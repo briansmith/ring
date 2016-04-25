@@ -127,6 +127,8 @@ typedef struct ecdsa_sig_st ECDSA_SIG;
 typedef struct rsa_st RSA;
 typedef struct spake2_ctx_st SPAKE2_CTX;
 
+typedef struct RAND RAND;
+
 
 #if defined(__cplusplus)
 }  /* extern C */

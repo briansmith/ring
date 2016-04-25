@@ -330,7 +330,7 @@ static const uint16_t primes[NUMPRIMES] = {
 
 static int witness(BIGNUM *w, const BIGNUM *a, const BIGNUM *a1,
                    const BIGNUM *a1_odd, int k, BN_CTX *ctx, BN_MONT_CTX *mont);
-static int probable_prime(BIGNUM *rnd, int bits);
+static int probable_prime(BIGNUM *rnd, int bits, RAND *rng);
 
 void BN_GENCB_set(BN_GENCB *callback,
                   int (*f)(int event, int n, struct bn_gencb_st *),
@@ -347,7 +347,7 @@ int BN_GENCB_call(BN_GENCB *callback, int event, int n) {
   return callback->callback(event, n, callback);
 }
 
-int BN_generate_prime_ex(BIGNUM *ret, int bits, BN_GENCB *cb) {
+int BN_generate_prime_ex(BIGNUM *ret, int bits, RAND *rng, BN_GENCB *cb) {
   int found = 0;
   int i, c1 = 0;
   BN_CTX *ctx;
@@ -366,7 +366,7 @@ int BN_generate_prime_ex(BIGNUM *ret, int bits, BN_GENCB *cb) {
 
   do {
     /* make a random number and set the top and bottom bits */
-    if (!probable_prime(ret, bits)) {
+    if (!probable_prime(ret, bits, rng)) {
       goto err;
     }
 
@@ -375,7 +375,7 @@ int BN_generate_prime_ex(BIGNUM *ret, int bits, BN_GENCB *cb) {
       goto err;
     }
 
-    i = BN_is_prime_fasttest_ex(ret, checks, ctx, 0, cb);
+    i = BN_is_prime_fasttest_ex(ret, checks, ctx, 0, rng, cb);
     if (i == -1) {
       goto err;
     }
@@ -390,7 +390,7 @@ err:
 }
 
 int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
-                            int do_trial_division, BN_GENCB *cb) {
+                            int do_trial_division, RAND *rng, BN_GENCB *cb) {
   int i, j, ret = -1;
   int k;
   BN_CTX *ctx = NULL;
@@ -481,7 +481,9 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
   }
 
   for (i = 0; i < checks; i++) {
-    if (!BN_pseudo_rand_range(check, A1)) {
+    /* XXX: Is `BN_pseudo_rand_range` really right here? Maybe we need a
+     * particular distribution? */
+    if (!BN_pseudo_rand_range(check, A1, rng)) {
       goto err;
     }
     if (!BN_add_word(check, 1)) {
@@ -559,7 +561,7 @@ static BN_ULONG get_word(const BIGNUM *bn) {
   return 0;
 }
 
-static int probable_prime(BIGNUM *rnd, int bits) {
+static int probable_prime(BIGNUM *rnd, int bits, RAND *rng) {
   int i;
   uint16_t mods[NUMPRIMES];
   BN_ULONG delta;
@@ -567,7 +569,7 @@ static int probable_prime(BIGNUM *rnd, int bits) {
   char is_single_word = bits <= BN_BITS2;
 
 again:
-  if (!BN_rand(rnd, bits, 1, 1)) {
+  if (!BN_rand(rnd, bits, 1, 1, rng)) {
     return 0;
   }
 

@@ -41,13 +41,11 @@ struct rand_buffer {
 /* urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|. */
 static int urandom_fd = -2;
 
-static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-
-/* init_once initializes the state of this module to values previously
- * requested. This is the only function that modifies |urandom_fd| and
- * |urandom_buffering|, whose values may be read safely after calling the
+/* CRYPTO_sysrand_init_once initializes the state of this module to values
+ * previously requested. This is the only function that modifies |urandom_fd|
+ * and |urandom_buffering|, whose values may be read safely after calling the
  * once. */
-static void init_once(void) {
+void CRYPTO_sysrand_init_once(void) {
   int fd;
 
   do {
@@ -95,15 +93,17 @@ static char read_full(int fd, void *out, size_t len) {
   return 1;
 }
 
-/* CRYPTO_sysrand puts |requested| random bytes into |out|. */
-void CRYPTO_sysrand(void *out, size_t requested) {
+/* CRYPTO_sysrand puts |requested| random bytes into |out|.
+ * |CRYPTO_sysrand_init_once| must be called exactly once before
+ * |CRYPTO_sysrand| is ever called. */
+int CRYPTO_sysrand(void *out, size_t requested) {
   if (requested == 0) {
-    return;
+    return 1;
   }
-  CRYPTO_once(&once, init_once);
   if (!read_full(urandom_fd, out, requested)) {
-    abort();
+    return 0;
   }
+  return 1;
 }
 
 #endif  /* !OPENSSL_WINDOWS && !BORINGSSL_UNSAFE_FUZZER_MODE */

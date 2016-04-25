@@ -20,9 +20,14 @@ extern "C" {
 #endif
 
 
+void CRYPTO_sysrand_init_once(void);
+
 /* CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
- * system. */
-void CRYPTO_sysrand(void *buf, size_t len);
+ * system. It returns one on success and zero on failure (unlike BoringSSL's
+ * version). When the urandom.c implementation is used,
+ * |CRYPTO_sysrand_init_once| must be called exactly once before
+ * |CRYPTO_sysrand| is called. */
+int CRYPTO_sysrand(void *buf, size_t len);
 
 
 #if defined(__cplusplus)

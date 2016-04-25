@@ -145,7 +145,8 @@ size_t RSA_padding_check_PKCS1_type_1(const uint8_t *from, unsigned from_len) {
 }
 
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
-                                 const uint8_t *from, unsigned from_len) {
+                                 const uint8_t *from, unsigned from_len,
+                                 RAND *rng) {
   unsigned i, j;
 
   if (to_len < RSA_PKCS1_PADDING_SIZE) {
@@ -166,13 +167,13 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
   /* pad out with non-zero random data */
   j = to_len - 3 - from_len;
 
-  if (!RAND_bytes(p, j)) {
+  if (!RAND_bytes(rng, p, j)) {
     return 0;
   }
 
   for (i = 0; i < j; i++) {
     while (*p == 0) {
-      if (!RAND_bytes(p, 1)) {
+      if (!RAND_bytes(rng, p, 1)) {
         return 0;
       }
     }

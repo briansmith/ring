@@ -95,7 +95,7 @@
 #include "../test/bn_test_util.h"
 
 
-extern "C" int bssl_bn_test_main();
+extern "C" int bssl_bn_test_main(RAND *rng);
 
 
 // This program tests the BIGNUM implementation. It takes an optional -bc
@@ -108,38 +108,38 @@ static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_add(void);
-static bool test_sub(void);
-static bool test_lshift1(void);
-static bool test_lshift(BN_CTX *ctx, ScopedBIGNUM a);
-static bool test_rshift1(void);
-static bool test_rshift(BN_CTX *ctx);
-static bool test_sqr(BN_CTX *ctx);
-static bool test_mul(void);
-static bool test_div(BN_CTX *ctx);
-static int rand_neg();
+static bool test_add(RAND *rng);
+static bool test_sub(RAND *rng);
+static bool test_lshift1(RAND *rng);
+static bool test_lshift(RAND *rng, BN_CTX *ctx, ScopedBIGNUM a);
+static bool test_rshift1(RAND *rng);
+static bool test_rshift(RAND *rng, BN_CTX *ctx);
+static bool test_sqr(RAND *rng, BN_CTX *ctx);
+static bool test_mul(RAND *rng);
+static bool test_div(RAND *rng, BN_CTX *ctx);
+static int rand_neg(void);
 
-static bool test_mont(BN_CTX *ctx);
-static bool test_mod(BN_CTX *ctx);
-static bool test_mod_mul(BN_CTX *ctx);
-static bool test_mod_exp_mont(BN_CTX *ctx);
-static bool test_mod_exp_mont_consttime(BN_CTX *ctx);
-static bool test_exp(BN_CTX *ctx);
+static bool test_mont(RAND *rng, BN_CTX *ctx);
+static bool test_mod(RAND *rng, BN_CTX *ctx);
+static bool test_mod_mul(RAND *rng, BN_CTX *ctx);
+static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx);
+static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
+static bool test_exp(RAND *rng, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
-static bool test_small_prime(void);
-static bool test_mod_exp_mont5(BN_CTX *ctx);
-static bool test_bn2bin_padded();
+static bool test_small_prime(RAND *rng);
+static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
+static bool test_bn2bin_padded(RAND *rng);
 static bool test_dec2bn();
 static bool test_hex2bn();
 static bool test_asc2bn();
-static bool test_rand();
+static bool test_rand(RAND *rng);
 static bool test_asn1();
 
 static const uint8_t kSample[] =
     "\xC6\x4F\x43\x04\x2A\xEA\xCA\x6E\x58\x36\x80\x5B\xE8\xC9"
     "\x9B\x04\x5D\x48\x36\xC2\xFD\x16\xC9\x64\xF0";
 
-extern "C" int bssl_bn_test_main() {
+extern "C" int bssl_bn_test_main(RAND *rng) {
   CRYPTO_library_init();
 
   ScopedBN_CTX ctx(BN_CTX_new());
@@ -152,30 +152,30 @@ extern "C" int bssl_bn_test_main() {
     return 1;
   }
 
-  if (!test_add() ||
-      !test_sub() ||
-      !test_lshift1() ||
-      !test_lshift(ctx.get(), std::move(sample)) ||
-      !test_lshift(ctx.get(), nullptr) ||
-      !test_rshift1() ||
-      !test_rshift(ctx.get()) ||
-      !test_sqr(ctx.get()) ||
-      !test_mul() ||
-      !test_div(ctx.get()) ||
-      !test_mod(ctx.get()) ||
-      !test_mod_mul(ctx.get()) ||
-      !test_mont(ctx.get()) ||
-      !test_mod_exp_mont(ctx.get()) ||
-      !test_mod_exp_mont_consttime(ctx.get()) ||
-      !test_mod_exp_mont5(ctx.get()) ||
-      !test_exp(ctx.get()) ||
+  if (!test_add(rng) ||
+      !test_sub(rng) ||
+      !test_lshift1(rng) ||
+      !test_lshift(rng, ctx.get(), std::move(sample)) ||
+      !test_lshift(rng, ctx.get(), nullptr) ||
+      !test_rshift1(rng) ||
+      !test_rshift(rng, ctx.get()) ||
+      !test_sqr(rng, ctx.get()) ||
+      !test_mul(rng) ||
+      !test_div(rng, ctx.get()) ||
+      !test_mod(rng, ctx.get()) ||
+      !test_mod_mul(rng, ctx.get()) ||
+      !test_mont(rng, ctx.get()) ||
+      !test_mod_exp_mont(rng, ctx.get()) ||
+      !test_mod_exp_mont_consttime(rng, ctx.get()) ||
+      !test_mod_exp_mont5(rng, ctx.get()) ||
+      !test_exp(rng, ctx.get()) ||
       !test_exp_mod_zero() ||
-      !test_small_prime() ||
-      !test_bn2bin_padded() ||
+      !test_small_prime(rng) ||
+      !test_bn2bin_padded(rng) ||
       !test_dec2bn() ||
       !test_hex2bn() ||
       !test_asc2bn() ||
-      !test_rand() ||
+      !test_rand(rng) ||
       !test_asn1()) {
     return 1;
   }
@@ -190,16 +190,16 @@ static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   return ret;
 }
 
-static bool test_add(void) {
+static bool test_add(RAND *rng) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c || !BN_rand(a.get(), 512, 0, 0)) {
+  if (!a || !b || !c || !BN_rand(a.get(), 512, 0, 0, rng)) {
     return false;
   }
 
   for (int i = 0; i < num0; i++) {
-    if (!BN_rand(b.get(), 450 + i, 0, 0)) {
+    if (!BN_rand(b.get(), 450 + i, 0, 0, rng)) {
       return false;
     }
     a->neg = rand_neg();
@@ -221,7 +221,7 @@ static bool test_add(void) {
   return true;
 }
 
-static bool test_sub(void) {
+static bool test_sub(RAND *rng) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -231,14 +231,14 @@ static bool test_sub(void) {
 
   for (int i = 0; i < num0 + num1; i++) {
     if (i < num1) {
-      if (!BN_rand(a.get(), 512, 0, 0) ||
+      if (!BN_rand(a.get(), 512, 0, 0, rng) ||
           !BN_copy(b.get(), a.get()) ||
           !BN_set_bit(a.get(), i) ||
           !BN_add_word(b.get(), i)) {
         return false;
       }
     } else {
-      if (!BN_rand(b.get(), 400 + i - num1, 0, 0)) {
+      if (!BN_rand(b.get(), 400 + i - num1, 0, 0, rng)) {
         return false;
       }
       a->neg = rand_neg();
@@ -259,7 +259,7 @@ static bool test_sub(void) {
   return true;
 }
 
-static bool test_div(BN_CTX *ctx) {
+static bool test_div(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -281,13 +281,13 @@ static bool test_div(BN_CTX *ctx) {
 
   for (int i = 0; i < num0 + num1; i++) {
     if (i < num1) {
-      if (!BN_rand(a.get(), 400, 0, 0) ||
+      if (!BN_rand(a.get(), 400, 0, 0, rng) ||
           !BN_copy(b.get(), a.get()) ||
           !BN_lshift(a.get(), a.get(), i) ||
           !BN_add_word(a.get(), i)) {
         return false;
       }
-    } else if (!BN_rand(b.get(), 50 + 3 * (i - num1), 0, 0)) {
+    } else if (!BN_rand(b.get(), 50 + 3 * (i - num1), 0, 0, rng)) {
       return false;
     }
     a->neg = rand_neg();
@@ -335,11 +335,11 @@ static bool test_div(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_lshift1(void) {
+static bool test_lshift1(RAND *rng) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c || !BN_rand(a.get(), 200, 0, 0)) {
+  if (!a || !b || !c || !BN_rand(a.get(), 200, 0, 0, rng)) {
     return false;
   }
   a->neg = rand_neg();
@@ -363,14 +363,14 @@ static bool test_lshift1(void) {
   return true;
 }
 
-static bool test_rshift(BN_CTX *ctx) {
+static bool test_rshift(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
   ScopedBIGNUM d(BN_new());
   ScopedBIGNUM e(BN_new());
   if (!a || !b || !c || !d || !e || !BN_one(c.get()) ||
-      !BN_rand(a.get(), 200, 0, 0)) {
+      !BN_rand(a.get(), 200, 0, 0, rng)) {
     return false;
   }
   a->neg = rand_neg();
@@ -391,11 +391,11 @@ static bool test_rshift(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_rshift1(void) {
+static bool test_rshift1(RAND *rng) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c || !BN_rand(a.get(), 200, 0, 0)) {
+  if (!a || !b || !c || !BN_rand(a.get(), 200, 0, 0, rng)) {
     return false;
   }
   a->neg = rand_neg();
@@ -419,10 +419,10 @@ static bool test_rshift1(void) {
   return true;
 }
 
-static bool test_lshift(BN_CTX *ctx, ScopedBIGNUM a) {
+static bool test_lshift(RAND *rng, BN_CTX *ctx, ScopedBIGNUM a) {
   if (!a) {
     a.reset(BN_new());
-    if (!a || !BN_rand(a.get(), 200, 0, 0)) {
+    if (!a || !BN_rand(a.get(), 200, 0, 0, rng)) {
       return false;
     }
     a->neg = rand_neg();
@@ -461,7 +461,7 @@ static bool test_lshift(BN_CTX *ctx, ScopedBIGNUM a) {
   return true;
 }
 
-static bool test_mul(void) {
+static bool test_mul(RAND *rng) {
   ScopedBN_CTX ctx(BN_CTX_new());
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
@@ -474,11 +474,11 @@ static bool test_mul(void) {
 
   for (int i = 0; i < num0 + num1; i++) {
     if (i <= num1) {
-      if (!BN_rand(a.get(), 100, 0, 0) ||
-          !BN_rand(b.get(), 100, 0, 0)) {
+      if (!BN_rand(a.get(), 100, 0, 0, rng) ||
+          !BN_rand(b.get(), 100, 0, 0, rng)) {
         return false;
       }
-    } else if (!BN_rand(b.get(), i - num1, 0, 0)) {
+    } else if (!BN_rand(b.get(), i - num1, 0, 0, rng)) {
       return false;
     }
     a->neg = rand_neg();
@@ -513,7 +513,7 @@ static bool test_mul(void) {
   return true;
 }
 
-static bool test_sqr(BN_CTX *ctx) {
+static bool test_sqr(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM c(BN_new());
   ScopedBIGNUM d(BN_new());
@@ -523,7 +523,7 @@ static bool test_sqr(BN_CTX *ctx) {
   }
 
   for (int i = 0; i < num0; i++) {
-    if (!BN_rand(a.get(), 40 + i * 10, 0, 0)) {
+    if (!BN_rand(a.get(), 40 + i * 10, 0, 0, rng)) {
       return false;
     }
     a->neg = rand_neg();
@@ -587,7 +587,7 @@ static int rand_neg() {
   return sign[(neg++) % 8];
 }
 
-static bool test_mont(BN_CTX *ctx) {
+static bool test_mont(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -616,8 +616,8 @@ static bool test_mont(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (!BN_rand(a.get(), 100, 0, 0) ||
-      !BN_rand(b.get(), 100, 0, 0)) {
+  if (!BN_rand(a.get(), 100, 0, 0, rng) ||
+      !BN_rand(b.get(), 100, 0, 0, rng)) {
     return false;
   }
 
@@ -627,7 +627,7 @@ static bool test_mont(BN_CTX *ctx) {
     if (bits == 0) {
       continue;
     }
-    if (!BN_rand(n.get(), bits, 0, 1) ||
+    if (!BN_rand(n.get(), bits, 0, 1, rng) ||
         !BN_MONT_CTX_set(mont.get(), n.get(), ctx) ||
         !BN_nnmod(a.get(), a.get(), n.get(), ctx) ||
         !BN_nnmod(b.get(), b.get(), n.get(), ctx) ||
@@ -650,19 +650,19 @@ static bool test_mont(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_mod(BN_CTX *ctx) {
+static bool test_mod(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
   ScopedBIGNUM d(BN_new());
   ScopedBIGNUM e(BN_new());
   if (!a || !b || !c || !d || !e ||
-      !BN_rand(a.get(), 1024, 0, 0)) {
+      !BN_rand(a.get(), 1024, 0, 0, rng)) {
     return false;
   }
 
   for (int i = 0; i < num0; i++) {
-    if (!BN_rand(b.get(), 450 + i * 10, 0, 0)) {
+    if (!BN_rand(b.get(), 450 + i * 10, 0, 0, rng)) {
       return false;
     }
     a->neg = rand_neg();
@@ -682,7 +682,7 @@ static bool test_mod(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_mod_mul(BN_CTX *ctx) {
+static bool test_mod_mul(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -703,12 +703,12 @@ static bool test_mod_mul(BN_CTX *ctx) {
   ERR_clear_error();
 
   for (int j = 0; j < 3; j++) {
-    if (!BN_rand(c.get(), 1024, 0, 0)) {
+    if (!BN_rand(c.get(), 1024, 0, 0, rng)) {
       return false;
     }
     for (int i = 0; i < num0; i++) {
-      if (!BN_rand(a.get(), 475 + i * 10, 0, 0) ||
-          !BN_rand(b.get(), 425 + i * 11, 0, 0)) {
+      if (!BN_rand(a.get(), 475 + i * 10, 0, 0, rng) ||
+          !BN_rand(b.get(), 425 + i * 11, 0, 0, rng)) {
         return false;
       }
       a->neg = rand_neg();
@@ -730,7 +730,7 @@ static bool test_mod_mul(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_mod_exp_mont(BN_CTX *ctx) {
+static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -750,12 +750,12 @@ static bool test_mod_exp_mont(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
+  if (!BN_rand(c.get(), 30, 0, 1, rng)) {  // must be odd for montgomery
     return false;
   }
   for (int i = 0; i < num2; i++) {
-    if (!BN_rand_range(a.get(), c.get()) ||
-        !BN_rand(b.get(), 2 + i, 0, 0) ||
+    if (!BN_rand_range(a.get(), c.get(), rng) ||
+        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
         !BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr)) {
       return false;
     }
@@ -796,7 +796,7 @@ static bool test_mod_exp_mont(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_mod_exp_mont_consttime(BN_CTX *ctx) {
+static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -827,12 +827,12 @@ static bool test_mod_exp_mont_consttime(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
+  if (!BN_rand(c.get(), 30, 0, 1, rng)) {  // must be odd for montgomery
     return false;
   }
   for (int i = 0; i < num2; i++) {
-    if (!BN_rand_range(a.get(), c.get()) ||
-        !BN_rand(b.get(), 2 + i, 0, 0) ||
+    if (!BN_rand_range(a.get(), c.get(), rng) ||
+        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
         !BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
                                    NULL)) {
       return false;
@@ -853,15 +853,15 @@ static bool test_mod_exp_mont_consttime(BN_CTX *ctx) {
 
 // Test constant-time modular exponentiation with 1024-bit inputs,
 // which on x86_64 cause a different code branch to be taken.
-static bool test_mod_exp_mont5(BN_CTX *ctx) {
+static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM p(BN_new());
   ScopedBIGNUM m(BN_new());
   ScopedBIGNUM d(BN_new());
   ScopedBIGNUM e(BN_new());
   if (!a || !p || !m || !d || !e ||
-      !BN_rand(m.get(), 1024, 0, 1) ||  // must be odd for montgomery
-      !BN_rand_range(a.get(), m.get())) {
+      !BN_rand(m.get(), 1024, 0, 1, rng) ||  // must be odd for montgomery
+      !BN_rand_range(a.get(), m.get(), rng)) {
     return false;
   }
   // Zero exponent.
@@ -874,7 +874,7 @@ static bool test_mod_exp_mont5(BN_CTX *ctx) {
     fprintf(stderr, "Modular exponentiation test failed!\n");
     return false;
   }
-  if (!BN_rand(p.get(), 1024, 0, 0)) {
+  if (!BN_rand(p.get(), 1024, 0, 0, rng)) {
     return false;
   }
   // Zero input.
@@ -904,7 +904,7 @@ static bool test_mod_exp_mont5(BN_CTX *ctx) {
     return false;
   }
   // Finally, some regular test vectors.
-  if (!BN_rand_range(e.get(), m.get()) ||
+  if (!BN_rand_range(e.get(), m.get(), rng) ||
       !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
                                  nullptr) ||
       !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
@@ -918,7 +918,7 @@ static bool test_mod_exp_mont5(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_exp(BN_CTX *ctx) {
+static bool test_exp(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM d(BN_new());
@@ -928,8 +928,8 @@ static bool test_exp(BN_CTX *ctx) {
   }
 
   for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
-        !BN_rand(b.get(), 2 + i, 0, 0) ||
+    if (!BN_rand(a.get(), 20 + i * 5, 0, 0, rng) ||
+        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
         !BN_exp(d.get(), a.get(), b.get(), ctx)) {
       return false;
     }
@@ -974,11 +974,12 @@ static bool test_exp_mod_zero(void) {
   return true;
 }
 
-static bool test_small_prime(void) {
+static bool test_small_prime(RAND *rng) {
   static const unsigned kBits = 10;
 
   ScopedBIGNUM r(BN_new());
-  if (!r || !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), NULL)) {
+  if (!r ||
+      !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), rng, NULL)) {
     return false;
   }
   if (BN_num_bits(r.get()) != kBits) {
@@ -990,7 +991,7 @@ static bool test_small_prime(void) {
   return true;
 }
 
-static bool test_bn2bin_padded() {
+static bool test_bn2bin_padded(RAND *rng) {
   uint8_t zeros[256], out[256], reference[128];
 
   memset(zeros, 0, sizeof(zeros));
@@ -1016,7 +1017,7 @@ static bool test_bn2bin_padded() {
   // Test a random numbers at various byte lengths.
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
     if (!BN_rand(n.get(), bytes * 8, 0 /* make sure top bit is 1 */,
-                 0 /* don't modify bottom bit */)) {
+                 0 /* don't modify bottom bit */, rng)) {
       return false;
     }
     if (BN_num_bytes(n.get()) != bytes ||
@@ -1196,7 +1197,7 @@ static bool test_asc2bn() {
   return true;
 }
 
-static bool test_rand() {
+static bool test_rand(RAND *rng) {
   ScopedBIGNUM bn(BN_new());
   if (!bn) {
     return false;
@@ -1204,34 +1205,34 @@ static bool test_rand() {
 
   // Test BN_rand accounts for degenerate cases with |top| and |bottom|
   // parameters.
-  if (!BN_rand(bn.get(), 0, 0 /* top */, 0 /* bottom */) ||
+  if (!BN_rand(bn.get(), 0, 0 /* top */, 0 /* bottom */, rng) ||
       !BN_is_zero(bn.get())) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
-  if (!BN_rand(bn.get(), 0, 1 /* top */, 1 /* bottom */) ||
+  if (!BN_rand(bn.get(), 0, 1 /* top */, 1 /* bottom */, rng) ||
       !BN_is_zero(bn.get())) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
 
-  if (!BN_rand(bn.get(), 1, 0 /* top */, 0 /* bottom */) ||
+  if (!BN_rand(bn.get(), 1, 0 /* top */, 0 /* bottom */, rng) ||
       !BN_is_word(bn.get(), 1)) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
-  if (!BN_rand(bn.get(), 1, 1 /* top */, 0 /* bottom */) ||
+  if (!BN_rand(bn.get(), 1, 1 /* top */, 0 /* bottom */, rng) ||
       !BN_is_word(bn.get(), 1)) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
-  if (!BN_rand(bn.get(), 1, -1 /* top */, 1 /* bottom */) ||
+  if (!BN_rand(bn.get(), 1, -1 /* top */, 1 /* bottom */, rng) ||
       !BN_is_word(bn.get(), 1)) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
 
-  if (!BN_rand(bn.get(), 2, 1 /* top */, 0 /* bottom */) ||
+  if (!BN_rand(bn.get(), 2, 1 /* top */, 0 /* bottom */, rng) ||
       !BN_is_word(bn.get(), 3)) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;

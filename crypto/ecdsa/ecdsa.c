@@ -67,7 +67,7 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
 
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
-               unsigned int *sig_len, EC_KEY *eckey) {
+               unsigned int *sig_len, EC_KEY *eckey, RAND *rng) {
   (void)type;
 
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
@@ -116,7 +116,7 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
       do {
         if (!BN_generate_dsa_nonce(k, &group->order,
                                    EC_KEY_get0_private_key(eckey), digest,
-                                   digest_len)) {
+                                   digest_len, rng)) {
           OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
           goto err;
         }

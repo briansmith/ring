@@ -115,7 +115,7 @@ OPENSSL_EXPORT size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out,
 /* EC_KEY_generate_key_ex generates a random private key and calculates the
  * corresponding public key. It returns the generated key pair on success or
  * NULL on failure. */
-OPENSSL_EXPORT EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group);
+OPENSSL_EXPORT EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group, RAND *rng);
 
 
 #if defined(__cplusplus)

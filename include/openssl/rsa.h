@@ -102,7 +102,7 @@ OPENSSL_EXPORT void RSA_free(RSA *rsa);
  * https://msdn.microsoft.com/en-us/library/windows/desktop/aa387685(v=vs.85).aspx
  *
  * It returns one on success or zero on error. */
-OPENSSL_EXPORT RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb);
+OPENSSL_EXPORT RSA *RSA_generate(int bits, uint32_t e, RAND *rng, BN_GENCB *cb);
 
 
 /* Encryption / Decryption */
@@ -124,7 +124,8 @@ OPENSSL_EXPORT RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb);
  * The |padding| argument must be one of the |RSA_*_PADDING| values. */
 OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
                                size_t *out_len, uint8_t *out, size_t max_out,
-                               const uint8_t *in, size_t in_len, int padding);
+                               const uint8_t *in, size_t in_len, int padding,
+                               RAND *rng);
 
 /* Signing / Verification */
 
@@ -140,7 +141,7 @@ OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
  * It returns 1 on success and zero on error. */
 OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
                             unsigned int in_len, uint8_t *out,
-                            unsigned int *out_len, RSA *rsa);
+                            unsigned int *out_len, RSA *rsa, RAND *rng);
 
 /* RSA_sign_raw signs |in_len| bytes from |in| with the public key from |rsa|
  * and writes, at most, |max_out| bytes of signature data to |out|. The
@@ -151,7 +152,7 @@ OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
  * The |padding| argument must be one of the |RSA_*_PADDING| values. */
 OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
-                                size_t in_len, int padding);
+                                size_t in_len, int padding, RAND *rng);
 
 
 /* Utility functions. */

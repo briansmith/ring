@@ -36,7 +36,7 @@ extern "C" {
 /* X25519_keypair sets |out_public_value| and |out_private_key| to a freshly
  * generated, public–private key pair. */
 OPENSSL_EXPORT void X25519_keypair(uint8_t out_public_value[32],
-                                   uint8_t out_private_key[32]);
+                                   uint8_t out_private_key[32], RAND *rng);
 
 /* X25519 writes a shared key to |out_shared_key| that is calculated from the
  * given private key and the peer's public value. It returns one on success and
@@ -66,7 +66,7 @@ OPENSSL_EXPORT void X25519_public_from_private(uint8_t out_public_value[32],
 /* ED25519_keypair sets |out_public_key| and |out_private_key| to a freshly
  * generated, public–private key pair. */
 OPENSSL_EXPORT void ED25519_keypair(uint8_t out_public_key[32],
-                                    uint8_t out_private_key[64]);
+                                    uint8_t out_private_key[64], RAND *rng);
 
 /* ED25519_sign sets |out_sig| to be a signature of |message_len| bytes from
  * |message| using |private_key|. It returns one on success or zero on

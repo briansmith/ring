@@ -462,14 +462,16 @@ OPENSSL_EXPORT int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a,
  *
  * If |bottom| is non-zero, the least-significant bit, if any, will be set. The
  * function returns one on success or zero otherwise. */
-OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom);
+OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom,
+                           RAND *rng);
 
 /* BN_rand_range sets |rnd| to a random value [0..range). It returns one on
  * success and zero otherwise. */
-OPENSSL_EXPORT int BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
+OPENSSL_EXPORT int BN_rand_range(BIGNUM *rnd, const BIGNUM *range, RAND *rng);
 
 /* BN_pseudo_rand_range is an alias for BN_rand_range. */
-OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
+OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range,
+                                        RAND *rng);
 
 /* BN_generate_dsa_nonce generates a random number 0 <= out < range. Unlike
  * BN_rand_range, it also includes the contents of |priv| and |message| in the
@@ -480,7 +482,7 @@ OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 OPENSSL_EXPORT int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range,
                                          const BIGNUM *priv,
                                          const uint8_t *message,
-                                         size_t message_len);
+                                         size_t message_len, RAND *rng);
 
 /* BN_GENCB holds a callback function that is used by generation functions that
  * can take a very long time to complete. Use |BN_GENCB_set| to initialise a
@@ -524,7 +526,8 @@ OPENSSL_EXPORT int BN_GENCB_call(BN_GENCB *callback, int event, int n);
  * If |cb| is not NULL, it will be called during processing to give an
  * indication of progress. See the comments for |BN_GENCB|. It returns one on
  * success and zero otherwise. */
-OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, BN_GENCB *cb);
+OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, RAND *rng,
+                                        BN_GENCB *cb);
 
 /* BN_prime_checks is magic value that can be used as the |checks| argument to
  * the primality testing functions in order to automatically select a number of
@@ -544,7 +547,7 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, BN_GENCB *cb);
  * WARNING: deprecated. Use |BN_primality_test|. */
 OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
                                            BN_CTX *ctx, int do_trial_division,
-                                           BN_GENCB *cb);
+                                           RAND *rng, BN_GENCB *cb);
 
 
 /* Number theory functions */

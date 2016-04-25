@@ -68,7 +68,7 @@
 
 
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                                 size_t len);
+                                 size_t len, RAND *rng);
 
 static int check_modulus_and_exponent_sizes(const BIGNUM *n, const BIGNUM *e,
                                             size_t min_bits, size_t max_bits) {
@@ -117,7 +117,8 @@ unsigned RSA_size(const RSA *rsa) {
 }
 
 int RSA_encrypt(const BIGNUM *n, const BIGNUM *e, size_t *out_len, uint8_t *out,
-                size_t max_out, const uint8_t *in, size_t in_len, int padding) {
+                size_t max_out, const uint8_t *in, size_t in_len, int padding,
+                RAND *rng) {
   const unsigned rsa_size = BN_num_bytes(n); /* RSA_size((n, e)) */
   BIGNUM *f, *result;
   uint8_t *buf = NULL;
@@ -151,7 +152,7 @@ int RSA_encrypt(const BIGNUM *n, const BIGNUM *e, size_t *out_len, uint8_t *out,
 
   switch (padding) {
     case RSA_PKCS1_PADDING:
-      i = RSA_padding_add_PKCS1_type_2(buf, rsa_size, in, in_len);
+      i = RSA_padding_add_PKCS1_type_2(buf, rsa_size, in, in_len, rng);
       break;
     case RSA_NO_PADDING:
       i = RSA_padding_add_none(buf, rsa_size, in, in_len);
@@ -314,7 +315,8 @@ static void rsa_blinding_release(RSA *rsa, BN_BLINDING *blinding,
 
 /* signing */
 int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                 const uint8_t *in, size_t in_len, int padding) {
+                 const uint8_t *in, size_t in_len, int padding,
+                 RAND *rng) {
   const unsigned rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int i, ret = 0;
@@ -346,7 +348,7 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (!rsa_private_transform(rsa, out, buf, rsa_size)) {
+  if (!rsa_private_transform(rsa, out, buf, rsa_size, rng)) {
     goto err;
   }
 
@@ -437,7 +439,7 @@ err:
  * It returns one on success and zero otherwise.
  */
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                                 size_t len) {
+                                 size_t len, RAND *rng) {
   BN_CTX *ctx = NULL;
   unsigned blinding_index = 0;
   BN_BLINDING *blinding = NULL;
@@ -469,7 +471,7 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
   blinding = rsa_blinding_get(rsa, &blinding_index);
   if (blinding == NULL ||
-      !BN_BLINDING_convert(&base, blinding, rsa, ctx)) {
+      !BN_BLINDING_convert(&base, blinding, rsa, rng, ctx)) {
   }
 
   /* Extra reductions would be required if |p < q| and |p == q| is just plain
@@ -561,7 +563,7 @@ err:
   return ret;
 }
 
-RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
+RSA *RSA_generate(int bits, uint32_t e, RAND *rng, BN_GENCB *cb) {
   RSA *rsa = rsa_new_begin();
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE)
@@ -602,7 +604,7 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
     goto err;
   }
   for (;;) {
-    if (!BN_generate_prime_ex(rsa->p, bitsp, cb) ||
+    if (!BN_generate_prime_ex(rsa->p, bitsp, rng, cb) ||
         !BN_sub(r2, rsa->p, BN_value_one()) ||
         !BN_gcd(r1, r2, rsa->e, ctx)) {
       goto err;
@@ -623,7 +625,7 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
      * this and bail if it happens 3 times. */
     unsigned int degenerate = 0;
     do {
-      if (!BN_generate_prime_ex(rsa->q, bitsq, cb)) {
+      if (!BN_generate_prime_ex(rsa->q, bitsq, rng, cb)) {
         goto err;
       }
     } while ((BN_cmp(rsa->p, rsa->q) == 0) && (++degenerate < 3));

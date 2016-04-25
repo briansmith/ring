@@ -118,7 +118,7 @@
 #include "../internal.h"
 
 
-int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
+int BN_rand(BIGNUM *rnd, int bits, int top, int bottom, RAND *rng) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
 
@@ -142,7 +142,7 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   }
 
   /* Make a random number and set the top and bottom bits. */
-  if (!RAND_bytes(buf, bytes)) {
+  if (!RAND_bytes(rng, buf, bytes)) {
     goto err;
   }
 
@@ -177,7 +177,7 @@ err:
   return (ret);
 }
 
-int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
+int BN_rand_range(BIGNUM *r, const BIGNUM *range, RAND *rng) {
   unsigned n;
   unsigned count = 100;
 
@@ -196,7 +196,7 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
      * so  3*range (= 11..._2)  is exactly one bit longer than  range */
     do {
       if (!BN_rand(r, n + 1, -1 /* don't set most significant bits */,
-                   0 /* don't set least significant bits */)) {
+                   0 /* don't set least significant bits */, rng)) {
         return 0;
       }
 
@@ -222,7 +222,7 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
   } else {
     do {
       /* range = 11..._2  or  range = 101..._2 */
-      if (!BN_rand(r, n, -1, 0)) {
+      if (!BN_rand(r, n, -1, 0, rng)) {
         return 0;
       }
 
@@ -236,8 +236,8 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
   return 1;
 }
 
-int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {
-  return BN_rand_range(r, range);
+int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range, RAND *rng) {
+  return BN_rand_range(r, range, rng);
 }
 
 extern int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
@@ -247,7 +247,8 @@ extern int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
                                         const uint8_t *part4, size_t part4_len);
 
 int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
-                          const uint8_t *message, size_t message_len) {
+                          const uint8_t *message, size_t message_len,
+                          RAND *rng) {
   /* We use 512 bits of random data per iteration to
    * ensure that we have at least |range| bits of randomness. */
   uint8_t random_bytes[64];
@@ -293,7 +294,7 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
   for (uint32_t attempt = 0;; attempt++) {
     uint8_t attempt_be[4];
     to_be_u32_ptr(attempt_be, attempt);
-    if (!RAND_bytes(random_bytes, sizeof(random_bytes)) ||
+    if (!RAND_bytes(rng, random_bytes, sizeof(random_bytes)) ||
         !BN_generate_dsa_nonce_digest(digest, sizeof(digest), attempt_be,
                                       sizeof(attempt_be), private_bytes,
                                       sizeof(private_bytes), message,

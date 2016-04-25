@@ -90,7 +90,7 @@ OPENSSL_EXPORT int ECDSA_verify_signed_digest(const EC_GROUP *group,
  * zero otherwise. */
 OPENSSL_EXPORT int ECDSA_sign(int type, const uint8_t *digest,
                               size_t digest_len, uint8_t *sig,
-                              unsigned int *sig_len, EC_KEY *key);
+                              unsigned int *sig_len, EC_KEY *key, RAND *rng);
 
 /* ECDSA_size returns the maximum size of an ECDSA signature using |key|. It
  * returns zero on error. */

@@ -75,7 +75,7 @@
 #include "../test/scoped_types.h"
 
 
-extern "C" int bssl_rsa_test_main(void);
+extern "C" int bssl_rsa_test_main(RAND *rng);
 
 
 // kPlaintext is a sample plaintext.
@@ -242,8 +242,8 @@ static const uint8_t kExponent1RSAKey[] = {
 };
 
 static bool TestRSA(const uint8_t *der, size_t der_len,
-                    const uint8_t *oaep_ciphertext,
-                    size_t oaep_ciphertext_len) {
+                    const uint8_t *oaep_ciphertext, size_t oaep_ciphertext_len,
+                    RAND *rng) {
   ScopedRSA key(RSA_private_key_from_bytes(der, der_len));
   if (!key) {
     return false;
@@ -254,7 +254,7 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   size_t ciphertext_len = 0;
   if (!RSA_encrypt(key->n, key->e, &ciphertext_len, ciphertext,
                    sizeof(ciphertext), kPlaintext, kPlaintextLen,
-                   RSA_PKCS1_PADDING) ||
+                   RSA_PKCS1_PADDING, rng) ||
       ciphertext_len != RSA_size(key.get())) {
     fprintf(stderr, "PKCS#1 v1.5 encryption failed!\n");
     return false;
@@ -362,15 +362,15 @@ static bool TestBadExponent() {
   return true;
 }
 
-extern "C" int bssl_rsa_test_main(void) {
+extern "C" int bssl_rsa_test_main(RAND *rng) {
   CRYPTO_library_init();
 
   if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,
-               sizeof(kOAEPCiphertext1) - 1) ||
+               sizeof(kOAEPCiphertext1) - 1, rng) ||
       !TestRSA(kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2,
-               sizeof(kOAEPCiphertext2) - 1) ||
+               sizeof(kOAEPCiphertext2) - 1, rng) ||
       !TestRSA(kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3,
-               sizeof(kOAEPCiphertext3) - 1) ||
+               sizeof(kOAEPCiphertext3) - 1, rng) ||
       !TestASN1() ||
       !TestBadExponent()) {
     return 1;

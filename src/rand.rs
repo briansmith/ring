@@ -16,15 +16,87 @@
 
 #![allow(unsafe_code)]
 
-use super::{c, bssl};
+#[cfg(unix)]
+extern crate std;
 
-/// Fills the given slice with random bytes generated from a PRNG.
-pub fn fill_secure_random(out: &mut [u8]) -> Result<(), ()> {
-    bssl::map_result(unsafe {
-        RAND_bytes(out.as_mut_ptr(), out.len())
-    })
+use {bssl, c};
+use core;
+
+/// A secure random number generator.
+pub trait SecureRandom {
+    /// Fills `dest` with random bytes.
+    fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()>;
+}
+
+/// A secure random number generator where the random values come directly
+/// from the operating system.
+///
+/// On "unix"-ish platforms, this is currently done by reading from
+/// `/dev/urandom`. On other platforms, this is done using the platform's
+/// API for secure random number generation.
+pub struct SystemRandom {
+    _dummy: u8,
+}
+
+impl SystemRandom {
+    /// Constructs a new `SystemRandom`.
+    #[inline(always)]
+    pub fn new() -> Result<SystemRandom, ()> {
+        init_once();
+        Ok(SystemRandom { _dummy: 1 })
+    }
+}
+
+impl SecureRandom for SystemRandom {
+    #[inline(always)]
+    fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
+        bssl::map_result(unsafe {
+            CRYPTO_sysrand(dest.as_mut_ptr(), dest.len())
+        })
+    }
 }
 
 extern {
-    fn RAND_bytes(buf: *mut u8, len: c::size_t) -> c::int;
+    fn CRYPTO_sysrand(buf: *mut u8, len: c::size_t) -> c::int;
+}
+
+#[cfg(unix)]
+extern {
+    fn CRYPTO_sysrand_init_once();
+}
+
+#[cfg(not(unix))]
+fn init_once() { }
+
+#[cfg(unix)]
+fn init_once() {
+    INIT.call_once(|| {
+        unsafe {
+            CRYPTO_sysrand_init_once();
+        }
+    });
+}
+
+#[cfg(unix)]
+static INIT: std::sync::Once = std::sync::ONCE_INIT;
+
+
+/// An adapter that lets the C code use `SecureRandom`.
+#[allow(non_snake_case)]
+#[doc(hidden)]
+pub struct RAND<'a> {
+    pub rng: &'a mut SecureRandom,
+}
+
+#[allow(non_snake_case)]
+#[doc(hidden)]
+#[no_mangle]
+pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
+                                dest_len: c::size_t) -> c::int {
+    let dest: &mut [u8] = core::slice::from_raw_parts_mut(dest, dest_len);
+
+    match (*(*rng).rng).fill(dest) {
+        Ok(()) => 1,
+        _ => 0
+    }
 }

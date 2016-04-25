@@ -24,9 +24,8 @@ extern "C" {
 
 /* Random number generation. */
 
-
 /* RAND_bytes writes |len| bytes of random data to |buf| and returns one. */
-OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
+int RAND_bytes(RAND *rng, uint8_t *buf, size_t len);
 
 /* RAND_cleanup frees any resources used by the RNG. This is not safe if other
  * threads might still be calling |RAND_bytes|. */

@@ -190,7 +190,7 @@ err:
   return ok;
 }
 
-EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group) {
+EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group, RAND *rng) {
   EC_KEY *eckey = ec_key_new_ex(group);
   if (!eckey) {
     return NULL;
@@ -203,7 +203,7 @@ EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group) {
   }
 
   do {
-    if (!BN_rand_range(eckey->priv_key, &eckey->group->order)) {
+    if (!BN_rand_range(eckey->priv_key, &eckey->group->order, rng)) {
       goto err;
     }
   } while (BN_is_zero(eckey->priv_key));

@@ -76,7 +76,8 @@ int rsa_new_end(RSA *rsa, BN_CTX *ctx);
 
 BN_BLINDING *BN_BLINDING_new(void);
 void BN_BLINDING_free(BN_BLINDING *b);
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx);
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, RAND *rng,
+                        BN_CTX *ctx);
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
                        BN_CTX *ctx);
 BN_BLINDING *rsa_setup_blinding(const RSA *rsa, BN_CTX *in_ctx);
@@ -91,7 +92,8 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len);
 size_t RSA_padding_check_PKCS1_type_1(const uint8_t *from, unsigned from_len);
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
-                                 const uint8_t *from, unsigned from_len);
+                                 const uint8_t *from, unsigned from_len,
+                                 RAND *rng);
 int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
                          unsigned from_len);
 

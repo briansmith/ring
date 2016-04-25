@@ -160,13 +160,13 @@ impl SigningKey {
     /// Key](http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf)
     /// and is consistent with the key lengths chosen for TLS as described in
     /// [RFC 5246, Appendix C](https://tools.ietf.org/html/rfc5246#appendix-C).
-    pub fn generate(digest_alg: &'static digest::Algorithm)
-                    -> Result<SigningKey, ()> {
+    pub fn generate(digest_alg: &'static digest::Algorithm,
+                    rng: &mut rand::SecureRandom) -> Result<SigningKey, ()> {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
         // now `digest::MAX_OUTPUT_LEN` is good enough.
         let mut key_data = [0u8; digest::MAX_OUTPUT_LEN];
         let key_data = &mut key_data[..digest_alg.output_len];
-        try!(rand::fill_secure_random(key_data));
+        try!(rng.fill(key_data));
         Ok(SigningKey::new(digest_alg, key_data))
     }
 
@@ -334,17 +334,19 @@ pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
 
 #[cfg(test)]
 mod tests {
-    use super::super::{digest, file_test, hmac};
+    use {digest, file_test, hmac, rand};
 
     // Make sure that `SigningKey::generate` and `verify_with_own_key` aren't
     // completely wacky.
     #[test]
     pub fn hmac_signing_key_coverage() {
+        let mut rng = rand::SystemRandom::new().unwrap();
+
         const HELLO_WORLD_GOOD: &'static [u8] = b"hello, world";
         const HELLO_WORLD_BAD:  &'static [u8] = b"hello, worle";
 
         for d in &digest::test_util::ALL_ALGORITHMS {
-            let key = hmac::SigningKey::generate(d).unwrap();
+            let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
             let signature = hmac::sign(&key, HELLO_WORLD_GOOD);
             assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD,
                                               signature.as_ref()).is_ok());

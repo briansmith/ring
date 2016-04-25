@@ -71,7 +71,7 @@
 #include "../test/scoped_types.h"
 
 
-extern "C" int bssl_ecdsa_test_main();
+extern "C" int bssl_ecdsa_test_main(RAND *rng);
 
 
 static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
@@ -166,10 +166,11 @@ static bool TestTamperedSig(int digest_nid, const uint8_t *digest,
   return true;
 }
 
-static bool TestBuiltin(FILE *out) {
+static bool TestBuiltin(RAND *rng, FILE *out) {
   // Fill digest values with some random data.
   uint8_t digest[20], wrong_digest[20];
-  if (!RAND_bytes(digest, 20) || !RAND_bytes(wrong_digest, 20)) {
+  if (!RAND_bytes(rng, digest, 20) ||
+      !RAND_bytes(rng, wrong_digest, 20)) {
     fprintf(out, "ERROR: unable to get random data\n");
     return false;
   }
@@ -190,7 +191,7 @@ static bool TestBuiltin(FILE *out) {
     const BIGNUM *order = EC_GROUP_get0_order(group);
 
     // Create a new ECDSA key.
-    ScopedEC_KEY eckey(EC_KEY_generate_key_ex(group));
+    ScopedEC_KEY eckey(EC_KEY_generate_key_ex(group, rng));
     if (!eckey) {
       fprintf(out, "EC_KEY_generate_key_ex failed for %s\n", kCurves[n].name);
       return false;
@@ -202,7 +203,7 @@ static bool TestBuiltin(FILE *out) {
     }
 
     // Create a second key.
-    ScopedEC_KEY wrong_eckey(EC_KEY_generate_key_ex(group));
+    ScopedEC_KEY wrong_eckey(EC_KEY_generate_key_ex(group, rng));
     if (!wrong_eckey) {
       fprintf(out, "EC_KEY_generate_key_ex failed for %s\n", kCurves[n].name);
       return false;
@@ -235,7 +236,8 @@ static bool TestBuiltin(FILE *out) {
     // Create a signature.
     unsigned sig_len = ECDSA_size(eckey.get());
     std::vector<uint8_t> signature(sig_len);
-    if (!ECDSA_sign(0, digest, 20, signature.data(), &sig_len, eckey.get())) {
+    if (!ECDSA_sign(0, digest, 20, signature.data(), &sig_len, eckey.get(),
+                    rng)) {
       fprintf(out, "ECDSA_sign failed for %s\n", kCurves[n].name);
       return false;
     }
@@ -319,10 +321,10 @@ static size_t BitsToBytes(size_t bits) {
   return (bits / 8) + (7 + (bits % 8)) / 8;
 }
 
-extern "C" int bssl_ecdsa_test_main() {
+extern "C" int bssl_ecdsa_test_main(RAND *rng) {
   CRYPTO_library_init();
 
-  if (!TestBuiltin(stdout) ||
+  if (!TestBuiltin(rng, stdout) ||
       !TestECDSA_SIG_max_len(BitsToBytes(256)) ||
       !TestECDSA_SIG_max_len(BitsToBytes(384))) {
     printf("\nECDSA test failed\n");

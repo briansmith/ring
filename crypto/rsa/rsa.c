@@ -281,7 +281,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len, int hash_nid,
 }
 
 int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
-             unsigned *out_len, RSA *rsa) {
+             unsigned *out_len, RSA *rsa, RAND *rng) {
   const unsigned rsa_size = RSA_size(rsa);
   int ret = 0;
   uint8_t *signed_msg;
@@ -300,7 +300,7 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
   }
 
   if (RSA_sign_raw(rsa, &size_t_out_len, out, rsa_size, signed_msg,
-                   signed_msg_len, RSA_PKCS1_PADDING)) {
+                   signed_msg_len, RSA_PKCS1_PADDING, rng)) {
     *out_len = size_t_out_len;
     ret = 1;
   }

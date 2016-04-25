@@ -35,15 +35,44 @@ pub fn map_ptr_result<T>(bssl_result: *mut T) -> Result<*mut T, ()> {
 // were all executables with their own `main` functions. Those main functions
 // have been replaced with uniquely-named functions so that they can all be
 // linked into the same executable.
+#[cfg(test)]
 macro_rules! bssl_test {
     ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
         #[test]
         #[allow(unsafe_code)]
         fn $fn_name() {
+            use $crate::c;
+
             extern {
-                fn $bssl_test_main_fn_name() -> $crate::c::int;
+                fn $bssl_test_main_fn_name() -> c::int;
             }
-            assert_eq!(unsafe { $bssl_test_main_fn_name() }, 0);
+            let result = unsafe {
+                $bssl_test_main_fn_name()
+            };
+            assert_eq!(result, 0);
+        }
+    }
+}
+
+// Adapt a BoringSSL test suite to a Rust test like `bssl_test`, passing the
+// test suite function a `rand::SecureRandom`.
+#[cfg(test)]
+macro_rules! bssl_test_rng {
+    ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
+        #[test]
+        #[allow(improper_ctypes, unsafe_code)]
+        fn $fn_name() {
+            use $crate::{c, rand};
+
+            extern {
+                fn $bssl_test_main_fn_name(rng: *mut rand::RAND) -> c::int;
+            }
+            let mut rng = rand::SystemRandom::new().unwrap();
+            let mut rng = rand::RAND { rng: &mut rng };
+            let result = unsafe {
+                $bssl_test_main_fn_name(&mut rng)
+            };
+            assert_eq!(result, 0);
         }
     }
 }

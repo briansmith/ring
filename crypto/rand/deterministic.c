@@ -30,11 +30,9 @@
  * mutex would not be deterministic.) */
 static uint64_t g_num_calls = 0;
 
-void RAND_cleanup(void) {}
-
 void RAND_reset_for_fuzzing(void) { g_num_calls = 0; }
 
-void CRYPTO_sysrand(uint8_t *out, size_t requested) {
+int CRYPTO_sysrand(uint8_t *out, size_t requested) {
   static const uint8_t kZeroKey[32];
 
   uint8_t nonce[12];
@@ -44,6 +42,8 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   memset(out, 0, requested);
   CRYPTO_chacha_20(out, out, requested, kZeroKey, nonce, 0);
   g_num_calls++;
+
+  return 1;
 }
 
 #endif  /* BORINGSSL_UNSAFE_FUZZER_MODE */

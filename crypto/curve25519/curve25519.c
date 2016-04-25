@@ -4623,9 +4623,10 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
+void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64],
+                     RAND *rng) {
   uint8_t seed[32];
-  RAND_bytes(seed, 32);
+  RAND_bytes(rng, seed, 32);
 
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512_4(az, sizeof(az), seed, 32, NULL, 0, NULL, 0, NULL, 0);
@@ -4858,8 +4859,9 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 #endif  /* BORINGSSL_X25519_X86_64 */
 
 
-void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
-  RAND_bytes(out_private_key, 32);
+void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32],
+                    RAND *rng) {
+  RAND_bytes(rng, out_private_key, 32);
   X25519_public_from_private(out_public_value, out_private_key);
 }
 
