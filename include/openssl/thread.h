@@ -67,7 +67,9 @@ extern "C" {
 
 
 #if defined(OPENSSL_NO_THREADS)
-typedef struct crypto_mutex_st {} CRYPTO_MUTEX;
+typedef struct crypto_mutex_st {
+  char padding;  /* Empty structs have different sizes in C and C++. */
+} CRYPTO_MUTEX;
 #elif defined(OPENSSL_WINDOWS)
 /* CRYPTO_MUTEX can appear in public header files so we really don't want to
  * pull in windows.h. It's statically asserted that this structure is large
