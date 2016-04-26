@@ -525,12 +525,12 @@ static bool SpeedNewHope(const std::string &selected) {
   uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH];
   RAND_bytes(clientmsg, sizeof(clientmsg));
 
-  if (!TimeFunction(&results, [sk, clientmsg]() -> bool {
+  if (!TimeFunction(&results, [sk, &clientmsg]() -> bool {
         uint8_t server_key[SHA256_DIGEST_LENGTH];
         uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
         NEWHOPE_keygen(servermsg, sk);
         if (!NEWHOPE_server_compute_key(server_key, sk, clientmsg,
-                                        sizeof(clientmsg))) {
+                                        NEWHOPE_CLIENTMSG_LENGTH)) {
           return false;
         }
         return true;
