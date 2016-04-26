@@ -14,7 +14,7 @@
 
 RING_PREFIX ?= ring/
 
-RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -I$(GENERATED_CODE_DIR) -D_XOPEN_SOURCE=700
+RING_CPPFLAGS = -I$(RING_PREFIX)include -I$(GENERATED_CODE_DIR) -D_XOPEN_SOURCE=700
 
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
@@ -132,14 +132,6 @@ RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
   $(NULL)) \
   $(RING_ARM_SHARED_SRCS) \
   $(NULL)
-
-ifeq ($(TARGET_SYS),none)
-RING_THREAD_FLAGS += -DOPENSSL_TRUSTY=1 -DOPENSSL_NO_THREADS=1
-RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_none.c)
-else
-RING_THREAD_FLAGS += -pthread
-RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
-endif
 
 RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes_test.cc \

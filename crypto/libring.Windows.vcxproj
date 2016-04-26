@@ -17,7 +17,6 @@
   <ItemGroup>
     <ClCompile Include="cpu-intel.c" />
     <ClCompile Include="crypto.c" />
-    <ClCompile Include="thread_win.c" />
     <ClCompile Include="aes\aes.c" />
     <ClCompile Include="bn\add.c" />
     <ClCompile Include="bn\bn.c" />

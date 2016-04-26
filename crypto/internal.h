@@ -116,7 +116,6 @@
 #endif
 
 #include <openssl/base.h>
-#include <openssl/thread.h>
 
 #if defined(_MSC_VER)
 #pragma warning(push, 3)
@@ -132,15 +131,6 @@
 #define alignof __alignof__
 #else
 #include <stdalign.h>
-#endif
-
-#if defined(OPENSSL_NO_THREADS)
-#elif defined(OPENSSL_WINDOWS)
-#pragma warning(push, 3)
-#include <windows.h>
-#pragma warning(pop)
-#else
-#include <pthread.h>
 #endif
 
 #if defined(__cplusplus)
@@ -233,25 +223,6 @@ static inline unsigned int constant_time_is_zero(unsigned int a) {
 static inline unsigned int constant_time_eq_int(int a, int b) {
   return constant_time_is_zero((unsigned)(a) ^ (unsigned)(b));
 }
-
-
-/* Locks.
- *
- * |CRYPTO_MUTEX| can appear in public structures and so is defined in
- * thread.h. */
-
-/* CRYPTO_MUTEX_init initialises |lock|. Do not use for static variables. */
-OPENSSL_EXPORT void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock);
-
-/* CRYPTO_MUTEX_lock_write locks |lock| such that no other thread has any type
- * of lock on it. */
-OPENSSL_EXPORT void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock);
-
-/* CRYPTO_MUTEX_unlock unlocks |lock|. */
-OPENSSL_EXPORT void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock);
-
-/* CRYPTO_MUTEX_cleanup releases all resources held by |lock|. */
-OPENSSL_EXPORT void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock);
 
 
 /* Bridge to Rust-based SHA-512 implementation. */
