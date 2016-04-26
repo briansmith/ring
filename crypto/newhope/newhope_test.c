@@ -24,7 +24,7 @@
 
 #define NTESTS 1000
 
-static int test_keys() {
+static int test_keys(void) {
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
   uint8_t server_key[SHA256_DIGEST_LENGTH], client_key[SHA256_DIGEST_LENGTH];
   uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
@@ -59,7 +59,7 @@ static int test_keys() {
   return 1;
 }
 
-static int test_invalid_sk_a() {
+static int test_invalid_sk_a(void) {
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
   uint8_t server_key[SHA256_DIGEST_LENGTH], client_key[SHA256_DIGEST_LENGTH];
   uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
@@ -97,7 +97,7 @@ static int test_invalid_sk_a() {
   return 1;
 }
 
-static int test_invalid_ciphertext() {
+static int test_invalid_ciphertext(void) {
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
   uint8_t server_key[SHA256_DIGEST_LENGTH], client_key[SHA256_DIGEST_LENGTH];
   uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
@@ -135,7 +135,7 @@ static int test_invalid_ciphertext() {
   return 1;
 }
 
-int main() {
+int main(void) {
   if (!test_keys() || !test_invalid_sk_a() || !test_invalid_ciphertext()) {
     return 1;
   }
