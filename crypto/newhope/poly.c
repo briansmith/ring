@@ -103,8 +103,7 @@ void newhope_poly_uniform(NEWHOPE_POLY* a, const uint8_t* seed) {
 
   /* Encrypt a block of zeros just to get the random bytes. With luck, 2688
    * bytes is enough. */
-  static size_t kBlocks = 168;
-  uint8_t buf[AES_BLOCK_SIZE * kBlocks];
+  uint8_t buf[AES_BLOCK_SIZE * 168];
   memset(buf, 0, sizeof(buf));
 
   unsigned int block_num = 0;
