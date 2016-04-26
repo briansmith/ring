@@ -68,7 +68,7 @@ static bool TestBasic() {
   return true;
 }
 
-bool TestSignatureAlgorithms() {
+static bool TestSignatureAlgorithms() {
   int digest_nid, pkey_nid;
   if (!OBJ_find_sigid_algs(NID_sha256WithRSAEncryption, &digest_nid,
                            &pkey_nid) ||
