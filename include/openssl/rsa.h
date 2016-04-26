@@ -59,14 +59,21 @@
 
 #include <openssl/base.h>
 
-#include <openssl/thread.h>
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 
 /* rsa.h contains functions for handling encryption and signature using RSA. */
+
+
+/* Blinding.
+ *
+ * TODO: The way blinding is done is being changed and that change is not
+ * complete. In particular, the new signing API requires the caller to supply
+ * the |BN_BLINDING| but there's no public API for creating & destroying
+ * |BN_BLINDING|s. */
+typedef struct bn_blinding_st BN_BLINDING;
 
 
 /* Simplified interface. */
@@ -141,7 +148,8 @@ OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
  * It returns 1 on success and zero on error. */
 OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
                             unsigned int in_len, uint8_t *out,
-                            unsigned int *out_len, RSA *rsa, RAND *rng);
+                            unsigned int *out_len, RSA *rsa,
+                            BN_BLINDING *blinding, RAND *rng);
 
 /* RSA_sign_raw signs |in_len| bytes from |in| with the public key from |rsa|
  * and writes, at most, |max_out| bytes of signature data to |out|. The
@@ -152,7 +160,8 @@ OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
  * The |padding| argument must be one of the |RSA_*_PADDING| values. */
 OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
-                                size_t in_len, int padding, RAND *rng);
+                                size_t in_len, int padding,
+                                BN_BLINDING *blinding, RAND *rng);
 
 
 /* Utility functions. */
@@ -250,8 +259,6 @@ OPENSSL_EXPORT int RSA_private_key_to_bytes(uint8_t **out_bytes,
 
 /* Private functions. */
 
-typedef struct bn_blinding_st BN_BLINDING;
-
 struct rsa_st {
   BIGNUM *n;
   BIGNUM *e;
@@ -264,8 +271,6 @@ struct rsa_st {
 
   int flags;
 
-  CRYPTO_MUTEX lock;
-
   /* Used to cache montgomery values. The creation of these values is protected
    * by |lock|. */
   BN_MONT_CTX *mont_n;
@@ -275,16 +280,6 @@ struct rsa_st {
 
   BIGNUM *qmn_mont; /* |q|, Montgomery-encoded using |mont_n|. */
   BIGNUM *iqmp_mont; /* |iqmp|, Montgomery-encoded using |mont_p|. */
-
-  /* num_blindings contains the size of the |blindings| and |blindings_inuse|
-   * arrays. This member and the |blindings_inuse| array are protected by
-   * |lock|. */
-  unsigned num_blindings;
-  /* blindings is an array of BN_BLINDING structures that can be reserved by a
-   * thread by locking |lock| and changing the corresponding element in
-   * |blindings_inuse| from 0 to 1. */
-  BN_BLINDING **blindings;
-  unsigned char *blindings_inuse;
 };
 
 

@@ -101,8 +101,6 @@ RSA *rsa_new_begin(void) {
   memset(rsa, 0, sizeof(RSA));
 
   rsa->flags = RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE;
-  CRYPTO_MUTEX_init(&rsa->lock);
-
   return rsa;
 }
 
@@ -168,8 +166,6 @@ err:
 }
 
 void RSA_free(RSA *rsa) {
-  unsigned u;
-
   if (rsa == NULL) {
     return;
   }
@@ -188,12 +184,6 @@ void RSA_free(RSA *rsa) {
   BN_MONT_CTX_free(rsa->mont_qq);
   BN_free(rsa->qmn_mont);
   BN_free(rsa->iqmp_mont);
-  for (u = 0; u < rsa->num_blindings; u++) {
-    BN_BLINDING_free(rsa->blindings[u]);
-  }
-  OPENSSL_free(rsa->blindings);
-  OPENSSL_free(rsa->blindings_inuse);
-  CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
 
@@ -281,7 +271,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len, int hash_nid,
 }
 
 int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
-             unsigned *out_len, RSA *rsa, RAND *rng) {
+             unsigned *out_len, RSA *rsa, BN_BLINDING *blinding, RAND *rng) {
   const unsigned rsa_size = RSA_size(rsa);
   int ret = 0;
   uint8_t *signed_msg;
@@ -300,7 +290,7 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
   }
 
   if (RSA_sign_raw(rsa, &size_t_out_len, out, rsa_size, signed_msg,
-                   signed_msg_len, RSA_PKCS1_PADDING, rng)) {
+                   signed_msg_len, RSA_PKCS1_PADDING, blinding, rng)) {
     *out_len = size_t_out_len;
     ret = 1;
   }

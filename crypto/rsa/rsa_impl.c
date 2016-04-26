@@ -68,7 +68,7 @@
 
 
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                                 size_t len, RAND *rng);
+                                 size_t len, BN_BLINDING *blinding, RAND *rng);
 
 static int check_modulus_and_exponent_sizes(const BIGNUM *n, const BIGNUM *e,
                                             size_t min_bits, size_t max_bits) {
@@ -206,117 +206,10 @@ err:
   return ret;
 }
 
-/* MAX_BLINDINGS_PER_RSA defines the maximum number of cached BN_BLINDINGs per
- * RSA*. Then this limit is exceeded, BN_BLINDING objects will be created and
- * destroyed as needed. */
-#define MAX_BLINDINGS_PER_RSA 1024
-
-/* rsa_blinding_get returns a BN_BLINDING to use with |rsa|. It does this by
- * allocating one of the cached BN_BLINDING objects in |rsa->blindings|. If
- * none are free, the cache will be extended by a extra element and the new
- * BN_BLINDING is returned.
- *
- * On success, the index of the assigned BN_BLINDING is written to
- * |*index_used| and must be passed to |rsa_blinding_release| when finished. */
-static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used) {
-  assert(rsa->mont_n != NULL);
-
-  BN_BLINDING *ret = NULL;
-  BN_BLINDING **new_blindings;
-  uint8_t *new_blindings_inuse;
-  char overflow = 0;
-
-  CRYPTO_MUTEX_lock_write(&rsa->lock);
-
-  unsigned i;
-  for (i = 0; i < rsa->num_blindings; i++) {
-    if (rsa->blindings_inuse[i] == 0) {
-      rsa->blindings_inuse[i] = 1;
-      ret = rsa->blindings[i];
-      *index_used = i;
-      break;
-    }
-  }
-
-  if (ret != NULL) {
-    CRYPTO_MUTEX_unlock(&rsa->lock);
-    return ret;
-  }
-
-  overflow = rsa->num_blindings >= MAX_BLINDINGS_PER_RSA;
-
-  /* We didn't find a free BN_BLINDING to use so increase the length of
-   * the arrays by one and use the newly created element. */
-
-  CRYPTO_MUTEX_unlock(&rsa->lock);
-  ret = BN_BLINDING_new();
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  if (overflow) {
-    /* We cannot add any more cached BN_BLINDINGs so we use |ret|
-     * and mark it for destruction in |rsa_blinding_release|. */
-    *index_used = MAX_BLINDINGS_PER_RSA;
-    return ret;
-  }
-
-  CRYPTO_MUTEX_lock_write(&rsa->lock);
-
-  new_blindings =
-      OPENSSL_malloc(sizeof(BN_BLINDING *) * (rsa->num_blindings + 1));
-  if (new_blindings == NULL) {
-    goto err1;
-  }
-  memcpy(new_blindings, rsa->blindings,
-         sizeof(BN_BLINDING *) * rsa->num_blindings);
-  new_blindings[rsa->num_blindings] = ret;
-
-  new_blindings_inuse = OPENSSL_malloc(rsa->num_blindings + 1);
-  if (new_blindings_inuse == NULL) {
-    goto err2;
-  }
-  memcpy(new_blindings_inuse, rsa->blindings_inuse, rsa->num_blindings);
-  new_blindings_inuse[rsa->num_blindings] = 1;
-  *index_used = rsa->num_blindings;
-
-  OPENSSL_free(rsa->blindings);
-  rsa->blindings = new_blindings;
-  OPENSSL_free(rsa->blindings_inuse);
-  rsa->blindings_inuse = new_blindings_inuse;
-  rsa->num_blindings++;
-
-  CRYPTO_MUTEX_unlock(&rsa->lock);
-  return ret;
-
-err2:
-  OPENSSL_free(new_blindings);
-
-err1:
-  CRYPTO_MUTEX_unlock(&rsa->lock);
-  BN_BLINDING_free(ret);
-  return NULL;
-}
-
-/* rsa_blinding_release marks the cached BN_BLINDING at the given index as free
- * for other threads to use. */
-static void rsa_blinding_release(RSA *rsa, BN_BLINDING *blinding,
-                                 unsigned blinding_index) {
-  if (blinding_index == MAX_BLINDINGS_PER_RSA) {
-    /* This blinding wasn't cached. */
-    BN_BLINDING_free(blinding);
-    return;
-  }
-
-  CRYPTO_MUTEX_lock_write(&rsa->lock);
-  rsa->blindings_inuse[blinding_index] = 0;
-  CRYPTO_MUTEX_unlock(&rsa->lock);
-}
-
 /* signing */
 int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding,
-                 RAND *rng) {
+                 BN_BLINDING *blinding, RAND *rng) {
   const unsigned rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int i, ret = 0;
@@ -348,7 +241,7 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (!rsa_private_transform(rsa, out, buf, rsa_size, rng)) {
+  if (!rsa_private_transform(rsa, out, buf, rsa_size, blinding, rng)) {
     goto err;
   }
 
@@ -439,12 +332,8 @@ err:
  * It returns one on success and zero otherwise.
  */
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                                 size_t len, RAND *rng) {
-  BN_CTX *ctx = NULL;
-  unsigned blinding_index = 0;
-  BN_BLINDING *blinding = NULL;
-
-  ctx = BN_CTX_new();
+                                 size_t len, BN_BLINDING *blinding, RAND *rng) {
+  BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     return 0;
   }
@@ -469,9 +358,7 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  blinding = rsa_blinding_get(rsa, &blinding_index);
-  if (blinding == NULL ||
-      !BN_BLINDING_convert(&base, blinding, rsa, rng, ctx)) {
+  if (!BN_BLINDING_convert(&base, blinding, rsa, rng, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -558,9 +445,6 @@ err:
   BN_free(&mp);
   BN_free(&mq);
   BN_free(&vrfy);
-  if (blinding != NULL) {
-    rsa_blinding_release(rsa, blinding, blinding_index);
-  }
 
   return ret;
 }
