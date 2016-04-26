@@ -12,8 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/crypto.h>
-
 #include <stdint.h>
 
 #include <openssl/cpu.h>
@@ -39,14 +37,6 @@
 #endif  /* !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 ||
                                OPENSSL_ARM || OPENSSL_AARCH64) */
 
-
-/* The capability variables are defined in this file in order to work around a
- * linker bug. When linking with a .a, if no symbols in a .o are referenced
- * then the .o is discarded, even if it has constructor functions.
- *
- * This still means that any binaries that don't include some functionality
- * that tests the capability values will still skip the constructor but, so
- * far, the init constructor function only sets the capability variables. */
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* This value must be explicitly initialised to zero in order to work around a
@@ -88,44 +78,6 @@ uint32_t OPENSSL_armcap_P = 0;
 #endif
 
 #endif
-
-
-#if defined(OPENSSL_WINDOWS) && !defined(BORINGSSL_NO_STATIC_INITIALIZER)
-#define OPENSSL_CDECL __cdecl
-#else
-#define OPENSSL_CDECL
-#endif
-
-#if defined(BORINGSSL_NO_STATIC_INITIALIZER)
-static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-#elif defined(OPENSSL_WINDOWS)
-#pragma section(".CRT$XCU", read)
-static void __cdecl do_library_init(void);
-__declspec(allocate(".CRT$XCU")) void(*library_init_constructor)(void) =
-    do_library_init;
-#else
-static void do_library_init(void) __attribute__ ((constructor));
-#endif
-
-/* do_library_init is the actual initialization function. If
- * BORINGSSL_NO_STATIC_INITIALIZER isn't defined, this is set as a static
- * initializer. Otherwise, it is called by CRYPTO_library_init. */
-static void OPENSSL_CDECL do_library_init(void) {
- /* WARNING: this function may only configure the capability variables. See the
-  * note above about the linker bug. */
-#if defined(NEED_CPUID)
-  OPENSSL_cpuid_setup();
-#endif
-}
-
-void CRYPTO_library_init(void) {
-  /* TODO(davidben): It would be tidier if this build knob could be replaced
-   * with an internal lazy-init mechanism that would handle things correctly
-   * in-library. https://crbug.com/542879 */
-#if defined(BORINGSSL_NO_STATIC_INITIALIZER)
-  CRYPTO_once(&once, do_library_init);
-#endif
-}
 
 /* These functions allow tests in other languages to verify that their
  * understanding of the C types matches the C compiler's understanding. */

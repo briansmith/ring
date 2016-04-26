@@ -27,7 +27,7 @@
 #![allow(unsafe_code)]
 
 use core;
-use super::{c, polyfill};
+use super::{c, init, polyfill};
 
 // XXX: endian-specific.
 // XXX: Replace with `const fn` when `const fn` is stable:
@@ -80,6 +80,8 @@ impl Context {
     ///
     /// C analogs: `EVP_DigestInit`, `EVP_DigestInit_ex`
     pub fn new(algorithm: &'static Algorithm) -> Context {
+        init::init_once();
+
         Context {
             algorithm: algorithm,
             state: algorithm.initial_state,

@@ -66,7 +66,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
@@ -363,8 +362,6 @@ static bool TestBadExponent() {
 }
 
 extern "C" int bssl_rsa_test_main(RAND *rng) {
-  CRYPTO_library_init();
-
   if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,
                sizeof(kOAEPCiphertext1) - 1, rng) ||
       !TestRSA(kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2,

@@ -23,7 +23,6 @@
 
 #include <vector>
 
-#include <openssl/crypto.h>
 #include <openssl/poly1305.h>
 
 #include "../internal.h"
@@ -129,8 +128,6 @@ static bool TestPoly1305(FileTest *t, void * /*arg*/) {
 }
 
 extern "C" int bssl_poly1305_test_main() {
-  CRYPTO_library_init();
-
   return FileTestMain(TestPoly1305, nullptr,
                       "crypto/poly1305/poly1305_test.txt");
 }

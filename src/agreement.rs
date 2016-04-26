@@ -16,7 +16,8 @@
 
 #![allow(unsafe_code)]
 
-use super::{c, ecc};
+use {c, ecc, init};
+
 #[cfg(not(feature = "no_heap"))] use super::bssl;
 use super::input::Input;
 
@@ -62,6 +63,8 @@ impl EphemeralKeyPair {
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
     pub fn generate(algorithm: &'static Algorithm)
                     -> Result<EphemeralKeyPair, ()> {
+        init::init_once();
+
         let key_pair_impl = try!((algorithm.generate_key_pair)(algorithm));
         Ok(EphemeralKeyPair {
             key_pair_impl: key_pair_impl,

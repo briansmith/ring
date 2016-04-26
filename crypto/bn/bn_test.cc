@@ -86,7 +86,6 @@
 
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
-#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -140,8 +139,6 @@ static const uint8_t kSample[] =
     "\x9B\x04\x5D\x48\x36\xC2\xFD\x16\xC9\x64\xF0";
 
 extern "C" int bssl_bn_test_main(RAND *rng) {
-  CRYPTO_library_init();
-
   ScopedBN_CTX ctx(BN_CTX_new());
   if (!ctx) {
     return 1;

@@ -116,6 +116,7 @@ pub mod der;
 mod ecc;
 pub mod hkdf;
 pub mod hmac;
+mod init;
 pub mod input;
 pub mod pbkdf2;
 

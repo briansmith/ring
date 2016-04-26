@@ -24,7 +24,6 @@
 
 #include <memory>
 
-#include <openssl/crypto.h>
 #include <openssl/chacha.h>
 
 
@@ -256,8 +255,6 @@ static bool TestChaCha20(size_t len) {
 }
 
 extern "C" int bssl_chacha_test_main(void) {
-  CRYPTO_library_init();
-
   // Run the test with the test vector at all lengths.
   for (size_t len = 0; len <= sizeof(kInput); len++) {
     if (!TestChaCha20(len)) {

@@ -41,7 +41,7 @@
 
 #![allow(unsafe_code)]
 
-use super::{c, bssl};
+use super::{c, bssl, init};
 #[cfg(not(feature = "no_heap"))] use super::{digest, ecc};
 use super::input::Input;
 
@@ -110,6 +110,7 @@ trait VerificationAlgorithmImpl {
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
               signature: Input) -> Result<(), ()> {
+    init::init_once();
     alg.implementation.verify(public_key, msg, signature)
 }
 
@@ -234,6 +235,8 @@ pub static ED25519_VERIFY: VerificationAlgorithm = VerificationAlgorithm {
 #[cfg(test)]
 fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
                 -> Result<(), ()> {
+    init::init_once();
+
     if private_key.len() != 64 || signature.len() != 64 {
         return Err(());
     }

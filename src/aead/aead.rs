@@ -26,7 +26,7 @@
 mod chacha20_poly1305;
 mod aes_gcm;
 
-use super::{constant_time, polyfill};
+use super::{constant_time, init, polyfill};
 
 pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -205,6 +205,8 @@ impl Key {
     ///
     /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
     fn init(&mut self, key_bytes: &[u8]) -> Result<(), ()> {
+        init::init_once();
+
         if key_bytes.len() != self.algorithm.key_len() {
             return Err(());
         }

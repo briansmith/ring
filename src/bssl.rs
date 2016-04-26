@@ -41,11 +41,13 @@ macro_rules! bssl_test {
         #[test]
         #[allow(unsafe_code)]
         fn $fn_name() {
-            use $crate::c;
-
+            use $crate::{c, init};
             extern {
                 fn $bssl_test_main_fn_name() -> c::int;
             }
+
+            init::init_once();
+
             let result = unsafe {
                 $bssl_test_main_fn_name()
             };
@@ -62,11 +64,13 @@ macro_rules! bssl_test_rng {
         #[test]
         #[allow(improper_ctypes, unsafe_code)]
         fn $fn_name() {
-            use $crate::{c, rand};
-
+            use $crate::{c, init, rand};
             extern {
                 fn $bssl_test_main_fn_name(rng: *mut rand::RAND) -> c::int;
             }
+
+            init::init_once();
+
             let mut rng = rand::SystemRandom::new().unwrap();
             let mut rng = rand::RAND { rng: &mut rng };
             let result = unsafe {

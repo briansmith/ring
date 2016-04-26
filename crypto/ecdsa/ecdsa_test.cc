@@ -61,7 +61,6 @@
 #include <vector>
 
 #include <openssl/bn.h>
-#include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -322,8 +321,6 @@ static size_t BitsToBytes(size_t bits) {
 }
 
 extern "C" int bssl_ecdsa_test_main(RAND *rng) {
-  CRYPTO_library_init();
-
   if (!TestBuiltin(rng, stdout) ||
       !TestECDSA_SIG_max_len(BitsToBytes(256)) ||
       !TestECDSA_SIG_max_len(BitsToBytes(384))) {

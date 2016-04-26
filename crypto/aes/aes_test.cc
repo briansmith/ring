@@ -16,7 +16,6 @@
 #include <string.h>
 
 #include <openssl/aes.h>
-#include <openssl/crypto.h>
 
 
 extern "C" int bssl_aes_test_main();
@@ -69,8 +68,6 @@ static bool TestAES(const uint8_t *key, size_t key_len,
 }
 
 extern "C" int bssl_aes_test_main() {
-  CRYPTO_library_init();
-
   // Test vectors from FIPS-197, Appendix C.
   if (!TestAES((const uint8_t *)"\x00\x01\x02\x03\x04\x05\x06\x07"
                                 "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",

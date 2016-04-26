@@ -28,7 +28,6 @@
 
 #include <vector>
 
-#include <openssl/crypto.h>
 #include <openssl/bytestring.h>
 
 #include "internal.h"
@@ -413,8 +412,6 @@ static int TestZero() {
 }
 
 extern "C" int bssl_bytestring_test_main() {
-  CRYPTO_library_init();
-
   if (!TestGetASN1() ||
       !TestCBBBasic() ||
       !TestCBBFixed() ||

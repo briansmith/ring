@@ -28,7 +28,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #include "../bn/internal.h"
