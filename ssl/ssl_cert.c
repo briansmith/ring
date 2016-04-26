@@ -422,13 +422,18 @@ static int ssl_add_cert_to_buf(BUF_MEM *buf, unsigned long *l, X509 *x) {
   uint8_t *p;
 
   n = i2d_X509(x, NULL);
-  if (!BUF_MEM_grow_clean(buf, (int)(n + (*l) + 3))) {
+  if (n < 0 || !BUF_MEM_grow_clean(buf, (int)(n + (*l) + 3))) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
     return 0;
   }
   p = (uint8_t *)&(buf->data[*l]);
   l2n3(n, p);
-  i2d_X509(x, &p);
+  n = i2d_X509(x, &p);
+  if (n < 0) {
+      /* This shouldn't happen. */
+      OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
+      return 0;
+  }
   *l += n + 3;
 
   return 1;
