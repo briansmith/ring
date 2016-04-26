@@ -472,6 +472,8 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   blinding = rsa_blinding_get(rsa, &blinding_index);
   if (blinding == NULL ||
       !BN_BLINDING_convert(&base, blinding, rsa, rng, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
   }
 
   /* Extra reductions would be required if |p < q| and |p == q| is just plain
