@@ -101,26 +101,22 @@ void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define HASH_CBLOCK 64
 #define HASH_UPDATE MD5_Update
 #define HASH_TRANSFORM MD5_Transform
-#define HASH_FINISH md5_finish
+#define HASH_FINAL MD5_Final
+#define HASH_MAKE_STRING(c, s) \
+  do {                         \
+    uint32_t ll;               \
+    ll = (c)->h[0];            \
+    HOST_l2c(ll, (s));         \
+    ll = (c)->h[1];            \
+    HOST_l2c(ll, (s));         \
+    ll = (c)->h[2];            \
+    HOST_l2c(ll, (s));         \
+    ll = (c)->h[3];            \
+    HOST_l2c(ll, (s));         \
+  } while (0)
 #define HASH_BLOCK_DATA_ORDER md5_block_data_order
 
 #include "../digest/md32_common.h"
-
-int MD5_Final(uint8_t *md, MD5_CTX *md5) {
-  md5_finish(md5);
-
-  uint32_t ll;
-  ll = md5->h[0];
-  HOST_l2c(ll, md);
-  ll = md5->h[1];
-  HOST_l2c(ll, md);
-  ll = md5->h[2];
-  HOST_l2c(ll, md);
-  ll = md5->h[3];
-  HOST_l2c(ll, md);
-
-  return 1;
-}
 
 /* As pointed out by Wei Dai <weidai@eskimo.com>, the above can be
  * simplified to the code below.  Wei attributes these optimizations

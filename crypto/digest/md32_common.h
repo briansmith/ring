@@ -90,7 +90,7 @@ extern "C" {
  * |HASH_TRANSFORM| must be defined as the  the name of the "Transform"
  * function to generate.
  *
- * |HASH_FINISH| must be defined as the name of "finish" function to generate.
+ * |HASH_FINAL| must be defined as the name of "Final" function to generate.
  *
  * |HASH_BLOCK_DATA_ORDER| must be defined as the name of the "Block" function.
  * That function must be implemented manually. It must be capable of operating
@@ -103,7 +103,11 @@ extern "C" {
  * It must update the hash state |state| with |num| blocks of data from |data|,
  * where each block is |HASH_CBLOCK| bytes; i.e. |data| points to a array of
  * |HASH_CBLOCK * num| bytes. |state| points to the |h| member of a |HASH_CTX|,
- * and so will have |<chaining length> / sizeof(uint32_t)| elements. */
+ * and so will have |<chaining length> / sizeof(uint32_t)| elements.
+ *
+ * |HASH_MAKE_STRING(c, s)| must be defined as a block statement that converts
+ * the hash state |c->h| into the output byte order, storing the result in |s|.
+ */
 
 #if !defined(DATA_ORDER_IS_BIG_ENDIAN) && !defined(DATA_ORDER_IS_LITTLE_ENDIAN)
 #error "DATA_ORDER must be defined!"
@@ -122,12 +126,16 @@ extern "C" {
 #ifndef HASH_TRANSFORM
 #error "HASH_TRANSFORM must be defined!"
 #endif
-#ifndef HASH_FINISH
-#error "HASH_FINISH must be defined!"
+#ifndef HASH_FINAL
+#error "HASH_FINAL must be defined!"
 #endif
 
 #ifndef HASH_BLOCK_DATA_ORDER
 #error "HASH_BLOCK_DATA_ORDER must be defined!"
+#endif
+
+#ifndef HASH_MAKE_STRING
+#error "HASH_MAKE_STRING must be defined!"
 #endif
 
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
@@ -212,7 +220,7 @@ void HASH_TRANSFORM(HASH_CTX *c, const uint8_t *data) {
 }
 
 
-static void HASH_FINISH(HASH_CTX *c) {
+int HASH_FINAL(uint8_t *md, HASH_CTX *c) {
   /* |c->data| always has room for at least one byte. A full block would have
    * been consumed. */
   size_t n = c->num;
@@ -241,6 +249,9 @@ static void HASH_FINISH(HASH_CTX *c) {
   HASH_BLOCK_DATA_ORDER(c->h, c->data, 1);
   c->num = 0;
   memset(c->data, 0, HASH_CBLOCK);
+
+  HASH_MAKE_STRING(c, md);
+  return 1;
 }
 
 

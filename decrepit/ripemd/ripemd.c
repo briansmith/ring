@@ -71,24 +71,6 @@ int RIPEMD160_Init(RIPEMD160_CTX *ctx) {
   return 1;
 }
 
-int RIPEMD160_Final(uint8_t *md, RIPEMD160_CTX *ctx) {
-  ripemd160_finish(ctx);
-
-  unsigned long ll;
-  ll = ctx->h[0];
-  (void)HOST_l2c(ll, md);
-  ll = ctx->h[1];
-  (void)HOST_l2c(ll, md);
-  ll = ctx->h[2];
-  (void)HOST_l2c(ll, md);
-  ll = ctx->h[3];
-  (void)HOST_l2c(ll, md);
-  ll = ctx->h[4];
-  (void)HOST_l2c(ll, md);
-
-  return 1;
-}
-
 static void ripemd160_block_data_order(uint32_t h[5], const uint8_t *data,
                                        size_t num) {
   uint32_t A, B, C, D, E;

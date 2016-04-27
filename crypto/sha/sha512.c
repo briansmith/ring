@@ -97,6 +97,7 @@ int SHA384_Init(SHA512_CTX *sha) {
   sha->Nl = 0;
   sha->Nh = 0;
   sha->num = 0;
+  sha->md_len = SHA384_DIGEST_LENGTH;
   return 1;
 }
 
@@ -114,6 +115,7 @@ int SHA512_Init(SHA512_CTX *sha) {
   sha->Nl = 0;
   sha->Nh = 0;
   sha->num = 0;
+  sha->md_len = SHA512_DIGEST_LENGTH;
   return 1;
 }
 
@@ -153,34 +155,13 @@ static
 #endif
 void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num);
 
-static void sha512_finish(SHA512_CTX *sha);
+
+int SHA384_Final(uint8_t *md, SHA512_CTX *sha) {
+  return SHA512_Final(md, sha);
+}
 
 int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
   return SHA512_Update(sha, data, len);
-}
-
-void SHA384_Transform(SHA512_CTX *c, const uint8_t *data) {
-  return SHA512_Transform(c, data);
-}
-
-int SHA384_Final(uint8_t *md, SHA512_CTX *sha) {
-  sha512_finish(sha);
-
-  size_t n;
-  for (n = 0; n < SHA384_DIGEST_LENGTH / 8; n++) {
-    uint64_t t = sha->h[n];
-
-    *(md++) = (uint8_t)(t >> 56);
-    *(md++) = (uint8_t)(t >> 48);
-    *(md++) = (uint8_t)(t >> 40);
-    *(md++) = (uint8_t)(t >> 32);
-    *(md++) = (uint8_t)(t >> 24);
-    *(md++) = (uint8_t)(t >> 16);
-    *(md++) = (uint8_t)(t >> 8);
-    *(md++) = (uint8_t)(t);
-  }
-
-  return 1;
 }
 
 void SHA512_Transform(SHA512_CTX *c, const uint8_t *data) {
@@ -253,7 +234,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   return 1;
 }
 
-static void sha512_finish(SHA512_CTX *sha) {
+int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
   uint8_t *p = (uint8_t *)sha->u.p;
   size_t n = sha->num;
 
@@ -284,23 +265,48 @@ static void sha512_finish(SHA512_CTX *sha) {
   p[sizeof(sha->u) - 16] = (uint8_t)(sha->Nh >> 56);
 
   sha512_block_data_order(sha->h, (uint64_t *)p, 1);
-}
 
-int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
-  sha512_finish(sha);
+  if (md == NULL) {
+    /* TODO(davidben): This NULL check is absent in other low-level hash 'final'
+     * functions and is one of the few places one can fail. */
+    return 0;
+  }
 
-  size_t n;
-  for (n = 0; n < SHA512_DIGEST_LENGTH / 8; n++) {
-    uint64_t t = sha->h[n];
+  switch (sha->md_len) {
+    /* Let compiler decide if it's appropriate to unroll... */
+    case SHA384_DIGEST_LENGTH:
+      for (n = 0; n < SHA384_DIGEST_LENGTH / 8; n++) {
+        uint64_t t = sha->h[n];
 
-    *(md++) = (uint8_t)(t >> 56);
-    *(md++) = (uint8_t)(t >> 48);
-    *(md++) = (uint8_t)(t >> 40);
-    *(md++) = (uint8_t)(t >> 32);
-    *(md++) = (uint8_t)(t >> 24);
-    *(md++) = (uint8_t)(t >> 16);
-    *(md++) = (uint8_t)(t >> 8);
-    *(md++) = (uint8_t)(t);
+        *(md++) = (uint8_t)(t >> 56);
+        *(md++) = (uint8_t)(t >> 48);
+        *(md++) = (uint8_t)(t >> 40);
+        *(md++) = (uint8_t)(t >> 32);
+        *(md++) = (uint8_t)(t >> 24);
+        *(md++) = (uint8_t)(t >> 16);
+        *(md++) = (uint8_t)(t >> 8);
+        *(md++) = (uint8_t)(t);
+      }
+      break;
+    case SHA512_DIGEST_LENGTH:
+      for (n = 0; n < SHA512_DIGEST_LENGTH / 8; n++) {
+        uint64_t t = sha->h[n];
+
+        *(md++) = (uint8_t)(t >> 56);
+        *(md++) = (uint8_t)(t >> 48);
+        *(md++) = (uint8_t)(t >> 40);
+        *(md++) = (uint8_t)(t >> 32);
+        *(md++) = (uint8_t)(t >> 24);
+        *(md++) = (uint8_t)(t >> 16);
+        *(md++) = (uint8_t)(t >> 8);
+        *(md++) = (uint8_t)(t);
+      }
+      break;
+    /* ... as well as make sure md_len is not abused. */
+    default:
+      /* TODO(davidben): This bad |md_len| case is one of the few places a
+       * low-level hash 'final' function can fail. This should never happen. */
+      return 0;
   }
 
   return 1;
