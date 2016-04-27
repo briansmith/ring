@@ -110,6 +110,8 @@
 
 #include <openssl/ssl.h>
 
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_PNACL)
+
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -118,8 +120,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-
-#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_PNACL)
 
 typedef struct {
   DIR *dir;
