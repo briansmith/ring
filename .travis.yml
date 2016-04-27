@@ -2,28 +2,28 @@ language: rust
 matrix:
   fast_finish: true
   include:
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG KCOV=0
       rust: stable
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG KCOV=0
       rust: nightly
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
 
-    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=DEBUG
+    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=DEBUG KCOV=0
       rust: stable
 
-    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
 
-    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=DEBUG
+    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=DEBUG KCOV=0
       rust: nightly
 
-    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=arm-unknown-linux-gnueabi CC_X=arm-linux-gnueabi-gcc CXX_X=arm-linux-gnueabi-g++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
 
     # The lines from "# BEGIN GENERATED" through "# END GENERATED" are
@@ -33,17 +33,17 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -55,7 +55,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -67,15 +67,15 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -89,7 +89,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -103,7 +103,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -114,7 +114,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -125,7 +125,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -139,7 +139,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -153,7 +153,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -164,7 +164,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -175,7 +175,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -189,7 +189,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -203,7 +203,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -214,7 +214,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -225,7 +225,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -239,7 +239,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -253,7 +253,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -264,7 +264,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -275,7 +275,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -289,7 +289,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -303,7 +303,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -314,7 +314,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -325,7 +325,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -339,7 +339,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -353,7 +353,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -364,7 +364,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -375,17 +375,17 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -397,7 +397,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -409,15 +409,15 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -431,7 +431,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -445,7 +445,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -456,7 +456,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -467,7 +467,31 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=1
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - libcurl3:i386
+            - libcurl4-openssl-dev:i386
+            - libdw-dev:i386
+            - libelf-dev:i386
+            - libkrb5-dev:i386
+            - libssl-dev:i386
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+      after_success:
+        - mk/travis-install-kcov.sh
+        - ${HOME}/kcov/bin/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-path=/usr/include --include-pattern=ring/crypto,ring/src target/kcov target/$TARGET_X/debug/ring-*
+
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -481,32 +505,26 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
-            - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
+            - binutils-dev
             - g++-5
             - gcc-5
+            - libcurl4-openssl-dev
+            - libdw-dev
+            - libelf-dev
           sources:
             - ubuntu-toolchain-r-test
+      after_success:
+        - mk/travis-install-kcov.sh
+        - ${HOME}/kcov/bin/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-path=/usr/include --include-pattern=ring/crypto,ring/src target/kcov target/$TARGET_X/debug/ring-*
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -517,7 +535,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -531,7 +549,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -545,7 +563,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -556,7 +574,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -567,7 +585,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -581,7 +599,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -595,7 +613,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -606,7 +624,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -617,7 +635,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -631,7 +649,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -645,7 +663,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -656,7 +674,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -667,7 +685,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -681,7 +699,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -695,7 +713,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -706,7 +724,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -717,17 +735,17 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -739,7 +757,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -751,15 +769,15 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -773,7 +791,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -787,7 +805,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -798,7 +816,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -809,7 +827,7 @@ matrix:
             - llvm-toolchain-precise-3.8
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -823,7 +841,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -837,7 +855,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -848,7 +866,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -859,7 +877,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -873,7 +891,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -887,7 +905,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -898,7 +916,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -909,7 +927,7 @@ matrix:
             - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -923,7 +941,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -937,7 +955,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -948,7 +966,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -959,7 +977,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -973,7 +991,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -987,7 +1005,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -998,7 +1016,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1009,7 +1027,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1023,7 +1041,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1037,7 +1055,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1048,7 +1066,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
