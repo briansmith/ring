@@ -76,36 +76,40 @@ int NEWHOPE_client_compute_key(
     return 0;
   }
 
-  /* Generate the same |a| as the server, from the server's seed. */
-  NEWHOPE_POLY a;
-  const uint8_t *seed = &servermsg[POLY_BYTES];
-  newhope_poly_uniform(&a, seed);
-
-  NEWHOPE_POLY pk;
-  newhope_poly_frombytes(&pk, servermsg);
-
   NEWHOPE_POLY sp;
   newhope_poly_getnoise(&sp);
   newhope_poly_ntt(&sp);
 
-  NEWHOPE_POLY ep;
-  newhope_poly_getnoise(&ep);
-  newhope_poly_ntt(&ep);
-
-  NEWHOPE_POLY epp;
-  newhope_poly_getnoise(&epp);
-
   /* The first part of the client's message is the polynomial bp=e'+a*s' */
-  NEWHOPE_POLY bp;
-  newhope_poly_pointwise(&bp, &a, &sp);
-  newhope_poly_add(&bp, &bp, &ep);
-  newhope_poly_tobytes(clientmsg, &bp);
+  {
+    NEWHOPE_POLY ep;
+    newhope_poly_getnoise(&ep);
+    newhope_poly_ntt(&ep);
+
+    /* Generate the same |a| as the server, from the server's seed. */
+    NEWHOPE_POLY a;
+    const uint8_t *seed = &servermsg[POLY_BYTES];
+    newhope_poly_uniform(&a, seed);
+
+    NEWHOPE_POLY bp;
+    newhope_poly_pointwise(&bp, &a, &sp);
+    newhope_poly_add(&bp, &bp, &ep);
+    newhope_poly_tobytes(clientmsg, &bp);
+  }
 
   /* v = pk * s' + e'' */
   NEWHOPE_POLY v;
-  newhope_poly_pointwise(&v, &pk, &sp);
-  newhope_poly_invntt(&v);
-  newhope_poly_add(&v, &v, &epp);
+  {
+    NEWHOPE_POLY pk;
+    newhope_poly_frombytes(&pk, servermsg);
+
+    NEWHOPE_POLY epp;
+    newhope_poly_getnoise(&epp);
+
+    newhope_poly_pointwise(&v, &pk, &sp);
+    newhope_poly_invntt(&v);
+    newhope_poly_add(&v, &v, &epp);
+  }
 
   /* The second part of the client's message is the reconciliation data derived
    * from v. */
