@@ -127,8 +127,8 @@ uint8_t *SHA384(const uint8_t *data, size_t len, uint8_t *out) {
   }
 
   SHA384_Init(&ctx);
-  SHA512_Update(&ctx, data, len);
-  SHA512_Final(out, &ctx);
+  SHA384_Update(&ctx, data, len);
+  SHA384_Final(out, &ctx);
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
