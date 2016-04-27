@@ -79,6 +79,4 @@ arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
   ;;
 esac
 
-CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo clean --verbose
-
 echo end of mk/travis.sh
