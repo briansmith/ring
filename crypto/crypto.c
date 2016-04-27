@@ -79,8 +79,6 @@ uint32_t OPENSSL_armcap_P =
 #endif
     0;
 
-#elif defined(__ARM_NEON__)
-uint32_t OPENSSL_armcap_P = ARMV7_NEON;
 #else
 uint32_t OPENSSL_armcap_P = 0;
 #endif
