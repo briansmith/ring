@@ -50,7 +50,7 @@ lists generated for GN in Chromium.
 
 BoringSSL does not present a lot of configurability in order to reduce the
 number of configurations that need to be tested. But there are a couple of
-#defines that you may wish to set:
+\#defines that you may wish to set:
 
 `OPENSSL_NO_ASM` prevents the use of assembly code (although it's up to you to
 ensure that the build system doesn't link it in if you wish to reduce binary
