@@ -288,6 +288,8 @@ static int has_broken_neon(const STRING_PIECE *cpuinfo) {
 
 extern uint32_t OPENSSL_armcap_P;
 
+static int g_has_broken_neon;
+
 void OPENSSL_cpuid_setup(void) {
   char *cpuinfo_data;
   size_t cpuinfo_len;
@@ -317,7 +319,8 @@ void OPENSSL_cpuid_setup(void) {
   }
 
   /* Clear NEON support if known broken. */
-  if (has_broken_neon(&cpuinfo)) {
+  g_has_broken_neon = has_broken_neon(&cpuinfo);
+  if (g_has_broken_neon) {
     hwcap &= ~HWCAP_NEON;
   }
 
@@ -351,5 +354,7 @@ void OPENSSL_cpuid_setup(void) {
 
   OPENSSL_free(cpuinfo_data);
 }
+
+int CRYPTO_has_broken_NEON(void) { return g_has_broken_neon; }
 
 #endif /* OPENSSL_ARM && !OPENSSL_STATIC_ARMCAP */

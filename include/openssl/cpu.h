@@ -110,12 +110,23 @@ OPENSSL_EXPORT char CRYPTO_is_NEON_capable_at_runtime(void);
 /* CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
  * this is known statically then it returns one immediately. */
 static inline int CRYPTO_is_NEON_capable(void) {
-#if defined(__ARM_NEON__)
+  /* Only statically skip the runtime lookup on aarch64. On arm, one CPU is
+   * known to have a broken NEON unit which is known to fail with on some
+   * hand-written NEON assembly. For now, continue to apply the workaround even
+   * when the compiler is instructed to freely emit NEON code. See
+   * https://crbug.com/341598 and https://crbug.com/606629. */
+#if defined(__ARM_NEON__) && !defined(OPENSSL_ARM)
   return 1;
 #else
   return CRYPTO_is_NEON_capable_at_runtime();
 #endif
 }
+
+#if defined(OPENSSL_ARM)
+/* CRYPTO_has_broken_NEON returns one if the current CPU is known to have a
+ * broken NEON unit. See https://crbug.com/341598. */
+OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
+#endif
 
 /* CRYPTO_is_ARMv8_AES_capable returns true if the current CPU supports the
  * ARMv8 AES instruction. */
@@ -152,7 +163,7 @@ static inline int CRYPTO_is_ARMv8_PMULL_capable(void) {
 }
 
 #endif  /* OPENSSL_STATIC_ARMCAP */
-#endif  /* OPENSSL_ARM */
+#endif  /* OPENSSL_ARM || OPENSSL_AARCH64 */
 
 
 #if defined(__cplusplus)
