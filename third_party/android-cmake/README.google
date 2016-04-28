@@ -1,0 +1,12 @@
+URL: https://github.com/taka-no-me/android-cmake/archive/556cc14296c226f753a3778d99d8b60778b7df4f.zip
+Version: 556cc14296c226f753a3778d99d8b60778b7df4f
+License: BSD
+License File: LICENSE
+
+Description:
+android-cmake is a collection of CMake scripts for building against the Android
+NDK.
+
+Local Modifications:
+LICENSE file has been created for compliance purposes. Not included in original
+distribution.
