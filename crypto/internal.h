@@ -366,7 +366,7 @@ OPENSSL_EXPORT int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count);
 struct CRYPTO_STATIC_MUTEX {
   char padding;  /* Empty structs have different sizes in C and C++. */
 };
-#define CRYPTO_STATIC_MUTEX_INIT {}
+#define CRYPTO_STATIC_MUTEX_INIT { 0 }
 #elif defined(OPENSSL_WINDOWS)
 struct CRYPTO_STATIC_MUTEX {
   CRYPTO_once_t once;
