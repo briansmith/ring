@@ -181,8 +181,14 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
     return 0;
   }
 
+  /* ITU-T X.690 section 8.1.2.3 specifies the format for identifiers with a tag
+   * number no greater than 30.
+   *
+   * If the number portion is 31 (0x1f, the largest value that fits in the
+   * allotted bits), then the tag is more than one byte long and the
+   * continuation bytes contain the tag number. This parser only supports tag
+   * numbers less than 31 (and thus single-byte tags). */
   if ((tag & 0x1f) == 0x1f) {
-    /* Long form tags are not supported. */
     return 0;
   }
 
@@ -191,6 +197,8 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   }
 
   size_t len;
+  /* The format for the length encoding is specified in ITU-T X.690 section
+   * 8.1.3. */
   if ((length_byte & 0x80) == 0) {
     /* Short form length. */
     len = ((size_t) length_byte) + 2;
@@ -198,7 +206,9 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
       *out_header_len = 2;
     }
   } else {
-    /* Long form length. */
+    /* The high bit indicate that this is the long form, while the next 7 bits
+     * encode the number of subsequent octets used to encode the length (ITU-T
+     * X.690 clause 8.1.3.5.b). */
     const size_t num_bytes = length_byte & 0x7f;
     uint32_t len32;
 
@@ -210,12 +220,18 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
       return CBS_get_bytes(cbs, out, 2);
     }
 
+    /* ITU-T X.690 clause 8.1.3.5.c specifies that the value 0xff shall not be
+     * used as the first byte of the length. If this parser encounters that
+     * value, num_bytes will be parsed as 127, which will fail the check below.
+     */
     if (num_bytes == 0 || num_bytes > 4) {
       return 0;
     }
     if (!cbs_get_u(&header, &len32, num_bytes)) {
       return 0;
     }
+    /* ITU-T X.690 section 10.1 (DER length forms) requires encoding the length
+     * with the minimum number of octets. */
     if (len32 < 128) {
       /* Length should have used short-form encoding. */
       return 0;
