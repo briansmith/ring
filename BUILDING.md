@@ -24,7 +24,7 @@
     by CMake, it may be configured explicitly by setting
     `CMAKE_ASM_NASM_COMPILER`.
 
-  * A C compiler is required. On Windows, MSVC 12 (Visual Studio 2013) or later
+  * A C compiler is required. On Windows, MSVC 14 (Visual Studio 2015) or later
     with Platform SDK 8.1 or later are supported. Recent versions of GCC (4.8+)
     and Clang should work on non-Windows platforms, and maybe on Windows too.
 

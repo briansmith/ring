@@ -64,8 +64,8 @@ def SetEnvironmentAndGetRuntimeDllDirs():
 def _GetDesiredVsToolchainHashes():
   """Load a list of SHA1s corresponding to the toolchains that we want installed
   to build with."""
-  # Use Chromium's VS2013.
-  return ['4087e065abebdca6dbd0caca2910c6718d2ec67f']
+  # Use Chromium's VS2015.
+  return ['95ddda401ec5678f15eeed01d2bee08fcbc5ee97']
 
 
 def FindDepotTools():
