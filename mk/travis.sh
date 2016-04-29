@@ -64,8 +64,6 @@ rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
-CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose --target=$TARGET_X
-
 case $TARGET_X in
 arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
   ;;
@@ -94,5 +92,11 @@ if [[ "$KCOV" == "1" ]]; then
                         target/kcov \
                         target/$TARGET_X/debug/ring-*
 fi
+
+# Verify that `cargo build`, independent from `cargo test`, works; i.e. verify
+# that non-test builds aren't trying to use test-only features. For platforms
+# for which we don't run tests, this is the only place we even verify that the
+# code builds.
+CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose --target=$TARGET_X
 
 echo end of mk/travis.sh

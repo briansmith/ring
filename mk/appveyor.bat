@@ -59,8 +59,10 @@ cl /?
 rustc --version
 cargo --version
 
-cargo build --verbose %CARGO_MODE%
+cargo test --verbose %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1
 
-cargo test --verbose %CARGO_MODE%
+REM Verify that `cargo build`, independent from `cargo test`, works; i.e.
+REM verify that non-test builds aren't trying to use test-only features.
+cargo build --verbose %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1
