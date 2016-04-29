@@ -120,12 +120,6 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-entry_after_success_kcov = """
-      after_success:
-        - mk/travis-install-kcov.sh
-        - ${HOME}/kcov/bin/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-path=/usr/include --include-pattern=ring/crypto,ring/src target/kcov target/$TARGET_X/debug/ring-*
-"""
-
 def format_entry(os, target, compiler, rust, mode):
     # Currently kcov only runs on Linux.
     #
@@ -167,9 +161,6 @@ def format_entry(os, target, compiler, rust, mode):
 
     if os == "osx":
         os += "\n" + entry_indent + "osx_image: xcode7.2"
-
-    if kcov == True:
-        template += entry_after_success_kcov
 
     return template % {
             "cc" : cc,

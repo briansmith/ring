@@ -64,19 +64,36 @@ rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
-if [[ "$KCOV" == "1" ]]; then
-  RUSTFLAGS_X="-C link-dead-code"
-fi
-
-CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo build -j2 ${mode-} --verbose --target=$TARGET_X
+CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose --target=$TARGET_X
 
 case $TARGET_X in
 arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
   ;;
 *)
-  CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo test -j2 ${mode-} --verbose --target=$TARGET_X
-  CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo doc -j2 ${mode-} --verbose --target=$TARGET_X
+  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
+  CC=$CC_X CXX=$CXX_X cargo doc -j2 ${mode-} --verbose --target=$TARGET_X
   ;;
 esac
+
+if [[ "$KCOV" == "1" ]]; then
+  # kcov reports coverage as a percentage of code *linked into the executable*
+  # (more accurately, code that has debug info linked into the executable), not
+  # as a percentage of source code. Thus, any code that gets discarded by the
+  # linker due to lack of usage isn't counted at all. Thus, we have to re-link
+  # with "-C link-dead-code" to get accurate code coverage reports.
+  # Alternatively, we could link pass "-C link-dead-code" in the "cargo test"
+  # step above, but then "cargo test" we wouldn't be testing the configuration
+  # we expect people to use in production.
+  CC=$CC_X CXX=$CXX_X cargo clean
+  CC=$CC_X CXX=$CXX_X RUSTFLAGS="-C link-dead-code" \
+    cargo test --no-run -j2  ${mode-} --verbose --target=$TARGET_X
+  mk/travis-install-kcov.sh
+  ${HOME}/kcov/bin/kcov --verify \
+                        --coveralls-id=$TRAVIS_JOB_ID \
+                        --exclude-path=/usr/include \
+                        --include-pattern="ring/crypto,ring/src" \
+                        target/kcov \
+                        target/$TARGET_X/debug/ring-*
+fi
 
 echo end of mk/travis.sh
