@@ -190,6 +190,11 @@ static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
                 goto err;
             }
             pol = POLICYINFO_new();
+            if (pol == NULL) {
+                OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
+                ASN1_OBJECT_free(pobj);
+                goto err;
+            }
             pol->policyid = pobj;
         }
         if (!sk_POLICYINFO_push(pols, pol)) {
