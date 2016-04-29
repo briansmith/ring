@@ -124,7 +124,7 @@ CPPFLAGS += -g3
 LDFLAGS += -Wl,--gc-sections
 endif
 
-ASFLAGS += -Wa,--noexecstack
+ASFLAGS += -Wa,--noexecstack,-gdwarf
 
 # TODO: link-time optimization.
 

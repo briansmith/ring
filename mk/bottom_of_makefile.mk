@@ -32,7 +32,7 @@ $(GENERATED) : | $(GENERATED_DIRS)
 %.o: %.S
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 $(OBJ_PREFIX)%.o: %.S
-	$(COMPILE.S) $(OUTPUT_OPTION) $<
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
 $(OBJ_PREFIX)%.o: %.c
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 $(OBJ_PREFIX)%.o: %.cpp
