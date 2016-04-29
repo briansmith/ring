@@ -64,9 +64,3 @@ if %ERRORLEVEL% NEQ 0 exit 1
 
 cargo test --verbose %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1
-
-cargo doc --verbose
-if %ERRORLEVEL% NEQ 0 exit 1
-
-cargo clean --verbose
-if %ERRORLEVEL% NEQ 0 exit 1

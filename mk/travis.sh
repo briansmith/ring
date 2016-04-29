@@ -71,7 +71,6 @@ arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
   ;;
 *)
   CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
-  CC=$CC_X CXX=$CXX_X cargo doc -j2 ${mode-} --verbose --target=$TARGET_X
   ;;
 esac
 
