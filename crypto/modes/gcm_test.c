@@ -282,9 +282,7 @@ static int decode_hex(uint8_t **out, size_t *out_len, const char *in,
     uint8_t v, v2;
     if (!from_hex(&v, in[i]) ||
         !from_hex(&v2, in[i+1])) {
-      fprintf(stderr,
-              "%u: invalid hex digit in %s around offset %" OPENSSL_PR_SIZE_T
-              ".\n",
+      fprintf(stderr, "%u: invalid hex digit in %s around offset %zu.\n",
               test_num, description, i);
       goto err;
     }

@@ -506,7 +506,7 @@ static int test_cert_reparse(const uint8_t *der_bytes, size_t der_len) {
     X509 *b = sk_X509_value(certs2, i);
 
     if (X509_cmp(a, b) != 0) {
-      fprintf(stderr, "Certificate %" OPENSSL_PR_SIZE_T " differs.\n", i);
+      fprintf(stderr, "Certificate %zu differs.\n", i);
       return 0;
     }
   }
@@ -570,7 +570,7 @@ static int test_crl_reparse(const uint8_t *der_bytes, size_t der_len) {
     X509_CRL *b = sk_X509_CRL_value(crls2, i);
 
     if (X509_CRL_cmp(a, b) != 0) {
-      fprintf(stderr, "CRL %" OPENSSL_PR_SIZE_T " differs.\n", i);
+      fprintf(stderr, "CRL %zu differs.\n", i);
       return 0;
     }
   }
@@ -608,8 +608,7 @@ static int test_pem_certs(const char *pem) {
 
   if (sk_X509_num(certs) != 1) {
     fprintf(stderr,
-            "Bad number of certificates from PKCS7_get_PEM_certificates: "
-            "%" OPENSSL_PR_SIZE_T "\n",
+            "Bad number of certificates from PKCS7_get_PEM_certificates: %zu\n",
             sk_X509_num(certs));
     return 0;
   }
@@ -630,9 +629,7 @@ static int test_pem_crls(const char *pem) {
   }
 
   if (sk_X509_CRL_num(crls) != 1) {
-    fprintf(stderr,
-            "Bad number of CRLs from PKCS7_get_PEM_CRLs: %" OPENSSL_PR_SIZE_T
-            "\n",
+    fprintf(stderr, "Bad number of CRLs from PKCS7_get_PEM_CRLs: %zu\n",
             sk_X509_CRL_num(crls));
     return 0;
   }

@@ -51,6 +51,7 @@ elseif(MSVC)
       "C4365" # '=' : conversion from 'size_t' to 'int',
               # signed/unsigned mismatch
       "C4389" # '!=' : signed/unsigned mismatch
+      "C4464" # relative include path contains '..'
       "C4510" # 'argument' : default constructor could not be generated
       "C4512" # 'argument' : assignment operator could not be generated
       "C4514" # 'function': unreferenced inline function has been removed
@@ -58,6 +59,7 @@ elseif(MSVC)
               # side-effect" caused by FD_* macros.
       "C4610" # struct 'argument' can never be instantiated - user defined
               # constructor required.
+      "C4623" # default constructor was implicitly defined as deleted
       "C4625" # copy constructor could not be generated because a base class
               # copy constructor is inaccessible or deleted
       "C4626" # assignment operator could not be generated because a base class
@@ -70,24 +72,16 @@ elseif(MSVC)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
       "C4996" # 'read': The POSIX name for this item is deprecated. Instead,
               # use the ISO C++ conformant name: _read.
-     )
-  if(NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "19.0.23506"))
-    # MSVC 2015 Update 1.
-    set(MSVC_DISABLED_WARNINGS_LIST
-        ${MSVC_DISABLED_WARNINGS_LIST}
-        "C4464" # relative include path contains '..'
-        "C4623" # default constructor was implicitly defined as deleted
-        "C5027" # move assignment operator was implicitly defined as deleted
-       )
-    set(MSVC_LEVEL4_WARNINGS_LIST
-        # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
-        "C4265" # class has virtual functions, but destructor is not virtual
-        )
-    string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
-                              ${MSVC_LEVEL4_WARNINGS_LIST})
-  endif()
+      "C5027" # move assignment operator was implicitly defined as deleted
+      )
+  set(MSVC_LEVEL4_WARNINGS_LIST
+      # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
+      "C4265" # class has virtual functions, but destructor is not virtual
+      )
   string(REPLACE "C" " -wd" MSVC_DISABLED_WARNINGS_STR
                             ${MSVC_DISABLED_WARNINGS_LIST})
+  string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
+                            ${MSVC_LEVEL4_WARNINGS_LIST})
   set(CMAKE_C_FLAGS   "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   add_definitions(-D_HAS_EXCEPTIONS=0)

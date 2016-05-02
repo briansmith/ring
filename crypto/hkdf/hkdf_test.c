@@ -228,9 +228,8 @@ int main(void) {
       return 1;
     }
     if (memcmp(buf, test->out, test->out_len) != 0) {
-      fprintf(stderr, "%" OPENSSL_PR_SIZE_T
-                      ": Resulting key material does not match test vector\n",
-              i);
+      fprintf(stderr,
+              "%zu: Resulting key material does not match test vector\n", i);
       return 1;
     }
   }
