@@ -1701,52 +1701,33 @@ void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
 
 void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a) {
-  CERT *c = ssl->cert;
-  int have_rsa_cert = 0, dh_tmp;
-  uint32_t mask_k, mask_a;
-  int have_ecc_cert = 0, ecdsa_ok;
-  X509 *x;
-
-  dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
+  uint32_t mask_k = 0;
+  uint32_t mask_a = 0;
 
   if (ssl->cert->x509 != NULL && ssl_has_private_key(ssl)) {
     if (ssl_private_key_type(ssl) == EVP_PKEY_RSA) {
-      have_rsa_cert = 1;
+      mask_k |= SSL_kRSA;
+      mask_a |= SSL_aRSA;
     } else if (ssl_private_key_type(ssl) == EVP_PKEY_EC) {
-      have_ecc_cert = 1;
+      /* An ECC certificate may be usable for ECDSA cipher suites depending on
+       * the key usage extension and on the client's curve preferences. */
+      X509 *x = ssl->cert->x509;
+      /* This call populates extension flags (ex_flags). */
+      X509_check_purpose(x, -1, 0);
+      int ecdsa_ok = (x->ex_flags & EXFLAG_KUSAGE)
+                         ? (x->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)
+                         : 1;
+      if (ecdsa_ok && tls1_check_ec_cert(ssl, x)) {
+        mask_a |= SSL_aECDSA;
+      }
     }
   }
 
-  mask_k = 0;
-  mask_a = 0;
-
-  if (dh_tmp) {
+  if (ssl->cert->dh_tmp != NULL || ssl->cert->dh_tmp_cb != NULL) {
     mask_k |= SSL_kDHE;
   }
-  if (have_rsa_cert) {
-    mask_k |= SSL_kRSA;
-    mask_a |= SSL_aRSA;
-  }
 
-  /* An ECC certificate may be usable for ECDSA cipher suites depending on the
-   * key usage extension and on the client's curve preferences. */
-  if (have_ecc_cert) {
-    x = c->x509;
-    /* This call populates extension flags (ex_flags). */
-    X509_check_purpose(x, -1, 0);
-    ecdsa_ok = (x->ex_flags & EXFLAG_KUSAGE)
-                   ? (x->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)
-                   : 1;
-    if (!tls1_check_ec_cert(ssl, x)) {
-      ecdsa_ok = 0;
-    }
-    if (ecdsa_ok) {
-      mask_a |= SSL_aECDSA;
-    }
-  }
-
-  /* If we are considering an ECC cipher suite that uses an ephemeral EC
-   * key, check for a shared curve. */
+  /* Check for a shared curve to consider ECDHE ciphers. */
   uint16_t unused;
   if (tls1_get_shared_curve(ssl, &unused)) {
     mask_k |= SSL_kECDHE;
