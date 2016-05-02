@@ -12,10 +12,11 @@ update_clang.py: Set CLANG_REVISION and CLANG_SUB_REVISION to the values used in
     Chromium, found at
     https://chromium.googlesource.com/chromium/src/+/master/tools/clang/scripts/update.py
 
-vs_toolchain.py: Set the hash in _GetDesiredVsToolchainHashes to the toolchain
-    used in Chromium, found at
+vs_toolchain.py: Set the hash in TOOLCHAIN_HASH to the toolchain
+    used in Chromium, found at _GetDesiredVsToolchainHashes
     https://chromium.googlesource.com/chromium/src/+/master/build/vs_toolchain.py
-    This may require taking other updates to that file.
+    This may require taking other updates to that file. If updating MSVS
+    version, also update TOOLCHAIN_VERSION accordingly.
 
 The .sha1 files correspond to files downloaded from Google Cloud Storage. To
 update, place the updated files in their intended location and run:

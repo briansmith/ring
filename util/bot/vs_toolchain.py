@@ -18,12 +18,16 @@ json_data_file = os.path.join(script_dir, 'win_toolchain.json')
 import gyp
 
 
+TOOLCHAIN_VERSION = '2015'
+TOOLCHAIN_HASH = '95ddda401ec5678f15eeed01d2bee08fcbc5ee97'
+
+
 def SetEnvironmentAndGetRuntimeDllDirs():
   """Sets up os.environ to use the depot_tools VS toolchain with gyp, and
   returns the location of the VS runtime DLLs so they can be copied into
   the output directory after gyp generation.
   """
-  vs2013_runtime_dll_dirs = None
+  vs_runtime_dll_dirs = None
   depot_tools_win_toolchain = \
       bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
   if sys.platform in ('win32', 'cygwin') and depot_tools_win_toolchain:
@@ -41,7 +45,7 @@ def SetEnvironmentAndGetRuntimeDllDirs():
     # TODO(scottmg): The order unfortunately matters in these. They should be
     # split into separate keys for x86 and x64. (See CopyVsRuntimeDlls call
     # below). http://crbug.com/345992
-    vs2013_runtime_dll_dirs = toolchain_data['runtime_dirs']
+    vs_runtime_dll_dirs = toolchain_data['runtime_dirs']
 
     os.environ['GYP_MSVS_OVERRIDE_PATH'] = toolchain
     os.environ['GYP_MSVS_VERSION'] = version
@@ -56,16 +60,9 @@ def SetEnvironmentAndGetRuntimeDllDirs():
     os.environ['WINDOWSSDKDIR'] = win_sdk
     os.environ['WDK_DIR'] = wdk
     # Include the VS runtime in the PATH in case it's not machine-installed.
-    runtime_path = ';'.join(vs2013_runtime_dll_dirs)
+    runtime_path = ';'.join(vs_runtime_dll_dirs)
     os.environ['PATH'] = runtime_path + ';' + os.environ['PATH']
-  return vs2013_runtime_dll_dirs
-
-
-def _GetDesiredVsToolchainHashes():
-  """Load a list of SHA1s corresponding to the toolchains that we want installed
-  to build with."""
-  # Use Chromium's VS2015.
-  return ['95ddda401ec5678f15eeed01d2bee08fcbc5ee97']
+  return vs_runtime_dll_dirs
 
 
 def FindDepotTools():
@@ -85,13 +82,16 @@ def Update():
       bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
   if sys.platform in ('win32', 'cygwin') and depot_tools_win_toolchain:
     depot_tools_path = FindDepotTools()
+    # Necessary so that get_toolchain_if_necessary.py will put the VS toolkit
+    # in the correct directory.
+    os.environ['GYP_MSVS_VERSION'] = TOOLCHAIN_VERSION
     get_toolchain_args = [
         sys.executable,
         os.path.join(depot_tools_path,
                     'win_toolchain',
                     'get_toolchain_if_necessary.py'),
-        '--output-json', json_data_file,
-      ] + _GetDesiredVsToolchainHashes()
+        '--output-json', json_data_file, TOOLCHAIN_HASH,
+      ]
     subprocess.check_call(get_toolchain_args)
 
   return 0
