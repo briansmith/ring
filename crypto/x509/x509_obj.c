@@ -64,6 +64,13 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+/*
+ * Limit to ensure we don't overflow: much greater than
+ * anything enountered in practice.
+ */
+
+#define NAME_ONELINE_MAX    (1024 * 1024)
+
 char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 {
     X509_NAME_ENTRY *ne;
@@ -110,6 +117,10 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 
         type = ne->value->type;
         num = ne->value->length;
+        if (num > NAME_ONELINE_MAX) {
+            OPENSSL_PUT_ERROR(X509, X509_R_NAME_TOO_LONG);
+            goto end;
+        }
         q = ne->value->data;
 
         if ((type == V_ASN1_GENERALSTRING) && ((num % 4) == 0)) {
@@ -137,6 +148,10 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 
         lold = l;
         l += 1 + l1 + 1 + l2;
+        if (l > NAME_ONELINE_MAX) {
+            OPENSSL_PUT_ERROR(X509, X509_R_NAME_TOO_LONG);
+            goto end;
+        }
         if (b != NULL) {
             if (!BUF_MEM_grow(b, l + 1))
                 goto err;
@@ -176,7 +191,7 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
     return (p);
  err:
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-    if (b != NULL)
-        BUF_MEM_free(b);
+ end:
+    BUF_MEM_free(b);
     return (NULL);
 }
