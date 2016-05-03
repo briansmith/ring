@@ -284,7 +284,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
   bl = ctx->cipher->block_size;
   assert(bl <= (int)sizeof(ctx->buf));
   if (i != 0) {
-    if (i + in_len < bl) {
+    if (bl - i > in_len) {
       memcpy(&ctx->buf[i], in, in_len);
       ctx->buf_len += in_len;
       *out_len = 0;
