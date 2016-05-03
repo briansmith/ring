@@ -119,8 +119,7 @@ void EVP_EncodeInit(EVP_ENCODE_CTX *ctx) {
 
 void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, size_t in_len) {
-  unsigned i, j;
-  unsigned total = 0;
+  size_t total = 0;
 
   *out_len = 0;
   if (in_len == 0) {
@@ -128,33 +127,37 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
   }
 
   assert(ctx->length <= sizeof(ctx->enc_data));
+  assert(ctx->num < ctx->length);
 
-  if (ctx->num + in_len < ctx->length) {
+  if (ctx->length - ctx->num > in_len) {
     memcpy(&ctx->enc_data[ctx->num], in, in_len);
     ctx->num += in_len;
     return;
   }
+
   if (ctx->num != 0) {
-    i = ctx->length - ctx->num;
-    memcpy(&ctx->enc_data[ctx->num], in, i);
-    in += i;
-    in_len -= i;
-    j = EVP_EncodeBlock(out, ctx->enc_data, ctx->length);
+    size_t todo = ctx->length - ctx->num;
+    memcpy(&ctx->enc_data[ctx->num], in, todo);
+    in += todo;
+    in_len -= todo;
+    size_t encoded = EVP_EncodeBlock(out, ctx->enc_data, ctx->length);
     ctx->num = 0;
-    out += j;
+    out += encoded;
     *(out++) = '\n';
     *out = '\0';
-    total = j + 1;
+    total = encoded + 1;
   }
+
   while (in_len >= ctx->length) {
-    j = EVP_EncodeBlock(out, in, ctx->length);
+    size_t encoded = EVP_EncodeBlock(out, in, ctx->length);
     in += ctx->length;
     in_len -= ctx->length;
-    out += j;
+    out += encoded;
     *(out++) = '\n';
     *out = '\0';
-    total += j + 1;
+    total += encoded + 1;
   }
+
   if (in_len != 0) {
     memcpy(&ctx->enc_data[0], in, in_len);
   }
