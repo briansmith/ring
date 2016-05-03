@@ -43,6 +43,13 @@ extern "C" {
  * should be called before entering a sandbox. */
 OPENSSL_EXPORT void CRYPTO_library_init(void);
 
+/* CRYPTO_is_confidential_build returns one if the linked version of BoringSSL
+ * has been built with the BORINGSSL_CONFIDENTIAL define and zero otherwise.
+ *
+ * This is used by some consumers to identify whether they are using an
+ * internal version of BoringSSL. */
+OPENSSL_EXPORT int CRYPTO_is_confidential_build(void);
+
 
 /* Deprecated functions. */
 

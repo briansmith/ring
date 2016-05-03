@@ -123,6 +123,14 @@ void CRYPTO_library_init(void) {
 #endif
 }
 
+int CRYPTO_is_confidential_build(void) {
+#if defined(BORINGSSL_CONFIDENTIAL)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 const char *SSLeay_version(int unused) {
   return "BoringSSL";
 }
