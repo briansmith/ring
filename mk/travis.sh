@@ -65,12 +65,17 @@ rustc --version
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
 case $TARGET_X in
-arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
+aarch64-unknown-linux-gnu)
+  export QEMU_LD_PREFIX=$DL_BASENAME/aarch64-linux-gnu/libc
   ;;
+arm-unknown-linux-gnueabi)
+  export QEMU_LD_PREFIX=$DL_BASENAME/arm-linux-gnueabi/libc
+    ;;
 *)
-  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
   ;;
 esac
+
+CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
 
 if [[ "$KCOV" == "1" ]]; then
   # kcov reports coverage as a percentage of code *linked into the executable*
