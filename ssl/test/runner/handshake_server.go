@@ -488,6 +488,10 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	hs.hello.sessionId = hs.clientHello.sessionId
 	hs.hello.ticketSupported = c.config.Bugs.RenewTicketOnResume
 
+	if c.config.Bugs.SendSCTListOnResume != nil {
+		hs.hello.sctList = c.config.Bugs.SendSCTListOnResume
+	}
+
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
 	hs.finishedHash.discardHandshakeBuffer()
 	hs.writeClientHash(hs.clientHello.marshal())

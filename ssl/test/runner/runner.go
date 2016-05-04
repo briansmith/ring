@@ -3879,6 +3879,20 @@ func addExtensionTests() {
 		resumeSession: true,
 	})
 	testCases = append(testCases, testCase{
+		name: "SendSCTListOnResume",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSCTListOnResume: []byte("bogus"),
+			},
+		},
+		flags: []string{
+			"-enable-signed-cert-timestamps",
+			"-expect-signed-cert-timestamps",
+			base64.StdEncoding.EncodeToString(testSCTList),
+		},
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
 		name:     "SignedCertificateTimestampList-Server",
 		testType: serverTest,
 		flags: []string{

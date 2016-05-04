@@ -834,6 +834,10 @@ type ProtocolBugs struct {
 	// NullAllCiphers, if true, causes every cipher to behave like the null
 	// cipher.
 	NullAllCiphers bool
+
+	// SendSCTListOnResume, if not nil, causes the server to send the
+	// supplied SCT list in resumption handshakes.
+	SendSCTListOnResume []byte
 }
 
 func (c *Config) serverInit() {
