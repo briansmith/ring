@@ -117,6 +117,16 @@ extern "C" {
 #define OPENSSL_VERSION_NUMBER 0x10002000
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
+/* BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL
+ * changes over time. The value itself is not meaningful. It will be incremented
+ * whenever is convenient to coordinate an API change with consumers. This will
+ * not denote any special point in development.
+ *
+ * A consumer may use this symbol in the preprocessor to temporarily build
+ * against multiple revisions of BoringSSL at the same time. It is not
+ * recommended to do so for longer than is necessary. */
+#define BORINGSSL_API_VERSION 1
+
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)
