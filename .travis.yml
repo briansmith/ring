@@ -1137,4 +1137,4 @@ matrix:
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG KCOV=0
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=RELWITHDEBINFO KCOV=0
 
-script: if [[ "$TARGET_X" == "arm-unknown-linux-gnueabi" ]]; then travis_wait 30 mk/travis.sh; else mk/travis.sh; fi
+script: if [[ "$TARGET_X" == "arm-unknown-linux-gnueabi" ]]; then travis_wait 60 mk/travis.sh; else mk/travis.sh; fi
