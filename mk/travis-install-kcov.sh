@@ -26,6 +26,20 @@ set -ex
 # kcov 31 is needed so `kcov --version` doesn't exit with status 1.
 KCOV_VERSION=${KCOV_VERSION:-31}
 
+KCOV_INSTALL_PREFIX="${HOME}/kcov-${TARGET_X}"
+
+# Check if kcov has been cached on travis.
+if [[ -f "$KCOV_INSTALL_PREFIX/bin/kcov" ]]; then
+  KCOV_INSTALLED_VERSION=`$KCOV_INSTALL_PREFIX/bin/kcov --version`
+  # Exit if we don't need to upgrade kcov.
+  if [[ "$KCOV_INSTALLED_VERSION" == "kcov $KCOV_VERSION" ]]; then
+    echo "Using cached kcov version: ${KCOV_VERSION}"
+    exit 0
+  else
+    rm -rf "$KCOV_INSTALL_PREFIX"
+  fi
+fi
+
 curl -L https://github.com/SimonKagstrom/kcov/archive/v$KCOV_VERSION.tar.gz | tar -zxf -
 
 pushd kcov-$KCOV_VERSION
@@ -37,15 +51,15 @@ pushd build
 if [[  "$TARGET_X" == "i686-unknown-linux-gnu" ]]; then
   # set PKG_CONFIG_PATH so the kcov build system uses the 32 bit libraries we installed.
   # otherwise kcov will be linked with 64 bit libraries and won't work with 32 bit executables.
-  PKG_CONFIG_PATH="/usr/lib/i386-linux-gnu/pkgconfig" CFLAGS="-m32" CXXFLAGS="-m32" CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X cmake -DCMAKE_INSTALL_PREFIX:PATH="${HOME}/kcov" ..
+  PKG_CONFIG_PATH="/usr/lib/i386-linux-gnu/pkgconfig" CFLAGS="-m32" CXXFLAGS="-m32" CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X cmake -DCMAKE_INSTALL_PREFIX:PATH="${KCOV_INSTALL_PREFIX}" ..
 else
-  CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X cmake -DCMAKE_INSTALL_PREFIX:PATH="${HOME}/kcov" ..
+  CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X cmake -DCMAKE_INSTALL_PREFIX:PATH="${KCOV_INSTALL_PREFIX}" ..
 fi
 
 make
 make install
 
-$HOME/kcov/bin/kcov --version
+$KCOV_INSTALL_PREFIX/bin/kcov --version
 
 popd
 popd

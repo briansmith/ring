@@ -1,4 +1,8 @@
 language: rust
+cache:
+  directories:
+    - $HOME/kcov-i686-unknown-linux-gnu
+    - $HOME/kcov-x86_64-unknown-linux-gnu
 matrix:
   fast_finish: true
   include:

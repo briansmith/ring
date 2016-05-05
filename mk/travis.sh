@@ -90,12 +90,12 @@ if [[ "$KCOV" == "1" ]]; then
   CC=$CC_X CXX=$CXX_X RUSTFLAGS="-C link-dead-code" \
     cargo test --no-run -j2  ${mode-} --verbose --target=$TARGET_X
   mk/travis-install-kcov.sh
-  ${HOME}/kcov/bin/kcov --verify \
-                        --coveralls-id=$TRAVIS_JOB_ID \
-                        --exclude-path=/usr/include \
-                        --include-pattern="ring/crypto,ring/src" \
-                        target/kcov \
-                        target/$TARGET_X/debug/ring-*
+  ${HOME}/kcov-${TARGET_X}/bin/kcov --verify \
+                                    --coveralls-id=$TRAVIS_JOB_ID \
+                                    --exclude-path=/usr/include \
+                                    --include-pattern="ring/crypto,ring/src" \
+                                    target/kcov \
+                                    target/$TARGET_X/debug/ring-*
 fi
 
 # Verify that `cargo build`, independent from `cargo test`, works; i.e. verify
