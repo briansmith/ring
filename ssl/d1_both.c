@@ -759,10 +759,11 @@ int dtls1_retransmit_buffered_messages(SSL *ssl) {
     }
   }
 
-  /* TODO(davidben): Check return value? */
-  (void)BIO_flush(SSL_get_wbio(ssl));
-
-  ret = 1;
+  ret = BIO_flush(SSL_get_wbio(ssl));
+  if (ret <= 0) {
+    ssl->rwstate = SSL_WRITING;
+    goto err;
+  }
 
 err:
   if (!was_buffered) {
