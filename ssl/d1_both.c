@@ -737,25 +737,38 @@ static int dtls1_retransmit_message(SSL *ssl, hm_fragment *frag) {
     ret = dtls1_do_handshake_write(ssl, use_epoch);
   }
 
-  /* TODO(davidben): Check return value? */
-  (void)BIO_flush(SSL_get_wbio(ssl));
   return ret;
 }
 
-
 int dtls1_retransmit_buffered_messages(SSL *ssl) {
-  pqueue sent = ssl->d1->sent_messages;
-  piterator iter = pqueue_iterator(sent);
-  pitem *item;
+  /* Ensure we are packing handshake messages. */
+  const int was_buffered = ssl_is_wbio_buffered(ssl);
+  assert(was_buffered == SSL_in_init(ssl));
+  if (!was_buffered && !ssl_init_wbio_buffer(ssl, 1)) {
+    return -1;
+  }
+  assert(ssl_is_wbio_buffered(ssl));
 
+  int ret = -1;
+  piterator iter = pqueue_iterator(ssl->d1->sent_messages);
+  pitem *item;
   for (item = pqueue_next(&iter); item != NULL; item = pqueue_next(&iter)) {
     hm_fragment *frag = (hm_fragment *)item->data;
     if (dtls1_retransmit_message(ssl, frag) <= 0) {
-      return -1;
+      goto err;
     }
   }
 
-  return 1;
+  /* TODO(davidben): Check return value? */
+  (void)BIO_flush(SSL_get_wbio(ssl));
+
+  ret = 1;
+
+err:
+  if (!was_buffered) {
+    ssl_free_wbio_buffer(ssl);
+  }
+  return ret;
 }
 
 /* dtls1_buffer_change_cipher_spec adds a ChangeCipherSpec to the current

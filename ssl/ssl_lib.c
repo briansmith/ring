@@ -1865,6 +1865,10 @@ const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
 int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
 
+int ssl_is_wbio_buffered(const SSL *ssl) {
+  return ssl->bbio != NULL && ssl->wbio == ssl->bbio;
+}
+
 int ssl_init_wbio_buffer(SSL *ssl, int push) {
   BIO *bbio;
 

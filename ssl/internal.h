@@ -1136,6 +1136,10 @@ long dtls1_get_message(SSL *ssl, int st1, int stn, int mt, long max,
                        enum ssl_hash_message_t hash_message, int *ok);
 int dtls1_dispatch_alert(SSL *ssl);
 
+/* ssl_is_wbio_buffered returns one if |ssl|'s write BIO is buffered and zero
+ * otherwise. */
+int ssl_is_wbio_buffered(const SSL *ssl);
+
 int ssl_init_wbio_buffer(SSL *ssl, int push);
 void ssl_free_wbio_buffer(SSL *ssl);
 
