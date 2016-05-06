@@ -226,7 +226,6 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CW_CLNT_HELLO_A:
       case SSL3_ST_CW_CLNT_HELLO_B:
-        ssl->shutdown = 0;
         ret = ssl3_send_client_hello(ssl);
         if (ret <= 0) {
           goto end;

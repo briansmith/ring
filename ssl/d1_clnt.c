@@ -182,7 +182,6 @@ int dtls1_connect(SSL *ssl) {
 
       case SSL3_ST_CW_CLNT_HELLO_A:
       case SSL3_ST_CW_CLNT_HELLO_B:
-        ssl->shutdown = 0;
         dtls1_start_timer(ssl);
         ret = ssl3_send_client_hello(ssl);
         if (ret <= 0) {
