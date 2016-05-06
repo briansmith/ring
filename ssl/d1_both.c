@@ -744,7 +744,7 @@ int dtls1_retransmit_buffered_messages(SSL *ssl) {
   /* Ensure we are packing handshake messages. */
   const int was_buffered = ssl_is_wbio_buffered(ssl);
   assert(was_buffered == SSL_in_init(ssl));
-  if (!was_buffered && !ssl_init_wbio_buffer(ssl, 1)) {
+  if (!was_buffered && !ssl_init_wbio_buffer(ssl)) {
     return -1;
   }
   assert(ssl_is_wbio_buffered(ssl));

@@ -169,12 +169,10 @@ int dtls1_connect(SSL *ssl) {
           buf = NULL;
         }
 
-        if (!ssl_init_wbio_buffer(ssl, 0)) {
+        if (!ssl_init_wbio_buffer(ssl)) {
           ret = -1;
           goto end;
         }
-
-        /* don't push the buffering BIO quite yet */
 
         ssl->state = SSL3_ST_CW_CLNT_HELLO_A;
         ssl->init_num = 0;
@@ -192,17 +190,13 @@ int dtls1_connect(SSL *ssl) {
         }
 
         if (ssl->d1->send_cookie) {
-          ssl->state = SSL3_ST_CW_FLUSH;
           ssl->s3->tmp.next_state = SSL3_ST_CR_SRVR_HELLO_A;
         } else {
-          ssl->state = DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
+          ssl->s3->tmp.next_state = DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
         }
+        ssl->state = SSL3_ST_CW_FLUSH;
 
         ssl->init_num = 0;
-        /* turn on buffering for the next lot of output */
-        if (ssl->bbio != ssl->wbio) {
-          ssl->wbio = BIO_push(ssl->bbio, ssl->wbio);
-        }
 
         break;
 

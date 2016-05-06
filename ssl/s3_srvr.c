@@ -219,7 +219,7 @@ int ssl3_accept(SSL *ssl) {
 
         /* Enable a write buffer. This groups handshake messages within a flight
          * into a single write. */
-        if (!ssl_init_wbio_buffer(ssl, 1)) {
+        if (!ssl_init_wbio_buffer(ssl)) {
           ret = -1;
           goto end;
         }

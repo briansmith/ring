@@ -168,7 +168,7 @@ int dtls1_accept(SSL *ssl) {
 
         ssl->init_num = 0;
 
-        if (!ssl_init_wbio_buffer(ssl, 1)) {
+        if (!ssl_init_wbio_buffer(ssl)) {
           ret = -1;
           goto end;
         }

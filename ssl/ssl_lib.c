@@ -1869,7 +1869,7 @@ int ssl_is_wbio_buffered(const SSL *ssl) {
   return ssl->bbio != NULL && ssl->wbio == ssl->bbio;
 }
 
-int ssl_init_wbio_buffer(SSL *ssl, int push) {
+int ssl_init_wbio_buffer(SSL *ssl) {
   BIO *bbio;
 
   if (ssl->bbio == NULL) {
@@ -1891,14 +1891,8 @@ int ssl_init_wbio_buffer(SSL *ssl, int push) {
     return 0;
   }
 
-  if (push) {
-    if (ssl->wbio != bbio) {
-      ssl->wbio = BIO_push(bbio, ssl->wbio);
-    }
-  } else {
-    if (ssl->wbio == bbio) {
-      ssl->wbio = BIO_pop(bbio);
-    }
+  if (ssl->wbio != bbio) {
+    ssl->wbio = BIO_push(bbio, ssl->wbio);
   }
 
   return 1;

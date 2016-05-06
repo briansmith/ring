@@ -1140,7 +1140,7 @@ int dtls1_dispatch_alert(SSL *ssl);
  * otherwise. */
 int ssl_is_wbio_buffered(const SSL *ssl);
 
-int ssl_init_wbio_buffer(SSL *ssl, int push);
+int ssl_init_wbio_buffer(SSL *ssl);
 void ssl_free_wbio_buffer(SSL *ssl);
 
 int tls1_change_cipher_state(SSL *ssl, int which);
