@@ -43,14 +43,6 @@ linux_compilers = [
     # XXX: GCC 6 doesn't work:
     # https://github.com/travis-ci/apt-package-whitelist/issues/2294
     "gcc-5",
-
-    # All other clang versions, newest to oldest.
-    "clang-3.7",
-    "clang-3.5",
-
-    # All other GCC versions, newest to oldest.
-    "gcc-4.9",
-    "gcc-4.8",
 ]
 
 # Clang 3.4 and GCC 4.6 are already installed by default.
