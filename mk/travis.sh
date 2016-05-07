@@ -33,6 +33,11 @@ arm-unknown-linux-gnueabi)
 esac
 
 if [[ -n ${DL_TARGET-} ]]; then
+  # We need a newer QEMU than Travis has.
+  sudo add-apt-repository ppa:pietro-monteiro/qemu-backport -y
+  sudo apt-get update -qq
+  sudo apt-get install binfmt-support qemu-user-binfmt -y
+
   DL_ROOT=https://releases.linaro.org/components/toolchain/binaries/
   DL_RELEASE=5.1-2015.08
   DL_BASENAME=gcc-linaro-$DL_RELEASE-x86_64_$DL_TARGET
