@@ -174,22 +174,15 @@ OPENSSL_EXPORT DH *DHparams_dup(const DH *dh);
 
 /* ASN.1 functions. */
 
-/* d2i_DHparams parses an ASN.1, DER encoded Diffie-Hellman parameters
- * structure from |len| bytes at |*inp|. If |ret| is not NULL then, on exit, a
- * pointer to the result is in |*ret|. If |*ret| is already non-NULL on entry
- * then the result is written directly into |*ret|, otherwise a fresh |DH| is
- * allocated. However, one should not depend on writing into |*ret| because
- * this behaviour is likely to change in the future.
- *
- * On successful exit, |*inp| is advanced past the DER structure. It
- * returns the result or NULL on error. */
-OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
+/* DH_parse_parameters decodes a DER-encoded DHParameter structure (PKCS #3)
+ * from |cbs| and advances |cbs|. It returns a newly-allocated |DH| or NULL on
+ * error. */
+OPENSSL_EXPORT DH *DH_parse_parameters(CBS *cbs);
 
-/* i2d_DHparams marshals |in| to an ASN.1, DER structure. If |outp| is not NULL
- * then the result is written to |*outp| and |*outp| is advanced just past the
- * output. It returns the number of bytes in the result, whether written or
- * not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
+/* DH_marshal_parameters marshals |dh| as a DER-encoded DHParameter structure
+ * (PKCS #3) and appends the result to |cbb|. It returns one on success and zero
+ * on error. */
+OPENSSL_EXPORT int DH_marshal_parameters(CBB *cbb, const DH *dh);
 
 
 /* ex_data functions.
@@ -212,6 +205,26 @@ OPENSSL_EXPORT void *DH_get_ex_data(DH *d, int idx);
 OPENSSL_EXPORT DH *DH_generate_parameters(int prime_len, int generator,
                                           void (*callback)(int, int, void *),
                                           void *cb_arg);
+
+/* d2i_DHparams parses an ASN.1, DER encoded Diffie-Hellman parameters structure
+ * from |len| bytes at |*inp|. If |ret| is not NULL then, on exit, a pointer to
+ * the result is in |*ret|. Note that, even if |*ret| is already non-NULL on
+ * entry, it will not be written to. Rather, a fresh |DH| is allocated and the
+ * previous one is freed.
+ *
+ * On successful exit, |*inp| is advanced past the DER structure. It
+ * returns the result or NULL on error.
+ *
+ * Use |DH_parse_parameters| instead. */
+OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
+
+/* i2d_DHparams marshals |in| to an ASN.1, DER structure. If |outp| is not NULL
+ * then the result is written to |*outp| and |*outp| is advanced just past the
+ * output. It returns the number of bytes in the result, whether written or
+ * not, or a negative value on error.
+ *
+ * Use |DH_marshal_parameters| instead. */
+OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 
 
 struct dh_st {
@@ -248,5 +261,7 @@ struct dh_st {
 #define DH_R_INVALID_PUBKEY 101
 #define DH_R_MODULUS_TOO_LARGE 102
 #define DH_R_NO_PRIVATE_VALUE 103
+#define DH_R_DECODE_ERROR 104
+#define DH_R_ENCODE_ERROR 105
 
 #endif  /* OPENSSL_HEADER_DH_H */

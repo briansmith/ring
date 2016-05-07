@@ -62,6 +62,7 @@
 #include <vector>
 
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -73,13 +74,15 @@
 static bool RunBasicTests();
 static bool RunRFC5114Tests();
 static bool TestBadY();
+static bool TestASN1();
 
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
   if (!RunBasicTests() ||
       !RunRFC5114Tests() ||
-      !TestBadY()) {
+      !TestBadY() ||
+      !TestASN1()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
@@ -530,6 +533,94 @@ static bool TestBadY() {
     return false;
   }
   ERR_clear_error();
+
+  return true;
+}
+
+static bool BIGNUMEqualsHex(const BIGNUM *bn, const char *hex) {
+  BIGNUM *hex_bn = NULL;
+  if (!BN_hex2bn(&hex_bn, hex)) {
+    return false;
+  }
+  ScopedBIGNUM free_hex_bn(hex_bn);
+  return BN_cmp(bn, hex_bn) == 0;
+}
+
+static bool TestASN1() {
+  // kParams are a set of Diffie-Hellman parameters generated with
+  // openssl dhparam 256
+  static const uint8_t kParams[] = {
+      0x30, 0x26, 0x02, 0x21, 0x00, 0xd7, 0x20, 0x34, 0xa3, 0x27,
+      0x4f, 0xdf, 0xbf, 0x04, 0xfd, 0x24, 0x68, 0x25, 0xb6, 0x56,
+      0xd8, 0xab, 0x2a, 0x41, 0x2d, 0x74, 0x0a, 0x52, 0x08, 0x7c,
+      0x40, 0x71, 0x4e, 0xd2, 0x57, 0x93, 0x13, 0x02, 0x01, 0x02,
+  };
+
+  CBS cbs;
+  CBS_init(&cbs, kParams, sizeof(kParams));
+  ScopedDH dh(DH_parse_parameters(&cbs));
+  if (!dh || CBS_len(&cbs) != 0 ||
+      !BIGNUMEqualsHex(
+          dh->p,
+          "d72034a3274fdfbf04fd246825b656d8ab2a412d740a52087c40714ed2579313") ||
+      !BIGNUMEqualsHex(dh->g, "2") || dh->priv_length != 0) {
+    return false;
+  }
+
+  ScopedCBB cbb;
+  uint8_t *der;
+  size_t der_len;
+  if (!CBB_init(cbb.get(), 0) ||
+      !DH_marshal_parameters(cbb.get(), dh.get()) ||
+      !CBB_finish(cbb.get(), &der, &der_len)) {
+    return false;
+  }
+  ScopedOpenSSLBytes free_der(der);
+  if (der_len != sizeof(kParams) || memcmp(der, kParams, der_len) != 0) {
+    return false;
+  }
+
+  // kParamsDSA are a set of Diffie-Hellman parameters generated with
+  // openssl dhparam 256 -dsaparam
+  static const uint8_t kParamsDSA[] = {
+      0x30, 0x81, 0x89, 0x02, 0x41, 0x00, 0x93, 0xf3, 0xc1, 0x18, 0x01, 0xe6,
+      0x62, 0xb6, 0xd1, 0x46, 0x9a, 0x2c, 0x72, 0xea, 0x31, 0xd9, 0x18, 0x10,
+      0x30, 0x28, 0x63, 0xe2, 0x34, 0x7d, 0x80, 0xca, 0xee, 0x82, 0x2b, 0x19,
+      0x3c, 0x19, 0xbb, 0x42, 0x83, 0x02, 0x70, 0xdd, 0xdb, 0x8c, 0x03, 0xab,
+      0xe9, 0x9c, 0xc4, 0x00, 0x4d, 0x70, 0x5f, 0x52, 0x03, 0x31, 0x2c, 0xa4,
+      0x67, 0x34, 0x51, 0x95, 0x2a, 0xac, 0x11, 0xe2, 0x6a, 0x55, 0x02, 0x40,
+      0x44, 0xc8, 0x10, 0x53, 0x44, 0x32, 0x31, 0x63, 0xd8, 0xd1, 0x8c, 0x75,
+      0xc8, 0x98, 0x53, 0x3b, 0x5b, 0x4a, 0x2a, 0x0a, 0x09, 0xe7, 0xd0, 0x3c,
+      0x53, 0x72, 0xa8, 0x6b, 0x70, 0x41, 0x9c, 0x26, 0x71, 0x44, 0xfc, 0x7f,
+      0x08, 0x75, 0xe1, 0x02, 0xab, 0x74, 0x41, 0xe8, 0x2a, 0x3d, 0x3c, 0x26,
+      0x33, 0x09, 0xe4, 0x8b, 0xb4, 0x41, 0xec, 0xa6, 0xa8, 0xba, 0x1a, 0x07,
+      0x8a, 0x77, 0xf5, 0x5f, 0x02, 0x02, 0x00, 0xa0,
+  };
+
+  CBS_init(&cbs, kParamsDSA, sizeof(kParamsDSA));
+  dh.reset(DH_parse_parameters(&cbs));
+  if (!dh || CBS_len(&cbs) != 0 ||
+      !BIGNUMEqualsHex(dh->p,
+                       "93f3c11801e662b6d1469a2c72ea31d91810302863e2347d80caee8"
+                       "22b193c19bb42830270dddb8c03abe99cc4004d705f5203312ca467"
+                       "3451952aac11e26a55") ||
+      !BIGNUMEqualsHex(dh->g,
+                       "44c8105344323163d8d18c75c898533b5b4a2a0a09e7d03c5372a86"
+                       "b70419c267144fc7f0875e102ab7441e82a3d3c263309e48bb441ec"
+                       "a6a8ba1a078a77f55f") ||
+      dh->priv_length != 160) {
+    return false;
+  }
+
+  if (!CBB_init(cbb.get(), 0) ||
+      !DH_marshal_parameters(cbb.get(), dh.get()) ||
+      !CBB_finish(cbb.get(), &der, &der_len)) {
+    return false;
+  }
+  ScopedOpenSSLBytes free_der2(der);
+  if (der_len != sizeof(kParamsDSA) || memcmp(der, kParamsDSA, der_len) != 0) {
+    return false;
+  }
 
   return true;
 }
