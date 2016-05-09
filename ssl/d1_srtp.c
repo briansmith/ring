@@ -188,6 +188,7 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     }
   } while (col);
 
+  sk_SRTP_PROTECTION_PROFILE_free(*out);
   *out = profiles;
 
   return 1;
