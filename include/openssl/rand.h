@@ -32,15 +32,6 @@ int RAND_bytes(RAND *rng, uint8_t *buf, size_t len);
 OPENSSL_EXPORT void RAND_cleanup(void);
 
 
-/* Obscure functions. */
-
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-/* RAND_reset_for_fuzzing resets the fuzzer-only deterministic RNG. This
- * function is only defined in the fuzzer-only build configuration. */
-OPENSSL_EXPORT void RAND_reset_for_fuzzing(void);
-#endif
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
