@@ -1292,7 +1292,11 @@ func (c *Conn) Close() error {
 	c.handshakeMutex.Lock()
 	defer c.handshakeMutex.Unlock()
 	if c.handshakeComplete && !c.config.Bugs.NoCloseNotify {
-		alertErr = c.sendAlert(alertCloseNotify)
+		alert := alertCloseNotify
+		if c.config.Bugs.SendAlertOnShutdown != 0 {
+			alert = c.config.Bugs.SendAlertOnShutdown
+		}
+		alertErr = c.sendAlert(alert)
 	}
 
 	// Consume a close_notify from the peer if one hasn't been received

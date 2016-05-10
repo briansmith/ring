@@ -131,12 +131,14 @@ static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
  * more data is needed. */
 static int dtls1_get_record(SSL *ssl) {
 again:
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    if (ssl->s3->clean_shutdown) {
+  switch (ssl->s3->recv_shutdown) {
+    case ssl_shutdown_none:
+      break;
+    case ssl_shutdown_fatal_alert:
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+      return -1;
+    case ssl_shutdown_close_notify:
       return 0;
-    }
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
-    return -1;
   }
 
   /* Read a new packet if there is no unconsumed one. */
@@ -225,7 +227,9 @@ void dtls1_read_close_notify(SSL *ssl) {
    * alerts also aren't delivered reliably, so we may even time out because the
    * peer never received our close_notify. Report to the caller that the channel
    * has fully shut down. */
-  ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
+  if (ssl->s3->recv_shutdown == ssl_shutdown_none) {
+    ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
+  }
 }
 
 /* Return up to 'len' payload bytes received in 'type' records.
@@ -354,8 +358,7 @@ start:
 
     if (alert_level == SSL3_AL_WARNING) {
       if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
-        ssl->s3->clean_shutdown = 1;
-        ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
+        ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
         return 0;
       }
     } else if (alert_level == SSL3_AL_FATAL) {
@@ -364,7 +367,7 @@ start:
       OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
       BIO_snprintf(tmp, sizeof tmp, "%d", alert_descr);
       ERR_add_error_data(2, "SSL alert number ", tmp);
-      ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
+      ssl->s3->recv_shutdown = ssl_shutdown_fatal_alert;
       SSL_CTX_remove_session(ssl->ctx, ssl->session);
       return 0;
     } else {

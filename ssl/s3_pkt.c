@@ -133,12 +133,14 @@ static const uint8_t kMaxWarningAlerts = 4;
 static int ssl3_get_record(SSL *ssl) {
   int ret;
 again:
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    if (ssl->s3->clean_shutdown) {
+  switch (ssl->s3->recv_shutdown) {
+    case ssl_shutdown_none:
+      break;
+    case ssl_shutdown_fatal_alert:
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+      return -1;
+    case ssl_shutdown_close_notify:
       return 0;
-    }
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
-    return -1;
   }
 
   /* Ensure the buffer is large enough to decrypt in-place. */
@@ -547,8 +549,7 @@ start:
 
     if (alert_level == SSL3_AL_WARNING) {
       if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
-        ssl->s3->clean_shutdown = 1;
-        ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
+        ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
         return 0;
       }
 
@@ -564,7 +565,7 @@ start:
       OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
       BIO_snprintf(tmp, sizeof(tmp), "%d", alert_descr);
       ERR_add_error_data(2, "SSL alert number ", tmp);
-      ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
+      ssl->s3->recv_shutdown = ssl_shutdown_fatal_alert;
       SSL_CTX_remove_session(ssl->ctx, ssl->session);
       return 0;
     } else {
@@ -576,7 +577,7 @@ start:
     goto start;
   }
 
-  if (ssl->shutdown & SSL_SENT_SHUTDOWN) {
+  if (ssl->s3->send_shutdown == ssl_shutdown_close_notify) {
     /* close_notify has been sent, so discard all records other than alerts. */
     rr->length = 0;
     goto start;
@@ -592,9 +593,19 @@ err:
 }
 
 int ssl3_send_alert(SSL *ssl, int level, int desc) {
-  /* If a fatal one, remove from cache */
-  if (level == 2 && ssl->session != NULL) {
-    SSL_CTX_remove_session(ssl->ctx, ssl->session);
+  /* It is illegal to send an alert when we've already sent a closing one. */
+  if (ssl->s3->send_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
+  if (level == SSL3_AL_FATAL) {
+    if (ssl->session != NULL) {
+      SSL_CTX_remove_session(ssl->ctx, ssl->session);
+    }
+    ssl->s3->send_shutdown = ssl_shutdown_fatal_alert;
+  } else if (level == SSL3_AL_WARNING && desc == SSL_AD_CLOSE_NOTIFY) {
+    ssl->s3->send_shutdown = ssl_shutdown_close_notify;
   }
 
   ssl->s3->alert_dispatch = 1;
@@ -606,8 +617,7 @@ int ssl3_send_alert(SSL *ssl, int level, int desc) {
     return ssl->method->ssl_dispatch_alert(ssl);
   }
 
-  /* else data is still being written out, we will get written some time in the
-   * future */
+  /* The alert will be dispatched later. */
   return -1;
 }
 

@@ -3879,8 +3879,6 @@ struct ssl_st {
    * handshake_func is == 0 until then, we use this test instead of an "init"
    * member. */
 
-  int shutdown; /* we have shut things down, 0x01 sent, 0x02
-                 * for received */
   int state;    /* where we are */
 
   BUF_MEM *init_buf; /* buffer used during init */
@@ -4041,6 +4039,14 @@ typedef struct ssl3_buffer_st {
   uint16_t cap;
 } SSL3_BUFFER;
 
+/* An ssl_shutdown_t describes the shutdown state of one end of the connection,
+ * whether it is alive or has been shutdown via close_notify or fatal alert. */
+enum ssl_shutdown_t {
+  ssl_shutdown_none = 0,
+  ssl_shutdown_close_notify = 1,
+  ssl_shutdown_fatal_alert = 2,
+};
+
 typedef struct ssl3_state_st {
   uint8_t read_sequence[8];
   uint8_t write_sequence[8];
@@ -4083,9 +4089,12 @@ typedef struct ssl3_state_st {
    * the handshake hash for TLS 1.1 and below. */
   EVP_MD_CTX handshake_md5;
 
-  /* clean_shutdown is one if the connection was cleanly shutdown with a
-   * close_notify and zero otherwise. */
-  char clean_shutdown;
+  /* recv_shutdown is the shutdown state for the receive half of the
+   * connection. */
+  enum ssl_shutdown_t recv_shutdown : 2;
+
+  /* recv_shutdown is the shutdown state for the send half of the connection. */
+  enum ssl_shutdown_t send_shutdown : 2;
 
   int alert_dispatch;
   uint8_t send_alert[2];

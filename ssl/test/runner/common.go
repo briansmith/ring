@@ -787,6 +787,10 @@ type ProtocolBugs struct {
 	// on connection shutdown.
 	NoCloseNotify bool
 
+	// SendAlertOnShutdown, if non-zero, is the alert to send instead of
+	// close_notify on shutdown.
+	SendAlertOnShutdown alert
+
 	// ExpectCloseNotify, if true, requires a close_notify from the peer on
 	// shutdown. Records from the peer received after close_notify is sent
 	// are not discard.

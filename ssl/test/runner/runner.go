@@ -2061,6 +2061,19 @@ func addBasicTests() {
 			shimShutsDown: true,
 		},
 		{
+			name: "Unclean-Shutdown-Alert",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendAlertOnShutdown: alertDecompressionFailure,
+					ExpectCloseNotify:   true,
+				},
+			},
+			shimShutsDown: true,
+			flags:         []string{"-check-close-notify"},
+			shouldFail:    true,
+			expectedError: ":SSLV3_ALERT_DECOMPRESSION_FAILURE:",
+		},
+		{
 			name: "LargePlaintext",
 			config: Config{
 				Bugs: ProtocolBugs{

@@ -658,7 +658,8 @@ void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time) {
 }
 
 int ssl_clear_bad_session(SSL *ssl) {
-  if (ssl->session != NULL && !(ssl->shutdown & SSL_SENT_SHUTDOWN) &&
+  if (ssl->session != NULL &&
+      ssl->s3->send_shutdown != ssl_shutdown_close_notify &&
       !SSL_in_init(ssl)) {
     SSL_CTX_remove_session(ssl->ctx, ssl->session);
     return 1;
