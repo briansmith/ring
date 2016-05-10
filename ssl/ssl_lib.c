@@ -559,6 +559,11 @@ int SSL_do_handshake(SSL *ssl) {
     return -1;
   }
 
+  if (ssl->s3->send_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   if (!SSL_in_init(ssl)) {
     return 1;
   }
@@ -596,6 +601,11 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
 
   if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
+    return -1;
+  }
+
+  if (ssl->s3->send_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
     return -1;
   }
 

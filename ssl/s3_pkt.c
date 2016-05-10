@@ -505,7 +505,8 @@ start:
     /* Begin a new handshake. */
     ssl->s3->total_renegotiations++;
     ssl->state = SSL_ST_CONNECT;
-    i = ssl->handshake_func(ssl);
+    /* TODO(davidben): Lift this call up to SSL_read. */
+    i = SSL_do_handshake(ssl);
     if (i < 0) {
       return i;
     }
