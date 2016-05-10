@@ -577,7 +577,9 @@ start:
     goto start;
   }
 
-  if (ssl->s3->send_shutdown == ssl_shutdown_close_notify) {
+  if (type == 0) {
+    /* This may only occur from read_close_notify. */
+    assert(ssl->s3->send_shutdown == ssl_shutdown_close_notify);
     /* close_notify has been sent, so discard all records other than alerts. */
     rr->length = 0;
     goto start;
