@@ -406,17 +406,6 @@ start:
   if (type != 0 && type == rr->type) {
     ssl->s3->warning_alert_count = 0;
 
-    /* Make sure that we are not getting application data when we are doing a
-     * handshake for the first time. */
-    if (SSL_in_init(ssl) && type == SSL3_RT_APPLICATION_DATA &&
-        ssl->s3->aead_read_ctx == NULL) {
-      /* TODO(davidben): Is this check redundant with the handshake_func
-       * check? */
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_APP_DATA_IN_HANDSHAKE);
-      goto f_err;
-    }
-
     /* Discard empty records. */
     if (rr->length == 0) {
       goto start;
