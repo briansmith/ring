@@ -124,7 +124,7 @@
 #include "internal.h"
 
 
-const SRTP_PROTECTION_PROFILE kSRTPProfiles[] = {
+static const SRTP_PROTECTION_PROFILE kSRTPProfiles[] = {
     {
         "SRTP_AES128_CM_SHA1_80", SRTP_AES128_CM_SHA1_80,
     },
