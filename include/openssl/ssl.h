@@ -4087,8 +4087,6 @@ typedef struct ssl3_state_st {
    * close_notify and zero otherwise. */
   char clean_shutdown;
 
-  /* we allow one fatal and one warning alert to be outstanding, send close
-   * alert via the warning alert */
   int alert_dispatch;
   uint8_t send_alert[2];
 
