@@ -316,22 +316,32 @@ int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
 }
 
 int ssl3_read_change_cipher_spec(SSL *ssl) {
-  uint8_t byte;
-  int ret = ssl3_read_bytes(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, &byte, 1 /* len */,
-                            0 /* no peek */);
-  if (ret <= 0) {
-    return ret;
-  }
-  assert(ret == 1);
+  SSL3_RECORD *rr = &ssl->s3->rrec;
 
-  if (ssl->s3->rrec.length != 0 || byte != SSL3_MT_CCS) {
+  if (rr->length == 0) {
+    int ret = ssl3_get_record(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  if (rr->type != SSL3_RT_CHANGE_CIPHER_SPEC) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    return -1;
+  }
+
+  if (rr->length != 1 || rr->data[0] != SSL3_MT_CCS) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return -1;
   }
 
   ssl_do_msg_callback(ssl, 0 /* read */, ssl->version,
-                      SSL3_RT_CHANGE_CIPHER_SPEC, &byte, 1);
+                      SSL3_RT_CHANGE_CIPHER_SPEC, rr->data, rr->length);
+
+  rr->length = 0;
+  ssl_read_buffer_discard(ssl);
   return 1;
 }
 
@@ -362,7 +372,6 @@ static int ssl3_can_renegotiate(SSL *ssl) {
  * 'type' is one of the following:
  *
  *   -  SSL3_RT_HANDSHAKE (when ssl3_get_message calls us)
- *   -  SSL3_RT_CHANGE_CIPHER_SPEC (when ssl3_read_change_cipher_spec calls us)
  *   -  SSL3_RT_APPLICATION_DATA (when ssl3_read_app_data calls us)
  *
  * If we don't have stored data to work from, read a SSL/TLS record first
@@ -375,8 +384,7 @@ int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek) {
   unsigned int n;
   SSL3_RECORD *rr;
 
-  if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE &&
-       type != SSL3_RT_CHANGE_CIPHER_SPEC) ||
+  if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
