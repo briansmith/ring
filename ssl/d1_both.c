@@ -658,27 +658,6 @@ err:
   return -1;
 }
 
-int dtls1_read_failed(SSL *ssl, int code) {
-  if (code > 0) {
-    assert(0);
-    return 1;
-  }
-
-  if (!dtls1_is_timer_expired(ssl)) {
-    /* not a timeout, none of our business, let higher layers handle this. In
-     * fact, it's probably an error */
-    return code;
-  }
-
-  if (!SSL_in_init(ssl)) {
-    /* done, no need to send a retransmit */
-    BIO_set_flags(ssl->rbio, BIO_FLAGS_READ);
-    return code;
-  }
-
-  return DTLSv1_handle_timeout(ssl);
-}
-
 static uint16_t dtls1_get_queue_priority(uint16_t seq, int is_ccs) {
   assert(seq * 2 >= seq);
 

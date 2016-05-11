@@ -1121,7 +1121,6 @@ int dtls1_write_bytes(SSL *ssl, int type, const void *buf, int len,
 
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b);
 int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
-int dtls1_read_failed(SSL *ssl, int code);
 int dtls1_buffer_message(SSL *ssl);
 int dtls1_retransmit_buffered_messages(SSL *ssl);
 void dtls1_clear_record_buffer(SSL *ssl);
