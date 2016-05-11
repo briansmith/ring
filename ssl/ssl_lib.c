@@ -369,6 +369,10 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->min_version = ctx->min_version;
   ssl->max_version = ctx->max_version;
 
+  /* RFC 6347 states that implementations SHOULD use an initial timer value of
+   * 1 second. */
+  ssl->initial_timeout_duration_ms = 1000;
+
   ssl->options = ctx->options;
   ssl->mode = ctx->mode;
   ssl->max_cert_list = ctx->max_cert_list;

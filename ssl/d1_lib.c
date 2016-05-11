@@ -157,17 +157,26 @@ int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
   return cipher->algorithm_enc != SSL_RC4 && cipher->algorithm_enc != SSL_eNULL;
 }
 
+void DTLSv1_set_initial_timeout_duration(SSL *ssl, unsigned int duration_ms) {
+  ssl->initial_timeout_duration_ms = duration_ms;
+}
+
 void dtls1_start_timer(SSL *ssl) {
-  /* If timer is not set, initialize duration with 1 second */
+  /* If timer is not set, initialize duration (by default, 1 second) */
   if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
-    ssl->d1->timeout_duration = 1;
+    ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
   }
 
   /* Set timeout to current time */
   get_current_time(ssl, &ssl->d1->next_timeout);
 
   /* Add duration to current time */
-  ssl->d1->next_timeout.tv_sec += ssl->d1->timeout_duration;
+  ssl->d1->next_timeout.tv_sec += ssl->d1->timeout_duration_ms / 1000;
+  ssl->d1->next_timeout.tv_usec += (ssl->d1->timeout_duration_ms % 1000) * 1000;
+  if (ssl->d1->next_timeout.tv_usec >= 1000000) {
+    ssl->d1->next_timeout.tv_sec++;
+    ssl->d1->next_timeout.tv_usec -= 1000000;
+  }
   BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
            &ssl->d1->next_timeout);
 }
@@ -230,9 +239,9 @@ int dtls1_is_timer_expired(SSL *ssl) {
 }
 
 void dtls1_double_timeout(SSL *ssl) {
-  ssl->d1->timeout_duration *= 2;
-  if (ssl->d1->timeout_duration > 60) {
-    ssl->d1->timeout_duration = 60;
+  ssl->d1->timeout_duration_ms *= 2;
+  if (ssl->d1->timeout_duration_ms > 60000) {
+    ssl->d1->timeout_duration_ms = 60000;
   }
   dtls1_start_timer(ssl);
 }
@@ -241,7 +250,7 @@ void dtls1_stop_timer(SSL *ssl) {
   /* Reset everything */
   ssl->d1->num_timeouts = 0;
   memset(&ssl->d1->next_timeout, 0, sizeof(struct timeval));
-  ssl->d1->timeout_duration = 1;
+  ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
   BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
            &ssl->d1->next_timeout);
   /* Clear retransmission buffer */

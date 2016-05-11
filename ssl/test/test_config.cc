@@ -148,6 +148,7 @@ const Flag<int> kIntFlags[] = {
     &TestConfig::expect_server_key_exchange_hash },
   { "-expect-key-exchange-info",
     &TestConfig::expect_key_exchange_info },
+  { "-initial-timeout-duration-ms", &TestConfig::initial_timeout_duration_ms },
 };
 
 }  // namespace

@@ -1317,6 +1317,10 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       return false;
     }
   }
+  if (config->initial_timeout_duration_ms > 0) {
+    DTLSv1_set_initial_timeout_duration(ssl.get(),
+                                        config->initial_timeout_duration_ms);
+  }
 
   int sock = Connect(config->port);
   if (sock == -1) {

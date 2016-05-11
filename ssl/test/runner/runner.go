@@ -4583,6 +4583,24 @@ var timeouts = []time.Duration{
 	60 * time.Second,
 }
 
+// shortTimeouts is an alternate set of timeouts which would occur if the
+// initial timeout duration was set to 250ms.
+var shortTimeouts = []time.Duration{
+	250 * time.Millisecond,
+	500 * time.Millisecond,
+	1 * time.Second,
+	2 * time.Second,
+	4 * time.Second,
+	8 * time.Second,
+	16 * time.Second,
+	32 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+}
+
 func addDTLSRetransmitTests() {
 	// Test that this is indeed the timeout schedule. Stress all
 	// four patterns of handshake.
@@ -4658,6 +4676,31 @@ func addDTLSRetransmitTests() {
 			},
 		},
 		flags: []string{"-async"},
+	})
+
+	// Test the timeout schedule when a shorter initial timeout duration is set.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS-Retransmit-Short-Client",
+		config: Config{
+			Bugs: ProtocolBugs{
+				TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
+			},
+		},
+		resumeSession: true,
+		flags:         []string{"-async", "-initial-timeout-duration-ms", "250"},
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "DTLS-Retransmit-Short-Server",
+		config: Config{
+			Bugs: ProtocolBugs{
+				TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
+			},
+		},
+		resumeSession: true,
+		flags:         []string{"-async", "-initial-timeout-duration-ms", "250"},
 	})
 }
 
