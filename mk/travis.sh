@@ -21,30 +21,22 @@ printenv
 
 case $TARGET_X in
 aarch64-unknown-linux-gnu)
-  DL_TARGET=aarch64-linux-gnu
-  DL_DIGEST=b9137008744d9009877f662dbac7481d673cdcb1798e727e325a37c98a0f63da
+  export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
   ;;
-arm-unknown-linux-gnueabi)
-  DL_TARGET=arm-linux-gnueabi
-  DL_DIGEST=1c11a944d3e515405e01effc129f3bbf24effb300effa10bf486c9119378ccd7
+arm-unknown-linux-gnueabihf)
+  export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
 *)
   ;;
 esac
 
-if [[ -n ${DL_TARGET-} ]]; then
+if [[  "$TARGET_X" =~ ^(arm|aarch64) ]]; then
   # We need a newer QEMU than Travis has.
+  # sudo is needed until the PPA and its packages are whitelisted.
+  # See https://github.com/travis-ci/apt-source-whitelist/issues/271
   sudo add-apt-repository ppa:pietro-monteiro/qemu-backport -y
   sudo apt-get update -qq
-  sudo apt-get install binfmt-support qemu-user-binfmt -y
-
-  DL_ROOT=https://releases.linaro.org/components/toolchain/binaries/
-  DL_RELEASE=5.1-2015.08
-  DL_BASENAME=gcc-linaro-$DL_RELEASE-x86_64_$DL_TARGET
-  wget $DL_ROOT/$DL_RELEASE/$DL_TARGET/$DL_BASENAME.tar.xz
-  echo "$DL_DIGEST  $DL_BASENAME.tar.xz" | sha256sum -c
-  tar xf $DL_BASENAME.tar.xz
-  export PATH=$PWD/$DL_BASENAME/bin:$PATH
+  sudo apt-get install --no-install-recommends binfmt-support qemu-user-binfmt -y
 fi
 
 if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
@@ -68,17 +60,6 @@ cargo version
 rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
-
-case $TARGET_X in
-aarch64-unknown-linux-gnu)
-  export QEMU_LD_PREFIX=$DL_BASENAME/aarch64-linux-gnu/libc
-  ;;
-arm-unknown-linux-gnueabi)
-  export QEMU_LD_PREFIX=$DL_BASENAME/arm-linux-gnueabi/libc
-    ;;
-*)
-  ;;
-esac
 
 CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
 
