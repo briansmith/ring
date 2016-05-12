@@ -114,11 +114,7 @@ in the table below.
 Bug Reporting
 -------------
 
-Please file bugs in the
-[issue tracker](https://github.com/briansmith/ring/issues). If you think you've
-found a security vulnerability that affects BoringSSL and/or OpenSSL then those
-projects would probably appreciate it if you report the bug privately to them.
-The *ring* project is happy to take *any* kind of bug report as a pull request
-that fixes it and/or adds a test for the issue, or as an issue filed in the
-public issue tracker. **Do NOT report any security vulnerability privately to
-the *ring* developers.**
+Please report bugs either as pull requests or as issues in [the issue
+tracker](https://github.com/briansmith/ring/issues). *ring* has a
+**full disclosure** vulnerability policy. **Please do NOT attempt to report
+any security vulnerability in this code privately to anybody.**
