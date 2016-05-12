@@ -314,6 +314,8 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
 
 int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
   assert(!SSL_in_init(ssl));
+  assert(ssl->s3->initial_handshake_complete);
+
   return ssl3_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
 }
 
@@ -469,14 +471,6 @@ start:
                       sizeof(kHelloRequest), ssl, ssl->msg_callback_arg);
     }
 
-    if (!SSL_is_init_finished(ssl) || !ssl->s3->initial_handshake_complete) {
-      /* This cannot happen. If a handshake is in progress, |type| must be
-       * |SSL3_RT_HANDSHAKE|. */
-      assert(0);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-
     if (ssl->renegotiate_mode == ssl_renegotiate_ignore) {
       goto start;
     }
@@ -579,7 +573,6 @@ start:
 
 f_err:
   ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-err:
   return -1;
 }
 
