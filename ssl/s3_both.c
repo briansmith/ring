@@ -216,8 +216,8 @@ int ssl3_get_finished(SSL *ssl, int a, int b) {
   long message_len;
   uint8_t *p;
 
-  message_len = ssl->method->ssl_get_message(
-      ssl, a, b, SSL3_MT_FINISHED, EVP_MAX_MD_SIZE, ssl_dont_hash_message, &ok);
+  message_len = ssl->method->ssl_get_message(ssl, a, b, SSL3_MT_FINISHED,
+                                             ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return message_len;
@@ -298,12 +298,23 @@ int ssl3_output_cert_chain(SSL *ssl) {
   return ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE, l);
 }
 
-/* Obtain handshake message of message type |msg_type| (any if |msg_type| == -1),
- * maximum acceptable body length |max|. The first four bytes (msg_type and
- * length) are read in state |header_state|, the body is read in state
- * |body_state|. */
+size_t ssl_max_handshake_message_len(const SSL *ssl) {
+  /* kMaxMessageLen is the default maximum message size for handshakes which do
+   * not accept peer certificate chains. */
+  static const size_t kMaxMessageLen = 16384;
+
+  if ((!ssl->server || (ssl->verify_mode & SSL_VERIFY_PEER)) &&
+      kMaxMessageLen < ssl->max_cert_list) {
+    return ssl->max_cert_list;
+  }
+  return kMaxMessageLen;
+}
+
+/* Obtain handshake message of message type |msg_type| (any if |msg_type| ==
+ * -1).  The first four bytes (msg_type and length) are read in state
+ * |header_state|, the body is read in state |body_state|. */
 long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
-                      long max, enum ssl_hash_message_t hash_message, int *ok) {
+                      enum ssl_hash_message_t hash_message, int *ok) {
   uint8_t *p;
   unsigned long l;
   long n;
@@ -369,7 +380,7 @@ long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
     ssl->s3->tmp.message_type = *(p++);
 
     n2l3(p, l);
-    if (l > (unsigned long)max) {
+    if (l > ssl_max_handshake_message_len(ssl)) {
       al = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
       goto f_err;

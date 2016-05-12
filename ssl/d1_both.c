@@ -483,17 +483,6 @@ static hm_fragment *dtls1_get_buffered_message(
   return frag;
 }
 
-/* dtls1_max_handshake_message_len returns the maximum number of bytes
- * permitted in a DTLS handshake message for |ssl|. The minimum is 16KB, but may
- * be greater if the maximum certificate list size requires it. */
-static size_t dtls1_max_handshake_message_len(const SSL *ssl) {
-  size_t max_len = DTLS1_HM_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
-  if (max_len < ssl->max_cert_list) {
-    return ssl->max_cert_list;
-  }
-  return max_len;
-}
-
 /* dtls1_process_fragment reads a handshake fragment and processes it. It
  * returns one if a fragment was successfully processed and 0 or -1 on error. */
 static int dtls1_process_fragment(SSL *ssl) {
@@ -521,7 +510,7 @@ static int dtls1_process_fragment(SSL *ssl) {
   const size_t msg_len = msg_hdr.msg_len;
   if (frag_off > msg_len || frag_off + frag_len < frag_off ||
       frag_off + frag_len > msg_len ||
-      msg_len > dtls1_max_handshake_message_len(ssl) ||
+      msg_len > ssl_max_handshake_message_len(ssl) ||
       frag_len > ssl->s3->rrec.length) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -567,9 +556,9 @@ static int dtls1_process_fragment(SSL *ssl) {
 }
 
 /* dtls1_get_message reads a handshake message of message type |msg_type| (any
- * if |msg_type| == -1), maximum acceptable body length |max|. Read an entire
- * handshake message. Handshake messages arrive in fragments. */
-long dtls1_get_message(SSL *ssl, int st1, int stn, int msg_type, long max,
+ * if |msg_type| == -1). Read an entire handshake message. Handshake messages
+ * arrive in fragments. */
+long dtls1_get_message(SSL *ssl, int st1, int stn, int msg_type,
                        enum ssl_hash_message_t hash_message, int *ok) {
   pitem *item = NULL;
   hm_fragment *frag = NULL;
@@ -609,11 +598,6 @@ long dtls1_get_message(SSL *ssl, int st1, int stn, int msg_type, long max,
   frag = (hm_fragment *)item->data;
   assert(ssl->d1->handshake_read_seq == frag->msg_header.seq);
   assert(frag->reassembly == NULL);
-
-  if (frag->msg_header.msg_len > (size_t)max) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
-    goto err;
-  }
 
   /* Reconstruct the assembled message. */
   size_t len;

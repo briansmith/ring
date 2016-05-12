@@ -582,6 +582,13 @@ int SSL_ECDH_CTX_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
                                 const uint8_t *peer_key, size_t peer_key_len);
 
 
+/* Handshake messages. */
+
+/* ssl_max_handshake_message_len returns the maximum number of bytes permitted
+ * in a handshake message for |ssl|. */
+size_t ssl_max_handshake_message_len(const SSL *ssl);
+
+
 /* Transport buffers. */
 
 /* ssl_read_buffer returns a pointer to contents of the read buffer. */
@@ -829,8 +836,8 @@ struct ssl_protocol_method_st {
   int (*ssl_accept)(SSL *ssl);
   int (*ssl_connect)(SSL *ssl);
   long (*ssl_get_message)(SSL *ssl, int header_state, int body_state,
-                          int msg_type, long max,
-                          enum ssl_hash_message_t hash_message, int *ok);
+                          int msg_type, enum ssl_hash_message_t hash_message,
+                          int *ok);
   int (*ssl_read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
   int (*ssl_read_change_cipher_spec)(SSL *ssl);
   void (*ssl_read_close_notify)(SSL *ssl);
@@ -1026,7 +1033,7 @@ int ssl3_do_write(SSL *ssl, int type);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_req_cert_type(SSL *ssl, uint8_t *p);
 long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
-                      long max, enum ssl_hash_message_t hash_message, int *ok);
+                      enum ssl_hash_message_t hash_message, int *ok);
 
 /* ssl3_hash_current_message incorporates the current handshake message into the
  * handshake hash. It returns one on success and zero on allocation failure. */
@@ -1131,7 +1138,7 @@ int dtls1_accept(SSL *ssl);
 int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-long dtls1_get_message(SSL *ssl, int st1, int stn, int mt, long max,
+long dtls1_get_message(SSL *ssl, int st1, int stn, int mt,
                        enum ssl_hash_message_t hash_message, int *ok);
 int dtls1_dispatch_alert(SSL *ssl);
 

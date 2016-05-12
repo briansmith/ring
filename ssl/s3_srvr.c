@@ -769,8 +769,7 @@ int ssl3_get_client_hello(SSL *ssl) {
     case SSL3_ST_SR_CLNT_HELLO_B:
       n = ssl->method->ssl_get_message(
           ssl, SSL3_ST_SR_CLNT_HELLO_A, SSL3_ST_SR_CLNT_HELLO_B,
-          SSL3_MT_CLIENT_HELLO, SSL3_RT_MAX_PLAIN_LENGTH,
-          ssl_hash_message, &ok);
+          SSL3_MT_CLIENT_HELLO, ssl_hash_message, &ok);
 
       if (!ok) {
         return n;
@@ -1453,7 +1452,7 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
     int ok;
     const long n = ssl->method->ssl_get_message(
         ssl, SSL3_ST_SR_KEY_EXCH_A, SSL3_ST_SR_KEY_EXCH_B,
-        SSL3_MT_CLIENT_KEY_EXCHANGE, 2048 /* ??? */, ssl_hash_message, &ok);
+        SSL3_MT_CLIENT_KEY_EXCHANGE, ssl_hash_message, &ok);
     if (!ok) {
       return n;
     }
@@ -1735,8 +1734,7 @@ int ssl3_get_cert_verify(SSL *ssl) {
 
   n = ssl->method->ssl_get_message(
       ssl, SSL3_ST_SR_CERT_VRFY_A, SSL3_ST_SR_CERT_VRFY_B,
-      SSL3_MT_CERTIFICATE_VERIFY, SSL3_RT_MAX_PLAIN_LENGTH,
-      ssl_dont_hash_message, &ok);
+      SSL3_MT_CERTIFICATE_VERIFY, ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1833,8 +1831,7 @@ int ssl3_get_client_certificate(SSL *ssl) {
 
   assert(ssl->s3->tmp.cert_request);
   n = ssl->method->ssl_get_message(ssl, SSL3_ST_SR_CERT_A, SSL3_ST_SR_CERT_B,
-                                   -1, (long)ssl->max_cert_list,
-                                   ssl_hash_message, &ok);
+                                   -1, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2122,9 +2119,8 @@ int ssl3_get_next_proto(SSL *ssl) {
   }
 
   n = ssl->method->ssl_get_message(ssl, SSL3_ST_SR_NEXT_PROTO_A,
-                                 SSL3_ST_SR_NEXT_PROTO_B, SSL3_MT_NEXT_PROTO,
-                                 514, /* See the payload format below */
-                                 ssl_hash_message, &ok);
+                                   SSL3_ST_SR_NEXT_PROTO_B, SSL3_MT_NEXT_PROTO,
+                                   ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2165,8 +2161,7 @@ int ssl3_get_channel_id(SSL *ssl) {
 
   n = ssl->method->ssl_get_message(
       ssl, SSL3_ST_SR_CHANNEL_ID_A, SSL3_ST_SR_CHANNEL_ID_B,
-      SSL3_MT_ENCRYPTED_EXTENSIONS, 2 + 2 + TLSEXT_CHANNEL_ID_SIZE,
-      ssl_dont_hash_message, &ok);
+      SSL3_MT_ENCRYPTED_EXTENSIONS, ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return n;
