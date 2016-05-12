@@ -21,11 +21,9 @@ Particular attention is being paid to making it easy to build and integrate
 
 The name *ring* comes from the fact that *ring* started as a subset of
 BoringSSL, and *"ring"* is a substring of "Bo*ring*SSL". Almost all the code in
-*ring* comes from BoringSSL, and BoringSSL is derived from OpenSSL. In general
-an application that uses the subset of BoringSSL APIs that *ring* supports
-should work identically if it is recompiled and relinked with BoringSSL
-instead. *ring* tracks upstream changes to BoringSSL. Several patches that
-were developed for *ring* have already been integrated upstream in BoringSSL.
+*ring* comes from BoringSSL, and BoringSSL is derived from OpenSSL. *ring*
+tracks upstream changes to BoringSSL. Several patches that were developed for
+*ring* have already been integrated upstream in BoringSSL (over 170 so far).
 
 
 
