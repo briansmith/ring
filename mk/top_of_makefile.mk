@@ -14,8 +14,12 @@
 
 .DEFAULT_GOAL := all
 
-# $(TARGET) must be of the form <arch>-<vendor>-<sys>-<abi>, except <abi> can
-# omitted on Mac OS X (Darwin).
+# $(TARGET) must be of the form <arch>[<sub>]-<vendor>-<sys>-<abi>.
+# Due to how Rust names platforms the following exceptions are allowed:
+# <abi> can be omitted for Mac OS X (Darwin) and iOS.
+# <vendor> can be omitted for the Android ABIs (android and androideabi).
+# The list of Rust supported platforms is at:
+# https://forge.rust-lang.org/platform-support.html
 TARGET_WORDS = $(subst -, ,$(TARGET))
 TARGET_ARCH_BASE = $(word 1,$(TARGET_WORDS))
 TARGET_ARCH_NORMAL = \
@@ -27,10 +31,16 @@ TARGET_VENDOR = $(word 2,$(TARGET_WORDS))
 TARGET_SYS = $(word 3,$(TARGET_WORDS))
 TARGET_ABI = $(word 4,$(TARGET_WORDS))
 
-# Cargo doesn't pass the ABI as part of TARGET on Mac OS X.
+# Match how Rust names targets to our expectations.
 ifeq ($(TARGET_ABI),)
-ifeq ($(findstring apple-darwin,$(TARGET_VENDOR)-$(TARGET_SYS)),apple-darwin)
+# Set ABI when building for Mac OS X and iOS.
+ifeq ($(TARGET_VENDOR),apple)
 TARGET_ABI = macho
+# Set the correct VENDOR, SYS and ABI when building for Android.
+else ifeq ($(findstring linux-android,$(TARGET_VENDOR)-$(TARGET_SYS)),linux-android)
+TARGET_ABI = $(TARGET_SYS)
+TARGET_VENDOR = unknow
+TARGET_SYS = linux
 else
 define NEWLINE
 
@@ -39,12 +49,13 @@ endef
 $(error TARGET must be of the form \
         <arch>[<sub>]-<vendor>-<sys>-<abi>.$(NEWLINE)\
 \
-\       Exceptions: <abi> defaults to "macho" on Mac OS X.\
+        Exceptions: <abi> defaults to "macho" on Mac OS X \
+        and <vendor> defaults to "unknown" on Android. $(NEWLINE)\
+        Linux x86 example:	TARGET=i586-pc-linux-gnu $(NEWLINE)\
+        Mac OS X x64 example:	TARGET=x86_64-apple-darwin $(NEWLINE)\
+        Android example:	TARGET=arm-linux-androideabi $(NEWLINE)\
 \
-        Linux x86 example: TARGET=i586-pc-linux-gnu $(NEWLINE)\
-        Mac OS X x64 example: TARGET=x86_64-apple-darwin $(NEWLINE)\
-\
-        NOTE: Use "i586" instead of "x86".)
+        NOTE: Use "i586" instead of "x86")
 endif
 endif
 
