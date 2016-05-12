@@ -1957,15 +1957,8 @@ int ssl_cipher_get_key_type(const SSL_CIPHER *cipher) {
   return EVP_PKEY_NONE;
 }
 
-int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {
-  /* PSK-authenticated ciphers do not use a certificate. (RSA_PSK is not
-   * supported.) */
-  if (cipher->algorithm_auth & SSL_aPSK) {
-    return 0;
-  }
-
-  /* All other ciphers include it. */
-  return 1;
+int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_auth & SSL_aCERT) != 0;
 }
 
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {

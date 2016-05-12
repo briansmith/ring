@@ -286,7 +286,7 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CERT_A:
       case SSL3_ST_SW_CERT_B:
-        if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_send_server_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -1051,8 +1051,8 @@ int ssl3_get_client_hello(SSL *ssl) {
         ssl->s3->tlsext_channel_id_valid) {
       ssl->s3->tmp.cert_request = 0;
     }
-    /* Plain PSK forbids Certificate and CertificateRequest. */
-    if (ssl->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK) {
+    /* CertificateRequest may only be sent in certificate-based ciphers. */
+    if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
       ssl->s3->tmp.cert_request = 0;
     }
   } else {
@@ -1270,7 +1270,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
   }
 
   /* Add a signature. */
-  if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+  if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     if (!ssl_has_private_key(ssl)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       goto err;

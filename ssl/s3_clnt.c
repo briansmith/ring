@@ -256,7 +256,7 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CR_CERT_A:
       case SSL3_ST_CR_CERT_B:
-        if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_get_server_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -289,7 +289,11 @@ int ssl3_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->state = SSL3_ST_CR_CERT_REQ_A;
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+          ssl->state = SSL3_ST_CR_CERT_REQ_A;
+        } else {
+          ssl->state = SSL3_ST_CR_SRVR_DONE_A;
+        }
         ssl->init_num = 0;
         break;
 
@@ -857,7 +861,8 @@ int ssl3_get_server_hello(SSL *ssl) {
   /* If doing a full handshake with TLS 1.2, the server may request a client
    * certificate which requires hashing the handshake transcript under a
    * different hash. Otherwise, the handshake buffer may be released. */
-  if (ssl->hit || ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
+  if (ssl->hit || ssl3_protocol_version(ssl) < TLS1_2_VERSION ||
+      !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     ssl3_free_handshake_buffer(ssl);
   }
 
@@ -1203,7 +1208,7 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
            CBS_len(&server_key_exchange_orig) - CBS_len(&server_key_exchange));
 
   /* ServerKeyExchange should be signed by the server's public key. */
-  if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+  if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     pkey = X509_get_pubkey(ssl->session->peer);
     if (pkey == NULL) {
       goto err;

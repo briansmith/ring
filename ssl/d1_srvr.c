@@ -217,7 +217,7 @@ int dtls1_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CERT_A:
       case SSL3_ST_SW_CERT_B:
-        if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           dtls1_start_timer(ssl);
           ret = ssl3_send_server_certificate(ssl);
           if (ret <= 0) {

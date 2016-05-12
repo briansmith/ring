@@ -236,7 +236,7 @@ int dtls1_connect(SSL *ssl) {
 
       case SSL3_ST_CR_CERT_A:
       case SSL3_ST_CR_CERT_B:
-        if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_get_server_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -269,7 +269,11 @@ int dtls1_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->state = SSL3_ST_CR_CERT_REQ_A;
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+          ssl->state = SSL3_ST_CR_CERT_REQ_A;
+        } else {
+          ssl->state = SSL3_ST_CR_SRVR_DONE_A;
+        }
         ssl->init_num = 0;
         break;
 

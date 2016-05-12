@@ -2714,6 +2714,40 @@ func addClientAuthTests() {
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
+
+	// Client auth is only legal in certificate-based ciphers.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-PSK",
+		config: Config{
+			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+			ClientAuth:   RequireAnyClientCert,
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-psk", "secret",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-ECDHE_PSK",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+			ClientAuth:   RequireAnyClientCert,
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-psk", "secret",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	})
 }
 
 func addExtendedMasterSecretTests() {

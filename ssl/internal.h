@@ -174,6 +174,8 @@
 /* SSL_aPSK is set for both PSK and ECDHE_PSK. */
 #define SSL_aPSK 0x00000004L
 
+#define SSL_aCERT (SSL_aRSA | SSL_aECDSA)
+
 /* Bits for |algorithm_enc| (symmetric encryption). */
 #define SSL_3DES 0x00000001L
 #define SSL_RC4 0x00000002L
@@ -239,17 +241,16 @@ uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
  * server key used in |cipher| or |EVP_PKEY_NONE| if there is none. */
 int ssl_cipher_get_key_type(const SSL_CIPHER *cipher);
 
-/* ssl_cipher_has_server_public_key returns 1 if |cipher| involves a server
- * public key in the key exchange, sent in a server Certificate message.
- * Otherwise it returns 0. */
-int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
+/* ssl_cipher_uses_certificate_auth returns one if |cipher| authenticates the
+ * server and, optionally, the client with a certificate. Otherwise it returns
+ * zero. */
+int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher);
 
 /* ssl_cipher_requires_server_key_exchange returns 1 if |cipher| requires a
  * ServerKeyExchange message. Otherwise it returns 0.
  *
- * Unlike |ssl_cipher_has_server_public_key|, this function may return zero
- * while still allowing |cipher| an optional ServerKeyExchange. This is the
- * case for plain PSK ciphers. */
+ * This function may return zero while still allowing |cipher| an optional
+ * ServerKeyExchange. This is the case for plain PSK ciphers. */
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
 /* ssl_cipher_get_record_split_len, for TLS 1.0 CBC mode ciphers, returns the
