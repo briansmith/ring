@@ -80,6 +80,10 @@ OPENSSL_EXPORT BUF_MEM *BUF_MEM_new(void);
 /* BUF_MEM_free frees |buf->data| if needed and then frees |buf| itself. */
 OPENSSL_EXPORT void BUF_MEM_free(BUF_MEM *buf);
 
+/* BUF_MEM_reserve ensures |buf| has capacity |cap| and allocates memory if
+ * needed. It returns one on success and zero on error. */
+OPENSSL_EXPORT int BUF_MEM_reserve(BUF_MEM *buf, size_t cap);
+
 /* BUF_MEM_grow ensures that |buf| has length |len| and allocates memory if
  * needed. If the length of |buf| increased, the new bytes are filled with
  * zeros. It returns the length of |buf|, or zero if there's an error. */
