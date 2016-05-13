@@ -27,14 +27,15 @@
   ((STACK_OF(ACCESS_DESCRIPTION) *)sk_new_null())
 
 #define sk_ACCESS_DESCRIPTION_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ACCESS_DESCRIPTION) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk))
 
 #define sk_ACCESS_DESCRIPTION_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ACCESS_DESCRIPTION) *, sk));
 
-#define sk_ACCESS_DESCRIPTION_value(sk, i) \
-  ((ACCESS_DESCRIPTION *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk), (i)))
+#define sk_ACCESS_DESCRIPTION_value(sk, i)                                    \
+  ((ACCESS_DESCRIPTION *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk), \
+      (i)))
 
 #define sk_ACCESS_DESCRIPTION_set(sk, i, p)                            \
   ((ACCESS_DESCRIPTION *)sk_set(                                       \
@@ -80,13 +81,14 @@
 
 #define sk_ACCESS_DESCRIPTION_dup(sk)      \
   ((STACK_OF(ACCESS_DESCRIPTION) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk)))
 
 #define sk_ACCESS_DESCRIPTION_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ACCESS_DESCRIPTION) *, sk))
 
 #define sk_ACCESS_DESCRIPTION_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk))
+  sk_is_sorted(                             \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk))
 
 #define sk_ACCESS_DESCRIPTION_set_cmp_func(sk, comp)                           \
   ((int (*)(const ACCESS_DESCRIPTION **a, const ACCESS_DESCRIPTION **b))       \
@@ -113,14 +115,15 @@
 #define sk_ASN1_ADB_TABLE_new_null() ((STACK_OF(ASN1_ADB_TABLE) *)sk_new_null())
 
 #define sk_ASN1_ADB_TABLE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_ADB_TABLE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk))
 
 #define sk_ASN1_ADB_TABLE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_ADB_TABLE) *, sk));
 
-#define sk_ASN1_ADB_TABLE_value(sk, i) \
-  ((ASN1_ADB_TABLE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk), (i)))
+#define sk_ASN1_ADB_TABLE_value(sk, i)                                    \
+  ((ASN1_ADB_TABLE *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk), \
+      (i)))
 
 #define sk_ASN1_ADB_TABLE_set(sk, i, p)                            \
   ((ASN1_ADB_TABLE *)sk_set(                                       \
@@ -166,13 +169,14 @@
 
 #define sk_ASN1_ADB_TABLE_dup(sk)      \
   ((STACK_OF(ASN1_ADB_TABLE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk)))
 
 #define sk_ASN1_ADB_TABLE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_ADB_TABLE) *, sk))
 
 #define sk_ASN1_ADB_TABLE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk))
+  sk_is_sorted(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk))
 
 #define sk_ASN1_ADB_TABLE_set_cmp_func(sk, comp)                           \
   ((int (*)(const ASN1_ADB_TABLE **a, const ASN1_ADB_TABLE **b))           \
@@ -200,14 +204,15 @@
   ((STACK_OF(ASN1_GENERALSTRING) *)sk_new_null())
 
 #define sk_ASN1_GENERALSTRING_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_GENERALSTRING) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk))
 
 #define sk_ASN1_GENERALSTRING_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_GENERALSTRING) *, sk));
 
-#define sk_ASN1_GENERALSTRING_value(sk, i) \
-  ((ASN1_GENERALSTRING *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk), (i)))
+#define sk_ASN1_GENERALSTRING_value(sk, i)                                    \
+  ((ASN1_GENERALSTRING *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk), \
+      (i)))
 
 #define sk_ASN1_GENERALSTRING_set(sk, i, p)                            \
   ((ASN1_GENERALSTRING *)sk_set(                                       \
@@ -253,13 +258,14 @@
 
 #define sk_ASN1_GENERALSTRING_dup(sk)      \
   ((STACK_OF(ASN1_GENERALSTRING) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk)))
 
 #define sk_ASN1_GENERALSTRING_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_GENERALSTRING) *, sk))
 
 #define sk_ASN1_GENERALSTRING_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk))
+  sk_is_sorted(                             \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk))
 
 #define sk_ASN1_GENERALSTRING_set_cmp_func(sk, comp)                           \
   ((int (*)(const ASN1_GENERALSTRING **a, const ASN1_GENERALSTRING **b))       \
@@ -286,14 +292,14 @@
 #define sk_ASN1_INTEGER_new_null() ((STACK_OF(ASN1_INTEGER) *)sk_new_null())
 
 #define sk_ASN1_INTEGER_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_INTEGER) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_INTEGER) *, sk))
 
 #define sk_ASN1_INTEGER_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_INTEGER) *, sk));
 
 #define sk_ASN1_INTEGER_value(sk, i) \
   ((ASN1_INTEGER *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_INTEGER) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_INTEGER) *, sk), (i)))
 
 #define sk_ASN1_INTEGER_set(sk, i, p)                            \
   ((ASN1_INTEGER *)sk_set(                                       \
@@ -338,13 +344,13 @@
 
 #define sk_ASN1_INTEGER_dup(sk)      \
   ((STACK_OF(ASN1_INTEGER) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_INTEGER) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_INTEGER) *, sk)))
 
 #define sk_ASN1_INTEGER_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_INTEGER) *, sk))
 
 #define sk_ASN1_INTEGER_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_INTEGER) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_INTEGER) *, sk))
 
 #define sk_ASN1_INTEGER_set_cmp_func(sk, comp)                               \
   ((int (*)(const ASN1_INTEGER **a, const ASN1_INTEGER **b))sk_set_cmp_func( \
@@ -369,14 +375,14 @@
 #define sk_ASN1_OBJECT_new_null() ((STACK_OF(ASN1_OBJECT) *)sk_new_null())
 
 #define sk_ASN1_OBJECT_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_OBJECT) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_OBJECT) *, sk))
 
 #define sk_ASN1_OBJECT_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_OBJECT) *, sk));
 
 #define sk_ASN1_OBJECT_value(sk, i) \
   ((ASN1_OBJECT *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_OBJECT) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_OBJECT) *, sk), (i)))
 
 #define sk_ASN1_OBJECT_set(sk, i, p)                                          \
   ((ASN1_OBJECT *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(ASN1_OBJECT) *, sk), \
@@ -419,13 +425,13 @@
 
 #define sk_ASN1_OBJECT_dup(sk)      \
   ((STACK_OF(ASN1_OBJECT) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_OBJECT) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_OBJECT) *, sk)))
 
 #define sk_ASN1_OBJECT_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_OBJECT) *, sk))
 
 #define sk_ASN1_OBJECT_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_OBJECT) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_OBJECT) *, sk))
 
 #define sk_ASN1_OBJECT_set_cmp_func(sk, comp)                              \
   ((int (*)(const ASN1_OBJECT **a, const ASN1_OBJECT **b))sk_set_cmp_func( \
@@ -452,14 +458,15 @@
   ((STACK_OF(ASN1_STRING_TABLE) *)sk_new_null())
 
 #define sk_ASN1_STRING_TABLE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_STRING_TABLE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk))
 
 #define sk_ASN1_STRING_TABLE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_STRING_TABLE) *, sk));
 
-#define sk_ASN1_STRING_TABLE_value(sk, i) \
-  ((ASN1_STRING_TABLE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk), (i)))
+#define sk_ASN1_STRING_TABLE_value(sk, i)                                    \
+  ((ASN1_STRING_TABLE *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk), \
+      (i)))
 
 #define sk_ASN1_STRING_TABLE_set(sk, i, p)                            \
   ((ASN1_STRING_TABLE *)sk_set(                                       \
@@ -505,13 +512,14 @@
 
 #define sk_ASN1_STRING_TABLE_dup(sk)      \
   ((STACK_OF(ASN1_STRING_TABLE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk)))
 
 #define sk_ASN1_STRING_TABLE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_STRING_TABLE) *, sk))
 
 #define sk_ASN1_STRING_TABLE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk))
+  sk_is_sorted(                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk))
 
 #define sk_ASN1_STRING_TABLE_set_cmp_func(sk, comp)                           \
   ((int (*)(const ASN1_STRING_TABLE **a, const ASN1_STRING_TABLE **b))        \
@@ -538,14 +546,14 @@
 #define sk_ASN1_TYPE_new_null() ((STACK_OF(ASN1_TYPE) *)sk_new_null())
 
 #define sk_ASN1_TYPE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_TYPE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_TYPE) *, sk))
 
 #define sk_ASN1_TYPE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_TYPE) *, sk));
 
 #define sk_ASN1_TYPE_value(sk, i) \
   ((ASN1_TYPE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_TYPE) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_TYPE) *, sk), (i)))
 
 #define sk_ASN1_TYPE_set(sk, i, p)                                             \
   ((ASN1_TYPE *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(ASN1_TYPE) *, sk), (i), \
@@ -588,13 +596,13 @@
 
 #define sk_ASN1_TYPE_dup(sk)      \
   ((STACK_OF(ASN1_TYPE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_TYPE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_TYPE) *, sk)))
 
 #define sk_ASN1_TYPE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_TYPE) *, sk))
 
 #define sk_ASN1_TYPE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_TYPE) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_TYPE) *, sk))
 
 #define sk_ASN1_TYPE_set_cmp_func(sk, comp)                            \
   ((int (*)(const ASN1_TYPE **a, const ASN1_TYPE **b))sk_set_cmp_func( \
@@ -617,14 +625,14 @@
 #define sk_ASN1_VALUE_new_null() ((STACK_OF(ASN1_VALUE) *)sk_new_null())
 
 #define sk_ASN1_VALUE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(ASN1_VALUE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_VALUE) *, sk))
 
 #define sk_ASN1_VALUE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(ASN1_VALUE) *, sk));
 
 #define sk_ASN1_VALUE_value(sk, i) \
   ((ASN1_VALUE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_VALUE) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_VALUE) *, sk), (i)))
 
 #define sk_ASN1_VALUE_set(sk, i, p)                                         \
   ((ASN1_VALUE *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(ASN1_VALUE) *, sk), \
@@ -667,13 +675,13 @@
 
 #define sk_ASN1_VALUE_dup(sk)      \
   ((STACK_OF(ASN1_VALUE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(ASN1_VALUE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_VALUE) *, sk)))
 
 #define sk_ASN1_VALUE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(ASN1_VALUE) *, sk))
 
 #define sk_ASN1_VALUE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(ASN1_VALUE) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_VALUE) *, sk))
 
 #define sk_ASN1_VALUE_set_cmp_func(sk, comp)                             \
   ((int (*)(const ASN1_VALUE **a, const ASN1_VALUE **b))sk_set_cmp_func( \
@@ -696,12 +704,14 @@
 
 #define sk_BIO_new_null() ((STACK_OF(BIO) *)sk_new_null())
 
-#define sk_BIO_num(sk) sk_num(CHECKED_CAST(_STACK *, STACK_OF(BIO) *, sk))
+#define sk_BIO_num(sk) \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(BIO) *, sk))
 
 #define sk_BIO_zero(sk) sk_zero(CHECKED_CAST(_STACK *, STACK_OF(BIO) *, sk));
 
-#define sk_BIO_value(sk, i) \
-  ((BIO *)sk_value(CHECKED_CAST(_STACK *, const STACK_OF(BIO) *, sk), (i)))
+#define sk_BIO_value(sk, i)                                                 \
+  ((BIO *)sk_value(CHECKED_CAST(const _STACK *, const STACK_OF(BIO) *, sk), \
+                   (i)))
 
 #define sk_BIO_set(sk, i, p)                                       \
   ((BIO *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(BIO) *, sk), (i), \
@@ -738,13 +748,14 @@
 #define sk_BIO_pop(sk) \
   ((BIO *)sk_pop(CHECKED_CAST(_STACK *, STACK_OF(BIO) *, sk)))
 
-#define sk_BIO_dup(sk) \
-  ((STACK_OF(BIO) *)sk_dup(CHECKED_CAST(_STACK *, const STACK_OF(BIO) *, sk)))
+#define sk_BIO_dup(sk)      \
+  ((STACK_OF(BIO) *)sk_dup( \
+      CHECKED_CAST(const _STACK *, const STACK_OF(BIO) *, sk)))
 
 #define sk_BIO_sort(sk) sk_sort(CHECKED_CAST(_STACK *, STACK_OF(BIO) *, sk))
 
 #define sk_BIO_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(BIO) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(BIO) *, sk))
 
 #define sk_BIO_set_cmp_func(sk, comp)                                     \
   ((int (*)(const BIO **a, const BIO **b))sk_set_cmp_func(                \
@@ -767,14 +778,14 @@
 #define sk_BY_DIR_ENTRY_new_null() ((STACK_OF(BY_DIR_ENTRY) *)sk_new_null())
 
 #define sk_BY_DIR_ENTRY_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_ENTRY) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk))
 
 #define sk_BY_DIR_ENTRY_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_ENTRY) *, sk));
 
 #define sk_BY_DIR_ENTRY_value(sk, i) \
   ((BY_DIR_ENTRY *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk), (i)))
 
 #define sk_BY_DIR_ENTRY_set(sk, i, p)                            \
   ((BY_DIR_ENTRY *)sk_set(                                       \
@@ -819,13 +830,13 @@
 
 #define sk_BY_DIR_ENTRY_dup(sk)      \
   ((STACK_OF(BY_DIR_ENTRY) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk)))
 
 #define sk_BY_DIR_ENTRY_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_ENTRY) *, sk))
 
 #define sk_BY_DIR_ENTRY_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk))
 
 #define sk_BY_DIR_ENTRY_set_cmp_func(sk, comp)                               \
   ((int (*)(const BY_DIR_ENTRY **a, const BY_DIR_ENTRY **b))sk_set_cmp_func( \
@@ -850,14 +861,14 @@
 #define sk_BY_DIR_HASH_new_null() ((STACK_OF(BY_DIR_HASH) *)sk_new_null())
 
 #define sk_BY_DIR_HASH_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_HASH) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_HASH) *, sk))
 
 #define sk_BY_DIR_HASH_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_HASH) *, sk));
 
 #define sk_BY_DIR_HASH_value(sk, i) \
   ((BY_DIR_HASH *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(BY_DIR_HASH) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_HASH) *, sk), (i)))
 
 #define sk_BY_DIR_HASH_set(sk, i, p)                                          \
   ((BY_DIR_HASH *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_HASH) *, sk), \
@@ -900,13 +911,13 @@
 
 #define sk_BY_DIR_HASH_dup(sk)      \
   ((STACK_OF(BY_DIR_HASH) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(BY_DIR_HASH) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_HASH) *, sk)))
 
 #define sk_BY_DIR_HASH_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(BY_DIR_HASH) *, sk))
 
 #define sk_BY_DIR_HASH_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(BY_DIR_HASH) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_HASH) *, sk))
 
 #define sk_BY_DIR_HASH_set_cmp_func(sk, comp)                              \
   ((int (*)(const BY_DIR_HASH **a, const BY_DIR_HASH **b))sk_set_cmp_func( \
@@ -931,14 +942,14 @@
 #define sk_CONF_VALUE_new_null() ((STACK_OF(CONF_VALUE) *)sk_new_null())
 
 #define sk_CONF_VALUE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(CONF_VALUE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(CONF_VALUE) *, sk))
 
 #define sk_CONF_VALUE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(CONF_VALUE) *, sk));
 
 #define sk_CONF_VALUE_value(sk, i) \
   ((CONF_VALUE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(CONF_VALUE) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(CONF_VALUE) *, sk), (i)))
 
 #define sk_CONF_VALUE_set(sk, i, p)                                         \
   ((CONF_VALUE *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(CONF_VALUE) *, sk), \
@@ -981,13 +992,13 @@
 
 #define sk_CONF_VALUE_dup(sk)      \
   ((STACK_OF(CONF_VALUE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(CONF_VALUE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(CONF_VALUE) *, sk)))
 
 #define sk_CONF_VALUE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(CONF_VALUE) *, sk))
 
 #define sk_CONF_VALUE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(CONF_VALUE) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(CONF_VALUE) *, sk))
 
 #define sk_CONF_VALUE_set_cmp_func(sk, comp)                             \
   ((int (*)(const CONF_VALUE **a, const CONF_VALUE **b))sk_set_cmp_func( \
@@ -1013,15 +1024,17 @@
 #define sk_CRYPTO_EX_DATA_FUNCS_new_null() \
   ((STACK_OF(CRYPTO_EX_DATA_FUNCS) *)sk_new_null())
 
-#define sk_CRYPTO_EX_DATA_FUNCS_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk))
+#define sk_CRYPTO_EX_DATA_FUNCS_num(sk)                                       \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, \
+                      sk))
 
 #define sk_CRYPTO_EX_DATA_FUNCS_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk));
 
-#define sk_CRYPTO_EX_DATA_FUNCS_value(sk, i)                              \
-  ((CRYPTO_EX_DATA_FUNCS *)sk_value(                                      \
-      CHECKED_CAST(_STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk), \
+#define sk_CRYPTO_EX_DATA_FUNCS_value(sk, i)                               \
+  ((CRYPTO_EX_DATA_FUNCS *)sk_value(                                       \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, \
+                   sk),                                                    \
       (i)))
 
 #define sk_CRYPTO_EX_DATA_FUNCS_set(sk, i, p)                            \
@@ -1066,16 +1079,16 @@
   ((CRYPTO_EX_DATA_FUNCS *)sk_pop(      \
       CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk)))
 
-#define sk_CRYPTO_EX_DATA_FUNCS_dup(sk)      \
-  ((STACK_OF(CRYPTO_EX_DATA_FUNCS) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk)))
+#define sk_CRYPTO_EX_DATA_FUNCS_dup(sk)                   \
+  ((STACK_OF(CRYPTO_EX_DATA_FUNCS) *)sk_dup(CHECKED_CAST( \
+      const _STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk)))
 
 #define sk_CRYPTO_EX_DATA_FUNCS_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk))
 
 #define sk_CRYPTO_EX_DATA_FUNCS_is_sorted(sk) \
-  sk_is_sorted(                               \
-      CHECKED_CAST(_STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *,   \
+                            const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, sk))
 
 #define sk_CRYPTO_EX_DATA_FUNCS_set_cmp_func(sk, comp)                       \
   ((int (*)(const CRYPTO_EX_DATA_FUNCS **a, const CRYPTO_EX_DATA_FUNCS **b)) \
@@ -1105,14 +1118,14 @@
 #define sk_DIST_POINT_new_null() ((STACK_OF(DIST_POINT) *)sk_new_null())
 
 #define sk_DIST_POINT_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(DIST_POINT) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(DIST_POINT) *, sk))
 
 #define sk_DIST_POINT_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(DIST_POINT) *, sk));
 
 #define sk_DIST_POINT_value(sk, i) \
   ((DIST_POINT *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(DIST_POINT) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(DIST_POINT) *, sk), (i)))
 
 #define sk_DIST_POINT_set(sk, i, p)                                         \
   ((DIST_POINT *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(DIST_POINT) *, sk), \
@@ -1155,13 +1168,13 @@
 
 #define sk_DIST_POINT_dup(sk)      \
   ((STACK_OF(DIST_POINT) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(DIST_POINT) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(DIST_POINT) *, sk)))
 
 #define sk_DIST_POINT_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(DIST_POINT) *, sk))
 
 #define sk_DIST_POINT_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(DIST_POINT) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(DIST_POINT) *, sk))
 
 #define sk_DIST_POINT_set_cmp_func(sk, comp)                             \
   ((int (*)(const DIST_POINT **a, const DIST_POINT **b))sk_set_cmp_func( \
@@ -1186,14 +1199,14 @@
 #define sk_GENERAL_NAME_new_null() ((STACK_OF(GENERAL_NAME) *)sk_new_null())
 
 #define sk_GENERAL_NAME_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_NAME) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAME) *, sk))
 
 #define sk_GENERAL_NAME_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_NAME) *, sk));
 
 #define sk_GENERAL_NAME_value(sk, i) \
   ((GENERAL_NAME *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_NAME) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAME) *, sk), (i)))
 
 #define sk_GENERAL_NAME_set(sk, i, p)                            \
   ((GENERAL_NAME *)sk_set(                                       \
@@ -1238,13 +1251,13 @@
 
 #define sk_GENERAL_NAME_dup(sk)      \
   ((STACK_OF(GENERAL_NAME) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_NAME) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAME) *, sk)))
 
 #define sk_GENERAL_NAME_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_NAME) *, sk))
 
 #define sk_GENERAL_NAME_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_NAME) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAME) *, sk))
 
 #define sk_GENERAL_NAME_set_cmp_func(sk, comp)                               \
   ((int (*)(const GENERAL_NAME **a, const GENERAL_NAME **b))sk_set_cmp_func( \
@@ -1269,14 +1282,14 @@
 #define sk_GENERAL_NAMES_new_null() ((STACK_OF(GENERAL_NAMES) *)sk_new_null())
 
 #define sk_GENERAL_NAMES_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_NAMES) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAMES) *, sk))
 
 #define sk_GENERAL_NAMES_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_NAMES) *, sk));
 
 #define sk_GENERAL_NAMES_value(sk, i) \
   ((GENERAL_NAMES *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_NAMES) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAMES) *, sk), (i)))
 
 #define sk_GENERAL_NAMES_set(sk, i, p)                            \
   ((GENERAL_NAMES *)sk_set(                                       \
@@ -1322,13 +1335,14 @@
 
 #define sk_GENERAL_NAMES_dup(sk)      \
   ((STACK_OF(GENERAL_NAMES) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_NAMES) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAMES) *, sk)))
 
 #define sk_GENERAL_NAMES_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_NAMES) *, sk))
 
 #define sk_GENERAL_NAMES_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_NAMES) *, sk))
+  sk_is_sorted(                        \
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAMES) *, sk))
 
 #define sk_GENERAL_NAMES_set_cmp_func(sk, comp)                                \
   ((int (*)(const GENERAL_NAMES **a, const GENERAL_NAMES **b))sk_set_cmp_func( \
@@ -1354,14 +1368,15 @@
   ((STACK_OF(GENERAL_SUBTREE) *)sk_new_null())
 
 #define sk_GENERAL_SUBTREE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_SUBTREE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk))
 
 #define sk_GENERAL_SUBTREE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_SUBTREE) *, sk));
 
-#define sk_GENERAL_SUBTREE_value(sk, i) \
-  ((GENERAL_SUBTREE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk), (i)))
+#define sk_GENERAL_SUBTREE_value(sk, i)                                    \
+  ((GENERAL_SUBTREE *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk), \
+      (i)))
 
 #define sk_GENERAL_SUBTREE_set(sk, i, p)                            \
   ((GENERAL_SUBTREE *)sk_set(                                       \
@@ -1407,13 +1422,14 @@
 
 #define sk_GENERAL_SUBTREE_dup(sk)      \
   ((STACK_OF(GENERAL_SUBTREE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk)))
 
 #define sk_GENERAL_SUBTREE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(GENERAL_SUBTREE) *, sk))
 
 #define sk_GENERAL_SUBTREE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk))
+  sk_is_sorted(                          \
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk))
 
 #define sk_GENERAL_SUBTREE_set_cmp_func(sk, comp)                           \
   ((int (*)(const GENERAL_SUBTREE **a, const GENERAL_SUBTREE **b))          \
@@ -1439,14 +1455,14 @@
 #define sk_POLICYINFO_new_null() ((STACK_OF(POLICYINFO) *)sk_new_null())
 
 #define sk_POLICYINFO_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(POLICYINFO) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(POLICYINFO) *, sk))
 
 #define sk_POLICYINFO_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(POLICYINFO) *, sk));
 
 #define sk_POLICYINFO_value(sk, i) \
   ((POLICYINFO *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(POLICYINFO) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYINFO) *, sk), (i)))
 
 #define sk_POLICYINFO_set(sk, i, p)                                         \
   ((POLICYINFO *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(POLICYINFO) *, sk), \
@@ -1489,13 +1505,13 @@
 
 #define sk_POLICYINFO_dup(sk)      \
   ((STACK_OF(POLICYINFO) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(POLICYINFO) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYINFO) *, sk)))
 
 #define sk_POLICYINFO_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(POLICYINFO) *, sk))
 
 #define sk_POLICYINFO_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(POLICYINFO) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(POLICYINFO) *, sk))
 
 #define sk_POLICYINFO_set_cmp_func(sk, comp)                             \
   ((int (*)(const POLICYINFO **a, const POLICYINFO **b))sk_set_cmp_func( \
@@ -1520,14 +1536,15 @@
 #define sk_POLICYQUALINFO_new_null() ((STACK_OF(POLICYQUALINFO) *)sk_new_null())
 
 #define sk_POLICYQUALINFO_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(POLICYQUALINFO) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(POLICYQUALINFO) *, sk))
 
 #define sk_POLICYQUALINFO_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(POLICYQUALINFO) *, sk));
 
-#define sk_POLICYQUALINFO_value(sk, i) \
-  ((POLICYQUALINFO *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(POLICYQUALINFO) *, sk), (i)))
+#define sk_POLICYQUALINFO_value(sk, i)                                    \
+  ((POLICYQUALINFO *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYQUALINFO) *, sk), \
+      (i)))
 
 #define sk_POLICYQUALINFO_set(sk, i, p)                            \
   ((POLICYQUALINFO *)sk_set(                                       \
@@ -1573,13 +1590,14 @@
 
 #define sk_POLICYQUALINFO_dup(sk)      \
   ((STACK_OF(POLICYQUALINFO) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(POLICYQUALINFO) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYQUALINFO) *, sk)))
 
 #define sk_POLICYQUALINFO_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(POLICYQUALINFO) *, sk))
 
 #define sk_POLICYQUALINFO_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(POLICYQUALINFO) *, sk))
+  sk_is_sorted(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYQUALINFO) *, sk))
 
 #define sk_POLICYQUALINFO_set_cmp_func(sk, comp)                           \
   ((int (*)(const POLICYQUALINFO **a, const POLICYQUALINFO **b))           \
@@ -1605,14 +1623,15 @@
 #define sk_POLICY_MAPPING_new_null() ((STACK_OF(POLICY_MAPPING) *)sk_new_null())
 
 #define sk_POLICY_MAPPING_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(POLICY_MAPPING) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(POLICY_MAPPING) *, sk))
 
 #define sk_POLICY_MAPPING_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(POLICY_MAPPING) *, sk));
 
-#define sk_POLICY_MAPPING_value(sk, i) \
-  ((POLICY_MAPPING *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(POLICY_MAPPING) *, sk), (i)))
+#define sk_POLICY_MAPPING_value(sk, i)                                    \
+  ((POLICY_MAPPING *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICY_MAPPING) *, sk), \
+      (i)))
 
 #define sk_POLICY_MAPPING_set(sk, i, p)                            \
   ((POLICY_MAPPING *)sk_set(                                       \
@@ -1658,13 +1677,14 @@
 
 #define sk_POLICY_MAPPING_dup(sk)      \
   ((STACK_OF(POLICY_MAPPING) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(POLICY_MAPPING) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICY_MAPPING) *, sk)))
 
 #define sk_POLICY_MAPPING_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(POLICY_MAPPING) *, sk))
 
 #define sk_POLICY_MAPPING_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(POLICY_MAPPING) *, sk))
+  sk_is_sorted(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICY_MAPPING) *, sk))
 
 #define sk_POLICY_MAPPING_set_cmp_func(sk, comp)                           \
   ((int (*)(const POLICY_MAPPING **a, const POLICY_MAPPING **b))           \
@@ -1691,15 +1711,17 @@
 #define sk_RSA_additional_prime_new_null() \
   ((STACK_OF(RSA_additional_prime) *)sk_new_null())
 
-#define sk_RSA_additional_prime_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(RSA_additional_prime) *, sk))
+#define sk_RSA_additional_prime_num(sk)                                       \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(RSA_additional_prime) *, \
+                      sk))
 
 #define sk_RSA_additional_prime_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(RSA_additional_prime) *, sk));
 
-#define sk_RSA_additional_prime_value(sk, i)                              \
-  ((RSA_additional_prime *)sk_value(                                      \
-      CHECKED_CAST(_STACK *, const STACK_OF(RSA_additional_prime) *, sk), \
+#define sk_RSA_additional_prime_value(sk, i)                               \
+  ((RSA_additional_prime *)sk_value(                                       \
+      CHECKED_CAST(const _STACK *, const STACK_OF(RSA_additional_prime) *, \
+                   sk),                                                    \
       (i)))
 
 #define sk_RSA_additional_prime_set(sk, i, p)                            \
@@ -1744,16 +1766,16 @@
   ((RSA_additional_prime *)sk_pop(      \
       CHECKED_CAST(_STACK *, STACK_OF(RSA_additional_prime) *, sk)))
 
-#define sk_RSA_additional_prime_dup(sk)      \
-  ((STACK_OF(RSA_additional_prime) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(RSA_additional_prime) *, sk)))
+#define sk_RSA_additional_prime_dup(sk)                   \
+  ((STACK_OF(RSA_additional_prime) *)sk_dup(CHECKED_CAST( \
+      const _STACK *, const STACK_OF(RSA_additional_prime) *, sk)))
 
 #define sk_RSA_additional_prime_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(RSA_additional_prime) *, sk))
 
 #define sk_RSA_additional_prime_is_sorted(sk) \
-  sk_is_sorted(                               \
-      CHECKED_CAST(_STACK *, const STACK_OF(RSA_additional_prime) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *,   \
+                            const STACK_OF(RSA_additional_prime) *, sk))
 
 #define sk_RSA_additional_prime_set_cmp_func(sk, comp)                       \
   ((int (*)(const RSA_additional_prime **a, const RSA_additional_prime **b)) \
@@ -1782,14 +1804,14 @@
 #define sk_SSL_COMP_new_null() ((STACK_OF(SSL_COMP) *)sk_new_null())
 
 #define sk_SSL_COMP_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SSL_COMP) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(SSL_COMP) *, sk))
 
 #define sk_SSL_COMP_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SSL_COMP) *, sk));
 
 #define sk_SSL_COMP_value(sk, i) \
   ((SSL_COMP *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_COMP) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_COMP) *, sk), (i)))
 
 #define sk_SSL_COMP_set(sk, i, p)                                            \
   ((SSL_COMP *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(SSL_COMP) *, sk), (i), \
@@ -1830,13 +1852,13 @@
 
 #define sk_SSL_COMP_dup(sk)      \
   ((STACK_OF(SSL_COMP) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_COMP) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_COMP) *, sk)))
 
 #define sk_SSL_COMP_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SSL_COMP) *, sk))
 
 #define sk_SSL_COMP_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(SSL_COMP) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(SSL_COMP) *, sk))
 
 #define sk_SSL_COMP_set_cmp_func(sk, comp)                           \
   ((int (*)(const SSL_COMP **a, const SSL_COMP **b))sk_set_cmp_func( \
@@ -1860,15 +1882,17 @@
 #define sk_SSL_CUSTOM_EXTENSION_new_null() \
   ((STACK_OF(SSL_CUSTOM_EXTENSION) *)sk_new_null())
 
-#define sk_SSL_CUSTOM_EXTENSION_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SSL_CUSTOM_EXTENSION) *, sk))
+#define sk_SSL_CUSTOM_EXTENSION_num(sk)                                       \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CUSTOM_EXTENSION) *, \
+                      sk))
 
 #define sk_SSL_CUSTOM_EXTENSION_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SSL_CUSTOM_EXTENSION) *, sk));
 
-#define sk_SSL_CUSTOM_EXTENSION_value(sk, i)                              \
-  ((SSL_CUSTOM_EXTENSION *)sk_value(                                      \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_CUSTOM_EXTENSION) *, sk), \
+#define sk_SSL_CUSTOM_EXTENSION_value(sk, i)                               \
+  ((SSL_CUSTOM_EXTENSION *)sk_value(                                       \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CUSTOM_EXTENSION) *, \
+                   sk),                                                    \
       (i)))
 
 #define sk_SSL_CUSTOM_EXTENSION_set(sk, i, p)                            \
@@ -1913,16 +1937,16 @@
   ((SSL_CUSTOM_EXTENSION *)sk_pop(      \
       CHECKED_CAST(_STACK *, STACK_OF(SSL_CUSTOM_EXTENSION) *, sk)))
 
-#define sk_SSL_CUSTOM_EXTENSION_dup(sk)      \
-  ((STACK_OF(SSL_CUSTOM_EXTENSION) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_CUSTOM_EXTENSION) *, sk)))
+#define sk_SSL_CUSTOM_EXTENSION_dup(sk)                   \
+  ((STACK_OF(SSL_CUSTOM_EXTENSION) *)sk_dup(CHECKED_CAST( \
+      const _STACK *, const STACK_OF(SSL_CUSTOM_EXTENSION) *, sk)))
 
 #define sk_SSL_CUSTOM_EXTENSION_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SSL_CUSTOM_EXTENSION) *, sk))
 
 #define sk_SSL_CUSTOM_EXTENSION_is_sorted(sk) \
-  sk_is_sorted(                               \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_CUSTOM_EXTENSION) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *,   \
+                            const STACK_OF(SSL_CUSTOM_EXTENSION) *, sk))
 
 #define sk_SSL_CUSTOM_EXTENSION_set_cmp_func(sk, comp)                       \
   ((int (*)(const SSL_CUSTOM_EXTENSION **a, const SSL_CUSTOM_EXTENSION **b)) \
@@ -1954,14 +1978,16 @@
   ((STACK_OF(STACK_OF_X509_NAME_ENTRY) *)sk_new_null())
 
 #define sk_STACK_OF_X509_NAME_ENTRY_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *,       \
+                      const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk))
 
 #define sk_STACK_OF_X509_NAME_ENTRY_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk));
 
-#define sk_STACK_OF_X509_NAME_ENTRY_value(sk, i)                              \
-  ((STACK_OF_X509_NAME_ENTRY *)sk_value(                                      \
-      CHECKED_CAST(_STACK *, const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk), \
+#define sk_STACK_OF_X509_NAME_ENTRY_value(sk, i)                               \
+  ((STACK_OF_X509_NAME_ENTRY *)sk_value(                                       \
+      CHECKED_CAST(const _STACK *, const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, \
+                   sk),                                                        \
       (i)))
 
 #define sk_STACK_OF_X509_NAME_ENTRY_set(sk, i, p)                            \
@@ -2008,16 +2034,16 @@
   ((STACK_OF_X509_NAME_ENTRY *)sk_pop(      \
       CHECKED_CAST(_STACK *, STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk)))
 
-#define sk_STACK_OF_X509_NAME_ENTRY_dup(sk)      \
-  ((STACK_OF(STACK_OF_X509_NAME_ENTRY) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk)))
+#define sk_STACK_OF_X509_NAME_ENTRY_dup(sk)                   \
+  ((STACK_OF(STACK_OF_X509_NAME_ENTRY) *)sk_dup(CHECKED_CAST( \
+      const _STACK *, const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk)))
 
 #define sk_STACK_OF_X509_NAME_ENTRY_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk))
 
 #define sk_STACK_OF_X509_NAME_ENTRY_is_sorted(sk) \
-  sk_is_sorted(                                   \
-      CHECKED_CAST(_STACK *, const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *,       \
+                            const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, sk))
 
 #define sk_STACK_OF_X509_NAME_ENTRY_set_cmp_func(sk, comp)                   \
   ((int (*)(const STACK_OF_X509_NAME_ENTRY **a,                              \
@@ -2047,14 +2073,14 @@
 #define sk_SXNETID_new_null() ((STACK_OF(SXNETID) *)sk_new_null())
 
 #define sk_SXNETID_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SXNETID) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(SXNETID) *, sk))
 
 #define sk_SXNETID_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SXNETID) *, sk));
 
-#define sk_SXNETID_value(sk, i)                                               \
-  ((SXNETID *)sk_value(CHECKED_CAST(_STACK *, const STACK_OF(SXNETID) *, sk), \
-                       (i)))
+#define sk_SXNETID_value(sk, i) \
+  ((SXNETID *)sk_value(         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SXNETID) *, sk), (i)))
 
 #define sk_SXNETID_set(sk, i, p)                                           \
   ((SXNETID *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(SXNETID) *, sk), (i), \
@@ -2095,13 +2121,13 @@
 
 #define sk_SXNETID_dup(sk)      \
   ((STACK_OF(SXNETID) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(SXNETID) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(SXNETID) *, sk)))
 
 #define sk_SXNETID_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SXNETID) *, sk))
 
 #define sk_SXNETID_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(SXNETID) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(SXNETID) *, sk))
 
 #define sk_SXNETID_set_cmp_func(sk, comp)                          \
   ((int (*)(const SXNETID **a, const SXNETID **b))sk_set_cmp_func( \
@@ -2122,12 +2148,14 @@
 
 #define sk_X509_new_null() ((STACK_OF(X509) *)sk_new_null())
 
-#define sk_X509_num(sk) sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509) *, sk))
+#define sk_X509_num(sk) \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509) *, sk))
 
 #define sk_X509_zero(sk) sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509) *, sk));
 
-#define sk_X509_value(sk, i) \
-  ((X509 *)sk_value(CHECKED_CAST(_STACK *, const STACK_OF(X509) *, sk), (i)))
+#define sk_X509_value(sk, i)                                                  \
+  ((X509 *)sk_value(CHECKED_CAST(const _STACK *, const STACK_OF(X509) *, sk), \
+                    (i)))
 
 #define sk_X509_set(sk, i, p)                                        \
   ((X509 *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509) *, sk), (i), \
@@ -2164,13 +2192,14 @@
 #define sk_X509_pop(sk) \
   ((X509 *)sk_pop(CHECKED_CAST(_STACK *, STACK_OF(X509) *, sk)))
 
-#define sk_X509_dup(sk) \
-  ((STACK_OF(X509) *)sk_dup(CHECKED_CAST(_STACK *, const STACK_OF(X509) *, sk)))
+#define sk_X509_dup(sk)      \
+  ((STACK_OF(X509) *)sk_dup( \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509) *, sk)))
 
 #define sk_X509_sort(sk) sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509) *, sk))
 
 #define sk_X509_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509) *, sk))
 
 #define sk_X509_set_cmp_func(sk, comp)                                      \
   ((int (*)(const X509 **a, const X509 **b))sk_set_cmp_func(                \
@@ -2195,14 +2224,15 @@
   ((STACK_OF(X509V3_EXT_METHOD) *)sk_new_null())
 
 #define sk_X509V3_EXT_METHOD_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509V3_EXT_METHOD) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk))
 
 #define sk_X509V3_EXT_METHOD_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509V3_EXT_METHOD) *, sk));
 
-#define sk_X509V3_EXT_METHOD_value(sk, i) \
-  ((X509V3_EXT_METHOD *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk), (i)))
+#define sk_X509V3_EXT_METHOD_value(sk, i)                                    \
+  ((X509V3_EXT_METHOD *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk), \
+      (i)))
 
 #define sk_X509V3_EXT_METHOD_set(sk, i, p)                            \
   ((X509V3_EXT_METHOD *)sk_set(                                       \
@@ -2248,13 +2278,14 @@
 
 #define sk_X509V3_EXT_METHOD_dup(sk)      \
   ((STACK_OF(X509V3_EXT_METHOD) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk)))
 
 #define sk_X509V3_EXT_METHOD_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509V3_EXT_METHOD) *, sk))
 
 #define sk_X509V3_EXT_METHOD_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk))
+  sk_is_sorted(                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk))
 
 #define sk_X509V3_EXT_METHOD_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509V3_EXT_METHOD **a, const X509V3_EXT_METHOD **b))        \
@@ -2281,14 +2312,14 @@
 #define sk_X509_ALGOR_new_null() ((STACK_OF(X509_ALGOR) *)sk_new_null())
 
 #define sk_X509_ALGOR_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_ALGOR) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_ALGOR) *, sk))
 
 #define sk_X509_ALGOR_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_ALGOR) *, sk));
 
 #define sk_X509_ALGOR_value(sk, i) \
   ((X509_ALGOR *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_ALGOR) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ALGOR) *, sk), (i)))
 
 #define sk_X509_ALGOR_set(sk, i, p)                                         \
   ((X509_ALGOR *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_ALGOR) *, sk), \
@@ -2331,13 +2362,13 @@
 
 #define sk_X509_ALGOR_dup(sk)      \
   ((STACK_OF(X509_ALGOR) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_ALGOR) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ALGOR) *, sk)))
 
 #define sk_X509_ALGOR_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_ALGOR) *, sk))
 
 #define sk_X509_ALGOR_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_ALGOR) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_ALGOR) *, sk))
 
 #define sk_X509_ALGOR_set_cmp_func(sk, comp)                             \
   ((int (*)(const X509_ALGOR **a, const X509_ALGOR **b))sk_set_cmp_func( \
@@ -2362,14 +2393,15 @@
 #define sk_X509_ATTRIBUTE_new_null() ((STACK_OF(X509_ATTRIBUTE) *)sk_new_null())
 
 #define sk_X509_ATTRIBUTE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_ATTRIBUTE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk))
 
 #define sk_X509_ATTRIBUTE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_ATTRIBUTE) *, sk));
 
-#define sk_X509_ATTRIBUTE_value(sk, i) \
-  ((X509_ATTRIBUTE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk), (i)))
+#define sk_X509_ATTRIBUTE_value(sk, i)                                    \
+  ((X509_ATTRIBUTE *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk), \
+      (i)))
 
 #define sk_X509_ATTRIBUTE_set(sk, i, p)                            \
   ((X509_ATTRIBUTE *)sk_set(                                       \
@@ -2415,13 +2447,14 @@
 
 #define sk_X509_ATTRIBUTE_dup(sk)      \
   ((STACK_OF(X509_ATTRIBUTE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk)))
 
 #define sk_X509_ATTRIBUTE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_ATTRIBUTE) *, sk))
 
 #define sk_X509_ATTRIBUTE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk))
+  sk_is_sorted(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk))
 
 #define sk_X509_ATTRIBUTE_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_ATTRIBUTE **a, const X509_ATTRIBUTE **b))           \
@@ -2446,14 +2479,14 @@
 #define sk_X509_CRL_new_null() ((STACK_OF(X509_CRL) *)sk_new_null())
 
 #define sk_X509_CRL_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_CRL) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_CRL) *, sk))
 
 #define sk_X509_CRL_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_CRL) *, sk));
 
 #define sk_X509_CRL_value(sk, i) \
   ((X509_CRL *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_CRL) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_CRL) *, sk), (i)))
 
 #define sk_X509_CRL_set(sk, i, p)                                            \
   ((X509_CRL *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_CRL) *, sk), (i), \
@@ -2494,13 +2527,13 @@
 
 #define sk_X509_CRL_dup(sk)      \
   ((STACK_OF(X509_CRL) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_CRL) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_CRL) *, sk)))
 
 #define sk_X509_CRL_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_CRL) *, sk))
 
 #define sk_X509_CRL_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_CRL) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_CRL) *, sk))
 
 #define sk_X509_CRL_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_CRL **a, const X509_CRL **b))sk_set_cmp_func( \
@@ -2523,14 +2556,15 @@
 #define sk_X509_EXTENSION_new_null() ((STACK_OF(X509_EXTENSION) *)sk_new_null())
 
 #define sk_X509_EXTENSION_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_EXTENSION) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_EXTENSION) *, sk))
 
 #define sk_X509_EXTENSION_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_EXTENSION) *, sk));
 
-#define sk_X509_EXTENSION_value(sk, i) \
-  ((X509_EXTENSION *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_EXTENSION) *, sk), (i)))
+#define sk_X509_EXTENSION_value(sk, i)                                    \
+  ((X509_EXTENSION *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_EXTENSION) *, sk), \
+      (i)))
 
 #define sk_X509_EXTENSION_set(sk, i, p)                            \
   ((X509_EXTENSION *)sk_set(                                       \
@@ -2576,13 +2610,14 @@
 
 #define sk_X509_EXTENSION_dup(sk)      \
   ((STACK_OF(X509_EXTENSION) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_EXTENSION) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_EXTENSION) *, sk)))
 
 #define sk_X509_EXTENSION_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_EXTENSION) *, sk))
 
 #define sk_X509_EXTENSION_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_EXTENSION) *, sk))
+  sk_is_sorted(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_EXTENSION) *, sk))
 
 #define sk_X509_EXTENSION_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_EXTENSION **a, const X509_EXTENSION **b))           \
@@ -2608,14 +2643,14 @@
 #define sk_X509_INFO_new_null() ((STACK_OF(X509_INFO) *)sk_new_null())
 
 #define sk_X509_INFO_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_INFO) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_INFO) *, sk))
 
 #define sk_X509_INFO_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_INFO) *, sk));
 
 #define sk_X509_INFO_value(sk, i) \
   ((X509_INFO *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_INFO) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_INFO) *, sk), (i)))
 
 #define sk_X509_INFO_set(sk, i, p)                                             \
   ((X509_INFO *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_INFO) *, sk), (i), \
@@ -2658,13 +2693,13 @@
 
 #define sk_X509_INFO_dup(sk)      \
   ((STACK_OF(X509_INFO) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_INFO) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_INFO) *, sk)))
 
 #define sk_X509_INFO_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_INFO) *, sk))
 
 #define sk_X509_INFO_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_INFO) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_INFO) *, sk))
 
 #define sk_X509_INFO_set_cmp_func(sk, comp)                            \
   ((int (*)(const X509_INFO **a, const X509_INFO **b))sk_set_cmp_func( \
@@ -2687,14 +2722,14 @@
 #define sk_X509_LOOKUP_new_null() ((STACK_OF(X509_LOOKUP) *)sk_new_null())
 
 #define sk_X509_LOOKUP_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_LOOKUP) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_LOOKUP) *, sk))
 
 #define sk_X509_LOOKUP_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_LOOKUP) *, sk));
 
 #define sk_X509_LOOKUP_value(sk, i) \
   ((X509_LOOKUP *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_LOOKUP) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_LOOKUP) *, sk), (i)))
 
 #define sk_X509_LOOKUP_set(sk, i, p)                                          \
   ((X509_LOOKUP *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_LOOKUP) *, sk), \
@@ -2737,13 +2772,13 @@
 
 #define sk_X509_LOOKUP_dup(sk)      \
   ((STACK_OF(X509_LOOKUP) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_LOOKUP) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_LOOKUP) *, sk)))
 
 #define sk_X509_LOOKUP_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_LOOKUP) *, sk))
 
 #define sk_X509_LOOKUP_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_LOOKUP) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_LOOKUP) *, sk))
 
 #define sk_X509_LOOKUP_set_cmp_func(sk, comp)                              \
   ((int (*)(const X509_LOOKUP **a, const X509_LOOKUP **b))sk_set_cmp_func( \
@@ -2768,14 +2803,14 @@
 #define sk_X509_NAME_new_null() ((STACK_OF(X509_NAME) *)sk_new_null())
 
 #define sk_X509_NAME_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME) *, sk))
 
 #define sk_X509_NAME_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME) *, sk));
 
 #define sk_X509_NAME_value(sk, i) \
   ((X509_NAME *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_NAME) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME) *, sk), (i)))
 
 #define sk_X509_NAME_set(sk, i, p)                                             \
   ((X509_NAME *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME) *, sk), (i), \
@@ -2818,13 +2853,13 @@
 
 #define sk_X509_NAME_dup(sk)      \
   ((STACK_OF(X509_NAME) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_NAME) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME) *, sk)))
 
 #define sk_X509_NAME_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME) *, sk))
 
 #define sk_X509_NAME_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_NAME) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME) *, sk))
 
 #define sk_X509_NAME_set_cmp_func(sk, comp)                            \
   ((int (*)(const X509_NAME **a, const X509_NAME **b))sk_set_cmp_func( \
@@ -2848,14 +2883,15 @@
   ((STACK_OF(X509_NAME_ENTRY) *)sk_new_null())
 
 #define sk_X509_NAME_ENTRY_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME_ENTRY) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk))
 
 #define sk_X509_NAME_ENTRY_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME_ENTRY) *, sk));
 
-#define sk_X509_NAME_ENTRY_value(sk, i) \
-  ((X509_NAME_ENTRY *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk), (i)))
+#define sk_X509_NAME_ENTRY_value(sk, i)                                    \
+  ((X509_NAME_ENTRY *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk), \
+      (i)))
 
 #define sk_X509_NAME_ENTRY_set(sk, i, p)                            \
   ((X509_NAME_ENTRY *)sk_set(                                       \
@@ -2901,13 +2937,14 @@
 
 #define sk_X509_NAME_ENTRY_dup(sk)      \
   ((STACK_OF(X509_NAME_ENTRY) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk)))
 
 #define sk_X509_NAME_ENTRY_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_NAME_ENTRY) *, sk))
 
 #define sk_X509_NAME_ENTRY_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk))
+  sk_is_sorted(                          \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk))
 
 #define sk_X509_NAME_ENTRY_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_NAME_ENTRY **a, const X509_NAME_ENTRY **b))          \
@@ -2933,14 +2970,14 @@
 #define sk_X509_OBJECT_new_null() ((STACK_OF(X509_OBJECT) *)sk_new_null())
 
 #define sk_X509_OBJECT_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_OBJECT) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_OBJECT) *, sk))
 
 #define sk_X509_OBJECT_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_OBJECT) *, sk));
 
 #define sk_X509_OBJECT_value(sk, i) \
   ((X509_OBJECT *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_OBJECT) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_OBJECT) *, sk), (i)))
 
 #define sk_X509_OBJECT_set(sk, i, p)                                          \
   ((X509_OBJECT *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_OBJECT) *, sk), \
@@ -2983,13 +3020,13 @@
 
 #define sk_X509_OBJECT_dup(sk)      \
   ((STACK_OF(X509_OBJECT) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_OBJECT) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_OBJECT) *, sk)))
 
 #define sk_X509_OBJECT_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_OBJECT) *, sk))
 
 #define sk_X509_OBJECT_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_OBJECT) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_OBJECT) *, sk))
 
 #define sk_X509_OBJECT_set_cmp_func(sk, comp)                              \
   ((int (*)(const X509_OBJECT **a, const X509_OBJECT **b))sk_set_cmp_func( \
@@ -3015,14 +3052,15 @@
   ((STACK_OF(X509_POLICY_DATA) *)sk_new_null())
 
 #define sk_X509_POLICY_DATA_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_POLICY_DATA) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_DATA) *, sk))
 
 #define sk_X509_POLICY_DATA_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_POLICY_DATA) *, sk));
 
-#define sk_X509_POLICY_DATA_value(sk, i) \
-  ((X509_POLICY_DATA *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_POLICY_DATA) *, sk), (i)))
+#define sk_X509_POLICY_DATA_value(sk, i)                                    \
+  ((X509_POLICY_DATA *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_DATA) *, sk), \
+      (i)))
 
 #define sk_X509_POLICY_DATA_set(sk, i, p)                            \
   ((X509_POLICY_DATA *)sk_set(                                       \
@@ -3068,13 +3106,14 @@
 
 #define sk_X509_POLICY_DATA_dup(sk)      \
   ((STACK_OF(X509_POLICY_DATA) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_POLICY_DATA) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_DATA) *, sk)))
 
 #define sk_X509_POLICY_DATA_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_POLICY_DATA) *, sk))
 
 #define sk_X509_POLICY_DATA_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_POLICY_DATA) *, sk))
+  sk_is_sorted(                           \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_DATA) *, sk))
 
 #define sk_X509_POLICY_DATA_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_POLICY_DATA **a, const X509_POLICY_DATA **b))         \
@@ -3102,14 +3141,15 @@
   ((STACK_OF(X509_POLICY_NODE) *)sk_new_null())
 
 #define sk_X509_POLICY_NODE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_POLICY_NODE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_NODE) *, sk))
 
 #define sk_X509_POLICY_NODE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_POLICY_NODE) *, sk));
 
-#define sk_X509_POLICY_NODE_value(sk, i) \
-  ((X509_POLICY_NODE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_POLICY_NODE) *, sk), (i)))
+#define sk_X509_POLICY_NODE_value(sk, i)                                    \
+  ((X509_POLICY_NODE *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_NODE) *, sk), \
+      (i)))
 
 #define sk_X509_POLICY_NODE_set(sk, i, p)                            \
   ((X509_POLICY_NODE *)sk_set(                                       \
@@ -3155,13 +3195,14 @@
 
 #define sk_X509_POLICY_NODE_dup(sk)      \
   ((STACK_OF(X509_POLICY_NODE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_POLICY_NODE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_NODE) *, sk)))
 
 #define sk_X509_POLICY_NODE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_POLICY_NODE) *, sk))
 
 #define sk_X509_POLICY_NODE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_POLICY_NODE) *, sk))
+  sk_is_sorted(                           \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_NODE) *, sk))
 
 #define sk_X509_POLICY_NODE_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_POLICY_NODE **a, const X509_POLICY_NODE **b))         \
@@ -3188,14 +3229,14 @@
 #define sk_X509_PURPOSE_new_null() ((STACK_OF(X509_PURPOSE) *)sk_new_null())
 
 #define sk_X509_PURPOSE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_PURPOSE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_PURPOSE) *, sk))
 
 #define sk_X509_PURPOSE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_PURPOSE) *, sk));
 
 #define sk_X509_PURPOSE_value(sk, i) \
   ((X509_PURPOSE *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_PURPOSE) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_PURPOSE) *, sk), (i)))
 
 #define sk_X509_PURPOSE_set(sk, i, p)                            \
   ((X509_PURPOSE *)sk_set(                                       \
@@ -3240,13 +3281,13 @@
 
 #define sk_X509_PURPOSE_dup(sk)      \
   ((STACK_OF(X509_PURPOSE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_PURPOSE) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_PURPOSE) *, sk)))
 
 #define sk_X509_PURPOSE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_PURPOSE) *, sk))
 
 #define sk_X509_PURPOSE_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_PURPOSE) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_PURPOSE) *, sk))
 
 #define sk_X509_PURPOSE_set_cmp_func(sk, comp)                               \
   ((int (*)(const X509_PURPOSE **a, const X509_PURPOSE **b))sk_set_cmp_func( \
@@ -3271,14 +3312,14 @@
 #define sk_X509_REVOKED_new_null() ((STACK_OF(X509_REVOKED) *)sk_new_null())
 
 #define sk_X509_REVOKED_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_REVOKED) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_REVOKED) *, sk))
 
 #define sk_X509_REVOKED_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_REVOKED) *, sk));
 
 #define sk_X509_REVOKED_value(sk, i) \
   ((X509_REVOKED *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_REVOKED) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_REVOKED) *, sk), (i)))
 
 #define sk_X509_REVOKED_set(sk, i, p)                            \
   ((X509_REVOKED *)sk_set(                                       \
@@ -3323,13 +3364,13 @@
 
 #define sk_X509_REVOKED_dup(sk)      \
   ((STACK_OF(X509_REVOKED) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_REVOKED) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_REVOKED) *, sk)))
 
 #define sk_X509_REVOKED_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_REVOKED) *, sk))
 
 #define sk_X509_REVOKED_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_REVOKED) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_REVOKED) *, sk))
 
 #define sk_X509_REVOKED_set_cmp_func(sk, comp)                               \
   ((int (*)(const X509_REVOKED **a, const X509_REVOKED **b))sk_set_cmp_func( \
@@ -3354,14 +3395,14 @@
 #define sk_X509_TRUST_new_null() ((STACK_OF(X509_TRUST) *)sk_new_null())
 
 #define sk_X509_TRUST_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_TRUST) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_TRUST) *, sk))
 
 #define sk_X509_TRUST_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_TRUST) *, sk));
 
 #define sk_X509_TRUST_value(sk, i) \
   ((X509_TRUST *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_TRUST) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_TRUST) *, sk), (i)))
 
 #define sk_X509_TRUST_set(sk, i, p)                                         \
   ((X509_TRUST *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(X509_TRUST) *, sk), \
@@ -3404,13 +3445,13 @@
 
 #define sk_X509_TRUST_dup(sk)      \
   ((STACK_OF(X509_TRUST) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_TRUST) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_TRUST) *, sk)))
 
 #define sk_X509_TRUST_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_TRUST) *, sk))
 
 #define sk_X509_TRUST_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_TRUST) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(X509_TRUST) *, sk))
 
 #define sk_X509_TRUST_set_cmp_func(sk, comp)                             \
   ((int (*)(const X509_TRUST **a, const X509_TRUST **b))sk_set_cmp_func( \
@@ -3437,14 +3478,15 @@
   ((STACK_OF(X509_VERIFY_PARAM) *)sk_new_null())
 
 #define sk_X509_VERIFY_PARAM_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(X509_VERIFY_PARAM) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk))
 
 #define sk_X509_VERIFY_PARAM_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(X509_VERIFY_PARAM) *, sk));
 
-#define sk_X509_VERIFY_PARAM_value(sk, i) \
-  ((X509_VERIFY_PARAM *)sk_value(         \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk), (i)))
+#define sk_X509_VERIFY_PARAM_value(sk, i)                                    \
+  ((X509_VERIFY_PARAM *)sk_value(                                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk), \
+      (i)))
 
 #define sk_X509_VERIFY_PARAM_set(sk, i, p)                            \
   ((X509_VERIFY_PARAM *)sk_set(                                       \
@@ -3490,13 +3532,14 @@
 
 #define sk_X509_VERIFY_PARAM_dup(sk)      \
   ((STACK_OF(X509_VERIFY_PARAM) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk)))
 
 #define sk_X509_VERIFY_PARAM_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(X509_VERIFY_PARAM) *, sk))
 
 #define sk_X509_VERIFY_PARAM_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk))
+  sk_is_sorted(                            \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk))
 
 #define sk_X509_VERIFY_PARAM_set_cmp_func(sk, comp)                           \
   ((int (*)(const X509_VERIFY_PARAM **a, const X509_VERIFY_PARAM **b))        \
@@ -3515,21 +3558,23 @@
                    free_func)))
 
 /* void */
-#define sk_void_new(comp)                \
-  ((STACK_OF(void)*)sk_new(CHECKED_CAST( \
+#define sk_void_new(comp)                 \
+  ((STACK_OF(void) *)sk_new(CHECKED_CAST( \
       stack_cmp_func, int (*)(const void **a, const void **b), comp)))
 
-#define sk_void_new_null() ((STACK_OF(void)*)sk_new_null())
+#define sk_void_new_null() ((STACK_OF(void) *)sk_new_null())
 
-#define sk_void_num(sk) sk_num(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk))
+#define sk_void_num(sk) \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(void) *, sk))
 
 #define sk_void_zero(sk) sk_zero(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk));
 
-#define sk_void_value(sk, i) \
-  ((void *)sk_value(CHECKED_CAST(_STACK *, const STACK_OF(void) *, sk), (i)))
+#define sk_void_value(sk, i)                                                  \
+  ((void *)sk_value(CHECKED_CAST(const _STACK *, const STACK_OF(void) *, sk), \
+                    (i)))
 
-#define sk_void_set(sk, i, p)                                       \
-  ((void *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(void)*, sk), (i), \
+#define sk_void_set(sk, i, p)                                        \
+  ((void *)sk_set(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk), (i), \
                   CHECKED_CAST(void *, void *, p)))
 
 #define sk_void_free(sk) sk_free(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk))
@@ -3543,10 +3588,10 @@
             CHECKED_CAST(void *, void *, p), (where))
 
 #define sk_void_delete(sk, where) \
-  ((void *)sk_delete(CHECKED_CAST(_STACK *, STACK_OF(void)*, sk), (where)))
+  ((void *)sk_delete(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk), (where)))
 
-#define sk_void_delete_ptr(sk, p)                                     \
-  ((void *)sk_delete_ptr(CHECKED_CAST(_STACK *, STACK_OF(void)*, sk), \
+#define sk_void_delete_ptr(sk, p)                                      \
+  ((void *)sk_delete_ptr(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk), \
                          CHECKED_CAST(void *, void *, p)))
 
 #define sk_void_find(sk, out_index, p)                               \
@@ -3554,31 +3599,32 @@
           CHECKED_CAST(void *, void *, p))
 
 #define sk_void_shift(sk) \
-  ((void *)sk_shift(CHECKED_CAST(_STACK *, STACK_OF(void)*, sk)))
+  ((void *)sk_shift(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk)))
 
 #define sk_void_push(sk, p)                             \
   sk_push(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk), \
           CHECKED_CAST(void *, void *, p))
 
 #define sk_void_pop(sk) \
-  ((void *)sk_pop(CHECKED_CAST(_STACK *, STACK_OF(void)*, sk)))
+  ((void *)sk_pop(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk)))
 
-#define sk_void_dup(sk) \
-  ((STACK_OF(void)*)sk_dup(CHECKED_CAST(_STACK *, const STACK_OF(void) *, sk)))
+#define sk_void_dup(sk)      \
+  ((STACK_OF(void) *)sk_dup( \
+      CHECKED_CAST(const _STACK *, const STACK_OF(void) *, sk)))
 
 #define sk_void_sort(sk) sk_sort(CHECKED_CAST(_STACK *, STACK_OF(void) *, sk))
 
 #define sk_void_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(void) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(void) *, sk))
 
 #define sk_void_set_cmp_func(sk, comp)                                      \
   ((int (*)(const void **a, const void **b))sk_set_cmp_func(                \
-      CHECKED_CAST(_STACK *, STACK_OF(void)*, sk),                          \
+      CHECKED_CAST(_STACK *, STACK_OF(void) *, sk),                         \
       CHECKED_CAST(stack_cmp_func, int (*)(const void **a, const void **b), \
                    comp)))
 
 #define sk_void_deep_copy(sk, copy_func, free_func)                  \
-  ((STACK_OF(void)*)sk_deep_copy(                                    \
+  ((STACK_OF(void) *)sk_deep_copy(                                   \
       CHECKED_CAST(const _STACK *, const STACK_OF(void) *, sk),      \
       CHECKED_CAST(void *(*)(void *), void *(*)(void *), copy_func), \
       CHECKED_CAST(void (*)(void *), void (*)(void *), free_func)))
@@ -3594,14 +3640,16 @@
   ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_new_null())
 
 #define sk_SRTP_PROTECTION_PROFILE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *,      \
+                      const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
 
 #define sk_SRTP_PROTECTION_PROFILE_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk));
 
-#define sk_SRTP_PROTECTION_PROFILE_value(sk, i)                              \
-  ((const SRTP_PROTECTION_PROFILE *)sk_value(                                \
-      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+#define sk_SRTP_PROTECTION_PROFILE_value(sk, i)                               \
+  ((const SRTP_PROTECTION_PROFILE *)sk_value(                                 \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, \
+                   sk),                                                       \
       (i)))
 
 #define sk_SRTP_PROTECTION_PROFILE_set(sk, i, p)                            \
@@ -3649,16 +3697,16 @@
   ((const SRTP_PROTECTION_PROFILE *)sk_pop( \
       CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
 
-#define sk_SRTP_PROTECTION_PROFILE_dup(sk)      \
-  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
+#define sk_SRTP_PROTECTION_PROFILE_dup(sk)                   \
+  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_dup(CHECKED_CAST( \
+      const _STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
 
 #define sk_SRTP_PROTECTION_PROFILE_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
 
 #define sk_SRTP_PROTECTION_PROFILE_is_sorted(sk) \
-  sk_is_sorted(                                  \
-      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *,      \
+                            const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
 
 #define sk_SRTP_PROTECTION_PROFILE_set_cmp_func(sk, comp)                   \
   ((int (*)(const SRTP_PROTECTION_PROFILE **a,                              \
@@ -3670,14 +3718,15 @@
                                 const SRTP_PROTECTION_PROFILE **b),         \
                         comp)))
 
-#define sk_SRTP_PROTECTION_PROFILE_deep_copy(sk, copy_func, free_func)        \
-  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_deep_copy(                         \
-      CHECKED_CAST(const _STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, \
-                   sk),                                                       \
-      CHECKED_CAST(void *(*)(void *), const SRTP_PROTECTION_PROFILE *(*)(     \
-                                          const SRTP_PROTECTION_PROFILE *),   \
-                   copy_func),                                                \
-      CHECKED_CAST(void (*)(void *),                                          \
+#define sk_SRTP_PROTECTION_PROFILE_deep_copy(sk, copy_func, free_func)         \
+  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_deep_copy(                          \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *,  \
+                   sk),                                                        \
+      CHECKED_CAST(                                                            \
+          void *(*)(void *),                                                   \
+          const SRTP_PROTECTION_PROFILE *(*)(const SRTP_PROTECTION_PROFILE *), \
+          copy_func),                                                          \
+      CHECKED_CAST(void (*)(void *),                                           \
                    void (*)(const SRTP_PROTECTION_PROFILE *), free_func)))
 
 /* SSL_CIPHER */
@@ -3689,14 +3738,14 @@
 #define sk_SSL_CIPHER_new_null() ((STACK_OF(SSL_CIPHER) *)sk_new_null())
 
 #define sk_SSL_CIPHER_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SSL_CIPHER) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CIPHER) *, sk))
 
 #define sk_SSL_CIPHER_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SSL_CIPHER) *, sk));
 
 #define sk_SSL_CIPHER_value(sk, i) \
   ((const SSL_CIPHER *)sk_value(   \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_CIPHER) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CIPHER) *, sk), (i)))
 
 #define sk_SSL_CIPHER_set(sk, i, p)                            \
   ((const SSL_CIPHER *)sk_set(                                 \
@@ -3742,13 +3791,13 @@
 
 #define sk_SSL_CIPHER_dup(sk)      \
   ((STACK_OF(SSL_CIPHER) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(SSL_CIPHER) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CIPHER) *, sk)))
 
 #define sk_SSL_CIPHER_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SSL_CIPHER) *, sk))
 
 #define sk_SSL_CIPHER_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(SSL_CIPHER) *, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CIPHER) *, sk))
 
 #define sk_SSL_CIPHER_set_cmp_func(sk, comp)                             \
   ((int (*)(const SSL_CIPHER **a, const SSL_CIPHER **b))sk_set_cmp_func( \
@@ -3774,14 +3823,15 @@
 #define sk_OPENSSL_STRING_new_null() ((STACK_OF(OPENSSL_STRING) *)sk_new_null())
 
 #define sk_OPENSSL_STRING_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(OPENSSL_STRING) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_STRING) *, sk))
 
 #define sk_OPENSSL_STRING_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(OPENSSL_STRING) *, sk));
 
-#define sk_OPENSSL_STRING_value(sk, i) \
-  ((OPENSSL_STRING)sk_value(           \
-      CHECKED_CAST(_STACK *, const STACK_OF(OPENSSL_STRING) *, sk), (i)))
+#define sk_OPENSSL_STRING_value(sk, i)                                    \
+  ((OPENSSL_STRING)sk_value(                                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_STRING) *, sk), \
+      (i)))
 
 #define sk_OPENSSL_STRING_set(sk, i, p)                            \
   ((OPENSSL_STRING)sk_set(                                         \
@@ -3827,13 +3877,14 @@
 
 #define sk_OPENSSL_STRING_dup(sk)      \
   ((STACK_OF(OPENSSL_STRING) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(OPENSSL_STRING) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_STRING) *, sk)))
 
 #define sk_OPENSSL_STRING_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(OPENSSL_STRING) *, sk))
 
 #define sk_OPENSSL_STRING_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(OPENSSL_STRING) *, sk))
+  sk_is_sorted(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_STRING) *, sk))
 
 #define sk_OPENSSL_STRING_set_cmp_func(sk, comp)                           \
   ((int (*)(const OPENSSL_STRING **a, const OPENSSL_STRING **b))           \
@@ -3859,14 +3910,14 @@
 #define sk_OPENSSL_BLOCK_new_null() ((STACK_OF(OPENSSL_BLOCK) *)sk_new_null())
 
 #define sk_OPENSSL_BLOCK_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(OPENSSL_BLOCK) *, sk))
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk))
 
 #define sk_OPENSSL_BLOCK_zero(sk) \
   sk_zero(CHECKED_CAST(_STACK *, STACK_OF(OPENSSL_BLOCK) *, sk));
 
 #define sk_OPENSSL_BLOCK_value(sk, i) \
   ((OPENSSL_BLOCK)sk_value(           \
-      CHECKED_CAST(_STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk), (i)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk), (i)))
 
 #define sk_OPENSSL_BLOCK_set(sk, i, p)                            \
   ((OPENSSL_BLOCK)sk_set(                                         \
@@ -3911,13 +3962,14 @@
 
 #define sk_OPENSSL_BLOCK_dup(sk)      \
   ((STACK_OF(OPENSSL_BLOCK) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk)))
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk)))
 
 #define sk_OPENSSL_BLOCK_sort(sk) \
   sk_sort(CHECKED_CAST(_STACK *, STACK_OF(OPENSSL_BLOCK) *, sk))
 
 #define sk_OPENSSL_BLOCK_is_sorted(sk) \
-  sk_is_sorted(CHECKED_CAST(_STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk))
+  sk_is_sorted(                        \
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk))
 
 #define sk_OPENSSL_BLOCK_set_cmp_func(sk, comp)                                \
   ((int (*)(const OPENSSL_BLOCK **a, const OPENSSL_BLOCK **b))sk_set_cmp_func( \

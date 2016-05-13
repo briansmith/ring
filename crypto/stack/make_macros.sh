@@ -36,13 +36,13 @@ output_stack () {
   ((STACK_OF(${type})*) sk_new_null())
 
 #define sk_${type}_num(sk)\\
-  sk_num(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk))
+  sk_num(CHECKED_CAST(const _STACK*, const STACK_OF(${type})*, sk))
 
 #define sk_${type}_zero(sk)\\
   sk_zero(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk));
 
 #define sk_${type}_value(sk, i)\\
-  ((${ptrtype}) sk_value(CHECKED_CAST(_STACK*, const STACK_OF(${type})*, sk), (i)))
+  ((${ptrtype}) sk_value(CHECKED_CAST(const _STACK*, const STACK_OF(${type})*, sk), (i)))
 
 #define sk_${type}_set(sk, i, p)\\
   ((${ptrtype}) sk_set(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk), (i), CHECKED_CAST(void*, ${ptrtype}, p)))
@@ -75,20 +75,19 @@ output_stack () {
   ((${ptrtype}) sk_pop(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk)))
 
 #define sk_${type}_dup(sk)\\
-  ((STACK_OF(${type})*) sk_dup(CHECKED_CAST(_STACK*, const STACK_OF(${type})*, sk)))
+  ((STACK_OF(${type})*) sk_dup(CHECKED_CAST(const _STACK*, const STACK_OF(${type})*, sk)))
 
 #define sk_${type}_sort(sk)\\
   sk_sort(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk))
 
 #define sk_${type}_is_sorted(sk)\\
-  sk_is_sorted(CHECKED_CAST(_STACK*, const STACK_OF(${type})*, sk))
+  sk_is_sorted(CHECKED_CAST(const _STACK*, const STACK_OF(${type})*, sk))
 
 #define sk_${type}_set_cmp_func(sk, comp)\\
   ((int (*) (const ${type} **a, const ${type} **b)) sk_set_cmp_func(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk), CHECKED_CAST(stack_cmp_func, int (*) (const ${type} **a, const ${type} **b), comp)))
 
 #define sk_${type}_deep_copy(sk, copy_func, free_func)\\
 ((STACK_OF(${type})*) sk_deep_copy(CHECKED_CAST(const _STACK*, const STACK_OF(${type})*, sk), CHECKED_CAST(void* (*) (void*), ${ptrtype} (*) (${ptrtype}), copy_func), CHECKED_CAST(void (*) (void*), void (*) (${ptrtype}), free_func)))
-
 
 EOF
 }
