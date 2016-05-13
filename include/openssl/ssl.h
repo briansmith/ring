@@ -4129,8 +4129,11 @@ typedef struct ssl3_state_st {
     uint8_t peer_finish_md[EVP_MAX_MD_SIZE];
     int peer_finish_md_len;
 
-    unsigned long message_size;
     int message_type;
+
+    /* message_complete is one if the current message is complete and zero
+     * otherwise. */
+    unsigned message_complete:1;
 
     /* used to hold the new cipher we are going to use */
     const SSL_CIPHER *new_cipher;

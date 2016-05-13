@@ -200,7 +200,7 @@ int ssl3_connect(SSL *ssl) {
         if (ssl->init_buf == NULL) {
           buf = BUF_MEM_new();
           if (buf == NULL ||
-              !BUF_MEM_grow(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
+              !BUF_MEM_reserve(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
             ret = -1;
             goto end;
           }

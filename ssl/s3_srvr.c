@@ -208,7 +208,7 @@ int ssl3_accept(SSL *ssl) {
 
         if (ssl->init_buf == NULL) {
           buf = BUF_MEM_new();
-          if (!buf || !BUF_MEM_grow(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
+          if (!buf || !BUF_MEM_reserve(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
             ret = -1;
             goto end;
           }
@@ -625,7 +625,7 @@ int ssl3_get_v2_client_hello(SSL *ssl) {
   const uint8_t *p;
   int ret;
   CBS v2_client_hello, cipher_specs, session_id, challenge;
-  size_t msg_length, rand_len, len;
+  size_t msg_length, rand_len;
   uint8_t msg_type;
   uint16_t version, cipher_spec_length, session_id_length, challenge_length;
   CBB client_hello, hello_body, cipher_suites;
@@ -730,7 +730,7 @@ int ssl3_get_v2_client_hello(SSL *ssl) {
 
   /* Add the null compression scheme and finish. */
   if (!CBB_add_u8(&hello_body, 1) || !CBB_add_u8(&hello_body, 0) ||
-      !CBB_finish(&client_hello, NULL, &len)) {
+      !CBB_finish(&client_hello, NULL, &ssl->init_buf->length)) {
     CBB_cleanup(&client_hello);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
@@ -739,8 +739,7 @@ int ssl3_get_v2_client_hello(SSL *ssl) {
   /* Mark the message for "re"-use by the version-specific method. */
   ssl->s3->tmp.reuse_message = 1;
   ssl->s3->tmp.message_type = SSL3_MT_CLIENT_HELLO;
-  /* The handshake message header is 4 bytes. */
-  ssl->s3->tmp.message_size = len - 4;
+  ssl->s3->tmp.message_complete = 1;
 
   /* Consume and discard the V2ClientHello. */
   ssl_read_buffer_consume(ssl, 2 + msg_length);
