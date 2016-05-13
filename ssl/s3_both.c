@@ -211,12 +211,12 @@ static void ssl3_take_mac(SSL *ssl) {
       ssl, !ssl->server, ssl->s3->tmp.peer_finish_md);
 }
 
-int ssl3_get_finished(SSL *ssl, int a, int b) {
+int ssl3_get_finished(SSL *ssl) {
   int al, finished_len, ok;
   long message_len;
   uint8_t *p;
 
-  message_len = ssl->method->ssl_get_message(ssl, a, b, SSL3_MT_FINISHED,
+  message_len = ssl->method->ssl_get_message(ssl, SSL3_MT_FINISHED,
                                              ssl_dont_hash_message, &ok);
 
   if (!ok) {
@@ -328,9 +328,8 @@ static int extend_handshake_buffer(SSL *ssl, size_t length) {
 }
 
 /* Obtain handshake message of message type |msg_type| (any if |msg_type| ==
- * -1).  The first four bytes (msg_type and length) are read in state
- * |header_state|, the body is read in state |body_state|. */
-long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
+ * -1). */
+long ssl3_get_message(SSL *ssl, int msg_type,
                       enum ssl_hash_message_t hash_message, int *ok) {
   *ok = 0;
 
@@ -347,7 +346,6 @@ long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
       return -1;
     }
     *ok = 1;
-    ssl->state = body_state;
     assert(ssl->init_buf->length >= 4);
     ssl->init_msg = (uint8_t *)ssl->init_buf->data + 4;
     ssl->init_num = (int)ssl->init_buf->length - 4;
@@ -405,7 +403,6 @@ again:
     return -1;
   }
   ssl->s3->tmp.message_type = actual_type;
-  ssl->state = body_state;
 
   ssl->init_msg = (uint8_t*)ssl->init_buf->data + 4;
   ssl->init_num = ssl->init_buf->length - 4;

@@ -185,7 +185,6 @@ int dtls1_accept(SSL *ssl) {
       case SSL3_ST_SR_CLNT_HELLO_A:
       case SSL3_ST_SR_CLNT_HELLO_B:
       case SSL3_ST_SR_CLNT_HELLO_C:
-      case SSL3_ST_SR_CLNT_HELLO_D:
         ret = ssl3_get_client_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -310,7 +309,6 @@ int dtls1_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CERT_A:
-      case SSL3_ST_SR_CERT_B:
         if (ssl->s3->tmp.cert_request) {
           ret = ssl3_get_client_certificate(ssl);
           if (ret <= 0) {
@@ -323,7 +321,6 @@ int dtls1_accept(SSL *ssl) {
 
       case SSL3_ST_SR_KEY_EXCH_A:
       case SSL3_ST_SR_KEY_EXCH_B:
-      case SSL3_ST_SR_KEY_EXCH_C:
         ret = ssl3_get_client_key_exchange(ssl);
         if (ret <= 0) {
           goto end;
@@ -333,7 +330,6 @@ int dtls1_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CERT_VRFY_A:
-      case SSL3_ST_SR_CERT_VRFY_B:
         ret = ssl3_get_cert_verify(ssl);
         if (ret <= 0) {
           goto end;
@@ -357,9 +353,7 @@ int dtls1_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_FINISHED_A:
-      case SSL3_ST_SR_FINISHED_B:
-        ret = ssl3_get_finished(ssl, SSL3_ST_SR_FINISHED_A,
-                                SSL3_ST_SR_FINISHED_B);
+        ret = ssl3_get_finished(ssl);
         if (ret <= 0) {
           goto end;
         }

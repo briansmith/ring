@@ -200,7 +200,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A:
-      case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B:
         ret = dtls1_get_hello_verify(ssl);
         if (ret <= 0) {
           goto end;
@@ -216,7 +215,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SRVR_HELLO_A:
-      case SSL3_ST_CR_SRVR_HELLO_B:
         ret = ssl3_get_server_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -235,7 +233,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_A:
-      case SSL3_ST_CR_CERT_B:
         if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_get_server_certificate(ssl);
           if (ret <= 0) {
@@ -264,7 +261,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_KEY_EXCH_A:
-      case SSL3_ST_CR_KEY_EXCH_B:
         ret = ssl3_get_server_key_exchange(ssl);
         if (ret <= 0) {
           goto end;
@@ -278,7 +274,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:
-      case SSL3_ST_CR_CERT_REQ_B:
         ret = ssl3_get_certificate_request(ssl);
         if (ret <= 0) {
           goto end;
@@ -288,7 +283,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SRVR_DONE_A:
-      case SSL3_ST_CR_SRVR_DONE_B:
         ret = ssl3_get_server_done(ssl);
         if (ret <= 0) {
           goto end;
@@ -393,7 +387,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SESSION_TICKET_A:
-      case SSL3_ST_CR_SESSION_TICKET_B:
         ret = ssl3_get_new_session_ticket(ssl);
         if (ret <= 0) {
           goto end;
@@ -403,7 +396,6 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_STATUS_A:
-      case SSL3_ST_CR_CERT_STATUS_B:
         ret = ssl3_get_cert_status(ssl);
         if (ret <= 0) {
           goto end;
@@ -426,9 +418,7 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_FINISHED_A:
-      case SSL3_ST_CR_FINISHED_B:
-        ret =
-            ssl3_get_finished(ssl, SSL3_ST_CR_FINISHED_A, SSL3_ST_CR_FINISHED_B);
+        ret = ssl3_get_finished(ssl);
         if (ret <= 0) {
           goto end;
         }
@@ -507,9 +497,7 @@ static int dtls1_get_hello_verify(SSL *ssl) {
   CBS hello_verify_request, cookie;
   uint16_t server_version;
 
-  n = ssl->method->ssl_get_message(ssl, DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A,
-                                   DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B, -1,
-                                   ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;

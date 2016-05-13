@@ -558,7 +558,7 @@ static int dtls1_process_fragment(SSL *ssl) {
 /* dtls1_get_message reads a handshake message of message type |msg_type| (any
  * if |msg_type| == -1). Read an entire handshake message. Handshake messages
  * arrive in fragments. */
-long dtls1_get_message(SSL *ssl, int st1, int stn, int msg_type,
+long dtls1_get_message(SSL *ssl, int msg_type,
                        enum ssl_hash_message_t hash_message, int *ok) {
   pitem *item = NULL;
   hm_fragment *frag = NULL;
@@ -646,7 +646,6 @@ long dtls1_get_message(SSL *ssl, int st1, int stn, int msg_type,
   pitem_free(item);
   dtls1_hm_fragment_free(frag);
 
-  ssl->state = stn;
   *ok = 1;
   return ssl->init_num;
 

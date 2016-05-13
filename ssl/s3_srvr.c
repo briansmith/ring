@@ -257,7 +257,6 @@ int ssl3_accept(SSL *ssl) {
       case SSL3_ST_SR_CLNT_HELLO_A:
       case SSL3_ST_SR_CLNT_HELLO_B:
       case SSL3_ST_SR_CLNT_HELLO_C:
-      case SSL3_ST_SR_CLNT_HELLO_D:
         ret = ssl3_get_client_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -380,7 +379,6 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CERT_A:
-      case SSL3_ST_SR_CERT_B:
         if (ssl->s3->tmp.cert_request) {
           ret = ssl3_get_client_certificate(ssl);
           if (ret <= 0) {
@@ -393,7 +391,6 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SR_KEY_EXCH_A:
       case SSL3_ST_SR_KEY_EXCH_B:
-      case SSL3_ST_SR_KEY_EXCH_C:
         ret = ssl3_get_client_key_exchange(ssl);
         if (ret <= 0) {
           goto end;
@@ -403,7 +400,6 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CERT_VRFY_A:
-      case SSL3_ST_SR_CERT_VRFY_B:
         ret = ssl3_get_cert_verify(ssl);
         if (ret <= 0) {
           goto end;
@@ -434,7 +430,6 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_NEXT_PROTO_A:
-      case SSL3_ST_SR_NEXT_PROTO_B:
         ret = ssl3_get_next_proto(ssl);
         if (ret <= 0) {
           goto end;
@@ -448,7 +443,6 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CHANNEL_ID_A:
-      case SSL3_ST_SR_CHANNEL_ID_B:
         ret = ssl3_get_channel_id(ssl);
         if (ret <= 0) {
           goto end;
@@ -458,9 +452,7 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_FINISHED_A:
-      case SSL3_ST_SR_FINISHED_B:
-        ret = ssl3_get_finished(ssl, SSL3_ST_SR_FINISHED_A,
-                                SSL3_ST_SR_FINISHED_B);
+        ret = ssl3_get_finished(ssl);
         if (ret <= 0) {
           goto end;
         }
@@ -765,19 +757,17 @@ int ssl3_get_client_hello(SSL *ssl) {
    * SSLv3, even if prompted with TLSv1. */
   switch (ssl->state) {
     case SSL3_ST_SR_CLNT_HELLO_A:
-    case SSL3_ST_SR_CLNT_HELLO_B:
-      n = ssl->method->ssl_get_message(
-          ssl, SSL3_ST_SR_CLNT_HELLO_A, SSL3_ST_SR_CLNT_HELLO_B,
-          SSL3_MT_CLIENT_HELLO, ssl_hash_message, &ok);
+      n = ssl->method->ssl_get_message(ssl, SSL3_MT_CLIENT_HELLO,
+                                       ssl_hash_message, &ok);
 
       if (!ok) {
         return n;
       }
 
-      ssl->state = SSL3_ST_SR_CLNT_HELLO_C;
+      ssl->state = SSL3_ST_SR_CLNT_HELLO_B;
       /* fallthrough */
+    case SSL3_ST_SR_CLNT_HELLO_B:
     case SSL3_ST_SR_CLNT_HELLO_C:
-    case SSL3_ST_SR_CLNT_HELLO_D:
       /* We have previously parsed the ClientHello message, and can't call
        * ssl_get_message again without hashing the message into the Finished
        * digest again. */
@@ -793,9 +783,9 @@ int ssl3_get_client_hello(SSL *ssl) {
         goto f_err;
       }
 
-      if (ssl->state == SSL3_ST_SR_CLNT_HELLO_C &&
+      if (ssl->state == SSL3_ST_SR_CLNT_HELLO_B &&
           ssl->ctx->select_certificate_cb != NULL) {
-        ssl->state = SSL3_ST_SR_CLNT_HELLO_D;
+        ssl->state = SSL3_ST_SR_CLNT_HELLO_C;
         switch (ssl->ctx->select_certificate_cb(&early_ctx)) {
           case 0:
             ssl->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
@@ -811,7 +801,7 @@ int ssl3_get_client_hello(SSL *ssl) {
             /* fallthrough */;
         }
       }
-      ssl->state = SSL3_ST_SR_CLNT_HELLO_D;
+      ssl->state = SSL3_ST_SR_CLNT_HELLO_C;
       break;
 
     default:
@@ -1446,12 +1436,10 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
   unsigned psk_len = 0;
   uint8_t psk[PSK_MAX_PSK_LEN];
 
-  if (ssl->state == SSL3_ST_SR_KEY_EXCH_A ||
-      ssl->state == SSL3_ST_SR_KEY_EXCH_B) {
+  if (ssl->state == SSL3_ST_SR_KEY_EXCH_A) {
     int ok;
     const long n = ssl->method->ssl_get_message(
-        ssl, SSL3_ST_SR_KEY_EXCH_A, SSL3_ST_SR_KEY_EXCH_B,
-        SSL3_MT_CLIENT_KEY_EXCHANGE, ssl_hash_message, &ok);
+        ssl, SSL3_MT_CLIENT_KEY_EXCHANGE, ssl_hash_message, &ok);
     if (!ok) {
       return n;
     }
@@ -1521,7 +1509,7 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
 
     enum ssl_private_key_result_t decrypt_result;
     size_t decrypt_len;
-    if (ssl->state == SSL3_ST_SR_KEY_EXCH_B) {
+    if (ssl->state == SSL3_ST_SR_KEY_EXCH_A) {
       if (!ssl_has_private_key(ssl) ||
           ssl_private_key_type(ssl) != EVP_PKEY_RSA) {
         al = SSL_AD_HANDSHAKE_FAILURE;
@@ -1549,7 +1537,7 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
           CBS_data(&encrypted_premaster_secret),
           CBS_len(&encrypted_premaster_secret));
     } else {
-      assert(ssl->state == SSL3_ST_SR_KEY_EXCH_C);
+      assert(ssl->state == SSL3_ST_SR_KEY_EXCH_B);
       /* Complete async decrypt. */
       decrypt_result = ssl_private_key_decrypt_complete(
           ssl, decrypt_buf, &decrypt_len, rsa_size);
@@ -1562,7 +1550,7 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
         goto err;
       case ssl_private_key_retry:
         ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
-        ssl->state = SSL3_ST_SR_KEY_EXCH_C;
+        ssl->state = SSL3_ST_SR_KEY_EXCH_B;
         goto err;
     }
 
@@ -1731,9 +1719,8 @@ int ssl3_get_cert_verify(SSL *ssl) {
     return 1;
   }
 
-  n = ssl->method->ssl_get_message(
-      ssl, SSL3_ST_SR_CERT_VRFY_A, SSL3_ST_SR_CERT_VRFY_B,
-      SSL3_MT_CERTIFICATE_VERIFY, ssl_dont_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE_VERIFY,
+                                   ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1829,8 +1816,7 @@ int ssl3_get_client_certificate(SSL *ssl) {
   int is_first_certificate = 1;
 
   assert(ssl->s3->tmp.cert_request);
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_SR_CERT_A, SSL3_ST_SR_CERT_B,
-                                   -1, ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2117,9 +2103,8 @@ int ssl3_get_next_proto(SSL *ssl) {
     return -1;
   }
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_SR_NEXT_PROTO_A,
-                                   SSL3_ST_SR_NEXT_PROTO_B, SSL3_MT_NEXT_PROTO,
-                                   ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEXT_PROTO, ssl_hash_message,
+                                   &ok);
 
   if (!ok) {
     return n;
@@ -2158,9 +2143,8 @@ int ssl3_get_channel_id(SSL *ssl) {
   BIGNUM x, y;
   CBS encrypted_extensions, extension;
 
-  n = ssl->method->ssl_get_message(
-      ssl, SSL3_ST_SR_CHANNEL_ID_A, SSL3_ST_SR_CHANNEL_ID_B,
-      SSL3_MT_ENCRYPTED_EXTENSIONS, ssl_dont_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_ENCRYPTED_EXTENSIONS,
+                                   ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return n;

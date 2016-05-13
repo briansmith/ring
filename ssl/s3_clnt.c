@@ -236,7 +236,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SRVR_HELLO_A:
-      case SSL3_ST_CR_SRVR_HELLO_B:
         ret = ssl3_get_server_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -255,7 +254,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_A:
-      case SSL3_ST_CR_CERT_B:
         if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_get_server_certificate(ssl);
           if (ret <= 0) {
@@ -284,7 +282,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_KEY_EXCH_A:
-      case SSL3_ST_CR_KEY_EXCH_B:
         ret = ssl3_get_server_key_exchange(ssl);
         if (ret <= 0) {
           goto end;
@@ -298,7 +295,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:
-      case SSL3_ST_CR_CERT_REQ_B:
         ret = ssl3_get_certificate_request(ssl);
         if (ret <= 0) {
           goto end;
@@ -308,7 +304,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SRVR_DONE_A:
-      case SSL3_ST_CR_SRVR_DONE_B:
         ret = ssl3_get_server_done(ssl);
         if (ret <= 0) {
           goto end;
@@ -448,7 +443,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SESSION_TICKET_A:
-      case SSL3_ST_CR_SESSION_TICKET_B:
         ret = ssl3_get_new_session_ticket(ssl);
         if (ret <= 0) {
           goto end;
@@ -458,7 +452,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_STATUS_A:
-      case SSL3_ST_CR_CERT_STATUS_B:
         ret = ssl3_get_cert_status(ssl);
         if (ret <= 0) {
           goto end;
@@ -481,9 +474,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_FINISHED_A:
-      case SSL3_ST_CR_FINISHED_B:
-        ret = ssl3_get_finished(ssl, SSL3_ST_CR_FINISHED_A,
-                                SSL3_ST_CR_FINISHED_B);
+        ret = ssl3_get_finished(ssl);
         if (ret <= 0) {
           goto end;
         }
@@ -729,9 +720,8 @@ int ssl3_get_server_hello(SSL *ssl) {
   uint16_t server_version, cipher_suite;
   uint8_t compression_method;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_SRVR_HELLO_A,
-                                   SSL3_ST_CR_SRVR_HELLO_B,
-                                   SSL3_MT_SERVER_HELLO, ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO, ssl_hash_message,
+                                   &ok);
 
   if (!ok) {
     uint32_t err = ERR_peek_error();
@@ -959,8 +949,8 @@ int ssl3_get_server_certificate(SSL *ssl) {
   CBS cbs, certificate_list;
   const uint8_t *data;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_CERT_A, SSL3_ST_CR_CERT_B,
-                                   SSL3_MT_CERTIFICATE, ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE, ssl_hash_message,
+                                   &ok);
 
   if (!ok) {
     return n;
@@ -1048,9 +1038,7 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
   EC_KEY *ecdh = NULL;
   EC_POINT *srvr_ecpoint = NULL;
 
-  long n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_KEY_EXCH_A,
-                                        SSL3_ST_CR_KEY_EXCH_B, -1,
-                                        ssl_hash_message, &ok);
+  long n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
   if (!ok) {
     return n;
   }
@@ -1295,9 +1283,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
   X509_NAME *xn = NULL;
   STACK_OF(X509_NAME) *ca_sk = NULL;
 
-  long n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_CERT_REQ_A,
-                                        SSL3_ST_CR_CERT_REQ_B, -1,
-                                        ssl_hash_message, &ok);
+  long n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1402,9 +1388,8 @@ err:
 
 int ssl3_get_new_session_ticket(SSL *ssl) {
   int ok, al;
-  long n = ssl->method->ssl_get_message(
-      ssl, SSL3_ST_CR_SESSION_TICKET_A, SSL3_ST_CR_SESSION_TICKET_B,
-      SSL3_MT_NEWSESSION_TICKET, ssl_hash_message, &ok);
+  long n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEWSESSION_TICKET,
+                                        ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1480,9 +1465,7 @@ int ssl3_get_cert_status(SSL *ssl) {
   CBS certificate_status, ocsp_response;
   uint8_t status_type;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_CERT_STATUS_A,
-                                   SSL3_ST_CR_CERT_STATUS_B, -1,
-                                   ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1523,9 +1506,8 @@ int ssl3_get_server_done(SSL *ssl) {
   int ok;
   long n;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_SRVR_DONE_A,
-                                   SSL3_ST_CR_SRVR_DONE_B, SSL3_MT_SERVER_DONE,
-                                   ssl_hash_message, &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_DONE, ssl_hash_message,
+                                   &ok);
 
   if (!ok) {
     return n;

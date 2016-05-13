@@ -853,9 +853,8 @@ struct ssl_protocol_method_st {
   void (*ssl_free)(SSL *ssl);
   int (*ssl_accept)(SSL *ssl);
   int (*ssl_connect)(SSL *ssl);
-  long (*ssl_get_message)(SSL *ssl, int header_state, int body_state,
-                          int msg_type, enum ssl_hash_message_t hash_message,
-                          int *ok);
+  long (*ssl_get_message)(SSL *ssl, int msg_type,
+                          enum ssl_hash_message_t hash_message, int *ok);
   int (*ssl_read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
   int (*ssl_read_change_cipher_spec)(SSL *ssl);
   void (*ssl_read_close_notify)(SSL *ssl);
@@ -1044,13 +1043,13 @@ int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 int ssl3_send_server_certificate(SSL *ssl);
 int ssl3_send_new_session_ticket(SSL *ssl);
 int ssl3_send_certificate_status(SSL *ssl);
-int ssl3_get_finished(SSL *ssl, int state_a, int state_b);
+int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl, int state_a, int state_b);
 void ssl3_cleanup_key_block(SSL *ssl);
 int ssl3_do_write(SSL *ssl, int type);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_req_cert_type(SSL *ssl, uint8_t *p);
-long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
+long ssl3_get_message(SSL *ssl, int msg_type,
                       enum ssl_hash_message_t hash_message, int *ok);
 
 /* ssl3_hash_current_message incorporates the current handshake message into the
@@ -1156,8 +1155,8 @@ int dtls1_accept(SSL *ssl);
 int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-long dtls1_get_message(SSL *ssl, int st1, int stn, int mt,
-                       enum ssl_hash_message_t hash_message, int *ok);
+long dtls1_get_message(SSL *ssl, int mt, enum ssl_hash_message_t hash_message,
+                       int *ok);
 int dtls1_dispatch_alert(SSL *ssl);
 
 /* ssl_is_wbio_buffered returns one if |ssl|'s write BIO is buffered and zero
