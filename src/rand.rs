@@ -16,9 +16,6 @@
 
 #![allow(unsafe_code)]
 
-#[cfg(unix)]
-extern crate std;
-
 use c;
 use core;
 
@@ -31,16 +28,27 @@ pub trait SecureRandom {
 /// A secure random number generator where the random values come directly
 /// from the operating system.
 ///
-/// On "unix"-ish platforms, this is currently done by reading from
-/// `/dev/urandom`. A new file handle for `/dev/urandom/` is opened each time a
-/// `SystemRandom` is constructed and the file handle is closed each time.
+/// On non-Linux Unix-/Posix-ish platforms, `fill()` is currently always
+/// implemented by reading from `/dev/urandom`. (This is something that should
+/// be improved, at least for platforms that offer something better.)
 ///
-/// On other platforms, this is done using the platform's API for secure random
-/// number generation.
+/// On Linux, `fill()` will use the
+/// [`getrandom`](man7.org/linux/man-pages/man2/getrandom.2.html) syscall. If
+/// the kernel is too old to support `getrandom` then by default `fill()` falls
+/// back to reading from `/dev/urandom`. This decision is made the first time
+/// `fill` *succeeds*. The fallback to `/dev/urandom` can be disabled by
+/// disabling by enabling the *ring* crate's `disable_dev_urandom_fallback`
+/// feature; this should be done whenever the target system is known to support
+/// `getrandom`. Note that only application (binary) crates, and not library
+/// crates, should enable the `disable_dev_urandom_fallback` feature.
 ///
-/// For efficiency's sake, it is recommend to create a single SystemRandom and
-/// then use it for all randomness generation, especially if the
-/// /dev/urandom-based `SystemRandom` implementation may be used.
+/// On Windows, `fill` is implemented done using the platform's API for secure
+/// random number generation.
+///
+/// On Linux, to properly implement seccomp filtering when the
+/// `disable_dev_urandom_fallback` feature is enabled, allow `getrandom`
+/// through. Otherwise, allow file opening, `getrandom`, and `read` up until
+/// `fill()` succeeds. After that, allow `getrandom` and `read`.
 pub struct SystemRandom {
     impl_: Impl,
 }
@@ -60,13 +68,19 @@ impl SecureRandom for SystemRandom {
     }
 }
 
-#[cfg(unix)]
+#[cfg(not(any(target_os = "linux", windows)))]
 type Impl = self::urandom::DevURandom;
 
-#[cfg(windows)]
+#[cfg(any(all(target_os = "linux", feature = "disable_dev_urandom_fallback"),
+          windows))]
 type Impl = self::sysrand::Sysrand;
 
-#[cfg(unix)]
+#[cfg(all(target_os = "linux", not(feature = "disable_dev_urandom_fallback")))]
+type Impl = self::sysrand_or_urandom::SysRandOrDevURandom;
+
+#[cfg(all(unix,
+          not(all(target_os = "linux",
+                  feature = "disable_dev_urandom_fallback"))))]
 mod urandom {
     extern crate std;
 
@@ -92,9 +106,9 @@ mod urandom {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(target_os = "linux", windows))]
 mod sysrand {
-    use {bssl, c};
+    use bssl;
 
     pub struct Sysrand;
 
@@ -107,14 +121,70 @@ mod sysrand {
     impl super::SecureRandom for Sysrand {
         #[allow(unsafe_code)]
         fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
-            bssl::map_result(unsafe {
-                CRYPTO_sysrand(dest.as_mut_ptr(), dest.len())
-            })
+            for mut chunk in
+                    dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
+                try!(bssl::map_result(unsafe {
+                    super::CRYPTO_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
+                }));
+            }
+            Ok(())
+        }
+    }
+}
+
+#[cfg(all(target_os = "linux", not(feature = "disable_dev_urandom_fallback")))]
+mod sysrand_or_urandom {
+    use core;
+    use super::{sysrand, urandom};
+
+    pub enum SysRandOrDevURandom {
+        Undecided,
+        Sysrand(sysrand::Sysrand),
+        DevURandom(urandom::DevURandom),
+    }
+
+    impl SysRandOrDevURandom {
+        pub fn new() -> Result<SysRandOrDevURandom, ()> {
+            Ok(SysRandOrDevURandom::Undecided)
         }
     }
 
-    extern {
-        fn CRYPTO_sysrand(buf: *mut u8, len: c::size_t) -> c::int;
+    impl super::SecureRandom for SysRandOrDevURandom {
+        fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
+            match self {
+                &mut SysRandOrDevURandom::Sysrand(ref mut i) => i.fill(dest),
+                &mut SysRandOrDevURandom::DevURandom(ref mut i) => i.fill(dest),
+                &mut SysRandOrDevURandom::Undecided => {
+                    let first_chunk_len =
+                        core::cmp::min(dest.len(),
+                                       super::CRYPTO_sysrand_chunk_max_len);
+                    match unsafe {
+                        super::CRYPTO_sysrand_chunk(dest.as_mut_ptr(),
+                                                    first_chunk_len)
+                    } {
+                        1 => {
+                            let _ = core::mem::replace(self,
+                                SysRandOrDevURandom::Sysrand(
+                                    try!(sysrand::Sysrand::new())));
+                            if first_chunk_len < dest.len() {
+                                self.fill(&mut dest[first_chunk_len..])
+                            } else {
+                                Ok(())
+                            }
+                        },
+                        -1 => {
+                            let _ = core::mem::replace(self,
+                                SysRandOrDevURandom::DevURandom(
+                                    try!(urandom::DevURandom::new())));
+                            self.fill(dest)
+                        },
+                        _ => {
+                            Err(())
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -137,4 +207,11 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
         Ok(()) => 1,
         _ => 0
     }
+}
+
+
+#[cfg(any(target_os = "linux", windows))]
+extern {
+    pub static CRYPTO_sysrand_chunk_max_len: c::size_t;
+    pub fn CRYPTO_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
 }

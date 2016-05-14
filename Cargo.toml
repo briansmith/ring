@@ -30,6 +30,7 @@ features = ["bigint"]
 
 [features]
 # These features are documented in the top-level module's documentation.
+disable_dev_urandom_fallback = []
 no_heap = []
 test_logging = []
 
