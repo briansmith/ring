@@ -51,7 +51,7 @@
     <ClCompile Include="mem.c" />
     <ClCompile Include="modes\gcm.c" />
     <ClCompile Include="poly1305\poly1305.c" />
-    <ClCompile Include="rand\windows.c" />
+    <ClCompile Include="rand\sysrand.c" />
     <ClCompile Include="rsa\blinding.c" />
     <ClCompile Include="rsa\padding.c" />
     <ClCompile Include="rsa\rsa.c" />
