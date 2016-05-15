@@ -430,6 +430,10 @@ int dtls1_connect(SSL *ssl) {
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(ssl);
 
+	/* |init_buf| cannot be released because post-handshake retransmit
+         * relies on that buffer being available as scratch space.
+         *
+         * TODO(davidben): Fix this. */
         ssl->init_num = 0;
         ssl->s3->initial_handshake_complete = 1;
 
