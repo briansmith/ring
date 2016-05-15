@@ -168,6 +168,7 @@ int dtls1_connect(SSL *ssl) {
           ssl->init_buf = buf;
           buf = NULL;
         }
+        ssl->init_num = 0;
 
         if (!ssl_init_wbio_buffer(ssl)) {
           ret = -1;
@@ -175,7 +176,6 @@ int dtls1_connect(SSL *ssl) {
         }
 
         ssl->state = SSL3_ST_CW_CLNT_HELLO_A;
-        ssl->init_num = 0;
         ssl->d1->send_cookie = 0;
         ssl->hit = 0;
         break;
@@ -194,9 +194,6 @@ int dtls1_connect(SSL *ssl) {
           ssl->s3->tmp.next_state = DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
         }
         ssl->state = SSL3_ST_CW_FLUSH;
-
-        ssl->init_num = 0;
-
         break;
 
       case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A:
@@ -211,7 +208,6 @@ int dtls1_connect(SSL *ssl) {
         } else {
           ssl->state = SSL3_ST_CR_SRVR_HELLO_A;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_SRVR_HELLO_A:
@@ -229,7 +225,6 @@ int dtls1_connect(SSL *ssl) {
         } else {
           ssl->state = SSL3_ST_CR_CERT_A;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_CERT_A:
@@ -247,7 +242,6 @@ int dtls1_connect(SSL *ssl) {
           skip = 1;
           ssl->state = SSL3_ST_CR_KEY_EXCH_A;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_VERIFY_SERVER_CERT:
@@ -257,7 +251,6 @@ int dtls1_connect(SSL *ssl) {
         }
 
         ssl->state = SSL3_ST_CR_KEY_EXCH_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_KEY_EXCH_A:
@@ -270,7 +263,6 @@ int dtls1_connect(SSL *ssl) {
         } else {
           ssl->state = SSL3_ST_CR_SRVR_DONE_A;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:
@@ -279,7 +271,6 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_CR_SRVR_DONE_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_SRVR_DONE_A:
@@ -293,7 +284,6 @@ int dtls1_connect(SSL *ssl) {
         } else {
           ssl->s3->tmp.next_state = SSL3_ST_CW_KEY_EXCH_A;
         }
-        ssl->init_num = 0;
         ssl->state = ssl->s3->tmp.next_state;
         break;
 
@@ -307,7 +297,6 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_CW_KEY_EXCH_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CW_KEY_EXCH_A:
@@ -324,8 +313,6 @@ int dtls1_connect(SSL *ssl) {
         } else {
           ssl->state = SSL3_ST_CW_CHANGE_A;
         }
-
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CW_CERT_VRFY_A:
@@ -337,7 +324,6 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_CW_CHANGE_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CW_CHANGE_A:
@@ -352,7 +338,6 @@ int dtls1_connect(SSL *ssl) {
         }
 
         ssl->state = SSL3_ST_CW_FINISHED_A;
-        ssl->init_num = 0;
 
         if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
           ret = -1;
@@ -383,7 +368,6 @@ int dtls1_connect(SSL *ssl) {
             ssl->s3->tmp.next_state = SSL3_ST_CR_CHANGE;
           }
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_SESSION_TICKET_A:
@@ -392,7 +376,6 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_CR_CHANGE;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_CERT_STATUS_A:
@@ -401,7 +384,6 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_VERIFY_SERVER_CERT;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CR_CHANGE:
@@ -430,7 +412,6 @@ int dtls1_connect(SSL *ssl) {
           ssl->state = SSL_ST_OK;
         }
 
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_CW_FLUSH:

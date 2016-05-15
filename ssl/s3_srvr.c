@@ -262,7 +262,6 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_SW_SRVR_HELLO_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_SRVR_HELLO_A:
@@ -280,7 +279,6 @@ int ssl3_accept(SSL *ssl) {
         } else {
           ssl->state = SSL3_ST_SW_CERT_A;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CERT_A:
@@ -299,7 +297,6 @@ int ssl3_accept(SSL *ssl) {
           skip = 1;
           ssl->state = SSL3_ST_SW_KEY_EXCH_A;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CERT_STATUS_A:
@@ -309,7 +306,6 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_SW_KEY_EXCH_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_KEY_EXCH_A:
@@ -335,7 +331,6 @@ int ssl3_accept(SSL *ssl) {
         }
 
         ssl->state = SSL3_ST_SW_CERT_REQ_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CERT_REQ_A:
@@ -349,7 +344,6 @@ int ssl3_accept(SSL *ssl) {
           skip = 1;
         }
         ssl->state = SSL3_ST_SW_SRVR_DONE_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_SRVR_DONE_A:
@@ -360,7 +354,6 @@ int ssl3_accept(SSL *ssl) {
         }
         ssl->s3->tmp.next_state = SSL3_ST_SR_CERT_A;
         ssl->state = SSL3_ST_SW_FLUSH;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_FLUSH:
@@ -385,7 +378,6 @@ int ssl3_accept(SSL *ssl) {
             goto end;
           }
         }
-        ssl->init_num = 0;
         ssl->state = SSL3_ST_SR_KEY_EXCH_A;
         break;
 
@@ -396,7 +388,6 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_SR_CERT_VRFY_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SR_CERT_VRFY_A:
@@ -406,7 +397,6 @@ int ssl3_accept(SSL *ssl) {
         }
 
         ssl->state = SSL3_ST_SR_CHANGE;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SR_CHANGE:
@@ -434,7 +424,6 @@ int ssl3_accept(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->init_num = 0;
         if (ssl->s3->tlsext_channel_id_valid) {
           ssl->state = SSL3_ST_SR_CHANNEL_ID_A;
         } else {
@@ -447,7 +436,6 @@ int ssl3_accept(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->init_num = 0;
         ssl->state = SSL3_ST_SR_FINISHED_A;
         break;
 
@@ -473,7 +461,6 @@ int ssl3_accept(SSL *ssl) {
             goto end;
           }
         }
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_SESSION_TICKET_A:
@@ -483,7 +470,6 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_SW_CHANGE_A;
-        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CHANGE_A:
@@ -494,7 +480,6 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
         ssl->state = SSL3_ST_SW_FINISHED_A;
-        ssl->init_num = 0;
 
         if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
           ret = -1;
@@ -515,7 +500,6 @@ int ssl3_accept(SSL *ssl) {
         } else {
           ssl->s3->tmp.next_state = SSL_ST_OK;
         }
-        ssl->init_num = 0;
         break;
 
       case SSL_ST_OK:
@@ -524,11 +508,11 @@ int ssl3_accept(SSL *ssl) {
 
         BUF_MEM_free(ssl->init_buf);
         ssl->init_buf = NULL;
+        ssl->init_num = 0;
 
         /* remove buffering on output */
         ssl_free_wbio_buffer(ssl);
 
-        ssl->init_num = 0;
 
         /* If we aren't retaining peer certificates then we can discard it
          * now. */
