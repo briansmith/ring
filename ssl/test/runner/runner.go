@@ -5006,6 +5006,7 @@ var testCurves = []struct {
 	{"P-384", CurveP384},
 	{"P-521", CurveP521},
 	{"X25519", CurveX25519},
+	{"CECPQ1", CurveCECPQ1},
 }
 
 func addCurveTests() {

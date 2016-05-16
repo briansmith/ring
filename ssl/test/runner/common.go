@@ -103,6 +103,7 @@ const (
 	CurveP384   CurveID = 24
 	CurveP521   CurveID = 25
 	CurveX25519 CurveID = 29
+	CurveCECPQ1 CurveID = 65165
 )
 
 // TLS Elliptic Curve Point Formats

@@ -1209,7 +1209,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
           !BN_bn2cbb_padded(&child, BN_num_bytes(params->p), params->p) ||
           !CBB_add_u16_length_prefixed(&cbb, &child) ||
           !BN_bn2cbb_padded(&child, BN_num_bytes(params->g), params->g) ||
-          !CBB_add_u16_length_prefixed(&cbb, &child) ||
+          !SSL_ECDH_CTX_add_key(&ssl->s3->tmp.ecdh_ctx, &cbb, &child) ||
           !SSL_ECDH_CTX_offer(&ssl->s3->tmp.ecdh_ctx, &child)) {
         goto err;
       }
@@ -1227,7 +1227,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
       if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, curve_id) ||
           !CBB_add_u8(&cbb, NAMED_CURVE_TYPE) ||
           !CBB_add_u16(&cbb, curve_id) ||
-          !CBB_add_u8_length_prefixed(&cbb, &child) ||
+          !SSL_ECDH_CTX_add_key(&ssl->s3->tmp.ecdh_ctx, &cbb, &child) ||
           !SSL_ECDH_CTX_offer(&ssl->s3->tmp.ecdh_ctx, &child)) {
         goto err;
       }
@@ -1591,18 +1591,11 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
     OPENSSL_free(decrypt_buf);
     decrypt_buf = NULL;
   } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
-    /* Parse the ClientKeyExchange. ECDHE uses a u8 length prefix while DHE uses
-     * u16. */
+    /* Parse the ClientKeyExchange. */
     CBS peer_key;
-    int peer_key_ok;
-    if (alg_k & SSL_kECDHE) {
-      peer_key_ok = CBS_get_u8_length_prefixed(&client_key_exchange, &peer_key);
-    } else {
-      peer_key_ok =
-          CBS_get_u16_length_prefixed(&client_key_exchange, &peer_key);
-    }
-
-    if (!peer_key_ok || CBS_len(&client_key_exchange) != 0) {
+    if (!SSL_ECDH_CTX_get_key(&ssl->s3->tmp.ecdh_ctx, &client_key_exchange,
+                              &peer_key) ||
+        CBS_len(&client_key_exchange) != 0) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;

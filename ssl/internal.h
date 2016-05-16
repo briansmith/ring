@@ -533,6 +533,7 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 #define SSL_CURVE_SECP384R1 24
 #define SSL_CURVE_SECP521R1 25
 #define SSL_CURVE_X25519 29
+#define SSL_CURVE_CECPQ1 65165
 
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
@@ -567,6 +568,15 @@ struct ssl_ecdh_method_st {
   int (*finish)(SSL_ECDH_CTX *ctx, uint8_t **out_secret, size_t *out_secret_len,
                 uint8_t *out_alert, const uint8_t *peer_key,
                 size_t peer_key_len);
+
+  /* get_key initializes |out| with a length-prefixed key from |cbs|. It returns
+   * one on success and zero on error. */
+  int (*get_key)(CBS *cbs, CBS *out);
+
+  /* add_key initializes |out_contents| to receive a key. Typically it will then
+   * be passed to |offer| or |accept|. It returns one on success and zero on
+   * error. */
+  int (*add_key)(CBB *cbb, CBB *out_contents);
 } /* SSL_ECDH_METHOD */;
 
 /* ssl_nid_to_curve_id looks up the curve corresponding to |nid|. On success, it
@@ -585,6 +595,12 @@ void SSL_ECDH_CTX_init_for_dhe(SSL_ECDH_CTX *ctx, DH *params);
 /* SSL_ECDH_CTX_cleanup releases memory associated with |ctx|. It is legal to
  * call it in the zero state. */
 void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx);
+
+/* SSL_ECDH_CTX_get_key calls the |get_key| method of |SSL_ECDH_METHOD|. */
+int SSL_ECDH_CTX_get_key(SSL_ECDH_CTX *ctx, CBS *cbs, CBS *out);
+
+/* SSL_ECDH_CTX_add_key calls the |add_key| method of |SSL_ECDH_METHOD|. */
+int SSL_ECDH_CTX_add_key(SSL_ECDH_CTX *ctx, CBB *cbb, CBB *out_contents);
 
 /* SSL_ECDH_CTX_offer calls the |offer| method of |SSL_ECDH_METHOD|. */
 int SSL_ECDH_CTX_offer(SSL_ECDH_CTX *ctx, CBB *out_public_key);

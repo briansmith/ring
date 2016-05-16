@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"./curve25519"
+	"./newhope"
 )
 
 var errClientKeyExchange = errors.New("tls: invalid ClientKeyExchange message")
@@ -348,6 +349,66 @@ func (e *x25519ECDHCurve) finish(peerKey []byte) (preMasterSecret []byte, err er
 	return out[:], nil
 }
 
+// cecpq1Curve is combined elliptic curve (X25519) and post-quantum (new hope) key
+// agreement.
+type cecpq1Curve struct {
+	x25519  *x25519ECDHCurve
+	newhope *newhope.Poly
+}
+
+func (e *cecpq1Curve) offer(rand io.Reader) (publicKey []byte, err error) {
+	var x25519OfferMsg, newhopeOfferMsg []byte
+
+	e.x25519 = new(x25519ECDHCurve)
+	if x25519OfferMsg, err = e.x25519.offer(rand); err != nil {
+		return nil, err
+	}
+
+	newhopeOfferMsg, e.newhope = newhope.Offer(rand)
+
+	return append(x25519OfferMsg, newhopeOfferMsg[:]...), nil
+}
+
+func (e *cecpq1Curve) accept(rand io.Reader, peerKey []byte) (publicKey []byte, preMasterSecret []byte, err error) {
+	if len(peerKey) != 32+newhope.OfferMsgLen {
+		return nil, nil, errors.New("cecpq1: invalid offer message")
+	}
+
+	var x25519AcceptMsg, newhopeAcceptMsg []byte
+	var x25519Secret []byte
+	var newhopeSecret newhope.Key
+
+	x25519 := new(x25519ECDHCurve)
+	if x25519AcceptMsg, x25519Secret, err = x25519.accept(rand, peerKey[:32]); err != nil {
+		return nil, nil, err
+	}
+
+	if newhopeSecret, newhopeAcceptMsg, err = newhope.Accept(rand, peerKey[32:]); err != nil {
+		return nil, nil, err
+	}
+
+	return append(x25519AcceptMsg, newhopeAcceptMsg[:]...), append(x25519Secret, newhopeSecret[:]...), nil
+}
+
+func (e *cecpq1Curve) finish(peerKey []byte) (preMasterSecret []byte, err error) {
+	if len(peerKey) != 32+newhope.AcceptMsgLen {
+		return nil, errors.New("cecpq1: invalid accept message")
+	}
+
+	var x25519Secret []byte
+	var newhopeSecret newhope.Key
+
+	if x25519Secret, err = e.x25519.finish(peerKey[:32]); err != nil {
+		return nil, err
+	}
+
+	if newhopeSecret, err = e.newhope.Finish(peerKey[32:]); err != nil {
+		return nil, err
+	}
+
+	return append(x25519Secret, newhopeSecret[:]...), nil
+}
+
 func curveForCurveID(id CurveID) (ecdhCurve, bool) {
 	switch id {
 	case CurveP224:
@@ -360,6 +421,8 @@ func curveForCurveID(id CurveID) (ecdhCurve, bool) {
 		return &ellipticECDHCurve{curve: elliptic.P521()}, true
 	case CurveX25519:
 		return &x25519ECDHCurve{}, true
+	case CurveCECPQ1:
+		return &cecpq1Curve{}, true
 	default:
 		return nil, false
 	}
@@ -584,15 +647,19 @@ NextCandidate:
 	}
 
 	// http://tools.ietf.org/html/rfc4492#section-5.4
-	serverECDHParams := make([]byte, 1+2+1+len(publicKey))
-	serverECDHParams[0] = 3 // named curve
-	serverECDHParams[1] = byte(curveid >> 8)
-	serverECDHParams[2] = byte(curveid)
+	var serverECDHParams []byte
+	serverECDHParams = append(serverECDHParams, byte(3)) // named curve
+	serverECDHParams = append(serverECDHParams, byte(curveid>>8))
+	serverECDHParams = append(serverECDHParams, byte(curveid))
 	if config.Bugs.InvalidSKXCurve {
 		serverECDHParams[2] ^= 0xff
 	}
-	serverECDHParams[3] = byte(len(publicKey))
-	copy(serverECDHParams[4:], publicKey)
+	if curveid == CurveCECPQ1 {
+		// The larger key size requires an extra length byte.
+		serverECDHParams = append(serverECDHParams, byte(len(publicKey)>>8))
+	}
+	serverECDHParams = append(serverECDHParams, byte(len(publicKey)&0xff))
+	serverECDHParams = append(serverECDHParams, publicKey[:]...)
 	if config.Bugs.InvalidECDHPoint {
 		serverECDHParams[4] ^= 0xff
 	}
@@ -601,10 +668,21 @@ NextCandidate:
 }
 
 func (ka *ecdheKeyAgreement) processClientKeyExchange(config *Config, cert *Certificate, ckx *clientKeyExchangeMsg, version uint16) ([]byte, error) {
-	if len(ckx.ciphertext) == 0 || int(ckx.ciphertext[0]) != len(ckx.ciphertext)-1 {
+	if len(ckx.ciphertext) == 0 {
 		return nil, errClientKeyExchange
 	}
-	return ka.curve.finish(ckx.ciphertext[1:])
+	peerKeyLen := int(ckx.ciphertext[0])
+	offset := 1
+	if _, postQuantum := ka.curve.(*cecpq1Curve); postQuantum {
+		// The larger key size requires an extra length byte.
+		peerKeyLen = int(ckx.ciphertext[0])<<8 + int(ckx.ciphertext[1])
+		offset = 2
+	}
+	peerKey := ckx.ciphertext[offset:]
+	if peerKeyLen != len(peerKey) {
+		return nil, errClientKeyExchange
+	}
+	return ka.curve.finish(peerKey)
 }
 
 func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
@@ -622,15 +700,22 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 	}
 
 	publicLen := int(skx.key[3])
-	if publicLen+4 > len(skx.key) {
+	publicOffset := 4
+	if curveid == CurveCECPQ1 {
+		// The larger key size requires an extra length byte.
+		publicLen = int(skx.key[3])<<8 + int(skx.key[4])
+		publicOffset += 1
+	}
+
+	if publicLen+publicOffset > len(skx.key) {
 		return errServerKeyExchange
 	}
 	// Save the peer key for later.
-	ka.peerKey = skx.key[4 : 4+publicLen]
+	ka.peerKey = skx.key[publicOffset : publicOffset+publicLen]
 
 	// Check the signature.
-	serverECDHParams := skx.key[:4+publicLen]
-	sig := skx.key[4+publicLen:]
+	serverECDHParams := skx.key[:publicOffset+publicLen]
+	sig := skx.key[publicOffset+publicLen:]
 	return ka.auth.verifyParameters(config, clientHello, serverHello, cert, serverECDHParams, sig)
 }
 
@@ -645,12 +730,15 @@ func (ka *ecdheKeyAgreement) generateClientKeyExchange(config *Config, clientHel
 	}
 
 	ckx := new(clientKeyExchangeMsg)
-	ckx.ciphertext = make([]byte, 1+len(publicKey))
-	ckx.ciphertext[0] = byte(len(publicKey))
-	copy(ckx.ciphertext[1:], publicKey)
-	if config.Bugs.InvalidECDHPoint {
-		ckx.ciphertext[1] ^= 0xff
+	if _, postQuantum := ka.curve.(*cecpq1Curve); postQuantum {
+		// The larger key size requires an extra length byte.
+		ckx.ciphertext = append(ckx.ciphertext, byte(len(publicKey)>>8))
 	}
+	ckx.ciphertext = append(ckx.ciphertext, byte(len(publicKey)&0xff))
+	if config.Bugs.InvalidECDHPoint {
+		publicKey[0] ^= 0xff
+	}
+	ckx.ciphertext = append(ckx.ciphertext, publicKey[:]...)
 
 	return preMasterSecret, ckx, nil
 }
