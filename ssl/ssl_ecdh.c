@@ -35,7 +35,7 @@ static void ssl_ec_point_cleanup(SSL_ECDH_CTX *ctx) {
   BN_clear_free(private_key);
 }
 
-static int ssl_ec_point_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out) {
+static int ssl_ec_point_offer(SSL_ECDH_CTX *ctx, CBB *out) {
   assert(ctx->data == NULL);
   BIGNUM *private_key = BN_new();
   if (private_key == NULL) {
@@ -84,12 +84,9 @@ err:
   return ret;
 }
 
-static int ssl_ec_point_compute_secret(SSL_ECDH_CTX *ctx,
-                                       uint8_t **out_secret,
-                                       size_t *out_secret_len,
-                                       uint8_t *out_alert,
-                                       const uint8_t *peer_key,
-                                       size_t peer_key_len) {
+static int ssl_ec_point_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
+                               size_t *out_secret_len, uint8_t *out_alert,
+                               const uint8_t *peer_key, size_t peer_key_len) {
   BIGNUM *private_key = (BIGNUM *)ctx->data;
   assert(private_key != NULL);
   *out_alert = SSL_AD_INTERNAL_ERROR;
@@ -150,6 +147,18 @@ err:
   return ret;
 }
 
+static int ssl_ec_point_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
+                               uint8_t **out_secret, size_t *out_secret_len,
+                               uint8_t *out_alert, const uint8_t *peer_key,
+                               size_t peer_key_len) {
+  *out_alert = SSL_AD_INTERNAL_ERROR;
+  if (!ssl_ec_point_offer(ctx, out_public_key) ||
+      !ssl_ec_point_finish(ctx, out_secret, out_secret_len, out_alert, peer_key,
+                           peer_key_len)) {
+    return 0;
+  }
+  return 1;
+}
 
 /* X25119 implementation. */
 
@@ -161,7 +170,7 @@ static void ssl_x25519_cleanup(SSL_ECDH_CTX *ctx) {
   OPENSSL_free(ctx->data);
 }
 
-static int ssl_x25519_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out) {
+static int ssl_x25519_offer(SSL_ECDH_CTX *ctx, CBB *out) {
   assert(ctx->data == NULL);
 
   ctx->data = OPENSSL_malloc(32);
@@ -174,10 +183,9 @@ static int ssl_x25519_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out) {
   return CBB_add_bytes(out, public_key, sizeof(public_key));
 }
 
-static int ssl_x25519_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
-                                     size_t *out_secret_len, uint8_t *out_alert,
-                                     const uint8_t *peer_key,
-                                     size_t peer_key_len) {
+static int ssl_x25519_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
+                             size_t *out_secret_len, uint8_t *out_alert,
+                             const uint8_t *peer_key, size_t peer_key_len) {
   assert(ctx->data != NULL);
   *out_alert = SSL_AD_INTERNAL_ERROR;
 
@@ -199,6 +207,18 @@ static int ssl_x25519_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
   return 1;
 }
 
+static int ssl_x25519_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
+                             uint8_t **out_secret, size_t *out_secret_len,
+                             uint8_t *out_alert, const uint8_t *peer_key,
+                             size_t peer_key_len) {
+  *out_alert = SSL_AD_INTERNAL_ERROR;
+  if (!ssl_x25519_offer(ctx, out_public_key) ||
+      !ssl_x25519_finish(ctx, out_secret, out_secret_len, out_alert, peer_key,
+                         peer_key_len)) {
+    return 0;
+  }
+  return 1;
+}
 
 /* Legacy DHE-based implementation. */
 
@@ -206,7 +226,7 @@ static void ssl_dhe_cleanup(SSL_ECDH_CTX *ctx) {
   DH_free((DH *)ctx->data);
 }
 
-static int ssl_dhe_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out) {
+static int ssl_dhe_offer(SSL_ECDH_CTX *ctx, CBB *out) {
   DH *dh = (DH *)ctx->data;
   /* The group must have been initialized already, but not the key. */
   assert(dh != NULL);
@@ -218,10 +238,9 @@ static int ssl_dhe_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out) {
          BN_bn2cbb_padded(out, BN_num_bytes(dh->p), dh->pub_key);
 }
 
-static int ssl_dhe_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
-                                  size_t *out_secret_len, uint8_t *out_alert,
-                                  const uint8_t *peer_key,
-                                  size_t peer_key_len) {
+static int ssl_dhe_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
+                          size_t *out_secret_len, uint8_t *out_alert,
+                          const uint8_t *peer_key, size_t peer_key_len) {
   DH *dh = (DH *)ctx->data;
   assert(dh != NULL);
   assert(dh->priv_key != NULL);
@@ -257,13 +276,26 @@ err:
   return 0;
 }
 
+static int ssl_dhe_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
+                          uint8_t **out_secret, size_t *out_secret_len,
+                          uint8_t *out_alert, const uint8_t *peer_key,
+                          size_t peer_key_len) {
+  *out_alert = SSL_AD_INTERNAL_ERROR;
+  if (!ssl_dhe_offer(ctx, out_public_key) ||
+      !ssl_dhe_finish(ctx, out_secret, out_secret_len, out_alert, peer_key,
+                      peer_key_len)) {
+    return 0;
+  }
+  return 1;
+}
+
 static const SSL_ECDH_METHOD kDHEMethod = {
     NID_undef, 0, "",
     ssl_dhe_cleanup,
-    ssl_dhe_generate_keypair,
-    ssl_dhe_compute_secret,
+    ssl_dhe_offer,
+    ssl_dhe_accept,
+    ssl_dhe_finish,
 };
-
 
 static const SSL_ECDH_METHOD kMethods[] = {
     {
@@ -271,32 +303,36 @@ static const SSL_ECDH_METHOD kMethods[] = {
         SSL_CURVE_SECP256R1,
         "P-256",
         ssl_ec_point_cleanup,
-        ssl_ec_point_generate_keypair,
-        ssl_ec_point_compute_secret,
+        ssl_ec_point_offer,
+        ssl_ec_point_accept,
+        ssl_ec_point_finish,
     },
     {
         NID_secp384r1,
         SSL_CURVE_SECP384R1,
         "P-384",
         ssl_ec_point_cleanup,
-        ssl_ec_point_generate_keypair,
-        ssl_ec_point_compute_secret,
+        ssl_ec_point_offer,
+        ssl_ec_point_accept,
+        ssl_ec_point_finish,
     },
     {
         NID_secp521r1,
         SSL_CURVE_SECP521R1,
         "P-521",
         ssl_ec_point_cleanup,
-        ssl_ec_point_generate_keypair,
-        ssl_ec_point_compute_secret,
+        ssl_ec_point_offer,
+        ssl_ec_point_accept,
+        ssl_ec_point_finish,
     },
     {
         NID_X25519,
         SSL_CURVE_X25519,
         "X25519",
         ssl_x25519_cleanup,
-        ssl_x25519_generate_keypair,
-        ssl_x25519_compute_secret,
+        ssl_x25519_offer,
+        ssl_x25519_accept,
+        ssl_x25519_finish,
     },
 };
 
@@ -365,13 +401,21 @@ void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx) {
   ctx->data = NULL;
 }
 
-int SSL_ECDH_CTX_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out_public_key) {
-  return ctx->method->generate_keypair(ctx, out_public_key);
+int SSL_ECDH_CTX_offer(SSL_ECDH_CTX *ctx, CBB *out_public_key) {
+  return ctx->method->offer(ctx, out_public_key);
 }
 
-int SSL_ECDH_CTX_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
-                                size_t *out_secret_len, uint8_t *out_alert,
-                                const uint8_t *peer_key, size_t peer_key_len) {
-  return ctx->method->compute_secret(ctx, out_secret, out_secret_len, out_alert,
-                                     peer_key, peer_key_len);
+int SSL_ECDH_CTX_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
+                        uint8_t **out_secret, size_t *out_secret_len,
+                        uint8_t *out_alert, const uint8_t *peer_key,
+                        size_t peer_key_len) {
+  return ctx->method->accept(ctx, out_public_key, out_secret, out_secret_len,
+                             out_alert, peer_key, peer_key_len);
+}
+
+int SSL_ECDH_CTX_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
+                        size_t *out_secret_len, uint8_t *out_alert,
+                        const uint8_t *peer_key, size_t peer_key_len) {
+  return ctx->method->finish(ctx, out_secret, out_secret_len, out_alert,
+                             peer_key, peer_key_len);
 }
