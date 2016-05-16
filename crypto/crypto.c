@@ -131,6 +131,14 @@ int CRYPTO_is_confidential_build(void) {
 #endif
 }
 
+int CRYPTO_has_asm(void) {
+#if defined(OPENSSL_NO_ASM)
+  return 0;
+#else
+  return 1;
+#endif
+}
+
 const char *SSLeay_version(int unused) {
   return "BoringSSL";
 }

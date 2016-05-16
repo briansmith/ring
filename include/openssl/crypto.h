@@ -50,6 +50,10 @@ OPENSSL_EXPORT void CRYPTO_library_init(void);
  * internal version of BoringSSL. */
 OPENSSL_EXPORT int CRYPTO_is_confidential_build(void);
 
+/* CRYPTO_has_asm returns one unless BoringSSL was built with OPENSSL_NO_ASM,
+ * in which case it returns zero. */
+OPENSSL_EXPORT int CRYPTO_has_asm(void);
+
 
 /* Deprecated functions. */
 
