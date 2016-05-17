@@ -274,13 +274,12 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 		return nil, err
 	}
 
-	lineNo := 0
+	lineNo := 1
 	found := false
 	for i, line := range lines {
-		lineNo++
 		if line == cppGuard {
 			lines = lines[i+1:]
-			lineNo++
+			lineNo += i + 1
 			found = true
 			break
 		}
@@ -302,9 +301,9 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 	}
 
 	for i, line := range lines {
-		lineNo++
 		if len(line) > 0 {
 			lines = lines[i:]
+			lineNo += i
 			break
 		}
 	}
@@ -390,6 +389,7 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 			if len(lines) == 0 {
 				return nil, errors.New("expected decl at EOF")
 			}
+			declLineNo := lineNo
 			decl, lines, lineNo, err = extractDecl(lines, lineNo)
 			if err != nil {
 				return nil, err
@@ -409,12 +409,12 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				// detected by starting with “The” or “These”.
 				if len(comment) > 0 &&
 					!strings.HasPrefix(comment[0], name) &&
-					!strings.HasPrefix(comment[0], "A " + name) &&
-					!strings.HasPrefix(comment[0], "An " + name) &&
+					!strings.HasPrefix(comment[0], "A "+name) &&
+					!strings.HasPrefix(comment[0], "An "+name) &&
 					!strings.HasPrefix(decl, "#define ") &&
 					!strings.HasPrefix(comment[0], "The ") &&
 					!strings.HasPrefix(comment[0], "These ") {
-					return nil, fmt.Errorf("Comment for %q doesn't seem to match just above %s:%d\n", name, path, lineNo)
+					return nil, fmt.Errorf("Comment for %q doesn't seem to match line %s:%d\n", name, path, declLineNo)
 				}
 				anchor := sanitizeAnchor(name)
 				// TODO(davidben): Enforce uniqueness. This is
