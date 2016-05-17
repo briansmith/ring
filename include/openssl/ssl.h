@@ -4091,10 +4091,10 @@ typedef struct ssl3_state_st {
 
   /* recv_shutdown is the shutdown state for the receive half of the
    * connection. */
-  enum ssl_shutdown_t recv_shutdown : 2;
+  enum ssl_shutdown_t recv_shutdown;
 
   /* recv_shutdown is the shutdown state for the send half of the connection. */
-  enum ssl_shutdown_t send_shutdown : 2;
+  enum ssl_shutdown_t send_shutdown;
 
   int alert_dispatch;
   uint8_t send_alert[2];
