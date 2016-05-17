@@ -409,6 +409,8 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				// detected by starting with “The” or “These”.
 				if len(comment) > 0 &&
 					!strings.HasPrefix(comment[0], name) &&
+					!strings.HasPrefix(comment[0], "A " + name) &&
+					!strings.HasPrefix(comment[0], "An " + name) &&
 					!strings.HasPrefix(decl, "#define ") &&
 					!strings.HasPrefix(comment[0], "The ") &&
 					!strings.HasPrefix(comment[0], "These ") {
