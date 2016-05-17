@@ -1137,26 +1137,26 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
     ssl->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
   } else if (alg_k & SSL_kECDHE) {
     /* Parse the server parameters. */
-    uint8_t curve_type;
-    uint16_t curve_id;
+    uint8_t group_type;
+    uint16_t group_id;
     CBS point;
-    if (!CBS_get_u8(&server_key_exchange, &curve_type) ||
-        curve_type != NAMED_CURVE_TYPE ||
-        !CBS_get_u16(&server_key_exchange, &curve_id)) {
+    if (!CBS_get_u8(&server_key_exchange, &group_type) ||
+        group_type != NAMED_CURVE_TYPE ||
+        !CBS_get_u16(&server_key_exchange, &group_id)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
-    ssl->session->key_exchange_info = curve_id;
+    ssl->session->key_exchange_info = group_id;
 
-    /* Ensure the curve is consistent with preferences. */
-    if (!tls1_check_curve_id(ssl, curve_id)) {
+    /* Ensure the group is consistent with preferences. */
+    if (!tls1_check_group_id(ssl, group_id)) {
       al = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       goto f_err;
     }
 
-    if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, curve_id)) {
+    if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, group_id)) {
       goto err;
     }
     if (!SSL_ECDH_CTX_get_key(&ssl->s3->tmp.ecdh_ctx, &server_key_exchange,

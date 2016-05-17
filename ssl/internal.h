@@ -527,19 +527,19 @@ void ssl3_free_handshake_hash(SSL *ssl);
 int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 
 
-/* ECDH curves. */
+/* ECDH groups. */
 
-#define SSL_CURVE_SECP256R1 23
-#define SSL_CURVE_SECP384R1 24
-#define SSL_CURVE_SECP521R1 25
-#define SSL_CURVE_X25519 29
-#define SSL_CURVE_CECPQ1 65165
+#define SSL_GROUP_SECP256R1 23
+#define SSL_GROUP_SECP384R1 24
+#define SSL_GROUP_SECP521R1 25
+#define SSL_GROUP_X25519 29
+#define SSL_GROUP_CECPQ1 65165
 
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
 struct ssl_ecdh_method_st {
   int nid;
-  uint16_t curve_id;
+  uint16_t group_id;
   const char name[8];
 
   /* cleanup releases state in |ctx|. */
@@ -579,14 +579,14 @@ struct ssl_ecdh_method_st {
   int (*add_key)(CBB *cbb, CBB *out_contents);
 } /* SSL_ECDH_METHOD */;
 
-/* ssl_nid_to_curve_id looks up the curve corresponding to |nid|. On success, it
- * sets |*out_curve_id| to the curve ID and returns one. Otherwise, it returns
+/* ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
+ * sets |*out_group_id| to the group ID and returns one. Otherwise, it returns
  * zero. */
-int ssl_nid_to_curve_id(uint16_t *out_curve_id, int nid);
+int ssl_nid_to_group_id(uint16_t *out_group_id, int nid);
 
-/* SSL_ECDH_CTX_init sets up |ctx| for use with curve |curve_id|. It returns one
+/* SSL_ECDH_CTX_init sets up |ctx| for use with curve |group_id|. It returns one
  * on success and zero on error. */
-int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t curve_id);
+int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t group_id);
 
 /* SSL_ECDH_CTX_init_for_dhe sets up |ctx| for use with legacy DHE-based ciphers
  * where the server specifies a group. It takes ownership of |params|. */
@@ -1190,21 +1190,21 @@ int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 
-/* tls1_check_curve_id returns one if |curve_id| is consistent with both our
- * and the peer's curve preferences. Note: if called as the client, only our
+/* tls1_check_group_id returns one if |group_id| is consistent with both our
+ * and the peer's group preferences. Note: if called as the client, only our
  * preferences are checked; the peer (the server) does not send preferences. */
-int tls1_check_curve_id(SSL *ssl, uint16_t curve_id);
+int tls1_check_group_id(SSL *ssl, uint16_t group_id);
 
-/* tls1_get_shared_curve sets |*out_curve_id| to the first preferred shared
- * curve between client and server preferences and returns one. If none may be
+/* tls1_get_shared_group sets |*out_group_id| to the first preferred shared
+ * group between client and server preferences and returns one. If none may be
  * found, it returns zero. */
-int tls1_get_shared_curve(SSL *ssl, uint16_t *out_curve_id);
+int tls1_get_shared_group(SSL *ssl, uint16_t *out_group_id);
 
 /* tls1_set_curves converts the array of |ncurves| NIDs pointed to by |curves|
- * into a newly allocated array of TLS curve IDs. On success, the function
- * returns one and writes the array to |*out_curve_ids| and its size to
- * |*out_curve_ids_len|. Otherwise, it returns zero. */
-int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
+ * into a newly allocated array of TLS group IDs. On success, the function
+ * returns one and writes the array to |*out_group_ids| and its size to
+ * |*out_group_ids_len|. Otherwise, it returns zero. */
+int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
                     const int *curves, size_t ncurves);
 
 /* tls1_check_ec_cert returns one if |x| is an ECC certificate with curve and

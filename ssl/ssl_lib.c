@@ -341,7 +341,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
   sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   OPENSSL_free(ctx->psk_identity_hint);
-  OPENSSL_free(ctx->tlsext_ellipticcurvelist);
+  OPENSSL_free(ctx->supported_group_list);
   OPENSSL_free(ctx->alpn_client_proto_list);
   OPENSSL_free(ctx->ocsp_response);
   OPENSSL_free(ctx->signed_cert_timestamp_list);
@@ -403,14 +403,14 @@ SSL *SSL_new(SSL_CTX *ctx) {
   CRYPTO_refcount_inc(&ctx->references);
   ssl->initial_ctx = ctx;
 
-  if (ctx->tlsext_ellipticcurvelist) {
-    ssl->tlsext_ellipticcurvelist =
-        BUF_memdup(ctx->tlsext_ellipticcurvelist,
-                   ctx->tlsext_ellipticcurvelist_length * 2);
-    if (!ssl->tlsext_ellipticcurvelist) {
+  if (ctx->supported_group_list) {
+    ssl->supported_group_list =
+        BUF_memdup(ctx->supported_group_list,
+                   ctx->supported_group_list_len * 2);
+    if (!ssl->supported_group_list) {
       goto err;
     }
-    ssl->tlsext_ellipticcurvelist_length = ctx->tlsext_ellipticcurvelist_length;
+    ssl->supported_group_list_len = ctx->supported_group_list_len;
   }
 
   if (ssl->ctx->alpn_client_proto_list) {
@@ -499,7 +499,7 @@ void SSL_free(SSL *ssl) {
 
   OPENSSL_free(ssl->tlsext_hostname);
   SSL_CTX_free(ssl->initial_ctx);
-  OPENSSL_free(ssl->tlsext_ellipticcurvelist);
+  OPENSSL_free(ssl->supported_group_list);
   OPENSSL_free(ssl->alpn_client_proto_list);
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
   OPENSSL_free(ssl->psk_identity_hint);
@@ -1705,7 +1705,7 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
       mask_a |= SSL_aRSA;
     } else if (ssl_private_key_type(ssl) == EVP_PKEY_EC) {
       /* An ECC certificate may be usable for ECDSA cipher suites depending on
-       * the key usage extension and on the client's curve preferences. */
+       * the key usage extension and on the client's group preferences. */
       X509 *x = ssl->cert->x509;
       /* This call populates extension flags (ex_flags). */
       X509_check_purpose(x, -1, 0);
@@ -1722,9 +1722,9 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
     mask_k |= SSL_kDHE;
   }
 
-  /* Check for a shared curve to consider ECDHE ciphers. */
+  /* Check for a shared group to consider ECDHE ciphers. */
   uint16_t unused;
-  if (tls1_get_shared_curve(ssl, &unused)) {
+  if (tls1_get_shared_group(ssl, &unused)) {
     mask_k |= SSL_kECDHE;
   }
 

@@ -451,7 +451,7 @@ static const SSL_ECDH_METHOD kDHEMethod = {
 static const SSL_ECDH_METHOD kMethods[] = {
     {
         NID_X9_62_prime256v1,
-        SSL_CURVE_SECP256R1,
+        SSL_GROUP_SECP256R1,
         "P-256",
         ssl_ec_point_cleanup,
         ssl_ec_point_offer,
@@ -462,7 +462,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_secp384r1,
-        SSL_CURVE_SECP384R1,
+        SSL_GROUP_SECP384R1,
         "P-384",
         ssl_ec_point_cleanup,
         ssl_ec_point_offer,
@@ -473,7 +473,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_secp521r1,
-        SSL_CURVE_SECP521R1,
+        SSL_GROUP_SECP521R1,
         "P-521",
         ssl_ec_point_cleanup,
         ssl_ec_point_offer,
@@ -484,7 +484,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_X25519,
-        SSL_CURVE_X25519,
+        SSL_GROUP_X25519,
         "X25519",
         ssl_x25519_cleanup,
         ssl_x25519_offer,
@@ -495,7 +495,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_cecpq1,
-        SSL_CURVE_CECPQ1,
+        SSL_GROUP_CECPQ1,
         "CECPQ1",
         ssl_cecpq1_cleanup,
         ssl_cecpq1_offer,
@@ -506,10 +506,10 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
 };
 
-static const SSL_ECDH_METHOD *method_from_curve_id(uint16_t curve_id) {
+static const SSL_ECDH_METHOD *method_from_group_id(uint16_t group_id) {
   size_t i;
   for (i = 0; i < sizeof(kMethods) / sizeof(kMethods[0]); i++) {
-    if (kMethods[i].curve_id == curve_id) {
+    if (kMethods[i].group_id == group_id) {
       return &kMethods[i];
     }
   }
@@ -526,27 +526,27 @@ static const SSL_ECDH_METHOD *method_from_nid(int nid) {
   return NULL;
 }
 
-const char* SSL_get_curve_name(uint16_t curve_id) {
-  const SSL_ECDH_METHOD *method = method_from_curve_id(curve_id);
+const char* SSL_get_curve_name(uint16_t group_id) {
+  const SSL_ECDH_METHOD *method = method_from_group_id(group_id);
   if (method == NULL) {
     return NULL;
   }
   return method->name;
 }
 
-int ssl_nid_to_curve_id(uint16_t *out_curve_id, int nid) {
+int ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {
   const SSL_ECDH_METHOD *method = method_from_nid(nid);
   if (method == NULL) {
     return 0;
   }
-  *out_curve_id = method->curve_id;
+  *out_group_id = method->group_id;
   return 1;
 }
 
-int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t curve_id) {
+int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t group_id) {
   SSL_ECDH_CTX_cleanup(ctx);
 
-  const SSL_ECDH_METHOD *method = method_from_curve_id(curve_id);
+  const SSL_ECDH_METHOD *method = method_from_group_id(group_id);
   if (method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
     return 0;

@@ -1214,19 +1214,19 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
         goto err;
       }
     } else if (alg_k & SSL_kECDHE) {
-      /* Determine the curve to use. */
-      uint16_t curve_id;
-      if (!tls1_get_shared_curve(ssl, &curve_id)) {
+      /* Determine the group to use. */
+      uint16_t group_id;
+      if (!tls1_get_shared_group(ssl, &group_id)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_ECDH_KEY);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
       }
-      ssl->session->key_exchange_info = curve_id;
+      ssl->session->key_exchange_info = group_id;
 
       /* Set up ECDH, generate a key, and emit the public half. */
-      if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, curve_id) ||
+      if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, group_id) ||
           !CBB_add_u8(&cbb, NAMED_CURVE_TYPE) ||
-          !CBB_add_u16(&cbb, curve_id) ||
+          !CBB_add_u16(&cbb, group_id) ||
           !SSL_ECDH_CTX_add_key(&ssl->s3->tmp.ecdh_ctx, &cbb, &child) ||
           !SSL_ECDH_CTX_offer(&ssl->s3->tmp.ecdh_ctx, &child)) {
         goto err;

@@ -220,7 +220,7 @@ void ssl3_free(SSL *ssl) {
 
   sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
   OPENSSL_free(ssl->s3->tmp.certificate_types);
-  OPENSSL_free(ssl->s3->tmp.peer_ellipticcurvelist);
+  OPENSSL_free(ssl->s3->tmp.peer_supported_group_list);
   OPENSSL_free(ssl->s3->tmp.peer_psk_identity_hint);
   ssl3_free_handshake_buffer(ssl);
   ssl3_free_handshake_hash(ssl);
@@ -382,14 +382,14 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
 }
 
 int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves, size_t curves_len) {
-  return tls1_set_curves(&ctx->tlsext_ellipticcurvelist,
-                         &ctx->tlsext_ellipticcurvelist_length, curves,
+  return tls1_set_curves(&ctx->supported_group_list,
+                         &ctx->supported_group_list_len, curves,
                          curves_len);
 }
 
 int SSL_set1_curves(SSL *ssl, const int *curves, size_t curves_len) {
-  return tls1_set_curves(&ssl->tlsext_ellipticcurvelist,
-                         &ssl->tlsext_ellipticcurvelist_length, curves,
+  return tls1_set_curves(&ssl->supported_group_list,
+                         &ssl->supported_group_list_len, curves,
                          curves_len);
 }
 
