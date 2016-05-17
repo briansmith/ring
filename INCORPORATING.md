@@ -46,6 +46,11 @@ and
 [test](https://code.google.com/p/chromium/codesearch#chromium/src/third_party/boringssl/BUILD.generated_tests.gni)
 lists generated for GN in Chromium.
 
+Generally one checks in these generated files alongside the hand-written build
+files. Periodically an engineer updates the BoringSSL revision, regenerates
+these files and checks in the updated result. As an example, see how this is
+done [in Chromium](https://code.google.com/p/chromium/codesearch#chromium/src/third_party/boringssl/).
+
 ## Defines
 
 BoringSSL does not present a lot of configurability in order to reduce the
