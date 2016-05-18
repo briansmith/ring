@@ -26,11 +26,19 @@ aarch64-unknown-linux-gnu)
 arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
+arm-linux-androideabi)
+  # install the android sdk/ndk
+  mk/travis-install-android.sh
+
+  export PATH=$HOME/android/android-18-arm-linux-androideabi-4.8/bin:$PATH
+  export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
+  export PATH=$HOME/android/android-sdk-linux/tools:$PATH
+  ;;
 *)
   ;;
 esac
 
-if [[  "$TARGET_X" =~ ^(arm|aarch64) ]]; then
+if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
   # We need a newer QEMU than Travis has.
   # sudo is needed until the PPA and its packages are whitelisted.
   # See https://github.com/travis-ci/apt-source-whitelist/issues/271
@@ -59,9 +67,32 @@ make --version
 cargo version
 rustc --version
 
-if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
+if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then
+  mode=--release
+  target_dir=target/$TARGET_X/release
+else
+  target_dir=target/$TARGET_X/debug
+fi
 
-CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
+case $TARGET_X in
+arm-linux-androideabi)
+  CC=$CC_X CXX=$CXX_X cargo test -j2 --no-run ${mode-} --verbose --target=$TARGET_X
+  emulator @arm-18 -no-skin -no-boot-anim -no-audio -no-window &
+  adb wait-for-device
+  adb push $target_dir/ring-* /data/ring-test
+  for testfile in `find src crypto -name "*_test*.txt"`; do
+    adb shell mkdir -p /data/`dirname $testfile`
+    adb push $testfile /data/$testfile
+  done
+  adb shell mkdir -p /data/third-party/NIST
+  adb push third-party/NIST/SHAVS /data/third-party/NIST/SHAVS
+  adb shell  'cd /data && ./ring-test' 2>&1 | tee /tmp/ring-test
+  grep "test result: ok" /tmp/ring-test
+  ;;
+*)
+  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
+  ;;
+esac
 
 if [[ "$KCOV" == "1" ]]; then
   # kcov reports coverage as a percentage of code *linked into the executable*
