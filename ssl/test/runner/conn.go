@@ -1297,6 +1297,11 @@ func (c *Conn) Close() error {
 			alert = c.config.Bugs.SendAlertOnShutdown
 		}
 		alertErr = c.sendAlert(alert)
+		// Clear local alerts when sending alerts so we continue to wait
+		// for the peer rather than closing the socket early.
+		if opErr, ok := alertErr.(*net.OpError); ok && opErr.Op == "local error" {
+			alertErr = nil
+		}
 	}
 
 	// Consume a close_notify from the peer if one hasn't been received
