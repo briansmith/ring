@@ -14,6 +14,7 @@
 
 //! Cryptographic psuedo-random number generation.
 
+
 #![allow(unsafe_code)]
 
 use c;
@@ -27,6 +28,13 @@ pub trait SecureRandom {
 
 /// A secure random number generator where the random values come directly
 /// from the operating system.
+///
+/// `new()` is guaranteed to always succeed and to have low latency; it won't
+/// try to open or read from a file or do similar things. The first call to
+/// `fill()` may block a substantial amount of time since any and all
+/// initialization is deferred to it. Therefore, it may be a good idea to call
+/// `fill()` once at a non-latency-sensitive time to minimize latency for
+/// future calls.
 ///
 /// On non-Linux Unix-/Posix-ish platforms, `fill()` is currently always
 /// implemented by reading from `/dev/urandom`. (This is something that should
@@ -45,6 +53,13 @@ pub trait SecureRandom {
 /// On Windows, `fill` is implemented done using the platform's API for secure
 /// random number generation.
 ///
+/// When `/dev/urandom` is used, a file handle for `/dev/urandom` won't be
+/// opened until `fill` is called. In particular, `SystemRandom::new()` will
+/// not open `/dev/urandom` or do other potentially-high-latency things. Once
+/// the file handle is opened by `fill()`, it won't be closed until the
+/// `SystemRandom` is destroyed. Each instance of `SystemRandom` will have its
+/// own file handle.
+///
 /// On Linux, to properly implement seccomp filtering when the
 /// `disable_dev_urandom_fallback` feature is enabled, allow `getrandom`
 /// through. Otherwise, allow file opening, `getrandom`, and `read` up until
@@ -56,8 +71,8 @@ pub struct SystemRandom {
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
-    pub fn new() -> Result<SystemRandom, ()> {
-        Ok(SystemRandom { impl_: try!(Impl::new()) })
+    pub fn new() -> SystemRandom {
+        SystemRandom { impl_: Impl::new() }
     }
 }
 
@@ -82,26 +97,32 @@ type Impl = self::sysrand_or_urandom::SysRandOrDevURandom;
           not(all(target_os = "linux",
                   feature = "disable_dev_urandom_fallback"))))]
 mod urandom {
+    use core;
     extern crate std;
 
-    pub struct DevURandom {
-        file: std::fs::File,
+    pub enum DevURandom {
+        Unopened,
+        Opened(std::fs::File),
     }
 
     impl DevURandom {
-        pub fn new() -> Result<DevURandom, ()> {
-            // std::fs::File::open opens the file with close-on-exec semantics
-            // whenever possible.
-            Ok(DevURandom {
-                file: try!(std::fs::File::open("/dev/urandom").map_err(|_| ())),
-            })
-        }
+        pub fn new() -> DevURandom { DevURandom::Unopened }
     }
 
     impl super::SecureRandom for DevURandom {
         fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
             use self::std::io::Read;
-            self.file.read_exact(dest).map_err(|_| ())
+            match self {
+                &mut DevURandom::Opened(ref mut file) =>
+                    file.read_exact(dest).map_err(|_| ()),
+                &mut DevURandom::Unopened => {
+                    let _ = core::mem::replace(self,
+                        DevURandom::Opened(
+                            try!(std::fs::File::open("/dev/urandom")
+                                    .map_err(|_| ()))));
+                    self.fill(dest)
+                }
+            }
         }
     }
 }
@@ -113,8 +134,8 @@ mod sysrand {
     pub struct Sysrand;
 
     impl Sysrand {
-        pub fn new() -> Result<Sysrand, ()> {
-            Ok(Sysrand)
+        pub fn new() -> Sysrand {
+            Sysrand
         }
     }
 
@@ -144,8 +165,8 @@ mod sysrand_or_urandom {
     }
 
     impl SysRandOrDevURandom {
-        pub fn new() -> Result<SysRandOrDevURandom, ()> {
-            Ok(SysRandOrDevURandom::Undecided)
+        pub fn new() -> SysRandOrDevURandom {
+            SysRandOrDevURandom::Undecided
         }
     }
 
@@ -165,7 +186,7 @@ mod sysrand_or_urandom {
                         1 => {
                             let _ = core::mem::replace(self,
                                 SysRandOrDevURandom::Sysrand(
-                                    try!(sysrand::Sysrand::new())));
+                                    sysrand::Sysrand::new()));
                             if first_chunk_len < dest.len() {
                                 self.fill(&mut dest[first_chunk_len..])
                             } else {
@@ -175,7 +196,7 @@ mod sysrand_or_urandom {
                         -1 => {
                             let _ = core::mem::replace(self,
                                 SysRandOrDevURandom::DevURandom(
-                                    try!(urandom::DevURandom::new())));
+                                    urandom::DevURandom::new()));
                             self.fill(dest)
                         },
                         _ => {

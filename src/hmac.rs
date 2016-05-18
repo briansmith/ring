@@ -340,7 +340,7 @@ mod tests {
     // completely wacky.
     #[test]
     pub fn hmac_signing_key_coverage() {
-        let mut rng = rand::SystemRandom::new().unwrap();
+        let mut rng = rand::SystemRandom::new();
 
         const HELLO_WORLD_GOOD: &'static [u8] = b"hello, world";
         const HELLO_WORLD_BAD:  &'static [u8] = b"hello, worle";
