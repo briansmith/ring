@@ -236,3 +236,51 @@ extern {
     pub static CRYPTO_sysrand_chunk_max_len: c::size_t;
     pub fn CRYPTO_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
 }
+
+#[cfg(test)]
+mod tests {
+    use rand;
+    use rand::SecureRandom;
+    extern crate std;
+
+    #[test]
+    fn test_system_random_lengths() {
+        // Test that `fill` succeeds for various interesting lengths. `256` and
+        // multiples thereof are interesting because that's an edge case for
+        // `getrandom` on Linux.
+        let lengths = [0, 1, 2, 3, 96, 255, 256, 257, 511, 512, 513, 4096];
+
+        for len in lengths.iter() {
+            let mut buf = std::vec::Vec::with_capacity(*len);
+            for _ in 0..*len {
+                buf.push(0);
+            }
+
+            let mut rng = rand::SystemRandom::new();
+            assert!(rng.fill(&mut buf).is_ok());
+
+            // If `len` < 96 then there's a big chance of false positives, but
+            // otherwise the likelihood of a false positive is so too low to
+            // worry about.
+            if *len >= 96 {
+                assert!(buf.iter().any(|x| *x != 0));
+            }
+
+            // Make sure we didn't forget to finish filling in the rest of the
+            // buffer after we filled in the first chunk, especially in the
+            // case in the `SysRandOrDevURandom::Undecided` case.
+            if *len > max_chunk_len() {
+                assert!(buf[max_chunk_len()..].iter().any(|x| *x != 0));
+            }
+        }
+    }
+
+    #[cfg(any(target_os = "linux", windows))]
+    fn max_chunk_len() -> usize { super::CRYPTO_sysrand_chunk_max_len }
+
+    #[cfg(not(any(target_os = "linux", windows)))]
+    fn max_chunk_len() -> usize {
+        use core;
+        core::usize::MAX
+    }
+}
