@@ -543,6 +543,6 @@ matrix:
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ MODE_X=DEBUG KCOV=0
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ MODE_X=RELWITHDEBINFO KCOV=0
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG KCOV=0
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
 
 script: if [[ "$TARGET_X" == "arm-unknown-linux-gnueabihf" ]]; then travis_wait 60 mk/travis.sh; else mk/travis.sh; fi
