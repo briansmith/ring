@@ -362,8 +362,6 @@ OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
  *
  * Memory BIOs support |BIO_gets| and |BIO_puts|.
  *
- * |BIO_eof| is true if no data is in the BIO.
- *
  * |BIO_ctrl_pending| returns the number of bytes currently stored. */
 
 /* BIO_s_mem returns a |BIO_METHOD| that uses a in-memory buffer. */
@@ -420,12 +418,7 @@ OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);
  * underlying file descriptor when the BIO is freed.
  *
  * |BIO_reset| attempts to seek the file pointer to the start of file using
- * |lseek|.
- *
- * |BIO_seek| sets the file pointer to position |off| from start of file using
- * |lseek|.
- *
- * |BIO_tell| returns the current file position. */
+ * |lseek|. */
 
 /* BIO_s_fd returns a |BIO_METHOD| for file descriptor fds. */
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_fd(void);
@@ -459,11 +452,6 @@ OPENSSL_EXPORT int BIO_get_fd(BIO *bio, int *out_fd);
  *
  * |BIO_reset| attempts to seek the file pointer to the start of file using
  * |fseek|.
- *
- * |BIO_seek| sets the file pointer to the given position from the start of
- * file using |fseek|.
- *
- * |BIO_eof| calls |feof|.
  *
  * Setting the close flag causes |fclose| to be called on the stream when the
  * BIO is freed. */
