@@ -20,7 +20,7 @@
 //! <tr><th>Feature
 //!     <th>Description
 //! <tr><td><code>disable_dev_urandom_fallback</code>
-//!     <td><p>On Linux, by default, `ring::rand::SystemRandom` will fall back
+//!     <td>On Linux, by default, `ring::rand::SystemRandom` will fall back
 //!         to reading from `/dev/urandom` if the `getrandom()` syscall isn't
 //!         supported at runtime. When the `disable_dev_urandom_fallback`
 //!         feature is enabled, such fallback will not occur. See the
