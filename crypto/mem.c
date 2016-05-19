@@ -147,8 +147,6 @@ uint32_t OPENSSL_hash32(const void *ptr, size_t len) {
   return h;
 }
 
-char *OPENSSL_strdup(const char *s) { return strdup(s); }
-
 size_t OPENSSL_strnlen(const char *s, size_t len) {
   size_t i;
 
@@ -163,6 +161,8 @@ size_t OPENSSL_strnlen(const char *s, size_t len) {
 
 #if defined(OPENSSL_WINDOWS)
 
+char *OPENSSL_strdup(const char *s) { return _strdup(s); }
+
 int OPENSSL_strcasecmp(const char *a, const char *b) {
   return _stricmp(a, b);
 }
@@ -172,6 +172,8 @@ int OPENSSL_strncasecmp(const char *a, const char *b, size_t n) {
 }
 
 #else
+
+char *OPENSSL_strdup(const char *s) { return strdup(s); }
 
 int OPENSSL_strcasecmp(const char *a, const char *b) {
   return strcasecmp(a, b);

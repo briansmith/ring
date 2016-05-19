@@ -152,7 +152,11 @@ int main(int argc, char **argv) {
       case 1:
         s = rand_string();
         lh_insert(lh, (void **)&s1, s);
+#if defined(OPENSSL_WINDOWS)
+        dummy_lh_insert(&dummy_lh, &s2, _strdup(s));
+#else
         dummy_lh_insert(&dummy_lh, &s2, strdup(s));
+#endif
 
         if (s1 != NULL && (s2 == NULL || strcmp(s1, s2) != 0)) {
           fprintf(stderr, "lh_insert failure\n");

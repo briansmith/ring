@@ -74,8 +74,6 @@ elseif(MSVC)
       "C4800" # 'int' : forcing value to bool 'true' or 'false'
               # (performance warning)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
-      "C4996" # 'read': The POSIX name for this item is deprecated. Instead,
-              # use the ISO C++ conformant name: _read.
       "C5027" # move assignment operator was implicitly defined as deleted
       )
   set(MSVC_LEVEL4_WARNINGS_LIST
@@ -91,6 +89,7 @@ elseif(MSVC)
   add_definitions(-D_HAS_EXCEPTIONS=0)
   add_definitions(-DWIN32_LEAN_AND_MEAN)
   add_definitions(-DNOMINMAX)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS) # Allow use of fopen
 endif()
 
 if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR

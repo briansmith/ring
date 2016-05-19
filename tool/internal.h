@@ -34,6 +34,20 @@
 #pragma warning(pop)
 #endif
 
+#if defined(OPENSSL_WINDOWS)
+  #define BORINGSSL_OPEN _open
+  #define BORINGSSL_FDOPEN _fdopen
+  #define BORINGSSL_CLOSE _close
+  #define BORINGSSL_READ _read
+  #define BORINGSSL_WRITE _write
+#else
+  #define BORINGSSL_OPEN open
+  #define BORINGSSL_FDOPEN fdopen
+  #define BORINGSSL_CLOSE close
+  #define BORINGSSL_READ read
+  #define BORINGSSL_WRITE write
+#endif
+
 enum ArgumentType {
   kRequiredArgument,
   kOptionalArgument,

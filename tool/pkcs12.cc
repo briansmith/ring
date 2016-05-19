@@ -64,7 +64,7 @@ bool DoPKCS12(const std::vector<std::string> &args) {
     return false;
   }
 
-  int fd = open(args_map["-dump"].c_str(), O_RDONLY);
+  int fd = BORINGSSL_OPEN(args_map["-dump"].c_str(), O_RDONLY);
   if (fd < 0) {
     perror("open");
     return false;
@@ -73,7 +73,7 @@ bool DoPKCS12(const std::vector<std::string> &args) {
   struct stat st;
   if (fstat(fd, &st)) {
     perror("fstat");
-    close(fd);
+    BORINGSSL_CLOSE(fd);
     return false;
   }
   const size_t size = st.st_size;
@@ -82,7 +82,7 @@ bool DoPKCS12(const std::vector<std::string> &args) {
   read_result_t n;
   size_t off = 0;
   do {
-    n = read(fd, &contents[off], size - off);
+    n = BORINGSSL_READ(fd, &contents[off], size - off);
     if (n >= 0) {
       off += static_cast<size_t>(n);
     }
@@ -90,11 +90,11 @@ bool DoPKCS12(const std::vector<std::string> &args) {
 
   if (off != size) {
     perror("read");
-    close(fd);
+    BORINGSSL_CLOSE(fd);
     return false;
   }
 
-  close(fd);
+  BORINGSSL_CLOSE(fd);
 
   printf("Enter password: ");
   fflush(stdout);
@@ -102,7 +102,7 @@ bool DoPKCS12(const std::vector<std::string> &args) {
   char password[256];
   off = 0;
   do {
-    n = read(0, &password[off], sizeof(password) - 1 - off);
+    n = BORINGSSL_READ(0, &password[off], sizeof(password) - 1 - off);
     if (n >= 0) {
       off += static_cast<size_t>(n);
     }

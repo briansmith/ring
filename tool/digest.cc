@@ -46,7 +46,7 @@ typedef int ssize_t;
 
 struct close_delete {
   void operator()(int *fd) {
-    close(*fd);
+    BORINGSSL_CLOSE(*fd);
   }
 };
 
@@ -83,7 +83,7 @@ static const char kStdinName[] = "standard input";
 static bool OpenFile(int *out_fd, const std::string &filename) {
   *out_fd = -1;
 
-  int fd = open(filename.c_str(), O_RDONLY | O_BINARY);
+  int fd = BORINGSSL_OPEN(filename.c_str(), O_RDONLY | O_BINARY);
   if (fd < 0) {
     fprintf(stderr, "Failed to open input file '%s': %s\n", filename.c_str(),
             strerror(errno));
@@ -146,7 +146,7 @@ static bool SumFile(std::string *out_hex, const EVP_MD *md,
     ssize_t n;
 
     do {
-      n = read(fd, buf.get(), kBufSize);
+      n = BORINGSSL_READ(fd, buf.get(), kBufSize);
     } while (n == -1 && errno == EINTR);
 
     if (n == 0) {
@@ -234,10 +234,10 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
       return false;
     }
 
-    file = fdopen(fd, "rb");
+    file = BORINGSSL_FDOPEN(fd, "rb");
     if (!file) {
       perror("fdopen");
-      close(fd);
+      BORINGSSL_CLOSE(fd);
       return false;
     }
 

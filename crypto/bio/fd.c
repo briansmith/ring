@@ -108,20 +108,25 @@ static int bio_fd_non_fatal_error(int err) {
 }
 
 #if defined(OPENSSL_WINDOWS)
-int bio_fd_should_retry(int i) {
-  if (i == -1) {
-    return bio_fd_non_fatal_error((int)GetLastError());
-  }
-  return 0;
-}
+  #define BORINGSSL_ERRNO (int)GetLastError()
+  #define BORINGSSL_CLOSE _close
+  #define BORINGSSL_LSEEK _lseek
+  #define BORINGSSL_READ _read
+  #define BORINGSSL_WRITE _write
 #else
+  #define BORINGSSL_ERRNO errno
+  #define BORINGSSL_CLOSE close
+  #define BORINGSSL_LSEEK lseek
+  #define BORINGSSL_READ read
+  #define BORINGSSL_WRITE write
+#endif
+
 int bio_fd_should_retry(int i) {
   if (i == -1) {
-    return bio_fd_non_fatal_error(errno);
+    return bio_fd_non_fatal_error(BORINGSSL_ERRNO);
   }
   return 0;
 }
-#endif
 
 BIO *BIO_new_fd(int fd, int close_flag) {
   BIO *ret = BIO_new(BIO_s_fd());
@@ -145,7 +150,7 @@ static int fd_free(BIO *bio) {
 
   if (bio->shutdown) {
     if (bio->init) {
-      close(bio->num);
+      BORINGSSL_CLOSE(bio->num);
     }
     bio->init = 0;
   }
@@ -155,7 +160,7 @@ static int fd_free(BIO *bio) {
 static int fd_read(BIO *b, char *out, int outl) {
   int ret = 0;
 
-  ret = read(b->num, out, outl);
+  ret = BORINGSSL_READ(b->num, out, outl);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
     if (bio_fd_should_retry(ret)) {
@@ -167,7 +172,7 @@ static int fd_read(BIO *b, char *out, int outl) {
 }
 
 static int fd_write(BIO *b, const char *in, int inl) {
-  int ret = write(b->num, in, inl);
+  int ret = BORINGSSL_WRITE(b->num, in, inl);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
     if (bio_fd_should_retry(ret)) {
@@ -188,14 +193,14 @@ static long fd_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_C_FILE_SEEK:
       ret = 0;
       if (b->init) {
-        ret = (long)lseek(b->num, num, SEEK_SET);
+        ret = (long)BORINGSSL_LSEEK(b->num, num, SEEK_SET);
       }
       break;
     case BIO_C_FILE_TELL:
     case BIO_CTRL_INFO:
       ret = 0;
       if (b->init) {
-        ret = (long)lseek(b->num, 0, SEEK_CUR);
+        ret = (long)BORINGSSL_LSEEK(b->num, 0, SEEK_CUR);
       }
       break;
     case BIO_C_SET_FD:

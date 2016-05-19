@@ -265,7 +265,7 @@ bool TransferData(SSL *ssl, int sock) {
       ssize_t n;
 
       do {
-        n = read(0, buffer, sizeof(buffer));
+        n = BORINGSSL_READ(0, buffer, sizeof(buffer));
       } while (n == -1 && errno == EINTR);
 
       if (n == 0) {
@@ -319,7 +319,7 @@ bool TransferData(SSL *ssl, int sock) {
 
       ssize_t n;
       do {
-        n = write(1, buffer, ssl_ret);
+        n = BORINGSSL_WRITE(1, buffer, ssl_ret);
       } while (n == -1 && errno == EINTR);
 
       if (n != ssl_ret) {
