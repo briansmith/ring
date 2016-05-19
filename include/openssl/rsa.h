@@ -219,11 +219,6 @@ OPENSSL_EXPORT RSA *RSA_parse_private_key(CBS *cbs);
 OPENSSL_EXPORT RSA *RSA_private_key_from_bytes(const uint8_t *in,
                                                size_t in_len);
 
-/* RSA_marshal_private_key marshals |rsa| as a DER-encoded RSAPrivateKey
- * structure (RFC 3447) and appends the result to |cbb|. It returns one on
- * success and zero on failure. */
-OPENSSL_EXPORT int RSA_marshal_private_key(CBB *cbb, const RSA *rsa);
-
 /* RSA_private_key_to_bytes marshals |rsa| as a DER-encoded RSAPrivateKey
  * structure (RFC 3447) and, on success, sets |*out_bytes| to a newly allocated
  * buffer containing the result and returns one. Otherwise, it returns zero. The

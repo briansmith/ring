@@ -218,7 +218,7 @@ RSA *RSA_private_key_from_bytes(const uint8_t *in, size_t in_len) {
   return ret;
 }
 
-int RSA_marshal_private_key(CBB *cbb, const RSA *rsa) {
+static int rsa_marshal_private_key(CBB *cbb, const RSA *rsa) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&child, kVersionTwoPrime) ||
@@ -246,7 +246,7 @@ int RSA_private_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   CBB cbb;
   CBB_zero(&cbb);
   if (!CBB_init(&cbb, 0) ||
-      !RSA_marshal_private_key(&cbb, rsa) ||
+      !rsa_marshal_private_key(&cbb, rsa) ||
       !CBB_finish(&cbb, out_bytes, out_len)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     CBB_cleanup(&cbb);
