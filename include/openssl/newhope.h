@@ -38,37 +38,38 @@ OPENSSL_EXPORT NEWHOPE_POLY *NEWHOPE_POLY_new(void);
 /* NEWHOPE_POLY_free frees |p|. */
 OPENSSL_EXPORT void NEWHOPE_POLY_free(NEWHOPE_POLY *p);
 
-/* NEWHOPE_SERVERMSG_LENGTH is the length of the server's message to the
- * client. */
-#define NEWHOPE_SERVERMSG_LENGTH (((1024 * 14) / 8) + 32)
+/* NEWHOPE_OFFERMSG_LENGTH is the length of the offering party's message to the
+ * accepting party. */
+#define NEWHOPE_OFFERMSG_LENGTH (((1024 * 14) / 8) + 32)
 
-/* NEWHOPE_CLIENTMSG_LENGTH is the length of the client's message to the
- * server. */
-#define NEWHOPE_CLIENTMSG_LENGTH (((1024 * 14) / 8) + 1024 / 4)
+/* NEWHOPE_ACCEPTMSG_LENGTH is the length of the accepting party's message to
+ * the offering party. */
+#define NEWHOPE_ACCEPTMSG_LENGTH (((1024 * 14) / 8) + 1024 / 4)
 
-/* NEWHOPE_keygen initializes |out_msg| and |out_sk| for a new key
- * exchange. |msg| must have room for |NEWHOPE_SERVERMSG_LENGTH| bytes. Neither
+/* NEWHOPE_offer initializes |out_msg| and |out_sk| for a new key
+ * exchange. |msg| must have room for |NEWHOPE_OFFERMSG_LENGTH| bytes. Neither
  * output may be cached. */
-OPENSSL_EXPORT void NEWHOPE_keygen(uint8_t out_msg[NEWHOPE_SERVERMSG_LENGTH],
-                                   NEWHOPE_POLY *out_sk);
+OPENSSL_EXPORT void NEWHOPE_offer(uint8_t out_msg[NEWHOPE_OFFERMSG_LENGTH],
+                                  NEWHOPE_POLY *out_sk);
 
-/* NEWHOPE_server_compute_key completes a key exchange given a client message
- * |msg| and the previously generated server secret |sk|. The result of the
- * key exchange is written to |out_key|, which must have space for
+/* NEWHOPE_accept completes a key exchange given an offer message |msg|. The
+ * result of the key exchange is written to |out_key|, which must have space for
+ * |SHA256_DIGEST_LENGTH| bytes. The message to be send to the offering party is
+ * written to |out_msg|, which must have room for |NEWHOPE_ACCEPTMSG_LENGTH|
+ * bytes. Returns 1 on success and 0 on error. */
+OPENSSL_EXPORT int NEWHOPE_accept(uint8_t out_key[SHA256_DIGEST_LENGTH],
+                                  uint8_t out_msg[NEWHOPE_ACCEPTMSG_LENGTH],
+                                  const uint8_t msg[NEWHOPE_OFFERMSG_LENGTH],
+                                  size_t msg_len);
+
+/* NEWHOPE_finish completes a key exchange for the offering party, given an
+ * accept message |msg| and the previously generated secret |sk|. The result of
+ * the key exchange is written to |out_key|, which must have space for
  * |SHA256_DIGEST_LENGTH| bytes. Returns 1 on success and 0 on error. */
-OPENSSL_EXPORT int NEWHOPE_server_compute_key(
-    uint8_t out_key[SHA256_DIGEST_LENGTH], const NEWHOPE_POLY *sk,
-    const uint8_t msg[NEWHOPE_CLIENTMSG_LENGTH], size_t msg_len);
-
-/* NEWHOPE_client_compute_key completes a key exchange given a server message
- * |msg|. The result of the key exchange is written to |out_key|, which must
- * have space for |SHA256_DIGEST_LENGTH| bytes. The message to be send to the
- * client is written to |out_msg|, which must have room for
- * |NEWHOPE_CLIENTMSG_LENGTH| bytes. Returns 1 on success and 0 on error. */
-OPENSSL_EXPORT int NEWHOPE_client_compute_key(
-    uint8_t out_key[SHA256_DIGEST_LENGTH],
-    uint8_t out_msg[NEWHOPE_CLIENTMSG_LENGTH],
-    const uint8_t msg[NEWHOPE_SERVERMSG_LENGTH], size_t msg_len);
+OPENSSL_EXPORT int NEWHOPE_finish(uint8_t out_key[SHA256_DIGEST_LENGTH],
+                                  const NEWHOPE_POLY *sk,
+                                  const uint8_t msg[NEWHOPE_ACCEPTMSG_LENGTH],
+                                  size_t msg_len);
 
 
 #if defined(__cplusplus)

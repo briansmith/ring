@@ -522,15 +522,14 @@ static bool SpeedNewHope(const std::string &selected) {
 
   TimeResults results;
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
-  uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH];
-  RAND_bytes(clientmsg, sizeof(clientmsg));
+  uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH];
+  RAND_bytes(acceptmsg, sizeof(acceptmsg));
 
-  if (!TimeFunction(&results, [sk, &clientmsg]() -> bool {
-        uint8_t server_key[SHA256_DIGEST_LENGTH];
-        uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
-        NEWHOPE_keygen(servermsg, sk);
-        if (!NEWHOPE_server_compute_key(server_key, sk, clientmsg,
-                                        NEWHOPE_CLIENTMSG_LENGTH)) {
+  if (!TimeFunction(&results, [sk, &acceptmsg]() -> bool {
+        uint8_t key[SHA256_DIGEST_LENGTH];
+        uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH];
+        NEWHOPE_offer(offermsg, sk);
+        if (!NEWHOPE_finish(key, sk, acceptmsg, NEWHOPE_ACCEPTMSG_LENGTH)) {
           return false;
         }
         return true;
@@ -540,7 +539,7 @@ static bool SpeedNewHope(const std::string &selected) {
   }
 
   NEWHOPE_POLY_free(sk);
-  results.Print("newhope server key exchange");
+  results.Print("newhope key exchange");
   return true;
 }
 

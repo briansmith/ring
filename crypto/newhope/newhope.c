@@ -46,14 +46,14 @@ static void decode_rec(const uint8_t *r, NEWHOPE_POLY *c) {
   }
 }
 
-void NEWHOPE_keygen(uint8_t *servermsg, NEWHOPE_POLY *sk) {
+void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *sk) {
   newhope_poly_getnoise(sk);
   newhope_poly_ntt(sk);
 
-  /* The first part of the server's message is the seed, which compactly encodes
+  /* The first part of the offer message is the seed, which compactly encodes
    * a. */
   NEWHOPE_POLY a;
-  uint8_t *seed = &servermsg[POLY_BYTES];
+  uint8_t *seed = &offermsg[POLY_BYTES];
   RAND_bytes(seed, SEED_LENGTH);
   newhope_poly_uniform(&a, seed);
 
@@ -61,18 +61,18 @@ void NEWHOPE_keygen(uint8_t *servermsg, NEWHOPE_POLY *sk) {
   newhope_poly_getnoise(&e);
   newhope_poly_ntt(&e);
 
-  /* The second part of the server's message is the polynomial pk = a*sk+e */
+  /* The second part of the offer message is the polynomial pk = a*sk+e */
   NEWHOPE_POLY r, pk;
   newhope_poly_pointwise(&r, sk, &a);
   newhope_poly_add(&pk, &e, &r);
-  newhope_poly_tobytes(servermsg, &pk);
+  newhope_poly_tobytes(offermsg, &pk);
 }
 
-int NEWHOPE_client_compute_key(
-    uint8_t key[SHA256_DIGEST_LENGTH],
-    uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH],
-    const uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH], size_t msg_len) {
-  if (msg_len != NEWHOPE_SERVERMSG_LENGTH) {
+int NEWHOPE_accept(uint8_t key[SHA256_DIGEST_LENGTH],
+                   uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH],
+                   const uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH],
+                   size_t msg_len) {
+  if (msg_len != NEWHOPE_OFFERMSG_LENGTH) {
     return 0;
   }
 
@@ -80,28 +80,28 @@ int NEWHOPE_client_compute_key(
   newhope_poly_getnoise(&sp);
   newhope_poly_ntt(&sp);
 
-  /* The first part of the client's message is the polynomial bp=e'+a*s' */
+  /* The first part of the accept message is the polynomial bp=e'+a*s' */
   {
     NEWHOPE_POLY ep;
     newhope_poly_getnoise(&ep);
     newhope_poly_ntt(&ep);
 
-    /* Generate the same |a| as the server, from the server's seed. */
+    /* Generate the same |a| as the peer, from the peer's seed. */
     NEWHOPE_POLY a;
-    const uint8_t *seed = &servermsg[POLY_BYTES];
+    const uint8_t *seed = &offermsg[POLY_BYTES];
     newhope_poly_uniform(&a, seed);
 
     NEWHOPE_POLY bp;
     newhope_poly_pointwise(&bp, &a, &sp);
     newhope_poly_add(&bp, &bp, &ep);
-    newhope_poly_tobytes(clientmsg, &bp);
+    newhope_poly_tobytes(acceptmsg, &bp);
   }
 
   /* v = pk * s' + e'' */
   NEWHOPE_POLY v;
   {
     NEWHOPE_POLY pk;
-    newhope_poly_frombytes(&pk, servermsg);
+    newhope_poly_frombytes(&pk, offermsg);
 
     NEWHOPE_POLY epp;
     newhope_poly_getnoise(&epp);
@@ -111,10 +111,10 @@ int NEWHOPE_client_compute_key(
     newhope_poly_add(&v, &v, &epp);
   }
 
-  /* The second part of the client's message is the reconciliation data derived
+  /* The second part of the accept message is the reconciliation data derived
    * from v. */
   NEWHOPE_POLY c;
-  uint8_t *reconciliation = &clientmsg[POLY_BYTES];
+  uint8_t *reconciliation = &acceptmsg[POLY_BYTES];
   newhope_helprec(&c, &v);
   encode_rec(&c, reconciliation);
 
@@ -130,21 +130,21 @@ int NEWHOPE_client_compute_key(
   return 1;
 }
 
-int NEWHOPE_server_compute_key(
-    uint8_t key[SHA256_DIGEST_LENGTH], const NEWHOPE_POLY *sk,
-    const uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH], size_t msg_len) {
-  if (msg_len != NEWHOPE_CLIENTMSG_LENGTH) {
+int NEWHOPE_finish(uint8_t key[SHA256_DIGEST_LENGTH], const NEWHOPE_POLY *sk,
+                   const uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH],
+                   size_t msg_len) {
+  if (msg_len != NEWHOPE_ACCEPTMSG_LENGTH) {
     return 0;
   }
   NEWHOPE_POLY bp;
-  newhope_poly_frombytes(&bp, clientmsg);
+  newhope_poly_frombytes(&bp, acceptmsg);
 
   NEWHOPE_POLY v;
   newhope_poly_pointwise(&v, sk, &bp);
   newhope_poly_invntt(&v);
 
   NEWHOPE_POLY c;
-  const uint8_t *reconciliation = &clientmsg[POLY_BYTES];
+  const uint8_t *reconciliation = &acceptmsg[POLY_BYTES];
   decode_rec(reconciliation, &c);
 
   uint8_t k[KEY_LENGTH];

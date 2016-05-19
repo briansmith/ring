@@ -22,34 +22,32 @@
 #include "internal.h"
 
 
-#define NTESTS 1000
+#define NTESTS 1
 
 static int test_keys(void) {
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
-  uint8_t server_key[SHA256_DIGEST_LENGTH], client_key[SHA256_DIGEST_LENGTH];
-  uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
-  uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH];
+  uint8_t offer_key[SHA256_DIGEST_LENGTH], accept_key[SHA256_DIGEST_LENGTH];
+  uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH];
+  uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH];
   int i;
 
   for (i = 0; i < NTESTS; i++) {
     /* Alice generates a public key */
-    NEWHOPE_keygen(servermsg, sk);
+    NEWHOPE_offer(offermsg, sk);
 
     /* Bob derives a secret key and creates a response */
-    if (!NEWHOPE_client_compute_key(client_key, clientmsg, servermsg,
-                                    sizeof(servermsg))) {
-      fprintf(stderr, "ERROR client key exchange failed\n");
+    if (!NEWHOPE_accept(accept_key, acceptmsg, offermsg, sizeof(offermsg))) {
+      fprintf(stderr, "ERROR accept key exchange failed\n");
       return 0;
     }
 
     /* Alice uses Bob's response to get her secret key */
-    if (!NEWHOPE_server_compute_key(server_key, sk, clientmsg,
-                                    sizeof(clientmsg))) {
-      fprintf(stderr, "ERROR server key exchange failed\n");
+    if (!NEWHOPE_finish(offer_key, sk, acceptmsg, sizeof(acceptmsg))) {
+      fprintf(stderr, "ERROR finish key exchange failed\n");
       return 0;
     }
 
-    if (memcmp(server_key, client_key, SHA256_DIGEST_LENGTH) != 0) {
+    if (memcmp(offer_key, accept_key, SHA256_DIGEST_LENGTH) != 0) {
       fprintf(stderr, "ERROR keys did not agree\n");
       return 0;
     }
@@ -61,33 +59,31 @@ static int test_keys(void) {
 
 static int test_invalid_sk_a(void) {
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
-  uint8_t server_key[SHA256_DIGEST_LENGTH], client_key[SHA256_DIGEST_LENGTH];
-  uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
-  uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH];
+  uint8_t offer_key[SHA256_DIGEST_LENGTH], accept_key[SHA256_DIGEST_LENGTH];
+  uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH];
+  uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH];
   int i;
 
   for (i = 0; i < NTESTS; i++) {
     /* Alice generates a public key */
-    NEWHOPE_keygen(servermsg, sk);
+    NEWHOPE_offer(offermsg, sk);
 
     /* Bob derives a secret key and creates a response */
-    if (!NEWHOPE_client_compute_key(client_key, clientmsg, servermsg,
-                                    sizeof(servermsg))) {
-      fprintf(stderr, "ERROR client key exchange failed\n");
+    if (!NEWHOPE_accept(accept_key, acceptmsg, offermsg, sizeof(offermsg))) {
+      fprintf(stderr, "ERROR accept key exchange failed\n");
       return 0;
     }
 
     /* Corrupt the secret key */
-    NEWHOPE_keygen(servermsg /* not used below */, sk);
+    NEWHOPE_offer(offermsg /* not used below */, sk);
 
     /* Alice uses Bob's response to get her secret key */
-    if (!NEWHOPE_server_compute_key(server_key, sk, clientmsg,
-                                    sizeof(clientmsg))) {
-      fprintf(stderr, "ERROR server key exchange failed\n");
+    if (!NEWHOPE_finish(offer_key, sk, acceptmsg, sizeof(acceptmsg))) {
+      fprintf(stderr, "ERROR finish key exchange failed\n");
       return 0;
     }
 
-    if (memcmp(server_key, client_key, SHA256_DIGEST_LENGTH) == 0) {
+    if (memcmp(offer_key, accept_key, SHA256_DIGEST_LENGTH) == 0) {
       fprintf(stderr, "ERROR invalid sk_a\n");
       return 0;
     }
@@ -99,34 +95,32 @@ static int test_invalid_sk_a(void) {
 
 static int test_invalid_ciphertext(void) {
   NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
-  uint8_t server_key[SHA256_DIGEST_LENGTH], client_key[SHA256_DIGEST_LENGTH];
-  uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
-  uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH];
+  uint8_t offer_key[SHA256_DIGEST_LENGTH], accept_key[SHA256_DIGEST_LENGTH];
+  uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH];
+  uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH];
   int i;
 
   for (i = 0; i < 10; i++) {
     /* Alice generates a public key */
-    NEWHOPE_keygen(servermsg, sk);
+    NEWHOPE_offer(offermsg, sk);
 
     /* Bob derives a secret key and creates a response */
-    if (!NEWHOPE_client_compute_key(client_key, clientmsg, servermsg,
-                                    sizeof(servermsg))) {
-      fprintf(stderr, "ERROR client key exchange failed\n");
+    if (!NEWHOPE_accept(accept_key, acceptmsg, offermsg, sizeof(offermsg))) {
+      fprintf(stderr, "ERROR accept key exchange failed\n");
       return 0;
     }
 
     /* Change some byte in the "ciphertext" */
-    clientmsg[42] ^= 1;
+    acceptmsg[42] ^= 1;
 
     /* Alice uses Bob's response to get her secret key */
-    if (!NEWHOPE_server_compute_key(server_key, sk, clientmsg,
-                                    sizeof(clientmsg))) {
-      fprintf(stderr, "ERROR server key exchange failed\n");
+    if (!NEWHOPE_finish(offer_key, sk, acceptmsg, sizeof(acceptmsg))) {
+      fprintf(stderr, "ERROR finish key exchange failed\n");
       return 0;
     }
 
-    if (!memcmp(server_key, client_key, SHA256_DIGEST_LENGTH)) {
-      fprintf(stderr, "ERROR invalid clientmsg\n");
+    if (!memcmp(offer_key, accept_key, SHA256_DIGEST_LENGTH)) {
+      fprintf(stderr, "ERROR invalid acceptmsg\n");
       return 0;
     }
   }
