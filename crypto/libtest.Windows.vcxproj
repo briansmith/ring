@@ -31,7 +31,6 @@
     <ClCompile Include="test/bn_test_convert.c" />
     <ClCompile Include="test/bn_test_lib.c" />
     <ClCompile Include="test/file_test.cc" />
-    <ClCompile Include="test/malloc.cc" />
     <ClCompile Include="test/test_util.cc" />
   </ItemGroup>
   <ItemGroup>
