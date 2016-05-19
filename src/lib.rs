@@ -100,8 +100,15 @@
 
 #![no_std]
 
+#[allow(unused_extern_crates)]
+#[macro_use]
+extern crate lazy_static;
+
 #[cfg(test)]
 extern crate rustc_serialize;
+
+#[cfg(not(test))]
+extern crate std;
 
 #[cfg(test)]
 #[macro_use(format, print, println, vec)]

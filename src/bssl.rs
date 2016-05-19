@@ -71,8 +71,8 @@ macro_rules! bssl_test_rng {
 
             init::init_once();
 
-            let mut rng = rand::SystemRandom::new();
-            let mut rng = rand::RAND { rng: &mut rng };
+            let rng = rand::SystemRandom::new();
+            let mut rng = rand::RAND { rng: &rng };
             let result = unsafe {
                 $bssl_test_main_fn_name(&mut rng)
             };
