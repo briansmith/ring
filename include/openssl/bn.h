@@ -126,7 +126,6 @@
 #include <openssl/base.h>
 
 #include <inttypes.h>  /* for PRIu64 and friends */
-#include <stdio.h>  /* for FILE* */
 
 #if defined(__cplusplus)
 extern "C" {

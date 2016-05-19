@@ -109,8 +109,6 @@
 #ifndef OPENSSL_HEADER_ERR_H
 #define OPENSSL_HEADER_ERR_H
 
-#include <stdio.h>
-
 #include <openssl/base.h>
 
 #if defined(__cplusplus)
