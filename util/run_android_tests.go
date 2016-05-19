@@ -28,6 +28,7 @@ import (
 
 var (
 	buildDir     = flag.String("build-dir", "build", "Specifies the build directory to push.")
+	adbPath      = flag.String("adb", "adb", "Specifies the adb binary to use. Defaults to looking in PATH.")
 	device       = flag.String("device", "", "Specifies the device or emulator. See adb's -s argument.")
 	aarch64      = flag.Bool("aarch64", false, "Build the test runners for aarch64 instead of arm.")
 	arm          = flag.Int("arm", 7, "Which arm revision to build for.")
@@ -49,7 +50,7 @@ func adb(args ...string) error {
 	if len(*device) > 0 {
 		args = append([]string{"-s", *device}, args...)
 	}
-	cmd := exec.Command("adb", args...)
+	cmd := exec.Command(*adbPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
