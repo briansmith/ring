@@ -61,8 +61,8 @@ pub trait SecureRandom {
 /// `getrandom`. Note that only application (binary) crates, and not library
 /// crates, should enable the `disable_dev_urandom_fallback` feature.
 ///
-/// On Windows, `fill` is implemented done using the platform's API for secure
-/// random number generation.
+/// On Windows, `fill` is implemented using the platform's API for secure
+// random number generation.
 ///
 /// When `/dev/urandom` is used, a file handle for `/dev/urandom` won't be
 /// opened until `fill` is called. In particular, `SystemRandom::new()` will
