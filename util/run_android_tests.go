@@ -61,6 +61,7 @@ func goTool(args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	cmd.Env = os.Environ()
 	if *aarch64 {
 		cmd.Env = append(cmd.Env, "GOARCH=arm64")
 	} else {
