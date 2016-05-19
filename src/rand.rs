@@ -279,8 +279,10 @@ mod tests {
 
             // Make sure we didn't forget to finish filling in the rest of the
             // buffer after we filled in the first chunk, especially in the
-            // case in the `SysRandOrDevURandom::Undecided` case.
-            if *len > max_chunk_len() {
+            // case in the `SysRandOrDevURandom::Undecided` case. As above, we
+            // only do this when there are at least 96 bytes after the first
+            // chunk to avoid false positives.
+            if *len > max_chunk_len() + 96 {
                 assert!(buf[max_chunk_len()..].iter().any(|x| *x != 0));
             }
         }
