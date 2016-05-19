@@ -17,6 +17,9 @@ name = "ring"
 # https://github.com/rust-lang/cargo/issues/1789
 doctest=false
 
+[dependencies]
+lazy_static = "0.2.1"
+
 [build-dependencies]
 rustc-serialize = "0.3.15"
 

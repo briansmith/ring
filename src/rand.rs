@@ -16,7 +16,7 @@
 //!
 //! An application should create a single SystemRandom and then use it for all
 //! randomness generation. Functions that generate random bytes should take a
-//! `&mut SecureRandom` parameter instead of instantiating their own. Besides
+//! `&SecureRandom` parameter instead of instantiating their own. Besides
 //! being more efficient, this also helps document where non-deterministic
 //! (random) outputs occur. Taking a reference to a `SecureRandom` also helps
 //! with testing techniques like fuzzing, where it is useful to use a
@@ -34,11 +34,13 @@ use core;
 /// A secure random number generator.
 pub trait SecureRandom {
     /// Fills `dest` with random bytes.
-    fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()>;
+    fn fill(&self, dest: &mut [u8]) -> Result<(), ()>;
 }
 
 /// A secure random number generator where the random values come directly
 /// from the operating system.
+///
+/// A single `SystemRandom` may be shared across multiple threads safely.
 ///
 /// `new()` is guaranteed to always succeed and to have low latency; it won't
 /// try to open or read from a file or do similar things. The first call to
@@ -66,166 +68,114 @@ pub trait SecureRandom {
 ///
 /// When `/dev/urandom` is used, a file handle for `/dev/urandom` won't be
 /// opened until `fill` is called. In particular, `SystemRandom::new()` will
-/// not open `/dev/urandom` or do other potentially-high-latency things. Once
-/// the file handle is opened by `fill()`, it won't be closed until the
-/// `SystemRandom` is destroyed. Each instance of `SystemRandom` will have its
-/// own file handle.
+/// not open `/dev/urandom` or do other potentially-high-latency things. The
+/// file handle will never be closed, until the operating system closes it at
+/// process shutdown. All instance of `SystemRandom` will share a single file
+/// handle.
 ///
 /// On Linux, to properly implement seccomp filtering when the
 /// `disable_dev_urandom_fallback` feature is enabled, allow `getrandom`
-/// through. Otherwise, allow file opening, `getrandom`, and `read` up until
-/// `fill()` succeeds. After that, allow `getrandom` and `read`.
-pub struct SystemRandom {
-    impl_: Impl,
-}
+/// through. Otherwise, allow file opening, `fcntl` `getrandom`, and `read` up
+/// until the first call to `fill()` succeeds. After that, allow `getrandom`
+/// and `read`.
+pub struct SystemRandom;
 
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
-    pub fn new() -> SystemRandom {
-        SystemRandom { impl_: Impl::new() }
-    }
+    pub fn new() -> SystemRandom { SystemRandom }
 }
 
 impl SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
-        self.impl_.fill(dest)
+    fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fill_impl(dest)
     }
 }
 
 #[cfg(not(any(target_os = "linux", windows)))]
-type Impl = self::urandom::DevURandom;
+use self::urandom::fill as fill_impl;
 
 #[cfg(any(all(target_os = "linux", feature = "disable_dev_urandom_fallback"),
           windows))]
-type Impl = self::sysrand::Sysrand;
+use self::sysrand::fill as fill_impl;
 
 #[cfg(all(target_os = "linux", not(feature = "disable_dev_urandom_fallback")))]
-type Impl = self::sysrand_or_urandom::SysRandOrDevURandom;
-
-#[cfg(all(unix,
-          not(all(target_os = "linux",
-                  feature = "disable_dev_urandom_fallback"))))]
-mod urandom {
-    use core;
-    extern crate std;
-
-    pub enum DevURandom {
-        Unopened,
-        Opened(std::fs::File),
-    }
-
-    impl DevURandom {
-        pub fn new() -> DevURandom { DevURandom::Unopened }
-    }
-
-    impl super::SecureRandom for DevURandom {
-        fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
-            use self::std::io::Read;
-            match self {
-                &mut DevURandom::Opened(ref mut file) =>
-                    file.read_exact(dest).map_err(|_| ()),
-                &mut DevURandom::Unopened => {
-                    let _ = core::mem::replace(self,
-                        DevURandom::Opened(
-                            try!(std::fs::File::open("/dev/urandom")
-                                    .map_err(|_| ()))));
-                    self.fill(dest)
-                }
-            }
-        }
-    }
-}
+use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
     use bssl;
 
-    pub struct Sysrand;
-
-    impl Sysrand {
-        pub fn new() -> Sysrand {
-            Sysrand
+    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+        for mut chunk in
+                dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
+            try!(bssl::map_result(unsafe {
+                super::CRYPTO_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
+            }));
         }
+        Ok(())
     }
+}
 
-    impl super::SecureRandom for Sysrand {
-        #[allow(unsafe_code)]
-        fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
-            for mut chunk in
-                    dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
-                try!(bssl::map_result(unsafe {
-                    super::CRYPTO_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
-                }));
-            }
-            Ok(())
+#[cfg(all(unix,
+          not(all(target_os = "linux",
+                  feature = "disable_dev_urandom_fallback"))))]
+mod urandom {
+    extern crate std;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+        lazy_static! {
+            static ref FILE: Result<std::fs::File, std::io::Error> =
+                std::fs::File::open("/dev/urandom");
+        }
+
+        match *FILE {
+            Ok(ref file) => {
+                use self::std::io::Read;
+                (&*file).read_exact(dest).map_err(|_| ())
+            },
+            Err(_) => Err(()),
         }
     }
 }
 
 #[cfg(all(target_os = "linux", not(feature = "disable_dev_urandom_fallback")))]
 mod sysrand_or_urandom {
-    use core;
-    use super::{sysrand, urandom};
+    extern crate std;
 
-    pub enum SysRandOrDevURandom {
-        Undecided,
-        Sysrand(sysrand::Sysrand),
-        DevURandom(urandom::DevURandom),
+    enum Mechanism {
+        Sysrand,
+        DevURandom,
     }
 
-    impl SysRandOrDevURandom {
-        pub fn new() -> SysRandOrDevURandom {
-            SysRandOrDevURandom::Undecided
-        }
-    }
-
-    impl super::SecureRandom for SysRandOrDevURandom {
-        fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
-            match self {
-                &mut SysRandOrDevURandom::Sysrand(ref mut i) => i.fill(dest),
-                &mut SysRandOrDevURandom::DevURandom(ref mut i) => i.fill(dest),
-                &mut SysRandOrDevURandom::Undecided => {
-                    let first_chunk_len =
-                        core::cmp::min(dest.len(),
-                                       super::CRYPTO_sysrand_chunk_max_len);
-                    match unsafe {
-                        super::CRYPTO_sysrand_chunk(dest.as_mut_ptr(),
-                                                    first_chunk_len)
-                    } {
-                        1 => {
-                            let _ = core::mem::replace(self,
-                                SysRandOrDevURandom::Sysrand(
-                                    sysrand::Sysrand::new()));
-                            if first_chunk_len < dest.len() {
-                                self.fill(&mut dest[first_chunk_len..])
-                            } else {
-                                Ok(())
-                            }
-                        },
-                        -1 => {
-                            let _ = core::mem::replace(self,
-                                SysRandOrDevURandom::DevURandom(
-                                    urandom::DevURandom::new()));
-                            self.fill(dest)
-                        },
-                        _ => {
-                            Err(())
-                        }
-                    }
+    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+        lazy_static! {
+            static ref MECHANISM: Mechanism = {
+                let mut dummy = [0u8; 1];
+                if unsafe {
+                    super::CRYPTO_sysrand_chunk(dummy.as_mut_ptr(),
+                                               dummy.len()) } == -1 {
+                    Mechanism::DevURandom
+                } else {
+                    Mechanism::Sysrand
                 }
-            }
+            };
+        }
+
+        match *MECHANISM {
+            Mechanism::Sysrand => super::sysrand::fill(dest),
+            Mechanism::DevURandom => super::urandom::fill(dest),
+
         }
     }
 }
-
 
 /// An adapter that lets the C code use `SecureRandom`.
 #[allow(non_snake_case)]
 #[doc(hidden)]
 pub struct RAND<'a> {
-    pub rng: &'a mut SecureRandom,
+    pub rng: &'a SecureRandom,
 }
 
 #[allow(non_snake_case)]
@@ -267,7 +217,7 @@ mod tests {
                 buf.push(0);
             }
 
-            let mut rng = rand::SystemRandom::new();
+            let rng = rand::SystemRandom::new();
             assert!(rng.fill(&mut buf).is_ok());
 
             // If `len` < 96 then there's a big chance of false positives, but
