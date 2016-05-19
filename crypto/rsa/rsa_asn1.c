@@ -123,7 +123,7 @@ int RSA_public_key_from_bytes(BIGNUM *n_out, BIGNUM *e_out, const uint8_t *in,
   return 1;
 }
 
-int RSA_marshal_public_key(CBB *cbb, const RSA *rsa) {
+static int rsa_marshal_public_key(CBB *cbb, const RSA *rsa) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
       !marshal_integer(&child, rsa->n) ||
@@ -140,7 +140,7 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   CBB cbb;
   CBB_zero(&cbb);
   if (!CBB_init(&cbb, 0) ||
-      !RSA_marshal_public_key(&cbb, rsa) ||
+      !rsa_marshal_public_key(&cbb, rsa) ||
       !CBB_finish(&cbb, out_bytes, out_len)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     CBB_cleanup(&cbb);

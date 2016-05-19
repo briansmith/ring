@@ -202,11 +202,6 @@ OPENSSL_EXPORT int RSA_parse_public_key(CBS *cbs, BIGNUM *n_out, BIGNUM *e_out);
 OPENSSL_EXPORT int RSA_public_key_from_bytes(BIGNUM *n_out, BIGNUM *e_out,
                                              const uint8_t *in, size_t in_len);
 
-/* RSA_marshal_public_key marshals |rsa| as a DER-encoded RSAPublicKey structure
- * (RFC 3447) and appends the result to |cbb|. It returns one on success and
- * zero on failure. */
-OPENSSL_EXPORT int RSA_marshal_public_key(CBB *cbb, const RSA *rsa);
-
 /* RSA_public_key_to_bytes marshals |rsa| as a DER-encoded RSAPublicKey
  * structure (RFC 3447) and, on success, sets |*out_bytes| to a newly allocated
  * buffer containing the result and returns one. Otherwise, it returns zero. The
