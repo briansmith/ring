@@ -56,13 +56,13 @@ pub trait SecureRandom {
 /// the kernel is too old to support `getrandom` then by default `fill()` falls
 /// back to reading from `/dev/urandom`. This decision is made the first time
 /// `fill` *succeeds*. The fallback to `/dev/urandom` can be disabled by
-/// disabling by enabling the *ring* crate's `disable_dev_urandom_fallback`
-/// feature; this should be done whenever the target system is known to support
-/// `getrandom`. Note that only application (binary) crates, and not library
-/// crates, should enable the `disable_dev_urandom_fallback` feature.
+/// enabling the *ring* crate's `disable_dev_urandom_fallback` feature; this
+/// should be done whenever the target system is known to support `getrandom`.
+/// Note that only application (binary) crates, and not library crates, should
+/// enable the `disable_dev_urandom_fallback` feature.
 ///
 /// On Windows, `fill` is implemented using the platform's API for secure
-// random number generation.
+/// random number generation.
 ///
 /// When `/dev/urandom` is used, a file handle for `/dev/urandom` won't be
 /// opened until `fill` is called. In particular, `SystemRandom::new()` will
