@@ -1,9 +1,9 @@
 This directory consumes tools from other repositories for use on the
 bots. To update to newer revisions, follow these instructions:
 
-DEPS: Set the external/gyp.git revision to the revision used in Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/master/DEPS
-    (Search for 'gyp.git'.)
+DEPS: Set all revisions to those used in Chromium, found at
+   https://chromium.googlesource.com/chromium/src/+/master/DEPS (Search for the
+   corresponding repository name.)
 
 go/bootstrap.py: Set TOOLSET_VERSION to the latest release of Go, found at
     https://golang.org/dl/.

@@ -21,6 +21,13 @@ deps = {
     Var('chromium_git') + '/external/gyp.git' + '@' + '4cf07e8d616739f6484e46c9359b2a35196b2585',
 }
 
+deps_os = {
+  'android': {
+    'boringssl/util/bot/android_tools':
+      Var('chromium_git') + '/android_tools.git' + '@' + '5b5f2f60b78198eaef25d442ac60f823142a8a6e',
+  },
+}
+
 hooks = [
   {
     'name': 'cmake_linux64',
