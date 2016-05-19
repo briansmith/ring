@@ -44,7 +44,6 @@ int CRYPTO_sysrand_chunk(void *buf, size_t len);
 #if defined(OPENSSL_WINDOWS)
 
 #include <limits.h>
-#include <stdlib.h>
 
 #pragma warning(push, 3)
 
