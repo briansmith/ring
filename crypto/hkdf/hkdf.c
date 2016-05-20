@@ -102,6 +102,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   ret = 1;
 
 out:
+  HMAC_CTX_cleanup(&hmac);
   if (ret != 1) {
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
   }
