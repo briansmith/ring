@@ -177,7 +177,7 @@ void dtls1_start_timer(SSL *ssl) {
     ssl->d1->next_timeout.tv_sec++;
     ssl->d1->next_timeout.tv_usec -= 1000000;
   }
-  BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
+  BIO_ctrl(ssl->rbio, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
            &ssl->d1->next_timeout);
 }
 
@@ -251,7 +251,7 @@ void dtls1_stop_timer(SSL *ssl) {
   ssl->d1->num_timeouts = 0;
   memset(&ssl->d1->next_timeout, 0, sizeof(struct timeval));
   ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
-  BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
+  BIO_ctrl(ssl->rbio, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
            &ssl->d1->next_timeout);
   /* Clear retransmission buffer */
   dtls1_clear_record_buffer(ssl);
@@ -263,8 +263,7 @@ int dtls1_check_timeout_num(SSL *ssl) {
   /* Reduce MTU after 2 unsuccessful retransmissions */
   if (ssl->d1->num_timeouts > DTLS1_MTU_TIMEOUTS &&
       !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
-    long mtu = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0,
-                        NULL);
+    long mtu = BIO_ctrl(ssl->wbio, BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0, NULL);
     if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
       ssl->d1->mtu = (unsigned)mtu;
     }

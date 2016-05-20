@@ -249,12 +249,12 @@ static void dtls1_update_mtu(SSL *ssl) {
   /* TODO(davidben): What is this code doing and do we need it? */
   if (ssl->d1->mtu < dtls1_min_mtu() &&
       !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
-    long mtu = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+    long mtu = BIO_ctrl(ssl->wbio, BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
     if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
       ssl->d1->mtu = (unsigned)mtu;
     } else {
       ssl->d1->mtu = kDefaultMTU;
-      BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL);
+      BIO_ctrl(ssl->wbio, BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL);
     }
   }
 
@@ -274,7 +274,7 @@ static size_t dtls1_max_record_size(SSL *ssl) {
   }
   ret -= overhead;
 
-  size_t pending = BIO_wpending(SSL_get_wbio(ssl));
+  size_t pending = BIO_wpending(ssl->wbio);
   if (ret <= pending) {
     return 0;
   }
@@ -290,7 +290,7 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
   /* During the handshake, wbio is buffered to pack messages together. Flush the
    * buffer if the ChangeCipherSpec would not fit in a packet. */
   if (dtls1_max_record_size(ssl) == 0) {
-    int ret = BIO_flush(SSL_get_wbio(ssl));
+    int ret = BIO_flush(ssl->wbio);
     if (ret <= 0) {
       ssl->rwstate = SSL_WRITING;
       return ret;
@@ -339,13 +339,13 @@ int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
     /* During the handshake, wbio is buffered to pack messages together. Flush
      * the buffer if there isn't enough room to make progress. */
     if (dtls1_max_record_size(ssl) < DTLS1_HM_HEADER_LENGTH + 1) {
-      int flush_ret = BIO_flush(SSL_get_wbio(ssl));
+      int flush_ret = BIO_flush(ssl->wbio);
       if (flush_ret <= 0) {
         ssl->rwstate = SSL_WRITING;
         ret = flush_ret;
         goto err;
       }
-      assert(BIO_wpending(SSL_get_wbio(ssl)) == 0);
+      assert(BIO_wpending(ssl->wbio) == 0);
     }
 
     size_t todo = dtls1_max_record_size(ssl);
@@ -672,7 +672,7 @@ int dtls1_read_failed(SSL *ssl, int code) {
 
   if (!SSL_in_init(ssl)) {
     /* done, no need to send a retransmit */
-    BIO_set_flags(SSL_get_rbio(ssl), BIO_FLAGS_READ);
+    BIO_set_flags(ssl->rbio, BIO_FLAGS_READ);
     return code;
   }
 
@@ -742,7 +742,7 @@ int dtls1_retransmit_buffered_messages(SSL *ssl) {
     }
   }
 
-  ret = BIO_flush(SSL_get_wbio(ssl));
+  ret = BIO_flush(ssl->wbio);
   if (ret <= 0) {
     ssl->rwstate = SSL_WRITING;
     goto err;
