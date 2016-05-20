@@ -75,7 +75,7 @@ pub trait SecureRandom {
 ///
 /// On Linux, to properly implement seccomp filtering when the
 /// `disable_dev_urandom_fallback` feature is enabled, allow `getrandom`
-/// through. Otherwise, allow file opening, `fcntl` `getrandom`, and `read` up
+/// through. Otherwise, allow file opening, `getrandom`, and `read` up
 /// until the first call to `fill()` succeeds. After that, allow `getrandom`
 /// and `read`.
 pub struct SystemRandom;
