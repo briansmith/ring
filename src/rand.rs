@@ -193,7 +193,10 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
 
 #[cfg(any(target_os = "linux", windows))]
 extern {
+    #[doc(hidden)]
     pub static CRYPTO_sysrand_chunk_max_len: c::size_t;
+
+    #[doc(hidden)]
     pub fn CRYPTO_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
 }
 
