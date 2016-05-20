@@ -282,7 +282,7 @@ mod tests {
             // case in the `SysRandOrDevURandom::Undecided` case. As above, we
             // only do this when there are at least 96 bytes after the first
             // chunk to avoid false positives.
-            if *len > max_chunk_len() + 96 {
+            if *len > 96 && *len - 96 > max_chunk_len() {
                 assert!(buf[max_chunk_len()..].iter().any(|x| *x != 0));
             }
         }
