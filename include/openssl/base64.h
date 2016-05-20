@@ -87,15 +87,16 @@ OPENSSL_EXPORT int EVP_EncodedLength(size_t *out_len, size_t len);
 
 /* Decoding */
 
-/* EVP_DecodedLength sets |*out_len| to the maximum number of bytes
- * that will be needed to call |EVP_DecodeBase64| on an input of
- * length |len|. */
+/* EVP_DecodedLength sets |*out_len| to the maximum number of bytes that will
+ * be needed to call |EVP_DecodeBase64| on an input of length |len|. It returns
+ * one on success or zero if |len| is not a valid length for a base64-encoded
+ * string. */
 OPENSSL_EXPORT int EVP_DecodedLength(size_t *out_len, size_t len);
 
 /* EVP_DecodeBase64 decodes |in_len| bytes from base64 and writes
  * |*out_len| bytes to |out|. |max_out| is the size of the output
  * buffer. If it is not enough for the maximum output size, the
- * operation fails. */
+ * operation fails. It returns one on success or zero on error. */
 OPENSSL_EXPORT int EVP_DecodeBase64(uint8_t *out, size_t *out_len,
                                     size_t max_out, const uint8_t *in,
                                     size_t in_len);
@@ -105,9 +106,7 @@ OPENSSL_EXPORT int EVP_DecodeBase64(uint8_t *out, size_t *out_len,
  *
  * OpenSSL provides a streaming base64 implementation, however its behavior is
  * very specific to PEM. It is also very lenient of invalid input. Use of any of
- * these functions is thus deprecated.
- *
- * TODO(davidben): Import upstream's rewrite that rejects the invalid input. */
+ * these functions is thus deprecated. */
 
 /* EVP_EncodeInit initialises |*ctx|, which is typically stack
  * allocated, for an encoding operation.
@@ -159,21 +158,25 @@ OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
  *
  * WARNING: EVP_DecodeBlock's return value does not take padding into
  * account. It also strips leading whitespace and trailing
- * whitespace. */
+ * whitespace and minuses. */
 OPENSSL_EXPORT int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src,
                                    size_t src_len);
 
 
 struct evp_encode_ctx_st {
-  unsigned num;    /* number saved in a partial encode/decode */
-  unsigned length; /* The length is either the output line length
-               * (in input bytes) or the shortest input line
-               * length that is ok.  Once decoding begins,
-               * the length is adjusted up each time a longer
-               * line is decoded */
-  uint8_t enc_data[80]; /* data to encode */
-  unsigned line_num;    /* number read on current line */
-  int expect_nl;
+  /* data_used indicates the number of bytes of |data| that are valid. When
+   * encoding, |data| will be filled and encoded as a lump. When decoding, only
+   * the first four bytes of |data| will be used. */
+  unsigned data_used;
+  uint8_t data[48];
+
+  /* eof_seen indicates that the end of the base64 data has been seen when
+   * decoding. Only whitespace can follow. */
+  char eof_seen;
+
+  /* error_encountered indicates that invalid base64 data was found. This will
+   * cause all future calls to fail. */
+  char error_encountered;
 };
 
 

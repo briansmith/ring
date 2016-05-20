@@ -30,15 +30,15 @@ The arguments to `jobs` and `workers` should be the number of cores that you wis
 
 The recommended values of `max_len` for each test are:
 
-| Test      | `max_len` value |
-|-----------|-----------------|
-| `cert`    | 3072            |
-| `client`  | 20000           |
-| `pkcs8`   | 2048            |
-| `privkey` | 2048            |
-| `server`  | 4096            |
-| `spki`    | 1024            |
-
+| Test       | `max_len` value |
+|------------|-----------------|
+| `cert`     | 3072            |
+| `client`   | 20000           |
+| `pkcs8`    | 2048            |
+| `privkey`  | 2048            |
+| `server`   | 4096            |
+| `spki`     | 1024            |
+| `read_pem` | 512             |
 
 These were determined by rounding up the length of the largest case in the corpus.
 

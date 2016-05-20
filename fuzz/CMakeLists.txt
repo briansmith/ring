@@ -55,3 +55,12 @@ add_executable(
 target_link_libraries(client Fuzzer)
 target_link_libraries(client crypto)
 target_link_libraries(client ssl)
+
+add_executable(
+  read_pem
+
+  read_pem.cc
+)
+
+target_link_libraries(read_pem Fuzzer)
+target_link_libraries(read_pem crypto)
