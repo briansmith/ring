@@ -5,5 +5,6 @@ add_library(
 
   OBJECT
 
+  dss1.c
   evp_do_all.c
 )
