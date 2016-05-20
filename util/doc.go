@@ -544,7 +544,10 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 
   <body>
     <div id="main">
-    <h2>{{.Name}}</h2>
+    <div class="title">
+      <h2>{{.Name}}</h2>
+      <a href="headers.html">All headers</a>
+    </div>
 
     {{range .Preamble}}<p>{{. | html | markupPipeWords}}</p>{{end}}
 
@@ -637,6 +640,9 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 
   <body>
     <div id="main">
+      <div class="title">
+        <h2>BoringSSL Headers</h2>
+      </div>
       <table>
         {{range .Sections}}
 	  <tr class="header"><td colspan="2">{{.Name}}</td></tr>
