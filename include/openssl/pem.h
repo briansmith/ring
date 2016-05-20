@@ -65,6 +65,10 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+/* For compatibility with open-iscsi, which assumes that it can get
+ * |OPENSSL_malloc| from pem.h or err.h */
+#include <openssl/crypto.h>
+
 #ifdef  __cplusplus
 extern "C" {
 #endif
