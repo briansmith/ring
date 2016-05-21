@@ -12,6 +12,24 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+
+struct PrivateKey {
+    bytes: [u8; SCALAR_MAX_BYTES],
+}
+
+const INVALID_ZERO_PRIVATE_KEY_BYTES: [u8; SCALAR_MAX_BYTES] =
+    [0u8; SCALAR_MAX_BYTES];
+
+// XXX: Not correct for x32 ABIs.
+#[cfg(target_pointer_width = "64")] type Limb = u64;
+#[cfg(target_pointer_width = "32")] type Limb = u32;
+
+const ELEM_MAX_BITS: usize = 384;
+const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
+
+const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
+
+
 #[allow(non_camel_case_types)]
 #[cfg(not(feature = "no_heap"))]
 enum EC_GROUP { }

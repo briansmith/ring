@@ -16,6 +16,7 @@
 
 pub struct NISTCurve {
     pub name: &'static str,
+    pub bits: usize,
     pub nid: &'static str,
     pub q: &'static str,
     pub n: &'static str,
@@ -35,6 +36,8 @@ pub static SUPPORTED_CURVES: [NISTCurve; 2] = [
 
     NISTCurve {
         name: "CURVE_P256",
+        bits: 256,
+        nid: "NID_X9_62_prime256v1",
 
         // 2**256 - 2**224 + 2**192 + 2**96 - 1
         q: "ffffffff00000001000000000000000000000000ffffffffffffffffffffffff",
@@ -50,11 +53,11 @@ pub static SUPPORTED_CURVES: [NISTCurve; 2] = [
         a: -3,
         b: "5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b",
         cofactor: 1,
-
-        nid: "NID_X9_62_prime256v1",
     },
     NISTCurve {
         name: "CURVE_P384",
+        bits: 384,
+        nid: "NID_secp384r1",
 
         // 2^384 − 2^128 − 2^96 + 2^32 − 1
         q: "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe\
@@ -74,7 +77,5 @@ pub static SUPPORTED_CURVES: [NISTCurve; 2] = [
         b: "b3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875a\
             c656398d8a2ed19d2a85c8edd3ec2aef",
         cofactor: 1,
-
-        nid: "NID_secp384r1",
     },
 ];

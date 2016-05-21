@@ -68,7 +68,7 @@
 #ifndef OPENSSL_HEADER_EC_INTERNAL_H
 #define OPENSSL_HEADER_EC_INTERNAL_H
 
-#include <openssl/base.h>
+#include <openssl/ec.h>
 
 #include <openssl/bn.h>
 

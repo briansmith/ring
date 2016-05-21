@@ -200,8 +200,45 @@ fn ec_group(curve: &NISTCurve) -> String {
           STATIC_BIGNUM_DIAGNOSTIC_POP
 
           return &group;
+        }}
+
+        /* Prototypes to avoid -Wmissing-prototypes warnings. */
+        int GFp_p{bits}_generate_private_key(uint8_t out[{priv_bytes}],
+                                             RAND *rng);
+        int GFp_p{bits}_public_from_private(
+                uint8_t public_key_out[{pub_bytes}],
+                const uint8_t private_key[{priv_bytes}]);
+        int GFp_p{bits}_ecdh(uint8_t out[{out_bytes}],
+                             const uint8_t private_key[{priv_bytes}],
+                             const uint8_t peer_public_key[{pub_bytes}]);
+
+
+        int GFp_p{bits}_generate_private_key(uint8_t out[{priv_bytes}],
+                                             RAND *rng) {{
+            return GFp_nist_generate_private_key({ec_group_fn_name}(), out,
+                                                 {priv_bytes}, rng);
+        }}
+
+        int GFp_p{bits}_public_from_private(
+                uint8_t public_key_out[{pub_bytes}],
+                const uint8_t private_key[{priv_bytes}]) {{
+            return GFp_nist_public_from_private(
+                    {ec_group_fn_name}(), public_key_out, {pub_bytes},
+                    private_key, {priv_bytes});
+        }}
+
+        int GFp_p{bits}_ecdh(uint8_t out[{out_bytes}],
+                             const uint8_t private_key[{priv_bytes}],
+                             const uint8_t peer_public_key[{pub_bytes}]) {{
+            return GFp_nist_ecdh({ec_group_fn_name}(), out, {out_bytes},
+                                 private_key, {priv_bytes}, peer_public_key,
+                                 {pub_bytes});
         }}",
         ec_group_fn_name = curve.name.replace("CURVE", "EC_GROUP"),
+        bits = curve.bits,
+        priv_bytes = (curve.bits + 7) / 8,
+        pub_bytes = 1 + (2 * ((curve.bits + 7) / 8)),
+        out_bytes = (curve.bits + 7) / 8,
         name = curve.name,
         nid = curve.nid,
 
