@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[allow(non_camel_case_types)]
+#[cfg(not(feature = "no_heap"))]
 pub enum EC_GROUP { }
 
 #[cfg(not(feature = "no_heap"))]
@@ -20,3 +21,6 @@ extern {
     pub fn EC_GROUP_P256() -> *const EC_GROUP;
     pub fn EC_GROUP_P384() -> *const EC_GROUP;
 }
+
+#[cfg(not(feature = "no_heap"))]
+pub mod ecdh;
