@@ -126,7 +126,7 @@ pub mod constant_time;
 pub mod der;
 
 #[path = "digest/digest.rs"] pub mod digest;
-mod ecc;
+#[path = "ec/ec.rs"] mod ec;
 pub mod hkdf;
 pub mod hmac;
 mod init;

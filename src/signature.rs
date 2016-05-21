@@ -42,7 +42,7 @@
 #![allow(unsafe_code)]
 
 use super::{c, bssl, init};
-#[cfg(not(feature = "no_heap"))] use super::{digest, ecc};
+#[cfg(not(feature = "no_heap"))] use super::{digest, ec};
 use super::input::Input;
 
 /// A signature verification algorithm.
@@ -119,7 +119,7 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 #[cfg(not(feature = "no_heap"))]
 struct ECDSA {
     digest_alg: &'static digest::Algorithm,
-    ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
+    ec_group_fn: unsafe extern fn() -> *const ec::EC_GROUP,
 }
 
 #[cfg(not(feature = "no_heap"))]
@@ -203,22 +203,22 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-1",
+ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256, "SHA-1",
        &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256,
        "SHA-512", &digest::SHA512);
 
-ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-1",
+ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384, "SHA-1",
        &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384,
        "SHA-512", &digest::SHA512);
 
 
@@ -326,7 +326,7 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384_VERIFY, 3072, "3072", "SHA-384",
 
 extern {
     #[cfg(not(feature = "no_heap"))]
-    fn ECDSA_verify_signed_digest(group: *const ecc::EC_GROUP, hash_nid: c::int,
+    fn ECDSA_verify_signed_digest(group: *const ec::EC_GROUP, hash_nid: c::int,
                                   digest: *const u8, digest_len: c::size_t,
                                   sig_der: *const u8, sig_der_len: c::size_t,
                                   key_octets: *const u8,

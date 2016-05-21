@@ -16,7 +16,7 @@
 
 #![allow(unsafe_code)]
 
-use {c, ecc, init};
+use {c, ec, init};
 
 #[cfg(not(feature = "no_heap"))] use super::bssl;
 use super::input::Input;
@@ -24,7 +24,7 @@ use super::input::Input;
 /// A key agreement algorithm.
 pub struct Algorithm {
     #[cfg_attr(feature = "no_heap", allow(dead_code))]
-    ec_group_fn: unsafe extern fn () -> *const ecc::EC_GROUP,
+    ec_group_fn: unsafe extern fn () -> *const ec::EC_GROUP,
 
     encoded_public_key_len: usize,
 
@@ -185,9 +185,9 @@ macro_rules! nist_ecdh {
     }
 }
 
-nist_ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+nist_ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", ec::EC_GROUP_P256,
            415 /*NID_X9_62_prime256v1*/);
-nist_ecdh!(ECDH_P384, 384, "P-384 (secp256r1)", ecc::EC_GROUP_P384,
+nist_ecdh!(ECDH_P384, 384, "P-384 (secp256r1)", ec::EC_GROUP_P384,
            715 /*NID_secp384r1*/);
 
 #[cfg(not(feature = "no_heap"))]
@@ -249,7 +249,7 @@ enum EC_KEY { }
 
 extern {
     #[cfg(not(feature = "no_heap"))]
-    fn EC_KEY_generate_key_ex(group: *const ecc::EC_GROUP) -> *mut EC_KEY;
+    fn EC_KEY_generate_key_ex(group: *const ec::EC_GROUP) -> *mut EC_KEY;
 
     #[cfg(not(feature = "no_heap"))]
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
