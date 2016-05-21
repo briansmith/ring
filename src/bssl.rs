@@ -21,14 +21,6 @@ pub fn map_result(bssl_result: c::int) -> Result<(), ()> {
     }
 }
 
-#[cfg(not(feature = "no_heap"))]
-pub fn map_ptr_result<T>(bssl_result: *mut T) -> Result<*mut T, ()> {
-    if bssl_result.is_null() {
-        return Err(());
-    }
-    Ok(bssl_result)
-}
-
 // Adapt a BoringSSL test suite to a Rust test.
 //
 // The BoringSSL test suite is broken up into multiple files. Originally, they

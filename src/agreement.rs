@@ -17,7 +17,7 @@
 #[cfg(not(feature = "no_heap"))]
 pub use ec::ecdh::{
     Algorithm,
-    EphemeralKeyPair,
+    EphemeralPrivateKey,
 
     ECDH_P256,
     ECDH_P384,

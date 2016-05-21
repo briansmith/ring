@@ -177,6 +177,13 @@ pub struct RAND<'a> {
     pub rng: &'a SecureRandom,
 }
 
+impl <'a> RAND<'a> {
+    /// Wraps `rng` in a `RAND` so it can be passed to non-Rust code.
+    pub fn new(rng: &'a SecureRandom) -> RAND<'a> {
+        RAND { rng: rng }
+    }
+}
+
 #[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]

@@ -200,8 +200,45 @@ fn ec_group(curve: &NISTCurve) -> String {
           STATIC_BIGNUM_DIAGNOSTIC_POP
 
           return &group;
+        }}
+
+        /* Prototypes to avoid -Wmissing-prototypes warnings. */
+        int GFp_p{bits}_generate_private_key(
+                uint8_t out[{elem_and_scalar_len}], RAND *rng);
+        int GFp_p{bits}_public_from_private(
+                uint8_t public_key_out[{public_key_len}],
+                const uint8_t private_key[{elem_and_scalar_len}]);
+        int GFp_p{bits}_ecdh(uint8_t out[{elem_and_scalar_len}],
+                             const uint8_t private_key[{elem_and_scalar_len}],
+                             const uint8_t peer_public_key[{public_key_len}]);
+
+
+        int GFp_p{bits}_generate_private_key(
+                uint8_t out[{elem_and_scalar_len}], RAND *rng) {{
+            return GFp_nist_generate_private_key({ec_group_fn_name}(), out,
+                                                 {elem_and_scalar_len}, rng);
+        }}
+
+        int GFp_p{bits}_public_from_private(
+                uint8_t public_key_out[{public_key_len}],
+                const uint8_t private_key[{elem_and_scalar_len}]) {{
+            return GFp_nist_public_from_private(
+                    {ec_group_fn_name}(), public_key_out, {public_key_len},
+                    private_key, {elem_and_scalar_len});
+        }}
+
+        int GFp_p{bits}_ecdh(uint8_t out[{elem_and_scalar_len}],
+                             const uint8_t private_key[{elem_and_scalar_len}],
+                             const uint8_t peer_public_key[{public_key_len}]) {{
+            return GFp_nist_ecdh({ec_group_fn_name}(), out,
+                                 {elem_and_scalar_len}, private_key,
+                                 {elem_and_scalar_len}, peer_public_key,
+                                 {public_key_len});
         }}",
         ec_group_fn_name = curve.name.replace("CURVE", "EC_GROUP"),
+        bits = curve.bits,
+        elem_and_scalar_len = (curve.bits + 7) / 8,
+        public_key_len = 1 + (2 * ((curve.bits + 7) / 8)),
         name = curve.name,
         nid = curve.nid,
 
