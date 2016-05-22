@@ -1,10 +1,10 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
@@ -12,20 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[allow(non_camel_case_types)]
-#[cfg(not(feature = "no_heap"))]
-enum EC_GROUP { }
+//! XXX: This submodule exists soley because there's no way to export
+//! `VerificationAlgorithmImpl` from `ring::signature` such that only `ring`
+//! submodules can implement it.
 
-#[cfg(not(feature = "no_heap"))]
-extern {
-    fn EC_GROUP_P256() -> *const EC_GROUP;
-    fn EC_GROUP_P384() -> *const EC_GROUP;
+use input::Input;
+
+pub trait VerificationAlgorithmImpl {
+    fn verify(&self, public_key: Input, msg: Input, signature: Input)
+              -> Result<(), ()>;
 }
-
-#[cfg(not(feature = "no_heap"))]
-pub mod ecdh;
-
-#[cfg(not(feature = "no_heap"))]
-pub mod ecdsa;
-
-pub mod eddsa;
