@@ -16,8 +16,8 @@
 //!
 //! # Example
 //!
-//! Note that this example uses X25519, but ECDH using NIST P-256/P-384 are
-//! done exactly the same way, just substituting
+//! Note that this example uses X25519, but ECDH using NIST P-256/P-384 is done
+//! exactly the same way, just substituting
 //! `agreement::ECDH_P256`/`agreement::ECDH_P384` for `agreement::X25519`.
 //!
 //! ```
