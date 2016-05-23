@@ -86,6 +86,16 @@ impl SystemRandom {
     pub fn new() -> SystemRandom { SystemRandom }
 }
 
+impl SystemRandom {
+    /// This is the same as calling `fill` through the `SecureRandom` trait,
+    /// but allows callers to avoid the annoying step of needing to
+    /// `use rand::SecureRandom` just to call `fill` on a `SystemRandom`.
+    #[inline(always)]
+    pub fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fill_impl(dest)
+    }
+}
+
 impl SecureRandom for SystemRandom {
     #[inline(always)]
     fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
@@ -210,7 +220,6 @@ extern {
 #[cfg(test)]
 mod tests {
     use rand;
-    use rand::SecureRandom;
     extern crate std;
 
     #[test]

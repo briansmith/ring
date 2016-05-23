@@ -62,10 +62,11 @@
 //! ## Signing a value and verifying it wasn't tampered with
 //!
 //! ```
-//! use ring::{digest, hmac};
+//! use ring::{digest, hmac, rand};
 //!
 //! # fn main_with_result() -> Result<(), ()> {
-//! let key = try!(hmac::SigningKey::generate(&digest::SHA256));
+//! let rng = rand::SystemRandom::new();
+//! let key = try!(hmac::SigningKey::generate(&digest::SHA256, &rng));
 //!
 //! let msg = "hello, world";
 //!
@@ -91,10 +92,11 @@
 //! let msg = "hello, world";
 //!
 //! // The sender generates a secure key value and signs the message with it.
-//! // Note that it is better to use `SigningKey::generate` to generate the key
-//! // when practical.
+//! // Note that in a real protocol, a key agreement protocol would be used to
+//! // derive `key_value`.
 //! let mut key_value = [0u8; 32];
-//! try!(rand::fill_secure_random(&mut key_value));
+//! let rng = rand::SystemRandom::new();
+//! try!(rng.fill(&mut key_value));
 //!
 //! let s_key = hmac::SigningKey::new(&digest::SHA256, key_value.as_ref());
 //! let signature = hmac::sign(&s_key, msg.as_bytes());
@@ -118,10 +120,11 @@
 //! let parts = ["hello", ", ", "world"];
 //!
 //! // The sender generates a secure key value and signs the message with it.
-//! // Note that it is better to use `SigningKey::generate` to generate the key
-//! // when practical.
+//! // Note that in a real protocol, a key agreement protocol would be used to
+//! // derive `key_value`.
 //! let mut key_value = [0u8; 48];
-//! try!(rand::fill_secure_random(&mut key_value));
+//! let rng = rand::SystemRandom::new();
+//! try!(rng.fill(&mut key_value));
 //!
 //! let s_key = hmac::SigningKey::new(&digest::SHA384, key_value.as_ref());
 //! let mut s_ctx = hmac::SigningContext::with_key(&s_key);
