@@ -333,3 +333,126 @@ PeerQ = 0429d8a36d22200a75b7aea1bb47cdfcb1b7fd66de967041434728ab5d533a060df73213
 D = 74ad8386c1cb2ca0fcdeb31e0869bb3f48c036afe2ef110ca302bc8b910f621c9fcc54cec32bb89ec7caa84c7b8e54a8
 MyQ = 0427a3e83cfb9d5122e73129d801615857da7cc089cccc9c54ab3032a19e0a0a9f677346e37f08a0b3ed8da6e5dd6910638d60e44aa5e0fd30c918456796af37f0e41957901645e5c596c6d989f5859b03a0bd7d1f4e77936fff3c74d204e5388e
 Output = 81e1e71575bb4505498de097350186430a6242fa6c57b85a5f984a23371123d2d1424eefbf804258392bc723e4ef1e35
+
+
+# Test vectors from NIST where the peer's public key validation fails.
+#
+# These vectors were taken from the file
+# KASValidityTest_ECCEphemeralUnified_KDFConcat_NOKC_init.fax in
+# http://csrc.nist.gov/groups/STM/cavp/documents/keymgmt/KASTestVectorsECC2014.zip
+# accessible via
+# http://csrc.nist.gov/groups/STM/cavp/key-establishment.html#test-vectors.
+#
+# Only the test vectors where the test fails because the peer's public key is
+# invalid are included here. Supporting the other vectors would require
+# implementing an entire key exchange protocol; since the omitted test vectors
+# don't seem to stress any *edge cases* of the *ECDH* step of the key exchange
+# protocol, they don't seem valuable.
+#
+# PeerQ = (QeCAVSx, QeCAVSy) in uncompressed encoding.
+# Error is the error text from the Result field. The errors reference
+# "PKV 5.6.2.5" which is section 5.6.2.5 of
+# http://csrc.nist.gov/publications/nistpubs/800-56A/SP800-56A_Revision1_Mar08-2007.pdf
+# which is section 5.6.2.3.2/5.6.2.3.3 of
+# http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+
+# [EC - SHA-256, COUNT = 4]
+Curve = P-256
+PeerQ = 04eec6ea7be0362fa496af12e551982a7d9c06b5ef735fadc37990c78ab9be87f4f45058db687e98326036c88eb846476a05385d7bda1d6dd6ca600499b7cc613f
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [EC - SHA-256, COUNT = 12]
+Curve = P-256
+PeerQ = 0439883b3aadd78b044dadbd9be6a2cc8360da8df4241a4d11665a14e1ce17d19296d5cc675c252d902da5118245e738d57442ca042add79f1d07752bb98a7b805
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [EC - SHA-256, COUNT = 12]
+Curve = P-256
+PeerQ = 0462ff2c3f5e165afa8dc919b7d705c862855d87869b8440c8d98db2ccb6144e3634a0335ebf64d77dc1c90fd5a5957c0d062593e8891d339f4b3616eb05018103
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [EC - SHA-256, COUNT = 20]
+Curve = P-256
+PeerQ = 04eaa4b595bd200d3197a35fad5afbee310ac2da532237d5623e1285bdcaa2422177735e831623cd5d67b45e9ca947a48055bdc5f3cca81f75ab124c92ea62091c
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [EC - SHA384, COUNT = 3]
+Curve = P-256
+PeerQ = 0482022f7a7507a5fdf191b7474d8503f1c2f31ef654096f28d046ff0b1f07d59406b2c2ff0fdcc2d913d6f3fbe02fded8543cd6aff9304213acc9cfd8f4d52803
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [EC - SHA384, COUNT = 9]
+Curve = P-256
+PeerQ = 045ce1fd24f150bb8714c7c12ed1d85fb8bd597f6e4a8c27eaabd3348903abf91261941a5cd8978c1cfaf6b0f67441dcc5a3686adc7dd1e157f138c9ce48634019
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [EC - SHA384, COUNT = 24]
+Curve = P-256
+PeerQ = 04d441c98190cf34cff0ba0dbafbade26c4cadcd5438bb5324e136851b09c009ac14c355a01189339a5a9a4f8a8ed57d7f6537ed161882c1e6912f8e3512faad0f
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [EC - SHA384, COUNT = 25]
+Curve = P-256
+PeerQ = 048dfc7063c55a1fe8684ff6675ad4b53dab503e409c12058ab602c40c143ef84cbe0fce323492ee123e2a543b26b327139f234a08355dd60e2fc2c0babf1a10e3
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [EC - SHA512, COUNT = 0]
+Curve = P-256
+PeerQ = 04eb65aaefab96a190a67e566978a179826cf4e04634013f7fe1547a749f3cf6e91d89dfdf23dc14fca68c7c138e90a0d9ee7bcdded8d80e6e409c7f0041d50b80
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [EC - SHA512, COUNT = 5]
+Curve = P-256
+PeerQ = 040d0d6e855cd97a1b5a5e52593b8ceac553be06a19090c5442e521731c08e7fc5efa166e25741659bfa5b257a23f36e7d9f08e084610be8dfd8c6844d0ea860b9
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [EC - SHA512, COUNT = 26]
+Curve = P-256
+PeerQ = 047417e66bbf708b258079648e1a9500d969f2d3860bd606054b611bc853228a324aade59d9ffb73cec6083887f5887c0306deb68e6aa984bbdad141635d078e79
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [EC - SHA512, COUNT = 29]
+Curve = P-256
+PeerQ = 04d9313d9b7c9abebba2d4cb3c05e3393bd5da667efa74c9d4cc33d2e54446d8d9904240a61c8d7f5ff2028041a81e1408451f4c0e0a18fcf33557546dfc380a06
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+
+# [ED - SHA384, COUNT = 1]
+Curve = P-384
+PeerQ = 04eed1bfbefb4c3b568ba187893d0d66f0a266928e57f5903213690cfe55660ce86d7eccf9ad1503932c31ab23917bc759a6e69055c5b84ccd92a414b84283bf89ebb85a850f03e02016a12ff22a4af6f80dd3900f68153b81e02c3f0c3d045d69
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [ED - SHA384, COUNT = 2]
+Curve = P-384
+PeerQ = 04f081e7e14fcfbf38e3780f57822e8255452e96c673e4b49ebda246b0a5dbca279935e5b31f94eff8ac753aecc810f5ac4dd779b89b0fb7460fe0c50d90006fc5ad7a7a31fe6b827ec059c3b22b40611dbad54c75e653bbdb408fe2e5e24246ae
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [ED - SHA384, COUNT = 19]
+Curve = P-384
+PeerQ = 0412159e7a89210ff0a5f723904a10c2425a13cfe9016b65cdb48285ec27912b66e415079ced48c94e707963bf5af66cd6ca8c934a135d8d3607f5792b63f127056e715eb4deabd501e6d3e3cfb6eb554c684c10c4a2b31df16fb8d9082131fa09
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [ED - SHA384, COUNT = 28]
+Curve = P-384
+PeerQ = 04a308a4cadf229c47fd74de1d1b6e07722ed87fa7506a0ddb8eb2060ca0f93ced5973a76d9e622b7519142ec41969a825fbb34034f8a6ead96a600281a01306b1a8d9a3148e4fb2e9727a4cec6a62b16690f3480a96a5f42dee895a2d456eb0f2
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [ED - SHA512, COUNT = 11]
+Curve = P-384
+PeerQ = 04ca8e02c55ea6756f5f65d213649c400296a6961d37947025f9d448042ed9c1f3da4e88842f64c1e8a5c2215d57e16cb0697b0923dc80e38fca5381b9a9d59c6f29337adcc7ff183cbb42f267956d130b0b53cb51ba459731001a39093b97db8c
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5
+
+# [ED - SHA512, COUNT = 13]
+Curve = P-384
+PeerQ = 045cb621e4a2186b552961cb7fa8e8191d21335c8fbf2eff27cc44f27a3ae5aa4d000c146279979cbe2cd901ee1619494abd0f8333b8ad65f621271c30386cb455bd66fde88705c57490638c3a6b73c27c4982eba177b0fb867d253d4fccac2361
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [ED - SHA512, COUNT = 20]
+Curve = P-384
+PeerQ = 04fd2a7437151a1df4949386fccec7509d731c36dc7ceae03c1ecd9b2b2a413853f5fe2066b4a52082a0a538b0536f6df670132a719f37a02a8fa12ed714876b17fe4d923abe50e7dd371172293336921229fcd44376dd52a2969f459c4a95f11f
+Error = 4 - CAVS's Ephemeral public key Y fails PKV 5.6.2.5
+
+# [ED - SHA512, COUNT = 28]
+Curve = P-384
+PeerQ = 0432d3118ba89149e3f75623098a258d5df0706730a256ee257e04b0a39cf8dfb631c4e31f476d40e538798048dc641138081f05d14000f9dcf2c98245951b6ab55ab9b4687eb36e3aae5391c3c3a0aefff41aebebc6bf027d268aa3153a017bd6
+Error = 3 - CAVS's Ephemeral public key X fails PKV 5.6.2.5

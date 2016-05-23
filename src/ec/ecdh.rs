@@ -221,12 +221,14 @@ nist_ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", 715 /*NID_secp384r1*/,
 
 #[cfg(test)]
 mod tests {
-    use {ec, file_test};
+    use {ec, file_test, rand};
     use ec::ecdh::*;
     use input::Input;
 
     #[test]
     fn test_nist_ecdh() {
+        let rng = rand::SystemRandom::new();
+
         file_test::run("src/ec/ecdh_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
@@ -240,24 +242,42 @@ mod tests {
             };
 
             let peer_public = test_case.consume_bytes("PeerQ");
-            let my_private = test_case.consume_bytes("D");
-            let my_public = test_case.consume_bytes("MyQ");
-            let output = test_case.consume_bytes("Output");
-
-            let private_key =
-                EphemeralPrivateKey::from_test_vector(alg, &my_private);
-
-            let mut computed_public = [0u8; 1 + (ec::ELEM_MAX_BITS * 2)];
-            let computed_public =
-                &mut computed_public[..private_key.public_key_len()];
-            private_key.compute_public_key(computed_public).unwrap();
-            assert_eq!(computed_public, &my_public[..]);
-
             let peer_public = Input::new(&peer_public).unwrap();
-            agree_ephemeral(private_key, alg, peer_public, (), |key_material| {
-                assert_eq!(key_material, &output[..]);
-                Ok(())
-            }).unwrap();
+
+            match test_case.consume_optional_string("Error") {
+                None => {
+                    let my_private = test_case.consume_bytes("D");
+                    let my_public = test_case.consume_bytes("MyQ");
+                    let output = test_case.consume_bytes("Output");
+
+                    let private_key =
+                        EphemeralPrivateKey::from_test_vector(alg, &my_private);
+
+                    let mut computed_public = [0u8; 1 + (ec::ELEM_MAX_BITS * 2)];
+                    let computed_public =
+                        &mut computed_public[..private_key.public_key_len()];
+                    private_key.compute_public_key(computed_public).unwrap();
+                    assert_eq!(computed_public, &my_public[..]);
+
+                    agree_ephemeral(private_key, alg, peer_public, (),
+                                    |key_material| {
+                        assert_eq!(key_material, &output[..]);
+                        Ok(())
+                    }).unwrap();
+                },
+
+                Some(_) => {
+                    let dummy_private_key =
+                        EphemeralPrivateKey::generate(alg, &rng).unwrap();
+                    fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
+                        panic!("The KDF was called during ECDH when the peer's \
+                                public key is invalid.");
+                    }
+                    assert!(
+                        agree_ephemeral(dummy_private_key, alg, peer_public,
+                                        (), kdf_not_called).is_err());
+                }
+            }
         });
     }
 }
