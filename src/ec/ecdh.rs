@@ -16,7 +16,7 @@
 
 #![allow(unsafe_code)]
 
-use {c, ec, init};
+use {c, ec, init, rand};
 
 use bssl;
 use input::Input;
@@ -187,8 +187,10 @@ nist_ecdh!(ECDH_P384, 384, "P-384 (secp256r1)", ec::EC_GROUP_P384,
            715 /*NID_secp384r1*/);
 
 fn nist_ecdh_generate_key_pair(algorithm: &Algorithm) -> Result<KeyPairImpl, ()> {
+    let rng = rand::SystemRandom::new();
+    let mut rand = rand::RAND { rng: &rng };
     let key = try!(bssl::map_ptr_result(unsafe {
-        EC_KEY_generate_key_ex((algorithm.ec_group_fn)())
+        EC_KEY_generate_key_ex((algorithm.ec_group_fn)(), &mut rand)
     }));
     Ok(KeyPairImpl::NIST { key: key })
 }
@@ -238,8 +240,9 @@ fn nist_ecdh_drop_key_pair(key_pair_impl: &mut KeyPairImpl) {
 #[allow(non_camel_case_types)]
 enum EC_KEY { }
 
+#[allow(improper_ctypes)]
 extern {
-    fn EC_KEY_generate_key_ex(group: *const ec::EC_GROUP) -> *mut EC_KEY;
+    fn EC_KEY_generate_key_ex(group: *const ec::EC_GROUP, rng: *mut rand::RAND) -> *mut EC_KEY;
 
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
                                 out_len: c::size_t) -> c::size_t;
