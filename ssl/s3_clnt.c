@@ -1979,7 +1979,8 @@ int ssl3_send_channel_id(SSL *ssl) {
       !BN_bn2cbb_padded(&child, 32, sig->r) ||
       !BN_bn2cbb_padded(&child, 32, sig->s) ||
       !CBB_finish(&cbb, NULL, &length) ||
-      !ssl_set_handshake_header(ssl, SSL3_MT_ENCRYPTED_EXTENSIONS, length)) {
+      !ssl_set_handshake_header(ssl, SSL3_MT_CHANNEL_ID_ENCRYPTED_EXTENSIONS,
+                                length)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     goto err;
