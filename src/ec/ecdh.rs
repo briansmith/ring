@@ -225,8 +225,58 @@ mod tests {
     use ec::ecdh::*;
     use input::Input;
 
+    static SUPPORTED_ALGS: [&'static Algorithm; 2] = [
+        &ECDH_P256,
+        &ECDH_P384,
+    ];
+
     #[test]
-    fn test_nist_ecdh() {
+    fn test_nist_ecdh_generate() {
+        struct FixedByteRandom {
+            byte: u8
+        };
+
+        impl rand::SecureRandom for FixedByteRandom {
+            fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+                for d in dest {
+                    *d = self.byte
+                }
+                Ok(())
+            }
+        }
+
+        // Generates a string of bytes 0x00...00, which will always result in
+        // a scalar value of zero.
+        let random_00 = FixedByteRandom { byte: 0 };
+
+        // Generates a string of bytes 0xFF...FF, which will be larger than the
+        // group order of any curve that is supported.
+        let random_ff = FixedByteRandom { byte: 0xff };
+
+        for alg in SUPPORTED_ALGS.iter() {
+            // Test that the private key value zero is rejected and that
+            // `generate` gives up after a while of only getting zeros.
+            assert!(
+                EphemeralPrivateKey::generate(alg, &random_00).is_err());
+
+            // Test that the private key value larger than the group order is
+            // rejected and that `generate` gives up after a while of only
+            // getting values larger than the group order.
+            assert!(
+                EphemeralPrivateKey::generate(alg, &random_ff).is_err());
+
+            // TODO XXX: Test that a private key value exactly equal to the
+            // group order is rejected and that `generate` gives up after a
+            // while of only getting that value from the PRNG. This is
+            // non-trivial because it requires the test PRNG to generate a
+            // series of bytes of output that, when interpreted as an array of
+            // `BN_ULONG`s (which vary in size and endianness by platform), is
+            // equal to the group order.
+        }
+    }
+
+    #[test]
+    fn test_nist_ecdh_agree_ephemeral() {
         let rng = rand::SystemRandom::new();
 
         file_test::run("src/ec/ecdh_tests.txt", |section, test_case| {
