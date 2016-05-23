@@ -24,11 +24,24 @@ const INVALID_ZERO_PRIVATE_KEY_BYTES: [u8; SCALAR_MAX_BYTES] =
 #[cfg(target_pointer_width = "64")] type Limb = u64;
 #[cfg(target_pointer_width = "32")] type Limb = u32;
 
+// When the `no_heap` feature isn't being used, P-384 has the largest field
+// element size.
+#[cfg(not(feature = "no_heap"))]
 const ELEM_MAX_BITS: usize = 384;
+
+// When the `no_heap` feature is used, P-384 and P-256 aren't available, so
+// X25519 has the largest field element size.
+#[cfg(feature = "no_heap")]
+const ELEM_MAX_BITS: usize = 256;
+
 const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
 
 const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
 
+/// The maximum length, in bytes, of an encoded public key. Note that the value
+/// depends on which algorithms are enabled (e.g. whether the `no_heap` feature
+/// is activated).
+pub const PUBLIC_KEY_MAX_LEN: usize = ELEM_MAX_BYTES;
 
 #[allow(non_camel_case_types)]
 #[cfg(not(feature = "no_heap"))]
