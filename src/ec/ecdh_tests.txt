@@ -1,3 +1,23 @@
+# RFC 7748 (X25519) Test Vectors.
+#
+# PeerQ is the "Input u-coordinate."
+# D is the "Input scalar."
+# XXX: MyQ is not provided in the RFC, so we calculated it ourselves.
+# Output is the "Output u-coordinate."
+
+Curve = X25519
+PeerQ = e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c
+D = a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4
+MyQ = 1c9fd88f45606d932a80c71824ae151d15d73e77de38e8e000852e614fae7019
+Output = c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552
+
+Curve = X25519
+PeerQ = e5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493
+D = 4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d
+MyQ = ff63fe57bfbf43fa3f563628b149af704d3db625369c49983650347a6a71e00e
+Output = 95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957
+
+
 # RFC 5903 (IKE and IKEv2 ECDH) Test vectors
 #
 # PeerQ is (grx, gry) in uncompressed encoding.

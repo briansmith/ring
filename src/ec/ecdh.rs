@@ -157,7 +157,25 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     }
 }
 
+macro_rules! externs {
+    ( $generate_private_key:ident, $public_from_private:ident, $ecdh:ident ) => {
+        #[allow(improper_ctypes)]
+        extern {
+            fn $generate_private_key(out: *mut u8, rng: *mut rand::RAND)
+                                     -> c::int;
+        }
 
+        extern {
+            fn $public_from_private(public_key_out: *mut u8,
+                                    private_key: *const u8) -> c::int;
+
+            fn $ecdh(out: *mut u8, private_key: *const u8,
+                     peer_public_key: *const u8) -> c::int;
+        }
+    }
+}
+
+#[cfg(not(feature = "no_heap"))]
 macro_rules! nist_ecdh {
     ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr,
       $generate_private_key:ident, $public_from_private:ident, $ecdh:ident ) => {
@@ -168,8 +186,8 @@ macro_rules! nist_ecdh {
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
         /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
-        /// Public keys are validated during key agreement according as
-        /// described in [NIST Special Publication 800-56A, revision
+        /// Public keys are validated during key agreement as described in
+        /// [NIST Special Publication 800-56A, revision
         /// 2](http://csrc.nist.gov/groups/ST/toolkit/documents/SP800-56Arev1_3-8-07.pdf)
         /// Section 5.6.2.5 and the [Suite B Implementer's Guide to NIST SP
         /// 800-56A](https://www.nsa.gov/ia/_files/suiteb_implementer_g-113808.pdf)
@@ -194,20 +212,14 @@ macro_rules! nist_ecdh {
             ecdh: $ecdh,
         };
 
-        #[allow(improper_ctypes)]
-        extern {
-            fn $generate_private_key(out: *mut u8, rng: *mut rand::RAND)
-                                     -> c::int;
-        }
+        externs!($generate_private_key, $public_from_private, $ecdh);
+    }
+}
 
-        extern {
-            fn $public_from_private(public_key_out: *mut u8,
-                                    private_key: *const u8)
-                                    -> c::int;
-
-            fn $ecdh(out: *mut u8, private_key: *const u8,
-                     peer_public_key: *const u8) -> c::int;
-        }
+#[cfg(feature = "no_heap")]
+macro_rules! nist_ecdh {
+    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr,
+      $generate_private_key:ident, $public_from_private:ident, $ecdh:ident ) => {
     }
 }
 
@@ -219,17 +231,39 @@ nist_ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", 715 /*NID_secp384r1*/,
            GFp_p384_generate_private_key, GFp_p384_public_from_private,
            GFp_p384_ecdh);
 
+
+/// X25519 (ECDH using Curve25519).
+///
+/// TODO: Document encoding.
+/// TODO: Reference RFC(s).
+pub static X25519: Algorithm = Algorithm {
+    public_key_len: 32,
+    elem_len: 32,
+    scalar_len: 32,
+    nid: 948, /* NID_X25519 */
+    generate_private_key: GFp_x25519_generate_private_key,
+    public_from_private: GFp_x25519_public_from_private,
+    ecdh: GFp_x25519_ecdh,
+};
+
+externs!(GFp_x25519_generate_private_key, GFp_x25519_public_from_private,
+         GFp_x25519_ecdh);
+
 #[cfg(test)]
 mod tests {
     use {ec, file_test, rand};
     use ec::ecdh::*;
     use input::Input;
+    use rustc_serialize::hex::FromHex;
+    use std;
 
-    static SUPPORTED_ALGS: [&'static Algorithm; 2] = [
+    #[cfg(not(feature = "no_heap"))]
+    static SUPPORTED_NIST_ALGS: [&'static Algorithm; 2] = [
         &ECDH_P256,
         &ECDH_P384,
     ];
 
+    #[cfg(not(feature = "no_heap"))]
     #[test]
     fn test_nist_ecdh_generate() {
         struct FixedByteRandom {
@@ -253,7 +287,7 @@ mod tests {
         // group order of any curve that is supported.
         let random_ff = FixedByteRandom { byte: 0xff };
 
-        for alg in SUPPORTED_ALGS.iter() {
+        for alg in SUPPORTED_NIST_ALGS.iter() {
             // Test that the private key value zero is rejected and that
             // `generate` gives up after a while of only getting zeros.
             assert!(
@@ -276,20 +310,24 @@ mod tests {
     }
 
     #[test]
-    fn test_nist_ecdh_agree_ephemeral() {
+    fn test_ecdh_agree_ephemeral() {
         let rng = rand::SystemRandom::new();
 
         file_test::run("src/ec/ecdh_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
             let curve_name = test_case.consume_string("Curve");
-            let alg = if curve_name == "P-256" {
-                &ECDH_P256
-            } else if curve_name == "P-384" {
-                &ECDH_P384
-            } else {
-                panic!("Unsupported curve: {}", curve_name);
-            };
+            let alg =
+                if curve_name == "P-256" && cfg!(not(feature = "no_heap")) {
+                    &ECDH_P256
+                } else if curve_name == "P-384" &&
+                          cfg!(not(feature = "no_heap")) {
+                    &ECDH_P384
+                } else if curve_name == "X25519" {
+                    &X25519
+                } else {
+                    panic!("Unsupported curve: {}", curve_name);
+                };
 
             let peer_public = test_case.consume_bytes("PeerQ");
             let peer_public = Input::new(&peer_public).unwrap();
@@ -306,14 +344,15 @@ mod tests {
                     let mut computed_public = [0u8; 1 + (ec::ELEM_MAX_BITS * 2)];
                     let computed_public =
                         &mut computed_public[..private_key.public_key_len()];
-                    private_key.compute_public_key(computed_public).unwrap();
+                    assert!(
+                        private_key.compute_public_key(computed_public).is_ok());
                     assert_eq!(computed_public, &my_public[..]);
 
-                    agree_ephemeral(private_key, alg, peer_public, (),
-                                    |key_material| {
+                    assert!(agree_ephemeral(private_key, alg, peer_public, (),
+                                            |key_material| {
                         assert_eq!(key_material, &output[..]);
                         Ok(())
-                    }).unwrap();
+                    }).is_ok());
                 },
 
                 Some(_) => {
@@ -332,4 +371,57 @@ mod tests {
     }
 
     // TODO: test vectors for overly-long public keys
+
+    #[test]
+    fn test_ecdh_x25519_rfc_iterated() {
+        let mut k =
+            h("0900000000000000000000000000000000000000000000000000000000000000");
+        let mut u = k.clone();
+
+        fn expect_iterated_x25519(expected_result: &str,
+                                  range: std::ops::Range<usize>,
+                                  k: &mut std::vec::Vec<u8>, u:
+                                  &mut std::vec::Vec<u8>) {
+            for _ in range {
+                let new_k = x25519(k, u);
+                *u = k.clone();
+                *k = new_k;
+            }
+            assert_eq!(&h(expected_result), k);
+        }
+
+        expect_iterated_x25519(
+            "422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079",
+            0..1, &mut k, &mut u);
+        expect_iterated_x25519(
+            "684cf59ba83309552800ef566f2f4d3c1c3887c49360e3875f2eb94d99532c51",
+            1..1_000, &mut k, &mut u);
+        // XXX: The spec gives a test vector for 1,000,000 iterations but it
+        // takes too long to do 1,000,000 iterations right now. We instead test
+        // 10,000 iterations, using a self-computed test vector.
+        expect_iterated_x25519(
+            "2c125a20f639d504a7703d2e223c79a79de48c4ee8c23379aa19a62ecd211815",
+            1_000..10_000, &mut k, &mut u);
+        //expect_iterated_x25519(
+        //    "7c3911e0ab2586fd864497297e575e6f3bc601c0883c30df5f4dd2d24f665424",
+        //    100_000..1_000_000, &mut k, &mut u);
+    }
+
+    fn x25519(private_key: &[u8], public_key: &[u8]) -> std::vec::Vec<u8> {
+        x25519_(private_key, public_key).unwrap()
+    }
+
+    fn x25519_(private_key: &[u8], public_key: &[u8])
+               -> Result<std::vec::Vec<u8>, ()> {
+        let key_pair =
+            EphemeralPrivateKey::from_test_vector(&X25519, private_key);
+        let public_key = try!(Input::new(public_key));
+        agree_ephemeral(key_pair, &X25519, public_key, (), |agreed_value| {
+            Ok(std::vec::Vec::from(agreed_value))
+        })
+    }
+
+    fn h(s: &str) -> std::vec::Vec<u8> {
+        s.from_hex().unwrap()
+    }
 }
