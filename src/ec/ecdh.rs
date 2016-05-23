@@ -252,3 +252,54 @@ extern {
                            peer_pub_point_bytes: *const u8,
                            peer_pub_point_bytes_len: c::size_t) -> c::int;
 }
+
+#[cfg(test)]
+mod smoketest {
+    use std::vec::Vec;
+    use input::Input;
+
+    fn get_pub(kp: &super::EphemeralKeyPair) -> Vec<u8> {
+        let mut ret = Vec::new();
+        ret.resize(kp.public_key_len(), 0u8);
+        kp.fill_with_encoded_public_key(ret.as_mut_slice()).unwrap();
+        ret
+    }
+
+    fn to_vec(v: &[u8]) -> Result<Vec<u8>, ()> {
+        let mut ret = Vec::new();
+        ret.extend_from_slice(v);
+        Ok(ret)
+    }
+
+    fn ecdh(alg: &'static super::Algorithm) {
+        let alice = super::EphemeralKeyPair::generate(alg).unwrap();
+        let bob = super::EphemeralKeyPair::generate(alg).unwrap();
+
+        let alice_pub = get_pub(&alice);
+        let bob_pub = get_pub(&bob);
+
+        let alice_secret = super::agree_ephemeral(alice,
+                                                  alg,
+                                                  Input::new(&bob_pub).unwrap(),
+                                                  (),
+                                                  to_vec).unwrap();
+
+        let bob_secret = super::agree_ephemeral(bob,
+                                                alg,
+                                                Input::new(&alice_pub).unwrap(),
+                                                (),
+                                                to_vec).unwrap();
+
+        assert_eq!(alice_secret, bob_secret);
+    }
+
+    #[test]
+    fn ecdh_p256() {
+        ecdh(&super::ECDH_P256);
+    }
+
+    #[test]
+    fn ecdh_p384() {
+        ecdh(&super::ECDH_P384);
+    }
+}
