@@ -75,7 +75,7 @@ macro_rules! ecdsa {
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
         /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
-        /// Public keys are validated during verification as described in
+        /// Public keys are validated during key agreement as described in
         /// [NIST Special Publication 800-56A, revision
         /// 2](http://csrc.nist.gov/groups/ST/toolkit/documents/SP800-56Arev1_3-8-07.pdf)
         /// Section 5.6.2.5 and the [Suite B Implementer's Guide to NIST SP

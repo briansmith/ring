@@ -31,6 +31,9 @@
 //!         goal is to enable as much functionality as is practical in
 //!         <code>no_heap</code> mode, but for now some RSA, ECDH, and ECDSA
 //!         functionality still uses the heap.
+//! <tr><td><code>slow_tests</code>
+//!     <td>Run additional tests that are too slow to run during a normal
+//!         edit-compile-test cycle.
 //! <tr><td><code>test_logging</code>
 //!     <td>Print out additional logging information, in particular the
 //!          contents of the test input files, as tests execute. When a test

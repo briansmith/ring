@@ -40,7 +40,6 @@ extern {
     fn EC_GROUP_P384() -> *const EC_GROUP;
 }
 
-#[cfg(not(feature = "no_heap"))]
 pub mod ecdh;
 
 #[cfg(not(feature = "no_heap"))]
