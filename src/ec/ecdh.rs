@@ -330,4 +330,6 @@ mod tests {
             }
         });
     }
+
+    // TODO: test vectors for overly-long public keys
 }
