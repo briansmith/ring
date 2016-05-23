@@ -14,9 +14,11 @@
 
 //! Key Agreement: ECDH, including X25519.
 //!
-//! # Examples
+//! # Example
 //!
-//! ## X25519 (Curve25519) key agreement
+//! Note that this example uses X25519, but ECDH using NIST P-256/P-384 are
+//! done exactly the same way, just substituting
+//! `agreement::ECDH_P256`/`agreement::ECDH_P384` for `agreement::X25519`.
 //!
 //! ```
 //! # fn x25519_agreement_example() -> Result<(), ()> {
