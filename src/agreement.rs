@@ -60,8 +60,8 @@
 //!     let error_value = ();
 //!
 //!     agreement::agree_ephemeral(my_private_key, peer_public_key_alg,
-//!                                     peer_public_key, error_value,
-//!                                     |_key_material| {
+//!                                peer_public_key, error_value,
+//!                                |_key_material| {
 //!         // In a real application, we'd apply a KDF to the key material and
 //!         // the public keys, as recommended in RFC 7748.
 //!         Ok(())
