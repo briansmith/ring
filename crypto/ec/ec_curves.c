@@ -1,4 +1,4 @@
-/* Copyright 2015 Brian Smith.
+/* Copyright 2015-2016 Brian Smith.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -12,11 +12,13 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <assert.h>
 #include <stdint.h>
 #include <openssl/ec.h>
+#include <openssl/err.h>
 #include <openssl/nid.h>
 
-#include "internal.h"
+#include "gfp_internal.h"
 #include "../bn/internal.h"
 
 

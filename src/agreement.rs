@@ -14,13 +14,17 @@
 
 //! Key Agreement.
 
-#[cfg(not(feature = "no_heap"))]
 pub use ec::ecdh::{
     Algorithm,
-    EphemeralKeyPair,
+    EphemeralPrivateKey,
 
-    ECDH_P256,
-    ECDH_P384,
+    X25519,
 
     agree_ephemeral,
+};
+
+#[cfg(not(feature = "no_heap"))]
+pub use ec::ecdh::{
+    ECDH_P256,
+    ECDH_P384,
 };

@@ -42,10 +42,11 @@
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_key.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
+    <ClCompile Include="ec\gfp_nist_ecdh.c" />
+    <ClCompile Include="ec\gfp_nist_private.c" />
     <ClCompile Include="ec\oct.c" />
     <ClCompile Include="ec\simple.c" />
     <ClCompile Include="ec\wnaf.c" />
-    <ClCompile Include="ecdh\ecdh.c" />
     <ClCompile Include="ecdsa\ecdsa.c" />
     <ClCompile Include="ecdsa\ecdsa_asn1.c" />
     <ClCompile Include="mem.c" />
