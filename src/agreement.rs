@@ -19,54 +19,52 @@
 //! ## X25519 (Curve25519) key agreement
 //!
 //! ```
-//! fn x25519_agreement_example() -> Result<(), ()> {
+//! # fn x25519_agreement_example() -> Result<(), ()> {
+//! use ring::{agreement, rand};
+//! use ring::input::Input;
 //!
-//!     use ring::{agreement, rand};
-//!     use ring::input::Input;
+//! let rng = rand::SystemRandom::new();
 //!
-//!     let rng = rand::SystemRandom::new();
+//! let my_private_key =
+//!     try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng));
 //!
-//!     let my_private_key =
-//!         try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519,
-//!                                                       &rng));
+//! // Make `my_public_key` a byte slice containing my public key. In a real
+//! // application, this would be sent to the peer in an encoded protocol
+//! // message.
+//! let mut my_public_key = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
+//! let my_public_key =
+//!     &mut my_public_key[..my_private_key.public_key_len()];
+//! try!(my_private_key.compute_public_key(my_public_key));
 //!
-//!     // Make `my_public_key` a byte slice containing my public key. In a
-//!     // real application, this would be sent to the peer in an encoded
-//!     // protocol message.
-//!     let mut my_public_key = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
-//!     let my_public_key =
-//!         &mut my_public_key[..my_private_key.public_key_len()];
-//!     try!(my_private_key.compute_public_key(my_public_key));
-//!
-//!     // In a real application, the peer public key would be parsed out of a
-//!     // protocol message. Here we just generate one.
-//!     let mut peer_public_key_buf = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
-//!     let peer_public_key;
-//!     {
-//!         let peer_private_key =
-//!            try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519,
-//!                                                          &rng));
-//!         peer_public_key =
-//!             &mut peer_public_key_buf[..peer_private_key.public_key_len()];
-//!         try!(peer_private_key.compute_public_key(peer_public_key));
-//!     }
-//!     let peer_public_key = try!(Input::new(peer_public_key));
-//!
-//!     // In a real application, the protocol specifies how to determine what
-//!     // algorithm was used to generate the peer's private key. Here, we know
-//!     // it is X25519 since we just generated it.
-//!     let peer_public_key_alg = &agreement::X25519;
-//!
-//!     let error_value = ();
-//!
-//!     agreement::agree_ephemeral(my_private_key, peer_public_key_alg,
-//!                                peer_public_key, error_value,
-//!                                |_key_material| {
-//!         // In a real application, we'd apply a KDF to the key material and
-//!         // the public keys, as recommended in RFC 7748.
-//!         Ok(())
-//!     })
+//! // In a real application, the peer public key would be parsed out of a
+//! // protocol message. Here we just generate one.
+//! let mut peer_public_key_buf = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
+//! let peer_public_key;
+//! {
+//!     let peer_private_key =
+//!        try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519,
+//!                                                      &rng));
+//!     peer_public_key =
+//!         &mut peer_public_key_buf[..peer_private_key.public_key_len()];
+//!     try!(peer_private_key.compute_public_key(peer_public_key));
 //! }
+//! let peer_public_key = try!(Input::new(peer_public_key));
+//!
+//! // In a real application, the protocol specifies how to determine what
+//! // algorithm was used to generate the peer's private key. Here, we know it
+//! // is X25519 since we just generated it.
+//! let peer_public_key_alg = &agreement::X25519;
+//!
+//! let error_value = ();
+//!
+//! agreement::agree_ephemeral(my_private_key, peer_public_key_alg,
+//!                            peer_public_key, error_value, |_key_material| {
+//!     // In a real application, we'd apply a KDF to the key material and the
+//!     // public keys (as recommended in RFC 7748) and then derive session
+//!     // keys from the result. We omit all that here.
+//!     Ok(())
+//! })
+//! # }
 //! ```
 
 pub use ec::PUBLIC_KEY_MAX_LEN;
