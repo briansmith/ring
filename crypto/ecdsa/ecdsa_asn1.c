@@ -64,21 +64,6 @@
 #include "../ec/internal.h"
 
 
-size_t ECDSA_size(const EC_KEY *key) {
-  if (key == NULL) {
-    return 0;
-  }
-
-  const EC_GROUP *group = EC_KEY_get0_group(key);
-  if (group == NULL) {
-    return 0;
-  }
-
-  size_t group_order_size = BN_num_bytes(&group->order);
-
-  return ECDSA_SIG_max_len(group_order_size);
-}
-
 ECDSA_SIG *ECDSA_SIG_new(void) {
   ECDSA_SIG *sig = OPENSSL_malloc(sizeof(ECDSA_SIG));
   if (sig == NULL) {
@@ -128,66 +113,6 @@ ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in, size_t in_len) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     ECDSA_SIG_free(ret);
     return NULL;
-  }
-  return ret;
-}
-
-int ECDSA_SIG_marshal(CBB *cbb, const ECDSA_SIG *sig) {
-  CBB child;
-  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
-      !BN_marshal_asn1(&child, sig->r) ||
-      !BN_marshal_asn1(&child, sig->s) ||
-      !CBB_flush(cbb)) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
-    return 0;
-  }
-  return 1;
-}
-
-int ECDSA_SIG_to_bytes(uint8_t **out_bytes, size_t *out_len,
-                       const ECDSA_SIG *sig) {
-  CBB cbb;
-  CBB_zero(&cbb);
-  if (!CBB_init(&cbb, 0) ||
-      !ECDSA_SIG_marshal(&cbb, sig) ||
-      !CBB_finish(&cbb, out_bytes, out_len)) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
-    CBB_cleanup(&cbb);
-    return 0;
-  }
-  return 1;
-}
-
-/* der_len_len returns the number of bytes needed to represent a length of |len|
- * in DER. */
-static size_t der_len_len(size_t len) {
-  if (len < 0x80) {
-    return 1;
-  }
-  size_t ret = 1;
-  while (len > 0) {
-    ret++;
-    len >>= 8;
-  }
-  return ret;
-}
-
-size_t ECDSA_SIG_max_len(size_t order_len) {
-  /* Compute the maximum length of an |order_len| byte integer. Defensively
-   * assume that the leading 0x00 is included. */
-  size_t integer_len = 1 /* tag */ + der_len_len(order_len + 1) + 1 + order_len;
-  if (integer_len < order_len) {
-    return 0;
-  }
-  /* An ECDSA signature is two INTEGERs. */
-  size_t value_len = 2 * integer_len;
-  if (value_len < integer_len) {
-    return 0;
-  }
-  /* Add the header. */
-  size_t ret = 1 /* tag */ + der_len_len(value_len) + value_len;
-  if (ret < value_len) {
-    return 0;
   }
   return ret;
 }

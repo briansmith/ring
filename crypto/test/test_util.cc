@@ -20,13 +20,6 @@
 #include "openssl/rand.h"
 
 
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-extern "C" int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
-                                            const uint8_t *, size_t,
-                                            const uint8_t *, size_t,
-                                            const uint8_t *, size_t);
-
-
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
   const uint8_t *data = reinterpret_cast<const uint8_t*>(in);
   size_t i;

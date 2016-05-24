@@ -43,25 +43,6 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
     }
 }
 
-// TODO: After ecdsa_test.cc is removed, this function should be removed and
-// the caller should be changed to call `SHA512_4` directly. Also, the
-// alternative implementation of this in crypto/test should be removed at
-// that time.
-#[allow(non_snake_case)]
-#[doc(hidden)]
-#[no_mangle]
-pub extern fn BN_generate_dsa_nonce_digest(
-        out: *mut u8, out_len: c::size_t,
-        part1: *const u8, part1_len: c::size_t,
-        part2: *const u8, part2_len: c::size_t,
-        part3: *const u8, part3_len: c::size_t,
-        part4: *const u8, part4_len: c::size_t)
-        -> c::int {
-    digest::SHA512_4(out, out_len, part1, part1_len, part2, part2_len, part3,
-                     part3_len, part4, part4_len);
-    1
-}
-
 macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ec_group_fn:expr,
       $digest_alg_name:expr, $digest_alg:expr ) => {

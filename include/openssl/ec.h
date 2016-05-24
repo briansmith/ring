@@ -160,11 +160,6 @@ OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
                                       BN_CTX *ctx);
 
 
-
-/* Old code expects to get EC_KEY from ec.h. */
-#include <openssl/ec_key.h>
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

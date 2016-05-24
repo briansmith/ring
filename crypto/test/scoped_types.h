@@ -34,7 +34,6 @@
 #include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/ec.h>
-#include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
@@ -88,7 +87,6 @@ SCOPED_OPENSSL_TYPE(ScopedBIGNUM, BIGNUM, BN_free);
 SCOPED_OPENSSL_TYPE(ScopedBN_CTX, BN_CTX, BN_CTX_free);
 SCOPED_OPENSSL_TYPE(ScopedBN_MONT_CTX, BN_MONT_CTX, BN_MONT_CTX_free);
 SCOPED_OPENSSL_TYPE(ScopedECDSA_SIG, ECDSA_SIG, ECDSA_SIG_free);
-SCOPED_OPENSSL_TYPE(ScopedEC_KEY, EC_KEY, EC_KEY_free);
 SCOPED_OPENSSL_TYPE(ScopedEC_POINT, EC_POINT, EC_POINT_free);
 SCOPED_OPENSSL_TYPE(ScopedRSA, RSA, RSA_free);
 SCOPED_OPENSSL_TYPE(ScopedSPAKE2_CTX, SPAKE2_CTX, SPAKE2_CTX_free);

@@ -40,7 +40,6 @@
     <ClCompile Include="curve25519\curve25519.c" />
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
-    <ClCompile Include="ec\ec_key.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
     <ClCompile Include="ec\gfp_nist_ecdh.c" />
     <ClCompile Include="ec\gfp_nist_private.c" />

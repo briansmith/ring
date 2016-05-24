@@ -141,12 +141,6 @@ pub mod rand;
 pub mod signature;
 mod signature_impl;
 
-// XXX: This must be exposed publicly according to Rust's rules in order for
-// the C code to use it.
-#[cfg(not(feature = "no_heap"))]
-#[doc(hidden)]
-pub use ec::ecdsa::BN_generate_dsa_nonce_digest;
-
 
 #[cfg(test)]
 mod file_test;

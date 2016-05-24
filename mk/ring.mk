@@ -41,7 +41,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/curve25519/curve25519.c \
   crypto/ec/ec.c \
   crypto/ec/ec_curves.c \
-  crypto/ec/ec_key.c \
   crypto/ec/ec_montgomery.c \
   crypto/ec/gfp_nist_ecdh.c \
   crypto/ec/gfp_nist_private.c \

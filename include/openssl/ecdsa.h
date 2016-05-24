@@ -54,8 +54,7 @@
 #define OPENSSL_HEADER_ECDSA_H
 
 #include <openssl/base.h>
-
-#include <openssl/ec_key.h>
+#include <openssl/ec.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -82,19 +81,6 @@ OPENSSL_EXPORT int ECDSA_verify_signed_digest(const EC_GROUP *group,
                                               size_t sig_len,
                                               const uint8_t *ec_key,
                                               const size_t ec_key_len);
-
-/* ECDSA_sign signs |digest_len| bytes from |digest| with |key| and writes the
- * resulting signature to |sig|, which must have |ECDSA_size(key)| bytes of
- * space. On successful exit, |*sig_len| is set to the actual number of bytes
- * written. The |type| argument should be zero. It returns one on success and
- * zero otherwise. */
-OPENSSL_EXPORT int ECDSA_sign(int type, const uint8_t *digest,
-                              size_t digest_len, uint8_t *sig,
-                              unsigned int *sig_len, EC_KEY *key, RAND *rng);
-
-/* ECDSA_size returns the maximum size of an ECDSA signature using |key|. It
- * returns zero on error. */
-OPENSSL_EXPORT size_t ECDSA_size(const EC_KEY *key);
 
 
 /* Low-level signing and verification.
@@ -124,22 +110,6 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_parse(CBS *cbs);
  * It returns a newly-allocated |ECDSA_SIG| structure or NULL on error. */
 OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in,
                                                size_t in_len);
-
-/* ECDSA_SIG_marshal marshals |sig| as a DER-encoded ECDSA-Sig-Value and appends
- * the result to |cbb|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int ECDSA_SIG_marshal(CBB *cbb, const ECDSA_SIG *sig);
-
-/* ECDSA_SIG_to_bytes marshals |sig| as a DER-encoded ECDSA-Sig-Value and, on
- * success, sets |*out_bytes| to a newly allocated buffer containing the result
- * and returns one. Otherwise, it returns zero. The result should be freed with
- * |OPENSSL_free|. */
-OPENSSL_EXPORT int ECDSA_SIG_to_bytes(uint8_t **out_bytes, size_t *out_len,
-                                      const ECDSA_SIG *sig);
-
-/* ECDSA_SIG_max_len returns the maximum length of a DER-encoded ECDSA-Sig-Value
- * structure for a group whose order is represented in |order_len| bytes, or
- * zero on overflow. */
-OPENSSL_EXPORT size_t ECDSA_SIG_max_len(size_t order_len);
 
 
 #if defined(__cplusplus)
