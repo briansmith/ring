@@ -203,6 +203,14 @@ PERL_EXECUTABLE ?= perl
 # The British spelling "flavour" is used for consistency with perlasm's code.
 ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
 PERLASM_FLAVOUR ?= macosx
+else ifeq ($(TARGET_SYS),ios)
+ifeq ($(findstring arm,$(TARGET_ARCH_NORMAL)),arm)
+PERLASM_FLAVOUR ?= ios32
+else ifeq ($(TARGET_ARCH_NORMAL),aarch64)
+PERLASM_FLAVOUR ?= ios64
+else
+PERLASM_FLAVOUR ?= macosx
+endif
 else ifeq ($(TARGET_ARCH_NORMAL),aarch64)
 PERLASM_FLAVOUR ?= linux64
 else ifeq ($(TARGET_ARCH_NORMAL),arm)

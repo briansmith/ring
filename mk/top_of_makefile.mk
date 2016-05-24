@@ -124,6 +124,28 @@ CXXFLAGS_STD ?= -std=c++0x
 CFLAGS += $(CFLAGS_STD)
 CXXFLAGS += $(CXXFLAGS_STD)
 
+# Add flags needed for ios.
+ifeq ($(TARGET_SYS),ios)
+IOS_MIN_VERSION = 7.0
+ifeq ($(findstring x86,$(TARGET_ARCH_NORMAL)),x86)
+IOS_SDK = iphonesimulator
+IOS_VERSION_FLAG = -mios-simulator-version-min=$(IOS_MIN_VERSION)
+else
+IOS_SDK = iphoneos
+IOS_VERSION_FLAG = -mios-version-min=$(IOS_MIN_VERSION)
+ifeq ($(TARGET_ARCH_BASE),aarch64)
+CFLAGS += -arch arm64
+CXXFLAGS += -arch arm64
+else
+CFLAGS += -arch $(TARGET_ARCH_BASE)
+CXXFLAGS += -arch $(TARGET_ARCH_BASE)
+endif
+endif
+IOS_SDK_PATH = $(shell xcrun --show-sdk-path -sdk $(IOS_SDK))
+CFLAGS += $(DEFAULT_TARGET_ARCH) -isysroot $(IOS_SDK_PATH) $(IOS_VERSION_FLAG)
+CXXFLAGS += $(DEFAULT_TARGET_ARCH) -isysroot $(IOS_SDK_PATH) $(IOS_VERSION_FLAG)
+endif
+
 # Always add full debug info and strip dead code.
 CPPFLAGS += -fpic -fdata-sections -ffunction-sections
 ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
