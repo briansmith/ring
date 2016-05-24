@@ -16,14 +16,15 @@ implementations.
 
 Particular attention is being paid to making it easy to build and integrate
 *ring* into applications and higher-level frameworks, and to ensuring that
-*ring* works optimally on microcontrollers to support Internet of Things
-(IoT) applications.
+*ring* works optimally on small devices, and eventually microcontrollers, to
+support Internet of Things (IoT) applications.
 
 The name *ring* comes from the fact that *ring* started as a subset of
-BoringSSL, and *"ring"* is a substring of "Bo*ring*SSL". Almost all the code in
-*ring* comes from BoringSSL, and BoringSSL is derived from OpenSSL. *ring*
-tracks upstream changes to BoringSSL. Several patches that were developed for
-*ring* have already been integrated upstream in BoringSSL (over 170 so far).
+BoringSSL, and *"ring"* is a substring of "Bo*ring*SSL". Most of the (C and
+assembly language) code in *ring* comes from BoringSSL, and BoringSSL is
+derived from OpenSSL. *ring* merges changes from BoringSSL regularly. Also,
+several changes that were developed for *ring* have already been merged into
+BoringSSL.
 
 
 
@@ -72,9 +73,6 @@ license your contributions in the commit messages of commits in pull requests,
 e.g. by putting “I agree to license my contributions to each file under the
 terms given at the top of each file I changed.” at the end of each commit
 message.
-
-If your patch is useful for BoringSSL then it would be very nice of you to also
-submit it to them after agreeing to their CLA.
 
 
 
