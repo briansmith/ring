@@ -76,18 +76,6 @@ extern "C" {
 typedef struct bn_blinding_st BN_BLINDING;
 
 
-/* Simplified interface. */
-
-/* Verify an encoded PKCS#1 signature. */
-OPENSSL_EXPORT int RSA_verify_pkcs1_signed_digest(size_t min_bits,
-                                                  size_t max_bits, int hash_nid,
-                                                  const uint8_t *digest,
-                                                  size_t digest_len,
-                                                  const uint8_t *sig,
-                                                  size_t sig_len,
-                                                  const uint8_t *rsa_key,
-                                                  size_t rsa_key_len);
-
 /* Allocation and destruction. */
 
 /* RSA_free decrements the reference count of |rsa| and frees it if the

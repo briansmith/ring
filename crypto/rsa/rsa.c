@@ -68,6 +68,16 @@
 #include "../internal.h"
 
 
+/* Declaration to avoid -Wmissing-prototypes warnings. */
+int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
+                                   int hash_nid, const uint8_t *digest,
+                                   size_t digest_len, const uint8_t *sig,
+                                   size_t sig_len, const uint8_t *public_key_n,
+                                   size_t public_key_n_len,
+                                   const uint8_t *public_key_e,
+                                   size_t public_key_e_len);
+
+
 typedef int (*rsa_verify_raw_f)(int hash_nid, const uint8_t *raw_sig,
                                 size_t raw_sig_len, const uint8_t *msg,
                                 size_t msg_len);
@@ -79,16 +89,20 @@ static int rsa_verify_raw_pkcs1(int hash_nid, const uint8_t *raw_sig,
 static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
                       size_t max_bits, int hash_nid, const uint8_t *msg,
                       size_t msg_len, const uint8_t *sig, size_t sig_len,
-                      const uint8_t *key_bytes, size_t key_bytes_len);
+                      const uint8_t *public_key_n, size_t public_key_n_len,
+                      const uint8_t *public_key_e, size_t public_key_e_len);
 
 
 int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
                                    int hash_nid, const uint8_t *digest,
                                    size_t digest_len, const uint8_t *sig,
-                                   size_t sig_len, const uint8_t *key,
-                                   size_t key_len) {
+                                   size_t sig_len, const uint8_t *public_key_n,
+                                   size_t public_key_n_len,
+                                   const uint8_t *public_key_e,
+                                   size_t public_key_e_len) {
   return rsa_verify(rsa_verify_raw_pkcs1, min_bits, max_bits, hash_nid, digest,
-                    digest_len, sig, sig_len, key, key_len);
+                    digest_len, sig, sig_len, public_key_n, public_key_n_len,
+                    public_key_e, public_key_e_len);
 }
 
 RSA *rsa_new_begin(void) {
@@ -353,7 +367,8 @@ static int rsa_verify_raw_pkcs1(int hash_nid, const uint8_t *raw_sig,
 static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
                       size_t max_bits, int hash_nid, const uint8_t *msg,
                       size_t msg_len, const uint8_t *sig, size_t sig_len,
-                      const uint8_t *key_bytes, size_t key_bytes_len) {
+                      const uint8_t *public_key_n, size_t public_key_n_len,
+                      const uint8_t *public_key_e, size_t public_key_e_len) {
   uint8_t *buf = NULL;
   int ret = 0;
 
@@ -369,7 +384,8 @@ static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
   BIGNUM e;
   BN_init(&e);
 
-  if (!RSA_public_key_from_bytes(&n, &e, key_bytes, key_bytes_len) ||
+  if (BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
+      BN_bin2bn(public_key_e, public_key_e_len, &e) == NULL ||
       !rsa_public_decrypt(&n, &e, buf, sig_len, sig, sig_len, min_bits,
                           max_bits)) {
     goto out;
