@@ -38,6 +38,7 @@ macro_rules! u32x2 {
 }
 
 mod sha1;
+mod sha256;
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
@@ -320,10 +321,10 @@ pub static SHA1: Algorithm = Algorithm {
 /// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
 pub static SHA256: Algorithm = Algorithm {
     output_len: 256 / 8,
-    chaining_len: 256 / 8,
-    block_len: 512 / 8,
+    chaining_len: sha256::CHAINING_LEN,
+    block_len: sha256::BLOCK_LEN,
     len_len: 64 / 8,
-    block_data_order: sha256_block_data_order,
+    block_data_order: sha256::block_data_order,
     format_output: sha256_format_output,
     initial_state: [
         u32x2!(0x6a09e667u32, 0xbb67ae85u32),
@@ -455,7 +456,6 @@ pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
 }
 
 extern {
-    fn sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8, num: c::size_t);
     fn sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8, num: c::size_t);
 }
 
