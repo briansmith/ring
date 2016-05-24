@@ -142,8 +142,7 @@ mod tests {
     use {ec, file_test, signature};
     use input::Input;
 
-    #[cfg(not(feature = "no_heap"))]
-    bssl_test_rng!(test_ecdsa, bssl_ecdsa_test_main);
+    // ECDSA tests are in crypto/ec/ecdsa.rs.
 
     #[cfg(not(feature = "no_heap"))]
     bssl_test_rng!(test_rsa, bssl_rsa_test_main);

@@ -141,7 +141,6 @@ RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bytestring/bytestring_test.cc \
   crypto/chacha/chacha_test.cc \
   crypto/constant_time_test.c \
-  crypto/ecdsa/ecdsa_test.cc \
   crypto/poly1305/poly1305_test.cc \
   crypto/rsa/rsa_test.cc \
   crypto/test/bn_test_convert.c \
