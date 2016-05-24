@@ -283,6 +283,8 @@ struct ssl_aead_ctx_st {
   /* omit_version_in_ad is non-zero if the version should be omitted
    * in the AEAD's ad parameter. */
   char omit_version_in_ad;
+  /* omit_ad is non-zero if the AEAD's ad parameter should be omitted. */
+  char omit_ad;
   /* xor_fixed_nonce is non-zero if the fixed nonce should be XOR'd into the
    * variable nonce rather than prepended. */
   char xor_fixed_nonce;
