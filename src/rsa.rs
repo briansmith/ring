@@ -100,3 +100,56 @@ extern {
                                       public_key_e: *const u8,
                                       public_key_e_len: c::size_t) -> c::int;
 }
+
+
+#[cfg(test)]
+mod tests {
+    use {der, file_test, input, signature};
+    use input::Input;
+    use super::*;
+
+    #[test]
+    fn test_signature_rsa_pkcs1_verify() {
+        file_test::run("src/rsa_pkcs1_verify_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+
+            let digest_name = test_case.consume_string("Digest");
+            let alg = if digest_name == "SHA1" {
+                &RSA_PKCS1_2048_8192_SHA1_VERIFY
+            } else if digest_name == "SHA256" {
+                &RSA_PKCS1_2048_8192_SHA256_VERIFY
+            } else if digest_name == "SHA384" {
+                &RSA_PKCS1_2048_8192_SHA384_VERIFY
+            } else if digest_name == "SHA512" {
+                &RSA_PKCS1_2048_8192_SHA512_VERIFY
+            } else {
+                panic!("Unsupported digest: {}", digest_name);
+            };
+
+            let public_key = test_case.consume_bytes("Key");
+            let public_key = Input::new(&public_key).unwrap();
+
+            // Sanity check that we correctly DER-encoded the originally-
+            // provided separate (n, e) components. When we add test vectors
+            // for improperly-encoded signatures, we'll have to revisit this.
+            assert!(input::read_all(public_key, (), |input| {
+                der::nested(input, der::Tag::Sequence, (), |input| {
+                    let _ = try!(der::positive_integer(input));
+                    let _ = try!(der::positive_integer(input));
+                    Ok(())
+                })
+            }).is_ok());
+
+            let msg = test_case.consume_bytes("Msg");
+            let msg = Input::new(&msg).unwrap();
+
+            let sig = test_case.consume_bytes("Sig");
+            let sig = Input::new(&sig).unwrap();
+
+            let expected_result = test_case.consume_string("Result");
+
+            let actual_result = signature::verify(alg, public_key, msg, sig);
+            assert_eq!(actual_result.is_ok(), expected_result == "P");
+        });
+    }
+}
