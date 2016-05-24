@@ -93,8 +93,8 @@ int GFp_nist_public_from_private(const EC_GROUP *group, uint8_t *public_key_out,
 
   if (!group->meth->mul_private(group, public_point, &private_key_bn, NULL,
                                 NULL, NULL) ||
-      EC_POINT_point2oct(group, public_point, public_key_out,
-                         public_key_out_len, NULL) != public_key_out_len) {
+      ec_GFp_simple_point2oct(group, public_point, public_key_out,
+                              public_key_out_len, NULL) != public_key_out_len) {
     goto err;
   }
 

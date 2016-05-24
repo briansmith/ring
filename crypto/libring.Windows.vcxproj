@@ -40,6 +40,7 @@
     <ClCompile Include="ec\ec_montgomery.c" />
     <ClCompile Include="ec\gfp_nist_ecdh.c" />
     <ClCompile Include="ec\gfp_nist_private.c" />
+    <ClCompile Include="ec\gfp_nist_public.c" />
     <ClCompile Include="ec\oct.c" />
     <ClCompile Include="ec\simple.c" />
     <ClCompile Include="ec\wnaf.c" />

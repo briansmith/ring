@@ -73,9 +73,8 @@
 #include "internal.h"
 
 
-static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
-                                      const EC_POINT *point, uint8_t *buf,
-                                      size_t len, BN_CTX *ctx) {
+size_t ec_GFp_simple_point2oct(const EC_GROUP *group, const EC_POINT *point,
+                               uint8_t *buf, size_t len, BN_CTX *ctx) {
   size_t ret;
   BN_CTX *new_ctx = NULL;
   int used_ctx = 0;
@@ -150,95 +149,4 @@ err:
   }
   BN_CTX_free(new_ctx);
   return 0;
-}
-
-
-static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
-                                   const uint8_t *buf, size_t len,
-                                   BN_CTX *ctx) {
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *x, *y;
-  size_t field_len, enc_len;
-  int ret = 0;
-
-  if (len == 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-  if (buf[0] != 4) { /* Uncompressed. */
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    return 0;
-  }
-
-  field_len = BN_num_bytes(&group->field);
-  enc_len = 1 + 2 * field_len;
-
-  if (len != enc_len) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    return 0;
-  }
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  x = BN_CTX_get(ctx);
-  y = BN_CTX_get(ctx);
-  if (x == NULL || y == NULL) {
-    goto err;
-  }
-
-  if (!BN_bin2bn(buf + 1, field_len, x)) {
-    goto err;
-  }
-  if (BN_ucmp(x, &group->field) >= 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    goto err;
-  }
-
-  if (!BN_bin2bn(buf + 1 + field_len, field_len, y)) {
-    goto err;
-  }
-  if (BN_ucmp(y, &group->field) >= 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    goto err;
-  }
-
-  if (!ec_GFp_simple_point_set_affine_coordinates(group, point, x, y, ctx)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
-}
-
-int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
-                       const uint8_t *buf, size_t len, BN_CTX *ctx) {
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_oct2point(group, point, buf, len, ctx);
-}
-
-size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
-                          uint8_t *buf, size_t len, BN_CTX *ctx) {
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_point2oct(group, point, buf, len, ctx);
 }

@@ -54,41 +54,7 @@
 #define OPENSSL_HEADER_ECDSA_H
 
 #include <openssl/base.h>
-#include <openssl/ec.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-
-/* ECDSA contains functions for signing and verifying with the Digital Signature
- * Algorithm over elliptic curves. */
-
-
-/* Signing and verifing. */
-
-/* ECDSA_verify_signed_digest verifies that the signature (|sig_r|, |sig_s|)
- * constitute a valid signature of |digest| for the public key |ec_key| for
- * the curve represented by the |EC_GROUP| created by |ec_group_new|.
- * |hash_nid| must be the identifier of the digest function used to calculate
- * |digest|. The caller must ensure that |sig_r| and |sig_s| are encodings of
- * *positive* integers. It returns one on success or zero if the signature is
- * invalid or on error. */
-OPENSSL_EXPORT int ECDSA_verify_signed_digest(const EC_GROUP *group,
-                                              int hash_nid,
-                                              const uint8_t *digest,
-                                              size_t digest_len,
-                                              const uint8_t *sig_r,
-                                              size_t sig_r_len,
-                                              const uint8_t *sig_s,
-                                              size_t sig_s_len,
-                                              const uint8_t *ec_key,
-                                              const size_t ec_key_len);
-
-
-#if defined(__cplusplus)
-}  /* extern C */
-#endif
 
 #define ECDSA_R_BAD_SIGNATURE 100
 #define ECDSA_R_MISSING_PARAMETERS 101

@@ -36,8 +36,8 @@ pub struct Algorithm {
         unsafe extern fn(public_out: *mut u8, private_key: *const u8) -> c::int,
 
     ecdh:
-        unsafe extern fn(out: *mut u8, private_key: *const u8,
-                         peer_public_key: *const u8) -> c::int,
+        fn(out: &mut [u8], private_key: &ec::PrivateKey, peer_public_key: Input)
+           -> Result<(), ()>,
 }
 
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
@@ -142,22 +142,15 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     if peer_public_key_alg.nid != my_private_key.alg.nid {
         return Err(error_value);
     }
-    let peer_public_key = peer_public_key.as_slice_less_safe();
-    if peer_public_key.len() != my_private_key.public_key_len() {
-        return Err(error_value);
-    }
     let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
-    match unsafe {
-        (my_private_key.alg.ecdh)(shared_key.as_mut_ptr(),
-            my_private_key.private_key.bytes.as_ptr(), peer_public_key.as_ptr())
-    } {
-        1 => kdf(&shared_key[..my_private_key.alg.elem_and_scalar_len]),
-        _ => Err(error_value),
-    }
+    let shared_key = &mut shared_key[..my_private_key.alg.elem_and_scalar_len];
+    try!((my_private_key.alg.ecdh)(shared_key, &my_private_key.private_key,
+                                   peer_public_key).map_err(|_| error_value));
+    kdf(shared_key)
 }
 
 macro_rules! externs {
-    ( $generate_private_key:ident, $public_from_private:ident, $ecdh:ident ) => {
+    ( $generate_private_key:ident, $public_from_private:ident ) => {
         #[allow(improper_ctypes)]
         extern {
             fn $generate_private_key(out: *mut u8, rng: *mut rand::RAND)
@@ -167,17 +160,15 @@ macro_rules! externs {
         extern {
             fn $public_from_private(public_key_out: *mut u8,
                                     private_key: *const u8) -> c::int;
-
-            fn $ecdh(out: *mut u8, private_key: *const u8,
-                     peer_public_key: *const u8) -> c::int;
         }
     }
 }
 
 #[cfg(not(feature = "no_heap"))]
 macro_rules! nist_ecdh {
-    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr,
-      $generate_private_key:ident, $public_from_private:ident, $ecdh:ident ) => {
+    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr, $ecdh:ident,
+      $ec_group_fn:expr, $generate_private_key:ident,
+      $public_from_private:ident ) => {
         #[doc="ECDH using the NIST"]
         #[doc=$name_str]
         #[doc="curve."]
@@ -210,24 +201,55 @@ macro_rules! nist_ecdh {
             ecdh: $ecdh,
         };
 
-        externs!($generate_private_key, $public_from_private, $ecdh);
+        fn $ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
+                 peer_public_key: Input) -> Result<(), ()> {
+            nist_ecdh(out, unsafe { $ec_group_fn() }, $NAME.elem_and_scalar_len,
+                      my_private_key, peer_public_key)
+        }
+
+        externs!($generate_private_key, $public_from_private);
     }
 }
 
 #[cfg(feature = "no_heap")]
 macro_rules! nist_ecdh {
-    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr,
-      $generate_private_key:ident, $public_from_private:ident, $ecdh:ident ) => {
+    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr, $ecdh:ident,
+      $ec_group_fn:ident, $generate_private_key:ident,
+      $public_from_private:ident ) => {
     }
 }
 
+fn nist_ecdh(out: &mut [u8], group: *const ec::EC_GROUP,
+             elem_and_scalar_len: usize, my_private_key: &ec::PrivateKey,
+             peer_public_key: Input)
+             -> Result<(), ()> {
+    let (peer_x, peer_y) =
+        try!(ec::nist_public::parse_uncompressed_point(peer_public_key,
+                                                       elem_and_scalar_len));
+    bssl::map_result(unsafe {
+        GFp_nist_ecdh(group, out.as_mut_ptr(), out.len(),
+                      my_private_key.bytes.as_ptr(), elem_and_scalar_len,
+                      peer_x.as_ptr(), peer_x.len(), peer_y.as_ptr(),
+                      peer_y.len())
+    })
+}
+
 nist_ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", 415 /*NID_X9_62_prime256v1*/,
-           GFp_p256_generate_private_key, GFp_p256_public_from_private,
-           GFp_p256_ecdh);
+           nist_p256_ecdh, ec::EC_GROUP_P256, GFp_p256_generate_private_key,
+           GFp_p256_public_from_private);
 
 nist_ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", 715 /*NID_secp384r1*/,
-           GFp_p384_generate_private_key, GFp_p384_public_from_private,
-           GFp_p384_ecdh);
+           nist_p384_ecdh, ec::EC_GROUP_P384, GFp_p384_generate_private_key,
+           GFp_p384_public_from_private);
+
+extern {
+    fn GFp_nist_ecdh(group: *const ec::EC_GROUP, out: *mut u8,
+                     out_len: c::size_t, private_key: *const u8,
+                     private_key_len: c::size_t, peer_public_key_x: *const u8,
+                     peer_public_key_x_len: c::size_t,
+                     peer_public_key_y: *const u8,
+                     peer_public_key_y_len: c::size_t) -> c::int;
+}
 
 
 /// X25519 (ECDH using Curve25519).
@@ -244,11 +266,26 @@ pub static X25519: Algorithm = Algorithm {
     nid: 948 /* NID_X25519 */,
     generate_private_key: GFp_x25519_generate_private_key,
     public_from_private: GFp_x25519_public_from_private,
-    ecdh: GFp_x25519_ecdh,
+    ecdh: x25519_ecdh,
 };
 
-externs!(GFp_x25519_generate_private_key, GFp_x25519_public_from_private,
-         GFp_x25519_ecdh);
+fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
+               peer_public_key: Input) -> Result<(), ()> {
+    debug_assert_eq!(out.len(), X25519.elem_and_scalar_len);
+    debug_assert_eq!(peer_public_key.len(), X25519.public_key_len);
+    bssl::map_result(unsafe {
+        GFp_x25519_ecdh(out.as_mut_ptr(), my_private_key.bytes.as_ptr(),
+                        peer_public_key.as_slice_less_safe().as_ptr())
+    })
+}
+
+externs!(GFp_x25519_generate_private_key, GFp_x25519_public_from_private);
+
+extern {
+    fn GFp_x25519_ecdh(out_shared_key: *mut u8/*[32]*/,
+                       private_key: *const u8/*[u32]*/,
+                       peer_public_value: *const u8/*[32]*/) -> c::int;
+}
 
 #[cfg(test)]
 mod tests {

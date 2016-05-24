@@ -144,21 +144,6 @@ OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                                        BIGNUM *x, BIGNUM *y,
                                                        BN_CTX *ctx);
 
-/* EC_POINT_point2oct serialises |point| into the X9.62 form given by |form|
- * into, at most, |len| bytes at |buf|. It returns the number of bytes written
- * or zero on error if |buf| is non-NULL, else the number of bytes needed. The
- * |ctx| argument may be used if not NULL. */
-OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
-                                         const EC_POINT *point,
-                                         uint8_t *buf, size_t len, BN_CTX *ctx);
-
-/* EC_POINT_oct2point sets |point| from |len| bytes of X9.62 format
- * serialisation in |buf|. It returns one on success and zero otherwise. The
- * |ctx| argument may be used if not NULL. */
-OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
-                                      const uint8_t *buf, size_t len,
-                                      BN_CTX *ctx);
-
 
 #if defined(__cplusplus)
 }  /* extern C */

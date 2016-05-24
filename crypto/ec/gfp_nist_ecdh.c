@@ -19,7 +19,10 @@
 
 int GFp_nist_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
                   const uint8_t *private_key, size_t private_key_len,
-                  const uint8_t *peer_public_key, size_t peer_public_key_len) {
+                  const uint8_t *peer_public_key_x,
+                  size_t peer_public_key_x_len,
+                  const uint8_t *peer_public_key_y,
+                  size_t peer_public_key_y_len) {
   BIGNUM private_key_bn;
   BN_init(&private_key_bn);
 
@@ -35,16 +38,10 @@ int GFp_nist_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
     goto err;
   }
 
-  peer_point = EC_POINT_new(group);
+  peer_point = GFp_nist_make_point(group, peer_public_key_x,
+                                   peer_public_key_x_len, peer_public_key_y,
+                                   peer_public_key_y_len);
   if (peer_point == NULL) {
-    goto err;
-  }
-
-  /* |EC_POINT_oct2point| verifies that the encoding is affine uncompressed
-   * (thus, the point cannot be the point at infinity) and that the point is on
-   * the curve. */
-  if (!EC_POINT_oct2point(group, peer_point, peer_public_key,
-                          peer_public_key_len, NULL)) {
     goto err;
   }
 

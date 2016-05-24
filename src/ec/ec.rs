@@ -59,3 +59,6 @@ pub mod ecdh;
 pub mod ecdsa;
 
 pub mod eddsa;
+
+#[cfg(not(feature = "no_heap"))]
+pub mod nist_public;

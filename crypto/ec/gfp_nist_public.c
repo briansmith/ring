@@ -12,37 +12,48 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef GFp_INTERNAL_H
-#define GFp_INTERNAL_H
+/* Common utilities on public keys for NIST curves. */
 
-#include <openssl/base.h>
-#include <openssl/ec.h>
+#include "gfp_internal.h"
 
-#include <stddef.h>
-
-#include "internal.h"
-
-
-int GFp_nist_generate_private_key(const EC_GROUP *group, uint8_t *out,
-                                  size_t out_len, RAND *rng);
-
-int GFp_nist_public_from_private(const EC_GROUP *group,
-                                 uint8_t *public_key_out,
-                                 size_t public_key_out_len,
-                                 const uint8_t *private_key,
-                                 size_t private_key_len);
-
-int GFp_nist_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
-                  const uint8_t *private_key, size_t private_key_len,
-                  const uint8_t *peer_public_key_x,
-                  size_t peer_public_key_x_len,
-                  const uint8_t *peer_public_key_y,
-                  size_t peer_public_key_y_len);
 
 EC_POINT *GFp_nist_make_point(const EC_GROUP *group,
                               const uint8_t *peer_public_key_x,
                               size_t peer_public_key_x_len,
                               const uint8_t *peer_public_key_y,
-                              size_t peer_public_key_y_len);
+                              size_t peer_public_key_y_len) {
+  BIGNUM x;
+  BN_init(&x);
 
-#endif /* GFp_INTERNAL_H */
+  BIGNUM y;
+  BN_init(&y);
+
+  int ok = 0;
+
+  EC_POINT *result = EC_POINT_new(group);
+  if (result == NULL) {
+    goto err;
+  }
+
+  /* |ec_GFp_simple_point_set_affine_coordinates| verifies that (x, y) is on
+   * the curve and that each coordinate is a valid field element (i.e.
+   * non-negative and less than `q`). The point cannot be the point at infinity
+   * because it was given as affine coordinates. */
+  if (BN_bin2bn(peer_public_key_x, peer_public_key_x_len, &x) == NULL ||
+      BN_bin2bn(peer_public_key_y, peer_public_key_y_len, &y) == NULL ||
+      !ec_GFp_simple_point_set_affine_coordinates(group, result, &x, &y,
+                                                  NULL)) {
+    goto err;
+  }
+
+  ok = 1;
+
+err:
+  BN_free(&x);
+  BN_free(&y);
+  if (!ok) {
+    EC_POINT_free(result);
+    result = NULL;
+  }
+  return result;
+}

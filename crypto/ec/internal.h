@@ -168,6 +168,8 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(const EC_GROUP *, EC_POINT *,
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
                                                const BIGNUM *x, const BIGNUM *y,
                                                BN_CTX *);
+size_t ec_GFp_simple_point2oct(const EC_GROUP *group, const EC_POINT *point,
+                               uint8_t *buf, size_t len, BN_CTX *ctx);
 int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       const EC_POINT *b, BN_CTX *);
 int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,

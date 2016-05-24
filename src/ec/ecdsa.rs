@@ -23,6 +23,7 @@ use input::Input;
 struct ECDSA {
     digest_alg: &'static digest::Algorithm,
     ec_group_fn: unsafe extern fn() -> *const ec::EC_GROUP,
+    elem_and_scalar_len: usize,
 }
 
 #[cfg(not(feature = "no_heap"))]
@@ -30,30 +31,33 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+
         let (r, s) = try!(input::read_all(signature, (), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
                 let r = try!(der::positive_integer(input));
                 let s = try!(der::positive_integer(input));
-                Ok((r, s))
+                Ok((r.as_slice_less_safe(), s.as_slice_less_safe()))
             })
         }));
-        let r = r.as_slice_less_safe();
-        let s = s.as_slice_less_safe();
-        let public_key = public_key.as_slice_less_safe();
+
+        let (x, y) = try!(ec::nist_public::parse_uncompressed_point(
+                                public_key, self.elem_and_scalar_len));
+
         bssl::map_result(unsafe {
             ECDSA_verify_signed_digest((self.ec_group_fn)(),
                                        digest.algorithm().nid,
                                        digest.as_ref().as_ptr(),
                                        digest.as_ref().len(), r.as_ptr(),
                                        r.len(), s.as_ptr(), s.len(),
-                                       public_key.as_ptr(), public_key.len())
+                                       x.as_ptr(), x.len(), y.as_ptr(),
+                                       y.len())
         })
     }
 }
 
 macro_rules! ecdsa {
-    ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ec_group_fn:expr,
-      $digest_alg_name:expr, $digest_alg:expr ) => {
+    ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $curve_bits: expr,
+      $ec_group_fn:expr, $digest_alg_name:expr, $digest_alg:expr ) => {
         #[cfg(not(feature = "no_heap"))]
         #[doc="Verification of ECDSA signatures using the "]
         #[doc=$curve_name]
@@ -90,27 +94,28 @@ macro_rules! ecdsa {
             implementation: &ECDSA {
                 digest_alg: $digest_alg,
                 ec_group_fn: $ec_group_fn,
+                elem_and_scalar_len: ($curve_bits + 7) / 8,
             }
         };
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256, "SHA-1",
-       &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
+       "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", ec::EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
        "SHA-512", &digest::SHA512);
 
-ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384, "SHA-1",
-       &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
+       "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", ec::EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
        "SHA-512", &digest::SHA512);
 
 
@@ -120,8 +125,10 @@ extern {
                                   digest: *const u8, digest_len: c::size_t,
                                   sig_r: *const u8, sig_r_len: c::size_t,
                                   sig_s: *const u8, sig_s_len: c::size_t,
-                                  key_octets: *const u8,
-                                  key_octets_len: c::size_t) -> c::int;
+                                  peer_public_key_x: *const u8,
+                                  peer_public_key_x_len: c::size_t,
+                                  peer_public_key_y: *const u8,
+                                  peer_public_key_y_len: c::size_t) -> c::int;
 }
 
 
