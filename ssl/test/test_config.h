@@ -38,6 +38,7 @@ struct TestConfig {
   bool write_different_record_sizes = false;
   bool cbc_record_splitting = false;
   bool partial_write = false;
+  bool no_tls13 = false;
   bool no_tls12 = false;
   bool no_tls11 = false;
   bool no_tls1 = false;

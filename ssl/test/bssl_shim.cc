@@ -1219,6 +1219,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->partial_write) {
     SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_PARTIAL_WRITE);
   }
+  if (config->no_tls13) {
+    SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_3);
+  }
   if (config->no_tls12) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_2);
   }

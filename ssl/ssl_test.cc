@@ -646,7 +646,10 @@ static bool TestDefaultVersion(uint16_t version,
   if (!ctx) {
     return false;
   }
-  return ctx->min_version == version && ctx->max_version == version;
+  // TODO(svaldez): Remove TLS1_2_VERSION fallback upon implementing TLS 1.3.
+  return ctx->min_version == version &&
+         (ctx->max_version == version ||
+          (version == 0 && ctx->max_version == TLS1_2_VERSION));
 }
 
 static bool CipherGetRFCName(std::string *out, uint16_t value) {
