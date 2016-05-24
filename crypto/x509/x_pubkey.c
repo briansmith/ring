@@ -140,10 +140,10 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
 
     CRYPTO_STATIC_MUTEX_lock_read(&g_pubkey_lock);
     if (key->pkey != NULL) {
-        CRYPTO_STATIC_MUTEX_unlock(&g_pubkey_lock);
+        CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
         return EVP_PKEY_up_ref(key->pkey);
     }
-    CRYPTO_STATIC_MUTEX_unlock(&g_pubkey_lock);
+    CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
 
     /* Re-encode the |X509_PUBKEY| to DER and parse it. */
     int spki_len = i2d_X509_PUBKEY(key, &spki);
@@ -161,12 +161,12 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
     /* Check to see if another thread set key->pkey first */
     CRYPTO_STATIC_MUTEX_lock_write(&g_pubkey_lock);
     if (key->pkey) {
-        CRYPTO_STATIC_MUTEX_unlock(&g_pubkey_lock);
+        CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
         EVP_PKEY_free(ret);
         ret = key->pkey;
     } else {
         key->pkey = ret;
-        CRYPTO_STATIC_MUTEX_unlock(&g_pubkey_lock);
+        CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
     }
 
     OPENSSL_free(spki);

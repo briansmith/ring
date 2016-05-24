@@ -241,7 +241,7 @@ const X509_POLICY_CACHE *policy_cache_set(X509 *x)
 
     CRYPTO_STATIC_MUTEX_lock_read(&g_x509_policy_cache_lock);
     cache = x->policy_cache;
-    CRYPTO_STATIC_MUTEX_unlock(&g_x509_policy_cache_lock);
+    CRYPTO_STATIC_MUTEX_unlock_read(&g_x509_policy_cache_lock);
 
     if (cache != NULL)
         return cache;
@@ -250,7 +250,7 @@ const X509_POLICY_CACHE *policy_cache_set(X509 *x)
     if (x->policy_cache == NULL)
         policy_cache_new(x);
     cache = x->policy_cache;
-    CRYPTO_STATIC_MUTEX_unlock(&g_x509_policy_cache_lock);
+    CRYPTO_STATIC_MUTEX_unlock_write(&g_x509_policy_cache_lock);
 
     return cache;
 }

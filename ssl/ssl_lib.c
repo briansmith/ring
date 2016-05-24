@@ -1774,7 +1774,7 @@ void ssl_update_cache(SSL *ssl, int mode) {
       flush_cache = 1;
       ctx->handshakes_since_cache_flush = 0;
     }
-    CRYPTO_MUTEX_unlock(&ctx->lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->lock);
 
     if (flush_cache) {
       SSL_CTX_flush_sessions(ctx, (unsigned long)time(NULL));

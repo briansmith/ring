@@ -234,7 +234,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   }
 
   if (ret != NULL) {
-    CRYPTO_MUTEX_unlock(&rsa->lock);
+    CRYPTO_MUTEX_unlock_write(&rsa->lock);
     return ret;
   }
 
@@ -243,7 +243,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   /* We didn't find a free BN_BLINDING to use so increase the length of
    * the arrays by one and use the newly created element. */
 
-  CRYPTO_MUTEX_unlock(&rsa->lock);
+  CRYPTO_MUTEX_unlock_write(&rsa->lock);
   ret = BN_BLINDING_new();
   if (ret == NULL) {
     return NULL;
@@ -281,14 +281,14 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   rsa->blindings_inuse = new_blindings_inuse;
   rsa->num_blindings++;
 
-  CRYPTO_MUTEX_unlock(&rsa->lock);
+  CRYPTO_MUTEX_unlock_write(&rsa->lock);
   return ret;
 
 err2:
   OPENSSL_free(new_blindings);
 
 err1:
-  CRYPTO_MUTEX_unlock(&rsa->lock);
+  CRYPTO_MUTEX_unlock_write(&rsa->lock);
   BN_BLINDING_free(ret);
   return NULL;
 }
@@ -305,7 +305,7 @@ static void rsa_blinding_release(RSA *rsa, BN_BLINDING *blinding,
 
   CRYPTO_MUTEX_lock_write(&rsa->lock);
   rsa->blindings_inuse[blinding_index] = 0;
-  CRYPTO_MUTEX_unlock(&rsa->lock);
+  CRYPTO_MUTEX_unlock_write(&rsa->lock);
 }
 
 /* signing */

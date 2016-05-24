@@ -293,7 +293,7 @@ int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
                            const BIGNUM *mod, BN_CTX *bn_ctx) {
   CRYPTO_MUTEX_lock_read(lock);
   BN_MONT_CTX *ctx = *pmont;
-  CRYPTO_MUTEX_unlock(lock);
+  CRYPTO_MUTEX_unlock_read(lock);
 
   if (ctx) {
     return 1;
@@ -317,7 +317,7 @@ int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
   *pmont = ctx;
 
 out:
-  CRYPTO_MUTEX_unlock(lock);
+  CRYPTO_MUTEX_unlock_write(lock);
   return ctx != NULL;
 }
 

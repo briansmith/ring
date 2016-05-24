@@ -460,14 +460,14 @@ static int def_crl_lookup(X509_CRL *crl,
 
     CRYPTO_STATIC_MUTEX_lock_read(&g_crl_sort_lock);
     const int is_sorted = sk_X509_REVOKED_is_sorted(crl->crl->revoked);
-    CRYPTO_STATIC_MUTEX_unlock(&g_crl_sort_lock);
+    CRYPTO_STATIC_MUTEX_unlock_read(&g_crl_sort_lock);
 
     if (!is_sorted) {
         CRYPTO_STATIC_MUTEX_lock_write(&g_crl_sort_lock);
         if (!sk_X509_REVOKED_is_sorted(crl->crl->revoked)) {
             sk_X509_REVOKED_sort(crl->crl->revoked);
         }
-        CRYPTO_STATIC_MUTEX_unlock(&g_crl_sort_lock);
+        CRYPTO_STATIC_MUTEX_unlock_write(&g_crl_sort_lock);
     }
 
     if (!sk_X509_REVOKED_find(crl->crl->revoked, &idx, &rtmp))

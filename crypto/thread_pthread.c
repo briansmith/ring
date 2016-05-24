@@ -45,7 +45,13 @@ void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
   }
 }
 
-void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock) {
+void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock) {
+  if (pthread_rwlock_unlock((pthread_rwlock_t *) lock) != 0) {
+    abort();
+  }
+}
+
+void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock) {
   if (pthread_rwlock_unlock((pthread_rwlock_t *) lock) != 0) {
     abort();
   }
@@ -67,7 +73,13 @@ void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   }
 }
 
-void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock) {
+void CRYPTO_STATIC_MUTEX_unlock_read(struct CRYPTO_STATIC_MUTEX *lock) {
+  if (pthread_rwlock_unlock(&lock->lock) != 0) {
+    abort();
+  }
+}
+
+void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   if (pthread_rwlock_unlock(&lock->lock) != 0) {
     abort();
   }

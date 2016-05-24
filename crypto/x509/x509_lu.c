@@ -305,7 +305,7 @@ int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
 
     CRYPTO_MUTEX_lock_write(&ctx->objs_lock);
     tmp = X509_OBJECT_retrieve_by_subject(ctx->objs, type, name);
-    CRYPTO_MUTEX_unlock(&ctx->objs_lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
     if (tmp == NULL || type == X509_LU_CRL) {
         for (i = vs->current_method;
@@ -364,7 +364,7 @@ int X509_STORE_add_cert(X509_STORE *ctx, X509 *x)
     } else
         sk_X509_OBJECT_push(ctx->objs, obj);
 
-    CRYPTO_MUTEX_unlock(&ctx->objs_lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
     return ret;
 }
@@ -396,7 +396,7 @@ int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x)
     } else
         sk_X509_OBJECT_push(ctx->objs, obj);
 
-    CRYPTO_MUTEX_unlock(&ctx->objs_lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
     return ret;
 }
@@ -504,7 +504,7 @@ STACK_OF (X509) * X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm)
          * cache
          */
         X509_OBJECT xobj;
-        CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+        CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
         if (!X509_STORE_get_by_subject(ctx, X509_LU_X509, nm, &xobj)) {
             sk_X509_free(sk);
             return NULL;
@@ -513,7 +513,7 @@ STACK_OF (X509) * X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm)
         CRYPTO_MUTEX_lock_write(&ctx->ctx->objs_lock);
         idx = x509_object_idx_cnt(ctx->ctx->objs, X509_LU_X509, nm, &cnt);
         if (idx < 0) {
-            CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+            CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
             sk_X509_free(sk);
             return NULL;
         }
@@ -522,13 +522,13 @@ STACK_OF (X509) * X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm)
         obj = sk_X509_OBJECT_value(ctx->ctx->objs, idx);
         x = obj->data.x509;
         if (!sk_X509_push(sk, X509_up_ref(x))) {
-            CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+            CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
             X509_free(x);
             sk_X509_pop_free(sk, X509_free);
             return NULL;
         }
     }
-    CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
     return sk;
 
 }
@@ -552,7 +552,7 @@ STACK_OF (X509_CRL) * X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm)
     CRYPTO_MUTEX_lock_write(&ctx->ctx->objs_lock);
     idx = x509_object_idx_cnt(ctx->ctx->objs, X509_LU_CRL, nm, &cnt);
     if (idx < 0) {
-        CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+        CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
         sk_X509_CRL_free(sk);
         return NULL;
     }
@@ -562,13 +562,13 @@ STACK_OF (X509_CRL) * X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm)
         x = obj->data.crl;
         X509_CRL_up_ref(x);
         if (!sk_X509_CRL_push(sk, x)) {
-            CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+            CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
             X509_CRL_free(x);
             sk_X509_CRL_pop_free(sk, X509_CRL_free);
             return NULL;
         }
     }
-    CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
     return sk;
 }
 
@@ -656,7 +656,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x)
             }
         }
     }
-    CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
     return ret;
 }
 

@@ -393,8 +393,11 @@ OPENSSL_EXPORT void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock);
  * of lock on it. */
 OPENSSL_EXPORT void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock);
 
-/* CRYPTO_MUTEX_unlock unlocks |lock|. */
-OPENSSL_EXPORT void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock);
+/* CRYPTO_MUTEX_unlock_read unlocks |lock| for reading. */
+OPENSSL_EXPORT void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock);
+
+/* CRYPTO_MUTEX_unlock_write unlocks |lock| for writing. */
+OPENSSL_EXPORT void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_cleanup releases all resources held by |lock|. */
 OPENSSL_EXPORT void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock);
@@ -413,8 +416,12 @@ OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_lock_read(
 OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_lock_write(
     struct CRYPTO_STATIC_MUTEX *lock);
 
-/* CRYPTO_STATIC_MUTEX_unlock unlocks |lock|. */
-OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock(
+/* CRYPTO_STATIC_MUTEX_unlock_read unlocks |lock| for reading. */
+OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_read(
+    struct CRYPTO_STATIC_MUTEX *lock);
+
+/* CRYPTO_STATIC_MUTEX_unlock_write unlocks |lock| for writing. */
+OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_write(
     struct CRYPTO_STATIC_MUTEX *lock);
 
 

@@ -396,7 +396,7 @@ static enum ssl_session_result_t ssl_lookup_session(
       SSL_SESSION_up_ref(session);
     }
     /* TODO(davidben): This should probably move it to the front of the list. */
-    CRYPTO_MUTEX_unlock(&ssl->initial_ctx->lock);
+    CRYPTO_MUTEX_unlock_read(&ssl->initial_ctx->lock);
 
     if (session != NULL) {
       *out_session = session;
@@ -517,7 +517,7 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
   SSL_SESSION *old_session;
   CRYPTO_MUTEX_lock_write(&ctx->lock);
   if (!lh_SSL_SESSION_insert(ctx->sessions, &old_session, session)) {
-    CRYPTO_MUTEX_unlock(&ctx->lock);
+    CRYPTO_MUTEX_unlock_write(&ctx->lock);
     SSL_SESSION_free(session);
     return 0;
   }
@@ -525,7 +525,7 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
   if (old_session != NULL) {
     if (old_session == session) {
       /* |session| was already in the cache. */
-      CRYPTO_MUTEX_unlock(&ctx->lock);
+      CRYPTO_MUTEX_unlock_write(&ctx->lock);
       SSL_SESSION_free(old_session);
       return 0;
     }
@@ -547,7 +547,7 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
     }
   }
 
-  CRYPTO_MUTEX_unlock(&ctx->lock);
+  CRYPTO_MUTEX_unlock_write(&ctx->lock);
   return 1;
 }
 
@@ -571,7 +571,7 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
     }
 
     if (lock) {
-      CRYPTO_MUTEX_unlock(&ctx->lock);
+      CRYPTO_MUTEX_unlock_write(&ctx->lock);
     }
 
     if (ret) {
@@ -654,7 +654,7 @@ void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time) {
   tp.time = time;
   CRYPTO_MUTEX_lock_write(&ctx->lock);
   lh_SSL_SESSION_doall_arg(tp.cache, timeout_doall_arg, &tp);
-  CRYPTO_MUTEX_unlock(&ctx->lock);
+  CRYPTO_MUTEX_unlock_write(&ctx->lock);
 }
 
 int ssl_clear_bad_session(SSL *ssl) {

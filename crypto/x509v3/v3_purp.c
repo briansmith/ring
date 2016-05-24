@@ -431,7 +431,7 @@ static void x509v3_cache_extensions(X509 *x)
     CRYPTO_STATIC_MUTEX_lock_write(&g_x509_cache_extensions_lock);
 
     if (x->ex_flags & EXFLAG_SET) {
-        CRYPTO_STATIC_MUTEX_unlock(&g_x509_cache_extensions_lock);
+        CRYPTO_STATIC_MUTEX_unlock_write(&g_x509_cache_extensions_lock);
         return;
     }
 
@@ -564,7 +564,7 @@ static void x509v3_cache_extensions(X509 *x)
     }
     x->ex_flags |= EXFLAG_SET;
 
-    CRYPTO_STATIC_MUTEX_unlock(&g_x509_cache_extensions_lock);
+    CRYPTO_STATIC_MUTEX_unlock_write(&g_x509_cache_extensions_lock);
 }
 
 /*

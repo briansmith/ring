@@ -327,7 +327,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                     hent = NULL;
                     k = 0;
                 }
-                CRYPTO_STATIC_MUTEX_unlock(&g_ent_hashes_lock);
+                CRYPTO_STATIC_MUTEX_unlock_read(&g_ent_hashes_lock);
             } else {
                 k = 0;
                 hent = NULL;
@@ -392,7 +392,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
             if (sk_X509_OBJECT_find(xl->store_ctx->objs, &idx, &stmp)) {
                 tmp = sk_X509_OBJECT_value(xl->store_ctx->objs, idx);
             }
-            CRYPTO_MUTEX_unlock(&xl->store_ctx->objs_lock);
+            CRYPTO_MUTEX_unlock_write(&xl->store_ctx->objs_lock);
 
             /*
              * If a CRL, update the last file suffix added for this
@@ -412,14 +412,14 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                 if (!hent) {
                     hent = OPENSSL_malloc(sizeof(BY_DIR_HASH));
                     if (hent == NULL) {
-                        CRYPTO_STATIC_MUTEX_unlock(&g_ent_hashes_lock);
+                        CRYPTO_STATIC_MUTEX_unlock_write(&g_ent_hashes_lock);
                         ok = 0;
                         goto finish;
                     }
                     hent->hash = h;
                     hent->suffix = k;
                     if (!sk_BY_DIR_HASH_push(ent->hashes, hent)) {
-                        CRYPTO_STATIC_MUTEX_unlock(&g_ent_hashes_lock);
+                        CRYPTO_STATIC_MUTEX_unlock_write(&g_ent_hashes_lock);
                         OPENSSL_free(hent);
                         ok = 0;
                         goto finish;
@@ -427,7 +427,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                 } else if (hent->suffix < k)
                     hent->suffix = k;
 
-                CRYPTO_STATIC_MUTEX_unlock(&g_ent_hashes_lock);
+                CRYPTO_STATIC_MUTEX_unlock_write(&g_ent_hashes_lock);
             }
 
             if (tmp != NULL) {

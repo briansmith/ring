@@ -325,7 +325,7 @@ int ERR_get_next_error_library(void) {
 
   CRYPTO_STATIC_MUTEX_lock_write(&global_next_library_mutex);
   ret = global_next_library++;
-  CRYPTO_STATIC_MUTEX_unlock(&global_next_library_mutex);
+  CRYPTO_STATIC_MUTEX_unlock_write(&global_next_library_mutex);
 
   return ret;
 }

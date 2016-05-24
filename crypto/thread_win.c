@@ -57,7 +57,11 @@ void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
   EnterCriticalSection((CRITICAL_SECTION *) lock);
 }
 
-void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock) {
+void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock) {
+  LeaveCriticalSection((CRITICAL_SECTION *) lock);
+}
+
+void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock) {
   LeaveCriticalSection((CRITICAL_SECTION *) lock);
 }
 
@@ -87,7 +91,11 @@ void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   CRYPTO_STATIC_MUTEX_lock_read(lock);
 }
 
-void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock) {
+void CRYPTO_STATIC_MUTEX_unlock_read(struct CRYPTO_STATIC_MUTEX *lock) {
+  LeaveCriticalSection(&lock->lock);
+}
+
+void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   LeaveCriticalSection(&lock->lock);
 }
 

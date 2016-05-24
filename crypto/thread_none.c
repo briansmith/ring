@@ -22,7 +22,9 @@ void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {}
 
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {}
 
-void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock) {}
+void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock) {}
+
+void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock) {}
 
 void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {}
 
@@ -30,7 +32,9 @@ void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {}
 
 void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {}
 
-void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock) {}
+void CRYPTO_STATIC_MUTEX_unlock_read(struct CRYPTO_STATIC_MUTEX *lock) {}
+
+void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {}
 
 void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
   if (*once) {

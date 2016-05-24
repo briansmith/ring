@@ -163,7 +163,7 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
   ret = 1;
 
 err:
-  CRYPTO_STATIC_MUTEX_unlock(&ex_data_class->lock);
+  CRYPTO_STATIC_MUTEX_unlock_write(&ex_data_class->lock);
   return ret;
 }
 
@@ -217,7 +217,7 @@ static int get_func_pointers(STACK_OF(CRYPTO_EX_DATA_FUNCS) **out,
   if (n > 0) {
     *out = sk_CRYPTO_EX_DATA_FUNCS_dup(ex_data_class->meth);
   }
-  CRYPTO_STATIC_MUTEX_unlock(&ex_data_class->lock);
+  CRYPTO_STATIC_MUTEX_unlock_read(&ex_data_class->lock);
 
   if (n > 0 && *out == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
