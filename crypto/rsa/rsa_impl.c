@@ -452,7 +452,7 @@ err:
 RSA *RSA_generate(int bits, uint32_t e, RAND *rng, BN_GENCB *cb) {
   RSA *rsa = rsa_new_begin();
   if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE)
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
