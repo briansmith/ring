@@ -20,7 +20,6 @@
     <ClCompile Include="aes\aes.c" />
     <ClCompile Include="bn\add.c" />
     <ClCompile Include="bn\bn.c" />
-    <ClCompile Include="bn\bn_asn1.c" />
     <ClCompile Include="bn\cmp.c" />
     <ClCompile Include="bn\convert.c" />
     <ClCompile Include="bn\ctx.c" />
@@ -34,8 +33,6 @@
     <ClCompile Include="bn\random.c" />
     <ClCompile Include="bn\rsaz_exp.c" />
     <ClCompile Include="bn\shift.c" />
-    <ClCompile Include="bytestring\cbb.c" />
-    <ClCompile Include="bytestring\cbs.c" />
     <ClCompile Include="cipher\e_aes.c" />
     <ClCompile Include="curve25519\curve25519.c" />
     <ClCompile Include="ec\ec.c" />
@@ -60,7 +57,6 @@
     <ClInclude Include="aes\internal.h" />
     <ClInclude Include="bn\internal.h" />
     <ClInclude Include="bn\rsaz_exp.h" />
-    <ClInclude Include="bytestring\internal.h" />
     <ClInclude Include="cipher\internal.h" />
     <ClInclude Include="des\internal.h" />
     <ClInclude Include="digest\internal.h" />

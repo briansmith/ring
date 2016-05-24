@@ -56,7 +56,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/bytestring.h>
 #include <openssl/err.h>
 
 #include "../ec/internal.h"

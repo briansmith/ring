@@ -22,7 +22,6 @@
 
     <ClCompile Include="aes/aes_test.cc" />
     <ClCompile Include="bn/bn_test.cc" />
-    <ClCompile Include="bytestring/bytestring_test.cc" />
     <ClCompile Include="chacha/chacha_test.cc" />
     <ClCompile Include="poly1305/poly1305_test.cc" />
 

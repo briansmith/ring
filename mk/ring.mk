@@ -20,7 +20,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
   crypto/bn/add.c \
   crypto/bn/bn.c \
-  crypto/bn/bn_asn1.c \
   crypto/bn/cmp.c \
   crypto/bn/convert.c \
   crypto/bn/ctx.c \
@@ -34,8 +33,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/random.c \
   crypto/bn/rsaz_exp.c \
   crypto/bn/shift.c \
-  crypto/bytestring/cbb.c \
-  crypto/bytestring/cbs.c \
   crypto/cipher/e_aes.c \
   crypto/crypto.c \
   crypto/curve25519/curve25519.c \
@@ -135,7 +132,6 @@ RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
 RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes_test.cc \
   crypto/bn/bn_test.cc \
-  crypto/bytestring/bytestring_test.cc \
   crypto/chacha/chacha_test.cc \
   crypto/constant_time_test.c \
   crypto/poly1305/poly1305_test.cc \
