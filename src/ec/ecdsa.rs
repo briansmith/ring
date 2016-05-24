@@ -133,3 +133,79 @@ extern {
                                   key_octets: *const u8,
                                   key_octets_len: c::size_t) -> c::int;
 }
+
+
+#[cfg(test)]
+mod tests {
+    use {file_test, der, input, signature};
+    use input::Input;
+    use super::*;
+
+    #[test]
+    fn test_signature_ecdsa_verify() {
+        file_test::run("src/ec/ecdsa_verify_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let digest_name = test_case.consume_string("Digest");
+            let alg = alg_from_curve_and_digest(&curve_name, &digest_name);
+
+            let msg = test_case.consume_bytes("Msg");
+            let msg = Input::new(&msg).unwrap();
+
+            let public_key = test_case.consume_bytes("Q");
+            let public_key = Input::new(&public_key).unwrap();
+
+            let sig = test_case.consume_bytes("Sig");
+            let sig = Input::new(&sig).unwrap();
+
+            // Sanity check that we correctly DER-encoded the
+            // originally-provided separate (r, s) components. When we add test
+            // vectors for improperly-encoded signatures, we'll have to revisit
+            // this.
+            assert!(input::read_all(sig, (), |input| {
+                der::nested(input, der::Tag::Sequence, (), |input| {
+                    let _ = try!(der::positive_integer(input));
+                    let _ = try!(der::positive_integer(input));
+                    Ok(())
+                })
+            }).is_ok());
+
+            let expected_result = test_case.consume_string("Result");
+
+            let actual_result = signature::verify(alg, public_key, msg, sig);
+            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
+        });
+    }
+
+    fn alg_from_curve_and_digest(curve_name: &str, digest_name: &str)
+                                 -> &'static signature::VerificationAlgorithm {
+        if curve_name == "P-256" {
+            if digest_name == "SHA1" {
+                &ECDSA_P256_SHA1_VERIFY
+            } else if digest_name == "SHA256" {
+                &ECDSA_P256_SHA256_VERIFY
+            } else if digest_name == "SHA384" {
+                &ECDSA_P256_SHA384_VERIFY
+            } else if digest_name == "SHA512" {
+                &ECDSA_P256_SHA512_VERIFY
+            } else {
+                panic!("Unsupported digest algorithm: {}", digest_name);
+            }
+        } else if curve_name == "P-384" {
+            if digest_name == "SHA1" {
+                &ECDSA_P384_SHA1_VERIFY
+            } else if digest_name == "SHA256" {
+                &ECDSA_P384_SHA256_VERIFY
+            } else if digest_name == "SHA384" {
+                &ECDSA_P384_SHA384_VERIFY
+            } else if digest_name == "SHA512" {
+                &ECDSA_P384_SHA512_VERIFY
+            } else {
+                panic!("Unsupported digest algorithm: {}", digest_name);
+            }
+        } else {
+            panic!("Unsupported curve: {}", curve_name);
+        }
+    }
+}

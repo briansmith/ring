@@ -253,10 +253,10 @@ externs!(GFp_x25519_generate_private_key, GFp_x25519_public_from_private,
 #[cfg(test)]
 mod tests {
     use {ec, file_test, rand};
-    use ec::ecdh::*;
     use input::Input;
     use rustc_serialize::hex::FromHex;
     use std;
+    use super::*;
 
     #[cfg(not(feature = "no_heap"))]
     static SUPPORTED_NIST_ALGS: [&'static Algorithm; 2] = [
