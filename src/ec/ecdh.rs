@@ -362,9 +362,9 @@ mod tests {
 
     #[cfg(not(feature = "no_heap"))]
     fn alg_from_curve_name(curve_name: &str) -> &'static Algorithm {
-        if curve_name == "P-256" && cfg!(not(feature = "no_heap")) {
+        if curve_name == "P-256" {
             &ECDH_P256
-        } else if curve_name == "P-384" && cfg!(not(feature = "no_heap")) {
+        } else if curve_name == "P-384" {
             &ECDH_P384
         } else if curve_name == "X25519" {
             &X25519
