@@ -355,12 +355,8 @@ OPENSSL_EXPORT int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count);
  * |CRYPTO_STATIC_MUTEX_INIT|.
  *
  * |CRYPTO_MUTEX| can appear in public structures and so is defined in
- * thread.h.
- *
- * The global lock is a different type because there's no static initialiser
- * value on Windows for locks, so global locks have to be coupled with a
- * |CRYPTO_once_t| to ensure that the lock is setup before use. This is done
- * automatically by |CRYPTO_STATIC_MUTEX_lock_*|. */
+ * thread.h as a structure large enough to fit the real type. The global lock is
+ * a different type so it may be initialized with platform initializer macros.*/
 
 #if defined(OPENSSL_NO_THREADS)
 struct CRYPTO_STATIC_MUTEX {
@@ -369,10 +365,9 @@ struct CRYPTO_STATIC_MUTEX {
 #define CRYPTO_STATIC_MUTEX_INIT { 0 }
 #elif defined(OPENSSL_WINDOWS)
 struct CRYPTO_STATIC_MUTEX {
-  CRYPTO_once_t once;
-  CRITICAL_SECTION lock;
+  SRWLOCK lock;
 };
-#define CRYPTO_STATIC_MUTEX_INIT { CRYPTO_ONCE_INIT, { 0 } }
+#define CRYPTO_STATIC_MUTEX_INIT { SRWLOCK_INIT }
 #else
 struct CRYPTO_STATIC_MUTEX {
   pthread_rwlock_t lock;
@@ -385,8 +380,7 @@ struct CRYPTO_STATIC_MUTEX {
 OPENSSL_EXPORT void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_lock_read locks |lock| such that other threads may also have a
- * read lock, but none may have a write lock. (On Windows, read locks are
- * actually fully exclusive.) */
+ * read lock, but none may have a write lock. */
 OPENSSL_EXPORT void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_lock_write locks |lock| such that no other thread has any type

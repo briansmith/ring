@@ -27,7 +27,7 @@
 #include <openssl/type_check.h>
 
 
-OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(CRITICAL_SECTION),
+OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(SRWLOCK),
                        CRYPTO_MUTEX_too_small);
 
 static BOOL CALLBACK call_once_init(INIT_ONCE *once, void *arg, void **out) {
@@ -43,60 +43,43 @@ void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
 }
 
 void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
-  if (!InitializeCriticalSectionAndSpinCount((CRITICAL_SECTION *) lock, 0x400)) {
-    abort();
-  }
+  InitializeSRWLock((SRWLOCK *) lock);
 }
 
 void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
-  /* Since we have to support Windows XP, read locks are actually exclusive. */
-  EnterCriticalSection((CRITICAL_SECTION *) lock);
+  AcquireSRWLockShared((SRWLOCK *) lock);
 }
 
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
-  EnterCriticalSection((CRITICAL_SECTION *) lock);
+  AcquireSRWLockExclusive((SRWLOCK *) lock);
 }
 
 void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock) {
-  LeaveCriticalSection((CRITICAL_SECTION *) lock);
+  ReleaseSRWLockShared((SRWLOCK *) lock);
 }
 
 void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock) {
-  LeaveCriticalSection((CRITICAL_SECTION *) lock);
+  ReleaseSRWLockExclusive((SRWLOCK *) lock);
 }
 
 void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
-  DeleteCriticalSection((CRITICAL_SECTION *) lock);
-}
-
-static BOOL CALLBACK static_lock_init(INIT_ONCE *once, void *arg, void **out) {
-  struct CRYPTO_STATIC_MUTEX *lock = arg;
-  if (!InitializeCriticalSectionAndSpinCount(&lock->lock, 0x400)) {
-    abort();
-  }
-  return TRUE;
+  /* SRWLOCKs require no cleanup. */
 }
 
 void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {
-  /* TODO(davidben): Consider replacing these with SRWLOCK now that we no longer
-   * need to support Windows XP. Currently, read locks are actually
-   * exclusive. */
-  if (!InitOnceExecuteOnce(&lock->once, static_lock_init, lock, NULL)) {
-    abort();
-  }
-  EnterCriticalSection(&lock->lock);
+  AcquireSRWLockShared(&lock->lock);
 }
 
 void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
-  CRYPTO_STATIC_MUTEX_lock_read(lock);
+  AcquireSRWLockExclusive(&lock->lock);
 }
 
 void CRYPTO_STATIC_MUTEX_unlock_read(struct CRYPTO_STATIC_MUTEX *lock) {
-  LeaveCriticalSection(&lock->lock);
+  ReleaseSRWLockShared(&lock->lock);
 }
 
 void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
-  LeaveCriticalSection(&lock->lock);
+  ReleaseSRWLockExclusive(&lock->lock);
 }
 
 static CRITICAL_SECTION g_destructors_lock;

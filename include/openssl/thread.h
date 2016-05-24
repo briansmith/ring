@@ -73,10 +73,9 @@ typedef struct crypto_mutex_st {
 #elif defined(OPENSSL_WINDOWS)
 /* CRYPTO_MUTEX can appear in public header files so we really don't want to
  * pull in windows.h. It's statically asserted that this structure is large
- * enough to contain a Windows CRITICAL_SECTION by thread_win.c. */
+ * enough to contain a Windows SRWLOCK by thread_win.c. */
 typedef union crypto_mutex_st {
-  double alignment;
-  uint8_t padding[4*sizeof(void*) + 2*sizeof(int)];
+  void *handle;
 } CRYPTO_MUTEX;
 #elif defined(__MACH__) && defined(__APPLE__)
 typedef pthread_rwlock_t CRYPTO_MUTEX;
