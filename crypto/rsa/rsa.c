@@ -378,16 +378,9 @@ static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
     return 0;
   }
 
-  BIGNUM n;
-  BN_init(&n);
-
-  BIGNUM e;
-  BN_init(&e);
-
-  if (BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
-      BN_bin2bn(public_key_e, public_key_e_len, &e) == NULL ||
-      !rsa_public_decrypt(&n, &e, buf, sig_len, sig, sig_len, min_bits,
-                          max_bits)) {
+  if (!rsa_public_decrypt(buf, sig_len, public_key_n, public_key_n_len,
+                          public_key_e, public_key_e_len, sig, sig_len,
+                          min_bits, max_bits)) {
     goto out;
   }
 
@@ -395,8 +388,6 @@ static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
 
 out:
   OPENSSL_free(buf);
-  BN_free(&n);
-  BN_free(&e);
   return ret;
 }
 

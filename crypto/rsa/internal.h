@@ -83,9 +83,11 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
 BN_BLINDING *rsa_setup_blinding(const RSA *rsa, BN_CTX *in_ctx);
 
 
-int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
-                       size_t out_len, const uint8_t *in, size_t in_len,
-                       size_t min_bits, size_t max_bits);
+int rsa_public_decrypt(uint8_t *out, size_t out_len,
+                       const uint8_t *public_key_n, size_t public_key_n_len,
+                       const uint8_t *public_key_e, size_t public_key_e_len,
+                       const uint8_t *in, size_t in_len, size_t min_bits,
+                       size_t max_bits);
 
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,

@@ -256,61 +256,74 @@ err:
 }
 
 /* rsa_public_decrypt decrypts the RSA signature |in| using the public key with
- * modulus |n| and exponent |e|, leaving the decrypted signature in |out|.
- * |out_len| and |in_len| must both be equal to |RSA_size(rsa)|. |min_bits| and
- * |max_bits| are the minimum and maximum allowed public key modulus sizes, in
- * bits. It returns one on success and zero on failure.
+ * modulus |public_key_n| and exponent |public_key_e|, leaving the decrypted
+ * signature in |out|. |out_len| and |in_len| must both be equal to
+ * |RSA_size(rsa)|. |min_bits| and |max_bits| are the minimum and maximum
+ * allowed public key modulus sizes, in bits. It returns one on success and
+ * zero on failure.
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
-int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
-                       size_t out_len, const uint8_t *in, size_t in_len,
-                       size_t min_bits, size_t max_bits) {
-  unsigned rsa_size = BN_num_bytes(n); /* RSA_size((n, e)); */
-  BIGNUM *f, *result;
+int rsa_public_decrypt(uint8_t *out, size_t out_len,
+                       const uint8_t *public_key_n, size_t public_key_n_len,
+                       const uint8_t *public_key_e, size_t public_key_e_len,
+                       const uint8_t *in, size_t in_len, size_t min_bits,
+                       size_t max_bits) {
+  BIGNUM n;
+  BN_init(&n);
+
+  BIGNUM e;
+  BN_init(&e);
+
+  BIGNUM f;
+  BN_init(&f);
+
+  BIGNUM result;
+  BN_init(&result);
+
+  BN_CTX *ctx = NULL;
+
+  int ret = 0;
+
+  if (BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
+      BN_bin2bn(public_key_e, public_key_e_len, &e) == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  unsigned rsa_size = BN_num_bytes(&n); /* RSA_size((n, e)); */
+
   if (out_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
-    return 0;
+    goto err;
   }
 
   if (in_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
-    return 0;
-  }
-
-  if (!check_modulus_and_exponent(n, e, min_bits, max_bits)) {
-    return 0;
-  }
-
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
-
-  int ret = 0;
-
-  BN_CTX_start(ctx);
-  f = BN_CTX_get(ctx);
-  result = BN_CTX_get(ctx);
-  if (f == NULL || result == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  if (BN_bin2bn(in, in_len, f) == NULL) {
+  if (!check_modulus_and_exponent(&n, &e, min_bits, max_bits)) {
     goto err;
   }
 
-  if (BN_ucmp(f, n) >= 0) {
+  if (BN_bin2bn(in, in_len, &f) == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  if (BN_ucmp(&f, &n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  if (!BN_mod_exp_mont(result, f, e, n, ctx, NULL)) {
+  ctx = BN_CTX_new();
+  if (ctx == NULL) {
     goto err;
   }
 
-  if (!BN_bn2bin_padded(out, out_len, result)) {
+  if (!BN_mod_exp_mont(&result, &f, &e, &n, ctx, NULL) ||
+      !BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -318,9 +331,11 @@ int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
   ret = 1;
 
 err:
-  BN_CTX_end(ctx);
+  BN_free(&n);
+  BN_free(&e);
+  BN_free(&f);
+  BN_free(&result);
   BN_CTX_free(ctx);
-
   return ret;
 }
 
