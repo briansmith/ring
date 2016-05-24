@@ -70,8 +70,8 @@
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                                  size_t len, BN_BLINDING *blinding, RAND *rng);
 
-static int check_modulus_and_exponent_sizes(const BIGNUM *n, const BIGNUM *e,
-                                            size_t min_bits, size_t max_bits) {
+static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
+                                      size_t min_bits, size_t max_bits) {
   unsigned rsa_bits = BN_num_bits(n);
 
   if (rsa_bits < min_bits) {
@@ -94,7 +94,9 @@ static int check_modulus_and_exponent_sizes(const BIGNUM *n, const BIGNUM *e,
    * [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx */
   static const unsigned kMaxExponentBits = 33;
 
-  if (BN_num_bits(e) > kMaxExponentBits) {
+  unsigned e_bits = BN_num_bits(e);
+
+  if (e_bits < 2 || e_bits > kMaxExponentBits || !BN_is_odd(e)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
@@ -132,7 +134,7 @@ int RSA_encrypt(const BIGNUM *n, const BIGNUM *e, size_t *out_len, uint8_t *out,
 
   /* XXX: |min_bits| should be much higer than 256, but this is what is needed
    * to get the rsa_test.cc tests to pass. */
-  if (!check_modulus_and_exponent_sizes(n, e, 256, 16 * 1024)) {
+  if (!check_modulus_and_exponent(n, e, 256, 16 * 1024)) {
     return 0;
   }
 
@@ -276,7 +278,7 @@ int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
     return 0;
   }
 
-  if (!check_modulus_and_exponent_sizes(n, e, min_bits, max_bits)) {
+  if (!check_modulus_and_exponent(n, e, min_bits, max_bits)) {
     return 0;
   }
 

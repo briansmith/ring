@@ -54,7 +54,6 @@
     <ClCompile Include="rsa\blinding.c" />
     <ClCompile Include="rsa\padding.c" />
     <ClCompile Include="rsa\rsa.c" />
-    <ClCompile Include="rsa\rsa_asn1.c" />
     <ClCompile Include="rsa\rsa_impl.c" />
   </ItemGroup>
   <ItemGroup>

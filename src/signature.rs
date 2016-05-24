@@ -141,7 +141,4 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 mod tests {
     // ECDSA tests are in crypto/ec/ecdsa.rs.
     // EdDSA tests are in crypto/ec/eddsa.rs.
-
-    #[cfg(not(feature = "no_heap"))]
-    bssl_test_rng!(test_rsa, bssl_rsa_test_main);
 }

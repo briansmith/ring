@@ -25,7 +25,6 @@
     <ClCompile Include="bytestring/bytestring_test.cc" />
     <ClCompile Include="chacha/chacha_test.cc" />
     <ClCompile Include="poly1305/poly1305_test.cc" />
-    <ClCompile Include="rsa/rsa_test.cc" />
 
     <ClCompile Include="test/bn_test_convert.c" />
     <ClCompile Include="test/bn_test_lib.c" />
