@@ -139,37 +139,9 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 
 #[cfg(test)]
 mod tests {
-    use {ec, file_test, signature};
-    use input::Input;
-
     // ECDSA tests are in crypto/ec/ecdsa.rs.
+    // EdDSA tests are in crypto/ec/eddsa.rs.
 
     #[cfg(not(feature = "no_heap"))]
     bssl_test_rng!(test_rsa, bssl_rsa_test_main);
-
-    /// Test vectors from BoringSSL.
-    #[test]
-    fn test_ed25519() {
-        file_test::run("src/ed25519_tests.txt", |section, test_case| {
-            assert_eq!(section, "");
-            let private_key = test_case.consume_bytes("PRIV");
-            assert_eq!(64, private_key.len());
-            let public_key = test_case.consume_bytes("PUB");
-            assert_eq!(32, public_key.len());
-            let msg = test_case.consume_bytes("MESSAGE");
-            let expected_sig = test_case.consume_bytes("SIG");
-
-            let mut actual_sig = [0u8; 64];
-            assert!(ec::eddsa::ed25519_sign(&private_key, &msg,
-                                            &mut actual_sig).is_ok());
-            assert_eq!(&expected_sig[..], &actual_sig[..]);
-
-            let public_key = Input::new(&public_key).unwrap();
-            let msg = Input::new(&msg).unwrap();
-            let expected_sig = Input::new(&expected_sig).unwrap();
-
-            assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
-                                      msg, expected_sig).is_ok());
-        });
-    }
 }
