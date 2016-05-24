@@ -16,7 +16,7 @@
 
 //! ECDSA Signatures.
 
-use {bssl, c, digest, ec, signature, signature_impl};
+use {bssl, c, der, digest, ec, input, signature, signature_impl};
 use input::Input;
 
 #[cfg(not(feature = "no_heap"))]
@@ -30,15 +30,23 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
-        let signature = signature.as_slice_less_safe();
+        let (r, s) = try!(input::read_all(signature, (), |input| {
+            der::nested(input, der::Tag::Sequence, (), |input| {
+                let r = try!(der::positive_integer(input));
+                let s = try!(der::positive_integer(input));
+                Ok((r, s))
+            })
+        }));
+        let r = r.as_slice_less_safe();
+        let s = s.as_slice_less_safe();
         let public_key = public_key.as_slice_less_safe();
         bssl::map_result(unsafe {
             ECDSA_verify_signed_digest((self.ec_group_fn)(),
                                        digest.algorithm().nid,
                                        digest.as_ref().as_ptr(),
-                                       digest.as_ref().len(), signature.as_ptr(),
-                                       signature.len(), public_key.as_ptr(),
-                                       public_key.len())
+                                       digest.as_ref().len(), r.as_ptr(),
+                                       r.len(), s.as_ptr(), s.len(),
+                                       public_key.as_ptr(), public_key.len())
         })
     }
 }
@@ -110,7 +118,8 @@ extern {
     #[cfg(not(feature = "no_heap"))]
     fn ECDSA_verify_signed_digest(group: *const ec::EC_GROUP, hash_nid: c::int,
                                   digest: *const u8, digest_len: c::size_t,
-                                  sig_der: *const u8, sig_der_len: c::size_t,
+                                  sig_r: *const u8, sig_r_len: c::size_t,
+                                  sig_s: *const u8, sig_s_len: c::size_t,
                                   key_octets: *const u8,
                                   key_octets_len: c::size_t) -> c::int;
 }

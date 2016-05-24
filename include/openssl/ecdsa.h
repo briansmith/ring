@@ -67,49 +67,23 @@ extern "C" {
 
 /* Signing and verifing. */
 
-/* ECDSA_verify_signed_digest verifies that |sig_len| bytes from |sig|
+/* ECDSA_verify_signed_digest verifies that the signature (|sig_r|, |sig_s|)
  * constitute a valid signature of |digest| for the public key |ec_key| for
  * the curve represented by the |EC_GROUP| created by |ec_group_new|.
  * |hash_nid| must be the identifier of the digest function used to calculate
- * |digest|. It returns one on success or zero if the signature is invalid or
- * on error. */
+ * |digest|. The caller must ensure that |sig_r| and |sig_s| are encodings of
+ * *positive* integers. It returns one on success or zero if the signature is
+ * invalid or on error. */
 OPENSSL_EXPORT int ECDSA_verify_signed_digest(const EC_GROUP *group,
                                               int hash_nid,
                                               const uint8_t *digest,
                                               size_t digest_len,
-                                              const uint8_t *sig,
-                                              size_t sig_len,
+                                              const uint8_t *sig_r,
+                                              size_t sig_r_len,
+                                              const uint8_t *sig_s,
+                                              size_t sig_s_len,
                                               const uint8_t *ec_key,
                                               const size_t ec_key_len);
-
-
-/* Low-level signing and verification.
- *
- * Low-level functions handle signatures as |ECDSA_SIG| structures which allow
- * the two values in an ECDSA signature to be handled separately. */
-
-struct ecdsa_sig_st {
-  BIGNUM *r;
-  BIGNUM *s;
-};
-
-/* ECDSA_SIG_new returns a fresh |ECDSA_SIG| structure or NULL on error. */
-OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_new(void);
-
-/* ECDSA_SIG_free frees |sig| its member |BIGNUM|s. */
-OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);
-
-
-/* ASN.1 functions. */
-
-/* ECDSA_SIG_parse parses a DER-encoded ECDSA-Sig-Value structure from |cbs| and
- * advances |cbs|. It returns a newly-allocated |ECDSA_SIG| or NULL on error. */
-OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_parse(CBS *cbs);
-
-/* ECDSA_SIG_from_bytes parses |in| as a DER-encoded ECDSA-Sig-Value structure.
- * It returns a newly-allocated |ECDSA_SIG| structure or NULL on error. */
-OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in,
-                                               size_t in_len);
 
 
 #if defined(__cplusplus)

@@ -68,7 +68,8 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
 
 int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
-                               const uint8_t *sig_, size_t sig_len,
+                               const uint8_t *sig_r, size_t sig_r_len,
+                               const uint8_t *sig_s, size_t sig_s_len,
                                const uint8_t *ec_key, const size_t ec_key_len) {
   (void)hash_nid; /* TODO: Verify |digest_len| is right for |hash_nid|. */
 
@@ -81,7 +82,6 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   BN_CTX_start(ctx);
 
   int ret = 0;
-  ECDSA_SIG *sig = NULL;
   EC_POINT *point = NULL;
 
   EC_POINT *pub_key = EC_POINT_new(group);
@@ -90,30 +90,36 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
     goto err;
   }
 
-  sig = ECDSA_SIG_from_bytes(sig_, sig_len);
-  if (sig == NULL) {
-    goto err;
-  }
-
   /* check input values */
+  BIGNUM *r = BN_CTX_get(ctx);
+  BIGNUM *s = BN_CTX_get(ctx);
   BIGNUM *u1 = BN_CTX_get(ctx);
   BIGNUM *u2 = BN_CTX_get(ctx);
   BIGNUM *m = BN_CTX_get(ctx);
   BIGNUM *X = BN_CTX_get(ctx);
-  if (u1 == NULL || u2 == NULL || m == NULL || X == NULL) {
+  if (r == NULL || s == NULL || u1 == NULL || u2 == NULL || m == NULL ||
+      X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
 
-  if (BN_is_zero(sig->r) || BN_is_negative(sig->r) ||
-      BN_ucmp(sig->r, &group->order) >= 0 || BN_is_zero(sig->s) ||
-      BN_is_negative(sig->s) || BN_ucmp(sig->s, &group->order) >= 0) {
+  if (BN_bin2bn(sig_r, sig_r_len, r) == NULL ||
+      BN_bin2bn(sig_s, sig_s_len, s) == NULL ||
+      BN_ucmp(r, &group->order) >= 0 ||
+      BN_ucmp(s, &group->order) >= 0) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     ret = 0; /* signature is invalid */
     goto err;
   }
+
+  /* These properties are guaranteed by the caller. */
+  assert(!BN_is_negative(r));
+  assert(!BN_is_zero(r));
+  assert(!BN_is_negative(s));
+  assert(!BN_is_zero(s));
+
   /* calculate tmp1 = inv(S) mod order */
-  if (!BN_mod_inverse(u2, sig->s, &group->order, ctx)) {
+  if (!BN_mod_inverse(u2, s, &group->order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -126,7 +132,7 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
     goto err;
   }
   /* u2 = r * w mod q */
-  if (!BN_mod_mul(u2, sig->r, u2, &group->order, ctx)) {
+  if (!BN_mod_mul(u2, r, u2, &group->order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -149,13 +155,12 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
     goto err;
   }
   /* if the signature is correct u1 is equal to sig->r */
-  ret = (BN_ucmp(u1, sig->r) == 0);
+  ret = (BN_ucmp(u1, r) == 0);
 
 err:
   BN_CTX_end(ctx);
   BN_CTX_free(ctx);
   EC_POINT_free(pub_key);
-  ECDSA_SIG_free(sig);
   EC_POINT_free(point);
   return ret;
 }
