@@ -138,10 +138,16 @@ define_metrics_tests!(u32, test_u32_metrics, ring_uint32_t_align,
                       ring_uint32_t_size);
 
 #[cfg(all(test,
-          not(all(target_arch = "x86", target_os = "linux"))))]
+          not(all(target_arch = "x86",
+                  any(target_os = "linux",
+                      target_os = "macos",
+                      target_os = "ios")))))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
 
-#[cfg(all(test, target_arch = "x86", target_os = "linux"))]
+#[cfg(all(test, target_arch = "x86",
+                  any(target_os = "linux",
+                      target_os = "macos",
+                      target_os = "ios")))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 
 define_metrics_tests!(i64, test_i64_metrics, ring_int64_t_align,
