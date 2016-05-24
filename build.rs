@@ -68,8 +68,8 @@
 
 extern crate num;
 
-#[path="src/ecc_build.rs"] mod ecc_build;
-#[path="src/ecc_curves.rs"] mod ecc_curves;
+#[path="src/ec/ec_build.rs"] mod ec_build;
+#[path="src/ec/curves.rs"] mod curves;
 
 use std::env;
 use std::path::Path;
@@ -84,7 +84,7 @@ fn main() {
 
     let out_dir = env::var("OUT_DIR").unwrap();
 
-    ecc_build::generate_code(&out_dir).unwrap();
+    ec_build::generate_code(&out_dir).unwrap();
     build_c_code(&out_dir).unwrap();
 }
 

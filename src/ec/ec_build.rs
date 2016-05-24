@@ -16,7 +16,7 @@ use num;
 use num::integer::Integer as Integral;
 use num::traits::{FromPrimitive, Num, One, Signed, ToPrimitive, Zero};
 use std;
-use super::ecc_curves::*;
+use super::curves::*;
 
 pub fn generate_code(out_dir: &str) -> std::io::Result<()> {
     generate_ec_groups(out_dir)
