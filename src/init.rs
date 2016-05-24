@@ -14,12 +14,18 @@
 
 #[allow(unsafe_code)]
 #[inline(always)]
+#[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
 pub fn init_once() {
     extern crate std;
     static INIT: std::sync::Once = std::sync::ONCE_INIT;
     INIT.call_once(|| unsafe { OPENSSL_cpuid_setup() });
 }
 
+#[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
 extern {
     fn OPENSSL_cpuid_setup();
+}
+
+#[cfg(all(target_arch = "aarch64", target_os = "ios"))]
+pub fn init_once() {
 }
