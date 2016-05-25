@@ -67,8 +67,10 @@
 #include "../internal.h"
 
 
-static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                                 size_t len, BN_BLINDING *blinding, RAND *rng);
+/* Declerations to avoid -Wmissing-prototypes warnings. */
+int GFp_rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                              size_t len, BN_BLINDING *blinding, RAND *rng);
+
 
 static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
                                       size_t min_bits, size_t max_bits) {
@@ -203,8 +205,8 @@ err:
   return ret;
 }
 
-/* rsa_private_transform takes a big-endian integer from |in|, calculates the
- * d'th power of it, modulo the RSA modulus and writes the result as a
+/* GFp_rsa_private_transform takes a big-endian integer from |in|, calculates
+ * the d'th power of it, modulo the RSA modulus and writes the result as a
  * big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
  * |len| is always equal to |RSA_size(rsa)|. If the result of the transform can
  * be represented in fewer than |len| bytes, then |out| must be zero padded on
@@ -212,8 +214,8 @@ err:
  *
  * It returns one on success and zero otherwise.
  */
-static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                                 size_t len, BN_BLINDING *blinding, RAND *rng) {
+int GFp_rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                              size_t len, BN_BLINDING *blinding, RAND *rng) {
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     return 0;
