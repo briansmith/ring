@@ -76,6 +76,7 @@ $code=<<___;
 .thumb
 #else
 .code	32
+#undef __thumb2__
 #endif
 
 .type	AES_Te,%object
