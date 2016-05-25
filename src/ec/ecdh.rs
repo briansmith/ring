@@ -214,11 +214,12 @@ macro_rules! nist_ecdh {
 #[cfg(feature = "no_heap")]
 macro_rules! nist_ecdh {
     ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr, $ecdh:ident,
-      $ec_group_fn:ident, $generate_private_key:ident,
+      $ec_group_fn:expr, $generate_private_key:ident,
       $public_from_private:ident ) => {
     }
 }
 
+#[cfg(not(feature = "no_heap"))]
 fn nist_ecdh(out: &mut [u8], group: *const ec::EC_GROUP,
              elem_and_scalar_len: usize, my_private_key: &ec::PrivateKey,
              peer_public_key: Input)
@@ -242,6 +243,7 @@ nist_ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", 715 /*NID_secp384r1*/,
            nist_p384_ecdh, ec::EC_GROUP_P384, GFp_p384_generate_private_key,
            GFp_p384_public_from_private);
 
+#[cfg(not(feature = "no_heap"))]
 extern {
     fn GFp_nist_ecdh(group: *const ec::EC_GROUP, out: *mut u8,
                      out_len: c::size_t, private_key: *const u8,
