@@ -19,11 +19,10 @@
 //! for `verify` for examples.
 //!
 //! The design of this module is unusual compared to other public key signature
-//! APIs. Algorithms are split into "signing" (suffixed `_SIGN`) and
-//! "verification" (suffixed `_VERIFY`) algorithms in order to make it easier
-//! for the linker to discard unused code in the case where only signing is
-//! done or only verification is done with a given algorithm. (Currently, only
-//! the verification algorithms are )
+//! APIs. Algorithms are split into "signing" (suffixed `_SIGN`, and not yet
+//! implemented) and "verification" (suffixed `_VERIFY`) algorithms in order to
+//! make it easier for the linker to discard unused code in the case where only
+//! signing is done or only verification is done with a given algorithm.
 //!
 //! Also, this API treats each combination of parameters as a separate
 //! algorithm. For example, instead of having a single "RSA" algorithm with a
