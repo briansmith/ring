@@ -15,9 +15,6 @@
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
 #define OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
 
-#include <stdint.h>
-#include <stdio.h>
-
 // Avoid "C4548: expression before comma has no effect; expected expression
 // with side-effect." in malloc.h in Visual Studio 2015 Update 1 in debug mode.
 #if defined(_MSC_VER) && defined(_DEBUG) && _MSC_VER >= 1900
@@ -32,48 +29,12 @@
 #endif
 
 #include <openssl/bn.h>
-#include <openssl/curve25519.h>
-#include <openssl/ec.h>
-#include <openssl/ecdsa.h>
-#include <openssl/mem.h>
-#include <openssl/rsa.h>
 
 template<typename T, void (*func)(T*)>
 struct OpenSSLDeleter {
   void operator()(T *obj) {
     func(obj);
   }
-};
-
-template<typename T>
-struct OpenSSLFree {
-  void operator()(T *buf) {
-    OPENSSL_free(buf);
-  }
-};
-
-struct FileCloser {
-  void operator()(FILE *file) {
-    fclose(file);
-  }
-};
-
-template<typename T, typename CleanupRet, void (*init_func)(T*),
-         CleanupRet (*cleanup_func)(T*)>
-class ScopedOpenSSLContext {
- public:
-  ScopedOpenSSLContext() {
-    init_func(&ctx_);
-  }
-  ~ScopedOpenSSLContext() {
-    cleanup_func(&ctx_);
-  }
-
-  T *get() { return &ctx_; }
-  const T *get() const { return &ctx_; }
-
- private:
-  T ctx_;
 };
 
 // XXX: GCC 4.6 doesn't support this use of `using` yet:
@@ -86,12 +47,5 @@ class ScopedOpenSSLContext {
 SCOPED_OPENSSL_TYPE(ScopedBIGNUM, BIGNUM, BN_free);
 SCOPED_OPENSSL_TYPE(ScopedBN_CTX, BN_CTX, BN_CTX_free);
 SCOPED_OPENSSL_TYPE(ScopedBN_MONT_CTX, BN_MONT_CTX, BN_MONT_CTX_free);
-SCOPED_OPENSSL_TYPE(ScopedEC_POINT, EC_POINT, EC_POINT_free);
-SCOPED_OPENSSL_TYPE(ScopedRSA, RSA, RSA_free);
-
-typedef std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>> ScopedOpenSSLBytes;
-typedef std::unique_ptr<char, OpenSSLFree<char>> ScopedOpenSSLString;
-
-typedef std::unique_ptr<FILE, FileCloser> ScopedFILE;
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
