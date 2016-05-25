@@ -88,7 +88,6 @@ SCOPED_OPENSSL_TYPE(ScopedBN_CTX, BN_CTX, BN_CTX_free);
 SCOPED_OPENSSL_TYPE(ScopedBN_MONT_CTX, BN_MONT_CTX, BN_MONT_CTX_free);
 SCOPED_OPENSSL_TYPE(ScopedEC_POINT, EC_POINT, EC_POINT_free);
 SCOPED_OPENSSL_TYPE(ScopedRSA, RSA, RSA_free);
-SCOPED_OPENSSL_TYPE(ScopedSPAKE2_CTX, SPAKE2_CTX, SPAKE2_CTX_free);
 
 typedef std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>> ScopedOpenSSLBytes;
 typedef std::unique_ptr<char, OpenSSLFree<char>> ScopedOpenSSLString;
