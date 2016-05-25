@@ -14,7 +14,7 @@ add_library(
 add_executable(
   newhope_test
 
-  newhope_test.c
+  newhope_test.cc
   $<TARGET_OBJECTS:test_support>
 )
 
