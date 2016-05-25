@@ -96,54 +96,6 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
   return 1;
 }
 
-/* RSA_padding_check_PKCS1_type_1 returns the length of the PKCS#1 padding,
- * not including the DigestInfo, if the padding is valid. Otherwise (if the
- * padding is not valid), it returns zero. Note that zero-length padding isn't
- * valid. */
-size_t RSA_padding_check_PKCS1_type_1(const uint8_t *from, unsigned from_len) {
-  size_t i, j;
-  const uint8_t *p;
-
-  if (from_len < 2) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_SMALL);
-    return 0;
-  }
-
-  p = from;
-  if ((*(p++) != 0) || (*(p++) != 1)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BLOCK_TYPE_IS_NOT_01);
-    return 0;
-  }
-
-  /* scan over padding data */
-  j = from_len - 2; /* one for leading 00, one for type. */
-  for (i = 0; i < j; i++) {
-    /* should decrypt to 0xff */
-    if (*p != 0xff) {
-      if (*p == 0) {
-        p++;
-        break;
-      } else {
-        OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_FIXED_HEADER_DECRYPT);
-        return 0;
-      }
-    }
-    p++;
-  }
-
-  if (i == j) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_NULL_BEFORE_BLOCK_MISSING);
-    return 0;
-  }
-
-  if (i < 8) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_PAD_BYTE_COUNT);
-    return 0;
-  }
-  i++; /* Skip over the '\0' */
-  return from_len - (j - i);
-}
-
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len,
                                  RAND *rng) {

@@ -17,36 +17,78 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, der, digest, input, signature, signature_impl};
-use input::Input;
+use input::{Input, input_equals};
 
 
 #[allow(non_camel_case_types)]
 struct RSA_PKCS1 {
     digest_alg: &'static digest::Algorithm,
     min_bits: usize,
+    digestinfo_prefix: &'static [u8],
 }
 
 impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
-        let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
-        let signature = signature.as_slice_less_safe();
+        const MAX_BITS: usize = 8192;
+
         let (n, e) = try!(parse_public_key(public_key));
-        bssl::map_result(unsafe {
-            RSA_verify_pkcs1_signed_digest(self.min_bits, 8192,
-                                           digest.algorithm().nid,
-                                           digest.as_ref().as_ptr(),
-                                           digest.as_ref().len(),
-                                           signature.as_ptr(), signature.len(),
-                                           n.as_ptr(), n.len(), e.as_ptr(),
-                                           e.len())
+        let signature = signature.as_slice_less_safe();
+
+        let mut decoded = [0u8; (MAX_BITS + 7) / 8];
+        if signature.len() > decoded.len() {
+            return Err(());
+        }
+        let decoded = &mut decoded[..signature.len()];
+        try!(bssl::map_result(unsafe {
+            GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(),
+                                   n.as_ptr(), n.len(), e.as_ptr(), e.len(),
+                                   signature.as_ptr(), signature.len(),
+                                   self.min_bits, MAX_BITS)
+        }));
+
+        let decoded = try!(Input::new(decoded));
+        input::read_all(decoded, (), |decoded| {
+            if try!(decoded.read_byte()) != 0 ||
+               try!(decoded.read_byte()) != 1 {
+                return Err(());
+            }
+
+            let mut ps_len = 0;
+            loop {
+                match try!(decoded.read_byte()) {
+                    0xff => { ps_len += 1; },
+                    0x00 => { break; },
+                    _ => { return Err(()); }
+                }
+            }
+            if ps_len < 8 {
+                return Err(());
+            }
+
+            let decoded_digestinfo_prefix =
+                try!(decoded.skip_and_get_input(self.digestinfo_prefix.len()));
+            if !input_equals(decoded_digestinfo_prefix,
+                             self.digestinfo_prefix) {
+                return Err(());
+            }
+
+            let decoded_digest =
+                try!(decoded.skip_and_get_input(self.digest_alg.output_len));
+            let digest =
+                digest::digest(self.digest_alg, msg.as_slice_less_safe());
+            if !input_equals(decoded_digest, digest.as_ref()) {
+                return Err(());
+            }
+
+            Ok(())
         })
     }
 }
 
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
-      $digest_alg_name:expr, $digest_alg:expr ) => {
+      $digest_alg_name:expr, $digest_alg:expr, $digestinfo_prefix:expr ) => {
         #[cfg(not(feature = "no_heap"))]
         #[doc="Verification of RSA PKCS#1 1.5 signatures of "]
         #[doc=$min_bits_str]
@@ -60,23 +102,56 @@ macro_rules! rsa_pkcs1 {
                 signature::VerificationAlgorithm {
             implementation: &RSA_PKCS1 {
                 digest_alg: $digest_alg,
-                min_bits: $min_bits
+                min_bits: $min_bits,
+                digestinfo_prefix: $digestinfo_prefix,
             }
         };
     }
 }
 
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1_VERIFY, 2048, "2048", "SHA-1",
-           &digest::SHA1);
+           &digest::SHA1, &SHA1_PKCS1_DIGESTINFO_PREFIX);
+
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256_VERIFY, 2048, "2048", "SHA-256",
-           &digest::SHA256);
+           &digest::SHA256, &SHA256_PKCS1_DIGESTINFO_PREFIX);
+
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384_VERIFY, 2048, "2048", "SHA-384",
-           &digest::SHA384);
+           &digest::SHA384, &SHA384_PKCS1_DIGESTINFO_PREFIX);
+
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512_VERIFY, 2048, "2048", "SHA-512",
-           &digest::SHA512);
+           &digest::SHA512, &SHA512_PKCS1_DIGESTINFO_PREFIX);
 
 rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384_VERIFY, 3072, "3072", "SHA-384",
-           &digest::SHA384);
+           &digest::SHA384, &SHA384_PKCS1_DIGESTINFO_PREFIX);
+
+macro_rules! pkcs1_digestinfo_prefix {
+    ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
+      [ $( $digest_oid:expr ),* ] ) => {
+        static $name: [u8; 2 + 8 + $digest_oid_len] = [
+            der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
+                der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
+                    der::Tag::OID as u8, $digest_oid_len, $( $digest_oid ),*,
+                    der::Tag::Null as u8, 0,
+                der::Tag::OctetString as u8, $digest_len,
+        ];
+    }
+}
+
+pkcs1_digestinfo_prefix!(
+    SHA1_PKCS1_DIGESTINFO_PREFIX, 20, 5, [ 0x2b, 0x0e, 0x03, 0x02, 0x1a ]);
+
+pkcs1_digestinfo_prefix!(
+    SHA256_PKCS1_DIGESTINFO_PREFIX, 32, 9,
+    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01 ]);
+
+
+pkcs1_digestinfo_prefix!(
+    SHA384_PKCS1_DIGESTINFO_PREFIX, 48, 9,
+    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02 ]);
+
+pkcs1_digestinfo_prefix!(
+    SHA512_PKCS1_DIGESTINFO_PREFIX, 64, 9,
+    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
 
 
 fn parse_public_key<'a>(input: Input<'a>) -> Result<(&'a [u8], &'a [u8]), ()> {
@@ -91,14 +166,14 @@ fn parse_public_key<'a>(input: Input<'a>) -> Result<(&'a [u8], &'a [u8]), ()> {
 
 
 extern {
-    fn RSA_verify_pkcs1_signed_digest(min_bits: usize, max_bits: usize,
-                                      digest_nid: c::int, digest: *const u8,
-                                      digest_len: c::size_t, sig: *const u8,
-                                      sig_len: c::size_t,
-                                      public_key_n: *const u8,
-                                      public_key_n_len: c::size_t,
-                                      public_key_e: *const u8,
-                                      public_key_e_len: c::size_t) -> c::int;
+    fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
+                              public_key_n: *const u8,
+                              public_key_n_len: c::size_t,
+                              public_key_e: *const u8,
+                              public_key_e_len: c::size_t,
+                              ciphertext: *const u8, ciphertext_len: c::size_t,
+                              min_bits: c::size_t, max_bits: c::size_t)
+                              -> c::int;
 }
 
 

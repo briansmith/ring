@@ -68,43 +68,6 @@
 #include "../internal.h"
 
 
-/* Declaration to avoid -Wmissing-prototypes warnings. */
-int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
-                                   int hash_nid, const uint8_t *digest,
-                                   size_t digest_len, const uint8_t *sig,
-                                   size_t sig_len, const uint8_t *public_key_n,
-                                   size_t public_key_n_len,
-                                   const uint8_t *public_key_e,
-                                   size_t public_key_e_len);
-
-
-typedef int (*rsa_verify_raw_f)(int hash_nid, const uint8_t *raw_sig,
-                                size_t raw_sig_len, const uint8_t *msg,
-                                size_t msg_len);
-
-static int rsa_verify_raw_pkcs1(int hash_nid, const uint8_t *raw_sig,
-                                size_t raw_sig_len, const uint8_t *msg,
-                                size_t msg_len);
-
-static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
-                      size_t max_bits, int hash_nid, const uint8_t *msg,
-                      size_t msg_len, const uint8_t *sig, size_t sig_len,
-                      const uint8_t *public_key_n, size_t public_key_n_len,
-                      const uint8_t *public_key_e, size_t public_key_e_len);
-
-
-int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
-                                   int hash_nid, const uint8_t *digest,
-                                   size_t digest_len, const uint8_t *sig,
-                                   size_t sig_len, const uint8_t *public_key_n,
-                                   size_t public_key_n_len,
-                                   const uint8_t *public_key_e,
-                                   size_t public_key_e_len) {
-  return rsa_verify(rsa_verify_raw_pkcs1, min_bits, max_bits, hash_nid, digest,
-                    digest_len, sig, sig_len, public_key_n, public_key_n_len,
-                    public_key_e, public_key_e_len);
-}
-
 RSA *rsa_new_begin(void) {
   RSA *rsa = OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
@@ -311,83 +274,6 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
 
 finish:
   OPENSSL_free(signed_msg);
-  return ret;
-}
-
-static int rsa_verify_raw_pkcs1(int hash_nid, const uint8_t *raw_sig,
-                                size_t raw_sig_len, const uint8_t *msg,
-                                size_t msg_len) {
-  size_t pkcs1_prefix_len = RSA_padding_check_PKCS1_type_1(raw_sig, raw_sig_len);
-  if (pkcs1_prefix_len == 0 || pkcs1_prefix_len >= raw_sig_len) {
-    return 0;
-  }
-  size_t remaining = raw_sig_len - pkcs1_prefix_len;
-
-  size_t i;
-  for (i = 0; kPKCS1SigPrefixes[i].nid != NID_undef; i++) {
-    const struct pkcs1_sig_prefix *sig_prefix = &kPKCS1SigPrefixes[i];
-    if (sig_prefix->nid != hash_nid) {
-      continue;
-    }
-
-    if (remaining - sig_prefix->len != msg_len ||
-        memcmp(raw_sig + pkcs1_prefix_len, sig_prefix->bytes, sig_prefix->len)
-          != 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
-      return 0;
-    }
-
-    if (memcmp(raw_sig + pkcs1_prefix_len + sig_prefix->len, msg, msg_len) != 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
-      return 0;
-    }
-
-    return 1;
-  }
-
-  OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_ALGORITHM_TYPE);
-  return 0;
-}
-
-/* rsa_verify verifies that |sig| is a valid signature of |msg| using the
- * public key in ASN.1 DER-encoded key in |key_bytes|, using the padding
- * checker |verify_raw_sig|.
- *
- * The |hash_nid| argument identifies the hash function used to calculate |in|
- * and is embedded in the resulting signature in order to prevent hash
- * confusion attacks. For example, it might be |NID_sha256|.
- *
- * |min_bits| and |max_bits| are the minimum and maximum allowed bitlengths for
- * the public key's modulus.
- *
- * It returns one if the signature is valid and zero otherwise.
- *
- * WARNING: this differs from the original, OpenSSL RSA_verify function
- * which additionally returned -1 on error. */
-static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
-                      size_t max_bits, int hash_nid, const uint8_t *msg,
-                      size_t msg_len, const uint8_t *sig, size_t sig_len,
-                      const uint8_t *public_key_n, size_t public_key_n_len,
-                      const uint8_t *public_key_e, size_t public_key_e_len) {
-  uint8_t *buf = NULL;
-  int ret = 0;
-
-  buf = OPENSSL_malloc(sig_len);
-  if (!buf) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  if (!rsa_public_decrypt(buf, sig_len, public_key_n, public_key_n_len,
-                          public_key_e, public_key_e_len, sig, sig_len,
-                          min_bits, max_bits)) {
-    goto out;
-  }
-
-  ret = verify_raw_sig(hash_nid, buf, sig_len, msg, msg_len);
-
-out:
-  OPENSSL_free(buf);
   return ret;
 }
 

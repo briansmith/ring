@@ -255,20 +255,20 @@ err:
   return ret;
 }
 
-/* rsa_public_decrypt decrypts the RSA signature |in| using the public key with
- * modulus |public_key_n| and exponent |public_key_e|, leaving the decrypted
- * signature in |out|. |out_len| and |in_len| must both be equal to
+/* GFp_rsa_public_decrypt decrypts the RSA signature |in| using the public key
+ * with modulus |public_key_n| and exponent |public_key_e|, leaving the
+ * decrypted signature in |out|. |out_len| and |in_len| must both be equal to
  * |RSA_size(rsa)|. |min_bits| and |max_bits| are the minimum and maximum
  * allowed public key modulus sizes, in bits. It returns one on success and
  * zero on failure.
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
-int rsa_public_decrypt(uint8_t *out, size_t out_len,
-                       const uint8_t *public_key_n, size_t public_key_n_len,
-                       const uint8_t *public_key_e, size_t public_key_e_len,
-                       const uint8_t *in, size_t in_len, size_t min_bits,
-                       size_t max_bits) {
+int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
+                           const uint8_t *public_key_n, size_t public_key_n_len,
+                           const uint8_t *public_key_e, size_t public_key_e_len,
+                           const uint8_t *in, size_t in_len, size_t min_bits,
+                           size_t max_bits) {
   BIGNUM n;
   BN_init(&n);
 
