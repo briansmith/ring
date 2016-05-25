@@ -367,6 +367,13 @@ mod tests {
                     let my_public = test_case.consume_bytes("MyQ");
                     let output = test_case.consume_bytes("Output");
 
+                    // In the no-heap mode, some algorithms aren't supported so
+                    // we have to skip those algorithms' test cases.
+                    if let None = alg {
+                        return;
+                    }
+                    let alg = alg.unwrap();
+
                     let private_key =
                         EphemeralPrivateKey::from_test_vector(alg, &my_private);
 
@@ -385,6 +392,13 @@ mod tests {
                 },
 
                 Some(_) => {
+                    // In the no-heap mode, some algorithms aren't supported so
+                    // we have to skip those algorithms' test cases.
+                    if let None = alg {
+                        return;
+                    }
+                    let alg = alg.unwrap();
+
                     let dummy_private_key =
                         EphemeralPrivateKey::generate(alg, &rng).unwrap();
                     fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
@@ -400,22 +414,25 @@ mod tests {
     }
 
     #[cfg(not(feature = "no_heap"))]
-    fn alg_from_curve_name(curve_name: &str) -> &'static Algorithm {
+    fn alg_from_curve_name(curve_name: &str) -> Option<&'static Algorithm> {
         if curve_name == "P-256" {
-            &ECDH_P256
+            Some(&ECDH_P256)
         } else if curve_name == "P-384" {
-            &ECDH_P384
+            Some(&ECDH_P384)
         } else if curve_name == "X25519" {
-            &X25519
+            Some(&X25519)
         } else {
             panic!("Unsupported curve: {}", curve_name);
         }
     }
 
     #[cfg(feature = "no_heap")]
-    fn alg_from_curve_name(curve_name: &str) -> &'static Algorithm {
-        if curve_name == "X25519" {
-            &X25519
+    fn alg_from_curve_name(curve_name: &str) -> Option<&'static Algorithm> {
+        if curve_name == "P-256" ||
+           curve_name == "P-384" {
+            None
+        } else if curve_name == "X25519" {
+            Some(&X25519)
         } else {
             panic!("Unsupported curve: {}", curve_name);
         }
