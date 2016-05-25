@@ -1132,7 +1132,8 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
     if (!CBS_stow(&dh_Ys, &ssl->s3->tmp.peer_key, &peer_key_len)) {
       goto err;
     }
-    /* |dh_Ys| has a u16 length prefix, so this fits in a |uint16_t|. */
+    /* |dh_Ys| was initialized with CBS_get_u16_length_prefixed, so peer_key_len
+     * fits in a uint16_t. */
     assert(sizeof(ssl->s3->tmp.peer_key_len) == 2 && peer_key_len <= 0xffff);
     ssl->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
   } else if (alg_k & SSL_kECDHE) {
@@ -1142,7 +1143,8 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
     CBS point;
     if (!CBS_get_u8(&server_key_exchange, &group_type) ||
         group_type != NAMED_CURVE_TYPE ||
-        !CBS_get_u16(&server_key_exchange, &group_id)) {
+        !CBS_get_u16(&server_key_exchange, &group_id) ||
+        !CBS_get_u8_length_prefixed(&server_key_exchange, &point)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
@@ -1156,22 +1158,33 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
       goto f_err;
     }
 
-    if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, group_id)) {
+    /* Initialize ECDH and save the peer public key for later. */
+    size_t peer_key_len;
+    if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, group_id) ||
+        !CBS_stow(&point, &ssl->s3->tmp.peer_key, &peer_key_len)) {
       goto err;
     }
-    if (!SSL_ECDH_CTX_get_key(&ssl->s3->tmp.ecdh_ctx, &server_key_exchange,
-                              &point)) {
+    /* |point| was initialized with CBS_get_u8_length_prefixed, so peer_key_len
+     * fits in a uint16_t. */
+    assert(sizeof(ssl->s3->tmp.peer_key_len) == 2 && peer_key_len <= 0xffff);
+    ssl->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
+  } else if (alg_k & SSL_kCECPQ1) {
+    if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, SSL_GROUP_CECPQ1)) {
+      goto err;
+    }
+    CBS key;
+    if (!CBS_get_u16_length_prefixed(&server_key_exchange, &key)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
 
-    /* Initialize ECDH and save the peer public key for later. */
     size_t peer_key_len;
-    if (!CBS_stow(&point, &ssl->s3->tmp.peer_key, &peer_key_len)) {
+    if (!CBS_stow(&key, &ssl->s3->tmp.peer_key, &peer_key_len)) {
       goto err;
     }
-    /* |point| has a u8 or u16 length prefix, so this fits in a |uint16_t|. */
+    /* |key| was initialized with CBS_get_u16_length_prefixed, so peer_key_len
+     * fits in a uint16_t. */
     assert(sizeof(ssl->s3->tmp.peer_key_len) == 2 && peer_key_len <= 0xffff);
     ssl->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
   } else if (!(alg_k & SSL_kPSK)) {
@@ -1623,7 +1636,7 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
         !CBB_flush(&cbb)) {
       goto err;
     }
-  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
+  } else if (alg_k & (SSL_kECDHE|SSL_kDHE|SSL_kCECPQ1)) {
     /* Generate a keypair and serialize the public half. */
     CBB child;
     if (!SSL_ECDH_CTX_add_key(&ssl->s3->tmp.ecdh_ctx, &cbb, &child)) {

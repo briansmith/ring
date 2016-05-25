@@ -1725,6 +1725,9 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
     mask_k |= SSL_kECDHE;
   }
 
+  /* CECPQ1 ciphers are always acceptable if supported by both sides. */
+  mask_k |= SSL_kCECPQ1;
+
   /* PSK requires a server callback. */
   if (ssl->psk_server_callback != NULL) {
     mask_k |= SSL_kPSK;

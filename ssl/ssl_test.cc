@@ -254,6 +254,31 @@ static const char *kMustNotIncludeNull[] = {
   "TLSv1.2",
 };
 
+static const char *kMustNotIncludeCECPQ1[] = {
+  "ALL",
+  "DEFAULT",
+  "MEDIUM",
+  "HIGH",
+  "FIPS",
+  "SHA",
+  "SHA1",
+  "SHA256",
+  "SHA384",
+  "RSA",
+  "SSLv3",
+  "TLSv1",
+  "TLSv1.2",
+  "aRSA",
+  "RSA",
+  "aECDSA",
+  "ECDSA",
+  "AES",
+  "AES128",
+  "AES256",
+  "AESGCM",
+  "CHACHA20",
+};
+
 static void PrintCipherPreferenceList(ssl_cipher_preference_list_st *list) {
   bool in_group = false;
   for (size_t i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
@@ -324,6 +349,24 @@ static bool TestRuleDoesNotIncludeNull(const char *rule) {
   return true;
 }
 
+static bool TestRuleDoesNotIncludeCECPQ1(const char *rule) {
+  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
+  }
+  if (!SSL_CTX_set_cipher_list(ctx.get(), rule)) {
+    fprintf(stderr, "Error: cipher rule '%s' failed\n", rule);
+    return false;
+  }
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(ctx->cipher_list->ciphers); i++) {
+    if (SSL_CIPHER_is_CECPQ1(sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i))) {
+      fprintf(stderr, "Error: cipher rule '%s' includes CECPQ1\n",rule);
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool TestCipherRules() {
   for (const CipherTest &test : kCipherTests) {
     if (!TestCipherRule(test)) {
@@ -345,6 +388,12 @@ static bool TestCipherRules() {
 
   for (const char *rule : kMustNotIncludeNull) {
     if (!TestRuleDoesNotIncludeNull(rule)) {
+      return false;
+    }
+  }
+
+  for (const char *rule : kMustNotIncludeCECPQ1) {
+    if (!TestRuleDoesNotIncludeCECPQ1(rule)) {
       return false;
     }
   }

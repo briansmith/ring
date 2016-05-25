@@ -421,8 +421,6 @@ func curveForCurveID(id CurveID) (ecdhCurve, bool) {
 		return &ellipticECDHCurve{curve: elliptic.P521()}, true
 	case CurveX25519:
 		return &x25519ECDHCurve{}, true
-	case CurveCECPQ1:
-		return &cecpq1Curve{}, true
 	default:
 		return nil, false
 	}
@@ -647,19 +645,15 @@ NextCandidate:
 	}
 
 	// http://tools.ietf.org/html/rfc4492#section-5.4
-	var serverECDHParams []byte
-	serverECDHParams = append(serverECDHParams, byte(3)) // named curve
-	serverECDHParams = append(serverECDHParams, byte(curveid>>8))
-	serverECDHParams = append(serverECDHParams, byte(curveid))
+	serverECDHParams := make([]byte, 1+2+1+len(publicKey))
+	serverECDHParams[0] = 3 // named curve
+	serverECDHParams[1] = byte(curveid >> 8)
+	serverECDHParams[2] = byte(curveid)
 	if config.Bugs.InvalidSKXCurve {
 		serverECDHParams[2] ^= 0xff
 	}
-	if curveid == CurveCECPQ1 {
-		// The larger key size requires an extra length byte.
-		serverECDHParams = append(serverECDHParams, byte(len(publicKey)>>8))
-	}
-	serverECDHParams = append(serverECDHParams, byte(len(publicKey)&0xff))
-	serverECDHParams = append(serverECDHParams, publicKey[:]...)
+	serverECDHParams[3] = byte(len(publicKey))
+	copy(serverECDHParams[4:], publicKey)
 	if config.Bugs.InvalidECDHPoint {
 		serverECDHParams[4] ^= 0xff
 	}
@@ -668,21 +662,10 @@ NextCandidate:
 }
 
 func (ka *ecdheKeyAgreement) processClientKeyExchange(config *Config, cert *Certificate, ckx *clientKeyExchangeMsg, version uint16) ([]byte, error) {
-	if len(ckx.ciphertext) == 0 {
+	if len(ckx.ciphertext) == 0 || int(ckx.ciphertext[0]) != len(ckx.ciphertext)-1 {
 		return nil, errClientKeyExchange
 	}
-	peerKeyLen := int(ckx.ciphertext[0])
-	offset := 1
-	if _, postQuantum := ka.curve.(*cecpq1Curve); postQuantum {
-		// The larger key size requires an extra length byte.
-		peerKeyLen = int(ckx.ciphertext[0])<<8 + int(ckx.ciphertext[1])
-		offset = 2
-	}
-	peerKey := ckx.ciphertext[offset:]
-	if peerKeyLen != len(peerKey) {
-		return nil, errClientKeyExchange
-	}
-	return ka.curve.finish(peerKey)
+	return ka.curve.finish(ckx.ciphertext[1:])
 }
 
 func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
@@ -700,22 +683,15 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 	}
 
 	publicLen := int(skx.key[3])
-	publicOffset := 4
-	if curveid == CurveCECPQ1 {
-		// The larger key size requires an extra length byte.
-		publicLen = int(skx.key[3])<<8 + int(skx.key[4])
-		publicOffset += 1
-	}
-
-	if publicLen+publicOffset > len(skx.key) {
+	if publicLen+4 > len(skx.key) {
 		return errServerKeyExchange
 	}
 	// Save the peer key for later.
-	ka.peerKey = skx.key[publicOffset : publicOffset+publicLen]
+	ka.peerKey = skx.key[4 : 4+publicLen]
 
 	// Check the signature.
-	serverECDHParams := skx.key[:publicOffset+publicLen]
-	sig := skx.key[publicOffset+publicLen:]
+	serverECDHParams := skx.key[:4+publicLen]
+	sig := skx.key[4+publicLen:]
 	return ka.auth.verifyParameters(config, clientHello, serverHello, cert, serverECDHParams, sig)
 }
 
@@ -730,14 +706,82 @@ func (ka *ecdheKeyAgreement) generateClientKeyExchange(config *Config, clientHel
 	}
 
 	ckx := new(clientKeyExchangeMsg)
-	if _, postQuantum := ka.curve.(*cecpq1Curve); postQuantum {
-		// The larger key size requires an extra length byte.
-		ckx.ciphertext = append(ckx.ciphertext, byte(len(publicKey)>>8))
-	}
-	ckx.ciphertext = append(ckx.ciphertext, byte(len(publicKey)&0xff))
+	ckx.ciphertext = make([]byte, 1+len(publicKey))
+	ckx.ciphertext[0] = byte(len(publicKey))
+	copy(ckx.ciphertext[1:], publicKey)
 	if config.Bugs.InvalidECDHPoint {
-		publicKey[0] ^= 0xff
+		ckx.ciphertext[1] ^= 0xff
 	}
+
+	return preMasterSecret, ckx, nil
+}
+
+// cecpq1RSAKeyAgreement is like an ecdheKeyAgreement, but using the cecpq1Curve
+// pseudo-curve, and without any parameters (e.g. curve name) other than the
+// keys being exchanged. The signature may either be ECDSA or RSA.
+type cecpq1KeyAgreement struct {
+	auth    keyAgreementAuthentication
+	curve   ecdhCurve
+	peerKey []byte
+}
+
+func (ka *cecpq1KeyAgreement) generateServerKeyExchange(config *Config, cert *Certificate, clientHello *clientHelloMsg, hello *serverHelloMsg) (*serverKeyExchangeMsg, error) {
+	ka.curve = &cecpq1Curve{}
+	publicKey, err := ka.curve.offer(config.rand())
+	if err != nil {
+		return nil, err
+	}
+
+	var params []byte
+	params = append(params, byte(len(publicKey)>>8))
+	params = append(params, byte(len(publicKey)&0xff))
+	params = append(params, publicKey[:]...)
+
+	return ka.auth.signParameters(config, cert, clientHello, hello, params)
+}
+
+func (ka *cecpq1KeyAgreement) processClientKeyExchange(config *Config, cert *Certificate, ckx *clientKeyExchangeMsg, version uint16) ([]byte, error) {
+	if len(ckx.ciphertext) < 2 {
+		return nil, errClientKeyExchange
+	}
+	peerKeyLen := int(ckx.ciphertext[0])<<8 + int(ckx.ciphertext[1])
+	peerKey := ckx.ciphertext[2:]
+	if peerKeyLen != len(peerKey) {
+		return nil, errClientKeyExchange
+	}
+	return ka.curve.finish(peerKey)
+}
+
+func (ka *cecpq1KeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
+	if len(skx.key) < 2 {
+		return errServerKeyExchange
+	}
+	peerKeyLen := int(skx.key[0])<<8 + int(skx.key[1])
+	// Save the peer key for later.
+	if len(skx.key) < 2+peerKeyLen {
+		return errServerKeyExchange
+	}
+	ka.peerKey = skx.key[2 : 2+peerKeyLen]
+	if peerKeyLen != len(ka.peerKey) {
+		return errServerKeyExchange
+	}
+
+	// Check the signature.
+	params := skx.key[:2+peerKeyLen]
+	sig := skx.key[2+peerKeyLen:]
+	return ka.auth.verifyParameters(config, clientHello, serverHello, cert, params, sig)
+}
+
+func (ka *cecpq1KeyAgreement) generateClientKeyExchange(config *Config, clientHello *clientHelloMsg, cert *x509.Certificate) ([]byte, *clientKeyExchangeMsg, error) {
+	curve := &cecpq1Curve{}
+	publicKey, preMasterSecret, err := curve.accept(config.rand(), ka.peerKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ckx := new(clientKeyExchangeMsg)
+	ckx.ciphertext = append(ckx.ciphertext, byte(len(publicKey)>>8))
+	ckx.ciphertext = append(ckx.ciphertext, byte(len(publicKey)&0xff))
 	ckx.ciphertext = append(ckx.ciphertext, publicKey[:]...)
 
 	return preMasterSecret, ckx, nil
