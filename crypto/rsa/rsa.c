@@ -247,36 +247,6 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len, int hash_nid,
   return 0;
 }
 
-int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
-             unsigned *out_len, RSA *rsa, BN_BLINDING *blinding, RAND *rng) {
-  const unsigned rsa_size = RSA_size(rsa);
-  int ret = 0;
-  uint8_t *signed_msg;
-  size_t signed_msg_len;
-  size_t size_t_out_len;
-
-  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len, hash_nid, in,
-                            in_len)) {
-    return 0;
-  }
-
-  if (rsa_size < RSA_PKCS1_PADDING_SIZE ||
-      signed_msg_len > rsa_size - RSA_PKCS1_PADDING_SIZE) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DIGEST_TOO_BIG_FOR_RSA_KEY);
-    goto finish;
-  }
-
-  if (RSA_sign_raw(rsa, &size_t_out_len, out, rsa_size, signed_msg,
-                   signed_msg_len, RSA_PKCS1_PADDING, blinding, rng)) {
-    *out_len = size_t_out_len;
-    ret = 1;
-  }
-
-finish:
-  OPENSSL_free(signed_msg);
-  return ret;
-}
-
 int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   assert(ctx);
 

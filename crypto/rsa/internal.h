@@ -65,8 +65,6 @@ extern "C" {
 #endif
 
 
-#define RSA_PKCS1_PADDING_SIZE 11
-
 /* rsa_new_begin returns a new, empty RSA object or NULL on error. After
  * filling in the key's values, |rsa_new_end| must be called. In particular,
  * |rsa_new_end| must be called before any RSA operation is performed.
@@ -88,15 +86,6 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
                            const uint8_t *public_key_e, size_t public_key_e_len,
                            const uint8_t *in, size_t in_len, size_t min_bits,
                            size_t max_bits);
-
-
-int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
-                                 const uint8_t *from, unsigned from_len);
-int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
-                                 const uint8_t *from, unsigned from_len,
-                                 RAND *rng);
-int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
-                         unsigned from_len);
 
 
 #if defined(__cplusplus)

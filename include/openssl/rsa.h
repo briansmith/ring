@@ -122,35 +122,6 @@ OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
                                const uint8_t *in, size_t in_len, int padding,
                                RAND *rng);
 
-/* Signing / Verification */
-
-/* RSA_sign signs |in_len| bytes of digest from |in| with |rsa| using
- * RSASSA-PKCS1-v1_5. It writes, at most, |RSA_size(rsa)| bytes to |out|. On
- * successful return, the actual number of bytes written is written to
- * |*out_len|.
- *
- * The |hash_nid| argument identifies the hash function used to calculate |in|
- * and is embedded in the resulting signature. For example, it might be
- * |NID_sha256|.
- *
- * It returns 1 on success and zero on error. */
-OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
-                            unsigned int in_len, uint8_t *out,
-                            unsigned int *out_len, RSA *rsa,
-                            BN_BLINDING *blinding, RAND *rng);
-
-/* RSA_sign_raw signs |in_len| bytes from |in| with the public key from |rsa|
- * and writes, at most, |max_out| bytes of signature data to |out|. The
- * |max_out| argument must be, at least, |RSA_size| in order to ensure success.
- *
- * It returns 1 on success or zero on error.
- *
- * The |padding| argument must be one of the |RSA_*_PADDING| values. */
-OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
-                                size_t max_out, const uint8_t *in,
-                                size_t in_len, int padding,
-                                BN_BLINDING *blinding, RAND *rng);
-
 
 /* Utility functions. */
 
