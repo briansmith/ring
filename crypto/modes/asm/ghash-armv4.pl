@@ -229,7 +229,7 @@ gcm_ghash_4bit:
 #ifdef	__thumb2__
 	it	pl
 #endif
-	ldrbpl	$nlo,[$inp,$cnt]
+	ldrplb	$nlo,[$inp,$cnt]
 	eor	$Zhl,$Zhl,$Zhh,lsl#28
 	eor	$Zhh,$Thh,$Zhh,lsr#4
 
@@ -242,7 +242,7 @@ gcm_ghash_4bit:
 #ifdef	__thumb2__
 	it	pl
 #endif
-	ldrbpl	$Tll,[$Xi,$cnt]
+	ldrplb	$Tll,[$Xi,$cnt]
 	eor	$Zll,$Zll,$Zlh,lsl#28
 	eor	$Zlh,$Tlh,$Zlh,lsr#4
 	ldrh	$Tlh,[sp,$nhi]
@@ -331,7 +331,7 @@ gcm_gmult_4bit:
 #ifdef	__thumb2__
 	it	pl
 #endif
-	ldrbpl	$nlo,[$Xi,$cnt]
+	ldrplb	$nlo,[$Xi,$cnt]
 	eor	$Zhl,$Zhl,$Zhh,lsl#28
 	eor	$Zhh,$Thh,$Zhh,lsr#4
 
