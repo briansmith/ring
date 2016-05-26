@@ -55,9 +55,6 @@ static uint32_t U8TO32_LE(const uint8_t *m) {
   return r;
 }
 
-/* XXX: Disable assembly language implementations until bugs in them are
- * fixed. */
-#if 0
 #if defined(OPENSSL_X86)
 /* See comment above |_poly1305_init_sse2| in poly1305-x86.pl. */
 OPENSSL_COMPILE_ASSERT(POLY1305_BLOCK_STATE_SIZE >= 4 * (5 + 1 + 4 + 2 + 4 * 9),
@@ -77,7 +74,6 @@ OPENSSL_COMPILE_ASSERT(POLY1305_BLOCK_STATE_SIZE >=
 /* TODO(davidben): Figure out the layout of the struct. For now,
  * |POLY1305_BLOCK_STATE_SIZE| is taken from OpenSSL. */
 #define POLY1305_ASM
-#endif
 #endif
 
 #if defined(POLY1305_ASM)

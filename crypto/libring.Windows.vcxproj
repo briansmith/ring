@@ -73,6 +73,7 @@
     <PerlAsm Include="bn/asm/x86-mont.pl" />
     <PerlAsm Include="chacha/asm/chacha-x86.pl" />
     <PerlAsm Include="modes/asm/ghash-x86.pl" />
+    <PerlAsm Include="poly1305/asm/poly1305-x86.pl" />
     <PerlAsm Include="sha/asm/sha256-586.pl" />
     <PerlAsm Include="sha/asm/sha512-586.pl" />
   </ItemGroup>
@@ -87,6 +88,7 @@
         $(IntDir)x86-mont.obj;
         $(IntDir)chacha-x86.obj;
         $(IntDir)ghash-x86.obj;
+        $(IntDir)poly1305-x86.obj;
         $(IntDir)sha256-586.obj;
         $(IntDir)sha512-586.obj;
       </AdditionalDependencies>
@@ -107,6 +109,7 @@
     <ClCompile Include="ec/p256-x86_64.c" />
     <PerlAsm Include="modes/asm/aesni-gcm-x86_64.pl" />
     <PerlAsm Include="modes/asm/ghash-x86_64.pl" />
+    <PerlAsm Include="poly1305/asm/poly1305-x86_64.pl" />
     <PerlAsm Include="sha/asm/sha256-x86_64.pl">
       <AdditionalDependencies>sha/asm/sha-x86_64.pl</AdditionalDependencies>
     </PerlAsm>
@@ -130,6 +133,7 @@
         $(IntDir)p256-x86_64-asm.obj;
         $(IntDir)aesni-gcm-x86_64.obj;
         $(IntDir)ghash-x86_64.obj;
+        $(IntDir)poly1305-x86_64.obj;
         $(IntDir)sha256-x86_64.obj;
         $(IntDir)sha512-x86_64.obj;
       </AdditionalDependencies>
