@@ -22,8 +22,7 @@ extern "C" {
 #endif
 
 
-typedef union {
-  double align;
+typedef struct {
   uint8_t bytes[512];
 } poly1305_state;
 
