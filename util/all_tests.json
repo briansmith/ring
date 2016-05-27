@@ -51,6 +51,7 @@
 	["crypto/lhash/lhash_test"],
 	["crypto/modes/gcm_test"],
 	["crypto/newhope/newhope_test"],
+	["crypto/newhope/newhope_vectors_test", "crypto/newhope/newhope_test.txt"],
 	["crypto/obj/obj_test"],
 	["crypto/pkcs8/pkcs12_test"],
 	["crypto/pkcs8/pkcs8_test"],

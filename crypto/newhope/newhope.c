@@ -53,7 +53,7 @@ void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *sk) {
   /* The first part of the offer message is the seed, which compactly encodes
    * a. */
   NEWHOPE_POLY a;
-  uint8_t *seed = &offermsg[POLY_BYTES];
+  uint8_t *seed = &offermsg[NEWHOPE_POLY_LENGTH];
   RAND_bytes(seed, SEED_LENGTH);
   newhope_poly_uniform(&a, seed);
 
@@ -76,53 +76,34 @@ int NEWHOPE_accept(uint8_t key[SHA256_DIGEST_LENGTH],
     return 0;
   }
 
-  NEWHOPE_POLY sp;
+  /* Decode the |offermsg|, generating the same |a| as the peer, from the peer's
+   * seed. */
+  NEWHOPE_POLY pk, a;
+  const uint8_t *seed = &offermsg[NEWHOPE_POLY_LENGTH];
+  newhope_poly_uniform(&a, seed);
+  NEWHOPE_POLY_frombytes(&pk, offermsg);
+
+  /* Generate noise polynomials used to generate our key. */
+  NEWHOPE_POLY sp, epp;
   newhope_poly_getnoise(&sp);
   newhope_poly_ntt(&sp);
+  newhope_poly_getnoise(&epp);
 
-  /* The first part of the accept message is the polynomial bp=e'+a*s' */
-  {
-    NEWHOPE_POLY ep;
-    newhope_poly_getnoise(&ep);
-    newhope_poly_ntt(&ep);
+  /* Generate random bytes used for reconciliation. (The reference
+   * implementation calls ChaCha20 here.) */
+  uint8_t rand[32];
+  RAND_bytes(rand, sizeof(rand));
 
-    /* Generate the same |a| as the peer, from the peer's seed. */
-    NEWHOPE_POLY a;
-    const uint8_t *seed = &offermsg[POLY_BYTES];
-    newhope_poly_uniform(&a, seed);
+  /* Encode |bp| and |c| as the |acceptmsg|. */
+  NEWHOPE_POLY bp, c;
+  uint8_t k[NEWHOPE_KEY_LENGTH];
+  NEWHOPE_accept_computation(k, &bp, &c, &sp, &epp, rand, &pk, &a);
+  newhope_poly_tobytes(acceptmsg, &bp);
+  encode_rec(&c, &acceptmsg[NEWHOPE_POLY_LENGTH]);
 
-    NEWHOPE_POLY bp;
-    newhope_poly_pointwise(&bp, &a, &sp);
-    newhope_poly_add(&bp, &bp, &ep);
-    newhope_poly_tobytes(acceptmsg, &bp);
-  }
-
-  /* v = pk * s' + e'' */
-  NEWHOPE_POLY v;
-  {
-    NEWHOPE_POLY pk;
-    newhope_poly_frombytes(&pk, offermsg);
-
-    NEWHOPE_POLY epp;
-    newhope_poly_getnoise(&epp);
-
-    newhope_poly_pointwise(&v, &pk, &sp);
-    newhope_poly_invntt(&v);
-    newhope_poly_add(&v, &v, &epp);
-  }
-
-  /* The second part of the accept message is the reconciliation data derived
-   * from v. */
-  NEWHOPE_POLY c;
-  uint8_t *reconciliation = &acceptmsg[POLY_BYTES];
-  newhope_helprec(&c, &v);
-  encode_rec(&c, reconciliation);
-
-  uint8_t k[KEY_LENGTH];
-  newhope_reconcile(k, &v, &c);
   SHA256_CTX ctx;
   if (!SHA256_Init(&ctx) ||
-      !SHA256_Update(&ctx, k, KEY_LENGTH) ||
+      !SHA256_Update(&ctx, k, NEWHOPE_KEY_LENGTH) ||
       !SHA256_Final(key, &ctx)) {
     return 0;
   }
@@ -136,25 +117,50 @@ int NEWHOPE_finish(uint8_t key[SHA256_DIGEST_LENGTH], const NEWHOPE_POLY *sk,
   if (msg_len != NEWHOPE_ACCEPTMSG_LENGTH) {
     return 0;
   }
-  NEWHOPE_POLY bp;
-  newhope_poly_frombytes(&bp, acceptmsg);
 
-  NEWHOPE_POLY v;
-  newhope_poly_pointwise(&v, sk, &bp);
-  newhope_poly_invntt(&v);
+  /* Decode the accept message into |bp| and |c|. */
+  NEWHOPE_POLY bp, c;
+  NEWHOPE_POLY_frombytes(&bp, acceptmsg);
+  decode_rec(&acceptmsg[NEWHOPE_POLY_LENGTH], &c);
 
-  NEWHOPE_POLY c;
-  const uint8_t *reconciliation = &acceptmsg[POLY_BYTES];
-  decode_rec(reconciliation, &c);
-
-  uint8_t k[KEY_LENGTH];
-  newhope_reconcile(k, &v, &c);
+  uint8_t k[NEWHOPE_KEY_LENGTH];
+  NEWHOPE_finish_computation(k, sk, &bp, &c);
   SHA256_CTX ctx;
   if (!SHA256_Init(&ctx) ||
-      !SHA256_Update(&ctx, k, KEY_LENGTH) ||
+      !SHA256_Update(&ctx, k, NEWHOPE_KEY_LENGTH) ||
       !SHA256_Final(key, &ctx)) {
     return 0;
   }
 
   return 1;
+}
+
+void NEWHOPE_accept_computation(uint8_t k[NEWHOPE_KEY_LENGTH], NEWHOPE_POLY *bp,
+                                NEWHOPE_POLY *reconciliation,
+                                const NEWHOPE_POLY *sp, const NEWHOPE_POLY *epp,
+                                const uint8_t rand[32], const NEWHOPE_POLY *pk,
+                                const NEWHOPE_POLY *a) {
+  /* bp = e' + a*s' */
+  NEWHOPE_POLY ep;
+  newhope_poly_getnoise(&ep);
+  newhope_poly_ntt(&ep);
+  newhope_poly_pointwise(bp, a, sp);
+  newhope_poly_add(bp, bp, &ep);
+
+  /* v = pk * s' + e'' */
+  NEWHOPE_POLY v;
+  newhope_poly_pointwise(&v, pk, sp);
+  newhope_poly_invntt(&v);
+  newhope_poly_add(&v, &v, epp);
+  newhope_helprec(reconciliation, &v, rand);
+  newhope_reconcile(k, &v, reconciliation);
+}
+
+void NEWHOPE_finish_computation(uint8_t k[NEWHOPE_KEY_LENGTH],
+                                const NEWHOPE_POLY *sk, const NEWHOPE_POLY *bp,
+                                const NEWHOPE_POLY *reconciliation) {
+  NEWHOPE_POLY v;
+  newhope_poly_pointwise(&v, sk, bp);
+  newhope_poly_invntt(&v);
+  newhope_reconcile(k, &v, reconciliation);
 }

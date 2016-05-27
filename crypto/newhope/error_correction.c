@@ -81,14 +81,11 @@ static int16_t LDDecode(int32_t xi0, int32_t xi1, int32_t xi2, int32_t xi3) {
   return t & 1;
 }
 
-void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v) {
+void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v,
+                     const uint8_t rand[32]) {
   int32_t v0[4], v1[4], v_tmp[4], k;
   uint8_t rbit;
-  uint8_t rand[32];
   unsigned i;
-
-  /* The reference implementation calls ChaCha20 here. */
-  RAND_bytes(rand, sizeof(rand));
 
   for (i = 0; i < 256; i++) {
     rbit = (rand[i >> 3] >> (i & 7)) & 1;
@@ -117,7 +114,7 @@ void newhope_reconcile(uint8_t* key, const NEWHOPE_POLY* v,
   int i;
   int32_t tmp[4];
 
-  memset(key, 0, KEY_LENGTH);
+  memset(key, 0, NEWHOPE_KEY_LENGTH);
 
   for (i = 0; i < 256; i++) {
     tmp[0] = 16 * PARAM_Q + 8 * (int32_t)v->coeffs[0 + i] -

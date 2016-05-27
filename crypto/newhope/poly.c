@@ -27,7 +27,7 @@ extern uint16_t newhope_omegas_inv_montgomery[];
 extern uint16_t newhope_psis_bitrev_montgomery[];
 extern uint16_t newhope_psis_inv_montgomery[];
 
-void newhope_poly_frombytes(NEWHOPE_POLY* r, const uint8_t* a) {
+void NEWHOPE_POLY_frombytes(NEWHOPE_POLY* r, const uint8_t* a) {
   int i;
   for (i = 0; i < PARAM_N / 4; i++) {
     r->coeffs[4 * i + 0] =

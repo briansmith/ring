@@ -38,13 +38,28 @@ OPENSSL_EXPORT NEWHOPE_POLY *NEWHOPE_POLY_new(void);
 /* NEWHOPE_POLY_free frees |p|. */
 OPENSSL_EXPORT void NEWHOPE_POLY_free(NEWHOPE_POLY *p);
 
+/* NEWHOPE_POLY_LENGTH is the size in bytes of the packed representation of a
+ * polynomial, encoded with 14 bits per coefficient. */
+#define NEWHOPE_POLY_LENGTH ((1024 * 14) / 8)
+
+/* NEWHOPE_RECONCILIATION_LENGTH is the size in bytes of the packed
+ * representation of the reconciliation data, encoded as 2 bits per
+ * coefficient. */
+#define NEWHOPE_RECONCILIATION_LENGTH ((1024 * 2) / 8)
+
 /* NEWHOPE_OFFERMSG_LENGTH is the length of the offering party's message to the
  * accepting party. */
-#define NEWHOPE_OFFERMSG_LENGTH (((1024 * 14) / 8) + 32)
+#define NEWHOPE_OFFERMSG_LENGTH (NEWHOPE_POLY_LENGTH + 32)
 
 /* NEWHOPE_ACCEPTMSG_LENGTH is the length of the accepting party's message to
  * the offering party. */
-#define NEWHOPE_ACCEPTMSG_LENGTH (((1024 * 14) / 8) + 1024 / 4)
+#define NEWHOPE_ACCEPTMSG_LENGTH \
+  (NEWHOPE_POLY_LENGTH + NEWHOPE_RECONCILIATION_LENGTH)
+
+/* NEWHOPE_KEY_LENGTH is the size of the result of the key agreement. This
+ * result is not exposed to callers: instead, it is whitened with SHA-256, whose
+ * output happens to be the same size. */
+#define NEWHOPE_KEY_LENGTH 32
 
 /* NEWHOPE_offer initializes |out_msg| and |out_sk| for a new key
  * exchange. |msg| must have room for |NEWHOPE_OFFERMSG_LENGTH| bytes. Neither
@@ -70,6 +85,32 @@ OPENSSL_EXPORT int NEWHOPE_finish(uint8_t out_key[SHA256_DIGEST_LENGTH],
                                   const NEWHOPE_POLY *sk,
                                   const uint8_t msg[NEWHOPE_ACCEPTMSG_LENGTH],
                                   size_t msg_len);
+
+
+/* Lower-level functions. */
+
+/* NEWHOPE_accept_computation is the work of |NEWHOPE_accept|, less the encoding
+ * parts. The inputs from the peer are |pk| and |a|. The locally-generated
+ * inputs are the noise polynomials |sk| and |epp|, and the random bytes
+ * |rand|. The outputs are |out_bp| and |out_reconciliation|, and the result of
+ * key agreement |key|. Returns 1 on success and 0 on failure. */
+OPENSSL_EXPORT void NEWHOPE_accept_computation(
+    uint8_t out_key[NEWHOPE_KEY_LENGTH], NEWHOPE_POLY *out_bp,
+    NEWHOPE_POLY *out_reconciliation, const NEWHOPE_POLY *sk,
+    const NEWHOPE_POLY *epp, const uint8_t rand[32], const NEWHOPE_POLY *pk,
+    const NEWHOPE_POLY *a);
+
+/* NEWHOPE_finish_computation is the work of |NEWHOPE_finish|, less the encoding
+ * parts. Given the peer's |bp| and |reconciliation|, and locally-generated
+ * noise |noise|, the result of the key agreement is written to out_key.
+ * Returns 1 on success and 0 on failure. */
+OPENSSL_EXPORT void NEWHOPE_finish_computation(
+    uint8_t out_key[NEWHOPE_KEY_LENGTH], const NEWHOPE_POLY *noise,
+    const NEWHOPE_POLY *bp, const NEWHOPE_POLY *reconciliation);
+
+/* NEWHOPE_POLY_frombytes decodes |a| into |r|. */
+OPENSSL_EXPORT void NEWHOPE_POLY_frombytes(
+    NEWHOPE_POLY *r, const uint8_t a[NEWHOPE_POLY_LENGTH]);
 
 
 #if defined(__cplusplus)

@@ -30,18 +30,10 @@
 /* Modulus. */
 #define PARAM_Q 12289
 
-/* KEY_LENGTH is the size of the result of the key agreement. This result is
- * not exposed to callers: instead, it is whitened with SHA-256, whose output
- * happens to be the same size. */
-#define KEY_LENGTH 32
-
 /* Polynomial coefficients in unpacked form. */
 struct newhope_poly_st {
   alignas(32) uint16_t coeffs[PARAM_N];
 };
-
-/* The packed form is 14 bits per coefficient, or 1792 bytes. */
-#define POLY_BYTES ((1024 * 14) / 8)
 
 /* SEED_LENGTH is the length of the AES-CTR seed used to derive a polynomial. */
 #define SEED_LENGTH 32
@@ -57,15 +49,12 @@ void newhope_poly_uniform(NEWHOPE_POLY* a, const uint8_t* seed);
  * is given a random seed and a nonce.)*/
 void newhope_poly_getnoise(NEWHOPE_POLY* r);
 
-/* newhope_poly_frombytes unpacks the packed polynomial coefficients in |a| into
- * |r|. */
-void newhope_poly_frombytes(NEWHOPE_POLY* r, const uint8_t* a);
-
 /* newhope_poly_tobytes packs the polynomial |p| into the compact representation
  * |r|. */
 void newhope_poly_tobytes(uint8_t* r, const NEWHOPE_POLY* p);
 
-void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v);
+void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v,
+                     const uint8_t rbits[32]);
 
 /* newhope_reconcile performs the error-reconciliation step using the input |v|
  * and
