@@ -107,9 +107,6 @@
 #[macro_use]
 extern crate lazy_static;
 
-#[cfg(test)]
-extern crate rustc_serialize;
-
 #[cfg(not(test))]
 extern crate std;
 

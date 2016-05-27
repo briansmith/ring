@@ -293,7 +293,6 @@ extern {
 mod tests {
     use {ec, file_test, rand};
     use input::Input;
-    use rustc_serialize::hex::FromHex;
     use std;
     use super::*;
 
@@ -492,6 +491,11 @@ mod tests {
     }
 
     fn h(s: &str) -> std::vec::Vec<u8> {
-        s.from_hex().unwrap()
+        match file_test::from_hex(s) {
+            Ok(v) => v,
+            Err(msg) => {
+                panic!("{} in {}", msg, s);
+            }
+        }
     }
 }

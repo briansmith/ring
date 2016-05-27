@@ -13,10 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 extern crate ring;
-extern crate rustc_serialize;
 
 use ring::*;
-use rustc_serialize::hex::FromHex;
 use std::error::Error;
 use std::io::{Read, Write};
 
@@ -71,15 +69,43 @@ fn run(digest_name: &str, expected_digest_hex: &str,
 
     let actual_digest = ctx.finish();
 
-    let matched = match expected_digest_hex.from_hex() {
+    let matched = match from_hex(&expected_digest_hex) {
         Ok(expected) => actual_digest.as_ref() == &expected[..],
-        Err(_) => panic!("syntactically invalid digest")
+        Err(msg) => panic!("syntactically invalid digest: {} in {}", msg,
+                           &expected_digest_hex),
     };
 
     match matched {
         true => Ok(()),
         false => Err("digest mismatch") // TODO: calculated digest.
     }
+}
+
+pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
+    if hex_str.len() % 2 != 0 {
+        return Err(
+            String::from("Hex string does not have an even number of digits"));
+    }
+
+    fn from_hex_digit(d: u8) -> Result<u8, String> {
+        if d >= b'0' && d <= b'9' {
+            Ok(d - b'0')
+        } else if d >= b'a' && d <= b'f' {
+            Ok(d - b'a' + 10u8)
+        } else if d >= b'A' && d <= b'F' {
+            Ok(d - b'A' + 10u8)
+        } else {
+            Err(format!("Invalid hex digit '{}'", d as char))
+        }
+    }
+
+    let mut result = Vec::with_capacity(hex_str.len() / 2);
+    for digits in hex_str.as_bytes().chunks(2) {
+        let hi = try!(from_hex_digit(digits[0]));
+        let lo = try!(from_hex_digit(digits[1]));
+        result.push((hi * 0x10) | lo);
+    }
+    Ok(result)
 }
 
 fn main() {

@@ -12,7 +12,6 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use rustc_serialize::hex::FromHex;
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -50,9 +49,11 @@ impl TestCase {
             Vec::from(s.as_bytes())
         } else {
             // The value is hex encoded.
-            match s.from_hex() {
-                Ok(value) => value,
-                Err(..) => panic!("Invalid hex encoding of attribute: {}", s)
+            match from_hex(&s) {
+                Ok(s) => s,
+                Err(ref err_str) => {
+                    panic!("{} in {}", err_str, s);
+                }
             }
         }
     }
@@ -118,6 +119,33 @@ pub fn run_mut<F>(test_data_relative_file_path: &str, f: &mut F)
             }
         }
     }
+}
+
+pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
+    if hex_str.len() % 2 != 0 {
+        return Err(
+            String::from("Hex string does not have an even number of digits"));
+    }
+
+    fn from_hex_digit(d: u8) -> Result<u8, String> {
+        if d >= b'0' && d <= b'9' {
+            Ok(d - b'0')
+        } else if d >= b'a' && d <= b'f' {
+            Ok(d - b'a' + 10u8)
+        } else if d >= b'A' && d <= b'F' {
+            Ok(d - b'A' + 10u8)
+        } else {
+            Err(format!("Invalid hex digit '{}'", d as char))
+        }
+    }
+
+    let mut result = Vec::with_capacity(hex_str.len() / 2);
+    for digits in hex_str.as_bytes().chunks(2) {
+        let hi = try!(from_hex_digit(digits[0]));
+        let lo = try!(from_hex_digit(digits[1]));
+        result.push((hi * 0x10) | lo);
+    }
+    Ok(result)
 }
 
 type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
