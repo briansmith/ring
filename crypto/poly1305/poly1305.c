@@ -352,3 +352,5 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   poly1305_emit(&state.state, mac, state.nonce);
 #endif
 }
+
+const size_t CRYPTO_POLY1305_STATE_LEN = sizeof(struct poly1305_state_st);

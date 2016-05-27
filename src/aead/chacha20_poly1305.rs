@@ -18,7 +18,7 @@ use core;
 use super::super::{aead, c, polyfill};
 
 const CHACHA20_KEY_LEN: usize = 256 / 8;
-const POLY1305_STATE_LEN: usize = 512;
+const POLY1305_STATE_LEN: usize = 256;
 const POLY1305_KEY_LEN: usize = 32;
 
 
@@ -249,21 +249,30 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::aead;
-    use super::super::tests::test_aead;
+    use {aead, c};
 
     bssl_test!(test_chacha, bssl_chacha_test_main);
     bssl_test!(test_poly1305, bssl_poly1305_test_main);
 
     #[test]
     pub fn test_chacha20_poly1305() {
-        test_aead(&aead::CHACHA20_POLY1305,
-                  "crypto/cipher/test/chacha20_poly1305_tests.txt");
+        aead::tests::test_aead(&aead::CHACHA20_POLY1305,
+            "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
 
     #[test]
     pub fn test_chacha20_poly1305_old() {
-        test_aead(&aead::CHACHA20_POLY1305_OLD,
-                  "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
+        aead::tests::test_aead(&aead::CHACHA20_POLY1305_OLD,
+            "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
+    }
+
+    #[test]
+    pub fn test_poly1305_state_len() {
+        assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
+                    (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
+    }
+
+    extern {
+        static CRYPTO_POLY1305_STATE_LEN: c::size_t;
     }
 }

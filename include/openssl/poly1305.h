@@ -23,7 +23,7 @@ extern "C" {
 
 
 typedef struct {
-  uint8_t bytes[512];
+  uint8_t bytes[256];
 } poly1305_state;
 
 /* CRYPTO_poly1305_init sets up |state| so that it can be used to calculate an
