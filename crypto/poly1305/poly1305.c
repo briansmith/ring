@@ -28,25 +28,6 @@
 
 #define POLY1305_BLOCK_STATE_SIZE 192
 
-typedef void (*poly1305_blocks_t)(void *ctx, const uint8_t *in, size_t len,
-                                  uint32_t padbit);
-typedef void (*poly1305_emit_t)(void *ctx, uint8_t mac[16],
-                                const uint32_t nonce[4]);
-
-struct poly1305_state_st {
-  alignas(8) uint8_t opaque[POLY1305_BLOCK_STATE_SIZE];
-  uint32_t nonce[4];
-  uint8_t buf[16];
-  unsigned buf_used;
-  struct {
-    poly1305_blocks_t blocks;
-    poly1305_emit_t emit;
-  } func;
-};
-
-OPENSSL_COMPILE_ASSERT(sizeof(poly1305_state) >=
-                           sizeof(struct poly1305_state_st),
-                       poly1305_state_too_small);
 
 /* We can assume little-endian. */
 static uint32_t U8TO32_LE(const uint8_t *m) {
@@ -91,6 +72,31 @@ struct poly1305_block_state_st {
   uint32_t h0, h1, h2, h3, h4;
 };
 
+#endif
+
+struct poly1305_state_st {
+#if defined(POLY1305_ASM)
+  alignas(8) uint8_t opaque[POLY1305_BLOCK_STATE_SIZE];
+#else
+  alignas(8) struct poly1305_block_state_st state;
+#endif
+  uint32_t nonce[4];
+  uint8_t buf[16];
+  unsigned buf_used;
+#if defined(POLY1305_ASM)
+  struct {
+    void (*blocks)(void *ctx, const uint8_t *in, size_t len, uint32_t padbit);
+    void (*emit)(void *ctx, uint8_t mac[16], const uint32_t nonce[4]);
+  } func;
+#endif
+};
+
+OPENSSL_COMPILE_ASSERT(sizeof(poly1305_state) >=
+                       sizeof(struct poly1305_state_st),
+                       poly1305_state_too_small);
+
+
+#if !defined(POLY1305_ASM)
 OPENSSL_COMPILE_ASSERT(POLY1305_BLOCK_STATE_SIZE >=
                            sizeof(struct poly1305_block_state_st),
                        poly1305_block_state_too_small);
@@ -100,10 +106,8 @@ static void U32TO8_LE(uint8_t *m, uint32_t v) { memcpy(m, &v, sizeof(v)); }
 
 static uint64_t mul32x32_64(uint32_t a, uint32_t b) { return (uint64_t)a * b; }
 
-static int poly1305_init(void *ctx, const uint8_t key[16], void *out_func) {
-  (void)out_func;
-
-  struct poly1305_block_state_st *state = ctx;
+static void poly1305_init(struct poly1305_block_state_st *state,
+                          const uint8_t key[16]) {
   uint32_t t0, t1, t2, t3;
 
   t0 = U8TO32_LE(key + 0);
@@ -136,13 +140,10 @@ static int poly1305_init(void *ctx, const uint8_t key[16], void *out_func) {
   state->h2 = 0;
   state->h3 = 0;
   state->h4 = 0;
-
-  return 0;
 }
 
-static void poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
-                            uint32_t padbit) {
-  struct poly1305_block_state_st *state = ctx;
+static void poly1305_blocks(struct poly1305_block_state_st *state,
+                            const uint8_t *in, size_t len, uint32_t padbit) {
   uint32_t t0, t1, t2, t3;
   uint64_t t[5];
   uint32_t b;
@@ -205,9 +206,9 @@ static void poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
   }
 }
 
-static void poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]) {
-  struct poly1305_block_state_st *state = ctx;
-  uint64_t f0, f1, f2, f3;
+static void poly1305_emit(struct poly1305_block_state_st *state,
+                          uint8_t mac[16], const uint32_t nonce[4]) {
+  int64_t f0, f1, f2, f3;
   uint32_t g0, g1, g2, g3, g4;
   uint32_t b, nb;
 
@@ -268,10 +269,14 @@ static void poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]) {
 void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st state;
 
+#if defined(POLY1305_ASM)
   if (!poly1305_init(state.opaque, key, &state.func)) {
     state.func.blocks = poly1305_blocks;
     state.func.emit = poly1305_emit;
   }
+#else
+  poly1305_init(&state.state, key);
+#endif
 
   state.buf_used = 0;
   state.nonce[0] = U8TO32_LE(key + 16);
@@ -299,14 +304,22 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
     in += todo;
 
     if (state.buf_used == 16) {
+#if defined(POLY1305_ASM)
       state.func.blocks(state.opaque, state.buf, 16, 1 /* pad */);
+#else
+      poly1305_blocks(&state.state, state.buf, 16, 1 /* pad */);
+#endif
       state.buf_used = 0;
     }
   }
 
   if (in_len >= 16) {
     size_t todo = in_len & ~0xf;
+#if defined(POLY1305_ASM)
     state.func.blocks(state.opaque, in, todo, 1 /* pad */);
+#else
+    poly1305_blocks(&state.state, in, todo, 1 /* pad */);
+#endif
     in += todo;
     in_len &= 0xf;
   }
@@ -326,8 +339,16 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   if (state.buf_used != 0) {
     state.buf[state.buf_used] = 1;
     memset(state.buf + state.buf_used + 1, 0, 16 - state.buf_used - 1);
+#if defined(POLY1305_ASM)
     state.func.blocks(state.opaque, state.buf, 16, 0 /* already padded */);
+#else
+    poly1305_blocks(&state.state, state.buf, 16, 0 /* already padded */);
+#endif
   }
 
+#if defined(POLY1305_ASM)
   state.func.emit(state.opaque, mac, state.nonce);
+#else
+  poly1305_emit(&state.state, mac, state.nonce);
+#endif
 }
