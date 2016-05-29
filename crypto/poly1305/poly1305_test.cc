@@ -23,8 +23,7 @@
 
 #include <vector>
 
-#include <openssl/poly1305.h>
-
+#include "internal.h"
 #include "../internal.h"
 #include "../test/file_test.h"
 
