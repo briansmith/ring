@@ -77,6 +77,11 @@ OPENSSL_COMPILE_ASSERT(sizeof(poly1305_state) >=
 void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st state;
 
+  /* TODO XXX: It seems at least some implementations |poly1305_init| always
+   * return the same value, so this conditional logic isn't always necessary.
+   * And, for platforms that have such conditional logic also in the ASM code,
+   * it seems it would be better to move the conditional logic out of the asm
+   * and into the higher-level code. */
   if (!poly1305_init(state.opaque, key, &state.func)) {
     state.func.blocks = poly1305_blocks;
     state.func.emit = poly1305_emit;
