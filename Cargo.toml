@@ -32,9 +32,6 @@ no_heap = []
 slow_tests = []
 test_logging = []
 
-# Fix the `bench`, `release`, and `test` profiles so they all have the
-# same configuration.
-
 [profile.bench]
 opt-level = 3
 debug = true

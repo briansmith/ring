@@ -248,6 +248,7 @@ else ifeq ($(CMAKE_BUILD_TYPE),RELWITHDEBINFO)
 CPPFLAGS += -DNDEBUG -O3
 else ifeq ($(CMAKE_BUILD_TYPE),DEBUG)
 # Do nothing
+# TODO: CPPFLAGS += -Og, but that is only supported with GCC.
 else
 $(error invalid value for CMAKE_BUILD_TYPE: $(CMAKE_BUILD_TYPE))
 endif
