@@ -142,7 +142,6 @@ RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/test/bn_test_convert.c \
   crypto/test/bn_test_lib.c \
   crypto/test/file_test.cc \
-  crypto/test/test_util.cc \
   $(NULL))
 
 RING_CORE_OBJS = \
