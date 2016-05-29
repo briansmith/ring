@@ -21,15 +21,12 @@
 
      C4996: The compiler encountered a deprecated declaration.
             https://msdn.microsoft.com/en-us/library/ttcz0bys.aspx
-    -->
-    <WarningsToDisable>4242;4244;4267;4365;4706;4996</WarningsToDisable>
 
-    <!--
      C4464: relative include path contains '..'.
             This is normally a good idea to enable, but the code inherited from
             BoringSSL frequently uses `#include "../internal.h"` and similar.
     -->
-    <WarningsToDisable Condition="$(VisualStudioVersion)=='14.0'">$(WarningsToDisable);4464</WarningsToDisable>
+    <WarningsToDisable>4242;4244;4267;4365;4706;4996;4464</WarningsToDisable>
 
     <!-- These warnings are not indications of wrongness.
      C4127: conditional expression is constant

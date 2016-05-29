@@ -121,7 +121,7 @@
 #pragma warning(push, 3)
 #include <intrin.h>
 #pragma warning(pop)
-#if !defined(__cplusplus) || _MSC_VER < 1900
+#if !defined(__cplusplus)
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
 #endif

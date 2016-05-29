@@ -17,14 +17,14 @@
 
 // Avoid "C4548: expression before comma has no effect; expected expression
 // with side-effect." in malloc.h in Visual Studio 2015 Update 1 in debug mode.
-#if defined(_MSC_VER) && defined(_DEBUG) && _MSC_VER >= 1900
+#if defined(_MSC_VER) && defined(_DEBUG)
 #pragma warning(push)
 #pragma warning(disable: 4548)
 #endif
 
 #include <memory>
 
-#if defined(_MSC_VER) && defined(_DEBUG) && _MSC_VER >= 1900
+#if defined(_MSC_VER) && defined(_DEBUG)
 #pragma warning(pop)
 #endif
 
