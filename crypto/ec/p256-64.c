@@ -1592,11 +1592,6 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
   smallfelem x_in, y_in, z_in;
   felem x_out, y_out, z_out;
 
-  BIGNUM x, y, z;
-  BN_init(&x);
-  BN_init(&y);
-  BN_init(&z);
-
   if (p_scalar != NULL) {
     /* precompute multiples */
     if (!BN_to_scalar_bytearray(group, p_secret, p_scalar) ||
@@ -1640,18 +1635,16 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
   felem_contract(x_in, x_out);
   felem_contract(y_in, y_out);
   felem_contract(z_in, z_out);
-  if (!smallfelem_to_BN(&x, x_in) ||
-      !smallfelem_to_BN(&y, y_in) ||
-      !smallfelem_to_BN(&z, z_in)) {
+  if (!smallfelem_to_BN(&r->X, x_in) ||
+      !smallfelem_to_BN(&r->Y, y_in) ||
+      !smallfelem_to_BN(&r->Z, z_in)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
-  ret = ec_point_set_Jprojective_coordinates_GFp(group, r, &x, &y, &z, ctx);
+
+  ret = 1;
 
 err:
-  BN_free(&x);
-  BN_free(&y);
-  BN_free(&z);
   return ret;
 }
 
