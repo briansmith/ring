@@ -17,6 +17,11 @@
 use input;
 use input::Input;
 
+
+pub mod ecdsa;
+pub mod ecdh;
+
+
 /// Parses a public key encoded in uncompressed form.
 ///
 /// XXX: The coordinates are *not* validated to be proper field elements; the
@@ -36,4 +41,15 @@ pub fn parse_uncompressed_point<'a>(input: Input<'a>,
         let y = try!(input.skip_and_get_input(elem_and_scalar_len));
         Ok((x.as_slice_less_safe(), y.as_slice_less_safe()))
     })
+}
+
+
+#[allow(non_camel_case_types)]
+#[cfg(not(feature = "no_heap"))]
+enum EC_GROUP { }
+
+#[cfg(not(feature = "no_heap"))]
+extern {
+    fn EC_GROUP_P256() -> *const EC_GROUP;
+    fn EC_GROUP_P384() -> *const EC_GROUP;
 }

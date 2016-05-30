@@ -12,17 +12,93 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![allow(unsafe_code)]
 
-struct PrivateKey {
+use {bssl, c, init, rand};
+use input::Input;
+
+/// A key agreement algorithm.
+#[cfg_attr(not(test), allow(dead_code))]
+pub struct AgreementAlgorithmImpl {
+    pub public_key_len: usize,
+    pub elem_and_scalar_len: usize,
+
+    pub nid: c::int,
+
+    generate_private_key:
+        unsafe extern fn(out: *mut u8, rng: *mut rand::RAND) -> c::int,
+
+    public_from_private:
+        unsafe extern fn(public_out: *mut u8, private_key: *const u8) -> c::int,
+
+    pub ecdh:
+        fn(out: &mut [u8], private_key: &PrivateKey, peer_public_key: Input)
+           -> Result<(), ()>,
+}
+
+macro_rules! agreement_externs {
+    ( $generate_private_key:ident, $public_from_private:ident ) => {
+        #[allow(improper_ctypes)]
+        extern {
+            fn $generate_private_key(out: *mut u8, rng: *mut rand::RAND)
+                                     -> c::int;
+        }
+
+        extern {
+            fn $public_from_private(public_key_out: *mut u8,
+                                    private_key: *const u8) -> c::int;
+        }
+    }
+}
+
+pub struct PrivateKey {
     bytes: [u8; SCALAR_MAX_BYTES],
 }
 
-const INVALID_ZERO_PRIVATE_KEY_BYTES: [u8; SCALAR_MAX_BYTES] =
-    [0u8; SCALAR_MAX_BYTES];
+impl PrivateKey {
+    pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
+                    -> Result<PrivateKey, ()> {
+        init::init_once();
+        let mut result = PrivateKey {
+            bytes: [0; SCALAR_MAX_BYTES],
+        };
+        let mut rng = rand::RAND::new(rng);
+        try!(bssl::map_result(unsafe {
+            (alg.generate_private_key)(result.bytes.as_mut_ptr(), &mut rng)
+        }));
+        Ok(result)
+    }
 
-// XXX: Not correct for x32 ABIs.
-#[cfg(target_pointer_width = "64")] type Limb = u64;
-#[cfg(target_pointer_width = "32")] type Limb = u32;
+    #[cfg(test)]
+    pub fn from_test_vector(alg: &AgreementAlgorithmImpl, test_vector: &[u8])
+                            -> PrivateKey {
+        init::init_once();
+        let mut result = PrivateKey {
+            bytes: [0; SCALAR_MAX_BYTES],
+        };
+        {
+            let private_key_bytes =
+                &mut result.bytes[..alg.elem_and_scalar_len];
+            assert_eq!(test_vector.len(), private_key_bytes.len());
+            for i in 0..private_key_bytes.len() {
+                private_key_bytes[i] = test_vector[i];
+            }
+        }
+        result
+    }
+
+    #[inline(always)]
+    pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,
+                              out: &mut [u8]) -> Result<(), ()> {
+        if out.len() != alg.public_key_len {
+            return Err(());
+        }
+        bssl::map_result(unsafe {
+            (alg.public_from_private)(out.as_mut_ptr(), self.bytes.as_ptr())
+        })
+    }
+}
+
 
 // When the `no_heap` feature isn't being used, P-384 has the largest field
 // element size.
@@ -34,7 +110,7 @@ const ELEM_MAX_BITS: usize = 384;
 #[cfg(feature = "no_heap")]
 const ELEM_MAX_BITS: usize = 256;
 
-const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
+pub const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
 
 const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
 
@@ -43,22 +119,11 @@ const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
 /// is activated).
 pub const PUBLIC_KEY_MAX_LEN: usize = 1 + (2 * ELEM_MAX_BYTES);
 
-#[allow(non_camel_case_types)]
-#[cfg(not(feature = "no_heap"))]
-enum EC_GROUP { }
-
-#[cfg(not(feature = "no_heap"))]
-extern {
-    fn EC_GROUP_P256() -> *const EC_GROUP;
-    fn EC_GROUP_P384() -> *const EC_GROUP;
-}
-
-pub mod ecdh;
-
-#[cfg(not(feature = "no_heap"))]
-pub mod ecdsa;
 
 pub mod eddsa;
 
 #[cfg(not(feature = "no_heap"))]
-pub mod nist_public;
+#[path = "suite_b/suite_b.rs"]
+pub mod suite_b;
+
+pub mod x25519;

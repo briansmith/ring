@@ -17,11 +17,11 @@
 #include "gfp_internal.h"
 
 
-EC_POINT *GFp_nist_make_point(const EC_GROUP *group,
-                              const uint8_t *peer_public_key_x,
-                              size_t peer_public_key_x_len,
-                              const uint8_t *peer_public_key_y,
-                              size_t peer_public_key_y_len) {
+EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
+                                 const uint8_t *peer_public_key_x,
+                                 size_t peer_public_key_x_len,
+                                 const uint8_t *peer_public_key_y,
+                                 size_t peer_public_key_y_len) {
   BIGNUM x;
   BN_init(&x);
 

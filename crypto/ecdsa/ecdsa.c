@@ -105,10 +105,10 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   int ret = 0;
   EC_POINT *point = NULL;
 
-  EC_POINT *pub_key = GFp_nist_make_point(group, peer_public_key_x,
-                                          peer_public_key_x_len,
-                                          peer_public_key_y,
-                                          peer_public_key_y_len);
+  EC_POINT *pub_key = GFp_suite_b_make_point(group, peer_public_key_x,
+                                             peer_public_key_x_len,
+                                             peer_public_key_y,
+                                             peer_public_key_y_len);
   if (pub_key == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;

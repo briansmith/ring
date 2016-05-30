@@ -17,12 +17,12 @@
 #include <limits.h>
 
 
-int GFp_nist_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
-                  const uint8_t *private_key, size_t private_key_len,
-                  const uint8_t *peer_public_key_x,
-                  size_t peer_public_key_x_len,
-                  const uint8_t *peer_public_key_y,
-                  size_t peer_public_key_y_len) {
+int GFp_suite_b_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
+                     const uint8_t *private_key, size_t private_key_len,
+                     const uint8_t *peer_public_key_x,
+                     size_t peer_public_key_x_len,
+                     const uint8_t *peer_public_key_y,
+                     size_t peer_public_key_y_len) {
   BIGNUM private_key_bn;
   BN_init(&private_key_bn);
 
@@ -38,9 +38,9 @@ int GFp_nist_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
     goto err;
   }
 
-  peer_point = GFp_nist_make_point(group, peer_public_key_x,
-                                   peer_public_key_x_len, peer_public_key_y,
-                                   peer_public_key_y_len);
+  peer_point = GFp_suite_b_make_point(group, peer_public_key_x,
+                                      peer_public_key_x_len, peer_public_key_y,
+                                      peer_public_key_y_len);
   if (peer_point == NULL) {
     goto err;
   }

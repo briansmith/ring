@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-//! ECDSA Signatures.
+//! ECDSA Signatures using the P-256 and P-384 curves.
 
 use {bssl, c, der, digest, ec, input, signature, signature_impl};
 use input::Input;
@@ -22,7 +22,7 @@ use input::Input;
 #[cfg(not(feature = "no_heap"))]
 struct ECDSA {
     digest_alg: &'static digest::Algorithm,
-    ec_group_fn: unsafe extern fn() -> *const ec::EC_GROUP,
+    ec_group_fn: unsafe extern fn() -> *const ec::suite_b::EC_GROUP,
     elem_and_scalar_len: usize,
 }
 
@@ -40,8 +40,9 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
             })
         }));
 
-        let (x, y) = try!(ec::nist_public::parse_uncompressed_point(
-                                public_key, self.elem_and_scalar_len));
+        let (x, y) = try!(
+            ec::suite_b::parse_uncompressed_point(public_key,
+                                                  self.elem_and_scalar_len));
 
         bssl::map_result(unsafe {
             ECDSA_verify_signed_digest((self.ec_group_fn)(),
@@ -100,29 +101,30 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
-       "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
-       "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
-       "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", 256, ec::EC_GROUP_P256,
-       "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", 256,
+       ec::suite_b::EC_GROUP_P256, "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", 256,
+       ec::suite_b::EC_GROUP_P256, "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", 256,
+       ec::suite_b::EC_GROUP_P256, "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", 256,
+       ec::suite_b::EC_GROUP_P256, "SHA-512", &digest::SHA512);
 
-ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
-       "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
-       "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
-       "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", 384, ec::EC_GROUP_P384,
-       "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", 384,
+       ec::suite_b::EC_GROUP_P384, "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", 384,
+       ec::suite_b::EC_GROUP_P384, "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", 384,
+       ec::suite_b::EC_GROUP_P384, "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", 384,
+       ec::suite_b::EC_GROUP_P384, "SHA-512", &digest::SHA512);
 
 
 extern {
     #[cfg(not(feature = "no_heap"))]
-    fn ECDSA_verify_signed_digest(group: *const ec::EC_GROUP, hash_nid: c::int,
-                                  digest: *const u8, digest_len: c::size_t,
+    fn ECDSA_verify_signed_digest(group: *const ec::suite_b::EC_GROUP,
+                                  hash_nid: c::int, digest: *const u8,
+                                  digest_len: c::size_t,
                                   sig_r: *const u8, sig_r_len: c::size_t,
                                   sig_s: *const u8, sig_s_len: c::size_t,
                                   peer_public_key_x: *const u8,

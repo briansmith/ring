@@ -69,19 +69,209 @@
 //! # }
 //! ```
 
+use {ec, rand};
+use input::Input;
+
+
 pub use ec::PUBLIC_KEY_MAX_LEN;
 
-pub use ec::ecdh::{
-    Algorithm,
-    EphemeralPrivateKey,
-
-    X25519,
-
-    agree_ephemeral,
-};
-
 #[cfg(not(feature = "no_heap"))]
-pub use ec::ecdh::{
+pub use ec::suite_b::ecdh::{
     ECDH_P256,
     ECDH_P384,
 };
+
+pub use ec::x25519::X25519;
+
+
+/// A key agreement algorithm.
+#[cfg_attr(not(test), allow(dead_code))]
+pub struct Algorithm {
+    // XXX: This is public so that `Algorithms`s can be defined in other `ring`
+    // submodules, but it isn't actually useful outside `ring` since
+    // `ec::AgreementAlgorithmImpl` isn't public.
+    #[doc(hidden)]
+    pub i: ec::AgreementAlgorithmImpl,
+}
+
+/// An ephemeral private key for use (only) with `agree_ephemeral`. The
+/// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
+/// used for at most one key agreement.
+pub struct EphemeralPrivateKey {
+    private_key: ec::PrivateKey,
+    alg: &'static Algorithm,
+}
+
+impl EphemeralPrivateKey {
+    /// Generate a new ephemeral private key for the given algorithm.
+    ///
+    /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
+    pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
+                    -> Result<EphemeralPrivateKey, ()> {
+        Ok(EphemeralPrivateKey {
+            private_key:
+                try!(ec::PrivateKey::generate(&alg.i, rng)),
+            alg: alg,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn from_test_vector(alg: &'static Algorithm, test_vector: &[u8])
+                            -> EphemeralPrivateKey {
+        EphemeralPrivateKey {
+            private_key: ec::PrivateKey::from_test_vector(&alg.i, test_vector),
+            alg: alg,
+        }
+    }
+
+    /// The size in bytes of the encoded public key.
+    #[inline(always)]
+    pub fn public_key_len(&self) -> usize { self.alg.i.public_key_len }
+
+    /// Computes the public key from the private key's value and fills `out`
+    /// with the public point encoded in the standard form for the algorithm.
+    ///
+    /// `out.len()` must be equal to the value returned by `public_key_len`.
+    #[inline(always)]
+    pub fn compute_public_key(&self, out: &mut [u8]) -> Result<(), ()> {
+        self.private_key.compute_public_key(&self.alg.i, out)
+    }
+}
+
+/// Performs a key agreement with an ephemeral private key and the given public
+/// key.
+///
+/// `my_private_key` is the ephemeral private key to use. Since it is moved, it
+/// will not be usable after calling `agree_ephemeral`, thus guaranteeing that
+/// the key is used for only one key agreement.
+///
+/// `peer_public_key_alg` is the algorithm/curve for the peer's public key
+/// point; `agree_ephemeral` will return `Err(())` if it does not match
+/// `my_private_key's` algorithm/curve.
+///
+/// `peer_pubic_key` is the peer's public key. `agree_ephemeral` verifies that
+/// it is encoded in the standard form for the algorithm and that the key is
+/// *valid*; see the algorithm's documentation for details on how keys are to
+/// be encoded and what constitutes a valid key for that algorithm.
+///
+/// `error_value` is the value to return if an error occurs before `kdf` is
+/// called, e.g. when decoding of the peer's public key fails or when the public
+/// key is otherwise invalid.
+///
+/// After the key agreement is done, `agree_ephemeral` calls `kdf` with the raw
+/// key material from the key agreement operation and then returns what `kdf`
+/// returns.
+///
+/// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
+pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
+                                peer_public_key_alg: &Algorithm,
+                                peer_public_key: Input,
+                                error_value: E, kdf: F) -> Result<R, E>
+                                where F: FnOnce(&[u8]) -> Result<R, E> {
+    if peer_public_key_alg.i.nid != my_private_key.alg.i.nid {
+        return Err(error_value);
+    }
+    let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
+    let shared_key =
+        &mut shared_key[..my_private_key.alg.i.elem_and_scalar_len];
+    try!((my_private_key.alg.i.ecdh)(shared_key, &my_private_key.private_key,
+                                     peer_public_key).map_err(|_| error_value));
+    kdf(shared_key)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use {file_test, rand};
+    use input::Input;
+    use super::*;
+
+    #[test]
+    fn test_agreement_agree_ephemeral() {
+        let rng = rand::SystemRandom::new();
+
+        file_test::run("src/ec/ecdh_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let alg = alg_from_curve_name(&curve_name);
+            let peer_public = test_case.consume_bytes("PeerQ");
+            let peer_public = Input::new(&peer_public).unwrap();
+
+            match test_case.consume_optional_string("Error") {
+                None => {
+                    let my_private = test_case.consume_bytes("D");
+                    let my_public = test_case.consume_bytes("MyQ");
+                    let output = test_case.consume_bytes("Output");
+
+                    // In the no-heap mode, some algorithms aren't supported so
+                    // we have to skip those algorithms' test cases.
+                    if let None = alg {
+                        return;
+                    }
+                    let alg = alg.unwrap();
+
+                    let private_key =
+                        EphemeralPrivateKey::from_test_vector(alg, &my_private);
+
+                    let mut computed_public = [0u8; PUBLIC_KEY_MAX_LEN];
+                    let computed_public =
+                        &mut computed_public[..private_key.public_key_len()];
+                    assert!(
+                        private_key.compute_public_key(computed_public).is_ok());
+                    assert_eq!(computed_public, &my_public[..]);
+
+                    assert!(agree_ephemeral(private_key, alg, peer_public, (),
+                                            |key_material| {
+                        assert_eq!(key_material, &output[..]);
+                        Ok(())
+                    }).is_ok());
+                },
+
+                Some(_) => {
+                    // In the no-heap mode, some algorithms aren't supported so
+                    // we have to skip those algorithms' test cases.
+                    if let None = alg {
+                        return;
+                    }
+                    let alg = alg.unwrap();
+
+                    let dummy_private_key =
+                        EphemeralPrivateKey::generate(alg, &rng).unwrap();
+                    fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
+                        panic!("The KDF was called during ECDH when the peer's \
+                                public key is invalid.");
+                    }
+                    assert!(
+                        agree_ephemeral(dummy_private_key, alg, peer_public,
+                                        (), kdf_not_called).is_err());
+                }
+            }
+        });
+    }
+
+    #[cfg(not(feature = "no_heap"))]
+    fn alg_from_curve_name(curve_name: &str) -> Option<&'static Algorithm> {
+        if curve_name == "P-256" {
+            Some(&ECDH_P256)
+        } else if curve_name == "P-384" {
+            Some(&ECDH_P384)
+        } else if curve_name == "X25519" {
+            Some(&X25519)
+        } else {
+            panic!("Unsupported curve: {}", curve_name);
+        }
+    }
+
+    #[cfg(feature = "no_heap")]
+    fn alg_from_curve_name(curve_name: &str) -> Option<&'static Algorithm> {
+        if curve_name == "P-256" ||
+           curve_name == "P-384" {
+            None
+        } else if curve_name == "X25519" {
+            Some(&X25519)
+        } else {
+            panic!("Unsupported curve: {}", curve_name);
+        }
+    }
+}

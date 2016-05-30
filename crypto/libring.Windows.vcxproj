@@ -38,9 +38,9 @@
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
-    <ClCompile Include="ec\gfp_nist_ecdh.c" />
-    <ClCompile Include="ec\gfp_nist_private.c" />
-    <ClCompile Include="ec\gfp_nist_public.c" />
+    <ClCompile Include="ec\gfp_suite_b_ecdh.c" />
+    <ClCompile Include="ec\gfp_suite_b_private.c" />
+    <ClCompile Include="ec\gfp_suite_b_public.c" />
     <ClCompile Include="ec\oct.c" />
     <ClCompile Include="ec\simple.c" />
     <ClCompile Include="ec\wnaf.c" />

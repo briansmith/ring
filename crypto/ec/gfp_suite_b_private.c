@@ -26,8 +26,8 @@
 /* Generates a private key for the curve given in |group|, saving it in |out|,
  * least-significant-word first, zero-padded. It returns one on success or zero
  * otherwise. */
-int GFp_nist_generate_private_key(const EC_GROUP *group, uint8_t *out,
-                                  size_t out_len, RAND *rng) {
+int GFp_suite_b_generate_private_key(const EC_GROUP *group, uint8_t *out,
+                                     size_t out_len, RAND *rng) {
   /* XXX: Not constant time. */
 
   unsigned order_bits = BN_num_bits(&group->order);
@@ -72,10 +72,11 @@ err:
   return ret;
 }
 
-int GFp_nist_public_from_private(const EC_GROUP *group, uint8_t *public_key_out,
-                                 size_t public_key_out_len,
-                                 const uint8_t *private_key,
-                                 size_t private_key_len) {
+int GFp_suite_b_public_from_private(const EC_GROUP *group,
+                                    uint8_t *public_key_out,
+                                    size_t public_key_out_len,
+                                    const uint8_t *private_key,
+                                    size_t private_key_len) {
   BIGNUM private_key_bn;
   BN_init(&private_key_bn);
 

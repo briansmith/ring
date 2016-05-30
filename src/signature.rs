@@ -42,7 +42,7 @@ use {init, signature_impl};
 use super::input::Input;
 
 #[cfg(not(feature = "no_heap"))]
-pub use ec::ecdsa::{
+pub use ec::suite_b::ecdsa::{
     ECDSA_P256_SHA1_VERIFY,
     ECDSA_P256_SHA256_VERIFY,
     ECDSA_P256_SHA384_VERIFY,
