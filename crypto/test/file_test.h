@@ -92,22 +92,10 @@ class FileTest {
 
   unsigned start_line() const { return start_line_; }
 
-  // GetType returns the name of the first attribute of the current test.
-  const std::string &GetType();
-  // GetParameter returns the value of the first attribute of the current test.
-  const std::string &GetParameter();
-
-  // HasAttribute returns true if the current test has an attribute named |key|.
-  bool HasAttribute(const std::string &key);
-
   // GetAttribute looks up the attribute with key |key|. It sets |*out_value| to
   // the value and returns true if it exists and returns false with an error to
   // |stderr| otherwise.
   bool GetAttribute(std::string *out_value, const std::string &key);
-
-  // GetAttributeOrDie looks up the attribute with key |key| and aborts if it is
-  // missing. It should only be used after a |HasAttribute| call.
-  const std::string &GetAttributeOrDie(const std::string &key);
 
   // GetBytes looks up the attribute with key |key| and decodes it as a byte
   // string. On success, it writes the result to |*out| and returns

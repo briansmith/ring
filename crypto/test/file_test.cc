@@ -146,21 +146,6 @@ void FileTest::PrintLine(const char *format, ...) {
   va_end(args);
 }
 
-const std::string &FileTest::GetType() {
-  OnKeyUsed(type_);
-  return type_;
-}
-
-const std::string &FileTest::GetParameter() {
-  OnKeyUsed(type_);
-  return parameter_;
-}
-
-bool FileTest::HasAttribute(const std::string &key) {
-  OnKeyUsed(key);
-  return attributes_.count(key) > 0;
-}
-
 bool FileTest::GetAttribute(std::string *out_value, const std::string &key) {
   OnKeyUsed(key);
   auto iter = attributes_.find(key);
@@ -170,13 +155,6 @@ bool FileTest::GetAttribute(std::string *out_value, const std::string &key) {
   }
   *out_value = iter->second;
   return true;
-}
-
-const std::string &FileTest::GetAttributeOrDie(const std::string &key) {
-  if (!HasAttribute(key)) {
-    abort();
-  }
-  return attributes_[key];
 }
 
 static bool FromHexDigit(uint8_t *out, char c) {
