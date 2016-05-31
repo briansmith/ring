@@ -181,6 +181,8 @@ void PrintConnectionInfo(const SSL *ssl) {
   }
   fprintf(stderr, "  Secure renegotiation: %s\n",
           SSL_get_secure_renegotiation_support(ssl) ? "yes" : "no");
+  fprintf(stderr, "  Extended master secret: %s\n",
+          SSL_get_extms_support(ssl) ? "yes" : "no");
 
   const uint8_t *next_proto;
   unsigned next_proto_len;
