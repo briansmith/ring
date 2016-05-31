@@ -18,11 +18,9 @@
 
 
 int GFp_suite_b_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
-                     const uint8_t *private_key, size_t private_key_len,
-                     const uint8_t *peer_public_key_x,
-                     size_t peer_public_key_x_len,
-                     const uint8_t *peer_public_key_y,
-                     size_t peer_public_key_y_len) {
+                     const uint8_t *private_key,
+                     const GFp_Limb *peer_public_key_x,
+                     const GFp_Limb *peer_public_key_y) {
   BIGNUM private_key_bn;
   BN_init(&private_key_bn);
 
@@ -34,13 +32,13 @@ int GFp_suite_b_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
 
   int ret = 0;
 
+  size_t private_key_len = (ec_GFp_simple_group_get_degree(group) + 7) / 8;
   if (BN_bin2bn(private_key, private_key_len, &private_key_bn) == NULL) {
     goto err;
   }
 
   peer_point = GFp_suite_b_make_point(group, peer_public_key_x,
-                                      peer_public_key_x_len, peer_public_key_y,
-                                      peer_public_key_y_len);
+                                      peer_public_key_y);
   if (peer_point == NULL) {
     goto err;
   }

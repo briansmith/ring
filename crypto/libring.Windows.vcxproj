@@ -38,6 +38,7 @@
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
+    <ClCompile Include="ec\gfp_p384.c" />
     <ClCompile Include="ec\gfp_suite_b_ecdh.c" />
     <ClCompile Include="ec\gfp_suite_b_private.c" />
     <ClCompile Include="ec\gfp_suite_b_public.c" />
@@ -72,6 +73,7 @@
     <PerlAsm Include="aes/asm/vpaes-x86.pl" />
     <PerlAsm Include="bn/asm/x86-mont.pl" />
     <PerlAsm Include="chacha/asm/chacha-x86.pl" />
+    <PerlAsm Include="ec/asm/ecp_nistz256-x86.pl" />
     <PerlAsm Include="modes/asm/ghash-x86.pl" />
     <PerlAsm Include="poly1305/asm/poly1305-x86.pl" />
     <PerlAsm Include="sha/asm/sha256-586.pl" />
@@ -87,6 +89,7 @@
         $(IntDir)vpaes-x86.obj;
         $(IntDir)x86-mont.obj;
         $(IntDir)chacha-x86.obj;
+        $(IntDir)ecp_nistz256-x86.obj;
         $(IntDir)ghash-x86.obj;
         $(IntDir)poly1305-x86.obj;
         $(IntDir)sha256-586.obj;

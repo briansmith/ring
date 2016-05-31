@@ -67,10 +67,8 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
                                const uint8_t *sig_r, size_t sig_r_len,
                                const uint8_t *sig_s, size_t sig_s_len,
-                               const uint8_t *peer_public_key_x,
-                               size_t peer_public_key_x_len,
-                               const uint8_t *peer_public_key_y,
-                               size_t peer_public_key_y_len);
+                               const GFp_Limb *peer_public_key_x,
+                               const GFp_Limb *peer_public_key_y);
 
 
 static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
@@ -88,10 +86,8 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
                                const uint8_t *sig_r, size_t sig_r_len,
                                const uint8_t *sig_s, size_t sig_s_len,
-                               const uint8_t *peer_public_key_x,
-                               size_t peer_public_key_x_len,
-                               const uint8_t *peer_public_key_y,
-                               size_t peer_public_key_y_len) {
+                               const GFp_Limb *peer_public_key_x,
+                               const GFp_Limb *peer_public_key_y) {
   (void)hash_nid; /* TODO: Verify |digest_len| is right for |hash_nid|. */
 
   BN_CTX *ctx = BN_CTX_new();
@@ -106,9 +102,7 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   EC_POINT *point = NULL;
 
   EC_POINT *pub_key = GFp_suite_b_make_point(group, peer_public_key_x,
-                                             peer_public_key_x_len,
-                                             peer_public_key_y,
-                                             peer_public_key_y_len);
+                                             peer_public_key_y);
   if (pub_key == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
