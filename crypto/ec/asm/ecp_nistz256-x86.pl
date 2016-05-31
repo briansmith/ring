@@ -44,100 +44,11 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
 
 ########################################################################
-# Convert ecp_nistz256_table.c to layout expected by ecp_nistz_gather_w7
-#
-open TABLE,"<ecp_nistz256_table.c"		or
-open TABLE,"<${dir}../ecp_nistz256_table.c"	or
-die "failed to open ecp_nistz256_table.c:",$!;
-
-use integer;
-
-foreach(<TABLE>) {
-	s/TOBN\(\s*(0x[0-9a-f]+),\s*(0x[0-9a-f]+)\s*\)/push @arr,hex($2),hex($1)/geo;
-}
-close TABLE;
-
-# See ecp_nistz256_table.c for explanation for why it's 64*16*37.
-# 64*16*37-1 is because $#arr returns last valid index or @arr, not
-# amount of elements.
-die "insane number of elements" if ($#arr != 64*16*37-1);
-
-&public_label("ecp_nistz256_precomputed");
-&align(4096);
-&set_label("ecp_nistz256_precomputed");
-
-########################################################################
-# this conversion smashes P256_POINT_AFFINE by individual bytes with
-# 64 byte interval, similar to
-#	1111222233334444
-#	1234123412341234
-for(1..37) {
-	@tbl = splice(@arr,0,64*16);
-	for($i=0;$i<64;$i++) {
-		undef @line;
-		for($j=0;$j<64;$j++) {
-			push @line,(@tbl[$j*16+$i/4]>>(($i%4)*8))&0xff;
-		}
-		&data_byte(join(',',map { sprintf "0x%02x",$_} @line));
-	}
-}
-
-########################################################################
 # Keep in mind that constants are stored least to most significant word
-&static_label("RR");
-&set_label("RR",64);
-&data_word(3,0,-1,-5,-2,-1,-3,4);	# 2^512 mod P-256
-
 &static_label("ONE_mont");
 &set_label("ONE_mont");
 &data_word(1,0,0,-1,-1,-1,-2,0);
 
-&static_label("ONE");
-&set_label("ONE");
-&data_word(1,0,0,0,0,0,0,0);
-&asciz("ECP_NISZ256 for x86/SSE2, CRYPTOGAMS by <appro\@openssl.org>");
-&align(64);
-
-########################################################################
-# void ecp_nistz256_mul_by_2(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_mul_by_2");
-	&mov	("esi",&wparam(1));
-	&mov	("edi",&wparam(0));
-	&mov	("ebp","esi");
-########################################################################
-# common pattern for internal functions is that %edi is result pointer,
-# %esi and %ebp are input ones, %ebp being optional. %edi is preserved.
-	&call	("_ecp_nistz256_add");
-&function_end("ecp_nistz256_mul_by_2");
-
-########################################################################
-# void ecp_nistz256_mul_by_3(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_mul_by_3");
-	&mov	("esi",&wparam(1));
-					# multiplication by 3 is performed
-					# as 2*n+n, but we can't use output
-					# to store 2*n, because if output
-					# pointer equals to input, then
-					# we'll get 2*n+2*n.
-	&stack_push(8);			# therefore we need to allocate
-					# 256-bit intermediate buffer.
-	&mov	("edi","esp");
-	&mov	("ebp","esi");
-	&call	("_ecp_nistz256_add");
-	&lea	("esi",&DWP(0,"edi"));
-	&mov	("ebp",&wparam(1));
-	&mov	("edi",&wparam(0));
-	&call	("_ecp_nistz256_add");
-	&stack_pop(8);
-&function_end("ecp_nistz256_mul_by_3");
-
-########################################################################
-# void ecp_nistz256_div_by_2(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_div_by_2");
-	&mov	("esi",&wparam(1));
-	&mov	("edi",&wparam(0));
-	&call	("_ecp_nistz256_div_by_2");
-&function_end("ecp_nistz256_div_by_2");
 
 &function_begin_B("_ecp_nistz256_div_by_2");
 	# tmp = a is odd ? a+mod : a
@@ -317,16 +228,6 @@ for(1..37) {
 	&ret	();
 &function_end_B("_ecp_nistz256_add");
 
-########################################################################
-# void ecp_nistz256_sub(BN_ULONG edi[8],const BN_ULONG esi[8],
-#					const BN_ULONG ebp[8]);
-&function_begin("ecp_nistz256_sub");
-	&mov	("esi",&wparam(1));
-	&mov	("ebp",&wparam(2));
-	&mov	("edi",&wparam(0));
-	&call	("_ecp_nistz256_sub");
-&function_end("ecp_nistz256_sub");
-
 &function_begin_B("_ecp_nistz256_sub");
 	&mov	("eax",&DWP(0,"esi"));
 	&mov	("ebx",&DWP(4,"esi"));
@@ -410,7 +311,7 @@ for(1..37) {
 	&mov	(&DWP(20,"esp"),"eax");
 	&mov	(&DWP(24,"esp"),"eax");
 	&mov	(&DWP(28,"esp"),"eax");
-	
+
 	&call	("_ecp_nistz256_sub");
 
 	&stack_pop(8);
@@ -420,34 +321,6 @@ for(1..37) {
 	&mov	("eax",&DWP(0,"esp"));
 	&ret	();
 &function_end_B("_picup_eax");
-
-########################################################################
-# void ecp_nistz256_to_mont(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_to_mont");
-	&mov	("esi",&wparam(1));
-	&call	("_picup_eax");
-    &set_label("pic");
-	&lea	("ebp",&DWP(&label("RR")."-".&label("pic"),"eax"));
-						if ($sse2) {
-	&picmeup("eax","OPENSSL_ia32cap_P","eax",&label("pic"));
-	&mov	("eax",&DWP(0,"eax"));		}
-	&mov	("edi",&wparam(0));
-	&call	("_ecp_nistz256_mul_mont");
-&function_end("ecp_nistz256_to_mont");
-
-########################################################################
-# void ecp_nistz256_from_mont(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_from_mont");
-	&mov	("esi",&wparam(1));
-	&call	("_picup_eax");
-    &set_label("pic");
-	&lea	("ebp",&DWP(&label("ONE")."-".&label("pic"),"eax"));
-						if ($sse2) {
-	&picmeup("eax","OPENSSL_ia32cap_P","eax",&label("pic"));
-	&mov	("eax",&DWP(0,"eax"));		}
-	&mov	("edi",&wparam(0));
-	&call	("_ecp_nistz256_mul_mont");
-&function_end("ecp_nistz256_from_mont");
 
 ########################################################################
 # void ecp_nistz256_mul_mont(BN_ULONG edi[8],const BN_ULONG esi[8],
@@ -463,20 +336,6 @@ for(1..37) {
 	&mov	("edi",&wparam(0));
 	&call	("_ecp_nistz256_mul_mont");
 &function_end("ecp_nistz256_mul_mont");
-
-########################################################################
-# void ecp_nistz256_sqr_mont(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_sqr_mont");
-	&mov	("esi",&wparam(1));
-						if ($sse2) {
-	&call	("_picup_eax");
-    &set_label("pic");
-	&picmeup("eax","OPENSSL_ia32cap_P","eax",&label("pic"));
-	&mov	("eax",&DWP(0,"eax"));		}
-	&mov	("edi",&wparam(0));
-	&mov	("ebp","esi");
-	&call	("_ecp_nistz256_mul_mont");
-&function_end("ecp_nistz256_sqr_mont");
 
 &function_begin_B("_ecp_nistz256_mul_mont");
 						if ($sse2) {
@@ -1083,112 +942,6 @@ for ($i=0;$i<7;$i++) {
 	&add	("esp",10*4);
 	&ret	();
 &function_end_B("_ecp_nistz256_mul_mont");
-
-########################################################################
-# void ecp_nistz256_scatter_w5(void *edi,const P256_POINT *esi,
-#					 int ebp);
-&function_begin("ecp_nistz256_scatter_w5");
-	&mov	("edi",&wparam(0));
-	&mov	("esi",&wparam(1));
-	&mov	("ebp",&wparam(2));
-
-	&lea	("edi",&DWP(128-4,"edi","ebp",4));
-	&mov	("ebp",96/16);
-&set_label("scatter_w5_loop");
-	&mov	("eax",&DWP(0,"esi"));
-	&mov	("ebx",&DWP(4,"esi"));
-	&mov	("ecx",&DWP(8,"esi"));
-	&mov	("edx",&DWP(12,"esi"));
-	&lea	("esi",&DWP(16,"esi"));
-	&mov	(&DWP(64*0-128,"edi"),"eax");
-	&mov	(&DWP(64*1-128,"edi"),"ebx");
-	&mov	(&DWP(64*2-128,"edi"),"ecx");
-	&mov	(&DWP(64*3-128,"edi"),"edx");
-	&lea	("edi",&DWP(64*4,"edi"));
-	&dec	("ebp");
-	&jnz	(&label("scatter_w5_loop"));
-&function_end("ecp_nistz256_scatter_w5");
-
-########################################################################
-# void ecp_nistz256_gather_w5(P256_POINT *edi,const void *esi,
-#					      int ebp);
-&function_begin("ecp_nistz256_gather_w5");
-	&mov	("esi",&wparam(1));
-	&mov	("ebp",&wparam(2));
-
-	&lea	("esi",&DWP(0,"esi","ebp",4));
-	&neg	("ebp");
-	&sar	("ebp",31);
-	&mov	("edi",&wparam(0));
-	&lea	("esi",&DWP(0,"esi","ebp",4));
-
-    for($i=0;$i<24;$i+=4) {
-	&mov	("eax",&DWP(64*($i+0),"esi"));
-	&mov	("ebx",&DWP(64*($i+1),"esi"));
-	&mov	("ecx",&DWP(64*($i+2),"esi"));
-	&mov	("edx",&DWP(64*($i+3),"esi"));
-	&and	("eax","ebp");
-	&and	("ebx","ebp");
-	&and	("ecx","ebp");
-	&and	("edx","ebp");
-	&mov	(&DWP(4*($i+0),"edi"),"eax");
-	&mov	(&DWP(4*($i+1),"edi"),"ebx");
-	&mov	(&DWP(4*($i+2),"edi"),"ecx");
-	&mov	(&DWP(4*($i+3),"edi"),"edx");
-    }
-&function_end("ecp_nistz256_gather_w5");
-
-########################################################################
-# void ecp_nistz256_scatter_w7(void *edi,const P256_POINT_AFFINE *esi,
-#					 int ebp);
-&function_begin("ecp_nistz256_scatter_w7");
-	&mov	("edi",&wparam(0));
-	&mov	("esi",&wparam(1));
-	&mov	("ebp",&wparam(2));
-
-	&lea	("edi",&DWP(-1,"edi","ebp"));
-	&mov	("ebp",64/4);
-&set_label("scatter_w7_loop");
-	&mov	("eax",&DWP(0,"esi"));
-	&lea	("esi",&DWP(4,"esi"));
-	&mov	(&BP(64*0,"edi"),"al");
-	&mov	(&BP(64*1,"edi"),"ah");
-	&shr	("eax",16);
-	&mov	(&BP(64*2,"edi"),"al");
-	&mov	(&BP(64*3,"edi"),"ah");
-	&lea	("edi",&DWP(64*4,"edi"));
-	&dec	("ebp");
-	&jnz	(&label("scatter_w7_loop"));
-&function_end("ecp_nistz256_scatter_w7");
-
-########################################################################
-# void ecp_nistz256_gather_w7(P256_POINT_AFFINE *edi,const void *esi,
-#						     int ebp);
-&function_begin("ecp_nistz256_gather_w7");
-	&mov	("esi",&wparam(1));
-	&mov	("ebp",&wparam(2));
-
-	&add	("esi","ebp");
-	&neg	("ebp"),
-	&sar	("ebp",31);
-	&mov	("edi",&wparam(0));
-	&lea	("esi",&DWP(0,"esi","ebp"));
-
-    for($i=0;$i<64;$i+=4) {
-	&movz	("eax",&BP(64*($i+0),"esi"));
-	&movz	("ebx",&BP(64*($i+1),"esi"));
-	&movz	("ecx",&BP(64*($i+2),"esi"));
-	&and	("eax","ebp");
-	&movz	("edx",&BP(64*($i+3),"esi"));
-	&and	("ebx","ebp");
-	&mov	(&BP($i+0,"edi"),"al");
-	&and	("ecx","ebp");
-	&mov	(&BP($i+1,"edi"),"bl");
-	&and	("edx","ebp");
-	&mov	(&BP($i+2,"edi"),"cl");
-	&mov	(&BP($i+3,"edi"),"dl");
-    }
-&function_end("ecp_nistz256_gather_w7");
 
 ########################################################################
 # following subroutines are "literal" implementation of those found in

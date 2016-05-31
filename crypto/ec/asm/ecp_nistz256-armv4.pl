@@ -51,60 +51,8 @@ $code.=<<___;
 #else
 .code	32
 #endif
-___
-########################################################################
-# Convert ecp_nistz256_table.c to layout expected by ecp_nistz_gather_w7
-#
-$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-open TABLE,"<ecp_nistz256_table.c"		or
-open TABLE,"<${dir}../ecp_nistz256_table.c"	or
-die "failed to open ecp_nistz256_table.c:",$!;
 
-use integer;
-
-foreach(<TABLE>) {
-	s/TOBN\(\s*(0x[0-9a-f]+),\s*(0x[0-9a-f]+)\s*\)/push @arr,hex($2),hex($1)/geo;
-}
-close TABLE;
-
-# See ecp_nistz256_table.c for explanation for why it's 64*16*37.
-# 64*16*37-1 is because $#arr returns last valid index or @arr, not
-# amount of elements.
-die "insane number of elements" if ($#arr != 64*16*37-1);
-
-$code.=<<___;
-.globl	ecp_nistz256_precomputed
-.type	ecp_nistz256_precomputed,%object
-.align	12
-ecp_nistz256_precomputed:
-___
-########################################################################
-# this conversion smashes P256_POINT_AFFINE by individual bytes with
-# 64 byte interval, similar to
-#	1111222233334444
-#	1234123412341234
-for(1..37) {
-	@tbl = splice(@arr,0,64*16);
-	for($i=0;$i<64;$i++) {
-		undef @line;
-		for($j=0;$j<64;$j++) {
-			push @line,(@tbl[$j*16+$i/4]>>(($i%4)*8))&0xff;
-		}
-		$code.=".byte\t";
-		$code.=join(',',map { sprintf "0x%02x",$_} @line);
-		$code.="\n";
-	}
-}
-$code.=<<___;
-.size	ecp_nistz256_precomputed,.-ecp_nistz256_precomputed
-.align	5
-.LRR:	@ 2^512 mod P precomputed for NIST P256 polynomial
-.long	0x00000003, 0x00000000, 0xffffffff, 0xfffffffb
-.long	0xfffffffe, 0xffffffff, 0xfffffffd, 0x00000004
-.Lone:
-.long	1,0,0,0,0,0,0,0
 .asciz	"ECP_NISTZ256 for ARMv4, CRYPTOGAMS by <appro\@openssl.org>"
-.align	6
 ___
 
 ########################################################################
@@ -116,37 +64,6 @@ ___
 ($t0,$t3)=($ff,$a_ptr);
 
 $code.=<<___;
-@ void	ecp_nistz256_to_mont(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	ecp_nistz256_to_mont
-.type	ecp_nistz256_to_mont,%function
-ecp_nistz256_to_mont:
-	adr	$b_ptr,.LRR
-	b	.Lecp_nistz256_mul_mont
-.size	ecp_nistz256_to_mont,.-ecp_nistz256_to_mont
-
-@ void	ecp_nistz256_from_mont(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	ecp_nistz256_from_mont
-.type	ecp_nistz256_from_mont,%function
-ecp_nistz256_from_mont:
-	adr	$b_ptr,.Lone
-	b	.Lecp_nistz256_mul_mont
-.size	ecp_nistz256_from_mont,.-ecp_nistz256_from_mont
-
-@ void	ecp_nistz256_mul_by_2(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	ecp_nistz256_mul_by_2
-.type	ecp_nistz256_mul_by_2,%function
-.align	4
-ecp_nistz256_mul_by_2:
-	stmdb	sp!,{r4-r12,lr}
-	bl	__ecp_nistz256_mul_by_2
-#if __ARM_ARCH__>=5 || !defined(__thumb__)
-	ldmia	sp!,{r4-r12,pc}
-#else
-	ldmia	sp!,{r4-r12,lr}
-	bx	lr			@ interoperable with Thumb ISA:-)
-#endif
-.size	ecp_nistz256_mul_by_2,.-ecp_nistz256_mul_by_2
-
 .type	__ecp_nistz256_mul_by_2,%function
 .align	4
 __ecp_nistz256_mul_by_2:
@@ -256,21 +173,6 @@ __ecp_nistz256_add:
 	mov	pc,lr
 .size	__ecp_nistz256_add,.-__ecp_nistz256_add
 
-@ void	ecp_nistz256_mul_by_3(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	ecp_nistz256_mul_by_3
-.type	ecp_nistz256_mul_by_3,%function
-.align	4
-ecp_nistz256_mul_by_3:
-	stmdb	sp!,{r4-r12,lr}
-	bl	__ecp_nistz256_mul_by_3
-#if __ARM_ARCH__>=5 || !defined(__thumb__)
-	ldmia	sp!,{r4-r12,pc}
-#else
-	ldmia	sp!,{r4-r12,lr}
-	bx	lr			@ interoperable with Thumb ISA:-)
-#endif
-.size	ecp_nistz256_mul_by_3,.-ecp_nistz256_mul_by_3
-
 .type	__ecp_nistz256_mul_by_3,%function
 .align	4
 __ecp_nistz256_mul_by_3:
@@ -341,21 +243,6 @@ __ecp_nistz256_mul_by_3:
 	b	.Lreduce_by_sub
 .size	__ecp_nistz256_mul_by_3,.-__ecp_nistz256_mul_by_3
 
-@ void	ecp_nistz256_div_by_2(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	ecp_nistz256_div_by_2
-.type	ecp_nistz256_div_by_2,%function
-.align	4
-ecp_nistz256_div_by_2:
-	stmdb	sp!,{r4-r12,lr}
-	bl	__ecp_nistz256_div_by_2
-#if __ARM_ARCH__>=5 || !defined(__thumb__)
-	ldmia	sp!,{r4-r12,pc}
-#else
-	ldmia	sp!,{r4-r12,lr}
-	bx	lr			@ interoperable with Thumb ISA:-)
-#endif
-.size	ecp_nistz256_div_by_2,.-ecp_nistz256_div_by_2
-
 .type	__ecp_nistz256_div_by_2,%function
 .align	4
 __ecp_nistz256_div_by_2:
@@ -414,22 +301,6 @@ __ecp_nistz256_div_by_2:
 
 	mov	pc,lr
 .size	__ecp_nistz256_div_by_2,.-__ecp_nistz256_div_by_2
-
-@ void	ecp_nistz256_sub(BN_ULONG r0[8],const BN_ULONG r1[8],
-@				        const BN_ULONG r2[8]);
-.globl	ecp_nistz256_sub
-.type	ecp_nistz256_sub,%function
-.align	4
-ecp_nistz256_sub:
-	stmdb	sp!,{r4-r12,lr}
-	bl	__ecp_nistz256_sub
-#if __ARM_ARCH__>=5 || !defined(__thumb__)
-	ldmia	sp!,{r4-r12,pc}
-#else
-	ldmia	sp!,{r4-r12,lr}
-	bx	lr			@ interoperable with Thumb ISA:-)
-#endif
-.size	ecp_nistz256_sub,.-ecp_nistz256_sub
 
 .type	__ecp_nistz256_sub,%function
 .align	4
@@ -537,15 +408,6 @@ my @acc=map("r$_",(3..11));
 my ($t0,$t1,$bj,$t2,$t3)=map("r$_",(0,1,2,12,14));
 
 $code.=<<___;
-@ void	ecp_nistz256_sqr_mont(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	ecp_nistz256_sqr_mont
-.type	ecp_nistz256_sqr_mont,%function
-.align	4
-ecp_nistz256_sqr_mont:
-	mov	$b_ptr,$a_ptr
-	b	.Lecp_nistz256_mul_mont
-.size	ecp_nistz256_sqr_mont,.-ecp_nistz256_sqr_mont
-
 @ void	ecp_nistz256_mul_mont(BN_ULONG r0[8],const BN_ULONG r1[8],
 @					     const BN_ULONG r2[8]);
 .globl	ecp_nistz256_mul_mont
@@ -735,209 +597,6 @@ $code.=<<___;
 ___
 }
 
-{
-my ($out,$inp,$index,$mask)=map("r$_",(0..3));
-$code.=<<___;
-@ void	ecp_nistz256_scatter_w5(void *r0,const P256_POINT *r1,
-@					 int r2);
-.globl	ecp_nistz256_scatter_w5
-.type	ecp_nistz256_scatter_w5,%function
-.align	5
-ecp_nistz256_scatter_w5:
-	stmdb	sp!,{r4-r11}
-
-	add	$out,$out,$index,lsl#2
-
-	ldmia	$inp!,{r4-r11}		@ X
-	str	r4,[$out,#64*0-4]
-	str	r5,[$out,#64*1-4]
-	str	r6,[$out,#64*2-4]
-	str	r7,[$out,#64*3-4]
-	str	r8,[$out,#64*4-4]
-	str	r9,[$out,#64*5-4]
-	str	r10,[$out,#64*6-4]
-	str	r11,[$out,#64*7-4]
-	add	$out,$out,#64*8
-
-	ldmia	$inp!,{r4-r11}		@ Y
-	str	r4,[$out,#64*0-4]
-	str	r5,[$out,#64*1-4]
-	str	r6,[$out,#64*2-4]
-	str	r7,[$out,#64*3-4]
-	str	r8,[$out,#64*4-4]
-	str	r9,[$out,#64*5-4]
-	str	r10,[$out,#64*6-4]
-	str	r11,[$out,#64*7-4]
-	add	$out,$out,#64*8
-
-	ldmia	$inp,{r4-r11}		@ Z
-	str	r4,[$out,#64*0-4]
-	str	r5,[$out,#64*1-4]
-	str	r6,[$out,#64*2-4]
-	str	r7,[$out,#64*3-4]
-	str	r8,[$out,#64*4-4]
-	str	r9,[$out,#64*5-4]
-	str	r10,[$out,#64*6-4]
-	str	r11,[$out,#64*7-4]
-
-	ldmia	sp!,{r4-r11}
-#if __ARM_ARCH__>=5 || defined(__thumb__)
-	bx	lr
-#else
-	mov	pc,lr
-#endif
-.size	ecp_nistz256_scatter_w5,.-ecp_nistz256_scatter_w5
-
-@ void	ecp_nistz256_gather_w5(P256_POINT *r0,const void *r1,
-@					      int r2);
-.globl	ecp_nistz256_gather_w5
-.type	ecp_nistz256_gather_w5,%function
-.align	5
-ecp_nistz256_gather_w5:
-	stmdb	sp!,{r4-r11}
-
-	cmp	$index,#0
-	mov	$mask,#0
-#ifdef	__thumb2__
-	itt	ne
-#endif
-	subne	$index,$index,#1
-	movne	$mask,#-1
-	add	$inp,$inp,$index,lsl#2
-
-	ldr	r4,[$inp,#64*0]
-	ldr	r5,[$inp,#64*1]
-	ldr	r6,[$inp,#64*2]
-	and	r4,r4,$mask
-	ldr	r7,[$inp,#64*3]
-	and	r5,r5,$mask
-	ldr	r8,[$inp,#64*4]
-	and	r6,r6,$mask
-	ldr	r9,[$inp,#64*5]
-	and	r7,r7,$mask
-	ldr	r10,[$inp,#64*6]
-	and	r8,r8,$mask
-	ldr	r11,[$inp,#64*7]
-	add	$inp,$inp,#64*8
-	and	r9,r9,$mask
-	and	r10,r10,$mask
-	and	r11,r11,$mask
-	stmia	$out!,{r4-r11}	@ X
-
-	ldr	r4,[$inp,#64*0]
-	ldr	r5,[$inp,#64*1]
-	ldr	r6,[$inp,#64*2]
-	and	r4,r4,$mask
-	ldr	r7,[$inp,#64*3]
-	and	r5,r5,$mask
-	ldr	r8,[$inp,#64*4]
-	and	r6,r6,$mask
-	ldr	r9,[$inp,#64*5]
-	and	r7,r7,$mask
-	ldr	r10,[$inp,#64*6]
-	and	r8,r8,$mask
-	ldr	r11,[$inp,#64*7]
-	add	$inp,$inp,#64*8
-	and	r9,r9,$mask
-	and	r10,r10,$mask
-	and	r11,r11,$mask
-	stmia	$out!,{r4-r11}	@ Y
-
-	ldr	r4,[$inp,#64*0]
-	ldr	r5,[$inp,#64*1]
-	ldr	r6,[$inp,#64*2]
-	and	r4,r4,$mask
-	ldr	r7,[$inp,#64*3]
-	and	r5,r5,$mask
-	ldr	r8,[$inp,#64*4]
-	and	r6,r6,$mask
-	ldr	r9,[$inp,#64*5]
-	and	r7,r7,$mask
-	ldr	r10,[$inp,#64*6]
-	and	r8,r8,$mask
-	ldr	r11,[$inp,#64*7]
-	and	r9,r9,$mask
-	and	r10,r10,$mask
-	and	r11,r11,$mask
-	stmia	$out,{r4-r11}		@ Z
-
-	ldmia	sp!,{r4-r11}
-#if __ARM_ARCH__>=5 || defined(__thumb__)
-	bx	lr
-#else
-	mov	pc,lr
-#endif
-.size	ecp_nistz256_gather_w5,.-ecp_nistz256_gather_w5
-
-@ void	ecp_nistz256_scatter_w7(void *r0,const P256_POINT_AFFINE *r1,
-@					 int r2);
-.globl	ecp_nistz256_scatter_w7
-.type	ecp_nistz256_scatter_w7,%function
-.align	5
-ecp_nistz256_scatter_w7:
-	add	$out,$out,$index
-	mov	$index,#64/4
-.Loop_scatter_w7:
-	ldr	$mask,[$inp],#4
-	subs	$index,$index,#1
-	strb	$mask,[$out,#64*0-1]
-	mov	$mask,$mask,lsr#8
-	strb	$mask,[$out,#64*1-1]
-	mov	$mask,$mask,lsr#8
-	strb	$mask,[$out,#64*2-1]
-	mov	$mask,$mask,lsr#8
-	strb	$mask,[$out,#64*3-1]
-	add	$out,$out,#64*4
-	bne	.Loop_scatter_w7
-
-#if __ARM_ARCH__>=5 || defined(__thumb__)
-	bx	lr
-#else
-	mov	pc,lr
-#endif
-.size	ecp_nistz256_scatter_w7,.-ecp_nistz256_scatter_w7
-
-@ void	ecp_nistz256_gather_w7(P256_POINT_AFFINE *r0,const void *r1,
-@						     int r2);
-.globl	ecp_nistz256_gather_w7
-.type	ecp_nistz256_gather_w7,%function
-.align	5
-ecp_nistz256_gather_w7:
-	stmdb	sp!,{r4-r7}
-
-	cmp	$index,#0
-	mov	$mask,#0
-#ifdef	__thumb2__
-	itt	ne
-#endif
-	subne	$index,$index,#1
-	movne	$mask,#-1
-	add	$inp,$inp,$index
-	mov	$index,#64/4
-	nop
-.Loop_gather_w7:
-	ldrb	r4,[$inp,#64*0]
-	subs	$index,$index,#1
-	ldrb	r5,[$inp,#64*1]
-	ldrb	r6,[$inp,#64*2]
-	ldrb	r7,[$inp,#64*3]
-	add	$inp,$inp,#64*4
-	orr	r4,r4,r5,lsl#8
-	orr	r4,r4,r6,lsl#16
-	orr	r4,r4,r7,lsl#24
-	and	r4,r4,$mask
-	str	r4,[$out],#4
-	bne	.Loop_gather_w7
-
-	ldmia	sp!,{r4-r7}
-#if __ARM_ARCH__>=5 || defined(__thumb__)
-	bx	lr
-#else
-	mov	pc,lr
-#endif
-.size	ecp_nistz256_gather_w7,.-ecp_nistz256_gather_w7
-___
-}
 if (0) {
 # In comparison to integer-only equivalent of below subroutine:
 #

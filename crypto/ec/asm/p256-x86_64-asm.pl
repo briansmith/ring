@@ -129,6 +129,53 @@ ecp_nistz256_mul_by_2:
 .size	ecp_nistz256_mul_by_2,.-ecp_nistz256_mul_by_2
 
 ################################################################################
+################################################################################
+# void ecp_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
+.globl	ecp_nistz256_add
+.type	ecp_nistz256_add,\@function,3
+.align	32
+ecp_nistz256_add:
+	push	%r12
+	push	%r13
+
+	mov	8*0($a_ptr), $a0
+	xor	$t4, $t4
+	mov	8*1($a_ptr), $a1
+	mov	8*2($a_ptr), $a2
+	mov	8*3($a_ptr), $a3
+	lea	.Lpoly(%rip), $a_ptr
+
+	add	8*0($b_ptr), $a0
+	adc	8*1($b_ptr), $a1
+	 mov	$a0, $t0
+	adc	8*2($b_ptr), $a2
+	adc	8*3($b_ptr), $a3
+	 mov	$a1, $t1
+	adc	\$0, $t4
+
+	sub	8*0($a_ptr), $a0
+	 mov	$a2, $t2
+	sbb	8*1($a_ptr), $a1
+	sbb	8*2($a_ptr), $a2
+	 mov	$a3, $t3
+	sbb	8*3($a_ptr), $a3
+	test	$t4, $t4
+
+	cmovz	$t0, $a0
+	cmovz	$t1, $a1
+	mov	$a0, 8*0($r_ptr)
+	cmovz	$t2, $a2
+	mov	$a1, 8*1($r_ptr)
+	cmovz	$t3, $a3
+	mov	$a2, 8*2($r_ptr)
+	mov	$a3, 8*3($r_ptr)
+
+	pop %r13
+	pop %r12
+	ret
+.size	ecp_nistz256_add,.-ecp_nistz256_add
+
+################################################################################
 # void ecp_nistz256_neg(uint64_t res[4], uint64_t a[4]);
 .globl	ecp_nistz256_neg
 .type	ecp_nistz256_neg,\@function,2
