@@ -100,7 +100,7 @@ in the table below.
 </tr>
 <tr><td>Windows</td>
     <td>x86, x64</td>
-    <td>MSVC 2013 Update 5 (12.0), MSVC 2015 Update 1 (14.0)</td>
+    <td>MSVC 2015 Update 2 (14.0)</td>
     <td><a title="Build Status" href=https://ci.appveyor.com/project/briansmith/ring/branch/master><img src=https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/master?svg=true></a>
 </tr>
 </table>

@@ -17,15 +17,16 @@ The directory containing perl.exe must be in `%PATH%`.
 [Strawberry Perl](strawberryperl.com) is recommended. 
 
 *ring* uses Visual Studio's native build system (msbuild) on Windows to build
-its C, C++, and assembly language parts, so it must be able to find msbuild.
-Visual Studio 2015 Update 1 and Visual Studio 2013 Update 5 are supported. It
-seems cargo sets things up so that it mostly works automatically, at least when
-the host architecture is the target architecture. Because using msbuild in
+its C, C++, and assembly language parts, so it must be able to find MSBuild.
+Visual Studio 2015 Update 2 (and later) is supported. It seems Cargo sets
+things up so that it mostly works automatically, at least when the host
+architecture is the target architecture. Because using MSBuild in
 `cargo build` is a little unusual, I would be particularly grateful if you
 could report any problems building (or using) *ring* that might be due to this.
 
-If you have trouble building, try starting the build from within a "Visual
-Studio Native Tools Command Prompt."
+If you have trouble building, make sure that there isn't an old version of
+`msbuild` ahead of MSBuild 14.0 in your `%PATH%`. Failing that, try starting
+the build from within a "Visual Studio Native Tools Command Prompt."
 
 
 
