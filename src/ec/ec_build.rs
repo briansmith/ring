@@ -155,19 +155,12 @@ fn ec_group(curve: &NISTCurve) -> String {
           static const BN_ULONG order_limbs[] = {n};
           static const BN_ULONG order_rr_limbs[] = {n_rr};
           static const BN_ULONG order_minus_2_limbs[] = {n_minus_2};
-        #if defined({name}_NO_MONT)
-          static const BN_ULONG generator_x_limbs[] = {x};
-          static const BN_ULONG generator_y_limbs[] = {y};
-          static const BN_ULONG a_limbs[] = {a};
-          static const BN_ULONG b_limbs[] = {b};
-          static const BN_ULONG one_limbs[] = {one};
-        #else
           static const BN_ULONG generator_x_limbs[] = {x_mont};
           static const BN_ULONG generator_y_limbs[] = {y_mont};
           static const BN_ULONG a_limbs[] = {a_mont};
           static const BN_ULONG b_limbs[] = {b_mont};
           static const BN_ULONG one_limbs[] = {one_mont};
-        #endif
+
           STATIC_BIGNUM_DIAGNOSTIC_PUSH
 
           static const EC_GROUP group = {{
@@ -240,12 +233,6 @@ fn ec_group(curve: &NISTCurve) -> String {
         n_rr = bn_limbs(&n.rr),
         n_n0 = (n.k % (1u64 << 32)) as usize,
         n_n1 = (n.k / (1u64 << 32)) as usize,
-
-        one = bn_limbs(&one),
-        x = bn_limbs(&generator_x),
-        y = bn_limbs(&generator_y),
-        a = bn_limbs(&a),
-        b = bn_limbs(&b),
 
         one_mont = bn_limbs(&one_mont),
         x_mont = bn_limbs(&generator_x_mont),

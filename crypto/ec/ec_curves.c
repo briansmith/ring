@@ -22,15 +22,8 @@
 #include "../bn/internal.h"
 
 
-/* MSAN appears to have a bug that causes this P-256 code to be miscompiled
- * in opt mode. While that is being looked at, don't run the uint128_t
- * P-256 code under MSAN for now. */
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL)
 #define CURVE_P256_EC_METHOD EC_GFp_nistz256_method
-#elif defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
-    !defined(MEMORY_SANITIZER)
-#define CURVE_P256_EC_METHOD EC_GFp_nistp256_method
-#define CURVE_P256_NO_MONT
 #else
 #define CURVE_P256_EC_METHOD EC_GFp_mont_method
 #endif

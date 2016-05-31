@@ -124,8 +124,6 @@ RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-aarch64-linux.c \
   crypto/bn/asm/armv8-mont.pl \
   crypto/chacha/asm/chacha-armv8.pl \
-  crypto/ec/p256-64.c \
-  crypto/ec/util-64.c \
   crypto/poly1305/asm/poly1305-armv8.pl \
   crypto/sha/asm/sha256-armv8.pl \
   crypto/sha/asm/sha512-armv8.pl \

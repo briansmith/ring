@@ -193,9 +193,6 @@ int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group,
                                              const BIGNUM *y, const BIGNUM *z,
                                              BN_CTX *ctx);
 
-void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
-
-extern const EC_METHOD EC_GFp_nistp256_method;
 extern const EC_METHOD EC_GFp_nistz256_method;
 
 struct ec_key_st {
