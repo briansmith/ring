@@ -42,7 +42,7 @@ if ($flavour && $flavour ne "void") {
 }
 
 $code.=<<___;
-#include "arm_arch.h"
+#include <openssl/arm_arch.h>
 
 .text
 #if defined(__thumb2__)
