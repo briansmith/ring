@@ -376,7 +376,7 @@ mod tests {
                     let private_key =
                         EphemeralPrivateKey::from_test_vector(alg, &my_private);
 
-                    let mut computed_public = [0u8; 1 + (ec::ELEM_MAX_BITS * 2)];
+                    let mut computed_public = [0u8; ec::PUBLIC_KEY_MAX_LEN];
                     let computed_public =
                         &mut computed_public[..private_key.public_key_len()];
                     assert!(

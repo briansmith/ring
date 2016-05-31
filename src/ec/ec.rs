@@ -41,7 +41,7 @@ const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
 /// The maximum length, in bytes, of an encoded public key. Note that the value
 /// depends on which algorithms are enabled (e.g. whether the `no_heap` feature
 /// is activated).
-pub const PUBLIC_KEY_MAX_LEN: usize = ELEM_MAX_BYTES;
+pub const PUBLIC_KEY_MAX_LEN: usize = 1 + (2 * ELEM_MAX_BYTES);
 
 #[allow(non_camel_case_types)]
 #[cfg(not(feature = "no_heap"))]
