@@ -339,7 +339,7 @@ __ecp_nistz256_mul_by_3:
 	ldr	lr,[sp],#4		@ pop lr
 
 	b	.Lreduce_by_sub
-.size	ecp_nistz256_mul_by_3,.-ecp_nistz256_mul_by_3
+.size	__ecp_nistz256_mul_by_3,.-__ecp_nistz256_mul_by_3
 
 @ void	ecp_nistz256_div_by_2(BN_ULONG r0[8],const BN_ULONG r1[8]);
 .globl	ecp_nistz256_div_by_2
