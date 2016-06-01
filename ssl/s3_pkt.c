@@ -336,7 +336,10 @@ int ssl3_read_change_cipher_spec(SSL *ssl) {
 }
 
 void ssl3_read_close_notify(SSL *ssl) {
-  ssl3_read_bytes(ssl, 0, NULL, 0, 0);
+  /* Read records until an error or close_notify. */
+  while (ssl3_get_record(ssl) > 0) {
+    ;
+  }
 }
 
 static int ssl3_can_renegotiate(SSL *ssl) {
@@ -361,7 +364,6 @@ static int ssl3_can_renegotiate(SSL *ssl) {
  *   -  SSL3_RT_HANDSHAKE (when ssl3_get_message calls us)
  *   -  SSL3_RT_CHANGE_CIPHER_SPEC (when ssl3_read_change_cipher_spec calls us)
  *   -  SSL3_RT_APPLICATION_DATA (when ssl3_read_app_data calls us)
- *   -  0 (during a shutdown, no data has to be returned)
  *
  * If we don't have stored data to work from, read a SSL/TLS record first
  * (possibly multiple records if we still don't have anything to return).
@@ -373,7 +375,7 @@ int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek) {
   unsigned int n;
   SSL3_RECORD *rr;
 
-  if ((type && type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE &&
+  if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE &&
        type != SSL3_RT_CHANGE_CIPHER_SPEC) ||
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -397,7 +399,7 @@ start:
 
   /* we now have a packet which can be read and processed */
 
-  if (type != 0 && type == rr->type) {
+  if (type == rr->type) {
     /* Discard empty records. */
     if (rr->length == 0) {
       goto start;
@@ -486,14 +488,6 @@ start:
     }
 
     /* The handshake completed synchronously. Continue reading records. */
-    goto start;
-  }
-
-  if (type == 0) {
-    /* This may only occur from read_close_notify. */
-    assert(ssl->s3->send_shutdown == ssl_shutdown_close_notify);
-    /* close_notify has been sent, so discard all records other than alerts. */
-    rr->length = 0;
     goto start;
   }
 
