@@ -84,14 +84,8 @@ typedef struct ec_point_st EC_POINT;
 
 /* Elliptic curve groups. */
 
-/* A pointer to a function that creates a new |EC_GROUP| instance. */
-typedef const EC_GROUP *(*EC_GROUP_fn)(void);
-
-/* EC_group_new_p256 returns a fresh EC_GROUP object for the NIST P-256 curve. */
-const EC_GROUP *EC_GROUP_P256(void);
-
-/* EC_group_new_p384 returns a fresh EC_GROUP object for the NIST P-384 curve. */
-const EC_GROUP *EC_GROUP_P384(void);
+extern const EC_GROUP EC_GROUP_P256;
+extern const EC_GROUP EC_GROUP_P384;
 
 /* EC_GROUP_get0_generator returns a pointer to the internal |EC_POINT| object
  * in |group| that specifies the generator for the group. */

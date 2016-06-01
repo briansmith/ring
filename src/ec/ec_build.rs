@@ -149,51 +149,48 @@ fn ec_group(curve: &NISTCurve) -> String {
     let generator_y_mont = q.encode(&generator_y);
 
     format!("
-        const EC_GROUP *{ec_group_fn_name}(void) {{
-          static const BN_ULONG field_limbs[] = {q};
-          static const BN_ULONG field_rr_limbs[] = {q_rr};
-          static const BN_ULONG order_limbs[] = {n};
-          static const BN_ULONG order_rr_limbs[] = {n_rr};
-          static const BN_ULONG order_minus_2_limbs[] = {n_minus_2};
-          static const BN_ULONG generator_x_limbs[] = {x_mont};
-          static const BN_ULONG generator_y_limbs[] = {y_mont};
-          static const BN_ULONG a_limbs[] = {a_mont};
-          static const BN_ULONG b_limbs[] = {b_mont};
-          static const BN_ULONG one_limbs[] = {one_mont};
+        static const BN_ULONG p{bits}_field_limbs[] = {q};
+        static const BN_ULONG p{bits}_field_rr_limbs[] = {q_rr};
+        static const BN_ULONG p{bits}_order_limbs[] = {n};
+        static const BN_ULONG p{bits}_order_rr_limbs[] = {n_rr};
+        static const BN_ULONG p{bits}_order_minus_2_limbs[] = {n_minus_2};
+        static const BN_ULONG p{bits}_generator_x_limbs[] = {x_mont};
+        static const BN_ULONG p{bits}_generator_y_limbs[] = {y_mont};
+        static const BN_ULONG p{bits}_a_limbs[] = {a_mont};
+        static const BN_ULONG p{bits}_b_limbs[] = {b_mont};
+        static const BN_ULONG p{bits}_one_limbs[] = {one_mont};
 
-          STATIC_BIGNUM_DIAGNOSTIC_PUSH
+        STATIC_BIGNUM_DIAGNOSTIC_PUSH
 
-          static const EC_GROUP group = {{
+        const EC_GROUP EC_GROUP_P{bits} = {{
+          FIELD(.meth =) &{name}_EC_METHOD,
+          FIELD(.generator =) {{
             FIELD(.meth =) &{name}_EC_METHOD,
-            FIELD(.generator =) {{
-              FIELD(.meth =) &{name}_EC_METHOD,
-              FIELD(.X =) STATIC_BIGNUM(generator_x_limbs),
-              FIELD(.Y =) STATIC_BIGNUM(generator_y_limbs),
-              FIELD(.Z =) STATIC_BIGNUM(one_limbs),
-            }},
-            FIELD(.order =) STATIC_BIGNUM(order_limbs),
-            FIELD(.order_mont =) {{
-              FIELD(.RR =) STATIC_BIGNUM(order_rr_limbs),
-              FIELD(.N =) STATIC_BIGNUM(order_limbs),
-              FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{n_n1:x}, 0x{n_n0:x}) }},
-            }},
-            FIELD(.order_minus_2 =) STATIC_BIGNUM(order_minus_2_limbs),
-            FIELD(.curve_name =) {nid},
-            FIELD(.field =) STATIC_BIGNUM(field_limbs),
-            FIELD(.a =) STATIC_BIGNUM(a_limbs),
-            FIELD(.b =) STATIC_BIGNUM(b_limbs),
-            FIELD(.mont =) {{
-              FIELD(.RR =) STATIC_BIGNUM(field_rr_limbs),
-              FIELD(.N =) STATIC_BIGNUM(field_limbs),
-              FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{q_n1:x}, 0x{q_n0:x}) }},
-            }},
-            FIELD(.one =) STATIC_BIGNUM(one_limbs),
-          }};
+            FIELD(.X =) STATIC_BIGNUM(p{bits}_generator_x_limbs),
+            FIELD(.Y =) STATIC_BIGNUM(p{bits}_generator_y_limbs),
+            FIELD(.Z =) STATIC_BIGNUM(p{bits}_one_limbs),
+          }},
+          FIELD(.order =) STATIC_BIGNUM(p{bits}_order_limbs),
+          FIELD(.order_mont =) {{
+            FIELD(.RR =) STATIC_BIGNUM(p{bits}_order_rr_limbs),
+            FIELD(.N =) STATIC_BIGNUM(p{bits}_order_limbs),
+            FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{n_n1:x}, 0x{n_n0:x}) }},
+          }},
+          FIELD(.order_minus_2 =) STATIC_BIGNUM(p{bits}_order_minus_2_limbs),
+          FIELD(.curve_name =) {nid},
+          FIELD(.field =) STATIC_BIGNUM(p{bits}_field_limbs),
+          FIELD(.a =) STATIC_BIGNUM(p{bits}_a_limbs),
+          FIELD(.b =) STATIC_BIGNUM(p{bits}_b_limbs),
+          FIELD(.mont =) {{
+            FIELD(.RR =) STATIC_BIGNUM(p{bits}_field_rr_limbs),
+            FIELD(.N =) STATIC_BIGNUM(p{bits}_field_limbs),
+            FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{q_n1:x}, 0x{q_n0:x}) }},
+          }},
+          FIELD(.one =) STATIC_BIGNUM(p{bits}_one_limbs),
+        }};
 
-          STATIC_BIGNUM_DIAGNOSTIC_POP
+        STATIC_BIGNUM_DIAGNOSTIC_POP
 
-          return &group;
-        }}
 
         /* Prototypes to avoid -Wmissing-prototypes warnings. */
         int GFp_p{bits}_generate_private_key(
@@ -205,18 +202,17 @@ fn ec_group(curve: &NISTCurve) -> String {
 
         int GFp_p{bits}_generate_private_key(
                 uint8_t out[{elem_and_scalar_len}], RAND *rng) {{
-            return GFp_suite_b_generate_private_key({ec_group_fn_name}(), out,
-                                                    {elem_and_scalar_len}, rng);
+            return GFp_suite_b_generate_private_key(
+                    &EC_GROUP_P{bits}, out, {elem_and_scalar_len}, rng);
         }}
 
         int GFp_p{bits}_public_from_private(
                 uint8_t public_key_out[{public_key_len}],
                 const uint8_t private_key[{elem_and_scalar_len}]) {{
             return GFp_suite_b_public_from_private(
-                    {ec_group_fn_name}(), public_key_out, {public_key_len},
+                    &EC_GROUP_P{bits}, public_key_out, {public_key_len},
                     private_key, {elem_and_scalar_len});
         }}",
-        ec_group_fn_name = curve.name.replace("CURVE", "EC_GROUP"),
         bits = curve.bits,
         elem_and_scalar_len = (curve.bits + 7) / 8,
         public_key_len = 1 + (2 * ((curve.bits + 7) / 8)),

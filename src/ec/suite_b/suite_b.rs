@@ -45,11 +45,9 @@ pub fn parse_uncompressed_point<'a>(input: Input<'a>,
 
 
 #[allow(non_camel_case_types)]
-#[cfg(not(feature = "no_heap"))]
 enum EC_GROUP { }
 
-#[cfg(not(feature = "no_heap"))]
 extern {
-    fn EC_GROUP_P256() -> *const EC_GROUP;
-    fn EC_GROUP_P384() -> *const EC_GROUP;
+    static EC_GROUP_P256: EC_GROUP;
+    static EC_GROUP_P384: EC_GROUP;
 }

@@ -17,16 +17,15 @@
 #![allow(unsafe_code)]
 
 use {agreement, c, ec, rand};
-
 use bssl;
 use input::Input;
+use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
 
 /// A key agreement algorithm.
-#[cfg(not(feature = "no_heap"))]
 macro_rules! ecdh {
-    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr, $ecdh:ident,
-      $ec_group_fn:expr, $generate_private_key:ident,
-      $public_from_private:ident ) => {
+    ( $NAME:ident, $bits:expr, $name_str:expr, $group:expr, $nid:expr,
+      $ecdh:ident, $generate_private_key:ident, $public_from_private:ident ) =>
+    {
         #[doc="ECDH using the NSA Suite B"]
         #[doc=$name_str]
         #[doc="curve."]
@@ -62,27 +61,15 @@ macro_rules! ecdh {
 
         fn $ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                  peer_public_key: Input) -> Result<(), ()> {
-            ecdh(out, unsafe { $ec_group_fn() },
-                 ($bits + 7) / 8 /* elem_and_scalar_len */, my_private_key,
-                 peer_public_key)
+            ecdh($group, out, ($bits + 7) / 8, my_private_key, peer_public_key)
         }
 
         agreement_externs!($generate_private_key, $public_from_private);
     }
 }
 
-#[cfg(feature = "no_heap")]
-macro_rules! ecdh {
-    ( $NAME:ident, $bits:expr, $name_str:expr, $nid:expr, $ecdh:ident,
-      $ec_group_fn:expr, $generate_private_key:ident,
-      $public_from_private:ident ) => {
-    }
-}
-
-#[cfg(not(feature = "no_heap"))]
-fn ecdh(out: &mut [u8], group: *const ec::suite_b::EC_GROUP,
-        elem_and_scalar_len: usize, my_private_key: &ec::PrivateKey,
-        peer_public_key: Input)
+fn ecdh(group: &EC_GROUP, out: &mut [u8], elem_and_scalar_len: usize,
+        my_private_key: &ec::PrivateKey, peer_public_key: Input)
         -> Result<(), ()> {
     let (peer_x, peer_y) =
         try!(ec::suite_b::parse_uncompressed_point(peer_public_key,
@@ -95,17 +82,16 @@ fn ecdh(out: &mut [u8], group: *const ec::suite_b::EC_GROUP,
     })
 }
 
-ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", 415 /*NID_X9_62_prime256v1*/,
-      p256_ecdh, ec::suite_b::EC_GROUP_P256, GFp_p256_generate_private_key,
+ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &EC_GROUP_P256,
+      415 /*NID_X9_62_prime256v1*/, p256_ecdh, GFp_p256_generate_private_key,
       GFp_p256_public_from_private);
 
-ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", 715 /*NID_secp384r1*/,
-      p384_ecdh, ec::suite_b::EC_GROUP_P384, GFp_p384_generate_private_key,
+ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &EC_GROUP_P384,
+      715 /*NID_secp384r1*/, p384_ecdh, GFp_p384_generate_private_key,
       GFp_p384_public_from_private);
 
-#[cfg(not(feature = "no_heap"))]
 extern {
-    fn GFp_suite_b_ecdh(group: *const ec::suite_b::EC_GROUP, out: *mut u8,
+    fn GFp_suite_b_ecdh(group: &EC_GROUP, out: *mut u8,
                         out_len: c::size_t, private_key: *const u8,
                         private_key_len: c::size_t,
                         peer_public_key_x: *const u8,
@@ -119,13 +105,11 @@ extern {
 mod tests {
     use {agreement, rand};
 
-    #[cfg(not(feature = "no_heap"))]
     static SUPPORTED_SUITE_B_ALGS: [&'static agreement::Algorithm; 2] = [
         &agreement::ECDH_P256,
         &agreement::ECDH_P384,
     ];
 
-    #[cfg(not(feature = "no_heap"))]
     #[test]
     fn test_agreement_suite_b_ecdh_generate() {
         struct FixedByteRandom {
