@@ -58,6 +58,7 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
+#include "../bn/internal.h"
 #include "../ec/gfp_internal.h"
 #include "../ec/internal.h"
 
@@ -65,8 +66,7 @@
 /* Declarations to suppress -Wmissing-prototypes warnings. */
 int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
-                               const uint8_t *sig_r, size_t sig_r_len,
-                               const uint8_t *sig_s, size_t sig_s_len,
+                               const GFp_Limb *sig_r, const GFp_Limb *sig_s,
                                const GFp_Limb *peer_public_key_x,
                                const GFp_Limb *peer_public_key_y);
 
@@ -79,13 +79,12 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
  * constitute a valid signature of |digest| for the public key |ec_key| for
  * the curve represented by the |EC_GROUP| created by |ec_group_new|.
  * |hash_nid| must be the identifier of the digest function used to calculate
- * |digest|. The caller must ensure that |sig_r| and |sig_s| are encodings of
- * *positive* integers. It returns one on success or zero if the signature is
- * invalid or on error. */
+ * |digest|. The caller must ensure that |sig_r| and |sig_s| are in the range
+ * [1, n). It returns one on success or zero if the signature is invalid or on
+ * error. */
 int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
-                               const uint8_t *sig_r, size_t sig_r_len,
-                               const uint8_t *sig_s, size_t sig_s_len,
+                               const GFp_Limb *sig_r, const GFp_Limb *sig_s,
                                const GFp_Limb *peer_public_key_x,
                                const GFp_Limb *peer_public_key_y) {
   (void)hash_nid; /* TODO: Verify |digest_len| is right for |hash_nid|. */
@@ -121,20 +120,21 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
     goto err;
   }
 
-  if (BN_bin2bn(sig_r, sig_r_len, r) == NULL ||
-      BN_bin2bn(sig_s, sig_s_len, s) == NULL ||
-      BN_ucmp(r, &group->order) >= 0 ||
-      BN_ucmp(s, &group->order) >= 0) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
-    ret = 0; /* signature is invalid */
+  size_t scalar_limbs =
+      (EC_GROUP_get_degree(group) + (BN_BITS2 - 1)) / BN_BITS2;
+  if (!bn_set_words(r, sig_r, scalar_limbs) ||
+      !bn_set_words(s, sig_s, scalar_limbs)) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
 
   /* These properties are guaranteed by the caller. */
   assert(!BN_is_negative(r));
   assert(!BN_is_zero(r));
+  assert(BN_ucmp(r, &group->order) < 0);
   assert(!BN_is_negative(s));
   assert(!BN_is_zero(s));
+  assert(BN_ucmp(s, &group->order) < 0);
 
   /* calculate tmp1 = inv(S) mod order */
   if (!BN_mod_inverse(u2, s, &group->order, ctx)) {
