@@ -20,57 +20,94 @@
 #include <openssl/rand.h>
 
 #include "../test/file_test.h"
+#include "../test/scoped_types.h"
 #include "internal.h"
 
 
 static bool TestNewhope(FileTest *t, void *arg) {
-  if (t->GetType() == "OfferSK") {
-    std::vector<uint8_t> offer_sk_bytes, accept_pk_bytes, accept_rec_bytes,
-        expected_key;
-    if (!t->GetBytes(&offer_sk_bytes, "OfferSK") ||
-        !t->GetBytes(&accept_pk_bytes, "AcceptPK") ||
-        !t->GetBytes(&accept_rec_bytes, "AcceptRec") ||
+  ScopedNEWHOPE_POLY a(NEWHOPE_POLY_new());
+  ScopedNEWHOPE_POLY s(NEWHOPE_POLY_new()), sp(NEWHOPE_POLY_new());
+  ScopedNEWHOPE_POLY e(NEWHOPE_POLY_new()), ep(NEWHOPE_POLY_new()),
+      epp(NEWHOPE_POLY_new());
+  ScopedNEWHOPE_POLY in_pk(NEWHOPE_POLY_new());
+  ScopedNEWHOPE_POLY in_rec(NEWHOPE_POLY_new());
+
+  if (t->GetType() == "InRandA") {
+    std::vector<uint8_t> a_bytes, s_bytes, e_bytes, expected_pk;
+    if (!t->GetBytes(&a_bytes, "InRandA") ||
+        !t->GetBytes(&s_bytes, "InNoiseS") ||
+        !t->GetBytes(&e_bytes, "InNoiseE") ||
+        !t->GetBytes(&expected_pk, "OutPK")) {
+      return false;
+    }
+    NEWHOPE_POLY_frombytes(a.get(), a_bytes.data());
+    NEWHOPE_POLY_frombytes(s.get(), s_bytes.data());
+    NEWHOPE_POLY_frombytes(e.get(), e_bytes.data());
+
+    NEWHOPE_POLY pk;
+    NEWHOPE_offer_computation(&pk, s.get(), e.get(), a.get());
+
+    uint8_t pk_bytes[NEWHOPE_POLY_LENGTH];
+    NEWHOPE_POLY_tobytes(pk_bytes, &pk);
+    return t->ExpectBytesEqual(expected_pk.data(), expected_pk.size(),
+                               pk_bytes, NEWHOPE_POLY_LENGTH);
+  } else if (t->GetType() == "InPK") {
+    std::vector<uint8_t> rand, in_pk_bytes, a_bytes, sp_bytes, ep_bytes,
+        epp_bytes, expected_pk, expected_rec, expected_key;
+    if (!t->GetBytes(&in_pk_bytes, "InPK") ||
+        !t->GetBytes(&rand, "InRand") ||
+        !t->GetBytes(&a_bytes, "InA") ||
+        !t->GetBytes(&sp_bytes, "InNoiseSP") ||
+        !t->GetBytes(&ep_bytes, "InNoiseEP") ||
+        !t->GetBytes(&epp_bytes, "InNoiseEPP") ||
+        !t->GetBytes(&expected_pk, "OutPK") ||
+        !t->GetBytes(&expected_rec, "OutRec") ||
         !t->GetBytes(&expected_key, "Key")) {
       return false;
     }
-    NEWHOPE_POLY offer_sk, accept_pk, accept_rec;
-    NEWHOPE_POLY_frombytes(&offer_sk, offer_sk_bytes.data());
-    NEWHOPE_POLY_frombytes(&accept_pk, accept_pk_bytes.data());
-    NEWHOPE_POLY_frombytes(&accept_rec, accept_rec_bytes.data());
+    NEWHOPE_POLY_frombytes(in_pk.get(), in_pk_bytes.data());
+    NEWHOPE_POLY_frombytes(a.get(), a_bytes.data());
+    NEWHOPE_POLY_frombytes(sp.get(), sp_bytes.data());
+    NEWHOPE_POLY_frombytes(ep.get(), ep_bytes.data());
+    NEWHOPE_POLY_frombytes(epp.get(), epp_bytes.data());
 
     uint8_t key[NEWHOPE_KEY_LENGTH];
-    NEWHOPE_finish_computation(key, &offer_sk, &accept_pk, &accept_rec);
+    NEWHOPE_POLY pk, rec;
+    NEWHOPE_accept_computation(key, &pk, &rec,
+                               sp.get(), ep.get(), epp.get(),
+                               rand.data(), in_pk.get(), a.get());
+
+    uint8_t pk_bytes[NEWHOPE_POLY_LENGTH], rec_bytes[NEWHOPE_POLY_LENGTH];
+    NEWHOPE_POLY_tobytes(pk_bytes, &pk);
+    NEWHOPE_POLY_tobytes(rec_bytes, &rec);
+    return
+        t->ExpectBytesEqual(expected_key.data(), expected_key.size(),
+                            key, NEWHOPE_KEY_LENGTH) &&
+        t->ExpectBytesEqual(expected_pk.data(), expected_pk.size(),
+                            pk_bytes, NEWHOPE_POLY_LENGTH) &&
+        t->ExpectBytesEqual(expected_rec.data(), expected_rec.size(),
+                            rec_bytes, NEWHOPE_POLY_LENGTH);
+  } else if (t->GetType() == "InNoiseS") {
+    std::vector<uint8_t> s_bytes, in_pk_bytes, in_rec_bytes, expected_key;
+    if (!t->GetBytes(&s_bytes, "InNoiseS") ||
+        !t->GetBytes(&in_pk_bytes, "InPK") ||
+        !t->GetBytes(&in_rec_bytes, "InRec") ||
+        !t->GetBytes(&expected_key, "Key")) {
+      return false;
+    }
+    NEWHOPE_POLY_frombytes(s.get(), s_bytes.data());
+    NEWHOPE_POLY_frombytes(in_pk.get(), in_pk_bytes.data());
+    NEWHOPE_POLY_frombytes(in_rec.get(), in_rec_bytes.data());
+
+    uint8_t key[NEWHOPE_KEY_LENGTH];
+    NEWHOPE_finish_computation(key, s.get(), in_pk.get(), in_rec.get());
+
     return t->ExpectBytesEqual(expected_key.data(), expected_key.size(), key,
                                NEWHOPE_KEY_LENGTH);
-  } else if (t->GetType() == "AcceptRand") {
-    std::vector<uint8_t> accept_rand, offer_pk_bytes, offer_a_bytes,
-        accept_sk_bytes, accept_epp_bytes, expected_key;
-    if (!t->GetBytes(&accept_rand, "AcceptRand") ||
-        !t->GetBytes(&offer_pk_bytes, "OfferPK") ||
-        !t->GetBytes(&offer_a_bytes, "OfferA") ||
-        !t->GetBytes(&accept_sk_bytes, "AcceptSK") ||
-        !t->GetBytes(&accept_epp_bytes, "AcceptEPP") ||
-        !t->GetBytes(&expected_key, "Key")) {
-      return false;
-    }
-    NEWHOPE_POLY offer_pk, offer_a, accept_sk, accept_epp;
-    NEWHOPE_POLY_frombytes(&offer_pk, offer_pk_bytes.data());
-    NEWHOPE_POLY_frombytes(&offer_a, offer_a_bytes.data());
-    NEWHOPE_POLY_frombytes(&accept_sk, accept_sk_bytes.data());
-    NEWHOPE_POLY_frombytes(&accept_epp, accept_epp_bytes.data());
-
-    uint8_t key[NEWHOPE_KEY_LENGTH];
-    NEWHOPE_POLY bp, reconciliation;
-    NEWHOPE_accept_computation(key, &bp, &reconciliation, &accept_sk,
-                               &accept_epp, accept_rand.data(), &offer_pk,
-                               &offer_a);
-    t->ExpectBytesEqual(expected_key.data(), expected_key.size(), key,
-                        NEWHOPE_KEY_LENGTH);
   } else {
     t->PrintLine("Unknown test '%s'", t->GetType().c_str());
     return false;
   }
-  return true;
 }
 
 int main(int argc, char **argv) {

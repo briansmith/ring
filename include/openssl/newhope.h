@@ -89,16 +89,24 @@ OPENSSL_EXPORT int NEWHOPE_finish(uint8_t out_key[SHA256_DIGEST_LENGTH],
 
 /* Lower-level functions. */
 
+/* NEWHOPE_offer_computation is the work of |NEWHOPE_offer|, less the encoding
+ * parts.  The inputs are the noise polynomials |s| and |e|, and random
+ * polynomial |a|. The output is the polynomial |pk|. */
+OPENSSL_EXPORT void NEWHOPE_offer_computation(
+    NEWHOPE_POLY *out_pk,
+    const NEWHOPE_POLY *s, const NEWHOPE_POLY *e, const NEWHOPE_POLY *a);
+
 /* NEWHOPE_accept_computation is the work of |NEWHOPE_accept|, less the encoding
  * parts. The inputs from the peer are |pk| and |a|. The locally-generated
- * inputs are the noise polynomials |sk| and |epp|, and the random bytes
+ * inputs are the noise polynomials |sp|, |ep|, and |epp|, and the random bytes
  * |rand|. The outputs are |out_bp| and |out_reconciliation|, and the result of
  * key agreement |key|. Returns 1 on success and 0 on failure. */
 OPENSSL_EXPORT void NEWHOPE_accept_computation(
     uint8_t out_key[NEWHOPE_KEY_LENGTH], NEWHOPE_POLY *out_bp,
-    NEWHOPE_POLY *out_reconciliation, const NEWHOPE_POLY *sk,
-    const NEWHOPE_POLY *epp, const uint8_t rand[32], const NEWHOPE_POLY *pk,
-    const NEWHOPE_POLY *a);
+    NEWHOPE_POLY *out_reconciliation,
+    const NEWHOPE_POLY *sp, const NEWHOPE_POLY *ep, const NEWHOPE_POLY *epp,
+    const uint8_t rand[32],
+    const NEWHOPE_POLY *pk, const NEWHOPE_POLY *a);
 
 /* NEWHOPE_finish_computation is the work of |NEWHOPE_finish|, less the encoding
  * parts. Given the peer's |bp| and |reconciliation|, and locally-generated
@@ -111,6 +119,11 @@ OPENSSL_EXPORT void NEWHOPE_finish_computation(
 /* NEWHOPE_POLY_frombytes decodes |a| into |r|. */
 OPENSSL_EXPORT void NEWHOPE_POLY_frombytes(
     NEWHOPE_POLY *r, const uint8_t a[NEWHOPE_POLY_LENGTH]);
+
+/* NEWHOPE_POLY_tobytes packs the polynomial |p| into the compact representation
+ * |r|. */
+OPENSSL_EXPORT void NEWHOPE_POLY_tobytes(uint8_t r[NEWHOPE_POLY_LENGTH],
+                                         const NEWHOPE_POLY* p);
 
 
 #if defined(__cplusplus)

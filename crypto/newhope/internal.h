@@ -49,10 +49,6 @@ void newhope_poly_uniform(NEWHOPE_POLY* a, const uint8_t* seed);
  * is given a random seed and a nonce.)*/
 void newhope_poly_getnoise(NEWHOPE_POLY* r);
 
-/* newhope_poly_tobytes packs the polynomial |p| into the compact representation
- * |r|. */
-void newhope_poly_tobytes(uint8_t* r, const NEWHOPE_POLY* p);
-
 void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v,
                      const uint8_t rbits[32]);
 

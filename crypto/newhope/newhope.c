@@ -46,9 +46,9 @@ static void decode_rec(const uint8_t *r, NEWHOPE_POLY *c) {
   }
 }
 
-void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *sk) {
-  newhope_poly_getnoise(sk);
-  newhope_poly_ntt(sk);
+void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *s) {
+  newhope_poly_getnoise(s);
+  newhope_poly_ntt(s);
 
   /* The first part of the offer message is the seed, which compactly encodes
    * a. */
@@ -61,11 +61,10 @@ void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *sk) {
   newhope_poly_getnoise(&e);
   newhope_poly_ntt(&e);
 
-  /* The second part of the offer message is the polynomial pk = a*sk+e */
-  NEWHOPE_POLY r, pk;
-  newhope_poly_pointwise(&r, sk, &a);
-  newhope_poly_add(&pk, &e, &r);
-  newhope_poly_tobytes(offermsg, &pk);
+  /* The second part of the offer message is the polynomial pk = a*s+e */
+  NEWHOPE_POLY pk;
+  NEWHOPE_offer_computation(&pk, s,  &e, &a);
+  NEWHOPE_POLY_tobytes(offermsg, &pk);
 }
 
 int NEWHOPE_accept(uint8_t key[SHA256_DIGEST_LENGTH],
@@ -84,10 +83,12 @@ int NEWHOPE_accept(uint8_t key[SHA256_DIGEST_LENGTH],
   NEWHOPE_POLY_frombytes(&pk, offermsg);
 
   /* Generate noise polynomials used to generate our key. */
-  NEWHOPE_POLY sp, epp;
+  NEWHOPE_POLY sp, ep, epp;
   newhope_poly_getnoise(&sp);
   newhope_poly_ntt(&sp);
-  newhope_poly_getnoise(&epp);
+  newhope_poly_getnoise(&ep);
+  newhope_poly_ntt(&ep);
+  newhope_poly_getnoise(&epp);  /* intentionally not NTT */
 
   /* Generate random bytes used for reconciliation. (The reference
    * implementation calls ChaCha20 here.) */
@@ -97,8 +98,8 @@ int NEWHOPE_accept(uint8_t key[SHA256_DIGEST_LENGTH],
   /* Encode |bp| and |c| as the |acceptmsg|. */
   NEWHOPE_POLY bp, c;
   uint8_t k[NEWHOPE_KEY_LENGTH];
-  NEWHOPE_accept_computation(k, &bp, &c, &sp, &epp, rand, &pk, &a);
-  newhope_poly_tobytes(acceptmsg, &bp);
+  NEWHOPE_accept_computation(k, &bp, &c, &sp, &ep, &epp, rand, &pk, &a);
+  NEWHOPE_POLY_tobytes(acceptmsg, &bp);
   encode_rec(&c, &acceptmsg[NEWHOPE_POLY_LENGTH]);
 
   SHA256_CTX ctx;
@@ -135,17 +136,23 @@ int NEWHOPE_finish(uint8_t key[SHA256_DIGEST_LENGTH], const NEWHOPE_POLY *sk,
   return 1;
 }
 
-void NEWHOPE_accept_computation(uint8_t k[NEWHOPE_KEY_LENGTH], NEWHOPE_POLY *bp,
-                                NEWHOPE_POLY *reconciliation,
-                                const NEWHOPE_POLY *sp, const NEWHOPE_POLY *epp,
-                                const uint8_t rand[32], const NEWHOPE_POLY *pk,
-                                const NEWHOPE_POLY *a) {
-  /* bp = e' + a*s' */
-  NEWHOPE_POLY ep;
-  newhope_poly_getnoise(&ep);
-  newhope_poly_ntt(&ep);
+void NEWHOPE_offer_computation(NEWHOPE_POLY *out_pk,
+                               const NEWHOPE_POLY *s, const NEWHOPE_POLY *e,
+                               const NEWHOPE_POLY *a) {
+  NEWHOPE_POLY r;
+  newhope_poly_pointwise(&r, s, a);
+  newhope_poly_add(out_pk, e, &r);
+}
+
+void NEWHOPE_accept_computation(
+    uint8_t k[NEWHOPE_KEY_LENGTH], NEWHOPE_POLY *bp,
+    NEWHOPE_POLY *reconciliation,
+    const NEWHOPE_POLY *sp, const NEWHOPE_POLY *ep, const NEWHOPE_POLY *epp,
+    const uint8_t rand[32],
+    const NEWHOPE_POLY *pk, const NEWHOPE_POLY *a) {
+  /* bp = a*s' + e' */
   newhope_poly_pointwise(bp, a, sp);
-  newhope_poly_add(bp, bp, &ep);
+  newhope_poly_add(bp, bp, ep);
 
   /* v = pk * s' + e'' */
   NEWHOPE_POLY v;
