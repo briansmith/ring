@@ -97,22 +97,35 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut Reader<'a>, tag: Tag, error: E,
 
 pub fn positive_integer<'a>(input: &mut Reader<'a>) -> Result<Input<'a>, ()> {
     let value = try!(expect_tag_and_get_value(input, Tag::Integer));
-    let bytes = value.as_slice_less_safe();
 
     // Empty encodings are not allowed.
-    if bytes.len() == 0 {
-        return Err(());
-    }
+    read_all(value, (), |input| {
+        let first_byte = try!(input.read_byte());
 
-    // Negative values are not allowed.
-    if bytes[0] & 0x80 != 0 {
-        return Err(());
-    }
+        if first_byte == 0 {
+            if input.at_end() {
+                // The valid encoding of zero.
+                return Ok(value);
+            }
 
-    // Over-long encodings are not allowed.
-    if bytes.len() > 1 && bytes[0] == 0 && (bytes[1] & 0x80 == 0) {
-        return Err(());
-    }
+            let after_leading_zero = input.mark();
+            let second_byte = try!(input.read_byte());
+            if (second_byte & 0x80) == 0 {
+                // A leading zero is only allowed when the value's high bit is
+                // set.
+                return Err(());
+            }
+            let _ = input.skip_to_end();
+            return input.get_input_between_marks(after_leading_zero,
+                                                 input.mark());
+        }
 
-    Ok(value)
+        // Negative values are not allowed.
+        if (first_byte & 0x80) != 0 {
+            return Err(());
+        }
+
+        let _ = input.skip_to_end();
+        Ok(value)
+    })
 }
