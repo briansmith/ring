@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{CommonOps, EC_GROUP, Elem, Limb, LIMB_BITS, Mont, PublicKeyOps};
+use super::{CommonOps, EC_GROUP, Elem, Limb, LIMB_BITS, Mont, PublicKeyOps,
+            PublicScalarOps};
 
 
 macro_rules! p384_limbs {
@@ -58,6 +59,15 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
     },
 
     elem_add_impl: GFp_p384_elem_add,
+};
+
+
+pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
+    public_key_ops: &PUBLIC_KEY_OPS,
+
+    n: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                   0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
+                   0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
 };
 
 

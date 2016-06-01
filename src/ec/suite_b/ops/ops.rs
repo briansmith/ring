@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use core;
+use der;
 use untrusted;
 
 /// Field elements. Field elements are always Montgomery-encoded and always
@@ -28,6 +29,19 @@ impl Elem {
     }
 }
 
+
+/// Scalars. Scalars are *not* Montgomery-encoded. They are always
+/// fully reduced mod n; i.e. their range is [0, n]. In most contexts,
+/// zero-valued scalars are forbidden.
+pub struct Scalar {
+    limbs: [Limb; MAX_LIMBS],
+}
+
+impl Scalar {
+    pub unsafe fn limbs_as_ptr(&self) -> *const Limb {
+        self.limbs.as_ptr()
+    }
+}
 
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
@@ -117,33 +131,19 @@ impl PublicKeyOps {
     // most significant limb.
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
                       -> Result<Elem, ()> {
-        let num_limbs = self.common.num_limbs;
-
-        let mut elem = Elem { limbs: [0; MAX_LIMBS] };
-        for i in 0..num_limbs {
-            let mut limb: Limb = 0;
-            for _ in 0..LIMB_BYTES {
-                limb = (limb << 8) | (try!(input.read_byte()) as Limb);
-            }
-            elem.limbs[num_limbs - 1 - i] = limb;
+        let encoded_value =
+            try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
+        let mut elem_limbs =
+            try!(parse_big_endian_value_in_range(
+                    encoded_value.as_slice_less_safe(), 0,
+                    &self.common.q.p[..self.common.num_limbs]));
+        // Montgomery encode (elem_to_mont).
+        unsafe {
+            (self.common.elem_mul_mont)(elem_limbs.as_mut_ptr(),
+                                        elem_limbs.as_ptr(),
+                                        self.common.q.rr.as_ptr())
         }
-
-        let q = &self.common.q;
-
-        // Verify that the value is in the range [0, q).
-        for i in 0..num_limbs {
-            match elem.limbs[num_limbs - 1 - i].cmp(&q.p[num_limbs - 1 - i]) {
-                core::cmp::Ordering::Less => {
-                    // Montgomery encode (elem_to_mont).
-                    ab_assign(self.common.elem_mul_mont, &mut elem.limbs,
-                              &q.rr);
-                    return Ok(elem);
-                },
-                core::cmp::Ordering::Equal => { }, // keep going
-                core::cmp::Ordering::Greater => { break; }
-            }
-        }
-        return Err(());
+        Ok(Elem { limbs: elem_limbs })
     }
 
     #[inline]
@@ -159,6 +159,47 @@ impl PublicKeyOps {
         }
         return true;
     }
+}
+
+
+/// Operations on public scalars needed by ECDSA signature verification.
+pub struct PublicScalarOps {
+    pub public_key_ops: &'static PublicKeyOps,
+    n: [Limb; MAX_LIMBS],
+}
+
+impl PublicScalarOps {
+    pub fn scalar_parse(&self, input: &mut untrusted::Reader)
+                        -> Result<Scalar, ()> {
+        let encoded_value = try!(der::positive_integer(input));
+        let limbs = try!(parse_big_endian_value_in_range(
+                            encoded_value.as_slice_less_safe(), 1,
+                            &self.n[..self.public_key_ops.common.num_limbs]));
+        Ok(Scalar { limbs: limbs })
+    }
+}
+
+
+// Public keys consist of two fixed-width, big-endian-encoded integers in the
+// range [0, q). ECDSA signatures consist of two variable-width,
+// big-endian-encoded integers in the range [1, n).
+// `parse_big_endian_value_in_range` is the common logic for converting the
+// big-endian encoding of bytes into an least-significant-limb-first array of
+// native-endian limbs, padded with zeros, and for validating that the value is
+// in the given range.
+fn parse_big_endian_value_in_range(input: &[u8], min_inclusive: Limb,
+                                   max_exclusive: &[Limb])
+                                   -> Result<[Limb; MAX_LIMBS], ()> {
+    let num_limbs = max_exclusive.len();
+    let result = try!(parse_big_endian_value(input, num_limbs));
+    if !limbs_less_than_limbs(&result[..num_limbs], max_exclusive) {
+        return Err(());
+    }
+    if result[0] < min_inclusive &&
+       result[1..num_limbs].iter().all(|limb| *limb == 0) {
+        return Err(());
+    }
+    Ok(result)
 }
 
 
@@ -191,6 +232,57 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
         f(r.as_mut_ptr(), a.as_ptr())
     }
     r
+}
+
+
+// `parse_big_endian_value` is the common logic for converting the big-endian
+// encoding of bytes into an least-significant-limb-first array of
+// native-endian limbs, padded with zeros.
+fn parse_big_endian_value(input: &[u8], num_limbs: usize)
+                          -> Result<[Limb; MAX_LIMBS], ()> {
+    // `bytes_in_current_limb` is the number of bytes in the current limb.
+    // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
+    // limb.
+    let mut bytes_in_current_limb =
+        core::cmp::min(LIMB_BYTES - (input.len() % LIMB_BYTES), input.len());
+    let num_encoded_limbs =
+        (input.len() / LIMB_BYTES) +
+        (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
+
+    if num_encoded_limbs > num_limbs {
+        return Err(());
+    }
+
+    let mut result = [0; MAX_LIMBS];
+    let mut current_byte = 0;
+    for i in 0..num_encoded_limbs {
+        let mut limb = 0;
+        for _ in 0..bytes_in_current_limb {
+            limb = (limb << 8) | (input[current_byte] as Limb);
+            current_byte += 1;
+        }
+        result[num_encoded_limbs - i - 1] = limb;
+        bytes_in_current_limb = LIMB_BYTES;
+    }
+
+    Ok(result)
+}
+
+fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
+    assert_eq!(a.len(), b.len());
+    let num_limbs = a.len();
+
+    // Verify `min_inclusive <= value < max_exclusive`.
+    for i in 0..num_limbs {
+        match a[num_limbs - 1 - i].cmp(&b[num_limbs - 1 - i]) {
+            core::cmp::Ordering::Less => {
+                return true;
+            },
+            core::cmp::Ordering::Equal => { }, // keep going
+            core::cmp::Ordering::Greater => { break; }
+        }
+    }
+    false
 }
 
 pub mod p256;
