@@ -1393,7 +1393,7 @@ err:
 
 int ssl3_get_new_session_ticket(SSL *ssl) {
   int ok, al;
-  long n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEWSESSION_TICKET,
+  long n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEW_SESSION_TICKET,
                                         ssl_hash_message, &ok);
 
   if (!ok) {

@@ -1987,7 +1987,7 @@ int ssl3_send_new_session_ticket(SSL *ssl) {
       p += placeholder_len;
 
       len = p - ssl_handshake_start(ssl);
-      if (!ssl_set_handshake_header(ssl, SSL3_MT_NEWSESSION_TICKET, len)) {
+      if (!ssl_set_handshake_header(ssl, SSL3_MT_NEW_SESSION_TICKET, len)) {
         goto err;
       }
       ssl->state = SSL3_ST_SW_SESSION_TICKET_B;
@@ -2056,7 +2056,7 @@ int ssl3_send_new_session_ticket(SSL *ssl) {
     /* Skip ticket lifetime hint */
     p = ssl_handshake_start(ssl) + 4;
     s2n(len - 6, p);
-    if (!ssl_set_handshake_header(ssl, SSL3_MT_NEWSESSION_TICKET, len)) {
+    if (!ssl_set_handshake_header(ssl, SSL3_MT_NEW_SESSION_TICKET, len)) {
       goto err;
     }
     ssl->state = SSL3_ST_SW_SESSION_TICKET_B;
