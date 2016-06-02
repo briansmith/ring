@@ -30,15 +30,22 @@
 
 
 // PacketedBioCreate creates a filter BIO which implements a reliable in-order
-// blocking datagram socket. The resulting BIO, on |BIO_read|, may simulate a
-// timeout which sets |*out_timeout| to the timeout and fails the read.
-// |*out_timeout| must be zero on entry to |BIO_read|; it is an error to not
-// apply the timeout before the next |BIO_read|.
+// blocking datagram socket. It internally maintains a clock and honors
+// |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| based on it.
 //
-// Note: The read timeout simulation is intended to be used with the async BIO
-// wrapper. It doesn't simulate BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, used in DTLS's
-// blocking mode.
-ScopedBIO PacketedBioCreate(timeval *out_timeout);
+// During a |BIO_read|, the peer may signal the filter BIO to simulate a
+// timeout. If |advance_clock| is true, it automatically advances the clock and
+// continues reading, subject to the read deadline. Otherwise, it fails
+// immediately. The caller must then call |PacketedBioAdvanceClock| before
+// retrying |BIO_read|.
+ScopedBIO PacketedBioCreate(bool advance_clock);
+
+// PacketedBioGetClock returns the current time for |bio|.
+timeval PacketedBioGetClock(const BIO *bio);
+
+// PacketedBioAdvanceClock advances |bio|'s internal clock and returns true if
+// there is a pending timeout. Otherwise, it returns false.
+bool PacketedBioAdvanceClock(BIO *bio);
 
 
 #endif  // HEADER_PACKETED_BIO

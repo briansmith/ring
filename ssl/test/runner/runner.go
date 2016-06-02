@@ -4687,106 +4687,137 @@ var shortTimeouts = []time.Duration{
 }
 
 func addDTLSRetransmitTests() {
-	// Test that this is indeed the timeout schedule. Stress all
-	// four patterns of handshake.
-	for i := 1; i < len(timeouts); i++ {
-		number := strconv.Itoa(i)
-		testCases = append(testCases, testCase{
+	// These tests work by coordinating some behavior on both the shim and
+	// the runner.
+	//
+	// TimeoutSchedule configures the runner to send a series of timeout
+	// opcodes to the shim (see packetAdaptor) immediately before reading
+	// each peer handshake flight N. The timeout opcode both simulates a
+	// timeout in the shim and acts as a synchronization point to help the
+	// runner bracket each handshake flight.
+	//
+	// We assume the shim does not read from the channel eagerly. It must
+	// first wait until it has sent flight N and is ready to receive
+	// handshake flight N+1. At this point, it will process the timeout
+	// opcode. It must then immediately respond with a timeout ACK and act
+	// as if the shim was idle for the specified amount of time.
+	//
+	// The runner then drops all packets received before the ACK and
+	// continues waiting for flight N. This ordering results in one attempt
+	// at sending flight N to be dropped. For the test to complete, the
+	// shim must send flight N again, testing that the shim implements DTLS
+	// retransmit on a timeout.
+
+	for _, async := range []bool{true, false} {
+		var tests []testCase
+
+		// Test that this is indeed the timeout schedule. Stress all
+		// four patterns of handshake.
+		for i := 1; i < len(timeouts); i++ {
+			number := strconv.Itoa(i)
+			tests = append(tests, testCase{
+				protocol: dtls,
+				name:     "DTLS-Retransmit-Client-" + number,
+				config: Config{
+					Bugs: ProtocolBugs{
+						TimeoutSchedule: timeouts[:i],
+					},
+				},
+				resumeSession: true,
+			})
+			tests = append(tests, testCase{
+				protocol: dtls,
+				testType: serverTest,
+				name:     "DTLS-Retransmit-Server-" + number,
+				config: Config{
+					Bugs: ProtocolBugs{
+						TimeoutSchedule: timeouts[:i],
+					},
+				},
+				resumeSession: true,
+			})
+		}
+
+		// Test that exceeding the timeout schedule hits a read
+		// timeout.
+		tests = append(tests, testCase{
 			protocol: dtls,
-			name:     "DTLS-Retransmit-Client-" + number,
+			name:     "DTLS-Retransmit-Timeout",
 			config: Config{
 				Bugs: ProtocolBugs{
-					TimeoutSchedule: timeouts[:i],
+					TimeoutSchedule: timeouts,
 				},
 			},
 			resumeSession: true,
-			flags:         []string{"-async"},
+			shouldFail:    true,
+			expectedError: ":READ_TIMEOUT_EXPIRED:",
 		})
-		testCases = append(testCases, testCase{
+
+		if async {
+			// Test that timeout handling has a fudge factor, due to API
+			// problems.
+			tests = append(tests, testCase{
+				protocol: dtls,
+				name:     "DTLS-Retransmit-Fudge",
+				config: Config{
+					Bugs: ProtocolBugs{
+						TimeoutSchedule: []time.Duration{
+							timeouts[0] - 10*time.Millisecond,
+						},
+					},
+				},
+				resumeSession: true,
+			})
+		}
+
+		// Test that the final Finished retransmitting isn't
+		// duplicated if the peer badly fragments everything.
+		tests = append(tests, testCase{
+			testType: serverTest,
+			protocol: dtls,
+			name:     "DTLS-Retransmit-Fragmented",
+			config: Config{
+				Bugs: ProtocolBugs{
+					TimeoutSchedule:          []time.Duration{timeouts[0]},
+					MaxHandshakeRecordLength: 2,
+				},
+			},
+		})
+
+		// Test the timeout schedule when a shorter initial timeout duration is set.
+		tests = append(tests, testCase{
+			protocol: dtls,
+			name:     "DTLS-Retransmit-Short-Client",
+			config: Config{
+				Bugs: ProtocolBugs{
+					TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
+				},
+			},
+			resumeSession: true,
+			flags:         []string{"-initial-timeout-duration-ms", "250"},
+		})
+		tests = append(tests, testCase{
 			protocol: dtls,
 			testType: serverTest,
-			name:     "DTLS-Retransmit-Server-" + number,
+			name:     "DTLS-Retransmit-Short-Server",
 			config: Config{
 				Bugs: ProtocolBugs{
-					TimeoutSchedule: timeouts[:i],
+					TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
 				},
 			},
 			resumeSession: true,
-			flags:         []string{"-async"},
+			flags:         []string{"-initial-timeout-duration-ms", "250"},
 		})
+
+		for _, test := range tests {
+			if async {
+				test.name += "-Async"
+				test.flags = append(test.flags, "-async")
+			}
+
+			testCases = append(testCases, test)
+		}
 	}
-
-	// Test that exceeding the timeout schedule hits a read
-	// timeout.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "DTLS-Retransmit-Timeout",
-		config: Config{
-			Bugs: ProtocolBugs{
-				TimeoutSchedule: timeouts,
-			},
-		},
-		resumeSession: true,
-		flags:         []string{"-async"},
-		shouldFail:    true,
-		expectedError: ":READ_TIMEOUT_EXPIRED:",
-	})
-
-	// Test that timeout handling has a fudge factor, due to API
-	// problems.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "DTLS-Retransmit-Fudge",
-		config: Config{
-			Bugs: ProtocolBugs{
-				TimeoutSchedule: []time.Duration{
-					timeouts[0] - 10*time.Millisecond,
-				},
-			},
-		},
-		resumeSession: true,
-		flags:         []string{"-async"},
-	})
-
-	// Test that the final Finished retransmitting isn't
-	// duplicated if the peer badly fragments everything.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		protocol: dtls,
-		name:     "DTLS-Retransmit-Fragmented",
-		config: Config{
-			Bugs: ProtocolBugs{
-				TimeoutSchedule:          []time.Duration{timeouts[0]},
-				MaxHandshakeRecordLength: 2,
-			},
-		},
-		flags: []string{"-async"},
-	})
-
-	// Test the timeout schedule when a shorter initial timeout duration is set.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "DTLS-Retransmit-Short-Client",
-		config: Config{
-			Bugs: ProtocolBugs{
-				TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
-			},
-		},
-		resumeSession: true,
-		flags:         []string{"-async", "-initial-timeout-duration-ms", "250"},
-	})
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "DTLS-Retransmit-Short-Server",
-		config: Config{
-			Bugs: ProtocolBugs{
-				TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
-			},
-		},
-		resumeSession: true,
-		flags:         []string{"-async", "-initial-timeout-duration-ms", "250"},
-	})
 }
 
 func addExportKeyingMaterialTests() {
