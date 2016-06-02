@@ -176,28 +176,19 @@
 int ssl3_accept(SSL *ssl) {
   BUF_MEM *buf = NULL;
   uint32_t alg_a;
-  void (*cb)(const SSL *ssl, int type, int value) = NULL;
   int ret = -1;
-  int new_state, state, skip = 0;
+  int state, skip = 0;
 
   assert(ssl->handshake_func == ssl3_accept);
   assert(ssl->server);
   assert(!SSL_IS_DTLS(ssl));
-
-  if (ssl->info_callback != NULL) {
-    cb = ssl->info_callback;
-  } else if (ssl->ctx->info_callback != NULL) {
-    cb = ssl->ctx->info_callback;
-  }
 
   for (;;) {
     state = ssl->state;
 
     switch (ssl->state) {
       case SSL_ST_ACCEPT:
-        if (cb != NULL) {
-          cb(ssl, SSL_CB_HANDSHAKE_START, 1);
-        }
+        ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
         if (ssl->init_buf == NULL) {
           buf = BUF_MEM_new();
@@ -520,9 +511,7 @@ int ssl3_accept(SSL *ssl) {
 
         ssl_update_cache(ssl, SSL_SESS_CACHE_SERVER);
 
-        if (cb != NULL) {
-          cb(ssl, SSL_CB_HANDSHAKE_DONE, 1);
-        }
+        ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
 
         ret = 1;
         goto end;
@@ -533,11 +522,10 @@ int ssl3_accept(SSL *ssl) {
         goto end;
     }
 
-    if (!ssl->s3->tmp.reuse_message && !skip && cb != NULL &&
-        ssl->state != state) {
-      new_state = ssl->state;
+    if (!ssl->s3->tmp.reuse_message && !skip && ssl->state != state) {
+      int new_state = ssl->state;
       ssl->state = state;
-      cb(ssl, SSL_CB_ACCEPT_LOOP, 1);
+      ssl_do_info_callback(ssl, SSL_CB_ACCEPT_LOOP, 1);
       ssl->state = new_state;
     }
     skip = 0;
@@ -545,9 +533,7 @@ int ssl3_accept(SSL *ssl) {
 
 end:
   BUF_MEM_free(buf);
-  if (cb != NULL) {
-    cb(ssl, SSL_CB_ACCEPT_EXIT, ret);
-  }
+  ssl_do_info_callback(ssl, SSL_CB_ACCEPT_EXIT, ret);
   return ret;
 }
 
@@ -630,10 +616,9 @@ int ssl3_get_v2_client_hello(SSL *ssl) {
                                   CBS_len(&v2_client_hello))) {
     return -1;
   }
-  if (ssl->msg_callback) {
-    ssl->msg_callback(0, SSL2_VERSION, 0, CBS_data(&v2_client_hello),
-                    CBS_len(&v2_client_hello), ssl, ssl->msg_callback_arg);
-  }
+
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL2_VERSION, 0,
+                      CBS_data(&v2_client_hello), CBS_len(&v2_client_hello));
 
   if (!CBS_get_u8(&v2_client_hello, &msg_type) ||
       !CBS_get_u16(&v2_client_hello, &version) ||

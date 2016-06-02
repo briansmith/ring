@@ -195,10 +195,8 @@ enum ssl_open_record_t dtls_open_record(
     return ssl_open_record_discard;
   }
 
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(0 /* read */, 0, SSL3_RT_HEADER, in,
-                      DTLS1_RT_HEADER_LENGTH, ssl, ssl->msg_callback_arg);
-  }
+  ssl_do_msg_callback(ssl, 0 /* read */, 0, SSL3_RT_HEADER, in,
+                      DTLS1_RT_HEADER_LENGTH);
 
   uint16_t epoch = (((uint16_t)sequence[0]) << 8) | sequence[1];
   if (epoch != ssl->d1->r_epoch ||
@@ -299,10 +297,8 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   *out_len = DTLS1_RT_HEADER_LENGTH + ciphertext_len;
 
-  if (ssl->msg_callback) {
-    ssl->msg_callback(1 /* write */, 0, SSL3_RT_HEADER, out,
-                      DTLS1_RT_HEADER_LENGTH, ssl, ssl->msg_callback_arg);
-  }
+  ssl_do_msg_callback(ssl, 1 /* write */, 0, SSL3_RT_HEADER, out,
+                      DTLS1_RT_HEADER_LENGTH);
 
   return 1;
 }

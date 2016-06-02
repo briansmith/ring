@@ -305,12 +305,9 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
     return ret;
   }
 
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(1 /* write */, ssl->version, SSL3_RT_CHANGE_CIPHER_SPEC,
-                      kChangeCipherSpec, sizeof(kChangeCipherSpec), ssl,
-                      ssl->msg_callback_arg);
-  }
-
+  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version,
+                      SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
+                      sizeof(kChangeCipherSpec));
   return 1;
 }
 
@@ -388,11 +385,9 @@ int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
     ssl->init_num -= todo;
   } while (ssl->init_num > 0);
 
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(
-        1 /* write */, ssl->version, SSL3_RT_HANDSHAKE, ssl->init_buf->data,
-        (size_t)(ssl->init_off + ssl->init_num), ssl, ssl->msg_callback_arg);
-  }
+  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, SSL3_RT_HANDSHAKE,
+                      ssl->init_buf->data,
+                      (size_t)(ssl->init_off + ssl->init_num));
 
   ssl->init_off = 0;
   ssl->init_num = 0;
@@ -637,11 +632,10 @@ long dtls1_get_message(SSL *ssl, int msg_type,
   if (hash_message == ssl_hash_message && !ssl3_hash_current_message(ssl)) {
     goto err;
   }
-  if (ssl->msg_callback) {
-    ssl->msg_callback(0, ssl->version, SSL3_RT_HANDSHAKE, ssl->init_buf->data,
-                    ssl->init_num + DTLS1_HM_HEADER_LENGTH, ssl,
-                    ssl->msg_callback_arg);
-  }
+
+  ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
+                      ssl->init_buf->data,
+                      ssl->init_num + DTLS1_HM_HEADER_LENGTH);
 
   pitem_free(item);
   dtls1_hm_fragment_free(frag);

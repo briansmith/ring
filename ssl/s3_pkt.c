@@ -334,11 +334,8 @@ int ssl3_read_change_cipher_spec(SSL *ssl) {
     return -1;
   }
 
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(0, ssl->version, SSL3_RT_CHANGE_CIPHER_SPEC, &byte, 1,
-                      ssl, ssl->msg_callback_arg);
-  }
-
+  ssl_do_msg_callback(ssl, 0 /* read */, ssl->version,
+                      SSL3_RT_CHANGE_CIPHER_SPEC, &byte, 1);
   return 1;
 }
 
@@ -379,7 +376,6 @@ int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek) {
   int al, i, ret;
   unsigned int n;
   SSL3_RECORD *rr;
-  void (*cb)(const SSL *ssl, int type, int value) = NULL;
 
   if ((type && type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE &&
        type != SSL3_RT_CHANGE_CIPHER_SPEC) ||
@@ -466,10 +462,8 @@ start:
     }
     ssl->s3->hello_request_len = 0;
 
-    if (ssl->msg_callback) {
-      ssl->msg_callback(0, ssl->version, SSL3_RT_HANDSHAKE, kHelloRequest,
-                      sizeof(kHelloRequest), ssl, ssl->msg_callback_arg);
-    }
+    ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
+                        kHelloRequest, sizeof(kHelloRequest));
 
     if (ssl->renegotiate_mode == ssl_renegotiate_ignore) {
       goto start;
@@ -510,25 +504,16 @@ start:
       goto f_err;
     }
 
-    if (ssl->msg_callback) {
-      ssl->msg_callback(0, ssl->version, SSL3_RT_ALERT, rr->data, 2, ssl,
-                        ssl->msg_callback_arg);
-    }
+    ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_ALERT,
+                        rr->data, 2);
+
     const uint8_t alert_level = rr->data[0];
     const uint8_t alert_descr = rr->data[1];
     rr->length -= 2;
     rr->data += 2;
 
-    if (ssl->info_callback != NULL) {
-      cb = ssl->info_callback;
-    } else if (ssl->ctx->info_callback != NULL) {
-      cb = ssl->ctx->info_callback;
-    }
-
-    if (cb != NULL) {
-      uint16_t alert = (alert_level << 8) | alert_descr;
-      cb(ssl, SSL_CB_READ_ALERT, alert);
-    }
+    uint16_t alert = (alert_level << 8) | alert_descr;
+    ssl_do_info_callback(ssl, SSL_CB_READ_ALERT, alert);
 
     if (alert_level == SSL3_AL_WARNING) {
       if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
@@ -618,22 +603,11 @@ int ssl3_dispatch_alert(SSL *ssl) {
     BIO_flush(ssl->wbio);
   }
 
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(1 /* write */, ssl->version, SSL3_RT_ALERT,
-                      ssl->s3->send_alert, 2, ssl, ssl->msg_callback_arg);
-  }
+  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, SSL3_RT_ALERT,
+                      ssl->s3->send_alert, 2);
 
-  void (*cb)(const SSL *ssl, int type, int value) = NULL;
-  if (ssl->info_callback != NULL) {
-    cb = ssl->info_callback;
-  } else if (ssl->ctx->info_callback != NULL) {
-    cb = ssl->ctx->info_callback;
-  }
-
-  if (cb != NULL) {
-    int alert = (ssl->s3->send_alert[0] << 8) | ssl->s3->send_alert[1];
-    cb(ssl, SSL_CB_WRITE_ALERT, alert);
-  }
+  int alert = (ssl->s3->send_alert[0] << 8) | ssl->s3->send_alert[1];
+  ssl_do_info_callback(ssl, SSL_CB_WRITE_ALERT, alert);
 
   return 1;
 }

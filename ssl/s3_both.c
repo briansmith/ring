@@ -142,11 +142,9 @@ int ssl3_do_write(SSL *ssl, int type) {
   }
 
   if (n == ssl->init_num) {
-    if (ssl->msg_callback) {
-      ssl->msg_callback(1, ssl->version, type, ssl->init_buf->data,
-                      (size_t)(ssl->init_off + ssl->init_num), ssl,
-                      ssl->msg_callback_arg);
-    }
+    ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type,
+                        ssl->init_buf->data,
+                        (size_t)(ssl->init_off + ssl->init_num));
     return 1;
   }
 
@@ -382,10 +380,8 @@ again:
 
   /* We have now received a complete message. */
   ssl->s3->tmp.message_complete = 1;
-  if (ssl->msg_callback) {
-    ssl->msg_callback(0, ssl->version, SSL3_RT_HANDSHAKE, ssl->init_buf->data,
-                      ssl->init_buf->length, ssl, ssl->msg_callback_arg);
-  }
+  ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
+                      ssl->init_buf->data, ssl->init_buf->length);
 
   static const uint8_t kHelloRequest[4] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
   if (!ssl->server && ssl->init_buf->length == sizeof(kHelloRequest) &&

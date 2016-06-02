@@ -172,28 +172,19 @@
 
 int ssl3_connect(SSL *ssl) {
   BUF_MEM *buf = NULL;
-  void (*cb)(const SSL *ssl, int type, int value) = NULL;
   int ret = -1;
-  int new_state, state, skip = 0;
+  int state, skip = 0;
 
   assert(ssl->handshake_func == ssl3_connect);
   assert(!ssl->server);
   assert(!SSL_IS_DTLS(ssl));
-
-  if (ssl->info_callback != NULL) {
-    cb = ssl->info_callback;
-  } else if (ssl->ctx->info_callback != NULL) {
-    cb = ssl->ctx->info_callback;
-  }
 
   for (;;) {
     state = ssl->state;
 
     switch (ssl->state) {
       case SSL_ST_CONNECT:
-        if (cb != NULL) {
-          cb(ssl, SSL_CB_HANDSHAKE_START, 1);
-        }
+        ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
         if (ssl->init_buf == NULL) {
           buf = BUF_MEM_new();
@@ -513,11 +504,8 @@ int ssl3_connect(SSL *ssl) {
         }
 
         ret = 1;
-        /* ssl->server=0; */
 
-        if (cb != NULL) {
-          cb(ssl, SSL_CB_HANDSHAKE_DONE, 1);
-        }
+        ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
 
         goto end;
 
@@ -527,22 +515,18 @@ int ssl3_connect(SSL *ssl) {
         goto end;
     }
 
-    if (!ssl->s3->tmp.reuse_message && !skip) {
-      if (cb != NULL && ssl->state != state) {
-        new_state = ssl->state;
-        ssl->state = state;
-        cb(ssl, SSL_CB_CONNECT_LOOP, 1);
-        ssl->state = new_state;
-      }
+    if (!ssl->s3->tmp.reuse_message && !skip && ssl->state != state) {
+      int new_state = ssl->state;
+      ssl->state = state;
+      ssl_do_info_callback(ssl, SSL_CB_CONNECT_LOOP, 1);
+      ssl->state = new_state;
     }
     skip = 0;
   }
 
 end:
   BUF_MEM_free(buf);
-  if (cb != NULL) {
-    cb(ssl, SSL_CB_CONNECT_EXIT, ret);
-  }
+  ssl_do_info_callback(ssl, SSL_CB_CONNECT_EXIT, ret);
   return ret;
 }
 

@@ -226,10 +226,8 @@ enum ssl_open_record_t tls_open_record(
     return ssl_open_record_partial;
   }
 
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(0 /* read */, 0, SSL3_RT_HEADER, in,
-                      SSL3_RT_HEADER_LENGTH, ssl, ssl->msg_callback_arg);
-  }
+  ssl_do_msg_callback(ssl, 0 /* read */, 0, SSL3_RT_HEADER, in,
+                      SSL3_RT_HEADER_LENGTH);
 
   /* Decrypt the body. */
   size_t plaintext_len;
@@ -335,11 +333,8 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
 
   *out_len = SSL3_RT_HEADER_LENGTH + ciphertext_len;
 
-  if (ssl->msg_callback) {
-    ssl->msg_callback(1 /* write */, 0, SSL3_RT_HEADER, out,
-                      SSL3_RT_HEADER_LENGTH, ssl, ssl->msg_callback_arg);
-  }
-
+  ssl_do_msg_callback(ssl, 1 /* write */, 0, SSL3_RT_HEADER, out,
+                      SSL3_RT_HEADER_LENGTH);
   return 1;
 }
 

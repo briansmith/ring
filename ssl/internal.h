@@ -626,6 +626,16 @@ int SSL_ECDH_CTX_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
 size_t ssl_max_handshake_message_len(const SSL *ssl);
 
 
+/* Callbacks. */
+
+/* ssl_do_info_callback calls |ssl|'s info callback, if set. */
+void ssl_do_info_callback(const SSL *ssl, int type, int value);
+
+/* ssl_do_msg_callback calls |ssl|'s message callback, if set. */
+void ssl_do_msg_callback(SSL *ssl, int is_write, int version, int content_type,
+                         const void *buf, size_t len);
+
+
 /* Transport buffers. */
 
 /* ssl_read_buffer returns a pointer to contents of the read buffer. */
