@@ -223,8 +223,14 @@ int bn_cmp_words(const BN_ULONG *a, const BN_ULONG *b, int n);
  * the length of |a| minus the length of |b|. */
 int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 
-int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                const BN_ULONG *np, const BN_ULONG *n0, int num);
+/* |num| must be at least 4, at least on x86.
+ *
+ * In other forks, |bn_mul_mont| returns an |int| indicating whether it
+ * actually did the multiplication. All our implementations always do the
+ * multiplication, and forcing callers to deal with the possibility of it
+ * failing just leads to further problems. */
+void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
 /* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
  * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|

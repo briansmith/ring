@@ -60,7 +60,7 @@ open OUT,"| \"$^X\" $xlate $flavour $output";
 # TODO(davidben): Enable this option after testing. $addx goes up to 1.
 $addx = 0;
 
-# int bn_mul_mont(
+# void bn_mul_mont(
 $rp="%rdi";	# BN_ULONG *rp,
 $ap="%rsi";	# const BN_ULONG *ap,
 $bp="%rdx";	# const BN_ULONG *bp,

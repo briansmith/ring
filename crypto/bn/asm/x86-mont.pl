@@ -58,8 +58,6 @@ $frame=32;				# size of above frame rounded up to 16n
 
 	&xor	("eax","eax");
 	&mov	("edi",&wparam(5));	# int num
-	&cmp	("edi",4);
-	&jl	(&label("just_leave"));
 
 	&lea	("esi",&wparam(0));	# put aside pointer to argument block
 	&lea	("edx",&wparam(1));	# load ap
@@ -262,17 +260,7 @@ $mask="mm7";
 &set_label("non_sse2",16);
 }
 
-if (0) {
-	&mov	("esp",$_sp);
-	&xor	("eax","eax");	# signal "not fast enough [yet]"
-	&jmp	(&label("just_leave"));
-	# While the below code provides competitive performance for
-	# all key lengthes on modern Intel cores, it's still more
-	# than 10% slower for 4096-bit key elsewhere:-( "Competitive"
-	# means compared to the original integer-only assembler.
-	# 512-bit RSA sign is better by ~40%, but that's about all
-	# one can say about all CPUs...
-} else {
+{
 $inp="esi";	# integer path uses these registers differently
 $word="edi";
 $carry="ebp";
@@ -584,7 +572,6 @@ $sbit=$num;
 
 	&mov	("esp",$_sp);		# pull saved stack pointer
 	&mov	("eax",1);
-&set_label("just_leave");
 &function_end("bn_mul_mont");
 
 &asciz("Montgomery Multiplication for x86, CRYPTOGAMS by <appro\@openssl.org>");

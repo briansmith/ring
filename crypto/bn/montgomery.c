@@ -363,16 +363,16 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 
   int num = mont->N.top;
 
-  if (num > 1 && a->top == num && b->top == num) {
+  /* bn_mul_mont requires at least four limbs, at least for x86. */
+  if (num >= 4 && a->top == num && b->top == num) {
     if (bn_wexpand(r, num) == NULL) {
       return 0;
     }
-    if (bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-      r->neg = a->neg ^ b->neg;
-      r->top = num;
-      bn_correct_top(r);
-      return 1;
-    }
+    bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num);
+    r->neg = a->neg ^ b->neg;
+    r->top = num;
+    bn_correct_top(r);
+    return 1;
   }
 
   BN_CTX_start(ctx);
