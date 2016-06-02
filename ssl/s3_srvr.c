@@ -192,11 +192,6 @@ int ssl3_accept(SSL *ssl) {
     cb = ssl->ctx->info_callback;
   }
 
-  if (ssl->cert == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-    return -1;
-  }
-
   for (;;) {
     state = ssl->state;
 
