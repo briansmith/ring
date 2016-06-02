@@ -436,6 +436,10 @@ extern "C" {
 #define TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 0x0300CCA9
 #define TLS1_CK_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256 0x0300CCAC
 
+/* PSK ciphersuites from mattsson-tls-ecdhe-psk-aead */
+#define TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256 0x0300D001
+#define TLS1_CK_ECDHE_PSK_WITH_AES_256_GCM_SHA384 0x0300D002
+
 /* TODO(davidben): Remove this. Historically, the CK names for CHACHA20_POLY1305
  * were missing 'WITH' and 'SHA256'. */
 #define TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305 \
@@ -626,6 +630,10 @@ extern "C" {
  * were missing 'SHA256'. */
 #define TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305 \
   TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+
+/* PSK ciphersuites from mattsson-tls-ecdhe-psk-aead */
+#define TLS1_TXT_ECDHE_PSK_WITH_AES_128_GCM_SHA256 "ECDHE-PSK-AES128-GCM-SHA256"
+#define TLS1_TXT_ECDHE_PSK_WITH_AES_256_GCM_SHA384 "ECDHE-PSK-AES256-GCM-SHA384"
 
 /* CECPQ1 ciphersuites.  These are specific to BoringSSL and not standard. */
 #define TLS1_TXT_CECPQ1_RSA_WITH_CHACHA20_POLY1305_SHA256 \

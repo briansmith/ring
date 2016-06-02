@@ -662,6 +662,28 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA256,
     },
 
+    /* Cipher D001 */
+    {
+     TLS1_TXT_ECDHE_PSK_WITH_AES_128_GCM_SHA256,
+     TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256,
+     SSL_kECDHE,
+     SSL_aPSK,
+     SSL_AES128GCM,
+     SSL_SHA256,
+     SSL_HANDSHAKE_MAC_SHA256,
+    },
+
+    /* Cipher D002 */
+    {
+     TLS1_TXT_ECDHE_PSK_WITH_AES_256_GCM_SHA384,
+     TLS1_CK_ECDHE_PSK_WITH_AES_256_GCM_SHA384,
+     SSL_kECDHE,
+     SSL_aPSK,
+     SSL_AES256GCM,
+     SSL_SHA384,
+     SSL_HANDSHAKE_MAC_SHA384,
+    },
+
 };
 
 static const size_t kCiphersLen = sizeof(kCiphers) / sizeof(kCiphers[0]);
