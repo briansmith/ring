@@ -37,9 +37,7 @@ type W32 = Wrapping<u32>;
 pub unsafe extern fn block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
                                       data: *const u8,
                                       num: c::size_t) {
-    let data = data as *const [u8; BLOCK_LEN];
-    let blocks = core::slice::from_raw_parts(data, num);
-    block_data_order_safe(state, blocks)
+    block_data_order_safe(state, ptr_as_array_slice!(data, BLOCK_LEN, num))
 }
 
 fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8],

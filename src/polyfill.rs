@@ -146,3 +146,18 @@ macro_rules! slice_as_array_ref_mut {
         }
     }
 }
+
+/// Returns a slice of arrays starting at the given pointer.
+macro_rules! ptr_as_array_slice {
+    ($ptr:expr, $block_len:expr, $block_num:expr) => {
+        {
+            unsafe fn ptr_as_array_slice<'a, T>(ptr: *const T,
+                                                block_num: usize)
+                                                -> &'a [[T; $block_len]] {
+                let ptr = ptr as *const [T; $block_len];
+                core::slice::from_raw_parts(ptr, block_num)
+            }
+            ptr_as_array_slice($ptr, $block_num)
+        }
+    }
+}
