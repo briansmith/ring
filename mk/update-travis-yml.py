@@ -38,7 +38,9 @@ linux_compilers = [
     # "clang-3.9",
 
     # Newest clang and GCC.
-    "clang-3.8",
+    # XXX: clang builds are disabled because the LLVM project turned off its
+    # APT servers, which we need to download clang.
+    # "clang-3.8",
 
     # XXX: GCC 6 doesn't work:
     # https://github.com/travis-ci/apt-package-whitelist/issues/2294

@@ -79,27 +79,35 @@ message.
 Online Automated Testing
 ------------------------
 
-Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows. The
-tests are run in debug and release configurations, for the current release of
-each Rust channel (Stable, Beta, Nightly), for each configuration listed
-in the table below.
+Travis CI is used for Android, Linux, and Mac OS X. Appveyor is used for
+Windows. The tests are run in debug and release configurations, for the current
+release of each Rust channel (Stable, Beta, Nightly), for each configuration
+listed in the table below.
 
 <table>
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td rowspan=2>Linux</td>
-    <td>x86, x64</td>
-    <td>GCC 4.6, GCC 5, Clang 3.8</td>
-    <td rowspan=3><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
+    <td>x86, x86_64</td>
+    <td>GCC 4.6, GCC 5, Clang 3.8. (Clang builds are temporarily disabled due
+        to the current LLVM APT repo outage.)</td>
+    <td rowspan=4><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
 </tr>
-<tr><td>32-bit ARM, AAarch64</td>
-    <td>Linaro GCC 5.1-2015.08 (build only, no tests are run)</td>
+<tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>
+    <td>GCC (Ubuntu/Linaro 4.8.4-2ubuntu1~14.04.1), tested using
+        <code>qemu-user-arm</code>.</td>
 </tr>
-<tr><td>Mac OS X</td>
+<tr><td>Android</td>
+    <td>32&#8209;bit&nbsp;ARM</td>
+    <td>Built using the Android SDK 24.4.1 and Android NDK 10e, tested using
+        the Android emulator. (Aarch64 builds are blocked on the Rust team
+        producing AAarch64 builds of Rust's libstd.)</td>
+</tr>
+<tr><td>Mac&nbsp;OS&nbsp;X</td>
     <td>x64</td>
     <td>Apple Clang 7.0.2 (clang-700.1.81)</td>
 </tr>
 <tr><td>Windows</td>
-    <td>x86, x64</td>
+    <td>x86, x86_64</td>
     <td>MSVC 2015 Update 2 (14.0)</td>
     <td><a title="Build Status" href=https://ci.appveyor.com/project/briansmith/ring/branch/master><img src=https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/master?svg=true></a>
 </tr>
