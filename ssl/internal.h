@@ -1052,7 +1052,6 @@ int dtls1_get_record(SSL *ssl);
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
 int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
-int dtls1_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek);
 void dtls1_set_message_header(SSL *ssl, uint8_t mt, unsigned long len,
                               unsigned short seq_num, unsigned long frag_off,
                               unsigned long frag_len);

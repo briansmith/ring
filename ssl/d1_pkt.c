@@ -202,7 +202,82 @@ again:
 
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
   assert(!SSL_in_init(ssl));
-  return dtls1_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
+
+  SSL3_RECORD *rr = &ssl->s3->rrec;
+
+again:
+  if (rr->length == 0) {
+    int ret = dtls1_get_record(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  if (rr->type == SSL3_RT_HANDSHAKE) {
+    /* Parse the first fragment header to determine if this is a pre-CCS or
+     * post-CCS handshake record. DTLS resets handshake message numbers on each
+     * handshake, so renegotiations and retransmissions are ambiguous. */
+    CBS cbs, body;
+    struct hm_header_st msg_hdr;
+    CBS_init(&cbs, rr->data, rr->length);
+    if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
+      return -1;
+    }
+
+    if (msg_hdr.type == SSL3_MT_FINISHED) {
+      if (msg_hdr.frag_off == 0) {
+        /* Retransmit our last flight of messages. If the peer sends the second
+         * Finished, they may not have received ours. Only do this for the
+         * first fragment, in case the Finished was fragmented. */
+        if (dtls1_check_timeout_num(ssl) < 0) {
+          return -1;
+        }
+
+        dtls1_retransmit_buffered_messages(ssl);
+      }
+
+      rr->length = 0;
+      goto again;
+    }
+
+    /* Otherwise, this is a pre-CCS handshake message from an unsupported
+     * renegotiation attempt. Fall through to the error path. */
+  }
+
+  if (rr->type != SSL3_RT_APPLICATION_DATA) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    return -1;
+  }
+
+  /* Discard empty records. */
+  if (rr->length == 0) {
+    goto again;
+  }
+
+  if (len <= 0) {
+    return len;
+  }
+
+  if ((unsigned)len > rr->length) {
+    len = rr->length;
+  }
+
+  memcpy(buf, rr->data, len);
+  if (!peek) {
+    /* TODO(davidben): Should the record be truncated instead? This is a
+     * datagram transport. See https://crbug.com/boringssl/65. */
+    rr->length -= len;
+    rr->data += len;
+    if (rr->length == 0) {
+      /* The record has been consumed, so we may now clear the buffer. */
+      ssl_read_buffer_discard(ssl);
+    }
+  }
+
+  return len;
 }
 
 int dtls1_read_change_cipher_spec(SSL *ssl) {
@@ -253,113 +328,6 @@ void dtls1_read_close_notify(SSL *ssl) {
   if (ssl->s3->recv_shutdown == ssl_shutdown_none) {
     ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
   }
-}
-
-/* Return up to 'len' payload bytes received in 'type' records.
- * 'type' must be SSL3_RT_APPLICATION_DATA (when dtls1_read_app_data calls us).
- *
- * If we don't have stored data to work from, read a DTLS record first (possibly
- * multiple records if we still don't have anything to return).
- *
- * This function must handle any surprises the peer may have for us, such as
- * Alert records (e.g. close_notify) and out of records. */
-int dtls1_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int peek) {
-  int al, ret;
-  unsigned int n;
-  SSL3_RECORD *rr;
-
-  if (type != SSL3_RT_APPLICATION_DATA) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-start:
-  /* ssl->s3->rrec.type     - is the type of record
-   * ssl->s3->rrec.data     - data
-   * ssl->s3->rrec.off      - offset into 'data' for next read
-   * ssl->s3->rrec.length   - number of bytes. */
-  rr = &ssl->s3->rrec;
-
-  /* get new packet if necessary */
-  if (rr->length == 0) {
-    ret = dtls1_get_record(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-
-  /* we now have a packet which can be read and processed */
-
-  if (type == rr->type) {
-    /* Discard empty records. */
-    if (rr->length == 0) {
-      goto start;
-    }
-
-    if (len <= 0) {
-      return len;
-    }
-
-    if ((unsigned int)len > rr->length) {
-      n = rr->length;
-    } else {
-      n = (unsigned int)len;
-    }
-
-    memcpy(buf, rr->data, n);
-    if (!peek) {
-      rr->length -= n;
-      rr->data += n;
-      if (rr->length == 0) {
-        /* The record has been consumed, so we may now clear the buffer. */
-        ssl_read_buffer_discard(ssl);
-      }
-    }
-
-    return n;
-  }
-
-  /* If we get here, then type != rr->type. */
-
-  if (rr->type == SSL3_RT_HANDSHAKE) {
-    /* Parse the first fragment header to determine if this is a pre-CCS or
-     * post-CCS handshake record. DTLS resets handshake message numbers on each
-     * handshake, so renegotiations and retransmissions are ambiguous. */
-    CBS cbs, body;
-    struct hm_header_st msg_hdr;
-    CBS_init(&cbs, rr->data, rr->length);
-    if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
-      goto f_err;
-    }
-
-    if (msg_hdr.type == SSL3_MT_FINISHED) {
-      if (msg_hdr.frag_off == 0) {
-        /* Retransmit our last flight of messages. If the peer sends the second
-         * Finished, they may not have received ours. Only do this for the
-         * first fragment, in case the Finished was fragmented. */
-        if (dtls1_check_timeout_num(ssl) < 0) {
-          return -1;
-        }
-
-        dtls1_retransmit_buffered_messages(ssl);
-      }
-
-      rr->length = 0;
-      goto start;
-    }
-
-    /* Otherwise, this is a pre-CCS handshake message from an unsupported
-     * renegotiation attempt. Fall through to the error path. */
-  }
-
-  al = SSL_AD_UNEXPECTED_MESSAGE;
-  OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-
-f_err:
-  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-  return -1;
 }
 
 int dtls1_write_app_data(SSL *ssl, const void *buf_, int len) {
