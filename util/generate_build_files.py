@@ -45,6 +45,9 @@ NON_PERL_FILES = {
     ('linux', 'x86_64'): [
         'src/crypto/curve25519/asm/x25519-asm-x86_64.S',
     ],
+    ('mac', 'x86_64'): [
+        'src/crypto/curve25519/asm/x25519-asm-x86_64.S',
+    ],
 }
 
 
