@@ -7,6 +7,8 @@ cache:
     - $HOME/android/android-18-arm-linux-androideabi-4.8
 matrix:
   fast_finish: true
+  allow_failures:
+    - rust: nightly
   include:
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG KCOV=0
       rust: stable
