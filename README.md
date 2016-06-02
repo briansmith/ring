@@ -43,36 +43,45 @@ there are build prerequisites that need to be installed.
 Contributing
 ------------
 
-Patches Welcome! Suggestions:
-
-* More code elimination, especially dead code.
-* Replacing more C code with Rust code.
-* Implementation of [SRP-6a](http://srp.stanford.edu/) in Rust, based on the
-  |rust::digest| API and the C/asm optimized modular exponentiation.
-* Optimizing the PBKDF2-HMAC implementation based on the ideas from
-  [fastpbkdf2](https://github.com/ctz/fastpbkdf2).
-* Better IDE support for Windows (e.g. running the tests within the IDE) and
-  Mac OS X (e.g. Xcode project files).
-* Support for more platforms in the continuous integration (e.g. Android, iOS,
-  ARM microcontrollers).
-* Static analysis and fuzzing in the continuous integration.
-
-
-
-License
--------
-
-See [LICENSE](LICENSE).
-
 The *ring* project happily accepts pull requests without you needing to sign
 any formal license agreement. The portions of pull requests that modify
 existing files must be licensed under the same terms as the files being
 modified. New files in pull requests, including in particular all Rust code,
 must be licensed under the ISC-style license. Please state that you agree to
 license your contributions in the commit messages of commits in pull requests,
-e.g. by putting “I agree to license my contributions to each file under the
-terms given at the top of each file I changed.” at the end of each commit
-message.
+e.g. by putting this at the bottom of your commit message:
+
+```
+
+I agree to license my contributions to each file under the terms given
+at the top of each file I changed.
+```
+
+The most important contributions are *uses* of *ring*. That is, we're very
+interested in seeing useful things built on top of *ring*, like implementations
+of TLS, SSH, the Noise Protocol, etc.
+
+Of course, contributions to *ring*'s code base are highly appreciated too. If
+you want to work directly on *ring* and you don't have an idea for something to
+contribute already, see the [issues marked
+`good-first-bug`](https://github.com/briansmith/ring/issues?q=is%3Aopen+is%3Aissue+label%3Agood-first-bug)
+in the issue tracker.
+
+In addition, we're always interested in these kinds of contributions:
+
+* Bug fixes.
+* Additional testing code and additional test vectors.
+* Documentation improvements.
+* More code simplification, especially eliminating dead code.
+* Replacing more C code with Rust code.
+* Improving the code size, execution speed, and/or memory footprint.
+* Making more features work in the `no_heap`/`#![no_std]` mode, by avoiding
+  uses of the heap.
+* Better IDE support for Windows (e.g. running the tests within the IDE) and
+  Mac OS X (e.g. Xcode project files).
+* Support for more platforms in the continuous integration (e.g. Android, iOS,
+  ARM microcontrollers).
+* Static analysis and fuzzing in the continuous integration.
 
 
 
@@ -122,3 +131,10 @@ Please report bugs either as pull requests or as issues in [the issue
 tracker](https://github.com/briansmith/ring/issues). *ring* has a
 **full disclosure** vulnerability policy. **Please do NOT attempt to report
 any security vulnerability in this code privately to anybody.**
+
+
+
+License
+-------
+
+See [LICENSE](LICENSE).
