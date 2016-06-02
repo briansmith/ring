@@ -139,8 +139,6 @@ int dtls1_accept(SSL *ssl) {
   assert(ssl->server);
   assert(SSL_IS_DTLS(ssl));
 
-  ERR_clear_system_error();
-
   if (ssl->info_callback != NULL) {
     cb = ssl->info_callback;
   } else if (ssl->ctx->info_callback != NULL) {

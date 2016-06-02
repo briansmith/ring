@@ -162,8 +162,6 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
     return -1;
   }
 
-  ERR_clear_system_error();
-
   int ret;
   if (SSL_IS_DTLS(ssl)) {
     /* |len| is ignored for a datagram transport. */
@@ -301,7 +299,6 @@ int ssl_write_buffer_flush(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BIO_NOT_SET);
     return -1;
   }
-  ERR_clear_system_error();
 
   if (SSL_IS_DTLS(ssl)) {
     return dtls_write_buffer_flush(ssl);

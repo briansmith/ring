@@ -559,6 +559,7 @@ int SSL_do_handshake(SSL *ssl) {
   ssl->rwstate = SSL_NOTHING;
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
+  ERR_clear_system_error();
 
   if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
@@ -665,6 +666,7 @@ int SSL_shutdown(SSL *ssl) {
   ssl->rwstate = SSL_NOTHING;
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
+  ERR_clear_system_error();
 
   if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
