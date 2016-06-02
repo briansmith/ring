@@ -415,24 +415,6 @@ static int dtls1_is_next_message_complete(SSL *ssl) {
          frag->reassembly == NULL;
 }
 
-/* dtls1_discard_fragment_body discards a handshake fragment body of length
- * |frag_len|. It returns one on success and zero on error.
- *
- * TODO(davidben): This function will go away when ssl_read_bytes is gone from
- * the DTLS side. */
-static int dtls1_discard_fragment_body(SSL *ssl, size_t frag_len) {
-  uint8_t discard[256];
-  while (frag_len > 0) {
-    size_t chunk = frag_len < sizeof(discard) ? frag_len : sizeof(discard);
-    int ret = dtls1_read_bytes(ssl, SSL3_RT_HANDSHAKE, discard, chunk, 0);
-    if (ret != (int) chunk) {
-      return 0;
-    }
-    frag_len -= chunk;
-  }
-  return 1;
-}
-
 /* dtls1_get_buffered_message returns the buffered message corresponding to
  * |msg_hdr|. If none exists, it creates a new one and inserts it in the
  * queue. Otherwise, it checks |msg_hdr| is consistent with the existing one. It
@@ -478,75 +460,92 @@ static hm_fragment *dtls1_get_buffered_message(
   return frag;
 }
 
-/* dtls1_process_fragment reads a handshake fragment and processes it. It
- * returns one if a fragment was successfully processed and 0 or -1 on error. */
-static int dtls1_process_fragment(SSL *ssl) {
-  /* Read handshake message header. */
-  uint8_t header[DTLS1_HM_HEADER_LENGTH];
-  int ret = dtls1_read_bytes(ssl, SSL3_RT_HANDSHAKE, header,
-                             DTLS1_HM_HEADER_LENGTH, 0);
-  if (ret <= 0) {
-    return ret;
+/* dtls1_process_handshake_record reads a handshake record and processes it. It
+ * returns one if the record was successfully processed and 0 or -1 on error. */
+static int dtls1_process_handshake_record(SSL *ssl) {
+  SSL3_RECORD *rr = &ssl->s3->rrec;
+
+start:
+  if (rr->length == 0) {
+    int ret = dtls1_get_record(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
   }
-  if (ret != DTLS1_HM_HEADER_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+
+  /* Cross-epoch records are discarded, but we may receive out-of-order
+   * application data between ChangeCipherSpec and Finished or a ChangeCipherSpec
+   * before the appropriate point in the handshake. Those must be silently
+   * discarded.
+   *
+   * However, only allow the out-of-order records in the correct epoch.
+   * Application data must come in the encrypted epoch, and ChangeCipherSpec in
+   * the unencrypted epoch (we never renegotiate). Other cases fall through and
+   * fail with a fatal error. */
+  if ((rr->type == SSL3_RT_APPLICATION_DATA &&
+       ssl->s3->aead_read_ctx != NULL) ||
+      (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC &&
+       ssl->s3->aead_read_ctx == NULL)) {
+    rr->length = 0;
+    goto start;
+  }
+
+  if (rr->type != SSL3_RT_HANDSHAKE) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
     return -1;
   }
 
-  /* Parse the message fragment header. */
-  struct hm_header_st msg_hdr;
-  dtls1_get_message_header(header, &msg_hdr);
+  CBS cbs;
+  CBS_init(&cbs, rr->data, rr->length);
 
-  /* TODO(davidben): dtls1_read_bytes is the wrong abstraction for DTLS. There
-   * should be no need to reach into |ssl->s3->rrec.length|. */
-  const size_t frag_off = msg_hdr.frag_off;
-  const size_t frag_len = msg_hdr.frag_len;
-  const size_t msg_len = msg_hdr.msg_len;
-  if (frag_off > msg_len || frag_off + frag_len < frag_off ||
-      frag_off + frag_len > msg_len ||
-      msg_len > ssl_max_handshake_message_len(ssl) ||
-      frag_len > ssl->s3->rrec.length) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return -1;
-  }
-
-  if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
-      msg_hdr.seq > (unsigned)ssl->d1->handshake_read_seq +
-                    kHandshakeBufferSize) {
-    /* Ignore fragments from the past, or ones too far in the future. */
-    if (!dtls1_discard_fragment_body(ssl, frag_len)) {
+  while (CBS_len(&cbs) > 0) {
+    /* Read a handshake fragment. */
+    struct hm_header_st msg_hdr;
+    CBS body;
+    if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return -1;
     }
-    return 1;
-  }
 
-  hm_fragment *frag = dtls1_get_buffered_message(ssl, &msg_hdr);
-  if (frag == NULL) {
-    return -1;
-  }
-  assert(frag->msg_header.msg_len == msg_len);
-
-  if (frag->reassembly == NULL) {
-    /* The message is already assembled. */
-    if (!dtls1_discard_fragment_body(ssl, frag_len)) {
+    const size_t frag_off = msg_hdr.frag_off;
+    const size_t frag_len = msg_hdr.frag_len;
+    const size_t msg_len = msg_hdr.msg_len;
+    if (frag_off > msg_len || frag_off + frag_len < frag_off ||
+        frag_off + frag_len > msg_len ||
+        msg_len > ssl_max_handshake_message_len(ssl)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return -1;
     }
-    return 1;
-  }
-  assert(msg_len > 0);
 
-  /* Read the body of the fragment. */
-  ret = dtls1_read_bytes(ssl, SSL3_RT_HANDSHAKE, frag->fragment + frag_off,
-                         frag_len, 0);
-  if (ret != (int) frag_len) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return -1;
-  }
-  dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
+    if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
+        msg_hdr.seq >
+            (unsigned)ssl->d1->handshake_read_seq + kHandshakeBufferSize) {
+      /* Ignore fragments from the past, or ones too far in the future. */
+      continue;
+    }
 
+    hm_fragment *frag = dtls1_get_buffered_message(ssl, &msg_hdr);
+    if (frag == NULL) {
+      return -1;
+    }
+    assert(frag->msg_header.msg_len == msg_len);
+
+    if (frag->reassembly == NULL) {
+      /* The message is already assembled. */
+      continue;
+    }
+    assert(msg_len > 0);
+
+    /* Copy the body into the fragment. */
+    memcpy(frag->fragment + frag_off, CBS_data(&body), CBS_len(&body));
+    dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
+  }
+
+  rr->length = 0;
+  ssl_read_buffer_discard(ssl);
   return 1;
 }
 
@@ -579,9 +578,9 @@ long dtls1_get_message(SSL *ssl, int msg_type,
     return ssl->init_num;
   }
 
-  /* Process fragments until one is found. */
+  /* Process handshake records until the next message is ready. */
   while (!dtls1_is_next_message_complete(ssl)) {
-    int ret = dtls1_process_fragment(ssl);
+    int ret = dtls1_process_handshake_record(ssl);
     if (ret <= 0) {
       *ok = 0;
       return ret;
@@ -835,13 +834,18 @@ unsigned int dtls1_min_mtu(void) {
   return kMinMTU;
 }
 
-void dtls1_get_message_header(uint8_t *data,
-                              struct hm_header_st *msg_hdr) {
-  memset(msg_hdr, 0x00, sizeof(struct hm_header_st));
-  msg_hdr->type = *(data++);
-  n2l3(data, msg_hdr->msg_len);
+int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
+                         CBS *out_body) {
+  memset(out_hdr, 0x00, sizeof(struct hm_header_st));
 
-  n2s(data, msg_hdr->seq);
-  n2l3(data, msg_hdr->frag_off);
-  n2l3(data, msg_hdr->frag_len);
+  if (!CBS_get_u8(cbs, &out_hdr->type) ||
+      !CBS_get_u24(cbs, &out_hdr->msg_len) ||
+      !CBS_get_u16(cbs, &out_hdr->seq) ||
+      !CBS_get_u24(cbs, &out_hdr->frag_off) ||
+      !CBS_get_u24(cbs, &out_hdr->frag_len) ||
+      !CBS_get_bytes(cbs, out_body, out_hdr->frag_len)) {
+    return 0;
+  }
+
+  return 1;
 }

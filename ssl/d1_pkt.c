@@ -116,6 +116,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/buf.h>
+#include <openssl/bytestring.h>
 #include <openssl/mem.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -127,10 +128,7 @@
 static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
                           unsigned int len, enum dtls1_use_epoch_t use_epoch);
 
-/* dtls1_get_record reads a new input record. On success, it places it in
- * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
- * more data is needed. */
-static int dtls1_get_record(SSL *ssl) {
+int dtls1_get_record(SSL *ssl) {
 again:
   switch (ssl->s3->recv_shutdown) {
     case ssl_shutdown_none:
@@ -258,10 +256,7 @@ void dtls1_read_close_notify(SSL *ssl) {
 }
 
 /* Return up to 'len' payload bytes received in 'type' records.
- * 'type' is one of the following:
- *
- *   -  SSL3_RT_HANDSHAKE (when dtls1_get_message calls us)
- *   -  SSL3_RT_APPLICATION_DATA (when dtls1_read_app_data calls us)
+ * 'type' must be SSL3_RT_APPLICATION_DATA (when dtls1_read_app_data calls us).
  *
  * If we don't have stored data to work from, read a DTLS record first (possibly
  * multiple records if we still don't have anything to return).
@@ -273,8 +268,7 @@ int dtls1_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int peek) 
   unsigned int n;
   SSL3_RECORD *rr;
 
-  if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
-      (peek && type != SSL3_RT_APPLICATION_DATA)) {
+  if (type != SSL3_RT_APPLICATION_DATA) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
@@ -327,35 +321,18 @@ start:
 
   /* If we get here, then type != rr->type. */
 
-  /* Cross-epoch records are discarded, but we may receive out-of-order
-   * application data between ChangeCipherSpec and Finished or a ChangeCipherSpec
-   * before the appropriate point in the handshake. Those must be silently
-   * discarded.
-   *
-   * However, only allow the out-of-order records in the correct epoch.
-   * Application data must come in the encrypted epoch, and ChangeCipherSpec in
-   * the unencrypted epoch (we never renegotiate). Other cases fall through and
-   * fail with a fatal error. */
-  if ((rr->type == SSL3_RT_APPLICATION_DATA &&
-       ssl->s3->aead_read_ctx != NULL) ||
-      (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC &&
-       ssl->s3->aead_read_ctx == NULL)) {
-    rr->length = 0;
-    goto start;
-  }
-
   if (rr->type == SSL3_RT_HANDSHAKE) {
-    assert(type == SSL3_RT_APPLICATION_DATA);
     /* Parse the first fragment header to determine if this is a pre-CCS or
      * post-CCS handshake record. DTLS resets handshake message numbers on each
      * handshake, so renegotiations and retransmissions are ambiguous. */
-    if (rr->length < DTLS1_HM_HEADER_LENGTH) {
+    CBS cbs, body;
+    struct hm_header_st msg_hdr;
+    CBS_init(&cbs, rr->data, rr->length);
+    if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
       goto f_err;
     }
-    struct hm_header_st msg_hdr;
-    dtls1_get_message_header(rr->data, &msg_hdr);
 
     if (msg_hdr.type == SSL3_MT_FINISHED) {
       if (msg_hdr.frag_off == 0) {

@@ -704,99 +704,16 @@ void ssl_write_buffer_clear(SSL *ssl);
  *
  * Functions below here haven't been touched up and may be underdocumented. */
 
-#define c2l(c, l)                                                            \
-  (l = ((unsigned long)(*((c)++))), l |= (((unsigned long)(*((c)++))) << 8), \
-   l |= (((unsigned long)(*((c)++))) << 16),                                 \
-   l |= (((unsigned long)(*((c)++))) << 24))
-
-/* NOTE - c is not incremented as per c2l */
-#define c2ln(c, l1, l2, n)                       \
-  {                                              \
-    c += n;                                      \
-    l1 = l2 = 0;                                 \
-    switch (n) {                                 \
-      case 8:                                    \
-        l2 = ((unsigned long)(*(--(c)))) << 24;  \
-      case 7:                                    \
-        l2 |= ((unsigned long)(*(--(c)))) << 16; \
-      case 6:                                    \
-        l2 |= ((unsigned long)(*(--(c)))) << 8;  \
-      case 5:                                    \
-        l2 |= ((unsigned long)(*(--(c))));       \
-      case 4:                                    \
-        l1 = ((unsigned long)(*(--(c)))) << 24;  \
-      case 3:                                    \
-        l1 |= ((unsigned long)(*(--(c)))) << 16; \
-      case 2:                                    \
-        l1 |= ((unsigned long)(*(--(c)))) << 8;  \
-      case 1:                                    \
-        l1 |= ((unsigned long)(*(--(c))));       \
-    }                                            \
-  }
-
-#define l2c(l, c)                            \
-  (*((c)++) = (uint8_t)(((l)) & 0xff),       \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 24) & 0xff))
-
-#define n2l(c, l)                          \
-  (l = ((unsigned long)(*((c)++))) << 24,  \
-   l |= ((unsigned long)(*((c)++))) << 16, \
-   l |= ((unsigned long)(*((c)++))) << 8, l |= ((unsigned long)(*((c)++))))
-
 #define l2n(l, c)                            \
   (*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
    *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
    *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
    *((c)++) = (uint8_t)(((l)) & 0xff))
 
-#define l2n8(l, c)                           \
-  (*((c)++) = (uint8_t)(((l) >> 56) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 48) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 40) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 32) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l)) & 0xff))
-
-/* NOTE - c is not incremented as per l2c */
-#define l2cn(l1, l2, c, n)                               \
-  {                                                      \
-    c += n;                                              \
-    switch (n) {                                         \
-      case 8:                                            \
-        *(--(c)) = (uint8_t)(((l2) >> 24) & 0xff); \
-      case 7:                                            \
-        *(--(c)) = (uint8_t)(((l2) >> 16) & 0xff); \
-      case 6:                                            \
-        *(--(c)) = (uint8_t)(((l2) >> 8) & 0xff);  \
-      case 5:                                            \
-        *(--(c)) = (uint8_t)(((l2)) & 0xff);       \
-      case 4:                                            \
-        *(--(c)) = (uint8_t)(((l1) >> 24) & 0xff); \
-      case 3:                                            \
-        *(--(c)) = (uint8_t)(((l1) >> 16) & 0xff); \
-      case 2:                                            \
-        *(--(c)) = (uint8_t)(((l1) >> 8) & 0xff);  \
-      case 1:                                            \
-        *(--(c)) = (uint8_t)(((l1)) & 0xff);       \
-    }                                                    \
-  }
-
-#define n2s(c, s) \
-  ((s = (((unsigned int)(c[0])) << 8) | (((unsigned int)(c[1])))), c += 2)
-
 #define s2n(s, c)                              \
   ((c[0] = (uint8_t)(((s) >> 8) & 0xff), \
     c[1] = (uint8_t)(((s)) & 0xff)),     \
    c += 2)
-
-#define n2l3(c, l)                                                         \
-  ((l = (((unsigned long)(c[0])) << 16) | (((unsigned long)(c[1])) << 8) | \
-        (((unsigned long)(c[2])))),                                        \
-   c += 3)
 
 #define l2n3(l, c)                              \
   ((c[0] = (uint8_t)(((l) >> 16) & 0xff), \
@@ -1126,6 +1043,12 @@ int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *ssl);
 
 int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch);
+
+/* dtls1_get_record reads a new input record. On success, it places it in
+ * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
+ * more data is needed. */
+int dtls1_get_record(SSL *ssl);
+
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
 int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
@@ -1143,7 +1066,8 @@ int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
 int dtls1_buffer_message(SSL *ssl);
 int dtls1_retransmit_buffered_messages(SSL *ssl);
 void dtls1_clear_record_buffer(SSL *ssl);
-void dtls1_get_message_header(uint8_t *data, struct hm_header_st *msg_hdr);
+int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
+                         CBS *out_body);
 int dtls1_check_timeout_num(SSL *ssl);
 int dtls1_set_handshake_header(SSL *ssl, int type, unsigned long len);
 int dtls1_handshake_write(SSL *ssl);

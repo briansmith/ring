@@ -1772,7 +1772,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":UNEXPECTED_MESSAGE:",
+			expectedError: ":BAD_HANDSHAKE_RECORD:",
 		},
 		{
 			protocol: dtls,
@@ -1783,7 +1783,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+			expectedError: ":BAD_HANDSHAKE_RECORD:",
 		},
 		{
 			protocol: dtls,
@@ -1794,7 +1794,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+			expectedError: ":BAD_HANDSHAKE_RECORD:",
 		},
 		{
 			protocol: dtls,
