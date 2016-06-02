@@ -11,7 +11,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *ring*
 ======
 
-*ring* is a crypto library in Rust based on BoringSSL's crypto primitive
+*ring* is a crypto library for Rust based on BoringSSL's crypto primitive
 implementations.
 
 Particular attention is being paid to making it easy to build and integrate
@@ -26,6 +26,13 @@ derived from OpenSSL. *ring* merges changes from BoringSSL regularly. Also,
 several changes that were developed for *ring* have already been merged into
 BoringSSL.
 
+*ring* is focused on the implementation, testing, and optimization of core
+crypto primitives. WebPKI X.509 certificate validation is done in the
+[webpki](https://github.com/briansmith/webpki) project, which is built on top
+of *ring*. Also, multiple groups are working on TLS implementations on top of
+*ring* and webpki.
+
+
 
 
 Documentation
@@ -37,6 +44,20 @@ https://briansmith.org/rustdoc/ring/.
 See [BUILDING.md](BUILDING.md#building-the-rust-library) for instructions on
 how to build it. These instructions are especially important on Windows, as
 there are build prerequisites that need to be installed.
+
+
+
+Benchmarks
+----------
+
+*ring*'s benchmarks are in the
+[crypto-bench](https://github.com/briansmith/crypto-bench) project. Because
+there is lots of platform-specific code in *ring*, and because *ring* chooses
+dynamically at runtime which optimized implementation of each crypto primitive
+to use, it is very difficult to publish a useful single set of benchmarks;
+instead, you are highly encouraged to run the benchmarks yourselves on your
+target hardware.
+
 
 
 
@@ -72,6 +93,8 @@ In addition, we're always interested in these kinds of contributions:
 * Bug fixes.
 * Additional testing code and additional test vectors.
 * Documentation improvements.
+* Expanded benchmarks in the
+  [crypto-bench](https://github.com/briansmith/crypto-bench) project.
 * More code simplification, especially eliminating dead code.
 * Replacing more C code with Rust code.
 * Improving the code size, execution speed, and/or memory footprint.
