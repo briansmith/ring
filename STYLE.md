@@ -14,10 +14,10 @@ concerned, balance consistency within a module with the benefits of a
 given rule. Module-wide deviations on naming should be respected while
 integer and return value conventions take precedence over consistency.
 
-Some modules have seen few changes, so they still retain the original
-indentation style for now. When editing these, try to retain the
-original style. For Emacs, `doc/c-indentation.el` from OpenSSL may be
-helpful in this.
+Modules from OpenSSL's legacy ASN.1 and X.509 stack are retained for
+compatibility and left largely unmodified. To ease importing patches from
+upstream, they match OpenSSL's new indentation style. For Emacs,
+`doc/openssl-c-indent.el` from OpenSSL may be helpful in this.
 
 
 ## Language
