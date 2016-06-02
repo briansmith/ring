@@ -69,7 +69,6 @@
 extern crate num;
 
 #[path="src/ec/ec_build.rs"] mod ec_build;
-#[path="src/ec/curves.rs"] mod curves;
 
 use std::env;
 use std::path::Path;
