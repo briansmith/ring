@@ -23,25 +23,26 @@
 #include "internal.h"
 
 
-typedef BN_ULONG GFp_Limb;
-
-#define GFp_LIMB_BITS ((size_t)BN_BITS2)
-
-int GFp_suite_b_generate_private_key(const EC_GROUP *group,
-                                     uint8_t *private_key_out, RAND *rng);
+int GFp_suite_b_generate_private_key(const EC_GROUP *group, uint8_t *out,
+                                     size_t out_len, RAND *rng);
 
 int GFp_suite_b_public_from_private(const EC_GROUP *group,
                                     uint8_t *public_key_out,
-                                    const uint8_t *private_key);
+                                    size_t public_key_out_len,
+                                    const uint8_t *private_key,
+                                    size_t private_key_len);
 
 int GFp_suite_b_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
-                     const uint8_t *private_key,
-                     const GFp_Limb *peer_public_key_x,
-                     const GFp_Limb *peer_public_key_y);
+                     const uint8_t *private_key, size_t private_key_len,
+                     const uint8_t *peer_public_key_x,
+                     size_t peer_public_key_x_len,
+                     const uint8_t *peer_public_key_y,
+                     size_t peer_public_key_y_len);
 
 EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
-                                 const GFp_Limb *peer_public_key_x,
-                                 const GFp_Limb *peer_public_key_y);
-
+                                 const uint8_t *peer_public_key_x,
+                                 size_t peer_public_key_x_len,
+                                 const uint8_t *peer_public_key_y,
+                                 size_t peer_public_key_y_len);
 
 #endif /* GFp_INTERNAL_H */

@@ -121,6 +121,70 @@ int ec_GFp_simple_point_set_to_infinity(EC_POINT *point) {
   return 1;
 }
 
+static int set_Jprojective_coordinate_GFp(const EC_GROUP *group, BIGNUM *out,
+                                          const BIGNUM *in, BN_CTX *ctx) {
+  if (in == NULL) {
+    return 1;
+  }
+  if (BN_is_negative(in) ||
+      BN_cmp(in, &group->field) >= 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+    return 0;
+  }
+  if (group->meth->field_encode) {
+    return group->meth->field_encode(group, out, in, ctx);
+  }
+  return BN_copy(out, in) != NULL;
+}
+
+int ec_GFp_simple_set_Jprojective_coordinates_GFp(
+    const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, const BIGNUM *y,
+    const BIGNUM *z, BN_CTX *ctx) {
+  BN_CTX *new_ctx = NULL;
+  int ret = 0;
+
+  if (ctx == NULL) {
+    ctx = new_ctx = BN_CTX_new();
+    if (ctx == NULL) {
+      return 0;
+    }
+  }
+
+  if (!set_Jprojective_coordinate_GFp(group, &point->X, x, ctx) ||
+      !set_Jprojective_coordinate_GFp(group, &point->Y, y, ctx) ||
+      !set_Jprojective_coordinate_GFp(group, &point->Z, z, ctx)) {
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  BN_CTX_free(new_ctx);
+  return ret;
+}
+
+int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
+                                               EC_POINT *point, const BIGNUM *x,
+                                               const BIGNUM *y, BN_CTX *ctx) {
+  if (x == NULL || y == NULL) {
+    /* unlike for projective coordinates, we do not tolerate this */
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (!ec_point_set_Jprojective_coordinates_GFp(group, point, x, y,
+                                                BN_value_one(), ctx)) {
+    return 0;
+  }
+
+  if (!ec_GFp_simple_is_on_curve(group, point, ctx)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+    return 0;
+  }
+
+  return 1;
+}
+
 int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
                       const EC_POINT *b, BN_CTX *ctx) {
   int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
@@ -440,4 +504,99 @@ int ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point) {
 
 int ec_GFp_simple_is_at_infinity(const EC_POINT *point) {
   return BN_is_zero(&point->Z);
+}
+
+int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
+                              BN_CTX *ctx) {
+  int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
+                   BN_CTX *);
+  int (*field_sqr)(const EC_GROUP *, BIGNUM *, const BIGNUM *, BN_CTX *);
+  const BIGNUM *p;
+  BN_CTX *new_ctx = NULL;
+  BIGNUM *rh, *tmp, *Z4, *Z6;
+  int ret = 0;
+
+  if (EC_POINT_is_at_infinity(group, point)) {
+    return 1;
+  }
+
+  field_mul = group->meth->field_mul;
+  field_sqr = group->meth->field_sqr;
+  p = &group->field;
+
+  if (ctx == NULL) {
+    ctx = new_ctx = BN_CTX_new();
+    if (ctx == NULL) {
+      return 0;
+    }
+  }
+
+  BN_CTX_start(ctx);
+  rh = BN_CTX_get(ctx);
+  tmp = BN_CTX_get(ctx);
+  Z4 = BN_CTX_get(ctx);
+  Z6 = BN_CTX_get(ctx);
+  if (Z6 == NULL) {
+    goto err;
+  }
+
+  /* We have a curve defined by a Weierstrass equation
+   *      y^2 = x^3 + a*x + b.
+   * The point to consider is given in Jacobian projective coordinates
+   * where  (X, Y, Z)  represents  (x, y) = (X/Z^2, Y/Z^3).
+   * Substituting this and multiplying by  Z^6  transforms the above equation
+   * into
+   *      Y^2 = X^3 + a*X*Z^4 + b*Z^6.
+   * To test this, we add up the right-hand side in 'rh'.
+   */
+
+  /* rh := X^2 */
+  if (!field_sqr(group, rh, &point->X, ctx)) {
+    goto err;
+  }
+
+  if (BN_cmp(&point->Z, &group->one) != 0) {
+    if (!field_sqr(group, tmp, &point->Z, ctx) ||
+        !field_sqr(group, Z4, tmp, ctx) ||
+        !field_mul(group, Z6, Z4, tmp, ctx)) {
+      goto err;
+    }
+
+    /* rh := (rh + a*Z^4)*X */
+    /* ring: This assumes a == -3. */
+    if (!BN_mod_lshift1_quick(tmp, Z4, p) ||
+        !BN_mod_add_quick(tmp, tmp, Z4, p) ||
+        !BN_mod_sub_quick(rh, rh, tmp, p) ||
+        !field_mul(group, rh, rh, &point->X, ctx)) {
+      goto err;
+    }
+
+    /* rh := rh + b*Z^6 */
+    if (!field_mul(group, tmp, &group->b, Z6, ctx) ||
+        !BN_mod_add_quick(rh, rh, tmp, p)) {
+      goto err;
+    }
+  } else {
+    /* rh := (rh + a)*X */
+    if (!BN_mod_add_quick(rh, rh, &group->a, p) ||
+        !field_mul(group, rh, rh, &point->X, ctx)) {
+      goto err;
+    }
+    /* rh := rh + b */
+    if (!BN_mod_add_quick(rh, rh, &group->b, p)) {
+      goto err;
+    }
+  }
+
+  /* 'lh' := Y^2 */
+  if (!field_sqr(group, tmp, &point->Y, ctx)) {
+    goto err;
+  }
+
+  ret = (0 == BN_ucmp(tmp, rh));
+
+err:
+  BN_CTX_end(ctx);
+  BN_CTX_free(new_ctx);
+  return ret;
 }

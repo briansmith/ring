@@ -26,8 +26,8 @@
 /* Generates a private key for the curve given in |group|, saving it in |out|,
  * least-significant-word first, zero-padded. It returns one on success or zero
  * otherwise. */
-int GFp_suite_b_generate_private_key(const EC_GROUP *group,
-                                     uint8_t *private_key_out, RAND *rng) {
+int GFp_suite_b_generate_private_key(const EC_GROUP *group, uint8_t *out,
+                                     size_t out_len, RAND *rng) {
   /* XXX: Not constant time. */
 
   unsigned order_bits = BN_num_bits(&group->order);
@@ -61,8 +61,7 @@ int GFp_suite_b_generate_private_key(const EC_GROUP *group,
     }
   }
 
-  size_t private_key_out_len = (EC_GROUP_get_degree(group) + 7) / 8;
-  if (!BN_bn2bin_padded(private_key_out, private_key_out_len, &tmp)) {
+  if (!BN_bn2bin_padded(out, out_len, &tmp)) {
     goto err;
   }
 
@@ -75,14 +74,15 @@ err:
 
 int GFp_suite_b_public_from_private(const EC_GROUP *group,
                                     uint8_t *public_key_out,
-                                    const uint8_t *private_key) {
+                                    size_t public_key_out_len,
+                                    const uint8_t *private_key,
+                                    size_t private_key_len) {
   BIGNUM private_key_bn;
   BN_init(&private_key_bn);
 
   EC_POINT *public_point = NULL;
   int ret = 0;
 
-  size_t private_key_len = (EC_GROUP_get_degree(group) + 7) / 8;
   if (BN_bin2bn(private_key, private_key_len, &private_key_bn) == NULL) {
     goto err;
   }
@@ -91,8 +91,6 @@ int GFp_suite_b_public_from_private(const EC_GROUP *group,
   if (public_point == NULL) {
     goto err;
   }
-
-  size_t public_key_out_len = 1 + (2 * private_key_len);
 
   if (!group->meth->mul_private(group, public_point, &private_key_bn, NULL,
                                 NULL, NULL) ||

@@ -16,11 +16,12 @@
 
 #include "gfp_internal.h"
 
-#include "../bn/internal.h"
 
 EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
-                                 const GFp_Limb *peer_public_key_x,
-                                 const GFp_Limb *peer_public_key_y) {
+                                 const uint8_t *peer_public_key_x,
+                                 size_t peer_public_key_x_len,
+                                 const uint8_t *peer_public_key_y,
+                                 size_t peer_public_key_y_len) {
   BIGNUM x;
   BN_init(&x);
 
@@ -34,13 +35,14 @@ EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
     goto err;
   }
 
-  size_t limbs =
-    (ec_GFp_simple_group_get_degree(group) + (GFp_LIMB_BITS - 1)) /
-    GFp_LIMB_BITS;
-
-  if (!bn_set_words(&result->X, peer_public_key_x, limbs) ||
-      !bn_set_words(&result->Y, peer_public_key_y, limbs) ||
-      !BN_copy(&result->Z, &group->one)) {
+  /* |ec_GFp_simple_point_set_affine_coordinates| verifies that (x, y) is on
+   * the curve and that each coordinate is a valid field element (i.e.
+   * non-negative and less than `q`). The point cannot be the point at infinity
+   * because it was given as affine coordinates. */
+  if (BN_bin2bn(peer_public_key_x, peer_public_key_x_len, &x) == NULL ||
+      BN_bin2bn(peer_public_key_y, peer_public_key_y_len, &y) == NULL ||
+      !ec_GFp_simple_point_set_affine_coordinates(group, result, &x, &y,
+                                                  NULL)) {
     goto err;
   }
 
