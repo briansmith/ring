@@ -1691,6 +1691,10 @@ int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_auth & SSL_aECDSA) != 0;
 }
 
+int SSL_CIPHER_is_DHE(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mkey & SSL_kDHE) != 0;
+}
+
 int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mkey & SSL_kECDHE) != 0;
 }
