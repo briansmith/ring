@@ -68,7 +68,7 @@
 
 extern crate num;
 
-#[path="src/ec/ec_build.rs"] mod ec_build;
+#[path="src/ec/suite_b/suite_b_build.rs"] mod suite_b_build;
 
 use std::env;
 use std::path::Path;
@@ -83,7 +83,7 @@ fn main() {
 
     let out_dir = env::var("OUT_DIR").unwrap();
 
-    ec_build::generate_code(&out_dir).unwrap();
+    suite_b_build::generate_code(&out_dir).unwrap();
     build_c_code(&out_dir).unwrap();
 }
 
