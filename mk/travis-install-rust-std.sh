@@ -26,21 +26,19 @@ rustc_info() {
   rustc -Vv | grep $1 | awk '{print $2}'
 }
 
+BUILD_DATE=$(rustc_info "commit-date")
 RELEASE=$(rustc_info "release")
 
 if echo $RELEASE | grep -q beta; then
-    DIST_PATH=dist
     VERSION="beta"
 elif echo $RELEASE | grep -q nightly; then
-    DIST_PATH=dist/$(rustc_info "commit-date")
     VERSION="nightly"
 else
-    DIST_PATH=dist
     VERSION=$RELEASE
 fi
 
 RUST_STD_BASENAME=rust-std-$VERSION-$TARGET_X
-curl https://static.rust-lang.org/$DIST_PATH/$RUST_STD_BASENAME.tar.gz | tar -zxf -
+curl https://static.rust-lang.org/dist/$BUILD_DATE/$RUST_STD_BASENAME.tar.gz | tar -zxf -
 pushd $RUST_STD_BASENAME
 ./install.sh --prefix=~/rust
 popd
