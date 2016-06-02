@@ -182,14 +182,13 @@ void ssl_read_buffer_consume(SSL *ssl, size_t len) {
   SSL3_BUFFER *buf = &ssl->s3->read_buffer;
 
   consume_buffer(buf, len);
-  if (!SSL_IS_DTLS(ssl)) {
-    /* The TLS stack never reads beyond the current record, so there will never
-     * be unconsumed data. If read-ahead is ever reimplemented,
-     * |ssl_read_buffer_discard| will require a |memcpy| to shift the excess
-     * back to the front of the buffer, to ensure there is enough space for the
-     * next record. */
-     assert(buf->len == 0);
-  }
+
+  /* The TLS stack never reads beyond the current record, so there will never be
+   * unconsumed data. If read-ahead is ever reimplemented,
+   * |ssl_read_buffer_discard| will require a |memcpy| to shift the excess back
+   * to the front of the buffer, to ensure there is enough space for the next
+   * record. */
+  assert(SSL_IS_DTLS(ssl) || len == 0 || buf->len == 0);
 }
 
 void ssl_read_buffer_discard(SSL *ssl) {

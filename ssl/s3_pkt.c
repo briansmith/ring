@@ -123,15 +123,10 @@
 
 static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len);
 
-/* kMaxWarningAlerts is the number of consecutive warning alerts that will be
- * processed. */
-static const uint8_t kMaxWarningAlerts = 4;
-
 /* ssl3_get_record reads a new input record. On success, it places it in
  * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
  * more data is needed. */
 static int ssl3_get_record(SSL *ssl) {
-  int ret;
 again:
   switch (ssl->s3->recv_shutdown) {
     case ssl_shutdown_none:
@@ -144,9 +139,9 @@ again:
   }
 
   /* Ensure the buffer is large enough to decrypt in-place. */
-  ret = ssl_read_buffer_extend_to(ssl, ssl_record_prefix_len(ssl));
-  if (ret <= 0) {
-    return ret;
+  int read_ret = ssl_read_buffer_extend_to(ssl, ssl_record_prefix_len(ssl));
+  if (read_ret <= 0) {
+    return read_ret;
   }
   assert(ssl_read_buffer_len(ssl) >= ssl_record_prefix_len(ssl));
 
@@ -154,11 +149,21 @@ again:
   size_t max_out = ssl_read_buffer_len(ssl) - ssl_record_prefix_len(ssl);
   uint8_t type, alert;
   size_t len, consumed;
-  switch (tls_open_record(ssl, &type, out, &len, &consumed, &alert, max_out,
-                          ssl_read_buffer(ssl), ssl_read_buffer_len(ssl))) {
-    case ssl_open_record_success:
-      ssl_read_buffer_consume(ssl, consumed);
+  enum ssl_open_record_t open_ret =
+      tls_open_record(ssl, &type, out, &len, &consumed, &alert, max_out,
+                      ssl_read_buffer(ssl), ssl_read_buffer_len(ssl));
+  if (open_ret != ssl_open_record_partial) {
+    ssl_read_buffer_consume(ssl, consumed);
+  }
+  switch (open_ret) {
+    case ssl_open_record_partial:
+      read_ret = ssl_read_buffer_extend_to(ssl, consumed);
+      if (read_ret <= 0) {
+        return read_ret;
+      }
+      goto again;
 
+    case ssl_open_record_success:
       if (len > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
         return -1;
@@ -170,16 +175,14 @@ again:
       rr->data = out;
       return 1;
 
-    case ssl_open_record_partial:
-      ret = ssl_read_buffer_extend_to(ssl, consumed);
-      if (ret <= 0) {
-        return ret;
-      }
+    case ssl_open_record_discard:
       goto again;
 
-    case ssl_open_record_discard:
-      ssl_read_buffer_consume(ssl, consumed);
-      goto again;
+    case ssl_open_record_close_notify:
+      return 0;
+
+    case ssl_open_record_fatal_alert:
+      return -1;
 
     case ssl_open_record_error:
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -402,8 +405,6 @@ start:
   /* we now have a packet which can be read and processed */
 
   if (type != 0 && type == rr->type) {
-    ssl->s3->warning_alert_count = 0;
-
     /* Discard empty records. */
     if (rr->length == 0) {
       goto start;
@@ -492,56 +493,6 @@ start:
     }
 
     /* The handshake completed synchronously. Continue reading records. */
-    goto start;
-  }
-
-  /* If an alert record, process the alert. */
-  if (rr->type == SSL3_RT_ALERT) {
-    /* Alerts records may not contain fragmented or multiple alerts. */
-    if (rr->length != 2) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ALERT);
-      goto f_err;
-    }
-
-    ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_ALERT,
-                        rr->data, 2);
-
-    const uint8_t alert_level = rr->data[0];
-    const uint8_t alert_descr = rr->data[1];
-    rr->length -= 2;
-    rr->data += 2;
-
-    uint16_t alert = (alert_level << 8) | alert_descr;
-    ssl_do_info_callback(ssl, SSL_CB_READ_ALERT, alert);
-
-    if (alert_level == SSL3_AL_WARNING) {
-      if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
-        ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
-        return 0;
-      }
-
-      ssl->s3->warning_alert_count++;
-      if (ssl->s3->warning_alert_count > kMaxWarningAlerts) {
-        al = SSL_AD_UNEXPECTED_MESSAGE;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_WARNING_ALERTS);
-        goto f_err;
-      }
-    } else if (alert_level == SSL3_AL_FATAL) {
-      char tmp[16];
-
-      OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
-      BIO_snprintf(tmp, sizeof(tmp), "%d", alert_descr);
-      ERR_add_error_data(2, "SSL alert number ", tmp);
-      ssl->s3->recv_shutdown = ssl_shutdown_fatal_alert;
-      SSL_CTX_remove_session(ssl->ctx, ssl->session);
-      return 0;
-    } else {
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_ALERT_TYPE);
-      goto f_err;
-    }
-
     goto start;
   }
 

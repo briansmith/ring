@@ -144,8 +144,8 @@ again:
 
   /* Read a new packet if there is no unconsumed one. */
   if (ssl_read_buffer_len(ssl) == 0) {
-    int ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
-    if (ret < 0 && dtls1_is_timer_expired(ssl)) {
+    int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
+    if (read_ret < 0 && dtls1_is_timer_expired(ssl)) {
       /* For blocking BIOs, retransmits must be handled internally. */
       int timeout_ret = DTLSv1_handle_timeout(ssl);
       if (timeout_ret <= 0) {
@@ -153,8 +153,8 @@ again:
       }
       goto again;
     }
-    if (ret <= 0) {
-      return ret;
+    if (read_ret <= 0) {
+      return read_ret;
     }
   }
   assert(ssl_read_buffer_len(ssl) > 0);
@@ -169,11 +169,16 @@ again:
   size_t max_out = ssl_read_buffer_len(ssl) - ssl_record_prefix_len(ssl);
   uint8_t type, alert;
   size_t len, consumed;
-  switch (dtls_open_record(ssl, &type, out, &len, &consumed, &alert, max_out,
-                           ssl_read_buffer(ssl), ssl_read_buffer_len(ssl))) {
-    case ssl_open_record_success:
-      ssl_read_buffer_consume(ssl, consumed);
+  enum ssl_open_record_t open_ret =
+      dtls_open_record(ssl, &type, out, &len, &consumed, &alert, max_out,
+                       ssl_read_buffer(ssl), ssl_read_buffer_len(ssl));
+  ssl_read_buffer_consume(ssl, consumed);
+  switch (open_ret) {
+    case ssl_open_record_partial:
+      /* Impossible in DTLS. */
+      break;
 
+    case ssl_open_record_success:
       if (len > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
         return -1;
@@ -186,16 +191,17 @@ again:
       return 1;
 
     case ssl_open_record_discard:
-      ssl_read_buffer_consume(ssl, consumed);
       goto again;
+
+    case ssl_open_record_close_notify:
+      return 0;
+
+    case ssl_open_record_fatal_alert:
+      return -1;
 
     case ssl_open_record_error:
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       return -1;
-
-    case ssl_open_record_partial:
-      /* Impossible in DTLS. */
-      break;
   }
 
   assert(0);
@@ -309,49 +315,6 @@ start:
   }
 
   /* If we get here, then type != rr->type. */
-
-  /* If an alert record, process the alert. */
-  if (rr->type == SSL3_RT_ALERT) {
-    /* Alerts records may not contain fragmented or multiple alerts. */
-    if (rr->length != 2) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ALERT);
-      goto f_err;
-    }
-
-    ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_ALERT,
-                        rr->data, 2);
-
-    const uint8_t alert_level = rr->data[0];
-    const uint8_t alert_descr = rr->data[1];
-    rr->length -= 2;
-    rr->data += 2;
-
-    uint16_t alert = (alert_level << 8) | alert_descr;
-    ssl_do_info_callback(ssl, SSL_CB_READ_ALERT, alert);
-
-    if (alert_level == SSL3_AL_WARNING) {
-      if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
-        ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
-        return 0;
-      }
-    } else if (alert_level == SSL3_AL_FATAL) {
-      char tmp[16];
-
-      OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
-      BIO_snprintf(tmp, sizeof tmp, "%d", alert_descr);
-      ERR_add_error_data(2, "SSL alert number ", tmp);
-      ssl->s3->recv_shutdown = ssl_shutdown_fatal_alert;
-      SSL_CTX_remove_session(ssl->ctx, ssl->session);
-      return 0;
-    } else {
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_ALERT_TYPE);
-      goto f_err;
-    }
-
-    goto start;
-  }
 
   /* Cross-epoch records are discarded, but we may receive out-of-order
    * application data between ChangeCipherSpec and Finished or a ChangeCipherSpec
