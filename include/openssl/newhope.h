@@ -93,7 +93,7 @@ OPENSSL_EXPORT int NEWHOPE_finish(uint8_t out_key[SHA256_DIGEST_LENGTH],
  * sampled from the noise distribution. */
 void NEWHOPE_POLY_noise(NEWHOPE_POLY* r);
 
-/* NEWHOPE_POLY_noise sets |r| to an output of NEWHOPE_POLY_noise, and then
+/* NEWHOPE_POLY_noise_ntt sets |r| to an output of NEWHOPE_POLY_noise, and then
  * applies NTT(r) in-place. */
 void NEWHOPE_POLY_noise_ntt(NEWHOPE_POLY* r);
 
