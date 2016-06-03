@@ -139,6 +139,7 @@ OPENSSL_EXPORT void NEWHOPE_offer_frommsg(
     NEWHOPE_POLY *out_pk, NEWHOPE_POLY *out_a,
     const uint8_t msg[NEWHOPE_OFFERMSG_LENGTH]);
 
+
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif
