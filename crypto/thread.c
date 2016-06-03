@@ -74,6 +74,11 @@ int CRYPTO_num_locks(void) { return 1; }
 void CRYPTO_set_locking_callback(void (*func)(int mode, int lock_num,
                                               const char *file, int line)) {}
 
+void (*CRYPTO_get_locking_callback(void))(int mode, int lock_num,
+                                          const char *file, int line) {
+  return NULL;
+}
+
 void CRYPTO_set_add_lock_callback(int (*func)(int *num, int mount, int lock_num,
                                               const char *file, int line)) {}
 
@@ -99,3 +104,19 @@ void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
 
 void CRYPTO_set_dynlock_destroy_callback(void (*dyn_destroy_function)(
     struct CRYPTO_dynlock_value *l, const char *file, int line)) {}
+
+struct CRYPTO_dynlock_value *(*CRYPTO_get_dynlock_create_callback(void))(
+    const char *file, int line) {
+  return NULL;
+}
+
+void (*CRYPTO_get_dynlock_lock_callback(void))(int mode,
+                                               struct CRYPTO_dynlock_value *l,
+                                               const char *file, int line) {
+  return NULL;
+}
+
+void (*CRYPTO_get_dynlock_destroy_callback(void))(
+    struct CRYPTO_dynlock_value *l, const char *file, int line) {
+  return NULL;
+}

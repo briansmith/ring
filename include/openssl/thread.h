@@ -101,7 +101,11 @@ typedef union crypto_mutex_st {
 typedef uint32_t CRYPTO_refcount_t;
 
 
-/* Deprecated functions */
+/* Deprecated functions.
+ *
+ * Historically, OpenSSL required callers to provide locking callbacks.
+ * BoringSSL is thread-safe by default, but some old code calls these functions
+ * and so no-op implementations are provided. */
 
 /* These defines do nothing but are provided to make old code easier to
  * compile. */
@@ -123,6 +127,11 @@ OPENSSL_EXPORT void CRYPTO_set_locking_callback(
 OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
     int *num, int amount, int lock_num, const char *file, int line));
 
+/* CRYPTO_get_locking_callback returns NULL. */
+OPENSSL_EXPORT void (*CRYPTO_get_locking_callback(void))(int mode, int lock_num,
+                                                         const char *file,
+                                                         int line);
+
 /* CRYPTO_get_lock_name returns a fixed, dummy string. */
 OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
 
@@ -139,14 +148,6 @@ OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
 
 /* CRYPTO_THREADID_current does nothing. */
 OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
-
-
-/* Private functions.
- *
- * Some old code calls these functions and so no-op implementations are
- * provided.
- *
- * TODO(fork): cleanup callers and remove. */
 
 OPENSSL_EXPORT void CRYPTO_set_id_callback(unsigned long (*func)(void));
 
@@ -165,6 +166,15 @@ OPENSSL_EXPORT void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
 OPENSSL_EXPORT void CRYPTO_set_dynlock_destroy_callback(
     void (*dyn_destroy_function)(struct CRYPTO_dynlock_value *l,
                                  const char *file, int line));
+
+OPENSSL_EXPORT struct CRYPTO_dynlock_value *(
+    *CRYPTO_get_dynlock_create_callback(void))(const char *file, int line);
+
+OPENSSL_EXPORT void (*CRYPTO_get_dynlock_lock_callback(void))(
+    int mode, struct CRYPTO_dynlock_value *l, const char *file, int line);
+
+OPENSSL_EXPORT void (*CRYPTO_get_dynlock_destroy_callback(void))(
+    struct CRYPTO_dynlock_value *l, const char *file, int line);
 
 
 #if defined(__cplusplus)
