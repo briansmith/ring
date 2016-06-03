@@ -75,7 +75,7 @@ static bool TestNoise(void) {
   return true;
 }
 
-static int hamming32(const uint8_t key[NEWHOPE_KEY_LENGTH]) {
+static int Hamming32(const uint8_t key[NEWHOPE_KEY_LENGTH]) {
   static int kHamming[256] = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
@@ -112,7 +112,7 @@ static bool TestKeys(void) {
       sp(NEWHOPE_POLY_new()), ep(NEWHOPE_POLY_new()), epp(NEWHOPE_POLY_new()),
       a(NEWHOPE_POLY_new()), bp(NEWHOPE_POLY_new()), rec(NEWHOPE_POLY_new());
 
-  uint64_t ones = 0;
+  int ones = 0;
   for (size_t i = 0; i < kNumTests; i++) {
     NEWHOPE_offer(offermsg, sk.get());
     NEWHOPE_offer_frommsg(pk.get(), a.get(), offermsg);
@@ -127,15 +127,15 @@ static bool TestKeys(void) {
     NEWHOPE_accept_computation(key, bp.get(), rec.get(),
                                sp.get(), ep.get(), epp.get(), rand,
                                pk.get(), a.get());
-    ones += hamming32(key);
+    ones += Hamming32(key);
   }
 
-  uint64_t bits = NEWHOPE_KEY_LENGTH * 8 * kNumTests;
-  uint64_t diff = bits - 2 * ones;
+  int bits = NEWHOPE_KEY_LENGTH * 8 * kNumTests;
+  int diff = bits - 2 * ones;
   double fraction = (double) abs(diff) / bits;
-  printf("ones:   %u\n", (unsigned) ones);
-  printf("zeroes: %u\n", (unsigned) (bits - ones));
-  printf("diff:   got %u (%f), want %ld\n", (unsigned) diff, fraction, 0L);
+  printf("ones:   %d\n", ones);
+  printf("zeroes: %d\n", (bits - ones));
+  printf("diff:   got %d (%f), want 0\n", diff, fraction);
   printf("\n");
 
   if (fraction > 0.01) {
