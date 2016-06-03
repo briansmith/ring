@@ -714,6 +714,8 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
 #define BIO_CTRL_INFO		3  /* opt - extra tit-bits */
 #define BIO_CTRL_SET		4  /* man - set the 'IO' type */
 #define BIO_CTRL_GET		5  /* man - get the 'IO' type */
+#define BIO_CTRL_PUSH	6
+#define BIO_CTRL_POP	7
 #define BIO_CTRL_GET_CLOSE	8  /* man - set the 'close' on free */
 #define BIO_CTRL_SET_CLOSE	9  /* man - set the 'close' on free */
 #define BIO_CTRL_PENDING	10  /* opt - is their more data buffered */
@@ -724,10 +726,8 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
 #define BIO_CTRL_GET_CALLBACK	15  /* opt - set callback function */
 #define BIO_CTRL_SET_FILENAME	30	/* BIO_s_file special */
 
-/* These are never used, but exist to allow code to compile more easily. */
-#define BIO_CTRL_DUP	100
-#define BIO_CTRL_PUSH	101
-#define BIO_CTRL_POP	102
+/* BIO_CTRL_DUP is never used, but exists to allow code to compile more easily. */
+#define BIO_CTRL_DUP	12
 
 
 /* Android compatibility section.
