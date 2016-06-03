@@ -562,6 +562,10 @@ OPENSSL_EXPORT int BIO_set_conn_hostname(BIO *bio,
  * will connect to. It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int BIO_set_conn_port(BIO *bio, const char *port_str);
 
+/* BIO_set_conn_int_port sets |*port| as the port that |bio| will connect to.
+ * It returns one on success and zero otherwise. */
+OPENSSL_EXPORT int BIO_set_conn_int_port(BIO *bio, const int *port);
+
 /* BIO_set_nbio sets whether |bio| will use non-blocking I/O operations. It
  * returns one on success and zero otherwise. */
 OPENSSL_EXPORT int BIO_set_nbio(BIO *bio, int on);

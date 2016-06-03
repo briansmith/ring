@@ -538,6 +538,12 @@ int BIO_set_conn_port(BIO *bio, const char *port_str) {
   return BIO_ctrl(bio, BIO_C_SET_CONNECT, 1, (void*) port_str);
 }
 
+int BIO_set_conn_int_port(BIO *bio, const int *port) {
+  char buf[DECIMAL_SIZE(int) + 1];
+  BIO_snprintf(buf, sizeof(buf), "%d", *port);
+  return BIO_set_conn_port(bio, buf);
+}
+
 int BIO_set_nbio(BIO *bio, int on) {
   return BIO_ctrl(bio, BIO_C_SET_NBIO, on, NULL);
 }
