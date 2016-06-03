@@ -43,12 +43,6 @@ struct newhope_poly_st {
  * |seed|. (In the reference implementation this was done with SHAKE-128.) */
 void newhope_poly_uniform(NEWHOPE_POLY* a, const uint8_t* seed);
 
-/* newhope_poly_getnoise sets |r| to a random polynomial where the coefficients
- * are
- * sampled from the noise distribution. (In the reference implementation, this
- * is given a random seed and a nonce.)*/
-void newhope_poly_getnoise(NEWHOPE_POLY* r);
-
 void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v,
                      const uint8_t rbits[32]);
 
@@ -57,9 +51,6 @@ void newhope_helprec(NEWHOPE_POLY* c, const NEWHOPE_POLY* v,
  * reconciliation data |c|, writing the resulting key to |key|. */
 void newhope_reconcile(uint8_t* key, const NEWHOPE_POLY* v,
                        const NEWHOPE_POLY* c);
-
-/* newhope_poly_ntt performs NTT(r) in-place. */
-void newhope_poly_ntt(NEWHOPE_POLY* r);
 
 /* newhope_poly_invntt performs the inverse of NTT(r) in-place. */
 void newhope_poly_invntt(NEWHOPE_POLY* r);

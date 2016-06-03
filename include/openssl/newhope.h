@@ -89,6 +89,14 @@ OPENSSL_EXPORT int NEWHOPE_finish(uint8_t out_key[SHA256_DIGEST_LENGTH],
 
 /* Lower-level functions. */
 
+/* NEWHOPE_POLY_noise sets |r| to a random polynomial where the coefficients are
+ * sampled from the noise distribution. */
+void NEWHOPE_POLY_noise(NEWHOPE_POLY* r);
+
+/* NEWHOPE_POLY_noise sets |r| to an output of NEWHOPE_POLY_noise, and then
+ * applies NTT(r) in-place. */
+void NEWHOPE_POLY_noise_ntt(NEWHOPE_POLY* r);
+
 /* NEWHOPE_offer_computation is the work of |NEWHOPE_offer|, less the encoding
  * parts.  The inputs are the noise polynomials |s| and |e|, and random
  * polynomial |a|. The output is the polynomial |pk|. */
@@ -125,6 +133,11 @@ OPENSSL_EXPORT void NEWHOPE_POLY_frombytes(
 OPENSSL_EXPORT void NEWHOPE_POLY_tobytes(uint8_t r[NEWHOPE_POLY_LENGTH],
                                          const NEWHOPE_POLY* p);
 
+/* NEWHOPE_offer_frommsg decodes an offer message |msg| into its constituent
+ * polynomials |out_pk| and |a|. */
+OPENSSL_EXPORT void NEWHOPE_offer_frommsg(
+    NEWHOPE_POLY *out_pk, NEWHOPE_POLY *out_a,
+    const uint8_t msg[NEWHOPE_OFFERMSG_LENGTH]);
 
 #if defined(__cplusplus)
 } /* extern "C" */

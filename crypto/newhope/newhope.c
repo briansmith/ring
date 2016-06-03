@@ -47,8 +47,7 @@ static void decode_rec(const uint8_t *r, NEWHOPE_POLY *c) {
 }
 
 void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *s) {
-  newhope_poly_getnoise(s);
-  newhope_poly_ntt(s);
+  NEWHOPE_POLY_noise_ntt(s);
 
   /* The first part of the offer message is the seed, which compactly encodes
    * a. */
@@ -58,8 +57,7 @@ void NEWHOPE_offer(uint8_t *offermsg, NEWHOPE_POLY *s) {
   newhope_poly_uniform(&a, seed);
 
   NEWHOPE_POLY e;
-  newhope_poly_getnoise(&e);
-  newhope_poly_ntt(&e);
+  NEWHOPE_POLY_noise_ntt(&e);
 
   /* The second part of the offer message is the polynomial pk = a*s+e */
   NEWHOPE_POLY pk;
@@ -78,17 +76,13 @@ int NEWHOPE_accept(uint8_t key[SHA256_DIGEST_LENGTH],
   /* Decode the |offermsg|, generating the same |a| as the peer, from the peer's
    * seed. */
   NEWHOPE_POLY pk, a;
-  const uint8_t *seed = &offermsg[NEWHOPE_POLY_LENGTH];
-  newhope_poly_uniform(&a, seed);
-  NEWHOPE_POLY_frombytes(&pk, offermsg);
+  NEWHOPE_offer_frommsg(&pk, &a, offermsg);
 
   /* Generate noise polynomials used to generate our key. */
   NEWHOPE_POLY sp, ep, epp;
-  newhope_poly_getnoise(&sp);
-  newhope_poly_ntt(&sp);
-  newhope_poly_getnoise(&ep);
-  newhope_poly_ntt(&ep);
-  newhope_poly_getnoise(&epp);  /* intentionally not NTT */
+  NEWHOPE_POLY_noise_ntt(&sp);
+  NEWHOPE_POLY_noise_ntt(&ep);
+  NEWHOPE_POLY_noise(&epp);  /* intentionally not NTT */
 
   /* Generate random bytes used for reconciliation. (The reference
    * implementation calls ChaCha20 here.) */
@@ -170,4 +164,11 @@ void NEWHOPE_finish_computation(uint8_t k[NEWHOPE_KEY_LENGTH],
   newhope_poly_pointwise(&v, sk, bp);
   newhope_poly_invntt(&v);
   newhope_reconcile(k, &v, reconciliation);
+}
+
+void NEWHOPE_offer_frommsg(NEWHOPE_POLY *out_pk, NEWHOPE_POLY *out_a,
+                           const uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH]) {
+  NEWHOPE_POLY_frombytes(out_pk, offermsg);
+  const uint8_t *seed = offermsg + NEWHOPE_POLY_LENGTH;
+  newhope_poly_uniform(out_a, seed);
 }

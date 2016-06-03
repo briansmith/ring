@@ -126,7 +126,7 @@ void newhope_poly_uniform(NEWHOPE_POLY* a, const uint8_t* seed) {
   }
 }
 
-void newhope_poly_getnoise(NEWHOPE_POLY* r) {
+void NEWHOPE_POLY_noise(NEWHOPE_POLY* r) {
 #if PARAM_K != 16
 #error "poly_getnoise in poly.c only supports k=16"
 #endif
@@ -171,7 +171,13 @@ void newhope_poly_add(NEWHOPE_POLY* r, const NEWHOPE_POLY* a,
   }
 }
 
-void newhope_poly_ntt(NEWHOPE_POLY* r) {
+void NEWHOPE_POLY_noise_ntt(NEWHOPE_POLY* r) {
+  NEWHOPE_POLY_noise(r);
+  /* Forward NTT transformation.  Because we're operating on a noise polynomial,
+   * we can regard the bits as already reversed and skip the bit-reversal
+   * step:
+   *
+   * newhope_bitrev_vector(r->coeffs); */
   newhope_mul_coefficients(r->coeffs, newhope_psis_bitrev_montgomery);
   newhope_ntt((uint16_t *) r->coeffs, newhope_omegas_montgomery);
 }
