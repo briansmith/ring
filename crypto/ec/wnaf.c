@@ -75,11 +75,24 @@
 
 #include "internal.h"
 #include "../internal.h"
-
+#include "../bn/internal.h"
 
 /* This file implements the wNAF-based interleaving multi-exponentation method
  * (<URL:http://www.informatik.tu-darmstadt.de/TI/Mitarbeiter/moeller.html#multiexp>);
  * */
+
+
+/* Prototypes to avoid -Wmissing-prototypes warnings. */
+size_t GFp_suite_b_wnaf(int8_t *r, const BN_ULONG *scalar, size_t scalar_limbs,
+                        int w);
+
+
+static int is_bit_set(const BN_ULONG *scalar, size_t bit) {
+  BN_ULONG limb = scalar[bit / BN_BITS2];
+  size_t bit_within_limb = bit % BN_BITS2;
+  int ret = (limb >> bit_within_limb) & 1;
+  return ret;
+}
 
 /* Determine the modified width-(w+1) Non-Adjacent Form (wNAF) of 'scalar'.
  * This is an array  r[]  of values that are either zero or odd with an
@@ -89,55 +102,33 @@
  * with the exception that the most significant digit may be only
  * w-1 zeros away from that next non-zero digit.
  */
-static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
+size_t GFp_suite_b_wnaf(int8_t *r, const BN_ULONG scalar[],
+                        size_t scalar_limbs, int w) {
+  /* 'int8_t' can represent integers with absolute values less than 2^7 */
+  assert(1 <= w);
+  assert(w <= 7);
+
   int window_val;
-  int ok = 0;
-  signed char *r = NULL;
-  int sign = 1;
   int bit, next_bit, mask;
-  size_t len = 0, j;
+  size_t j;
 
-  if (BN_is_zero(scalar)) {
-    r = OPENSSL_malloc(1);
-    if (!r) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      goto err;
+  size_t len = scalar_limbs * BN_BITS2;
+  for (;;) {
+    if (len == 0) {
+      r[0] = 0;
+      return 1;
     }
-    r[0] = 0;
-    *ret_len = 1;
-    return r;
+    if (is_bit_set(scalar, len - 1)) {
+      break;
+    }
+    --len;
   }
 
-  if (w <= 0 || w > 7) /* 'signed char' can represent integers with absolute
-                          values less than 2^7 */
-  {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
   bit = 1 << w;        /* at most 128 */
   next_bit = bit << 1; /* at most 256 */
   mask = next_bit - 1; /* at most 255 */
 
-  if (BN_is_negative(scalar)) {
-    sign = -1;
-  }
-
-  if (scalar->d == NULL || scalar->top == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  len = BN_num_bits(scalar);
-  r = OPENSSL_malloc(
-      len +
-      1); /* modified wNAF may be one digit longer than binary representation
-           * (*ret_len will be set to the actual length, i.e. at most
-           * BN_num_bits(scalar) + 1) */
-  if (r == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  window_val = scalar->d[0] & mask;
+  window_val = scalar[0] & mask;
   j = 0;
   while ((window_val != 0) ||
          (j + w + 1 < len)) /* if j+w+1 >= len, window_val will not increase */
@@ -166,49 +157,28 @@ static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
         digit = window_val; /* 0 < digit < 2^w */
       }
 
-      if (digit <= -bit || digit >= bit || !(digit & 1)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-        goto err;
-      }
+      assert(!(digit <= -bit || digit >= bit || !(digit & 1)));
 
       window_val -= digit;
 
       /* now window_val is 0 or 2^(w+1) in standard wNAF generation;
        * for modified window NAFs, it may also be 2^w
        */
-      if (window_val != 0 && window_val != next_bit && window_val != bit) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-        goto err;
-      }
+      assert(!(window_val != 0 && window_val != next_bit && window_val != bit));
     }
 
-    r[j++] = sign * digit;
+    r[j++] = digit;
 
     window_val >>= 1;
-    window_val += bit * BN_is_bit_set(scalar, j + w);
-
-    if (window_val > next_bit) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-      goto err;
+    if (j + w < len && is_bit_set(scalar, j + w)) {
+      window_val += bit;
     }
+
+    assert(!(window_val > next_bit));
   }
 
-  if (j > len + 1) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-  len = j;
-  ok = 1;
-
-err:
-  if (!ok) {
-    OPENSSL_free(r);
-    r = NULL;
-  }
-  if (ok) {
-    *ret_len = len;
-  }
-  return r;
+  assert(!(j > len + 1));
+  return j;
 }
 
 
@@ -223,6 +193,28 @@ err:
                                                                          ? 2   \
                                                                          : 1))
 
+static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
+  if (BN_is_negative(scalar)) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return NULL;
+
+  }
+  if (w <= 0 || w > 7) /* 'signed char' can represent integers with absolute
+                       values less than 2^7 */
+  {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return NULL;
+  }
+
+  unsigned len = BN_num_bits(scalar);
+  signed char *r = OPENSSL_malloc(len + 1);
+  if (r == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  *ret_len = GFp_suite_b_wnaf(r, scalar->d, (size_t)scalar->top, w);
+  return r;
+}
 
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                 const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
