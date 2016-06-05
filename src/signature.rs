@@ -136,6 +136,21 @@ pub struct VerificationAlgorithm {
 /// }
 /// ```
 ///
+/// ## Signing with Ed25519 private key
+///
+/// ```
+/// use ring::input::Input;
+/// use ring::signature::{Ed25519KeyPair, Signature};
+///
+/// fn sign_ed25519(private_key: Input, public_key: Input, msg: Input)
+///                 -> Result<Signature, ()> {
+///     let pub_key = public_key.as_slice_less_safe();
+///     let priv_key = private_key.as_slice_less_safe();
+///     let key_pair = try!(Ed25519KeyPair::from_bytes(priv_key, pub_key));
+///     Ok(key_pair.sign(msg.as_slice_less_safe()))
+/// }
+/// ```
+///
 /// ## Verify an Ed25519 signature
 ///
 /// ```
