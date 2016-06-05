@@ -16,8 +16,8 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, input, signature, signature_impl};
-use input::{Input, input_equals};
+use {bssl, c, der, digest, signature, signature_impl};
+use untrusted;
 
 
 #[allow(non_camel_case_types)]
@@ -28,8 +28,8 @@ struct RSA_PKCS1 {
 }
 
 impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
-    fn verify(&self, public_key: Input, msg: Input, signature: Input)
-              -> Result<(), ()> {
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), ()> {
         const MAX_BITS: usize = 8192;
 
         let (n, e) = try!(parse_public_key(public_key));
@@ -47,8 +47,8 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
                                    self.min_bits, MAX_BITS)
         }));
 
-        let decoded = try!(Input::new(decoded));
-        input::read_all(decoded, (), |decoded| {
+        let decoded = try!(untrusted::Input::new(decoded));
+        untrusted::read_all(decoded, (), |decoded| {
             if try!(decoded.read_byte()) != 0 ||
                try!(decoded.read_byte()) != 1 {
                 return Err(());
@@ -68,8 +68,8 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
 
             let decoded_digestinfo_prefix =
                 try!(decoded.skip_and_get_input(self.digestinfo_prefix.len()));
-            if !input_equals(decoded_digestinfo_prefix,
-                             self.digestinfo_prefix) {
+            if !untrusted::input_equals(decoded_digestinfo_prefix,
+                                        self.digestinfo_prefix) {
                 return Err(());
             }
 
@@ -77,7 +77,7 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
                 try!(decoded.skip_and_get_input(self.digest_alg.output_len));
             let digest =
                 digest::digest(self.digest_alg, msg.as_slice_less_safe());
-            if !input_equals(decoded_digest, digest.as_ref()) {
+            if !untrusted::input_equals(decoded_digest, digest.as_ref()) {
                 return Err(());
             }
 
@@ -153,8 +153,9 @@ pkcs1_digestinfo_prefix!(
     [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
 
 
-fn parse_public_key<'a>(input: Input<'a>) -> Result<(&'a [u8], &'a [u8]), ()> {
-    input::read_all(input, (), |input| {
+fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
+                        Result<(&'a [u8], &'a [u8]), ()> {
+    untrusted::read_all(input, (), |input| {
         der::nested(input, der::Tag::Sequence, (), |input| {
             let n = try!(der::positive_integer(input));
             let e = try!(der::positive_integer(input));
@@ -178,8 +179,8 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {der, file_test, input, signature};
-    use input::Input;
+    use {der, file_test, signature};
+    use untrusted;
     use super::*;
 
     #[test]
@@ -201,12 +202,12 @@ mod tests {
             };
 
             let public_key = test_case.consume_bytes("Key");
-            let public_key = Input::new(&public_key).unwrap();
+            let public_key = untrusted::Input::new(&public_key).unwrap();
 
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(input::read_all(public_key, (), |input| {
+            assert!(untrusted::read_all(public_key, (), |input| {
                 der::nested(input, der::Tag::Sequence, (), |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));
@@ -215,10 +216,10 @@ mod tests {
             }).is_ok());
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = Input::new(&msg).unwrap();
+            let msg = untrusted::Input::new(&msg).unwrap();
 
             let sig = test_case.consume_bytes("Sig");
-            let sig = Input::new(&sig).unwrap();
+            let sig = untrusted::Input::new(&sig).unwrap();
 
             let expected_result = test_case.consume_string("Result");
 

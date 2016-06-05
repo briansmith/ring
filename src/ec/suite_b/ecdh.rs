@@ -18,7 +18,7 @@
 
 use {agreement, c, ec, rand};
 use bssl;
-use input::Input;
+use untrusted;
 use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
 
 /// A key agreement algorithm.
@@ -60,7 +60,7 @@ macro_rules! ecdh {
         };
 
         fn $ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
-                 peer_public_key: Input) -> Result<(), ()> {
+                 peer_public_key: untrusted::Input) -> Result<(), ()> {
             ecdh($group, out, ($bits + 7) / 8, my_private_key, peer_public_key)
         }
 
@@ -69,7 +69,7 @@ macro_rules! ecdh {
 }
 
 fn ecdh(group: &EC_GROUP, out: &mut [u8], elem_and_scalar_len: usize,
-        my_private_key: &ec::PrivateKey, peer_public_key: Input)
+        my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input)
         -> Result<(), ()> {
     let (peer_x, peer_y) =
         try!(ec::suite_b::parse_uncompressed_point(peer_public_key,

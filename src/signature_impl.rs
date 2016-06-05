@@ -16,9 +16,9 @@
 //! `VerificationAlgorithmImpl` from `ring::signature` such that only `ring`
 //! submodules can implement it.
 
-use input::Input;
+use untrusted;
 
 pub trait VerificationAlgorithmImpl {
-    fn verify(&self, public_key: Input, msg: Input, signature: Input)
-              -> Result<(), ()>;
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), ()>;
 }

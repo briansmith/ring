@@ -15,7 +15,7 @@
 #![allow(unsafe_code)]
 
 use {bssl, c, init, rand};
-use input::Input;
+use untrusted;
 
 /// A key agreement algorithm.
 #[cfg_attr(not(test), allow(dead_code))]
@@ -32,8 +32,8 @@ pub struct AgreementAlgorithmImpl {
         unsafe extern fn(public_out: *mut u8, private_key: *const u8) -> c::int,
 
     pub ecdh:
-        fn(out: &mut [u8], private_key: &PrivateKey, peer_public_key: Input)
-           -> Result<(), ()>,
+        fn(out: &mut [u8], private_key: &PrivateKey,
+           peer_public_key: untrusted::Input) -> Result<(), ()>,
 }
 
 macro_rules! agreement_externs {

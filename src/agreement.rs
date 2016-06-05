@@ -23,7 +23,7 @@
 //! ```
 //! # fn x25519_agreement_example() -> Result<(), ()> {
 //! use ring::{agreement, rand};
-//! use ring::input::Input;
+//! use untrusted;
 //!
 //! let rng = rand::SystemRandom::new();
 //!
@@ -50,7 +50,7 @@
 //!         &mut peer_public_key_buf[..peer_private_key.public_key_len()];
 //!     try!(peer_private_key.compute_public_key(peer_public_key));
 //! }
-//! let peer_public_key = try!(Input::new(peer_public_key));
+//! let peer_public_key = try!(untrusted::Input::new(peer_public_key));
 //!
 //! // In a real application, the protocol specifies how to determine what
 //! // algorithm was used to generate the peer's private key. Here, we know it
@@ -70,7 +70,7 @@
 //! ```
 
 use {ec, rand};
-use input::Input;
+use untrusted;
 
 
 pub use ec::PUBLIC_KEY_MAX_LEN;
@@ -165,7 +165,7 @@ impl EphemeralPrivateKey {
 /// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
 pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
                                 peer_public_key_alg: &Algorithm,
-                                peer_public_key: Input,
+                                peer_public_key: untrusted::Input,
                                 error_value: E, kdf: F) -> Result<R, E>
                                 where F: FnOnce(&[u8]) -> Result<R, E> {
     if peer_public_key_alg.i.nid != my_private_key.alg.i.nid {
@@ -183,7 +183,7 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
 #[cfg(test)]
 mod tests {
     use {file_test, rand};
-    use input::Input;
+    use untrusted;
     use super::*;
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
             let curve_name = test_case.consume_string("Curve");
             let alg = alg_from_curve_name(&curve_name);
             let peer_public = test_case.consume_bytes("PeerQ");
-            let peer_public = Input::new(&peer_public).unwrap();
+            let peer_public = untrusted::Input::new(&peer_public).unwrap();
 
             match test_case.consume_optional_string("Error") {
                 None => {

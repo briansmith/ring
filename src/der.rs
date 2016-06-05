@@ -16,7 +16,7 @@
 //!
 //! This module contains the foundational parts of an ASN.1 DER parser.
 
-use super::input::*;
+use untrusted;
 
 pub const CONSTRUCTED : u8 = 1 << 5;
 pub const CONTEXT_SPECIFIC : u8 = 2 << 6;
@@ -39,8 +39,9 @@ pub enum Tag {
     ContextSpecificConstructed3 = CONTEXT_SPECIFIC | CONSTRUCTED | 3,
 }
 
-pub fn expect_tag_and_get_value<'a>(input: &mut Reader<'a>, tag: Tag)
-                                    -> Result<Input<'a>, ()> {
+pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
+                                    tag: Tag)
+                                    -> Result<untrusted::Input<'a>, ()> {
     let (actual_tag, inner) = try!(read_tag_and_get_value(input));
     if (tag as usize) != (actual_tag as usize) {
         return Err(());
@@ -48,8 +49,8 @@ pub fn expect_tag_and_get_value<'a>(input: &mut Reader<'a>, tag: Tag)
     Ok(inner)
 }
 
-pub fn read_tag_and_get_value<'a>(input: &mut Reader<'a>)
-                                  -> Result<(u8, Input<'a>), ()> {
+pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
+                                  -> Result<(u8, untrusted::Input<'a>), ()> {
     let tag = try!(input.read_byte());
     if (tag & 0x1F) == 0x1F {
         return Err(()) // High tag number form is not allowed.
@@ -87,19 +88,20 @@ pub fn read_tag_and_get_value<'a>(input: &mut Reader<'a>)
 
 // TODO: investigate taking decoder as a reference to reduce generated code
 // size.
-pub fn nested<'a, F, R, E: Copy>(input: &mut Reader<'a>, tag: Tag, error: E,
-                                 decoder: F) -> Result<R, E>
-                                 where F : FnOnce(&mut Reader<'a>)
+pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
+                                 error: E, decoder: F) -> Result<R, E>
+                                 where F : FnOnce(&mut untrusted::Reader<'a>)
                                  -> Result<R, E> {
     let inner = try!(expect_tag_and_get_value(input, tag).map_err(|_| error));
-    read_all(inner, error, decoder)
+    untrusted::read_all(inner, error, decoder)
 }
 
-pub fn positive_integer<'a>(input: &mut Reader<'a>) -> Result<Input<'a>, ()> {
+pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
+                            -> Result<untrusted::Input<'a>, ()> {
     let value = try!(expect_tag_and_get_value(input, Tag::Integer));
 
     // Empty encodings are not allowed.
-    read_all(value, (), |input| {
+    untrusted::read_all(value, (), |input| {
         let first_byte = try!(input.read_byte());
 
         if first_byte == 0 {

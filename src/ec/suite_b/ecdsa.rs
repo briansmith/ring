@@ -16,8 +16,8 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use {bssl, c, der, digest, ec, input, signature, signature_impl};
-use input::Input;
+use {bssl, c, der, digest, ec, signature, signature_impl};
+use untrusted;
 use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
 
 #[cfg(not(feature = "no_heap"))]
@@ -29,11 +29,11 @@ struct ECDSA {
 
 #[cfg(not(feature = "no_heap"))]
 impl signature_impl::VerificationAlgorithmImpl for ECDSA {
-    fn verify(&self, public_key: Input, msg: Input, signature: Input)
-              -> Result<(), ()> {
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), ()> {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
 
-        let (r, s) = try!(input::read_all(signature, (), |input| {
+        let (r, s) = try!(untrusted::read_all(signature, (), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
                 let r = try!(der::positive_integer(input));
                 let s = try!(der::positive_integer(input));
@@ -135,8 +135,8 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {file_test, der, input, signature};
-    use input::Input;
+    use {file_test, der, signature};
+    use untrusted;
     use super::*;
 
     #[test]
@@ -149,19 +149,19 @@ mod tests {
             let alg = alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = Input::new(&msg).unwrap();
+            let msg = untrusted::Input::new(&msg).unwrap();
 
             let public_key = test_case.consume_bytes("Q");
-            let public_key = Input::new(&public_key).unwrap();
+            let public_key = untrusted::Input::new(&public_key).unwrap();
 
             let sig = test_case.consume_bytes("Sig");
-            let sig = Input::new(&sig).unwrap();
+            let sig = untrusted::Input::new(&sig).unwrap();
 
             // Sanity check that we correctly DER-encoded the
             // originally-provided separate (r, s) components. When we add test
             // vectors for improperly-encoded signatures, we'll have to revisit
             // this.
-            assert!(input::read_all(sig, (), |input| {
+            assert!(untrusted::read_all(sig, (), |input| {
                 der::nested(input, der::Tag::Sequence, (), |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));

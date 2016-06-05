@@ -14,8 +14,7 @@
 
 //! Common functionality on public keys for NIST curves.
 
-use input;
-use input::Input;
+use untrusted;
 
 
 pub mod ecdsa;
@@ -27,10 +26,10 @@ pub mod ecdh;
 /// XXX: The coordinates are *not* validated to be proper field elements; the
 /// caller is responsible for doing that check (this check is done in the C
 /// code).
-pub fn parse_uncompressed_point<'a>(input: Input<'a>,
+pub fn parse_uncompressed_point<'a>(input: untrusted::Input<'a>,
                                     elem_and_scalar_len: usize)
                                     -> Result<(&'a [u8], &'a [u8]), ()> {
-    input::read_all(input, (), |input| {
+    untrusted::read_all(input, (), |input| {
         // The encoding must be 4, which is the encoding for
         // "uncompressed".
         let encoding = try!(input.read_byte());

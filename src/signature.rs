@@ -39,7 +39,7 @@
 //! larger messages may be added later.
 
 use {init, signature_impl};
-use super::input::Input;
+use untrusted;
 
 #[cfg(not(feature = "no_heap"))]
 pub use ec::suite_b::ecdsa::{
@@ -101,18 +101,18 @@ pub struct VerificationAlgorithm {
 /// # // XXX: Re-enable when https://github.com/rust-lang/rust/pull/30372
 /// # // reaches stable.
 /// #
-/// use ring::input::Input;
 /// use ring::signature;
+/// use untrusted;
 ///
-/// // Ideally this function should take its inputs as `Input`s instead of
-/// // slices. It takes its input as slices to illustrate how to convert slices
-/// // to `Input`s.
+/// // Ideally this function should take its inputs as `untrusted::Input`s
+/// // instead of // slices. It takes its input as slices to illustrate how to
+/// // convert slices to `untrusted::Input`s.
 /// # #[cfg(not(feature = "no_heap"))]
 /// fn verify_rsa_pkcs1_sha256(public_key: &[u8], msg: &[u8], sig: &[u8])
 ///                            -> Result<(), ()> {
-///    let public_key = try!(Input::new(public_key));
-///    let msg = try!(Input::new(msg));
-///    let sig = try!(Input::new(sig));
+///    let public_key = try!(untrusted::Input::new(public_key));
+///    let msg = try!(untrusted::Input::new(msg));
+///    let sig = try!(untrusted::Input::new(sig));
 ///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
 ///                      public_key, msg, sig)
 /// }
@@ -121,16 +121,17 @@ pub struct VerificationAlgorithm {
 /// ## Verify an Ed25519 signature
 ///
 /// ```
-/// use ring::input::Input;
 /// use ring::signature;
+/// use untrusted;
 ///
-/// fn verify_ed25519(public_key: Input, msg: Input, sig: Input)
-///                   -> Result<(), ()> {
+/// fn verify_ed25519(public_key: untrusted::Input, msg: untrusted::Input,
+///                   sig: untrusted::Input) -> Result<(), ()> {
 ///    signature::verify(&signature::ED25519_VERIFY, public_key, msg, sig)
 /// }
 /// ```
-pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
-              signature: Input) -> Result<(), ()> {
+pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
+              msg: untrusted::Input, signature: untrusted::Input)
+              -> Result<(), ()> {
     init::init_once();
     alg.implementation.verify(public_key, msg, signature)
 }

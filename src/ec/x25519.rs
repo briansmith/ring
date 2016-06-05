@@ -19,7 +19,7 @@
 use {agreement, c, ec, rand};
 
 use bssl;
-use input::Input;
+use untrusted;
 
 
 /// X25519 (ECDH using Curve25519).
@@ -42,7 +42,7 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
 };
 
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
-               peer_public_key: Input) -> Result<(), ()> {
+               peer_public_key: untrusted::Input) -> Result<(), ()> {
     debug_assert_eq!(out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     debug_assert_eq!(peer_public_key.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     bssl::map_result(unsafe {
@@ -65,8 +65,8 @@ extern {
 #[cfg(test)]
 mod tests {
     use {agreement, file_test};
-    use input::Input;
     use std;
+    use untrusted;
 
     #[test]
     fn test_agreement_ecdh_x25519_rfc_iterated() {
@@ -116,7 +116,7 @@ mod tests {
         let private_key =
             agreement::EphemeralPrivateKey::from_test_vector(
                 &agreement::X25519, private_key);
-        let public_key = try!(Input::new(public_key));
+        let public_key = try!(untrusted::Input::new(public_key));
         agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
                                    (), |agreed_value| {
             Ok(std::vec::Vec::from(agreed_value))

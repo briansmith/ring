@@ -114,6 +114,8 @@ extern crate std;
 #[macro_use(format, print, println, vec)]
 extern crate std;
 
+extern crate untrusted;
+
 #[macro_use] mod bssl;
 #[macro_use] mod polyfill;
 
@@ -130,7 +132,6 @@ pub mod der;
 pub mod hkdf;
 pub mod hmac;
 mod init;
-pub mod input;
 pub mod pbkdf2;
 
 pub mod rand;

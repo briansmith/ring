@@ -19,6 +19,7 @@ doctest=false
 
 [dependencies]
 lazy_static = "0.2.1"
+untrusted = { git = "https://github.com/briansmith/untrusted" }
 
 [build-dependencies.num]
 version = "0.1.30"

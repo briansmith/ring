@@ -17,7 +17,7 @@
 //! EdDSA Signatures.
 
 use {bssl, c, signature, signature_impl};
-use input::Input;
+use untrusted;
 
 struct EdDSA;
 
@@ -45,8 +45,8 @@ pub fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
 }
 
 impl signature_impl::VerificationAlgorithmImpl for EdDSA {
-    fn verify(&self, public_key: Input, msg: Input, signature: Input)
-              -> Result<(), ()> {
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), ()> {
         let public_key = public_key.as_slice_less_safe();
         if public_key.len() != 32 || signature.len() != 64 {
             return Err(())
@@ -76,7 +76,7 @@ extern {
 #[cfg(test)]
 mod tests {
     use {file_test, signature};
-    use input::Input;
+    use untrusted;
     use super::ed25519_sign;
 
     /// Test vectors from BoringSSL.
@@ -95,9 +95,9 @@ mod tests {
             assert!(ed25519_sign(&private_key, &msg, &mut actual_sig).is_ok());
             assert_eq!(&expected_sig[..], &actual_sig[..]);
 
-            let public_key = Input::new(&public_key).unwrap();
-            let msg = Input::new(&msg).unwrap();
-            let expected_sig = Input::new(&expected_sig).unwrap();
+            let public_key = untrusted::Input::new(&public_key).unwrap();
+            let msg = untrusted::Input::new(&msg).unwrap();
+            let expected_sig = untrusted::Input::new(&expected_sig).unwrap();
 
             assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
                                       msg, expected_sig).is_ok());
