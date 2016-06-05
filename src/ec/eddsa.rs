@@ -64,8 +64,7 @@ impl signature_impl::VerificationAlgorithmImpl for EdDSA {
 extern {
     #[cfg(test)]
     fn ED25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
-                    message_len: c::size_t, private_key: *const u8/*[64]*/)
-                    -> c::int;
+                    message_len: c::size_t, private_key: *const u8/*[64]*/);
 
     fn ED25519_verify(message: *const u8, message_len: c::size_t,
                       signature: *const u8/*[64]*/,
