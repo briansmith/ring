@@ -32,9 +32,10 @@ extern "C" {
 #define ED25519_SIGNATURE_LEN 64
 
 /* ED25519_keypair sets |out_public_key| and |out_private_key| to a freshly
- * generated, public–private key pair. */
-OPENSSL_EXPORT void ED25519_keypair(uint8_t out_public_key[32],
-                                    uint8_t out_private_key[64], RAND *rng);
+ * generated, public–private key pair. It returns one on success or zero on
+ * failure (to get bytes from the rng). */
+OPENSSL_EXPORT int ED25519_keypair(uint8_t out_public_key[32],
+                                   uint8_t out_private_key[64], RAND *rng);
 
 /* ED25519_sign sets |out_sig| to be a signature of |message_len| bytes from
  * |message| using |private_key|. */
