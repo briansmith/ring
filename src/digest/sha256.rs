@@ -63,21 +63,8 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
     let state = &mut state[..CHAINING_WORDS];
     let state = slice_as_array_ref_mut!(state, CHAINING_WORDS).unwrap();
 
-    let mut w: [u32; 64] = [0; 64];
     for block in blocks {
-        for i in 0..16 {
-            let offset = i * 4;
-            let word = slice_as_array_ref!(&block[offset..][..4], 4).unwrap();
-            w[i] = polyfill::slice::u32_from_be_u8(word);
-        }
-
-        for i in 16..64 {
-            let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
-            let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
-            w[i] = w[i - 16].wrapping_add(s0).wrapping_add(w[i - 7]).wrapping_add(s1);
-        }
-
-        let mut a: u32 = state[0];
+        let mut a = state[0];
         let mut b = state[1];
         let mut c = state[2];
         let mut d = state[3];
@@ -86,12 +73,107 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
         let mut g = state[6];
         let mut h = state[7];
 
+        let mut w_0: [u32; 16] = [0; 16];
+        let mut w_1: [u32; 16] = [0; 16];
+
+        macro_rules! block_to_w {
+            ($i:expr, $w:ident) => {
+                {
+                    let offset = $i * 4;
+                    let word = slice_as_array_ref!(&block[offset..][..4], 4).unwrap();
+                    $w[$i] = polyfill::slice::u32_from_be_u8(word);
+                }
+            }
+        }
+
+        macro_rules! flip_w_up_to_2 {
+            ($from:ident, $to:ident, $i:expr) => {
+                {
+                    let old_1 = $from[$i + 1];
+                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+                    let old_14 = $from[$i + 14];
+                    let s1 = old_14.rotate_right(17) ^ old_14.rotate_right(19) ^ (old_14 >> 10);
+                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($from[$i + 9]).wrapping_add(s1);
+                }
+            }
+        }
+
+        macro_rules! flip_w_2_up_to_7 {
+            ($from:ident, $to:ident, $i:expr) => {
+                {
+                    let old_1 = $from[$i + 1];
+                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+                    let new_2 = $to[$i - 2];
+                    let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
+                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($from[$i + 9]).wrapping_add(s1);
+                }
+            }
+        }
+
+        macro_rules! flip_w_7_up_to_15 {
+            ($from:ident, $to:ident, $i:expr) => {
+                {
+                    let old_1 = $from[$i + 1];
+                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+                    let new_2 = $to[$i - 2];
+                    let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
+                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($to[$i - 7]).wrapping_add(s1);
+                }
+            }
+        }
+
+        macro_rules! flip_w_15 {
+            ($from:ident, $to:ident, $i:expr) => {
+                {
+                    let old_1 = $to[$i - 15];
+                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+                    let new_2 = $to[$i - 2];
+                    let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
+                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($to[$i - 7]).wrapping_add(s1);
+                }
+            }
+        }
+
+        macro_rules! flip_w {
+            ($from:ident, $to:ident) => {
+                {
+                    flip_w_up_to_2!($from, $to, 0);
+                    flip_w_up_to_2!($from, $to, 1);
+                    flip_w_2_up_to_7!($from, $to, 2);
+                    flip_w_2_up_to_7!($from, $to, 3);
+                    flip_w_2_up_to_7!($from, $to, 4);
+                    flip_w_2_up_to_7!($from, $to, 5);
+                    flip_w_2_up_to_7!($from, $to, 6);
+                    flip_w_7_up_to_15!($from, $to, 7);
+                    flip_w_7_up_to_15!($from, $to, 8);
+                    flip_w_7_up_to_15!($from, $to, 9);
+                    flip_w_7_up_to_15!($from, $to, 10);
+                    flip_w_7_up_to_15!($from, $to, 11);
+                    flip_w_7_up_to_15!($from, $to, 12);
+                    flip_w_7_up_to_15!($from, $to, 13);
+                    flip_w_7_up_to_15!($from, $to, 14);
+                    flip_w_15!($from, $to, 15);
+                }
+            }
+        }
+
+        macro_rules! full_block_to_w {
+            ($w:ident, $offset:expr) => {
+                {
+                    block_to_w!($offset + 0, $w);
+                    block_to_w!($offset + 1, $w);
+                    block_to_w!($offset + 2, $w);
+                    block_to_w!($offset + 3, $w);
+                }
+            }
+        }
+
         macro_rules! iter_4 {
-            ($i:expr) => {
+            ($i:expr, $w:ident, $w_i:expr) => {
                 {
                     let s1_0: u32 = sigma_1(e);
                     let ch_0: u32 = ch(e, f, g);
-                    let temp1_0: u32 = temp1(h, s1_0, ch_0, K[$i], w[$i]);
+                    let temp1_0: u32 = temp1(h, s1_0, ch_0, K[$i], $w[$w_i]);
                     let s0_0: u32 = sigma_0(a);
                     let maj_0: u32 = maj(a, b, c);
                     let temp2_0: u32 = s0_0.wrapping_add(maj_0);
@@ -101,7 +183,7 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
 
                     let ch_1: u32 = ch(e_0, e, f);
                     let s1_1: u32 = sigma_1(e_0);
-                    let temp1_1: u32 = temp1(g, s1_1, ch_1, K[$i + 1], w[$i + 1]);
+                    let temp1_1: u32 = temp1(g, s1_1, ch_1, K[$i + 1], $w[$w_i + 1]);
 
 
                     let s0_1: u32 = sigma_0(a_0);
@@ -113,7 +195,7 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
 
                     let s1_2 = sigma_1(e_1);
                     let ch_2 = ch(e_1, e_0, e);
-                    let temp1_2 = temp1(f, s1_2, ch_2, K[$i + 2], w[$i + 2]);
+                    let temp1_2 = temp1(f, s1_2, ch_2, K[$i + 2], $w[$w_i + 2]);
                     let s0_2 = sigma_0(a_1);
                     let maj_2 = maj(a_1, a_0, a);
                     let temp2_2 = s0_2.wrapping_add(maj_2);
@@ -123,7 +205,7 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
 
                     let ch_3 = ch(e_2, e_1, e_0);
                     let s1_3 = sigma_1(e_2);
-                    let temp1_3 = temp1(e, s1_3, ch_3, K[$i + 3], w[$i + 3]);
+                    let temp1_3 = temp1(e, s1_3, ch_3, K[$i + 3], $w[$w_i + 3]);
 
                     let s0_3 = sigma_0(a_2);
                     let maj_3 = maj(a_2, a_1, a_0);
@@ -140,22 +222,33 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
                 }
             }
         }
-        iter_4!(0);
-        iter_4!(4);
-        iter_4!(8);
-        iter_4!(12);
-        iter_4!(16);
-        iter_4!(20);
-        iter_4!(24);
-        iter_4!(28);
-        iter_4!(32);
-        iter_4!(36);
-        iter_4!(40);
-        iter_4!(44);
-        iter_4!(48);
-        iter_4!(52);
-        iter_4!(56);
-        iter_4!(60);
+
+        full_block_to_w!(w_0, 0);
+        full_block_to_w!(w_0, 4);
+        full_block_to_w!(w_0, 8);
+        full_block_to_w!(w_0, 12);
+        iter_4!(0, w_0, 0);
+        iter_4!(4, w_0, 4);
+        iter_4!(8, w_0, 8);
+        iter_4!(12, w_0, 12);
+
+        flip_w!(w_0, w_1);
+        iter_4!(16, w_1, 0);
+        iter_4!(20, w_1, 4);
+        iter_4!(24, w_1, 8);
+        iter_4!(28, w_1, 12);
+
+        flip_w!(w_1, w_0);
+        iter_4!(32, w_0, 0);
+        iter_4!(36, w_0, 4);
+        iter_4!(40, w_0, 8);
+        iter_4!(44, w_0, 12);
+
+        flip_w!(w_0, w_1);
+        iter_4!(48, w_1, 0);
+        iter_4!(52, w_1, 4);
+        iter_4!(56, w_1, 8);
+        iter_4!(60, w_1, 12);
 
         state[0] = state[0].wrapping_add(a);
         state[1] = state[1].wrapping_add(b);
