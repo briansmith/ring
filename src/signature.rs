@@ -54,7 +54,7 @@ pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA512_VERIFY,
 };
 
-pub use ec::eddsa::ED25519_VERIFY;
+pub use ec::eddsa::{ED25519_VERIFY, Ed25519KeyPair};
 
 #[cfg(not(feature = "no_heap"))]
 pub use rsa::{
@@ -65,6 +65,26 @@ pub use rsa::{
 
     RSA_PKCS1_3072_8192_SHA384_VERIFY,
 };
+
+/// A public key signature.
+pub struct Signature {
+    value: [u8; 64],
+}
+
+impl<'a> Signature {
+    // Initialize a 64-byte signature from slice of bytes. XXX: This is public
+    // so that other *ring* submodules can use it, but it isn't intended for
+    // public use.
+    #[doc(hidden)]
+    pub fn new(signature_bytes: [u8; 64]) -> Signature {
+        Signature { value: signature_bytes }
+    }
+
+    /// Returns a reference to the signature's encoded value.
+    pub fn as_slice(&'a self) -> &'a [u8] {
+        &self.value[..]
+    }
+}
 
 /// A signature verification algorithm.
 //
