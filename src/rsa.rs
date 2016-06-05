@@ -48,7 +48,7 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
         }));
 
         let decoded = try!(untrusted::Input::new(decoded));
-        untrusted::read_all(decoded, (), |decoded| {
+        decoded.read_all((), |decoded| {
             if try!(decoded.read_byte()) != 0 ||
                try!(decoded.read_byte()) != 1 {
                 return Err(());
@@ -154,7 +154,7 @@ pkcs1_digestinfo_prefix!(
 
 fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
                         Result<(&'a [u8], &'a [u8]), ()> {
-    untrusted::read_all(input, (), |input| {
+    input.read_all((), |input| {
         der::nested(input, der::Tag::Sequence, (), |input| {
             let n = try!(der::positive_integer(input));
             let e = try!(der::positive_integer(input));
@@ -206,7 +206,7 @@ mod tests {
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(untrusted::read_all(public_key, (), |input| {
+            assert!(public_key.read_all((), |input| {
                 der::nested(input, der::Tag::Sequence, (), |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));

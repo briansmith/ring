@@ -29,7 +29,7 @@ pub mod ecdh;
 pub fn parse_uncompressed_point<'a>(input: untrusted::Input<'a>,
                                     elem_and_scalar_len: usize)
                                     -> Result<(&'a [u8], &'a [u8]), ()> {
-    untrusted::read_all(input, (), |input| {
+    input.read_all((), |input| {
         // The encoding must be 4, which is the encoding for
         // "uncompressed".
         let encoding = try!(input.read_byte());

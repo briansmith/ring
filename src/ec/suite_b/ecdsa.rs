@@ -33,7 +33,7 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
               signature: untrusted::Input) -> Result<(), ()> {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
 
-        let (r, s) = try!(untrusted::read_all(signature, (), |input| {
+        let (r, s) = try!(signature.read_all((), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
                 let r = try!(der::positive_integer(input));
                 let s = try!(der::positive_integer(input));
@@ -161,7 +161,7 @@ mod tests {
             // originally-provided separate (r, s) components. When we add test
             // vectors for improperly-encoded signatures, we'll have to revisit
             // this.
-            assert!(untrusted::read_all(sig, (), |input| {
+            assert!(sig.read_all((), |input| {
                 der::nested(input, der::Tag::Sequence, (), |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));

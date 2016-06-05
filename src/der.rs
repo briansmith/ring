@@ -93,7 +93,7 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
                                  where F : FnOnce(&mut untrusted::Reader<'a>)
                                  -> Result<R, E> {
     let inner = try!(expect_tag_and_get_value(input, tag).map_err(|_| error));
-    untrusted::read_all(inner, error, decoder)
+    inner.read_all(error, decoder)
 }
 
 pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
@@ -101,7 +101,7 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
     let value = try!(expect_tag_and_get_value(input, Tag::Integer));
 
     // Empty encodings are not allowed.
-    untrusted::read_all(value, (), |input| {
+    value.read_all((), |input| {
         let first_byte = try!(input.read_byte());
 
         if first_byte == 0 {
