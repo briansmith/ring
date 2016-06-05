@@ -68,8 +68,7 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
 
             let decoded_digestinfo_prefix =
                 try!(decoded.skip_and_get_input(self.digestinfo_prefix.len()));
-            if !untrusted::input_equals(decoded_digestinfo_prefix,
-                                        self.digestinfo_prefix) {
+            if decoded_digestinfo_prefix != self.digestinfo_prefix {
                 return Err(());
             }
 
@@ -77,7 +76,7 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
                 try!(decoded.skip_and_get_input(self.digest_alg.output_len));
             let digest =
                 digest::digest(self.digest_alg, msg.as_slice_less_safe());
-            if !untrusted::input_equals(decoded_digest, digest.as_ref()) {
+            if decoded_digest != digest.as_ref() {
                 return Err(());
             }
 
