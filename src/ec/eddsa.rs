@@ -43,8 +43,14 @@ impl<'a> Ed25519KeyPair {
 
     /// Copies key data from the given slices to create a new key pair.
     /// The arguments are interpreted as little-endian-encoded key bytes.
-    pub fn from_bytes(private_key: &[u8; 32], public_key: &[u8; 32]) -> Ed25519KeyPair {
+    pub fn from_bytes(private_key: &[u8], public_key: &[u8])
+                      -> Result<Ed25519KeyPair, ()> {
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
+        if private_key.len() != 32 {
+            return Err(());
+        } else if public_key.len() != 32 {
+            return Err(());
+        }
         {
             let (pair_priv, pair_pub) = pair.private_public.split_at_mut(32);
             for i in 0..pair_priv.len() {
@@ -54,7 +60,7 @@ impl<'a> Ed25519KeyPair {
                 pair_pub[i] = public_key[i];
             }
         }
-        pair
+        Ok(pair)
     }
 
     /// Returns a reference to the little-endian-encoded private key bytes.
@@ -137,9 +143,7 @@ mod tests {
             let msg = test_case.consume_bytes("MESSAGE");
             let expected_sig = test_case.consume_bytes("SIG");
 
-            let priv_key_sized = slice_as_array_ref!(&private_key[..32], 32).unwrap();
-            let pub_key_sized = slice_as_array_ref!(&public_key, 32).unwrap();
-            let key_pair = Ed25519KeyPair::from_bytes(&priv_key_sized, &pub_key_sized);
+            let key_pair = Ed25519KeyPair::from_bytes(&private_key[..32], &public_key).unwrap();
             let actual_sig = key_pair.sign(&msg);
             assert_eq!(&expected_sig[..], actual_sig.as_slice());
 
