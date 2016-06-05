@@ -24,9 +24,18 @@
 
 #include <memory>
 
-#include <openssl/chacha.h>
+#include <openssl/base.h>
+
+/* ChaCha20_ctr32 encrypts |in_len| bytes from |in| with the given key and
+ * writes the result to |out|, which may/must point at or before |in|.
+ * The initial block counter (and nonce) is specified by |counter|. */
+extern "C" {
+    void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
+                        const uint32_t key[8], const uint32_t counter[4]);
+}
 
 
+/* Declerations to avoid -Wmissing-prototypes warnings. */
 extern "C" int bssl_chacha_test_main(void);
 
 
