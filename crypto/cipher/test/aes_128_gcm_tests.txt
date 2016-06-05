@@ -1,4 +1,4 @@
-# The AES-128-GCM test cases from cipher_test.txt have been merged into this
+# The AES-128-GCM test cases from cipher_tests.txt have been merged into this
 # file.
 
 KEY: d480429666d48b400633921c5407d1d1
