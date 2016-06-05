@@ -33,26 +33,51 @@ const K: [u32; 64] =
      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
      0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
 
+#[inline(always)]
+fn sigma_1(e: u32) -> u32 {
+    e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25)
+}
+
+#[inline(always)]
+fn sigma_0(a: u32) -> u32 {
+    a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22)
+}
+
+#[inline(always)]
+fn ch(e: u32, f: u32, g: u32) -> u32 {
+    (e & f) ^ (!e & g)
+}
+
+#[inline(always)]
+fn temp1(h: u32, s1: u32, ch: u32, k: u32, w: u32) -> u32 {
+    h.wrapping_add(s1).wrapping_add(ch).wrapping_add(k).wrapping_add(w)
+}
+
+#[inline(always)]
+fn maj(a: u32, b: u32, c: u32) -> u32 {
+    (a & b) ^ (a & c) ^ (b & c)
+}
+
 fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8; BLOCK_LEN]]) {
     let state = polyfill::slice::u64_as_u32_mut(state);
     let state = &mut state[..CHAINING_WORDS];
     let state = slice_as_array_ref_mut!(state, CHAINING_WORDS).unwrap();
 
+    let mut w: [u32; 64] = [0; 64];
     for block in blocks {
-        let mut w: [u32; 64] = [0; 64];
         for i in 0..16 {
             let offset = i * 4;
             let word = slice_as_array_ref!(&block[offset..][..4], 4).unwrap();
             w[i] = polyfill::slice::u32_from_be_u8(word);
         }
 
-        for i in 16..64  {
+        for i in 16..64 {
             let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
             let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
             w[i] = w[i - 16].wrapping_add(s0).wrapping_add(w[i - 7]).wrapping_add(s1);
         }
 
-        let mut a = state[0];
+        let mut a: u32 = state[0];
         let mut b = state[1];
         let mut c = state[2];
         let mut d = state[3];
@@ -61,22 +86,76 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
         let mut g = state[6];
         let mut h = state[7];
 
-        for i in 0..64 {
-            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
-            let ch = (e & f) ^ (!e & g);
-            let temp1 = h.wrapping_add(s1).wrapping_add(ch).wrapping_add(K[i]).wrapping_add(w[i]);
-            let s0 = a.rotate_right(2)  ^ a.rotate_right(13) ^ a.rotate_right(22);
-            let maj = (a & b) ^ (a & c) ^ (b & c);
-            let temp2 = s0.wrapping_add(maj);
-            h = g;
-            g = f;
-            f = e;
-            e = d.wrapping_add(temp1);
-            d = c;
-            c = b;
-            b = a;
-            a = temp1.wrapping_add(temp2);
+        macro_rules! iter_4 {
+            ($i:expr) => {
+                {
+                    let s1_0: u32 = sigma_1(e);
+                    let ch_0: u32 = ch(e, f, g);
+                    let temp1_0: u32 = temp1(h, s1_0, ch_0, K[$i], w[$i]);
+                    let s0_0: u32 = sigma_0(a);
+                    let maj_0: u32 = maj(a, b, c);
+                    let temp2_0: u32 = s0_0.wrapping_add(maj_0);
+
+                    let e_0: u32 = d.wrapping_add(temp1_0);
+                    let a_0: u32 = temp1_0.wrapping_add(temp2_0);
+
+                    let ch_1: u32 = ch(e_0, e, f);
+                    let s1_1: u32 = sigma_1(e_0);
+                    let temp1_1: u32 = temp1(g, s1_1, ch_1, K[$i + 1], w[$i + 1]);
+
+
+                    let s0_1: u32 = sigma_0(a_0);
+                    let maj_1: u32 = maj(a_0, a, b);
+                    let temp2_1: u32 = s0_1.wrapping_add(maj_1);
+
+                    let e_1 = c.wrapping_add(temp1_1);
+                    let a_1 = temp1_1.wrapping_add(temp2_1);
+
+                    let s1_2 = sigma_1(e_1);
+                    let ch_2 = ch(e_1, e_0, e);
+                    let temp1_2 = temp1(f, s1_2, ch_2, K[$i + 2], w[$i + 2]);
+                    let s0_2 = sigma_0(a_1);
+                    let maj_2 = maj(a_1, a_0, a);
+                    let temp2_2 = s0_2.wrapping_add(maj_2);
+
+                    let e_2 = b.wrapping_add(temp1_2);
+                    let a_2 = temp1_2.wrapping_add(temp2_2);
+
+                    let ch_3 = ch(e_2, e_1, e_0);
+                    let s1_3 = sigma_1(e_2);
+                    let temp1_3 = temp1(e, s1_3, ch_3, K[$i + 3], w[$i + 3]);
+
+                    let s0_3 = sigma_0(a_2);
+                    let maj_3 = maj(a_2, a_1, a_0);
+                    let temp2_3 = s0_3.wrapping_add(maj_3);
+
+                    h = e_0;
+                    g = e_1;
+                    f = e_2;
+                    e = a.wrapping_add(temp1_3);
+                    d = a_0;
+                    c = a_1;
+                    b = a_2;
+                    a = temp1_3.wrapping_add(temp2_3);
+                }
+            }
         }
+        iter_4!(0);
+        iter_4!(4);
+        iter_4!(8);
+        iter_4!(12);
+        iter_4!(16);
+        iter_4!(20);
+        iter_4!(24);
+        iter_4!(28);
+        iter_4!(32);
+        iter_4!(36);
+        iter_4!(40);
+        iter_4!(44);
+        iter_4!(48);
+        iter_4!(52);
+        iter_4!(56);
+        iter_4!(60);
 
         state[0] = state[0].wrapping_add(a);
         state[1] = state[1].wrapping_add(b);
