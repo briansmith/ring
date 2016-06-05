@@ -37,11 +37,10 @@ OPENSSL_EXPORT void ED25519_keypair(uint8_t out_public_key[32],
                                     uint8_t out_private_key[64], RAND *rng);
 
 /* ED25519_sign sets |out_sig| to be a signature of |message_len| bytes from
- * |message| using |private_key|. It returns one on success or zero on
- * error. */
-OPENSSL_EXPORT int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
-                                size_t message_len,
-                                const uint8_t private_key[64]);
+ * |message| using |private_key|. */
+OPENSSL_EXPORT void ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
+                                 size_t message_len,
+                                 const uint8_t private_key[64]);
 
 /* ED25519_verify returns one iff |signature| is a valid signature, by
  * |public_key| of |message_len| bytes from |message|. It returns zero

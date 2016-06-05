@@ -4643,8 +4643,8 @@ void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64],
   memmove(out_private_key + 32, out_public_key, 32);
 }
 
-int ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
-                 const uint8_t private_key[64]) {
+void ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
+                  const uint8_t private_key[64]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
 
@@ -4667,8 +4667,6 @@ int ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
 
   x25519_sc_reduce(hram);
   sc_muladd(out_sig + 32, hram, az, nonce);
-
-  return 1;
 }
 
 int ED25519_verify(const uint8_t *message, size_t message_len,
