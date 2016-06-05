@@ -18,8 +18,72 @@
 
 use {bssl, c, signature, signature_impl};
 use input::Input;
+use rand::{RAND, SecureRandom};
 
 struct EdDSA;
+
+/// An Ed25519 key pair.
+///
+/// This can be used for signing. Allows generation of a new key pair through
+/// the `generate()` method, or using an existing key pair with `from_bytes()`.
+pub struct Ed25519KeyPair {
+    private_public: [u8; 64],
+}
+
+impl<'a> Ed25519KeyPair {
+    /// Generate a new key pair.
+    pub fn generate(rng: &SecureRandom) -> Result<Ed25519KeyPair, ()> {
+        let mut rand = RAND::new(rng);
+        let mut pair = Ed25519KeyPair { private_public: [0; 64] };
+        try!(bssl::map_result(unsafe {
+            ED25519_keypair(pair.private_public.as_mut_ptr(), &mut rand)
+        }));
+        Ok(pair)
+    }
+
+    /// Copies key data from the given slices to create a new key pair.
+    /// The arguments are interpreted as little-endian-encoded key bytes.
+    pub fn from_bytes(private_key: &[u8], public_key: &[u8])
+                      -> Result<Ed25519KeyPair, ()> {
+        let mut pair = Ed25519KeyPair { private_public: [0; 64] };
+        if private_key.len() != 32 {
+            return Err(());
+        } else if public_key.len() != 32 {
+            return Err(());
+        }
+        {
+            let (pair_priv, pair_pub) = pair.private_public.split_at_mut(32);
+            for i in 0..pair_priv.len() {
+                pair_priv[i] = private_key[i];
+            }
+            for i in 0..pair_pub.len() {
+                pair_pub[i] = public_key[i];
+            }
+        }
+        Ok(pair)
+    }
+
+    /// Returns a reference to the little-endian-encoded private key bytes.
+    pub fn private_key_bytes(&'a self) -> &'a [u8] {
+        &self.private_public[..32]
+    }
+
+    /// Returns a reference to the little-endian-encoded public key bytes.
+    pub fn public_key_bytes(&'a self) -> &'a [u8] {
+        &self.private_public[32..]
+    }
+
+    /// Sign a given message, returning the signature.
+    pub fn sign(&self, msg: &[u8]) -> signature::Signature {
+        let mut signature_bytes = [0u8; 64];
+        unsafe {
+            ED25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
+                         msg.len(), self.private_public.as_ptr());
+        }
+        signature::Signature::new(signature_bytes)
+    }
+}
+
 
 /// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
 ///
@@ -29,20 +93,6 @@ pub static ED25519_VERIFY: signature::VerificationAlgorithm =
     implementation: &EdDSA,
 };
 
-#[cfg(test)]
-pub fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
-                    -> Result<(), ()> {
-    use init;
-    init::init_once();
-
-    if private_key.len() != 64 || signature.len() != 64 {
-        return Err(());
-    }
-    bssl::map_result(unsafe {
-        ED25519_sign(signature.as_mut_ptr(), msg.as_ptr(), msg.len(),
-                     private_key.as_ptr())
-    })
-}
 
 impl signature_impl::VerificationAlgorithmImpl for EdDSA {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
@@ -61,11 +111,13 @@ impl signature_impl::VerificationAlgorithmImpl for EdDSA {
 }
 
 
+#[allow(improper_ctypes)]
 extern {
-    #[cfg(test)]
+    fn ED25519_keypair(out_private_key: *mut u8/*[64]*/,
+                       rng: *mut RAND) -> c::int;
+
     fn ED25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
-                    message_len: c::size_t, private_key: *const u8/*[64]*/)
-                    -> c::int;
+                    message_len: c::size_t, private_key: *const u8/*[64]*/);
 
     fn ED25519_verify(message: *const u8, message_len: c::size_t,
                       signature: *const u8/*[64]*/,
@@ -77,7 +129,7 @@ extern {
 mod tests {
     use {file_test, signature};
     use input::Input;
-    use super::ed25519_sign;
+    use super::Ed25519KeyPair;
 
     /// Test vectors from BoringSSL.
     #[test]
@@ -91,9 +143,9 @@ mod tests {
             let msg = test_case.consume_bytes("MESSAGE");
             let expected_sig = test_case.consume_bytes("SIG");
 
-            let mut actual_sig = [0u8; 64];
-            assert!(ed25519_sign(&private_key, &msg, &mut actual_sig).is_ok());
-            assert_eq!(&expected_sig[..], &actual_sig[..]);
+            let key_pair = Ed25519KeyPair::from_bytes(&private_key[..32], &public_key).unwrap();
+            let actual_sig = key_pair.sign(&msg);
+            assert_eq!(&expected_sig[..], actual_sig.as_slice());
 
             let public_key = Input::new(&public_key).unwrap();
             let msg = Input::new(&msg).unwrap();

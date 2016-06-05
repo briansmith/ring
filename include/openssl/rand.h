@@ -24,7 +24,8 @@ extern "C" {
 
 /* Random number generation. */
 
-/* RAND_bytes writes |len| bytes of random data to |buf| and returns one. */
+/* RAND_bytes writes |len| bytes of random data to |buf| and returns one on
+ * success, zero on failure. */
 int RAND_bytes(RAND *rng, uint8_t *buf, size_t len);
 
 
