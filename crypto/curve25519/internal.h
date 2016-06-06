@@ -15,6 +15,9 @@
 #ifndef OPENSSL_HEADER_CURVE25519_INTERNAL_H
 #define OPENSSL_HEADER_CURVE25519_INTERNAL_H
 
+#include <stdint.h>
+
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

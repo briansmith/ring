@@ -16,9 +16,8 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, signature, signature_impl};
+use {bssl, c, rand, signature, signature_impl};
 use untrusted;
-use rand::{RAND, SecureRandom};
 
 struct EdDSA;
 
@@ -29,19 +28,28 @@ pub struct Ed25519KeyPair {
 
 impl<'a> Ed25519KeyPair {
     /// Generates a new key pair.
-    pub fn generate(rng: &SecureRandom) -> Result<Ed25519KeyPair, ()> {
-        let mut rand = RAND::new(rng);
+    pub fn generate(rng: &rand::SecureRandom) -> Result<Ed25519KeyPair, ()> {
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
-        try!(bssl::map_result(unsafe {
-            ED25519_keypair(pair.private_public.as_mut_ptr(), &mut rand)
-        }));
+        try!(rng.fill(&mut pair.private_public[0..32]));
+        unsafe {
+            GFp_ed25519_public_from_private(
+                pair.private_public[32..].as_mut_ptr(),
+                pair.private_public.as_ptr());
+        }
         Ok(pair)
     }
 
-    /// Copies key data from the given slices to create a new key pair.
-    /// The arguments are interpreted as little-endian-encoded key bytes.
+    /// Copies key data from the given slices to create a new key pair. The
+    /// first slice must hold the private key and the second slice must hold
+    /// the public key. Both slices must contain 32 little-endian-encoded
+    /// bytes.
     ///
     /// This is intended for use by code that deserializes key pairs.
+    ///
+    /// The private and public keys will be verified to be consistent. This
+    /// helps protect, for example, against the accidental swapping of the
+    /// public and private components of the key pair. This also detects
+    /// corruption that might have occurred during storage of the key pair.
     pub fn from_bytes(private_key: &[u8], public_key: &[u8])
                       -> Result<Ed25519KeyPair, ()> {
         if private_key.len() != 32 {
@@ -50,19 +58,23 @@ impl<'a> Ed25519KeyPair {
             return Err(());
         }
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
-        {
-            let (pair_priv, pair_pub) = pair.private_public.split_at_mut(32);
-            for i in 0..pair_priv.len() {
-                pair_priv[i] = private_key[i];
-            }
-            for i in 0..pair_pub.len() {
-                pair_pub[i] = public_key[i];
-            }
+        for i in 0..32 {
+            pair.private_public[i] = private_key[i];
+        }
+        unsafe {
+            GFp_ed25519_public_from_private(
+                pair.private_public[32..].as_mut_ptr(),
+                pair.private_public.as_ptr());
+        }
+        if &pair.private_public[32..] != public_key {
+            return Err(());
         }
         Ok(pair)
     }
 
     /// Returns a reference to the little-endian-encoded private key bytes.
+    ///
+    /// This is intended for use by code that serializes the key pair.
     pub fn private_key_bytes(&'a self) -> &'a [u8] {
         &self.private_public[..32]
     }
@@ -76,8 +88,8 @@ impl<'a> Ed25519KeyPair {
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         let mut signature_bytes = [0u8; 64];
         unsafe {
-            ED25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
-                         msg.len(), self.private_public.as_ptr());
+            GFp_ed25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
+                             msg.len(), self.private_public.as_ptr());
         }
         signature::Signature::new(signature_bytes)
     }
@@ -103,32 +115,29 @@ impl signature_impl::VerificationAlgorithmImpl for EdDSA {
         let msg = msg.as_slice_less_safe();
         let signature = signature.as_slice_less_safe();
         bssl::map_result(unsafe {
-            ED25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
-                           public_key.as_ptr())
+            GFp_ed25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
+                               public_key.as_ptr())
         })
     }
 }
 
 
-#[allow(improper_ctypes)]
-extern {
-    fn ED25519_keypair(out_private_key: *mut u8/*[64]*/,
-                       rng: *mut RAND) -> c::int;
-}
-
 extern  {
-    fn ED25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
-                    message_len: c::size_t, private_key: *const u8/*[64]*/);
+    fn GFp_ed25519_public_from_private(out: *mut u8/*[32]*/,
+                                       in_: *const u8/*[32]*/);
 
-    fn ED25519_verify(message: *const u8, message_len: c::size_t,
-                      signature: *const u8/*[64]*/,
-                      public_key: *const u8/*[32]*/) -> c::int;
+    fn GFp_ed25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
+                        message_len: c::size_t, private_key: *const u8/*[64]*/);
+
+    fn GFp_ed25519_verify(message: *const u8, message_len: c::size_t,
+                          signature: *const u8/*[64]*/,
+                          public_key: *const u8/*[32]*/) -> c::int;
 }
 
 
 #[cfg(test)]
 mod tests {
-    use {file_test, signature};
+    use {file_test, rand, signature};
     use untrusted;
     use super::Ed25519KeyPair;
 
@@ -156,5 +165,19 @@ mod tests {
             assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
                                       msg, expected_sig).is_ok());
         });
+    }
+
+    #[test]
+    fn test_ed25519_from_bytes_swapped() {
+        let rng = rand::SystemRandom::new();
+        let key_pair = Ed25519KeyPair::generate(&rng).unwrap();
+
+        assert!(Ed25519KeyPair::from_bytes(key_pair.private_key_bytes(),
+                                           key_pair.public_key_bytes())
+                                           .is_ok());
+
+        assert!(Ed25519KeyPair::from_bytes(key_pair.public_key_bytes(),
+                                           key_pair.private_key_bytes())
+                                           .is_err());
     }
 }

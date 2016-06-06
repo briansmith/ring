@@ -19,8 +19,6 @@
  *
  * The field functions are shared by Ed25519 and X25519 where possible. */
 
-#include <openssl/curve25519.h>
-
 #include <string.h>
 
 #include <openssl/cpu.h>
@@ -4623,14 +4621,19 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-int ED25519_keypair(uint8_t out_private_key[64], RAND *rng) {
-  uint8_t seed[32];
-  if (!RAND_bytes(rng, seed, 32)) {
-    return 0;
-  }
 
+/* Prototype to avoid -Wmissing-prototypes warnings. */
+void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]);
+void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
+                      size_t message_len, const uint8_t private_key[64]);
+int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
+                       const uint8_t signature[64],
+                       const uint8_t public_key[32]);
+
+
+void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512_4(az, sizeof(az), seed, 32, NULL, 0, NULL, 0, NULL, 0);
+  SHA512_4(az, sizeof(az), in, 32, NULL, 0, NULL, 0, NULL, 0);
 
   az[0] &= 248;
   az[31] &= 63;
@@ -4638,14 +4641,11 @@ int ED25519_keypair(uint8_t out_private_key[64], RAND *rng) {
 
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);
-  ge_p3_tobytes(&out_private_key[32], &A);
-
-  memcpy(out_private_key, seed, 32);
-  return 1;
+  ge_p3_tobytes(out, &A);
 }
 
-void ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
-                  const uint8_t private_key[64]) {
+void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
+                      size_t message_len, const uint8_t private_key[64]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
 
@@ -4670,8 +4670,9 @@ void ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
   sc_muladd(out_sig + 32, hram, az, nonce);
 }
 
-int ED25519_verify(const uint8_t *message, size_t message_len,
-                   const uint8_t signature[64], const uint8_t public_key[32]) {
+int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
+                       const uint8_t signature[64],
+                       const uint8_t public_key[32]) {
   ge_p3 A;
   if ((signature[63] & 224) != 0 ||
       x25519_ge_frombytes_vartime(&A, public_key) != 0) {

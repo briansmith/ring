@@ -1,5 +1,3 @@
-#include <openssl/curve25519.h>
-
 #include <string.h>
 
 #include "internal.h"
