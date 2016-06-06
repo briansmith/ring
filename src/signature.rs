@@ -69,7 +69,7 @@
 //! let sig_bytes = sig.as_slice();
 //!
 //! // Verify the signature of the message using the public key. Normally the
-//! // verifying of the message would parse the inputs to `signature::verify`
+//! // verifier of the message would parse the inputs to `signature::verify`
 //! // out of the protocol message(s) sent by the signer.
 //! let pub_key_input = try!(untrusted::Input::new(pub_key_bytes));
 //! let msg_input = try!(untrusted::Input::new(MESSAGE));
