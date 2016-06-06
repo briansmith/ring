@@ -97,15 +97,14 @@ pub struct VerificationAlgorithm {
 ///
 /// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
 ///
-/// ```ignore
-/// # // XXX: Re-enable when https://github.com/rust-lang/rust/pull/30372
-/// # // reaches stable.
-/// #
+/// ```
+/// extern crate untrusted;
+/// extern crate ring;
+///
 /// use ring::signature;
-/// use untrusted;
 ///
 /// // Ideally this function should take its inputs as `untrusted::Input`s
-/// // instead of // slices. It takes its input as slices to illustrate how to
+/// // instead of slices. It takes its input as slices to illustrate how to
 /// // convert slices to `untrusted::Input`s.
 /// # #[cfg(not(feature = "no_heap"))]
 /// fn verify_rsa_pkcs1_sha256(public_key: &[u8], msg: &[u8], sig: &[u8])
@@ -116,6 +115,8 @@ pub struct VerificationAlgorithm {
 ///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
 ///                      public_key, msg, sig)
 /// }
+///
+/// # fn main() { }
 /// ```
 ///
 /// ## Verify an Ed25519 signature
