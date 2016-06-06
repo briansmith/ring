@@ -168,7 +168,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ed25519_from_bytes_swapped() {
+    fn test_ed25519_from_bytes_misuse() {
         let rng = rand::SystemRandom::new();
         let key_pair = Ed25519KeyPair::generate(&rng).unwrap();
 
@@ -176,6 +176,17 @@ mod tests {
                                            key_pair.public_key_bytes())
                                            .is_ok());
 
+        // Truncated private key.
+        assert!(Ed25519KeyPair::from_bytes(&key_pair.private_key_bytes()[..31],
+                                           key_pair.public_key_bytes())
+                                           .is_err());
+
+        // Truncated public key.
+        assert!(Ed25519KeyPair::from_bytes(key_pair.private_key_bytes(),
+                                           &key_pair.public_key_bytes()[..31])
+                                           .is_err());
+
+        // Swapped public and private key.
         assert!(Ed25519KeyPair::from_bytes(key_pair.public_key_bytes(),
                                            key_pair.private_key_bytes())
                                            .is_err());
