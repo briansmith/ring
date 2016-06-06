@@ -30,9 +30,11 @@ no_heap = []
 slow_tests = []
 test_logging = []
 
+# XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
+
 [profile.bench]
 opt-level = 3
-debug = true
+debug = false
 rpath = false
 lto = true
 debug-assertions = false
@@ -40,7 +42,7 @@ codegen-units = 1
 
 [profile.release]
 opt-level = 3
-debug = true
+debug = false
 rpath = false
 lto = true
 debug-assertions = false
