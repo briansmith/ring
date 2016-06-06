@@ -356,6 +356,8 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
 
 void OpenSSL_add_all_algorithms(void) {}
 
+void OpenSSL_add_all_algorithms_conf(void) {}
+
 void OpenSSL_add_all_ciphers(void) {}
 
 void OpenSSL_add_all_digests(void) {}
