@@ -166,22 +166,16 @@ static size_t ssl_aead_ctx_get_ad(SSL_AEAD_CTX *aead, uint8_t out[13],
   return len;
 }
 
-int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
-                      size_t max_out, uint8_t type, uint16_t wire_version,
-                      const uint8_t seqnum[8], const uint8_t *in,
-                      size_t in_len) {
+int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, CBS *out, uint8_t type,
+                      uint16_t wire_version, const uint8_t seqnum[8],
+                      uint8_t *in, size_t in_len) {
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   aead = NULL;
 #endif
 
   if (aead == NULL) {
     /* Handle the initial NULL cipher. */
-    if (in_len > max_out) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
-      return 0;
-    }
-    memmove(out, in, in_len);
-    *out_len = in_len;
+    CBS_init(out, in, in_len);
     return 1;
   }
 
@@ -239,8 +233,14 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
     }
   }
 
-  return EVP_AEAD_CTX_open(&aead->ctx, out, out_len, max_out, nonce, nonce_len,
-                           in, in_len, ad, ad_len);
+  /* Decrypt in-place. */
+  size_t len;
+  if (!EVP_AEAD_CTX_open(&aead->ctx, in, &len, in_len, nonce, nonce_len,
+                         in, in_len, ad, ad_len)) {
+    return 0;
+  }
+  CBS_init(out, in, len);
+  return 1;
 }
 
 int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,

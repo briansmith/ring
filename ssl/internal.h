@@ -313,15 +313,13 @@ size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *ctx);
  * |SSL_AEAD_CTX_seal|. |ctx| may be NULL to denote the null cipher. */
 size_t SSL_AEAD_CTX_max_overhead(SSL_AEAD_CTX *ctx);
 
-/* SSL_AEAD_CTX_open authenticates and decrypts |in_len| bytes from |in| and
- * writes the result to |out|. It returns one on success and zero on
- * error. |ctx| may be NULL to denote the null cipher.
- *
- * If |in| and |out| alias then |out| must be <= |in| + |explicit_nonce_len|. */
-int SSL_AEAD_CTX_open(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-                      size_t max_out, uint8_t type, uint16_t wire_version,
-                      const uint8_t seqnum[8], const uint8_t *in,
-                      size_t in_len);
+/* SSL_AEAD_CTX_open authenticates and decrypts |in_len| bytes from |in|
+ * in-place. On success, it sets |*out| to the plaintext in |in| and returns
+ * one. Otherwise, it returns zero. |ctx| may be NULL to denote the null cipher.
+ * The output will always be |explicit_nonce_len| bytes ahead of |in|. */
+int SSL_AEAD_CTX_open(SSL_AEAD_CTX *ctx, CBS *out, uint8_t type,
+                      uint16_t wire_version, const uint8_t seqnum[8],
+                      uint8_t *in, size_t in_len);
 
 /* SSL_AEAD_CTX_seal encrypts and authenticates |in_len| bytes from |in| and
  * writes the result to |out|. It returns one on success and zero on
@@ -370,7 +368,7 @@ enum ssl_open_record_t {
   ssl_open_record_error,
 };
 
-/* tls_open_record decrypts a record from |in|.
+/* tls_open_record decrypts a record from |in| in-place.
  *
  * If the input did not contain a complete record, it returns
  * |ssl_open_record_partial|. It sets |*out_consumed| to the total number of
@@ -382,8 +380,8 @@ enum ssl_open_record_t {
  * decrypted.
  *
  * On success, it returns |ssl_open_record_success|. It sets |*out_type| to the
- * record type, |*out_len| to the plaintext length, and writes the record body
- * to |out|. Note that |*out_len| may be zero.
+ * record type and |*out| to the record body in |in|. Note that |*out| may be
+ * empty.
  *
  * If a record was successfully processed but should be discarded, it returns
  * |ssl_open_record_discard|.
@@ -392,20 +390,17 @@ enum ssl_open_record_t {
  * it returns |ssl_open_record_close_notify| or |ssl_open_record_fatal_alert|.
  *
  * On failure, it returns |ssl_open_record_error| and sets |*out_alert| to an
- * alert to emit.
- *
- * If |in| and |out| alias, |out| must be <= |in| + |ssl_record_prefix_len|. */
-enum ssl_open_record_t tls_open_record(
-    SSL *ssl, uint8_t *out_type, uint8_t *out, size_t *out_len,
-    size_t *out_consumed, uint8_t *out_alert, size_t max_out, const uint8_t *in,
-    size_t in_len);
+ * alert to emit. */
+enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
+                                       size_t *out_consumed, uint8_t *out_alert,
+                                       uint8_t *in, size_t in_len);
 
 /* dtls_open_record implements |tls_open_record| for DTLS. It never returns
  * |ssl_open_record_partial| but otherwise behaves analogously. */
-enum ssl_open_record_t dtls_open_record(
-    SSL *ssl, uint8_t *out_type, uint8_t *out, size_t *out_len,
-    size_t *out_consumed, uint8_t *out_alert, size_t max_out, const uint8_t *in,
-    size_t in_len);
+enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
+                                        size_t *out_consumed,
+                                        uint8_t *out_alert, uint8_t *in,
+                                        size_t in_len);
 
 /* ssl_seal_prefix_len returns the length of the prefix before the ciphertext
  * when sealing a record with |ssl|. Note that this value may differ from

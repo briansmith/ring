@@ -159,18 +159,11 @@ again:
   }
   assert(ssl_read_buffer_len(ssl) > 0);
 
-  /* Ensure the packet is large enough to decrypt in-place. */
-  if (ssl_read_buffer_len(ssl) < ssl_record_prefix_len(ssl)) {
-    ssl_read_buffer_clear(ssl);
-    goto again;
-  }
-
-  uint8_t *out = ssl_read_buffer(ssl) + ssl_record_prefix_len(ssl);
-  size_t max_out = ssl_read_buffer_len(ssl) - ssl_record_prefix_len(ssl);
+  CBS body;
   uint8_t type, alert;
-  size_t len, consumed;
+  size_t consumed;
   enum ssl_open_record_t open_ret =
-      dtls_open_record(ssl, &type, out, &len, &consumed, &alert, max_out,
+      dtls_open_record(ssl, &type, &body, &consumed, &alert,
                        ssl_read_buffer(ssl), ssl_read_buffer_len(ssl));
   ssl_read_buffer_consume(ssl, consumed);
   switch (open_ret) {
@@ -179,15 +172,15 @@ again:
       break;
 
     case ssl_open_record_success:
-      if (len > 0xffff) {
+      if (CBS_len(&body) > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
         return -1;
       }
 
       SSL3_RECORD *rr = &ssl->s3->rrec;
       rr->type = type;
-      rr->length = (uint16_t)len;
-      rr->data = out;
+      rr->length = (uint16_t)CBS_len(&body);
+      rr->data = (uint8_t *)CBS_data(&body);
       return 1;
 
     case ssl_open_record_discard:

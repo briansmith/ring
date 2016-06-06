@@ -128,6 +128,15 @@ int CBS_get_u32(CBS *cbs, uint32_t *out) {
   return cbs_get_u(cbs, out, 4);
 }
 
+int CBS_get_last_u8(CBS *cbs, uint8_t *out) {
+  if (cbs->len == 0) {
+    return 0;
+  }
+  *out = cbs->data[cbs->len - 1];
+  cbs->len--;
+  return 1;
+}
+
 int CBS_get_bytes(CBS *cbs, CBS *out, size_t len) {
   const uint8_t *v;
   if (!cbs_get(cbs, &v, len)) {

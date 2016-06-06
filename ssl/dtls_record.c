@@ -171,10 +171,10 @@ static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap,
   }
 }
 
-enum ssl_open_record_t dtls_open_record(
-    SSL *ssl, uint8_t *out_type, uint8_t *out, size_t *out_len,
-    size_t *out_consumed, uint8_t *out_alert, size_t max_out, const uint8_t *in,
-    size_t in_len) {
+enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
+                                        size_t *out_consumed,
+                                        uint8_t *out_alert, uint8_t *in,
+                                        size_t in_len) {
   *out_consumed = 0;
 
   CBS cbs;
@@ -211,11 +211,9 @@ enum ssl_open_record_t dtls_open_record(
     return ssl_open_record_discard;
   }
 
-  /* Decrypt the body. */
-  size_t plaintext_len;
-  if (!SSL_AEAD_CTX_open(ssl->s3->aead_read_ctx, out, &plaintext_len, max_out,
-                         type, version, sequence, CBS_data(&body),
-                         CBS_len(&body))) {
+  /* Decrypt the body in-place. */
+  if (!SSL_AEAD_CTX_open(ssl->s3->aead_read_ctx, out, type, version, sequence,
+                         (uint8_t *)CBS_data(&body), CBS_len(&body))) {
     /* Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
      * Clear the error queue of any errors decryption may have added. Drop the
      * entire packet as it must not have come from the peer.
@@ -229,7 +227,7 @@ enum ssl_open_record_t dtls_open_record(
   *out_consumed = in_len - CBS_len(&cbs);
 
   /* Check the plaintext length. */
-  if (plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH) {
+  if (CBS_len(out) > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
@@ -241,13 +239,12 @@ enum ssl_open_record_t dtls_open_record(
    * useful if we also limit discarded packets. */
 
   if (type == SSL3_RT_ALERT) {
-    return ssl_process_alert(ssl, out_alert, out, plaintext_len);
+    return ssl_process_alert(ssl, out_alert, CBS_data(out), CBS_len(out));
   }
 
   ssl->s3->warning_alert_count = 0;
 
   *out_type = type;
-  *out_len = plaintext_len;
   return ssl_open_record_success;
 }
 
