@@ -121,13 +121,17 @@ pub struct VerificationAlgorithm {
 /// ## Verify an Ed25519 signature
 ///
 /// ```
+/// extern crate ring;
+/// extern crate untrusted;
+///
 /// use ring::signature;
-/// use untrusted;
 ///
 /// fn verify_ed25519(public_key: untrusted::Input, msg: untrusted::Input,
 ///                   sig: untrusted::Input) -> Result<(), ()> {
 ///    signature::verify(&signature::ED25519_VERIFY, public_key, msg, sig)
 /// }
+///
+/// # fn main() { }
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
               msg: untrusted::Input, signature: untrusted::Input)

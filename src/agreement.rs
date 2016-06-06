@@ -21,6 +21,9 @@
 //! `agreement::ECDH_P256`/`agreement::ECDH_P384` for `agreement::X25519`.
 //!
 //! ```
+//! # extern crate untrusted;
+//! # extern crate ring;
+//! #
 //! # fn x25519_agreement_example() -> Result<(), ()> {
 //! use ring::{agreement, rand};
 //! use untrusted;
@@ -67,6 +70,7 @@
 //!     Ok(())
 //! })
 //! # }
+//! # fn main() { x25519_agreement_example().unwrap() }
 //! ```
 
 use {ec, rand};
