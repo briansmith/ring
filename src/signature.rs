@@ -18,25 +18,72 @@
 //! `_VERIFY` algorithm that identifies the algorithm. See the documentation
 //! for `verify` for examples.
 //!
-//! The design of this module is unusual compared to other public key signature
-//! APIs. Algorithms are split into "signing" (suffixed `_SIGN`, and not yet
-//! implemented) and "verification" (suffixed `_VERIFY`) algorithms in order to
-//! make it easier for the linker to discard unused code in the case where only
-//! signing is done or only verification is done with a given algorithm.
-//!
-//! Also, this API treats each combination of parameters as a separate
-//! algorithm. For example, instead of having a single "RSA" algorithm with a
-//! verification function that takes a bunch of parameters, there are
-//! `RSA_PKCS1_2048_8192_SHA256_VERIFY`, `RSA_PKCS1_2048_8192_SHA256_VERIFY`,
-//! etc. which encode sets of parameter choices into objects. This is designed
-//! to reduce the risks of algorithm agility and to provide consistency with
-//! ECDSA and EdDSA.
+//! For signature verification, this API treats each combination of parameters
+//! as a separate algorithm. For example, instead of having a single "RSA"
+//! algorithm with a verification function that takes a bunch of parameters,
+//! there are `RSA_PKCS1_2048_8192_SHA256_VERIFY`,
+//! `RSA_PKCS1_2048_8192_SHA384_VERIFY`, etc., which encode sets of parameter
+//! choices into objects. This is designed to reduce the risks of algorithm
+//! agility and to provide consistency with ECDSA and EdDSA.
 //!
 //! Currently this module does not support digesting the message to be signed
 //! separately from the public key operation, as it is currently being
 //! optimized for Ed25519 and for the implementation of protocols that do not
 //! requiring signing large messages. An interface for efficiently supporting
 //! larger messages may be added later.
+//!
+//! # Examples
+//!
+//! ## Signing and verifying with Ed25519
+//!
+//! ```
+//! extern crate ring;
+//! extern crate untrusted;
+//!
+//! use ring::{rand, signature};
+//!
+//! # fn sign_ed25519() -> Result<(), ()> {
+//! // Generate a key pair.
+//! let rng = rand::SystemRandom::new();
+//! let generated_key_pair = try!(signature::Ed25519KeyPair::generate(&rng));
+//!
+//! // Normally after generating the key pair, the application would extract
+//! // the private and public components and store them persistently for future
+//! // use.
+//! let priv_key_bytes = generated_key_pair.private_key_bytes();
+//! let pub_key_bytes = generated_key_pair.public_key_bytes();
+//!
+//! // Normally the application would later deserialize the private and public
+//! // key from storage and then create an `Ed25519KeyPair` from the
+//! // deserialized bytes.
+//! let key_pair =
+//!    try!(signature::Ed25519KeyPair::from_bytes(priv_key_bytes,
+//!                                               pub_key_bytes));
+//!
+//! // Sign the message "hello, world".
+//! const MESSAGE: &'static [u8] = b"hello, world";
+//! let sig = key_pair.sign(MESSAGE);
+//!
+//! // Normally, an application would extract the bytes of the signature and
+//! // send them in a protocol message to the peer(s).
+//! let sig_bytes = sig.as_slice();
+//!
+//! // Verify the signature of the message using the public key. Normally the
+//! // verifying of the message would parse the inputs to `signature::verify`
+//! // out of the protocol message(s) sent by the signer.
+//! let pub_key_input = try!(untrusted::Input::new(pub_key_bytes));
+//! let msg_input = try!(untrusted::Input::new(MESSAGE));
+//! let sig_input = try!(untrusted::Input::new(sig_bytes));
+//!
+//! try!(signature::verify(&signature::ED25519_VERIFY, pub_key_input,
+//!                        msg_input, sig_input));
+//!
+//! # Ok(())
+//! # }
+//!
+//! # fn main() { sign_ed25519().unwrap() }
+//! ```
+
 
 use {init, signature_impl};
 use untrusted;
@@ -118,40 +165,18 @@ pub struct VerificationAlgorithm {
 /// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
 ///
 /// ```
-/// extern crate untrusted;
 /// extern crate ring;
+/// extern crate untrusted;
 ///
 /// use ring::signature;
 ///
-/// // Ideally this function should take its inputs as `untrusted::Input`s
-/// // instead of slices. It takes its input as slices to illustrate how to
-/// // convert slices to `untrusted::Input`s.
 /// # #[cfg(not(feature = "no_heap"))]
-/// fn verify_rsa_pkcs1_sha256(public_key: &[u8], msg: &[u8], sig: &[u8])
+/// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
+///                            msg: untrusted::Input, sig: untrusted::Input)
 ///                            -> Result<(), ()> {
-///    let public_key = try!(untrusted::Input::new(public_key));
-///    let msg = try!(untrusted::Input::new(msg));
-///    let sig = try!(untrusted::Input::new(sig));
 ///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
 ///                      public_key, msg, sig)
 /// }
-///
-/// # fn main() { }
-/// ```
-///
-/// ## Verify an Ed25519 signature
-///
-/// ```
-/// extern crate ring;
-/// extern crate untrusted;
-///
-/// use ring::signature;
-///
-/// fn verify_ed25519(public_key: untrusted::Input, msg: untrusted::Input,
-///                   sig: untrusted::Input) -> Result<(), ()> {
-///    signature::verify(&signature::ED25519_VERIFY, public_key, msg, sig)
-/// }
-///
 /// # fn main() { }
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
