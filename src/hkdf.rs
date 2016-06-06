@@ -35,9 +35,13 @@ use super::hmac;
 ///
 /// `extract_and_expand` is exactly equivalent to:
 ///
-/// ```ignore
-/// let prk = extract(salt, secret);
-/// expand(&prk, info, out)
+/// ```
+/// # use ring::{hkdf, hmac};
+/// # fn foo(salt: &hmac::SigningKey, secret: &[u8], info: &[u8],
+/// #        out: &mut [u8]) {
+/// let prk = hkdf::extract(salt, secret);
+/// hkdf::expand(&prk, info, out)
+/// # }
 /// ```
 ///
 /// See the documentation for `extract` and `expand` for details.
