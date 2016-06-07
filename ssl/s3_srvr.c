@@ -177,17 +177,17 @@ static int ssl3_get_initial_bytes(SSL *ssl);
 static int ssl3_get_v2_client_hello(SSL *ssl);
 static int ssl3_get_client_hello(SSL *ssl);
 static int ssl3_send_server_hello(SSL *ssl);
+static int ssl3_send_server_certificate(SSL *ssl);
 static int ssl3_send_certificate_status(SSL *ssl);
-static int ssl3_send_server_done(SSL *ssl);
 static int ssl3_send_server_key_exchange(SSL *ssl);
 static int ssl3_send_certificate_request(SSL *ssl);
+static int ssl3_send_server_done(SSL *ssl);
+static int ssl3_get_client_certificate(SSL *ssl);
 static int ssl3_get_client_key_exchange(SSL *ssl);
 static int ssl3_get_cert_verify(SSL *ssl);
-static int ssl3_get_client_certificate(SSL *ssl);
-static int ssl3_send_server_certificate(SSL *ssl);
-static int ssl3_send_new_session_ticket(SSL *ssl);
 static int ssl3_get_next_proto(SSL *ssl);
 static int ssl3_get_channel_id(SSL *ssl);
+static int ssl3_send_new_session_ticket(SSL *ssl);
 
 int ssl3_accept(SSL *ssl) {
   BUF_MEM *buf = NULL;
@@ -352,19 +352,6 @@ int ssl3_accept(SSL *ssl) {
         ssl->state = SSL3_ST_SW_FLUSH;
         break;
 
-      case SSL3_ST_SW_FLUSH:
-        if (BIO_flush(ssl->wbio) <= 0) {
-          ssl->rwstate = SSL_WRITING;
-          ret = -1;
-          goto end;
-        }
-
-        ssl->state = ssl->s3->tmp.next_state;
-        if (ssl->state != SSL_ST_OK) {
-          ssl->method->expect_flight(ssl);
-        }
-        break;
-
       case SSL3_ST_SR_CERT_A:
         if (ssl->s3->tmp.cert_request) {
           ret = ssl3_get_client_certificate(ssl);
@@ -495,6 +482,19 @@ int ssl3_accept(SSL *ssl) {
           ssl->s3->tmp.next_state = SSL3_ST_SR_CHANGE;
         } else {
           ssl->s3->tmp.next_state = SSL_ST_OK;
+        }
+        break;
+
+      case SSL3_ST_SW_FLUSH:
+        if (BIO_flush(ssl->wbio) <= 0) {
+          ssl->rwstate = SSL_WRITING;
+          ret = -1;
+          goto end;
+        }
+
+        ssl->state = ssl->s3->tmp.next_state;
+        if (ssl->state != SSL_ST_OK) {
+          ssl->method->expect_flight(ssl);
         }
         break;
 
@@ -1121,6 +1121,18 @@ static int ssl3_send_server_hello(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
+static int ssl3_send_server_certificate(SSL *ssl) {
+  if (ssl->state == SSL3_ST_SW_CERT_A) {
+    if (!ssl3_output_cert_chain(ssl)) {
+      return 0;
+    }
+    ssl->state = SSL3_ST_SW_CERT_B;
+  }
+
+  /* SSL3_ST_SW_CERT_B */
+  return ssl_do_write(ssl);
+}
+
 static int ssl3_send_certificate_status(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_CERT_STATUS_A) {
     CBB out, ocsp_response;
@@ -1144,18 +1156,6 @@ static int ssl3_send_certificate_status(SSL *ssl) {
   }
 
   /* SSL3_ST_SW_CERT_STATUS_B */
-  return ssl_do_write(ssl);
-}
-
-static int ssl3_send_server_done(SSL *ssl) {
-  if (ssl->state == SSL3_ST_SW_SRVR_DONE_A) {
-    if (!ssl_set_handshake_header(ssl, SSL3_MT_SERVER_DONE, 0)) {
-      return -1;
-    }
-    ssl->state = SSL3_ST_SW_SRVR_DONE_B;
-  }
-
-  /* SSL3_ST_SW_SRVR_DONE_B */
   return ssl_do_write(ssl);
 }
 
@@ -1413,6 +1413,157 @@ static int ssl3_send_certificate_request(SSL *ssl) {
 
 err:
   return -1;
+}
+
+static int ssl3_send_server_done(SSL *ssl) {
+  if (ssl->state == SSL3_ST_SW_SRVR_DONE_A) {
+    if (!ssl_set_handshake_header(ssl, SSL3_MT_SERVER_DONE, 0)) {
+      return -1;
+    }
+    ssl->state = SSL3_ST_SW_SRVR_DONE_B;
+  }
+
+  /* SSL3_ST_SW_SRVR_DONE_B */
+  return ssl_do_write(ssl);
+}
+
+static int ssl3_get_client_certificate(SSL *ssl) {
+  int ok, al, ret = -1;
+  X509 *x = NULL;
+  unsigned long n;
+  STACK_OF(X509) *sk = NULL;
+  SHA256_CTX sha256;
+  CBS certificate_msg, certificate_list;
+  int is_first_certificate = 1;
+
+  assert(ssl->s3->tmp.cert_request);
+  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
+
+  if (!ok) {
+    return n;
+  }
+
+  if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE) {
+    if (ssl->version == SSL3_VERSION &&
+        ssl->s3->tmp.message_type == SSL3_MT_CLIENT_KEY_EXCHANGE) {
+      /* In SSL 3.0, the Certificate message is omitted to signal no certificate. */
+      if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
+          (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
+        al = SSL_AD_HANDSHAKE_FAILURE;
+        goto f_err;
+      }
+
+      ssl->s3->tmp.reuse_message = 1;
+      return 1;
+    }
+
+    al = SSL_AD_UNEXPECTED_MESSAGE;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    goto f_err;
+  }
+
+  CBS_init(&certificate_msg, ssl->init_msg, n);
+
+  sk = sk_X509_new_null();
+  if (sk == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (!CBS_get_u24_length_prefixed(&certificate_msg, &certificate_list) ||
+      CBS_len(&certificate_msg) != 0) {
+    al = SSL_AD_DECODE_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    goto f_err;
+  }
+
+  while (CBS_len(&certificate_list) > 0) {
+    CBS certificate;
+    const uint8_t *data;
+
+    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
+      al = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      goto f_err;
+    }
+
+    if (is_first_certificate && ssl->ctx->retain_only_sha256_of_client_certs) {
+      /* If this is the first certificate, and we don't want to keep peer
+       * certificates in memory, then we hash it right away. */
+      SHA256_Init(&sha256);
+      SHA256_Update(&sha256, CBS_data(&certificate), CBS_len(&certificate));
+      SHA256_Final(ssl->session->peer_sha256, &sha256);
+      ssl->session->peer_sha256_valid = 1;
+    }
+    is_first_certificate = 0;
+
+    /* A u24 length cannot overflow a long. */
+    data = CBS_data(&certificate);
+    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
+    if (x == NULL) {
+      al = SSL_AD_BAD_CERTIFICATE;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
+      goto f_err;
+    }
+    if (data != CBS_data(&certificate) + CBS_len(&certificate)) {
+      al = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
+      goto f_err;
+    }
+    if (!sk_X509_push(sk, x)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    x = NULL;
+  }
+
+  if (sk_X509_num(sk) <= 0) {
+    /* No client certificate so the handshake buffer may be discarded. */
+    ssl3_free_handshake_buffer(ssl);
+
+    /* TLS does not mind 0 certs returned */
+    if (ssl->version == SSL3_VERSION) {
+      al = SSL_AD_HANDSHAKE_FAILURE;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
+      goto f_err;
+    } else if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
+               (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
+      /* Fail for TLS only if we required a certificate */
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
+      al = SSL_AD_HANDSHAKE_FAILURE;
+      goto f_err;
+    }
+  } else {
+    if (ssl_verify_cert_chain(ssl, sk) <= 0) {
+      al = ssl_verify_alarm_type(ssl->verify_result);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+      goto f_err;
+    }
+  }
+
+  X509_free(ssl->session->peer);
+  ssl->session->peer = sk_X509_shift(sk);
+  ssl->session->verify_result = ssl->verify_result;
+
+  sk_X509_pop_free(ssl->session->cert_chain, X509_free);
+  ssl->session->cert_chain = sk;
+  /* Inconsistency alert: cert_chain does *not* include the peer's own
+   * certificate, while we do include it in s3_clnt.c */
+
+  sk = NULL;
+
+  ret = 1;
+
+  if (0) {
+  f_err:
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
+  }
+
+err:
+  X509_free(x);
+  sk_X509_pop_free(sk, X509_free);
+  return ret;
 }
 
 static int ssl3_get_client_key_exchange(SSL *ssl) {
@@ -1790,289 +1941,6 @@ err:
   return ret;
 }
 
-static int ssl3_get_client_certificate(SSL *ssl) {
-  int ok, al, ret = -1;
-  X509 *x = NULL;
-  unsigned long n;
-  STACK_OF(X509) *sk = NULL;
-  SHA256_CTX sha256;
-  CBS certificate_msg, certificate_list;
-  int is_first_certificate = 1;
-
-  assert(ssl->s3->tmp.cert_request);
-  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
-  }
-
-  if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE) {
-    if (ssl->version == SSL3_VERSION &&
-        ssl->s3->tmp.message_type == SSL3_MT_CLIENT_KEY_EXCHANGE) {
-      /* In SSL 3.0, the Certificate message is omitted to signal no certificate. */
-      if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
-          (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-        al = SSL_AD_HANDSHAKE_FAILURE;
-        goto f_err;
-      }
-
-      ssl->s3->tmp.reuse_message = 1;
-      return 1;
-    }
-
-    al = SSL_AD_UNEXPECTED_MESSAGE;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    goto f_err;
-  }
-
-  CBS_init(&certificate_msg, ssl->init_msg, n);
-
-  sk = sk_X509_new_null();
-  if (sk == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!CBS_get_u24_length_prefixed(&certificate_msg, &certificate_list) ||
-      CBS_len(&certificate_msg) != 0) {
-    al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
-  }
-
-  while (CBS_len(&certificate_list) > 0) {
-    CBS certificate;
-    const uint8_t *data;
-
-    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto f_err;
-    }
-
-    if (is_first_certificate && ssl->ctx->retain_only_sha256_of_client_certs) {
-      /* If this is the first certificate, and we don't want to keep peer
-       * certificates in memory, then we hash it right away. */
-      SHA256_Init(&sha256);
-      SHA256_Update(&sha256, CBS_data(&certificate), CBS_len(&certificate));
-      SHA256_Final(ssl->session->peer_sha256, &sha256);
-      ssl->session->peer_sha256_valid = 1;
-    }
-    is_first_certificate = 0;
-
-    /* A u24 length cannot overflow a long. */
-    data = CBS_data(&certificate);
-    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
-    if (x == NULL) {
-      al = SSL_AD_BAD_CERTIFICATE;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-      goto f_err;
-    }
-    if (data != CBS_data(&certificate) + CBS_len(&certificate)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
-      goto f_err;
-    }
-    if (!sk_X509_push(sk, x)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    x = NULL;
-  }
-
-  if (sk_X509_num(sk) <= 0) {
-    /* No client certificate so the handshake buffer may be discarded. */
-    ssl3_free_handshake_buffer(ssl);
-
-    /* TLS does not mind 0 certs returned */
-    if (ssl->version == SSL3_VERSION) {
-      al = SSL_AD_HANDSHAKE_FAILURE;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
-      goto f_err;
-    } else if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
-               (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
-      /* Fail for TLS only if we required a certificate */
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-      al = SSL_AD_HANDSHAKE_FAILURE;
-      goto f_err;
-    }
-  } else {
-    if (ssl_verify_cert_chain(ssl, sk) <= 0) {
-      al = ssl_verify_alarm_type(ssl->verify_result);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-      goto f_err;
-    }
-  }
-
-  X509_free(ssl->session->peer);
-  ssl->session->peer = sk_X509_shift(sk);
-  ssl->session->verify_result = ssl->verify_result;
-
-  sk_X509_pop_free(ssl->session->cert_chain, X509_free);
-  ssl->session->cert_chain = sk;
-  /* Inconsistency alert: cert_chain does *not* include the peer's own
-   * certificate, while we do include it in s3_clnt.c */
-
-  sk = NULL;
-
-  ret = 1;
-
-  if (0) {
-  f_err:
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-  }
-
-err:
-  X509_free(x);
-  sk_X509_pop_free(sk, X509_free);
-  return ret;
-}
-
-static int ssl3_send_server_certificate(SSL *ssl) {
-  if (ssl->state == SSL3_ST_SW_CERT_A) {
-    if (!ssl3_output_cert_chain(ssl)) {
-      return 0;
-    }
-    ssl->state = SSL3_ST_SW_CERT_B;
-  }
-
-  /* SSL3_ST_SW_CERT_B */
-  return ssl_do_write(ssl);
-}
-
-/* send a new session ticket (not necessarily for a new session) */
-static int ssl3_send_new_session_ticket(SSL *ssl) {
-  int ret = -1;
-  uint8_t *session = NULL;
-  size_t session_len;
-  EVP_CIPHER_CTX ctx;
-  HMAC_CTX hctx;
-
-  EVP_CIPHER_CTX_init(&ctx);
-  HMAC_CTX_init(&hctx);
-
-  if (ssl->state == SSL3_ST_SW_SESSION_TICKET_A) {
-    uint8_t *p, *macstart;
-    int len;
-    unsigned int hlen;
-    SSL_CTX *tctx = ssl->initial_ctx;
-    uint8_t iv[EVP_MAX_IV_LENGTH];
-    uint8_t key_name[16];
-    /* The maximum overhead of encrypting the session is 16 (key name) + IV +
-     * one block of encryption overhead + HMAC.  */
-    const size_t max_ticket_overhead =
-        16 + EVP_MAX_IV_LENGTH + EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE;
-
-    /* Serialize the SSL_SESSION to be encoded into the ticket. */
-    if (!SSL_SESSION_to_bytes_for_ticket(ssl->session, &session,
-                                         &session_len)) {
-      goto err;
-    }
-
-    /* If the session is too long, emit a dummy value rather than abort the
-     * connection. */
-    if (session_len > 0xFFFF - max_ticket_overhead) {
-      static const char kTicketPlaceholder[] = "TICKET TOO LARGE";
-      const size_t placeholder_len = strlen(kTicketPlaceholder);
-
-      OPENSSL_free(session);
-      session = NULL;
-
-      p = ssl_handshake_start(ssl);
-      /* Emit ticket_lifetime_hint. */
-      l2n(0, p);
-      /* Emit ticket. */
-      s2n(placeholder_len, p);
-      memcpy(p, kTicketPlaceholder, placeholder_len);
-      p += placeholder_len;
-
-      len = p - ssl_handshake_start(ssl);
-      if (!ssl_set_handshake_header(ssl, SSL3_MT_NEW_SESSION_TICKET, len)) {
-        goto err;
-      }
-      ssl->state = SSL3_ST_SW_SESSION_TICKET_B;
-      return ssl_do_write(ssl);
-    }
-
-    /* Grow buffer if need be: the length calculation is as follows:
-     * handshake_header_length + 4 (ticket lifetime hint) + 2 (ticket length) +
-     * max_ticket_overhead + * session_length */
-    if (!BUF_MEM_grow(ssl->init_buf, SSL_HM_HEADER_LENGTH(ssl) + 6 +
-                                       max_ticket_overhead + session_len)) {
-      goto err;
-    }
-    p = ssl_handshake_start(ssl);
-    /* Initialize HMAC and cipher contexts. If callback present it does all the
-     * work otherwise use generated values from parent ctx. */
-    if (tctx->tlsext_ticket_key_cb) {
-      if (tctx->tlsext_ticket_key_cb(ssl, key_name, iv, &ctx, &hctx,
-                                     1 /* encrypt */) < 0) {
-        goto err;
-      }
-    } else {
-      if (!RAND_bytes(iv, 16) ||
-          !EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL,
-                              tctx->tlsext_tick_aes_key, iv) ||
-          !HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(),
-                        NULL)) {
-        goto err;
-      }
-      memcpy(key_name, tctx->tlsext_tick_key_name, 16);
-    }
-
-    /* Ticket lifetime hint (advisory only): We leave this unspecified for
-     * resumed session (for simplicity), and guess that tickets for new
-     * sessions will live as long as their sessions. */
-    l2n(ssl->hit ? 0 : ssl->session->timeout, p);
-
-    /* Skip ticket length for now */
-    p += 2;
-    /* Output key name */
-    macstart = p;
-    memcpy(p, key_name, 16);
-    p += 16;
-    /* output IV */
-    memcpy(p, iv, EVP_CIPHER_CTX_iv_length(&ctx));
-    p += EVP_CIPHER_CTX_iv_length(&ctx);
-    /* Encrypt session data */
-    if (!EVP_EncryptUpdate(&ctx, p, &len, session, session_len)) {
-      goto err;
-    }
-    p += len;
-    if (!EVP_EncryptFinal_ex(&ctx, p, &len)) {
-      goto err;
-    }
-    p += len;
-
-    if (!HMAC_Update(&hctx, macstart, p - macstart) ||
-        !HMAC_Final(&hctx, p, &hlen)) {
-      goto err;
-    }
-
-    p += hlen;
-    /* Now write out lengths: p points to end of data written */
-    /* Total length */
-    len = p - ssl_handshake_start(ssl);
-    /* Skip ticket lifetime hint */
-    p = ssl_handshake_start(ssl) + 4;
-    s2n(len - 6, p);
-    if (!ssl_set_handshake_header(ssl, SSL3_MT_NEW_SESSION_TICKET, len)) {
-      goto err;
-    }
-    ssl->state = SSL3_ST_SW_SESSION_TICKET_B;
-  }
-
-  /* SSL3_ST_SW_SESSION_TICKET_B */
-  ret = ssl_do_write(ssl);
-
-err:
-  OPENSSL_free(session);
-  EVP_CIPHER_CTX_cleanup(&ctx);
-  HMAC_CTX_cleanup(&hctx);
-  return ret;
-}
-
 /* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It
  * sets the next_proto member in s if found */
 static int ssl3_get_next_proto(SSL *ssl) {
@@ -2221,5 +2089,137 @@ err:
   EC_KEY_free(key);
   EC_POINT_free(point);
   EC_GROUP_free(p256);
+  return ret;
+}
+
+/* send a new session ticket (not necessarily for a new session) */
+static int ssl3_send_new_session_ticket(SSL *ssl) {
+  int ret = -1;
+  uint8_t *session = NULL;
+  size_t session_len;
+  EVP_CIPHER_CTX ctx;
+  HMAC_CTX hctx;
+
+  EVP_CIPHER_CTX_init(&ctx);
+  HMAC_CTX_init(&hctx);
+
+  if (ssl->state == SSL3_ST_SW_SESSION_TICKET_A) {
+    uint8_t *p, *macstart;
+    int len;
+    unsigned int hlen;
+    SSL_CTX *tctx = ssl->initial_ctx;
+    uint8_t iv[EVP_MAX_IV_LENGTH];
+    uint8_t key_name[16];
+    /* The maximum overhead of encrypting the session is 16 (key name) + IV +
+     * one block of encryption overhead + HMAC.  */
+    const size_t max_ticket_overhead =
+        16 + EVP_MAX_IV_LENGTH + EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE;
+
+    /* Serialize the SSL_SESSION to be encoded into the ticket. */
+    if (!SSL_SESSION_to_bytes_for_ticket(ssl->session, &session,
+                                         &session_len)) {
+      goto err;
+    }
+
+    /* If the session is too long, emit a dummy value rather than abort the
+     * connection. */
+    if (session_len > 0xFFFF - max_ticket_overhead) {
+      static const char kTicketPlaceholder[] = "TICKET TOO LARGE";
+      const size_t placeholder_len = strlen(kTicketPlaceholder);
+
+      OPENSSL_free(session);
+      session = NULL;
+
+      p = ssl_handshake_start(ssl);
+      /* Emit ticket_lifetime_hint. */
+      l2n(0, p);
+      /* Emit ticket. */
+      s2n(placeholder_len, p);
+      memcpy(p, kTicketPlaceholder, placeholder_len);
+      p += placeholder_len;
+
+      len = p - ssl_handshake_start(ssl);
+      if (!ssl_set_handshake_header(ssl, SSL3_MT_NEW_SESSION_TICKET, len)) {
+        goto err;
+      }
+      ssl->state = SSL3_ST_SW_SESSION_TICKET_B;
+      return ssl_do_write(ssl);
+    }
+
+    /* Grow buffer if need be: the length calculation is as follows:
+     * handshake_header_length + 4 (ticket lifetime hint) + 2 (ticket length) +
+     * max_ticket_overhead + * session_length */
+    if (!BUF_MEM_grow(ssl->init_buf, SSL_HM_HEADER_LENGTH(ssl) + 6 +
+                                       max_ticket_overhead + session_len)) {
+      goto err;
+    }
+    p = ssl_handshake_start(ssl);
+    /* Initialize HMAC and cipher contexts. If callback present it does all the
+     * work otherwise use generated values from parent ctx. */
+    if (tctx->tlsext_ticket_key_cb) {
+      if (tctx->tlsext_ticket_key_cb(ssl, key_name, iv, &ctx, &hctx,
+                                     1 /* encrypt */) < 0) {
+        goto err;
+      }
+    } else {
+      if (!RAND_bytes(iv, 16) ||
+          !EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL,
+                              tctx->tlsext_tick_aes_key, iv) ||
+          !HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(),
+                        NULL)) {
+        goto err;
+      }
+      memcpy(key_name, tctx->tlsext_tick_key_name, 16);
+    }
+
+    /* Ticket lifetime hint (advisory only): We leave this unspecified for
+     * resumed session (for simplicity), and guess that tickets for new
+     * sessions will live as long as their sessions. */
+    l2n(ssl->hit ? 0 : ssl->session->timeout, p);
+
+    /* Skip ticket length for now */
+    p += 2;
+    /* Output key name */
+    macstart = p;
+    memcpy(p, key_name, 16);
+    p += 16;
+    /* output IV */
+    memcpy(p, iv, EVP_CIPHER_CTX_iv_length(&ctx));
+    p += EVP_CIPHER_CTX_iv_length(&ctx);
+    /* Encrypt session data */
+    if (!EVP_EncryptUpdate(&ctx, p, &len, session, session_len)) {
+      goto err;
+    }
+    p += len;
+    if (!EVP_EncryptFinal_ex(&ctx, p, &len)) {
+      goto err;
+    }
+    p += len;
+
+    if (!HMAC_Update(&hctx, macstart, p - macstart) ||
+        !HMAC_Final(&hctx, p, &hlen)) {
+      goto err;
+    }
+
+    p += hlen;
+    /* Now write out lengths: p points to end of data written */
+    /* Total length */
+    len = p - ssl_handshake_start(ssl);
+    /* Skip ticket lifetime hint */
+    p = ssl_handshake_start(ssl) + 4;
+    s2n(len - 6, p);
+    if (!ssl_set_handshake_header(ssl, SSL3_MT_NEW_SESSION_TICKET, len)) {
+      goto err;
+    }
+    ssl->state = SSL3_ST_SW_SESSION_TICKET_B;
+  }
+
+  /* SSL3_ST_SW_SESSION_TICKET_B */
+  ret = ssl_do_write(ssl);
+
+err:
+  OPENSSL_free(session);
+  EVP_CIPHER_CTX_cleanup(&ctx);
+  HMAC_CTX_cleanup(&hctx);
   return ret;
 }

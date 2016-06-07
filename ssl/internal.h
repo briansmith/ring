@@ -806,8 +806,6 @@ struct ssl_protocol_method_st {
   char is_dtls;
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
-  int (*ssl_accept)(SSL *ssl);
-  int (*ssl_connect)(SSL *ssl);
   long (*ssl_get_message)(SSL *ssl, int msg_type,
                           enum ssl_hash_message_t hash_message, int *ok);
   int (*ssl_read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);

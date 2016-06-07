@@ -514,13 +514,13 @@ void SSL_free(SSL *ssl) {
 void SSL_set_connect_state(SSL *ssl) {
   ssl->server = 0;
   ssl->state = SSL_ST_CONNECT;
-  ssl->handshake_func = ssl->method->ssl_connect;
+  ssl->handshake_func = ssl3_connect;
 }
 
 void SSL_set_accept_state(SSL *ssl) {
   ssl->server = 1;
   ssl->state = SSL_ST_ACCEPT;
-  ssl->handshake_func = ssl->method->ssl_accept;
+  ssl->handshake_func = ssl3_accept;
 }
 
 void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
@@ -579,8 +579,6 @@ int SSL_connect(SSL *ssl) {
     SSL_set_connect_state(ssl);
   }
 
-  assert(ssl->handshake_func == ssl->method->ssl_connect);
-
   return SSL_do_handshake(ssl);
 }
 
@@ -589,8 +587,6 @@ int SSL_accept(SSL *ssl) {
     /* Not properly initialized yet */
     SSL_set_accept_state(ssl);
   }
-
-  assert(ssl->handshake_func == ssl->method->ssl_accept);
 
   return SSL_do_handshake(ssl);
 }
