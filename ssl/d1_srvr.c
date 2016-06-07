@@ -184,7 +184,6 @@ int dtls1_accept(SSL *ssl) {
 
       case SSL3_ST_SW_SRVR_HELLO_A:
       case SSL3_ST_SW_SRVR_HELLO_B:
-        dtls1_start_timer(ssl);
         ret = ssl3_send_server_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -204,7 +203,6 @@ int dtls1_accept(SSL *ssl) {
       case SSL3_ST_SW_CERT_A:
       case SSL3_ST_SW_CERT_B:
         if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
-          dtls1_start_timer(ssl);
           ret = ssl3_send_server_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -244,7 +242,6 @@ int dtls1_accept(SSL *ssl) {
          * in sync. */
         if (ssl_cipher_requires_server_key_exchange(ssl->s3->tmp.new_cipher) ||
             ((alg_a & SSL_aPSK) && ssl->psk_identity_hint)) {
-          dtls1_start_timer(ssl);
           ret = ssl3_send_server_key_exchange(ssl);
           if (ret <= 0) {
             goto end;
@@ -259,7 +256,6 @@ int dtls1_accept(SSL *ssl) {
       case SSL3_ST_SW_CERT_REQ_A:
       case SSL3_ST_SW_CERT_REQ_B:
         if (ssl->s3->tmp.cert_request) {
-          dtls1_start_timer(ssl);
           ret = ssl3_send_certificate_request(ssl);
           if (ret <= 0) {
             goto end;
@@ -272,7 +268,6 @@ int dtls1_accept(SSL *ssl) {
 
       case SSL3_ST_SW_SRVR_DONE_A:
       case SSL3_ST_SW_SRVR_DONE_B:
-        dtls1_start_timer(ssl);
         ret = ssl3_send_server_done(ssl);
         if (ret <= 0) {
           goto end;
@@ -288,6 +283,9 @@ int dtls1_accept(SSL *ssl) {
           goto end;
         }
         ssl->state = ssl->s3->tmp.next_state;
+        if (ssl->state != SSL_ST_OK) {
+          dtls1_start_timer(ssl);
+        }
         break;
 
       case SSL3_ST_SR_CERT_A:

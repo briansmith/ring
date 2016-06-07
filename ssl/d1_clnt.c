@@ -171,7 +171,6 @@ int dtls1_connect(SSL *ssl) {
 
       case SSL3_ST_CW_CLNT_HELLO_A:
       case SSL3_ST_CW_CLNT_HELLO_B:
-        dtls1_start_timer(ssl);
         ret = ssl3_send_client_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -280,7 +279,6 @@ int dtls1_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_B:
       case SSL3_ST_CW_CERT_C:
       case SSL3_ST_CW_CERT_D:
-        dtls1_start_timer(ssl);
         ret = ssl3_send_client_certificate(ssl);
         if (ret <= 0) {
           goto end;
@@ -290,7 +288,6 @@ int dtls1_connect(SSL *ssl) {
 
       case SSL3_ST_CW_KEY_EXCH_A:
       case SSL3_ST_CW_KEY_EXCH_B:
-        dtls1_start_timer(ssl);
         ret = ssl3_send_client_key_exchange(ssl);
         if (ret <= 0) {
           goto end;
@@ -307,7 +304,6 @@ int dtls1_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
       case SSL3_ST_CW_CERT_VRFY_C:
-        dtls1_start_timer(ssl);
         ret = ssl3_send_cert_verify(ssl);
         if (ret <= 0) {
           goto end;
@@ -317,9 +313,6 @@ int dtls1_connect(SSL *ssl) {
 
       case SSL3_ST_CW_CHANGE_A:
       case SSL3_ST_CW_CHANGE_B:
-        if (!ssl->hit) {
-          dtls1_start_timer(ssl);
-        }
         ret = dtls1_send_change_cipher_spec(ssl, SSL3_ST_CW_CHANGE_A,
                                             SSL3_ST_CW_CHANGE_B);
         if (ret <= 0) {
@@ -336,10 +329,6 @@ int dtls1_connect(SSL *ssl) {
 
       case SSL3_ST_CW_FINISHED_A:
       case SSL3_ST_CW_FINISHED_B:
-        if (!ssl->hit) {
-          dtls1_start_timer(ssl);
-        }
-
         ret = ssl3_send_finished(ssl, SSL3_ST_CW_FINISHED_A,
                                  SSL3_ST_CW_FINISHED_B);
         if (ret <= 0) {
@@ -410,6 +399,9 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = ssl->s3->tmp.next_state;
+        if (ssl->state != SSL_ST_OK) {
+          dtls1_start_timer(ssl);
+        }
         break;
 
       case SSL_ST_OK:
