@@ -53,7 +53,7 @@ var (
 	resourceDir     = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
 	fuzzer          = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 	transcriptDir   = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
-	timeout         = flag.Int("timeout", 15, "The number of seconds to wait for a read or write to bssl_shim.")
+	idleTimeout     = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
 )
 
 const (
@@ -315,7 +315,7 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
-	conn = &timeoutConn{conn, time.Duration(*timeout) * time.Second}
+	conn = &timeoutConn{conn, *idleTimeout}
 
 	if test.protocol == dtls {
 		config.Bugs.PacketAdaptor = newPacketAdaptor(conn)
