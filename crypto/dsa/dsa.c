@@ -845,6 +845,7 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
     goto err;
   }
 
+  BN_set_flags(&kq, BN_FLG_CONSTTIME);
   K = &kq;
 
   if (!BN_mod_exp_mont(r, dsa->g, K, dsa->p, ctx, dsa->method_mont_p)) {
