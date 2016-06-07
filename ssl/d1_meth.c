@@ -63,7 +63,7 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
     1 /* is_dtls */,
     dtls1_new,
     dtls1_free,
-    dtls1_accept,
+    ssl3_accept,
     ssl3_connect,
     dtls1_get_message,
     dtls1_read_app_data,

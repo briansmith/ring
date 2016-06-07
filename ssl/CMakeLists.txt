@@ -11,7 +11,6 @@ add_library(
   d1_meth.c
   d1_pkt.c
   d1_srtp.c
-  d1_srvr.c
   dtls_record.c
   s3_both.c
   s3_clnt.c

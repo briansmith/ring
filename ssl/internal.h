@@ -1003,9 +1003,6 @@ int ssl_verify_alarm_type(long type);
  * |len|. It returns one on success and zero on failure. */
 int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 
-int ssl3_send_server_certificate(SSL *ssl);
-int ssl3_send_new_session_ticket(SSL *ssl);
-int ssl3_send_certificate_status(SSL *ssl);
 int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl, int state_a, int state_b);
 void ssl3_cleanup_key_block(SSL *ssl);
@@ -1090,20 +1087,6 @@ int dtls1_is_timer_expired(SSL *ssl);
 void dtls1_double_timeout(SSL *ssl);
 unsigned int dtls1_min_mtu(void);
 void dtls1_hm_fragment_free(hm_fragment *frag);
-
-/* some server-only functions */
-int ssl3_get_initial_bytes(SSL *ssl);
-int ssl3_get_v2_client_hello(SSL *ssl);
-int ssl3_get_client_hello(SSL *ssl);
-int ssl3_send_server_hello(SSL *ssl);
-int ssl3_send_server_key_exchange(SSL *ssl);
-int ssl3_send_certificate_request(SSL *ssl);
-int ssl3_send_server_done(SSL *ssl);
-int ssl3_get_client_certificate(SSL *ssl);
-int ssl3_get_client_key_exchange(SSL *ssl);
-int ssl3_get_cert_verify(SSL *ssl);
-int ssl3_get_next_proto(SSL *ssl);
-int ssl3_get_channel_id(SSL *ssl);
 
 int dtls1_new(SSL *ssl);
 int dtls1_accept(SSL *ssl);

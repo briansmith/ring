@@ -173,6 +173,22 @@
 #include "../crypto/dh/internal.h"
 
 
+static int ssl3_get_initial_bytes(SSL *ssl);
+static int ssl3_get_v2_client_hello(SSL *ssl);
+static int ssl3_get_client_hello(SSL *ssl);
+static int ssl3_send_server_hello(SSL *ssl);
+static int ssl3_send_certificate_status(SSL *ssl);
+static int ssl3_send_server_done(SSL *ssl);
+static int ssl3_send_server_key_exchange(SSL *ssl);
+static int ssl3_send_certificate_request(SSL *ssl);
+static int ssl3_get_client_key_exchange(SSL *ssl);
+static int ssl3_get_cert_verify(SSL *ssl);
+static int ssl3_get_client_certificate(SSL *ssl);
+static int ssl3_send_server_certificate(SSL *ssl);
+static int ssl3_send_new_session_ticket(SSL *ssl);
+static int ssl3_get_next_proto(SSL *ssl);
+static int ssl3_get_channel_id(SSL *ssl);
+
 int ssl3_accept(SSL *ssl) {
   BUF_MEM *buf = NULL;
   uint32_t alg_a;
@@ -181,7 +197,6 @@ int ssl3_accept(SSL *ssl) {
 
   assert(ssl->handshake_func == ssl3_accept);
   assert(ssl->server);
-  assert(!SSL_IS_DTLS(ssl));
 
   for (;;) {
     state = ssl->state;
@@ -214,7 +229,7 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
 
-        if (!ssl->s3->have_version) {
+        if (!ssl->s3->have_version && !SSL_IS_DTLS(ssl)) {
           ssl->state = SSL3_ST_SR_INITIAL_BYTES;
         } else {
           ssl->state = SSL3_ST_SR_CLNT_HELLO_A;
@@ -222,6 +237,7 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_INITIAL_BYTES:
+        assert(!SSL_IS_DTLS(ssl));
         ret = ssl3_get_initial_bytes(ssl);
         if (ret <= 0) {
           goto end;
@@ -231,6 +247,7 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_V2_CLIENT_HELLO:
+        assert(!SSL_IS_DTLS(ssl));
         ret = ssl3_get_v2_client_hello(ssl);
         if (ret <= 0) {
           goto end;
@@ -245,6 +262,7 @@ int ssl3_accept(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
+        ssl->method->received_flight(ssl);
         ssl->state = SSL3_ST_SW_SRVR_HELLO_A;
         break;
 
@@ -297,13 +315,7 @@ int ssl3_accept(SSL *ssl) {
       case SSL3_ST_SW_KEY_EXCH_C:
         alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
 
-        /* Send a ServerKeyExchange message if:
-         * - The key exchange is ephemeral or anonymous
-         *   Diffie-Hellman.
-         * - There is a PSK identity hint.
-         *
-         * TODO(davidben): This logic is currently duplicated in d1_srvr.c. Fix
-         * this. In the meantime, keep them in sync. */
+        /* PSK ciphers send ServerKeyExchange if there is an identity hint. */
         if (ssl_cipher_requires_server_key_exchange(ssl->s3->tmp.new_cipher) ||
             ((alg_a & SSL_aPSK) && ssl->psk_identity_hint)) {
           ret = ssl3_send_server_key_exchange(ssl);
@@ -341,11 +353,6 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SW_FLUSH:
-        /* This code originally checked to see if any data was pending using
-         * BIO_CTRL_INFO and then flushed. This caused problems as documented
-         * in PR#1939. The proposed fix doesn't completely resolve this issue
-         * as buggy implementations of BIO_CTRL_PENDING still exist. So instead
-         * we just flush unconditionally. */
         if (BIO_flush(ssl->wbio) <= 0) {
           ssl->rwstate = SSL_WRITING;
           ret = -1;
@@ -353,6 +360,9 @@ int ssl3_accept(SSL *ssl) {
         }
 
         ssl->state = ssl->s3->tmp.next_state;
+        if (ssl->state != SSL_ST_OK) {
+          ssl->method->expect_flight(ssl);
+        }
         break;
 
       case SSL3_ST_SR_CERT_A:
@@ -429,6 +439,7 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
 
+        ssl->method->received_flight(ssl);
         if (ssl->hit) {
           ssl->state = SSL_ST_OK;
         } else if (ssl->tlsext_ticket_expected) {
@@ -436,6 +447,7 @@ int ssl3_accept(SSL *ssl) {
         } else {
           ssl->state = SSL3_ST_SW_CHANGE_A;
         }
+
         /* If this is a full handshake with ChannelID then record the hashshake
          * hashes in |ssl->session| in case we need them to verify a ChannelID
          * signature on a resumption of this session in the future. */
@@ -458,8 +470,8 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CHANGE_A:
       case SSL3_ST_SW_CHANGE_B:
-        ret = ssl3_send_change_cipher_spec(ssl, SSL3_ST_SW_CHANGE_A,
-                                           SSL3_ST_SW_CHANGE_B);
+        ret = ssl->method->send_change_cipher_spec(ssl, SSL3_ST_SW_CHANGE_A,
+                                                   SSL3_ST_SW_CHANGE_B);
         if (ret <= 0) {
           goto end;
         }
@@ -490,13 +502,18 @@ int ssl3_accept(SSL *ssl) {
         /* clean a few things up */
         ssl3_cleanup_key_block(ssl);
 
-        BUF_MEM_free(ssl->init_buf);
-        ssl->init_buf = NULL;
-        ssl->init_num = 0;
+        /* In DTLS, |init_buf| cannot be released because post-handshake
+         * retransmit relies on that buffer being available as scratch space.
+         *
+         * TODO(davidben): Fix this. */
+        if (!SSL_IS_DTLS(ssl)) {
+          BUF_MEM_free(ssl->init_buf);
+          ssl->init_buf = NULL;
+          ssl->init_num = 0;
+        }
 
         /* remove buffering on output */
         ssl_free_wbio_buffer(ssl);
-
 
         /* If we aren't retaining peer certificates then we can discard it
          * now. */
@@ -505,6 +522,12 @@ int ssl3_accept(SSL *ssl) {
           ssl->session->peer = NULL;
           sk_X509_pop_free(ssl->session->cert_chain, X509_free);
           ssl->session->cert_chain = NULL;
+        }
+
+        if (SSL_IS_DTLS(ssl)) {
+          ssl->d1->handshake_read_seq = 0;
+          ssl->d1->handshake_write_seq = 0;
+          ssl->d1->next_handshake_write_seq = 0;
         }
 
         ssl->s3->initial_handshake_complete = 1;
@@ -537,7 +560,7 @@ end:
   return ret;
 }
 
-int ssl3_get_initial_bytes(SSL *ssl) {
+static int ssl3_get_initial_bytes(SSL *ssl) {
   /* Read the first 5 bytes, the size of the TLS record header. This is
    * sufficient to detect a V2ClientHello and ensures that we never read beyond
    * the first record. */
@@ -576,7 +599,7 @@ int ssl3_get_initial_bytes(SSL *ssl) {
   return 1;
 }
 
-int ssl3_get_v2_client_hello(SSL *ssl) {
+static int ssl3_get_v2_client_hello(SSL *ssl) {
   const uint8_t *p;
   int ret;
   CBS v2_client_hello, cipher_specs, session_id, challenge;
@@ -702,7 +725,7 @@ int ssl3_get_v2_client_hello(SSL *ssl) {
   return 1;
 }
 
-int ssl3_get_client_hello(SSL *ssl) {
+static int ssl3_get_client_hello(SSL *ssl) {
   int ok, al = SSL_AD_INTERNAL_ERROR, ret = -1;
   long n;
   const SSL_CIPHER *c;
@@ -1047,7 +1070,7 @@ err:
   return ret;
 }
 
-int ssl3_send_server_hello(SSL *ssl) {
+static int ssl3_send_server_hello(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_SRVR_HELLO_B) {
     return ssl_do_write(ssl);
   }
@@ -1098,7 +1121,7 @@ int ssl3_send_server_hello(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
-int ssl3_send_certificate_status(SSL *ssl) {
+static int ssl3_send_certificate_status(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_CERT_STATUS_A) {
     CBB out, ocsp_response;
     size_t length;
@@ -1124,7 +1147,7 @@ int ssl3_send_certificate_status(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
-int ssl3_send_server_done(SSL *ssl) {
+static int ssl3_send_server_done(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_SRVR_DONE_A) {
     if (!ssl_set_handshake_header(ssl, SSL3_MT_SERVER_DONE, 0)) {
       return -1;
@@ -1136,7 +1159,7 @@ int ssl3_send_server_done(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
-int ssl3_send_server_key_exchange(SSL *ssl) {
+static int ssl3_send_server_key_exchange(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_KEY_EXCH_C) {
     return ssl_do_write(ssl);
   }
@@ -1324,7 +1347,7 @@ err:
   return -1;
 }
 
-int ssl3_send_certificate_request(SSL *ssl) {
+static int ssl3_send_certificate_request(SSL *ssl) {
   uint8_t *p, *d;
   size_t i;
   int j, nl, off, n;
@@ -1392,7 +1415,7 @@ err:
   return -1;
 }
 
-int ssl3_get_client_key_exchange(SSL *ssl) {
+static int ssl3_get_client_key_exchange(SSL *ssl) {
   int al;
   CBS client_key_exchange;
   uint32_t alg_k;
@@ -1661,7 +1684,7 @@ err:
   return -1;
 }
 
-int ssl3_get_cert_verify(SSL *ssl) {
+static int ssl3_get_cert_verify(SSL *ssl) {
   int al, ok, ret = 0;
   long n;
   CBS certificate_verify, signature;
@@ -1767,7 +1790,7 @@ err:
   return ret;
 }
 
-int ssl3_get_client_certificate(SSL *ssl) {
+static int ssl3_get_client_certificate(SSL *ssl) {
   int ok, al, ret = -1;
   X509 *x = NULL;
   unsigned long n;
@@ -1906,7 +1929,7 @@ err:
   return ret;
 }
 
-int ssl3_send_server_certificate(SSL *ssl) {
+static int ssl3_send_server_certificate(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_CERT_A) {
     if (!ssl3_output_cert_chain(ssl)) {
       return 0;
@@ -1919,7 +1942,7 @@ int ssl3_send_server_certificate(SSL *ssl) {
 }
 
 /* send a new session ticket (not necessarily for a new session) */
-int ssl3_send_new_session_ticket(SSL *ssl) {
+static int ssl3_send_new_session_ticket(SSL *ssl) {
   int ret = -1;
   uint8_t *session = NULL;
   size_t session_len;
@@ -2052,7 +2075,7 @@ err:
 
 /* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It
  * sets the next_proto member in s if found */
-int ssl3_get_next_proto(SSL *ssl) {
+static int ssl3_get_next_proto(SSL *ssl) {
   int ok;
   long n;
   CBS next_protocol, selected_protocol, padding;
@@ -2090,7 +2113,7 @@ int ssl3_get_next_proto(SSL *ssl) {
 }
 
 /* ssl3_get_channel_id reads and verifies a ClientID handshake message. */
-int ssl3_get_channel_id(SSL *ssl) {
+static int ssl3_get_channel_id(SSL *ssl) {
   int ret = -1, ok;
   long n;
   uint8_t channel_id_hash[EVP_MAX_MD_SIZE];
