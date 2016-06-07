@@ -130,27 +130,20 @@
 
 
 /* ssl3_do_write sends |ssl->init_buf| in records of type 'type'
- * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns -1 on error, 1
- * on success or zero if the transmission is still incomplete. */
+ * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns -1 on error and
+ * 1 on success. */
 int ssl3_do_write(SSL *ssl, int type) {
-  int n;
-
-  n = ssl3_write_bytes(ssl, type, &ssl->init_buf->data[ssl->init_off],
-                       ssl->init_num);
+  int n = ssl3_write_bytes(ssl, type, ssl->init_buf->data, ssl->init_num);
   if (n < 0) {
     return -1;
   }
 
-  if (n == ssl->init_num) {
-    ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type,
-                        ssl->init_buf->data,
-                        (size_t)(ssl->init_off + ssl->init_num));
-    return 1;
-  }
-
-  ssl->init_off += n;
-  ssl->init_num -= n;
-  return 0;
+  /* ssl3_write_bytes writes the data in its entirety. */
+  assert(n == ssl->init_num);
+  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type,
+                      ssl->init_buf->data, (size_t)ssl->init_num);
+  ssl->init_num = 0;
+  return 1;
 }
 
 int ssl3_send_finished(SSL *ssl, int a, int b) {
@@ -272,7 +265,6 @@ int ssl3_send_change_cipher_spec(SSL *ssl, int a, int b) {
   if (ssl->state == a) {
     *((uint8_t *)ssl->init_buf->data) = SSL3_MT_CCS;
     ssl->init_num = 1;
-    ssl->init_off = 0;
 
     ssl->state = b;
   }

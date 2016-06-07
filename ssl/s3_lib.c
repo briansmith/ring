@@ -171,7 +171,6 @@ int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
   *(p++) = htype;
   l2n3(len, p);
   ssl->init_num = (int)len + SSL3_HM_HEADER_LENGTH;
-  ssl->init_off = 0;
 
   /* Add the message to the handshake hash. */
   return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
