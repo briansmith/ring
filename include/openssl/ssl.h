@@ -4176,12 +4176,9 @@ typedef struct ssl3_state_st {
       uint16_t received;
     } custom_extensions;
 
-    /* SNI extension */
-
     /* should_ack_sni is used by a server and indicates that the SNI extension
      * should be echoed in the ServerHello. */
     unsigned should_ack_sni:1;
-
 
     /* Client-only: cert_req determines if a client certificate is to be sent.
      * This is 0 if no client Certificate message is to be sent, 1 if there is
