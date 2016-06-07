@@ -170,6 +170,24 @@
 #include "../crypto/dh/internal.h"
 
 
+static int ssl3_send_client_hello(SSL *ssl);
+static int dtls1_get_hello_verify(SSL *ssl);
+static int ssl3_get_server_hello(SSL *ssl);
+static int ssl3_get_certificate_request(SSL *ssl);
+static int ssl3_get_new_session_ticket(SSL *ssl);
+static int ssl3_get_cert_status(SSL *ssl);
+static int ssl3_get_server_done(SSL *ssl);
+static int ssl3_send_cert_verify(SSL *ssl);
+static int ssl3_send_client_certificate(SSL *ssl);
+static int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509,
+                                 EVP_PKEY **out_pkey);
+static int ssl3_send_client_key_exchange(SSL *ssl);
+static int ssl3_get_server_key_exchange(SSL *ssl);
+static int ssl3_get_server_certificate(SSL *ssl);
+static int ssl3_send_next_proto(SSL *ssl);
+static int ssl3_send_channel_id(SSL *ssl);
+static int ssl3_verify_server_cert(SSL *ssl);
+
 int ssl3_connect(SSL *ssl) {
   BUF_MEM *buf = NULL;
   int ret = -1;
@@ -177,7 +195,6 @@ int ssl3_connect(SSL *ssl) {
 
   assert(ssl->handshake_func == ssl3_connect);
   assert(!ssl->server);
-  assert(!SSL_IS_DTLS(ssl));
 
   for (;;) {
     state = ssl->state;
@@ -204,12 +221,6 @@ int ssl3_connect(SSL *ssl) {
           goto end;
         }
 
-        if (!ssl3_init_handshake_buffer(ssl)) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          ret = -1;
-          goto end;
-        }
-
         ssl->state = SSL3_ST_CW_CLNT_HELLO_A;
         break;
 
@@ -219,8 +230,27 @@ int ssl3_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->s3->tmp.next_state = SSL3_ST_CR_SRVR_HELLO_A;
+
+        if (!SSL_IS_DTLS(ssl) || ssl->d1->send_cookie) {
+          ssl->s3->tmp.next_state = SSL3_ST_CR_SRVR_HELLO_A;
+        } else {
+          ssl->s3->tmp.next_state = DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
+        }
         ssl->state = SSL3_ST_CW_FLUSH;
+        break;
+
+      case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A:
+        assert(SSL_IS_DTLS(ssl));
+        ret = dtls1_get_hello_verify(ssl);
+        if (ret <= 0) {
+          goto end;
+        }
+        if (ssl->d1->send_cookie) {
+          ssl->method->received_flight(ssl);
+          ssl->state = SSL3_ST_CW_CLNT_HELLO_A;
+        } else {
+          ssl->state = SSL3_ST_CR_SRVR_HELLO_A;
+        }
         break;
 
       case SSL3_ST_CR_SRVR_HELLO_A:
@@ -291,12 +321,12 @@ int ssl3_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
+        ssl->method->received_flight(ssl);
         if (ssl->s3->tmp.cert_req) {
           ssl->state = SSL3_ST_CW_CERT_A;
         } else {
           ssl->state = SSL3_ST_CW_KEY_EXCH_A;
         }
-
         break;
 
       case SSL3_ST_CW_CERT_A:
@@ -337,8 +367,8 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CW_CHANGE_A:
       case SSL3_ST_CW_CHANGE_B:
-        ret = ssl3_send_change_cipher_spec(ssl, SSL3_ST_CW_CHANGE_A,
-                                           SSL3_ST_CW_CHANGE_B);
+        ret = ssl->method->send_change_cipher_spec(ssl, SSL3_ST_CW_CHANGE_A,
+                                                   SSL3_ST_CW_CHANGE_B);
         if (ret <= 0) {
           goto end;
         }
@@ -452,6 +482,7 @@ int ssl3_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
+        ssl->method->received_flight(ssl);
 
         if (ssl->hit) {
           ssl->state = SSL3_ST_CW_CHANGE_A;
@@ -467,6 +498,9 @@ int ssl3_connect(SSL *ssl) {
           goto end;
         }
         ssl->state = ssl->s3->tmp.next_state;
+        if (ssl->state != SSL_ST_OK) {
+          ssl->method->expect_flight(ssl);
+        }
         break;
 
       case SSL3_ST_FALSE_START:
@@ -486,9 +520,15 @@ int ssl3_connect(SSL *ssl) {
         /* clean a few things up */
         ssl3_cleanup_key_block(ssl);
 
-        BUF_MEM_free(ssl->init_buf);
-        ssl->init_buf = NULL;
-        ssl->init_num = 0;
+        /* |init_buf| cannot be released in DTLS because post-handshake
+         * retransmit relies on that buffer being available as scratch space.
+         *
+         * TODO(davidben): Fix this. */
+        if (!SSL_IS_DTLS(ssl)) {
+          BUF_MEM_free(ssl->init_buf);
+          ssl->init_buf = NULL;
+          ssl->init_num = 0;
+        }
 
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(ssl);
@@ -503,10 +543,13 @@ int ssl3_connect(SSL *ssl) {
           ssl_update_cache(ssl, SSL_SESS_CACHE_CLIENT);
         }
 
+        if (SSL_IS_DTLS(ssl)) {
+          ssl->d1->handshake_read_seq = 0;
+          ssl->d1->next_handshake_write_seq = 0;
+        }
+
         ret = 1;
-
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
-
         goto end;
 
       default:
@@ -585,14 +628,14 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
   return CBB_flush(out);
 }
 
-int ssl3_send_client_hello(SSL *ssl) {
+static int ssl3_send_client_hello(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CLNT_HELLO_B) {
     return ssl_do_write(ssl);
   }
 
-  /* In DTLS, reset the handshake buffer each time a new ClientHello is
-   * assembled. We may send multiple if we receive HelloVerifyRequest. */
-  if (SSL_IS_DTLS(ssl) && !ssl3_init_handshake_buffer(ssl)) {
+  /* The handshake buffer is reset on every ClientHello. Notably, in DTLS, we
+   * may send multiple ClientHellos if we receive HelloVerifyRequest. */
+  if (!ssl3_init_handshake_buffer(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
@@ -676,7 +719,51 @@ err:
   return -1;
 }
 
-int ssl3_get_server_hello(SSL *ssl) {
+static int dtls1_get_hello_verify(SSL *ssl) {
+  long n;
+  int al, ok = 0;
+  CBS hello_verify_request, cookie;
+  uint16_t server_version;
+
+  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
+
+  if (!ok) {
+    return n;
+  }
+
+  if (ssl->s3->tmp.message_type != DTLS1_MT_HELLO_VERIFY_REQUEST) {
+    ssl->d1->send_cookie = 0;
+    ssl->s3->tmp.reuse_message = 1;
+    return 1;
+  }
+
+  CBS_init(&hello_verify_request, ssl->init_msg, n);
+
+  if (!CBS_get_u16(&hello_verify_request, &server_version) ||
+      !CBS_get_u8_length_prefixed(&hello_verify_request, &cookie) ||
+      CBS_len(&hello_verify_request) != 0) {
+    al = SSL_AD_DECODE_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    goto f_err;
+  }
+
+  if (CBS_len(&cookie) > sizeof(ssl->d1->cookie)) {
+    al = SSL_AD_ILLEGAL_PARAMETER;
+    goto f_err;
+  }
+
+  memcpy(ssl->d1->cookie, CBS_data(&cookie), CBS_len(&cookie));
+  ssl->d1->cookie_len = CBS_len(&cookie);
+
+  ssl->d1->send_cookie = 1;
+  return 1;
+
+f_err:
+  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
+  return -1;
+}
+
+static int ssl3_get_server_hello(SSL *ssl) {
   STACK_OF(SSL_CIPHER) *sk;
   const SSL_CIPHER *c;
   CERT *ct = ssl->cert;
@@ -906,7 +993,7 @@ err:
   return ret;
 }
 
-int ssl3_get_server_certificate(SSL *ssl) {
+static int ssl3_get_server_certificate(SSL *ssl) {
   int al, ok, ret = -1;
   unsigned long n;
   X509 *x = NULL;
@@ -996,7 +1083,7 @@ err:
   return ret;
 }
 
-int ssl3_get_server_key_exchange(SSL *ssl) {
+static int ssl3_get_server_key_exchange(SSL *ssl) {
   EVP_MD_CTX md_ctx;
   int al, ok;
   EVP_PKEY *pkey = NULL;
@@ -1265,7 +1352,7 @@ static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
   return X509_NAME_cmp(*a, *b);
 }
 
-int ssl3_get_certificate_request(SSL *ssl) {
+static int ssl3_get_certificate_request(SSL *ssl) {
   int ok, ret = 0;
   X509_NAME *xn = NULL;
   STACK_OF(X509_NAME) *ca_sk = NULL;
@@ -1373,7 +1460,7 @@ err:
   return ret;
 }
 
-int ssl3_get_new_session_ticket(SSL *ssl) {
+static int ssl3_get_new_session_ticket(SSL *ssl) {
   int ok, al;
   long n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEW_SESSION_TICKET,
                                         ssl_hash_message, &ok);
@@ -1446,7 +1533,7 @@ err:
   return -1;
 }
 
-int ssl3_get_cert_status(SSL *ssl) {
+static int ssl3_get_cert_status(SSL *ssl) {
   int ok, al;
   long n;
   CBS certificate_status, ocsp_response;
@@ -1489,7 +1576,7 @@ f_err:
   return -1;
 }
 
-int ssl3_get_server_done(SSL *ssl) {
+static int ssl3_get_server_done(SSL *ssl) {
   int ok;
   long n;
 
@@ -1513,7 +1600,7 @@ int ssl3_get_server_done(SSL *ssl) {
 OPENSSL_COMPILE_ASSERT(sizeof(size_t) >= sizeof(unsigned),
                        SIZE_T_IS_SMALLER_THAN_UNSIGNED);
 
-int ssl3_send_client_key_exchange(SSL *ssl) {
+static int ssl3_send_client_key_exchange(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_KEY_EXCH_B) {
     return ssl_do_write(ssl);
   }
@@ -1711,7 +1798,7 @@ err:
   return -1;
 }
 
-int ssl3_send_cert_verify(SSL *ssl) {
+static int ssl3_send_cert_verify(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CERT_VRFY_C) {
     return ssl_do_write(ssl);
   }
@@ -1806,7 +1893,7 @@ static int ssl3_has_client_certificate(SSL *ssl) {
   return ssl->cert && ssl->cert->x509 && ssl_has_private_key(ssl);
 }
 
-int ssl3_send_client_certificate(SSL *ssl) {
+static int ssl3_send_client_certificate(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CERT_A) {
     /* Call cert_cb to update the certificate. */
     if (ssl->cert->cert_cb) {
@@ -1879,7 +1966,7 @@ int ssl3_send_client_certificate(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
-int ssl3_send_next_proto(SSL *ssl) {
+static int ssl3_send_next_proto(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_NEXT_PROTO_B) {
     return ssl_do_write(ssl);
   }
@@ -1910,7 +1997,7 @@ int ssl3_send_next_proto(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
-int ssl3_send_channel_id(SSL *ssl) {
+static int ssl3_send_channel_id(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CHANNEL_ID_B) {
     return ssl_do_write(ssl);
   }
@@ -1991,7 +2078,8 @@ err:
   return ret;
 }
 
-int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
+static int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509,
+                                 EVP_PKEY **out_pkey) {
   if (ssl->ctx->client_cert_cb == NULL) {
     return 0;
   }
@@ -2006,7 +2094,7 @@ int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
   return 1;
 }
 
-int ssl3_verify_server_cert(SSL *ssl) {
+static int ssl3_verify_server_cert(SSL *ssl) {
   int ret = ssl_verify_cert_chain(ssl, ssl->session->cert_chain);
   if (ssl->verify_mode != SSL_VERIFY_NONE && ret <= 0) {
     int al = ssl_verify_alarm_type(ssl->verify_result);

@@ -824,6 +824,14 @@ struct ssl_protocol_method_st {
   int (*set_handshake_header)(SSL *ssl, int type, unsigned long len);
   /* Write out handshake message */
   int (*do_write)(SSL *ssl);
+  /* send_change_cipher_spec sends a ChangeCipherSpec message. */
+  int (*send_change_cipher_spec)(SSL *ssl, int a, int b);
+  /* expect_flight is called when the handshake expects a flight of messages from
+   * the peer. */
+  void (*expect_flight)(SSL *ssl);
+  /* received_flight is called when the handshake has received a flight of
+   * messages from the peer. */
+  void (*received_flight)(SSL *ssl);
 };
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
@@ -1041,6 +1049,8 @@ int ssl3_connect(SSL *ssl);
 
 int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *ssl);
+void ssl3_expect_flight(SSL *ssl);
+void ssl3_received_flight(SSL *ssl);
 
 int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch);
 
@@ -1070,6 +1080,8 @@ int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
 int dtls1_check_timeout_num(SSL *ssl);
 int dtls1_set_handshake_header(SSL *ssl, int type, unsigned long len);
 int dtls1_handshake_write(SSL *ssl);
+void dtls1_expect_flight(SSL *ssl);
+void dtls1_received_flight(SSL *ssl);
 
 int dtls1_supports_cipher(const SSL_CIPHER *cipher);
 void dtls1_start_timer(SSL *ssl);
@@ -1078,23 +1090,6 @@ int dtls1_is_timer_expired(SSL *ssl);
 void dtls1_double_timeout(SSL *ssl);
 unsigned int dtls1_min_mtu(void);
 void dtls1_hm_fragment_free(hm_fragment *frag);
-
-/* some client-only functions */
-int ssl3_send_client_hello(SSL *ssl);
-int ssl3_get_server_hello(SSL *ssl);
-int ssl3_get_certificate_request(SSL *ssl);
-int ssl3_get_new_session_ticket(SSL *ssl);
-int ssl3_get_cert_status(SSL *ssl);
-int ssl3_get_server_done(SSL *ssl);
-int ssl3_send_cert_verify(SSL *ssl);
-int ssl3_send_client_certificate(SSL *ssl);
-int ssl_do_client_cert_cb(SSL *ssl, X509 **px509, EVP_PKEY **ppkey);
-int ssl3_send_client_key_exchange(SSL *ssl);
-int ssl3_get_server_key_exchange(SSL *ssl);
-int ssl3_get_server_certificate(SSL *ssl);
-int ssl3_send_next_proto(SSL *ssl);
-int ssl3_send_channel_id(SSL *ssl);
-int ssl3_verify_server_cert(SSL *ssl);
 
 /* some server-only functions */
 int ssl3_get_initial_bytes(SSL *ssl);

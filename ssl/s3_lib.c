@@ -181,6 +181,10 @@ int ssl3_handshake_write(SSL *ssl) {
   return ssl3_do_write(ssl, SSL3_RT_HANDSHAKE);
 }
 
+void ssl3_expect_flight(SSL *ssl) {}
+
+void ssl3_received_flight(SSL *ssl) {}
+
 int ssl3_new(SSL *ssl) {
   SSL3_STATE *s3;
 

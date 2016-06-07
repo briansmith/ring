@@ -350,3 +350,11 @@ int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
 int dtls1_handshake_write(SSL *ssl) {
   return dtls1_do_handshake_write(ssl, dtls1_use_current_epoch);
 }
+
+void dtls1_expect_flight(SSL *ssl) {
+  dtls1_start_timer(ssl);
+}
+
+void dtls1_received_flight(SSL *ssl) {
+  dtls1_stop_timer(ssl);
+}
