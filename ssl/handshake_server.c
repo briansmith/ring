@@ -181,7 +181,7 @@ static int ssl3_send_server_certificate(SSL *ssl);
 static int ssl3_send_certificate_status(SSL *ssl);
 static int ssl3_send_server_key_exchange(SSL *ssl);
 static int ssl3_send_certificate_request(SSL *ssl);
-static int ssl3_send_server_done(SSL *ssl);
+static int ssl3_send_server_hello_done(SSL *ssl);
 static int ssl3_get_client_certificate(SSL *ssl);
 static int ssl3_get_client_key_exchange(SSL *ssl);
 static int ssl3_get_cert_verify(SSL *ssl);
@@ -344,7 +344,7 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_SRVR_DONE_A:
       case SSL3_ST_SW_SRVR_DONE_B:
-        ret = ssl3_send_server_done(ssl);
+        ret = ssl3_send_server_hello_done(ssl);
         if (ret <= 0) {
           goto end;
         }
@@ -1415,9 +1415,9 @@ err:
   return -1;
 }
 
-static int ssl3_send_server_done(SSL *ssl) {
+static int ssl3_send_server_hello_done(SSL *ssl) {
   if (ssl->state == SSL3_ST_SW_SRVR_DONE_A) {
-    if (!ssl_set_handshake_header(ssl, SSL3_MT_SERVER_DONE, 0)) {
+    if (!ssl_set_handshake_header(ssl, SSL3_MT_SERVER_HELLO_DONE, 0)) {
       return -1;
     }
     ssl->state = SSL3_ST_SW_SRVR_DONE_B;

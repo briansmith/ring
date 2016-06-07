@@ -178,7 +178,7 @@ static int ssl3_get_cert_status(SSL *ssl);
 static int ssl3_verify_server_cert(SSL *ssl);
 static int ssl3_get_server_key_exchange(SSL *ssl);
 static int ssl3_get_certificate_request(SSL *ssl);
-static int ssl3_get_server_done(SSL *ssl);
+static int ssl3_get_server_hello_done(SSL *ssl);
 static int ssl3_send_client_certificate(SSL *ssl);
 static int ssl3_send_client_key_exchange(SSL *ssl);
 static int ssl3_send_cert_verify(SSL *ssl);
@@ -323,7 +323,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_SRVR_DONE_A:
-        ret = ssl3_get_server_done(ssl);
+        ret = ssl3_get_server_hello_done(ssl);
         if (ret <= 0) {
           goto end;
         }
@@ -1420,7 +1420,7 @@ static int ssl3_get_certificate_request(SSL *ssl) {
 
   ssl->s3->tmp.cert_req = 0;
 
-  if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_DONE) {
+  if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_HELLO_DONE) {
     ssl->s3->tmp.reuse_message = 1;
     /* If we get here we don't need the handshake buffer as we won't be doing
      * client auth. */
@@ -1515,12 +1515,12 @@ err:
   return ret;
 }
 
-static int ssl3_get_server_done(SSL *ssl) {
+static int ssl3_get_server_hello_done(SSL *ssl) {
   int ok;
   long n;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_DONE, ssl_hash_message,
-                                   &ok);
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO_DONE,
+                                   ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
