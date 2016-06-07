@@ -299,8 +299,8 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
 
   static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
   int ret =
-      dtls1_write_bytes(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
-                        sizeof(kChangeCipherSpec), use_epoch);
+      dtls1_write_record(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
+                         sizeof(kChangeCipherSpec), use_epoch);
   if (ret <= 0) {
     return ret;
   }
@@ -375,8 +375,8 @@ int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
       goto err;
     }
 
-    int write_ret = dtls1_write_bytes(ssl, SSL3_RT_HANDSHAKE, buf, len,
-                                      use_epoch);
+    int write_ret =
+        dtls1_write_record(ssl, SSL3_RT_HANDSHAKE, buf, len, use_epoch);
     if (write_ret <= 0) {
       ret = write_ret;
       goto err;

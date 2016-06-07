@@ -1062,8 +1062,11 @@ void dtls1_set_message_header(SSL *ssl, uint8_t mt, unsigned long len,
                               unsigned long frag_len);
 
 int dtls1_write_app_data(SSL *ssl, const void *buf, int len);
-int dtls1_write_bytes(SSL *ssl, int type, const void *buf, int len,
-                      enum dtls1_use_epoch_t use_epoch);
+
+/* dtls1_write_record sends a record. It returns one on success and <= 0 on
+ * error. */
+int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
+                       enum dtls1_use_epoch_t use_epoch);
 
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b);
 int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);

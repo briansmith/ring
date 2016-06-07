@@ -125,9 +125,6 @@
 #include "internal.h"
 
 
-static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
-                          unsigned int len, enum dtls1_use_epoch_t use_epoch);
-
 int dtls1_get_record(SSL *ssl) {
 again:
   switch (ssl->s3->recv_shutdown) {
@@ -338,20 +335,26 @@ int dtls1_write_app_data(SSL *ssl, const void *buf_, int len) {
     return -1;
   }
 
-  return dtls1_write_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf_, len,
-                           dtls1_use_current_epoch);
+  if (len < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_LENGTH);
+    return -1;
+  }
+
+  if (len == 0) {
+    return 0;
+  }
+
+  int ret = dtls1_write_record(ssl, SSL3_RT_APPLICATION_DATA, buf_, (size_t)len,
+                               dtls1_use_current_epoch);
+  if (ret <= 0) {
+    return ret;
+  }
+  return len;
 }
 
-/* Call this to write data in records of type 'type' It will return <= 0 if not
- * all data has been sent or non-blocking IO. */
-int dtls1_write_bytes(SSL *ssl, int type, const void *buf, int len,
-                      enum dtls1_use_epoch_t use_epoch) {
+int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
+                       enum dtls1_use_epoch_t use_epoch) {
   assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
-  return do_dtls1_write(ssl, type, buf, len, use_epoch);
-}
-
-static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
-                          unsigned int len, enum dtls1_use_epoch_t use_epoch) {
   /* There should never be a pending write buffer in DTLS. One can't write half
    * a datagram, so the write buffer is always dropped in
    * |ssl_write_buffer_flush|. */
@@ -371,10 +374,6 @@ static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
     return -1;
   }
 
-  if (len == 0) {
-    return 0;
-  }
-
   size_t max_out = len + ssl_max_seal_overhead(ssl);
   uint8_t *out;
   size_t ciphertext_len;
@@ -390,13 +389,13 @@ static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
   if (ret <= 0) {
     return ret;
   }
-  return (int)len;
+  return 1;
 }
 
 int dtls1_dispatch_alert(SSL *ssl) {
   ssl->s3->alert_dispatch = 0;
-  int ret = do_dtls1_write(ssl, SSL3_RT_ALERT, &ssl->s3->send_alert[0], 2,
-                           dtls1_use_current_epoch);
+  int ret = dtls1_write_record(ssl, SSL3_RT_ALERT, &ssl->s3->send_alert[0], 2,
+                               dtls1_use_current_epoch);
   if (ret <= 0) {
     ssl->s3->alert_dispatch = 1;
     return ret;
