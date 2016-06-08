@@ -325,7 +325,7 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *ctx, CBS *out, uint8_t type,
  * writes the result to |out|. It returns one on success and zero on
  * error. |ctx| may be NULL to denote the null cipher.
  *
- * If |in| and |out| alias then |out| + |explicit_nonce_len| must be <= |in| */
+ * If |in| and |out| alias then |out| + |explicit_nonce_len| must be == |in|. */
 int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out, uint8_t type, uint16_t wire_version,
                       const uint8_t seqnum[8], const uint8_t *in,

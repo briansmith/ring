@@ -225,84 +225,65 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
     return false;
   }
 
-  // First test with out > in, which we expect to fail.
-  for (auto offset : offsets) {
-    if (offset == 0) {
-      // Will be tested in the next loop.
-      continue;
-    }
+  // Test with out != in which we expect to fail.
+  std::vector<uint8_t> buffer(2 + valid_encryption_len);
+  uint8_t *in = buffer.data() + 1;
+  uint8_t *out1 = buffer.data();
+  uint8_t *out2 = buffer.data() + 2;
 
-    std::vector<uint8_t> buffer(offset + valid_encryption_len);
-    memcpy(buffer.data(), kPlaintext, sizeof(kPlaintext));
-    uint8_t *out = buffer.data() + offset;
+  memcpy(in, kPlaintext, sizeof(kPlaintext));
+  size_t out_len;
+  if (EVP_AEAD_CTX_seal(ctx.get(), out1, &out_len,
+                        sizeof(kPlaintext) + max_overhead, nonce.data(),
+                        nonce_len, in, sizeof(kPlaintext), nullptr, 0) ||
+      EVP_AEAD_CTX_seal(ctx.get(), out2, &out_len,
+                        sizeof(kPlaintext) + max_overhead, nonce.data(),
+                        nonce_len, in, sizeof(kPlaintext), nullptr, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_seal unexpectedly succeeded.\n");
+    return false;
+  }
+  ERR_clear_error();
 
-    size_t out_len;
-    if (!EVP_AEAD_CTX_seal(ctx.get(), out, &out_len,
-                           sizeof(kPlaintext) + max_overhead, nonce.data(),
-                           nonce_len, buffer.data(), sizeof(kPlaintext),
-                           nullptr, 0)) {
-      // We expect offsets where the output is greater than the input to fail.
-      ERR_clear_error();
-    } else {
-      fprintf(stderr,
-              "EVP_AEAD_CTX_seal unexpectedly succeeded for offset %u.\n",
-              static_cast<unsigned>(offset));
-      return false;
-    }
+  memcpy(in, valid_encryption.data(), valid_encryption_len);
+  if (EVP_AEAD_CTX_open(ctx.get(), out1, &out_len, valid_encryption_len,
+                        nonce.data(), nonce_len, in, valid_encryption_len,
+                        nullptr, 0) ||
+      EVP_AEAD_CTX_open(ctx.get(), out2, &out_len, valid_encryption_len,
+                        nonce.data(), nonce_len, in, valid_encryption_len,
+                        nullptr, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_open unexpectedly succeeded.\n");
+    return false;
+  }
+  ERR_clear_error();
 
-    memcpy(buffer.data(), valid_encryption.data(), valid_encryption_len);
-    if (!EVP_AEAD_CTX_open(ctx.get(), out, &out_len, valid_encryption_len,
-                           nonce.data(), nonce_len, buffer.data(),
-                           valid_encryption_len, nullptr, 0)) {
-      // We expect offsets where the output is greater than the input to fail.
-      ERR_clear_error();
-    } else {
-      fprintf(stderr,
-              "EVP_AEAD_CTX_open unexpectedly succeeded for offset %u.\n",
-              static_cast<unsigned>(offset));
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
+  // Test with out == in, which we expect to work.
+  memcpy(in, kPlaintext, sizeof(kPlaintext));
+
+  if (!EVP_AEAD_CTX_seal(ctx.get(), in, &out_len,
+                         sizeof(kPlaintext) + max_overhead, nonce.data(),
+                         nonce_len, in, sizeof(kPlaintext), nullptr, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_seal failed in-place.\n");
+    return false;
   }
 
-  // Test with out <= in, which we expect to work.
-  for (auto offset : offsets) {
-    std::vector<uint8_t> buffer(offset + valid_encryption_len);
-    uint8_t *const out = buffer.data();
-    uint8_t *const in = buffer.data() + offset;
-    memcpy(in, kPlaintext, sizeof(kPlaintext));
+  if (out_len != valid_encryption_len ||
+      memcmp(in, valid_encryption.data(), out_len) != 0) {
+    fprintf(stderr, "EVP_AEAD_CTX_seal produced bad output in-place.\n");
+    return false;
+  }
 
-    size_t out_len;
-    if (!EVP_AEAD_CTX_seal(ctx.get(), out, &out_len,
-                           sizeof(kPlaintext) + max_overhead, nonce.data(),
-                           nonce_len, in, sizeof(kPlaintext), nullptr, 0)) {
-      fprintf(stderr, "EVP_AEAD_CTX_seal failed for offset -%u.\n",
-              static_cast<unsigned>(offset));
-      return false;
-    }
+  memcpy(in, valid_encryption.data(), valid_encryption_len);
+  if (!EVP_AEAD_CTX_open(ctx.get(), in, &out_len, valid_encryption_len,
+                         nonce.data(), nonce_len, in, valid_encryption_len,
+                         nullptr, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_open failed in-place.\n");
+    return false;
+  }
 
-    if (out_len != valid_encryption_len ||
-        memcmp(out, valid_encryption.data(), out_len) != 0) {
-      fprintf(stderr, "EVP_AEAD_CTX_seal produced bad output for offset -%u.\n",
-              static_cast<unsigned>(offset));
-      return false;
-    }
-
-    memcpy(in, valid_encryption.data(), valid_encryption_len);
-    if (!EVP_AEAD_CTX_open(ctx.get(), out, &out_len,
-                           offset + valid_encryption_len, nonce.data(),
-                           nonce_len, in, valid_encryption_len, nullptr, 0)) {
-      fprintf(stderr, "EVP_AEAD_CTX_open failed for offset -%u.\n",
-              static_cast<unsigned>(offset));
-      return false;
-    }
-
-    if (out_len != sizeof(kPlaintext) ||
-        memcmp(out, kPlaintext, out_len) != 0) {
-      fprintf(stderr, "EVP_AEAD_CTX_open produced bad output for offset -%u.\n",
-              static_cast<unsigned>(offset));
-      return false;
-    }
+  if (out_len != sizeof(kPlaintext) ||
+      memcmp(in, kPlaintext, out_len) != 0) {
+    fprintf(stderr, "EVP_AEAD_CTX_open produced bad output in-place.\n");
+    return false;
   }
 
   return true;

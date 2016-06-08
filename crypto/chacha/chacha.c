@@ -16,9 +16,12 @@
 
 #include <openssl/chacha.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/cpu.h>
+
+#include "../internal.h"
 
 
 #define U8TO32_LITTLE(p)                              \
@@ -36,8 +39,9 @@ void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
 void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
                       const uint8_t key[32], const uint8_t nonce[12],
                       uint32_t counter) {
-  uint32_t counter_nonce[4];
-  counter_nonce[0] = counter;
+  assert(!buffers_alias(out, in_len, in, in_len) || in == out);
+
+  uint32_t counter_nonce[4];  counter_nonce[0] = counter;
   counter_nonce[1] = U8TO32_LITTLE(nonce + 0);
   counter_nonce[2] = U8TO32_LITTLE(nonce + 4);
   counter_nonce[3] = U8TO32_LITTLE(nonce + 8);
@@ -118,6 +122,8 @@ static void chacha_core(uint8_t output[64], const uint32_t input[16]) {
 void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
                       const uint8_t key[32], const uint8_t nonce[12],
                       uint32_t counter) {
+  assert(!buffers_alias(out, in_len, in, in_len) || in == out);
+
   uint32_t input[16];
   uint8_t buf[64];
   size_t todo, i;

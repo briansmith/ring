@@ -218,25 +218,16 @@ static bool TestChaCha20(size_t len) {
   std::unique_ptr<uint8_t[]> buf(new uint8_t[len]);
   CRYPTO_chacha_20(buf.get(), kInput, len, kKey, kNonce, kCounter);
   if (memcmp(buf.get(), kOutput, len) != 0) {
-    fprintf(stderr, "Mismatch at length %u.\n", static_cast<unsigned>(len));
+    fprintf(stderr, "Mismatch at length %zu.\n", len);
     return false;
   }
 
-  // Test in-place at various offsets.
-  static const size_t kOffsets[] = {
-      0,  1,  2,  8,  15, 16,  17,  31,  32,  33,  63,
-      64, 65, 95, 96, 97, 127, 128, 129, 255, 256, 257,
-  };
-  for (size_t offset : kOffsets) {
-    buf.reset(new uint8_t[len + offset]);
-    memcpy(buf.get() + offset, kInput, len);
-    CRYPTO_chacha_20(buf.get(), buf.get() + offset, len, kKey, kNonce,
-                     kCounter);
-    if (memcmp(buf.get(), kOutput, len) != 0) {
-      fprintf(stderr, "Mismatch at length %u with in-place offset %u.\n",
-              static_cast<unsigned>(len), static_cast<unsigned>(offset));
-      return false;
-    }
+  // Test in-place.
+  memcpy(buf.get(), kInput, len);
+  CRYPTO_chacha_20(buf.get(), buf.get(), len, kKey, kNonce, kCounter);
+  if (memcmp(buf.get(), kOutput, len) != 0) {
+    fprintf(stderr, "Mismatch at length %zu, in-place.\n", len);
+    return false;
   }
 
   return true;

@@ -20,6 +20,7 @@
 #include <openssl/err.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 size_t EVP_AEAD_key_length(const EVP_AEAD *aead) { return aead->key_len; }
@@ -80,21 +81,15 @@ void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx) {
   ctx->aead = NULL;
 }
 
-/* check_alias returns 0 if |out| points within the buffer determined by |in|
- * and |in_len| and 1 otherwise.
- *
- * When processing, there's only an issue if |out| points within in[:in_len]
- * and isn't equal to |in|. If that's the case then writing the output will
- * stomp input that hasn't been read yet.
- *
- * This function checks for that case. */
-static int check_alias(const uint8_t *in, size_t in_len, const uint8_t *out) {
-  if (out <= in) {
-    return 1;
-  } else if (in + in_len <= out) {
+/* check_alias returns 1 if |out| is compatible with |in| and 0 otherwise. If
+ * |in| and |out| alias, we require that |in| == |out|. */
+static int check_alias(const uint8_t *in, size_t in_len, const uint8_t *out,
+                       size_t out_len) {
+  if (!buffers_alias(in, in_len, out, out_len)) {
     return 1;
   }
-  return 0;
+
+  return in == out;
 }
 
 int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
@@ -108,7 +103,7 @@ int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
     goto error;
   }
 
-  if (!check_alias(in, in_len, out)) {
+  if (!check_alias(in, in_len, out, max_out_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
     goto error;
   }
@@ -130,7 +125,7 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out_len, const uint8_t *nonce,
                       size_t nonce_len, const uint8_t *in, size_t in_len,
                       const uint8_t *ad, size_t ad_len) {
-  if (!check_alias(in, in_len, out)) {
+  if (!check_alias(in, in_len, out, max_out_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
     goto error;
   }

@@ -226,7 +226,7 @@ OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
  * insufficient, zero will be returned. (In this case, |*out_len| is set to
  * zero.)
  *
- * If |in| and |out| alias then |out| must be <= |in|. */
+ * If |in| and |out| alias then |out| must be == |in|. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      size_t *out_len, size_t max_out_len,
                                      const uint8_t *nonce, size_t nonce_len,
@@ -251,7 +251,7 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
  * insufficient, zero will be returned. (In this case, |*out_len| is set to
  * zero.)
  *
- * If |in| and |out| alias then |out| must be <= |in|. */
+ * If |in| and |out| alias then |out| must be == |in|. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      size_t *out_len, size_t max_out_len,
                                      const uint8_t *nonce, size_t nonce_len,
