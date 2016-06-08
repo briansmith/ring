@@ -3213,6 +3213,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				NextProtos: []string{"foo"},
 			},
 			flags:                 []string{"-select-next-proto", "foo"},
+			resumeSession:         true,
 			expectedNextProto:     "foo",
 			expectedNextProtoType: npn,
 		})
@@ -3226,6 +3227,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				"-advertise-npn", "\x03foo\x03bar\x03baz",
 				"-expect-next-proto", "bar",
 			},
+			resumeSession:         true,
 			expectedNextProto:     "bar",
 			expectedNextProtoType: npn,
 		})
@@ -3340,6 +3342,42 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			},
 			resumeSession:   true,
 			expectChannelID: true,
+		})
+
+		// Channel ID and NPN at the same time, to ensure their relative
+		// ordering is correct.
+		tests = append(tests, testCase{
+			name: "ChannelID-NPN-Client",
+			config: Config{
+				RequestChannelID: true,
+				NextProtos:       []string{"foo"},
+			},
+			flags: []string{
+				"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+				"-select-next-proto", "foo",
+			},
+			resumeSession:         true,
+			expectChannelID:       true,
+			expectedNextProto:     "foo",
+			expectedNextProtoType: npn,
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "ChannelID-NPN-Server",
+			config: Config{
+				ChannelID:  channelIDKey,
+				NextProtos: []string{"bar"},
+			},
+			flags: []string{
+				"-expect-channel-id",
+				base64.StdEncoding.EncodeToString(channelIDBytes),
+				"-advertise-npn", "\x03foo\x03bar\x03baz",
+				"-expect-next-proto", "bar",
+			},
+			resumeSession:         true,
+			expectChannelID:       true,
+			expectedNextProto:     "bar",
+			expectedNextProtoType: npn,
 		})
 
 		// Bidirectional shutdown with the runner initiating.
