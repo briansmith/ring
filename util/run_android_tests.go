@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -54,6 +56,55 @@ func adb(args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func adbShell(shellCmd string) (int, error) {
+	var args []string
+	if len(*device) > 0 {
+		args = append([]string{"-s", *device}, args...)
+	}
+	args = append(args, "shell")
+
+	const delimiter = "___EXIT_CODE___"
+
+	// Older versions of adb and Android do not preserve the exit
+	// code, so work around this.
+	// https://code.google.com/p/android/issues/detail?id=3254
+	shellCmd += "; echo " + delimiter + " $?"
+	args = append(args, shellCmd)
+
+	cmd := exec.Command(*adbPath, args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return 0, err
+	}
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return 0, err
+	}
+
+	var stdoutBytes bytes.Buffer
+	for {
+		var buf [1024]byte
+		n, err := stdout.Read(buf[:])
+		stdoutBytes.Write(buf[:n])
+		os.Stdout.Write(buf[:n])
+		if err != nil {
+			break
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return 0, err
+	}
+
+	stdoutStr := stdoutBytes.String()
+	idx := strings.LastIndex(stdoutStr, delimiter)
+	if idx < 0 {
+		return 0, fmt.Errorf("Could not find delimiter in output.")
+	}
+
+	return strconv.Atoi(strings.TrimSpace(stdoutStr[idx+len(delimiter):]))
 }
 
 func goTool(args ...string) error {
@@ -227,17 +278,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	var unitTestExit int
 	if enableUnitTests() {
 		fmt.Printf("Running unit tests...\n")
-		if err := adb("shell", fmt.Sprintf("cd /data/local/tmp/boringssl-tmp && ./util/all_tests -json-output results.json %s", *allTestsArgs)); err != nil {
+		unitTestExit, err = adbShell(fmt.Sprintf("cd /data/local/tmp/boringssl-tmp && ./util/all_tests -json-output results.json %s", *allTestsArgs))
+		if err != nil {
 			fmt.Printf("Failed to run unit tests: %s\n", err)
 			os.Exit(1)
 		}
 	}
 
+	var sslTestExit int
 	if enableSSLTests() {
 		fmt.Printf("Running SSL tests...\n")
-		if err := adb("shell", fmt.Sprintf("cd /data/local/tmp/boringssl-tmp/ssl/test/runner && ./runner -json-output ../../../results.json %s", *runnerArgs)); err != nil {
+		sslTestExit, err = adbShell(fmt.Sprintf("cd /data/local/tmp/boringssl-tmp/ssl/test/runner && ./runner -json-output ../../../results.json %s", *runnerArgs))
+		if err != nil {
 			fmt.Printf("Failed to run SSL tests: %s\n", err)
 			os.Exit(1)
 		}
@@ -248,5 +303,13 @@ func main() {
 			fmt.Printf("Failed to extract results.json: %s\n", err)
 			os.Exit(1)
 		}
+	}
+
+	if unitTestExit != 0 {
+		os.Exit(unitTestExit)
+	}
+
+	if sslTestExit != 0 {
+		os.Exit(sslTestExit)
 	}
 }
