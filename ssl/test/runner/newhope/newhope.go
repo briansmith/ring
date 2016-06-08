@@ -153,24 +153,24 @@ func inverseNTT(in *Poly) *Poly {
 // details of how this works.
 func ntt(in *Poly, omega, preScaleBase, postScaleBase, postScale uint16) *Poly {
 	out := new(Poly)
-	omega_to_the_i := 1
+	omega_to_the_i := uint64(1)
 
 	for i := range out {
-		omegaToTheIJ := 1
-		preScale := int(1)
-		sum := 0
+		omegaToTheIJ := uint64(1)
+		preScale := uint64(1)
+		sum := uint64(0)
 
 		for j := range in {
-			t := (int(in[j]) * preScale) % q
+			t := (uint64(in[j]) * preScale) % q
 			sum += (t * omegaToTheIJ) % q
 			omegaToTheIJ = (omegaToTheIJ * omega_to_the_i) % q
-			preScale = (int(preScaleBase) * preScale) % q
+			preScale = (uint64(preScaleBase) * preScale) % q
 		}
 
-		out[i] = uint16((sum * int(postScale)) % q)
+		out[i] = uint16((sum * uint64(postScale)) % q)
 
-		omega_to_the_i = (omega_to_the_i * int(omega)) % q
-		postScale = uint16((int(postScale) * int(postScaleBase)) % q)
+		omega_to_the_i = (omega_to_the_i * uint64(omega)) % q
+		postScale = uint16((uint64(postScale) * uint64(postScaleBase)) % q)
 	}
 
 	return out
@@ -255,7 +255,7 @@ func Offer(rand io.Reader) (offerMsg []byte, sFreq *Poly) {
 
 	bFreq := new(Poly)
 	for i := range bFreq {
-		bFreq[i] = uint16((int(sFreq[i])*int(aFreq[i]) + int(eFreq[i])) % q)
+		bFreq[i] = uint16((uint64(sFreq[i])*uint64(aFreq[i]) + uint64(eFreq[i])) % q)
 	}
 
 	offerMsg = encodePoly(bFreq)
@@ -279,18 +279,18 @@ func Accept(rand io.Reader, offerMsg []byte) (sharedKey Key, acceptMsg []byte, e
 
 	uFreq := new(Poly)
 	for i := range uFreq {
-		uFreq[i] = uint16((int(sPrimeFreq[i])*int(aFreq[i]) + int(ePrimeFreq[i])) % q)
+		uFreq[i] = uint16((uint64(sPrimeFreq[i])*uint64(aFreq[i]) + uint64(ePrimeFreq[i])) % q)
 	}
 
 	vFreq := new(Poly)
 	for i := range vFreq {
-		vFreq[i] = uint16((int(sPrimeFreq[i]) * int(bFreq[i])) % q)
+		vFreq[i] = uint16((uint64(sPrimeFreq[i]) * uint64(bFreq[i])) % q)
 	}
 
 	v := inverseNTT(vFreq)
 	ePrimePrime := sampleNoise(rand)
 	for i := range v {
-		v[i] = uint16((int(v[i]) + int(ePrimePrime[i])) % q)
+		v[i] = uint16((uint64(v[i]) + uint64(ePrimePrime[i])) % q)
 	}
 
 	rec := helprec(rand, v)
@@ -311,7 +311,7 @@ func (sk *Poly) Finish(acceptMsg []byte) (sharedKey Key, err error) {
 	rec := decodeRec(acceptMsg[encodedPolyLen:])
 
 	for i, u := range uFreq {
-		uFreq[i] = uint16((int(u) * int(sk[i])) % q)
+		uFreq[i] = uint16((uint64(u) * uint64(sk[i])) % q)
 	}
 	u := inverseNTT(uFreq)
 
