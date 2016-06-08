@@ -54,6 +54,7 @@ var (
 	fuzzer          = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 	transcriptDir   = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
 	idleTimeout     = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
+	deterministic   = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
 )
 
 const (
@@ -765,6 +766,9 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	if *fuzzer {
 		config.Bugs.NullAllCiphers = true
 	}
+	if *deterministic {
+		config.Rand = &deterministicRand{}
+	}
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
@@ -795,6 +799,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			if *fuzzer {
 				resumeConfig.Bugs.NullAllCiphers = true
 			}
+			resumeConfig.Rand = config.Rand
 		} else {
 			resumeConfig = config
 		}
