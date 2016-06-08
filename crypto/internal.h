@@ -152,6 +152,19 @@ typedef __uint128_t uint128_t;
 #endif
 
 
+/* buffers_alias returns one if |a| and |b| alias and zero otherwise. */
+static inline int buffers_alias(const uint8_t *a, size_t a_len,
+                                const uint8_t *b, size_t b_len) {
+  /* Cast |a| and |b| to integers. In C, pointer comparisons between unrelated
+   * objects are undefined whereas pointer to integer conversions are merely
+   * implementation-defined. We assume the implementation defined it in a sane
+   * way. */
+  uintptr_t a_u = (uintptr_t)a;
+  uintptr_t b_u = (uintptr_t)b;
+  return a_u + a_len > b_u && b_u + b_len > a_u;
+}
+
+
 /* Constant-time utility functions.
  *
  * The following methods return a bitmask of all ones (0xff...f) for true and 0

@@ -116,6 +116,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
 
 
 /* kMaxEmptyRecords is the number of consecutive, empty records that will be
@@ -159,7 +160,7 @@ size_t ssl_record_prefix_len(const SSL *ssl) {
   }
 }
 
-size_t ssl_seal_prefix_len(const SSL *ssl) {
+size_t ssl_seal_align_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
            SSL_AEAD_CTX_explicit_nonce_len(ssl->s3->aead_write_ctx);
@@ -301,12 +302,14 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
     return 0;
   }
-  /* Check the record header does not alias any part of the input.
-   * |SSL_AEAD_CTX_seal| will internally enforce other aliasing requirements. */
-  if (in < out + SSL3_RT_HEADER_LENGTH && out < in + in_len) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
-    return 0;
-  }
+
+  /* Either |in| and |out| don't alias or |in| aligns with the
+   * ciphertext. |tls_seal_record| forbids aliasing, but TLS 1.3 aliases them
+   * internally. */
+  assert(!buffers_alias(in, in_len, out, max_out) ||
+         in ==
+             out + SSL3_RT_HEADER_LENGTH +
+                 SSL_AEAD_CTX_explicit_nonce_len(ssl->s3->aead_write_ctx));
 
   out[0] = type;
 
@@ -347,6 +350,11 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
 
 int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                     uint8_t type, const uint8_t *in, size_t in_len) {
+  if (buffers_alias(in, in_len, out, max_out)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
+    return 0;
+  }
+
   size_t frag_len = 0;
 
   /* TLS 1.3 hides the actual record type inside the encrypted data. */
@@ -369,18 +377,7 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   if (type == SSL3_RT_APPLICATION_DATA && in_len > 1 &&
       ssl_needs_record_splitting(ssl)) {
-    /* |do_seal_record| will notice if it clobbers |in[0]|, but not if it
-     * aliases the rest of |in|. */
-    if (in + 1 <= out && out < in + in_len) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
-      return 0;
-    }
-    /* Ensure |do_seal_record| does not write beyond |in[0]|. */
-    size_t frag_max_out = max_out;
-    if (out <= in + 1 && in + 1 < out + frag_max_out) {
-      frag_max_out = (size_t)(in + 1 - out);
-    }
-    if (!do_seal_record(ssl, out, &frag_len, frag_max_out, type, in, 1)) {
+    if (!do_seal_record(ssl, out, &frag_len, max_out, type, in, 1)) {
       return 0;
     }
     in++;

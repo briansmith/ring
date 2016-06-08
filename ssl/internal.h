@@ -402,17 +402,21 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
                                         uint8_t *out_alert, uint8_t *in,
                                         size_t in_len);
 
-/* ssl_seal_prefix_len returns the length of the prefix before the ciphertext
- * when sealing a record with |ssl|. Note that this value may differ from
- * |ssl_record_prefix_len| when TLS 1.0 CBC record-splitting is enabled. Sealing
- * a small record may also result in a smaller output than this value.
+/* ssl_seal_align_prefix_len returns the length of the prefix before the start
+ * of the bulk of the ciphertext when sealing a record with |ssl|. Callers may
+ * use this to align buffers.
+ *
+ * Note when TLS 1.0 CBC record-splitting is enabled, this includes the one byte
+ * record and is the offset into second record's ciphertext. Thus this value may
+ * differ from |ssl_record_prefix_len| and sealing a small record may result in
+ * a smaller output than this value.
  *
  * TODO(davidben): Expose this as part of public API once the high-level
  * buffer-free APIs are available. */
-size_t ssl_seal_prefix_len(const SSL *ssl);
+size_t ssl_seal_align_prefix_len(const SSL *ssl);
 
 /* ssl_max_seal_overhead returns the maximum overhead of sealing a record with
- * |ssl|. This includes |ssl_seal_prefix_len|.
+ * |ssl|.
  *
  * TODO(davidben): Expose this as part of public API once the high-level
  * buffer-free APIs are available. */
@@ -423,11 +427,12 @@ size_t ssl_max_seal_overhead(const SSL *ssl);
  * and zero on error. If enabled, |tls_seal_record| implements TLS 1.0 CBC 1/n-1
  * record splitting and may write two records concatenated.
  *
- * For a large record, the ciphertext will begin |ssl_seal_prefix_len| bytes
- * into out. Aligning |out| appropriately may improve performance. It writes at
- * most |in_len| + |ssl_max_seal_overhead| bytes to |out|.
+ * For a large record, the bulk of the ciphertext will begin
+ * |ssl_seal_align_prefix_len| bytes into out. Aligning |out| appropriately may
+ * improve performance. It writes at most |in_len| + |ssl_max_seal_overhead|
+ * bytes to |out|.
  *
- * If |in| and |out| alias, |out| + |ssl_seal_prefix_len| must be <= |in|. */
+ * |in| and |out| may not alias. */
 int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                     uint8_t type, const uint8_t *in, size_t in_len);
 

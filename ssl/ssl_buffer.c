@@ -224,7 +224,7 @@ int ssl_write_buffer_init(SSL *ssl, uint8_t **out_ptr, size_t max_len) {
     return 0;
   }
 
-  size_t header_len = ssl_seal_prefix_len(ssl);
+  size_t header_len = ssl_seal_align_prefix_len(ssl);
 
   /* TODO(davidben): This matches the original behavior in keeping the malloc
    * size consistent. Does this matter? |cap| could just be |max_len|. */
