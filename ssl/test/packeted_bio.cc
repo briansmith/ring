@@ -50,7 +50,7 @@ struct PacketedBio {
     if (clock.tv_sec == read_deadline.tv_sec) {
       return clock.tv_usec < read_deadline.tv_usec;
     }
-    return clock.tv_sec < read.deadline.tv_sec;
+    return clock.tv_sec < read_deadline.tv_sec;
   }
 
   timeval timeout;
