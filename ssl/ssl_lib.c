@@ -2356,6 +2356,12 @@ void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
   ctx->keylog_callback = cb;
 }
 
+void SSL_CTX_set_current_time_cb(SSL_CTX *ctx,
+                                 void (*cb)(const SSL *ssl,
+                                            struct timeval *out_clock)) {
+  ctx->current_time_cb = cb;
+}
+
 static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
   static const char hextable[] = "0123456789abcdef";
   uint8_t *out;
