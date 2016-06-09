@@ -850,8 +850,14 @@ static bool test_div_word(FILE *fp) {
       return false;
     }
     BN_ULONG s = b->d[0];
+    BN_ULONG rmod = BN_mod_word(b.get(), s);
     BN_ULONG r = BN_div_word(b.get(), s);
     if (r == (BN_ULONG)-1) {
+      return false;
+    }
+
+    if (rmod != r) {
+      fprintf(stderr, "Mod (word) test failed!\n");
       return false;
     }
 

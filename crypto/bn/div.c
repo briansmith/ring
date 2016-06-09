@@ -644,6 +644,20 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
     return (BN_ULONG) -1;
   }
 
+#ifndef BN_ULLONG
+  /* If |w| is too long and we don't have |BN_ULLONG| then we need to fall back
+   * to using |BN_div_word|. */
+  if (w > ((BN_ULONG)1 << BN_BITS4)) {
+    BIGNUM *tmp = BN_dup(a);
+    if (tmp == NULL) {
+      return (BN_ULONG)-1;
+    }
+    ret = BN_div_word(tmp, w);
+    BN_free(tmp);
+    return ret;
+  }
+#endif
+
   w &= BN_MASK2;
   for (i = a->top - 1; i >= 0; i--) {
 #ifndef BN_ULLONG
