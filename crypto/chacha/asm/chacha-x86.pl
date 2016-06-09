@@ -19,13 +19,13 @@
 # P4		18.6/+84%
 # Core2		9.56/+89%	4.83
 # Westmere	9.50/+45%	3.35
-# Sandy Bridge	10.7/+47%	3.24
-# Haswell	8.22/+50%	2.89
-# Silvermont	17.8/+36%	8.53
+# Sandy Bridge	10.5/+47%	3.20
+# Haswell	8.15/+50%	2.83
+# Silvermont	17.4/+36%	8.35
 # Sledgehammer	10.2/+54%
-# Bulldozer	13.5/+50%	4.39(*)
+# Bulldozer	13.4/+50%	4.38(*)
 #
-# (*)  Bulldozer actually executes 4xXOP code path that delivers 3.50;
+# (*)	Bulldozer actually executes 4xXOP code path that delivers 3.55;
 #
 # Modified from upstream OpenSSL to remove the XOP code.
 
@@ -224,20 +224,18 @@ if ($xmm) {
 
 	&xor	($a, &DWP(4*0,$b));		# xor with input
 	&xor	($b_,&DWP(4*4,$b));
-	&mov	(&DWP(4*0,"esp"),$a);		# off-load for later write
+	&mov	(&DWP(4*0,"esp"),$a);
 	&mov	($a,&wparam(0));		# load output pointer
 	&xor	($c, &DWP(4*8,$b));
 	&xor	($c_,&DWP(4*9,$b));
 	&xor	($d, &DWP(4*12,$b));
 	&xor	($d_,&DWP(4*14,$b));
-	&mov	(&DWP(4*4,"esp"),$b_);
-	&mov	($b_,&DWP(4*0,"esp"));
-	&mov	(&DWP(4*8,"esp"),$c);
-	&mov	(&DWP(4*9,"esp"),$c_);
-	&mov	(&DWP(4*12,"esp"),$d);
-	&mov	(&DWP(4*14,"esp"),$d_);
+	&mov	(&DWP(4*4,$a),$b_);		# write output
+	&mov	(&DWP(4*8,$a),$c);
+	&mov	(&DWP(4*9,$a),$c_);
+	&mov	(&DWP(4*12,$a),$d);
+	&mov	(&DWP(4*14,$a),$d_);
 
-	&mov	(&DWP(4*0,$a),$b_);		# write output in order
 	&mov	($b_,&DWP(4*1,"esp"));
 	&mov	($c, &DWP(4*2,"esp"));
 	&mov	($c_,&DWP(4*3,"esp"));
@@ -254,45 +252,35 @@ if ($xmm) {
 	&xor	($d, &DWP(4*5,$b));
 	&xor	($d_,&DWP(4*6,$b));
 	&mov	(&DWP(4*1,$a),$b_);
-	&mov	($b_,&DWP(4*4,"esp"));
 	&mov	(&DWP(4*2,$a),$c);
 	&mov	(&DWP(4*3,$a),$c_);
-	&mov	(&DWP(4*4,$a),$b_);
 	&mov	(&DWP(4*5,$a),$d);
 	&mov	(&DWP(4*6,$a),$d_);
 
-	&mov	($c,&DWP(4*7,"esp"));
-	&mov	($d,&DWP(4*8,"esp"));
-	&mov	($d_,&DWP(4*9,"esp"));
-	&add	($c,&DWP(64+4*7,"esp"));
-	&mov	($b_, &DWP(4*10,"esp"));
-	&xor	($c,&DWP(4*7,$b));
+	&mov	($b_,&DWP(4*7,"esp"));
+	&mov	($c, &DWP(4*10,"esp"));
 	&mov	($c_,&DWP(4*11,"esp"));
-	&mov	(&DWP(4*7,$a),$c);
-	&mov	(&DWP(4*8,$a),$d);
-	&mov	(&DWP(4*9,$a),$d_);
-
-	&add	($b_, &DWP(64+4*10,"esp"));
-	&add	($c_,&DWP(64+4*11,"esp"));
-	&xor	($b_, &DWP(4*10,$b));
-	&xor	($c_,&DWP(4*11,$b));
-	&mov	(&DWP(4*10,$a),$b_);
-	&mov	(&DWP(4*11,$a),$c_);
-
-	&mov	($c,&DWP(4*12,"esp"));
-	&mov	($c_,&DWP(4*14,"esp"));
 	&mov	($d, &DWP(4*13,"esp"));
 	&mov	($d_,&DWP(4*15,"esp"));
+	&add	($b_,&DWP(64+4*7,"esp"));
+	&add	($c, &DWP(64+4*10,"esp"));
+	&add	($c_,&DWP(64+4*11,"esp"));
 	&add	($d, &DWP(64+4*13,"esp"));
 	&add	($d_,&DWP(64+4*15,"esp"));
+	&xor	($b_,&DWP(4*7,$b));
+	&xor	($c, &DWP(4*10,$b));
+	&xor	($c_,&DWP(4*11,$b));
 	&xor	($d, &DWP(4*13,$b));
 	&xor	($d_,&DWP(4*15,$b));
 	&lea	($b,&DWP(4*16,$b));
-	&mov	(&DWP(4*12,$a),$c);
+	&mov	(&DWP(4*7,$a),$b_);
+	&mov	($b_,&DWP(4*0,"esp"));
+	&mov	(&DWP(4*10,$a),$c);
 	&mov	($c,&wparam(2));		# len
+	&mov	(&DWP(4*11,$a),$c_);
 	&mov	(&DWP(4*13,$a),$d);
-	&mov	(&DWP(4*14,$a),$c_);
 	&mov	(&DWP(4*15,$a),$d_);
+	&mov	(&DWP(4*0,$a),$b_);
 	&lea	($a,&DWP(4*16,$a));
 	&sub	($c,64);
 	&jnz	(&label("outer_loop"));
@@ -567,12 +555,12 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 
     my ($xa0,$xa1,$xa2,$xa3,$xt0,$xt1,$xt2,$xt3)=map("xmm$_",(0..7));
 
-    for($i=0;$i<256;$i+=64) {
-	#&movdqa	($xa0,&QWP($i+16*0-128,"ebx"));	# it's there
-	&movdqa		($xa1,&QWP($i+16*1-128,"ebx"));
-	&movdqa		($xa2,&QWP($i+16*2-128,"ebx"));
-	&movdqa		($xa3,&QWP($i+16*3-128,"ebx"));
+	#&movdqa	($xa0,&QWP(16*0-128,"ebx"));	# it's there
+	&movdqa		($xa1,&QWP(16*1-128,"ebx"));
+	&movdqa		($xa2,&QWP(16*2-128,"ebx"));
+	&movdqa		($xa3,&QWP(16*3-128,"ebx"));
 
+    for($i=0;$i<256;$i+=64) {
 	&paddd		($xa0,&QWP($i+16*0-128,"ebp"));	# accumulate key material
 	&paddd		($xa1,&QWP($i+16*1-128,"ebp"));
 	&paddd		($xa2,&QWP($i+16*2-128,"ebp"));
@@ -593,29 +581,25 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 
 	#($xa2,$xt2)=($xt2,$xa2);
 
-	&movdqa		(&QWP($i+16*0-128,"ebx"),$xa0);
+	&movdqu		($xt0,&QWP(64*0-128,$inp));	# load input
+	&movdqu		($xt1,&QWP(64*1-128,$inp));
+	&movdqu		($xa2,&QWP(64*2-128,$inp));
+	&movdqu		($xt3,&QWP(64*3-128,$inp));
+	&lea		($inp,&QWP($i<192?16:(64*4-16*3),$inp));
+	&pxor		($xt0,$xa0);
 	&movdqa		($xa0,&QWP($i+16*4-128,"ebx"))	if ($i<192);
-	&movdqa		(&QWP($i+16*1-128,"ebx"),$xa1);
-	&movdqa		(&QWP($i+16*2-128,"ebx"),$xt2);
-	&movdqa		(&QWP($i+16*3-128,"ebx"),$xa3);
+	&pxor		($xt1,$xa1);
+	&movdqa		($xa1,&QWP($i+16*5-128,"ebx"))	if ($i<192);
+	&pxor		($xt2,$xa2);
+	&movdqa		($xa2,&QWP($i+16*6-128,"ebx"))	if ($i<192);
+	&pxor		($xt3,$xa3);
+	&movdqa		($xa3,&QWP($i+16*7-128,"ebx"))	if ($i<192);
+	&movdqu		(&QWP(64*0-128,$out),$xt0);	# store output
+	&movdqu		(&QWP(64*1-128,$out),$xt1);
+	&movdqu		(&QWP(64*2-128,$out),$xt2);
+	&movdqu		(&QWP(64*3-128,$out),$xt3);
+	&lea		($out,&QWP($i<192?16:(64*4-16*3),$out));
     }
-    for($i=0;$i<256;$i+=64) {
-	my $j = 16*($i/64);
-	&movdqu		($xa0,&QWP($i+16*0-128,$inp));	# load input
-	&movdqu		($xa1,&QWP($i+16*1-128,$inp));
-	&movdqu		($xa2,&QWP($i+16*2-128,$inp));
-	&movdqu		($xa3,&QWP($i+16*3-128,$inp));
-	&pxor		($xa0,&QWP($j+64*0-128,"ebx"));
-	&pxor		($xa1,&QWP($j+64*1-128,"ebx"));
-	&pxor		($xa2,&QWP($j+64*2-128,"ebx"));
-	&pxor		($xa3,&QWP($j+64*3-128,"ebx"));
-	&movdqu		(&QWP($i+16*0-128,$out),$xa0);	# write output
-	&movdqu		(&QWP($i+16*1-128,$out),$xa1);
-	&movdqu		(&QWP($i+16*2-128,$out),$xa2);
-	&movdqu		(&QWP($i+16*3-128,$out),$xa3);
-    }
-	&lea		($inp,&DWP(256,$inp));
-	&lea		($out,&DWP(256,$out));
 	&sub		($len,64*4);
 	&jnc		(&label("outer_loop"));
 
