@@ -16,9 +16,9 @@
 
 #if defined(OPENSSL_WINDOWS) && !defined(OPENSSL_NO_THREADS)
 
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <stdlib.h>
 #include <string.h>

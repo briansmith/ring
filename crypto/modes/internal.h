@@ -121,9 +121,9 @@ extern "C" {
 #endif
 #elif defined(_MSC_VER)
 #if _MSC_VER >= 1300
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <intrin.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #pragma intrinsic(_byteswap_uint64, _byteswap_ulong)
 #define BSWAP8(x) _byteswap_uint64((uint64_t)(x))
 #define BSWAP4(x) _byteswap_ulong((uint32_t)(x))

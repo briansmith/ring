@@ -57,9 +57,9 @@
 #include <openssl/cast.h>
 
 #if defined(OPENSSL_WINDOWS)
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <intrin.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include "internal.h"

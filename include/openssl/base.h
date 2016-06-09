@@ -161,6 +161,13 @@ extern "C" {
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
 #endif
 
+/* OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers. */
+#if defined(_MSC_VER)
+#define OPENSSL_MSVC_PRAGMA(arg) __pragma(arg)
+#else
+#define OPENSSL_MSVC_PRAGMA(arg)
+#endif
+
 
 /* CRYPTO_THREADID is a dummy value. */
 typedef int CRYPTO_THREADID;

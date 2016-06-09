@@ -33,10 +33,10 @@
 #include <unistd.h>
 #else
 #include <io.h>
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 
 typedef int ssize_t;
 #pragma comment(lib, "Ws2_32.lib")

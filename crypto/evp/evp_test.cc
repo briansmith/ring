@@ -51,30 +51,27 @@
  * ====================================================================
  */
 
+#include <openssl/evp.h>
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4702)
-#endif
+OPENSSL_MSVC_PRAGMA(warning(push))
+OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
 
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
 
 #include "../test/file_test.h"
 #include "../test/scoped_types.h"

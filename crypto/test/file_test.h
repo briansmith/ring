@@ -20,19 +20,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4702)
-#endif
+OPENSSL_MSVC_PRAGMA(warning(push))
+OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
 
 #include <string>
 #include <map>
 #include <set>
 #include <vector>
 
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+OPENSSL_MSVC_PRAGMA(warning(pop))
 
 // File-based test framework.
 //

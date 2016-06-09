@@ -63,9 +63,9 @@
 #include <unistd.h>
 #else
 #include <io.h>
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include <openssl/buf.h>

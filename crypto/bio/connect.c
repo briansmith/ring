@@ -66,10 +66,10 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #else
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include <openssl/buf.h>

@@ -126,9 +126,9 @@
 #include <openssl/base.h>
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <intrin.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #pragma intrinsic(__umulh, _umul128)
 #endif
 

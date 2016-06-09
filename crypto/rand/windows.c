@@ -19,7 +19,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 
 #include <windows.h>
 
@@ -30,7 +30,7 @@
 #include <ntsecapi.h>
 #undef SystemFunction036
 
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include "internal.h"
 

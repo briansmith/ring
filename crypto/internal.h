@@ -123,9 +123,9 @@
 
 #if defined(OPENSSL_NO_THREADS)
 #elif defined(OPENSSL_WINDOWS)
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #else
 #include <pthread.h>
 #endif

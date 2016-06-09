@@ -63,9 +63,9 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
 #else
-#pragma warning(push, 3)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
-#pragma warning(pop)
+OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #pragma comment(lib, "Ws2_32.lib")
 #endif

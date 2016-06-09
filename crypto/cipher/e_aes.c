@@ -67,9 +67,7 @@
 #endif
 
 
-#if defined(_MSC_VER)
-#pragma warning(disable: 4702) /* Unreachable code. */
-#endif
+OPENSSL_MSVC_PRAGMA(warning(disable: 4702)) /* Unreachable code. */
 
 typedef struct {
   union {
