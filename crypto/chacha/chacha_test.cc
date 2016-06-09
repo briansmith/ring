@@ -236,27 +236,33 @@ static bool TestChaCha20(size_t len) {
     return false;
   }
 
-  // Test in-place at various offsets.
-  static const size_t kOffsets[] = {
-      0,
-      // The ARM assembly language code--at least some branches of it--is known
-      // to not work in-place with offsets other than 0. chacha20_poly1305.rs
-      // works aronud this.
+  /* Test that everything works correctly when the output pointer is
+   * misaligned in various ways. */
+  for (size_t alignment = 0; alignment < 16; ++alignment) {
+    /* Test that everything works correctly when the input pointer is offset
+     * from the output pointer by various degrees.
+     *
+     * The ARM assembly language code--at least some branches of it--is known
+     * to not work in-place with offsets other than 0. chacha20_poly1305.rs
+     * works aronud this. */
 #if !defined(OPENSSL_ARM)
-      1,  2,  8,  15, 16,  17,  31,  32,  33,  63,
-      64, 65, 95, 96, 97, 127, 128, 129, 255, 256, 257,
+    static const size_t MAX_OFFSET = 259;
+#else
+    static const size_t MAX_OFFSET = 0;
 #endif
-  };
-  for (size_t offset : kOffsets) {
-    buf.reset(new uint8_t[len + offset]);
-    memcpy(buf.get() + offset, kInput, len);
+    for (size_t offset = 0; offset <= MAX_OFFSET; ++offset) {
+      buf.reset(new uint8_t[len + alignment + offset]);
+      uint8_t *out = buf.get() + alignment;
+      uint8_t *in = out + offset;
+      memcpy(in, kInput, len);
 
-    ChaCha20_ctr32(buf.get(), buf.get() + offset, len, kKey, kCounterAndNonce);
+      ChaCha20_ctr32(out, in, len, kKey, kCounterAndNonce);
 
-    if (memcmp(buf.get(), kOutput, len) != 0) {
-      fprintf(stderr, "Mismatch at length %u with in-place offset %u.\n",
-              static_cast<unsigned>(len), static_cast<unsigned>(offset));
-      return false;
+      if (memcmp(out, kOutput, len) != 0) {
+        fprintf(stderr, "Mismatch at length %zu with in-place offset %zu and "
+                        "aligmment %zu .\n", len, offset, alignment);
+        return false;
+      }
     }
   }
 
