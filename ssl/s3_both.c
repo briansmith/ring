@@ -130,16 +130,16 @@
 
 
 /* ssl3_do_write sends |ssl->init_buf| in records of type 'type'
- * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns -1 on error and
- * 1 on success. */
+ * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns 1 on success
+ * and <= 0 on error. */
 int ssl3_do_write(SSL *ssl, int type) {
-  int n = ssl3_write_bytes(ssl, type, ssl->init_buf->data, ssl->init_num);
-  if (n < 0) {
-    return -1;
+  int ret = ssl3_write_bytes(ssl, type, ssl->init_buf->data, ssl->init_num);
+  if (ret <= 0) {
+    return ret;
   }
 
   /* ssl3_write_bytes writes the data in its entirety. */
-  assert(n == ssl->init_num);
+  assert(ret == ssl->init_num);
   ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type,
                       ssl->init_buf->data, (size_t)ssl->init_num);
   ssl->init_num = 0;
