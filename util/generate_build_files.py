@@ -12,10 +12,9 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-"""Enumerates the BoringSSL source in src/ and either generates two gypi files
-  (boringssl.gypi and boringssl_tests.gypi) for Chromium, or generates
-  source-list files for Android."""
+"""Enumerates source files for consumption by various build systems."""
 
+import optparse
 import os
 import subprocess
 import sys
@@ -49,6 +48,12 @@ NON_PERL_FILES = {
         'src/crypto/curve25519/asm/x25519-asm-x86_64.S',
     ],
 }
+
+PREFIX = None
+
+
+def PathOf(x):
+  return x if not PREFIX else os.path.join(PREFIX, x)
 
 
 class Android(object):
@@ -121,7 +126,7 @@ class Bazel(object):
 
     out.write('%s = [\n' % name)
     for f in sorted(files):
-      out.write('    "%s",\n' % f)
+      out.write('    "%s",\n' % PathOf(f))
     out.write(']\n')
 
   def WriteFiles(self, files, asm_outputs):
@@ -149,13 +154,13 @@ class Bazel(object):
       for filename in files['test_support']:
         if os.path.basename(filename) == 'malloc.cc':
           continue
-        out.write('    "%s",\n' % filename)
+        out.write('    "%s",\n' % PathOf(filename))
 
       out.write(']\n\n')
 
       out.write('def create_tests(copts):\n')
       out.write('  test_support_sources_complete = test_support_sources + \\\n')
-      out.write('      native.glob(["src/crypto/test/*.h"])\n')
+      out.write('      native.glob(["%s"])\n' % PathOf("src/crypto/test/*.h"))
       name_counts = {}
       for test in files['tests']:
         name = os.path.basename(test[0])
@@ -185,7 +190,8 @@ class Bazel(object):
         out.write('  native.cc_test(\n')
         out.write('      name = "%s",\n' % name)
         out.write('      size = "small",\n')
-        out.write('      srcs = ["%s"] + test_support_sources_complete,\n' % src)
+        out.write('      srcs = ["%s"] + test_support_sources_complete,\n' %
+            PathOf(src))
 
         data_files = []
         if len(test) > 1:
@@ -193,7 +199,8 @@ class Bazel(object):
           out.write('      args = [\n')
           for arg in test[1:]:
             if '/' in arg:
-              out.write('          "$(location src/%s)",\n' % arg)
+              out.write('          "$(location %s)",\n' %
+                  PathOf(os.path.join('src', arg)))
               data_files.append('src/%s' % arg)
             else:
               out.write('          "%s",\n' % arg)
@@ -204,7 +211,7 @@ class Bazel(object):
         if len(data_files) > 0:
           out.write('      data = [\n')
           for filename in data_files:
-            out.write('          "%s",\n' % filename)
+            out.write('          "%s",\n' % PathOf(filename))
           out.write('      ],\n')
 
         if 'ssl/' in test[0]:
@@ -609,17 +616,20 @@ def main(platforms):
   return 0
 
 
-def Usage():
-  print 'Usage: python %s [android|android-standalone|bazel|gn|gyp]' % sys.argv[0]
-  sys.exit(1)
-
-
 if __name__ == '__main__':
-  if len(sys.argv) < 2:
-    Usage()
+  parser = optparse.OptionParser(usage='Usage: %prog [--prefix=<path>]'
+      ' [android|android-standalone|bazel|gn|gyp]')
+  parser.add_option('--prefix', dest='prefix',
+      help='For Bazel, prepend argument to all source files')
+  options, args = parser.parse_args(sys.argv[1:])
+  PREFIX = options.prefix
+
+  if not args:
+    parser.print_help()
+    sys.exit(1)
 
   platforms = []
-  for s in sys.argv[1:]:
+  for s in args:
     if s == 'android':
       platforms.append(Android())
     elif s == 'android-standalone':
@@ -631,6 +641,7 @@ if __name__ == '__main__':
     elif s == 'gyp':
       platforms.append(GYP())
     else:
-      Usage()
+      parser.print_help()
+      sys.exit(1)
 
   sys.exit(main(platforms))
