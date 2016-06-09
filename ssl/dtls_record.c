@@ -118,6 +118,7 @@
 #include <openssl/err.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
 
 
 /* to_u64_be treats |in| as a 8-byte big-endian integer and returns the value as
@@ -251,6 +252,11 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      uint8_t type, const uint8_t *in, size_t in_len,
                      enum dtls1_use_epoch_t use_epoch) {
+  if (buffers_alias(in, in_len, out, max_out)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
+    return 0;
+  }
+
   /* Determine the parameters for the current epoch. */
   uint16_t epoch = ssl->d1->w_epoch;
   SSL_AEAD_CTX *aead = ssl->s3->aead_write_ctx;
@@ -266,12 +272,6 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   if (max_out < DTLS1_RT_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-  /* Check the record header does not alias any part of the input.
-   * |SSL_AEAD_CTX_seal| will internally enforce other aliasing requirements. */
-  if (in < out + DTLS1_RT_HEADER_LENGTH && out < in + in_len) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
     return 0;
   }
 
