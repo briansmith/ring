@@ -144,13 +144,15 @@ void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 static char aesni_capable(void);
 #endif
 
-static aes_ctr_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
-                                const uint8_t *key, size_t key_len) {
+static void aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
+                            const uint8_t *key, size_t key_len) {
+  /* Keep this in sync with |aes_ctr|. */
+
 #if defined(AESNI)
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_len * 8, aes_key);
     CRYPTO_gcm128_init(gcm_ctx, aes_key, aesni_encrypt);
-    return aesni_ctr32_encrypt_blocks;
+    return;
   }
 #endif
 
@@ -158,7 +160,7 @@ static aes_ctr_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   if (hwaes_capable()) {
     aes_v8_set_encrypt_key(key, key_len * 8, aes_key);
     CRYPTO_gcm128_init(gcm_ctx, aes_key, aes_v8_encrypt);
-    return aes_v8_ctr32_encrypt_blocks;
+    return;
   }
 #endif
 
@@ -166,7 +168,7 @@ static aes_ctr_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   if (bsaes_capable()) {
     AES_set_encrypt_key(key, key_len * 8, aes_key);
     CRYPTO_gcm128_init(gcm_ctx, aes_key, AES_encrypt);
-    return bsaes_ctr32_encrypt_blocks;
+    return;
   }
 #endif
 
@@ -174,12 +176,35 @@ static aes_ctr_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, key_len * 8, aes_key);
     CRYPTO_gcm128_init(gcm_ctx, aes_key, vpaes_encrypt);
-    return NULL;
+    return;
   }
 #endif
 
   AES_set_encrypt_key(key, key_len * 8, aes_key);
   CRYPTO_gcm128_init(gcm_ctx, aes_key, AES_encrypt);
+}
+
+static aes_ctr_f aes_ctr(void) {
+  /* Keep this in sync with |aes_ctr_set_key|. */
+
+#if defined(AESNI)
+  if (aesni_capable()) {
+    return aesni_ctr32_encrypt_blocks;
+  }
+#endif
+
+#if defined(HWAES)
+  if (hwaes_capable()) {
+    return aes_v8_ctr32_encrypt_blocks;
+  }
+#endif
+
+#if defined(BSAES)
+  if (bsaes_capable()) {
+    return bsaes_ctr32_encrypt_blocks;
+  }
+#endif
+
   return NULL;
 }
 
@@ -192,13 +217,12 @@ static char aesni_capable(void) {
 struct aead_aes_gcm_ctx {
   alignas(16) AES_KEY ks;
   GCM128_CONTEXT gcm;
-  aes_ctr_f ctr;
 };
 
 int evp_aead_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
                           size_t key_len) {
   struct aead_aes_gcm_ctx gcm_ctx;
-  gcm_ctx.ctr = aes_ctr_set_key(&gcm_ctx.ks, &gcm_ctx.gcm, key, key_len);
+  aes_ctr_set_key(&gcm_ctx.ks, &gcm_ctx.gcm, key, key_len);
   assert(sizeof(gcm_ctx) <= ctx_buf_len);
   if (sizeof(gcm_ctx) > ctx_buf_len) {
     return 0;
@@ -231,9 +255,10 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
     return 0;
   }
   if (in_out_len > 0) {
-    if (gcm_ctx.ctr) {
+    aes_ctr_f ctr = aes_ctr();
+    if (ctr != NULL) {
       if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, &gcm_ctx.ks, in_out, in_out,
-                                       in_out_len, gcm_ctx.ctr)) {
+                                       in_out_len, ctr)) {
         return 0;
       }
     } else {
@@ -271,9 +296,10 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
     return 0;
   }
   if (in_out_len > 0) {
-    if (gcm_ctx.ctr) {
+    aes_ctr_f ctr = aes_ctr();
+    if (ctr != NULL) {
       if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, &gcm_ctx.ks, in, out, in_out_len,
-                                       gcm_ctx.ctr)) {
+                                       ctr)) {
         return 0;
       }
     } else {
