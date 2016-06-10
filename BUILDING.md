@@ -27,9 +27,13 @@
   * A C compiler is required. On Windows, MSVC 14 (Visual Studio 2015) or later
     with Platform SDK 8.1 or later are supported. Recent versions of GCC (4.8+)
     and Clang should work on non-Windows platforms, and maybe on Windows too.
+    To build the tests, you also need a C++ compiler with C++11 support.
 
   * [Go](https://golang.org/dl/) is required. If not found by CMake, the go
     executable may be configured explicitly by setting `GO_EXECUTABLE`.
+
+  * To build the x86 and x86\_64 assembly, your assembler must support AVX2
+    instructions. If using GNU binutils, you must have 2.22 or later.
 
 ## Building
 
