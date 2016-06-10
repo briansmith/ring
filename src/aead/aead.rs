@@ -189,16 +189,7 @@ struct Key {
 const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
 
 // Keep this in sync with `aead_aes_gcm_ctx` in e_aes.c.
-const KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_CONTEXT_BUF_LEN + 8;
-
-// Keep this in sync with `AES_KEY` in aes.h.
-const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
-
-// Keep this in sync with `AES_MAXNR` in aes.h.
-const AES_MAX_ROUNDS: usize = 14;
-
-// Keep this in sync with `gcm128_context` in gcm.h.
-const GCM128_CONTEXT_BUF_LEN: usize = (16 * 6) + (16 * 16) + (6 * 8);
+const KEY_CTX_BUF_LEN: usize = self::aes_gcm::AES_KEY_CTX_BUF_LEN;
 
 impl Key {
     /// XXX: Assumes self.algorithm is already filled in.
