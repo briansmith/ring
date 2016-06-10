@@ -96,8 +96,6 @@ struct gcm128_context {
 
   gcm128_gmult_f gmult;
   gcm128_ghash_f ghash;
-
-  unsigned int mres, ares;
   aes_block_f block;
 };
 

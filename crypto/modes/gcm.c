@@ -468,75 +468,42 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 }
 
 int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
-  size_t i;
-  unsigned int n;
-  uint64_t alen = ctx->len.u[0];
+  assert(ctx->len.u[0] == 0);
+  assert(ctx->len.u[1] == 0);
+
 #ifdef GCM_FUNCREF_4BIT
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
-#ifdef GHASH
-  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
-#endif
 #endif
 
-  if (ctx->len.u[1]) {
+  ctx->len.u[0] = len;
+  if (ctx->len.u[0] > (UINT64_C(1) << 61)) {
     return 0;
   }
 
-  alen += len;
-  if (alen > (UINT64_C(1) << 61) || (sizeof(len) == 8 && alen < len)) {
-    return 0;
-  }
-  ctx->len.u[0] = alen;
-
-  n = ctx->ares;
-  if (n) {
-    while (n && len) {
-      ctx->Xi[n] ^= *(aad++);
-      --len;
-      n = (n + 1) % 16;
-    }
-    if (n == 0) {
+  if (len > 0) {
+    for (;;) {
+      for (size_t i = 0; i < 16 && i < len; ++i) {
+        ctx->Xi[i] ^= aad[i];
+      }
       GCM_MUL(ctx, Xi);
-    } else {
-      ctx->ares = n;
-      return 1;
+      if (len <= 16) {
+        break;
+      }
+      aad += 16;
+      len -= 16;
     }
   }
 
-#ifdef GHASH
-  i = len & kSizeTWithoutLower4Bits;
-  if (i != 0) {
-    GHASH(ctx, aad, i);
-    aad += i;
-    len -= i;
-  }
-#else
-  while (len >= 16) {
-    for (i = 0; i < 16; ++i) {
-      ctx->Xi[i] ^= aad[i];
-    }
-    GCM_MUL(ctx, Xi);
-    aad += 16;
-    len -= 16;
-  }
-#endif
-  if (len) {
-    n = (unsigned int)len;
-    for (i = 0; i < len; ++i) {
-      ctx->Xi[i] ^= aad[i];
-    }
-  }
-
-  ctx->ares = n;
   return 1;
 }
 
 int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const unsigned char *in, unsigned char *out,
                           size_t len) {
-  unsigned int n, ctr;
+  assert(ctx->len.u[1] == 0);
+
+  unsigned int ctr;
   size_t i;
-  uint64_t mlen = ctx->len.u[1];
   aes_block_f block = ctx->block;
 #ifdef GCM_FUNCREF_4BIT
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
@@ -545,35 +512,13 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #endif
 
-  mlen += len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  ctx->len.u[1] = len;
+  if (ctx->len.u[1] > ((UINT64_C(1) << 36) - 32)) {
     return 0;
-  }
-  ctx->len.u[1] = mlen;
-
-  if (ctx->ares) {
-    /* First call to encrypt finalizes GHASH(AAD) */
-    GCM_MUL(ctx, Xi);
-    ctx->ares = 0;
   }
 
   ctr = from_be_u32_ptr(ctx->Yi + 12);
 
-  n = ctx->mres;
-  if (n) {
-    while (n && len) {
-      ctx->Xi[n] ^= *(out++) = *(in++) ^ ctx->EKi[n];
-      --len;
-      n = (n + 1) % 16;
-    }
-    if (n == 0) {
-      GCM_MUL(ctx, Xi);
-    } else {
-      ctx->mres = n;
-      return 1;
-    }
-  }
 #if defined(GHASH) && defined(GHASH_CHUNK)
   while (len >= GHASH_CHUNK) {
     size_t j = GHASH_CHUNK;
@@ -627,22 +572,24 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     (*block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
     to_be_u32_ptr(ctx->Yi + 12, ctr);
+    size_t n = 0;
     while (len--) {
       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
       ++n;
     }
+    GCM_MUL(ctx, Xi);
   }
 
-  ctx->mres = n;
   return 1;
 }
 
 int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const unsigned char *in, unsigned char *out,
                           size_t len) {
-  unsigned int n, ctr;
+  assert(ctx->len.u[1] == 0);
+
+  unsigned int ctr;
   size_t i;
-  uint64_t mlen = ctx->len.u[1];
   aes_block_f block = ctx->block;
 #ifdef GCM_FUNCREF_4BIT
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
@@ -651,37 +598,13 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #endif
 
-  mlen += len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  ctx->len.u[1] = len;
+  if (ctx->len.u[1] > ((UINT64_C(1) << 36) - 32)) {
     return 0;
-  }
-  ctx->len.u[1] = mlen;
-
-  if (ctx->ares) {
-    /* First call to decrypt finalizes GHASH(AAD) */
-    GCM_MUL(ctx, Xi);
-    ctx->ares = 0;
   }
 
   ctr = from_be_u32_ptr(ctx->Yi + 12);
 
-  n = ctx->mres;
-  if (n) {
-    while (n && len) {
-      uint8_t c = *(in++);
-      *(out++) = c ^ ctx->EKi[n];
-      ctx->Xi[n] ^= c;
-      --len;
-      n = (n + 1) % 16;
-    }
-    if (n == 0) {
-      GCM_MUL(ctx, Xi);
-    } else {
-      ctx->mres = n;
-      return 1;
-    }
-  }
 #if defined(GHASH) && defined(GHASH_CHUNK)
   while (len >= GHASH_CHUNK) {
     size_t j = GHASH_CHUNK;
@@ -735,23 +658,25 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     (*block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
     to_be_u32_ptr(ctx->Yi + 12, ctr);
+    size_t n = 0;
     while (len--) {
       uint8_t c = in[n];
       ctx->Xi[n] ^= c;
       out[n] = c ^ ctx->EKi[n];
       ++n;
     }
+    GCM_MUL(ctx, Xi);
   }
 
-  ctx->mres = n;
   return 1;
 }
 
 int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 aes_ctr_f stream) {
-  unsigned int n, ctr;
-  uint64_t mlen = ctx->len.u[1];
+  assert(ctx->len.u[1] == 0);
+
+  unsigned int ctr;
 #ifdef GCM_FUNCREF_4BIT
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
@@ -759,32 +684,9 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #endif
 
-  mlen += len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  ctx->len.u[1] = len;
+  if (ctx->len.u[1] > ((UINT64_C(1) << 36) - 32)) {
     return 0;
-  }
-  ctx->len.u[1] = mlen;
-
-  if (ctx->ares) {
-    /* First call to encrypt finalizes GHASH(AAD) */
-    GCM_MUL(ctx, Xi);
-    ctx->ares = 0;
-  }
-
-  n = ctx->mres;
-  if (n) {
-    while (n && len) {
-      ctx->Xi[n] ^= *(out++) = *(in++) ^ ctx->EKi[n];
-      --len;
-      n = (n + 1) % 16;
-    }
-    if (n == 0) {
-      GCM_MUL(ctx, Xi);
-    } else {
-      ctx->mres = n;
-      return 1;
-    }
   }
 
 #if defined(AESNI_GCM)
@@ -837,21 +739,23 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     (*ctx->block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
     to_be_u32_ptr(ctx->Yi + 12, ctr);
+    size_t n = 0;
     while (len--) {
       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
       ++n;
     }
+    GCM_MUL(ctx, Xi);
   }
 
-  ctx->mres = n;
   return 1;
 }
 
 int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 aes_ctr_f stream) {
-  unsigned int n, ctr;
-  uint64_t mlen = ctx->len.u[1];
+  assert(ctx->len.u[1] == 0);
+
+  unsigned int ctr;
 #ifdef GCM_FUNCREF_4BIT
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
@@ -859,34 +763,9 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #endif
 
-  mlen += len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  ctx->len.u[1] = len;
+  if (ctx->len.u[1] > ((UINT64_C(1) << 36) - 32)) {
     return 0;
-  }
-  ctx->len.u[1] = mlen;
-
-  if (ctx->ares) {
-    /* First call to decrypt finalizes GHASH(AAD) */
-    GCM_MUL(ctx, Xi);
-    ctx->ares = 0;
-  }
-
-  n = ctx->mres;
-  if (n) {
-    while (n && len) {
-      uint8_t c = *(in++);
-      *(out++) = c ^ ctx->EKi[n];
-      ctx->Xi[n] ^= c;
-      --len;
-      n = (n + 1) % 16;
-    }
-    if (n == 0) {
-      GCM_MUL(ctx, Xi);
-    } else {
-      ctx->mres = n;
-      return 1;
-    }
   }
 
 #if defined(AESNI_GCM)
@@ -942,15 +821,16 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     (*ctx->block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
     to_be_u32_ptr(ctx->Yi + 12, ctr);
+    size_t n = 0;
     while (len--) {
       uint8_t c = in[n];
       ctx->Xi[n] ^= c;
       out[n] = c ^ ctx->EKi[n];
       ++n;
     }
+    GCM_MUL(ctx, Xi);
   }
 
-  ctx->mres = n;
   return 1;
 }
 
@@ -960,10 +840,6 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
 #ifdef GCM_FUNCREF_4BIT
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #endif
-
-  if (ctx->mres || ctx->ares) {
-    GCM_MUL(ctx, Xi);
-  }
 
   uint8_t a_c_len[16];
   to_be_u64_ptr(a_c_len, alen);
