@@ -53,6 +53,7 @@
 
 #include <openssl/mem.h>
 #include <openssl/cpu.h>
+#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../internal.h"
@@ -83,7 +84,7 @@
 // bits of a |size_t|.
 static const size_t kSizeTWithoutLower4Bits = (size_t) -16;
 
-static void gcm_init_4bit(u128 Htable[16], uint64_t H[2]) {
+static void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
   u128 V;
 
   Htable[0].hi = 0;
@@ -344,11 +345,12 @@ void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 #endif
 #endif
 
-void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                        aes_block_f block) {
-  memset(ctx, 0, sizeof(*ctx));
-  ctx->block = block;
+static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
+                               const uint64_t H[2]);
 
+void CRYPTO_gcm128_init_serialized(
+    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
+    aes_block_f block) {
   static const alignas(16) uint8_t ZEROS[16] = { 0 };
   uint8_t H_be[16];
   (*block)(ZEROS, H_be, key);
@@ -358,14 +360,54 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   H[0] = from_be_u64_ptr(H_be);
   H[1] = from_be_u64_ptr(H_be + 8);
 
+  alignas(16) u128 Htable[GCM128_HTABLE_LEN];
+  gcm128_init_htable(Htable, H);
+
+  OPENSSL_COMPILE_ASSERT(sizeof(Htable) == GCM128_SERIALIZED_LEN,
+                         GCM128_SERIALIZED_LEN_is_wrong);
+
+  memcpy(serialized_ctx, Htable, GCM128_SERIALIZED_LEN);
+}
+
+static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
+                               const uint64_t H[2]) {
+  /* Keep in sync with |gcm128_init_gmult_ghash|. */
+
 #if defined(GHASH_ASM_X86_OR_64)
   if (crypto_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
-      gcm_init_avx(ctx->Htable, H);
+      gcm_init_avx(Htable, H);
+    } else {
+      gcm_init_clmul(Htable, H);
+    }
+    return;
+  }
+#endif
+#if defined(ARM_PMULL_ASM)
+  if (CRYPTO_is_ARMv8_PMULL_capable()) {
+    gcm_init_v8(Htable, H);
+    return;
+  }
+#endif
+#if defined(OPENSSL_ARM)
+  if (CRYPTO_is_NEON_capable()) {
+    gcm_init_neon(Htable, H);
+    return;
+  }
+#endif
+
+  gcm_init_4bit(Htable, H);
+}
+
+static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
+  /* Keep in sync with |gcm128_init_htable|. */
+
+#if defined(GHASH_ASM_X86_OR_64)
+  if (crypto_gcm_clmul_enabled()) {
+    if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       ctx->gmult = gcm_gmult_avx;
       ctx->ghash = gcm_ghash_avx;
     } else {
-      gcm_init_clmul(ctx->Htable, H);
       ctx->gmult = gcm_gmult_clmul;
       ctx->ghash = gcm_ghash_clmul;
     }
@@ -373,7 +415,6 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #endif
 #if defined(GHASH_ASM_X86)
-  gcm_init_4bit(ctx->Htable, H);
   if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
     ctx->gmult = gcm_gmult_4bit_mmx;
     ctx->ghash = gcm_ghash_4bit_mmx;
@@ -386,7 +427,6 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #if defined(ARM_PMULL_ASM)
   if (CRYPTO_is_ARMv8_PMULL_capable()) {
-    gcm_init_v8(ctx->Htable, H);
     ctx->gmult = gcm_gmult_v8;
     ctx->ghash = gcm_ghash_v8;
     return;
@@ -394,7 +434,6 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #if defined(OPENSSL_ARM)
   if (CRYPTO_is_NEON_capable()) {
-    gcm_init_neon(ctx->Htable, H);
     ctx->gmult = gcm_gmult_neon;
     ctx->ghash = gcm_ghash_neon;
     return;
@@ -402,28 +441,30 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 
 #if !defined(GHASH_ASM_X86)
-  gcm_init_4bit(ctx->Htable, H);
   ctx->gmult = gcm_gmult_4bit;
   ctx->ghash = gcm_ghash_4bit;
 #endif
 }
 
-void CRYPTO_gcm128_set_96_bit_iv(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                 const uint8_t *iv) {
+void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                        aes_block_f block,
+                        const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN],
+                        const uint8_t *iv) {
   uint32_t ctr = 1;
 
-  memset(&ctx->Xi, 0, sizeof(ctx->Xi));
-  ctx->len.u[0] = 0; /* AAD length */
-  ctx->len.u[1] = 0; /* message length */
-  ctx->ares = 0;
-  ctx->mres = 0;
-
+  memset(ctx, 0, sizeof(*ctx));
   memcpy(ctx->Yi, iv, 12);
   to_be_u32_ptr(ctx->Yi + 12, ctr);
-
-  (*ctx->block)(ctx->Yi, ctx->EK0, key);
+  (block)(ctx->Yi, ctx->EK0, key);
   ++ctr;
   to_be_u32_ptr(ctx->Yi + 12, ctr);
+
+  OPENSSL_COMPILE_ASSERT(sizeof(ctx->Htable) == GCM128_SERIALIZED_LEN,
+                         GCM128_SERIALIZED_LEN_is_wrong);
+
+  memcpy(ctx->Htable, serialized_ctx, GCM128_SERIALIZED_LEN);
+  ctx->block = block;
+  gcm128_init_gmult_ghash(ctx);
 }
 
 int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {

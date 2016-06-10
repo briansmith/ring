@@ -70,6 +70,10 @@ typedef void (*gcm128_gmult_f)(uint8_t Xi[16], const u128 Htable[16]);
 typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
                                const uint8_t *inp, size_t len);
 
+#define GCM128_HTABLE_LEN 16
+
+#define GCM128_SERIALIZED_LEN (GCM128_HTABLE_LEN * 16)
+
 /* This differs from OpenSSL's |gcm128_context| in that it does not have the
  * |key| pointer, in order to make it |memcpy|-friendly. See openssl/modes.h
  * for more info. */
@@ -88,7 +92,7 @@ struct gcm128_context {
 
   /* Relative position of Xi, H and pre-computed Htable is used in some
    * assembler modules, i.e. don't change the order! */
-  u128 Htable[16];
+  u128 Htable[GCM128_HTABLE_LEN];
 
   gcm128_gmult_f gmult;
   gcm128_ghash_f ghash;
@@ -120,16 +124,13 @@ typedef void (*aes_ctr_f)(const uint8_t *in, uint8_t *out, size_t blocks,
 
 typedef struct gcm128_context GCM128_CONTEXT;
 
-/* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
- * the given key. */
-OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                       aes_block_f block);
+OPENSSL_EXPORT void CRYPTO_gcm128_init_serialized(
+    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
+    aes_block_f block);
 
-/* CRYPTO_gcm128_set_96_bit_iv sets the IV (nonce) for |ctx|. The |key| must be
- * the same key that was passed to |CRYPTO_gcm128_init|. */
-OPENSSL_EXPORT void CRYPTO_gcm128_set_96_bit_iv(GCM128_CONTEXT *ctx,
-                                                const AES_KEY *key,
-                                                const uint8_t *iv);
+OPENSSL_EXPORT void CRYPTO_gcm128_init(
+    GCM128_CONTEXT *ctx, const AES_KEY *key, aes_block_f block,
+    const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const uint8_t *iv);
 
 /* CRYPTO_gcm128_aad sets the authenticated data for an instance of GCM.
  * This must be called before and data is encrypted. It returns one on success

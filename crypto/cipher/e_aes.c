@@ -114,7 +114,7 @@ static int hwaes_capable(void) {
   return CRYPTO_is_ARMv8_AES_capable();
 }
 
-int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
+int aes_v8_set_encrypt_key(const uint8_t *user_key, const unsigned bits,
                            AES_KEY *key);
 void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
@@ -132,60 +132,81 @@ void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
 #if defined(VPAES)
 /* On platforms where VPAES gets defined (just above), then these functions are
  * provided by asm. */
-int vpaes_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
+int vpaes_set_encrypt_key(const uint8_t *userKey, unsigned bits, AES_KEY *key);
 void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
 #define AESNI
-int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
+int aesni_set_encrypt_key(const uint8_t *userKey, unsigned bits, AES_KEY *key);
 void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 static char aesni_capable(void);
 #endif
 
-static void aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
-                            const uint8_t *key, size_t key_len) {
-  /* Keep this in sync with |aes_ctr|. */
+typedef int (*aes_set_key_f)(const uint8_t *userKey, unsigned bits,
+                             AES_KEY *key);
 
+static aes_set_key_f aes_set_key(void) {
 #if defined(AESNI)
   if (aesni_capable()) {
-    aesni_set_encrypt_key(key, key_len * 8, aes_key);
-    CRYPTO_gcm128_init(gcm_ctx, aes_key, aesni_encrypt);
-    return;
+    return aesni_set_encrypt_key;
   }
 #endif
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    aes_v8_set_encrypt_key(key, key_len * 8, aes_key);
-    CRYPTO_gcm128_init(gcm_ctx, aes_key, aes_v8_encrypt);
-    return;
+    return aes_v8_set_encrypt_key;
   }
 #endif
 
 #if defined(BSAES)
   if (bsaes_capable()) {
-    AES_set_encrypt_key(key, key_len * 8, aes_key);
-    CRYPTO_gcm128_init(gcm_ctx, aes_key, AES_encrypt);
-    return;
+    return AES_set_encrypt_key;
   }
 #endif
 
 #if defined(VPAES)
   if (vpaes_capable()) {
-    vpaes_set_encrypt_key(key, key_len * 8, aes_key);
-    CRYPTO_gcm128_init(gcm_ctx, aes_key, vpaes_encrypt);
-    return;
+    return vpaes_set_encrypt_key;
   }
 #endif
 
-  AES_set_encrypt_key(key, key_len * 8, aes_key);
-  CRYPTO_gcm128_init(gcm_ctx, aes_key, AES_encrypt);
+  return AES_set_encrypt_key;
+}
+
+static aes_block_f aes_block(void) {
+  /* Keep this in sync with |set_set_key| and |aes_ctr|. */
+
+#if defined(AESNI)
+  if (aesni_capable()) {
+    return aesni_encrypt;
+  }
+#endif
+
+#if defined(HWAES)
+  if (hwaes_capable()) {
+    return aes_v8_encrypt;
+  }
+#endif
+
+#if defined(VPAES)
+#if defined(BSAES)
+  if (bsaes_capable()) {
+    return AES_encrypt;
+  }
+#endif
+
+  if (vpaes_capable()) {
+    return vpaes_encrypt;
+  }
+#endif
+
+  return AES_encrypt;
 }
 
 static aes_ctr_f aes_ctr(void) {
-  /* Keep this in sync with |aes_ctr_set_key|. */
+  /* Keep this in sync with |set_set_key| and |aes_block|. */
 
 #if defined(AESNI)
   if (aesni_capable()) {
@@ -214,20 +235,37 @@ static char aesni_capable(void) {
 }
 #endif
 
-struct aead_aes_gcm_ctx {
-  alignas(16) AES_KEY ks;
-  GCM128_CONTEXT gcm;
-};
-
 int evp_aead_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
                           size_t key_len) {
-  struct aead_aes_gcm_ctx gcm_ctx;
-  aes_ctr_set_key(&gcm_ctx.ks, &gcm_ctx.gcm, key, key_len);
-  assert(sizeof(gcm_ctx) <= ctx_buf_len);
-  if (sizeof(gcm_ctx) > ctx_buf_len) {
+  alignas(16) AES_KEY ks;
+  assert(ctx_buf_len >= sizeof(ks) + GCM128_SERIALIZED_LEN);
+  if (ctx_buf_len < sizeof(ks) + GCM128_SERIALIZED_LEN) {
     return 0;
   }
-  memcpy(ctx_buf, &gcm_ctx, sizeof(gcm_ctx));
+
+  /* XXX: Ignores return value. TODO: These functions should return |void|
+   * anyway. */
+  (void)(aes_set_key())(key, key_len * 8, &ks);
+
+  CRYPTO_gcm128_init_serialized((uint8_t *)ctx_buf + sizeof(ks), &ks,
+                                aes_block());
+  memcpy(ctx_buf, &ks, sizeof(ks));
+  return 1;
+}
+
+static int evp_aead_aes_gcm_init_and_aad(GCM128_CONTEXT *gcm, AES_KEY *ks,
+                                         const void *ctx_buf,
+                                         const uint8_t nonce[],
+                                         const uint8_t ad[], size_t ad_len) {
+  assert(ad != NULL || ad_len == 0);
+  memcpy(ks, ctx_buf, sizeof(*ks));
+  CRYPTO_gcm128_init(gcm, ks, aes_block(),
+                     (const uint8_t *)ctx_buf + sizeof(*ks), nonce);
+  if (ad_len > 0) {
+    if (!CRYPTO_gcm128_aad(gcm, ad, ad_len)) {
+      return 0;
+    }
+  }
   return 1;
 }
 
@@ -236,36 +274,29 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
                           uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
                           const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                           const uint8_t *ad, size_t ad_len) {
-  assert(ctx_buf != NULL);
   assert(in_out != NULL || in_out_len == 0);
   assert(aead_check_in_len(in_out_len));
-  assert(tag_out != NULL);
-  assert(nonce != NULL);
   assert(ad != NULL || ad_len == 0);
 
-  struct aead_aes_gcm_ctx ctx;
-  memcpy(&ctx, ctx_buf, sizeof(ctx));
-
-  CRYPTO_gcm128_set_96_bit_iv(&ctx.gcm, &ctx.ks, nonce);
-
-  if (ad_len > 0 && !CRYPTO_gcm128_aad(&ctx.gcm, ad, ad_len)) {
+  GCM128_CONTEXT gcm;
+  alignas(16) AES_KEY ks;
+  if (!evp_aead_aes_gcm_init_and_aad(&gcm, &ks, ctx_buf, nonce, ad, ad_len)) {
     return 0;
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
     if (ctr != NULL) {
-      if (!CRYPTO_gcm128_encrypt_ctr32(&ctx.gcm, &ctx.ks, in_out, in_out,
-                                       in_out_len, ctr)) {
+      if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len,
+                                       ctr)) {
         return 0;
       }
     } else {
-      if (!CRYPTO_gcm128_encrypt(&ctx.gcm, &ctx.ks, in_out, in_out,
-                                 in_out_len)) {
+      if (!CRYPTO_gcm128_encrypt(&gcm, &ks, in_out, in_out, in_out_len)) {
         return 0;
       }
     }
   }
-  CRYPTO_gcm128_tag(&ctx.gcm, tag_out);
+  CRYPTO_gcm128_tag(&gcm, tag_out);
   return 1;
 }
 
@@ -274,37 +305,30 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
                           uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
                           const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                           const uint8_t *in,  const uint8_t *ad, size_t ad_len) {
-  assert(ctx_buf != NULL);
   assert(out != NULL || in_out_len == 0);
   assert(aead_check_in_len(in_out_len));
   assert(aead_check_alias(in, in_out_len, out));
-  assert(tag_out != NULL);
-  assert(nonce != NULL);
   assert(in != NULL || in_out_len == 0);
   assert(ad != NULL || ad_len == 0);
 
-  struct aead_aes_gcm_ctx ctx;
-  memcpy(&ctx, ctx_buf, sizeof(ctx));
-
-  CRYPTO_gcm128_set_96_bit_iv(&ctx.gcm, &ctx.ks, nonce);
-
-  if (!CRYPTO_gcm128_aad(&ctx.gcm, ad, ad_len)) {
+  GCM128_CONTEXT gcm;
+  alignas(16) AES_KEY ks;
+  if (!evp_aead_aes_gcm_init_and_aad(&gcm, &ks, ctx_buf, nonce, ad, ad_len)) {
     return 0;
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
     if (ctr != NULL) {
-      if (!CRYPTO_gcm128_decrypt_ctr32(&ctx.gcm, &ctx.ks, in, out, in_out_len,
-                                       ctr)) {
+      if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr)) {
         return 0;
       }
     } else {
-      if (!CRYPTO_gcm128_decrypt(&ctx.gcm, &ctx.ks, in, out, in_out_len)) {
+      if (!CRYPTO_gcm128_decrypt(&gcm, &ks, in, out, in_out_len)) {
         return 0;
       }
     }
   }
-  CRYPTO_gcm128_tag(&ctx.gcm, tag_out);
+  CRYPTO_gcm128_tag(&gcm, tag_out);
   return 1;
 }
 

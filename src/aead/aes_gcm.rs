@@ -19,8 +19,7 @@ use super::super::{aead, bssl, c, polyfill};
 const AES_128_KEY_LEN: usize = 128 / 8;
 const AES_256_KEY_LEN: usize = 32; // 256 / 8
 
-pub const AES_KEY_CTX_BUF_LEN: usize =
-    AES_KEY_BUF_LEN + GCM128_CONTEXT_BUF_LEN + 8;
+pub const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
 
 // Keep this in sync with `AES_KEY` in aes.h.
 const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
@@ -28,8 +27,11 @@ const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
 // Keep this in sync with `AES_MAXNR` in aes.h.
 const AES_MAX_ROUNDS: usize = 14;
 
-// Keep this in sync with `gcm128_context` in gcm.h.
-const GCM128_CONTEXT_BUF_LEN: usize = (16 * 6) + (16 * 16) + (6 * 8);
+// Keep this in sync with `GCM128_SERIALIZED_LEN` in gcm.h.
+// TODO: test.
+// TODO: some implementations of GCM don't require the buffer to be this big.
+// We should shrink it down on those platforms since this is still huge.
+const GCM128_SERIALIZED_LEN: usize = 16 * 16;
 
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
