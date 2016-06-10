@@ -243,31 +243,29 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
   assert(nonce != NULL);
   assert(ad != NULL || ad_len == 0);
 
-  struct aead_aes_gcm_ctx gcm_ctx;
-  memcpy(&gcm_ctx, ctx_buf, sizeof(gcm_ctx));
+  struct aead_aes_gcm_ctx ctx;
+  memcpy(&ctx, ctx_buf, sizeof(ctx));
 
-  GCM128_CONTEXT gcm;
+  CRYPTO_gcm128_set_96_bit_iv(&ctx.gcm, &ctx.ks, nonce);
 
-  memcpy(&gcm, &gcm_ctx.gcm, sizeof(gcm));
-  CRYPTO_gcm128_set_96_bit_iv(&gcm, &gcm_ctx.ks, nonce);
-
-  if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
+  if (ad_len > 0 && !CRYPTO_gcm128_aad(&ctx.gcm, ad, ad_len)) {
     return 0;
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
     if (ctr != NULL) {
-      if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, &gcm_ctx.ks, in_out, in_out,
+      if (!CRYPTO_gcm128_encrypt_ctr32(&ctx.gcm, &ctx.ks, in_out, in_out,
                                        in_out_len, ctr)) {
         return 0;
       }
     } else {
-      if (!CRYPTO_gcm128_encrypt(&gcm, &gcm_ctx.ks, in_out, in_out, in_out_len)) {
+      if (!CRYPTO_gcm128_encrypt(&ctx.gcm, &ctx.ks, in_out, in_out,
+                                 in_out_len)) {
         return 0;
       }
     }
   }
-  CRYPTO_gcm128_tag(&gcm, tag_out);
+  CRYPTO_gcm128_tag(&ctx.gcm, tag_out);
   return 1;
 }
 
@@ -285,30 +283,28 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
   assert(in != NULL || in_out_len == 0);
   assert(ad != NULL || ad_len == 0);
 
-  struct aead_aes_gcm_ctx gcm_ctx;
-  memcpy(&gcm_ctx, ctx_buf, sizeof(gcm_ctx));
+  struct aead_aes_gcm_ctx ctx;
+  memcpy(&ctx, ctx_buf, sizeof(ctx));
 
-  GCM128_CONTEXT gcm;
-  memcpy(&gcm, &gcm_ctx.gcm, sizeof(gcm));
-  CRYPTO_gcm128_set_96_bit_iv(&gcm, &gcm_ctx.ks, nonce);
+  CRYPTO_gcm128_set_96_bit_iv(&ctx.gcm, &ctx.ks, nonce);
 
-  if (!CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
+  if (!CRYPTO_gcm128_aad(&ctx.gcm, ad, ad_len)) {
     return 0;
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
     if (ctr != NULL) {
-      if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, &gcm_ctx.ks, in, out, in_out_len,
+      if (!CRYPTO_gcm128_decrypt_ctr32(&ctx.gcm, &ctx.ks, in, out, in_out_len,
                                        ctr)) {
         return 0;
       }
     } else {
-      if (!CRYPTO_gcm128_decrypt(&gcm, &gcm_ctx.ks, in, out, in_out_len)) {
+      if (!CRYPTO_gcm128_decrypt(&ctx.gcm, &ctx.ks, in, out, in_out_len)) {
         return 0;
       }
     }
   }
-  CRYPTO_gcm128_tag(&gcm, tag_out);
+  CRYPTO_gcm128_tag(&ctx.gcm, tag_out);
   return 1;
 }
 
