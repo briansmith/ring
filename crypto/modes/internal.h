@@ -84,7 +84,7 @@ struct gcm128_context {
   alignas(16) uint8_t Xi[16];
   alignas(16) struct {
     uint64_t u[2];
-  } H;
+  } H_unused;
 
   /* Relative position of Xi, H and pre-computed Htable is used in some
    * assembler modules, i.e. don't change the order! */

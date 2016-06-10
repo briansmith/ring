@@ -354,17 +354,18 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   (*block)(ZEROS, H_be, key);
 
   /* H is stored in host byte order */
-  ctx->H.u[0] = from_be_u64_ptr(H_be);
-  ctx->H.u[1] = from_be_u64_ptr(H_be + 8);
+  alignas(16) uint64_t H[2];
+  H[0] = from_be_u64_ptr(H_be);
+  H[1] = from_be_u64_ptr(H_be + 8);
 
 #if defined(GHASH_ASM_X86_OR_64)
   if (crypto_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
-      gcm_init_avx(ctx->Htable, ctx->H.u);
+      gcm_init_avx(ctx->Htable, H);
       ctx->gmult = gcm_gmult_avx;
       ctx->ghash = gcm_ghash_avx;
     } else {
-      gcm_init_clmul(ctx->Htable, ctx->H.u);
+      gcm_init_clmul(ctx->Htable, H);
       ctx->gmult = gcm_gmult_clmul;
       ctx->ghash = gcm_ghash_clmul;
     }
@@ -372,7 +373,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #endif
 #if defined(GHASH_ASM_X86)
-  gcm_init_4bit(ctx->Htable, ctx->H.u);
+  gcm_init_4bit(ctx->Htable, H);
   if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
     ctx->gmult = gcm_gmult_4bit_mmx;
     ctx->ghash = gcm_ghash_4bit_mmx;
@@ -385,7 +386,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #if defined(ARM_PMULL_ASM)
   if (CRYPTO_is_ARMv8_PMULL_capable()) {
-    gcm_init_v8(ctx->Htable, ctx->H.u);
+    gcm_init_v8(ctx->Htable, H);
     ctx->gmult = gcm_gmult_v8;
     ctx->ghash = gcm_ghash_v8;
     return;
@@ -393,7 +394,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 #if defined(OPENSSL_ARM)
   if (CRYPTO_is_NEON_capable()) {
-    gcm_init_neon(ctx->Htable,ctx->H.u);
+    gcm_init_neon(ctx->Htable, H);
     ctx->gmult = gcm_gmult_neon;
     ctx->ghash = gcm_ghash_neon;
     return;
@@ -401,7 +402,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 
 #if !defined(GHASH_ASM_X86)
-  gcm_init_4bit(ctx->Htable, ctx->H.u);
+  gcm_init_4bit(ctx->Htable, H);
   ctx->gmult = gcm_gmult_4bit;
   ctx->ghash = gcm_ghash_4bit;
 #endif
