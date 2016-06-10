@@ -259,8 +259,9 @@ static bool TestChaCha20(size_t len) {
       ChaCha20_ctr32(out, in, len, kKey, kCounterAndNonce);
 
       if (memcmp(out, kOutput, len) != 0) {
-        fprintf(stderr, "Mismatch at length %zu with in-place offset %zu and "
-                        "aligmment %zu .\n", len, offset, alignment);
+        fprintf(stderr,
+                "Mismatch at length %u with in-place offset %u and aligmment %u.\n",
+                (unsigned)len, (unsigned)offset, (unsigned)alignment);
         return false;
       }
     }
