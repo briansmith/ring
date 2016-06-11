@@ -207,9 +207,6 @@ static int unknown_ext_print(BIO *out, X509_EXTENSION *ext,
         return 1;
 
     case X509V3_EXT_PARSE_UNKNOWN:
-        return ASN1_parse_dump(out,
-                               ext->value->data, ext->value->length, indent,
-                               -1);
     case X509V3_EXT_DUMP_UNKNOWN:
         return BIO_hexdump(out, ext->value->data, ext->value->length, indent);
 
