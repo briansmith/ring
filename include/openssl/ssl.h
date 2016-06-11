@@ -237,7 +237,10 @@ OPENSSL_EXPORT int SSL_is_server(SSL *ssl);
  * In DTLS, if |rbio| is blocking, it must handle
  * |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| control requests to set read timeouts.
  *
- * Calling this function on an already-configured |ssl| is deprecated. */
+ * If |rbio| (respectively, |wbio|) is the same as the currently configured
+ * |BIO| for reading (respectivly, writing), that side is left untouched and is
+ * not freed. Using this behavior and calling this function if |ssl| already has
+ * |BIO|s configured is deprecated. */
 OPENSSL_EXPORT void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio);
 
 /* SSL_get_rbio returns the |BIO| that |ssl| reads from. */

@@ -477,11 +477,8 @@ void SSL_free(SSL *ssl) {
   ssl_free_wbio_buffer(ssl);
   assert(ssl->bbio == NULL);
 
-  int free_wbio = ssl->wbio != ssl->rbio;
   BIO_free_all(ssl->rbio);
-  if (free_wbio) {
-    BIO_free_all(ssl->wbio);
-  }
+  BIO_free_all(ssl->wbio);
 
   BUF_MEM_free(ssl->init_buf);
 
@@ -523,25 +520,49 @@ void SSL_set_accept_state(SSL *ssl) {
   ssl->handshake_func = ssl3_accept;
 }
 
-void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
+static void ssl_set_rbio(SSL *ssl, BIO *rbio) {
+  BIO_free_all(ssl->rbio);
+  ssl->rbio = rbio;
+}
+
+static void ssl_set_wbio(SSL *ssl, BIO *wbio) {
   /* If the output buffering BIO is still in place, remove it. */
   if (ssl->bbio != NULL) {
     ssl->wbio = BIO_pop(ssl->wbio);
   }
 
-  if (ssl->rbio != rbio) {
-    BIO_free_all(ssl->rbio);
-  }
-  if (ssl->wbio != wbio && ssl->rbio != ssl->wbio) {
-    BIO_free_all(ssl->wbio);
-  }
-  ssl->rbio = rbio;
+  BIO_free_all(ssl->wbio);
   ssl->wbio = wbio;
 
   /* Re-attach |bbio| to the new |wbio|. */
   if (ssl->bbio != NULL) {
     ssl->wbio = BIO_push(ssl->bbio, ssl->wbio);
   }
+}
+
+void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
+  /* For historical reasons, this function has many different cases in ownership
+   * handling. */
+
+  /* If the two arguments are equal, one fewer reference is granted than
+   * taken. */
+  if (rbio != NULL && rbio == wbio) {
+    BIO_up_ref(rbio);
+  }
+
+  /* If at most one of rbio or wbio is changed, only adopt one reference. */
+  if (rbio == SSL_get_rbio(ssl)) {
+    ssl_set_wbio(ssl, wbio);
+    return;
+  }
+  if (wbio == SSL_get_wbio(ssl)) {
+    ssl_set_rbio(ssl, rbio);
+    return;
+  }
+
+  /* Otherwise, adopt both references. */
+  ssl_set_rbio(ssl, rbio);
+  ssl_set_wbio(ssl, wbio);
 }
 
 BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }

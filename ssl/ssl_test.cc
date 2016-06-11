@@ -1309,8 +1309,6 @@ static bool TestSetFD() {
     return false;
   }
 
-  // TODO(davidben): This one is broken.
-#if 0
   // Test changing the read FD partway through.
   ssl.reset(SSL_new(ctx.get()));
   if (!ssl ||
@@ -1319,7 +1317,6 @@ static bool TestSetFD() {
       !ExpectFDs(ssl.get(), 2, 1)) {
     return false;
   }
-#endif
 
   // Test changing the write FD partway through.
   ssl.reset(SSL_new(ctx.get()));
