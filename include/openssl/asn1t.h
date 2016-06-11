@@ -631,6 +631,7 @@ typedef struct ASN1_EXTERN_FUNCS_st {
 	ASN1_ex_free_func *asn1_ex_clear;
 	ASN1_ex_d2i *asn1_ex_d2i;
 	ASN1_ex_i2d *asn1_ex_i2d;
+	/* asn1_ex_print is unused. */
 	ASN1_ex_print_func *asn1_ex_print;
 } ASN1_EXTERN_FUNCS;
 
@@ -834,17 +835,6 @@ typedef struct ASN1_STREAM_ARG_st {
         { \
         return ASN1_item_dup(ASN1_ITEM_rptr(stname), x); \
         }
-
-#define IMPLEMENT_ASN1_PRINT_FUNCTION(stname) \
-	IMPLEMENT_ASN1_PRINT_FUNCTION_fname(stname, stname, stname)
-
-#define IMPLEMENT_ASN1_PRINT_FUNCTION_fname(stname, itname, fname) \
-	int fname##_print_ctx(BIO *out, stname *x, int indent, \
-						const ASN1_PCTX *pctx) \
-	{ \
-		return ASN1_item_print(out, (ASN1_VALUE *)x, indent, \
-			ASN1_ITEM_rptr(itname), pctx); \
-	} 
 
 #define IMPLEMENT_ASN1_FUNCTIONS_const(name) \
 		IMPLEMENT_ASN1_FUNCTIONS_const_fname(name, name, name)

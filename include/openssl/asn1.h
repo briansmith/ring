@@ -1017,41 +1017,6 @@ OPENSSL_EXPORT void ASN1_add_oid_module(void);
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_nconf(char *str, CONF *nconf);
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
 
-/* ASN1 Print flags */
-
-/* Indicate missing OPTIONAL fields */
-#define ASN1_PCTX_FLAGS_SHOW_ABSENT		0x001	
-/* Mark start and end of SEQUENCE */
-#define ASN1_PCTX_FLAGS_SHOW_SEQUENCE		0x002
-/* Mark start and end of SEQUENCE/SET OF */
-#define ASN1_PCTX_FLAGS_SHOW_SSOF		0x004
-/* Show the ASN1 type of primitives */
-#define ASN1_PCTX_FLAGS_SHOW_TYPE		0x008
-/* Don't show ASN1 type of ANY */
-#define ASN1_PCTX_FLAGS_NO_ANY_TYPE		0x010
-/* Don't show ASN1 type of MSTRINGs */
-#define ASN1_PCTX_FLAGS_NO_MSTRING_TYPE		0x020
-/* Don't show field names in SEQUENCE */
-#define ASN1_PCTX_FLAGS_NO_FIELD_NAME		0x040
-/* Show structure names of each SEQUENCE field */
-#define ASN1_PCTX_FLAGS_SHOW_FIELD_STRUCT_NAME	0x080
-/* Don't show structure name even at top level */
-#define ASN1_PCTX_FLAGS_NO_STRUCT_NAME		0x100
-
-OPENSSL_EXPORT int ASN1_item_print(BIO *out, ASN1_VALUE *ifld, int indent, const ASN1_ITEM *it, const ASN1_PCTX *pctx);
-OPENSSL_EXPORT ASN1_PCTX *ASN1_PCTX_new(void);
-OPENSSL_EXPORT void ASN1_PCTX_free(ASN1_PCTX *p);
-OPENSSL_EXPORT unsigned long ASN1_PCTX_get_flags(ASN1_PCTX *p);
-OPENSSL_EXPORT void ASN1_PCTX_set_flags(ASN1_PCTX *p, unsigned long flags);
-OPENSSL_EXPORT unsigned long ASN1_PCTX_get_nm_flags(ASN1_PCTX *p);
-OPENSSL_EXPORT void ASN1_PCTX_set_nm_flags(ASN1_PCTX *p, unsigned long flags);
-OPENSSL_EXPORT unsigned long ASN1_PCTX_get_cert_flags(ASN1_PCTX *p);
-OPENSSL_EXPORT void ASN1_PCTX_set_cert_flags(ASN1_PCTX *p, unsigned long flags);
-OPENSSL_EXPORT unsigned long ASN1_PCTX_get_oid_flags(ASN1_PCTX *p);
-OPENSSL_EXPORT void ASN1_PCTX_set_oid_flags(ASN1_PCTX *p, unsigned long flags);
-OPENSSL_EXPORT unsigned long ASN1_PCTX_get_str_flags(ASN1_PCTX *p);
-OPENSSL_EXPORT void ASN1_PCTX_set_str_flags(ASN1_PCTX *p, unsigned long flags);
-
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_asn1(void);
 
 OPENSSL_EXPORT BIO *BIO_new_NDEF(BIO *out, ASN1_VALUE *val, const ASN1_ITEM *it);

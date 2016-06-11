@@ -61,13 +61,3 @@
 
 int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);
-
-/* ASN1 print context structure */
-
-struct asn1_pctx_st {
-    unsigned long flags;
-    unsigned long nm_flags;
-    unsigned long cert_flags;
-    unsigned long oid_flags;
-    unsigned long str_flags;
-} /* ASN1_PCTX */ ;

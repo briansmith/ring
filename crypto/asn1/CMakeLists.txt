@@ -36,7 +36,6 @@ add_library(
   tasn_enc.c
   tasn_fre.c
   tasn_new.c
-  tasn_prn.c
   tasn_typ.c
   tasn_utl.c
   x_bignum.c
