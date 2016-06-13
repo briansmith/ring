@@ -58,6 +58,98 @@ fn maj(a: u32, b: u32, c: u32) -> u32 {
     (a & b) ^ (a & c) ^ (b & c)
 }
 
+ macro_rules! block_to_w {
+     ($i:expr, $w:ident, $block:ident) => {
+         {
+             let word = slice_as_array_ref!(&$block[($i * 4)..][..4], 4).unwrap();
+             $w[$i] = polyfill::slice::u32_from_be_u8(word);
+         }
+     }
+}
+
+macro_rules! full_block_to_w {
+    ($w:ident, $offset:expr, $block:ident) => {
+        {
+            block_to_w!($offset + 0, $w, $block);
+            block_to_w!($offset + 1, $w, $block);
+            block_to_w!($offset + 2, $w, $block);
+            block_to_w!($offset + 3, $w, $block);
+        }
+    }
+}
+
+macro_rules! flip_w_up_to_2 {
+    ($from:ident, $to:ident, $i:expr) => {
+        {
+            let old_1 = $from[$i + 1];
+            let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+            let old_14 = $from[$i + 14];
+            let s1 = old_14.rotate_right(17) ^ old_14.rotate_right(19) ^ (old_14 >> 10);
+            $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($from[$i + 9]).wrapping_add(s1);
+        }
+    }
+}
+
+macro_rules! flip_w_2_up_to_7 {
+    ($from:ident, $to:ident, $i:expr) => {
+        {
+            let old_1 = $from[$i + 1];
+            let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+            let new_2 = $to[$i - 2];
+            let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
+            $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($from[$i + 9]).wrapping_add(s1);
+        }
+    }
+}
+
+macro_rules! flip_w_7_up_to_15 {
+    ($from:ident, $to:ident, $i:expr) => {
+        {
+            let old_1 = $from[$i + 1];
+            let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+            let new_2 = $to[$i - 2];
+            let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
+            $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($to[$i - 7]).wrapping_add(s1);
+        }
+    }
+}
+
+macro_rules! flip_w_15 {
+    ($from:ident, $to:ident, $i:expr) => {
+        {
+            let old_1 = $to[$i - 15];
+            let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
+            let new_2 = $to[$i - 2];
+            let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
+            $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($to[$i - 7]).wrapping_add(s1);
+        }
+    }
+}
+
+macro_rules! flip_w {
+    ($from:ident, $to:ident) => {
+        {
+            flip_w_up_to_2!($from, $to, 0);
+            flip_w_up_to_2!($from, $to, 1);
+            flip_w_2_up_to_7!($from, $to, 2);
+            flip_w_2_up_to_7!($from, $to, 3);
+            flip_w_2_up_to_7!($from, $to, 4);
+            flip_w_2_up_to_7!($from, $to, 5);
+            flip_w_2_up_to_7!($from, $to, 6);
+            flip_w_7_up_to_15!($from, $to, 7);
+            flip_w_7_up_to_15!($from, $to, 8);
+            flip_w_7_up_to_15!($from, $to, 9);
+            flip_w_7_up_to_15!($from, $to, 10);
+            flip_w_7_up_to_15!($from, $to, 11);
+            flip_w_7_up_to_15!($from, $to, 12);
+            flip_w_7_up_to_15!($from, $to, 13);
+            flip_w_7_up_to_15!($from, $to, 14);
+            flip_w_15!($from, $to, 15);
+        }
+    }
+}
+
+
 fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8; BLOCK_LEN]]) {
     let state = polyfill::slice::u64_as_u32_mut(state);
     let state = &mut state[..CHAINING_WORDS];
@@ -75,98 +167,6 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
 
         let mut w_0: [u32; 16] = [0; 16];
         let mut w_1: [u32; 16] = [0; 16];
-
-        macro_rules! block_to_w {
-            ($i:expr, $w:ident) => {
-                {
-                    let offset = $i * 4;
-                    let word = slice_as_array_ref!(&block[offset..][..4], 4).unwrap();
-                    $w[$i] = polyfill::slice::u32_from_be_u8(word);
-                }
-            }
-        }
-
-        macro_rules! flip_w_up_to_2 {
-            ($from:ident, $to:ident, $i:expr) => {
-                {
-                    let old_1 = $from[$i + 1];
-                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
-                    let old_14 = $from[$i + 14];
-                    let s1 = old_14.rotate_right(17) ^ old_14.rotate_right(19) ^ (old_14 >> 10);
-                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($from[$i + 9]).wrapping_add(s1);
-                }
-            }
-        }
-
-        macro_rules! flip_w_2_up_to_7 {
-            ($from:ident, $to:ident, $i:expr) => {
-                {
-                    let old_1 = $from[$i + 1];
-                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
-                    let new_2 = $to[$i - 2];
-                    let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
-                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($from[$i + 9]).wrapping_add(s1);
-                }
-            }
-        }
-
-        macro_rules! flip_w_7_up_to_15 {
-            ($from:ident, $to:ident, $i:expr) => {
-                {
-                    let old_1 = $from[$i + 1];
-                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
-                    let new_2 = $to[$i - 2];
-                    let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
-                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($to[$i - 7]).wrapping_add(s1);
-                }
-            }
-        }
-
-        macro_rules! flip_w_15 {
-            ($from:ident, $to:ident, $i:expr) => {
-                {
-                    let old_1 = $to[$i - 15];
-                    let s0 = old_1.rotate_right(7) ^ old_1.rotate_right(18) ^ (old_1 >> 3);
-                    let new_2 = $to[$i - 2];
-                    let s1 = new_2.rotate_right(17) ^ new_2.rotate_right(19) ^ (new_2 >> 10);
-                    $to[$i] = $from[$i].wrapping_add(s0).wrapping_add($to[$i - 7]).wrapping_add(s1);
-                }
-            }
-        }
-
-        macro_rules! flip_w {
-            ($from:ident, $to:ident) => {
-                {
-                    flip_w_up_to_2!($from, $to, 0);
-                    flip_w_up_to_2!($from, $to, 1);
-                    flip_w_2_up_to_7!($from, $to, 2);
-                    flip_w_2_up_to_7!($from, $to, 3);
-                    flip_w_2_up_to_7!($from, $to, 4);
-                    flip_w_2_up_to_7!($from, $to, 5);
-                    flip_w_2_up_to_7!($from, $to, 6);
-                    flip_w_7_up_to_15!($from, $to, 7);
-                    flip_w_7_up_to_15!($from, $to, 8);
-                    flip_w_7_up_to_15!($from, $to, 9);
-                    flip_w_7_up_to_15!($from, $to, 10);
-                    flip_w_7_up_to_15!($from, $to, 11);
-                    flip_w_7_up_to_15!($from, $to, 12);
-                    flip_w_7_up_to_15!($from, $to, 13);
-                    flip_w_7_up_to_15!($from, $to, 14);
-                    flip_w_15!($from, $to, 15);
-                }
-            }
-        }
-
-        macro_rules! full_block_to_w {
-            ($w:ident, $offset:expr) => {
-                {
-                    block_to_w!($offset + 0, $w);
-                    block_to_w!($offset + 1, $w);
-                    block_to_w!($offset + 2, $w);
-                    block_to_w!($offset + 3, $w);
-                }
-            }
-        }
 
         macro_rules! iter_4 {
             ($i:expr, $w:ident, $w_i:expr) => {
@@ -223,10 +223,10 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8], blocks: &[[u8;
             }
         }
 
-        full_block_to_w!(w_0, 0);
-        full_block_to_w!(w_0, 4);
-        full_block_to_w!(w_0, 8);
-        full_block_to_w!(w_0, 12);
+        full_block_to_w!(w_0, 0, block);
+        full_block_to_w!(w_0, 4, block);
+        full_block_to_w!(w_0, 8, block);
+        full_block_to_w!(w_0, 12, block);
         iter_4!(0, w_0, 0);
         iter_4!(4, w_0, 4);
         iter_4!(8, w_0, 8);
