@@ -35,12 +35,12 @@ const K: [u32; 64] =
 
 #[inline(always)]
 fn sigma_1(e: u32) -> u32 {
-    e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25)
+    ((e.rotate_right(14) ^ e).rotate_right(5)  ^ e).rotate_right(6)
 }
 
 #[inline(always)]
 fn sigma_0(a: u32) -> u32 {
-    a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22)
+    ((a.rotate_right(9)  ^ a).rotate_right(11) ^ a).rotate_right(2)
 }
 
 #[inline(always)]
