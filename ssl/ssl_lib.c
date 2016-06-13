@@ -1870,7 +1870,7 @@ void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
 }
 
 size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
-  if (ssl->server || !ssl->s3->tmp.cert_req) {
+  if (ssl->server) {
     *out_types = NULL;
     return 0;
   }

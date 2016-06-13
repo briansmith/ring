@@ -333,7 +333,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_B:
       case SSL3_ST_CW_CERT_C:
       case SSL3_ST_CW_CERT_D:
-        if (ssl->s3->tmp.cert_req) {
+        if (ssl->s3->tmp.cert_request) {
           ret = ssl3_send_client_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -356,9 +356,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
       case SSL3_ST_CW_CERT_VRFY_C:
-        /* If cert_req is 2, client certificates are sent, but not
-         * CertificateVerify. */
-        if (ssl->s3->tmp.cert_req == 1) {
+        if (ssl->s3->tmp.cert_request) {
           ret = ssl3_send_cert_verify(ssl);
           if (ret <= 0) {
             goto end;
@@ -1406,7 +1404,7 @@ static int ssl3_get_certificate_request(SSL *ssl) {
     return n;
   }
 
-  ssl->s3->tmp.cert_req = 0;
+  ssl->s3->tmp.cert_request = 0;
 
   if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_HELLO_DONE) {
     ssl->s3->tmp.reuse_message = 1;
@@ -1490,7 +1488,7 @@ static int ssl3_get_certificate_request(SSL *ssl) {
   }
 
   /* we should setup a certificate to return.... */
-  ssl->s3->tmp.cert_req = 1;
+  ssl->s3->tmp.cert_request = 1;
   sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
   ssl->s3->tmp.ca_names = ca_sk;
   ca_sk = NULL;
@@ -1592,18 +1590,17 @@ static int ssl3_send_client_certificate(SSL *ssl) {
 
   if (ssl->state == SSL3_ST_CW_CERT_C) {
     if (!ssl3_has_client_certificate(ssl)) {
+      ssl->s3->tmp.cert_request = 0;
       /* Without a client certificate, the handshake buffer may be released. */
       ssl3_free_handshake_buffer(ssl);
 
       if (ssl->version == SSL3_VERSION) {
         /* In SSL 3.0, send no certificate by skipping both messages. */
-        ssl->s3->tmp.cert_req = 0;
         ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_NO_CERTIFICATE);
         return 1;
       }
 
       /* In TLS, send an empty Certificate message. */
-      ssl->s3->tmp.cert_req = 2;
       uint8_t *p = ssl_handshake_start(ssl);
       l2n3(0, p);
       if (!ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE, 3)) {

@@ -4195,12 +4195,6 @@ typedef struct ssl3_state_st {
      * should be echoed in the ServerHello. */
     unsigned should_ack_sni:1;
 
-    /* Client-only: cert_req determines if a client certificate is to be sent.
-     * This is 0 if no client Certificate message is to be sent, 1 if there is
-     * a client certificate, and 2 to send an empty client Certificate
-     * message. */
-    int cert_req;
-
     /* Client-only: ca_names contains the list of CAs received in a
      * CertificateRequest message. */
     STACK_OF(X509_NAME) *ca_names;
@@ -4217,9 +4211,9 @@ typedef struct ssl3_state_st {
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
 
-    /* Server-only: cert_request is true if a client certificate was
-     * requested. */
-    int cert_request;
+    /* cert_request is true if a client certificate was requested and false
+     * otherwise. */
+    unsigned cert_request:1;
 
     /* certificate_status_expected is true if OCSP stapling was negotiated and
      * the server is expected to send a CertificateStatus message. (This is
