@@ -258,11 +258,7 @@ int ssl3_connect(SSL *ssl) {
         }
 
         if (ssl->hit) {
-          ssl->state = SSL3_ST_CR_CHANGE;
-          if (ssl->tlsext_ticket_expected) {
-            /* receive renewed session ticket */
-            ssl->state = SSL3_ST_CR_SESSION_TICKET_A;
-          }
+          ssl->state = SSL3_ST_CR_SESSION_TICKET_A;
         } else {
           ssl->state = SSL3_ST_CR_CERT_A;
         }
@@ -274,31 +270,33 @@ int ssl3_connect(SSL *ssl) {
           if (ret <= 0) {
             goto end;
           }
-          if (ssl->s3->tmp.certificate_status_expected) {
-            ssl->state = SSL3_ST_CR_CERT_STATUS_A;
-          } else {
-            ssl->state = SSL3_ST_VERIFY_SERVER_CERT;
-          }
         } else {
           skip = 1;
-          ssl->state = SSL3_ST_CR_KEY_EXCH_A;
         }
+        ssl->state = SSL3_ST_CR_CERT_STATUS_A;
         break;
 
       case SSL3_ST_CR_CERT_STATUS_A:
-        ret = ssl3_get_cert_status(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->s3->tmp.certificate_status_expected) {
+          ret = ssl3_get_cert_status(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_VERIFY_SERVER_CERT;
         break;
 
       case SSL3_ST_VERIFY_SERVER_CERT:
-        ret = ssl3_verify_server_cert(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+          ret = ssl3_verify_server_cert(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
-
         ssl->state = SSL3_ST_CR_KEY_EXCH_A;
         break;
 
@@ -307,17 +305,17 @@ int ssl3_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
-          ssl->state = SSL3_ST_CR_CERT_REQ_A;
-        } else {
-          ssl->state = SSL3_ST_CR_SRVR_DONE_A;
-        }
+        ssl->state = SSL3_ST_CR_CERT_REQ_A;
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:
-        ret = ssl3_get_certificate_request(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+          ret = ssl3_get_certificate_request(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_CR_SRVR_DONE_A;
         break;
@@ -328,20 +326,20 @@ int ssl3_connect(SSL *ssl) {
           goto end;
         }
         ssl->method->received_flight(ssl);
-        if (ssl->s3->tmp.cert_req) {
-          ssl->state = SSL3_ST_CW_CERT_A;
-        } else {
-          ssl->state = SSL3_ST_CW_KEY_EXCH_A;
-        }
+        ssl->state = SSL3_ST_CW_CERT_A;
         break;
 
       case SSL3_ST_CW_CERT_A:
       case SSL3_ST_CW_CERT_B:
       case SSL3_ST_CW_CERT_C:
       case SSL3_ST_CW_CERT_D:
-        ret = ssl3_send_client_certificate(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->s3->tmp.cert_req) {
+          ret = ssl3_send_client_certificate(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_CW_KEY_EXCH_A;
         break;
@@ -352,21 +350,21 @@ int ssl3_connect(SSL *ssl) {
         if (ret <= 0) {
           goto end;
         }
-        /* For TLS, cert_req is set to 2, so a cert chain
-         * of nothing is sent, but no verify packet is sent */
-        if (ssl->s3->tmp.cert_req == 1) {
-          ssl->state = SSL3_ST_CW_CERT_VRFY_A;
-        } else {
-          ssl->state = SSL3_ST_CW_CHANGE_A;
-        }
+        ssl->state = SSL3_ST_CW_CERT_VRFY_A;
         break;
 
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
       case SSL3_ST_CW_CERT_VRFY_C:
-        ret = ssl3_send_cert_verify(ssl);
-        if (ret <= 0) {
-          goto end;
+        /* If cert_req is 2, client certificates are sent, but not
+         * CertificateVerify. */
+        if (ssl->s3->tmp.cert_req == 1) {
+          ret = ssl3_send_cert_verify(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_CW_CHANGE_A;
         break;
@@ -379,13 +377,7 @@ int ssl3_connect(SSL *ssl) {
           goto end;
         }
 
-        ssl->state = SSL3_ST_CW_FINISHED_A;
-        if (ssl->s3->tlsext_channel_id_valid) {
-          ssl->state = SSL3_ST_CW_CHANNEL_ID_A;
-        }
-        if (ssl->s3->next_proto_neg_seen) {
-          ssl->state = SSL3_ST_CW_NEXT_PROTO_A;
-        }
+        ssl->state = SSL3_ST_CW_NEXT_PROTO_A;
 
         if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
           ret = -1;
@@ -396,23 +388,26 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CW_NEXT_PROTO_A:
       case SSL3_ST_CW_NEXT_PROTO_B:
-        ret = ssl3_send_next_proto(ssl);
-        if (ret <= 0) {
-          goto end;
-        }
-
-        if (ssl->s3->tlsext_channel_id_valid) {
-          ssl->state = SSL3_ST_CW_CHANNEL_ID_A;
+        if (ssl->s3->next_proto_neg_seen) {
+          ret = ssl3_send_next_proto(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
         } else {
-          ssl->state = SSL3_ST_CW_FINISHED_A;
+          skip = 1;
         }
+        ssl->state = SSL3_ST_CW_CHANNEL_ID_A;
         break;
 
       case SSL3_ST_CW_CHANNEL_ID_A:
       case SSL3_ST_CW_CHANNEL_ID_B:
-        ret = ssl3_send_channel_id(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->s3->tlsext_channel_id_valid) {
+          ret = ssl3_send_channel_id(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_CW_FINISHED_A;
         break;
@@ -444,23 +439,13 @@ int ssl3_connect(SSL *ssl) {
               !ssl->s3->initial_handshake_complete) {
             ssl->s3->tmp.next_state = SSL3_ST_FALSE_START;
           } else {
-            /* Allow NewSessionTicket if ticket expected */
-            if (ssl->tlsext_ticket_expected) {
-              ssl->s3->tmp.next_state = SSL3_ST_CR_SESSION_TICKET_A;
-            } else {
-              ssl->s3->tmp.next_state = SSL3_ST_CR_CHANGE;
-            }
+            ssl->s3->tmp.next_state = SSL3_ST_CR_SESSION_TICKET_A;
           }
         }
         break;
 
       case SSL3_ST_FALSE_START:
-        /* Allow NewSessionTicket if ticket expected */
-        if (ssl->tlsext_ticket_expected) {
-          ssl->state = SSL3_ST_CR_SESSION_TICKET_A;
-        } else {
-          ssl->state = SSL3_ST_CR_CHANGE;
-        }
+        ssl->state = SSL3_ST_CR_SESSION_TICKET_A;
         ssl->s3->tmp.in_false_start = 1;
 
         ssl_free_wbio_buffer(ssl);
@@ -468,9 +453,13 @@ int ssl3_connect(SSL *ssl) {
         goto end;
 
       case SSL3_ST_CR_SESSION_TICKET_A:
-        ret = ssl3_get_new_session_ticket(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->tlsext_ticket_expected) {
+          ret = ssl3_get_new_session_ticket(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_CR_CHANGE;
         break;

@@ -273,11 +273,7 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
         if (ssl->hit) {
-          if (ssl->tlsext_ticket_expected) {
-            ssl->state = SSL3_ST_SW_SESSION_TICKET_A;
-          } else {
-            ssl->state = SSL3_ST_SW_CHANGE_A;
-          }
+          ssl->state = SSL3_ST_SW_SESSION_TICKET_A;
         } else {
           ssl->state = SSL3_ST_SW_CERT_A;
         }
@@ -290,22 +286,21 @@ int ssl3_accept(SSL *ssl) {
           if (ret <= 0) {
             goto end;
           }
-          if (ssl->s3->tmp.certificate_status_expected) {
-            ssl->state = SSL3_ST_SW_CERT_STATUS_A;
-          } else {
-            ssl->state = SSL3_ST_SW_KEY_EXCH_A;
-          }
         } else {
           skip = 1;
-          ssl->state = SSL3_ST_SW_KEY_EXCH_A;
         }
+        ssl->state = SSL3_ST_SW_CERT_STATUS_A;
         break;
 
       case SSL3_ST_SW_CERT_STATUS_A:
       case SSL3_ST_SW_CERT_STATUS_B:
-        ret = ssl3_send_certificate_status(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->s3->tmp.certificate_status_expected) {
+          ret = ssl3_send_certificate_status(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_SW_KEY_EXCH_A;
         break;
@@ -391,31 +386,29 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
 
-        if (ssl->s3->next_proto_neg_seen) {
-          ssl->state = SSL3_ST_SR_NEXT_PROTO_A;
-        } else if (ssl->s3->tlsext_channel_id_valid) {
-          ssl->state = SSL3_ST_SR_CHANNEL_ID_A;
-        } else {
-          ssl->state = SSL3_ST_SR_FINISHED_A;
-        }
+        ssl->state = SSL3_ST_SR_NEXT_PROTO_A;
         break;
 
       case SSL3_ST_SR_NEXT_PROTO_A:
-        ret = ssl3_get_next_proto(ssl);
-        if (ret <= 0) {
-          goto end;
-        }
-        if (ssl->s3->tlsext_channel_id_valid) {
-          ssl->state = SSL3_ST_SR_CHANNEL_ID_A;
+        if (ssl->s3->next_proto_neg_seen) {
+          ret = ssl3_get_next_proto(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
         } else {
-          ssl->state = SSL3_ST_SR_FINISHED_A;
+          skip = 1;
         }
+        ssl->state = SSL3_ST_SR_CHANNEL_ID_A;
         break;
 
       case SSL3_ST_SR_CHANNEL_ID_A:
-        ret = ssl3_get_channel_id(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->s3->tlsext_channel_id_valid) {
+          ret = ssl3_get_channel_id(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_SR_FINISHED_A;
         break;
@@ -429,10 +422,8 @@ int ssl3_accept(SSL *ssl) {
         ssl->method->received_flight(ssl);
         if (ssl->hit) {
           ssl->state = SSL_ST_OK;
-        } else if (ssl->tlsext_ticket_expected) {
-          ssl->state = SSL3_ST_SW_SESSION_TICKET_A;
         } else {
-          ssl->state = SSL3_ST_SW_CHANGE_A;
+          ssl->state = SSL3_ST_SW_SESSION_TICKET_A;
         }
 
         /* If this is a full handshake with ChannelID then record the hashshake
@@ -448,9 +439,13 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_SESSION_TICKET_A:
       case SSL3_ST_SW_SESSION_TICKET_B:
-        ret = ssl3_send_new_session_ticket(ssl);
-        if (ret <= 0) {
-          goto end;
+        if (ssl->tlsext_ticket_expected) {
+          ret = ssl3_send_new_session_ticket(ssl);
+          if (ret <= 0) {
+            goto end;
+          }
+        } else {
+          skip = 1;
         }
         ssl->state = SSL3_ST_SW_CHANGE_A;
         break;
