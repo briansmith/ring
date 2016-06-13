@@ -732,6 +732,16 @@ func (ka *cecpq1KeyAgreement) generateServerKeyExchange(config *Config, cert *Ce
 		return nil, err
 	}
 
+	if config.Bugs.CECPQ1BadX25519Part {
+		publicKey[0] ^= 1
+	}
+	if config.Bugs.CECPQ1BadNewhopePart {
+		publicKey[32] ^= 1
+		publicKey[33] ^= 1
+		publicKey[34] ^= 1
+		publicKey[35] ^= 1
+	}
+
 	var params []byte
 	params = append(params, byte(len(publicKey)>>8))
 	params = append(params, byte(len(publicKey)&0xff))
@@ -777,6 +787,16 @@ func (ka *cecpq1KeyAgreement) generateClientKeyExchange(config *Config, clientHe
 	publicKey, preMasterSecret, err := curve.accept(config.rand(), ka.peerKey)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if config.Bugs.CECPQ1BadX25519Part {
+		publicKey[0] ^= 1
+	}
+	if config.Bugs.CECPQ1BadNewhopePart {
+		publicKey[32] ^= 1
+		publicKey[33] ^= 1
+		publicKey[34] ^= 1
+		publicKey[35] ^= 1
 	}
 
 	ckx := new(clientKeyExchangeMsg)

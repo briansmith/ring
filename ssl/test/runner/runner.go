@@ -5101,6 +5101,65 @@ func addCurveTests() {
 	})
 }
 
+func addCECPQ1Tests() {
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "CECPQ1-Client-BadX25519Part",
+		config: Config{
+			MinVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
+			Bugs: ProtocolBugs{
+				CECPQ1BadX25519Part: true,
+			},
+		},
+		flags:              []string{"-cipher", "kCECPQ1"},
+		shouldFail:         true,
+		expectedLocalError: "local error: bad record MAC",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "CECPQ1-Client-BadNewhopePart",
+		config: Config{
+			MinVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
+			Bugs: ProtocolBugs{
+				CECPQ1BadNewhopePart: true,
+			},
+		},
+		flags:              []string{"-cipher", "kCECPQ1"},
+		shouldFail:         true,
+		expectedLocalError: "local error: bad record MAC",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CECPQ1-Server-BadX25519Part",
+		config: Config{
+			MinVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
+			Bugs: ProtocolBugs{
+				CECPQ1BadX25519Part: true,
+			},
+		},
+		flags:         []string{"-cipher", "kCECPQ1"},
+		shouldFail:    true,
+		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CECPQ1-Server-BadNewhopePart",
+		config: Config{
+			MinVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
+			Bugs: ProtocolBugs{
+				CECPQ1BadNewhopePart: true,
+			},
+		},
+		flags:         []string{"-cipher", "kCECPQ1"},
+		shouldFail:    true,
+		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	})
+}
+
 func addKeyExchangeInfoTests() {
 	testCases = append(testCases, testCase{
 		name: "KeyExchangeInfo-RSA-Client",
@@ -5254,6 +5313,7 @@ func main() {
 	addCustomExtensionTests()
 	addRSAClientKeyExchangeTests()
 	addCurveTests()
+	addCECPQ1Tests()
 	addKeyExchangeInfoTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {

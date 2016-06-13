@@ -842,6 +842,14 @@ type ProtocolBugs struct {
 	// SendSCTListOnResume, if not nil, causes the server to send the
 	// supplied SCT list in resumption handshakes.
 	SendSCTListOnResume []byte
+
+	// CECPQ1BadX25519Part corrupts the X25519 part of a CECPQ1 key exchange, as
+	// a trivial proof that it is actually used.
+	CECPQ1BadX25519Part bool
+
+	// CECPQ1BadNewhopePart corrupts the Newhope part of a CECPQ1 key exchange,
+	// as a trivial proof that it is actually used.
+	CECPQ1BadNewhopePart bool
 }
 
 func (c *Config) serverInit() {
