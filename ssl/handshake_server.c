@@ -1942,13 +1942,6 @@ static int ssl3_get_next_proto(SSL *ssl) {
   long n;
   CBS next_protocol, selected_protocol, padding;
 
-  /* Clients cannot send a NextProtocol message if we didn't see the extension
-   * in their ClientHello */
-  if (!ssl->s3->next_proto_neg_seen) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_GOT_NEXT_PROTO_WITHOUT_EXTENSION);
-    return -1;
-  }
-
   n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEXT_PROTO, ssl_hash_message,
                                    &ok);
 
@@ -1958,11 +1951,6 @@ static int ssl3_get_next_proto(SSL *ssl) {
 
   CBS_init(&next_protocol, ssl->init_msg, n);
 
-  /* The payload looks like:
-   *   uint8 proto_len;
-   *   uint8 proto[proto_len];
-   *   uint8 padding_len;
-   *   uint8 padding[padding_len]; */
   if (!CBS_get_u8_length_prefixed(&next_protocol, &selected_protocol) ||
       !CBS_get_u8_length_prefixed(&next_protocol, &padding) ||
       CBS_len(&next_protocol) != 0 ||
@@ -2010,17 +1998,8 @@ static int ssl3_get_channel_id(SSL *ssl) {
   CBS_init(&encrypted_extensions, ssl->init_msg, n);
 
   /* EncryptedExtensions could include multiple extensions, but the only
-   * extension that could be negotiated is ChannelID, so there can only be one
-   * entry.
-   *
-   * The payload looks like:
-   *   uint16 extension_type
-   *   uint16 extension_len;
-   *   uint8 x[32];
-   *   uint8 y[32];
-   *   uint8 r[32];
-   *   uint8 s[32]; */
-
+   * extension that could be negotiated is Channel ID, so there can only be one
+   * entry. */
   if (!CBS_get_u16(&encrypted_extensions, &extension_type) ||
       !CBS_get_u16_length_prefixed(&encrypted_extensions, &extension) ||
       CBS_len(&encrypted_extensions) != 0 ||
