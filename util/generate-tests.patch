@@ -1,0 +1,277 @@
+From 09a177dfee2efc8bff9e64f0d8e812634d9c23a9 Mon Sep 17 00:00:00 2001
+From: Brian Smith <brian@briansmith.org>
+Date: Wed, 15 Jun 2016 12:04:02 -1000
+Subject: [PATCH] Add generator for ECDSA test vectors for Gregory Maxwell's
+ trick.
+
+Change-Id: I2896fa9ee72b49dc3463fe60515a1135187d67c1
+---
+ crypto/ecdsa/ecdsa.c   |   2 +-
+ tool/CMakeLists.txt    |   1 +
+ tool/generate_tests.cc | 203 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tool/internal.h        |   1 +
+ tool/tool.cc           |   1 +
+ 5 files changed, 207 insertions(+), 1 deletion(-)
+ create mode 100644 tool/generate_tests.cc
+
+diff --git a/crypto/ecdsa/ecdsa.c b/crypto/ecdsa/ecdsa.c
+index 70cb118..d146a84 100644
+--- a/crypto/ecdsa/ecdsa.c
++++ b/crypto/ecdsa/ecdsa.c
+@@ -105,7 +105,7 @@ err:
+ /* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
+  * number and sets |out| to that value. It then truncates |out| so that it's,
+  * at most, as long as |order|. It returns one on success and zero otherwise. */
+-static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
++int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
+                         const BIGNUM *order) {
+   size_t num_bits;
+ 
+diff --git a/tool/CMakeLists.txt b/tool/CMakeLists.txt
+index f0af283..8889960 100644
+--- a/tool/CMakeLists.txt
++++ b/tool/CMakeLists.txt
+@@ -9,6 +9,7 @@ add_executable(
+   const.cc
+   digest.cc
+   generate_ed25519.cc
++  generate_tests.cc
+   genrsa.cc
+   pkcs12.cc
+   rand.cc
+diff --git a/tool/generate_tests.cc b/tool/generate_tests.cc
+new file mode 100644
+index 0000000..54556fd
+--- /dev/null
++++ b/tool/generate_tests.cc
+@@ -0,0 +1,203 @@
++/* Copyright 2016 Brian Smith.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
++
++// Generate test vectors for ECDSA signature verification edge cases.
++
++#include <vector>
++
++#include "../crypto/test/scoped_types.h"
++
++#include "internal.h"
++
++extern "C" int digest_to_bn(BIGNUM *out, const uint8_t *digest,
++                            size_t digest_len, const BIGNUM *order);
++
++
++void print_hex(FILE *f, const uint8_t *data, size_t len) {
++  for (size_t i = 0; i < len; i++) {
++    fprintf(f, "%02x", data[i]);
++  }
++}
++
++
++static bool GenerateTestsForCurveR(const EC_GROUP *group,
++                                   const char *curve_name, const BIGNUM *r,
++                                   const BIGNUM *r_override, BN_CTX *ctx,
++                                   const char *comment) {
++  ScopedEC_POINT pub_key(EC_POINT_new(group));
++  if (!pub_key ||
++      !EC_POINT_set_compressed_coordinates_GFp(
++          group, pub_key.get(), (r_override ? r_override : r), 0, NULL)) {
++    return false;
++  }
++
++  uint8_t *sig_bytes = NULL;
++  size_t sig_bytes_len = 0;
++  ScopedECDSA_SIG sig(ECDSA_SIG_new());
++  if (!sig ||
++      !BN_nnmod(sig->r, r, EC_GROUP_get0_order(group), ctx) ||
++      !BN_set_word(sig->s, 4) || // Arbitrarily chosen.
++      !ECDSA_SIG_to_bytes(&sig_bytes, &sig_bytes_len, sig.get())) {
++    return false;
++  }
++  ScopedOpenSSLBytes sig_bytes_free(sig_bytes);
++
++  // Any message will do.
++  uint8_t digest[32];
++  if (SHA256((const uint8_t *)"", 0, digest) == NULL) {
++    return false;
++  }
++
++  ScopedBIGNUM z_neg(BN_new());
++  if (!z_neg ||
++      !digest_to_bn(z_neg.get(), digest, sizeof(digest),
++                    EC_GROUP_get0_order(group))) {
++    return false;
++  }
++  BN_set_negative(z_neg.get(), true);
++
++  ScopedEC_POINT intermediate(EC_POINT_new(group));
++  if (!intermediate ||
++      !EC_POINT_mul(group, intermediate.get(), z_neg.get(), pub_key.get(),
++                    sig->s, NULL)) {
++    return false;
++  }
++  ScopedBIGNUM r_inv(BN_new());
++  if (!r_inv ||
++      BN_mod_inverse(r_inv.get(), r, EC_GROUP_get0_order(group), ctx) == NULL) {
++    return false;
++  }
++  ScopedEC_POINT result(EC_POINT_new(group));
++  if (!result ||
++      !EC_POINT_mul(group, result.get(), NULL, intermediate.get(), r_inv.get(),
++                    NULL)) {
++    return false;
++  }
++  uint8_t pub_key_encoded[1024];
++  size_t pub_key_encoded_len =
++    EC_POINT_point2oct(group, result.get(), POINT_CONVERSION_UNCOMPRESSED,
++                       pub_key_encoded, sizeof(pub_key_encoded), NULL);
++  if (pub_key_encoded_len == 0) {
++    return false;
++  }
++
++  printf("\n");
++  printf("%s\n", comment);
++  printf("Curve = %s\n", curve_name);
++  printf("Digest = SHA256\n");
++  printf("Msg = \"\"\n");
++  printf("Q = ");
++  print_hex(stdout, pub_key_encoded, pub_key_encoded_len);
++  printf("\n");
++  printf("Sig = ");
++  print_hex(stdout, sig_bytes, sig_bytes_len);
++  printf("\n");
++  printf("Result = %s\n", (r_override == NULL) ? "P (0 )" : "F");
++
++  return true;
++}
++
++static bool GenerateTestsForCurve(int nid, const char *curve_name,
++                                  BN_ULONG r_word, BN_ULONG offset,
++                                  BN_CTX *ctx) {
++  ScopedEC_GROUP group(EC_GROUP_new_by_curve_name(nid));
++  ScopedBIGNUM r(BN_new());
++  ScopedBIGNUM q(BN_new());
++  ScopedBIGNUM q_minus_n(BN_new());
++  ScopedBIGNUM q_minus_n_ish(BN_new());
++  ScopedBIGNUM wrong_r(BN_new());
++  if (!group || !r || !q || !q_minus_n || !q_minus_n_ish || !wrong_r ||
++      !EC_GROUP_get_curve_GFp(group.get(), q.get(), NULL, NULL, NULL) ||
++      !BN_sub(q_minus_n.get(), q.get(), EC_GROUP_get0_order(group.get())) ||
++      !BN_copy(q_minus_n_ish.get(), q_minus_n.get()) ||
++      !BN_add_word(q_minus_n_ish.get(), offset) ||
++      !BN_mod_add(wrong_r.get(), q_minus_n_ish.get(),
++                  EC_GROUP_get0_order(group.get()), q.get(), ctx)) {
++    return false;
++  }
++
++  if (!BN_set_word(r.get(), r_word) ||
++      !GenerateTestsForCurveR(group.get(), curve_name, r.get(), NULL, ctx,
++      "# The signature has r < q - n. This is the control case for the next\n"
++      "# test case; this signature is the same but the public key is\n"
++      "# different. Notice that both public keys work for the same signature!\n"
++      "# This signature will validate even if the implementation doesn't\n"
++      "# reduce the X coordinate of the multiplication result (mod n).")) {
++    return false;
++  }
++  if (!BN_add(r.get(), r.get(), EC_GROUP_get0_order(group.get())) ||
++      !GenerateTestsForCurveR(group.get(), curve_name, r.get(), NULL, ctx,
++      "# The signature has r < q - n. s Since r < q - n, r + n < q. Notice\n"
++      "# that this signature is the same as the signature in the preceding\n"
++      "# test case, but the public key is different. That the signature\n"
++      "# validates for this case too is what's special about the case where\n"
++      "# r < q - n. If this test case fails it is likely that the\n"
++      "# implementation doesn't reduce the X coordinate of the multiplication\n"
++      "# result (mod n), or it is missing the second step of Gregory\n"
++      "# Maxwell's trick.")) {
++    return false;
++  }
++
++  if (!GenerateTestsForCurveR(group.get(), curve_name, q_minus_n_ish.get(),
++                              NULL, ctx,
++      "# The signature has r > q - n. The signature is for the public key\n"
++      "# recovered from r. r + n > q since r > q - n. This is the control\n"
++      "# for the next test case; this signature is the same as the signature\n"
++      "# in the following test case but the public key is different.")) {
++    return false;
++  }
++
++  if (!GenerateTestsForCurveR(group.get(), curve_name, q_minus_n_ish.get(),
++                              wrong_r.get(), ctx,
++      "# The signature has r > q - n. The signature is for the public key\n"
++      "# recovered from r + n (mod q). r + n > q since r > q - n, and so\n"
++      "# r + n (mod q) < r because r + n (mod n) != r + n (mod q). Notice\n"
++      "# that this signature is the same as the signature in the preceding\n"
++      "# test case but the public key is different. Also, notice that the\n"
++      "# signature fails to validate in this case, unlike other related test\n"
++      "# cases. If this test case fails (the signature validates), it is\n"
++      "# likely that the implementation didn't guard the second case of\n"
++      "# Gregory Maxwell's trick on the condition r < q - n.")) {
++    return false;
++  }
++
++  return true;
++}
++
++bool GenerateTests(const std::vector<std::string> &args) {
++  ScopedBN_CTX ctx(BN_CTX_new());
++
++  printf(
++    "# Test vectors for Gregory Maxwell's trick.\n"
++    "#\n"
++    "# These test vectors were generated by applying the patch in\n"
++    "# util/generate-tests.patch to BoringSSL, and then running\n"
++    "# `bssl generate-tests`.\n"
++    "#\n"
++    "# In all cases, the `s` component of the signature was selected\n"
++    "# arbitrarily as 4 and then the `r` component was chosen to be the\n"
++    "# smallest value where the public key recovery from the signature\n"
++    "# works.\n");
++
++
++  // The numbers (6, 0) and (3, 2) were determined using the guess-and-check
++  // method. Using smaller/different numbers causes the public key recovery
++  // from the signature to fail.
++  if (!ctx ||
++      !GenerateTestsForCurve(NID_X9_62_prime256v1, "P-256", 6, 0, ctx.get()) ||
++      !GenerateTestsForCurve(NID_secp384r1, "P-384", 3, 2, ctx.get())) {
++    return false;
++  }
++  return true;
++}
+diff --git a/tool/internal.h b/tool/internal.h
+index fd66e00..24b84a3 100644
+--- a/tool/internal.h
++++ b/tool/internal.h
+@@ -79,6 +79,7 @@ bool SHA384Sum(const std::vector<std::string> &args);
+ bool SHA512Sum(const std::vector<std::string> &args);
+ bool Server(const std::vector<std::string> &args);
+ bool Speed(const std::vector<std::string> &args);
++bool GenerateTests(const std::vector<std::string> &args);
+ 
+ // These values are DER encoded, RSA private keys.
+ extern const uint8_t kDERRSAPrivate2048[];
+diff --git a/tool/tool.cc b/tool/tool.cc
+index 34851b4..0057a0f 100644
+--- a/tool/tool.cc
++++ b/tool/tool.cc
+@@ -40,6 +40,7 @@ static const Tool kTools[] = {
+   { "ciphers", Ciphers },
+   { "client", Client },
+   { "generate-ed25519", GenerateEd25519Key },
++  { "generate-tests", GenerateTests },
+   { "genrsa", GenerateRSAKey },
+   { "md5sum", MD5Sum },
+   { "pkcs12", DoPKCS12 },
+-- 
+2.8.1.windows.1
+
