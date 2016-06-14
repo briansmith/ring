@@ -151,16 +151,16 @@ class Bazel(object):
       out.write(self.header)
 
       out.write('test_support_sources = [\n')
-      for filename in files['test_support']:
+      for filename in (files['test_support'] +
+                       files['crypto_internal_headers'] +
+                       files['ssl_internal_headers']):
         if os.path.basename(filename) == 'malloc.cc':
           continue
         out.write('    "%s",\n' % PathOf(filename))
 
       out.write(']\n\n')
 
-      out.write('def create_tests(copts):\n')
-      out.write('  test_support_sources_complete = test_support_sources + \\\n')
-      out.write('      native.glob(["%s"])\n' % PathOf("src/crypto/test/*.h"))
+      out.write('def create_tests(copts, crypto, ssl):\n')
       name_counts = {}
       for test in files['tests']:
         name = os.path.basename(test[0])
@@ -190,7 +190,7 @@ class Bazel(object):
         out.write('  native.cc_test(\n')
         out.write('      name = "%s",\n' % name)
         out.write('      size = "small",\n')
-        out.write('      srcs = ["%s"] + test_support_sources_complete,\n' %
+        out.write('      srcs = ["%s"] + test_support_sources,\n' %
             PathOf(src))
 
         data_files = []
@@ -216,11 +216,11 @@ class Bazel(object):
 
         if 'ssl/' in test[0]:
           out.write('      deps = [\n')
-          out.write('          ":crypto",\n')
-          out.write('          ":ssl",\n')
+          out.write('          crypto,\n')
+          out.write('          ssl,\n')
           out.write('      ],\n')
         else:
-          out.write('      deps = [":crypto"],\n')
+          out.write('      deps = [crypto],\n')
         out.write('  )\n')
 
 
@@ -439,6 +439,10 @@ def FindHeaderFiles(directory, filter_func):
         continue
       hfiles.append(os.path.join(path, filename))
 
+      for (i, dirname) in enumerate(dirnames):
+        if not filter_func(dirname, True):
+          del dirnames[i]
+
   return hfiles
 
 
@@ -553,6 +557,9 @@ def main(platforms):
 
   test_support_c_files = FindCFiles(os.path.join('src', 'crypto', 'test'),
                                     AllFiles)
+  test_support_h_files = (
+      FindHeaderFiles(os.path.join('src', 'crypto', 'test'), AllFiles) +
+      FindHeaderFiles(os.path.join('src', 'ssl', 'test'), AllFiles))
 
   test_c_files = FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
   test_c_files += FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
@@ -604,7 +611,7 @@ def main(platforms):
       'ssl_internal_headers': ssl_internal_h_files,
       'tool': tool_c_files,
       'test': test_c_files,
-      'test_support': test_support_c_files,
+      'test_support': test_support_h_files + test_support_c_files,
       'tests': tests,
   }
 
