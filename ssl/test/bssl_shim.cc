@@ -880,9 +880,8 @@ static bool RetryAsync(SSL *ssl, int ret) {
     return false;
   }
 
-  const TestConfig *config = GetTestConfig(ssl);
   TestState *test_state = GetTestState(ssl);
-  assert(config->async);
+  assert(GetTestConfig(ssl)->async);
 
   if (test_state->packeted_bio != nullptr &&
       PacketedBioAdvanceClock(test_state->packeted_bio)) {
