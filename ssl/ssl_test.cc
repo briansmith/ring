@@ -1251,6 +1251,109 @@ static bool TestOneSidedShutdown() {
   return true;
 }
 
+static bool ExpectFDs(const SSL *ssl, int rfd, int wfd) {
+  if (SSL_get_rfd(ssl) != rfd || SSL_get_wfd(ssl) != wfd) {
+    fprintf(stderr, "Got fds %d and %d, wanted %d and %d.\n", SSL_get_rfd(ssl),
+            SSL_get_wfd(ssl), rfd, wfd);
+    return false;
+  }
+
+  // The wrapper BIOs are always equal when fds are equal, even if set
+  // individually.
+  if (rfd == wfd && SSL_get_rbio(ssl) != SSL_get_wbio(ssl)) {
+    fprintf(stderr, "rbio and wbio did not match.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestSetFD() {
+  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
+  }
+
+  // Test setting different read and write FDs.
+  ScopedSSL ssl(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_rfd(ssl.get(), 1) ||
+      !SSL_set_wfd(ssl.get(), 2) ||
+      !ExpectFDs(ssl.get(), 1, 2)) {
+    return false;
+  }
+
+  // Test setting the same FD.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_fd(ssl.get(), 1) ||
+      !ExpectFDs(ssl.get(), 1, 1)) {
+    return false;
+  }
+
+  // Test setting the same FD one side at a time.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_rfd(ssl.get(), 1) ||
+      !SSL_set_wfd(ssl.get(), 1) ||
+      !ExpectFDs(ssl.get(), 1, 1)) {
+    return false;
+  }
+
+  // Test setting the same FD in the other order.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_wfd(ssl.get(), 1) ||
+      !SSL_set_rfd(ssl.get(), 1) ||
+      !ExpectFDs(ssl.get(), 1, 1)) {
+    return false;
+  }
+
+  // TODO(davidben): This one is broken.
+#if 0
+  // Test changing the read FD partway through.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_fd(ssl.get(), 1) ||
+      !SSL_set_rfd(ssl.get(), 2) ||
+      !ExpectFDs(ssl.get(), 2, 1)) {
+    return false;
+  }
+#endif
+
+  // Test changing the write FD partway through.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_fd(ssl.get(), 1) ||
+      !SSL_set_wfd(ssl.get(), 2) ||
+      !ExpectFDs(ssl.get(), 1, 2)) {
+    return false;
+  }
+
+  // Test a no-op change to the read FD partway through.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_fd(ssl.get(), 1) ||
+      !SSL_set_rfd(ssl.get(), 1) ||
+      !ExpectFDs(ssl.get(), 1, 1)) {
+    return false;
+  }
+
+  // Test a no-op change to the write FD partway through.
+  ssl.reset(SSL_new(ctx.get()));
+  if (!ssl ||
+      !SSL_set_fd(ssl.get(), 1) ||
+      !SSL_set_wfd(ssl.get(), 1) ||
+      !ExpectFDs(ssl.get(), 1, 1)) {
+    return false;
+  }
+
+  // ASan builds will implicitly test that the internal |BIO| reference-counting
+  // is correct.
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -1275,7 +1378,8 @@ int main() {
       !TestInternalSessionCache() ||
       !TestSequenceNumber(false /* TLS */) ||
       !TestSequenceNumber(true /* DTLS */) ||
-      !TestOneSidedShutdown()) {
+      !TestOneSidedShutdown() ||
+      !TestSetFD()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
