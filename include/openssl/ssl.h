@@ -238,7 +238,7 @@ OPENSSL_EXPORT int SSL_is_server(SSL *ssl);
  * |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| control requests to set read timeouts.
  *
  * If |rbio| (respectively, |wbio|) is the same as the currently configured
- * |BIO| for reading (respectivly, writing), that side is left untouched and is
+ * |BIO| for reading (respectively, writing), that side is left untouched and is
  * not freed. Using this behavior and calling this function if |ssl| already has
  * |BIO|s configured is deprecated. */
 OPENSSL_EXPORT void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio);
