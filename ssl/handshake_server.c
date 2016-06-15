@@ -376,7 +376,7 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CHANGE:
-        ret = ssl->method->ssl_read_change_cipher_spec(ssl);
+        ret = ssl->method->read_change_cipher_spec(ssl);
         if (ret <= 0) {
           goto end;
         }

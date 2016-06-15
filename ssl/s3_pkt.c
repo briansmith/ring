@@ -268,7 +268,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
 
   /* If we have an alert to send, lets send it */
   if (ssl->s3->alert_dispatch) {
-    int ret = ssl->method->ssl_dispatch_alert(ssl);
+    int ret = ssl->method->dispatch_alert(ssl);
     if (ret <= 0) {
       return ret;
     }
@@ -529,7 +529,7 @@ int ssl3_send_alert(SSL *ssl, int level, int desc) {
   if (!ssl_write_buffer_is_pending(ssl)) {
     /* Nothing is being written out, so the alert may be dispatched
      * immediately. */
-    return ssl->method->ssl_dispatch_alert(ssl);
+    return ssl->method->dispatch_alert(ssl);
   }
 
   /* The alert will be dispatched later. */

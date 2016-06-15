@@ -813,11 +813,11 @@ struct ssl_protocol_method_st {
   void (*ssl_free)(SSL *ssl);
   long (*ssl_get_message)(SSL *ssl, int msg_type,
                           enum ssl_hash_message_t hash_message, int *ok);
-  int (*ssl_read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
-  int (*ssl_read_change_cipher_spec)(SSL *ssl);
-  void (*ssl_read_close_notify)(SSL *ssl);
-  int (*ssl_write_app_data)(SSL *ssl, const void *buf_, int len);
-  int (*ssl_dispatch_alert)(SSL *ssl);
+  int (*read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
+  int (*read_change_cipher_spec)(SSL *ssl);
+  void (*read_close_notify)(SSL *ssl);
+  int (*write_app_data)(SSL *ssl, const void *buf_, int len);
+  int (*dispatch_alert)(SSL *ssl);
   /* supports_cipher returns one if |cipher| is supported by this protocol and
    * zero otherwise. */
   int (*supports_cipher)(const SSL_CIPHER *cipher);

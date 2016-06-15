@@ -642,7 +642,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     }
   }
 
-  return ssl->method->ssl_read_app_data(ssl, buf, num, peek);
+  return ssl->method->read_app_data(ssl, buf, num, peek);
 }
 
 int SSL_read(SSL *ssl, void *buf, int num) {
@@ -681,7 +681,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
     }
   }
 
-  return ssl->method->ssl_write_app_data(ssl, buf, num);
+  return ssl->method->write_app_data(ssl, buf, num);
 }
 
 int SSL_shutdown(SSL *ssl) {
@@ -719,12 +719,12 @@ int SSL_shutdown(SSL *ssl) {
     }
   } else if (ssl->s3->alert_dispatch) {
     /* Finish sending the close_notify. */
-    if (ssl->method->ssl_dispatch_alert(ssl) <= 0) {
+    if (ssl->method->dispatch_alert(ssl) <= 0) {
       return -1;
     }
   } else if (ssl->s3->recv_shutdown != ssl_shutdown_close_notify) {
     /* Wait for the peer's close_notify. */
-    ssl->method->ssl_read_close_notify(ssl);
+    ssl->method->read_close_notify(ssl);
     if (ssl->s3->recv_shutdown != ssl_shutdown_close_notify) {
       return -1;
     }

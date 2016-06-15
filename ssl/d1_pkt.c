@@ -362,7 +362,7 @@ int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
 
   /* If we have an alert to send, lets send it */
   if (ssl->s3->alert_dispatch) {
-    int ret = ssl->method->ssl_dispatch_alert(ssl);
+    int ret = ssl->method->dispatch_alert(ssl);
     if (ret <= 0) {
       return ret;
     }
