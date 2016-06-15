@@ -12,12 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Common functionality on public keys for Suite B curves.
 
-pub mod ecdsa;
-pub mod ecdh;
+#[allow(non_camel_case_types)]
+pub enum EC_GROUP { }
 
-#[path = "ops/ops.rs"]
-mod ops;
-
-mod public_key;
+extern {
+    pub static EC_GROUP_P256: EC_GROUP;
+    pub static EC_GROUP_P384: EC_GROUP;
+}

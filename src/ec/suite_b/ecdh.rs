@@ -17,7 +17,8 @@
 #![allow(unsafe_code)]
 
 use {agreement, bssl, c, ec, rand};
-use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
+use super::ops::*;
+use super::public_key::*;
 use untrusted;
 
 /// A key agreement algorithm.
@@ -71,8 +72,7 @@ fn ecdh(group: &EC_GROUP, out: &mut [u8], elem_and_scalar_len: usize,
         my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input)
         -> Result<(), ()> {
     let (peer_x, peer_y) =
-        try!(ec::suite_b::parse_uncompressed_point(peer_public_key,
-                                                   elem_and_scalar_len));
+        try!(parse_uncompressed_point(peer_public_key, elem_and_scalar_len));
     bssl::map_result(unsafe {
         GFp_suite_b_ecdh(group, out.as_mut_ptr(), out.len(),
                          my_private_key.bytes.as_ptr(), elem_and_scalar_len,

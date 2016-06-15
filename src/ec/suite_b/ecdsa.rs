@@ -16,8 +16,9 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use {bssl, c, der, digest, ec, signature, signature_impl};
-use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
+use {bssl, c, der, digest, signature, signature_impl};
+use super::ops::*;
+use super::public_key::*;
 use untrusted;
 
 struct ECDSA {
@@ -39,9 +40,8 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
             })
         }));
 
-        let (x, y) = try!(
-            ec::suite_b::parse_uncompressed_point(public_key,
-                                                  self.elem_and_scalar_len));
+        let (x, y) = try!(parse_uncompressed_point(public_key,
+                                                   self.elem_and_scalar_len));
 
         bssl::map_result(unsafe {
             ECDSA_verify_signed_digest(self.ec_group,
