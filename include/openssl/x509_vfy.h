@@ -109,8 +109,10 @@ The X509_STORE then calls a function to actually verify the
 certificate chain.
 */
 
+/* The following are legacy constants that should not be used. */
 #define X509_LU_RETRY		-1
 #define X509_LU_FAIL		0
+
 #define X509_LU_X509		1
 #define X509_LU_CRL		2
 #define X509_LU_PKEY		3
@@ -228,7 +230,6 @@ struct x509_lookup_st
 struct x509_store_ctx_st      /* X509_STORE_CTX */
 	{
 	X509_STORE *ctx;
-	int current_method;	/* used when looking up certs */
 
 	/* The following are set by the caller */
 	X509 *cert;		/* The cert to check */
