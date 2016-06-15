@@ -64,33 +64,23 @@
 
 
 /* Declarations to suppress -Wmissing-prototypes warnings. */
-int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
-                               const uint8_t *digest, size_t digest_len,
+int ECDSA_verify_signed_digest(const EC_GROUP *group, const GFp_Limb *m,
                                const GFp_Limb *sig_r, const GFp_Limb *sig_s,
                                const GFp_Limb *sig_s_inv_mont,
                                const GFp_Limb *peer_public_key_x,
                                const GFp_Limb *peer_public_key_y);
 
 
-static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
-                        const BIGNUM *order);
-
-
 /* ECDSA_verify_signed_digest verifies that the signature (|sig_r|, |sig_s|)
  * constitute a valid signature of |digest| for the public key |ec_key| for
  * the curve represented by the |EC_GROUP| created by |ec_group_new|.
- * |hash_nid| must be the identifier of the digest function used to calculate
- * |digest|. The caller must ensure that |sig_r| and |sig_s| are in the range
- * [1, n). It returns one on success or zero if the signature is invalid or on
- * error. */
-int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
-                               const uint8_t *digest, size_t digest_len,
+ * The caller must ensure that |sig_r| and |sig_s| are in the range [1, n). It
+ * returns one on success or zero if the signature is invalid or on error. */
+int ECDSA_verify_signed_digest(const EC_GROUP *group, const GFp_Limb *m,
                                const GFp_Limb *sig_r, const GFp_Limb *sig_s,
                                const GFp_Limb *sig_s_inv_mont,
                                const GFp_Limb *peer_public_key_x,
                                const GFp_Limb *peer_public_key_y) {
-  (void)hash_nid; /* TODO: Verify |digest_len| is right for |hash_nid|. */
-
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
@@ -114,9 +104,9 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   BIGNUM *s = BN_CTX_get(ctx);
   BIGNUM *u1 = BN_CTX_get(ctx);
   BIGNUM *u2 = BN_CTX_get(ctx);
-  BIGNUM *m = BN_CTX_get(ctx);
+  BIGNUM *m_bn = BN_CTX_get(ctx);
   BIGNUM *X = BN_CTX_get(ctx);
-  if (r == NULL || s == NULL || u1 == NULL || u2 == NULL || m == NULL ||
+  if (r == NULL || s == NULL || u1 == NULL || u2 == NULL || m_bn == NULL ||
       X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
@@ -125,7 +115,8 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   size_t scalar_limbs =
       (EC_GROUP_get_degree(group) + (BN_BITS2 - 1)) / BN_BITS2;
   if (!bn_set_words(r, sig_r, scalar_limbs) ||
-      !bn_set_words(s, sig_s, scalar_limbs)) {
+      !bn_set_words(s, sig_s, scalar_limbs) ||
+      !bn_set_words(m_bn, m, scalar_limbs)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -137,6 +128,7 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   assert(!BN_is_negative(s));
   assert(!BN_is_zero(s));
   assert(BN_ucmp(s, &group->order) < 0);
+  assert(BN_ucmp(m_bn, &group->order) < 0);
 
   /* u2 = inv(S) mod order (Montgomery-encoded) */
   if (!bn_set_words(u2, sig_s_inv_mont, scalar_limbs)) {
@@ -144,12 +136,9 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
     goto err;
   }
 
-  if (!digest_to_bn(m, digest, digest_len, &group->order)) {
-    goto err;
-  }
   /* u1 = m * u2 mod order. Since only one input is Montgomery-encoded, the
    * result will not be Montgomery-encoded. */
-  if (!BN_mod_mul_montgomery(u1, m, u2, &group->order_mont, ctx)) {
+  if (!BN_mod_mul_montgomery(u1, m_bn, u2, &group->order_mont, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -186,32 +175,4 @@ err:
   EC_POINT_free(pub_key);
   EC_POINT_free(point);
   return ret;
-}
-
-/* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
- * number and sets |out| to that value. It then truncates |out| so that it's,
- * at most, as long as |order|. It returns one on success and zero otherwise. */
-static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
-                        const BIGNUM *order) {
-  size_t num_bits;
-
-  num_bits = BN_num_bits(order);
-  /* Need to truncate digest if it is too long: first truncate whole
-   * bytes. */
-  if (8 * digest_len > num_bits) {
-    digest_len = (num_bits + 7) / 8;
-  }
-  if (!BN_bin2bn(digest, digest_len, out)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    return 0;
-  }
-
-  /* If still too long truncate remaining bits with a shift */
-  if ((8 * digest_len > num_bits) &&
-      !BN_rshift(out, out, 8 - (num_bits & 0x7))) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    return 0;
-  }
-
-  return 1;
 }

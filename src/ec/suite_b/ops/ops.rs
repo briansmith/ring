@@ -34,10 +34,15 @@ impl Elem {
 /// fully reduced mod n; i.e. their range is [0, n]. In most contexts,
 /// zero-valued scalars are forbidden.
 pub struct Scalar {
-    limbs: [Limb; MAX_LIMBS],
+    pub limbs: [Limb; MAX_LIMBS],
 }
 
 impl Scalar {
+    #[inline(always)]
+    pub fn from_limbs_unchecked(limbs: &[Limb; MAX_LIMBS]) -> Scalar {
+        Scalar { limbs: *limbs }
+    }
+
     #[inline(always)]
     pub unsafe fn limbs_as_ptr(&self) -> *const Limb {
         self.limbs.as_ptr()
@@ -60,8 +65,8 @@ impl ScalarMont {
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
 #[cfg(target_pointer_width = "32")] pub type Limb = u32;
-#[cfg(target_pointer_width = "64")] const LIMB_BITS: usize = 64;
-#[cfg(target_pointer_width = "32")] const LIMB_BITS: usize = 32;
+#[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
+#[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
 
 #[cfg(all(target_pointer_width = "32", target_endian = "little"))]
 macro_rules! limbs {
@@ -88,13 +93,13 @@ macro_rules! limbs {
     }
 }
 
-const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
+pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
 
 
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
-    num_limbs: usize,
+    pub num_limbs: usize,
     q: Mont,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
@@ -181,7 +186,7 @@ impl PublicKeyOps {
 /// Operations on public scalars needed by ECDSA signature verification.
 pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
-    n: [Limb; MAX_LIMBS],
+    pub n: [Limb; MAX_LIMBS],
 
     scalar_inv_to_mont_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
 }
@@ -271,8 +276,8 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // `parse_big_endian_value` is the common logic for converting the big-endian
 // encoding of bytes into an least-significant-limb-first array of
 // native-endian limbs, padded with zeros.
-fn parse_big_endian_value(input: &[u8], num_limbs: usize)
-                          -> Result<[Limb; MAX_LIMBS], ()> {
+pub fn parse_big_endian_value(input: &[u8], num_limbs: usize)
+                              -> Result<[Limb; MAX_LIMBS], ()> {
     // `bytes_in_current_limb` is the number of bytes in the current limb.
     // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
     // limb.
@@ -301,7 +306,7 @@ fn parse_big_endian_value(input: &[u8], num_limbs: usize)
     Ok(result)
 }
 
-fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
+pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
     assert_eq!(a.len(), b.len());
     let num_limbs = a.len();
 
