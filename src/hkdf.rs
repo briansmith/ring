@@ -136,7 +136,8 @@ mod tests {
     pub fn hkdf_tests() {
         file_test::run("src/hkdf_tests.txt", |section, test_case| {
             assert_eq!(section, "");
-            let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
+            let digest_alg =
+                try!(test_case.consume_digest_alg("Hash").ok_or(()));
             let secret = test_case.consume_bytes("IKM");
             let salt = test_case.consume_bytes("salt");
             let info = test_case.consume_bytes("info");
@@ -152,6 +153,8 @@ mod tests {
             let mut out = vec![0u8; out.len()];
             hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
             assert_eq!(out, out);
+
+            Ok(())
         });
     }
 }

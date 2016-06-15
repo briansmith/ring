@@ -497,6 +497,8 @@ mod tests {
 
             let actual_from_one_shot = digest::digest(digest_alg, &data);
             assert_eq!(&expected, &actual_from_one_shot.as_ref());
+
+            Ok(())
         });
     }
 
@@ -557,6 +559,8 @@ mod tests {
                 let expected = test_case.consume_bytes("MD");
                 let actual = digest::digest(digest_alg, &msg);
                 assert_eq!(&expected, &actual.as_ref());
+
+                Ok(())
             });
         }
 
@@ -573,7 +577,7 @@ mod tests {
                 if expected_count == -1 {
                     seed.extend(test_case.consume_bytes("Seed"));
                     expected_count = 0;
-                    return;
+                    return Ok(());
                 }
 
                 assert!(expected_count >= 0);
@@ -599,6 +603,8 @@ mod tests {
                 let md_j = mds.last().unwrap();
                 assert_eq!(&expected_md, md_j);
                 seed = md_j.clone();
+
+                Ok(())
             });
 
             assert_eq!(expected_count, 100);

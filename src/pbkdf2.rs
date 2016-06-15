@@ -226,7 +226,8 @@ mod tests {
     pub fn pkbdf2_tests() {
         file_test::run("src/pbkdf2_tests.txt", |section, test_case| {
             assert_eq!(section, "");
-            let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
+            let digest_alg =
+                try!(test_case.consume_digest_alg("Hash").ok_or(()));
             let iterations = test_case.consume_usize("c");
             let secret = test_case.consume_bytes("P");
             let salt = test_case.consume_bytes("S");
@@ -245,6 +246,7 @@ mod tests {
             assert_eq!(dk, out);
             assert!(pbkdf2::verify(prf, iterations, &salt, &secret, &out)
                         .is_ok());
+            Ok(())
         });
     }
 }

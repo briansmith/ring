@@ -74,7 +74,7 @@ impl TestCase {
 }
 
 pub fn run<F>(test_data_relative_file_path: &str, f: F)
-              where F: Fn(&str, &mut TestCase) {
+              where F: Fn(&str, &mut TestCase) -> Result<(), ()> {
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
@@ -84,7 +84,7 @@ pub fn run<F>(test_data_relative_file_path: &str, f: F)
     loop {
         match parse_test_case(&mut current_section, &mut lines) {
             Some(ref mut test_case) => {
-                f(&current_section, test_case);
+                f(&current_section, test_case).unwrap();
 
                 // Make sure all the attributes in the test case were consumed.
                 assert!(test_case.attributes.is_empty());
@@ -98,7 +98,7 @@ pub fn run<F>(test_data_relative_file_path: &str, f: F)
 }
 
 pub fn run_mut<F>(test_data_relative_file_path: &str, f: &mut F)
-                  where F: FnMut(&str, &mut TestCase) {
+                  where F: FnMut(&str, &mut TestCase) -> Result<(), ()> {
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
@@ -108,7 +108,7 @@ pub fn run_mut<F>(test_data_relative_file_path: &str, f: &mut F)
     loop {
         match parse_test_case(&mut current_section, &mut lines) {
             Some(ref mut test_case) => {
-                f(&current_section, test_case);
+                f(&current_section, test_case).unwrap();
 
                 // Make sure all the attributes in the test case were consumed.
                 assert!(test_case.attributes.is_empty());

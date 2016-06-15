@@ -201,7 +201,7 @@ mod tests {
             };
 
             let public_key = test_case.consume_bytes("Key");
-            let public_key = untrusted::Input::new(&public_key).unwrap();
+            let public_key = try!(untrusted::Input::new(&public_key));
 
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
@@ -215,15 +215,17 @@ mod tests {
             }).is_ok());
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::new(&msg).unwrap();
+            let msg = try!(untrusted::Input::new(&msg));
 
             let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::new(&sig).unwrap();
+            let sig = try!(untrusted::Input::new(&sig));
 
             let expected_result = test_case.consume_string("Result");
 
             let actual_result = signature::verify(alg, public_key, msg, sig);
             assert_eq!(actual_result.is_ok(), expected_result == "P");
+
+            Ok(())
         });
     }
 }

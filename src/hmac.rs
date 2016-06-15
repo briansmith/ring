@@ -369,11 +369,11 @@ mod tests {
 
             let digest_alg = match digest_alg {
                 Some(digest_alg) => digest_alg,
-                None => { return; } // Unsupported digest algorithm
+                None => { return Ok(()); } // Unsupported digest algorithm
             };
 
-            hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                                 &output[..], true);
+            try!(hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
+                                      &output[..], true));
 
             // Tamper with the input and check that verification fails.
             if input.len() == 0 {
@@ -383,13 +383,13 @@ mod tests {
             }
 
             hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                                 &output[..], false);
+                                 &output[..], false)
         });
     }
 
     fn hmac_test_case_inner(digest_alg: &'static digest::Algorithm,
                             key_value: &[u8], input: &[u8], output: &[u8],
-                            is_ok: bool) {
+                            is_ok: bool) -> Result<(), ()> {
 
         let s_key = hmac::SigningKey::new(digest_alg, key_value);
         let v_key = hmac::VerificationKey::new(digest_alg, key_value);
@@ -418,5 +418,7 @@ mod tests {
             let signature = s_ctx.sign();
             assert_eq!(is_ok, signature.as_ref() == output);
         }
+
+        Ok(())
     }
 }

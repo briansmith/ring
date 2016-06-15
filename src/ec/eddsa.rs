@@ -164,6 +164,8 @@ mod tests {
 
             assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
                                       msg, expected_sig).is_ok());
+
+            Ok(())
         });
     }
 

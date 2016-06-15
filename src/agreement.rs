@@ -200,7 +200,7 @@ mod tests {
             let curve_name = test_case.consume_string("Curve");
             let alg = alg_from_curve_name(&curve_name);
             let peer_public = test_case.consume_bytes("PeerQ");
-            let peer_public = untrusted::Input::new(&peer_public).unwrap();
+            let peer_public = try!(untrusted::Input::new(&peer_public));
 
             match test_case.consume_optional_string("Error") {
                 None => {
@@ -210,10 +210,10 @@ mod tests {
 
                     // In the no-heap mode, some algorithms aren't supported so
                     // we have to skip those algorithms' test cases.
-                    if let None = alg {
-                        return;
-                    }
-                    let alg = alg.unwrap();
+                    let alg = match alg {
+                        None => { return Ok(()); }
+                        Some(alg) => alg,
+                    };
 
                     let private_key =
                         EphemeralPrivateKey::from_test_vector(alg, &my_private);
@@ -235,13 +235,13 @@ mod tests {
                 Some(_) => {
                     // In the no-heap mode, some algorithms aren't supported so
                     // we have to skip those algorithms' test cases.
-                    if let None = alg {
-                        return;
-                    }
-                    let alg = alg.unwrap();
+                    let alg = match alg {
+                        None => { return Ok(()); }
+                        Some(alg) => alg
+                    };
 
                     let dummy_private_key =
-                        EphemeralPrivateKey::generate(alg, &rng).unwrap();
+                        try!(EphemeralPrivateKey::generate(alg, &rng));
                     fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
                         panic!("The KDF was called during ECDH when the peer's \
                                 public key is invalid.");
@@ -251,6 +251,8 @@ mod tests {
                                         (), kdf_not_called).is_err());
                 }
             }
+
+            return Ok(());
         });
     }
 

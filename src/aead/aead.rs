@@ -284,7 +284,7 @@ mod tests {
 
     pub fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         test_aead_key_sizes(aead_alg);
-        test_aead_nonce_sizes(aead_alg);
+        test_aead_nonce_sizes(aead_alg).unwrap();
 
         file_test::run(file_path, |section, test_case| {
             assert_eq!(section, "");
@@ -301,11 +301,11 @@ mod tests {
             for _ in 0..max_overhead_len {
                 s_in_out.push(0);
             }
-            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let s_key = try!(aead::SealingKey::new(aead_alg, &key_bytes[..]));
             let s_result = aead::seal_in_place(&s_key, &nonce[..],
                                                &mut s_in_out[..],
                                                max_overhead_len, &ad);
-            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let o_key = try!(aead::OpeningKey::new(aead_alg, &key_bytes[..]));
 
             ct.extend(tag);
 
@@ -414,6 +414,8 @@ mod tests {
                     }
                 };
             }
+
+            Ok(())
         });
     }
 
@@ -471,13 +473,14 @@ mod tests {
     // we're verifying that `open_in_place` won't crash or access out-of-bounds
     // memory (when run under valgrind or similar). The AES-128-GCM tests have
     // some WRONG_NONCE_LENGTH test cases that tests this more correctly.
-    fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm) {
+    fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm)
+                             -> Result<(), ()> {
         let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len];
         let o_key =
-            aead::OpeningKey::new(aead_alg, &key_data[..key_len]).unwrap();
+            try!(aead::OpeningKey::new(aead_alg, &key_data[..key_len]));
         let s_key =
-            aead::SealingKey::new(aead_alg, &key_data[..key_len]).unwrap();
+            try!(aead::SealingKey::new(aead_alg, &key_data[..key_len]));
 
         let nonce_len = aead_alg.nonce_len();
 
@@ -497,9 +500,9 @@ mod tests {
 
         // Construct a template input for `open_in_place`.
         let mut to_open = Vec::from(to_seal);
-        let ciphertext_len = aead::seal_in_place(&s_key, &nonce[..nonce_len],
-                                                 &mut to_open, suffix_space,
-                                                 &ad).unwrap();
+        let ciphertext_len =
+            try!(aead::seal_in_place(&s_key, &nonce[..nonce_len], &mut to_open,
+                                     suffix_space, &ad));
         let to_open = &to_open[..ciphertext_len];
 
         // Nonce is the correct length.
@@ -597,5 +600,7 @@ mod tests {
             assert!(aead::open_in_place(&o_key, &nonce[..16], prefix_len,
                                         &mut in_out, &ad).is_err());
         }
+
+        Ok(())
     }
 }
