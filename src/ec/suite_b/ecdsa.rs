@@ -30,7 +30,6 @@ struct ECDSA {
 impl signature_impl::VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), ()> {
-        let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
 
         let (r, s) = try!(signature.read_all((), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
@@ -44,17 +43,78 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
             try!(parse_uncompressed_point(self.ops.public_key_ops, public_key));
 
         let s_inv_mont = try!(self.ops.scalar_inv_to_mont(&s));
+        let m = digest_scalar(self.ops, self.digest_alg, msg);
         bssl::map_result(unsafe {
             ECDSA_verify_signed_digest(self.ops.public_key_ops.common.ec_group,
-                                       digest.algorithm().nid,
-                                       digest.as_ref().as_ptr(),
-                                       digest.as_ref().len(),
-                                       r.limbs_as_ptr(), s.limbs_as_ptr(),
+                                       m.limbs_as_ptr(), r.limbs_as_ptr(),
+                                       s.limbs_as_ptr(),
                                        s_inv_mont.limbs_as_ptr(),
                                        x.limbs_as_ptr(), y.limbs_as_ptr())
         })
     }
 }
+
+
+/// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
+/// convert the digest to a scalar in the range [0, n) as described in
+/// NIST's FIPS 186-4 Section 4.2. Note that this is one of the few cases where
+/// a `Scalar` is allowed to have the value zero.
+///
+/// NIST's FIPS 186-4 4.2 says "When the length of the output of the hash
+/// function is greater than N (i.e., the bit length of q), then the leftmost N
+/// bits of the hash function output block shall be used in any calculation
+/// using the hash function output during the generation or verification of a
+/// digital signature."
+///
+/// "Leftmost N bits" means "N most significant bits" because we interpret the
+/// digest as a bit-endian encoded integer.
+///
+/// The NSA guide instead vaguely suggests that we should convert the digest
+/// value to an integer and then reduce it mod `n`. However, real-world
+/// implementations (e.g. `digest_to_bn` in OpenSSL and `hashToInt` in Go) do
+/// what FIPS 186-4 says to do, not what the NSA guide suggests.
+///
+/// Why shifting the value right by at most one bit is sufficient: P-256's `n`
+/// has its 256th bit set; i.e. 2**255 < n < 2**256. Once we've truncated the
+/// digest to 256 bits and convert it to an integer, it will have a value less
+/// than 2**256. If the value is larger than `n` then shifting it one bit right
+/// will give a value less than 2**255, which is less than `n`. The analogous
+/// argument applies for P-384. However, it does *not* apply in general; for
+/// example, it doesn't apply to P-521.
+fn digest_scalar(ops: &PublicScalarOps, digest_alg: &'static digest::Algorithm,
+                 msg: untrusted::Input) -> Scalar {
+    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
+    digest_scalar_(ops, digest.as_ref())
+}
+
+// This is a separate function solely so that we can test specific digest
+// values like all-zero values and values larger than `n`.
+fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
+    let num_limbs = ops.public_key_ops.common.num_limbs;
+
+    let digest = if digest.len() > num_limbs * LIMB_BYTES {
+        &digest[..(num_limbs * LIMB_BYTES)]
+    } else {
+        digest
+    };
+
+    // XXX: unwrap
+    let mut limbs = parse_big_endian_value(digest, num_limbs).unwrap();
+    let n = &ops.n[..num_limbs];
+    if !limbs_less_than_limbs(&limbs[..num_limbs], n) {
+        let mut carried_bit = 0;
+        for i in 0..num_limbs {
+            let next_carried_bit =
+                limbs[num_limbs - i - 1] << (LIMB_BITS - 1);
+            limbs[num_limbs - i - 1] =
+                (limbs[num_limbs - i - 1] >> 1) | carried_bit;
+            carried_bit = next_carried_bit;
+        }
+        debug_assert!(limbs_less_than_limbs(&limbs[..num_limbs], &n));
+    }
+    Scalar::from_limbs_unchecked(&limbs)
+}
+
 
 macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ecdsa_verify_ops:expr,
@@ -115,8 +175,7 @@ ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
 
 
 extern {
-    fn ECDSA_verify_signed_digest(group: *const EC_GROUP, hash_nid: c::int,
-                                  digest: *const u8, digest_len: c::size_t,
+    fn ECDSA_verify_signed_digest(group: *const EC_GROUP, m: *const Limb,
                                   sig_r: *const Limb, sig_s: *const Limb,
                                   sig_s_inv_mont: *const Limb,
                                   peer_public_key_x: *const Limb,
@@ -126,19 +185,21 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {file_test, signature};
-    use super::*;
+    use {digest, file_test, signature};
+    use super::digest_scalar_;
+    use super::super::ops::*;
     use untrusted;
 
     #[test]
-    fn test_signature_ecdsa_verify() {
+    fn signature_ecdsa_verify_test() {
         file_test::run("src/ec/suite_b/ecdsa_verify_tests.txt",
                        |section, test_case| {
             assert_eq!(section, "");
 
             let curve_name = test_case.consume_string("Curve");
             let digest_name = test_case.consume_string("Digest");
-            let alg = alg_from_curve_and_digest(&curve_name, &digest_name);
+            let (alg, _, _) =
+                alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let msg = test_case.consume_bytes("Msg");
             let msg = try!(untrusted::Input::new(&msg));
@@ -158,29 +219,68 @@ mod tests {
         });
     }
 
+    #[test]
+    fn ecdsa_digest_scalar_test() {
+        file_test::run("src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
+                       |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let digest_name = test_case.consume_string("Digest");
+            let (_, ops, digest_alg) =
+                alg_from_curve_and_digest(&curve_name, &digest_name);
+
+            let num_limbs = ops.public_key_ops.common.num_limbs;
+
+            let input = test_case.consume_bytes("Input");
+            assert_eq!(input.len(), digest_alg.output_len);
+
+            let output = test_case.consume_bytes("Output");
+            assert_eq!(output.len(),
+                       ops.public_key_ops.common.num_limbs * LIMB_BYTES);
+            let expected = try!(parse_big_endian_value(&output, num_limbs));
+
+            let actual = digest_scalar_(ops, &input);
+
+            assert_eq!(actual.limbs[..num_limbs], expected[..num_limbs]);
+
+            Ok(())
+        });
+    }
+
     fn alg_from_curve_and_digest(curve_name: &str, digest_name: &str)
-                                 -> &'static signature::VerificationAlgorithm {
+                                 -> (&'static signature::VerificationAlgorithm,
+                                     &'static PublicScalarOps,
+                                     &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA1" {
-                &ECDSA_P256_SHA1_VERIFY
+                (&signature::ECDSA_P256_SHA1_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA1)
             } else if digest_name == "SHA256" {
-                &ECDSA_P256_SHA256_VERIFY
+                (&signature::ECDSA_P256_SHA256_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256)
             } else if digest_name == "SHA384" {
-                &ECDSA_P256_SHA384_VERIFY
+                (&signature::ECDSA_P256_SHA384_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384)
             } else if digest_name == "SHA512" {
-                &ECDSA_P256_SHA512_VERIFY
+                (&signature::ECDSA_P256_SHA512_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
             if digest_name == "SHA1" {
-                &ECDSA_P384_SHA1_VERIFY
+                (&signature::ECDSA_P384_SHA1_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA1)
             } else if digest_name == "SHA256" {
-                &ECDSA_P384_SHA256_VERIFY
+                (&signature::ECDSA_P384_SHA256_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256)
             } else if digest_name == "SHA384" {
-                &ECDSA_P384_SHA384_VERIFY
+                (&signature::ECDSA_P384_SHA384_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384)
             } else if digest_name == "SHA512" {
-                &ECDSA_P384_SHA512_VERIFY
+                (&signature::ECDSA_P384_SHA512_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
