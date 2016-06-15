@@ -1727,6 +1727,15 @@ uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
   return SSL3_VERSION;
 }
 
+uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher) {
+  if (cipher->algorithm_mac == SSL_AEAD &&
+      (cipher->algorithm_enc & SSL_CHACHA20POLY1305_OLD) == 0 &&
+      (cipher->algorithm_mkey & SSL_kECDHE) != 0) {
+    return TLS1_3_VERSION;
+  }
+  return TLS1_2_VERSION;
+}
+
 /* return the actual cipher being used */
 const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
   if (cipher != NULL) {

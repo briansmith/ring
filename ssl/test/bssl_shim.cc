@@ -752,6 +752,11 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
+  if (!config->is_dtls) {
+    // Enable TLS 1.3 for tests.
+    SSL_CTX_set_max_version(ssl_ctx.get(), TLS1_3_VERSION);
+  }
+
   std::string cipher_list = "ALL";
   if (!config->cipher.empty()) {
     cipher_list = config->cipher;

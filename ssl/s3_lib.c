@@ -293,7 +293,8 @@ const SSL_CIPHER *ssl3_choose_cipher(
     ok = 1;
 
     /* Check the TLS version. */
-    if (SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl)) {
+    if (SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
+        SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl)) {
       ok = 0;
     }
 

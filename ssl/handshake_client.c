@@ -591,6 +591,8 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
         (cipher->algorithm_auth & ssl->cert->mask_a)) {
       continue;
     }
+    /* TODO(davidben): Also check |SSL_CIPHER_get_max_version| against the
+     * minimum enabled version. See https://crbug.com/boringssl/66. */
     if (SSL_CIPHER_get_min_version(cipher) >
         ssl3_version_from_wire(ssl, ssl->client_version)) {
       continue;
@@ -864,7 +866,8 @@ static int ssl3_get_server_hello(SSL *ssl) {
   /* If the cipher is disabled then we didn't sent it in the ClientHello, so if
    * the server selected it, it's an error. */
   if ((c->algorithm_mkey & ct->mask_k) || (c->algorithm_auth & ct->mask_a) ||
-      SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl)) {
+      SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
+      SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl)) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     goto f_err;

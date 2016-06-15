@@ -779,7 +779,7 @@ func (hs *serverHandshakeState) establishKeys() error {
 	c := hs.c
 
 	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV :=
-		keysFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.clientHello.random, hs.hello.random, hs.suite.macLen, hs.suite.keyLen, hs.suite.ivLen)
+		keysFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.clientHello.random, hs.hello.random, hs.suite.macLen, hs.suite.keyLen, hs.suite.ivLen(c.vers))
 
 	var clientCipher, serverCipher interface{}
 	var clientHash, serverHash macFunction
@@ -790,8 +790,8 @@ func (hs *serverHandshakeState) establishKeys() error {
 		serverCipher = hs.suite.cipher(serverKey, serverIV, false /* not for reading */)
 		serverHash = hs.suite.mac(c.vers, serverMAC)
 	} else {
-		clientCipher = hs.suite.aead(clientKey, clientIV)
-		serverCipher = hs.suite.aead(serverKey, serverIV)
+		clientCipher = hs.suite.aead(c.vers, clientKey, clientIV)
+		serverCipher = hs.suite.aead(c.vers, serverKey, serverIV)
 	}
 
 	c.in.prepareCipherSpec(c.vers, clientCipher, clientHash)

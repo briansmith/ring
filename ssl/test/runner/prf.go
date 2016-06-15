@@ -130,7 +130,11 @@ func prfForVersion(version uint16, suite *cipherSuite) func(result, secret, labe
 		return prf30
 	case VersionTLS10, VersionTLS11:
 		return prf10
-	case VersionTLS12:
+	// TODO(nharper): VersionTLS13 is in the case statement below only to
+	// support Fake TLS 1.3. Real TLS 1.3 should never call this function.
+	// Once we no longer support Fake TLS 1.3, the VersionTLS13 should be
+	// removed from this case statement.
+	case VersionTLS12, VersionTLS13:
 		if suite.flags&suiteSHA384 != 0 {
 			return prf12(sha512.New384)
 		}

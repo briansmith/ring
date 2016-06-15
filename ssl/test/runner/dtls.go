@@ -105,7 +105,9 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 
 	// Process message.
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
-	ok, off, err := c.in.decrypt(b)
+	// TODO(nharper): Once DTLS 1.3 is defined, handle the extra
+	// parameter from decrypt.
+	ok, off, _, err := c.in.decrypt(b)
 	if !ok {
 		c.in.setErrorLocked(c.sendAlert(err))
 	}
@@ -302,6 +304,8 @@ func (c *Conn) dtlsSealRecord(typ recordType, data []byte) (b *block, err error)
 		panic("Unknown cipher")
 	}
 	b.resize(recordHeaderLen + explicitIVLen + len(data))
+	// TODO(nharper): DTLS 1.3 will likely need to set this to
+	// recordTypeApplicationData if c.out.cipher != nil.
 	b.data[0] = byte(typ)
 	vers := c.vers
 	if vers == 0 {
@@ -327,7 +331,7 @@ func (c *Conn) dtlsSealRecord(typ recordType, data []byte) (b *block, err error)
 		}
 	}
 	copy(b.data[recordHeaderLen+explicitIVLen:], data)
-	c.out.encrypt(b, explicitIVLen)
+	c.out.encrypt(b, explicitIVLen, typ)
 	return
 }
 

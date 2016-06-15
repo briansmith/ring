@@ -1111,6 +1111,10 @@ OPENSSL_EXPORT int SSL_CIPHER_is_CECPQ1(const SSL_CIPHER *cipher);
  * for |cipher|. */
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher);
 
+/* SSL_CIPHER_get_max_version returns the maximum protocol version that
+ * supports |cipher|. */
+OPENSSL_EXPORT uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher);
+
 /* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
 
