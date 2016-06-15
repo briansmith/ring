@@ -120,8 +120,8 @@ listed in the table below.
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td rowspan=2>Linux</td>
     <td>x86, x86_64</td>
-    <td>GCC 4.6, GCC 5, Clang 3.8. (Clang builds are temporarily disabled due
-        to the current LLVM APT repo outage.)</td>
+    <td>GCC 4.6, GCC 5, GCC 6, Clang 3.8. (Clang builds are temporarily
+        disabled due the current LLVM APT repo outage.)</td>
     <td rowspan=4><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
 </tr>
 <tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>

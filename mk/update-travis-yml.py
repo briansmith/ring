@@ -42,9 +42,8 @@ linux_compilers = [
     # APT servers, which we need to download clang.
     # "clang-3.8",
 
-    # XXX: GCC 6 doesn't work:
-    # https://github.com/travis-ci/apt-package-whitelist/issues/2294
     "gcc-5",
+    "gcc-6",
 ]
 
 # Clang 3.4 and GCC 4.6 are already installed by default.
