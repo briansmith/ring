@@ -29,9 +29,9 @@
 use {c, init, polyfill};
 use core;
 
-// XXX: endian-specific.
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111
+#[cfg(target_endian = "little")]
 macro_rules! u32x2 {
     ( $first:expr, $second:expr ) =>
     ( ((($second as u64) << 32) | ($first as u64)) )
