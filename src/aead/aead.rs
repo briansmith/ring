@@ -26,7 +26,7 @@
 mod chacha20_poly1305;
 mod aes_gcm;
 
-use super::{constant_time, init, polyfill};
+use {constant_time, init, polyfill};
 
 pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};

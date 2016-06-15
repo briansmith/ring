@@ -16,10 +16,9 @@
 
 #![allow(unsafe_code)]
 
-use {agreement, c, ec, rand};
-use bssl;
-use untrusted;
+use {agreement, bssl, c, ec, rand};
 use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
+use untrusted;
 
 /// A key agreement algorithm.
 macro_rules! ecdh {

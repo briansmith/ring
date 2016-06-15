@@ -14,8 +14,8 @@
 
 #![allow(unsafe_code)]
 
+use {aead, c, polyfill};
 use core;
-use super::super::{aead, c, polyfill};
 
 const CHACHA20_KEY_LEN: usize = 256 / 8;
 const POLY1305_STATE_LEN: usize = 256;

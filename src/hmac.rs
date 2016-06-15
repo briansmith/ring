@@ -148,7 +148,7 @@
 //! # fn main() { main_with_result().unwrap() }
 //! ```
 
-use super::{constant_time, digest, rand};
+use {constant_time, digest, rand};
 
 /// A key to use for HMAC signing.
 pub struct SigningKey {

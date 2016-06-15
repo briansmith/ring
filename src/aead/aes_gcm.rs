@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-use super::super::{aead, bssl, c, polyfill};
+use {aead, bssl, c, polyfill};
 
 const AES_128_KEY_LEN: usize = 128 / 8;
 const AES_256_KEY_LEN: usize = 32; // 256 / 8

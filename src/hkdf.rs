@@ -28,7 +28,7 @@
 //! constructed as `hmac::SigningKey::new(digest_alg, salt)`.
 
 
-use super::hmac;
+use hmac;
 
 /// Fills `out` with the output of the HKDF Extract-and-Expand operation for
 /// the given inputs.

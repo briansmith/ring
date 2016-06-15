@@ -26,8 +26,8 @@
 
 #![allow(unsafe_code)]
 
+use {c, init, polyfill};
 use core;
-use super::{c, init, polyfill};
 
 // XXX: endian-specific.
 // XXX: Replace with `const fn` when `const fn` is stable:

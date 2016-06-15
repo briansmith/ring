@@ -13,10 +13,9 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use {c, polyfill};
 use core;
 use core::num::Wrapping;
-use c;
-use polyfill;
 use super::MAX_CHAINING_LEN;
 
 pub const BLOCK_LEN: usize = 512 / 8;

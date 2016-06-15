@@ -16,9 +16,7 @@
 
 #![allow(unsafe_code)]
 
-use {agreement, c, ec, rand};
-
-use bssl;
+use {agreement, bssl, c, ec, rand};
 use untrusted;
 
 

@@ -17,8 +17,8 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use {bssl, c, der, digest, ec, signature, signature_impl};
-use untrusted;
 use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
+use untrusted;
 
 #[cfg(not(feature = "no_heap"))]
 struct ECDSA {
@@ -136,8 +136,8 @@ extern {
 #[cfg(test)]
 mod tests {
     use {file_test, der, signature};
-    use untrusted;
     use super::*;
+    use untrusted;
 
     #[test]
     fn test_signature_ecdsa_verify() {

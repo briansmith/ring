@@ -138,8 +138,8 @@ extern  {
 #[cfg(test)]
 mod tests {
     use {file_test, rand, signature};
-    use untrusted;
     use super::Ed25519KeyPair;
+    use untrusted;
 
     /// Test vectors from BoringSSL.
     #[test]

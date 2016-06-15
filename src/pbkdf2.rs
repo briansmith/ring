@@ -105,7 +105,7 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use super::{constant_time, digest, hmac, polyfill};
+use {constant_time, digest, hmac, polyfill};
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///

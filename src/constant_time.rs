@@ -16,7 +16,7 @@
 
 #![allow(unsafe_code)]
 
-use super::c;
+use c;
 
 /// Returns `Ok(())` if `a == b` and `Err(())` otherwise. The comparison of
 /// `a` and `b` is done in constant time with respect to the contents of each,

@@ -12,11 +12,11 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use digest;
 use std;
 use std::string::String;
 use std::vec::Vec;
 use std::io::BufRead;
-use super::digest;
 
 pub struct TestCase {
     attributes: std::collections::HashMap<String, String>,
