@@ -100,8 +100,10 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
       aead_ctx->variable_nonce_len = 8;
       aead_ctx->variable_nonce_included_in_record = 0;
       aead_ctx->omit_ad = 1;
+      assert(fixed_iv_len >= aead_ctx->variable_nonce_len);
     }
   } else {
+    assert(version < TLS1_3_VERSION);
     aead_ctx->variable_nonce_included_in_record = 1;
     aead_ctx->random_variable_nonce = 1;
     aead_ctx->omit_length_in_ad = 1;

@@ -826,24 +826,24 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     case SSL_AES128GCM:
       *out_aead = EVP_aead_aes_128_gcm();
       *out_fixed_iv_len = 4;
-      return 1;
+      break;
 
     case SSL_AES256GCM:
       *out_aead = EVP_aead_aes_256_gcm();
       *out_fixed_iv_len = 4;
-      return 1;
+      break;
 
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
     case SSL_CHACHA20POLY1305_OLD:
       *out_aead = EVP_aead_chacha20_poly1305_old();
       *out_fixed_iv_len = 0;
-      return 1;
+      break;
 #endif
 
     case SSL_CHACHA20POLY1305:
       *out_aead = EVP_aead_chacha20_poly1305();
       *out_fixed_iv_len = 12;
-      return 1;
+      break;
 
     case SSL_RC4:
       switch (cipher->algorithm_mac) {
@@ -854,7 +854,7 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_aead = EVP_aead_rc4_md5_tls();
           }
           *out_mac_secret_len = MD5_DIGEST_LENGTH;
-          return 1;
+          break;
         case SSL_SHA1:
           if (version == SSL3_VERSION) {
             *out_aead = EVP_aead_rc4_sha1_ssl3();
@@ -862,10 +862,11 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_aead = EVP_aead_rc4_sha1_tls();
           }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          return 1;
+          break;
         default:
           return 0;
       }
+      break;
 
     case SSL_AES128:
       switch (cipher->algorithm_mac) {
@@ -880,14 +881,15 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_aead = EVP_aead_aes_128_cbc_sha1_tls();
           }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          return 1;
+          break;
         case SSL_SHA256:
           *out_aead = EVP_aead_aes_128_cbc_sha256_tls();
           *out_mac_secret_len = SHA256_DIGEST_LENGTH;
-          return 1;
+          break;
         default:
           return 0;
       }
+      break;
 
     case SSL_AES256:
       switch (cipher->algorithm_mac) {
@@ -902,18 +904,19 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_aead = EVP_aead_aes_256_cbc_sha1_tls();
           }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          return 1;
+          break;
         case SSL_SHA256:
           *out_aead = EVP_aead_aes_256_cbc_sha256_tls();
           *out_mac_secret_len = SHA256_DIGEST_LENGTH;
-          return 1;
+          break;
         case SSL_SHA384:
           *out_aead = EVP_aead_aes_256_cbc_sha384_tls();
           *out_mac_secret_len = SHA384_DIGEST_LENGTH;
-          return 1;
+          break;
         default:
           return 0;
       }
+      break;
 
     case SSL_3DES:
       switch (cipher->algorithm_mac) {
@@ -928,10 +931,11 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_aead = EVP_aead_des_ede3_cbc_sha1_tls();
           }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          return 1;
+          break;
         default:
           return 0;
       }
+      break;
 
     case SSL_eNULL:
       switch (cipher->algorithm_mac) {
@@ -942,14 +946,25 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_aead = EVP_aead_null_sha1_tls();
           }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          return 1;
+          break;
         default:
           return 0;
       }
+      break;
 
     default:
       return 0;
   }
+
+  /* In TLS 1.3, the iv_len is equal to the AEAD nonce length whereas the code
+   * above computes the TLS 1.2 construction.
+   *
+   * TODO(davidben,svaldez): Avoid computing the wrong value and fixing it. */
+  if (version >= TLS1_3_VERSION) {
+    *out_fixed_iv_len = EVP_AEAD_nonce_length(*out_aead);
+    assert(*out_fixed_iv_len >= 8);
+  }
+  return 1;
 }
 
 const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf) {
