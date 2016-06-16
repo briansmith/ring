@@ -392,5 +392,6 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 #define EC_R_DECODE_ERROR 128
 #define EC_R_ENCODE_ERROR 129
 #define EC_R_GROUP_MISMATCH 130
+#define EC_R_INVALID_COFACTOR 131
 
 #endif  /* OPENSSL_HEADER_EC_H */
