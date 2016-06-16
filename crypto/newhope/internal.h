@@ -32,7 +32,7 @@
 
 /* Polynomial coefficients in unpacked form. */
 struct newhope_poly_st {
-  alignas(32) uint16_t coeffs[PARAM_N];
+  uint16_t coeffs[PARAM_N];
 };
 
 /* SEED_LENGTH is the length of the AES-CTR seed used to derive a polynomial. */
