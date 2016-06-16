@@ -23,6 +23,10 @@
 #include "internal.h"
 
 
+typedef BN_ULONG GFp_Limb;
+
+#define GFp_LIMB_BITS BN_BITS2
+
 int GFp_suite_b_generate_private_key(const EC_GROUP *group, uint8_t *out,
                                      size_t out_len, RAND *rng);
 
