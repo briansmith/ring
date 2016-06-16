@@ -12,25 +12,47 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! Functionality shared by operations on public keys (ECDSA verification and
+//! ECDH agreement).
+
+use super::ops::*;
 use untrusted;
 
-/// Parses a public key encoded in uncompressed form.
-///
-/// XXX: The coordinates are *not* validated to be proper field elements; the
-/// caller is responsible for doing that check (this check is done in the C
-/// code).
-pub fn parse_uncompressed_point<'a>(input: untrusted::Input<'a>,
-                                    elem_and_scalar_len: usize)
-                                    -> Result<(&'a [u8], &'a [u8]), ()> {
-    input.read_all((), |input| {
-        // The encoding must be 4, which is the encoding for
-        // "uncompressed".
+/// Parses a public key encoded in uncompressed form. The key's coordinates are
+/// verified to be valid field elements and the point is verified to be on the
+/// curve. (The point cannot be at infinity because it is given in affine
+/// coordinates.)
+pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
+                                    input: untrusted::Input<'a>)
+                                    -> Result<(Elem, Elem), ()> {
+    let (x, y) = try!(input.read_all((), |input| {
+        // The encoding must be 4, which is the encoding for "uncompressed".
         let encoding = try!(input.read_byte());
         if encoding != 4 {
             return Err(());
         }
-        let x = try!(input.skip_and_get_input(elem_and_scalar_len));
-        let y = try!(input.skip_and_get_input(elem_and_scalar_len));
-        Ok((x.as_slice_less_safe(), y.as_slice_less_safe()))
-    })
+        let x = try!(ops.elem_parse(input));
+        let y = try!(ops.elem_parse(input));
+        Ok((x, y))
+    }));
+
+    // Verify that (x, y) is on the curve, which is true iif:
+    //
+    //     y**2 == x**3 + a*x + b
+    //
+    // Or, equivalently, but more efficiently:
+    //
+    //     y**2 == (x**2 + a)*x + b
+
+    let lhs = ops.common.elem_sqr(&y);
+
+    let mut rhs = ops.common.elem_sqr(&x);
+    ops.elem_add(&mut rhs, &ops.a);
+    let mut rhs = ops.common.elem_mul(&rhs, &x);
+    ops.elem_add(&mut rhs, &ops.b);
+    if !ops.elems_are_equal(&lhs, &rhs) {
+        return Err(());
+    }
+
+    Ok((x, y))
 }

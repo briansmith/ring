@@ -201,16 +201,15 @@ fn ec_group(curve: &NISTCurve) -> String {
 
         int GFp_p{bits}_generate_private_key(
                 uint8_t out[{elem_and_scalar_len}], RAND *rng) {{
-            return GFp_suite_b_generate_private_key(
-                    &EC_GROUP_P{bits}, out, {elem_and_scalar_len}, rng);
+            return GFp_suite_b_generate_private_key(&EC_GROUP_P{bits}, out,
+                                                    rng);
         }}
 
         int GFp_p{bits}_public_from_private(
                 uint8_t public_key_out[{public_key_len}],
                 const uint8_t private_key[{elem_and_scalar_len}]) {{
             return GFp_suite_b_public_from_private(
-                    &EC_GROUP_P{bits}, public_key_out, {public_key_len},
-                    private_key, {elem_and_scalar_len});
+                    &EC_GROUP_P{bits}, public_key_out, private_key);
         }}",
         bits = curve.bits,
         elem_and_scalar_len = (curve.bits + 7) / 8,
