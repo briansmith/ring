@@ -442,7 +442,10 @@ int DSA_generate_key(DSA *dsa) {
   BN_init(&prk);
   BN_with_flags(&prk, priv_key, BN_FLG_CONSTTIME);
 
-  if (!BN_mod_exp(pub_key, dsa->g, &prk, dsa->p, ctx)) {
+  if (!BN_MONT_CTX_set_locked(&dsa->method_mont_p, &dsa->method_mont_lock,
+                              dsa->p, ctx) ||
+      !BN_mod_exp_mont_consttime(pub_key, dsa->g, &prk, dsa->p, ctx,
+                                 dsa->method_mont_p)) {
     goto err;
   }
 
@@ -789,7 +792,7 @@ int DSA_size(const DSA *dsa) {
 int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
                    BIGNUM **out_r) {
   BN_CTX *ctx;
-  BIGNUM k, kq, qm2, *K, *kinv = NULL, *r = NULL;
+  BIGNUM k, kq, qm2, *kinv = NULL, *r = NULL;
   int ret = 0;
 
   if (!dsa->p || !dsa->q || !dsa->g) {
@@ -851,9 +854,8 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
   }
 
   BN_set_flags(&kq, BN_FLG_CONSTTIME);
-  K = &kq;
-
-  if (!BN_mod_exp_mont(r, dsa->g, K, dsa->p, ctx, dsa->method_mont_p)) {
+  if (!BN_mod_exp_mont_consttime(r, dsa->g, &kq, dsa->p, ctx,
+                                 dsa->method_mont_p)) {
     goto err;
   }
   if (!BN_mod(r, r, dsa->q, ctx)) {
