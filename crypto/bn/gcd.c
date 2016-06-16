@@ -500,6 +500,12 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     }
   }
 
+  if (!BN_is_one(A)) {
+    *out_no_inverse = 1;
+    OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
+    goto err;
+  }
+
   /* The while loop (Euclid's algorithm) ends when
    *      A == gcd(a,n);
    * we have
@@ -513,22 +519,17 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   }
   /* Now  Y*a  ==  A  (mod |n|).  */
 
-  if (BN_is_one(A)) {
-    /* Y*a == 1  (mod |n|) */
-    if (!Y->neg && BN_ucmp(Y, n) < 0) {
-      if (!BN_copy(R, Y)) {
-        goto err;
-      }
-    } else {
-      if (!BN_nnmod(R, Y, n, ctx)) {
-        goto err;
-      }
+  /* Y*a == 1  (mod |n|) */
+  if (!Y->neg && BN_ucmp(Y, n) < 0) {
+    if (!BN_copy(R, Y)) {
+      goto err;
     }
   } else {
-    *out_no_inverse = 1;
-    OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
-    goto err;
+    if (!BN_nnmod(R, Y, n, ctx)) {
+      goto err;
+    }
   }
+
   ret = R;
 
 err:
