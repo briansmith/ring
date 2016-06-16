@@ -27,6 +27,9 @@ typedef BN_ULONG GFp_Limb;
 
 #define GFp_LIMB_BITS BN_BITS2
 
+#define P256_LIMBS (256u / BN_BITS2)
+#define P384_LIMBS (384u / BN_BITS2)
+
 int GFp_suite_b_generate_private_key(const EC_GROUP *group,
                                      uint8_t *private_key_out, RAND *rng);
 
@@ -42,6 +45,8 @@ int GFp_suite_b_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
 EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
                                  const GFp_Limb *peer_public_key_x,
                                  const GFp_Limb *peer_public_key_y);
+
+void GFp_p256_elem_inv(GFp_Limb r[P256_LIMBS], const GFp_Limb a[P256_LIMBS]);
 
 
 #endif /* GFp_INTERNAL_H */

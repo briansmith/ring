@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include "ecp_nistz256.h"
 #include "gfp_internal.h"
 
 #include <string.h>
@@ -19,23 +20,15 @@
 #include "../bn/internal.h"
 
 
-#define P256_LIMBS (256u / GFp_LIMB_BITS)
-
 typedef GFp_Limb Elem[P256_LIMBS];
 typedef GFp_Limb ScalarMont[P256_LIMBS];
 typedef GFp_Limb Scalar[P256_LIMBS];
-
-
-void ecp_nistz256_mul_mont(Elem r, const Elem a, const Elem b);
 
 
 void ecp_nistz256_ord_mul_mont(ScalarMont r, const ScalarMont a,
                                const ScalarMont b);
 void ecp_nistz256_ord_sqr_mont(ScalarMont r, const ScalarMont a, int rep);
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-#if defined(OPENSSL_ARM) || defined(OPENSSL_X86)
-void ecp_nistz256_sqr_mont(Elem r, const Elem a);
-#endif
 void GFp_p256_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
@@ -47,6 +40,67 @@ void ecp_nistz256_sqr_mont(Elem r, const Elem a) {
   ecp_nistz256_mul_mont(r, a, a);
 }
 #endif
+
+static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
+  ecp_nistz256_mul_mont(r, a, b);
+}
+
+static inline void elem_sqr_mont(Elem r, const Elem a) {
+  ecp_nistz256_sqr_mont(r, a);
+}
+
+static inline void elem_sqr_mul_mont(Elem r, const Elem a, size_t squarings,
+                                     const Elem b) {
+  assert(squarings >= 1);
+  ScalarMont tmp;
+  elem_sqr_mont(tmp, a);
+  for (size_t i = 1; i < squarings; ++i) {
+    elem_sqr_mont(tmp, tmp);
+  }
+  elem_mul_mont(r, tmp, b);
+}
+
+void GFp_p256_elem_inv(Elem r, const Elem a) {
+  /* Calculate the modular inverse of field element |a| using Fermat's Little
+   * Theorem:
+   *
+   *    a**-1 (mod q) == a**(q - 2) (mod q)
+   *
+   * The exponent (q - 2) is:
+   *
+   *    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffd
+   */
+  const GFp_Limb *b_1 = a;
+  Elem b_11;     elem_sqr_mul_mont(b_11, b_1, 0 + 1, b_1);
+  Elem f;        elem_sqr_mul_mont(f, b_11, 0 + 2, b_11);
+  Elem ff;       elem_sqr_mul_mont(ff, f, 0 + 4, f);
+  Elem ffff;     elem_sqr_mul_mont(ffff, ff, 0 + 8, ff);
+  Elem ffffffff; elem_sqr_mul_mont(ffffffff, ffff, 0 + 16, ffff);
+
+  Elem acc;
+
+  /* ffffffff00000001 */
+  elem_sqr_mul_mont(acc, ffffffff, 31 + 1, b_1);
+
+  /* ffffffff00000001000000000000000000000000ffffffff */
+  elem_sqr_mul_mont(acc, acc, 96 + 32, ffffffff);
+
+  /* ffffffff00000001000000000000000000000000ffffffffffffffff */
+  elem_sqr_mul_mont(acc, acc, 0 + 32, ffffffff);
+
+  /* ffffffff00000001000000000000000000000000ffffffffffffffffffff */
+  elem_sqr_mul_mont(acc, acc, 0 + 16, ffff);
+
+  /* ffffffff00000001000000000000000000000000ffffffffffffffffffffff */
+  elem_sqr_mul_mont(acc, acc, 0 + 8, ff);
+
+  /* ffffffff00000001000000000000000000000000fffffffffffffffffffffff */
+  elem_sqr_mul_mont(acc, acc, 0 + 4, f);
+
+  /* ffffffff00000001000000000000000000000000fffffffffffffffffffffffd */
+  elem_sqr_mul_mont(acc, acc, 0 + 2, b_11);
+  elem_sqr_mul_mont(r, acc, 1 + 1, b_1);
+}
 
 
 #if !defined(OPENSSL_X86_64)
