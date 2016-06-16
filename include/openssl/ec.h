@@ -315,15 +315,6 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const BIGNUM *order,
                                           const BIGNUM *cofactor);
 
-/* EC_GROUP_new_arbitrary calls |EC_GROUP_new_curve_GFp| and
- * |EC_GROUP_set_generator|.
- *
- * TODO(davidben): Remove this once
- * https://android-review.googlesource.com/#/c/207990/ has cycled in. */
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_arbitrary(
-    const BIGNUM *p, const BIGNUM *a, const BIGNUM *b, const BIGNUM *gx,
-    const BIGNUM *gy, const BIGNUM *order, const BIGNUM *cofactor);
-
 /* EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
  * NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
  * |EC_GROUP_get0_order| instead. */

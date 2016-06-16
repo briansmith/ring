@@ -404,39 +404,6 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
          BN_copy(&group->cofactor, cofactor);
 }
 
-EC_GROUP *EC_GROUP_new_arbitrary(const BIGNUM *p, const BIGNUM *a,
-                                 const BIGNUM *b, const BIGNUM *gx,
-                                 const BIGNUM *gy, const BIGNUM *order,
-                                 const BIGNUM *cofactor) {
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return NULL;
-  }
-
-  EC_POINT *generator = NULL;
-  EC_GROUP *ret = EC_GROUP_new_curve_GFp(p, a, b, ctx);
-  if (ret == NULL) {
-    goto err;
-  }
-
-  generator = EC_POINT_new(ret);
-  if (generator == NULL ||
-      !EC_POINT_set_affine_coordinates_GFp(ret, generator, gx, gy, ctx) ||
-      !EC_GROUP_set_generator(ret, generator, order, cofactor)) {
-    goto err;
-  }
-
-  EC_POINT_free(generator);
-  BN_CTX_free(ctx);
-  return ret;
-
-err:
-  EC_POINT_free(generator);
-  EC_GROUP_free(ret);
-  BN_CTX_free(ctx);
-  return NULL;
-}
-
 static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
   const struct built_in_curve *curve = &OPENSSL_built_in_curves[built_in_index];
   EC_GROUP *group = NULL;
