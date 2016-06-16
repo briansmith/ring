@@ -387,8 +387,9 @@ struct dsa_st {
 
   int flags;
   /* Normally used to cache montgomery values */
-  CRYPTO_MUTEX method_mont_p_lock;
+  CRYPTO_MUTEX method_mont_lock;
   BN_MONT_CTX *method_mont_p;
+  BN_MONT_CTX *method_mont_q;
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
 };
