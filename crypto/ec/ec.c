@@ -154,14 +154,3 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
   }
   return group->meth->point_get_affine_coordinates(group, point, x, y, ctx);
 }
-
-int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
-                                             const BIGNUM *x, const BIGNUM *y,
-                                             const BIGNUM *z, BN_CTX *ctx) {
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_set_Jprojective_coordinates_GFp(group, point, x, y, z,
-                                                       ctx);
-}
