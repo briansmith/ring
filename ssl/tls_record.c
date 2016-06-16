@@ -360,7 +360,7 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   /* TLS 1.3 hides the actual record type inside the encrypted data. */
   if (ssl->s3->have_version &&
       ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
-      ssl->s3->aead_read_ctx != NULL) {
+      ssl->s3->aead_write_ctx != NULL) {
     size_t padding = SSL3_RT_HEADER_LENGTH + 1;
 
     if (in_len > in_len + padding || max_out < in_len + padding) {
