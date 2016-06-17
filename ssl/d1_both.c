@@ -311,7 +311,9 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
   return 1;
 }
 
-int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
+int dtls1_do_handshake_write(SSL *ssl, size_t *out_offset, const uint8_t *in,
+                             size_t offset, size_t len,
+                             enum dtls1_use_epoch_t use_epoch) {
   dtls1_update_mtu(ssl);
 
   int ret = -1;
@@ -324,13 +326,21 @@ int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
     goto err;
   }
 
-  /* Consume the message header. Fragments will have different headers
-   * prepended. */
-  if (ssl->init_off == 0) {
-    ssl->init_off += DTLS1_HM_HEADER_LENGTH;
-    ssl->init_num -= DTLS1_HM_HEADER_LENGTH;
+  /* Although it may be sent as multiple fragments, a DTLS message must be sent
+   * serialized as a single fragment for purposes of |ssl_do_msg_callback| and
+   * the handshake hash. */
+  CBS cbs, body;
+  struct hm_header_st hdr;
+  CBS_init(&cbs, in, len);
+  if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||
+      hdr.frag_off != 0 ||
+      hdr.frag_len != CBS_len(&body) ||
+      hdr.msg_len != CBS_len(&body) ||
+      !CBS_skip(&body, offset) ||
+      CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    goto err;
   }
-  assert(ssl->init_off >= DTLS1_HM_HEADER_LENGTH);
 
   do {
     /* During the handshake, wbio is buffered to pack messages together. Flush
@@ -354,47 +364,47 @@ int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
     }
     todo -= DTLS1_HM_HEADER_LENGTH;
 
-    if (todo > (size_t)ssl->init_num) {
-      todo = ssl->init_num;
+    if (todo > CBS_len(&body)) {
+      todo = CBS_len(&body);
     }
     if (todo >= (1u << 24)) {
       todo = (1u << 24) - 1;
     }
 
-    size_t len;
+    size_t buf_len;
     if (!CBB_init_fixed(&cbb, buf, ssl->d1->mtu) ||
-        !CBB_add_u8(&cbb, ssl->d1->w_msg_hdr.type) ||
-        !CBB_add_u24(&cbb, ssl->d1->w_msg_hdr.msg_len) ||
-        !CBB_add_u16(&cbb, ssl->d1->w_msg_hdr.seq) ||
-        !CBB_add_u24(&cbb, ssl->init_off - DTLS1_HM_HEADER_LENGTH) ||
+        !CBB_add_u8(&cbb, hdr.type) ||
+        !CBB_add_u24(&cbb, hdr.msg_len) ||
+        !CBB_add_u16(&cbb, hdr.seq) ||
+        !CBB_add_u24(&cbb, offset) ||
         !CBB_add_u24(&cbb, todo) ||
-        !CBB_add_bytes(
-            &cbb, (const uint8_t *)ssl->init_buf->data + ssl->init_off, todo) ||
-        !CBB_finish(&cbb, NULL, &len)) {
+        !CBB_add_bytes(&cbb, CBS_data(&body), todo) ||
+        !CBB_finish(&cbb, NULL, &buf_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
     }
 
     int write_ret =
-        dtls1_write_record(ssl, SSL3_RT_HANDSHAKE, buf, len, use_epoch);
+        dtls1_write_record(ssl, SSL3_RT_HANDSHAKE, buf, buf_len, use_epoch);
     if (write_ret <= 0) {
       ret = write_ret;
       goto err;
     }
-    ssl->init_off += todo;
-    ssl->init_num -= todo;
-  } while (ssl->init_num > 0);
 
-  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, SSL3_RT_HANDSHAKE,
-                      ssl->init_buf->data,
-                      (size_t)(ssl->init_off + ssl->init_num));
+    if (!CBS_skip(&body, todo)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      goto err;
+    }
+    offset += todo;
+  } while (CBS_len(&body) != 0);
 
-  ssl->init_off = 0;
-  ssl->init_num = 0;
+  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, SSL3_RT_HANDSHAKE, in,
+                      len);
 
   ret = 1;
 
 err:
+  *out_offset = offset;
   CBB_cleanup(&cbb);
   OPENSSL_free(buf);
   return ret;
@@ -680,16 +690,10 @@ static int dtls1_retransmit_message(SSL *ssl, hm_fragment *frag) {
   if (frag->msg_header.is_ccs) {
     ret = dtls1_write_change_cipher_spec(ssl, use_epoch);
   } else {
-    /* Restore the message body.
-     * TODO(davidben): Make this less stateful. */
-    memcpy(ssl->init_buf->data, frag->fragment,
-           frag->msg_header.msg_len + DTLS1_HM_HEADER_LENGTH);
-    ssl->init_num = frag->msg_header.msg_len + DTLS1_HM_HEADER_LENGTH;
-
-    dtls1_set_message_header(ssl, frag->msg_header.type,
-                             frag->msg_header.msg_len, frag->msg_header.seq,
-                             0, frag->msg_header.frag_len);
-    ret = dtls1_do_handshake_write(ssl, use_epoch);
+    size_t offset = 0;
+    ret = dtls1_do_handshake_write(
+        ssl, &offset, frag->fragment, offset,
+        frag->msg_header.msg_len + DTLS1_HM_HEADER_LENGTH, use_epoch);
   }
 
   return ret;
@@ -756,10 +760,6 @@ static int dtls1_buffer_change_cipher_spec(SSL *ssl, uint16_t seq) {
 }
 
 int dtls1_buffer_message(SSL *ssl) {
-  /* this function is called immediately after a message has
-   * been serialized */
-  assert(ssl->init_off == 0);
-
   hm_fragment *frag = dtls1_hm_fragment_new(ssl->init_num, 0);
   if (!frag) {
     return 0;

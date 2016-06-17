@@ -56,6 +56,7 @@
 
 #include <openssl/ssl.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -321,8 +322,6 @@ static void get_current_time(const SSL *ssl, struct timeval *out_clock) {
 int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
   uint8_t *message = (uint8_t *)ssl->init_buf->data;
   const struct hm_header_st *msg_hdr = &ssl->d1->w_msg_hdr;
-  uint8_t serialised_header[DTLS1_HM_HEADER_LENGTH];
-  uint8_t *p = serialised_header;
 
   ssl->d1->handshake_write_seq = ssl->d1->next_handshake_write_seq;
   ssl->d1->next_handshake_write_seq++;
@@ -332,23 +331,28 @@ int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
   ssl->init_num = (int)len + DTLS1_HM_HEADER_LENGTH;
   ssl->init_off = 0;
 
-  /* Buffer the message to handle re-xmits */
-  dtls1_buffer_message(ssl);
-
-  /* Add the new message to the handshake hash. Serialize the message
-   * header as if it were a single fragment. */
+  /* Serialize the message header as if it were a single fragment. */
+  uint8_t *p = message;
   *p++ = msg_hdr->type;
   l2n3(msg_hdr->msg_len, p);
   s2n(msg_hdr->seq, p);
   l2n3(0, p);
   l2n3(msg_hdr->msg_len, p);
-  return ssl3_update_handshake_hash(ssl, serialised_header,
-                                    sizeof(serialised_header)) &&
-         ssl3_update_handshake_hash(ssl, message + DTLS1_HM_HEADER_LENGTH, len);
+  assert(p == message + DTLS1_HM_HEADER_LENGTH);
+
+  /* Buffer the message to handle re-xmits. */
+  dtls1_buffer_message(ssl);
+
+  return ssl3_update_handshake_hash(ssl, message, ssl->init_num);
 }
 
 int dtls1_handshake_write(SSL *ssl) {
-  return dtls1_do_handshake_write(ssl, dtls1_use_current_epoch);
+  size_t offset = ssl->init_off;
+  int ret = dtls1_do_handshake_write(
+      ssl, &offset, (const uint8_t *)ssl->init_buf->data, offset, ssl->init_num,
+      dtls1_use_current_epoch);
+  ssl->init_off = offset;
+  return ret;
 }
 
 void dtls1_expect_flight(SSL *ssl) {

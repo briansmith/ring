@@ -1052,7 +1052,15 @@ int ssl3_handshake_write(SSL *ssl);
 void ssl3_expect_flight(SSL *ssl);
 void ssl3_received_flight(SSL *ssl);
 
-int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch);
+/* dtls1_do_handshake_write writes handshake message |in| using the give epoch,
+ * starting |offset| bytes into the message body. It returns one on success. On
+ * error, it returns <= 0 and sets |*out_offset| to the number of bytes of body
+ * which were successfully written. This may be used to retry the write
+ * later. |in| must be a reassembled handshake message with the full DTLS
+ * handshake header. */
+int dtls1_do_handshake_write(SSL *ssl, size_t *out_offset, const uint8_t *in,
+                             size_t offset, size_t len,
+                             enum dtls1_use_epoch_t use_epoch);
 
 /* dtls1_get_record reads a new input record. On success, it places it in
  * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
