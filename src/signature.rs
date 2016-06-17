@@ -104,6 +104,9 @@ pub use ec::suite_b::ecdsa::{
 pub use ec::eddsa::{ED25519_VERIFY, Ed25519KeyPair};
 
 #[cfg(feature = "use_heap")]
+pub use rsa::RSAKeyPair;
+
+#[cfg(feature = "use_heap")]
 pub use rsa::{
     RSA_PKCS1_2048_8192_SHA1_VERIFY,
     RSA_PKCS1_2048_8192_SHA256_VERIFY,
