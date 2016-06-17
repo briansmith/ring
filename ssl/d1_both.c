@@ -749,8 +749,6 @@ int dtls1_buffer_message(SSL *ssl) {
 
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b) {
   if (ssl->state == a) {
-    /* Buffer the message to handle retransmits. */
-    ssl->d1->handshake_write_seq = ssl->d1->next_handshake_write_seq;
     dtls1_buffer_change_cipher_spec(ssl);
     ssl->state = b;
   }

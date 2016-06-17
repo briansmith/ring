@@ -524,7 +524,7 @@ int ssl3_connect(SSL *ssl) {
 
         if (SSL_IS_DTLS(ssl)) {
           ssl->d1->handshake_read_seq = 0;
-          ssl->d1->next_handshake_write_seq = 0;
+          ssl->d1->handshake_write_seq = 0;
         }
 
         ret = 1;

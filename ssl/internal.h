@@ -916,12 +916,7 @@ typedef struct dtls1_state_st {
   /* records being received in the current epoch */
   DTLS1_BITMAP bitmap;
 
-  /* handshake message numbers.
-   * TODO(davidben): It doesn't make much sense to store both of these. Only
-   * store one. */
   uint16_t handshake_write_seq;
-  uint16_t next_handshake_write_seq;
-
   uint16_t handshake_read_seq;
 
   /* save last sequence number for retransmissions */

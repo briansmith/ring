@@ -312,8 +312,8 @@ static void get_current_time(const SSL *ssl, struct timeval *out_clock) {
 int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
   uint8_t *message = (uint8_t *)ssl->init_buf->data;
 
-  ssl->d1->handshake_write_seq = ssl->d1->next_handshake_write_seq;
-  ssl->d1->next_handshake_write_seq++;
+  uint16_t seq = ssl->d1->handshake_write_seq;
+  ssl->d1->handshake_write_seq++;
 
   ssl->init_num = (int)len + DTLS1_HM_HEADER_LENGTH;
   ssl->init_off = 0;
@@ -322,7 +322,7 @@ int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
   uint8_t *p = message;
   *p++ = htype;
   l2n3(len, p);
-  s2n(ssl->d1->handshake_write_seq, p);
+  s2n(seq, p);
   l2n3(0, p);
   l2n3(len, p);
   assert(p == message + DTLS1_HM_HEADER_LENGTH);
