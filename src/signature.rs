@@ -88,7 +88,7 @@
 use {init, signature_impl};
 use untrusted;
 
-#[cfg(not(feature = "no_heap"))]
+#[cfg(feature = "use_heap")]
 pub use ec::suite_b::ecdsa::{
     ECDSA_P256_SHA1_VERIFY,
     ECDSA_P256_SHA256_VERIFY,
@@ -103,7 +103,7 @@ pub use ec::suite_b::ecdsa::{
 
 pub use ec::eddsa::{ED25519_VERIFY, Ed25519KeyPair};
 
-#[cfg(not(feature = "no_heap"))]
+#[cfg(feature = "use_heap")]
 pub use rsa::{
     RSA_PKCS1_2048_8192_SHA1_VERIFY,
     RSA_PKCS1_2048_8192_SHA256_VERIFY,
@@ -170,7 +170,7 @@ pub struct VerificationAlgorithm {
 ///
 /// use ring::signature;
 ///
-/// # #[cfg(not(feature = "no_heap"))]
+/// # #[cfg(feature = "use_heap")]
 /// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
 ///                            msg: untrusted::Input, sig: untrusted::Input)
 ///                            -> Result<(), ()> {

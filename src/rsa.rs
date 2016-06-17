@@ -88,7 +88,7 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
       $digest_alg_name:expr, $digest_alg:expr, $digestinfo_prefix:expr ) => {
-        #[cfg(not(feature = "no_heap"))]
+        #[cfg(feature = "use_heap")]
         #[doc="Verification of RSA PKCS#1 1.5 signatures of "]
         #[doc=$min_bits_str]
         #[doc="-8192 bits "]
@@ -96,7 +96,7 @@ macro_rules! rsa_pkcs1 {
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
         ///
-        /// Not available in `no_heap` mode.
+        /// Only available in `use_heap` mode.
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
                 signature::VerificationAlgorithm {
             implementation: &RSA_PKCS1 {
