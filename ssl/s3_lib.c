@@ -220,6 +220,7 @@ void ssl3_free(SSL *ssl) {
   ssl_write_buffer_clear(ssl);
   SSL_ECDH_CTX_cleanup(&ssl->s3->tmp.ecdh_ctx);
   OPENSSL_free(ssl->s3->tmp.peer_key);
+  OPENSSL_free(ssl->s3->tmp.server_params);
 
   sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
   OPENSSL_free(ssl->s3->tmp.certificate_types);

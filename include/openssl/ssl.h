@@ -4255,6 +4255,11 @@ typedef struct ssl3_state_st {
     /* peer_key is the peer's ECDH key. */
     uint8_t *peer_key;
     uint16_t peer_key_len;
+
+    /* server_params stores the ServerKeyExchange parameters to be signed while
+     * the signature is being computed. */
+    uint8_t *server_params;
+    uint32_t server_params_len;
   } tmp;
 
   /* Connection binding to prevent renegotiation attacks */

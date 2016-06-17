@@ -1159,15 +1159,17 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
   }
 
   CBB cbb, child;
-  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
-                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl))) {
-    goto err;
-  }
+  CBB_zero(&cbb);
 
+  /* Put together the parameters. */
   if (ssl->state == SSL3_ST_SW_KEY_EXCH_A) {
-    /* This is the first iteration, so write parameters. */
     uint32_t alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
     uint32_t alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
+
+    /* Pre-allocate enough room to comfortably fit an ECDHE public key. */
+    if (!CBB_init(&cbb, 128)) {
+      goto err;
+    }
 
     /* PSK ciphers begin with an identity hint. */
     if (alg_a & SSL_aPSK) {
@@ -1236,10 +1238,21 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
       assert(alg_k & SSL_kPSK);
     }
 
-    /* Otherwise, restore |cbb| from the previous iteration.
-     * TODO(davidben): When |ssl->init_buf| is gone, come up with a simpler
-     * pattern. Probably keep the |CBB| around in the handshake state. */
-  } else if (!CBB_did_write(&cbb, ssl->init_num - SSL_HM_HEADER_LENGTH(ssl))) {
+    size_t len;
+    if (!CBB_finish(&cbb, &ssl->s3->tmp.server_params, &len) ||
+        len > 0xffffffffu) {
+      OPENSSL_free(ssl->s3->tmp.server_params);
+      ssl->s3->tmp.server_params = NULL;
+      goto err;
+    }
+    ssl->s3->tmp.server_params_len = (uint32_t)len;
+  }
+
+  /* Assemble the message. */
+  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
+                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
+      !CBB_add_bytes(&cbb, ssl->s3->tmp.server_params,
+                     ssl->s3->tmp.server_params_len)) {
     goto err;
   }
 
@@ -1250,32 +1263,32 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
       goto err;
     }
 
+    /* Determine the signature algorithm. */
+    const EVP_MD *md;
+    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+      md = tls1_choose_signing_digest(ssl);
+      if (!tls12_add_sigandhash(ssl, &cbb, md)) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        goto err;
+      }
+    } else if (ssl_private_key_type(ssl) == EVP_PKEY_RSA) {
+      md = EVP_md5_sha1();
+    } else {
+      md = EVP_sha1();
+    }
+
+    /* Add space for the signature. */
     const size_t max_sig_len = ssl_private_key_max_signature_len(ssl);
+    uint8_t *ptr;
+    if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+        !CBB_reserve(&child, &ptr, max_sig_len)) {
+      goto err;
+    }
+
     size_t sig_len;
     enum ssl_private_key_result_t sign_result;
     if (ssl->state == SSL3_ST_SW_KEY_EXCH_A) {
-      /* This is the first iteration, so set up the signature. Sample the
-       * parameter length before adding a signature algorithm. */
-      if (!CBB_flush(&cbb)) {
-        goto err;
-      }
-      size_t params_len = CBB_len(&cbb);
-
-      /* Determine signature algorithm. */
-      const EVP_MD *md;
-      if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-        md = tls1_choose_signing_digest(ssl);
-        if (!tls12_add_sigandhash(ssl, &cbb, md)) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-          goto err;
-        }
-      } else if (ssl_private_key_type(ssl) == EVP_PKEY_RSA) {
-        md = EVP_md5_sha1();
-      } else {
-        md = EVP_sha1();
-      }
-
       /* Compute the digest and sign it. */
       uint8_t digest[EVP_MAX_MD_SIZE];
       unsigned digest_len = 0;
@@ -1285,26 +1298,17 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
           EVP_DigestInit_ex(&md_ctx, md, NULL) &&
           EVP_DigestUpdate(&md_ctx, ssl->s3->client_random, SSL3_RANDOM_SIZE) &&
           EVP_DigestUpdate(&md_ctx, ssl->s3->server_random, SSL3_RANDOM_SIZE) &&
-          EVP_DigestUpdate(&md_ctx, CBB_data(&cbb), params_len) &&
+          EVP_DigestUpdate(&md_ctx, ssl->s3->tmp.server_params,
+                           ssl->s3->tmp.server_params_len) &&
           EVP_DigestFinal_ex(&md_ctx, digest, &digest_len);
       EVP_MD_CTX_cleanup(&md_ctx);
-      uint8_t *ptr;
-      if (!digest_ret ||
-          !CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !CBB_reserve(&child, &ptr, max_sig_len)) {
+      if (!digest_ret) {
         goto err;
       }
       sign_result = ssl_private_key_sign(ssl, ptr, &sig_len, max_sig_len, md,
                                          digest, digest_len);
     } else {
       assert(ssl->state == SSL3_ST_SW_KEY_EXCH_B);
-
-      /* Retry the signature. */
-      uint8_t *ptr;
-      if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !CBB_reserve(&child, &ptr, max_sig_len)) {
-        goto err;
-      }
       sign_result =
           ssl_private_key_sign_complete(ssl, ptr, &sig_len, max_sig_len);
     }
@@ -1318,10 +1322,6 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
       case ssl_private_key_failure:
         goto err;
       case ssl_private_key_retry:
-        /* Discard the unfinished signature and save the state of |cbb| for the
-         * next iteration. */
-        CBB_discard_child(&cbb);
-        ssl->init_num = SSL_HM_HEADER_LENGTH(ssl) + CBB_len(&cbb);
         ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
         ssl->state = SSL3_ST_SW_KEY_EXCH_B;
         goto err;
@@ -1333,6 +1333,11 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
       !ssl_set_handshake_header(ssl, SSL3_MT_SERVER_KEY_EXCHANGE, length)) {
     goto err;
   }
+
+  OPENSSL_free(ssl->s3->tmp.server_params);
+  ssl->s3->tmp.server_params = NULL;
+  ssl->s3->tmp.server_params_len = 0;
+
   ssl->state = SSL3_ST_SW_KEY_EXCH_C;
   return ssl_do_write(ssl);
 
