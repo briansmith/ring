@@ -317,14 +317,6 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
     goto err;
   }
-  /* TODO(fork): can this be skipped if the cofactor is one or if we're about
-   * to check the private key, below? */
-  if (eckey->group->meth->check_pub_key_order != NULL &&
-      !eckey->group->meth->check_pub_key_order(eckey->group, eckey->pub_key,
-                                               ctx)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
-    goto err;
-  }
   /* in case the priv_key is present :
    * check if generator * priv_key == pub_key
    */

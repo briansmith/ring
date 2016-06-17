@@ -1742,7 +1742,6 @@ const EC_METHOD *EC_GFp_nistp256_method(void) {
       ec_GFp_simple_group_set_curve,
       ec_GFp_nistp256_point_get_affine_coordinates,
       ec_GFp_nistp256_points_mul,
-      0 /* check_pub_key_order */,
       ec_GFp_simple_field_mul, ec_GFp_simple_field_sqr,
       0 /* field_encode */, 0 /* field_decode */,
   };

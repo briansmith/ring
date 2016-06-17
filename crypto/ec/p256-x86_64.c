@@ -559,7 +559,6 @@ const EC_METHOD *EC_GFp_nistz256_method(void) {
       ec_GFp_mont_group_set_curve,
       ecp_nistz256_get_affine,
       ecp_nistz256_points_mul,
-      0 /* check_pub_key_order */,
       ec_GFp_mont_field_mul,
       ec_GFp_mont_field_sqr,
       ec_GFp_mont_field_encode,
