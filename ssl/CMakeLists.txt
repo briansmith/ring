@@ -1,7 +1,5 @@
 include_directories(../include)
 
-add_subdirectory(pqueue)
-
 add_library(
   ssl
 
@@ -33,8 +31,6 @@ add_library(
   t1_enc.c
   t1_lib.c
   tls_record.c
-
-  $<TARGET_OBJECTS:pqueue>
 )
 
 target_link_libraries(ssl crypto)
