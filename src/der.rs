@@ -96,30 +96,50 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
     inner.read_all(error, decoder)
 }
 
-pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
-                            -> Result<untrusted::Input<'a>, ()> {
+pub fn nonnegative_integer_<'a>(input: &mut untrusted::Reader<'a>,
+                                min_value: u8)
+                                -> Result<untrusted::Input<'a>, ()> {
+    // Verify that |input|, which has had any leading zero stripped off, is the
+    // encoding of a value of at least |min_value|.
+    fn check_minimum(input: untrusted::Input, min_value: u8) -> Result<(), ()> {
+        input.read_all((), |input| {
+            let first_byte = try!(input.read_byte());
+            if input.at_end() && first_byte < min_value {
+                return Err(());
+            }
+            let _ = input.skip_to_end();
+            Ok(())
+        })
+    }
+
     let value = try!(expect_tag_and_get_value(input, Tag::Integer));
 
-    // Empty encodings are not allowed.
     value.read_all((), |input| {
+        // Empty encodings are not allowed.
         let first_byte = try!(input.read_byte());
 
         if first_byte == 0 {
             if input.at_end() {
-                // The valid encoding of zero.
+                // |value| is the legal encoding of zero.
+                if min_value > 0 {
+                    return Err(());
+                }
                 return Ok(value);
             }
 
             let after_leading_zero = input.mark();
             let second_byte = try!(input.read_byte());
             if (second_byte & 0x80) == 0 {
-                // A leading zero is only allowed when the value's high bit is
-                // set.
+                // A leading zero is only allowed when the value's high bit
+                // is set.
                 return Err(());
             }
+
             let _ = input.skip_to_end();
-            return input.get_input_between_marks(after_leading_zero,
-                                                 input.mark());
+            let r = try!(input.get_input_between_marks(after_leading_zero,
+                                                       input.mark()));
+            try!(check_minimum(r, min_value));
+            return Ok(r);
         }
 
         // Negative values are not allowed.
@@ -128,6 +148,126 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
         }
 
         let _ = input.skip_to_end();
+        try!(check_minimum(value, min_value));
         Ok(value)
     })
+}
+
+#[inline]
+pub fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>)
+                               -> Result<untrusted::Input<'a>, ()> {
+    nonnegative_integer_(input, 0)
+}
+
+#[inline]
+pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
+                            -> Result<untrusted::Input<'a>, ()> {
+    nonnegative_integer_(input, 1)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use untrusted;
+
+    fn i(value: &[u8]) -> untrusted::Input {
+        untrusted::Input::new(value).unwrap()
+    }
+
+    fn with_good_i<F, R>(value: &[u8], f: F)
+                         where F: FnOnce(&mut untrusted::Reader)
+                         -> Result<R, ()> {
+        let r = i(value).read_all((), f);
+        assert!(r.is_ok());
+    }
+
+    fn with_bad_i<F, R>(value: &[u8], f: F)
+                        where F: FnOnce(&mut untrusted::Reader)
+                         -> Result<R, ()> {
+        let r = i(value).read_all((), f);
+        assert!(r.is_err());
+    }
+
+    static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
+
+    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], &'static [u8])] =
+    &[
+        (&[0x02, 0x01, 0x01], &[0x01]),
+        (&[0x02, 0x01, 0x02], &[0x02]),
+        (&[0x02, 0x01, 0x7e], &[0x7e]),
+        (&[0x02, 0x01, 0x7f], &[0x7f]),
+
+        // Values that need to have an 0x00 prefix to disambiguate them from
+        // them from negative values.
+        (&[0x02, 0x02, 0x00, 0x80], &[0x80]),
+        (&[0x02, 0x02, 0x00, 0x81], &[0x81]),
+        (&[0x02, 0x02, 0x00, 0xfe], &[0xfe]),
+        (&[0x02, 0x02, 0x00, 0xff], &[0xff]),
+    ];
+
+    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] = &[
+        &[], // At end of input
+        &[0x02], // Tag only
+        &[0x02, 0x00], // Empty value
+
+        // Length mismatch
+        &[0x02, 0x00, 0x01],
+        &[0x02, 0x01],
+        &[0x02, 0x01, 0x00, 0x01],
+        &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
+        &[0x02, 0x02, 0x01],
+
+        // Negative values
+        &[0x02, 0x01, 0x80],
+        &[0x02, 0x01, 0xfe],
+        &[0x02, 0x01, 0xff],
+
+        // Values that have an unnecessary leading 0x00
+        &[0x02, 0x02, 0x00, 0x00],
+        &[0x02, 0x02, 0x00, 0x01],
+        &[0x02, 0x02, 0x00, 0x02],
+        &[0x02, 0x02, 0x00, 0x7e],
+        &[0x02, 0x02, 0x00, 0x7f],
+    ];
+
+    #[test]
+    fn test_nonnegative_integer() {
+        with_good_i(ZERO_INTEGER, |input| {
+            assert_eq!(try!(nonnegative_integer(input)), i(&[0x00]));
+            Ok(())
+        });
+        for &(ref test_in, ref test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+            with_good_i(test_in, |input| {
+                assert_eq!(try!(nonnegative_integer(input)), i(test_out));
+                Ok(())
+            });
+        }
+        for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
+            with_bad_i(test_in, |input| {
+                let _ = try!(nonnegative_integer(input));
+                Ok(())
+            });
+        }
+    }
+
+    #[test]
+    fn test_positive_integer() {
+        with_bad_i(ZERO_INTEGER, |input| {
+            let _ = try!(positive_integer(input));
+            Ok(())
+        });
+        for &(ref test_in, ref test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+            with_good_i(test_in, |input| {
+                assert_eq!(try!(positive_integer(input)), i(test_out));
+                Ok(())
+            });
+        }
+        for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
+            with_bad_i(test_in, |input| {
+                let _ = try!(positive_integer(input));
+                Ok(())
+            });
+        }
+    }
 }
