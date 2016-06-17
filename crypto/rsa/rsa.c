@@ -74,10 +74,7 @@ RSA *rsa_new_begin(void) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-
   memset(rsa, 0, sizeof(RSA));
-
-  rsa->flags = RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE;
   return rsa;
 }
 

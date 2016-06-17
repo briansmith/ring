@@ -147,20 +147,6 @@ OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
                                         size_t msg_len);
 
 
-/* Flags. */
-
-/* RSA_FLAG_CACHE_PUBLIC causes a precomputed Montgomery context to be created,
- * on demand, for the public key operations. */
-#define RSA_FLAG_CACHE_PUBLIC 2
-
-/* RSA_FLAG_CACHE_PRIVATE causes a precomputed Montgomery context to be
- * created, on demand, for the private key operations. */
-#define RSA_FLAG_CACHE_PRIVATE 4
-
-/* RSA_FLAG_NO_BLINDING disables blinding of private operations. */
-#define RSA_FLAG_NO_BLINDING 8
-
-
 /* RSA public exponent values. */
 
 #define RSA_3 0x3
@@ -178,8 +164,6 @@ struct rsa_st {
   BIGNUM *dmp1;
   BIGNUM *dmq1;
   BIGNUM *iqmp;
-
-  int flags;
 
   /* Used to cache montgomery values. The creation of these values is protected
    * by |lock|. */
