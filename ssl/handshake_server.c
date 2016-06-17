@@ -497,15 +497,9 @@ int ssl3_accept(SSL *ssl) {
         /* clean a few things up */
         ssl3_cleanup_key_block(ssl);
 
-        /* In DTLS, |init_buf| cannot be released because post-handshake
-         * retransmit relies on that buffer being available as scratch space.
-         *
-         * TODO(davidben): Fix this. */
-        if (!SSL_IS_DTLS(ssl)) {
-          BUF_MEM_free(ssl->init_buf);
-          ssl->init_buf = NULL;
-          ssl->init_num = 0;
-        }
+        BUF_MEM_free(ssl->init_buf);
+        ssl->init_buf = NULL;
+        ssl->init_num = 0;
 
         /* remove buffering on output */
         ssl_free_wbio_buffer(ssl);
