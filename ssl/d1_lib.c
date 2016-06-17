@@ -98,11 +98,7 @@ int dtls1_new(SSL *ssl) {
   memset(d1, 0, sizeof *d1);
 
   d1->buffered_messages = pqueue_new();
-  d1->sent_messages = pqueue_new();
-
-  if (!d1->buffered_messages || !d1->sent_messages) {
-    pqueue_free(d1->buffered_messages);
-    pqueue_free(d1->sent_messages);
+  if (d1->buffered_messages == NULL) {
     OPENSSL_free(d1);
     ssl3_free(ssl);
     return 0;
@@ -128,12 +124,6 @@ static void dtls1_clear_queues(SSL *ssl) {
     dtls1_hm_fragment_free(frag);
     pitem_free(item);
   }
-
-  while ((item = pqueue_pop(ssl->d1->sent_messages)) != NULL) {
-    frag = (hm_fragment *)item->data;
-    dtls1_hm_fragment_free(frag);
-    pitem_free(item);
-  }
 }
 
 void dtls1_free(SSL *ssl) {
@@ -144,9 +134,9 @@ void dtls1_free(SSL *ssl) {
   }
 
   dtls1_clear_queues(ssl);
-
   pqueue_free(ssl->d1->buffered_messages);
-  pqueue_free(ssl->d1->sent_messages);
+
+  dtls_clear_outgoing_messages(ssl);
 
   OPENSSL_free(ssl->d1);
   ssl->d1 = NULL;
@@ -255,7 +245,7 @@ void dtls1_stop_timer(SSL *ssl) {
   BIO_ctrl(ssl->rbio, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
            &ssl->d1->next_timeout);
   /* Clear retransmission buffer */
-  dtls1_clear_record_buffer(ssl);
+  dtls_clear_outgoing_messages(ssl);
 }
 
 int dtls1_check_timeout_num(SSL *ssl) {
@@ -321,23 +311,20 @@ static void get_current_time(const SSL *ssl, struct timeval *out_clock) {
 
 int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
   uint8_t *message = (uint8_t *)ssl->init_buf->data;
-  const struct hm_header_st *msg_hdr = &ssl->d1->w_msg_hdr;
 
   ssl->d1->handshake_write_seq = ssl->d1->next_handshake_write_seq;
   ssl->d1->next_handshake_write_seq++;
 
-  dtls1_set_message_header(ssl, htype, len, ssl->d1->handshake_write_seq, 0,
-                           len);
   ssl->init_num = (int)len + DTLS1_HM_HEADER_LENGTH;
   ssl->init_off = 0;
 
   /* Serialize the message header as if it were a single fragment. */
   uint8_t *p = message;
-  *p++ = msg_hdr->type;
-  l2n3(msg_hdr->msg_len, p);
-  s2n(msg_hdr->seq, p);
+  *p++ = htype;
+  l2n3(len, p);
+  s2n(ssl->d1->handshake_write_seq, p);
   l2n3(0, p);
-  l2n3(msg_hdr->msg_len, p);
+  l2n3(len, p);
   assert(p == message + DTLS1_HM_HEADER_LENGTH);
 
   /* Buffer the message to handle re-xmits. */

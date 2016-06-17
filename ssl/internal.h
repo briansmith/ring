@@ -635,9 +635,25 @@ int SSL_ECDH_CTX_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
 
 /* Handshake messages. */
 
+/* SSL_MAX_HANDSHAKE_FLIGHT is the number of messages, including
+ * ChangeCipherSpec, in the longest handshake flight. Currently this is the
+ * client's second leg in a full handshake when client certificates, NPN, and
+ * Channel ID, are all enabled. */
+#define SSL_MAX_HANDSHAKE_FLIGHT 7
+
 /* ssl_max_handshake_message_len returns the maximum number of bytes permitted
  * in a handshake message for |ssl|. */
 size_t ssl_max_handshake_message_len(const SSL *ssl);
+
+typedef struct dtls_outgoing_message_st {
+  uint8_t *data;
+  uint32_t len;
+  uint16_t epoch;
+  char is_ccs;
+} DTLS_OUTGOING_MESSAGE;
+
+/* dtls_clear_outgoing_messages releases all buffered outgoing messages. */
+void dtls_clear_outgoing_messages(SSL *ssl);
 
 
 /* Callbacks. */
@@ -870,24 +886,14 @@ struct ssl3_enc_method {
 
 #define DTLS1_AL_HEADER_LENGTH 2
 
-/* TODO(davidben): This structure is used for both incoming messages and
- * outgoing messages. |is_ccs| and |epoch| are only used in the latter and
- * should be moved elsewhere. */
 struct hm_header_st {
   uint8_t type;
   uint32_t msg_len;
   uint16_t seq;
   uint32_t frag_off;
   uint32_t frag_len;
-  int is_ccs;
-  /* epoch, for buffered outgoing messages, is the epoch the message was
-   * originally sent in. */
-  uint16_t epoch;
 };
 
-/* TODO(davidben): This structure is used for both incoming messages and
- * outgoing messages. |fragment| and |reassembly| are only used in the former
- * and should be moved elsewhere. */
 typedef struct hm_fragment_st {
   struct hm_header_st msg_header;
   uint8_t *fragment;
@@ -928,15 +934,12 @@ typedef struct dtls1_state_st {
    * size. */
   pqueue buffered_messages;
 
-  /* send_messages is a priority queue of outgoing handshake messages sent in
-   * the most recent handshake flight.
-   *
-   * TODO(davidben): This data structure may as well be a STACK_OF(T). */
-  pqueue sent_messages;
+  /* outgoing_messages is the queue of outgoing messages from the last handshake
+   * flight. */
+  DTLS_OUTGOING_MESSAGE outgoing_messages[SSL_MAX_HANDSHAKE_FLIGHT];
+  uint8_t outgoing_messages_len;
 
   unsigned int mtu; /* max DTLS packet size */
-
-  struct hm_header_st w_msg_hdr;
 
   /* num_timeouts is the number of times the retransmit timer has fired since
    * the last time it was reset. */
@@ -1070,9 +1073,6 @@ int dtls1_get_record(SSL *ssl);
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
 int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
-void dtls1_set_message_header(SSL *ssl, uint8_t mt, unsigned long len,
-                              unsigned short seq_num, unsigned long frag_off,
-                              unsigned long frag_len);
 
 int dtls1_write_app_data(SSL *ssl, const void *buf, int len);
 

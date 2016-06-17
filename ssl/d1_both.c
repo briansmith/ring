@@ -139,11 +139,7 @@ static const unsigned int kMinMTU = 256 - 28;
  * the underlying BIO supplies one. */
 static const unsigned int kDefaultMTU = 1500 - 28;
 
-/* kMaxHandshakeBuffer is the maximum number of handshake messages ahead of the
- * current one to buffer. */
-static const unsigned int kHandshakeBufferSize = 10;
-
-static hm_fragment *dtls1_hm_fragment_new(size_t frag_len, int reassembly) {
+static hm_fragment *dtls1_hm_fragment_new(size_t frag_len) {
   hm_fragment *frag = OPENSSL_malloc(sizeof(hm_fragment));
   if (frag == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -160,20 +156,18 @@ static hm_fragment *dtls1_hm_fragment_new(size_t frag_len, int reassembly) {
       goto err;
     }
 
-    if (reassembly) {
-      /* Initialize reassembly bitmask. */
-      if (frag_len + 7 < frag_len) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-        goto err;
-      }
-      size_t bitmask_len = (frag_len + 7) / 8;
-      frag->reassembly = OPENSSL_malloc(bitmask_len);
-      if (frag->reassembly == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        goto err;
-      }
-      memset(frag->reassembly, 0, bitmask_len);
+    /* Initialize reassembly bitmask. */
+    if (frag_len + 7 < frag_len) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+      goto err;
     }
+    size_t bitmask_len = (frag_len + 7) / 8;
+    frag->reassembly = OPENSSL_malloc(bitmask_len);
+    if (frag->reassembly == NULL) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    memset(frag->reassembly, 0, bitmask_len);
   }
 
   return frag;
@@ -440,8 +434,7 @@ static hm_fragment *dtls1_get_buffered_message(
   hm_fragment *frag;
   if (item == NULL) {
     /* This is the first fragment from this message. */
-    frag = dtls1_hm_fragment_new(msg_hdr->msg_len,
-                                 1 /* reassembly buffer needed */);
+    frag = dtls1_hm_fragment_new(msg_hdr->msg_len);
     if (frag == NULL) {
       return NULL;
     }
@@ -532,7 +525,7 @@ start:
 
     if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
         msg_hdr.seq >
-            (unsigned)ssl->d1->handshake_read_seq + kHandshakeBufferSize) {
+            (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {
       /* Ignore fragments from the past, or ones too far in the future. */
       continue;
     }
@@ -661,39 +654,25 @@ err:
   return -1;
 }
 
-static uint16_t dtls1_get_queue_priority(uint16_t seq, int is_ccs) {
-  assert(seq * 2 >= seq);
-
-  /* The index of the retransmission queue actually is the message sequence
-   * number, since the queue only contains messages of a single handshake.
-   * However, the ChangeCipherSpec has no message sequence number and so using
-   * only the sequence will result in the CCS and Finished having the same
-   * index. To prevent this, the sequence number is multiplied by 2. In case of
-   * a CCS 1 is subtracted. This does not only differ CSS and Finished, it also
-   * maintains the order of the index (important for priority queues) and fits
-   * in the unsigned short variable. */
-  return seq * 2 - is_ccs;
-}
-
-static int dtls1_retransmit_message(SSL *ssl, hm_fragment *frag) {
+static int dtls1_retransmit_message(SSL *ssl,
+                                    const DTLS_OUTGOING_MESSAGE *msg) {
   /* DTLS renegotiation is unsupported, so only epochs 0 (NULL cipher) and 1
    * (negotiated cipher) exist. */
   assert(ssl->d1->w_epoch == 0 || ssl->d1->w_epoch == 1);
-  assert(frag->msg_header.epoch <= ssl->d1->w_epoch);
+  assert(msg->epoch <= ssl->d1->w_epoch);
   enum dtls1_use_epoch_t use_epoch = dtls1_use_current_epoch;
-  if (ssl->d1->w_epoch == 1 && frag->msg_header.epoch == 0) {
+  if (ssl->d1->w_epoch == 1 && msg->epoch == 0) {
     use_epoch = dtls1_use_previous_epoch;
   }
 
   /* TODO(davidben): This cannot handle non-blocking writes. */
   int ret;
-  if (frag->msg_header.is_ccs) {
+  if (msg->is_ccs) {
     ret = dtls1_write_change_cipher_spec(ssl, use_epoch);
   } else {
     size_t offset = 0;
-    ret = dtls1_do_handshake_write(
-        ssl, &offset, frag->fragment, offset,
-        frag->msg_header.msg_len + DTLS1_HM_HEADER_LENGTH, use_epoch);
+    ret = dtls1_do_handshake_write(ssl, &offset, msg->data, offset, msg->len,
+                                   use_epoch);
   }
 
   return ret;
@@ -709,11 +688,9 @@ int dtls1_retransmit_buffered_messages(SSL *ssl) {
   assert(ssl_is_wbio_buffered(ssl));
 
   int ret = -1;
-  piterator iter = pqueue_iterator(ssl->d1->sent_messages);
-  pitem *item;
-  for (item = pqueue_next(&iter); item != NULL; item = pqueue_next(&iter)) {
-    hm_fragment *frag = (hm_fragment *)item->data;
-    if (dtls1_retransmit_message(ssl, frag) <= 0) {
+  size_t i;
+  for (i = 0; i < ssl->d1->outgoing_messages_len; i++) {
+    if (dtls1_retransmit_message(ssl, &ssl->d1->outgoing_messages[i]) <= 0) {
       goto err;
     }
   }
@@ -732,66 +709,41 @@ err:
 }
 
 /* dtls1_buffer_change_cipher_spec adds a ChangeCipherSpec to the current
- * handshake flight, ordered just before the handshake message numbered
- * |seq|. */
-static int dtls1_buffer_change_cipher_spec(SSL *ssl, uint16_t seq) {
-  hm_fragment *frag = dtls1_hm_fragment_new(0 /* frag_len */,
-                                            0 /* no reassembly */);
-  if (frag == NULL) {
-    return 0;
-  }
-  frag->msg_header.is_ccs = 1;
-  frag->msg_header.epoch = ssl->d1->w_epoch;
-
-  uint16_t priority = dtls1_get_queue_priority(seq, 1 /* is_ccs */);
-  uint8_t seq64be[8];
-  memset(seq64be, 0, sizeof(seq64be));
-  seq64be[6] = (uint8_t)(priority >> 8);
-  seq64be[7] = (uint8_t)priority;
-
-  pitem *item = pitem_new(seq64be, frag);
-  if (item == NULL) {
-    dtls1_hm_fragment_free(frag);
+ * handshake flight. */
+static int dtls1_buffer_change_cipher_spec(SSL *ssl) {
+  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  pqueue_insert(ssl->d1->sent_messages, item);
+  DTLS_OUTGOING_MESSAGE *msg =
+      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
+  msg->data = NULL;
+  msg->len = 0;
+  msg->epoch = ssl->d1->w_epoch;
+  msg->is_ccs = 1;
+
+  ssl->d1->outgoing_messages_len++;
   return 1;
 }
 
 int dtls1_buffer_message(SSL *ssl) {
-  hm_fragment *frag = dtls1_hm_fragment_new(ssl->init_num, 0);
-  if (!frag) {
+  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  memcpy(frag->fragment, ssl->init_buf->data, ssl->init_num);
-
-  assert(ssl->d1->w_msg_hdr.msg_len + DTLS1_HM_HEADER_LENGTH ==
-         (unsigned int)ssl->init_num);
-
-  frag->msg_header.msg_len = ssl->d1->w_msg_hdr.msg_len;
-  frag->msg_header.seq = ssl->d1->w_msg_hdr.seq;
-  frag->msg_header.type = ssl->d1->w_msg_hdr.type;
-  frag->msg_header.frag_off = 0;
-  frag->msg_header.frag_len = ssl->d1->w_msg_hdr.msg_len;
-  frag->msg_header.is_ccs = 0;
-  frag->msg_header.epoch = ssl->d1->w_epoch;
-
-  uint16_t priority = dtls1_get_queue_priority(frag->msg_header.seq,
-                                               0 /* handshake */);
-  uint8_t seq64be[8];
-  memset(seq64be, 0, sizeof(seq64be));
-  seq64be[6] = (uint8_t)(priority >> 8);
-  seq64be[7] = (uint8_t)priority;
-
-  pitem *item = pitem_new(seq64be, frag);
-  if (item == NULL) {
-    dtls1_hm_fragment_free(frag);
+  DTLS_OUTGOING_MESSAGE *msg =
+      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
+  msg->data = BUF_memdup(ssl->init_buf->data, ssl->init_num);
+  if (msg->data == NULL) {
     return 0;
   }
+  msg->len = ssl->init_num;
+  msg->epoch = ssl->d1->w_epoch;
+  msg->is_ccs = 0;
 
-  pqueue_insert(ssl->d1->sent_messages, item);
+  ssl->d1->outgoing_messages_len++;
   return 1;
 }
 
@@ -799,35 +751,20 @@ int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b) {
   if (ssl->state == a) {
     /* Buffer the message to handle retransmits. */
     ssl->d1->handshake_write_seq = ssl->d1->next_handshake_write_seq;
-    dtls1_buffer_change_cipher_spec(ssl, ssl->d1->handshake_write_seq);
+    dtls1_buffer_change_cipher_spec(ssl);
     ssl->state = b;
   }
 
   return dtls1_write_change_cipher_spec(ssl, dtls1_use_current_epoch);
 }
 
-/* call this function when the buffered messages are no longer needed */
-void dtls1_clear_record_buffer(SSL *ssl) {
-  pitem *item;
-
-  for (item = pqueue_pop(ssl->d1->sent_messages); item != NULL;
-       item = pqueue_pop(ssl->d1->sent_messages)) {
-    dtls1_hm_fragment_free((hm_fragment *)item->data);
-    pitem_free(item);
+void dtls_clear_outgoing_messages(SSL *ssl) {
+  size_t i;
+  for (i = 0; i < ssl->d1->outgoing_messages_len; i++) {
+    OPENSSL_free(ssl->d1->outgoing_messages[i].data);
+    ssl->d1->outgoing_messages[i].data = NULL;
   }
-}
-
-/* don't actually do the writing, wait till the MTU has been retrieved */
-void dtls1_set_message_header(SSL *ssl, uint8_t mt, unsigned long len,
-                              unsigned short seq_num, unsigned long frag_off,
-                              unsigned long frag_len) {
-  struct hm_header_st *msg_hdr = &ssl->d1->w_msg_hdr;
-
-  msg_hdr->type = mt;
-  msg_hdr->msg_len = len;
-  msg_hdr->seq = seq_num;
-  msg_hdr->frag_off = frag_off;
-  msg_hdr->frag_len = frag_len;
+  ssl->d1->outgoing_messages_len = 0;
 }
 
 unsigned int dtls1_min_mtu(void) {
