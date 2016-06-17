@@ -1822,28 +1822,35 @@ static int ssl3_send_cert_verify(SSL *ssl) {
     return ssl_do_write(ssl);
   }
 
+  assert(ssl_has_private_key(ssl));
+
   CBB cbb, child;
   if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
                       ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl))) {
     goto err;
   }
 
-  assert(ssl_has_private_key(ssl));
+  /* Select and write out the digest type in TLS 1.2. */
+  const EVP_MD *md = NULL;
+  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+    md = tls1_choose_signing_digest(ssl);
+    if (!tls12_add_sigandhash(ssl, &cbb, md)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      goto err;
+    }
+  }
 
+  /* Set aside space for the signature. */
   const size_t max_sig_len = ssl_private_key_max_signature_len(ssl);
+  uint8_t *ptr;
+  if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+      !CBB_reserve(&child, &ptr, max_sig_len)) {
+    goto err;
+  }
+
   size_t sig_len;
   enum ssl_private_key_result_t sign_result;
   if (ssl->state == SSL3_ST_CW_CERT_VRFY_A) {
-    /* Select and write out the digest type in TLS 1.2. */
-    const EVP_MD *md = NULL;
-    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-      md = tls1_choose_signing_digest(ssl);
-      if (!tls12_add_sigandhash(ssl, &cbb, md)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        goto err;
-      }
-    }
-
     /* Compute the digest. In TLS 1.1 and below, the digest type is also
      * selected here. */
     uint8_t digest[EVP_MAX_MD_SIZE];
@@ -1857,25 +1864,10 @@ static int ssl3_send_cert_verify(SSL *ssl) {
     ssl3_free_handshake_buffer(ssl);
 
     /* Sign the digest. */
-    uint8_t *ptr;
-    if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
-        !CBB_reserve(&child, &ptr, max_sig_len)) {
-      goto err;
-    }
     sign_result = ssl_private_key_sign(ssl, ptr, &sig_len, max_sig_len, md,
                                        digest, digest_len);
   } else {
     assert(ssl->state == SSL3_ST_CW_CERT_VRFY_B);
-
-    /* Skip over the already written signature algorithm and retry the
-     * signature. */
-    uint8_t *ptr;
-    if ((ssl3_protocol_version(ssl) >= TLS1_2_VERSION &&
-         !CBB_did_write(&cbb, 2)) ||
-        !CBB_add_u16_length_prefixed(&cbb, &child) ||
-        !CBB_reserve(&child, &ptr, max_sig_len)) {
-      goto err;
-    }
     sign_result =
         ssl_private_key_sign_complete(ssl, ptr, &sig_len, max_sig_len);
   }
