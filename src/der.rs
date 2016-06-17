@@ -96,9 +96,8 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
     inner.read_all(error, decoder)
 }
 
-pub fn nonnegative_integer_<'a>(input: &mut untrusted::Reader<'a>,
-                                min_value: u8)
-                                -> Result<untrusted::Input<'a>, ()> {
+fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
+                           -> Result<untrusted::Input<'a>, ()> {
     // Verify that |input|, which has had any leading zero stripped off, is the
     // encoding of a value of at least |min_value|.
     fn check_minimum(input: untrusted::Input, min_value: u8) -> Result<(), ()> {
@@ -153,16 +152,23 @@ pub fn nonnegative_integer_<'a>(input: &mut untrusted::Reader<'a>,
     })
 }
 
+/// Parse as integer with a value in the in the range [0, 255], returning its
+/// numeric value. This is typically used for parsing version numbers.
 #[inline]
-pub fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>)
-                               -> Result<untrusted::Input<'a>, ()> {
-    nonnegative_integer_(input, 0)
+pub fn small_nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>)
+                                     -> Result<u8, ()> {
+    let value = try!(nonnegative_integer(input, 0));
+    value.read_all((), |input| {
+        input.read_byte()
+    })
 }
 
+/// Parses a positive DER integer, returning the big-endian-encoded value, sans
+/// any leading zero byte.
 #[inline]
 pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
                             -> Result<untrusted::Input<'a>, ()> {
-    nonnegative_integer_(input, 1)
+    nonnegative_integer(input, 1)
 }
 
 
@@ -191,19 +197,19 @@ mod tests {
 
     static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
 
-    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], &'static [u8])] =
+    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], u8)] =
     &[
-        (&[0x02, 0x01, 0x01], &[0x01]),
-        (&[0x02, 0x01, 0x02], &[0x02]),
-        (&[0x02, 0x01, 0x7e], &[0x7e]),
-        (&[0x02, 0x01, 0x7f], &[0x7f]),
+        (&[0x02, 0x01, 0x01], 0x01),
+        (&[0x02, 0x01, 0x02], 0x02),
+        (&[0x02, 0x01, 0x7e], 0x7e),
+        (&[0x02, 0x01, 0x7f], 0x7f),
 
         // Values that need to have an 0x00 prefix to disambiguate them from
         // them from negative values.
-        (&[0x02, 0x02, 0x00, 0x80], &[0x80]),
-        (&[0x02, 0x02, 0x00, 0x81], &[0x81]),
-        (&[0x02, 0x02, 0x00, 0xfe], &[0xfe]),
-        (&[0x02, 0x02, 0x00, 0xff], &[0xff]),
+        (&[0x02, 0x02, 0x00, 0x80], 0x80),
+        (&[0x02, 0x02, 0x00, 0x81], 0x81),
+        (&[0x02, 0x02, 0x00, 0xfe], 0xfe),
+        (&[0x02, 0x02, 0x00, 0xff], 0xff),
     ];
 
     static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] = &[
@@ -232,20 +238,20 @@ mod tests {
     ];
 
     #[test]
-    fn test_nonnegative_integer() {
+    fn test_small_nonnegative_integer() {
         with_good_i(ZERO_INTEGER, |input| {
-            assert_eq!(try!(nonnegative_integer(input)), i(&[0x00]));
+            assert_eq!(try!(small_nonnegative_integer(input)), 0x00);
             Ok(())
         });
-        for &(ref test_in, ref test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+        for &(ref test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
             with_good_i(test_in, |input| {
-                assert_eq!(try!(nonnegative_integer(input)), i(test_out));
+                assert_eq!(try!(small_nonnegative_integer(input)), test_out);
                 Ok(())
             });
         }
         for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
             with_bad_i(test_in, |input| {
-                let _ = try!(nonnegative_integer(input));
+                let _ = try!(small_nonnegative_integer(input));
                 Ok(())
             });
         }
@@ -257,9 +263,10 @@ mod tests {
             let _ = try!(positive_integer(input));
             Ok(())
         });
-        for &(ref test_in, ref test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+        for &(ref test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
             with_good_i(test_in, |input| {
-                assert_eq!(try!(positive_integer(input)), i(test_out));
+                let test_out = [test_out];
+                assert_eq!(try!(positive_integer(input)), i(&test_out[..]));
                 Ok(())
             });
         }
