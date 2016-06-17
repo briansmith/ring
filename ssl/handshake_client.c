@@ -611,7 +611,7 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
 
 static int ssl3_send_client_hello(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CLNT_HELLO_B) {
-    return ssl_do_write(ssl);
+    return ssl->method->write_message(ssl);
   }
 
   /* The handshake buffer is reset on every ClientHello. Notably, in DTLS, we
@@ -662,12 +662,11 @@ static int ssl3_send_client_hello(SSL *ssl) {
   int has_session = ssl->session != NULL &&
                     !ssl->s3->initial_handshake_complete;
 
-  CBB child;
-  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
-                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
-      !CBB_add_u16(&cbb, ssl->client_version) ||
-      !CBB_add_bytes(&cbb, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+  CBB body, child;
+  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO) ||
+      !CBB_add_u16(&body, ssl->client_version) ||
+      !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_u8_length_prefixed(&body, &child) ||
       (has_session &&
        !CBB_add_bytes(&child, ssl->session->session_id,
                       ssl->session->session_id_length))) {
@@ -675,25 +674,24 @@ static int ssl3_send_client_hello(SSL *ssl) {
   }
 
   if (SSL_IS_DTLS(ssl)) {
-    if (!CBB_add_u8_length_prefixed(&cbb, &child) ||
+    if (!CBB_add_u8_length_prefixed(&body, &child) ||
         !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
       goto err;
     }
   }
 
-  size_t length;
-  if (!ssl3_write_client_cipher_list(ssl, &cbb) ||
-      !CBB_add_u8(&cbb, 1 /* one compression method */) ||
-      !CBB_add_u8(&cbb, 0 /* null compression */) ||
-      !ssl_add_clienthello_tlsext(ssl, &cbb,
-                                  CBB_len(&cbb) + SSL_HM_HEADER_LENGTH(ssl)) ||
-      !CBB_finish(&cbb, NULL, &length) ||
-      !ssl_set_handshake_header(ssl, SSL3_MT_CLIENT_HELLO, length)) {
+  size_t header_len =
+      SSL_IS_DTLS(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+  if (!ssl3_write_client_cipher_list(ssl, &body) ||
+      !CBB_add_u8(&body, 1 /* one compression method */) ||
+      !CBB_add_u8(&body, 0 /* null compression */) ||
+      !ssl_add_clienthello_tlsext(ssl, &body, header_len + CBB_len(&body)) ||
+      !ssl->method->finish_message(ssl, &cbb)) {
     goto err;
   }
 
   ssl->state = SSL3_ST_CW_CLNT_HELLO_B;
-  return ssl_do_write(ssl);
+  return ssl->method->write_message(ssl);
 
 err:
   CBB_cleanup(&cbb);
@@ -1594,10 +1592,10 @@ static int ssl3_send_client_certificate(SSL *ssl) {
         return 1;
       }
 
-      /* In TLS, send an empty Certificate message. */
-      uint8_t *p = ssl_handshake_start(ssl);
-      l2n3(0, p);
-      if (!ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE, 3)) {
+      CBB cbb, body;
+      if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
+          !CBB_add_u24(&body, 0 /* no certificates */) ||
+          !ssl->method->finish_message(ssl, &cbb)) {
         return -1;
       }
     } else if (!ssl3_output_cert_chain(ssl)) {
@@ -1607,7 +1605,7 @@ static int ssl3_send_client_certificate(SSL *ssl) {
   }
 
   assert(ssl->state == SSL3_ST_CW_CERT_D);
-  return ssl_do_write(ssl);
+  return ssl->method->write_message(ssl);
 }
 
 OPENSSL_COMPILE_ASSERT(sizeof(size_t) >= sizeof(unsigned),
@@ -1615,15 +1613,15 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) >= sizeof(unsigned),
 
 static int ssl3_send_client_key_exchange(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_KEY_EXCH_B) {
-    return ssl_do_write(ssl);
+    return ssl->method->write_message(ssl);
   }
   assert(ssl->state == SSL3_ST_CW_KEY_EXCH_A);
 
   uint8_t *pms = NULL;
   size_t pms_len = 0;
-  CBB cbb;
-  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
-                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl))) {
+  CBB cbb, body;
+  if (!ssl->method->init_message(ssl, &cbb, &body,
+                                 SSL3_MT_CLIENT_KEY_EXCHANGE)) {
     goto err;
   }
 
@@ -1660,10 +1658,10 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
 
     /* Write out psk_identity. */
     CBB child;
-    if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+    if (!CBB_add_u16_length_prefixed(&body, &child) ||
         !CBB_add_bytes(&child, (const uint8_t *)identity,
                        OPENSSL_strnlen(identity, sizeof(identity))) ||
-        !CBB_flush(&cbb)) {
+        !CBB_flush(&body)) {
       goto err;
     }
   }
@@ -1698,11 +1696,11 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
       goto err;
     }
 
-    CBB child, *enc_pms = &cbb;
+    CBB child, *enc_pms = &body;
     size_t enc_pms_len;
     /* In TLS, there is a length prefix. */
     if (ssl->version > SSL3_VERSION) {
-      if (!CBB_add_u16_length_prefixed(&cbb, &child)) {
+      if (!CBB_add_u16_length_prefixed(&body, &child)) {
         goto err;
       }
       enc_pms = &child;
@@ -1715,13 +1713,13 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
         /* Log the premaster secret, if logging is enabled. */
         !ssl_log_rsa_client_key_exchange(ssl, ptr, enc_pms_len, pms, pms_len) ||
         !CBB_did_write(enc_pms, enc_pms_len) ||
-        !CBB_flush(&cbb)) {
+        !CBB_flush(&body)) {
       goto err;
     }
   } else if (alg_k & (SSL_kECDHE|SSL_kDHE|SSL_kCECPQ1)) {
     /* Generate a keypair and serialize the public half. */
     CBB child;
-    if (!SSL_ECDH_CTX_add_key(&ssl->s3->tmp.ecdh_ctx, &cbb, &child)) {
+    if (!SSL_ECDH_CTX_add_key(&ssl->s3->tmp.ecdh_ctx, &body, &child)) {
       goto err;
     }
 
@@ -1733,7 +1731,7 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       goto err;
     }
-    if (!CBB_flush(&cbb)) {
+    if (!CBB_flush(&body)) {
       goto err;
     }
 
@@ -1783,9 +1781,7 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
 
   /* The message must be added to the finished hash before calculating the
    * master secret. */
-  size_t length;
-  if (!CBB_finish(&cbb, NULL, &length) ||
-      !ssl_set_handshake_header(ssl, SSL3_MT_CLIENT_KEY_EXCHANGE, length)) {
+  if (!ssl->method->finish_message(ssl, &cbb)) {
     goto err;
   }
   ssl->state = SSL3_ST_CW_KEY_EXCH_B;
@@ -1799,8 +1795,7 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
   OPENSSL_cleanse(pms, pms_len);
   OPENSSL_free(pms);
 
-  /* SSL3_ST_CW_KEY_EXCH_B */
-  return ssl_do_write(ssl);
+  return ssl->method->write_message(ssl);
 
 err:
   CBB_cleanup(&cbb);
@@ -1813,14 +1808,14 @@ err:
 
 static int ssl3_send_cert_verify(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CERT_VRFY_C) {
-    return ssl_do_write(ssl);
+    return ssl->method->write_message(ssl);
   }
 
   assert(ssl_has_private_key(ssl));
 
-  CBB cbb, child;
-  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
-                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl))) {
+  CBB cbb, body, child;
+  if (!ssl->method->init_message(ssl, &cbb, &body,
+                                 SSL3_MT_CERTIFICATE_VERIFY)) {
     goto err;
   }
 
@@ -1828,7 +1823,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
   const EVP_MD *md = NULL;
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     md = tls1_choose_signing_digest(ssl);
-    if (!tls12_add_sigandhash(ssl, &cbb, md)) {
+    if (!tls12_add_sigandhash(ssl, &body, md)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
     }
@@ -1837,7 +1832,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
   /* Set aside space for the signature. */
   const size_t max_sig_len = ssl_private_key_max_signature_len(ssl);
   uint8_t *ptr;
-  if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+  if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &ptr, max_sig_len)) {
     goto err;
   }
@@ -1877,15 +1872,13 @@ static int ssl3_send_cert_verify(SSL *ssl) {
       goto err;
   }
 
-  size_t length;
   if (!CBB_did_write(&child, sig_len) ||
-      !CBB_finish(&cbb, NULL, &length) ||
-      !ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE_VERIFY, length)) {
+      !ssl->method->finish_message(ssl, &cbb)) {
     goto err;
   }
 
   ssl->state = SSL3_ST_CW_CERT_VRFY_C;
-  return ssl_do_write(ssl);
+  return ssl->method->write_message(ssl);
 
 err:
   CBB_cleanup(&cbb);
@@ -1894,7 +1887,7 @@ err:
 
 static int ssl3_send_next_proto(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_NEXT_PROTO_B) {
-    return ssl_do_write(ssl);
+    return ssl->method->write_message(ssl);
   }
 
   assert(ssl->state == SSL3_ST_CW_NEXT_PROTO_A);
@@ -1902,30 +1895,26 @@ static int ssl3_send_next_proto(SSL *ssl) {
   static const uint8_t kZero[32] = {0};
   size_t padding_len = 32 - ((ssl->s3->next_proto_negotiated_len + 2) % 32);
 
-  CBB cbb, child;
-  size_t length;
-  CBB_zero(&cbb);
-  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
-                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
-      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+  CBB cbb, body, child;
+  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_NEXT_PROTO) ||
+      !CBB_add_u8_length_prefixed(&body, &child) ||
       !CBB_add_bytes(&child, ssl->s3->next_proto_negotiated,
                      ssl->s3->next_proto_negotiated_len) ||
-      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_u8_length_prefixed(&body, &child) ||
       !CBB_add_bytes(&child, kZero, padding_len) ||
-      !CBB_finish(&cbb, NULL, &length) ||
-      !ssl_set_handshake_header(ssl, SSL3_MT_NEXT_PROTO, length)) {
+      !ssl->method->finish_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
   }
 
   ssl->state = SSL3_ST_CW_NEXT_PROTO_B;
-  return ssl_do_write(ssl);
+  return ssl->method->write_message(ssl);
 }
 
 static int ssl3_send_channel_id(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CHANNEL_ID_B) {
-    return ssl_do_write(ssl);
+    return ssl->method->write_message(ssl);
   }
 
   assert(ssl->state == SSL3_ST_CW_CHANNEL_ID_A);
@@ -1975,27 +1964,22 @@ static int ssl3_send_channel_id(SSL *ssl) {
     goto err;
   }
 
-  CBB cbb, child;
-  size_t length;
-  CBB_zero(&cbb);
-  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
-                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
-      !CBB_add_u16(&cbb, TLSEXT_TYPE_channel_id) ||
-      !CBB_add_u16_length_prefixed(&cbb, &child) ||
-      !BN_bn2cbb_padded(&child, 32, x) ||
-      !BN_bn2cbb_padded(&child, 32, y) ||
+  CBB cbb, body, child;
+  if (!ssl->method->init_message(ssl, &cbb, &body,
+                                 SSL3_MT_CHANNEL_ID_ENCRYPTED_EXTENSIONS) ||
+      !CBB_add_u16(&body, TLSEXT_TYPE_channel_id) ||
+      !CBB_add_u16_length_prefixed(&body, &child) ||
+      !BN_bn2cbb_padded(&child, 32, x) || !BN_bn2cbb_padded(&child, 32, y) ||
       !BN_bn2cbb_padded(&child, 32, sig->r) ||
       !BN_bn2cbb_padded(&child, 32, sig->s) ||
-      !CBB_finish(&cbb, NULL, &length) ||
-      !ssl_set_handshake_header(ssl, SSL3_MT_CHANNEL_ID_ENCRYPTED_EXTENSIONS,
-                                length)) {
+      !ssl->method->finish_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     goto err;
   }
 
   ssl->state = SSL3_ST_CW_CHANNEL_ID_B;
-  ret = ssl_do_write(ssl);
+  ret = ssl->method->write_message(ssl);
 
 err:
   BN_free(x);

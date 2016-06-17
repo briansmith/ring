@@ -117,6 +117,7 @@
 #include <string.h>
 
 #include <openssl/buf.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -132,61 +133,118 @@
 /* ssl3_do_write sends |ssl->init_buf| in records of type 'type'
  * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns 1 on success
  * and <= 0 on error. */
-int ssl3_do_write(SSL *ssl, int type) {
-  int ret = ssl3_write_bytes(ssl, type, ssl->init_buf->data, ssl->init_num);
+static int ssl3_do_write(SSL *ssl, int type, const uint8_t *data, size_t len) {
+  int ret = ssl3_write_bytes(ssl, type, data, len);
   if (ret <= 0) {
     return ret;
   }
 
   /* ssl3_write_bytes writes the data in its entirety. */
-  assert(ret == ssl->init_num);
-  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type,
-                      ssl->init_buf->data, (size_t)ssl->init_num);
-  ssl->init_num = 0;
+  assert((size_t)ret == len);
+  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type, data, len);
+  return 1;
+}
+
+int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
+  CBB_zero(cbb);
+  if (ssl->s3->pending_message != NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  /* Pick a modest size hint to save most of the |realloc| calls. */
+  if (!CBB_init(cbb, 64) ||
+      !CBB_add_u8(cbb, type) ||
+      !CBB_add_u24_length_prefixed(cbb, body)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  return 1;
+}
+
+int ssl3_finish_message(SSL *ssl, CBB *cbb) {
+  if (ssl->s3->pending_message != NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  uint8_t *msg = NULL;
+  size_t len;
+  if (!CBB_finish(cbb, &msg, &len) ||
+      len > 0xffffffffu) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    OPENSSL_free(msg);
+    return 0;
+  }
+
+  ssl3_update_handshake_hash(ssl, msg, len);
+
+  ssl->s3->pending_message = msg;
+  ssl->s3->pending_message_len = (uint32_t)len;
+  return 1;
+}
+
+int ssl3_write_message(SSL *ssl) {
+  if (ssl->s3->pending_message == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  int ret = ssl3_do_write(ssl, SSL3_RT_HANDSHAKE, ssl->s3->pending_message,
+                          ssl->s3->pending_message_len);
+  if (ret <= 0) {
+    return ret;
+  }
+
+  OPENSSL_free(ssl->s3->pending_message);
+  ssl->s3->pending_message = NULL;
+  ssl->s3->pending_message_len = 0;
   return 1;
 }
 
 int ssl3_send_finished(SSL *ssl, int a, int b) {
-  uint8_t *p;
-  int n;
-
-  if (ssl->state == a) {
-    p = ssl_handshake_start(ssl);
-
-    n = ssl->s3->enc_method->final_finish_mac(ssl, ssl->server,
-                                              ssl->s3->tmp.finish_md);
-    if (n == 0) {
-      return 0;
-    }
-    ssl->s3->tmp.finish_md_len = n;
-    memcpy(p, ssl->s3->tmp.finish_md, n);
-
-    /* Log the master secret, if logging is enabled. */
-    if (!ssl_log_master_secret(ssl, ssl->s3->client_random, SSL3_RANDOM_SIZE,
-                               ssl->session->master_key,
-                               ssl->session->master_key_length)) {
-      return 0;
-    }
-
-    /* Copy the finished so we can use it for renegotiation checks */
-    if (ssl->server) {
-      assert(n <= EVP_MAX_MD_SIZE);
-      memcpy(ssl->s3->previous_server_finished, ssl->s3->tmp.finish_md, n);
-      ssl->s3->previous_server_finished_len = n;
-    } else {
-      assert(n <= EVP_MAX_MD_SIZE);
-      memcpy(ssl->s3->previous_client_finished, ssl->s3->tmp.finish_md, n);
-      ssl->s3->previous_client_finished_len = n;
-    }
-
-    if (!ssl_set_handshake_header(ssl, SSL3_MT_FINISHED, n)) {
-      return 0;
-    }
-    ssl->state = b;
+  if (ssl->state == b) {
+    return ssl->method->write_message(ssl);
   }
 
-  /* SSL3_ST_SEND_xxxxxx_HELLO_B */
-  return ssl_do_write(ssl);
+  int n = ssl->s3->enc_method->final_finish_mac(ssl, ssl->server,
+                                                ssl->s3->tmp.finish_md);
+  if (n == 0) {
+    return 0;
+  }
+  ssl->s3->tmp.finish_md_len = n;
+
+  /* Log the master secret, if logging is enabled. */
+  if (!ssl_log_master_secret(ssl, ssl->s3->client_random, SSL3_RANDOM_SIZE,
+                             ssl->session->master_key,
+                             ssl->session->master_key_length)) {
+    return 0;
+  }
+
+  /* Copy the finished so we can use it for renegotiation checks */
+  if (ssl->server) {
+    assert(n <= EVP_MAX_MD_SIZE);
+    memcpy(ssl->s3->previous_server_finished, ssl->s3->tmp.finish_md, n);
+    ssl->s3->previous_server_finished_len = n;
+  } else {
+    assert(n <= EVP_MAX_MD_SIZE);
+    memcpy(ssl->s3->previous_client_finished, ssl->s3->tmp.finish_md, n);
+    ssl->s3->previous_client_finished_len = n;
+  }
+
+  CBB cbb, body;
+  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
+      !CBB_add_bytes(&body, ssl->s3->tmp.finish_md,
+                     ssl->s3->tmp.finish_md_len) ||
+      !ssl->method->finish_message(ssl, &cbb)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    CBB_cleanup(&cbb);
+    return -1;
+  }
+
+  ssl->state = b;
+  return ssl->method->write_message(ssl);
 }
 
 /* ssl3_take_mac calculates the Finished MAC for the handshakes messages seen
@@ -262,30 +320,24 @@ err:
 }
 
 int ssl3_send_change_cipher_spec(SSL *ssl, int a, int b) {
-  if (ssl->state == a) {
-    *((uint8_t *)ssl->init_buf->data) = SSL3_MT_CCS;
-    ssl->init_num = 1;
+  static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
 
-    ssl->state = b;
-  }
-
-  /* SSL3_ST_CW_CHANGE_B */
-  return ssl3_do_write(ssl, SSL3_RT_CHANGE_CIPHER_SPEC);
+  ssl->state = b;
+  return ssl3_do_write(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
+                       sizeof(kChangeCipherSpec));
 }
 
 int ssl3_output_cert_chain(SSL *ssl) {
-  uint8_t *p;
-  unsigned long l = 3 + SSL_HM_HEADER_LENGTH(ssl);
-
-  if (!ssl_add_cert_chain(ssl, &l)) {
+  CBB cbb, body;
+  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
+      !ssl_add_cert_chain(ssl, &body) ||
+      !ssl->method->finish_message(ssl, &cbb)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    CBB_cleanup(&cbb);
     return 0;
   }
 
-  l -= 3 + SSL_HM_HEADER_LENGTH(ssl);
-  p = ssl_handshake_start(ssl);
-  l2n3(l, p);
-  l += 3;
-  return ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE, l);
+  return 1;
 }
 
 size_t ssl_max_handshake_message_len(const SSL *ssl) {

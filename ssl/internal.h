@@ -723,28 +723,16 @@ int ssl_write_buffer_flush(SSL *ssl);
 void ssl_write_buffer_clear(SSL *ssl);
 
 
+/* Certificate functions. */
+
+/* ssl_add_cert_to_cbb adds |x509| to |cbb|. It returns one on success and zero
+ * on error. */
+int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
-
-#define l2n(l, c)                            \
-  (*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l)) & 0xff))
-
-#define s2n(s, c)                              \
-  ((c[0] = (uint8_t)(((s) >> 8) & 0xff), \
-    c[1] = (uint8_t)(((s)) & 0xff)),     \
-   c += 2)
-
-#define l2n3(l, c)                              \
-  ((c[0] = (uint8_t)(((l) >> 16) & 0xff), \
-    c[1] = (uint8_t)(((l) >> 8) & 0xff),  \
-    c[2] = (uint8_t)(((l)) & 0xff)),      \
-   c += 3)
-
-/* LOCAL STUFF */
 
 #define TLSEXT_CHANNEL_ID_SIZE 128
 
@@ -839,12 +827,16 @@ struct ssl_protocol_method_st {
   /* supports_cipher returns one if |cipher| is supported by this protocol and
    * zero otherwise. */
   int (*supports_cipher)(const SSL_CIPHER *cipher);
-  /* Handshake header length */
-  unsigned int hhlen;
-  /* Set the handshake header */
-  int (*set_handshake_header)(SSL *ssl, int type, unsigned long len);
-  /* Write out handshake message */
-  int (*do_write)(SSL *ssl);
+  /* init_message begins a new handshake message of type |type|. |cbb| is the
+   * root CBB to be passed into |finish_message|. |*body| is set to a child CBB
+   * the caller should write to. It returns one on success and zero on error. */
+  int (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+  /* finish_message finishes a handshake message and prepares it to be
+   * written. It returns one on success and zero on error. */
+  int (*finish_message)(SSL *ssl, CBB *cbb);
+  /* write_message writes the next message to the transport. It returns one on
+   * success and <= 0 on error. */
+  int (*write_message)(SSL *ssl);
   /* send_change_cipher_spec sends a ChangeCipherSpec message. */
   int (*send_change_cipher_spec)(SSL *ssl, int a, int b);
   /* expect_flight is called when the handshake expects a flight of messages from
@@ -869,13 +861,6 @@ struct ssl3_enc_method {
   int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
 };
-
-#define SSL_HM_HEADER_LENGTH(ssl) ssl->method->hhlen
-#define ssl_handshake_start(ssl) \
-  (((uint8_t *)ssl->init_buf->data) + ssl->method->hhlen)
-#define ssl_set_handshake_header(ssl, htype, len) \
-  ssl->method->set_handshake_header(ssl, htype, len)
-#define ssl_do_write(ssl) ssl->method->do_write(ssl)
 
 /* lengths of messages */
 #define DTLS1_COOKIE_LENGTH 256
@@ -988,7 +973,7 @@ void ssl_cert_set_cert_cb(CERT *cert,
                           int (*cb)(SSL *ssl, void *arg), void *arg);
 
 int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain);
-int ssl_add_cert_chain(SSL *ssl, unsigned long *l);
+int ssl_add_cert_chain(SSL *ssl, CBB *cbb);
 void ssl_update_cache(SSL *ssl, int mode);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
@@ -1008,9 +993,7 @@ int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl, int state_a, int state_b);
 void ssl3_cleanup_key_block(SSL *ssl);
-int ssl3_do_write(SSL *ssl, int type);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
-int ssl3_get_req_cert_type(SSL *ssl, uint8_t *p);
 long ssl3_get_message(SSL *ssl, int msg_type,
                       enum ssl_hash_message_t hash_message, int *ok);
 
@@ -1046,20 +1029,16 @@ void ssl3_free(SSL *ssl);
 int ssl3_accept(SSL *ssl);
 int ssl3_connect(SSL *ssl);
 
-int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len);
-int ssl3_handshake_write(SSL *ssl);
+int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+int ssl3_finish_message(SSL *ssl, CBB *cbb);
+int ssl3_write_message(SSL *ssl);
+
 void ssl3_expect_flight(SSL *ssl);
 void ssl3_received_flight(SSL *ssl);
 
-/* dtls1_do_handshake_write writes handshake message |in| using the give epoch,
- * starting |offset| bytes into the message body. It returns one on success. On
- * error, it returns <= 0 and sets |*out_offset| to the number of bytes of body
- * which were successfully written. This may be used to retry the write
- * later. |in| must be a reassembled handshake message with the full DTLS
- * handshake header. */
-int dtls1_do_handshake_write(SSL *ssl, size_t *out_offset, const uint8_t *in,
-                             size_t offset, size_t len,
-                             enum dtls1_use_epoch_t use_epoch);
+int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+int dtls1_finish_message(SSL *ssl, CBB *cbb);
+int dtls1_write_message(SSL *ssl);
 
 /* dtls1_get_record reads a new input record. On success, it places it in
  * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
@@ -1079,13 +1058,11 @@ int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
 
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b);
 int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
-int dtls1_buffer_message(SSL *ssl);
 int dtls1_retransmit_buffered_messages(SSL *ssl);
 void dtls1_clear_record_buffer(SSL *ssl);
 int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
                          CBS *out_body);
 int dtls1_check_timeout_num(SSL *ssl);
-int dtls1_set_handshake_header(SSL *ssl, int type, unsigned long len);
 int dtls1_handshake_write(SSL *ssl);
 void dtls1_expect_flight(SSL *ssl);
 void dtls1_received_flight(SSL *ssl);

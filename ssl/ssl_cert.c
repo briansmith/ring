@@ -416,56 +416,58 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
   return add_client_CA(&ctx->client_CA, x509);
 }
 
-/* Add a certificate to a BUF_MEM structure */
-static int ssl_add_cert_to_buf(BUF_MEM *buf, unsigned long *l, X509 *x) {
-  int n;
-  uint8_t *p;
-
-  n = i2d_X509(x, NULL);
-  if (n < 0 || !BUF_MEM_grow_clean(buf, (int)(n + (*l) + 3))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
+int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509) {
+  int len = i2d_X509(x509, NULL);
+  if (len < 0) {
     return 0;
   }
-  p = (uint8_t *)&(buf->data[*l]);
-  l2n3(n, p);
-  n = i2d_X509(x, &p);
-  if (n < 0) {
-      /* This shouldn't happen. */
-      OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
-      return 0;
+  uint8_t *buf;
+  if (!CBB_add_space(cbb, &buf, len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
-  *l += n + 3;
-
+  if (buf != NULL && i2d_X509(x509, &buf) < 0) {
+    return 0;
+  }
   return 1;
 }
 
-/* Add certificate chain to internal SSL BUF_MEM structure. */
-int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
+static int ssl_add_cert_with_length(CBB *cbb, X509 *x509) {
+  CBB child;
+  return CBB_add_u24_length_prefixed(cbb, &child) &&
+         ssl_add_cert_to_cbb(&child, x509) &&
+         CBB_flush(cbb);
+}
+
+int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   CERT *cert = ssl->cert;
-  BUF_MEM *buf = ssl->init_buf;
-  int no_chain = 0;
-  size_t i;
-
   X509 *x = cert->x509;
-  STACK_OF(X509) *chain = cert->chain;
-
   if (x == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
     return 0;
   }
 
+  CBB child;
+  if (!CBB_add_u24_length_prefixed(cbb, &child)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  int no_chain = 0;
+  STACK_OF(X509) *chain = cert->chain;
   if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || chain != NULL) {
     no_chain = 1;
   }
 
   if (no_chain) {
-    if (!ssl_add_cert_to_buf(buf, l, x)) {
+    if (!ssl_add_cert_to_cbb(&child, x)) {
       return 0;
     }
 
+    size_t i;
     for (i = 0; i < sk_X509_num(chain); i++) {
       x = sk_X509_value(chain, i);
-      if (!ssl_add_cert_to_buf(buf, l, x)) {
+      if (!ssl_add_cert_with_length(&child, x)) {
         return 0;
       }
     }
@@ -479,10 +481,11 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
     X509_verify_cert(&xs_ctx);
     /* Don't leave errors in the queue */
     ERR_clear_error();
+
+    size_t i;
     for (i = 0; i < sk_X509_num(xs_ctx.chain); i++) {
       x = sk_X509_value(xs_ctx.chain, i);
-
-      if (!ssl_add_cert_to_buf(buf, l, x)) {
+      if (!ssl_add_cert_with_length(&child, x)) {
         X509_STORE_CTX_cleanup(&xs_ctx);
         return 0;
       }
@@ -490,7 +493,7 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
     X509_STORE_CTX_cleanup(&xs_ctx);
   }
 
-  return 1;
+  return CBB_flush(cbb);
 }
 
 static int set_cert_store(X509_STORE **store_ptr, X509_STORE *new_store, int take_ref) {

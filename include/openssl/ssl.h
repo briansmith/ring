@@ -4140,6 +4140,10 @@ typedef struct ssl3_state_st {
    * version. */
   const SSL3_ENC_METHOD *enc_method;
 
+  /* pending_message is the current outgoing handshake message. */
+  uint8_t *pending_message;
+  uint32_t pending_message_len;
+
   /* State pertaining to the pending handshake.
    *
    * TODO(davidben): State is current spread all over the place. Move

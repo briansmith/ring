@@ -166,21 +166,6 @@ int ssl3_supports_cipher(const SSL_CIPHER *cipher) {
   return 1;
 }
 
-int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
-  uint8_t *p = (uint8_t *)ssl->init_buf->data;
-  *(p++) = htype;
-  l2n3(len, p);
-  ssl->init_num = (int)len + SSL3_HM_HEADER_LENGTH;
-
-  /* Add the message to the handshake hash. */
-  return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
-                                    ssl->init_num);
-}
-
-int ssl3_handshake_write(SSL *ssl) {
-  return ssl3_do_write(ssl, SSL3_RT_HANDSHAKE);
-}
-
 void ssl3_expect_flight(SSL *ssl) {}
 
 void ssl3_received_flight(SSL *ssl) {}
@@ -232,6 +217,7 @@ void ssl3_free(SSL *ssl) {
   OPENSSL_free(ssl->s3->alpn_selected);
   SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
   SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
+  OPENSSL_free(ssl->s3->pending_message);
 
   OPENSSL_cleanse(ssl->s3, sizeof *ssl->s3);
   OPENSSL_free(ssl->s3);
@@ -326,40 +312,6 @@ const SSL_CIPHER *ssl3_choose_cipher(
       ret = sk_SSL_CIPHER_value(allow, group_min);
       break;
     }
-  }
-
-  return ret;
-}
-
-int ssl3_get_req_cert_type(SSL *ssl, uint8_t *p) {
-  int ret = 0;
-  const uint8_t *sig;
-  size_t i, siglen;
-  int have_rsa_sign = 0;
-  int have_ecdsa_sign = 0;
-
-  /* get configured sigalgs */
-  siglen = tls12_get_psigalgs(ssl, &sig);
-  for (i = 0; i < siglen; i += 2, sig += 2) {
-    switch (sig[1]) {
-      case TLSEXT_signature_rsa:
-        have_rsa_sign = 1;
-        break;
-
-      case TLSEXT_signature_ecdsa:
-        have_ecdsa_sign = 1;
-        break;
-    }
-  }
-
-  if (have_rsa_sign) {
-    p[ret++] = SSL3_CT_RSA_SIGN;
-  }
-
-  /* ECDSA certs can be used with RSA cipher suites as well so we don't need to
-   * check for SSL_kECDH or SSL_kECDHE. */
-  if (ssl->version >= TLS1_VERSION && have_ecdsa_sign) {
-      p[ret++] = TLS_CT_ECDSA_SIGN;
   }
 
   return ret;

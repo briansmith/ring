@@ -305,9 +305,16 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
   return 1;
 }
 
-int dtls1_do_handshake_write(SSL *ssl, size_t *out_offset, const uint8_t *in,
-                             size_t offset, size_t len,
-                             enum dtls1_use_epoch_t use_epoch) {
+/* dtls1_do_handshake_write writes handshake message |in| using the given epoch,
+ * starting |offset| bytes into the message body. It returns one on success. On
+ * error, it returns <= 0 and sets |*out_offset| to the number of bytes of body
+ * that were successfully written. This may be used to retry the write
+ * later. |in| must be a reassembled handshake message with the full DTLS
+ * handshake header. */
+static int dtls1_do_handshake_write(SSL *ssl, size_t *out_offset,
+                                    const uint8_t *in, size_t offset,
+                                    size_t len,
+                                    enum dtls1_use_epoch_t use_epoch) {
   dtls1_update_mtu(ssl);
 
   int ret = -1;
@@ -401,6 +408,108 @@ err:
   *out_offset = offset;
   CBB_cleanup(&cbb);
   OPENSSL_free(buf);
+  return ret;
+}
+
+void dtls_clear_outgoing_messages(SSL *ssl) {
+  size_t i;
+  for (i = 0; i < ssl->d1->outgoing_messages_len; i++) {
+    OPENSSL_free(ssl->d1->outgoing_messages[i].data);
+    ssl->d1->outgoing_messages[i].data = NULL;
+  }
+  ssl->d1->outgoing_messages_len = 0;
+}
+
+/* dtls1_buffer_change_cipher_spec adds a ChangeCipherSpec to the current
+ * handshake flight. */
+static int dtls1_buffer_change_cipher_spec(SSL *ssl) {
+  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  DTLS_OUTGOING_MESSAGE *msg =
+      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
+  msg->data = NULL;
+  msg->len = 0;
+  msg->epoch = ssl->d1->w_epoch;
+  msg->is_ccs = 1;
+
+  ssl->d1->outgoing_messages_len++;
+  return 1;
+}
+
+static int dtls1_buffer_message(SSL *ssl, uint8_t *data, size_t len) {
+  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    OPENSSL_free(data);
+    return 0;
+  }
+
+  DTLS_OUTGOING_MESSAGE *msg =
+      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
+  msg->data = data;
+  msg->len = len;
+  msg->epoch = ssl->d1->w_epoch;
+  msg->is_ccs = 0;
+
+  ssl->d1->outgoing_messages_len++;
+  return 1;
+}
+
+int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
+  /* Pick a modest size hint to save most of the |realloc| calls. */
+  if (!CBB_init(cbb, 64) ||
+      !CBB_add_u8(cbb, type) ||
+      !CBB_add_u24(cbb, 0 /* length (filled in later) */) ||
+      !CBB_add_u16(cbb, ssl->d1->handshake_write_seq) ||
+      !CBB_add_u24(cbb, 0 /* offset */) ||
+      !CBB_add_u24_length_prefixed(cbb, body)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int dtls1_finish_message(SSL *ssl, CBB *cbb) {
+  uint8_t *msg = NULL;
+  size_t len;
+  if (!CBB_finish(cbb, &msg, &len) ||
+      len > 0xffffffffu ||
+      len < DTLS1_HM_HEADER_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    OPENSSL_free(msg);
+    return 0;
+  }
+
+  /* Fix up the header. Copy the fragment length into the total message
+   * length. */
+  memcpy(msg + 1, msg + DTLS1_HM_HEADER_LENGTH - 3, 3);
+
+  ssl3_update_handshake_hash(ssl, msg, len);
+
+  ssl->d1->handshake_write_seq++;
+  ssl->init_off = 0;
+  return dtls1_buffer_message(ssl, msg, len);
+}
+
+int dtls1_write_message(SSL *ssl) {
+  if (ssl->d1->outgoing_messages_len == 0) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  const DTLS_OUTGOING_MESSAGE *msg =
+      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len - 1];
+  if (msg->is_ccs) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  size_t offset = ssl->init_off;
+  int ret = dtls1_do_handshake_write(ssl, &offset, msg->data, offset, msg->len,
+                                     dtls1_use_current_epoch);
+  ssl->init_off = offset;
   return ret;
 }
 
@@ -693,45 +802,6 @@ err:
   return ret;
 }
 
-/* dtls1_buffer_change_cipher_spec adds a ChangeCipherSpec to the current
- * handshake flight. */
-static int dtls1_buffer_change_cipher_spec(SSL *ssl) {
-  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  DTLS_OUTGOING_MESSAGE *msg =
-      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
-  msg->data = NULL;
-  msg->len = 0;
-  msg->epoch = ssl->d1->w_epoch;
-  msg->is_ccs = 1;
-
-  ssl->d1->outgoing_messages_len++;
-  return 1;
-}
-
-int dtls1_buffer_message(SSL *ssl) {
-  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  DTLS_OUTGOING_MESSAGE *msg =
-      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
-  msg->data = BUF_memdup(ssl->init_buf->data, ssl->init_num);
-  if (msg->data == NULL) {
-    return 0;
-  }
-  msg->len = ssl->init_num;
-  msg->epoch = ssl->d1->w_epoch;
-  msg->is_ccs = 0;
-
-  ssl->d1->outgoing_messages_len++;
-  return 1;
-}
-
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b) {
   if (ssl->state == a) {
     dtls1_buffer_change_cipher_spec(ssl);
@@ -739,15 +809,6 @@ int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b) {
   }
 
   return dtls1_write_change_cipher_spec(ssl, dtls1_use_current_epoch);
-}
-
-void dtls_clear_outgoing_messages(SSL *ssl) {
-  size_t i;
-  for (i = 0; i < ssl->d1->outgoing_messages_len; i++) {
-    OPENSSL_free(ssl->d1->outgoing_messages[i].data);
-    ssl->d1->outgoing_messages[i].data = NULL;
-  }
-  ssl->d1->outgoing_messages_len = 0;
 }
 
 void dtls_clear_incoming_messages(SSL *ssl) {

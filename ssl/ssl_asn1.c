@@ -165,22 +165,6 @@ static const int kKeyExchangeInfoTag =
 static const int kCertChainTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 19;
 
-static int add_X509(CBB *cbb, X509 *x509) {
-  int len = i2d_X509(x509, NULL);
-  if (len < 0) {
-    return 0;
-  }
-  uint8_t *buf;
-  if (!CBB_add_space(cbb, &buf, len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  if (buf != NULL && i2d_X509(x509, &buf) < 0) {
-    return 0;
-  }
-  return 1;
-}
-
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
   CBB cbb, session, child, child2;
@@ -229,7 +213,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    if (!add_X509(&child, in->peer)) {
+    if (!ssl_add_cert_to_cbb(&child, in->peer)) {
       goto err;
     }
   }
@@ -351,7 +335,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
     size_t i;
     for (i = 0; i < sk_X509_num(in->cert_chain); i++) {
-      if (!add_X509(&child, sk_X509_value(in->cert_chain, i))) {
+      if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->cert_chain, i))) {
         goto err;
       }
     }
