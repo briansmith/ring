@@ -97,13 +97,6 @@ int dtls1_new(SSL *ssl) {
   }
   memset(d1, 0, sizeof *d1);
 
-  d1->buffered_messages = pqueue_new();
-  if (d1->buffered_messages == NULL) {
-    OPENSSL_free(d1);
-    ssl3_free(ssl);
-    return 0;
-  }
-
   ssl->d1 = d1;
 
   /* Set the version to the highest supported version.
@@ -115,17 +108,6 @@ int dtls1_new(SSL *ssl) {
   return 1;
 }
 
-static void dtls1_clear_queues(SSL *ssl) {
-  pitem *item = NULL;
-  hm_fragment *frag = NULL;
-
-  while ((item = pqueue_pop(ssl->d1->buffered_messages)) != NULL) {
-    frag = (hm_fragment *)item->data;
-    dtls1_hm_fragment_free(frag);
-    pitem_free(item);
-  }
-}
-
 void dtls1_free(SSL *ssl) {
   ssl3_free(ssl);
 
@@ -133,9 +115,7 @@ void dtls1_free(SSL *ssl) {
     return;
   }
 
-  dtls1_clear_queues(ssl);
-  pqueue_free(ssl->d1->buffered_messages);
-
+  dtls_clear_incoming_messages(ssl);
   dtls_clear_outgoing_messages(ssl);
 
   OPENSSL_free(ssl->d1);

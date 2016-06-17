@@ -145,7 +145,6 @@
 #include <openssl/base.h>
 
 #include <openssl/aead.h>
-#include <openssl/pqueue.h>
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
 
@@ -645,6 +644,9 @@ int SSL_ECDH_CTX_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
  * in a handshake message for |ssl|. */
 size_t ssl_max_handshake_message_len(const SSL *ssl);
 
+/* dtls_clear_incoming_messages releases all buffered incoming messages. */
+void dtls_clear_incoming_messages(SSL *ssl);
+
 typedef struct dtls_outgoing_message_st {
   uint8_t *data;
   uint32_t len;
@@ -922,12 +924,11 @@ typedef struct dtls1_state_st {
   /* save last sequence number for retransmissions */
   uint8_t last_write_sequence[8];
 
-  /* buffered_messages is a priority queue of incoming handshake messages that
-   * have yet to be processed.
-   *
-   * TODO(davidben): This data structure may as well be a ring buffer of fixed
-   * size. */
-  pqueue buffered_messages;
+  /* incoming_messages is a ring buffer of incoming handshake messages that have
+   * yet to be processed. The front of the ring buffer is message number
+   * |handshake_read_seq|, at position |handshake_read_seq| %
+   * |SSL_MAX_HANDSHAKE_FLIGHT|. */
+  hm_fragment *incoming_messages[SSL_MAX_HANDSHAKE_FLIGHT];
 
   /* outgoing_messages is the queue of outgoing messages from the last handshake
    * flight. */
@@ -1095,7 +1096,6 @@ void dtls1_stop_timer(SSL *ssl);
 int dtls1_is_timer_expired(SSL *ssl);
 void dtls1_double_timeout(SSL *ssl);
 unsigned int dtls1_min_mtu(void);
-void dtls1_hm_fragment_free(hm_fragment *frag);
 
 int dtls1_new(SSL *ssl);
 int dtls1_accept(SSL *ssl);
