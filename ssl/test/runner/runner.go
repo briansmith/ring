@@ -941,12 +941,6 @@ func hasComponent(suiteName, component string) bool {
 	return strings.Contains("-"+suiteName+"-", "-"+component+"-")
 }
 
-func isTLSOnly(suiteName string) bool {
-	// BoringSSL doesn't support ECDHE without a curves extension, and
-	// SSLv3 doesn't contain extensions.
-	return hasComponent(suiteName, "ECDHE") || isTLS12Only(suiteName)
-}
-
 func isTLS12Only(suiteName string) bool {
 	return hasComponent(suiteName, "GCM") ||
 		hasComponent(suiteName, "SHA256") ||
@@ -1390,18 +1384,6 @@ func addBasicTests() {
 			sendPrefix:    "blah",
 			shouldFail:    true,
 			expectedError: ":WRONG_VERSION_NUMBER:",
-		},
-		{
-			name: "SkipCipherVersionCheck",
-			config: Config{
-				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
-				MaxVersion:   VersionTLS11,
-				Bugs: ProtocolBugs{
-					SkipCipherVersionCheck: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":WRONG_CIPHER_RETURNED:",
 		},
 		{
 			name: "RSAEphemeralKey",
@@ -2004,19 +1986,6 @@ func addBasicTests() {
 			},
 		},
 		{
-			testType: serverTest,
-			protocol: dtls,
-			name:     "NoRC4-DTLS",
-			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_RC4_128_SHA},
-				Bugs: ProtocolBugs{
-					EnableAllCiphersInDTLS: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":NO_SHARED_CIPHER:",
-		},
-		{
 			name:             "SendEmptyRecords-Pass",
 			sendEmptyRecords: 32,
 		},
@@ -2312,75 +2281,44 @@ func addCipherSuiteTests() {
 		}
 
 		for _, ver := range tlsVersions {
-			if ver.version < VersionTLS12 && isTLS12Only(suite.name) {
-				continue
-			}
+			for _, protocol := range []protocol{tls, dtls} {
+				var prefix string
+				if protocol == dtls {
+					if !ver.hasDTLS {
+						continue
+					}
+					prefix = "D"
+				}
 
-			shouldFail := isTLSOnly(suite.name) && ver.version == VersionSSL30
+				var shouldServerFail, shouldClientFail bool
+				if hasComponent(suite.name, "ECDHE") && ver.version == VersionSSL30 {
+					// BoringSSL clients accept ECDHE on SSLv3, but
+					// a BoringSSL server will never select it
+					// because the extension is missing.
+					shouldServerFail = true
+				}
+				if isTLS12Only(suite.name) && ver.version < VersionTLS12 {
+					shouldClientFail = true
+					shouldServerFail = true
+				}
+				if !isDTLSCipher(suite.name) && protocol == dtls {
+					shouldClientFail = true
+					shouldServerFail = true
+				}
 
-			expectedError := ""
-			if shouldFail {
-				expectedError = ":NO_SHARED_CIPHER:"
-			}
+				var expectedServerError, expectedClientError string
+				if shouldServerFail {
+					expectedServerError = ":NO_SHARED_CIPHER:"
+				}
+				if shouldClientFail {
+					expectedClientError = ":WRONG_CIPHER_RETURNED:"
+				}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     ver.name + "-" + suite.name + "-server",
-				config: Config{
-					MinVersion:           ver.version,
-					MaxVersion:           ver.version,
-					CipherSuites:         []uint16{suite.id},
-					Certificates:         []Certificate{cert},
-					PreSharedKey:         []byte(psk),
-					PreSharedKeyIdentity: pskIdentity,
-				},
-				certFile:      certFile,
-				keyFile:       keyFile,
-				flags:         flags,
-				resumeSession: true,
-				shouldFail:    shouldFail,
-				expectedError: expectedError,
-			})
-
-			if shouldFail {
-				continue
-			}
-
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     ver.name + "-" + suite.name + "-client",
-				config: Config{
-					MinVersion:           ver.version,
-					MaxVersion:           ver.version,
-					CipherSuites:         []uint16{suite.id},
-					Certificates:         []Certificate{cert},
-					PreSharedKey:         []byte(psk),
-					PreSharedKeyIdentity: pskIdentity,
-				},
-				flags:         flags,
-				resumeSession: true,
-			})
-
-			if ver.hasDTLS && isDTLSCipher(suite.name) {
-				testCases = append(testCases, testCase{
-					testType: clientTest,
-					protocol: dtls,
-					name:     "D" + ver.name + "-" + suite.name + "-client",
-					config: Config{
-						MinVersion:           ver.version,
-						MaxVersion:           ver.version,
-						CipherSuites:         []uint16{suite.id},
-						Certificates:         []Certificate{cert},
-						PreSharedKey:         []byte(psk),
-						PreSharedKeyIdentity: pskIdentity,
-					},
-					flags:         flags,
-					resumeSession: true,
-				})
 				testCases = append(testCases, testCase{
 					testType: serverTest,
-					protocol: dtls,
-					name:     "D" + ver.name + "-" + suite.name + "-server",
+					protocol: protocol,
+
+					name: prefix + ver.name + "-" + suite.name + "-server",
 					config: Config{
 						MinVersion:           ver.version,
 						MaxVersion:           ver.version,
@@ -2388,11 +2326,39 @@ func addCipherSuiteTests() {
 						Certificates:         []Certificate{cert},
 						PreSharedKey:         []byte(psk),
 						PreSharedKeyIdentity: pskIdentity,
+						Bugs: ProtocolBugs{
+							EnableAllCiphers:            true,
+							IgnorePeerCipherPreferences: true,
+						},
 					},
 					certFile:      certFile,
 					keyFile:       keyFile,
 					flags:         flags,
 					resumeSession: true,
+					shouldFail:    shouldServerFail,
+					expectedError: expectedServerError,
+				})
+
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     prefix + ver.name + "-" + suite.name + "-client",
+					config: Config{
+						MinVersion:           ver.version,
+						MaxVersion:           ver.version,
+						CipherSuites:         []uint16{suite.id},
+						Certificates:         []Certificate{cert},
+						PreSharedKey:         []byte(psk),
+						PreSharedKeyIdentity: pskIdentity,
+						Bugs: ProtocolBugs{
+							EnableAllCiphers:            true,
+							IgnorePeerCipherPreferences: true,
+						},
+					},
+					flags:         flags,
+					resumeSession: true,
+					shouldFail:    shouldClientFail,
+					expectedError: expectedClientError,
 				})
 			}
 		}

@@ -1063,17 +1063,19 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 			}
 			// Don't select a ciphersuite which we can't
 			// support for this client.
-			if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
-				continue
-			}
-			if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
-				continue
-			}
-			if !c.config.Bugs.SkipCipherVersionCheck && version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
-				continue
-			}
-			if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
-				continue
+			if !c.config.Bugs.EnableAllCiphers {
+				if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
+					continue
+				}
+				if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
+					continue
+				}
+				if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
+					continue
+				}
+				if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
+					continue
+				}
 			}
 			return candidate
 		}

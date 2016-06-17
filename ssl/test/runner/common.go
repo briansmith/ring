@@ -558,10 +558,6 @@ type ProtocolBugs struct {
 	// closed the connection) before or after sending app data.
 	AlertBeforeFalseStartTest alert
 
-	// SkipCipherVersionCheck causes the server to negotiate
-	// TLS 1.2 ciphers in earlier versions of TLS.
-	SkipCipherVersionCheck bool
-
 	// ExpectServerName, if not empty, is the hostname the client
 	// must specify in the server_name extension.
 	ExpectServerName string
@@ -760,8 +756,9 @@ type ProtocolBugs struct {
 	// into individual packets, up to the specified packet size.
 	PackHandshakeRecords int
 
-	// EnableAllCiphersInDTLS, if true, causes RC4 to be enabled in DTLS.
-	EnableAllCiphersInDTLS bool
+	// EnableAllCiphers, if true, causes all configured ciphers to be
+	// enabled.
+	EnableAllCiphers bool
 
 	// EmptyCertificateList, if true, causes the server to send an empty
 	// certificate list in the Certificate message.
