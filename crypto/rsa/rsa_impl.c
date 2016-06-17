@@ -484,7 +484,7 @@ RSA *RSA_generate(int bits, uint32_t e, RAND *rng, BN_GENCB *cb) {
   }
   BN_set_flags(rsa->iqmp, BN_FLG_CONSTTIME);
 
-  if (!rsa_new_end(rsa, ctx)) {
+  if (!rsa_new_end(rsa)) {
     goto err;
   }
 

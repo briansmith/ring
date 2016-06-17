@@ -67,10 +67,9 @@ extern "C" {
 
 /* rsa_new_begin returns a new, empty RSA object or NULL on error. After
  * filling in the key's values, |rsa_new_end| must be called. In particular,
- * |rsa_new_end| must be called before any RSA operation is performed.
- * |rsa_new_end|'s |ctx| parameter must be non-NULL. */
+ * |rsa_new_end| must be called before any RSA operation is performed. */
 RSA *rsa_new_begin(void);
-int rsa_new_end(RSA *rsa, BN_CTX *ctx);
+int rsa_new_end(RSA *rsa);
 
 BN_BLINDING *BN_BLINDING_new(void);
 void BN_BLINDING_free(BN_BLINDING *b);

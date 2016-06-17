@@ -78,9 +78,7 @@ RSA *rsa_new_begin(void) {
   return rsa;
 }
 
-int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
-  assert(ctx != NULL);
-
+int rsa_new_end(RSA *rsa) {
   assert(rsa->n != NULL);
   assert(rsa->e != NULL);
 
@@ -101,6 +99,11 @@ int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
 
   assert(rsa->iqmp != NULL);
   assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return 0;
+  }
 
   int ret = 0;
 
@@ -136,6 +139,7 @@ int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
 
 err:
   BN_free(&qq);
+  BN_CTX_free(ctx);
   return ret;
 }
 
