@@ -29,6 +29,9 @@ typedef GFp_Limb Scalar[P256_LIMBS];
 void ecp_nistz256_mul_mont(Elem r, const Elem a, const Elem b);
 
 
+void ecp_nistz256_ord_mul_mont(ScalarMont r, const ScalarMont a,
+                               const ScalarMont b);
+void ecp_nistz256_ord_sqr_mont(ScalarMont r, const ScalarMont a, int rep);
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 #if defined(OPENSSL_ARM) || defined(OPENSSL_X86)
 void ecp_nistz256_sqr_mont(Elem r, const Elem a);
@@ -46,19 +49,29 @@ void ecp_nistz256_sqr_mont(Elem r, const Elem a) {
 #endif
 
 
-static void scalar_mul_mont(ScalarMont r, const ScalarMont a,
-                            const ScalarMont b) {
+#if !defined(OPENSSL_X86_64)
+void ecp_nistz256_ord_mul_mont(ScalarMont r, const ScalarMont a,
+                               const ScalarMont b) {
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
   bn_mul_mont(r, a, b, EC_GROUP_P256.order_mont.N.d,
               EC_GROUP_P256.order_mont.n0, P256_LIMBS);
 }
+#endif
 
-static inline void scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
-  /* XXX: Inefficient. TODO: optimize with dedicated squaring routine. */
-  scalar_mul_mont(r, a, a);
+static inline void scalar_mul_mont(ScalarMont r, const ScalarMont a,
+                                   const ScalarMont b) {
+  ecp_nistz256_ord_mul_mont(r, a, b);
 }
 
-static inline void scalar_to_mont(ScalarMont r, const GFp_Limb a[P256_LIMBS]) {
+static inline void scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
+#if defined(OPENSSL_X86_64)
+  ecp_nistz256_ord_sqr_mont(r, a, 1);
+#else
+  scalar_mul_mont(r, a, a);
+#endif
+}
+
+static inline void scalar_to_mont(ScalarMont r, const Scalar a) {
   scalar_mul_mont(r, a, EC_GROUP_P256.order_mont.RR.d);
 }
 
@@ -66,10 +79,14 @@ static void scalar_sqr_mul_mont(ScalarMont r, const ScalarMont a,
                                 size_t squarings, const ScalarMont b) {
   assert(squarings >= 1);
   ScalarMont tmp;
+#if defined(OPENSSL_X86_64)
+  ecp_nistz256_ord_sqr_mont(tmp, a, (int)squarings);
+#else
   scalar_sqr_mont(tmp, a);
   for (size_t i = 1; i < squarings; ++i) {
     scalar_sqr_mont(tmp, tmp);
   }
+#endif
   scalar_mul_mont(r, tmp, b);
 }
 
