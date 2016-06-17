@@ -17,6 +17,7 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, der, digest, signature, signature_impl};
+use std;
 use untrusted;
 
 
@@ -164,7 +165,147 @@ fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
 }
 
 
+/// An RSA key pair.
+pub struct RSAKeyPair {
+    rsa: std::boxed::Box<RSA>,
+}
+
+impl RSAKeyPair {
+    /// Read private key data from the DER-formatted ASN.1 encoding as
+    /// documented in [RFC 3447 Appending
+    /// A.1.2](https://tools.ietf.org/html/rfc3447#appendix-A.1.2).
+    ///
+    /// Only two-prime keys (version 0) are supported at this time; other
+    /// versions return an `Err` result.
+    pub fn from_der(input: untrusted::Input) -> Result<RSAKeyPair, ()> {
+        input.read_all((), |input| {
+            der::nested(input, der::Tag::Sequence, (), |input| {
+                let version = try!(der::small_nonnegative_integer(input));
+                if version != 0 {
+                    return Err(());
+                }
+                let mut n = try!(PositiveInteger::from_input(input, 0));
+                let mut e = try!(PositiveInteger::from_input(input, 0));
+                let mut d =
+                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                let mut p =
+                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                let mut q =
+                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                let mut dmp1 =
+                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                let mut dmq1 =
+                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                let mut iqmp =
+                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                let mut rsa = std::boxed::Box::new(RSA {
+                    n: n.into_raw(), e: e.into_raw(), d: d.into_raw(),
+                    p: p.into_raw(), q: q.into_raw(), dmp1: dmp1.into_raw(),
+                    dmq1: dmq1.into_raw(), iqmp: iqmp.into_raw(),
+                    mont_n: std::ptr::null_mut(), mont_p: std::ptr::null_mut(),
+                    mont_q: std::ptr::null_mut(),
+                    mont_qq: std::ptr::null_mut(),
+                    qmn_mont: std::ptr::null_mut(),
+                    iqmp_mont: std::ptr::null_mut(),
+                });
+                try!(bssl::map_result(unsafe {
+                    rsa_new_end(rsa.as_mut())
+                }));
+                Ok(RSAKeyPair { rsa: rsa })
+            })
+        })
+    }
+}
+
+impl Drop for RSAKeyPair {
+    fn drop(&mut self) {
+        unsafe {
+            BN_free(self.rsa.n);
+            BN_free(self.rsa.e);
+            BN_free(self.rsa.d);
+            BN_free(self.rsa.p);
+            BN_free(self.rsa.q);
+            BN_free(self.rsa.dmp1);
+            BN_free(self.rsa.dmq1);
+            BN_free(self.rsa.iqmp);
+            BN_MONT_CTX_free(self.rsa.mont_n);
+            BN_MONT_CTX_free(self.rsa.mont_p);
+            BN_MONT_CTX_free(self.rsa.mont_q);
+            BN_MONT_CTX_free(self.rsa.mont_qq);
+            BN_free(self.rsa.qmn_mont);
+            BN_free(self.rsa.iqmp_mont);
+        }
+    }
+}
+
+/// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
+#[repr(C)]
+struct RSA {
+    n: *mut BIGNUM,
+    e: *mut BIGNUM,
+    d: *mut BIGNUM,
+    p: *mut BIGNUM,
+    q: *mut BIGNUM,
+    dmp1: *mut BIGNUM,
+    dmq1: *mut BIGNUM,
+    iqmp: *mut BIGNUM,
+    mont_n: *mut BN_MONT_CTX,
+    mont_p: *mut BN_MONT_CTX,
+    mont_q: *mut BN_MONT_CTX,
+    mont_qq: *mut BN_MONT_CTX,
+    qmn_mont: *mut BIGNUM,
+    iqmp_mont: *mut BIGNUM,
+}
+
+struct PositiveInteger {
+    value: Option<*mut BIGNUM>,
+}
+
+impl PositiveInteger {
+    fn from_input(input: &mut untrusted::Reader, flags: c::int)
+                  -> Result<PositiveInteger, ()> {
+        let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
+        let res = unsafe {
+            BN_bin2bn(bytes.as_ptr(), bytes.len(), std::ptr::null_mut())
+        };
+        if res.is_null() {
+            return Err(());
+        }
+        unsafe { BN_set_flags(res, flags); }
+        Ok(PositiveInteger { value: Some(res) })
+    }
+
+    fn into_raw(&mut self) -> *mut BIGNUM {
+        let res = self.value.unwrap();
+        self.value = None;
+        res
+    }
+}
+
+impl Drop for PositiveInteger {
+    fn drop(&mut self) {
+        match self.value {
+            Some(val) => unsafe { BN_free(val); },
+            None => { },
+        }
+    }
+}
+
+enum BIGNUM {}
+
+#[allow(non_camel_case_types)]
+enum BN_MONT_CTX {}
+
+const BN_FLG_CONSTTIME: c::int = 4;
+
+
 extern {
+    fn BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
+                 -> *mut BIGNUM;
+    fn BN_set_flags(bn: *mut BIGNUM, flags: c::int);
+    fn BN_free(bn: *mut BIGNUM);
+    fn BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
+
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
                               public_key_n: *const u8,
                               public_key_n_len: c::size_t,
@@ -173,6 +314,8 @@ extern {
                               ciphertext: *const u8, ciphertext_len: c::size_t,
                               min_bits: c::size_t, max_bits: c::size_t)
                               -> c::int;
+
+    fn rsa_new_end(rsa: *mut RSA) -> c::int;
 }
 
 
