@@ -25,12 +25,13 @@
 //!         supported at runtime. When the `disable_dev_urandom_fallback`
 //!         feature is enabled, such fallback will not occur. See the
 //!         documentation for `rand::SystemRandom` for more details.
-//! <tr><td><code>no_heap</code>
-//!     <td>Disable all functionality that uses the heap. This is useful for
-//!         code running in kernel space and some embedded applications. The
-//!         goal is to enable as much functionality as is practical in
-//!         <code>no_heap</code> mode, but for now some RSA, ECDH, and ECDSA
-//!         functionality still uses the heap.
+//! <tr><td><code>use_heap</code>
+//!     <td>Enable functionality that uses the heap. This is on by default, but
+//!         disabling it is useful for code running in kernel space and some
+//!         embedded applications. The goal is to enable as much functionality
+//!         as is practical in without requiring <code>use_heap</code> mode,
+//!         but for now some RSA, ECDH, and ECDSA functionality still uses the
+//!         heap.
 //! <tr><td><code>slow_tests</code>
 //!     <td>Run additional tests that are too slow to run during a normal
 //!         edit-compile-test cycle.
@@ -135,7 +136,7 @@ mod init;
 pub mod pbkdf2;
 
 pub mod rand;
-#[cfg(not(feature = "no_heap"))] mod rsa;
+#[cfg(feature = "use_heap")] mod rsa;
 pub mod signature;
 mod signature_impl;
 

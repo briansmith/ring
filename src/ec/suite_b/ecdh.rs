@@ -46,7 +46,7 @@ macro_rules! ecdh {
         /// verification. Soon, coordinates larger than *q* - 1 will be
         /// rejected.
         ///
-        /// Not available in `no_heap` mode.
+        /// Only available in `use_heap` mode.
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
             i: ec::AgreementAlgorithmImpl {
                 public_key_len: 1 + (2 * (($bits + 7) / 8)),

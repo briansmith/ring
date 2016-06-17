@@ -100,14 +100,14 @@ impl PrivateKey {
 }
 
 
-// When the `no_heap` feature isn't being used, P-384 has the largest field
+// When the `use_heap` feature is enabled, P-384 has the largest field
 // element size.
-#[cfg(not(feature = "no_heap"))]
+#[cfg(feature = "use_heap")]
 const ELEM_MAX_BITS: usize = 384;
 
-// When the `no_heap` feature is used, P-384 and P-256 aren't available, so
+// When the `use_heap` feature is disabled, P-384 and P-256 aren't available, so
 // X25519 has the largest field element size.
-#[cfg(feature = "no_heap")]
+#[cfg(not(feature = "use_heap"))]
 const ELEM_MAX_BITS: usize = 256;
 
 pub const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
@@ -115,14 +115,14 @@ pub const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
 const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
 
 /// The maximum length, in bytes, of an encoded public key. Note that the value
-/// depends on which algorithms are enabled (e.g. whether the `no_heap` feature
+/// depends on which algorithms are enabled (e.g. whether the `use_heap` feature
 /// is activated).
 pub const PUBLIC_KEY_MAX_LEN: usize = 1 + (2 * ELEM_MAX_BYTES);
 
 
 pub mod eddsa;
 
-#[cfg(not(feature = "no_heap"))]
+#[cfg(feature = "use_heap")]
 #[path = "suite_b/suite_b.rs"]
 pub mod suite_b;
 
