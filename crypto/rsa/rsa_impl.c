@@ -116,7 +116,7 @@ static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
   return 1;
 }
 
-unsigned RSA_size(const RSA *rsa) {
+size_t RSA_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
 
