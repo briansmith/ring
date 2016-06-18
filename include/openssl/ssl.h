@@ -432,9 +432,9 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * See also |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb|. */
 #define SSL_ERROR_WANT_X509_LOOKUP 4
 
-/* SSL_ERROR_WANT_SYSCALL indicates the operation failed externally to the
- * library. The caller should consult the system-specific error mechanism. This
- * is typically |errno| but may be something custom if using a custom |BIO|. It
+/* SSL_ERROR_SYSCALL indicates the operation failed externally to the library.
+ * The caller should consult the system-specific error mechanism. This is
+ * typically |errno| but may be something custom if using a custom |BIO|. It
  * may also be signaled if the transport returned EOF, in which case the
  * operation's return value will be zero. */
 #define SSL_ERROR_SYSCALL 5
