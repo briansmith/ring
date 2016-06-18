@@ -239,6 +239,13 @@ impl RSAKeyPair {
             })
         })
     }
+
+    /// Returns the length in bytes of the key pair's public modulus.
+    ///
+    /// A signature has the same length as the public modulus.
+    pub fn public_modulus_len(&self) -> usize {
+        unsafe { RSA_size(self.rsa.as_ref()) }
+    }
 }
 
 impl Drop for RSAKeyPair {
@@ -341,6 +348,7 @@ extern {
                               -> c::int;
 
     fn rsa_new_end(rsa: *mut RSA) -> c::int;
+    fn RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
 
