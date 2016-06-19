@@ -68,8 +68,8 @@
 
 
 /* Declerations to avoid -Wmissing-prototypes warnings. */
-int GFp_rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                              size_t len, BN_BLINDING *blinding, RAND *rng);
+int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
+                              BN_BLINDING *blinding, RAND *rng);
 
 
 static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
@@ -205,17 +205,17 @@ err:
   return ret;
 }
 
-/* GFp_rsa_private_transform takes a big-endian integer from |in|, calculates
- * the d'th power of it, modulo the RSA modulus and writes the result as a
- * big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
- * |len| is always equal to |RSA_size(rsa)|. If the result of the transform can
- * be represented in fewer than |len| bytes, then |out| must be zero padded on
- * the left.
+/* GFp_rsa_private_transform takes a big-endian integer from |inout|,
+ * calculates the d'th power of it, modulo the RSA modulus and writes the
+ * result as a big-endian integer back to |inout|. |inout| is |len| bytes long
+ * and |len| is always equal to |RSA_size(rsa)|. If the result of the transform
+ * can be represented in fewer than |len| bytes, then |out| must be zero padded
+ * on the left.
  *
  * It returns one on success and zero otherwise.
  */
-int GFp_rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                              size_t len, BN_BLINDING *blinding, RAND *rng) {
+int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
+                              BN_BLINDING *blinding, RAND *rng) {
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     return 0;
@@ -231,7 +231,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   BN_init(&mq);
   BN_init(&vrfy);
 
-  if (BN_bin2bn(in, len, &base) == NULL) {
+  if (BN_bin2bn(inout, len, &base) == NULL) {
     goto err;
   }
 
@@ -314,7 +314,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   }
 
   if (!BN_BLINDING_invert(&r, blinding, rsa->mont_n, ctx) ||
-      !BN_bn2bin_padded(out, len, &r)) {
+      !BN_bn2bin_padded(inout, len, &r)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
