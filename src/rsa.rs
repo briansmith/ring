@@ -528,12 +528,16 @@ mod tests {
             };
 
             let private_key = test_case.consume_bytes("Key");
-            let private_key = try!(untrusted::Input::new(&private_key));
-            let key_pair = RSAKeyPair::from_der(private_key).unwrap();
-
             let msg = test_case.consume_bytes("Msg");
             let expected = test_case.consume_bytes("Sig");
             let result = test_case.consume_string("Result");
+
+            let private_key = try!(untrusted::Input::new(&private_key));
+            let key_pair = RSAKeyPair::from_der(private_key);
+            if key_pair.is_err() && result == "Fail-Invalid-Key" {
+                return Ok(());
+            }
+            let key_pair = key_pair.unwrap();
 
             let mut actual: std::vec::Vec<u8> =
                 std::vec::Vec::with_capacity(key_pair.public_modulus_len());
