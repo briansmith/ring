@@ -67,7 +67,7 @@
 #include "../internal.h"
 
 
-/* Declerations to avoid -Wmissing-prototypes warnings. */
+/* Declarations to avoid -Wmissing-prototypes warnings. */
 int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
                               BN_BLINDING *blinding, RAND *rng);
 
