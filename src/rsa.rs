@@ -21,14 +21,18 @@ use std;
 use untrusted;
 
 
-#[allow(non_camel_case_types)]
-struct RSA_PKCS1 {
+pub struct RSAPadding {
     digest_alg: &'static digest::Algorithm,
-    min_bits: usize,
     digestinfo_prefix: &'static [u8],
 }
 
-impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
+struct RSAVerificationAlgorithm {
+    padding_alg: &'static RSAPadding,
+    min_bits: usize,
+}
+
+
+impl signature_impl::VerificationAlgorithmImpl for RSAVerificationAlgorithm {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), ()> {
         const MAX_BITS: usize = 8192;
@@ -68,15 +72,16 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
             }
 
             let decoded_digestinfo_prefix =
-                try!(decoded.skip_and_get_input(self.digestinfo_prefix.len()));
-            if decoded_digestinfo_prefix != self.digestinfo_prefix {
+                try!(decoded.skip_and_get_input(
+                        self.padding_alg.digestinfo_prefix.len()));
+            if decoded_digestinfo_prefix != self.padding_alg.digestinfo_prefix {
                 return Err(());
             }
 
+            let digest_alg = self.padding_alg.digest_alg;
             let decoded_digest =
-                try!(decoded.skip_and_get_input(self.digest_alg.output_len));
-            let digest =
-                digest::digest(self.digest_alg, msg.as_slice_less_safe());
+                try!(decoded.skip_and_get_input(digest_alg.output_len));
+            let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
             if decoded_digest != digest.as_ref() {
                 return Err(());
             }
@@ -86,9 +91,32 @@ impl signature_impl::VerificationAlgorithmImpl for RSA_PKCS1 {
     }
 }
 
+macro_rules! rsa_pkcs1_padding {
+    ( $PADDING_ALGORITHM:ident, $digest_alg_name:expr,
+      $digest_alg:expr, $digestinfo_prefix:expr ) => {
+
+        #[doc="PKCS#1 1.5 padding with the "]
+        #[doc=$digest_alg_name]
+        #[doc=" digest algorithm."]
+        pub static $PADDING_ALGORITHM: RSAPadding = RSAPadding {
+            digest_alg: $digest_alg,
+            digestinfo_prefix: $digestinfo_prefix,
+        };
+    }
+}
+
+rsa_pkcs1_padding!(RSA_PKCS1_SHA1, "SHA1", &digest::SHA1,
+                   &SHA1_PKCS1_DIGESTINFO_PREFIX);
+rsa_pkcs1_padding!(RSA_PKCS1_SHA256, "SHA256", &digest::SHA256,
+                   &SHA256_PKCS1_DIGESTINFO_PREFIX);
+rsa_pkcs1_padding!(RSA_PKCS1_SHA384, "SHA384", &digest::SHA384,
+                   &SHA384_PKCS1_DIGESTINFO_PREFIX);
+rsa_pkcs1_padding!(RSA_PKCS1_SHA512, "SHA512", &digest::SHA512,
+                   &SHA512_PKCS1_DIGESTINFO_PREFIX);
+
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
-      $digest_alg_name:expr, $digest_alg:expr, $digestinfo_prefix:expr ) => {
+      $digest_alg_name:expr, $PADDING_ALGORITHM:ident ) => {
         #[cfg(feature = "use_heap")]
         #[doc="Verification of RSA PKCS#1 1.5 signatures of "]
         #[doc=$min_bits_str]
@@ -100,29 +128,24 @@ macro_rules! rsa_pkcs1 {
         /// Only available in `use_heap` mode.
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
                 signature::VerificationAlgorithm {
-            implementation: &RSA_PKCS1 {
-                digest_alg: $digest_alg,
+            implementation: &RSAVerificationAlgorithm {
+                padding_alg: &$PADDING_ALGORITHM,
                 min_bits: $min_bits,
-                digestinfo_prefix: $digestinfo_prefix,
             }
         };
     }
 }
 
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1_VERIFY, 2048, "2048", "SHA-1",
-           &digest::SHA1, &SHA1_PKCS1_DIGESTINFO_PREFIX);
-
+           RSA_PKCS1_SHA1);
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256_VERIFY, 2048, "2048", "SHA-256",
-           &digest::SHA256, &SHA256_PKCS1_DIGESTINFO_PREFIX);
-
+           RSA_PKCS1_SHA256);
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384_VERIFY, 2048, "2048", "SHA-384",
-           &digest::SHA384, &SHA384_PKCS1_DIGESTINFO_PREFIX);
-
+           RSA_PKCS1_SHA384);
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512_VERIFY, 2048, "2048", "SHA-512",
-           &digest::SHA512, &SHA512_PKCS1_DIGESTINFO_PREFIX);
-
+           RSA_PKCS1_SHA512);
 rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384_VERIFY, 3072, "3072", "SHA-384",
-           &digest::SHA384, &SHA384_PKCS1_DIGESTINFO_PREFIX);
+           RSA_PKCS1_SHA384);
 
 macro_rules! pkcs1_digestinfo_prefix {
     ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
