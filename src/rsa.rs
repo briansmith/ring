@@ -456,9 +456,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {der, file_test, signature};
+    use {der, file_test, rand, signature};
     use untrusted;
     use super::*;
+    use std;
 
     #[test]
     fn test_signature_rsa_pkcs1_verify() {
@@ -503,6 +504,43 @@ mod tests {
             let actual_result = signature::verify(alg, public_key, msg, sig);
             assert_eq!(actual_result.is_ok(), expected_result == "P");
 
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn test_signature_rsa_pkcs1_sign() {
+        let rng = rand::SystemRandom::new();
+        file_test::run("src/rsa_pkcs1_sign_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+
+            let digest_name = test_case.consume_string("Digest");
+            let alg = if digest_name == "SHA1" {
+                &RSA_PKCS1_SHA1
+            } else if digest_name == "SHA256" {
+                &RSA_PKCS1_SHA256
+            } else if digest_name == "SHA384" {
+                &RSA_PKCS1_SHA384
+            } else if digest_name == "SHA512" {
+                &RSA_PKCS1_SHA512
+            } else {
+                panic!("Unsupported digest: {}", digest_name);
+            };
+
+            let private_key = test_case.consume_bytes("Key");
+            let private_key = try!(untrusted::Input::new(&private_key));
+            let key_pair = RSAKeyPair::from_der(private_key).unwrap();
+
+            let msg = test_case.consume_bytes("Msg");
+            let expected = test_case.consume_bytes("Sig");
+            let result = test_case.consume_string("Result");
+
+            let mut actual: std::vec::Vec<u8> =
+                std::vec::Vec::with_capacity(key_pair.public_modulus_len());
+            actual.extend(
+                std::iter::repeat(0).take(key_pair.public_modulus_len()));
+            try!(key_pair.sign(alg, &rng, &msg, actual.as_mut_slice()));
+            assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
         });
     }
