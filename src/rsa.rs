@@ -16,7 +16,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, signature, signature_impl};
+use {bssl, c, der, digest, rand, signature, signature_impl};
 use std;
 use untrusted;
 
@@ -25,6 +25,34 @@ pub struct RSAPadding {
     digest_alg: &'static digest::Algorithm,
     digestinfo_prefix: &'static [u8],
 }
+
+impl RSAPadding {
+    // Implement padding procedure per EMSA-PKCS1-v1_5,
+    // https://tools.ietf.org/html/rfc3447#section-9.2.
+    fn pad(&self, msg: &[u8], out: &mut [u8]) -> Result<(), ()> {
+        let digest_len =
+            self.digestinfo_prefix.len() + self.digest_alg.output_len;
+
+        // Require at least 8 bytes of padding. Since we disallow keys smaller
+        // than 2048 bits, this should never happen anyway.
+        debug_assert!(out.len() >= digest_len + 11);
+        let pad_len = out.len() - digest_len - 3;
+        out[0] = 0;
+        out[1] = 1;
+        for i in 0..pad_len {
+            out[2 + i] = 0xff;
+        }
+        out[2 + pad_len] = 0;
+
+        let (digest_prefix, digest_dst) = out[3 + pad_len..].split_at_mut(
+            self.digestinfo_prefix.len());
+        digest_prefix.copy_from_slice(self.digestinfo_prefix);
+        digest_dst.copy_from_slice(
+            digest::digest(self.digest_alg, msg).as_ref());
+        Ok(())
+    }
+}
+
 
 struct RSAVerificationAlgorithm {
     padding_alg: &'static RSAPadding,
@@ -269,6 +297,33 @@ impl RSAKeyPair {
     pub fn public_modulus_len(&self) -> usize {
         unsafe { RSA_size(self.rsa.as_ref()) }
     }
+
+    /// Sign the `msg`. `msg` is digested using the digest algorithm from
+    /// `padding_alg`, and then padded using the padding algorithm from
+    /// `padding_alg`. The signature it written to into `signature`;
+    /// `signature`'s length must be exactly the length returned by
+    /// `public_modulus_len()`. `rng` is used for blinding the message during
+    /// signing, to mitigate some side-channel (e.g. timing) attacks.
+    pub fn sign(&self, padding_alg: &'static RSAPadding,
+                rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
+                -> Result<(), ()> {
+        if signature.len() != self.public_modulus_len() {
+            return Err(());
+        }
+
+        try!(padding_alg.pad(msg, signature));
+        let mut rand = rand::RAND::new(rng);
+        bssl::map_result(unsafe {
+            let blinding = BN_BLINDING_new();
+            let ret =
+                GFp_rsa_private_transform(self.rsa.as_ref(),
+                                          signature.as_mut_ptr(),
+                                          signature.len(), blinding,
+                                          &mut rand);
+            BN_BLINDING_free(blinding);
+            ret
+        })
+    }
 }
 
 impl Drop for RSAKeyPair {
@@ -349,12 +404,17 @@ impl Drop for PositiveInteger {
 enum BIGNUM {}
 
 #[allow(non_camel_case_types)]
+enum BN_BLINDING {}
+
+#[allow(non_camel_case_types)]
 enum BN_MONT_CTX {}
 
 const BN_FLG_CONSTTIME: c::int = 4;
 
 
 extern {
+    fn BN_BLINDING_new() -> *mut BN_BLINDING;
+    fn BN_BLINDING_free(b: *mut BN_BLINDING);
     fn BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                  -> *mut BIGNUM;
     fn BN_set_flags(bn: *mut BIGNUM, flags: c::int);
@@ -372,6 +432,13 @@ extern {
 
     fn rsa_new_end(rsa: *mut RSA) -> c::int;
     fn RSA_size(rsa: *const RSA) -> c::size_t;
+}
+
+#[allow(improper_ctypes)]
+extern {
+    fn GFp_rsa_private_transform(rsa: *const RSA, inout: *mut u8,
+                                 len: c::size_t, blinding: *mut BN_BLINDING,
+                                 rng: *mut rand::RAND) -> c::int;
 }
 
 

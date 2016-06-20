@@ -108,6 +108,11 @@ pub use rsa::RSAKeyPair;
 
 #[cfg(feature = "use_heap")]
 pub use rsa::{
+    RSA_PKCS1_SHA1,
+    RSA_PKCS1_SHA256,
+    RSA_PKCS1_SHA384,
+    RSA_PKCS1_SHA512,
+
     RSA_PKCS1_2048_8192_SHA1_VERIFY,
     RSA_PKCS1_2048_8192_SHA256_VERIFY,
     RSA_PKCS1_2048_8192_SHA384_VERIFY,
