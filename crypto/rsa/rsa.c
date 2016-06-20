@@ -181,6 +181,12 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   BN_init(&dmq1);
   BN_init(&iqmp);
 
+  /* The public modulus must be at least 2048 bits. */
+  if (RSA_size(key) < 256) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
+    goto out;
+  }
+
   /* Technically |p < q| may be legal, but the implementation of |mod_exp| has
    * been optimized such that it is now required that |p > q|. |p == q| is
    * definitely *not* OK. To support keys with |p < q| in the future, we can
