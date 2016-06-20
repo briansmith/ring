@@ -2,6 +2,8 @@
 
 # ARM assembler distiller by <appro>.
 
+use strict;
+
 my $flavour = shift;
 my $output = shift;
 open STDOUT,">$output" || die "can't open $output: $!";
@@ -121,7 +123,7 @@ sub expand_line {
 print "#if defined(__arm__)\n" if ($flavour eq "linux32");
 print "#if defined(__aarch64__)\n" if ($flavour eq "linux64");
 
-while($line=<>) {
+while(my $line=<>) {
 
     if ($line =~ m/^\s*(#|@|\/\/)/)	{ print $line; next; }
 
