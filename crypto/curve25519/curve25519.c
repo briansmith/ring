@@ -4869,6 +4869,24 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 
 void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
   RAND_bytes(out_private_key, 32);
+
+  /* All X25519 implementations should decode scalars correctly (see
+   * https://tools.ietf.org/html/rfc7748#section-5). However, if an
+   * implementation doesn't then it might interoperate with random keys a
+   * fraction of the time because they'll, randomly, happen to be correctly
+   * formed.
+   *
+   * Thus we do the opposite of the masking here to make sure that our private
+   * keys are never correctly masked and so, hopefully, any incorrect
+   * implementations are deterministically broken.
+   *
+   * This does not affect security because, although we're throwing away
+   * entropy, a valid implementation of scalarmult should throw away the exact
+   * same bits anyway. */
+  out_private_key[0] |= 7;
+  out_private_key[31] &= 63;
+  out_private_key[31] |= 128;
+
   X25519_public_from_private(out_public_value, out_private_key);
 }
 
