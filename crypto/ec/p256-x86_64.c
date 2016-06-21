@@ -499,7 +499,6 @@ const EC_METHOD EC_GFp_nistz256_method = {
   ec_GFp_mont_field_mul,
   ec_GFp_mont_field_sqr,
   ec_GFp_mont_field_encode,
-  ec_GFp_mont_field_decode,
 };
 
 #endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \

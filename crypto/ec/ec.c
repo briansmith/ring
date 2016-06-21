@@ -87,8 +87,6 @@ const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group) {
   return &group->order;
 }
 
-int EC_GROUP_get_curve_name(const EC_GROUP *group) { return group->curve_name; }
-
 unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
   return ec_GFp_simple_group_get_degree(group);
 }
@@ -141,15 +139,6 @@ int EC_POINT_is_at_infinity(const EC_GROUP *group, const EC_POINT *point) {
     return 0;
   }
   return ec_GFp_simple_is_at_infinity(point);
-}
-
-int EC_POINT_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
-                         BN_CTX *ctx) {
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_is_on_curve(group, point, ctx);
 }
 
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,

@@ -110,8 +110,6 @@ typedef struct ec_method_st {
 
   int (*field_encode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                       BN_CTX *); /* e.g. to Montgomery */
-  int (*field_decode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                      BN_CTX *); /* e.g. from Montgomery */
 } EC_METHOD;
 
 extern const EC_METHOD EC_GFp_mont_method;
