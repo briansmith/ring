@@ -172,10 +172,6 @@ OPENSSL_EXPORT void BN_init(BIGNUM *bn);
  * allocated on the heap, frees |bn| also. */
 OPENSSL_EXPORT void BN_free(BIGNUM *bn);
 
-/* BN_dup allocates a new BIGNUM and sets it equal to |src|. It returns the
- * allocated BIGNUM on success or NULL otherwise. */
-OPENSSL_EXPORT BIGNUM *BN_dup(const BIGNUM *src);
-
 /* BN_copy sets |dest| equal to |src| and returns |dest| or NULL on allocation
  * failure. */
 OPENSSL_EXPORT BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src);
