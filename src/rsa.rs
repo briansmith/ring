@@ -298,12 +298,24 @@ impl RSAKeyPair {
         unsafe { RSA_size(self.rsa.as_ref()) }
     }
 
-    /// Sign the `msg`. `msg` is digested using the digest algorithm from
-    /// `padding_alg`, and then padded using the padding algorithm from
-    /// `padding_alg`. The signature it written to into `signature`;
+    /// Sign `msg`. `msg` is digested using the digest algorithm from
+    /// `padding_alg` and the digest is then padded using the padding algorithm
+    /// from `padding_alg`. The signature it written into `signature`;
     /// `signature`'s length must be exactly the length returned by
     /// `public_modulus_len()`. `rng` is used for blinding the message during
     /// signing, to mitigate some side-channel (e.g. timing) attacks.
+    ///
+    /// Many other crypto libraries have signing functions that takes a
+    /// precomputed digest as input, instead of the message to digest. This
+    /// function does *not* take a precomputed digest; instead, `sign`
+    /// calculates the digest itself.
+    ///
+    /// Lots of effort has been made to make the signing operations close to
+    /// constant time to protect the private key from side channel attacks. On
+    /// x86-64, this is done pretty well, but not perfectly. On other
+    /// platforms, it is done less perfectly. To help mitigate the current
+    /// imperfections, and for defense-in-depth, base blinding is always done.
+    /// Exponent blinding is not done, but it may be done in the future.
     pub fn sign(&self, padding_alg: &'static RSAPadding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), ()> {
