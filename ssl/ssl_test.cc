@@ -689,16 +689,13 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
   return true;
 }
 
-static bool TestDefaultVersion(uint16_t version,
+static bool TestDefaultVersion(uint16_t min_version, uint16_t max_version,
                                const SSL_METHOD *(*method)(void)) {
   ScopedSSL_CTX ctx(SSL_CTX_new(method()));
   if (!ctx) {
     return false;
   }
-  // TODO(svaldez): Remove TLS1_2_VERSION fallback upon implementing TLS 1.3.
-  return ctx->min_version == version &&
-         (ctx->max_version == version ||
-          (version == 0 && ctx->max_version == TLS1_2_VERSION));
+  return ctx->min_version == min_version && ctx->max_version == max_version;
 }
 
 static bool CipherGetRFCName(std::string *out, uint16_t value) {
@@ -1361,14 +1358,15 @@ int main() {
       !TestBadSSL_SESSIONEncoding(kBadSessionExtraField) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionVersion) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionTrailingData) ||
-      !TestDefaultVersion(0, &TLS_method) ||
-      !TestDefaultVersion(SSL3_VERSION, &SSLv3_method) ||
-      !TestDefaultVersion(TLS1_VERSION, &TLSv1_method) ||
-      !TestDefaultVersion(TLS1_1_VERSION, &TLSv1_1_method) ||
-      !TestDefaultVersion(TLS1_2_VERSION, &TLSv1_2_method) ||
-      !TestDefaultVersion(0, &DTLS_method) ||
-      !TestDefaultVersion(DTLS1_VERSION, &DTLSv1_method) ||
-      !TestDefaultVersion(DTLS1_2_VERSION, &DTLSv1_2_method) ||
+      // TODO(svaldez): Update this when TLS 1.3 is enabled by default.
+      !TestDefaultVersion(SSL3_VERSION, TLS1_2_VERSION, &TLS_method) ||
+      !TestDefaultVersion(SSL3_VERSION, SSL3_VERSION, &SSLv3_method) ||
+      !TestDefaultVersion(TLS1_VERSION, TLS1_VERSION, &TLSv1_method) ||
+      !TestDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &TLSv1_1_method) ||
+      !TestDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &TLSv1_2_method) ||
+      !TestDefaultVersion(DTLS1_VERSION, DTLS1_2_VERSION, &DTLS_method) ||
+      !TestDefaultVersion(DTLS1_VERSION, DTLS1_VERSION, &DTLSv1_method) ||
+      !TestDefaultVersion(DTLS1_2_VERSION, DTLS1_2_VERSION, &DTLSv1_2_method) ||
       !TestCipherGetRFCName() ||
       !TestPaddingExtension() ||
       !TestClientCAList() ||

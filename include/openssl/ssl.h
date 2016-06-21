@@ -3619,12 +3619,10 @@ struct ssl_ctx_st {
   /* lock is used to protect various operations on this object. */
   CRYPTO_MUTEX lock;
 
-  /* max_version is the maximum acceptable protocol version. If zero, the
-   * maximum supported version, currently (D)TLS 1.2, is used. */
+  /* max_version is the maximum acceptable wire protocol version. */
   uint16_t max_version;
 
-  /* min_version is the minimum acceptable protocl version. If zero, the
-   * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
+  /* min_version is the minimum acceptable wire protocol version. */
   uint16_t min_version;
 
   struct ssl_cipher_preference_list_st *cipher_list;
@@ -3868,12 +3866,10 @@ struct ssl_st {
   /* version is the protocol version. */
   int version;
 
-  /* max_version is the maximum acceptable protocol version. If zero, the
-   * maximum supported version, currently (D)TLS 1.2, is used. */
+  /* max_version is the maximum acceptable wire protocol version. */
   uint16_t max_version;
 
-  /* min_version is the minimum acceptable protocl version. If zero, the
-   * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
+  /* min_version is the minimum acceptable wire protocol version. */
   uint16_t min_version;
 
   /* method is the method table corresponding to the current protocol (DTLS or

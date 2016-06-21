@@ -297,9 +297,14 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   if (method->version != 0) {
     SSL_CTX_set_max_version(ret, method->version);
     SSL_CTX_set_min_version(ret, method->version);
-  } else if (!method->method->is_dtls) {
+  } else if (method->method->is_dtls) {
+    /* TODO(svaldez): Enable DTLS 1.3 once implemented. */
+    SSL_CTX_set_max_version(ret, DTLS1_2_VERSION);
+    SSL_CTX_set_min_version(ret, DTLS1_VERSION);
+  } else {
     /* TODO(svaldez): Enable TLS 1.3 once implemented. */
     SSL_CTX_set_max_version(ret, TLS1_2_VERSION);
+    SSL_CTX_set_min_version(ret, SSL3_VERSION);
   }
 
   return ret;
@@ -2558,7 +2563,7 @@ uint16_t ssl3_get_mutual_version(SSL *ssl, uint16_t client_version) {
 
   if (SSL_IS_DTLS(ssl)) {
     /* Clamp client_version to max_version. */
-    if (ssl->max_version != 0 && client_version < ssl->max_version) {
+    if (client_version < ssl->max_version) {
       client_version = ssl->max_version;
     }
 
@@ -2571,13 +2576,13 @@ uint16_t ssl3_get_mutual_version(SSL *ssl, uint16_t client_version) {
     }
 
     /* Check against min_version. */
-    if (version != 0 && ssl->min_version != 0 && version > ssl->min_version) {
+    if (version != 0 && version > ssl->min_version) {
       return 0;
     }
     return version;
   } else {
     /* Clamp client_version to max_version. */
-    if (ssl->max_version != 0 && client_version > ssl->max_version) {
+    if (client_version > ssl->max_version) {
       client_version = ssl->max_version;
     }
 
@@ -2599,7 +2604,7 @@ uint16_t ssl3_get_mutual_version(SSL *ssl, uint16_t client_version) {
     }
 
     /* Check against min_version. */
-    if (version != 0 && ssl->min_version != 0 && version < ssl->min_version) {
+    if (version != 0 && version < ssl->min_version) {
       return 0;
     }
     return version;
@@ -2630,7 +2635,7 @@ uint16_t ssl3_get_max_client_version(SSL *ssl) {
     if (!(options & SSL_OP_NO_DTLSv1) && (options & SSL_OP_NO_DTLSv1_2)) {
       version = DTLS1_VERSION;
     }
-    if (ssl->max_version != 0 && version < ssl->max_version) {
+    if (version != 0 && version < ssl->max_version) {
       version = ssl->max_version;
     }
   } else {
@@ -2649,7 +2654,7 @@ uint16_t ssl3_get_max_client_version(SSL *ssl) {
     if (!(options & SSL_OP_NO_SSLv3) && (options & SSL_OP_NO_TLSv1)) {
       version = SSL3_VERSION;
     }
-    if (ssl->max_version != 0 && version > ssl->max_version) {
+    if (version != 0 && version > ssl->max_version) {
       version = ssl->max_version;
     }
   }
@@ -2659,10 +2664,10 @@ uint16_t ssl3_get_max_client_version(SSL *ssl) {
 
 int ssl3_is_version_enabled(SSL *ssl, uint16_t version) {
   if (SSL_IS_DTLS(ssl)) {
-    if (ssl->max_version != 0 && version < ssl->max_version) {
+    if (version < ssl->max_version) {
       return 0;
     }
-    if (ssl->min_version != 0 && version > ssl->min_version) {
+    if (version > ssl->min_version) {
       return 0;
     }
 
@@ -2677,10 +2682,10 @@ int ssl3_is_version_enabled(SSL *ssl, uint16_t version) {
         return 0;
     }
   } else {
-    if (ssl->max_version != 0 && version > ssl->max_version) {
+    if (version > ssl->max_version) {
       return 0;
     }
-    if (ssl->min_version != 0 && version < ssl->min_version) {
+    if (version < ssl->min_version) {
       return 0;
     }
 
