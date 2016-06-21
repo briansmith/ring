@@ -5,13 +5,11 @@
 package runner
 
 import (
-	"crypto"
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
-	"errors"
 	"hash"
 )
 
@@ -189,27 +187,6 @@ func keysFromMasterSecret(version uint16, suite *cipherSuite, masterSecret, clie
 	return
 }
 
-// lookupTLSHash looks up the corresponding crypto.Hash for a given
-// TLS hash identifier.
-func lookupTLSHash(hash uint8) (crypto.Hash, error) {
-	switch hash {
-	case hashMD5:
-		return crypto.MD5, nil
-	case hashSHA1:
-		return crypto.SHA1, nil
-	case hashSHA224:
-		return crypto.SHA224, nil
-	case hashSHA256:
-		return crypto.SHA256, nil
-	case hashSHA384:
-		return crypto.SHA384, nil
-	case hashSHA512:
-		return crypto.SHA512, nil
-	default:
-		return 0, errors.New("tls: unsupported hash algorithm")
-	}
-}
-
 func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 	if version >= VersionTLS12 {
 		newHash := sha256.New
@@ -325,50 +302,14 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 	return out
 }
 
-// selectClientCertSignatureAlgorithm returns a signatureAndHash to sign a
-// client's CertificateVerify with, or an error if none can be found.
-func (h finishedHash) selectClientCertSignatureAlgorithm(serverList, clientList []signatureAndHash, sigType uint8) (signatureAndHash, error) {
-	if h.version < VersionTLS12 {
-		// Nothing to negotiate before TLS 1.2.
-		return signatureAndHash{signature: sigType}, nil
-	}
-
-	for _, v := range serverList {
-		if v.signature == sigType && isSupportedSignatureAndHash(v, clientList) {
-			return v, nil
-		}
-	}
-	return signatureAndHash{}, errors.New("tls: no supported signature algorithm found for signing client certificate")
-}
-
-// hashForClientCertificate returns a digest, hash function, and TLS 1.2 hash
-// id suitable for signing by a TLS client certificate.
-func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash, masterSecret []byte) ([]byte, crypto.Hash, error) {
-	if h.version == VersionSSL30 {
-		if signatureAndHash.signature != signatureRSA {
-			return nil, 0, errors.New("tls: unsupported signature type for client certificate")
-		}
-
-		md5Hash := md5.New()
-		md5Hash.Write(h.buffer)
-		sha1Hash := sha1.New()
-		sha1Hash.Write(h.buffer)
-		return finishedSum30(md5Hash, sha1Hash, masterSecret, nil), crypto.MD5SHA1, nil
-	}
-	if h.version >= VersionTLS12 {
-		hashAlg, err := lookupTLSHash(signatureAndHash.hash)
-		if err != nil {
-			return nil, 0, err
-		}
-		hash := hashAlg.New()
-		hash.Write(h.buffer)
-		return hash.Sum(nil), hashAlg, nil
-	}
-	if signatureAndHash.signature == signatureECDSA {
-		return h.server.Sum(nil), crypto.SHA1, nil
-	}
-
-	return h.Sum(), crypto.MD5SHA1, nil
+// hashForClientCertificateSSL3 returns the hash to be signed for client
+// certificates in SSL 3.0.
+func (h finishedHash) hashForClientCertificateSSL3(masterSecret []byte) []byte {
+	md5Hash := md5.New()
+	md5Hash.Write(h.buffer)
+	sha1Hash := sha1.New()
+	sha1Hash.Write(h.buffer)
+	return finishedSum30(md5Hash, sha1Hash, masterSecret, nil)
 }
 
 // hashForChannelID returns the hash to be signed for TLS Channel

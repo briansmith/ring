@@ -6,12 +6,12 @@ package runner
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/x509"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
@@ -141,8 +141,8 @@ NextCipherSuite:
 		return errors.New("tls: short read from Rand: " + err.Error())
 	}
 
-	if hello.vers >= VersionTLS12 && !c.config.Bugs.NoSignatureAndHashes {
-		hello.signatureAndHashes = c.config.signatureAndHashesForClient()
+	if hello.vers >= VersionTLS12 && !c.config.Bugs.NoSignatureAlgorithms {
+		hello.signatureAlgorithms = c.config.signatureAlgorithmsForClient()
 	}
 
 	var session *ClientSessionState
@@ -474,6 +474,8 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			return err
 		}
 
+		c.peerSignatureAlgorithm = keyAgreement.peerSignatureAlgorithm()
+
 		msg, err = c.readHandshake()
 		if err != nil {
 			return err
@@ -605,56 +607,50 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	if chainToSend != nil {
-		var signed []byte
 		certVerify := &certificateVerifyMsg{
-			hasSignatureAndHash: c.vers >= VersionTLS12,
+			hasSignatureAlgorithm: c.vers >= VersionTLS12,
 		}
 
 		// Determine the hash to sign.
-		var signatureType uint8
-		switch c.config.Certificates[0].PrivateKey.(type) {
-		case *ecdsa.PrivateKey:
-			signatureType = signatureECDSA
-		case *rsa.PrivateKey:
-			signatureType = signatureRSA
-		default:
-			c.sendAlert(alertInternalError)
-			return errors.New("unknown private key type")
-		}
+		privKey := c.config.Certificates[0].PrivateKey
 		if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-			certReq.signatureAndHashes = c.config.signatureAndHashesForClient()
-		}
-		certVerify.signatureAndHash, err = hs.finishedHash.selectClientCertSignatureAlgorithm(certReq.signatureAndHashes, c.config.signatureAndHashesForClient(), signatureType)
-		if err != nil {
-			c.sendAlert(alertInternalError)
-			return err
-		}
-		digest, hashFunc, err := hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash, hs.masterSecret)
-		if err != nil {
-			c.sendAlert(alertInternalError)
-			return err
-		}
-		if c.config.Bugs.InvalidCertVerifySignature {
-			digest[0] ^= 0x80
+			certReq.signatureAlgorithms = c.config.signatureAlgorithmsForClient()
 		}
 
-		switch key := c.config.Certificates[0].PrivateKey.(type) {
-		case *ecdsa.PrivateKey:
-			var r, s *big.Int
-			r, s, err = ecdsa.Sign(c.config.rand(), key, digest)
-			if err == nil {
-				signed, err = asn1.Marshal(ecdsaSignature{r, s})
+		if certVerify.hasSignatureAlgorithm {
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, certReq.signatureAlgorithms, c.config.signatureAlgorithmsForClient())
+			if err != nil {
+				c.sendAlert(alertInternalError)
+				return err
 			}
-		case *rsa.PrivateKey:
-			signed, err = rsa.SignPKCS1v15(c.config.rand(), key, hashFunc, digest)
-		default:
-			err = errors.New("unknown private key type")
+		}
+
+		if c.vers > VersionSSL30 {
+			msg := hs.finishedHash.buffer
+			if c.config.Bugs.InvalidCertVerifySignature {
+				msg = make([]byte, len(hs.finishedHash.buffer))
+				copy(msg, hs.finishedHash.buffer)
+				msg[0] ^= 0x80
+			}
+			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, msg)
+		} else {
+			// SSL 3.0's client certificate construction is
+			// incompatible with signatureAlgorithm.
+			rsaKey, ok := privKey.(*rsa.PrivateKey)
+			if !ok {
+				err = errors.New("unsupported signature type for client certificate")
+			} else {
+				digest := hs.finishedHash.hashForClientCertificateSSL3(hs.masterSecret)
+				if c.config.Bugs.InvalidCertVerifySignature {
+					digest[0] ^= 0x80
+				}
+				certVerify.signature, err = rsa.SignPKCS1v15(c.config.rand(), rsaKey, crypto.MD5SHA1, digest)
+			}
 		}
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return errors.New("tls: failed to sign handshake with client certificate: " + err.Error())
 		}
-		certVerify.signature = signed
 
 		hs.writeClientHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())

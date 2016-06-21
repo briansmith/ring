@@ -50,11 +50,9 @@ type Conn struct {
 	// firstFinished contains the first Finished hash sent during the
 	// handshake. This is the "tls-unique" channel binding value.
 	firstFinished [12]byte
-	// clientCertSignatureHash contains the TLS hash id for the hash that
-	// was used by the client to sign the handshake with a client
-	// certificate. This is only set by a server and is zero if no client
-	// certificates were used.
-	clientCertSignatureHash uint8
+	// peerSignatureAlgorithm contains the signature algorithm that was used
+	// by the peer in the handshake, or zero if not applicable.
+	peerSignatureAlgorithm signatureAlgorithm
 
 	clientRandom, serverRandom [32]byte
 	masterSecret               [48]byte
@@ -1089,7 +1087,7 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(certificateMsg)
 	case typeCertificateRequest:
 		m = &certificateRequestMsg{
-			hasSignatureAndHash: c.vers >= VersionTLS12,
+			hasSignatureAlgorithm: c.vers >= VersionTLS12,
 		}
 	case typeCertificateStatus:
 		m = new(certificateStatusMsg)
@@ -1101,7 +1099,7 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(clientKeyExchangeMsg)
 	case typeCertificateVerify:
 		m = &certificateVerifyMsg{
-			hasSignatureAndHash: c.vers >= VersionTLS12,
+			hasSignatureAlgorithm: c.vers >= VersionTLS12,
 		}
 	case typeNextProtocol:
 		m = new(nextProtoMsg)
@@ -1436,7 +1434,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.SRTPProtectionProfile = c.srtpProtectionProfile
 		state.TLSUnique = c.firstFinished[:]
 		state.SCTList = c.sctList
-		state.ClientCertSignatureHash = c.clientCertSignatureHash
+		state.PeerSignatureAlgorithm = c.peerSignatureAlgorithm
 	}
 
 	return state

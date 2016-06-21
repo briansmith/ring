@@ -1128,12 +1128,12 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
-  if (config->expect_server_key_exchange_hash != 0 &&
-      config->expect_server_key_exchange_hash !=
-          SSL_get_server_key_exchange_hash(ssl)) {
-    fprintf(stderr, "ServerKeyExchange hash was %d, wanted %d.\n",
-            SSL_get_server_key_exchange_hash(ssl),
-            config->expect_server_key_exchange_hash);
+  if (config->expect_peer_signature_algorithm != 0 &&
+      config->expect_peer_signature_algorithm !=
+          SSL_get_peer_signature_algorithm(ssl)) {
+    fprintf(stderr, "Peer signature algorithm was %04x, wanted %04x.\n",
+            SSL_get_peer_signature_algorithm(ssl),
+            config->expect_peer_signature_algorithm);
     return false;
   }
 

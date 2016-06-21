@@ -12,7 +12,6 @@ import (
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/x509"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
@@ -196,11 +195,11 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	c.clientVersion = hs.clientHello.vers
 
 	// Reject < 1.2 ClientHellos with signature_algorithms.
-	if c.clientVersion < VersionTLS12 && len(hs.clientHello.signatureAndHashes) > 0 {
+	if c.clientVersion < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
 		return false, fmt.Errorf("tls: client included signature_algorithms before TLS 1.2")
 	}
 	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-		hs.clientHello.signatureAndHashes = config.signatureAndHashesForServer()
+		hs.clientHello.signatureAlgorithms = config.signatureAlgorithmsForServer()
 	}
 
 	// Check the client cipher list is consistent with the version.
@@ -592,9 +591,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			}
 		}
 		if c.vers >= VersionTLS12 {
-			certReq.hasSignatureAndHash = true
-			if !config.Bugs.NoSignatureAndHashes {
-				certReq.signatureAndHashes = config.signatureAndHashesForServer()
+			certReq.hasSignatureAlgorithm = true
+			if !config.Bugs.NoSignatureAlgorithms {
+				certReq.signatureAlgorithms = config.signatureAlgorithmsForServer()
 			}
 		}
 
@@ -707,60 +706,27 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 
 		// Determine the signature type.
-		var signatureAndHash signatureAndHash
-		if certVerify.hasSignatureAndHash {
-			signatureAndHash = certVerify.signatureAndHash
-			if !isSupportedSignatureAndHash(signatureAndHash, config.signatureAndHashesForServer()) {
-				return errors.New("tls: unsupported hash function for client certificate")
+		var sigAlg signatureAlgorithm
+		if certVerify.hasSignatureAlgorithm {
+			sigAlg = certVerify.signatureAlgorithm
+			if !isSupportedSignatureAlgorithm(sigAlg, config.signatureAlgorithmsForServer()) {
+				return errors.New("tls: unsupported signature algorithm for client certificate")
 			}
-			c.clientCertSignatureHash = signatureAndHash.hash
-		} else {
-			// Before TLS 1.2 the signature algorithm was implicit
-			// from the key type, and only one hash per signature
-			// algorithm was possible. Leave the hash as zero.
-			switch pub.(type) {
-			case *ecdsa.PublicKey:
-				signatureAndHash.signature = signatureECDSA
-			case *rsa.PublicKey:
-				signatureAndHash.signature = signatureRSA
-			}
+			c.peerSignatureAlgorithm = sigAlg
 		}
 
-		switch key := pub.(type) {
-		case *ecdsa.PublicKey:
-			if signatureAndHash.signature != signatureECDSA {
-				err = errors.New("tls: bad signature type for client's ECDSA certificate")
-				break
+		if c.vers > VersionSSL30 {
+			err = verifyMessage(c.vers, pub, sigAlg, hs.finishedHash.buffer, certVerify.signature)
+		} else {
+			// SSL 3.0's client certificate construction is
+			// incompatible with signatureAlgorithm.
+			rsaPub, ok := pub.(*rsa.PublicKey)
+			if !ok {
+				err = errors.New("unsupported key type for client certificate")
+			} else {
+				digest := hs.finishedHash.hashForClientCertificateSSL3(hs.masterSecret)
+				err = rsa.VerifyPKCS1v15(rsaPub, crypto.MD5SHA1, digest, certVerify.signature)
 			}
-			ecdsaSig := new(ecdsaSignature)
-			if _, err = asn1.Unmarshal(certVerify.signature, ecdsaSig); err != nil {
-				break
-			}
-			if ecdsaSig.R.Sign() <= 0 || ecdsaSig.S.Sign() <= 0 {
-				err = errors.New("ECDSA signature contained zero or negative values")
-				break
-			}
-			var digest []byte
-			digest, _, err = hs.finishedHash.hashForClientCertificate(signatureAndHash, hs.masterSecret)
-			if err != nil {
-				break
-			}
-			if !ecdsa.Verify(key, digest, ecdsaSig.R, ecdsaSig.S) {
-				err = errors.New("ECDSA verification failure")
-				break
-			}
-		case *rsa.PublicKey:
-			if signatureAndHash.signature != signatureRSA {
-				err = errors.New("tls: bad signature type for client's RSA certificate")
-				break
-			}
-			var digest []byte
-			var hashFunc crypto.Hash
-			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(signatureAndHash, hs.masterSecret)
-			if err != nil {
-				break
-			}
-			err = rsa.VerifyPKCS1v15(key, hashFunc, digest, certVerify.signature)
 		}
 		if err != nil {
 			c.sendAlert(alertBadCertificate)

@@ -132,43 +132,51 @@ const (
 	// Rest of these are reserved by the TLS spec
 )
 
-// Hash functions for TLS 1.2 (See RFC 5246, section A.4.1)
-const (
-	hashMD5    uint8 = 1
-	hashSHA1   uint8 = 2
-	hashSHA224 uint8 = 3
-	hashSHA256 uint8 = 4
-	hashSHA384 uint8 = 5
-	hashSHA512 uint8 = 6
-)
+// signatureAlgorithm corresponds to a SignatureScheme value from TLS 1.3. Note
+// that TLS 1.3 names the production 'SignatureScheme' to avoid colliding with
+// TLS 1.2's SignatureAlgorithm but otherwise refers to them as 'signature
+// algorithms' throughout. We match the latter.
+type signatureAlgorithm uint16
 
-// Signature algorithms for TLS 1.2 (See RFC 5246, section A.4.1)
 const (
-	signatureRSA   uint8 = 1
-	signatureECDSA uint8 = 3
-)
+	// RSASSA-PKCS1-v1_5 algorithms
+	signatureRSAPKCS1WithMD5    signatureAlgorithm = 0x0101
+	signatureRSAPKCS1WithSHA1   signatureAlgorithm = 0x0201
+	signatureRSAPKCS1WithSHA256 signatureAlgorithm = 0x0401
+	signatureRSAPKCS1WithSHA384 signatureAlgorithm = 0x0501
+	signatureRSAPKCS1WithSHA512 signatureAlgorithm = 0x0601
 
-// signatureAndHash mirrors the TLS 1.2, SignatureAndHashAlgorithm struct. See
-// RFC 5246, section A.4.1.
-type signatureAndHash struct {
-	signature, hash uint8
-}
+	// ECDSA algorithms
+	signatureECDSAWithSHA1          signatureAlgorithm = 0x0203
+	signatureECDSAWithP256AndSHA256 signatureAlgorithm = 0x0403
+	signatureECDSAWithP384AndSHA384 signatureAlgorithm = 0x0503
+	signatureECDSAWithP521AndSHA512 signatureAlgorithm = 0x0603
+
+	// RSASSA-PSS algorithms
+	signatureRSAPSSWithSHA256 signatureAlgorithm = 0x0700
+	signatureRSAPSSWithSHA384 signatureAlgorithm = 0x0701
+	signatureRSAPSSWithSHA512 signatureAlgorithm = 0x0702
+
+	// EdDSA algorithms
+	signatureEd25519 signatureAlgorithm = 0x0703
+	signatureEd448   signatureAlgorithm = 0x0704
+)
 
 // supportedSKXSignatureAlgorithms contains the signature and hash algorithms
 // that the code advertises as supported in a TLS 1.2 ClientHello.
-var supportedSKXSignatureAlgorithms = []signatureAndHash{
-	{signatureRSA, hashSHA256},
-	{signatureECDSA, hashSHA256},
-	{signatureRSA, hashSHA1},
-	{signatureECDSA, hashSHA1},
+var supportedSKXSignatureAlgorithms = []signatureAlgorithm{
+	signatureRSAPKCS1WithSHA256,
+	signatureECDSAWithP256AndSHA256,
+	signatureRSAPKCS1WithSHA1,
+	signatureECDSAWithSHA1,
 }
 
-// supportedClientCertSignatureAlgorithms contains the signature and hash
+// supportedPeerSignatureAlgorithms contains the signature and hash
 // algorithms that the code advertises as supported in a TLS 1.2
 // CertificateRequest.
-var supportedClientCertSignatureAlgorithms = []signatureAndHash{
-	{signatureRSA, hashSHA256},
-	{signatureECDSA, hashSHA256},
+var supportedPeerSignatureAlgorithms = []signatureAlgorithm{
+	signatureRSAPKCS1WithSHA256,
+	signatureECDSAWithP256AndSHA256,
 }
 
 // SRTP protection profiles (See RFC 5764, section 4.1.2)
@@ -193,7 +201,7 @@ type ConnectionState struct {
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
 	TLSUnique                  []byte                // the tls-unique channel binding
 	SCTList                    []byte                // signed certificate timestamp list
-	ClientCertSignatureHash    uint8                 // TLS id of the hash used by the client to sign the handshake
+	PeerSignatureAlgorithm     signatureAlgorithm    // algorithm used by the peer in the handshake
 }
 
 // ClientAuthType declares the policy the server will follow for
@@ -378,10 +386,10 @@ type Config struct {
 	// protection profiles to offer in DTLS-SRTP.
 	SRTPProtectionProfiles []uint16
 
-	// SignatureAndHashes, if not nil, overrides the default set of
+	// SignatureAlgorithms, if not nil, overrides the default set of
 	// supported signature and hash algorithms to advertise in
 	// CertificateRequest.
-	SignatureAndHashes []signatureAndHash
+	SignatureAlgorithms []signatureAlgorithm
 
 	// Bugs specifies optional misbehaviour to be used for testing other
 	// implementations.
@@ -640,13 +648,13 @@ type ProtocolBugs struct {
 	// server sends in the ServerHello instead of the negotiated one.
 	SendSRTPProtectionProfile uint16
 
-	// NoSignatureAndHashes, if true, causes the client to omit the
+	// NoSignatureAlgorithms, if true, causes the client to omit the
 	// signature and hashes extension.
 	//
 	// For a server, it will cause an empty list to be sent in the
 	// CertificateRequest message. None the less, the configured set will
 	// still be enforced.
-	NoSignatureAndHashes bool
+	NoSignatureAlgorithms bool
 
 	// NoSupportedCurves, if true, causes the client to omit the
 	// supported_curves extension.
@@ -980,16 +988,16 @@ func (c *Config) getCertificateForName(name string) *Certificate {
 	return &c.Certificates[0]
 }
 
-func (c *Config) signatureAndHashesForServer() []signatureAndHash {
-	if c != nil && c.SignatureAndHashes != nil {
-		return c.SignatureAndHashes
+func (c *Config) signatureAlgorithmsForServer() []signatureAlgorithm {
+	if c != nil && c.SignatureAlgorithms != nil {
+		return c.SignatureAlgorithms
 	}
-	return supportedClientCertSignatureAlgorithms
+	return supportedPeerSignatureAlgorithms
 }
 
-func (c *Config) signatureAndHashesForClient() []signatureAndHash {
-	if c != nil && c.SignatureAndHashes != nil {
-		return c.SignatureAndHashes
+func (c *Config) signatureAlgorithmsForClient() []signatureAlgorithm {
+	if c != nil && c.SignatureAlgorithms != nil {
+		return c.SignatureAlgorithms
 	}
 	return supportedSKXSignatureAlgorithms
 }
@@ -1206,9 +1214,9 @@ func unexpectedMessageError(wanted, got interface{}) error {
 	return fmt.Errorf("tls: received unexpected handshake message of type %T when waiting for %T", got, wanted)
 }
 
-func isSupportedSignatureAndHash(sigHash signatureAndHash, sigHashes []signatureAndHash) bool {
-	for _, s := range sigHashes {
-		if s == sigHash {
+func isSupportedSignatureAlgorithm(sigAlg signatureAlgorithm, sigAlgs []signatureAlgorithm) bool {
+	for _, s := range sigAlgs {
+		if s == sigAlg {
 			return true
 		}
 	}

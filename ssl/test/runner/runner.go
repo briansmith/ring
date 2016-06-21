@@ -143,6 +143,46 @@ const (
 	npn  = 2
 )
 
+type testCert int
+
+const (
+	testCertRSA testCert = iota
+	testCertECDSA
+)
+
+func getRunnerCertificate(t testCert) Certificate {
+	switch t {
+	case testCertRSA:
+		return getRSACertificate()
+	case testCertECDSA:
+		return getECDSACertificate()
+	default:
+		panic("Unknown test certificate")
+	}
+}
+
+func getShimCertificate(t testCert) string {
+	switch t {
+	case testCertRSA:
+		return rsaCertificateFile
+	case testCertECDSA:
+		return ecdsaCertificateFile
+	default:
+		panic("Unknown test certificate")
+	}
+}
+
+func getShimKey(t testCert) string {
+	switch t {
+	case testCertRSA:
+		return rsaKeyFile
+	case testCertECDSA:
+		return ecdsaKeyFile
+	default:
+		panic("Unknown test certificate")
+	}
+}
+
 type testCase struct {
 	testType      testType
 	protocol      protocol
@@ -181,10 +221,9 @@ type testCase struct {
 	expectedOCSPResponse []uint8
 	// expectedSCTList, if not nil, is the expected SCT list to be received.
 	expectedSCTList []uint8
-	// expectedClientCertSignatureHash, if not zero, is the TLS id of the
-	// hash function that the client should have used when signing the
-	// handshake with a client certificate.
-	expectedClientCertSignatureHash uint8
+	// expectedPeerSignatureAlgorithm, if not zero, is the signature
+	// algorithm that the peer should have used in the handshake.
+	expectedPeerSignatureAlgorithm signatureAlgorithm
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -447,8 +486,8 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 		return fmt.Errorf("SCT list mismatch")
 	}
 
-	if expected := test.expectedClientCertSignatureHash; expected != 0 && expected != connState.ClientCertSignatureHash {
-		return fmt.Errorf("expected client to sign handshake with hash %d, but got %d", expected, connState.ClientCertSignatureHash)
+	if expected := test.expectedPeerSignatureAlgorithm; expected != 0 && expected != connState.PeerSignatureAlgorithm {
+		return fmt.Errorf("expected peer to use signature algorithm %04x, but got %04x", expected, connState.PeerSignatureAlgorithm)
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -644,10 +683,6 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	if test.expectResumeRejected && !test.resumeSession {
 		panic("expectResumeRejected without resumeSession in " + test.name)
-	}
-
-	if test.testType != clientTest && test.expectedClientCertSignatureHash != 0 {
-		panic("expectedClientCertSignatureHash non-zero with serverTest in " + test.name)
 	}
 
 	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
@@ -4510,78 +4545,123 @@ func addDTLSReplayTests() {
 	})
 }
 
-var testHashes = []struct {
+var testSignatureAlgorithms = []struct {
 	name string
-	id   uint8
+	id   signatureAlgorithm
+	cert testCert
 }{
-	{"SHA1", hashSHA1},
-	{"SHA256", hashSHA256},
-	{"SHA384", hashSHA384},
-	{"SHA512", hashSHA512},
+	{"RSA-PKCS1-SHA1", signatureRSAPKCS1WithSHA1, testCertRSA},
+	{"RSA-PKCS1-SHA256", signatureRSAPKCS1WithSHA256, testCertRSA},
+	{"RSA-PKCS1-SHA384", signatureRSAPKCS1WithSHA384, testCertRSA},
+	{"RSA-PKCS1-SHA512", signatureRSAPKCS1WithSHA512, testCertRSA},
+	{"ECDSA-SHA1", signatureECDSAWithSHA1, testCertECDSA},
+	// TODO(davidben): These signature algorithms are paired with a curve in
+	// TLS 1.3. Test that, in TLS 1.3, the curves must match and, in TLS
+	// 1.2, mismatches are tolerated.
+	{"ECDSA-SHA256", signatureECDSAWithP256AndSHA256, testCertECDSA},
+	{"ECDSA-SHA384", signatureECDSAWithP384AndSHA384, testCertECDSA},
+	{"ECDSA-SHA512", signatureECDSAWithP521AndSHA512, testCertECDSA},
 }
 
-func addSigningHashTests() {
-	// Make sure each hash works. Include some fake hashes in the list and
-	// ensure they're ignored.
-	for _, hash := range testHashes {
+const fakeSigAlg1 signatureAlgorithm = 0x2a01
+const fakeSigAlg2 signatureAlgorithm = 0xff01
+
+func addSignatureAlgorithmTests() {
+	// Make sure each signature algorithm works. Include some fake values in
+	// the list and ensure they're ignored.
+	for _, alg := range testSignatureAlgorithms {
 		testCases = append(testCases, testCase{
-			name: "SigningHash-ClientAuth-" + hash.name,
+			name: "SigningHash-ClientAuth-Sign-" + alg.name,
 			config: Config{
-				ClientAuth: RequireAnyClientCert,
-				SignatureAndHashes: []signatureAndHash{
-					{signatureRSA, 42},
-					{signatureRSA, hash.id},
-					{signatureRSA, 255},
+				// SignatureAlgorithms is shared, so we must
+				// configure a matching server certificate too.
+				Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+				ClientAuth:   RequireAnyClientCert,
+				SignatureAlgorithms: []signatureAlgorithm{
+					fakeSigAlg1,
+					alg.id,
+					fakeSigAlg2,
 				},
 			},
 			flags: []string{
-				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
-				"-key-file", path.Join(*resourceDir, rsaKeyFile),
+				"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+				"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+			},
+			expectedPeerSignatureAlgorithm: alg.id,
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "SigningHash-ClientAuth-Verify-" + alg.name,
+			config: Config{
+				Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+				SignatureAlgorithms: []signatureAlgorithm{
+					alg.id,
+				},
+			},
+			flags: []string{
+				"-require-any-client-certificate",
+				"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+				// SignatureAlgorithms is shared, so we must
+				// configure a matching server certificate too.
+				"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+				"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
 			},
 		})
 
 		testCases = append(testCases, testCase{
 			testType: serverTest,
-			name:     "SigningHash-ServerKeyExchange-Sign-" + hash.name,
+			name:     "SigningHash-ServerKeyExchange-Sign-" + alg.name,
 			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				SignatureAndHashes: []signatureAndHash{
-					{signatureRSA, 42},
-					{signatureRSA, hash.id},
-					{signatureRSA, 255},
+				CipherSuites: []uint16{
+					TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+					TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				},
+				SignatureAlgorithms: []signatureAlgorithm{
+					fakeSigAlg1,
+					alg.id,
+					fakeSigAlg2,
 				},
 			},
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+				"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+			},
+			expectedPeerSignatureAlgorithm: alg.id,
 		})
 
 		testCases = append(testCases, testCase{
-			name: "SigningHash-ServerKeyExchange-Verify-" + hash.name,
+			name: "SigningHash-ServerKeyExchange-Verify-" + alg.name,
 			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				SignatureAndHashes: []signatureAndHash{
-					{signatureRSA, 42},
-					{signatureRSA, hash.id},
-					{signatureRSA, 255},
+				Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+				CipherSuites: []uint16{
+					TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+					TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				},
+				SignatureAlgorithms: []signatureAlgorithm{
+					alg.id,
 				},
 			},
-			flags: []string{"-expect-server-key-exchange-hash", strconv.Itoa(int(hash.id))},
+			flags: []string{"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id))},
 		})
 	}
 
-	// Test that hash resolution takes the signature type into account.
+	// Test that algorithm selection takes the key type into account.
 	testCases = append(testCases, testCase{
 		name: "SigningHash-ClientAuth-SignatureType",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
-			SignatureAndHashes: []signatureAndHash{
-				{signatureECDSA, hashSHA512},
-				{signatureRSA, hashSHA384},
-				{signatureECDSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithP521AndSHA512,
+				signatureRSAPKCS1WithSHA384,
+				signatureECDSAWithSHA1,
 			},
 		},
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA384,
 	})
 
 	testCases = append(testCases, testCase{
@@ -4589,12 +4669,13 @@ func addSigningHashTests() {
 		name:     "SigningHash-ServerKeyExchange-SignatureType",
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			SignatureAndHashes: []signatureAndHash{
-				{signatureECDSA, hashSHA512},
-				{signatureRSA, hashSHA384},
-				{signatureECDSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithP521AndSHA512,
+				signatureRSAPKCS1WithSHA384,
+				signatureECDSAWithSHA1,
 			},
 		},
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA384,
 	})
 
 	// Test that, if the list is missing, the peer falls back to SHA-1.
@@ -4602,11 +4683,11 @@ func addSigningHashTests() {
 		name: "SigningHash-ClientAuth-Fallback",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
 			},
 			Bugs: ProtocolBugs{
-				NoSignatureAndHashes: true,
+				NoSignatureAlgorithms: true,
 			},
 		},
 		flags: []string{
@@ -4620,11 +4701,11 @@ func addSigningHashTests() {
 		name:     "SigningHash-ServerKeyExchange-Fallback",
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
 			},
 			Bugs: ProtocolBugs{
-				NoSignatureAndHashes: true,
+				NoSignatureAlgorithms: true,
 			},
 		},
 	})
@@ -4636,13 +4717,13 @@ func addSigningHashTests() {
 		name:     "SigningHash-ClientAuth-Enforced",
 		config: Config{
 			Certificates: []Certificate{rsaCertificate},
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashMD5},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithMD5,
 				// Advertise SHA-1 so the handshake will
 				// proceed, but the shim's preferences will be
 				// ignored in CertificateVerify generation, so
 				// MD5 will be chosen.
-				{signatureRSA, hashSHA1},
+				signatureRSAPKCS1WithSHA1,
 			},
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
@@ -4657,8 +4738,8 @@ func addSigningHashTests() {
 		name: "SigningHash-ServerKeyExchange-Enforced",
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashMD5},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithMD5,
 			},
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
@@ -4674,65 +4755,65 @@ func addSigningHashTests() {
 		name: "Agree-Digest-Fallback",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashSHA512},
-				{signatureRSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA512,
+				signatureRSAPKCS1WithSHA1,
 			},
 		},
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		digestPrefs:                     "SHA256",
-		expectedClientCertSignatureHash: hashSHA1,
+		digestPrefs:                    "SHA256",
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA1,
 	})
 	testCases = append(testCases, testCase{
 		name: "Agree-Digest-SHA256",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashSHA1},
-				{signatureRSA, hashSHA256},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
+				signatureRSAPKCS1WithSHA256,
 			},
 		},
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		digestPrefs:                     "SHA256,SHA1",
-		expectedClientCertSignatureHash: hashSHA256,
+		digestPrefs:                    "SHA256,SHA1",
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 	})
 	testCases = append(testCases, testCase{
 		name: "Agree-Digest-SHA1",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
 			},
 		},
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		digestPrefs:                     "SHA512,SHA256,SHA1",
-		expectedClientCertSignatureHash: hashSHA1,
+		digestPrefs:                    "SHA512,SHA256,SHA1",
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA1,
 	})
 	testCases = append(testCases, testCase{
 		name: "Agree-Digest-Default",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
-			SignatureAndHashes: []signatureAndHash{
-				{signatureRSA, hashSHA256},
-				{signatureECDSA, hashSHA256},
-				{signatureRSA, hashSHA1},
-				{signatureECDSA, hashSHA1},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA256,
+				signatureECDSAWithP256AndSHA256,
+				signatureRSAPKCS1WithSHA1,
+				signatureECDSAWithSHA1,
 			},
 		},
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		expectedClientCertSignatureHash: hashSHA256,
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 	})
 }
 
@@ -5439,7 +5520,7 @@ func main() {
 	addExtendedMasterSecretTests()
 	addRenegotiationTests()
 	addDTLSReplayTests()
-	addSigningHashTests()
+	addSignatureAlgorithmTests()
 	addDTLSRetransmitTests()
 	addExportKeyingMaterialTests()
 	addTLSUniqueTests()
