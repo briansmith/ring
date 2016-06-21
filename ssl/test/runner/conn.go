@@ -714,15 +714,20 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 
 	vers := uint16(b.data[1])<<8 | uint16(b.data[2])
 	n := int(b.data[3])<<8 | int(b.data[4])
-	if c.haveVers {
-		if vers != c.vers && c.vers < VersionTLS13 {
-			c.sendAlert(alertProtocolVersion)
-			return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, c.vers))
-		}
-	} else {
-		if expect := c.config.Bugs.ExpectInitialRecordVersion; expect != 0 && vers != expect {
-			c.sendAlert(alertProtocolVersion)
-			return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, expect))
+	// Alerts sent near version negotiation do not have a well-defined
+	// record-layer version prior to TLS 1.3. (In TLS 1.3, the record-layer
+	// version is irrelevant.)
+	if typ != recordTypeAlert {
+		if c.haveVers {
+			if vers != c.vers && c.vers < VersionTLS13 {
+				c.sendAlert(alertProtocolVersion)
+				return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, c.vers))
+			}
+		} else {
+			if expect := c.config.Bugs.ExpectInitialRecordVersion; expect != 0 && vers != expect {
+				c.sendAlert(alertProtocolVersion)
+				return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, expect))
+			}
 		}
 	}
 	if n > maxCiphertext {
