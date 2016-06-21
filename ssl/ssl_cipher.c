@@ -669,7 +669,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_kECDHE,
      SSL_aPSK,
      SSL_AES128GCM,
-     SSL_SHA256,
+     SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
     },
 
@@ -680,7 +680,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_kECDHE,
      SSL_aPSK,
      SSL_AES256GCM,
-     SSL_SHA384,
+     SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
     },
 
