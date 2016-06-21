@@ -184,20 +184,20 @@ impl RSAKeyPair {
                 if version != 0 {
                     return Err(());
                 }
-                let mut n = try!(PositiveInteger::from_input(input, 0));
-                let mut e = try!(PositiveInteger::from_input(input, 0));
+                let mut n = try!(PositiveInteger::from_der(input, 0));
+                let mut e = try!(PositiveInteger::from_der(input, 0));
                 let mut d =
-                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
                 let mut p =
-                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
                 let mut q =
-                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
                 let mut dmp1 =
-                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
                 let mut dmq1 =
-                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
                 let mut iqmp =
-                    try!(PositiveInteger::from_input(input, BN_FLG_CONSTTIME));
+                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
                 let mut rsa = std::boxed::Box::new(RSA {
                     n: n.into_raw(), e: e.into_raw(), d: d.into_raw(),
                     p: p.into_raw(), q: q.into_raw(), dmp1: dmp1.into_raw(),
@@ -262,8 +262,9 @@ struct PositiveInteger {
 }
 
 impl PositiveInteger {
-    fn from_input(input: &mut untrusted::Reader, flags: c::int)
-                  -> Result<PositiveInteger, ()> {
+    // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
+    fn from_der(input: &mut untrusted::Reader, flags: c::int)
+                -> Result<PositiveInteger, ()> {
         let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
         let res = unsafe {
             BN_bin2bn(bytes.as_ptr(), bytes.len(), std::ptr::null_mut())
