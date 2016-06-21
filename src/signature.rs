@@ -108,6 +108,10 @@ pub use rsa::RSAKeyPair;
 
 #[cfg(feature = "use_heap")]
 pub use rsa::{
+    // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
+    // to create test vectors for signing with it, which we don't currently
+    // have. But, it's a bad idea to use SHA-1 anyway, so perhaps we just won't
+    // ever expose it.
     RSA_PKCS1_SHA256,
     RSA_PKCS1_SHA384,
     RSA_PKCS1_SHA512,

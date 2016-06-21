@@ -515,9 +515,9 @@ mod tests {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
-            let alg = if digest_name == "SHA1" {
-                &RSA_PKCS1_SHA1
-            } else if digest_name == "SHA256" {
+            // Note that SHA-1 isn't recognized here because we don't expose
+            // PKCS#1 SHA-1 signing, because we don't have test vectors for it.
+            let alg = if digest_name == "SHA256" {
                 &RSA_PKCS1_SHA256
             } else if digest_name == "SHA384" {
                 &RSA_PKCS1_SHA384
