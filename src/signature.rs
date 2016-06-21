@@ -106,7 +106,7 @@
 //! // SHA256 digest algorithm.
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let rng = rand::SystemRandom::new();
-//! let mut signature = [0; 256]; // 2048 bits / 8 = 256 bytes
+//! let mut signature = vec![0; key_pair.public_modulus_len()];
 //! try!(key_pair.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
 //!                    &mut signature));
 //!

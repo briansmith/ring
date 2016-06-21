@@ -230,10 +230,7 @@ mod tests {
         let lengths = [0, 1, 2, 3, 96, 255, 256, 257, 511, 512, 513, 4096];
 
         for len in lengths.iter() {
-            let mut buf = std::vec::Vec::with_capacity(*len);
-            for _ in 0..*len {
-                buf.push(0);
-            }
+            let mut buf = vec![0; *len];
 
             let rng = rand::SystemRandom::new();
             assert!(rng.fill(&mut buf).is_ok());

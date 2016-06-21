@@ -540,9 +540,7 @@ mod tests {
             let key_pair = key_pair.unwrap();
 
             let mut actual: std::vec::Vec<u8> =
-                std::vec::Vec::with_capacity(key_pair.public_modulus_len());
-            actual.extend(
-                std::iter::repeat(0).take(key_pair.public_modulus_len()));
+                vec![0; key_pair.public_modulus_len()];
             try!(key_pair.sign(alg, &rng, &msg, actual.as_mut_slice()));
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
