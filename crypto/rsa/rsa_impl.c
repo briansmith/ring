@@ -98,7 +98,15 @@ static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
 
   unsigned e_bits = BN_num_bits(e);
 
-  if (e_bits < 2 || e_bits > kMaxExponentBits || !BN_is_odd(e)) {
+  if (e_bits < 2) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+    return 0;
+  }
+  if (e_bits > kMaxExponentBits) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+    return 0;
+  }
+  if (!BN_is_odd(e)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
@@ -306,8 +314,11 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * than the CRT attack, but there have likely been improvements since 1997.
    *
    * This check is very cheap assuming |e| is small, which it almost always is. */
-  if (!BN_mod_exp_mont(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n) ||
-      vrfy.top != base.top ||
+  if (!BN_mod_exp_mont(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+  if (vrfy.top != base.top ||
       CRYPTO_memcmp(vrfy.d, base.d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
