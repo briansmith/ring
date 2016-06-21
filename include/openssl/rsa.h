@@ -86,7 +86,7 @@ OPENSSL_EXPORT void RSA_free(RSA *rsa);
 /* Key generation. */
 
 /* RSA_generate generates a new RSA key where the modulus has size |bits| and
- * the public exponent is |e|. If unsure, |RSA_F4| is a good value
+ * the public exponent is |e|. If unsure, 65537 is a good value
  * for |e|. If |cb| is not NULL then it is called during the key generation
  * process. In addition to the calls documented for |BN_generate_prime_ex|, it
  * is called with event=2 when the n'th prime is rejected as unsuitable and
@@ -100,29 +100,6 @@ OPENSSL_EXPORT void RSA_free(RSA *rsa);
 OPENSSL_EXPORT RSA *RSA_generate(int bits, uint32_t e, RAND *rng, BN_GENCB *cb);
 
 
-/* Encryption / Decryption */
-
-/* Padding types for encryption. */
-#define RSA_PKCS1_PADDING 1
-#define RSA_NO_PADDING 3
-#define RSA_PKCS1_OAEP_PADDING 4
-/* RSA_PKCS1_PSS_PADDING can only be used via the EVP interface. */
-#define RSA_PKCS1_PSS_PADDING 6
-
-/* RSA_encrypt encrypts |in_len| bytes from |in| to the public key with modulus
- * |n| and exponent |e| and writes, at most, |max_out| bytes of encrypted data
- * to |out|. The |max_out| argument must be, at least, |RSA_size| in order to
- * ensure success.
- *
- * It returns 1 on success or zero on error.
- *
- * The |padding| argument must be one of the |RSA_*_PADDING| values. */
-OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
-                               size_t *out_len, uint8_t *out, size_t max_out,
-                               const uint8_t *in, size_t in_len, int padding,
-                               RAND *rng);
-
-
 /* Utility functions. */
 
 /* RSA_size returns the number of bytes in the modulus, which is also the size
@@ -133,20 +110,6 @@ OPENSSL_EXPORT size_t RSA_size(const RSA *rsa);
  * they pass and zero otherwise. Opaque keys and public keys always pass. If it
  * returns zero then a more detailed error is available on the error queue. */
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa, BN_CTX *ctx);
-
-/* RSA_add_pkcs1_prefix builds a version of |msg| prefixed with the DigestInfo
- * header for the given hash function and sets |out_msg| to point to it. On
- * successful return, |*out_msg| will be allocated memory and so will need to
- * be freed with OPENSSL_free. */
-OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
-                                        int hash_nid, const uint8_t *msg,
-                                        size_t msg_len);
-
-
-/* RSA public exponent values. */
-
-#define RSA_3 0x3
-#define RSA_F4 0x10001
 
 
 /* Private functions. */
