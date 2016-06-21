@@ -83,6 +83,43 @@
 //!
 //! # fn main() { sign_ed25519().unwrap() }
 //! ```
+//!
+//! ## Signing and verifying with RSA (PKCS1 padding)
+//!
+//! ```
+//! extern crate ring;
+//! extern crate untrusted;
+//!
+//! use ring::{rand, signature};
+//! use untrusted::Input;
+//!
+//! # fn sign_rsa() -> Result<(), ()> {
+//!
+//! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
+//! // a 2048-bit key, but larger keys are also supported.
+//! let key_bytes_der = try!(
+//!    Input::new(include_bytes!("src/signature_rsa_example_private_key.der")));
+//! let key_pair =
+//!    try!(signature::RSAKeyPair::from_der(key_bytes_der));
+//!
+//! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
+//! // SHA256 digest algorithm.
+//! const MESSAGE: &'static [u8] = b"hello, world";
+//! let rng = rand::SystemRandom::new();
+//! let mut signature = [0; 256]; // 2048 bits / 8 = 256 bytes
+//! try!(key_pair.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
+//!                    &mut signature));
+//!
+//! // Verify the signature.
+//! let public_key_bytes_der = try!(
+//!     Input::new(include_bytes!("src/signature_rsa_example_public_key.der")));
+//! signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
+//!                   public_key_bytes_der, Input::new(MESSAGE).unwrap(),
+//!                   Input::new(&signature).unwrap())
+//! # }
+//!
+//! # fn main() { sign_rsa().unwrap() }
+//! ```
 
 
 use {init, signature_impl};
@@ -104,7 +141,14 @@ pub use ec::suite_b::ecdsa::{
 pub use ec::eddsa::{ED25519_VERIFY, Ed25519KeyPair};
 
 #[cfg(feature = "use_heap")]
+pub use rsa::RSAKeyPair;
+
+#[cfg(feature = "use_heap")]
 pub use rsa::{
+    RSA_PKCS1_SHA256,
+    RSA_PKCS1_SHA384,
+    RSA_PKCS1_SHA512,
+
     RSA_PKCS1_2048_8192_SHA1_VERIFY,
     RSA_PKCS1_2048_8192_SHA256_VERIFY,
     RSA_PKCS1_2048_8192_SHA384_VERIFY,
