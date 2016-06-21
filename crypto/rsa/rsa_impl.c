@@ -80,6 +80,8 @@ static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
     return 0;
   }
+  /* XXX: There's may be another check for the maximum length in rsa.rs that
+   * subsumes this; check that when investigating the code coverage. */
   if (rsa_bits > 16 * 1024 || rsa_bits > max_bits) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
