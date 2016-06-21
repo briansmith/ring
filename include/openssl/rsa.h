@@ -129,10 +129,6 @@ OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
  * of a signature or encrypted value using |rsa|. */
 OPENSSL_EXPORT size_t RSA_size(const RSA *rsa);
 
-/* RSAPrivateKey_dup allocates a fresh |RSA| and copies the private key from
- * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
-OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
-
 /* RSA_check_key performs basic validatity tests on |rsa|. It returns one if
  * they pass and zero otherwise. Opaque keys and public keys always pass. If it
  * returns zero then a more detailed error is available on the error queue. */
