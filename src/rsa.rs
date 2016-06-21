@@ -171,12 +171,36 @@ pub struct RSAKeyPair {
 }
 
 impl RSAKeyPair {
-    /// Read private key data from the DER-formatted ASN.1 encoding as
-    /// documented in [RFC 3447 Appending
-    /// A.1.2](https://tools.ietf.org/html/rfc3447#appendix-A.1.2).
+    /// Parse a private key in DER-encoded ASN.1 `RSAPrivateKey` form (see [RFC
+    /// 3447
+    /// Appendix A.1.2](https://tools.ietf.org/html/rfc3447#appendix-A.1.2)).
     ///
-    /// Only two-prime keys (version 0) are supported at this time; other
-    /// versions return an `Err` result.
+    /// Only two-prime keys (version 0) keys are supported. The public modulus
+    /// (n) must be at least 2048 bits. Currently, the public modulus must be
+    /// no larger than 4096 bits.
+    ///
+    /// Here's one way to generate a key in the required format using OpenSSL:
+    ///
+    /// ```sh
+    /// openssl genpkey -algorithm RSA \
+    ///                 -pkeyopt rsa_keygen_bits:2048 \
+    ///                 -outform der \
+    ///                 -out private_key.der
+    /// ```
+    ///
+    /// Often, keys generated for use in OpenSSL-based software are
+    /// encoded in PEM format, which is not supported by *ring*. PEM-encoded
+    /// keys that are in `RSAPrivateKey` format can be decoded into the using
+    /// an OpenSSL command like this:
+    ///
+    /// ```sh
+    /// openssl rsa -in private_key.pem -outform DER -out private_key.der
+    /// ```
+    ///
+    /// If these commands don't work, it is like that the private key is in a
+    /// different format like PKCS#8, which isn't supported yet. An upcoming
+    /// version of *ring* will likely replace the support for the
+    /// `RSAPrivateKey` format with support for the PKCS\#8 format.
     pub fn from_der(input: untrusted::Input) -> Result<RSAKeyPair, ()> {
         input.read_all((), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
