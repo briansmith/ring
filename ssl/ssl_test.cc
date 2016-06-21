@@ -695,7 +695,12 @@ static bool TestDefaultVersion(uint16_t min_version, uint16_t max_version,
   if (!ctx) {
     return false;
   }
-  return ctx->min_version == min_version && ctx->max_version == max_version;
+  if (ctx->min_version != min_version || ctx->max_version != max_version) {
+    fprintf(stderr, "Got min %04x, max %04x; wanted min %04x, max %04x\n",
+            ctx->min_version, ctx->max_version, min_version, max_version);
+    return false;
+  }
+  return true;
 }
 
 static bool CipherGetRFCName(std::string *out, uint16_t value) {
@@ -1364,9 +1369,9 @@ int main() {
       !TestDefaultVersion(TLS1_VERSION, TLS1_VERSION, &TLSv1_method) ||
       !TestDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &TLSv1_1_method) ||
       !TestDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &TLSv1_2_method) ||
-      !TestDefaultVersion(DTLS1_VERSION, DTLS1_2_VERSION, &DTLS_method) ||
-      !TestDefaultVersion(DTLS1_VERSION, DTLS1_VERSION, &DTLSv1_method) ||
-      !TestDefaultVersion(DTLS1_2_VERSION, DTLS1_2_VERSION, &DTLSv1_2_method) ||
+      !TestDefaultVersion(TLS1_1_VERSION, TLS1_2_VERSION, &DTLS_method) ||
+      !TestDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &DTLSv1_method) ||
+      !TestDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &DTLSv1_2_method) ||
       !TestCipherGetRFCName() ||
       !TestPaddingExtension() ||
       !TestClientCAList() ||

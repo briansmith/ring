@@ -719,7 +719,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
   STACK_OF(SSL_CIPHER) *ciphers = NULL;
   struct ssl_early_callback_ctx early_ctx;
   CBS client_hello;
-  uint16_t client_version;
+  uint16_t client_wire_version;
   CBS client_random, session_id, cipher_suites, compression_methods;
   SSL_SESSION *session = NULL;
 
@@ -782,7 +782,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
   }
 
   CBS_init(&client_hello, ssl->init_msg, n);
-  if (!CBS_get_u16(&client_hello, &client_version) ||
+  if (!CBS_get_u16(&client_hello, &client_wire_version) ||
       !CBS_get_bytes(&client_hello, &client_random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
       CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH) {
@@ -791,9 +791,11 @@ static int ssl3_get_client_hello(SSL *ssl) {
     goto f_err;
   }
 
+  uint16_t client_version = ssl->method->version_from_wire(client_wire_version);
+
   /* use version from inside client hello, not from record header (may differ:
    * see RFC 2246, Appendix E, second paragraph) */
-  ssl->client_version = client_version;
+  ssl->client_version = client_wire_version;
 
   /* Load the client random. */
   memcpy(ssl->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
@@ -809,27 +811,35 @@ static int ssl3_get_client_hello(SSL *ssl) {
     }
   }
 
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    al = SSL_AD_PROTOCOL_VERSION;
+    goto f_err;
+  }
+
   /* Note: This codepath may run twice if |ssl_get_prev_session| completes
    * asynchronously.
    *
    * TODO(davidben): Clean up the order of events around ClientHello
    * processing. */
   if (!ssl->s3->have_version) {
-    /* Select version to use */
-    uint16_t version = ssl3_get_mutual_version(ssl, client_version);
-    if (version == 0) {
+    /* Select the version to use. */
+    uint16_t version = client_version;
+    if (version > max_version) {
+      version = max_version;
+    }
+    if (version < min_version) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
       al = SSL_AD_PROTOCOL_VERSION;
       goto f_err;
     }
-    ssl->version = version;
+    ssl->version = ssl->method->version_to_wire(version);
     ssl->s3->enc_method = ssl3_get_enc_method(version);
     assert(ssl->s3->enc_method != NULL);
     /* At this point, the connection's version is known and |ssl->version| is
      * fixed. Begin enforcing the record-layer version. */
     ssl->s3->have_version = 1;
-  } else if (SSL_IS_DTLS(ssl) ? (ssl->client_version > ssl->version)
-                            : (ssl->client_version < ssl->version)) {
+  } else if (client_version < ssl3_protocol_version(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
     al = SSL_AD_PROTOCOL_VERSION;
     goto f_err;
@@ -916,7 +926,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
     goto f_err;
   }
 
-  ciphers = ssl_bytes_to_cipher_list(ssl, &cipher_suites);
+  ciphers = ssl_bytes_to_cipher_list(ssl, &cipher_suites, max_version);
   if (ciphers == NULL) {
     goto err;
   }

@@ -809,6 +809,21 @@ struct ssl_method_st {
 struct ssl_protocol_method_st {
   /* is_dtls is one if the protocol is DTLS and zero otherwise. */
   char is_dtls;
+  /* min_version is the minimum implemented version. */
+  uint16_t min_version;
+  /* max_version is the maximum implemented version. */
+  uint16_t max_version;
+  /* version_from_wire maps |wire_version| to a protocol version. For
+   * SSLv3/TLS, the version is returned as-is. For DTLS, the corresponding TLS
+   * version is used. Note that this mapping is not injective but preserves
+   * comparisons.
+   *
+   * TODO(davidben): To normalize some DTLS-specific code, move away from using
+   * the wire version except at API boundaries. */
+  uint16_t (*version_from_wire)(uint16_t wire_version);
+  /* version_to_wire maps |version| to the wire representation. It is an error
+   * to call it with an invalid version. */
+  uint16_t (*version_to_wire)(uint16_t version);
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
   long (*ssl_get_message)(SSL *ssl, int msg_type,
@@ -954,7 +969,8 @@ enum ssl_session_result_t ssl_get_prev_session(
     SSL *ssl, SSL_SESSION **out_session, int *out_send_ticket,
     const struct ssl_early_callback_ctx *ctx);
 
-STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *ssl, const CBS *cbs);
+STACK_OF(SSL_CIPHER) *
+    ssl_bytes_to_cipher_list(SSL *ssl, const CBS *cbs, uint16_t max_version);
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl);
@@ -1167,33 +1183,10 @@ int ssl3_can_false_start(const SSL *ssl);
  * |version|. */
 const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version);
 
-/* ssl3_get_max_server_version returns the maximum SSL/TLS version number
- * supported by |ssl| as a server, or zero if all versions are disabled. */
-uint16_t ssl3_get_max_server_version(const SSL *ssl);
-
-/* ssl3_get_mutual_version selects the protocol version on |ssl| for a client
- * which advertises |client_version|. If no suitable version exists, it returns
- * zero. */
-uint16_t ssl3_get_mutual_version(SSL *ssl, uint16_t client_version);
-
-/* ssl3_get_max_client_version returns the maximum protocol version configured
- * for the client. It is guaranteed that the set of allowed versions at or below
- * this maximum version is contiguous. If all versions are disabled, it returns
- * zero. */
-uint16_t ssl3_get_max_client_version(SSL *ssl);
-
-/* ssl3_is_version_enabled returns one if |version| is an enabled protocol
- * version for |ssl| and zero otherwise. */
-int ssl3_is_version_enabled(SSL *ssl, uint16_t version);
-
-/* ssl3_version_from_wire maps |wire_version| to a protocol version. For
- * SSLv3/TLS, the version is returned as-is. For DTLS, the corresponding TLS
- * version is used. Note that this mapping is not injective but preserves
- * comparisons.
- *
- * TODO(davidben): To normalize some DTLS-specific code, move away from using
- * the wire version except at API boundaries. */
-uint16_t ssl3_version_from_wire(const SSL *ssl, uint16_t wire_version);
+/* ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
+ * minimum and maximum enabled protocol versions, respectively. */
+int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
+                          uint16_t *out_max_version);
 
 /* ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
  * call this function before the version is determined. */

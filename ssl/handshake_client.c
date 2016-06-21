@@ -573,7 +573,7 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
     /* TODO(davidben): Also check |SSL_CIPHER_get_max_version| against the
      * minimum enabled version. See https://crbug.com/boringssl/66. */
     if (SSL_CIPHER_get_min_version(cipher) >
-        ssl3_version_from_wire(ssl, ssl->client_version)) {
+        ssl->method->version_from_wire(ssl->client_version)) {
       continue;
     }
     any_enabled = 1;
@@ -622,30 +622,31 @@ static int ssl3_send_client_hello(SSL *ssl) {
   CBB cbb;
   CBB_zero(&cbb);
 
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    goto err;
+  }
+
   assert(ssl->state == SSL3_ST_CW_CLNT_HELLO_A);
   if (!ssl->s3->have_version) {
-    uint16_t max_version = ssl3_get_max_client_version(ssl);
-    /* Disabling all versions is silly: return an error. */
-    if (max_version == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
-      goto err;
-    }
-
-    ssl->version = max_version;
+    ssl->version = ssl->method->version_to_wire(max_version);
     /* Only set |ssl->client_version| on the initial handshake. Renegotiations,
      * although locked to a version, reuse the value. When using the plain RSA
      * key exchange, the ClientHello version is checked in the premaster secret.
      * Some servers fail when this value changes. */
-    ssl->client_version = max_version;
+    ssl->client_version = ssl->version;
   }
 
   /* If the configured session has expired or was created at a disabled
    * version, drop it. */
-  if (ssl->session != NULL &&
-      (ssl->session->session_id_length == 0 || ssl->session->not_resumable ||
-       ssl->session->timeout < (long)(time(NULL) - ssl->session->time) ||
-       !ssl3_is_version_enabled(ssl, ssl->session->ssl_version))) {
-    SSL_set_session(ssl, NULL);
+  if (ssl->session != NULL) {
+    uint16_t session_version =
+        ssl->method->version_from_wire(ssl->session->ssl_version);
+    if (ssl->session->session_id_length == 0 || ssl->session->not_resumable ||
+        ssl->session->timeout < (long)(time(NULL) - ssl->session->time) ||
+        session_version < min_version || session_version > max_version) {
+      SSL_set_session(ssl, NULL);
+    }
   }
 
   /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
@@ -747,7 +748,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
   int al = SSL_AD_INTERNAL_ERROR, ok;
   long n;
   CBS server_hello, server_random, session_id;
-  uint16_t server_version, cipher_suite;
+  uint16_t server_wire_version, server_version, cipher_suite;
   uint8_t compression_method;
 
   n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO, ssl_hash_message,
@@ -770,7 +771,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
 
   CBS_init(&server_hello, ssl->init_msg, n);
 
-  if (!CBS_get_u16(&server_hello, &server_version) ||
+  if (!CBS_get_u16(&server_hello, &server_wire_version) ||
       !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
       CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
@@ -781,20 +782,24 @@ static int ssl3_get_server_hello(SSL *ssl) {
     goto f_err;
   }
 
+  server_version = ssl->method->version_from_wire(server_wire_version);
+
   assert(ssl->s3->have_version == ssl->s3->initial_handshake_complete);
   if (!ssl->s3->have_version) {
-    if (!ssl3_is_version_enabled(ssl, server_version)) {
+    uint16_t min_version, max_version;
+    if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
+        server_version < min_version || server_version > max_version) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
       al = SSL_AD_PROTOCOL_VERSION;
       goto f_err;
     }
-    ssl->version = server_version;
+    ssl->version = server_wire_version;
     ssl->s3->enc_method = ssl3_get_enc_method(server_version);
     assert(ssl->s3->enc_method != NULL);
     /* At this point, the connection's version is known and ssl->version is
      * fixed. Begin enforcing the record-layer version. */
     ssl->s3->have_version = 1;
-  } else if (server_version != ssl->version) {
+  } else if (server_wire_version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     al = SSL_AD_PROTOCOL_VERSION;
     goto f_err;

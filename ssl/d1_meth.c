@@ -56,11 +56,44 @@
 
 #include <openssl/ssl.h>
 
+#include <assert.h>
+
 #include "internal.h"
 
 
+static uint16_t dtls1_version_from_wire(uint16_t wire_version) {
+  uint16_t tls_version = ~wire_version;
+  uint16_t version = tls_version + 0x0201;
+  /* If either component overflowed, clamp it so comparisons still work. */
+  if ((version >> 8) < (tls_version >> 8)) {
+    version = 0xff00 | (version & 0xff);
+  }
+  if ((version & 0xff) < (tls_version & 0xff)) {
+    version = (version & 0xff00) | 0xff;
+  }
+  /* DTLS 1.0 maps to TLS 1.1, not TLS 1.0. */
+  if (version == TLS1_VERSION) {
+    version = TLS1_1_VERSION;
+  }
+  return version;
+}
+
+static uint16_t dtls1_version_to_wire(uint16_t version) {
+  assert(version >= TLS1_1_VERSION);
+
+  /* DTLS 1.0 maps to TLS 1.1, not TLS 1.0. */
+  if (version == TLS1_1_VERSION) {
+    return DTLS1_VERSION;
+  }
+  return ~(version - 0x0201);
+}
+
 static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
     1 /* is_dtls */,
+    TLS1_1_VERSION,
+    TLS1_2_VERSION,
+    dtls1_version_from_wire,
+    dtls1_version_to_wire,
     dtls1_new,
     dtls1_free,
     dtls1_get_message,

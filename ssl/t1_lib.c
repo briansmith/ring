@@ -1034,7 +1034,7 @@ static int ext_ticket_add_serverhello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1 */
 
 static int ext_sigalgs_add_clienthello(SSL *ssl, CBB *out) {
-  if (ssl3_version_from_wire(ssl, ssl->client_version) < TLS1_2_VERSION) {
+  if (ssl->method->version_from_wire(ssl->client_version) < TLS1_2_VERSION) {
     return 1;
   }
 
