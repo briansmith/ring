@@ -377,6 +377,10 @@ OPENSSL_EXPORT int CBB_add_u16(CBB *cbb, uint16_t value);
  * returns one on success and zero otherwise. */
 OPENSSL_EXPORT int CBB_add_u24(CBB *cbb, uint32_t value);
 
+/* CBB_add_u32 appends a 32-bit, big-endian number from |value| to |cbb|. It
+ * returns one on success and zero otherwise. */
+OPENSSL_EXPORT int CBB_add_u32(CBB *cbb, uint32_t value);
+
 /* CBB_discard_child discards the current unflushed child of |cbb|. Neither the
  * child's contents nor the length prefix will be included in the output. */
 OPENSSL_EXPORT void CBB_discard_child(CBB *cbb);

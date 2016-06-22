@@ -397,6 +397,14 @@ int CBB_add_u24(CBB *cbb, uint32_t value) {
   return cbb_buffer_add_u(cbb->base, value, 3);
 }
 
+int CBB_add_u32(CBB *cbb, uint32_t value) {
+  if (!CBB_flush(cbb)) {
+    return 0;
+  }
+
+  return cbb_buffer_add_u(cbb->base, value, 4);
+}
+
 void CBB_discard_child(CBB *cbb) {
   if (cbb->child == NULL) {
     return;
