@@ -165,6 +165,10 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   if (!BN_copy(&mont->N, mod)) {
     goto err; /* Set N */
   }
+  if (BN_get_flags(mod, BN_FLG_CONSTTIME)) {
+    BN_set_flags(&mont->N, BN_FLG_CONSTTIME);
+  }
+
   mont->N.neg = 0;
 
   BN_init(&tmod);
