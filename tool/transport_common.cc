@@ -72,8 +72,15 @@ bool InitSocketLibrary() {
 // in |hostname_and_port|, which should be of the form "www.example.com:123".
 // It returns true on success and false otherwise.
 bool Connect(int *out_sock, const std::string &hostname_and_port) {
-  const size_t colon_offset = hostname_and_port.find_last_of(':');
+  size_t colon_offset = hostname_and_port.find_last_of(':');
+  const size_t bracket_offset = hostname_and_port.find_last_of(']');
   std::string hostname, port;
+
+  // An IPv6 literal may have colons internally, guarded by square brackets.
+  if (bracket_offset != std::string::npos &&
+      colon_offset != std::string::npos && bracket_offset > colon_offset) {
+    colon_offset = std::string::npos;
+  }
 
   if (colon_offset == std::string::npos) {
     hostname = hostname_and_port;
@@ -81,6 +88,12 @@ bool Connect(int *out_sock, const std::string &hostname_and_port) {
   } else {
     hostname = hostname_and_port.substr(0, colon_offset);
     port = hostname_and_port.substr(colon_offset + 1);
+  }
+
+  // Handle IPv6 literals.
+  if (hostname.size() >= 2 && hostname[0] == '[' &&
+      hostname[hostname.size() - 1] == ']') {
+    hostname = hostname.substr(1, hostname.size() - 2);
   }
 
   struct addrinfo hint, *result;
