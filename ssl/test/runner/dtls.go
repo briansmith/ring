@@ -141,7 +141,30 @@ func (c *Conn) makeFragment(header, data []byte, fragOffset, fragLen int) []byte
 func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	if typ != recordTypeHandshake {
 		// Only handshake messages are fragmented.
-		return c.dtlsWriteRawRecord(typ, data)
+		n, err = c.dtlsWriteRawRecord(typ, data)
+		if err != nil {
+			return
+		}
+
+		if typ == recordTypeChangeCipherSpec {
+			err = c.out.changeCipherSpec(c.config)
+			if err != nil {
+				// Cannot call sendAlert directly,
+				// because we already hold c.out.Mutex.
+				c.tmp[0] = alertLevelError
+				c.tmp[1] = byte(err.(alert))
+				c.writeRecord(recordTypeAlert, c.tmp[0:2])
+				return n, c.out.setErrorLocked(&net.OpError{Op: "local error", Err: err})
+			}
+		}
+		return
+	}
+
+	if c.out.cipher == nil && c.config.Bugs.StrayChangeCipherSpec {
+		_, err = c.dtlsWriteRawRecord(recordTypeChangeCipherSpec, []byte{1})
+		if err != nil {
+			return
+		}
 	}
 
 	maxLen := c.config.Bugs.MaxHandshakeRecordLength
@@ -354,18 +377,6 @@ func (c *Conn) dtlsWriteRawRecord(typ recordType, data []byte) (n int, err error
 	n = len(data)
 
 	c.out.freeBlock(b)
-
-	if typ == recordTypeChangeCipherSpec {
-		err = c.out.changeCipherSpec(c.config)
-		if err != nil {
-			// Cannot call sendAlert directly,
-			// because we already hold c.out.Mutex.
-			c.tmp[0] = alertLevelError
-			c.tmp[1] = byte(err.(alert))
-			c.writeRecord(recordTypeAlert, c.tmp[0:2])
-			return n, c.out.setErrorLocked(&net.OpError{Op: "local error", Err: err})
-		}
-	}
 	return
 }
 

@@ -1277,6 +1277,15 @@ func addBasicTests() {
 			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
+			protocol: dtls,
+			name:     "StrayChangeCipherSpec",
+			config: Config{
+				Bugs: ProtocolBugs{
+					StrayChangeCipherSpec: true,
+				},
+			},
+		},
+		{
 			name: "SkipNewSessionTicket",
 			config: Config{
 				Bugs: ProtocolBugs{

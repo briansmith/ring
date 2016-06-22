@@ -493,6 +493,11 @@ type ProtocolBugs struct {
 	// and 1.0.1 modes, respectively.
 	EarlyChangeCipherSpec int
 
+	// StrayChangeCipherSpec causes every pre-ChangeCipherSpec handshake
+	// message in DTLS to be prefaced by stray ChangeCipherSpec record. This
+	// may be used to test DTLS's handling of reordered ChangeCipherSpec.
+	StrayChangeCipherSpec bool
+
 	// FragmentAcrossChangeCipherSpec causes the implementation to fragment
 	// the Finished (or NextProto) message around the ChangeCipherSpec
 	// messages.
