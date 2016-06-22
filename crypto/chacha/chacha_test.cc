@@ -242,10 +242,10 @@ static bool TestChaCha20(size_t len) {
     /* Test that everything works correctly when the input pointer is offset
      * from the output pointer by various degrees.
      *
-     * The ARM assembly language code--at least some branches of it--is known
-     * to not work in-place with offsets other than 0. chacha20_poly1305.rs
-     * works aronud this. */
-#if !defined(OPENSSL_ARM)
+     * The x86 code, and the ARM assembly language code--at least some branches
+     * of it--is known to not work in-place with offsets other than 0.
+     * chacha20_poly1305.rs works around this. */
+#if !defined(OPENSSL_ARM) && !defined(OPENSSL_X86)
     static const size_t MAX_OFFSET = 259;
 #else
     static const size_t MAX_OFFSET = 0;

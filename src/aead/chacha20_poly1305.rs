@@ -141,13 +141,14 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
     debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        // XXX: At least one branch of the ARM assembly language code doesn't
-        // allow overlapping input and output unless they are exactly
-        // overlapping. TODO: Figure out which branch of the ARM code has this
-        // limitation and come up with a better solution.
+        // XXX: The x86 and at least one branch of the ARM assembly language
+        // code doesn't allow overlapping input and output unless they are
+        // exactly overlapping. TODO: Figure out which branch of the ARM code
+        // has this limitation and come up with a better solution.
         //
         // https://rt.openssl.org/Ticket/Display.html?id=4362
-        if cfg!(target_arch = "arm") && in_prefix_len != 0 {
+        if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
+           in_prefix_len != 0 {
             ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
                            in_out[in_prefix_len..].as_ptr(),
                            in_out.len() - in_prefix_len, chacha20_key, &counter);
