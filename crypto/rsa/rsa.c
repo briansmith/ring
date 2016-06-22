@@ -68,15 +68,8 @@
 #include "../internal.h"
 
 
-RSA *rsa_new_begin(void) {
-  RSA *rsa = OPENSSL_malloc(sizeof(RSA));
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-  memset(rsa, 0, sizeof(RSA));
-  return rsa;
-}
+/* Prototypes to avoid -Wmissing-prototypes warnings. */
+int rsa_new_end(RSA *rsa);
 
 int rsa_new_end(RSA *rsa) {
   assert(rsa->n != NULL);
@@ -141,28 +134,6 @@ err:
   BN_free(&qq);
   BN_CTX_free(ctx);
   return ret;
-}
-
-void RSA_free(RSA *rsa) {
-  if (rsa == NULL) {
-    return;
-  }
-
-  BN_free(rsa->n);
-  BN_free(rsa->e);
-  BN_free(rsa->d);
-  BN_free(rsa->p);
-  BN_free(rsa->q);
-  BN_free(rsa->dmp1);
-  BN_free(rsa->dmq1);
-  BN_free(rsa->iqmp);
-  BN_MONT_CTX_free(rsa->mont_n);
-  BN_MONT_CTX_free(rsa->mont_p);
-  BN_MONT_CTX_free(rsa->mont_q);
-  BN_MONT_CTX_free(rsa->mont_qq);
-  BN_free(rsa->qmn_mont);
-  BN_free(rsa->iqmp_mont);
-  OPENSSL_free(rsa);
 }
 
 int RSA_check_key(const RSA *key, BN_CTX *ctx) {

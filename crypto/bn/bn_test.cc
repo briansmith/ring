@@ -124,7 +124,6 @@ static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
 static bool test_exp(RAND *rng, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
-static bool test_small_prime(RAND *rng);
 static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
 static bool test_bn2bin_padded(RAND *rng);
 static bool test_dec2bn();
@@ -165,7 +164,6 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !test_mod_exp_mont5(rng, ctx.get()) ||
       !test_exp(rng, ctx.get()) ||
       !test_exp_mod_zero() ||
-      !test_small_prime(rng) ||
       !test_bn2bin_padded(rng) ||
       !test_dec2bn() ||
       !test_hex2bn() ||
@@ -968,23 +966,6 @@ static bool test_exp_mod_zero(void) {
   return true;
 }
 
-static bool test_small_prime(RAND *rng) {
-  static const unsigned kBits = 10;
-
-  ScopedBIGNUM r(BN_new());
-  if (!r ||
-      !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), rng, NULL)) {
-    return false;
-  }
-  if (BN_num_bits(r.get()) != kBits) {
-    fprintf(stderr, "Expected %u bit prime, got %u bit number\n", kBits,
-            BN_num_bits(r.get()));
-    return false;
-  }
-
-  return true;
-}
-
 static bool test_bn2bin_padded(RAND *rng) {
   uint8_t zeros[256], out[256], reference[128];
 
@@ -1059,6 +1040,10 @@ static int DecimalToBIGNUM(ScopedBIGNUM *out, const char *in) {
   int ret = BN_dec2bn(&raw, in);
   out->reset(raw);
   return ret;
+}
+
+static int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
+  return BN_abs_is_word(bn, w) && (w == 0 || bn->neg == 0);
 }
 
 static bool test_dec2bn() {

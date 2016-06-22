@@ -268,14 +268,6 @@ BIGNUM *bn_wexpand(BIGNUM *bn, size_t words) {
   return bn;
 }
 
-BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
-  if (bits + BN_BITS2 - 1 < bits) {
-    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
-    return NULL;
-  }
-  return bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
-}
-
 void bn_correct_top(BIGNUM *bn) {
   BN_ULONG *ftl;
   int tmp_top = bn->top;

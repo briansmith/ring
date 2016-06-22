@@ -76,30 +76,6 @@ extern "C" {
 typedef struct bn_blinding_st BN_BLINDING;
 
 
-/* Allocation and destruction. */
-
-/* RSA_free decrements the reference count of |rsa| and frees it if the
- * reference count drops to zero. */
-OPENSSL_EXPORT void RSA_free(RSA *rsa);
-
-
-/* Key generation. */
-
-/* RSA_generate generates a new RSA key where the modulus has size |bits| and
- * the public exponent is |e|. If unsure, 65537 is a good value
- * for |e|. If |cb| is not NULL then it is called during the key generation
- * process. In addition to the calls documented for |BN_generate_prime_ex|, it
- * is called with event=2 when the n'th prime is rejected as unsuitable and
- * with event=3 when a suitable value for |p| is found.
- *
- * |e| is a |uint32_t| because the Windows CryptoAPI RSA implementation
- * only accepts 32-bit exponents.
- * https://msdn.microsoft.com/en-us/library/windows/desktop/aa387685(v=vs.85).aspx
- *
- * It returns one on success or zero on error. */
-OPENSSL_EXPORT RSA *RSA_generate(int bits, uint32_t e, RAND *rng, BN_GENCB *cb);
-
-
 /* Utility functions. */
 
 /* RSA_size returns the number of bytes in the modulus, which is also the size

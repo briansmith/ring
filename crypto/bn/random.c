@@ -235,7 +235,3 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range, RAND *rng) {
 
   return 1;
 }
-
-int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range, RAND *rng) {
-  return BN_rand_range(r, range, rng);
-}

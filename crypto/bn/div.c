@@ -534,27 +534,3 @@ int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
 
   return 1;
 }
-
-BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
-#ifndef BN_ULLONG
-  BN_ULONG ret = 0;
-#else
-  BN_ULLONG ret = 0;
-#endif
-  int i;
-
-  if (w == 0) {
-    return (BN_ULONG) -1;
-  }
-
-  w &= BN_MASK2;
-  for (i = a->top - 1; i >= 0; i--) {
-#ifndef BN_ULLONG
-    ret = ((ret << BN_BITS4) | ((a->d[i] >> BN_BITS4) & BN_MASK2l)) % w;
-    ret = ((ret << BN_BITS4) | (a->d[i] & BN_MASK2l)) % w;
-#else
-    ret = (BN_ULLONG)(((ret << (BN_ULLONG)BN_BITS2) | a->d[i]) % (BN_ULLONG)w);
-#endif
-  }
-  return (BN_ULONG)ret;
-}

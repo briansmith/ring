@@ -138,10 +138,6 @@
 extern "C" {
 #endif
 
-/* bn_expand acts the same as |bn_wexpand|, but takes a number of bits rather
- * than a number of words. */
-BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
-
 #if defined(OPENSSL_64_BIT)
 
 #if !defined(_MSC_VER)

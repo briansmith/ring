@@ -191,10 +191,6 @@ int BN_is_one(const BIGNUM *bn) {
   return bn->neg == 0 && BN_abs_is_word(bn, 1);
 }
 
-int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
-  return BN_abs_is_word(bn, w) && (w == 0 || bn->neg == 0);
-}
-
 int BN_is_odd(const BIGNUM *bn) {
   return bn->top > 0 && (bn->d[0] & 1) == 1;
 }

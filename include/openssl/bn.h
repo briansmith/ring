@@ -355,9 +355,6 @@ OPENSSL_EXPORT int BN_is_zero(const BIGNUM *bn);
 /* BN_is_one returns one if |bn| equals one and zero otherwise. */
 OPENSSL_EXPORT int BN_is_one(const BIGNUM *bn);
 
-/* BN_is_word returns one if |bn| is exactly |w| and zero otherwise. */
-OPENSSL_EXPORT int BN_is_word(const BIGNUM *bn, BN_ULONG w);
-
 /* BN_is_odd returns one if |bn| is odd and zero otherwise. */
 OPENSSL_EXPORT int BN_is_odd(const BIGNUM *bn);
 
@@ -391,9 +388,6 @@ OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 
 
 /* Modulo arithmetic. */
-
-/* BN_mod_word returns |a| mod |w|. */
-OPENSSL_EXPORT BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);
 
 /* BN_mod is a helper macro that calls |BN_div| and discards the quotient. */
 #define BN_mod(rem, numerator, divisor, ctx) \
@@ -449,75 +443,6 @@ OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom,
 /* BN_rand_range sets |rnd| to a random value [0..range). It returns one on
  * success and zero otherwise. */
 OPENSSL_EXPORT int BN_rand_range(BIGNUM *rnd, const BIGNUM *range, RAND *rng);
-
-/* BN_pseudo_rand_range is an alias for BN_rand_range. */
-OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range,
-                                        RAND *rng);
-
-/* BN_GENCB holds a callback function that is used by generation functions that
- * can take a very long time to complete. Use |BN_GENCB_set| to initialise a
- * |BN_GENCB| structure.
- *
- * The callback receives the address of that |BN_GENCB| structure as its last
- * argument and the user is free to put an arbitary pointer in |arg|. The other
- * arguments are set as follows:
- *   event=BN_GENCB_GENERATED, n=i:   after generating the i'th possible prime
- *                                    number.
- *   event=BN_GENCB_PRIME_TEST, n=-1: when finished trial division primality
- *                                    checks.
- *   event=BN_GENCB_PRIME_TEST, n=i:  when the i'th primality test has finished.
- *
- * The callback can return zero to abort the generation progress or one to
- * allow it to continue.
- *
- * When other code needs to call a BN generation function it will often take a
- * BN_GENCB argument and may call the function with other argument values. */
-#define BN_GENCB_GENERATED 0
-#define BN_GENCB_PRIME_TEST 1
-
-struct bn_gencb_st {
-  void *arg;        /* callback-specific data */
-  int (*callback)(int event, int n, struct bn_gencb_st *);
-};
-
-/* BN_GENCB_set configures |callback| to call |f| and sets |callout->arg| to
- * |arg|. */
-OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
-                                 int (*f)(int event, int n,
-                                          struct bn_gencb_st *),
-                                 void *arg);
-
-/* BN_GENCB_call calls |callback|, if not NULL, and returns the return value of
- * the callback, or 1 if |callback| is NULL. */
-OPENSSL_EXPORT int BN_GENCB_call(BN_GENCB *callback, int event, int n);
-
-/* BN_generate_prime_ex sets |ret| to a prime number of |bits| length.
- *
- * If |cb| is not NULL, it will be called during processing to give an
- * indication of progress. See the comments for |BN_GENCB|. It returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, RAND *rng,
-                                        BN_GENCB *cb);
-
-/* BN_prime_checks is magic value that can be used as the |checks| argument to
- * the primality testing functions in order to automatically select a number of
- * Miller-Rabin checks that gives a false positive rate of ~2^{-80}. */
-#define BN_prime_checks 0
-
-/* BN_is_prime_fasttest_ex returns one if |candidate| is probably a prime
- * number by the Miller-Rabin test, zero if it's certainly not and -1 on error.
- *
- * If |do_trial_division| is non-zero then |candidate| will be tested against a
- * list of small primes before Miller-Rabin tests. The probability of this
- * function returning one when |candidate| is composite is 2^{2*checks}. If
- * |checks| is |BN_prime_checks| then a value that results in approximately
- * 2^{-80} false positive probability is used. If |cb| is not NULL then it is
- * called during the checking process. See the comment above |BN_GENCB|.
- *
- * WARNING: deprecated. Use |BN_primality_test|. */
-OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
-                                           BN_CTX *ctx, int do_trial_division,
-                                           RAND *rng, BN_GENCB *cb);
 
 
 /* Number theory functions */
