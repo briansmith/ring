@@ -42,7 +42,7 @@
 //!
 //! use ring::{rand, signature};
 //!
-//! # fn sign_ed25519() -> Result<(), ()> {
+//! # fn sign_and_verify_ed25519() -> Result<(), ()> {
 //! // Generate a key pair.
 //! let rng = rand::SystemRandom::new();
 //! let generated_key_pair = try!(signature::Ed25519KeyPair::generate(&rng));
@@ -81,7 +81,7 @@
 //! # Ok(())
 //! # }
 //!
-//! # fn main() { sign_ed25519().unwrap() }
+//! # fn main() { sign_and_verify_ed25519().unwrap() }
 //! ```
 //!
 //! ## Signing and verifying with RSA (PKCS#1 1.5 padding)
@@ -93,7 +93,7 @@
 //! use ring::{rand, signature};
 //!
 //! # #[cfg(feature = "use_heap")]
-//! # fn sign_rsa() -> Result<(), ()> {
+//! # fn sign_and_verify_rsa() -> Result<(), ()> {
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
@@ -125,7 +125,7 @@
 //! # #[cfg(not(feature = "use_heap"))]
 //! # fn sign_and_verify_rsa() -> Result<(), ()> { Ok(()) }
 //! #
-//! # fn main() { sign_rsa().unwrap() }
+//! # fn main() { sign_and_verify_rsa().unwrap() }
 //! ```
 
 
