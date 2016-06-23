@@ -747,12 +747,6 @@ enum ssl_hash_message_t {
   ssl_hash_message,
 };
 
-/* Structure containing decoded values of signature algorithms extension */
-typedef struct tls_sigalgs_st {
-  uint8_t rsign;
-  uint8_t rhash;
-} TLS_SIGALGS;
-
 typedef struct cert_st {
   X509 *x509;
   EVP_PKEY *privatekey;
@@ -777,7 +771,7 @@ typedef struct cert_st {
   /* peer_sigalgs are the algorithm/hash pairs that the peer supports. These
    * are taken from the contents of signature algorithms extension for a server
    * or from the CertificateRequest for a client. */
-  TLS_SIGALGS *peer_sigalgs;
+  uint16_t *peer_sigalgs;
   /* peer_sigalgslen is the number of entries in |peer_sigalgs|. */
   size_t peer_sigalgslen;
 
@@ -1142,13 +1136,10 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len);
 
-/* tls12_add_sigandhash assembles the SignatureAndHashAlgorithm corresponding to
- * |ssl|'s private key and |md|. The two-byte value is written to |out|. It
- * returns one on success and zero on failure. */
-int tls12_add_sigandhash(SSL *ssl, CBB *out, const EVP_MD *md);
-
-int tls12_get_sigid(int pkey_type);
-const EVP_MD *tls12_get_hash(uint8_t hash_alg);
+/* tls12_add_sigalg picks the SignatureScheme corresponding to |ssl|'s private
+ * key and |md| and writes it to |out|. It returns one on success and zero on
+ * failure. */
+int tls12_add_sigalg(SSL *ssl, CBB *out, const EVP_MD *md);
 
 /* tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
  * it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
@@ -1220,14 +1211,14 @@ int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
  * based on the peer's preferences the digests supported. */
 const EVP_MD *tls1_choose_signing_digest(SSL *ssl);
 
-size_t tls12_get_psigalgs(SSL *ssl, const uint8_t **psigs);
+size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
 
-/* tls12_check_peer_sigalg checks that |hash| and |signature| are consistent
- * with |pkey| and |ssl|'s sent, supported signature algorithms and, if so,
+/* tls12_check_peer_sigalg checks that |signature_algorithm| is consistent with
+ * the |pkey| and |ssl|'s sent, supported signature algorithms and, if so,
  * writes the relevant digest into |*out_md| and returns 1. Otherwise it
  * returns 0 and writes an alert into |*out_alert|. */
 int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
-                            uint8_t hash, uint8_t signature, EVP_PKEY *pkey);
+                            uint16_t signature_algorithm, EVP_PKEY *pkey);
 void ssl_set_client_disabled(SSL *ssl);
 
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

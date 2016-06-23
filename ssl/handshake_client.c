@@ -1311,17 +1311,16 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
 
     const EVP_MD *md = NULL;
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-      uint8_t hash, signature;
-      if (!CBS_get_u8(&server_key_exchange, &hash) ||
-          !CBS_get_u8(&server_key_exchange, &signature)) {
+      uint16_t signature_algorithm;
+      if (!CBS_get_u16(&server_key_exchange, &signature_algorithm)) {
         al = SSL_AD_DECODE_ERROR;
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         goto f_err;
       }
-      if (!tls12_check_peer_sigalg(ssl, &md, &al, hash, signature, pkey)) {
+      if (!tls12_check_peer_sigalg(ssl, &md, &al, signature_algorithm, pkey)) {
         goto f_err;
       }
-      ssl->s3->tmp.server_key_exchange_hash = hash;
+      ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
     } else if (pkey->type == EVP_PKEY_RSA) {
       md = EVP_md5_sha1();
     } else {
@@ -1823,7 +1822,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
   const EVP_MD *md = NULL;
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     md = tls1_choose_signing_digest(ssl);
-    if (!tls12_add_sigandhash(ssl, &body, md)) {
+    if (!tls12_add_sigalg(ssl, &body, md)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
     }

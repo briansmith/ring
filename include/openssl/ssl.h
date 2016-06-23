@@ -2958,10 +2958,9 @@ OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
  * respectively. */
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
 
-/* SSL_get_server_key_exchange_hash, on a client, returns the hash the server
- * used to sign the ServerKeyExchange in TLS 1.2. If not applicable, it returns
- * |TLSEXT_hash_none|. */
-OPENSSL_EXPORT uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl);
+/* SSL_get_peer_signature_algorithm returns the signature algorithm used by the
+ * peer. If not applicable, it returns zero. */
+OPENSSL_EXPORT uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl);
 
 /* TODO(davidben): Remove this when wpa_supplicant in Android has synced with
  * upstream. */
@@ -3192,6 +3191,14 @@ OPENSSL_EXPORT void SSL_load_error_strings(void);
  * convention. Use |SSL_CTX_set_srtp_profiles| instead. */
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
                                                const char *profiles);
+
+/* SSL_get_server_key_exchange_hash, on a client, returns the hash the server
+ * used to sign the ServerKeyExchange in TLS 1.2. If not applicable, it returns
+ * |TLSEXT_hash_none|.
+ *
+ * TODO(davidben): Remove once Chromium switches to
+ * |SSL_get_peer_signature_algorithm|. */
+OPENSSL_EXPORT uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl);
 
 /* SSL_set_tlsext_use_srtp calls |SSL_set_srtp_profiles|. It returns zero on
  * success and one on failure.
@@ -4248,10 +4255,9 @@ typedef struct ssl3_state_st {
      * False Start. The client may write data at this point. */
     char in_false_start;
 
-    /* server_key_exchange_hash, on a client, is the hash the server used to
-     * sign the ServerKeyExchange in TLS 1.2. If not applicable, it is
-     * |TLSEXT_hash_none|. */
-    uint8_t server_key_exchange_hash;
+    /* peer_signature_algorithm is the signature algorithm used to authenticate
+     * the peer, or zero if not applicable. */
+    uint16_t peer_signature_algorithm;
 
     /* ecdh_ctx is the current ECDH instance. */
     SSL_ECDH_CTX ecdh_ctx;

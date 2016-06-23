@@ -1254,7 +1254,7 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
     const EVP_MD *md;
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       md = tls1_choose_signing_digest(ssl);
-      if (!tls12_add_sigandhash(ssl, &body, md)) {
+      if (!tls12_add_sigalg(ssl, &body, md)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         goto err;
@@ -1335,16 +1335,22 @@ static int add_cert_types(SSL *ssl, CBB *cbb) {
   /* Get configured signature algorithms. */
   int have_rsa_sign = 0;
   int have_ecdsa_sign = 0;
-  const uint8_t *sig;
-  size_t siglen = tls12_get_psigalgs(ssl, &sig);
+  const uint16_t *sig_algs;
+  size_t sig_algs_len = tls12_get_psigalgs(ssl, &sig_algs);
   size_t i;
-  for (i = 0; i < siglen; i += 2, sig += 2) {
-    switch (sig[1]) {
-      case TLSEXT_signature_rsa:
+  for (i = 0; i < sig_algs_len; i++) {
+    switch (sig_algs[i]) {
+      case SSL_SIGN_RSA_PKCS1_SHA512:
+      case SSL_SIGN_RSA_PKCS1_SHA384:
+      case SSL_SIGN_RSA_PKCS1_SHA256:
+      case SSL_SIGN_RSA_PKCS1_SHA1:
         have_rsa_sign = 1;
         break;
 
-      case TLSEXT_signature_ecdsa:
+      case SSL_SIGN_ECDSA_SECP521R1_SHA512:
+      case SSL_SIGN_ECDSA_SECP384R1_SHA384:
+      case SSL_SIGN_ECDSA_SECP256R1_SHA256:
+      case SSL_SIGN_ECDSA_SHA1:
         have_ecdsa_sign = 1;
         break;
     }
@@ -1378,11 +1384,17 @@ static int ssl3_send_certificate_request(SSL *ssl) {
   }
 
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-    const uint8_t *sigalgs;
+    const uint16_t *sigalgs;
     size_t sigalgs_len = tls12_get_psigalgs(ssl, &sigalgs);
-    if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
-        !CBB_add_bytes(&sigalgs_cbb, sigalgs, sigalgs_len)) {
+    if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
       goto err;
+    }
+
+    size_t i;
+    for (i = 0; i < sigalgs_len; i++) {
+      if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
+        goto err;
+      }
     }
   }
 
@@ -1888,16 +1900,16 @@ static int ssl3_get_cert_verify(SSL *ssl) {
 
   /* Determine the digest type if needbe. */
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-    uint8_t hash, signature_type;
-    if (!CBS_get_u8(&certificate_verify, &hash) ||
-        !CBS_get_u8(&certificate_verify, &signature_type)) {
+    uint16_t signature_algorithm;
+    if (!CBS_get_u16(&certificate_verify, &signature_algorithm)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
-    if (!tls12_check_peer_sigalg(ssl, &md, &al, hash, signature_type, pkey)) {
+    if (!tls12_check_peer_sigalg(ssl, &md, &al, signature_algorithm, pkey)) {
       goto f_err;
     }
+    ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
   }
 
   /* Compute the digest. */

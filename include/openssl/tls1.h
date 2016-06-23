@@ -261,6 +261,16 @@ extern "C" {
 #define TLSEXT_hash_sha384 5
 #define TLSEXT_hash_sha512 6
 
+#define SSL_SIGN_RSA_PKCS1_SHA1         0x0201
+#define SSL_SIGN_RSA_PKCS1_SHA256       0x0401
+#define SSL_SIGN_RSA_PKCS1_SHA384       0x0501
+#define SSL_SIGN_RSA_PKCS1_SHA512       0x0601
+#define SSL_SIGN_ECDSA_SHA1             0x0203
+#define SSL_SIGN_ECDSA_SECP256R1_SHA256 0x0403
+#define SSL_SIGN_ECDSA_SECP384R1_SHA384 0x0503
+#define SSL_SIGN_ECDSA_SECP521R1_SHA512 0x0603
+
+
 /* Flag set for unrecognised algorithms */
 #define TLSEXT_nid_unknown 0x1000000
 

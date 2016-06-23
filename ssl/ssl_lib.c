@@ -2812,8 +2812,12 @@ uint64_t SSL_get_write_sequence(const SSL *ssl) {
   return ret;
 }
 
+uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
+  return ssl->s3->tmp.peer_signature_algorithm;
+}
+
 uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl) {
-  return ssl->s3->tmp.server_key_exchange_hash;
+  return (uint8_t) (SSL_get_peer_signature_algorithm(ssl) >> 8);
 }
 
 size_t SSL_get_client_random(const SSL *ssl, uint8_t *out, size_t max_out) {
