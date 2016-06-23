@@ -502,7 +502,7 @@ OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);
 
 /* Modulo arithmetic. */
 
-/* BN_mod_word returns |a| mod |w|. */
+/* BN_mod_word returns |a| mod |w| or (BN_ULONG)-1 on error. */
 OPENSSL_EXPORT BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);
 
 /* BN_mod is a helper macro that calls |BN_div| and discards the quotient. */
