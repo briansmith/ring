@@ -145,7 +145,6 @@ rsa_pkcs1_padding!(RSA_PKCS1_SHA512, "SHA512", &digest::SHA512,
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
       $digest_alg_name:expr, $PADDING_ALGORITHM:ident ) => {
-        #[cfg(feature = "use_heap")]
         #[doc="Verification of RSA PKCS#1 1.5 signatures of "]
         #[doc=$min_bits_str]
         #[doc="-8192 bits "]

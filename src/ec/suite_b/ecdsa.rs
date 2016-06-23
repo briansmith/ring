@@ -20,14 +20,12 @@ use {bssl, c, der, digest, ec, signature, signature_impl};
 use super::{EC_GROUP, EC_GROUP_P256, EC_GROUP_P384};
 use untrusted;
 
-#[cfg(feature = "use_heap")]
 struct ECDSA {
     digest_alg: &'static digest::Algorithm,
     ec_group: &'static EC_GROUP,
     elem_and_scalar_len: usize,
 }
 
-#[cfg(feature = "use_heap")]
 impl signature_impl::VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), ()> {
@@ -60,7 +58,6 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
 macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $curve_bits: expr,
       $ec_group:expr, $digest_alg_name:expr, $digest_alg:expr ) => {
-        #[cfg(feature = "use_heap")]
         #[doc="Verification of ECDSA signatures using the "]
         #[doc=$curve_name]
         #[doc=" curve and the "]
@@ -121,7 +118,6 @@ ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", 384, &EC_GROUP_P384,
 
 
 extern {
-    #[cfg(feature = "use_heap")]
     fn ECDSA_verify_signed_digest(group: &EC_GROUP, hash_nid: c::int,
                                   digest: *const u8, digest_len: c::size_t,
                                   sig_r: *const u8, sig_r_len: c::size_t,
