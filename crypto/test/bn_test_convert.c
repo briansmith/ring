@@ -89,7 +89,7 @@ static int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
   return 1;
 }
 
-BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
+static BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
   if (bits + BN_BITS2 - 1 < bits) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return NULL;
