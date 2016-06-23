@@ -232,7 +232,7 @@ again:
           return -1;
         }
 
-        dtls1_retransmit_buffered_messages(ssl);
+        dtls1_retransmit_outgoing_messages(ssl);
       }
 
       rr->length = 0;

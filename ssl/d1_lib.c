@@ -270,7 +270,7 @@ int DTLSv1_handle_timeout(SSL *ssl) {
   }
 
   dtls1_start_timer(ssl);
-  return dtls1_retransmit_buffered_messages(ssl);
+  return dtls1_retransmit_outgoing_messages(ssl);
 }
 
 static void get_current_time(const SSL *ssl, struct timeval *out_clock) {

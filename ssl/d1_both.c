@@ -420,9 +420,9 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
   ssl->d1->outgoing_messages_len = 0;
 }
 
-/* dtls1_buffer_change_cipher_spec adds a ChangeCipherSpec to the current
+/* dtls1_add_change_cipher_spec adds a ChangeCipherSpec to the current
  * handshake flight. */
-static int dtls1_buffer_change_cipher_spec(SSL *ssl) {
+static int dtls1_add_change_cipher_spec(SSL *ssl) {
   if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
@@ -439,7 +439,7 @@ static int dtls1_buffer_change_cipher_spec(SSL *ssl) {
   return 1;
 }
 
-static int dtls1_buffer_message(SSL *ssl, uint8_t *data, size_t len) {
+static int dtls1_add_message(SSL *ssl, uint8_t *data, size_t len) {
   if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     OPENSSL_free(data);
@@ -490,7 +490,7 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb) {
 
   ssl->d1->handshake_write_seq++;
   ssl->init_off = 0;
-  return dtls1_buffer_message(ssl, msg, len);
+  return dtls1_add_message(ssl, msg, len);
 }
 
 int dtls1_write_message(SSL *ssl) {
@@ -521,11 +521,11 @@ static int dtls1_is_next_message_complete(SSL *ssl) {
   return frag != NULL && frag->reassembly == NULL;
 }
 
-/* dtls1_get_buffered_message returns the buffered message corresponding to
+/* dtls1_get_incoming_message returns the incoming message corresponding to
  * |msg_hdr|. If none exists, it creates a new one and inserts it in the
  * queue. Otherwise, it checks |msg_hdr| is consistent with the existing one. It
  * returns NULL on failure. The caller does not take ownership of the result. */
-static hm_fragment *dtls1_get_buffered_message(
+static hm_fragment *dtls1_get_incoming_message(
     SSL *ssl, const struct hm_header_st *msg_hdr) {
   if (msg_hdr->seq < ssl->d1->handshake_read_seq ||
       msg_hdr->seq - ssl->d1->handshake_read_seq >= SSL_MAX_HANDSHAKE_FLIGHT) {
@@ -624,7 +624,7 @@ start:
       continue;
     }
 
-    hm_fragment *frag = dtls1_get_buffered_message(ssl, &msg_hdr);
+    hm_fragment *frag = dtls1_get_incoming_message(ssl, &msg_hdr);
     if (frag == NULL) {
       return -1;
     }
@@ -772,7 +772,7 @@ static int dtls1_retransmit_message(SSL *ssl,
   return ret;
 }
 
-int dtls1_retransmit_buffered_messages(SSL *ssl) {
+int dtls1_retransmit_outgoing_messages(SSL *ssl) {
   /* Ensure we are packing handshake messages. */
   const int was_buffered = ssl_is_wbio_buffered(ssl);
   assert(was_buffered == SSL_in_init(ssl));
@@ -804,7 +804,7 @@ err:
 
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b) {
   if (ssl->state == a) {
-    dtls1_buffer_change_cipher_spec(ssl);
+    dtls1_add_change_cipher_spec(ssl);
     ssl->state = b;
   }
 

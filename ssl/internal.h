@@ -1058,7 +1058,7 @@ int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
 
 int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b);
 int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
-int dtls1_retransmit_buffered_messages(SSL *ssl);
+int dtls1_retransmit_outgoing_messages(SSL *ssl);
 void dtls1_clear_record_buffer(SSL *ssl);
 int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
                          CBS *out_body);
