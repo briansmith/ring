@@ -19,13 +19,13 @@
 # P4		18.6/+84%
 # Core2		9.56/+89%	4.83
 # Westmere	9.50/+45%	3.35
-# Sandy Bridge	10.7/+47%	3.24
-# Haswell	8.22/+50%	2.89
-# Silvermont	17.8/+36%	8.53
+# Sandy Bridge	10.5/+47%	3.20
+# Haswell	8.15/+50%	2.83
+# Silvermont	17.4/+36%	8.35
 # Sledgehammer	10.2/+54%
-# Bulldozer	13.5/+50%	4.39(*)
+# Bulldozer	13.4/+50%	4.38(*)
 #
-# (*)  Bulldozer actually executes 4xXOP code path that delivers 3.50;
+# (*)	Bulldozer actually executes 4xXOP code path that delivers 3.55;
 #
 # Modified from upstream OpenSSL to remove the XOP code.
 
