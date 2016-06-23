@@ -102,11 +102,6 @@ extern "C" {
 #define OPENSSL_WINDOWS
 #endif
 
-#if defined(TRUSTY)
-#define OPENSSL_TRUSTY
-#define OPENSSL_NO_THREADS
-#endif
-
 #define OPENSSL_IS_BORINGSSL
 #define OPENSSL_IS_RING
 #define OPENSSL_VERSION_NUMBER 0x10002000
