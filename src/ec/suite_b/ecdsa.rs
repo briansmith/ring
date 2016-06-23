@@ -125,7 +125,8 @@ mod tests {
 
     #[test]
     fn test_signature_ecdsa_verify() {
-        file_test::run("src/ec/ecdsa_verify_tests.txt", |section, test_case| {
+        file_test::run("src/ec/suite_b/ecdsa_verify_tests.txt",
+                       |section, test_case| {
             assert_eq!(section, "");
 
             let curve_name = test_case.consume_string("Curve");

@@ -56,3 +56,41 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
 
     Ok((x, y))
 }
+
+
+#[cfg(test)]
+mod tests {
+    use file_test;
+    use super::*;
+    use super::super::ops;
+    use untrusted;
+
+    #[test]
+    fn parse_uncompressed_point_test() {
+         file_test::run("src/ec/suite_b/suite_b_public_key_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let curve_ops = if curve_name == "P-256" {
+                &ops::p256::PUBLIC_KEY_OPS
+            } else if curve_name == "P-384" {
+                &ops::p384::PUBLIC_KEY_OPS
+            } else {
+                panic!("Unsupported curve: {}", curve_name);
+            };
+
+            let public_key = test_case.consume_bytes("Q");
+            let public_key = try!(untrusted::Input::new(&public_key));
+            let valid = test_case.consume_string("Result") == "P";
+
+            let result = parse_uncompressed_point(curve_ops, public_key);
+            assert_eq!(valid, result.is_ok());
+
+            // TODO: Verify that we when we re-serialize the parsed (x, y), the
+            // output is equal to the input.
+
+            Ok(())
+        });
+    }
+}
