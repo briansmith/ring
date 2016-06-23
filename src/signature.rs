@@ -92,6 +92,7 @@
 //!
 //! use ring::{rand, signature};
 //!
+//! # #[cfg(feature = "use_heap")]
 //! # fn sign_rsa() -> Result<(), ()> {
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
@@ -120,7 +121,10 @@
 //!                        public_key_bytes_der, message, signature));
 //! # Ok(())
 //! # }
-//!
+//! #
+//! # #[cfg(not(feature = "use_heap"))]
+//! # fn sign_and_verify_rsa() -> Result<(), ()> { Ok(()) }
+//! #
 //! # fn main() { sign_rsa().unwrap() }
 //! ```
 
