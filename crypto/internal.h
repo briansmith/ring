@@ -141,10 +141,6 @@ extern "C" {
 void OPENSSL_cpuid_setup(void);
 #endif
 
-#if !defined(inline)
-#define inline __inline
-#endif
-
 
 #if !defined(_MSC_VER) && defined(OPENSSL_64_BIT)
 typedef __int128_t int128_t;
