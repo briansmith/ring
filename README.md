@@ -98,7 +98,7 @@ In addition, we're always interested in these kinds of contributions:
 * More code simplification, especially eliminating dead code.
 * Replacing more C code with Rust code.
 * Improving the code size, execution speed, and/or memory footprint.
-* Making more features work in the `#![no_std]`/non-`use_heap`` mode, by
+* Making more features work in the `#![no_std]`/non-`use_heap` mode, by
   avoiding uses of the heap.
 * Better IDE support for Windows (e.g. running the tests within the IDE) and
   Mac OS X (e.g. Xcode project files).
