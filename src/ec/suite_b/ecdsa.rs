@@ -22,11 +22,11 @@ use super::public_key::*;
 use untrusted;
 
 struct ECDSA {
+    ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
-    ec_group: &'static EC_GROUP,
-    elem_and_scalar_len: usize,
 }
 
+#[cfg(feature = "use_heap")]
 impl signature_impl::VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), ()> {
@@ -34,30 +34,29 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
 
         let (r, s) = try!(signature.read_all((), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
-                let r = try!(der::positive_integer(input));
-                let s = try!(der::positive_integer(input));
-                Ok((r.as_slice_less_safe(), s.as_slice_less_safe()))
+                let r = try!(self.ops.scalar_parse(input));
+                let s = try!(self.ops.scalar_parse(input));
+                Ok((r, s))
             })
         }));
 
-        let (x, y) = try!(parse_uncompressed_point(public_key,
-                                                   self.elem_and_scalar_len));
+        let (x, y) =
+            try!(parse_uncompressed_point(self.ops.public_key_ops, public_key));
 
         bssl::map_result(unsafe {
-            ECDSA_verify_signed_digest(self.ec_group,
+            ECDSA_verify_signed_digest(self.ops.public_key_ops.common.ec_group,
                                        digest.algorithm().nid,
                                        digest.as_ref().as_ptr(),
-                                       digest.as_ref().len(), r.as_ptr(),
-                                       r.len(), s.as_ptr(), s.len(),
-                                       x.as_ptr(), x.len(), y.as_ptr(),
-                                       y.len())
+                                       digest.as_ref().len(), r.limbs_as_ptr(),
+                                       s.limbs_as_ptr(), x.limbs_as_ptr(),
+                                       y.limbs_as_ptr())
         })
     }
 }
 
 macro_rules! ecdsa {
-    ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $curve_bits: expr,
-      $ec_group:expr, $digest_alg_name:expr, $digest_alg:expr ) => {
+    ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ecdsa_verify_ops:expr,
+      $digest_alg_name:expr, $digest_alg:expr ) => {
         #[doc="Verification of ECDSA signatures using the "]
         #[doc=$curve_name]
         #[doc=" curve and the "]
@@ -75,12 +74,6 @@ macro_rules! ecdsa {
         /// "partial" validation is equivalent to "full" validation for
         /// prime-order curves like this one.
         ///
-        /// TODO: Each of the encoded coordinates are verified to be the
-        /// correct length, but values of the allowed length that haven't been
-        /// reduced modulo *q* are currently reduced mod *q* during
-        /// verification. Soon, coordinates larger than *q* - 1 will be
-        /// rejected.
-        ///
         /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3). Both *r*
@@ -90,42 +83,39 @@ macro_rules! ecdsa {
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
                 signature::VerificationAlgorithm {
             implementation: &ECDSA {
+                ops: $ecdsa_verify_ops,
                 digest_alg: $digest_alg,
-                ec_group: $ec_group,
-                elem_and_scalar_len: ($curve_bits + 7) / 8,
             }
         };
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", 256, &EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", 256, &EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", 256, &EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", 256, &EC_GROUP_P256,
+ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-512", &digest::SHA512);
 
-ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", 384, &EC_GROUP_P384,
+
+ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", 384, &EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", 384, &EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", 384, &EC_GROUP_P384,
+ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-512", &digest::SHA512);
 
 
 extern {
-    fn ECDSA_verify_signed_digest(group: &EC_GROUP, hash_nid: c::int,
+    fn ECDSA_verify_signed_digest(group: *const EC_GROUP, hash_nid: c::int,
                                   digest: *const u8, digest_len: c::size_t,
-                                  sig_r: *const u8, sig_r_len: c::size_t,
-                                  sig_s: *const u8, sig_s_len: c::size_t,
-                                  peer_public_key_x: *const u8,
-                                  peer_public_key_x_len: c::size_t,
-                                  peer_public_key_y: *const u8,
-                                  peer_public_key_y_len: c::size_t) -> c::int;
+                                  sig_r: *const Limb, sig_s: *const Limb,
+                                  peer_public_key_x: *const Limb,
+                                  peer_public_key_y: *const Limb) -> c::int;
 }
 
 

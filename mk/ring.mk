@@ -38,6 +38,8 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ec/ec.c \
   crypto/ec/ec_curves.c \
   crypto/ec/ec_montgomery.c \
+  crypto/ec/gfp_p256.c \
+  crypto/ec/gfp_p384.c \
   crypto/ec/gfp_suite_b_ecdh.c \
   crypto/ec/gfp_suite_b_private.c \
   crypto/ec/gfp_suite_b_public.c \
@@ -67,6 +69,7 @@ RING_x86_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/vpaes-x86.pl \
   crypto/bn/asm/x86-mont.pl \
   crypto/chacha/asm/chacha-x86.pl \
+  crypto/ec/asm/ecp_nistz256-x86.pl \
   crypto/modes/asm/ghash-x86.pl \
   crypto/poly1305/asm/poly1305-x86.pl \
   crypto/sha/asm/sha256-586.pl \
@@ -111,6 +114,7 @@ RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/armv4-mont.pl \
   crypto/chacha/asm/chacha-armv4.pl \
   crypto/curve25519/asm/x25519-asm-arm.S \
+  crypto/ec/asm/ecp_nistz256-armv4.pl \
   crypto/modes/asm/ghash-armv4.pl \
   crypto/poly1305/asm/poly1305-armv4.pl \
   crypto/sha/asm/sha256-armv4.pl \
@@ -123,6 +127,7 @@ RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-aarch64-linux.c \
   crypto/bn/asm/armv8-mont.pl \
   crypto/chacha/asm/chacha-armv8.pl \
+  crypto/ec/asm/ecp_nistz256-armv8.pl \
   crypto/poly1305/asm/poly1305-armv8.pl \
   crypto/sha/asm/sha256-armv8.pl \
   crypto/sha/asm/sha512-armv8.pl \

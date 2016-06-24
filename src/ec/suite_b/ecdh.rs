@@ -23,7 +23,7 @@ use untrusted;
 
 /// A key agreement algorithm.
 macro_rules! ecdh {
-    ( $NAME:ident, $bits:expr, $name_str:expr, $group:expr, $nid:expr,
+    ( $NAME:ident, $bits:expr, $name_str:expr, $curve:expr, $nid:expr,
       $ecdh:ident, $generate_private_key:ident, $public_from_private:ident ) =>
     {
         #[doc="ECDH using the NSA Suite B"]
@@ -41,12 +41,6 @@ macro_rules! ecdh {
         /// guide, "partial" validation is equivalent to "full" validation for
         /// prime-order curves like this one.
         ///
-        /// TODO: Each of the encoded coordinates are verified to be the
-        /// correct length, but values of the allowed length that haven't been
-        /// reduced modulo *q* are currently reduced mod *q* during
-        /// verification. Soon, coordinates larger than *q* - 1 will be
-        /// rejected.
-        ///
         /// Only available in `use_heap` mode.
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
             i: ec::AgreementAlgorithmImpl {
@@ -61,42 +55,36 @@ macro_rules! ecdh {
 
         fn $ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                  peer_public_key: untrusted::Input) -> Result<(), ()> {
-            ecdh($group, out, ($bits + 7) / 8, my_private_key, peer_public_key)
+            ecdh($curve, out, my_private_key, peer_public_key)
         }
 
         agreement_externs!($generate_private_key, $public_from_private);
     }
 }
 
-fn ecdh(group: &EC_GROUP, out: &mut [u8], elem_and_scalar_len: usize,
-        my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input)
-        -> Result<(), ()> {
-    let (peer_x, peer_y) =
-        try!(parse_uncompressed_point(peer_public_key, elem_and_scalar_len));
+fn ecdh(ops: &PublicKeyOps, out: &mut [u8], my_private_key: &ec::PrivateKey,
+        peer_public_key: untrusted::Input) -> Result<(), ()> {
+    let (peer_x, peer_y) = try!(parse_uncompressed_point(ops, peer_public_key));
     bssl::map_result(unsafe {
-        GFp_suite_b_ecdh(group, out.as_mut_ptr(), out.len(),
-                         my_private_key.bytes.as_ptr(), elem_and_scalar_len,
-                         peer_x.as_ptr(), peer_x.len(), peer_y.as_ptr(),
-                         peer_y.len())
+        GFp_suite_b_ecdh(ops.common.ec_group, out.as_mut_ptr(), out.len(),
+                         my_private_key.bytes.as_ptr(),
+                         peer_x.limbs_as_ptr(), peer_y.limbs_as_ptr())
     })
 }
 
-ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &EC_GROUP_P256,
+ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &p256::PUBLIC_KEY_OPS,
       415 /*NID_X9_62_prime256v1*/, p256_ecdh, GFp_p256_generate_private_key,
       GFp_p256_public_from_private);
 
-ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &EC_GROUP_P384,
+ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &p384::PUBLIC_KEY_OPS,
       715 /*NID_secp384r1*/, p384_ecdh, GFp_p384_generate_private_key,
       GFp_p384_public_from_private);
 
 extern {
     fn GFp_suite_b_ecdh(group: &EC_GROUP, out: *mut u8,
                         out_len: c::size_t, private_key: *const u8,
-                        private_key_len: c::size_t,
-                        peer_public_key_x: *const u8,
-                        peer_public_key_x_len: c::size_t,
-                        peer_public_key_y: *const u8,
-                        peer_public_key_y_len: c::size_t) -> c::int;
+                        peer_public_key_x: *const Limb,
+                        peer_public_key_y: *const Limb) -> c::int;
 }
 
 
