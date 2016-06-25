@@ -12,8 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{CommonOps, EC_GROUP, Elem, Limb, LIMB_BITS, Mont, PublicKeyOps,
-            PublicScalarOps};
+use super::{CommonOps, EC_GROUP, Elem, ElemDecoded, Limb, LIMB_BITS, Mont,
+            PublicKeyOps, PublicScalarOps};
 
 
 macro_rules! p384_limbs {
@@ -65,11 +65,20 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     public_key_ops: &PUBLIC_KEY_OPS,
 
-    n: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                   0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
-                   0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
+    n: ElemDecoded {
+        limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                           0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
+                           0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
+    },
+
+    q_minus_n: ElemDecoded {
+        limbs: p384_limbs![0, 0, 0, 0,
+                           0, 0, 0x389cb27e, 0x0bc8d21f,
+                           0x1313e696, 0x333ad68c, 0xa7e5f24c, 0xb74f5885],
+    },
 
     scalar_inv_to_mont_impl: GFp_p384_scalar_inv_to_mont,
+    scalar_mul_mont: GFp_p384_scalar_mul_mont,
 };
 
 
@@ -92,6 +101,9 @@ extern {
 
     fn GFp_p384_scalar_inv_to_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                    a: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_p384_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
+                                a: *const Limb/*[COMMON_OPS.num_limbs]*/,
+                                b: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
     static EC_GROUP_P384: EC_GROUP;
 }

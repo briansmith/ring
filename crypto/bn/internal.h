@@ -194,8 +194,12 @@ extern "C" {
   }
 
 
+/* bn_get_words sets |words| to the value in |bn|, least significant word
+ * first. It returns one on success or zero otherwise. */
+int bn_get_words(BN_ULONG *words, const BIGNUM *bn, size_t num);
+
 /* bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
- * least significant word first. */
+ * least significant word first. It returns one on success or zero otherwise. */
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
 
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
