@@ -67,17 +67,19 @@ macro_rules! ecdsa {
         /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
         /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
         /// Public keys are validated during key agreement as described in
+        /// using the ECC
+        /// Partial Public-Key Validation Routine from Section 5.6.2.3.3 of
         /// [NIST Special Publication 800-56A, revision
-        /// 2](http://csrc.nist.gov/groups/ST/toolkit/documents/SP800-56Arev1_3-8-07.pdf)
-        /// Section 5.6.2.5 and the NSA's "Suite B implementer's guide to FIPS
-        /// 186-3," Appendix A.3. Note that, as explained in the NSA guide,
-        /// "partial" validation is equivalent to "full" validation for
+        /// 2](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
+        /// and Appendix A.3 of the NSA's [Suite B implementer's guide to FIPS
+        /// 186-3](https://github.com/briansmith/ring/doc/ecdsa.pdf). Note
+        /// that, as explained in the NSA guide, ECC Partial Public-Key
+        /// Validation is equivalent to ECC Full Public-Key Validation for
         /// prime-order curves like this one.
         ///
         /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
         /// described in [RFC 3279 Section
-        /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3). Both *r*
-        /// and *s* are verified to be in the range [1, *n* - 1].
+        /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
         ///
         /// Only available in `use_heap` mode.
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =

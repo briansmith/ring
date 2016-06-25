@@ -128,7 +128,9 @@ pub struct PublicKeyOps {
 impl PublicKeyOps {
     // The serialized bytes are in big-endian order, zero-padded. The limbs
     // of `Elem` are in the native endianness, least significant limb to
-    // most significant limb.
+    // most significant limb. Besides the parsing, conversion, this also
+    // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
+    // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
                       -> Result<Elem, ()> {
         let encoded_value =

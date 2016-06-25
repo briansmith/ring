@@ -18,31 +18,45 @@
 use super::ops::*;
 use untrusted;
 
-/// Parses a public key encoded in uncompressed form. The key's coordinates are
-/// verified to be valid field elements and the point is verified to be on the
-/// curve. (The point cannot be at infinity because it is given in affine
-/// coordinates.)
+/// Parses a public key encoded in uncompressed form. The key is validated
+/// using the ECC Partial Public-Key Validation Routine from [NIST SP 800-56A,
+/// revision
+/// 2](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
+/// Section 5.6.2.3.3, the NSA's "Suite B Implementer's Guide to NIST
+/// SP 800-56A," Appendix B.3, and the NSA's "Suite B Implementer's Guide to
+/// FIPS 186-3 (ECDSA)," Appendix A.3.
 pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
                                     input: untrusted::Input<'a>)
                                     -> Result<(Elem, Elem), ()> {
+    // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
+    // This can be done by inspection if the point is entered in the standard
+    // affine representation." (We do it by inspection since we only accept
+    // the affine representation.)
     let (x, y) = try!(input.read_all((), |input| {
         // The encoding must be 4, which is the encoding for "uncompressed".
         let encoding = try!(input.read_byte());
         if encoding != 4 {
             return Err(());
         }
+
+        // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the
+        // interval [0, p-1] in the case that q is an odd prime p[.]"
         let x = try!(ops.elem_parse(input));
         let y = try!(ops.elem_parse(input));
         Ok((x, y))
     }));
 
-    // Verify that (x, y) is on the curve, which is true iif:
+    // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
+    // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
+    // modulo p."
     //
-    //     y**2 == x**3 + a*x + b
+    // That is, verify that (x, y) is on the curve, which is true iif:
+    //
+    //     y**2 == x**3 + a*x + b (mod q)
     //
     // Or, equivalently, but more efficiently:
     //
-    //     y**2 == (x**2 + a)*x + b
+    //     y**2 == (x**2 + a)*x + b  (mod q)
 
     let lhs = ops.common.elem_sqr(&y);
 
@@ -50,9 +64,22 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
     ops.elem_add(&mut rhs, &ops.a);
     let mut rhs = ops.common.elem_mul(&rhs, &x);
     ops.elem_add(&mut rhs, &ops.b);
+
     if !ops.elems_are_equal(&lhs, &rhs) {
         return Err(());
     }
+
+    // NIST SP 800-56A Note: "Since its order is not verified, there is no
+    // check that the public key is in the correct EC subgroup."
+    //
+    // NSA Suite B Implementer's Guide Note: "ECC Full Public-Key Validation
+    // includes an additional check to ensure that the point has the correct
+    // order. This check is not necessary for curves having prime order (and
+    // cofactor h = 1), such as P-256 and P-384. As long as the implementation
+    // under testing claims to support only the Suite B subset of the NIST
+    // curves, the partial validation routine will be sufficient to satisfy
+    // FIPS 140 CAVP testing of both full and partial public key validation
+    // capabilities."
 
     Ok((x, y))
 }
