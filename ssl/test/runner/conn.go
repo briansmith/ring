@@ -523,17 +523,24 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 		case cipher.Stream:
 			c.XORKeyStream(payload, payload)
 		case *tlsAead:
-			contentTypeLen := 0
-			if hc.version >= VersionTLS13 {
-				contentTypeLen = 1
-			}
 			payloadLen := len(b.data) - recordHeaderLen - explicitIVLen
-			b.resize(len(b.data) + contentTypeLen + c.Overhead())
+			paddingLen := 0
 			if hc.version >= VersionTLS13 {
-				b.data[payloadLen+recordHeaderLen] = byte(typ)
-				payloadLen += 1
-				// TODO(nharper): Add ProtocolBugs to add
-				// padding.
+				payloadLen++
+				paddingLen = hc.config.Bugs.RecordPadding
+			}
+			if hc.config.Bugs.OmitRecordContents {
+				payloadLen = 0
+			}
+			b.resize(recordHeaderLen + explicitIVLen + payloadLen + paddingLen + c.Overhead())
+			if hc.version >= VersionTLS13 {
+				if !hc.config.Bugs.OmitRecordContents {
+					b.data[payloadLen+recordHeaderLen-1] = byte(typ)
+				}
+				for i := 0; i < hc.config.Bugs.RecordPadding; i++ {
+					b.data[payloadLen+recordHeaderLen+i] = 0
+				}
+				payloadLen += paddingLen
 			}
 			nonce := hc.outSeq[:]
 			if c.explicitNonce {
@@ -762,8 +769,9 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
 	ok, off, encTyp, err := c.in.decrypt(b)
 	if c.vers >= VersionTLS13 && c.in.cipher != nil {
-		// TODO(nharper): Check that outer type (typ) is
-		// application data.
+		if typ != recordTypeApplicationData {
+			return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: outer record type is not application data"))
+		}
 		typ = encTyp
 	}
 	if !ok {
@@ -971,8 +979,10 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		b.resize(recordHeaderLen + explicitIVLen + m)
 		b.data[0] = byte(typ)
 		if c.vers >= VersionTLS13 && c.out.cipher != nil {
-			// TODO(nharper): Add a ProtocolBugs to skip this.
 			b.data[0] = byte(recordTypeApplicationData)
+			if outerType := c.config.Bugs.OuterRecordType; outerType != 0 {
+				b.data[0] = byte(outerType)
+			}
 		}
 		vers := c.vers
 		if vers == 0 || vers >= VersionTLS13 {

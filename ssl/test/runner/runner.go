@@ -5298,6 +5298,59 @@ func addKeyExchangeInfoTests() {
 	})
 }
 
+func addTLS13RecordTests() {
+	testCases = append(testCases, testCase{
+		name: "TLS13-RecordPadding",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				RecordPadding: 10,
+			},
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		name: "TLS13-EmptyRecords",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				OmitRecordContents: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "TLS13-OnlyPadding",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				OmitRecordContents: true,
+				RecordPadding:      10,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "TLS13-WrongOuterRecord",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				OuterRecordType: recordTypeHandshake,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":INVALID_OUTER_RECORD_TYPE:",
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -5398,6 +5451,7 @@ func main() {
 	addCurveTests()
 	addCECPQ1Tests()
 	addKeyExchangeInfoTests()
+	addTLS13RecordTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

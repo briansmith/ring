@@ -255,6 +255,13 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   if (ssl->s3->have_version &&
       ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
       ssl->s3->aead_read_ctx != NULL) {
+    /* The outer record type is always application_data. */
+    if (type != SSL3_RT_APPLICATION_DATA) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_OUTER_RECORD_TYPE);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return ssl_open_record_error;
+    }
+
     do {
       if (!CBS_get_last_u8(out, &type)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);

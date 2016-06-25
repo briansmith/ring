@@ -853,6 +853,19 @@ type ProtocolBugs struct {
 	// CECPQ1BadNewhopePart corrupts the Newhope part of a CECPQ1 key exchange,
 	// as a trivial proof that it is actually used.
 	CECPQ1BadNewhopePart bool
+
+	// RecordPadding is the number of bytes of padding to add to each
+	// encrypted record in TLS 1.3.
+	RecordPadding int
+
+	// OmitRecordContents, if true, causes encrypted records in TLS 1.3 to
+	// be missing their body and content type. Padding, if configured, is
+	// still added.
+	OmitRecordContents bool
+
+	// OuterRecordType, if non-zero, is the outer record type to use instead
+	// of application data.
+	OuterRecordType recordType
 }
 
 func (c *Config) serverInit() {
