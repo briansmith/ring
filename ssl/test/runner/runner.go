@@ -3597,14 +3597,24 @@ func addMinimumVersionTests() {
 
 				var expectedVersion uint16
 				var shouldFail bool
-				var expectedError string
-				var expectedLocalError string
+				var expectedClientError, expectedServerError string
+				var expectedClientLocalError, expectedServerLocalError string
 				if runnerVers.version >= shimVers.version {
 					expectedVersion = runnerVers.version
 				} else {
 					shouldFail = true
-					expectedError = ":UNSUPPORTED_PROTOCOL:"
-					expectedLocalError = "remote error: protocol version not supported"
+					expectedServerError = ":UNSUPPORTED_PROTOCOL:"
+					expectedServerLocalError = "remote error: protocol version not supported"
+					if shimVers.version >= VersionTLS13 && runnerVers.version <= VersionTLS11 {
+						// If the client's minimum version is TLS 1.3 and the runner's
+						// maximum is below TLS 1.2, the runner will fail to select a
+						// cipher before the shim rejects the selected version.
+						expectedClientError = ":SSLV3_ALERT_HANDSHAKE_FAILURE:"
+						expectedClientLocalError = "tls: no cipher suite supported by both client and server"
+					} else {
+						expectedClientError = expectedServerError
+						expectedClientLocalError = expectedServerLocalError
+					}
 				}
 
 				testCases = append(testCases, testCase{
@@ -3617,8 +3627,8 @@ func addMinimumVersionTests() {
 					flags:              flags,
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedError,
-					expectedLocalError: expectedLocalError,
+					expectedError:      expectedClientError,
+					expectedLocalError: expectedClientLocalError,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -3630,8 +3640,8 @@ func addMinimumVersionTests() {
 					flags:              []string{"-min-version", shimVersFlag},
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedError,
-					expectedLocalError: expectedLocalError,
+					expectedError:      expectedClientError,
+					expectedLocalError: expectedClientLocalError,
 				})
 
 				testCases = append(testCases, testCase{
@@ -3644,8 +3654,8 @@ func addMinimumVersionTests() {
 					flags:              flags,
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedError,
-					expectedLocalError: expectedLocalError,
+					expectedError:      expectedServerError,
+					expectedLocalError: expectedServerLocalError,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -3657,8 +3667,8 @@ func addMinimumVersionTests() {
 					flags:              []string{"-min-version", shimVersFlag},
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedError,
-					expectedLocalError: expectedLocalError,
+					expectedError:      expectedServerError,
+					expectedLocalError: expectedServerLocalError,
 				})
 			}
 		}

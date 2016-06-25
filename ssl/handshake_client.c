@@ -550,7 +550,9 @@ end:
   return ret;
 }
 
-static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
+static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out,
+                                         uint16_t min_version,
+                                         uint16_t max_version) {
   /* Prepare disabled cipher masks. */
   ssl_set_client_disabled(ssl);
 
@@ -570,10 +572,8 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
         (cipher->algorithm_auth & ssl->cert->mask_a)) {
       continue;
     }
-    /* TODO(davidben): Also check |SSL_CIPHER_get_max_version| against the
-     * minimum enabled version. See https://crbug.com/boringssl/66. */
-    if (SSL_CIPHER_get_min_version(cipher) >
-        ssl->method->version_from_wire(ssl->client_version)) {
+    if (SSL_CIPHER_get_min_version(cipher) > max_version ||
+        SSL_CIPHER_get_max_version(cipher) < min_version) {
       continue;
     }
     any_enabled = 1;
@@ -681,7 +681,7 @@ static int ssl3_send_client_hello(SSL *ssl) {
 
   size_t header_len =
       SSL_IS_DTLS(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
-  if (!ssl3_write_client_cipher_list(ssl, &body) ||
+  if (!ssl3_write_client_cipher_list(ssl, &body, min_version, max_version) ||
       !CBB_add_u8(&body, 1 /* one compression method */) ||
       !CBB_add_u8(&body, 0 /* null compression */) ||
       !ssl_add_clienthello_tlsext(ssl, &body, header_len + CBB_len(&body)) ||
