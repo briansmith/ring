@@ -2355,8 +2355,8 @@ func addCipherSuiteTests() {
 						PreSharedKey:         []byte(psk),
 						PreSharedKeyIdentity: pskIdentity,
 						Bugs: ProtocolBugs{
-							EnableAllCiphers:            true,
-							IgnorePeerCipherPreferences: true,
+							EnableAllCiphers:            shouldServerFail,
+							IgnorePeerCipherPreferences: shouldServerFail,
 						},
 					},
 					certFile:      certFile,
@@ -2379,8 +2379,8 @@ func addCipherSuiteTests() {
 						PreSharedKey:         []byte(psk),
 						PreSharedKeyIdentity: pskIdentity,
 						Bugs: ProtocolBugs{
-							EnableAllCiphers:            true,
-							IgnorePeerCipherPreferences: true,
+							EnableAllCiphers:            shouldClientFail,
+							IgnorePeerCipherPreferences: shouldClientFail,
 						},
 					},
 					flags:         flags,
