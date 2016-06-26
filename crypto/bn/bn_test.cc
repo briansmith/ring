@@ -99,7 +99,6 @@ static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_sqr(FILE *fp, BN_CTX *ctx);
 static bool test_mul(FILE *fp);
 static bool test_div(FILE *fp, BN_CTX *ctx);
 static int rand_neg();
@@ -180,12 +179,6 @@ int main(int argc, char *argv[]) {
   puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
-
-  message(bc_file.get(), "BN_sqr");
-  if (!test_sqr(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_mul");
   if (!test_mul(bc_file.get())) {
@@ -354,19 +347,23 @@ static bool TestSum(FileTest *t, BN_CTX *ctx) {
 static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM lshift1 = GetBIGNUM(t, "LShift1");
-  if (!a || !lshift1) {
+  ScopedBIGNUM zero(BN_new());
+  if (!a || !lshift1 || !zero) {
     return false;
   }
 
-  ScopedBIGNUM ret(BN_new()), two(BN_new());
-  if (!ret || !two ||
+  BN_zero(zero.get());
+
+  ScopedBIGNUM ret(BN_new()), two(BN_new()), remainder(BN_new());
+  if (!ret || !two || !remainder ||
       !BN_set_word(two.get(), 2) ||
       !BN_add(ret.get(), a.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "A + A", lshift1.get(), ret.get()) ||
       !BN_mul(ret.get(), a.get(), two.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "A * 2", lshift1.get(), ret.get()) ||
-      !BN_div(ret.get(), nullptr /* rem */, lshift1.get(), two.get(), ctx) ||
+      !BN_div(ret.get(), remainder.get(), lshift1.get(), two.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "LShift1 / 2", a.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "LShift1 % 2", zero.get(), remainder.get()) ||
       !BN_lshift1(ret.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "A << 1", lshift1.get(), ret.get()) ||
       !BN_rshift1(ret.get(), lshift1.get()) ||
@@ -435,6 +432,37 @@ static bool TestRShift(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestSquare(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM square = GetBIGNUM(t, "Square");
+  ScopedBIGNUM zero(BN_new());
+  if (!a || !square || !zero) {
+    return false;
+  }
+
+  BN_zero(zero.get());
+
+  ScopedBIGNUM ret(BN_new()), remainder(BN_new());
+  if (!ret ||
+      !BN_sqr(ret.get(), a.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A^2", square.get(), ret.get()) ||
+      !BN_mul(ret.get(), a.get(), a.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A * A", square.get(), ret.get()) ||
+      !BN_div(ret.get(), remainder.get(), square.get(), a.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "Square / A", a.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Square % A", zero.get(), remainder.get())) {
+    return false;
+  }
+
+  BN_set_negative(a.get(), 0);
+  if (!BN_sqrt(ret.get(), square.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "sqrt(Square)", a.get(), ret.get())) {
+    return false;
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -445,6 +473,7 @@ static const Test kTests[] = {
     {"LShift1", TestLShift1},
     {"LShift", TestLShift},
     {"RShift", TestRShift},
+    {"Square", TestSquare},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -609,97 +638,6 @@ static bool test_mul(FILE *fp) {
 
   return true;
 }
-
-static bool test_sqr(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !c || !d || !e) {
-    return false;
-  }
-
-  for (int i = 0; i < num0; i++) {
-    if (!BN_rand(a.get(), 40 + i * 10, 0, 0)) {
-      return false;
-    }
-    a->neg = rand_neg();
-    if (!BN_sqr(c.get(), a.get(), ctx)) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " * ");
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_div(d.get(), e.get(), c.get(), a.get(), ctx) ||
-        !BN_sub(d.get(), d.get(), a.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get()) || !BN_is_zero(e.get())) {
-      fprintf(stderr, "Square test failed!\n");
-      return false;
-    }
-  }
-
-  // Regression test for a BN_sqr overflow bug.
-  BIGNUM *a_raw = a.get();
-  if (!BN_hex2bn(
-          &a_raw,
-          "80000000000000008000000000000001FFFFFFFFFFFFFFFE0000000000000000") ||
-      !BN_sqr(c.get(), a.get(), ctx)) {
-    return false;
-  }
-  if (fp != NULL) {
-    BN_print_fp(fp, a.get());
-    puts_fp(fp, " * ");
-    BN_print_fp(fp, a.get());
-    puts_fp(fp, " - ");
-    BN_print_fp(fp, c.get());
-    puts_fp(fp, "\n");
-  }
-  if (!BN_mul(d.get(), a.get(), a.get(), ctx)) {
-    return false;
-  }
-  if (BN_cmp(c.get(), d.get())) {
-    fprintf(stderr,
-            "Square test failed: BN_sqr and BN_mul produce "
-            "different results!\n");
-    return false;
-  }
-
-  // Regression test for a BN_sqr overflow bug.
-  a_raw = a.get();
-  if (!BN_hex2bn(
-          &a_raw,
-          "80000000000000000000000080000001FFFFFFFE000000000000000000000000") ||
-      !BN_sqr(c.get(), a.get(), ctx)) {
-    return false;
-  }
-  if (fp != NULL) {
-    BN_print_fp(fp, a.get());
-    puts_fp(fp, " * ");
-    BN_print_fp(fp, a.get());
-    puts_fp(fp, " - ");
-    BN_print_fp(fp, c.get());
-    puts_fp(fp, "\n");
-  }
-  if (!BN_mul(d.get(), a.get(), a.get(), ctx)) {
-    return false;
-  }
-  if (BN_cmp(c.get(), d.get())) {
-    fprintf(stderr,
-            "Square test failed: BN_sqr and BN_mul produce "
-            "different results!\n");
-    return false;
-  }
-
-  return true;
-}
-
 
 static int rand_neg() {
   static unsigned int neg = 0;
