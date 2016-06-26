@@ -111,13 +111,13 @@ static bool test_exp_mod_zero(void);
 static bool test_small_prime(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
 static bool test_sqrt(FILE *fp, BN_CTX *ctx);
-static bool test_bn2bin_padded(BN_CTX *ctx);
-static bool test_dec2bn(BN_CTX *ctx);
-static bool test_hex2bn(BN_CTX *ctx);
-static bool test_asc2bn(BN_CTX *ctx);
-static bool test_mpi();
-static bool test_rand();
-static bool test_asn1();
+static bool TestBN2BinPadded(BN_CTX *ctx);
+static bool TestDec2BN(BN_CTX *ctx);
+static bool TestHex2BN(BN_CTX *ctx);
+static bool TestASC2BN(BN_CTX *ctx);
+static bool TestMPI();
+static bool TestRand();
+static bool TestASN1();
 static bool TestNegativeZero(BN_CTX *ctx);
 static bool TestDivideZero(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
@@ -228,13 +228,13 @@ int main(int argc, char *argv[]) {
   }
   flush_fp(bc_file.get());
 
-  if (!test_bn2bin_padded(ctx.get()) ||
-      !test_dec2bn(ctx.get()) ||
-      !test_hex2bn(ctx.get()) ||
-      !test_asc2bn(ctx.get()) ||
-      !test_mpi() ||
-      !test_rand() ||
-      !test_asn1() ||
+  if (!TestBN2BinPadded(ctx.get()) ||
+      !TestDec2BN(ctx.get()) ||
+      !TestHex2BN(ctx.get()) ||
+      !TestASC2BN(ctx.get()) ||
+      !TestMPI() ||
+      !TestRand() ||
+      !TestASN1() ||
       !TestNegativeZero(ctx.get()) ||
       !TestDivideZero(ctx.get())) {
     return 1;
@@ -1089,7 +1089,7 @@ static bool test_sqrt(FILE *fp, BN_CTX *ctx) {
   return true;
 }
 
-static bool test_bn2bin_padded(BN_CTX *ctx) {
+static bool TestBN2BinPadded(BN_CTX *ctx) {
   uint8_t zeros[256], out[256], reference[128];
 
   memset(zeros, 0, sizeof(zeros));
@@ -1166,7 +1166,7 @@ static int DecimalToBIGNUM(ScopedBIGNUM *out, const char *in) {
   return ret;
 }
 
-static bool test_dec2bn(BN_CTX *ctx) {
+static bool TestDec2BN(BN_CTX *ctx) {
   ScopedBIGNUM bn;
   int ret = DecimalToBIGNUM(&bn, "0");
   if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
@@ -1201,7 +1201,7 @@ static bool test_dec2bn(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_hex2bn(BN_CTX *ctx) {
+static bool TestHex2BN(BN_CTX *ctx) {
   ScopedBIGNUM bn;
   int ret = HexToBIGNUM(&bn, "0");
   if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
@@ -1244,7 +1244,7 @@ static ScopedBIGNUM ASCIIToBIGNUM(const char *in) {
   return ScopedBIGNUM(raw);
 }
 
-static bool test_asc2bn(BN_CTX *ctx) {
+static bool TestASC2BN(BN_CTX *ctx) {
   ScopedBIGNUM bn = ASCIIToBIGNUM("0");
   if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
     fprintf(stderr, "BN_asc2bn gave a bad result.\n");
@@ -1311,7 +1311,7 @@ static const MPITest kMPITests[] = {
   { "-256", "\x00\x00\x00\x02\x81\x00", 6 },
 };
 
-static bool test_mpi() {
+static bool TestMPI() {
   uint8_t scratch[8];
 
   for (size_t i = 0; i < sizeof(kMPITests) / sizeof(kMPITests[0]); i++) {
@@ -1353,7 +1353,7 @@ static bool test_mpi() {
   return true;
 }
 
-static bool test_rand() {
+static bool TestRand() {
   ScopedBIGNUM bn(BN_new());
   if (!bn) {
     return false;
@@ -1437,7 +1437,7 @@ static const ASN1Test kASN1BuggyTests[] = {
     {"1", "\x02\x02\x00\x01", 4},
 };
 
-static bool test_asn1() {
+static bool TestASN1() {
   for (const ASN1Test &test : kASN1Tests) {
     ScopedBIGNUM bn = ASCIIToBIGNUM(test.value_ascii);
     if (!bn) {
