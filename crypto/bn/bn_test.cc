@@ -107,8 +107,6 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx);
 static bool test_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx);
-static bool test_exp_mod_zero(void);
-static bool test_small_prime(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
 static bool test_sqrt(FILE *fp, BN_CTX *ctx);
 static bool TestBN2BinPadded(BN_CTX *ctx);
@@ -120,6 +118,8 @@ static bool TestRand();
 static bool TestASN1();
 static bool TestNegativeZero(BN_CTX *ctx);
 static bool TestBadModulus(BN_CTX *ctx);
+static bool TestExpModZero();
+static bool TestSmallPrime(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
 
 // A wrapper around puts that takes its arguments in the same order as our *_fp
@@ -204,20 +204,13 @@ int main(int argc, char *argv[]) {
   flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_exp");
-  if (!test_exp(bc_file.get(), ctx.get()) ||
-      !test_exp_mod_zero()) {
+  if (!test_exp(bc_file.get(), ctx.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_mod_sqrt");
   if (!test_mod_sqrt(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
-  message(bc_file.get(), "Small prime generation");
-  if (!test_small_prime(bc_file.get(), ctx.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
@@ -236,7 +229,9 @@ int main(int argc, char *argv[]) {
       !TestRand() ||
       !TestASN1() ||
       !TestNegativeZero(ctx.get()) ||
-      !TestBadModulus(ctx.get())) {
+      !TestBadModulus(ctx.get()) ||
+      !TestExpModZero() ||
+      !TestSmallPrime(ctx.get())) {
     return 1;
   }
 
@@ -885,31 +880,6 @@ static bool test_exp(FILE *fp, BN_CTX *ctx) {
   return true;
 }
 
-// test_exp_mod_zero tests that 1**0 mod 1 == 0.
-static bool test_exp_mod_zero(void) {
-  ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
-  if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0)) {
-    return false;
-  }
-  BN_zero(zero.get());
-
-  if (!BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), nullptr) ||
-      !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
-                       nullptr) ||
-      !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
-                                 nullptr, nullptr) ||
-      !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont_word(r.get(), 42, zero.get(), BN_value_one(), nullptr,
-                            nullptr) ||
-      !BN_is_zero(r.get())) {
-    return false;
-  }
-
-  return true;
-}
-
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM p(BN_new());
@@ -967,23 +937,6 @@ static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
       }
     }
   }
-  return true;
-}
-
-static bool test_small_prime(FILE *fp, BN_CTX *ctx) {
-  static const unsigned kBits = 10;
-
-  ScopedBIGNUM r(BN_new());
-  if (!r || !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), 0, NULL,
-                                  NULL, NULL)) {
-    return false;
-  }
-  if (BN_num_bits(r.get()) != kBits) {
-    fprintf(fp, "Expected %u bit prime, got %u bit number\n", kBits,
-            BN_num_bits(r.get()));
-    return false;
-  }
-
   return true;
 }
 
@@ -1620,6 +1573,48 @@ static bool TestBadModulus(BN_CTX *ctx) {
     return 0;
   }
   ERR_clear_error();
+
+  return true;
+}
+
+// TestExpModZero tests that 1**0 mod 1 == 0.
+static bool TestExpModZero() {
+  ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
+  if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0)) {
+    return false;
+  }
+  BN_zero(zero.get());
+
+  if (!BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
+                       nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
+                                 nullptr, nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont_word(r.get(), 42, zero.get(), BN_value_one(), nullptr,
+                            nullptr) ||
+      !BN_is_zero(r.get())) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestSmallPrime(BN_CTX *ctx) {
+  static const unsigned kBits = 10;
+
+  ScopedBIGNUM r(BN_new());
+  if (!r || !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), 0, NULL,
+                                  NULL, NULL)) {
+    return false;
+  }
+  if (BN_num_bits(r.get()) != kBits) {
+    fprintf(stderr, "Expected %u bit prime, got %u bit number\n", kBits,
+            BN_num_bits(r.get()));
+    return false;
+  }
 
   return true;
 }
