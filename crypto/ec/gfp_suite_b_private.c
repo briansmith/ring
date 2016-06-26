@@ -72,39 +72,3 @@ err:
   BN_free(&tmp);
   return ret;
 }
-
-int GFp_suite_b_public_from_private(const EC_GROUP *group,
-                                    uint8_t *public_key_out,
-                                    const uint8_t *private_key) {
-  BIGNUM private_key_bn;
-  BN_init(&private_key_bn);
-
-  EC_POINT *public_point = NULL;
-  int ret = 0;
-
-  size_t private_key_len = (EC_GROUP_get_degree(group) + 7) / 8;
-  if (BN_bin2bn(private_key, private_key_len, &private_key_bn) == NULL) {
-    goto err;
-  }
-
-  public_point = EC_POINT_new(group);
-  if (public_point == NULL) {
-    goto err;
-  }
-
-  size_t public_key_out_len = 1 + (2 * private_key_len);
-
-  if (!group->meth->mul(group, public_point, &private_key_bn, NULL, NULL,
-                        NULL) ||
-      ec_GFp_simple_point2oct(group, public_point, public_key_out,
-                              public_key_out_len, NULL) != public_key_out_len) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_free(&private_key_bn);
-  EC_POINT_free(public_point);
-  return ret;
-}

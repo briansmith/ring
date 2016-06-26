@@ -78,9 +78,6 @@ extern "C" {
 
 
 typedef struct ec_method_st {
-  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
-                                      BIGNUM *x, BIGNUM *y, BN_CTX *);
-
   /* Point multiplication.
    *
    * Computes |r = g_scalar*generator + p_scalar*p| if |g_scalar| and |p_scalar|
@@ -144,8 +141,6 @@ int ec_GFp_simple_point_init(EC_POINT *);
 void ec_GFp_simple_point_finish(EC_POINT *);
 int ec_GFp_simple_point_copy(EC_POINT *, const EC_POINT *);
 int ec_GFp_simple_point_set_to_infinity(EC_POINT *);
-size_t ec_GFp_simple_point2oct(const EC_GROUP *group, const EC_POINT *point,
-                               uint8_t *buf, size_t len, BN_CTX *ctx);
 int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       const EC_POINT *b, BN_CTX *);
 int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,

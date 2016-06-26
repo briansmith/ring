@@ -29,11 +29,6 @@ impl Elem {
     fn zero() -> Elem {
         Elem { limbs: [0; MAX_LIMBS] }
     }
-
-    #[inline(always)]
-    pub unsafe fn limbs_as_ptr<'a>(&self) -> *const Limb {
-        self.limbs.as_ptr()
-    }
 }
 
 /// Field elements that are *not* Montgomery-encoded. TODO: document range.
@@ -95,7 +90,7 @@ macro_rules! limbs {
 }
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
-const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
+pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
 
 static ONE: ElemDecoded = ElemDecoded {
     limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
@@ -154,6 +149,42 @@ struct Mont {
 
 #[allow(non_camel_case_types)]
 pub enum EC_GROUP { }
+
+
+/// Operations on private keys, for ECDH and ECDSA signing.
+pub struct PrivateKeyOps {
+    pub common: &'static CommonOps,
+    elem_inv: unsafe extern fn(r: *mut Limb/*[num_limbs]*/,
+                               a: *const Limb/*[num_limbs]*/),
+}
+
+impl PrivateKeyOps {
+    pub fn base_point_mult(&self, u: &Scalar)
+                           -> Result<(Elem, Elem, Elem), ()> {
+        // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
+        // shouldn't be used for this. TODO: Replace use of this with the use
+        // of an always-constant-time implementation.
+        let mut x = Elem { limbs: [0; MAX_LIMBS] };
+        let mut y = Elem { limbs: [0; MAX_LIMBS] };
+        let mut z = Elem { limbs: [0; MAX_LIMBS] };
+        try!(bssl::map_result(unsafe {
+            GFp_suite_b_public_twin_mult(self.common.ec_group,
+                                         x.limbs.as_mut_ptr(),
+                                         y.limbs.as_mut_ptr(),
+                                         z.limbs.as_mut_ptr(),
+                                         u.limbs.as_ptr(), // g_scalar
+                                         core::ptr::null(), // p_scalar
+                                         core::ptr::null(), // p_x
+                                         core::ptr::null()) // p_y
+        }));
+        Ok((x, y, z))
+    }
+
+    #[inline]
+    pub fn elem_inverse(&self, a: &Elem) -> Elem {
+        Elem { limbs: ra(self.elem_inv, &a.limbs) }
+    }
+}
 
 
 /// Operations and values needed by all operations on public keys (ECDH
@@ -306,7 +337,27 @@ impl PublicScalarOps {
 }
 
 
-// Public keys consist of two fixed-width, big-endian-encoded integers in the
+pub fn var_point_mult(ops: &CommonOps, s: &Scalar,
+                      &(ref peer_x, ref peer_y): &(Elem, Elem))
+                      -> Result<(Elem, Elem, Elem), ()> {
+    // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
+    // shouldn't be used for this. TODO: Replace use of this with the use of an
+    // always-constant-time implementation.
+    let mut x = Elem::zero();
+    let mut y = Elem::zero();
+    let mut z = Elem::zero();
+    try!(bssl::map_result(unsafe {
+        GFp_suite_b_public_twin_mult(ops.ec_group, x.limbs.as_mut_ptr(),
+                                     y.limbs.as_mut_ptr(),
+                                     z.limbs.as_mut_ptr(), core::ptr::null(),
+                                     s.limbs.as_ptr(), peer_x.limbs.as_ptr(),
+                                     peer_y.limbs.as_ptr())
+    }));
+    Ok((x, y, z))
+}
+
+
+// Public Keys consist of two fixed-width, big-endian-encoded integers in the
 // range [0, q). ECDSA signatures consist of two variable-width,
 // big-endian-encoded integers in the range [1, n).
 // `parse_big_endian_value_in_range` is the common logic for converting the
@@ -427,7 +478,6 @@ extern {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::MAX_LIMBS;
 
     const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
 

@@ -119,16 +119,6 @@ OPENSSL_EXPORT int EC_POINT_set_to_infinity(const EC_GROUP *group,
 OPENSSL_EXPORT int EC_POINT_is_at_infinity(const EC_GROUP *group,
                                            const EC_POINT *point);
 
-/* Point conversion. */
-
-/* EC_POINT_get_affine_coordinates_GFp sets |x| and |y| to the affine value of
- * |point| using |ctx|, if it's not NULL. It returns one on success and zero
- * otherwise. */
-OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
-                                                       const EC_POINT *point,
-                                                       BIGNUM *x, BIGNUM *y,
-                                                       BN_CTX *ctx);
-
 
 #if defined(__cplusplus)
 }  /* extern C */

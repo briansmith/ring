@@ -4861,8 +4861,8 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 int GFp_x25519_generate_private_key(uint8_t out_private_key[32], RAND *rng);
-int GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                   const uint8_t private_key[32]);
+void GFp_x25519_public_from_private(uint8_t out_public_value[32],
+                                    const uint8_t private_key[32]);
 int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
                     const uint8_t peer_public_value[32]);
 
@@ -4886,22 +4886,21 @@ int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
  * the Montgomery ladder because it's faster. Otherwise it's done using the
  * Ed25519 tables. */
 
-int GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                   const uint8_t private_key[32]) {
+void GFp_x25519_public_from_private(uint8_t out_public_value[32],
+                                    const uint8_t private_key[32]) {
   static const uint8_t kMongomeryBasePoint[32] = {9};
   x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
-  return 1;
 }
 
 #else
 
-int GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                   const uint8_t private_key[32]) {
+void GFp_x25519_public_from_private(uint8_t out_public_value[32],
+                                    const uint8_t private_key[32]) {
 #if defined(BORINGSSL_X25519_NEON)
   if (CRYPTO_is_NEON_capable()) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
-    return 1;
+    return;
   }
 #endif
 
@@ -4922,8 +4921,6 @@ int GFp_x25519_public_from_private(uint8_t out_public_value[32],
   fe_invert(zminusy_inv, zminusy);
   fe_mul(zplusy, zplusy, zminusy_inv);
   fe_tobytes(out_public_value, zplusy);
-
-  return 1;
 }
 
 #endif  /* BORINGSSL_X25519_X86_64 */

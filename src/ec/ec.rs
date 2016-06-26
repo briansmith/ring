@@ -27,26 +27,11 @@ pub struct AgreementAlgorithmImpl {
         unsafe extern fn(out: *mut u8, rng: *mut rand::RAND) -> c::int,
 
     public_from_private:
-        unsafe extern fn(public_out: *mut u8, private_key: *const u8) -> c::int,
+        fn(public_out: &mut [u8], private_key: &PrivateKey) -> Result<(), ()>,
 
     pub ecdh:
         fn(out: &mut [u8], private_key: &PrivateKey,
            peer_public_key: untrusted::Input) -> Result<(), ()>,
-}
-
-macro_rules! agreement_externs {
-    ( $generate_private_key:ident, $public_from_private:ident ) => {
-        #[allow(improper_ctypes)]
-        extern {
-            fn $generate_private_key(out: *mut u8, rng: *mut rand::RAND)
-                                     -> c::int;
-        }
-
-        extern {
-            fn $public_from_private(public_key_out: *mut u8,
-                                    private_key: *const u8) -> c::int;
-        }
-    }
 }
 
 pub struct PrivateKey {
@@ -93,9 +78,7 @@ impl PrivateKey {
         if out.len() != alg.public_key_len {
             return Err(());
         }
-        bssl::map_result(unsafe {
-            (alg.public_from_private)(out.as_mut_ptr(), self.bytes.as_ptr())
-        })
+        (alg.public_from_private)(out, &self)
     }
 }
 

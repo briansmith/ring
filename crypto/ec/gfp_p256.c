@@ -29,6 +29,7 @@ void ecp_nistz256_ord_mul_mont(ScalarMont r, const ScalarMont a,
                                const ScalarMont b);
 void ecp_nistz256_ord_sqr_mont(ScalarMont r, const ScalarMont a, int rep);
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
+void GFp_p256_elem_inv(Elem r, const Elem a);
 void GFp_p256_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
