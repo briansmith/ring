@@ -193,7 +193,9 @@ OPENSSL_EXPORT int OBJ_find_sigid_by_algs(int *out_sign_nid, int digest_nid,
 
 typedef struct obj_name_st {
   int type;
+  int alias;
   const char *name;
+  const char *data;
 } OBJ_NAME;
 
 #define OBJ_NAME_TYPE_MD_METH 1
