@@ -72,6 +72,7 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
+#include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -96,15 +97,11 @@
 // the results, most of these tests should use known answers.
 
 static const int num0 = 100; // number of tests
-static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_div(FILE *fp, BN_CTX *ctx);
 static int rand_neg();
 
-static bool test_div_word(FILE *fp);
 static bool test_mont(FILE *fp, BN_CTX *ctx);
-static bool test_mod(FILE *fp, BN_CTX *ctx);
 static bool test_mod_mul(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx);
@@ -121,7 +118,8 @@ static bool test_asc2bn(BN_CTX *ctx);
 static bool test_mpi();
 static bool test_rand();
 static bool test_asn1();
-static bool TestNegativeZero();
+static bool TestNegativeZero(BN_CTX *ctx);
+static bool TestDivideZero(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
 
 // A wrapper around puts that takes its arguments in the same order as our *_fp
@@ -180,24 +178,6 @@ int main(int argc, char *argv[]) {
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
 
-  message(bc_file.get(), "BN_div");
-  if (!test_div(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
-  message(bc_file.get(), "BN_div_word");
-  if (!test_div_word(bc_file.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
-  message(bc_file.get(), "BN_mod");
-  if (!test_mod(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
   message(bc_file.get(), "BN_mod_mul");
   if (!test_mod_mul(bc_file.get(), ctx.get())) {
     return 1;
@@ -255,7 +235,8 @@ int main(int argc, char *argv[]) {
       !test_mpi() ||
       !test_rand() ||
       !test_asn1() ||
-      !TestNegativeZero()) {
+      !TestNegativeZero(ctx.get()) ||
+      !TestDivideZero(ctx.get())) {
     return 1;
   }
 
@@ -485,6 +466,57 @@ static bool TestProduct(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestQuotient(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM b = GetBIGNUM(t, "B");
+  ScopedBIGNUM quotient = GetBIGNUM(t, "Quotient");
+  ScopedBIGNUM remainder = GetBIGNUM(t, "Remainder");
+  if (!a || !b || !quotient || !remainder) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new()), ret2(BN_new());
+  if (!ret || !ret2 ||
+      !BN_div(ret.get(), ret2.get(), a.get(), b.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A / B", quotient.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "A % B", remainder.get(), ret2.get()) ||
+      !BN_mul(ret.get(), quotient.get(), b.get(), ctx) ||
+      !BN_add(ret.get(), ret.get(), remainder.get()) ||
+      !ExpectBIGNUMsEqual(t, "Quotient * B + Remainder", a.get(), ret.get())) {
+    return false;
+  }
+
+  // Test with |BN_mod_word| and |BN_div_word| if the divisor is small enough.
+  BN_ULONG b_word = BN_get_word(b.get());
+  if (!BN_is_negative(b.get()) && b_word != (BN_ULONG)-1) {
+    BN_ULONG remainder_word = BN_get_word(remainder.get());
+    assert(remainder_word != (BN_ULONG)-1);
+    if (!BN_copy(ret.get(), a.get())) {
+      return false;
+    }
+    BN_ULONG ret_word = BN_div_word(ret.get(), b_word);
+    if (ret_word != remainder_word) {
+      t->PrintLine("Got A %% B (word) = " BN_HEX_FMT1 ", wanted " BN_HEX_FMT1
+                   "\n",
+                   ret_word, remainder_word);
+      return false;
+    }
+    if (!ExpectBIGNUMsEqual(t, "A / B (word)", quotient.get(), ret.get())) {
+      return false;
+    }
+
+    ret_word = BN_mod_word(a.get(), b_word);
+    if (ret_word != remainder_word) {
+      t->PrintLine("Got A %% B (word) = " BN_HEX_FMT1 ", wanted " BN_HEX_FMT1
+                   "\n",
+                   ret_word, remainder_word);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -497,6 +529,7 @@ static const Test kTests[] = {
     {"RShift", TestRShift},
     {"Square", TestSquare},
     {"Product", TestProduct},
+    {"Quotient", TestQuotient},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -511,164 +544,11 @@ static bool RunTest(FileTest *t, void *arg) {
   return false;
 }
 
-static bool test_div(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  if (!BN_one(a.get())) {
-    return false;
-  }
-  BN_zero(b.get());
-  if (BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
-    fprintf(stderr, "Division by zero succeeded!\n");
-    return false;
-  }
-  ERR_clear_error();
-
-  for (int i = 0; i < num0 + num1; i++) {
-    if (i < num1) {
-      if (!BN_rand(a.get(), 400, 0, 0) ||
-          !BN_copy(b.get(), a.get()) ||
-          !BN_lshift(a.get(), a.get(), i) ||
-          !BN_add_word(a.get(), i)) {
-        return false;
-      }
-    } else if (!BN_rand(b.get(), 50 + 3 * (i - num1), 0, 0)) {
-      return false;
-    }
-    a->neg = rand_neg();
-    b->neg = rand_neg();
-    if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " / ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, d.get());
-      puts_fp(fp, "\n");
-
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " % ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_mul(e.get(), d.get(), b.get(), ctx) ||
-        !BN_add(d.get(), e.get(), c.get()) ||
-        !BN_sub(d.get(), d.get(), a.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get())) {
-      fprintf(stderr, "Division test failed!\n");
-      return false;
-    }
-  }
-
-  // Test that BN_div never gives negative zero in the quotient.
-  if (!BN_set_word(a.get(), 1) ||
-      !BN_set_word(b.get(), 2)) {
-    return false;
-  }
-  BN_set_negative(a.get(), 1);
-  if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
-    return false;
-  }
-  if (!BN_is_zero(d.get()) || BN_is_negative(d.get())) {
-    fprintf(stderr, "Division test failed!\n");
-    return false;
-  }
-
-  // Test that BN_div never gives negative zero in the remainder.
-  if (!BN_set_word(b.get(), 1)) {
-    return false;
-  }
-  if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
-    return false;
-  }
-  if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
-    fprintf(stderr, "Division test failed!\n");
-    return false;
-  }
-
-  return true;
-}
-
 static int rand_neg() {
   static unsigned int neg = 0;
   static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
 
   return sign[(neg++) % 8];
-}
-
-static void print_word(FILE *fp, BN_ULONG w) {
-  fprintf(fp, BN_HEX_FMT1, w);
-}
-
-static bool test_div_word(FILE *fp) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  if (!a || !b) {
-    return false;
-  }
-
-  for (int i = 0; i < num0; i++) {
-    do {
-      if (!BN_rand(a.get(), 512, -1, 0) ||
-          !BN_rand(b.get(), BN_BITS2, -1, 0)) {
-        return false;
-      }
-    } while (BN_is_zero(b.get()));
-
-    if (!BN_copy(b.get(), a.get())) {
-      return false;
-    }
-    BN_ULONG s = b->d[0];
-    BN_ULONG rmod = BN_mod_word(b.get(), s);
-    BN_ULONG r = BN_div_word(b.get(), s);
-    if (r == (BN_ULONG)-1 || rmod == (BN_ULONG)-1) {
-      return false;
-    }
-
-    if (rmod != r) {
-      fprintf(stderr, "Mod (word) test failed!\n");
-      return false;
-    }
-
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " / ");
-      print_word(fp, s);
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, "\n");
-
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " % ");
-      print_word(fp, s);
-      puts_fp(fp, " - ");
-      print_word(fp, r);
-      puts_fp(fp, "\n");
-    }
-    if (!BN_mul_word(b.get(), s) ||
-        !BN_add_word(b.get(), r) ||
-        !BN_sub(b.get(), a.get(), b.get())) {
-      return false;
-    }
-    if (!BN_is_zero(b.get())) {
-      fprintf(stderr, "Division (word) test failed!\n");
-      return false;
-    }
-  }
-  return true;
 }
 
 static bool test_mont(FILE *fp, BN_CTX *ctx) {
@@ -741,46 +621,6 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
     }
   }
 
-  return true;
-}
-
-static bool test_mod(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e ||
-      !BN_rand(a.get(), 1024, 0, 0)) {
-    return false;
-  }
-
-  for (int i = 0; i < num0; i++) {
-    if (!BN_rand(b.get(), 450 + i * 10, 0, 0)) {
-      return false;
-    }
-    a->neg = rand_neg();
-    b->neg = rand_neg();
-    if (!BN_mod(c.get(), a.get(), b.get(), ctx)) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " % ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_div(d.get(), e.get(), a.get(), b.get(), ctx) ||
-        !BN_sub(e.get(), e.get(), c.get())) {
-      return false;
-    }
-    if (!BN_is_zero(e.get())) {
-      fprintf(stderr, "Modulo test failed!\n");
-      return false;
-    }
-  }
   return true;
 }
 
@@ -1719,17 +1559,18 @@ static bool test_asn1() {
     CBB_cleanup(&cbb);
     return false;
   }
+  ERR_clear_error();
   CBB_cleanup(&cbb);
 
   return true;
 }
 
-static bool TestNegativeZero() {
-  ScopedBN_CTX ctx(BN_CTX_new());
+static bool TestNegativeZero(BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
-  if (!ctx || !a || !b || !c) {
+  ScopedBIGNUM d(BN_new());
+  if (!a || !b || !c || !d) {
     return false;
   }
 
@@ -1739,13 +1580,58 @@ static bool TestNegativeZero() {
   }
   BN_set_negative(a.get(), 1);
   BN_zero(b.get());
-  if (!BN_mul(c.get(), a.get(), b.get(), ctx.get())) {
+  if (!BN_mul(c.get(), a.get(), b.get(), ctx)) {
     return false;
   }
   if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
     fprintf(stderr, "Multiplication test failed!\n");
     return false;
   }
+
+  // Test that BN_div never gives negative zero in the quotient.
+  if (!BN_set_word(a.get(), 1) ||
+      !BN_set_word(b.get(), 2)) {
+    return false;
+  }
+  BN_set_negative(a.get(), 1);
+  if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
+    return false;
+  }
+  if (!BN_is_zero(d.get()) || BN_is_negative(d.get())) {
+    fprintf(stderr, "Division test failed!\n");
+    return false;
+  }
+
+  // Test that BN_div never gives negative zero in the remainder.
+  if (!BN_set_word(b.get(), 1)) {
+    return false;
+  }
+  if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
+    return false;
+  }
+  if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
+    fprintf(stderr, "Division test failed!\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestDivideZero(BN_CTX *ctx) {
+  ScopedBIGNUM a(BN_new());
+  ScopedBIGNUM b(BN_new());
+  ScopedBIGNUM zero(BN_new());
+  if (!a || !b || !zero) {
+    return false;
+  }
+
+  BN_zero(zero.get());
+
+  if (BN_div(a.get(), b.get(), BN_value_one(), zero.get(), ctx)) {
+    fprintf(stderr, "Division by zero succeeded!\n");
+    return false;
+  }
+  ERR_clear_error();
 
   return true;
 }
