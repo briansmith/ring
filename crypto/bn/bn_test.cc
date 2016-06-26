@@ -99,7 +99,6 @@ static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_mul(FILE *fp);
 static bool test_div(FILE *fp, BN_CTX *ctx);
 static int rand_neg();
 
@@ -122,6 +121,7 @@ static bool test_asc2bn(BN_CTX *ctx);
 static bool test_mpi();
 static bool test_rand();
 static bool test_asn1();
+static bool TestNegativeZero();
 static bool RunTest(FileTest *t, void *arg);
 
 // A wrapper around puts that takes its arguments in the same order as our *_fp
@@ -179,12 +179,6 @@ int main(int argc, char *argv[]) {
   puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
-
-  message(bc_file.get(), "BN_mul");
-  if (!test_mul(bc_file.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_div");
   if (!test_div(bc_file.get(), ctx.get())) {
@@ -260,7 +254,8 @@ int main(int argc, char *argv[]) {
       !test_asc2bn(ctx.get()) ||
       !test_mpi() ||
       !test_rand() ||
-      !test_asn1()) {
+      !test_asn1() ||
+      !TestNegativeZero()) {
     return 1;
   }
 
@@ -463,6 +458,33 @@ static bool TestSquare(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestProduct(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM b = GetBIGNUM(t, "B");
+  ScopedBIGNUM product = GetBIGNUM(t, "Product");
+  ScopedBIGNUM zero(BN_new());
+  if (!a || !b || !product || !zero) {
+    return false;
+  }
+
+  BN_zero(zero.get());
+
+  ScopedBIGNUM ret(BN_new()), remainder(BN_new());
+  if (!ret || !remainder ||
+      !BN_mul(ret.get(), a.get(), b.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A * B", product.get(), ret.get()) ||
+      !BN_div(ret.get(), remainder.get(), product.get(), a.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "Product / A", b.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Product % A", zero.get(), remainder.get()) ||
+      !BN_div(ret.get(), remainder.get(), product.get(), b.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "Product / B", a.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Product % B", zero.get(), remainder.get())) {
+    return false;
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -474,6 +496,7 @@ static const Test kTests[] = {
     {"LShift", TestLShift},
     {"RShift", TestRShift},
     {"Square", TestSquare},
+    {"Product", TestProduct},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -573,66 +596,6 @@ static bool test_div(FILE *fp, BN_CTX *ctx) {
   }
   if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
     fprintf(stderr, "Division test failed!\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool test_mul(FILE *fp) {
-  ScopedBN_CTX ctx(BN_CTX_new());
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!ctx || !a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  for (int i = 0; i < num0 + num1; i++) {
-    if (i <= num1) {
-      if (!BN_rand(a.get(), 100, 0, 0) ||
-          !BN_rand(b.get(), 100, 0, 0)) {
-        return false;
-      }
-    } else if (!BN_rand(b.get(), i - num1, 0, 0)) {
-      return false;
-    }
-    a->neg = rand_neg();
-    b->neg = rand_neg();
-    if (!BN_mul(c.get(), a.get(), b.get(), ctx.get())) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " * ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_div(d.get(), e.get(), c.get(), a.get(), ctx.get()) ||
-        !BN_sub(d.get(), d.get(), b.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get()) || !BN_is_zero(e.get())) {
-      fprintf(stderr, "Multiplication test failed!\n");
-      return false;
-    }
-  }
-
-  // Test that BN_mul never gives negative zero.
-  if (!BN_set_word(a.get(), 1)) {
-    return false;
-  }
-  BN_set_negative(a.get(), 1);
-  BN_zero(b.get());
-  if (!BN_mul(c.get(), a.get(), b.get(), ctx.get())) {
-    return false;
-  }
-  if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
-    fprintf(stderr, "Multiplication test failed!\n");
     return false;
   }
 
@@ -1757,6 +1720,32 @@ static bool test_asn1() {
     return false;
   }
   CBB_cleanup(&cbb);
+
+  return true;
+}
+
+static bool TestNegativeZero() {
+  ScopedBN_CTX ctx(BN_CTX_new());
+  ScopedBIGNUM a(BN_new());
+  ScopedBIGNUM b(BN_new());
+  ScopedBIGNUM c(BN_new());
+  if (!ctx || !a || !b || !c) {
+    return false;
+  }
+
+  // Test that BN_mul never gives negative zero.
+  if (!BN_set_word(a.get(), 1)) {
+    return false;
+  }
+  BN_set_negative(a.get(), 1);
+  BN_zero(b.get());
+  if (!BN_mul(c.get(), a.get(), b.get(), ctx.get())) {
+    return false;
+  }
+  if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
+    fprintf(stderr, "Multiplication test failed!\n");
+    return false;
+  }
 
   return true;
 }
