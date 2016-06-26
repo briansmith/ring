@@ -41,7 +41,7 @@ endif()
 function(perlasm dest src)
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} > ${dest}
+    COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl

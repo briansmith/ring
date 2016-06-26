@@ -487,10 +487,8 @@ def PerlAsm(output_filename, input_filename, perlasm_style, extra_args):
   base_dir = os.path.dirname(output_filename)
   if not os.path.isdir(base_dir):
     os.makedirs(base_dir)
-  output = subprocess.check_output(
-      ['perl', input_filename, perlasm_style] + extra_args)
-  with open(output_filename, 'w+') as out_file:
-    out_file.write(output)
+  subprocess.check_call(
+      ['perl', input_filename, perlasm_style] + extra_args + [output_filename])
 
 
 def ArchForAsmFilename(filename):

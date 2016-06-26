@@ -60,6 +60,9 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
 require "x86asm.pl";
 
+$output=pop;
+open STDOUT,">$output";
+
 &asm_init($ARGV[0],"rc4-586.pl",$x86only = $ARGV[$#ARGV] eq "386");
 
 $xx="eax";
@@ -386,3 +389,4 @@ $idx="edx";
 
 &asm_finish();
 
+close STDOUT;

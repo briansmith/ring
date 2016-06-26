@@ -33,6 +33,9 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
 require "x86asm.pl";
 
+$output=pop;
+open STDOUT,">$output";
+
 &asm_init($ARGV[0],"chacha-x86.pl",$ARGV[$#ARGV] eq "386");
 
 $xmm=$ymm=0;
@@ -751,3 +754,5 @@ sub SSSE3ROUND {	# critical path is 20 "SIMD ticks" per round
 &asciz	("ChaCha20 for x86, CRYPTOGAMS by <appro\@openssl.org>");
 
 &asm_finish();
+
+close STDOUT;
