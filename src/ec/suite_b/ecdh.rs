@@ -14,8 +14,6 @@
 
 //! ECDH key agreement using the P-256 and P-384 curves.
 
-#![allow(unsafe_code)]
-
 use {agreement, bssl, c, ec, rand};
 use super::ops::*;
 use super::public_key::*;
@@ -63,6 +61,7 @@ macro_rules! ecdh {
     }
 }
 
+#[allow(unsafe_code)]
 fn ecdh(ops: &PublicKeyOps, out: &mut [u8], my_private_key: &ec::PrivateKey,
         peer_public_key: untrusted::Input) -> Result<(), ()> {
     let (peer_x, peer_y) = try!(parse_uncompressed_point(ops, peer_public_key));
