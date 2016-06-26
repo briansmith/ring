@@ -83,6 +83,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../crypto/test/file_test.h"
 #include "../crypto/test/scoped_types.h"
 #include "../crypto/test/test_util.h"
 
@@ -97,8 +98,6 @@ static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_add(FILE *fp);
-static bool test_sub(FILE *fp);
 static bool test_lshift1(FILE *fp);
 static bool test_lshift(FILE *fp, BN_CTX *ctx, ScopedBIGNUM a);
 static bool test_rshift1(FILE *fp);
@@ -127,6 +126,7 @@ static bool test_asc2bn(BN_CTX *ctx);
 static bool test_mpi();
 static bool test_rand();
 static bool test_asn1();
+static bool RunTest(FileTest *t, void *arg);
 
 static const uint8_t kSample[] =
     "\xC6\x4F\x43\x04\x2A\xEA\xCA\x6E\x58\x36\x80\x5B\xE8\xC9"
@@ -156,28 +156,26 @@ int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
   ScopedFILE bc_file;
+  const char *name = argv[0];
   argc--;
   argv++;
-  while (argc >= 1) {
-    if (strcmp(*argv, "-bc") == 0) {
-      if (argc < 2) {
-        fprintf(stderr, "Missing parameter to -bc\n");
-        return 1;
-      }
-      bc_file.reset(fopen(argv[1], "w+"));
-      if (!bc_file) {
-        fprintf(stderr, "Failed to open %s: %s\n", argv[1], strerror(errno));
-      }
-      argc--;
-      argv++;
-    } else {
-      fprintf(stderr, "Unknown option: %s\n", argv[0]);
+  if (argc > 0 && strcmp(argv[0], "-bc") == 0) {
+    if (argc < 2) {
+      fprintf(stderr, "Missing parameter to -bc\n");
       return 1;
     }
-    argc--;
-    argv++;
+    bc_file.reset(fopen(argv[1], "w+"));
+    if (!bc_file) {
+      fprintf(stderr, "Failed to open %s: %s\n", argv[1], strerror(errno));
+    }
+    argc -= 2;
+    argv += 2;
   }
 
+  if (argc != 1) {
+    fprintf(stderr, "%s [-bc BC_FILE] TEST_FILE\n", name);
+    return 1;
+  }
 
   ScopedBN_CTX ctx(BN_CTX_new());
   if (!ctx) {
@@ -189,18 +187,6 @@ int main(int argc, char *argv[]) {
   puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
-
-  message(bc_file.get(), "BN_add");
-  if (!test_add(bc_file.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
-  message(bc_file.get(), "BN_sub");
-  if (!test_sub(bc_file.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_lshift1");
   if (!test_lshift1(bc_file.get())) {
@@ -326,8 +312,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  printf("PASS\n");
-  return 0;
+  return FileTestMain(RunTest, nullptr, argv[0]);
 }
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
@@ -337,89 +322,79 @@ static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   return ret;
 }
 
-static bool test_add(FILE *fp) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c || !BN_rand(a.get(), 512, 0, 0)) {
+static ScopedBIGNUM GetBIGNUM(FileTest *t, const char *attribute) {
+  std::string hex;
+  if (!t->GetAttribute(&hex, attribute)) {
+    return nullptr;
+  }
+
+  ScopedBIGNUM ret;
+  if (HexToBIGNUM(&ret, hex.c_str()) != static_cast<int>(hex.size())) {
+    t->PrintLine("Could not decode '%s'.", hex.c_str());
+    return nullptr;
+  }
+  return ret;
+}
+
+static bool ExpectBIGNUMsEqual(FileTest *t, const char *operation,
+                               const BIGNUM *expected, const BIGNUM *actual) {
+  if (BN_cmp(expected, actual) == 0) {
+    return true;
+  }
+
+  ScopedOpenSSLString expected_str(BN_bn2hex(expected));
+  ScopedOpenSSLString actual_str(BN_bn2hex(actual));
+  if (!expected_str || !actual_str) {
     return false;
   }
 
-  for (int i = 0; i < num0; i++) {
-    if (!BN_rand(b.get(), 450 + i, 0, 0)) {
-      return false;
-    }
-    a->neg = rand_neg();
-    b->neg = rand_neg();
-    if (!BN_add(c.get(), a.get(), b.get())) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " + ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, "\n");
-    }
-    a->neg = !a->neg;
-    b->neg = !b->neg;
-    if (!BN_add(c.get(), c.get(), b.get()) ||
-        !BN_add(c.get(), c.get(), a.get())) {
-      return false;
-    }
-    if (!BN_is_zero(c.get())) {
-      fprintf(stderr, "Add test failed!\n");
-      return false;
-    }
+  t->PrintLine("Got %s =", operation);
+  t->PrintLine("\t%s", actual_str.get());
+  t->PrintLine("wanted:");
+  t->PrintLine("\t%s", expected_str.get());
+  return false;
+}
+
+static bool TestSum(FileTest *t) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM b = GetBIGNUM(t, "B");
+  ScopedBIGNUM sum = GetBIGNUM(t, "Sum");
+  if (!a || !b || !sum) {
+    return false;
   }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_add(ret.get(), a.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "A + B", sum.get(), ret.get()) ||
+      !BN_sub(ret.get(), sum.get(), a.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - A", b.get(), ret.get()) ||
+      !BN_sub(ret.get(), sum.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - B", a.get(), ret.get())) {
+    return false;
+  }
+
   return true;
 }
 
-static bool test_sub(FILE *fp) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c) {
-    return false;
-  }
+struct Test {
+  const char *name;
+  bool (*func)(FileTest *t);
+};
 
-  for (int i = 0; i < num0 + num1; i++) {
-    if (i < num1) {
-      if (!BN_rand(a.get(), 512, 0, 0) ||
-          !BN_copy(b.get(), a.get()) ||
-          !BN_set_bit(a.get(), i) ||
-          !BN_add_word(b.get(), i)) {
-        return false;
-      }
-    } else {
-      if (!BN_rand(b.get(), 400 + i - num1, 0, 0)) {
-        return false;
-      }
-      a->neg = rand_neg();
-      b->neg = rand_neg();
+static const Test kTests[] = {
+    {"Sum", TestSum},
+};
+
+static bool RunTest(FileTest *t, void *arg) {
+  for (const Test &test : kTests) {
+    if (t->GetType() != test.name) {
+      continue;
     }
-    if (!BN_sub(c.get(), a.get(), b.get())) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_add(c.get(), c.get(), b.get()) ||
-        !BN_sub(c.get(), c.get(), a.get())) {
-      return false;
-    }
-    if (!BN_is_zero(c.get())) {
-      fprintf(stderr, "Subtract test failed!\n");
-      return false;
-    }
+    return test.func(t);
   }
-  return true;
+  t->PrintLine("Unknown test type: %s", t->GetType().c_str());
+  return false;
 }
 
 static bool test_div(FILE *fp, BN_CTX *ctx) {
