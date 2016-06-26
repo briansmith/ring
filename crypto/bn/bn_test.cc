@@ -119,7 +119,7 @@ static bool TestMPI();
 static bool TestRand();
 static bool TestASN1();
 static bool TestNegativeZero(BN_CTX *ctx);
-static bool TestDivideZero(BN_CTX *ctx);
+static bool TestBadModulus(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
 
 // A wrapper around puts that takes its arguments in the same order as our *_fp
@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
       !TestRand() ||
       !TestASN1() ||
       !TestNegativeZero(ctx.get()) ||
-      !TestDivideZero(ctx.get())) {
+      !TestBadModulus(ctx.get())) {
     return 1;
   }
 
@@ -564,22 +564,6 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
     return false;
   }
 
-  BN_zero(n.get());
-  if (BN_MONT_CTX_set(mont.get(), n.get(), ctx)) {
-    fprintf(stderr, "BN_MONT_CTX_set succeeded for zero modulus!\n");
-    return false;
-  }
-  ERR_clear_error();
-
-  if (!BN_set_word(n.get(), 16)) {
-    return false;
-  }
-  if (BN_MONT_CTX_set(mont.get(), n.get(), ctx)) {
-    fprintf(stderr, "BN_MONT_CTX_set succeeded for even modulus!\n");
-    return false;
-  }
-  ERR_clear_error();
-
   if (!BN_rand(a.get(), 100, 0, 0) ||
       !BN_rand(b.get(), 100, 0, 0)) {
     return false;
@@ -633,16 +617,6 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx) {
   if (!a || !b || !c || !d || !e) {
     return false;
   }
-
-  if (!BN_one(a.get()) || !BN_one(b.get())) {
-    return false;
-  }
-  BN_zero(c.get());
-  if (BN_mod_mul(e.get(), a.get(), b.get(), c.get(), ctx)) {
-    fprintf(stderr, "BN_mod_mul with zero modulus succeeded!\n");
-    return false;
-  }
-  ERR_clear_error();
 
   for (int j = 0; j < 3; j++) {
     if (!BN_rand(c.get(), 1024, 0, 0)) {
@@ -701,16 +675,6 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
   if (!a || !b || !c || !d || !e) {
     return false;
   }
-
-  if (!BN_one(a.get()) || !BN_one(b.get())) {
-    return false;
-  }
-  BN_zero(c.get());
-  if (BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx)) {
-    fprintf(stderr, "BN_mod_exp with zero modulus succeeded!\n");
-    return 0;
-  }
-  ERR_clear_error();
 
   if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
     return false;
@@ -775,27 +739,6 @@ static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx) {
   if (!a || !b || !c || !d || !e) {
     return false;
   }
-
-  if (!BN_one(a.get()) || !BN_one(b.get())) {
-    return false;
-  }
-  BN_zero(c.get());
-  if (BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
-                                nullptr)) {
-    fprintf(stderr, "BN_mod_exp_mont_consttime with zero modulus succeeded!\n");
-    return 0;
-  }
-  ERR_clear_error();
-
-  if (!BN_set_word(c.get(), 16)) {
-    return false;
-  }
-  if (BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
-                                nullptr)) {
-    fprintf(stderr, "BN_mod_exp_mont_consttime with even modulus succeeded!\n");
-    return 0;
-  }
-  ERR_clear_error();
 
   if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
     return false;
@@ -1617,11 +1560,12 @@ static bool TestNegativeZero(BN_CTX *ctx) {
   return true;
 }
 
-static bool TestDivideZero(BN_CTX *ctx) {
+static bool TestBadModulus(BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM zero(BN_new());
-  if (!a || !b || !zero) {
+  ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+  if (!a || !b || !zero || !mont) {
     return false;
   }
 
@@ -1630,6 +1574,50 @@ static bool TestDivideZero(BN_CTX *ctx) {
   if (BN_div(a.get(), b.get(), BN_value_one(), zero.get(), ctx)) {
     fprintf(stderr, "Division by zero succeeded!\n");
     return false;
+  }
+  ERR_clear_error();
+
+  if (BN_mod_mul(a.get(), BN_value_one(), BN_value_one(), zero.get(), ctx)) {
+    fprintf(stderr, "BN_mod_mul with zero modulus succeeded!\n");
+    return false;
+  }
+  ERR_clear_error();
+
+  if (BN_mod_exp(a.get(), BN_value_one(), BN_value_one(), zero.get(), ctx)) {
+    fprintf(stderr, "BN_mod_exp with zero modulus succeeded!\n");
+    return 0;
+  }
+  ERR_clear_error();
+
+  if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
+                                zero.get(), ctx, nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont_consttime with zero modulus succeeded!\n");
+    return 0;
+  }
+  ERR_clear_error();
+
+  if (BN_MONT_CTX_set(mont.get(), zero.get(), ctx)) {
+    fprintf(stderr, "BN_MONT_CTX_set succeeded for zero modulus!\n");
+    return false;
+  }
+  ERR_clear_error();
+
+  // Some operations also may not be used with an even modulus.
+
+  if (!BN_set_word(b.get(), 16)) {
+    return false;
+  }
+
+  if (BN_MONT_CTX_set(mont.get(), b.get(), ctx)) {
+    fprintf(stderr, "BN_MONT_CTX_set succeeded for even modulus!\n");
+    return false;
+  }
+  ERR_clear_error();
+
+  if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
+                                b.get(), ctx, nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont_consttime with even modulus succeeded!\n");
+    return 0;
   }
   ERR_clear_error();
 
