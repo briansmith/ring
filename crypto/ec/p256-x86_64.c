@@ -57,16 +57,6 @@ typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 /* Modular neg: res = -a mod P */
 void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
-/* Montgomery mul: res = a*b*2^-256 mod P */
-void ecp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS],
-                           const BN_ULONG b[P256_LIMBS]);
-/* Montgomery sqr: res = a*a*2^-256 mod P */
-void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS]);
-/* Convert a number from Montgomery domain, by multiplying with 1 */
-void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
-                            const BN_ULONG in[P256_LIMBS]);
 /* Functions that perform constant time access to the precomputed tables */
 void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT *in_t, int index);
 void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,
@@ -357,63 +347,7 @@ static int ecp_nistz256_points_mul(
   return 1;
 }
 
-static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
-                                   BIGNUM *x, BIGNUM *y, BN_CTX *ctx) {
-  (void)ctx;
-
-  BN_ULONG z_inv2[P256_LIMBS];
-  BN_ULONG z_inv3[P256_LIMBS];
-  BN_ULONG point_x[P256_LIMBS], point_y[P256_LIMBS], point_z[P256_LIMBS];
-
-  if (EC_POINT_is_at_infinity(group, point)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
-    return 0;
-  }
-
-  if (!ecp_nistz256_bignum_to_field_elem(point_x, &point->X) ||
-      !ecp_nistz256_bignum_to_field_elem(point_y, &point->Y) ||
-      !ecp_nistz256_bignum_to_field_elem(point_z, &point->Z)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    return 0;
-  }
-
-  GFp_p256_elem_inv(z_inv3, point_z);
-  ecp_nistz256_sqr_mont(z_inv2, z_inv3);
-
-  /* Instead of using |ecp_nistz256_from_mont| to convert the |x| coordinate
-   * and then calling |ecp_nistz256_from_mont| again to convert the |y|
-   * coordinate below, convert the common factor |z_inv2| once now, saving one
-   * reduction. */
-  ecp_nistz256_from_mont(z_inv2, z_inv2);
-
-  if (x != NULL) {
-    if (bn_wexpand(x, P256_LIMBS) == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-    x->top = P256_LIMBS;
-    x->neg = 0;
-    ecp_nistz256_mul_mont(x->d, z_inv2, point_x);
-    bn_correct_top(x);
-  }
-
-  if (y != NULL) {
-    ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
-    if (bn_wexpand(y, P256_LIMBS) == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-    y->top = P256_LIMBS;
-    y->neg = 0;
-    ecp_nistz256_mul_mont(y->d, z_inv3, point_y);
-    bn_correct_top(y);
-  }
-
-  return 1;
-}
-
 const EC_METHOD EC_GFp_nistz256_method = {
-  ecp_nistz256_get_affine,
   ecp_nistz256_points_mul,
   ec_GFp_mont_field_mul,
   ec_GFp_mont_field_sqr,

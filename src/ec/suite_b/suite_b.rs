@@ -21,4 +21,5 @@ pub mod ecdh;
 #[path = "ops/ops.rs"]
 mod ops;
 
+mod private_key;
 mod public_key;

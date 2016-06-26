@@ -26,9 +26,9 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
                                  const BN_ULONG *p_y, const BN_ULONG *p_scalar);
 
 
-EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
-                                 const GFp_Limb *peer_public_key_x,
-                                 const GFp_Limb *peer_public_key_y) {
+static EC_POINT *make_point(const EC_GROUP *group,
+                            const GFp_Limb *peer_public_key_x,
+                            const GFp_Limb *peer_public_key_y) {
   BIGNUM x;
   BN_init(&x);
 
@@ -69,6 +69,10 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
                                  const BN_ULONG *g_scalar,
                                  const BN_ULONG *p_scalar, const BN_ULONG *p_x,
                                  const BN_ULONG *p_y) {
+  assert(g_scalar != NULL || p_scalar != NULL);
+  assert((p_scalar == NULL) == (p_x == NULL));
+  assert((p_scalar == NULL) == (p_y == NULL));
+
   BIGNUM g_scalar_bn;
   BN_init(&g_scalar_bn);
 
@@ -85,18 +89,22 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
     goto err;
   }
 
-  p = GFp_suite_b_make_point(group, p_x, p_y);
-  if (p == NULL) {
-    goto err;
+  if (p_scalar != NULL) {
+    p = make_point(group, p_x, p_y);
+    if (p == NULL) {
+      goto err;
+    }
   }
 
   size_t num_limbs =
     (ec_GFp_simple_group_get_degree(group) + (GFp_LIMB_BITS - 1)) /
     GFp_LIMB_BITS;
 
-  if (!bn_set_words(&g_scalar_bn, g_scalar, num_limbs) ||
-      !bn_set_words(&p_scalar_bn, p_scalar, num_limbs) ||
-      !group->meth->mul(group, result, &g_scalar_bn, p, &p_scalar_bn, NULL) ||
+  if ((g_scalar != NULL && !bn_set_words(&g_scalar_bn, g_scalar, num_limbs)) ||
+      (p_scalar != NULL && !bn_set_words(&p_scalar_bn, p_scalar, num_limbs)) ||
+      !group->meth->mul(group, result,
+                        (g_scalar != NULL) ? &g_scalar_bn : NULL, p,
+                        (p_scalar != NULL) ? &p_scalar_bn : NULL, NULL) ||
       !bn_get_words(x_out, &result->X, num_limbs) ||
       !bn_get_words(y_out, &result->Y, num_limbs) ||
       !bn_get_words(z_out, &result->Z, num_limbs)) {

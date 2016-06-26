@@ -32,10 +32,21 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
         elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
         nid: 948 /* NID_X25519 */,
         generate_private_key: GFp_x25519_generate_private_key,
-        public_from_private: GFp_x25519_public_from_private,
+        public_from_private: x25519_public_from_private,
         ecdh: x25519_ecdh,
     },
 };
+
+#[allow(unsafe_code)]
+fn x25519_public_from_private(public_out: &mut [u8],
+                              private_key: &ec::PrivateKey) -> Result<(), ()> {
+    debug_assert_eq!(public_out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
+    unsafe {
+        GFp_x25519_public_from_private(public_out.as_mut_ptr(),
+                                       private_key.bytes.as_ptr());
+    }
+    Ok(())
+}
 
 #[allow(unsafe_code)]
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
@@ -48,15 +59,21 @@ fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
     })
 }
 
-agreement_externs!(GFp_x25519_generate_private_key,
-                   GFp_x25519_public_from_private);
 
 const X25519_ELEM_SCALAR_PUBLIC_KEY_LEN: usize = 32;
+
+#[allow(improper_ctypes)]
+extern {
+    fn GFp_x25519_generate_private_key(out: *mut u8, rng: *mut rand::RAND)
+                                       -> c::int;
+}
 
 extern {
     fn GFp_x25519_ecdh(out_shared_key: *mut u8/*[32]*/,
                        private_key: *const u8/*[u32]*/,
                        peer_public_value: *const u8/*[32]*/) -> c::int;
+    fn GFp_x25519_public_from_private(public_key_out: *mut u8,
+                                      private_key: *const u8);
 }
 
 #[cfg(test)]

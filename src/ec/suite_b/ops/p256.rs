@@ -12,8 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use {c, rand};
 use super::{CommonOps, EC_GROUP, Elem, ElemDecoded, Limb, LIMB_BITS, Mont,
-            PublicKeyOps, PublicScalarOps};
+            PrivateKeyOps, PublicKeyOps, PublicScalarOps};
 
 
 macro_rules! p256_limbs {
@@ -40,6 +41,12 @@ static COMMON_OPS: CommonOps = CommonOps {
     elem_sqr_mont: ecp_nistz256_sqr_mont,
 
     ec_group: &EC_GROUP_P256,
+};
+
+
+pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
+    common: &COMMON_OPS,
+    elem_inv: GFp_p256_elem_inv,
 };
 
 
@@ -77,10 +84,18 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 };
 
 
+#[allow(improper_ctypes)]
+extern {
+    pub fn GFp_p256_generate_private_key(out: *mut u8, rng: *mut rand::RAND)
+                                         -> c::int;
+}
+
 extern {
     fn ecp_nistz256_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                         a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                         b: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_p256_elem_inv(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
+                         a: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn ecp_nistz256_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                              b: *const Limb/*[COMMON_OPS.num_limbs]*/);

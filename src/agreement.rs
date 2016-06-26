@@ -73,6 +73,10 @@
 //! # fn main() { x25519_agreement_example().unwrap() }
 //! ```
 
+// The "NSA Guide" steps here are from from section 3.1, "Ephemeral Unified Model."
+
+
+
 use {ec, rand};
 use untrusted;
 
@@ -112,6 +116,10 @@ impl EphemeralPrivateKey {
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
     pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
                     -> Result<EphemeralPrivateKey, ()> {
+        // NSA Guide Step 1.
+        //
+        // This only handles the key generation part of step 1. The rest of
+        // step one is done by `compute_public_key()`.
         Ok(EphemeralPrivateKey {
             private_key:
                 try!(ec::PrivateKey::generate(&alg.i, rng)),
@@ -138,6 +146,11 @@ impl EphemeralPrivateKey {
     /// `out.len()` must be equal to the value returned by `public_key_len`.
     #[inline(always)]
     pub fn compute_public_key(&self, out: &mut [u8]) -> Result<(), ()> {
+        // NSA Guide Step 1.
+        //
+        // Obviously, this only handles the part of Step 1 between the private
+        // key generation and the sending of the public key to the peer. `out`
+        // is what should be sent to the peer.
         self.private_key.compute_public_key(&self.alg.i, out)
     }
 }
@@ -172,14 +185,40 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
                                 peer_public_key: untrusted::Input,
                                 error_value: E, kdf: F) -> Result<R, E>
                                 where F: FnOnce(&[u8]) -> Result<R, E> {
+    // NSA Guide Prerequisite 1.
+    //
+    // The domain parameters are hard-coded. This check verifies that the
+    // peer's public key's domain parameters match the domain parameters of
+    // this private key.
     if peer_public_key_alg.i.nid != my_private_key.alg.i.nid {
         return Err(error_value);
     }
+
+    // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
+    // to the caller.
+
+    // NSA Gudie Prerequisite 3, "Prior to or during the key-agreement process,
+    // each party shall obtain the identifier associated with the other party
+    // during the key-agreement scheme," is delegated to the caller.
+
+    // NSA Guide Step 1 is handled by `EphemeralPrivateKey::generate()` and
+    // `EphemeralPrivateKey::compute_public_key()`.
+
     let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
     let shared_key =
         &mut shared_key[..my_private_key.alg.i.elem_and_scalar_len];
+
+    // NSA Guide Steps 2, 3, and 4.
+    //
+    // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
+    // that doesn't meet the NSA requirement to "zeroize."
     try!((my_private_key.alg.i.ecdh)(shared_key, &my_private_key.private_key,
                                      peer_public_key).map_err(|_| error_value));
+
+    // NSA Guide Steps 5 and 6.
+    //
+    // Again, we have a pretty liberal interpretation of the NIST's spec's
+    // "Destroy" that doesn't meet the NSA requirement to "zeroize."
     kdf(shared_key)
 }
 
