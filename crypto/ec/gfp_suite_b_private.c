@@ -94,8 +94,8 @@ int GFp_suite_b_public_from_private(const EC_GROUP *group,
 
   size_t public_key_out_len = 1 + (2 * private_key_len);
 
-  if (!group->meth->mul_private(group, public_point, &private_key_bn, NULL,
-                                NULL, NULL) ||
+  if (!group->meth->mul(group, public_point, &private_key_bn, NULL, NULL,
+                        NULL) ||
       ec_GFp_simple_point2oct(group, public_point, public_key_out,
                               public_key_out_len, NULL) != public_key_out_len) {
     goto err;

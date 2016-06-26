@@ -96,8 +96,7 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
 
   if (!bn_set_words(&g_scalar_bn, g_scalar, num_limbs) ||
       !bn_set_words(&p_scalar_bn, p_scalar, num_limbs) ||
-      !group->meth->mul_public(group, result, &g_scalar_bn, p, &p_scalar_bn,
-                               NULL) ||
+      !group->meth->mul(group, result, &g_scalar_bn, p, &p_scalar_bn, NULL) ||
       !bn_get_words(x_out, &result->X, num_limbs) ||
       !bn_get_words(y_out, &result->Y, num_limbs) ||
       !bn_get_words(z_out, &result->Z, num_limbs)) {

@@ -48,8 +48,8 @@ int GFp_suite_b_ecdh(const EC_GROUP *group, uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (!group->meth->mul_private(group, result_point, NULL, peer_point,
-                                &private_key_bn, NULL) ||
+  if (!group->meth->mul(group, result_point, NULL, peer_point, &private_key_bn,
+                        NULL) ||
       !EC_POINT_get_affine_coordinates_GFp(group, result_point, &result_x, NULL,
                                            NULL) ||
       !BN_bn2bin_padded(out, out_len, &result_x)) {

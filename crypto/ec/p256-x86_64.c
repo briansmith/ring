@@ -415,7 +415,6 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
 const EC_METHOD EC_GFp_nistz256_method = {
   ecp_nistz256_get_affine,
   ecp_nistz256_points_mul,
-  ecp_nistz256_points_mul,
   ec_GFp_mont_field_mul,
   ec_GFp_mont_field_sqr,
   ec_GFp_mont_field_encode,
