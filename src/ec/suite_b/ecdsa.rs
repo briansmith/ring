@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![allow(unsafe_code)]
-
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use {der, digest, signature, signature_impl};

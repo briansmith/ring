@@ -14,8 +14,6 @@
 
 //! X25519 Key agreement.
 
-#![allow(unsafe_code)]
-
 use {agreement, bssl, c, ec, rand};
 use untrusted;
 
@@ -39,6 +37,7 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
     },
 };
 
+#[allow(unsafe_code)]
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input) -> Result<(), ()> {
     debug_assert_eq!(out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
