@@ -194,9 +194,9 @@ int tls13_process_certificate(SSL *ssl) {
   int ret = 0;
   uint8_t alert;
   STACK_OF(X509) *chain = ssl_parse_cert_chain(
-      ssl, &alert,
-      ssl->ctx->retain_only_sha256_of_client_certs ? ssl->session->peer_sha256
-                                                   : NULL,
+      ssl, &alert, ssl->ctx->retain_only_sha256_of_client_certs
+                       ? ssl->s3->new_session->peer_sha256
+                       : NULL,
       &cbs);
   if (chain == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -232,7 +232,7 @@ int tls13_process_certificate(SSL *ssl) {
 
   if (ssl->server && ssl->ctx->retain_only_sha256_of_client_certs) {
     /* The hash was filled in by |ssl_parse_cert_chain|. */
-    ssl->session->peer_sha256_valid = 1;
+    ssl->s3->new_session->peer_sha256_valid = 1;
   }
 
   X509 *leaf = sk_X509_value(chain, 0);
@@ -251,19 +251,19 @@ int tls13_process_certificate(SSL *ssl) {
   }
   ERR_clear_error();
 
-  ssl->session->verify_result = ssl->verify_result;
+  ssl->s3->new_session->verify_result = ssl->verify_result;
 
-  X509_free(ssl->session->peer);
+  X509_free(ssl->s3->new_session->peer);
   /* For historical reasons, the client and server differ on whether the chain
    * includes the leaf. */
   if (ssl->server) {
-    ssl->session->peer = sk_X509_shift(chain);
+    ssl->s3->new_session->peer = sk_X509_shift(chain);
   } else {
-    ssl->session->peer = X509_up_ref(leaf);
+    ssl->s3->new_session->peer = X509_up_ref(leaf);
   }
 
-  sk_X509_pop_free(ssl->session->cert_chain, X509_free);
-  ssl->session->cert_chain = chain;
+  sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
+  ssl->s3->new_session->cert_chain = chain;
   chain = NULL;
 
   ret = 1;
@@ -275,7 +275,7 @@ err:
 
 int tls13_process_certificate_verify(SSL *ssl) {
   int ret = 0;
-  X509 *peer = ssl->session->peer;
+  X509 *peer = ssl->s3->new_session->peer;
   EVP_PKEY *pkey = NULL;
   uint8_t *msg = NULL;
   size_t msg_len;

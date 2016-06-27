@@ -30,6 +30,7 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
 #include "test/scoped_types.h"
 #include "../crypto/test/test_util.h"
 
@@ -1253,6 +1254,48 @@ static bool TestOneSidedShutdown() {
 
   return true;
 }
+static bool TestSessionDuplication() {
+  ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+  ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
+  if (!client_ctx || !server_ctx) {
+    return false;
+  }
+
+  ScopedX509 cert = GetTestCertificate();
+  ScopedEVP_PKEY key = GetTestKey();
+  if (!cert || !key ||
+      !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
+    return false;
+  }
+
+  ScopedSSL client, server;
+  if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
+                              server_ctx.get())) {
+    return false;
+  }
+
+  SSL_SESSION *session0 = SSL_get_session(client.get());
+  ScopedSSL_SESSION session1(SSL_SESSION_dup(session0, 1));
+  if (!session1) {
+    return false; 
+  }
+  
+  uint8_t *s0_bytes, *s1_bytes;
+  size_t s0_len, s1_len;
+
+  if (!SSL_SESSION_to_bytes(session0, &s0_bytes, &s0_len)) {
+    return false;
+  }
+  ScopedOpenSSLBytes free_s0(s0_bytes);
+
+  if (!SSL_SESSION_to_bytes(session1.get(), &s1_bytes, &s1_len)) {
+    return false;
+  }
+  ScopedOpenSSLBytes free_s1(s1_bytes);
+
+  return s0_len == s1_len && memcmp(s0_bytes, s1_bytes, s0_len) == 0;
+}
 
 static bool ExpectFDs(const SSL *ssl, int rfd, int wfd) {
   if (SSL_get_rfd(ssl) != rfd || SSL_get_wfd(ssl) != wfd) {
@@ -1501,6 +1544,7 @@ int main() {
       !TestSequenceNumber(false /* TLS */) ||
       !TestSequenceNumber(true /* DTLS */) ||
       !TestOneSidedShutdown() ||
+      !TestSessionDuplication() ||
       !TestSetFD() ||
       !TestGetPeerCertificate() ||
       !TestRetainOnlySHA256OfCerts()) {

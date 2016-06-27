@@ -327,8 +327,8 @@ size_t SSL_get_key_block_len(const SSL *ssl) {
 
 int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
   return ssl->s3->enc_method->prf(
-      ssl, out, out_len, ssl->session->master_key,
-      ssl->session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
+      ssl, out, out_len, SSL_get_session(ssl)->master_key,
+      SSL_get_session(ssl)->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
       TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random, SSL3_RANDOM_SIZE,
       ssl->s3->client_random, SSL3_RANDOM_SIZE);
 }
@@ -338,12 +338,16 @@ int tls1_setup_key_block(SSL *ssl) {
     return 1;
   }
 
+  SSL_SESSION *session = ssl->session;
+  if (ssl->s3->new_session != NULL) {
+    session = ssl->s3->new_session;
+  }
+
   const EVP_AEAD *aead = NULL;
   size_t mac_secret_len, fixed_iv_len;
-  if (ssl->session->cipher == NULL ||
+  if (session->cipher == NULL ||
       !ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
-                               ssl->session->cipher,
-                               ssl3_protocol_version(ssl))) {
+                               session->cipher, ssl3_protocol_version(ssl))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
     return 0;
   }
@@ -454,8 +458,8 @@ static int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
 
   static const size_t kFinishedLen = 12;
   if (!ssl->s3->enc_method->prf(ssl, out, kFinishedLen,
-                                ssl->session->master_key,
-                                ssl->session->master_key_length, label,
+                                SSL_get_session(ssl)->master_key,
+                                SSL_get_session(ssl)->master_key_length, label,
                                 label_len, buf, digests_len, NULL, 0)) {
     return 0;
   }
@@ -529,8 +533,9 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   }
 
   int ret =
-      ssl->s3->enc_method->prf(ssl, out, out_len, ssl->session->master_key,
-                               ssl->session->master_key_length, label,
+      ssl->s3->enc_method->prf(ssl, out, out_len,
+                               SSL_get_session(ssl)->master_key,
+                               SSL_get_session(ssl)->master_key_length, label,
                                label_len, seed, seed_len, NULL, 0);
   OPENSSL_free(seed);
   return ret;

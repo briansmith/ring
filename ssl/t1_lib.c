@@ -713,10 +713,10 @@ static int ext_sni_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
   assert(ssl->tlsext_hostname != NULL);
 
-  if (!ssl->hit) {
-    assert(ssl->session->tlsext_hostname == NULL);
-    ssl->session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
-    if (!ssl->session->tlsext_hostname) {
+  if (ssl->session == NULL) {
+    assert(ssl->s3->new_session->tlsext_hostname == NULL);
+    ssl->s3->new_session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
+    if (!ssl->s3->new_session->tlsext_hostname) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return 0;
     }
@@ -759,11 +759,11 @@ static int ext_sni_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   /* TODO(davidben): SNI should be resolved before resumption. We have the
    * early callback as a replacement, but we should fix the current callback
    * and avoid the need for |SSL_CTX_set_session_id_context|. */
-  if (!ssl->hit) {
-    assert(ssl->session->tlsext_hostname == NULL);
+  if (ssl->session == NULL) {
+    assert(ssl->s3->new_session->tlsext_hostname == NULL);
 
     /* Copy the hostname as a string. */
-    if (!CBS_strdup(&host_name, &ssl->session->tlsext_hostname)) {
+    if (!CBS_strdup(&host_name, &ssl->s3->new_session->tlsext_hostname)) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return 0;
     }
@@ -775,9 +775,9 @@ static int ext_sni_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 }
 
 static int ext_sni_add_serverhello(SSL *ssl, CBB *out) {
-  if (ssl->hit ||
+  if (ssl->session != NULL ||
       !ssl->s3->tmp.should_ack_sni ||
-      ssl->session->tlsext_hostname == NULL) {
+      ssl->s3->new_session->tlsext_hostname == NULL) {
     return 1;
   }
 
@@ -1210,8 +1210,8 @@ static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  if (!CBS_stow(&ocsp_response, &ssl->session->ocsp_response,
-                &ssl->session->ocsp_response_length)) {
+  if (!CBS_stow(&ocsp_response, &ssl->s3->new_session->ocsp_response,
+                &ssl->s3->new_session->ocsp_response_length)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
@@ -1246,7 +1246,7 @@ static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
 
   if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     /* The extension shouldn't be sent when resuming sessions. */
-    if (ssl->hit) {
+    if (ssl->session != NULL) {
       return 1;
     }
 
@@ -1436,9 +1436,11 @@ static int ext_sct_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   }
 
   /* Session resumption uses the original session information. */
-  if (!ssl->hit &&
-      !CBS_stow(contents, &ssl->session->tlsext_signed_cert_timestamp_list,
-                &ssl->session->tlsext_signed_cert_timestamp_list_length)) {
+  if (ssl->session == NULL &&
+      !CBS_stow(
+          contents,
+          &ssl->s3->new_session->tlsext_signed_cert_timestamp_list,
+          &ssl->s3->new_session->tlsext_signed_cert_timestamp_list_length)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
@@ -1453,7 +1455,7 @@ static int ext_sct_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 
 static int ext_sct_add_serverhello(SSL *ssl, CBB *out) {
   /* The extension shouldn't be sent when resuming sessions. */
-  if (ssl->hit ||
+  if (ssl->session != NULL ||
       ssl->ctx->signed_cert_timestamp_list_length == 0) {
     return 1;
   }
@@ -2976,7 +2978,7 @@ int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
   static const char kClientIDMagic[] = "TLS Channel ID signature";
   EVP_DigestUpdate(&ctx, kClientIDMagic, sizeof(kClientIDMagic));
 
-  if (ssl->hit) {
+  if (ssl->session != NULL) {
     static const char kResumptionMagic[] = "Resumption";
     EVP_DigestUpdate(&ctx, kResumptionMagic, sizeof(kResumptionMagic));
     if (ssl->session->original_handshake_hash_len == 0) {
@@ -3006,25 +3008,26 @@ err:
 }
 
 /* tls1_record_handshake_hashes_for_channel_id records the current handshake
- * hashes in |ssl->session| so that Channel ID resumptions can sign that
+ * hashes in |ssl->s3->new_session| so that Channel ID resumptions can sign that
  * data. */
 int tls1_record_handshake_hashes_for_channel_id(SSL *ssl) {
   int digest_len;
   /* This function should never be called for a resumed session because the
    * handshake hashes that we wish to record are for the original, full
    * handshake. */
-  if (ssl->hit) {
+  if (ssl->session != NULL) {
     return -1;
   }
 
   digest_len =
-      tls1_handshake_digest(ssl, ssl->session->original_handshake_hash,
-                            sizeof(ssl->session->original_handshake_hash));
+      tls1_handshake_digest(
+          ssl, ssl->s3->new_session->original_handshake_hash,
+          sizeof(ssl->s3->new_session->original_handshake_hash));
   if (digest_len < 0) {
     return -1;
   }
 
-  ssl->session->original_handshake_hash_len = digest_len;
+  ssl->s3->new_session->original_handshake_hash_len = digest_len;
 
   return 1;
 }

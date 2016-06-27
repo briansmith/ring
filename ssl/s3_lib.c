@@ -211,6 +211,8 @@ void ssl3_free(SSL *ssl) {
   OPENSSL_free(ssl->s3->tmp.certificate_types);
   OPENSSL_free(ssl->s3->tmp.peer_supported_group_list);
   OPENSSL_free(ssl->s3->tmp.peer_psk_identity_hint);
+  SSL_SESSION_free(ssl->s3->new_session);
+  SSL_SESSION_free(ssl->s3->established_session);
   ssl3_free_handshake_buffer(ssl);
   ssl3_free_handshake_hash(ssl);
   ssl_handshake_free(ssl->s3->hs);

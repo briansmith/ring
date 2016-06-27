@@ -136,7 +136,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* Load the client random. */
   memcpy(ssl->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
 
-  ssl->hit = 0;
+  SSL_set_session(ssl, NULL);
   if (!ssl_get_new_session(ssl, 1 /* server */)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -212,7 +212,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  ssl->session->cipher = cipher;
+  ssl->s3->new_session->cipher = cipher;
   ssl->s3->tmp.new_cipher = cipher;
 
   ssl->method->received_flight(ssl);
@@ -470,7 +470,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
 
 static enum ssl_hs_wait_t do_process_client_certificate_verify(
     SSL *ssl, SSL_HANDSHAKE *hs) {
-  if (ssl->session->peer == NULL) {
+  if (ssl->s3->new_session->peer == NULL) {
     /* Skip this state. */
     hs->state = state_process_client_finished;
     return ssl_hs_ok;

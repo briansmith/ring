@@ -176,7 +176,7 @@ int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
   size_t mac_secret_len, fixed_iv_len;
   if (!ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
-                               ssl->session->cipher,
+                               ssl->s3->new_session->cipher,
                                ssl3_protocol_version(ssl))) {
     return 0;
   }
@@ -206,11 +206,9 @@ int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
     return 0;
   }
 
-  SSL_AEAD_CTX *traffic_aead = SSL_AEAD_CTX_new(direction,
-                                                ssl3_protocol_version(ssl),
-                                                ssl->session->cipher,
-                                                key, key_len, NULL, 0,
-                                                iv, iv_len);
+  SSL_AEAD_CTX *traffic_aead = SSL_AEAD_CTX_new(
+      direction, ssl3_protocol_version(ssl), ssl->s3->new_session->cipher, key,
+      key_len, NULL, 0, iv, iv_len);
   if (traffic_aead == NULL) {
     return 0;
   }
@@ -276,12 +274,12 @@ int tls13_finalize_keys(SSL *ssl) {
   SSL_HANDSHAKE *hs = ssl->s3->hs;
 
   ssl->s3->exporter_secret_len = hs->hash_len;
-  ssl->session->master_key_length = hs->hash_len;
+  ssl->s3->new_session->master_key_length = hs->hash_len;
   if (!derive_secret(
           ssl, ssl->s3->exporter_secret, ssl->s3->exporter_secret_len,
           (const uint8_t *)kTLS13LabelExporter, strlen(kTLS13LabelExporter)) ||
-      !derive_secret(ssl, ssl->session->master_key,
-                     ssl->session->master_key_length,
+      !derive_secret(ssl, ssl->s3->new_session->master_key,
+                     ssl->s3->new_session->master_key_length,
                      (const uint8_t *)kTLS13LabelResumption,
                      strlen(kTLS13LabelResumption))) {
     return 0;

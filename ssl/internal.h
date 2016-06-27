@@ -157,6 +157,10 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #endif
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 
 /* Cipher suites. */
 
@@ -1216,6 +1220,12 @@ enum ssl_session_result_t ssl_get_prev_session(
     SSL *ssl, SSL_SESSION **out_session, int *out_send_ticket,
     const struct ssl_early_callback_ctx *ctx);
 
+/* SSL_SESSION_dup returns a newly-allocated |SSL_SESSION| with a copy of the
+ * fields in |session| or NULL on error. The new session is non-resumable and
+ * must be explicitly marked resumable once it has been filled in. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
+                                            int include_ticket);
+
 STACK_OF(SSL_CIPHER) *
     ssl_bytes_to_cipher_list(SSL *ssl, const CBS *cbs, uint16_t max_version);
 void ssl_cipher_preference_list_free(
@@ -1452,5 +1462,10 @@ size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
 int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
                             uint16_t signature_algorithm);
 void ssl_set_client_disabled(SSL *ssl);
+
+
+#if defined(__cplusplus)
+} /* extern C */
+#endif
 
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

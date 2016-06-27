@@ -183,7 +183,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   assert(ssl->s3->have_version);
   memcpy(ssl->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
-  ssl->hit = 0;
+  SSL_set_session(ssl, NULL);
   if (!ssl_get_new_session(ssl, 0)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -207,7 +207,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  ssl->session->cipher = cipher;
+  ssl->s3->new_session->cipher = cipher;
   ssl->s3->tmp.new_cipher = cipher;
 
   /* The PRF hash is now known. Set up the key schedule. */
