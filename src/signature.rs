@@ -191,6 +191,13 @@ pub use rsa::verification::{
     RSA_PKCS1_3072_8192_SHA384,
 };
 
+/// Lower-level verification primitives. Usage of `ring::signature::verify()`
+/// is preferred when the public key and signature are encoded in standard
+/// formats, as it also handles the parsing.
+pub mod primitive {
+    pub use rsa::verification::verify_rsa;
+}
+
 /// A public key signature returned from a signing operation.
 pub struct Signature {
     value: [u8; 64],
