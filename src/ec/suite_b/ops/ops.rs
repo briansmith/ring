@@ -318,5 +318,51 @@ fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
 }
 
 
+#[cfg(feature = "internal_benches")]
+mod internal_benches {
+    use super::{Limb, MAX_LIMBS};
+
+    pub const LIMBS_1: [Limb; MAX_LIMBS] =
+        limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+
+    pub const LIMBS_ALTERNATING_10: [Limb; MAX_LIMBS] =
+        limbs![0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010];
+}
+
+#[cfg(feature = "internal_benches")]
+macro_rules! bench_curve {
+    ( $vectors:expr ) => {
+        use super::super::Scalar;
+        use test;
+
+        #[bench]
+        fn bench_scalar_inv_to_mont(bench: &mut test::Bencher) {
+            const VECTORS: &'static [Scalar] = $vectors;
+            let vectors_len = VECTORS.len();
+            let mut i = 0;
+            bench.iter(|| {
+                let _ = PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&VECTORS[i]);
+
+                i += 1;
+                if i == vectors_len {
+                    i = 0;
+                }
+            });
+        }
+    }
+}
+
+
 pub mod p256;
 pub mod p384;

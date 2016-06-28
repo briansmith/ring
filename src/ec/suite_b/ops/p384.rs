@@ -95,3 +95,21 @@ extern {
 
     static EC_GROUP_P384: EC_GROUP;
 }
+
+
+#[cfg(feature = "internal_benches")]
+mod internal_benches {
+    use super::*;
+    use super::super::internal_benches::*;
+
+    bench_curve!(&[
+        Scalar { limbs: LIMBS_1 },
+        Scalar { limbs: LIMBS_ALTERNATING_10, },
+        Scalar { // n - 1
+            limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                               0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
+                               0x581a0db2, 0x48b0a77a, 0xecec196a,
+                               0xccc52973 - 1],
+        },
+    ]);
+}

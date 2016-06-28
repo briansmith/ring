@@ -27,6 +27,7 @@ rustc-serialize = "0.3.19"
 # These features are documented in the top-level module's documentation.
 default = ["use_heap"]
 disable_dev_urandom_fallback = []
+internal_benches = []
 slow_tests = []
 test_logging = []
 use_heap = []
