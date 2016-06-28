@@ -832,7 +832,7 @@ struct ssl_protocol_method_st {
    * success and <= 0 on error. */
   int (*write_message)(SSL *ssl);
   /* send_change_cipher_spec sends a ChangeCipherSpec message. */
-  int (*send_change_cipher_spec)(SSL *ssl, int a, int b);
+  int (*send_change_cipher_spec)(SSL *ssl);
   /* expect_flight is called when the handshake expects a flight of messages from
    * the peer. */
   void (*expect_flight)(SSL *ssl);
@@ -985,7 +985,7 @@ int ssl_verify_alarm_type(long type);
 int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 
 int ssl3_get_finished(SSL *ssl);
-int ssl3_send_change_cipher_spec(SSL *ssl, int state_a, int state_b);
+int ssl3_send_change_cipher_spec(SSL *ssl);
 void ssl3_cleanup_key_block(SSL *ssl);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 long ssl3_get_message(SSL *ssl, int msg_type,
@@ -1050,7 +1050,7 @@ int dtls1_write_app_data(SSL *ssl, const void *buf, int len);
 int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
                        enum dtls1_use_epoch_t use_epoch);
 
-int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b);
+int dtls1_send_change_cipher_spec(SSL *ssl);
 int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
 int dtls1_retransmit_outgoing_messages(SSL *ssl);
 void dtls1_clear_record_buffer(SSL *ssl);

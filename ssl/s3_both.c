@@ -319,10 +319,9 @@ err:
   return 0;
 }
 
-int ssl3_send_change_cipher_spec(SSL *ssl, int a, int b) {
+int ssl3_send_change_cipher_spec(SSL *ssl) {
   static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
 
-  ssl->state = b;
   return ssl3_do_write(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
                        sizeof(kChangeCipherSpec));
 }

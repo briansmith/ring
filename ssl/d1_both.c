@@ -828,13 +828,13 @@ err:
   return ret;
 }
 
-int dtls1_send_change_cipher_spec(SSL *ssl, int a, int b) {
-  if (ssl->state == a) {
-    dtls1_add_change_cipher_spec(ssl);
-    ssl->state = b;
+int dtls1_send_change_cipher_spec(SSL *ssl) {
+  int ret = dtls1_write_change_cipher_spec(ssl, dtls1_use_current_epoch);
+  if (ret <= 0) {
+    return ret;
   }
-
-  return dtls1_write_change_cipher_spec(ssl, dtls1_use_current_epoch);
+  dtls1_add_change_cipher_spec(ssl);
+  return 1;
 }
 
 unsigned int dtls1_min_mtu(void) {

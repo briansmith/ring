@@ -364,13 +364,11 @@ int ssl3_connect(SSL *ssl) {
         } else {
           skip = 1;
         }
-        ssl->state = SSL3_ST_CW_CHANGE_A;
+        ssl->state = SSL3_ST_CW_CHANGE;
         break;
 
-      case SSL3_ST_CW_CHANGE_A:
-      case SSL3_ST_CW_CHANGE_B:
-        ret = ssl->method->send_change_cipher_spec(ssl, SSL3_ST_CW_CHANGE_A,
-                                                   SSL3_ST_CW_CHANGE_B);
+      case SSL3_ST_CW_CHANGE:
+        ret = ssl->method->send_change_cipher_spec(ssl);
         if (ret <= 0) {
           goto end;
         }
@@ -483,7 +481,7 @@ int ssl3_connect(SSL *ssl) {
         ssl->method->received_flight(ssl);
 
         if (ssl->hit) {
-          ssl->state = SSL3_ST_CW_CHANGE_A;
+          ssl->state = SSL3_ST_CW_CHANGE;
         } else {
           ssl->state = SSL_ST_OK;
         }
