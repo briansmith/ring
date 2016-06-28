@@ -38,10 +38,24 @@ pub struct Scalar {
 }
 
 impl Scalar {
+    #[inline(always)]
     pub unsafe fn limbs_as_ptr(&self) -> *const Limb {
         self.limbs.as_ptr()
     }
 }
+
+/// A `Scalar`, except Montgomery-encoded.
+pub struct ScalarMont {
+    limbs: [Limb; MAX_LIMBS],
+}
+
+impl ScalarMont {
+    #[inline(always)]
+    pub unsafe fn limbs_as_ptr(&self) -> *const Limb {
+        self.limbs.as_ptr()
+    }
+}
+
 
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
@@ -168,6 +182,8 @@ impl PublicKeyOps {
 pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
     n: [Limb; MAX_LIMBS],
+
+    scalar_inv_to_mont_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
 }
 
 impl PublicScalarOps {
@@ -178,6 +194,21 @@ impl PublicScalarOps {
                             encoded_value.as_slice_less_safe(), 1,
                             &self.n[..self.public_key_ops.common.num_limbs]));
         Ok(Scalar { limbs: limbs })
+    }
+
+    /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.
+    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> ScalarMont {
+        let num_limbs = self.public_key_ops.common.num_limbs;
+
+        // `a` must not be zero.
+        assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
+
+        let mut r = ScalarMont { limbs: [0; MAX_LIMBS] };
+        unsafe {
+            (self.scalar_inv_to_mont_impl)(r.limbs.as_mut_ptr(),
+                                           a.limbs.as_ptr());
+        }
+        r
     }
 }
 
@@ -286,6 +317,28 @@ fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
     }
     false
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::MAX_LIMBS;
+
+    const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
+
+    #[test]
+    #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
+    fn p256_scalar_inv_to_mont_zero_panic_test() {
+        let _ = p256::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+    }
+
+    #[test]
+    #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
+    fn p384_scalar_inv_to_mont_zero_panic_test() {
+        let _ = p384::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+    }
+}
+
 
 pub mod p256;
 pub mod p384;

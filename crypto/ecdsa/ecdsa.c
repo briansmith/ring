@@ -67,6 +67,7 @@
 int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
                                const GFp_Limb *sig_r, const GFp_Limb *sig_s,
+                               const GFp_Limb *sig_s_inv_mont,
                                const GFp_Limb *peer_public_key_x,
                                const GFp_Limb *peer_public_key_y);
 
@@ -85,6 +86,7 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
 int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
                                const GFp_Limb *sig_r, const GFp_Limb *sig_s,
+                               const GFp_Limb *sig_s_inv_mont,
                                const GFp_Limb *peer_public_key_x,
                                const GFp_Limb *peer_public_key_y) {
   (void)hash_nid; /* TODO: Verify |digest_len| is right for |hash_nid|. */
@@ -136,21 +138,24 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
   assert(!BN_is_zero(s));
   assert(BN_ucmp(s, &group->order) < 0);
 
-  /* calculate tmp1 = inv(S) mod order */
-  if (!BN_mod_inverse(u2, s, &group->order, ctx)) {
+  /* u2 = inv(S) mod order (Montgomery-encoded) */
+  if (!bn_set_words(u2, sig_s_inv_mont, scalar_limbs)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
+
   if (!digest_to_bn(m, digest, digest_len, &group->order)) {
     goto err;
   }
-  /* u1 = m * tmp mod order */
-  if (!BN_mod_mul(u1, m, u2, &group->order, ctx)) {
+  /* u1 = m * u2 mod order. Since only one input is Montgomery-encoded, the
+   * result will not be Montgomery-encoded. */
+  if (!BN_mod_mul_montgomery(u1, m, u2, &group->order_mont, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
-  /* u2 = r * w mod q */
-  if (!BN_mod_mul(u2, r, u2, &group->order, ctx)) {
+  /* u2 = r * w mod order. Since only one input is Montgomery-encoded, the
+   * result will not be Montgomery-encoded. */
+  if (!BN_mod_mul_montgomery(u2, r, u2, &group->order_mont, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }

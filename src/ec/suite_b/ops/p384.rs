@@ -68,6 +68,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     n: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
                    0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
                    0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
+
+    scalar_inv_to_mont_impl: GFp_p384_scalar_inv_to_mont,
 };
 
 
@@ -87,6 +89,9 @@ extern {
     fn GFp_p384_elem_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                               a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[COMMON_OPS.num_limbs]*/);
+
+    fn GFp_p384_scalar_inv_to_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
+                                   a: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
     static EC_GROUP_P384: EC_GROUP;
 }
