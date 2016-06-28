@@ -460,7 +460,7 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   }
 
   if (no_chain) {
-    if (!ssl_add_cert_to_cbb(&child, x)) {
+    if (!ssl_add_cert_with_length(&child, x)) {
       return 0;
     }
 
