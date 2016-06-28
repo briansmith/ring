@@ -56,18 +56,6 @@
 
 #include <openssl/thread.h>
 
-#include <string.h>
-
-#if !defined(OPENSSL_WINDOWS)
-#include <errno.h>
-#else
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <windows.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#endif
-
-#include <openssl/mem.h>
-
 
 int CRYPTO_num_locks(void) { return 1; }
 
