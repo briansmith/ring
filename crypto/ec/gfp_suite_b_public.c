@@ -18,6 +18,7 @@
 
 #include "../bn/internal.h"
 
+
 EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
                                  const GFp_Limb *peer_public_key_x,
                                  const GFp_Limb *peer_public_key_y) {
@@ -34,12 +35,12 @@ EC_POINT *GFp_suite_b_make_point(const EC_GROUP *group,
     goto err;
   }
 
-  size_t limbs =
+  size_t num_limbs =
     (ec_GFp_simple_group_get_degree(group) + (GFp_LIMB_BITS - 1)) /
     GFp_LIMB_BITS;
 
-  if (!bn_set_words(&result->X, peer_public_key_x, limbs) ||
-      !bn_set_words(&result->Y, peer_public_key_y, limbs) ||
+  if (!bn_set_words(&result->X, peer_public_key_x, num_limbs) ||
+      !bn_set_words(&result->Y, peer_public_key_y, num_limbs) ||
       !BN_copy(&result->Z, &group->one)) {
     goto err;
   }

@@ -43,13 +43,15 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSA {
         let (x, y) =
             try!(parse_uncompressed_point(self.ops.public_key_ops, public_key));
 
+        let s_inv_mont = try!(self.ops.scalar_inv_to_mont(&s));
         bssl::map_result(unsafe {
             ECDSA_verify_signed_digest(self.ops.public_key_ops.common.ec_group,
                                        digest.algorithm().nid,
                                        digest.as_ref().as_ptr(),
-                                       digest.as_ref().len(), r.limbs_as_ptr(),
-                                       s.limbs_as_ptr(), x.limbs_as_ptr(),
-                                       y.limbs_as_ptr())
+                                       digest.as_ref().len(),
+                                       r.limbs_as_ptr(), s.limbs_as_ptr(),
+                                       s_inv_mont.limbs_as_ptr(),
+                                       x.limbs_as_ptr(), y.limbs_as_ptr())
         })
     }
 }
@@ -116,6 +118,7 @@ extern {
     fn ECDSA_verify_signed_digest(group: *const EC_GROUP, hash_nid: c::int,
                                   digest: *const u8, digest_len: c::size_t,
                                   sig_r: *const Limb, sig_s: *const Limb,
+                                  sig_s_inv_mont: *const Limb,
                                   peer_public_key_x: *const Limb,
                                   peer_public_key_y: *const Limb) -> c::int;
 }
