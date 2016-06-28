@@ -149,6 +149,7 @@ OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
 /* CRYPTO_THREADID_current does nothing. */
 OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
 
+/* CRYPTO_set_id_callback does nothing. */
 OPENSSL_EXPORT void CRYPTO_set_id_callback(unsigned long (*func)(void));
 
 typedef struct {
@@ -156,23 +157,29 @@ typedef struct {
   struct CRYPTO_dynlock_value *data;
 } CRYPTO_dynlock;
 
+/* CRYPTO_set_dynlock_create_callback does nothing. */
 OPENSSL_EXPORT void CRYPTO_set_dynlock_create_callback(
     struct CRYPTO_dynlock_value *(*dyn_create_function)(const char *file,
                                                         int line));
 
+/* CRYPTO_set_dynlock_lock_callback does nothing. */
 OPENSSL_EXPORT void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
     int mode, struct CRYPTO_dynlock_value *l, const char *file, int line));
 
+/* CRYPTO_set_dynlock_destroy_callback does nothing. */
 OPENSSL_EXPORT void CRYPTO_set_dynlock_destroy_callback(
     void (*dyn_destroy_function)(struct CRYPTO_dynlock_value *l,
                                  const char *file, int line));
 
+/* CRYPTO_get_dynlock_create_callback returns NULL. */
 OPENSSL_EXPORT struct CRYPTO_dynlock_value *(
     *CRYPTO_get_dynlock_create_callback(void))(const char *file, int line);
 
+/* CRYPTO_get_dynlock_lock_callback returns NULL. */
 OPENSSL_EXPORT void (*CRYPTO_get_dynlock_lock_callback(void))(
     int mode, struct CRYPTO_dynlock_value *l, const char *file, int line);
 
+/* CRYPTO_get_dynlock_destroy_callback returns NULL. */
 OPENSSL_EXPORT void (*CRYPTO_get_dynlock_destroy_callback(void))(
     struct CRYPTO_dynlock_value *l, const char *file, int line);
 
