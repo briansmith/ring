@@ -25,6 +25,11 @@
 //!         supported at runtime. When the `disable_dev_urandom_fallback`
 //!         feature is enabled, such fallback will not occur. See the
 //!         documentation for `rand::SystemRandom` for more details.
+//! <tr><td><code>internal_benches</code>
+//!     <td>Enable benchmarks of internal functions. These benchmarks are only
+//!         useful for people hacking on *ring*. The benchmarks for the *ring*
+//!         API are in the
+//!         [crypto-bench](https://github.com/briansmith/crypto-bench) project.
 //! <tr><td><code>use_heap</code>
 //!     <td>Enable functionality that uses the heap. This is on by default, but
 //!         disabling it is useful for code running in kernel space and some
@@ -103,6 +108,12 @@
 )]
 
 #![no_std]
+
+#![cfg_attr(feature = "internal_benches", allow(unstable_features))]
+#![cfg_attr(feature = "internal_benches", feature(test))]
+
+#[cfg(feature = "internal_benches")]
+extern crate test;
 
 #[allow(unused_extern_crates)]
 #[macro_use]
