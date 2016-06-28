@@ -23,67 +23,9 @@ use untrusted;
 
 impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), error::Unspecified> {
-        const MAX_BITS: usize = 8192;
-
-        let (n, e) = try!(parse_public_key(public_key));
-        let signature = signature.as_slice_less_safe();
-
-        let mut decoded = [0u8; (MAX_BITS + 7) / 8];
-        if signature.len() > decoded.len() {
-            return Err(error::Unspecified);
-        }
-        let decoded = &mut decoded[..signature.len()];
-        try!(bssl::map_result(unsafe {
-            GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(),
-                                   n.as_ptr(), n.len(), e.as_ptr(), e.len(),
-                                   signature.as_ptr(), signature.len(),
-                                   self.min_bits, MAX_BITS)
-        }));
-
-        untrusted::Input::from(decoded).read_all(error::Unspecified,
-                                                 |decoded| {
-            if try!(decoded.read_byte()) != 0 {
-                return Err(error::Unspecified);
-            }
-            if try!(decoded.read_byte()) != 1 {
-                return Err(error::Unspecified);
-            }
-
-            let mut ps_len = 0;
-            loop {
-                match try!(decoded.read_byte()) {
-                    0xff => {
-                        ps_len += 1;
-                    },
-                    0x00 => {
-                        break;
-                    },
-                    _ => {
-                        return Err(error::Unspecified);
-                    },
-                }
-            }
-            if ps_len < 8 {
-                return Err(error::Unspecified);
-            }
-
-            let decoded_digestinfo_prefix = try!(decoded.skip_and_get_input(
-                        self.padding_alg.digestinfo_prefix.len()));
-            if decoded_digestinfo_prefix != self.padding_alg.digestinfo_prefix {
-                return Err(error::Unspecified);
-            }
-
-            let digest_alg = self.padding_alg.digest_alg;
-            let decoded_digest =
-                try!(decoded.skip_and_get_input(digest_alg.output_len));
-            let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-            if decoded_digest != digest.as_ref() {
-                return Err(error::Unspecified);
-            }
-
-            Ok(())
-        })
+              signature: untrusted::Input)
+              -> Result<(), error::Unspecified> {
+        verify_rsa(self, public_key, msg, signature)
     }
 }
 
@@ -118,6 +60,67 @@ rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, 2048, &super::RSA_PKCS1_SHA512,
 rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
            "Verification of signatures using RSA keys of 3072-8192 bits,
             PKCS#1.5 padding, and SHA-384.");
+
+fn verify_rsa(params: &RSAParameters, public_key: untrusted::Input,
+              msg: untrusted::Input, signature: untrusted::Input)
+              -> Result<(), error::Unspecified> {
+    const MAX_BITS: usize = 8192;
+
+    let (n, e) = try!(parse_public_key(public_key));
+    let signature = signature.as_slice_less_safe();
+
+    let mut decoded = [0u8; (MAX_BITS + 7) / 8];
+    if signature.len() > decoded.len() {
+        return Err(error::Unspecified);
+    }
+    let decoded = &mut decoded[..signature.len()];
+    try!(bssl::map_result(unsafe {
+        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(),
+                               n.as_ptr(), n.len(), e.as_ptr(), e.len(),
+                               signature.as_ptr(), signature.len(),
+                               params.min_bits, MAX_BITS)
+    }));
+
+    untrusted::Input::from(decoded).read_all(error::Unspecified, |decoded| {
+        if try!(decoded.read_byte()) != 0 || try!(decoded.read_byte()) != 1 {
+            return Err(error::Unspecified);
+        }
+
+        let mut ps_len = 0;
+        loop {
+            match try!(decoded.read_byte()) {
+                0xff => {
+                    ps_len += 1;
+                },
+                0x00 => {
+                    break;
+                },
+                _ => {
+                    return Err(error::Unspecified);
+                },
+            }
+        }
+        if ps_len < 8 {
+            return Err(error::Unspecified);
+        }
+
+        let decoded_digestinfo_prefix = try!(decoded.skip_and_get_input(
+                    params.padding_alg.digestinfo_prefix.len()));
+        if decoded_digestinfo_prefix != params.padding_alg.digestinfo_prefix {
+            return Err(error::Unspecified);
+        }
+
+        let digest_alg = params.padding_alg.digest_alg;
+        let decoded_digest =
+            try!(decoded.skip_and_get_input(digest_alg.output_len));
+        let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
+        if decoded_digest != digest.as_ref() {
+            return Err(error::Unspecified);
+        }
+
+        Ok(())
+    })
+}
 
 extern {
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
