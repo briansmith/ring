@@ -16,7 +16,6 @@
 #include <stdint.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
-#include <openssl/nid.h>
 
 #include "gfp_internal.h"
 #include "../bn/internal.h"

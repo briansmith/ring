@@ -52,7 +52,6 @@
 #include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/nid.h>
 #include <openssl/rand.h>
 
 #include "internal.h"
