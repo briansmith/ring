@@ -94,9 +94,6 @@ typedef struct ec_method_st {
   int (*field_mul)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                    const BIGNUM *b, BN_CTX *);
   int (*field_sqr)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a, BN_CTX *);
-
-  int (*field_encode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                      BN_CTX *); /* e.g. to Montgomery */
 } EC_METHOD;
 
 extern const EC_METHOD EC_GFp_mont_method;
@@ -116,8 +113,6 @@ struct ec_group_st {
   const EC_POINT generator;
   const BIGNUM order;
   const BN_MONT_CTX order_mont;
-
-  int curve_name; /* optional NID for named curve */
 
   /* The following members are handled by the method functions,
    * even if they appear generic */
@@ -153,10 +148,6 @@ int ec_GFp_mont_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                           const BIGNUM *b, BN_CTX *);
 int ec_GFp_mont_field_sqr(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                           BN_CTX *);
-int ec_GFp_mont_field_encode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *);
-int ec_GFp_mont_field_decode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *);
 
 extern const EC_METHOD EC_GFp_nistz256_method;
 

@@ -84,19 +84,8 @@ int ec_GFp_mont_field_sqr(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
   return BN_mod_mul_montgomery(r, a, a, &group->mont, ctx);
 }
 
-int ec_GFp_mont_field_encode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *ctx) {
-  return BN_to_montgomery(r, a, &group->mont, ctx);
-}
-
-int ec_GFp_mont_field_decode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *ctx) {
-  return BN_from_montgomery(r, a, &group->mont, ctx);
-}
-
 const EC_METHOD EC_GFp_mont_method = {
   ec_wNAF_mul /* XXX: Not constant time. */,
   ec_GFp_mont_field_mul,
   ec_GFp_mont_field_sqr,
-  ec_GFp_mont_field_encode,
 };

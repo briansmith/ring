@@ -67,10 +67,5 @@
 #define NID_sha384 673
 #define NID_sha512 674
 
-/* ECC named curves */
-#define NID_X9_62_prime256v1 415
-#define NID_secp384r1 715
-#define NID_X25519 948
-
 
 #endif  /* OPENSSL_HEADER_NID_H */
