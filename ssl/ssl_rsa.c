@@ -365,8 +365,13 @@ size_t ssl_private_key_max_signature_len(SSL *ssl) {
 }
 
 enum ssl_private_key_result_t ssl_private_key_sign(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, const EVP_MD *md,
-    const uint8_t *in, size_t in_len) {
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    uint16_t signature_algorithm, const uint8_t *in, size_t in_len) {
+  const EVP_MD *md = tls12_get_hash(signature_algorithm);
+  if (md == NULL) {
+    return ssl_private_key_failure;
+  }
+
   if (ssl->cert->key_method != NULL) {
     return ssl->cert->key_method->sign(ssl, out, out_len, max_out, md, in,
                                        in_len);

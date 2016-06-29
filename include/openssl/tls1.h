@@ -248,6 +248,11 @@ extern "C" {
 #define SSL_SIGN_ECDSA_SECP384R1_SHA384 0x0503
 #define SSL_SIGN_ECDSA_SECP521R1_SHA512 0x0603
 
+/* Reserved SignatureScheme value to indicate RSA with MD5-SHA1. This will never
+ * be negotiated in TLS 1.2 and up, but is used to unify signing interfaces in
+ * older TLS versions. */
+#define SSL_SIGN_RSA_PKCS1_MD5_SHA1           0xff01
+
 #define TLSEXT_MAXLEN_host_name 255
 
 /* PSK ciphersuites from 4279 */

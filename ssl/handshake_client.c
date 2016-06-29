@@ -1307,22 +1307,21 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
       goto err;
     }
 
-    const EVP_MD *md = NULL;
+    uint16_t signature_algorithm = 0;
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-      uint16_t signature_algorithm;
       if (!CBS_get_u16(&server_key_exchange, &signature_algorithm)) {
         al = SSL_AD_DECODE_ERROR;
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         goto f_err;
       }
-      if (!tls12_check_peer_sigalg(ssl, &md, &al, signature_algorithm, pkey)) {
+      if (!tls12_check_peer_sigalg(ssl, &al, signature_algorithm, pkey)) {
         goto f_err;
       }
       ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
     } else if (pkey->type == EVP_PKEY_RSA) {
-      md = EVP_md5_sha1();
-    } else {
-      md = EVP_sha1();
+      signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
+    } else if (pkey->type == EVP_PKEY_EC) {
+      signature_algorithm = SSL_SIGN_ECDSA_SHA1;
     }
 
     /* The last field in |server_key_exchange| is the signature. */
@@ -1334,6 +1333,12 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
       goto f_err;
     }
 
+    const EVP_MD *md = tls12_get_hash(signature_algorithm);
+    if (md == NULL) {
+      al = SSL_AD_ILLEGAL_PARAMETER;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+      goto f_err;
+    }
     int sig_ok = EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) &&
                  EVP_DigestVerifyUpdate(&md_ctx, ssl->s3->client_random,
                                         SSL3_RANDOM_SIZE) &&
@@ -1816,11 +1821,10 @@ static int ssl3_send_cert_verify(SSL *ssl) {
     goto err;
   }
 
-  /* Select and write out the digest type in TLS 1.2. */
-  const EVP_MD *md = NULL;
+  uint16_t signature_algorithm = tls1_choose_signature_algorithm(ssl);
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-    md = tls1_choose_signing_digest(ssl);
-    if (!tls12_add_sigalg(ssl, &body, md)) {
+    /* Write out the digest type in TLS 1.2. */
+    if (!CBB_add_u16(&body, signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
     }
@@ -1841,8 +1845,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
      * selected here. */
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
-    if (!ssl3_cert_verify_hash(ssl, digest, &digest_len, &md,
-                               ssl_private_key_type(ssl))) {
+    if (!ssl3_cert_verify_hash(ssl, digest, &digest_len, signature_algorithm)) {
       goto err;
     }
 
@@ -1850,8 +1853,8 @@ static int ssl3_send_cert_verify(SSL *ssl) {
     ssl3_free_handshake_buffer(ssl);
 
     /* Sign the digest. */
-    sign_result = ssl_private_key_sign(ssl, ptr, &sig_len, max_sig_len, md,
-                                       digest, digest_len);
+    sign_result = ssl_private_key_sign(ssl, ptr, &sig_len, max_sig_len,
+                                       signature_algorithm, digest, digest_len);
   } else {
     assert(ssl->state == SSL3_ST_CW_CERT_VRFY_B);
     sign_result =

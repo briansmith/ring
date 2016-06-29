@@ -477,8 +477,8 @@ int ssl_private_key_type(SSL *ssl);
 size_t ssl_private_key_max_signature_len(SSL *ssl);
 
 enum ssl_private_key_result_t ssl_private_key_sign(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, const EVP_MD *md,
-    const uint8_t *in, size_t in_len);
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    uint16_t signature_algorithm, const uint8_t *in, size_t in_len);
 
 enum ssl_private_key_result_t ssl_private_key_sign_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
@@ -997,12 +997,12 @@ int ssl3_hash_current_message(SSL *ssl);
 
 /* ssl3_cert_verify_hash writes the CertificateVerify hash into the bytes
  * pointed to by |out| and writes the number of bytes to |*out_len|. |out| must
- * have room for EVP_MAX_MD_SIZE bytes. For TLS 1.2 and up, |*out_md| is used
- * for the hash function, otherwise the hash function depends on |pkey_type|
- * and is written to |*out_md|. It returns one on success and zero on
- * failure. */
+ * have room for EVP_MAX_MD_SIZE bytes. For TLS 1.2 and up,
+ * |signature_algorithm| is used to determine the hash function, otherwise the
+ * hash function depends on the private key type. It returns one on success and
+ * zero on failure. */
 int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
-                          const EVP_MD **out_md, int pkey_type);
+                          uint16_t signature_algorithm);
 
 int ssl3_send_finished(SSL *ssl, int a, int b);
 int ssl3_supports_cipher(const SSL_CIPHER *cipher);
@@ -1136,11 +1136,6 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len);
 
-/* tls12_add_sigalg picks the SignatureScheme corresponding to |ssl|'s private
- * key and |md| and writes it to |out|. It returns one on success and zero on
- * failure. */
-int tls12_add_sigalg(SSL *ssl, CBB *out, const EVP_MD *md);
-
 /* tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
  * it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
  * one on success and zero on failure. */
@@ -1207,17 +1202,20 @@ uint16_t ssl3_protocol_version(const SSL *ssl);
 uint32_t ssl_get_algorithm_prf(const SSL *ssl);
 int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
 
-/* tls1_choose_signing_digest returns a digest for use with |ssl|'s private key
- * based on the peer's preferences the digests supported. */
-const EVP_MD *tls1_choose_signing_digest(SSL *ssl);
+/* tls1_choose_signature_algorithm returns a signature algorithm for use with
+ * |ssl|'s private key based on the peer's preferences the digests supported. */
+uint16_t tls1_choose_signature_algorithm(SSL *ssl);
 
 size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
 
+/* tls12_get_hash returns the EVP_MD corresponding to the TLS signature
+ * algorithm |sigalg|. It returns NULL if the type is unknown. */
+const EVP_MD *tls12_get_hash(uint16_t sigalg);
+
 /* tls12_check_peer_sigalg checks that |signature_algorithm| is consistent with
- * the |pkey| and |ssl|'s sent, supported signature algorithms and, if so,
- * writes the relevant digest into |*out_md| and returns 1. Otherwise it
- * returns 0 and writes an alert into |*out_alert|. */
-int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
+ * the |pkey| and |ssl|'s sent, supported signature algorithms and returns 1.
+ * Otherwise it returns 0 and writes an alert into |*out_alert|. */
+int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
                             uint16_t signature_algorithm, EVP_PKEY *pkey);
 void ssl_set_client_disabled(SSL *ssl);
 

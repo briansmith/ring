@@ -518,16 +518,15 @@ size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs) {
          sizeof(kDefaultSignatureAlgorithms[0]);
 }
 
-static int tls12_get_pkey_type(uint16_t sig_alg);
-static const EVP_MD *tls12_get_hash(uint16_t sig_alg);
+static int tls12_get_pkey_type(uint16_t sigalg);
 
-int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
-                            uint16_t signature_algorithm, EVP_PKEY *pkey) {
+int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
+                            uint16_t sigalg, EVP_PKEY *pkey) {
   const uint16_t *sent_sigs;
   size_t sent_sigslen, i;
 
   /* Check key type is consistent with signature */
-  if (pkey->type != tls12_get_pkey_type(signature_algorithm)) {
+  if (pkey->type != tls12_get_pkey_type(sigalg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
@@ -536,20 +535,13 @@ int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
   /* Check signature matches a type we sent */
   sent_sigslen = tls12_get_psigalgs(ssl, &sent_sigs);
   for (i = 0; i < sent_sigslen; i++) {
-    if (signature_algorithm == sent_sigs[i]) {
+    if (sigalg == sent_sigs[i]) {
       break;
     }
   }
 
   if (i == sent_sigslen) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return 0;
-  }
-
-  *out_md = tls12_get_hash(signature_algorithm);
-  if (*out_md == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_DIGEST);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -2528,44 +2520,12 @@ done:
   return ret;
 }
 
-/* Tables to translate from NIDs to TLS v1.2 ids
- *
- * TODO(svaldez): Remove decomposition of SignatureAlgorithm IDs. */
-typedef struct {
-  int pkey_type;
-  int md_type;
-  uint16_t id;
-} tls12_lookup;
-
-static const tls12_lookup kTLS12SignatureAlgorithmIDs[] = {
-    {EVP_PKEY_RSA, NID_sha512, SSL_SIGN_RSA_PKCS1_SHA512},
-    {EVP_PKEY_EC, NID_sha512, SSL_SIGN_ECDSA_SECP521R1_SHA512},
-    {EVP_PKEY_RSA, NID_sha384, SSL_SIGN_RSA_PKCS1_SHA384},
-    {EVP_PKEY_EC, NID_sha384, SSL_SIGN_ECDSA_SECP384R1_SHA384},
-    {EVP_PKEY_RSA, NID_sha256, SSL_SIGN_RSA_PKCS1_SHA256},
-    {EVP_PKEY_EC, NID_sha256, SSL_SIGN_ECDSA_SECP256R1_SHA256},
-    {EVP_PKEY_RSA, NID_sha1, SSL_SIGN_RSA_PKCS1_SHA1},
-    {EVP_PKEY_EC, NID_sha1, SSL_SIGN_ECDSA_SHA1},
-};
-
-int tls12_add_sigalg(SSL *ssl, CBB *out, const EVP_MD *md) {
-  int pkey_type = ssl_private_key_type(ssl);
-  int md_type = EVP_MD_type(md);
-
-  size_t i;
-  for (i = 0; i < sizeof(kTLS12SignatureAlgorithmIDs) / sizeof(tls12_lookup);
-       i++) {
-    if (kTLS12SignatureAlgorithmIDs[i].pkey_type == pkey_type &&
-        kTLS12SignatureAlgorithmIDs[i].md_type == md_type) {
-      return CBB_add_u16(out, kTLS12SignatureAlgorithmIDs[i].id);
-    }
+const EVP_MD *tls12_get_hash(uint16_t sigalg) {
+  if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
+    return EVP_md5_sha1();
   }
 
-  return 0;
-}
-
-static const EVP_MD *tls12_get_hash(uint16_t sig_alg) {
-  switch (sig_alg >> 8) {
+  switch (sigalg >> 8) {
     case TLSEXT_hash_sha1:
       return EVP_sha1();
 
@@ -2584,9 +2544,9 @@ static const EVP_MD *tls12_get_hash(uint16_t sig_alg) {
 }
 
 /* tls12_get_pkey_type returns the EVP_PKEY type corresponding to TLS signature
- * algorithm |sig_alg|. It returns -1 if the type is unknown. */
-static int tls12_get_pkey_type(uint16_t sig_alg) {
-  switch (sig_alg & 0xff) {
+ * algorithm |sigalg|. It returns -1 if the type is unknown. */
+static int tls12_get_pkey_type(uint16_t sigalg) {
+  switch (sigalg & 0xff) {
     case TLSEXT_signature_rsa:
       return EVP_PKEY_RSA;
 
@@ -2643,10 +2603,19 @@ int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *in_sigalgs) {
   return 1;
 }
 
-const EVP_MD *tls1_choose_signing_digest(SSL *ssl) {
+uint16_t tls1_choose_signature_algorithm(SSL *ssl) {
   CERT *cert = ssl->cert;
   int type = ssl_private_key_type(ssl);
   size_t i, j;
+
+  /* Before TLS 1.2, the signature algorithm isn't negotiated as part of the
+   * handshake. It is fixed at MD5-SHA1 for RSA and SHA1 for ECDSA. */
+  if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
+    if (type == EVP_PKEY_RSA) {
+      return SSL_SIGN_RSA_PKCS1_MD5_SHA1;
+    }
+    return SSL_SIGN_ECDSA_SHA1;
+  }
 
   static const int kDefaultDigestList[] = {NID_sha256, NID_sha384, NID_sha512,
                                            NID_sha1};
@@ -2662,19 +2631,25 @@ const EVP_MD *tls1_choose_signing_digest(SSL *ssl) {
   for (i = 0; i < num_digest_nids; i++) {
     const int digest_nid = digest_nids[i];
     for (j = 0; j < cert->peer_sigalgslen; j++) {
-      const EVP_MD *md = tls12_get_hash(cert->peer_sigalgs[j]);
-      if (md == NULL ||
-          digest_nid != EVP_MD_type(md) ||
-          tls12_get_pkey_type(cert->peer_sigalgs[j]) != type) {
+      uint16_t signature_algorithm = cert->peer_sigalgs[j];
+      /* SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
+       * negotiated. */
+      if (signature_algorithm == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
         continue;
       }
-
-      return md;
+      const EVP_MD *md = tls12_get_hash(signature_algorithm);
+      if (md != NULL && EVP_MD_type(md) == digest_nid &&
+          tls12_get_pkey_type(signature_algorithm) == type) {
+        return signature_algorithm;
+      }
     }
   }
 
   /* If no suitable digest may be found, default to SHA-1. */
-  return EVP_sha1();
+  if (type == EVP_PKEY_RSA) {
+    return SSL_SIGN_RSA_PKCS1_SHA1;
+  }
+  return SSL_SIGN_ECDSA_SHA1;
 }
 
 int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
