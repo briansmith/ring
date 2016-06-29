@@ -12,8 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![allow(unsafe_code)]
+
+use {bssl, c, der};
 use core;
-use der;
 use untrusted;
 
 /// Field elements. Field elements are always Montgomery-encoded and always
@@ -24,30 +26,48 @@ pub struct Elem {
 
 impl Elem {
     #[inline(always)]
+    fn zero() -> Elem {
+        Elem { limbs: [0; MAX_LIMBS] }
+    }
+
+    #[inline(always)]
     pub unsafe fn limbs_as_ptr<'a>(&self) -> *const Limb {
         self.limbs.as_ptr()
     }
 }
+
+/// Field elements that are *not* Montgomery-encoded. TODO: document range.
+pub struct ElemDecoded {
+    pub limbs: [Limb; MAX_LIMBS],
+}
+
 
 
 /// Scalars. Scalars are *not* Montgomery-encoded. They are always
 /// fully reduced mod n; i.e. their range is [0, n]. In most contexts,
 /// zero-valued scalars are forbidden.
 pub struct Scalar {
-    limbs: [Limb; MAX_LIMBS],
+    pub limbs: [Limb; MAX_LIMBS],
 }
 
 impl Scalar {
-    pub unsafe fn limbs_as_ptr(&self) -> *const Limb {
-        self.limbs.as_ptr()
+    #[inline(always)]
+    pub fn from_limbs_unchecked(limbs: &[Limb; MAX_LIMBS]) -> Scalar {
+        Scalar { limbs: *limbs }
     }
 }
+
+/// A `Scalar`, except Montgomery-encoded.
+pub struct ScalarMont {
+    limbs: [Limb; MAX_LIMBS],
+}
+
 
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
 #[cfg(target_pointer_width = "32")] pub type Limb = u32;
-#[cfg(target_pointer_width = "64")] const LIMB_BITS: usize = 64;
-#[cfg(target_pointer_width = "32")] const LIMB_BITS: usize = 32;
+#[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
+#[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
 
 #[cfg(all(target_pointer_width = "32", target_endian = "little"))]
 macro_rules! limbs {
@@ -74,13 +94,17 @@ macro_rules! limbs {
     }
 }
 
-const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
+pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
+
+static ONE: ElemDecoded = ElemDecoded {
+    limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+};
 
 
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
-    num_limbs: usize,
+    pub num_limbs: usize,
     q: Mont,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
@@ -93,8 +117,19 @@ pub struct CommonOps {
 
 impl CommonOps {
     #[inline]
+    pub fn elem_decode(&self, a: &Elem) -> ElemDecoded {
+        self.elem_mul_mixed(a, &ONE)
+    }
+
+    #[inline]
     pub fn elem_mul(&self, a: &Elem, b: &Elem) -> Elem {
         Elem { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
+    }
+
+    #[inline]
+    pub fn elem_mul_mixed(&self, a: &Elem, b: &ElemDecoded)
+                           -> ElemDecoded {
+        ElemDecoded { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
     }
 
     #[inline]
@@ -126,9 +161,15 @@ pub struct PublicKeyOps {
 }
 
 impl PublicKeyOps {
+    pub fn elem_is_zero(&self, a: &Elem) -> bool {
+        a.limbs[..self.common.num_limbs].iter().all(|limb| *limb == 0)
+    }
+
     // The serialized bytes are in big-endian order, zero-padded. The limbs
     // of `Elem` are in the native endianness, least significant limb to
-    // most significant limb.
+    // most significant limb. Besides the parsing, conversion, this also
+    // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
+    // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
                       -> Result<Elem, ()> {
         let encoded_value =
@@ -165,7 +206,12 @@ impl PublicKeyOps {
 /// Operations on public scalars needed by ECDSA signature verification.
 pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
-    n: [Limb; MAX_LIMBS],
+    pub n: ElemDecoded,
+    pub q_minus_n: ElemDecoded,
+
+    scalar_inv_to_mont_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
+    scalar_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                      b: *const Limb),
 }
 
 impl PublicScalarOps {
@@ -174,8 +220,82 @@ impl PublicScalarOps {
         let encoded_value = try!(der::positive_integer(input));
         let limbs = try!(parse_big_endian_value_in_range(
                             encoded_value.as_slice_less_safe(), 1,
-                            &self.n[..self.public_key_ops.common.num_limbs]));
+                            &self.n.limbs[
+                                ..self.public_key_ops.common.num_limbs]));
         Ok(Scalar { limbs: limbs })
+    }
+
+    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Result<ScalarMont, ()> {
+        let num_limbs = self.public_key_ops.common.num_limbs;
+
+        // `a` must not be zero.
+        debug_assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
+
+        let mut r = ScalarMont { limbs: [0; MAX_LIMBS] };
+        unsafe {
+            (self.scalar_inv_to_mont_impl)(r.limbs.as_mut_ptr(),
+                                           a.limbs.as_ptr());
+        }
+        Ok(r)
+    }
+
+    #[inline]
+    pub fn scalar_mul_mixed(&self, a: &Scalar, b: &ScalarMont) -> Scalar {
+        Scalar { limbs: rab(self.scalar_mul_mont, &a.limbs, &b.limbs) }
+    }
+
+    #[inline]
+    pub fn scalar_as_elem_decoded(&self, a: &Scalar) -> ElemDecoded {
+        ElemDecoded { limbs: a.limbs }
+    }
+
+    pub fn elem_decoded_equals(&self, a: &ElemDecoded, b: &ElemDecoded)
+                               -> bool {
+        for i in 0..self.public_key_ops.common.num_limbs {
+            if a.limbs[i] != b.limbs[i] {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    pub fn elem_decoded_less_than(&self, a: &ElemDecoded, b: &ElemDecoded)
+                                  -> bool {
+        let num_limbs = self.public_key_ops.common.num_limbs;
+        limbs_less_than_limbs(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
+    }
+
+    #[inline]
+    pub fn elem_decoded_sum(&self, a: &ElemDecoded, b: &ElemDecoded)
+                            -> ElemDecoded {
+        ElemDecoded {
+            limbs: rab(self.public_key_ops.elem_add_impl, &a.limbs,
+                       &b.limbs)
+        }
+    }
+
+    #[inline]
+    pub fn elem_mul_mixed(&self, a: &Elem, b: &ElemDecoded) -> ElemDecoded {
+        ElemDecoded {
+            limbs: rab(self.public_key_ops.common.elem_mul_mont, &a.limbs,
+                       &b.limbs)
+        }
+    }
+
+    pub fn twin_mult(&self, g_scalar: &Scalar, p_scalar: &Scalar,
+                     &(ref peer_x, ref peer_y): &(Elem, Elem))
+                     -> Result<(Elem, Elem, Elem), ()> {
+        let mut x = Elem::zero();
+        let mut y = Elem::zero();
+        let mut z = Elem::zero();
+        try!(bssl::map_result(unsafe {
+            GFp_suite_b_public_twin_mult(
+                self.public_key_ops.common.ec_group, x.limbs.as_mut_ptr(),
+                y.limbs.as_mut_ptr(), z.limbs.as_mut_ptr(),
+                g_scalar.limbs.as_ptr(), p_scalar.limbs.as_ptr(),
+                peer_x.limbs.as_ptr(), peer_y.limbs.as_ptr())
+        }));
+        Ok((x, y, z))
     }
 }
 
@@ -238,8 +358,8 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // `parse_big_endian_value` is the common logic for converting the big-endian
 // encoding of bytes into an least-significant-limb-first array of
 // native-endian limbs, padded with zeros.
-fn parse_big_endian_value(input: &[u8], num_limbs: usize)
-                          -> Result<[Limb; MAX_LIMBS], ()> {
+pub fn parse_big_endian_value(input: &[u8], num_limbs: usize)
+                              -> Result<[Limb; MAX_LIMBS], ()> {
     // `bytes_in_current_limb` is the number of bytes in the current limb.
     // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
     // limb.
@@ -268,7 +388,7 @@ fn parse_big_endian_value(input: &[u8], num_limbs: usize)
     Ok(result)
 }
 
-fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
+pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
     assert_eq!(a.len(), b.len());
     let num_limbs = a.len();
 
@@ -284,6 +404,62 @@ fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
     }
     false
 }
+
+
+extern {
+    fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, x_out: *mut Limb,
+                                    y_out: *mut Limb, z_out: *mut Limb,
+                                    g_scalar: *const Limb,
+                                    p_scalar: *const Limb, p_x: *const Limb,
+                                    p_y: *const Limb) -> c::int;
+}
+
+
+#[cfg(feature = "internal_benches")]
+mod internal_benches {
+    use super::{Limb, MAX_LIMBS};
+
+    pub const LIMBS_1: [Limb; MAX_LIMBS] =
+        limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+
+    pub const LIMBS_ALTERNATING_10: [Limb; MAX_LIMBS] =
+        limbs![0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010,
+               0b10101010_10101010_10101010_10101010];
+}
+
+#[cfg(feature = "internal_benches")]
+macro_rules! bench_curve {
+    ( $vectors:expr ) => {
+        use super::super::Scalar;
+        use test;
+
+        #[bench]
+        fn bench_scalar_inv_to_mont(bench: &mut test::Bencher) {
+            const VECTORS: &'static [Scalar] = $vectors;
+            let vectors_len = VECTORS.len();
+            let mut i = 0;
+            bench.iter(|| {
+                let _ = PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&VECTORS[i]);
+
+                i += 1;
+                if i == vectors_len {
+                    i = 0;
+                }
+            });
+        }
+    }
+}
+
 
 pub mod p256;
 pub mod p384;

@@ -130,7 +130,6 @@ fn ec_group(curve: &NISTCurve) -> String {
     let q = ModP::new(&curve.q).unwrap();
 
     let n = ModP::new(&curve.n).unwrap();
-    let n_minus_2 = &n.p - Integer::from_i8(2).unwrap();
 
     let one = Integer::one();
     assert_eq!(curve.a, -3);
@@ -152,7 +151,6 @@ fn ec_group(curve: &NISTCurve) -> String {
         static const BN_ULONG p{bits}_field_rr_limbs[] = {q_rr};
         static const BN_ULONG p{bits}_order_limbs[] = {n};
         static const BN_ULONG p{bits}_order_rr_limbs[] = {n_rr};
-        static const BN_ULONG p{bits}_order_minus_2_limbs[] = {n_minus_2};
         static const BN_ULONG p{bits}_generator_x_limbs[] = {x_mont};
         static const BN_ULONG p{bits}_generator_y_limbs[] = {y_mont};
         static const BN_ULONG p{bits}_a_limbs[] = {a_mont};
@@ -175,7 +173,6 @@ fn ec_group(curve: &NISTCurve) -> String {
             FIELD(.N =) STATIC_BIGNUM(p{bits}_order_limbs),
             FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{n_n1:x}, 0x{n_n0:x}) }},
           }},
-          FIELD(.order_minus_2 =) STATIC_BIGNUM(p{bits}_order_minus_2_limbs),
           FIELD(.curve_name =) {nid},
           FIELD(.field =) STATIC_BIGNUM(p{bits}_field_limbs),
           FIELD(.a =) STATIC_BIGNUM(p{bits}_a_limbs),
@@ -223,7 +220,6 @@ fn ec_group(curve: &NISTCurve) -> String {
         q_n1 = (q.k / (1u64 << 32)) as usize,
 
         n = bn_limbs(&n.p),
-        n_minus_2 = bn_limbs(&n_minus_2),
         n_rr = bn_limbs(&n.rr),
         n_n0 = (n.k % (1u64 << 32)) as usize,
         n_n1 = (n.k / (1u64 << 32)) as usize,

@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![allow(unsafe_code)]
-
 use {bssl, c, init, rand};
 use untrusted;
 
@@ -56,6 +54,7 @@ pub struct PrivateKey {
 }
 
 impl PrivateKey {
+    #[allow(unsafe_code)]
     pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
                     -> Result<PrivateKey, ()> {
         init::init_once();
@@ -87,6 +86,7 @@ impl PrivateKey {
         result
     }
 
+    #[allow(unsafe_code)]
     #[inline(always)]
     pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,
                               out: &mut [u8]) -> Result<(), ()> {

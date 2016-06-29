@@ -212,6 +212,16 @@ int BN_set_word(BIGNUM *bn, BN_ULONG value) {
   return 1;
 }
 
+int bn_get_words(BN_ULONG *words, const BIGNUM *bn, size_t num) {
+  if ((size_t)bn->top > num) {
+    return 0;
+  }
+  for (size_t i = 0; i < num; ++i) {
+    words[i] = (i < (size_t)bn->top) ? bn->d[i] : 0;
+  }
+  return 1;
+}
+
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   if (bn_wexpand(bn, num) == NULL) {
     return 0;

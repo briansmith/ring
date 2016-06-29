@@ -14,8 +14,6 @@
 
 //! ECDH key agreement using the P-256 and P-384 curves.
 
-#![allow(unsafe_code)]
-
 use {agreement, bssl, c, ec, rand};
 use super::ops::*;
 use super::public_key::*;
@@ -33,13 +31,14 @@ macro_rules! ecdh {
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
         /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
-        /// Public keys are validated during key agreement as described in
+        /// Public keys are validated during key agreement using the ECC
+        /// Partial Public-Key Validation Routine from Section 5.6.2.3.3 of
         /// [NIST Special Publication 800-56A, revision
-        /// 2](http://csrc.nist.gov/groups/ST/toolkit/documents/SP800-56Arev1_3-8-07.pdf)
-        /// Section 5.6.2.5 and the NSA's "Suite B Implementer's Guide to NIST
-        /// SP 800-56A," Appendix B.3. Note that, as explained in the NSA
-        /// guide, "partial" validation is equivalent to "full" validation for
-        /// prime-order curves like this one.
+        /// 2](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
+        /// and Appendix B.3 of the NSA's "Suite B Implementer's Guide to NIST
+        /// SP 800-56A." Note that, as explained in the NSA guide, ECC Partial
+        /// Public-Key Validation is equivalent to ECC Full Public-Key
+        /// Validation for prime-order curves like this one.
         ///
         /// Only available in `use_heap` mode.
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
@@ -62,6 +61,7 @@ macro_rules! ecdh {
     }
 }
 
+#[allow(unsafe_code)]
 fn ecdh(ops: &PublicKeyOps, out: &mut [u8], my_private_key: &ec::PrivateKey,
         peer_public_key: untrusted::Input) -> Result<(), ()> {
     let (peer_x, peer_y) = try!(parse_uncompressed_point(ops, peer_public_key));
