@@ -61,7 +61,8 @@ compilers = {
 
 modes = [
     "DEBUG",
-    "RELWITHDEBINFO"
+    "RELWITHDEBINFO",
+    "NODEFAULTFEATURES",
 ]
 
 # Mac OS X is first because we don't want to have to wait until all the Linux

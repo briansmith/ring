@@ -70,6 +70,9 @@ rustc --version
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then
   mode=--release
   target_dir=target/$TARGET_X/release
+elif [[ "$MODE_X" == "NODEFAULTFEATURES" ]]; then
+  mode=--no-default-features
+  target_dir=target/$TARGET_X/debug
 else
   target_dir=target/$TARGET_X/debug
 fi
