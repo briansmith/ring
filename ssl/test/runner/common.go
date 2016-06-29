@@ -429,9 +429,9 @@ type ProtocolBugs struct {
 	// CertificateVerify message should be invalid.
 	InvalidCertVerifySignature bool
 
-	// InvalidSKXCurve causes the curve ID in the ServerKeyExchange message
-	// to be wrong.
-	InvalidSKXCurve bool
+	// SendCurve, if non-zero, causes the ServerKeyExchange message to use
+	// the specified curve ID rather than the negotiated one.
+	SendCurve CurveID
 
 	// InvalidECDHPoint, if true, causes the ECC points in
 	// ServerKeyExchange or ClientKeyExchange messages to be invalid.

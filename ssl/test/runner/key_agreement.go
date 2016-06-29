@@ -529,11 +529,11 @@ NextCandidate:
 	// http://tools.ietf.org/html/rfc4492#section-5.4
 	serverECDHParams := make([]byte, 1+2+1+len(publicKey))
 	serverECDHParams[0] = 3 // named curve
+	if config.Bugs.SendCurve != 0 {
+		curveid = config.Bugs.SendCurve
+	}
 	serverECDHParams[1] = byte(curveid >> 8)
 	serverECDHParams[2] = byte(curveid)
-	if config.Bugs.InvalidSKXCurve {
-		serverECDHParams[2] ^= 0xff
-	}
 	serverECDHParams[3] = byte(len(publicKey))
 	copy(serverECDHParams[4:], publicKey)
 	if config.Bugs.InvalidECDHPoint {
