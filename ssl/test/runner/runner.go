@@ -1379,37 +1379,6 @@ func addBasicTests() {
 			expectedVersion: VersionTLS13,
 		},
 		{
-			testType: serverTest,
-			name:     "MinorVersionTolerance",
-			config: Config{
-				Bugs: ProtocolBugs{
-					SendClientVersion: 0x03ff,
-				},
-			},
-			expectedVersion: VersionTLS13,
-		},
-		{
-			testType: serverTest,
-			name:     "MajorVersionTolerance",
-			config: Config{
-				Bugs: ProtocolBugs{
-					SendClientVersion: 0x0400,
-				},
-			},
-			expectedVersion: VersionTLS13,
-		},
-		{
-			testType: serverTest,
-			name:     "VersionTooLow",
-			config: Config{
-				Bugs: ProtocolBugs{
-					SendClientVersion: 0x0200,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNSUPPORTED_PROTOCOL:",
-		},
-		{
 			testType:      serverTest,
 			name:          "HttpGET",
 			sendPrefix:    "GET / HTTP/1.0\n",
@@ -3668,6 +3637,77 @@ func addVersionNegotiationTests() {
 			}
 		}
 	}
+
+	// Test for version tolerance.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "MinorVersionTolerance",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x03ff,
+			},
+		},
+		expectedVersion: VersionTLS13,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "MajorVersionTolerance",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x0400,
+			},
+		},
+		expectedVersion: VersionTLS13,
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "MinorVersionTolerance-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x03ff,
+			},
+		},
+		expectedVersion: VersionTLS12,
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "MajorVersionTolerance-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x0400,
+			},
+		},
+		expectedVersion: VersionTLS12,
+	})
+
+	// Test that versions below 3.0 are rejected.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "VersionTooLow",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x0200,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSUPPORTED_PROTOCOL:",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "VersionTooLow-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				// 0x0201 is the lowest version expressable in
+				// DTLS.
+				SendClientVersion: 0x0201,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSUPPORTED_PROTOCOL:",
+	})
 }
 
 func addMinimumVersionTests() {
