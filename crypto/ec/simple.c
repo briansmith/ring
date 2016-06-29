@@ -80,8 +80,7 @@
 /* Most method functions in this file are designed to work with non-trivial
  * representations of field elements if necessary (see ecp_mont.c): while
  * standard modular addition and subtraction are used, the field_mul and
- * field_sqr methods will be used for multiplication, and field_encode will be
- * used for converting between representations.
+ * field_sqr methods will be used for multiplication.
  *
  * Functions here specifically assume that if a non-trivial representation is
  * used, it is a Montgomery representation (i.e. 'encoding' means multiplying

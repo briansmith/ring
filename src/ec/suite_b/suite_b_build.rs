@@ -173,7 +173,6 @@ fn ec_group(curve: &NISTCurve) -> String {
             FIELD(.N =) STATIC_BIGNUM(p{bits}_order_limbs),
             FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{n_n1:x}, 0x{n_n0:x}) }},
           }},
-          FIELD(.curve_name =) {nid},
           FIELD(.field =) STATIC_BIGNUM(p{bits}_field_limbs),
           FIELD(.a =) STATIC_BIGNUM(p{bits}_a_limbs),
           FIELD(.b =) STATIC_BIGNUM(p{bits}_b_limbs),
@@ -189,7 +188,6 @@ fn ec_group(curve: &NISTCurve) -> String {
         ",
         bits = curve.bits,
         name = curve.name,
-        nid = curve.nid,
 
         q = bn_limbs(&q.p),
         q_rr = bn_limbs(&q.rr),
@@ -246,7 +244,6 @@ fn bn_limbs(value: &Integer) -> String {
 struct NISTCurve {
     pub name: &'static str,
     pub bits: usize,
-    pub nid: &'static str,
     pub q: &'static str,
     pub n: &'static str,
     pub generator: (&'static str, &'static str),
@@ -266,7 +263,6 @@ static SUPPORTED_CURVES: [NISTCurve; 2] = [
     NISTCurve {
         name: "CURVE_P256",
         bits: 256,
-        nid: "NID_X9_62_prime256v1",
 
         // 2**256 - 2**224 + 2**192 + 2**96 - 1
         q: "ffffffff00000001000000000000000000000000ffffffffffffffffffffffff",
@@ -286,7 +282,6 @@ static SUPPORTED_CURVES: [NISTCurve; 2] = [
     NISTCurve {
         name: "CURVE_P384",
         bits: 384,
-        nid: "NID_secp384r1",
 
         // 2^384 − 2^128 − 2^96 + 2^32 − 1
         q: "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe\
