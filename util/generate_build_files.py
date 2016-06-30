@@ -142,6 +142,7 @@ class Bazel(object):
           out, 'crypto_internal_headers', files['crypto_internal_headers'])
       self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
       self.PrintVariableSection(out, 'tool_sources', files['tool'])
+      self.PrintVariableSection(out, 'tool_headers', files['tool_headers'])
 
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(
@@ -545,6 +546,7 @@ def main(platforms):
   crypto_c_files = FindCFiles(os.path.join('src', 'crypto'), NoTests)
   ssl_c_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
   tool_c_files = FindCFiles(os.path.join('src', 'tool'), NoTests)
+  tool_h_files = FindHeaderFiles(os.path.join('src', 'tool'), AllFiles)
 
   # Generate err_data.c
   with open('err_data.c', 'w+') as err_data:
@@ -608,6 +610,7 @@ def main(platforms):
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
       'tool': tool_c_files,
+      'tool_headers': tool_h_files,
       'test': test_c_files,
       'test_support': test_support_h_files + test_support_c_files,
       'tests': tests,
