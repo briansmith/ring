@@ -110,7 +110,7 @@ pub struct EphemeralPrivateKey {
     alg: &'static Algorithm,
 }
 
-impl EphemeralPrivateKey {
+impl <'a> EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
@@ -152,6 +152,11 @@ impl EphemeralPrivateKey {
         // key generation and the sending of the public key to the peer. `out`
         // is what should be sent to the peer.
         self.private_key.compute_public_key(&self.alg.i, out)
+    }
+
+    #[cfg(test)]
+    pub fn bytes(&'a self) -> &'a [u8] {
+        self.private_key.bytes()
     }
 }
 

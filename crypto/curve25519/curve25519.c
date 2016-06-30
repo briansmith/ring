@@ -23,7 +23,6 @@
 
 #include <openssl/cpu.h>
 #include <openssl/mem.h>
-#include <openssl/rand.h>
 
 #include "../internal.h"
 
@@ -4860,16 +4859,11 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-int GFp_x25519_generate_private_key(uint8_t out_private_key[32], RAND *rng);
 void GFp_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]);
 int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
                     const uint8_t peer_public_value[32]);
 
-
-int GFp_x25519_generate_private_key(uint8_t out_private_key[32], RAND *rng) {
-  return RAND_bytes(rng, out_private_key, 32);
-}
 
 /* GFp_x25519_ecdh |X25519| function from the RFC. */
 int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],

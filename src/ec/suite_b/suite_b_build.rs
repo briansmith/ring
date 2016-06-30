@@ -186,20 +186,8 @@ fn ec_group(curve: &NISTCurve) -> String {
         }};
 
         STATIC_BIGNUM_DIAGNOSTIC_POP
-
-
-        /* Prototypes to avoid -Wmissing-prototypes warnings. */
-        int GFp_p{bits}_generate_private_key(
-                uint8_t out[{elem_and_scalar_len}], RAND *rng);
-
-
-        int GFp_p{bits}_generate_private_key(
-                uint8_t out[{elem_and_scalar_len}], RAND *rng) {{
-            return GFp_suite_b_generate_private_key(&EC_GROUP_P{bits}, out,
-                                                    rng);
-        }}",
+        ",
         bits = curve.bits,
-        elem_and_scalar_len = (curve.bits + 7) / 8,
         name = curve.name,
         nid = curve.nid,
 

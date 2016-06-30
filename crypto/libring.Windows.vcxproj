@@ -40,7 +40,6 @@
     <ClCompile Include="ec\gfp_constant_time.c" />
     <ClCompile Include="ec\gfp_p256.c" />
     <ClCompile Include="ec\gfp_p384.c" />
-    <ClCompile Include="ec\gfp_suite_b_private.c" />
     <ClCompile Include="ec\gfp_suite_b_public.c" />
     <ClCompile Include="ec\simple.c" />
     <ClCompile Include="ec\wnaf.c" />
