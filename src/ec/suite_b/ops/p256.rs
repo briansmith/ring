@@ -41,6 +41,16 @@ pub static COMMON_OPS: CommonOps = CommonOps {
                            0xbce6faad, 0xa7179e84, 0xf3b9cac2, 0xfc632551],
     },
 
+    a: Elem {
+        limbs: p256_limbs![0xfffffffc, 0x00000004, 0x00000000, 0x00000000,
+                           0x00000003, 0xffffffff, 0xffffffff, 0xfffffffc],
+    },
+    b: Elem {
+        limbs: p256_limbs![0xdc30061d, 0x04874834, 0xe5a220ab, 0xf7212ed6,
+                           0xacf005cd, 0x78843090, 0xd89cdf62, 0x29c4bddf],
+    },
+
+    elem_add_impl: ecp_nistz256_add,
     elem_mul_mont: ecp_nistz256_mul_mont,
     elem_sqr_mont: ecp_nistz256_sqr_mont,
 
@@ -56,17 +66,6 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
     common: &COMMON_OPS,
-
-    a: Elem {
-        limbs: p256_limbs![0xfffffffc, 0x00000004, 0x00000000, 0x00000000,
-                           0x00000003, 0xffffffff, 0xffffffff, 0xfffffffc],
-    },
-    b: Elem {
-        limbs: p256_limbs![0xdc30061d, 0x04874834, 0xe5a220ab, 0xf7212ed6,
-                           0xacf005cd, 0x78843090, 0xd89cdf62, 0x29c4bddf],
-    },
-
-    elem_add_impl: ecp_nistz256_add,
 };
 
 

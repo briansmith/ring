@@ -16,6 +16,7 @@
 //! ECDH agreement).
 
 use super::ops::*;
+use super::verify_affine_point_is_on_the_curve;
 use untrusted;
 
 /// Parses a public key encoded in uncompressed form. The key is validated
@@ -50,24 +51,9 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
     //
-    // That is, verify that (x, y) is on the curve, which is true iif:
-    //
-    //     y**2 == x**3 + a*x + b (mod q)
-    //
-    // Or, equivalently, but more efficiently:
-    //
-    //     y**2 == (x**2 + a)*x + b  (mod q)
-
-    let lhs = ops.common.elem_sqr(&y);
-
-    let mut rhs = ops.common.elem_sqr(&x);
-    ops.elem_add(&mut rhs, &ops.a);
-    let mut rhs = ops.common.elem_mul(&rhs, &x);
-    ops.elem_add(&mut rhs, &ops.b);
-
-    if !ops.elems_are_equal(&lhs, &rhs) {
-        return Err(());
-    }
+    // `verify_affine_point_is_on_the_curve` does that check and also verifies
+    // that the point is on the curve.
+    try!(verify_affine_point_is_on_the_curve(ops.common, (&x, &y)));
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
     // check that the public key is in the correct EC subgroup."
