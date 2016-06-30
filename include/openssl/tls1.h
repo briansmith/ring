@@ -183,9 +183,6 @@ extern "C" {
 #define TLSEXT_TYPE_server_name 0
 #define TLSEXT_TYPE_status_request 5
 
-/* ExtensionType values from draft-ietf-tls-tls13-13 */
-#define TLSEXT_TYPE_supported_groups 10
-
 /* ExtensionType values from RFC4492 */
 #define TLSEXT_TYPE_ec_point_formats 11
 
@@ -207,11 +204,11 @@ extern "C" {
 /* ExtensionType value from RFC4507 */
 #define TLSEXT_TYPE_session_ticket 35
 
-/* ExtensionType values from draft-ietf-tls-tls13-latest */
+/* ExtensionType values from draft-ietf-tls-tls13-13 */
+#define TLSEXT_TYPE_supported_groups 10
 #define TLSEXT_TYPE_key_share 40
 #define TLSEXT_TYPE_pre_shared_key 41
 #define TLSEXT_TYPE_early_data 42
-#define TLSEXT_TYPE_ticket_age 43
 #define TLSEXT_TYPE_cookie 44
 
 /* ExtensionType value from RFC5746 */
