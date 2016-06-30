@@ -900,6 +900,10 @@ type ProtocolBugs struct {
 	// SkipECDSACurveCheck, if true, causes all ECDSA curve checks to be
 	// skipped.
 	SkipECDSACurveCheck bool
+
+	// IgnoreSignatureVersionChecks, if true, causes all signature
+	// algorithms to be enabled at all TLS versions.
+	IgnoreSignatureVersionChecks bool
 }
 
 func (c *Config) serverInit() {

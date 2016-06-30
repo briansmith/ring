@@ -198,6 +198,39 @@ func (e *ecdsaSigner) verifyMessage(key crypto.PublicKey, msg, sig []byte) error
 	return nil
 }
 
+var pssOptions = rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash}
+
+type rsaPSSSigner struct {
+	hash crypto.Hash
+}
+
+func (r *rsaPSSSigner) supportsKey(key crypto.PrivateKey) bool {
+	_, ok := key.(*rsa.PrivateKey)
+	return ok
+}
+
+func (r *rsaPSSSigner) signMessage(key crypto.PrivateKey, config *Config, msg []byte) ([]byte, error) {
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("invalid key type for RSA-PSS")
+	}
+
+	h := r.hash.New()
+	h.Write(msg)
+	return rsa.SignPSS(config.rand(), rsaKey, r.hash, h.Sum(nil), &pssOptions)
+}
+
+func (r *rsaPSSSigner) verifyMessage(key crypto.PublicKey, msg, sig []byte) error {
+	rsaKey, ok := key.(*rsa.PublicKey)
+	if !ok {
+		return errors.New("invalid key type for RSA-PSS")
+	}
+
+	h := r.hash.New()
+	h.Write(msg)
+	return rsa.VerifyPSS(rsaKey, r.hash, h.Sum(nil), sig, &pssOptions)
+}
+
 func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm) (signer, error) {
 	// TLS 1.1 and below use legacy signature algorithms.
 	if version < VersionTLS12 {
@@ -211,7 +244,7 @@ func getSigner(version uint16, key interface{}, config *Config, sigAlg signature
 		}
 	}
 
-	// TODO(davidben): Implement RSA-PSS for TLS 1.3.
+	// TODO(davidben): Forbid RSASSA-PKCS1-v1_5 in TLS 1.3.
 	switch sigAlg {
 	case signatureRSAPKCS1WithMD5:
 		return &rsaPKCS1Signer{crypto.MD5}, nil
@@ -231,7 +264,19 @@ func getSigner(version uint16, key interface{}, config *Config, sigAlg signature
 		return &ecdsaSigner{version, config, elliptic.P384(), crypto.SHA384}, nil
 	case signatureECDSAWithP521AndSHA512:
 		return &ecdsaSigner{version, config, elliptic.P521(), crypto.SHA512}, nil
-	default:
-		return nil, fmt.Errorf("unsupported signature algorithm %04x", sigAlg)
+	case signatureRSAPSSWithSHA256:
+		if version >= VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPSSSigner{crypto.SHA256}, nil
+		}
+	case signatureRSAPSSWithSHA384:
+		if version >= VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPSSSigner{crypto.SHA384}, nil
+		}
+	case signatureRSAPSSWithSHA512:
+		if version >= VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPSSSigner{crypto.SHA512}, nil
+		}
 	}
+
+	return nil, fmt.Errorf("unsupported signature algorithm %04x", sigAlg)
 }
