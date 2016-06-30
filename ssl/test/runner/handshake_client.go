@@ -880,7 +880,7 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 	}
 
 	if hs.serverHello.channelIDRequested {
-		encryptedExtensions := new(encryptedExtensionsMsg)
+		channelIDMsg := new(channelIDMsg)
 		if c.config.ChannelID.Curve != elliptic.P256() {
 			return fmt.Errorf("tls: Channel ID is not on P-256.")
 		}
@@ -897,14 +897,14 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		writeIntPadded(channelID[32:64], c.config.ChannelID.Y)
 		writeIntPadded(channelID[64:96], r)
 		writeIntPadded(channelID[96:128], s)
-		encryptedExtensions.channelID = channelID
+		channelIDMsg.channelID = channelID
 
 		c.channelID = &c.config.ChannelID.PublicKey
 
-		encryptedExtensionsBytes := encryptedExtensions.marshal()
-		hs.writeHash(encryptedExtensionsBytes, seqno)
+		channelIDMsgBytes := channelIDMsg.marshal()
+		hs.writeHash(channelIDMsgBytes, seqno)
 		seqno++
-		postCCSBytes = append(postCCSBytes, encryptedExtensionsBytes...)
+		postCCSBytes = append(postCCSBytes, channelIDMsgBytes...)
 	}
 
 	finished := new(finishedMsg)

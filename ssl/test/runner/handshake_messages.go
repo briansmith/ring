@@ -1641,12 +1641,12 @@ func (m *helloVerifyRequestMsg) unmarshal(data []byte) bool {
 	return true
 }
 
-type encryptedExtensionsMsg struct {
+type channelIDMsg struct {
 	raw       []byte
 	channelID []byte
 }
 
-func (m *encryptedExtensionsMsg) marshal() []byte {
+func (m *channelIDMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
@@ -1654,7 +1654,7 @@ func (m *encryptedExtensionsMsg) marshal() []byte {
 	length := 2 + 2 + len(m.channelID)
 
 	x := make([]byte, 4+length)
-	x[0] = typeEncryptedExtensions
+	x[0] = typeChannelID
 	x[1] = uint8(length >> 16)
 	x[2] = uint8(length >> 8)
 	x[3] = uint8(length)
@@ -1667,7 +1667,7 @@ func (m *encryptedExtensionsMsg) marshal() []byte {
 	return x
 }
 
-func (m *encryptedExtensionsMsg) unmarshal(data []byte) bool {
+func (m *channelIDMsg) unmarshal(data []byte) bool {
 	if len(data) != 4+2+2+128 {
 		return false
 	}

@@ -1107,8 +1107,8 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(finishedMsg)
 	case typeHelloVerifyRequest:
 		m = new(helloVerifyRequestMsg)
-	case typeEncryptedExtensions:
-		m = new(encryptedExtensionsMsg)
+	case typeChannelID:
+		m = new(channelIDMsg)
 	default:
 		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 	}

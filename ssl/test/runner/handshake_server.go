@@ -793,15 +793,15 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 		if err != nil {
 			return err
 		}
-		encryptedExtensions, ok := msg.(*encryptedExtensionsMsg)
+		channelIDMsg, ok := msg.(*channelIDMsg)
 		if !ok {
 			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(encryptedExtensions, msg)
+			return unexpectedMessageError(channelIDMsg, msg)
 		}
-		x := new(big.Int).SetBytes(encryptedExtensions.channelID[0:32])
-		y := new(big.Int).SetBytes(encryptedExtensions.channelID[32:64])
-		r := new(big.Int).SetBytes(encryptedExtensions.channelID[64:96])
-		s := new(big.Int).SetBytes(encryptedExtensions.channelID[96:128])
+		x := new(big.Int).SetBytes(channelIDMsg.channelID[0:32])
+		y := new(big.Int).SetBytes(channelIDMsg.channelID[32:64])
+		r := new(big.Int).SetBytes(channelIDMsg.channelID[64:96])
+		s := new(big.Int).SetBytes(channelIDMsg.channelID[96:128])
 		if !elliptic.P256().IsOnCurve(x, y) {
 			return errors.New("tls: invalid channel ID public key")
 		}
@@ -815,7 +815,7 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 		}
 		c.channelID = channelID
 
-		hs.writeClientHash(encryptedExtensions.marshal())
+		hs.writeClientHash(channelIDMsg.marshal())
 	}
 
 	msg, err := c.readHandshake()
