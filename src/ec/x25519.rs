@@ -31,11 +31,18 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
         public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
         elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
         nid: 948 /* NID_X25519 */,
-        generate_private_key: GFp_x25519_generate_private_key,
+        generate_private_key: x25519_generate_private_key,
         public_from_private: x25519_public_from_private,
         ecdh: x25519_ecdh,
     },
 };
+
+fn x25519_generate_private_key(rng: &rand::SecureRandom)
+                               -> Result<ec::PrivateKey, ()> {
+    let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
+    try!(rng.fill(&mut result.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]));
+    Ok(result)
+}
 
 #[allow(unsafe_code)]
 fn x25519_public_from_private(public_out: &mut [u8],
@@ -61,12 +68,6 @@ fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
 
 
 const X25519_ELEM_SCALAR_PUBLIC_KEY_LEN: usize = 32;
-
-#[allow(improper_ctypes)]
-extern {
-    fn GFp_x25519_generate_private_key(out: *mut u8, rng: *mut rand::RAND)
-                                       -> c::int;
-}
 
 extern {
     fn GFp_x25519_ecdh(out_shared_key: *mut u8/*[32]*/,

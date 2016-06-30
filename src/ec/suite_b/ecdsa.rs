@@ -99,7 +99,9 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
             return Ok(());
         }
         if self.ops.elem_decoded_less_than(&r, &self.ops.q_minus_n) {
-            let r_plus_n = self.ops.elem_decoded_sum(&r, &self.ops.n);
+            let r_plus_n =
+                self.ops.elem_decoded_sum(&r,
+                                          &self.ops.public_key_ops.common.n);
             if sig_r_equals_x(self.ops, &r_plus_n, &x, &z) {
                 return Ok(());
             }
@@ -155,7 +157,7 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
 
     // XXX: unwrap
     let mut limbs = parse_big_endian_value(digest, num_limbs).unwrap();
-    let n = &ops.n.limbs[..num_limbs];
+    let n = &ops.public_key_ops.common.n.limbs[..num_limbs];
     if !limbs_less_than_limbs(&limbs[..num_limbs], n) {
         let mut carried_bit = 0;
         for i in 0..num_limbs {

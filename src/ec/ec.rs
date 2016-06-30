@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {bssl, c, init, rand};
+use {c, init, rand};
 use untrusted;
 
 /// A key agreement algorithm.
@@ -24,7 +24,7 @@ pub struct AgreementAlgorithmImpl {
     pub nid: c::int,
 
     generate_private_key:
-        unsafe extern fn(out: *mut u8, rng: *mut rand::RAND) -> c::int,
+        fn(rng: &rand::SecureRandom) -> Result<PrivateKey, ()>,
 
     public_from_private:
         fn(public_out: &mut [u8], private_key: &PrivateKey) -> Result<(), ()>,
@@ -38,19 +38,11 @@ pub struct PrivateKey {
     bytes: [u8; SCALAR_MAX_BYTES],
 }
 
-impl PrivateKey {
-    #[allow(unsafe_code)]
+impl <'a> PrivateKey {
     pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
                     -> Result<PrivateKey, ()> {
         init::init_once();
-        let mut result = PrivateKey {
-            bytes: [0; SCALAR_MAX_BYTES],
-        };
-        let mut rng = rand::RAND::new(rng);
-        try!(bssl::map_result(unsafe {
-            (alg.generate_private_key)(result.bytes.as_mut_ptr(), &mut rng)
-        }));
-        Ok(result)
+        (alg.generate_private_key)(rng)
     }
 
     #[cfg(test)]
@@ -71,7 +63,11 @@ impl PrivateKey {
         result
     }
 
-    #[allow(unsafe_code)]
+    #[cfg(test)]
+    pub fn bytes(&'a self) -> &'a [u8] {
+        &self.bytes[..]
+    }
+
     #[inline(always)]
     pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,
                               out: &mut [u8]) -> Result<(), ()> {

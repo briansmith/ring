@@ -217,6 +217,81 @@ extern {
     pub fn CRYPTO_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
 }
 
+
+#[cfg(test)]
+pub mod test_util {
+    use core;
+    use super::*;
+
+    /// An implementation of `SecureRandom` that always fills the output slice
+    /// with the given byte.
+    pub struct FixedByteRandom {
+        pub byte: u8
+    }
+
+    impl SecureRandom for FixedByteRandom {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+            for d in dest {
+                *d = self.byte
+            }
+            Ok(())
+        }
+    }
+
+    /// An implementation of `SecureRandom` that always fills the output slice
+    /// with the slice in `bytes`. The length of the slice given to `slice`
+    /// must match exactly.
+    pub struct FixedSliceRandom<'a> {
+        pub bytes: &'a [u8],
+    }
+
+    impl <'a> SecureRandom for FixedSliceRandom<'a> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+            assert_eq!(dest.len(), self.bytes.len());
+            for i in 0..self.bytes.len() {
+                dest[i] = self.bytes[i];
+            }
+            Ok(())
+        }
+    }
+
+    /// An implementation of `SecureRandom` where each slice in `bytes` is a
+    /// test vector for one call to `fill()`. So, for example, the slice in
+    /// `bytes` is the output for the first call to `fill()`, the second slice
+    /// is the output for the second call to `fill()`, etc. The output slice
+    /// passed to `fill()` must have exactly the length of the corresponding
+    /// entry in `bytes`. `current` must be initialized to zero. `fill()` must
+    /// be called once for each entry in `bytes`.
+    pub struct FixedSliceSequenceRandom<'a> {
+        pub bytes: &'a [&'a [u8]],
+        pub current: core::cell::UnsafeCell<usize>,
+    }
+
+    impl <'a> SecureRandom for FixedSliceSequenceRandom<'a> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+            let current = unsafe { *self.current.get() };
+            let bytes = self.bytes[current];
+            assert_eq!(dest.len(), bytes.len());
+            for i in 0..bytes.len() {
+                dest[i] = bytes[i];
+            }
+            // Remember that we returned this slice and prepare to return
+            // the next one, if any.
+            unsafe { *self.current.get() += 1 };
+            Ok(())
+        }
+    }
+
+    impl <'a> Drop for FixedSliceSequenceRandom<'a> {
+        fn drop(&mut self) {
+            // Ensure that `fill()` was called exactly the right number of
+            // times.
+            assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use rand;

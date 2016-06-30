@@ -101,6 +101,7 @@ static ONE: ElemDecoded = ElemDecoded {
 pub struct CommonOps {
     pub num_limbs: usize,
     q: Mont,
+    pub n: ElemDecoded,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
     elem_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
@@ -242,7 +243,6 @@ impl PublicKeyOps {
 /// Operations on public scalars needed by ECDSA signature verification.
 pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
-    pub n: ElemDecoded,
     pub q_minus_n: ElemDecoded,
 
     scalar_inv_to_mont_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
@@ -256,7 +256,7 @@ impl PublicScalarOps {
         let encoded_value = try!(der::positive_integer(input));
         let limbs = try!(parse_big_endian_value_in_range(
                             encoded_value.as_slice_less_safe(), 1,
-                            &self.n.limbs[
+                            &self.public_key_ops.common.n.limbs[
                                 ..self.public_key_ops.common.num_limbs]));
         Ok(Scalar { limbs: limbs })
     }

@@ -15,15 +15,86 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use ec;
+use {c, ec, rand};
 use super::ops::*;
+
+#[allow(unsafe_code)]
+pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
+                            -> Result<ec::PrivateKey, ()> {
+    // NSA Guide Appendix B.2: "Key Pair Generation by Testing Candidates".
+
+    // TODO: The NSA guide also suggests, in appendix B.1, another mechanism
+    // that would avoid the need to use `rng.fill()` more than once. It works
+    // by generating an extra 64 bits of random bytes and then reducing the
+    // output (mod n). Supposedly, this removes enough of the bias towards
+    // small values from the modular reduction, but it isn't obvious that it is
+    // sufficient. TODO: Figure out what we can do to mitigate the bias issue
+    // and switch to the other mechanism.
+
+    let num_limbs = ops.common.num_limbs;
+
+    // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
+    // what specific value would be better, but it seems bad to try 100 times.
+    for _ in 0..100 {
+        let mut candidate_private_key = ec::PrivateKey {
+            bytes: [0; ec::SCALAR_MAX_BYTES],
+        };
+
+        // NSA Guide Steps 1, 2, and 3.
+        //
+        // Since we calculate the length ourselves, it is pointless to check
+        // it, since we can only check it by doing the same calculation.
+        let num_bytes = num_limbs * LIMB_BYTES;
+
+        // NSA Guide Step 4.
+        //
+        // The requirement that the random number generator has the requested
+        // security strength is delegated to `rng`.
+        try!(rng.fill(&mut candidate_private_key.bytes[..num_bytes]));
+
+        // NSA Guide Steps 5, 6, and 7.
+        //
+        // XXX: The NSA guide says that we should verify that the random scalar
+        // is in the range [0, n - 1) and then add one to it so that it is in
+        // the range [1, n). Instead, we verify that the scalar is in the range
+        // [1, n) like BoringSSL (et al.) does. This way, we avoid needing to
+        // compute or store the value (n - 1), we avoid the need to implement
+        // a function to add one to a scalar, and we avoid needing to convert
+        // the scalar back into an array of bytes. TODO: Is there any security
+        // advantage to the way the NSA suggests? There doesn't seem to be,
+        // other than being less error prone w.r.t. accidentally generating
+        // zero-valued keys.
+        let scalar = private_key_as_scalar_(ops, &candidate_private_key);
+        if !scalar_is_in_range(ops.common, &scalar) {
+            continue;
+        }
+
+        // NSA Guide Step 8 is done in `private_to_public()`.
+
+        // NSA Guide Step 9.
+        return Ok(candidate_private_key);
+    }
+
+    Err(())
+}
+
 
 // The underlying X25519 and Ed25519 code uses an [u8; 32] to store the private
 // key. To make the ECDH and ECDSA code similar to that, we also store the
 // private key that way, which means we have to convert it to a Scalar whenever
 // we need to use it.
+#[inline]
 pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
                              -> Scalar {
+    let r = private_key_as_scalar_(ops, private_key);
+    assert!(scalar_is_in_range(&ops.common, &r));
+    r
+}
+
+// Like `private_key_as_scalar`, but without the assertions about the range of
+// the value.
+fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
+                          -> Scalar {
     let num_limbs = ops.common.num_limbs;
     let bytes = &private_key.bytes;
     let mut limbs = [0; MAX_LIMBS];
@@ -35,9 +106,6 @@ pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
         }
         limbs[i] = limb;
     }
-    //TODO:
-    //debug_assert!(limbs_less_than_limbs(&limbs[..num_limbs],
-    //                                    &ops.common.n.limbs[..num_limbs]))
     Scalar::from_limbs_unchecked(&limbs)
 }
 
@@ -47,17 +115,15 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
-    // TODO: what does the spec call this?
-    let my_public_key = try!(ops.base_point_mult(&my_private_key));
+    let (x, y, z) = try!(ops.base_point_mult(&my_private_key));
 
-    // XXX: Is this needed?
-    // try!(ops.common.elem_verify_is_not_zero(&z));
+    assert!(ops.common.elem_verify_is_not_zero(&z).is_ok());
 
     public_out[0] = 4; // Uncompressed encoding.
     let (x_out, y_out) =
         (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
     big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out),
-                                    &my_public_key);
+                                    &(x, y, z));
 
     Ok(())
 }
@@ -101,5 +167,35 @@ fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
                 = (limb & 0xff) as u8;
             limb >>= 8;
         }
+    }
+}
+
+#[allow(unsafe_code)]
+fn scalar_is_in_range(ops: &CommonOps, candidate_scalar: &Scalar) -> bool {
+    let is_zero = unsafe {
+        GFp_constant_time_limbs_are_zero(candidate_scalar.limbs.as_ptr(),
+                                         ops.num_limbs)
+    };
+    let is_lt_n = unsafe {
+        GFp_constant_time_limbs_lt_limbs(candidate_scalar.limbs.as_ptr(),
+                                         ops.n.limbs.as_ptr(),
+                                         ops.num_limbs)
+    };
+    (is_zero == 0) && (is_lt_n != 0)
+}
+
+extern {
+    fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
+                                        -> Limb;
+    fn GFp_constant_time_limbs_lt_limbs(a: *const Limb, b: *const Limb,
+                                        num_limbs: c::size_t) -> Limb;
+}
+
+#[cfg(test)]
+pub mod test_util {
+    use super::super::ops::Limb;
+
+    pub fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
+        super::big_endian_from_limbs(out, limbs)
     }
 }

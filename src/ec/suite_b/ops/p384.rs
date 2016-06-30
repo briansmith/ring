@@ -12,7 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {c, rand};
 use super::{CommonOps, EC_GROUP, Elem, ElemDecoded, Limb, LIMB_BITS, Mont,
             PrivateKeyOps, PublicKeyOps, PublicScalarOps};
 
@@ -36,6 +35,12 @@ pub static COMMON_OPS: CommonOps = CommonOps {
                        0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffe,
                        0xffffffff, 0x00000000, 0x00000000, 0xffffffff],
         rr: limbs![0, 0, 0, 1, 2, 0, 0xfffffffe, 0, 2, 0, 0xfffffffe, 1 ],
+    },
+
+    n: ElemDecoded {
+        limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                           0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
+                           0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
     },
 
     elem_mul_mont: GFp_p384_elem_mul_mont,
@@ -72,12 +77,6 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     public_key_ops: &PUBLIC_KEY_OPS,
 
-    n: ElemDecoded {
-        limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                           0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
-                           0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
-    },
-
     q_minus_n: ElemDecoded {
         limbs: p384_limbs![0, 0, 0, 0,
                            0, 0, 0x389cb27e, 0x0bc8d21f,
@@ -97,12 +96,6 @@ unsafe extern fn GFp_p384_elem_sqr_mont(
   GFp_p384_elem_mul_mont(r, a, a);
 }
 
-
-#[allow(improper_ctypes)]
-extern {
-    pub fn GFp_p384_generate_private_key(out: *mut u8, rng: *mut rand::RAND)
-                                         -> c::int;
-}
 
 extern {
     fn GFp_p384_elem_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
