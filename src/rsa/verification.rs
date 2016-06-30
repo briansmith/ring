@@ -25,6 +25,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input)
               -> Result<(), error::Unspecified> {
+        let public_key = try!(parse_public_key(public_key));
         verify_rsa(self, public_key, msg, signature)
     }
 }
@@ -61,15 +62,17 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
            "Verification of signatures using RSA keys of 3072-8192 bits,
             PKCS#1.5 padding, and SHA-384.");
 
-fn verify_rsa(params: &RSAParameters, public_key: untrusted::Input,
+fn verify_rsa(params: &RSAParameters,
+              (n, e): (untrusted::Input, untrusted::Input),
               msg: untrusted::Input, signature: untrusted::Input)
               -> Result<(), error::Unspecified> {
     const MAX_BITS: usize = 8192;
 
-    let (n, e) = try!(parse_public_key(public_key));
     let signature = signature.as_slice_less_safe();
 
     let mut decoded = [0u8; (MAX_BITS + 7) / 8];
+    let n = n.as_slice_less_safe();
+    let e = e.as_slice_less_safe();
     if signature.len() > decoded.len() {
         return Err(error::Unspecified);
     }
