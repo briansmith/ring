@@ -6,6 +6,105 @@ package runner
 
 import "bytes"
 
+func writeLen(buf []byte, v, size int) {
+	for i := 0; i < size; i++ {
+		buf[size-i-1] = byte(v)
+		v >>= 8
+	}
+	if v != 0 {
+		panic("length is too long")
+	}
+}
+
+type byteBuilder struct {
+	buf       *[]byte
+	start     int
+	prefixLen int
+	child     *byteBuilder
+}
+
+func newByteBuilder() *byteBuilder {
+	buf := make([]byte, 0, 32)
+	return &byteBuilder{buf: &buf}
+}
+
+func (bb *byteBuilder) len() int {
+	return len(*bb.buf) - bb.start - bb.prefixLen
+}
+
+func (bb *byteBuilder) flush() {
+	if bb.child == nil {
+		return
+	}
+	bb.child.flush()
+	writeLen((*bb.buf)[bb.child.start:], bb.child.len(), bb.child.prefixLen)
+	bb.child = nil
+	return
+}
+
+func (bb *byteBuilder) finish() []byte {
+	bb.flush()
+	return *bb.buf
+}
+
+func (bb *byteBuilder) addU8(u uint8) {
+	bb.flush()
+	*bb.buf = append(*bb.buf, u)
+}
+
+func (bb *byteBuilder) addU16(u uint16) {
+	bb.flush()
+	*bb.buf = append(*bb.buf, byte(u>>8), byte(u))
+}
+
+func (bb *byteBuilder) addU24(u int) {
+	bb.flush()
+	*bb.buf = append(*bb.buf, byte(u>>16), byte(u>>8), byte(u))
+}
+
+func (bb *byteBuilder) addU32(u uint32) {
+	bb.flush()
+	*bb.buf = append(*bb.buf, byte(u>>24), byte(u>>16), byte(u>>8), byte(u))
+}
+
+func (bb *byteBuilder) addU8LengthPrefixed() *byteBuilder {
+	return bb.createChild(1)
+}
+
+func (bb *byteBuilder) addU16LengthPrefixed() *byteBuilder {
+	return bb.createChild(2)
+}
+
+func (bb *byteBuilder) addU24LengthPrefixed() *byteBuilder {
+	return bb.createChild(3)
+}
+
+func (bb *byteBuilder) addBytes(b []byte) {
+	bb.flush()
+	*bb.buf = append(*bb.buf, b...)
+}
+
+func (bb *byteBuilder) createChild(lengthPrefixSize int) *byteBuilder {
+	bb.flush()
+	bb.child = &byteBuilder{
+		buf:       bb.buf,
+		start:     len(*bb.buf),
+		prefixLen: lengthPrefixSize,
+	}
+	for i := 0; i < lengthPrefixSize; i++ {
+		*bb.buf = append(*bb.buf, 0)
+	}
+	return bb.child
+}
+
+func (bb *byteBuilder) discardChild() {
+	if bb.child != nil {
+		return
+	}
+	bb.child = nil
+	*bb.buf = (*bb.buf)[:bb.start]
+}
+
 type clientHelloMsg struct {
 	raw                     []byte
 	isDTLS                  bool
@@ -75,132 +174,38 @@ func (m *clientHelloMsg) marshal() []byte {
 		return m.raw
 	}
 
-	length := 2 + 32 + 1 + len(m.sessionId) + 2 + len(m.cipherSuites)*2 + 1 + len(m.compressionMethods)
-	if m.isDTLS {
-		length += 1 + len(m.cookie)
-	}
-	numExtensions := 0
-	extensionsLength := 0
-	if m.nextProtoNeg {
-		numExtensions++
-	}
-	if m.ocspStapling {
-		extensionsLength += 1 + 2 + 2
-		numExtensions++
-	}
-	if len(m.serverName) > 0 {
-		extensionsLength += 5 + len(m.serverName)
-		numExtensions++
-	}
-	if len(m.supportedCurves) > 0 {
-		extensionsLength += 2 + 2*len(m.supportedCurves)
-		numExtensions++
-	}
-	if len(m.supportedPoints) > 0 {
-		extensionsLength += 1 + len(m.supportedPoints)
-		numExtensions++
-	}
-	if m.ticketSupported {
-		extensionsLength += len(m.sessionTicket)
-		numExtensions++
-	}
-	if len(m.signatureAlgorithms) > 0 {
-		extensionsLength += 2 + 2*len(m.signatureAlgorithms)
-		numExtensions++
-	}
-	if m.secureRenegotiation != nil {
-		extensionsLength += 1 + len(m.secureRenegotiation)
-		numExtensions++
-	}
-	if m.duplicateExtension {
-		numExtensions += 2
-	}
-	if m.channelIDSupported {
-		numExtensions++
-	}
-	if len(m.alpnProtocols) > 0 {
-		extensionsLength += 2
-		for _, s := range m.alpnProtocols {
-			if l := len(s); l > 255 {
-				panic("invalid ALPN protocol")
-			}
-			extensionsLength++
-			extensionsLength += len(s)
-		}
-		numExtensions++
-	}
-	if m.extendedMasterSecret {
-		numExtensions++
-	}
-	if len(m.srtpProtectionProfiles) > 0 {
-		extensionsLength += 2 + 2*len(m.srtpProtectionProfiles)
-		extensionsLength += 1 + len(m.srtpMasterKeyIdentifier)
-		numExtensions++
-	}
-	if m.sctListSupported {
-		numExtensions++
-	}
-	if l := len(m.customExtension); l > 0 {
-		extensionsLength += l
-		numExtensions++
-	}
-	if numExtensions > 0 {
-		extensionsLength += 4 * numExtensions
-		length += 2 + extensionsLength
-	}
-
-	x := make([]byte, 4+length)
-	x[0] = typeClientHello
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
+	handshakeMsg := newByteBuilder()
+	handshakeMsg.addU8(typeClientHello)
+	hello := handshakeMsg.addU24LengthPrefixed()
 	vers := versionToWire(m.vers, m.isDTLS)
-	x[4] = uint8(vers >> 8)
-	x[5] = uint8(vers)
-	copy(x[6:38], m.random)
-	x[38] = uint8(len(m.sessionId))
-	copy(x[39:39+len(m.sessionId)], m.sessionId)
-	y := x[39+len(m.sessionId):]
+	hello.addU16(vers)
+	hello.addBytes(m.random)
+	sessionId := hello.addU8LengthPrefixed()
+	sessionId.addBytes(m.sessionId)
 	if m.isDTLS {
-		y[0] = uint8(len(m.cookie))
-		copy(y[1:], m.cookie)
-		y = y[1+len(m.cookie):]
+		cookie := hello.addU8LengthPrefixed()
+		cookie.addBytes(m.cookie)
 	}
-	y[0] = uint8(len(m.cipherSuites) >> 7)
-	y[1] = uint8(len(m.cipherSuites) << 1)
-	for i, suite := range m.cipherSuites {
-		y[2+i*2] = uint8(suite >> 8)
-		y[3+i*2] = uint8(suite)
+	cipherSuites := hello.addU16LengthPrefixed()
+	for _, suite := range m.cipherSuites {
+		cipherSuites.addU16(suite)
 	}
-	z := y[2+len(m.cipherSuites)*2:]
-	z[0] = uint8(len(m.compressionMethods))
-	copy(z[1:], m.compressionMethods)
+	compressionMethods := hello.addU8LengthPrefixed()
+	compressionMethods.addBytes(m.compressionMethods)
 
-	z = z[1+len(m.compressionMethods):]
-	if numExtensions > 0 {
-		z[0] = byte(extensionsLength >> 8)
-		z[1] = byte(extensionsLength)
-		z = z[2:]
-	}
+	extensions := hello.addU16LengthPrefixed()
 	if m.duplicateExtension {
 		// Add a duplicate bogus extension at the beginning and end.
-		z[0] = 0xff
-		z[1] = 0xff
-		z = z[4:]
+		extensions.addU16(0xffff)
+		extensions.addU16(0) // 0-length for empty extension
 	}
 	if m.nextProtoNeg && !m.npnLast {
-		z[0] = byte(extensionNextProtoNeg >> 8)
-		z[1] = byte(extensionNextProtoNeg & 0xff)
-		// The length is always 0
-		z = z[4:]
+		extensions.addU16(extensionNextProtoNeg)
+		extensions.addU16(0) // The length is always 0
 	}
 	if len(m.serverName) > 0 {
-		z[0] = byte(extensionServerName >> 8)
-		z[1] = byte(extensionServerName & 0xff)
-		l := len(m.serverName) + 5
-		z[2] = byte(l >> 8)
-		z[3] = byte(l)
-		z = z[4:]
+		extensions.addU16(extensionServerName)
+		serverNameList := extensions.addU16LengthPrefixed()
 
 		// RFC 3546, section 3.1
 		//
@@ -221,179 +226,121 @@ func (m *clientHelloMsg) marshal() []byte {
 		//     ServerName server_name_list<1..2^16-1>
 		// } ServerNameList;
 
-		z[0] = byte((len(m.serverName) + 3) >> 8)
-		z[1] = byte(len(m.serverName) + 3)
-		z[3] = byte(len(m.serverName) >> 8)
-		z[4] = byte(len(m.serverName))
-		copy(z[5:], []byte(m.serverName))
-		z = z[l:]
+		serverName := serverNameList.addU16LengthPrefixed()
+		serverName.addU8(0) // NameType host_name(0)
+		hostName := serverName.addU16LengthPrefixed()
+		hostName.addBytes([]byte(m.serverName))
 	}
 	if m.ocspStapling {
+		extensions.addU16(extensionStatusRequest)
+		certificateStatusRequest := extensions.addU16LengthPrefixed()
+
 		// RFC 4366, section 3.6
-		z[0] = byte(extensionStatusRequest >> 8)
-		z[1] = byte(extensionStatusRequest)
-		z[2] = 0
-		z[3] = 5
-		z[4] = 1 // OCSP type
+		certificateStatusRequest.addU8(1) // OCSP type
 		// Two zero valued uint16s for the two lengths.
-		z = z[9:]
+		certificateStatusRequest.addU16(0) // ResponderID length
+		certificateStatusRequest.addU16(0) // Extensions length
 	}
 	if len(m.supportedCurves) > 0 {
-		// http://tools.ietf.org/html/rfc4492#section-5.5.1
-		z[0] = byte(extensionSupportedCurves >> 8)
-		z[1] = byte(extensionSupportedCurves)
-		l := 2 + 2*len(m.supportedCurves)
-		z[2] = byte(l >> 8)
-		z[3] = byte(l)
-		l -= 2
-		z[4] = byte(l >> 8)
-		z[5] = byte(l)
-		z = z[6:]
+		// http://tools.ietf.org/html/rfc4492#section-5.1.1
+		extensions.addU16(extensionSupportedCurves)
+		supportedCurvesList := extensions.addU16LengthPrefixed()
+		supportedCurves := supportedCurvesList.addU16LengthPrefixed()
 		for _, curve := range m.supportedCurves {
-			z[0] = byte(curve >> 8)
-			z[1] = byte(curve)
-			z = z[2:]
+			supportedCurves.addU16(uint16(curve))
 		}
 	}
 	if len(m.supportedPoints) > 0 {
-		// http://tools.ietf.org/html/rfc4492#section-5.5.2
-		z[0] = byte(extensionSupportedPoints >> 8)
-		z[1] = byte(extensionSupportedPoints)
-		l := 1 + len(m.supportedPoints)
-		z[2] = byte(l >> 8)
-		z[3] = byte(l)
-		l--
-		z[4] = byte(l)
-		z = z[5:]
+		// http://tools.ietf.org/html/rfc4492#section-5.1.2
+		extensions.addU16(extensionSupportedPoints)
+		supportedPointsList := extensions.addU16LengthPrefixed()
+		supportedPoints := supportedPointsList.addU8LengthPrefixed()
 		for _, pointFormat := range m.supportedPoints {
-			z[0] = byte(pointFormat)
-			z = z[1:]
+			supportedPoints.addU8(pointFormat)
 		}
 	}
 	if m.ticketSupported {
 		// http://tools.ietf.org/html/rfc5077#section-3.2
-		z[0] = byte(extensionSessionTicket >> 8)
-		z[1] = byte(extensionSessionTicket)
-		l := len(m.sessionTicket)
-		z[2] = byte(l >> 8)
-		z[3] = byte(l)
-		z = z[4:]
-		copy(z, m.sessionTicket)
-		z = z[len(m.sessionTicket):]
+		extensions.addU16(extensionSessionTicket)
+		sessionTicketExtension := extensions.addU16LengthPrefixed()
+		sessionTicketExtension.addBytes(m.sessionTicket)
 	}
 	if len(m.signatureAlgorithms) > 0 {
 		// https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
-		z[0] = byte(extensionSignatureAlgorithms >> 8)
-		z[1] = byte(extensionSignatureAlgorithms)
-		l := 2 + 2*len(m.signatureAlgorithms)
-		z[2] = byte(l >> 8)
-		z[3] = byte(l)
-		z = z[4:]
-
-		l -= 2
-		z[0] = byte(l >> 8)
-		z[1] = byte(l)
-		z = z[2:]
+		extensions.addU16(extensionSignatureAlgorithms)
+		signatureAlgorithmsExtension := extensions.addU16LengthPrefixed()
+		signatureAlgorithms := signatureAlgorithmsExtension.addU16LengthPrefixed()
 		for _, sigAlg := range m.signatureAlgorithms {
-			z[0] = byte(sigAlg >> 8)
-			z[1] = byte(sigAlg)
-			z = z[2:]
+			signatureAlgorithms.addU16(uint16(sigAlg))
 		}
 	}
 	if m.secureRenegotiation != nil {
-		z[0] = byte(extensionRenegotiationInfo >> 8)
-		z[1] = byte(extensionRenegotiationInfo & 0xff)
-		z[2] = 0
-		z[3] = byte(1 + len(m.secureRenegotiation))
-		z[4] = byte(len(m.secureRenegotiation))
-		z = z[5:]
-		copy(z, m.secureRenegotiation)
-		z = z[len(m.secureRenegotiation):]
+		extensions.addU16(extensionRenegotiationInfo)
+		secureRenegoExt := extensions.addU16LengthPrefixed()
+		secureRenego := secureRenegoExt.addU8LengthPrefixed()
+		secureRenego.addBytes(m.secureRenegotiation)
 	}
 	if len(m.alpnProtocols) > 0 {
-		z[0] = byte(extensionALPN >> 8)
-		z[1] = byte(extensionALPN & 0xff)
-		lengths := z[2:]
-		z = z[6:]
+		// https://tools.ietf.org/html/rfc7301#section-3.1
+		extensions.addU16(extensionALPN)
+		alpnExtension := extensions.addU16LengthPrefixed()
 
-		stringsLength := 0
+		protocolNameList := alpnExtension.addU16LengthPrefixed()
 		for _, s := range m.alpnProtocols {
-			l := len(s)
-			z[0] = byte(l)
-			copy(z[1:], s)
-			z = z[1+l:]
-			stringsLength += 1 + l
+			protocolName := protocolNameList.addU8LengthPrefixed()
+			protocolName.addBytes([]byte(s))
 		}
-
-		lengths[2] = byte(stringsLength >> 8)
-		lengths[3] = byte(stringsLength)
-		stringsLength += 2
-		lengths[0] = byte(stringsLength >> 8)
-		lengths[1] = byte(stringsLength)
 	}
 	if m.channelIDSupported {
-		z[0] = byte(extensionChannelID >> 8)
-		z[1] = byte(extensionChannelID & 0xff)
-		z = z[4:]
+		extensions.addU16(extensionChannelID)
+		extensions.addU16(0) // Length is always 0
 	}
 	if m.nextProtoNeg && m.npnLast {
-		z[0] = byte(extensionNextProtoNeg >> 8)
-		z[1] = byte(extensionNextProtoNeg & 0xff)
-		// The length is always 0
-		z = z[4:]
+		extensions.addU16(extensionNextProtoNeg)
+		extensions.addU16(0) // Length is always 0
 	}
 	if m.duplicateExtension {
 		// Add a duplicate bogus extension at the beginning and end.
-		z[0] = 0xff
-		z[1] = 0xff
-		z = z[4:]
+		extensions.addU16(0xffff)
+		extensions.addU16(0)
 	}
 	if m.extendedMasterSecret {
 		// https://tools.ietf.org/html/rfc7627
-		z[0] = byte(extensionExtendedMasterSecret >> 8)
-		z[1] = byte(extensionExtendedMasterSecret & 0xff)
-		z = z[4:]
+		extensions.addU16(extensionExtendedMasterSecret)
+		extensions.addU16(0) // Length is always 0
 	}
 	if len(m.srtpProtectionProfiles) > 0 {
-		z[0] = byte(extensionUseSRTP >> 8)
-		z[1] = byte(extensionUseSRTP & 0xff)
+		// https://tools.ietf.org/html/rfc5764#section-4.1.1
+		extensions.addU16(extensionUseSRTP)
+		useSrtpExt := extensions.addU16LengthPrefixed()
 
-		profilesLen := 2 * len(m.srtpProtectionProfiles)
-		mkiLen := len(m.srtpMasterKeyIdentifier)
-		l := 2 + profilesLen + 1 + mkiLen
-		z[2] = byte(l >> 8)
-		z[3] = byte(l & 0xff)
-
-		z[4] = byte(profilesLen >> 8)
-		z[5] = byte(profilesLen & 0xff)
-		z = z[6:]
+		srtpProtectionProfiles := useSrtpExt.addU16LengthPrefixed()
 		for _, p := range m.srtpProtectionProfiles {
-			z[0] = byte(p >> 8)
-			z[1] = byte(p & 0xff)
-			z = z[2:]
+			// An SRTPProtectionProfile is defined as uint8[2],
+			// not uint16. For some reason, we're storing it
+			// as a uint16.
+			srtpProtectionProfiles.addU8(byte(p >> 8))
+			srtpProtectionProfiles.addU8(byte(p))
 		}
-
-		z[0] = byte(mkiLen)
-		copy(z[1:], []byte(m.srtpMasterKeyIdentifier))
-		z = z[1+mkiLen:]
+		srtpMki := useSrtpExt.addU8LengthPrefixed()
+		srtpMki.addBytes([]byte(m.srtpMasterKeyIdentifier))
 	}
 	if m.sctListSupported {
-		z[0] = byte(extensionSignedCertificateTimestamp >> 8)
-		z[1] = byte(extensionSignedCertificateTimestamp & 0xff)
-		z = z[4:]
+		extensions.addU16(extensionSignedCertificateTimestamp)
+		extensions.addU16(0) // Length is always 0
 	}
 	if l := len(m.customExtension); l > 0 {
-		z[0] = byte(extensionCustom >> 8)
-		z[1] = byte(extensionCustom & 0xff)
-		z[2] = byte(l >> 8)
-		z[3] = byte(l & 0xff)
-		copy(z[4:], []byte(m.customExtension))
-		z = z[4+l:]
+		extensions.addU16(extensionCustom)
+		customExt := extensions.addU16LengthPrefixed()
+		customExt.addBytes([]byte(m.customExtension))
 	}
 
-	m.raw = x
+	if extensions.len() == 0 {
+		hello.discardChild()
+	}
 
-	return x
+	m.raw = handshakeMsg.finish()
+	return m.raw
 }
 
 func (m *clientHelloMsg) unmarshal(data []byte) bool {
