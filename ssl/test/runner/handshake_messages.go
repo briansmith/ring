@@ -105,6 +105,11 @@ func (bb *byteBuilder) discardChild() {
 	*bb.buf = (*bb.buf)[:bb.start]
 }
 
+type keyShareEntry struct {
+	group       CurveID
+	keyExchange []byte
+}
+
 type clientHelloMsg struct {
 	raw                     []byte
 	isDTLS                  bool
@@ -119,6 +124,10 @@ type clientHelloMsg struct {
 	ocspStapling            bool
 	supportedCurves         []CurveID
 	supportedPoints         []uint8
+	keyShares               []keyShareEntry
+	pskIdentities           [][]uint8
+	hasEarlyData            bool
+	earlyDataContext        []byte
 	ticketSupported         bool
 	sessionTicket           []uint8
 	signatureAlgorithms     []signatureAlgorithm
@@ -153,6 +162,10 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.ocspStapling == m1.ocspStapling &&
 		eqCurveIDs(m.supportedCurves, m1.supportedCurves) &&
 		bytes.Equal(m.supportedPoints, m1.supportedPoints) &&
+		eqKeyShareEntryLists(m.keyShares, m1.keyShares) &&
+		eqByteSlices(m.pskIdentities, m1.pskIdentities) &&
+		m.hasEarlyData == m1.hasEarlyData &&
+		bytes.Equal(m.earlyDataContext, m1.earlyDataContext) &&
 		m.ticketSupported == m1.ticketSupported &&
 		bytes.Equal(m.sessionTicket, m1.sessionTicket) &&
 		eqSignatureAlgorithms(m.signatureAlgorithms, m1.signatureAlgorithms) &&
@@ -258,6 +271,34 @@ func (m *clientHelloMsg) marshal() []byte {
 		for _, pointFormat := range m.supportedPoints {
 			supportedPoints.addU8(pointFormat)
 		}
+	}
+	if len(m.keyShares) > 0 {
+		extensions.addU16(extensionKeyShare)
+		keyShareList := extensions.addU16LengthPrefixed()
+
+		keyShares := keyShareList.addU16LengthPrefixed()
+		for _, keyShare := range m.keyShares {
+			keyShares.addU16(uint16(keyShare.group))
+			keyExchange := keyShares.addU16LengthPrefixed()
+			keyExchange.addBytes(keyShare.keyExchange)
+		}
+	}
+	if len(m.pskIdentities) > 0 {
+		extensions.addU16(extensionPreSharedKey)
+		pskExtension := extensions.addU16LengthPrefixed()
+
+		pskIdentities := pskExtension.addU16LengthPrefixed()
+		for _, psk := range m.pskIdentities {
+			pskIdentity := pskIdentities.addU16LengthPrefixed()
+			pskIdentity.addBytes(psk)
+		}
+	}
+	if m.hasEarlyData {
+		extensions.addU16(extensionEarlyData)
+		earlyDataIndication := extensions.addU16LengthPrefixed()
+
+		context := earlyDataIndication.addU8LengthPrefixed()
+		context.addBytes(m.earlyDataContext)
 	}
 	if m.ticketSupported {
 		// http://tools.ietf.org/html/rfc5077#section-3.2
@@ -399,6 +440,10 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.nextProtoNeg = false
 	m.serverName = ""
 	m.ocspStapling = false
+	m.keyShares = nil
+	m.pskIdentities = nil
+	m.hasEarlyData = false
+	m.earlyDataContext = nil
 	m.ticketSupported = false
 	m.sessionTicket = nil
 	m.signatureAlgorithms = nil
@@ -492,6 +537,67 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			// http://tools.ietf.org/html/rfc5077#section-3.2
 			m.ticketSupported = true
 			m.sessionTicket = data[:length]
+		case extensionKeyShare:
+			// draft-ietf-tls-tls13 section 6.3.2.3
+			if length < 2 {
+				return false
+			}
+			l := int(data[0])<<8 | int(data[1])
+			if l != length-2 {
+				return false
+			}
+			d := data[2:length]
+			for len(d) > 0 {
+				// The next KeyShareEntry contains a NamedGroup (2 bytes) and a
+				// key_exchange (2-byte length prefix with at least 1 byte of content).
+				if len(d) < 5 {
+					return false
+				}
+				entry := keyShareEntry{}
+				entry.group = CurveID(d[0])<<8 | CurveID(d[1])
+				keyExchLen := int(d[2])<<8 | int(d[3])
+				d = d[4:]
+				if len(d) < keyExchLen {
+					return false
+				}
+				entry.keyExchange = d[:keyExchLen]
+				d = d[keyExchLen:]
+				m.keyShares = append(m.keyShares, entry)
+			}
+		case extensionPreSharedKey:
+			// draft-ietf-tls-tls13 section 6.3.2.4
+			if length < 2 {
+				return false
+			}
+			l := int(data[0])<<8 | int(data[1])
+			if l != length-2 {
+				return false
+			}
+			d := data[2:length]
+			for len(d) > 0 {
+				if len(d) < 2 {
+					return false
+				}
+				pskLen := int(d[0])<<8 | int(d[1])
+				d = d[2:]
+				if len(d) < pskLen {
+					return false
+				}
+				psk := d[:pskLen]
+				m.pskIdentities = append(m.pskIdentities, psk)
+				d = d[pskLen:]
+			}
+		case extensionEarlyData:
+			// draft-ietf-tls-tls13 section 6.3.2.5
+			if length < 1 {
+				return false
+			}
+			l := int(data[0])
+			if length != l+1 {
+				return false
+			}
+			m.hasEarlyData = true
+			m.earlyDataContext = data[1:length]
 		case extensionSignatureAlgorithms:
 			// https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
 			if length < 2 || length&1 != 0 {
@@ -1568,4 +1674,17 @@ func eqSignatureAlgorithms(x, y []signatureAlgorithm) bool {
 		}
 	}
 	return true
+}
+
+func eqKeyShareEntryLists(x, y []keyShareEntry) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	for i, v := range x {
+		if y[i].group != v.group || !bytes.Equal(y[i].keyExchange, v.keyExchange) {
+			return false
+		}
+	}
+	return true
+
 }
