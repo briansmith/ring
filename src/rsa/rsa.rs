@@ -101,13 +101,15 @@ pub struct RSAParameters {
     min_bits: usize,
 }
 
-fn parse_public_key(input: untrusted::Input)
-                    -> Result<(&[u8], &[u8]), error::Unspecified> {
+
+fn parse_public_key(input: untrusted::Input) ->
+                    Result<(untrusted::Input, untrusted::Input),
+                           error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
             let e = try!(der::positive_integer(input));
-            Ok((n.as_slice_less_safe(), e.as_slice_less_safe()))
+            Ok((n, e))
         })
     })
 }

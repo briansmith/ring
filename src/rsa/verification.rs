@@ -24,22 +24,24 @@ use untrusted;
 impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
-        verify(self, public_key, msg, signature)
+        let (n, e) = try!(parse_public_key(public_key));
+        verify(self, (n, e), msg, signature)
     }
 }
 
-fn verify(params: &RSAParameters, public_key: untrusted::Input,
+fn verify(params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input),
           msg: untrusted::Input, signature: untrusted::Input)
           -> Result<(), error::Unspecified> {
     const MAX_BITS: usize = 8192;
 
-    let (n, e) = try!(parse_public_key(public_key));
     let signature = signature.as_slice_less_safe();
     let mut decoded = [0u8; (MAX_BITS + 7) / 8];
     if signature.len() > decoded.len() {
         return Err(error::Unspecified);
     }
 
+    let n = n.as_slice_less_safe();
+    let e = e.as_slice_less_safe();
     let decoded = &mut decoded[..signature.len()];
     try!(bssl::map_result(unsafe {
         GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(),
