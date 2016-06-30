@@ -79,9 +79,7 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
         let (x, _, z) = try!(self.ops.twin_mult(&u1, &u2, &peer_pub_key));
-        if self.ops.public_key_ops.elem_is_zero(&z) {
-            return Err(());
-        }
+        try!(self.ops.public_key_ops.common.elem_verify_is_not_zero(&z));
 
         // NSA Guide Step 7: "Compute v = xR mod n."
         // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
