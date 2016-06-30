@@ -917,18 +917,40 @@ func (c *Config) cipherSuites() []uint16 {
 	return s
 }
 
-func (c *Config) minVersion() uint16 {
-	if c == nil || c.MinVersion == 0 {
-		return minVersion
+func (c *Config) minVersion(isDTLS bool) uint16 {
+	ret := uint16(minVersion)
+	if c != nil && c.MinVersion != 0 {
+		ret = c.MinVersion
 	}
-	return c.MinVersion
+	if isDTLS {
+		// The lowest version of DTLS is 1.0. There is no DSSL 3.0.
+		if ret < VersionTLS10 {
+			return VersionTLS10
+		}
+		// There is no such thing as DTLS 1.1.
+		if ret == VersionTLS11 {
+			return VersionTLS12
+		}
+	}
+	return ret
 }
 
-func (c *Config) maxVersion() uint16 {
-	if c == nil || c.MaxVersion == 0 {
-		return maxVersion
+func (c *Config) maxVersion(isDTLS bool) uint16 {
+	ret := uint16(maxVersion)
+	if c != nil && c.MaxVersion != 0 {
+		ret = c.MaxVersion
 	}
-	return c.MaxVersion
+	if isDTLS {
+		// We only implement up to DTLS 1.2.
+		if ret > VersionTLS12 {
+			return VersionTLS12
+		}
+		// There is no such thing as DTLS 1.1.
+		if ret == VersionTLS11 {
+			return VersionTLS10
+		}
+	}
+	return ret
 }
 
 var defaultCurvePreferences = []CurveID{CurveX25519, CurveP256, CurveP384, CurveP521}
@@ -942,9 +964,14 @@ func (c *Config) curvePreferences() []CurveID {
 
 // mutualVersion returns the protocol version to use given the advertised
 // version of the peer.
-func (c *Config) mutualVersion(vers uint16) (uint16, bool) {
-	minVersion := c.minVersion()
-	maxVersion := c.maxVersion()
+func (c *Config) mutualVersion(vers uint16, isDTLS bool) (uint16, bool) {
+	// There is no such thing as DTLS 1.1.
+	if isDTLS && vers == VersionTLS11 {
+		vers = VersionTLS10
+	}
+
+	minVersion := c.minVersion(isDTLS)
+	maxVersion := c.maxVersion(isDTLS)
 
 	if vers < minVersion {
 		return 0, false

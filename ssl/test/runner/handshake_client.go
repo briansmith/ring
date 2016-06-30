@@ -57,7 +57,7 @@ func (c *Conn) clientHandshake() error {
 
 	hello := &clientHelloMsg{
 		isDTLS:                  c.isDTLS,
-		vers:                    c.config.maxVersion(),
+		vers:                    c.config.maxVersion(c.isDTLS),
 		compressionMethods:      []uint8{compressionNone},
 		random:                  make([]byte, 32),
 		ocspStapling:            true,
@@ -71,7 +71,7 @@ func (c *Conn) clientHandshake() error {
 		duplicateExtension:      c.config.Bugs.DuplicateExtension,
 		channelIDSupported:      c.config.ChannelID != nil,
 		npnLast:                 c.config.Bugs.SwapNPNAndALPN,
-		extendedMasterSecret:    c.config.maxVersion() >= VersionTLS10,
+		extendedMasterSecret:    c.config.maxVersion(c.isDTLS) >= VersionTLS10,
 		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
 		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
 		customExtension:         c.config.Bugs.CustomExtension,
@@ -169,8 +169,8 @@ NextCipherSuite:
 				}
 			}
 
-			versOk := candidateSession.vers >= c.config.minVersion() &&
-				candidateSession.vers <= c.config.maxVersion()
+			versOk := candidateSession.vers >= c.config.minVersion(c.isDTLS) &&
+				candidateSession.vers <= c.config.maxVersion(c.isDTLS)
 			if ticketOk && versOk && cipherSuiteOk {
 				session = candidateSession
 			}
@@ -267,7 +267,7 @@ NextCipherSuite:
 		return unexpectedMessageError(serverHello, msg)
 	}
 
-	c.vers, ok = c.config.mutualVersion(serverHello.vers)
+	c.vers, ok = c.config.mutualVersion(serverHello.vers, c.isDTLS)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
 		return fmt.Errorf("tls: server selected unsupported protocol version %x", serverHello.vers)

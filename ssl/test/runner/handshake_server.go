@@ -211,7 +211,7 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		}
 	}
 
-	c.vers, ok = config.mutualVersion(hs.clientHello.vers)
+	c.vers, ok = config.mutualVersion(hs.clientHello.vers, c.isDTLS)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
 		return false, fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
