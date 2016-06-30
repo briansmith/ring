@@ -1506,13 +1506,6 @@ OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *session);
 /* SSL_SESSION_get_timeout returns the lifetime of |session| in seconds. */
 OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *session);
 
-/* SSL_SESSION_get_key_exchange_info returns a value that describes the
- * strength of the asymmetric operation that provides confidentiality to
- * |session|. Its interpretation depends on the operation used. See the
- * documentation for this value in the |SSL_SESSION| structure. */
-OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(
-    const SSL_SESSION *session);
-
 /* SSL_SESSION_get0_peer return's the peer leaf certificate stored in
  * |session|.
  *
@@ -1837,35 +1830,50 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
  * are supported. ECDHE is always enabled, but the curve preferences may be
  * configured with these functions.
  *
- * A client may use |SSL_SESSION_get_key_exchange_info| to determine the curve
- * selected. */
+ * Note that TLS 1.3 renames these from curves to groups. For consistency, we
+ * currently use the TLS 1.2 name in the API. */
 
 /* SSL_CTX_set1_curves sets the preferred curves for |ctx| to be |curves|. Each
  * element of |curves| should be a curve nid. It returns one on success and
- * zero on failure. */
+ * zero on failure.
+ *
+ * Note that this API uses nid values from nid.h and not the |SSL_CURVE_*|
+ * values defined below. */
 OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
                                        size_t curves_len);
 
 /* SSL_set1_curves sets the preferred curves for |ssl| to be |curves|. Each
  * element of |curves| should be a curve nid. It returns one on success and
- * zero on failure. */
+ * zero on failure.
+ *
+ * Note that this API uses nid values from nid.h and not the |SSL_CURVE_*|
+ * values defined below. */
 OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
                                    size_t curves_len);
 
-/* SSL_get_curve_name returns a human-readable name for the group specified by
- * the given TLS group id, or NULL if the group is unknown. */
-OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t group_id);
+/* SSL_CURVE_* define TLS curve IDs. */
+#define SSL_CURVE_SECP256R1 23
+#define SSL_CURVE_SECP384R1 24
+#define SSL_CURVE_SECP521R1 25
+#define SSL_CURVE_X25519 29
+
+/* SSL_get_curve_id returns the ID of the curve used by |ssl|'s most recently
+ * completed handshake or 0 if not applicable.
+ *
+ * TODO(davidben): This API currently does not work correctly if there is a
+ * renegotiation in progress. Fix this. */
+OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
+
+/* SSL_get_curve_name returns a human-readable name for the curve specified by
+ * the given TLS curve id, or NULL if the curve is unknown. */
+OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
 
 /* Multiplicative Diffie-Hellman.
  *
  * Cipher suites using a DHE key exchange perform Diffie-Hellman over a
  * multiplicative group selected by the server. These ciphers are disabled for a
- * server unless a group is chosen with one of these functions.
- *
- * A client may use |SSL_SESSION_get_key_exchange_info| to determine the size of
- * the selected group's prime, but note that servers may select degenerate
- * groups. */
+ * server unless a group is chosen with one of these functions. */
 
 /* SSL_CTX_set_tmp_dh configures |ctx| to use the group from |dh| as the group
  * for DHE. Only the group is used, so |dh| needn't have a keypair. It returns
@@ -1897,6 +1905,15 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*dh)(SSL *ssl, int is_export,
                                                       int keylength));
+
+/* SSL_get_dhe_group_size returns the number of bits in the most recently
+ * completed handshake's selected group's prime, or zero if not
+ * applicable. Note, however, that validating this value does not ensure the
+ * server selected a secure group.
+ *
+ * TODO(davidben): This API currently does not work correctly if there is a
+ * renegotiation in progress. Fix this. */
+OPENSSL_EXPORT unsigned SSL_get_dhe_group_size(const SSL *ssl);
 
 
 /* Certificate verification.
@@ -3457,6 +3474,18 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
  * library. */
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
+
+/* SSL_SESSION_get_key_exchange_info returns a value that describes the
+ * strength of the asymmetric operation that provides confidentiality to
+ * |session|. Its interpretation depends on the operation used. See the
+ * documentation for this value in the |SSL_SESSION| structure.
+ *
+ * Use |SSL_get_curve_id| or |SSL_get_dhe_group_size| instead.
+ *
+ * TODO(davidben): Remove this API once Chromium has switched to the new
+ * APIs. */
+OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(
+    const SSL_SESSION *session);
 
 
 /* Private structures.

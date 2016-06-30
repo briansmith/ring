@@ -147,8 +147,8 @@ const Flag<int> kIntFlags[] = {
   { "-expect-total-renegotiations", &TestConfig::expect_total_renegotiations },
   { "-expect-server-key-exchange-hash",
     &TestConfig::expect_server_key_exchange_hash },
-  { "-expect-key-exchange-info",
-    &TestConfig::expect_key_exchange_info },
+  { "-expect-curve-id", &TestConfig::expect_curve_id },
+  { "-expect-dhe-group-size", &TestConfig::expect_dhe_group_size },
   { "-initial-timeout-duration-ms", &TestConfig::initial_timeout_duration_ms },
 };
 

@@ -103,7 +103,8 @@ struct TestConfig {
   bool p384_only = false;
   bool enable_all_curves = false;
   bool use_sparse_dh_prime = false;
-  int expect_key_exchange_info = 0;
+  int expect_curve_id = 0;
+  int expect_dhe_group_size = 0;
   bool use_old_client_cert_callback = false;
   int initial_timeout_duration_ms = 0;
 };

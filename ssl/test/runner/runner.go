@@ -5258,7 +5258,7 @@ func addKeyExchangeInfoTests() {
 				DHGroupPrime: bigFromHex("0215C589A86BE450D1255A86D7A08877A70E124C11F0C75E476BA6A2186B1C830D4A132555973F2D5881D5F737BB800B7F417C01EC5960AEBF79478F8E0BBB6A021269BD10590C64C57F50AD8169D5488B56EE38DC5E02DA1A16ED3B5F41FEB2AD184B78A31F3A5B2BEC8441928343DA35DE3D4F89F0D4CEDE0034045084A0D1E6182E5EF7FCA325DD33CE81BE7FA87D43613E8FA7A1457099AB53"),
 			},
 		},
-		flags: []string{"-expect-key-exchange-info", "1234"},
+		flags: []string{"-expect-dhe-group-size", "1234"},
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -5268,7 +5268,7 @@ func addKeyExchangeInfoTests() {
 			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
 		// bssl_shim as a server configures a 2048-bit DHE group.
-		flags: []string{"-expect-key-exchange-info", "2048"},
+		flags: []string{"-expect-dhe-group-size", "2048"},
 	})
 
 	// TODO(davidben): Add TLS 1.3 versions of these tests once the
@@ -5281,7 +5281,7 @@ func addKeyExchangeInfoTests() {
 			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 			CurvePreferences: []CurveID{CurveX25519},
 		},
-		flags: []string{"-expect-key-exchange-info", "29", "-enable-all-curves"},
+		flags: []string{"-expect-curve-id", "29", "-enable-all-curves"},
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -5291,7 +5291,7 @@ func addKeyExchangeInfoTests() {
 			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 			CurvePreferences: []CurveID{CurveX25519},
 		},
-		flags: []string{"-expect-key-exchange-info", "29", "-enable-all-curves"},
+		flags: []string{"-expect-curve-id", "29", "-enable-all-curves"},
 	})
 }
 

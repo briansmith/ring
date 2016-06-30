@@ -545,11 +545,6 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 
 /* ECDH groups. */
 
-#define SSL_GROUP_SECP256R1 23
-#define SSL_GROUP_SECP384R1 24
-#define SSL_GROUP_SECP521R1 25
-#define SSL_GROUP_X25519 29
-
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
 struct ssl_ecdh_method_st {

@@ -292,11 +292,11 @@ int SSL_early_callback_ctx_extension_get(
 }
 
 static const uint16_t kDefaultGroups[] = {
-    SSL_GROUP_X25519,
-    SSL_GROUP_SECP256R1,
-    SSL_GROUP_SECP384R1,
+    SSL_CURVE_X25519,
+    SSL_CURVE_SECP256R1,
+    SSL_CURVE_SECP384R1,
 #if defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_GROUP_SECP521R1,
+    SSL_CURVE_SECP521R1,
 #endif
 };
 

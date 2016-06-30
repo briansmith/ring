@@ -1137,11 +1137,21 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     return false;
   }
 
-  if (config->expect_key_exchange_info != 0) {
-    uint32_t info = SSL_SESSION_get_key_exchange_info(SSL_get_session(ssl));
-    if (static_cast<uint32_t>(config->expect_key_exchange_info) != info) {
-      fprintf(stderr, "key_exchange_info was %" PRIu32 ", wanted %" PRIu32 "\n",
-              info, static_cast<uint32_t>(config->expect_key_exchange_info));
+  if (config->expect_curve_id != 0) {
+    uint16_t curve_id = SSL_get_curve_id(ssl);
+    if (static_cast<uint16_t>(config->expect_curve_id) != curve_id) {
+      fprintf(stderr, "curve_id was %04x, wanted %04x\n", curve_id,
+              static_cast<uint16_t>(config->expect_curve_id));
+      return false;
+    }
+  }
+
+  if (config->expect_dhe_group_size != 0) {
+    unsigned dhe_group_size = SSL_get_dhe_group_size(ssl);
+    if (static_cast<unsigned>(config->expect_dhe_group_size) !=
+        dhe_group_size) {
+      fprintf(stderr, "dhe_group_size was %u, wanted %d\n", dhe_group_size,
+              config->expect_dhe_group_size);
       return false;
     }
   }

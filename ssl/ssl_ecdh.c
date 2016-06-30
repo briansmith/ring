@@ -461,7 +461,7 @@ static const SSL_ECDH_METHOD kCECPQ1Method = {
 static const SSL_ECDH_METHOD kMethods[] = {
     {
         NID_X9_62_prime256v1,
-        SSL_GROUP_SECP256R1,
+        SSL_CURVE_SECP256R1,
         "P-256",
         ssl_ec_point_cleanup,
         ssl_ec_point_offer,
@@ -472,7 +472,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_secp384r1,
-        SSL_GROUP_SECP384R1,
+        SSL_CURVE_SECP384R1,
         "P-384",
         ssl_ec_point_cleanup,
         ssl_ec_point_offer,
@@ -483,7 +483,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_secp521r1,
-        SSL_GROUP_SECP521R1,
+        SSL_CURVE_SECP521R1,
         "P-521",
         ssl_ec_point_cleanup,
         ssl_ec_point_offer,
@@ -494,7 +494,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
     },
     {
         NID_X25519,
-        SSL_GROUP_X25519,
+        SSL_CURVE_X25519,
         "X25519",
         ssl_x25519_cleanup,
         ssl_x25519_offer,
