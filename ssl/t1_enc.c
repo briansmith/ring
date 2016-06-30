@@ -389,29 +389,6 @@ int tls1_setup_key_block(SSL *ssl) {
   return 1;
 }
 
-static int tls1_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *out) {
-  const EVP_MD_CTX *ctx_template;
-  if (md_nid == NID_md5) {
-    ctx_template = &ssl->s3->handshake_md5;
-  } else if (md_nid == EVP_MD_CTX_type(&ssl->s3->handshake_hash)) {
-    ctx_template = &ssl->s3->handshake_hash;
-  } else {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_REQUIRED_DIGEST);
-    return 0;
-  }
-
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  if (!EVP_MD_CTX_copy_ex(&ctx, ctx_template)) {
-    EVP_MD_CTX_cleanup(&ctx);
-    return 0;
-  }
-  unsigned ret;
-  EVP_DigestFinal_ex(&ctx, out, &ret);
-  EVP_MD_CTX_cleanup(&ctx);
-  return ret;
-}
-
 static int append_digest(const EVP_MD_CTX *ctx, uint8_t *out, size_t *out_len,
                          size_t max_out) {
   int ret = 0;
@@ -558,5 +535,4 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
 const SSL3_ENC_METHOD TLSv1_enc_data = {
     tls1_prf,
     tls1_final_finish_mac,
-    tls1_cert_verify_mac,
 };

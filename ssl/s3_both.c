@@ -463,55 +463,6 @@ int ssl3_hash_current_message(SSL *ssl) {
                                     ssl->init_num + header_len);
 }
 
-/* ssl3_cert_verify_hash is documented as needing EVP_MAX_MD_SIZE because that
- * is sufficient pre-TLS1.2 as well. */
-OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE > MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
-                       combined_tls_hash_fits_in_max);
-
-int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
-                          uint16_t signature_algorithm) {
-  /* For TLS v1.2 send signature algorithm and signature using
-   * agreed digest and cached handshake records. Otherwise, use
-   * SHA1 or MD5 + SHA1 depending on key type.  */
-  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-    EVP_MD_CTX mctx;
-    unsigned len;
-
-    const EVP_MD *md = tls12_get_hash(signature_algorithm);
-    if (md == NULL) {
-      return 0;
-    }
-
-    EVP_MD_CTX_init(&mctx);
-    if (!EVP_DigestInit_ex(&mctx, md, NULL) ||
-        !EVP_DigestUpdate(&mctx, ssl->s3->handshake_buffer->data,
-                          ssl->s3->handshake_buffer->length) ||
-        !EVP_DigestFinal(&mctx, out, &len)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
-      EVP_MD_CTX_cleanup(&mctx);
-      return 0;
-    }
-    *out_len = len;
-  } else if (signature_algorithm == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
-    if (ssl->s3->enc_method->cert_verify_mac(ssl, NID_md5, out) == 0 ||
-        ssl->s3->enc_method->cert_verify_mac(ssl, NID_sha1,
-                                             out + MD5_DIGEST_LENGTH) == 0) {
-      return 0;
-    }
-    *out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
-  } else if (signature_algorithm == SSL_SIGN_ECDSA_SHA1) {
-    if (ssl->s3->enc_method->cert_verify_mac(ssl, NID_sha1, out) == 0) {
-      return 0;
-    }
-    *out_len = SHA_DIGEST_LENGTH;
-  } else {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  return 1;
-}
-
 int ssl_verify_alarm_type(long type) {
   int al;
 

@@ -490,6 +490,12 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
 enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
 
+/* ssl_public_key_verify verifies that the |signature| is valid for the public
+ * key |pkey| and input |in|, using the |signature_algorithm| specified. */
+int ssl_public_key_verify(
+    SSL *ssl, const uint8_t *signature, size_t signature_len,
+    uint16_t signature_algorithm, EVP_PKEY *pkey,
+    const uint8_t *in, size_t in_len);
 
 /* Custom extensions */
 
@@ -865,7 +871,6 @@ struct ssl3_enc_method {
              size_t label_len, const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len);
   int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
-  int (*cert_verify_mac)(SSL *, int, uint8_t *);
 };
 
 /* lengths of messages */
@@ -1008,12 +1013,10 @@ long ssl3_get_message(SSL *ssl, int msg_type,
  * handshake hash. It returns one on success and zero on allocation failure. */
 int ssl3_hash_current_message(SSL *ssl);
 
-/* ssl3_cert_verify_hash writes the CertificateVerify hash into the bytes
- * pointed to by |out| and writes the number of bytes to |*out_len|. |out| must
- * have room for EVP_MAX_MD_SIZE bytes. For TLS 1.2 and up,
- * |signature_algorithm| is used to determine the hash function, otherwise the
- * hash function depends on the private key type. It returns one on success and
- * zero on failure. */
+/* ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify hash into the
+ * bytes pointed to by |out| and writes the number of bytes to |*out_len|. |out|
+ * must have room for EVP_MAX_MD_SIZE bytes. It returns one on success and zero
+ * on failure. */
 int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
                           uint16_t signature_algorithm);
 

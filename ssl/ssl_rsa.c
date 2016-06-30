@@ -372,9 +372,24 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     return ssl_private_key_failure;
   }
 
+  EVP_MD_CTX mctx;
+  uint8_t hash[EVP_MAX_MD_SIZE];
+  unsigned hash_len;
+
+  EVP_MD_CTX_init(&mctx);
+  if (!EVP_DigestInit_ex(&mctx, md, NULL) ||
+      !EVP_DigestUpdate(&mctx, in, in_len) ||
+      !EVP_DigestFinal(&mctx, hash, &hash_len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
+    EVP_MD_CTX_cleanup(&mctx);
+    return 0;
+  }
+  EVP_MD_CTX_cleanup(&mctx);
+
+
   if (ssl->cert->key_method != NULL) {
-    return ssl->cert->key_method->sign(ssl, out, out_len, max_out, md, in,
-                                       in_len);
+    return ssl->cert->key_method->sign(ssl, out, out_len, max_out, md, hash,
+                                       hash_len);
   }
 
   enum ssl_private_key_result_t ret = ssl_private_key_failure;
@@ -386,7 +401,7 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   size_t len = max_out;
   if (!EVP_PKEY_sign_init(ctx) ||
       !EVP_PKEY_CTX_set_signature_md(ctx, md) ||
-      !EVP_PKEY_sign(ctx, out, &len, in, in_len)) {
+      !EVP_PKEY_sign(ctx, out, &len, hash, hash_len)) {
     goto end;
   }
   *out_len = len;
@@ -401,6 +416,23 @@ enum ssl_private_key_result_t ssl_private_key_sign_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
   /* Only custom keys may be asynchronous. */
   return ssl->cert->key_method->sign_complete(ssl, out, out_len, max_out);
+}
+
+int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
+                          size_t signature_len, uint16_t signature_algorithm,
+                          EVP_PKEY *pkey, const uint8_t *in, size_t in_len) {
+  const EVP_MD *md = tls12_get_hash(signature_algorithm);
+  if (md == NULL) {
+    return 0;
+  }
+
+  EVP_MD_CTX md_ctx;
+  EVP_MD_CTX_init(&md_ctx);
+  int ret = EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) &&
+            EVP_DigestVerifyUpdate(&md_ctx, in, in_len) &&
+            EVP_DigestVerifyFinal(&md_ctx, signature, signature_len);
+  EVP_MD_CTX_cleanup(&md_ctx);
+  return ret;
 }
 
 enum ssl_private_key_result_t ssl_private_key_decrypt(
