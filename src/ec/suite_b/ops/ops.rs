@@ -117,7 +117,7 @@ pub struct CommonOps {
 
 impl CommonOps {
     #[inline]
-    pub fn elem_decode(&self, a: &Elem) -> ElemDecoded {
+    pub fn elem_decoded(&self, a: &Elem) -> ElemDecoded {
         self.elem_mul_mixed(a, &ONE)
     }
 
