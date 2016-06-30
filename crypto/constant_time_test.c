@@ -55,6 +55,27 @@ int bssl_constant_time_test_main(void);
 static const unsigned int CONSTTIME_TRUE = (unsigned)(~0);
 static const unsigned int CONSTTIME_FALSE = 0;
 
+static const size_t CONSTTIME_TRUE_SIZE_T = (size_t)(~0);
+static const size_t CONSTTIME_FALSE_SIZE_T = 0;
+
+static int test_binary_op_size_t(size_t (*op)(size_t a, size_t b),
+                                 const char* op_name, size_t a, size_t b,
+                                 int is_true) {
+  size_t c = op(a, b);
+  if (is_true && c != CONSTTIME_TRUE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for %s(%zu, %zu): expected %zu (TRUE), got %zu\n",
+            op_name, a, b, CONSTTIME_TRUE_SIZE_T, c);
+    return 1;
+  } else if (!is_true && c != CONSTTIME_FALSE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for  %s(%zu, %zu): expected %zu (FALSE), got %zu\n",
+            op_name, a, b, CONSTTIME_FALSE_SIZE_T, c);
+    return 1;
+  }
+  return 0;
+}
+
 static int test_is_zero(unsigned int a) {
   unsigned int c = constant_time_is_zero(a);
   if (a == 0 && c != CONSTTIME_TRUE) {
@@ -68,6 +89,44 @@ static int test_is_zero(unsigned int a) {
             "Test failed for constant_time_is_zero(%du): expected %du (FALSE), "
             "got %du\n",
             a, CONSTTIME_FALSE, c);
+    return 1;
+  }
+  return 0;
+}
+
+static int test_is_zero_size_t(size_t a) {
+  size_t c = constant_time_is_zero_size_t(a);
+  if (a == 0 && c != CONSTTIME_TRUE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_is_zero(%zu): expected %zu (TRUE), "
+            "got %zu\n",
+            a, CONSTTIME_TRUE_SIZE_T, c);
+    return 1;
+  } else if (a != 0 && c != CONSTTIME_FALSE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_is_zero(%zu): expected %zu (FALSE), "
+            "got %zu\n",
+            a, CONSTTIME_FALSE_SIZE_T, c);
+    return 1;
+  }
+  return 0;
+}
+
+static int test_select_size_t(size_t a, size_t b) {
+  size_t selected = constant_time_select_size_t(CONSTTIME_TRUE_SIZE_T, a, b);
+  if (selected != a) {
+    fprintf(stderr,
+            "Test failed for constant_time_select(%zu, %zu,"
+            "%zu): expected %zu(first value), got %zu\n",
+            CONSTTIME_TRUE_SIZE_T, a, b, a, selected);
+    return 1;
+  }
+  selected = constant_time_select_size_t(CONSTTIME_FALSE_SIZE_T, a, b);
+  if (selected != b) {
+    fprintf(stderr,
+            "Test failed for constant_time_select(%zu, %zu,"
+            "%zu): expected %zu(second value), got %zu\n",
+            CONSTTIME_FALSE_SIZE_T, a, b, b, selected);
     return 1;
   }
   return 0;
@@ -91,38 +150,76 @@ static int test_eq_int(int a, int b) {
   return 0;
 }
 
+static inline size_t test_eq_size_t(size_t a, size_t b) {
+  size_t equal = constant_time_eq_size_t(a, b);
+  if (a == b && equal != CONSTTIME_TRUE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_eq_size_t(%zu, %zu): "
+            "expected %zu(TRUE), got %zu\n",
+            a, b, CONSTTIME_TRUE_SIZE_T, equal);
+    return 1;
+  } else if (a != b && equal != CONSTTIME_FALSE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_eq_int(%zu, %zu): expected "
+            "%zu(FALSE), got %zu\n",
+            a, b, CONSTTIME_FALSE_SIZE_T, equal);
+    return 1;
+  }
+  return 0;
+}
+
 static unsigned int test_values[] = {0, 1, 1024, 12345, 32000, UINT_MAX / 2 - 1,
                                      UINT_MAX / 2, UINT_MAX / 2 + 1,
                                      UINT_MAX - 1, UINT_MAX};
+
+static size_t size_t_test_values[] = {
+    0, 1, 1024, 12345, 32000, SIZE_MAX / 2 - 1, SIZE_MAX / 2, SIZE_MAX / 2 + 1,
+    SIZE_MAX - 1, SIZE_MAX};
 
 static int signed_test_values[] = {
     0,     1,      -1,      1024,    -1024,       12345,      -12345,
     32000, -32000, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 1};
 
 int bssl_constant_time_test_main(void) {
-  unsigned int a, i, j;
-  int c, d;
-  int num_failed = 0, num_all = 0;
+  int num_failed = 0;
 
-  for (i = 0; i < sizeof(test_values) / sizeof(int); ++i) {
-    a = test_values[i];
+  for (size_t i = 0; i < sizeof(test_values) / sizeof(test_values[0]); ++i) {
+    unsigned a = test_values[i];
     num_failed += test_is_zero(a);
-    num_all += 2;
   }
 
-  for (i = 0; i < sizeof(signed_test_values) / sizeof(int); ++i) {
-    c = signed_test_values[i];
-    for (j = 0; j < sizeof(signed_test_values) / sizeof(int); ++j) {
-      d = signed_test_values[j];
-      num_failed += test_eq_int(c, d);
-      num_all += 3;
+  for (size_t i = 0;
+       i < sizeof(size_t_test_values) / sizeof(size_t_test_values[0]); ++i) {
+    size_t a = test_values[i];
+    num_failed += test_is_zero_size_t(a);
+    for (size_t j = 0; j < sizeof(test_values) / sizeof(int); ++j) {
+      size_t b = test_values[j];
+      num_failed += test_binary_op_size_t(
+          &constant_time_lt_size_t, "constant_time_lt_size_t", a, b, a < b);
+      num_failed += test_binary_op_size_t(
+          &constant_time_lt_size_t, "constant_time_lt_size_t", b, a, b < a);
+      num_failed += test_binary_op_size_t(
+          &constant_time_eq_size_t, "constant_time_eq_size_t", a, b, a == b);
+      num_failed += test_binary_op_size_t(
+          &constant_time_eq_size_t, "constant_time_eq_size_t", b, a, b == a);
+      num_failed += test_select_size_t(a, b);
+    }
+  }
+
+  for (size_t i = 0;
+       i < sizeof(signed_test_values) / sizeof(signed_test_values[0]); ++i) {
+    int a = signed_test_values[i];
+    for (size_t j = 0;
+         j < sizeof(signed_test_values) / sizeof(signed_test_values); ++j) {
+      int b = signed_test_values[j];
+      num_failed += test_eq_int(a, b);
     }
   }
 
   if (!num_failed) {
     return EXIT_SUCCESS;
-  } else {
-    fprintf(stdout, "%d of %d tests failed!\n", num_failed, num_all);
-    return EXIT_FAILURE;
   }
+
+  fprintf(stdout, "%d tests failed!\n", num_failed);
+  return EXIT_FAILURE;
 }
