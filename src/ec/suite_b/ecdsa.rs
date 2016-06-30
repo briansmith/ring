@@ -93,7 +93,7 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
                           z: &Elem) -> bool {
             let zz = ops.public_key_ops.common.elem_sqr(z);
             let r_jacobian = ops.elem_mul_mixed(&zz, r);
-            let x_decoded = ops.public_key_ops.common.elem_decode(x);
+            let x_decoded = ops.public_key_ops.common.elem_decoded(x);
             ops.elem_decoded_equals(&r_jacobian, &x_decoded)
         }
         let r = self.ops.scalar_as_elem_decoded(&r);
