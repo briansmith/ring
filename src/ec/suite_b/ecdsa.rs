@@ -87,6 +87,10 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         //
         // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
         // that would be necessary to compute the affine X coordinate.
+        //
+        // The unfortunate consequence of this is that this forces us to skip
+        // the point-is-on-the-curve check that we normally do to mitigate bugs
+        // or faults in the point multiplication.
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded, x: &Elem,
                           z: &Elem) -> bool {
             let zz = ops.public_key_ops.common.elem_sqr(z);

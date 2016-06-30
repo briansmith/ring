@@ -17,6 +17,7 @@
 
 use {c, ec, rand};
 use super::ops::*;
+use super::verify_affine_point_is_on_the_curve;
 
 #[allow(unsafe_code)]
 pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
@@ -115,46 +116,55 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
-    let (x, y, z) = try!(ops.base_point_mult(&my_private_key));
-
-    assert!(ops.common.elem_verify_is_not_zero(&z).is_ok());
-
+    let my_public_key = try!(ops.base_point_mult(&my_private_key));
     public_out[0] = 4; // Uncompressed encoding.
     let (x_out, y_out) =
         (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
-    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out),
-                                    &(x, y, z));
 
-    Ok(())
+    // `big_endian_affine_from_jacobian` verifies that the point is not at
+    // infinity and is on the curve.
+    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out),
+                                    &my_public_key)
 }
 
 pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
                                        x_out: Option<&mut [u8]>,
                                        y_out: Option<&mut [u8]>,
                                        &(ref x, ref y, ref z):
-                                            &(Elem, Elem, Elem)) {
-    debug_assert!(ops.common.elem_verify_is_not_zero(z).is_ok());
+                                            &(Elem, Elem, Elem))
+                                       -> Result<(), ()> {
+    // Since we restrict our private key to the range [1, n), the curve has
+    // prime order, and we verify that the peer's point is on the curve,
+    // there's no way that the result can be at infinity. But, use `assert!`
+    // instead of `debug_assert!` anyway
+    assert!(ops.common.elem_verify_is_not_zero(&z).is_ok());
 
     let z_inv = ops.elem_inverse(&z);
     let zz_inv = ops.common.elem_sqr(&z_inv);
+    let zzz_inv = ops.common.elem_mul(&z_inv, &zz_inv);
 
-    // Instead of converting `x` from Montgomery encoding and then
-    // (separately) converting the `y` coordinate from Montgomery encoding,
-    // convert the common factor `zz_inv` once now, saving one reduction.
-    let zz_inv = ops.common.elem_decoded(&zz_inv);
+    let x_aff = ops.common.elem_mul(x, &zz_inv);
+    let y_aff = ops.common.elem_mul(y, &zzz_inv);
+
+    // If we validated our inputs correctly and then computed (x, y, z), then
+    // (x, y, z) will be on the curve. But just in case there was a (hardware)
+    // fault or code defect encountered during the computation, verify that the
+    // point is on the curve anyway. This isn't expected to detect all
+    // such problems. TODO: Do some experiments to see how effective this check
+    // is at detecting problems.
+    try!(verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff)));
 
     let num_limbs = ops.common.num_limbs;
-
     if let Some(x_out) = x_out {
-        let x_decoded = ops.common.elem_mul_mixed(x, &zz_inv);
+        let x_decoded = ops.common.elem_decoded(&x_aff);
         big_endian_from_limbs(x_out, &x_decoded.limbs[..num_limbs]);
     }
-
     if let Some(y_out) = y_out {
-        let zzz_inv = ops.common.elem_mul_mixed(&z_inv, &zz_inv);
-        let y_decoded = ops.common.elem_mul_mixed(y, &zzz_inv);
+        let y_decoded = ops.common.elem_decoded(&y_aff);
         big_endian_from_limbs(y_out, &y_decoded.limbs[..num_limbs]);
     }
+
+    Ok(())
 }
 
 fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {

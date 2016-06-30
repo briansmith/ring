@@ -43,6 +43,18 @@ pub static COMMON_OPS: CommonOps = CommonOps {
                            0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
     },
 
+    a: Elem {
+        limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                           0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffb,
+                           0xfffffffc, 0x00000000, 0x00000003, 0xfffffffc],
+    },
+    b: Elem {
+        limbs: p384_limbs![0xcd08114b, 0x604fbff9, 0xb62b21f4, 0x1f022094,
+                           0xe3374bee, 0x94938ae2, 0x77f2209b, 0x1920022e,
+                           0xf729add8, 0x7a4c32ec, 0x08118871, 0x9d412dcc],
+    },
+
+    elem_add_impl: GFp_p384_elem_add,
     elem_mul_mont: GFp_p384_elem_mul_mont,
     elem_sqr_mont: GFp_p384_elem_sqr_mont,
 
@@ -58,19 +70,6 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
     common: &COMMON_OPS,
-
-    a: Elem {
-        limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                           0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffb,
-                           0xfffffffc, 0x00000000, 0x00000003, 0xfffffffc],
-    },
-    b: Elem {
-        limbs: p384_limbs![0xcd08114b, 0x604fbff9, 0xb62b21f4, 0x1f022094,
-                           0xe3374bee, 0x94938ae2, 0x77f2209b, 0x1920022e,
-                           0xf729add8, 0x7a4c32ec, 0x08118871, 0x9d412dcc],
-    },
-
-    elem_add_impl: GFp_p384_elem_add,
 };
 
 

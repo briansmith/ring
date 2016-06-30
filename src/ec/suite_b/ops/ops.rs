@@ -103,7 +103,12 @@ pub struct CommonOps {
     q: Mont,
     pub n: ElemDecoded,
 
+    pub a: Elem, // Must be -3 mod q
+    pub b: Elem,
+
     // In all cases, `r`, `a`, and `b` may all alias each other.
+    elem_add_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                    b: *const Limb),
     elem_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
                                     b: *const Limb),
     elem_sqr_mont: unsafe extern fn(r: *mut Limb, a: *const Limb),
@@ -112,6 +117,20 @@ pub struct CommonOps {
 }
 
 impl CommonOps {
+    #[inline]
+    pub fn elem_add(&self, a: &mut Elem, b: &Elem) {
+        ab_assign(self.elem_add_impl, &mut a.limbs, &b.limbs)
+    }
+
+    pub fn elems_are_equal(&self, a: &Elem, b: &Elem) -> bool {
+        for i in 0..self.num_limbs {
+            if a.limbs[i] != b.limbs[i] {
+                return false;
+            }
+        }
+        return true;
+    }
+
     #[inline]
     pub fn elem_decoded(&self, a: &Elem) -> ElemDecoded {
         self.elem_mul_mixed(a, &ONE)
@@ -192,13 +211,6 @@ impl PrivateKeyOps {
 /// agreement and ECDSA verification).
 pub struct PublicKeyOps {
     pub common: &'static CommonOps,
-
-    pub a: Elem, // Must be -3 mod q
-    pub b: Elem,
-
-    // `r`, `a`, and `b` may all alias each other.
-    elem_add_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                    b: *const Limb),
 }
 
 impl PublicKeyOps {
@@ -222,20 +234,6 @@ impl PublicKeyOps {
                                         self.common.q.rr.as_ptr())
         }
         Ok(Elem { limbs: elem_limbs })
-    }
-
-    #[inline]
-    pub fn elem_add(&self, a: &mut Elem, b: &Elem) {
-        ab_assign(self.elem_add_impl, &mut a.limbs, &b.limbs)
-    }
-
-    pub fn elems_are_equal(&self, a: &Elem, b: &Elem) -> bool {
-        for i in 0..self.common.num_limbs {
-            if a.limbs[i] != b.limbs[i] {
-                return false;
-            }
-        }
-        return true;
     }
 }
 
@@ -306,7 +304,7 @@ impl PublicScalarOps {
     pub fn elem_decoded_sum(&self, a: &ElemDecoded, b: &ElemDecoded)
                             -> ElemDecoded {
         ElemDecoded {
-            limbs: rab(self.public_key_ops.elem_add_impl, &a.limbs,
+            limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
                        &b.limbs)
         }
     }
