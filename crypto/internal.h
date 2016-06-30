@@ -115,7 +115,10 @@
 #include <string.h>
 #endif
 
+#include <stddef.h>
+
 #include <openssl/base.h>
+#include <openssl/type_check.h>
 
 #if defined(_MSC_VER)
 #pragma warning(push, 3)
@@ -202,6 +205,14 @@ static inline unsigned int constant_time_msb(unsigned int a) {
   return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
 }
 
+OPENSSL_COMPILE_ASSERT(sizeof(ptrdiff_t) == sizeof(size_t),
+                       ptrdiff_t_and_size_t_are_different_sizes);
+
+static inline size_t constant_time_msb_size_t(size_t a) {
+  return (size_t)((ptrdiff_t)(a) >> (sizeof(ptrdiff_t) * 8 - 1));
+}
+
+
 /* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
 static inline unsigned int constant_time_is_zero(unsigned int a) {
   /* Here is an SMT-LIB verification of this formula:
@@ -219,10 +230,38 @@ static inline unsigned int constant_time_is_zero(unsigned int a) {
   return constant_time_msb(~a & (a - 1));
 }
 
+/* constant_time_is_zero_size_t is like constant_time_is_zero but operates on
+ * |size_t|. */
+static inline size_t constant_time_is_zero_size_t(size_t a) {
+  return constant_time_msb_size_t(~a & (a - 1));
+}
+
 /* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
 static inline unsigned int constant_time_eq_int(int a, int b) {
   return constant_time_is_zero((unsigned)(a) ^ (unsigned)(b));
 }
+
+/* constant_time_eq_size_t acts like |constant_time_eq_int| but operates on
+ * |size_t|. */
+static inline size_t constant_time_eq_size_t(size_t a, size_t b) {
+  return constant_time_is_zero_size_t(a ^ b);
+}
+
+/* constant_time_select_size_t returns (mask & a) | (~mask & b). When |mask| is
+ * all 1s or all 0s (as returned by the methods above), the select methods
+ * return either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). it is
+ * derived from BoringSSL's |constant_time_select|. */
+static inline size_t constant_time_select_size_t(size_t mask, size_t a,
+                                                 size_t b) {
+  return (mask & a) | (~mask & b);
+}
+
+/* constant_time_lt_size_t returns 0xff..f if a < b and 0 otherwise. Derived
+ * from BoringSSL's |constant_time_lt|. */
+static inline size_t constant_time_lt_size_t(size_t a, size_t b) {
+  return constant_time_msb_size_t(a^((a^b)|((a-b)^a)));
+}
+
 
 
 /* Bridge to Rust-based SHA-512 implementation. */
