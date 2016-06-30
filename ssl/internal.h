@@ -549,7 +549,6 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 #define SSL_GROUP_SECP384R1 24
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
-#define SSL_GROUP_CECPQ1 65165
 
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
@@ -607,6 +606,9 @@ int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t group_id);
 /* SSL_ECDH_CTX_init_for_dhe sets up |ctx| for use with legacy DHE-based ciphers
  * where the server specifies a group. It takes ownership of |params|. */
 void SSL_ECDH_CTX_init_for_dhe(SSL_ECDH_CTX *ctx, DH *params);
+
+/* SSL_ECDH_CTX_init_for_cecpq1 sets up |ctx| for use with CECPQ1. */
+void SSL_ECDH_CTX_init_for_cecpq1(SSL_ECDH_CTX *ctx);
 
 /* SSL_ECDH_CTX_cleanup releases memory associated with |ctx|. It is legal to
  * call it in the zero state. */

@@ -1274,9 +1274,7 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
     assert(sizeof(ssl->s3->tmp.peer_key_len) == 2 && peer_key_len <= 0xffff);
     ssl->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
   } else if (alg_k & SSL_kCECPQ1) {
-    if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, SSL_GROUP_CECPQ1)) {
-      goto err;
-    }
+    SSL_ECDH_CTX_init_for_cecpq1(&ssl->s3->tmp.ecdh_ctx);
     CBS key;
     if (!CBS_get_u16_length_prefixed(&server_key_exchange, &key)) {
       al = SSL_AD_DECODE_ERROR;

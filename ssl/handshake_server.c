@@ -1223,8 +1223,8 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
         goto err;
       }
     } else if (alg_k & SSL_kCECPQ1) {
-      if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, SSL_GROUP_CECPQ1) ||
-          !CBB_add_u16_length_prefixed(&cbb, &child) ||
+      SSL_ECDH_CTX_init_for_cecpq1(&ssl->s3->tmp.ecdh_ctx);
+      if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
           !SSL_ECDH_CTX_offer(&ssl->s3->tmp.ecdh_ctx, &child)) {
         goto err;
       }
