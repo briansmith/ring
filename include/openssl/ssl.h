@@ -3502,7 +3502,6 @@ struct ssl_session_st {
    * that controls the confidentiality of the connection. Its interpretation
    * depends on the primitive that was used; as specified by the cipher suite:
    *   DHE: the size, in bits, of the multiplicative group.
-   *   RSA: the size, in bits, of the modulus.
    *   ECDHE: the TLS id for the curve.
    *
    * A zero indicates that the value is unknown. */

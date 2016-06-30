@@ -5247,19 +5247,6 @@ func addCECPQ1Tests() {
 
 func addKeyExchangeInfoTests() {
 	testCases = append(testCases, testCase{
-		name: "KeyExchangeInfo-RSA-Client",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
-		},
-		// key.pem is a 1024-bit RSA key.
-		flags: []string{"-expect-key-exchange-info", "1024"},
-	})
-	// TODO(davidben): key_exchange_info doesn't work for plain RSA on the
-	// server. Either fix this or change the API as it's not very useful in
-	// this case.
-
-	testCases = append(testCases, testCase{
 		name: "KeyExchangeInfo-DHE-Client",
 		config: Config{
 			MaxVersion:   VersionTLS12,
