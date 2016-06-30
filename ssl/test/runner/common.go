@@ -49,21 +49,23 @@ const (
 
 // TLS handshake message types.
 const (
-	typeHelloRequest       uint8 = 0
-	typeClientHello        uint8 = 1
-	typeServerHello        uint8 = 2
-	typeHelloVerifyRequest uint8 = 3
-	typeNewSessionTicket   uint8 = 4
-	typeCertificate        uint8 = 11
-	typeServerKeyExchange  uint8 = 12
-	typeCertificateRequest uint8 = 13
-	typeServerHelloDone    uint8 = 14
-	typeCertificateVerify  uint8 = 15
-	typeClientKeyExchange  uint8 = 16
-	typeFinished           uint8 = 20
-	typeCertificateStatus  uint8 = 22
-	typeNextProtocol       uint8 = 67  // Not IANA assigned
-	typeChannelID          uint8 = 203 // Not IANA assigned
+	typeHelloRequest        uint8 = 0
+	typeClientHello         uint8 = 1
+	typeServerHello         uint8 = 2
+	typeHelloVerifyRequest  uint8 = 3
+	typeNewSessionTicket    uint8 = 4
+	typeHelloRetryRequest   uint8 = 6 // draft-ietf-tls-tls13-13
+	typeEncryptedExtensions uint8 = 8 // draft-ietf-tls-tls13-13
+	typeCertificate         uint8 = 11
+	typeServerKeyExchange   uint8 = 12
+	typeCertificateRequest  uint8 = 13
+	typeServerHelloDone     uint8 = 14
+	typeCertificateVerify   uint8 = 15
+	typeClientKeyExchange   uint8 = 16
+	typeFinished            uint8 = 20
+	typeCertificateStatus   uint8 = 22
+	typeNextProtocol        uint8 = 67  // Not IANA assigned
+	typeChannelID           uint8 = 203 // Not IANA assigned
 )
 
 // TLS compression types.
@@ -83,6 +85,10 @@ const (
 	extensionSignedCertificateTimestamp uint16 = 18
 	extensionExtendedMasterSecret       uint16 = 23
 	extensionSessionTicket              uint16 = 35
+	extensionKeyShare                   uint16 = 40    // draft-ietf-tls-tls13-13
+	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-13
+	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-13
+	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-13
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01

@@ -16,6 +16,7 @@ const (
 
 const (
 	alertCloseNotify            alert = 0
+	alertEndOfEarlyData         alert = 1
 	alertUnexpectedMessage      alert = 10
 	alertBadRecordMAC           alert = 20
 	alertDecryptionFailed       alert = 21
@@ -38,10 +39,12 @@ const (
 	alertInternalError          alert = 80
 	alertUserCanceled           alert = 90
 	alertNoRenegotiation        alert = 100
+	alertMissingExtension       alert = 109
 )
 
 var alertText = map[alert]string{
 	alertCloseNotify:            "close notify",
+	alertEndOfEarlyData:         "end of early data",
 	alertUnexpectedMessage:      "unexpected message",
 	alertBadRecordMAC:           "bad record MAC",
 	alertDecryptionFailed:       "decryption failed",
@@ -63,6 +66,7 @@ var alertText = map[alert]string{
 	alertInternalError:          "internal error",
 	alertUserCanceled:           "user canceled",
 	alertNoRenegotiation:        "no renegotiation",
+	alertMissingExtension:       "missing extension",
 }
 
 func (e alert) String() string {
