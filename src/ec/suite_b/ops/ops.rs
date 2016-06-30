@@ -136,6 +136,15 @@ impl CommonOps {
     pub fn elem_sqr(&self, a: &Elem) -> Elem {
         Elem { limbs: ra(self.elem_sqr_mont, &a.limbs) }
     }
+
+    pub fn elem_verify_is_not_zero(&self, a: &Elem) -> Result<(), ()> {
+        match unsafe {
+            GFp_constant_time_limbs_are_zero(a.limbs.as_ptr(), self.num_limbs)
+        } {
+            0 => Ok(()),
+            _ => Err(()),
+        }
+    }
 }
 
 struct Mont {
@@ -161,10 +170,6 @@ pub struct PublicKeyOps {
 }
 
 impl PublicKeyOps {
-    pub fn elem_is_zero(&self, a: &Elem) -> bool {
-        a.limbs[..self.common.num_limbs].iter().all(|limb| *limb == 0)
-    }
-
     // The serialized bytes are in big-endian order, zero-padded. The limbs
     // of `Elem` are in the native endianness, least significant limb to
     // most significant limb. Besides the parsing, conversion, this also
@@ -408,6 +413,9 @@ pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
 
 
 extern {
+    fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
+                                        -> Limb;
+
     fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, x_out: *mut Limb,
                                     y_out: *mut Limb, z_out: *mut Limb,
                                     g_scalar: *const Limb,
