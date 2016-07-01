@@ -111,7 +111,6 @@ static const int num2 = 5;   // number of tests for slow functions
 static int rand_neg(void);
 
 static bool test_mont(RAND *rng, BN_CTX *ctx);
-static bool test_mod(RAND *rng, BN_CTX *ctx);
 static bool test_mod_mul(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
