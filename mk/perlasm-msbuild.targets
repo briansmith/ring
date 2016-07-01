@@ -25,7 +25,7 @@
     Inputs="%(PerlAsm.Identity);../crypto/perlasm/*.pl"
     Outputs="$(IntDir)%(PerlAsm.FileName).obj">
   <Message Text="Generating code: %(PerlAsm.Identity)" />
-  <Exec Command="perl.exe %(PerlAsm.Identity) $(PerlAsmFlags) > $(IntDir)%(PerlAsm.FileName).asm"/>
+  <Exec Command="perl.exe %(PerlAsm.Identity) $(PerlAsmFlags) $(IntDir)%(PerlAsm.FileName).asm"/>
   <Exec Command="yasm.exe -X vc --dformat=cv8 --oformat=$(YasmOFormat) --machine=$(YasmMachine) -o $(IntDir)%(PerlAsm.FileName).obj $(IntDir)%(PerlAsm.FileName).asm"/>
  </Target>
 </Project>

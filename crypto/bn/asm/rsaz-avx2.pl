@@ -87,7 +87,7 @@ die "can't locate x86_64-xlate.pl";
 $avx = 0;
 $addx = 0;
 
-open OUT,"| \"$^X\" $xlate $flavour $output";
+open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT = *OUT;
 
 if ($avx>1) {{{

@@ -191,6 +191,10 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
 require "x86asm.pl";
 
+$output = pop;
+open OUT,">$output";
+*STDOUT=*OUT;
+
 &asm_init($ARGV[0],"aes-586.pl",$x86only = $ARGV[$#ARGV] eq "386");
 &static_label("AES_Te");
 &static_label("AES_Td");
@@ -2309,3 +2313,5 @@ sub deckey()
 &asciz("AES for x86, CRYPTOGAMS by <appro\@openssl.org>");
 
 &asm_finish();
+
+close STDOUT;

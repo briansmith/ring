@@ -30,10 +30,6 @@
 #	and the gap is only 40-90%.
 
 $flavour=shift;
-# Unlike most perlasm files, sha512-armv8.pl takes an additional argument to
-# determine which hash function to emit. This differs from upstream OpenSSL so
-# that the script may continue to output to stdout.
-$variant=shift;
 $output=shift;
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
@@ -44,7 +40,7 @@ die "can't locate arm-xlate.pl";
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
-if ($variant eq "sha512") {
+if ($output =~ /512/) {
 	$BITS=512;
 	$SZ=8;
 	@Sigma0=(28,34,39);
@@ -53,7 +49,7 @@ if ($variant eq "sha512") {
 	@sigma1=(19,61, 6);
 	$rounds=80;
 	$reg_t="x";
-} elsif ($variant eq "sha256") {
+} else {
 	$BITS=256;
 	$SZ=4;
 	@Sigma0=( 2,13,22);
@@ -62,8 +58,6 @@ if ($variant eq "sha512") {
 	@sigma1=(17,19,10);
 	$rounds=64;
 	$reg_t="w";
-} else {
-  die "Unknown variant: $variant";
 }
 
 $func="sha${BITS}_block_data_order";

@@ -117,7 +117,7 @@ $avx = 2;
 $shaext=1;
 $avx=1		if (!$shaext && $avx);
 
-open OUT,"| \"$^X\" $xlate $flavour";
+open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 if ($output =~ /512/) {
