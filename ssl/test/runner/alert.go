@@ -40,6 +40,7 @@ const (
 	alertUserCanceled           alert = 90
 	alertNoRenegotiation        alert = 100
 	alertMissingExtension       alert = 109
+	alertUnsupportedExtension   alert = 110
 )
 
 var alertText = map[alert]string{
@@ -67,6 +68,7 @@ var alertText = map[alert]string{
 	alertUserCanceled:           "user canceled",
 	alertNoRenegotiation:        "no renegotiation",
 	alertMissingExtension:       "missing extension",
+	alertUnsupportedExtension:   "unsupported extension",
 }
 
 func (e alert) String() string {

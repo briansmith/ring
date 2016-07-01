@@ -199,6 +199,13 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 	return nil
 }
 
+// updateKeys sets the current cipher state.
+func (hc *halfConn) updateKeys(cipher interface{}, version uint16) {
+	hc.version = version
+	hc.cipher = cipher
+	hc.incEpoch()
+}
+
 // incSeq increments the sequence number.
 func (hc *halfConn) incSeq(isOutgoing bool) {
 	limit := 0
@@ -1114,11 +1121,16 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		}
 	case typeNewSessionTicket:
 		m = new(newSessionTicketMsg)
+	case typeEncryptedExtensions:
+		m = new(encryptedExtensionsMsg)
 	case typeCertificate:
-		m = new(certificateMsg)
+		m = &certificateMsg{
+			hasRequestContext: c.vers >= VersionTLS13 && enableTLS13Handshake,
+		}
 	case typeCertificateRequest:
 		m = &certificateRequestMsg{
 			hasSignatureAlgorithm: c.vers >= VersionTLS12,
+			hasRequestContext:     c.vers >= VersionTLS13 && enableTLS13Handshake,
 		}
 	case typeCertificateStatus:
 		m = new(certificateStatusMsg)

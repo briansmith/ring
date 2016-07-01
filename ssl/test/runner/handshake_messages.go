@@ -111,11 +111,13 @@ type keyShareEntry struct {
 }
 
 type clientHelloMsg struct {
-	raw                     []byte
-	isDTLS                  bool
-	vers                    uint16
-	random                  []byte
-	sessionId               []byte
+	raw       []byte
+	isDTLS    bool
+	vers      uint16
+	random    []byte
+	sessionId []byte
+	// TODO(davidben): Add support for TLS 1.3 cookies which are larger and
+	// use an extension.
 	cookie                  []byte
 	cipherSuites            []uint16
 	compressionMethods      []uint8
@@ -681,14 +683,19 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 }
 
 type serverHelloMsg struct {
-	raw               []byte
-	isDTLS            bool
-	vers              uint16
-	random            []byte
-	sessionId         []byte
-	cipherSuite       uint16
-	compressionMethod uint8
-	extensions        serverExtensions
+	raw                 []byte
+	isDTLS              bool
+	vers                uint16
+	random              []byte
+	sessionId           []byte
+	cipherSuite         uint16
+	hasKeyShare         bool
+	keyShare            keyShareEntry
+	hasPSKIdentity      bool
+	pskIdentity         uint16
+	earlyDataIndication bool
+	compressionMethod   uint8
+	extensions          serverExtensions
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -702,17 +709,39 @@ func (m *serverHelloMsg) marshal() []byte {
 	vers := versionToWire(m.vers, m.isDTLS)
 	hello.addU16(vers)
 	hello.addBytes(m.random)
-	sessionId := hello.addU8LengthPrefixed()
-	sessionId.addBytes(m.sessionId)
+	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+		sessionId := hello.addU8LengthPrefixed()
+		sessionId.addBytes(m.sessionId)
+	}
 	hello.addU16(m.cipherSuite)
-	hello.addU8(m.compressionMethod)
+	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+		hello.addU8(m.compressionMethod)
+	}
 
 	extensions := hello.addU16LengthPrefixed()
 
-	m.extensions.marshal(extensions)
-
-	if extensions.len() == 0 {
-		hello.discardChild()
+	if m.vers >= VersionTLS13 && enableTLS13Handshake {
+		if m.hasKeyShare {
+			extensions.addU16(extensionKeyShare)
+			keyShare := extensions.addU16LengthPrefixed()
+			keyShare.addU16(uint16(m.keyShare.group))
+			keyExchange := keyShare.addU16LengthPrefixed()
+			keyExchange.addBytes(m.keyShare.keyExchange)
+		}
+		if m.hasPSKIdentity {
+			extensions.addU16(extensionPreSharedKey)
+			extensions.addU16(2) // Length
+			extensions.addU16(m.pskIdentity)
+		}
+		if m.earlyDataIndication {
+			extensions.addU16(extensionEarlyData)
+			extensions.addU16(0) // Length
+		}
+	} else {
+		m.extensions.marshal(extensions)
+		if extensions.len() == 0 {
+			hello.discardChild()
+		}
 	}
 
 	m.raw = handshakeMsg.finish()
@@ -726,21 +755,30 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	m.raw = data
 	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
 	m.random = data[6:38]
-	sessionIdLen := int(data[38])
-	if sessionIdLen > 32 || len(data) < 39+sessionIdLen {
-		return false
+	data = data[38:]
+	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+		sessionIdLen := int(data[0])
+		if sessionIdLen > 32 || len(data) < 1+sessionIdLen {
+			return false
+		}
+		m.sessionId = data[1 : 1+sessionIdLen]
+		data = data[1+sessionIdLen:]
 	}
-	m.sessionId = data[39 : 39+sessionIdLen]
-	data = data[39+sessionIdLen:]
-	if len(data) < 3 {
+	if len(data) < 2 {
 		return false
 	}
 	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
-	m.compressionMethod = data[2]
-	data = data[3:]
+	data = data[2:]
+	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+		if len(data) < 1 {
+			return false
+		}
+		m.compressionMethod = data[0]
+		data = data[1:]
+	}
 
-	if len(data) == 0 {
-		// ServerHello is optionally followed by extension data
+	if len(data) == 0 && (m.vers < VersionTLS13 || enableTLS13Handshake) {
+		// Extension data is optional before TLS 1.3.
 		m.extensions = serverExtensions{}
 		return true
 	}
@@ -754,11 +792,96 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 
-	if !m.extensions.unmarshal(data) {
+	if m.vers >= VersionTLS13 && enableTLS13Handshake {
+		for len(data) != 0 {
+			if len(data) < 4 {
+				return false
+			}
+			extension := uint16(data[0])<<8 | uint16(data[1])
+			length := int(data[2])<<8 | int(data[3])
+			data = data[4:]
+
+			if len(data) < length {
+				return false
+			}
+			d := data[:length]
+			data = data[length:]
+
+			switch extension {
+			case extensionKeyShare:
+				m.hasKeyShare = true
+				if len(d) < 4 {
+					return false
+				}
+				m.keyShare.group = CurveID(uint16(d[0])<<8 | uint16(d[1]))
+				keyExchLen := int(d[2])<<8 | int(d[3])
+				if keyExchLen != len(d)-4 {
+					return false
+				}
+				m.keyShare.keyExchange = make([]byte, keyExchLen)
+				copy(m.keyShare.keyExchange, d[4:])
+			case extensionPreSharedKey:
+				if len(d) != 2 {
+					return false
+				}
+				m.pskIdentity = uint16(d[0])<<8 | uint16(d[1])
+				m.hasPSKIdentity = true
+			case extensionEarlyData:
+				if len(d) != 0 {
+					return false
+				}
+				m.earlyDataIndication = true
+			default:
+				// Only allow the 3 extensions that are sent in
+				// the clear in TLS 1.3.
+				return false
+			}
+		}
+	} else if !m.extensions.unmarshal(data) {
 		return false
 	}
 
 	return true
+}
+
+type encryptedExtensionsMsg struct {
+	raw        []byte
+	extensions serverExtensions
+}
+
+func (m *encryptedExtensionsMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	encryptedExtensionsMsg := newByteBuilder()
+	encryptedExtensionsMsg.addU8(typeEncryptedExtensions)
+	encryptedExtensions := encryptedExtensionsMsg.addU24LengthPrefixed()
+	extensions := encryptedExtensions.addU16LengthPrefixed()
+	m.extensions.marshal(extensions)
+
+	m.raw = encryptedExtensionsMsg.finish()
+	return m.raw
+}
+
+func (m *encryptedExtensionsMsg) unmarshal(data []byte) bool {
+	if len(data) < 6 {
+		return false
+	}
+	if data[0] != typeEncryptedExtensions {
+		return false
+	}
+	msgLen := int(data[1])<<16 | int(data[2])<<8 | int(data[3])
+	data = data[4:]
+	if len(data) != msgLen {
+		return false
+	}
+	extLen := int(data[0])<<8 | int(data[1])
+	data = data[2:]
+	if extLen != len(data) {
+		return false
+	}
+	return m.extensions.unmarshal(data)
 }
 
 type serverExtensions struct {
@@ -962,8 +1085,10 @@ func (m *serverExtensions) unmarshal(data []byte) bool {
 }
 
 type certificateMsg struct {
-	raw          []byte
-	certificates [][]byte
+	raw               []byte
+	hasRequestContext bool
+	requestContext    []byte
+	certificates      [][]byte
 }
 
 func (m *certificateMsg) marshal() (x []byte) {
@@ -974,6 +1099,10 @@ func (m *certificateMsg) marshal() (x []byte) {
 	certMsg := newByteBuilder()
 	certMsg.addU8(typeCertificate)
 	certificate := certMsg.addU24LengthPrefixed()
+	if m.hasRequestContext {
+		context := certificate.addU8LengthPrefixed()
+		context.addBytes(m.requestContext)
+	}
 	certificateList := certificate.addU24LengthPrefixed()
 	for _, cert := range m.certificates {
 		certEntry := certificateList.addU24LengthPrefixed()
@@ -985,24 +1114,43 @@ func (m *certificateMsg) marshal() (x []byte) {
 }
 
 func (m *certificateMsg) unmarshal(data []byte) bool {
-	if len(data) < 7 {
+	if len(data) < 4 {
 		return false
 	}
 
 	m.raw = data
-	certsLen := uint32(data[4])<<16 | uint32(data[5])<<8 | uint32(data[6])
-	if uint32(len(data)) != certsLen+7 {
+	data = data[4:]
+
+	if m.hasRequestContext {
+		if len(data) == 0 {
+			return false
+		}
+		contextLen := int(data[0])
+		if len(data) < 1+contextLen {
+			return false
+		}
+		m.requestContext = make([]byte, contextLen)
+		copy(m.requestContext, data[1:])
+		data = data[1+contextLen:]
+	}
+
+	if len(data) < 3 {
+		return false
+	}
+	certsLen := int(data[0])<<16 | int(data[1])<<8 | int(data[2])
+	data = data[3:]
+	if len(data) != certsLen {
 		return false
 	}
 
 	numCerts := 0
-	d := data[7:]
+	d := data
 	for certsLen > 0 {
 		if len(d) < 4 {
 			return false
 		}
-		certLen := uint32(d[0])<<16 | uint32(d[1])<<8 | uint32(d[2])
-		if uint32(len(d)) < 3+certLen {
+		certLen := int(d[0])<<16 | int(d[1])<<8 | int(d[2])
+		if len(d) < 3+certLen {
 			return false
 		}
 		d = d[3+certLen:]
@@ -1011,7 +1159,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 	}
 
 	m.certificates = make([][]byte, numCerts)
-	d = data[7:]
+	d = data
 	for i := 0; i < numCerts; i++ {
 		certLen := uint32(d[0])<<16 | uint32(d[1])<<8 | uint32(d[2])
 		m.certificates[i] = d[3 : 3+certLen]
@@ -1245,8 +1393,13 @@ type certificateRequestMsg struct {
 	// of signature and hash functions. This change was introduced with TLS
 	// 1.2.
 	hasSignatureAlgorithm bool
+	// hasRequestContext indicates whether this message includes a context
+	// field instead of certificateTypes. This change was introduced with
+	// TLS 1.3.
+	hasRequestContext bool
 
 	certificateTypes       []byte
+	requestContext         []byte
 	signatureAlgorithms    []signatureAlgorithm
 	certificateAuthorities [][]byte
 }
@@ -1261,8 +1414,13 @@ func (m *certificateRequestMsg) marshal() []byte {
 	builder.addU8(typeCertificateRequest)
 	body := builder.addU24LengthPrefixed()
 
-	certificateTypes := body.addU8LengthPrefixed()
-	certificateTypes.addBytes(m.certificateTypes)
+	if m.hasRequestContext {
+		requestContext := body.addU8LengthPrefixed()
+		requestContext.addBytes(m.requestContext)
+	} else {
+		certificateTypes := body.addU8LengthPrefixed()
+		certificateTypes.addBytes(m.certificateTypes)
+	}
 
 	if m.hasSignatureAlgorithm {
 		signatureAlgorithms := body.addU16LengthPrefixed()
@@ -1287,24 +1445,25 @@ func (m *certificateRequestMsg) unmarshal(data []byte) bool {
 	if len(data) < 5 {
 		return false
 	}
+	data = data[4:]
 
-	length := uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
-	if uint32(len(data))-4 != length {
-		return false
+	if m.hasRequestContext {
+		contextLen := int(data[0])
+		if len(data) < 1+contextLen {
+			return false
+		}
+		m.requestContext = make([]byte, contextLen)
+		copy(m.requestContext, data[1:])
+		data = data[1+contextLen:]
+	} else {
+		numCertTypes := int(data[0])
+		if len(data) < 1+numCertTypes {
+			return false
+		}
+		m.certificateTypes = make([]byte, numCertTypes)
+		copy(m.certificateTypes, data[1:])
+		data = data[1+numCertTypes:]
 	}
-
-	numCertTypes := int(data[4])
-	data = data[5:]
-	if numCertTypes == 0 || len(data) <= numCertTypes {
-		return false
-	}
-
-	m.certificateTypes = make([]byte, numCertTypes)
-	if copy(m.certificateTypes, data) != numCertTypes {
-		return false
-	}
-
-	data = data[numCertTypes:]
 
 	if m.hasSignatureAlgorithm {
 		if len(data) < 2 {

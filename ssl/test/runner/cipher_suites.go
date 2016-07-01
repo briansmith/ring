@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
@@ -91,6 +92,13 @@ type cipherSuite struct {
 	cipher func(key, iv []byte, isRead bool) interface{}
 	mac    func(version uint16, macKey []byte) macFunction
 	aead   func(version uint16, key, fixedNonce []byte) *tlsAead
+}
+
+func (cs cipherSuite) hash() crypto.Hash {
+	if cs.flags&suiteSHA384 != 0 {
+		return crypto.SHA384
+	}
+	return crypto.SHA256
 }
 
 var cipherSuites = []*cipherSuite{

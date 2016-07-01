@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+// TODO(davidben): Flip this to true when the C code lands.
+const enableTLS13Handshake = false
+
 const (
 	VersionSSL30 = 0x0300
 	VersionTLS10 = 0x0301
