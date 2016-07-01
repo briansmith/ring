@@ -312,6 +312,19 @@ static bool TestSum(FileTest *t, BN_CTX *ctx) {
     return false;
   }
 
+  // Test with |BN_add_word| and |BN_sub_word| if |b| is small enough.
+  BN_ULONG b_word = BN_get_word(b.get());
+  if (!BN_is_negative(b.get()) && b_word != (BN_ULONG)-1) {
+    if (!BN_copy(ret.get(), a.get()) ||
+        !BN_add_word(ret.get(), b_word) ||
+        !ExpectBIGNUMsEqual(t, "A + B (word)", sum.get(), ret.get()) ||
+        !BN_copy(ret.get(), sum.get()) ||
+        !BN_sub_word(ret.get(), b_word) ||
+        !ExpectBIGNUMsEqual(t, "Sum - B (word)", a.get(), ret.get())) {
+      return false;
+    }
+  }
+
   return true;
 }
 
