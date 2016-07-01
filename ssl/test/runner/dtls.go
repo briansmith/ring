@@ -111,13 +111,17 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 
 	// Process message.
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
-	// TODO(nharper): Once DTLS 1.3 is defined, handle the extra
-	// parameter from decrypt.
-	ok, off, _, err := c.in.decrypt(b)
+	ok, off, _, alertValue := c.in.decrypt(b)
 	if !ok {
-		c.in.setErrorLocked(c.sendAlert(err))
+		// A real DTLS implementation would silently ignore bad records,
+		// but we want to notice errors from the implementation under
+		// test.
+		return 0, nil, c.in.setErrorLocked(c.sendAlert(alertValue))
 	}
 	b.off = off
+
+	// TODO(nharper): Once DTLS 1.3 is defined, handle the extra
+	// parameter from decrypt.
 
 	// Require that ChangeCipherSpec always share a packet with either the
 	// previous or next handshake message.

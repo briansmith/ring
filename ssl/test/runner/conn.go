@@ -765,17 +765,18 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 
 	// Process message.
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
-	ok, off, encTyp, err := c.in.decrypt(b)
+	ok, off, encTyp, alertValue := c.in.decrypt(b)
+	if !ok {
+		return 0, nil, c.in.setErrorLocked(c.sendAlert(alertValue))
+	}
+	b.off = off
+
 	if c.vers >= VersionTLS13 && c.in.cipher != nil {
 		if typ != recordTypeApplicationData {
 			return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: outer record type is not application data"))
 		}
 		typ = encTyp
 	}
-	if !ok {
-		c.in.setErrorLocked(c.sendAlert(err))
-	}
-	b.off = off
 	return typ, b, nil
 }
 
