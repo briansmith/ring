@@ -95,10 +95,6 @@ OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
  * |group| that specifies the order of the group. */
 OPENSSL_EXPORT const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group);
 
-/* EC_GROUP_get_degree returns the number of bits needed to represent an
- * element of the field underlying |group|. */
-OPENSSL_EXPORT unsigned EC_GROUP_get_degree(const EC_GROUP *group);
-
 
 /* Points on elliptic curves. */
 

@@ -86,10 +86,6 @@ const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group) {
   return &group->order;
 }
 
-unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
-  return ec_GFp_simple_group_get_degree(group);
-}
-
 EC_POINT *EC_POINT_new(const EC_GROUP *group) {
   EC_POINT *ret;
 
