@@ -118,11 +118,11 @@ static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
 static bool test_exp(RAND *rng, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
 static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
-static bool test_bn2bin_padded(RAND *rng);
-static bool test_dec2bn();
-static bool test_hex2bn();
-static bool test_asc2bn();
-static bool test_rand(RAND *rng);
+static bool TestBN2BinPadded(RAND *rng);
+static bool TestDec2BN();
+static bool TestHex2BN();
+static bool TestASC2BN();
+static bool TestRand(RAND *rng);
 static bool TestNegativeZero(BN_CTX *ctx);
 static bool TestDivideZero(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
@@ -149,11 +149,11 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !test_mod_exp_mont5(rng, ctx.get()) ||
       !test_exp(rng, ctx.get()) ||
       !test_exp_mod_zero() ||
-      !test_bn2bin_padded(rng) ||
-      !test_dec2bn() ||
-      !test_hex2bn() ||
-      !test_asc2bn() ||
-      !test_rand(rng) ||
+      !TestBN2BinPadded(rng) ||
+      !TestDec2BN() ||
+      !TestHex2BN() ||
+      !TestASC2BN() ||
+      !TestRand(rng) ||
       !TestNegativeZero(ctx.get()) ||
       !TestDivideZero(ctx.get())) {
     return 1;
@@ -788,7 +788,7 @@ static bool test_exp_mod_zero(void) {
   return true;
 }
 
-static bool test_bn2bin_padded(RAND *rng) {
+static bool TestBN2BinPadded(RAND *rng) {
   uint8_t zeros[256], out[256], reference[128];
 
   memset(zeros, 0, sizeof(zeros));
@@ -868,7 +868,7 @@ static int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
   return BN_abs_is_word(bn, w) && (w == 0 || bn->neg == 0);
 }
 
-static bool test_dec2bn() {
+static bool TestDec2BN() {
   ScopedBIGNUM bn;
   int ret = DecimalToBIGNUM(&bn, "0");
   if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
@@ -903,7 +903,7 @@ static bool test_dec2bn() {
   return true;
 }
 
-static bool test_hex2bn() {
+static bool TestHex2BN() {
   ScopedBIGNUM bn;
   int ret = HexToBIGNUM(&bn, "0");
   if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
@@ -946,7 +946,7 @@ static ScopedBIGNUM ASCIIToBIGNUM(const char *in) {
   return ScopedBIGNUM(raw);
 }
 
-static bool test_asc2bn() {
+static bool TestASC2BN() {
   ScopedBIGNUM bn = ASCIIToBIGNUM("0");
   if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
     fprintf(stderr, "BN_asc2bn gave a bad result.\n");
@@ -998,7 +998,7 @@ static bool test_asc2bn() {
   return true;
 }
 
-static bool test_rand(RAND *rng) {
+static bool TestRand(RAND *rng) {
   ScopedBIGNUM bn(BN_new());
   if (!bn) {
     return false;
