@@ -146,6 +146,11 @@ void FileTest::PrintLine(const char *format, ...) {
   va_end(args);
 }
 
+const std::string &FileTest::GetType() {
+  OnKeyUsed(type_);
+  return type_;
+}
+
 bool FileTest::GetAttribute(std::string *out_value, const std::string &key) {
   OnKeyUsed(key);
   auto iter = attributes_.find(key);

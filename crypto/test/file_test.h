@@ -92,6 +92,9 @@ class FileTest {
 
   unsigned start_line() const { return start_line_; }
 
+  // GetType returns the name of the first attribute of the current test.
+  const std::string &GetType();
+
   // GetAttribute looks up the attribute with key |key|. It sets |*out_value| to
   // the value and returns true if it exists and returns false with an error to
   // |stderr| otherwise.

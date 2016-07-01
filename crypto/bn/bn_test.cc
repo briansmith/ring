@@ -89,6 +89,7 @@
 #include <openssl/mem.h>
 
 #include "../test/bn_test_lib.h"
+#include "../crypto/test/file_test.h"
 #include "../crypto/test/scoped_types.h"
 #include "../test/bn_test_util.h"
 
@@ -106,8 +107,6 @@ static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_add(RAND *rng);
-static bool test_sub(RAND *rng);
 static bool test_lshift1(RAND *rng);
 static bool test_lshift(RAND *rng, BN_CTX *ctx, ScopedBIGNUM a);
 static bool test_rshift1(RAND *rng);
@@ -130,6 +129,7 @@ static bool test_dec2bn();
 static bool test_hex2bn();
 static bool test_asc2bn();
 static bool test_rand(RAND *rng);
+static bool RunTest(FileTest *t, void *);
 
 static const uint8_t kSample[] =
     "\xC6\x4F\x43\x04\x2A\xEA\xCA\x6E\x58\x36\x80\x5B\xE8\xC9"
@@ -146,9 +146,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
     return 1;
   }
 
-  if (!test_add(rng) ||
-      !test_sub(rng) ||
-      !test_lshift1(rng) ||
+  if (!test_lshift1(rng) ||
       !test_lshift(rng, ctx.get(), std::move(sample)) ||
       !test_lshift(rng, ctx.get(), nullptr) ||
       !test_rshift1(rng) ||
@@ -172,7 +170,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
     return 1;
   }
 
-  return 0;
+  return FileTestMain(RunTest, ctx.get(), "crypto/bn/bn_tests.txt");
 }
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
@@ -182,73 +180,69 @@ static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   return ret;
 }
 
-static bool test_add(RAND *rng) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c || !BN_rand(a.get(), 512, 0, 0, rng)) {
+static ScopedBIGNUM GetBIGNUM(FileTest *t, const char *attribute) {
+  std::string hex;
+  if (!t->GetAttribute(&hex, attribute)) {
+    return nullptr;
+  }
+
+  ScopedBIGNUM ret;
+  if (HexToBIGNUM(&ret, hex.c_str()) != static_cast<int>(hex.size())) {
+    t->PrintLine("Could not decode '%s'.", hex.c_str());
+    return nullptr;
+  }
+  return ret;
+}
+
+static bool ExpectBIGNUMsEqual(FileTest *t, const char *operation,
+                               const BIGNUM *expected, const BIGNUM *actual) {
+  if (BN_cmp(expected, actual) == 0) {
+    return true;
+  }
+  t->PrintLine("Got wrong value for %s", operation);
+  return false;
+}
+
+static bool TestSum(FileTest *t) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM b = GetBIGNUM(t, "B");
+  ScopedBIGNUM sum = GetBIGNUM(t, "Sum");
+  if (!a || !b || !sum) {
     return false;
   }
 
-  for (int i = 0; i < num0; i++) {
-    if (!BN_rand(b.get(), 450 + i, 0, 0, rng)) {
-      return false;
-    }
-    a->neg = rand_neg();
-    b->neg = rand_neg();
-    if (!BN_add(c.get(), a.get(), b.get())) {
-      return false;
-    }
-    a->neg = !a->neg;
-    b->neg = !b->neg;
-    if (!BN_add(c.get(), c.get(), b.get()) ||
-        !BN_add(c.get(), c.get(), a.get())) {
-      return false;
-    }
-    if (!BN_is_zero(c.get())) {
-      fprintf(stderr, "Add test failed!\n");
-      return false;
-    }
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_add(ret.get(), a.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "A + B", sum.get(), ret.get()) ||
+      !BN_sub(ret.get(), sum.get(), a.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - A", b.get(), ret.get()) ||
+      !BN_sub(ret.get(), sum.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - B", a.get(), ret.get())) {
+    return false;
   }
+
   return true;
 }
 
-static bool test_sub(RAND *rng) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  if (!a || !b || !c) {
-    return false;
-  }
+struct Test {
+  const char *name;
+  bool (*func)(FileTest *t);
+};
 
-  for (int i = 0; i < num0 + num1; i++) {
-    if (i < num1) {
-      if (!BN_rand(a.get(), 512, 0, 0, rng) ||
-          !BN_copy(b.get(), a.get()) ||
-          !BN_set_bit(a.get(), i) ||
-          !BN_add_word(b.get(), i)) {
-        return false;
-      }
-    } else {
-      if (!BN_rand(b.get(), 400 + i - num1, 0, 0, rng)) {
-        return false;
-      }
-      a->neg = rand_neg();
-      b->neg = rand_neg();
+static const Test kTests[] = {
+    {"Sum", TestSum},
+};
+
+static bool RunTest(FileTest *t, void *) {
+  for (const Test &test : kTests) {
+    if (t->GetType() != test.name) {
+      continue;
     }
-    if (!BN_sub(c.get(), a.get(), b.get())) {
-      return false;
-    }
-    if (!BN_add(c.get(), c.get(), b.get()) ||
-        !BN_sub(c.get(), c.get(), a.get())) {
-      return false;
-    }
-    if (!BN_is_zero(c.get())) {
-      fprintf(stderr, "Subtract test failed!\n");
-      return false;
-    }
+    return test.func(t);
   }
-  return true;
+  t->PrintLine("Unknown test type: %s", t->GetType().c_str());
+  return false;
 }
 
 static bool test_div(RAND *rng, BN_CTX *ctx) {
