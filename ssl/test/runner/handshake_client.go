@@ -280,26 +280,6 @@ NextCipherSuite:
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
 	}
 
-	if c.config.Bugs.RequireRenegotiationInfo && serverHello.extensions.secureRenegotiation == nil {
-		return errors.New("tls: renegotiation extension missing")
-	}
-
-	if len(c.clientVerify) > 0 && !c.noRenegotiationInfo() {
-		var expectedRenegInfo []byte
-		expectedRenegInfo = append(expectedRenegInfo, c.clientVerify...)
-		expectedRenegInfo = append(expectedRenegInfo, c.serverVerify...)
-		if !bytes.Equal(serverHello.extensions.secureRenegotiation, expectedRenegInfo) {
-			c.sendAlert(alertHandshakeFailure)
-			return fmt.Errorf("tls: renegotiation mismatch")
-		}
-	}
-
-	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
-		if serverHello.extensions.customExtension != *expected {
-			return fmt.Errorf("tls: bad custom extension contents %q", serverHello.extensions.customExtension)
-		}
-	}
-
 	hs := &clientHandshakeState{
 		c:            c,
 		serverHello:  serverHello,
@@ -315,6 +295,16 @@ NextCipherSuite:
 	if c.config.Bugs.EarlyChangeCipherSpec > 0 {
 		hs.establishKeys()
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
+
+	if hs.serverHello.compressionMethod != compressionNone {
+		c.sendAlert(alertUnexpectedMessage)
+		return errors.New("tls: server selected unsupported compression format")
+	}
+
+	err = hs.processServerExtensions(&serverHello.extensions)
+	if err != nil {
+		return err
 	}
 
 	isResume, err := hs.processServerHello()
@@ -640,6 +630,82 @@ func (hs *clientHandshakeState) establishKeys() error {
 	return nil
 }
 
+func (hs *clientHandshakeState) processServerExtensions(serverExtensions *serverExtensions) error {
+	c := hs.c
+
+	if c.config.Bugs.RequireRenegotiationInfo && serverExtensions.secureRenegotiation == nil {
+		return errors.New("tls: renegotiation extension missing")
+	}
+
+	if len(c.clientVerify) > 0 && !c.noRenegotiationInfo() {
+		var expectedRenegInfo []byte
+		expectedRenegInfo = append(expectedRenegInfo, c.clientVerify...)
+		expectedRenegInfo = append(expectedRenegInfo, c.serverVerify...)
+		if !bytes.Equal(serverExtensions.secureRenegotiation, expectedRenegInfo) {
+			c.sendAlert(alertHandshakeFailure)
+			return fmt.Errorf("tls: renegotiation mismatch")
+		}
+	}
+
+	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
+		if serverExtensions.customExtension != *expected {
+			return fmt.Errorf("tls: bad custom extension contents %q", serverExtensions.customExtension)
+		}
+	}
+
+	clientDidNPN := hs.hello.nextProtoNeg
+	clientDidALPN := len(hs.hello.alpnProtocols) > 0
+	serverHasNPN := serverExtensions.nextProtoNeg
+	serverHasALPN := len(serverExtensions.alpnProtocol) > 0
+
+	if !clientDidNPN && serverHasNPN {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("server advertised unrequested NPN extension")
+	}
+
+	if !clientDidALPN && serverHasALPN {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("server advertised unrequested ALPN extension")
+	}
+
+	if serverHasNPN && serverHasALPN {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("server advertised both NPN and ALPN extensions")
+	}
+
+	if serverHasALPN {
+		c.clientProtocol = serverExtensions.alpnProtocol
+		c.clientProtocolFallback = false
+		c.usedALPN = true
+	}
+
+	if !hs.hello.channelIDSupported && serverExtensions.channelIDRequested {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("server advertised unrequested Channel ID extension")
+	}
+
+	if serverExtensions.srtpProtectionProfile != 0 {
+		if serverExtensions.srtpMasterKeyIdentifier != "" {
+			return errors.New("tls: server selected SRTP MKI value")
+		}
+
+		found := false
+		for _, p := range c.config.SRTPProtectionProfiles {
+			if p == serverExtensions.srtpProtectionProfile {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.New("tls: server advertised unsupported SRTP profile")
+		}
+
+		c.srtpProtectionProfile = serverExtensions.srtpProtectionProfile
+	}
+
+	return nil
+}
+
 func (hs *clientHandshakeState) serverResumedSession() bool {
 	// If the server responded with the same sessionId then it means the
 	// sessionTicket is being used to resume a TLS session.
@@ -649,61 +715,6 @@ func (hs *clientHandshakeState) serverResumedSession() bool {
 
 func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	c := hs.c
-
-	if hs.serverHello.compressionMethod != compressionNone {
-		c.sendAlert(alertUnexpectedMessage)
-		return false, errors.New("tls: server selected unsupported compression format")
-	}
-
-	clientDidNPN := hs.hello.nextProtoNeg
-	clientDidALPN := len(hs.hello.alpnProtocols) > 0
-	serverHasNPN := hs.serverHello.extensions.nextProtoNeg
-	serverHasALPN := len(hs.serverHello.extensions.alpnProtocol) > 0
-
-	if !clientDidNPN && serverHasNPN {
-		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("server advertised unrequested NPN extension")
-	}
-
-	if !clientDidALPN && serverHasALPN {
-		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("server advertised unrequested ALPN extension")
-	}
-
-	if serverHasNPN && serverHasALPN {
-		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("server advertised both NPN and ALPN extensions")
-	}
-
-	if serverHasALPN {
-		c.clientProtocol = hs.serverHello.extensions.alpnProtocol
-		c.clientProtocolFallback = false
-		c.usedALPN = true
-	}
-
-	if !hs.hello.channelIDSupported && hs.serverHello.extensions.channelIDRequested {
-		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("server advertised unrequested Channel ID extension")
-	}
-
-	if hs.serverHello.extensions.srtpProtectionProfile != 0 {
-		if hs.serverHello.extensions.srtpMasterKeyIdentifier != "" {
-			return false, errors.New("tls: server selected SRTP MKI value")
-		}
-
-		found := false
-		for _, p := range c.config.SRTPProtectionProfiles {
-			if p == hs.serverHello.extensions.srtpProtectionProfile {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false, errors.New("tls: server advertised unsupported SRTP profile")
-		}
-
-		c.srtpProtectionProfile = hs.serverHello.extensions.srtpProtectionProfile
-	}
 
 	if hs.serverResumedSession() {
 		// For test purposes, assert that the server never accepts the
