@@ -127,9 +127,6 @@ static bool TestNegativeZero(BN_CTX *ctx);
 static bool TestDivideZero(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
 
-static const uint8_t kSample[] =
-    "\xC6\x4F\x43\x04\x2A\xEA\xCA\x6E\x58\x36\x80\x5B\xE8\xC9"
-    "\x9B\x04\x5D\x48\x36\xC2\xFD\x16\xC9\x64\xF0";
 
 extern "C" int bssl_bn_test_main(RAND *rng) {
   ScopedBN_CTX ctx(BN_CTX_new());
@@ -137,10 +134,6 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
     return 1;
   }
 
-  ScopedBIGNUM sample(BN_bin2bn(kSample, sizeof(kSample) - 1, NULL));
-  if (!sample) {
-    return 1;
-  }
 
   if (!test_mod_mul(rng, ctx.get()) ||
       !test_mont(rng, ctx.get()) ||
