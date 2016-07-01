@@ -21,10 +21,10 @@
 //! For signature verification, this API treats each combination of parameters
 //! as a separate algorithm. For example, instead of having a single "RSA"
 //! algorithm with a verification function that takes a bunch of parameters,
-//! there are `RSA_PKCS1_2048_8192_SHA256_VERIFY`,
-//! `RSA_PKCS1_2048_8192_SHA384_VERIFY`, etc., which encode sets of parameter
-//! choices into objects. This is designed to reduce the risks of algorithm
-//! agility and to provide consistency with ECDSA and EdDSA.
+//! there are `RSA_PKCS1_SHA256_2048_8192`, `RSA_PKCS1_SHA384_2048_8192`, etc.,
+//! which encode sets of parameter choices into objects. This is designed to
+//! reduce the risks of algorithm agility and to provide consistency with ECDSA
+//! and EdDSA.
 //!
 //! Currently this module does not support digesting the message to be signed
 //! separately from the public key operation, as it is currently being
@@ -117,7 +117,7 @@
 //!         include_bytes!("src/signature_rsa_example_public_key.der"));
 //! let message = untrusted::Input::from(MESSAGE);
 //! let signature = untrusted::Input::from(&signature);
-//! try!(signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
+//! try!(signature::verify(&signature::RSA_PKCS1_SHA256_2048_8192,
 //!                        public_key_bytes_der, message, signature));
 //! # Ok(())
 //! # }
@@ -160,12 +160,12 @@ pub use rsa::{
     RSA_PKCS1_SHA384,
     RSA_PKCS1_SHA512,
 
-    RSA_PKCS1_2048_8192_SHA1_VERIFY,
-    RSA_PKCS1_2048_8192_SHA256_VERIFY,
-    RSA_PKCS1_2048_8192_SHA384_VERIFY,
-    RSA_PKCS1_2048_8192_SHA512_VERIFY,
+    RSA_PKCS1_SHA1_2048_8192,
+    RSA_PKCS1_SHA256_2048_8192,
+    RSA_PKCS1_SHA384_2048_8192,
+    RSA_PKCS1_SHA512_2048_8192,
 
-    RSA_PKCS1_3072_8192_SHA384_VERIFY,
+    RSA_PKCS1_SHA384_3072_8192,
 };
 
 /// A public key signature.
@@ -229,8 +229,8 @@ pub struct VerificationAlgorithm {
 /// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
 ///                            msg: untrusted::Input, sig: untrusted::Input)
 ///                            -> Result<(), ()> {
-///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
-///                      public_key, msg, sig)
+///    signature::verify(&signature::RSA_PKCS1_SHA256_2048_8192, public_key,
+///                      msg, sig)
 /// }
 /// # fn main() { }
 /// ```
