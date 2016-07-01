@@ -15,8 +15,8 @@
 //! Public key signatures: signing and verification.
 //!
 //! Use the `verify` function to verify signatures, passing a reference to the
-//! `_VERIFY` algorithm that identifies the algorithm. See the documentation
-//! for `verify` for examples.
+//! algorithm that identifies the algorithm. See the documentation for `verify`
+//! for examples.
 //!
 //! For signature verification, this API treats each combination of parameters
 //! as a separate algorithm. For example, instead of having a single "RSA"
