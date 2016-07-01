@@ -159,48 +159,6 @@ int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int BN_add_word(BIGNUM *a, BN_ULONG w) {
-  BN_ULONG l;
-  int i;
-
-  w &= BN_MASK2;
-
-  /* degenerate case: w is zero */
-  if (!w) {
-    return 1;
-  }
-
-  /* degenerate case: a is zero */
-  if (BN_is_zero(a)) {
-    return BN_set_word(a, w);
-  }
-
-  /* handle 'a' when negative */
-  if (a->neg) {
-    a->neg = 0;
-    i = BN_sub_word(a, w);
-    if (!BN_is_zero(a)) {
-      a->neg = !(a->neg);
-    }
-    return i;
-  }
-
-  for (i = 0; w != 0 && i < a->top; i++) {
-    a->d[i] = l = (a->d[i] + w) & BN_MASK2;
-    w = (w > l) ? 1 : 0;
-  }
-
-  if (w && i == a->top) {
-    if (bn_wexpand(a, a->top + 1) == NULL) {
-      return 0;
-    }
-    a->top++;
-    a->d[i] = w;
-  }
-
-  return 1;
-}
-
 int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   int max;
   int add = 0, neg = 0;
@@ -324,32 +282,10 @@ int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int BN_sub_word(BIGNUM *a, BN_ULONG w) {
+int BN_sub_1_from_positive(BIGNUM *a) {
   int i;
 
-  w &= BN_MASK2;
-
-  /* degenerate case: w is zero */
-  if (!w) {
-    return 1;
-  }
-
-  /* degenerate case: a is zero */
-  if (BN_is_zero(a)) {
-    i = BN_set_word(a, w);
-    if (i != 0) {
-      BN_set_negative(a, 1);
-    }
-    return i;
-  }
-
-  /* handle 'a' when negative */
-  if (a->neg) {
-    a->neg = 0;
-    i = BN_add_word(a, w);
-    a->neg = 1;
-    return i;
-  }
+  const BN_ULONG w = 1;
 
   if ((a->top == 1) && (a->d[0] < w)) {
     a->d[0] = w - a->d[0];
@@ -365,7 +301,6 @@ int BN_sub_word(BIGNUM *a, BN_ULONG w) {
     } else {
       a->d[i] = (a->d[i] - w) & BN_MASK2;
       i++;
-      w = 1;
     }
   }
 
