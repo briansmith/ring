@@ -162,15 +162,14 @@ macro_rules! rsa_pkcs1 {
     }
 }
 
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1_VERIFY, 2048, "2048", "SHA-1",
-           RSA_PKCS1_SHA1);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256_VERIFY, 2048, "2048", "SHA-256",
+rsa_pkcs1!(RSA_PKCS1_SHA1_2048_8192, 2048, "2048", "SHA-1", RSA_PKCS1_SHA1);
+rsa_pkcs1!(RSA_PKCS1_SHA256_2048_8192, 2048, "2048", "SHA-256",
            RSA_PKCS1_SHA256);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384_VERIFY, 2048, "2048", "SHA-384",
+rsa_pkcs1!(RSA_PKCS1_SHA384_2048_8192, 2048, "2048", "SHA-384",
            RSA_PKCS1_SHA384);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512_VERIFY, 2048, "2048", "SHA-512",
+rsa_pkcs1!(RSA_PKCS1_SHA512_2048_8192, 2048, "2048", "SHA-512",
            RSA_PKCS1_SHA512);
-rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384_VERIFY, 3072, "3072", "SHA-384",
+rsa_pkcs1!(RSA_PKCS1_SHA384_3072_8192, 3072, "3072", "SHA-384",
            RSA_PKCS1_SHA384);
 
 macro_rules! pkcs1_digestinfo_prefix {
@@ -466,13 +465,13 @@ mod tests {
 
             let digest_name = test_case.consume_string("Digest");
             let alg = if digest_name == "SHA1" {
-                &RSA_PKCS1_2048_8192_SHA1_VERIFY
+                &RSA_PKCS1_SHA1_2048_8192
             } else if digest_name == "SHA256" {
-                &RSA_PKCS1_2048_8192_SHA256_VERIFY
+                &RSA_PKCS1_SHA256_2048_8192
             } else if digest_name == "SHA384" {
-                &RSA_PKCS1_2048_8192_SHA384_VERIFY
+                &RSA_PKCS1_SHA384_2048_8192
             } else if digest_name == "SHA512" {
-                &RSA_PKCS1_2048_8192_SHA512_VERIFY
+                &RSA_PKCS1_SHA512_2048_8192
             } else {
                 panic!("Unsupported digest: {}", digest_name);
             };
