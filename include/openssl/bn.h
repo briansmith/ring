@@ -298,6 +298,9 @@ OPENSSL_EXPORT int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
  * on allocation failure. */
 OPENSSL_EXPORT int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
+/* BN_add_word adds |w| to |a|. It returns one on success and zero otherwise. */
+OPENSSL_EXPORT int BN_add_word(BIGNUM *a, BN_ULONG w);
+
 /* BN_sub sets |r| = |a| - |b|, where |r| must be a distinct pointer from |a|
  * and |b|. It returns one on success and zero on allocation failure. */
 OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
@@ -307,9 +310,9 @@ OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
  * one on success and zero on allocation failure. */
 OPENSSL_EXPORT int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
-/* BN_sub_1_from_positive subtracts 1 from |a|. |a| must be positive. It
- * returns one on success and zero on allocation failure. */
-OPENSSL_EXPORT int BN_sub_1_from_positive(BIGNUM *a);
+/* BN_sub_word subtracts |w| from |a|. It returns one on success and zero on
+ * allocation failure. */
+OPENSSL_EXPORT int BN_sub_word(BIGNUM *a, BN_ULONG w);
 
 /* BN_mul sets |r| = |a| * |b|, where |r| may be the same pointer as |a| or
  * |b|. Returns one on success and zero otherwise. */

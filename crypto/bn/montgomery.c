@@ -199,19 +199,27 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   if (!BN_lshift(Ri, Ri, BN_MONT_CTX_N0_LIMBS * BN_BITS2)) {
     goto err; /* R*Ri */
   }
-  if (BN_is_zero(Ri)) {
-    /* XXX: This is impossible because if Ri is zero then
-     * Ri * R (mod tmod) != 1, but Ri * R == 1 (mod tmod) by the definition of
-     * modular inverse. We put this check in here, at least temporarily, to
-     * have time to figure out why OpenSSL has special code to handle this
-     * case. TODO: Remove this. */
-    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-    goto err;
+  const BIGNUM *Ri_dividend;
+  if (!BN_is_zero(Ri)) {
+    if (!BN_sub_word(Ri, 1)) {
+      goto err;
+    }
+    Ri_dividend = Ri;
+  } else {
+    /* Ri == 0 so Ri - 1 == -1. -1 % tmod == 0xff..ff. */
+    static const BN_ULONG kMinusOneLimbs[BN_MONT_CTX_N0_LIMBS] = {
+      BN_MASK2,
+#if BN_MONT_CTX_N0_LIMBS == 2
+      BN_MASK2
+#endif
+    };
+    STATIC_BIGNUM_DIAGNOSTIC_PUSH
+    static const BIGNUM kMinusOne = STATIC_BIGNUM(kMinusOneLimbs);
+    STATIC_BIGNUM_DIAGNOSTIC_POP
+    Ri_dividend = &kMinusOne;
   }
-  if (!BN_sub_1_from_positive(Ri)) {
-    goto err;
-  }
-  if (!BN_div(Ri, NULL, Ri, &tmod, ctx)) {
+
+  if (!BN_div(Ri, NULL, Ri_dividend, &tmod, ctx)) {
     goto err;
   }
 
