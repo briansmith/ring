@@ -99,7 +99,7 @@ impl<'a> Ed25519KeyPair {
 /// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
-pub static ED25519_VERIFY: signature::VerificationAlgorithm =
+pub static ED25519: signature::VerificationAlgorithm =
         signature::VerificationAlgorithm {
     implementation: &EdDSA,
 };
@@ -162,7 +162,7 @@ mod tests {
             let msg = untrusted::Input::from(&msg);
             let expected_sig = untrusted::Input::from(&expected_sig);
 
-            assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
+            assert!(signature::verify(&signature::ED25519, public_key,
                                       msg, expected_sig).is_ok());
 
             Ok(())

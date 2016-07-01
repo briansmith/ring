@@ -75,7 +75,7 @@
 //! let msg_input = untrusted::Input::from(MESSAGE);
 //! let sig_input = untrusted::Input::from(sig_bytes);
 //!
-//! try!(signature::verify(&signature::ED25519_VERIFY, pub_key_input,
+//! try!(signature::verify(&signature::ED25519, pub_key_input,
 //!                        msg_input, sig_input));
 //!
 //! # Ok(())
@@ -145,7 +145,7 @@ pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA512_VERIFY,
 };
 
-pub use ec::eddsa::{ED25519_VERIFY, Ed25519KeyPair};
+pub use ec::eddsa::{ED25519, Ed25519KeyPair};
 
 #[cfg(feature = "use_heap")]
 pub use rsa::RSAKeyPair;
