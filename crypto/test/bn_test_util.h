@@ -140,30 +140,6 @@ extern "C" {
  * error. */
 OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
 
-/* BN_hex2bn_with_flags acts like |BN_hex2n|, but in addition, sets |flags| on
- * the resulting BIGNUM.
- */
-OPENSSL_EXPORT int BN_hex2bn_with_flags(BIGNUM **outp, const char *in,
-                                        int flags);
-
-/* BN_dec2bn parses the leading decimal number from |in|, which may be
- * proceeded by a '-' to indicate a negative number and may contain trailing,
- * non-decimal data. If |outp| is not NULL, it constructs a BIGNUM equal to the
- * decimal number and stores it in |*outp|. If |*outp| is NULL then it
- * allocates a new BIGNUM and updates |*outp|. It returns the number of bytes
- * of |in| processed or zero on error. */
-OPENSSL_EXPORT int BN_dec2bn(BIGNUM **outp, const char *in);
-
-/* BN_asc2bn acts like |BN_dec2bn| or |BN_hex2bn| depending on whether |in|
- * begins with "0X" or "0x" (indicating hex) or not (indicating decimal). A
- * leading '-' is still permitted and comes before the optional 0X/0x. It
- * returns one on success or zero on error. */
-OPENSSL_EXPORT int BN_asc2bn(BIGNUM **outp, const char *in);
-
-/* BN_print_fp writes a hex encoding of |a| to |fp|. It returns one on success
- * and zero on error. */
-OPENSSL_EXPORT int BN_print_fp(FILE *fp, const BIGNUM *a);
-
 
 #if defined(__cplusplus)
 }

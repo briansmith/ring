@@ -153,8 +153,6 @@ extern "C" {
 #define BN_MASK2h	(0xffffffff00000000UL)
 #define BN_MASK2h1	(0xffffffff80000000UL)
 #define BN_TBIT		(0x8000000000000000UL)
-#define BN_DEC_CONV	(10000000000000000000UL)
-#define BN_DEC_NUM	19
 #define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
 
 #elif defined(OPENSSL_32_BIT)
@@ -168,8 +166,6 @@ extern "C" {
 #define BN_MASK2h1	(0xffff8000UL)
 #define BN_MASK2h	(0xffff0000UL)
 #define BN_TBIT		(0x80000000UL)
-#define BN_DEC_CONV	(1000000000UL)
-#define BN_DEC_NUM	9
 #define TOBN(hi, lo) lo, hi
 
 #else

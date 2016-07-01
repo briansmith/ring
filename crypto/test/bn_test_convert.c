@@ -65,30 +65,6 @@
 #include "../bn/internal.h"
 
 
-static int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
-  BN_ULONG ll;
-
-  w &= BN_MASK2;
-  if (!bn->top) {
-    return 1;
-  }
-
-  if (w == 0) {
-    BN_zero(bn);
-    return 1;
-  }
-
-  ll = bn_mul_words(bn->d, bn->d, bn->top, w);
-  if (ll) {
-    if (bn_wexpand(bn, bn->top + 1) == NULL) {
-      return 0;
-    }
-    bn->d[bn->top++] = ll;
-  }
-
-  return 1;
-}
-
 static BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
   if (bits + BN_BITS2 - 1 < bits) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
@@ -143,32 +119,6 @@ static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
   }
   assert(i <= bn->dmax);
   bn->top = i;
-  return 1;
-}
-
-/* decode_dec decodes |in_len| bytes of decimal data from |in| and updates |bn|. */
-static int decode_dec(BIGNUM *bn, const char *in, int in_len) {
-  int i, j;
-  BN_ULONG l = 0;
-
-  /* Decode |BN_DEC_NUM| digits at a time. */
-  j = BN_DEC_NUM - (in_len % BN_DEC_NUM);
-  if (j == BN_DEC_NUM) {
-    j = 0;
-  }
-  l = 0;
-  for (i = 0; i < in_len; i++) {
-    l *= 10;
-    l += in[i] - '0';
-    if (++j == BN_DEC_NUM) {
-      if (!BN_mul_word(bn, BN_DEC_CONV) ||
-          !BN_add_word(bn, l)) {
-        return 0;
-      }
-      l = 0;
-      j = 0;
-    }
-  }
   return 1;
 }
 
@@ -229,69 +179,4 @@ err:
 
 int BN_hex2bn(BIGNUM **outp, const char *in) {
   return bn_x2bn(outp, in, decode_hex, isxdigit);
-}
-
-int BN_hex2bn_with_flags(BIGNUM **outp, const char *in, int flags) {
-  if (!BN_hex2bn(outp, in)) {
-    return 0;
-  }
-  BN_set_flags(*outp, flags);
-  return 1;
-}
-
-int BN_dec2bn(BIGNUM **outp, const char *in) {
-  return bn_x2bn(outp, in, decode_dec, isdigit);
-}
-
-int BN_asc2bn(BIGNUM **outp, const char *in) {
-  const char *const orig_in = in;
-  if (*in == '-') {
-    in++;
-  }
-
-  if (in[0] == '0' && (in[1] == 'X' || in[1] == 'x')) {
-    if (!BN_hex2bn(outp, in+2)) {
-      return 0;
-    }
-  } else {
-    if (!BN_dec2bn(outp, in)) {
-      return 0;
-    }
-  }
-
-  if (*orig_in == '-' && !BN_is_zero(*outp)) {
-    (*outp)->neg = 1;
-  }
-
-  return 1;
-}
-
-int BN_print_fp(FILE *fp, const BIGNUM *a) {
-  int i, j, v, z = 0;
-  int ret = 0;
-
-  if (a->neg && fputc('-', fp) != 1) {
-    goto end;
-  }
-
-  if (BN_is_zero(a) && fputc('0', fp) != 1) {
-    goto end;
-  }
-
-  for (i = a->top - 1; i >= 0; i--) {
-    for (j = BN_BITS2 - 4; j >= 0; j -= 4) {
-      /* strip leading zeros */
-      v = ((int)(a->d[i] >> (long)j)) & 0x0f;
-      if (z || v != 0) {
-        if (fputc(hextable[v], fp) != 1) {
-          goto end;
-        }
-        z = 1;
-      }
-    }
-  }
-  ret = 1;
-
-end:
-  return ret;
 }

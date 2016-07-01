@@ -118,9 +118,7 @@ static bool test_exp(RAND *rng, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
 static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
 static bool TestBN2BinPadded(RAND *rng);
-static bool TestDec2BN();
 static bool TestHex2BN();
-static bool TestASC2BN();
 static bool TestRand(RAND *rng);
 static bool TestNegativeZero(BN_CTX *ctx);
 static bool TestDivideZero(BN_CTX *ctx);
@@ -142,9 +140,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !test_exp(rng, ctx.get()) ||
       !test_exp_mod_zero() ||
       !TestBN2BinPadded(rng) ||
-      !TestDec2BN() ||
       !TestHex2BN() ||
-      !TestASC2BN() ||
       !TestRand(rng) ||
       !TestNegativeZero(ctx.get()) ||
       !TestDivideZero(ctx.get())) {
@@ -849,50 +845,8 @@ static bool TestBN2BinPadded(RAND *rng) {
   return true;
 }
 
-static int DecimalToBIGNUM(ScopedBIGNUM *out, const char *in) {
-  BIGNUM *raw = NULL;
-  int ret = BN_dec2bn(&raw, in);
-  out->reset(raw);
-  return ret;
-}
-
 static int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
   return BN_abs_is_word(bn, w) && (w == 0 || bn->neg == 0);
-}
-
-static bool TestDec2BN() {
-  ScopedBIGNUM bn;
-  int ret = DecimalToBIGNUM(&bn, "0");
-  if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
-    return false;
-  }
-
-  ret = DecimalToBIGNUM(&bn, "256");
-  if (ret != 3 || !BN_is_word(bn.get(), 256) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
-    return false;
-  }
-
-  ret = DecimalToBIGNUM(&bn, "-42");
-  if (ret != 3 || !BN_abs_is_word(bn.get(), 42) || !BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
-    return false;
-  }
-
-  ret = DecimalToBIGNUM(&bn, "-0");
-  if (ret != 2 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
-    return false;
-  }
-
-  ret = DecimalToBIGNUM(&bn, "42trailing garbage is ignored");
-  if (ret != 2 || !BN_abs_is_word(bn.get(), 42) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
-    return false;
-  }
-
-  return true;
 }
 
 static bool TestHex2BN() {
@@ -924,66 +878,6 @@ static bool TestHex2BN() {
   ret = HexToBIGNUM(&bn, "abctrailing garbage is ignored");
   if (ret != 3 || !BN_is_word(bn.get(), 0xabc) || BN_is_negative(bn.get())) {
     fprintf(stderr, "BN_hex2bn gave a bad result.\n");
-    return false;
-  }
-
-  return true;
-}
-
-static ScopedBIGNUM ASCIIToBIGNUM(const char *in) {
-  BIGNUM *raw = NULL;
-  if (!BN_asc2bn(&raw, in)) {
-    return nullptr;
-  }
-  return ScopedBIGNUM(raw);
-}
-
-static bool TestASC2BN() {
-  ScopedBIGNUM bn = ASCIIToBIGNUM("0");
-  if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("256");
-  if (!bn || !BN_is_word(bn.get(), 256) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("-42");
-  if (!bn || !BN_abs_is_word(bn.get(), 42) || !BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("0x1234");
-  if (!bn || !BN_is_word(bn.get(), 0x1234) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("0X1234");
-  if (!bn || !BN_is_word(bn.get(), 0x1234) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("-0xabcd");
-  if (!bn || !BN_abs_is_word(bn.get(), 0xabcd) || !BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("-0");
-  if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
-    return false;
-  }
-
-  bn = ASCIIToBIGNUM("123trailing garbage is ignored");
-  if (!bn || !BN_is_word(bn.get(), 123) || BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
     return false;
   }
 
