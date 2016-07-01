@@ -115,13 +115,13 @@ static bool test_mod_mul(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
 static bool test_exp(RAND *rng, BN_CTX *ctx);
-static bool test_exp_mod_zero(void);
 static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
 static bool TestBN2BinPadded(RAND *rng);
 static bool TestHex2BN();
 static bool TestRand(RAND *rng);
 static bool TestNegativeZero(BN_CTX *ctx);
 static bool TestBadModulus(BN_CTX *ctx);
+static bool TestExpModZero(RAND *rng);
 static bool RunTest(FileTest *t, void *arg);
 
 
@@ -138,12 +138,12 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !test_mod_exp_mont_consttime(rng, ctx.get()) ||
       !test_mod_exp_mont5(rng, ctx.get()) ||
       !test_exp(rng, ctx.get()) ||
-      !test_exp_mod_zero() ||
       !TestBN2BinPadded(rng) ||
       !TestHex2BN() ||
       !TestRand(rng) ||
       !TestNegativeZero(ctx.get()) ||
-      !TestBadModulus(ctx.get())) {
+      !TestBadModulus(ctx.get()) ||
+      !TestExpModZero(rng)) {
     return 1;
   }
 
@@ -699,26 +699,6 @@ static bool test_exp(RAND *rng, BN_CTX *ctx) {
   return true;
 }
 
-// test_exp_mod_zero tests that 1**0 mod 1 == 0.
-static bool test_exp_mod_zero(void) {
-  ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
-  if (!zero || !a || !r || !BN_one(a.get())) {
-    return false;
-  }
-  BN_zero(zero.get());
-
-  if (!BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
-                       nullptr) ||
-      !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
-                                 nullptr, nullptr) ||
-      !BN_is_zero(r.get())) {
-    return false;
-  }
-
-  return true;
-}
-
 static bool TestBN2BinPadded(RAND *rng) {
   uint8_t zeros[256], out[256], reference[128];
 
@@ -991,6 +971,26 @@ static bool TestBadModulus(BN_CTX *ctx) {
     return 0;
   }
   ERR_clear_error();
+
+  return true;
+}
+
+// TestExpModZero tests that 1**0 mod 1 == 0.
+static bool TestExpModZero(RAND *rng) {
+  ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
+  if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0, rng)) {
+    return false;
+  }
+  BN_zero(zero.get());
+
+  if (!BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
+                       nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
+                                 nullptr, nullptr) ||
+      !BN_is_zero(r.get())) {
+    return false;
+  }
 
   return true;
 }
