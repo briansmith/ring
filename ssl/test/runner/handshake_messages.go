@@ -575,28 +575,14 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 }
 
 type serverHelloMsg struct {
-	raw                     []byte
-	isDTLS                  bool
-	vers                    uint16
-	random                  []byte
-	sessionId               []byte
-	cipherSuite             uint16
-	compressionMethod       uint8
-	nextProtoNeg            bool
-	nextProtos              []string
-	ocspStapling            bool
-	ticketSupported         bool
-	secureRenegotiation     []byte
-	alpnProtocol            string
-	alpnProtocolEmpty       bool
-	duplicateExtension      bool
-	channelIDRequested      bool
-	extendedMasterSecret    bool
-	srtpProtectionProfile   uint16
-	srtpMasterKeyIdentifier string
-	sctList                 []byte
-	customExtension         string
-	npnLast                 bool
+	raw               []byte
+	isDTLS            bool
+	vers              uint16
+	random            []byte
+	sessionId         []byte
+	cipherSuite       uint16
+	compressionMethod uint8
+	extensions        serverExtensions
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -616,6 +602,78 @@ func (m *serverHelloMsg) marshal() []byte {
 	hello.addU8(m.compressionMethod)
 
 	extensions := hello.addU16LengthPrefixed()
+
+	m.extensions.marshal(extensions)
+
+	if extensions.len() == 0 {
+		hello.discardChild()
+	}
+
+	m.raw = handshakeMsg.finish()
+	return m.raw
+}
+
+func (m *serverHelloMsg) unmarshal(data []byte) bool {
+	if len(data) < 42 {
+		return false
+	}
+	m.raw = data
+	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
+	m.random = data[6:38]
+	sessionIdLen := int(data[38])
+	if sessionIdLen > 32 || len(data) < 39+sessionIdLen {
+		return false
+	}
+	m.sessionId = data[39 : 39+sessionIdLen]
+	data = data[39+sessionIdLen:]
+	if len(data) < 3 {
+		return false
+	}
+	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
+	m.compressionMethod = data[2]
+	data = data[3:]
+
+	if len(data) == 0 {
+		// ServerHello is optionally followed by extension data
+		m.extensions = serverExtensions{}
+		return true
+	}
+	if len(data) < 2 {
+		return false
+	}
+
+	extensionsLength := int(data[0])<<8 | int(data[1])
+	data = data[2:]
+	if len(data) != extensionsLength {
+		return false
+	}
+
+	if !m.extensions.unmarshal(data) {
+		return false
+	}
+
+	return true
+}
+
+type serverExtensions struct {
+	nextProtoNeg            bool
+	nextProtos              []string
+	ocspStapling            bool
+	ticketSupported         bool
+	secureRenegotiation     []byte
+	alpnProtocol            string
+	alpnProtocolEmpty       bool
+	duplicateExtension      bool
+	channelIDRequested      bool
+	extendedMasterSecret    bool
+	srtpProtectionProfile   uint16
+	srtpMasterKeyIdentifier string
+	sctList                 []byte
+	customExtension         string
+	npnLast                 bool
+}
+
+func (m *serverExtensions) marshal(extensions *byteBuilder) {
 	if m.duplicateExtension {
 		// Add a duplicate bogus extension at the beginning and end.
 		extensions.addU16(0xffff)
@@ -700,57 +758,11 @@ func (m *serverHelloMsg) marshal() []byte {
 			npn.addBytes([]byte(v))
 		}
 	}
-
-	if extensions.len() == 0 {
-		hello.discardChild()
-	}
-
-	m.raw = handshakeMsg.finish()
-	return m.raw
 }
 
-func (m *serverHelloMsg) unmarshal(data []byte) bool {
-	if len(data) < 42 {
-		return false
-	}
-	m.raw = data
-	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
-	m.random = data[6:38]
-	sessionIdLen := int(data[38])
-	if sessionIdLen > 32 || len(data) < 39+sessionIdLen {
-		return false
-	}
-	m.sessionId = data[39 : 39+sessionIdLen]
-	data = data[39+sessionIdLen:]
-	if len(data) < 3 {
-		return false
-	}
-	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
-	m.compressionMethod = data[2]
-	data = data[3:]
-
-	m.nextProtoNeg = false
-	m.nextProtos = nil
-	m.ocspStapling = false
-	m.ticketSupported = false
-	m.alpnProtocol = ""
-	m.alpnProtocolEmpty = false
-	m.extendedMasterSecret = false
-	m.customExtension = ""
-
-	if len(data) == 0 {
-		// ServerHello is optionally followed by extension data
-		return true
-	}
-	if len(data) < 2 {
-		return false
-	}
-
-	extensionsLength := int(data[0])<<8 | int(data[1])
-	data = data[2:]
-	if len(data) != extensionsLength {
-		return false
-	}
+func (m *serverExtensions) unmarshal(data []byte) bool {
+	// Reset all fields.
+	*m = serverExtensions{}
 
 	for len(data) != 0 {
 		if len(data) < 4 {

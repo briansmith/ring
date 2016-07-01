@@ -280,7 +280,7 @@ NextCipherSuite:
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
 	}
 
-	if c.config.Bugs.RequireRenegotiationInfo && serverHello.secureRenegotiation == nil {
+	if c.config.Bugs.RequireRenegotiationInfo && serverHello.extensions.secureRenegotiation == nil {
 		return errors.New("tls: renegotiation extension missing")
 	}
 
@@ -288,15 +288,15 @@ NextCipherSuite:
 		var expectedRenegInfo []byte
 		expectedRenegInfo = append(expectedRenegInfo, c.clientVerify...)
 		expectedRenegInfo = append(expectedRenegInfo, c.serverVerify...)
-		if !bytes.Equal(serverHello.secureRenegotiation, expectedRenegInfo) {
+		if !bytes.Equal(serverHello.extensions.secureRenegotiation, expectedRenegInfo) {
 			c.sendAlert(alertHandshakeFailure)
 			return fmt.Errorf("tls: renegotiation mismatch")
 		}
 	}
 
 	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
-		if serverHello.customExtension != *expected {
-			return fmt.Errorf("tls: bad custom extension contents %q", serverHello.customExtension)
+		if serverHello.extensions.customExtension != *expected {
+			return fmt.Errorf("tls: bad custom extension contents %q", serverHello.extensions.customExtension)
 		}
 	}
 
@@ -441,7 +441,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.peerCertificates = certs
 	}
 
-	if hs.serverHello.ocspStapling {
+	if hs.serverHello.extensions.ocspStapling {
 		msg, err := c.readHandshake()
 		if err != nil {
 			return err
@@ -596,7 +596,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.writeRecord(recordTypeHandshake, ckx.marshal())
 	}
 
-	if hs.serverHello.extendedMasterSecret && c.vers >= VersionTLS10 {
+	if hs.serverHello.extensions.extendedMasterSecret && c.vers >= VersionTLS10 {
 		hs.masterSecret = extendedMasterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.finishedHash)
 		c.extendedMasterSecret = true
 	} else {
@@ -701,8 +701,8 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 
 	clientDidNPN := hs.hello.nextProtoNeg
 	clientDidALPN := len(hs.hello.alpnProtocols) > 0
-	serverHasNPN := hs.serverHello.nextProtoNeg
-	serverHasALPN := len(hs.serverHello.alpnProtocol) > 0
+	serverHasNPN := hs.serverHello.extensions.nextProtoNeg
+	serverHasALPN := len(hs.serverHello.extensions.alpnProtocol) > 0
 
 	if !clientDidNPN && serverHasNPN {
 		c.sendAlert(alertHandshakeFailure)
@@ -720,24 +720,24 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	}
 
 	if serverHasALPN {
-		c.clientProtocol = hs.serverHello.alpnProtocol
+		c.clientProtocol = hs.serverHello.extensions.alpnProtocol
 		c.clientProtocolFallback = false
 		c.usedALPN = true
 	}
 
-	if !hs.hello.channelIDSupported && hs.serverHello.channelIDRequested {
+	if !hs.hello.channelIDSupported && hs.serverHello.extensions.channelIDRequested {
 		c.sendAlert(alertHandshakeFailure)
 		return false, errors.New("server advertised unrequested Channel ID extension")
 	}
 
-	if hs.serverHello.srtpProtectionProfile != 0 {
-		if hs.serverHello.srtpMasterKeyIdentifier != "" {
+	if hs.serverHello.extensions.srtpProtectionProfile != 0 {
+		if hs.serverHello.extensions.srtpMasterKeyIdentifier != "" {
 			return false, errors.New("tls: server selected SRTP MKI value")
 		}
 
 		found := false
 		for _, p := range c.config.SRTPProtectionProfiles {
-			if p == hs.serverHello.srtpProtectionProfile {
+			if p == hs.serverHello.extensions.srtpProtectionProfile {
 				found = true
 				break
 			}
@@ -746,7 +746,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 			return false, errors.New("tls: server advertised unsupported SRTP profile")
 		}
 
-		c.srtpProtectionProfile = hs.serverHello.srtpProtectionProfile
+		c.srtpProtectionProfile = hs.serverHello.extensions.srtpProtectionProfile
 	}
 
 	if hs.serverResumedSession() {
@@ -756,11 +756,11 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 			return false, errors.New("tls: server resumed session on renegotiation")
 		}
 
-		if hs.serverHello.sctList != nil {
+		if hs.serverHello.extensions.sctList != nil {
 			return false, errors.New("tls: server sent SCT extension on session resumption")
 		}
 
-		if hs.serverHello.ocspStapling {
+		if hs.serverHello.extensions.ocspStapling {
 			return false, errors.New("tls: server sent OCSP extension on session resumption")
 		}
 
@@ -774,8 +774,8 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		return true, nil
 	}
 
-	if hs.serverHello.sctList != nil {
-		c.sctList = hs.serverHello.sctList
+	if hs.serverHello.extensions.sctList != nil {
+		c.sctList = hs.serverHello.extensions.sctList
 	}
 
 	return false, nil
@@ -828,7 +828,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		ocspResponse:       c.ocspResponse,
 	}
 
-	if !hs.serverHello.ticketSupported {
+	if !hs.serverHello.extensions.ticketSupported {
 		if c.config.Bugs.ExpectNewTicket {
 			return errors.New("tls: expected new ticket")
 		}
@@ -866,9 +866,9 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 
 	var postCCSBytes []byte
 	seqno := hs.c.sendHandshakeSeq
-	if hs.serverHello.nextProtoNeg {
+	if hs.serverHello.extensions.nextProtoNeg {
 		nextProto := new(nextProtoMsg)
-		proto, fallback := mutualProtocol(c.config.NextProtos, hs.serverHello.nextProtos)
+		proto, fallback := mutualProtocol(c.config.NextProtos, hs.serverHello.extensions.nextProtos)
 		nextProto.proto = proto
 		c.clientProtocol = proto
 		c.clientProtocolFallback = fallback
@@ -879,7 +879,7 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		postCCSBytes = append(postCCSBytes, nextProtoBytes...)
 	}
 
-	if hs.serverHello.channelIDRequested {
+	if hs.serverHello.extensions.channelIDRequested {
 		channelIDMsg := new(channelIDMsg)
 		if c.config.ChannelID.Curve != elliptic.P256() {
 			return fmt.Errorf("tls: Channel ID is not on P-256.")

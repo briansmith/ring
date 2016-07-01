@@ -219,9 +219,11 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	c.haveVers = true
 
 	hs.hello = &serverHelloMsg{
-		isDTLS:          c.isDTLS,
-		customExtension: config.Bugs.CustomExtension,
-		npnLast:         config.Bugs.SwapNPNAndALPN,
+		isDTLS: c.isDTLS,
+		extensions: serverExtensions{
+			customExtension: config.Bugs.CustomExtension,
+			npnLast:         config.Bugs.SwapNPNAndALPN,
+		},
 	}
 
 	supportedCurve := false
@@ -276,33 +278,33 @@ Curves:
 	}
 
 	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
-		hs.hello.secureRenegotiation = append(hs.hello.secureRenegotiation, c.clientVerify...)
-		hs.hello.secureRenegotiation = append(hs.hello.secureRenegotiation, c.serverVerify...)
+		hs.hello.extensions.secureRenegotiation = append(hs.hello.extensions.secureRenegotiation, c.clientVerify...)
+		hs.hello.extensions.secureRenegotiation = append(hs.hello.extensions.secureRenegotiation, c.serverVerify...)
 		if c.config.Bugs.BadRenegotiationInfo {
-			hs.hello.secureRenegotiation[0] ^= 0x80
+			hs.hello.extensions.secureRenegotiation[0] ^= 0x80
 		}
 	} else {
-		hs.hello.secureRenegotiation = hs.clientHello.secureRenegotiation
+		hs.hello.extensions.secureRenegotiation = hs.clientHello.secureRenegotiation
 	}
 
 	if c.noRenegotiationInfo() {
-		hs.hello.secureRenegotiation = nil
+		hs.hello.extensions.secureRenegotiation = nil
 	}
 
 	hs.hello.compressionMethod = compressionNone
-	hs.hello.duplicateExtension = c.config.Bugs.DuplicateExtension
+	hs.hello.extensions.duplicateExtension = c.config.Bugs.DuplicateExtension
 	if len(hs.clientHello.serverName) > 0 {
 		c.serverName = hs.clientHello.serverName
 	}
 
 	if len(hs.clientHello.alpnProtocols) > 0 {
 		if proto := c.config.Bugs.ALPNProtocol; proto != nil {
-			hs.hello.alpnProtocol = *proto
-			hs.hello.alpnProtocolEmpty = len(*proto) == 0
+			hs.hello.extensions.alpnProtocol = *proto
+			hs.hello.extensions.alpnProtocolEmpty = len(*proto) == 0
 			c.clientProtocol = *proto
 			c.usedALPN = true
 		} else if selectedProto, fallback := mutualProtocol(hs.clientHello.alpnProtocols, c.config.NextProtos); !fallback {
-			hs.hello.alpnProtocol = selectedProto
+			hs.hello.extensions.alpnProtocol = selectedProto
 			c.clientProtocol = selectedProto
 			c.usedALPN = true
 		}
@@ -313,11 +315,11 @@ Curves:
 		// config.NextProtos is empty. See
 		// https://code.google.com/p/go/issues/detail?id=5445.
 		if hs.clientHello.nextProtoNeg && len(config.NextProtos) > 0 {
-			hs.hello.nextProtoNeg = true
-			hs.hello.nextProtos = config.NextProtos
+			hs.hello.extensions.nextProtoNeg = true
+			hs.hello.extensions.nextProtos = config.NextProtos
 		}
 	}
-	hs.hello.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
+	hs.hello.extensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
 
 	if len(config.Certificates) == 0 {
 		c.sendAlert(alertInternalError)
@@ -332,7 +334,7 @@ Curves:
 	}
 
 	if hs.clientHello.channelIDSupported && config.RequestChannelID {
-		hs.hello.channelIDRequested = true
+		hs.hello.extensions.channelIDRequested = true
 	}
 
 	if hs.clientHello.srtpProtectionProfiles != nil {
@@ -340,7 +342,7 @@ Curves:
 		for _, p1 := range c.config.SRTPProtectionProfiles {
 			for _, p2 := range hs.clientHello.srtpProtectionProfiles {
 				if p1 == p2 {
-					hs.hello.srtpProtectionProfile = p1
+					hs.hello.extensions.srtpProtectionProfile = p1
 					c.srtpProtectionProfile = p1
 					break SRTPLoop
 				}
@@ -349,7 +351,7 @@ Curves:
 	}
 
 	if c.config.Bugs.SendSRTPProtectionProfile != 0 {
-		hs.hello.srtpProtectionProfile = c.config.Bugs.SendSRTPProtectionProfile
+		hs.hello.extensions.srtpProtectionProfile = c.config.Bugs.SendSRTPProtectionProfile
 	}
 
 	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
@@ -485,10 +487,10 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	// We echo the client's session ID in the ServerHello to let it know
 	// that we're doing a resumption.
 	hs.hello.sessionId = hs.clientHello.sessionId
-	hs.hello.ticketSupported = c.config.Bugs.RenewTicketOnResume
+	hs.hello.extensions.ticketSupported = c.config.Bugs.RenewTicketOnResume
 
 	if c.config.Bugs.SendSCTListOnResume != nil {
-		hs.hello.sctList = c.config.Bugs.SendSCTListOnResume
+		hs.hello.extensions.sctList = c.config.Bugs.SendSCTListOnResume
 	}
 
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
@@ -516,22 +518,22 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	isPSK := hs.suite.flags&suitePSK != 0
 	if !isPSK && hs.clientHello.ocspStapling && len(hs.cert.OCSPStaple) > 0 {
-		hs.hello.ocspStapling = true
+		hs.hello.extensions.ocspStapling = true
 	}
 
 	if hs.clientHello.sctListSupported && len(hs.cert.SignedCertificateTimestampList) > 0 {
-		hs.hello.sctList = hs.cert.SignedCertificateTimestampList
+		hs.hello.extensions.sctList = hs.cert.SignedCertificateTimestampList
 	}
 
-	hs.hello.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
+	hs.hello.extensions.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
 	hs.hello.cipherSuite = hs.suite.id
 	if config.Bugs.SendCipherSuite != 0 {
 		hs.hello.cipherSuite = config.Bugs.SendCipherSuite
 	}
-	c.extendedMasterSecret = hs.hello.extendedMasterSecret
+	c.extendedMasterSecret = hs.hello.extensions.extendedMasterSecret
 
 	// Generate a session ID if we're to save the session.
-	if !hs.hello.ticketSupported && config.ServerSessionCache != nil {
+	if !hs.hello.extensions.ticketSupported && config.ServerSessionCache != nil {
 		hs.hello.sessionId = make([]byte, 32)
 		if _, err := io.ReadFull(config.rand(), hs.hello.sessionId); err != nil {
 			c.sendAlert(alertInternalError)
@@ -560,7 +562,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	if hs.hello.ocspStapling && !c.config.Bugs.SkipCertificateStatus {
+	if hs.hello.extensions.ocspStapling && !c.config.Bugs.SkipCertificateStatus {
 		certStatus := new(certificateStatusMsg)
 		certStatus.statusType = statusTypeOCSP
 		certStatus.response = hs.cert.OCSPStaple
@@ -774,7 +776,7 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 		return err
 	}
 
-	if hs.hello.nextProtoNeg {
+	if hs.hello.extensions.nextProtoNeg {
 		msg, err := c.readHandshake()
 		if err != nil {
 			return err
@@ -788,7 +790,7 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 		c.clientProtocol = nextProto.proto
 	}
 
-	if hs.hello.channelIDRequested {
+	if hs.hello.extensions.channelIDRequested {
 		msg, err := c.readHandshake()
 		if err != nil {
 			return err
@@ -851,7 +853,7 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 		handshakeHash: hs.finishedHash.server.Sum(nil),
 	}
 
-	if !hs.hello.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
+	if !hs.hello.extensions.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
 		if c.config.ServerSessionCache != nil && len(hs.hello.sessionId) != 0 {
 			c.config.ServerSessionCache.Put(string(hs.hello.sessionId), &state)
 		}
