@@ -865,34 +865,17 @@ func (m *certificateMsg) marshal() (x []byte) {
 		return m.raw
 	}
 
-	var i int
-	for _, slice := range m.certificates {
-		i += len(slice)
+	certMsg := newByteBuilder()
+	certMsg.addU8(typeCertificate)
+	certificate := certMsg.addU24LengthPrefixed()
+	certificateList := certificate.addU24LengthPrefixed()
+	for _, cert := range m.certificates {
+		certEntry := certificateList.addU24LengthPrefixed()
+		certEntry.addBytes(cert)
 	}
 
-	length := 3 + 3*len(m.certificates) + i
-	x = make([]byte, 4+length)
-	x[0] = typeCertificate
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
-
-	certificateOctets := length - 3
-	x[4] = uint8(certificateOctets >> 16)
-	x[5] = uint8(certificateOctets >> 8)
-	x[6] = uint8(certificateOctets)
-
-	y := x[7:]
-	for _, slice := range m.certificates {
-		y[0] = uint8(len(slice) >> 16)
-		y[1] = uint8(len(slice) >> 8)
-		y[2] = uint8(len(slice))
-		copy(y[3:], slice)
-		y = y[3+len(slice):]
-	}
-
-	m.raw = x
-	return
+	m.raw = certMsg.finish()
+	return m.raw
 }
 
 func (m *certificateMsg) unmarshal(data []byte) bool {
@@ -1162,59 +1145,34 @@ type certificateRequestMsg struct {
 	certificateAuthorities [][]byte
 }
 
-func (m *certificateRequestMsg) marshal() (x []byte) {
+func (m *certificateRequestMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
 
 	// See http://tools.ietf.org/html/rfc4346#section-7.4.4
-	length := 1 + len(m.certificateTypes) + 2
-	casLength := 0
-	for _, ca := range m.certificateAuthorities {
-		casLength += 2 + len(ca)
-	}
-	length += casLength
+	builder := newByteBuilder()
+	builder.addU8(typeCertificateRequest)
+	body := builder.addU24LengthPrefixed()
+
+	certificateTypes := body.addU8LengthPrefixed()
+	certificateTypes.addBytes(m.certificateTypes)
 
 	if m.hasSignatureAlgorithm {
-		length += 2 + 2*len(m.signatureAlgorithms)
-	}
-
-	x = make([]byte, 4+length)
-	x[0] = typeCertificateRequest
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
-
-	x[4] = uint8(len(m.certificateTypes))
-
-	copy(x[5:], m.certificateTypes)
-	y := x[5+len(m.certificateTypes):]
-
-	if m.hasSignatureAlgorithm {
-		n := len(m.signatureAlgorithms) * 2
-		y[0] = uint8(n >> 8)
-		y[1] = uint8(n)
-		y = y[2:]
+		signatureAlgorithms := body.addU16LengthPrefixed()
 		for _, sigAlg := range m.signatureAlgorithms {
-			y[0] = byte(sigAlg >> 8)
-			y[1] = byte(sigAlg)
-			y = y[2:]
+			signatureAlgorithms.addU16(uint16(sigAlg))
 		}
 	}
 
-	y[0] = uint8(casLength >> 8)
-	y[1] = uint8(casLength)
-	y = y[2:]
+	certificateAuthorities := body.addU16LengthPrefixed()
 	for _, ca := range m.certificateAuthorities {
-		y[0] = uint8(len(ca) >> 8)
-		y[1] = uint8(len(ca))
-		y = y[2:]
-		copy(y, ca)
-		y = y[len(ca):]
+		caEntry := certificateAuthorities.addU16LengthPrefixed()
+		caEntry.addBytes(ca)
 	}
 
-	m.raw = x
-	return
+	m.raw = builder.finish()
+	return m.raw
 }
 
 func (m *certificateRequestMsg) unmarshal(data []byte) bool {
