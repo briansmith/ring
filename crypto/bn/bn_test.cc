@@ -290,7 +290,7 @@ static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
 static bool TestLShift(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM lshift = GetBIGNUM(t, "LShift");
-  int n;
+  int n = 0;
   if (!a || !lshift || !GetInt(t, &n, "N")) {
     return false;
   }
@@ -310,7 +310,7 @@ static bool TestLShift(FileTest *t, BN_CTX *) {
 static bool TestRShift(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM rshift = GetBIGNUM(t, "RShift");
-  int n;
+  int n = 0;
   if (!a || !rshift || !GetInt(t, &n, "N")) {
     return false;
   }
