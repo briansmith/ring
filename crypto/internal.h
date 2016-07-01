@@ -147,10 +147,6 @@ extern "C" {
 void OPENSSL_cpuid_setup(void);
 #endif
 
-#if defined(_MSC_VER)
-#define inline __inline
-#endif
-
 #define OPENSSL_LITTLE_ENDIAN 1
 #define OPENSSL_BIG_ENDIAN 2
 
