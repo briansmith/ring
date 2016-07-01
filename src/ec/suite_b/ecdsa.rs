@@ -215,23 +215,23 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P256_SHA1, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P256_SHA256, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P256_SHA384, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P256_SHA512, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
        "SHA-512", &digest::SHA512);
 
 
-ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P384_SHA1, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P384_SHA256, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P384_SHA384, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
+ecdsa!(ECDSA_P384_SHA512, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
        "SHA-512", &digest::SHA512);
 
 
@@ -306,32 +306,32 @@ mod tests {
                                      &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA1" {
-                (&signature::ECDSA_P256_SHA1_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA1)
             } else if digest_name == "SHA256" {
-                (&signature::ECDSA_P256_SHA256_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA256, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
-                (&signature::ECDSA_P256_SHA384_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA384, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
             } else if digest_name == "SHA512" {
-                (&signature::ECDSA_P256_SHA512_VERIFY, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA512, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
             if digest_name == "SHA1" {
-                (&signature::ECDSA_P384_SHA1_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA1)
             } else if digest_name == "SHA256" {
-                (&signature::ECDSA_P384_SHA256_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA256, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
-                (&signature::ECDSA_P384_SHA384_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA384, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
             } else if digest_name == "SHA512" {
-                (&signature::ECDSA_P384_SHA512_VERIFY, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA512, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
