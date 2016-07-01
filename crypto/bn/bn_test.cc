@@ -79,6 +79,7 @@
 #endif
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -107,8 +108,6 @@ static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_lshift(RAND *rng, BN_CTX *ctx, ScopedBIGNUM a);
-static bool test_rshift(RAND *rng, BN_CTX *ctx);
 static bool test_sqr(RAND *rng, BN_CTX *ctx);
 static bool test_mul(RAND *rng);
 static bool test_div(RAND *rng, BN_CTX *ctx);
@@ -144,10 +143,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
     return 1;
   }
 
-  if (!test_lshift(rng, ctx.get(), std::move(sample)) ||
-      !test_lshift(rng, ctx.get(), nullptr) ||
-      !test_rshift(rng, ctx.get()) ||
-      !test_sqr(rng, ctx.get()) ||
+  if (!test_sqr(rng, ctx.get()) ||
       !test_mul(rng) ||
       !test_div(rng, ctx.get()) ||
       !test_mod(rng, ctx.get()) ||
@@ -188,6 +184,28 @@ static ScopedBIGNUM GetBIGNUM(FileTest *t, const char *attribute) {
     return nullptr;
   }
   return ret;
+}
+
+static bool GetInt(FileTest *t, int *out, const char *attribute) {
+  ScopedBIGNUM ret = GetBIGNUM(t, attribute);
+  if (!ret) {
+    return false;
+  }
+
+  // This is |BN_get_word|, inlined and improved.
+  switch (ret->top) {
+    case 0:
+      *out = 0;
+      return 1;
+    case 1:
+      if (ret->d[0] > (BN_ULONG)INT_MAX) {
+        return false;
+      }
+      *out = static_cast<int>(ret->d[0]);
+      return true;
+    default:
+      return false;
+  }
 }
 
 static bool ExpectBIGNUMsEqual(FileTest *t, const char *operation,
@@ -267,6 +285,44 @@ static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestLShift(FileTest *t, BN_CTX *) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM lshift = GetBIGNUM(t, "LShift");
+  int n;
+  if (!a || !lshift || !GetInt(t, &n, "N")) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_lshift(ret.get(), a.get(), n) ||
+      !ExpectBIGNUMsEqual(t, "A << N", lshift.get(), ret.get()) ||
+      !BN_rshift(ret.get(), lshift.get(), n) ||
+      !ExpectBIGNUMsEqual(t, "A >> N", a.get(), ret.get())) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestRShift(FileTest *t, BN_CTX *) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM rshift = GetBIGNUM(t, "RShift");
+  int n;
+  if (!a || !rshift || !GetInt(t, &n, "N")) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_rshift(ret.get(), a.get(), n) ||
+      !ExpectBIGNUMsEqual(t, "A >> N", rshift.get(), ret.get())) {
+    return false;
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -275,6 +331,8 @@ struct Test {
 static const Test kTests[] = {
     {"Sum", TestSum},
     {"LShift1", TestLShift1},
+    {"LShift", TestLShift},
+    {"RShift", TestRShift},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -362,76 +420,6 @@ static bool test_div(RAND *rng, BN_CTX *ctx) {
     return false;
   }
 
-  return true;
-}
-
-static bool test_rshift(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e || !BN_one(c.get()) ||
-      !BN_rand(a.get(), 200, 0, 0, rng)) {
-    return false;
-  }
-  a->neg = rand_neg();
-  for (int i = 0; i < num0; i++) {
-    if (!BN_rshift(b.get(), a.get(), i + 1) ||
-        !BN_add(c.get(), c.get(), c.get())) {
-      return false;
-    }
-    if (!BN_div(d.get(), e.get(), a.get(), c.get(), ctx) ||
-        !BN_sub(d.get(), d.get(), b.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get())) {
-      fprintf(stderr, "Right shift test failed!\n");
-      return false;
-    }
-  }
-  return true;
-}
-
-static bool test_lshift(RAND *rng, BN_CTX *ctx, ScopedBIGNUM a) {
-  if (!a) {
-    a.reset(BN_new());
-    if (!a || !BN_rand(a.get(), 200, 0, 0, rng)) {
-      return false;
-    }
-    a->neg = rand_neg();
-  }
-
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  if (!b || !c || !d || !BN_one(c.get())) {
-    return false;
-  }
-
-  for (int i = 0; i < num0; i++) {
-    if (!BN_lshift(b.get(), a.get(), i + 1) ||
-        !BN_add(c.get(), c.get(), c.get())) {
-      return false;
-    }
-    if (!BN_mul(d.get(), a.get(), c.get(), ctx) ||
-        !BN_sub(d.get(), d.get(), b.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get())) {
-      fprintf(stderr, "Left shift test failed!\n");
-      fprintf(stderr, "a=");
-      BN_print_fp(stderr, a.get());
-      fprintf(stderr, "\nb=");
-      BN_print_fp(stderr, b.get());
-      fprintf(stderr, "\nc=");
-      BN_print_fp(stderr, c.get());
-      fprintf(stderr, "\nd=");
-      BN_print_fp(stderr, d.get());
-      fprintf(stderr, "\n");
-      return false;
-    }
-  }
   return true;
 }
 
