@@ -383,8 +383,8 @@ OPENSSL_EXPORT int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 /* BN_add_word adds |w| to |a|. It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int BN_add_word(BIGNUM *a, BN_ULONG w);
 
-/* BN_sub sets |r| = |a| - |b|, where |r| must be a distinct pointer from |a|
- * and |b|. It returns one on success and zero on allocation failure. */
+/* BN_sub sets |r| = |a| - |b|, where |r| may be the same pointer as either |a|
+ * or |b|. It returns one on success and zero on allocation failure. */
 OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 /* BN_usub sets |r| = |a| - |b|, where |a| and |b| are non-negative integers,
