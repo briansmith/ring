@@ -94,7 +94,7 @@ mod tests {
             };
 
             let public_key = test_case.consume_bytes("Q");
-            let public_key = try!(untrusted::Input::new(&public_key));
+            let public_key = untrusted::Input::from(&public_key);
             let valid = test_case.consume_string("Result") == "P";
 
             let result = parse_uncompressed_point(curve_ops, public_key);

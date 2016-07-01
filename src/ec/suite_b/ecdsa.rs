@@ -254,13 +254,13 @@ mod tests {
                 alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = try!(untrusted::Input::new(&msg));
+            let msg = untrusted::Input::from(&msg);
 
             let public_key = test_case.consume_bytes("Q");
-            let public_key = try!(untrusted::Input::new(&public_key));
+            let public_key = untrusted::Input::from(&public_key);
 
             let sig = test_case.consume_bytes("Sig");
-            let sig = try!(untrusted::Input::new(&sig));
+            let sig = untrusted::Input::from(&sig);
 
             let expected_result = test_case.consume_string("Result");
 

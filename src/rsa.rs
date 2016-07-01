@@ -80,8 +80,7 @@ impl signature_impl::VerificationAlgorithmImpl for RSAVerificationAlgorithm {
                                    self.min_bits, MAX_BITS)
         }));
 
-        let decoded = try!(untrusted::Input::new(decoded));
-        decoded.read_all((), |decoded| {
+        untrusted::Input::from(decoded).read_all((), |decoded| {
             if try!(decoded.read_byte()) != 0 ||
                try!(decoded.read_byte()) != 1 {
                 return Err(());
@@ -479,7 +478,7 @@ mod tests {
             };
 
             let public_key = test_case.consume_bytes("Key");
-            let public_key = try!(untrusted::Input::new(&public_key));
+            let public_key = untrusted::Input::from(&public_key);
 
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
@@ -493,10 +492,10 @@ mod tests {
             }).is_ok());
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = try!(untrusted::Input::new(&msg));
+            let msg = untrusted::Input::from(&msg);
 
             let sig = test_case.consume_bytes("Sig");
-            let sig = try!(untrusted::Input::new(&sig));
+            let sig = untrusted::Input::from(&sig);
 
             let expected_result = test_case.consume_string("Result");
 
@@ -531,7 +530,7 @@ mod tests {
             let expected = test_case.consume_bytes("Sig");
             let result = test_case.consume_string("Result");
 
-            let private_key = try!(untrusted::Input::new(&private_key));
+            let private_key = untrusted::Input::from(&private_key);
             let key_pair = RSAKeyPair::from_der(private_key);
             if key_pair.is_err() && result == "Fail-Invalid-Key" {
                 return Ok(());
@@ -557,7 +556,7 @@ mod tests {
 
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::new(PRIVATE_KEY_DER).unwrap();
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
 
         // The output buffer is one byte too short.

@@ -71,9 +71,9 @@
 //! // Verify the signature of the message using the public key. Normally the
 //! // verifier of the message would parse the inputs to `signature::verify`
 //! // out of the protocol message(s) sent by the signer.
-//! let pub_key_input = try!(untrusted::Input::new(pub_key_bytes));
-//! let msg_input = try!(untrusted::Input::new(MESSAGE));
-//! let sig_input = try!(untrusted::Input::new(sig_bytes));
+//! let pub_key_input = untrusted::Input::from(pub_key_bytes);
+//! let msg_input = untrusted::Input::from(MESSAGE);
+//! let sig_input = untrusted::Input::from(sig_bytes);
 //!
 //! try!(signature::verify(&signature::ED25519_VERIFY, pub_key_input,
 //!                        msg_input, sig_input));
@@ -97,9 +97,9 @@
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
-//! let key_bytes_der = try!(
-//!    untrusted::Input::new(
-//!         include_bytes!("src/signature_rsa_example_private_key.der")));
+//! let key_bytes_der =
+//!    untrusted::Input::from(
+//!         include_bytes!("src/signature_rsa_example_private_key.der"));
 //! let key_pair =
 //!    try!(signature::RSAKeyPair::from_der(key_bytes_der));
 //!
@@ -112,11 +112,11 @@
 //!                    &mut signature));
 //!
 //! // Verify the signature.
-//! let public_key_bytes_der = try!(
-//!     untrusted::Input::new(
-//!         include_bytes!("src/signature_rsa_example_public_key.der")));
-//! let message = try!(untrusted::Input::new(MESSAGE));
-//! let signature = try!(untrusted::Input::new(&signature));
+//! let public_key_bytes_der =
+//!     untrusted::Input::from(
+//!         include_bytes!("src/signature_rsa_example_public_key.der"));
+//! let message = untrusted::Input::from(MESSAGE);
+//! let signature = untrusted::Input::from(&signature);
 //! try!(signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
 //!                        public_key_bytes_der, message, signature));
 //! # Ok(())

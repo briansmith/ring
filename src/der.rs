@@ -177,21 +177,17 @@ mod tests {
     use super::*;
     use untrusted;
 
-    fn i(value: &[u8]) -> untrusted::Input {
-        untrusted::Input::new(value).unwrap()
-    }
-
     fn with_good_i<F, R>(value: &[u8], f: F)
                          where F: FnOnce(&mut untrusted::Reader)
                          -> Result<R, ()> {
-        let r = i(value).read_all((), f);
+        let r = untrusted::Input::from(value).read_all((), f);
         assert!(r.is_ok());
     }
 
     fn with_bad_i<F, R>(value: &[u8], f: F)
                         where F: FnOnce(&mut untrusted::Reader)
                          -> Result<R, ()> {
-        let r = i(value).read_all((), f);
+        let r = untrusted::Input::from(value).read_all((), f);
         assert!(r.is_err());
     }
 
@@ -266,7 +262,8 @@ mod tests {
         for &(ref test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
-                assert_eq!(try!(positive_integer(input)), i(&test_out[..]));
+                assert_eq!(try!(positive_integer(input)),
+                                untrusted::Input::from(&test_out[..]));
                 Ok(())
             });
         }

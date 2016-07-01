@@ -158,9 +158,9 @@ mod tests {
             let actual_sig = key_pair.sign(&msg);
             assert_eq!(&expected_sig[..], actual_sig.as_slice());
 
-            let public_key = untrusted::Input::new(&public_key).unwrap();
-            let msg = untrusted::Input::new(&msg).unwrap();
-            let expected_sig = untrusted::Input::new(&expected_sig).unwrap();
+            let public_key = untrusted::Input::from(&public_key);
+            let msg = untrusted::Input::from(&msg);
+            let expected_sig = untrusted::Input::from(&expected_sig);
 
             assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
                                       msg, expected_sig).is_ok());

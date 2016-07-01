@@ -53,7 +53,7 @@
 //!         &mut peer_public_key_buf[..peer_private_key.public_key_len()];
 //!     try!(peer_private_key.compute_public_key(peer_public_key));
 //! }
-//! let peer_public_key = try!(untrusted::Input::new(peer_public_key));
+//! let peer_public_key = untrusted::Input::from(peer_public_key);
 //!
 //! // In a real application, the protocol specifies how to determine what
 //! // algorithm was used to generate the peer's private key. Here, we know it
@@ -244,7 +244,7 @@ mod tests {
             let curve_name = test_case.consume_string("Curve");
             let alg = alg_from_curve_name(&curve_name);
             let peer_public = test_case.consume_bytes("PeerQ");
-            let peer_public = try!(untrusted::Input::new(&peer_public));
+            let peer_public = untrusted::Input::from(&peer_public);
 
             match test_case.consume_optional_string("Error") {
                 None => {

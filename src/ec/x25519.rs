@@ -131,7 +131,7 @@ mod tests {
         let private_key =
             agreement::EphemeralPrivateKey::from_test_vector(
                 &agreement::X25519, private_key);
-        let public_key = try!(untrusted::Input::new(public_key));
+        let public_key = untrusted::Input::from(public_key);
         agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
                                    (), |agreed_value| {
             Ok(std::vec::Vec::from(agreed_value))
