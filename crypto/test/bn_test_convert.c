@@ -73,8 +73,6 @@ static BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
   return bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
 }
 
-static const char hextable[] = "0123456789abcdef";
-
 /* decode_hex decodes |in_len| bytes of hex data from |in| and updates |bn|. */
 static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
   if (in_len > INT_MAX/4) {
