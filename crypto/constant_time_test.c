@@ -150,6 +150,24 @@ static int test_eq_int(int a, int b) {
   return 0;
 }
 
+static inline size_t test_eq_size_t(size_t a, size_t b) {
+  size_t equal = constant_time_eq_size_t(a, b);
+  if (a == b && equal != CONSTTIME_TRUE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_eq_size_t(%zu, %zu): "
+            "expected %zu(TRUE), got %zu\n",
+            a, b, CONSTTIME_TRUE_SIZE_T, equal);
+    return 1;
+  } else if (a != b && equal != CONSTTIME_FALSE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_eq_int(%zu, %zu): expected "
+            "%zu(FALSE), got %zu\n",
+            a, b, CONSTTIME_FALSE_SIZE_T, equal);
+    return 1;
+  }
+  return 0;
+}
+
 static unsigned int test_values[] = {0, 1, 1024, 12345, 32000, UINT_MAX / 2 - 1,
                                      UINT_MAX / 2, UINT_MAX / 2 + 1,
                                      UINT_MAX - 1, UINT_MAX};
