@@ -83,12 +83,12 @@ int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 
     /* we are now a - b */
     if (BN_ucmp(a, b) < 0) {
-      if (!BN_usub(r, b, a)) {
+      if (!BN_usub_unchecked(r, b, a)) {
         return 0;
       }
       r->neg = 1;
     } else {
-      if (!BN_usub(r, a, b)) {
+      if (!BN_usub_unchecked(r, a, b)) {
         return 0;
       }
       r->neg = 0;
@@ -202,12 +202,12 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   }
 
   if (BN_ucmp(a, b) < 0) {
-    if (!BN_usub(r, b, a)) {
+    if (!BN_usub_unchecked(r, b, a)) {
       return 0;
     }
     r->neg = 1;
   } else {
-    if (!BN_usub(r, a, b)) {
+    if (!BN_usub_unchecked(r, a, b)) {
       return 0;
     }
     r->neg = 0;
@@ -217,6 +217,14 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 }
 
 int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  assert(!BN_is_negative(a));
+  assert(!BN_is_negative(b));
+  assert(BN_cmp(a, b) >= 0);
+  return BN_usub_unchecked(r, a, b);
+}
+
+
+int BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   int max, min, dif;
   register BN_ULONG t1, t2, *ap, *bp, *rp;
   int i, carry;

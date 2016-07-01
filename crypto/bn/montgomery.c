@@ -201,7 +201,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   }
   const BIGNUM *Ri_dividend;
   if (!BN_is_zero(Ri)) {
-    if (!BN_sub(Ri, Ri, BN_value_one())) {
+    if (!BN_usub(Ri, Ri, BN_value_one())) {
       goto err;
     }
     Ri_dividend = Ri;
