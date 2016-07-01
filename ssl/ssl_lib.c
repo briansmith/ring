@@ -314,6 +314,11 @@ err2:
   return NULL;
 }
 
+int SSL_CTX_up_ref(SSL_CTX *ctx) {
+  CRYPTO_refcount_inc(&ctx->references);
+  return 1;
+}
+
 void SSL_CTX_free(SSL_CTX *ctx) {
   if (ctx == NULL ||
       !CRYPTO_refcount_dec_and_test_zero(&ctx->references)) {
