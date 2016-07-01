@@ -1542,6 +1542,13 @@ static bool TestBadModulus(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
+  if (BN_mod_exp_mont(a.get(), BN_value_one(), BN_value_one(), zero.get(), ctx,
+                      NULL)) {
+    fprintf(stderr, "BN_mod_exp_mont with zero modulus succeeded!\n");
+    return 0;
+  }
+  ERR_clear_error();
+
   if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
                                 zero.get(), ctx, nullptr)) {
     fprintf(stderr, "BN_mod_exp_mont_consttime with zero modulus succeeded!\n");
@@ -1564,6 +1571,13 @@ static bool TestBadModulus(BN_CTX *ctx) {
   if (BN_MONT_CTX_set(mont.get(), b.get(), ctx)) {
     fprintf(stderr, "BN_MONT_CTX_set succeeded for even modulus!\n");
     return false;
+  }
+  ERR_clear_error();
+
+  if (BN_mod_exp_mont(a.get(), BN_value_one(), BN_value_one(), b.get(), ctx,
+                      NULL)) {
+    fprintf(stderr, "BN_mod_exp_mont with even modulus succeeded!\n");
+    return 0;
   }
   ERR_clear_error();
 
