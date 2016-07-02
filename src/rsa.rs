@@ -122,7 +122,7 @@ macro_rules! rsa_pkcs1_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg_name:expr,
       $digest_alg:expr, $digestinfo_prefix:expr ) => {
 
-        #[doc="PKCS#1 1.5 padding with the "]
+        #[doc="Signing using PKCS#1 1.5 padding with the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
         pub static $PADDING_ALGORITHM: RSAPadding = RSAPadding {
