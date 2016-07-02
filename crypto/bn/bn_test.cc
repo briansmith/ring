@@ -627,44 +627,43 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
     return false;
   }
 
-  if (!BN_rand(a.get(), 100, 0, 0) ||
-      !BN_rand(b.get(), 100, 0, 0)) {
-    return false;
-  }
+  for (int j = 0; j < 20; j++) {
+    for (int i = 0; i < num2; i++) {
+      int bits = (200 * (i + 1)) / num2;
 
-  for (int i = 0; i < num2; i++) {
-    int bits = (200 * (i + 1)) / num2;
-
-    if (bits == 0) {
-      continue;
-    }
-    if (!BN_rand(n.get(), bits, 0, 1) ||
-        !BN_MONT_CTX_set(mont.get(), n.get(), ctx) ||
-        !BN_nnmod(a.get(), a.get(), n.get(), ctx) ||
-        !BN_nnmod(b.get(), b.get(), n.get(), ctx) ||
-        !BN_to_montgomery(A.get(), a.get(), mont.get(), ctx) ||
-        !BN_to_montgomery(B.get(), b.get(), mont.get(), ctx) ||
-        !BN_mod_mul_montgomery(c.get(), A.get(), B.get(), mont.get(), ctx) ||
-        !BN_from_montgomery(A.get(), c.get(), mont.get(), ctx)) {
-      return false;
-    }
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " * ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " % ");
-      BN_print_fp(fp, &mont->N);
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, A.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_mod_mul(d.get(), a.get(), b.get(), n.get(), ctx) ||
-        !BN_sub(d.get(), d.get(), A.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get())) {
-      fprintf(stderr, "Montgomery multiplication test failed!\n");
-      return false;
+      if (bits == 0) {
+        continue;
+      }
+      if (!BN_rand(a.get(), 100, 0, 0) ||
+          !BN_rand(b.get(), 100, 0, 0) ||
+          !BN_rand(n.get(), bits, 0, 1) ||
+          !BN_MONT_CTX_set(mont.get(), n.get(), ctx) ||
+          !BN_nnmod(a.get(), a.get(), n.get(), ctx) ||
+          !BN_nnmod(b.get(), b.get(), n.get(), ctx) ||
+          !BN_to_montgomery(A.get(), a.get(), mont.get(), ctx) ||
+          !BN_to_montgomery(B.get(), b.get(), mont.get(), ctx) ||
+          !BN_mod_mul_montgomery(c.get(), A.get(), B.get(), mont.get(), ctx) ||
+          !BN_from_montgomery(A.get(), c.get(), mont.get(), ctx)) {
+        return false;
+      }
+      if (fp != NULL) {
+        BN_print_fp(fp, a.get());
+        puts_fp(fp, " * ");
+        BN_print_fp(fp, b.get());
+        puts_fp(fp, " % ");
+        BN_print_fp(fp, &mont->N);
+        puts_fp(fp, " - ");
+        BN_print_fp(fp, A.get());
+        puts_fp(fp, "\n");
+      }
+      if (!BN_mod_mul(d.get(), a.get(), b.get(), n.get(), ctx) ||
+          !BN_sub(d.get(), d.get(), A.get())) {
+        return false;
+      }
+      if (!BN_is_zero(d.get())) {
+        fprintf(stderr, "Montgomery multiplication test failed!\n");
+        return false;
+      }
     }
   }
 
