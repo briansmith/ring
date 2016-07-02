@@ -738,7 +738,7 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(0) // Length
 		}
 	} else {
-		m.extensions.marshal(extensions)
+		m.extensions.marshal(extensions, m.vers)
 		if extensions.len() == 0 {
 			hello.discardChild()
 		}
@@ -837,7 +837,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 		}
-	} else if !m.extensions.unmarshal(data) {
+	} else if !m.extensions.unmarshal(data, m.vers) {
 		return false
 	}
 
@@ -858,7 +858,7 @@ func (m *encryptedExtensionsMsg) marshal() []byte {
 	encryptedExtensionsMsg.addU8(typeEncryptedExtensions)
 	encryptedExtensions := encryptedExtensionsMsg.addU24LengthPrefixed()
 	extensions := encryptedExtensions.addU16LengthPrefixed()
-	m.extensions.marshal(extensions)
+	m.extensions.marshal(extensions, VersionTLS13)
 
 	m.raw = encryptedExtensionsMsg.finish()
 	return m.raw
@@ -881,13 +881,14 @@ func (m *encryptedExtensionsMsg) unmarshal(data []byte) bool {
 	if extLen != len(data) {
 		return false
 	}
-	return m.extensions.unmarshal(data)
+	return m.extensions.unmarshal(data, VersionTLS13)
 }
 
 type serverExtensions struct {
 	nextProtoNeg            bool
 	nextProtos              []string
 	ocspStapling            bool
+	ocspResponse            []byte
 	ticketSupported         bool
 	secureRenegotiation     []byte
 	alpnProtocol            string
@@ -902,7 +903,7 @@ type serverExtensions struct {
 	npnLast                 bool
 }
 
-func (m *serverExtensions) marshal(extensions *byteBuilder) {
+func (m *serverExtensions) marshal(extensions *byteBuilder, version uint16) {
 	if m.duplicateExtension {
 		// Add a duplicate bogus extension at the beginning and end.
 		extensions.addU16(0xffff)
@@ -920,9 +921,19 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 			npn.addBytes([]byte(v))
 		}
 	}
-	if m.ocspStapling {
-		extensions.addU16(extensionStatusRequest)
-		extensions.addU16(0)
+	if version >= VersionTLS13 && enableTLS13Handshake {
+		if m.ocspResponse != nil {
+			extensions.addU16(extensionStatusRequest)
+			body := extensions.addU16LengthPrefixed()
+			body.addU8(statusTypeOCSP)
+			response := body.addU24LengthPrefixed()
+			response.addBytes(m.ocspResponse)
+		}
+	} else {
+		if m.ocspStapling {
+			extensions.addU16(extensionStatusRequest)
+			extensions.addU16(0)
+		}
 	}
 	if m.ticketSupported {
 		extensions.addU16(extensionSessionTicket)
@@ -989,7 +1000,7 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 	}
 }
 
-func (m *serverExtensions) unmarshal(data []byte) bool {
+func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 	// Reset all fields.
 	*m = serverExtensions{}
 
@@ -1018,10 +1029,25 @@ func (m *serverExtensions) unmarshal(data []byte) bool {
 				d = d[l:]
 			}
 		case extensionStatusRequest:
-			if length > 0 {
-				return false
+			if version >= VersionTLS13 && enableTLS13Handshake {
+				if length < 4 {
+					return false
+				}
+				d := data[:length]
+				if d[0] != statusTypeOCSP {
+					return false
+				}
+				respLen := int(d[1])<<16 | int(d[2])<<8 | int(d[3])
+				if respLen+4 != len(d) || respLen == 0 {
+					return false
+				}
+				m.ocspResponse = d[4:]
+			} else {
+				if length > 0 {
+					return false
+				}
+				m.ocspStapling = true
 			}
-			m.ocspStapling = true
 		case extensionSessionTicket:
 			if length > 0 {
 				return false
