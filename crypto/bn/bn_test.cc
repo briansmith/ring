@@ -336,6 +336,46 @@ static bool TestSum(FileTest *t, BN_CTX *ctx) {
     return false;
   }
 
+  // Test |BN_uadd| and |BN_usub| with the prerequisites they are documented as
+  // having. Note that these functions are frequently used when the
+  // prerequisites don't hold. In those cases, they are supposed to work as if
+  // the prerequisite hold, but we don't test that yet. TODO: test that.
+  if (!BN_is_negative(a.get()) &&
+      !BN_is_negative(b.get()) && BN_cmp(a.get(), b.get()) >= 0) {
+    if (!BN_uadd(ret.get(), a.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "A +u B", sum.get(), ret.get()) ||
+        !BN_usub(ret.get(), sum.get(), a.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u A", b.get(), ret.get()) ||
+        !BN_usub(ret.get(), sum.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u B", a.get(), ret.get())) {
+      return false;
+    }
+
+    // Test that the functions work when |r| and |a| point to the same |BIGNUM|,
+    // or when |r| and |b| point to the same |BIGNUM|. TODO: Test the case where
+    // all of |r|, |a|, and |b| point to the same |BIGNUM|.
+    if (!BN_copy(ret.get(), a.get()) ||
+        !BN_uadd(ret.get(), ret.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "A +u B (r is a)", sum.get(), ret.get()) ||
+        !BN_copy(ret.get(), b.get()) ||
+        !BN_uadd(ret.get(), a.get(), ret.get()) ||
+        !ExpectBIGNUMsEqual(t, "A +u B (r is b)", sum.get(), ret.get()) ||
+        !BN_copy(ret.get(), sum.get()) ||
+        !BN_usub(ret.get(), ret.get(), a.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u A (r is a)", b.get(), ret.get()) ||
+        !BN_copy(ret.get(), a.get()) ||
+        !BN_usub(ret.get(), sum.get(), ret.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u A (r is b)", b.get(), ret.get()) ||
+        !BN_copy(ret.get(), sum.get()) ||
+        !BN_usub(ret.get(), ret.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u B (r is a)", a.get(), ret.get()) ||
+        !BN_copy(ret.get(), b.get()) ||
+        !BN_usub(ret.get(), sum.get(), ret.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u B (r is b)", a.get(), ret.get())) {
+      return false;
+    }
+  }
+
   // Test with |BN_add_word| and |BN_sub_word| if |b| is small enough.
   BN_ULONG b_word = BN_get_word(b.get());
   if (!BN_is_negative(b.get()) && b_word != (BN_ULONG)-1) {
