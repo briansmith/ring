@@ -422,17 +422,8 @@ static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
   }
 
   // Set the LSB to 1 and test rshift1 again.
-  if (BN_is_negative(lshift1.get())) {
-    if (!BN_sub(lshift1.get(), lshift1.get(), BN_value_one())) {
-      return false;
-    }
-  } else {
-    if (!BN_add(lshift1.get(), lshift1.get(), BN_value_one())) {
-      return false;
-    }
-  }
-
-  if (!BN_div(ret.get(), nullptr /* rem */, lshift1.get(), two.get(), ctx) ||
+  if (!BN_set_bit(lshift1.get(), 0) ||
+      !BN_div(ret.get(), nullptr /* rem */, lshift1.get(), two.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "(LShift1 | 1) / 2", a.get(), ret.get()) ||
       !BN_rshift1(ret.get(), lshift1.get()) ||
       !ExpectBIGNUMsEqual(t, "(LShift | 1) >> 1", a.get(), ret.get())) {
