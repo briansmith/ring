@@ -132,13 +132,13 @@ macro_rules! rsa_pkcs1_padding {
     }
 }
 
-rsa_pkcs1_padding!(RSA_PKCS1_SHA1, "SHA1", &digest::SHA1,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA1, "SHA-1", &digest::SHA1,
                    &SHA1_PKCS1_DIGESTINFO_PREFIX);
-rsa_pkcs1_padding!(RSA_PKCS1_SHA256, "SHA256", &digest::SHA256,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA256, "SHA-256", &digest::SHA256,
                    &SHA256_PKCS1_DIGESTINFO_PREFIX);
-rsa_pkcs1_padding!(RSA_PKCS1_SHA384, "SHA384", &digest::SHA384,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA384, "SHA-384", &digest::SHA384,
                    &SHA384_PKCS1_DIGESTINFO_PREFIX);
-rsa_pkcs1_padding!(RSA_PKCS1_SHA512, "SHA512", &digest::SHA512,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA512, "SHA-512", &digest::SHA512,
                    &SHA512_PKCS1_DIGESTINFO_PREFIX);
 
 macro_rules! rsa_pkcs1 {
