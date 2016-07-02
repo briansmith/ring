@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Cryptographic psuedo-random number generation.
+//! Cryptographic pseudo-random number generation.
 //!
 //! An application should create a single SystemRandom and then use it for all
 //! randomness generation. Functions that generate random bytes should take a
