@@ -21,7 +21,7 @@
 //! For signature verification, this API treats each combination of parameters
 //! as a separate algorithm. For example, instead of having a single "RSA"
 //! algorithm with a verification function that takes a bunch of parameters,
-//! there are `RSA_PKCS1_SHA256_2048_8192`, `RSA_PKCS1_SHA384_2048_8192`, etc.,
+//! there are `RSA_PKCS1_2048_8192_SHA256`, `RSA_PKCS1_2048_8192_SHA384`, etc.,
 //! which encode sets of parameter choices into objects. This is designed to
 //! reduce the risks of algorithm agility and to provide consistency with ECDSA
 //! and EdDSA.
@@ -117,7 +117,7 @@
 //!         include_bytes!("src/signature_rsa_example_public_key.der"));
 //! let message = untrusted::Input::from(MESSAGE);
 //! let signature = untrusted::Input::from(&signature);
-//! try!(signature::verify(&signature::RSA_PKCS1_SHA256_2048_8192,
+//! try!(signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
 //!                        public_key_bytes_der, message, signature));
 //! # Ok(())
 //! # }
@@ -160,12 +160,12 @@ pub use rsa::{
     RSA_PKCS1_SHA384,
     RSA_PKCS1_SHA512,
 
-    RSA_PKCS1_SHA1_2048_8192,
-    RSA_PKCS1_SHA256_2048_8192,
-    RSA_PKCS1_SHA384_2048_8192,
-    RSA_PKCS1_SHA512_2048_8192,
+    RSA_PKCS1_2048_8192_SHA1,
+    RSA_PKCS1_2048_8192_SHA256,
+    RSA_PKCS1_2048_8192_SHA384,
+    RSA_PKCS1_2048_8192_SHA512,
 
-    RSA_PKCS1_SHA384_3072_8192,
+    RSA_PKCS1_3072_8192_SHA384,
 };
 
 /// A public key signature.
@@ -229,7 +229,7 @@ pub struct VerificationAlgorithm {
 /// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
 ///                            msg: untrusted::Input, sig: untrusted::Input)
 ///                            -> Result<(), ()> {
-///    signature::verify(&signature::RSA_PKCS1_SHA256_2048_8192, public_key,
+///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key,
 ///                      msg, sig)
 /// }
 /// # fn main() { }
