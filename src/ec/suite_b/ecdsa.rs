@@ -178,13 +178,9 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
 
 
 macro_rules! ecdsa {
-    ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ecdsa_verify_ops:expr,
-      $digest_alg_name:expr, $digest_alg:expr ) => {
-        #[doc="Verification of ECDSA signatures using the "]
-        #[doc=$curve_name]
-        #[doc=" curve and the "]
-        #[doc=$digest_alg_name]
-        #[doc=" digest algorithm."]
+    ( $VERIFY_ALGORITHM:ident, $ecdsa_verify_ops:expr, $digest_alg:expr,
+      $doc_str:expr ) => {
+        #[doc=$doc_str]
         ///
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
@@ -215,24 +211,23 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
-       "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
-       "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
-       "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512, "P-256 (secp256r1)", &p256::PUBLIC_SCALAR_OPS,
-       "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P256_SHA1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
+       "Verification of ECDSA signatures using the P-256 curve and SHA-1.");
+ecdsa!(ECDSA_P256_SHA256, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
+       "Verification of ECDSA signatures using the P-256 curve and SHA-256.");
+ecdsa!(ECDSA_P256_SHA384, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
+       "Verification of ECDSA signatures using the P-256 curve and SHA-384.");
+ecdsa!(ECDSA_P256_SHA512, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
+       "Verification of ECDSA signatures using the P-256 curve and SHA-512.");
 
-
-ecdsa!(ECDSA_P384_SHA1, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
-       "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
-       "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
-       "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512, "P-384 (secp384r1)", &p384::PUBLIC_SCALAR_OPS,
-       "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P384_SHA1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
+       "Verification of ECDSA signatures using the P-384 curve and SHA-1.");
+ecdsa!(ECDSA_P384_SHA256, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
+       "Verification of ECDSA signatures using the P-384 curve and SHA-256.");
+ecdsa!(ECDSA_P384_SHA384, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
+       "Verification of ECDSA signatures using the P-384 curve and SHA-384.");
+ecdsa!(ECDSA_P384_SHA512, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
+       "Verification of ECDSA signatures using the P-384 curve and SHA-512.");
 
 
 #[cfg(test)]

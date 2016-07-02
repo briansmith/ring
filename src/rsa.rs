@@ -119,12 +119,9 @@ impl signature_impl::VerificationAlgorithmImpl for RSAVerificationAlgorithm {
 }
 
 macro_rules! rsa_pkcs1_padding {
-    ( $PADDING_ALGORITHM:ident, $digest_alg_name:expr,
-      $digest_alg:expr, $digestinfo_prefix:expr ) => {
-
-        #[doc="Signing using PKCS#1 1.5 padding with the "]
-        #[doc=$digest_alg_name]
-        #[doc=" digest algorithm."]
+    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
+      $doc_str:expr ) => {
+        #[doc=$doc_str]
         pub static $PADDING_ALGORITHM: RSAPadding = RSAPadding {
             digest_alg: $digest_alg,
             digestinfo_prefix: $digestinfo_prefix,
@@ -132,24 +129,23 @@ macro_rules! rsa_pkcs1_padding {
     }
 }
 
-rsa_pkcs1_padding!(RSA_PKCS1_SHA1, "SHA-1", &digest::SHA1,
-                   &SHA1_PKCS1_DIGESTINFO_PREFIX);
-rsa_pkcs1_padding!(RSA_PKCS1_SHA256, "SHA-256", &digest::SHA256,
-                   &SHA256_PKCS1_DIGESTINFO_PREFIX);
-rsa_pkcs1_padding!(RSA_PKCS1_SHA384, "SHA-384", &digest::SHA384,
-                   &SHA384_PKCS1_DIGESTINFO_PREFIX);
-rsa_pkcs1_padding!(RSA_PKCS1_SHA512, "SHA-512", &digest::SHA512,
-                   &SHA512_PKCS1_DIGESTINFO_PREFIX);
+rsa_pkcs1_padding!(RSA_PKCS1_SHA1, &digest::SHA1,
+                   &SHA1_PKCS1_DIGESTINFO_PREFIX,
+                   "Signing using RSA with PKCS#1 1.5 padding and SHA-1.");
+rsa_pkcs1_padding!(RSA_PKCS1_SHA256, &digest::SHA256,
+                   &SHA256_PKCS1_DIGESTINFO_PREFIX,
+                   "Signing using RSA with PKCS#1 1.5 padding and SHA-256.");
+rsa_pkcs1_padding!(RSA_PKCS1_SHA384, &digest::SHA384,
+                   &SHA384_PKCS1_DIGESTINFO_PREFIX,
+                   "Signing using RSA with PKCS#1 1.5 padding and SHA3846.");
+rsa_pkcs1_padding!(RSA_PKCS1_SHA512, &digest::SHA512,
+                   &SHA512_PKCS1_DIGESTINFO_PREFIX,
+                   "Signing using RSA with PKCS#1 1.5 padding and SHA-512.");
 
 macro_rules! rsa_pkcs1 {
-    ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
-      $digest_alg_name:expr, $PADDING_ALGORITHM:ident ) => {
-        #[doc="Verification of RSA PKCS#1 1.5 signatures of "]
-        #[doc=$min_bits_str]
-        #[doc="-8192 bits "]
-        #[doc="using the "]
-        #[doc=$digest_alg_name]
-        #[doc=" digest algorithm."]
+    ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:ident,
+      $doc_str:expr ) => {
+        #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
@@ -162,15 +158,21 @@ macro_rules! rsa_pkcs1 {
     }
 }
 
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1, 2048, "2048", "SHA-1", RSA_PKCS1_SHA1);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, 2048, "2048", "SHA-256",
-           RSA_PKCS1_SHA256);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384, 2048, "2048", "SHA-384",
-           RSA_PKCS1_SHA384);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, 2048, "2048", "SHA-512",
-           RSA_PKCS1_SHA512);
-rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, "3072", "SHA-384",
-           RSA_PKCS1_SHA384);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1, 2048, RSA_PKCS1_SHA1,
+           "Verification of signatures using RSA keys of 2048-8192 bits,
+            PKCS#1.5 padding, and SHA-1.");
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, 2048, RSA_PKCS1_SHA256,
+           "Verification of signatures using RSA keys of 2048-8192 bits,
+            PKCS#1.5 padding, and SHA-256.");
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384, 2048, RSA_PKCS1_SHA384,
+           "Verification of signatures using RSA keys of 2048-8192 bits,
+            PKCS#1.5 padding, and SHA-384.");
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, 2048, RSA_PKCS1_SHA512,
+           "Verification of signatures using RSA keys of 2048-8192 bits,
+            PKCS#1.5 padding, and SHA-512.");
+rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, RSA_PKCS1_SHA384,
+           "Verification of signatures using RSA keys of 3072-8192 bits,
+            PKCS#1.5 padding, and SHA-384.");
 
 macro_rules! pkcs1_digestinfo_prefix {
     ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
