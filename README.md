@@ -106,6 +106,11 @@ In addition, we're always interested in these kinds of contributions:
   ARM microcontrollers).
 * Static analysis and fuzzing in the continuous integration.
 
+Before submitting pull requests, make sure that the tests succeed both when
+running `cargo test` and `cargo test --no-default-features`. See
+[BUILDING.md](BUILDING.md) for more info about the features flags that are
+useful for people hacking on *ring*.
+
 
 
 Online Automated Testing
