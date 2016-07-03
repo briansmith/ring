@@ -168,7 +168,7 @@ pub use rsa::{
     RSA_PKCS1_3072_8192_SHA384,
 };
 
-/// A public key signature.
+/// A public key signature returned from a signing operation.
 pub struct Signature {
     value: [u8; 64],
 }
