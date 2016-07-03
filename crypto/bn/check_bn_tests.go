@@ -222,6 +222,11 @@ func main() {
 				r := new(big.Int).Exp(test.Values["A"], test.Values["E"], test.Values["M"])
 				checkResult(test, "A ^ E (mod M)", "ModExp", r)
 			}
+		case "Exp":
+			if checkKeys(test, "A", "E", "Exp") {
+				r := new(big.Int).Exp(test.Values["A"], test.Values["E"], nil)
+				checkResult(test, "A ^ E", "Exp", r)
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)
 		}

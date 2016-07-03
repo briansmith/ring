@@ -100,7 +100,6 @@ static const int num2 = 5;   // number of tests for slow functions
 
 static int rand_neg();
 
-static bool test_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx);
 static bool TestBN2BinPadded(BN_CTX *ctx);
 static bool TestDec2BN(BN_CTX *ctx);
@@ -170,12 +169,6 @@ int main(int argc, char *argv[]) {
   puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
-
-  message(bc_file.get(), "BN_exp");
-  if (!test_exp(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_mod_sqrt");
   if (!test_mod_sqrt(bc_file.get(), ctx.get())) {
@@ -650,6 +643,24 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestExp(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM e = GetBIGNUM(t, "E");
+  ScopedBIGNUM exp = GetBIGNUM(t, "Exp");
+  if (!a || !e || !exp) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_exp(ret.get(), a.get(), e.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A ^ E", exp.get(), ret.get())) {
+    return false;
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -665,6 +676,7 @@ static const Test kTests[] = {
     {"Quotient", TestQuotient},
     {"ModMul", TestModMul},
     {"ModExp", TestModExp},
+    {"Exp", TestExp},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -684,50 +696,6 @@ static int rand_neg() {
   static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
 
   return sign[(neg++) % 8];
-}
-
-static bool test_exp(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !d || !e) {
-    return false;
-  }
-
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
-        !BN_rand(b.get(), 2 + i, 0, 0) ||
-        !BN_exp(d.get(), a.get(), b.get(), ctx)) {
-      return false;
-    }
-
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " ^ ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, d.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_one(e.get())) {
-      return false;
-    }
-    while (!BN_is_zero(b.get())) {
-      if (!BN_mul(e.get(), e.get(), a.get(), ctx) ||
-          !BN_sub(b.get(), b.get(), BN_value_one())) {
-        return false;
-      }
-    }
-    if (!BN_sub(e.get(), e.get(), d.get())) {
-      return false;
-    }
-    if (!BN_is_zero(e.get())) {
-      fprintf(stderr, "Exponentiation test failed!\n");
-      return false;
-    }
-  }
-  return true;
 }
 
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
