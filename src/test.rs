@@ -82,8 +82,8 @@ pub struct TestCase {
 impl TestCase {
     /// Maps the strings "SHA1", "SHA256", "SHA384", and "SHA512" to digest
     /// algorithms, maps "SHA224" to `None`, and panics on other (erroneous)
-    /// inputs. "SHA224" is mapped to None *ring* intentionally does not
-    /// support SHA224, but we need to consume test vectors from NIST that
+    /// inputs. "SHA224" is mapped to None because *ring* intentionally does
+    /// not support SHA224, but we need to consume test vectors from NIST that
     /// have SHA224 vectors in them.
     pub fn consume_digest_alg(&mut self, key: &str)
                               -> Option<&'static digest::Algorithm> {
