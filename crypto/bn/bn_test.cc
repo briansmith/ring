@@ -100,8 +100,6 @@ static const int num2 = 5;   // number of tests for slow functions
 
 static int rand_neg();
 
-static bool test_mod_exp(FILE *fp, BN_CTX *ctx);
-static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx);
 static bool test_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
@@ -174,15 +172,8 @@ int main(int argc, char *argv[]) {
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
 
-  message(bc_file.get(), "BN_mod_exp");
-  if (!test_mod_exp(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
   message(bc_file.get(), "BN_mod_exp_mont_consttime");
-  if (!test_mod_exp_mont_consttime(bc_file.get(), ctx.get()) ||
-      !test_mod_exp_mont5(bc_file.get(), ctx.get())) {
+  if (!test_mod_exp_mont5(bc_file.get(), ctx.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
@@ -635,6 +626,37 @@ static bool TestModMul(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestModExp(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM e = GetBIGNUM(t, "E");
+  ScopedBIGNUM m = GetBIGNUM(t, "M");
+  ScopedBIGNUM mod_exp = GetBIGNUM(t, "ModExp");
+  if (!a || !e || !m || !mod_exp) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_mod_exp(ret.get(), a.get(), e.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A ^ E (mod M)", mod_exp.get(), ret.get())) {
+    return false;
+  }
+
+  if (BN_is_odd(m.get())) {
+    if (!BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, NULL) ||
+        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
+                            ret.get()) ||
+        !BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), m.get(), ctx,
+                                   NULL) ||
+        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
+                            ret.get())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -649,6 +671,7 @@ static const Test kTests[] = {
     {"Product", TestProduct},
     {"Quotient", TestQuotient},
     {"ModMul", TestModMul},
+    {"ModExp", TestModExp},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -668,114 +691,6 @@ static int rand_neg() {
   static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
 
   return sign[(neg++) % 8];
-}
-
-static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
-    return false;
-  }
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
-        !BN_rand(b.get(), 2 + i, 0, 0) ||
-        !BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx)) {
-      return false;
-    }
-
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " ^ ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " % ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, d.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_exp(e.get(), a.get(), b.get(), ctx) ||
-        !BN_sub(e.get(), e.get(), d.get()) ||
-        !BN_div(a.get(), b.get(), e.get(), c.get(), ctx)) {
-      return false;
-    }
-    if (!BN_is_zero(b.get())) {
-      fprintf(stderr, "Modulo exponentiation test failed!\n");
-      return false;
-    }
-  }
-
-   // Regression test for carry propagation bug in sqr8x_reduction.
-  if (!HexToBIGNUM(&a, "050505050505") ||
-      !HexToBIGNUM(&b, "02") ||
-      !HexToBIGNUM(
-          &c,
-          "4141414141414141414141274141414141414141414141414141414141414141"
-          "4141414141414141414141414141414141414141414141414141414141414141"
-          "4141414141414141414141800000000000000000000000000000000000000000"
-          "0000000000000000000000000000000000000000000000000000000000000000"
-          "0000000000000000000000000000000000000000000000000000000000000000"
-          "0000000000000000000000000000000000000000000000000000000001") ||
-      !BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx) ||
-      !BN_mul(e.get(), a.get(), a.get(), ctx)) {
-    return false;
-  }
-  if (BN_cmp(d.get(), e.get()) != 0) {
-    fprintf(stderr, "BN_mod_exp and BN_mul produce different results!\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
-    return false;
-  }
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
-        !BN_rand(b.get(), 2 + i, 0, 0) ||
-        !BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
-                                   NULL)) {
-      return false;
-    }
-
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " ^ ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, " % ");
-      BN_print_fp(fp, c.get());
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, d.get());
-      puts_fp(fp, "\n");
-    }
-    if (!BN_exp(e.get(), a.get(), b.get(), ctx) ||
-        !BN_sub(e.get(), e.get(), d.get()) ||
-        !BN_div(a.get(), b.get(), e.get(), c.get(), ctx)) {
-      return false;
-    }
-    if (!BN_is_zero(b.get())) {
-      fprintf(stderr, "Modulo exponentiation test failed!\n");
-      return false;
-    }
-  }
-  return true;
 }
 
 // Test constant-time modular exponentiation with 1024-bit inputs,

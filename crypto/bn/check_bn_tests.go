@@ -217,6 +217,11 @@ func main() {
 				r = r.Mod(r, test.Values["M"])
 				checkResult(test, "A * B (mod M)", "ModMul", r)
 			}
+		case "ModExp":
+			if checkKeys(test, "A", "E", "M", "ModExp") {
+				r := new(big.Int).Exp(test.Values["A"], test.Values["E"], test.Values["M"])
+				checkResult(test, "A ^ E (mod M)", "ModExp", r)
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)
 		}
