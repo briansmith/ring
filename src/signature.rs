@@ -86,13 +86,16 @@
 //!
 //! ## Signing and verifying with RSA (PKCS#1 1.5 padding)
 //!
+//! RSA signing (but not verification) requires the `rsa_signing` feature to
+//! be enabled.
+//!
 //! ```
 //! extern crate ring;
 //! extern crate untrusted;
 //!
 //! use ring::{rand, signature};
 //!
-//! # #[cfg(feature = "use_heap")]
+//! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 //! # fn sign_and_verify_rsa() -> Result<(), ()> {
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
@@ -122,7 +125,7 @@
 //! # Ok(())
 //! # }
 //! #
-//! # #[cfg(not(feature = "use_heap"))]
+//! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap")))]
 //! # fn sign_and_verify_rsa() -> Result<(), ()> { Ok(()) }
 //! #
 //! # fn main() { sign_and_verify_rsa().unwrap() }
@@ -147,10 +150,10 @@ pub use ec::suite_b::ecdsa::{
 
 pub use ec::eddsa::{ED25519, Ed25519KeyPair};
 
-#[cfg(feature = "use_heap")]
+#[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::RSAKeyPair;
 
-#[cfg(feature = "use_heap")]
+#[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently
@@ -159,7 +162,9 @@ pub use rsa::{
     RSA_PKCS1_SHA256,
     RSA_PKCS1_SHA384,
     RSA_PKCS1_SHA512,
+};
 
+pub use rsa::{
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA384,

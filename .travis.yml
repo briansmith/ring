@@ -137,17 +137,27 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: osx
+      osx_image: xcode7.2
+
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: osx
+      osx_image: xcode7.2
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -159,7 +169,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -171,15 +181,47 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -193,7 +235,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -207,7 +249,35 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -218,7 +288,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -229,7 +299,29 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -243,7 +335,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -257,7 +349,35 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - g++-6-multilib
+            - gcc-6
+            - gcc-6-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - g++-6-multilib
+            - gcc-6
+            - gcc-6-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -268,7 +388,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -279,17 +399,49 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - gcc-6
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - gcc-6
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: osx
+      osx_image: xcode7.2
+
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: osx
+      osx_image: xcode7.2
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -301,7 +453,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -313,15 +465,47 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=1
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
@@ -341,7 +525,27 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=1
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - libcurl3:i386
+            - libcurl4-openssl-dev:i386
+            - libdw-dev:i386
+            - libelf-dev:i386
+            - libkrb5-dev:i386
+            - libssl-dev:i386
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -355,7 +559,21 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=1
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
@@ -370,7 +588,22 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=1
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - binutils-dev
+            - g++-5
+            - gcc-5
+            - libcurl4-openssl-dev
+            - libdw-dev
+            - libelf-dev
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -381,7 +614,18 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -395,7 +639,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -409,7 +653,35 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - g++-6-multilib
+            - gcc-6
+            - gcc-6-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - g++-6-multilib
+            - gcc-6
+            - gcc-6-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -420,7 +692,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -431,17 +703,49 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - gcc-6
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - gcc-6
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
       osx_image: xcode7.2
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: osx
+      osx_image: xcode7.2
+
+    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: osx
+      osx_image: xcode7.2
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -453,7 +757,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -465,15 +769,47 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.6 CXX_X=g++-4.6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -487,7 +823,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -501,7 +837,35 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -512,7 +876,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -523,7 +887,29 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -537,7 +923,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -551,7 +937,35 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - g++-6-multilib
+            - gcc-6
+            - gcc-6-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - g++-6-multilib
+            - gcc-6
+            - gcc-6-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -562,7 +976,29 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - gcc-6
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-6
+            - gcc-6
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:

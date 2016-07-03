@@ -28,6 +28,7 @@ rustc-serialize = "0.3.19"
 default = ["use_heap"]
 disable_dev_urandom_fallback = []
 internal_benches = []
+rsa_signing = []
 slow_tests = []
 test_logging = []
 use_heap = []

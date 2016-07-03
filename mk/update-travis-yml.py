@@ -59,6 +59,11 @@ compilers = {
     "osx" : osx_compilers,
 }
 
+feature_sets = [
+    "--features=rsa_signing",
+    "",
+]
+
 modes = [
     "DEBUG",
     "RELWITHDEBINFO"
@@ -82,12 +87,13 @@ targets = {
 }
 
 def format_entries():
-    return "\n".join([format_entry(os, target, compiler, rust, mode)
+    return "\n".join([format_entry(os, target, compiler, rust, mode, features)
                       for rust in rusts
                       for os in oss
                       for compiler in compilers[os]
                       for target in targets[os]
-                      for mode in modes])
+                      for mode in modes
+                      for features in feature_sets])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # enure that we set the specific variables we want and that no relevant
@@ -97,7 +103,7 @@ def format_entries():
 # directive here. Also, we keep these variable names short so that the env
 # line does not get cut off in the Travis CI UI.
 entry_template = """
-    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s MODE_X=%(mode)s KCOV=%(kcov)s
+    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s FEATURES_X=%(features)s MODE_X=%(mode)s KCOV=%(kcov)s
       rust: %(rust)s
       os: %(os)s"""
 
@@ -113,7 +119,7 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(os, target, compiler, rust, mode):
+def format_entry(os, target, compiler, rust, mode, features):
     # Currently kcov only runs on Linux.
     #
     # GCC 5 was picked arbitrarily to restrict coverage report to one build for
@@ -158,6 +164,7 @@ def format_entry(os, target, compiler, rust, mode):
     return template % {
             "cc" : cc,
             "cxx" : cxx,
+            "features" : features,
             "mode" : mode,
             "kcov": "1" if kcov == True else "0",
             "packages" : "\n            ".join(prefix_all("- ", packages)),
