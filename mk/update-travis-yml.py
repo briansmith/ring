@@ -55,9 +55,18 @@ osx_compilers = [
 ]
 
 compilers = {
-    "linux" : linux_compilers,
-    "osx" : osx_compilers,
+    "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
+    "arm-linux-androideabi" : [ "arm-linux-androideabi-gcc" ],
+    "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
+    "i686-unknown-linux-gnu" : linux_compilers,
+    "x86_64-unknown-linux-gnu" : linux_compilers,
+    "x86_64-apple-darwin" : osx_compilers,
 }
+
+feature_sets = [
+    "--features=rsa_signing",
+    "",
+]
 
 modes = [
     "DEBUG",
@@ -76,18 +85,22 @@ targets = {
         "x86_64-apple-darwin",
     ],
     "linux" : [
-        "i686-unknown-linux-gnu",
+        "arm-linux-androideabi",
         "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu",
+        "i686-unknown-linux-gnu",
+        "arm-unknown-linux-gnueabihf",
     ],
 }
 
 def format_entries():
-    return "\n".join([format_entry(os, target, compiler, rust, mode)
+    return "\n".join([format_entry(os, target, compiler, rust, mode, features)
                       for rust in rusts
                       for os in oss
-                      for compiler in compilers[os]
                       for target in targets[os]
-                      for mode in modes])
+                      for compiler in compilers[target]
+                      for mode in modes
+                      for features in feature_sets])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # enure that we set the specific variables we want and that no relevant
@@ -97,7 +110,7 @@ def format_entries():
 # directive here. Also, we keep these variable names short so that the env
 # line does not get cut off in the Travis CI UI.
 entry_template = """
-    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s MODE_X=%(mode)s KCOV=%(kcov)s
+    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s FEATURES_X=%(features)s MODE_X=%(mode)s KCOV=%(kcov)s
       rust: %(rust)s
       os: %(os)s"""
 
@@ -113,7 +126,7 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(os, target, compiler, rust, mode):
+def format_entry(os, target, compiler, rust, mode, features):
     # Currently kcov only runs on Linux.
     #
     # GCC 5 was picked arbitrarily to restrict coverage report to one build for
@@ -132,15 +145,32 @@ def format_entry(os, target, compiler, rust, mode):
     vendor = target_words[1]
     sys = target_words[2]
 
+    if sys == "darwin":
+        abi = sys
+        sys = "macos"
+    elif sys == "androideabi":
+        abi = sys
+        sys = "linux"
+    else:
+        abi = target_words[3]
+
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
 
     template = entry_template
 
     if sys == "linux":
-        packages = sorted(get_linux_packages_to_install(compiler, arch, kcov))
+        packages = sorted(get_linux_packages_to_install(target, compiler, arch, kcov))
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
+
+    # TODO: Use trusty for everything?
+    if arch in ["aarch64", "arm"] and sys != "androideabi":
+        template += """
+      dist: trusty
+      sudo: required"""
+
+    if sys == "linux":
         if packages:
             template += entry_packages_template
         if sources:
@@ -158,6 +188,7 @@ def format_entry(os, target, compiler, rust, mode):
     return template % {
             "cc" : cc,
             "cxx" : cxx,
+            "features" : features,
             "mode" : mode,
             "kcov": "1" if kcov == True else "0",
             "packages" : "\n            ".join(prefix_all("- ", packages)),
@@ -167,7 +198,7 @@ def format_entry(os, target, compiler, rust, mode):
             "os" : os,
             }
 
-def get_linux_packages_to_install(compiler, arch, kcov):
+def get_linux_packages_to_install(target, compiler, arch, kcov):
     if compiler in [linux_default_clang, linux_default_gcc]:
         packages = []
     elif compiler.startswith("clang-"):
@@ -175,7 +206,19 @@ def get_linux_packages_to_install(compiler, arch, kcov):
     elif compiler.startswith("gcc-"):
         packages = [compiler, replace_cc_with_cxx("linux", compiler)]
     else:
-        raise ValueError("unexpected compiler: %s" % compiler)
+        packages = []
+
+    if target == "aarch64-unknown-linux-gnu":
+        packages += ["gcc-aarch64-linux-gnu",
+                     "g++-aarch64-linux-gnu",
+                     "libc6-dev-arm64-cross"]
+    if target == "arm-unknown-linux-gnueabihf":
+        packages += ["gcc-arm-linux-gnueabihf",
+                     "g++-arm-linux-gnueabihf",
+                     "libc6-dev-armhf-cross"]
+    if target == "arm-linux-androideabi":
+        packages += ["expect",
+                     "openjdk-6-jre-headless"]
 
     if arch == "i686":
         if kcov == True:
@@ -202,7 +245,7 @@ def get_linux_packages_to_install(compiler, arch, kcov):
                          "libelf-dev",
                          "libdw-dev",
                          "binutils-dev"]
-    else:
+    elif arch not in ["aarch64", "arm"]:
         raise ValueError("unexpected arch: %s" % arch)
 
     return packages

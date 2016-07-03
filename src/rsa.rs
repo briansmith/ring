@@ -16,8 +16,14 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, rand, signature, signature_impl};
+use {bssl, c, der, digest, signature, signature_impl};
+
+#[cfg(feature = "rsa_signing")]
+use rand;
+
+#[cfg(feature = "rsa_signing")]
 use std;
+
 use untrusted;
 
 
@@ -26,6 +32,7 @@ pub struct RSAPadding {
     digestinfo_prefix: &'static [u8],
 }
 
+#[cfg(feature = "rsa_signing")]
 impl RSAPadding {
     // Implement padding procedure per EMSA-PKCS1-v1_5,
     // https://tools.ietf.org/html/rfc3447#section-9.2.
@@ -122,6 +129,7 @@ macro_rules! rsa_pkcs1_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
       $doc_str:expr ) => {
         #[doc=$doc_str]
+        /// Feature: `rsa_signing`.
         pub static $PADDING_ALGORITHM: RSAPadding = RSAPadding {
             digest_alg: $digest_alg,
             digestinfo_prefix: $digestinfo_prefix,
@@ -215,11 +223,13 @@ fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
 }
 
 
-/// An RSA key pair, used for signing.
+/// An RSA key pair, used for signing. Feature: `rsa_signing`.
+#[cfg(feature = "rsa_signing")]
 pub struct RSAKeyPair {
     rsa: std::boxed::Box<RSA>,
 }
 
+#[cfg(feature = "rsa_signing")]
 impl RSAKeyPair {
     /// Parse a private key in DER-encoded ASN.1 `RSAPrivateKey` form (see [RFC
     /// 3447
@@ -337,6 +347,7 @@ impl RSAKeyPair {
     }
 }
 
+#[cfg(feature = "rsa_signing")]
 impl Drop for RSAKeyPair {
     fn drop(&mut self) {
         unsafe {
@@ -359,6 +370,7 @@ impl Drop for RSAKeyPair {
 }
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
+#[cfg(feature = "rsa_signing")]
 #[repr(C)]
 struct RSA {
     n: *mut BIGNUM,
@@ -377,10 +389,12 @@ struct RSA {
     iqmp_mont: *mut BIGNUM,
 }
 
+#[cfg(feature = "rsa_signing")]
 struct PositiveInteger {
     value: Option<*mut BIGNUM>,
 }
 
+#[cfg(feature = "rsa_signing")]
 impl PositiveInteger {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
     fn from_der(input: &mut untrusted::Reader, flags: c::int)
@@ -403,6 +417,7 @@ impl PositiveInteger {
     }
 }
 
+#[cfg(feature = "rsa_signing")]
 impl Drop for PositiveInteger {
     fn drop(&mut self) {
         match self.value {
@@ -412,17 +427,22 @@ impl Drop for PositiveInteger {
     }
 }
 
+#[cfg(feature = "rsa_signing")]
 enum BIGNUM {}
 
+#[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
 enum BN_BLINDING {}
 
+#[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
 enum BN_MONT_CTX {}
 
+#[cfg(feature = "rsa_signing")]
 const BN_FLG_CONSTTIME: c::int = 4;
 
 
+#[cfg(feature = "rsa_signing")]
 extern {
     fn BN_BLINDING_new() -> *mut BN_BLINDING;
     fn BN_BLINDING_free(b: *mut BN_BLINDING);
@@ -432,6 +452,11 @@ extern {
     fn BN_free(bn: *mut BIGNUM);
     fn BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 
+    fn rsa_new_end(rsa: *mut RSA) -> c::int;
+    fn RSA_size(rsa: *const RSA) -> c::size_t;
+}
+
+extern {
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
                               public_key_n: *const u8,
                               public_key_n_len: c::size_t,
@@ -440,11 +465,9 @@ extern {
                               ciphertext: *const u8, ciphertext_len: c::size_t,
                               min_bits: c::size_t, max_bits: c::size_t)
                               -> c::int;
-
-    fn rsa_new_end(rsa: *mut RSA) -> c::int;
-    fn RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
+#[cfg(feature = "rsa_signing")]
 #[allow(improper_ctypes)]
 extern {
     fn GFp_rsa_private_transform(rsa: *const RSA, inout: *mut u8,
@@ -455,10 +478,16 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {der, file_test, rand, signature};
-    use untrusted;
-    use super::*;
+    use {der, file_test, signature};
+
+    #[cfg(feature = "rsa_signing")]
+    use rand;
+
+    #[cfg(feature = "rsa_signing")]
     use std;
+
+    use super::*;
+    use untrusted;
 
     #[test]
     fn test_signature_rsa_pkcs1_verify() {
@@ -507,6 +536,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_signature_rsa_pkcs1_sign() {
         let rng = rand::SystemRandom::new();
@@ -548,6 +578,7 @@ mod tests {
 
     // `RSAKeyPair::sign` requires that the output buffer is the same length as
     // the public key modulus. Test what happens when it isn't the same length.
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
         // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
