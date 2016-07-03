@@ -58,3 +58,26 @@ platforms, and then package the generated assembly language code into the
 crate. That would avoid the need for Perl for *users* of the crate. We could
 take this idea further to eliminate most of the other dependencies (C compilers,
 C++ compilers, assemblers, GNU make, msbuild, etc.) for *users* of the crate.
+
+
+
+Additional features that are useful for Development
+---------------------------------------------------
+
+The `internal_benches` feature enable benchmarks of internal functions. These
+benchmarks are only useful for people hacking on the implementation of *ring*.
+(The benchmarks for the *ring* API are in the
+[crypto-bench](https://github.com/briansmith/crypto-bench) project.)
+
+The `slow_tests` feature runs additional tests that are too slow to run during
+a normal edit-compile-test cycle.
+
+The `test_logging` feature prints out additional logging information during
+tests, in particular the contents of the test input files, as tests execute.
+When a test fails, the most recently-logged stuff indicates which test vectors
+failed. This isn't enabled by default because it uses too much memory on small
+targets, due to the way that Rust buffers the output until (unless) the test
+fails. For small (embedded) targets, use
+`cargo test --release --no-run --features=test_logging` to build the tests, and
+then run the tests on the target with `<executable-name> --nocapture' to see
+the log.
