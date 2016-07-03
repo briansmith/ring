@@ -90,17 +90,6 @@
 #include "../crypto/test/test_util.h"
 
 
-// This program tests the BIGNUM implementation. It takes an optional -bc
-// argument to write a transcript compatible with the UNIX bc utility.
-//
-// TODO(davidben): Rather than generate random inputs and depend on bc to check
-// the results, most of these tests should use known answers.
-
-static const int num2 = 5;   // number of tests for slow functions
-
-static int rand_neg();
-
-static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx);
 static bool TestBN2BinPadded(BN_CTX *ctx);
 static bool TestDec2BN(BN_CTX *ctx);
 static bool TestHex2BN(BN_CTX *ctx);
@@ -114,48 +103,11 @@ static bool TestExpModZero();
 static bool TestSmallPrime(BN_CTX *ctx);
 static bool RunTest(FileTest *t, void *arg);
 
-// A wrapper around puts that takes its arguments in the same order as our *_fp
-// functions.
-static void puts_fp(FILE *out, const char *m) {
-  if (out != nullptr) {
-    fputs(m, out);
-  }
-}
-
-static void flush_fp(FILE *out) {
-  if (out != nullptr) {
-    fflush(out);
-  }
-}
-
-static void message(FILE *out, const char *m) {
-  puts_fp(out, "print \"test ");
-  puts_fp(out, m);
-  puts_fp(out, "\\n\"\n");
-}
-
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
-  ScopedFILE bc_file;
-  const char *name = argv[0];
-  argc--;
-  argv++;
-  if (argc > 0 && strcmp(argv[0], "-bc") == 0) {
-    if (argc < 2) {
-      fprintf(stderr, "Missing parameter to -bc\n");
-      return 1;
-    }
-    bc_file.reset(fopen(argv[1], "w+"));
-    if (!bc_file) {
-      fprintf(stderr, "Failed to open %s: %s\n", argv[1], strerror(errno));
-    }
-    argc -= 2;
-    argv += 2;
-  }
-
-  if (argc != 1) {
-    fprintf(stderr, "%s [-bc BC_FILE] TEST_FILE\n", name);
+  if (argc != 2) {
+    fprintf(stderr, "%s TEST_FILE\n", argv[0]);
     return 1;
   }
 
@@ -163,18 +115,6 @@ int main(int argc, char *argv[]) {
   if (!ctx) {
     return 1;
   }
-
-  puts_fp(bc_file.get(), "/* This script, when run through the UNIX bc utility, "
-                         "should produce a sequence of zeros. */\n");
-  puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
-                         "| grep -v 0 */\n");
-  puts_fp(bc_file.get(), "obase=16\nibase=16\n");
-
-  message(bc_file.get(), "BN_mod_sqrt");
-  if (!test_mod_sqrt(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
 
   if (!TestBN2BinPadded(ctx.get()) ||
       !TestDec2BN(ctx.get()) ||
@@ -190,7 +130,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return FileTestMain(RunTest, ctx.get(), argv[0]);
+  return FileTestMain(RunTest, ctx.get(), argv[1]);
 }
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
@@ -661,6 +601,32 @@ static bool TestExp(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestModSqrt(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM p = GetBIGNUM(t, "P");
+  ScopedBIGNUM mod_sqrt = GetBIGNUM(t, "ModSqrt");
+  if (!a || !p || !mod_sqrt) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  ScopedBIGNUM ret2(BN_new());
+  if (!ret ||
+      !ret2 ||
+      !BN_mod_sqrt(ret.get(), a.get(), p.get(), ctx) ||
+      // There are two possible answers.
+      !BN_sub(ret2.get(), p.get(), ret.get())) {
+    return false;
+  }
+
+  if (BN_cmp(ret2.get(), mod_sqrt.get()) != 0 &&
+      !ExpectBIGNUMsEqual(t, "sqrt(A) (mod P)", mod_sqrt.get(), ret.get())) {
+    return false;
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -677,6 +643,7 @@ static const Test kTests[] = {
     {"ModMul", TestModMul},
     {"ModExp", TestModExp},
     {"Exp", TestExp},
+    {"ModSqrt", TestModSqrt},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -689,73 +656,6 @@ static bool RunTest(FileTest *t, void *arg) {
   }
   t->PrintLine("Unknown test type: %s", t->GetType().c_str());
   return false;
-}
-
-static int rand_neg() {
-  static unsigned int neg = 0;
-  static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
-
-  return sign[(neg++) % 8];
-}
-
-static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM p(BN_new());
-  ScopedBIGNUM r(BN_new());
-  if (!a || !p || !r) {
-    return false;
-  }
-
-  for (int i = 0; i < 16; i++) {
-    if (i < 8) {
-      const unsigned kPrimes[8] = {2, 3, 5, 7, 11, 13, 17, 19};
-      if (!BN_set_word(p.get(), kPrimes[i])) {
-        return false;
-      }
-    } else {
-      if (!BN_set_word(a.get(), 32) ||
-          !BN_set_word(r.get(), 2 * i + 1) ||
-          !BN_generate_prime_ex(p.get(), 256, 0, a.get(), r.get(), nullptr)) {
-        return false;
-      }
-    }
-    p->neg = rand_neg();
-
-    for (int j = 0; j < num2; j++) {
-      // construct 'a' such that it is a square modulo p, but in general not a
-      // proper square and not reduced modulo p
-      if (!BN_rand(r.get(), 256, 0, 3) ||
-          !BN_nnmod(r.get(), r.get(), p.get(), ctx) ||
-          !BN_mod_sqr(r.get(), r.get(), p.get(), ctx) ||
-          !BN_rand(a.get(), 256, 0, 3) ||
-          !BN_nnmod(a.get(), a.get(), p.get(), ctx) ||
-          !BN_mod_sqr(a.get(), a.get(), p.get(), ctx) ||
-          !BN_mul(a.get(), a.get(), r.get(), ctx)) {
-        return false;
-      }
-      if (rand_neg() && !BN_sub(a.get(), a.get(), p.get())) {
-        return false;
-      }
-
-      if (!BN_mod_sqrt(r.get(), a.get(), p.get(), ctx) ||
-          !BN_mod_sqr(r.get(), r.get(), p.get(), ctx) ||
-          !BN_nnmod(a.get(), a.get(), p.get(), ctx)) {
-        return false;
-      }
-
-      if (BN_cmp(a.get(), r.get()) != 0) {
-        fprintf(stderr, "BN_mod_sqrt failed: a = ");
-        BN_print_fp(stderr, a.get());
-        fprintf(stderr, ", r = ");
-        BN_print_fp(stderr, r.get());
-        fprintf(stderr, ", p = ");
-        BN_print_fp(stderr, p.get());
-        fprintf(stderr, "\n");
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 static bool TestBN2BinPadded(BN_CTX *ctx) {

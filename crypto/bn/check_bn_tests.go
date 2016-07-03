@@ -227,6 +227,26 @@ func main() {
 				r := new(big.Int).Exp(test.Values["A"], test.Values["E"], nil)
 				checkResult(test, "A ^ E", "Exp", r)
 			}
+		case "ModSqrt":
+			bigOne := new(big.Int).SetInt64(1)
+			bigTwo := new(big.Int).SetInt64(2)
+
+			if checkKeys(test, "A", "P", "ModSqrt") {
+				test.Values["A"].Mod(test.Values["A"], test.Values["P"])
+
+				r := new(big.Int).Mul(test.Values["ModSqrt"], test.Values["ModSqrt"])
+				r = r.Mod(r, test.Values["P"])
+				checkResult(test, "ModSqrt ^ 2 (mod P)", "A", r)
+
+				if (test.Values["P"].Cmp(bigTwo) > 0) {
+					pMinus1Over2 := new(big.Int).Sub(test.Values["P"], bigOne)
+					pMinus1Over2.Rsh(pMinus1Over2, 1)
+
+					if test.Values["ModSqrt"].Cmp(pMinus1Over2) > 0 {
+						fmt.Fprintf(os.Stderr, "Line %d: ModSqrt should be minimal.\n", test.LineNumber)
+					}
+				}
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)
 		}
