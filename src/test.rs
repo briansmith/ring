@@ -16,7 +16,7 @@
 //!
 //! Unlike the rest of *ring*, this testing framework uses panics pretty
 //! liberally. It was originally designed for internal use--it drives most of
-//! *ring*s internal tests, and so it is optimized for getting *ring*'s tests
+//! *ring*'s internal tests, and so it is optimized for getting *ring*'s tests
 //! written quickly at the expense of some usability. The documentation is
 //! lacking. The best way to learn it is to look at some examples. The digest
 //! tests are the most complicated because they use named sections. Other tests
