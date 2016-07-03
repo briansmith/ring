@@ -577,6 +577,20 @@ static bool TestQuotient(FileTest *t, BN_CTX *ctx) {
     }
   }
 
+  // Test BN_nnmod.
+  if (!BN_is_negative(b.get())) {
+    ScopedBIGNUM nnmod(BN_new());
+    if (!nnmod ||
+        !BN_copy(nnmod.get(), remainder.get()) ||
+        (BN_is_negative(nnmod.get()) &&
+         !BN_add(nnmod.get(), nnmod.get(), b.get())) ||
+        !BN_nnmod(ret.get(), a.get(), b.get(), ctx) ||
+        !ExpectBIGNUMsEqual(t, "A % B (non-negative)", nnmod.get(),
+                            ret.get())) {
+      return false;
+    }
+  }
+
   return true;
 }
 
