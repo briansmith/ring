@@ -63,8 +63,8 @@
 //! });
 //! ```
 //!
-//! Note that `consume_digest_alg` automatically maps the name "SHA256" to a
-//! reference to `digest::SHA256`.
+//! Note that `consume_digest_alg` automatically maps the string "SHA1" to a
+//! reference to `digest::SHA1`, "SHA256" to `digest::SHA256`, etc.
 
 use digest;
 use std;
