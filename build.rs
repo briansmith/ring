@@ -66,10 +66,6 @@
     while_true,
 )]
 
-extern crate num;
-
-#[path="src/ec/suite_b/suite_b_build.rs"] mod suite_b_build;
-
 use std::env;
 use std::path::Path;
 
@@ -83,7 +79,6 @@ fn main() {
 
     let out_dir = env::var("OUT_DIR").unwrap();
 
-    suite_b_build::generate_code(&out_dir).unwrap();
     build_c_code(&out_dir).unwrap();
 }
 
@@ -120,7 +115,6 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
-            format!("GENERATED_CODE_DIR={}", out_dir),
         ];
     } else {
         // TODO: This assumes that the package is being built under a
@@ -140,7 +134,6 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("/p:Platform={}", platform),
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),
-            format!("/p:GENERATED_CODE_DIR={}", out_dir),
         ];
     }
 

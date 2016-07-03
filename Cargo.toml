@@ -15,11 +15,6 @@ name = "ring"
 lazy_static = "0.2.1"
 untrusted = "0.2"
 
-[build-dependencies.num]
-version = "0.1.30"
-default-features = false
-features = ["bigint"]
-
 [dev-dependencies]
 rustc-serialize = "0.3.19"
 

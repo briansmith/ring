@@ -14,7 +14,7 @@
 
 RING_PREFIX ?= ring/
 
-RING_CPPFLAGS = -I$(RING_PREFIX)include -I$(GENERATED_CODE_DIR) -D_XOPEN_SOURCE=700
+RING_CPPFLAGS = -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
 
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
