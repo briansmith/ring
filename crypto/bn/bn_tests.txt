@@ -5957,7 +5957,8 @@ B = -542fb814f45924aa09a16f2a6
 
 # Quotient tests.
 #
-# These test vectors satisfy Quotient = A / B and Remainder = A - B * Quotient.
+# These test vectors satisfy Quotient = A / B, rounded towards zero, and
+# Remainder = A - B * Quotient.
 
 Quotient = 1
 Remainder = 0
