@@ -102,7 +102,6 @@ static int rand_neg();
 
 static bool test_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx);
-static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
 static bool TestBN2BinPadded(BN_CTX *ctx);
 static bool TestDec2BN(BN_CTX *ctx);
 static bool TestHex2BN(BN_CTX *ctx);
@@ -171,12 +170,6 @@ int main(int argc, char *argv[]) {
   puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
                          "| grep -v 0 */\n");
   puts_fp(bc_file.get(), "obase=16\nibase=16\n");
-
-  message(bc_file.get(), "BN_mod_exp_mont_consttime");
-  if (!test_mod_exp_mont5(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
 
   message(bc_file.get(), "BN_exp");
   if (!test_exp(bc_file.get(), ctx.get())) {
@@ -691,73 +684,6 @@ static int rand_neg() {
   static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
 
   return sign[(neg++) % 8];
-}
-
-// Test constant-time modular exponentiation with 1024-bit inputs,
-// which on x86_64 cause a different code branch to be taken.
-static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM p(BN_new());
-  ScopedBIGNUM m(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !p || !m || !d || !e ||
-      !BN_rand(m.get(), 1024, 0, 1) ||  // must be odd for montgomery
-      !BN_rand(a.get(), 1024, 0, 0)) {
-    return false;
-  }
-  // Zero exponent.
-  BN_zero(p.get());
-  if (!BN_mod_exp_mont_consttime(d.get(), a.get(), p.get(), m.get(), ctx,
-                                 NULL)) {
-    return false;
-  }
-  if (!BN_is_one(d.get())) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  if (!BN_rand(p.get(), 1024, 0, 0)) {
-    return false;
-  }
-  // Zero input.
-  BN_zero(a.get());
-  if (!BN_mod_exp_mont_consttime(d.get(), a.get(), p.get(), m.get(), ctx,
-                                 NULL)) {
-    return false;
-  }
-  if (!BN_is_zero(d.get())) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  // Craft an input whose Montgomery representation is 1, i.e., shorter than the
-  // modulus m, in order to test the const time precomputation
-  // scattering/gathering.
-  ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-  if (!mont || !BN_one(a.get()) ||
-      !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
-      !BN_from_montgomery(e.get(), a.get(), mont.get(), ctx) ||
-      !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 NULL) ||
-      !BN_mod_exp(a.get(), e.get(), p.get(), m.get(), ctx)) {
-    return false;
-  }
-  if (BN_cmp(a.get(), d.get()) != 0) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  // Finally, some regular test vectors.
-  if (!BN_rand(e.get(), 1024, 0, 0) ||
-      !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 NULL) ||
-      !BN_mod_exp(a.get(), e.get(), p.get(), m.get(), ctx)) {
-    return false;
-  }
-  if (BN_cmp(a.get(), d.get()) != 0) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-
-  return true;
 }
 
 static bool test_exp(FILE *fp, BN_CTX *ctx) {
