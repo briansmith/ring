@@ -27,14 +27,12 @@
 //! Input files look like this:
 //!
 //! ```text
-//! # Additional HMAC tests from OpenSSL.
+//! # This is a comment.
 //!
 //! HMAC = SHA1
 //! Input = "My test data"
 //! Key = ""
 //! Output = 61afdecb95429ef494d61fdee15990cabf0826fc
-//!
-//! # HMAC tests from NIST test data
 //!
 //! HMAC = SHA256
 //! Input = "Sample message for keylen<blocklen"
@@ -42,15 +40,17 @@
 //! Output = A28CF43130EE696A98F14A37678B56BCFCBDD9E5CF69717FECF5480F0EBDF790
 //! ```
 //!
-//! Note how the bytes of the `Key` attribute are specified as a quoted string
-//! in the first test case and as hex in the second test case; you can use
-//! whichever form is more convenient and you can mix and match within the
-//! same file. The empty sequence of bytes can only be represented with the
-//! quoted string form (`""`).
+//! Test cases are separated with blank lines. Note how the bytes of the `Key`
+//! attribute are specified as a quoted string in the first test case and as
+//! hex in the second test case; you can use whichever form is more convenient
+//! and you can mix and match within the same file. The empty sequence of bytes
+//! can only be represented with the quoted string form (`""`).
 //!
-//! And here's how you would consume the test data:
+//! Here's how you would consume the test data:
 //!
 //! ```ignore
+//! use ring::test;
+//!
 //! test::from_file("src/hmac_tests.txt", |section, test_case| {
 //!     assert_eq!(section, ""); // This test doesn't use named sections.
 //!
