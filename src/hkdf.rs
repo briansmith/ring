@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     pub fn hkdf_tests() {
-        file_test::run("src/hkdf_tests.txt", |section, test_case| {
+        file_test::run("src/hkdf_tests.txt",|section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
                 try!(test_case.consume_digest_alg("Hash").ok_or(()));

@@ -571,7 +571,7 @@ mod tests {
             let mut expected_count: isize = -1;
             let mut seed = Vec::with_capacity(digest_alg.output_len);
 
-            file_test::run_mut(file_name, &mut |section, test_case| {
+            file_test::run(file_name, |section, test_case| {
                 assert_eq!(section_name, section);
 
                 if expected_count == -1 {
