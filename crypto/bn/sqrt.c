@@ -57,12 +57,11 @@
 #include <openssl/err.h>
 
 
-/* Returns 'ret' such that
- *      ret^2 == a (mod p),
- * using the Tonelli/Shanks algorithm (cf. Henri Cohen, "A Course
- * in Algebraic Computational Number Theory", algorithm 1.5.1).
- * 'p' must be prime! */
 BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
+  /* Compute a square root of |a| mod |p| using the Tonelli/Shanks algorithm
+   * (cf. Henri Cohen, "A Course in Algebraic Computational Number Theory",
+   * algorithm 1.5.1). |p| is assumed to be a prime. */
+
   BIGNUM *ret = in;
   int err = 1;
   int r;
