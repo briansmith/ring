@@ -25,13 +25,6 @@
 //!         supported at runtime. When the `disable_dev_urandom_fallback`
 //!         feature is enabled, such fallback will not occur. See the
 //!         documentation for `rand::SystemRandom` for more details.
-//! <tr><td><code>use_heap</code>
-//!     <td>Enable functionality that uses the heap. This is on by default, but
-//!         disabling it is useful for code running in kernel space and some
-//!         embedded applications. The goal is to enable as much functionality
-//!         as is practical in without requiring <code>use_heap</code> mode,
-//!         but for now some RSA, ECDH, and ECDSA functionality still uses the
-//!         heap.
 //! </table>
 
 #![allow(
