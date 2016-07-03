@@ -13,7 +13,7 @@ name = "ring"
 
 [dependencies]
 lazy_static = "0.2.1"
-untrusted = { git = "https://github.com/briansmith/untrusted" }
+untrusted = "0.2"
 
 [build-dependencies.num]
 version = "0.1.30"
