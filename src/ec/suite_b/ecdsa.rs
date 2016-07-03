@@ -232,14 +232,14 @@ ecdsa!(ECDSA_P384_SHA512, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
 
 #[cfg(test)]
 mod tests {
-    use {digest, file_test, signature};
+    use {digest, test, signature};
     use super::digest_scalar_;
     use super::super::ops::*;
     use untrusted;
 
     #[test]
     fn signature_ecdsa_verify_test() {
-        file_test::run("src/ec/suite_b/ecdsa_verify_tests.txt",
+        test::from_file("src/ec/suite_b/ecdsa_verify_tests.txt",
                        |section, test_case| {
             assert_eq!(section, "");
 
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn ecdsa_digest_scalar_test() {
-        file_test::run("src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
+        test::from_file("src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
                        |section, test_case| {
             assert_eq!(section, "");
 

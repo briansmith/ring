@@ -79,7 +79,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {agreement, file_test};
+    use {agreement, test};
     use std;
     use untrusted;
 
@@ -139,7 +139,7 @@ mod tests {
     }
 
     fn h(s: &str) -> std::vec::Vec<u8> {
-        match file_test::from_hex(s) {
+        match test::from_hex(s) {
             Ok(v) => v,
             Err(msg) => {
                 panic!("{} in {}", msg, s);

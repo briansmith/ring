@@ -73,14 +73,14 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
 
 #[cfg(test)]
 mod tests {
-    use file_test;
+    use test;
     use super::*;
     use super::super::ops;
     use untrusted;
 
     #[test]
     fn parse_uncompressed_point_test() {
-         file_test::run("src/ec/suite_b/suite_b_public_key_tests.txt",
+         test::from_file("src/ec/suite_b/suite_b_public_key_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 

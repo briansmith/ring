@@ -96,10 +96,6 @@ extern crate test;
 #[macro_use]
 extern crate lazy_static;
 
-#[cfg(not(test))]
-extern crate std;
-
-#[cfg(test)]
 #[macro_use(format, print, println, vec)]
 extern crate std;
 
@@ -128,9 +124,8 @@ pub mod rand;
 pub mod signature;
 mod signature_impl;
 
-
-#[cfg(test)]
-mod file_test;
+#[cfg(any(feature = "use_heap", test))]
+pub mod test;
 
 #[cfg(test)]
 mod tests {

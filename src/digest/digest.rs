@@ -474,12 +474,12 @@ pub mod test_util {
 #[cfg(test)]
 mod tests {
     use std::vec::Vec;
-    use super::super::{digest, file_test};
+    use super::super::{digest, test};
 
     /// Test vectors from BoringSSL.
     #[test]
     fn test_bssl() {
-        file_test::run("src/digest_tests.txt", |section, test_case| {
+        test::from_file("src/digest_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
             let input = test_case.consume_bytes("Input");
@@ -504,7 +504,7 @@ mod tests {
 
     mod shavs {
         use std::vec::Vec;
-        use super::super::super::{digest, file_test};
+        use super::super::super::{digest, test};
 
         macro_rules! shavs_tests {
             ( $algorithm_name:ident ) => {
@@ -543,7 +543,7 @@ mod tests {
         fn run_known_answer_test(digest_alg: &'static digest::Algorithm,
                                  file_name: &str, ) {
             let section_name = &format!("L = {}", digest_alg.output_len);
-            file_test::run(file_name, |section, test_case| {
+            test::from_file(file_name, |section, test_case| {
                 assert_eq!(section_name, section);
                 let len_bits = test_case.consume_usize("Len");
 
@@ -571,7 +571,7 @@ mod tests {
             let mut expected_count: isize = -1;
             let mut seed = Vec::with_capacity(digest_alg.output_len);
 
-            file_test::run(file_name, |section, test_case| {
+            test::from_file(file_name, |section, test_case| {
                 assert_eq!(section_name, section);
 
                 if expected_count == -1 {

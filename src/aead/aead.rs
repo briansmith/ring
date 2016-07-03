@@ -279,14 +279,14 @@ fn check_per_nonce_max_bytes(in_out_len: usize) -> Result<(), ()> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{aead, file_test};
+    use super::super::{aead, test};
     use std::vec::Vec;
 
     pub fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         test_aead_key_sizes(aead_alg);
         test_aead_nonce_sizes(aead_alg).unwrap();
 
-        file_test::run(file_path, |section, test_case| {
+        test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
             let key_bytes = test_case.consume_bytes("KEY");
             let nonce = test_case.consume_bytes("NONCE");

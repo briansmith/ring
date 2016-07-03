@@ -478,7 +478,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {der, file_test, signature};
+    use {der, test, signature};
 
     #[cfg(feature = "rsa_signing")]
     use rand;
@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     fn test_signature_rsa_pkcs1_verify() {
-        file_test::run("src/rsa_pkcs1_verify_tests.txt", |section, test_case| {
+        test::from_file("src/rsa_pkcs1_verify_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn test_signature_rsa_pkcs1_sign() {
         let rng = rand::SystemRandom::new();
-        file_test::run("src/rsa_pkcs1_sign_tests.txt", |section, test_case| {
+        test::from_file("src/rsa_pkcs1_sign_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");

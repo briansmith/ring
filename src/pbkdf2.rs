@@ -220,11 +220,11 @@ pub static HMAC_SHA512: PRF  = PRF {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{digest, file_test, pbkdf2};
+    use super::super::{digest, test, pbkdf2};
 
     #[test]
     pub fn pkbdf2_tests() {
-        file_test::run("src/pbkdf2_tests.txt", |section, test_case| {
+        test::from_file("src/pbkdf2_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
                 try!(test_case.consume_digest_alg("Hash").ok_or(()));

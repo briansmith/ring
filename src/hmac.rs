@@ -337,7 +337,7 @@ pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
 
 #[cfg(test)]
 mod tests {
-    use {digest, file_test, hmac, rand};
+    use {digest, test, hmac, rand};
 
     // Make sure that `SigningKey::generate` and `verify_with_own_key` aren't
     // completely wacky.
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     pub fn hmac_tests() {
-        file_test::run("src/hmac_tests.txt", |section, test_case| {
+        test::from_file("src/hmac_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg = test_case.consume_digest_alg("HMAC");
             let key_value = test_case.consume_bytes("Key");

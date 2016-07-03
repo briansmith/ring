@@ -230,7 +230,7 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
 
 #[cfg(test)]
 mod tests {
-    use {file_test, rand};
+    use {test, rand};
     use untrusted;
     use super::*;
 
@@ -238,7 +238,7 @@ mod tests {
     fn test_agreement_agree_ephemeral() {
         let rng = rand::SystemRandom::new();
 
-        file_test::run("src/ec/ecdh_tests.txt", |section, test_case| {
+        test::from_file("src/ec/ecdh_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
             let curve_name = test_case.consume_string("Curve");

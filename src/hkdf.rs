@@ -130,11 +130,11 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{file_test, hkdf, hmac};
+    use super::super::{test, hkdf, hmac};
 
     #[test]
     pub fn hkdf_tests() {
-        file_test::run("src/hkdf_tests.txt",|section, test_case| {
+        test::from_file("src/hkdf_tests.txt",|section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
                 try!(test_case.consume_digest_alg("Hash").ok_or(()));
@@ -143,7 +143,7 @@ mod tests {
             let info = test_case.consume_bytes("info");
 
             // The PRK is an intermediate value that we can't test, but we
-            // have to consume it to make file_test::run happy.
+            // have to consume it to make test::from_file happy.
             let _ = test_case.consume_bytes("PRK");
 
             let out = test_case.consume_bytes("OKM");
