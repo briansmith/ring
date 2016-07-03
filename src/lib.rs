@@ -25,6 +25,8 @@
 //!         supported at runtime. When the `disable_dev_urandom_fallback`
 //!         feature is enabled, such fallback will not occur. See the
 //!         documentation for `rand::SystemRandom` for more details.
+//! <tr><td><code>rsa_signing</code>
+//!     <td>Enable RSA signing (<code>RSAKeyPair</code> and related things).
 //! </table>
 
 #![allow(
