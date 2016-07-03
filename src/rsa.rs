@@ -129,6 +129,7 @@ macro_rules! rsa_pkcs1_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
       $doc_str:expr ) => {
         #[doc=$doc_str]
+        /// Feature: `rsa_signing`.
         pub static $PADDING_ALGORITHM: RSAPadding = RSAPadding {
             digest_alg: $digest_alg,
             digestinfo_prefix: $digestinfo_prefix,
@@ -222,7 +223,7 @@ fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
 }
 
 
-/// An RSA key pair, used for signing. Requires the "rsa_signing" feature.
+/// An RSA key pair, used for signing. Feature: `rsa_signing`.
 #[cfg(feature = "rsa_signing")]
 pub struct RSAKeyPair {
     rsa: std::boxed::Box<RSA>,

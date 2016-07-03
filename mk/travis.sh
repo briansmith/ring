@@ -76,7 +76,7 @@ fi
 
 case $TARGET_X in
 arm-linux-androideabi)
-  CC=$CC_X CXX=$CXX_X cargo test -j2 --no-run ${mode-} $FEATURES_X \
+  CC=$CC_X CXX=$CXX_X cargo test -j2 --no-run ${mode-} ${FEATURES_X-} \
                                  --target=$TARGET_X --verbose
   emulator @arm-18 -no-skin -no-boot-anim -no-audio -no-window &
   adb wait-for-device
@@ -91,7 +91,7 @@ arm-linux-androideabi)
   grep "test result: ok" /tmp/ring-test
   ;;
 *)
-  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} $FEATURES_X \
+  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} ${FEATURES_X-} \
                       --target=$TARGET_X --verbose
   ;;
 esac
@@ -107,7 +107,8 @@ if [[ "$KCOV" == "1" ]]; then
   # we expect people to use in production.
   CC=$CC_X CXX=$CXX_X cargo clean
   CC=$CC_X CXX=$CXX_X RUSTFLAGS="-C link-dead-code" \
-    cargo test --no-run -j2  ${mode-} $FEATURES_X --target=$TARGET_X --verbose
+    cargo test --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X \
+               --verbose
   mk/travis-install-kcov.sh
   ${HOME}/kcov-${TARGET_X}/bin/kcov --verify \
                                     --coveralls-id=$TRAVIS_JOB_ID \
@@ -121,7 +122,7 @@ fi
 # that non-test builds aren't trying to use test-only features. For platforms
 # for which we don't run tests, this is the only place we even verify that the
 # code builds.
-CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} $FEATURES_X --target=$TARGET_X \
-                    --verbose
+CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} ${FEATURES_X-} \
+                                --target=$TARGET_X --verbose
 
 echo end of mk/travis.sh

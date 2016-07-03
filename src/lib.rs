@@ -20,11 +20,12 @@
 //! <tr><th>Feature
 //!     <th>Description
 //! <tr><td><code>disable_dev_urandom_fallback</code>
-//!     <td>On Linux, by default, `ring::rand::SystemRandom` will fall back
-//!         to reading from `/dev/urandom` if the `getrandom()` syscall isn't
-//!         supported at runtime. When the `disable_dev_urandom_fallback`
-//!         feature is enabled, such fallback will not occur. See the
-//!         documentation for `rand::SystemRandom` for more details.
+//!     <td>On Linux, by default, <code>ring::rand::SystemRandom</code> will
+//!         fall back to reading from <code>/dev/urandom</code> if the
+//!         <code>getrandom()</code> syscall isn't supported at runtime. When
+//!         the <code>disable_dev_urandom_fallback</code> feature is enabled,
+//!         such fallback will not occur. See the documentation for
+//!         <code>rand::SystemRandom</code> for more details.
 //! <tr><td><code>rsa_signing</code>
 //!     <td>Enable RSA signing (<code>RSAKeyPair</code> and related things).
 //! </table>
