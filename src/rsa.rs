@@ -215,7 +215,7 @@ fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
 }
 
 
-/// An RSA key pair.
+/// An RSA key pair, used for signing.
 pub struct RSAKeyPair {
     rsa: std::boxed::Box<RSA>,
 }

@@ -21,7 +21,7 @@ use untrusted;
 
 struct EdDSA;
 
-/// An Ed25519 key pair.
+/// An Ed25519 key pair, used for signing.
 pub struct Ed25519KeyPair {
     private_public: [u8; 64],
 }
