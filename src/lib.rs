@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Safe, fast, small crypto using Rust with BoringSSL's cryptography primitives.
+//! Safe, fast, small crypto using Rust with BoringSSL's cryptography
+//! primitives.
+//!
+//! git clone https://github.com/briansmith/ring
 //!
 //! # Feature Flags
 //!
