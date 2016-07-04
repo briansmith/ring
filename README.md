@@ -84,7 +84,7 @@ of TLS, SSH, the Noise Protocol, etc.
 
 Of course, contributions to *ring*'s code base are highly appreciated too. If
 you want to work directly on *ring* and you don't have an idea for something to
-contribute already, see the these curated lists of open issues:
+contribute already, see these curated lists of open issues:
 
 * [good-first-bug](https://github.com/briansmith/ring/labels/good-first-bug):
   Bugs that we think newcomers might find best to start with. Note that what
