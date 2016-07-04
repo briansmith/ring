@@ -69,7 +69,7 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 };
 
 /* Precomputed tables for the default generator */
-#include "p256-x86_64-table.h"
+#include "ecp_nistz256_table.inc"
 
 /* Recode window to a signed digit. See util-64.c for details. */
 static unsigned booth_recode_w5(unsigned in) {

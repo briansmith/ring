@@ -59,6 +59,7 @@
     <ClInclude Include="des\internal.h" />
     <ClInclude Include="digest\internal.h" />
     <ClInclude Include="ec\internal.h" />
+    <ClInclude Include="ec\ecp_nistz256_table.inc" />
     <ClInclude Include="evp\internal.h" />
     <ClInclude Include="modes\internal.h" />
     <ClInclude Include="rand\internal.h" />
@@ -107,7 +108,7 @@
     <ClCompile Include="curve25519\x25519-x86_64.c" />
     <PerlAsm Include="ec/asm/ecp_nistz256-x86_64.pl" />
     <PerlAsm Include="ec/asm/p256-x86_64-asm.pl" />
-    <ClCompile Include="ec/p256-x86_64.c" />
+    <ClCompile Include="ec/ecp_nistz256.c" />
     <PerlAsm Include="modes/asm/aesni-gcm-x86_64.pl" />
     <PerlAsm Include="modes/asm/ghash-x86_64.pl" />
     <PerlAsm Include="poly1305/asm/poly1305-x86_64.pl" />
