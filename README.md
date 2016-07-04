@@ -84,27 +84,37 @@ of TLS, SSH, the Noise Protocol, etc.
 
 Of course, contributions to *ring*'s code base are highly appreciated too. If
 you want to work directly on *ring* and you don't have an idea for something to
-contribute already, see the [issues marked
-`good-first-bug`](https://github.com/briansmith/ring/issues?q=is%3Aopen+is%3Aissue+label%3Agood-first-bug)
-in the issue tracker.
+contribute already, see the these curated lists of open issues:
+
+* [good-first-bug](https://github.com/briansmith/ring/labels/good-first-bug):
+  Bugs that we think newcomers might find best to start with. Note that what
+  makes a bug a good fit depends a lot on the developer's background and not
+  just the hardness of the work.
+* [oxidation](https://github.com/briansmith/ring/labels/oxidation): Replacing
+  C code with Rust code.
+* [tls-1.3](https://github.com/briansmith/ring/labels/tls-1.3): Issues blocking
+  a complete implementation of TLS 1.3:
+* [rsa](https://github.com/briansmith/ring/labels/rsa): The primary *ring*
+  developer is less interested in RSA than ECC and other things, and it would
+  be great to have somebody jump in and "own" the RSA work. *ring* has
+  inherited the fastest open source RSA implementation (as far as we know)
+  from BoringSSL/OpenSSL, and we've already done a lot of cleanup. But, there's
+  a lot more work to do.
 
 In addition, we're always interested in these kinds of contributions:
 
-* Bug fixes.
-* Additional testing code and additional test vectors.
-* Documentation improvements.
 * Expanded benchmarks in the
   [crypto-bench](https://github.com/briansmith/crypto-bench) project.
-* More code simplification, especially eliminating dead code.
-* Replacing more C code with Rust code.
-* Improving the code size, execution speed, and/or memory footprint.
-* Making more features work in the `#![no_std]`/non-`use_heap` mode, by
-  avoiding uses of the heap.
-* Better IDE support for Windows (e.g. running the tests within the IDE) and
-  Mac OS X (e.g. Xcode project files).
+* Additional testing code and additional test vectors.
+* Static analysis and fuzzing in the continuous integration.
 * Support for more platforms in the continuous integration (e.g. Android, iOS,
   ARM microcontrollers).
-* Static analysis and fuzzing in the continuous integration.
+* Documentation improvements.
+* More code simplification, especially eliminating dead code.
+* Improving the code size, execution speed, and/or memory footprint.
+* Fixing any bugs you may have found.
+* Better IDE support for Windows (e.g. running the tests within the IDE) and
+  Mac OS X (e.g. Xcode project files).
 
 Before submitting pull requests, make sure that the tests succeed both when
 running `cargo test` and `cargo test --no-default-features`. See
