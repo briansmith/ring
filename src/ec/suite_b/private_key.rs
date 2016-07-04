@@ -147,11 +147,8 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     let y_aff = ops.common.elem_mul(y, &zzz_inv);
 
     // If we validated our inputs correctly and then computed (x, y, z), then
-    // (x, y, z) will be on the curve. But just in case there was a (hardware)
-    // fault or code defect encountered during the computation, verify that the
-    // point is on the curve anyway. This isn't expected to detect all
-    // such problems. TODO: Do some experiments to see how effective this check
-    // is at detecting problems.
+    // (x, y, z) will be on the curve. See
+    // `verify_affine_point_is_on_the_curve_scaled` for the motivation.
     try!(verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff)));
 
     let num_limbs = ops.common.num_limbs;

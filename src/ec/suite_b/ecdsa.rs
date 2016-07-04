@@ -15,6 +15,7 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use {der, digest, signature, signature_impl};
+use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
 use untrusted;
@@ -78,8 +79,17 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let (x, _, z) = try!(self.ops.twin_mult(&u1, &u2, &peer_pub_key));
-        try!(self.ops.public_key_ops.common.elem_verify_is_not_zero(&z));
+        let product = try!(self.ops.twin_mult(&u1, &u2, &peer_pub_key));
+
+        // Verify that the point we computed is on the curve; see
+        // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
+        // would be more secure to do the check on the affine coordinates if we
+        // were going to convert to affine form (again, see
+        // `verify_affine_point_is_on_the_curve_scaled` for details on why).
+        // But, we're going to avoid converting to affine for performance
+        // reasons, so we do the verification using the Jacobian coordinates.
+        let z2 = try!(verify_jacobian_point_is_on_the_curve(
+                        self.ops.public_key_ops.common, &product));
 
         // NSA Guide Step 7: "Compute v = xR mod n."
         // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
@@ -87,26 +97,22 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         //
         // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
         // that would be necessary to compute the affine X coordinate.
-        //
-        // The unfortunate consequence of this is that this forces us to skip
-        // the point-is-on-the-curve check that we normally do to mitigate bugs
-        // or faults in the point multiplication.
+        let &(ref x, _, _) = &product;
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded, x: &Elem,
-                          z: &Elem) -> bool {
-            let zz = ops.public_key_ops.common.elem_sqr(z);
-            let r_jacobian = ops.elem_mul_mixed(&zz, r);
+                          z2: &Elem) -> bool {
+            let r_jacobian = ops.elem_mul_mixed(&z2, r);
             let x_decoded = ops.public_key_ops.common.elem_decoded(x);
             ops.elem_decoded_equals(&r_jacobian, &x_decoded)
         }
         let r = self.ops.scalar_as_elem_decoded(&r);
-        if sig_r_equals_x(self.ops, &r, &x, &z) {
+        if sig_r_equals_x(self.ops, &r, &x, &z2) {
             return Ok(());
         }
         if self.ops.elem_decoded_less_than(&r, &self.ops.q_minus_n) {
             let r_plus_n =
                 self.ops.elem_decoded_sum(&r,
                                           &self.ops.public_key_ops.common.n);
-            if sig_r_equals_x(self.ops, &r_plus_n, &x, &z) {
+            if sig_r_equals_x(self.ops, &r_plus_n, &x, &z2) {
                 return Ok(());
             }
         }

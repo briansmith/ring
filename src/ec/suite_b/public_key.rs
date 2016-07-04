@@ -50,9 +50,6 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    //
-    // `verify_affine_point_is_on_the_curve` does that check and also verifies
-    // that the point is on the curve.
     try!(verify_affine_point_is_on_the_curve(ops.common, (&x, &y)));
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
