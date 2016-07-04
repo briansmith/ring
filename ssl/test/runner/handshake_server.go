@@ -218,12 +218,10 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	}
 	c.haveVers = true
 
-	hs.hello = &serverHelloMsg{
-		isDTLS: c.isDTLS,
-		extensions: serverExtensions{
-			customExtension: config.Bugs.CustomExtension,
-			npnLast:         config.Bugs.SwapNPNAndALPN,
-		},
+	hs.hello = &serverHelloMsg{isDTLS: c.isDTLS}
+
+	if err := hs.processClientExtensions(&hs.hello.extensions); err != nil {
+		return false, err
 	}
 
 	supportedCurve := false
@@ -272,93 +270,7 @@ Curves:
 		return false, err
 	}
 
-	if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
-		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("tls: renegotiation mismatch")
-	}
-
-	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
-		hs.hello.extensions.secureRenegotiation = append(hs.hello.extensions.secureRenegotiation, c.clientVerify...)
-		hs.hello.extensions.secureRenegotiation = append(hs.hello.extensions.secureRenegotiation, c.serverVerify...)
-		if c.config.Bugs.BadRenegotiationInfo {
-			hs.hello.extensions.secureRenegotiation[0] ^= 0x80
-		}
-	} else {
-		hs.hello.extensions.secureRenegotiation = hs.clientHello.secureRenegotiation
-	}
-
-	if c.noRenegotiationInfo() {
-		hs.hello.extensions.secureRenegotiation = nil
-	}
-
 	hs.hello.compressionMethod = compressionNone
-	hs.hello.extensions.duplicateExtension = c.config.Bugs.DuplicateExtension
-	if len(hs.clientHello.serverName) > 0 {
-		c.serverName = hs.clientHello.serverName
-	}
-
-	if len(hs.clientHello.alpnProtocols) > 0 {
-		if proto := c.config.Bugs.ALPNProtocol; proto != nil {
-			hs.hello.extensions.alpnProtocol = *proto
-			hs.hello.extensions.alpnProtocolEmpty = len(*proto) == 0
-			c.clientProtocol = *proto
-			c.usedALPN = true
-		} else if selectedProto, fallback := mutualProtocol(hs.clientHello.alpnProtocols, c.config.NextProtos); !fallback {
-			hs.hello.extensions.alpnProtocol = selectedProto
-			c.clientProtocol = selectedProto
-			c.usedALPN = true
-		}
-	}
-	if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
-		// Although sending an empty NPN extension is reasonable, Firefox has
-		// had a bug around this. Best to send nothing at all if
-		// config.NextProtos is empty. See
-		// https://code.google.com/p/go/issues/detail?id=5445.
-		if hs.clientHello.nextProtoNeg && len(config.NextProtos) > 0 {
-			hs.hello.extensions.nextProtoNeg = true
-			hs.hello.extensions.nextProtos = config.NextProtos
-		}
-	}
-	hs.hello.extensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
-
-	if len(config.Certificates) == 0 {
-		c.sendAlert(alertInternalError)
-		return false, errors.New("tls: no certificates configured")
-	}
-	hs.cert = &config.Certificates[0]
-	if len(hs.clientHello.serverName) > 0 {
-		hs.cert = config.getCertificateForName(hs.clientHello.serverName)
-	}
-	if expected := c.config.Bugs.ExpectServerName; expected != "" && expected != hs.clientHello.serverName {
-		return false, errors.New("tls: unexpected server name")
-	}
-
-	if hs.clientHello.channelIDSupported && config.RequestChannelID {
-		hs.hello.extensions.channelIDRequested = true
-	}
-
-	if hs.clientHello.srtpProtectionProfiles != nil {
-	SRTPLoop:
-		for _, p1 := range c.config.SRTPProtectionProfiles {
-			for _, p2 := range hs.clientHello.srtpProtectionProfiles {
-				if p1 == p2 {
-					hs.hello.extensions.srtpProtectionProfile = p1
-					c.srtpProtectionProfile = p1
-					break SRTPLoop
-				}
-			}
-		}
-	}
-
-	if c.config.Bugs.SendSRTPProtectionProfile != 0 {
-		hs.hello.extensions.srtpProtectionProfile = c.config.Bugs.SendSRTPProtectionProfile
-	}
-
-	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
-		if hs.clientHello.customExtension != *expected {
-			return false, fmt.Errorf("tls: bad custom extension contents %q", hs.clientHello.customExtension)
-		}
-	}
 
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
 
@@ -415,6 +327,105 @@ Curves:
 	}
 
 	return false, nil
+}
+
+// processClientExtensions processes all ClientHello extensions not directly
+// related to cipher suite negotiation and writes responses in serverExtensions.
+func (hs *serverHandshakeState) processClientExtensions(serverExtensions *serverExtensions) error {
+	config := hs.c.config
+	c := hs.c
+
+	if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: renegotiation mismatch")
+	}
+
+	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
+		serverExtensions.secureRenegotiation = append(serverExtensions.secureRenegotiation, c.clientVerify...)
+		serverExtensions.secureRenegotiation = append(serverExtensions.secureRenegotiation, c.serverVerify...)
+		if c.config.Bugs.BadRenegotiationInfo {
+			serverExtensions.secureRenegotiation[0] ^= 0x80
+		}
+	} else {
+		serverExtensions.secureRenegotiation = hs.clientHello.secureRenegotiation
+	}
+
+	if c.noRenegotiationInfo() {
+		serverExtensions.secureRenegotiation = nil
+	}
+
+	serverExtensions.duplicateExtension = c.config.Bugs.DuplicateExtension
+
+	if len(hs.clientHello.serverName) > 0 {
+		c.serverName = hs.clientHello.serverName
+	}
+	if len(config.Certificates) == 0 {
+		c.sendAlert(alertInternalError)
+		return errors.New("tls: no certificates configured")
+	}
+	hs.cert = &config.Certificates[0]
+	if len(hs.clientHello.serverName) > 0 {
+		hs.cert = config.getCertificateForName(hs.clientHello.serverName)
+	}
+	if expected := c.config.Bugs.ExpectServerName; expected != "" && expected != hs.clientHello.serverName {
+		return errors.New("tls: unexpected server name")
+	}
+
+	if len(hs.clientHello.alpnProtocols) > 0 {
+		if proto := c.config.Bugs.ALPNProtocol; proto != nil {
+			serverExtensions.alpnProtocol = *proto
+			serverExtensions.alpnProtocolEmpty = len(*proto) == 0
+			c.clientProtocol = *proto
+			c.usedALPN = true
+		} else if selectedProto, fallback := mutualProtocol(hs.clientHello.alpnProtocols, c.config.NextProtos); !fallback {
+			serverExtensions.alpnProtocol = selectedProto
+			c.clientProtocol = selectedProto
+			c.usedALPN = true
+		}
+	}
+	if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
+		// Although sending an empty NPN extension is reasonable, Firefox has
+		// had a bug around this. Best to send nothing at all if
+		// config.NextProtos is empty. See
+		// https://code.google.com/p/go/issues/detail?id=5445.
+		if hs.clientHello.nextProtoNeg && len(config.NextProtos) > 0 {
+			serverExtensions.nextProtoNeg = true
+			serverExtensions.nextProtos = config.NextProtos
+			serverExtensions.npnLast = config.Bugs.SwapNPNAndALPN
+		}
+	}
+
+	serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
+
+	if hs.clientHello.channelIDSupported && config.RequestChannelID {
+		serverExtensions.channelIDRequested = true
+	}
+
+	if hs.clientHello.srtpProtectionProfiles != nil {
+	SRTPLoop:
+		for _, p1 := range c.config.SRTPProtectionProfiles {
+			for _, p2 := range hs.clientHello.srtpProtectionProfiles {
+				if p1 == p2 {
+					serverExtensions.srtpProtectionProfile = p1
+					c.srtpProtectionProfile = p1
+					break SRTPLoop
+				}
+			}
+		}
+	}
+
+	if c.config.Bugs.SendSRTPProtectionProfile != 0 {
+		serverExtensions.srtpProtectionProfile = c.config.Bugs.SendSRTPProtectionProfile
+	}
+
+	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
+		if hs.clientHello.customExtension != *expected {
+			return fmt.Errorf("tls: bad custom extension contents %q", hs.clientHello.customExtension)
+		}
+	}
+	serverExtensions.customExtension = config.Bugs.CustomExtension
+
+	return nil
 }
 
 // checkForResumption returns true if we should perform resumption on this connection.
