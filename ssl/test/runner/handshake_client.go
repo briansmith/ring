@@ -301,6 +301,21 @@ NextCipherSuite:
 	}
 	c.haveVers = true
 
+	// Check for downgrade signals in the server random, per
+	// draft-ietf-tls-tls13-13, section 6.3.1.2.
+	if c.vers <= VersionTLS12 && c.config.maxVersion(c.isDTLS) >= VersionTLS13 {
+		if bytes.Equal(serverHello.random[:8], downgradeTLS13) {
+			c.sendAlert(alertProtocolVersion)
+			return errors.New("tls: downgrade from TLS 1.3 detected")
+		}
+	}
+	if c.vers <= VersionTLS11 && c.config.maxVersion(c.isDTLS) >= VersionTLS12 {
+		if bytes.Equal(serverHello.random[:8], downgradeTLS12) {
+			c.sendAlert(alertProtocolVersion)
+			return errors.New("tls: downgrade from TLS 1.2 detected")
+		}
+	}
+
 	suite := mutualCipherSuite(c.config.cipherSuites(), serverHello.cipherSuite)
 	if suite == nil {
 		c.sendAlert(alertHandshakeFailure)

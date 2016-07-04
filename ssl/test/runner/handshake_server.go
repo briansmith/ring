@@ -263,6 +263,13 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		c.sendAlert(alertInternalError)
 		return false, err
 	}
+	// Signal downgrades in the server random, per draft-ietf-tls-tls13-13, section 6.3.1.2.
+	if c.vers <= VersionTLS12 && config.maxVersion(c.isDTLS) >= VersionTLS13 {
+		copy(hs.hello.random[:8], downgradeTLS13)
+	}
+	if c.vers <= VersionTLS11 && config.maxVersion(c.isDTLS) == VersionTLS12 {
+		copy(hs.hello.random[:8], downgradeTLS12)
+	}
 
 	foundCompression := false
 	// We only support null compression, so check that the client offered it.
