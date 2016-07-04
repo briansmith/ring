@@ -113,8 +113,8 @@
 //!
 //! Notice that the output shows the name of the data file
 //! (`src/example_tests.txt`), the test inputs that led to the failure, and the
-//! stack trace to line in the test code that panicked: entry 9 in the stack
-//! trace pointing to line 652 of the file `example.rs`.
+//! stack trace to the line in the test code that panicked: entry 9 in the
+//! stack trace pointing to line 652 of the file `example.rs`.
 
 use digest;
 use std;
