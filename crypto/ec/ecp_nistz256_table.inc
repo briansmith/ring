@@ -17,8 +17,8 @@
  * subtables, each subtable contains 64 affine points. The affine points are
  * encoded as eight uint64's, four for the x coordinate and four for the y.
  * Both values are in little-endian order. There are 37 tables because a
- * signed, 6-bit wNAF form of the scalar is used and ceil(256/(6 + 1)) = 37.
- * Within each table there are 64 values because the 6-bit wNAF value can take
+ * signed, 6-bit recoding of the scalar is used and ceil(256/(6 + 1)) = 37.
+ * Within each table there are 64 values because the 6-bit recoding can take
  * 64 values, ignoring the sign bit, which is implemented by performing a
  * negation of the affine point when required. We would like to align it to 2MB
  * in order to increase the chances of using a large page but that appears to
