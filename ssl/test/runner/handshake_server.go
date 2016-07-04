@@ -49,7 +49,10 @@ func (c *Conn) serverHandshake() error {
 	hs := serverHandshakeState{
 		c: c,
 	}
-	isResume, err := hs.readClientHello()
+	if err := hs.readClientHello(); err != nil {
+		return err
+	}
+	isResume, err := hs.processClientHello()
 	if err != nil {
 		return err
 	}
@@ -119,27 +122,27 @@ func (c *Conn) serverHandshake() error {
 	return nil
 }
 
-// readClientHello reads a ClientHello message from the client and decides
-// whether we will perform session resumption.
-func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
+// readClientHello reads a ClientHello message from the client and determines
+// the protocol version.
+func (hs *serverHandshakeState) readClientHello() error {
 	config := hs.c.config
 	c := hs.c
 
 	if err := c.simulatePacketLoss(nil); err != nil {
-		return false, err
+		return err
 	}
 	msg, err := c.readHandshake()
 	if err != nil {
-		return false, err
+		return err
 	}
 	var ok bool
 	hs.clientHello, ok = msg.(*clientHelloMsg)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
-		return false, unexpectedMessageError(hs.clientHello, msg)
+		return unexpectedMessageError(hs.clientHello, msg)
 	}
 	if size := config.Bugs.RequireClientHelloSize; size != 0 && len(hs.clientHello.raw) != size {
-		return false, fmt.Errorf("tls: ClientHello record size is %d, but expected %d", len(hs.clientHello.raw), size)
+		return fmt.Errorf("tls: ClientHello record size is %d, but expected %d", len(hs.clientHello.raw), size)
 	}
 
 	if c.isDTLS && !config.Bugs.SkipHelloVerifyRequest {
@@ -151,25 +154,25 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		}
 		if _, err := io.ReadFull(c.config.rand(), helloVerifyRequest.cookie); err != nil {
 			c.sendAlert(alertInternalError)
-			return false, errors.New("dtls: short read from Rand: " + err.Error())
+			return errors.New("dtls: short read from Rand: " + err.Error())
 		}
 		c.writeRecord(recordTypeHandshake, helloVerifyRequest.marshal())
 		c.flushHandshake()
 
 		if err := c.simulatePacketLoss(nil); err != nil {
-			return false, err
+			return err
 		}
 		msg, err := c.readHandshake()
 		if err != nil {
-			return false, err
+			return err
 		}
 		newClientHello, ok := msg.(*clientHelloMsg)
 		if !ok {
 			c.sendAlert(alertUnexpectedMessage)
-			return false, unexpectedMessageError(hs.clientHello, msg)
+			return unexpectedMessageError(hs.clientHello, msg)
 		}
 		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
-			return false, errors.New("dtls: invalid cookie")
+			return errors.New("dtls: invalid cookie")
 		}
 
 		// Apart from the cookie, the two ClientHellos must
@@ -182,31 +185,28 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		newClientHelloCopy.raw = nil
 		newClientHelloCopy.cookie = nil
 		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
-			return false, errors.New("dtls: retransmitted ClientHello does not match")
+			return errors.New("dtls: retransmitted ClientHello does not match")
 		}
 		hs.clientHello = newClientHello
 	}
 
 	if config.Bugs.RequireSameRenegoClientVersion && c.clientVersion != 0 {
 		if c.clientVersion != hs.clientHello.vers {
-			return false, fmt.Errorf("tls: client offered different version on renego")
+			return fmt.Errorf("tls: client offered different version on renego")
 		}
 	}
 	c.clientVersion = hs.clientHello.vers
 
 	// Reject < 1.2 ClientHellos with signature_algorithms.
 	if c.clientVersion < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
-		return false, fmt.Errorf("tls: client included signature_algorithms before TLS 1.2")
-	}
-	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-		hs.clientHello.signatureAlgorithms = config.signatureAlgorithmsForServer()
+		return fmt.Errorf("tls: client included signature_algorithms before TLS 1.2")
 	}
 
 	// Check the client cipher list is consistent with the version.
 	if hs.clientHello.vers < VersionTLS12 {
 		for _, id := range hs.clientHello.cipherSuites {
 			if isTLS12Cipher(id) {
-				return false, fmt.Errorf("tls: client offered TLS 1.2 cipher before TLS 1.2")
+				return fmt.Errorf("tls: client offered TLS 1.2 cipher before TLS 1.2")
 			}
 		}
 	}
@@ -214,11 +214,69 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	c.vers, ok = config.mutualVersion(hs.clientHello.vers, c.isDTLS)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
-		return false, fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+		return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
 	}
 	c.haveVers = true
 
-	hs.hello = &serverHelloMsg{isDTLS: c.isDTLS}
+	var scsvFound bool
+	for _, cipherSuite := range hs.clientHello.cipherSuites {
+		if cipherSuite == fallbackSCSV {
+			scsvFound = true
+			break
+		}
+	}
+
+	if !scsvFound && config.Bugs.FailIfNotFallbackSCSV {
+		return errors.New("tls: no fallback SCSV found when expected")
+	} else if scsvFound && !config.Bugs.FailIfNotFallbackSCSV {
+		return errors.New("tls: fallback SCSV found when not expected")
+	}
+
+	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
+		hs.clientHello.signatureAlgorithms = config.signatureAlgorithmsForServer()
+	}
+	if config.Bugs.IgnorePeerCurvePreferences {
+		hs.clientHello.supportedCurves = config.curvePreferences()
+	}
+	if config.Bugs.IgnorePeerCipherPreferences {
+		hs.clientHello.cipherSuites = config.cipherSuites()
+	}
+
+	return nil
+}
+
+// processClientHello processes the ClientHello message from the client and
+// decides whether we will perform session resumption.
+func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) {
+	config := hs.c.config
+	c := hs.c
+
+	hs.hello = &serverHelloMsg{
+		isDTLS:            c.isDTLS,
+		vers:              c.vers,
+		compressionMethod: compressionNone,
+	}
+
+	hs.hello.random = make([]byte, 32)
+	_, err = io.ReadFull(config.rand(), hs.hello.random)
+	if err != nil {
+		c.sendAlert(alertInternalError)
+		return false, err
+	}
+
+	foundCompression := false
+	// We only support null compression, so check that the client offered it.
+	for _, compression := range hs.clientHello.compressionMethods {
+		if compression == compressionNone {
+			foundCompression = true
+			break
+		}
+	}
+
+	if !foundCompression {
+		c.sendAlert(alertHandshakeFailure)
+		return false, errors.New("tls: client does not support uncompressed connections")
+	}
 
 	if err := hs.processClientExtensions(&hs.hello.extensions); err != nil {
 		return false, err
@@ -226,9 +284,6 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 
 	supportedCurve := false
 	preferredCurves := config.curvePreferences()
-	if config.Bugs.IgnorePeerCurvePreferences {
-		hs.clientHello.supportedCurves = preferredCurves
-	}
 Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
 		for _, supported := range preferredCurves {
@@ -248,30 +303,6 @@ Curves:
 	}
 	hs.ellipticOk = supportedCurve && supportedPointFormat
 
-	foundCompression := false
-	// We only support null compression, so check that the client offered it.
-	for _, compression := range hs.clientHello.compressionMethods {
-		if compression == compressionNone {
-			foundCompression = true
-			break
-		}
-	}
-
-	if !foundCompression {
-		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("tls: client does not support uncompressed connections")
-	}
-
-	hs.hello.vers = c.vers
-	hs.hello.random = make([]byte, 32)
-	_, err = io.ReadFull(config.rand(), hs.hello.random)
-	if err != nil {
-		c.sendAlert(alertInternalError)
-		return false, err
-	}
-
-	hs.hello.compressionMethod = compressionNone
-
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
 
 	// For test purposes, check that the peer never offers a session when
@@ -288,24 +319,6 @@ Curves:
 		return true, nil
 	}
 
-	var scsvFound bool
-
-	for _, cipherSuite := range hs.clientHello.cipherSuites {
-		if cipherSuite == fallbackSCSV {
-			scsvFound = true
-			break
-		}
-	}
-
-	if !scsvFound && config.Bugs.FailIfNotFallbackSCSV {
-		return false, errors.New("tls: no fallback SCSV found when expected")
-	} else if scsvFound && !config.Bugs.FailIfNotFallbackSCSV {
-		return false, errors.New("tls: fallback SCSV found when not expected")
-	}
-
-	if config.Bugs.IgnorePeerCipherPreferences {
-		hs.clientHello.cipherSuites = c.config.cipherSuites()
-	}
 	var preferenceList, supportedList []uint16
 	if c.config.PreferServerCipherSuites {
 		preferenceList = c.config.cipherSuites()
