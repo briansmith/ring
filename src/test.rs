@@ -345,6 +345,10 @@ fn parse_test_case(current_section: &mut String,
                 is_first_line = false;
 
                 let parts: Vec<&str> = line.splitn(2, " = ").collect();
+                if parts.len() != 2 {
+                    panic!("Syntax error: Expected Key = Value.");
+                };
+
                 let key = parts[0].trim();
                 let value = parts[1].trim();
 
@@ -425,7 +429,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Syntax error: Expected Key = Value.")]
     fn syntax_error() {
         test::from_file("src/test_1_syntax_error_tests.txt", |_, _| {
             Ok(())
