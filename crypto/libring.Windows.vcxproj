@@ -105,6 +105,7 @@
     <PerlAsm Include="chacha/asm/chacha-x86_64.pl" />
     <!-- XXX: curve25519/asm/x25519-asm-x86_64.S doesn't support Windows. -->
     <ClCompile Include="curve25519\x25519-x86_64.c" />
+    <PerlAsm Include="ec/asm/ecp_nistz256-x86_64.pl" />
     <PerlAsm Include="ec/asm/p256-x86_64-asm.pl" />
     <ClCompile Include="ec/p256-x86_64.c" />
     <PerlAsm Include="modes/asm/aesni-gcm-x86_64.pl" />
@@ -130,6 +131,7 @@
         $(IntDir)rsaz-avx2.obj;
         $(IntDir)x86_64-mont.obj;
         $(IntDir)x86_64-mont5.obj;
+        $(IntDir)ecp_nistz256-x86_64.obj;
         $(IntDir)p256-x86_64-asm.obj;
         $(IntDir)aesni-gcm-x86_64.obj;
         $(IntDir)ghash-x86_64.obj;

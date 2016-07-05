@@ -86,6 +86,7 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/chacha/asm/chacha-x86_64.pl \
   crypto/curve25519/asm/x25519-asm-x86_64.S \
   crypto/curve25519/x25519-x86_64.c \
+  crypto/ec/asm/ecp_nistz256-x86_64.pl \
   crypto/ec/asm/p256-x86_64-asm.pl \
   crypto/ec/p256-x86_64.c \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
