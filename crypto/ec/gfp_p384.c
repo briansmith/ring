@@ -203,6 +203,9 @@ static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
   elem_add(r, doubled, a);
 }
 
+static inline void elem_sqr_mont(Elem r, const Elem a) {
+  elem_mul_mont(r, a, a);
+}
 
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
   elem_add(r, a, b);
@@ -264,3 +267,6 @@ static void gfp_p384_point_select_w5(P384_POINT *out,
   memcpy(out->Y, y, sizeof(y));
   memcpy(out->Z, z, sizeof(z));
 }
+
+
+#include "ecp_nistz384.inl"
