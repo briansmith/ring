@@ -30,8 +30,5 @@ typedef BN_ULONG GFp_Limb;
 #define P256_LIMBS (256u / BN_BITS2)
 #define P384_LIMBS (384u / BN_BITS2)
 
-int GFp_suite_b_generate_private_key(const EC_GROUP *group,
-                                     uint8_t *private_key_out, RAND *rng);
-
 
 #endif /* GFp_INTERNAL_H */
