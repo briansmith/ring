@@ -114,7 +114,7 @@ In addition, we're always interested in these kinds of contributions:
 * Improving the code size, execution speed, and/or memory footprint.
 * Fixing any bugs you may have found.
 * Better IDE support for Windows (e.g. running the tests within the IDE) and
-  Mac OS X (e.g. Xcode project files).
+  macOS (e.g. Xcode project files).
 
 Before submitting pull requests, make sure that the tests succeed both when
 running `cargo test` and `cargo test --features=rsa_signing`. See
@@ -126,10 +126,10 @@ useful for people hacking on *ring*.
 Online Automated Testing
 ------------------------
 
-Travis CI is used for Android, Linux, and Mac OS X. Appveyor is used for
-Windows. The tests are run in debug and release configurations, for the current
-release of each Rust channel (Stable, Beta, Nightly), for each configuration
-listed in the table below.
+Travis CI is used for Android, Linux, and macOS. Appveyor is used for Windows.
+The tests are run in debug and release configurations, for the current release
+of each Rust channel (Stable, Beta, Nightly), for each configuration listed in
+the table below.
 
 <table>
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
@@ -151,7 +151,7 @@ listed in the table below.
 </tr>
 <tr><td>Mac&nbsp;OS&nbsp;X</td>
     <td>x64</td>
-    <td>Apple Clang 7.0.2 (clang-700.1.81)</td>
+    <td>Apple LLVM version 7.3.0 (clang-703.0.31) from Xcode 7.3</td>
 </tr>
 <tr><td>Windows</td>
     <td>x86, x86_64</td>

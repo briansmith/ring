@@ -20,22 +20,22 @@ matrix:
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=arm-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
@@ -468,22 +468,22 @@ matrix:
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=arm-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
@@ -936,22 +936,22 @@ matrix:
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: osx
-      osx_image: xcode7.2
+      osx_image: xcode7.3
 
     - env: TARGET_X=arm-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta

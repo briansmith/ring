@@ -183,7 +183,7 @@ def format_entry(os, target, compiler, rust, mode, features):
     cxx = replace_cc_with_cxx(sys, compiler)
 
     if os == "osx":
-        os += "\n" + entry_indent + "osx_image: xcode7.2"
+        os += "\n" + entry_indent + "osx_image: xcode7.3"
 
     return template % {
             "cc" : cc,
