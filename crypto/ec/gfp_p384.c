@@ -16,6 +16,7 @@
 
 #include <string.h>
 
+#include "ecp_nistz384.h"
 #include "../bn/internal.h"
 #include "../internal.h"
 
@@ -32,13 +33,103 @@ void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
 void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
+void GFp_p384_select_w5(P384_POINT *out, const P384_POINT table[16],
+                        int index);
+void GFp_p384_select_w7(P384_POINT_AFFINE *out,
+                        const P384_POINT_AFFINE table[64], int index);
 
+
+
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
+                       size_t_and_gfp_limb_are_different_sizes);
+
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(BN_ULONG),
+                       size_t_and_bn_ulong_are_different_sizes);
+
+
+/* XXX: MSVC for x86 warns when it fails to inline these functions it should
+ * probably inline. */
+#if defined(_MSC_VER)  && defined(OPENSSL_X86)
+#define INLINE_IF_POSSIBLE __forceinline
+#else
+#define INLINE_IF_POSSIBLE inline
+#endif
+
+
+static INLINE_IF_POSSIBLE GFp_Limb is_equal(const Elem a, const Elem b) {
+  GFp_Limb eq = constant_time_is_zero(0);
+  for (size_t i = 1; i < P384_LIMBS; ++i) {
+    eq =
+        constant_time_select_size_t(eq, constant_time_eq_size_t(a[i], b[i]), 0);
+  }
+  return eq;
+}
+
+static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
+                                                const GFp_Limb condition) {
+  for (size_t i = 0; i < P384_LIMBS; ++i) {
+    r[i] = constant_time_select_size_t(condition, a[i], r[i]);
+  }
+}
+
+static const BN_ULONG ONE[P384_LIMBS] = {
+  TOBN(0xffffffff, 1), TOBN(0, 0xffffffff), TOBN(0, 1), TOBN(0, 0), TOBN(0, 0),
+  TOBN(0, 0),
+};
+
+static void elem_add(Elem r, const Elem a, const Elem b) {
+  GFp_Limb carry =
+      constant_time_is_nonzero_size_t(bn_add_words(r, a, b, P384_LIMBS));
+  Elem adjusted;
+  GFp_Limb no_borrow = constant_time_is_zero_size_t(
+      bn_sub_words(adjusted, r, EC_GROUP_P384.mont.N.d, P384_LIMBS));
+  copy_conditional(r, adjusted,
+                   constant_time_select_size_t(carry, carry, no_borrow));
+}
+
+static void elem_sub(Elem r, const Elem a, const Elem b) {
+  /* TODO: simplify the boolean logic here, e..g. by adding a
+   * `constant_time_is_nonzero_size_t`. */
+  GFp_Limb no_borrow =
+    constant_time_is_zero_size_t(bn_sub_words(r, a, b, P384_LIMBS));
+  Elem adjusted;
+  (void)bn_add_words(adjusted, r, EC_GROUP_P384.mont.N.d, P384_LIMBS);
+  GFp_Limb adjust = constant_time_is_zero_size_t(no_borrow);
+  copy_conditional(r, adjusted, adjust);
+}
 
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   /* XXX: Not (clearly) constant-time; inefficient. TODO: Add a dedicated
    * squaring routine. */
   bn_mul_mont(r, a, b, EC_GROUP_P384.mont.N.d, EC_GROUP_P384.mont.n0,
               P384_LIMBS);
+}
+
+static inline void elem_mul_by_2(Elem r, const Elem a) {
+  elem_add(r, a, a);
+}
+
+static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
+  ///* XXX: inefficient. TODO: Replace with an integrated shift + add. */
+  static const Elem THREE = {
+    TOBN(0xfffffffd, 3),
+    TOBN(2, 0xffffffff),
+    TOBN(0, 3),
+  };
+  elem_mul_mont(r, a, THREE);
+}
+
+static inline void elem_div_by_2(Elem r, const Elem a) {
+  /* XXX: inefficient. TODO: Replace with a shift. */
+  static const Elem HALF = {
+    TOBN(0, 0),
+    TOBN(0, 0),
+    TOBN(0, 0),
+    TOBN(0, 0),
+    TOBN(0, 0),
+    TOBN(0x80000000, 0),
+  };
+  elem_mul_mont(r, a, HALF);
 }
 
 static inline void elem_sqr_mont(Elem r, const Elem a) {
@@ -59,16 +150,7 @@ static inline void elem_sqr_mul_mont(Elem r, const Elem a, size_t squarings,
 
 
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
-  /* XXX: Not constant-time. */
-  if (!bn_add_words(r, a, b, P384_LIMBS)) {
-    if (bn_cmp_words(r, EC_GROUP_P384.mont.N.d, P384_LIMBS) < 0) {
-      return;
-    }
-  }
-  /* Either the addition resulted in a carry requiring 1 bit more than would
-   * fit in |P384_LIMBS| limbs, or the addition result fit in |P384_LIMBS|
-   * limbs but it was not less than |q|. Either way, it needs to be reduced. */
-  (void)bn_sub_words(r, r, EC_GROUP_P384.mont.N.d, P384_LIMBS);
+  elem_add(r, a, b);
 }
 
 void GFp_p384_elem_inv(Elem r, const Elem a) {
@@ -283,3 +365,6 @@ void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   scalar_mul_mont(r, a, b);
 }
+
+
+#include "ecp_nistz384.inl"
