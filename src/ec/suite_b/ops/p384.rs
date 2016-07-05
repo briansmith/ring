@@ -58,6 +58,8 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     elem_mul_mont: GFp_p384_elem_mul_mont,
     elem_sqr_mont: GFp_p384_elem_sqr_mont,
 
+    point_double_impl: ecp_nistz384_point_double,
+
     ec_group: &EC_GROUP_P384,
 };
 
@@ -105,6 +107,9 @@ extern {
     fn GFp_p384_elem_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                               a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[COMMON_OPS.num_limbs]*/);
+
+    fn ecp_nistz384_point_double(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                                 a: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
 
     fn GFp_p384_scalar_inv_to_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                    a: *const Limb/*[COMMON_OPS.num_limbs]*/);

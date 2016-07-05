@@ -58,6 +58,33 @@ pub struct ScalarMont {
 }
 
 
+pub struct Point {
+    // The coordinates are stored in a contiguous array, where the first
+    // `ops.num_limbs` elements are the X coordinate, the next
+    // `ops.num_limbs` elements are the Y coordinate, and the next
+    // `ops.num_limbs` elements are the Z coordinate. This layout is dictated
+    // by the requirements of the ecp_nistz256 assembly language.
+    xyz: [Limb; 3 * MAX_LIMBS],
+}
+
+impl Point {
+    #[cfg(test)]
+    pub fn new_at_infinity() -> Point {
+        Point { xyz: [0; 3 * MAX_LIMBS] }
+    }
+}
+
+// Cannot be derived because `xyz` is too large on 32-bit platforms to have a
+// built-in implementation of `Clone`.
+impl Clone for Point {
+    fn clone(&self) -> Self {
+        Point { xyz: self.xyz }
+    }
+}
+
+impl Copy for Point {
+}
+
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
 #[cfg(target_pointer_width = "32")] pub type Limb = u32;
@@ -113,6 +140,9 @@ pub struct CommonOps {
                                     b: *const Limb),
     elem_sqr_mont: unsafe extern fn(r: *mut Limb, a: *const Limb),
 
+    #[cfg_attr(not(test), allow(dead_code))]
+    point_double_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
+
     pub ec_group: &'static EC_GROUP,
 }
 
@@ -159,6 +189,47 @@ impl CommonOps {
             0 => Ok(()),
             _ => Err(()),
         }
+    }
+
+    #[cfg(test)]
+    #[inline(always)]
+    pub fn point_double(&self, a: &mut Point) {
+        unsafe {
+            (self.point_double_impl)(a.xyz.as_mut_ptr(), a.xyz.as_ptr())
+        }
+    }
+
+    #[cfg(test)]
+    #[inline(always)]
+    pub fn point_doubled(&self, a: &Point) -> Point {
+        let mut r = Point::new_at_infinity();
+        unsafe {
+            (self.point_double_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr())
+        }
+        r
+    }
+
+    #[cfg(test)]
+    pub fn point_x(&self, p: &Point) -> Elem {
+        let mut r = Elem::zero();
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[0..self.num_limbs]);
+        r
+    }
+
+    #[cfg(test)]
+    pub fn point_y(&self, p: &Point) -> Elem {
+        let mut r = Elem::zero();
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[self.num_limbs..
+                                                         (2 * self.num_limbs)]);
+        r
+    }
+
+    #[cfg(test)]
+    pub fn point_z(&self, p: &Point) -> Elem {
+        let mut r = Elem::zero();
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[(2 * self.num_limbs)..
+                                                         (3 * self.num_limbs)]);
+        r
     }
 }
 
@@ -475,7 +546,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
+    use test;
+    use std;
     use super::*;
+    use super::{ONE, parse_big_endian_value_in_range};
 
     const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
 
@@ -489,6 +563,86 @@ mod tests {
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p384_scalar_inv_to_mont_zero_panic_test() {
         let _ = p384::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+    }
+
+    #[test]
+    fn point_double_test() {
+         test::from_file("src/ec/suite_b/ops/suite_b_point_double_tests.txt",
+                         |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let ops = curve_ops_from_curve_name(&curve_name);
+            let mut a = consume_point(test_case, ops, "a");
+            let r = consume_point(test_case, ops, "r");
+
+            let result = ops.common.point_doubled(&a);
+            verify_point_equals_affine_point(ops, &result, &r);
+
+            ops.common.point_double(&mut a);
+            verify_point_equals_affine_point(ops, &a, &r);
+
+            Ok(())
+        });
+    }
+
+    fn verify_point_equals_affine_point(ops: &PrivateKeyOps, a:
+                                        &Point, b: &Point) {
+        let a_x = ops.common.point_x(a);
+        let a_y = ops.common.point_y(a);
+        let a_z = ops.common.point_z(a);
+
+        let b_z = ops.common.point_z(b);
+
+        if &a_z.limbs == &[0; MAX_LIMBS] {
+            assert_eq!(&b_z.limbs, &[0; MAX_LIMBS]);
+            return;
+        }
+        let b_z_decoded = ops.common.elem_decoded(&b_z);
+        assert_eq!(&b_z_decoded.limbs, &ONE.limbs);
+
+        let z_inv = ops.elem_inverse(&a_z);
+        let zz_inv = ops.common.elem_sqr(&z_inv);
+        let x_aff = ops.common.elem_mul(&a_x, &zz_inv);
+        let zzz_inv = ops.common.elem_mul(&z_inv, &zz_inv);
+        let y_aff = ops.common.elem_mul(&a_y, &zzz_inv);
+
+        let b_x = ops.common.point_x(b);
+        let b_y = ops.common.point_y(b);
+        assert_eq!((&x_aff.limbs[..], &y_aff.limbs[..]),
+                   (&b_x.limbs[..], &b_y.limbs[..]));
+    }
+
+    fn curve_ops_from_curve_name(curve_name: &str) -> &'static PrivateKeyOps {
+        if curve_name == "P-256" {
+            &p256::PRIVATE_KEY_OPS
+        } else if curve_name == "P-384" {
+            &p384::PRIVATE_KEY_OPS
+        } else {
+            panic!("Unsupported curve: {}", curve_name);
+        }
+    }
+
+    fn consume_point(test_case: &mut test::TestCase, ops: &PrivateKeyOps,
+                     name: &str) -> Point {
+        let input = test_case.consume_string(name);
+        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        assert_eq!(elems.len(), 3);
+        let mut p = Point::new_at_infinity();
+        consume_elem(ops.common, &mut p, &elems, 0);
+        consume_elem(ops.common, &mut p, &elems, 1);
+        consume_elem(ops.common, &mut p, &elems, 2);
+        p
+    }
+
+    fn consume_elem(ops: &CommonOps, p: &mut Point, elems: &std::vec::Vec<&str>,
+                    i: usize) {
+        let elem_bytes = test::from_hex(elems[i]).unwrap();
+        let elem_limbs =
+            parse_big_endian_value_in_range(&elem_bytes, 0,
+                                            &ops.q.p[..ops.num_limbs]).unwrap();
+        p.xyz[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
+            .copy_from_slice(&elem_limbs[..ops.num_limbs]);
     }
 }
 
