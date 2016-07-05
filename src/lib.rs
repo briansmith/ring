@@ -93,7 +93,7 @@
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
 #[cfg(feature = "internal_benches")]
-extern crate test;
+extern crate test as bench;
 
 #[allow(unused_extern_crates)]
 #[macro_use]

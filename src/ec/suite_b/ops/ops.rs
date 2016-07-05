@@ -519,10 +519,10 @@ mod internal_benches {
 macro_rules! bench_curve {
     ( $vectors:expr ) => {
         use super::super::{Elem, Scalar};
-        use test;
+        use bench;
 
         #[bench]
-        fn elem_inverse_bench(bench: &mut test::Bencher) {
+        fn elem_inverse_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the `elem_inverse()` is
             // constant-time so inverting 1 mod q is as good of a choice as
             // anything.
@@ -534,7 +534,7 @@ macro_rules! bench_curve {
         }
 
         #[bench]
-        fn elem_mul_bench(bench: &mut test::Bencher) {
+        fn elem_mul_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the multiplication is constant-time
             // so 0 * 0 is as good of a choice as anything.
             let a = Elem::zero();
@@ -545,7 +545,7 @@ macro_rules! bench_curve {
         }
 
         #[bench]
-        fn elem_sqr_bench(bench: &mut test::Bencher) {
+        fn elem_sqr_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the squaring is constant-time so
             // 0**2 * 0 is as good of a choice as anything.
             let a = Elem::zero();
@@ -555,7 +555,7 @@ macro_rules! bench_curve {
         }
 
         #[bench]
-        fn scalar_inv_to_mont_bench(bench: &mut test::Bencher) {
+        fn scalar_inv_to_mont_bench(bench: &mut bench::Bencher) {
             const VECTORS: &'static [Scalar] = $vectors;
             let vectors_len = VECTORS.len();
             let mut i = 0;
