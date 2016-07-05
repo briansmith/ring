@@ -12,16 +12,25 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#ifndef OPENSSL_HEADER_EC_ECP_NISTZ_H
+#define OPENSSL_HEADER_EC_ECP_NISTZ_H
+
 #include <openssl/base.h>
 
+#include <assert.h>
 
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
+#include <openssl/bn.h>
+#include <openssl/type_check.h>
 
-#include <openssl/ec.h>
+#include "../internal.h"
 
-#include "internal.h"
 
-/* This function looks at 5+1 scalar bits (5 current, 1 adjacent less
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
+/* This function looks at `w + 1` scalar bits (`w` current, 1 adjacent less
  * significant bit), and recodes them into a signed digit for use in fast point
  * multiplication: the use of signed rather than unsigned digits means that
  * fewer points need to be precomputed, given that point inversion is easy (a
@@ -73,37 +82,47 @@
  * as in wNAFs won't do, we need their fixed-window equivalent -- which is a few
  * decades older: we'll be using the so-called "modified Booth encoding" due to
  * MacSorley ("High-speed arithmetic in binary computers", Proc. IRE, vol. 49
- * (1961), pp. 67-91), in a radix-2^5 setting.  That is, we always combine five
- * signed bits into a signed digit:
+ * (1961), pp. 67-91), in a radix-2**w setting.  That is, we always combine `w`
+ * signed bits into a signed digit, e.g. (for `w == 5`):
  *
  *       s_(4j + 4) s_(4j + 3) s_(4j + 2) s_(4j + 1) s_(4j)
  *
  * The sign-alternating property implies that the resulting digit values are
- * integers from -16 to 16.
+ * integers from `-2**(w-1)` to `2**(w-1)`, e.g. -16 to 16 for `w == 5`.
  *
  * Of course, we don't actually need to compute the signed digits s_i as an
  * intermediate step (that's just a nice way to see how this scheme relates
  * to the wNAF): a direct computation obtains the recoded digit from the
  * six bits b_(4j + 4) ... b_(4j - 1).
  *
- * This function takes those five bits as an integer (0 .. 63), writing the
- * recoded digit to *sign (0 for positive, 1 for negative) and *digit (absolute
- * value, in the range 0 .. 8).  Note that this integer essentially provides the
- * input bits "shifted to the left" by one position: for example, the input to
- * compute the least significant recoded digit, given that there's no bit b_-1,
- * has to be b_4 b_3 b_2 b_1 b_0 0. */
-void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit,
-                                     uint8_t in) {
-  uint8_t s, d;
+ * This function takes those `w` bits as an integer, writing the recoded digit
+ * to |*is_negative| (a mask for `constant_time_select_size_t`) and |*digit|
+ * (absolute value, in the range 0 .. 2**(w-1).  Note that this integer
+ * essentially provides the input bits "shifted to the left" by one position.
+ * For example, the input to compute the least significant recoded digit, given
+ * that there's no bit b_-1, has to be b_4 b_3 b_2 b_1 b_0 0. */
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(BN_ULONG),
+                       size_t_and_bn_ulong_are_different_sizes);
+static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
+                                unsigned in, unsigned w) {
+  assert(w >= 2);
+  assert(w <= 7);
 
-  s = ~((in >> 5) - 1); /* sets all bits to MSB(in), 'in' seen as
-                          * 6-bit value */
-  d = (1 << 6) - in - 1;
+  /* Set all bits of `s` to MSB(in), similar to |constant_time_msb_size_t|,
+   * but 'in' seen as (`w+1`)-bit value. */
+  BN_ULONG s = ~((in >> w) - 1);
+  unsigned d;
+  d = (1 << (w + 1)) - in - 1;
   d = (d & s) | (in & ~s);
   d = (d >> 1) + (d & 1);
 
-  *sign = s & 1;
+  *is_negative = constant_time_is_nonzero_size_t(s & 1);
   *digit = d;
 }
 
-#endif  /* 64_BIT && !WINDOWS */
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif /* OPENSSL_HEADER_EC_ECP_NISTZ_H */

@@ -30,6 +30,7 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
+#include "ecp_nistz.h"
 #include "ecp_nistz256.h"
 #include "../bn/internal.h"
 #include "../ec/internal.h"
@@ -61,32 +62,9 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 /* Precomputed tables for the default generator */
 #include "ecp_nistz256_table.inl"
 
-/* Recode window to a signed digit. See util-64.c for details. */
-static unsigned booth_recode_w5(unsigned in) {
-  unsigned s, d;
-
-  s = ~((in >> 5) - 1);
-  d = (1 << 6) - in - 1;
-  d = (d & s) | (in & ~s);
-  d = (d >> 1) + (d & 1);
-
-  return (d << 1) + (s & 1);
-}
-
-static unsigned booth_recode_w7(unsigned in) {
-  unsigned s, d;
-
-  s = ~((in >> 7) - 1);
-  d = (1 << 8) - in - 1;
-  d = (d & s) | (in & ~s);
-  d = (d >> 1) + (d & 1);
-
-  return (d << 1) + (s & 1);
-}
-
 static void copy_conditional(BN_ULONG dst[P256_LIMBS],
                              const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
-  BN_ULONG mask1 = ((BN_ULONG)0) - move;
+  BN_ULONG mask1 = move;
   BN_ULONG mask2 = ~mask1;
 
   dst[0] = (src[0] & mask1) ^ (dst[0] & mask2);
@@ -170,24 +148,29 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
   unsigned index = 255;
-  unsigned wvalue = p_str[(index - 1) / 8];
-  wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
-  ecp_nistz256_select_w5(r, table, booth_recode_w5(wvalue) >> 1);
+  unsigned raw_wvalue;
+  BN_ULONG recoded_is_negative;
+  unsigned recoded;
 
-  while (index >= 5) {
+  raw_wvalue = p_str[(index - 1) / 8];
+  raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
+
+  booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
+  assert(!recoded_is_negative);
+  ecp_nistz256_select_w5(r, table, recoded);
+
+  while (index >= kWindowSize) {
     if (index != 255) {
       unsigned off = (index - 1) / 8;
 
-      wvalue = p_str[off] | p_str[off + 1] << 8;
-      wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
+      raw_wvalue = p_str[off] | p_str[off + 1] << 8;
+      raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
+      booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
 
-      wvalue = booth_recode_w5(wvalue);
-
-      ecp_nistz256_select_w5(&h, table, wvalue >> 1);
-
+      ecp_nistz256_select_w5(&h, table, recoded);
       ecp_nistz256_neg(tmp, h.Y);
-      copy_conditional(h.Y, tmp, (wvalue & 1));
+      copy_conditional(h.Y, tmp, recoded_is_negative);
 
       ecp_nistz256_point_add(r, r, &h);
     }
@@ -202,16 +185,13 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   }
 
   /* Final window */
-  wvalue = p_str[0];
-  wvalue = (wvalue << 1) & kMask;
+  raw_wvalue = p_str[0];
+  raw_wvalue = (raw_wvalue << 1) & kMask;
 
-  wvalue = booth_recode_w5(wvalue);
-
-  ecp_nistz256_select_w5(&h, table, wvalue >> 1);
-
+  booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
+  ecp_nistz256_select_w5(&h, table, recoded);
   ecp_nistz256_neg(tmp, h.Y);
-  copy_conditional(h.Y, tmp, wvalue & 1);
-
+  copy_conditional(h.Y, tmp, recoded_is_negative);
   ecp_nistz256_point_add(r, r, &h);
 }
 
@@ -258,33 +238,33 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
   }
 
   /* First window */
-  unsigned wvalue = (p_str[0] << 1) & kMask;
   unsigned index = kWindowSize;
 
-  wvalue = booth_recode_w7(wvalue);
+  unsigned raw_wvalue;
+  BN_ULONG recoded_is_negative;
+  unsigned recoded;
 
+  raw_wvalue = (p_str[0] << 1) & kMask;
+
+  booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
   const PRECOMP256_ROW *const precomputed_table =
       (const PRECOMP256_ROW *)ecp_nistz256_precomputed;
-  ecp_nistz256_select_w7(&p.a, precomputed_table[0], wvalue >> 1);
-
+  ecp_nistz256_select_w7(&p.a, precomputed_table[0], recoded);
   ecp_nistz256_neg(p.p.Z, p.p.Y);
-  copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+  copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
   memcpy(p.p.Z, ONE, sizeof(ONE));
 
   for (i = 1; i < 37; i++) {
     unsigned off = (index - 1) / 8;
-    wvalue = p_str[off] | p_str[off + 1] << 8;
-    wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
+    raw_wvalue = p_str[off] | p_str[off + 1] << 8;
+    raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
     index += kWindowSize;
 
-    wvalue = booth_recode_w7(wvalue);
-
-    ecp_nistz256_select_w7(&t.a, precomputed_table[i], wvalue >> 1);
-
+    booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
+    ecp_nistz256_select_w7(&t.a, precomputed_table[i], recoded);
     ecp_nistz256_neg(t.p.Z, t.a.Y);
-    copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
-
+    copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
     ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
