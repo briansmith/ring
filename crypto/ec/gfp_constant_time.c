@@ -22,8 +22,6 @@
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
-                                          size_t num_limbs);
 GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
                                           const GFp_Limb b[],
                                           size_t num_limbs);

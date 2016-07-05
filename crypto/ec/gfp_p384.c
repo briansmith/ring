@@ -35,6 +35,7 @@ typedef GFp_Limb Scalar[P384_LIMBS];
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
 void GFp_p384_elem_div_by_2(Elem r, const Elem a);
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
+void GFp_p384_elem_neg(Elem r, const Elem a);
 void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b);
 void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
@@ -206,6 +207,18 @@ void GFp_p384_elem_div_by_2(Elem r, const Elem a) {
 
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
   elem_mul_mont(r, a, b);
+}
+
+void GFp_p384_elem_neg(Elem r, const Elem a) {
+  GFp_Limb is_zero = GFp_constant_time_limbs_are_zero(a, P384_LIMBS);
+  GFp_Carry borrow = gfp_limbs_sub(r, Q, a, P384_LIMBS);
+#if defined(NDEBUG)
+  (void)borrow;
+#endif
+  assert(borrow == 0);
+  for (size_t i = 0; i < P384_LIMBS; ++i) {
+    r[i] = constant_time_select_size_t(is_zero, 0, r[i]);
+  }
 }
 
 

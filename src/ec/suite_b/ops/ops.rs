@@ -730,6 +730,49 @@ mod tests {
         })
     }
 
+    // TODO: Add test vectors that test the range of values above `q`.
+    #[test]
+    fn p256_elem_neg_test() {
+        extern {
+            fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
+        }
+        elem_neg_test(&p256::COMMON_OPS, ecp_nistz256_neg,
+                      "src/ec/suite_b/ops/p256_neg_tests.txt");
+    }
+
+    #[test]
+    fn p384_elem_neg_test() {
+        extern {
+            fn GFp_p384_elem_neg(r: *mut Limb, a: *const Limb);
+        }
+        elem_neg_test(&p384::COMMON_OPS, GFp_p384_elem_neg,
+                      "src/ec/suite_b/ops/p384_neg_tests.txt");
+    }
+
+    fn elem_neg_test(ops: &CommonOps,
+                     elem_neg: unsafe extern fn(r: *mut Limb, a: *const Limb),
+                     file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_elem_unreduced(ops, test_case, "a");
+            let r = consume_elem_unreduced(ops, test_case, "r");
+
+            let mut actual_result = ElemUnreduced::zero();
+            unsafe {
+                elem_neg(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_result.limbs, &r.limbs);
+
+            // We would test that the -r == a here, but because the P-256 uses
+            // almost-Montgomery reduction, and because -0 == 0. we can't.
+            // Instead, unlike the other input files, the input files for this
+            // test contain the inverse test vectors explicitly.
+
+            Ok(())
+        })
+    }
+
     #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
