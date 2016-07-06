@@ -253,6 +253,9 @@ extern "C" {
 #define SSL_SIGN_ECDSA_SECP256R1_SHA256 0x0403
 #define SSL_SIGN_ECDSA_SECP384R1_SHA384 0x0503
 #define SSL_SIGN_ECDSA_SECP521R1_SHA512 0x0603
+#define SSL_SIGN_RSA_PSS_SHA256         0x0700
+#define SSL_SIGN_RSA_PSS_SHA384         0x0701
+#define SSL_SIGN_RSA_PSS_SHA512         0x0702
 
 /* Reserved SignatureScheme value to indicate RSA with MD5-SHA1. This will never
  * be negotiated in TLS 1.2 and up, but is used to unify signing interfaces in

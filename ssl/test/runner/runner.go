@@ -4679,6 +4679,9 @@ var testSignatureAlgorithms = []struct {
 	{"ECDSA-P256-SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP256},
 	{"ECDSA-P384-SHA384", signatureECDSAWithP384AndSHA384, testCertECDSAP384},
 	{"ECDSA-P521-SHA512", signatureECDSAWithP521AndSHA512, testCertECDSAP521},
+	{"RSA-PSS-SHA256", signatureRSAPSSWithSHA256, testCertRSA},
+	{"RSA-PSS-SHA384", signatureRSAPSSWithSHA384, testCertRSA},
+	{"RSA-PSS-SHA512", signatureRSAPSSWithSHA512, testCertRSA},
 }
 
 const fakeSigAlg1 signatureAlgorithm = 0x2a01
@@ -4693,54 +4696,70 @@ func addSignatureAlgorithmTests() {
 				continue
 			}
 
+			var shouldFail bool
 			// ecdsa_sha1 does not exist in TLS 1.3.
-			if ver.version == VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
-				continue
+			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
+				shouldFail = true
+			}
+			// RSA-PSS does not exist in TLS 1.2.
+			if ver.version == VersionTLS12 && hasComponent(alg.name, "PSS") {
+				shouldFail = true
+			}
+
+			var signError, verifyError string
+			if shouldFail {
+				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+				verifyError = ":WRONG_SIGNATURE_TYPE:"
 			}
 
 			suffix := "-" + alg.name + "-" + ver.name
-			testCases = append(testCases, testCase{
-				name: "SigningHash-ClientAuth-Sign" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-					// SignatureAlgorithms is shared, so we must
-					// configure a matching server certificate too.
-					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-					ClientAuth:   RequireAnyClientCert,
-					SignatureAlgorithms: []signatureAlgorithm{
-						fakeSigAlg1,
-						alg.id,
-						fakeSigAlg2,
-					},
-				},
-				flags: []string{
-					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-					"-enable-all-curves",
-				},
-				expectedPeerSignatureAlgorithm: alg.id,
-			})
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "SigningHash-ClientAuth-Verify" + suffix,
-				config: Config{
-					MaxVersion:   ver.version,
-					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-					SignatureAlgorithms: []signatureAlgorithm{
-						alg.id,
+			// TODO(davidben): Separate signing and verifying sigalg
+			// configuration in Go, so we can run both sides.
+			if !shouldFail {
+				testCases = append(testCases, testCase{
+					name: "SigningHash-ClientAuth-Sign" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						// SignatureAlgorithms is shared, so we must
+						// configure a matching server certificate too.
+						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+						ClientAuth:   RequireAnyClientCert,
+						SignatureAlgorithms: []signatureAlgorithm{
+							fakeSigAlg1,
+							alg.id,
+							fakeSigAlg2,
+						},
 					},
-				},
-				flags: []string{
-					"-require-any-client-certificate",
-					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-					// SignatureAlgorithms is shared, so we must
-					// configure a matching server certificate too.
-					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-					"-enable-all-curves",
-				},
-			})
+					flags: []string{
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
+					},
+					expectedPeerSignatureAlgorithm: alg.id,
+				})
+
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "SigningHash-ClientAuth-Verify" + suffix,
+					config: Config{
+						MaxVersion:   ver.version,
+						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+						SignatureAlgorithms: []signatureAlgorithm{
+							alg.id,
+						},
+					},
+					flags: []string{
+						"-require-any-client-certificate",
+						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+						// SignatureAlgorithms is shared, so we must
+						// configure a matching server certificate too.
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
+					},
+				})
+			}
 
 			testCases = append(testCases, testCase{
 				testType: serverTest,
@@ -4756,12 +4775,18 @@ func addSignatureAlgorithmTests() {
 						alg.id,
 						fakeSigAlg2,
 					},
+					Bugs: ProtocolBugs{
+						SkipECDSACurveCheck:          shouldFail,
+						IgnoreSignatureVersionChecks: shouldFail,
+					},
 				},
 				flags: []string{
 					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
 					"-enable-all-curves",
 				},
+				shouldFail:                     shouldFail,
+				expectedError:                  signError,
 				expectedPeerSignatureAlgorithm: alg.id,
 			})
 
@@ -4777,11 +4802,17 @@ func addSignatureAlgorithmTests() {
 					SignatureAlgorithms: []signatureAlgorithm{
 						alg.id,
 					},
+					Bugs: ProtocolBugs{
+						SkipECDSACurveCheck:          shouldFail,
+						IgnoreSignatureVersionChecks: shouldFail,
+					},
 				},
 				flags: []string{
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
 					"-enable-all-curves",
 				},
+				shouldFail:    shouldFail,
+				expectedError: verifyError,
 			})
 		}
 	}
@@ -5122,24 +5153,6 @@ func addSignatureAlgorithmTests() {
 			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
 		},
 		expectedPeerSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
-	})
-
-	// ecdsa_sha1 cannot be negotiated in TLS 1.3.
-	testCases = append(testCases, testCase{
-		name: "NoECDSAWithSHA1-TLS13",
-		config: Config{
-			MaxVersion:   VersionTLS13,
-			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Certificates: []Certificate{ecdsaP256Certificate},
-			SignatureAlgorithms: []signatureAlgorithm{
-				signatureECDSAWithSHA1,
-			},
-			Bugs: ProtocolBugs{
-				SkipECDSACurveCheck: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_SIGNATURE_TYPE:",
 	})
 }
 
