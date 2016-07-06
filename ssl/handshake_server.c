@@ -2029,7 +2029,7 @@ static int ssl3_get_channel_id(SSL *ssl) {
   BIGNUM x, y;
   CBS encrypted_extensions, extension;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CHANNEL_ID_ENCRYPTED_EXTENSIONS,
+  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CHANNEL_ID,
                                    ssl_dont_hash_message, &ok);
 
   if (!ok) {

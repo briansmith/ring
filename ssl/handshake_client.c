@@ -1987,8 +1987,7 @@ static int ssl3_send_channel_id(SSL *ssl) {
   }
 
   CBB cbb, body, child;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
-                                 SSL3_MT_CHANNEL_ID_ENCRYPTED_EXTENSIONS) ||
+  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
       !CBB_add_u16(&body, TLSEXT_TYPE_channel_id) ||
       !CBB_add_u16_length_prefixed(&body, &child) ||
       !BN_bn2cbb_padded(&child, 32, x) || !BN_bn2cbb_padded(&child, 32, y) ||
