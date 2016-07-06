@@ -38,6 +38,7 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ec/ec.c \
   crypto/ec/ec_curves.c \
   crypto/ec/ec_montgomery.c \
+  crypto/ec/ecp_nistz256.c \
   crypto/ec/gfp_constant_time.c \
   crypto/ec/gfp_p256.c \
   crypto/ec/gfp_p384.c \
@@ -88,7 +89,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/curve25519/x25519-x86_64.c \
   crypto/ec/asm/ecp_nistz256-x86_64.pl \
   crypto/ec/asm/p256-x86_64-asm.pl \
-  crypto/ec/ecp_nistz256.c \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
   crypto/poly1305/asm/poly1305-x86_64.pl \

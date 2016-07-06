@@ -36,31 +36,12 @@
 #include "../internal.h"
 
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    !defined(OPENSSL_SMALL)
-
-
-typedef struct {
-  BN_ULONG X[P256_LIMBS];
-  BN_ULONG Y[P256_LIMBS];
-  BN_ULONG Z[P256_LIMBS];
-} P256_POINT;
-
-typedef struct {
-  BN_ULONG X[P256_LIMBS];
-  BN_ULONG Y[P256_LIMBS];
-} P256_POINT_AFFINE;
-
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 /* Functions implemented in assembly */
 
 /* Modular neg: res = -a mod P */
 void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
-/* Functions that perform constant time access to the precomputed tables */
-void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT *in_t, int index);
-void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,
-                            const P256_POINT_AFFINE *in_t, int index);
 
 /* One converted into the Montgomery domain */
 static const BN_ULONG ONE[P256_LIMBS] = {
@@ -352,6 +333,3 @@ const EC_METHOD EC_GFp_nistz256_method = {
   ec_GFp_mont_field_mul,
   ec_GFp_mont_field_sqr,
 };
-
-#endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-          !defined(OPENSSL_SMALL) */

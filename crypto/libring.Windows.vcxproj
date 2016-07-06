@@ -37,6 +37,7 @@
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
+    <ClCompile Include="ec\ecp_nistz256.c" />
     <ClCompile Include="ec\gfp_constant_time.c" />
     <ClCompile Include="ec\gfp_p256.c" />
     <ClCompile Include="ec\gfp_p384.c" />
@@ -108,7 +109,6 @@
     <ClCompile Include="curve25519\x25519-x86_64.c" />
     <PerlAsm Include="ec/asm/ecp_nistz256-x86_64.pl" />
     <PerlAsm Include="ec/asm/p256-x86_64-asm.pl" />
-    <ClCompile Include="ec/ecp_nistz256.c" />
     <PerlAsm Include="modes/asm/aesni-gcm-x86_64.pl" />
     <PerlAsm Include="modes/asm/ghash-x86_64.pl" />
     <PerlAsm Include="poly1305/asm/poly1305-x86_64.pl" />

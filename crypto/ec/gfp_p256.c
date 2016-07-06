@@ -17,6 +17,7 @@
 
 #include <string.h>
 
+#include "../internal.h"
 #include "../bn/internal.h"
 
 
@@ -245,3 +246,56 @@ void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   scalar_mul_mont(r, a, b);
 }
+
+#if !defined(OPENSSL_X86_64)
+
+/* TODO(perf): Optimize these. */
+
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
+                       size_t_and_gfp_limb_are_different_sizes);
+
+
+void ecp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[15],
+                            int index) {
+  assert(index >= 0);
+  size_t index_as_size_t = (size_t)index; /* XXX: constant time? */
+
+  alignas(32) Elem x; memset(x, 0, sizeof(x));
+  alignas(32) Elem y; memset(y, 0, sizeof(y));
+  alignas(32) Elem z; memset(z, 0, sizeof(z));
+
+  for (size_t i = 0; i < 16; ++i) {
+    GFp_Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
+    for (size_t j = 0; j < P256_LIMBS; ++j) {
+      x[j] |= table[i].X[j] & mask;
+      y[j] |= table[i].Y[j] & mask;
+      z[j] |= table[i].Z[j] & mask;
+    }
+  }
+
+  memcpy(&out->X, x, sizeof(x));
+  memcpy(&out->Y, y, sizeof(y));
+  memcpy(&out->Z, z, sizeof(z));
+}
+
+void ecp_nistz256_select_w7(P256_POINT_AFFINE *out,
+                            const P256_POINT_AFFINE table[63], int index) {
+  assert(index >= 0);
+  size_t index_as_size_t = (size_t)index; /* XXX: constant time? */
+
+  alignas(32) Elem x; memset(x, 0, sizeof(x));
+  alignas(32) Elem y; memset(y, 0, sizeof(y));
+
+  for (size_t i = 0; i < 64; ++i) {
+    GFp_Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
+    for (size_t j = 0; j < P256_LIMBS; ++j) {
+      x[j] |= table[i].X[j] & mask;
+      y[j] |= table[i].Y[j] & mask;
+    }
+  }
+
+  memcpy(&out->X, x, sizeof(x));
+  memcpy(&out->Y, y, sizeof(y));
+}
+
+#endif

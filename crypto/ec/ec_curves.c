@@ -21,12 +21,7 @@
 #include "../bn/internal.h"
 
 
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL)
 #define CURVE_P256_EC_METHOD EC_GFp_nistz256_method
-#else
-#define CURVE_P256_EC_METHOD EC_GFp_mont_method
-#endif
-
 #define CURVE_P384_EC_METHOD EC_GFp_mont_method
 
 /* Use C99 designated initializers + the -Wuninitialized warning to help keep
