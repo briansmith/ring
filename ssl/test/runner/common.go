@@ -767,14 +767,18 @@ type ProtocolBugs struct {
 	// Diffie-Hellman group. The generator used is always two.
 	DHGroupPrime *big.Int
 
-	// PackHandshakeFragments, if true, causes handshake fragments to be
-	// packed into individual handshake records, up to the specified record
-	// size.
+	// PackHandshakeFragments, if true, causes handshake fragments in DTLS
+	// to be packed into individual handshake records, up to the specified
+	// record size.
 	PackHandshakeFragments int
 
-	// PackHandshakeRecords, if true, causes handshake records to be packed
-	// into individual packets, up to the specified packet size.
+	// PackHandshakeRecords, if true, causes handshake records in DTLS to be
+	// packed into individual packets, up to the specified packet size.
 	PackHandshakeRecords int
+
+	// PackHandshakeFlight, if true, causes each handshake flight in TLS to
+	// be packed into records, up to the largest size record available.
+	PackHandshakeFlight bool
 
 	// EnableAllCiphers, if true, causes all configured ciphers to be
 	// enabled.

@@ -76,7 +76,7 @@ func (c *Conn) serverHandshake() error {
 		// Finished.
 		if err := c.simulatePacketLoss(func() {
 			c.writeRecord(recordTypeHandshake, hs.finishedBytes)
-			c.dtlsFlushHandshake()
+			c.flushHandshake()
 		}); err != nil {
 			return err
 		}
@@ -154,7 +154,7 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 			return false, errors.New("dtls: short read from Rand: " + err.Error())
 		}
 		c.writeRecord(recordTypeHandshake, helloVerifyRequest.marshal())
-		c.dtlsFlushHandshake()
+		c.flushHandshake()
 
 		if err := c.simulatePacketLoss(nil); err != nil {
 			return false, err
@@ -614,7 +614,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	helloDone := new(serverHelloDoneMsg)
 	hs.writeServerHash(helloDone.marshal())
 	c.writeRecord(recordTypeHandshake, helloDone.marshal())
-	c.dtlsFlushHandshake()
+	c.flushHandshake()
 
 	var pub crypto.PublicKey // public key for client auth, if any
 
@@ -894,7 +894,7 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
 		postCCSBytes = postCCSBytes[5:]
 	}
-	c.dtlsFlushHandshake()
+	c.flushHandshake()
 
 	if !c.config.Bugs.SkipChangeCipherSpec {
 		ccs := []byte{1}
@@ -914,7 +914,7 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 
 	if !c.config.Bugs.SkipFinished {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)
-		c.dtlsFlushHandshake()
+		c.flushHandshake()
 	}
 
 	c.cipherSuite = hs.suite

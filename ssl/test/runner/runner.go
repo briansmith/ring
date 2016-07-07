@@ -2918,10 +2918,39 @@ func addExtendedMasterSecretTests() {
 	}
 }
 
+type stateMachineTestConfig struct {
+	protocol                            protocol
+	async                               bool
+	splitHandshake, packHandshakeFlight bool
+}
+
 // Adds tests that try to cover the range of the handshake state machine, under
 // various conditions. Some of these are redundant with other tests, but they
 // only cover the synchronous case.
-func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol) {
+func addAllStateMachineCoverageTests() {
+	for _, async := range []bool{false, true} {
+		for _, protocol := range []protocol{tls, dtls} {
+			addStateMachineCoverageTests(stateMachineTestConfig{
+				protocol: protocol,
+				async:    async,
+			})
+			addStateMachineCoverageTests(stateMachineTestConfig{
+				protocol:       protocol,
+				async:          async,
+				splitHandshake: true,
+			})
+			if protocol == tls {
+				addStateMachineCoverageTests(stateMachineTestConfig{
+					protocol:            protocol,
+					async:               async,
+					packHandshakeFlight: true,
+				})
+			}
+		}
+	}
+}
+
+func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	var tests []testCase
 
 	// Basic handshake, with resumption. Client and server,
@@ -3024,7 +3053,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		// Setting SSL_VERIFY_PEER allows anonymous clients.
 		flags: []string{"-verify-peer"},
 	})
-	if protocol == tls {
+	if config.protocol == tls {
 		tests = append(tests, testCase{
 			testType: clientTest,
 			name:     "ClientAuth-NoCertificate-Client-SSL3",
@@ -3247,7 +3276,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		},
 	})
 
-	if protocol == tls {
+	if config.protocol == tls {
 		tests = append(tests, testCase{
 			name: "Renegotiate-Client",
 			config: Config{
@@ -3486,23 +3515,27 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	}
 
 	for _, test := range tests {
-		test.protocol = protocol
-		if protocol == dtls {
+		test.protocol = config.protocol
+		if config.protocol == dtls {
 			test.name += "-DTLS"
 		}
-		if async {
+		if config.async {
 			test.name += "-Async"
 			test.flags = append(test.flags, "-async")
 		} else {
 			test.name += "-Sync"
 		}
-		if splitHandshake {
+		if config.splitHandshake {
 			test.name += "-SplitHandshakeRecords"
 			test.config.Bugs.MaxHandshakeRecordLength = 1
-			if protocol == dtls {
+			if config.protocol == dtls {
 				test.config.Bugs.MaxPacketLength = 256
 				test.flags = append(test.flags, "-mtu", "256")
 			}
+		}
+		if config.packHandshakeFlight {
+			test.name += "-PackHandshakeFlight"
+			test.config.Bugs.PackHandshakeFlight = true
 		}
 		testCases = append(testCases, test)
 	}
@@ -5856,13 +5889,7 @@ func main() {
 	addCECPQ1Tests()
 	addKeyExchangeInfoTests()
 	addTLS13RecordTests()
-	for _, async := range []bool{false, true} {
-		for _, splitHandshake := range []bool{false, true} {
-			for _, protocol := range []protocol{tls, dtls} {
-				addStateMachineCoverageTests(async, splitHandshake, protocol)
-			}
-		}
-	}
+	addAllStateMachineCoverageTests()
 
 	var wg sync.WaitGroup
 

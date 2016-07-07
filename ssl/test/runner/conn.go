@@ -77,6 +77,10 @@ type Conn struct {
 	input    *block       // application record waiting to be read
 	hand     bytes.Buffer // handshake record waiting to be read
 
+	// pendingFlight, if PackHandshakeFlight is enabled, is the buffer of
+	// handshake data to be split into records at the end of the flight.
+	pendingFlight bytes.Buffer
+
 	// DTLS state
 	sendHandshakeSeq uint16
 	recvHandshakeSeq uint16
@@ -934,6 +938,15 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		return c.dtlsWriteRecord(typ, data)
 	}
 
+	if c.config.Bugs.PackHandshakeFlight && typ == recordTypeHandshake {
+		c.pendingFlight.Write(data)
+		return len(data), nil
+	}
+
+	return c.doWriteRecord(typ, data)
+}
+
+func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 	recordHeaderLen := tlsRecordHeaderLen
 	b := c.out.newBlock()
 	first := true
@@ -1029,6 +1042,23 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		}
 	}
 	return
+}
+
+func (c *Conn) flushHandshake() error {
+	if c.isDTLS {
+		return c.dtlsFlushHandshake()
+	}
+
+	for c.pendingFlight.Len() > 0 {
+		var buf [maxPlaintext]byte
+		n, _ := c.pendingFlight.Read(buf[:])
+		if _, err := c.doWriteRecord(recordTypeHandshake, buf[:n]); err != nil {
+			return err
+		}
+	}
+
+	c.pendingFlight.Reset()
+	return nil
 }
 
 func (c *Conn) doReadHandshake() ([]byte, error) {
@@ -1217,6 +1247,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 
 	if c.config.Bugs.SendHelloRequestBeforeEveryAppDataRecord {
 		c.writeRecord(recordTypeHandshake, []byte{typeHelloRequest, 0, 0, 0})
+		c.flushHandshake()
 	}
 
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
@@ -1269,6 +1300,7 @@ func (c *Conn) Renegotiate() error {
 			helloReq = c.config.Bugs.BadHelloRequest
 		}
 		c.writeRecord(recordTypeHandshake, helloReq)
+		c.flushHandshake()
 	}
 
 	c.handshakeComplete = false

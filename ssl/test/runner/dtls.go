@@ -242,10 +242,6 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 }
 
 func (c *Conn) dtlsFlushHandshake() error {
-	if !c.isDTLS {
-		return nil
-	}
-
 	// This is a test-only DTLS implementation, so there is no need to
 	// retain |c.pendingFragments| for a future retransmit.
 	var fragments [][]byte
