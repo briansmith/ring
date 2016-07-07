@@ -54,6 +54,8 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     elem_mul_mont: ecp_nistz256_mul_mont,
     elem_sqr_mont: ecp_nistz256_sqr_mont,
 
+    point_double_impl: ecp_nistz256_point_double,
+
     ec_group: &EC_GROUP_P256,
 };
 
@@ -93,6 +95,9 @@ extern {
                              b: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn ecp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/);
+
+    fn ecp_nistz256_point_double(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                                 a: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
 
     fn GFp_p256_scalar_inv_to_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                    a: *const Limb/*[COMMON_OPS.num_limbs]*/);
