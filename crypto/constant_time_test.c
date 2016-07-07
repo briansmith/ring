@@ -109,6 +109,22 @@ static int test_is_zero_size_t(size_t a) {
             a, CONSTTIME_FALSE_SIZE_T, c);
     return 1;
   }
+
+  c = constant_time_is_nonzero_size_t(a);
+  if (a == 0 && c != CONSTTIME_FALSE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_is_nonzero(%zu): expected %zu (FALSE), "
+            "got %zu\n",
+            a, CONSTTIME_FALSE_SIZE_T, c);
+    return 1;
+  } else if (a != 0 && c != CONSTTIME_TRUE_SIZE_T) {
+    fprintf(stderr,
+            "Test failed for constant_time_is_nonzero(%zu): expected %zu (TRUE), "
+            "got %zu\n",
+            a, CONSTTIME_TRUE_SIZE_T, c);
+    return 1;
+  }
+
   return 0;
 }
 

@@ -232,6 +232,10 @@ static inline size_t constant_time_is_zero_size_t(size_t a) {
   return constant_time_msb_size_t(~a & (a - 1));
 }
 
+static inline size_t constant_time_is_nonzero_size_t(size_t a) {
+  return constant_time_is_zero_size_t(constant_time_is_zero_size_t(a));
+}
+
 /* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
 static inline unsigned int constant_time_eq_int(int a, int b) {
   return constant_time_is_zero((unsigned)(a) ^ (unsigned)(b));
