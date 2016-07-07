@@ -672,7 +672,7 @@ mod internal_benches {
 #[cfg(feature = "internal_benches")]
 macro_rules! bench_curve {
     ( $vectors:expr ) => {
-        use super::super::{Elem, Scalar};
+        use super::super::{Elem, Point, Scalar};
         use bench;
 
         #[bench]
@@ -720,6 +720,17 @@ macro_rules! bench_curve {
                 if i == vectors_len {
                     i = 0;
                 }
+            });
+        }
+
+        #[bench]
+        fn point_double_bench(bench: &mut bench::Bencher) {
+            // We assume that doubling the point at infinity isn't any
+            // different than other points since the `point_double` should be
+            // constant-time.
+            let mut p = Point::new_at_infinity();
+            bench.iter(|| {
+                COMMON_OPS.point_double(&mut p);
             });
         }
     }
