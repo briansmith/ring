@@ -3,6 +3,24 @@
 **Note**: if your target project is not a Google project then first read the
 [main README](/README.md) about the purpose of BoringSSL.
 
+## Bazel
+
+If you are using [Bazel](http://www.bazel.io) then you can incorporate
+BoringSSL as an external repository by using a commit from the
+`master-with-bazel` branch. That branch is maintained by a bot from `master`
+and includes the needed generated files and a top-level BUILD file.
+
+For example:
+
+    git\_repository(
+        name = "boringssl",
+        commit = "_some commit_",
+        remote = "https://boringssl.googlesource.com/boringssl",
+    )
+
+You would still need to keep the referenced commit up to date if a specific
+commit is referred to.
+
 ## Directory layout
 
 Typically projects create a `third_party/boringssl` directory to put
