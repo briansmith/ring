@@ -173,8 +173,6 @@
 #include "../crypto/dh/internal.h"
 
 
-static int ssl3_get_initial_bytes(SSL *ssl);
-static int ssl3_get_v2_client_hello(SSL *ssl);
 static int ssl3_get_client_hello(SSL *ssl);
 static int ssl3_send_server_hello(SSL *ssl);
 static int ssl3_send_server_certificate(SSL *ssl);
@@ -229,29 +227,6 @@ int ssl3_accept(SSL *ssl) {
           goto end;
         }
 
-        if (!ssl->s3->have_version && !SSL_IS_DTLS(ssl)) {
-          ssl->state = SSL3_ST_SR_INITIAL_BYTES;
-        } else {
-          ssl->state = SSL3_ST_SR_CLNT_HELLO_A;
-        }
-        break;
-
-      case SSL3_ST_SR_INITIAL_BYTES:
-        assert(!SSL_IS_DTLS(ssl));
-        ret = ssl3_get_initial_bytes(ssl);
-        if (ret <= 0) {
-          goto end;
-        }
-        /* ssl3_get_initial_bytes sets ssl->state to one of
-         * SSL3_ST_SR_V2_CLIENT_HELLO or SSL3_ST_SR_CLNT_HELLO_A on success. */
-        break;
-
-      case SSL3_ST_SR_V2_CLIENT_HELLO:
-        assert(!SSL_IS_DTLS(ssl));
-        ret = ssl3_get_v2_client_hello(ssl);
-        if (ret <= 0) {
-          goto end;
-        }
         ssl->state = SSL3_ST_SR_CLNT_HELLO_A;
         break;
 
@@ -545,170 +520,6 @@ end:
   BUF_MEM_free(buf);
   ssl_do_info_callback(ssl, SSL_CB_ACCEPT_EXIT, ret);
   return ret;
-}
-
-static int ssl3_get_initial_bytes(SSL *ssl) {
-  /* Read the first 5 bytes, the size of the TLS record header. This is
-   * sufficient to detect a V2ClientHello and ensures that we never read beyond
-   * the first record. */
-  int ret = ssl_read_buffer_extend_to(ssl, SSL3_RT_HEADER_LENGTH);
-  if (ret <= 0) {
-    return ret;
-  }
-  assert(ssl_read_buffer_len(ssl) == SSL3_RT_HEADER_LENGTH);
-  const uint8_t *p = ssl_read_buffer(ssl);
-
-  /* Some dedicated error codes for protocol mixups should the application wish
-   * to interpret them differently. (These do not overlap with ClientHello or
-   * V2ClientHello.) */
-  if (strncmp("GET ", (const char *)p, 4) == 0 ||
-      strncmp("POST ", (const char *)p, 5) == 0 ||
-      strncmp("HEAD ", (const char *)p, 5) == 0 ||
-      strncmp("PUT ", (const char *)p, 4) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_HTTP_REQUEST);
-    return -1;
-  }
-  if (strncmp("CONNE", (const char *)p, 5) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_HTTPS_PROXY_REQUEST);
-    return -1;
-  }
-
-  /* Determine if this is a V2ClientHello. */
-  if ((p[0] & 0x80) && p[2] == SSL2_MT_CLIENT_HELLO &&
-      p[3] >= SSL3_VERSION_MAJOR) {
-    /* This is a V2ClientHello. */
-    ssl->state = SSL3_ST_SR_V2_CLIENT_HELLO;
-    return 1;
-  }
-
-  /* Fall through to the standard logic. */
-  ssl->state = SSL3_ST_SR_CLNT_HELLO_A;
-  return 1;
-}
-
-static int ssl3_get_v2_client_hello(SSL *ssl) {
-  const uint8_t *p;
-  int ret;
-  CBS v2_client_hello, cipher_specs, session_id, challenge;
-  size_t msg_length, rand_len;
-  uint8_t msg_type;
-  uint16_t version, cipher_spec_length, session_id_length, challenge_length;
-  CBB client_hello, hello_body, cipher_suites;
-  uint8_t random[SSL3_RANDOM_SIZE];
-
-  /* Determine the length of the V2ClientHello. */
-  assert(ssl_read_buffer_len(ssl) >= SSL3_RT_HEADER_LENGTH);
-  p = ssl_read_buffer(ssl);
-  msg_length = ((p[0] & 0x7f) << 8) | p[1];
-  if (msg_length > (1024 * 4)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
-    return -1;
-  }
-  if (msg_length < SSL3_RT_HEADER_LENGTH - 2) {
-    /* Reject lengths that are too short early. We have already read
-     * |SSL3_RT_HEADER_LENGTH| bytes, so we should not attempt to process an
-     * (invalid) V2ClientHello which would be shorter than that. */
-    OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_LENGTH_MISMATCH);
-    return -1;
-  }
-
-  /* Read the remainder of the V2ClientHello. */
-  ret = ssl_read_buffer_extend_to(ssl, 2 + msg_length);
-  if (ret <= 0) {
-    return ret;
-  }
-  assert(ssl_read_buffer_len(ssl) == msg_length + 2);
-  CBS_init(&v2_client_hello, ssl_read_buffer(ssl) + 2, msg_length);
-
-  /* The V2ClientHello without the length is incorporated into the handshake
-   * hash. */
-  if (!ssl3_update_handshake_hash(ssl, CBS_data(&v2_client_hello),
-                                  CBS_len(&v2_client_hello))) {
-    return -1;
-  }
-
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL2_VERSION, 0,
-                      CBS_data(&v2_client_hello), CBS_len(&v2_client_hello));
-
-  if (!CBS_get_u8(&v2_client_hello, &msg_type) ||
-      !CBS_get_u16(&v2_client_hello, &version) ||
-      !CBS_get_u16(&v2_client_hello, &cipher_spec_length) ||
-      !CBS_get_u16(&v2_client_hello, &session_id_length) ||
-      !CBS_get_u16(&v2_client_hello, &challenge_length) ||
-      !CBS_get_bytes(&v2_client_hello, &cipher_specs, cipher_spec_length) ||
-      !CBS_get_bytes(&v2_client_hello, &session_id, session_id_length) ||
-      !CBS_get_bytes(&v2_client_hello, &challenge, challenge_length) ||
-      CBS_len(&v2_client_hello) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return -1;
-  }
-
-  /* msg_type has already been checked. */
-  assert(msg_type == SSL2_MT_CLIENT_HELLO);
-
-  /* The client_random is the V2ClientHello challenge. Truncate or
-   * left-pad with zeros as needed. */
-  memset(random, 0, SSL3_RANDOM_SIZE);
-  rand_len = CBS_len(&challenge);
-  if (rand_len > SSL3_RANDOM_SIZE) {
-    rand_len = SSL3_RANDOM_SIZE;
-  }
-  memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge),
-         rand_len);
-
-  /* Write out an equivalent SSLv3 ClientHello. */
-  CBB_zero(&client_hello);
-  if (!CBB_init_fixed(&client_hello, (uint8_t *)ssl->init_buf->data,
-                      ssl->init_buf->max) ||
-      !CBB_add_u8(&client_hello, SSL3_MT_CLIENT_HELLO) ||
-      !CBB_add_u24_length_prefixed(&client_hello, &hello_body) ||
-      !CBB_add_u16(&hello_body, version) ||
-      !CBB_add_bytes(&hello_body, random, SSL3_RANDOM_SIZE) ||
-      /* No session id. */
-      !CBB_add_u8(&hello_body, 0) ||
-      !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
-    CBB_cleanup(&client_hello);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return -1;
-  }
-
-  /* Copy the cipher suites. */
-  while (CBS_len(&cipher_specs) > 0) {
-    uint32_t cipher_spec;
-    if (!CBS_get_u24(&cipher_specs, &cipher_spec)) {
-      CBB_cleanup(&client_hello);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return -1;
-    }
-
-    /* Skip SSLv2 ciphers. */
-    if ((cipher_spec & 0xff0000) != 0) {
-      continue;
-    }
-    if (!CBB_add_u16(&cipher_suites, cipher_spec)) {
-      CBB_cleanup(&client_hello);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
-    }
-  }
-
-  /* Add the null compression scheme and finish. */
-  if (!CBB_add_u8(&hello_body, 1) || !CBB_add_u8(&hello_body, 0) ||
-      !CBB_finish(&client_hello, NULL, &ssl->init_buf->length)) {
-    CBB_cleanup(&client_hello);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  /* Mark the message for "re"-use by the version-specific method. */
-  ssl->s3->tmp.reuse_message = 1;
-  ssl->s3->tmp.message_complete = 1;
-
-  /* Consume and discard the V2ClientHello. */
-  ssl_read_buffer_consume(ssl, 2 + msg_length);
-  ssl_read_buffer_discard(ssl);
-
-  return 1;
 }
 
 static int ssl3_get_client_hello(SSL *ssl) {
