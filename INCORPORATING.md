@@ -12,7 +12,7 @@ and includes the needed generated files and a top-level BUILD file.
 
 For example:
 
-    git\_repository(
+    git_repository(
         name = "boringssl",
         commit = "_some commit_",
         remote = "https://boringssl.googlesource.com/boringssl",
