@@ -60,7 +60,7 @@
     <ClInclude Include="des\internal.h" />
     <ClInclude Include="digest\internal.h" />
     <ClInclude Include="ec\internal.h" />
-    <ClInclude Include="ec\ecp_nistz256_table.inc" />
+    <ClInclude Include="ec\ecp_nistz256_table.inl" />
     <ClInclude Include="evp\internal.h" />
     <ClInclude Include="modes\internal.h" />
     <ClInclude Include="rand\internal.h" />
