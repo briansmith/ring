@@ -39,5 +39,8 @@ int PrintErrorCallback(const char *str, size_t len, void *ctx);
 
 bool TransferData(SSL *ssl, int sock);
 
+// DoSMTPStartTLS performs the SMTP STARTTLS mini-protocol over |sock|. It
+// returns true on success and false otherwise.
+bool DoSMTPStartTLS(int sock);
 
 #endif  /* !OPENSSL_HEADER_TOOL_TRANSPORT_COMMON_H */

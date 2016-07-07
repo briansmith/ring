@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -343,4 +344,196 @@ bool TransferData(SSL *ssl, int sock) {
       }
     }
   }
+}
+
+// SocketLineReader wraps a small buffer around a socket for line-orientated
+// protocols.
+class SocketLineReader {
+ public:
+  explicit SocketLineReader(int sock) : sock_(sock) {}
+
+  // Next reads a '\n'- or '\r\n'-terminated line from the socket and, on
+  // success, sets |*out_line| to it and returns true. Otherwise it returns
+  // false.
+  bool Next(std::string *out_line) {
+    for (;;) {
+      for (size_t i = 0; i < buf_len_; i++) {
+        if (buf_[i] != '\n') {
+          continue;
+        }
+
+        size_t length = i;
+        if (i > 0 && buf_[i - 1] == '\r') {
+          length--;
+        }
+
+        out_line->assign(buf_, length);
+        buf_len_ -= i + 1;
+        memmove(buf_, &buf_[i + 1], buf_len_);
+
+        return true;
+      }
+
+      if (buf_len_ == sizeof(buf_)) {
+        fprintf(stderr, "Received line too long!\n");
+        return false;
+      }
+
+      ssize_t n;
+      do {
+        n = recv(sock_, &buf_[buf_len_], sizeof(buf_) - buf_len_, 0);
+      } while (n == -1 && errno == EINTR);
+
+      if (n < 0) {
+        fprintf(stderr, "Read error from socket\n");
+        return false;
+      }
+
+      buf_len_ += n;
+    }
+  }
+
+  // ReadSMTPReply reads one or more lines that make up an SMTP reply. On
+  // success, it sets |*out_code| to the reply's code (e.g. 250) and
+  // |*out_content| to the body of the reply (e.g. "OK") and returns true.
+  // Otherwise it returns false.
+  //
+  // See https://tools.ietf.org/html/rfc821#page-48
+  bool ReadSMTPReply(unsigned *out_code, std::string *out_content) {
+    out_content->clear();
+
+    // kMaxLines is the maximum number of lines that we'll accept in an SMTP
+    // reply.
+    static const unsigned kMaxLines = 512;
+    for (unsigned i = 0; i < kMaxLines; i++) {
+      std::string line;
+      if (!Next(&line)) {
+        return false;
+      }
+
+      if (line.size() < 4) {
+        fprintf(stderr, "Short line from SMTP server: %s\n", line.c_str());
+        return false;
+      }
+
+      const std::string code_str = line.substr(0, 3);
+      char *endptr;
+      const unsigned long code = strtoul(code_str.c_str(), &endptr, 10);
+      if (*endptr || code > UINT_MAX) {
+        fprintf(stderr, "Failed to parse code from line: %s\n", line.c_str());
+        return false;
+      }
+
+      if (i == 0) {
+        *out_code = code;
+      } else if (code != *out_code) {
+        fprintf(stderr,
+                "Reply code varied within a single reply: was %u, now %u\n",
+                *out_code, static_cast<unsigned>(code));
+        return false;
+      }
+
+      if (line[3] == ' ') {
+        // End of reply.
+        *out_content += line.substr(4, std::string::npos);
+        return true;
+      } else if (line[3] == '-') {
+        // Another line of reply will follow this one.
+        *out_content += line.substr(4, std::string::npos);
+        out_content->push_back('\n');
+      } else {
+        fprintf(stderr, "Bad character after code in SMTP reply: %s\n",
+                line.c_str());
+        return false;
+      }
+    }
+
+    fprintf(stderr, "Rejected SMTP reply of more then %u lines\n", kMaxLines);
+    return false;
+  }
+
+ private:
+  const int sock_;
+  char buf_[512];
+  size_t buf_len_ = 0;
+};
+
+// SendAll writes |data_len| bytes from |data| to |sock|. It returns true on
+// success and false otherwise.
+static bool SendAll(int sock, const char *data, size_t data_len) {
+  size_t done = 0;
+
+  while (done < data_len) {
+    ssize_t n;
+    do {
+      n = send(sock, &data[done], data_len - done, 0);
+    } while (n == -1 && errno == EINTR);
+
+    if (n < 0) {
+      fprintf(stderr, "Error while writing to socket\n");
+      return false;
+    }
+
+    done += n;
+  }
+
+  return true;
+}
+
+bool DoSMTPStartTLS(int sock) {
+  SocketLineReader line_reader(sock);
+
+  unsigned code_220;
+  std::string reply_220;
+  if (!line_reader.ReadSMTPReply(&code_220, &reply_220)) {
+    return false;
+  }
+
+  if (code_220 != 220) {
+    fprintf(stderr, "Expected 220 line from SMTP server but got code %u\n",
+            code_220);
+    return false;
+  }
+
+  static const char kHelloLine[] = "EHLO BoringSSL\r\n";
+  if (!SendAll(sock, kHelloLine, sizeof(kHelloLine) - 1)) {
+    return false;
+  }
+
+  unsigned code_250;
+  std::string reply_250;
+  if (!line_reader.ReadSMTPReply(&code_250, &reply_250)) {
+    return false;
+  }
+
+  if (code_250 != 250) {
+    fprintf(stderr, "Expected 250 line after EHLO but got code %u\n", code_250);
+    return false;
+  }
+
+  // https://tools.ietf.org/html/rfc1869#section-4.3
+  if (reply_250.find("\nSTARTTLS\n") == std::string::npos &&
+      reply_250.find("\nSTARTTLS") != reply_250.size() - 8) {
+    fprintf(stderr, "Server does not support STARTTLS\n");
+    return false;
+  }
+
+  static const char kSTARTTLSLine[] = "STARTTLS\r\n";
+  if (!SendAll(sock, kSTARTTLSLine, sizeof(kSTARTTLSLine) - 1)) {
+    return false;
+  }
+
+  if (!line_reader.ReadSMTPReply(&code_220, &reply_220)) {
+    return false;
+  }
+
+  if (code_220 != 220) {
+    fprintf(
+        stderr,
+        "Expected 220 line from SMTP server after STARTTLS, but got code %u\n",
+        code_220);
+    return false;
+  }
+
+  return true;
 }

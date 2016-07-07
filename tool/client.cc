@@ -86,6 +86,11 @@ static const struct argument kArguments[] = {
       "Private-key file to use (default is no client certificate)",
     },
     {
+      "-starttls", kOptionalArgument,
+      "A STARTTLS mini-protocol to run before the TLS handshake. Supported"
+      " values: 'smtp'",
+    },
+    {
      "", kOptionalArgument, "",
     },
 };
@@ -255,6 +260,18 @@ bool Client(const std::vector<std::string> &args) {
   int sock = -1;
   if (!Connect(&sock, args_map["-connect"])) {
     return false;
+  }
+
+  if (args_map.count("-starttls") != 0) {
+    const std::string& starttls = args_map["-starttls"];
+    if (starttls == "smtp") {
+      if (!DoSMTPStartTLS(sock)) {
+        return false;
+      }
+    } else {
+      fprintf(stderr, "Unknown value for -starttls: %s\n", starttls.c_str());
+      return false;
+    }
   }
 
   ScopedBIO bio(BIO_new_socket(sock, BIO_CLOSE));
