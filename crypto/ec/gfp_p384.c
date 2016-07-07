@@ -16,6 +16,7 @@
 
 #include <string.h>
 
+#include "ecp_nistz384.h"
 #include "../bn/internal.h"
 #include "../internal.h"
 
@@ -229,4 +230,27 @@ void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
   };
   /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
   bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
+}
+
+
+/* TODO(perf): Optimize this. */
+
+static void gfp_p384_point_select_w5(P384_POINT *out,
+                                     const P384_POINT table[16], size_t index) {
+  Elem x; memset(x, 0, sizeof(x));
+  Elem y; memset(y, 0, sizeof(y));
+  Elem z; memset(z, 0, sizeof(z));
+
+  for (size_t i = 0; i < 16; ++i) {
+    GFp_Limb mask = constant_time_eq_size_t(index, i + 1);
+    for (size_t j = 0; j < P384_LIMBS; ++j) {
+      x[j] |= table[i].X[j] & mask;
+      y[j] |= table[i].Y[j] & mask;
+      z[j] |= table[i].Z[j] & mask;
+    }
+  }
+
+  memcpy(out->X, x, sizeof(x));
+  memcpy(out->Y, y, sizeof(y));
+  memcpy(out->Z, z, sizeof(z));
 }
