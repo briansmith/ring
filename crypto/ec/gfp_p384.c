@@ -111,12 +111,9 @@ static inline void elem_mul_by_2(Elem r, const Elem a) {
 
 static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
   ///* XXX: inefficient. TODO: Replace with an integrated shift + add. */
-  static const Elem THREE = {
-    TOBN(0xfffffffd, 3),
-    TOBN(2, 0xffffffff),
-    TOBN(0, 3),
-  };
-  elem_mul_mont(r, a, THREE);
+  Elem doubled;
+  elem_add(doubled, a, a);
+  elem_add(r, doubled, a);
 }
 
 static inline void elem_div_by_2(Elem r, const Elem a) {
