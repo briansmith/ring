@@ -374,27 +374,17 @@ long ssl3_get_message(SSL *ssl, int msg_type,
                       enum ssl_hash_message_t hash_message, int *ok) {
   *ok = 0;
 
+again:
   if (ssl->s3->tmp.reuse_message) {
     /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
      * ssl_dont_hash_message would have to have been applied to the previous
      * call. */
     assert(hash_message == ssl_hash_message);
     assert(ssl->s3->tmp.message_complete);
-    ssl->s3->tmp.reuse_message = 0;
-    if (msg_type >= 0 && ssl->s3->tmp.message_type != msg_type) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-      return -1;
-    }
-    *ok = 1;
-    assert(ssl->init_buf->length >= 4);
-    ssl->init_msg = (uint8_t *)ssl->init_buf->data + 4;
-    ssl->init_num = (int)ssl->init_buf->length - 4;
-    return ssl->init_num;
-  }
 
-again:
-  if (ssl->s3->tmp.message_complete) {
+    ssl->s3->tmp.reuse_message = 0;
+    hash_message = ssl_dont_hash_message;
+  } else if (ssl->s3->tmp.message_complete) {
     ssl->s3->tmp.message_complete = 0;
     ssl->init_buf->length = 0;
   }

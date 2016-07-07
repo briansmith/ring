@@ -702,7 +702,6 @@ static int ssl3_get_v2_client_hello(SSL *ssl) {
 
   /* Mark the message for "re"-use by the version-specific method. */
   ssl->s3->tmp.reuse_message = 1;
-  ssl->s3->tmp.message_type = SSL3_MT_CLIENT_HELLO;
   ssl->s3->tmp.message_complete = 1;
 
   /* Consume and discard the V2ClientHello. */
