@@ -98,6 +98,73 @@ static void elem_sub(Elem r, const Elem a, const Elem b) {
   copy_conditional(r, adjusted, adjust);
 }
 
+static void elem_div_by_2(Elem r, const Elem a) {
+  /* Consider the case where `a` is even. Then we can shift `a` right one bit
+   * and the result will still be valid because we didn't lose any bits and so
+   * `(a >> 1) * 2 == a`, which is the postcondition the result must satisfy.
+   *
+   * The remainder of this comment is considering the case where `a` is odd.
+   *
+   * Since `a` is odd, it isn't the case that `(a >> 1) * 2 == a` because the
+   * lowest bit is lost during the shift. For example, consider:
+   *
+   * ```python
+   * q = 2**384 - 2**128 - 2**96 + 2**32 - 1
+   * a = 2**383
+   * two_a = a * 2 % q
+   * assert two_a == 0x100000000ffffffffffffffff00000001
+   * ```
+   *
+   * Notice there how `(2 * a) % q` wrapped around to a smaller odd value. When
+   * we divide `two_a` by two (mod q), we need to get the value 2**383, which
+   * we obviously can't get with just a right shift.
+   *
+   * `q` is odd, and `a` is odd, so `a` + `q` is even. We could calculate
+   * `(a + q) >> 1` and then reduce it mod `q`. However, we then we would have
+   * to keep track of an extra most significant bit. We can avoid that by
+   * instead calculating `(a >> 1) + ((q + 1) >> 1)`. The `1` in `q + 1` is the
+   * least significant bit of `a`. `q + 1` is even, which means it can be
+   * shifted without losing any bits.
+   *
+   * Since `q` is odd, `q - 1` is even, so the largest odd field element is
+   * `q - 2`. Thus we know that `a <= q - 2`. We know `(q + 1) >> 1` is
+   * `(q + 1) / 2` since (`q + 1`) is even. The value of `a >> 1` is
+   * `(a - 1)/2` since the shift will drop the least significant bit of `a`,
+   * which is 1. The maximum value of the sum is thus:
+   *
+   * sum  =  ((q + 1) >> 1) + (a >> 1)
+   * sum  =  (q + 1)/2 + (a >> 1)       (substituting (q + 1)/2)
+   *     <=  (q + 1)/2 + (q - 2 - 1)/2  (substituting a <= q - 2)
+   *         (q + 1)/2 + (q - 3)/2      (simplifying)
+   *         (q + 1 + q - 3)/2          (factoring out the common divisor)
+   *         (2q - 2)/2                 (simplifying)
+   *         q - 1                      (simplifying)
+   *
+   * Thus, no reduction of the sum mod q is necessary. */
+
+  GFp_Limb is_odd = constant_time_is_nonzero_size_t(a[0] & 1);
+
+  /* r = a >> 1. */
+  GFp_Limb carry = a[P384_LIMBS - 1] & 1;
+  r[P384_LIMBS - 1] = a[P384_LIMBS - 1] >> 1;
+  for (size_t i = 1; i < P384_LIMBS; ++i) {
+    GFp_Limb new_carry = a[P384_LIMBS - i - 1];
+    r[P384_LIMBS - i - 1] =
+        (a[P384_LIMBS - i - 1] >> 1) | (carry << (GFp_LIMB_BITS - 1));
+    carry = new_carry;
+  }
+
+  static const Elem Q_PLUS_1_SHR_1 = {
+    TOBN(0x00000000, 0x80000000), TOBN(0x7fffffff, 0x80000000),
+    TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff),
+    TOBN(0xffffffff, 0xffffffff), TOBN(0x7fffffff, 0xffffffff),
+  };
+
+  Elem adjusted;
+  (void)bn_add_words(adjusted, r, Q_PLUS_1_SHR_1, P384_LIMBS);
+  copy_conditional(r, adjusted, is_odd);
+}
+
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   /* XXX: Not (clearly) constant-time; inefficient. TODO: Add a dedicated
    * squaring routine. */
@@ -114,19 +181,6 @@ static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
   Elem doubled;
   elem_add(doubled, a, a);
   elem_add(r, doubled, a);
-}
-
-static inline void elem_div_by_2(Elem r, const Elem a) {
-  /* XXX: inefficient. TODO: Replace with a shift. */
-  static const Elem HALF = {
-    TOBN(0, 0),
-    TOBN(0, 0),
-    TOBN(0, 0),
-    TOBN(0, 0),
-    TOBN(0, 0),
-    TOBN(0x80000000, 0),
-  };
-  elem_mul_mont(r, a, HALF);
 }
 
 static inline void elem_sqr_mont(Elem r, const Elem a) {
