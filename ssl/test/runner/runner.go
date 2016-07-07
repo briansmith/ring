@@ -1137,84 +1137,6 @@ func addBasicTests() {
 			expectedError: ":UNEXPECTED_MESSAGE:",
 		},
 		{
-			name: "SkipChangeCipherSpec-Client",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					SkipChangeCipherSpec: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			testType: serverTest,
-			name:     "SkipChangeCipherSpec-Server",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					SkipChangeCipherSpec: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			testType: serverTest,
-			name:     "SkipChangeCipherSpec-Server-NPN",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				NextProtos: []string{"bar"},
-				Bugs: ProtocolBugs{
-					SkipChangeCipherSpec: true,
-				},
-			},
-			flags: []string{
-				"-advertise-npn", "\x03foo\x03bar\x03baz",
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			name: "FragmentAcrossChangeCipherSpec-Client",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					FragmentAcrossChangeCipherSpec: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			testType: serverTest,
-			name:     "FragmentAcrossChangeCipherSpec-Server",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					FragmentAcrossChangeCipherSpec: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			testType: serverTest,
-			name:     "FragmentAcrossChangeCipherSpec-Server-NPN",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				NextProtos: []string{"bar"},
-				Bugs: ProtocolBugs{
-					FragmentAcrossChangeCipherSpec: true,
-				},
-			},
-			flags: []string{
-				"-advertise-npn", "\x03foo\x03bar\x03baz",
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
 			testType: serverTest,
 			name:     "Alert",
 			config: Config{
@@ -1286,43 +1208,6 @@ func addBasicTests() {
 			},
 			shouldFail:    true,
 			expectedError: ":BAD_ALERT:",
-		},
-		{
-			testType: serverTest,
-			name:     "EarlyChangeCipherSpec-server-1",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					EarlyChangeCipherSpec: 1,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			testType: serverTest,
-			name:     "EarlyChangeCipherSpec-server-2",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					EarlyChangeCipherSpec: 2,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
-		},
-		{
-			protocol: dtls,
-			name:     "StrayChangeCipherSpec",
-			config: Config{
-				// TODO(davidben): Once DTLS 1.3 exists, test
-				// that stray ChangeCipherSpec messages are
-				// rejected.
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					StrayChangeCipherSpec: true,
-				},
-			},
 		},
 		{
 			name: "SkipNewSessionTicket",
@@ -2132,52 +2017,6 @@ func addBasicTests() {
 			flags:                []string{"-expect-no-session"},
 			resumeSession:        true,
 			expectResumeRejected: true,
-		},
-		{
-			name: "BadChangeCipherSpec-1",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					BadChangeCipherSpec: []byte{2},
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
-		},
-		{
-			name: "BadChangeCipherSpec-2",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					BadChangeCipherSpec: []byte{1, 1},
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
-		},
-		{
-			protocol: dtls,
-			name:     "BadChangeCipherSpec-DTLS-1",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					BadChangeCipherSpec: []byte{2},
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
-		},
-		{
-			protocol: dtls,
-			name:     "BadChangeCipherSpec-DTLS-2",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					BadChangeCipherSpec: []byte{1, 1},
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
 		},
 		{
 			name:        "BadHelloRequest-1",
@@ -5788,6 +5627,226 @@ func addTLS13RecordTests() {
 	})
 }
 
+func addChangeCipherSpecTests() {
+	// Test missing ChangeCipherSpecs.
+	testCases = append(testCases, testCase{
+		name: "SkipChangeCipherSpec-Client",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SkipChangeCipherSpec-Server",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SkipChangeCipherSpec-Server-NPN",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			NextProtos: []string{"bar"},
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		flags: []string{
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	})
+
+	// Test synchronization between the handshake and ChangeCipherSpec.
+	// Partial post-CCS handshake messages before ChangeCipherSpec should be
+	// rejected. Test both with and without handshake packing to handle both
+	// when the partial post-CCS message is in its own record and when it is
+	// attached to the pre-CCS message.
+	//
+	// TODO(davidben): Fix and test DTLS as well.
+	for _, packed := range []bool{false, true} {
+		var suffix string
+		if packed {
+			suffix = "-Packed"
+		}
+
+		testCases = append(testCases, testCase{
+			name: "FragmentAcrossChangeCipherSpec-Client" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+					PackHandshakeFlight:            packed,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		})
+		testCases = append(testCases, testCase{
+			name: "FragmentAcrossChangeCipherSpec-Client-Resume" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
+			resumeSession: true,
+			resumeConfig: &Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+					PackHandshakeFlight:            packed,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "FragmentAcrossChangeCipherSpec-Server" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+					PackHandshakeFlight:            packed,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "FragmentAcrossChangeCipherSpec-Server-Resume" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
+			resumeSession: true,
+			resumeConfig: &Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+					PackHandshakeFlight:            packed,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "FragmentAcrossChangeCipherSpec-Server-NPN" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				NextProtos: []string{"bar"},
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+					PackHandshakeFlight:            packed,
+				},
+			},
+			flags: []string{
+				"-advertise-npn", "\x03foo\x03bar\x03baz",
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		})
+	}
+
+	// Test that early ChangeCipherSpecs are handled correctly.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "EarlyChangeCipherSpec-server-1",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				EarlyChangeCipherSpec: 1,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "EarlyChangeCipherSpec-server-2",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				EarlyChangeCipherSpec: 2,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "StrayChangeCipherSpec",
+		config: Config{
+			// TODO(davidben): Once DTLS 1.3 exists, test
+			// that stray ChangeCipherSpec messages are
+			// rejected.
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				StrayChangeCipherSpec: true,
+			},
+		},
+	})
+
+	// Test that the contents of ChangeCipherSpec are checked.
+	testCases = append(testCases, testCase{
+		name: "BadChangeCipherSpec-1",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				BadChangeCipherSpec: []byte{2},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+	})
+	testCases = append(testCases, testCase{
+		name: "BadChangeCipherSpec-2",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				BadChangeCipherSpec: []byte{1, 1},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "BadChangeCipherSpec-DTLS-1",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				BadChangeCipherSpec: []byte{2},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "BadChangeCipherSpec-DTLS-2",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				BadChangeCipherSpec: []byte{1, 1},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -5890,6 +5949,7 @@ func main() {
 	addKeyExchangeInfoTests()
 	addTLS13RecordTests()
 	addAllStateMachineCoverageTests()
+	addChangeCipherSpecTests()
 
 	var wg sync.WaitGroup
 

@@ -780,7 +780,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		hs.writeClientHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
 	}
-	c.flushHandshake()
+	// flushHandshake will be called in sendFinished.
 
 	hs.finishedHash.discardHandshakeBuffer()
 
