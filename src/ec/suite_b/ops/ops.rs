@@ -697,6 +697,39 @@ mod tests {
         })
     }
 
+    // XXX: There's no `ecp_nistz256_div_by_2` in *ring*; it's logic is inlined
+    // into the point arithmetic functions. Thus, we can't test it.
+
+    #[test]
+    fn p384_div_by_2_test() {
+        extern {
+            fn GFp_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
+        }
+        div_by_2_test(&p384::COMMON_OPS, GFp_p384_elem_div_by_2,
+                      "src/ec/suite_b/ops/p384_div_by_2_tests.txt");
+    }
+
+    fn div_by_2_test(ops: &CommonOps,
+                     elem_div_by_2: unsafe extern fn(r: *mut Limb,
+                                                     a: *const Limb),
+                     file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_elem_unreduced(ops, test_case, "a");
+            let r = consume_elem_unreduced(ops, test_case, "r");
+
+            let mut actual_result = ElemUnreduced::zero();
+            unsafe {
+                elem_div_by_2(actual_result.limbs.as_mut_ptr(),
+                              a.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_result.limbs, &r.limbs);
+
+            Ok(())
+        })
+    }
+
     #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
