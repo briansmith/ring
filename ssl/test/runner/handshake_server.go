@@ -391,6 +391,15 @@ Curves:
 	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite), c.vers)
 	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite), c.vers)
 
+	if hs.suite.flags&suitePSK != 0 {
+		if hs.clientHello.ocspStapling {
+			encryptedExtensions.extensions.ocspResponse = hs.cert.OCSPStaple
+		}
+		if hs.clientHello.sctListSupported {
+			encryptedExtensions.extensions.sctList = hs.cert.SignedCertificateTimestampList
+		}
+	}
+
 	// Send EncryptedExtensions.
 	hs.writeServerHash(encryptedExtensions.marshal())
 	c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal())
