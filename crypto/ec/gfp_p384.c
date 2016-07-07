@@ -113,6 +113,13 @@ static inline void elem_mul_by_2(Elem r, const Elem a) {
   elem_add(r, a, a);
 }
 
+static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
+  /* XXX: inefficient. TODO: Replace with an integrated shift + add. */
+  Elem doubled;
+  elem_add(doubled, a, a);
+  elem_add(r, doubled, a);
+}
+
 
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
   elem_add(r, a, b);
