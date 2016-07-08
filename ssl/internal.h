@@ -778,10 +778,10 @@ typedef struct cert_st {
   /* peer_sigalgslen is the number of entries in |peer_sigalgs|. */
   size_t peer_sigalgslen;
 
-  /* digest_nids, if non-NULL, is the set of digests supported by |privatekey|
-   * in decreasing order of preference. */
-  int *digest_nids;
-  size_t num_digest_nids;
+  /* sigalgs, if non-NULL, is the set of digests supported by |privatekey| in
+   * decreasing order of preference. */
+  uint16_t *sigalgs;
+  size_t sigalgs_len;
 
   /* Certificate setup callback: if set is called whenever a
    * certificate may be required (client or server). the callback
@@ -1220,10 +1220,6 @@ int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
 uint16_t tls1_choose_signature_algorithm(SSL *ssl);
 
 size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
-
-/* tls12_get_hash returns the EVP_MD corresponding to the TLS signature
- * algorithm |sigalg|. It returns NULL if the type is unknown. */
-const EVP_MD *tls12_get_hash(uint16_t sigalg);
 
 /* tls12_check_peer_sigalg checks that |signature_algorithm| is consistent with
  * the |pkey| and |ssl|'s sent, supported signature algorithms and returns 1.

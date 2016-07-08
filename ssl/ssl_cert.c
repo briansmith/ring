@@ -226,7 +226,7 @@ void ssl_cert_free(CERT *c) {
 
   ssl_cert_clear_certs(c);
   OPENSSL_free(c->peer_sigalgs);
-  OPENSSL_free(c->digest_nids);
+  OPENSSL_free(c->sigalgs);
   X509_STORE_free(c->verify_store);
 
   OPENSSL_free(c);

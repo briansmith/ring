@@ -61,6 +61,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 #include <openssl/x509.h>
 
 #include "internal.h"
@@ -331,18 +332,51 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
   ctx->cert->key_method = key_method;
 }
 
+OPENSSL_COMPILE_ASSERT(sizeof(int) >= 2 * sizeof(uint16_t),
+                       digest_list_conversion_cannot_overflow);
+
 int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
                                      size_t num_digests) {
-  OPENSSL_free(ssl->cert->digest_nids);
+  OPENSSL_free(ssl->cert->sigalgs);
 
-  ssl->cert->num_digest_nids = 0;
-  ssl->cert->digest_nids = BUF_memdup(digest_nids, num_digests*sizeof(int));
-  if (ssl->cert->digest_nids == NULL) {
+  ssl->cert->sigalgs_len = 0;
+  ssl->cert->sigalgs = OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
+  if (ssl->cert->sigalgs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  ssl->cert->num_digest_nids = num_digests;
+  /* Convert the digest list to a signature algorithms list.
+   *
+   * TODO(davidben): Replace this API with one that can express RSA-PSS, etc. */
+  for (size_t i = 0; i < num_digests; i++) {
+    switch (digest_nids[i]) {
+      case NID_sha1:
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA1;
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] = SSL_SIGN_ECDSA_SHA1;
+        ssl->cert->sigalgs_len += 2;
+        break;
+      case NID_sha256:
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA256;
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] =
+            SSL_SIGN_ECDSA_SECP256R1_SHA256;
+        ssl->cert->sigalgs_len += 2;
+        break;
+      case NID_sha384:
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA384;
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] =
+            SSL_SIGN_ECDSA_SECP384R1_SHA384;
+        ssl->cert->sigalgs_len += 2;
+        break;
+      case NID_sha512:
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA512;
+        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] =
+            SSL_SIGN_ECDSA_SECP521R1_SHA512;
+        ssl->cert->sigalgs_len += 2;
+        break;
+    }
+  }
+
   return 1;
 }
 
@@ -362,6 +396,31 @@ size_t ssl_private_key_max_signature_len(SSL *ssl) {
     return ssl->cert->key_method->max_signature_len(ssl);
   }
   return EVP_PKEY_size(ssl->cert->privatekey);
+}
+
+/* tls12_get_hash returns the EVP_MD corresponding to the TLS signature
+ * algorithm |sigalg|. It returns NULL if the type is unknown. */
+static const EVP_MD *tls12_get_hash(uint16_t sigalg) {
+  if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
+    return EVP_md5_sha1();
+  }
+
+  switch (sigalg >> 8) {
+    case TLSEXT_hash_sha1:
+      return EVP_sha1();
+
+    case TLSEXT_hash_sha256:
+      return EVP_sha256();
+
+    case TLSEXT_hash_sha384:
+      return EVP_sha384();
+
+    case TLSEXT_hash_sha512:
+      return EVP_sha512();
+
+    default:
+      return NULL;
+  }
 }
 
 enum ssl_private_key_result_t ssl_private_key_sign(

@@ -2520,37 +2520,20 @@ done:
   return ret;
 }
 
-const EVP_MD *tls12_get_hash(uint16_t sigalg) {
-  if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
-    return EVP_md5_sha1();
-  }
-
-  switch (sigalg >> 8) {
-    case TLSEXT_hash_sha1:
-      return EVP_sha1();
-
-    case TLSEXT_hash_sha256:
-      return EVP_sha256();
-
-    case TLSEXT_hash_sha384:
-      return EVP_sha384();
-
-    case TLSEXT_hash_sha512:
-      return EVP_sha512();
-
-    default:
-      return NULL;
-  }
-}
-
 /* tls12_get_pkey_type returns the EVP_PKEY type corresponding to TLS signature
  * algorithm |sigalg|. It returns -1 if the type is unknown. */
 static int tls12_get_pkey_type(uint16_t sigalg) {
-  switch (sigalg & 0xff) {
-    case TLSEXT_signature_rsa:
+  switch (sigalg) {
+    case SSL_SIGN_RSA_PKCS1_SHA1:
+    case SSL_SIGN_RSA_PKCS1_SHA256:
+    case SSL_SIGN_RSA_PKCS1_SHA384:
+    case SSL_SIGN_RSA_PKCS1_SHA512:
       return EVP_PKEY_RSA;
 
-    case TLSEXT_signature_ecdsa:
+    case SSL_SIGN_ECDSA_SHA1:
+    case SSL_SIGN_ECDSA_SECP256R1_SHA256:
+    case SSL_SIGN_ECDSA_SECP384R1_SHA384:
+    case SSL_SIGN_ECDSA_SECP521R1_SHA512:
       return EVP_PKEY_EC;
 
     default:
@@ -2617,28 +2600,21 @@ uint16_t tls1_choose_signature_algorithm(SSL *ssl) {
     return SSL_SIGN_ECDSA_SHA1;
   }
 
-  static const int kDefaultDigestList[] = {NID_sha256, NID_sha384, NID_sha512,
-                                           NID_sha1};
-
-  const int *digest_nids = kDefaultDigestList;
-  size_t num_digest_nids =
-      sizeof(kDefaultDigestList) / sizeof(kDefaultDigestList[0]);
-  if (cert->digest_nids != NULL) {
-    digest_nids = cert->digest_nids;
-    num_digest_nids = cert->num_digest_nids;
+  const uint16_t *sigalgs = kDefaultSignatureAlgorithms;
+  size_t sigalgs_len = sizeof(kDefaultSignatureAlgorithms) /
+                       sizeof(kDefaultSignatureAlgorithms[0]);
+  if (cert->sigalgs != NULL) {
+    sigalgs = cert->sigalgs;
+    sigalgs_len = cert->sigalgs_len;
   }
 
-  for (i = 0; i < num_digest_nids; i++) {
-    const int digest_nid = digest_nids[i];
+  for (i = 0; i < sigalgs_len; i++) {
     for (j = 0; j < cert->peer_sigalgslen; j++) {
       uint16_t signature_algorithm = cert->peer_sigalgs[j];
       /* SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
        * negotiated. */
-      if (signature_algorithm == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
-        continue;
-      }
-      const EVP_MD *md = tls12_get_hash(signature_algorithm);
-      if (md != NULL && EVP_MD_type(md) == digest_nid &&
+      if (signature_algorithm != SSL_SIGN_RSA_PKCS1_MD5_SHA1 &&
+          signature_algorithm == sigalgs[i] &&
           tls12_get_pkey_type(signature_algorithm) == type) {
         return signature_algorithm;
       }
