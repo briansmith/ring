@@ -1792,7 +1792,10 @@ static int ssl3_send_cert_verify(SSL *ssl) {
     goto err;
   }
 
-  uint16_t signature_algorithm = tls1_choose_signature_algorithm(ssl);
+  uint16_t signature_algorithm;
+  if (!tls1_choose_signature_algorithm(ssl, &signature_algorithm)) {
+    goto err;
+  }
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     /* Write out the digest type in TLS 1.2. */
     if (!CBB_add_u16(&body, signature_algorithm)) {

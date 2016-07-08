@@ -1045,7 +1045,10 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
     }
 
     /* Determine the signature algorithm. */
-    uint16_t signature_algorithm = tls1_choose_signature_algorithm(ssl);
+    uint16_t signature_algorithm;
+    if (!tls1_choose_signature_algorithm(ssl, &signature_algorithm)) {
+      goto err;
+    }
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       if (!CBB_add_u16(&body, signature_algorithm)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

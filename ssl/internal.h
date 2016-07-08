@@ -1215,9 +1215,10 @@ uint16_t ssl3_protocol_version(const SSL *ssl);
 uint32_t ssl_get_algorithm_prf(const SSL *ssl);
 int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
 
-/* tls1_choose_signature_algorithm returns a signature algorithm for use with
- * |ssl|'s private key based on the peer's preferences the digests supported. */
-uint16_t tls1_choose_signature_algorithm(SSL *ssl);
+/* tls1_choose_signature_algorithm sets |*out| to a signature algorithm for use
+ * with |ssl|'s private key based on the peer's preferences and the digests
+ * supported. It returns one on success and zero on error. */
+int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out);
 
 size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
 

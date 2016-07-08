@@ -4876,7 +4876,7 @@ func addSignatureAlgorithmTests() {
 	//
 	// TODO(davidben): Add TLS 1.3 versions of these.
 	testCases = append(testCases, testCase{
-		name: "Agree-Digest-Fallback",
+		name: "NoCommonAlgorithms",
 		config: Config{
 			MaxVersion: VersionTLS12,
 			ClientAuth: RequireAnyClientCert,
@@ -4889,8 +4889,9 @@ func addSignatureAlgorithmTests() {
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		digestPrefs:                    "SHA256",
-		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA1,
+		digestPrefs:   "SHA256",
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 	testCases = append(testCases, testCase{
 		name: "Agree-Digest-SHA256",

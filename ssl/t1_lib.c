@@ -2586,7 +2586,7 @@ int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *in_sigalgs) {
   return 1;
 }
 
-uint16_t tls1_choose_signature_algorithm(SSL *ssl) {
+int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
   CERT *cert = ssl->cert;
   int type = ssl_private_key_type(ssl);
   size_t i, j;
@@ -2595,9 +2595,11 @@ uint16_t tls1_choose_signature_algorithm(SSL *ssl) {
    * handshake. It is fixed at MD5-SHA1 for RSA and SHA1 for ECDSA. */
   if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
     if (type == EVP_PKEY_RSA) {
-      return SSL_SIGN_RSA_PKCS1_MD5_SHA1;
+      *out = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
+    } else {
+      *out = SSL_SIGN_ECDSA_SHA1;
     }
-    return SSL_SIGN_ECDSA_SHA1;
+    return 1;
   }
 
   const uint16_t *sigalgs = kDefaultSignatureAlgorithms;
@@ -2608,24 +2610,35 @@ uint16_t tls1_choose_signature_algorithm(SSL *ssl) {
     sigalgs_len = cert->sigalgs_len;
   }
 
+  const uint16_t *peer_sigalgs = cert->peer_sigalgs;
+  size_t peer_sigalgs_len = cert->peer_sigalgslen;
+  if (peer_sigalgs_len == 0) {
+    /* If the client didn't specify any signature_algorithms extension then
+     * we can assume that it supports SHA1. See
+     * http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1 */
+    static const uint16_t kDefaultPeerAlgorithms[] = {SSL_SIGN_RSA_PKCS1_SHA1,
+                                                      SSL_SIGN_ECDSA_SHA1};
+    peer_sigalgs = kDefaultPeerAlgorithms;
+    peer_sigalgs_len =
+        sizeof(kDefaultPeerAlgorithms) / sizeof(kDefaultPeerAlgorithms);
+  }
+
   for (i = 0; i < sigalgs_len; i++) {
-    for (j = 0; j < cert->peer_sigalgslen; j++) {
-      uint16_t signature_algorithm = cert->peer_sigalgs[j];
+    for (j = 0; j < peer_sigalgs_len; j++) {
+      uint16_t signature_algorithm = peer_sigalgs[j];
       /* SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
        * negotiated. */
       if (signature_algorithm != SSL_SIGN_RSA_PKCS1_MD5_SHA1 &&
           signature_algorithm == sigalgs[i] &&
           tls12_get_pkey_type(signature_algorithm) == type) {
-        return signature_algorithm;
+        *out = signature_algorithm;
+        return 1;
       }
     }
   }
 
-  /* If no suitable digest may be found, default to SHA-1. */
-  if (type == EVP_PKEY_RSA) {
-    return SSL_SIGN_RSA_PKCS1_SHA1;
-  }
-  return SSL_SIGN_ECDSA_SHA1;
+  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
+  return 0;
 }
 
 int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
