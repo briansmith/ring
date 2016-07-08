@@ -834,8 +834,12 @@ struct ssl_protocol_method_st {
   int (*begin_handshake)(SSL *ssl);
   /* finish_handshake is called when a handshake completes. */
   void (*finish_handshake)(SSL *ssl);
-  long (*ssl_get_message)(SSL *ssl, int msg_type,
-                          enum ssl_hash_message_t hash_message, int *ok);
+  /* ssl_get_message reads the next handshake message. If |msg_type| is not -1,
+   * the message must have the specified type. On success, it returns one and
+   * sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and |ssl->init_num|.
+   * Otherwise, it returns <= 0. */
+  int (*ssl_get_message)(SSL *ssl, int msg_type,
+                         enum ssl_hash_message_t hash_message);
   /* hash_current_message incorporates the current handshake message into the
    * handshake hash. It returns one on success and zero on allocation
    * failure. */
@@ -1025,8 +1029,8 @@ int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl);
 void ssl3_cleanup_key_block(SSL *ssl);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
-long ssl3_get_message(SSL *ssl, int msg_type,
-                      enum ssl_hash_message_t hash_message, int *ok);
+int ssl3_get_message(SSL *ssl, int msg_type,
+                     enum ssl_hash_message_t hash_message);
 int ssl3_hash_current_message(SSL *ssl);
 
 /* ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify hash into the
@@ -1105,8 +1109,7 @@ int dtls1_accept(SSL *ssl);
 int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-long dtls1_get_message(SSL *ssl, int mt, enum ssl_hash_message_t hash_message,
-                       int *ok);
+int dtls1_get_message(SSL *ssl, int mt, enum ssl_hash_message_t hash_message);
 int dtls1_hash_current_message(SSL *ssl);
 int dtls1_dispatch_alert(SSL *ssl);
 

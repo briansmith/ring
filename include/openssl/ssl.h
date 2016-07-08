@@ -3938,10 +3938,15 @@ struct ssl_st {
   int state;    /* where we are */
 
   BUF_MEM *init_buf; /* buffer used during init */
-  uint8_t *init_msg; /* pointer to handshake message body, set by
-                        ssl3_get_message() */
-  int init_num;      /* amount read/written */
-  int init_off;      /* amount read/written */
+
+  /* init_msg is a pointer to the current handshake message body. */
+  const uint8_t *init_msg;
+  /* init_num is the length of the current handshake message body. */
+  uint32_t init_num;
+
+  /* init_off, in DTLS, is the number of bytes of the current message that have
+   * been written. */
+  uint32_t init_off;
 
   struct ssl3_state_st *s3;  /* SSLv3 variables */
   struct dtls1_state_st *d1; /* DTLSv1 variables */
@@ -4189,9 +4194,9 @@ typedef struct ssl3_state_st {
    * established connection state in case of renegotiations. */
   struct {
     uint8_t finish_md[EVP_MAX_MD_SIZE];
-    int finish_md_len;
+    uint8_t finish_md_len;
     uint8_t peer_finish_md[EVP_MAX_MD_SIZE];
-    int peer_finish_md_len;
+    uint8_t peer_finish_md_len;
 
     int message_type;
 

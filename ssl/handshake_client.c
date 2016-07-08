@@ -681,15 +681,13 @@ err:
 }
 
 static int dtls1_get_hello_verify(SSL *ssl) {
-  long n;
-  int al, ok = 0;
+  int al;
   CBS hello_verify_request, cookie;
   uint16_t server_version;
 
-  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  if (ret <= 0) {
+    return ret;
   }
 
   if (ssl->s3->tmp.message_type != DTLS1_MT_HELLO_VERIFY_REQUEST) {
@@ -698,7 +696,7 @@ static int dtls1_get_hello_verify(SSL *ssl) {
     return 1;
   }
 
-  CBS_init(&hello_verify_request, ssl->init_msg, n);
+  CBS_init(&hello_verify_request, ssl->init_msg, ssl->init_num);
 
   if (!CBS_get_u16(&hello_verify_request, &server_version) ||
       !CBS_get_u8_length_prefixed(&hello_verify_request, &cookie) ||
@@ -728,16 +726,14 @@ static int ssl3_get_server_hello(SSL *ssl) {
   STACK_OF(SSL_CIPHER) *sk;
   const SSL_CIPHER *c;
   CERT *ct = ssl->cert;
-  int al = SSL_AD_INTERNAL_ERROR, ok;
-  long n;
+  int al = SSL_AD_INTERNAL_ERROR;
   CBS server_hello, server_random, session_id;
   uint16_t server_wire_version, server_version, cipher_suite;
   uint8_t compression_method;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO, ssl_hash_message,
-                                   &ok);
-
-  if (!ok) {
+  int ret =
+      ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO, ssl_hash_message);
+  if (ret <= 0) {
     uint32_t err = ERR_peek_error();
     if (ERR_GET_LIB(err) == ERR_LIB_SSL &&
         ERR_GET_REASON(err) == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE) {
@@ -749,10 +745,10 @@ static int ssl3_get_server_hello(SSL *ssl) {
        * See https://crbug.com/446505. */
       OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_FAILURE_ON_CLIENT_HELLO);
     }
-    return n;
+    return ret;
   }
 
-  CBS_init(&server_hello, ssl->init_msg, n);
+  CBS_init(&server_hello, ssl->init_msg, ssl->init_num);
 
   if (!CBS_get_u16(&server_hello, &server_wire_version) ||
       !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
@@ -955,22 +951,20 @@ err:
 }
 
 static int ssl3_get_server_certificate(SSL *ssl) {
-  int al, ok, ret = -1;
-  unsigned long n;
+  int al, ret = -1;
   X509 *x = NULL;
   STACK_OF(X509) *sk = NULL;
   EVP_PKEY *pkey = NULL;
   CBS cbs, certificate_list;
   const uint8_t *data;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE, ssl_hash_message,
-                                   &ok);
-
-  if (!ok) {
-    return n;
+  int msg_ret =
+      ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE, ssl_hash_message);
+  if (msg_ret <= 0) {
+    return msg_ret;
   }
 
-  CBS_init(&cbs, ssl->init_msg, n);
+  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
 
   sk = sk_X509_new_null();
   if (sk == NULL) {
@@ -1045,15 +1039,13 @@ err:
 }
 
 static int ssl3_get_cert_status(SSL *ssl) {
-  int ok, al;
-  long n;
+  int al;
   CBS certificate_status, ocsp_response;
   uint8_t status_type;
 
-  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  if (ret <= 0) {
+    return ret;
   }
 
   if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE_STATUS) {
@@ -1063,7 +1055,7 @@ static int ssl3_get_cert_status(SSL *ssl) {
     return 1;
   }
 
-  CBS_init(&certificate_status, ssl->init_msg, n);
+  CBS_init(&certificate_status, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8(&certificate_status, &status_type) ||
       status_type != TLSEXT_STATUSTYPE_ocsp ||
       !CBS_get_u24_length_prefixed(&certificate_status, &ocsp_response) ||
@@ -1102,15 +1094,15 @@ static int ssl3_verify_server_cert(SSL *ssl) {
 }
 
 static int ssl3_get_server_key_exchange(SSL *ssl) {
-  int al, ok;
+  int al;
   EVP_PKEY *pkey = NULL;
   DH *dh = NULL;
   EC_KEY *ecdh = NULL;
   EC_POINT *srvr_ecpoint = NULL;
 
-  long n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
-  if (!ok) {
-    return n;
+  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  if (ret <= 0) {
+    return ret;
   }
 
   if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_KEY_EXCHANGE) {
@@ -1134,7 +1126,7 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
 
   /* Retain a copy of the original CBS to compute the signature over. */
   CBS server_key_exchange;
-  CBS_init(&server_key_exchange, ssl->init_msg, n);
+  CBS_init(&server_key_exchange, ssl->init_msg, ssl->init_num);
   CBS server_key_exchange_orig = server_key_exchange;
 
   uint32_t alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
@@ -1373,14 +1365,13 @@ static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
 }
 
 static int ssl3_get_certificate_request(SSL *ssl) {
-  int ok, ret = 0;
+  int ret = 0;
   X509_NAME *xn = NULL;
   STACK_OF(X509_NAME) *ca_sk = NULL;
 
-  long n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int msg_ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  if (msg_ret <= 0) {
+    return msg_ret;
   }
 
   ssl->s3->tmp.cert_request = 0;
@@ -1400,7 +1391,7 @@ static int ssl3_get_certificate_request(SSL *ssl) {
   }
 
   CBS cbs;
-  CBS_init(&cbs, ssl->init_msg, n);
+  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
 
   ca_sk = sk_X509_NAME_new(ca_dn_cmp);
   if (ca_sk == NULL) {
@@ -1481,18 +1472,14 @@ err:
 }
 
 static int ssl3_get_server_hello_done(SSL *ssl) {
-  int ok;
-  long n;
-
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO_DONE,
-                                   ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO_DONE,
+                                         ssl_hash_message);
+  if (ret <= 0) {
+    return ret;
   }
 
-  if (n > 0) {
-    /* should contain no data */
+  /* ServerHelloDone is empty. */
+  if (ssl->init_num > 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_LENGTH_MISMATCH);
     return -1;
@@ -1993,17 +1980,16 @@ err:
 }
 
 static int ssl3_get_new_session_ticket(SSL *ssl) {
-  int ok, al;
-  long n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEW_SESSION_TICKET,
-                                        ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int al;
+  int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_NEW_SESSION_TICKET,
+                                         ssl_hash_message);
+  if (ret <= 0) {
+    return ret;
   }
 
   CBS new_session_ticket, ticket;
   uint32_t ticket_lifetime_hint;
-  CBS_init(&new_session_ticket, ssl->init_msg, n);
+  CBS_init(&new_session_ticket, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u32(&new_session_ticket, &ticket_lifetime_hint) ||
       !CBS_get_u16_length_prefixed(&new_session_ticket, &ticket) ||
       CBS_len(&new_session_ticket) != 0) {

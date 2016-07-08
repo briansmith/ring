@@ -507,8 +507,7 @@ end:
 }
 
 static int ssl3_get_client_hello(SSL *ssl) {
-  int ok, al = SSL_AD_INTERNAL_ERROR, ret = -1;
-  long n;
+  int al = SSL_AD_INTERNAL_ERROR, ret = -1;
   const SSL_CIPHER *c;
   STACK_OF(SSL_CIPHER) *ciphers = NULL;
   struct ssl_early_callback_ctx early_ctx;
@@ -522,27 +521,22 @@ static int ssl3_get_client_hello(SSL *ssl) {
    * be handled by a different method. If we are SSLv3, we will respond with
    * SSLv3, even if prompted with TLSv1. */
   switch (ssl->state) {
-    case SSL3_ST_SR_CLNT_HELLO_A:
-      n = ssl->method->ssl_get_message(ssl, SSL3_MT_CLIENT_HELLO,
-                                       ssl_hash_message, &ok);
-
-      if (!ok) {
-        return n;
+    case SSL3_ST_SR_CLNT_HELLO_A: {
+      int msg_ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CLIENT_HELLO,
+                                                 ssl_hash_message);
+      if (msg_ret <= 0) {
+        return msg_ret;
       }
 
       ssl->state = SSL3_ST_SR_CLNT_HELLO_B;
+    }
       /* fallthrough */
     case SSL3_ST_SR_CLNT_HELLO_B:
     case SSL3_ST_SR_CLNT_HELLO_C:
-      /* We have previously parsed the ClientHello message, and can't call
-       * ssl_get_message again without hashing the message into the Finished
-       * digest again. */
-      n = ssl->init_num;
-
       memset(&early_ctx, 0, sizeof(early_ctx));
       early_ctx.ssl = ssl;
       early_ctx.client_hello = ssl->init_msg;
-      early_ctx.client_hello_len = n;
+      early_ctx.client_hello_len = ssl->init_num;
       if (!ssl_early_callback_init(&early_ctx)) {
         al = SSL_AD_DECODE_ERROR;
         OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
@@ -575,7 +569,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
       return -1;
   }
 
-  CBS_init(&client_hello, ssl->init_msg, n);
+  CBS_init(&client_hello, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u16(&client_hello, &client_wire_version) ||
       !CBS_get_bytes(&client_hello, &client_random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
@@ -1248,19 +1242,18 @@ static int ssl3_send_server_hello_done(SSL *ssl) {
 }
 
 static int ssl3_get_client_certificate(SSL *ssl) {
-  int ok, al, ret = -1;
+  int al, ret = -1;
   X509 *x = NULL;
-  unsigned long n;
   STACK_OF(X509) *sk = NULL;
   SHA256_CTX sha256;
   CBS certificate_msg, certificate_list;
   int is_first_certificate = 1;
 
   assert(ssl->s3->tmp.cert_request);
-  n = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message, &ok);
 
-  if (!ok) {
-    return n;
+  int msg_ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  if (msg_ret <= 0) {
+    return msg_ret;
   }
 
   if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE) {
@@ -1283,7 +1276,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
     goto f_err;
   }
 
-  CBS_init(&certificate_msg, ssl->init_msg, n);
+  CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
 
   sk = sk_X509_new_null();
   if (sk == NULL) {
@@ -1399,11 +1392,10 @@ static int ssl3_get_client_key_exchange(SSL *ssl) {
   uint8_t psk[PSK_MAX_PSK_LEN];
 
   if (ssl->state == SSL3_ST_SR_KEY_EXCH_A) {
-    int ok;
-    const long n = ssl->method->ssl_get_message(
-        ssl, SSL3_MT_CLIENT_KEY_EXCHANGE, ssl_hash_message, &ok);
-    if (!ok) {
-      return n;
+    int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CLIENT_KEY_EXCHANGE,
+                                           ssl_hash_message);
+    if (ret <= 0) {
+      return ret;
     }
   }
 
@@ -1656,8 +1648,7 @@ err:
 }
 
 static int ssl3_get_cert_verify(SSL *ssl) {
-  int al, ok, ret = 0;
-  long n;
+  int al, ret = 0;
   CBS certificate_verify, signature;
   X509 *peer = ssl->session->peer;
   EVP_PKEY *pkey = NULL;
@@ -1670,11 +1661,10 @@ static int ssl3_get_cert_verify(SSL *ssl) {
     return 1;
   }
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE_VERIFY,
-                                   ssl_dont_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int msg_ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE_VERIFY,
+                                             ssl_dont_hash_message);
+  if (msg_ret <= 0) {
+    return msg_ret;
   }
 
   /* Filter out unsupported certificate types. */
@@ -1689,7 +1679,7 @@ static int ssl3_get_cert_verify(SSL *ssl) {
     goto f_err;
   }
 
-  CBS_init(&certificate_verify, ssl->init_msg, n);
+  CBS_init(&certificate_verify, ssl->init_msg, ssl->init_num);
 
   /* Determine the digest type if needbe. */
   uint16_t signature_algorithm = 0;
@@ -1784,19 +1774,14 @@ err:
 /* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It
  * sets the next_proto member in s if found */
 static int ssl3_get_next_proto(SSL *ssl) {
-  int ok;
-  long n;
-  CBS next_protocol, selected_protocol, padding;
-
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_NEXT_PROTO, ssl_hash_message,
-                                   &ok);
-
-  if (!ok) {
-    return n;
+  int ret =
+      ssl->method->ssl_get_message(ssl, SSL3_MT_NEXT_PROTO, ssl_hash_message);
+  if (ret <= 0) {
+    return ret;
   }
 
-  CBS_init(&next_protocol, ssl->init_msg, n);
-
+  CBS next_protocol, selected_protocol, padding;
+  CBS_init(&next_protocol, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8_length_prefixed(&next_protocol, &selected_protocol) ||
       !CBS_get_u8_length_prefixed(&next_protocol, &padding) ||
       CBS_len(&next_protocol) != 0 ||
@@ -1810,8 +1795,7 @@ static int ssl3_get_next_proto(SSL *ssl) {
 
 /* ssl3_get_channel_id reads and verifies a ClientID handshake message. */
 static int ssl3_get_channel_id(SSL *ssl) {
-  int ret = -1, ok;
-  long n;
+  int ret = -1;
   uint8_t channel_id_hash[EVP_MAX_MD_SIZE];
   size_t channel_id_hash_len;
   const uint8_t *p;
@@ -1823,11 +1807,10 @@ static int ssl3_get_channel_id(SSL *ssl) {
   BIGNUM x, y;
   CBS encrypted_extensions, extension;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_MT_CHANNEL_ID,
-                                   ssl_dont_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  int msg_ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CHANNEL_ID,
+                                             ssl_dont_hash_message);
+  if (msg_ret <= 0) {
+    return msg_ret;
   }
 
   /* Before incorporating the EncryptedExtensions message to the handshake
@@ -1841,7 +1824,7 @@ static int ssl3_get_channel_id(SSL *ssl) {
     return -1;
   }
 
-  CBS_init(&encrypted_extensions, ssl->init_msg, n);
+  CBS_init(&encrypted_extensions, ssl->init_msg, ssl->init_num);
 
   /* EncryptedExtensions could include multiple extensions, but the only
    * extension that could be negotiated is Channel ID, so there can only be one

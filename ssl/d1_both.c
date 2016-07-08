@@ -398,13 +398,8 @@ start:
   return 1;
 }
 
-/* dtls1_get_message reads a handshake message of message type |msg_type| (any
- * if |msg_type| == -1). Read an entire handshake message. Handshake messages
- * arrive in fragments. */
-long dtls1_get_message(SSL *ssl, int msg_type,
-                       enum ssl_hash_message_t hash_message, int *ok) {
-  *ok = 0;
-
+int dtls1_get_message(SSL *ssl, int msg_type,
+                      enum ssl_hash_message_t hash_message) {
   if (ssl->s3->tmp.reuse_message) {
     /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
      * ssl_dont_hash_message would have to have been applied to the previous
@@ -449,8 +444,7 @@ long dtls1_get_message(SSL *ssl, int msg_type,
 
   ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
                       frag->data, ssl->init_num + DTLS1_HM_HEADER_LENGTH);
-  *ok = 1;
-  return ssl->init_num;
+  return 1;
 }
 
 int dtls1_hash_current_message(SSL *ssl) {
