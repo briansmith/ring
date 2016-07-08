@@ -93,32 +93,14 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
+  uint8_t p_str[(P256_LIMBS * BN_BYTES) + 1];
+  gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
+                                      p_scalar, P256_LIMBS);
+
   /* A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
    * add no more than 63 bytes of overhead. Thus, |table| should require
    * ~1599 ((96 * 16) + 63) bytes of stack space. */
   alignas(64) P256_POINT table[16];
-  uint8_t p_str[33];
-
-  int j;
-  for (j = 0; j < P256_LIMBS * BN_BYTES; j += BN_BYTES) {
-    BN_ULONG d = p_scalar[j / BN_BYTES];
-
-    p_str[j + 0] = d & 0xff;
-    p_str[j + 1] = (d >> 8) & 0xff;
-    p_str[j + 2] = (d >> 16) & 0xff;
-    p_str[j + 3] = (d >>= 24) & 0xff;
-    if (BN_BYTES == 8) {
-      d >>= 8;
-      p_str[j + 4] = d & 0xff;
-      p_str[j + 5] = (d >> 8) & 0xff;
-      p_str[j + 6] = (d >> 16) & 0xff;
-      p_str[j + 7] = (d >> 24) & 0xff;
-    }
-  }
-
-  for (; j < 33; j++) {
-    p_str[j] = 0;
-  }
 
   /* table[0] is implicitly (0,0,0) (the point at infinity), therefore it is
    * not stored. All other values are actually stored with an offset of -1 in
@@ -211,6 +193,10 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
+  uint8_t p_str[(P256_LIMBS * BN_BYTES) + 1];
+  gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
+                                      g_scalar, P256_LIMBS);
+
   typedef union {
     P256_POINT p;
     P256_POINT_AFFINE a;
@@ -218,24 +204,6 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
 
   alignas(32) P256_POINT_UNION p;
   alignas(32) P256_POINT_UNION t;
-
-  uint8_t p_str[33] = {0};
-  int i;
-  for (i = 0; i < P256_LIMBS * BN_BYTES; i += BN_BYTES) {
-    BN_ULONG d = g_scalar[i / BN_BYTES];
-
-    p_str[i + 0] = d & 0xff;
-    p_str[i + 1] = (d >> 8) & 0xff;
-    p_str[i + 2] = (d >> 16) & 0xff;
-    p_str[i + 3] = (d >>= 24) & 0xff;
-    if (BN_BYTES == 8) {
-      d >>= 8;
-      p_str[i + 4] = d & 0xff;
-      p_str[i + 5] = (d >> 8) & 0xff;
-      p_str[i + 6] = (d >> 16) & 0xff;
-      p_str[i + 7] = (d >> 24) & 0xff;
-    }
-  }
 
   /* First window */
   unsigned index = kWindowSize;
@@ -255,7 +223,7 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
 
   memcpy(p.p.Z, ONE, sizeof(ONE));
 
-  for (i = 1; i < 37; i++) {
+  for (size_t i = 1; i < 37; i++) {
     unsigned off = (index - 1) / 8;
     raw_wvalue = p_str[off] | p_str[off + 1] << 8;
     raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;

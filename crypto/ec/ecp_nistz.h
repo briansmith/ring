@@ -121,6 +121,11 @@ static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
 }
 
 
+void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
+                                         const BN_ULONG scalar[],
+                                         size_t num_limbs);
+
+
 #if defined(__cplusplus)
 }
 #endif

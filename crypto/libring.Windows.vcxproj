@@ -37,6 +37,7 @@
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
+    <ClCompile Include="ec\ecp_nistz.c" />
     <ClCompile Include="ec\ecp_nistz256.c" />
     <ClCompile Include="ec\gfp_constant_time.c" />
     <ClCompile Include="ec\gfp_p256.c" />
