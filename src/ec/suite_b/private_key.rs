@@ -116,7 +116,7 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
-    let my_public_key = try!(ops.base_point_mult(&my_private_key));
+    let my_public_key = try!(ops.base_point_mul(&my_private_key));
     public_out[0] = 4; // Uncompressed encoding.
     let (x_out, y_out) =
         (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
@@ -129,22 +129,25 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
 
 pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
                                        x_out: Option<&mut [u8]>,
-                                       y_out: Option<&mut [u8]>,
-                                       &(ref x, ref y, ref z):
-                                            &(Elem, Elem, Elem))
+                                       y_out: Option<&mut [u8]>, p: &Point)
                                        -> Result<(), ()> {
+    let z = ops.common.point_z(&p);
+
     // Since we restrict our private key to the range [1, n), the curve has
     // prime order, and we verify that the peer's point is on the curve,
     // there's no way that the result can be at infinity. But, use `assert!`
     // instead of `debug_assert!` anyway
     assert!(ops.common.elem_verify_is_not_zero(&z).is_ok());
 
+    let x = ops.common.point_x(&p);
+    let y = ops.common.point_y(&p);
+
     let z_inv = ops.elem_inverse(&z);
     let zz_inv = ops.common.elem_sqr(&z_inv);
     let zzz_inv = ops.common.elem_mul(&z_inv, &zz_inv);
 
-    let x_aff = ops.common.elem_mul(x, &zz_inv);
-    let y_aff = ops.common.elem_mul(y, &zzz_inv);
+    let x_aff = ops.common.elem_mul(&x, &zz_inv);
+    let y_aff = ops.common.elem_mul(&y, &zzz_inv);
 
     // If we validated our inputs correctly and then computed (x, y, z), then
     // (x, y, z) will be on the curve. See

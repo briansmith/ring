@@ -58,6 +58,32 @@ pub struct ScalarMont {
 }
 
 
+pub struct Point {
+    // The coordinates are stored in a contiguous array, where the first
+    // `ops.num_limbs` elements are the X coordinate, the next
+    // `ops.num_limbs` elements are the Y coordinate, and the next
+    // `ops.num_limbs` elements are the Z coordinate. This layout is dictated
+    // by the requirements of the ecp_nistz256 code.
+    xyz: [Limb; 3 * MAX_LIMBS],
+}
+
+impl Point {
+    pub fn new_at_infinity() -> Point {
+        Point { xyz: [0; 3 * MAX_LIMBS] }
+    }
+}
+
+// Cannot be derived because `xyz` is too large on 32-bit platforms to have a
+// built-in implementation of `Clone`.
+impl Clone for Point {
+    fn clone(&self) -> Self {
+        Point { xyz: self.xyz }
+    }
+}
+
+impl Copy for Point {
+}
+
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
 #[cfg(target_pointer_width = "32")] pub type Limb = u32;
@@ -160,6 +186,26 @@ impl CommonOps {
             _ => Err(()),
         }
     }
+
+    pub fn point_x(&self, p: &Point) -> Elem {
+        let mut r = Elem::zero();
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[0..self.num_limbs]);
+        r
+    }
+
+    pub fn point_y(&self, p: &Point) -> Elem {
+        let mut r = Elem::zero();
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[self.num_limbs..
+                                                         (2 * self.num_limbs)]);
+        r
+    }
+
+    pub fn point_z(&self, p: &Point) -> Elem {
+        let mut r = Elem::zero();
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[(2 * self.num_limbs)..
+                                                         (3 * self.num_limbs)]);
+        r
+    }
 }
 
 struct Mont {
@@ -176,28 +222,13 @@ pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
     elem_inv: unsafe extern fn(r: *mut Limb/*[num_limbs]*/,
                                a: *const Limb/*[num_limbs]*/),
+    point_mul_base_impl: fn(a: &Scalar) -> Result<Point, ()>,
 }
 
 impl PrivateKeyOps {
-    pub fn base_point_mult(&self, u: &Scalar)
-                           -> Result<(Elem, Elem, Elem), ()> {
-        // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
-        // shouldn't be used for this. TODO: Replace use of this with the use
-        // of an always-constant-time implementation.
-        let mut x = Elem { limbs: [0; MAX_LIMBS] };
-        let mut y = Elem { limbs: [0; MAX_LIMBS] };
-        let mut z = Elem { limbs: [0; MAX_LIMBS] };
-        try!(bssl::map_result(unsafe {
-            GFp_suite_b_public_twin_mult(self.common.ec_group,
-                                         x.limbs.as_mut_ptr(),
-                                         y.limbs.as_mut_ptr(),
-                                         z.limbs.as_mut_ptr(),
-                                         u.limbs.as_ptr(), // g_scalar
-                                         core::ptr::null(), // p_scalar
-                                         core::ptr::null(), // p_x
-                                         core::ptr::null()) // p_y
-        }));
-        Ok((x, y, z))
+    #[inline(always)]
+    pub fn base_point_mul(&self, a: &Scalar) -> Result<Point, ()> {
+        (self.point_mul_base_impl)(a)
     }
 
     #[inline]
@@ -319,39 +350,33 @@ impl PublicScalarOps {
 
     pub fn twin_mult(&self, g_scalar: &Scalar, p_scalar: &Scalar,
                      &(ref peer_x, ref peer_y): &(Elem, Elem))
-                     -> Result<(Elem, Elem, Elem), ()> {
-        let mut x = Elem::zero();
-        let mut y = Elem::zero();
-        let mut z = Elem::zero();
+                     -> Result<Point, ()> {
+        let mut p = Point::new_at_infinity();
         try!(bssl::map_result(unsafe {
             GFp_suite_b_public_twin_mult(
-                self.public_key_ops.common.ec_group, x.limbs.as_mut_ptr(),
-                y.limbs.as_mut_ptr(), z.limbs.as_mut_ptr(),
+                self.public_key_ops.common.ec_group, p.xyz.as_mut_ptr(),
                 g_scalar.limbs.as_ptr(), p_scalar.limbs.as_ptr(),
                 peer_x.limbs.as_ptr(), peer_y.limbs.as_ptr())
         }));
-        Ok((x, y, z))
+        Ok(p)
     }
 }
 
 
 pub fn var_point_mult(ops: &CommonOps, s: &Scalar,
                       &(ref peer_x, ref peer_y): &(Elem, Elem))
-                      -> Result<(Elem, Elem, Elem), ()> {
+                      -> Result<Point, ()> {
     // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
     // shouldn't be used for this. TODO: Replace use of this with the use of an
     // always-constant-time implementation.
-    let mut x = Elem::zero();
-    let mut y = Elem::zero();
-    let mut z = Elem::zero();
+    let mut p = Point::new_at_infinity();
     try!(bssl::map_result(unsafe {
-        GFp_suite_b_public_twin_mult(ops.ec_group, x.limbs.as_mut_ptr(),
-                                     y.limbs.as_mut_ptr(),
-                                     z.limbs.as_mut_ptr(), core::ptr::null(),
-                                     s.limbs.as_ptr(), peer_x.limbs.as_ptr(),
+        GFp_suite_b_public_twin_mult(ops.ec_group, p.xyz.as_mut_ptr(),
+                                     core::ptr::null(), s.limbs.as_ptr(),
+                                     peer_x.limbs.as_ptr(),
                                      peer_y.limbs.as_ptr())
     }));
-    Ok((x, y, z))
+    Ok(p)
 }
 
 
@@ -465,8 +490,7 @@ extern {
     fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
                                         -> Limb;
 
-    fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, x_out: *mut Limb,
-                                    y_out: *mut Limb, z_out: *mut Limb,
+    fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, xyz_out: *mut Limb,
                                     g_scalar: *const Limb,
                                     p_scalar: *const Limb, p_x: *const Limb,
                                     p_y: *const Limb) -> c::int;

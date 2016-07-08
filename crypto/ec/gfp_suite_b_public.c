@@ -20,8 +20,7 @@
 
 
 /* Declarations to avoid -Wmissing-prototypes warnings. */
-int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
-                                 BN_ULONG *y_out, BN_ULONG *z_out,
+int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
                                  const BN_ULONG *g_scalar, const BN_ULONG *p_x,
                                  const BN_ULONG *p_y, const BN_ULONG *p_scalar);
 
@@ -64,8 +63,7 @@ err:
   return result;
 }
 
-int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
-                                 BN_ULONG *y_out, BN_ULONG *z_out,
+int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
                                  const BN_ULONG *g_scalar,
                                  const BN_ULONG *p_scalar, const BN_ULONG *p_x,
                                  const BN_ULONG *p_y) {
@@ -99,6 +97,10 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *x_out,
   size_t num_limbs =
     (ec_GFp_simple_group_get_degree(group) + (GFp_LIMB_BITS - 1)) /
     GFp_LIMB_BITS;
+
+  BN_ULONG *x_out = xyz_out;
+  BN_ULONG *y_out = x_out + num_limbs;
+  BN_ULONG *z_out = y_out + num_limbs;
 
   if ((g_scalar != NULL && !bn_set_words(&g_scalar_bn, g_scalar, num_limbs)) ||
       (p_scalar != NULL && !bn_set_words(&p_scalar_bn, p_scalar, num_limbs)) ||

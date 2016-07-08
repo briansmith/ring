@@ -38,10 +38,16 @@
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
-/* Functions implemented in assembly */
 
+/* Prototypes to avoid -Wmissing-prototypes warnings. */
+void ecp_nistz256_point_mul_base(P256_POINT *r,
+                                 const BN_ULONG g_scalar[P256_LIMBS]);
+
+
+/* Functions implemented in assembly */
 /* Modular neg: res = -a mod P */
 void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
+
 
 /* One converted into the Montgomery domain */
 static const BN_ULONG ONE[P256_LIMBS] = {
@@ -226,87 +232,105 @@ static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
   return 1;
 }
 
-static int ecp_nistz256_points_mul(
-    const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-    const EC_POINT *p_, const BIGNUM *p_scalar, BN_CTX *ctx) {
-  (void)ctx;
-
-  assert((p_ != NULL) == (p_scalar != NULL));
-  assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
+void ecp_nistz256_point_mul_base(P256_POINT *r,
+                                 const BN_ULONG g_scalar[P256_LIMBS]) {
+#if !defined(NDEBUG)
+  int is_g_scalar_zero = 1;
+  for (size_t i = 0; i < P256_LIMBS; ++i) {
+    if (g_scalar[i] != 0) {
+      is_g_scalar_zero = 0;
+      break;
+    }
+  }
+  assert(!is_g_scalar_zero);
+#endif
 
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
-  alignas(32) union {
+  typedef union {
     P256_POINT p;
     P256_POINT_AFFINE a;
-  } t, p;
+  } P256_POINT_UNION;
 
+  alignas(32) P256_POINT_UNION p;
+  alignas(32) P256_POINT_UNION t;
 
-  if (g_scalar != NULL) {
-#if defined(NDEBUG)
-    (void)group;
-#endif
-    assert(BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
-    uint8_t p_str[33] = {0};
-    int i;
-    for (i = 0; i < g_scalar->top * BN_BYTES; i += BN_BYTES) {
-      BN_ULONG d = g_scalar->d[i / BN_BYTES];
+  uint8_t p_str[33] = {0};
+  int i;
+  for (i = 0; i < P256_LIMBS * BN_BYTES; i += BN_BYTES) {
+    BN_ULONG d = g_scalar[i / BN_BYTES];
 
-      p_str[i + 0] = d & 0xff;
-      p_str[i + 1] = (d >> 8) & 0xff;
-      p_str[i + 2] = (d >> 16) & 0xff;
-      p_str[i + 3] = (d >>= 24) & 0xff;
-      if (BN_BYTES == 8) {
-        d >>= 8;
-        p_str[i + 4] = d & 0xff;
-        p_str[i + 5] = (d >> 8) & 0xff;
-        p_str[i + 6] = (d >> 16) & 0xff;
-        p_str[i + 7] = (d >> 24) & 0xff;
-      }
+    p_str[i + 0] = d & 0xff;
+    p_str[i + 1] = (d >> 8) & 0xff;
+    p_str[i + 2] = (d >> 16) & 0xff;
+    p_str[i + 3] = (d >>= 24) & 0xff;
+    if (BN_BYTES == 8) {
+      d >>= 8;
+      p_str[i + 4] = d & 0xff;
+      p_str[i + 5] = (d >> 8) & 0xff;
+      p_str[i + 6] = (d >> 16) & 0xff;
+      p_str[i + 7] = (d >> 24) & 0xff;
     }
+  }
 
-    for (; i < (int) sizeof(p_str); i++) {
-      p_str[i] = 0;
-    }
+  /* First window */
+  unsigned wvalue = (p_str[0] << 1) & kMask;
+  unsigned index = kWindowSize;
 
-    /* First window */
-    unsigned wvalue = (p_str[0] << 1) & kMask;
-    unsigned index = kWindowSize;
+  wvalue = booth_recode_w7(wvalue);
+
+  const PRECOMP256_ROW *const precomputed_table =
+      (const PRECOMP256_ROW *)ecp_nistz256_precomputed;
+  ecp_nistz256_select_w7(&p.a, precomputed_table[0], wvalue >> 1);
+
+  ecp_nistz256_neg(p.p.Z, p.p.Y);
+  copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+
+  memcpy(p.p.Z, ONE, sizeof(ONE));
+
+  for (i = 1; i < 37; i++) {
+    unsigned off = (index - 1) / 8;
+    wvalue = p_str[off] | p_str[off + 1] << 8;
+    wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
+    index += kWindowSize;
 
     wvalue = booth_recode_w7(wvalue);
 
-    const PRECOMP256_ROW *const precomputed_table =
-        (const PRECOMP256_ROW *)ecp_nistz256_precomputed;
-    ecp_nistz256_select_w7(&p.a, precomputed_table[0], wvalue >> 1);
+    ecp_nistz256_select_w7(&t.a, precomputed_table[i], wvalue >> 1);
 
-    ecp_nistz256_neg(p.p.Z, p.p.Y);
-    copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+    ecp_nistz256_neg(t.p.Z, t.a.Y);
+    copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
 
-    memcpy(p.p.Z, ONE, sizeof(ONE));
+    ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+  }
 
-    for (i = 1; i < 37; i++) {
-      unsigned off = (index - 1) / 8;
-      wvalue = p_str[off] | p_str[off + 1] << 8;
-      wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
-      index += kWindowSize;
+  memcpy(r, &p.p, sizeof(p.p));
+}
 
-      wvalue = booth_recode_w7(wvalue);
+static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
+                                   const BIGNUM *g_scalar, const EC_POINT *p_,
+                                   const BIGNUM *p_scalar, BN_CTX *ctx) {
+  (void)ctx;
+  assert((p_ != NULL) == (p_scalar != NULL));
+  assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
 
-      ecp_nistz256_select_w7(&t.a, precomputed_table[i], wvalue >> 1);
+  alignas(32) P256_POINT p;
+  alignas(32) P256_POINT t;
 
-      ecp_nistz256_neg(t.p.Z, t.a.Y);
-      copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
-
-      ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+  if (g_scalar != NULL) {
+    BN_ULONG g_scalar_[P256_LIMBS];
+    for (size_t i = 0; i < P256_LIMBS; ++i) {
+      g_scalar_[i] = (i < (size_t)g_scalar->top) ? g_scalar->d[i] : 0;
     }
+    ecp_nistz256_point_mul_base(&p, g_scalar_);
   }
 
   const int p_is_infinity = g_scalar == NULL;
   if (p_scalar != NULL) {
-    P256_POINT *out = &t.p;
+    P256_POINT *out = &t;
     if (p_is_infinity) {
-      out = &p.p;
+      out = &p;
     }
 
     if (!ecp_nistz256_windowed_mul(out, p_, p_scalar)) {
@@ -314,14 +338,14 @@ static int ecp_nistz256_points_mul(
     }
 
     if (!p_is_infinity) {
-      ecp_nistz256_point_add(&p.p, &p.p, out);
+      ecp_nistz256_point_add(&p, &p, out);
     }
   }
 
   /* Not constant-time, but we're only operating on the public output. */
-  if (!bn_set_words(&r->X, p.p.X, P256_LIMBS) ||
-      !bn_set_words(&r->Y, p.p.Y, P256_LIMBS) ||
-      !bn_set_words(&r->Z, p.p.Z, P256_LIMBS)) {
+  if (!bn_set_words(&r->X, p.X, P256_LIMBS) ||
+      !bn_set_words(&r->Y, p.Y, P256_LIMBS) ||
+      !bn_set_words(&r->Z, p.Z, P256_LIMBS)) {
     return 0;
   }
 

@@ -12,8 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{CommonOps, EC_GROUP, Elem, ElemDecoded, Limb, LIMB_BITS, Mont,
-            PrivateKeyOps, PublicKeyOps, PublicScalarOps};
+use bssl;
+use core;
+use super::*;
+use super::{GFp_suite_b_public_twin_mult, Mont};
 
 
 macro_rules! p384_limbs {
@@ -65,7 +67,25 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv: GFp_p384_elem_inv,
+    point_mul_base_impl: p384_point_mul_base_impl,
 };
+
+
+fn p384_point_mul_base_impl(a: &Scalar) -> Result<Point, ()> {
+    // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
+    // shouldn't be used for this. TODO: Replace use of this with the use
+    // of an always-constant-time implementation.
+    let mut p = Point::new_at_infinity();
+    try!(bssl::map_result(unsafe {
+        GFp_suite_b_public_twin_mult(COMMON_OPS.ec_group,
+                                     p.xyz.as_mut_ptr(),
+                                     a.limbs.as_ptr(), // g_scalar
+                                     core::ptr::null(), // p_scalar
+                                     core::ptr::null(), // p_x
+                                     core::ptr::null()) // p_y
+    }));
+    Ok(p)
+}
 
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {

@@ -12,8 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{CommonOps, EC_GROUP, Elem, ElemDecoded, Limb, LIMB_BITS, Mont,
-            PrivateKeyOps, PublicKeyOps, PublicScalarOps};
+use super::*;
+use super::Mont;
 
 
 macro_rules! p256_limbs {
@@ -61,7 +61,17 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv: GFp_p256_elem_inv,
+    point_mul_base_impl: p256_point_mul_base_impl,
 };
+
+fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
+    let mut p = Point::new_at_infinity();
+    unsafe {
+        ecp_nistz256_point_mul_base(p.xyz.as_mut_ptr(),
+                                    g_scalar.limbs.as_ptr());
+    }
+    Ok(p)
+}
 
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
@@ -93,6 +103,9 @@ extern {
                              b: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn ecp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/);
+
+    fn ecp_nistz256_point_mul_base(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                                   g_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
     fn GFp_p256_scalar_inv_to_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                    a: *const Limb/*[COMMON_OPS.num_limbs]*/);

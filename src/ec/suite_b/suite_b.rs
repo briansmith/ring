@@ -45,11 +45,15 @@ fn verify_affine_point_is_on_the_curve(ops: &CommonOps, (x, y): (&Elem, &Elem))
 // verification.
 //
 // This function also verifies that the point is not at infinity.
-fn verify_jacobian_point_is_on_the_curve(
-        ops: &CommonOps, &(ref x, ref y, ref z): &(Elem, Elem, Elem))
-        -> Result<Elem, ()> {
+fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
+                                         -> Result<Elem, ()> {
+    let z = ops.point_z(&p);
+
     // Verify that the point is not at infinity.
     try!(ops.elem_verify_is_not_zero(&z));
+
+    let x = ops.point_x(&p);
+    let y = ops.point_y(&p);
 
     // We are given Jacobian coordinates (x, y, z). So, we have:
     //
@@ -98,7 +102,8 @@ fn verify_jacobian_point_is_on_the_curve(
     let z4_a = ops.elem_mul(&z4, &ops.a);
     let z6 = ops.elem_mul(&z4, &z2);
     let z6_b = ops.elem_mul(&z6, &ops.b);
-    try!(verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &z4_a, &z6_b));
+    try!(verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a,
+                                                    &z6_b));
     Ok(z2)
 }
 

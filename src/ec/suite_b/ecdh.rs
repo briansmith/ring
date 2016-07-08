@@ -119,7 +119,7 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     // information about their values can be recovered. This doesn't meet the
     // NSA guide's explicit requirement to "zeroize" them though.
     let my_private_key = private_key_as_scalar(private_key_ops, my_private_key);
-    let (x, y, z) =
+    let product =
         try!(var_point_mult(private_key_ops.common, &my_private_key,
                             &peer_public_key));
 
@@ -131,8 +131,7 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     // `big_endian_affine_from_jacobian` verifies that the result is not at
     // infinity and also does an extra check to verify that the point is on
     // the curve.
-    big_endian_affine_from_jacobian(private_key_ops, Some(out), None,
-                                    &(x, y, z))
+    big_endian_affine_from_jacobian(private_key_ops, Some(out), None, &product)
 
     // NSA Guide Step 5 & 6 are deferred to the caller. Again, we have a
     // pretty liberal interpretation of the NIST's spec's "Destroy" that
