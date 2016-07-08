@@ -1820,9 +1820,10 @@ static int ssl3_send_cert_verify(SSL *ssl) {
         goto err;
       }
 
+      const EVP_MD *md;
       uint8_t digest[EVP_MAX_MD_SIZE];
       size_t digest_len;
-      if (!ssl3_cert_verify_hash(ssl, digest, &digest_len,
+      if (!ssl3_cert_verify_hash(ssl, &md, digest, &digest_len,
                                  signature_algorithm)) {
         goto err;
       }
@@ -1832,6 +1833,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
       EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL);
       if (pctx == NULL ||
           !EVP_PKEY_sign_init(pctx) ||
+          !EVP_PKEY_CTX_set_signature_md(pctx, md) ||
           !EVP_PKEY_sign(pctx, ptr, &sig_len, digest, digest_len)) {
         EVP_PKEY_CTX_free(pctx);
         sign_result = ssl_private_key_failure;

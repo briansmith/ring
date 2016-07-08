@@ -1035,10 +1035,10 @@ int ssl3_hash_current_message(SSL *ssl);
 
 /* ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify hash into the
  * bytes pointed to by |out| and writes the number of bytes to |*out_len|. |out|
- * must have room for EVP_MAX_MD_SIZE bytes. It returns one on success and zero
- * on failure. */
-int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
-                          uint16_t signature_algorithm);
+ * must have room for |EVP_MAX_MD_SIZE| bytes. It sets |*out_md| to the hash
+ * function used. It returns one on success and zero on failure. */
+int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
+                          size_t *out_len, uint16_t signature_algorithm);
 
 int ssl3_send_finished(SSL *ssl, int a, int b);
 int ssl3_supports_cipher(const SSL_CIPHER *cipher);

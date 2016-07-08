@@ -377,13 +377,8 @@ static int ssl3_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
   return ret;
 }
 
-/* ssl3_cert_verify_hash is documented as needing EVP_MAX_MD_SIZE because that
- * is sufficient pre-TLS1.2 as well. */
-OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE > MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
-                       combined_tls_hash_fits_in_max);
-
-int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
-                          uint16_t signature_algorithm) {
+int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
+                          size_t *out_len, uint16_t signature_algorithm) {
   assert(ssl3_protocol_version(ssl) == SSL3_VERSION);
 
   if (signature_algorithm == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
@@ -392,11 +387,13 @@ int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
                            out + MD5_DIGEST_LENGTH) == 0) {
       return 0;
     }
+    *out_md = EVP_md5_sha1();
     *out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
   } else if (signature_algorithm == SSL_SIGN_ECDSA_SHA1) {
     if (ssl3_handshake_mac(ssl, NID_sha1, NULL, 0, out) == 0) {
       return 0;
     }
+    *out_md = EVP_sha1();
     *out_len = SHA_DIGEST_LENGTH;
   } else {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
