@@ -52,66 +52,73 @@ func (c *Conn) serverHandshake() error {
 	if err := hs.readClientHello(); err != nil {
 		return err
 	}
-	isResume, err := hs.processClientHello()
-	if err != nil {
-		return err
-	}
 
-	// For an overview of TLS handshaking, see https://tools.ietf.org/html/rfc5246#section-7.3
-	if isResume {
-		// The client has included a session ticket and so we do an abbreviated handshake.
-		if err := hs.doResumeHandshake(); err != nil {
+	if c.vers >= VersionTLS13 && enableTLS13Handshake {
+		if err := hs.doTLS13Handshake(); err != nil {
 			return err
 		}
-		if err := hs.establishKeys(); err != nil {
+	} else {
+		isResume, err := hs.processClientHello()
+		if err != nil {
 			return err
 		}
-		if c.config.Bugs.RenewTicketOnResume {
+
+		// For an overview of TLS handshaking, see https://tools.ietf.org/html/rfc5246#section-7.3
+		if isResume {
+			// The client has included a session ticket and so we do an abbreviated handshake.
+			if err := hs.doResumeHandshake(); err != nil {
+				return err
+			}
+			if err := hs.establishKeys(); err != nil {
+				return err
+			}
+			if c.config.Bugs.RenewTicketOnResume {
+				if err := hs.sendSessionTicket(); err != nil {
+					return err
+				}
+			}
+			if err := hs.sendFinished(c.firstFinished[:]); err != nil {
+				return err
+			}
+			// Most retransmits are triggered by a timeout, but the final
+			// leg of the handshake is retransmited upon re-receiving a
+			// Finished.
+			if err := c.simulatePacketLoss(func() {
+				c.writeRecord(recordTypeHandshake, hs.finishedBytes)
+				c.flushHandshake()
+			}); err != nil {
+				return err
+			}
+			if err := hs.readFinished(nil, isResume); err != nil {
+				return err
+			}
+			c.didResume = true
+		} else {
+			// The client didn't include a session ticket, or it wasn't
+			// valid so we do a full handshake.
+			if err := hs.doFullHandshake(); err != nil {
+				return err
+			}
+			if err := hs.establishKeys(); err != nil {
+				return err
+			}
+			if err := hs.readFinished(c.firstFinished[:], isResume); err != nil {
+				return err
+			}
+			if c.config.Bugs.AlertBeforeFalseStartTest != 0 {
+				c.sendAlert(c.config.Bugs.AlertBeforeFalseStartTest)
+			}
+			if c.config.Bugs.ExpectFalseStart {
+				if err := c.readRecord(recordTypeApplicationData); err != nil {
+					return fmt.Errorf("tls: peer did not false start: %s", err)
+				}
+			}
 			if err := hs.sendSessionTicket(); err != nil {
 				return err
 			}
-		}
-		if err := hs.sendFinished(c.firstFinished[:]); err != nil {
-			return err
-		}
-		// Most retransmits are triggered by a timeout, but the final
-		// leg of the handshake is retransmited upon re-receiving a
-		// Finished.
-		if err := c.simulatePacketLoss(func() {
-			c.writeRecord(recordTypeHandshake, hs.finishedBytes)
-			c.flushHandshake()
-		}); err != nil {
-			return err
-		}
-		if err := hs.readFinished(nil, isResume); err != nil {
-			return err
-		}
-		c.didResume = true
-	} else {
-		// The client didn't include a session ticket, or it wasn't
-		// valid so we do a full handshake.
-		if err := hs.doFullHandshake(); err != nil {
-			return err
-		}
-		if err := hs.establishKeys(); err != nil {
-			return err
-		}
-		if err := hs.readFinished(c.firstFinished[:], isResume); err != nil {
-			return err
-		}
-		if c.config.Bugs.AlertBeforeFalseStartTest != 0 {
-			c.sendAlert(c.config.Bugs.AlertBeforeFalseStartTest)
-		}
-		if c.config.Bugs.ExpectFalseStart {
-			if err := c.readRecord(recordTypeApplicationData); err != nil {
-				return fmt.Errorf("tls: peer did not false start: %s", err)
+			if err := hs.sendFinished(nil); err != nil {
+				return err
 			}
-		}
-		if err := hs.sendSessionTicket(); err != nil {
-			return err
-		}
-		if err := hs.sendFinished(nil); err != nil {
-			return err
 		}
 	}
 	c.handshakeComplete = true
@@ -249,6 +256,234 @@ func (hs *serverHandshakeState) readClientHello() error {
 	return nil
 }
 
+func (hs *serverHandshakeState) doTLS13Handshake() error {
+	c := hs.c
+	config := c.config
+
+	hs.hello = &serverHelloMsg{
+		isDTLS: c.isDTLS,
+		vers:   c.vers,
+	}
+
+	hs.hello.random = make([]byte, 32)
+	if _, err := io.ReadFull(config.rand(), hs.hello.random); err != nil {
+		c.sendAlert(alertInternalError)
+		return err
+	}
+
+	// TLS 1.3 forbids clients from advertising any non-null compression.
+	if len(hs.clientHello.compressionMethods) != 1 || hs.clientHello.compressionMethods[0] != compressionNone {
+		return errors.New("tls: client sent compression method other than null for TLS 1.3")
+	}
+
+	// Prepare an EncryptedExtensions message, but do not send it yet.
+	encryptedExtensions := new(encryptedExtensionsMsg)
+	if err := hs.processClientExtensions(&encryptedExtensions.extensions); err != nil {
+		return err
+	}
+
+	supportedCurve := false
+	var selectedCurve CurveID
+	preferredCurves := config.curvePreferences()
+Curves:
+	for _, curve := range hs.clientHello.supportedCurves {
+		for _, supported := range preferredCurves {
+			if supported == curve {
+				supportedCurve = true
+				selectedCurve = curve
+				break Curves
+			}
+		}
+	}
+
+	_, ecdsaOk := hs.cert.PrivateKey.(*ecdsa.PrivateKey)
+
+	// TODO(davidben): Implement PSK support.
+	pskOk := false
+
+	// Select the cipher suite.
+	var preferenceList, supportedList []uint16
+	if config.PreferServerCipherSuites {
+		preferenceList = config.cipherSuites()
+		supportedList = hs.clientHello.cipherSuites
+	} else {
+		preferenceList = hs.clientHello.cipherSuites
+		supportedList = config.cipherSuites()
+	}
+
+	for _, id := range preferenceList {
+		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, supportedCurve, ecdsaOk, pskOk); hs.suite != nil {
+			break
+		}
+	}
+
+	if hs.suite == nil {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: no cipher suite supported by both client and server")
+	}
+
+	hs.hello.cipherSuite = hs.suite.id
+	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
+	hs.finishedHash.discardHandshakeBuffer()
+	hs.writeClientHash(hs.clientHello.marshal())
+
+	// Resolve PSK and compute the early secret.
+	var psk []byte
+	if hs.suite.flags&suitePSK != 0 {
+		return errors.New("tls: PSK ciphers not implemented for TLS 1.3")
+	} else {
+		psk = hs.finishedHash.zeroSecret()
+		hs.finishedHash.setResumptionContext(hs.finishedHash.zeroSecret())
+	}
+
+	earlySecret := hs.finishedHash.extractKey(hs.finishedHash.zeroSecret(), psk)
+
+	// Resolve ECDHE and compute the handshake secret.
+	var ecdheSecret []byte
+	if hs.suite.flags&suiteECDHE != 0 {
+		// Look for the key share corresponding to our selected curve.
+		var selectedKeyShare *keyShareEntry
+		for i := range hs.clientHello.keyShares {
+			if hs.clientHello.keyShares[i].group == selectedCurve {
+				selectedKeyShare = &hs.clientHello.keyShares[i]
+				break
+			}
+		}
+
+		if selectedKeyShare == nil {
+			// TODO(davidben,nharper): Implement HelloRetryRequest.
+			return errors.New("tls: HelloRetryRequest not implemented")
+		}
+
+		// Once a curve has been selected and a key share identified,
+		// the server needs to generate a public value and send it in
+		// the ServerHello.
+		curve, ok := curveForCurveID(selectedKeyShare.group)
+		if !ok {
+			panic("tls: server failed to look up curve ID")
+		}
+		var publicKey []byte
+		var err error
+		publicKey, ecdheSecret, err = curve.accept(config.rand(), selectedKeyShare.keyExchange)
+		if err != nil {
+			c.sendAlert(alertHandshakeFailure)
+			return err
+		}
+		hs.hello.hasKeyShare = true
+		hs.hello.keyShare = keyShareEntry{
+			group:       selectedKeyShare.group,
+			keyExchange: publicKey,
+		}
+	} else {
+		ecdheSecret = hs.finishedHash.zeroSecret()
+	}
+
+	// Send unencrypted ServerHello.
+	hs.writeServerHash(hs.hello.marshal())
+	c.writeRecord(recordTypeHandshake, hs.hello.marshal())
+	c.flushHandshake()
+
+	// Compute the handshake secret.
+	handshakeSecret := hs.finishedHash.extractKey(earlySecret, ecdheSecret)
+
+	// Switch to handshake traffic keys.
+	handshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, handshakeTrafficLabel)
+	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite), c.vers)
+	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite), c.vers)
+
+	// Send EncryptedExtensions.
+	hs.writeServerHash(encryptedExtensions.marshal())
+	c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal())
+
+	if hs.suite.flags&suitePSK == 0 {
+		if config.ClientAuth >= RequestClientCert {
+			// TODO(davidben): Implement client auth.
+			return errors.New("tls: client auth not implemented")
+		}
+
+		certMsg := &certificateMsg{
+			hasRequestContext: true,
+		}
+		if !config.Bugs.EmptyCertificateList {
+			certMsg.certificates = hs.cert.Certificate
+		}
+		hs.writeServerHash(certMsg.marshal())
+		c.writeRecord(recordTypeHandshake, certMsg.marshal())
+
+		certVerify := &certificateVerifyMsg{
+			hasSignatureAlgorithm: true,
+		}
+
+		// Determine the hash to sign.
+		privKey := hs.cert.PrivateKey
+
+		var err error
+		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
+		if err != nil {
+			c.sendAlert(alertInternalError)
+			return err
+		}
+
+		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
+		certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+		if err != nil {
+			c.sendAlert(alertInternalError)
+			return err
+		}
+
+		hs.writeServerHash(certVerify.marshal())
+		c.writeRecord(recordTypeHandshake, certVerify.marshal())
+	}
+
+	finished := new(finishedMsg)
+	finished.verifyData = hs.finishedHash.serverSum(handshakeTrafficSecret)
+	if config.Bugs.BadFinished {
+		finished.verifyData[0]++
+	}
+	hs.writeServerHash(finished.marshal())
+	c.writeRecord(recordTypeHandshake, finished.marshal())
+	c.flushHandshake()
+
+	// The various secrets do not incorporate the client's final leg, so
+	// derive them now before updating the handshake context.
+	masterSecret := hs.finishedHash.extractKey(handshakeSecret, hs.finishedHash.zeroSecret())
+	trafficSecret := hs.finishedHash.deriveSecret(masterSecret, applicationTrafficLabel)
+
+	// If we requested a client certificate, then the client must send a
+	// certificate message, even if it's empty.
+	if config.ClientAuth >= RequestClientCert {
+		return errors.New("tls: client certificates not implemented")
+	}
+
+	// Read the client Finished message.
+	msg, err := c.readHandshake()
+	if err != nil {
+		return err
+	}
+	clientFinished, ok := msg.(*finishedMsg)
+	if !ok {
+		c.sendAlert(alertUnexpectedMessage)
+		return unexpectedMessageError(clientFinished, msg)
+	}
+
+	verify := hs.finishedHash.clientSum(handshakeTrafficSecret)
+	if len(verify) != len(clientFinished.verifyData) ||
+		subtle.ConstantTimeCompare(verify, clientFinished.verifyData) != 1 {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: client's Finished message was incorrect")
+	}
+
+	// Switch to application data keys.
+	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
+	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
+
+	// TODO(davidben): Derive and save the exporter master secret for key exporters. Swap out the masterSecret field.
+	// TODO(davidben): Derive and save the resumption master secret for receiving tickets.
+	// TODO(davidben): Save the traffic secret for KeyUpdate.
+	c.cipherSuite = hs.suite
+	return nil
+}
+
 // processClientHello processes the ClientHello message from the client and
 // decides whether we will perform session resumption.
 func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) {
@@ -341,7 +576,7 @@ Curves:
 	}
 
 	for _, id := range preferenceList {
-		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, hs.ellipticOk, hs.ecdsaOk); hs.suite != nil {
+		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, hs.ellipticOk, hs.ecdsaOk, true); hs.suite != nil {
 			break
 		}
 	}
@@ -360,23 +595,25 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	config := hs.c.config
 	c := hs.c
 
-	if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("tls: renegotiation mismatch")
-	}
-
-	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
-		serverExtensions.secureRenegotiation = append(serverExtensions.secureRenegotiation, c.clientVerify...)
-		serverExtensions.secureRenegotiation = append(serverExtensions.secureRenegotiation, c.serverVerify...)
-		if c.config.Bugs.BadRenegotiationInfo {
-			serverExtensions.secureRenegotiation[0] ^= 0x80
+	if c.vers < VersionTLS13 || !enableTLS13Handshake {
+		if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: renegotiation mismatch")
 		}
-	} else {
-		serverExtensions.secureRenegotiation = hs.clientHello.secureRenegotiation
-	}
 
-	if c.noRenegotiationInfo() {
-		serverExtensions.secureRenegotiation = nil
+		if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
+			serverExtensions.secureRenegotiation = append(serverExtensions.secureRenegotiation, c.clientVerify...)
+			serverExtensions.secureRenegotiation = append(serverExtensions.secureRenegotiation, c.serverVerify...)
+			if c.config.Bugs.BadRenegotiationInfo {
+				serverExtensions.secureRenegotiation[0] ^= 0x80
+			}
+		} else {
+			serverExtensions.secureRenegotiation = hs.clientHello.secureRenegotiation
+		}
+
+		if c.noRenegotiationInfo() {
+			serverExtensions.secureRenegotiation = nil
+		}
 	}
 
 	serverExtensions.duplicateExtension = c.config.Bugs.DuplicateExtension
@@ -408,22 +645,25 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 			c.usedALPN = true
 		}
 	}
-	if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
-		// Although sending an empty NPN extension is reasonable, Firefox has
-		// had a bug around this. Best to send nothing at all if
-		// config.NextProtos is empty. See
-		// https://code.google.com/p/go/issues/detail?id=5445.
-		if hs.clientHello.nextProtoNeg && len(config.NextProtos) > 0 {
-			serverExtensions.nextProtoNeg = true
-			serverExtensions.nextProtos = config.NextProtos
-			serverExtensions.npnLast = config.Bugs.SwapNPNAndALPN
+
+	if c.vers < VersionTLS13 || !enableTLS13Handshake {
+		if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
+			// Although sending an empty NPN extension is reasonable, Firefox has
+			// had a bug around this. Best to send nothing at all if
+			// config.NextProtos is empty. See
+			// https://code.google.com/p/go/issues/detail?id=5445.
+			if hs.clientHello.nextProtoNeg && len(config.NextProtos) > 0 {
+				serverExtensions.nextProtoNeg = true
+				serverExtensions.nextProtos = config.NextProtos
+				serverExtensions.npnLast = config.Bugs.SwapNPNAndALPN
+			}
 		}
-	}
 
-	serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
+		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
 
-	if hs.clientHello.channelIDSupported && config.RequestChannelID {
-		serverExtensions.channelIDRequested = true
+		if hs.clientHello.channelIDSupported && config.RequestChannelID {
+			serverExtensions.channelIDRequested = true
+		}
 	}
 
 	if hs.clientHello.srtpProtectionProfiles != nil {
@@ -496,7 +736,7 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 	}
 
 	// Check that we also support the ciphersuite from the session.
-	hs.suite = c.tryCipherSuite(hs.sessionState.cipherSuite, c.config.cipherSuites(), hs.sessionState.vers, hs.ellipticOk, hs.ecdsaOk)
+	hs.suite = c.tryCipherSuite(hs.sessionState.cipherSuite, c.config.cipherSuites(), hs.sessionState.vers, hs.ellipticOk, hs.ecdsaOk, true)
 	if hs.suite == nil {
 		return false
 	}
@@ -1048,7 +1288,7 @@ func (hs *serverHandshakeState) writeHash(msg []byte, seqno uint16) {
 
 // tryCipherSuite returns a cipherSuite with the given id if that cipher suite
 // is acceptable to use.
-func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version uint16, ellipticOk, ecdsaOk bool) *cipherSuite {
+func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version uint16, ellipticOk, ecdsaOk, pskOk bool) *cipherSuite {
 	for _, supported := range supportedCipherSuites {
 		if id == supported {
 			var candidate *cipherSuite
@@ -1065,6 +1305,9 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 			// Don't select a ciphersuite which we can't
 			// support for this client.
 			if !c.config.Bugs.EnableAllCiphers {
+				if (candidate.flags&suitePSK != 0) && !pskOk {
+					continue
+				}
 				if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
 					continue
 				}
@@ -1072,6 +1315,9 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 					continue
 				}
 				if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
+					continue
+				}
+				if version >= VersionTLS13 && candidate.flags&suiteTLS13 == 0 {
 					continue
 				}
 				if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
