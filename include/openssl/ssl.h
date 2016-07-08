@@ -3212,14 +3212,6 @@ OPENSSL_EXPORT void SSL_load_error_strings(void);
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
                                                const char *profiles);
 
-/* SSL_get_server_key_exchange_hash, on a client, returns the hash the server
- * used to sign the ServerKeyExchange in TLS 1.2. If not applicable, it returns
- * |TLSEXT_hash_none|.
- *
- * TODO(davidben): Remove once Chromium switches to
- * |SSL_get_peer_signature_algorithm|. */
-OPENSSL_EXPORT uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl);
-
 /* SSL_set_tlsext_use_srtp calls |SSL_set_srtp_profiles|. It returns zero on
  * success and one on failure.
  *

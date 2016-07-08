@@ -2716,10 +2716,6 @@ uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
   return ssl->s3->tmp.peer_signature_algorithm;
 }
 
-uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl) {
-  return (uint8_t) (SSL_get_peer_signature_algorithm(ssl) >> 8);
-}
-
 size_t SSL_get_client_random(const SSL *ssl, uint8_t *out, size_t max_out) {
   if (max_out == 0) {
     return sizeof(ssl->s3->client_random);
