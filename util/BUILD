@@ -48,11 +48,6 @@ boringssl_copts = [
     # This is needed on Linux systems (at least) to get rwlock in pthread.
     "-D_XOPEN_SOURCE=700",
 
-    # Exported symbols are annotated specifically in header files. This option
-    # sets the default for all other symbols to be hidden. (Applies only to
-    # shared-library builds.)
-    "-fvisibility=hidden",
-
     # This list of warnings should match those in the top-level CMakeLists.txt.
     "-Wall",
     "-Werror",
