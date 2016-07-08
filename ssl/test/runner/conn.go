@@ -945,9 +945,18 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		return c.dtlsWriteRecord(typ, data)
 	}
 
-	if c.config.Bugs.PackHandshakeFlight && typ == recordTypeHandshake {
-		c.pendingFlight.Write(data)
-		return len(data), nil
+	if typ == recordTypeHandshake {
+		if c.config.Bugs.SendHelloRequestBeforeEveryHandshakeMessage {
+			newData := make([]byte, 0, 4+len(data))
+			newData = append(newData, typeHelloRequest, 0, 0, 0)
+			newData = append(newData, data...)
+			data = newData
+		}
+
+		if c.config.Bugs.PackHandshakeFlight {
+			c.pendingFlight.Write(data)
+			return len(data), nil
+		}
 	}
 
 	return c.doWriteRecord(typ, data)

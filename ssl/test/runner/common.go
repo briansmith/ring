@@ -842,6 +842,11 @@ type ProtocolBugs struct {
 	// data record. This only makes sense for a server.
 	SendHelloRequestBeforeEveryAppDataRecord bool
 
+	// SendHelloRequestBeforeEveryHandshakeMessage, if true, causes a
+	// HelloRequest handshake message to be sent before each handshake
+	// message. This only makes sense for a server.
+	SendHelloRequestBeforeEveryHandshakeMessage bool
+
 	// RequireDHPublicValueLen causes a fatal error if the length (in
 	// bytes) of the server's Diffie-Hellman public value is not equal to
 	// this.
