@@ -291,13 +291,22 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
   memcpy(r, &p.p, sizeof(p.p));
 }
 
-static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
+/* MSVC warns us that it's dangerous to rely on the precondition that one or
+ * both of |g_scalar| or |p_scalar} must be non-NULL. But, we rely on it
+ * anyway. */
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4701)
+#endif
+
+static int ecp_nistz256_points_mul(const EC_GROUP *group, BN_ULONG r_xyz[],
                                    const BN_ULONG g_scalar[P256_LIMBS],
                                    const BN_ULONG p_scalar[P256_LIMBS],
                                    const BN_ULONG p_x[P256_LIMBS],
                                    const BN_ULONG p_y[P256_LIMBS]) {
   (void)group;
 
+  assert((g_scalar != NULL) || (p_scalar != NULL));
   assert((p_scalar != NULL) == (p_x != NULL));
   assert((p_scalar != NULL) == (p_y != NULL));
 
@@ -322,15 +331,15 @@ static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-  /* Not constant-time, but we're only operating on the public output. */
-  if (!bn_set_words(&r->X, p.X, P256_LIMBS) ||
-      !bn_set_words(&r->Y, p.Y, P256_LIMBS) ||
-      !bn_set_words(&r->Z, p.Z, P256_LIMBS)) {
-    return 0;
-  }
+  memcpy(r_xyz, &p, sizeof(p));
 
   return 1;
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
 
 const EC_METHOD EC_GFp_nistz256_method = {
   ecp_nistz256_points_mul,

@@ -245,9 +245,9 @@ err:
 }
 
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BN_ULONG g_scalar_[],
-                const BN_ULONG p_scalar_[], const BN_ULONG p_x[],
-                const BN_ULONG p_y[]) {
+int ec_wNAF_mul(const EC_GROUP *group, BN_ULONG r_xyz[],
+                const BN_ULONG g_scalar_[], const BN_ULONG p_scalar_[],
+                const BN_ULONG p_x[], const BN_ULONG p_y[]) {
   assert((p_scalar_ == NULL) == (p_x == NULL));
   assert((p_scalar_ == NULL) == (p_y == NULL));
 
@@ -269,6 +269,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BN_ULONG g_scalar_[],
   EC_POINT ***val_sub = NULL; /* pointers to sub-arrays of 'val' */
   int ret = 0;
 
+  EC_POINT *r = NULL;
   BIGNUM *g_scalar = NULL;
   EC_POINT *p_new = NULL;
   const BIGNUM *p_scalar = NULL;
@@ -277,6 +278,11 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BN_ULONG g_scalar_[],
   ctx = BN_CTX_new();
   if (ctx == NULL) {
     return 0;
+  }
+
+  r = EC_POINT_new(group);
+  if (r == NULL) {
+    goto err;
   }
 
   size_t num_limbs =
@@ -469,9 +475,19 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BN_ULONG g_scalar_[],
     goto err;
   }
 
+  BN_ULONG *x_out = r_xyz;
+  BN_ULONG *y_out = x_out + num_limbs;
+  BN_ULONG *z_out = y_out + num_limbs;
+  if (!bn_get_words(x_out, &r->X, num_limbs) ||
+      !bn_get_words(y_out, &r->Y, num_limbs) ||
+      !bn_get_words(z_out, &r->Z, num_limbs)) {
+    goto err;
+  }
+
   ret = 1;
 
 err:
+  EC_POINT_free(r);
   EC_POINT_free(p_new);
   BN_CTX_free(ctx);
   EC_POINT_free(tmp);

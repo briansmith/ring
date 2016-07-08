@@ -33,34 +33,5 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
   assert(g_scalar != NULL || p_scalar != NULL);
   assert((p_scalar == NULL) == (p_x == NULL));
   assert((p_scalar == NULL) == (p_y == NULL));
-
-  int ret = 0;
-
-  EC_POINT *result = NULL;
-
-  result = EC_POINT_new(group);
-  if (result == NULL) {
-    goto err;
-  }
-
-  size_t num_limbs =
-    (ec_GFp_simple_group_get_degree(group) + (GFp_LIMB_BITS - 1)) /
-    GFp_LIMB_BITS;
-
-  BN_ULONG *x_out = xyz_out;
-  BN_ULONG *y_out = x_out + num_limbs;
-  BN_ULONG *z_out = y_out + num_limbs;
-
-  if (!group->meth->mul(group, result, g_scalar, p_scalar, p_x, p_y) ||
-      !bn_get_words(x_out, &result->X, num_limbs) ||
-      !bn_get_words(y_out, &result->Y, num_limbs) ||
-      !bn_get_words(z_out, &result->Z, num_limbs)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  EC_POINT_free(result);
-  return ret;
+  return group->meth->mul(group, xyz_out, g_scalar, p_scalar, p_x, p_y);
 }
