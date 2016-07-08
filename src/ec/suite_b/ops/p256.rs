@@ -62,6 +62,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv: GFp_p256_elem_inv,
     point_mul_base_impl: p256_point_mul_base_impl,
+    point_mul_impl: p256_point_mul_impl,
 };
 
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
@@ -71,6 +72,16 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
                                     g_scalar.limbs.as_ptr());
     }
     Ok(p)
+}
+
+fn p256_point_mul_impl(p_scalar: &Scalar, &(ref p_x, ref p_y): &(Elem, Elem))
+                       -> Result<Point, ()> {
+    let mut r = Point::new_at_infinity();
+    unsafe {
+        ecp_nistz256_point_mul(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),
+                               p_x.limbs.as_ptr(), p_y.limbs.as_ptr());
+    }
+    Ok(r)
 }
 
 
@@ -104,6 +115,10 @@ extern {
     fn ecp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
+    fn ecp_nistz256_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                              p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
+                              p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,
+                              p_y: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn ecp_nistz256_point_mul_base(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                                    g_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/);
 

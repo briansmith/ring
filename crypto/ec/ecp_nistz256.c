@@ -42,6 +42,9 @@ typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 void ecp_nistz256_point_mul_base(P256_POINT *r,
                                  const BN_ULONG g_scalar[P256_LIMBS]);
+void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
+                            const BN_ULONG p_x[P256_LIMBS],
+                            const BN_ULONG p_y[P256_LIMBS]);
 
 
 /* Functions implemented in assembly */
@@ -105,25 +108,10 @@ void ecp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
 
 
-/* ecp_nistz256_bignum_to_field_elem copies the contents of |in| to |out| and
- * returns one if it fits. Otherwise it returns zero. */
-static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
-                                             const BIGNUM *in) {
-  if ((size_t)in->top > P256_LIMBS) {
-    return 0;
-  }
-
-  memset(out, 0, sizeof(BN_ULONG) * P256_LIMBS);
-  memcpy(out, in->d, sizeof(BN_ULONG) * in->top);
-  return 1;
-}
-
 /* r = p * p_scalar */
-static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
-                                     const BIGNUM *p_scalar) {
-  assert(p != NULL);
-  assert(p_scalar != NULL);
-
+void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
+                            const BN_ULONG p_x[P256_LIMBS],
+                            const BN_ULONG p_y[P256_LIMBS]) {
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
@@ -134,8 +122,8 @@ static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
   uint8_t p_str[33];
 
   int j;
-  for (j = 0; j < p_scalar->top * BN_BYTES; j += BN_BYTES) {
-    BN_ULONG d = p_scalar->d[j / BN_BYTES];
+  for (j = 0; j < P256_LIMBS * BN_BYTES; j += BN_BYTES) {
+    BN_ULONG d = p_scalar[j / BN_BYTES];
 
     p_str[j + 0] = d & 0xff;
     p_str[j + 1] = (d >> 8) & 0xff;
@@ -159,12 +147,9 @@ static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
    * table. */
   P256_POINT *row = table;
 
-  if (!ecp_nistz256_bignum_to_field_elem(row[1 - 1].X, &p->X) ||
-      !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Y, &p->Y) ||
-      !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Z, &p->Z)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    return 0;
-  }
+  memcpy(row[1 - 1].X, p_x, P256_LIMBS * BN_BYTES);
+  memcpy(row[1 - 1].Y, p_y, P256_LIMBS * BN_BYTES);
+  memcpy(row[1 - 1].Z, ONE, P256_LIMBS * BN_BYTES);
 
   ecp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
   ecp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
@@ -228,8 +213,6 @@ static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
   copy_conditional(h.Y, tmp, wvalue & 1);
 
   ecp_nistz256_point_add(r, r, &h);
-
-  return 1;
 }
 
 void ecp_nistz256_point_mul_base(P256_POINT *r,
@@ -309,21 +292,20 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
 }
 
 static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
-                                   const BIGNUM *g_scalar, const EC_POINT *p_,
-                                   const BIGNUM *p_scalar, BN_CTX *ctx) {
-  (void)ctx;
-  assert((p_ != NULL) == (p_scalar != NULL));
-  assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
+                                   const BN_ULONG g_scalar[P256_LIMBS],
+                                   const BN_ULONG p_scalar[P256_LIMBS],
+                                   const BN_ULONG p_x[P256_LIMBS],
+                                   const BN_ULONG p_y[P256_LIMBS]) {
+  (void)group;
+
+  assert((p_scalar != NULL) == (p_x != NULL));
+  assert((p_scalar != NULL) == (p_y != NULL));
 
   alignas(32) P256_POINT p;
   alignas(32) P256_POINT t;
 
   if (g_scalar != NULL) {
-    BN_ULONG g_scalar_[P256_LIMBS];
-    for (size_t i = 0; i < P256_LIMBS; ++i) {
-      g_scalar_[i] = (i < (size_t)g_scalar->top) ? g_scalar->d[i] : 0;
-    }
-    ecp_nistz256_point_mul_base(&p, g_scalar_);
+    ecp_nistz256_point_mul_base(&p, g_scalar);
   }
 
   const int p_is_infinity = g_scalar == NULL;
@@ -333,9 +315,7 @@ static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
       out = &p;
     }
 
-    if (!ecp_nistz256_windowed_mul(out, p_, p_scalar)) {
-      return 0;
-    }
+    ecp_nistz256_point_mul(out, p_scalar, p_x, p_y);
 
     if (!p_is_infinity) {
       ecp_nistz256_point_add(&p, &p, out);

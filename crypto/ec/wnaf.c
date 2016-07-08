@@ -216,9 +216,42 @@ static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
   return r;
 }
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-                const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
+static EC_POINT *make_point(const EC_GROUP *group, const BN_ULONG p_x[],
+                            const BN_ULONG p_y[]) {
+  EC_POINT *result = EC_POINT_new(group);
+  if (result == NULL) {
+    return NULL;
+  }
+
+  int ok = 0;
+
+  size_t num_limbs =
+    (ec_GFp_simple_group_get_degree(group) + (BN_BITS2 - 1)) / BN_BITS2;
+
+  if (!bn_set_words(&result->X, p_x, num_limbs) ||
+      !bn_set_words(&result->Y, p_y, num_limbs) ||
+      !BN_copy(&result->Z, &group->one)) {
+    goto err;
+  }
+
+  ok = 1;
+
+err:
+  if (!ok) {
+    EC_POINT_free(result);
+    result = NULL;
+  }
+  return result;
+}
+
+
+int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BN_ULONG g_scalar_[],
+                const BN_ULONG p_scalar_[], const BN_ULONG p_x[],
+                const BN_ULONG p_y[]) {
+  assert((p_scalar_ == NULL) == (p_x == NULL));
+  assert((p_scalar_ == NULL) == (p_y == NULL));
+
+  BN_CTX *ctx = NULL;
   const EC_POINT *generator = NULL;
   EC_POINT *tmp = NULL;
   size_t total_num;
@@ -236,11 +269,39 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   EC_POINT ***val_sub = NULL; /* pointers to sub-arrays of 'val' */
   int ret = 0;
 
+  BIGNUM *g_scalar = NULL;
+  EC_POINT *p_new = NULL;
+  const BIGNUM *p_scalar = NULL;
+  const EC_POINT *p = NULL;
+
+  ctx = BN_CTX_new();
   if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
+    return 0;
+  }
+
+  size_t num_limbs =
+    (ec_GFp_simple_group_get_degree(group) + (BN_BITS2 - 1)) / BN_BITS2;
+
+  if (g_scalar_ != NULL) {
+    g_scalar = BN_CTX_get(ctx);
+    if (g_scalar == NULL ||
+        !bn_set_words(g_scalar, g_scalar_, num_limbs)) {
       goto err;
     }
+  }
+
+  if (p_scalar_ != NULL) {
+    BIGNUM *p_scalar_new = BN_CTX_get(ctx);
+    if (p_scalar_new == NULL ||
+        !bn_set_words(p_scalar_new, p_scalar_, num_limbs)) {
+      goto err;
+    }
+    p_scalar = p_scalar_new;
+    p_new = make_point(group, p_x, p_y);
+    if (p_new == NULL) {
+      goto err;
+    }
+    p = p_new;
   }
 
   /* TODO: This function used to take |points| and |scalars| as arrays of
@@ -411,7 +472,8 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   ret = 1;
 
 err:
-  BN_CTX_free(new_ctx);
+  EC_POINT_free(p_new);
+  BN_CTX_free(ctx);
   EC_POINT_free(tmp);
   OPENSSL_free(wsize);
   OPENSSL_free(wNAF_len);

@@ -21,77 +21,26 @@
 
 /* Declarations to avoid -Wmissing-prototypes warnings. */
 int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
-                                 const BN_ULONG *g_scalar, const BN_ULONG *p_x,
-                                 const BN_ULONG *p_y, const BN_ULONG *p_scalar);
+                                 const BN_ULONG *g_scalar,
+                                 const BN_ULONG *p_scalar,
+                                 const BN_ULONG p_x[], const BN_ULONG p_y[]);
 
-
-static EC_POINT *make_point(const EC_GROUP *group,
-                            const GFp_Limb *peer_public_key_x,
-                            const GFp_Limb *peer_public_key_y) {
-  BIGNUM x;
-  BN_init(&x);
-
-  BIGNUM y;
-  BN_init(&y);
-
-  int ok = 0;
-
-  EC_POINT *result = EC_POINT_new(group);
-  if (result == NULL) {
-    goto err;
-  }
-
-  size_t num_limbs =
-    (ec_GFp_simple_group_get_degree(group) + (GFp_LIMB_BITS - 1)) /
-    GFp_LIMB_BITS;
-
-  if (!bn_set_words(&result->X, peer_public_key_x, num_limbs) ||
-      !bn_set_words(&result->Y, peer_public_key_y, num_limbs) ||
-      !BN_copy(&result->Z, &group->one)) {
-    goto err;
-  }
-
-  ok = 1;
-
-err:
-  BN_free(&x);
-  BN_free(&y);
-  if (!ok) {
-    EC_POINT_free(result);
-    result = NULL;
-  }
-  return result;
-}
 
 int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
                                  const BN_ULONG *g_scalar,
-                                 const BN_ULONG *p_scalar, const BN_ULONG *p_x,
-                                 const BN_ULONG *p_y) {
+                                 const BN_ULONG *p_scalar,
+                                 const BN_ULONG p_x[], const BN_ULONG p_y[]) {
   assert(g_scalar != NULL || p_scalar != NULL);
   assert((p_scalar == NULL) == (p_x == NULL));
   assert((p_scalar == NULL) == (p_y == NULL));
 
-  BIGNUM g_scalar_bn;
-  BN_init(&g_scalar_bn);
-
-  BIGNUM p_scalar_bn;
-  BN_init(&p_scalar_bn);
-
   int ret = 0;
 
   EC_POINT *result = NULL;
-  EC_POINT *p = NULL;
 
   result = EC_POINT_new(group);
   if (result == NULL) {
     goto err;
-  }
-
-  if (p_scalar != NULL) {
-    p = make_point(group, p_x, p_y);
-    if (p == NULL) {
-      goto err;
-    }
   }
 
   size_t num_limbs =
@@ -102,11 +51,7 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
   BN_ULONG *y_out = x_out + num_limbs;
   BN_ULONG *z_out = y_out + num_limbs;
 
-  if ((g_scalar != NULL && !bn_set_words(&g_scalar_bn, g_scalar, num_limbs)) ||
-      (p_scalar != NULL && !bn_set_words(&p_scalar_bn, p_scalar, num_limbs)) ||
-      !group->meth->mul(group, result,
-                        (g_scalar != NULL) ? &g_scalar_bn : NULL, p,
-                        (p_scalar != NULL) ? &p_scalar_bn : NULL, NULL) ||
+  if (!group->meth->mul(group, result, g_scalar, p_scalar, p_x, p_y) ||
       !bn_get_words(x_out, &result->X, num_limbs) ||
       !bn_get_words(y_out, &result->Y, num_limbs) ||
       !bn_get_words(z_out, &result->Z, num_limbs)) {
@@ -116,9 +61,6 @@ int GFp_suite_b_public_twin_mult(EC_GROUP *group, BN_ULONG *xyz_out,
   ret = 1;
 
 err:
-  BN_free(&g_scalar_bn);
-  BN_free(&p_scalar_bn);
   EC_POINT_free(result);
-  EC_POINT_free(p);
   return ret;
 }

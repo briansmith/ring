@@ -223,12 +223,20 @@ pub struct PrivateKeyOps {
     elem_inv: unsafe extern fn(r: *mut Limb/*[num_limbs]*/,
                                a: *const Limb/*[num_limbs]*/),
     point_mul_base_impl: fn(a: &Scalar) -> Result<Point, ()>,
+    point_mul_impl: fn(s: &Scalar, point_x_y: &(Elem, Elem))
+                       -> Result<Point, ()>,
 }
 
 impl PrivateKeyOps {
     #[inline(always)]
     pub fn base_point_mul(&self, a: &Scalar) -> Result<Point, ()> {
         (self.point_mul_base_impl)(a)
+    }
+
+    #[inline(always)]
+    pub fn point_mul(&self, s: &Scalar, point_x_y: &(Elem, Elem))
+                     -> Result<Point, ()> {
+        (self.point_mul_impl)(s, point_x_y)
     }
 
     #[inline]
@@ -360,23 +368,6 @@ impl PublicScalarOps {
         }));
         Ok(p)
     }
-}
-
-
-pub fn var_point_mult(ops: &CommonOps, s: &Scalar,
-                      &(ref peer_x, ref peer_y): &(Elem, Elem))
-                      -> Result<Point, ()> {
-    // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
-    // shouldn't be used for this. TODO: Replace use of this with the use of an
-    // always-constant-time implementation.
-    let mut p = Point::new_at_infinity();
-    try!(bssl::map_result(unsafe {
-        GFp_suite_b_public_twin_mult(ops.ec_group, p.xyz.as_mut_ptr(),
-                                     core::ptr::null(), s.limbs.as_ptr(),
-                                     peer_x.limbs.as_ptr(),
-                                     peer_y.limbs.as_ptr())
-    }));
-    Ok(p)
 }
 
 
