@@ -65,7 +65,7 @@ static uint16_t ssl3_version_from_wire(uint16_t wire_version) {
 
 static uint16_t ssl3_version_to_wire(uint16_t version) { return version; }
 
-static const SSL_PROTOCOL_METHOD TLS_protocol_method = {
+static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     0 /* is_dtls */,
     SSL3_VERSION,
     TLS1_3_VERSION,
@@ -89,11 +89,11 @@ static const SSL_PROTOCOL_METHOD TLS_protocol_method = {
 };
 
 const SSL_METHOD *TLS_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       0,
-      &TLS_protocol_method,
+      &kTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 const SSL_METHOD *SSLv23_method(void) {
@@ -103,35 +103,35 @@ const SSL_METHOD *SSLv23_method(void) {
 /* Legacy version-locked methods. */
 
 const SSL_METHOD *TLSv1_2_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       TLS1_2_VERSION,
-      &TLS_protocol_method,
+      &kTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 const SSL_METHOD *TLSv1_1_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       TLS1_1_VERSION,
-      &TLS_protocol_method,
+      &kTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 const SSL_METHOD *TLSv1_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       TLS1_VERSION,
-      &TLS_protocol_method,
+      &kTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 const SSL_METHOD *SSLv3_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       SSL3_VERSION,
-      &TLS_protocol_method,
+      &kTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 /* Legacy side-specific methods. */

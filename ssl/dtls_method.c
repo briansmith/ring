@@ -88,7 +88,7 @@ static uint16_t dtls1_version_to_wire(uint16_t version) {
   return ~(version - 0x0201);
 }
 
-static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
+static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     1 /* is_dtls */,
     TLS1_1_VERSION,
     TLS1_2_VERSION,
@@ -112,29 +112,29 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
 };
 
 const SSL_METHOD *DTLS_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       0,
-      &DTLS_protocol_method,
+      &kDTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 /* Legacy version-locked methods. */
 
 const SSL_METHOD *DTLSv1_2_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       DTLS1_2_VERSION,
-      &DTLS_protocol_method,
+      &kDTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 const SSL_METHOD *DTLSv1_method(void) {
-  static const SSL_METHOD method = {
+  static const SSL_METHOD kMethod = {
       DTLS1_VERSION,
-      &DTLS_protocol_method,
+      &kDTLSProtocolMethod,
   };
-  return &method;
+  return &kMethod;
 }
 
 /* Legacy side-specific methods. */

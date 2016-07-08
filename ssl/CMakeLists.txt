@@ -8,14 +8,13 @@ add_library(
   handshake_client.c
   d1_both.c
   d1_lib.c
-  d1_meth.c
   d1_pkt.c
   d1_srtp.c
+  dtls_method.c
   dtls_record.c
   s3_both.c
   s3_enc.c
   s3_lib.c
-  s3_meth.c
   s3_pkt.c
   ssl_aead_ctx.c
   ssl_asn1.c
@@ -30,6 +29,7 @@ add_library(
   ssl_stat.c
   t1_enc.c
   t1_lib.c
+  tls_method.c
   tls_record.c
 )
 
