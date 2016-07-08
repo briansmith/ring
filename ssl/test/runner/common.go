@@ -892,6 +892,10 @@ type ProtocolBugs struct {
 	// OuterRecordType, if non-zero, is the outer record type to use instead
 	// of application data.
 	OuterRecordType recordType
+
+	// SendSignatureAlgorithm, if non-zero, causes all signatures to be sent
+	// with the given signature algorithm rather than the one negotiated.
+	SendSignatureAlgorithm signatureAlgorithm
 }
 
 func (c *Config) serverInit() {

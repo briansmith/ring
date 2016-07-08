@@ -414,6 +414,9 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 	if err != nil {
 		return nil, err
 	}
+	if config.Bugs.SendSignatureAlgorithm != 0 {
+		sigAlg = config.Bugs.SendSignatureAlgorithm
+	}
 
 	skx := new(serverKeyExchangeMsg)
 	if config.Bugs.UnauthenticatedECDH {

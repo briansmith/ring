@@ -783,6 +783,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				msg[0] ^= 0x80
 			}
 			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, msg)
+			if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
+				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
+			}
 		} else {
 			// SSL 3.0's client certificate construction is
 			// incompatible with signatureAlgorithm.

@@ -4794,6 +4794,45 @@ func addSignatureAlgorithmTests() {
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA384,
 	})
 
+	// Test that signature verification takes the key type into account.
+	//
+	// TODO(davidben): Test this in TLS 1.3.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Verify-ClientAuth-SignatureType",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			Certificates: []Certificate{rsaCertificate},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA256,
+			},
+			Bugs: ProtocolBugs{
+				SendSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
+			},
+		},
+		flags: []string{
+			"-require-any-client-certificate",
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_SIGNATURE_TYPE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "Verify-ServerKeyExchange-SignatureType",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA256,
+			},
+			Bugs: ProtocolBugs{
+				SendSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_SIGNATURE_TYPE:",
+	})
+
 	// Test that, if the list is missing, the peer falls back to SHA-1 in
 	// TLS 1.2, but not TLS 1.3.
 	testCases = append(testCases, testCase{
