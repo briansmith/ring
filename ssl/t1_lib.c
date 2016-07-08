@@ -2608,7 +2608,7 @@ int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
 
   const uint16_t *peer_sigalgs = cert->peer_sigalgs;
   size_t peer_sigalgs_len = cert->peer_sigalgslen;
-  if (peer_sigalgs_len == 0) {
+  if (peer_sigalgs_len == 0 && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     /* If the client didn't specify any signature_algorithms extension then
      * we can assume that it supports SHA1. See
      * http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1 */

@@ -4794,9 +4794,8 @@ func addSignatureAlgorithmTests() {
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA384,
 	})
 
-	// Test that, if the list is missing, the peer falls back to SHA-1.
-	//
-	// TODO(davidben): Test this does not happen in TLS 1.3.
+	// Test that, if the list is missing, the peer falls back to SHA-1 in
+	// TLS 1.2, but not TLS 1.3.
 	testCases = append(testCases, testCase{
 		name: "SigningHash-ClientAuth-Fallback",
 		config: Config{
@@ -4828,6 +4827,43 @@ func addSignatureAlgorithmTests() {
 				NoSignatureAlgorithms: true,
 			},
 		},
+	})
+
+	testCases = append(testCases, testCase{
+		name: "SigningHash-ClientAuth-Fallback-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			ClientAuth: RequireAnyClientCert,
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SigningHash-ServerKeyExchange-Fallback-TLS13",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 
 	// Test that hash preferences are enforced. BoringSSL defaults to
