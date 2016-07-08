@@ -615,6 +615,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		finished.verifyData[0]++
 	}
 	c.writeRecord(recordTypeHandshake, finished.marshal())
+	c.flushHandshake()
 
 	// Switch to application data keys.
 	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
