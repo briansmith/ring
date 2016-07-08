@@ -99,8 +99,8 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     let peer_public_key =
         try!(parse_uncompressed_point(public_key_ops, peer_public_key));
 
-    // NIST SP 800-56Ar2 Steps 1 and 2.
-    // NSA Guide Step 3.
+    // NIST SP 800-56Ar2 Step 1.
+    // NSA Guide Step 3 (except point at infinity check).
     //
     // Note that the cofactor (h) is one since we only support prime-order
     // curves, so we can safely ignore the cofactor.
@@ -122,10 +122,9 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     let (x, y, z) =
         try!(var_point_mult(private_key_ops.common, &my_private_key,
                             &peer_public_key));
-    assert!(public_key_ops.common.elem_verify_is_not_zero(&z).is_ok());
 
-    // NIST SP 800-56Ar2 Steps 3, 4, and 5.
-    // NSA Guide Step 4.
+    // NIST SP 800-56Ar2 Steps 2, 3, 4, and 5.
+    // NSA Guide Steps 3 (point at infinity check) and 4.
     //
     // Again, we have a pretty liberal interpretation of the NIST's spec's
     // "Destroy" that doesn't meet the NSA requirement to "zeroize."
