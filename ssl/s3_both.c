@@ -574,12 +574,14 @@ again:
   ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
                       ssl->init_buf->data, ssl->init_buf->length);
 
+  /* Ignore stray HelloRequest messages. Per RFC 5246, section 7.4.1.1, the
+   * server may send HelloRequest at any time. */
   static const uint8_t kHelloRequest[4] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
-  if (!ssl->server && ssl->init_buf->length == sizeof(kHelloRequest) &&
+  if (!ssl->server &&
+      (!ssl->s3->have_version ||
+       ssl3_protocol_version(ssl) < TLS1_3_VERSION) &&
+      ssl->init_buf->length == sizeof(kHelloRequest) &&
       memcmp(kHelloRequest, ssl->init_buf->data, sizeof(kHelloRequest)) == 0) {
-    /* The server may always send 'Hello Request' messages -- we are doing a
-     * handshake anyway now, so ignore them if their format is correct.  Does
-     * not count for 'Finished' MAC. */
     goto again;
   }
 

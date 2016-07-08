@@ -353,6 +353,10 @@ void ssl3_read_close_notify(SSL *ssl) {
 }
 
 static int ssl3_can_renegotiate(SSL *ssl) {
+  if (ssl->server || ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    return 0;
+  }
+
   switch (ssl->renegotiate_mode) {
     case ssl_renegotiate_never:
       return 0;
