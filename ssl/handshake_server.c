@@ -1764,7 +1764,7 @@ static int ssl3_get_cert_verify(SSL *ssl) {
   /* The handshake buffer is no longer necessary, and we may hash the current
    * message.*/
   ssl3_free_handshake_buffer(ssl);
-  if (!ssl3_hash_current_message(ssl)) {
+  if (!ssl->method->hash_current_message(ssl)) {
     goto err;
   }
 
@@ -1837,7 +1837,7 @@ static int ssl3_get_channel_id(SSL *ssl) {
   }
   assert(channel_id_hash_len == SHA256_DIGEST_LENGTH);
 
-  if (!ssl3_hash_current_message(ssl)) {
+  if (!ssl->method->hash_current_message(ssl)) {
     return -1;
   }
 

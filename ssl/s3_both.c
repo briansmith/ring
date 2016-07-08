@@ -274,7 +274,7 @@ int ssl3_get_finished(SSL *ssl) {
 
   /* Snapshot the finished hash before incorporating the new message. */
   ssl3_take_mac(ssl);
-  if (!ssl3_hash_current_message(ssl)) {
+  if (!ssl->method->hash_current_message(ssl)) {
     goto err;
   }
 
@@ -606,11 +606,8 @@ again:
 }
 
 int ssl3_hash_current_message(SSL *ssl) {
-  /* The handshake header (different size between DTLS and TLS) is included in
-   * the hash. */
-  size_t header_len = ssl->init_msg - (uint8_t *)ssl->init_buf->data;
   return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
-                                    ssl->init_num + header_len);
+                                    ssl->init_buf->length);
 }
 
 int ssl_verify_alarm_type(long type) {
