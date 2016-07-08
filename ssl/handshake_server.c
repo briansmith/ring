@@ -188,7 +188,6 @@ static int ssl3_get_channel_id(SSL *ssl);
 static int ssl3_send_new_session_ticket(SSL *ssl);
 
 int ssl3_accept(SSL *ssl) {
-  BUF_MEM *buf = NULL;
   uint32_t alg_a;
   int ret = -1;
   int state, skip = 0;
@@ -203,16 +202,10 @@ int ssl3_accept(SSL *ssl) {
       case SSL_ST_ACCEPT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
-        if (ssl->init_buf == NULL) {
-          buf = BUF_MEM_new();
-          if (!buf || !BUF_MEM_reserve(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
-            ret = -1;
-            goto end;
-          }
-          ssl->init_buf = buf;
-          buf = NULL;
+        if (!ssl->method->begin_handshake(ssl)) {
+          ret = -1;
+          goto end;
         }
-        ssl->init_num = 0;
 
         /* Enable a write buffer. This groups handshake messages within a flight
          * into a single write. */
@@ -470,9 +463,7 @@ int ssl3_accept(SSL *ssl) {
         /* clean a few things up */
         ssl3_cleanup_key_block(ssl);
 
-        BUF_MEM_free(ssl->init_buf);
-        ssl->init_buf = NULL;
-        ssl->init_num = 0;
+        ssl->method->finish_handshake(ssl);
 
         /* remove buffering on output */
         ssl_free_wbio_buffer(ssl);
@@ -484,12 +475,6 @@ int ssl3_accept(SSL *ssl) {
           ssl->session->peer = NULL;
           sk_X509_pop_free(ssl->session->cert_chain, X509_free);
           ssl->session->cert_chain = NULL;
-        }
-
-        if (SSL_IS_DTLS(ssl)) {
-          ssl->d1->handshake_read_seq = 0;
-          ssl->d1->handshake_write_seq = 0;
-          dtls_clear_incoming_messages(ssl);
         }
 
         ssl->s3->initial_handshake_complete = 1;
@@ -517,7 +502,6 @@ int ssl3_accept(SSL *ssl) {
   }
 
 end:
-  BUF_MEM_free(buf);
   ssl_do_info_callback(ssl, SSL_CB_ACCEPT_EXIT, ret);
   return ret;
 }

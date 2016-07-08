@@ -187,7 +187,6 @@ static int ssl3_send_channel_id(SSL *ssl);
 static int ssl3_get_new_session_ticket(SSL *ssl);
 
 int ssl3_connect(SSL *ssl) {
-  BUF_MEM *buf = NULL;
   int ret = -1;
   int state, skip = 0;
 
@@ -201,18 +200,10 @@ int ssl3_connect(SSL *ssl) {
       case SSL_ST_CONNECT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
-        if (ssl->init_buf == NULL) {
-          buf = BUF_MEM_new();
-          if (buf == NULL ||
-              !BUF_MEM_reserve(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
-            ret = -1;
-            goto end;
-          }
-
-          ssl->init_buf = buf;
-          buf = NULL;
+        if (!ssl->method->begin_handshake(ssl)) {
+          ret = -1;
+          goto end;
         }
-        ssl->init_num = 0;
 
         if (!ssl_init_wbio_buffer(ssl)) {
           ret = -1;
@@ -503,9 +494,7 @@ int ssl3_connect(SSL *ssl) {
         /* clean a few things up */
         ssl3_cleanup_key_block(ssl);
 
-        BUF_MEM_free(ssl->init_buf);
-        ssl->init_buf = NULL;
-        ssl->init_num = 0;
+        ssl->method->finish_handshake(ssl);
 
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(ssl);
@@ -518,11 +507,6 @@ int ssl3_connect(SSL *ssl) {
         if (is_initial_handshake) {
           /* Renegotiations do not participate in session resumption. */
           ssl_update_cache(ssl, SSL_SESS_CACHE_CLIENT);
-        }
-
-        if (SSL_IS_DTLS(ssl)) {
-          ssl->d1->handshake_read_seq = 0;
-          ssl->d1->handshake_write_seq = 0;
         }
 
         ret = 1;
@@ -545,7 +529,6 @@ int ssl3_connect(SSL *ssl) {
   }
 
 end:
-  BUF_MEM_free(buf);
   ssl_do_info_callback(ssl, SSL_CB_CONNECT_EXIT, ret);
   return ret;
 }

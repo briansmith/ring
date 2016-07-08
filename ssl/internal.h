@@ -829,6 +829,11 @@ struct ssl_protocol_method_st {
   uint16_t (*version_to_wire)(uint16_t version);
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
+  /* begin_handshake is called to start a new handshake. It returns one on
+   * success and zero on error. */
+  int (*begin_handshake)(SSL *ssl);
+  /* finish_handshake is called when a handshake completes. */
+  void (*finish_handshake)(SSL *ssl);
   long (*ssl_get_message)(SSL *ssl, int msg_type,
                           enum ssl_hash_message_t hash_message, int *ok);
   int (*read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);

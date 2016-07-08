@@ -58,6 +58,8 @@
 
 #include <assert.h>
 
+#include <openssl/buf.h>
+
 #include "internal.h"
 
 
@@ -88,6 +90,32 @@ static uint16_t dtls1_version_to_wire(uint16_t version) {
   return ~(version - 0x0201);
 }
 
+static int dtls1_begin_handshake(SSL *ssl) {
+  if (ssl->init_buf != NULL) {
+    return 1;
+  }
+
+  BUF_MEM *buf = BUF_MEM_new();
+  if (buf == NULL || !BUF_MEM_reserve(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
+    BUF_MEM_free(buf);
+    return 0;
+  }
+
+  ssl->init_buf = buf;
+  ssl->init_num = 0;
+  return 1;
+}
+
+static void dtls1_finish_handshake(SSL *ssl) {
+  BUF_MEM_free(ssl->init_buf);
+  ssl->init_buf = NULL;
+  ssl->init_num = 0;
+
+  ssl->d1->handshake_read_seq = 0;
+  ssl->d1->handshake_write_seq = 0;
+  dtls_clear_incoming_messages(ssl);
+}
+
 static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     1 /* is_dtls */,
     TLS1_1_VERSION,
@@ -96,6 +124,8 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_version_to_wire,
     dtls1_new,
     dtls1_free,
+    dtls1_begin_handshake,
+    dtls1_finish_handshake,
     dtls1_get_message,
     dtls1_read_app_data,
     dtls1_read_change_cipher_spec,
