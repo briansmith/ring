@@ -518,19 +518,9 @@ size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs) {
          sizeof(kDefaultSignatureAlgorithms[0]);
 }
 
-static int tls12_get_pkey_type(uint16_t sigalg);
-
-int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
-                            uint16_t sigalg, EVP_PKEY *pkey) {
+int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg) {
   const uint16_t *sent_sigs;
   size_t sent_sigslen, i;
-
-  /* Check key type is consistent with signature */
-  if (pkey->type != tls12_get_pkey_type(sigalg)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return 0;
-  }
 
   /* Check signature matches a type we sent */
   sent_sigslen = tls12_get_psigalgs(ssl, &sent_sigs);

@@ -1223,10 +1223,10 @@ int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out);
 size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
 
 /* tls12_check_peer_sigalg checks that |signature_algorithm| is consistent with
- * the |pkey| and |ssl|'s sent, supported signature algorithms and returns 1.
- * Otherwise it returns 0 and writes an alert into |*out_alert|. */
+ * |ssl|'s sent, supported signature algorithms and returns 1. Otherwise it
+ * returns 0 and writes an alert into |*out_alert|. */
 int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
-                            uint16_t signature_algorithm, EVP_PKEY *pkey);
+                            uint16_t signature_algorithm);
 void ssl_set_client_disabled(SSL *ssl);
 
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

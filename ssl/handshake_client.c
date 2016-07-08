@@ -1289,7 +1289,7 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         goto f_err;
       }
-      if (!tls12_check_peer_sigalg(ssl, &al, signature_algorithm, pkey)) {
+      if (!tls12_check_peer_sigalg(ssl, &al, signature_algorithm)) {
         goto f_err;
       }
       ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;

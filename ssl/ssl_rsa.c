@@ -438,6 +438,11 @@ static int ssl_verify_rsa_pkcs1(SSL *ssl, const uint8_t *signature,
                                 size_t signature_len, const EVP_MD *md,
                                 EVP_PKEY *pkey, const uint8_t *in,
                                 size_t in_len) {
+  if (pkey->type != EVP_PKEY_RSA) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    return 0;
+  }
+
   EVP_MD_CTX md_ctx;
   EVP_MD_CTX_init(&md_ctx);
   int ret = EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) &&
@@ -482,6 +487,11 @@ static int ssl_sign_ecdsa(SSL *ssl, uint8_t *out, size_t *out_len,
 static int ssl_verify_ecdsa(SSL *ssl, const uint8_t *signature,
                             size_t signature_len, const EVP_MD *md,
                             EVP_PKEY *pkey, const uint8_t *in, size_t in_len) {
+  if (pkey->type != EVP_PKEY_EC) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    return 0;
+  }
+
   EVP_MD_CTX md_ctx;
   EVP_MD_CTX_init(&md_ctx);
   int ret = EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) &&
