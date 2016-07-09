@@ -90,49 +90,6 @@
 #include "../crypto/test/test_util.h"
 
 
-static bool TestBN2BinPadded(BN_CTX *ctx);
-static bool TestDec2BN(BN_CTX *ctx);
-static bool TestHex2BN(BN_CTX *ctx);
-static bool TestASC2BN(BN_CTX *ctx);
-static bool TestMPI();
-static bool TestRand();
-static bool TestASN1();
-static bool TestNegativeZero(BN_CTX *ctx);
-static bool TestBadModulus(BN_CTX *ctx);
-static bool TestExpModZero();
-static bool TestSmallPrime(BN_CTX *ctx);
-static bool RunTest(FileTest *t, void *arg);
-
-int main(int argc, char *argv[]) {
-  CRYPTO_library_init();
-
-  if (argc != 2) {
-    fprintf(stderr, "%s TEST_FILE\n", argv[0]);
-    return 1;
-  }
-
-  ScopedBN_CTX ctx(BN_CTX_new());
-  if (!ctx) {
-    return 1;
-  }
-
-  if (!TestBN2BinPadded(ctx.get()) ||
-      !TestDec2BN(ctx.get()) ||
-      !TestHex2BN(ctx.get()) ||
-      !TestASC2BN(ctx.get()) ||
-      !TestMPI() ||
-      !TestRand() ||
-      !TestASN1() ||
-      !TestNegativeZero(ctx.get()) ||
-      !TestBadModulus(ctx.get()) ||
-      !TestExpModZero() ||
-      !TestSmallPrime(ctx.get())) {
-    return 1;
-  }
-
-  return FileTestMain(RunTest, ctx.get(), argv[1]);
-}
-
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   BIGNUM *raw = NULL;
   int ret = BN_hex2bn(&raw, in);
@@ -1304,4 +1261,34 @@ static bool TestSmallPrime(BN_CTX *ctx) {
   }
 
   return true;
+}
+
+int main(int argc, char *argv[]) {
+  CRYPTO_library_init();
+
+  if (argc != 2) {
+    fprintf(stderr, "%s TEST_FILE\n", argv[0]);
+    return 1;
+  }
+
+  ScopedBN_CTX ctx(BN_CTX_new());
+  if (!ctx) {
+    return 1;
+  }
+
+  if (!TestBN2BinPadded(ctx.get()) ||
+      !TestDec2BN(ctx.get()) ||
+      !TestHex2BN(ctx.get()) ||
+      !TestASC2BN(ctx.get()) ||
+      !TestMPI() ||
+      !TestRand() ||
+      !TestASN1() ||
+      !TestNegativeZero(ctx.get()) ||
+      !TestBadModulus(ctx.get()) ||
+      !TestExpModZero() ||
+      !TestSmallPrime(ctx.get())) {
+    return 1;
+  }
+
+  return FileTestMain(RunTest, ctx.get(), argv[1]);
 }
