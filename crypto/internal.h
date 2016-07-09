@@ -192,12 +192,12 @@ typedef __uint128_t uint128_t;
  *
  * can be written as
  *
- * unsigned int lt = constant_time_lt(a, b);
- * c = constant_time_select(lt, a, b); */
+ * size_t lt = constant_time_lt_size_t(a, b);
+ * c = constant_time_select_size_t(lt, a, b); */
 
 /* constant_time_msb returns the given value with the MSB copied to all the
  * other bits. */
-static inline unsigned int constant_time_msb(unsigned int a) {
+static inline unsigned int constant_time_msb_unsigned(unsigned int a) {
   return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
 }
 
@@ -210,7 +210,7 @@ static inline size_t constant_time_msb_size_t(size_t a) {
 
 
 /* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
-static inline unsigned int constant_time_is_zero(unsigned int a) {
+static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
   /* Here is an SMT-LIB verification of this formula:
    *
    * (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
@@ -223,7 +223,7 @@ static inline unsigned int constant_time_is_zero(unsigned int a) {
    * (check-sat)
    * (get-model)
    */
-  return constant_time_msb(~a & (a - 1));
+  return constant_time_msb_unsigned(~a & (a - 1));
 }
 
 /* constant_time_is_zero_size_t is like constant_time_is_zero but operates on
@@ -238,7 +238,7 @@ static inline size_t constant_time_is_nonzero_size_t(size_t a) {
 
 /* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
 static inline unsigned int constant_time_eq_int(int a, int b) {
-  return constant_time_is_zero((unsigned)(a) ^ (unsigned)(b));
+  return constant_time_is_zero_unsigned((unsigned)(a) ^ (unsigned)(b));
 }
 
 /* constant_time_eq_size_t acts like |constant_time_eq_int| but operates on

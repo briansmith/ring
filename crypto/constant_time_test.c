@@ -77,17 +77,17 @@ static int test_binary_op_size_t(size_t (*op)(size_t a, size_t b),
 }
 
 static int test_is_zero(unsigned int a) {
-  unsigned int c = constant_time_is_zero(a);
+  unsigned int c = constant_time_is_zero_unsigned(a);
   if (a == 0 && c != CONSTTIME_TRUE) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero(%du): expected %du (TRUE), "
-            "got %du\n",
+            "Test failed for constant_time_is_zero_unsigned(%du): "
+            "expected %du (TRUE), got %du\n",
             a, CONSTTIME_TRUE, c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_FALSE) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero(%du): expected %du (FALSE), "
-            "got %du\n",
+            "Test failed for constant_time_is_zero_unsigned(%du): "
+            "expected %du (FALSE), got %du\n",
             a, CONSTTIME_FALSE, c);
     return 1;
   }
@@ -98,14 +98,14 @@ static int test_is_zero_size_t(size_t a) {
   size_t c = constant_time_is_zero_size_t(a);
   if (a == 0 && c != CONSTTIME_TRUE_SIZE_T) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero(%zu): expected %zu (TRUE), "
-            "got %zu\n",
+            "Test failed for constant_time_is_zero_size_t(%zu): "
+            "expected %zu (TRUE), got %zu\n",
             a, CONSTTIME_TRUE_SIZE_T, c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_FALSE_SIZE_T) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero(%zu): expected %zu (FALSE), "
-            "got %zu\n",
+            "Test failed for constant_time_is_zero_size_t(%zu): "
+            "expected %zu (FALSE), got %zu\n",
             a, CONSTTIME_FALSE_SIZE_T, c);
     return 1;
   }
@@ -113,14 +113,14 @@ static int test_is_zero_size_t(size_t a) {
   c = constant_time_is_nonzero_size_t(a);
   if (a == 0 && c != CONSTTIME_FALSE_SIZE_T) {
     fprintf(stderr,
-            "Test failed for constant_time_is_nonzero(%zu): expected %zu (FALSE), "
-            "got %zu\n",
+            "Test failed for constant_time_is_nonzero_size_t(%zu): "
+            "expected %zu (FALSE), got %zu\n",
             a, CONSTTIME_FALSE_SIZE_T, c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_TRUE_SIZE_T) {
     fprintf(stderr,
-            "Test failed for constant_time_is_nonzero(%zu): expected %zu (TRUE), "
-            "got %zu\n",
+            "Test failed for constant_time_is_nonzero_size_t(%zu): "
+            "expected %zu (TRUE), got %zu\n",
             a, CONSTTIME_TRUE_SIZE_T, c);
     return 1;
   }
@@ -132,7 +132,7 @@ static int test_select_size_t(size_t a, size_t b) {
   size_t selected = constant_time_select_size_t(CONSTTIME_TRUE_SIZE_T, a, b);
   if (selected != a) {
     fprintf(stderr,
-            "Test failed for constant_time_select(%zu, %zu,"
+            "Test failed for constant_time_select_size_t(%zu, %zu,"
             "%zu): expected %zu(first value), got %zu\n",
             CONSTTIME_TRUE_SIZE_T, a, b, a, selected);
     return 1;
@@ -140,7 +140,7 @@ static int test_select_size_t(size_t a, size_t b) {
   selected = constant_time_select_size_t(CONSTTIME_FALSE_SIZE_T, a, b);
   if (selected != b) {
     fprintf(stderr,
-            "Test failed for constant_time_select(%zu, %zu,"
+            "Test failed for constant_time_select_size_t(%zu, %zu,"
             "%zu): expected %zu(second value), got %zu\n",
             CONSTTIME_FALSE_SIZE_T, a, b, b, selected);
     return 1;
