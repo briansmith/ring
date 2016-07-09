@@ -129,7 +129,8 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
 
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
-  unsigned index = 255;
+  static const unsigned START_INDEX = 256 - 1;
+  unsigned index = START_INDEX;
 
   unsigned raw_wvalue;
   BN_ULONG recoded_is_negative;
@@ -143,7 +144,7 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   ecp_nistz256_select_w5(r, table, recoded);
 
   while (index >= kWindowSize) {
-    if (index != 255) {
+    if (index != START_INDEX) {
       unsigned off = (index - 1) / 8;
 
       raw_wvalue = p_str[off] | p_str[off + 1] << 8;
