@@ -1461,6 +1461,11 @@ func (m *certificateRequestMsg) marshal() []byte {
 		caEntry.addBytes(ca)
 	}
 
+	if m.hasRequestContext {
+		// Emit no certificate extensions.
+		body.addU16(0)
+	}
+
 	m.raw = builder.finish()
 	return m.raw
 }
@@ -1538,6 +1543,19 @@ func (m *certificateRequestMsg) unmarshal(data []byte) bool {
 		m.certificateAuthorities = append(m.certificateAuthorities, cas[:caLen])
 		cas = cas[caLen:]
 	}
+
+	if m.hasRequestContext {
+		// Ignore certificate extensions.
+		if len(data) < 2 {
+			return false
+		}
+		extsLength := int(data[0])<<8 | int(data[1])
+		if len(data) < 2+extsLength {
+			return false
+		}
+		data = data[2+extsLength:]
+	}
+
 	if len(data) > 0 {
 		return false
 	}

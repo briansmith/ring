@@ -510,8 +510,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	}
 
 	var chainToSend *Certificate
-	var certRequested bool
-	var certRequestContext []byte
+	var certReq *certificateRequestMsg
 	if hs.suite.flags&suitePSK != 0 {
 		if encryptedExtensions.extensions.ocspResponse != nil {
 			c.sendAlert(alertUnsupportedExtension)
@@ -530,11 +529,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			return err
 		}
 
-		certReq, ok := msg.(*certificateRequestMsg)
+		var ok bool
+		certReq, ok = msg.(*certificateRequestMsg)
 		if ok {
 			hs.writeServerHash(certReq.marshal())
-			certRequested = true
-			certRequestContext = certReq.requestContext
 
 			chainToSend, err = selectClientCertificate(c, certReq)
 			if err != nil {
@@ -602,10 +600,42 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	masterSecret := hs.finishedHash.extractKey(handshakeSecret, zeroSecret)
 	trafficSecret := hs.finishedHash.deriveSecret(masterSecret, applicationTrafficLabel)
 
-	if certRequested {
-		_ = chainToSend
-		_ = certRequestContext
-		return errors.New("tls: client auth not implemented.")
+	if certReq != nil {
+		certMsg := &certificateMsg{
+			hasRequestContext: true,
+			requestContext:    certReq.requestContext,
+		}
+		if chainToSend != nil {
+			certMsg.certificates = chainToSend.Certificate
+		}
+		hs.writeClientHash(certMsg.marshal())
+		c.writeRecord(recordTypeHandshake, certMsg.marshal())
+
+		if chainToSend != nil {
+			certVerify := &certificateVerifyMsg{
+				hasSignatureAlgorithm: true,
+			}
+
+			// Determine the hash to sign.
+			privKey := chainToSend.PrivateKey
+
+			var err error
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			if err != nil {
+				c.sendAlert(alertInternalError)
+				return err
+			}
+
+			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
+			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+			if err != nil {
+				c.sendAlert(alertInternalError)
+				return err
+			}
+
+			hs.writeClientHash(certVerify.marshal())
+			c.writeRecord(recordTypeHandshake, certVerify.marshal())
+		}
 	}
 
 	// Send a client Finished message.

@@ -406,8 +406,25 @@ Curves:
 
 	if hs.suite.flags&suitePSK == 0 {
 		if config.ClientAuth >= RequestClientCert {
-			// TODO(davidben): Implement client auth.
-			return errors.New("tls: client auth not implemented")
+			// Request a client certificate
+			certReq := &certificateRequestMsg{
+				hasSignatureAlgorithm: true,
+				hasRequestContext:     true,
+			}
+			if !config.Bugs.NoSignatureAlgorithms {
+				certReq.signatureAlgorithms = config.signSignatureAlgorithms()
+			}
+
+			// An empty list of certificateAuthorities signals to
+			// the client that it may send any certificate in response
+			// to our request. When we know the CAs we trust, then
+			// we can send them down, so that the client can choose
+			// an appropriate certificate to give to us.
+			if config.ClientCAs != nil {
+				certReq.certificateAuthorities = config.ClientCAs.Subjects()
+			}
+			hs.writeServerHash(certReq.marshal())
+			c.writeRecord(recordTypeHandshake, certReq.marshal())
 		}
 
 		certMsg := &certificateMsg{
@@ -461,7 +478,51 @@ Curves:
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {
-		return errors.New("tls: client certificates not implemented")
+		msg, err := c.readHandshake()
+		if err != nil {
+			return err
+		}
+
+		certMsg, ok := msg.(*certificateMsg)
+		if !ok {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(certMsg, msg)
+		}
+		hs.writeClientHash(certMsg.marshal())
+
+		if len(certMsg.certificates) == 0 {
+			// The client didn't actually send a certificate
+			switch config.ClientAuth {
+			case RequireAnyClientCert, RequireAndVerifyClientCert:
+				c.sendAlert(alertBadCertificate)
+				return errors.New("tls: client didn't provide a certificate")
+			}
+		}
+
+		pub, err := hs.processCertsFromClient(certMsg.certificates)
+		if err != nil {
+			return err
+		}
+
+		if len(c.peerCertificates) > 0 {
+			msg, err = c.readHandshake()
+			if err != nil {
+				return err
+			}
+
+			certVerify, ok := msg.(*certificateVerifyMsg)
+			if !ok {
+				c.sendAlert(alertUnexpectedMessage)
+				return unexpectedMessageError(certVerify, msg)
+			}
+
+			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
+			if err := verifyMessage(c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
+				c.sendAlert(alertBadCertificate)
+				return err
+			}
+			hs.writeClientHash(certVerify.marshal())
+		}
 	}
 
 	// Read the client Finished message.
