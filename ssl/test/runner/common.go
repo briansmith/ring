@@ -171,21 +171,14 @@ const (
 	signatureEd448   signatureAlgorithm = 0x0704
 )
 
-// supportedSKXSignatureAlgorithms contains the signature and hash algorithms
-// that the code advertises as supported in a TLS 1.2 ClientHello.
-var supportedSKXSignatureAlgorithms = []signatureAlgorithm{
+// supportedSignatureAlgorithms contains the default supported signature
+// algorithms.
+var supportedSignatureAlgorithms = []signatureAlgorithm{
+	signatureRSAPSSWithSHA256,
 	signatureRSAPKCS1WithSHA256,
 	signatureECDSAWithP256AndSHA256,
 	signatureRSAPKCS1WithSHA1,
 	signatureECDSAWithSHA1,
-}
-
-// supportedPeerSignatureAlgorithms contains the signature and hash
-// algorithms that the code advertises as supported in a TLS 1.2
-// CertificateRequest.
-var supportedPeerSignatureAlgorithms = []signatureAlgorithm{
-	signatureRSAPKCS1WithSHA256,
-	signatureECDSAWithP256AndSHA256,
 }
 
 // SRTP protection profiles (See RFC 5764, section 4.1.2)
@@ -395,10 +388,13 @@ type Config struct {
 	// protection profiles to offer in DTLS-SRTP.
 	SRTPProtectionProfiles []uint16
 
-	// SignatureAlgorithms, if not nil, overrides the default set of
-	// supported signature and hash algorithms to advertise in
-	// CertificateRequest.
-	SignatureAlgorithms []signatureAlgorithm
+	// SignSignatureAlgorithms, if not nil, overrides the default set of
+	// supported signature algorithms to sign with.
+	SignSignatureAlgorithms []signatureAlgorithm
+
+	// VerifySignatureAlgorithms, if not nil, overrides the default set of
+	// supported signature algorithms that are accepted.
+	VerifySignatureAlgorithms []signatureAlgorithm
 
 	// Bugs specifies optional misbehaviour to be used for testing other
 	// implementations.
@@ -1045,18 +1041,18 @@ func (c *Config) getCertificateForName(name string) *Certificate {
 	return &c.Certificates[0]
 }
 
-func (c *Config) signatureAlgorithmsForServer() []signatureAlgorithm {
-	if c != nil && c.SignatureAlgorithms != nil {
-		return c.SignatureAlgorithms
+func (c *Config) signSignatureAlgorithms() []signatureAlgorithm {
+	if c != nil && c.SignSignatureAlgorithms != nil {
+		return c.SignSignatureAlgorithms
 	}
-	return supportedPeerSignatureAlgorithms
+	return supportedSignatureAlgorithms
 }
 
-func (c *Config) signatureAlgorithmsForClient() []signatureAlgorithm {
-	if c != nil && c.SignatureAlgorithms != nil {
-		return c.SignatureAlgorithms
+func (c *Config) verifySignatureAlgorithms() []signatureAlgorithm {
+	if c != nil && c.VerifySignatureAlgorithms != nil {
+		return c.VerifySignatureAlgorithms
 	}
-	return supportedSKXSignatureAlgorithms
+	return supportedSignatureAlgorithms
 }
 
 // BuildNameToCertificate parses c.Certificates and builds c.NameToCertificate

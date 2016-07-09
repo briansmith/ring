@@ -233,7 +233,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 	}
 
 	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-		hs.clientHello.signatureAlgorithms = config.signatureAlgorithmsForServer()
+		hs.clientHello.signatureAlgorithms = config.signSignatureAlgorithms()
 	}
 	if config.Bugs.IgnorePeerCurvePreferences {
 		hs.clientHello.supportedCurves = config.curvePreferences()
@@ -626,7 +626,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		if c.vers >= VersionTLS12 {
 			certReq.hasSignatureAlgorithm = true
 			if !config.Bugs.NoSignatureAlgorithms {
-				certReq.signatureAlgorithms = config.signatureAlgorithmsForServer()
+				certReq.signatureAlgorithms = config.verifySignatureAlgorithms()
 			}
 		}
 
@@ -742,7 +742,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		var sigAlg signatureAlgorithm
 		if certVerify.hasSignatureAlgorithm {
 			sigAlg = certVerify.signatureAlgorithm
-			if !isSupportedSignatureAlgorithm(sigAlg, config.signatureAlgorithmsForServer()) {
+			if !isSupportedSignatureAlgorithm(sigAlg, config.verifySignatureAlgorithms()) {
 				return errors.New("tls: unsupported signature algorithm for client certificate")
 			}
 			c.peerSignatureAlgorithm = sigAlg
