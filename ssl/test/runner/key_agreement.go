@@ -472,9 +472,6 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 		}
 		sigAlg = signatureAlgorithm(sig[0])<<8 | signatureAlgorithm(sig[1])
 		sig = sig[2:]
-		if !isSupportedSignatureAlgorithm(sigAlg, config.verifySignatureAlgorithms()) {
-			return errors.New("tls: unsupported signature algorithm for ServerKeyExchange")
-		}
 		// Stash the signature algorithm to be extracted by the handshake.
 		ka.peerSignatureAlgorithm = sigAlg
 	}

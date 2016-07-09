@@ -742,9 +742,6 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		var sigAlg signatureAlgorithm
 		if certVerify.hasSignatureAlgorithm {
 			sigAlg = certVerify.signatureAlgorithm
-			if !isSupportedSignatureAlgorithm(sigAlg, config.verifySignatureAlgorithms()) {
-				return errors.New("tls: unsupported signature algorithm for client certificate")
-			}
 			c.peerSignatureAlgorithm = sigAlg
 		}
 
