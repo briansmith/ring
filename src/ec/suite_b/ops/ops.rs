@@ -490,6 +490,42 @@ mod tests {
     fn p384_scalar_inv_to_mont_zero_panic_test() {
         let _ = p384::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
+
+    #[test]
+    fn parse_big_endian_value_test() {
+        fn nlimbs(b: &[u8]) -> usize { (b.len() + LIMB_BYTES - 1) / LIMB_BYTES }
+
+        /* shorter than a limb */
+        let inp = [0xfe];
+        let out = parse_big_endian_value(&inp, MAX_LIMBS).unwrap();
+        assert_eq!(out[0], 0xfe);
+        assert_eq!(out[1], 0);
+
+        /* whole number of limbs */
+        let inp = [0xfe, 0xed, 0xde, 0xad, 0xbe, 0xef, 0xf0, 0x0d];
+        let out = parse_big_endian_value(&inp, MAX_LIMBS).unwrap();
+        assert_eq!(out[0], 0xfeeddeadbeeff00d);
+        assert_eq!(out[1], 0);
+
+        /* whole number of limbs - 1 */
+        let inp = [0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8,
+            0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0];
+        let out = parse_big_endian_value(&inp, MAX_LIMBS).unwrap();
+        assert_eq!(out[0], 0x0706050403020100);
+        assert_eq!(out[1], 0x000e0d0c0b0a0908);
+        assert_eq!(out[2], 0);
+
+        /* whole number of limbs + 1 */
+        let inp = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00];
+
+        /* check nlimbs fail branch */
+        assert!(parse_big_endian_value(&inp, nlimbs(&inp) - 1).is_err());
+
+        let out = parse_big_endian_value(&inp, nlimbs(&inp)).unwrap();
+        assert_eq!(out[0], 0x7766554433221100);
+        assert_eq!(out[1], 0x88);
+        assert_eq!(out[2], 0);
+    }
 }
 
 
