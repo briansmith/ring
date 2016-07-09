@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define _GNU_SOURCE  /* needed for syscall() on Linux. */
+
 #include <openssl/rand.h>
 
 #if !defined(OPENSSL_WINDOWS) && !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
@@ -22,12 +24,53 @@
 #include <string.h>
 #include <unistd.h>
 
+#if defined(OPENSSL_LINUX)
+#include <sys/syscall.h>
+#endif
+
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
 #include "../internal.h"
 
+
+#if defined(OPENSSL_LINUX)
+
+#if defined(OPENSSL_X86_64)
+#define EXPECTED_SYS_getrandom 318
+#elif defined(OPENSSL_X86)
+#define EXPECTED_SYS_getrandom 355
+#elif defined(OPENSSL_AARCH64)
+#define EXPECTED_SYS_getrandom 278
+#elif defined(OPENSSL_ARM)
+#define EXPECTED_SYS_getrandom 384
+#elif defined(OPENSSL_PPC64LE)
+#define EXPECTED_SYS_getrandom 359
+#endif
+
+#if defined(EXPECTED_SYS_getrandom)
+#define USE_SYS_getrandom
+
+#if defined(SYS_getrandom)
+
+#if SYS_getrandom != EXPECTED_SYS_getrandom
+#error "system call number for getrandom is not the expected value"
+#endif
+
+#else  /* SYS_getrandom */
+
+#define SYS_getrandom EXPECTED_SYS_getrandom
+
+#endif  /* SYS_getrandom */
+
+#endif /* EXPECTED_SYS_getrandom */
+
+#if !defined(GRND_NONBLOCK)
+#define GRND_NONBLOCK 1
+#endif
+
+#endif  /* OPENSSL_LINUX */
 
 /* This file implements a PRNG by reading from /dev/urandom, optionally with a
  * buffer, which is unsafe across |fork|. */
@@ -70,6 +113,12 @@ static void init_once(void) {
   urandom_buffering = urandom_buffering_requested;
   int fd = urandom_fd_requested;
   CRYPTO_STATIC_MUTEX_unlock_read(&requested_lock);
+
+#if defined(USE_SYS_getrandom)
+  /* Initial test of getrandom to find any unexpected behavior. */
+  uint8_t dummy;
+  syscall(SYS_getrandom, &dummy, sizeof(dummy), GRND_NONBLOCK);
+#endif
 
   if (fd == -2) {
     do {
@@ -144,7 +193,7 @@ static struct rand_buffer *get_thread_local_buffer(void) {
   if (buf == NULL) {
     return NULL;
   }
-  buf->used = BUF_SIZE;  /* To trigger a |read_full| on first use. */
+  buf->used = BUF_SIZE;  /* To trigger a |fill_with_entropy| on first use. */
   if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_URANDOM_BUF, buf,
                                OPENSSL_free)) {
     OPENSSL_free(buf);
@@ -154,14 +203,14 @@ static struct rand_buffer *get_thread_local_buffer(void) {
   return buf;
 }
 
-/* read_full reads exactly |len| bytes from |fd| into |out| and returns 1. In
- * the case of an error it returns 0. */
-static char read_full(int fd, uint8_t *out, size_t len) {
+/* fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
+ * on success and zero on error. */
+static char fill_with_entropy(uint8_t *out, size_t len) {
   ssize_t r;
 
   while (len > 0) {
     do {
-      r = read(fd, out, len);
+      r = read(urandom_fd, out, len);
     } while (r == -1 && errno == EINTR);
 
     if (r <= 0) {
@@ -186,7 +235,7 @@ static void read_from_buffer(struct rand_buffer *buf,
     out += remaining;
     requested -= remaining;
 
-    if (!read_full(urandom_fd, buf->rand, BUF_SIZE)) {
+    if (!fill_with_entropy(buf->rand, BUF_SIZE)) {
       abort();
       return;
     }
@@ -213,7 +262,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
     }
   }
 
-  if (!read_full(urandom_fd, out, requested)) {
+  if (!fill_with_entropy(out, requested)) {
     abort();
   }
 }

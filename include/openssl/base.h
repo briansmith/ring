@@ -114,6 +114,10 @@ extern "C" {
 #define OPENSSL_WINDOWS
 #endif
 
+#if defined(__linux__)
+#define OPENSSL_LINUX
+#endif
+
 #if defined(TRUSTY)
 #define OPENSSL_TRUSTY
 #define OPENSSL_NO_THREADS
