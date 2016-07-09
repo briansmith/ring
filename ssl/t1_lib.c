@@ -472,14 +472,19 @@ int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
 }
 
 int tls1_check_ec_cert(SSL *ssl, X509 *x) {
-  int ret = 0;
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    /* In TLS 1.3, the ECDSA curve is negotiated via signature algorithms. */
+    return 1;
+  }
+
   EVP_PKEY *pkey = X509_get_pubkey(x);
+  if (pkey == NULL) {
+    return 0;
+  }
+
+  int ret = 0;
   uint16_t group_id;
   uint8_t comp_id;
-
-  if (!pkey) {
-    goto done;
-  }
   EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
   if (ec_key == NULL ||
       !tls1_curve_params_from_ec_key(&group_id, &comp_id, ec_key) ||

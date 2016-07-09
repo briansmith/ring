@@ -5041,9 +5041,6 @@ func addSignatureAlgorithmTests() {
 
 	// In TLS 1.2 and below, ECDSA uses the curve list rather than the
 	// signature algorithms.
-	//
-	// TODO(davidben): Add a TLS 1.3 version of this test where the mismatch
-	// is allowed.
 	testCases = append(testCases, testCase{
 		name: "CheckLeafCurve",
 		config: Config{
@@ -5054,6 +5051,17 @@ func addSignatureAlgorithmTests() {
 		flags:         []string{"-p384-only"},
 		shouldFail:    true,
 		expectedError: ":BAD_ECC_CERT:",
+	})
+
+	// In TLS 1.3, ECDSA does not use the ECDHE curve list.
+	testCases = append(testCases, testCase{
+		name: "CheckLeafCurve-TLS13",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			Certificates: []Certificate{ecdsaP256Certificate},
+		},
+		flags: []string{"-p384-only"},
 	})
 }
 
