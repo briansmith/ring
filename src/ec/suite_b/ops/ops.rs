@@ -415,29 +415,24 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // native-endian limbs, padded with zeros.
 pub fn parse_big_endian_value(input: &[u8], num_limbs: usize)
                               -> Result<[Limb; MAX_LIMBS], ()> {
-    // `bytes_in_current_limb` is the number of bytes in the current limb.
-    // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
-    // limb.
-    let mut bytes_in_current_limb =
-        core::cmp::min(LIMB_BYTES - (input.len() % LIMB_BYTES), input.len());
-    let num_encoded_limbs =
-        (input.len() / LIMB_BYTES) +
-        (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
+    let num_encoded_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
 
     if num_encoded_limbs > num_limbs {
         return Err(());
     }
 
     let mut result = [0; MAX_LIMBS];
-    let mut current_byte = 0;
     for i in 0..num_encoded_limbs {
         let mut limb = 0;
-        for _ in 0..bytes_in_current_limb {
-            limb = (limb << 8) | (input[current_byte] as Limb);
-            current_byte += 1;
+        /* numbering here has 0 as the rightmost byte. */
+        let start = i * LIMB_BYTES;
+        let end = core::cmp::min(start + LIMB_BYTES, input.len());
+
+        for offs in start..end {
+            let shift = 8 * (offs - start);
+            limb |= (input[input.len() - offs - 1] as Limb) << shift;
         }
-        result[num_encoded_limbs - i - 1] = limb;
-        bytes_in_current_limb = LIMB_BYTES;
+        result[i] = limb;
     }
 
     Ok(result)
