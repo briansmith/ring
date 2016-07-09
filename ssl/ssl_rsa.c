@@ -58,6 +58,8 @@
 
 #include <limits.h>
 
+#include <openssl/ec.h>
+#include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -452,18 +454,22 @@ static int ssl_verify_rsa_pkcs1(SSL *ssl, const uint8_t *signature,
   return ret;
 }
 
-static int is_ecdsa(const EVP_MD **out_md, uint16_t sigalg) {
+static int is_ecdsa(int *out_curve, const EVP_MD **out_md, uint16_t sigalg) {
   switch (sigalg) {
     case SSL_SIGN_ECDSA_SHA1:
+      *out_curve = NID_undef;
       *out_md = EVP_sha1();
       return 1;
     case SSL_SIGN_ECDSA_SECP256R1_SHA256:
+      *out_curve = NID_X9_62_prime256v1;
       *out_md = EVP_sha256();
       return 1;
     case SSL_SIGN_ECDSA_SECP384R1_SHA384:
+      *out_curve = NID_secp384r1;
       *out_md = EVP_sha384();
       return 1;
     case SSL_SIGN_ECDSA_SECP521R1_SHA512:
+      *out_curve = NID_secp521r1;
       *out_md = EVP_sha512();
       return 1;
     default:
@@ -472,8 +478,22 @@ static int is_ecdsa(const EVP_MD **out_md, uint16_t sigalg) {
 }
 
 static int ssl_sign_ecdsa(SSL *ssl, uint8_t *out, size_t *out_len,
-                          size_t max_out, const EVP_MD *md, const uint8_t *in,
-                          size_t in_len) {
+                          size_t max_out, int curve, const EVP_MD *md,
+                          const uint8_t *in, size_t in_len) {
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(ssl->cert->privatekey);
+  if (ec_key == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    return 0;
+  }
+
+  /* In TLS 1.3, the curve is also specified by the signature algorithm. */
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
+      (curve == NID_undef ||
+       EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key)) != curve)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    return 0;
+  }
+
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
   *out_len = max_out;
@@ -485,9 +505,18 @@ static int ssl_sign_ecdsa(SSL *ssl, uint8_t *out, size_t *out_len,
 }
 
 static int ssl_verify_ecdsa(SSL *ssl, const uint8_t *signature,
-                            size_t signature_len, const EVP_MD *md,
+                            size_t signature_len, int curve, const EVP_MD *md,
                             EVP_PKEY *pkey, const uint8_t *in, size_t in_len) {
-  if (pkey->type != EVP_PKEY_EC) {
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (ec_key == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    return 0;
+  }
+
+  /* In TLS 1.3, the curve is also specified by the signature algorithm. */
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
+      (curve == NID_undef ||
+       EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key)) != curve)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     return 0;
   }
@@ -510,8 +539,9 @@ enum ssl_private_key_result_t ssl_private_key_sign(
      *
      * TODO(davidben): Switch SSL_PRIVATE_KEY_METHOD to message-based APIs. */
     const EVP_MD *md;
+    int curve;
     if (!is_rsa_pkcs1(&md, signature_algorithm) &&
-        !is_ecdsa(&md, signature_algorithm)) {
+        !is_ecdsa(&curve, &md, signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
       return ssl_private_key_failure;
     }
@@ -532,8 +562,9 @@ enum ssl_private_key_result_t ssl_private_key_sign(
                ? ssl_private_key_success
                : ssl_private_key_failure;
   }
-  if (is_ecdsa(&md, signature_algorithm)) {
-    return ssl_sign_ecdsa(ssl, out, out_len, max_out, md, in, in_len)
+  int curve;
+  if (is_ecdsa(&curve, &md, signature_algorithm)) {
+    return ssl_sign_ecdsa(ssl, out, out_len, max_out, curve, md, in, in_len)
                ? ssl_private_key_success
                : ssl_private_key_failure;
   }
@@ -556,8 +587,9 @@ int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
     return ssl_verify_rsa_pkcs1(ssl, signature, signature_len, md, pkey, in,
                                 in_len);
   }
-  if (is_ecdsa(&md, signature_algorithm)) {
-    return ssl_verify_ecdsa(ssl, signature, signature_len, md, pkey, in,
+  int curve;
+  if (is_ecdsa(&curve, &md, signature_algorithm)) {
+    return ssl_verify_ecdsa(ssl, signature, signature_len, curve, md, pkey, in,
                             in_len);
   }
 
@@ -592,4 +624,33 @@ enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
   /* Only custom keys may be asynchronous. */
   return ssl->cert->key_method->decrypt_complete(ssl, out, out_len, max_out);
+}
+
+int ssl_private_key_supports_signature_algorithm(SSL *ssl,
+                                                 uint16_t signature_algorithm) {
+  const EVP_MD *md;
+  if (is_rsa_pkcs1(&md, signature_algorithm)) {
+    return ssl_private_key_type(ssl) == EVP_PKEY_RSA;
+  }
+
+  int curve;
+  if (is_ecdsa(&curve, &md, signature_algorithm)) {
+    if (ssl_private_key_type(ssl) != EVP_PKEY_EC) {
+      return 0;
+    }
+
+    /* For non-custom keys, also check the curve matches. Custom private keys
+     * must instead configure the signature algorithms accordingly. */
+    if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
+        ssl->cert->key_method == NULL) {
+      EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(ssl->cert->privatekey);
+      if (curve == NID_undef ||
+          EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key)) != curve) {
+        return 0;
+      }
+    }
+    return 1;
+  }
+
+  return 0;
 }

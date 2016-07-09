@@ -2511,27 +2511,6 @@ done:
   return ret;
 }
 
-/* tls12_get_pkey_type returns the EVP_PKEY type corresponding to TLS signature
- * algorithm |sigalg|. It returns -1 if the type is unknown. */
-static int tls12_get_pkey_type(uint16_t sigalg) {
-  switch (sigalg) {
-    case SSL_SIGN_RSA_PKCS1_SHA1:
-    case SSL_SIGN_RSA_PKCS1_SHA256:
-    case SSL_SIGN_RSA_PKCS1_SHA384:
-    case SSL_SIGN_RSA_PKCS1_SHA512:
-      return EVP_PKEY_RSA;
-
-    case SSL_SIGN_ECDSA_SHA1:
-    case SSL_SIGN_ECDSA_SECP256R1_SHA256:
-    case SSL_SIGN_ECDSA_SECP384R1_SHA384:
-    case SSL_SIGN_ECDSA_SECP521R1_SHA512:
-      return EVP_PKEY_EC;
-
-    default:
-      return -1;
-  }
-}
-
 int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *in_sigalgs) {
   /* Extension ignored for inappropriate versions */
   if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
@@ -2579,13 +2558,12 @@ int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *in_sigalgs) {
 
 int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
   CERT *cert = ssl->cert;
-  int type = ssl_private_key_type(ssl);
   size_t i, j;
 
   /* Before TLS 1.2, the signature algorithm isn't negotiated as part of the
    * handshake. It is fixed at MD5-SHA1 for RSA and SHA1 for ECDSA. */
   if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (type == EVP_PKEY_RSA) {
+    if (ssl_private_key_type(ssl) == EVP_PKEY_RSA) {
       *out = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
     } else {
       *out = SSL_SIGN_ECDSA_SHA1;
@@ -2615,14 +2593,17 @@ int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
   }
 
   for (i = 0; i < sigalgs_len; i++) {
+    uint16_t sigalg = sigalgs[i];
+    /* SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
+     * negotiated. */
+    if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1 ||
+        !ssl_private_key_supports_signature_algorithm(ssl, sigalgs[i])) {
+      continue;
+    }
+
     for (j = 0; j < peer_sigalgs_len; j++) {
-      uint16_t signature_algorithm = peer_sigalgs[j];
-      /* SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
-       * negotiated. */
-      if (signature_algorithm != SSL_SIGN_RSA_PKCS1_MD5_SHA1 &&
-          signature_algorithm == sigalgs[i] &&
-          tls12_get_pkey_type(signature_algorithm) == type) {
-        *out = signature_algorithm;
+      if (sigalg == peer_sigalgs[j]) {
+        *out = sigalg;
         return 1;
       }
     }

@@ -490,12 +490,18 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
 enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
 
+/* ssl_private_key_supports_signature_algorithm returns one if |ssl|'s private
+ * key supports |signature_algorithm| and zero otherwise. */
+int ssl_private_key_supports_signature_algorithm(SSL *ssl,
+                                                 uint16_t signature_algorithm);
+
 /* ssl_public_key_verify verifies that the |signature| is valid for the public
  * key |pkey| and input |in|, using the |signature_algorithm| specified. */
 int ssl_public_key_verify(
     SSL *ssl, const uint8_t *signature, size_t signature_len,
     uint16_t signature_algorithm, EVP_PKEY *pkey,
     const uint8_t *in, size_t in_len);
+
 
 /* Custom extensions */
 

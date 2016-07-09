@@ -749,7 +749,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 
 		if c.vers > VersionSSL30 {
-			err = verifyMessage(c.vers, pub, sigAlg, hs.finishedHash.buffer, certVerify.signature)
+			err = verifyMessage(c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature)
 		} else {
 			// SSL 3.0's client certificate construction is
 			// incompatible with signatureAlgorithm.

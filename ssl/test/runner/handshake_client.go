@@ -570,7 +570,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		err = verifyMessage(c.vers, leaf.PublicKey, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
+		err = verifyMessage(c.vers, leaf.PublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		if err != nil {
 			return err
 		}
@@ -768,7 +768,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		if certVerify.hasSignatureAlgorithm {
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, certReq.signatureAlgorithms, c.config.signatureAlgorithmsForClient())
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms, c.config.signatureAlgorithmsForClient())
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
@@ -1254,7 +1254,7 @@ findCert:
 		// Ensure the private key supports one of the advertised
 		// signature algorithms.
 		if certReq.hasSignatureAlgorithm {
-			if _, err := selectSignatureAlgorithm(c.vers, chain.PrivateKey, certReq.signatureAlgorithms, c.config.signatureAlgorithmsForClient()); err != nil {
+			if _, err := selectSignatureAlgorithm(c.vers, chain.PrivateKey, c.config, certReq.signatureAlgorithms, c.config.signatureAlgorithmsForClient()); err != nil {
 				continue
 			}
 		}

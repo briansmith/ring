@@ -64,7 +64,7 @@ func (ka *rsaKeyAgreement) generateServerKeyExchange(config *Config, cert *Certi
 
 	var sigAlg signatureAlgorithm
 	if ka.version >= VersionTLS12 {
-		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, clientHello.signatureAlgorithms, config.signatureAlgorithmsForServer())
+		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms, config.signatureAlgorithmsForServer())
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +404,7 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 	var sigAlg signatureAlgorithm
 	var err error
 	if ka.version >= VersionTLS12 {
-		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, clientHello.signatureAlgorithms, config.signatureAlgorithmsForServer())
+		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms, config.signatureAlgorithmsForServer())
 		if err != nil {
 			return nil, err
 		}
@@ -488,7 +488,7 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 	}
 	sig = sig[2:]
 
-	return verifyMessage(ka.version, cert.PublicKey, sigAlg, msg, sig)
+	return verifyMessage(ka.version, cert.PublicKey, config, sigAlg, msg, sig)
 }
 
 // ecdheRSAKeyAgreement implements a TLS key agreement where the server

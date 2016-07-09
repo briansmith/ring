@@ -896,6 +896,10 @@ type ProtocolBugs struct {
 	// SendSignatureAlgorithm, if non-zero, causes all signatures to be sent
 	// with the given signature algorithm rather than the one negotiated.
 	SendSignatureAlgorithm signatureAlgorithm
+
+	// SkipECDSACurveCheck, if true, causes all ECDSA curve checks to be
+	// skipped.
+	SkipECDSACurveCheck bool
 }
 
 func (c *Config) serverInit() {

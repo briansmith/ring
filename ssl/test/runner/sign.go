@@ -7,6 +7,7 @@ package runner
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/md5"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -24,7 +25,7 @@ type signer interface {
 	verifyMessage(key crypto.PublicKey, msg, sig []byte) error
 }
 
-func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, peerSigAlgs, ourSigAlgs []signatureAlgorithm) (signatureAlgorithm, error) {
+func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Config, peerSigAlgs, ourSigAlgs []signatureAlgorithm) (signatureAlgorithm, error) {
 	// If the client didn't specify any signature_algorithms extension then
 	// we can assume that it supports SHA1. See
 	// http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
@@ -37,7 +38,7 @@ func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, peerSigAlgs
 			continue
 		}
 
-		signer, err := getSigner(version, key, sigAlg)
+		signer, err := getSigner(version, key, config, sigAlg)
 		if err != nil {
 			continue
 		}
@@ -50,7 +51,7 @@ func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, peerSigAlgs
 }
 
 func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg signatureAlgorithm, msg []byte) ([]byte, error) {
-	signer, err := getSigner(version, key, sigAlg)
+	signer, err := getSigner(version, key, config, sigAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +59,8 @@ func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg s
 	return signer.signMessage(key, config, msg)
 }
 
-func verifyMessage(version uint16, key crypto.PublicKey, sigAlg signatureAlgorithm, msg, sig []byte) error {
-	signer, err := getSigner(version, key, sigAlg)
+func verifyMessage(version uint16, key crypto.PublicKey, config *Config, sigAlg signatureAlgorithm, msg, sig []byte) error {
+	signer, err := getSigner(version, key, config, sigAlg)
 	if err != nil {
 		return err
 	}
@@ -110,14 +111,25 @@ func (r *rsaPKCS1Signer) verifyMessage(key crypto.PublicKey, msg, sig []byte) er
 }
 
 type ecdsaSigner struct {
-	// TODO(davidben): In TLS 1.3, ECDSA signatures must match curves as
-	// well. Pass in a curve to enforce in 1.3 alone.
-	hash crypto.Hash
+	version uint16
+	config  *Config
+	curve   elliptic.Curve
+	hash    crypto.Hash
+}
+
+func (e *ecdsaSigner) isCurveValid(curve elliptic.Curve) bool {
+	if e.config.Bugs.SkipECDSACurveCheck {
+		return true
+	}
+	if e.version <= VersionTLS12 {
+		return true
+	}
+	return e.curve != nil && curve == e.curve
 }
 
 func (e *ecdsaSigner) supportsKey(key crypto.PrivateKey) bool {
-	_, ok := key.(*ecdsa.PrivateKey)
-	return ok
+	ecdsaKey, ok := key.(*ecdsa.PrivateKey)
+	return ok && e.isCurveValid(ecdsaKey.Curve)
 }
 
 func maybeCorruptECDSAValue(n *big.Int, typeOfCorruption BadValue, limit *big.Int) *big.Int {
@@ -143,6 +155,9 @@ func (e *ecdsaSigner) signMessage(key crypto.PrivateKey, config *Config, msg []b
 	if !ok {
 		return nil, errors.New("invalid key type for ECDSA")
 	}
+	if !e.isCurveValid(ecdsaKey.Curve) {
+		return nil, errors.New("invalid curve for ECDSA")
+	}
 
 	h := e.hash.New()
 	h.Write(msg)
@@ -163,6 +178,9 @@ func (e *ecdsaSigner) verifyMessage(key crypto.PublicKey, msg, sig []byte) error
 	if !ok {
 		return errors.New("invalid key type for ECDSA")
 	}
+	if !e.isCurveValid(ecdsaKey.Curve) {
+		return errors.New("invalid curve for ECDSA")
+	}
 
 	ecdsaSig := new(ecdsaSignature)
 	if _, err := asn1.Unmarshal(sig, ecdsaSig); err != nil {
@@ -180,14 +198,14 @@ func (e *ecdsaSigner) verifyMessage(key crypto.PublicKey, msg, sig []byte) error
 	return nil
 }
 
-func getSigner(version uint16, key interface{}, sigAlg signatureAlgorithm) (signer, error) {
+func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm) (signer, error) {
 	// TLS 1.1 and below use legacy signature algorithms.
 	if version < VersionTLS12 {
 		switch key.(type) {
 		case *rsa.PrivateKey, *rsa.PublicKey:
 			return &rsaPKCS1Signer{crypto.MD5SHA1}, nil
 		case *ecdsa.PrivateKey, *ecdsa.PublicKey:
-			return &ecdsaSigner{crypto.SHA1}, nil
+			return &ecdsaSigner{version, config, nil, crypto.SHA1}, nil
 		default:
 			return nil, errors.New("unknown key type")
 		}
@@ -206,13 +224,13 @@ func getSigner(version uint16, key interface{}, sigAlg signatureAlgorithm) (sign
 	case signatureRSAPKCS1WithSHA512:
 		return &rsaPKCS1Signer{crypto.SHA512}, nil
 	case signatureECDSAWithSHA1:
-		return &ecdsaSigner{crypto.SHA1}, nil
+		return &ecdsaSigner{version, config, nil, crypto.SHA1}, nil
 	case signatureECDSAWithP256AndSHA256:
-		return &ecdsaSigner{crypto.SHA256}, nil
+		return &ecdsaSigner{version, config, elliptic.P256(), crypto.SHA256}, nil
 	case signatureECDSAWithP384AndSHA384:
-		return &ecdsaSigner{crypto.SHA384}, nil
+		return &ecdsaSigner{version, config, elliptic.P384(), crypto.SHA384}, nil
 	case signatureECDSAWithP521AndSHA512:
-		return &ecdsaSigner{crypto.SHA512}, nil
+		return &ecdsaSigner{version, config, elliptic.P521(), crypto.SHA512}, nil
 	default:
 		return nil, fmt.Errorf("unsupported signature algorithm %04x", sigAlg)
 	}

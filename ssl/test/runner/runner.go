@@ -4676,7 +4676,6 @@ var testSignatureAlgorithms = []struct {
 	{"RSA-PKCS1-SHA384", signatureRSAPKCS1WithSHA384, testCertRSA},
 	{"RSA-PKCS1-SHA512", signatureRSAPKCS1WithSHA512, testCertRSA},
 	{"ECDSA-SHA1", signatureECDSAWithSHA1, testCertECDSAP256},
-	// TODO(davidben): Enforce curve matching in TLS 1.3 and test.
 	{"ECDSA-P256-SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP256},
 	{"ECDSA-P384-SHA384", signatureECDSAWithP384AndSHA384, testCertECDSAP384},
 	{"ECDSA-P521-SHA512", signatureECDSAWithP521AndSHA512, testCertECDSAP521},
@@ -4688,93 +4687,103 @@ const fakeSigAlg2 signatureAlgorithm = 0xff01
 func addSignatureAlgorithmTests() {
 	// Make sure each signature algorithm works. Include some fake values in
 	// the list and ensure they're ignored.
-	//
-	// TODO(davidben): Test each of these against both TLS 1.2 and TLS 1.3.
 	for _, alg := range testSignatureAlgorithms {
-		testCases = append(testCases, testCase{
-			name: "SigningHash-ClientAuth-Sign-" + alg.name,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				// SignatureAlgorithms is shared, so we must
-				// configure a matching server certificate too.
-				Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-				ClientAuth:   RequireAnyClientCert,
-				SignatureAlgorithms: []signatureAlgorithm{
-					fakeSigAlg1,
-					alg.id,
-					fakeSigAlg2,
-				},
-			},
-			flags: []string{
-				"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-				"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-				"-enable-all-curves",
-			},
-			expectedPeerSignatureAlgorithm: alg.id,
-		})
+		for _, ver := range tlsVersions {
+			if ver.version < VersionTLS12 {
+				continue
+			}
 
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "SigningHash-ClientAuth-Verify-" + alg.name,
-			config: Config{
-				MaxVersion:   VersionTLS12,
-				Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-				SignatureAlgorithms: []signatureAlgorithm{
-					alg.id,
-				},
-			},
-			flags: []string{
-				"-require-any-client-certificate",
-				"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-				// SignatureAlgorithms is shared, so we must
-				// configure a matching server certificate too.
-				"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-				"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-				"-enable-all-curves",
-			},
-		})
+			// ecdsa_sha1 does not exist in TLS 1.3.
+			if ver.version == VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
+				continue
+			}
 
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "SigningHash-ServerKeyExchange-Sign-" + alg.name,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				CipherSuites: []uint16{
-					TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-					TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			suffix := "-" + alg.name + "-" + ver.name
+			testCases = append(testCases, testCase{
+				name: "SigningHash-ClientAuth-Sign" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					// SignatureAlgorithms is shared, so we must
+					// configure a matching server certificate too.
+					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+					ClientAuth:   RequireAnyClientCert,
+					SignatureAlgorithms: []signatureAlgorithm{
+						fakeSigAlg1,
+						alg.id,
+						fakeSigAlg2,
+					},
 				},
-				SignatureAlgorithms: []signatureAlgorithm{
-					fakeSigAlg1,
-					alg.id,
-					fakeSigAlg2,
+				flags: []string{
+					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+					"-enable-all-curves",
 				},
-			},
-			flags: []string{
-				"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-				"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-				"-enable-all-curves",
-			},
-			expectedPeerSignatureAlgorithm: alg.id,
-		})
+				expectedPeerSignatureAlgorithm: alg.id,
+			})
 
-		testCases = append(testCases, testCase{
-			name: "SigningHash-ServerKeyExchange-Verify-" + alg.name,
-			config: Config{
-				MaxVersion:   VersionTLS12,
-				Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-				CipherSuites: []uint16{
-					TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-					TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "SigningHash-ClientAuth-Verify" + suffix,
+				config: Config{
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+					SignatureAlgorithms: []signatureAlgorithm{
+						alg.id,
+					},
 				},
-				SignatureAlgorithms: []signatureAlgorithm{
-					alg.id,
+				flags: []string{
+					"-require-any-client-certificate",
+					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+					// SignatureAlgorithms is shared, so we must
+					// configure a matching server certificate too.
+					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+					"-enable-all-curves",
 				},
-			},
-			flags: []string{
-				"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-				"-enable-all-curves",
-			},
-		})
+			})
+
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "SigningHash-ServerKeyExchange-Sign" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					CipherSuites: []uint16{
+						TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+					},
+					SignatureAlgorithms: []signatureAlgorithm{
+						fakeSigAlg1,
+						alg.id,
+						fakeSigAlg2,
+					},
+				},
+				flags: []string{
+					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+					"-enable-all-curves",
+				},
+				expectedPeerSignatureAlgorithm: alg.id,
+			})
+
+			testCases = append(testCases, testCase{
+				name: "SigningHash-ServerKeyExchange-Verify" + suffix,
+				config: Config{
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+					CipherSuites: []uint16{
+						TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+					},
+					SignatureAlgorithms: []signatureAlgorithm{
+						alg.id,
+					},
+				},
+				flags: []string{
+					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+					"-enable-all-curves",
+				},
+			})
+		}
 	}
 
 	// Test that algorithm selection takes the key type into account.
@@ -5062,6 +5071,75 @@ func addSignatureAlgorithmTests() {
 			Certificates: []Certificate{ecdsaP256Certificate},
 		},
 		flags: []string{"-p384-only"},
+	})
+
+	// In TLS 1.2, the ECDSA curve is not in the signature algorithm.
+	testCases = append(testCases, testCase{
+		name: "ECDSACurveMismatch-Verify-TLS12",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			Certificates: []Certificate{ecdsaP256Certificate},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithP384AndSHA384,
+			},
+		},
+	})
+
+	// In TLS 1.3, the ECDSA curve comes from the signature algorithm.
+	testCases = append(testCases, testCase{
+		name: "ECDSACurveMismatch-Verify-TLS13",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			Certificates: []Certificate{ecdsaP256Certificate},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithP384AndSHA384,
+			},
+			Bugs: ProtocolBugs{
+				SkipECDSACurveCheck: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_SIGNATURE_TYPE:",
+	})
+
+	// Signature algorithm selection in TLS 1.3 should take the curve into
+	// account.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ECDSACurveMismatch-Sign-TLS13",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithP384AndSHA384,
+				signatureECDSAWithP256AndSHA256,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
+			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
+		},
+		expectedPeerSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
+	})
+
+	// ecdsa_sha1 cannot be negotiated in TLS 1.3.
+	testCases = append(testCases, testCase{
+		name: "NoECDSAWithSHA1-TLS13",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			Certificates: []Certificate{ecdsaP256Certificate},
+			SignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				SkipECDSACurveCheck: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_SIGNATURE_TYPE:",
 	})
 }
 
