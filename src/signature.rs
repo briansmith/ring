@@ -164,6 +164,7 @@ pub use rsa::{
     RSA_PKCS1_SHA512,
 };
 
+#[cfg(feature = "use_heap")]
 pub use rsa::{
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
