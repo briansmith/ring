@@ -219,22 +219,22 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
+ecdsa!(ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
        "Verification of ECDSA signatures using the P-256 curve and SHA-1.");
-ecdsa!(ECDSA_P256_SHA256, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
+ecdsa!(ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
        "Verification of ECDSA signatures using the P-256 curve and SHA-256.");
-ecdsa!(ECDSA_P256_SHA384, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
+ecdsa!(ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
        "Verification of ECDSA signatures using the P-256 curve and SHA-384.");
-ecdsa!(ECDSA_P256_SHA512, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
+ecdsa!(ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
        "Verification of ECDSA signatures using the P-256 curve and SHA-512.");
 
-ecdsa!(ECDSA_P384_SHA1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
+ecdsa!(ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
        "Verification of ECDSA signatures using the P-384 curve and SHA-1.");
-ecdsa!(ECDSA_P384_SHA256, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
+ecdsa!(ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
        "Verification of ECDSA signatures using the P-384 curve and SHA-256.");
-ecdsa!(ECDSA_P384_SHA384, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
+ecdsa!(ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
        "Verification of ECDSA signatures using the P-384 curve and SHA-384.");
-ecdsa!(ECDSA_P384_SHA512, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
+ecdsa!(ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
        "Verification of ECDSA signatures using the P-384 curve and SHA-512.");
 
 
@@ -311,32 +311,32 @@ mod tests {
                                      &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA1" {
-                (&signature::ECDSA_P256_SHA1, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA1)
             } else if digest_name == "SHA256" {
-                (&signature::ECDSA_P256_SHA256, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
-                (&signature::ECDSA_P256_SHA384, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
             } else if digest_name == "SHA512" {
-                (&signature::ECDSA_P256_SHA512, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
             if digest_name == "SHA1" {
-                (&signature::ECDSA_P384_SHA1, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA1)
             } else if digest_name == "SHA256" {
-                (&signature::ECDSA_P384_SHA256, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
-                (&signature::ECDSA_P384_SHA384, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
             } else if digest_name == "SHA512" {
-                (&signature::ECDSA_P384_SHA512, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
