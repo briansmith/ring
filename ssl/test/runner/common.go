@@ -564,6 +564,11 @@ type ProtocolBugs struct {
 	// TLS version in the ClientHello than the maximum supported version.
 	SendClientVersion uint16
 
+	// NegotiateVersion, if non-zero, causes the server to negotiate the
+	// specifed TLS version rather than the version supported by either
+	// peer.
+	NegotiateVersion uint16
+
 	// ExpectFalseStart causes the server to, on full handshakes,
 	// expect the peer to False Start; the server Finished message
 	// isn't sent until we receive an application data record

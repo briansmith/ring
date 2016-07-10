@@ -1027,10 +1027,6 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
 STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *ssl);
 int ssl_verify_alarm_type(long type);
 
-/* ssl_fill_hello_random fills a client_random or server_random field of length
- * |len|. It returns one on success and zero on failure. */
-int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
-
 int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl);
 void ssl3_cleanup_key_block(SSL *ssl);

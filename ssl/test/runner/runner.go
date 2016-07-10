@@ -3614,6 +3614,29 @@ func addVersionNegotiationTests() {
 		shouldFail:    true,
 		expectedError: ":UNSUPPORTED_PROTOCOL:",
 	})
+
+	// Test TLS 1.3's downgrade signal.
+	testCases = append(testCases, testCase{
+		name: "Downgrade-TLS12-Client",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NegotiateVersion: VersionTLS12,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DOWNGRADE_DETECTED:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Downgrade-TLS12-Server",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: VersionTLS12,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "tls: downgrade from TLS 1.3 detected",
+	})
 }
 
 func addMinimumVersionTests() {

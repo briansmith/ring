@@ -873,10 +873,28 @@ static int ssl3_send_server_hello(SSL *ssl) {
     ssl->s3->tlsext_channel_id_valid = 0;
   }
 
-  if (!ssl_fill_hello_random(ssl->s3->server_random, SSL3_RANDOM_SIZE,
-                             1 /* server */)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  const uint32_t current_time = time(NULL);
+  ssl->s3->server_random[0] = current_time >> 24;
+  ssl->s3->server_random[1] = current_time >> 16;
+  ssl->s3->server_random[2] = current_time >> 8;
+  ssl->s3->server_random[3] = current_time;
+  if (!RAND_bytes(ssl->s3->server_random + 4, SSL3_RANDOM_SIZE - 4)) {
     return -1;
+  }
+
+  /* Fill in the TLS 1.2 downgrade signal. See draft-ietf-tls-tls13-14.
+   *
+   * TODO(davidben): Also implement the TLS 1.1 sentinel when things have
+   * settled down. */
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return -1;
+  }
+  if (max_version >= TLS1_3_VERSION &&
+      ssl3_protocol_version(ssl) <= TLS1_2_VERSION) {
+    static const uint8_t kDowngradeTLS12[8] = {0x44, 0x4f, 0x57, 0x4e,
+                                               0x47, 0x52, 0x44, 0x01};
+    memcpy(ssl->s3->server_random + SSL3_RANDOM_SIZE - 8, kDowngradeTLS12, 8);
   }
 
   CBB cbb, body, session_id;

@@ -635,8 +635,7 @@ static int ssl3_send_client_hello(SSL *ssl) {
   /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
    * renegerate the client_random. The random must be reused. */
   if ((!SSL_IS_DTLS(ssl) || !ssl->d1->send_cookie) &&
-      !ssl_fill_hello_random(ssl->s3->client_random,
-                             sizeof(ssl->s3->client_random), 0 /* client */)) {
+      !RAND_bytes(ssl->s3->client_random, sizeof(ssl->s3->client_random))) {
     goto err;
   }
 
@@ -763,15 +762,16 @@ static int ssl3_get_server_hello(SSL *ssl) {
 
   server_version = ssl->method->version_from_wire(server_wire_version);
 
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
+      server_version < min_version || server_version > max_version) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
+    al = SSL_AD_PROTOCOL_VERSION;
+    goto f_err;
+  }
+
   assert(ssl->s3->have_version == ssl->s3->initial_handshake_complete);
   if (!ssl->s3->have_version) {
-    uint16_t min_version, max_version;
-    if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
-        server_version < min_version || server_version > max_version) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
-      al = SSL_AD_PROTOCOL_VERSION;
-      goto f_err;
-    }
     ssl->version = server_wire_version;
     ssl->s3->enc_method = ssl3_get_enc_method(server_version);
     assert(ssl->s3->enc_method != NULL);
@@ -786,6 +786,21 @@ static int ssl3_get_server_hello(SSL *ssl) {
 
   /* Copy over the server random. */
   memcpy(ssl->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
+
+  /* Check for a TLS 1.3 downgrade signal. See draft-ietf-tls-tls13-14.
+   *
+   * TODO(davidben): Also implement the TLS 1.1 sentinel when things have
+   * settled down. */
+  static const uint8_t kDowngradeTLS12[8] = {0x44, 0x4f, 0x57, 0x4e,
+                                             0x47, 0x52, 0x44, 0x01};
+  if (max_version >= TLS1_3_VERSION &&
+      ssl3_protocol_version(ssl) <= TLS1_2_VERSION &&
+      memcmp(ssl->s3->server_random + SSL3_RANDOM_SIZE - 8, kDowngradeTLS12,
+             8) == 0) {
+    al = SSL_AD_ILLEGAL_PARAMETER;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DOWNGRADE_DETECTED);
+    goto f_err;
+  }
 
   assert(ssl->session == NULL || ssl->session->session_id_length > 0);
   if (!ssl->s3->initial_handshake_complete && ssl->session != NULL &&

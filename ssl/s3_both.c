@@ -672,21 +672,3 @@ int ssl_verify_alarm_type(long type) {
 
   return al;
 }
-
-int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server) {
-  if (is_server) {
-    const uint32_t current_time = time(NULL);
-    uint8_t *p = out;
-
-    if (len < 4) {
-      return 0;
-    }
-    p[0] = current_time >> 24;
-    p[1] = current_time >> 16;
-    p[2] = current_time >> 8;
-    p[3] = current_time;
-    return RAND_bytes(p + 4, len - 4);
-  } else {
-    return RAND_bytes(out, len);
-  }
-}

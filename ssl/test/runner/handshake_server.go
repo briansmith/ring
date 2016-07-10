@@ -211,10 +211,14 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	c.vers, ok = config.mutualVersion(hs.clientHello.vers, c.isDTLS)
-	if !ok {
-		c.sendAlert(alertProtocolVersion)
-		return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+	if config.Bugs.NegotiateVersion != 0 {
+		c.vers = config.Bugs.NegotiateVersion
+	} else {
+		c.vers, ok = config.mutualVersion(hs.clientHello.vers, c.isDTLS)
+		if !ok {
+			c.sendAlert(alertProtocolVersion)
+			return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+		}
 	}
 	c.haveVers = true
 
@@ -263,12 +267,13 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		c.sendAlert(alertInternalError)
 		return false, err
 	}
-	// Signal downgrades in the server random, per draft-ietf-tls-tls13-13, section 6.3.1.2.
+	// Signal downgrades in the server random, per draft-ietf-tls-tls13-14,
+	// section 6.3.1.2.
 	if c.vers <= VersionTLS12 && config.maxVersion(c.isDTLS) >= VersionTLS13 {
-		copy(hs.hello.random[:8], downgradeTLS13)
+		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS13)
 	}
 	if c.vers <= VersionTLS11 && config.maxVersion(c.isDTLS) == VersionTLS12 {
-		copy(hs.hello.random[:8], downgradeTLS12)
+		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS12)
 	}
 
 	foundCompression := false
