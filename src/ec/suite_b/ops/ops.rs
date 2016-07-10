@@ -264,7 +264,7 @@ impl PublicKeyOps {
             try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
         let mut elem_limbs =
             try!(parse_big_endian_value_in_range(
-                    encoded_value.as_slice_less_safe(), 0,
+                    encoded_value, 0,
                     &self.common.q.p[..self.common.num_limbs]));
         // Montgomery encode (elem_to_mont).
         unsafe {
@@ -292,7 +292,7 @@ impl PublicScalarOps {
                         -> Result<Scalar, ()> {
         let encoded_value = try!(der::positive_integer(input));
         let limbs = try!(parse_big_endian_value_in_range(
-                            encoded_value.as_slice_less_safe(), 1,
+                            encoded_value, 1,
                             &self.public_key_ops.common.n.limbs[
                                 ..self.public_key_ops.common.num_limbs]));
         Ok(Scalar { limbs: limbs })
@@ -378,7 +378,7 @@ impl PublicScalarOps {
 // big-endian encoding of bytes into an least-significant-limb-first array of
 // native-endian limbs, padded with zeros, and for validating that the value is
 // in the given range.
-fn parse_big_endian_value_in_range(input: &[u8], min_inclusive: Limb,
+fn parse_big_endian_value_in_range(input: untrusted::Input, min_inclusive: Limb,
                                    max_exclusive: &[Limb])
                                    -> Result<[Limb; MAX_LIMBS], ()> {
     let num_limbs = max_exclusive.len();
@@ -429,7 +429,7 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // `parse_big_endian_value` is the common logic for converting the big-endian
 // encoding of bytes into an least-significant-limb-first array of
 // native-endian limbs, padded with zeros.
-pub fn parse_big_endian_value(input: &[u8], num_limbs: usize)
+pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
                               -> Result<[Limb; MAX_LIMBS], ()> {
     if input.len() == 0 {
         return Err(());
@@ -450,19 +450,19 @@ pub fn parse_big_endian_value(input: &[u8], num_limbs: usize)
         return Err(());
     }
 
-    let mut result = [0; MAX_LIMBS];
-    let mut current_byte = 0;
-    for i in 0..num_encoded_limbs {
-        let mut limb = 0;
-        for _ in 0..bytes_in_current_limb {
-            limb = (limb << 8) | (input[current_byte] as Limb);
-            current_byte += 1;
+    input.read_all((), |input| {
+        let mut result = [0; MAX_LIMBS];
+        for i in 0..num_encoded_limbs {
+            let mut limb: Limb = 0;
+            for _ in 0..bytes_in_current_limb {
+                let b = try!(input.read_byte());
+                limb = (limb << 8) | (b as Limb);
+            }
+            result[num_encoded_limbs - i - 1] = limb;
+            bytes_in_current_limb = LIMB_BYTES;
         }
-        result[num_encoded_limbs - i - 1] = limb;
-        bytes_in_current_limb = LIMB_BYTES;
-    }
-
-    Ok(result)
+        Ok(result)
+    })
 }
 
 pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
@@ -497,6 +497,7 @@ extern {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
 
@@ -515,57 +516,65 @@ mod tests {
     #[test]
     fn parse_big_endian_value_test() {
         // Empty input.
-        assert_eq!(parse_big_endian_value(&[], MAX_LIMBS), Err(()));
+        let inp = untrusted::Input::from(&[]);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS), Err(()));
 
         // Less than a full limb.
         let inp = [0xfe];
-        assert_eq!(parse_big_endian_value(&inp, MAX_LIMBS),
+        let inp = untrusted::Input::from(&inp);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
                    Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xfe]));
 
         // A whole limb for 32-bit, half a limb for 64-bit.
         let inp = [0xbe, 0xef, 0xf0, 0x0d];
-        assert_eq!(parse_big_endian_value(&inp, MAX_LIMBS),
+        let inp = untrusted::Input::from(&inp);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
                    Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0xbeeff00d]));
 
         // A whole number of limbs (2 for 32-bit, 1 for 64-bit).
         let inp = [0xfe, 0xed, 0xde, 0xad, 0xbe, 0xef, 0xf0, 0x0d];
-        assert_eq!(parse_big_endian_value(&inp, MAX_LIMBS),
+        let inp = untrusted::Input::from(&inp);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
                    Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0xfeeddead, 0xbeeff00d]));
 
         // One limb - 1 for 32-bit.
         let inp = [0xef, 0xf0, 0x0d];
-        assert_eq!(parse_big_endian_value(&inp, MAX_LIMBS),
+        let inp = untrusted::Input::from(&inp);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
                    Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0xeff00d]));
 
         // Two limbs - 1 for 64-bit, four limbs - 1 for 32-bit.
         let inp = [     0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8,
                    0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0];
-        assert_eq!(parse_big_endian_value(&inp, MAX_LIMBS),
+        let inp = untrusted::Input::from(&inp);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
                    Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
                              0x000e0d0c, 0x0b0a0908, 0x07060504, 0x03020100]));
 
         // One limb + 1 for for 32-bit, half a limb + 1 for 64-bit.
         let inp = [0x4, 0x3, 0x2, 0x1, 0x0];
-        assert_eq!(parse_big_endian_value(&inp, MAX_LIMBS),
+        let inp = untrusted::Input::from(&inp);
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
                    Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x04, 0x03020100]));
 
         // A whole number of limbs + 1.
         let inp = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00];
+        let inp = untrusted::Input::from(&inp);
         let out = limbs![0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0x88, 0x77665544, 0x33221100];
-        assert_eq!(parse_big_endian_value(&inp, 3), Ok(out));
+        assert_eq!(parse_big_endian_value(inp, 3), Ok(out));
 
         // The input is longer than will fit in the given number of limbs.
-        assert_eq!(parse_big_endian_value(&inp, 2),
+        assert_eq!(parse_big_endian_value(inp, 2),
                    if cfg!(target_pointer_width = "64") {
                         Ok(out)
                    } else {
                         Err(())
                    });
-        assert_eq!(parse_big_endian_value(&inp, 1), Err(()));
+        assert_eq!(parse_big_endian_value(inp, 1), Err(()));
     }
 }
 

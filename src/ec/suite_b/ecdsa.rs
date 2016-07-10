@@ -166,7 +166,9 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
     };
 
     // XXX: unwrap
-    let mut limbs = parse_big_endian_value(digest, num_limbs).unwrap();
+    let mut limbs =
+        parse_big_endian_value(untrusted::Input::from(digest), num_limbs)
+            .unwrap();
     let n = &ops.public_key_ops.common.n.limbs[..num_limbs];
     if !limbs_less_than_limbs(&limbs[..num_limbs], n) {
         let mut carried_bit = 0;
@@ -291,7 +293,9 @@ mod tests {
             let output = test_case.consume_bytes("Output");
             assert_eq!(output.len(),
                        ops.public_key_ops.common.num_limbs * LIMB_BYTES);
-            let expected = try!(parse_big_endian_value(&output, num_limbs));
+            let expected =
+                try!(parse_big_endian_value(untrusted::Input::from(&output),
+                                            num_limbs));
 
             let actual = digest_scalar_(ops, &input);
 
