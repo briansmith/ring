@@ -83,11 +83,10 @@ use untrusted;
 
 pub use ec::PUBLIC_KEY_MAX_LEN;
 
+pub use ec::suite_b::ecdh::ECDH_P256;
+
 #[cfg(feature = "use_heap")]
-pub use ec::suite_b::ecdh::{
-    ECDH_P256,
-    ECDH_P384,
-};
+pub use ec::suite_b::ecdh::ECDH_P384;
 
 pub use ec::x25519::X25519;
 
@@ -315,8 +314,9 @@ mod tests {
 
     #[cfg(not(feature = "use_heap"))]
     fn alg_from_curve_name(curve_name: &str) -> Option<&'static Algorithm> {
-        if curve_name == "P-256" ||
-           curve_name == "P-384" {
+        if curve_name == "P-256" {
+            Some(&ECDH_P256)
+        } else if curve_name == "P-384" {
             None
         } else if curve_name == "X25519" {
             Some(&X25519)

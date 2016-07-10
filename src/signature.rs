@@ -135,13 +135,15 @@
 use {init, signature_impl};
 use untrusted;
 
-#[cfg(feature = "use_heap")]
 pub use ec::suite_b::ecdsa::{
     ECDSA_P256_SHA1_ASN1,
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA384_ASN1,
     ECDSA_P256_SHA512_ASN1,
+};
 
+#[cfg(feature = "use_heap")]
+pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA1_ASN1,
     ECDSA_P384_SHA256_ASN1,
     ECDSA_P384_SHA384_ASN1,

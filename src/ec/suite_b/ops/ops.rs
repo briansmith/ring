@@ -507,6 +507,7 @@ mod tests {
         let _ = p256::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
 
+    #[cfg(feature = "use_heap")]
     #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p384_scalar_inv_to_mont_zero_panic_test() {
@@ -659,4 +660,6 @@ macro_rules! bench_curve {
 
 
 pub mod p256;
+
+#[cfg(feature = "use_heap")]
 pub mod p384;
