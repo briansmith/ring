@@ -240,3 +240,5 @@ RAND_METHOD *RAND_SSLeay(void) {
 }
 
 void RAND_set_rand_method(const RAND_METHOD *method) {}
+
+void RAND_cleanup(void) {}

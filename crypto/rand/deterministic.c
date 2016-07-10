@@ -30,8 +30,6 @@
  * mutex would not be deterministic.) */
 static uint64_t g_num_calls = 0;
 
-void RAND_cleanup(void) {}
-
 void RAND_reset_for_fuzzing(void) { g_num_calls = 0; }
 
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {

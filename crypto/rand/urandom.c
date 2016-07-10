@@ -96,8 +96,6 @@ static void init_once(void) {
   urandom_fd = fd;
 }
 
-void RAND_cleanup(void) {}
-
 void RAND_set_urandom_fd(int fd) {
   fd = dup(fd);
   if (fd < 0) {
