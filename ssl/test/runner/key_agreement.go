@@ -64,7 +64,7 @@ func (ka *rsaKeyAgreement) generateServerKeyExchange(config *Config, cert *Certi
 
 	var sigAlg signatureAlgorithm
 	if ka.version >= VersionTLS12 {
-		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms, config.signSignatureAlgorithms())
+		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms)
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +404,7 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 	var sigAlg signatureAlgorithm
 	var err error
 	if ka.version >= VersionTLS12 {
-		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms, config.signSignatureAlgorithms())
+		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms)
 		if err != nil {
 			return nil, err
 		}

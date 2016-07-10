@@ -768,7 +768,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		privKey := c.config.Certificates[0].PrivateKey
 
 		if certVerify.hasSignatureAlgorithm {
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms, c.config.signSignatureAlgorithms())
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
@@ -1254,7 +1254,7 @@ findCert:
 		// Ensure the private key supports one of the advertised
 		// signature algorithms.
 		if certReq.hasSignatureAlgorithm {
-			if _, err := selectSignatureAlgorithm(c.vers, chain.PrivateKey, c.config, certReq.signatureAlgorithms, c.config.signSignatureAlgorithms()); err != nil {
+			if _, err := selectSignatureAlgorithm(c.vers, chain.PrivateKey, c.config, certReq.signatureAlgorithms); err != nil {
 				continue
 			}
 		}
