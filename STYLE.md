@@ -27,7 +27,9 @@ Google style guide do not apply. Support for C99 features depends on
 our target platforms. Typically, Chromium's target MSVC is the most
 restrictive.
 
-Variable declarations in the middle of a function are allowed.
+Variable declarations in the middle of a function or inside a `for` loop are
+allowed and preferred where possible. Note that the common `goto err` cleanup
+pattern requires lifting some variable declarations.
 
 Comments should be `/* C-style */` for consistency.
 
