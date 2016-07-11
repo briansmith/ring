@@ -196,7 +196,7 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 
 macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $ecdsa_verify_ops:expr, $digest_alg:expr,
-      $doc_str:expr, $use_heap_note:expr ) => {
+      $doc_str:expr ) => {
         #[doc=$doc_str]
         ///
         /// Public keys are encoding in uncompressed form using the
@@ -216,8 +216,6 @@ macro_rules! ecdsa {
         /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
-        ///
-        #[doc=$use_heap_note]
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
                 signature::VerificationAlgorithm {
             implementation: &ECDSAVerification {
@@ -229,34 +227,22 @@ macro_rules! ecdsa {
 }
 
 ecdsa!(ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-1.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-1.");
 ecdsa!(ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-256.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-256.");
 ecdsa!(ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-384.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-384.");
 ecdsa!(ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-512.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-512.");
 
-#[cfg(feature = "use_heap")]
 ecdsa!(ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-1.",
-       "Only available when the `use_heap` default feature is enabled.");
-#[cfg(feature = "use_heap")]
+       "Verification of ECDSA signatures using the P-384 curve and SHA-1.");
 ecdsa!(ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-256.",
-       "Only available when the `use_heap` default feature is enabled.");
-#[cfg(feature = "use_heap")]
+       "Verification of ECDSA signatures using the P-384 curve and SHA-256.");
 ecdsa!(ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-384.",
-       "Only available when the `use_heap` default feature is enabled.");
-#[cfg(feature = "use_heap")]
+       "Verification of ECDSA signatures using the P-384 curve and SHA-384.");
 ecdsa!(ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-512.",
-       "Only available when the `use_heap` default feature is enabled.");
+       "Verification of ECDSA signatures using the P-384 curve and SHA-512.");
 
 
 #[cfg(test)]
@@ -286,11 +272,8 @@ mod tests {
 
             let expected_result = test_case.consume_string("Result");
 
-            let alg =
-                match alg_from_curve_and_digest(&curve_name, &digest_name) {
-                None => { return Ok(()); },
-                Some((alg, _, _)) => alg,
-            };
+            let (alg, _, _) =
+                alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let actual_result = signature::verify(alg, public_key, msg, sig);
             assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
@@ -312,11 +295,8 @@ mod tests {
 
             let output = test_case.consume_bytes("Output");
 
-            let (ops, digest_alg) =
-                match alg_from_curve_and_digest(&curve_name, &digest_name) {
-                None => { return Ok(()); },
-                Some((_, ops, digest_alg)) => (ops, digest_alg)
-            };
+            let (_, ops, digest_alg) =
+                alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let num_limbs = ops.public_key_ops.common.num_limbs;
             assert_eq!(input.len(), digest_alg.output_len);
@@ -335,65 +315,45 @@ mod tests {
         });
     }
 
-    fn alg_from_curve_and_digest(
-        curve_name: &str, digest_name: &str)
-        -> Option<(&'static signature::VerificationAlgorithm,
-                   &'static PublicScalarOps,
-                   &'static digest::Algorithm)> {
+    fn alg_from_curve_and_digest(curve_name: &str, digest_name: &str)
+                                 -> (&'static signature::VerificationAlgorithm,
+                                     &'static PublicScalarOps,
+                                     &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA1" {
-                Some((&signature::ECDSA_P256_SHA1_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA1))
+                (&signature::ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA1)
             } else if digest_name == "SHA256" {
-                Some((&signature::ECDSA_P256_SHA256_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA256))
+                (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256)
             } else if digest_name == "SHA384" {
-                Some((&signature::ECDSA_P256_SHA384_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA384))
+                (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384)
             } else if digest_name == "SHA512" {
-                Some((&signature::ECDSA_P256_SHA512_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA512))
+                (&signature::ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
-            p384_alg_from_digest(digest_name)
+            if digest_name == "SHA1" {
+                (&signature::ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA1)
+            } else if digest_name == "SHA256" {
+                (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256)
+            } else if digest_name == "SHA384" {
+                (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384)
+            } else if digest_name == "SHA512" {
+                (&signature::ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA512)
+            } else {
+                panic!("Unsupported digest algorithm: {}", digest_name);
+            }
         } else {
             panic!("Unsupported curve: {}", curve_name);
         }
-
-    }
-
-    #[cfg(feature = "use_heap")]
-    fn p384_alg_from_digest(
-        digest_name: &str)
-        -> Option<(&'static signature::VerificationAlgorithm,
-                   &'static PublicScalarOps,
-                   &'static digest::Algorithm)> {
-        if digest_name == "SHA1" {
-            Some((&signature::ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA1))
-        } else if digest_name == "SHA256" {
-            Some((&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256))
-        } else if digest_name == "SHA384" {
-            Some((&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384))
-        } else if digest_name == "SHA512" {
-            Some((&signature::ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA512))
-        } else {
-            panic!("Unsupported digest algorithm: {}", digest_name);
-        }
-    }
-
-    #[cfg(not(feature = "use_heap"))]
-    fn p384_alg_from_digest(
-        _digest_name: &str)
-        -> Option<(&'static signature::VerificationAlgorithm,
-                   &'static PublicScalarOps,
-                   &'static digest::Algorithm)> {
-        None
     }
 }
 
