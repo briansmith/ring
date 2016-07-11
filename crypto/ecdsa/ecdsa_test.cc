@@ -64,6 +64,9 @@
 
 #include "../test/scoped_types.h"
 
+
+namespace bssl {
+
 enum Api {
   kEncodedApi,
   kRawApi,
@@ -82,7 +85,7 @@ static bool VerifyECDSASig(Api api, const uint8_t *digest,
       if (!ECDSA_SIG_to_bytes(&der, &der_len, ecdsa_sig)) {
         return false;
       }
-      ScopedOpenSSLBytes delete_der(der);
+      ScopedBytes delete_der(der);
       actual_result = ECDSA_verify(0, digest, digest_len, der, der_len, eckey);
       break;
     }
@@ -328,7 +331,7 @@ static bool TestECDSA_SIG_max_len(size_t order_len) {
   if (!ECDSA_SIG_to_bytes(&der, &der_len, sig.get())) {
     return false;
   }
-  ScopedOpenSSLBytes delete_der(der);
+  ScopedBytes delete_der(der);
 
   size_t max_len = ECDSA_SIG_max_len(order_len);
   if (max_len != der_len) {
@@ -340,6 +343,8 @@ static bool TestECDSA_SIG_max_len(size_t order_len) {
   return true;
 }
 
+}  // namespace bssl
+
 static size_t BitsToBytes(size_t bits) {
   return (bits / 8) + (7 + (bits % 8)) / 8;
 }
@@ -347,12 +352,12 @@ static size_t BitsToBytes(size_t bits) {
 int main(void) {
   CRYPTO_library_init();
 
-  if (!TestBuiltin(stdout) ||
-      !TestECDSA_SIG_max_len(BitsToBytes(224)) ||
-      !TestECDSA_SIG_max_len(BitsToBytes(256)) ||
-      !TestECDSA_SIG_max_len(BitsToBytes(384)) ||
-      !TestECDSA_SIG_max_len(BitsToBytes(521)) ||
-      !TestECDSA_SIG_max_len(BitsToBytes(10000))) {
+  if (!bssl::TestBuiltin(stdout) ||
+      !bssl::TestECDSA_SIG_max_len(BitsToBytes(224)) ||
+      !bssl::TestECDSA_SIG_max_len(BitsToBytes(256)) ||
+      !bssl::TestECDSA_SIG_max_len(BitsToBytes(384)) ||
+      !bssl::TestECDSA_SIG_max_len(BitsToBytes(521)) ||
+      !bssl::TestECDSA_SIG_max_len(BitsToBytes(10000))) {
     printf("\nECDSA test failed\n");
     ERR_print_errors_fp(stdout);
     return 1;

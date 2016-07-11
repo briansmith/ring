@@ -25,6 +25,8 @@
 #include "internal.h"
 
 
+namespace bssl {
+
 bool Ciphers(const std::vector<std::string> &args) {
   if (args.size() != 1) {
     fprintf(stderr, "Usage: bssl ciphers <cipher suite string>\n");
@@ -64,3 +66,5 @@ bool Ciphers(const std::vector<std::string> &args) {
 
   return true;
 }
+
+}  // namespace bssl

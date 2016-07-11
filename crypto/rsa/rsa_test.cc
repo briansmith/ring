@@ -523,6 +523,8 @@ static const uint8_t kExponent1RSAKey[] = {
     0xdd, 0x02, 0x01, 0x01,
 };
 
+namespace bssl {
+
 static bool TestRSA(const uint8_t *der, size_t der_len,
                     const uint8_t *oaep_ciphertext,
                     size_t oaep_ciphertext_len) {
@@ -855,7 +857,7 @@ static bool TestASN1() {
   if (!RSA_private_key_to_bytes(&der, &der_len, rsa.get())) {
     return false;
   }
-  ScopedOpenSSLBytes delete_der(der);
+  ScopedBytes delete_der(der);
   if (der_len != sizeof(kKey1) - 1 || memcmp(der, kKey1, der_len) != 0) {
     return false;
   }
@@ -878,7 +880,7 @@ static bool TestASN1() {
   if (!RSA_public_key_to_bytes(&der2, &der2_len, rsa.get())) {
     return false;
   }
-  ScopedOpenSSLBytes delete_der2(der2);
+  ScopedBytes delete_der2(der2);
   if (der_len != der2_len || memcmp(der, der2, der_len) != 0) {
     return false;
   }
@@ -922,30 +924,32 @@ static bool TestBadExponent() {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
-  if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,
-               sizeof(kOAEPCiphertext1) - 1) ||
-      !TestRSA(kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2,
-               sizeof(kOAEPCiphertext2) - 1) ||
-      !TestRSA(kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3,
-               sizeof(kOAEPCiphertext3) - 1) ||
-      !TestOnlyDGiven() ||
-      !TestRecoverCRTParams() ||
-      !TestBadKey() ||
-      !TestMultiPrimeKey(2, kTwoPrimeKey, sizeof(kTwoPrimeKey) - 1,
-                            kTwoPrimeEncryptedMessage,
-                            sizeof(kTwoPrimeEncryptedMessage)) ||
-      !TestMultiPrimeKey(3, kThreePrimeKey, sizeof(kThreePrimeKey) - 1,
-                            kThreePrimeEncryptedMessage,
-                            sizeof(kThreePrimeEncryptedMessage)) ||
-      !TestMultiPrimeKey(6, kSixPrimeKey, sizeof(kSixPrimeKey) - 1,
-                            kSixPrimeEncryptedMessage,
-                            sizeof(kSixPrimeEncryptedMessage)) ||
-      !TestMultiPrimeKeygen() ||
-      !TestASN1() ||
-      !TestBadExponent()) {
+  if (!bssl::TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,
+                     sizeof(kOAEPCiphertext1) - 1) ||
+      !bssl::TestRSA(kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2,
+                     sizeof(kOAEPCiphertext2) - 1) ||
+      !bssl::TestRSA(kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3,
+                     sizeof(kOAEPCiphertext3) - 1) ||
+      !bssl::TestOnlyDGiven() ||
+      !bssl::TestRecoverCRTParams() ||
+      !bssl::TestBadKey() ||
+      !bssl::TestMultiPrimeKey(2, kTwoPrimeKey, sizeof(kTwoPrimeKey) - 1,
+                               kTwoPrimeEncryptedMessage,
+                               sizeof(kTwoPrimeEncryptedMessage)) ||
+      !bssl::TestMultiPrimeKey(3, kThreePrimeKey, sizeof(kThreePrimeKey) - 1,
+                               kThreePrimeEncryptedMessage,
+                               sizeof(kThreePrimeEncryptedMessage)) ||
+      !bssl::TestMultiPrimeKey(6, kSixPrimeKey, sizeof(kSixPrimeKey) - 1,
+                               kSixPrimeEncryptedMessage,
+                               sizeof(kSixPrimeEncryptedMessage)) ||
+      !bssl::TestMultiPrimeKeygen() ||
+      !bssl::TestASN1() ||
+      !bssl::TestBadExponent()) {
     return 1;
   }
 

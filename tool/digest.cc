@@ -44,6 +44,8 @@ typedef int ssize_t;
 #include "internal.h"
 
 
+namespace bssl {
+
 struct close_delete {
   void operator()(int *fd) {
     BORINGSSL_CLOSE(*fd);
@@ -476,3 +478,5 @@ bool SHA384Sum(const std::vector<std::string> &args) {
 bool SHA512Sum(const std::vector<std::string> &args) {
   return DigestSum(EVP_sha512(), args);
 }
+
+}  // namespace bssl

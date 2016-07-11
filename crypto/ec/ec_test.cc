@@ -26,6 +26,8 @@
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field
 // omitted.
 static const uint8_t kECKeyWithoutPublic[] = {
@@ -161,8 +163,8 @@ static bool Testd2i_ECPrivateKey() {
     fprintf(stderr, "Failed to get public key in affine coordinates.\n");
     return false;
   }
-  ScopedOpenSSLString x_hex(BN_bn2hex(x.get()));
-  ScopedOpenSSLString y_hex(BN_bn2hex(y.get()));
+  ScopedString x_hex(BN_bn2hex(x.get()));
+  ScopedString y_hex(BN_bn2hex(y.get()));
   if (!x_hex || !y_hex) {
     return false;
   }
@@ -471,15 +473,17 @@ static bool ForEachCurve(bool (*test_func)(int nid)) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(void) {
   CRYPTO_library_init();
 
-  if (!Testd2i_ECPrivateKey() ||
-      !TestZeroPadding() ||
-      !TestSpecifiedCurve() ||
-      !ForEachCurve(TestSetAffine) ||
-      !ForEachCurve(TestAddingEqualPoints) ||
-      !TestArbitraryCurve()) {
+  if (!bssl::Testd2i_ECPrivateKey() ||
+      !bssl::TestZeroPadding() ||
+      !bssl::TestSpecifiedCurve() ||
+      !bssl::ForEachCurve(bssl::TestSetAffine) ||
+      !bssl::ForEachCurve(bssl::TestAddingEqualPoints) ||
+      !bssl::TestArbitraryCurve()) {
     fprintf(stderr, "failed\n");
     return 1;
   }

@@ -62,6 +62,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "test_config.h"
 
 
+namespace bssl {
+
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
   return close(sock);
@@ -284,7 +286,7 @@ static const SSL_PRIVATE_KEY_METHOD g_async_private_key_method = {
 };
 
 template<typename T>
-struct Free {
+struct SystemFree {
   void operator()(T *buf) {
     free(buf);
   }
@@ -295,7 +297,7 @@ static bool GetCertificate(SSL *ssl, ScopedX509 *out_x509,
   const TestConfig *config = GetTestConfig(ssl);
 
   if (!config->digest_prefs.empty()) {
-    std::unique_ptr<char, Free<char>> digest_prefs(
+    std::unique_ptr<char, SystemFree<char>> digest_prefs(
         strdup(config->digest_prefs.c_str()));
     std::vector<int> digest_list;
 
@@ -1555,7 +1557,7 @@ class StderrDelimiter {
   ~StderrDelimiter() { fprintf(stderr, "--- DONE ---\n"); }
 };
 
-int main(int argc, char **argv) {
+static int Main(int argc, char **argv) {
   // To distinguish ASan's output from ours, add a trailing message to stderr.
   // Anything following this line will be considered an error.
   StderrDelimiter delimiter;
@@ -1610,4 +1612,10 @@ int main(int argc, char **argv) {
   }
 
   return 0;
+}
+
+}  // namespace bssl
+
+int main(int argc, char **argv) {
+  return bssl::Main(argc, argv);
 }

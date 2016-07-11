@@ -90,6 +90,8 @@
 #include "../crypto/test/test_util.h"
 
 
+namespace bssl {
+
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   BIGNUM *raw = NULL;
   int ret = BN_hex2bn(&raw, in);
@@ -132,8 +134,8 @@ static bool ExpectBIGNUMsEqual(FileTest *t, const char *operation,
     return true;
   }
 
-  ScopedOpenSSLString expected_str(BN_bn2hex(expected));
-  ScopedOpenSSLString actual_str(BN_bn2hex(actual));
+  ScopedString expected_str(BN_bn2hex(expected));
+  ScopedString actual_str(BN_bn2hex(actual));
   if (!expected_str || !actual_str) {
     return false;
   }
@@ -997,7 +999,7 @@ static bool TestASN1() {
       CBB_cleanup(&cbb);
       return false;
     }
-    ScopedOpenSSLBytes delete_der(der);
+    ScopedBytes delete_der(der);
     if (der_len != test.der_len ||
         memcmp(der, reinterpret_cast<const uint8_t*>(test.der), der_len) != 0) {
       fprintf(stderr, "Bad serialization.\n");
@@ -1263,6 +1265,8 @@ static bool TestSmallPrime(BN_CTX *ctx) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
@@ -1271,24 +1275,24 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  ScopedBN_CTX ctx(BN_CTX_new());
+  bssl::ScopedBN_CTX ctx(BN_CTX_new());
   if (!ctx) {
     return 1;
   }
 
-  if (!TestBN2BinPadded(ctx.get()) ||
-      !TestDec2BN(ctx.get()) ||
-      !TestHex2BN(ctx.get()) ||
-      !TestASC2BN(ctx.get()) ||
-      !TestMPI() ||
-      !TestRand() ||
-      !TestASN1() ||
-      !TestNegativeZero(ctx.get()) ||
-      !TestBadModulus(ctx.get()) ||
-      !TestExpModZero() ||
-      !TestSmallPrime(ctx.get())) {
+  if (!bssl::TestBN2BinPadded(ctx.get()) ||
+      !bssl::TestDec2BN(ctx.get()) ||
+      !bssl::TestHex2BN(ctx.get()) ||
+      !bssl::TestASC2BN(ctx.get()) ||
+      !bssl::TestMPI() ||
+      !bssl::TestRand() ||
+      !bssl::TestASN1() ||
+      !bssl::TestNegativeZero(ctx.get()) ||
+      !bssl::TestBadModulus(ctx.get()) ||
+      !bssl::TestExpModZero() ||
+      !bssl::TestSmallPrime(ctx.get())) {
     return 1;
   }
 
-  return FileTestMain(RunTest, ctx.get(), argv[1]);
+  return bssl::FileTestMain(bssl::RunTest, ctx.get(), argv[1]);
 }

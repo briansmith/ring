@@ -22,6 +22,8 @@
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 struct SPAKE2Run {
   bool Run() {
     ScopedSPAKE2_CTX alice(SPAKE2_CTX_new(
@@ -154,13 +156,15 @@ static bool TestCorruptMessages() {
   return true;
 }
 
+}  // namespace bssl
+
 /* TODO(agl): add tests with fixed vectors once SPAKE2 is nailed down. */
 
 int main(int argc, char **argv) {
-  if (!TestSPAKE2() ||
-      !TestWrongPassword() ||
-      !TestWrongNames() ||
-      !TestCorruptMessages()) {
+  if (!bssl::TestSPAKE2() ||
+      !bssl::TestWrongPassword() ||
+      !bssl::TestWrongNames() ||
+      !bssl::TestCorruptMessages()) {
     return 1;
   }
 

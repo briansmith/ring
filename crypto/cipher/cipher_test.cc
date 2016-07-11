@@ -65,6 +65,8 @@
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 static const EVP_CIPHER *GetCipher(const std::string &name) {
   if (name == "DES-CBC") {
     return EVP_des_cbc();
@@ -284,6 +286,8 @@ static bool TestCipher(FileTest *t, void *arg) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
@@ -292,5 +296,5 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  return FileTestMain(TestCipher, nullptr, argv[1]);
+  return bssl::FileTestMain(bssl::TestCipher, nullptr, argv[1]);
 }

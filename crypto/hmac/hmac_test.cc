@@ -68,6 +68,8 @@
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 static const EVP_MD *GetDigest(const std::string &name) {
   if (name == "MD5") {
     return EVP_md5();
@@ -152,6 +154,8 @@ static bool TestHMAC(FileTest *t, void *arg) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
@@ -160,5 +164,5 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return FileTestMain(TestHMAC, nullptr, argv[1]);
+  return bssl::FileTestMain(bssl::TestHMAC, nullptr, argv[1]);
 }

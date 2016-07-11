@@ -290,6 +290,22 @@ OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+namespace bssl {
+
+template<typename StackType, typename T, void (*func)(T*)>
+struct StackDeleter {
+  void operator()(StackType *obj) {
+    sk_pop_free(reinterpret_cast<_STACK*>(obj),
+                reinterpret_cast<void (*)(void *)>(func));
+  }
+};
+
+template <typename StackType, typename T, void (*func)(T *)>
+using ScopedStack =
+    std::unique_ptr<StackType, StackDeleter<StackType, T, func>>;
+
+}  // namespace bssl
 #endif
 
 #endif  /* OPENSSL_HEADER_STACK_H */

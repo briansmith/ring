@@ -77,6 +77,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 // evp_test dispatches between multiple test types. PrivateKey tests take a key
 // name parameter and single block, decode it as a PEM private key, and save it
 // under that key name. Decrypt, Sign, and Verify tests take a previously
@@ -149,7 +151,7 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
       !CBB_finish(cbb.get(), &der, &der_len)) {
     return false;
   }
-  ScopedOpenSSLBytes free_der(der);
+  ScopedBytes free_der(der);
 
   std::vector<uint8_t> output = input;
   if (t->HasAttribute("Output") &&
@@ -253,6 +255,8 @@ static bool TestEVP(FileTest *t, void *arg) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char **argv) {
   CRYPTO_library_init();
   if (argc != 2) {
@@ -260,6 +264,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  KeyMap map;
-  return FileTestMain(TestEVP, &map, argv[1]);
+  bssl::KeyMap map;
+  return bssl::FileTestMain(bssl::TestEVP, &map, argv[1]);
 }

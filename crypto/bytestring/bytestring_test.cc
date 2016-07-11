@@ -29,6 +29,8 @@
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 static bool TestSkip() {
   static const uint8_t kData[] = {1, 2, 3};
   CBS data;
@@ -292,7 +294,7 @@ static bool TestCBBBasic() {
     return false;
   }
 
-  ScopedOpenSSLBytes scoper(buf);
+  ScopedBytes scoper(buf);
   return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
 }
 
@@ -337,7 +339,7 @@ static bool TestCBBFinishChild() {
     CBB_cleanup(&cbb);
     return false;
   }
-  ScopedOpenSSLBytes scoper(out_buf);
+  ScopedBytes scoper(out_buf);
   return out_size == 1 && out_buf[0] == 0;
 }
 
@@ -370,7 +372,7 @@ static bool TestCBBPrefixed() {
     return false;
   }
 
-  ScopedOpenSSLBytes scoper(buf);
+  ScopedBytes scoper(buf);
   return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
 }
 
@@ -410,7 +412,7 @@ static bool TestCBBDiscardChild() {
   if (!CBB_finish(cbb.get(), &buf, &buf_len)) {
     return false;
   }
-  ScopedOpenSSLBytes scoper(buf);
+  ScopedBytes scoper(buf);
 
   static const uint8_t kExpected[] = {
         0xaa,
@@ -456,7 +458,7 @@ static bool TestCBBMisuse() {
     CBB_cleanup(&cbb);
     return false;
   }
-  ScopedOpenSSLBytes scoper(buf);
+  ScopedBytes scoper(buf);
 
   if (buf_len != 3 ||
       memcmp(buf, "\x01\x01\x02", 3) != 0) {
@@ -480,7 +482,7 @@ static bool TestCBBASN1() {
     CBB_cleanup(&cbb);
     return false;
   }
-  ScopedOpenSSLBytes scoper(buf);
+  ScopedBytes scoper(buf);
 
   if (buf_len != sizeof(kExpected) || memcmp(buf, kExpected, buf_len) != 0) {
     return false;
@@ -555,7 +557,7 @@ static bool DoBerConvert(const char *name,
     fprintf(stderr, "%s: CBS_asn1_ber_to_der failed.\n", name);
     return false;
   }
-  ScopedOpenSSLBytes scoper(out);
+  ScopedBytes scoper(out);
 
   if (out == NULL) {
     if (ber_len != der_len ||
@@ -668,7 +670,7 @@ static bool TestImplicitString() {
     int ok = CBS_get_asn1_implicit_string(&in, &out, &storage,
                                           CBS_ASN1_CONTEXT_SPECIFIC | 0,
                                           CBS_ASN1_OCTETSTRING);
-    ScopedOpenSSLBytes scoper(storage);
+    ScopedBytes scoper(storage);
 
     if (static_cast<bool>(ok) != test.ok) {
       fprintf(stderr, "CBS_get_asn1_implicit_string unexpectedly %s\n",
@@ -747,7 +749,7 @@ static bool TestASN1Uint64() {
       CBB_cleanup(&cbb);
       return false;
     }
-    ScopedOpenSSLBytes scoper(out);
+    ScopedBytes scoper(out);
     if (len != test->encoding_len || memcmp(out, test->encoding, len) != 0) {
       return false;
     }
@@ -797,27 +799,29 @@ static bool TestCBBReserve() {
   return true;
 }
 
+}  // namespace bssl
+
 int main(void) {
   CRYPTO_library_init();
 
-  if (!TestSkip() ||
-      !TestGetUint() ||
-      !TestGetPrefixed() ||
-      !TestGetPrefixedBad() ||
-      !TestGetASN1() ||
-      !TestCBBBasic() ||
-      !TestCBBFixed() ||
-      !TestCBBFinishChild() ||
-      !TestCBBMisuse() ||
-      !TestCBBPrefixed() ||
-      !TestCBBDiscardChild() ||
-      !TestCBBASN1() ||
-      !TestBerConvert() ||
-      !TestImplicitString() ||
-      !TestASN1Uint64() ||
-      !TestGetOptionalASN1Bool() ||
-      !TestZero() ||
-      !TestCBBReserve()) {
+  if (!bssl::TestSkip() ||
+      !bssl::TestGetUint() ||
+      !bssl::TestGetPrefixed() ||
+      !bssl::TestGetPrefixedBad() ||
+      !bssl::TestGetASN1() ||
+      !bssl::TestCBBBasic() ||
+      !bssl::TestCBBFixed() ||
+      !bssl::TestCBBFinishChild() ||
+      !bssl::TestCBBMisuse() ||
+      !bssl::TestCBBPrefixed() ||
+      !bssl::TestCBBDiscardChild() ||
+      !bssl::TestCBBASN1() ||
+      !bssl::TestBerConvert() ||
+      !bssl::TestImplicitString() ||
+      !bssl::TestASN1Uint64() ||
+      !bssl::TestGetOptionalASN1Bool() ||
+      !bssl::TestZero() ||
+      !bssl::TestCBBReserve()) {
     return 1;
   }
 

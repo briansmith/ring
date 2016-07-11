@@ -133,6 +133,18 @@ OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+namespace bssl {
+
+template<typename T>
+struct Free {
+  void operator()(T *buf) {
+    OPENSSL_free(buf);
+  }
+};
+
+}  // namespace bssl
+
 #endif
 
 #endif  /* OPENSSL_HEADER_MEM_H */

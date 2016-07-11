@@ -23,6 +23,8 @@
 #include "internal.h"
 
 
+namespace bssl {
+
 // Set to 10 for quick execution.  Tested up to 1,000,000.
 static const int kNumTests = 10;
 
@@ -128,11 +130,13 @@ static bool TestInvalidAcceptMsg(void) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(void) {
-  for (int i = 0; i < kNumTests; i++) {
-    if (!TestKeys() ||
-        !TestInvalidSK() ||
-        !TestInvalidAcceptMsg()) {
+  for (int i = 0; i < bssl::kNumTests; i++) {
+    if (!bssl::TestKeys() ||
+        !bssl::TestInvalidSK() ||
+        !bssl::TestInvalidAcceptMsg()) {
       return 1;
     }
   }

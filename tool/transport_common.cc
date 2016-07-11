@@ -51,6 +51,8 @@ typedef int ssize_t;
 #include "transport_common.h"
 
 
+namespace bssl {
+
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
   return close(sock);
@@ -537,3 +539,5 @@ bool DoSMTPStartTLS(int sock) {
 
   return true;
 }
+
+}  // namespace bssl

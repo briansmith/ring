@@ -681,6 +681,8 @@ static const uint8_t kWindows[] = {
     0xfe, 0x3a, 0x66, 0x47, 0x40, 0x49, 0x02, 0x02, 0x07, 0xd0,
 };
 
+namespace bssl {
+
 static const char kPassword[] = "foo";
 
 static bool Test(const char *name, const uint8_t *der, size_t der_len) {
@@ -755,13 +757,15 @@ static bool TestCompat(const uint8_t *der, size_t der_len) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
-  if (!Test("OpenSSL", kOpenSSL, sizeof(kOpenSSL)) ||
-      !Test("NSS", kNSS, sizeof(kNSS)) ||
-      !Test("Windows", kWindows, sizeof(kWindows)) ||
-      !TestCompat(kWindows, sizeof(kWindows))) {
+  if (!bssl::Test("OpenSSL", kOpenSSL, sizeof(kOpenSSL)) ||
+      !bssl::Test("NSS", kNSS, sizeof(kNSS)) ||
+      !bssl::Test("Windows", kWindows, sizeof(kWindows)) ||
+      !bssl::TestCompat(kWindows, sizeof(kWindows))) {
     return 1;
   }
 

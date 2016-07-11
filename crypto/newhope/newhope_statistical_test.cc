@@ -25,6 +25,8 @@
 #include "internal.h"
 
 
+namespace bssl {
+
 static const unsigned kNumTests = 1000;
 
 static bool TestNoise(void) {
@@ -146,9 +148,11 @@ static bool TestKeys(void) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(void) {
-  if (!TestKeys() ||
-      !TestNoise()) {
+  if (!bssl::TestKeys() ||
+      !bssl::TestNoise()) {
     return 1;
   }
   printf("PASS\n");

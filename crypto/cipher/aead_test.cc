@@ -25,6 +25,8 @@
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 // This program tests an AEAD against a series of test vectors from a file,
 // using the FileTest format. As an example, here's a valid test case:
 //
@@ -327,7 +329,7 @@ static const struct KnownAEAD kAEADs[] = {
   { "", NULL, false },
 };
 
-int main(int argc, char **argv) {
+static int Main(int argc, char **argv) {
   CRYPTO_library_init();
 
   if (argc != 3) {
@@ -359,4 +361,10 @@ int main(int argc, char **argv) {
   }
 
   return FileTestMain(TestAEAD, const_cast<EVP_AEAD*>(aead), argv[2]);
+}
+
+}  // namespace bssl
+
+int main(int argc, char **argv) {
+  return bssl::Main(argc, argv);
 }

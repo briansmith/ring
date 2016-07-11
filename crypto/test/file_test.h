@@ -30,6 +30,9 @@ OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
+
+namespace bssl {
+
 // File-based test framework.
 //
 // This module provides a file-based test framework. The file format is based on
@@ -152,6 +155,8 @@ class FileTest {
 // subsequent tests.
 int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
                  const char *path);
+
+}  // namespace bssl
 
 
 #endif /* OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H */

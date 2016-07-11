@@ -20,6 +20,8 @@
 #include "../test/file_test.h"
 
 
+namespace bssl {
+
 static bool TestSignature(FileTest *t, void *arg) {
   std::vector<uint8_t> private_key, public_key, message, expected_signature;
   if (!t->GetBytes(&private_key, "PRIV") ||
@@ -53,11 +55,13 @@ static bool TestSignature(FileTest *t, void *arg) {
   return true;
 }
 
+}  // namespace bssl
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "%s <test input.txt>\n", argv[0]);
     return 1;
   }
 
-  return FileTestMain(TestSignature, nullptr, argv[1]);
+  return bssl::FileTestMain(bssl::TestSignature, nullptr, argv[1]);
 }

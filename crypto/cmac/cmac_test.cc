@@ -22,6 +22,8 @@
 #include "../test/test_util.h"
 
 
+namespace bssl {
+
 static void dump(const uint8_t *got, const uint8_t *want, size_t len) {
   hexdump(stderr, "got :", got, len);
   hexdump(stderr, "want:", want, len);
@@ -141,8 +143,10 @@ static int rfc_4493_test_vectors(void) {
   return 1;
 }
 
+}  // namespace bssl
+
 int main(int argc, char **argv) {
-  if (!rfc_4493_test_vectors()) {
+  if (!bssl::rfc_4493_test_vectors()) {
     return 1;
   }
 

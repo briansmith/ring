@@ -43,6 +43,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "../test/scoped_types.h"
 
 
+namespace bssl {
+
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
   return close(sock);
@@ -339,7 +341,7 @@ static bool ReadASN1(bool should_succeed, const uint8_t *data, size_t data_len,
   if (!ok) {
     out = nullptr;
   }
-  ScopedOpenSSLBytes out_storage(out);
+  ScopedBytes out_storage(out);
 
   if (should_succeed != (ok == 1)) {
     return false;
@@ -369,7 +371,7 @@ static bool TestASN1() {
   static const size_t kLargePayloadLen = 8000;
   static const uint8_t kLargePrefix[] = {0x30, 0x82, kLargePayloadLen >> 8,
                                          kLargePayloadLen & 0xff};
-  ScopedOpenSSLBytes large(reinterpret_cast<uint8_t *>(
+  ScopedBytes large(reinterpret_cast<uint8_t *>(
       OPENSSL_malloc(sizeof(kLargePrefix) + kLargePayloadLen)));
   if (!large) {
     return false;
@@ -410,6 +412,8 @@ static bool TestASN1() {
   return true;
 }
 
+}  // namespace bssl
+
 int main(void) {
   CRYPTO_library_init();
 
@@ -428,10 +432,10 @@ int main(void) {
   }
 #endif
 
-  if (!TestSocketConnect() ||
-      !TestPrintf() ||
-      !TestZeroCopyBioPairs() ||
-      !TestASN1()) {
+  if (!bssl::TestSocketConnect() ||
+      !bssl::TestPrintf() ||
+      !bssl::TestZeroCopyBioPairs() ||
+      !bssl::TestASN1()) {
     return 1;
   }
 

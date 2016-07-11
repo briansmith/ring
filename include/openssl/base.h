@@ -67,6 +67,8 @@
 #endif
 
 #if defined(__cplusplus)
+#include <memory>
+
 extern "C" {
 #endif
 
@@ -290,6 +292,44 @@ typedef void *OPENSSL_BLOCK;
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+namespace bssl {
+
+template<typename T, void (*func)(T*)>
+struct Deleter {
+  void operator()(T *obj) {
+    func(obj);
+  }
+};
+
+template<typename T, void (*func)(T*)>
+using ScopedType = std::unique_ptr<T, Deleter<T, func>>;
+
+template<typename T, typename CleanupRet, void (*init_func)(T*),
+         CleanupRet (*cleanup_func)(T*)>
+class ScopedContext {
+ public:
+  ScopedContext() {
+    init_func(&ctx_);
+  }
+  ~ScopedContext() {
+    cleanup_func(&ctx_);
+  }
+
+  T *get() { return &ctx_; }
+  const T *get() const { return &ctx_; }
+
+  void Reset() {
+    cleanup_func(&ctx_);
+    init_func(&ctx_);
+  }
+
+ private:
+  T ctx_;
+};
+
+}  // namespace bssl
+
 #endif
 
 #endif  /* OPENSSL_HEADER_BASE_H */
