@@ -483,7 +483,7 @@ static bool SendAll(int sock, const char *data, size_t data_len) {
 bool DoSMTPStartTLS(int sock) {
   SocketLineReader line_reader(sock);
 
-  unsigned code_220;
+  unsigned code_220 = 0;
   std::string reply_220;
   if (!line_reader.ReadSMTPReply(&code_220, &reply_220)) {
     return false;
@@ -500,7 +500,7 @@ bool DoSMTPStartTLS(int sock) {
     return false;
   }
 
-  unsigned code_250;
+  unsigned code_250 = 0;
   std::string reply_250;
   if (!line_reader.ReadSMTPReply(&code_250, &reply_250)) {
     return false;
