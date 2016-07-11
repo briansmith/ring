@@ -12,11 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use bssl;
-use core;
 use super::*;
-use super::{GFp_suite_b_public_twin_mult, elem_sqr_mul, elem_sqr_mul_acc,
-            Mont, ab_assign, rab};
+use super::{elem_sqr_mul, elem_sqr_mul_acc, Mont, ab_assign, rab};
 
 
 macro_rules! p384_limbs {
@@ -140,20 +137,22 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
 }
 
 
-fn p384_point_mul_base_impl(a: &Scalar) -> Result<Point, ()> {
-    // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
-    // shouldn't be used for this. TODO: Replace use of this with the use
-    // of an always-constant-time implementation.
-    let mut p = Point::new_at_infinity();
-    try!(bssl::map_result(unsafe {
-        GFp_suite_b_public_twin_mult(COMMON_OPS.ec_group,
-                                     p.xyz.as_mut_ptr(),
-                                     a.limbs.as_ptr(), // g_scalar
-                                     core::ptr::null(), // p_scalar
-                                     core::ptr::null(), // p_x
-                                     core::ptr::null()) // p_y
-    }));
-    Ok(p)
+fn p384_point_mul_base_impl(a: &Scalar) -> Point {
+    // XXX: Not efficient. TODO: Precompute multiples of the generator.
+    static P384_GENERATOR: (Elem, Elem) = (
+        Elem {
+            limbs: p384_limbs![0x4d3aadc2, 0x299e1513, 0x812ff723, 0x614ede2b,
+                               0x64548684, 0x59a30eff, 0x879c3afc, 0x541b4d6e,
+                               0x20e378e2, 0xa0d6ce38, 0x3dd07566, 0x49c0b528]
+        },
+        Elem {
+            limbs: p384_limbs![0x2b78abc2, 0x5a15c5e9, 0xdd800226, 0x3969a840,
+                               0xc6c35219, 0x68f4ffd9, 0x8bade756, 0x2e83b050,
+                               0xa1bfa8bf, 0x7bb4a9ac, 0x23043dad, 0x4b03a4fe]
+        }
+    );
+
+    PRIVATE_KEY_OPS.point_mul(a, &P384_GENERATOR)
 }
 
 
