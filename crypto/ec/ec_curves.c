@@ -21,7 +21,6 @@
 #include "../bn/internal.h"
 
 
-#define CURVE_P256_EC_METHOD EC_GFp_nistz256_method
 #define CURVE_P384_EC_METHOD EC_GFp_mont_method
 
 /* Use C99 designated initializers + the -Wuninitialized warning to help keep

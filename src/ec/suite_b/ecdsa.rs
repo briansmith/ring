@@ -78,7 +78,8 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = try!(self.ops.twin_mult(&u1, &u2, &peer_pub_key));
+        let product = twin_mul(self.ops.private_key_ops, &u1, &u2,
+                               &peer_pub_key);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
@@ -182,6 +183,14 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
         debug_assert!(limbs_less_than_limbs(&limbs[..num_limbs], &n));
     }
     Scalar::from_limbs_unchecked(&limbs)
+}
+
+fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
+            p_xy: &(Elem, Elem)) -> Point {
+    // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
+    let scaled_g = ops.point_mul_base(g_scalar);
+    let scaled_p = ops.point_mul(p_scalar, p_xy);
+    ops.common.point_sum(&scaled_g, &scaled_p)
 }
 
 
