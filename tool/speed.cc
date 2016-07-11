@@ -21,8 +21,11 @@
 #include <string.h>
 
 #include <openssl/aead.h>
+#include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
+#include <openssl/ecdsa.h>
+#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/newhope.h>
 #include <openssl/nid.h>
@@ -37,7 +40,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #endif
 
-#include "../crypto/test/scoped_types.h"
 #include "internal.h"
 
 

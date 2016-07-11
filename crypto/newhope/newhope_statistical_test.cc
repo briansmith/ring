@@ -21,7 +21,6 @@
 #include <openssl/crypto.h>
 #include <openssl/rand.h>
 
-#include "../test/scoped_types.h"
 #include "internal.h"
 
 

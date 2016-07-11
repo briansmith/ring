@@ -18,7 +18,6 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
-#include "../crypto/test/scoped_types.h"
 #include "internal.h"
 
 

@@ -260,6 +260,18 @@ struct env_md_ctx_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedEVP_MD_CTX =
+    ScopedContext<EVP_MD_CTX, int, EVP_MD_CTX_init, EVP_MD_CTX_cleanup>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #define DIGEST_R_INPUT_NOT_INITIALIZED 100

@@ -65,7 +65,6 @@
 #include <openssl/hmac.h>
 
 #include "../test/file_test.h"
-#include "../test/scoped_types.h"
 
 
 namespace bssl {

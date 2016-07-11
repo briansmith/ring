@@ -25,9 +25,8 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
-
-#include "../test/scoped_types.h"
 
 
 namespace bssl {

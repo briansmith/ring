@@ -293,6 +293,9 @@ typedef void *OPENSSL_BLOCK;
 #if defined(__cplusplus)
 }  /* extern C */
 
+
+#if __cplusplus >= 201103
+
 namespace bssl {
 
 template<typename T, void (*func)(T*)>
@@ -329,6 +332,8 @@ class ScopedContext {
 };
 
 }  // namespace bssl
+
+#endif
 
 #endif
 

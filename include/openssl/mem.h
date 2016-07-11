@@ -134,6 +134,8 @@ OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
 #if defined(__cplusplus)
 }  /* extern C */
 
+#if __cplusplus >= 201103
+
 namespace bssl {
 
 template<typename T>
@@ -143,7 +145,12 @@ struct Free {
   }
 };
 
+using ScopedBytes = std::unique_ptr<uint8_t, Free<uint8_t>>;
+using ScopedString = std::unique_ptr<char, Free<char>>;
+
 }  // namespace bssl
+
+#endif
 
 #endif
 

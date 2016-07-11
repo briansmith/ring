@@ -393,6 +393,17 @@ OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedCBB = ScopedContext<CBB, void, CBB_zero, CBB_cleanup>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #endif  /* OPENSSL_HEADER_BYTESTRING_H */

@@ -1225,6 +1225,22 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 
 #ifdef  __cplusplus
 }
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedX509 = ScopedType<X509, X509_free>;
+using ScopedX509_ALGOR = ScopedType<X509_ALGOR, X509_ALGOR_free>;
+using ScopedX509_SIG = ScopedType<X509_SIG, X509_SIG_free>;
+using ScopedX509_STORE_CTX = ScopedType<X509_STORE_CTX, X509_STORE_CTX_free>;
+
+using ScopedX509Stack = ScopedStack<STACK_OF(X509), X509, X509_free>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #define X509_R_AKID_MISMATCH 100

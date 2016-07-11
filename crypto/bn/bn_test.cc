@@ -81,12 +81,12 @@
 #include <utility>
 
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
 #include "../crypto/test/file_test.h"
-#include "../crypto/test/scoped_types.h"
 #include "../crypto/test/test_util.h"
 
 

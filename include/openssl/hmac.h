@@ -153,6 +153,18 @@ struct hmac_ctx_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedHMAC_CTX =
+    ScopedContext<HMAC_CTX, void, HMAC_CTX_init, HMAC_CTX_cleanup>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #endif  /* OPENSSL_HEADER_HMAC_H */

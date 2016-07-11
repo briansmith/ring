@@ -866,6 +866,19 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedBIGNUM = ScopedType<BIGNUM, BN_free>;
+using ScopedBN_CTX = ScopedType<BN_CTX, BN_CTX_free>;
+using ScopedBN_MONT_CTX = ScopedType<BN_MONT_CTX, BN_MONT_CTX_free>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #define BN_R_ARG2_LT_ARG3 100

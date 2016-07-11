@@ -359,6 +359,18 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedEC_GROUP = ScopedType<EC_GROUP, EC_GROUP_free>;
+using ScopedEC_POINT = ScopedType<EC_POINT, EC_POINT_free>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #define EC_R_BUFFER_TOO_SMALL 100

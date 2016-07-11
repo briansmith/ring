@@ -17,13 +17,13 @@
 
 #include <vector>
 
+#include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-
-#include "../test/scoped_types.h"
+#include <openssl/obj.h>
 
 
 namespace bssl {

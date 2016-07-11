@@ -187,6 +187,19 @@ OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedPKCS8_PRIV_KEY_INFO =
+    ScopedType<PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free>;
+using ScopedPKCS12 = ScopedType<PKCS12, PKCS12_free>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #define PKCS8_R_BAD_PKCS12_DATA 100

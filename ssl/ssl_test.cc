@@ -29,7 +29,6 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
-#include "test/scoped_types.h"
 #include "../crypto/test/test_util.h"
 
 

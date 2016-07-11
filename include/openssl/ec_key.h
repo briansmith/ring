@@ -322,6 +322,17 @@ OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if __cplusplus >= 201103
+
+namespace bssl {
+
+using ScopedEC_KEY = ScopedType<EC_KEY, EC_KEY_free>;
+
+}  // namespace bssl
+
+#endif
+
 #endif
 
 #endif  /* OPENSSL_HEADER_EC_KEY_H */

@@ -17,8 +17,9 @@
 #include <algorithm>
 
 #include <openssl/cmac.h>
+#include <openssl/evp.h>
+#include <openssl/mem.h>
 
-#include "../test/scoped_types.h"
 #include "../test/test_util.h"
 
 

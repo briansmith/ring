@@ -21,8 +21,6 @@
 #include <openssl/pkcs8.h>
 #include <openssl/x509.h>
 
-#include "../test/scoped_types.h"
-
 
 /* kDER is a PKCS#8 encrypted private key. It was generated with:
  *

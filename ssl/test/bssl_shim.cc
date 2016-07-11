@@ -55,10 +55,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <string>
 #include <vector>
 
-#include "../../crypto/test/scoped_types.h"
 #include "async_bio.h"
 #include "packeted_bio.h"
-#include "scoped_types.h"
 #include "test_config.h"
 
 

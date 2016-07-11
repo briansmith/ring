@@ -65,8 +65,6 @@
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
-#include "../test/scoped_types.h"
-
 
 // kPlaintext is a sample plaintext.
 static const uint8_t kPlaintext[] = "\x54\x85\x9b\x34\x2c\x49\xea\x2a";
