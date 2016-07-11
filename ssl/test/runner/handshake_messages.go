@@ -847,6 +847,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 type encryptedExtensionsMsg struct {
 	raw        []byte
 	extensions serverExtensions
+	empty      bool
 }
 
 func (m *encryptedExtensionsMsg) marshal() []byte {
@@ -857,8 +858,10 @@ func (m *encryptedExtensionsMsg) marshal() []byte {
 	encryptedExtensionsMsg := newByteBuilder()
 	encryptedExtensionsMsg.addU8(typeEncryptedExtensions)
 	encryptedExtensions := encryptedExtensionsMsg.addU24LengthPrefixed()
-	extensions := encryptedExtensions.addU16LengthPrefixed()
-	m.extensions.marshal(extensions, VersionTLS13)
+	if !m.empty {
+		extensions := encryptedExtensions.addU16LengthPrefixed()
+		m.extensions.marshal(extensions, VersionTLS13)
+	}
 
 	m.raw = encryptedExtensionsMsg.finish()
 	return m.raw
@@ -902,6 +905,8 @@ type serverExtensions struct {
 	sctList                 []byte
 	customExtension         string
 	npnLast                 bool
+	hasKeyShare             bool
+	keyShare                keyShareEntry
 }
 
 func (m *serverExtensions) marshal(extensions *byteBuilder, version uint16) {
@@ -998,6 +1003,13 @@ func (m *serverExtensions) marshal(extensions *byteBuilder, version uint16) {
 			npn := extension.addU8LengthPrefixed()
 			npn.addBytes([]byte(v))
 		}
+	}
+	if m.hasKeyShare {
+		extensions.addU16(extensionKeyShare)
+		keyShare := extensions.addU16LengthPrefixed()
+		keyShare.addU16(uint16(m.keyShare.group))
+		keyExchange := keyShare.addU16LengthPrefixed()
+		keyExchange.addBytes(m.keyShare.keyExchange)
 	}
 }
 

@@ -615,6 +615,9 @@ void SSL_ECDH_CTX_init_for_cecpq1(SSL_ECDH_CTX *ctx);
  * call it in the zero state. */
 void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx);
 
+/* SSL_ECDH_CTX_get_id returns the group ID for |ctx|. */
+uint16_t SSL_ECDH_CTX_get_id(const SSL_ECDH_CTX *ctx);
+
 /* SSL_ECDH_CTX_get_key calls the |get_key| method of |SSL_ECDH_METHOD|. */
 int SSL_ECDH_CTX_get_key(SSL_ECDH_CTX *ctx, CBS *cbs, CBS *out);
 
@@ -770,6 +773,141 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb);
  * certificate for |ssl|. Otherwise, it returns zero and pushes an error on the
  * error queue. */
 int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf);
+
+
+/* TLS 1.3 key derivation. */
+
+/* tls13_init_key_schedule initializes the handshake hash and key derivation
+ * state with the given resumption context. The cipher suite and PRF hash must
+ * have been selected at this point. It returns one on success and zero on
+ * error. */
+int tls13_init_key_schedule(SSL *ssl, const uint8_t *resumption_ctx,
+                            size_t resumption_ctx_len);
+
+/* tls13_advance_key_schedule incorporates |in| into the key schedule with
+ * HKDF-Extract. It returns one on success and zero on error. */
+int tls13_advance_key_schedule(SSL *ssl, const uint8_t *in, size_t len);
+
+/* tls13_get_context_hashes writes Hash(Handshake Context) +
+ * Hash(resumption_context) to |out| which much have room for at least 2 *
+ * |EVP_MAX_MD_SIZE| bytes. On success, it returns one and sets |*out_len| to
+ * the number of bytes written. Otherwise, it returns zero. */
+int tls13_get_context_hashes(SSL *ssl, uint8_t *out, size_t *out_len);
+
+enum tls_record_type_t {
+  type_early_handshake,
+  type_early_data,
+  type_handshake,
+  type_data,
+};
+
+/* tls13_set_traffic_key sets the read or write traffic keys to |traffic_secret|
+ * for the given traffic phase |type|. It returns one on success and zero on
+ * error. */
+int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
+                          enum evp_aead_direction_t direction,
+                          const uint8_t *traffic_secret,
+                          size_t traffic_secret_len);
+
+/* tls13_set_handshake_traffic derives the handshake traffic secret and
+ * switches both read and write traffic to it. It returns one on success and
+ * zero on error. */
+int tls13_set_handshake_traffic(SSL *ssl);
+
+/* tls13_derive_traffic_secret_0 derives the initial application data traffic
+ * secret based on the handshake transcripts and |master_secret|. It returns one
+ * on success and zero on error. */
+int tls13_derive_traffic_secret_0(SSL *ssl);
+
+/* tls13_finalize_keys derives the |exporter_secret| and |resumption_secret|. */
+int tls13_finalize_keys(SSL *ssl);
+
+/* tls13_export_keying_material provides and exporter interface to use the
+ * |exporter_secret|. */
+int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
+                                 const char *label, size_t label_len,
+                                 const uint8_t *context, size_t context_len,
+                                 int use_context);
+
+/* tls13_finished_mac calculates the MAC of the handshake transcript to verify
+ * the integrity of the Finished message, and stores the result in |out| and
+ * length in |out_len|. |is_server| is 1 if this is for the Server Finished and
+ * 0 for the Client Finished. */
+int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server);
+
+
+/* Handshake functions. */
+
+enum ssl_hs_wait_t {
+  ssl_hs_error,
+  ssl_hs_ok,
+  ssl_hs_read_message,
+  ssl_hs_write_message,
+  ssl_hs_flush,
+  ssl_hs_x509_lookup,
+  ssl_hs_private_key_operation,
+};
+
+struct ssl_handshake_st {
+  /* wait contains the operation |do_handshake| is currently blocking on or
+   * |ssl_hs_ok| if none. */
+  enum ssl_hs_wait_t wait;
+
+  /* do_handshake runs the handshake. On completion, it returns |ssl_hs_ok|.
+   * Otherwise, it returns a value corresponding to what operation is needed to
+   * progress. */
+  enum ssl_hs_wait_t (*do_handshake)(SSL *ssl);
+
+  int state;
+
+  size_t hash_len;
+  uint8_t resumption_hash[EVP_MAX_MD_SIZE];
+  uint8_t secret[EVP_MAX_MD_SIZE];
+  uint8_t traffic_secret_0[EVP_MAX_MD_SIZE];
+
+  SSL_ECDH_CTX *groups;
+  size_t groups_len;
+  uint8_t *public_key;
+  size_t public_key_len;
+
+  uint8_t *cert_context;
+  size_t cert_context_len;
+} /* SSL_HANDSHAKE */;
+
+SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
+
+/* ssl_handshake_free releases all memory associated with |hs|. */
+void ssl_handshake_free(SSL_HANDSHAKE *hs);
+
+/* tls13_handshake runs the TLS 1.3 handshake. It returns one on success and <=
+ * 0 on error. */
+int tls13_handshake(SSL *ssl);
+
+/* The following are implementations of |do_handshake| for the client and
+ * server. */
+enum ssl_hs_wait_t tls13_client_handshake(SSL *ssl);
+enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl);
+
+/* tls13_check_message_type checks if the current message has type |type|. If so
+ * it returns one. Otherwise, it sends an alert and returns zero. */
+int tls13_check_message_type(SSL *ssl, int type);
+
+int tls13_process_certificate(SSL *ssl);
+int tls13_process_certificate_verify(SSL *ssl);
+int tls13_process_finished(SSL *ssl);
+
+int tls13_prepare_certificate(SSL *ssl);
+enum ssl_private_key_result_t tls13_prepare_certificate_verify(
+    SSL *ssl, int is_first_run);
+int tls13_prepare_finished(SSL *ssl);
+
+int ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
+                                    size_t *out_secret_len, uint8_t *out_alert,
+                                    CBS *contents);
+int ext_key_share_parse_clienthello(SSL *ssl, uint8_t **out_secret,
+                                    size_t *out_secret_len, uint8_t *out_alert,
+                                    CBS *contents);
+int ext_key_share_add_serverhello(SSL *ssl, CBB *out);
 
 
 /* Underdocumented functions.

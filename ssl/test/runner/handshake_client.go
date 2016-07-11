@@ -133,6 +133,14 @@ func (c *Conn) clientHandshake() error {
 				keyExchange: publicKey,
 			})
 			keyShares[curveID] = curve
+
+			if c.config.Bugs.DuplicateKeyShares {
+				hello.keyShares = append(hello.keyShares, hello.keyShares[len(hello.keyShares)-1])
+			}
+		}
+
+		if c.config.Bugs.MissingKeyShare {
+			hello.keyShares = nil
 		}
 	}
 
@@ -477,7 +485,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Resolve ECDHE and compute the handshake secret.
 	var ecdheSecret []byte
-	if hs.suite.flags&suiteECDHE != 0 {
+	if hs.suite.flags&suiteECDHE != 0 && !c.config.Bugs.MissingKeyShare {
 		if !hs.serverHello.hasKeyShare {
 			c.sendAlert(alertMissingExtension)
 			return errors.New("tls: server omitted the key share extension")
@@ -1012,6 +1020,10 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 
 	if serverExtensions.extendedMasterSecret && c.vers >= VersionTLS13 && enableTLS13Handshake {
 		return errors.New("tls: server advertised extended master secret over TLS 1.3")
+	}
+
+	if serverExtensions.ticketSupported && c.vers >= VersionTLS13 && enableTLS13Handshake {
+		return errors.New("tls: server advertised ticket extension over TLS 1.3")
 	}
 
 	if serverExtensions.srtpProtectionProfile != 0 {

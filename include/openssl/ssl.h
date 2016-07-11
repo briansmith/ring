@@ -548,6 +548,8 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define DTLS1_VERSION 0xfeff
 #define DTLS1_2_VERSION 0xfefd
 
+#define TLS1_3_DRAFT_VERSION 13
+
 /* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
  * |version|. */
 OPENSSL_EXPORT void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
@@ -2655,6 +2657,7 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 #define SSL_AD_INTERNAL_ERROR TLS1_AD_INTERNAL_ERROR
 #define SSL_AD_USER_CANCELLED TLS1_AD_USER_CANCELLED
 #define SSL_AD_NO_RENEGOTIATION TLS1_AD_NO_RENEGOTIATION
+#define SSL_AD_MISSING_EXTENSION TLS1_AD_MISSING_EXTENSION
 #define SSL_AD_UNSUPPORTED_EXTENSION TLS1_AD_UNSUPPORTED_EXTENSION
 #define SSL_AD_CERTIFICATE_UNOBTAINABLE TLS1_AD_CERTIFICATE_UNOBTAINABLE
 #define SSL_AD_UNRECOGNIZED_NAME TLS1_AD_UNRECOGNIZED_NAME
@@ -2919,6 +2922,7 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 #define SSL_ST_INIT (SSL_ST_CONNECT | SSL_ST_ACCEPT)
 #define SSL_ST_OK 0x03
 #define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
+#define SSL_ST_TLS13 (0x05 | SSL_ST_INIT)
 
 /* SSL_CB_* are possible values for the |type| parameter in the info
  * callback and the bitmasks that make them up. */
@@ -3538,6 +3542,7 @@ OPENSSL_EXPORT int SSL_set_private_key_digest_prefs(SSL *ssl,
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
+typedef struct ssl_handshake_st SSL_HANDSHAKE;
 
 struct ssl_cipher_st {
   /* name is the OpenSSL name for the cipher. */
@@ -3578,6 +3583,8 @@ struct ssl_session_st {
    * A zero indicates that the value is unknown. */
   uint32_t key_exchange_info;
 
+  /* master_key, in TLS 1.2 and below, is the master secret associated with the
+   * session. In TLS 1.3 and up, it is the resumption secret. */
   int master_key_length;
   uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
@@ -4234,11 +4241,21 @@ typedef struct ssl3_state_st {
   uint8_t *pending_message;
   uint32_t pending_message_len;
 
+  /* hs is the handshake state for the current handshake or NULL if there isn't
+   * one. */
+  SSL_HANDSHAKE *hs;
+
+  uint8_t write_traffic_secret[EVP_MAX_MD_SIZE];
+  uint8_t write_traffic_secret_len;
+  uint8_t read_traffic_secret[EVP_MAX_MD_SIZE];
+  uint8_t read_traffic_secret_len;
+  uint8_t exporter_secret[EVP_MAX_MD_SIZE];
+  uint8_t exporter_secret_len;
+
   /* State pertaining to the pending handshake.
    *
-   * TODO(davidben): State is current spread all over the place. Move
-   * pending handshake state here so it can be managed separately from
-   * established connection state in case of renegotiations. */
+   * TODO(davidben): Move everything not needed after the handshake completes to
+   * |hs| and remove this. */
   struct {
     uint8_t finish_md[EVP_MAX_MD_SIZE];
     uint8_t finish_md_len;
@@ -4715,6 +4732,9 @@ OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 #define SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS 253
 #define SSL_R_DOWNGRADE_DETECTED 254
 #define SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE 255
+#define SSL_R_INVALID_COMPRESSION_LIST 256
+#define SSL_R_DUPLICATE_EXTENSION 257
+#define SSL_R_MISSING_KEY_SHARE 258
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

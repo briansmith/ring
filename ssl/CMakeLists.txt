@@ -31,6 +31,10 @@ add_library(
   t1_lib.c
   tls_method.c
   tls_record.c
+  tls13_both.c
+  tls13_client.c
+  tls13_enc.c
+  tls13_server.c
 )
 
 target_link_libraries(ssl crypto)

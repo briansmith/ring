@@ -61,6 +61,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-no-tls11", &TestConfig::no_tls11 },
   { "-no-tls1", &TestConfig::no_tls1 },
   { "-no-ssl3", &TestConfig::no_ssl3 },
+  { "-enable-channel-id", &TestConfig::enable_channel_id },
   { "-shim-writes-first", &TestConfig::shim_writes_first },
   { "-expect-session-miss", &TestConfig::expect_session_miss },
   { "-decline-alpn", &TestConfig::decline_alpn },

@@ -279,6 +279,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 
 	// Prepare an EncryptedExtensions message, but do not send it yet.
 	encryptedExtensions := new(encryptedExtensionsMsg)
+	encryptedExtensions.empty = config.Bugs.EmptyEncryptedExtensions
 	if err := hs.processClientExtensions(&encryptedExtensions.extensions); err != nil {
 		return err
 	}
@@ -341,7 +342,7 @@ Curves:
 
 	// Resolve ECDHE and compute the handshake secret.
 	var ecdheSecret []byte
-	if hs.suite.flags&suiteECDHE != 0 {
+	if hs.suite.flags&suiteECDHE != 0 && !config.Bugs.MissingKeyShare {
 		// Look for the key share corresponding to our selected curve.
 		var selectedKeyShare *keyShareEntry
 		for i := range hs.clientHello.keyShares {
@@ -383,6 +384,14 @@ Curves:
 		hs.hello.keyShare = keyShareEntry{
 			group:       curveID,
 			keyExchange: publicKey,
+		}
+
+		if config.Bugs.EncryptedExtensionsWithKeyShare {
+			encryptedExtensions.extensions.hasKeyShare = true
+			encryptedExtensions.extensions.keyShare = keyShareEntry{
+				group:       curveID,
+				keyExchange: publicKey,
+			}
 		}
 	} else {
 		ecdheSecret = hs.finishedHash.zeroSecret()
@@ -700,7 +709,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	config := hs.c.config
 	c := hs.c
 
-	if c.vers < VersionTLS13 || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateRenegotiationInfoAtAllVersions || !enableTLS13Handshake {
 		if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: renegotiation mismatch")
@@ -751,7 +760,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		}
 	}
 
-	if c.vers < VersionTLS13 || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateNPNAtAllVersions || !enableTLS13Handshake {
 		if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
 			// Although sending an empty NPN extension is reasonable, Firefox has
 			// had a bug around this. Best to send nothing at all if
@@ -763,9 +772,13 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 				serverExtensions.npnLast = config.Bugs.SwapNPNAndALPN
 			}
 		}
+	}
 
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions || !enableTLS13Handshake {
 		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
+	}
 
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateChannelIDAtAllVersions || !enableTLS13Handshake {
 		if hs.clientHello.channelIDSupported && config.RequestChannelID {
 			serverExtensions.channelIDRequested = true
 		}
@@ -794,6 +807,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		}
 	}
 	serverExtensions.customExtension = config.Bugs.CustomExtension
+
+	if c.config.Bugs.AdvertiseTicketExtension {
+		serverExtensions.ticketSupported = true
+	}
 
 	return nil
 }

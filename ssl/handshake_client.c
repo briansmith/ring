@@ -200,7 +200,9 @@ int ssl3_connect(SSL *ssl) {
       case SSL_ST_CONNECT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
-        if (!ssl->method->begin_handshake(ssl)) {
+        ssl->s3->hs = ssl_handshake_new(tls13_client_handshake);
+        if (ssl->s3->hs == NULL ||
+            !ssl->method->begin_handshake(ssl)) {
           ret = -1;
           goto end;
         }
@@ -244,6 +246,9 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CR_SRVR_HELLO_A:
         ret = ssl3_get_server_hello(ssl);
+        if (ssl->state == SSL_ST_TLS13) {
+          break;
+        }
         if (ret <= 0) {
           goto end;
         }
@@ -490,6 +495,14 @@ int ssl3_connect(SSL *ssl) {
         }
         break;
 
+      case SSL_ST_TLS13:
+        ret = tls13_handshake(ssl);
+        if (ret <= 0) {
+          goto end;
+        }
+        ssl->state = SSL_ST_OK;
+        break;
+
       case SSL_ST_OK:
         /* clean a few things up */
         ssl3_cleanup_key_block(ssl);
@@ -498,6 +511,9 @@ int ssl3_connect(SSL *ssl) {
 
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(ssl);
+
+        ssl_handshake_free(ssl->s3->hs);
+        ssl->s3->hs = NULL;
 
         const int is_initial_handshake = !ssl->s3->initial_handshake_complete;
 
@@ -730,8 +746,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
   uint16_t server_wire_version, server_version, cipher_suite;
   uint8_t compression_method;
 
-  int ret =
-      ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO, ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
   if (ret <= 0) {
     uint32_t err = ERR_peek_error();
     if (ERR_GET_LIB(err) == ERR_LIB_SSL &&
@@ -747,14 +762,16 @@ static int ssl3_get_server_hello(SSL *ssl) {
     return ret;
   }
 
+  if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO &&
+      ssl->s3->tmp.message_type != SSL3_MT_HELLO_RETRY_REQUEST) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    return -1;
+  }
+
   CBS_init(&server_hello, ssl->init_msg, ssl->init_num);
 
-  if (!CBS_get_u16(&server_hello, &server_wire_version) ||
-      !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
-      CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
-      !CBS_get_u16(&server_hello, &cipher_suite) ||
-      !CBS_get_u8(&server_hello, &compression_method)) {
+  if (!CBS_get_u16(&server_hello, &server_wire_version)) {
     al = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     goto f_err;
@@ -781,6 +798,27 @@ static int ssl3_get_server_hello(SSL *ssl) {
   } else if (server_wire_version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     al = SSL_AD_PROTOCOL_VERSION;
+    goto f_err;
+  }
+
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    ssl->state = SSL_ST_TLS13;
+    return 1;
+  }
+
+  if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    return -1;
+  }
+
+  if (!CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
+      !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
+      CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
+      !CBS_get_u16(&server_hello, &cipher_suite) ||
+      !CBS_get_u8(&server_hello, &compression_method)) {
+    al = SSL_AD_DECODE_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     goto f_err;
   }
 

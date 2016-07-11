@@ -56,7 +56,6 @@
 
 #include <openssl/ssl.h>
 
-#include <assert.h>
 #include <string.h>
 
 #include <openssl/buf.h>
@@ -93,9 +92,13 @@ static void ssl3_finish_handshake(SSL *ssl) {
 }
 
 static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
-  /* TODO(davidben): In TLS 1.3, cipher changes are not always preceeded by a
-   * ChangeCipherSpec, so this must become a runtime check. */
-  assert(ssl->s3->rrec.length == 0);
+  if (ssl->s3->rrec.length != 0) {
+    /* There may not be unprocessed record data at a cipher change. */
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    SSL_AEAD_CTX_free(aead_ctx);
+    return 0;
+  }
 
   memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 

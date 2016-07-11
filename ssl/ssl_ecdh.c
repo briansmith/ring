@@ -567,6 +567,19 @@ void SSL_ECDH_CTX_init_for_cecpq1(SSL_ECDH_CTX *ctx) {
   ctx->method = &kCECPQ1Method;
 }
 
+void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx) {
+  if (ctx->method == NULL) {
+    return;
+  }
+  ctx->method->cleanup(ctx);
+  ctx->method = NULL;
+  ctx->data = NULL;
+}
+
+uint16_t SSL_ECDH_CTX_get_id(const SSL_ECDH_CTX *ctx) {
+  return ctx->method->group_id;
+}
+
 int SSL_ECDH_CTX_get_key(SSL_ECDH_CTX *ctx, CBS *cbs, CBS *out) {
   if (ctx->method == NULL) {
     return 0;
@@ -579,15 +592,6 @@ int SSL_ECDH_CTX_add_key(SSL_ECDH_CTX *ctx, CBB *cbb, CBB *out_contents) {
     return 0;
   }
   return ctx->method->add_key(cbb, out_contents);
-}
-
-void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx) {
-  if (ctx->method == NULL) {
-    return;
-  }
-  ctx->method->cleanup(ctx);
-  ctx->method = NULL;
-  ctx->data = NULL;
 }
 
 int SSL_ECDH_CTX_offer(SSL_ECDH_CTX *ctx, CBB *out_public_key) {

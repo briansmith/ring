@@ -18,8 +18,7 @@ import (
 	"time"
 )
 
-// TODO(davidben): Flip this to true when the C code lands.
-const enableTLS13Handshake = false
+const enableTLS13Handshake = true
 
 const (
 	VersionSSL30 = 0x0300
@@ -919,6 +918,43 @@ type ProtocolBugs struct {
 	// IgnoreSignatureVersionChecks, if true, causes all signature
 	// algorithms to be enabled at all TLS versions.
 	IgnoreSignatureVersionChecks bool
+
+	// NegotiateRenegotiationInfoAtAllVersions, if true, causes
+	// Renegotiation Info to be negotiated at all versions.
+	NegotiateRenegotiationInfoAtAllVersions bool
+
+	// NegotiateChannelIDAtAllVersions, if true, causes Channel ID to be
+	// negotiated at all versions.
+	NegotiateChannelIDAtAllVersions bool
+
+	// NegotiateNPNAtAllVersions, if true, causes NPN to be negotiated at
+	// all versions.
+	NegotiateNPNAtAllVersions bool
+
+	// NegotiateEMSAtAllVersions, if true, causes EMS to be negotiated at
+	// all versions.
+	NegotiateEMSAtAllVersions bool
+
+	// AdvertiseTicketExtension, if true, causes the ticket extension to be
+	// advertised in server extensions
+	AdvertiseTicketExtension bool
+
+	// MissingKeyShare, if true, causes the TLS 1.3 implementation to skip
+	// sending a key_share extension and use the zero ECDHE secret
+	// instead.
+	MissingKeyShare bool
+
+	// DuplicateKeyShares, if true, causes the TLS 1.3 client to send two
+	// copies of each KeyShareEntry.
+	DuplicateKeyShares bool
+
+	// EmptyEncryptedExtensions, if true, causes the TLS 1.3 server to
+	// emit an empty EncryptedExtensions block.
+	EmptyEncryptedExtensions bool
+
+	// EncryptedExtensionsWithKeyShare, if true, causes the TLS 1.3 server to
+	// include the KeyShare extension in the EncryptedExtensions block.
+	EncryptedExtensionsWithKeyShare bool
 }
 
 func (c *Config) serverInit() {

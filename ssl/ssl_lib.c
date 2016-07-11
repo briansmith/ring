@@ -1122,7 +1122,8 @@ int SSL_get_verify_depth(const SSL *ssl) {
 }
 
 int SSL_get_extms_support(const SSL *ssl) {
-  return ssl->s3->tmp.extended_master_secret == 1;
+  return ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
+         ssl->s3->tmp.extended_master_secret == 1;
 }
 
 int (*SSL_get_verify_callback(const SSL *ssl))(int, X509_STORE_CTX *) {

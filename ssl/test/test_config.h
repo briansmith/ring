@@ -46,6 +46,7 @@ struct TestConfig {
   bool no_tls1 = false;
   bool no_ssl3 = false;
   std::string expected_channel_id;
+  bool enable_channel_id = false;
   std::string send_channel_id;
   bool shim_writes_first = false;
   std::string host_name;
