@@ -58,6 +58,8 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     elem_mul_mont: GFp_p384_elem_mul_mont,
     elem_sqr_mont: GFp_p384_elem_sqr_mont,
 
+    point_add_jacobian_impl: ecp_nistz384_point_add,
+
     ec_group: &EC_GROUP_P384,
 };
 
@@ -343,6 +345,9 @@ extern {
                               a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
+    fn ecp_nistz384_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                              a: *const Limb/*[3][COMMON_OPS.num_limbs]*/,
+                              b: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
     fn ecp_nistz384_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                               p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,

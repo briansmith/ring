@@ -155,6 +155,10 @@ pub struct CommonOps {
                                     b: *const Limb),
     elem_sqr_mont: unsafe extern fn(r: *mut Limb, a: *const Limb),
 
+    #[cfg_attr(not(test), allow(dead_code))]
+    point_add_jacobian_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                              b: *const Limb),
+
     pub ec_group: &'static EC_GROUP,
 }
 
@@ -218,6 +222,16 @@ impl CommonOps {
             0 => Ok(()),
             _ => Err(()),
         }
+    }
+
+    #[cfg(test)]
+    pub fn point_sum(&self, a: &Point, b: &Point) -> Point {
+        let mut r = Point::new_at_infinity();
+        unsafe {
+            (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(),
+                                           b.xyz.as_ptr())
+        }
+        r
     }
 
     pub fn point_x(&self, p: &Point) -> ElemUnreduced {
@@ -576,6 +590,7 @@ extern {
 mod tests {
     use std;
     use super::*;
+    use super::parse_big_endian_value_in_range;
     use test;
     use untrusted;
 
@@ -857,6 +872,117 @@ mod tests {
         assert_eq!(parse_big_endian_value(inp, 1), Err(()));
     }
 
+    #[test]
+    fn p256_point_sum_test() {
+        point_sum_test(&p256::PRIVATE_KEY_OPS,
+                       "src/ec/suite_b/ops/p256_point_sum_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_sum_test() {
+        point_sum_test(&p384::PRIVATE_KEY_OPS,
+                       "src/ec/suite_b/ops/p384_point_sum_tests.txt");
+    }
+
+    fn point_sum_test(ops: &PrivateKeyOps, file_path: &str) {
+         test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_jacobian_point(ops, test_case, "a");
+            let b = consume_jacobian_point(ops, test_case, "b");
+            let r_expected = consume_point(ops, test_case, "r");
+
+            let r_actual = ops.common.point_sum(&a, &b);
+            assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
+
+            Ok(())
+        });
+    }
+
+    fn assert_point_actual_equals_expected(ops: &PrivateKeyOps,
+                                           actual_point: &Point,
+                                           expected_point: &TestPoint) {
+        let cops = ops.common;
+        let actual_x = &cops.point_x(&actual_point);
+        let actual_y = &cops.point_y(&actual_point);
+        let actual_z = &cops.point_z(&actual_point);
+        match expected_point {
+            &TestPoint::Infinity => {
+                let zero = Elem { limbs: [0; MAX_LIMBS] };
+                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_x),
+                                             &zero));
+                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_y),
+                                             &zero));
+                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_z),
+                                             &zero));
+            },
+            &TestPoint::Affine(ref expected_x, ref expected_y) => {
+                let z_inv = ops.elem_inverse(&actual_z);
+                let zz_inv = cops.elem_squared(&z_inv);
+                let x_aff =
+                    cops.elem_reduced(&cops.elem_product(&actual_x, &zz_inv));
+                let zzz_inv = cops.elem_product(&z_inv, &zz_inv);
+                let y_aff =
+                    cops.elem_reduced(&cops.elem_product(&actual_y, &zzz_inv));
+                assert!(cops.elems_are_equal(&x_aff, &expected_x));
+                assert!(cops.elems_are_equal(&y_aff, &expected_y));
+            }
+        }
+    }
+
+    fn consume_jacobian_point(ops: &PrivateKeyOps,
+                              test_case: &mut test::TestCase, name: &str)
+                              -> Point {
+        fn consume_point_elem(ops: &CommonOps, p: &mut Point,
+                              elems: &std::vec::Vec<&str>, i: usize) {
+            let bytes = test::from_hex(elems[i]).unwrap();
+            let bytes = untrusted::Input::from(&bytes);
+            let limbs =
+                parse_big_endian_value_in_range(
+                    bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap();
+            p.xyz[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
+                .copy_from_slice(&limbs[..ops.num_limbs]);
+        }
+
+        let input = test_case.consume_string(name);
+        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        assert_eq!(elems.len(), 3);
+        let mut p = Point::new_at_infinity();
+        consume_point_elem(ops.common, &mut p, &elems, 0);
+        consume_point_elem(ops.common, &mut p, &elems, 1);
+        consume_point_elem(ops.common, &mut p, &elems, 2);
+        p
+    }
+
+    enum TestPoint {
+        Infinity,
+        Affine(Elem, Elem),
+    }
+
+    fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase,
+                     name: &str) -> TestPoint {
+        fn consume_point_elem(ops: &CommonOps, elems: &std::vec::Vec<&str>,
+                              i: usize) -> Elem {
+            let bytes = test::from_hex(elems[i]).unwrap();
+            let bytes = untrusted::Input::from(&bytes);
+            Elem {
+                limbs:
+                    parse_big_endian_value_in_range(
+                        bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap()
+            }
+        }
+
+        let input = test_case.consume_string(name);
+        if input == "inf" {
+            return TestPoint::Infinity;
+        }
+        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        assert_eq!(elems.len(), 2);
+        let x = consume_point_elem(ops.common, &elems, 0);
+        let y = consume_point_elem(ops.common, &elems, 1);
+        TestPoint::Affine(x, y)
+    }
+
     fn assert_limbs_are_equal(ops: &CommonOps, actual: &[Limb; MAX_LIMBS],
                               expected: &[Limb; MAX_LIMBS]) {
         for i in 0..ops.num_limbs {
@@ -876,11 +1002,11 @@ mod tests {
 
     fn consume_elem_unreduced(ops: &CommonOps, test_case: &mut test::TestCase,
                               name: &str) -> ElemUnreduced {
-        let elem_bytes = test_case.consume_bytes(name);
-        let elem_bytes = untrusted::Input::from(&elem_bytes);
-        let elem_limbs =
-            parse_big_endian_value(elem_bytes, ops.num_limbs).unwrap();
-        ElemUnreduced{ limbs: elem_limbs }
+        let bytes = test_case.consume_bytes(name);
+        let bytes = untrusted::Input::from(&bytes);
+        ElemUnreduced {
+            limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap()
+        }
     }
 }
 
