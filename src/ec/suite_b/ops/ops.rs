@@ -656,6 +656,47 @@ mod tests {
         })
     }
 
+    // XXX: There's no `ecp_nistz256_sub` in *ring*; it's logic is inlined into
+    // the point arithmetic functions. Thus, we can't test it.
+
+    #[test]
+    fn p384_difference_test() {
+        extern {
+            fn GFp_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
+        }
+        difference_test(&p384::COMMON_OPS, GFp_p384_elem_sub,
+                        "src/ec/suite_b/ops/p384_sum_tests.txt");
+    }
+
+    fn difference_test(ops: &CommonOps,
+                       elem_sub: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                                  b: *const Limb),
+                       file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_elem_unreduced(ops, test_case, "a");
+            let b = consume_elem_unreduced(ops, test_case, "b");
+            let r = consume_elem_unreduced(ops, test_case, "r");
+
+            let mut actual_difference = ElemUnreduced::zero();
+            unsafe {
+                elem_sub(actual_difference.limbs.as_mut_ptr(),
+                         r.limbs.as_ptr(), b.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_difference.limbs, &a.limbs);
+
+            let mut actual_difference = ElemUnreduced::zero();
+            unsafe {
+                elem_sub(actual_difference.limbs.as_mut_ptr(),
+                         r.limbs.as_ptr(), a.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_difference.limbs, &b.limbs);
+
+            Ok(())
+        })
+    }
+
     #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {

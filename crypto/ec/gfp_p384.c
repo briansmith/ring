@@ -34,6 +34,7 @@ typedef GFp_Limb Scalar[P384_LIMBS];
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
+void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b);
 void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
@@ -91,6 +92,14 @@ static void elem_add(Elem r, const Elem a, const Elem b) {
                    constant_time_select_size_t(carry, carry, no_borrow));
 }
 
+static void elem_sub(Elem r, const Elem a, const Elem b) {
+  GFp_Limb borrow =
+    constant_time_is_nonzero_size_t(gfp_limbs_sub(r, a, b, P384_LIMBS));
+  Elem adjusted;
+  (void)gfp_limbs_add(adjusted, r, Q, P384_LIMBS);
+  copy_conditional(r, adjusted, borrow);
+}
+
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   static const BN_ULONG Q_N0[] = {
     BN_MONT_CTX_N0(0x1, 0x1)
@@ -102,6 +111,10 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
 
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
   elem_add(r, a, b);
+}
+
+void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b) {
+  elem_sub(r, a, b);
 }
 
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
