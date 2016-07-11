@@ -3231,6 +3231,25 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			shimWritesFirst: true,
 		})
 
+		tests = append(tests, testCase{
+			name: "FalseStart-CECPQ1",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart: true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-cipher", "DEFAULT:kCECPQ1",
+				"-select-next-proto", "foo",
+			},
+			shimWritesFirst: true,
+			resumeSession:   true,
+		})
+
 		// Server parses a V2ClientHello.
 		tests = append(tests, testCase{
 			testType: serverTest,

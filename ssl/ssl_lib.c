@@ -2528,7 +2528,8 @@ int ssl3_can_false_start(const SSL *ssl) {
       SSL_version(ssl) == TLS1_2_VERSION &&
       (ssl->s3->alpn_selected || ssl->s3->next_proto_neg_seen) &&
       cipher != NULL &&
-      cipher->algorithm_mkey == SSL_kECDHE &&
+      (cipher->algorithm_mkey == SSL_kECDHE ||
+       cipher->algorithm_mkey == SSL_kCECPQ1) &&
       cipher->algorithm_mac == SSL_AEAD;
 }
 
