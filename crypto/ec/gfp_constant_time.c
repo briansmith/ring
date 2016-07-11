@@ -48,6 +48,19 @@ GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
   return is_zero;
 }
 
+/* Returns 0xffff..f if |a| is less than |b|, and zero otherwise. */
+GFp_Limb GFp_constant_time_limbs_eq_limbs(const GFp_Limb a[],
+                                          const GFp_Limb b[],
+                                          size_t num_limbs) {
+  assert(num_limbs >= 1);
+  GFp_Limb eq = constant_time_eq_size_t(a[0], b[0]);
+  for (size_t i = 1; i < num_limbs; ++i) {
+    eq = constant_time_select_size_t(eq, constant_time_eq_size_t(a[i], b[i]),
+                                     eq);
+  }
+  return eq;
+}
+
 /* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
 GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
                                           const GFp_Limb b[],
