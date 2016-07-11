@@ -51,6 +51,29 @@ static const BN_ULONG N[P384_LIMBS] = {
   TOBN(0xffffffff, 0xffffffff),
 };
 
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
+                       size_t_and_gfp_limb_are_different_sizes);
+
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(BN_ULONG),
+                       size_t_and_bn_ulong_are_different_sizes);
+
+
+/* XXX: MSVC for x86 warns when it fails to inline these functions it should
+ * probably inline. */
+#if defined(_MSC_VER)  && defined(OPENSSL_X86)
+#define INLINE_IF_POSSIBLE __forceinline
+#else
+#define INLINE_IF_POSSIBLE inline
+#endif
+
+
+static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
+                                                const GFp_Limb condition) {
+  for (size_t i = 0; i < P384_LIMBS; ++i) {
+    r[i] = constant_time_select_size_t(condition, a[i], r[i]);
+  }
+}
+
 
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   static const BN_ULONG Q_N0[] = {
