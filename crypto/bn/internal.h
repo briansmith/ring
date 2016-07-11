@@ -235,8 +235,14 @@ void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
  * currently only the assembly files know which is which. */
 #if BN_BITS2 <= 32
 #define BN_MONT_CTX_N0_LIMBS 2
+#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
 #else
 #define BN_MONT_CTX_N0_LIMBS 1
+#if defined(OPENSSL_64_BIT)
+#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
+#elif defined(OPENSSL_32_BIT)
+#define BN_MONT_CTX_N0(hi, lo) TOBN(0, lo)
+#endif
 #endif
 
 

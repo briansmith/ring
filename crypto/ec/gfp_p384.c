@@ -34,11 +34,37 @@ void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
 
 
+static const BN_ULONG Q[P384_LIMBS] = {
+  TOBN(0x00000000, 0xffffffff),
+  TOBN(0xffffffff, 0x00000000),
+  TOBN(0xffffffff, 0xfffffffe),
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0xffffffff, 0xffffffff),
+};
+
+static const BN_ULONG N[P384_LIMBS] = {
+  TOBN(0xecec196a, 0xccc52973),
+  TOBN(0x581a0db2, 0x48b0a77a),
+  TOBN(0xc7634d81, 0xf4372ddf),
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0xffffffff, 0xffffffff),
+};
+
+static const BN_ULONG ONE[P384_LIMBS] = {
+  TOBN(0xffffffff, 1), TOBN(0, 0xffffffff), TOBN(0, 1), TOBN(0, 0), TOBN(0, 0),
+  TOBN(0, 0),
+};
+
+
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
+  static const BN_ULONG Q_N0[] = {
+    BN_MONT_CTX_N0(0x1, 0x1)
+  };
   /* XXX: Not (clearly) constant-time; inefficient. TODO: Add a dedicated
    * squaring routine. */
-  bn_mul_mont(r, a, b, EC_GROUP_P384.mont.N.d, EC_GROUP_P384.mont.n0,
-              P384_LIMBS);
+  bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
 static inline void elem_sqr_mont(Elem r, const Elem a) {
@@ -61,14 +87,14 @@ static inline void elem_sqr_mul_mont(Elem r, const Elem a, size_t squarings,
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
   /* XXX: Not constant-time. */
   if (!bn_add_words(r, a, b, P384_LIMBS)) {
-    if (bn_cmp_words(r, EC_GROUP_P384.mont.N.d, P384_LIMBS) < 0) {
+    if (bn_cmp_words(r, Q, P384_LIMBS) < 0) {
       return;
     }
   }
   /* Either the addition resulted in a carry requiring 1 bit more than would
    * fit in |P384_LIMBS| limbs, or the addition result fit in |P384_LIMBS|
    * limbs but it was not less than |q|. Either way, it needs to be reduced. */
-  (void)bn_sub_words(r, r, EC_GROUP_P384.mont.N.d, P384_LIMBS);
+  (void)bn_sub_words(r, r, Q, P384_LIMBS);
 }
 
 void GFp_p384_elem_inv(Elem r, const Elem a) {
@@ -137,9 +163,11 @@ void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
 
 static inline void scalar_mul_mont(ScalarMont r, const ScalarMont a,
                                    const ScalarMont b) {
+  static const BN_ULONG N_N0[] = {
+    BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
+  };
   /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, EC_GROUP_P384.order_mont.N.d,
-              EC_GROUP_P384.order_mont.n0, P384_LIMBS);
+  bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 static inline void scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
@@ -148,7 +176,15 @@ static inline void scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
 }
 
 static inline void scalar_to_mont(ScalarMont r, const ScalarMont a) {
-  scalar_mul_mont(r, a, EC_GROUP_P384.order_mont.RR.d);
+  static const BN_ULONG N_RR[P384_LIMBS] = {
+    TOBN(0x2d319b24, 0x19b409a9),
+    TOBN(0xff3d81e5, 0xdf1aa419),
+    TOBN(0xbc3e483a, 0xfcb82947),
+    TOBN(0xd40d4917, 0x4aab1cc5),
+    TOBN(0x3fb05b7a, 0x28266895),
+    TOBN(0x0c84ee01, 0x2b39bf21),
+  };
+  scalar_mul_mont(r, a, N_RR);
 }
 
 static void scalar_sqr_mul_mont(ScalarMont r, const ScalarMont a,

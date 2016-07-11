@@ -33,14 +33,4 @@
 #define FIELD(x) x
 #endif
 
-#if defined(OPENSSL_64_BIT) && BN_MONT_CTX_N0_LIMBS == 1
-#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
-#elif defined(OPENSSL_32_BIT) && BN_MONT_CTX_N0_LIMBS == 1
-#define BN_MONT_CTX_N0(hi, lo) TOBN(0, lo)
-#elif defined(OPENSSL_32_BIT) && BN_MONT_CTX_N0_LIMBS == 2
-#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
-#else
-#error "Unexpected value of BN_MONT_CTX_N0_LIMBS"
-#endif
-
 #include "ec_curve_data.inl"

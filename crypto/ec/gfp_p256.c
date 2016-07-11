@@ -108,9 +108,17 @@ void GFp_p256_elem_inv(Elem r, const Elem a) {
 #if !defined(OPENSSL_X86_64)
 void ecp_nistz256_ord_mul_mont(ScalarMont r, const ScalarMont a,
                                const ScalarMont b) {
+  static const BN_ULONG N[] = {
+    TOBN(0xf3b9cac2, 0xfc632551),
+    TOBN(0xbce6faad, 0xa7179e84),
+    TOBN(0xffffffff, 0xffffffff),
+    TOBN(0xffffffff, 0x00000000),
+  };
+  static const BN_ULONG N_N0[] = {
+    BN_MONT_CTX_N0(0xccd1c8aa, 0xee00bc4f)
+  };
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, EC_GROUP_P256.order_mont.N.d,
-              EC_GROUP_P256.order_mont.n0, P256_LIMBS);
+  bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
 }
 #endif
 
@@ -128,7 +136,13 @@ static inline void scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
 }
 
 static inline void scalar_to_mont(ScalarMont r, const Scalar a) {
-  scalar_mul_mont(r, a, EC_GROUP_P256.order_mont.RR.d);
+  static const GFp_Limb N_RR[P256_LIMBS] = {
+    TOBN(0x83244c95, 0xbe79eea2),
+    TOBN(0x4699799c, 0x49bd6fa6),
+    TOBN(0x2845b239, 0x2b6bec59),
+    TOBN(0x66e12d94, 0xf3d95620),
+  };
+  scalar_mul_mont(r, a, N_RR);
 }
 
 static void scalar_sqr_mul_mont(ScalarMont r, const ScalarMont a,
