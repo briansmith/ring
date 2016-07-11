@@ -68,6 +68,12 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(BN_ULONG),
                        size_t_and_bn_ulong_are_different_sizes);
 
 
+static const BN_ULONG ONE[P384_LIMBS] = {
+  TOBN(0xffffffff, 1), TOBN(0, 0xffffffff), TOBN(0, 1), TOBN(0, 0), TOBN(0, 0),
+  TOBN(0, 0),
+};
+
+
 /* XXX: MSVC for x86 warns when it fails to inline these functions it should
  * probably inline. */
 #if defined(_MSC_VER)  && defined(OPENSSL_X86)
