@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-use {bssl, c, der};
+use {c, der};
 use core;
 use untrusted;
 
@@ -224,7 +224,6 @@ impl CommonOps {
         }
     }
 
-    #[cfg(test)]
     pub fn point_sum(&self, a: &Point, b: &Point) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
@@ -350,6 +349,11 @@ impl PublicKeyOps {
 /// Operations on public scalars needed by ECDSA signature verification.
 pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
+
+    // XXX: `PublicScalarOps` shouldn't depend on `PrivateKeyOps`, but it does
+    // temporarily until `twin_mul` is rewritten.
+    pub private_key_ops: &'static PrivateKeyOps,
+
     pub q_minus_n: ElemDecoded,
 
     scalar_inv_to_mont_impl: fn(a: &Scalar) -> ScalarMont,
@@ -413,19 +417,6 @@ impl PublicScalarOps {
             limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
                        &b.limbs)
         }
-    }
-
-    pub fn twin_mult(&self, g_scalar: &Scalar, p_scalar: &Scalar,
-                     &(ref peer_x, ref peer_y): &(Elem, Elem))
-                     -> Result<Point, ()> {
-        let mut p = Point::new_at_infinity();
-        try!(bssl::map_result(unsafe {
-            GFp_suite_b_public_twin_mult(
-                self.public_key_ops.common.ec_group, p.xyz.as_mut_ptr(),
-                g_scalar.limbs.as_ptr(), p_scalar.limbs.as_ptr(),
-                peer_x.limbs.as_ptr(), peer_y.limbs.as_ptr())
-        }));
-        Ok(p)
     }
 }
 
@@ -579,10 +570,6 @@ extern {
                                         -> Limb;
     fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
                                            num_limbs: c::size_t);
-    fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, xyz_out: *mut Limb,
-                                    g_scalar: *const Limb,
-                                    p_scalar: *const Limb, p_x: *const Limb,
-                                    p_y: *const Limb) -> c::int;
 }
 
 

@@ -74,9 +74,9 @@ static const BN_ULONG p256_one_limbs[] = {
 STATIC_BIGNUM_DIAGNOSTIC_PUSH
 
 const EC_GROUP EC_GROUP_P256 = {
-  FIELD(.meth =) &CURVE_P256_EC_METHOD,
+  FIELD(.meth =) NULL,
   FIELD(.generator =) {
-    FIELD(.meth =) &CURVE_P256_EC_METHOD,
+    FIELD(.meth =) NULL,
     FIELD(.X =) STATIC_BIGNUM(p256_generator_x_limbs),
     FIELD(.Y =) STATIC_BIGNUM(p256_generator_y_limbs),
     FIELD(.Z =) STATIC_BIGNUM(p256_one_limbs),

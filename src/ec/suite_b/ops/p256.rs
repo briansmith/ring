@@ -136,6 +136,7 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     public_key_ops: &PUBLIC_KEY_OPS,
+    private_key_ops: &PRIVATE_KEY_OPS,
 
     q_minus_n: ElemDecoded {
         limbs: p256_limbs![0, 0, 0, 0,
