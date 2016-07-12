@@ -270,3 +270,4 @@ static void gfp_p384_point_select_w5(P384_POINT *out,
 
 
 #include "ecp_nistz384.inl"
+#include "ecp_nistz384_mul.inl"
