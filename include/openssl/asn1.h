@@ -1017,7 +1017,7 @@ OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
 #ifdef  __cplusplus
 }
 
-#if __cplusplus >= 201103
+#if defined(BORINGSSL_HAVE_CXX11)
 
 namespace bssl {
 

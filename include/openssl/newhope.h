@@ -143,7 +143,7 @@ OPENSSL_EXPORT void NEWHOPE_offer_frommsg(
 #if defined(__cplusplus)
 } /* extern "C" */
 
-#if __cplusplus >= 201103
+#if defined(BORINGSSL_HAVE_CXX11)
 
 namespace bssl {
 

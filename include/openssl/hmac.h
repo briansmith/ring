@@ -154,7 +154,7 @@ struct hmac_ctx_st {
 #if defined(__cplusplus)
 }  /* extern C */
 
-#if __cplusplus >= 201103
+#if defined(BORINGSSL_HAVE_CXX11)
 
 namespace bssl {
 

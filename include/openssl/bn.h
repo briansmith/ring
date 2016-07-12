@@ -867,7 +867,7 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #if defined(__cplusplus)
 }  /* extern C */
 
-#if __cplusplus >= 201103
+#if defined(BORINGSSL_HAVE_CXX11)
 
 namespace bssl {
 

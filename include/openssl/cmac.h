@@ -72,7 +72,7 @@ OPENSSL_EXPORT int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len);
 #if defined(__cplusplus)
 }  /* extern C */
 
-#if __cplusplus >= 201103
+#if defined(BORINGSSL_HAVE_CXX11)
 
 namespace bssl {
 

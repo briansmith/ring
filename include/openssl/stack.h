@@ -291,7 +291,7 @@ OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
 #if defined(__cplusplus)
 }  /* extern C */
 
-#if __cplusplus >= 201103
+#if defined(BORINGSSL_HAVE_CXX11)
 
 namespace bssl {
 
