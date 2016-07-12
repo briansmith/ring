@@ -4505,19 +4505,6 @@ OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 
 #if defined(__cplusplus)
 } /* extern C */
-
-#if defined(BORINGSSL_HAVE_CXX11)
-
-namespace bssl {
-
-using ScopedSSL = ScopedType<SSL, SSL_free>;
-using ScopedSSL_CTX = ScopedType<SSL_CTX, SSL_CTX_free>;
-using ScopedSSL_SESSION = ScopedType<SSL_SESSION, SSL_SESSION_free>;
-
-}  // namespace bssl
-
-#endif
-
 #endif
 
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100

@@ -40,6 +40,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <algorithm>
 
+#include "../test/scoped_types.h"
+
 
 namespace bssl {
 

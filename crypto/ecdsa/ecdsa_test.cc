@@ -62,6 +62,8 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
+#include "../test/scoped_types.h"
+
 
 namespace bssl {
 

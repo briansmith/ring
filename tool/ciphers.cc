@@ -20,6 +20,8 @@
 
 #include <openssl/ssl.h>
 
+#include "../crypto/test/scoped_types.h"
+#include "../ssl/test/scoped_types.h"
 #include "internal.h"
 
 

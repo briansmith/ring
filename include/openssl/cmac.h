@@ -71,17 +71,6 @@ OPENSSL_EXPORT int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len);
 
 #if defined(__cplusplus)
 }  /* extern C */
-
-#if defined(BORINGSSL_HAVE_CXX11)
-
-namespace bssl {
-
-using ScopedCMAC_CTX = ScopedType<CMAC_CTX, CMAC_CTX_free>;
-
-}  // namespace bssl
-
-#endif
-
 #endif
 
 #endif  /* OPENSSL_HEADER_CMAC_H */

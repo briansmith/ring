@@ -18,6 +18,8 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#include "../test/scoped_types.h"
+
 
 namespace bssl {
 

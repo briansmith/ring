@@ -333,18 +333,6 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx,
 
 #if defined(__cplusplus)
 }  /* extern C */
-
-#if defined(BORINGSSL_HAVE_CXX11)
-
-namespace bssl {
-
-using ScopedEVP_AEAD_CTX =
-    ScopedContext<EVP_AEAD_CTX, void, EVP_AEAD_CTX_zero, EVP_AEAD_CTX_cleanup>;
-
-}  // namespace bssl
-
-#endif
-
 #endif
 
 #endif  /* OPENSSL_HEADER_AEAD_H */

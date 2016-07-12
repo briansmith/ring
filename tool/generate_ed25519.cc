@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../crypto/test/scoped_types.h"
 #include "internal.h"
 
 
@@ -35,14 +36,6 @@ static const struct argument kArguments[] = {
         "", kOptionalArgument, "",
     },
 };
-
-struct FileCloser {
-  void operator()(FILE *file) {
-    fclose(file);
-  }
-};
-
-using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
 static bool WriteToFile(const std::string &path, const uint8_t *in,
                         size_t in_len) {

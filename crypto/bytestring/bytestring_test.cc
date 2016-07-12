@@ -26,6 +26,7 @@
 #include <openssl/bytestring.h>
 
 #include "internal.h"
+#include "../test/scoped_types.h"
 
 
 namespace bssl {

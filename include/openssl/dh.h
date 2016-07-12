@@ -255,17 +255,6 @@ struct dh_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
-
-#if defined(BORINGSSL_HAVE_CXX11)
-
-namespace bssl {
-
-using ScopedDH = ScopedType<DH, DH_free>;
-
-}  // namespace bssl
-
-#endif
-
 #endif
 
 #define DH_R_BAD_GENERATOR 100

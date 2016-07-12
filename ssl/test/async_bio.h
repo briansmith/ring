@@ -17,6 +17,8 @@
 
 #include <openssl/bio.h>
 
+#include "../../crypto/test/scoped_types.h"
+
 
 namespace bssl {
 

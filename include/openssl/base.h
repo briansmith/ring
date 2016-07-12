@@ -170,13 +170,6 @@ extern "C" {
 #define OPENSSL_MSVC_PRAGMA(arg)
 #endif
 
-/* MSVC doesn't set __cplusplus to 201103 to indicate C++11 support (see
- * https://connect.microsoft.com/VisualStudio/feedback/details/763051/a-value-of-predefined-macro-cplusplus-is-still-199711l)
- * so MSVC is just assumed to support C++11. */
-#if defined(__cplusplus) && (__cplusplus >= 201103 || defined(_MSC_VER))
-#define BORINGSSL_HAVE_CXX11
-#endif
-
 
 /* CRYPTO_THREADID is a dummy value. */
 typedef int CRYPTO_THREADID;
@@ -300,9 +293,6 @@ typedef void *OPENSSL_BLOCK;
 #if defined(__cplusplus)
 }  /* extern C */
 
-
-#if defined(BORINGSSL_HAVE_CXX11)
-
 namespace bssl {
 
 template<typename T, void (*func)(T*)>
@@ -339,8 +329,6 @@ class ScopedContext {
 };
 
 }  // namespace bssl
-
-#endif
 
 #endif
 

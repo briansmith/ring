@@ -20,6 +20,7 @@
 #include <openssl/rand.h>
 
 #include "../test/file_test.h"
+#include "../test/scoped_types.h"
 #include "internal.h"
 
 

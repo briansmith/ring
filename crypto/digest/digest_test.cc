@@ -23,6 +23,8 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
+#include "../test/scoped_types.h"
+
 
 namespace bssl {
 

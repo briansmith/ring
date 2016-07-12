@@ -142,17 +142,6 @@ OPENSSL_EXPORT void NEWHOPE_offer_frommsg(
 
 #if defined(__cplusplus)
 } /* extern "C" */
-
-#if defined(BORINGSSL_HAVE_CXX11)
-
-namespace bssl {
-
-using ScopedNEWHOPE_POLY = ScopedType<NEWHOPE_POLY, NEWHOPE_POLY_free>;
-
-}  // namespace bssl
-
-#endif
-
 #endif
 
 #endif /* OPENSSL_HEADER_NEWHOPE_H */

@@ -24,6 +24,8 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
+#include "../test/scoped_types.h"
+
 
 namespace bssl {
 

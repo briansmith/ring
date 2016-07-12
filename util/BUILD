@@ -113,7 +113,10 @@ cc_library(
 
 cc_binary(
     name = "bssl",
-    srcs = tool_sources + tool_headers,
+    srcs = tool_sources + tool_headers + [
+        "src/crypto/test/scoped_types.h",
+        "src/ssl/test/scoped_types.h",
+    ],
     copts = boringssl_copts_cxx,
     visibility = ["//visibility:public"],
     deps = [":ssl"],
