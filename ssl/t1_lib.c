@@ -623,6 +623,25 @@ struct tls_extension {
   int (*add_serverhello)(SSL *ssl, CBB *out);
 };
 
+static int forbid_parse_serverhello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
+  if (contents != NULL) {
+    /* Servers MUST NOT send this extension. */
+    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ignore_parse_clienthello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
+  /* This extension from the client is handled elsewhere. */
+  return 1;
+}
+
+static int dont_add_serverhello(SSL *ssl, CBB *out) {
+  return 1;
+}
 
 /* Server name indication (SNI).
  *
@@ -1004,13 +1023,6 @@ static int ext_ticket_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   return 1;
 }
 
-static int ext_ticket_parse_clienthello(SSL *ssl, uint8_t *out_alert,
-                                        CBS *contents) {
-  /* This function isn't used because the ticket extension from the client is
-   * handled in ssl_session.c. */
-  return 1;
-}
-
 static int ext_ticket_add_serverhello(SSL *ssl, CBB *out) {
   if (!ssl->tlsext_ticket_expected) {
     return 1;
@@ -1062,18 +1074,6 @@ static int ext_sigalgs_add_clienthello(SSL *ssl, CBB *out) {
   return 1;
 }
 
-static int ext_sigalgs_parse_serverhello(SSL *ssl, uint8_t *out_alert,
-                                         CBS *contents) {
-  if (contents != NULL) {
-    /* Servers MUST NOT send this extension. */
-    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SIGNATURE_ALGORITHMS_EXTENSION_SENT_BY_SERVER);
-    return 0;
-  }
-
-  return 1;
-}
-
 static int ext_sigalgs_parse_clienthello(SSL *ssl, uint8_t *out_alert,
                                          CBS *contents) {
   OPENSSL_free(ssl->cert->peer_sigalgs);
@@ -1092,11 +1092,6 @@ static int ext_sigalgs_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  return 1;
-}
-
-static int ext_sigalgs_add_serverhello(SSL *ssl, CBB *out) {
-  /* Servers MUST NOT send this extension. */
   return 1;
 }
 
@@ -1938,16 +1933,17 @@ static const struct tls_extension kExtensions[] = {
     NULL,
     ext_ticket_add_clienthello,
     ext_ticket_parse_serverhello,
-    ext_ticket_parse_clienthello,
+    /* Ticket extension client parsing is handled in ssl_session.c */
+    ignore_parse_clienthello,
     ext_ticket_add_serverhello,
   },
   {
     TLSEXT_TYPE_signature_algorithms,
     NULL,
     ext_sigalgs_add_clienthello,
-    ext_sigalgs_parse_serverhello,
+    forbid_parse_serverhello,
     ext_sigalgs_parse_clienthello,
-    ext_sigalgs_add_serverhello,
+    dont_add_serverhello,
   },
   {
     TLSEXT_TYPE_status_request,
