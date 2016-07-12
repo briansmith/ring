@@ -244,8 +244,12 @@ func main() {
 			"util/all_tests.json",
 			"ssl/test/runner/cert.pem",
 			"ssl/test/runner/channel_id_key.pem",
-			"ssl/test/runner/ecdsa_cert.pem",
-			"ssl/test/runner/ecdsa_key.pem",
+			"ssl/test/runner/ecdsa_p256_cert.pem",
+			"ssl/test/runner/ecdsa_p256_key.pem",
+			"ssl/test/runner/ecdsa_p384_cert.pem",
+			"ssl/test/runner/ecdsa_p384_key.pem",
+			"ssl/test/runner/ecdsa_p521_cert.pem",
+			"ssl/test/runner/ecdsa_p521_key.pem",
 			"ssl/test/runner/key.pem",
 		)
 
