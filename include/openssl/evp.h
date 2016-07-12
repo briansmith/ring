@@ -89,8 +89,8 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new(void);
  * itself. */
 OPENSSL_EXPORT void EVP_PKEY_free(EVP_PKEY *pkey);
 
-/* EVP_PKEY_up_ref increments the reference count of |pkey| and returns it. */
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_up_ref(EVP_PKEY *pkey);
+/* EVP_PKEY_up_ref increments the reference count of |pkey| and returns one. */
+OPENSSL_EXPORT int EVP_PKEY_up_ref(EVP_PKEY *pkey);
 
 /* EVP_PKEY_is_opaque returns one if |pkey| is opaque. Opaque keys are backed by
  * custom implementations which do not expose key material and parameters. It is

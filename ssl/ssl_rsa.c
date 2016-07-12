@@ -143,7 +143,8 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
   }
 
   EVP_PKEY_free(c->privatekey);
-  c->privatekey = EVP_PKEY_up_ref(pkey);
+  EVP_PKEY_up_ref(pkey);
+  c->privatekey = pkey;
 
   return 1;
 }

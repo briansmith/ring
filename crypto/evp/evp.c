@@ -108,9 +108,9 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
   OPENSSL_free(pkey);
 }
 
-EVP_PKEY *EVP_PKEY_up_ref(EVP_PKEY *pkey) {
+int EVP_PKEY_up_ref(EVP_PKEY *pkey) {
   CRYPTO_refcount_inc(&pkey->references);
-  return pkey;
+  return 1;
 }
 
 int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {

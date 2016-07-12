@@ -174,7 +174,8 @@ CERT *ssl_cert_dup(CERT *cert) {
   }
 
   if (cert->privatekey != NULL) {
-    ret->privatekey = EVP_PKEY_up_ref(cert->privatekey);
+    EVP_PKEY_up_ref(cert->privatekey);
+    ret->privatekey = cert->privatekey;
   }
 
   if (cert->chain) {

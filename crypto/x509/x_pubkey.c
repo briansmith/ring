@@ -141,7 +141,8 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
     CRYPTO_STATIC_MUTEX_lock_read(&g_pubkey_lock);
     if (key->pkey != NULL) {
         CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
-        return EVP_PKEY_up_ref(key->pkey);
+        EVP_PKEY_up_ref(key->pkey);
+        return key->pkey;
     }
     CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
 
@@ -170,7 +171,8 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
     }
 
     OPENSSL_free(spki);
-    return EVP_PKEY_up_ref(ret);
+    EVP_PKEY_up_ref(ret);
+    return ret;
 
  error:
     OPENSSL_free(spki);

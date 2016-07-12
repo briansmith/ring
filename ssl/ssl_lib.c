@@ -456,8 +456,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   ssl->tlsext_channel_id_enabled = ctx->tlsext_channel_id_enabled;
   if (ctx->tlsext_channel_id_private) {
-    ssl->tlsext_channel_id_private =
-        EVP_PKEY_up_ref(ctx->tlsext_channel_id_private);
+    EVP_PKEY_up_ref(ctx->tlsext_channel_id_private);
+    ssl->tlsext_channel_id_private = ctx->tlsext_channel_id_private;
   }
 
   ssl->signed_cert_timestamps_enabled =
@@ -1834,7 +1834,8 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
   }
 
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
-  ctx->tlsext_channel_id_private = EVP_PKEY_up_ref(private_key);
+  EVP_PKEY_up_ref(private_key);
+  ctx->tlsext_channel_id_private = private_key;
   ctx->tlsext_channel_id_enabled = 1;
 
   return 1;
@@ -1847,7 +1848,8 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
   }
 
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
-  ssl->tlsext_channel_id_private = EVP_PKEY_up_ref(private_key);
+  EVP_PKEY_up_ref(private_key);
+  ssl->tlsext_channel_id_private = private_key;
   ssl->tlsext_channel_id_enabled = 1;
 
   return 1;
