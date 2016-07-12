@@ -134,6 +134,17 @@ extern "C" {
  * because no library code uses them anymore. They are retained here so that
  * bn_test.cc can use them to test functions that still remain in libcrypto. */
 
+/* Basic functions. */
+
+void BN_set_negative(BIGNUM *bn, int sign);
+
+/* Conversion functions. */
+
+/* BN_bn2bin serialises the absolute value of |in| to |out| as a big-endian
+ * integer, which must have |BN_num_bytes| of space available. It returns the
+ * number of bytes written. */
+OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
+
 
 /* Exponentiation. */
 

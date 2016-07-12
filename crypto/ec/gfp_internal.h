@@ -16,11 +16,9 @@
 #define GFp_INTERNAL_H
 
 #include <openssl/base.h>
-#include <openssl/ec.h>
+#include <openssl/bn.h>
 
 #include <stddef.h>
-
-#include "internal.h"
 
 
 typedef BN_ULONG GFp_Limb;

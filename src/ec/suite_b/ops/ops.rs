@@ -158,8 +158,6 @@ pub struct CommonOps {
     #[cfg_attr(not(test), allow(dead_code))]
     point_add_jacobian_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
                                               b: *const Limb),
-
-    pub ec_group: &'static EC_GROUP,
 }
 
 impl CommonOps {
@@ -275,9 +273,6 @@ struct Mont {
     p: [Limb; MAX_LIMBS],
     rr: [Limb; MAX_LIMBS],
 }
-
-#[allow(non_camel_case_types)]
-pub enum EC_GROUP { }
 
 
 /// Operations on private keys, for ECDH and ECDSA signing.

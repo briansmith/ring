@@ -424,17 +424,6 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
   return (d->neg ? BN_sub : BN_add)(r, r, d);
 }
 
-int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                     const BIGNUM *m) {
-  if (!BN_uadd(r, a, b)) {
-    return 0;
-  }
-  if (BN_ucmp(r, m) >= 0) {
-    return BN_usub(r, r, m);
-  }
-  return 1;
-}
-
 int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   if (!BN_sub(r, a, b)) {
@@ -476,61 +465,4 @@ int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
 err:
   BN_CTX_end(ctx);
   return ret;
-}
-
-int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
-  if (r != a) {
-    if (BN_copy(r, a) == NULL) {
-      return 0;
-    }
-  }
-
-  while (n > 0) {
-    int max_shift;
-
-    /* 0 < r < m */
-    max_shift = BN_num_bits(m) - BN_num_bits(r);
-    /* max_shift >= 0 */
-
-    if (max_shift < 0) {
-      OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
-      return 0;
-    }
-
-    if (max_shift > n) {
-      max_shift = n;
-    }
-
-    if (max_shift) {
-      if (!BN_lshift(r, r, max_shift)) {
-        return 0;
-      }
-      n -= max_shift;
-    } else {
-      if (!BN_lshift1(r, r)) {
-        return 0;
-      }
-      --n;
-    }
-
-    /* BN_num_bits(r) <= BN_num_bits(m) */
-    if (BN_cmp(r, m) >= 0) {
-      if (!BN_sub(r, r, m)) {
-        return 0;
-      }
-    }
-  }
-
-  return 1;
-}
-
-int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
-  if (!BN_lshift1(r, a)) {
-    return 0;
-  }
-  if (BN_cmp(r, m) >= 0) {
-    return BN_sub(r, r, m);
-  }
-
-  return 1;
 }
