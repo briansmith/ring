@@ -21,8 +21,6 @@
 #include "../test/scoped_types.h"
 
 
-namespace bssl {
-
 // kTag128 is an ASN.1 structure with a universal tag with number 128.
 static const uint8_t kTag128[] = {
     0x1f, 0x81, 0x00, 0x01, 0x00,
@@ -71,12 +69,10 @@ static bool TestLargeTags() {
   return true;
 }
 
-}  // namespace bssl
-
 int main() {
   CRYPTO_library_init();
 
-  if (!bssl::TestLargeTags()) {
+  if (!TestLargeTags()) {
     return 1;
   }
 

@@ -20,13 +20,9 @@
 #include "../../crypto/test/scoped_types.h"
 
 
-namespace bssl {
-
-using ScopedSSL = ScopedType<SSL, SSL_free>;
-using ScopedSSL_CTX = ScopedType<SSL_CTX, SSL_CTX_free>;
-using ScopedSSL_SESSION = ScopedType<SSL_SESSION, SSL_SESSION_free>;
-
-}  // namespace bssl
+using ScopedSSL = ScopedOpenSSLType<SSL, SSL_free>;
+using ScopedSSL_CTX = ScopedOpenSSLType<SSL_CTX, SSL_CTX_free>;
+using ScopedSSL_SESSION = ScopedOpenSSLType<SSL_SESSION, SSL_SESSION_free>;
 
 
 #endif  // OPENSSL_HEADER_SSL_TEST_SCOPED_TYPES_H

@@ -24,8 +24,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 static bool TestNewhope(FileTest *t, void *arg) {
   ScopedNEWHOPE_POLY a(NEWHOPE_POLY_new());
   ScopedNEWHOPE_POLY s(NEWHOPE_POLY_new()), sp(NEWHOPE_POLY_new());
@@ -112,8 +110,6 @@ static bool TestNewhope(FileTest *t, void *arg) {
   }
 }
 
-}  // namespace bssl
-
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
@@ -122,5 +118,5 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  return bssl::FileTestMain(bssl::TestNewhope, nullptr, argv[1]);
+  return FileTestMain(TestNewhope, nullptr, argv[1]);
 }

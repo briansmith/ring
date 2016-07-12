@@ -20,8 +20,6 @@
 #include <openssl/mem.h>
 
 
-namespace bssl {
-
 namespace {
 
 extern const BIO_METHOD g_async_bio_method;
@@ -188,5 +186,3 @@ void AsyncBioEnforceWriteQuota(BIO *bio, bool enforce) {
   }
   a->enforce_write_quota = enforce;
 }
-
-}  // namespace bssl

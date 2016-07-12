@@ -18,8 +18,6 @@
 #include <string>
 
 
-namespace bssl {
-
 struct TestConfig {
   int port = 0;
   bool is_server = false;
@@ -112,8 +110,6 @@ struct TestConfig {
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);
-
-}  // namespace bssl
 
 
 #endif  // HEADER_TEST_CONFIG

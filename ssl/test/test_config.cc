@@ -22,8 +22,6 @@
 
 #include <openssl/base64.h>
 
-namespace bssl {
-
 namespace {
 
 template <typename T>
@@ -215,5 +213,3 @@ bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
 
   return true;
 }
-
-}  // namespace bssl

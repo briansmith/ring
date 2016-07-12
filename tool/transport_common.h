@@ -18,9 +18,6 @@
 #include <openssl/ssl.h>
 #include <string.h>
 
-
-namespace bssl {
-
 // InitSocketLibrary calls the Windows socket init functions, if needed.
 bool InitSocketLibrary();
 
@@ -45,8 +42,5 @@ bool TransferData(SSL *ssl, int sock);
 // DoSMTPStartTLS performs the SMTP STARTTLS mini-protocol over |sock|. It
 // returns true on success and false otherwise.
 bool DoSMTPStartTLS(int sock);
-
-}  // namespace bssl
-
 
 #endif  /* !OPENSSL_HEADER_TOOL_TRANSPORT_COMMON_H */

@@ -23,8 +23,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 static const struct argument kArguments[] = {
     {
      "-hex", kBooleanArgument,
@@ -95,5 +93,3 @@ bool Rand(const std::vector<std::string> &args) {
 
   return true;
 }
-
-}  // namespace bssl

@@ -30,8 +30,6 @@
 #include "../test/scoped_types.h"
 
 
-namespace bssl {
-
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
 // should never use this key anywhere but in an example.
 static const uint8_t kExampleRSAKeyDER[] = {
@@ -673,7 +671,7 @@ static bool Testd2i_PrivateKey(void) {
   return true;
 }
 
-static int Main() {
+int main(void) {
   CRYPTO_library_init();
 
   if (!TestEVP_DigestSignInit()) {
@@ -720,10 +718,4 @@ static int Main() {
 
   printf("PASS\n");
   return 0;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }

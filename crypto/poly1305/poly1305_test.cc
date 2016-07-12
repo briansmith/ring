@@ -24,8 +24,6 @@
 #include "../test/file_test.h"
 
 
-namespace bssl {
-
 static bool TestSIMD(FileTest *t, unsigned excess,
                      const std::vector<uint8_t> &key,
                      const std::vector<uint8_t> &in,
@@ -121,8 +119,6 @@ static bool TestPoly1305(FileTest *t, void *arg) {
   return true;
 }
 
-}  // namespace bssl
-
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
@@ -131,5 +127,5 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  return bssl::FileTestMain(bssl::TestPoly1305, nullptr, argv[1]);
+  return FileTestMain(TestPoly1305, nullptr, argv[1]);
 }

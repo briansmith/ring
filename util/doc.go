@@ -72,7 +72,6 @@ type HeaderDecl struct {
 
 const (
 	cppGuard     = "#if defined(__cplusplus)"
-	endif        = "#endif"
 	commentStart = "/* "
 	commentEnd   = " */"
 )
@@ -293,14 +292,8 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 	if len(lines) == 0 || lines[0] != "extern \"C\" {" {
 		return nil, errors.New("no extern \"C\" found after C++ guard")
 	}
-
-	for i, line := range lines {
-		if line == endif {
-			lines = lines[i+1:]
-			lineNo += i + 1
-			break
-		}
-	}
+	lineNo += 2
+	lines = lines[2:]
 
 	header := &HeaderFile{
 		Name:     filepath.Base(path),

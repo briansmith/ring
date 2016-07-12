@@ -62,9 +62,7 @@ static const uint8_t kDER[] = {
   0xd6, 0x2d,
 };
 
-namespace bssl {
-
-static bool Test(const uint8_t *der, size_t der_len) {
+static bool test(const uint8_t *der, size_t der_len) {
   const uint8_t *data = der;
   ScopedX509_SIG sig(d2i_X509_SIG(NULL, &data, der_len));
   if (sig.get() == NULL || data != der + der_len) {
@@ -83,10 +81,8 @@ static bool Test(const uint8_t *der, size_t der_len) {
   return true;
 }
 
-}  // namespace bssl
-
 int main(int argc, char **argv) {
-  if (!bssl::Test(kDER, sizeof(kDER))) {
+  if (!test(kDER, sizeof(kDER))) {
     return 1;
   }
 

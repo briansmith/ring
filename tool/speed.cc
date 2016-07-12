@@ -41,8 +41,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "internal.h"
 
 
-namespace bssl {
-
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
@@ -632,5 +630,3 @@ bool Speed(const std::vector<std::string> &args) {
 
   return true;
 }
-
-}  // namespace bssl

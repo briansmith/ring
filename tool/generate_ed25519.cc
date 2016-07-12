@@ -22,8 +22,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 static const struct argument kArguments[] = {
     {
         "-out-public", kRequiredArgument, "The file to write the public key to",
@@ -67,5 +65,3 @@ bool GenerateEd25519Key(const std::vector<std::string> &args) {
          WriteToFile(args_map["-out-private"], private_key,
                      sizeof(private_key));
 }
-
-}  // namespace bssl

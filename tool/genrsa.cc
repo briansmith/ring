@@ -22,8 +22,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 static const struct argument kArguments[] = {
     {
      "-nprimes", kOptionalArgument,
@@ -69,5 +67,3 @@ bool GenerateRSAKey(const std::vector<std::string> &args) {
 
   return true;
 }
-
-}  // namespace bssl

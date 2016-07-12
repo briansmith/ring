@@ -29,8 +29,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
-namespace bssl {
-
 // PacketedBioCreate creates a filter BIO which implements a reliable in-order
 // blocking datagram socket. It internally maintains a clock and honors
 // |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| based on it.
@@ -48,8 +46,6 @@ timeval PacketedBioGetClock(const BIO *bio);
 // PacketedBioAdvanceClock advances |bio|'s internal clock and returns true if
 // there is a pending timeout. Otherwise, it returns false.
 bool PacketedBioAdvanceClock(BIO *bio);
-
-}  // namespace bssl
 
 
 #endif  // HEADER_PACKETED_BIO

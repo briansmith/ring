@@ -71,7 +71,25 @@
 #include "../test/scoped_types.h"
 
 
-namespace bssl {
+static bool RunBasicTests();
+static bool RunRFC5114Tests();
+static bool TestBadY();
+static bool TestASN1();
+
+int main(int argc, char *argv[]) {
+  CRYPTO_library_init();
+
+  if (!RunBasicTests() ||
+      !RunRFC5114Tests() ||
+      !TestBadY() ||
+      !TestASN1()) {
+    ERR_print_errors_fp(stderr);
+    return 1;
+  }
+
+  printf("PASS\n");
+  return 0;
+}
 
 static int GenerateCallback(int p, int n, BN_GENCB *arg) {
   char c = '*';
@@ -557,7 +575,7 @@ static bool TestASN1() {
       !CBB_finish(cbb.get(), &der, &der_len)) {
     return false;
   }
-  ScopedBytes free_der(der);
+  ScopedOpenSSLBytes free_der(der);
   if (der_len != sizeof(kParams) || memcmp(der, kParams, der_len) != 0) {
     return false;
   }
@@ -599,27 +617,10 @@ static bool TestASN1() {
       !CBB_finish(cbb.get(), &der, &der_len)) {
     return false;
   }
-  ScopedBytes free_der2(der);
+  ScopedOpenSSLBytes free_der2(der);
   if (der_len != sizeof(kParamsDSA) || memcmp(der, kParamsDSA, der_len) != 0) {
     return false;
   }
 
   return true;
-}
-
-}  // namespace bssl
-
-int main(int argc, char *argv[]) {
-  CRYPTO_library_init();
-
-  if (!bssl::RunBasicTests() ||
-      !bssl::RunRFC5114Tests() ||
-      !bssl::TestBadY() ||
-      !bssl::TestASN1()) {
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
 }

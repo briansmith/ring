@@ -21,8 +21,6 @@
 #include "transport_common.h"
 
 
-namespace bssl {
-
 static const struct argument kArguments[] = {
     {
      "-accept", kRequiredArgument,
@@ -152,5 +150,3 @@ bool Server(const std::vector<std::string> &args) {
   SSL_CTX_free(ctx);
   return ok;
 }
-
-}  // namespace bssl

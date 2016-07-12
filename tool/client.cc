@@ -26,8 +26,6 @@
 #include "transport_common.h"
 
 
-namespace bssl {
-
 static const struct argument kArguments[] = {
     {
      "-connect", kRequiredArgument,
@@ -328,5 +326,3 @@ bool Client(const std::vector<std::string> &args) {
 
   return ok;
 }
-
-}  // namespace bssl

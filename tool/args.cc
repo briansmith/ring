@@ -23,8 +23,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args,
                             const std::vector<std::string> &args,
                             const struct argument *templates) {
@@ -104,5 +102,3 @@ bool GetUnsigned(unsigned *out, const std::string &arg_name,
   *out = num;
   return true;
 }
-
-}  // namespace bssl

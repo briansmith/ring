@@ -39,8 +39,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 #if defined(OPENSSL_WINDOWS)
 typedef int read_result_t;
 #else
@@ -142,5 +140,3 @@ bool DoPKCS12(const std::vector<std::string> &args) {
 
   return true;
 }
-
-}  // namespace bssl

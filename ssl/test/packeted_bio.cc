@@ -22,8 +22,6 @@
 #include <openssl/mem.h>
 
 
-namespace bssl {
-
 namespace {
 
 extern const BIO_METHOD g_packeted_bio_method;
@@ -304,5 +302,3 @@ bool PacketedBioAdvanceClock(BIO *bio) {
   memset(&data->timeout, 0, sizeof(data->timeout));
   return true;
 }
-
-}  // namespace bssl

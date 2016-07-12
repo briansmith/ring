@@ -26,8 +26,6 @@
 #include "../test/scoped_types.h"
 
 
-namespace bssl {
-
 struct MD {
   // name is the name of the digest.
   const char* name;
@@ -245,7 +243,7 @@ static int TestGetters() {
   return true;
 }
 
-static int Main() {
+int main(void) {
   CRYPTO_library_init();
 
   for (size_t i = 0; i < sizeof(kTestVectors) / sizeof(kTestVectors[0]); i++) {
@@ -261,10 +259,4 @@ static int Main() {
 
   printf("PASS\n");
   return 0;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }

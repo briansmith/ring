@@ -25,8 +25,6 @@
 #include <openssl/err.h>
 
 
-namespace bssl {
-
 FileTest::FileTest(const char *path) {
   file_ = fopen(path, "r");
   if (file_ == nullptr) {
@@ -302,5 +300,3 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
   printf("PASS\n");
   return 0;
 }
-
-}  // namespace bssl

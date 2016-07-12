@@ -20,8 +20,6 @@
 #include "../../crypto/test/scoped_types.h"
 
 
-namespace bssl {
-
 // AsyncBioCreate creates a filter BIO for testing asynchronous state
 // machines which consume a stream socket. Reads and writes will fail
 // and return EAGAIN unless explicitly allowed. Each async BIO has a
@@ -42,8 +40,6 @@ void AsyncBioAllowWrite(BIO *bio, size_t count);
 
 // AsyncBioEnforceWriteQuota configures where |bio| enforces its write quota.
 void AsyncBioEnforceWriteQuota(BIO *bio, bool enforce);
-
-}  // namespace bssl
 
 
 #endif  // HEADER_ASYNC_BIO

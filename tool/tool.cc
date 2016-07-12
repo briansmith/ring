@@ -29,8 +29,6 @@
 #include "internal.h"
 
 
-namespace bssl {
-
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 struct Tool {
@@ -81,8 +79,7 @@ static tool_func_t FindTool(const std::string &name) {
   }
 }
 
-
-static int Main(int argc, char **argv) {
+int main(int argc, char **argv) {
 #if defined(OPENSSL_WINDOWS)
   // Read and write in binary mode. This makes bssl on Windows consistent with
   // bssl on other platforms, and also makes it consistent with MSYS's commands
@@ -126,10 +123,4 @@ static int Main(int argc, char **argv) {
   }
 
   return !tool(args);
-}
-
-}  // namespace bssl
-
-int main(int argc, char **argv) {
-  return bssl::Main(argc, argv);
 }

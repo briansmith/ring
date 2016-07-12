@@ -27,8 +27,6 @@
 #include "../test/scoped_types.h"
 
 
-namespace bssl {
-
 static const char kCrossSigningRootPEM[] =
 "-----BEGIN CERTIFICATE-----\n"
 "MIICcTCCAdqgAwIBAgIIagJHiPvE0MowDQYJKoZIhvcNAQELBQAwPDEaMBgGA1UE\n"
@@ -459,15 +457,13 @@ static bool TestSignCtx() {
   return true;
 }
 
-}  // namespace bssl
-
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
-  if (!bssl::TestVerify() ||
-      !bssl::TestPSS() ||
-      !bssl::TestBadPSSParameters() ||
-      !bssl::TestSignCtx()) {
+  if (!TestVerify() ||
+      !TestPSS() ||
+      !TestBadPSSParameters() ||
+      !TestSignCtx()) {
     return 1;
   }
 
