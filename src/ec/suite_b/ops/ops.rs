@@ -229,7 +229,7 @@ pub struct PrivateKeyOps {
 
 impl PrivateKeyOps {
     #[inline(always)]
-    pub fn base_point_mul(&self, a: &Scalar) -> Result<Point, ()> {
+    pub fn point_mul_base(&self, a: &Scalar) -> Result<Point, ()> {
         (self.point_mul_base_impl)(a)
     }
 

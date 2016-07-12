@@ -66,12 +66,12 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
 };
 
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
-    let mut p = Point::new_at_infinity();
+    let mut r = Point::new_at_infinity();
     unsafe {
-        ecp_nistz256_point_mul_base(p.xyz.as_mut_ptr(),
+        ecp_nistz256_point_mul_base(r.xyz.as_mut_ptr(),
                                     g_scalar.limbs.as_ptr());
     }
-    Ok(p)
+    Ok(r)
 }
 
 fn p256_point_mul_impl(p_scalar: &Scalar, &(ref p_x, ref p_y): &(Elem, Elem))
