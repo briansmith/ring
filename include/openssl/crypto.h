@@ -77,6 +77,9 @@ OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 /* ENGINE_load_builtin_engines does nothing. */
 OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
 
+/* ENGINE_register_all_complete returns one. */
+OPENSSL_EXPORT int ENGINE_register_all_complete(void);
+
 /* OPENSSL_load_builtin_modules does nothing. */
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 
