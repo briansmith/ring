@@ -122,8 +122,7 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     // information about their values can be recovered. This doesn't meet the
     // NSA guide's explicit requirement to "zeroize" them though.
     let my_private_key = private_key_as_scalar(private_key_ops, my_private_key);
-    let product =
-        try!(private_key_ops.point_mul(&my_private_key, &peer_public_key));
+    let product = private_key_ops.point_mul(&my_private_key, &peer_public_key);
 
     // NIST SP 800-56Ar2 Steps 2, 3, 4, and 5.
     // NSA Guide Steps 3 (point at infinity check) and 4.

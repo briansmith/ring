@@ -69,7 +69,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv: p384_elem_inv,
     point_mul_base_impl: p384_point_mul_base_impl,
-    point_mul_impl: p384_point_mul_impl,
+    point_mul_impl: ecp_nistz384_point_mul,
 };
 
 fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
@@ -152,20 +152,6 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Result<Point, ()> {
                                      core::ptr::null(), // p_scalar
                                      core::ptr::null(), // p_x
                                      core::ptr::null()) // p_y
-    }));
-    Ok(p)
-}
-
-pub fn p384_point_mul_impl(s: &Scalar, &(ref x, ref y): &(Elem, Elem))
-                           -> Result<Point, ()> {
-    // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
-    // shouldn't be used for this. TODO: Replace use of this with the use of an
-    // always-constant-time implementation.
-    let mut p = Point::new_at_infinity();
-    try!(bssl::map_result(unsafe {
-        GFp_suite_b_public_twin_mult(COMMON_OPS.ec_group, p.xyz.as_mut_ptr(),
-                                     core::ptr::null(), s.limbs.as_ptr(),
-                                     x.limbs.as_ptr(), y.limbs.as_ptr())
     }));
     Ok(p)
 }
@@ -357,6 +343,11 @@ extern {
     fn GFp_p384_elem_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                               a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[COMMON_OPS.num_limbs]*/);
+
+    fn ecp_nistz384_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                              p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
+                              p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,
+                              p_y: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
     fn GFp_p384_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                 a: *const Limb/*[COMMON_OPS.num_limbs]*/,
