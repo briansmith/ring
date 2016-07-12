@@ -309,11 +309,6 @@ OPENSSL_EXPORT int BN_usub_unchecked(BIGNUM *r, const BIGNUM *a,
 OPENSSL_EXPORT int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           BN_CTX *ctx);
 
-/* BN_sqr sets |r| = |a|^2 (i.e. squares), where |r| may be the same pointer as
- * |a|. Returns one on success and zero otherwise. This is more efficient than
- * BN_mul(r, a, a, ctx). */
-OPENSSL_EXPORT int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
-
 /* BN_div divides |numerator| by |divisor| and places the result in |quotient|
  * and the remainder in |rem|. Either of |quotient| or |rem| may be NULL, in
  * which case the respective value is not returned. The result is rounded

@@ -362,8 +362,6 @@ static bool TestSquare(FileTest *t, BN_CTX *ctx) {
 
   ScopedBIGNUM ret(BN_new()), remainder(BN_new());
   if (!ret ||
-      !BN_sqr(ret.get(), a.get(), ctx) ||
-      !ExpectBIGNUMsEqual(t, "A^2", square.get(), ret.get()) ||
       !BN_mul(ret.get(), a.get(), a.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "A * A", square.get(), ret.get()) ||
       !BN_div(ret.get(), remainder.get(), square.get(), a.get(), ctx) ||
