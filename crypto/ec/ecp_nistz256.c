@@ -21,7 +21,7 @@
  *   "Fast Prime Field Elliptic Curve Cryptography with 256 Bit Primes"
  *   http://eprint.iacr.org/2013/816 */
 
-#include <openssl/ec.h>
+#include "ecp_nistz256.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -31,10 +31,8 @@
 #include <openssl/err.h>
 
 #include "ecp_nistz.h"
-#include "ecp_nistz256.h"
 #include "gfp_internal.h"
 #include "../bn/internal.h"
-#include "../ec/internal.h"
 #include "../internal.h"
 
 

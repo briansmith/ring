@@ -201,9 +201,6 @@ OPENSSL_EXPORT int BN_one(BIGNUM *bn);
  * allocation failure. */
 OPENSSL_EXPORT int BN_set_word(BIGNUM *bn, BN_ULONG value);
 
-/* BN_set_negative sets the sign of |bn|. */
-OPENSSL_EXPORT void BN_set_negative(BIGNUM *bn, int sign);
-
 /* BN_is_negative returns one if |bn| is negative and zero otherwise. */
 OPENSSL_EXPORT int BN_is_negative(const BIGNUM *bn);
 
@@ -221,11 +218,6 @@ OPENSSL_EXPORT void BN_set_flags(BIGNUM *bn, int flags);
  * |BIGNUM| is allocated and returned. It returns NULL on allocation
  * failure. */
 OPENSSL_EXPORT BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
-
-/* BN_bn2bin serialises the absolute value of |in| to |out| as a big-endian
- * integer, which must have |BN_num_bytes| of space available. It returns the
- * number of bytes written. */
-OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
 /* BN_bn2bin_padded serialises the absolute value of |in| to |out| as a
  * big-endian integer. The integer is padded with leading zeros up to size
@@ -397,12 +389,6 @@ OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 OPENSSL_EXPORT int BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
                             const BIGNUM *divisor, BN_CTX *ctx);
 
-/* BN_mod_add_quick sets |r| = |a| + |b| mod |m|. It requires that |a| and |b|
- * be non-negative and less than |m|. It returns one on success and zero on
- * error. */
-OPENSSL_EXPORT int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                                    const BIGNUM *m);
-
 /* BN_mod_sub_quick acts like |BN_mod_sub| but requires that |a| and |b| be
  * non-negative and less than |m|. */
 OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
@@ -412,16 +398,6 @@ OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
  * on error. */
 OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                               const BIGNUM *m, BN_CTX *ctx);
-
-/* BN_mod_lshift_quick acts like |BN_mod_lshift| but requires that |a| be
- * non-negative and less than |m|. */
-OPENSSL_EXPORT int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n,
-                                       const BIGNUM *m);
-
-/* BN_mod_lshift1_quick acts like |BN_mod_lshift1| but requires that |a| be
- * non-negative and less than |m|. */
-OPENSSL_EXPORT int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a,
-                                        const BIGNUM *m);
 
 
 /* Random and prime number generation. */
