@@ -865,6 +865,7 @@ func (m *encryptedExtensionsMsg) marshal() []byte {
 }
 
 func (m *encryptedExtensionsMsg) unmarshal(data []byte) bool {
+	m.raw = data
 	if len(data) < 6 {
 		return false
 	}
