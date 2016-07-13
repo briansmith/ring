@@ -1016,7 +1016,24 @@ func isTLS12Only(suiteName string) bool {
 }
 
 func isTLS13Suite(suiteName string) bool {
-	return (hasComponent(suiteName, "GCM") || hasComponent(suiteName, "POLY1305")) && hasComponent(suiteName, "ECDHE") && !hasComponent(suiteName, "OLD")
+	// Only AEADs.
+	if !hasComponent(suiteName, "GCM") && !hasComponent(suiteName, "POLY1305") {
+		return false
+	}
+	// No old CHACHA20_POLY1305.
+	if hasComponent(suiteName, "CHACHA20-POLY1305-OLD") {
+		return false
+	}
+	// Must have ECDHE.
+	// TODO(davidben,svaldez): Add pure PSK support.
+	if !hasComponent(suiteName, "ECDHE") {
+		return false
+	}
+	// TODO(davidben,svaldez): Add PSK support.
+	if hasComponent(suiteName, "PSK") {
+		return false
+	}
+	return true
 }
 
 func isDTLSCipher(suiteName string) bool {
@@ -2150,7 +2167,7 @@ func addCipherSuiteTests() {
 					shouldClientFail = true
 					shouldServerFail = true
 				}
-				if !isTLS13Suite(suite.name) && ver.version == VersionTLS13 {
+				if !isTLS13Suite(suite.name) && ver.version >= VersionTLS13 {
 					shouldClientFail = true
 					shouldServerFail = true
 				}

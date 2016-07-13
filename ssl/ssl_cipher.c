@@ -1730,7 +1730,9 @@ uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
 uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher) {
   if (cipher->algorithm_mac == SSL_AEAD &&
       (cipher->algorithm_enc & SSL_CHACHA20POLY1305_OLD) == 0 &&
-      (cipher->algorithm_mkey & SSL_kECDHE) != 0) {
+      (cipher->algorithm_mkey & SSL_kECDHE) != 0 &&
+      /* TODO(davidben,svaldez): Support PSK-based ciphers in TLS 1.3. */
+      (cipher->algorithm_auth & SSL_aCERT) != 0) {
     return TLS1_3_VERSION;
   }
   return TLS1_2_VERSION;
