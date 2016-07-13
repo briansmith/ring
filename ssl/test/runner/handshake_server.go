@@ -120,11 +120,12 @@ func (c *Conn) serverHandshake() error {
 				return err
 			}
 		}
+
+		c.exporterSecret = hs.masterSecret
 	}
 	c.handshakeComplete = true
 	copy(c.clientRandom[:], hs.clientHello.random)
 	copy(c.serverRandom[:], hs.hello.random)
-	copy(c.masterSecret[:], hs.masterSecret)
 
 	return nil
 }
@@ -544,15 +545,16 @@ Curves:
 		c.sendAlert(alertHandshakeFailure)
 		return errors.New("tls: client's Finished message was incorrect")
 	}
+	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys.
 	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
 	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
 
-	// TODO(davidben): Derive and save the exporter master secret for key exporters. Swap out the masterSecret field.
 	// TODO(davidben): Derive and save the resumption master secret for receiving tickets.
 	// TODO(davidben): Save the traffic secret for KeyUpdate.
 	c.cipherSuite = hs.suite
+	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
 	return nil
 }
 

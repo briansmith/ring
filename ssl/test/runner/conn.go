@@ -55,7 +55,7 @@ type Conn struct {
 	peerSignatureAlgorithm signatureAlgorithm
 
 	clientRandom, serverRandom [32]byte
-	masterSecret               [48]byte
+	exporterSecret             []byte
 
 	clientProtocol         string
 	clientProtocolFallback bool
@@ -1527,6 +1527,12 @@ func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContex
 		return nil, errors.New("tls: handshake has not yet been performed")
 	}
 
+	if enableTLS13Handshake && c.vers >= VersionTLS13 {
+		// TODO(davidben): What should we do with useContext? See
+		// https://github.com/tlswg/tls13-spec/issues/546
+		return hkdfExpandLabel(c.cipherSuite.hash(), c.exporterSecret, label, context, length), nil
+	}
+
 	seedLen := len(c.clientRandom) + len(c.serverRandom)
 	if useContext {
 		seedLen += 2 + len(context)
@@ -1539,7 +1545,7 @@ func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContex
 		seed = append(seed, context...)
 	}
 	result := make([]byte, length)
-	prfForVersion(c.vers, c.cipherSuite)(result, c.masterSecret[:], label, seed)
+	prfForVersion(c.vers, c.cipherSuite)(result, c.exporterSecret, label, seed)
 	return result, nil
 }
 

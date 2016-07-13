@@ -410,13 +410,13 @@ NextCipherSuite:
 		}
 
 		c.didResume = isResume
+		c.exporterSecret = hs.masterSecret
 	}
 
 	c.handshakeComplete = true
 	c.cipherSuite = suite
 	copy(c.clientRandom[:], hs.hello.random)
 	copy(c.serverRandom[:], hs.serverHello.random)
-	copy(c.masterSecret[:], hs.masterSecret)
 
 	return nil
 }
@@ -644,6 +644,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	if c.config.Bugs.BadFinished {
 		finished.verifyData[0]++
 	}
+	hs.writeClientHash(finished.marshal())
 	c.writeRecord(recordTypeHandshake, finished.marshal())
 	c.flushHandshake()
 
@@ -651,9 +652,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
 	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
 
-	// TODO(davidben): Derive and save the exporter master secret for key exporters. Swap out the masterSecret field.
 	// TODO(davidben): Derive and save the resumption master secret for receiving tickets.
 	// TODO(davidben): Save the traffic secret for KeyUpdate.
+	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
 	return nil
 }
 
