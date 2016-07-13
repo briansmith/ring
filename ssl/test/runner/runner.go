@@ -2196,6 +2196,9 @@ func addCipherSuiteTests() {
 					expectedClientError = ":WRONG_CIPHER_RETURNED:"
 				}
 
+				// TODO(davidben,svaldez): Implement resumption for TLS 1.3.
+				resumeSession := ver.version < VersionTLS13
+
 				testCases = append(testCases, testCase{
 					testType: serverTest,
 					protocol: protocol,
@@ -2216,7 +2219,7 @@ func addCipherSuiteTests() {
 					certFile:      certFile,
 					keyFile:       keyFile,
 					flags:         flags,
-					resumeSession: true,
+					resumeSession: resumeSession,
 					shouldFail:    shouldServerFail,
 					expectedError: expectedServerError,
 				})
@@ -2238,7 +2241,7 @@ func addCipherSuiteTests() {
 						},
 					},
 					flags:         flags,
-					resumeSession: true,
+					resumeSession: resumeSession,
 					shouldFail:    shouldClientFail,
 					expectedError: expectedClientError,
 				})
