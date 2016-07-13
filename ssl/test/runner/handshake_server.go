@@ -433,8 +433,12 @@ Curves:
 		if !config.Bugs.EmptyCertificateList {
 			certMsg.certificates = hs.cert.Certificate
 		}
-		hs.writeServerHash(certMsg.marshal())
-		c.writeRecord(recordTypeHandshake, certMsg.marshal())
+		certMsgBytes := certMsg.marshal()
+		if config.Bugs.WrongCertificateMessageType {
+			certMsgBytes[0] += 42
+		}
+		hs.writeServerHash(certMsgBytes)
+		c.writeRecord(recordTypeHandshake, certMsgBytes)
 
 		certVerify := &certificateVerifyMsg{
 			hasSignatureAlgorithm: true,

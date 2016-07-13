@@ -1680,6 +1680,18 @@ func addBasicTests() {
 		{
 			name: "WrongMessageType",
 			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					WrongCertificateMessageType: true,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			name: "WrongMessageType-TLS13",
+			config: Config{
 				Bugs: ProtocolBugs{
 					WrongCertificateMessageType: true,
 				},
