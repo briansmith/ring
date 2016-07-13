@@ -188,10 +188,13 @@ void PrintConnectionInfo(const SSL *ssl) {
   fprintf(stderr, "  Resumed session: %s\n",
           SSL_session_reused(ssl) ? "yes" : "no");
   fprintf(stderr, "  Cipher: %s\n", SSL_CIPHER_get_name(cipher));
-  if (SSL_CIPHER_is_ECDHE(cipher)) {
-    fprintf(stderr, "  ECDHE curve: %s\n",
-            SSL_get_curve_name(
-                SSL_SESSION_get_key_exchange_info(SSL_get_session(ssl))));
+  uint16_t curve = SSL_get_curve_id(ssl);
+  if (curve != 0) {
+    fprintf(stderr, "  ECDHE curve: %s\n", SSL_get_curve_name(curve));
+  }
+  unsigned dhe_bits = SSL_get_dhe_group_size(ssl);
+  if (dhe_bits != 0) {
+    fprintf(stderr, "  DHE group size: %u bits\n", dhe_bits);
   }
   fprintf(stderr, "  Secure renegotiation: %s\n",
           SSL_get_secure_renegotiation_support(ssl) ? "yes" : "no");
