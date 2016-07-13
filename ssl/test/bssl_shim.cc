@@ -873,6 +873,10 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
+  if (config->use_null_client_ca_list) {
+    SSL_CTX_set_client_CA_list(ssl_ctx.get(), nullptr);
+  }
+
   return ssl_ctx;
 }
 

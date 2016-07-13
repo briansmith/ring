@@ -102,6 +102,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-sparse-dh-prime", &TestConfig::use_sparse_dh_prime },
   { "-use-old-client-cert-callback",
     &TestConfig::use_old_client_cert_callback },
+  { "-use-null-client-ca-list", &TestConfig::use_null_client_ca_list },
 };
 
 const Flag<std::string> kStringFlags[] = {

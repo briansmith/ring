@@ -107,6 +107,7 @@ struct TestConfig {
   int expect_dhe_group_size = 0;
   bool use_old_client_cert_callback = false;
   int initial_timeout_duration_ms = 0;
+  bool use_null_client_ca_list = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

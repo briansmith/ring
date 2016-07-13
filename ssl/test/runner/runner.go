@@ -2681,6 +2681,21 @@ func addClientAuthTests() {
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
+
+	// Regression test for a bug where the client CA list, if explicitly
+	// set to NULL, was mis-encoded.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Null-Client-CA-List",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			Certificates: []Certificate{rsaCertificate},
+		},
+		flags: []string{
+			"-require-any-client-certificate",
+			"-use-null-client-ca-list",
+		},
+	})
 }
 
 func addExtendedMasterSecretTests() {
