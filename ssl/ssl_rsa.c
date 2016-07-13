@@ -726,8 +726,22 @@ int ssl_private_key_supports_signature_algorithm(SSL *ssl,
   }
 
   if (is_rsa_pss(&md, signature_algorithm)) {
-    return ssl_private_key_type(ssl) == EVP_PKEY_RSA &&
-           ssl3_protocol_version(ssl) >= TLS1_3_VERSION;
+    if (ssl3_protocol_version(ssl) < TLS1_3_VERSION ||
+        ssl_private_key_type(ssl) != EVP_PKEY_RSA) {
+      return 0;
+    }
+
+    /* Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
+     * emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
+     * hash in TLS. Reasonable RSA key sizes are large enough for the largest
+     * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too large for
+     * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check
+     * the size to fall back to another algorithm. */
+    if (ssl_private_key_max_signature_len(ssl) < 2 * EVP_MD_size(md) + 2) {
+      return 0;
+    }
+
+    return 1;
   }
 
   return 0;

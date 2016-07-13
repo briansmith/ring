@@ -61,6 +61,7 @@ type testCert int
 
 const (
 	testCertRSA testCert = iota
+	testCertRSA1024
 	testCertECDSAP256
 	testCertECDSAP384
 	testCertECDSAP521
@@ -68,6 +69,7 @@ const (
 
 const (
 	rsaCertificateFile       = "cert.pem"
+	rsa1024CertificateFile   = "rsa_1024_cert.pem"
 	ecdsaP256CertificateFile = "ecdsa_p256_cert.pem"
 	ecdsaP384CertificateFile = "ecdsa_p384_cert.pem"
 	ecdsaP521CertificateFile = "ecdsa_p521_cert.pem"
@@ -75,13 +77,20 @@ const (
 
 const (
 	rsaKeyFile       = "key.pem"
+	rsa1024KeyFile   = "rsa_1024_key.pem"
 	ecdsaP256KeyFile = "ecdsa_p256_key.pem"
 	ecdsaP384KeyFile = "ecdsa_p384_key.pem"
 	ecdsaP521KeyFile = "ecdsa_p521_key.pem"
 	channelIDKeyFile = "channel_id_key.pem"
 )
 
-var rsaCertificate, ecdsaP256Certificate, ecdsaP384Certificate, ecdsaP521Certificate Certificate
+var (
+	rsaCertificate       Certificate
+	rsa1024Certificate   Certificate
+	ecdsaP256Certificate Certificate
+	ecdsaP384Certificate Certificate
+	ecdsaP521Certificate Certificate
+)
 
 var testCerts = []struct {
 	id                testCert
@@ -93,6 +102,12 @@ var testCerts = []struct {
 		certFile: rsaCertificateFile,
 		keyFile:  rsaKeyFile,
 		cert:     &rsaCertificate,
+	},
+	{
+		id:       testCertRSA1024,
+		certFile: rsa1024CertificateFile,
+		keyFile:  rsa1024KeyFile,
+		cert:     &rsa1024Certificate,
 	},
 	{
 		id:       testCertECDSAP256,
@@ -5172,6 +5187,25 @@ func addSignatureAlgorithmTests() {
 			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
 		},
 		expectedPeerSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
+	})
+
+	// RSASSA-PSS with SHA-512 is too large for 1024-bit RSA. Test that the
+	// server does not attempt to sign in that case.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "RSA-PSS-Large",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPSSWithSHA512,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsa1024CertificateFile),
+			"-key-file", path.Join(*resourceDir, rsa1024KeyFile),
+		},
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 }
 
