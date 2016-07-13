@@ -471,7 +471,13 @@ const (
 
 // deriveTrafficAEAD derives traffic keys and constructs an AEAD given a traffic
 // secret.
-func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret, phase []byte, side trafficDirection) *tlsAead {
+func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret, phase []byte, side trafficDirection) interface{} {
+	// We may have forcibly selected a non-AEAD cipher from the
+	// EnableAllCiphers bug. Use the NULL cipher to avoid crashing the test.
+	if suite.aead == nil {
+		return nil
+	}
+
 	label := make([]byte, 0, len(phase)+2+16)
 	label = append(label, phase...)
 	if side == clientWrite {
