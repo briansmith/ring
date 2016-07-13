@@ -1210,12 +1210,12 @@ static int ssl3_send_certificate_request(SSL *ssl) {
     }
   }
 
+  if (!CBB_add_u16_length_prefixed(&body, &names_cbb)) {
+    goto err;
+  }
+
   STACK_OF(X509_NAME) *sk = SSL_get_client_CA_list(ssl);
   if (sk != NULL) {
-    if (!CBB_add_u16_length_prefixed(&body, &names_cbb)) {
-      goto err;
-    }
-
     size_t i;
     for (i = 0; i < sk_X509_NAME_num(sk); i++) {
       X509_NAME *name = sk_X509_NAME_value(sk, i);
