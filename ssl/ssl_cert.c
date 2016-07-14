@@ -122,6 +122,7 @@
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/sha.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -419,6 +420,59 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
 
 int ssl_has_certificate(const SSL *ssl) {
   return ssl->cert->x509 != NULL && ssl_has_private_key(ssl);
+}
+
+STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
+                                     uint8_t *out_leaf_sha256, CBS *cbs) {
+  STACK_OF(X509) *ret = sk_X509_new_null();
+  if (ret == NULL) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  X509 *x = NULL;
+  CBS certificate_list;
+  if (!CBS_get_u24_length_prefixed(cbs, &certificate_list)) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    goto err;
+  }
+
+  while (CBS_len(&certificate_list) > 0) {
+    CBS certificate;
+    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
+      goto err;
+    }
+
+    /* Retain the hash of the leaf certificate if requested. */
+    if (sk_X509_num(ret) == 0 && out_leaf_sha256 != NULL) {
+      SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
+    }
+
+    /* A u24 length cannot overflow a long. */
+    const uint8_t *data = CBS_data(&certificate);
+    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
+    if (x == NULL || data != CBS_data(&certificate) + CBS_len(&certificate)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      goto err;
+    }
+    if (!sk_X509_push(ret, x)) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    x = NULL;
+  }
+
+  return ret;
+
+err:
+  X509_free(x);
+  sk_X509_pop_free(ret, X509_free);
+  return NULL;
 }
 
 int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509) {

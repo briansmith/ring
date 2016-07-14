@@ -165,7 +165,6 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
 #include <openssl/x509.h>
 
 #include "internal.h"
@@ -1247,13 +1246,6 @@ static int ssl3_send_server_hello_done(SSL *ssl) {
 }
 
 static int ssl3_get_client_certificate(SSL *ssl) {
-  int al, ret = -1;
-  X509 *x = NULL;
-  STACK_OF(X509) *sk = NULL;
-  SHA256_CTX sha256;
-  CBS certificate_msg, certificate_list;
-  int is_first_certificate = 1;
-
   assert(ssl->s3->tmp.cert_request);
 
   int msg_ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
@@ -1268,120 +1260,82 @@ static int ssl3_get_client_certificate(SSL *ssl) {
       if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
           (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-        al = SSL_AD_HANDSHAKE_FAILURE;
-        goto f_err;
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+        return -1;
       }
 
       ssl->s3->tmp.reuse_message = 1;
       return 1;
     }
 
-    al = SSL_AD_UNEXPECTED_MESSAGE;
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    goto f_err;
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    return -1;
   }
 
+  CBS certificate_msg;
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
-
-  sk = sk_X509_new_null();
-  if (sk == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  uint8_t alert;
+  STACK_OF(X509) *chain = ssl_parse_cert_chain(
+      ssl, &alert,
+      ssl->ctx->retain_only_sha256_of_client_certs ? ssl->session->peer_sha256
+                                                   : NULL,
+      &certificate_msg);
+  if (chain == NULL) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     goto err;
   }
 
-  if (!CBS_get_u24_length_prefixed(&certificate_msg, &certificate_list) ||
-      CBS_len(&certificate_msg) != 0) {
-    al = SSL_AD_DECODE_ERROR;
+  if (CBS_len(&certificate_msg) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    goto err;
   }
 
-  while (CBS_len(&certificate_list) > 0) {
-    CBS certificate;
-    const uint8_t *data;
-
-    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto f_err;
-    }
-
-    if (is_first_certificate && ssl->ctx->retain_only_sha256_of_client_certs) {
-      /* If this is the first certificate, and we don't want to keep peer
-       * certificates in memory, then we hash it right away. */
-      SHA256_Init(&sha256);
-      SHA256_Update(&sha256, CBS_data(&certificate), CBS_len(&certificate));
-      SHA256_Final(ssl->session->peer_sha256, &sha256);
-      ssl->session->peer_sha256_valid = 1;
-    }
-    is_first_certificate = 0;
-
-    /* A u24 length cannot overflow a long. */
-    data = CBS_data(&certificate);
-    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
-    if (x == NULL) {
-      al = SSL_AD_BAD_CERTIFICATE;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-      goto f_err;
-    }
-    if (data != CBS_data(&certificate) + CBS_len(&certificate)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
-      goto f_err;
-    }
-    if (!sk_X509_push(sk, x)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    x = NULL;
-  }
-
-  if (sk_X509_num(sk) <= 0) {
+  if (sk_X509_num(chain) == 0) {
     /* No client certificate so the handshake buffer may be discarded. */
     ssl3_free_handshake_buffer(ssl);
 
     /* TLS does not mind 0 certs returned */
     if (ssl->version == SSL3_VERSION) {
-      al = SSL_AD_HANDSHAKE_FAILURE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
-      goto f_err;
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      goto err;
     } else if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
                (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
       /* Fail for TLS only if we required a certificate */
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-      al = SSL_AD_HANDSHAKE_FAILURE;
-      goto f_err;
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      goto err;
     }
   } else {
-    if (ssl_verify_cert_chain(ssl, sk) <= 0) {
-      al = ssl_verify_alarm_type(ssl->verify_result);
+    /* The hash would have been filled in. */
+    if (ssl->ctx->retain_only_sha256_of_client_certs) {
+      ssl->session->peer_sha256_valid = 1;
+    }
+
+    if (ssl_verify_cert_chain(ssl, chain) <= 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-      goto f_err;
+      ssl3_send_alert(ssl, SSL3_AL_FATAL,
+                      ssl_verify_alarm_type(ssl->verify_result));
+      goto err;
     }
   }
 
   X509_free(ssl->session->peer);
-  ssl->session->peer = sk_X509_shift(sk);
+  ssl->session->peer = sk_X509_shift(chain);
   ssl->session->verify_result = ssl->verify_result;
 
   sk_X509_pop_free(ssl->session->cert_chain, X509_free);
-  ssl->session->cert_chain = sk;
+  ssl->session->cert_chain = chain;
   /* Inconsistency alert: cert_chain does *not* include the peer's own
    * certificate, while we do include it in s3_clnt.c */
 
-  sk = NULL;
-
-  ret = 1;
-
-  if (0) {
-  f_err:
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-  }
+  return 1;
 
 err:
-  X509_free(x);
-  sk_X509_pop_free(sk, X509_free);
-  return ret;
+  sk_X509_pop_free(chain, X509_free);
+  return -1;
 }
 
 static int ssl3_get_client_key_exchange(SSL *ssl) {

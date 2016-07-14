@@ -966,91 +966,48 @@ err:
 }
 
 static int ssl3_get_server_certificate(SSL *ssl) {
-  int al, ret = -1;
-  X509 *x = NULL;
-  STACK_OF(X509) *sk = NULL;
-  EVP_PKEY *pkey = NULL;
-  CBS cbs, certificate_list;
-  const uint8_t *data;
-
-  int msg_ret =
+  int ret =
       ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE, ssl_hash_message);
-  if (msg_ret <= 0) {
-    return msg_ret;
+  if (ret <= 0) {
+    return ret;
   }
 
+  CBS cbs;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-
-  sk = sk_X509_new_null();
-  if (sk == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  uint8_t alert;
+  STACK_OF(X509) *chain = ssl_parse_cert_chain(ssl, &alert, NULL, &cbs);
+  if (chain == NULL) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     goto err;
   }
 
-  if (!CBS_get_u24_length_prefixed(&cbs, &certificate_list) ||
-      CBS_len(&certificate_list) == 0 ||
-      CBS_len(&cbs) != 0) {
-    al = SSL_AD_DECODE_ERROR;
+  if (sk_X509_num(chain) == 0 || CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    goto err;
   }
 
-  while (CBS_len(&certificate_list) > 0) {
-    CBS certificate;
-    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
-      goto f_err;
-    }
-    /* A u24 length cannot overflow a long. */
-    data = CBS_data(&certificate);
-    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
-    if (x == NULL) {
-      al = SSL_AD_BAD_CERTIFICATE;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-      goto f_err;
-    }
-    if (data != CBS_data(&certificate) + CBS_len(&certificate)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
-      goto f_err;
-    }
-    if (!sk_X509_push(sk, x)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    x = NULL;
-  }
-
-  X509 *leaf = sk_X509_value(sk, 0);
+  X509 *leaf = sk_X509_value(chain, 0);
   if (!ssl3_check_leaf_certificate(ssl, leaf)) {
-    al = SSL_AD_ILLEGAL_PARAMETER;
-    goto f_err;
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    goto err;
   }
 
   /* NOTE: Unlike the server half, the client's copy of |cert_chain| includes
    * the leaf. */
   sk_X509_pop_free(ssl->session->cert_chain, X509_free);
-  ssl->session->cert_chain = sk;
-  sk = NULL;
+  ssl->session->cert_chain = chain;
 
   X509_free(ssl->session->peer);
   ssl->session->peer = X509_up_ref(leaf);
 
   ssl->session->verify_result = ssl->verify_result;
 
-  ret = 1;
-
-  if (0) {
-  f_err:
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-  }
+  return 1;
 
 err:
-  EVP_PKEY_free(pkey);
-  X509_free(x);
-  sk_X509_pop_free(sk, X509_free);
-  return ret;
+  sk_X509_pop_free(chain, X509_free);
+  return -1;
 }
 
 static int ssl3_get_cert_status(SSL *ssl) {
