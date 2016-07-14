@@ -943,6 +943,8 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 				return fmt.Errorf("tls: renegotiation mismatch")
 			}
 		}
+	} else if serverExtensions.secureRenegotiation != nil {
+		return errors.New("tls: renegotiation info sent in TLS 1.3")
 	}
 
 	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
