@@ -52,11 +52,6 @@ static const BN_ULONG N[P384_LIMBS] = {
   TOBN(0xffffffff, 0xffffffff),
 };
 
-static const BN_ULONG ONE[P384_LIMBS] = {
-  TOBN(0xffffffff, 1), TOBN(0, 0xffffffff), TOBN(0, 1), TOBN(0, 0), TOBN(0, 0),
-  TOBN(0, 0),
-};
-
 
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   static const BN_ULONG Q_N0[] = {
