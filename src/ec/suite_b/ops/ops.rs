@@ -32,6 +32,7 @@ pub struct ElemDecoded {
 
 /// Field elements that are Montgomery-encoded and unreduced. Their values are
 /// in the range [0, 2**LIMB_BITS).
+#[derive(Clone)]
 pub struct ElemUnreduced {
     limbs: [Limb; MAX_LIMBS],
 }
@@ -566,7 +567,9 @@ extern {
 
 #[cfg(test)]
 mod tests {
+    use std;
     use super::*;
+    use test;
     use untrusted;
 
     #[test]
@@ -617,6 +620,41 @@ mod tests {
     }
 
     const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
+
+    #[test]
+    fn p256_sum_test() {
+        sum_test(&p256::PUBLIC_SCALAR_OPS,
+                 "src/ec/suite_b/ops/p256_sum_tests.txt");
+    }
+
+    #[test]
+    fn p384_sum_test() {
+        sum_test(&p384::PUBLIC_SCALAR_OPS,
+                 "src/ec/suite_b/ops/p384_sum_tests.txt");
+    }
+
+    fn sum_test(ops: &PublicScalarOps, file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let cops = ops.public_key_ops.common;
+            let a = consume_elem_unreduced(cops, test_case, "a");
+            let b = consume_elem_unreduced(cops, test_case, "b");
+            let expected_sum = consume_elem_unreduced(cops, test_case, "r");
+
+            let mut actual_sum = a.clone();
+            ops.public_key_ops.common.elem_add(&mut actual_sum, &b);
+            assert_limbs_are_equal(cops, &actual_sum.limbs,
+                                   &expected_sum.limbs);
+
+            let mut actual_sum = b.clone();
+            ops.public_key_ops.common.elem_add(&mut actual_sum, &a);
+            assert_limbs_are_equal(cops, &actual_sum.limbs,
+                                   &expected_sum.limbs);
+
+            Ok(())
+        })
+    }
 
     #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
@@ -693,6 +731,32 @@ mod tests {
                         Err(())
                    });
         assert_eq!(parse_big_endian_value(inp, 1), Err(()));
+    }
+
+    fn assert_limbs_are_equal(ops: &CommonOps, actual: &[Limb; MAX_LIMBS],
+                              expected: &[Limb; MAX_LIMBS]) {
+        for i in 0..ops.num_limbs {
+            if actual[i] != expected[i] {
+                let mut s = std::string::String::new();
+                for j in 0..ops.num_limbs {
+                    let formatted =
+                        format!("{:016x}",
+                                actual[ops.num_limbs - j - 1]);
+                    s.push_str(&formatted);
+                }
+                print!("\n");
+                panic!("Actual != Expected,\nActual = {}", s);
+            }
+        }
+    }
+
+    fn consume_elem_unreduced(ops: &CommonOps, test_case: &mut test::TestCase,
+                              name: &str) -> ElemUnreduced {
+        let elem_bytes = test_case.consume_bytes(name);
+        let elem_bytes = untrusted::Input::from(&elem_bytes);
+        let elem_limbs =
+            parse_big_endian_value(elem_bytes, ops.num_limbs).unwrap();
+        ElemUnreduced{ limbs: elem_limbs }
     }
 }
 

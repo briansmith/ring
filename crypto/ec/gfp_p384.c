@@ -19,6 +19,12 @@
 #include "../bn/internal.h"
 #include "../internal.h"
 
+#include "gfp_limbs.inl"
+
+ /* XXX: Here we assume that the conversion from |GFp_Carry| to |GFp_Limb|
+  * is constant-time, but we haven't verified that assumption. TODO: Fix it so
+  * we don't need to make that assumption. */
+
 
 typedef GFp_Limb Elem[P384_LIMBS];
 typedef GFp_Limb ScalarMont[P384_LIMBS];
@@ -75,6 +81,16 @@ static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
 }
 
 
+static void elem_add(Elem r, const Elem a, const Elem b) {
+  GFp_Limb carry =
+      constant_time_is_nonzero_size_t(gfp_limbs_add(r, a, b, P384_LIMBS));
+  Elem adjusted;
+  GFp_Limb no_borrow =
+      constant_time_is_zero_size_t(gfp_limbs_sub(adjusted, r, Q, P384_LIMBS));
+  copy_conditional(r, adjusted,
+                   constant_time_select_size_t(carry, carry, no_borrow));
+}
+
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   static const BN_ULONG Q_N0[] = {
     BN_MONT_CTX_N0(0x1, 0x1)
@@ -85,16 +101,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
 }
 
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
-  /* XXX: Not constant-time. */
-  if (!bn_add_words(r, a, b, P384_LIMBS)) {
-    if (bn_cmp_words(r, Q, P384_LIMBS) < 0) {
-      return;
-    }
-  }
-  /* Either the addition resulted in a carry requiring 1 bit more than would
-   * fit in |P384_LIMBS| limbs, or the addition result fit in |P384_LIMBS|
-   * limbs but it was not less than |q|. Either way, it needs to be reduced. */
-  (void)bn_sub_words(r, r, Q, P384_LIMBS);
+  elem_add(r, a, b);
 }
 
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
