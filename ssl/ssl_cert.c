@@ -417,6 +417,10 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
   return add_client_CA(&ctx->client_CA, x509);
 }
 
+int ssl_has_certificate(const SSL *ssl) {
+  return ssl->cert->x509 != NULL && ssl_has_private_key(ssl);
+}
+
 int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509) {
   int len = i2d_X509(x509, NULL);
   if (len < 0) {
@@ -441,12 +445,12 @@ static int ssl_add_cert_with_length(CBB *cbb, X509 *x509) {
 }
 
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
+  if (!ssl_has_certificate(ssl)) {
+    return CBB_add_u24(cbb, 0);
+  }
+
   CERT *cert = ssl->cert;
   X509 *x = cert->x509;
-  if (x == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-    return 0;
-  }
 
   CBB child;
   if (!CBB_add_u24_length_prefixed(cbb, &child)) {
@@ -492,6 +496,34 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
       }
     }
     X509_STORE_CTX_cleanup(&xs_ctx);
+  }
+
+  return CBB_flush(cbb);
+}
+
+int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
+  CBB child, name_cbb;
+  if (!CBB_add_u16_length_prefixed(cbb, &child)) {
+    return 0;
+  }
+
+  STACK_OF(X509_NAME) *sk = SSL_get_client_CA_list(ssl);
+  if (sk == NULL) {
+    return CBB_flush(cbb);
+  }
+
+  for (size_t i = 0; i < sk_X509_NAME_num(sk); i++) {
+    X509_NAME *name = sk_X509_NAME_value(sk, i);
+    int len = i2d_X509_NAME(name, NULL);
+    if (len < 0) {
+      return 0;
+    }
+    uint8_t *ptr;
+    if (!CBB_add_u16_length_prefixed(&child, &name_cbb) ||
+        !CBB_add_space(&name_cbb, &ptr, (size_t)len) ||
+        (len > 0 && i2d_X509_NAME(name, &ptr) < 0)) {
+      return 0;
+    }
   }
 
   return CBB_flush(cbb);

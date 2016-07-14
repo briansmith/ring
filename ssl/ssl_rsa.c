@@ -383,7 +383,7 @@ int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
   return 1;
 }
 
-int ssl_has_private_key(SSL *ssl) {
+int ssl_has_private_key(const SSL *ssl) {
   return ssl->cert->privatekey != NULL || ssl->cert->key_method != NULL;
 }
 

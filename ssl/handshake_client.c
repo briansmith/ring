@@ -1503,12 +1503,6 @@ static int ssl3_get_server_hello_done(SSL *ssl) {
   return 1;
 }
 
-/* ssl3_has_client_certificate returns true if a client certificate is
- * configured. */
-static int ssl3_has_client_certificate(SSL *ssl) {
-  return ssl->cert && ssl->cert->x509 && ssl_has_private_key(ssl);
-}
-
 static int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509,
                                  EVP_PKEY **out_pkey) {
   if (ssl->ctx->client_cert_cb == NULL) {
@@ -1540,7 +1534,7 @@ static int ssl3_send_client_certificate(SSL *ssl) {
       }
     }
 
-    if (ssl3_has_client_certificate(ssl)) {
+    if (ssl_has_certificate(ssl)) {
       ssl->state = SSL3_ST_CW_CERT_C;
     } else {
       ssl->state = SSL3_ST_CW_CERT_B;
@@ -1570,7 +1564,7 @@ static int ssl3_send_client_certificate(SSL *ssl) {
   }
 
   if (ssl->state == SSL3_ST_CW_CERT_C) {
-    if (!ssl3_has_client_certificate(ssl)) {
+    if (!ssl_has_certificate(ssl)) {
       ssl->s3->tmp.cert_request = 0;
       /* Without a client certificate, the handshake buffer may be released. */
       ssl3_free_handshake_buffer(ssl);
@@ -1580,14 +1574,9 @@ static int ssl3_send_client_certificate(SSL *ssl) {
         ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_NO_CERTIFICATE);
         return 1;
       }
+    }
 
-      CBB cbb, body;
-      if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
-          !CBB_add_u24(&body, 0 /* no certificates */) ||
-          !ssl->method->finish_message(ssl, &cbb)) {
-        return -1;
-      }
-    } else if (!ssl3_output_cert_chain(ssl)) {
+    if (!ssl3_output_cert_chain(ssl)) {
       return -1;
     }
     ssl->state = SSL3_ST_CW_CERT_D;

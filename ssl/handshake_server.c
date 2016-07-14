@@ -922,6 +922,11 @@ static int ssl3_send_server_certificate(SSL *ssl) {
     return ssl->method->write_message(ssl);
   }
 
+  if (!ssl_has_certificate(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
+    return 0;
+  }
+
   if (!ssl3_output_cert_chain(ssl)) {
     return 0;
   }
@@ -1187,7 +1192,7 @@ static int ssl3_send_certificate_request(SSL *ssl) {
     return ssl->method->write_message(ssl);
   }
 
-  CBB cbb, body, cert_types, sigalgs_cbb, names_cbb, name_cbb;
+  CBB cbb, body, cert_types, sigalgs_cbb;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_CERTIFICATE_REQUEST) ||
       !CBB_add_u8_length_prefixed(&body, &cert_types) ||
@@ -1210,29 +1215,8 @@ static int ssl3_send_certificate_request(SSL *ssl) {
     }
   }
 
-  if (!CBB_add_u16_length_prefixed(&body, &names_cbb)) {
-    goto err;
-  }
-
-  STACK_OF(X509_NAME) *sk = SSL_get_client_CA_list(ssl);
-  if (sk != NULL) {
-    size_t i;
-    for (i = 0; i < sk_X509_NAME_num(sk); i++) {
-      X509_NAME *name = sk_X509_NAME_value(sk, i);
-      int len = i2d_X509_NAME(name, NULL);
-      if (len < 0) {
-        goto err;
-      }
-      uint8_t *ptr;
-      if (!CBB_add_u16_length_prefixed(&names_cbb, &name_cbb) ||
-          !CBB_add_space(&name_cbb, &ptr, (size_t)len) ||
-          (len > 0 && i2d_X509_NAME(name, &ptr) < 0)) {
-        goto err;
-      }
-    }
-  }
-
-  if (!ssl->method->finish_message(ssl, &cbb)) {
+  if (!ssl_add_client_CA_list(ssl, &body) ||
+      !ssl->method->finish_message(ssl, &cbb)) {
     goto err;
   }
 
