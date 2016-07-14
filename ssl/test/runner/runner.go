@@ -3742,406 +3742,439 @@ func addExtensionTests() {
 	// halves to EncryptedExtensions in TLS 1.3. Duplicate each of these
 	// tests for both. Also test interaction with 0-RTT when implemented.
 
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "DuplicateExtensionClient",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				DuplicateExtension: true,
+	// Repeat extensions tests all versions except SSL 3.0.
+	for _, ver := range tlsVersions {
+		if ver.version == VersionSSL30 {
+			continue
+		}
+
+		// TODO(davidben): Implement resumption in TLS 1.3.
+		resumeSession := ver.version < VersionTLS13
+
+		// Test that duplicate extensions are rejected.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "DuplicateExtensionClient-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					DuplicateExtension: true,
+				},
 			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decoding message",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "DuplicateExtensionServer",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				DuplicateExtension: true,
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decoding message",
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "DuplicateExtensionServer-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					DuplicateExtension: true,
+				},
 			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decoding message",
-	})
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ServerNameExtensionClient",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ExpectServerName: "example.com",
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decoding message",
+		})
+
+		// Test SNI.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ServerNameExtensionClient-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					ExpectServerName: "example.com",
+				},
 			},
-		},
-		flags: []string{"-host-name", "example.com"},
-	})
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ServerNameExtensionClientMismatch",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ExpectServerName: "mismatch.com",
+			flags: []string{"-host-name", "example.com"},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ServerNameExtensionClientMismatch-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					ExpectServerName: "mismatch.com",
+				},
 			},
-		},
-		flags:              []string{"-host-name", "example.com"},
-		shouldFail:         true,
-		expectedLocalError: "tls: unexpected server name",
-	})
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ServerNameExtensionClientMissing",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ExpectServerName: "missing.com",
+			flags:              []string{"-host-name", "example.com"},
+			shouldFail:         true,
+			expectedLocalError: "tls: unexpected server name",
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ServerNameExtensionClientMissing-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					ExpectServerName: "missing.com",
+				},
 			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "tls: unexpected server name",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ServerNameExtensionServer",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			ServerName: "example.com",
-		},
-		flags:         []string{"-expect-server-name", "example.com"},
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ALPNClient",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo"},
-		},
-		flags: []string{
-			"-advertise-alpn", "\x03foo\x03bar\x03baz",
-			"-expect-alpn", "foo",
-		},
-		expectedNextProto:     "foo",
-		expectedNextProtoType: alpn,
-		resumeSession:         true,
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ALPNServer",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo", "bar", "baz"},
-		},
-		flags: []string{
-			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-			"-select-alpn", "foo",
-		},
-		expectedNextProto:     "foo",
-		expectedNextProtoType: alpn,
-		resumeSession:         true,
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ALPNServer-Decline",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo", "bar", "baz"},
-		},
-		flags:             []string{"-decline-alpn"},
-		expectNoNextProto: true,
-		resumeSession:     true,
-	})
-	// Test that the server prefers ALPN over NPN.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ALPNServer-Preferred",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo", "bar", "baz"},
-		},
-		flags: []string{
-			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-			"-select-alpn", "foo",
-			"-advertise-npn", "\x03foo\x03bar\x03baz",
-		},
-		expectedNextProto:     "foo",
-		expectedNextProtoType: alpn,
-		resumeSession:         true,
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ALPNServer-Preferred-Swapped",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo", "bar", "baz"},
-			Bugs: ProtocolBugs{
-				SwapNPNAndALPN: true,
+			shouldFail:         true,
+			expectedLocalError: "tls: unexpected server name",
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ServerNameExtensionServer-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				ServerName: "example.com",
 			},
-		},
-		flags: []string{
-			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-			"-select-alpn", "foo",
-			"-advertise-npn", "\x03foo\x03bar\x03baz",
-		},
-		expectedNextProto:     "foo",
-		expectedNextProtoType: alpn,
-		resumeSession:         true,
-	})
-	var emptyString string
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ALPNClient-EmptyProtocolName",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{""},
-			Bugs: ProtocolBugs{
-				// A server returning an empty ALPN protocol
+			flags:         []string{"-expect-server-name", "example.com"},
+			resumeSession: resumeSession,
+		})
+
+		// Test ALPN.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ALPNClient-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				NextProtos: []string{"foo"},
+			},
+			flags: []string{
+				"-advertise-alpn", "\x03foo\x03bar\x03baz",
+				"-expect-alpn", "foo",
+			},
+			expectedNextProto:     "foo",
+			expectedNextProtoType: alpn,
+			resumeSession:         resumeSession,
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ALPNServer-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				NextProtos: []string{"foo", "bar", "baz"},
+			},
+			flags: []string{
+				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+				"-select-alpn", "foo",
+			},
+			expectedNextProto:     "foo",
+			expectedNextProtoType: alpn,
+			resumeSession:         resumeSession,
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ALPNServer-Decline-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				NextProtos: []string{"foo", "bar", "baz"},
+			},
+			flags:             []string{"-decline-alpn"},
+			expectNoNextProto: true,
+			resumeSession:     resumeSession,
+		})
+
+		var emptyString string
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ALPNClient-EmptyProtocolName-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				NextProtos: []string{""},
+				Bugs: ProtocolBugs{
+					// A server returning an empty ALPN protocol
+					// should be rejected.
+					ALPNProtocol: &emptyString,
+				},
+			},
+			flags: []string{
+				"-advertise-alpn", "\x03foo",
+			},
+			shouldFail:    true,
+			expectedError: ":PARSE_TLSEXT:",
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ALPNServer-EmptyProtocolName-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				// A ClientHello containing an empty ALPN protocol
 				// should be rejected.
-				ALPNProtocol: &emptyString,
+				NextProtos: []string{"foo", "", "baz"},
 			},
-		},
-		flags: []string{
-			"-advertise-alpn", "\x03foo",
-		},
-		shouldFail:    true,
-		expectedError: ":PARSE_TLSEXT:",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ALPNServer-EmptyProtocolName",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			// A ClientHello containing an empty ALPN protocol
-			// should be rejected.
-			NextProtos: []string{"foo", "", "baz"},
-		},
-		flags: []string{
-			"-select-alpn", "foo",
-		},
-		shouldFail:    true,
-		expectedError: ":PARSE_TLSEXT:",
-	})
-	// Test that negotiating both NPN and ALPN is forbidden.
-	testCases = append(testCases, testCase{
-		name: "NegotiateALPNAndNPN",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo", "bar", "baz"},
-			Bugs: ProtocolBugs{
-				NegotiateALPNAndNPN: true,
+			flags: []string{
+				"-select-alpn", "foo",
 			},
-		},
-		flags: []string{
-			"-advertise-alpn", "\x03foo",
-			"-select-next-proto", "foo",
-		},
-		shouldFail:    true,
-		expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
-	})
-	testCases = append(testCases, testCase{
-		name: "NegotiateALPNAndNPN-Swapped",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo", "bar", "baz"},
-			Bugs: ProtocolBugs{
-				NegotiateALPNAndNPN: true,
-				SwapNPNAndALPN:      true,
+			shouldFail:    true,
+			expectedError: ":PARSE_TLSEXT:",
+		})
+
+		// Test NPN and the interaction with ALPN.
+		if ver.version < VersionTLS13 {
+			// Test that the server prefers ALPN over NPN.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPNServer-Preferred-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+				},
+				flags: []string{
+					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+					"-select-alpn", "foo",
+					"-advertise-npn", "\x03foo\x03bar\x03baz",
+				},
+				expectedNextProto:     "foo",
+				expectedNextProtoType: alpn,
+				resumeSession:         resumeSession,
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPNServer-Preferred-Swapped-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+					Bugs: ProtocolBugs{
+						SwapNPNAndALPN: true,
+					},
+				},
+				flags: []string{
+					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+					"-select-alpn", "foo",
+					"-advertise-npn", "\x03foo\x03bar\x03baz",
+				},
+				expectedNextProto:     "foo",
+				expectedNextProtoType: alpn,
+				resumeSession:         resumeSession,
+			})
+
+			// Test that negotiating both NPN and ALPN is forbidden.
+			testCases = append(testCases, testCase{
+				name: "NegotiateALPNAndNPN-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+					Bugs: ProtocolBugs{
+						NegotiateALPNAndNPN: true,
+					},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo",
+					"-select-next-proto", "foo",
+				},
+				shouldFail:    true,
+				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+			})
+			testCases = append(testCases, testCase{
+				name: "NegotiateALPNAndNPN-Swapped-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+					Bugs: ProtocolBugs{
+						NegotiateALPNAndNPN: true,
+						SwapNPNAndALPN:      true,
+					},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo",
+					"-select-next-proto", "foo",
+				},
+				shouldFail:    true,
+				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+			})
+
+			// Test that NPN can be disabled with SSL_OP_DISABLE_NPN.
+			testCases = append(testCases, testCase{
+				name: "DisableNPN-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo"},
+				},
+				flags: []string{
+					"-select-next-proto", "foo",
+					"-disable-npn",
+				},
+				expectNoNextProto: true,
+			})
+		}
+
+		// Test ticket behavior.
+		//
+		// TODO(davidben): Add TLS 1.3 versions of these.
+		if ver.version < VersionTLS13 {
+			// Resume with a corrupt ticket.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "CorruptTicket-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						CorruptTicket: true,
+					},
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+			})
+			// Test the ticket callback, with and without renewal.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "TicketCallback-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+				},
+				resumeSession: true,
+				flags:         []string{"-use-ticket-callback"},
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "TicketCallback-Renew-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						ExpectNewTicket: true,
+					},
+				},
+				flags:         []string{"-use-ticket-callback", "-renew-ticket"},
+				resumeSession: true,
+			})
+
+			// Resume with an oversized session id.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "OversizedSessionId-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						OversizedSessionId: true,
+					},
+				},
+				resumeSession: true,
+				shouldFail:    true,
+				expectedError: ":DECODE_ERROR:",
+			})
+		}
+
+		// Basic DTLS-SRTP tests. Include fake profiles to ensure they
+		// are ignored.
+		if ver.hasDTLS {
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				name:     "SRTP-Client-" + ver.name,
+				config: Config{
+					MaxVersion:             ver.version,
+					SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+				},
+				flags: []string{
+					"-srtp-profiles",
+					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+				},
+				expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+			})
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				testType: serverTest,
+				name:     "SRTP-Server-" + ver.name,
+				config: Config{
+					MaxVersion:             ver.version,
+					SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+				},
+				flags: []string{
+					"-srtp-profiles",
+					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+				},
+				expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+			})
+			// Test that the MKI is ignored.
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				testType: serverTest,
+				name:     "SRTP-Server-IgnoreMKI-" + ver.name,
+				config: Config{
+					MaxVersion:             ver.version,
+					SRTPProtectionProfiles: []uint16{SRTP_AES128_CM_HMAC_SHA1_80},
+					Bugs: ProtocolBugs{
+						SRTPMasterKeyIdentifer: "bogus",
+					},
+				},
+				flags: []string{
+					"-srtp-profiles",
+					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+				},
+				expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+			})
+			// Test that SRTP isn't negotiated on the server if there were
+			// no matching profiles.
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				testType: serverTest,
+				name:     "SRTP-Server-NoMatch-" + ver.name,
+				config: Config{
+					MaxVersion:             ver.version,
+					SRTPProtectionProfiles: []uint16{100, 101, 102},
+				},
+				flags: []string{
+					"-srtp-profiles",
+					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+				},
+				expectedSRTPProtectionProfile: 0,
+			})
+			// Test that the server returning an invalid SRTP profile is
+			// flagged as an error by the client.
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				name:     "SRTP-Client-NoMatch-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						SendSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_32,
+					},
+				},
+				flags: []string{
+					"-srtp-profiles",
+					"SRTP_AES128_CM_SHA1_80",
+				},
+				shouldFail:    true,
+				expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
+			})
+		}
+
+		// Test SCT list.
+		testCases = append(testCases, testCase{
+			name:     "SignedCertificateTimestampList-Client-" + ver.name,
+			testType: clientTest,
+			config: Config{
+				MaxVersion: ver.version,
 			},
-		},
-		flags: []string{
-			"-advertise-alpn", "\x03foo",
-			"-select-next-proto", "foo",
-		},
-		shouldFail:    true,
-		expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
-	})
-	// Test that NPN can be disabled with SSL_OP_DISABLE_NPN.
-	testCases = append(testCases, testCase{
-		name: "DisableNPN",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			NextProtos: []string{"foo"},
-		},
-		flags: []string{
-			"-select-next-proto", "foo",
-			"-disable-npn",
-		},
-		expectNoNextProto: true,
-	})
-	// Resume with a corrupt ticket.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CorruptTicket",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				CorruptTicket: true,
+			flags: []string{
+				"-enable-signed-cert-timestamps",
+				"-expect-signed-cert-timestamps",
+				base64.StdEncoding.EncodeToString(testSCTList),
 			},
-		},
-		resumeSession:        true,
-		expectResumeRejected: true,
-	})
-	// Test the ticket callback, with and without renewal.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TicketCallback",
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		resumeSession: true,
-		flags:         []string{"-use-ticket-callback"},
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TicketCallback-Renew",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ExpectNewTicket: true,
+			resumeSession: resumeSession,
+		})
+		testCases = append(testCases, testCase{
+			name: "SendSCTListOnResume-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendSCTListOnResume: []byte("bogus"),
+				},
 			},
-		},
-		flags:         []string{"-use-ticket-callback", "-renew-ticket"},
-		resumeSession: true,
-	})
-	// Resume with an oversized session id.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "OversizedSessionId",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				OversizedSessionId: true,
+			flags: []string{
+				"-enable-signed-cert-timestamps",
+				"-expect-signed-cert-timestamps",
+				base64.StdEncoding.EncodeToString(testSCTList),
 			},
-		},
-		resumeSession: true,
-		shouldFail:    true,
-		expectedError: ":DECODE_ERROR:",
-	})
-	// Basic DTLS-SRTP tests. Include fake profiles to ensure they
-	// are ignored.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "SRTP-Client",
-		config: Config{
-			MaxVersion:             VersionTLS12,
-			SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
-		},
-		flags: []string{
-			"-srtp-profiles",
-			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-		},
-		expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
-	})
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "SRTP-Server",
-		config: Config{
-			MaxVersion:             VersionTLS12,
-			SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
-		},
-		flags: []string{
-			"-srtp-profiles",
-			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-		},
-		expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
-	})
-	// Test that the MKI is ignored.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "SRTP-Server-IgnoreMKI",
-		config: Config{
-			MaxVersion:             VersionTLS12,
-			SRTPProtectionProfiles: []uint16{SRTP_AES128_CM_HMAC_SHA1_80},
-			Bugs: ProtocolBugs{
-				SRTPMasterKeyIdentifer: "bogus",
+			resumeSession: resumeSession,
+		})
+		testCases = append(testCases, testCase{
+			name:     "SignedCertificateTimestampList-Server-" + ver.name,
+			testType: serverTest,
+			config: Config{
+				MaxVersion: ver.version,
 			},
-		},
-		flags: []string{
-			"-srtp-profiles",
-			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-		},
-		expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
-	})
-	// Test that SRTP isn't negotiated on the server if there were
-	// no matching profiles.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "SRTP-Server-NoMatch",
-		config: Config{
-			MaxVersion:             VersionTLS12,
-			SRTPProtectionProfiles: []uint16{100, 101, 102},
-		},
-		flags: []string{
-			"-srtp-profiles",
-			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-		},
-		expectedSRTPProtectionProfile: 0,
-	})
-	// Test that the server returning an invalid SRTP profile is
-	// flagged as an error by the client.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "SRTP-Client-NoMatch",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				SendSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_32,
+			flags: []string{
+				"-signed-cert-timestamps",
+				base64.StdEncoding.EncodeToString(testSCTList),
 			},
-		},
-		flags: []string{
-			"-srtp-profiles",
-			"SRTP_AES128_CM_SHA1_80",
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
-	})
-	// Test SCT list.
-	testCases = append(testCases, testCase{
-		name:     "SignedCertificateTimestampList-Client",
-		testType: clientTest,
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		flags: []string{
-			"-enable-signed-cert-timestamps",
-			"-expect-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
-		},
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		name: "SendSCTListOnResume",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				SendSCTListOnResume: []byte("bogus"),
-			},
-		},
-		flags: []string{
-			"-enable-signed-cert-timestamps",
-			"-expect-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
-		},
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		name:     "SignedCertificateTimestampList-Server",
-		testType: serverTest,
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		flags: []string{
-			"-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
-		},
-		expectedSCTList: testSCTList,
-		resumeSession:   true,
-	})
+			expectedSCTList: testSCTList,
+			resumeSession:   resumeSession,
+		})
+	}
 
 	testCases = append(testCases, testCase{
 		testType: clientTest,
