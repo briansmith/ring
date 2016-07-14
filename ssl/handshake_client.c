@@ -1269,6 +1269,10 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
       signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
     } else if (pkey->type == EVP_PKEY_EC) {
       signature_algorithm = SSL_SIGN_ECDSA_SHA1;
+    } else {
+      al = SSL_AD_UNSUPPORTED_CERTIFICATE;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
+      goto f_err;
     }
 
     /* The last field in |server_key_exchange| is the signature. */

@@ -1631,12 +1631,6 @@ static int ssl3_get_cert_verify(SSL *ssl) {
   if (pkey == NULL) {
     goto err;
   }
-  if (!(X509_certificate_type(peer, pkey) & EVP_PKT_SIGN) ||
-      (pkey->type != EVP_PKEY_RSA && pkey->type != EVP_PKEY_EC)) {
-    al = SSL_AD_UNSUPPORTED_CERTIFICATE;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
-    goto f_err;
-  }
 
   CBS_init(&certificate_verify, ssl->init_msg, ssl->init_num);
 
@@ -1656,6 +1650,10 @@ static int ssl3_get_cert_verify(SSL *ssl) {
     signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
   } else if (pkey->type == EVP_PKEY_EC) {
     signature_algorithm = SSL_SIGN_ECDSA_SHA1;
+  } else {
+    al = SSL_AD_UNSUPPORTED_CERTIFICATE;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
+    goto f_err;
   }
 
   /* Parse and verify the signature. */
@@ -1670,11 +1668,6 @@ static int ssl3_get_cert_verify(SSL *ssl) {
   /* The SSL3 construction for CertificateVerify does not decompose into a
    * single final digest and signature, and must be special-cased. */
   if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
-    if (ssl->cert->key_method != NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
-      goto err;
-    }
-
     const EVP_MD *md;
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
