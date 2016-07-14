@@ -747,6 +747,13 @@ int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509);
  * empty certificate list. It returns one on success and zero on error. */
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb);
 
+/* ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
+ * TLS CertificateRequest message. On success, it returns a newly-allocated
+ * |X509_NAME| list and advances |cbs|. Otherwise, it returns NULL and sets
+ * |*out_alert| to an alert to send to the peer. */
+STACK_OF(X509_NAME) *
+    ssl_parse_client_CA_list(SSL *ssl, uint8_t *out_alert, CBS *cbs);
+
 /* ssl_add_client_CA_list adds the configured CA list to |cbb| in the format
  * used by a TLS CertificateRequest message. It returns one on success and zero
  * on error. */

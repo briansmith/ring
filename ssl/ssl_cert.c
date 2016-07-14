@@ -501,6 +501,61 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
+static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
+  return X509_NAME_cmp(*a, *b);
+}
+
+STACK_OF(X509_NAME) *
+    ssl_parse_client_CA_list(SSL *ssl, uint8_t *out_alert, CBS *cbs) {
+  STACK_OF(X509_NAME) *ret = sk_X509_NAME_new(ca_dn_cmp);
+  X509_NAME *name = NULL;
+  if (ret == NULL) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  CBS child;
+  if (!CBS_get_u16_length_prefixed(cbs, &child)) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_LENGTH_MISMATCH);
+    goto err;
+  }
+
+  while (CBS_len(&child) > 0) {
+    CBS distinguished_name;
+    if (!CBS_get_u16_length_prefixed(&child, &distinguished_name)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CA_DN_TOO_LONG);
+      goto err;
+    }
+
+    const uint8_t *ptr = CBS_data(&distinguished_name);
+    /* A u16 length cannot overflow a long. */
+    name = d2i_X509_NAME(NULL, &ptr, (long)CBS_len(&distinguished_name));
+    if (name == NULL ||
+        ptr != CBS_data(&distinguished_name) + CBS_len(&distinguished_name)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      goto err;
+    }
+
+    if (!sk_X509_NAME_push(ret, name)) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    name = NULL;
+  }
+
+  return ret;
+
+err:
+  X509_NAME_free(name);
+  sk_X509_NAME_pop_free(ret, X509_NAME_free);
+  return NULL;
+}
+
 int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
   CBB child, name_cbb;
   if (!CBB_add_u16_length_prefixed(cbb, &child)) {

@@ -1375,15 +1375,7 @@ err:
   return -1;
 }
 
-static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
-  return X509_NAME_cmp(*a, *b);
-}
-
 static int ssl3_get_certificate_request(SSL *ssl) {
-  int ret = 0;
-  X509_NAME *xn = NULL;
-  STACK_OF(X509_NAME) *ca_sk = NULL;
-
   int msg_ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
   if (msg_ret <= 0) {
     return msg_ret;
@@ -1402,30 +1394,24 @@ static int ssl3_get_certificate_request(SSL *ssl) {
   if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE_REQUEST) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    goto err;
+    return -1;
   }
 
   CBS cbs;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
 
-  ca_sk = sk_X509_NAME_new(ca_dn_cmp);
-  if (ca_sk == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  /* get the certificate types */
+  /* Get the certificate types. */
   CBS certificate_types;
   if (!CBS_get_u8_length_prefixed(&cbs, &certificate_types)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto err;
+    return -1;
   }
 
   if (!CBS_stow(&certificate_types, &ssl->s3->tmp.certificate_types,
                 &ssl->s3->tmp.num_certificate_types)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    goto err;
+    return -1;
   }
 
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
@@ -1434,56 +1420,21 @@ static int ssl3_get_certificate_request(SSL *ssl) {
         !tls1_parse_peer_sigalgs(ssl, &supported_signature_algorithms)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto err;
+      return -1;
     }
   }
 
-  /* get the CA RDNs */
-  CBS certificate_authorities;
-  if (!CBS_get_u16_length_prefixed(&cbs, &certificate_authorities)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_LENGTH_MISMATCH);
-    goto err;
+  uint8_t alert;
+  STACK_OF(X509_NAME) *ca_sk = ssl_parse_client_CA_list(ssl, &alert, &cbs);
+  if (ca_sk == NULL) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return -1;
   }
 
-  while (CBS_len(&certificate_authorities) > 0) {
-    CBS distinguished_name;
-    if (!CBS_get_u16_length_prefixed(&certificate_authorities,
-                                     &distinguished_name)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CA_DN_TOO_LONG);
-      goto err;
-    }
-
-    const uint8_t *data = CBS_data(&distinguished_name);
-    /* A u16 length cannot overflow a long. */
-    xn = d2i_X509_NAME(NULL, &data, (long)CBS_len(&distinguished_name));
-    if (xn == NULL ||
-        data != CBS_data(&distinguished_name) + CBS_len(&distinguished_name)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto err;
-    }
-
-    if (!sk_X509_NAME_push(ca_sk, xn)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    xn = NULL;
-  }
-
-  /* we should setup a certificate to return.... */
   ssl->s3->tmp.cert_request = 1;
   sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
   ssl->s3->tmp.ca_names = ca_sk;
-  ca_sk = NULL;
-
-  ret = 1;
-
-err:
-  X509_NAME_free(xn);
-  sk_X509_NAME_pop_free(ca_sk, X509_NAME_free);
-  return ret;
+  return 1;
 }
 
 static int ssl3_get_server_hello_done(SSL *ssl) {
