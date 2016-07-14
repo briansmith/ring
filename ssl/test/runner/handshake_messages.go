@@ -1104,6 +1104,20 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 			m.sctList = data[:length]
 		case extensionCustom:
 			m.customExtension = string(data[:length])
+		case extensionServerName:
+			if length != 0 {
+				return false
+			}
+			// Ignore this extension from the server.
+		case extensionSupportedPoints:
+			// supported_points is illegal in TLS 1.3.
+			if version >= VersionTLS13 && enableTLS13Handshake {
+				return false
+			}
+			// Ignore this extension from the server.
+		default:
+			// Unknown extensions are illegal from the server.
+			return false
 		}
 		data = data[length:]
 	}
