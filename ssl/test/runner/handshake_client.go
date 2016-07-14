@@ -567,6 +567,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			return unexpectedMessageError(certVerifyMsg, msg)
 		}
 
+		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
 		err = verifyMessage(c.vers, leaf.PublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		if err != nil {

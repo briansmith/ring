@@ -411,7 +411,7 @@ Curves:
 				hasRequestContext:     true,
 			}
 			if !config.Bugs.NoSignatureAlgorithms {
-				certReq.signatureAlgorithms = config.signSignatureAlgorithms()
+				certReq.signatureAlgorithms = config.verifySignatureAlgorithms()
 			}
 
 			// An empty list of certificateAuthorities signals to
@@ -519,6 +519,7 @@ Curves:
 				return unexpectedMessageError(certVerify, msg)
 			}
 
+			c.peerSignatureAlgorithm = certVerify.signatureAlgorithm
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
 			if err := verifyMessage(c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
 				c.sendAlert(alertBadCertificate)
