@@ -1092,8 +1092,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
   }
 
   if (config->expect_extended_master_secret) {
-    if (!ssl->session->extended_master_secret) {
-      fprintf(stderr, "No EMS for session when expected");
+    if (!SSL_get_extms_support(ssl)) {
+      fprintf(stderr, "No EMS for connection when expected");
       return false;
     }
   }
