@@ -61,7 +61,7 @@ func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg s
 
 func verifyMessage(version uint16, key crypto.PublicKey, config *Config, sigAlg signatureAlgorithm, msg, sig []byte) error {
 	if version >= VersionTLS12 && !isSupportedSignatureAlgorithm(sigAlg, config.verifySignatureAlgorithms()) {
-		return errors.New("tls: unsupported signature algorithm for ServerKeyExchange")
+		return errors.New("tls: unsupported signature algorithm")
 	}
 
 	signer, err := getSigner(version, key, config, sigAlg)
