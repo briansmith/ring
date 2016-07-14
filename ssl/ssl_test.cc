@@ -26,6 +26,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
+#include <openssl/sha.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
@@ -1353,6 +1354,72 @@ static bool TestSetFD() {
   return true;
 }
 
+static uint16_t kVersions[] = {
+    SSL3_VERSION, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_VERSION, TLS1_3_VERSION,
+};
+
+static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) { return 1; }
+
+static bool TestRetainOnlySHA256OfCerts() {
+  ScopedX509 cert = GetTestCertificate();
+  ScopedEVP_PKEY key = GetTestKey();
+  if (!cert || !key) {
+    return false;
+  }
+
+  uint8_t *cert_der = NULL;
+  int cert_der_len = i2d_X509(cert.get(), &cert_der);
+  if (cert_der_len < 0) {
+    return false;
+  }
+  ScopedOpenSSLBytes free_cert_der(cert_der);
+
+  uint8_t cert_sha256[SHA256_DIGEST_LENGTH];
+  SHA256(cert_der, cert_der_len, cert_sha256);
+
+  for (uint16_t version : kVersions) {
+    // Configure both client and server to accept any certificate, but the
+    // server must retain only the SHA-256 of the peer.
+    ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+    if (!ctx ||
+        !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
+        !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+      return false;
+    }
+    SSL_CTX_set_min_version(ctx.get(), version);
+    SSL_CTX_set_max_version(ctx.get(), version);
+    SSL_CTX_set_verify(
+        ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_cert_verify_callback(ctx.get(), VerifySucceed, NULL);
+    SSL_CTX_set_retain_only_sha256_of_client_certs(ctx.get(), 1);
+
+    ScopedSSL client, server;
+    if (!ConnectClientAndServer(&client, &server, ctx.get(), ctx.get())) {
+      return false;
+    }
+
+    // The peer certificate has been dropped.
+    ScopedX509 peer(SSL_get_peer_certificate(server.get()));
+    if (peer) {
+      fprintf(stderr, "%x: Peer certificate was retained.\n", version);
+      return false;
+    }
+
+    SSL_SESSION *session = SSL_get_session(server.get());
+    if (!session->peer_sha256_valid) {
+      fprintf(stderr, "%x: peer_sha256_valid was not set.\n", version);
+      return false;
+    }
+
+    if (memcmp(cert_sha256, session->peer_sha256, SHA256_DIGEST_LENGTH) != 0) {
+      fprintf(stderr, "%x: peer_sha256 did not match.\n", version);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -1379,7 +1446,8 @@ int main() {
       !TestSequenceNumber(false /* TLS */) ||
       !TestSequenceNumber(true /* DTLS */) ||
       !TestOneSidedShutdown() ||
-      !TestSetFD()) {
+      !TestSetFD() ||
+      !TestRetainOnlySHA256OfCerts()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
