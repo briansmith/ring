@@ -426,13 +426,9 @@ const (
 )
 
 type ProtocolBugs struct {
-	// InvalidSKXSignature specifies that the signature in a
-	// ServerKeyExchange message should be invalid.
-	InvalidSKXSignature bool
-
-	// InvalidCertVerifySignature specifies that the signature in a
-	// CertificateVerify message should be invalid.
-	InvalidCertVerifySignature bool
+	// InvalidSignature specifies that the signature in a ServerKeyExchange
+	// or CertificateVerify message should be invalid.
+	InvalidSignature bool
 
 	// SendCurve, if non-zero, causes the ServerKeyExchange message to use
 	// the specified curve ID rather than the negotiated one.

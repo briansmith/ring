@@ -397,10 +397,6 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 	msg = append(msg, hello.random...)
 	msg = append(msg, params...)
 
-	if config.Bugs.InvalidSKXSignature {
-		msg[0] ^= 0x80
-	}
-
 	var sigAlg signatureAlgorithm
 	var err error
 	if ka.version >= VersionTLS12 {

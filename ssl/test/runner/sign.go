@@ -51,6 +51,13 @@ func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Con
 }
 
 func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg signatureAlgorithm, msg []byte) ([]byte, error) {
+	if config.Bugs.InvalidSignature {
+		newMsg := make([]byte, len(msg))
+		copy(newMsg, msg)
+		newMsg[0] ^= 0x80
+		msg = newMsg
+	}
+
 	signer, err := getSigner(version, key, config, sigAlg)
 	if err != nil {
 		return nil, err

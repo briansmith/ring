@@ -1051,63 +1051,6 @@ func bigFromHex(hex string) *big.Int {
 func addBasicTests() {
 	basicTests := []testCase{
 		{
-			name: "BadRSASignature",
-			config: Config{
-				// TODO(davidben): Add a TLS 1.3 version of this.
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				Bugs: ProtocolBugs{
-					InvalidSKXSignature: true,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_SIGNATURE:",
-		},
-		{
-			name: "BadECDSASignature",
-			config: Config{
-				// TODO(davidben): Add a TLS 1.3 version of this.
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-				Bugs: ProtocolBugs{
-					InvalidSKXSignature: true,
-				},
-				Certificates: []Certificate{ecdsaP256Certificate},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_SIGNATURE:",
-		},
-		{
-			testType: serverTest,
-			name:     "BadRSASignature-ClientAuth",
-			config: Config{
-				// TODO(davidben): Add a TLS 1.3 version of this.
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					InvalidCertVerifySignature: true,
-				},
-				Certificates: []Certificate{rsaCertificate},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_SIGNATURE:",
-			flags:         []string{"-require-any-client-certificate"},
-		},
-		{
-			testType: serverTest,
-			name:     "BadECDSASignature-ClientAuth",
-			config: Config{
-				// TODO(davidben): Add a TLS 1.3 version of this.
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					InvalidCertVerifySignature: true,
-				},
-				Certificates: []Certificate{ecdsaP256Certificate},
-			},
-			shouldFail:    true,
-			expectedError: ":BAD_SIGNATURE:",
-			flags:         []string{"-require-any-client-certificate"},
-		},
-		{
 			name: "NoFallbackSCSV",
 			config: Config{
 				Bugs: ProtocolBugs{
@@ -4774,17 +4717,36 @@ var testSignatureAlgorithms = []struct {
 	{"RSA-PSS-SHA256", signatureRSAPSSWithSHA256, testCertRSA},
 	{"RSA-PSS-SHA384", signatureRSAPSSWithSHA384, testCertRSA},
 	{"RSA-PSS-SHA512", signatureRSAPSSWithSHA512, testCertRSA},
+	// Tests for key types prior to TLS 1.2.
+	{"RSA", 0, testCertRSA},
+	{"ECDSA", 0, testCertECDSAP256},
 }
 
 const fakeSigAlg1 signatureAlgorithm = 0x2a01
 const fakeSigAlg2 signatureAlgorithm = 0xff01
 
 func addSignatureAlgorithmTests() {
+	// Not all ciphers involve a signature. Advertise a list which gives all
+	// versions a signing cipher.
+	signingCiphers := []uint16{
+		TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+		TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+		TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+	}
+
 	// Make sure each signature algorithm works. Include some fake values in
 	// the list and ensure they're ignored.
 	for _, alg := range testSignatureAlgorithms {
 		for _, ver := range tlsVersions {
-			if ver.version < VersionTLS12 {
+			if (ver.version < VersionTLS12) != (alg.id == 0) {
+				continue
+			}
+
+			// TODO(davidben): Support ECDSA in SSL 3.0 in Go for testing
+			// or remove it in C.
+			if ver.version == VersionSSL30 && alg.cert != testCertRSA {
 				continue
 			}
 
@@ -4857,11 +4819,8 @@ func addSignatureAlgorithmTests() {
 				testType: serverTest,
 				name:     "ServerAuth-Sign" + suffix,
 				config: Config{
-					MaxVersion: ver.version,
-					CipherSuites: []uint16{
-						TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-					},
+					MaxVersion:   ver.version,
+					CipherSuites: signingCiphers,
 					VerifySignatureAlgorithms: []signatureAlgorithm{
 						fakeSigAlg1,
 						alg.id,
@@ -4883,10 +4842,7 @@ func addSignatureAlgorithmTests() {
 				config: Config{
 					MaxVersion:   ver.version,
 					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-					CipherSuites: []uint16{
-						TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-					},
+					CipherSuites: signingCiphers,
 					SignSignatureAlgorithms: []signatureAlgorithm{
 						alg.id,
 					},
@@ -4902,6 +4858,47 @@ func addSignatureAlgorithmTests() {
 				shouldFail:    shouldFail,
 				expectedError: verifyError,
 			})
+
+			if !shouldFail {
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "ClientAuth-InvalidSignature" + suffix,
+					config: Config{
+						MaxVersion:   ver.version,
+						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+						SignSignatureAlgorithms: []signatureAlgorithm{
+							alg.id,
+						},
+						Bugs: ProtocolBugs{
+							InvalidSignature: true,
+						},
+					},
+					flags: []string{
+						"-require-any-client-certificate",
+						"-enable-all-curves",
+					},
+					shouldFail:    true,
+					expectedError: ":BAD_SIGNATURE:",
+				})
+
+				testCases = append(testCases, testCase{
+					name: "ServerAuth-InvalidSignature" + suffix,
+					config: Config{
+						MaxVersion:   ver.version,
+						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+						CipherSuites: signingCiphers,
+						SignSignatureAlgorithms: []signatureAlgorithm{
+							alg.id,
+						},
+						Bugs: ProtocolBugs{
+							InvalidSignature: true,
+						},
+					},
+					flags:         []string{"-enable-all-curves"},
+					shouldFail:    true,
+					expectedError: ":BAD_SIGNATURE:",
+				})
+			}
 		}
 	}
 

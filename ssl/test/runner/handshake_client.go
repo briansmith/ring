@@ -808,13 +808,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		if c.vers > VersionSSL30 {
-			msg := hs.finishedHash.buffer
-			if c.config.Bugs.InvalidCertVerifySignature {
-				msg = make([]byte, len(hs.finishedHash.buffer))
-				copy(msg, hs.finishedHash.buffer)
-				msg[0] ^= 0x80
-			}
-			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, msg)
+			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
 			if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
 				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
 			}
@@ -826,7 +820,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				err = errors.New("unsupported signature type for client certificate")
 			} else {
 				digest := hs.finishedHash.hashForClientCertificateSSL3(hs.masterSecret)
-				if c.config.Bugs.InvalidCertVerifySignature {
+				if c.config.Bugs.InvalidSignature {
 					digest[0] ^= 0x80
 				}
 				certVerify.signature, err = rsa.SignPKCS1v15(c.config.rand(), rsaKey, crypto.MD5SHA1, digest)
