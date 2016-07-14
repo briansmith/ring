@@ -468,6 +468,10 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
  * configured and zero otherwise. */
 int ssl_has_private_key(const SSL *ssl);
 
+/* ssl_is_ecdsa_key_type returns one if |type| is an ECDSA key type and zero
+ * otherwise. */
+int ssl_is_ecdsa_key_type(int type);
+
 /* ssl_private_key_* call the corresponding function on the
  * |SSL_PRIVATE_KEY_METHOD| for |ssl|, if configured. Otherwise, they implement
  * the operation with |EVP_PKEY|. */

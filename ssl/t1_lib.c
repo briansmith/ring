@@ -2596,12 +2596,17 @@ int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
   /* Before TLS 1.2, the signature algorithm isn't negotiated as part of the
    * handshake. It is fixed at MD5-SHA1 for RSA and SHA1 for ECDSA. */
   if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (ssl_private_key_type(ssl) == EVP_PKEY_RSA) {
+    int type = ssl_private_key_type(ssl);
+    if (type == NID_rsaEncryption) {
       *out = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
-    } else {
-      *out = SSL_SIGN_ECDSA_SHA1;
+      return 1;
     }
-    return 1;
+    if (ssl_is_ecdsa_key_type(type)) {
+      *out = SSL_SIGN_ECDSA_SHA1;
+      return 1;
+    }
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
+    return 0;
   }
 
   const uint16_t *sigalgs;

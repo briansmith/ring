@@ -147,7 +147,16 @@ static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
 }
 
 static int AsyncPrivateKeyType(SSL *ssl) {
-  return EVP_PKEY_id(GetTestState(ssl)->private_key.get());
+  EVP_PKEY *key = GetTestState(ssl)->private_key.get();
+  switch (EVP_PKEY_id(key)) {
+    case EVP_PKEY_RSA:
+      return NID_rsaEncryption;
+    case EVP_PKEY_EC:
+      return EC_GROUP_get_curve_name(
+          EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
+    default:
+      return NID_undef;
+  }
 }
 
 static size_t AsyncPrivateKeyMaxSignatureLen(SSL *ssl) {

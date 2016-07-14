@@ -1424,7 +1424,7 @@ static int ssl3_get_client_key_exchange(SSL *ssl) {
     size_t decrypt_len;
     if (ssl->state == SSL3_ST_SR_KEY_EXCH_A) {
       if (!ssl_has_private_key(ssl) ||
-          ssl_private_key_type(ssl) != EVP_PKEY_RSA) {
+          ssl_private_key_type(ssl) != NID_rsaEncryption) {
         al = SSL_AD_HANDSHAKE_FAILURE;
         OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_RSA_CERTIFICATE);
         goto f_err;

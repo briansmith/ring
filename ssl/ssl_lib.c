@@ -1905,10 +1905,11 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
   uint32_t mask_a = 0;
 
   if (ssl->cert->x509 != NULL && ssl_has_private_key(ssl)) {
-    if (ssl_private_key_type(ssl) == EVP_PKEY_RSA) {
+    int type = ssl_private_key_type(ssl);
+    if (type == NID_rsaEncryption) {
       mask_k |= SSL_kRSA;
       mask_a |= SSL_aRSA;
-    } else if (ssl_private_key_type(ssl) == EVP_PKEY_EC) {
+    } else if (ssl_is_ecdsa_key_type(type)) {
       /* An ECC certificate may be usable for ECDSA cipher suites depending on
        * the key usage extension and on the client's group preferences. */
       X509 *x = ssl->cert->x509;
