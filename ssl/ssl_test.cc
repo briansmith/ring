@@ -1360,6 +1360,61 @@ static uint16_t kVersions[] = {
 
 static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) { return 1; }
 
+static bool TestGetPeerCertificate() {
+  ScopedX509 cert = GetTestCertificate();
+  ScopedEVP_PKEY key = GetTestKey();
+  if (!cert || !key) {
+    return false;
+  }
+
+  for (uint16_t version : kVersions) {
+    // Configure both client and server to accept any certificate.
+    ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+    if (!ctx ||
+        !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
+        !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+      return false;
+    }
+    SSL_CTX_set_min_version(ctx.get(), version);
+    SSL_CTX_set_max_version(ctx.get(), version);
+    SSL_CTX_set_verify(
+        ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_cert_verify_callback(ctx.get(), VerifySucceed, NULL);
+
+    ScopedSSL client, server;
+    if (!ConnectClientAndServer(&client, &server, ctx.get(), ctx.get())) {
+      return false;
+    }
+
+    // Client and server should both see the leaf certificate.
+    ScopedX509 peer(SSL_get_peer_certificate(server.get()));
+    if (!peer || X509_cmp(cert.get(), peer.get()) != 0) {
+      fprintf(stderr, "%x: Server peer certificate did not match.\n", version);
+      return false;
+    }
+
+    peer.reset(SSL_get_peer_certificate(client.get()));
+    if (!peer || X509_cmp(cert.get(), peer.get()) != 0) {
+      fprintf(stderr, "%x: Client peer certificate did not match.\n", version);
+      return false;
+    }
+
+    // However, for historical reasons, the chain includes the leaf on the
+    // client, but does not on the server.
+    if (sk_X509_num(SSL_get_peer_cert_chain(client.get())) != 1) {
+      fprintf(stderr, "%x: Client peer chain was incorrect.\n", version);
+      return false;
+    }
+
+    if (sk_X509_num(SSL_get_peer_cert_chain(server.get())) != 0) {
+      fprintf(stderr, "%x: Server peer chain was incorrect.\n", version);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 static bool TestRetainOnlySHA256OfCerts() {
   ScopedX509 cert = GetTestCertificate();
   ScopedEVP_PKEY key = GetTestKey();
@@ -1447,6 +1502,7 @@ int main() {
       !TestSequenceNumber(true /* DTLS */) ||
       !TestOneSidedShutdown() ||
       !TestSetFD() ||
+      !TestGetPeerCertificate() ||
       !TestRetainOnlySHA256OfCerts()) {
     ERR_print_errors_fp(stderr);
     return 1;
