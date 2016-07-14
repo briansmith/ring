@@ -484,15 +484,13 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t signature_algorithm, const uint8_t *in, size_t in_len);
 
-enum ssl_private_key_result_t ssl_private_key_sign_complete(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
-
 enum ssl_private_key_result_t ssl_private_key_decrypt(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     const uint8_t *in, size_t in_len);
 
-enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
+enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
+                                                       size_t *out_len,
+                                                       size_t max_out);
 
 /* ssl_private_key_supports_signature_algorithm returns one if |ssl|'s private
  * key supports |signature_algorithm| and zero otherwise. */

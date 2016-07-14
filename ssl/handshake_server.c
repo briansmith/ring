@@ -1112,8 +1112,7 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
       OPENSSL_free(transcript_data);
     } else {
       assert(ssl->state == SSL3_ST_SW_KEY_EXCH_B);
-      sign_result =
-          ssl_private_key_sign_complete(ssl, ptr, &sig_len, max_sig_len);
+      sign_result = ssl_private_key_complete(ssl, ptr, &sig_len, max_sig_len);
     }
 
     switch (sign_result) {
@@ -1452,8 +1451,8 @@ static int ssl3_get_client_key_exchange(SSL *ssl) {
     } else {
       assert(ssl->state == SSL3_ST_SR_KEY_EXCH_B);
       /* Complete async decrypt. */
-      decrypt_result = ssl_private_key_decrypt_complete(
-          ssl, decrypt_buf, &decrypt_len, rsa_size);
+      decrypt_result =
+          ssl_private_key_complete(ssl, decrypt_buf, &decrypt_len, rsa_size);
     }
 
     switch (decrypt_result) {

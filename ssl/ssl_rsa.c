@@ -626,10 +626,13 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t signature_algorithm, const uint8_t *in, size_t in_len) {
   if (ssl->cert->key_method != NULL) {
-    /* For now, custom private keys can only handle pre-TLS-1.3 signature
-     * algorithms.
-     *
-     * TODO(davidben): Switch SSL_PRIVATE_KEY_METHOD to message-based APIs. */
+    if (ssl->cert->key_method->sign != NULL) {
+      return ssl->cert->key_method->sign(ssl, out, out_len, max_out,
+                                         signature_algorithm, in, in_len);
+    }
+
+    /* TODO(davidben): Remove support for |sign_digest|-only
+     * |SSL_PRIVATE_KEY_METHOD|s. */
     const EVP_MD *md;
     int curve;
     if (!is_rsa_pkcs1(&md, signature_algorithm) &&
@@ -644,8 +647,8 @@ enum ssl_private_key_result_t ssl_private_key_sign(
       return ssl_private_key_failure;
     }
 
-    return ssl->cert->key_method->sign(ssl, out, out_len, max_out, md, hash,
-                                       hash_len);
+    return ssl->cert->key_method->sign_digest(ssl, out, out_len, max_out, md,
+                                              hash, hash_len);
   }
 
   const EVP_MD *md;
@@ -671,12 +674,6 @@ enum ssl_private_key_result_t ssl_private_key_sign(
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
   return ssl_private_key_failure;
-}
-
-enum ssl_private_key_result_t ssl_private_key_sign_complete(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
-  /* Only custom keys may be asynchronous. */
-  return ssl->cert->key_method->sign_complete(ssl, out, out_len, max_out);
 }
 
 int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
@@ -727,10 +724,11 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
   return ssl_private_key_success;
 }
 
-enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
+enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
+                                                       size_t *out_len,
+                                                       size_t max_out) {
   /* Only custom keys may be asynchronous. */
-  return ssl->cert->key_method->decrypt_complete(ssl, out, out_len, max_out);
+  return ssl->cert->key_method->complete(ssl, out, out_len, max_out);
 }
 
 int ssl_private_key_supports_signature_algorithm(SSL *ssl,
@@ -769,6 +767,11 @@ int ssl_private_key_supports_signature_algorithm(SSL *ssl,
      * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check
      * the size to fall back to another algorithm. */
     if (ssl_private_key_max_signature_len(ssl) < 2 * EVP_MD_size(md) + 2) {
+      return 0;
+    }
+
+    /* RSA-PSS is only supported by message-based private keys. */
+    if (ssl->cert->key_method != NULL && ssl->cert->key_method->sign == NULL) {
       return 0;
     }
 

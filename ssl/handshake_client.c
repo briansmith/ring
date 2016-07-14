@@ -1727,8 +1727,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
     ssl3_free_handshake_buffer(ssl);
   } else {
     assert(ssl->state == SSL3_ST_CW_CERT_VRFY_B);
-    sign_result =
-        ssl_private_key_sign_complete(ssl, ptr, &sig_len, max_sig_len);
+    sign_result = ssl_private_key_complete(ssl, ptr, &sig_len, max_sig_len);
   }
 
   switch (sign_result) {

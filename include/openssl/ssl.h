@@ -992,35 +992,50 @@ typedef struct ssl_private_key_method_st {
    * key used by |ssl|. This must be a constant value for a given |ssl|. */
   size_t (*max_signature_len)(SSL *ssl);
 
-  /* sign signs |in_len| bytes of digest from |in|. |md| is the hash function
-   * used to calculate |in|. On success, it returns |ssl_private_key_success|
-   * and writes at most |max_out| bytes of signature data to |out|. On failure,
-   * it returns |ssl_private_key_failure|. If the operation has not completed,
-   * it returns |ssl_private_key_retry|. |sign| should arrange for the
-   * high-level operation on |ssl| to be retried when the operation is
-   * completed. This will result in a call to |sign_complete|.
+  /* sign signs the message |in| in using the specified signature algorithm. On
+   * success, it returns |ssl_private_key_success| and writes at most |max_out|
+   * bytes of signature data to |out| and sets |*out_len| to the number of bytes
+   * written. On failure, it returns |ssl_private_key_failure|. If the operation
+   * has not completed, it returns |ssl_private_key_retry|. |sign| should
+   * arrange for the high-level operation on |ssl| to be retried when the
+   * operation is completed. This will result in a call to |complete|.
+   *
+   * |signature_algorithm| is one of the |SSL_SIGN_*| values, as defined in TLS
+   * 1.3. Note that, in TLS 1.2, ECDSA algorithms do not require that curve
+   * sizes match hash sizes, so the curve portion of |SSL_SIGN_ECDSA_*| values
+   * must be ignored. BoringSSL will internally handle the curve matching logic
+   * where appropriate.
+   *
+   * It is an error to call |sign| while another private key operation is in
+   * progress on |ssl|. */
+  enum ssl_private_key_result_t (*sign)(SSL *ssl, uint8_t *out, size_t *out_len,
+                                        size_t max_out,
+                                        uint16_t signature_algorithm,
+                                        const uint8_t *in, size_t in_len);
+
+  /* sign_digest signs |in_len| bytes of digest from |in|. |md| is the hash
+   * function used to calculate |in|. On success, it returns
+   * |ssl_private_key_success| and writes at most |max_out| bytes of signature
+   * data to |out|. On failure, it returns |ssl_private_key_failure|. If the
+   * operation has not completed, it returns |ssl_private_key_retry|. |sign|
+   * should arrange for the high-level operation on |ssl| to be retried when the
+   * operation is completed. This will result in a call to |complete|.
    *
    * If the key is an RSA key, implementations must use PKCS#1 padding. |in| is
    * the digest itself, so the DigestInfo prefix, if any, must be prepended by
    * |sign|. If |md| is |EVP_md5_sha1|, there is no prefix.
    *
-   * It is an error to call |sign| while another private key operation is in
-   * progress on |ssl|. */
-  enum ssl_private_key_result_t (*sign)(SSL *ssl, uint8_t *out, size_t *out_len,
-                                        size_t max_out, const EVP_MD *md,
-                                        const uint8_t *in, size_t in_len);
-
-  /* sign_complete completes a pending |sign| operation. If the operation has
-   * completed, it returns |ssl_private_key_success| and writes the result to
-   * |out| as in |sign|. Otherwise, it returns |ssl_private_key_failure| on
-   * failure and |ssl_private_key_retry| if the operation is still in progress.
+   * It is an error to call |sign_digest| while another private key operation is
+   * in progress on |ssl|.
    *
-   * |sign_complete| may be called arbitrarily many times before completion, but
-   * it is an error to call |sign_complete| if there is no pending |sign|
-   * operation in progress on |ssl|. */
-  enum ssl_private_key_result_t (*sign_complete)(SSL *ssl, uint8_t *out,
-                                                 size_t *out_len,
-                                                 size_t max_out);
+   * This function is deprecated. Implement |sign| instead.
+   *
+   * TODO(davidben): Remove this function. */
+  enum ssl_private_key_result_t (*sign_digest)(SSL *ssl, uint8_t *out,
+                                               size_t *out_len, size_t max_out,
+                                               const EVP_MD *md,
+                                               const uint8_t *in,
+                                               size_t in_len);
 
   /* decrypt decrypts |in_len| bytes of encrypted data from |in|. On success it
    * returns |ssl_private_key_success|, writes at most |max_out| bytes of
@@ -1028,9 +1043,9 @@ typedef struct ssl_private_key_method_st {
    * written. On failure it returns |ssl_private_key_failure|. If the operation
    * has not completed, it returns |ssl_private_key_retry|. The caller should
    * arrange for the high-level operation on |ssl| to be retried when the
-   * operation is completed, which will result in a call to |decrypt_complete|.
-   * This function only works with RSA keys and should perform a raw RSA
-   * decryption operation with no padding.
+   * operation is completed, which will result in a call to |complete|. This
+   * function only works with RSA keys and should perform a raw RSA decryption
+   * operation with no padding.
    *
    * It is an error to call |decrypt| while another private key operation is in
    * progress on |ssl|. */
@@ -1038,18 +1053,16 @@ typedef struct ssl_private_key_method_st {
                                            size_t *out_len, size_t max_out,
                                            const uint8_t *in, size_t in_len);
 
-  /* decrypt_complete completes a pending |decrypt| operation. If the operation
-   * has completed, it returns |ssl_private_key_success| and writes the result
-   * to |out| as in |decrypt|. Otherwise, it returns |ssl_private_key_failure|
-   * on failure and |ssl_private_key_retry| if the operation is still in
-   * progress.
+  /* complete completes a pending operation. If the operation has completed, it
+   * returns |ssl_private_key_success| and writes the result to |out| as in
+   * |sign|. Otherwise, it returns |ssl_private_key_failure| on failure and
+   * |ssl_private_key_retry| if the operation is still in progress.
    *
-   * |decrypt_complete| may be called arbitrarily many times before completion,
-   * but it is an error to call |decrypt_complete| if there is no pending
-   * |decrypt| operation in progress on |ssl|. */
-  enum ssl_private_key_result_t (*decrypt_complete)(SSL *ssl, uint8_t *out,
-                                                    size_t *out_len,
-                                                    size_t max_out);
+   * |complete| may be called arbitrarily many times before completion, but it
+   * is an error to call |complete| if there is no pending operation in progress
+   * on |ssl|. */
+  enum ssl_private_key_result_t (*complete)(SSL *ssl, uint8_t *out,
+                                            size_t *out_len, size_t max_out);
 } SSL_PRIVATE_KEY_METHOD;
 
 /* SSL_set_private_key_method configures a custom private key on |ssl|.
