@@ -986,6 +986,10 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		return errors.New("server advertised Channel ID over TLS 1.3")
 	}
 
+	if serverExtensions.extendedMasterSecret && c.vers >= VersionTLS13 && enableTLS13Handshake {
+		return errors.New("tls: server advertised extended master secret over TLS 1.3")
+	}
+
 	if serverExtensions.srtpProtectionProfile != 0 {
 		if serverExtensions.srtpMasterKeyIdentifier != "" {
 			return errors.New("tls: server selected SRTP MKI value")
