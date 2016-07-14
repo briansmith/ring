@@ -4286,7 +4286,14 @@ func addExtensionTests() {
 
 func addResumptionVersionTests() {
 	for _, sessionVers := range tlsVersions {
+		// TODO(davidben,svaldez): Implement resumption in TLS 1.3.
+		if sessionVers.version >= VersionTLS13 {
+			continue
+		}
 		for _, resumeVers := range tlsVersions {
+			if resumeVers.version >= VersionTLS13 {
+				continue
+			}
 			cipher := TLS_RSA_WITH_AES_128_CBC_SHA
 			if sessionVers.version >= VersionTLS13 || resumeVers.version >= VersionTLS13 {
 				// TLS 1.3 only shares ciphers with TLS 1.2, so
