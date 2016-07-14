@@ -3242,16 +3242,16 @@ OPENSSL_EXPORT int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
 
 #define SSL_get_cipher(ssl) SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))
 #define SSL_get_cipher_bits(ssl, out_alg_bits) \
-	  SSL_CIPHER_get_bits(SSL_get_current_cipher(ssl), out_alg_bits)
+    SSL_CIPHER_get_bits(SSL_get_current_cipher(ssl), out_alg_bits)
 #define SSL_get_cipher_version(ssl) \
-	  SSL_CIPHER_get_version(SSL_get_current_cipher(ssl))
+    SSL_CIPHER_get_version(SSL_get_current_cipher(ssl))
 #define SSL_get_cipher_name(ssl) \
-	  SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))
+    SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))
 #define SSL_get_time(session) SSL_SESSION_get_time(session)
 #define SSL_set_time(session, time) SSL_SESSION_set_time((session), (time))
 #define SSL_get_timeout(session) SSL_SESSION_get_timeout(session)
 #define SSL_set_timeout(session, timeout) \
-		SSL_SESSION_set_timeout((session), (timeout))
+    SSL_SESSION_set_timeout((session), (timeout))
 
 typedef struct ssl_comp_st SSL_COMP;
 
