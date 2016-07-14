@@ -1379,6 +1379,18 @@ func addBasicTests() {
 			expectedError: ":DECODE_ERROR:",
 		},
 		{
+			name: "EmptyCertificateList-TLS13",
+			config: Config{
+				MaxVersion:   VersionTLS13,
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					EmptyCertificateList: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DECODE_ERROR:",
+		},
+		{
 			name:             "TLSFatalBadPackets",
 			damageFirstWrite: true,
 			shouldFail:       true,
