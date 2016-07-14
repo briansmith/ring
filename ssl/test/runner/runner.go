@@ -259,8 +259,6 @@ type testCase struct {
 	messageLen int
 	// messageCount is the number of test messages that will be sent.
 	messageCount int
-	// digestPrefs is the list of digest preferences from the client.
-	digestPrefs string
 	// certFile is the path to the certificate to use for the server.
 	certFile string
 	// keyFile is the path to the private key to use for the server.
@@ -742,11 +740,6 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		} else {
 			flags = append(flags, path.Join(*resourceDir, test.certFile))
 		}
-	}
-
-	if test.digestPrefs != "" {
-		flags = append(flags, "-digest-prefs")
-		flags = append(flags, test.digestPrefs)
 	}
 
 	if test.protocol == dtls {
@@ -4736,6 +4729,13 @@ func addSignatureAlgorithmTests() {
 		TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
 	}
 
+	var allAlgorithms []signatureAlgorithm
+	for _, alg := range testSignatureAlgorithms {
+		if alg.id != 0 {
+			allAlgorithms = append(allAlgorithms, alg.id)
+		}
+	}
+
 	// Make sure each signature algorithm works. Include some fake values in
 	// the list and ensure they're ignored.
 	for _, alg := range testSignatureAlgorithms {
@@ -4897,6 +4897,41 @@ func addSignatureAlgorithmTests() {
 					flags:         []string{"-enable-all-curves"},
 					shouldFail:    true,
 					expectedError: ":BAD_SIGNATURE:",
+				})
+			}
+
+			if ver.version >= VersionTLS12 && !shouldFail {
+				testCases = append(testCases, testCase{
+					name: "ClientAuth-Sign-Negotiate" + suffix,
+					config: Config{
+						MaxVersion:                ver.version,
+						ClientAuth:                RequireAnyClientCert,
+						VerifySignatureAlgorithms: allAlgorithms,
+					},
+					flags: []string{
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
+						"-signing-prefs", strconv.Itoa(int(alg.id)),
+					},
+					expectedPeerSignatureAlgorithm: alg.id,
+				})
+
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "ServerAuth-Sign-Negotiate" + suffix,
+					config: Config{
+						MaxVersion:                ver.version,
+						CipherSuites:              signingCiphers,
+						VerifySignatureAlgorithms: allAlgorithms,
+					},
+					flags: []string{
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
+						"-signing-prefs", strconv.Itoa(int(alg.id)),
+					},
+					expectedPeerSignatureAlgorithm: alg.id,
 				})
 			}
 		}
@@ -5095,6 +5130,24 @@ func addSignatureAlgorithmTests() {
 	//
 	// TODO(davidben): Add TLS 1.3 versions of these.
 	testCases = append(testCases, testCase{
+		name: "NoCommonAlgorithms-Digests",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			ClientAuth: RequireAnyClientCert,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA512,
+				signatureRSAPKCS1WithSHA1,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-digest-prefs", "SHA256",
+		},
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+	})
+	testCases = append(testCases, testCase{
 		name: "NoCommonAlgorithms",
 		config: Config{
 			MaxVersion: VersionTLS12,
@@ -5107,8 +5160,26 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
 		},
-		digestPrefs:   "SHA256",
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+	})
+	testCases = append(testCases, testCase{
+		name: "NoCommonAlgorithms-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			ClientAuth: RequireAnyClientCert,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPSSWithSHA512,
+				signatureRSAPSSWithSHA384,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
+		},
 		shouldFail:    true,
 		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
@@ -5125,8 +5196,8 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-digest-prefs", "SHA256,SHA1",
 		},
-		digestPrefs:                    "SHA256,SHA1",
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 	})
 	testCases = append(testCases, testCase{
@@ -5141,8 +5212,8 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-digest-prefs", "SHA512,SHA256,SHA1",
 		},
-		digestPrefs:                    "SHA512,SHA256,SHA1",
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA1,
 	})
 	testCases = append(testCases, testCase{
@@ -5160,6 +5231,28 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
+	})
+
+	// Test that the signing preference list may include extra algorithms
+	// without negotiation problems.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "FilterExtraAlgorithms",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA256,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-signing-prefs", strconv.Itoa(int(fakeSigAlg1)),
+			"-signing-prefs", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
+			"-signing-prefs", strconv.Itoa(int(fakeSigAlg2)),
 		},
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 	})

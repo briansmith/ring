@@ -315,6 +315,14 @@ static bool GetCertificate(SSL *ssl, ScopedX509 *out_x509,
     }
   }
 
+  if (!config->signing_prefs.empty()) {
+    std::vector<uint16_t> u16s(config->signing_prefs.begin(),
+                               config->signing_prefs.end());
+    if (!SSL_set_signing_algorithm_prefs(ssl, u16s.data(), u16s.size())) {
+      return false;
+    }
+  }
+
   if (!config->key_file.empty()) {
     *out_pkey = LoadPrivateKey(config->key_file.c_str());
     if (!*out_pkey) {

@@ -16,6 +16,7 @@
 #define HEADER_TEST_CONFIG
 
 #include <string>
+#include <vector>
 
 
 struct TestConfig {
@@ -25,6 +26,7 @@ struct TestConfig {
   bool resume = false;
   bool fallback_scsv = false;
   std::string digest_prefs;
+  std::vector<int> signing_prefs;
   std::string key_file;
   std::string cert_file;
   std::string expected_server_name;
