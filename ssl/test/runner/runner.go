@@ -1626,41 +1626,6 @@ func addBasicTests() {
 			expectedLocalError: "remote error: access denied",
 		},
 		{
-			name: "WrongMessageType",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					WrongCertificateMessageType: true,
-				},
-			},
-			shouldFail:         true,
-			expectedError:      ":UNEXPECTED_MESSAGE:",
-			expectedLocalError: "remote error: unexpected message",
-		},
-		{
-			name: "WrongMessageType-TLS13",
-			config: Config{
-				Bugs: ProtocolBugs{
-					WrongCertificateMessageType: true,
-				},
-			},
-			shouldFail:         true,
-			expectedError:      ":UNEXPECTED_MESSAGE:",
-			expectedLocalError: "remote error: unexpected message",
-		},
-		{
-			protocol: dtls,
-			name:     "WrongMessageType-DTLS",
-			config: Config{
-				Bugs: ProtocolBugs{
-					WrongCertificateMessageType: true,
-				},
-			},
-			shouldFail:         true,
-			expectedError:      ":UNEXPECTED_MESSAGE:",
-			expectedLocalError: "remote error: unexpected message",
-		},
-		{
 			protocol: dtls,
 			name:     "FragmentMessageTypeMismatch-DTLS",
 			config: Config{
@@ -6365,6 +6330,265 @@ func addChangeCipherSpecTests() {
 	})
 }
 
+func addWrongMessageTypeTests() {
+	for _, protocol := range []protocol{tls, dtls} {
+		var suffix string
+		if protocol == dtls {
+			suffix = "-DTLS"
+		}
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			testType: serverTest,
+			name:     "WrongMessageType-ClientHello" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeClientHello,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		if protocol == dtls {
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "WrongMessageType-HelloVerifyRequest" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						SendWrongMessageType: typeHelloVerifyRequest,
+					},
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_MESSAGE:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+		}
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-ServerHello" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeServerHello,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-ServerCertificate" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeCertificate,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-CertificateStatus" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeCertificateStatus,
+				},
+			},
+			flags:              []string{"-enable-ocsp-stapling"},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-ServerKeyExchange" + suffix,
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeServerKeyExchange,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-CertificateRequest" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				ClientAuth: RequireAnyClientCert,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeCertificateRequest,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-ServerHelloDone" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeServerHelloDone,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     "WrongMessageType-ClientCertificate" + suffix,
+			config: Config{
+				Certificates: []Certificate{rsaCertificate},
+				MaxVersion:   VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeCertificate,
+				},
+			},
+			flags:              []string{"-require-any-client-certificate"},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     "WrongMessageType-CertificateVerify" + suffix,
+			config: Config{
+				Certificates: []Certificate{rsaCertificate},
+				MaxVersion:   VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeCertificateVerify,
+				},
+			},
+			flags:              []string{"-require-any-client-certificate"},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     "WrongMessageType-ClientKeyExchange" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeClientKeyExchange,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		if protocol != dtls {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     "WrongMessageType-NextProtocol" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS12,
+					NextProtos: []string{"bar"},
+					Bugs: ProtocolBugs{
+						SendWrongMessageType: typeNextProtocol,
+					},
+				},
+				flags:              []string{"-advertise-npn", "\x03foo\x03bar\x03baz"},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_MESSAGE:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     "WrongMessageType-ChannelID" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS12,
+					ChannelID:  channelIDKey,
+					Bugs: ProtocolBugs{
+						SendWrongMessageType: typeChannelID,
+					},
+				},
+				flags: []string{
+					"-expect-channel-id",
+					base64.StdEncoding.EncodeToString(channelIDBytes),
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_MESSAGE:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+		}
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     "WrongMessageType-ClientFinished" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeFinished,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-NewSessionTicket" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeNewSessionTicket,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "WrongMessageType-ServerFinished" + suffix,
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendWrongMessageType: typeFinished,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		})
+
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -6469,6 +6693,7 @@ func main() {
 	addTLS13RecordTests()
 	addAllStateMachineCoverageTests()
 	addChangeCipherSpecTests()
+	addWrongMessageTypeTests()
 
 	var wg sync.WaitGroup
 

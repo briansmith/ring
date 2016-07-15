@@ -736,9 +736,9 @@ type ProtocolBugs struct {
 	// content type to be sent immediately following the handshake.
 	SendInvalidRecordType bool
 
-	// WrongCertificateMessageType, if true, causes Certificate message to
-	// be sent with the wrong message type.
-	WrongCertificateMessageType bool
+	// SendWrongMessageType, if non-zero, causes messages of the specified
+	// type to be sent with the wrong value.
+	SendWrongMessageType byte
 
 	// FragmentMessageTypeMismatch, if true, causes all non-initial
 	// handshake fragments in DTLS to have the wrong message type.
