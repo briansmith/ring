@@ -57,8 +57,10 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/buf.h>
+#include <openssl/err.h>
 
 #include "internal.h"
 
@@ -100,6 +102,35 @@ static void dtls1_finish_handshake(SSL *ssl) {
   dtls_clear_incoming_messages(ssl);
 }
 
+static int dtls1_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+  /* Cipher changes are illegal when there are buffered incoming messages. */
+  if (dtls_has_incoming_messages(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    SSL_AEAD_CTX_free(aead_ctx);
+    return 0;
+  }
+
+  ssl->d1->r_epoch++;
+  memset(&ssl->d1->bitmap, 0, sizeof(ssl->d1->bitmap));
+  memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
+
+  SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
+  ssl->s3->aead_read_ctx = aead_ctx;
+  return 1;
+}
+
+static int dtls1_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+  ssl->d1->w_epoch++;
+  memcpy(ssl->d1->last_write_sequence, ssl->s3->write_sequence,
+         sizeof(ssl->s3->write_sequence));
+  memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
+
+  SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
+  ssl->s3->aead_write_ctx = aead_ctx;
+  return 1;
+}
+
 static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     1 /* is_dtls */,
     TLS1_1_VERSION,
@@ -124,6 +155,8 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_send_change_cipher_spec,
     dtls1_expect_flight,
     dtls1_received_flight,
+    dtls1_set_read_state,
+    dtls1_set_write_state,
 };
 
 const SSL_METHOD *DTLS_method(void) {

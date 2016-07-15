@@ -1261,6 +1261,9 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
 		postCCSBytes = postCCSBytes[5:]
+	} else if c.config.Bugs.SendUnencryptedFinished {
+		c.writeRecord(recordTypeHandshake, postCCSBytes)
+		postCCSBytes = nil
 	}
 	c.flushHandshake()
 
@@ -1280,7 +1283,7 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 		return errors.New("tls: simulating post-CCS alert")
 	}
 
-	if !c.config.Bugs.SkipFinished {
+	if !c.config.Bugs.SkipFinished && len(postCCSBytes) > 0 {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)
 		c.flushHandshake()
 	}

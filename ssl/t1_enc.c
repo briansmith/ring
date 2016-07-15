@@ -313,11 +313,10 @@ int tls1_change_cipher_state(SSL *ssl, int which) {
   }
 
   if (is_read) {
-    ssl_set_read_state(ssl, aead_ctx);
-  } else {
-    ssl_set_write_state(ssl, aead_ctx);
+    return ssl->method->set_read_state(ssl, aead_ctx);
   }
-  return 1;
+
+  return ssl->method->set_write_state(ssl, aead_ctx);
 }
 
 size_t SSL_get_key_block_len(const SSL *ssl) {

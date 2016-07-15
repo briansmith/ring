@@ -256,7 +256,7 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
 
 /* dtls1_is_current_message_complete returns one if the current handshake
  * message is complete and zero otherwise. */
-static int dtls1_is_current_message_complete(SSL *ssl) {
+static int dtls1_is_current_message_complete(const SSL *ssl) {
   hm_fragment *frag = ssl->d1->incoming_messages[ssl->d1->handshake_read_seq %
                                                  SSL_MAX_HANDSHAKE_FLIGHT];
   return frag != NULL && frag->reassembly == NULL;
@@ -457,11 +457,24 @@ int dtls1_hash_current_message(SSL *ssl) {
 }
 
 void dtls_clear_incoming_messages(SSL *ssl) {
-  size_t i;
-  for (i = 0; i < SSL_MAX_HANDSHAKE_FLIGHT; i++) {
+  for (size_t i = 0; i < SSL_MAX_HANDSHAKE_FLIGHT; i++) {
     dtls1_hm_fragment_free(ssl->d1->incoming_messages[i]);
     ssl->d1->incoming_messages[i] = NULL;
   }
+}
+
+int dtls_has_incoming_messages(const SSL *ssl) {
+  /* This function may not be called if there is a pending |dtls1_get_message|
+   * operation. */
+  assert(dtls1_is_current_message_complete(ssl));
+
+  size_t current = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
+  for (size_t i = 0; i < SSL_MAX_HANDSHAKE_FLIGHT; i++) {
+    if (i != current && ssl->d1->incoming_messages[i] != NULL) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,

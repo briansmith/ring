@@ -56,6 +56,9 @@
 
 #include <openssl/ssl.h>
 
+#include <assert.h>
+#include <string.h>
+
 #include <openssl/buf.h>
 
 #include "internal.h"
@@ -89,6 +92,26 @@ static void ssl3_finish_handshake(SSL *ssl) {
   ssl->init_num = 0;
 }
 
+static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+  /* TODO(davidben): In TLS 1.3, cipher changes are not always preceeded by a
+   * ChangeCipherSpec, so this must become a runtime check. */
+  assert(ssl->s3->rrec.length == 0);
+
+  memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
+
+  SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
+  ssl->s3->aead_read_ctx = aead_ctx;
+  return 1;
+}
+
+static int ssl3_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+  memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
+
+  SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
+  ssl->s3->aead_write_ctx = aead_ctx;
+  return 1;
+}
+
 static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     0 /* is_dtls */,
     SSL3_VERSION,
@@ -113,6 +136,8 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_send_change_cipher_spec,
     ssl3_expect_flight,
     ssl3_received_flight,
+    ssl3_set_read_state,
+    ssl3_set_write_state,
 };
 
 const SSL_METHOD *TLS_method(void) {

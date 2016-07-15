@@ -6175,8 +6175,6 @@ func addChangeCipherSpecTests() {
 	// rejected. Test both with and without handshake packing to handle both
 	// when the partial post-CCS message is in its own record and when it is
 	// attached to the pre-CCS message.
-	//
-	// TODO(davidben): Fix and test DTLS as well.
 	for _, packed := range []bool{false, true} {
 		var suffix string
 		if packed {
@@ -6259,6 +6257,25 @@ func addChangeCipherSpecTests() {
 			expectedError: ":UNEXPECTED_RECORD:",
 		})
 	}
+
+	// Test that, in DTLS, ChangeCipherSpec is not allowed when there are
+	// messages in the handshake queue. Do this by testing the server
+	// reading the client Finished, reversing the flight so Finished comes
+	// first.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "SendUnencryptedFinished-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendUnencryptedFinished:   true,
+				ReverseHandshakeFragments: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BUFFERED_MESSAGES_ON_CIPHER_CHANGE:",
+	})
 
 	// Test that early ChangeCipherSpecs are handled correctly.
 	testCases = append(testCases, testCase{

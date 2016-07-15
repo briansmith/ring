@@ -254,6 +254,12 @@ func (c *Conn) dtlsFlushHandshake() error {
 			tmp[i] = fragments[perm[i]]
 		}
 		fragments = tmp
+	} else if c.config.Bugs.ReverseHandshakeFragments {
+		tmp := make([][]byte, len(fragments))
+		for i := range tmp {
+			tmp[i] = fragments[len(fragments)-i-1]
+		}
+		fragments = tmp
 	}
 
 	maxRecordLen := c.config.Bugs.PackHandshakeFragments

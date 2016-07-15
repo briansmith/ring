@@ -446,14 +446,6 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      uint8_t type, const uint8_t *in, size_t in_len,
                      enum dtls1_use_epoch_t use_epoch);
 
-/* ssl_set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It takes
- * ownership of |aead_ctx|. */
-void ssl_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
-
-/* ssl_set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It takes
- * ownership of |aead_ctx|. */
-void ssl_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
-
 /* ssl_process_alert processes |in| as an alert and updates |ssl|'s shutdown
  * state. It returns one of |ssl_open_record_discard|, |ssl_open_record_error|,
  * |ssl_open_record_close_notify|, or |ssl_open_record_fatal_alert| as
@@ -657,6 +649,10 @@ size_t ssl_max_handshake_message_len(const SSL *ssl);
 
 /* dtls_clear_incoming_messages releases all buffered incoming messages. */
 void dtls_clear_incoming_messages(SSL *ssl);
+
+/* dtls_has_incoming_messages returns one if there are buffered incoming
+ * messages ahead of the current message and zero otherwise. */
+int dtls_has_incoming_messages(const SSL *ssl);
 
 typedef struct dtls_outgoing_message_st {
   uint8_t *data;
@@ -913,6 +909,14 @@ struct ssl_protocol_method_st {
   /* received_flight is called when the handshake has received a flight of
    * messages from the peer. */
   void (*received_flight)(SSL *ssl);
+  /* set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It takes
+   * ownership of |aead_ctx|. It returns one on success and zero if changing the
+   * read state is forbidden at this point. */
+  int (*set_read_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
+  /* set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It takes
+   * ownership of |aead_ctx|. It returns one on success and zero if changing the
+   * write state is forbidden at this point. */
+  int (*set_write_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
 };
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit

@@ -512,6 +512,10 @@ type ProtocolBugs struct {
 	// messages.
 	FragmentAcrossChangeCipherSpec bool
 
+	// SendUnencryptedFinished, if true, causes the Finished message to be
+	// send unencrypted before ChangeCipherSpec rather than after it.
+	SendUnencryptedFinished bool
+
 	// SendV2ClientHello causes the client to send a V2ClientHello
 	// instead of a normal ClientHello.
 	SendV2ClientHello bool
@@ -708,6 +712,10 @@ type ProtocolBugs struct {
 	// pre-CCS flights to be sent twice. (Post-CCS flights consist of
 	// Finished and will trigger a spurious retransmit.)
 	ReorderHandshakeFragments bool
+
+	// ReverseHandshakeFragments, if true, causes handshake fragments in
+	// DTLS to be reversed within a flight.
+	ReverseHandshakeFragments bool
 
 	// MixCompleteMessageWithFragments, if true, causes handshake
 	// messages in DTLS to redundantly both fragment the message
