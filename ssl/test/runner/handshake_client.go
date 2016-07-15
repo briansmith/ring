@@ -120,6 +120,14 @@ func (c *Conn) clientHandshake() error {
 			if err != nil {
 				return err
 			}
+
+			if c.config.Bugs.SendCurve != 0 {
+				curveID = c.config.Bugs.SendCurve
+			}
+			if c.config.Bugs.InvalidECDHPoint {
+				publicKey[0] ^= 0xff
+			}
+
 			hello.keyShares = append(hello.keyShares, keyShareEntry{
 				group:       curveID,
 				keyExchange: publicKey,
@@ -601,7 +609,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	masterSecret := hs.finishedHash.extractKey(handshakeSecret, zeroSecret)
 	trafficSecret := hs.finishedHash.deriveSecret(masterSecret, applicationTrafficLabel)
 
-	if certReq != nil {
+	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
 			hasRequestContext: true,
 			requestContext:    certReq.requestContext,
@@ -632,6 +640,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
+			}
+			if c.config.Bugs.SendSignatureAlgorithm != 0 {
+				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
 			}
 
 			hs.writeClientHash(certVerify.marshal())

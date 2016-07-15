@@ -324,6 +324,10 @@ Curves:
 	}
 
 	hs.hello.cipherSuite = hs.suite.id
+	if c.config.Bugs.SendCipherSuite != 0 {
+		hs.hello.cipherSuite = c.config.Bugs.SendCipherSuite
+	}
+
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
 	hs.finishedHash.discardHandshakeBuffer()
 	hs.writeClientHash(hs.clientHello.marshal())
@@ -367,8 +371,17 @@ Curves:
 			return err
 		}
 		hs.hello.hasKeyShare = true
+
+		curveID := selectedKeyShare.group
+		if c.config.Bugs.SendCurve != 0 {
+			curveID = config.Bugs.SendCurve
+		}
+		if c.config.Bugs.InvalidECDHPoint {
+			publicKey[0] ^= 0xff
+		}
+
 		hs.hello.keyShare = keyShareEntry{
-			group:       selectedKeyShare.group,
+			group:       curveID,
 			keyExchange: publicKey,
 		}
 	} else {
@@ -458,6 +471,10 @@ Curves:
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
+		}
+
+		if config.Bugs.SendSignatureAlgorithm != 0 {
+			certVerify.signatureAlgorithm = config.Bugs.SendSignatureAlgorithm
 		}
 
 		hs.writeServerHash(certVerify.marshal())
