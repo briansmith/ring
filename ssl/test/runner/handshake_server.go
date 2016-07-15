@@ -390,7 +390,15 @@ Curves:
 
 	// Send unencrypted ServerHello.
 	hs.writeServerHash(hs.hello.marshal())
-	c.writeRecord(recordTypeHandshake, hs.hello.marshal())
+	if config.Bugs.PartialEncryptedExtensionsWithServerHello {
+		helloBytes := hs.hello.marshal()
+		toWrite := make([]byte, 0, len(helloBytes)+1)
+		toWrite = append(toWrite, helloBytes...)
+		toWrite = append(toWrite, typeEncryptedExtensions)
+		c.writeRecord(recordTypeHandshake, toWrite)
+	} else {
+		c.writeRecord(recordTypeHandshake, hs.hello.marshal())
+	}
 	c.flushHandshake()
 
 	// Compute the handshake secret.
@@ -414,7 +422,12 @@ Curves:
 
 	// Send EncryptedExtensions.
 	hs.writeServerHash(encryptedExtensions.marshal())
-	c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal())
+	if config.Bugs.PartialEncryptedExtensionsWithServerHello {
+		// The first byte has already been sent.
+		c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal()[1:])
+	} else {
+		c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal())
+	}
 
 	if hs.suite.flags&suitePSK == 0 {
 		if config.ClientAuth >= RequestClientCert {

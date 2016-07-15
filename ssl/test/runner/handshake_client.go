@@ -257,7 +257,18 @@ NextCipherSuite:
 		c.writeV2Record(helloBytes)
 	} else {
 		helloBytes = hello.marshal()
-		c.writeRecord(recordTypeHandshake, helloBytes)
+		if c.config.Bugs.PartialClientFinishedWithClientHello {
+			// Include one byte of Finished. We can compute it
+			// without completing the handshake. This assumes we
+			// negotiate TLS 1.3 with no HelloRetryRequest or
+			// CertificateRequest.
+			toWrite := make([]byte, 0, len(helloBytes)+1)
+			toWrite = append(toWrite, helloBytes...)
+			toWrite = append(toWrite, typeFinished)
+			c.writeRecord(recordTypeHandshake, toWrite)
+		} else {
+			c.writeRecord(recordTypeHandshake, helloBytes)
+		}
 	}
 	c.flushHandshake()
 
@@ -657,7 +668,12 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		finished.verifyData[0]++
 	}
 	hs.writeClientHash(finished.marshal())
-	c.writeRecord(recordTypeHandshake, finished.marshal())
+	if c.config.Bugs.PartialClientFinishedWithClientHello {
+		// The first byte has already been sent.
+		c.writeRecord(recordTypeHandshake, finished.marshal()[1:])
+	} else {
+		c.writeRecord(recordTypeHandshake, finished.marshal())
+	}
 	c.flushHandshake()
 
 	// Switch to application data keys.

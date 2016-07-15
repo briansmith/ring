@@ -516,6 +516,16 @@ type ProtocolBugs struct {
 	// send unencrypted before ChangeCipherSpec rather than after it.
 	SendUnencryptedFinished bool
 
+	// PartialEncryptedExtensionsWithServerHello, if true, causes the TLS
+	// 1.3 server to send part of EncryptedExtensions unencrypted
+	// in the same record as ServerHello.
+	PartialEncryptedExtensionsWithServerHello bool
+
+	// PartialClientFinishedWithClientHello, if true, causes the TLS 1.3
+	// client to send part of Finished unencrypted in the same record as
+	// ClientHello.
+	PartialClientFinishedWithClientHello bool
+
 	// SendV2ClientHello causes the client to send a V2ClientHello
 	// instead of a normal ClientHello.
 	SendV2ClientHello bool
