@@ -768,6 +768,11 @@ STACK_OF(X509_NAME) *
  * on error. */
 int ssl_add_client_CA_list(SSL *ssl, CBB *cbb);
 
+/* ssl_check_leaf_certificate returns one if |leaf| is a suitable leaf server
+ * certificate for |ssl|. Otherwise, it returns zero and pushes an error on the
+ * error queue. */
+int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf);
+
 
 /* Underdocumented functions.
  *

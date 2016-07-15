@@ -922,49 +922,6 @@ err:
   return -1;
 }
 
-/* ssl3_check_leaf_certificate returns one if |leaf| is a suitable leaf server
- * certificate for |ssl|. Otherwise, it returns zero and pushes an error on the
- * error queue. */
-static int ssl3_check_leaf_certificate(SSL *ssl, X509 *leaf) {
-  int ret = 0;
-  EVP_PKEY *pkey = X509_get_pubkey(leaf);
-  if (pkey == NULL) {
-    goto err;
-  }
-
-  /* Check the certificate's type matches the cipher. */
-  const SSL_CIPHER *cipher = ssl->s3->tmp.new_cipher;
-  int expected_type = ssl_cipher_get_key_type(cipher);
-  assert(expected_type != EVP_PKEY_NONE);
-  if (pkey->type != expected_type) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
-    goto err;
-  }
-
-  if (cipher->algorithm_auth & SSL_aECDSA) {
-    /* TODO(davidben): This behavior is preserved from upstream. Should key
-     * usages be checked in other cases as well? */
-    /* This call populates the ex_flags field correctly */
-    X509_check_purpose(leaf, -1, 0);
-    if ((leaf->ex_flags & EXFLAG_KUSAGE) &&
-        !(leaf->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_ECC_CERT_NOT_FOR_SIGNING);
-      goto err;
-    }
-
-    if (!tls1_check_ec_cert(ssl, leaf)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
-      goto err;
-    }
-  }
-
-  ret = 1;
-
-err:
-  EVP_PKEY_free(pkey);
-  return ret;
-}
-
 static int ssl3_get_server_certificate(SSL *ssl) {
   int ret =
       ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE, ssl_hash_message);
@@ -988,7 +945,7 @@ static int ssl3_get_server_certificate(SSL *ssl) {
   }
 
   X509 *leaf = sk_X509_value(chain, 0);
-  if (!ssl3_check_leaf_certificate(ssl, leaf)) {
+  if (!ssl_check_leaf_certificate(ssl, leaf)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     goto err;
   }
