@@ -478,6 +478,10 @@ Curves:
 	masterSecret := hs.finishedHash.extractKey(handshakeSecret, hs.finishedHash.zeroSecret())
 	trafficSecret := hs.finishedHash.deriveSecret(masterSecret, applicationTrafficLabel)
 
+	// Switch to application data keys on write. In particular, any alerts
+	// from the client certificate are sent over these keys.
+	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
+
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {
@@ -548,8 +552,7 @@ Curves:
 	}
 	hs.writeClientHash(clientFinished.marshal())
 
-	// Switch to application data keys.
-	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
+	// Switch to application data keys on read.
 	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
 
 	// TODO(davidben): Derive and save the resumption master secret for receiving tickets.
