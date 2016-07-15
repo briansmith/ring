@@ -4425,7 +4425,12 @@ OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
  *
  * Although using either the CTRL values or their wrapper macros in #ifdefs is
  * still supported, the CTRL values may not be passed to |SSL_ctrl| and
- * |SSL_CTX_ctrl|. Call the functions (previously wrapper macros) instead. */
+ * |SSL_CTX_ctrl|. Call the functions (previously wrapper macros) instead.
+ *
+ * See PORTING.md in the BoringSSL source tree for a table of corresponding
+ * functions.
+ * https://boringssl.googlesource.com/boringssl/+/master/PORTING.md#Replacements-for-values
+ */
 
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist

@@ -79,7 +79,8 @@ will continue to function. However, the macros themselves will not work.
 
 Switch any `*_ctrl` callers to the macro/function versions. This works in both
 OpenSSL and BoringSSL. Note that BoringSSL's function versions will be
-type-checked and may require more care with types.
+type-checked and may require more care with types. See the end of this
+document for a table of functions to use.
 
 ### HMAC `EVP_PKEY`s
 
@@ -185,3 +186,60 @@ guarantees it.
 BoringSSL is in the process of deprecating OpenSSL's `d2i` and `i2d` in favor of
 new functions using the much less error-prone `CBS` and `CBB` types.
 BoringSSL-only code should use those functions where available.
+
+
+## Replacements for `CTRL` values
+
+When porting code which uses `SSL_CTX_ctrl` or `SSL_ctrl`, use the replacement
+functions below. If a function has both `SSL_CTX` and `SSL` variants, only the
+`SSL_CTX` version is listed.
+
+Note some values correspond to multiple functions depending on the `larg`
+parameter.
+
+`CTRL` value | Replacement function(s)
+-------------|-------------------------
+`DTLS_CTRL_GET_TIMEOUT` | `DTLSv1_get_timeout`
+`DTLS_CTRL_HANDLE_TIMEOUT` | `DTLSv1_handle_timeout`
+`SSL_CTRL_CHAIN` | `SSL_CTX_set0_chain` or `SSL_CTX_set1_chain`
+`SSL_CTRL_CHAIN_CERT` | `SSL_add0_chain_cert` or `SSL_add1_chain_cert`
+`SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS` | `SSL_CTX_clear_extra_chain_certs`
+`SSL_CTRL_CLEAR_MODE` | `SSL_CTX_clear_mode`
+`SSL_CTRL_CLEAR_OPTIONS` | `SSL_CTX_clear_options`
+`SSL_CTRL_EXTRA_CHAIN_CERT` | `SSL_CTX_add_extra_chain_cert`
+`SSL_CTRL_GET_CHAIN_CERTS` | `SSL_CTX_get0_chain_certs`
+`SSL_CTRL_GET_CLIENT_CERT_TYPES` | `SSL_get0_certificate_types`
+`SSL_CTRL_GET_EXTRA_CHAIN_CERTS` | `SSL_CTX_get_extra_chain_certs` or `SSL_CTX_get_extra_chain_certs_only`
+`SSL_CTRL_GET_MAX_CERT_LIST` | `SSL_CTX_get_max_cert_list`
+`SSL_CTRL_GET_NUM_RENEGOTIATIONS` | `SSL_num_renegotiations`
+`SSL_CTRL_GET_READ_AHEAD` | `SSL_CTX_get_read_ahead`
+`SSL_CTRL_GET_RI_SUPPORT` | `SSL_get_secure_renegotiation_support`
+`SSL_CTRL_GET_SESSION_REUSED` | `SSL_session_reused`
+`SSL_CTRL_GET_SESS_CACHE_MODE` | `SSL_CTX_get_session_cache_mode`
+`SSL_CTRL_GET_SESS_CACHE_SIZE` | `SSL_CTX_sess_get_cache_size`
+`SSL_CTRL_GET_TLSEXT_TICKET_KEYS` | `SSL_CTX_get_tlsext_ticket_keys`
+`SSL_CTRL_GET_TOTAL_RENEGOTIATIONS` | `SSL_total_renegotiations`
+`SSL_CTRL_MODE` | `SSL_CTX_get_mode` or `SSL_CTX_set_mode`
+`SSL_CTRL_NEED_TMP_RSA` | `SSL_CTX_need_tmp_RSA` is equivalent, but [*do not use this function*](https://freakattack.com/). (It is a no-op in BoringSSL.)
+`SSL_CTRL_OPTIONS` | `SSL_CTX_get_options` or `SSL_CTX_set_options`
+`SSL_CTRL_SESS_NUMBER` | `SSL_CTX_sess_number`
+`SSL_CTRL_SET_CURVES` | `SSL_CTX_set1_curves`
+`SSL_CTRL_SET_MAX_CERT_LIST` | `SSL_CTX_set_max_cert_list`
+`SSL_CTRL_SET_MAX_SEND_FRAGMENT` | `SSL_CTX_set_max_send_fragment`
+`SSL_CTRL_SET_MSG_CALLBACK` | `SSL_set_msg_callback`
+`SSL_CTRL_SET_MSG_CALLBACK_ARG` | `SSL_set_msg_callback_arg`
+`SSL_CTRL_SET_MTU` | `SSL_set_mtu`
+`SSL_CTRL_SET_READ_AHEAD` | `SSL_CTX_set_read_ahead`
+`SSL_CTRL_SET_SESS_CACHE_MODE` | `SSL_CTX_set_session_cache_mode`
+`SSL_CTRL_SET_SESS_CACHE_SIZE` | `SSL_CTX_sess_set_cache_size`
+`SSL_CTRL_SET_TLSEXT_HOSTNAME` | `SSL_set_tlsext_host_name`
+`SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG` | `SSL_CTX_set_tlsext_servername_arg`
+`SSL_CTRL_SET_TLSEXT_SERVERNAME_CB` | `SSL_CTX_set_tlsext_servername_callback`
+`SSL_CTRL_SET_TLSEXT_TICKET_KEYS` | `SSL_CTX_set_tlsext_ticket_keys`
+`SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB` | `SSL_CTX_set_tlsext_ticket_key_cb`
+`SSL_CTRL_SET_TMP_DH` | `SSL_CTX_set_tmp_dh`
+`SSL_CTRL_SET_TMP_DH_CB` | `SSL_CTX_set_tmp_dh_callback`
+`SSL_CTRL_SET_TMP_ECDH` | `SSL_CTX_set_tmp_ecdh`
+`SSL_CTRL_SET_TMP_ECDH_CB` | `SSL_CTX_set_tmp_ecdh_callback`
+`SSL_CTRL_SET_TMP_RSA` | `SSL_CTX_set_tmp_rsa` is equivalent, but [*do not use this function*](https://freakattack.com/). (It is a no-op in BoringSSL.)
+`SSL_CTRL_SET_TMP_RSA_CB` | `SSL_CTX_set_tmp_rsa_callback` is equivalent, but [*do not use this function*](https://freakattack.com/). (It is a no-op in BoringSSL.)
