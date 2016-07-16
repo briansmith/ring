@@ -105,13 +105,13 @@ func (c *Conn) clientHandshake() error {
 
 	var keyShares map[CurveID]ecdhCurve
 	if hello.vers >= VersionTLS13 {
-		// Offer every supported curve in the initial ClientHello.
-		//
-		// TODO(davidben): For real code, default to a more conservative
-		// set like P-256 and X25519. Make it configurable for tests to
-		// stress the HelloRetryRequest logic when implemented.
 		keyShares = make(map[CurveID]ecdhCurve)
+		hello.hasKeyShares = true
+		curvesToSend := c.config.defaultCurves()
 		for _, curveID := range hello.supportedCurves {
+			if !curvesToSend[curveID] {
+				continue
+			}
 			curve, ok := curveForCurveID(curveID)
 			if !ok {
 				continue
@@ -314,19 +314,78 @@ NextCipherSuite:
 		}
 	}
 
-	// TODO(davidben): Handle HelloRetryRequest.
+	var serverVersion uint16
+	switch m := msg.(type) {
+	case *helloRetryRequestMsg:
+		serverVersion = m.vers
+	case *serverHelloMsg:
+		serverVersion = m.vers
+	default:
+		c.sendAlert(alertUnexpectedMessage)
+		return fmt.Errorf("tls: received unexpected message of type %T when waiting for HelloRetryRequest or ServerHello", msg)
+	}
+
+	var ok bool
+	c.vers, ok = c.config.mutualVersion(serverVersion, c.isDTLS)
+	if !ok {
+		c.sendAlert(alertProtocolVersion)
+		return fmt.Errorf("tls: server selected unsupported protocol version %x", c.vers)
+	}
+	c.haveVers = true
+
+	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
+	var secondHelloBytes []byte
+	if haveHelloRetryRequest {
+		var hrrCurveFound bool
+		group := helloRetryRequest.selectedGroup
+		for _, curveID := range hello.supportedCurves {
+			if group == curveID {
+				hrrCurveFound = true
+				break
+			}
+		}
+		if !hrrCurveFound || keyShares[group] != nil {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: received invalid HelloRetryRequest")
+		}
+		curve, ok := curveForCurveID(group)
+		if !ok {
+			return errors.New("tls: Unable to get curve requested in HelloRetryRequest")
+		}
+		publicKey, err := curve.offer(c.config.rand())
+		if err != nil {
+			return err
+		}
+		keyShares[group] = curve
+		hello.keyShares = append(hello.keyShares, keyShareEntry{
+			group:       group,
+			keyExchange: publicKey,
+		})
+
+		hello.hasEarlyData = false
+		hello.earlyDataContext = nil
+		hello.raw = nil
+
+		secondHelloBytes = hello.marshal()
+		c.writeRecord(recordTypeHandshake, secondHelloBytes)
+		c.flushHandshake()
+
+		msg, err = c.readHandshake()
+		if err != nil {
+			return err
+		}
+	}
+
 	serverHello, ok := msg.(*serverHelloMsg)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(serverHello, msg)
 	}
 
-	c.vers, ok = c.config.mutualVersion(serverHello.vers, c.isDTLS)
-	if !ok {
+	if c.vers != serverHello.vers {
 		c.sendAlert(alertProtocolVersion)
-		return fmt.Errorf("tls: server selected unsupported protocol version %x", serverHello.vers)
+		return fmt.Errorf("tls: server sent non-matching version %x vs %x", serverHello.vers, c.vers)
 	}
-	c.haveVers = true
 
 	// Check for downgrade signals in the server random, per
 	// draft-ietf-tls-tls13-14, section 6.3.1.2.
@@ -349,6 +408,11 @@ NextCipherSuite:
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
 	}
 
+	if haveHelloRetryRequest && (helloRetryRequest.cipherSuite != serverHello.cipherSuite || helloRetryRequest.selectedGroup != serverHello.keyShare.group) {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: ServerHello parameters did not match HelloRetryRequest")
+	}
+
 	hs := &clientHandshakeState{
 		c:            c,
 		serverHello:  serverHello,
@@ -360,6 +424,10 @@ NextCipherSuite:
 	}
 
 	hs.writeHash(helloBytes, hs.c.sendHandshakeSeq-1)
+	if haveHelloRetryRequest {
+		hs.writeServerHash(helloRetryRequest.marshal())
+		hs.writeClientHash(secondHelloBytes)
+	}
 	hs.writeServerHash(hs.serverHello.marshal())
 
 	if c.vers >= VersionTLS13 {

@@ -126,6 +126,7 @@ type clientHelloMsg struct {
 	ocspStapling            bool
 	supportedCurves         []CurveID
 	supportedPoints         []uint8
+	hasKeyShares            bool
 	keyShares               []keyShareEntry
 	pskIdentities           [][]uint8
 	hasEarlyData            bool
@@ -164,6 +165,7 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.ocspStapling == m1.ocspStapling &&
 		eqCurveIDs(m.supportedCurves, m1.supportedCurves) &&
 		bytes.Equal(m.supportedPoints, m1.supportedPoints) &&
+		m.hasKeyShares == m1.hasKeyShares &&
 		eqKeyShareEntryLists(m.keyShares, m1.keyShares) &&
 		eqByteSlices(m.pskIdentities, m1.pskIdentities) &&
 		m.hasEarlyData == m1.hasEarlyData &&
@@ -274,7 +276,7 @@ func (m *clientHelloMsg) marshal() []byte {
 			supportedPoints.addU8(pointFormat)
 		}
 	}
-	if len(m.keyShares) > 0 {
+	if m.hasKeyShares {
 		extensions.addU16(extensionKeyShare)
 		keyShareList := extensions.addU16LengthPrefixed()
 
@@ -549,6 +551,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			d := data[2:length]
+			m.hasKeyShares = true
 			for len(d) > 0 {
 				// The next KeyShareEntry contains a NamedGroup (2 bytes) and a
 				// key_exchange (2-byte length prefix with at least 1 byte of content).
@@ -1139,6 +1142,47 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 		data = data[length:]
 	}
 
+	return true
+}
+
+type helloRetryRequestMsg struct {
+	raw           []byte
+	vers          uint16
+	cipherSuite   uint16
+	selectedGroup CurveID
+}
+
+func (m *helloRetryRequestMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	retryRequestMsg := newByteBuilder()
+	retryRequestMsg.addU8(typeHelloRetryRequest)
+	retryRequest := retryRequestMsg.addU24LengthPrefixed()
+	retryRequest.addU16(m.vers)
+	retryRequest.addU16(m.cipherSuite)
+	retryRequest.addU16(uint16(m.selectedGroup))
+	// Extensions field. We have none to send.
+	retryRequest.addU16(0)
+
+	m.raw = retryRequestMsg.finish()
+	return m.raw
+}
+
+func (m *helloRetryRequestMsg) unmarshal(data []byte) bool {
+	m.raw = data
+	if len(data) < 12 {
+		return false
+	}
+	m.vers = uint16(data[4])<<8 | uint16(data[5])
+	m.cipherSuite = uint16(data[6])<<8 | uint16(data[7])
+	m.selectedGroup = CurveID(data[8])<<8 | CurveID(data[9])
+	extLen := int(data[10])<<8 | int(data[11])
+	data = data[12:]
+	if len(data) != extLen {
+		return false
+	}
 	return true
 }
 

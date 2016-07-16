@@ -353,8 +353,46 @@ Curves:
 		}
 
 		if selectedKeyShare == nil {
-			// TODO(davidben,nharper): Implement HelloRetryRequest.
-			return errors.New("tls: HelloRetryRequest not implemented")
+			// Send HelloRetryRequest.
+			helloRetryRequestMsg := helloRetryRequestMsg{
+				vers:          c.vers,
+				cipherSuite:   hs.hello.cipherSuite,
+				selectedGroup: selectedCurve,
+			}
+			hs.writeServerHash(helloRetryRequestMsg.marshal())
+			c.writeRecord(recordTypeHandshake, helloRetryRequestMsg.marshal())
+
+			// Read new ClientHello.
+			newMsg, err := c.readHandshake()
+			if err != nil {
+				return err
+			}
+			newClientHello, ok := newMsg.(*clientHelloMsg)
+			if !ok {
+				c.sendAlert(alertUnexpectedMessage)
+				return unexpectedMessageError(newClientHello, newMsg)
+			}
+			hs.writeClientHash(newClientHello.marshal())
+
+			// Check that the new ClientHello matches the old ClientHello, except for
+			// the addition of the new KeyShareEntry at the end of the list, and
+			// removing the EarlyDataIndication extension (if present).
+			newKeyShares := newClientHello.keyShares
+			if len(newKeyShares) == 0 || newKeyShares[len(newKeyShares)-1].group != selectedCurve {
+				return errors.New("tls: KeyShare from HelloRetryRequest not present in new ClientHello")
+			}
+			oldClientHelloCopy := *hs.clientHello
+			oldClientHelloCopy.raw = nil
+			oldClientHelloCopy.hasEarlyData = false
+			oldClientHelloCopy.earlyDataContext = nil
+			newClientHelloCopy := *newClientHello
+			newClientHelloCopy.raw = nil
+			newClientHelloCopy.keyShares = newKeyShares[:len(newKeyShares)-1]
+			if !oldClientHelloCopy.equal(&newClientHelloCopy) {
+				return errors.New("tls: new ClientHello does not match")
+			}
+
+			selectedKeyShare = &newKeyShares[len(newKeyShares)-1]
 		}
 
 		// Once a curve has been selected and a key share identified,

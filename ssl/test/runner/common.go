@@ -364,6 +364,12 @@ type Config struct {
 	// be used.
 	CurvePreferences []CurveID
 
+	// DefaultCurves contains the elliptic curves for which public values will
+	// be sent in the ClientHello's KeyShare extension. If this value is nil,
+	// all supported curves will have public values sent. This field is ignored
+	// on servers.
+	DefaultCurves []CurveID
+
 	// ChannelID contains the ECDSA key for the client to use as
 	// its TLS Channel ID.
 	ChannelID *ecdsa.PrivateKey
@@ -1039,6 +1045,18 @@ func (c *Config) curvePreferences() []CurveID {
 		return defaultCurvePreferences
 	}
 	return c.CurvePreferences
+}
+
+func (c *Config) defaultCurves() map[CurveID]bool {
+	defaultCurves := make(map[CurveID]bool)
+	curves := c.DefaultCurves
+	if c == nil || c.DefaultCurves == nil {
+		curves = c.curvePreferences()
+	}
+	for _, curveID := range curves {
+		defaultCurves[curveID] = true
+	}
+	return defaultCurves
 }
 
 // mutualVersion returns the protocol version to use given the advertised
