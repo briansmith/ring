@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {c, err, init, rand};
+use {c, init, rand};
 use untrusted;
 
 /// A key agreement algorithm.
@@ -24,14 +24,14 @@ pub struct AgreementAlgorithmImpl {
     pub nid: c::int,
 
     generate_private_key:
-        fn(rng: &rand::SecureRandom) -> err::Result<PrivateKey>,
+        fn(rng: &rand::SecureRandom) -> ::Result<PrivateKey>,
 
     public_from_private:
-        fn(public_out: &mut [u8], private_key: &PrivateKey) -> err::EmptyResult,
+        fn(public_out: &mut [u8], private_key: &PrivateKey) -> ::EmptyResult,
 
     pub ecdh:
         fn(out: &mut [u8], private_key: &PrivateKey,
-           peer_public_key: untrusted::Input) -> err::EmptyResult,
+           peer_public_key: untrusted::Input) -> ::EmptyResult,
 }
 
 pub struct PrivateKey {
@@ -40,7 +40,7 @@ pub struct PrivateKey {
 
 impl <'a> PrivateKey {
     pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
-                    -> err::Result<PrivateKey> {
+                    -> ::Result<PrivateKey> {
         init::init_once();
         (alg.generate_private_key)(rng)
     }
@@ -70,7 +70,7 @@ impl <'a> PrivateKey {
 
     #[inline(always)]
     pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,
-                              out: &mut [u8]) -> err::EmptyResult {
+                              out: &mut [u8]) -> ::EmptyResult {
         if out.len() != alg.public_key_len {
             return Err(());
         }

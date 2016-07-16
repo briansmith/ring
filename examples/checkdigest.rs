@@ -15,6 +15,7 @@
 extern crate ring;
 
 use ring::*;
+use std::result;
 use std::error::Error;
 use std::io::{Read, Write};
 
@@ -37,7 +38,7 @@ fn print_usage(program_name: &str) {
 }
 
 fn run(digest_name: &str, expected_digest_hex: &str,
-       file_path: &std::path::Path) -> Result<(), &'static str> {
+       file_path: &std::path::Path) -> result::Result<(), &'static str> {
     let digest_alg = match digest_name {
         "sha256" => &digest::SHA256,
         "sha384" => &digest::SHA384,
@@ -81,13 +82,13 @@ fn run(digest_name: &str, expected_digest_hex: &str,
     }
 }
 
-pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
+pub fn from_hex(hex_str: &str) -> result::Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
         return Err(
             String::from("Hex string does not have an even number of digits"));
     }
 
-    fn from_hex_digit(d: u8) -> Result<u8, String> {
+    fn from_hex_digit(d: u8) -> result::Result<u8, String> {
         if d >= b'0' && d <= b'9' {
             Ok(d - b'0')
         } else if d >= b'a' && d <= b'f' {

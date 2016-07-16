@@ -14,7 +14,7 @@
 
 use super::*;
 use super::Mont;
-use err;
+
 
 macro_rules! p256_limbs {
     [$limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
@@ -65,7 +65,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: p256_point_mul_impl,
 };
 
-fn p256_point_mul_base_impl(g_scalar: &Scalar) -> err::Result<Point> {
+fn p256_point_mul_base_impl(g_scalar: &Scalar) -> ::Result<Point> {
     let mut r = Point::new_at_infinity();
     unsafe {
         ecp_nistz256_point_mul_base(r.xyz.as_mut_ptr(),
@@ -75,7 +75,7 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar) -> err::Result<Point> {
 }
 
 fn p256_point_mul_impl(p_scalar: &Scalar, &(ref p_x, ref p_y): &(Elem, Elem))
-                       -> err::Result<Point> {
+                       -> ::Result<Point> {
     let mut r = Point::new_at_infinity();
     unsafe {
         ecp_nistz256_point_mul(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),

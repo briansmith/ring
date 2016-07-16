@@ -15,7 +15,7 @@
 //! Elliptic curve operations on P-256 & P-384.
 
 
-use err;
+
 use self::ops::*;
 
 
@@ -32,7 +32,7 @@ use self::ops::*;
 //     y**2 == (x**2 + a)*x + b  (mod q)
 //
 fn verify_affine_point_is_on_the_curve(ops: &CommonOps, (x, y): (&Elem, &Elem))
-                                       -> err::EmptyResult {
+                                       -> ::EmptyResult {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
 
@@ -47,7 +47,7 @@ fn verify_affine_point_is_on_the_curve(ops: &CommonOps, (x, y): (&Elem, &Elem))
 //
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> err::Result<Elem> {
+                                         -> ::Result<Elem> {
     let z = ops.point_z(&p);
 
     // Verify that the point is not at infinity.
@@ -137,7 +137,7 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 fn verify_affine_point_is_on_the_curve_scaled(ops: &CommonOps,
                                               (x, y): (&Elem, &Elem),
                                               a_scaled: &Elem, b_scaled: &Elem)
-                                              -> err::EmptyResult {
+                                              -> ::EmptyResult {
     let lhs = ops.elem_sqr(&y);
 
     let mut rhs = ops.elem_sqr(&x);
