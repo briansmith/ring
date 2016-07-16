@@ -64,7 +64,7 @@
 //! ```
 //! use ring::{digest, hmac, rand};
 //!
-//! # fn main_with_result() -> Result<(), ()> {
+//! # fn main_with_result() -> ring::EmptyResult {
 //! let rng = rand::SystemRandom::new();
 //! let key = try!(hmac::SigningKey::generate(&digest::SHA256, &rng));
 //!
@@ -88,7 +88,7 @@
 //! ```
 //! use ring::{digest, hmac, rand};
 //!
-//! # fn main_with_result() -> Result<(), ()> {
+//! # fn main_with_result() -> ring::EmptyResult {
 //! let msg = "hello, world";
 //!
 //! // The sender generates a secure key value and signs the message with it.
@@ -116,7 +116,7 @@
 //! ```
 //! use ring::{digest, hmac, rand};
 //!
-//! # fn main_with_result() -> Result<(), ()> {
+//! # fn main_with_result() -> ring::EmptyResult {
 //! let parts = ["hello", ", ", "world"];
 //!
 //! // The sender generates a secure key value and signs the message with it.
@@ -164,7 +164,7 @@ impl SigningKey {
     /// and is consistent with the key lengths chosen for TLS as described in
     /// [RFC 5246, Appendix C](https://tools.ietf.org/html/rfc5246#appendix-C).
     pub fn generate(digest_alg: &'static digest::Algorithm,
-                    rng: &rand::SecureRandom) -> Result<SigningKey, ()> {
+                    rng: &rand::SecureRandom) -> ::Result<SigningKey> {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
         // now `digest::MAX_OUTPUT_LEN` is good enough.
         let mut key_data = [0u8; digest::MAX_OUTPUT_LEN];
@@ -317,7 +317,7 @@ impl VerificationKey {
 /// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
 #[inline(always)]
 pub fn verify(key: &VerificationKey, data: &[u8], signature: &[u8])
-              -> Result<(), ()> {
+              -> ::EmptyResult {
     verify_with_own_key(&key.wrapped, data, signature)
 }
 
@@ -331,13 +331,13 @@ pub fn verify(key: &VerificationKey, data: &[u8], signature: &[u8])
 ///
 /// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
 pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
-                           -> Result<(), ()> {
+                           -> ::EmptyResult {
     constant_time::verify_slices_are_equal(sign(&key, data).as_ref(), signature)
 }
 
 #[cfg(test)]
 mod tests {
-    use {digest, test, hmac, rand};
+    use {digest, hmac, rand, test};
 
     // Make sure that `SigningKey::generate` and `verify_with_own_key` aren't
     // completely wacky.
@@ -389,7 +389,7 @@ mod tests {
 
     fn hmac_test_case_inner(digest_alg: &'static digest::Algorithm,
                             key_value: &[u8], input: &[u8], output: &[u8],
-                            is_ok: bool) -> Result<(), ()> {
+                            is_ok: bool) -> ::EmptyResult {
 
         let s_key = hmac::SigningKey::new(digest_alg, key_value);
         let v_key = hmac::VerificationKey::new(digest_alg, key_value);

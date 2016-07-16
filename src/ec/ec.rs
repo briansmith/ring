@@ -24,14 +24,14 @@ pub struct AgreementAlgorithmImpl {
     pub nid: c::int,
 
     generate_private_key:
-        fn(rng: &rand::SecureRandom) -> Result<PrivateKey, ()>,
+        fn(rng: &rand::SecureRandom) -> ::Result<PrivateKey>,
 
     public_from_private:
-        fn(public_out: &mut [u8], private_key: &PrivateKey) -> Result<(), ()>,
+        fn(public_out: &mut [u8], private_key: &PrivateKey) -> ::EmptyResult,
 
     pub ecdh:
         fn(out: &mut [u8], private_key: &PrivateKey,
-           peer_public_key: untrusted::Input) -> Result<(), ()>,
+           peer_public_key: untrusted::Input) -> ::EmptyResult,
 }
 
 pub struct PrivateKey {
@@ -40,7 +40,7 @@ pub struct PrivateKey {
 
 impl <'a> PrivateKey {
     pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
-                    -> Result<PrivateKey, ()> {
+                    -> ::Result<PrivateKey> {
         init::init_once();
         (alg.generate_private_key)(rng)
     }
@@ -70,7 +70,7 @@ impl <'a> PrivateKey {
 
     #[inline(always)]
     pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,
-                              out: &mut [u8]) -> Result<(), ()> {
+                              out: &mut [u8]) -> ::EmptyResult {
         if out.len() != alg.public_key_len {
             return Err(());
         }

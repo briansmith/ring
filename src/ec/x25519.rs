@@ -38,7 +38,7 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
 };
 
 fn x25519_generate_private_key(rng: &rand::SecureRandom)
-                               -> Result<ec::PrivateKey, ()> {
+                               -> ::Result<ec::PrivateKey> {
     let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
     try!(rng.fill(&mut result.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]));
     Ok(result)
@@ -46,7 +46,7 @@ fn x25519_generate_private_key(rng: &rand::SecureRandom)
 
 #[allow(unsafe_code)]
 fn x25519_public_from_private(public_out: &mut [u8],
-                              private_key: &ec::PrivateKey) -> Result<(), ()> {
+                              private_key: &ec::PrivateKey) -> ::EmptyResult {
     debug_assert_eq!(public_out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     unsafe {
         GFp_x25519_public_from_private(public_out.as_mut_ptr(),
@@ -57,7 +57,7 @@ fn x25519_public_from_private(public_out: &mut [u8],
 
 #[allow(unsafe_code)]
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
-               peer_public_key: untrusted::Input) -> Result<(), ()> {
+               peer_public_key: untrusted::Input) -> ::EmptyResult {
     debug_assert_eq!(out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     debug_assert_eq!(peer_public_key.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     bssl::map_result(unsafe {
@@ -127,7 +127,7 @@ mod tests {
     }
 
     fn x25519_(private_key: &[u8], public_key: &[u8])
-               -> Result<std::vec::Vec<u8>, ()> {
+               -> ::Result<std::vec::Vec<u8>> {
         let private_key =
             agreement::EphemeralPrivateKey::from_test_vector(
                 &agreement::X25519, private_key);

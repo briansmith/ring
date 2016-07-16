@@ -42,7 +42,7 @@
 //!
 //! use ring::{rand, signature};
 //!
-//! # fn sign_and_verify_ed25519() -> Result<(), ()> {
+//! # fn sign_and_verify_ed25519() -> ring::EmptyResult {
 //! // Generate a key pair.
 //! let rng = rand::SystemRandom::new();
 //! let generated_key_pair = try!(signature::Ed25519KeyPair::generate(&rng));
@@ -96,7 +96,7 @@
 //! use ring::{rand, signature};
 //!
 //! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-//! # fn sign_and_verify_rsa() -> Result<(), ()> {
+//! # fn sign_and_verify_rsa() -> ring::EmptyResult {
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
@@ -126,7 +126,7 @@
 //! # }
 //! #
 //! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap")))]
-//! # fn sign_and_verify_rsa() -> Result<(), ()> { Ok(()) }
+//! # fn sign_and_verify_rsa() -> ring::EmptyResult { Ok(()) }
 //! #
 //! # fn main() { sign_and_verify_rsa().unwrap() }
 //! ```
@@ -236,7 +236,7 @@ pub struct VerificationAlgorithm {
 /// # #[cfg(feature = "use_heap")]
 /// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
 ///                            msg: untrusted::Input, sig: untrusted::Input)
-///                            -> Result<(), ()> {
+///                            -> ring::EmptyResult {
 ///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key,
 ///                      msg, sig)
 /// }
@@ -244,7 +244,7 @@ pub struct VerificationAlgorithm {
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
               msg: untrusted::Input, signature: untrusted::Input)
-              -> Result<(), ()> {
+              -> ::EmptyResult {
     init::init_once();
     alg.implementation.verify(public_key, msg, signature)
 }

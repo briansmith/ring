@@ -53,7 +53,7 @@ impl OpeningKey {
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<OpeningKey, ()> {
+               -> ::Result<OpeningKey> {
         let mut key = OpeningKey {
             key: Key {
                 algorithm: algorithm,
@@ -87,7 +87,7 @@ impl OpeningKey {
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
-                     in_out: &mut [u8], ad: &[u8]) -> Result<usize, ()> {
+                     in_out: &mut [u8], ad: &[u8]) -> ::Result<usize> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let ciphertext_and_tag_len =
         try!(in_out.len().checked_sub(in_prefix_len).ok_or(()));
@@ -120,7 +120,7 @@ impl SealingKey {
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<SealingKey, ()> {
+               -> ::Result<SealingKey> {
         let mut key = SealingKey {
             key: Key {
                 algorithm: algorithm,
@@ -142,7 +142,7 @@ impl SealingKey {
 ///
 /// `nonce` must be unique for every use of the key to seal data.
 ///
-/// The input is `in_out[..(in_out.len() - out_suffix_capacity]`; i.e. the
+/// The input is `in_out[..(in_out.len() - out_suffix_capacity)]`; i.e. the
 /// input is the part of `in_out` that precedes the suffix. When `seal` returns
 /// `Ok(out_len)`, the encrypted and signed output is `in_out[..out_len]`; i.e.
 /// the output has been written over input and at least part of the data
@@ -161,7 +161,7 @@ impl SealingKey {
 /// Go analog: [`AEAD.Seal`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
-                     -> Result<usize, ()> {
+                     -> ::Result<usize> {
     if out_suffix_capacity < key.key.algorithm.max_overhead_len() {
         return Err(());
     }
@@ -195,7 +195,7 @@ impl Key {
     /// XXX: Assumes self.algorithm is already filled in.
     ///
     /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
-    fn init(&mut self, key_bytes: &[u8]) -> Result<(), ()> {
+    fn init(&mut self, key_bytes: &[u8]) -> ::EmptyResult {
         init::init_once();
 
         if key_bytes.len() != self.algorithm.key_len() {
@@ -217,14 +217,14 @@ impl Key {
 ///
 /// Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
-    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
+    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> ::EmptyResult,
 
     seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
               in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-              -> Result<(), ()>,
+              -> ::EmptyResult,
     open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
              in_out: &mut [u8], in_prefix_len: usize,
-             tag_out: &mut [u8; TAG_LEN], ad: &[u8]) -> Result<(), ()>,
+             tag_out: &mut [u8; TAG_LEN], ad: &[u8]) -> ::EmptyResult,
 
     key_len: usize,
 }
@@ -269,7 +269,7 @@ const NONCE_LEN: usize = 96 / 8;
 
 /// |CRYPTO_chacha_20| uses a 32-bit block counter, so we disallow individual
 /// operations that work on more than 256GB at a time, for all AEADs.
-fn check_per_nonce_max_bytes(in_out_len: usize) -> Result<(), ()> {
+fn check_per_nonce_max_bytes(in_out_len: usize) -> ::EmptyResult {
     if polyfill::u64_from_usize(in_out_len) >= (1u64 << 32) * 64 - 64 {
         return Err(())
     }
@@ -474,7 +474,7 @@ mod tests {
     // memory (when run under valgrind or similar). The AES-128-GCM tests have
     // some WRONG_NONCE_LENGTH test cases that tests this more correctly.
     fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm)
-                             -> Result<(), ()> {
+                             -> ::EmptyResult {
         let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len];
         let o_key =

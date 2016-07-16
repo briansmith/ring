@@ -53,7 +53,7 @@
 //!     }
 //!
 //!     pub fn verify_password(&self, username: &str, attempted_password: &str)
-//!                            -> Result<(), ()> {
+//!                            -> ring::EmptyResult {
 //!         match self.storage.get(username) {
 //!            Some(actual_password) => {
 //!                let salt = self.salt(username);
@@ -193,7 +193,7 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
 /// `verify` panics if `out.len()` is larger than the output length of the
 /// digest function used by the PRF algorithm.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
-              previously_derived: &[u8]) -> Result<(), ()> {
+              previously_derived: &[u8]) -> ::EmptyResult {
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
     if previously_derived.len() > derived_buf.len() {
         return Err(());

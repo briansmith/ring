@@ -72,7 +72,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
 };
 
 
-fn p384_point_mul_base_impl(a: &Scalar) -> Result<Point, ()> {
+fn p384_point_mul_base_impl(a: &Scalar) -> ::Result<Point> {
     // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
     // shouldn't be used for this. TODO: Replace use of this with the use
     // of an always-constant-time implementation.
@@ -89,7 +89,7 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Result<Point, ()> {
 }
 
 pub fn p384_point_mul_impl(s: &Scalar, &(ref x, ref y): &(Elem, Elem))
-                           -> Result<Point, ()> {
+                           -> ::Result<Point> {
     // XXX: GFp_suite_b_public_twin_mult isn't always constant time and
     // shouldn't be used for this. TODO: Replace use of this with the use of an
     // always-constant-time implementation.
