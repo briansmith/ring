@@ -116,7 +116,7 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-use digest;
+use {digest, err};
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -209,7 +209,7 @@ impl TestCase {
 /// or until all the test vectors have been read. `f` can indicate failure
 /// either by returning `Err()` or by panicking.
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
-                    where F: FnMut(&str, &mut TestCase) -> Result<(), ()> {
+                    where F: FnMut(&str, &mut TestCase) -> err::EmptyResult {
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();

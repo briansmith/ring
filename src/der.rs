@@ -16,6 +16,7 @@
 //!
 //! This module contains the foundational parts of an ASN.1 DER parser.
 
+use err;
 use untrusted;
 
 pub const CONSTRUCTED : u8 = 1 << 5;
@@ -41,7 +42,7 @@ pub enum Tag {
 
 pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
                                     tag: Tag)
-                                    -> Result<untrusted::Input<'a>, ()> {
+                                    -> err::Result<untrusted::Input<'a>> {
     let (actual_tag, inner) = try!(read_tag_and_get_value(input));
     if (tag as usize) != (actual_tag as usize) {
         return Err(());
@@ -97,10 +98,10 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
 }
 
 fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
-                           -> Result<untrusted::Input<'a>, ()> {
+                           -> err::Result<untrusted::Input<'a>> {
     // Verify that |input|, which has had any leading zero stripped off, is the
     // encoding of a value of at least |min_value|.
-    fn check_minimum(input: untrusted::Input, min_value: u8) -> Result<(), ()> {
+    fn check_minimum(input: untrusted::Input, min_value: u8) -> err::EmptyResult {
         input.read_all((), |input| {
             let first_byte = try!(input.read_byte());
             if input.at_end() && first_byte < min_value {
@@ -156,7 +157,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
 /// numeric value. This is typically used for parsing version numbers.
 #[inline]
 pub fn small_nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>)
-                                     -> Result<u8, ()> {
+                                     -> err::Result<u8> {
     let value = try!(nonnegative_integer(input, 0));
     value.read_all((), |input| {
         input.read_byte()
@@ -167,7 +168,7 @@ pub fn small_nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>)
 /// any leading zero byte.
 #[inline]
 pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
-                            -> Result<untrusted::Input<'a>, ()> {
+                            -> err::Result<untrusted::Input<'a>> {
     nonnegative_integer(input, 1)
 }
 
@@ -175,18 +176,19 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use err;
     use untrusted;
 
     fn with_good_i<F, R>(value: &[u8], f: F)
                          where F: FnOnce(&mut untrusted::Reader)
-                         -> Result<R, ()> {
+                         -> err::Result<R> {
         let r = untrusted::Input::from(value).read_all((), f);
         assert!(r.is_ok());
     }
 
     fn with_bad_i<F, R>(value: &[u8], f: F)
                         where F: FnOnce(&mut untrusted::Reader)
-                         -> Result<R, ()> {
+                         -> err::Result<R> {
         let r = untrusted::Input::from(value).read_all((), f);
         assert!(r.is_err());
     }

@@ -28,7 +28,7 @@
 //! ## Password Database Example
 //!
 //! ```
-//! use ring::pbkdf2;
+//! use ring::{err, pbkdf2};
 //! use std::collections::HashMap;
 //!
 //! static PBKDF2_PRF: &'static pbkdf2::PRF = &pbkdf2::HMAC_SHA256;
@@ -53,7 +53,7 @@
 //!     }
 //!
 //!     pub fn verify_password(&self, username: &str, attempted_password: &str)
-//!                            -> Result<(), ()> {
+//!                            -> err::EmptyResult {
 //!         match self.storage.get(username) {
 //!            Some(actual_password) => {
 //!                let salt = self.salt(username);
@@ -105,7 +105,7 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use {constant_time, digest, hmac, polyfill};
+use {constant_time, digest, err, hmac, polyfill};
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///
@@ -193,7 +193,7 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
 /// `verify` panics if `out.len()` is larger than the output length of the
 /// digest function used by the PRF algorithm.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
-              previously_derived: &[u8]) -> Result<(), ()> {
+              previously_derived: &[u8]) -> err::EmptyResult {
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
     if previously_derived.len() > derived_buf.len() {
         return Err(());

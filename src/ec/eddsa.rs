@@ -16,7 +16,7 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, rand, signature, signature_impl};
+use {bssl, c, err, rand, signature, signature_impl};
 use untrusted;
 
 struct EdDSA;
@@ -28,7 +28,7 @@ pub struct Ed25519KeyPair {
 
 impl<'a> Ed25519KeyPair {
     /// Generates a new key pair.
-    pub fn generate(rng: &rand::SecureRandom) -> Result<Ed25519KeyPair, ()> {
+    pub fn generate(rng: &rand::SecureRandom) -> err::Result<Ed25519KeyPair> {
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
         try!(rng.fill(&mut pair.private_public[0..32]));
         unsafe {
@@ -51,7 +51,7 @@ impl<'a> Ed25519KeyPair {
     /// public and private components of the key pair. This also detects
     /// corruption that might have occurred during storage of the key pair.
     pub fn from_bytes(private_key: &[u8], public_key: &[u8])
-                      -> Result<Ed25519KeyPair, ()> {
+                      -> err::Result<Ed25519KeyPair> {
         if private_key.len() != 32 {
             return Err(());
         } else if public_key.len() != 32 {
@@ -107,7 +107,7 @@ pub static ED25519: signature::VerificationAlgorithm =
 
 impl signature_impl::VerificationAlgorithmImpl for EdDSA {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> err::EmptyResult {
         let public_key = public_key.as_slice_less_safe();
         if public_key.len() != 32 || signature.len() != 64 {
             return Err(())

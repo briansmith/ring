@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2016 Jonathan 'theJPster' Pallant.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,28 +12,15 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Constant-time operations.
+//! Implements types influenced by `std::io::Result` for indicating success or failure
+//! of a routine.
 
-#![allow(unsafe_code)]
+use std::result;
 
-use {c, err};
+/// Used by routines that return a certain type if they pass, or
+/// wish to indicate failure without any sense of why they failed.
+pub type Result<T> = result::Result<T, ()>;
 
-/// Returns `Ok(())` if `a == b` and `Err(())` otherwise. The comparison of
-/// `a` and `b` is done in constant time with respect to the contents of each,
-/// but NOT in constant time with respect to the lengths of `a` and `b`.
-pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> err::EmptyResult {
-    if a.len() != b.len() {
-        return Err(());
-    }
-    let result = unsafe {
-        CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len())
-    };
-    match result {
-        0 => Ok(()),
-        _ => Err(())
-    }
-}
-
-extern {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
-}
+/// Used by routines that wish to indicate success or failure, with
+/// no associated value either way.
+pub type EmptyResult = Result<()>;

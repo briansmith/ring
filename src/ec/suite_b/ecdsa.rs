@@ -14,7 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use {der, digest, signature, signature_impl};
+use {der, digest, err, signature, signature_impl};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
@@ -29,7 +29,7 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> err::EmptyResult {
         // NSA Guide Prerequisites:
         //
         //    Prior to accepting a verified digital signature as valid the

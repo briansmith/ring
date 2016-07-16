@@ -16,7 +16,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, signature, signature_impl};
+use {bssl, c, der, digest, err, signature, signature_impl};
 
 #[cfg(feature = "rsa_signing")]
 use rand;
@@ -36,7 +36,7 @@ pub struct RSAPadding {
 impl RSAPadding {
     // Implement padding procedure per EMSA-PKCS1-v1_5,
     // https://tools.ietf.org/html/rfc3447#section-9.2.
-    fn pad(&self, msg: &[u8], out: &mut [u8]) -> Result<(), ()> {
+    fn pad(&self, msg: &[u8], out: &mut [u8]) -> err::EmptyResult {
         let digest_len =
             self.digestinfo_prefix.len() + self.digest_alg.output_len;
 
@@ -69,7 +69,7 @@ struct RSAVerificationAlgorithm {
 
 impl signature_impl::VerificationAlgorithmImpl for RSAVerificationAlgorithm {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> err::EmptyResult {
         const MAX_BITS: usize = 8192;
 
         let (n, e) = try!(parse_public_key(public_key));
@@ -261,7 +261,7 @@ impl RSAKeyPair {
     /// different format like PKCS#8, which isn't supported yet. An upcoming
     /// version of *ring* will likely replace the support for the
     /// `RSAPrivateKey` format with support for the PKCS#8 format.
-    pub fn from_der(input: untrusted::Input) -> Result<RSAKeyPair, ()> {
+    pub fn from_der(input: untrusted::Input) -> err::Result<RSAKeyPair> {
         input.read_all((), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {
                 let version = try!(der::small_nonnegative_integer(input));
@@ -327,7 +327,7 @@ impl RSAKeyPair {
     /// Exponent blinding is not done, but it may be done in the future.
     pub fn sign(&self, padding_alg: &'static RSAPadding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
-                -> Result<(), ()> {
+                -> err::EmptyResult {
         if signature.len() != self.public_modulus_len() {
             return Err(());
         }
@@ -398,7 +398,7 @@ struct PositiveInteger {
 impl PositiveInteger {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
     fn from_der(input: &mut untrusted::Reader, flags: c::int)
-                -> Result<PositiveInteger, ()> {
+                -> err::Result<PositiveInteger> {
         let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
         let res = unsafe {
             BN_bin2bn(bytes.as_ptr(), bytes.len(), std::ptr::null_mut())

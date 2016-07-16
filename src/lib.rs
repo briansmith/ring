@@ -127,6 +127,8 @@ pub mod rand;
 pub mod signature;
 mod signature_impl;
 
+pub mod err;
+
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
 
