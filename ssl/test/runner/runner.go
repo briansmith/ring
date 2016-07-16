@@ -507,7 +507,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 	}
 
 	if test.expectedOCSPResponse != nil && !bytes.Equal(test.expectedOCSPResponse, tlsConn.OCSPResponse()) {
-		return fmt.Errorf("OCSP Response mismatch")
+		return fmt.Errorf("OCSP Response mismatch: got %x, wanted %x", tlsConn.OCSPResponse(), test.expectedOCSPResponse)
 	}
 
 	if test.expectedSCTList != nil && !bytes.Equal(test.expectedSCTList, connState.SCTList) {
@@ -3204,8 +3204,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	})
 
 	// OCSP stapling tests.
-	//
-	// TODO(davidben): Test the TLS 1.3 version of OCSP stapling.
 	tests = append(tests, testCase{
 		testType: clientTest,
 		name:     "OCSPStapling-Client",
@@ -3232,6 +3230,37 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
 		},
 		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "OCSPStapling-Client-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		flags: []string{
+			"-enable-ocsp-stapling",
+			"-expect-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			"-verify-peer",
+		},
+		// TODO(davidben): Enable this when resumption is implemented
+		// in TLS 1.3.
+		resumeSession: false,
+	})
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "OCSPStapling-Server-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		expectedOCSPResponse: testOCSPResponse,
+		flags: []string{
+			"-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+		// TODO(davidben): Enable this when resumption is implemented
+		// in TLS 1.3.
+		resumeSession: false,
 	})
 
 	// Certificate verification tests.

@@ -1184,11 +1184,36 @@ static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 1;
   }
 
-  if (CBS_len(contents) != 0) {
+  /* OCSP stapling is forbidden on a non-certificate cipher. */
+  if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     return 0;
   }
 
-  ssl->s3->tmp.certificate_status_expected = 1;
+  if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+    if (CBS_len(contents) != 0) {
+      return 0;
+    }
+
+    ssl->s3->tmp.certificate_status_expected = 1;
+    return 1;
+  }
+
+  uint8_t status_type;
+  CBS ocsp_response;
+  if (!CBS_get_u8(contents, &status_type) ||
+      status_type != TLSEXT_STATUSTYPE_ocsp ||
+      !CBS_get_u24_length_prefixed(contents, &ocsp_response) ||
+      CBS_len(&ocsp_response) == 0 ||
+      CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  if (!CBS_stow(&ocsp_response, &ssl->session->ocsp_response,
+                &ssl->session->ocsp_response_length)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
   return 1;
 }
 
@@ -1211,21 +1236,32 @@ static int ext_ocsp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 }
 
 static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->tmp.ocsp_stapling_requested ||
+      ssl->ctx->ocsp_response_length == 0 ||
+      !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     return 1;
   }
 
-  /* The extension shouldn't be sent when resuming sessions. */
-  if (ssl->hit ||
-      !ssl->s3->tmp.ocsp_stapling_requested ||
-      ssl->ctx->ocsp_response_length == 0) {
-    return 1;
+  if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+    /* The extension shouldn't be sent when resuming sessions. */
+    if (ssl->hit) {
+      return 1;
+    }
+
+    ssl->s3->tmp.certificate_status_expected = 1;
+
+    return CBB_add_u16(out, TLSEXT_TYPE_status_request) &&
+           CBB_add_u16(out, 0 /* length */);
   }
 
-  ssl->s3->tmp.certificate_status_expected = 1;
-
+  CBB body, ocsp_response;
   return CBB_add_u16(out, TLSEXT_TYPE_status_request) &&
-         CBB_add_u16(out, 0 /* length */);
+         CBB_add_u16_length_prefixed(out, &body) &&
+         CBB_add_u8(&body, TLSEXT_STATUSTYPE_ocsp) &&
+         CBB_add_u24_length_prefixed(&body, &ocsp_response) &&
+         CBB_add_bytes(&ocsp_response, ssl->ctx->ocsp_response,
+                       ssl->ctx->ocsp_response_length) &&
+         CBB_flush(out);
 }
 
 
