@@ -50,7 +50,7 @@ OPENSSL_EXPORT int HKDF_extract(uint8_t *out_key, size_t *out_len,
  * |out_len| from the PRK |prk| and info |info| using |digest|, and outputs
  * the result to |out_key|. It returns one on success and zero on error. */
 OPENSSL_EXPORT int HKDF_expand(uint8_t *out_key, size_t out_len,
-                               const EVP_MD *digest, uint8_t *prk,
+                               const EVP_MD *digest, const uint8_t *prk,
                                size_t prk_len, const uint8_t *info,
                                size_t info_len);
 

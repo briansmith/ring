@@ -55,7 +55,7 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
 }
 
 int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
-                uint8_t *prk, size_t prk_len, const uint8_t *info,
+                const uint8_t *prk, size_t prk_len, const uint8_t *info,
                 size_t info_len) {
   /* https://tools.ietf.org/html/rfc5869#section-2.3 */
   const size_t digest_len = EVP_MD_size(digest);
