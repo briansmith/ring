@@ -181,6 +181,26 @@ out:
   return ok;
 }
 
+bool VersionFromString(uint16_t *out_version, const std::string &version) {
+  if (version == "ssl3") {
+    *out_version = SSL3_VERSION;
+    return true;
+  } else if (version == "tls1" || version == "tls1.0") {
+    *out_version = TLS1_VERSION;
+    return true;
+  } else if (version == "tls1.1") {
+    *out_version = TLS1_1_VERSION;
+    return true;
+  } else if (version == "tls1.2") {
+    *out_version = TLS1_2_VERSION;
+    return true;
+  } else if (version == "tls1.3") {
+    *out_version = TLS1_3_VERSION;
+    return true;
+  }
+  return false;
+}
+
 void PrintConnectionInfo(const SSL *ssl) {
   const SSL_CIPHER *cipher = SSL_get_current_cipher(ssl);
 

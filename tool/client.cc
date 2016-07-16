@@ -105,27 +105,6 @@ static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
   return pkey;
 }
 
-static bool VersionFromString(uint16_t *out_version,
-                              const std::string& version) {
-  if (version == "ssl3") {
-    *out_version = SSL3_VERSION;
-    return true;
-  } else if (version == "tls1" || version == "tls1.0") {
-    *out_version = TLS1_VERSION;
-    return true;
-  } else if (version == "tls1.1") {
-    *out_version = TLS1_1_VERSION;
-    return true;
-  } else if (version == "tls1.2") {
-    *out_version = TLS1_2_VERSION;
-    return true;
-  } else if (version == "tls1.3") {
-    *out_version = TLS1_3_VERSION;
-    return true;
-  }
-  return false;
-}
-
 static int NextProtoSelectCallback(SSL* ssl, uint8_t** out, uint8_t* outlen,
                                    const uint8_t* in, unsigned inlen, void* arg) {
   *out = reinterpret_cast<uint8_t *>(arg);

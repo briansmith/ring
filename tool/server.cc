@@ -31,6 +31,14 @@ static const struct argument kArguments[] = {
      "An OpenSSL-style cipher suite string that configures the offered ciphers",
     },
     {
+     "-max-version", kOptionalArgument,
+     "The maximum acceptable protocol version",
+    },
+    {
+     "-min-version", kOptionalArgument,
+     "The minimum acceptable protocol version",
+    },
+    {
       "-key", kOptionalArgument,
       "Private-key file to use (default is server.pem)",
     },
@@ -116,6 +124,26 @@ bool Server(const std::vector<std::string> &args) {
       !SSL_CTX_set_cipher_list(ctx, args_map["-cipher"].c_str())) {
     fprintf(stderr, "Failed setting cipher list\n");
     return false;
+  }
+
+  if (args_map.count("-max-version") != 0) {
+    uint16_t version;
+    if (!VersionFromString(&version, args_map["-max-version"])) {
+      fprintf(stderr, "Unknown protocol version: '%s'\n",
+              args_map["-max-version"].c_str());
+      return false;
+    }
+    SSL_CTX_set_max_version(ctx, version);
+  }
+
+  if (args_map.count("-min-version") != 0) {
+    uint16_t version;
+    if (!VersionFromString(&version, args_map["-min-version"])) {
+      fprintf(stderr, "Unknown protocol version: '%s'\n",
+              args_map["-min-version"].c_str());
+      return false;
+    }
+    SSL_CTX_set_min_version(ctx, version);
   }
 
   if (args_map.count("-ocsp-response") != 0 &&

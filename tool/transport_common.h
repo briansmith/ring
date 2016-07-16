@@ -31,6 +31,8 @@ bool Connect(int *out_sock, const std::string &hostname_and_port);
 // It returns true on success and false otherwise.
 bool Accept(int *out_sock, const std::string &port);
 
+bool VersionFromString(uint16_t *out_version, const std::string &version);
+
 void PrintConnectionInfo(const SSL *ssl);
 
 bool SocketSetNonBlocking(int sock, bool is_non_blocking);
