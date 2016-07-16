@@ -119,6 +119,9 @@ static bool VersionFromString(uint16_t *out_version,
   } else if (version == "tls1.2") {
     *out_version = TLS1_2_VERSION;
     return true;
+  } else if (version == "tls1.3") {
+    *out_version = TLS1_3_VERSION;
+    return true;
   }
   return false;
 }
