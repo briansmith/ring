@@ -61,23 +61,6 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
-static inline void elem_sqr_mont(Elem r, const Elem a) {
-  /* XXX: Inefficient. TODO: Add dedicated squaring routine. */
-  elem_mul_mont(r, a, a);
-}
-
-static inline void elem_sqr_mul_mont(Elem r, const Elem a, size_t squarings,
-                                     const Elem b) {
-  assert(squarings >= 1);
-  ScalarMont tmp;
-  elem_sqr_mont(tmp, a);
-  for (size_t i = 1; i < squarings; ++i) {
-    elem_sqr_mont(tmp, tmp);
-  }
-  elem_mul_mont(r, tmp, b);
-}
-
-
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
   /* XXX: Not constant-time. */
   if (!bn_add_words(r, a, b, P384_LIMBS)) {
