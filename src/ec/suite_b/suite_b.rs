@@ -97,11 +97,11 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
     //
     //            y**2  ==  (x**2  +  z**4 * a) * x  +  (z**6) * b
     //
-    let z2 = ops.elem_sqr(&z);
-    let z4 = ops.elem_sqr(&z2);
-    let z4_a = ops.elem_mul(&z4, &ops.a);
-    let z6 = ops.elem_mul(&z4, &z2);
-    let z6_b = ops.elem_mul(&z6, &ops.b);
+    let z2 = ops.elem_squared(&z);
+    let z4 = ops.elem_squared(&z2);
+    let z4_a = ops.elem_product(&z4, &ops.a);
+    let z6 = ops.elem_product(&z4, &z2);
+    let z6_b = ops.elem_product(&z6, &ops.b);
     try!(verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a,
                                                     &z6_b));
     Ok(z2)
@@ -137,11 +137,11 @@ fn verify_affine_point_is_on_the_curve_scaled(ops: &CommonOps,
                                               (x, y): (&Elem, &Elem),
                                               a_scaled: &Elem, b_scaled: &Elem)
                                               -> Result<(), ()> {
-    let lhs = ops.elem_sqr(&y);
+    let lhs = ops.elem_squared(&y);
 
-    let mut rhs = ops.elem_sqr(&x);
+    let mut rhs = ops.elem_squared(&x);
     ops.elem_add(&mut rhs, a_scaled);
-    let mut rhs = ops.elem_mul(&rhs, &x);
+    ops.elem_mul(&mut rhs, &x);
     ops.elem_add(&mut rhs, b_scaled);
 
     if !ops.elems_are_equal(&lhs, &rhs) {

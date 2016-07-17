@@ -163,8 +163,8 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_mul(&self, a: &Elem, b: &Elem) -> Elem {
-        Elem { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
+    pub fn elem_mul(&self, a: &mut Elem, b: &Elem) {
+        ab_assign(self.elem_mul_mont, &mut a.limbs, &b.limbs)
     }
 
     #[inline]
@@ -174,7 +174,12 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_sqr(&self, a: &Elem) -> Elem {
+    pub fn elem_product(&self, a: &Elem, b: &Elem) -> Elem {
+        Elem { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
+    }
+
+    #[inline]
+    pub fn elem_squared(&self, a: &Elem) -> Elem {
         Elem { limbs: ra(self.elem_sqr_mont, &a.limbs) }
     }
 
@@ -621,23 +626,23 @@ macro_rules! bench_curve {
         }
 
         #[bench]
-        fn elem_mul_bench(bench: &mut bench::Bencher) {
+        fn elem_product_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the multiplication is constant-time
             // so 0 * 0 is as good of a choice as anything.
             let a = Elem::zero();
             let b = Elem::zero();
             bench.iter(|| {
-                let _ = COMMON_OPS.elem_mul(&a, &b);
+                let _ = COMMON_OPS.elem_product(&a, &b);
             });
         }
 
         #[bench]
-        fn elem_sqr_bench(bench: &mut bench::Bencher) {
+        fn elem_squared_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the squaring is constant-time so
             // 0**2 * 0 is as good of a choice as anything.
             let a = Elem::zero();
             bench.iter(|| {
-                let _ = COMMON_OPS.elem_sqr(&a);
+                let _ = COMMON_OPS.elem_squared(&a);
             });
         }
 
