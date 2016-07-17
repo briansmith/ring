@@ -772,12 +772,6 @@ static int ssl3_get_client_hello(SSL *ssl) {
 
   /* Given ciphers and SSL_get_ciphers, we must pick a cipher */
   if (!ssl->hit) {
-    if (ciphers == NULL) {
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_PASSED);
-      goto f_err;
-    }
-
     /* Let cert callback update server certificates if required */
     if (ssl->cert->cert_cb) {
       int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
