@@ -53,10 +53,10 @@ impl Scalar {
 }
 
 /// A `Scalar`, except Montgomery-encoded.
+#[derive(Clone, Copy)]
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
 }
-
 
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
@@ -291,7 +291,7 @@ pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
     pub q_minus_n: ElemDecoded,
 
-    scalar_inv_to_mont_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
+    scalar_inv_to_mont_impl: fn(a: &Scalar) -> ScalarMont,
     scalar_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
                                       b: *const Limb),
 }
@@ -314,12 +314,7 @@ impl PublicScalarOps {
         // `a` must not be zero.
         assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
 
-        let mut r = ScalarMont { limbs: [0; MAX_LIMBS] };
-        unsafe {
-            (self.scalar_inv_to_mont_impl)(r.limbs.as_mut_ptr(),
-                                           a.limbs.as_ptr());
-        }
-        r
+        (self.scalar_inv_to_mont_impl)(&a)
     }
 
     #[inline]

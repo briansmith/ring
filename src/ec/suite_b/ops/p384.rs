@@ -16,7 +16,7 @@ use bssl;
 use core;
 use super::*;
 use super::{GFp_suite_b_public_twin_mult, elem_sqr_mul, elem_sqr_mul_acc,
-            Mont};
+            Mont, ab_assign, rab};
 
 
 macro_rules! p384_limbs {
@@ -183,9 +183,160 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
                            0x1313e696, 0x333ad68c, 0xa7e5f24c, 0xb74f5885],
     },
 
-    scalar_inv_to_mont_impl: GFp_p384_scalar_inv_to_mont,
+    scalar_inv_to_mont_impl: p384_scalar_inv_to_mont,
     scalar_mul_mont: GFp_p384_scalar_mul_mont,
 };
+
+fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
+    // Calculate the modular inverse of scalar |a| using Fermat's Little
+    // Theorem:
+    //
+    //   a**-1 (mod n) == a**(n - 2) (mod n)
+    //
+    // The exponent (n - 2) is:
+    //
+    //     0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
+    //       581a0db248b0a77aecec196accc52971.
+
+    // XXX(perf): This hasn't been optimized at all. TODO: optimize.
+
+    fn mul(a: &ScalarMont, b: &ScalarMont) -> ScalarMont {
+        ScalarMont { limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &b.limbs) }
+    }
+
+    fn sqr(a: &ScalarMont) -> ScalarMont {
+        ScalarMont { limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &a.limbs) }
+    }
+
+    fn sqr_mut(a: &mut ScalarMont) {
+        unsafe {
+            GFp_p384_scalar_mul_mont(a.limbs.as_mut_ptr(), a.limbs.as_ptr(),
+                                     a.limbs.as_ptr())
+        }
+    }
+
+    // Returns (`a` squared `squarings` times) * `b`.
+    fn sqr_mul(a: &ScalarMont, squarings: usize, b: &ScalarMont)
+               -> ScalarMont {
+        debug_assert!(squarings >= 1);
+        let mut tmp = sqr(a);
+        for _ in 1..squarings {
+            sqr_mut(&mut tmp);
+        }
+        mul(&tmp, b)
+    }
+
+    // Sets `acc` = (`acc` squared `squarings` times) * `b`.
+    fn sqr_mul_acc(acc: &mut ScalarMont, squarings: usize, b: &ScalarMont) {
+        debug_assert!(squarings >= 1);
+        for _ in 0..squarings {
+            sqr_mut(acc);
+        }
+        ab_assign(GFp_p384_scalar_mul_mont, &mut acc.limbs, &b.limbs)
+    }
+
+    fn to_mont(a: &Scalar) -> ScalarMont {
+        static N_RR: [Limb; MAX_LIMBS] =
+            p384_limbs![0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895,
+                        0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
+                        0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9];
+        ScalarMont { limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &N_RR) }
+    }
+
+    // Indexes into `d`.
+    const B_1: usize = 0;
+    const B_10: usize = 1;
+    const B_11: usize = 2;
+    const B_101: usize = 3;
+    const B_111: usize = 4;
+    const B_1111: usize = 5;
+    const DIGIT_COUNT: usize = 6;
+
+    let mut d = [ScalarMont { limbs: [0; MAX_LIMBS] }; DIGIT_COUNT];
+
+    d[B_1]    = to_mont(a);
+    d[B_10]   = sqr    (&d[B_1]);
+    d[B_11]   = mul    (&d[B_10],         &d[B_1]);
+    d[B_101]  = sqr_mul(&d[B_10],  0 + 1, &d[B_1]);
+    d[B_111]  = mul    (&d[B_101],        &d[B_10]);
+    d[B_1111] = sqr_mul(&d[B_111], 0 + 1, &d[B_1]);
+
+    let ff       = sqr_mul(&d[B_1111], 0 +  4, &d[B_1111]);
+    let ffff     = sqr_mul(&ff,        0 +  8, &ff);
+    let ffffffff = sqr_mul(&ffff,      0 + 16, &ffff);
+
+    let ffffffffffffffff = sqr_mul(&ffffffff, 0 + 32, &ffffffff);
+
+    let ffffffffffffffffffffffff =
+        sqr_mul(&ffffffffffffffff, 0 + 32, &ffffffff);
+
+    // ffffffffffffffffffffffffffffffffffffffffffffffff
+    let mut acc =
+        sqr_mul(&ffffffffffffffffffffffff, 0 + 96, &ffffffffffffffffffffffff);
+
+    // The rest of the exponent, in binary, is:
+    //
+    //    1100011101100011010011011000000111110100001101110010110111011111
+    //    0101100000011010000011011011001001001000101100001010011101111010
+    //    1110110011101100000110010110101011001100110001010010100101110001
+
+    static REMAINING_WINDOWS: [(u8, u8); 48] = [
+        (    2, B_11 as u8),
+        (3 + 3, B_111 as u8),
+        (1 + 2, B_11 as u8),
+        (3 + 2, B_11 as u8),
+        (1 + 1, B_1 as u8),
+        (2 + 2, B_11 as u8),
+        (1 + 2, B_11 as u8),
+        (6 + 4, B_1111 as u8),
+        (    3, B_101 as u8),
+        (4 + 2, B_11 as u8),
+        (1 + 3, B_111 as u8),
+        (2 + 3, B_101 as u8),
+        (    1, B_1 as u8),
+        (1 + 3, B_111 as u8),
+        (1 + 4, B_1111 as u8),
+        (    3, B_101 as u8),
+        (1 + 2, B_11 as u8),
+        (6 + 2, B_11 as u8),
+        (1 + 1, B_1 as u8),
+        (5 + 2, B_11 as u8),
+        (1 + 2, B_11 as u8),
+        (1 + 2, B_11 as u8),
+        (2 + 1, B_1 as u8),
+        (2 + 1, B_1 as u8),
+        (2 + 1, B_1 as u8),
+        (3 + 1, B_1 as u8),
+        (1 + 2, B_11 as u8),
+        (4 + 1, B_1 as u8),
+        (1 + 1, B_1 as u8),
+        (2 + 3, B_111 as u8),
+        (1 + 4, B_1111 as u8),
+        (1 + 1, B_1 as u8),
+        (1 + 3, B_111 as u8),
+        (1 + 2, B_11 as u8),
+        (2 + 3, B_111 as u8),
+        (1 + 2, B_11 as u8),
+        (5 + 2, B_11 as u8),
+        (2 + 1, B_1 as u8),
+        (1 + 2, B_11 as u8),
+        (1 + 3, B_101 as u8),
+        (1 + 2, B_11 as u8),
+        (2 + 2, B_11 as u8),
+        (2 + 2, B_11 as u8),
+        (3 + 3, B_101 as u8),
+        (2 + 3, B_101 as u8),
+        (2 + 1, B_1 as u8),
+        (1 + 3, B_111 as u8),
+        (3 + 1, B_1 as u8),
+    ];
+
+    for &(squarings, digit) in &REMAINING_WINDOWS[..] {
+        sqr_mul_acc(&mut acc, squarings as usize, &d[digit as usize]);
+    }
+
+    acc
+}
 
 
 #[allow(non_snake_case)]
@@ -205,8 +356,6 @@ extern {
                               a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
-    fn GFp_p384_scalar_inv_to_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                                   a: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn GFp_p384_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                 a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                                 b: *const Limb/*[COMMON_OPS.num_limbs]*/);
