@@ -220,19 +220,21 @@ NextCipherSuite:
 	}
 
 	if session != nil {
-		if session.sessionTicket != nil {
-			hello.sessionTicket = session.sessionTicket
-			if c.config.Bugs.CorruptTicket {
-				hello.sessionTicket = make([]byte, len(session.sessionTicket))
-				copy(hello.sessionTicket, session.sessionTicket)
-				if len(hello.sessionTicket) > 0 {
-					offset := 40
-					if offset > len(hello.sessionTicket) {
-						offset = len(hello.sessionTicket) - 1
-					}
-					hello.sessionTicket[offset] ^= 0x40
-				}
+		ticket := session.sessionTicket
+		if c.config.Bugs.CorruptTicket && len(ticket) > 0 {
+			ticket = make([]byte, len(session.sessionTicket))
+			copy(ticket, session.sessionTicket)
+			offset := 40
+			if offset >= len(ticket) {
+				offset = len(ticket) - 1
 			}
+			ticket[offset] ^= 0x40
+		}
+
+		if session.vers >= VersionTLS13 {
+			// TODO(davidben): Offer TLS 1.3 tickets.
+		} else if ticket != nil {
+			hello.sessionTicket = ticket
 			// A random session ID is used to detect when the
 			// server accepted the ticket and is resuming a session
 			// (see RFC 5077).
@@ -768,9 +770,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
 	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
 
-	// TODO(davidben): Derive and save the resumption master secret for receiving tickets.
 	// TODO(davidben): Save the traffic secret for KeyUpdate.
 	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
+	c.resumptionSecret = hs.finishedHash.deriveSecret(masterSecret, resumptionLabel)
 	return nil
 }
 
