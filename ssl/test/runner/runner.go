@@ -6377,12 +6377,28 @@ func addCurveTests() {
 	testCases = append(testCases, testCase{
 		name: "UnsupportedCurve",
 		config: Config{
-			// TODO(davidben): Add a TLS 1.3 version of this test.
 			MaxVersion:       VersionTLS12,
 			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 			CurvePreferences: []CurveID{CurveP256},
 			Bugs: ProtocolBugs{
 				IgnorePeerCurvePreferences: true,
+			},
+		},
+		flags:         []string{"-p384-only"},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
+	testCases = append(testCases, testCase{
+		// TODO(davidben): Add a TLS 1.3 version where
+		// HelloRetryRequest requests an unsupported curve.
+		name: "UnsupportedCurve-ServerHello-TLS13",
+		config: Config{
+			MaxVersion:       VersionTLS12,
+			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				SendCurve: CurveP256,
 			},
 		},
 		flags:         []string{"-p384-only"},
