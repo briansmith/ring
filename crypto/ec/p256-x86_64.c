@@ -312,7 +312,7 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   ecp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
   ecp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
   ecp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[16 - 1], &row[15 - 1], &row[1 - 1]);
+  ecp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
