@@ -1115,6 +1115,11 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 				return false
 			}
 			// Ignore this extension from the server.
+		case extensionSupportedCurves:
+			// The server can only send supported_curves in TLS 1.3.
+			if version < VersionTLS13 || !enableTLS13Handshake {
+				return false
+			}
 		default:
 			// Unknown extensions are illegal from the server.
 			return false
