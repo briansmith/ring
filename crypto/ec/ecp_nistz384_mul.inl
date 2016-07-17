@@ -85,7 +85,7 @@ void ecp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   ecp_nistz384_point_double(&row[10 - 1], &row[5 - 1]);
   ecp_nistz384_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
   ecp_nistz384_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  ecp_nistz384_point_add(&row[16 - 1], &row[15 - 1], &row[1 - 1]);
+  ecp_nistz384_point_double(&row[16 - 1], &row[8 - 1]);
 
   static const unsigned START_INDEX = 384 - 4;
   unsigned index = START_INDEX;
