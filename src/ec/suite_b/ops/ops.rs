@@ -37,7 +37,6 @@ pub struct ElemDecoded {
 }
 
 
-
 /// Scalars. Scalars are *not* Montgomery-encoded. They are always
 /// fully reduced mod n; i.e. their range is [0, n]. In most contexts,
 /// zero-valued scalars are forbidden.
@@ -57,6 +56,7 @@ impl Scalar {
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
 }
+
 
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
