@@ -179,6 +179,11 @@ impl CommonOps {
     }
 
     #[inline]
+    pub fn elem_square(&self, a: &mut Elem) {
+        a_assign(self.elem_sqr_mont, &mut a.limbs);
+    }
+
+    #[inline]
     pub fn elem_squared(&self, a: &Elem) -> Elem {
         Elem { limbs: ra(self.elem_sqr_mont, &a.limbs) }
     }
@@ -225,8 +230,7 @@ pub enum EC_GROUP { }
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
-    elem_inv: unsafe extern fn(r: *mut Limb/*[num_limbs]*/,
-                               a: *const Limb/*[num_limbs]*/),
+    elem_inv: fn(a: &Elem) -> Elem,
     point_mul_base_impl: fn(a: &Scalar) -> Result<Point, ()>,
     point_mul_impl: fn(s: &Scalar, point_x_y: &(Elem, Elem))
                        -> Result<Point, ()>,
@@ -246,7 +250,7 @@ impl PrivateKeyOps {
 
     #[inline]
     pub fn elem_inverse(&self, a: &Elem) -> Elem {
-        Elem { limbs: ra(self.elem_inv, &a.limbs) }
+        (self.elem_inv)(&a)
     }
 }
 
@@ -399,6 +403,28 @@ fn parse_big_endian_value_in_range(input: untrusted::Input, min_inclusive: Limb,
 }
 
 
+// Returns (`a` squared `squarings` times) * `b`.
+fn elem_sqr_mul(ops: &CommonOps, a: &Elem, squarings: usize, b: &Elem)
+                -> Elem {
+    debug_assert!(squarings >= 1);
+    let mut tmp = ops.elem_squared(a);
+    for _ in 1..squarings {
+        ops.elem_square(&mut tmp);
+    }
+    ops.elem_product(&tmp, &b)
+}
+
+// Sets `acc` = (`acc` squared `squarings` times) * `b`.
+fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem, squarings: usize,
+                    b: &Elem) {
+    debug_assert!(squarings >= 1);
+    for _ in 0..squarings {
+        ops.elem_square(acc);
+    }
+    ops.elem_mul(acc, &b)
+}
+
+
 // let r = f(a, b); return r;
 #[inline]
 fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
@@ -408,6 +434,16 @@ fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
         f(r.as_mut_ptr(), a.as_ptr(), b.as_ptr())
     }
     r
+}
+
+
+// a = f(a, b);
+#[inline]
+fn a_assign(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
+            a: &mut [Limb; MAX_LIMBS]) {
+    unsafe {
+        f(a.as_mut_ptr(), a.as_ptr())
+    }
 }
 
 // a = f(a, b);

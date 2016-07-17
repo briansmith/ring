@@ -27,7 +27,6 @@ typedef GFp_Limb Scalar[P384_LIMBS];
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_inv(Elem r, const Elem a);
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
 void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
@@ -90,65 +89,6 @@ void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
    * fit in |P384_LIMBS| limbs, or the addition result fit in |P384_LIMBS|
    * limbs but it was not less than |q|. Either way, it needs to be reduced. */
   (void)bn_sub_words(r, r, Q, P384_LIMBS);
-}
-
-void GFp_p384_elem_inv(Elem r, const Elem a) {
-  /* Calculate the modular inverse of field element |a| using Fermat's Little
-   * Theorem:
-   *
-   *    a**-1 (mod q) == a**(q - 2) (mod q)
-   *
-   * The exponent (q - 2) is:
-   *
-   *    0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe\
-   *      ffffffff0000000000000000fffffffd
-   */
-
-  const GFp_Limb *b_1 = a;
-
-  Elem b_11;    elem_sqr_mul_mont(b_11, b_1, 0 + 1, b_1);
-  Elem f;       elem_sqr_mul_mont(f, b_11, 0 + 2, b_11);
-  Elem ff;      elem_sqr_mul_mont(ff, f, 0 + 4, f);
-  Elem ffff;    elem_sqr_mul_mont(ffff, ff, 0 + 8, ff);
-  Elem ffffff;  elem_sqr_mul_mont(ffffff, ffff, 0 + 8, ff);
-  Elem fffffff; elem_sqr_mul_mont(fffffff, ffffff, 0 + 4, f);
-
-  Elem ffffffffffffff;
-  elem_sqr_mul_mont(ffffffffffffff, fffffff, 0 + 28, fffffff);
-
-  Elem ffffffffffffffffffffffffffff;
-  elem_sqr_mul_mont(ffffffffffffffffffffffffffff, ffffffffffffff, 0 + 56,
-                    ffffffffffffff);
-
-  Elem acc;
-
-  /* ffffffffffffffffffffffffffffffffffffffffffffffffffffffff */
-  elem_sqr_mul_mont(acc, ffffffffffffffffffffffffffff, 0 + 112,
-                    ffffffffffffffffffffffffffff);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff */
-  elem_sqr_mul_mont(acc, acc, 0 + 28, fffffff);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[11] */
-  elem_sqr_mul_mont(acc, acc, 0 + 2, b_11);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[111] */
-  elem_sqr_mul_mont(acc, acc, 0 + 1, b_1);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffff */
-  elem_sqr_mul_mont(acc, acc, 1 + 28, fffffff);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff */
-  elem_sqr_mul_mont(acc, acc, 0 + 4, f);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
-   * 0000000000000000fffffff */
-  elem_sqr_mul_mont(acc, acc, 64 + 28, fffffff);
-
-  /* fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
-   * 0000000000000000fffffffd */
-  elem_sqr_mul_mont(acc, acc, 0 + 2, b_11);
-  elem_sqr_mul_mont(r, acc, 1 + 1, b_1);
 }
 
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {

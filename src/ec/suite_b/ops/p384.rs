@@ -15,7 +15,8 @@
 use bssl;
 use core;
 use super::*;
-use super::{GFp_suite_b_public_twin_mult, Mont};
+use super::{GFp_suite_b_public_twin_mult, elem_sqr_mul, elem_sqr_mul_acc,
+            Mont};
 
 
 macro_rules! p384_limbs {
@@ -66,10 +67,75 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
-    elem_inv: GFp_p384_elem_inv,
+    elem_inv: p384_elem_inv,
     point_mul_base_impl: p384_point_mul_base_impl,
     point_mul_impl: p384_point_mul_impl,
 };
+
+fn p384_elem_inv(a: &Elem) -> Elem {
+    // Calculate the modular inverse of field element |a| using Fermat's Little
+    // Theorem:
+    //
+    //    a**-1 (mod q) == a**(q - 2) (mod q)
+    //
+    // The exponent (q - 2) is:
+    //
+    //    0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe\
+    //      ffffffff0000000000000000fffffffd
+
+    #[inline]
+    fn sqr_mul(a: &Elem, squarings: usize, b: &Elem) -> Elem {
+        elem_sqr_mul(&COMMON_OPS, a, squarings, b)
+    }
+
+    #[inline]
+    fn sqr_mul_acc(a: &mut Elem, squarings: usize, b: &Elem) {
+        elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
+    }
+
+    let b_1 = &a;
+    let b_11    = sqr_mul(&b_1,    0 + 1, &b_1);
+    let f       = sqr_mul(&b_11,   0 + 2, &b_11);
+    let ff      = sqr_mul(&f,      0 + 4, &f);
+    let ffff    = sqr_mul(&ff,     0 + 8, &ff);
+    let ffffff  = sqr_mul(&ffff,   0 + 8, &ff);
+    let fffffff = sqr_mul(&ffffff, 0 + 4, &f);
+
+    let b_1 = &a;
+
+    let ffffffffffffff = sqr_mul(&fffffff, 0 + 28, &fffffff);
+
+    let ffffffffffffffffffffffffffff =
+        sqr_mul(&ffffffffffffff, 0 + 56, &ffffffffffffff);
+
+    // ffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    let mut acc = sqr_mul(&ffffffffffffffffffffffffffff, 0 + 112,
+                          &ffffffffffffffffffffffffffff);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff */
+    sqr_mul_acc(&mut acc, 0 + 28, &fffffff);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[11]
+    sqr_mul_acc(&mut acc, 0 + 2, &b_11);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[111]
+    sqr_mul_acc(&mut acc, 0 + 1, &b_1);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffff
+    sqr_mul_acc(&mut acc, 1 + 28, &fffffff);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
+    sqr_mul_acc(&mut acc, 0 + 4, &f);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
+    // 0000000000000000fffffff
+    sqr_mul_acc(&mut acc, 64 + 28, &fffffff);
+
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
+    // 0000000000000000fffffffd
+    sqr_mul_acc(&mut acc, 0 + 2, &b_11);
+    sqr_mul(&acc, 1 + 1, &b_1)
+}
 
 
 fn p384_point_mul_base_impl(a: &Scalar) -> Result<Point, ()> {
@@ -135,8 +201,6 @@ extern {
     fn GFp_p384_elem_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                          a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                          b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_p384_elem_inv(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                         a: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn GFp_p384_elem_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                               a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[COMMON_OPS.num_limbs]*/);
