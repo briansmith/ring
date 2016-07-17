@@ -40,14 +40,6 @@ void ecp_nistz256_sqr_mont(Elem r, const Elem a) {
 }
 #endif
 
-static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
-  ecp_nistz256_mul_mont(r, a, b);
-}
-
-static inline void elem_sqr_mont(Elem r, const Elem a) {
-  ecp_nistz256_sqr_mont(r, a);
-}
-
 #if !defined(OPENSSL_X86_64)
 void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
