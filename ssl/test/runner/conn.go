@@ -59,6 +59,7 @@ type Conn struct {
 
 	clientRandom, serverRandom [32]byte
 	exporterSecret             []byte
+	resumptionSecret           []byte
 
 	clientProtocol         string
 	clientProtocolFallback bool
@@ -1143,7 +1144,9 @@ func (c *Conn) readHandshake() (interface{}, error) {
 	case typeHelloRetryRequest:
 		m = new(helloRetryRequestMsg)
 	case typeNewSessionTicket:
-		m = new(newSessionTicketMsg)
+		m = &newSessionTicketMsg{
+			version: c.vers,
+		}
 	case typeEncryptedExtensions:
 		m = new(encryptedExtensionsMsg)
 	case typeCertificate:
@@ -1581,4 +1584,40 @@ func (c *Conn) noRenegotiationInfo() bool {
 		return true
 	}
 	return false
+}
+
+func (c *Conn) SendNewSessionTicket() error {
+	if c.isClient || c.vers < VersionTLS13 {
+		return errors.New("tls: cannot send post-handshake NewSessionTicket")
+	}
+
+	var peerCertificatesRaw [][]byte
+	for _, cert := range c.peerCertificates {
+		peerCertificatesRaw = append(peerCertificatesRaw, cert.Raw)
+	}
+	state := sessionState{
+		vers:         c.vers,
+		cipherSuite:  c.cipherSuite.id,
+		masterSecret: c.resumptionSecret,
+		certificates: peerCertificatesRaw,
+	}
+
+	// TODO(davidben): Allow configuring these values.
+	m := &newSessionTicketMsg{
+		version:        c.vers,
+		ticketLifetime: uint32(24 * time.Hour / time.Second),
+		ticketFlags:    ticketAllowDHEResumption | ticketAllowPSKResumption,
+	}
+	if !c.config.Bugs.SendEmptySessionTicket {
+		var err error
+		m.ticket, err = c.encryptTicket(&state)
+		if err != nil {
+			return err
+		}
+	}
+
+	c.out.Lock()
+	defer c.out.Unlock()
+	_, err := c.writeRecord(recordTypeHandshake, m.marshal())
+	return err
 }

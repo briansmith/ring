@@ -1715,50 +1715,75 @@ func (m *certificateVerifyMsg) unmarshal(data []byte) bool {
 }
 
 type newSessionTicketMsg struct {
-	raw    []byte
-	ticket []byte
+	raw            []byte
+	version        uint16
+	ticketLifetime uint32
+	ticketFlags    uint32
+	ticketAgeAdd   uint32
+	ticket         []byte
 }
 
-func (m *newSessionTicketMsg) marshal() (x []byte) {
+func (m *newSessionTicketMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
 
 	// See http://tools.ietf.org/html/rfc5077#section-3.3
-	ticketLen := len(m.ticket)
-	length := 2 + 4 + ticketLen
-	x = make([]byte, 4+length)
-	x[0] = typeNewSessionTicket
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
-	x[8] = uint8(ticketLen >> 8)
-	x[9] = uint8(ticketLen)
-	copy(x[10:], m.ticket)
+	ticketMsg := newByteBuilder()
+	ticketMsg.addU8(typeNewSessionTicket)
+	body := ticketMsg.addU24LengthPrefixed()
+	body.addU32(m.ticketLifetime)
+	if m.version >= VersionTLS13 {
+		body.addU32(m.ticketFlags)
+		body.addU32(m.ticketAgeAdd)
+		// Send no extensions.
+		//
+		// TODO(davidben): Add an option to send a custom extension to
+		// test we correctly ignore unknown ones.
+		body.addU16(0)
+	}
+	ticket := body.addU16LengthPrefixed()
+	ticket.addBytes(m.ticket)
 
-	m.raw = x
-
-	return
+	m.raw = ticketMsg.finish()
+	return m.raw
 }
 
 func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 	m.raw = data
 
-	if len(data) < 10 {
+	if len(data) < 8 {
+		return false
+	}
+	m.ticketLifetime = uint32(data[4])<<24 | uint32(data[5])<<16 | uint32(data[6])<<8 | uint32(data[7])
+	data = data[8:]
+
+	if m.version >= VersionTLS13 {
+		if len(data) < 10 {
+			return false
+		}
+		m.ticketFlags = uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
+		m.ticketAgeAdd = uint32(data[4])<<24 | uint32(data[5])<<16 | uint32(data[6])<<8 | uint32(data[7])
+		extsLength := int(data[8])<<8 + int(data[9])
+		data = data[10:]
+		if len(data) < extsLength {
+			return false
+		}
+		data = data[extsLength:]
+	}
+
+	if len(data) < 2 {
+		return false
+	}
+	ticketLen := int(data[0])<<8 + int(data[1])
+	if len(data)-2 != ticketLen {
+		return false
+	}
+	if m.version >= VersionTLS13 && ticketLen == 0 {
 		return false
 	}
 
-	length := uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
-	if uint32(len(data))-4 != length {
-		return false
-	}
-
-	ticketLen := int(data[8])<<8 + int(data[9])
-	if len(data)-10 != ticketLen {
-		return false
-	}
-
-	m.ticket = data[10:]
+	m.ticket = data[2:]
 
 	return true
 }

@@ -189,6 +189,13 @@ const (
 	SRTP_AES128_CM_HMAC_SHA1_32        = 0x0002
 )
 
+// TicketFlags values (see draft-ietf-tls-tls13-14, section 4.4.1)
+const (
+	ticketAllowEarlyData     = 1
+	ticketAllowDHEResumption = 2
+	ticketAllowPSKResumption = 4
+)
+
 // ConnectionState records basic TLS details about the connection.
 type ConnectionState struct {
 	Version                    uint16                // TLS version used by the connection (e.g. VersionTLS12)
