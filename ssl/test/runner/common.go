@@ -18,8 +18,6 @@ import (
 	"time"
 )
 
-const enableTLS13Handshake = true
-
 const (
 	VersionSSL30 = 0x0300
 	VersionTLS10 = 0x0301

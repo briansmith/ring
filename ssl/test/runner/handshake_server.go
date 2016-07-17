@@ -53,7 +53,7 @@ func (c *Conn) serverHandshake() error {
 		return err
 	}
 
-	if c.vers >= VersionTLS13 && enableTLS13Handshake {
+	if c.vers >= VersionTLS13 {
 		if err := hs.doTLS13Handshake(); err != nil {
 			return err
 		}
@@ -709,7 +709,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	config := hs.c.config
 	c := hs.c
 
-	if c.vers < VersionTLS13 || config.Bugs.NegotiateRenegotiationInfoAtAllVersions || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateRenegotiationInfoAtAllVersions {
 		if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: renegotiation mismatch")
@@ -760,7 +760,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		}
 	}
 
-	if c.vers < VersionTLS13 || config.Bugs.NegotiateNPNAtAllVersions || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateNPNAtAllVersions {
 		if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
 			// Although sending an empty NPN extension is reasonable, Firefox has
 			// had a bug around this. Best to send nothing at all if
@@ -774,11 +774,11 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		}
 	}
 
-	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions {
 		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
 	}
 
-	if c.vers < VersionTLS13 || config.Bugs.NegotiateChannelIDAtAllVersions || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 || config.Bugs.NegotiateChannelIDAtAllVersions {
 		if hs.clientHello.channelIDSupported && config.RequestChannelID {
 			serverExtensions.channelIDRequested = true
 		}

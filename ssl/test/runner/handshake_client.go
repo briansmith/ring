@@ -104,7 +104,7 @@ func (c *Conn) clientHandshake() error {
 	}
 
 	var keyShares map[CurveID]ecdhCurve
-	if hello.vers >= VersionTLS13 && enableTLS13Handshake {
+	if hello.vers >= VersionTLS13 {
 		// Offer every supported curve in the initial ClientHello.
 		//
 		// TODO(davidben): For real code, default to a more conservative
@@ -362,7 +362,7 @@ NextCipherSuite:
 	hs.writeHash(helloBytes, hs.c.sendHandshakeSeq-1)
 	hs.writeServerHash(hs.serverHello.marshal())
 
-	if c.vers >= VersionTLS13 && enableTLS13Handshake {
+	if c.vers >= VersionTLS13 {
 		if err := hs.doTLS13Handshake(); err != nil {
 			return err
 		}
@@ -953,7 +953,7 @@ func (hs *clientHandshakeState) establishKeys() error {
 func (hs *clientHandshakeState) processServerExtensions(serverExtensions *serverExtensions) error {
 	c := hs.c
 
-	if c.vers < VersionTLS13 || !enableTLS13Handshake {
+	if c.vers < VersionTLS13 {
 		if c.config.Bugs.RequireRenegotiationInfo && serverExtensions.secureRenegotiation == nil {
 			return errors.New("tls: renegotiation extension missing")
 		}
@@ -1003,7 +1003,7 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		c.usedALPN = true
 	}
 
-	if serverHasNPN && c.vers >= VersionTLS13 && enableTLS13Handshake {
+	if serverHasNPN && c.vers >= VersionTLS13 {
 		c.sendAlert(alertHandshakeFailure)
 		return errors.New("server advertised NPN over TLS 1.3")
 	}
@@ -1013,16 +1013,16 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		return errors.New("server advertised unrequested Channel ID extension")
 	}
 
-	if serverExtensions.channelIDRequested && c.vers >= VersionTLS13 && enableTLS13Handshake {
+	if serverExtensions.channelIDRequested && c.vers >= VersionTLS13 {
 		c.sendAlert(alertHandshakeFailure)
 		return errors.New("server advertised Channel ID over TLS 1.3")
 	}
 
-	if serverExtensions.extendedMasterSecret && c.vers >= VersionTLS13 && enableTLS13Handshake {
+	if serverExtensions.extendedMasterSecret && c.vers >= VersionTLS13 {
 		return errors.New("tls: server advertised extended master secret over TLS 1.3")
 	}
 
-	if serverExtensions.ticketSupported && c.vers >= VersionTLS13 && enableTLS13Handshake {
+	if serverExtensions.ticketSupported && c.vers >= VersionTLS13 {
 		return errors.New("tls: server advertised ticket extension over TLS 1.3")
 	}
 

@@ -1143,12 +1143,12 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(encryptedExtensionsMsg)
 	case typeCertificate:
 		m = &certificateMsg{
-			hasRequestContext: c.vers >= VersionTLS13 && enableTLS13Handshake,
+			hasRequestContext: c.vers >= VersionTLS13,
 		}
 	case typeCertificateRequest:
 		m = &certificateRequestMsg{
 			hasSignatureAlgorithm: c.vers >= VersionTLS12,
-			hasRequestContext:     c.vers >= VersionTLS13 && enableTLS13Handshake,
+			hasRequestContext:     c.vers >= VersionTLS13,
 		}
 	case typeCertificateStatus:
 		m = new(certificateStatusMsg)
@@ -1536,7 +1536,7 @@ func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContex
 		return nil, errors.New("tls: handshake has not yet been performed")
 	}
 
-	if enableTLS13Handshake && c.vers >= VersionTLS13 {
+	if c.vers >= VersionTLS13 {
 		// TODO(davidben): What should we do with useContext? See
 		// https://github.com/tlswg/tls13-spec/issues/546
 		return hkdfExpandLabel(c.cipherSuite.hash(), c.exporterSecret, label, context, length), nil

@@ -133,7 +133,7 @@ func prfForVersion(version uint16, suite *cipherSuite) func(result, secret, labe
 	// Once we no longer support Fake TLS 1.3, the VersionTLS13 should be
 	// removed from this case statement.
 	case VersionTLS12, VersionTLS13:
-		if version == VersionTLS12 || !enableTLS13Handshake {
+		if version == VersionTLS12 {
 			return prf12(suite.hash().New)
 		}
 	}
@@ -194,7 +194,7 @@ func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 		ret.client = ret.hash.New()
 		ret.server = ret.hash.New()
 
-		if version == VersionTLS12 || !enableTLS13Handshake {
+		if version == VersionTLS12 {
 			ret.prf = prf12(ret.hash.New)
 		}
 	} else {
@@ -305,7 +305,7 @@ func (h finishedHash) clientSum(baseKey []byte) []byte {
 		return finishedSum30(h.clientMD5, h.client, baseKey, ssl3ClientFinishedMagic[:])
 	}
 
-	if h.version < VersionTLS13 || !enableTLS13Handshake {
+	if h.version < VersionTLS13 {
 		out := make([]byte, finishedVerifyLength)
 		h.prf(out, baseKey, clientFinishedLabel, h.Sum())
 		return out
@@ -324,7 +324,7 @@ func (h finishedHash) serverSum(baseKey []byte) []byte {
 		return finishedSum30(h.serverMD5, h.server, baseKey, ssl3ServerFinishedMagic[:])
 	}
 
-	if h.version < VersionTLS13 || !enableTLS13Handshake {
+	if h.version < VersionTLS13 {
 		out := make([]byte, finishedVerifyLength)
 		h.prf(out, baseKey, serverFinishedLabel, h.Sum())
 		return out

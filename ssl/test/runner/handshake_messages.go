@@ -709,18 +709,18 @@ func (m *serverHelloMsg) marshal() []byte {
 	vers := versionToWire(m.vers, m.isDTLS)
 	hello.addU16(vers)
 	hello.addBytes(m.random)
-	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+	if m.vers < VersionTLS13 {
 		sessionId := hello.addU8LengthPrefixed()
 		sessionId.addBytes(m.sessionId)
 	}
 	hello.addU16(m.cipherSuite)
-	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+	if m.vers < VersionTLS13 {
 		hello.addU8(m.compressionMethod)
 	}
 
 	extensions := hello.addU16LengthPrefixed()
 
-	if m.vers >= VersionTLS13 && enableTLS13Handshake {
+	if m.vers >= VersionTLS13 {
 		if m.hasKeyShare {
 			extensions.addU16(extensionKeyShare)
 			keyShare := extensions.addU16LengthPrefixed()
@@ -756,7 +756,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
 	m.random = data[6:38]
 	data = data[38:]
-	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+	if m.vers < VersionTLS13 {
 		sessionIdLen := int(data[0])
 		if sessionIdLen > 32 || len(data) < 1+sessionIdLen {
 			return false
@@ -769,7 +769,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
 	data = data[2:]
-	if m.vers < VersionTLS13 || !enableTLS13Handshake {
+	if m.vers < VersionTLS13 {
 		if len(data) < 1 {
 			return false
 		}
@@ -777,7 +777,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		data = data[1:]
 	}
 
-	if len(data) == 0 && (m.vers < VersionTLS13 || enableTLS13Handshake) {
+	if len(data) == 0 && m.vers < VersionTLS13 {
 		// Extension data is optional before TLS 1.3.
 		m.extensions = serverExtensions{}
 		return true
@@ -792,7 +792,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 
-	if m.vers >= VersionTLS13 && enableTLS13Handshake {
+	if m.vers >= VersionTLS13 {
 		for len(data) != 0 {
 			if len(data) < 4 {
 				return false
@@ -927,7 +927,7 @@ func (m *serverExtensions) marshal(extensions *byteBuilder, version uint16) {
 			npn.addBytes([]byte(v))
 		}
 	}
-	if version >= VersionTLS13 && enableTLS13Handshake {
+	if version >= VersionTLS13 {
 		if m.ocspResponse != nil {
 			extensions.addU16(extensionStatusRequest)
 			body := extensions.addU16LengthPrefixed()
@@ -1042,7 +1042,7 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 				d = d[l:]
 			}
 		case extensionStatusRequest:
-			if version >= VersionTLS13 && enableTLS13Handshake {
+			if version >= VersionTLS13 {
 				if length < 4 {
 					return false
 				}
@@ -1123,13 +1123,13 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 			// Ignore this extension from the server.
 		case extensionSupportedPoints:
 			// supported_points is illegal in TLS 1.3.
-			if version >= VersionTLS13 && enableTLS13Handshake {
+			if version >= VersionTLS13 {
 				return false
 			}
 			// Ignore this extension from the server.
 		case extensionSupportedCurves:
 			// The server can only send supported_curves in TLS 1.3.
-			if version < VersionTLS13 || !enableTLS13Handshake {
+			if version < VersionTLS13 {
 				return false
 			}
 		default:
