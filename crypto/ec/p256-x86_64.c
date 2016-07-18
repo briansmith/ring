@@ -54,20 +54,28 @@ typedef struct {
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
-/* Functions implemented in assembly */
+/* Arithmetic on field elements using Almost Montgomery Multiplication. The
+ * "almost" means, in particular, that the inputs and outputs of these
+ * functions are in the range [0, 2**BN_BITS2), not [0, P). Only
+ * |ecp_nistz256_from_mont| outputs a fully reduced value in [0, P). Almost
+ * Montgomery Arithmetic is described clearly in "Efficient Software
+ * Implementations of Modular Exponentiation" by Shay Gueron. */
 
-/* Modular neg: res = -a mod P */
+/* Modular neg: res = -a mod P, where res is not fully reduced. */
 void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
-/* Montgomery mul: res = a*b*2^-256 mod P */
+/* Montgomery mul: res = a*b*2^-256 mod P, where res is not fully reduced. */
 void ecp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
                            const BN_ULONG a[P256_LIMBS],
                            const BN_ULONG b[P256_LIMBS]);
-/* Montgomery sqr: res = a*a*2^-256 mod P */
+/* Montgomery sqr: res = a*a*2^-256 mod P, where res is not fully reduced. */
 void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
                            const BN_ULONG a[P256_LIMBS]);
-/* Convert a number from Montgomery domain, by multiplying with 1 */
+/* Convert a number from Montgomery domain, by multiplying with 1, where res
+ * will be fully reduced mod P. */
 void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
                             const BN_ULONG in[P256_LIMBS]);
+
+
 /* Functions that perform constant time access to the precomputed tables */
 void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT *in_t, int index);
 void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,
@@ -519,33 +527,30 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   ecp_nistz256_mod_inverse(z_inv3, point_z);
   ecp_nistz256_sqr_mont(z_inv2, z_inv3);
 
-  /* Instead of using |ecp_nistz256_from_mont| to convert the |x| coordinate
-   * and then calling |ecp_nistz256_from_mont| again to convert the |y|
-   * coordinate below, convert the common factor |z_inv2| once now, saving one
-   * reduction. */
-  ecp_nistz256_from_mont(z_inv2, z_inv2);
+  /* Unlike the |BN_mod_mul_montgomery|-based implementation, we cannot factor
+   * out the two calls to |ecp_nistz256_from_mont| into one call, because
+   * |ecp_nistz256_from_mont| must be the last operation to ensure that the
+   * result is fully reduced mod P. */
 
   if (x != NULL) {
-    if (bn_wexpand(x, P256_LIMBS) == NULL) {
+    BN_ULONG x_aff[P256_LIMBS];
+    ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
+    ecp_nistz256_from_mont(x_aff, x_aff);
+    if (!bn_set_words(x, x_aff, P256_LIMBS)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
     }
-    x->top = P256_LIMBS;
-    x->neg = 0;
-    ecp_nistz256_mul_mont(x->d, z_inv2, point_x);
-    bn_correct_top(x);
   }
 
   if (y != NULL) {
+    BN_ULONG y_aff[P256_LIMBS];
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
-    if (bn_wexpand(y, P256_LIMBS) == NULL) {
+    ecp_nistz256_mul_mont(y_aff, z_inv3, point_y);
+    ecp_nistz256_from_mont(y_aff, y_aff);
+    if (!bn_set_words(y, y_aff, P256_LIMBS)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
     }
-    y->top = P256_LIMBS;
-    y->neg = 0;
-    ecp_nistz256_mul_mont(y->d, z_inv3, point_y);
-    bn_correct_top(y);
   }
 
   return 1;
