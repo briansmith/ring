@@ -559,6 +559,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		var ok bool
 		certReq, ok = msg.(*certificateRequestMsg)
 		if ok {
+			if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
+				certReq.signatureAlgorithms = c.config.signSignatureAlgorithms()
+			}
+
 			hs.writeServerHash(certReq.marshal())
 
 			chainToSend, err = selectClientCertificate(c, certReq)
