@@ -493,3 +493,7 @@ func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret, phase []byte,
 
 	return suite.aead(version, key, iv)
 }
+
+func updateTrafficSecret(hash crypto.Hash, secret []byte) []byte {
+	return hkdfExpandLabel(hash, secret, applicationTrafficLabel, nil, hash.Size())
+}

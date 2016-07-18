@@ -68,6 +68,7 @@ const (
 	typeClientKeyExchange   uint8 = 16
 	typeFinished            uint8 = 20
 	typeCertificateStatus   uint8 = 22
+	typeKeyUpdate           uint8 = 24  // draft-ietf-tls-tls13-13
 	typeNextProtocol        uint8 = 67  // Not IANA assigned
 	typeChannelID           uint8 = 203 // Not IANA assigned
 )

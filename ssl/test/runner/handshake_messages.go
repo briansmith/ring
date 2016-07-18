@@ -1924,6 +1924,17 @@ func (*helloRequestMsg) unmarshal(data []byte) bool {
 	return len(data) == 4
 }
 
+type keyUpdateMsg struct {
+}
+
+func (*keyUpdateMsg) marshal() []byte {
+	return []byte{typeKeyUpdate, 0, 0, 0}
+}
+
+func (*keyUpdateMsg) unmarshal(data []byte) bool {
+	return len(data) == 4
+}
+
 func eqUint16s(x, y []uint16) bool {
 	if len(x) != len(y) {
 		return false

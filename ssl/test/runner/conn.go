@@ -159,6 +159,9 @@ type halfConn struct {
 	// used to save allocating a new buffer for each MAC.
 	inDigestBuf, outDigestBuf []byte
 
+	trafficSecret       []byte
+	keyUpdateGeneration int
+
 	config *Config
 }
 
@@ -203,11 +206,21 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 	return nil
 }
 
-// updateKeys sets the current cipher state.
-func (hc *halfConn) updateKeys(cipher interface{}, version uint16) {
+// useTrafficSecret sets the current cipher state for TLS 1.3.
+func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret, phase []byte, side trafficDirection) {
 	hc.version = version
-	hc.cipher = cipher
+	hc.cipher = deriveTrafficAEAD(version, suite, secret, phase, side)
+	hc.trafficSecret = secret
 	hc.incEpoch()
+}
+
+func (hc *halfConn) doKeyUpdate(c *Conn, isOutgoing bool) {
+	side := serverWrite
+	if c.isClient == isOutgoing {
+		side = clientWrite
+	}
+	hc.useTrafficSecret(hc.version, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), hc.trafficSecret), applicationPhase, side)
+	hc.keyUpdateGeneration++
 }
 
 // incSeq increments the sequence number.
@@ -1175,6 +1188,8 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(helloVerifyRequestMsg)
 	case typeChannelID:
 		m = new(channelIDMsg)
+	case typeKeyUpdate:
+		m = new(keyUpdateMsg)
 	default:
 		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 	}
@@ -1280,6 +1295,13 @@ func (c *Conn) Write(b []byte) (int, error) {
 		return 0, alertInternalError
 	}
 
+	// Catch up with KeyUpdates from the peer.
+	for c.out.keyUpdateGeneration < c.in.keyUpdateGeneration {
+		if err := c.sendKeyUpdateLocked(); err != nil {
+			return 0, err
+		}
+	}
+
 	if c.config.Bugs.SendSpuriousAlert != 0 {
 		c.sendAlertLocked(alertLevelError, c.config.Bugs.SendSpuriousAlert)
 	}
@@ -1355,6 +1377,11 @@ func (c *Conn) handlePostHandshakeMessage() error {
 			c.config.ClientSessionCache.Put(cacheKey, session)
 			return nil
 		}
+	}
+
+	if _, ok := msg.(*keyUpdateMsg); ok {
+		c.in.doKeyUpdate(c, true)
+		return nil
 	}
 
 	// TODO(davidben): Add support for KeyUpdate.
@@ -1647,4 +1674,22 @@ func (c *Conn) SendNewSessionTicket() error {
 	defer c.out.Unlock()
 	_, err := c.writeRecord(recordTypeHandshake, m.marshal())
 	return err
+}
+
+func (c *Conn) SendKeyUpdate() error {
+	c.out.Lock()
+	defer c.out.Unlock()
+	return c.sendKeyUpdateLocked()
+}
+
+func (c *Conn) sendKeyUpdateLocked() error {
+	m := new(keyUpdateMsg)
+	if _, err := c.writeRecord(recordTypeHandshake, m.marshal()); err != nil {
+		return err
+	}
+	if err := c.flushHandshake(); err != nil {
+		return err
+	}
+	c.out.doKeyUpdate(c, false)
+	return nil
 }

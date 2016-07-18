@@ -490,8 +490,8 @@ Curves:
 
 	// Switch to handshake traffic keys.
 	handshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, handshakeTrafficLabel)
-	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite), c.vers)
-	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite), c.vers)
+	c.out.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite)
+	c.in.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite)
 
 	if hs.suite.flags&suitePSK != 0 {
 		return errors.New("tls: PSK ciphers not implemented for TLS 1.3")
@@ -591,7 +591,7 @@ Curves:
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
-	c.out.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite), c.vers)
+	c.out.useTrafficSecret(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite)
 
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
@@ -664,9 +664,8 @@ Curves:
 	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys on read.
-	c.in.updateKeys(deriveTrafficAEAD(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite), c.vers)
+	c.in.useTrafficSecret(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite)
 
-	// TODO(davidben): Save the traffic secret for KeyUpdate.
 	c.cipherSuite = hs.suite
 	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(masterSecret, resumptionLabel)
