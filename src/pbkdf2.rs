@@ -113,10 +113,7 @@ use {constant_time, digest, hmac, polyfill};
 /// minimize the effectiveness of timing attacks.
 ///
 /// `out.len()` must be no larger than the output length of the digest function
-/// used in the PRF algorithm. This limit is more strict than what the
-/// specification requires. As noted at https://github.com/ctz/fastpbkdf2,
-/// "PBKDF2 is mis-designed and you should avoid asking for more than your hash
-/// function's output length."
+/// used in the PRF algorithm * (2**32 - 1), per the PBKDF2 specification.
 ///
 /// | Parameter   | RFC 2898 Section 5.2 Term
 /// |-------------|---------------------------------------
@@ -133,12 +130,13 @@ use {constant_time, digest, hmac, polyfill};
 ///
 /// `derive` panics if `iterations < 1`.
 ///
-/// `derive` panics if `out.len()` is larger than the output length of the
-/// digest function used by the PRF algorithm.
+/// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
+/// length, per the PBKDF2 specification.
 pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
               out: &mut [u8]) {
     assert!(iterations >= 1);
-    assert!(out.len() <= prf.digest_alg.output_len);
+
+    let output_len = prf.digest_alg.output_len;
 
     // This implementation's performance is asymptotically optimal as described
     // in https://jbp.io/2015/08/11/pbkdf2-performance-matters/. However, it
@@ -150,9 +148,24 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     // Clear |out|.
     polyfill::slice::fill(out, 0);
 
+    let mut idx: u32 = 0;
+
+    for chunk in out.chunks_mut(output_len) {
+        idx = idx.checked_add(1).expect("derived key too long");
+        derive_block(&secret, iterations, salt, idx, chunk);
+    }
+}
+
+fn derive_block(
+        secret: &hmac::SigningKey,
+        iterations: usize,
+        salt: &[u8],
+        idx: u32,
+        out: &mut [u8]) {
     let mut ctx = hmac::SigningContext::with_key(&secret);
     ctx.update(salt);
-    ctx.update(&[0, 0, 0, 1]);
+    ctx.update(&polyfill::slice::be_u8_from_u32(idx));
+
     let mut u = ctx.sign();
 
     let mut remaining = iterations;
@@ -190,17 +203,34 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
 ///
 /// `verify` panics if `iterations < 1`.
 ///
-/// `verify` panics if `out.len()` is larger than the output length of the
-/// digest function used by the PRF algorithm.
+/// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
+/// length, per the PBKDF2 specification.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
               previously_derived: &[u8]) -> Result<(), ()> {
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
-    if previously_derived.len() > derived_buf.len() {
-        return Err(());
+
+    let output_len = prf.digest_alg.output_len;
+    let secret = hmac::SigningKey::new(prf.digest_alg, secret);
+    let mut idx: u32 = 0;
+
+    let mut result = Ok(());
+
+    for previously_derived_chunk in previously_derived.chunks(output_len) {
+        idx = idx.checked_add(1).expect("derived key too long");
+
+        let derived_chunk = &mut derived_buf[..previously_derived_chunk.len()];
+        polyfill::slice::fill(derived_chunk, 0);
+
+        derive_block(&secret, iterations, salt, idx, derived_chunk);
+        let compares_equal = constant_time::verify_slices_are_equal(derived_chunk,
+                                                                    previously_derived_chunk);
+
+        if result.is_ok() {
+            result = compares_equal;
+        }
     }
-    let derived = &mut derived_buf[..previously_derived.len()];
-    derive(prf, iterations, salt, secret, derived);
-    constant_time::verify_slices_are_equal(derived, previously_derived)
+
+    result
 }
 
 /// A PRF algorithm for use with `derive` and `verify`.
