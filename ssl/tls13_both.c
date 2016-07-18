@@ -68,6 +68,20 @@ int tls13_handshake(SSL *ssl) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
         return -1;
 
+      case ssl_hs_flush:
+      case ssl_hs_flush_and_read_message: {
+        int ret = BIO_flush(ssl->wbio);
+        if (ret <= 0) {
+          ssl->rwstate = SSL_WRITING;
+          return ret;
+        }
+        if (hs->wait != ssl_hs_flush_and_read_message) {
+          break;
+        }
+        hs->wait = ssl_hs_read_message;
+        /* Fall-through. */
+      }
+
       case ssl_hs_read_message: {
         int ret = ssl->method->ssl_get_message(ssl, -1, ssl_dont_hash_message);
         if (ret <= 0) {
@@ -79,15 +93,6 @@ int tls13_handshake(SSL *ssl) {
       case ssl_hs_write_message: {
         int ret = ssl->method->write_message(ssl);
         if (ret <= 0) {
-          return ret;
-        }
-        break;
-      }
-
-      case ssl_hs_flush: {
-        int ret = BIO_flush(ssl->wbio);
-        if (ret <= 0) {
-          ssl->rwstate = SSL_WRITING;
           return ret;
         }
         break;
@@ -316,6 +321,8 @@ int tls13_check_message_type(SSL *ssl, int type) {
   if (ssl->s3->tmp.message_type != type) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    ERR_add_error_dataf("got type %d, wanted type %d",
+                        ssl->s3->tmp.message_type, type);
     return 0;
   }
 

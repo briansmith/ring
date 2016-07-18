@@ -37,7 +37,6 @@ enum server_hs_state_t {
   state_complete_server_certificate_verify,
   state_send_server_finished,
   state_flush,
-  state_read_client_second_flight,
   state_process_client_certificate,
   state_process_client_certificate_verify,
   state_process_client_finished,
@@ -352,12 +351,6 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
-  hs->state = state_read_client_second_flight;
-  return ssl_hs_flush;
-}
-
-static enum ssl_hs_wait_t do_read_client_second_flight(SSL *ssl,
-                                                       SSL_HANDSHAKE *hs) {
   /* Update the secret to the master secret and derive traffic keys. */
   static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
   if (!tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len) ||
@@ -368,7 +361,7 @@ static enum ssl_hs_wait_t do_read_client_second_flight(SSL *ssl,
   }
 
   hs->state = state_process_client_certificate;
-  return ssl_hs_read_message;
+  return ssl_hs_flush_and_read_message;
 }
 
 static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
@@ -456,9 +449,6 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl) {
         break;
       case state_flush:
         ret = do_flush(ssl, hs);
-        break;
-      case state_read_client_second_flight:
-        ret = do_read_client_second_flight(ssl, hs);
         break;
       case state_process_client_certificate:
         ret = do_process_client_certificate(ssl, hs);

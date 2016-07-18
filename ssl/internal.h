@@ -844,6 +844,7 @@ enum ssl_hs_wait_t {
   ssl_hs_read_message,
   ssl_hs_write_message,
   ssl_hs_flush,
+  ssl_hs_flush_and_read_message,
   ssl_hs_x509_lookup,
   ssl_hs_private_key_operation,
 };
