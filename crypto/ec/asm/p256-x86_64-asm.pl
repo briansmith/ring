@@ -78,57 +78,12 @@ $code.=<<___;
 ___
 
 {
-################################################################################
-# void ecp_nistz256_mul_by_2(uint64_t res[4], uint64_t a[4]);
-
 my ($a0,$a1,$a2,$a3)=map("%r$_",(8..11));
 my ($t0,$t1,$t2,$t3,$t4)=("%rax","%rdx","%rcx","%r12","%r13");
 my ($r_ptr,$a_ptr,$b_ptr)=("%rdi","%rsi","%rdx");
 
 $code.=<<___;
 
-.type	ecp_nistz256_mul_by_2,\@function,2
-.align	64
-ecp_nistz256_mul_by_2:
-	push	%r12
-	push	%r13
-
-	mov	8*0($a_ptr), $a0
-	mov	8*1($a_ptr), $a1
-	add	$a0, $a0		# a0:a3+a0:a3
-	mov	8*2($a_ptr), $a2
-	adc	$a1, $a1
-	mov	8*3($a_ptr), $a3
-	lea	.Lpoly(%rip), $a_ptr
-	 mov	$a0, $t0
-	adc	$a2, $a2
-	adc	$a3, $a3
-	 mov	$a1, $t1
-	sbb	$t4, $t4
-
-	sub	8*0($a_ptr), $a0
-	 mov	$a2, $t2
-	sbb	8*1($a_ptr), $a1
-	sbb	8*2($a_ptr), $a2
-	 mov	$a3, $t3
-	sbb	8*3($a_ptr), $a3
-	test	$t4, $t4
-
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
-	mov	$a0, 8*0($r_ptr)
-	cmovz	$t2, $a2
-	mov	$a1, 8*1($r_ptr)
-	cmovz	$t3, $a3
-	mov	$a2, 8*2($r_ptr)
-	mov	$a3, 8*3($r_ptr)
-
-	pop	%r13
-	pop	%r12
-	ret
-.size	ecp_nistz256_mul_by_2,.-ecp_nistz256_mul_by_2
-
-################################################################################
 ################################################################################
 # void ecp_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
 .globl	ecp_nistz256_add
