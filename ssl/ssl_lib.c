@@ -433,7 +433,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
     ssl->alpn_client_proto_list_len = ssl->ctx->alpn_client_proto_list_len;
   }
 
-  ssl->verify_result = X509_V_OK;
+  ssl->verify_result = X509_V_ERR_INVALID_CALL;
   ssl->method = ctx->method;
 
   if (!ssl->method->ssl_new(ssl)) {

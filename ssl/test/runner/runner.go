@@ -3400,6 +3400,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			flags: []string{
 				"-verify-peer",
 			},
+			resumeSession: vers.version != VersionTLS13,
 		})
 		tests = append(tests, testCase{
 			testType: clientTest,
@@ -3424,6 +3425,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-verify-fail",
 				"-expect-verify-result",
 			},
+			resumeSession: vers.version != VersionTLS13,
 		})
 	}
 

@@ -167,7 +167,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
   }
   memset(session, 0, sizeof(SSL_SESSION));
 
-  session->verify_result = 1; /* avoid 0 (= X509_V_OK) just in case */
+  session->verify_result = X509_V_ERR_INVALID_CALL;
   session->references = 1;
   session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
   session->time = (unsigned long)time(NULL);
@@ -457,7 +457,7 @@ int ssl_get_new_session(SSL *ssl, int is_server) {
 
   /* The session is marked not resumable until it is completely filled in. */
   session->not_resumable = 1;
-  session->verify_result = X509_V_OK;
+  session->verify_result = X509_V_ERR_INVALID_CALL;
 
   SSL_SESSION_free(ssl->s3->new_session);
   ssl->s3->new_session = session;

@@ -1041,8 +1041,6 @@ static int ssl3_get_server_certificate(SSL *ssl) {
   X509_free(ssl->s3->new_session->peer);
   ssl->s3->new_session->peer = X509_up_ref(leaf);
 
-  ssl->s3->new_session->verify_result = ssl->verify_result;
-
   return 1;
 
 err:
@@ -1097,12 +1095,13 @@ static int ssl3_verify_server_cert(SSL *ssl) {
     int al = ssl_verify_alarm_type(ssl->verify_result);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
     OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-  } else {
-    ret = 1;
-    ERR_clear_error(); /* but we keep ssl->verify_result */
+    return ret;
   }
 
-  return ret;
+  /* Otherwise the error is non-fatal, but we keep verify_result. */
+  ERR_clear_error();
+  ssl->s3->new_session->verify_result = ssl->verify_result;
+  return 1;
 }
 
 static int ssl3_get_server_key_exchange(SSL *ssl) {
