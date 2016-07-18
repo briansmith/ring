@@ -2082,6 +2082,8 @@ func addBasicTests() {
 }
 
 func addCipherSuiteTests() {
+	const bogusCipher = 0xfe00
+
 	for _, suite := range testCipherSuites {
 		const psk = "12345"
 		const pskIdentity = "luggage combo"
@@ -2257,6 +2259,29 @@ func addCipherSuiteTests() {
 	})
 
 	testCases = append(testCases, testCase{
+		name: "ServerHelloBogusCipher",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendCipherSuite: bogusCipher,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNKNOWN_CIPHER_RETURNED:",
+	})
+	testCases = append(testCases, testCase{
+		name: "ServerHelloBogusCipher-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendCipherSuite: bogusCipher,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNKNOWN_CIPHER_RETURNED:",
+	})
+
+	testCases = append(testCases, testCase{
 		name: "WeakDH",
 		config: Config{
 			MaxVersion:   VersionTLS12,
@@ -2305,7 +2330,6 @@ func addCipherSuiteTests() {
 	})
 
 	// The server must be tolerant to bogus ciphers.
-	const bogusCipher = 0x1234
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "UnknownCipher",
