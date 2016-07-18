@@ -30,8 +30,9 @@ use self::ops::*;
 //
 //     y**2 == (x**2 + a)*x + b  (mod q)
 //
-fn verify_affine_point_is_on_the_curve(ops: &CommonOps, (x, y): (&Elem, &Elem))
-                                       -> Result<(), ()> {
+fn verify_affine_point_is_on_the_curve(
+        ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced))
+        -> Result<(), ()> {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
 
@@ -46,7 +47,7 @@ fn verify_affine_point_is_on_the_curve(ops: &CommonOps, (x, y): (&Elem, &Elem))
 //
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> Result<Elem, ()> {
+                                         -> Result<ElemUnreduced, ()> {
     let z = ops.point_z(&p);
 
     // Verify that the point is not at infinity.
@@ -133,16 +134,17 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 // check after multiplication is given in "Sign Change Fault Attacks On
 // Elliptic Curve Cryptosystems" by Johannes Blömer, Martin Otto, and
 // Jean-Pierre Seifert.
-fn verify_affine_point_is_on_the_curve_scaled(ops: &CommonOps,
-                                              (x, y): (&Elem, &Elem),
-                                              a_scaled: &Elem, b_scaled: &Elem)
-                                              -> Result<(), ()> {
+fn verify_affine_point_is_on_the_curve_scaled(
+        ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced),
+        a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced) -> Result<(), ()> {
     let lhs = ops.elem_squared(&y);
+    let lhs = ops.elem_reduced(&lhs);
 
     let mut rhs = ops.elem_squared(&x);
     ops.elem_add(&mut rhs, a_scaled);
     ops.elem_mul(&mut rhs, &x);
     ops.elem_add(&mut rhs, b_scaled);
+    let rhs = ops.elem_reduced(&rhs);
 
     if !ops.elems_are_equal(&lhs, &rhs) {
         return Err(());

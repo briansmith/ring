@@ -97,8 +97,8 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
         // that would be necessary to compute the affine X coordinate.
         let x = self.ops.public_key_ops.common.point_x(&product);
-        fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded, x: &Elem,
-                          z2: &Elem) -> bool {
+        fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded,
+                          x: &ElemUnreduced, z2: &ElemUnreduced) -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_mul_mixed(&z2, r);
             let x_decoded = cops.elem_decoded(x);

@@ -42,11 +42,11 @@ pub static COMMON_OPS: CommonOps = CommonOps {
                            0xbce6faad, 0xa7179e84, 0xf3b9cac2, 0xfc632551],
     },
 
-    a: Elem {
+    a: ElemUnreduced {
         limbs: p256_limbs![0xfffffffc, 0x00000004, 0x00000000, 0x00000000,
                            0x00000003, 0xffffffff, 0xffffffff, 0xfffffffc],
     },
-    b: Elem {
+    b: ElemUnreduced {
         limbs: p256_limbs![0xdc30061d, 0x04874834, 0xe5a220ab, 0xf7212ed6,
                            0xacf005cd, 0x78843090, 0xd89cdf62, 0x29c4bddf],
     },
@@ -66,7 +66,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: p256_point_mul_impl,
 };
 
-fn p256_elem_inv(a: &Elem) -> Elem {
+fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     // Calculate the modular inverse of field element |a| using Fermat's Little
     // Theorem:
     //
@@ -77,12 +77,13 @@ fn p256_elem_inv(a: &Elem) -> Elem {
     //    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffd
 
     #[inline]
-    fn sqr_mul(a: &Elem, squarings: usize, b: &Elem) -> Elem {
+    fn sqr_mul(a: &ElemUnreduced, squarings: usize, b: &ElemUnreduced)
+               -> ElemUnreduced {
         elem_sqr_mul(&COMMON_OPS, a, squarings, b)
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut Elem, squarings: usize, b: &Elem) {
+    fn sqr_mul_acc(a: &mut ElemUnreduced, squarings: usize, b: &ElemUnreduced) {
         elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
     }
 
