@@ -99,8 +99,9 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         let x = self.ops.public_key_ops.common.point_x(&product);
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded, x: &Elem,
                           z2: &Elem) -> bool {
-            let r_jacobian = ops.elem_mul_mixed(&z2, r);
-            let x_decoded = ops.public_key_ops.common.elem_decoded(x);
+            let cops = ops.public_key_ops.common;
+            let r_jacobian = cops.elem_mul_mixed(&z2, r);
+            let x_decoded = cops.elem_decoded(x);
             ops.elem_decoded_equals(&r_jacobian, &x_decoded)
         }
         let r = self.ops.scalar_as_elem_decoded(&r);

@@ -352,14 +352,6 @@ impl PublicScalarOps {
         }
     }
 
-    #[inline]
-    pub fn elem_mul_mixed(&self, a: &Elem, b: &ElemDecoded) -> ElemDecoded {
-        ElemDecoded {
-            limbs: rab(self.public_key_ops.common.elem_mul_mont, &a.limbs,
-                       &b.limbs)
-        }
-    }
-
     pub fn twin_mult(&self, g_scalar: &Scalar, p_scalar: &Scalar,
                      &(ref peer_x, ref peer_y): &(Elem, Elem))
                      -> Result<Point, ()> {
