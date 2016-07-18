@@ -45,6 +45,18 @@ pub mod slice {
         u32::from(buffer[3])
     }
 
+    #[inline(always)]
+    pub fn be_u8_from_u32(value: u32) -> [u8; 4] {
+        let mut buffer = [0u8; 4];
+
+        buffer[0] = (value >> 24) as u8;
+        buffer[1] = (value >> 16 & 0xFF) as u8;
+        buffer[2] = (value >> 8  & 0xFF) as u8;
+        buffer[3] = (value & 0xFF) as u8;
+
+        buffer
+    }
+
     // https://github.com/rust-lang/rust/issues/27750
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]
