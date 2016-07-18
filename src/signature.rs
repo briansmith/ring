@@ -45,38 +45,38 @@
 //! # fn sign_and_verify_ed25519() -> Result<(), ()> {
 //! // Generate a key pair.
 //! let rng = rand::SystemRandom::new();
-//! let generated_key_pair = try!(signature::Ed25519KeyPair::generate(&rng));
+//! let (generated, generated_bytes) =
+//!     try!(signature::Ed25519KeyPair::generate_serializable(&rng));
 //!
 //! // Normally after generating the key pair, the application would extract
 //! // the private and public components and store them persistently for future
 //! // use.
-//! let priv_key_bytes = generated_key_pair.private_key_bytes();
-//! let pub_key_bytes = generated_key_pair.public_key_bytes();
 //!
 //! // Normally the application would later deserialize the private and public
 //! // key from storage and then create an `Ed25519KeyPair` from the
 //! // deserialized bytes.
 //! let key_pair =
-//!    try!(signature::Ed25519KeyPair::from_bytes(priv_key_bytes,
-//!                                               pub_key_bytes));
+//!    try!(signature::Ed25519KeyPair::from_bytes(&generated_bytes.private_key,
+//!                                               &generated_bytes.public_key));
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let sig = key_pair.sign(MESSAGE);
 //!
 //! // Normally, an application would extract the bytes of the signature and
-//! // send them in a protocol message to the peer(s).
+//! // send them in a protocol message to the peer(s). Here we just use the
+//! // public key from the private key we just generated.
+//! let peer_public_key_bytes = &generated_bytes.public_key;
 //! let sig_bytes = sig.as_slice();
 //!
 //! // Verify the signature of the message using the public key. Normally the
 //! // verifier of the message would parse the inputs to `signature::verify`
 //! // out of the protocol message(s) sent by the signer.
-//! let pub_key_input = untrusted::Input::from(pub_key_bytes);
-//! let msg_input = untrusted::Input::from(MESSAGE);
-//! let sig_input = untrusted::Input::from(sig_bytes);
+//! let peer_public_key = untrusted::Input::from(peer_public_key_bytes);
+//! let msg = untrusted::Input::from(MESSAGE);
+//! let sig = untrusted::Input::from(sig_bytes);
 //!
-//! try!(signature::verify(&signature::ED25519, pub_key_input,
-//!                        msg_input, sig_input));
+//! try!(signature::verify(&signature::ED25519, peer_public_key, msg, sig));
 //!
 //! # Ok(())
 //! # }

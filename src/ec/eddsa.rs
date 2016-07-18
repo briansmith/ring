@@ -26,17 +26,39 @@ pub struct Ed25519KeyPair {
     private_public: [u8; 64],
 }
 
+pub struct Ed25519KeyPairBytes {
+    pub private_key: [u8; 32],
+    pub public_key: [u8; 32],
+}
+
 impl<'a> Ed25519KeyPair {
-    /// Generates a new key pair.
+    /// Generates a new random key pair. There is no way to extract the private
+    /// key bytes to save them. If you need to save the private key bytes for
+    /// future use then use `generate_serializable()` instead.
     pub fn generate(rng: &rand::SecureRandom) -> Result<Ed25519KeyPair, ()> {
-        let mut pair = Ed25519KeyPair { private_public: [0; 64] };
-        try!(rng.fill(&mut pair.private_public[0..32]));
+        Ed25519KeyPair::generate_serializable(rng)
+            .map(|(key_pair, _)| key_pair)
+    }
+
+    /// Generates a new key pair and returns the key pair as both an
+    /// `Ed25519KeyPair` and a `Ed25519KeyPairBytes`. There is no way to
+    /// extract the private key bytes from an `Ed25519KeyPair`, so extracting
+    /// the values from the `Ed25519KeyPairBytes` is the only way to get them.
+    pub fn generate_serializable(rng: &rand::SecureRandom)
+            -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes), ()> {
+        let mut bytes = Ed25519KeyPairBytes {
+            private_key: [0; 32],
+            public_key: [0; 32],
+        };
+        try!(rng.fill(&mut bytes.private_key));
         unsafe {
-            GFp_ed25519_public_from_private(
-                pair.private_public[32..].as_mut_ptr(),
-                pair.private_public.as_ptr());
+            GFp_ed25519_public_from_private(bytes.public_key.as_mut_ptr(),
+                                            bytes.private_key.as_ptr());
         }
-        Ok(pair)
+        let key_pair =
+            try!(Ed25519KeyPair::from_bytes_unchecked(&bytes.private_key,
+                                                      &bytes.public_key));
+        Ok((key_pair, bytes))
     }
 
     /// Copies key data from the given slices to create a new key pair. The
@@ -52,6 +74,21 @@ impl<'a> Ed25519KeyPair {
     /// corruption that might have occurred during storage of the key pair.
     pub fn from_bytes(private_key: &[u8], public_key: &[u8])
                       -> Result<Ed25519KeyPair, ()> {
+        let pair =
+            try!(Ed25519KeyPair::from_bytes_unchecked(private_key, public_key));
+        let mut public_key_check = [0; 32];
+        unsafe {
+            GFp_ed25519_public_from_private(public_key_check.as_mut_ptr(),
+                                            pair.private_public.as_ptr());
+        }
+        if public_key != public_key_check {
+            return Err(());
+        }
+        Ok(pair)
+    }
+
+    fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
+                            -> Result<Ed25519KeyPair, ()> {
         if private_key.len() != 32 {
             return Err(());
         } else if public_key.len() != 32 {
@@ -60,23 +97,9 @@ impl<'a> Ed25519KeyPair {
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
         for i in 0..32 {
             pair.private_public[i] = private_key[i];
-        }
-        unsafe {
-            GFp_ed25519_public_from_private(
-                pair.private_public[32..].as_mut_ptr(),
-                pair.private_public.as_ptr());
-        }
-        if &pair.private_public[32..] != public_key {
-            return Err(());
+            pair.private_public[32 + i] = public_key[i];
         }
         Ok(pair)
-    }
-
-    /// Returns a reference to the little-endian-encoded private key bytes.
-    ///
-    /// This is intended for use by code that serializes the key pair.
-    pub fn private_key_bytes(&'a self) -> &'a [u8] {
-        &self.private_public[..32]
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
@@ -172,25 +195,22 @@ mod tests {
     #[test]
     fn test_ed25519_from_bytes_misuse() {
         let rng = rand::SystemRandom::new();
-        let key_pair = Ed25519KeyPair::generate(&rng).unwrap();
+        let (_, bytes) =
+            Ed25519KeyPair::generate_serializable(&rng).unwrap();
 
-        assert!(Ed25519KeyPair::from_bytes(key_pair.private_key_bytes(),
-                                           key_pair.public_key_bytes())
-                                           .is_ok());
+        assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
+                                           &bytes.public_key).is_ok());
 
         // Truncated private key.
-        assert!(Ed25519KeyPair::from_bytes(&key_pair.private_key_bytes()[..31],
-                                           key_pair.public_key_bytes())
-                                           .is_err());
+        assert!(Ed25519KeyPair::from_bytes(&bytes.private_key[..31],
+                                           &bytes.public_key).is_err());
 
         // Truncated public key.
-        assert!(Ed25519KeyPair::from_bytes(key_pair.private_key_bytes(),
-                                           &key_pair.public_key_bytes()[..31])
-                                           .is_err());
+        assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
+                                           &bytes.public_key[..31]).is_err());
 
         // Swapped public and private key.
-        assert!(Ed25519KeyPair::from_bytes(key_pair.public_key_bytes(),
-                                           key_pair.private_key_bytes())
-                                           .is_err());
+        assert!(Ed25519KeyPair::from_bytes(&bytes.public_key,
+                                           &bytes.private_key).is_err());
     }
 }
