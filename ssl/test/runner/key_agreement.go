@@ -484,13 +484,14 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 	return verifyMessage(ka.version, cert.PublicKey, config, sigAlg, msg, sig)
 }
 
-// ecdheRSAKeyAgreement implements a TLS key agreement where the server
+// ecdheKeyAgreement implements a TLS key agreement where the server
 // generates a ephemeral EC public/private key pair and signs it. The
 // pre-master secret is then calculated using ECDH. The signature may
 // either be ECDSA or RSA.
 type ecdheKeyAgreement struct {
 	auth    keyAgreementAuthentication
 	curve   ecdhCurve
+	curveID CurveID
 	peerKey []byte
 }
 
@@ -516,6 +517,7 @@ NextCandidate:
 	if ka.curve, ok = curveForCurveID(curveid); !ok {
 		return nil, errors.New("tls: preferredCurves includes unsupported curve")
 	}
+	ka.curveID = curveid
 
 	publicKey, err := ka.curve.offer(config.rand())
 	if err != nil {
@@ -554,6 +556,7 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 		return errors.New("tls: server selected unsupported curve")
 	}
 	curveid := CurveID(skx.key[1])<<8 | CurveID(skx.key[2])
+	ka.curveID = curveid
 
 	var ok bool
 	if ka.curve, ok = curveForCurveID(curveid); !ok {

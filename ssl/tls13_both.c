@@ -40,6 +40,19 @@ SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl)) {
   return hs;
 }
 
+void ssl_handshake_clear_groups(SSL_HANDSHAKE *hs) {
+  if (hs->groups == NULL) {
+    return;
+  }
+
+  for (size_t i = 0; i < hs->groups_len; i++) {
+    SSL_ECDH_CTX_cleanup(&hs->groups[i]);
+  }
+  OPENSSL_free(hs->groups);
+  hs->groups = NULL;
+  hs->groups_len = 0;
+}
+
 void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   if (hs == NULL) {
     return;
@@ -47,12 +60,8 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
 
   OPENSSL_cleanse(hs->secret, sizeof(hs->secret));
   OPENSSL_cleanse(hs->traffic_secret_0, sizeof(hs->traffic_secret_0));
-  if (hs->groups != NULL) {
-    for (size_t i = 0; i < hs->groups_len; i++) {
-      SSL_ECDH_CTX_cleanup(&hs->groups[i]);
-    }
-    OPENSSL_free(hs->groups);
-  }
+  ssl_handshake_clear_groups(hs);
+  OPENSSL_free(hs->key_share_bytes);
   OPENSSL_free(hs->public_key);
   OPENSSL_free(hs->cert_context);
   OPENSSL_free(hs);

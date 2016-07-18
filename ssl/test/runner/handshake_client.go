@@ -140,7 +140,7 @@ func (c *Conn) clientHandshake() error {
 		}
 
 		if c.config.Bugs.MissingKeyShare {
-			hello.keyShares = nil
+			hello.hasKeyShares = false
 		}
 	}
 
@@ -337,6 +337,9 @@ NextCipherSuite:
 	var secondHelloBytes []byte
 	if haveHelloRetryRequest {
 		var hrrCurveFound bool
+		if c.config.Bugs.MisinterpretHelloRetryRequestCurve != 0 {
+			helloRetryRequest.selectedGroup = c.config.Bugs.MisinterpretHelloRetryRequestCurve
+		}
 		group := helloRetryRequest.selectedGroup
 		for _, curveID := range hello.supportedCurves {
 			if group == curveID {
@@ -361,6 +364,10 @@ NextCipherSuite:
 			group:       group,
 			keyExchange: publicKey,
 		})
+
+		if c.config.Bugs.SecondClientHelloMissingKeyShare {
+			hello.hasKeyShares = false
+		}
 
 		hello.hasEarlyData = false
 		hello.earlyDataContext = nil
@@ -553,7 +560,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Resolve ECDHE and compute the handshake secret.
 	var ecdheSecret []byte
-	if hs.suite.flags&suiteECDHE != 0 && !c.config.Bugs.MissingKeyShare {
+	if hs.suite.flags&suiteECDHE != 0 && !c.config.Bugs.MissingKeyShare && !c.config.Bugs.SecondClientHelloMissingKeyShare {
 		if !hs.serverHello.hasKeyShare {
 			c.sendAlert(alertMissingExtension)
 			return errors.New("tls: server omitted the key share extension")
@@ -564,6 +571,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: server selected an unsupported group")
 		}
+		c.curveID = hs.serverHello.keyShare.group
 
 		var err error
 		ecdheSecret, err = curve.finish(hs.serverHello.keyShare.keyExchange)
@@ -820,6 +828,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if err != nil {
 			c.sendAlert(alertUnexpectedMessage)
 			return err
+		}
+		if ecdhe, ok := keyAgreement.(*ecdheKeyAgreement); ok {
+			c.curveID = ecdhe.curveID
 		}
 
 		c.peerSignatureAlgorithm = keyAgreement.peerSignatureAlgorithm()

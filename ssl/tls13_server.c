@@ -29,6 +29,9 @@
 
 enum server_hs_state_t {
   state_process_client_hello = 0,
+  state_send_hello_retry_request,
+  state_flush_hello_retry_request,
+  state_process_second_client_hello,
   state_send_server_hello,
   state_send_encrypted_extensions,
   state_send_certificate_request,
@@ -42,6 +45,60 @@ enum server_hs_state_t {
   state_process_client_finished,
   state_done,
 };
+
+static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
+
+static int resolve_psk_secret(SSL *ssl) {
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+
+  if (ssl->s3->tmp.new_cipher->algorithm_auth != SSL_aPSK) {
+    return tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len);
+  }
+
+  /* TODO(davidben): Support PSK. */
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  return 0;
+}
+
+static int resolve_ecdhe_secret(SSL *ssl, int *out_need_retry,
+                                struct ssl_early_callback_ctx *early_ctx) {
+  *out_need_retry = 0;
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+
+  if (ssl->s3->tmp.new_cipher->algorithm_mkey != SSL_kECDHE) {
+    return tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len);
+  }
+
+  const uint8_t *key_share_buf = NULL;
+  size_t key_share_len = 0;
+  CBS key_share;
+  if (!SSL_early_callback_ctx_extension_get(early_ctx, TLSEXT_TYPE_key_share,
+                                            &key_share_buf, &key_share_len)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
+    return ssl_hs_error;
+  }
+
+  CBS_init(&key_share, key_share_buf, key_share_len);
+  int found_key_share;
+  uint8_t *dhe_secret;
+  size_t dhe_secret_len;
+  uint8_t alert;
+  if (!ext_key_share_parse_clienthello(ssl, &found_key_share, &dhe_secret,
+                                       &dhe_secret_len, &alert, &key_share)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return 0;
+  }
+
+  if (!found_key_share) {
+    *out_need_retry = 1;
+    return 0;
+  }
+
+  int ok = tls13_advance_key_schedule(ssl, dhe_secret, dhe_secret_len);
+  OPENSSL_free(dhe_secret);
+  return ok;
+}
 
 static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   if (!tls13_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
@@ -165,7 +222,6 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
 
   /* The PRF hash is now known. Set up the key schedule and hash the
    * ClientHello. */
-  static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
   size_t hash_len =
       EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
   if (!tls13_init_key_schedule(ssl, kZeroes, hash_len)) {
@@ -173,42 +229,79 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
 
   /* Resolve PSK and incorporate it into the secret. */
-  if (cipher->algorithm_auth == SSL_aPSK) {
-    /* TODO(davidben): Support PSK. */
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
-  } else if (!tls13_advance_key_schedule(ssl, kZeroes, hash_len)) {
+  if (!resolve_psk_secret(ssl)) {
     return ssl_hs_error;
   }
 
   /* Resolve ECDHE and incorporate it into the secret. */
-  if (cipher->algorithm_mkey == SSL_kECDHE) {
-    const uint8_t *key_share_buf = NULL;
-    size_t key_share_len = 0;
-    CBS key_share;
-    if (!SSL_early_callback_ctx_extension_get(&early_ctx, TLSEXT_TYPE_key_share,
-                                              &key_share_buf, &key_share_len)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
-      return ssl_hs_error;
+  int need_retry;
+  if (!resolve_ecdhe_secret(ssl, &need_retry, &early_ctx)) {
+    if (need_retry) {
+      hs->state = state_send_hello_retry_request;
+      return ssl_hs_ok;
     }
+    return ssl_hs_error;
+  }
 
-    CBS_init(&key_share, key_share_buf, key_share_len);
-    uint8_t *dhe_secret;
-    size_t dhe_secret_len;
-    uint8_t alert;
-    if (!ext_key_share_parse_clienthello(ssl, &dhe_secret, &dhe_secret_len,
-                                         &alert, &key_share)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-      return ssl_hs_error;
-    }
+  hs->state = state_send_server_hello;
+  return ssl_hs_ok;
+}
 
-    int ok = tls13_advance_key_schedule(ssl, dhe_secret, dhe_secret_len);
-    OPENSSL_free(dhe_secret);
-    if (!ok) {
-      return ssl_hs_error;
+static enum ssl_hs_wait_t do_send_hello_retry_request(SSL *ssl,
+                                                      SSL_HANDSHAKE *hs) {
+  CBB cbb, body, extensions;
+  uint16_t group_id;
+  if (!ssl->method->init_message(ssl, &cbb, &body,
+                                 SSL3_MT_HELLO_RETRY_REQUEST) ||
+      !CBB_add_u16(&body, ssl->version) ||
+      !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
+      !tls1_get_shared_group(ssl, &group_id) ||
+      !CBB_add_u16(&body, group_id) ||
+      !CBB_add_u16_length_prefixed(&body, &extensions) ||
+      !ssl->method->finish_message(ssl, &cbb)) {
+    CBB_cleanup(&cbb);
+    return ssl_hs_error;
+  }
+
+  hs->state = state_flush_hello_retry_request;
+  return ssl_hs_write_message;
+}
+
+static enum ssl_hs_wait_t do_flush_hello_retry_request(SSL *ssl,
+                                                       SSL_HANDSHAKE *hs) {
+  hs->state = state_process_second_client_hello;
+  return ssl_hs_flush_and_read_message;
+}
+
+static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
+                                                      SSL_HANDSHAKE *hs) {
+  if (!tls13_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
+    return ssl_hs_error;
+  }
+
+  struct ssl_early_callback_ctx early_ctx;
+
+  memset(&early_ctx, 0, sizeof(early_ctx));
+  early_ctx.ssl = ssl;
+  early_ctx.client_hello = ssl->init_msg;
+  early_ctx.client_hello_len = ssl->init_num;
+  if (!ssl_early_callback_init(&early_ctx)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return ssl_hs_error;
+  }
+
+  int need_retry;
+  if (!resolve_ecdhe_secret(ssl, &need_retry, &early_ctx)) {
+    if (need_retry) {
+      /* Only send one HelloRetryRequest. */
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
     }
-  } else if (!tls13_advance_key_schedule(ssl, kZeroes, hash_len)) {
+    return ssl_hs_error;
+  }
+
+  if (!ssl->method->hash_current_message(ssl)) {
     return ssl_hs_error;
   }
 
@@ -352,7 +445,6 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* Update the secret to the master secret and derive traffic keys. */
-  static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
   if (!tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len) ||
       !tls13_derive_traffic_secret_0(ssl) ||
       !tls13_set_traffic_key(ssl, type_data, evp_aead_seal,
@@ -425,6 +517,15 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl) {
     switch (state) {
       case state_process_client_hello:
         ret = do_process_client_hello(ssl, hs);
+        break;
+      case state_send_hello_retry_request:
+        ret = do_send_hello_retry_request(ssl, hs);
+        break;
+      case state_flush_hello_retry_request:
+        ret = do_flush_hello_retry_request(ssl, hs);
+        break;
+      case state_process_second_client_hello:
+        ret = do_process_second_client_hello(ssl, hs);
         break;
       case state_send_server_hello:
         ret = do_send_server_hello(ssl, hs);

@@ -266,6 +266,10 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		vers:   c.vers,
 	}
 
+	if config.Bugs.SendServerHelloVersion != 0 {
+		hs.hello.vers = config.Bugs.SendServerHelloVersion
+	}
+
 	hs.hello.random = make([]byte, 32)
 	if _, err := io.ReadFull(config.rand(), hs.hello.random); err != nil {
 		c.sendAlert(alertInternalError)
@@ -352,12 +356,24 @@ Curves:
 			}
 		}
 
-		if selectedKeyShare == nil {
+		sendHelloRetryRequest := selectedKeyShare == nil
+		if config.Bugs.UnnecessaryHelloRetryRequest {
+			sendHelloRetryRequest = true
+		}
+		if config.Bugs.SkipHelloRetryRequest {
+			sendHelloRetryRequest = false
+		}
+		if sendHelloRetryRequest {
+			firstTime := true
+		ResendHelloRetryRequest:
 			// Send HelloRetryRequest.
 			helloRetryRequestMsg := helloRetryRequestMsg{
 				vers:          c.vers,
 				cipherSuite:   hs.hello.cipherSuite,
 				selectedGroup: selectedCurve,
+			}
+			if config.Bugs.SendHelloRetryRequestCurve != 0 {
+				helloRetryRequestMsg.selectedGroup = config.Bugs.SendHelloRetryRequestCurve
 			}
 			hs.writeServerHash(helloRetryRequestMsg.marshal())
 			c.writeRecord(recordTypeHandshake, helloRetryRequestMsg.marshal())
@@ -392,26 +408,47 @@ Curves:
 				return errors.New("tls: new ClientHello does not match")
 			}
 
+			if firstTime && config.Bugs.SecondHelloRetryRequest {
+				firstTime = false
+				goto ResendHelloRetryRequest
+			}
+
 			selectedKeyShare = &newKeyShares[len(newKeyShares)-1]
 		}
 
 		// Once a curve has been selected and a key share identified,
 		// the server needs to generate a public value and send it in
 		// the ServerHello.
-		curve, ok := curveForCurveID(selectedKeyShare.group)
+		curve, ok := curveForCurveID(selectedCurve)
 		if !ok {
 			panic("tls: server failed to look up curve ID")
 		}
+		c.curveID = selectedCurve
+
+		var peerKey []byte
+		if config.Bugs.SkipHelloRetryRequest {
+			// If skipping HelloRetryRequest, use a random key to
+			// avoid crashing.
+			curve2, _ := curveForCurveID(selectedCurve)
+			var err error
+			peerKey, err = curve2.offer(config.rand())
+			if err != nil {
+				return err
+			}
+		} else {
+			peerKey = selectedKeyShare.keyExchange
+		}
+
 		var publicKey []byte
 		var err error
-		publicKey, ecdheSecret, err = curve.accept(config.rand(), selectedKeyShare.keyExchange)
+		publicKey, ecdheSecret, err = curve.accept(config.rand(), peerKey)
 		if err != nil {
 			c.sendAlert(alertHandshakeFailure)
 			return err
 		}
 		hs.hello.hasKeyShare = true
 
-		curveID := selectedKeyShare.group
+		curveID := selectedCurve
 		if c.config.Bugs.SendCurve != 0 {
 			curveID = config.Bugs.SendCurve
 		}
@@ -646,6 +683,10 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		isDTLS:            c.isDTLS,
 		vers:              c.vers,
 		compressionMethod: compressionNone,
+	}
+
+	if config.Bugs.SendServerHelloVersion != 0 {
+		hs.hello.vers = config.Bugs.SendServerHelloVersion
 	}
 
 	hs.hello.random = make([]byte, 32)
@@ -1008,6 +1049,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	if err != nil {
 		c.sendAlert(alertHandshakeFailure)
 		return err
+	}
+	if ecdhe, ok := keyAgreement.(*ecdheKeyAgreement); ok {
+		c.curveID = ecdhe.curveID
 	}
 	if skx != nil && !config.Bugs.SkipServerKeyExchange {
 		hs.writeServerHash(skx.marshal())

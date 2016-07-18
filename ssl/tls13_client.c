@@ -28,7 +28,10 @@
 
 
 enum client_hs_state_t {
-  state_process_server_hello = 0,
+  state_process_hello_retry_request = 0,
+  state_send_second_client_hello,
+  state_flush_second_client_hello,
+  state_process_server_hello,
   state_process_encrypted_extensions,
   state_process_certificate_request,
   state_process_server_certificate,
@@ -42,6 +45,85 @@ enum client_hs_state_t {
   state_flush,
   state_done,
 };
+
+static enum ssl_hs_wait_t do_process_hello_retry_request(SSL *ssl,
+                                                         SSL_HANDSHAKE *hs) {
+  if (ssl->s3->tmp.message_type != SSL3_MT_HELLO_RETRY_REQUEST) {
+    hs->state = state_process_server_hello;
+    return ssl_hs_ok;
+  }
+
+  CBS cbs, extensions;
+  uint16_t server_wire_version, cipher_suite, group_id;
+  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
+  if (!CBS_get_u16(&cbs, &server_wire_version) ||
+      !CBS_get_u16(&cbs, &cipher_suite) ||
+      !CBS_get_u16(&cbs, &group_id) ||
+      /* We do not currently parse any HelloRetryRequest extensions. */
+      !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
+      CBS_len(&cbs) != 0) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return ssl_hs_error;
+  }
+
+  /* TODO(svaldez): Don't do early_data on HelloRetryRequest. */
+
+  const uint16_t *groups;
+  size_t groups_len;
+  tls1_get_grouplist(ssl, 0 /* local groups */, &groups, &groups_len);
+  int found = 0;
+  for (size_t i = 0; i < groups_len; i++) {
+    if (groups[i] == group_id) {
+      found = 1;
+      break;
+    }
+  }
+
+  if (!found) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+    return ssl_hs_error;
+  }
+
+  for (size_t i = 0; i < ssl->s3->hs->groups_len; i++) {
+    /* Check that the HelloRetryRequest does not request a key share that was
+     * provided in the initial ClientHello.
+     *
+     * TODO(svaldez): Don't enforce this check when the HelloRetryRequest is due
+     * to a cookie. */
+    if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->groups[i]) == group_id) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+      return ssl_hs_error;
+    }
+  }
+
+  ssl_handshake_clear_groups(ssl->s3->hs);
+  ssl->s3->hs->retry_group = group_id;
+
+  hs->state = state_send_second_client_hello;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_send_second_client_hello(SSL *ssl,
+                                                      SSL_HANDSHAKE *hs) {
+  CBB cbb, body;
+  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO) ||
+      !ssl_add_client_hello_body(ssl, &body) ||
+      !ssl->method->finish_message(ssl, &cbb)) {
+    CBB_cleanup(&cbb);
+    return ssl_hs_error;
+  }
+
+  hs->state = state_flush_second_client_hello;
+  return ssl_hs_write_message;
+}
+
+static enum ssl_hs_wait_t do_flush_second_client_hello(SSL *ssl,
+                                                       SSL_HANDSHAKE *hs) {
+  hs->state = state_process_server_hello;
+  return ssl_hs_flush_and_read_message;
+}
 
 static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   if (!tls13_check_message_type(ssl, SSL3_MT_SERVER_HELLO)) {
@@ -58,6 +140,13 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
       CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return ssl_hs_error;
+  }
+
+  if (server_wire_version != ssl->version) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
     return ssl_hs_error;
   }
 
@@ -169,6 +258,12 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     if (!tls13_advance_key_schedule(ssl, kZeroes, hash_len)) {
       return ssl_hs_error;
     }
+  }
+
+  /* If there was no HelloRetryRequest, the version negotiation logic has
+   * already hashed the message. */
+  if (ssl->s3->hs->retry_group != 0 &&
+      !ssl->method->hash_current_message(ssl)) {
     return ssl_hs_error;
   }
 
@@ -403,6 +498,15 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL *ssl) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
     enum client_hs_state_t state = hs->state;
     switch (state) {
+      case state_process_hello_retry_request:
+        ret = do_process_hello_retry_request(ssl, hs);
+        break;
+      case state_send_second_client_hello:
+        ret = do_send_second_client_hello(ssl, hs);
+        break;
+      case state_flush_second_client_hello:
+        ret = do_flush_second_client_hello(ssl, hs);
+        break;
       case state_process_server_hello:
         ret = do_process_server_hello(ssl, hs);
         break;

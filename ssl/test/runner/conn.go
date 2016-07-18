@@ -53,6 +53,9 @@ type Conn struct {
 	// peerSignatureAlgorithm contains the signature algorithm that was used
 	// by the peer in the handshake, or zero if not applicable.
 	peerSignatureAlgorithm signatureAlgorithm
+	// curveID contains the curve that was used in the handshake, or zero if
+	// not applicable.
+	curveID CurveID
 
 	clientRandom, serverRandom [32]byte
 	exporterSecret             []byte
@@ -1500,6 +1503,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.TLSUnique = c.firstFinished[:]
 		state.SCTList = c.sctList
 		state.PeerSignatureAlgorithm = c.peerSignatureAlgorithm
+		state.CurveID = c.curveID
 	}
 
 	return state

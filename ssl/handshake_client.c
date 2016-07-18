@@ -548,9 +548,8 @@ end:
   return ret;
 }
 
-static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out,
-                                         uint16_t min_version,
-                                         uint16_t max_version) {
+int ssl_write_client_cipher_list(SSL *ssl, CBB *out, uint16_t min_version,
+                                 uint16_t max_version) {
   /* Prepare disabled cipher masks. */
   ssl_set_client_disabled(ssl);
 
@@ -605,6 +604,45 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out,
   return CBB_flush(out);
 }
 
+int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  /* Renegotiations do not participate in session resumption. */
+  int has_session = ssl->session != NULL &&
+                    !ssl->s3->initial_handshake_complete;
+
+  CBB child;
+  if (!CBB_add_u16(body, ssl->client_version) ||
+      !CBB_add_bytes(body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_u8_length_prefixed(body, &child) ||
+      (has_session &&
+       !CBB_add_bytes(&child, ssl->session->session_id,
+                      ssl->session->session_id_length))) {
+    return 0;
+  }
+
+  if (SSL_IS_DTLS(ssl)) {
+    if (!CBB_add_u8_length_prefixed(body, &child) ||
+        !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
+      return 0;
+    }
+  }
+
+  size_t header_len =
+      SSL_IS_DTLS(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+  if (!ssl_write_client_cipher_list(ssl, body, min_version, max_version) ||
+      !CBB_add_u8(body, 1 /* one compression method */) ||
+      !CBB_add_u8(body, 0 /* null compression */) ||
+      !ssl_add_clienthello_tlsext(ssl, body, header_len + CBB_len(body))) {
+    return 0;
+  }
+
+  return 1;
+}
+
 static int ssl3_send_client_hello(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CLNT_HELLO_B) {
     return ssl->method->write_message(ssl);
@@ -654,34 +692,9 @@ static int ssl3_send_client_hello(SSL *ssl) {
     goto err;
   }
 
-  /* Renegotiations do not participate in session resumption. */
-  int has_session = ssl->session != NULL &&
-                    !ssl->s3->initial_handshake_complete;
-
-  CBB body, child;
+  CBB body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO) ||
-      !CBB_add_u16(&body, ssl->client_version) ||
-      !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u8_length_prefixed(&body, &child) ||
-      (has_session &&
-       !CBB_add_bytes(&child, ssl->session->session_id,
-                      ssl->session->session_id_length))) {
-    goto err;
-  }
-
-  if (SSL_IS_DTLS(ssl)) {
-    if (!CBB_add_u8_length_prefixed(&body, &child) ||
-        !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
-      goto err;
-    }
-  }
-
-  size_t header_len =
-      SSL_IS_DTLS(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
-  if (!ssl3_write_client_cipher_list(ssl, &body, min_version, max_version) ||
-      !CBB_add_u8(&body, 1 /* one compression method */) ||
-      !CBB_add_u8(&body, 0 /* null compression */) ||
-      !ssl_add_clienthello_tlsext(ssl, &body, header_len + CBB_len(&body)) ||
+      !ssl_add_client_hello_body(ssl, &body) ||
       !ssl->method->finish_message(ssl, &cbb)) {
     goto err;
   }

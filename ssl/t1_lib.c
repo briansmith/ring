@@ -300,12 +300,9 @@ static const uint16_t kDefaultGroups[] = {
 #endif
 };
 
-/* tls1_get_grouplist sets |*out_group_ids| and |*out_group_ids_len| to the
- * list of allowed group IDs. If |get_peer_groups| is non-zero, return the
- * peer's group list. Otherwise, return the preferred list. */
-static void tls1_get_grouplist(SSL *ssl, int get_peer_groups,
-                               const uint16_t **out_group_ids,
-                               size_t *out_group_ids_len) {
+void tls1_get_grouplist(SSL *ssl, int get_peer_groups,
+                        const uint16_t **out_group_ids,
+                        size_t *out_group_ids_len) {
   if (get_peer_groups) {
     /* Only clients send a supported group list, so this function is only
      * called on the server. */
@@ -1973,7 +1970,24 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
 
   const uint16_t *groups;
   size_t groups_len;
-  tls1_get_grouplist(ssl, 0 /* local groups */, &groups, &groups_len);
+  if (ssl->s3->hs->retry_group) {
+    /* Append the new key share to the old list. */
+    if (!CBB_add_bytes(&kse_bytes, ssl->s3->hs->key_share_bytes,
+                       ssl->s3->hs->key_share_bytes_len)) {
+      return 0;
+    }
+    OPENSSL_free(ssl->s3->hs->key_share_bytes);
+    ssl->s3->hs->key_share_bytes = NULL;
+
+    groups = &ssl->s3->hs->retry_group;
+    groups_len = 1;
+  } else {
+    tls1_get_grouplist(ssl, 0 /* local groups */, &groups, &groups_len);
+    /* Only send the top two preferred key shares. */
+    if (groups_len > 2) {
+      groups_len = 2;
+    }
+  }
 
   ssl->s3->hs->groups = OPENSSL_malloc(groups_len * sizeof(SSL_ECDH_CTX));
   if (ssl->s3->hs->groups == NULL) {
@@ -1992,6 +2006,17 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
         !SSL_ECDH_CTX_init(&ssl->s3->hs->groups[i], groups[i]) ||
         !SSL_ECDH_CTX_offer(&ssl->s3->hs->groups[i], &key_exchange) ||
         !CBB_flush(&kse_bytes)) {
+      return 0;
+    }
+  }
+
+  if (!ssl->s3->hs->retry_group) {
+    /* Save the contents of the extension to repeat it in the second
+     * ClientHello. */
+    ssl->s3->hs->key_share_bytes_len = CBB_len(&kse_bytes);
+    ssl->s3->hs->key_share_bytes = BUF_memdup(CBB_data(&kse_bytes),
+                                              CBB_len(&kse_bytes));
+    if (ssl->s3->hs->key_share_bytes == NULL) {
       return 0;
     }
   }
@@ -2030,16 +2055,12 @@ int ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
     return 0;
   }
 
-  for (size_t i = 0; i < ssl->s3->hs->groups_len; i++) {
-    SSL_ECDH_CTX_cleanup(&ssl->s3->hs->groups[i]);
-  }
-  OPENSSL_free(ssl->s3->hs->groups);
-  ssl->s3->hs->groups = NULL;
-
+  ssl_handshake_clear_groups(ssl->s3->hs);
   return 1;
 }
 
-int ext_key_share_parse_clienthello(SSL *ssl, uint8_t **out_secret,
+int ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
+                                    uint8_t **out_secret,
                                     size_t *out_secret_len, uint8_t *out_alert,
                                     CBS *contents) {
   uint16_t group_id;
@@ -2049,7 +2070,7 @@ int ext_key_share_parse_clienthello(SSL *ssl, uint8_t **out_secret,
     return 0;
   }
 
-  int found = 0;
+  *out_found = 0;
   while (CBS_len(&key_shares) > 0) {
     uint16_t id;
     CBS peer_key;
@@ -2058,7 +2079,7 @@ int ext_key_share_parse_clienthello(SSL *ssl, uint8_t **out_secret,
       return 0;
     }
 
-    if (id != group_id || found) {
+    if (id != group_id || *out_found) {
       continue;
     }
 
@@ -2078,10 +2099,10 @@ int ext_key_share_parse_clienthello(SSL *ssl, uint8_t **out_secret,
     }
     SSL_ECDH_CTX_cleanup(&group);
 
-    found = 1;
+    *out_found = 1;
   }
 
-  return found;
+  return 1;
 }
 
 int ext_key_share_add_serverhello(SSL *ssl, CBB *out) {

@@ -206,6 +206,7 @@ type ConnectionState struct {
 	TLSUnique                  []byte                // the tls-unique channel binding
 	SCTList                    []byte                // signed certificate timestamp list
 	PeerSignatureAlgorithm     signatureAlgorithm    // algorithm used by the peer in the handshake
+	CurveID                    CurveID               // the curve used in ECDHE
 }
 
 // ClientAuthType declares the policy the server will follow for
@@ -438,9 +439,15 @@ type ProtocolBugs struct {
 	// or CertificateVerify message should be invalid.
 	InvalidSignature bool
 
-	// SendCurve, if non-zero, causes the ServerKeyExchange message to use
-	// the specified curve ID rather than the negotiated one.
+	// SendCurve, if non-zero, causes the server to send the specified curve
+	// ID in ServerKeyExchange (TLS 1.2) or ServerHello (TLS 1.3) rather
+	// than the negotiated one.
 	SendCurve CurveID
+
+	// SendHelloRetryRequestCurve, if non-zero, causes the server to send
+	// the specified curve in HelloRetryRequest rather than the negotiated
+	// one.
+	SendHelloRetryRequestCurve CurveID
 
 	// InvalidECDHPoint, if true, causes the ECC points in
 	// ServerKeyExchange or ClientKeyExchange messages to be invalid.
@@ -953,6 +960,16 @@ type ProtocolBugs struct {
 	// instead.
 	MissingKeyShare bool
 
+	// SecondClientHelloMissingKeyShare, if true, causes the second TLS 1.3
+	// ClientHello to skip sending a key_share extension and use the zero
+	// ECDHE secret instead.
+	SecondClientHelloMissingKeyShare bool
+
+	// MisinterpretHelloRetryRequestCurve, if non-zero, causes the TLS 1.3
+	// client to pretend the server requested a HelloRetryRequest with the
+	// given curve rather than the actual one.
+	MisinterpretHelloRetryRequestCurve CurveID
+
 	// DuplicateKeyShares, if true, causes the TLS 1.3 client to send two
 	// copies of each KeyShareEntry.
 	DuplicateKeyShares bool
@@ -964,6 +981,22 @@ type ProtocolBugs struct {
 	// EncryptedExtensionsWithKeyShare, if true, causes the TLS 1.3 server to
 	// include the KeyShare extension in the EncryptedExtensions block.
 	EncryptedExtensionsWithKeyShare bool
+
+	// UnnecessaryHelloRetryRequest, if true, causes the TLS 1.3 server to
+	// send a HelloRetryRequest regardless of whether it needs to.
+	UnnecessaryHelloRetryRequest bool
+
+	// SecondHelloRetryRequest, if true, causes the TLS 1.3 server to send
+	// two HelloRetryRequests instead of one.
+	SecondHelloRetryRequest bool
+
+	// SendServerHelloVersion, if non-zero, causes the server to send the
+	// specified version in ServerHello rather than the true version.
+	SendServerHelloVersion uint16
+
+	// SkipHelloRetryRequest, if true, causes the TLS 1.3 server to not send
+	// HelloRetryRequest.
+	SkipHelloRetryRequest bool
 }
 
 func (c *Config) serverInit() {

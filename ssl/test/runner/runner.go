@@ -254,6 +254,9 @@ type testCase struct {
 	// expectedPeerSignatureAlgorithm, if not zero, is the signature
 	// algorithm that the peer should have used in the handshake.
 	expectedPeerSignatureAlgorithm signatureAlgorithm
+	// expectedCurveID, if not zero, is the curve that the handshake should
+	// have used.
+	expectedCurveID CurveID
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -516,6 +519,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 
 	if expected := test.expectedPeerSignatureAlgorithm; expected != 0 && expected != connState.PeerSignatureAlgorithm {
 		return fmt.Errorf("expected peer to use signature algorithm %04x, but got %04x", expected, connState.PeerSignatureAlgorithm)
+	}
+
+	if expected := test.expectedCurveID; expected != 0 && expected != connState.CurveID {
+		return fmt.Errorf("expected peer to use curve %04x, but got %04x", expected, connState.CurveID)
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -6304,6 +6311,8 @@ var testCurves = []struct {
 	{"X25519", CurveX25519},
 }
 
+const bogusCurve = 0x1234
+
 func addCurveTests() {
 	for _, curve := range testCurves {
 		testCases = append(testCases, testCase{
@@ -6313,7 +6322,8 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags: []string{"-enable-all-curves"},
+			flags:           []string{"-enable-all-curves"},
+			expectedCurveID: curve.id,
 		})
 		testCases = append(testCases, testCase{
 			name: "CurveTest-Client-" + curve.name + "-TLS13",
@@ -6322,7 +6332,8 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags: []string{"-enable-all-curves"},
+			flags:           []string{"-enable-all-curves"},
+			expectedCurveID: curve.id,
 		})
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -6332,7 +6343,8 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags: []string{"-enable-all-curves"},
+			flags:           []string{"-enable-all-curves"},
+			expectedCurveID: curve.id,
 		})
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -6342,12 +6354,12 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags: []string{"-enable-all-curves"},
+			flags:           []string{"-enable-all-curves"},
+			expectedCurveID: curve.id,
 		})
 	}
 
 	// The server must be tolerant to bogus curves.
-	const bogusCurve = 0x1234
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "UnknownCurve",
@@ -7359,7 +7371,8 @@ func addTLS13HandshakeTests() {
 	})
 
 	testCases = append(testCases, testCase{
-		name: "MissingKeyShare-Server",
+		testType: serverTest,
+		name:     "MissingKeyShare-Server",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
@@ -7431,6 +7444,158 @@ func addTLS13HandshakeTests() {
 		},
 		shouldFail:         true,
 		expectedLocalError: "remote error: unsupported extension",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SendHelloRetryRequest",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Require a HelloRetryRequest for every curve.
+			DefaultCurves: []CurveID{},
+		},
+		expectedCurveID: CurveX25519,
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SendHelloRetryRequest-2",
+		config: Config{
+			MaxVersion:    VersionTLS13,
+			DefaultCurves: []CurveID{CurveP384},
+		},
+		// Although the ClientHello did not predict our preferred curve,
+		// we always select it whether it is predicted or not.
+		expectedCurveID: CurveX25519,
+	})
+
+	testCases = append(testCases, testCase{
+		name: "UnknownCurve-HelloRetryRequest",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// P-384 requires HelloRetryRequest in BoringSSL.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				SendHelloRetryRequestCurve: bogusCurve,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "DisabledCurve-HelloRetryRequest",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveP256},
+			Bugs: ProtocolBugs{
+				IgnorePeerCurvePreferences: true,
+			},
+		},
+		flags:         []string{"-p384-only"},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "UnnecessaryHelloRetryRequest",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				UnnecessaryHelloRetryRequest: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "SecondHelloRetryRequest",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// P-384 requires HelloRetryRequest in BoringSSL.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				SecondHelloRetryRequest: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SecondClientHelloMissingKeyShare",
+		config: Config{
+			MaxVersion:    VersionTLS13,
+			DefaultCurves: []CurveID{},
+			Bugs: ProtocolBugs{
+				SecondClientHelloMissingKeyShare: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":MISSING_KEY_SHARE:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SecondClientHelloWrongCurve",
+		config: Config{
+			MaxVersion:    VersionTLS13,
+			DefaultCurves: []CurveID{},
+			Bugs: ProtocolBugs{
+				MisinterpretHelloRetryRequestCurve: CurveP521,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "HelloRetryRequestVersionMismatch",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// P-384 requires HelloRetryRequest in BoringSSL.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				SendServerHelloVersion: 0x0305,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_VERSION_NUMBER:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "HelloRetryRequestCurveMismatch",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// P-384 requires HelloRetryRequest in BoringSSL.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				// Send P-384 (correct) in the HelloRetryRequest.
+				SendHelloRetryRequestCurve: CurveP384,
+				// But send P-256 in the ServerHello.
+				SendCurve: CurveP256,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
+	// Test the server selecting a curve that requires a HelloRetryRequest
+	// without sending it.
+	testCases = append(testCases, testCase{
+		name: "SkipHelloRetryRequest",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// P-384 requires HelloRetryRequest in BoringSSL.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				SkipHelloRetryRequest: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
 	})
 }
 
