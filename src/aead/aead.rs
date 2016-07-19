@@ -142,7 +142,7 @@ impl SealingKey {
 ///
 /// `nonce` must be unique for every use of the key to seal data.
 ///
-/// The input is `in_out[..(in_out.len() - out_suffix_capacity]`; i.e. the
+/// The input is `in_out[..(in_out.len() - out_suffix_capacity)]`; i.e. the
 /// input is the part of `in_out` that precedes the suffix. When `seal` returns
 /// `Ok(out_len)`, the encrypted and signed output is `in_out[..out_len]`; i.e.
 /// the output has been written over input and at least part of the data
