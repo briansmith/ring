@@ -109,6 +109,11 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
+static inline void elem_mul_by_2(Elem r, const Elem a) {
+  elem_add(r, a, a);
+}
+
+
 void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
   elem_add(r, a, b);
 }
