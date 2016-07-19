@@ -53,17 +53,15 @@ GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
 GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
                                           const GFp_Limb b[],
                                           size_t num_limbs) {
-  GFp_Limb eq = constant_time_is_zero_size_t(0);
-  GFp_Limb lt = constant_time_is_zero_size_t(1);
-  for (size_t i = 0; i < num_limbs; ++i) {
-    GFp_Limb a_limb = a[num_limbs - i - 1];
-    GFp_Limb b_limb = b[num_limbs - i - 1];
-    lt = constant_time_select_size_t(
-      eq, constant_time_lt_size_t(a_limb, b_limb), lt);
-    eq = constant_time_select_size_t(
-      eq, constant_time_eq_size_t(a_limb, b_limb), 0);
+  /* There are lots of ways to implement this. It is implemented this way to
+   * be consistent with |GFp_constant_time_limbs_reduce_once| and other code
+   * that makes such comparisions as part of doing conditional reductions. */
+  GFp_Limb dummy;
+  GFp_Carry borrow = gfp_sub(&dummy, a[0], b[0]);
+  for (size_t i = 1; i < num_limbs; ++i) {
+    borrow = gfp_sbb(&dummy, a[i], b[i], borrow);
   }
-  return lt;
+  return constant_time_is_nonzero_size_t(borrow);
 }
 
 /* if (r >= m) { r -= m; } */
