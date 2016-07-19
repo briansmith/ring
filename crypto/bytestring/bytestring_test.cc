@@ -297,26 +297,32 @@ static bool TestCBBBasic() {
 }
 
 static bool TestCBBFixed() {
-  CBB cbb;
+  ScopedCBB cbb;
   uint8_t buf[1];
   uint8_t *out_buf;
   size_t out_size;
 
-  if (!CBB_init_fixed(&cbb, NULL, 0) ||
-      CBB_add_u8(&cbb, 1) ||
-      !CBB_finish(&cbb, &out_buf, &out_size) ||
+  if (!CBB_init_fixed(cbb.get(), NULL, 0) ||
+      !CBB_finish(cbb.get(), &out_buf, &out_size) ||
       out_buf != NULL ||
       out_size != 0) {
     return false;
   }
 
-  if (!CBB_init_fixed(&cbb, buf, 1) ||
-      !CBB_add_u8(&cbb, 1) ||
-      CBB_add_u8(&cbb, 2) ||
-      !CBB_finish(&cbb, &out_buf, &out_size) ||
+  cbb.Reset();
+  if (!CBB_init_fixed(cbb.get(), buf, 1) ||
+      !CBB_add_u8(cbb.get(), 1) ||
+      !CBB_finish(cbb.get(), &out_buf, &out_size) ||
       out_buf != buf ||
       out_size != 1 ||
       buf[0] != 1) {
+    return false;
+  }
+
+  cbb.Reset();
+  if (!CBB_init_fixed(cbb.get(), buf, 1) ||
+      !CBB_add_u8(cbb.get(), 1) ||
+      CBB_add_u8(cbb.get(), 2)) {
     return false;
   }
 
@@ -784,7 +790,12 @@ static bool TestCBBReserve() {
   ScopedCBB cbb;
   if (!CBB_init_fixed(cbb.get(), buf, sizeof(buf)) ||
       // Too large.
-      CBB_reserve(cbb.get(), &ptr, 11) ||
+      CBB_reserve(cbb.get(), &ptr, 11)) {
+    return false;
+  }
+
+  cbb.Reset();
+  if (!CBB_init_fixed(cbb.get(), buf, sizeof(buf)) ||
       // Successfully reserve the entire space.
       !CBB_reserve(cbb.get(), &ptr, 10) ||
       ptr != buf ||
@@ -794,6 +805,53 @@ static bool TestCBBReserve() {
       len != 5) {
     return false;
   }
+  return true;
+}
+
+static bool TestStickyError() {
+  // Write an input that exceeds the limit for its length prefix.
+  ScopedCBB cbb;
+  CBB child;
+  static const uint8_t kZeros[256] = {0};
+  if (!CBB_init(cbb.get(), 0) ||
+      !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
+      !CBB_add_bytes(&child, kZeros, sizeof(kZeros))) {
+    return false;
+  }
+
+  if (CBB_flush(cbb.get())) {
+    fprintf(stderr, "CBB_flush unexpectedly succeeded.\n");
+    return false;
+  }
+
+  // All future operations should fail.
+  uint8_t *ptr;
+  size_t len;
+  if (CBB_add_u8(cbb.get(), 0) ||
+      CBB_finish(cbb.get(), &ptr, &len)) {
+    fprintf(stderr, "Future operations unexpectedly succeeded.\n");
+    return false;
+  }
+
+  // Write an input that cannot fit in a fixed CBB.
+  cbb.Reset();
+  uint8_t buf;
+  if (!CBB_init_fixed(cbb.get(), &buf, 1)) {
+    return false;
+  }
+
+  if (CBB_add_bytes(cbb.get(), kZeros, sizeof(kZeros))) {
+    fprintf(stderr, "CBB_add_bytes unexpectedly succeeded.\n");
+    return false;
+  }
+
+  // All future operations should fail.
+  if (CBB_add_u8(cbb.get(), 0) ||
+      CBB_finish(cbb.get(), &ptr, &len)) {
+    fprintf(stderr, "Future operations unexpectedly succeeded.\n");
+    return false;
+  }
+
   return true;
 }
 
@@ -817,7 +875,8 @@ int main(void) {
       !TestASN1Uint64() ||
       !TestGetOptionalASN1Bool() ||
       !TestZero() ||
-      !TestCBBReserve()) {
+      !TestCBBReserve() ||
+      !TestStickyError()) {
     return 1;
   }
 

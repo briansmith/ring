@@ -37,6 +37,7 @@ static int cbb_init(CBB *cbb, uint8_t *buf, size_t cap) {
   base->len = 0;
   base->cap = cap;
   base->can_resize = 1;
+  base->error = 0;
 
   cbb->base = base;
   cbb->is_top_level = 1;
@@ -95,7 +96,7 @@ static int cbb_buffer_reserve(struct cbb_buffer_st *base, uint8_t **out,
   newlen = base->len + len;
   if (newlen < base->len) {
     /* Overflow */
-    return 0;
+    goto err;
   }
 
   if (newlen > base->cap) {
@@ -103,7 +104,7 @@ static int cbb_buffer_reserve(struct cbb_buffer_st *base, uint8_t **out,
     uint8_t *newbuf;
 
     if (!base->can_resize) {
-      return 0;
+      goto err;
     }
 
     if (newcap < base->cap || newcap < newlen) {
@@ -111,7 +112,7 @@ static int cbb_buffer_reserve(struct cbb_buffer_st *base, uint8_t **out,
     }
     newbuf = OPENSSL_realloc(base->buf, newcap);
     if (newbuf == NULL) {
-      return 0;
+      goto err;
     }
 
     base->buf = newbuf;
@@ -123,6 +124,10 @@ static int cbb_buffer_reserve(struct cbb_buffer_st *base, uint8_t **out,
   }
 
   return 1;
+
+err:
+  base->error = 1;
+  return 0;
 }
 
 static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
@@ -185,7 +190,10 @@ int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len) {
 int CBB_flush(CBB *cbb) {
   size_t child_start, i, len;
 
-  if (cbb->base == NULL) {
+  /* If |cbb->base| has hit an error, the buffer is in an undefined state, so
+   * fail all following calls. In particular, |cbb->child| may point to invalid
+   * memory. */
+  if (cbb->base == NULL || cbb->base->error) {
     return 0;
   }
 
@@ -198,7 +206,7 @@ int CBB_flush(CBB *cbb) {
   if (!CBB_flush(cbb->child) ||
       child_start < cbb->child->offset ||
       cbb->base->len < child_start) {
-    return 0;
+    goto err;
   }
 
   len = cbb->base->len - child_start;
@@ -214,7 +222,7 @@ int CBB_flush(CBB *cbb) {
 
     if (len > 0xfffffffe) {
       /* Too large. */
-      return 0;
+      goto err;
     } else if (len > 0xffffff) {
       len_len = 5;
       initial_length_byte = 0x80 | 4;
@@ -237,7 +245,7 @@ int CBB_flush(CBB *cbb) {
       /* We need to move the contents along in order to make space. */
       size_t extra_bytes = len_len - 1;
       if (!cbb_buffer_add(cbb->base, NULL, extra_bytes)) {
-        return 0;
+        goto err;
       }
       memmove(cbb->base->buf + child_start + extra_bytes,
               cbb->base->buf + child_start, len);
@@ -252,13 +260,17 @@ int CBB_flush(CBB *cbb) {
     len >>= 8;
   }
   if (len != 0) {
-    return 0;
+    goto err;
   }
 
   cbb->child->base = NULL;
   cbb->child = NULL;
 
   return 1;
+
+err:
+  cbb->base->error = 1;
+  return 0;
 }
 
 const uint8_t *CBB_data(const CBB *cbb) {
@@ -312,6 +324,7 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
 int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag) {
   if ((tag & 0x1f) == 0x1f) {
     /* Long form identifier octets are not supported. */
+    cbb->base->error = 1;
     return 0;
   }
 
