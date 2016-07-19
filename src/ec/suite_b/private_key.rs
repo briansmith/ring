@@ -70,7 +70,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
             continue;
         }
 
-        // NSA Guide Step 8 is done in `private_to_public()`.
+        // NSA Guide Step 8 is done in `public_from_private()`.
 
         // NSA Guide Step 9.
         return Ok(candidate_private_key);
