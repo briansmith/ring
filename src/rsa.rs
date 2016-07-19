@@ -16,7 +16,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, signature, signature_impl};
+use {bssl, c, der, digest, signature};
 
 #[cfg(feature = "rsa_signing")]
 use rand;
@@ -61,15 +61,15 @@ impl RSAPadding {
 }
 
 
-struct RSAVerificationAlgorithm {
+pub struct RSAVerificationAlgorithm {
     padding_alg: &'static RSAPadding,
     min_bits: usize,
 }
 
 
-impl signature_impl::VerificationAlgorithmImpl for RSAVerificationAlgorithm {
-    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+impl RSAVerificationAlgorithm {
+    pub fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+                  signature: untrusted::Input) -> Result<(), ()> {
         const MAX_BITS: usize = 8192;
 
         let (n, e) = try!(parse_public_key(public_key));
@@ -157,12 +157,10 @@ macro_rules! rsa_pkcs1 {
         ///
         /// Only available in `use_heap` mode.
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
-                signature::VerificationAlgorithm {
-            implementation: &RSAVerificationAlgorithm {
+            signature::VerificationAlgorithm::RSA(RSAVerificationAlgorithm {
                 padding_alg: &$PADDING_ALGORITHM,
                 min_bits: $min_bits,
-            }
-        };
+            });
     }
 }
 

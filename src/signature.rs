@@ -132,7 +132,7 @@
 //! ```
 
 
-use {init, signature_impl};
+use init;
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
@@ -196,29 +196,24 @@ impl<'a> Signature {
     }
 }
 
+
+use rsa::RSAVerificationAlgorithm;
+use ec::eddsa::EdDSA;
+use ec::suite_b::ecdsa::ECDSAVerification;
+
 /// A signature verification algorithm.
 //
-// The `VerificationAlgorithm` struct is just a wrapper around a
-// `VerificationAlgorithmImpl`. This is done to be consistent with the rest of
-// *ring*, which avoids exposing traits in its API, and to save users from
-// encountering errors such as:
-//
-// ```output
-// the trait `core::marker::Sync` is not implemented for the type
-// `signature::VerificationAlgorithm + 'static` [E0277]
-// note: shared static variables must have a type that implements `Sync`
-// ```
-//
-// Although users could resolve such errors by adding `+ Sync` as we do here,
-// it's confusing and hard to debug for newcomers.
-pub struct VerificationAlgorithm {
-    // XXX: This is public so that `VerificationAlgorithm`s can be defined in
-    // other `ring` submodules, but it isn't actually useful outside `ring`
-    // since `signature_impl` isn't public.
+// The `VerificationAlgorithm` enum unifies the different algorithms for
+// signing.
+pub enum VerificationAlgorithm {
     #[doc(hidden)]
-    pub implementation:
-        &'static (signature_impl::VerificationAlgorithmImpl + Sync),
+    RSA(RSAVerificationAlgorithm),
+    #[doc(hidden)]
+    ED25519(EdDSA),
+    #[doc(hidden)]
+    ECDSA(ECDSAVerification),
 }
+
 
 /// Verify the signature `signature` of message `msg` with the public key
 /// `public_key` using the algorithm `alg`.
@@ -246,7 +241,14 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
               msg: untrusted::Input, signature: untrusted::Input)
               -> Result<(), ()> {
     init::init_once();
-    alg.implementation.verify(public_key, msg, signature)
+    match alg {
+        &VerificationAlgorithm::RSA(ref params) =>
+            params.verify(public_key, msg, signature),
+        &VerificationAlgorithm::ED25519(ref params) =>
+            params.verify(public_key, msg, signature),
+        &VerificationAlgorithm::ECDSA(ref params) =>
+            params.verify(public_key, msg, signature),
+    }
 }
 
 

@@ -125,7 +125,6 @@ pub mod pbkdf2;
 pub mod rand;
 #[cfg(feature = "use_heap")] mod rsa;
 pub mod signature;
-mod signature_impl;
 
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
