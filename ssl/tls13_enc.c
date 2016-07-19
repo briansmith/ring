@@ -248,6 +248,8 @@ int tls13_set_handshake_traffic(SSL *ssl) {
   if (!derive_secret(ssl, traffic_secret, hs->hash_len,
                      (const uint8_t *)kTLS13LabelHandshakeTraffic,
                      strlen(kTLS13LabelHandshakeTraffic)) ||
+      !ssl_log_secret(ssl, "HANDSHAKE_TRAFFIC_SECRET", traffic_secret,
+                      hs->hash_len) ||
       !tls13_set_traffic_key(ssl, type_handshake, evp_aead_open, traffic_secret,
                              hs->hash_len) ||
       !tls13_set_traffic_key(ssl, type_handshake, evp_aead_seal, traffic_secret,
@@ -262,7 +264,9 @@ int tls13_derive_traffic_secret_0(SSL *ssl) {
 
   return derive_secret(ssl, hs->traffic_secret_0, hs->hash_len,
                        (const uint8_t *)kTLS13LabelApplicationTraffic,
-                       strlen(kTLS13LabelApplicationTraffic));
+                       strlen(kTLS13LabelApplicationTraffic)) &&
+         ssl_log_secret(ssl, "TRAFFIC_SECRET_0", hs->traffic_secret_0,
+                        hs->hash_len);
 }
 
 static const char kTLS13LabelExporter[] = "exporter master secret";

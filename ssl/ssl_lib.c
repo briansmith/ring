@@ -2470,26 +2470,22 @@ int ssl_log_rsa_client_key_exchange(const SSL *ssl,
   return 1;
 }
 
-int ssl_log_master_secret(const SSL *ssl, const uint8_t *client_random,
-                          size_t client_random_len, const uint8_t *master,
-                          size_t master_len) {
+int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
+                   size_t secret_len) {
   if (ssl->ctx->keylog_callback == NULL) {
     return 1;
-  }
-
-  if (client_random_len != 32) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
   }
 
   CBB cbb;
   uint8_t *out;
   size_t out_len;
-  if (!CBB_init(&cbb, 14 + 64 + 1 + master_len * 2 + 1) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)"CLIENT_RANDOM ", 14) ||
-      !cbb_add_hex(&cbb, client_random, 32) ||
+  if (!CBB_init(&cbb, strlen(label) + 1 + SSL3_RANDOM_SIZE * 2 + 1 +
+                          secret_len * 2 + 1) ||
+      !CBB_add_bytes(&cbb, (const uint8_t *)label, strlen(label)) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
-      !cbb_add_hex(&cbb, master, master_len) ||
+      !cbb_add_hex(&cbb, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
+      !cbb_add_hex(&cbb, secret, secret_len) ||
       !CBB_add_u8(&cbb, 0 /* NUL */) ||
       !CBB_finish(&cbb, &out, &out_len)) {
     CBB_cleanup(&cbb);

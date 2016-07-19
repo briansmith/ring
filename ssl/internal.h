@@ -911,6 +911,23 @@ int ext_key_share_parse_clienthello(SSL *ssl, uint8_t **out_secret,
 int ext_key_share_add_serverhello(SSL *ssl, CBB *out);
 
 
+/* SSLKEYLOGFILE functions. */
+
+/* ssl_log_rsa_client_key_exchange logs |premaster|, if logging is enabled for
+ * |ssl|. It returns one on success and zero on failure. The entry is identified
+ * by the first 8 bytes of |encrypted_premaster|. */
+int ssl_log_rsa_client_key_exchange(const SSL *ssl,
+                                    const uint8_t *encrypted_premaster,
+                                    size_t encrypted_premaster_len,
+                                    const uint8_t *premaster,
+                                    size_t premaster_len);
+
+/* ssl_log_secret logs |secret| with label |label|, if logging is enabled for
+ * |ssl|. It returns one on success and zero on failure. */
+int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
+                   size_t secret_len);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -1359,22 +1376,6 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
 int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len);
 
 int tls1_record_handshake_hashes_for_channel_id(SSL *ssl);
-
-/* ssl_log_rsa_client_key_exchange logs |premaster|, if logging is enabled for
- * |ssl|. It returns one on success and zero on failure. The entry is identified
- * by the first 8 bytes of |encrypted_premaster|. */
-int ssl_log_rsa_client_key_exchange(const SSL *ssl,
-                                    const uint8_t *encrypted_premaster,
-                                    size_t encrypted_premaster_len,
-                                    const uint8_t *premaster,
-                                    size_t premaster_len);
-
-/* ssl_log_master_secret logs |master|, if logging is enabled for |ssl|. It
- * returns one on success and zero on failure. The entry is identified by
- * |client_random|. */
-int ssl_log_master_secret(const SSL *ssl, const uint8_t *client_random,
-                          size_t client_random_len, const uint8_t *master,
-                          size_t master_len);
 
 /* ssl3_can_false_start returns one if |ssl| is allowed to False Start and zero
  * otherwise. */
