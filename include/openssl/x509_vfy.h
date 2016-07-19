@@ -162,7 +162,7 @@ typedef struct X509_VERIFY_PARAM_ID_st X509_VERIFY_PARAM_ID;
  * parameters used can be customized
  */
 
-typedef struct X509_VERIFY_PARAM_st
+struct X509_VERIFY_PARAM_st
 	{
 	char *name;
 	time_t check_time;	/* Time to use */
@@ -173,7 +173,7 @@ typedef struct X509_VERIFY_PARAM_st
 	int depth;		/* Verify depth */
 	STACK_OF(ASN1_OBJECT) *policies;	/* Permissible policies */
 	X509_VERIFY_PARAM_ID *id;	/* opaque ID data */
-	} X509_VERIFY_PARAM;
+	};
 
 DECLARE_STACK_OF(X509_VERIFY_PARAM)
 

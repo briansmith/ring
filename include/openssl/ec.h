@@ -78,9 +78,6 @@ extern "C" {
 /* Low-level operations on elliptic curves. */
 
 
-typedef struct ec_group_st EC_GROUP;
-typedef struct ec_point_st EC_POINT;
-
 /* point_conversion_form_t enumerates forms, as defined in X9.62 (ECDSA), for
  * the encoding of a elliptic curve point (x,y) */
 typedef enum {
