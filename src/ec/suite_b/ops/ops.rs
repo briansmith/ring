@@ -63,7 +63,8 @@ impl Scalar {
     }
 }
 
-/// A `Scalar`, except Montgomery-encoded.
+/// A `Scalar`, except Montgomery-encoded, and not reduced. The range is
+/// [0, 2**LIMB_BITS).
 #[derive(Clone, Copy)]
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
@@ -185,7 +186,7 @@ impl CommonOps {
     pub fn elem_mul_mixed(&self, a: &ElemUnreduced, b: &ElemDecoded)
                            -> ElemDecoded {
         let unreduced = rab(self.elem_mul_mont, &a.limbs, &b.limbs);
-        ElemDecoded { limbs: self.reduced_limbs(&unreduced) }
+        ElemDecoded { limbs: self.reduced_limbs(&unreduced, &self.q.p) }
     }
 
     #[inline]
@@ -196,7 +197,7 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_reduced(&self, a: &ElemUnreduced) -> Elem {
-        Elem { limbs: self.reduced_limbs(&a.limbs) }
+        Elem { limbs: self.reduced_limbs(&a.limbs, &self.q.p) }
     }
 
     #[inline]
@@ -238,11 +239,19 @@ impl CommonOps {
         r
     }
 
-    fn reduced_limbs(&self, a: &[Limb; MAX_LIMBS]) -> [Limb; MAX_LIMBS] {
+    // This assumes
+    // 2**((self.num_limbs * LIMB_BITS) - 1) < p and
+    // p < 2**(self.num_limbs * LIMB_BITS) and `p` is prime. See
+    // "Efficient Software Implementations of Modular Exponentiation" by Shay
+    // Gueron for the details. This is the case for both the field order and
+    // group order for both P-256 and P-384, but it is not the case for all
+    // curves. For example, it is not true for P-521.
+    fn reduced_limbs(&self, a: &[Limb; MAX_LIMBS], p: &[Limb; MAX_LIMBS])
+                     -> [Limb; MAX_LIMBS] {
         let mut r = *a;
         unsafe {
-            GFp_constant_time_limbs_reduce_once(
-                r.as_mut_ptr(), self.q.p.as_ptr(), self.num_limbs);
+            GFp_constant_time_limbs_reduce_once(r.as_mut_ptr(), p.as_ptr(),
+                                                self.num_limbs);
         }
         r
     }
@@ -349,7 +358,9 @@ impl PublicScalarOps {
 
     #[inline]
     pub fn scalar_mul_mixed(&self, a: &Scalar, b: &ScalarMont) -> Scalar {
-        Scalar { limbs: rab(self.scalar_mul_mont, &a.limbs, &b.limbs) }
+        let cops = self.public_key_ops.common;
+        let unreduced = rab(self.scalar_mul_mont, &a.limbs, &b.limbs);
+        Scalar { limbs: cops.reduced_limbs(&unreduced, &cops.n.limbs) }
     }
 
     #[inline]
