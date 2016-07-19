@@ -1935,7 +1935,7 @@ static int ext_ec_point_add_serverhello(SSL *ssl, CBB *out) {
 static int ext_draft_version_add_clienthello(SSL *ssl, CBB *out) {
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
-      max_version >= TLS1_3_VERSION) {
+      max_version < TLS1_3_VERSION) {
     return 1;
   }
 
