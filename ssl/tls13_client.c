@@ -330,23 +330,14 @@ static enum ssl_hs_wait_t do_certificate_callback(SSL *ssl, SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_client_certificate(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
-  if (!ssl_has_certificate(ssl) && ssl->ctx->client_cert_cb != NULL) {
-    X509 *x509 = NULL;
-    EVP_PKEY *pkey = NULL;
-    int rv = ssl->ctx->client_cert_cb(ssl, &x509, &pkey);
-    if (rv < 0) {
+  /* Call client_cert_cb to update the certificate. */
+  int should_retry;
+  if (!ssl_do_client_cert_cb(ssl, &should_retry)) {
+    if (should_retry) {
       hs->state = state_send_client_certificate;
       return ssl_hs_x509_lookup;
     }
-
-    int setup_error = rv == 1 && (!SSL_use_certificate(ssl, x509) ||
-                                  !SSL_use_PrivateKey(ssl, pkey));
-    X509_free(x509);
-    EVP_PKEY_free(pkey);
-    if (setup_error) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
+    return ssl_hs_error;
   }
 
   if (!tls13_prepare_certificate(ssl)) {

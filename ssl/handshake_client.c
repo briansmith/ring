@@ -328,7 +328,6 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_A:
       case SSL3_ST_CW_CERT_B:
       case SSL3_ST_CW_CERT_C:
-      case SSL3_ST_CW_CERT_D:
         if (ssl->s3->tmp.cert_request) {
           ret = ssl3_send_client_certificate(ssl);
           if (ret <= 0) {
@@ -1410,22 +1409,6 @@ static int ssl3_get_server_hello_done(SSL *ssl) {
   return 1;
 }
 
-static int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509,
-                                 EVP_PKEY **out_pkey) {
-  if (ssl->ctx->client_cert_cb == NULL) {
-    return 0;
-  }
-
-  int ret = ssl->ctx->client_cert_cb(ssl, out_x509, out_pkey);
-  if (ret <= 0) {
-    return ret;
-  }
-
-  assert(*out_x509 != NULL);
-  assert(*out_pkey != NULL);
-  return 1;
-}
-
 static int ssl3_send_client_certificate(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CERT_A) {
     /* Call cert_cb to update the certificate. */
@@ -1441,36 +1424,19 @@ static int ssl3_send_client_certificate(SSL *ssl) {
       }
     }
 
-    if (ssl_has_certificate(ssl)) {
-      ssl->state = SSL3_ST_CW_CERT_C;
-    } else {
-      ssl->state = SSL3_ST_CW_CERT_B;
-    }
+    ssl->state = SSL3_ST_CW_CERT_B;
   }
 
   if (ssl->state == SSL3_ST_CW_CERT_B) {
     /* Call client_cert_cb to update the certificate. */
-    X509 *x509 = NULL;
-    EVP_PKEY *pkey = NULL;
-    int ret = ssl_do_client_cert_cb(ssl, &x509, &pkey);
-    if (ret < 0) {
-      ssl->rwstate = SSL_X509_LOOKUP;
+    int should_retry;
+    if (!ssl_do_client_cert_cb(ssl, &should_retry)) {
+      if (should_retry) {
+        ssl->rwstate = SSL_X509_LOOKUP;
+      }
       return -1;
     }
 
-    int setup_error = ret == 1 && (!SSL_use_certificate(ssl, x509) ||
-                                   !SSL_use_PrivateKey(ssl, pkey));
-    X509_free(x509);
-    EVP_PKEY_free(pkey);
-    if (setup_error) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return -1;
-    }
-
-    ssl->state = SSL3_ST_CW_CERT_C;
-  }
-
-  if (ssl->state == SSL3_ST_CW_CERT_C) {
     if (!ssl_has_certificate(ssl)) {
       ssl->s3->tmp.cert_request = 0;
       /* Without a client certificate, the handshake buffer may be released. */
@@ -1486,10 +1452,10 @@ static int ssl3_send_client_certificate(SSL *ssl) {
     if (!ssl3_output_cert_chain(ssl)) {
       return -1;
     }
-    ssl->state = SSL3_ST_CW_CERT_D;
+    ssl->state = SSL3_ST_CW_CERT_C;
   }
 
-  assert(ssl->state == SSL3_ST_CW_CERT_D);
+  assert(ssl->state == SSL3_ST_CW_CERT_C);
   return ssl->method->write_message(ssl);
 }
 

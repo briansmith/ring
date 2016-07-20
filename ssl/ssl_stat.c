@@ -134,9 +134,6 @@ const char *SSL_state_string_long(const SSL *ssl) {
     case SSL3_ST_CW_CERT_C:
       return "SSLv3 write client certificate C";
 
-    case SSL3_ST_CW_CERT_D:
-      return "SSLv3 write client certificate D";
-
     case SSL3_ST_CW_KEY_EXCH_A:
       return "SSLv3 write client key exchange A";
 
@@ -293,9 +290,6 @@ const char *SSL_state_string(const SSL *ssl) {
 
     case SSL3_ST_CW_CERT_C:
       return "3WCC_C";
-
-    case SSL3_ST_CW_CERT_D:
-      return "3WCC_D";
 
     case SSL3_ST_CW_KEY_EXCH_A:
       return "3WCKEA";

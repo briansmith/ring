@@ -774,6 +774,11 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb);
  * error queue. */
 int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf);
 
+/* ssl_do_client_cert_cb runs the client_cert_cb, if any, and returns one on
+ * success and zero on error. On error, it sets |*out_should_retry| to one if
+ * the callback failed and should be retried and zero otherwise. */
+int ssl_do_client_cert_cb(SSL *ssl, int *out_should_retry);
+
 
 /* TLS 1.3 key derivation. */
 

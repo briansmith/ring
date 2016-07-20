@@ -639,6 +639,33 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
+int ssl_do_client_cert_cb(SSL *ssl, int *out_should_retry) {
+  if (ssl_has_certificate(ssl) || ssl->ctx->client_cert_cb == NULL) {
+    return 1;
+  }
+
+  X509 *x509 = NULL;
+  EVP_PKEY *pkey = NULL;
+  int ret = ssl->ctx->client_cert_cb(ssl, &x509, &pkey);
+  if (ret < 0) {
+    *out_should_retry = 1;
+    return 0;
+  }
+
+  if (ret != 0) {
+    if (!SSL_use_certificate(ssl, x509) ||
+        !SSL_use_PrivateKey(ssl, pkey)) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      *out_should_retry = 0;
+      return 0;
+    }
+  }
+
+  X509_free(x509);
+  EVP_PKEY_free(pkey);
+  return 1;
+}
+
 static int set_cert_store(X509_STORE **store_ptr, X509_STORE *new_store, int take_ref) {
   X509_STORE_free(*store_ptr);
   *store_ptr = new_store;
