@@ -106,20 +106,15 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
 
   struct ssl_early_callback_ctx early_ctx;
-  uint16_t client_wire_version;
-  CBS client_random, session_id, cipher_suites, compression_methods;
-
-  memset(&early_ctx, 0, sizeof(early_ctx));
-  early_ctx.ssl = ssl;
-  early_ctx.client_hello = ssl->init_msg;
-  early_ctx.client_hello_len = ssl->init_num;
-  if (!ssl_early_callback_init(&early_ctx)) {
+  if (!ssl_early_callback_init(ssl, &early_ctx, ssl->init_msg,
+                               ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
-  CBS cbs;
+  CBS cbs, client_random, session_id, cipher_suites, compression_methods;
+  uint16_t client_wire_version;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u16(&cbs, &client_wire_version) ||
       !CBS_get_bytes(&cbs, &client_random, SSL3_RANDOM_SIZE) ||
@@ -280,12 +275,8 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
   }
 
   struct ssl_early_callback_ctx early_ctx;
-
-  memset(&early_ctx, 0, sizeof(early_ctx));
-  early_ctx.ssl = ssl;
-  early_ctx.client_hello = ssl->init_msg;
-  early_ctx.client_hello_len = ssl->init_num;
-  if (!ssl_early_callback_init(&early_ctx)) {
+  if (!ssl_early_callback_init(ssl, &early_ctx, ssl->init_msg,
+                               ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;

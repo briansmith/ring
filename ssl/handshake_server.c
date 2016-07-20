@@ -548,11 +548,8 @@ static int ssl3_get_client_hello(SSL *ssl) {
       /* fallthrough */
     case SSL3_ST_SR_CLNT_HELLO_B:
     case SSL3_ST_SR_CLNT_HELLO_C:
-      memset(&early_ctx, 0, sizeof(early_ctx));
-      early_ctx.ssl = ssl;
-      early_ctx.client_hello = ssl->init_msg;
-      early_ctx.client_hello_len = ssl->init_num;
-      if (!ssl_early_callback_init(&early_ctx)) {
+      if (!ssl_early_callback_init(ssl, &early_ctx, ssl->init_msg,
+                                   ssl->init_num)) {
         al = SSL_AD_DECODE_ERROR;
         OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
         goto f_err;

@@ -202,9 +202,14 @@ done:
   return ret;
 }
 
-char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx) {
-  CBS client_hello, session_id, cipher_suites, compression_methods, extensions;
+int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
+                            const uint8_t *in, size_t in_len) {
+  memset(ctx, 0, sizeof(*ctx));
+  ctx->ssl = ssl;
+  ctx->client_hello = in;
+  ctx->client_hello_len = in_len;
 
+  CBS client_hello, session_id, cipher_suites, compression_methods, extensions;
   CBS_init(&client_hello, ctx->client_hello, ctx->client_hello_len);
 
   if (/* Skip client version. */
