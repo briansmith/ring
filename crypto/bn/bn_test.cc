@@ -107,7 +107,6 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 
 static const int num2 = 5;   // number of tests for slow functions
 
-static bool test_exp(RAND *rng, BN_CTX *ctx);
 static bool TestBN2BinPadded(RAND *rng);
 static bool TestHex2BN();
 static bool TestRand(RAND *rng);
@@ -124,8 +123,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
   }
 
 
-  if (!test_exp(rng, ctx.get()) ||
-      !TestBN2BinPadded(rng) ||
+  if (!TestBN2BinPadded(rng) ||
       !TestHex2BN() ||
       !TestRand(rng) ||
       !TestNegativeZero(ctx.get()) ||
@@ -568,42 +566,6 @@ static bool RunTest(FileTest *t, void *arg) {
   }
   t->PrintLine("Unknown test type: %s", t->GetType().c_str());
   return false;
-}
-
-static bool test_exp(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !d || !e) {
-    return false;
-  }
-
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0, rng) ||
-        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
-        !BN_exp(d.get(), a.get(), b.get(), ctx)) {
-      return false;
-    }
-
-    if (!BN_one(e.get())) {
-      return false;
-    }
-    while (!BN_is_zero(b.get())) {
-      if (!BN_mul(e.get(), e.get(), a.get(), ctx) ||
-          !BN_sub(b.get(), b.get(), BN_value_one())) {
-        return false;
-      }
-    }
-    if (!BN_sub(e.get(), e.get(), d.get())) {
-      return false;
-    }
-    if (!BN_is_zero(e.get())) {
-      fprintf(stderr, "Exponentiation test failed!\n");
-      return false;
-    }
-  }
-  return true;
 }
 
 static bool TestBN2BinPadded(RAND *rng) {
