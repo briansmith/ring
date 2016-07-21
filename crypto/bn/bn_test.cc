@@ -108,7 +108,6 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 static const int num2 = 5;   // number of tests for slow functions
 
 static bool test_exp(RAND *rng, BN_CTX *ctx);
-static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
 static bool TestBN2BinPadded(RAND *rng);
 static bool TestHex2BN();
 static bool TestRand(RAND *rng);
@@ -125,8 +124,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
   }
 
 
-  if (!test_mod_exp_mont5(rng, ctx.get()) ||
-      !test_exp(rng, ctx.get()) ||
+  if (!test_exp(rng, ctx.get()) ||
       !TestBN2BinPadded(rng) ||
       !TestHex2BN() ||
       !TestRand(rng) ||
@@ -504,10 +502,11 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
-    // |BN_mod_exp_mont| requires the input to already be reduced mod |m|.
-    // |BN_mod_exp_mont_consttime| doesn't have the same requirement simply
-    // because we haven't gotten around to it yet.
-    int expected_ok = BN_cmp(a.get(), m.get()) < 0;
+    // |BN_mod_exp_mont| requires the input to already be reduced mod |m|
+    // unless |e| is zero (purely due to the ordering of how these special
+    // cases are handled). // |BN_mod_exp_mont_consttime| doesn't have the same
+    // requirement simply because we haven't gotten around to it yet.
+    int expected_ok = BN_cmp(a.get(), m.get()) < 0 || BN_is_zero(e.get());
 
     // First test with a NULL |BN_MONT_CTX|.
     int ok = BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, NULL);
@@ -569,73 +568,6 @@ static bool RunTest(FileTest *t, void *arg) {
   }
   t->PrintLine("Unknown test type: %s", t->GetType().c_str());
   return false;
-}
-
-// Test constant-time modular exponentiation with 1024-bit inputs,
-// which on x86_64 cause a different code branch to be taken.
-static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM p(BN_new());
-  ScopedBIGNUM m(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !p || !m || !d || !e ||
-      !BN_rand(m.get(), 1024, 0, 1, rng) ||  // must be odd for montgomery
-      !BN_rand_range(a.get(), m.get(), rng)) {
-    return false;
-  }
-  // Zero exponent.
-  BN_zero(p.get());
-  if (!BN_mod_exp_mont_consttime(d.get(), a.get(), p.get(), m.get(), ctx,
-                                 NULL)) {
-    return false;
-  }
-  if (!BN_is_one(d.get())) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  if (!BN_rand(p.get(), 1024, 0, 0, rng)) {
-    return false;
-  }
-  // Zero input.
-  BN_zero(a.get());
-  if (!BN_mod_exp_mont_consttime(d.get(), a.get(), p.get(), m.get(), ctx,
-                                 NULL)) {
-    return false;
-  }
-  if (!BN_is_zero(d.get())) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  // Craft an input whose Montgomery representation is 1, i.e., shorter than the
-  // modulus m, in order to test the const time precomputation
-  // scattering/gathering.
-  ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-  if (!mont || !BN_one(a.get()) ||
-      !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
-      !BN_from_montgomery(e.get(), a.get(), mont.get(), ctx) ||
-      !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 nullptr) ||
-      !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
-    return false;
-  }
-  if (BN_cmp(a.get(), d.get()) != 0) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  // Finally, some regular test vectors.
-  if (!BN_rand_range(e.get(), m.get(), rng) ||
-      !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 nullptr) ||
-      !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
-    return false;
-  }
-  if (BN_cmp(a.get(), d.get()) != 0) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-
-  return true;
 }
 
 static bool test_exp(RAND *rng, BN_CTX *ctx) {
