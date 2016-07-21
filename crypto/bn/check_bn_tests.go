@@ -211,6 +211,12 @@ func main() {
 				checkResult(test, "A / B", "Quotient", q)
 				checkResult(test, "A % B", "Remainder", r)
 			}
+		case "ModMul":
+			if checkKeys(test, "A", "B", "M", "ModMul") {
+				r := new(big.Int).Mul(test.Values["A"], test.Values["B"])
+				r = r.Mod(r, test.Values["M"])
+				checkResult(test, "A * B (mod M)", "ModMul", r)
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)
 		}

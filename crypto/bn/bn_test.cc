@@ -105,13 +105,8 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 // TODO(davidben): Rather than generate random inputs and depend on bc to check
 // the results, most of these tests should use known answers.
 
-static const int num0 = 100; // number of tests
 static const int num2 = 5;   // number of tests for slow functions
 
-static int rand_neg(void);
-
-static bool test_mont(RAND *rng, BN_CTX *ctx);
-static bool test_mod_mul(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
 static bool test_exp(RAND *rng, BN_CTX *ctx);
@@ -132,9 +127,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
   }
 
 
-  if (!test_mod_mul(rng, ctx.get()) ||
-      !test_mont(rng, ctx.get()) ||
-      !test_mod_exp_mont(rng, ctx.get()) ||
+  if (!test_mod_exp_mont(rng, ctx.get()) ||
       !test_mod_exp_mont_consttime(rng, ctx.get()) ||
       !test_mod_exp_mont5(rng, ctx.get()) ||
       !test_exp(rng, ctx.get()) ||
@@ -456,6 +449,44 @@ static bool TestQuotient(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestModMul(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM b = GetBIGNUM(t, "B");
+  ScopedBIGNUM m = GetBIGNUM(t, "M");
+  ScopedBIGNUM mod_mul = GetBIGNUM(t, "ModMul");
+  if (!a || !b || !m || !mod_mul) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_mod_mul(ret.get(), a.get(), b.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A * B (mod M)", mod_mul.get(), ret.get())) {
+    return false;
+  }
+
+  if (BN_is_odd(m.get())) {
+    // Reduce |a| and |b| and test the Montgomery version.
+    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+    ScopedBIGNUM a_tmp(BN_new()), b_tmp(BN_new());
+    if (!mont || !a_tmp || !b_tmp ||
+        !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
+        !BN_nnmod(a_tmp.get(), a.get(), m.get(), ctx) ||
+        !BN_nnmod(b_tmp.get(), b.get(), m.get(), ctx) ||
+        !BN_to_montgomery(a_tmp.get(), a_tmp.get(), mont.get(), ctx) ||
+        !BN_to_montgomery(b_tmp.get(), b_tmp.get(), mont.get(), ctx) ||
+        !BN_mod_mul_montgomery(ret.get(), a_tmp.get(), b_tmp.get(), mont.get(),
+                               ctx) ||
+        !BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx) ||
+        !ExpectBIGNUMsEqual(t, "A * B (mod M) (Montgomery)",
+                            mod_mul.get(), ret.get())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -469,6 +500,7 @@ static const Test kTests[] = {
     {"Square", TestSquare},
     {"Product", TestProduct},
     {"Quotient", TestQuotient},
+    {"ModMul", TestModMul},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -481,98 +513,6 @@ static bool RunTest(FileTest *t, void *arg) {
   }
   t->PrintLine("Unknown test type: %s", t->GetType().c_str());
   return false;
-}
-
-static int rand_neg() {
-  static unsigned int neg = 0;
-  static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
-
-  return sign[(neg++) % 8];
-}
-
-static bool test_mont(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM A(BN_new());
-  ScopedBIGNUM B(BN_new());
-  ScopedBIGNUM n(BN_new());
-  ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-  if (!a || !b || !c || !d || !A || !B || !n || !mont) {
-    return false;
-  }
-
-  if (!BN_rand(a.get(), 100, 0, 0, rng) ||
-      !BN_rand(b.get(), 100, 0, 0, rng)) {
-    return false;
-  }
-
-  for (int i = 0; i < num2; i++) {
-    int bits = (200 * (i + 1)) / num2;
-
-    if (bits == 0) {
-      continue;
-    }
-    if (!BN_rand(n.get(), bits, 0, 1, rng) ||
-        !BN_MONT_CTX_set(mont.get(), n.get(), ctx) ||
-        !BN_nnmod(a.get(), a.get(), n.get(), ctx) ||
-        !BN_nnmod(b.get(), b.get(), n.get(), ctx) ||
-        !BN_to_montgomery(A.get(), a.get(), mont.get(), ctx) ||
-        !BN_to_montgomery(B.get(), b.get(), mont.get(), ctx) ||
-        !BN_mod_mul_montgomery(c.get(), A.get(), B.get(), mont.get(), ctx) ||
-        !BN_from_montgomery(A.get(), c.get(), mont.get(), ctx)) {
-      return false;
-    }
-    if (!BN_mod_mul(d.get(), a.get(), b.get(), n.get(), ctx) ||
-        !BN_sub(d.get(), d.get(), A.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get())) {
-      fprintf(stderr, "Montgomery multiplication test failed!\n");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-static bool test_mod_mul(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  for (int j = 0; j < 3; j++) {
-    if (!BN_rand(c.get(), 1024, 0, 0, rng)) {
-      return false;
-    }
-    for (int i = 0; i < num0; i++) {
-      if (!BN_rand(a.get(), 475 + i * 10, 0, 0, rng) ||
-          !BN_rand(b.get(), 425 + i * 11, 0, 0, rng)) {
-        return false;
-      }
-      a->neg = rand_neg();
-      b->neg = rand_neg();
-      if (!BN_mod_mul(e.get(), a.get(), b.get(), c.get(), ctx)) {
-        return false;
-      }
-      if (!BN_mul(d.get(), a.get(), b.get(), ctx) ||
-          !BN_sub(d.get(), d.get(), e.get()) ||
-          !BN_div(a.get(), b.get(), d.get(), c.get(), ctx)) {
-        return false;
-      }
-      if (!BN_is_zero(b.get())) {
-        fprintf(stderr, "Modulo multiply test failed!\n");
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx) {
