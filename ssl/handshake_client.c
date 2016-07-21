@@ -548,8 +548,10 @@ end:
   return ret;
 }
 
-int ssl_write_client_cipher_list(SSL *ssl, CBB *out, uint16_t min_version,
-                                 uint16_t max_version) {
+static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
+                                        uint16_t min_version,
+                                        uint16_t max_version,
+                                        uint16_t real_max_version) {
   /* Prepare disabled cipher masks. */
   ssl_set_client_disabled(ssl);
 
@@ -596,17 +598,20 @@ int ssl_write_client_cipher_list(SSL *ssl, CBB *out, uint16_t min_version,
     ssl->s3->tmp.extensions.sent |= (1u << 0);
   }
 
-  if ((ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) &&
-      !CBB_add_u16(&child, SSL3_CK_FALLBACK_SCSV & 0xffff)) {
-    return 0;
+  if ((ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) ||
+      real_max_version > max_version) {
+    if (!CBB_add_u16(&child, SSL3_CK_FALLBACK_SCSV & 0xffff)) {
+      return 0;
+    }
   }
 
   return CBB_flush(out);
 }
 
 int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+  uint16_t min_version, max_version, real_max_version;
+  if (!ssl_get_full_version_range(ssl, &min_version, &max_version,
+                                  &real_max_version)) {
     return 0;
   }
 
@@ -633,7 +638,8 @@ int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
 
   size_t header_len =
       SSL_IS_DTLS(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
-  if (!ssl_write_client_cipher_list(ssl, body, min_version, max_version) ||
+  if (!ssl_write_client_cipher_list(ssl, body, min_version, max_version,
+                                    real_max_version) ||
       !CBB_add_u8(body, 1 /* one compression method */) ||
       !CBB_add_u8(body, 0 /* null compression */) ||
       !ssl_add_clienthello_tlsext(ssl, body, header_len + CBB_len(body))) {
@@ -791,8 +797,9 @@ static int ssl3_get_server_hello(SSL *ssl) {
 
   server_version = ssl->method->version_from_wire(server_wire_version);
 
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
+  uint16_t min_version, max_version, real_max_version;
+  if (!ssl_get_full_version_range(ssl, &min_version, &max_version,
+                                  &real_max_version) ||
       server_version < min_version || server_version > max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
     al = SSL_AD_PROTOCOL_VERSION;
@@ -843,7 +850,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
    * settled down. */
   static const uint8_t kDowngradeTLS12[8] = {0x44, 0x4f, 0x57, 0x4e,
                                              0x47, 0x52, 0x44, 0x01};
-  if (max_version >= TLS1_3_VERSION &&
+  if (real_max_version >= TLS1_3_VERSION &&
       ssl3_protocol_version(ssl) <= TLS1_2_VERSION &&
       memcmp(ssl->s3->server_random + SSL3_RANDOM_SIZE - 8, kDowngradeTLS12,
              8) == 0) {

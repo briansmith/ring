@@ -681,7 +681,9 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
  * version; see RFC 7507 for details.
  *
  * DO NOT ENABLE THIS if your application attempts a normal handshake. Only use
- * this in explicit fallback retries, following the guidance in RFC 7507. */
+ * this in explicit fallback retries, following the guidance in RFC 7507.
+ *
+ * This flag is deprecated. Use |SSL_set_fallback_version| instead. */
 #define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
 
 /* SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
@@ -3059,6 +3061,22 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl);
 OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 
+/* SSL_set_fallback_version, on a client, sets the effective maximum protocol
+ * version. This may be used when implementing a version
+ * fallback to work around buggy servers.
+ *
+ * For purposes of the TLS protocol itself, including assembling the ClientHello
+ * and which ServerHello versions are accepted, this value is used as the
+ * maximum version. However, if this value differs from the real maximum
+ * version, as set by |SSL_set_max_version|, TLS_FALLBACK_SCSV (see RFC 7507)
+ * will be sent. Further, the TLS 1.3 anti-downgrade logic will be conditioned
+ * on the true maximum version.
+ *
+ * For instance, a fallback from a TLS 1.3 ClientHello to a TLS 1.2 ClientHello
+ * should set this value to |TLS1_2_VERSION| and call |SSL_set_max_version| with
+ * |TLS1_3_VERSION|. */
+OPENSSL_EXPORT void SSL_set_fallback_version(SSL *ssl, uint16_t version);
+
 
 /* Deprecated functions. */
 
@@ -3959,6 +3977,11 @@ struct ssl_st {
   /* min_version is the minimum acceptable protocol version. Note this version
    * is normalized in DTLS. */
   uint16_t min_version;
+
+  /* fallback_version is the effective maximum acceptable protocol version for
+   * use with a version fallback, or zero if unset. Note this version is
+   * normalized in DTLS. */
+  uint16_t fallback_version;
 
   /* method is the method table corresponding to the current protocol (DTLS or
    * TLS). */

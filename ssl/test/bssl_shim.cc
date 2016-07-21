@@ -1316,6 +1316,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->max_version != 0) {
     SSL_set_max_version(ssl.get(), (uint16_t)config->max_version);
   }
+  if (config->fallback_version != 0) {
+    SSL_set_fallback_version(ssl.get(), (uint16_t)config->fallback_version);
+  }
   if (config->mtu != 0) {
     SSL_set_options(ssl.get(), SSL_OP_NO_QUERY_MTU);
     SSL_set_mtu(ssl.get(), config->mtu);

@@ -860,6 +860,10 @@ void SSL_set_max_version(SSL *ssl, uint16_t version) {
   ssl->max_version = ssl->method->version_from_wire(version);
 }
 
+void SSL_set_fallback_version(SSL *ssl, uint16_t version) {
+  ssl->fallback_version = ssl->method->version_from_wire(version);
+}
+
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
   ctx->options |= options;
   return ctx->options;
@@ -2562,8 +2566,9 @@ const struct {
 
 static const size_t kVersionsLen = sizeof(kVersions) / sizeof(kVersions[0]);
 
-int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
-                          uint16_t *out_max_version) {
+int ssl_get_full_version_range(const SSL *ssl, uint16_t *out_min_version,
+                               uint16_t *out_fallback_version,
+                               uint16_t *out_max_version) {
   /* For historical reasons, |SSL_OP_NO_DTLSv1| aliases |SSL_OP_NO_TLSv1|, but
    * DTLS 1.0 should be mapped to TLS 1.1. */
   uint32_t options = ssl->options;
@@ -2623,14 +2628,30 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
     }
   }
 
-  if (!any_enabled) {
+  uint16_t fallback_version = max_version;
+  if (ssl->fallback_version != 0 && ssl->fallback_version < fallback_version) {
+    fallback_version = ssl->fallback_version;
+  }
+
+  if (!any_enabled || fallback_version < min_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     return 0;
   }
 
   *out_min_version = min_version;
+  *out_fallback_version = fallback_version;
   *out_max_version = max_version;
   return 1;
+}
+
+int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
+                          uint16_t *out_effective_max_version) {
+  /* This function returns the effective maximum version and not the fallback
+   * version. */
+  uint16_t real_max_version_unused;
+  return ssl_get_full_version_range(ssl, out_min_version,
+                                    out_effective_max_version,
+                                    &real_max_version_unused);
 }
 
 uint16_t ssl3_protocol_version(const SSL *ssl) {

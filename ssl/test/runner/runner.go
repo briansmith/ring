@@ -3864,6 +3864,51 @@ func addVersionNegotiationTests() {
 		shouldFail:         true,
 		expectedLocalError: "tls: downgrade from TLS 1.3 detected",
 	})
+
+	// Test that FALLBACK_SCSV is sent and that the downgrade signal works
+	// behave correctly when both real maximum and fallback versions are
+	// set.
+	testCases = append(testCases, testCase{
+		name: "Downgrade-TLS12-Client-Fallback",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FailIfNotFallbackSCSV: true,
+			},
+		},
+		flags: []string{
+			"-max-version", strconv.Itoa(VersionTLS13),
+			"-fallback-version", strconv.Itoa(VersionTLS12),
+		},
+		shouldFail:    true,
+		expectedError: ":DOWNGRADE_DETECTED:",
+	})
+	testCases = append(testCases, testCase{
+		name: "Downgrade-TLS12-Client-FallbackEqualsMax",
+		flags: []string{
+			"-max-version", strconv.Itoa(VersionTLS12),
+			"-fallback-version", strconv.Itoa(VersionTLS12),
+		},
+	})
+
+	// On TLS 1.2 fallback, 1.3 ServerHellos are forbidden. (We would rather
+	// just have such connections fail than risk getting confused because we
+	// didn't sent the 1.3 ClientHello.)
+	testCases = append(testCases, testCase{
+		name: "Downgrade-TLS12-Fallback-CheckVersion",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NegotiateVersion:      VersionTLS13,
+				FailIfNotFallbackSCSV: true,
+			},
+		},
+		flags: []string{
+			"-max-version", strconv.Itoa(VersionTLS13),
+			"-fallback-version", strconv.Itoa(VersionTLS12),
+		},
+		shouldFail:    true,
+		expectedError: ":UNSUPPORTED_PROTOCOL:",
+	})
+
 }
 
 func addMinimumVersionTests() {

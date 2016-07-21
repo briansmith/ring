@@ -1238,9 +1238,6 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
 STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *ssl);
 int ssl_verify_alarm_type(long type);
 
-int ssl_write_client_cipher_list(SSL *ssl, CBB *out, uint16_t min_version,
-                                 uint16_t max_version);
-
 int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl);
 void ssl3_cleanup_key_block(SSL *ssl);
@@ -1411,10 +1408,21 @@ int ssl3_can_false_start(const SSL *ssl);
  * |version|. */
 const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version);
 
-/* ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
- * minimum and maximum enabled protocol versions, respectively. */
+/* ssl_get_full_version_range sets |*out_min_version|, |*out_fallback_version|,
+ * and |*out_max_version| to the minimum, fallback, and maximum enabled protocol
+ * versions, respectively. The fallback version is the effective maximium
+ * version used throughout the stack and the maximum version is the true maximum
+ * for downgrade purposes. */
+int ssl_get_full_version_range(const SSL *ssl, uint16_t *out_min_version,
+                               uint16_t *out_fallback_version,
+                               uint16_t *out_max_version);
+
+/* ssl_get_version_range sets |*out_min_version| and
+ * |*out_effective_max_version| to the minimum and maximum enabled protocol
+ * versions, respectively. Note that, if there is a fallback version set, it
+ * returns it as the maximum version. */
 int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
-                          uint16_t *out_max_version);
+                          uint16_t *out_effective_max_version);
 
 /* ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
  * call this function before the version is determined. */
