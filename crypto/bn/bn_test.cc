@@ -105,8 +105,6 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 // TODO(davidben): Rather than generate random inputs and depend on bc to check
 // the results, most of these tests should use known answers.
 
-static const int num2 = 5;   // number of tests for slow functions
-
 static bool TestBN2BinPadded(RAND *rng);
 static bool TestHex2BN();
 static bool TestRand(RAND *rng);
