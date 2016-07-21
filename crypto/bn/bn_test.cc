@@ -221,6 +221,30 @@ static bool TestSum(FileTest *t, BN_CTX *) {
     return false;
   }
 
+  // Test that the functions work when |r| and |a| point to the same |BIGNUM|,
+  // or when |r| and |b| point to the same |BIGNUM|. TODO: Test the case where
+  // all of |r|, |a|, and |b| point to the same |BIGNUM|.
+  if (!BN_copy(ret.get(), a.get()) ||
+      !BN_add(ret.get(), ret.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "A + B (r is a)", sum.get(), ret.get()) ||
+      !BN_copy(ret.get(), b.get()) ||
+      !BN_add(ret.get(), a.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "A + B (r is b)", sum.get(), ret.get()) ||
+      !BN_copy(ret.get(), sum.get()) ||
+      !BN_sub(ret.get(), ret.get(), a.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - A (r is a)", b.get(), ret.get()) ||
+      !BN_copy(ret.get(), a.get()) ||
+      !BN_sub(ret.get(), sum.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - A (r is b)", b.get(), ret.get()) ||
+      !BN_copy(ret.get(), sum.get()) ||
+      !BN_sub(ret.get(), ret.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - B (r is a)", a.get(), ret.get()) ||
+      !BN_copy(ret.get(), b.get()) ||
+      !BN_sub(ret.get(), sum.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - B (r is b)", a.get(), ret.get())) {
+    return false;
+  }
+
   return true;
 }
 
