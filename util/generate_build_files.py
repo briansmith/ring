@@ -74,6 +74,8 @@ class Android(object):
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This file is created by generate_build_files.py. Do not edit manually.
+
 """
 
   def ExtraFiles(self):
@@ -86,15 +88,84 @@ class Android(object):
     out.write('\n')
 
   def WriteFiles(self, files, asm_outputs):
+    # New Android.bp format
+    with open('sources.bp', 'w+') as blueprint:
+      blueprint.write(self.header.replace('#', '//'))
+
+      blueprint.write('cc_defaults {\n')
+      blueprint.write('    name: "libcrypto_sources",\n')
+      blueprint.write('    srcs: [\n')
+      for f in sorted(files['crypto'] + self.ExtraFiles()):
+        blueprint.write('        "%s",\n' % f)
+      blueprint.write('    ],\n')
+      blueprint.write('    target: {\n')
+
+      for ((osname, arch), asm_files) in asm_outputs:
+        if osname != 'linux':
+          continue
+        if arch == 'aarch64':
+          arch = 'arm64'
+
+        blueprint.write('        android_%s: {\n' % arch)
+        blueprint.write('            srcs: [\n')
+        for f in sorted(asm_files):
+          blueprint.write('                "%s",\n' % f)
+        blueprint.write('            ],\n')
+        blueprint.write('        },\n')
+
+        if arch == 'x86' or arch == 'x86_64':
+          blueprint.write('        linux_%s: {\n' % arch)
+          blueprint.write('            srcs: [\n')
+          for f in sorted(asm_files):
+            blueprint.write('                "%s",\n' % f)
+          blueprint.write('            ],\n')
+          blueprint.write('        },\n')
+
+      blueprint.write('    },\n')
+      blueprint.write('}\n\n')
+
+      blueprint.write('cc_defaults {\n')
+      blueprint.write('    name: "libssl_sources",\n')
+      blueprint.write('    srcs: [\n')
+      for f in sorted(files['ssl']):
+        blueprint.write('        "%s",\n' % f)
+      blueprint.write('    ],\n')
+      blueprint.write('}\n\n')
+
+      blueprint.write('cc_defaults {\n')
+      blueprint.write('    name: "bssl_sources",\n')
+      blueprint.write('    srcs: [\n')
+      for f in sorted(files['tool']):
+        blueprint.write('        "%s",\n' % f)
+      blueprint.write('    ],\n')
+      blueprint.write('}\n\n')
+
+      blueprint.write('cc_defaults {\n')
+      blueprint.write('    name: "boringssl_test_support_sources",\n')
+      blueprint.write('    srcs: [\n')
+      for f in sorted(files['test_support']):
+        blueprint.write('        "%s",\n' % f)
+      blueprint.write('    ],\n')
+      blueprint.write('}\n\n')
+
+      blueprint.write('cc_defaults {\n')
+      blueprint.write('    name: "boringssl_tests_sources",\n')
+      blueprint.write('    srcs: [\n')
+      for f in sorted(files['test']):
+        blueprint.write('        "%s",\n' % f)
+      blueprint.write('    ],\n')
+      blueprint.write('}\n')
+
+    # Legacy Android.mk format, only used by Trusty in new branches
     with open('sources.mk', 'w+') as makefile:
       makefile.write(self.header)
 
       crypto_files = files['crypto'] + self.ExtraFiles()
       self.PrintVariableSection(makefile, 'crypto_sources', crypto_files)
-      self.PrintVariableSection(makefile, 'ssl_sources', files['ssl'])
-      self.PrintVariableSection(makefile, 'tool_sources', files['tool'])
 
       for ((osname, arch), asm_files) in asm_outputs:
+        if osname != 'linux':
+          continue
         self.PrintVariableSection(
             makefile, '%s_%s_sources' % (osname, arch), asm_files)
 
