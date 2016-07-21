@@ -1753,9 +1753,7 @@ static int internal_verify(X509_STORE_CTX *ctx)
          * explicitly asked for. It doesn't add any security and just wastes
          * time.
          */
-        if (!xs->valid
-            && (xs != xi
-                || (ctx->param->flags & X509_V_FLAG_CHECK_SS_SIGNATURE))) {
+        if (xs != xi || (ctx->param->flags & X509_V_FLAG_CHECK_SS_SIGNATURE)) {
             if ((pkey = X509_get_pubkey(xi)) == NULL) {
                 ctx->error = X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY;
                 ctx->current_cert = xi;
@@ -1774,8 +1772,6 @@ static int internal_verify(X509_STORE_CTX *ctx)
             EVP_PKEY_free(pkey);
             pkey = NULL;
         }
-
-        xs->valid = 1;
 
  check_cert:
         ok = check_cert_time(ctx, xs);
