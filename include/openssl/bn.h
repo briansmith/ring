@@ -303,7 +303,8 @@ OPENSSL_EXPORT int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 /* BN_usub sets |r| = |a| - |b|, where |a| and |b| are non-negative integers,
- * |b| < |a|. It returns one on success and zero on allocation failure. */
+ * |b| < |a| and |r| may be the same pointer as either |a| or |b|. It returns
+ * one on success and zero on allocation failure. */
 OPENSSL_EXPORT int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 /* BN_usub_unchecked is line |BN_usub| except it doesn't assert that the
