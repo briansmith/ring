@@ -9714,3 +9714,264 @@ ModMul = 6e99aa5b8107399848cf24fbd88ed6350efb68d737e505b466
 A = ca6c51ba2f410d09bf71d60fe
 B = 8bdfa8fe5ef3b2ad02bc63c4d
 M = 84daecf412b8c50ad6dfdb546c3eb783dcc6f32003eda914bb
+
+
+# ModExp tests.
+#
+# These test vectors satisfy A ^ E = ModExp (mod M) and 0 <= ModExp < M.
+
+# Regression test for carry propagation bug in sqr8x_reduction.
+ModExp = 19324b647d967d644b3219
+A = 050505050505
+E = 02
+M = 414141414141414141414127414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+
+ModExp = 208f8aa0
+A = 86b49
+E = 2
+M = 30d26ecb
+
+ModExp = 27308229
+A = 17591bb
+E = 6
+M = 30d26ecb
+
+ModExp = 2bdf498f
+A = 21292626
+E = d
+M = 30d26ecb
+
+ModExp = 11317167
+A = 4a655df24
+E = 10
+M = 30d26ecb
+
+ModExp = 2e1b88e
+A = da6b761a86
+E = 35
+M = 30d26ecb
+
+ModExp = 20a12ec3
+A = ea811
+E = 2
+M = 23bc042f
+
+ModExp = c42ced
+A = 1011a6a
+E = 4
+M = 23bc042f
+
+ModExp = 4637d79
+A = 28d9a601
+E = 8
+M = 23bc042f
+
+ModExp = 20e5669b
+A = 72fe6bc20
+E = 11
+M = 23bc042f
+
+ModExp = 142ab9e3
+A = 9a07b9363c
+E = 29
+M = 23bc042f
+
+ModExp = 14c64646
+A = 822df
+E = 3
+M = 30915765
+
+ModExp = 160e35a2
+A = 15ea542
+E = 5
+M = 30915765
+
+ModExp = 2f23a488
+A = 34d2e02e
+E = e
+M = 30915765
+
+ModExp = 28e67f93
+A = 636a32703
+E = 14
+M = 30915765
+
+ModExp = 29bfeaa5
+A = c8646998e6
+E = 2c
+M = 30915765
+
+ModExp = 30959e22
+A = 81dad
+E = 3
+M = 326dd68d
+
+ModExp = 1a1da4fa
+A = 116adb9
+E = 5
+M = 326dd68d
+
+ModExp = 272bf0d8
+A = 2d21ef08
+E = 8
+M = 326dd68d
+
+ModExp = 29f5054b
+A = 76989850a
+E = 16
+M = 326dd68d
+
+ModExp = e6c7b77
+A = b88ee70d2a
+E = 3e
+M = 326dd68d
+
+ModExp = 369605e1
+A = cf26f
+E = 2
+M = 3ce082eb
+
+ModExp = 168a3c5d
+A = 1f82caf
+E = 5
+M = 3ce082eb
+
+ModExp = 125c4bb8
+A = 2e9c4c07
+E = 9
+M = 3ce082eb
+
+ModExp = 1c5fe761
+A = 523ab37f1
+E = 14
+M = 3ce082eb
+
+ModExp = 21703009
+A = dc832165e8
+E = 20
+M = 3ce082eb
+
+ModExp = 1228d1e
+A = a5555
+E = 3
+M = 24665b27
+
+ModExp = 5226af4
+A = 1077bd6
+E = 4
+M = 24665b27
+
+ModExp = 1b14eac1
+A = 2db3a834
+E = f
+M = 24665b27
+
+ModExp = 161727bc
+A = 6bd962cb6
+E = 19
+M = 24665b27
+
+ModExp = 10d61d0d
+A = c10caed407
+E = 28
+M = 24665b27
+
+ModExp = 233da406
+A = b125f
+E = 3
+M = 33509981
+
+ModExp = 24032799
+A = 1656b7c
+E = 6
+M = 33509981
+
+ModExp = 129ecebe
+A = 2e671504
+E = a
+M = 33509981
+
+ModExp = 20c20bac
+A = 4d7a2de44
+E = 1f
+M = 33509981
+
+ModExp = 2e3ce9d3
+A = c53b3def4d
+E = 31
+M = 33509981
+
+ModExp = 12fadfd6
+A = b4cf8
+E = 2
+M = 36e9d4ae
+
+ModExp = 457ac85
+A = 1b1c7e9
+E = 7
+M = 36e9d4ae
+
+ModExp = 31debef4
+A = 3a973028
+E = d
+M = 36e9d4ae
+
+ModExp = 2333ad93
+A = 552b97c45
+E = 11
+M = 36e9d4ae
+
+ModExp = 99ba1fb
+A = 8bfb949cbb
+E = 28
+M = 36e9d4ae
+
+ModExp = 27b691de
+A = 93492
+E = 3
+M = 298fdb16
+
+ModExp = 3c2b70f
+A = 14e7b0d
+E = 4
+M = 298fdb16
+
+ModExp = 1486cda7
+A = 29acff81
+E = c
+M = 298fdb16
+
+ModExp = 11725275
+A = 507489205
+E = 13
+M = 298fdb16
+
+ModExp = 24d14627
+A = e71c55606d
+E = 35
+M = 298fdb16
+
+ModExp = 222b8d14
+A = 9b1a0
+E = 3
+M = 3db59d12
+
+ModExp = 3b8bd47d
+A = 13f4e8d
+E = 7
+M = 3db59d12
+
+ModExp = 17e72356
+A = 334774ce
+E = a
+M = 3db59d12
+
+ModExp = 306447ca
+A = 47079ddd2
+E = 12
+M = 3db59d12
+
+ModExp = 90bef3b
+A = a75d62616d
+E = 37
+M = 3db59d12
