@@ -24,7 +24,7 @@
 //! # extern crate untrusted;
 //! # extern crate ring;
 //! #
-//! # fn x25519_agreement_example() -> Result<(), ()> {
+//! # fn x25519_agreement_example() -> ring::EmptyResult {
 //! use ring::{agreement, rand};
 //! use untrusted;
 //!
@@ -114,7 +114,7 @@ impl <'a> EphemeralPrivateKey {
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
     pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
-                    -> Result<EphemeralPrivateKey, ()> {
+                    -> ::Result<EphemeralPrivateKey> {
         // NSA Guide Step 1.
         //
         // This only handles the key generation part of step 1. The rest of
@@ -144,7 +144,7 @@ impl <'a> EphemeralPrivateKey {
     ///
     /// `out.len()` must be equal to the value returned by `public_key_len`.
     #[inline(always)]
-    pub fn compute_public_key(&self, out: &mut [u8]) -> Result<(), ()> {
+    pub fn compute_public_key(&self, out: &mut [u8]) -> ::EmptyResult {
         // NSA Guide Step 1.
         //
         // Obviously, this only handles the part of Step 1 between the private
@@ -285,7 +285,7 @@ mod tests {
 
                     let dummy_private_key =
                         try!(EphemeralPrivateKey::generate(alg, &rng));
-                    fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
+                    fn kdf_not_called(_: &[u8]) -> ::EmptyResult {
                         panic!("The KDF was called during ECDH when the peer's \
                                 public key is invalid.");
                     }

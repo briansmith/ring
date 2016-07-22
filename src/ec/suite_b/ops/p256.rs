@@ -117,7 +117,7 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     sqr_mul(&acc, 1 + 1, &b_1)
 }
 
-fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
+fn p256_point_mul_base_impl(g_scalar: &Scalar) -> ::Result<Point> {
     let mut r = Point::new_at_infinity();
     unsafe {
         ecp_nistz256_point_mul_base(r.xyz.as_mut_ptr(),
@@ -127,7 +127,7 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
 }
 
 fn p256_point_mul_impl(p_scalar: &Scalar, &(ref p_x, ref p_y): &(Elem, Elem))
-                       -> Result<Point, ()> {
+                       -> ::Result<Point> {
     let mut r = Point::new_at_infinity();
     unsafe {
         ecp_nistz256_point_mul(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),

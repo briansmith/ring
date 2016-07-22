@@ -209,7 +209,7 @@ impl TestCase {
 /// or until all the test vectors have been read. `f` can indicate failure
 /// either by returning `Err()` or by panicking.
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
-                    where F: FnMut(&str, &mut TestCase) -> Result<(), ()> {
+                    where F: FnMut(&str, &mut TestCase) -> ::EmptyResult {
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();

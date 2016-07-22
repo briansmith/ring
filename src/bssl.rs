@@ -14,7 +14,7 @@
 
 use c;
 
-pub fn map_result(bssl_result: c::int) -> Result<(), ()> {
+pub fn map_result(bssl_result: c::int) -> ::EmptyResult {
     match bssl_result {
         1 => Ok(()),
         _ => Err(())

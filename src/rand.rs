@@ -34,7 +34,7 @@ use core;
 /// A secure random number generator.
 pub trait SecureRandom {
     /// Fills `dest` with random bytes.
-    fn fill(&self, dest: &mut [u8]) -> Result<(), ()>;
+    fn fill(&self, dest: &mut [u8]) -> ::EmptyResult;
 }
 
 /// A secure random number generator where the random values come directly
@@ -91,14 +91,14 @@ impl SystemRandom {
     /// but allows callers to avoid the annoying step of needing to
     /// `use rand::SecureRandom` just to call `fill` on a `SystemRandom`.
     #[inline(always)]
-    pub fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(&self, dest: &mut [u8]) -> ::EmptyResult {
         fill_impl(dest)
     }
 }
 
 impl SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+    fn fill(&self, dest: &mut [u8]) -> ::EmptyResult {
         fill_impl(dest)
     }
 }
@@ -117,7 +117,7 @@ use self::sysrand_or_urandom::fill as fill_impl;
 mod sysrand {
     use bssl;
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(dest: &mut [u8]) -> ::EmptyResult {
         for mut chunk in
                 dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
             try!(bssl::map_result(unsafe {
@@ -134,7 +134,7 @@ mod sysrand {
 mod urandom {
     extern crate std;
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(dest: &mut [u8]) -> ::EmptyResult {
         lazy_static! {
             static ref FILE: Result<std::fs::File, std::io::Error> =
                 std::fs::File::open("/dev/urandom");
@@ -159,7 +159,7 @@ mod sysrand_or_urandom {
         DevURandom,
     }
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(dest: &mut [u8]) -> ::EmptyResult {
         lazy_static! {
             static ref MECHANISM: Mechanism = {
                 let mut dummy = [0u8; 1];
@@ -230,7 +230,7 @@ pub mod test_util {
     }
 
     impl SecureRandom for FixedByteRandom {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fn fill(&self, dest: &mut [u8]) -> ::EmptyResult {
             for d in dest {
                 *d = self.byte
             }
@@ -246,7 +246,7 @@ pub mod test_util {
     }
 
     impl <'a> SecureRandom for FixedSliceRandom<'a> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fn fill(&self, dest: &mut [u8]) -> ::EmptyResult {
             assert_eq!(dest.len(), self.bytes.len());
             for i in 0..self.bytes.len() {
                 dest[i] = self.bytes[i];
@@ -268,7 +268,7 @@ pub mod test_util {
     }
 
     impl <'a> SecureRandom for FixedSliceSequenceRandom<'a> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fn fill(&self, dest: &mut [u8]) -> ::EmptyResult {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
             assert_eq!(dest.len(), bytes.len());
