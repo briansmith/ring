@@ -87,6 +87,7 @@ int tls13_handshake(SSL *ssl) {
         if (hs->wait != ssl_hs_flush_and_read_message) {
           break;
         }
+        ssl->method->expect_flight(ssl);
         hs->wait = ssl_hs_read_message;
         /* Fall-through. */
       }

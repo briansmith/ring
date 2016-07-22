@@ -394,6 +394,7 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL *ssl,
     return ssl_hs_error;
   }
 
+  ssl->method->received_flight(ssl);
   hs->state = state_certificate_callback;
   return ssl_hs_ok;
 }

@@ -215,6 +215,8 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   ssl->session->cipher = cipher;
   ssl->s3->tmp.new_cipher = cipher;
 
+  ssl->method->received_flight(ssl);
+
   /* The PRF hash is now known. Set up the key schedule and hash the
    * ClientHello. */
   size_t hash_len =
@@ -296,6 +298,7 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
     return ssl_hs_error;
   }
 
+  ssl->method->received_flight(ssl);
   hs->state = state_send_server_hello;
   return ssl_hs_ok;
 }
@@ -495,6 +498,7 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
     return ssl_hs_error;
   }
 
+  ssl->method->received_flight(ssl);
   hs->state = state_done;
   return ssl_hs_ok;
 }
