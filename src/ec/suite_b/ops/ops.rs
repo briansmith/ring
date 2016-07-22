@@ -929,6 +929,32 @@ mod tests {
         })
     }
 
+    #[test]
+    fn p256_point_mul_base_test() {
+        point_mul_base_tests(
+            &p256::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_mul_base_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_mul_base_test() {
+        point_mul_base_tests(
+            &p384::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p384_point_mul_base_tests.txt");
+    }
+
+    fn point_mul_base_tests(ops: &PrivateKeyOps, file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
+            let expected_result = consume_point(ops, test_case, "r");
+            let actual_result = ops.point_mul_base(&g_scalar);
+            assert_point_actual_equals_expected(ops, &actual_result,
+                                                &expected_result);
+            Ok(())
+        })
+    }
+
     fn assert_point_actual_equals_expected(ops: &PrivateKeyOps,
                                            actual_point: &Point,
                                            expected_point: &TestPoint) {
