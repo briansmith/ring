@@ -3062,8 +3062,8 @@ OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 
 /* SSL_set_fallback_version, on a client, sets the effective maximum protocol
- * version. This may be used when implementing a version
- * fallback to work around buggy servers.
+ * version. This may be used when implementing a version fallback to work around
+ * buggy servers.
  *
  * For purposes of the TLS protocol itself, including assembling the ClientHello
  * and which ServerHello versions are accepted, this value is used as the
