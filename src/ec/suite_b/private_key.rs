@@ -71,7 +71,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
             continue;
         }
 
-        // NSA Guide Step 8 is done in `private_to_public()`.
+        // NSA Guide Step 8 is done in `public_from_private()`.
 
         // NSA Guide Step 9.
         return Ok(candidate_private_key);
@@ -144,11 +144,11 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     let y = ops.common.point_y(&p);
 
     let z_inv = ops.elem_inverse(&z);
-    let zz_inv = ops.common.elem_sqr(&z_inv);
-    let zzz_inv = ops.common.elem_mul(&z_inv, &zz_inv);
+    let zz_inv = ops.common.elem_squared(&z_inv);
+    let zzz_inv = ops.common.elem_product(&z_inv, &zz_inv);
 
-    let x_aff = ops.common.elem_mul(&x, &zz_inv);
-    let y_aff = ops.common.elem_mul(&y, &zzz_inv);
+    let x_aff = ops.common.elem_product(&x, &zz_inv);
+    let y_aff = ops.common.elem_product(&y, &zzz_inv);
 
     // If we validated our inputs correctly and then computed (x, y, z), then
     // (x, y, z) will be on the curve. See

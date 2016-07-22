@@ -105,17 +105,6 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 // TODO(davidben): Rather than generate random inputs and depend on bc to check
 // the results, most of these tests should use known answers.
 
-static const int num0 = 100; // number of tests
-static const int num2 = 5;   // number of tests for slow functions
-
-static int rand_neg(void);
-
-static bool test_mont(RAND *rng, BN_CTX *ctx);
-static bool test_mod_mul(RAND *rng, BN_CTX *ctx);
-static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx);
-static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx);
-static bool test_exp(RAND *rng, BN_CTX *ctx);
-static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx);
 static bool TestBN2BinPadded(RAND *rng);
 static bool TestHex2BN();
 static bool TestRand(RAND *rng);
@@ -132,13 +121,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
   }
 
 
-  if (!test_mod_mul(rng, ctx.get()) ||
-      !test_mont(rng, ctx.get()) ||
-      !test_mod_exp_mont(rng, ctx.get()) ||
-      !test_mod_exp_mont_consttime(rng, ctx.get()) ||
-      !test_mod_exp_mont5(rng, ctx.get()) ||
-      !test_exp(rng, ctx.get()) ||
-      !TestBN2BinPadded(rng) ||
+  if (!TestBN2BinPadded(rng) ||
       !TestHex2BN() ||
       !TestRand(rng) ||
       !TestNegativeZero(ctx.get()) ||
@@ -221,6 +204,70 @@ static bool TestSum(FileTest *t, BN_CTX *) {
     return false;
   }
 
+  // Test that the functions work when |r| and |a| point to the same |BIGNUM|,
+  // or when |r| and |b| point to the same |BIGNUM|. TODO: Test the case where
+  // all of |r|, |a|, and |b| point to the same |BIGNUM|.
+  if (!BN_copy(ret.get(), a.get()) ||
+      !BN_add(ret.get(), ret.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "A + B (r is a)", sum.get(), ret.get()) ||
+      !BN_copy(ret.get(), b.get()) ||
+      !BN_add(ret.get(), a.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "A + B (r is b)", sum.get(), ret.get()) ||
+      !BN_copy(ret.get(), sum.get()) ||
+      !BN_sub(ret.get(), ret.get(), a.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - A (r is a)", b.get(), ret.get()) ||
+      !BN_copy(ret.get(), a.get()) ||
+      !BN_sub(ret.get(), sum.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - A (r is b)", b.get(), ret.get()) ||
+      !BN_copy(ret.get(), sum.get()) ||
+      !BN_sub(ret.get(), ret.get(), b.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - B (r is a)", a.get(), ret.get()) ||
+      !BN_copy(ret.get(), b.get()) ||
+      !BN_sub(ret.get(), sum.get(), ret.get()) ||
+      !ExpectBIGNUMsEqual(t, "Sum - B (r is b)", a.get(), ret.get())) {
+    return false;
+  }
+
+  // Test |BN_uadd| and |BN_usub| with the prerequisites they are documented as
+  // having. Note that these functions are frequently used when the
+  // prerequisites don't hold. In those cases, they are supposed to work as if
+  // the prerequisite hold, but we don't test that yet. TODO: test that.
+  if (!BN_is_negative(a.get()) &&
+      !BN_is_negative(b.get()) && BN_cmp(a.get(), b.get()) >= 0) {
+    if (!BN_uadd(ret.get(), a.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "A +u B", sum.get(), ret.get()) ||
+        !BN_usub(ret.get(), sum.get(), a.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u A", b.get(), ret.get()) ||
+        !BN_usub(ret.get(), sum.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u B", a.get(), ret.get())) {
+      return false;
+    }
+
+    // Test that the functions work when |r| and |a| point to the same |BIGNUM|,
+    // or when |r| and |b| point to the same |BIGNUM|. TODO: Test the case where
+    // all of |r|, |a|, and |b| point to the same |BIGNUM|.
+    if (!BN_copy(ret.get(), a.get()) ||
+        !BN_uadd(ret.get(), ret.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "A +u B (r is a)", sum.get(), ret.get()) ||
+        !BN_copy(ret.get(), b.get()) ||
+        !BN_uadd(ret.get(), a.get(), ret.get()) ||
+        !ExpectBIGNUMsEqual(t, "A +u B (r is b)", sum.get(), ret.get()) ||
+        !BN_copy(ret.get(), sum.get()) ||
+        !BN_usub(ret.get(), ret.get(), a.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u A (r is a)", b.get(), ret.get()) ||
+        !BN_copy(ret.get(), a.get()) ||
+        !BN_usub(ret.get(), sum.get(), ret.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u A (r is b)", b.get(), ret.get()) ||
+        !BN_copy(ret.get(), sum.get()) ||
+        !BN_usub(ret.get(), ret.get(), b.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u B (r is a)", a.get(), ret.get()) ||
+        !BN_copy(ret.get(), b.get()) ||
+        !BN_usub(ret.get(), sum.get(), ret.get()) ||
+        !ExpectBIGNUMsEqual(t, "Sum -u B (r is b)", a.get(), ret.get())) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -254,17 +301,8 @@ static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
   }
 
   // Set the LSB to 1 and test rshift1 again.
-  if (BN_is_negative(lshift1.get())) {
-    if (!BN_sub(lshift1.get(), lshift1.get(), BN_value_one())) {
-      return false;
-    }
-  } else {
-    if (!BN_add(lshift1.get(), lshift1.get(), BN_value_one())) {
-      return false;
-    }
-  }
-
-  if (!BN_div(ret.get(), nullptr /* rem */, lshift1.get(), two.get(), ctx) ||
+  if (!BN_set_bit(lshift1.get(), 0) ||
+      !BN_div(ret.get(), nullptr /* rem */, lshift1.get(), two.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "(LShift1 | 1) / 2", a.get(), ret.get()) ||
       !BN_rshift1(ret.get(), lshift1.get()) ||
       !ExpectBIGNUMsEqual(t, "(LShift | 1) >> 1", a.get(), ret.get())) {
@@ -384,6 +422,118 @@ static bool TestQuotient(FileTest *t, BN_CTX *ctx) {
     return false;
   }
 
+  // Test BN_nnmod.
+  if (!BN_is_negative(b.get())) {
+    ScopedBIGNUM nnmod(BN_new());
+    if (!nnmod ||
+        !BN_copy(nnmod.get(), remainder.get()) ||
+        (BN_is_negative(nnmod.get()) &&
+         !BN_add(nnmod.get(), nnmod.get(), b.get())) ||
+        !BN_nnmod(ret.get(), a.get(), b.get(), ctx) ||
+        !ExpectBIGNUMsEqual(t, "A % B (non-negative)", nnmod.get(),
+                            ret.get())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool TestModMul(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM b = GetBIGNUM(t, "B");
+  ScopedBIGNUM m = GetBIGNUM(t, "M");
+  ScopedBIGNUM mod_mul = GetBIGNUM(t, "ModMul");
+  if (!a || !b || !m || !mod_mul) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_mod_mul(ret.get(), a.get(), b.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A * B (mod M)", mod_mul.get(), ret.get())) {
+    return false;
+  }
+
+  if (BN_is_odd(m.get())) {
+    // Reduce |a| and |b| and test the Montgomery version.
+    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+    ScopedBIGNUM a_tmp(BN_new()), b_tmp(BN_new());
+    if (!mont || !a_tmp || !b_tmp ||
+        !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
+        !BN_nnmod(a_tmp.get(), a.get(), m.get(), ctx) ||
+        !BN_nnmod(b_tmp.get(), b.get(), m.get(), ctx) ||
+        !BN_to_montgomery(a_tmp.get(), a_tmp.get(), mont.get(), ctx) ||
+        !BN_to_montgomery(b_tmp.get(), b_tmp.get(), mont.get(), ctx) ||
+        !BN_mod_mul_montgomery(ret.get(), a_tmp.get(), b_tmp.get(), mont.get(),
+                               ctx) ||
+        !BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx) ||
+        !ExpectBIGNUMsEqual(t, "A * B (mod M) (Montgomery)",
+                            mod_mul.get(), ret.get())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool TestModExp(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM e = GetBIGNUM(t, "E");
+  ScopedBIGNUM m = GetBIGNUM(t, "M");
+  ScopedBIGNUM mod_exp = GetBIGNUM(t, "ModExp");
+  if (!a || !e || !m || !mod_exp) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret) {
+    return false;
+  }
+
+  if (BN_is_odd(m.get())) {
+    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+    if (!mont ||
+        !BN_MONT_CTX_set(mont.get(), m.get(), ctx)) {
+      return false;
+    }
+
+    // |BN_mod_exp_mont| requires the input to already be reduced mod |m|
+    // unless |e| is zero (purely due to the ordering of how these special
+    // cases are handled). // |BN_mod_exp_mont_consttime| doesn't have the same
+    // requirement simply because we haven't gotten around to it yet.
+    int expected_ok = BN_cmp(a.get(), m.get()) < 0 || BN_is_zero(e.get());
+
+    // First test with a NULL |BN_MONT_CTX|.
+    int ok = BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, NULL);
+    if (ok != expected_ok) {
+      return false;
+    }
+    if ((ok &&
+         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
+                             ret.get()))) {
+      return false;
+    }
+
+    // Now test with a non-NULL |BN_MONT_CTX|.
+    ok = BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, mont.get());
+    if (ok != expected_ok) {
+      return false;
+    }
+    if (ok &&
+        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
+                            ret.get())) {
+      return false;
+    }
+
+    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), m.get(), ctx,
+                                   NULL) ||
+        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
+                            ret.get())) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -400,6 +550,8 @@ static const Test kTests[] = {
     {"Square", TestSquare},
     {"Product", TestProduct},
     {"Quotient", TestQuotient},
+    {"ModMul", TestModMul},
+    {"ModExp", TestModExp},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
@@ -412,291 +564,6 @@ static bool RunTest(FileTest *t, void *arg) {
   }
   t->PrintLine("Unknown test type: %s", t->GetType().c_str());
   return false;
-}
-
-static int rand_neg() {
-  static unsigned int neg = 0;
-  static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
-
-  return sign[(neg++) % 8];
-}
-
-static bool test_mont(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM A(BN_new());
-  ScopedBIGNUM B(BN_new());
-  ScopedBIGNUM n(BN_new());
-  ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-  if (!a || !b || !c || !d || !A || !B || !n || !mont) {
-    return false;
-  }
-
-  if (!BN_rand(a.get(), 100, 0, 0, rng) ||
-      !BN_rand(b.get(), 100, 0, 0, rng)) {
-    return false;
-  }
-
-  for (int i = 0; i < num2; i++) {
-    int bits = (200 * (i + 1)) / num2;
-
-    if (bits == 0) {
-      continue;
-    }
-    if (!BN_rand(n.get(), bits, 0, 1, rng) ||
-        !BN_MONT_CTX_set(mont.get(), n.get(), ctx) ||
-        !BN_nnmod(a.get(), a.get(), n.get(), ctx) ||
-        !BN_nnmod(b.get(), b.get(), n.get(), ctx) ||
-        !BN_to_montgomery(A.get(), a.get(), mont.get(), ctx) ||
-        !BN_to_montgomery(B.get(), b.get(), mont.get(), ctx) ||
-        !BN_mod_mul_montgomery(c.get(), A.get(), B.get(), mont.get(), ctx) ||
-        !BN_from_montgomery(A.get(), c.get(), mont.get(), ctx)) {
-      return false;
-    }
-    if (!BN_mod_mul(d.get(), a.get(), b.get(), n.get(), ctx) ||
-        !BN_sub(d.get(), d.get(), A.get())) {
-      return false;
-    }
-    if (!BN_is_zero(d.get())) {
-      fprintf(stderr, "Montgomery multiplication test failed!\n");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-static bool test_mod_mul(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  for (int j = 0; j < 3; j++) {
-    if (!BN_rand(c.get(), 1024, 0, 0, rng)) {
-      return false;
-    }
-    for (int i = 0; i < num0; i++) {
-      if (!BN_rand(a.get(), 475 + i * 10, 0, 0, rng) ||
-          !BN_rand(b.get(), 425 + i * 11, 0, 0, rng)) {
-        return false;
-      }
-      a->neg = rand_neg();
-      b->neg = rand_neg();
-      if (!BN_mod_mul(e.get(), a.get(), b.get(), c.get(), ctx)) {
-        return false;
-      }
-      if (!BN_mul(d.get(), a.get(), b.get(), ctx) ||
-          !BN_sub(d.get(), d.get(), e.get()) ||
-          !BN_div(a.get(), b.get(), d.get(), c.get(), ctx)) {
-        return false;
-      }
-      if (!BN_is_zero(b.get())) {
-        fprintf(stderr, "Modulo multiply test failed!\n");
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-static bool test_mod_exp_mont(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  if (!BN_rand(c.get(), 30, 0, 1, rng)) {  // must be odd for montgomery
-    return false;
-  }
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand_range(a.get(), c.get(), rng) ||
-        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
-        !BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr)) {
-      return false;
-    }
-
-    /* TODO: add a test for the case where |a| == |m| and where |a| > |m|. */
-
-    if (!BN_exp(e.get(), a.get(), b.get(), ctx) ||
-        !BN_sub(e.get(), e.get(), d.get()) ||
-        !BN_div(a.get(), b.get(), e.get(), c.get(), ctx)) {
-      return false;
-    }
-    if (!BN_is_zero(b.get())) {
-      fprintf(stderr, "Modulo exponentiation test failed!\n");
-      return false;
-    }
-  }
-
-   // Regression test for carry propagation bug in sqr8x_reduction.
-  if (!HexToBIGNUM(&a, "050505050505") ||
-      !HexToBIGNUM(&b, "02") ||
-      !HexToBIGNUM(
-          &c,
-          "4141414141414141414141274141414141414141414141414141414141414141"
-          "4141414141414141414141414141414141414141414141414141414141414141"
-          "4141414141414141414141800000000000000000000000000000000000000000"
-          "0000000000000000000000000000000000000000000000000000000000000000"
-          "0000000000000000000000000000000000000000000000000000000000000000"
-          "0000000000000000000000000000000000000000000000000000000001") ||
-      !BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr) ||
-      !BN_mul(e.get(), a.get(), a.get(), ctx)) {
-    return false;
-  }
-  if (BN_cmp(d.get(), e.get()) != 0) {
-    fprintf(stderr, "BN_mod_exp_mont and BN_mul produce different results!\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool test_mod_exp_mont_consttime(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM c(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e) {
-    return false;
-  }
-
-  if (!BN_rand(c.get(), 30, 0, 1, rng)) {  // must be odd for montgomery
-    return false;
-  }
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand_range(a.get(), c.get(), rng) ||
-        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
-        !BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
-                                   NULL)) {
-      return false;
-    }
-
-    if (!BN_exp(e.get(), a.get(), b.get(), ctx) ||
-        !BN_sub(e.get(), e.get(), d.get()) ||
-        !BN_div(a.get(), b.get(), e.get(), c.get(), ctx)) {
-      return false;
-    }
-    if (!BN_is_zero(b.get())) {
-      fprintf(stderr, "Modulo exponentiation test failed!\n");
-      return false;
-    }
-  }
-  return true;
-}
-
-// Test constant-time modular exponentiation with 1024-bit inputs,
-// which on x86_64 cause a different code branch to be taken.
-static bool test_mod_exp_mont5(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM p(BN_new());
-  ScopedBIGNUM m(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !p || !m || !d || !e ||
-      !BN_rand(m.get(), 1024, 0, 1, rng) ||  // must be odd for montgomery
-      !BN_rand_range(a.get(), m.get(), rng)) {
-    return false;
-  }
-  // Zero exponent.
-  BN_zero(p.get());
-  if (!BN_mod_exp_mont_consttime(d.get(), a.get(), p.get(), m.get(), ctx,
-                                 NULL)) {
-    return false;
-  }
-  if (!BN_is_one(d.get())) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  if (!BN_rand(p.get(), 1024, 0, 0, rng)) {
-    return false;
-  }
-  // Zero input.
-  BN_zero(a.get());
-  if (!BN_mod_exp_mont_consttime(d.get(), a.get(), p.get(), m.get(), ctx,
-                                 NULL)) {
-    return false;
-  }
-  if (!BN_is_zero(d.get())) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  // Craft an input whose Montgomery representation is 1, i.e., shorter than the
-  // modulus m, in order to test the const time precomputation
-  // scattering/gathering.
-  ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-  if (!mont || !BN_one(a.get()) ||
-      !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
-      !BN_from_montgomery(e.get(), a.get(), mont.get(), ctx) ||
-      !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 nullptr) ||
-      !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
-    return false;
-  }
-  if (BN_cmp(a.get(), d.get()) != 0) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-  // Finally, some regular test vectors.
-  if (!BN_rand_range(e.get(), m.get(), rng) ||
-      !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 nullptr) ||
-      !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
-    return false;
-  }
-  if (BN_cmp(a.get(), d.get()) != 0) {
-    fprintf(stderr, "Modular exponentiation test failed!\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool test_exp(RAND *rng, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  ScopedBIGNUM d(BN_new());
-  ScopedBIGNUM e(BN_new());
-  if (!a || !b || !d || !e) {
-    return false;
-  }
-
-  for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0, rng) ||
-        !BN_rand(b.get(), 2 + i, 0, 0, rng) ||
-        !BN_exp(d.get(), a.get(), b.get(), ctx)) {
-      return false;
-    }
-
-    if (!BN_one(e.get())) {
-      return false;
-    }
-    while (!BN_is_zero(b.get())) {
-      if (!BN_mul(e.get(), e.get(), a.get(), ctx) ||
-          !BN_sub(b.get(), b.get(), BN_value_one())) {
-        return false;
-      }
-    }
-    if (!BN_sub(e.get(), e.get(), d.get())) {
-      return false;
-    }
-    if (!BN_is_zero(e.get())) {
-      fprintf(stderr, "Exponentiation test failed!\n");
-      return false;
-    }
-  }
-  return true;
 }
 
 static bool TestBN2BinPadded(RAND *rng) {

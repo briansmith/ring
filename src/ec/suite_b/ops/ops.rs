@@ -25,18 +25,29 @@ pub struct Elem {
     limbs: [Limb; MAX_LIMBS],
 }
 
-impl Elem {
-    #[inline(always)]
-    fn zero() -> Elem {
-        Elem { limbs: [0; MAX_LIMBS] }
-    }
-}
-
-/// Field elements that are *not* Montgomery-encoded. TODO: document range.
+/// Field elements that are not Montgomery-encoded. Their values are in the
+/// range [0, Q).
 pub struct ElemDecoded {
     pub limbs: [Limb; MAX_LIMBS],
 }
 
+/// Field elements that are Montgomery-encoded and unreduced. Their values are
+/// in the range [0, 2**LIMB_BITS).
+pub struct ElemUnreduced {
+    limbs: [Limb; MAX_LIMBS],
+}
+
+impl ElemUnreduced {
+    fn zero() -> ElemUnreduced {
+        ElemUnreduced { limbs: [0; MAX_LIMBS] }
+    }
+}
+
+impl <'a> From<&'a Elem> for ElemUnreduced {
+    fn from(a: &Elem) -> ElemUnreduced {
+        ElemUnreduced { limbs: a.limbs }
+    }
+}
 
 
 /// Scalars. Scalars are *not* Montgomery-encoded. They are always
@@ -53,7 +64,9 @@ impl Scalar {
     }
 }
 
-/// A `Scalar`, except Montgomery-encoded.
+/// A `Scalar`, except Montgomery-encoded, and not reduced. The range is
+/// [0, 2**LIMB_BITS).
+#[derive(Clone, Copy)]
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
 }
@@ -130,8 +143,10 @@ pub struct CommonOps {
     q: Mont,
     pub n: ElemDecoded,
 
-    pub a: Elem, // Must be -3 mod q
-    pub b: Elem,
+    // These could be `Elem`s but we only use them in contexts that take
+    // `ElemUnreduced`s.
+    pub a: ElemUnreduced, // Must be -3 mod q
+    pub b: ElemUnreduced,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
     elem_add_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
@@ -145,7 +160,7 @@ pub struct CommonOps {
 
 impl CommonOps {
     #[inline]
-    pub fn elem_add(&self, a: &mut Elem, b: &Elem) {
+    pub fn elem_add(&self, a: &mut ElemUnreduced, b: &ElemUnreduced) {
         ab_assign(self.elem_add_impl, &mut a.limbs, &b.limbs)
     }
 
@@ -159,27 +174,44 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_decoded(&self, a: &Elem) -> ElemDecoded {
+    pub fn elem_decoded(&self, a: &ElemUnreduced) -> ElemDecoded {
         self.elem_mul_mixed(a, &ONE)
     }
 
     #[inline]
-    pub fn elem_mul(&self, a: &Elem, b: &Elem) -> Elem {
-        Elem { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
+    pub fn elem_mul(&self, a: &mut ElemUnreduced, b: &ElemUnreduced) {
+        ab_assign(self.elem_mul_mont, &mut a.limbs, &b.limbs)
     }
 
     #[inline]
-    pub fn elem_mul_mixed(&self, a: &Elem, b: &ElemDecoded)
+    pub fn elem_mul_mixed(&self, a: &ElemUnreduced, b: &ElemDecoded)
                            -> ElemDecoded {
-        ElemDecoded { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
+        let unreduced = rab(self.elem_mul_mont, &a.limbs, &b.limbs);
+        ElemDecoded { limbs: self.reduced_limbs(&unreduced, &self.q.p) }
     }
 
     #[inline]
-    pub fn elem_sqr(&self, a: &Elem) -> Elem {
-        Elem { limbs: ra(self.elem_sqr_mont, &a.limbs) }
+    pub fn elem_product(&self, a: &ElemUnreduced, b: &ElemUnreduced)
+                        -> ElemUnreduced {
+        ElemUnreduced { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
     }
 
-    pub fn elem_verify_is_not_zero(&self, a: &Elem) -> ::EmptyResult {
+    #[inline]
+    pub fn elem_reduced(&self, a: &ElemUnreduced) -> Elem {
+        Elem { limbs: self.reduced_limbs(&a.limbs, &self.q.p) }
+    }
+
+    #[inline]
+    pub fn elem_square(&self, a: &mut ElemUnreduced) {
+        a_assign(self.elem_sqr_mont, &mut a.limbs);
+    }
+
+    #[inline]
+    pub fn elem_squared(&self, a: &ElemUnreduced) -> ElemUnreduced {
+        ElemUnreduced { limbs: ra(self.elem_sqr_mont, &a.limbs) }
+    }
+
+    pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced) -> ::EmptyResult {
         match unsafe {
             GFp_constant_time_limbs_are_zero(a.limbs.as_ptr(), self.num_limbs)
         } {
@@ -188,23 +220,40 @@ impl CommonOps {
         }
     }
 
-    pub fn point_x(&self, p: &Point) -> Elem {
-        let mut r = Elem::zero();
+    pub fn point_x(&self, p: &Point) -> ElemUnreduced {
+        let mut r = ElemUnreduced::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[0..self.num_limbs]);
         r
     }
 
-    pub fn point_y(&self, p: &Point) -> Elem {
-        let mut r = Elem::zero();
+    pub fn point_y(&self, p: &Point) -> ElemUnreduced {
+        let mut r = ElemUnreduced::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[self.num_limbs..
                                                          (2 * self.num_limbs)]);
         r
     }
 
-    pub fn point_z(&self, p: &Point) -> Elem {
-        let mut r = Elem::zero();
+    pub fn point_z(&self, p: &Point) -> ElemUnreduced {
+        let mut r = ElemUnreduced::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[(2 * self.num_limbs)..
                                                          (3 * self.num_limbs)]);
+        r
+    }
+
+    // This assumes
+    // 2**((self.num_limbs * LIMB_BITS) - 1) < p and
+    // p < 2**(self.num_limbs * LIMB_BITS) and `p` is prime. See
+    // "Efficient Software Implementations of Modular Exponentiation" by Shay
+    // Gueron for the details. This is the case for both the field order and
+    // group order for both P-256 and P-384, but it is not the case for all
+    // curves. For example, it is not true for P-521.
+    fn reduced_limbs(&self, a: &[Limb; MAX_LIMBS], p: &[Limb; MAX_LIMBS])
+                     -> [Limb; MAX_LIMBS] {
+        let mut r = *a;
+        unsafe {
+            GFp_constant_time_limbs_reduce_once(r.as_mut_ptr(), p.as_ptr(),
+                                                self.num_limbs);
+        }
         r
     }
 }
@@ -221,8 +270,7 @@ pub enum EC_GROUP { }
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
-    elem_inv: unsafe extern fn(r: *mut Limb/*[num_limbs]*/,
-                               a: *const Limb/*[num_limbs]*/),
+    elem_inv: fn(a: &ElemUnreduced) -> ElemUnreduced,
     point_mul_base_impl: fn(a: &Scalar) -> ::Result<Point>,
     point_mul_impl: fn(s: &Scalar, point_x_y: &(Elem, Elem))
                        -> ::Result<Point>,
@@ -241,8 +289,8 @@ impl PrivateKeyOps {
     }
 
     #[inline]
-    pub fn elem_inverse(&self, a: &Elem) -> Elem {
-        Elem { limbs: ra(self.elem_inv, &a.limbs) }
+    pub fn elem_inverse(&self, a: &ElemUnreduced) -> ElemUnreduced {
+        (self.elem_inv)(&a)
     }
 }
 
@@ -283,7 +331,7 @@ pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
     pub q_minus_n: ElemDecoded,
 
-    scalar_inv_to_mont_impl: unsafe extern fn(r: *mut Limb, a: *const Limb),
+    scalar_inv_to_mont_impl: fn(a: &Scalar) -> ScalarMont,
     scalar_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
                                       b: *const Limb),
 }
@@ -306,17 +354,14 @@ impl PublicScalarOps {
         // `a` must not be zero.
         assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
 
-        let mut r = ScalarMont { limbs: [0; MAX_LIMBS] };
-        unsafe {
-            (self.scalar_inv_to_mont_impl)(r.limbs.as_mut_ptr(),
-                                           a.limbs.as_ptr());
-        }
-        r
+        (self.scalar_inv_to_mont_impl)(&a)
     }
 
     #[inline]
     pub fn scalar_mul_mixed(&self, a: &Scalar, b: &ScalarMont) -> Scalar {
-        Scalar { limbs: rab(self.scalar_mul_mont, &a.limbs, &b.limbs) }
+        let cops = self.public_key_ops.common;
+        let unreduced = rab(self.scalar_mul_mont, &a.limbs, &b.limbs);
+        Scalar { limbs: cops.reduced_limbs(&unreduced, &cops.n.limbs) }
     }
 
     #[inline]
@@ -345,14 +390,6 @@ impl PublicScalarOps {
                             -> ElemDecoded {
         ElemDecoded {
             limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
-                       &b.limbs)
-        }
-    }
-
-    #[inline]
-    pub fn elem_mul_mixed(&self, a: &Elem, b: &ElemDecoded) -> ElemDecoded {
-        ElemDecoded {
-            limbs: rab(self.public_key_ops.common.elem_mul_mont, &a.limbs,
                        &b.limbs)
         }
     }
@@ -395,6 +432,28 @@ fn parse_big_endian_value_in_range(input: untrusted::Input, min_inclusive: Limb,
 }
 
 
+// Returns (`a` squared `squarings` times) * `b`.
+fn elem_sqr_mul(ops: &CommonOps, a: &ElemUnreduced, squarings: usize,
+                b: &ElemUnreduced) -> ElemUnreduced {
+    debug_assert!(squarings >= 1);
+    let mut tmp = ops.elem_squared(a);
+    for _ in 1..squarings {
+        ops.elem_square(&mut tmp);
+    }
+    ops.elem_product(&tmp, &b)
+}
+
+// Sets `acc` = (`acc` squared `squarings` times) * `b`.
+fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced, squarings: usize,
+                    b: &ElemUnreduced) {
+    debug_assert!(squarings >= 1);
+    for _ in 0..squarings {
+        ops.elem_square(acc);
+    }
+    ops.elem_mul(acc, &b)
+}
+
+
 // let r = f(a, b); return r;
 #[inline]
 fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
@@ -404,6 +463,16 @@ fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
         f(r.as_mut_ptr(), a.as_ptr(), b.as_ptr())
     }
     r
+}
+
+
+// a = f(a, b);
+#[inline]
+fn a_assign(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
+            a: &mut [Limb; MAX_LIMBS]) {
+    unsafe {
+        f(a.as_mut_ptr(), a.as_ptr())
+    }
 }
 
 // a = f(a, b);
@@ -487,7 +556,8 @@ pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
 extern {
     fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
                                         -> Limb;
-
+    fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
+                                           num_limbs: c::size_t);
     fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, xyz_out: *mut Limb,
                                     g_scalar: *const Limb,
                                     p_scalar: *const Limb, p_x: *const Limb,
@@ -499,6 +569,53 @@ extern {
 mod tests {
     use super::*;
     use untrusted;
+
+    #[test]
+    fn p256_elem_reduced_test() {
+        test_elem_reduced(&p256::COMMON_OPS);
+    }
+
+    #[test]
+    fn p384_elem_reduced_test() {
+        test_elem_reduced(&p384::COMMON_OPS);
+    }
+
+    fn test_elem_reduced(ops: &CommonOps) {
+        let zero = ElemUnreduced::zero();
+
+        let reduced = ops.elem_reduced(&zero);
+        assert_eq!(reduced.limbs, zero.limbs);
+
+        let mut one = ElemUnreduced::zero();
+        one.limbs[0] = 1;
+
+        let reduced = ops.elem_reduced(&one);
+        assert_eq!(reduced.limbs, one.limbs);
+
+        let q = ElemUnreduced { limbs: ops.q.p };
+        let reduced = ops.elem_reduced(&q);
+        assert_eq!(reduced.limbs, zero.limbs);
+
+        let mut q_minus_1 = ElemUnreduced { limbs: ops.q.p };
+        q_minus_1.limbs[0] -= 1;
+        let reduced = ops.elem_reduced(&q_minus_1);
+        assert_eq!(reduced.limbs, q_minus_1.limbs);
+
+        let mut q_plus_1 = ElemUnreduced { limbs: ops.q.p };
+        // Add one to it, dealing with the fact that the lower limb(s) are
+        // 0xfff...ff. We can't use `elem_add` because at least the P-384
+        // implementation would do the reduction itself.
+        for i in 0..ops.num_limbs {
+            q_plus_1.limbs[i] = q_plus_1.limbs[i].wrapping_add(1);
+            if q_plus_1.limbs[i] != 0 {
+                break;
+            }
+        }
+        assert!(reduced.limbs != q.limbs); // Sanity check the math we did.
+        assert!(reduced.limbs != one.limbs); // Sanity check the math we did.
+        let reduced = ops.elem_reduced(&q_plus_1);
+        assert_eq!(reduced.limbs, one.limbs);
+    }
 
     const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
 
@@ -606,7 +723,7 @@ mod internal_benches {
 #[cfg(feature = "internal_benches")]
 macro_rules! bench_curve {
     ( $vectors:expr ) => {
-        use super::super::{Elem, Scalar};
+        use super::super::{ElemUnreduced, Scalar};
         use bench;
 
         #[bench]
@@ -614,7 +731,7 @@ macro_rules! bench_curve {
             // This benchmark assumes that the `elem_inverse()` is
             // constant-time so inverting 1 mod q is as good of a choice as
             // anything.
-            let mut a = Elem::zero();
+            let mut a = ElemUnreduced::zero();
             a.limbs[0] = 1;
             bench.iter(|| {
                 let _ = PRIVATE_KEY_OPS.elem_inverse(&a);
@@ -622,23 +739,23 @@ macro_rules! bench_curve {
         }
 
         #[bench]
-        fn elem_mul_bench(bench: &mut bench::Bencher) {
+        fn elem_product_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the multiplication is constant-time
             // so 0 * 0 is as good of a choice as anything.
-            let a = Elem::zero();
-            let b = Elem::zero();
+            let a = ElemUnreduced::zero();
+            let b = ElemUnreduced::zero();
             bench.iter(|| {
-                let _ = COMMON_OPS.elem_mul(&a, &b);
+                let _ = COMMON_OPS.elem_product(&a, &b);
             });
         }
 
         #[bench]
-        fn elem_sqr_bench(bench: &mut bench::Bencher) {
+        fn elem_squared_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the squaring is constant-time so
             // 0**2 * 0 is as good of a choice as anything.
-            let a = Elem::zero();
+            let a = ElemUnreduced::zero();
             bench.iter(|| {
-                let _ = COMMON_OPS.elem_sqr(&a);
+                let _ = COMMON_OPS.elem_squared(&a);
             });
         }
 

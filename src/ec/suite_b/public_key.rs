@@ -50,7 +50,9 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    try!(verify_affine_point_is_on_the_curve(ops.common, (&x, &y)));
+    let x_ = ElemUnreduced::from(&x);
+    let y_ = ElemUnreduced::from(&y);
+    try!(verify_affine_point_is_on_the_curve(ops.common, (&x_, &y_)));
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
     // check that the public key is in the correct EC subgroup."
@@ -58,11 +60,7 @@ pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
     // NSA Suite B Implementer's Guide Note: "ECC Full Public-Key Validation
     // includes an additional check to ensure that the point has the correct
     // order. This check is not necessary for curves having prime order (and
-    // cofactor h = 1), such as P-256 and P-384. As long as the implementation
-    // under testing claims to support only the Suite B subset of the NIST
-    // curves, the partial validation routine will be sufficient to satisfy
-    // FIPS 140 CAVP testing of both full and partial public key validation
-    // capabilities."
+    // cofactor h = 1), such as P-256 and P-384."
 
     Ok((x, y))
 }

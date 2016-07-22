@@ -105,15 +105,15 @@ my ($poly1,$poly3)=($acc6,$acc7);
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_ord_mul_mont(
+# void GFp_p256_scalar_mul_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t b[4]);
 
-.globl	ecp_nistz256_ord_mul_mont
-.type	ecp_nistz256_ord_mul_mont,\@function,3
+.globl	GFp_p256_scalar_mul_mont
+.type	GFp_p256_scalar_mul_mont,\@function,3
 .align	32
-ecp_nistz256_ord_mul_mont:
+GFp_p256_scalar_mul_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
@@ -399,7 +399,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_ord_mul_mont,.-ecp_nistz256_ord_mul_mont
+.size	GFp_p256_scalar_mul_mont,.-GFp_p256_scalar_mul_mont
 ___
 $code.=<<___	if ($addx);
 ################################################################################
@@ -612,15 +612,15 @@ ecp_nistz256_ord_mul_montx:
 ################################################################################
 ___
 $code.=<<___;
-# void ecp_nistz256_ord_sqr_mont(
+# void GFp_p256_scalar_sqr_rep_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   int rep);
 
-.globl	ecp_nistz256_ord_sqr_mont
-.type	ecp_nistz256_ord_sqr_mont,\@function,3
+.globl	GFp_p256_scalar_sqr_rep_mont
+.type	GFp_p256_scalar_sqr_rep_mont,\@function,3
 .align	32
-ecp_nistz256_ord_sqr_mont:
+GFp_p256_scalar_sqr_rep_mont:
 
 ___
 $code.=<<___	if ($addx);
@@ -894,7 +894,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_ord_sqr_mont,.-ecp_nistz256_ord_sqr_mont
+.size	GFp_p256_scalar_sqr_rep_mont,.-GFp_p256_scalar_sqr_rep_mont
 ___
 $code.=<<___	if ($addx);
 .align	32
