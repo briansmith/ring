@@ -25,8 +25,6 @@
 GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
                                           const GFp_Limb b[],
                                           size_t num_limbs);
-void GFp_constant_time_limbs_reduce_once(GFp_Limb r[], const GFp_Limb m[],
-                                         size_t num_limbs);
 
 
 /* We have constant time primitives on |size_t|. Rather than duplicate them,
