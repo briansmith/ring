@@ -899,6 +899,36 @@ mod tests {
         });
     }
 
+    #[test]
+    fn p256_point_mul_test() {
+        point_mul_tests(&p256::PRIVATE_KEY_OPS,
+                        "src/ec/suite_b/ops/p256_point_mul_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_mul_test() {
+        point_mul_tests(&p384::PRIVATE_KEY_OPS,
+                        "src/ec/suite_b/ops/p384_point_mul_tests.txt");
+    }
+
+    fn point_mul_tests(ops: &PrivateKeyOps, file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let p_scalar = consume_scalar(ops.common, test_case, "p_scalar");
+            let (x, y) = match consume_point(ops, test_case, "p") {
+                TestPoint::Infinity => {
+                    panic!("can't be inf.");
+                },
+                TestPoint::Affine(x, y) => (x, y)
+            };
+            let expected_result = consume_point(ops, test_case, "r");
+            let actual_result = ops.point_mul(&p_scalar, &(x, y));
+            assert_point_actual_equals_expected(ops, &actual_result,
+                                                &expected_result);
+            Ok(())
+        })
+    }
+
     fn assert_point_actual_equals_expected(ops: &PrivateKeyOps,
                                            actual_point: &Point,
                                            expected_point: &TestPoint) {
@@ -1006,6 +1036,16 @@ mod tests {
         let bytes = untrusted::Input::from(&bytes);
         ElemUnreduced {
             limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap()
+        }
+    }
+
+    fn consume_scalar(ops: &CommonOps, test_case: &mut test::TestCase,
+                      name: &str) -> Scalar {
+        let bytes = test_case.consume_bytes(name);
+        let bytes = untrusted::Input::from(&bytes);
+        Scalar {
+            limbs: parse_big_endian_value_in_range(
+                    bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap()
         }
     }
 }
