@@ -30,9 +30,12 @@ typedef BN_ULONG GFp_Limb;
 #define P256_LIMBS (256u / BN_BITS2)
 #define P384_LIMBS (384u / BN_BITS2)
 
-GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[], size_t num_limbs);
+GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
+                                          size_t num_limbs);
 GFp_Limb GFp_constant_time_limbs_eq_limbs(const GFp_Limb a[],
                                           const GFp_Limb b[], size_t num_limbs);
+void GFp_constant_time_limbs_reduce_once(GFp_Limb r[], const GFp_Limb m[],
+                                         size_t num_limbs);
 
 
 #endif /* GFp_INTERNAL_H */

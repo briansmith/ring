@@ -32,6 +32,7 @@
 
 #include "ecp_nistz.h"
 #include "ecp_nistz256.h"
+#include "gfp_internal.h"
 #include "../bn/internal.h"
 #include "../ec/internal.h"
 #include "../internal.h"
@@ -59,8 +60,26 @@ static const BN_ULONG ONE[P256_LIMBS] = {
     TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
 };
 
+static const BN_ULONG Q[P256_LIMBS] = {
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0x00000000, 0xffffffff),
+  TOBN(0x00000000, 0x00000000),
+  TOBN(0xffffffff, 0x00000001),
+};
+
 /* Precomputed tables for the default generator */
 #include "ecp_nistz256_table.inl"
+
+/* This assumes that |x| and |y| have been each been reduced to their minimal
+ * unique representations. */
+static BN_ULONG is_infinity(const BN_ULONG x[P256_LIMBS],
+                            const BN_ULONG y[P256_LIMBS]) {
+  BN_ULONG acc = 0;
+  for (size_t i = 0; i < P256_LIMBS; ++i) {
+    acc |= x[i] | y[i];
+  }
+  return constant_time_is_zero_size_t(acc);
+}
 
 static void copy_conditional(BN_ULONG dst[P256_LIMBS],
                              const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
@@ -180,17 +199,6 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
 
 void ecp_nistz256_point_mul_base(P256_POINT *r,
                                  const BN_ULONG g_scalar[P256_LIMBS]) {
-#if !defined(NDEBUG)
-  int is_g_scalar_zero = 1;
-  for (size_t i = 0; i < P256_LIMBS; ++i) {
-    if (g_scalar[i] != 0) {
-      is_g_scalar_zero = 0;
-      break;
-    }
-  }
-  assert(!is_g_scalar_zero);
-#endif
-
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
@@ -223,6 +231,8 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
   copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
   memcpy(p.p.Z, ONE, sizeof(ONE));
+  /* If it is at the point at infinity then p.p.X will be zero. */
+  copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
 
   for (size_t i = 1; i < 37; i++) {
     unsigned off = (index - 1) / 8;
@@ -236,6 +246,13 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
     copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
     ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
+
+  GFp_constant_time_limbs_reduce_once(p.p.X, Q, P256_LIMBS);
+  GFp_constant_time_limbs_reduce_once(p.p.Y, Q, P256_LIMBS);
+  GFp_constant_time_limbs_reduce_once(p.p.Z, Q, P256_LIMBS);
+
+  /* If it is at the point at infinity then p.p.X will be zero. */
+  copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
 
   memcpy(r, &p.p, sizeof(p.p));
 }
