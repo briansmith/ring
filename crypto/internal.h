@@ -226,8 +226,8 @@ static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
   return constant_time_msb_unsigned(~a & (a - 1));
 }
 
-/* constant_time_is_zero_size_t is like constant_time_is_zero but operates on
- * |size_t|. */
+/* constant_time_is_zero_size_t is like |constant_time_is_zero_unsigned| but
+ * operates on |size_t|. */
 static inline size_t constant_time_is_zero_size_t(size_t a) {
   return constant_time_msb_size_t(~a & (a - 1));
 }
