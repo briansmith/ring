@@ -50,13 +50,14 @@ GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
   return is_zero;
 }
 
-/* Returns non-zero if |a| is less than |b|, and zero otherwise. */
+/* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
 GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
                                           const GFp_Limb b[],
                                           size_t num_limbs) {
+  assert(num_limbs >= 1);
   /* There are lots of ways to implement this. It is implemented this way to
    * be consistent with |GFp_constant_time_limbs_reduce_once| and other code
-   * that makes such comparisions as part of doing conditional reductions. */
+   * that makes such comparisons as part of doing conditional reductions. */
   GFp_Limb dummy;
   GFp_Carry borrow = gfp_sub(&dummy, a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
