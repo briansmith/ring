@@ -69,6 +69,7 @@ GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
 /* if (r >= m) { r -= m; } */
 void GFp_constant_time_limbs_reduce_once(GFp_Limb r[], const GFp_Limb m[],
                                          size_t num_limbs) {
+  assert(num_limbs >= 1);
   /* This could be done more efficiently if we had |num_limbs| of extra space
    * available, by storing |r - m| and then doing a conditional copy of either
    * |r| or |r - m|. But, in order to operate in constant space, with an eye
