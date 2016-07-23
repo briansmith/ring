@@ -38,13 +38,14 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
                        size_t_and_gfp_limb_are_different_sizes);
 
 
-/* Returns non-zero if |a| is all zero limbs, and zero otherwise. */
+/* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. */
 GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
                                           size_t num_limbs) {
-  GFp_Limb is_zero = constant_time_is_zero_size_t(0);
-  for (size_t i = 0; i < num_limbs; ++i) {
+  assert(num_limbs >= 1);
+  GFp_Limb is_zero = constant_time_is_zero_size_t(a[0]);
+  for (size_t i = 1; i < num_limbs; ++i) {
     is_zero = constant_time_select_size_t(
-        is_zero, constant_time_is_zero_size_t(a[i]), 0);
+        is_zero, constant_time_is_zero_size_t(a[i]), is_zero);
   }
   return is_zero;
 }
