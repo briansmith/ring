@@ -233,16 +233,12 @@ void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
  * needs to be two words long. Only certain 32-bit platforms actually make use
  * of n0[1] and shorter R value would suffice for the others. However,
  * currently only the assembly files know which is which. */
-#if BN_BITS2 <= 32
+#if BN_BITS2 == 32
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
-#else
+#elif BN_BITS2 == 64
 #define BN_MONT_CTX_N0_LIMBS 1
-#if defined(OPENSSL_64_BIT)
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
-#elif defined(OPENSSL_32_BIT)
-#define BN_MONT_CTX_N0(hi, lo) TOBN(0, lo)
-#endif
 #endif
 
 
