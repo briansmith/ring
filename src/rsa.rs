@@ -344,14 +344,11 @@ impl RSAKeyPair {
         try!(padding_alg.pad(msg, signature));
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
-            let blinding = BN_BLINDING_new();
-            let ret =
-                GFp_rsa_private_transform(self.rsa.as_ref(),
-                                          signature.as_mut_ptr(),
-                                          signature.len(), blinding,
-                                          &mut rand);
-            BN_BLINDING_free(blinding);
-            ret
+            let blinding = *(self.blinding.lock().unwrap());
+            GFp_rsa_private_transform(self.rsa.as_ref(),
+                                      signature.as_mut_ptr(),
+                                      signature.len(), blinding,
+                                      &mut rand)
         })
     }
 }
@@ -505,6 +502,9 @@ mod tests {
     use super::*;
     use untrusted;
 
+    #[cfg(feature = "rsa_signing")]
+    extern { static GFp_BN_BLINDING_COUNTER: u32; }
+
     #[test]
     fn test_signature_rsa_pkcs1_verify() {
         test::from_file("src/rsa_pkcs1_verify_tests.txt", |section, test_case| {
@@ -627,5 +627,40 @@ mod tests {
         signature.push(0);
         assert!(key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
                               &mut signature).is_err());
+    }
+
+    // Once the `BN_BLINDING` in an `RSAKeyPair` has been used
+    // `GFp_BN_BLINDING_COUNTER` times, a new blinding should be created. we
+    // don't check that a new blinding was created; we just make sure to
+    // exercise the code path, so this is basically a coverage test.
+    #[cfg(feature = "rsa_signing")]
+    #[test]
+    fn test_signature_rsa_pkcs1_sign_blinding_reuse() {
+        const MESSAGE: &'static [u8] = b"hello, world";
+        let rng = rand::SystemRandom::new();
+
+        const PRIVATE_KEY_DER: &'static [u8] =
+            include_bytes!("signature_rsa_example_private_key.der");
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
+        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+
+        let mut signature = vec![0; key_pair.public_modulus_len()];
+
+        for _ in 0 .. GFp_BN_BLINDING_COUNTER + 1 {
+            let prev_counter = unsafe {
+                let blinding = *(key_pair.blinding.lock().unwrap());
+                (*blinding).counter
+            };
+
+            let _ = key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                  &mut signature);
+
+            let counter = unsafe {
+                let blinding = *(key_pair.blinding.lock().unwrap());
+                (*blinding).counter
+            };
+
+            assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
+        }
     }
 }
