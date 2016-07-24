@@ -563,27 +563,24 @@ again:
   ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
                       ssl->init_buf->data, ssl->init_buf->length);
 
+  ssl->s3->tmp.message_type = ((const uint8_t *)ssl->init_buf->data)[0];
+  ssl->init_msg = (uint8_t*)ssl->init_buf->data + 4;
+  ssl->init_num = ssl->init_buf->length - 4;
+
   /* Ignore stray HelloRequest messages. Per RFC 5246, section 7.4.1.1, the
    * server may send HelloRequest at any time. */
-  static const uint8_t kHelloRequest[4] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
   if (!ssl->server &&
-      (!ssl->s3->have_version ||
-       ssl3_protocol_version(ssl) < TLS1_3_VERSION) &&
-      ssl->init_buf->length == sizeof(kHelloRequest) &&
-      memcmp(kHelloRequest, ssl->init_buf->data, sizeof(kHelloRequest)) == 0) {
+      (!ssl->s3->have_version || ssl3_protocol_version(ssl) < TLS1_3_VERSION) &&
+      ssl->s3->tmp.message_type == SSL3_MT_HELLO_REQUEST &&
+      ssl->init_num == 0) {
     goto again;
   }
 
-  uint8_t actual_type = ((const uint8_t *)ssl->init_buf->data)[0];
-  if (msg_type >= 0 && actual_type != msg_type) {
+  if (msg_type >= 0 && ssl->s3->tmp.message_type != msg_type) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     return -1;
   }
-  ssl->s3->tmp.message_type = actual_type;
-
-  ssl->init_msg = (uint8_t*)ssl->init_buf->data + 4;
-  ssl->init_num = ssl->init_buf->length - 4;
 
   /* Feed this message into MAC computation. */
   if (hash_message == ssl_hash_message && !ssl3_hash_current_message(ssl)) {
