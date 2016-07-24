@@ -1126,6 +1126,9 @@ int SSL_get_verify_depth(const SSL *ssl) {
 }
 
 int SSL_get_extms_support(const SSL *ssl) {
+  if (!ssl->s3->have_version) {
+    return 0;
+  }
   return ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
          ssl->s3->tmp.extended_master_secret == 1;
 }
