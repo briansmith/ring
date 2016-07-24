@@ -430,9 +430,15 @@ impl Drop for PositiveInteger {
 #[cfg(feature = "rsa_signing")]
 enum BIGNUM {}
 
+/// Needs to be kept in sync with `struct bn_blinding_st` (in `crypto/rsa/blinding.c`).
 #[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
-enum BN_BLINDING {}
+#[repr(C)]
+struct BN_BLINDING {
+    a: *mut BIGNUM,
+    ai: *mut BIGNUM,
+    counter: u32,
+}
 
 #[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
