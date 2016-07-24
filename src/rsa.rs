@@ -227,6 +227,7 @@ fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
 #[cfg(feature = "rsa_signing")]
 pub struct RSAKeyPair {
     rsa: std::boxed::Box<RSA>,
+    blinding: std::sync::Mutex<*mut BN_BLINDING>,
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -295,7 +296,15 @@ impl RSAKeyPair {
                 try!(bssl::map_result(unsafe {
                     rsa_new_end(rsa.as_mut())
                 }));
-                Ok(RSAKeyPair { rsa: rsa })
+                let blinding = unsafe { BN_BLINDING_new() };
+                if blinding.is_null() {
+                    return Err(());
+                }
+
+                Ok(RSAKeyPair {
+                    rsa: rsa,
+                    blinding: std::sync::Mutex::new(blinding),
+                })
             })
         })
     }
@@ -365,6 +374,7 @@ impl Drop for RSAKeyPair {
             BN_MONT_CTX_free(self.rsa.mont_qq);
             BN_free(self.rsa.qmn_mont);
             BN_free(self.rsa.iqmp_mont);
+            BN_BLINDING_free(*(self.blinding.lock().unwrap()));
         }
     }
 }
