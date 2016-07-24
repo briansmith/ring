@@ -1391,7 +1391,10 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 
 	if !c.config.Bugs.SkipFinished && len(postCCSBytes) > 0 {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)
-		c.flushHandshake()
+		if !c.config.Bugs.PackHelloRequestWithFinished {
+			// Defer flushing until renegotiation.
+			c.flushHandshake()
+		}
 	}
 
 	c.cipherSuite = hs.suite

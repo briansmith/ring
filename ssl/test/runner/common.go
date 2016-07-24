@@ -997,6 +997,10 @@ type ProtocolBugs struct {
 	// SkipHelloRetryRequest, if true, causes the TLS 1.3 server to not send
 	// HelloRetryRequest.
 	SkipHelloRetryRequest bool
+
+	// PackHelloRequestWithFinished, if true, causes the TLS server to send
+	// HelloRequest in the same record as Finished.
+	PackHelloRequestWithFinished bool
 }
 
 func (c *Config) serverInit() {

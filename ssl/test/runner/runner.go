@@ -5021,6 +5021,24 @@ func addRenegotiationTests() {
 		},
 	})
 
+	// Test renegotiation works if HelloRequest and server Finished come in
+	// the same record.
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-Packed",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				PackHandshakeFlight:          true,
+				PackHelloRequestWithFinished: true,
+			},
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+	})
+
 	// Renegotiation is forbidden in TLS 1.3.
 	//
 	// TODO(davidben): This test current asserts that we ignore
