@@ -55,7 +55,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     elem_mul_mont: ecp_nistz256_mul_mont,
     elem_sqr_mont: ecp_nistz256_sqr_mont,
 
-    ec_group: &EC_GROUP_P256,
+    point_add_jacobian_impl: ecp_nistz256_point_add,
 };
 
 
@@ -63,7 +63,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv: p256_elem_inv,
     point_mul_base_impl: p256_point_mul_base_impl,
-    point_mul_impl: p256_point_mul_impl,
+    point_mul_impl: ecp_nistz256_point_mul,
 };
 
 fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
@@ -117,23 +117,13 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     sqr_mul(&acc, 1 + 1, &b_1)
 }
 
-fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Result<Point, ()> {
+fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
     let mut r = Point::new_at_infinity();
     unsafe {
         ecp_nistz256_point_mul_base(r.xyz.as_mut_ptr(),
                                     g_scalar.limbs.as_ptr());
     }
-    Ok(r)
-}
-
-fn p256_point_mul_impl(p_scalar: &Scalar, &(ref p_x, ref p_y): &(Elem, Elem))
-                       -> Result<Point, ()> {
-    let mut r = Point::new_at_infinity();
-    unsafe {
-        ecp_nistz256_point_mul(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),
-                               p_x.limbs.as_ptr(), p_y.limbs.as_ptr());
-    }
-    Ok(r)
+    r
 }
 
 
@@ -144,6 +134,7 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     public_key_ops: &PUBLIC_KEY_OPS,
+    private_key_ops: &PRIVATE_KEY_OPS,
 
     q_minus_n: ElemDecoded {
         limbs: p256_limbs![0, 0, 0, 0,
@@ -291,6 +282,9 @@ extern {
     fn ecp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
+    fn ecp_nistz256_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+                              a: *const Limb/*[3][COMMON_OPS.num_limbs]*/,
+                              b: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
     fn ecp_nistz256_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                               p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,
@@ -306,8 +300,6 @@ extern {
     fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                     a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                                     rep: c::int);
-
-    static EC_GROUP_P256: EC_GROUP;
 }
 
 

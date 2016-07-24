@@ -190,14 +190,6 @@ extern "C" {
   }
 
 
-/* bn_get_words sets |words| to the value in |bn|, least significant word
- * first. It returns one on success or zero otherwise. */
-int bn_get_words(BN_ULONG *words, const BIGNUM *bn, size_t num);
-
-/* bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
- * least significant word first. It returns one on success or zero otherwise. */
-int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
-
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 void     bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);
@@ -233,16 +225,12 @@ void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
  * needs to be two words long. Only certain 32-bit platforms actually make use
  * of n0[1] and shorter R value would suffice for the others. However,
  * currently only the assembly files know which is which. */
-#if BN_BITS2 <= 32
+#if BN_BITS2 == 32
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
-#else
+#elif BN_BITS2 == 64
 #define BN_MONT_CTX_N0_LIMBS 1
-#if defined(OPENSSL_64_BIT)
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
-#elif defined(OPENSSL_32_BIT)
-#define BN_MONT_CTX_N0(hi, lo) TOBN(0, lo)
-#endif
 #endif
 
 

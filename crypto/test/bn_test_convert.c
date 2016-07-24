@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include "bn_test_util.h"
+#include "bn_test_lib.h"
 
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -177,4 +178,24 @@ err:
 
 int BN_hex2bn(BIGNUM **outp, const char *in) {
   return bn_x2bn(outp, in, decode_hex, isxdigit);
+}
+
+size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
+  size_t n, i;
+  BN_ULONG l;
+
+  n = i = BN_num_bytes(in);
+  while (i--) {
+    l = in->d[i / BN_BYTES];
+    *(out++) = (unsigned char)(l >> (8 * (i % BN_BYTES))) & 0xff;
+  }
+  return n;
+}
+
+void BN_set_negative(BIGNUM *bn, int sign) {
+  if (sign && !BN_is_zero(bn)) {
+    bn->neg = 1;
+  } else {
+    bn->neg = 0;
+  }
 }

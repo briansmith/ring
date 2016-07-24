@@ -66,9 +66,9 @@ Additional features that are useful for Development
 
 The `use_heap` feature enables functionality that uses the heap. This is on by
 default. Disabling it is useful for code running in kernel space and some
-embedded applications. For now some RSA, ECDH, and ECDSA functionality still
-uses the heap. This feature will go away once RSA signing is the only feature
-that uses the heap.
+embedded applications. For now some RSA, ECDH, and ECDSA signing functionality
+still uses the heap. This feature will go away once RSA signing is the only
+feature that uses the heap.
 
 The `internal_benches` feature enable benchmarks of internal functions. These
 benchmarks are only useful for people hacking on the implementation of *ring*.

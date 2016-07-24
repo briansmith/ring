@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-use {bssl, c, der};
+use {c, der};
 use core;
 use untrusted;
 
@@ -32,6 +32,7 @@ pub struct ElemDecoded {
 
 /// Field elements that are Montgomery-encoded and unreduced. Their values are
 /// in the range [0, 2**LIMB_BITS).
+#[derive(Clone)]
 pub struct ElemUnreduced {
     limbs: [Limb; MAX_LIMBS],
 }
@@ -154,7 +155,9 @@ pub struct CommonOps {
                                     b: *const Limb),
     elem_sqr_mont: unsafe extern fn(r: *mut Limb, a: *const Limb),
 
-    pub ec_group: &'static EC_GROUP,
+    #[cfg_attr(not(test), allow(dead_code))]
+    point_add_jacobian_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                              b: *const Limb),
 }
 
 impl CommonOps {
@@ -219,6 +222,15 @@ impl CommonOps {
         }
     }
 
+    pub fn point_sum(&self, a: &Point, b: &Point) -> Point {
+        let mut r = Point::new_at_infinity();
+        unsafe {
+            (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(),
+                                           b.xyz.as_ptr())
+        }
+        r
+    }
+
     pub fn point_x(&self, p: &Point) -> ElemUnreduced {
         let mut r = ElemUnreduced::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[0..self.num_limbs]);
@@ -262,29 +274,33 @@ struct Mont {
     rr: [Limb; MAX_LIMBS],
 }
 
-#[allow(non_camel_case_types)]
-pub enum EC_GROUP { }
-
 
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
     elem_inv: fn(a: &ElemUnreduced) -> ElemUnreduced,
-    point_mul_base_impl: fn(a: &Scalar) -> Result<Point, ()>,
-    point_mul_impl: fn(s: &Scalar, point_x_y: &(Elem, Elem))
-                       -> Result<Point, ()>,
+    point_mul_base_impl: fn(a: &Scalar) -> Point,
+    point_mul_impl: unsafe extern fn(r: *mut Limb/*[3][num_limbs]*/,
+                                     p_scalar: *const Limb/*[num_limbs]*/,
+                                     p_x: *const Limb/*[num_limbs]*/,
+                                     p_y: *const Limb/*[num_limbs]*/),
 }
 
 impl PrivateKeyOps {
     #[inline(always)]
-    pub fn point_mul_base(&self, a: &Scalar) -> Result<Point, ()> {
+    pub fn point_mul_base(&self, a: &Scalar) -> Point {
         (self.point_mul_base_impl)(a)
     }
 
     #[inline(always)]
-    pub fn point_mul(&self, s: &Scalar, point_x_y: &(Elem, Elem))
-                     -> Result<Point, ()> {
-        (self.point_mul_impl)(s, point_x_y)
+    pub fn point_mul(&self, p_scalar: &Scalar,
+                     &(ref p_x, ref p_y): &(Elem, Elem)) -> Point {
+        let mut r = Point::new_at_infinity();
+        unsafe {
+            (self.point_mul_impl)(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),
+                                  p_x.limbs.as_ptr(), p_y.limbs.as_ptr());
+        }
+        r
     }
 
     #[inline]
@@ -328,6 +344,11 @@ impl PublicKeyOps {
 /// Operations on public scalars needed by ECDSA signature verification.
 pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
+
+    // XXX: `PublicScalarOps` shouldn't depend on `PrivateKeyOps`, but it does
+    // temporarily until `twin_mul` is rewritten.
+    pub private_key_ops: &'static PrivateKeyOps,
+
     pub q_minus_n: ElemDecoded,
 
     scalar_inv_to_mont_impl: fn(a: &Scalar) -> ScalarMont,
@@ -391,19 +412,6 @@ impl PublicScalarOps {
             limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
                        &b.limbs)
         }
-    }
-
-    pub fn twin_mult(&self, g_scalar: &Scalar, p_scalar: &Scalar,
-                     &(ref peer_x, ref peer_y): &(Elem, Elem))
-                     -> Result<Point, ()> {
-        let mut p = Point::new_at_infinity();
-        try!(bssl::map_result(unsafe {
-            GFp_suite_b_public_twin_mult(
-                self.public_key_ops.common.ec_group, p.xyz.as_mut_ptr(),
-                g_scalar.limbs.as_ptr(), p_scalar.limbs.as_ptr(),
-                peer_x.limbs.as_ptr(), peer_y.limbs.as_ptr())
-        }));
-        Ok(p)
     }
 }
 
@@ -557,16 +565,15 @@ extern {
                                         -> Limb;
     fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
                                            num_limbs: c::size_t);
-    fn GFp_suite_b_public_twin_mult(group: &EC_GROUP, xyz_out: *mut Limb,
-                                    g_scalar: *const Limb,
-                                    p_scalar: *const Limb, p_x: *const Limb,
-                                    p_y: *const Limb) -> c::int;
 }
 
 
 #[cfg(test)]
 mod tests {
+    use std;
     use super::*;
+    use super::parse_big_endian_value_in_range;
+    use test;
     use untrusted;
 
     #[test]
@@ -619,12 +626,163 @@ mod tests {
     const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
 
     #[test]
+    fn p256_sum_test() {
+        sum_test(&p256::PUBLIC_SCALAR_OPS,
+                 "src/ec/suite_b/ops/p256_sum_tests.txt");
+    }
+
+    #[test]
+    fn p384_sum_test() {
+        sum_test(&p384::PUBLIC_SCALAR_OPS,
+                 "src/ec/suite_b/ops/p384_sum_tests.txt");
+    }
+
+    fn sum_test(ops: &PublicScalarOps, file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let cops = ops.public_key_ops.common;
+            let a = consume_elem_unreduced(cops, test_case, "a");
+            let b = consume_elem_unreduced(cops, test_case, "b");
+            let expected_sum = consume_elem_unreduced(cops, test_case, "r");
+
+            let mut actual_sum = a.clone();
+            ops.public_key_ops.common.elem_add(&mut actual_sum, &b);
+            assert_limbs_are_equal(cops, &actual_sum.limbs,
+                                   &expected_sum.limbs);
+
+            let mut actual_sum = b.clone();
+            ops.public_key_ops.common.elem_add(&mut actual_sum, &a);
+            assert_limbs_are_equal(cops, &actual_sum.limbs,
+                                   &expected_sum.limbs);
+
+            Ok(())
+        })
+    }
+
+    // XXX: There's no `ecp_nistz256_sub` in *ring*; it's logic is inlined into
+    // the point arithmetic functions. Thus, we can't test it.
+
+    #[test]
+    fn p384_difference_test() {
+        extern {
+            fn GFp_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
+        }
+        difference_test(&p384::COMMON_OPS, GFp_p384_elem_sub,
+                        "src/ec/suite_b/ops/p384_sum_tests.txt");
+    }
+
+    fn difference_test(ops: &CommonOps,
+                       elem_sub: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                                  b: *const Limb),
+                       file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_elem_unreduced(ops, test_case, "a");
+            let b = consume_elem_unreduced(ops, test_case, "b");
+            let r = consume_elem_unreduced(ops, test_case, "r");
+
+            let mut actual_difference = ElemUnreduced::zero();
+            unsafe {
+                elem_sub(actual_difference.limbs.as_mut_ptr(),
+                         r.limbs.as_ptr(), b.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_difference.limbs, &a.limbs);
+
+            let mut actual_difference = ElemUnreduced::zero();
+            unsafe {
+                elem_sub(actual_difference.limbs.as_mut_ptr(),
+                         r.limbs.as_ptr(), a.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_difference.limbs, &b.limbs);
+
+            Ok(())
+        })
+    }
+
+    // XXX: There's no `ecp_nistz256_div_by_2` in *ring*; it's logic is inlined
+    // into the point arithmetic functions. Thus, we can't test it.
+
+    #[test]
+    fn p384_div_by_2_test() {
+        extern {
+            fn GFp_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
+        }
+        div_by_2_test(&p384::COMMON_OPS, GFp_p384_elem_div_by_2,
+                      "src/ec/suite_b/ops/p384_div_by_2_tests.txt");
+    }
+
+    fn div_by_2_test(ops: &CommonOps,
+                     elem_div_by_2: unsafe extern fn(r: *mut Limb,
+                                                     a: *const Limb),
+                     file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_elem_unreduced(ops, test_case, "a");
+            let r = consume_elem_unreduced(ops, test_case, "r");
+
+            let mut actual_result = ElemUnreduced::zero();
+            unsafe {
+                elem_div_by_2(actual_result.limbs.as_mut_ptr(),
+                              a.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_result.limbs, &r.limbs);
+
+            Ok(())
+        })
+    }
+
+    // TODO: Add test vectors that test the range of values above `q`.
+    #[test]
+    fn p256_elem_neg_test() {
+        extern {
+            fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
+        }
+        elem_neg_test(&p256::COMMON_OPS, ecp_nistz256_neg,
+                      "src/ec/suite_b/ops/p256_neg_tests.txt");
+    }
+
+    #[test]
+    fn p384_elem_neg_test() {
+        extern {
+            fn GFp_p384_elem_neg(r: *mut Limb, a: *const Limb);
+        }
+        elem_neg_test(&p384::COMMON_OPS, GFp_p384_elem_neg,
+                      "src/ec/suite_b/ops/p384_neg_tests.txt");
+    }
+
+    fn elem_neg_test(ops: &CommonOps,
+                     elem_neg: unsafe extern fn(r: *mut Limb, a: *const Limb),
+                     file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_elem_unreduced(ops, test_case, "a");
+            let r = consume_elem_unreduced(ops, test_case, "r");
+
+            let mut actual_result = ElemUnreduced::zero();
+            unsafe {
+                elem_neg(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr());
+            }
+            assert_limbs_are_equal(ops, &actual_result.limbs, &r.limbs);
+
+            // We would test that the -r == a here, but because the P-256 uses
+            // almost-Montgomery reduction, and because -0 == 0. we can't.
+            // Instead, unlike the other input files, the input files for this
+            // test contain the inverse test vectors explicitly.
+
+            Ok(())
+        })
+    }
+
+    #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
         let _ = p256::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
 
-    #[cfg(feature = "use_heap")]
     #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p384_scalar_inv_to_mont_zero_panic_test() {
@@ -693,6 +851,209 @@ mod tests {
                         Err(())
                    });
         assert_eq!(parse_big_endian_value(inp, 1), Err(()));
+    }
+
+    #[test]
+    fn p256_point_sum_test() {
+        point_sum_test(&p256::PRIVATE_KEY_OPS,
+                       "src/ec/suite_b/ops/p256_point_sum_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_sum_test() {
+        point_sum_test(&p384::PRIVATE_KEY_OPS,
+                       "src/ec/suite_b/ops/p384_point_sum_tests.txt");
+    }
+
+    fn point_sum_test(ops: &PrivateKeyOps, file_path: &str) {
+         test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_jacobian_point(ops, test_case, "a");
+            let b = consume_jacobian_point(ops, test_case, "b");
+            let r_expected = consume_point(ops, test_case, "r");
+
+            let r_actual = ops.common.point_sum(&a, &b);
+            assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
+
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn p256_point_mul_test() {
+        point_mul_tests(&p256::PRIVATE_KEY_OPS,
+                        "src/ec/suite_b/ops/p256_point_mul_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_mul_test() {
+        point_mul_tests(&p384::PRIVATE_KEY_OPS,
+                        "src/ec/suite_b/ops/p384_point_mul_tests.txt");
+    }
+
+    fn point_mul_tests(ops: &PrivateKeyOps, file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let p_scalar = consume_scalar(ops.common, test_case, "p_scalar");
+            let (x, y) = match consume_point(ops, test_case, "p") {
+                TestPoint::Infinity => {
+                    panic!("can't be inf.");
+                },
+                TestPoint::Affine(x, y) => (x, y)
+            };
+            let expected_result = consume_point(ops, test_case, "r");
+            let actual_result = ops.point_mul(&p_scalar, &(x, y));
+            assert_point_actual_equals_expected(ops, &actual_result,
+                                                &expected_result);
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn p256_point_mul_base_test() {
+        point_mul_base_tests(
+            &p256::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_mul_base_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_mul_base_test() {
+        point_mul_base_tests(
+            &p384::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p384_point_mul_base_tests.txt");
+    }
+
+    fn point_mul_base_tests(ops: &PrivateKeyOps, file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
+            let expected_result = consume_point(ops, test_case, "r");
+            let actual_result = ops.point_mul_base(&g_scalar);
+            assert_point_actual_equals_expected(ops, &actual_result,
+                                                &expected_result);
+            Ok(())
+        })
+    }
+
+    fn assert_point_actual_equals_expected(ops: &PrivateKeyOps,
+                                           actual_point: &Point,
+                                           expected_point: &TestPoint) {
+        let cops = ops.common;
+        let actual_x = &cops.point_x(&actual_point);
+        let actual_y = &cops.point_y(&actual_point);
+        let actual_z = &cops.point_z(&actual_point);
+        match expected_point {
+            &TestPoint::Infinity => {
+                let zero = Elem { limbs: [0; MAX_LIMBS] };
+                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_x),
+                                             &zero));
+                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_y),
+                                             &zero));
+                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_z),
+                                             &zero));
+            },
+            &TestPoint::Affine(ref expected_x, ref expected_y) => {
+                let z_inv = ops.elem_inverse(&actual_z);
+                let zz_inv = cops.elem_squared(&z_inv);
+                let x_aff =
+                    cops.elem_reduced(&cops.elem_product(&actual_x, &zz_inv));
+                let zzz_inv = cops.elem_product(&z_inv, &zz_inv);
+                let y_aff =
+                    cops.elem_reduced(&cops.elem_product(&actual_y, &zzz_inv));
+                assert!(cops.elems_are_equal(&x_aff, &expected_x));
+                assert!(cops.elems_are_equal(&y_aff, &expected_y));
+            }
+        }
+    }
+
+    fn consume_jacobian_point(ops: &PrivateKeyOps,
+                              test_case: &mut test::TestCase, name: &str)
+                              -> Point {
+        fn consume_point_elem(ops: &CommonOps, p: &mut Point,
+                              elems: &std::vec::Vec<&str>, i: usize) {
+            let bytes = test::from_hex(elems[i]).unwrap();
+            let bytes = untrusted::Input::from(&bytes);
+            let limbs =
+                parse_big_endian_value_in_range(
+                    bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap();
+            p.xyz[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
+                .copy_from_slice(&limbs[..ops.num_limbs]);
+        }
+
+        let input = test_case.consume_string(name);
+        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        assert_eq!(elems.len(), 3);
+        let mut p = Point::new_at_infinity();
+        consume_point_elem(ops.common, &mut p, &elems, 0);
+        consume_point_elem(ops.common, &mut p, &elems, 1);
+        consume_point_elem(ops.common, &mut p, &elems, 2);
+        p
+    }
+
+    enum TestPoint {
+        Infinity,
+        Affine(Elem, Elem),
+    }
+
+    fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase,
+                     name: &str) -> TestPoint {
+        fn consume_point_elem(ops: &CommonOps, elems: &std::vec::Vec<&str>,
+                              i: usize) -> Elem {
+            let bytes = test::from_hex(elems[i]).unwrap();
+            let bytes = untrusted::Input::from(&bytes);
+            Elem {
+                limbs:
+                    parse_big_endian_value_in_range(
+                        bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap()
+            }
+        }
+
+        let input = test_case.consume_string(name);
+        if input == "inf" {
+            return TestPoint::Infinity;
+        }
+        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        assert_eq!(elems.len(), 2);
+        let x = consume_point_elem(ops.common, &elems, 0);
+        let y = consume_point_elem(ops.common, &elems, 1);
+        TestPoint::Affine(x, y)
+    }
+
+    fn assert_limbs_are_equal(ops: &CommonOps, actual: &[Limb; MAX_LIMBS],
+                              expected: &[Limb; MAX_LIMBS]) {
+        for i in 0..ops.num_limbs {
+            if actual[i] != expected[i] {
+                let mut s = std::string::String::new();
+                for j in 0..ops.num_limbs {
+                    let formatted =
+                        format!("{:016x}",
+                                actual[ops.num_limbs - j - 1]);
+                    s.push_str(&formatted);
+                }
+                print!("\n");
+                panic!("Actual != Expected,\nActual = {}", s);
+            }
+        }
+    }
+
+    fn consume_elem_unreduced(ops: &CommonOps, test_case: &mut test::TestCase,
+                              name: &str) -> ElemUnreduced {
+        let bytes = test_case.consume_bytes(name);
+        let bytes = untrusted::Input::from(&bytes);
+        ElemUnreduced {
+            limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap()
+        }
+    }
+
+    fn consume_scalar(ops: &CommonOps, test_case: &mut test::TestCase,
+                      name: &str) -> Scalar {
+        let bytes = test_case.consume_bytes(name);
+        let bytes = untrusted::Input::from(&bytes);
+        Scalar {
+            limbs: parse_big_endian_value_in_range(
+                    bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap()
+        }
     }
 }
 
@@ -777,6 +1138,4 @@ macro_rules! bench_curve {
 
 
 pub mod p256;
-
-#[cfg(feature = "use_heap")]
 pub mod p384;

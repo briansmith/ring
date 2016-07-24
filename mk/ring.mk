@@ -35,16 +35,11 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cipher/e_aes.c \
   crypto/crypto.c \
   crypto/curve25519/curve25519.c \
-  crypto/ec/ec.c \
-  crypto/ec/ec_curves.c \
-  crypto/ec/ec_montgomery.c \
   crypto/ec/ecp_nistz.c \
   crypto/ec/ecp_nistz256.c \
   crypto/ec/gfp_constant_time.c \
   crypto/ec/gfp_p256.c \
   crypto/ec/gfp_p384.c \
-  crypto/ec/gfp_suite_b_public.c \
-  crypto/ec/simple.c \
   crypto/ec/wnaf.c \
   crypto/mem.c \
   crypto/modes/gcm.c \

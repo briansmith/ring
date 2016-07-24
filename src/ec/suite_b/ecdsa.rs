@@ -78,7 +78,8 @@ impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = try!(self.ops.twin_mult(&u1, &u2, &peer_pub_key));
+        let product = twin_mul(self.ops.private_key_ops, &u1, &u2,
+                               &peer_pub_key);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
@@ -184,10 +185,18 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
     Scalar::from_limbs_unchecked(&limbs)
 }
 
+fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
+            p_xy: &(Elem, Elem)) -> Point {
+    // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
+    let scaled_g = ops.point_mul_base(g_scalar);
+    let scaled_p = ops.point_mul(p_scalar, p_xy);
+    ops.common.point_sum(&scaled_g, &scaled_p)
+}
+
 
 macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $ecdsa_verify_ops:expr, $digest_alg:expr,
-      $doc_str:expr, $use_heap_note:expr ) => {
+      $doc_str:expr ) => {
         #[doc=$doc_str]
         ///
         /// Public keys are encoding in uncompressed form using the
@@ -207,8 +216,6 @@ macro_rules! ecdsa {
         /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
-        ///
-        #[doc=$use_heap_note]
         pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
                 signature::VerificationAlgorithm {
             implementation: &ECDSAVerification {
@@ -220,34 +227,22 @@ macro_rules! ecdsa {
 }
 
 ecdsa!(ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-1.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-1.");
 ecdsa!(ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-256.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-256.");
 ecdsa!(ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-384.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-384.");
 ecdsa!(ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-512.",
-       "");
+       "Verification of ECDSA signatures using the P-256 curve and SHA-512.");
 
-#[cfg(feature = "use_heap")]
 ecdsa!(ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-1.",
-       "Only available when the `use_heap` default feature is enabled.");
-#[cfg(feature = "use_heap")]
+       "Verification of ECDSA signatures using the P-384 curve and SHA-1.");
 ecdsa!(ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-256.",
-       "Only available when the `use_heap` default feature is enabled.");
-#[cfg(feature = "use_heap")]
+       "Verification of ECDSA signatures using the P-384 curve and SHA-256.");
 ecdsa!(ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-384.",
-       "Only available when the `use_heap` default feature is enabled.");
-#[cfg(feature = "use_heap")]
+       "Verification of ECDSA signatures using the P-384 curve and SHA-384.");
 ecdsa!(ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-512.",
-       "Only available when the `use_heap` default feature is enabled.");
+       "Verification of ECDSA signatures using the P-384 curve and SHA-512.");
 
 
 #[cfg(test)]
@@ -277,11 +272,8 @@ mod tests {
 
             let expected_result = test_case.consume_string("Result");
 
-            let alg =
-                match alg_from_curve_and_digest(&curve_name, &digest_name) {
-                None => { return Ok(()); },
-                Some((alg, _, _)) => alg,
-            };
+            let (alg, _, _) =
+                alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let actual_result = signature::verify(alg, public_key, msg, sig);
             assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
@@ -303,11 +295,8 @@ mod tests {
 
             let output = test_case.consume_bytes("Output");
 
-            let (ops, digest_alg) =
-                match alg_from_curve_and_digest(&curve_name, &digest_name) {
-                None => { return Ok(()); },
-                Some((_, ops, digest_alg)) => (ops, digest_alg)
-            };
+            let (_, ops, digest_alg) =
+                alg_from_curve_and_digest(&curve_name, &digest_name);
 
             let num_limbs = ops.public_key_ops.common.num_limbs;
             assert_eq!(input.len(), digest_alg.output_len);
@@ -326,64 +315,163 @@ mod tests {
         });
     }
 
-    fn alg_from_curve_and_digest(
-        curve_name: &str, digest_name: &str)
-        -> Option<(&'static signature::VerificationAlgorithm,
-                   &'static PublicScalarOps,
-                   &'static digest::Algorithm)> {
+    fn alg_from_curve_and_digest(curve_name: &str, digest_name: &str)
+                                 -> (&'static signature::VerificationAlgorithm,
+                                     &'static PublicScalarOps,
+                                     &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA1" {
-                Some((&signature::ECDSA_P256_SHA1_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA1))
+                (&signature::ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA1)
             } else if digest_name == "SHA256" {
-                Some((&signature::ECDSA_P256_SHA256_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA256))
+                (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256)
             } else if digest_name == "SHA384" {
-                Some((&signature::ECDSA_P256_SHA384_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA384))
+                (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384)
             } else if digest_name == "SHA512" {
-                Some((&signature::ECDSA_P256_SHA512_ASN1,
-                      &p256::PUBLIC_SCALAR_OPS, &digest::SHA512))
+                (&signature::ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
-            p384_alg_from_digest(digest_name)
+            if digest_name == "SHA1" {
+                (&signature::ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA1)
+            } else if digest_name == "SHA256" {
+                (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256)
+            } else if digest_name == "SHA384" {
+                (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384)
+            } else if digest_name == "SHA512" {
+                (&signature::ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA512)
+            } else {
+                panic!("Unsupported digest algorithm: {}", digest_name);
+            }
         } else {
             panic!("Unsupported curve: {}", curve_name);
         }
+    }
+}
 
+#[cfg(feature = "internal_benches")]
+mod benches {
+    use bench;
+    use {signature, test};
+    use untrusted;
+
+    #[bench]
+    fn ecdsa_verify_p256_bench(bench: &mut bench::Bencher) {
+        let pub_key_1 =
+            test::from_hex("04e424dc61d4bb3cb7ef4344a7f8957a0c5134e16f7a67c074\
+                            f82e6e12f49abf3c970eed7aa2bc48651545949de1dddaf012\
+                            7e5965ac85d1243d6f60e7dfaee927").unwrap();
+        let msg_1 =
+            test::from_hex("e1130af6a38ccb412a9c8d13e15dbfc9e69a16385af3c3f1e5\
+                            da954fd5e7c45fd75e2b8c36699228e92840c0562fbf3772f0\
+                            7e17f1add56588dd45f7450e1217ad239922dd9c32695dc71f\
+                            f2424ca0dec1321aa47064a044b7fe3c2b97d03ce470a59230\
+                            4c5ef21eed9f93da56bb232d1eeb0035f9bf0dfafdcc460627\
+                            2b20a3").unwrap();
+        let sig_1 =
+            test::from_hex("3045022100bf96b99aa49c705c910be33142017c642ff540c7\
+                            6349b9dab72f981fd9347f4f022017c55095819089c2e03b9c\
+                            d415abdf12444e323075d98f31920b9e0f57ec871c")
+                           .unwrap();
+
+        let pub_key_2 =
+            test::from_hex("04e0fc6a6f50e1c57475673ee54e3a57f9a49f3328e743bf52\
+                            f335e3eeaa3d28647f59d689c91e463607d9194d99faf316e2\
+                            5432870816dde63f5d4b373f12f22a").unwrap();
+        let msg_2 =
+            test::from_hex("73c5f6a67456ae48209b5f85d1e7de7758bf235300c6ae2bdc\
+                            eb1dcb27a7730fb68c950b7fcada0ecc4661d3578230f225a8\
+                            75e69aaa17f1e71c6be5c831f22663bac63d0c7a9635edb004\
+                            3ff8c6f26470f02a7bc56556f1437f06dfa27b487a6c4290d8\
+                            bad38d4879b334e341ba092dde4e4ae694a9c09302e2dbf443\
+                            581c08").unwrap();
+        let sig_2 =
+            test::from_hex("304502201d75830cd36f4c9aa181b2c4221e87f176b7f05b7c\
+                            87824e82e396c88315c407022100cb2acb01dac96efc53a32d\
+                            4a0d85d0c2e48955214783ecf50a4f0414a319c05a")
+                           .unwrap();
+
+        let vectors = [
+            (untrusted::Input::from(&pub_key_1),
+             untrusted::Input::from(&msg_1),
+             untrusted::Input::from(&sig_1)),
+            (untrusted::Input::from(&pub_key_2),
+             untrusted::Input::from(&msg_2),
+             untrusted::Input::from(&sig_2)),
+        ];
+        let mut i = 0;
+        bench.iter(|| {
+            let (pub_key, msg, sig) = vectors[i];
+            i = (i + 1) % vectors.len();
+            assert!(signature::verify(&signature::ECDSA_P256_SHA256_ASN1,
+                                      pub_key, msg, sig).is_ok());
+        });
     }
 
-    #[cfg(feature = "use_heap")]
-    fn p384_alg_from_digest(
-        digest_name: &str)
-        -> Option<(&'static signature::VerificationAlgorithm,
-                   &'static PublicScalarOps,
-                   &'static digest::Algorithm)> {
-        if digest_name == "SHA1" {
-            Some((&signature::ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA1))
-        } else if digest_name == "SHA256" {
-            Some((&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256))
-        } else if digest_name == "SHA384" {
-            Some((&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384))
-        } else if digest_name == "SHA512" {
-            Some((&signature::ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA512))
-        } else {
-            panic!("Unsupported digest algorithm: {}", digest_name);
-        }
-    }
+    #[bench]
+    fn ecdsa_verify_p384_bench(bench: &mut bench::Bencher) {
+        let pub_key_1 =
+            test::from_hex("04cb908b1fd516a57b8ee1e14383579b33cb154fece20c5035\
+                            e2b3765195d1951d75bd78fb23e00fef37d7d064fd9af144cd\
+                            99c46b5857401ddcff2cf7cf822121faf1cbad9a011bed8c55\
+                            1f6f59b2c360f79bfbe32adbcaa09583bdfdf7c374bb")
+                            .unwrap();
+        let msg_1 =
+            test::from_hex("9dd789ea25c04745d57a381f22de01fb0abd3c72dbdefd44e4\
+                            3213c189583eef85ba662044da3de2dd8670e6325154480155\
+                            bbeebb702c75781ac32e13941860cb576fe37a05b757da5b5b\
+                            418f6dd7c30b042e40f4395a342ae4dce05634c33625e2bc52\
+                            4345481f7e253d9551266823771b251705b4a85166022a37ac\
+                            28f1bd").unwrap();
+        let sig_1 =
+            test::from_hex("3064023033f64fb65cd6a8918523f23aea0bbcf56bba1daca7\
+                            aff817c8791dc92428d605ac629de2e847d43cee55ba9e4a0e\
+                            83ba02304428bb478a43ac73ecd6de51ddf7c28ff3c2441625\
+                            a081714337dd44fea8011bae71959a10947b6ea33f77e128d3\
+                            c6ae").unwrap();
 
-    #[cfg(not(feature = "use_heap"))]
-    fn p384_alg_from_digest(
-        _digest_name: &str)
-        -> Option<(&'static signature::VerificationAlgorithm,
-                   &'static PublicScalarOps,
-                   &'static digest::Algorithm)> {
-        None
+        let pub_key_2 =
+            test::from_hex("04a370cdbef95d1df5bf68ec487122514a107db87df3f88520\
+                            68fd4694abcadb9b14302c72491a76a64442fc07bd99f02cd3\
+                            97c25dc1a5781573d039f2520cf329bf65120fdbe964b6b801\
+                            01160e533d5570e62125b9f3276c49244b8d0f3e44ec")
+                            .unwrap();
+        let msg_2 =
+            test::from_hex("93e7e75cfaf3fa4e71df80f7f8c0ef6672a630d2dbeba1d613\
+                            49acbaaa476f5f0e34dccbd85b9a815d908203313a22fe3e91\
+                            9504cb222d623ad95662ea4a90099742c048341fe3a7a51110\
+                            d30ad3a48a777c6347ea8b71749316e0dd1902facb304a7632\
+                            4b71f3882e6e70319e13fc2bb9f3f5dbb9bd2cc7265f52dfc0\
+                            a3bb91").unwrap();
+        let sig_2 =
+            test::from_hex("3065023100c6c7bb516cc3f37a304328d136b2f44bb89d3dac\
+                            78f1f5bcd36b412a8b4d879f6cdb75175292c696b58bfa9c91\
+                            fe639102306b711425e1b14f7224cd4b96717a84d65a60ec99\
+                            51a30152ea1dd3b6ea66a0088d1fd3e9a1ef069804b7d96914\
+                            8c37a0").unwrap();
+
+        let vectors = [
+            (untrusted::Input::from(&pub_key_1),
+             untrusted::Input::from(&msg_1),
+             untrusted::Input::from(&sig_1)),
+            (untrusted::Input::from(&pub_key_2),
+             untrusted::Input::from(&msg_2),
+             untrusted::Input::from(&sig_2)),
+        ];
+        let mut i = 0;
+        bench.iter(|| {
+            let (pub_key, msg, sig) = vectors[i];
+            i = (i + 1) % vectors.len();
+            assert!(signature::verify(&signature::ECDSA_P384_SHA384_ASN1,
+                                      pub_key, msg, sig).is_ok());
+        });
     }
 }

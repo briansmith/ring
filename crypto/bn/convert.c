@@ -111,18 +111,6 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   return ret;
 }
 
-size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
-  size_t n, i;
-  BN_ULONG l;
-
-  n = i = BN_num_bytes(in);
-  while (i--) {
-    l = in->d[i / BN_BYTES];
-    *(out++) = (unsigned char)(l >> (8 * (i % BN_BYTES))) & 0xff;
-  }
-  return n;
-}
-
 /* constant_time_select_ulong returns |x| if |v| is 1 and |y| if |v| is 0. Its
  * behavior is undefined if |v| takes any other value. */
 static BN_ULONG constant_time_select_ulong(int v, BN_ULONG x, BN_ULONG y) {
