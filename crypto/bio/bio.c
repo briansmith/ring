@@ -68,25 +68,6 @@
 #include "../internal.h"
 
 
-/* BIO_set initialises a BIO structure to have the given type and sets the
- * reference count to one. It returns one on success or zero on error. */
-static int bio_set(BIO *bio, const BIO_METHOD *method) {
-  /* This function can be called with a stack allocated |BIO| so we have to
-   * assume that the contents of |BIO| are arbitary. This also means that it'll
-   * leak memory if you call |BIO_set| twice on the same BIO. */
-  memset(bio, 0, sizeof(BIO));
-
-  bio->method = method;
-  bio->shutdown = 1;
-  bio->references = 1;
-
-  if (method->create != NULL && !method->create(bio)) {
-    return 0;
-  }
-
-  return 1;
-}
-
 BIO *BIO_new(const BIO_METHOD *method) {
   BIO *ret = OPENSSL_malloc(sizeof(BIO));
   if (ret == NULL) {
@@ -94,9 +75,14 @@ BIO *BIO_new(const BIO_METHOD *method) {
     return NULL;
   }
 
-  if (!bio_set(ret, method)) {
+  memset(ret, 0, sizeof(BIO));
+  ret->method = method;
+  ret->shutdown = 1;
+  ret->references = 1;
+
+  if (method->create != NULL && !method->create(ret)) {
     OPENSSL_free(ret);
-    ret = NULL;
+    return NULL;
   }
 
   return ret;
