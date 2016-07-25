@@ -275,11 +275,9 @@ int DH_generate_key(DH *dh) {
 
   if (generate_new_key) {
     if (dh->q) {
-      do {
-        if (!BN_rand_range(priv_key, dh->q)) {
-          goto err;
-        }
-      } while (BN_is_zero(priv_key) || BN_is_one(priv_key));
+      if (!BN_rand_range_ex(priv_key, 2, dh->q)) {
+        goto err;
+      }
     } else {
       /* secret exponent length */
       DH_check_standard_parameters(dh);

@@ -181,16 +181,17 @@ int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   return BN_rand(rnd, bits, top, bottom);
 }
 
-int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
+int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
+                     const BIGNUM *max_exclusive) {
   unsigned n;
   unsigned count = 100;
 
-  if (range->neg || BN_is_zero(range)) {
+  if (BN_cmp_word(max_exclusive, min_inclusive) <= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
   }
 
-  n = BN_num_bits(range); /* n > 0 */
+  n = BN_num_bits(max_exclusive); /* n > 0 */
 
   /* BN_is_bit_set(range, n - 1) always holds */
   if (n == 1) {
@@ -204,7 +205,8 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
       return 0;
     }
 
-    if (!BN_is_bit_set(range, n - 2) && !BN_is_bit_set(range, n - 3)) {
+    if (!BN_is_bit_set(max_exclusive, n - 2) &&
+        !BN_is_bit_set(max_exclusive, n - 3)) {
       /* range = 100..._2, so 3*range (= 11..._2) is exactly one bit longer
        * than range. This is a common scenario when generating a random value
        * modulo an RSA public modulus, e.g. for RSA base blinding. */
@@ -216,12 +218,12 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
       /* If r < 3*range, use r := r MOD range (which is either r, r - range, or
        * r - 2*range). Otherwise, iterate again. Since 3*range = 11..._2, each
        * iteration succeeds with probability >= .75. */
-      if (BN_cmp(r, range) >= 0) {
-        if (!BN_sub(r, r, range)) {
+      if (BN_cmp(r, max_exclusive) >= 0) {
+        if (!BN_sub(r, r, max_exclusive)) {
           return 0;
         }
-        if (BN_cmp(r, range) >= 0) {
-          if (!BN_sub(r, r, range)) {
+        if (BN_cmp(r, max_exclusive) >= 0) {
+          if (!BN_sub(r, r, max_exclusive)) {
             return 0;
           }
         }
@@ -232,9 +234,14 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
         return 0;
       }
     }
-  } while (BN_cmp(r, range) >= 0);
+  } while (BN_cmp_word(r, min_inclusive) < 0 ||
+           BN_cmp(r, max_exclusive) >= 0);
 
   return 1;
+}
+
+int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
+  return BN_rand_range_ex(r, 0, range);
 }
 
 int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {

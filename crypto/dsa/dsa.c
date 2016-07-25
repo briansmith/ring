@@ -425,11 +425,9 @@ int DSA_generate_key(DSA *dsa) {
     }
   }
 
-  do {
-    if (!BN_rand_range(priv_key, dsa->q)) {
-      goto err;
-    }
-  } while (BN_is_zero(priv_key));
+  if (!BN_rand_range_ex(priv_key, 1, dsa->q)) {
+    goto err;
+  }
 
   pub_key = dsa->pub_key;
   if (pub_key == NULL) {
@@ -818,11 +816,9 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
   }
 
   /* Get random k */
-  do {
-    if (!BN_rand_range(&k, dsa->q)) {
-      goto err;
-    }
-  } while (BN_is_zero(&k));
+  if (!BN_rand_range_ex(&k, 1, dsa->q)) {
+    goto err;
+  }
 
   BN_set_flags(&k, BN_FLG_CONSTTIME);
 

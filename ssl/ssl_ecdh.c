@@ -59,12 +59,9 @@ static int ssl_ec_point_offer(SSL_ECDH_CTX *ctx, CBB *out) {
   }
 
   /* Generate a private key. */
-  const BIGNUM *order = EC_GROUP_get0_order(group);
-  do {
-    if (!BN_rand_range(private_key, order)) {
-      goto err;
-    }
-  } while (BN_is_zero(private_key));
+  if (!BN_rand_range_ex(private_key, 1, EC_GROUP_get0_order(group))) {
+    goto err;
+  }
 
   /* Compute the corresponding public key and serialize it. */
   public_key = EC_POINT_new(group);

@@ -263,20 +263,18 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
     /* If possible, we'll include the private key and message digest in the k
      * generation. The |digest| argument is only empty if |ECDSA_sign_setup| is
      * being used. */
-    do {
-      int ok;
-
-      if (digest_len > 0) {
-        ok = BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
-                                   digest, digest_len, ctx);
-      } else {
-        ok = BN_rand_range(k, order);
-      }
-      if (!ok) {
-        OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
-        goto err;
-      }
-    } while (BN_is_zero(k));
+    if (digest_len > 0) {
+      do {
+        if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
+                                   digest, digest_len, ctx)) {
+          OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
+          goto err;
+        }
+      } while (BN_is_zero(k));
+    } else if (!BN_rand_range_ex(k, 1, order)) {
+      OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
+      goto err;
+    }
 
     /* We do not want timing information to leak the length of k,
      * so we compute G*k using an equivalent scalar of fixed
