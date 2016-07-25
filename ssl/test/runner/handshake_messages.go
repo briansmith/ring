@@ -4,7 +4,10 @@
 
 package runner
 
-import "bytes"
+import (
+	"bytes"
+	"encoding/binary"
+)
 
 func writeLen(buf []byte, v, size int) {
 	for i := 0; i < size; i++ {
@@ -67,6 +70,13 @@ func (bb *byteBuilder) addU32(u uint32) {
 	*bb.buf = append(*bb.buf, byte(u>>24), byte(u>>16), byte(u>>8), byte(u))
 }
 
+func (bb *byteBuilder) addU64(u uint64) {
+	bb.flush()
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], u)
+	*bb.buf = append(*bb.buf, b[:]...)
+}
+
 func (bb *byteBuilder) addU8LengthPrefixed() *byteBuilder {
 	return bb.createChild(1)
 }
@@ -77,6 +87,10 @@ func (bb *byteBuilder) addU16LengthPrefixed() *byteBuilder {
 
 func (bb *byteBuilder) addU24LengthPrefixed() *byteBuilder {
 	return bb.createChild(3)
+}
+
+func (bb *byteBuilder) addU32LengthPrefixed() *byteBuilder {
+	return bb.createChild(4)
 }
 
 func (bb *byteBuilder) addBytes(b []byte) {

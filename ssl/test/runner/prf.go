@@ -497,3 +497,11 @@ func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret, phase []byte,
 func updateTrafficSecret(hash crypto.Hash, secret []byte) []byte {
 	return hkdfExpandLabel(hash, secret, applicationTrafficLabel, nil, hash.Size())
 }
+
+func deriveResumptionPSK(suite *cipherSuite, resumptionSecret []byte) []byte {
+	return hkdfExpandLabel(suite.hash(), resumptionSecret, []byte("resumption psk"), nil, suite.hash().Size())
+}
+
+func deriveResumptionContext(suite *cipherSuite, resumptionSecret []byte) []byte {
+	return hkdfExpandLabel(suite.hash(), resumptionSecret, []byte("resumption context"), nil, suite.hash().Size())
+}

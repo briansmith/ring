@@ -101,6 +101,27 @@ func (cs cipherSuite) hash() crypto.Hash {
 	return crypto.SHA256
 }
 
+// TODO(nharper): Remove this function when TLS 1.3 cipher suites get
+// refactored to break out the AEAD/PRF from everything else. Once that's
+// done, this won't be necessary anymore.
+func ecdhePSKSuite(id uint16) uint16 {
+	switch id {
+	case TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+		TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256:
+		return TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256
+	case TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256:
+		return TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256
+	case TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384:
+		return TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384
+	}
+	return 0
+}
+
 var cipherSuites = []*cipherSuite{
 	// Ciphersuite order is chosen so that ECDHE comes before plain RSA
 	// and RC4 comes before AES (because of the Lucky13 attack).

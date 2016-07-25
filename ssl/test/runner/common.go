@@ -28,7 +28,7 @@ const (
 
 // The draft version of TLS 1.3 that is implemented here and sent in the draft
 // indicator extension.
-const tls13DraftVersion = 13
+const tls13DraftVersion = 14
 
 const (
 	maxPlaintext        = 16384        // maximum plaintext payload length
@@ -242,6 +242,10 @@ type ClientSessionState struct {
 	extendedMasterSecret bool                // Whether an extended master secret was used to generate the session
 	sctList              []byte
 	ocspResponse         []byte
+	ticketCreationTime   time.Time
+	ticketExpiration     time.Time
+	ticketFlags          uint32
+	ticketAgeAdd         uint32
 }
 
 // ClientSessionCache is a cache of ClientSessionState objects that can be used

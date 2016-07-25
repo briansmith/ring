@@ -41,6 +41,7 @@ const (
 	alertNoRenegotiation        alert = 100
 	alertMissingExtension       alert = 109
 	alertUnsupportedExtension   alert = 110
+	alertUnknownPSKIdentity     alert = 115
 )
 
 var alertText = map[alert]string{
@@ -69,6 +70,7 @@ var alertText = map[alert]string{
 	alertNoRenegotiation:        "no renegotiation",
 	alertMissingExtension:       "missing extension",
 	alertUnsupportedExtension:   "unsupported extension",
+	alertUnknownPSKIdentity:     "unknown PSK identity",
 }
 
 func (e alert) String() string {

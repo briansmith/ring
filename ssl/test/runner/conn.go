@@ -1389,6 +1389,10 @@ func (c *Conn) handlePostHandshakeMessage() error {
 				serverCertificates: c.peerCertificates,
 				sctList:            c.sctList,
 				ocspResponse:       c.ocspResponse,
+				ticketCreationTime: c.config.time(),
+				ticketExpiration:   c.config.time().Add(time.Duration(newSessionTicket.ticketLifetime) * time.Second),
+				ticketFlags:        newSessionTicket.ticketFlags,
+				ticketAgeAdd:       newSessionTicket.ticketAgeAdd,
 			}
 
 			cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
@@ -1667,11 +1671,10 @@ func (c *Conn) SendNewSessionTicket() error {
 	for _, cert := range c.peerCertificates {
 		peerCertificatesRaw = append(peerCertificatesRaw, cert.Raw)
 	}
-	state := sessionState{
-		vers:         c.vers,
-		cipherSuite:  c.cipherSuite.id,
-		masterSecret: c.resumptionSecret,
-		certificates: peerCertificatesRaw,
+
+	var ageAdd uint32
+	if err := binary.Read(c.config.rand(), binary.LittleEndian, &ageAdd); err != nil {
+		return err
 	}
 
 	// TODO(davidben): Allow configuring these values.
@@ -1679,7 +1682,20 @@ func (c *Conn) SendNewSessionTicket() error {
 		version:        c.vers,
 		ticketLifetime: uint32(24 * time.Hour / time.Second),
 		ticketFlags:    ticketAllowDHEResumption | ticketAllowPSKResumption,
+		ticketAgeAdd:   ageAdd,
 	}
+
+	state := sessionState{
+		vers:               c.vers,
+		cipherSuite:        c.cipherSuite.id,
+		masterSecret:       c.resumptionSecret,
+		certificates:       peerCertificatesRaw,
+		ticketCreationTime: c.config.time(),
+		ticketExpiration:   c.config.time().Add(time.Duration(m.ticketLifetime) * time.Second),
+		ticketFlags:        m.ticketFlags,
+		ticketAgeAdd:       ageAdd,
+	}
+
 	if !c.config.Bugs.SendEmptySessionTicket {
 		var err error
 		m.ticket, err = c.encryptTicket(&state)

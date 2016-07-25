@@ -18,6 +18,7 @@ import (
 	"math/big"
 	"net"
 	"strconv"
+	"time"
 )
 
 type clientHandshakeState struct {
@@ -197,6 +198,8 @@ NextCipherSuite:
 		// Try to resume a previously negotiated TLS session, if
 		// available.
 		cacheKey = clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
+		// TODO(nharper): Support storing more than one session
+		// ticket for TLS 1.3.
 		candidateSession, ok := sessionCache.Get(cacheKey)
 		if ok {
 			ticketOk := !c.config.SessionTicketsDisabled || candidateSession.sessionTicket == nil
@@ -219,7 +222,7 @@ NextCipherSuite:
 		}
 	}
 
-	if session != nil {
+	if session != nil && c.config.time().Before(session.ticketExpiration) {
 		ticket := session.sessionTicket
 		if c.config.Bugs.CorruptTicket && len(ticket) > 0 {
 			ticket = make([]byte, len(session.sessionTicket))
@@ -232,7 +235,21 @@ NextCipherSuite:
 		}
 
 		if session.vers >= VersionTLS13 {
-			// TODO(davidben): Offer TLS 1.3 tickets.
+			// TODO(nharper): Support sending more
+			// than one PSK identity.
+			if session.ticketFlags&ticketAllowDHEResumption != 0 {
+				var found bool
+				for _, id := range hello.cipherSuites {
+					if id == session.cipherSuite {
+						found = true
+						break
+					}
+				}
+				if found {
+					hello.pskIdentities = [][]uint8{ticket}
+					hello.cipherSuites = append(hello.cipherSuites, ecdhePSKSuite(session.cipherSuite))
+				}
+			}
 		} else if ticket != nil {
 			hello.sessionTicket = ticket
 			// A random session ID is used to detect when the
@@ -411,7 +428,7 @@ NextCipherSuite:
 		}
 	}
 
-	suite := mutualCipherSuite(c.config.cipherSuites(), serverHello.cipherSuite)
+	suite := mutualCipherSuite(hello.cipherSuites, serverHello.cipherSuite)
 	if suite == nil {
 		c.sendAlert(alertHandshakeFailure)
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
@@ -546,9 +563,18 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			return errors.New("tls: server omitted the PSK identity extension")
 		}
 
-		// TODO(davidben): Support PSK ciphers and PSK resumption. Set
-		// the resumption context appropriately if resuming.
-		return errors.New("tls: PSK ciphers not implemented for TLS 1.3")
+		// We send at most one PSK identity.
+		if hs.session == nil || hs.serverHello.pskIdentity != 0 {
+			c.sendAlert(alertUnknownPSKIdentity)
+			return errors.New("tls: server sent unknown PSK identity")
+		}
+		if ecdhePSKSuite(hs.session.cipherSuite) != hs.suite.id {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: server sent invalid cipher suite for PSK")
+		}
+		psk = deriveResumptionPSK(hs.suite, hs.session.masterSecret)
+		hs.finishedHash.setResumptionContext(deriveResumptionContext(hs.suite, hs.session.masterSecret))
+		c.didResume = true
 	} else {
 		if hs.serverHello.hasPSKIdentity {
 			c.sendAlert(alertUnsupportedExtension)
@@ -626,6 +652,11 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			c.sendAlert(alertUnsupportedExtension)
 			return errors.New("tls: server sent SCT list without a certificate")
 		}
+
+		// Copy over authentication from the session.
+		c.peerCertificates = hs.session.serverCertificates
+		c.sctList = hs.session.sctList
+		c.ocspResponse = hs.session.ocspResponse
 	} else {
 		c.ocspResponse = encryptedExtensions.extensions.ocspResponse
 		c.sctList = encryptedExtensions.extensions.sctList
@@ -1223,6 +1254,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		serverCertificates: c.peerCertificates,
 		sctList:            c.sctList,
 		ocspResponse:       c.ocspResponse,
+		ticketExpiration:   c.config.time().Add(time.Duration(7 * 24 * time.Hour)),
 	}
 
 	if !hs.serverHello.extensions.ticketSupported {

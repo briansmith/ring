@@ -5,14 +5,15 @@
 package runner
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/binary"
 	"errors"
 	"io"
+	"time"
 )
 
 // sessionState contains the information that is serialized into a session
@@ -24,79 +25,40 @@ type sessionState struct {
 	handshakeHash        []byte
 	certificates         [][]byte
 	extendedMasterSecret bool
-}
-
-func (s *sessionState) equal(i interface{}) bool {
-	s1, ok := i.(*sessionState)
-	if !ok {
-		return false
-	}
-
-	if s.vers != s1.vers ||
-		s.cipherSuite != s1.cipherSuite ||
-		!bytes.Equal(s.masterSecret, s1.masterSecret) ||
-		!bytes.Equal(s.handshakeHash, s1.handshakeHash) ||
-		s.extendedMasterSecret != s1.extendedMasterSecret {
-		return false
-	}
-
-	if len(s.certificates) != len(s1.certificates) {
-		return false
-	}
-
-	for i := range s.certificates {
-		if !bytes.Equal(s.certificates[i], s1.certificates[i]) {
-			return false
-		}
-	}
-
-	return true
+	ticketCreationTime   time.Time
+	ticketExpiration     time.Time
+	ticketFlags          uint32
+	ticketAgeAdd         uint32
 }
 
 func (s *sessionState) marshal() []byte {
-	length := 2 + 2 + 2 + len(s.masterSecret) + 2 + len(s.handshakeHash) + 2
+	msg := newByteBuilder()
+	msg.addU16(s.vers)
+	msg.addU16(s.cipherSuite)
+	masterSecret := msg.addU16LengthPrefixed()
+	masterSecret.addBytes(s.masterSecret)
+	handshakeHash := msg.addU16LengthPrefixed()
+	handshakeHash.addBytes(s.handshakeHash)
+	msg.addU16(uint16(len(s.certificates)))
 	for _, cert := range s.certificates {
-		length += 4 + len(cert)
-	}
-	length++
-
-	ret := make([]byte, length)
-	x := ret
-	x[0] = byte(s.vers >> 8)
-	x[1] = byte(s.vers)
-	x[2] = byte(s.cipherSuite >> 8)
-	x[3] = byte(s.cipherSuite)
-	x[4] = byte(len(s.masterSecret) >> 8)
-	x[5] = byte(len(s.masterSecret))
-	x = x[6:]
-	copy(x, s.masterSecret)
-	x = x[len(s.masterSecret):]
-
-	x[0] = byte(len(s.handshakeHash) >> 8)
-	x[1] = byte(len(s.handshakeHash))
-	x = x[2:]
-	copy(x, s.handshakeHash)
-	x = x[len(s.handshakeHash):]
-
-	x[0] = byte(len(s.certificates) >> 8)
-	x[1] = byte(len(s.certificates))
-	x = x[2:]
-
-	for _, cert := range s.certificates {
-		x[0] = byte(len(cert) >> 24)
-		x[1] = byte(len(cert) >> 16)
-		x[2] = byte(len(cert) >> 8)
-		x[3] = byte(len(cert))
-		copy(x[4:], cert)
-		x = x[4+len(cert):]
+		certMsg := msg.addU32LengthPrefixed()
+		certMsg.addBytes(cert)
 	}
 
 	if s.extendedMasterSecret {
-		x[0] = 1
+		msg.addU8(1)
+	} else {
+		msg.addU8(0)
 	}
-	x = x[1:]
 
-	return ret
+	if s.vers >= VersionTLS13 {
+		msg.addU64(uint64(s.ticketCreationTime.UnixNano()))
+		msg.addU64(uint64(s.ticketExpiration.UnixNano()))
+		msg.addU32(s.ticketFlags)
+		msg.addU32(s.ticketAgeAdd)
+	}
+
+	return msg.finish()
 }
 
 func (s *sessionState) unmarshal(data []byte) bool {
@@ -161,6 +123,20 @@ func (s *sessionState) unmarshal(data []byte) bool {
 		s.extendedMasterSecret = true
 	}
 	data = data[1:]
+
+	if s.vers >= VersionTLS13 {
+		if len(data) < 24 {
+			return false
+		}
+		s.ticketCreationTime = time.Unix(0, int64(binary.BigEndian.Uint64(data)))
+		data = data[8:]
+		s.ticketExpiration = time.Unix(0, int64(binary.BigEndian.Uint64(data)))
+		data = data[8:]
+		s.ticketFlags = binary.BigEndian.Uint32(data)
+		data = data[4:]
+		s.ticketAgeAdd = binary.BigEndian.Uint32(data)
+		data = data[4:]
+	}
 
 	if len(data) > 0 {
 		return false

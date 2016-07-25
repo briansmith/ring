@@ -305,22 +305,54 @@ Curves:
 
 	_, ecdsaOk := hs.cert.PrivateKey.(*ecdsa.PrivateKey)
 
-	// TODO(davidben): Implement PSK support.
-	pskOk := false
-
-	// Select the cipher suite.
-	var preferenceList, supportedList []uint16
-	if config.PreferServerCipherSuites {
-		preferenceList = config.cipherSuites()
-		supportedList = hs.clientHello.cipherSuites
-	} else {
-		preferenceList = hs.clientHello.cipherSuites
-		supportedList = config.cipherSuites()
+	for i, pskIdentity := range hs.clientHello.pskIdentities {
+		sessionState, ok := c.decryptTicket(pskIdentity)
+		if !ok {
+			continue
+		}
+		if sessionState.vers != c.vers {
+			continue
+		}
+		if sessionState.ticketFlags&ticketAllowDHEResumption == 0 {
+			continue
+		}
+		if sessionState.ticketExpiration.Before(c.config.time()) {
+			continue
+		}
+		suiteId := ecdhePSKSuite(sessionState.cipherSuite)
+		suite := mutualCipherSuite(hs.clientHello.cipherSuites, suiteId)
+		var found bool
+		for _, id := range config.cipherSuites() {
+			if id == sessionState.cipherSuite {
+				found = true
+				break
+			}
+		}
+		if suite != nil && found {
+			hs.sessionState = sessionState
+			hs.suite = suite
+			hs.hello.hasPSKIdentity = true
+			hs.hello.pskIdentity = uint16(i)
+			c.didResume = true
+			break
+		}
 	}
 
-	for _, id := range preferenceList {
-		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, supportedCurve, ecdsaOk, pskOk); hs.suite != nil {
-			break
+	// If not resuming, select the cipher suite.
+	if hs.suite == nil {
+		var preferenceList, supportedList []uint16
+		if config.PreferServerCipherSuites {
+			preferenceList = config.cipherSuites()
+			supportedList = hs.clientHello.cipherSuites
+		} else {
+			preferenceList = hs.clientHello.cipherSuites
+			supportedList = config.cipherSuites()
+		}
+
+		for _, id := range preferenceList {
+			if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, supportedCurve, ecdsaOk, false); hs.suite != nil {
+				break
+			}
 		}
 	}
 
@@ -339,9 +371,19 @@ Curves:
 	hs.writeClientHash(hs.clientHello.marshal())
 
 	// Resolve PSK and compute the early secret.
-	// TODO(davidben): Implement PSK in TLS 1.3.
-	psk := hs.finishedHash.zeroSecret()
-	hs.finishedHash.setResumptionContext(hs.finishedHash.zeroSecret())
+	var psk []byte
+	// The only way for hs.suite to be a PSK suite yet for there to be
+	// no sessionState is if config.Bugs.EnableAllCiphers is true and
+	// the test runner forced us to negotiated a PSK suite. It doesn't
+	// really matter what we do here so long as we continue the
+	// handshake and let the client error out.
+	if hs.suite.flags&suitePSK != 0 && hs.sessionState != nil {
+		psk = deriveResumptionPSK(hs.suite, hs.sessionState.masterSecret)
+		hs.finishedHash.setResumptionContext(deriveResumptionContext(hs.suite, hs.sessionState.masterSecret))
+	} else {
+		psk = hs.finishedHash.zeroSecret()
+		hs.finishedHash.setResumptionContext(hs.finishedHash.zeroSecret())
+	}
 
 	earlySecret := hs.finishedHash.extractKey(hs.finishedHash.zeroSecret(), psk)
 
@@ -494,9 +536,7 @@ Curves:
 	c.out.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite)
 	c.in.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite)
 
-	if hs.suite.flags&suitePSK != 0 {
-		return errors.New("tls: PSK ciphers not implemented for TLS 1.3")
-	} else {
+	if hs.suite.flags&suitePSK == 0 {
 		if hs.clientHello.ocspStapling {
 			encryptedExtensions.extensions.ocspResponse = hs.cert.OCSPStaple
 		}
@@ -574,6 +614,15 @@ Curves:
 
 		hs.writeServerHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
+	} else {
+		// Pick up certificates from the session instead.
+		// hs.sessionState may be nil if config.Bugs.EnableAllCiphers is
+		// true.
+		if hs.sessionState != nil && len(hs.sessionState.certificates) > 0 {
+			if _, err := hs.processCertsFromClient(hs.sessionState.certificates); err != nil {
+				return err
+			}
+		}
 	}
 
 	finished := new(finishedMsg)
