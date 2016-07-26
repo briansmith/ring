@@ -1017,6 +1017,17 @@ static int DoShutdown(SSL *ssl) {
   return ret;
 }
 
+// DoSendFatalAlert calls |SSL_send_fatal_alert|, resolving any asynchronous
+// operations. It returns the result of the final |SSL_send_fatal_alert| call.
+static int DoSendFatalAlert(SSL *ssl, uint8_t alert) {
+  const TestConfig *config = GetTestConfig(ssl);
+  int ret;
+  do {
+    ret = SSL_send_fatal_alert(ssl, alert);
+  } while (config->async && RetryAsync(ssl, ret));
+  return ret;
+}
+
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
@@ -1470,6 +1481,13 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     if (WriteAll(ssl.get(), tls_unique, tls_unique_len) < 0) {
       return false;
     }
+  }
+
+  if (config->send_alert) {
+    if (DoSendFatalAlert(ssl.get(), SSL_AD_DECOMPRESSION_FAILURE) < 0) {
+      return false;
+    }
+    return true;
   }
 
   if (config->write_different_record_sizes) {

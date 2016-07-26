@@ -3335,6 +3335,14 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		})
 	}
 
+	tests = append(tests, testCase{
+		name:               "ShimSendAlert",
+		flags:              []string{"-send-alert"},
+		shimWritesFirst:    true,
+		shouldFail:         true,
+		expectedLocalError: "remote error: decompression failure",
+	})
+
 	if config.protocol == tls {
 		tests = append(tests, testCase{
 			name: "Renegotiate-Client",

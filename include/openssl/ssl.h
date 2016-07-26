@@ -2687,6 +2687,16 @@ OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
  * alert description or "unknown" if unknown. */
 OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
 
+/* SSL_send_fatal_alert sends a fatal alert over |ssl| of the specified type,
+ * which should be one of the |SSL_AD_*| constants. It returns one on success
+ * and <= 0 on error. The caller should pass the return value into
+ * |SSL_get_error| to determine how to proceed. Once this function has been
+ * called, future calls to |SSL_write| will fail.
+ *
+ * If retrying a failed operation due to |SSL_ERROR_WANT_WRITE|, subsequent
+ * calls must use the same |alert| parameter. */
+OPENSSL_EXPORT int SSL_send_fatal_alert(SSL *ssl, uint8_t alert);
+
 
 /* ex_data functions.
  *

@@ -737,6 +737,20 @@ int SSL_shutdown(SSL *ssl) {
   return ssl->s3->recv_shutdown == ssl_shutdown_close_notify;
 }
 
+int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
+  if (ssl->s3->alert_dispatch) {
+    if (ssl->s3->send_alert[0] != SSL3_AL_FATAL ||
+        ssl->s3->send_alert[1] != alert) {
+      /* We are already attempting to write a different alert. */
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+      return -1;
+    }
+    return ssl->method->dispatch_alert(ssl);
+  }
+
+  return ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+}
+
 int SSL_get_error(const SSL *ssl, int ret_code) {
   int reason;
   uint32_t err;
