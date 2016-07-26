@@ -195,10 +195,19 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
   /* BN_is_bit_set(range, n - 1) always holds */
   if (n == 1) {
     BN_zero(r);
-  } else if (!BN_is_bit_set(range, n - 2) && !BN_is_bit_set(range, n - 3)) {
-    /* range = 100..._2,
-     * so  3*range (= 11..._2)  is exactly one bit longer than  range */
-    do {
+    return 1;
+  }
+
+  do {
+    if (!--count) {
+      OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
+      return 0;
+    }
+
+    if (!BN_is_bit_set(range, n - 2) && !BN_is_bit_set(range, n - 3)) {
+      /* range = 100..._2, so 3*range (= 11..._2) is exactly one bit longer
+       * than range. This is a common scenario when generating a random value
+       * modulo an RSA public modulus, e.g. for RSA base blinding. */
       if (!BN_rand(r, n + 1, -1 /* don't set most significant bits */,
                    0 /* don't set least significant bits */)) {
         return 0;
@@ -217,25 +226,13 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
           }
         }
       }
-
-      if (!--count) {
-        OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
-        return 0;
-      }
-    } while (BN_cmp(r, range) >= 0);
-  } else {
-    do {
+    } else {
       /* range = 11..._2  or  range = 101..._2 */
       if (!BN_rand(r, n, -1, 0)) {
         return 0;
       }
-
-      if (!--count) {
-        OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
-        return 0;
-      }
-    } while (BN_cmp(r, range) >= 0);
-  }
+    }
+  } while (BN_cmp(r, range) >= 0);
 
   return 1;
 }
