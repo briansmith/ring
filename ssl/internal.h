@@ -823,6 +823,10 @@ int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
  * zero on error. */
 int tls13_set_handshake_traffic(SSL *ssl);
 
+/* tls13_rotate_traffic_key derives the next read or write traffic secret. It
+ * returns one on success and zero on error. */
+int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction);
+
 /* tls13_derive_traffic_secret_0 derives the initial application data traffic
  * secret based on the handshake transcripts and |master_secret|. It returns one
  * on success and zero on error. */

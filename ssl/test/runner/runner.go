@@ -2166,6 +2166,16 @@ func addBasicTests() {
 			shouldFail:    true,
 			expectedError: ":WRONG_VERSION_NUMBER:",
 		},
+		{
+			testType: clientTest,
+			name:     "KeyUpdate",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendKeyUpdateBeforeEveryAppDataRecord: true,
+				},
+			},
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

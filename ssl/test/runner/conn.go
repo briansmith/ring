@@ -1325,6 +1325,10 @@ func (c *Conn) Write(b []byte) (int, error) {
 		c.flushHandshake()
 	}
 
+	if c.config.Bugs.SendKeyUpdateBeforeEveryAppDataRecord {
+		c.sendKeyUpdateLocked()
+	}
+
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
 	// attack when using block mode ciphers due to predictable IVs.
 	// This can be prevented by splitting each Application Data
@@ -1394,7 +1398,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 	}
 
 	if _, ok := msg.(*keyUpdateMsg); ok {
-		c.in.doKeyUpdate(c, true)
+		c.in.doKeyUpdate(c, false)
 		return nil
 	}
 
@@ -1704,6 +1708,6 @@ func (c *Conn) sendKeyUpdateLocked() error {
 	if err := c.flushHandshake(); err != nil {
 		return err
 	}
-	c.out.doKeyUpdate(c, false)
+	c.out.doKeyUpdate(c, true)
 	return nil
 }
