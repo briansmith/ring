@@ -517,7 +517,7 @@ static void bn_free_and_null(BIGNUM **bn) {
 }
 
 int RSA_check_key(const RSA *key) {
-  BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp;
+  BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp_times_q;
   BN_CTX *ctx;
   int ok = 0, has_crt_values;
 
@@ -556,7 +556,7 @@ int RSA_check_key(const RSA *key) {
   BN_init(&de);
   BN_init(&dmp1);
   BN_init(&dmq1);
-  BN_init(&iqmp);
+  BN_init(&iqmp_times_q);
 
   if (!BN_mul(&n, key->p, key->q, ctx) ||
       /* lcm = lcm(prime-1, for all primes) */
@@ -617,14 +617,15 @@ int RSA_check_key(const RSA *key) {
         /* dmq1 = d mod (q-1) */
         !BN_mod(&dmq1, key->d, &qm1, ctx) ||
         /* iqmp = q^-1 mod p */
-        !BN_mod_inverse(&iqmp, key->q, key->p, ctx)) {
+        !BN_mod_mul(&iqmp_times_q, key->iqmp, key->q, key->p, ctx)) {
       OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
       goto out;
     }
 
     if (BN_cmp(&dmp1, key->dmp1) != 0 ||
         BN_cmp(&dmq1, key->dmq1) != 0 ||
-        BN_cmp(&iqmp, key->iqmp) != 0) {
+        BN_cmp(key->iqmp, key->p) >= 0 ||
+        !BN_is_one(&iqmp_times_q)) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
       goto out;
     }
@@ -641,7 +642,7 @@ out:
   BN_free(&de);
   BN_free(&dmp1);
   BN_free(&dmq1);
-  BN_free(&iqmp);
+  BN_free(&iqmp_times_q);
   BN_CTX_free(ctx);
 
   return ok;
