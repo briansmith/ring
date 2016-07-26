@@ -675,9 +675,7 @@ static int ssl_do_post_handshake(SSL *ssl) {
     return ssl_do_renegotiate(ssl);
   }
 
-  /* TODO(svaldez): Handle TLS 1.3 post-handshake messages. For now,
-   * silently drop them. */
-  return 1;
+  return tls13_post_handshake(ssl);
 }
 
 static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {

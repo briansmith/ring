@@ -905,6 +905,10 @@ int tls13_handshake(SSL *ssl);
 enum ssl_hs_wait_t tls13_client_handshake(SSL *ssl);
 enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl);
 
+/* tls13_post_handshake processes a post-handshake message. It returns one on
+ * success and zero on failure. */
+int tls13_post_handshake(SSL *ssl);
+
 /* tls13_check_message_type checks if the current message has type |type|. If so
  * it returns one. Otherwise, it sends an alert and returns zero. */
 int tls13_check_message_type(SSL *ssl, int type);

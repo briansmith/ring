@@ -5144,10 +5144,6 @@ func addRenegotiationTests() {
 	})
 
 	// Renegotiation is forbidden in TLS 1.3.
-	//
-	// TODO(davidben): This test current asserts that we ignore
-	// HelloRequests, but we actually should hard reject them. Fix this
-	// test once we actually parse post-handshake messages.
 	testCases = append(testCases, testCase{
 		name: "Renegotiate-Client-TLS13",
 		config: Config{
@@ -5159,6 +5155,8 @@ func addRenegotiationTests() {
 		flags: []string{
 			"-renegotiate-freely",
 		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
 
 	// Stray HelloRequests during the handshake are forbidden in TLS 1.3.

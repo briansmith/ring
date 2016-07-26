@@ -452,3 +452,18 @@ int tls13_prepare_finished(SSL *ssl) {
 
   return 1;
 }
+
+int tls13_post_handshake(SSL *ssl) {
+  if (ssl->s3->tmp.message_type == SSL3_MT_NEW_SESSION_TICKET &&
+      !ssl->server) {
+    // TODO(svaldez): Handle NewSessionTicket.
+    return 1;
+  }
+
+  // TODO(svaldez): Handle post-handshake authentication.
+  // TODO(svaldez): Handle KeyUpdate.
+
+  ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+  OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+  return 0;
+}
