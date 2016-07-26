@@ -47,14 +47,10 @@ pub mod slice {
 
     #[inline(always)]
     pub fn be_u8_from_u32(value: u32) -> [u8; 4] {
-        let mut buffer = [0u8; 4];
-
-        buffer[0] = (value >> 24) as u8;
-        buffer[1] = (value >> 16 & 0xFF) as u8;
-        buffer[2] = (value >> 8  & 0xFF) as u8;
-        buffer[3] = (value & 0xFF) as u8;
-
-        buffer
+        [((value >> 24) & 0xff) as u8,
+         ((value >> 16) & 0xff) as u8,
+         ((value >> 8) & 0xff) as u8,
+         (value & 0xff) as u8]
     }
 
     // https://github.com/rust-lang/rust/issues/27750

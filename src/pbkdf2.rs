@@ -186,7 +186,9 @@ fn derive_block(
 /// Verifies that a previously-derived (e.g., using `derive`) PBKDF2 value
 /// matches the PBKDF2 value derived from the other inputs.
 ///
-/// The comparison is done in constant time to prevent timing attacks.
+/// The comparison is done in constant time to prevent timing attacks. The
+/// comparison will fail if `previously_derived` is empty (has a length of
+/// zero).
 ///
 /// | Parameter                | RFC 2898 Section 5.2 Term
 /// |--------------------------|---------------------------------------
@@ -207,13 +209,17 @@ fn derive_block(
 /// length, per the PBKDF2 specification.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
               previously_derived: &[u8]) -> Result<(), ()> {
+    if previously_derived.len() == 0 {
+        return Err(());
+    }
+
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
     let output_len = prf.digest_alg.output_len;
     let secret = hmac::SigningKey::new(prf.digest_alg, secret);
     let mut idx: u32 = 0;
 
-    let mut result = Ok(());
+    let mut matches = 1;
 
     for previously_derived_chunk in previously_derived.chunks(output_len) {
         idx = idx.checked_add(1).expect("derived key too long");
@@ -222,15 +228,24 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
         polyfill::slice::fill(derived_chunk, 0);
 
         derive_block(&secret, iterations, salt, idx, derived_chunk);
-        let compares_equal = constant_time::verify_slices_are_equal(derived_chunk,
-                                                                    previously_derived_chunk);
 
-        if result.is_ok() {
-            result = compares_equal;
-        }
+        // XXX: This isn't fully constant-time-safe. TODO: Fix that.
+        let current_block_matches =
+            if constant_time::verify_slices_are_equal(
+                    derived_chunk, previously_derived_chunk).is_ok() {
+                1
+            } else {
+                0
+            };
+
+        matches = matches & current_block_matches;
     }
 
-    result
+    if matches == 0 {
+        return Err(());
+    }
+
+    Ok(())
 }
 
 /// A PRF algorithm for use with `derive` and `verify`.
@@ -262,6 +277,12 @@ mod tests {
             let secret = test_case.consume_bytes("P");
             let salt = test_case.consume_bytes("S");
             let dk = test_case.consume_bytes("DK");
+            let verify_expected_result = test_case.consume_string("Verify");
+            let verify_expected_result = match verify_expected_result.as_str() {
+                "OK" => Ok(()),
+                "Err" => Err(()),
+                _ => panic!("Unsupported value of \"Verify\"")
+            };
 
             let prf = if digest_alg.nid ==  digest::SHA256.nid {
                 &pbkdf2::HMAC_SHA256
@@ -271,11 +292,16 @@ mod tests {
                 unimplemented!();
             };
 
-            let mut out = vec![0u8; dk.len()];
-            pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
-            assert_eq!(dk, out);
-            assert!(pbkdf2::verify(prf, iterations, &salt, &secret, &out)
-                        .is_ok());
+            {
+                let mut out = vec![0u8; dk.len()];
+                pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
+                assert_eq!(dk == out,
+                           verify_expected_result.is_ok() || dk.len() == 0);
+            }
+
+            assert_eq!(pbkdf2::verify(prf, iterations, &salt, &secret, &dk),
+                       verify_expected_result);
+
             Ok(())
         });
     }
