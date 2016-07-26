@@ -227,16 +227,12 @@ static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
                                         const BIGNUM *a, const BIGNUM *n,
                                         BN_CTX *ctx);
 
-BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                          const BIGNUM *n, BN_CTX *ctx) {
+static BIGNUM *bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
+                                 const BIGNUM *a, const BIGNUM *n,
+                                 BN_CTX *ctx) {
   BIGNUM *A, *B, *X, *Y, *M, *D, *T, *R = NULL;
   BIGNUM *ret = NULL;
   int sign;
-
-  if ((a->flags & BN_FLG_CONSTTIME) != 0 ||
-      (n->flags & BN_FLG_CONSTTIME) != 0) {
-    return BN_mod_inverse_no_branch(out, out_no_inverse, a, n, ctx);
-  }
 
   *out_no_inverse = 0;
 
@@ -266,11 +262,6 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     goto err;
   }
   A->neg = 0;
-  if (B->neg || (BN_ucmp(B, A) >= 0)) {
-    if (!BN_nnmod(B, B, A, ctx)) {
-      goto err;
-    }
-  }
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that
    *
@@ -543,7 +534,57 @@ err:
 BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
                        BN_CTX *ctx) {
   int no_inverse;
-  return BN_mod_inverse_ex(out, &no_inverse, a, n, ctx);
+
+  if ((a->flags & BN_FLG_CONSTTIME) != 0 ||
+      (n->flags & BN_FLG_CONSTTIME) != 0) {
+    return BN_mod_inverse_no_branch(out, &no_inverse, a, n, ctx);
+  }
+
+  if (!a->neg && BN_ucmp(a, n) < 0) {
+    return bn_mod_inverse_ex(out, &no_inverse, a, n, ctx);
+  }
+
+  BIGNUM a_reduced;
+  BN_init(&a_reduced);
+  BIGNUM *ret = NULL;
+
+  if (!BN_nnmod(&a_reduced, a, n, ctx)) {
+    goto err;
+  }
+
+  ret = bn_mod_inverse_ex(out, &no_inverse, &a_reduced, n, ctx);
+
+err:
+  BN_free(&a_reduced);
+  return ret;
+}
+
+int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                           const BN_MONT_CTX *mont, BN_CTX *ctx) {
+  *out_no_inverse = 0;
+
+  if (BN_is_negative(a) || BN_cmp(a, &mont->N) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    return 0;
+  }
+
+  int ret = 0;
+  BIGNUM blinding_factor;
+  BN_init(&blinding_factor);
+
+  if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N) ||
+      !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
+      bn_mod_inverse_ex(out, out_no_inverse, out, &mont->N, ctx) == NULL ||
+      !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  BN_free(&blinding_factor);
+  return ret;
 }
 
 /* BN_mod_inverse_no_branch is a special version of BN_mod_inverse.
