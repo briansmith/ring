@@ -247,6 +247,11 @@ func main() {
 					}
 				}
 			}
+		case "ModInv":
+			if checkKeys(test, "A", "M", "ModInv") {
+				r := new(big.Int).ModInverse(test.Values["A"], test.Values["M"])
+				checkResult(test, "A ^ -1 (mod M)", "ModInv", r)
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)
 		}
