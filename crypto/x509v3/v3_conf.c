@@ -138,10 +138,12 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
             nval = NCONF_get_section(conf, value + 1);
         else
             nval = X509V3_parse_list(value);
-        if (sk_CONF_VALUE_num(nval) <= 0) {
+        if (nval == NULL || sk_CONF_VALUE_num(nval) <= 0) {
             OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_EXTENSION_STRING);
             ERR_add_error_data(4, "name=", OBJ_nid2sn(ext_nid), ",section=",
                                value);
+            if (*value != '@')
+                sk_CONF_VALUE_pop_free(nval, X509V3_conf_free);
             return NULL;
         }
         ext_struc = method->v2i(method, ctx, nval);
