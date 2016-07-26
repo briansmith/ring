@@ -156,6 +156,12 @@ static int cbb_buffer_add_u(struct cbb_buffer_st *base, uint32_t v,
     buf[i] = v;
     v >>= 8;
   }
+
+  if (v != 0) {
+    base->error = 1;
+    return 0;
+  }
+
   return 1;
 }
 

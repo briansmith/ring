@@ -852,6 +852,24 @@ static bool TestStickyError() {
     return false;
   }
 
+  // Write a u32 that cannot fit in a u24.
+  cbb.Reset();
+  if (!CBB_init(cbb.get(), 0)) {
+    return false;
+  }
+
+  if (CBB_add_u24(cbb.get(), 1u << 24)) {
+    fprintf(stderr, "CBB_add_u24 unexpectedly succeeded.\n");
+    return false;
+  }
+
+  // All future operations should fail.
+  if (CBB_add_u8(cbb.get(), 0) ||
+      CBB_finish(cbb.get(), &ptr, &len)) {
+    fprintf(stderr, "Future operations unexpectedly succeeded.\n");
+    return false;
+  }
+
   return true;
 }
 
