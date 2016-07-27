@@ -72,7 +72,6 @@ static uint16_t ssl3_version_to_wire(uint16_t version) { return version; }
 static void ssl3_finish_handshake(SSL *ssl) {
   BUF_MEM_free(ssl->init_buf);
   ssl->init_buf = NULL;
-  ssl->s3->tmp.message_complete = 0;
 
   ssl->init_msg = NULL;
   ssl->init_num = 0;

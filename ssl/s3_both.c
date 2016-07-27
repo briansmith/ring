@@ -361,7 +361,7 @@ static int extend_handshake_buffer(SSL *ssl, size_t length) {
   return 1;
 }
 
-static int read_v2_client_hello(SSL *ssl) {
+static int read_v2_client_hello(SSL *ssl, int *out_is_v2_client_hello) {
   /* Read the first 5 bytes, the size of the TLS record header. This is
    * sufficient to detect a V2ClientHello and ensures that we never read beyond
    * the first record. */
@@ -389,6 +389,7 @@ static int read_v2_client_hello(SSL *ssl) {
   if ((p[0] & 0x80) == 0 || p[2] != SSL2_MT_CLIENT_HELLO ||
       p[3] != SSL3_VERSION_MAJOR) {
     /* Not a V2ClientHello. */
+    *out_is_v2_client_hello = 0;
     return 1;
   }
 
@@ -506,13 +507,11 @@ static int read_v2_client_hello(SSL *ssl) {
     return -1;
   }
 
-  /* Mark the message for "re"-use. */
-  ssl->s3->tmp.reuse_message = 1;
-  ssl->s3->tmp.message_complete = 1;
-
   /* Consume and discard the V2ClientHello. */
   ssl_read_buffer_consume(ssl, 2 + msg_length);
   ssl_read_buffer_discard(ssl);
+
+  *out_is_v2_client_hello = 1;
   return 1;
 }
 
@@ -530,9 +529,14 @@ again:
   if (ssl->server && !ssl->s3->v2_hello_done) {
     /* Bypass the record layer for the first message to handle V2ClientHello. */
     assert(hash_message == ssl_hash_message);
-    int ret = read_v2_client_hello(ssl);
+    int is_v2_client_hello = 0;
+    int ret = read_v2_client_hello(ssl, &is_v2_client_hello);
     if (ret <= 0) {
       return ret;
+    }
+    if (is_v2_client_hello) {
+      /* V2ClientHello is hashed separately. */
+      hash_message = ssl_dont_hash_message;
     }
     ssl->s3->v2_hello_done = 1;
   }
@@ -542,12 +546,17 @@ again:
      * ssl_dont_hash_message would have to have been applied to the previous
      * call. */
     assert(hash_message == ssl_hash_message);
-    assert(ssl->s3->tmp.message_complete);
+    assert(ssl->init_msg != NULL);
 
     ssl->s3->tmp.reuse_message = 0;
     hash_message = ssl_dont_hash_message;
-  } else if (ssl->s3->tmp.message_complete) {
-    ssl->s3->tmp.message_complete = 0;
+  } else if (ssl->init_msg != NULL) {
+    /* |init_buf| never contains data beyond the current message. */
+    assert(SSL3_HM_HEADER_LENGTH + ssl->init_num == ssl->init_buf->length);
+
+    /* Clear the current message. */
+    ssl->init_msg = NULL;
+    ssl->init_num = 0;
     ssl->init_buf->length = 0;
   }
 
@@ -574,7 +583,6 @@ again:
   }
 
   /* We have now received a complete message. */
-  ssl->s3->tmp.message_complete = 1;
   ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
                       ssl->init_buf->data, ssl->init_buf->length);
 

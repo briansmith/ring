@@ -4297,10 +4297,6 @@ typedef struct ssl3_state_st {
 
     int message_type;
 
-    /* message_complete is one if the current message is complete and zero
-     * otherwise. */
-    unsigned message_complete:1;
-
     /* used to hold the new cipher we are going to use */
     const SSL_CIPHER *new_cipher;
 
