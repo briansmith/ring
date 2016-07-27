@@ -238,7 +238,7 @@ func main() {
 				r = r.Mod(r, test.Values["P"])
 				checkResult(test, "ModSqrt ^ 2 (mod P)", "A", r)
 
-				if (test.Values["P"].Cmp(bigTwo) > 0) {
+				if test.Values["P"].Cmp(bigTwo) > 0 {
 					pMinus1Over2 := new(big.Int).Sub(test.Values["P"], bigOne)
 					pMinus1Over2.Rsh(pMinus1Over2, 1)
 
