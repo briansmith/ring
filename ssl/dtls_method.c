@@ -100,6 +100,8 @@ static void dtls1_finish_handshake(SSL *ssl) {
   ssl->d1->handshake_read_seq = 0;
   ssl->d1->handshake_write_seq = 0;
   dtls_clear_incoming_messages(ssl);
+  ssl->init_msg = NULL;
+  ssl->init_num = 0;
 }
 
 static int dtls1_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {

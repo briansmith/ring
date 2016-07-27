@@ -81,13 +81,15 @@ static int ssl3_begin_handshake(SSL *ssl) {
   }
 
   ssl->init_buf = buf;
-  ssl->init_num = 0;
   return 1;
 }
 
 static void ssl3_finish_handshake(SSL *ssl) {
   BUF_MEM_free(ssl->init_buf);
   ssl->init_buf = NULL;
+  ssl->s3->tmp.message_complete = 0;
+
+  ssl->init_msg = NULL;
   ssl->init_num = 0;
 }
 
