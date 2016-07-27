@@ -37,6 +37,19 @@ pub fn wrapping_rotate_left_u32(x: core::num::Wrapping<u32>, n: u32)
 pub mod slice {
     use core;
 
+    #[cfg(feature="no_asm")]
+    #[inline(always)]
+    pub fn u64_from_be_u8(buffer: &[u8; 8]) -> u64 {
+        u64::from(buffer[0]) << 56 |
+        u64::from(buffer[1]) << 48 |
+        u64::from(buffer[2]) << 40 |
+        u64::from(buffer[3]) << 32 |
+        u64::from(buffer[4]) << 24 |
+        u64::from(buffer[5]) << 16 |
+        u64::from(buffer[6]) << 8 |
+        u64::from(buffer[7])
+    }
+
     #[inline(always)]
     pub fn u32_from_be_u8(buffer: &[u8; 4]) -> u32 {
         u32::from(buffer[0]) << 24 |
