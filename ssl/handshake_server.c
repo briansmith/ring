@@ -471,10 +471,9 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL_ST_OK:
-        /* clean a few things up */
+        /* Clean a few things up. */
         ssl3_cleanup_key_block(ssl);
-
-        ssl->method->finish_handshake(ssl);
+        ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         /* remove buffering on output */
         ssl_free_wbio_buffer(ssl);

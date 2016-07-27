@@ -92,12 +92,6 @@ static uint16_t dtls1_version_to_wire(uint16_t version) {
   return ~(version - 0x0201);
 }
 
-static void dtls1_finish_handshake(SSL *ssl) {
-  dtls_clear_incoming_messages(ssl);
-  ssl->init_msg = NULL;
-  ssl->init_num = 0;
-}
-
 static int dtls1_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   /* Cipher changes are illegal when there are buffered incoming messages. */
   if (dtls_has_incoming_messages(ssl)) {
@@ -135,9 +129,9 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_version_to_wire,
     dtls1_new,
     dtls1_free,
-    dtls1_finish_handshake,
     dtls1_get_message,
     dtls1_hash_current_message,
+    dtls1_release_current_message,
     dtls1_read_app_data,
     dtls1_read_change_cipher_spec,
     dtls1_read_close_notify,

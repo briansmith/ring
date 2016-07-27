@@ -502,10 +502,9 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL_ST_OK:
-        /* clean a few things up */
+        /* Clean a few things up. */
         ssl3_cleanup_key_block(ssl);
-
-        ssl->method->finish_handshake(ssl);
+        ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(ssl);

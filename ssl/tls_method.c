@@ -69,14 +69,6 @@ static uint16_t ssl3_version_from_wire(uint16_t wire_version) {
 
 static uint16_t ssl3_version_to_wire(uint16_t version) { return version; }
 
-static void ssl3_finish_handshake(SSL *ssl) {
-  BUF_MEM_free(ssl->init_buf);
-  ssl->init_buf = NULL;
-
-  ssl->init_msg = NULL;
-  ssl->init_num = 0;
-}
-
 static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   if (ssl->s3->rrec.length != 0) {
     /* There may not be unprocessed record data at a cipher change. */
@@ -109,9 +101,9 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_version_to_wire,
     ssl3_new,
     ssl3_free,
-    ssl3_finish_handshake,
     ssl3_get_message,
     ssl3_hash_current_message,
+    ssl3_release_current_message,
     ssl3_read_app_data,
     ssl3_read_change_cipher_spec,
     ssl3_read_close_notify,

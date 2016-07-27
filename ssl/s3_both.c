@@ -550,14 +550,8 @@ again:
 
     ssl->s3->tmp.reuse_message = 0;
     hash_message = ssl_dont_hash_message;
-  } else if (ssl->init_msg != NULL) {
-    /* |init_buf| never contains data beyond the current message. */
-    assert(SSL3_HM_HEADER_LENGTH + ssl->init_num == ssl->init_buf->length);
-
-    /* Clear the current message. */
-    ssl->init_msg = NULL;
-    ssl->init_num = 0;
-    ssl->init_buf->length = 0;
+  } else {
+    ssl3_release_current_message(ssl, 0 /* don't free buffer */);
   }
 
   /* Read the message header, if we haven't yet. */
@@ -616,6 +610,23 @@ again:
 int ssl3_hash_current_message(SSL *ssl) {
   return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
                                     ssl->init_buf->length);
+}
+
+void ssl3_release_current_message(SSL *ssl, int free_buffer) {
+  if (ssl->init_msg != NULL) {
+    /* |init_buf| never contains data beyond the current message. */
+    assert(SSL3_HM_HEADER_LENGTH + ssl->init_num == ssl->init_buf->length);
+
+    /* Clear the current message. */
+    ssl->init_msg = NULL;
+    ssl->init_num = 0;
+    ssl->init_buf->length = 0;
+  }
+
+  if (free_buffer) {
+    BUF_MEM_free(ssl->init_buf);
+    ssl->init_buf = NULL;
+  }
 }
 
 int ssl_verify_alarm_type(long type) {

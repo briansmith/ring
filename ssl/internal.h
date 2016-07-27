@@ -1039,8 +1039,6 @@ struct ssl_protocol_method_st {
   uint16_t (*version_to_wire)(uint16_t version);
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
-  /* finish_handshake is called when a handshake completes. */
-  void (*finish_handshake)(SSL *ssl);
   /* ssl_get_message reads the next handshake message. If |msg_type| is not -1,
    * the message must have the specified type. On success, it returns one and
    * sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and |ssl->init_num|.
@@ -1051,6 +1049,9 @@ struct ssl_protocol_method_st {
    * handshake hash. It returns one on success and zero on allocation
    * failure. */
   int (*hash_current_message)(SSL *ssl);
+  /* release_current_message is called to release the current handshake message.
+   * If |free_buffer| is one, buffers will also be released. */
+  void (*release_current_message)(SSL *ssl, int free_buffer);
   int (*read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
   int (*read_change_cipher_spec)(SSL *ssl);
   void (*read_close_notify)(SSL *ssl);
@@ -1242,6 +1243,7 @@ int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_message(SSL *ssl, int msg_type,
                      enum ssl_hash_message_t hash_message);
 int ssl3_hash_current_message(SSL *ssl);
+void ssl3_release_current_message(SSL *ssl, int free_buffer);
 
 /* ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify hash into the
  * bytes pointed to by |out| and writes the number of bytes to |*out_len|. |out|
@@ -1321,6 +1323,7 @@ void dtls1_free(SSL *ssl);
 
 int dtls1_get_message(SSL *ssl, int mt, enum ssl_hash_message_t hash_message);
 int dtls1_hash_current_message(SSL *ssl);
+void dtls1_release_current_message(SSL *ssl, int free_buffer);
 int dtls1_dispatch_alert(SSL *ssl);
 
 /* ssl_is_wbio_buffered returns one if |ssl|'s write BIO is buffered and zero
