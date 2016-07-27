@@ -223,7 +223,8 @@ again:
       return -1;
     }
 
-    if (msg_hdr.type == SSL3_MT_FINISHED) {
+    if (msg_hdr.type == SSL3_MT_FINISHED &&
+        msg_hdr.seq == ssl->d1->handshake_read_seq) {
       if (msg_hdr.frag_off == 0) {
         /* Retransmit our last flight of messages. If the peer sends the second
          * Finished, they may not have received ours. Only do this for the

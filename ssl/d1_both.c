@@ -368,6 +368,13 @@ start:
       return -1;
     }
 
+    /* The encrypted epoch in DTLS has only one handshake message. */
+    if (ssl->d1->r_epoch == 1 && msg_hdr.seq != ssl->d1->handshake_read_seq) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+      return -1;
+    }
+
     if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
         msg_hdr.seq >
             (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {

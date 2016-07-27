@@ -84,6 +84,7 @@ func (c *Conn) serverHandshake() error {
 			// leg of the handshake is retransmited upon re-receiving a
 			// Finished.
 			if err := c.simulatePacketLoss(func() {
+				c.sendHandshakeSeq--
 				c.writeRecord(recordTypeHandshake, hs.finishedBytes)
 				c.flushHandshake()
 			}); err != nil {
@@ -582,6 +583,9 @@ Curves:
 	}
 	hs.writeServerHash(finished.marshal())
 	c.writeRecord(recordTypeHandshake, finished.marshal())
+	if c.config.Bugs.SendExtraFinished {
+		c.writeRecord(recordTypeHandshake, finished.marshal())
+	}
 	c.flushHandshake()
 
 	// The various secrets do not incorporate the client's final leg, so
@@ -1399,6 +1403,10 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 
 	if !c.config.Bugs.SkipFinished && len(postCCSBytes) > 0 {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)
+		if c.config.Bugs.SendExtraFinished {
+			c.writeRecord(recordTypeHandshake, finished.marshal())
+		}
+
 		if !c.config.Bugs.PackHelloRequestWithFinished {
 			// Defer flushing until renegotiation.
 			c.flushHandshake()

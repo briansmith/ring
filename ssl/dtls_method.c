@@ -93,8 +93,6 @@ static uint16_t dtls1_version_to_wire(uint16_t version) {
 }
 
 static void dtls1_finish_handshake(SSL *ssl) {
-  ssl->d1->handshake_read_seq = 0;
-  ssl->d1->handshake_write_seq = 0;
   dtls_clear_incoming_messages(ssl);
   ssl->init_msg = NULL;
   ssl->init_num = 0;

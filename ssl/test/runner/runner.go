@@ -2086,6 +2086,30 @@ func addBasicTests() {
 			},
 			resumeSession: true,
 		},
+		{
+			protocol: dtls,
+			name:     "DTLS-SendExtraFinished",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendExtraFinished: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			protocol: dtls,
+			name:     "DTLS-SendExtraFinished-Reordered",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength:  2,
+					ReorderHandshakeFragments: true,
+					SendExtraFinished:         true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

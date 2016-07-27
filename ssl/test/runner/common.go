@@ -1009,6 +1009,10 @@ type ProtocolBugs struct {
 	// PackHelloRequestWithFinished, if true, causes the TLS server to send
 	// HelloRequest in the same record as Finished.
 	PackHelloRequestWithFinished bool
+
+	// SendExtraFinished, if true, causes an extra Finished message to be
+	// sent.
+	SendExtraFinished bool
 }
 
 func (c *Config) serverInit() {
