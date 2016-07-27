@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -39,22 +40,23 @@ import (
 )
 
 var (
-	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
-	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
-	useLLDB         = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
-	flagDebug       = flag.Bool("debug", false, "Hexdump the contents of the connection")
-	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
-	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
-	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
-	pipe            = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
-	testToRun       = flag.String("test", "", "The name of a test to run, or empty to run all tests")
-	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
-	shimPath        = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
-	resourceDir     = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
-	fuzzer          = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
-	transcriptDir   = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
-	idleTimeout     = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
-	deterministic   = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
+	useValgrind        = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	useGDB             = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	useLLDB            = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
+	flagDebug          = flag.Bool("debug", false, "Hexdump the contents of the connection")
+	mallocTest         = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
+	mallocTestDebug    = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
+	jsonOutput         = flag.String("json-output", "", "The file to output JSON results to.")
+	pipe               = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
+	testToRun          = flag.String("test", "", "The name of a test to run, or empty to run all tests")
+	numWorkers         = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
+	shimPath           = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
+	resourceDir        = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
+	fuzzer             = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
+	transcriptDir      = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
+	idleTimeout        = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
+	deterministic      = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
+	allowUnimplemented = flag.Bool("allow-unimplemented", false, "If true, report pass even if some tests are unimplemented.")
 )
 
 type testCert int
@@ -681,13 +683,10 @@ func lldbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
-type moreMallocsError struct{}
-
-func (moreMallocsError) Error() string {
-	return "child process did not exhaust all allocation calls"
-}
-
-var errMoreMallocs = moreMallocsError{}
+var (
+	errMoreMallocs   = errors.New("child process did not exhaust all allocation calls")
+	errUnimplemented = errors.New("child process does not implement needed flags")
+)
 
 // accept accepts a connection from listener, unless waitChan signals a process
 // exit first.
@@ -883,8 +882,11 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	childErr := <-waitChan
 	if exitError, ok := childErr.(*exec.ExitError); ok {
-		if exitError.Sys().(syscall.WaitStatus).ExitStatus() == 88 {
+		switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
+		case 88:
 			return errMoreMallocs
+		case 89:
+			return errUnimplemented
 		}
 	}
 
@@ -7701,7 +7703,7 @@ type statusMsg struct {
 }
 
 func statusPrinter(doneChan chan *testOutput, statusChan chan statusMsg, total int) {
-	var started, done, failed, lineLen int
+	var started, done, failed, unimplemented, lineLen int
 
 	testOutput := newTestOutput()
 	for msg := range statusChan {
@@ -7720,9 +7722,18 @@ func statusPrinter(doneChan chan *testOutput, statusChan chan statusMsg, total i
 			done++
 
 			if msg.err != nil {
-				fmt.Printf("FAILED (%s)\n%s\n", msg.test.name, msg.err)
-				failed++
-				testOutput.addResult(msg.test.name, "FAIL")
+				if msg.err == errUnimplemented {
+					if *pipe {
+						// Print each test instead of a status line.
+						fmt.Printf("UNIMPLEMENTED (%s)\n", msg.test.name)
+					}
+					unimplemented++
+					testOutput.addResult(msg.test.name, "UNIMPLEMENTED")
+				} else {
+					fmt.Printf("FAILED (%s)\n%s\n", msg.test.name, msg.err)
+					failed++
+					testOutput.addResult(msg.test.name, "FAIL")
+				}
 			} else {
 				if *pipe {
 					// Print each test instead of a status line.
@@ -7734,7 +7745,7 @@ func statusPrinter(doneChan chan *testOutput, statusChan chan statusMsg, total i
 
 		if !*pipe {
 			// Print a new status line.
-			line := fmt.Sprintf("%d/%d/%d/%d", failed, done, started, total)
+			line := fmt.Sprintf("%d/%d/%d/%d/%d", failed, unimplemented, done, started, total)
 			lineLen = len(line)
 			os.Stdout.WriteString(line)
 		}
@@ -7816,7 +7827,11 @@ func main() {
 		}
 	}
 
-	if !testOutput.allPassed {
+	if !*allowUnimplemented && testOutput.NumFailuresByType["UNIMPLEMENTED"] > 0 {
+		os.Exit(1)
+	}
+
+	if !testOutput.noneFailed {
 		os.Exit(1)
 	}
 }
