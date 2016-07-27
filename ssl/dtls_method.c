@@ -92,10 +92,6 @@ static uint16_t dtls1_version_to_wire(uint16_t version) {
   return ~(version - 0x0201);
 }
 
-static int dtls1_begin_handshake(SSL *ssl) {
-  return 1;
-}
-
 static void dtls1_finish_handshake(SSL *ssl) {
   ssl->d1->handshake_read_seq = 0;
   ssl->d1->handshake_write_seq = 0;
@@ -141,7 +137,6 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_version_to_wire,
     dtls1_new,
     dtls1_free,
-    dtls1_begin_handshake,
     dtls1_finish_handshake,
     dtls1_get_message,
     dtls1_hash_current_message,

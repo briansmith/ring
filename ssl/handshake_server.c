@@ -202,8 +202,7 @@ int ssl3_accept(SSL *ssl) {
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
         ssl->s3->hs = ssl_handshake_new(tls13_server_handshake);
-        if (ssl->s3->hs == NULL ||
-            !ssl->method->begin_handshake(ssl)) {
+        if (ssl->s3->hs == NULL) {
           ret = -1;
           goto end;
         }

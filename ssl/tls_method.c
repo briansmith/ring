@@ -69,21 +69,6 @@ static uint16_t ssl3_version_from_wire(uint16_t wire_version) {
 
 static uint16_t ssl3_version_to_wire(uint16_t version) { return version; }
 
-static int ssl3_begin_handshake(SSL *ssl) {
-  if (ssl->init_buf != NULL) {
-    return 1;
-  }
-
-  BUF_MEM *buf = BUF_MEM_new();
-  if (buf == NULL || !BUF_MEM_reserve(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
-    BUF_MEM_free(buf);
-    return 0;
-  }
-
-  ssl->init_buf = buf;
-  return 1;
-}
-
 static void ssl3_finish_handshake(SSL *ssl) {
   BUF_MEM_free(ssl->init_buf);
   ssl->init_buf = NULL;
@@ -125,7 +110,6 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_version_to_wire,
     ssl3_new,
     ssl3_free,
-    ssl3_begin_handshake,
     ssl3_finish_handshake,
     ssl3_get_message,
     ssl3_hash_current_message,
