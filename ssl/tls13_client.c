@@ -566,3 +566,38 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL *ssl) {
 
   return ssl_hs_ok;
 }
+
+int tls13_process_new_session_ticket(SSL *ssl) {
+  SSL_SESSION *session = SSL_SESSION_dup(ssl->s3->established_session,
+                                         0 /* don't include ticket */);
+  if (session == NULL) {
+    return 0;
+  }
+
+  CBS cbs, extensions, ticket;
+  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
+  if (!CBS_get_u32(&cbs, &session->ticket_lifetime_hint) ||
+      !CBS_get_u32(&cbs, &session->ticket_flags) ||
+      !CBS_get_u32(&cbs, &session->ticket_age_add) ||
+      !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
+      !CBS_get_u16_length_prefixed(&cbs, &ticket) ||
+      !CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen) ||
+      CBS_len(&cbs) != 0) {
+    SSL_SESSION_free(session);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return 0;
+  }
+
+  session->ticket_age_add_valid = 1;
+  session->not_resumable = 0;
+
+  if (ssl->ctx->new_session_cb != NULL &&
+      ssl->ctx->new_session_cb(ssl, session)) {
+    /* |new_session_cb|'s return value signals that it took ownership. */
+    return 1;
+  }
+
+  SSL_SESSION_free(session);
+  return 1;
+}

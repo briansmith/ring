@@ -891,6 +891,8 @@ struct ssl_handshake_st {
 
   uint8_t *cert_context;
   size_t cert_context_len;
+
+  uint8_t session_tickets_sent;
 } /* SSL_HANDSHAKE */;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
@@ -925,6 +927,7 @@ int tls13_prepare_certificate(SSL *ssl);
 enum ssl_private_key_result_t tls13_prepare_certificate_verify(
     SSL *ssl, int is_first_run);
 int tls13_prepare_finished(SSL *ssl);
+int tls13_process_new_session_ticket(SSL *ssl);
 
 int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
                                         size_t *out_secret_len,
@@ -1202,12 +1205,18 @@ typedef struct dtls1_state_st {
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
 
+/* From draft-ietf-tls-tls13-14, used in determining ticket validity. */
+#define SSL_TICKET_ALLOW_EARLY_DATA 1
+#define SSL_TICKET_ALLOW_DHE_RESUMPTION 2
+#define SSL_TICKET_ALLOW_PSK_RESUMPTION 4
+
 int ssl_clear_bad_session(SSL *ssl);
 CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
 int ssl_get_new_session(SSL *ssl, int is_server);
+int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
 
 enum ssl_session_result_t {
   ssl_session_success,

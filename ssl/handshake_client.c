@@ -1953,7 +1953,7 @@ static int ssl3_get_new_session_ticket(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  session->tlsext_tick_lifetime_hint = ticket_lifetime_hint;
+  session->ticket_lifetime_hint = ticket_lifetime_hint;
 
   /* Generate a session ID for this session based on the session ticket. We use
    * the session ID mechanism for detecting ticket resumption. This also fits in

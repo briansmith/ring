@@ -120,6 +120,8 @@
  *     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
  *     keyExchangeInfo         [18] INTEGER OPTIONAL,
  *     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
+ *     ticketFlags             [20] INTEGER OPTIONAL,
+ *     ticketAgeAdd            [21] OCTET STRING OPTIONAL,
  * }
  *
  * Note: historically this serialization has included other optional
@@ -164,6 +166,10 @@ static const int kKeyExchangeInfoTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 18;
 static const int kCertChainTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 19;
+static const int kTicketFlagsTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 20;
+static const int kTicketAgeAddTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 21;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -255,9 +261,9 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
-  if (in->tlsext_tick_lifetime_hint > 0) {
+  if (in->ticket_lifetime_hint > 0) {
     if (!CBB_add_asn1(&session, &child, kTicketLifetimeHintTag) ||
-        !CBB_add_asn1_uint64(&child, in->tlsext_tick_lifetime_hint)) {
+        !CBB_add_asn1_uint64(&child, in->ticket_lifetime_hint)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -338,6 +344,23 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
       if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->cert_chain, i))) {
         goto err;
       }
+    }
+  }
+
+  if (in->ticket_flags > 0) {
+    if (!CBB_add_asn1(&session, &child, kTicketFlagsTag) ||
+        !CBB_add_asn1_uint64(&child, in->ticket_flags)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  if (in->ticket_age_add_valid) {
+    if (!CBB_add_asn1(&session, &child, kTicketAgeAddTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_u32(&child2, in->ticket_age_add)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
     }
   }
 
@@ -573,7 +596,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
                                 kHostNameTag) ||
       !SSL_SESSION_parse_string(&session, &ret->psk_identity,
                                 kPSKIdentityTag) ||
-      !SSL_SESSION_parse_u32(&session, &ret->tlsext_tick_lifetime_hint,
+      !SSL_SESSION_parse_u32(&session, &ret->ticket_lifetime_hint,
                              kTicketLifetimeHintTag, 0) ||
       !SSL_SESSION_parse_octet_string(&session, &ret->tlsext_tick,
                                       &ret->tlsext_ticklen, kTicketTag)) {
@@ -651,6 +674,19 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
       }
     }
   }
+
+  CBS age_add;
+  int age_add_present;
+  if (!SSL_SESSION_parse_u32(&session, &ret->ticket_flags,
+                             kTicketFlagsTag, 0) ||
+      !CBS_get_optional_asn1_octet_string(&session, &age_add, &age_add_present,
+                                          kTicketAgeAddTag) ||
+      (age_add_present &&
+       !CBS_get_u32(&age_add, &ret->ticket_age_add)) ||
+      CBS_len(&age_add) != 0) {
+    goto err;
+  }
+  ret->ticket_age_add_valid = age_add_present;
 
   if (CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
