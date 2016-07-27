@@ -552,7 +552,7 @@ again:
   }
 
   /* Read the message header, if we haven't yet. */
-  int ret = extend_handshake_buffer(ssl, 4);
+  int ret = extend_handshake_buffer(ssl, SSL3_HM_HEADER_LENGTH);
   if (ret <= 0) {
     return ret;
   }
@@ -568,7 +568,7 @@ again:
   }
 
   /* Read the message body, if we haven't yet. */
-  ret = extend_handshake_buffer(ssl, 4 + msg_len);
+  ret = extend_handshake_buffer(ssl, SSL3_HM_HEADER_LENGTH + msg_len);
   if (ret <= 0) {
     return ret;
   }
@@ -579,8 +579,8 @@ again:
                       ssl->init_buf->data, ssl->init_buf->length);
 
   ssl->s3->tmp.message_type = ((const uint8_t *)ssl->init_buf->data)[0];
-  ssl->init_msg = (uint8_t*)ssl->init_buf->data + 4;
-  ssl->init_num = ssl->init_buf->length - 4;
+  ssl->init_msg = (uint8_t*)ssl->init_buf->data + SSL3_HM_HEADER_LENGTH;
+  ssl->init_num = ssl->init_buf->length - SSL3_HM_HEADER_LENGTH;
 
   /* Ignore stray HelloRequest messages. Per RFC 5246, section 7.4.1.1, the
    * server may send HelloRequest at any time. */
