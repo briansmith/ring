@@ -1052,7 +1052,13 @@ struct ssl_protocol_method_st {
   /* release_current_message is called to release the current handshake message.
    * If |free_buffer| is one, buffers will also be released. */
   void (*release_current_message)(SSL *ssl, int free_buffer);
-  int (*read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
+  /* read_app_data reads up to |len| bytes of application data into |buf|. On
+   * success, it returns the number of bytes read. Otherwise, it returns <= 0
+   * and sets |*out_got_handshake| to whether the failure was due to a
+   * post-handshake handshake message. If so, it fills in the current message as
+   * in |ssl_get_message|. */
+  int (*read_app_data)(SSL *ssl, int *out_got_handshake,  uint8_t *buf, int len,
+                       int peek);
   int (*read_change_cipher_spec)(SSL *ssl);
   void (*read_close_notify)(SSL *ssl);
   int (*write_app_data)(SSL *ssl, const void *buf_, int len);
@@ -1255,10 +1261,11 @@ int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
 int ssl3_send_finished(SSL *ssl, int a, int b);
 int ssl3_supports_cipher(const SSL_CIPHER *cipher);
 int ssl3_dispatch_alert(SSL *ssl);
-int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
+int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+                       int peek);
 int ssl3_read_change_cipher_spec(SSL *ssl);
 void ssl3_read_close_notify(SSL *ssl);
-int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek);
+int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len);
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
@@ -1287,7 +1294,8 @@ int dtls1_write_message(SSL *ssl);
  * more data is needed. */
 int dtls1_get_record(SSL *ssl);
 
-int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
+int dtls1_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+                        int peek);
 int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
 

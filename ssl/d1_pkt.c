@@ -197,9 +197,11 @@ again:
   return -1;
 }
 
-int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
+int dtls1_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+                        int peek) {
   assert(!SSL_in_init(ssl));
 
+  *out_got_handshake = 0;
   SSL3_RECORD *rr = &ssl->s3->rrec;
 
 again:

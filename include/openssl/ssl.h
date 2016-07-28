@@ -4221,10 +4221,6 @@ typedef struct ssl3_state_st {
 
   SSL3_RECORD rrec; /* each decoded record goes in here */
 
-  /* hello_request_len is the number of bytes of HelloRequest received, possibly
-   * split over multiple records. */
-  uint8_t hello_request_len;
-
   /* partial write - check the numbers match */
   unsigned int wnum; /* number of bytes sent so far */
   int wpend_tot;     /* number bytes written */

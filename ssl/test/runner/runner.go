@@ -2067,7 +2067,7 @@ func addBasicTests() {
 				"-expect-total-renegotiations", "1",
 			},
 			shouldFail:    true,
-			expectedError: ":BAD_HELLO_REQUEST:",
+			expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
 		},
 		{
 			name:        "BadHelloRequest-2",

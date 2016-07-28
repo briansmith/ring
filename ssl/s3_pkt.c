@@ -308,11 +308,81 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   return ssl3_write_pending(ssl, type, buf, len);
 }
 
-int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
+static int consume_record(SSL *ssl, uint8_t *out, int len, int peek) {
+  SSL3_RECORD *rr = &ssl->s3->rrec;
+
+  if (len <= 0) {
+    return len;
+  }
+
+  if (len > (int)rr->length) {
+    len = (int)rr->length;
+  }
+
+  memcpy(out, rr->data, len);
+  if (!peek) {
+    rr->length -= len;
+    rr->data += len;
+    if (rr->length == 0) {
+      /* The record has been consumed, so we may now clear the buffer. */
+      ssl_read_buffer_discard(ssl);
+    }
+  }
+  return len;
+}
+
+int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+                       int peek) {
   assert(!SSL_in_init(ssl));
   assert(ssl->s3->initial_handshake_complete);
+  *out_got_handshake = 0;
 
-  return ssl3_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
+  SSL3_RECORD *rr = &ssl->s3->rrec;
+
+  for (;;) {
+    /* A previous iteration may have read a partial handshake message. Do not
+     * allow more app data in that case. */
+    int has_hs_data = ssl->init_buf != NULL && ssl->init_buf->length > 0;
+
+    /* Get new packet if necessary. */
+    if (rr->length == 0 && !has_hs_data) {
+      int ret = ssl3_get_record(ssl);
+      if (ret <= 0) {
+        return ret;
+      }
+    }
+
+    if (has_hs_data || rr->type == SSL3_RT_HANDSHAKE) {
+      /* Post-handshake data prior to TLS 1.3 is always renegotiation, which we
+       * never accept as a server. Otherwise |ssl3_get_message| will send
+       * |SSL_R_EXCESSIVE_MESSAGE_SIZE|. */
+      if (ssl->server && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+        return -1;
+      }
+
+      /* Parse post-handshake handshake messages. */
+      int ret = ssl3_get_message(ssl, -1, ssl_dont_hash_message);
+      if (ret <= 0) {
+        return ret;
+      }
+      *out_got_handshake = 1;
+      return -1;
+    }
+
+    if (rr->type != SSL3_RT_APPLICATION_DATA) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+      return -1;
+    }
+
+    if (rr->length != 0) {
+      return consume_record(ssl, buf, len, peek);
+    }
+
+    /* Discard empty records and loop again. */
+  }
 }
 
 int ssl3_read_change_cipher_spec(SSL *ssl) {
@@ -352,171 +422,30 @@ void ssl3_read_close_notify(SSL *ssl) {
   }
 }
 
-static int ssl3_can_renegotiate(SSL *ssl) {
-  if (ssl->server || ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    return 0;
-  }
+int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len) {
+  SSL3_RECORD *rr = &ssl->s3->rrec;
 
-  switch (ssl->renegotiate_mode) {
-    case ssl_renegotiate_never:
-      return 0;
-    case ssl_renegotiate_once:
-      return ssl->s3->total_renegotiations == 0;
-    case ssl_renegotiate_freely:
-      return 1;
-    case ssl_renegotiate_ignore:
-      return 1;
-  }
-
-  assert(0);
-  return 0;
-}
-
-/* Return up to 'len' payload bytes received in 'type' records.
- * 'type' is one of the following:
- *
- *   -  SSL3_RT_HANDSHAKE (when ssl3_get_message calls us)
- *   -  SSL3_RT_APPLICATION_DATA (when ssl3_read_app_data calls us)
- *
- * If we don't have stored data to work from, read a SSL/TLS record first
- * (possibly multiple records if we still don't have anything to return).
- *
- * This function must handle any surprises the peer may have for us, such as
- * Alert records (e.g. close_notify) or renegotiation requests. */
-int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek) {
-  int al, i, ret;
-  unsigned int n;
-  SSL3_RECORD *rr;
-
-  if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
-      (peek && type != SSL3_RT_APPLICATION_DATA)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-start:
-  /* ssl->s3->rrec.type    - is the type of record
-   * ssl->s3->rrec.data    - data
-   * ssl->s3->rrec.off     - offset into 'data' for next read
-   * ssl->s3->rrec.length  - number of bytes. */
-  rr = &ssl->s3->rrec;
-
-  /* get new packet if necessary */
-  if (rr->length == 0) {
-    ret = ssl3_get_record(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-
-  /* we now have a packet which can be read and processed */
-
-  /* Do not allow interleaving application data and HelloRequest. */
-  if (type == rr->type && ssl->s3->hello_request_len == 0) {
-    /* Discard empty records. */
+  for (;;) {
+    /* Get new packet if necessary. */
     if (rr->length == 0) {
-      goto start;
-    }
-
-    if (len <= 0) {
-      return len;
-    }
-
-    if ((unsigned int)len > rr->length) {
-      n = rr->length;
-    } else {
-      n = (unsigned int)len;
-    }
-
-    memcpy(buf, rr->data, n);
-    if (!peek) {
-      rr->length -= n;
-      rr->data += n;
-      if (rr->length == 0) {
-        /* The record has been consumed, so we may now clear the buffer. */
-        ssl_read_buffer_discard(ssl);
+      int ret = ssl3_get_record(ssl);
+      if (ret <= 0) {
+        return ret;
       }
     }
 
-    return n;
-  }
-
-  /* Process unexpected records. */
-
-  if (type == SSL3_RT_APPLICATION_DATA && rr->type == SSL3_RT_HANDSHAKE) {
-    if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-      /* TODO(svaldez): Handle TLS 1.3 post-handshake messages. For now,
-       * silently drop all handshake records. */
-      rr->length = 0;
-      goto start;
-    }
-
-    /* If peer renegotiations are disabled, all out-of-order handshake records
-     * are fatal. Renegotiations as a server are never supported. */
-    if (ssl->server || !ssl3_can_renegotiate(ssl)) {
-      al = SSL_AD_NO_RENEGOTIATION;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
-      goto f_err;
-    }
-
-    /* This must be a HelloRequest, possibly fragmented over multiple records.
-     * Consume data from the handshake protocol until it is complete. */
-    static const uint8_t kHelloRequest[] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
-    while (ssl->s3->hello_request_len < sizeof(kHelloRequest)) {
-      if (rr->length == 0) {
-        /* Get a new record. */
-        goto start;
-      }
-      if (rr->data[0] != kHelloRequest[ssl->s3->hello_request_len]) {
-        al = SSL_AD_DECODE_ERROR;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HELLO_REQUEST);
-        goto f_err;
-      }
-      rr->data++;
-      rr->length--;
-      ssl->s3->hello_request_len++;
-    }
-    ssl->s3->hello_request_len = 0;
-
-    ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
-                        kHelloRequest, sizeof(kHelloRequest));
-
-    if (ssl->renegotiate_mode == ssl_renegotiate_ignore) {
-      goto start;
-    }
-
-    /* Renegotiation is only supported at quiescent points in the application
-     * protocol, namely in HTTPS, just before reading the HTTP response. Require
-     * the record-layer be idle and avoid complexities of sending a handshake
-     * record while an application_data record is being written. */
-    if (ssl_write_buffer_is_pending(ssl)) {
-      al = SSL_AD_NO_RENEGOTIATION;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
-      goto f_err;
-    }
-
-    /* Begin a new handshake. */
-    ssl->s3->total_renegotiations++;
-    ssl->state = SSL_ST_CONNECT;
-    i = ssl->handshake_func(ssl);
-    if (i < 0) {
-      return i;
-    }
-    if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
+    if (rr->type != SSL3_RT_HANDSHAKE) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return -1;
     }
 
-    /* The handshake completed synchronously. Continue reading records. */
-    goto start;
+    if (rr->length != 0) {
+      return consume_record(ssl, buf, len, 0 /* consume data */);
+    }
+
+    /* Discard empty records and loop again. */
   }
-
-  al = SSL_AD_UNEXPECTED_MESSAGE;
-  OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-
-f_err:
-  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-  return -1;
 }
 
 int ssl3_send_alert(SSL *ssl, int level, int desc) {
