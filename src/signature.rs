@@ -132,10 +132,12 @@
 //! ```
 
 
-use {init, signature_impl};
+use init;
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
+    ECDSAVerification,
+
     ECDSA_P256_SHA1_ASN1,
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA384_ASN1,
@@ -147,7 +149,7 @@ pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA512_ASN1,
 };
 
-pub use ec::eddsa::{ED25519, Ed25519KeyPair};
+pub use ec::eddsa::{EdDSA, ED25519, Ed25519KeyPair};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::RSAKeyPair;
@@ -165,6 +167,8 @@ pub use rsa::{
 
 #[cfg(feature = "use_heap")]
 pub use rsa::{
+    RSAVerificationAlgorithm,
+
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA384,
@@ -194,27 +198,16 @@ impl<'a> Signature {
 }
 
 /// A signature verification algorithm.
-//
-// The `VerificationAlgorithm` struct is just a wrapper around a
-// `VerificationAlgorithmImpl`. This is done to be consistent with the rest of
-// *ring*, which avoids exposing traits in its API, and to save users from
-// encountering errors such as:
-//
-// ```output
-// the trait `core::marker::Sync` is not implemented for the type
-// `signature::VerificationAlgorithm + 'static` [E0277]
-// note: shared static variables must have a type that implements `Sync`
-// ```
-//
-// Although users could resolve such errors by adding `+ Sync` as we do here,
-// it's confusing and hard to debug for newcomers.
-pub struct VerificationAlgorithm {
-    // XXX: This is public so that `VerificationAlgorithm`s can be defined in
-    // other `ring` submodules, but it isn't actually useful outside `ring`
-    // since `signature_impl` isn't public.
-    #[doc(hidden)]
-    pub implementation:
-        &'static (signature_impl::VerificationAlgorithmImpl + Sync),
+///
+/// Don't implement this trait yourself. This is intended for implementation by
+/// *ring* types only. *ring* may assume there are no implementations of this
+/// trait outside the *ring* crate, which may cause external implementations to
+/// not work as one might expect.
+pub trait VerificationAlgorithm : Sync {
+    /// Verify the signature `signature` of message `msg` with the public key
+    /// `public_key`.
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), ()>;
 }
 
 /// Verify the signature `signature` of message `msg` with the public key
@@ -243,7 +236,7 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
               msg: untrusted::Input, signature: untrusted::Input)
               -> Result<(), ()> {
     init::init_once();
-    alg.implementation.verify(public_key, msg, signature)
+    alg.verify(public_key, msg, signature)
 }
 
 
