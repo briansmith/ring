@@ -94,7 +94,8 @@ OPENSSL_EXPORT int SHA1_Final(uint8_t *md, SHA_CTX *sha);
 OPENSSL_EXPORT uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out);
 
 /* SHA1_Transform is a low-level function that performs a single, SHA-1 block
- * transformation using the state from |sha| and 64 bytes from |block|. */
+ * transformation using the state from |sha| and |SHA_CBLOCK| bytes from
+ * |block|. */
 OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha, const uint8_t *block);
 
 struct sha_state_st {
@@ -169,9 +170,10 @@ OPENSSL_EXPORT int SHA256_Final(uint8_t *md, SHA256_CTX *sha);
  * |out|. */
 OPENSSL_EXPORT uint8_t *SHA256(const uint8_t *data, size_t len, uint8_t *out);
 
-/* SHA256_Transform is a low-level function that performs a single, SHA-1 block
- * transformation using the state from |sha| and 64 bytes from |block|. */
-OPENSSL_EXPORT void SHA256_Transform(SHA256_CTX *sha, const uint8_t *data);
+/* SHA256_Transform is a low-level function that performs a single, SHA-256
+ * block transformation using the state from |sha| and |SHA256_CBLOCK| bytes
+ * from |block|. */
+OPENSSL_EXPORT void SHA256_Transform(SHA256_CTX *sha, const uint8_t *block);
 
 struct sha256_state_st {
   uint32_t h[8];
@@ -205,9 +207,10 @@ OPENSSL_EXPORT int SHA384_Final(uint8_t *md, SHA512_CTX *sha);
  * |out|. */
 OPENSSL_EXPORT uint8_t *SHA384(const uint8_t *data, size_t len, uint8_t *out);
 
-/* SHA384_Transform is a low-level function that performs a single, SHA-1 block
- * transformation using the state from |sha| and 64 bytes from |block|. */
-OPENSSL_EXPORT void SHA384_Transform(SHA512_CTX *sha, const uint8_t *data);
+/* SHA384_Transform is a low-level function that performs a single, SHA-384
+ * block transformation using the state from |sha| and |SHA384_CBLOCK| bytes
+ * from |block|. */
+OPENSSL_EXPORT void SHA384_Transform(SHA512_CTX *sha, const uint8_t *block);
 
 
 /* SHA-512. */
@@ -234,9 +237,10 @@ OPENSSL_EXPORT int SHA512_Final(uint8_t *md, SHA512_CTX *sha);
  * |out|. */
 OPENSSL_EXPORT uint8_t *SHA512(const uint8_t *data, size_t len, uint8_t *out);
 
-/* SHA512_Transform is a low-level function that performs a single, SHA-1 block
- * transformation using the state from |sha| and 64 bytes from |block|. */
-OPENSSL_EXPORT void SHA512_Transform(SHA512_CTX *sha, const uint8_t *data);
+/* SHA512_Transform is a low-level function that performs a single, SHA-512
+ * block transformation using the state from |sha| and |SHA512_CBLOCK| bytes
+ * from |block|. */
+OPENSSL_EXPORT void SHA512_Transform(SHA512_CTX *sha, const uint8_t *block);
 
 struct sha512_state_st {
   uint64_t h[8];

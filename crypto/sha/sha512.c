@@ -164,14 +164,14 @@ int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
   return SHA512_Update(sha, data, len);
 }
 
-void SHA512_Transform(SHA512_CTX *c, const uint8_t *data) {
+void SHA512_Transform(SHA512_CTX *c, const uint8_t *block) {
 #ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
-  if ((size_t)data % sizeof(c->u.d[0]) != 0) {
-    memcpy(c->u.p, data, sizeof(c->u.p));
-    data = c->u.p;
+  if ((size_t)block % sizeof(c->u.d[0]) != 0) {
+    memcpy(c->u.p, block, sizeof(c->u.p));
+    block = c->u.p;
   }
 #endif
-  sha512_block_data_order(c->h, (uint64_t *)data, 1);
+  sha512_block_data_order(c->h, (uint64_t *)block, 1);
 }
 
 int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
