@@ -14,18 +14,19 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use {der, digest, signature, signature_impl};
+use {der, digest, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
 use untrusted;
 
-struct ECDSAVerification {
+/// Parameters for ECDSA signing and verification.
+pub struct ECDSAVerification {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
 }
 
-impl signature_impl::VerificationAlgorithmImpl for ECDSAVerification {
+impl signature::VerificationAlgorithm for ECDSAVerification {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
@@ -216,12 +217,9 @@ macro_rules! ecdsa {
         /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
-        pub static $VERIFY_ALGORITHM: signature::VerificationAlgorithm =
-                signature::VerificationAlgorithm {
-            implementation: &ECDSAVerification {
-                ops: $ecdsa_verify_ops,
-                digest_alg: $digest_alg,
-            }
+        pub static $VERIFY_ALGORITHM: ECDSAVerification = ECDSAVerification {
+            ops: $ecdsa_verify_ops,
+            digest_alg: $digest_alg,
         };
     }
 }
