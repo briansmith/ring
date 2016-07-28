@@ -411,7 +411,8 @@ start:
 
   /* we now have a packet which can be read and processed */
 
-  if (type == rr->type) {
+  /* Do not allow interleaving application data and HelloRequest. */
+  if (type == rr->type && ssl->s3->hello_request_len == 0) {
     /* Discard empty records. */
     if (rr->length == 0) {
       goto start;

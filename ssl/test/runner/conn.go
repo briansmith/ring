@@ -1274,6 +1274,20 @@ func (c *Conn) simulatePacketLoss(resendFunc func()) error {
 	return nil
 }
 
+func (c *Conn) SendHalfHelloRequest() error {
+	if err := c.Handshake(); err != nil {
+		return err
+	}
+
+	c.out.Lock()
+	defer c.out.Unlock()
+
+	if _, err := c.writeRecord(recordTypeHandshake, []byte{typeHelloRequest, 0}); err != nil {
+		return err
+	}
+	return c.flushHandshake()
+}
+
 // Write writes data to the connection.
 func (c *Conn) Write(b []byte) (int, error) {
 	if err := c.Handshake(); err != nil {

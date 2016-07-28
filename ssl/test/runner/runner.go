@@ -301,6 +301,9 @@ type testCase struct {
 	// renegotiate indicates the number of times the connection should be
 	// renegotiated during the exchange.
 	renegotiate int
+	// sendHalfHelloRequest, if true, causes the server to send half a
+	// HelloRequest when the handshake completes.
+	sendHalfHelloRequest bool
 	// renegotiateCiphers is a list of ciphersuite ids that will be
 	// switched in just before renegotiation.
 	renegotiateCiphers []uint16
@@ -570,6 +573,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 
 	for i := 0; i < test.sendWarningAlerts; i++ {
 		tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
+	}
+
+	if test.sendHalfHelloRequest {
+		tlsConn.SendHalfHelloRequest()
 	}
 
 	if test.renegotiate > 0 {
@@ -3381,6 +3388,20 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-renegotiate-freely",
 				"-expect-total-renegotiations", "1",
 			},
+		})
+
+		tests = append(tests, testCase{
+			name: "SendHalfHelloRequest",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					PackHelloRequestWithFinished: config.packHandshakeFlight,
+				},
+			},
+			sendHalfHelloRequest: true,
+			flags:                []string{"-renegotiate-ignore"},
+			shouldFail:           true,
+			expectedError:        ":UNEXPECTED_RECORD:",
 		})
 
 		// NPN on client and server; results in post-handshake message.
