@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -48,7 +49,7 @@ var (
 	mallocTestDebug    = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 	jsonOutput         = flag.String("json-output", "", "The file to output JSON results to.")
 	pipe               = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
-	testToRun          = flag.String("test", "", "The name of a test to run, or empty to run all tests")
+	testToRun          = flag.String("test", "", "The pattern to filter tests to run, or empty to run all tests")
 	numWorkers         = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 	shimPath           = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	resourceDir        = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
@@ -7828,13 +7829,24 @@ func main() {
 
 	var foundTest bool
 	for i := range testCases {
-		if len(*testToRun) == 0 || *testToRun == testCases[i].name {
+		matched := true
+		if len(*testToRun) != 0 {
+			var err error
+			matched, err = filepath.Match(*testToRun, testCases[i].name)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error matching pattern: %s\n", err)
+				os.Exit(1)
+			}
+		}
+
+		if matched {
 			foundTest = true
 			testChan <- &testCases[i]
 		}
 	}
+
 	if !foundTest {
-		fmt.Fprintf(os.Stderr, "No test named '%s'\n", *testToRun)
+		fmt.Fprintf(os.Stderr, "No tests matched %q\n", *testToRun)
 		os.Exit(1)
 	}
 
