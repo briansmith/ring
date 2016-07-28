@@ -21,12 +21,12 @@ use super::public_key::*;
 use untrusted;
 
 /// Parameters for ECDSA signing and verification.
-pub struct ECDSAVerification {
+pub struct ECDSAParameters {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
 }
 
-impl signature::VerificationAlgorithm for ECDSAVerification {
+impl signature::VerificationAlgorithm for ECDSAParameters {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
@@ -217,7 +217,7 @@ macro_rules! ecdsa {
         /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
-        pub static $VERIFY_ALGORITHM: ECDSAVerification = ECDSAVerification {
+        pub static $VERIFY_ALGORITHM: ECDSAParameters = ECDSAParameters {
             ops: $ecdsa_verify_ops,
             digest_alg: $digest_alg,
         };

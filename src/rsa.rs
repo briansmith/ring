@@ -62,13 +62,13 @@ impl RSAPadding {
 
 
 /// Parameters for RSA signing and verification.
-pub struct RSAVerificationAlgorithm {
+pub struct RSAParameters {
     padding_alg: &'static RSAPadding,
     min_bits: usize,
 }
 
 
-impl signature::VerificationAlgorithm for RSAVerificationAlgorithm {
+impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), ()> {
         const MAX_BITS: usize = 8192;
@@ -157,8 +157,8 @@ macro_rules! rsa_pkcs1 {
         #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
-        pub static $VERIFY_ALGORITHM: RSAVerificationAlgorithm =
-            RSAVerificationAlgorithm {
+        pub static $VERIFY_ALGORITHM: RSAParameters =
+            RSAParameters {
                 padding_alg: &$PADDING_ALGORITHM,
                 min_bits: $min_bits,
             };

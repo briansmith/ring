@@ -136,7 +136,7 @@ use init;
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
-    ECDSAVerification,
+    ECDSAParameters,
 
     ECDSA_P256_SHA1_ASN1,
     ECDSA_P256_SHA256_ASN1,
@@ -149,7 +149,7 @@ pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA512_ASN1,
 };
 
-pub use ec::eddsa::{EdDSA, ED25519, Ed25519KeyPair};
+pub use ec::eddsa::{EdDSAParameters, ED25519, Ed25519KeyPair};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::RSAKeyPair;
@@ -167,7 +167,7 @@ pub use rsa::{
 
 #[cfg(feature = "use_heap")]
 pub use rsa::{
-    RSAVerificationAlgorithm,
+    RSAParameters,
 
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
