@@ -29,7 +29,9 @@ pub struct Ed25519KeyPair {
 
 /// The raw bytes of the Ed25519 key pair, for serialization.
 pub struct Ed25519KeyPairBytes {
+    /// Private key bytes.
     pub private_key: [u8; 32],
+    /// Public key bytes.
     pub public_key: [u8; 32],
 }
 
