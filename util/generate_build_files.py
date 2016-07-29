@@ -223,9 +223,10 @@ class Bazel(object):
       out.write(self.header)
 
       out.write('test_support_sources = [\n')
-      for filename in (files['test_support'] +
-                       files['crypto_internal_headers'] +
-                       files['ssl_internal_headers']):
+      for filename in sorted(files['test_support'] +
+                             files['test_support_headers'] +
+                             files['crypto_internal_headers'] +
+                             files['ssl_internal_headers']):
         if os.path.basename(filename) == 'malloc.cc':
           continue
         out.write('    "%s",\n' % PathOf(filename))
@@ -323,8 +324,12 @@ class GN(object):
     with open('BUILD.generated.gni', 'w+') as out:
       out.write(self.header)
 
-      self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
-      self.PrintVariableSection(out, 'ssl_sources', files['ssl'])
+      self.PrintVariableSection(out, 'crypto_sources',
+                                files['crypto'] + files['crypto_headers'] +
+                                files['crypto_internal_headers'])
+      self.PrintVariableSection(out, 'ssl_sources',
+                                files['ssl'] + files['ssl_headers'] +
+                                files['ssl_internal_headers'])
 
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(
@@ -339,7 +344,8 @@ class GN(object):
       out.write(self.header)
 
       self.PrintVariableSection(out, '_test_support_sources',
-                                files['test_support'])
+                                files['test_support'] +
+                                files['test_support_headers'])
       out.write('\n')
 
       out.write('template("create_tests") {\n')
@@ -393,10 +399,12 @@ class GYP(object):
     with open('boringssl.gypi', 'w+') as gypi:
       gypi.write(self.header + '{\n  \'variables\': {\n')
 
-      self.PrintVariableSection(
-          gypi, 'boringssl_ssl_sources', files['ssl'])
-      self.PrintVariableSection(
-          gypi, 'boringssl_crypto_sources', files['crypto'])
+      self.PrintVariableSection(gypi, 'boringssl_ssl_sources',
+                                files['ssl'] + files['ssl_headers'] +
+                                files['ssl_internal_headers'])
+      self.PrintVariableSection(gypi, 'boringssl_crypto_sources',
+                                files['crypto'] + files['crypto_headers'] +
+                                files['crypto_internal_headers'])
 
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(gypi, 'boringssl_%s_%s_sources' %
@@ -430,8 +438,9 @@ class GYP(object):
 
       test_gypi.write('  ],\n  \'variables\': {\n')
 
-      self.PrintVariableSection(
-          test_gypi, 'boringssl_test_support_sources', files['test_support'])
+      self.PrintVariableSection(test_gypi, 'boringssl_test_support_sources',
+                                files['test_support'] +
+                                files['test_support_headers'])
 
       test_gypi.write('    \'boringssl_test_targets\': [\n')
 
@@ -683,7 +692,8 @@ def main(platforms):
       'tool': tool_c_files,
       'tool_headers': tool_h_files,
       'test': test_c_files,
-      'test_support': test_support_h_files + test_support_c_files,
+      'test_support': test_support_c_files,
+      'test_support_headers': test_support_h_files,
       'tests': tests,
   }
 
