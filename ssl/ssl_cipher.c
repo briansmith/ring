@@ -1660,6 +1660,30 @@ uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher) {
   return id & 0xffff;
 }
 
+int ssl_cipher_get_ecdhe_psk_cipher(const SSL_CIPHER *cipher,
+                                    uint16_t *out_cipher) {
+  switch (cipher->id) {
+    case TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:
+    case TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:
+    case TLS1_CK_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256:
+      *out_cipher = TLS1_CK_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256 & 0xffff;
+      return 1;
+
+    case TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256:
+    case TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:
+    case TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256:
+      *out_cipher = TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256 & 0xffff;
+      return 1;
+
+    case TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384:
+    case TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:
+    case TLS1_CK_ECDHE_PSK_WITH_AES_256_GCM_SHA384:
+      *out_cipher = TLS1_CK_ECDHE_PSK_WITH_AES_256_GCM_SHA384 & 0xffff;
+      return 1;
+  }
+  return 0;
+}
+
 int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_AES) != 0;
 }

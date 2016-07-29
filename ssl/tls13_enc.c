@@ -351,6 +351,28 @@ int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server) {
   return 1;
 }
 
+static const char kTLS13LabelResumptionPSK[] = "resumption psk";
+static const char kTLS13LabelResumptionContext[] = "resumption context";
+
+int tls13_resumption_psk(SSL *ssl, uint8_t *out, size_t out_len,
+                         const SSL_SESSION *session) {
+  const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
+  return hkdf_expand_label(out, digest, session->master_key,
+                           session->master_key_length,
+                           (const uint8_t *)kTLS13LabelResumptionPSK,
+                           strlen(kTLS13LabelResumptionPSK), NULL, 0, out_len);
+}
+
+int tls13_resumption_context(SSL *ssl, uint8_t *out, size_t out_len,
+                             const SSL_SESSION *session) {
+  const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
+  return hkdf_expand_label(out, digest, session->master_key,
+                           session->master_key_length,
+                           (const uint8_t *)kTLS13LabelResumptionContext,
+                           strlen(kTLS13LabelResumptionContext), NULL, 0,
+                           out_len);
+}
+
 int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                  const char *label, size_t label_len,
                                  const uint8_t *context, size_t context_len,

@@ -4440,6 +4440,9 @@ typedef struct ssl3_state_st {
    * immutable. */
   SSL_SESSION *established_session;
 
+  /* session_reused indicates whether a session was resumed. */
+  unsigned session_reused:1;
+
   /* Connection binding to prevent renegotiation attacks */
   uint8_t previous_client_finished[EVP_MAX_MD_SIZE];
   uint8_t previous_client_finished_len;

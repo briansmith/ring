@@ -2162,7 +2162,7 @@ const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
 }
 
 int SSL_session_reused(const SSL *ssl) {
-  return ssl->session != NULL;
+  return ssl->s3->session_reused;
 }
 
 const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }

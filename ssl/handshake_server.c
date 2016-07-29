@@ -713,6 +713,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
       ssl->session = session;
       session = NULL;
       ssl->verify_result = ssl->session->verify_result;
+      ssl->s3->session_reused = 1;
     } else {
       SSL_set_session(ssl, NULL);
       if (!ssl_get_new_session(ssl, 1 /* server */)) {

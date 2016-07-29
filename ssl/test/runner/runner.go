@@ -2313,9 +2313,6 @@ func addCipherSuiteTests() {
 					expectedClientError = ":WRONG_CIPHER_RETURNED:"
 				}
 
-				// TODO(davidben,svaldez): Implement resumption for TLS 1.3.
-				resumeSession := ver.version < VersionTLS13
-
 				testCases = append(testCases, testCase{
 					testType: serverTest,
 					protocol: protocol,
@@ -2336,7 +2333,7 @@ func addCipherSuiteTests() {
 					certFile:      certFile,
 					keyFile:       keyFile,
 					flags:         flags,
-					resumeSession: resumeSession,
+					resumeSession: true,
 					shouldFail:    shouldServerFail,
 					expectedError: expectedServerError,
 				})
@@ -2358,7 +2355,7 @@ func addCipherSuiteTests() {
 						},
 					},
 					flags:         flags,
-					resumeSession: resumeSession,
+					resumeSession: true,
 					shouldFail:    shouldClientFail,
 					expectedError: expectedClientError,
 				})
@@ -3426,9 +3423,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
 			"-verify-peer",
 		},
-		// TODO(davidben): Enable this when resumption is implemented
-		// in TLS 1.3.
-		resumeSession: false,
+		resumeSession: true,
 	})
 	tests = append(tests, testCase{
 		testType: serverTest,
@@ -3441,9 +3436,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			"-ocsp-response",
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
 		},
-		// TODO(davidben): Enable this when resumption is implemented
-		// in TLS 1.3.
-		resumeSession: false,
+		resumeSession: true,
 	})
 
 	// Certificate verification tests.
@@ -3474,9 +3467,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					flag,
 					"-expect-verify-result",
 				},
-				// TODO(davidben): Enable this when resumption is
-				// implemented in TLS 1.3.
-				resumeSession: vers.version != VersionTLS13,
+				resumeSession: true,
 			})
 			tests = append(tests, testCase{
 				testType: testType,
@@ -3507,9 +3498,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-verify-fail",
 				"-expect-verify-result",
 			},
-			// TODO(davidben): Enable this when resumption is
-			// implemented in TLS 1.3.
-			resumeSession: vers.version != VersionTLS13,
+			resumeSession: true,
 		})
 	}
 
@@ -3822,7 +3811,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 
 func addDDoSCallbackTests() {
 	// DDoS callback.
-	// TODO(davidben): Implement DDoS resumption tests for TLS 1.3.
 	for _, resume := range []bool{false, true} {
 		suffix := "Resume"
 		if resume {
@@ -3838,17 +3826,15 @@ func addDDoSCallbackTests() {
 			flags:         []string{"-install-ddos-callback"},
 			resumeSession: resume,
 		})
-		if !resume {
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "Server-DDoS-OK-" + suffix + "-TLS13",
-				config: Config{
-					MaxVersion: VersionTLS13,
-				},
-				flags:         []string{"-install-ddos-callback"},
-				resumeSession: resume,
-			})
-		}
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "Server-DDoS-OK-" + suffix + "-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			flags:         []string{"-install-ddos-callback"},
+			resumeSession: resume,
+		})
 
 		failFlag := "-fail-ddos-callback"
 		if resume {
@@ -3865,19 +3851,17 @@ func addDDoSCallbackTests() {
 			shouldFail:    true,
 			expectedError: ":CONNECTION_REJECTED:",
 		})
-		if !resume {
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "Server-DDoS-Reject-" + suffix + "-TLS13",
-				config: Config{
-					MaxVersion: VersionTLS13,
-				},
-				flags:         []string{"-install-ddos-callback", failFlag},
-				resumeSession: resume,
-				shouldFail:    true,
-				expectedError: ":CONNECTION_REJECTED:",
-			})
-		}
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "Server-DDoS-Reject-" + suffix + "-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			flags:         []string{"-install-ddos-callback", failFlag},
+			resumeSession: resume,
+			shouldFail:    true,
+			expectedError: ":CONNECTION_REJECTED:",
+		})
 	}
 }
 
@@ -4223,9 +4207,6 @@ func addExtensionTests() {
 			continue
 		}
 
-		// TODO(davidben): Implement resumption in TLS 1.3.
-		resumeSession := ver.version < VersionTLS13
-
 		// Test that duplicate extensions are rejected.
 		testCases = append(testCases, testCase{
 			testType: clientTest,
@@ -4297,7 +4278,7 @@ func addExtensionTests() {
 				ServerName: "example.com",
 			},
 			flags:         []string{"-expect-server-name", "example.com"},
-			resumeSession: resumeSession,
+			resumeSession: true,
 		})
 
 		// Test ALPN.
@@ -4314,7 +4295,7 @@ func addExtensionTests() {
 			},
 			expectedNextProto:     "foo",
 			expectedNextProtoType: alpn,
-			resumeSession:         resumeSession,
+			resumeSession:         true,
 		})
 		testCases = append(testCases, testCase{
 			testType: clientTest,
@@ -4345,7 +4326,7 @@ func addExtensionTests() {
 			},
 			expectedNextProto:     "foo",
 			expectedNextProtoType: alpn,
-			resumeSession:         resumeSession,
+			resumeSession:         true,
 		})
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -4356,7 +4337,7 @@ func addExtensionTests() {
 			},
 			flags:             []string{"-decline-alpn"},
 			expectNoNextProto: true,
-			resumeSession:     resumeSession,
+			resumeSession:     true,
 		})
 
 		// Test ALPN in async mode as well to ensure that extensions callbacks are only
@@ -4375,7 +4356,7 @@ func addExtensionTests() {
 			},
 			expectedNextProto:     "foo",
 			expectedNextProtoType: alpn,
-			resumeSession:         resumeSession,
+			resumeSession:         true,
 		})
 
 		var emptyString string
@@ -4430,7 +4411,7 @@ func addExtensionTests() {
 				},
 				expectedNextProto:     "foo",
 				expectedNextProtoType: alpn,
-				resumeSession:         resumeSession,
+				resumeSession:         true,
 			})
 			testCases = append(testCases, testCase{
 				testType: serverTest,
@@ -4449,7 +4430,7 @@ func addExtensionTests() {
 				},
 				expectedNextProto:     "foo",
 				expectedNextProtoType: alpn,
-				resumeSession:         resumeSession,
+				resumeSession:         true,
 			})
 
 			// Test that negotiating both NPN and ALPN is forbidden.
@@ -4503,66 +4484,65 @@ func addExtensionTests() {
 		}
 
 		// Test ticket behavior.
-		//
-		// TODO(davidben): Add TLS 1.3 versions of these.
+
+		// Resume with a corrupt ticket.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "CorruptTicket-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					CorruptTicket: true,
+				},
+			},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		})
+		// Test the ticket callback, with and without renewal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "TicketCallback-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+			},
+			resumeSession: true,
+			flags:         []string{"-use-ticket-callback"},
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "TicketCallback-Renew-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					ExpectNewTicket: true,
+				},
+			},
+			flags:         []string{"-use-ticket-callback", "-renew-ticket"},
+			resumeSession: true,
+		})
+
+		// Test that the ticket callback is only called once when everything before
+		// it in the ClientHello is asynchronous. This corrupts the ticket so
+		// certificate selection callbacks run.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "TicketCallback-SingleCall-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					CorruptTicket: true,
+				},
+			},
+			resumeSession:        true,
+			expectResumeRejected: true,
+			flags: []string{
+				"-use-ticket-callback",
+				"-async",
+			},
+		})
+
+		// Resume with an oversized session id.
 		if ver.version < VersionTLS13 {
-			// Resume with a corrupt ticket.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "CorruptTicket-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						CorruptTicket: true,
-					},
-				},
-				resumeSession:        true,
-				expectResumeRejected: true,
-			})
-			// Test the ticket callback, with and without renewal.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketCallback-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-				},
-				resumeSession: true,
-				flags:         []string{"-use-ticket-callback"},
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketCallback-Renew-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						ExpectNewTicket: true,
-					},
-				},
-				flags:         []string{"-use-ticket-callback", "-renew-ticket"},
-				resumeSession: true,
-			})
-
-			// Test that the ticket callback is only called once when everything before
-			// it in the ClientHello is asynchronous. This corrupts the ticket so
-			// certificate selection callbacks run.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketCallback-SingleCall-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						CorruptTicket: true,
-					},
-				},
-				resumeSession:        true,
-				expectResumeRejected: true,
-				flags: []string{
-					"-use-ticket-callback",
-					"-async",
-				},
-			})
-
-			// Resume with an oversized session id.
 			testCases = append(testCases, testCase{
 				testType: serverTest,
 				name:     "OversizedSessionId-" + ver.name,
@@ -4674,7 +4654,7 @@ func addExtensionTests() {
 				"-expect-signed-cert-timestamps",
 				base64.StdEncoding.EncodeToString(testSCTList),
 			},
-			resumeSession: resumeSession,
+			resumeSession: true,
 		})
 		testCases = append(testCases, testCase{
 			name: "SendSCTListOnResume-" + ver.name,
@@ -4689,7 +4669,7 @@ func addExtensionTests() {
 				"-expect-signed-cert-timestamps",
 				base64.StdEncoding.EncodeToString(testSCTList),
 			},
-			resumeSession: resumeSession,
+			resumeSession: true,
 		})
 		testCases = append(testCases, testCase{
 			name:     "SignedCertificateTimestampList-Server-" + ver.name,
@@ -4702,7 +4682,7 @@ func addExtensionTests() {
 				base64.StdEncoding.EncodeToString(testSCTList),
 			},
 			expectedSCTList: testSCTList,
-			resumeSession:   resumeSession,
+			resumeSession:   true,
 		})
 	}
 
@@ -4874,14 +4854,7 @@ func addExtensionTests() {
 
 func addResumptionVersionTests() {
 	for _, sessionVers := range tlsVersions {
-		// TODO(davidben,svaldez): Implement resumption in TLS 1.3.
-		if sessionVers.version >= VersionTLS13 {
-			continue
-		}
 		for _, resumeVers := range tlsVersions {
-			if resumeVers.version >= VersionTLS13 {
-				continue
-			}
 			cipher := TLS_RSA_WITH_AES_128_CBC_SHA
 			if sessionVers.version >= VersionTLS13 || resumeVers.version >= VersionTLS13 {
 				// TLS 1.3 only shares ciphers with TLS 1.2, so
@@ -4916,6 +4889,14 @@ func addResumptionVersionTests() {
 						expectedResumeVersion: resumeVers.version,
 					})
 				} else {
+					var localError, error string
+					if (resumeVers.version >= VersionTLS13) != (sessionVers.version >= VersionTLS13) {
+						// TLS 1.3 sessions are incompatible with TLS 1.2 sessions.
+						localError = "didResume is false, but we expected the opposite"
+					} else {
+						error = ":OLD_SESSION_VERSION_NOT_RETURNED:"
+					}
+
 					testCases = append(testCases, testCase{
 						protocol:      protocol,
 						name:          "Resume-Client-Mismatch" + suffix,
@@ -4934,7 +4915,8 @@ func addResumptionVersionTests() {
 						},
 						expectedResumeVersion: resumeVers.version,
 						shouldFail:            true,
-						expectedError:         ":OLD_SESSION_VERSION_NOT_RETURNED:",
+						expectedLocalError:    localError,
+						expectedError:         error,
 					})
 				}
 
@@ -4977,7 +4959,6 @@ func addResumptionVersionTests() {
 		}
 	}
 
-	// TODO(davidben): This test should have a TLS 1.3 variant later.
 	testCases = append(testCases, testCase{
 		name:          "Resume-Client-CipherMismatch",
 		resumeSession: true,
@@ -4990,6 +4971,24 @@ func addResumptionVersionTests() {
 			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
 			Bugs: ProtocolBugs{
 				SendCipherSuite: TLS_RSA_WITH_AES_128_CBC_SHA,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":OLD_SESSION_CIPHER_NOT_RETURNED:",
+	})
+
+	testCases = append(testCases, testCase{
+		name:          "Resume-Client-CipherMismatch-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+		},
+		resumeConfig: &Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				SendCipherSuite: TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA,
 			},
 		},
 		shouldFail:    true,

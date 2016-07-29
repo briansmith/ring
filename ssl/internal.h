@@ -241,6 +241,11 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
 
+/* ssl_cipher_get_resumption_cipher returns the cipher suite id of the cipher
+ * matching |cipher| with PSK enabled. */
+int ssl_cipher_get_ecdhe_psk_cipher(const SSL_CIPHER *cipher,
+                                    uint16_t *out_cipher);
+
 /* ssl_cipher_get_key_type returns the |EVP_PKEY_*| value corresponding to the
  * server key used in |cipher| or |EVP_PKEY_NONE| if there is none. */
 int ssl_cipher_get_key_type(const SSL_CIPHER *cipher);
@@ -848,6 +853,18 @@ int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
  * 0 for the Client Finished. */
 int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server);
 
+/* tls13_resumption_psk calculates the PSK to use for the resumption of
+ * |session| and stores the result in |out|. It returns one on success, and
+ * zero on failure. */
+int tls13_resumption_psk(SSL *ssl, uint8_t *out, size_t out_len,
+                         const SSL_SESSION *session);
+
+/* tls13_resumption_context derives the context to be used for the handshake
+ * transcript on the resumption of |session|. It returns one on success, and
+ * zero on failure. */
+int tls13_resumption_context(SSL *ssl, uint8_t *out, size_t out_len,
+                             const SSL_SESSION *session);
+
 
 /* Handshake functions. */
 
@@ -937,6 +954,13 @@ int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents);
 int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out);
+
+int ssl_ext_pre_shared_key_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                             CBS *contents);
+int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
+                                             SSL_SESSION **out_session,
+                                             uint8_t *out_alert, CBS *contents);
+int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
 
 int ssl_add_client_hello_body(SSL *ssl, CBB *body);
 
@@ -1232,6 +1256,14 @@ void ssl_cert_free(CERT *c);
 int ssl_get_new_session(SSL *ssl, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
 
+/* ssl_session_is_context_valid returns one if |session|'s session ID context
+ * matches the one set on |ssl| and zero otherwise. */
+int ssl_session_is_context_valid(const SSL *ssl, const SSL_SESSION *session);
+
+/* ssl_session_is_time_valid returns one if |session| is still valid and zero if
+ * it has expired. */
+int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
+
 enum ssl_session_result_t {
   ssl_session_success,
   ssl_session_error,
@@ -1248,11 +1280,18 @@ enum ssl_session_result_t ssl_get_prev_session(
     SSL *ssl, SSL_SESSION **out_session, int *out_send_ticket,
     const struct ssl_early_callback_ctx *ctx);
 
+/* The following flags determine which parts of the session are duplicated. */
+#define SSL_SESSION_DUP_AUTH_ONLY 0x0
+#define SSL_SESSION_INCLUDE_TICKET 0x1
+#define SSL_SESSION_INCLUDE_NONAUTH 0x2
+#define SSL_SESSION_DUP_ALL \
+  (SSL_SESSION_INCLUDE_TICKET | SSL_SESSION_INCLUDE_NONAUTH)
+
 /* SSL_SESSION_dup returns a newly-allocated |SSL_SESSION| with a copy of the
  * fields in |session| or NULL on error. The new session is non-resumable and
  * must be explicitly marked resumable once it has been filled in. */
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
-                                            int include_ticket);
+                                            int dup_flags);
 
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
