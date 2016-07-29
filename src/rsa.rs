@@ -227,6 +227,7 @@ fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
 #[cfg(feature = "rsa_signing")]
 pub struct RSAKeyPair {
     rsa: std::boxed::Box<RSA>,
+    blinding: std::sync::Mutex<*mut BN_BLINDING>,
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -295,7 +296,15 @@ impl RSAKeyPair {
                 try!(bssl::map_result(unsafe {
                     rsa_new_end(rsa.as_mut())
                 }));
-                Ok(RSAKeyPair { rsa: rsa })
+                let blinding = unsafe { BN_BLINDING_new() };
+                if blinding.is_null() {
+                    return Err(());
+                }
+
+                Ok(RSAKeyPair {
+                    rsa: rsa,
+                    blinding: std::sync::Mutex::new(blinding),
+                })
             })
         })
     }
@@ -335,14 +344,12 @@ impl RSAKeyPair {
         try!(padding_alg.pad(msg, signature));
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
-            let blinding = BN_BLINDING_new();
-            let ret =
-                GFp_rsa_private_transform(self.rsa.as_ref(),
-                                          signature.as_mut_ptr(),
-                                          signature.len(), blinding,
-                                          &mut rand);
-            BN_BLINDING_free(blinding);
-            ret
+            let blinding = *(self.blinding.lock().unwrap());
+
+            GFp_rsa_private_transform(self.rsa.as_ref(),
+                                      signature.as_mut_ptr(),
+                                      signature.len(), blinding,
+                                      &mut rand)
         })
     }
 }
@@ -365,6 +372,7 @@ impl Drop for RSAKeyPair {
             BN_MONT_CTX_free(self.rsa.mont_qq);
             BN_free(self.rsa.qmn_mont);
             BN_free(self.rsa.iqmp_mont);
+            BN_BLINDING_free(*(self.blinding.lock().unwrap()));
         }
     }
 }
@@ -430,9 +438,15 @@ impl Drop for PositiveInteger {
 #[cfg(feature = "rsa_signing")]
 enum BIGNUM {}
 
+/// Needs to be kept in sync with `struct bn_blinding_st` (in `crypto/rsa/blinding.c`).
 #[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
-enum BN_BLINDING {}
+#[repr(C)]
+struct BN_BLINDING {
+    a: *mut BIGNUM,
+    ai: *mut BIGNUM,
+    counter: u32,
+}
 
 #[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
@@ -488,6 +502,9 @@ mod tests {
 
     use super::*;
     use untrusted;
+
+    #[cfg(feature = "rsa_signing")]
+    extern { static GFp_BN_BLINDING_COUNTER: u32; }
 
     #[test]
     fn test_signature_rsa_pkcs1_verify() {
@@ -611,5 +628,64 @@ mod tests {
         signature.push(0);
         assert!(key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
                               &mut signature).is_err());
+    }
+
+    // Once the `BN_BLINDING` in an `RSAKeyPair` has been used
+    // `GFp_BN_BLINDING_COUNTER` times, a new blinding should be created.
+    #[cfg(feature = "rsa_signing")]
+    #[test]
+    fn test_signature_rsa_pkcs1_sign_blinding_reuse() {
+        const MESSAGE: &'static [u8] = b"hello, world";
+        let rng = rand::SystemRandom::new();
+
+        const PRIVATE_KEY_DER: &'static [u8] =
+            include_bytes!("signature_rsa_example_private_key.der");
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
+        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+
+        let mut signature = vec![0; key_pair.public_modulus_len()];
+
+        for _ in 0 .. GFp_BN_BLINDING_COUNTER + 1 {
+            let prev_counter = unsafe {
+                let blinding = *(key_pair.blinding.lock().unwrap());
+                (*blinding).counter
+            };
+
+            let _ = key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                  &mut signature);
+
+            let counter = unsafe {
+                let blinding = *(key_pair.blinding.lock().unwrap());
+                (*blinding).counter
+            };
+
+            assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
+        }
+    }
+
+    // In `crypto/rsa/blinding.c`, when `bn_blinding_create_param` fails
+    // to randomly generate an invertible blinding factor too many times
+    // in a loop, it returns an error. Check that we observe this.
+    #[cfg(feature = "rsa_signing")]
+    #[test]
+    fn test_signature_rsa_pkcs1_sign_blinding_creation_failure() {
+        const MESSAGE: &'static [u8] = b"hello, world";
+
+        // Stub RNG that is constantly 0. In `bn_blinding_create_param`,
+        // this causes the candidate blinding factors to always be 0,
+        // which has no inverse, so `BN_mod_inverse_no_branch` fails.
+        let rng = rand::test_util::FixedByteRandom { byte: 0x00 };
+
+        const PRIVATE_KEY_DER: &'static [u8] =
+            include_bytes!("signature_rsa_example_private_key.der");
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
+        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+
+        let mut signature = vec![0; key_pair.public_modulus_len()];
+
+        let result = key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature);
+
+        assert!(result.is_err());
     }
 }
