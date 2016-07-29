@@ -1291,6 +1291,77 @@ static bool TestSmallPrime(BN_CTX *ctx) {
   return true;
 }
 
+static bool TestCmpWord() {
+  static const BN_ULONG kMaxWord = (BN_ULONG)-1;
+
+  ScopedBIGNUM r(BN_new());
+  if (!r ||
+      !BN_set_word(r.get(), 0)) {
+    return false;
+  }
+
+  if (BN_cmp_word(r.get(), 0) != 0 ||
+      BN_cmp_word(r.get(), 1) >= 0 ||
+      BN_cmp_word(r.get(), kMaxWord) >= 0) {
+    fprintf(stderr, "BN_cmp_word compared against 0 incorrectly.\n");
+    return false;
+  }
+
+  if (!BN_set_word(r.get(), 100)) {
+    return false;
+  }
+
+  if (BN_cmp_word(r.get(), 0) <= 0 ||
+      BN_cmp_word(r.get(), 99) <= 0 ||
+      BN_cmp_word(r.get(), 100) != 0 ||
+      BN_cmp_word(r.get(), 101) >= 0 ||
+      BN_cmp_word(r.get(), kMaxWord) >= 0) {
+    fprintf(stderr, "BN_cmp_word compared against 100 incorrectly.\n");
+    return false;
+  }
+
+  BN_set_negative(r.get(), 1);
+
+  if (BN_cmp_word(r.get(), 0) >= 0 ||
+      BN_cmp_word(r.get(), 100) >= 0 ||
+      BN_cmp_word(r.get(), kMaxWord) >= 0) {
+    fprintf(stderr, "BN_cmp_word compared against -100 incorrectly.\n");
+    return false;
+  }
+
+  if (!BN_set_word(r.get(), kMaxWord)) {
+    return false;
+  }
+
+  if (BN_cmp_word(r.get(), 0) <= 0 ||
+      BN_cmp_word(r.get(), kMaxWord - 1) <= 0 ||
+      BN_cmp_word(r.get(), kMaxWord) != 0) {
+    fprintf(stderr, "BN_cmp_word compared against kMaxWord incorrectly.\n");
+    return false;
+  }
+
+  if (!BN_add(r.get(), r.get(), BN_value_one())) {
+    return false;
+  }
+
+  if (BN_cmp_word(r.get(), 0) <= 0 ||
+      BN_cmp_word(r.get(), kMaxWord) <= 0) {
+    fprintf(stderr, "BN_cmp_word compared against kMaxWord + 1 incorrectly.\n");
+    return false;
+  }
+
+  BN_set_negative(r.get(), 1);
+
+  if (BN_cmp_word(r.get(), 0) >= 0 ||
+      BN_cmp_word(r.get(), kMaxWord) >= 0) {
+    fprintf(stderr,
+            "BN_cmp_word compared against -kMaxWord - 1 incorrectly.\n");
+    return false;
+  }
+
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
@@ -1314,7 +1385,8 @@ int main(int argc, char *argv[]) {
       !TestNegativeZero(ctx.get()) ||
       !TestBadModulus(ctx.get()) ||
       !TestExpModZero() ||
-      !TestSmallPrime(ctx.get())) {
+      !TestSmallPrime(ctx.get()) ||
+      !TestCmpWord()) {
     return 1;
   }
 
