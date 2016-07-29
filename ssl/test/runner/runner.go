@@ -2121,6 +2121,51 @@ func addBasicTests() {
 			shouldFail:    true,
 			expectedError: ":UNEXPECTED_RECORD:",
 		},
+		{
+			testType: serverTest,
+			name:     "V2ClientHello-EmptyRecordPrefix",
+			config: Config{
+				// Choose a cipher suite that does not involve
+				// elliptic curves, so no extensions are
+				// involved.
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					SendV2ClientHello: true,
+				},
+			},
+			sendPrefix: string([]byte{
+				byte(recordTypeHandshake),
+				3, 1, // version
+				0, 0, // length
+			}),
+			// A no-op empty record may not be sent before V2ClientHello.
+			shouldFail:    true,
+			expectedError: ":WRONG_VERSION_NUMBER:",
+		},
+		{
+			testType: serverTest,
+			name:     "V2ClientHello-WarningAlertPrefix",
+			config: Config{
+				// Choose a cipher suite that does not involve
+				// elliptic curves, so no extensions are
+				// involved.
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					SendV2ClientHello: true,
+				},
+			},
+			sendPrefix: string([]byte{
+				byte(recordTypeAlert),
+				3, 1, // version
+				0, 2, // length
+				alertLevelWarning, byte(alertDecompressionFailure),
+			}),
+			// A no-op warning alert may not be sent before V2ClientHello.
+			shouldFail:    true,
+			expectedError: ":WRONG_VERSION_NUMBER:",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }
