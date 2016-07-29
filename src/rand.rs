@@ -58,10 +58,10 @@ pub trait SecureRandom {
 /// syscall. If the kernel is too old to support `getrandom` then by default
 /// `fill()` falls back to reading from `/dev/urandom`. This decision is made
 /// the first time `fill` *succeeds*. The fallback to `/dev/urandom` can be
-/// disabled by enabling the *ring* crate's `disable_dev_urandom_fallback`
-/// feature; this should be done whenever the target system is known to support
-/// `getrandom`. Note that only application (binary) crates, and not library
-/// crates, should enable the `disable_dev_urandom_fallback` feature.
+/// disabled by disabling the `dev_urandom_fallback` default feature; this
+/// should be done whenever the target system is known to support `getrandom`.
+/// Library crates should avoid explicitly enabling the `dev_urandom_fallback`
+/// feature.
 ///
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
@@ -74,10 +74,10 @@ pub trait SecureRandom {
 /// handle.
 ///
 /// On Linux, to properly implement seccomp filtering when the
-/// `disable_dev_urandom_fallback` feature is enabled, allow `getrandom`
-/// through. Otherwise, allow file opening, `getrandom`, and `read` up
-/// until the first call to `fill()` succeeds. After that, allow `getrandom`
-/// and `read`.
+/// `dev_urandom_fallback` default feature is disabled, allow `getrandom`
+/// through. When the fallback is enabled, allow file opening, `getrandom`,
+/// and `read` up until the first call to `fill()` succeeds. After that, allow
+/// `getrandom` and `read`.
 pub struct SystemRandom;
 
 impl SystemRandom {
@@ -106,11 +106,11 @@ impl SecureRandom for SystemRandom {
 #[cfg(not(any(target_os = "linux", windows)))]
 use self::urandom::fill as fill_impl;
 
-#[cfg(any(all(target_os = "linux", feature = "disable_dev_urandom_fallback"),
+#[cfg(any(all(target_os = "linux", not(feature = "dev_urandom_fallback")),
           windows))]
 use self::sysrand::fill as fill_impl;
 
-#[cfg(all(target_os = "linux", not(feature = "disable_dev_urandom_fallback")))]
+#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "linux", windows))]
@@ -130,7 +130,7 @@ mod sysrand {
 
 #[cfg(all(unix,
           not(all(target_os = "linux",
-                  feature = "disable_dev_urandom_fallback"))))]
+                  not(feature = "dev_urandom_fallback")))))]
 mod urandom {
     extern crate std;
 
@@ -150,7 +150,7 @@ mod urandom {
     }
 }
 
-#[cfg(all(target_os = "linux", not(feature = "disable_dev_urandom_fallback")))]
+#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
     extern crate std;
 

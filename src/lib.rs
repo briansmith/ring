@@ -22,12 +22,13 @@
 //! <table>
 //! <tr><th>Feature
 //!     <th>Description
-//! <tr><td><code>disable_dev_urandom_fallback</code>
-//!     <td>On Linux, by default, <code>ring::rand::SystemRandom</code> will
-//!         fall back to reading from <code>/dev/urandom</code> if the
-//!         <code>getrandom()</code> syscall isn't supported at runtime. When
-//!         the <code>disable_dev_urandom_fallback</code> feature is enabled,
-//!         such fallback will not occur. See the documentation for
+//! <tr><td><code>dev_urandom_fallback (default)</code>
+//!     <td>This is only applicable to Linux. On Linux, by default,
+//!         <code>ring::rand::SystemRandom</code> will fall back to reading
+//!         from <code>/dev/urandom</code> if the <code>getrandom()</code>
+//!         syscall isn't supported at runtime. When the
+//!         <code>dev_urandom_fallback</code> feature is disabled, such
+//!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
 //! <tr><td><code>rsa_signing</code>
 //!     <td>Enable RSA signing (<code>RSAKeyPair</code> and related things).
@@ -95,7 +96,7 @@
 #[cfg(feature = "internal_benches")]
 extern crate test as bench;
 
-#[allow(unused_extern_crates)]
+#[cfg(unix)]
 #[macro_use]
 extern crate lazy_static;
 
