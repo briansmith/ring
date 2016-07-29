@@ -58,6 +58,7 @@ var (
 	idleTimeout        = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
 	deterministic      = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
 	allowUnimplemented = flag.Bool("allow-unimplemented", false, "If true, report pass even if some tests are unimplemented.")
+	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
 )
 
 type testCert int
@@ -911,7 +912,9 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	}
 
 	failed := err != nil || childErr != nil
-	correctFailure := len(test.expectedError) == 0 || strings.Contains(stderr, test.expectedError)
+	correctFailure := len(test.expectedError) == 0 || strings.Contains(stderr, test.expectedError) ||
+		(*looseErrors && strings.Contains(stderr, "UNTRANSLATED_ERROR"))
+
 	localError := "none"
 	if err != nil {
 		localError = err.Error()
