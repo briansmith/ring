@@ -22,11 +22,12 @@ use untrusted;
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
 
-/// An Ed25519 key pair, used for signing.
+/// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
     private_public: [u8; 64],
 }
 
+/// The raw bytes of the Ed25519 key pair, for serialization.
 pub struct Ed25519KeyPairBytes {
     pub private_key: [u8; 32],
     pub public_key: [u8; 32],

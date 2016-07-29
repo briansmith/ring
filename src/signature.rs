@@ -149,7 +149,14 @@ pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA512_ASN1,
 };
 
-pub use ec::eddsa::{EdDSAParameters, ED25519, Ed25519KeyPair};
+pub use ec::eddsa::{
+    EdDSAParameters,
+
+    ED25519,
+
+    Ed25519KeyPair,
+    Ed25519KeyPairBytes
+};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::RSAKeyPair;
