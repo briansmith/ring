@@ -662,4 +662,30 @@ mod tests {
             assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
         }
     }
+
+    // In `crypto/rsa/blinding.c`, when `bn_blinding_create_param` fails
+    // to randomly generate an invertible blinding factor too many times
+    // in a loop, it returns an error. Check that we observe this.
+    #[cfg(feature = "rsa_signing")]
+    #[test]
+    fn test_signature_rsa_pkcs1_sign_blinding_creation_failure() {
+        const MESSAGE: &'static [u8] = b"hello, world";
+
+        // Stub RNG that is constantly 0. In `bn_blinding_create_param`,
+        // this causes the candidate blinding factors to always be 0,
+        // which has no inverse, so `BN_mod_inverse_no_branch` fails.
+        let rng = rand::test_util::FixedByteRandom { byte: 0x00 };
+
+        const PRIVATE_KEY_DER: &'static [u8] =
+            include_bytes!("signature_rsa_example_private_key.der");
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
+        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+
+        let mut signature = vec![0; key_pair.public_modulus_len()];
+
+        let result = key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature);
+
+        assert!(result.is_err());
+    }
 }
