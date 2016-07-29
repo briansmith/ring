@@ -16,10 +16,11 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, rand, signature, signature_impl};
+use {bssl, c, rand, signature};
 use untrusted;
 
-struct EdDSA;
+/// Parameters for EdDSA signing and verification.
+pub struct EdDSAParameters;
 
 /// An Ed25519 key pair, used for signing.
 pub struct Ed25519KeyPair {
@@ -122,13 +123,9 @@ impl<'a> Ed25519KeyPair {
 /// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
-pub static ED25519: signature::VerificationAlgorithm =
-        signature::VerificationAlgorithm {
-    implementation: &EdDSA,
-};
+pub static ED25519: EdDSAParameters = EdDSAParameters { };
 
-
-impl signature_impl::VerificationAlgorithmImpl for EdDSA {
+impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), ()> {
         let public_key = public_key.as_slice_less_safe();
