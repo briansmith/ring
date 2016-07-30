@@ -843,6 +843,75 @@ static bool TestExpModZero(RAND *rng) {
   return true;
 }
 
+static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
+  ScopedBIGNUM r(BN_new());
+  if (!r) {
+    return false;
+  }
+
+  static const BN_ULONG kBases[] = { 1, 3 };
+  static const BN_ULONG kExponents[] = { 1, 2, 3 };
+  static const BN_ULONG kModuli[] = { 1, 3 };
+
+  for (BN_ULONG mod_value : kModuli) {
+    ScopedBIGNUM mod(BN_new());
+    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+    if (!mod ||
+        !BN_set_word(mod.get(), mod_value) ||
+        !mont ||
+        !BN_MONT_CTX_set(mont.get(), mod.get(), ctx)) {
+      return false;
+    }
+    for (BN_ULONG exp_value : kExponents) {
+      ScopedBIGNUM exp(BN_new());
+      if (!exp ||
+          !BN_set_word(exp.get(), exp_value)) {
+        return false;
+      }
+      for (BN_ULONG base_value : kBases) {
+        ScopedBIGNUM base(BN_new());
+        if (!base ||
+            !BN_set_word(base.get(), base_value)) {
+          return false;
+        }
+
+        if (base_value >= mod_value &&
+            BN_mod_exp_mont(r.get(), base.get(), exp.get(), mod.get(), ctx,
+                            mont.get())) {
+          fprintf(stderr, "BN_mod_exp_mont(%d, %d, %d) succeeded!\n",
+                  (int)base_value, (int)exp_value, (int)mod_value);
+          return false;
+        }
+
+        if (base_value >= mod_value &&
+            BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(), mod.get(),
+                                      ctx, mont.get())) {
+          fprintf(stderr, "BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
+                  (int)base_value, (int)exp_value, (int)mod_value);
+          return false;
+        }
+
+        BN_set_negative(base.get(), 1);
+
+        if (BN_mod_exp_mont(r.get(), base.get(), exp.get(), mod.get(), ctx,
+                            mont.get())) {
+          fprintf(stderr, "BN_mod_exp_mont(%d, %d, %d) succeeded!\n",
+                  -(int)base_value, (int)exp_value, (int)mod_value);
+          return false;
+        }
+        if (BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
+                                      mod.get(), ctx, mont.get())) {
+          fprintf(stderr, "BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
+                  -(int)base_value, (int)exp_value, (int)mod_value);
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 static bool TestCmpWord() {
   static const BN_ULONG kMaxWord = (BN_ULONG)-1;
 
@@ -926,6 +995,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestNegativeZero(ctx.get()) ||
       !TestBadModulus(ctx.get()) ||
       !TestExpModZero(rng) ||
+      !TestExpModRejectUnreduced(ctx.get()) ||
       !TestCmpWord()) {
     return 1;
   }

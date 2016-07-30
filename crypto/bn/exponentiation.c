@@ -569,10 +569,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   /* prepare a^1 in Montgomery domain */
   if (a->neg || BN_ucmp(a, m) >= 0) {
-    if (!BN_mod(&am, a, m, ctx) ||
-        !BN_to_montgomery(&am, &am, mont, ctx)) {
-      goto err;
-    }
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    goto err;
   } else if (!BN_to_montgomery(&am, a, mont, ctx)) {
     goto err;
   }
