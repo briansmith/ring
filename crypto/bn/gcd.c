@@ -151,6 +151,10 @@ static BIGNUM *bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
     goto err;
   }
   A->neg = 0;
+  if (B->neg || (BN_ucmp(B, A) >= 0)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    goto err;
+  }
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that
    *
@@ -298,23 +302,7 @@ BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
     return BN_mod_inverse_no_branch(out, &no_inverse, a, n, ctx);
   }
 
-  if (!a->neg && BN_ucmp(a, n) < 0) {
-    return bn_mod_inverse_ex(out, &no_inverse, a, n, ctx);
-  }
-
-  BIGNUM a_reduced;
-  BN_init(&a_reduced);
-  BIGNUM *ret = NULL;
-
-  if (!BN_nnmod(&a_reduced, a, n, ctx)) {
-    goto err;
-  }
-
-  ret = bn_mod_inverse_ex(out, &no_inverse, &a_reduced, n, ctx);
-
-err:
-  BN_free(&a_reduced);
-  return ret;
+  return bn_mod_inverse_ex(out, &no_inverse, a, n, ctx);
 }
 
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
@@ -384,10 +372,8 @@ BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
   A->neg = 0;
 
   if (B->neg || (BN_ucmp(B, A) >= 0)) {
-    BN_set_flags(B, BN_FLG_CONSTTIME);
-    if (!BN_nnmod(B, B, A, ctx)) {
-      goto err;
-    }
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    goto err;
   }
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that

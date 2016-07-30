@@ -10366,14 +10366,17 @@ ModInv = 00
 A = 00
 M = 01
 
-ModInv = 00
-A = 01
-M = 01
+# Unreduced input is not allowed in *ring*.
+# ModInv = 00
+# A = 01
+# M = 01
 
-ModInv = 00
-A = 02
-M = 01
+# Unreduced input is not allowed in *ring*.
+# ModInv = 00
+# A = 02
+# M = 01
 
-ModInv = 00
-A = 03
-M = 01
+# Unreduced input is not allowed in *ring*.
+# ModInv = 00
+# A = 03
+# M = 01

@@ -912,6 +912,80 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
   return true;
 }
 
+static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
+  ScopedBIGNUM r(BN_new());
+  if (!r) {
+    return false;
+  }
+
+  static const BN_ULONG kBases[] = { 2, 4, 6 };
+  static const BN_ULONG kModuli[] = { 1, 3 };
+
+  for (BN_ULONG mod_value : kModuli) {
+    ScopedBIGNUM mod(BN_new());
+    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+    if (!mod ||
+        !BN_set_word(mod.get(), mod_value) ||
+        !mont ||
+        !BN_MONT_CTX_set(mont.get(), mod.get(), ctx)) {
+      return false;
+    }
+    for (BN_ULONG base_value : kBases) {
+      ScopedBIGNUM base(BN_new());
+      if (!base ||
+          !BN_set_word(base.get(), base_value)) {
+        return false;
+      }
+
+      int no_inverse;
+
+      if (base_value >= mod_value &&
+          BN_mod_inverse(r.get(), base.get(), mod.get(), ctx) != NULL) {
+        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
+                (int)base_value, (int)mod_value);
+        return false;
+      }
+      if (base_value >= mod_value &&
+          BN_mod_inverse_no_branch(r.get(), &no_inverse, base.get(), mod.get(),
+                                   ctx) != NULL) {
+        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
+          (int)base_value, (int)mod_value);
+        return false;
+      }
+      if (base_value >= mod_value &&
+          BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(), mont.get(),
+                                 rng, ctx)) {
+        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
+          (int)base_value, (int)mod_value);
+        return false;
+      }
+
+      BN_set_negative(base.get(), 1);
+
+      if (BN_mod_inverse(r.get(), base.get(), mod.get(), ctx) != NULL) {
+        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
+                -(int)base_value, (int)mod_value);
+        return false;
+      }
+      if (BN_mod_inverse_no_branch(r.get(), &no_inverse, base.get(), mod.get(),
+                                   ctx) != NULL) {
+        fprintf(stderr, "BN_mod_inverse_no_branch(%d, %d) succeeded!\n",
+                -(int)base_value, (int)mod_value);
+        return false;
+      }
+      if (BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(), mont.get(),
+                                 rng, ctx)) {
+        fprintf(stderr, "BN_mod_inverse_blinded(%d, %d) succeeded!\n",
+                -(int)base_value, (int)mod_value);
+        return false;
+      }
+
+    }
+  }
+
+  return true;
+}
+
 static bool TestCmpWord() {
   static const BN_ULONG kMaxWord = (BN_ULONG)-1;
 
@@ -996,6 +1070,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestBadModulus(ctx.get()) ||
       !TestExpModZero(rng) ||
       !TestExpModRejectUnreduced(ctx.get()) ||
+      !TestModInvRejectUnreduced(rng, ctx.get()) ||
       !TestCmpWord()) {
     return 1;
   }
