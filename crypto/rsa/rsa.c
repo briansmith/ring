@@ -123,6 +123,7 @@ int rsa_new_end(RSA *rsa) {
       !BN_to_montgomery(&qq, &qq, rsa->mont_n, ctx) ||
       !BN_MONT_CTX_set(rsa->mont_qq, &qq, ctx) ||
       !BN_to_montgomery(rsa->qmn_mont, rsa->q, rsa->mont_n, ctx) ||
+      /* Assumes p > q. */
       !BN_to_montgomery(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
     goto err;
   }
@@ -197,16 +198,26 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
       !BN_mod(&dmp1, key->d, &pm1, ctx) ||
       /* dmq1 = d mod (q-1) */
       !BN_sub(&qm1, key->q, BN_value_one()) ||
-      !BN_mod(&dmq1, key->d, &qm1, ctx) ||
-      /* iqmp = q^-1 mod p */
-      !BN_mod_mul(&iqmp_times_q, key->iqmp, key->q, key->p, ctx)) {
+      !BN_mod(&dmq1, key->d, &qm1, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+
+  if (BN_cmp(key->iqmp, key->p) >= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto out;
+  }
+
+  /* iqmp = q^-1 mod p. Assumes p > q. */
+  if (!BN_mod_mul_montgomery(&iqmp_times_q, key->iqmp, key->q, key->mont_p,
+                             ctx) ||
+      !BN_to_montgomery(&iqmp_times_q, &iqmp_times_q, key->mont_p, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
   if (BN_cmp(&dmp1, key->dmp1) != 0 ||
       BN_cmp(&dmq1, key->dmq1) != 0 ||
-      BN_cmp(key->iqmp, key->p) >= 0 ||
       !BN_is_one(&iqmp_times_q)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
     goto out;

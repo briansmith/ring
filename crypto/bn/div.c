@@ -434,29 +434,3 @@ int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   }
   return 1;
 }
-
-int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
-               BN_CTX *ctx) {
-  BIGNUM *t;
-  int ret = 0;
-
-  BN_CTX_start(ctx);
-  t = BN_CTX_get(ctx);
-  if (t == NULL) {
-    goto err;
-  }
-
-  if (!BN_mul(t, a, b, ctx)) {
-    goto err;
-  }
-
-  if (!BN_nnmod(r, t, m, ctx)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
-}

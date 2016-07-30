@@ -414,12 +414,6 @@ static bool TestModMul(FileTest *t, BN_CTX *ctx) {
   }
 
   ScopedBIGNUM ret(BN_new());
-  if (!ret ||
-      !BN_mod_mul(ret.get(), a.get(), b.get(), m.get(), ctx) ||
-      !ExpectBIGNUMsEqual(t, "A * B (mod M)", mod_mul.get(), ret.get())) {
-    return false;
-  }
-
   if (BN_is_odd(m.get())) {
     // Reduce |a| and |b| and test the Montgomery version.
     ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
@@ -776,12 +770,6 @@ static bool TestBadModulus(BN_CTX *ctx) {
 
   if (BN_div(a.get(), b.get(), BN_value_one(), zero.get(), ctx)) {
     fprintf(stderr, "Division by zero succeeded!\n");
-    return false;
-  }
-  ERR_clear_error();
-
-  if (BN_mod_mul(a.get(), BN_value_one(), BN_value_one(), zero.get(), ctx)) {
-    fprintf(stderr, "BN_mod_mul with zero modulus succeeded!\n");
     return false;
   }
   ERR_clear_error();

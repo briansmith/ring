@@ -393,11 +393,6 @@ OPENSSL_EXPORT int BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
 OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                                     const BIGNUM *m);
 
-/* BN_mod_mul sets |r| = |a|*|b| mod |m|. It returns one on success and zero
- * on error. */
-OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                              const BIGNUM *m, BN_CTX *ctx);
-
 
 /* Random and prime number generation. */
 
