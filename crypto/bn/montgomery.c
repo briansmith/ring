@@ -162,131 +162,61 @@ BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, const BN_MONT_CTX *from) {
   return to;
 }
 
-int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
-  int ret = 0;
-  BIGNUM *Ri, *R;
-  BIGNUM tmod;
-  BN_ULONG buf[2];
+OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
+                       BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
+OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
+                       sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
+int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   if (BN_is_zero(mod)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
   }
-
-  BN_CTX_start(ctx);
-  Ri = BN_CTX_get(ctx);
-  if (Ri == NULL) {
-    goto err;
+  if (!BN_is_odd(mod)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+    return 0;
   }
-  R = &mont->RR; /* grab RR as a temp */
+  if (BN_is_negative(mod)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+
+  /* Save the modulus. */
   if (!BN_copy(&mont->N, mod)) {
-    goto err; /* Set N */
+    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
-  mont->N.neg = 0;
-
-  BN_init(&tmod);
-  tmod.d = buf;
-  tmod.dmax = 2;
-  tmod.neg = 0;
-
-#if defined(OPENSSL_BN_ASM_MONT) && (BN_BITS2 <= 32)
-  /* Only certain BN_BITS2<=32 platforms actually make use of
-   * n0[1], and we could use the #else case (with a shorter R
-   * value) for the others.  However, currently only the assembler
-   * files do know which is which. */
-
-  BN_zero(R);
-  if (!BN_set_bit(R, 2 * BN_BITS2)) {
-    goto err;
+  if (BN_get_flags(mod, BN_FLG_CONSTTIME)) {
+    BN_set_flags(&mont->N, BN_FLG_CONSTTIME);
   }
 
-  tmod.top = 0;
-  if ((buf[0] = mod->d[0])) {
-    tmod.top = 1;
-  }
-  if ((buf[1] = mod->top > 1 ? mod->d[1] : 0)) {
-    tmod.top = 2;
-  }
-
-  if (BN_mod_inverse(Ri, R, &tmod, ctx) == NULL) {
-    goto err;
-  }
-  if (!BN_lshift(Ri, Ri, 2 * BN_BITS2)) {
-    goto err; /* R*Ri */
-  }
-  if (!BN_is_zero(Ri)) {
-    if (!BN_sub_word(Ri, 1)) {
-      goto err;
-    }
-  } else {
-    /* if N mod word size == 1 */
-    if (bn_expand(Ri, (int)sizeof(BN_ULONG) * 2) == NULL) {
-      goto err;
-    }
-    /* Ri-- (mod double word size) */
-    Ri->neg = 0;
-    Ri->d[0] = BN_MASK2;
-    Ri->d[1] = BN_MASK2;
-    Ri->top = 2;
-  }
-
-  if (!BN_div(Ri, NULL, Ri, &tmod, ctx)) {
-    goto err;
-  }
-  /* Ni = (R*Ri-1)/N,
-   * keep only couple of least significant words: */
-  mont->n0[0] = (Ri->top > 0) ? Ri->d[0] : 0;
-  mont->n0[1] = (Ri->top > 1) ? Ri->d[1] : 0;
+  /* Find n0 such that n0 * N == -1 (mod r).
+   *
+   * Only certain BN_BITS2<=32 platforms actually make use of n0[1]. For the
+   * others, we could use a shorter R value and use faster |BN_ULONG|-based
+   * math instead of |uint64_t|-based math, which would be double-precision.
+   * However, currently only the assembler files know which is which. */
+  uint64_t n0 = bn_mont_n0(mod);
+  mont->n0[0] = (BN_ULONG)n0;
+#if BN_MONT_CTX_N0_LIMBS == 2
+  mont->n0[1] = (BN_ULONG)(n0 >> BN_BITS2);
 #else
-  BN_zero(R);
-  if (!BN_set_bit(R, BN_BITS2)) {
-    goto err; /* R */
-  }
-
-  buf[0] = mod->d[0]; /* tmod = N mod word size */
-  buf[1] = 0;
-  tmod.top = buf[0] != 0 ? 1 : 0;
-  /* Ri = R^-1 mod N*/
-  if (BN_mod_inverse(Ri, R, &tmod, ctx) == NULL) {
-    goto err;
-  }
-  if (!BN_lshift(Ri, Ri, BN_BITS2)) {
-    goto err; /* R*Ri */
-  }
-  if (!BN_is_zero(Ri)) {
-    if (!BN_sub_word(Ri, 1)) {
-      goto err;
-    }
-  } else {
-    /* if N mod word size == 1 */
-    if (!BN_set_word(Ri, BN_MASK2)) {
-      goto err; /* Ri-- (mod word size) */
-    }
-  }
-  if (!BN_div(Ri, NULL, Ri, &tmod, ctx)) {
-    goto err;
-  }
-  /* Ni = (R*Ri-1)/N,
-   * keep only least significant word: */
-  mont->n0[0] = (Ri->top > 0) ? Ri->d[0] : 0;
   mont->n0[1] = 0;
 #endif
 
-  /* RR = (2^ri)^2 == 2^(ri*2) == 1 << (ri*2), which has its (ri*2)th bit set. */
-  int ri = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
-  BN_zero(&(mont->RR));
-  if (!BN_set_bit(&(mont->RR), ri * 2)) {
-    goto err;
-  }
-  if (!BN_mod(&(mont->RR), &(mont->RR), &(mont->N), ctx)) {
-    goto err;
+  /* Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS such that R
+   * > mod. Even though the assembly on some 32-bit platforms works with 64-bit
+   * values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
+   * BN_BITS2|, is correct because because R^2 will still be a multiple of the
+   * latter as |BN_MONT_CTX_N0_LIMBS| is either one or two. */
+  unsigned lgBigR = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
+  BN_zero(&mont->RR);
+  if (!BN_set_bit(&mont->RR, lgBigR * 2) ||
+      !BN_mod(&mont->RR, &mont->RR, &mont->N, ctx)) {
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
+  return 1;
 }
 
 int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,

@@ -57,6 +57,7 @@ add_library(
   gcd.c
   kronecker.c
   montgomery.c
+  montgomery_inv.c
   mul.c
   prime.c
   random.c

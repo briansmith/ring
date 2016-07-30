@@ -681,8 +681,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     BIGNUM local_p, local_q;
     BIGNUM *p = NULL, *q = NULL;
 
-    /* Make sure BN_mod_inverse in Montgomery intialization uses the
-     * BN_FLG_CONSTTIME flag. */
+    /* Make sure BN_mod in Montgomery initialization uses BN_FLG_CONSTTIME. */
     BN_init(&local_p);
     p = &local_p;
     BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
