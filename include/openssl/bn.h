@@ -325,6 +325,10 @@ OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
  * less than, equal to or greater than |b|, respectively. */
 OPENSSL_EXPORT int BN_cmp(const BIGNUM *a, const BIGNUM *b);
 
+/* BN_cmp_word is like |BN_cmp| except it takes its second argument as a
+ * |BN_ULONG| instead of a |BIGNUM|. */
+int BN_cmp_word(const BIGNUM *a, BN_ULONG b);
+
 /* BN_ucmp returns a value less than, equal to or greater than zero if the
  * absolute value of |a| is less than, equal to or greater than the absolute
  * value of |b|, respectively. */
@@ -409,9 +413,11 @@ OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom,
                            RAND *rng);
 
-/* BN_rand_range sets |rnd| to a random value [0..range). It returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int BN_rand_range(BIGNUM *rnd, const BIGNUM *range, RAND *rng);
+/* BN_rand_range_ex sets |rnd| to a random value in
+ * [min_inclusive..max_exclusive). It returns one on success and zero
+ * otherwise. */
+OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
+                                    const BIGNUM *max_exclusive, RAND *rng);
 
 
 /* Number theory functions */
