@@ -427,20 +427,29 @@ OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 OPENSSL_EXPORT int BN_gcd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           BN_CTX *ctx);
 
-/* BN_mod_inverse sets |out| equal to |a|^-1, mod |n|. If either of |a| or |n|
- * have |BN_FLG_CONSTTIME| set then the operation is performed in constant
- * time. If |out| is NULL, a fresh BIGNUM is allocated. It returns the result
- * or NULL on error. */
+/* BN_mod_inverse sets |out| equal to |a|^-1, mod |n|. If |out| is NULL, a
+ * fresh BIGNUM is allocated. It returns the result or NULL on error.
+ *
+ * If either of |a| or |n| have |BN_FLG_CONSTTIME| set then the operation is
+ * performed using an algorithm that avoids some branches but which isn't
+ * constant-time. This function shouldn't be used for secret values, even
+ * with |BN_FLG_CONSTTIME|; use |BN_mod_inverse_blinded| instead. Or, if
+ * |n| is guaranteed to be prime, use
+ * |BN_mod_exp_mont_consttime(out, a, m_minus_2, m, ctx, m_mont)|, taking
+ * advantage of Fermat's Little Theorem. */
 OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
                                       const BIGNUM *n, BN_CTX *ctx);
 
-/* BN_mod_inverse_ex acts like |BN_mod_inverse| except that, when it returns
- * zero, it will set |*out_no_inverse| to one if the failure was caused because
- * |a| has no inverse mod |n|. Otherwise it will set |*out_no_inverse| to
- * zero. */
-OPENSSL_EXPORT BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
-                                         const BIGNUM *a, const BIGNUM *n,
-                                         BN_CTX *ctx);
+/* BN_mod_inverse_blinded sets |out| equal to |a|^-1, mod |n|, where |n| is the
+ * Montgomery modulus for |mont|. |a| must be non-negative and must be less
+ * than |n|. |n| must be greater than 1. |a| is blinded (masked by a random
+ * value) to protect it against side-channel attacks. |BN_mod_inverse_blinded|
+ * may or may not ignore the |BN_FLG_CONSTTIME| flag on any/all of its inputs.
+ * It returns one on success or zero on failure. On failure, if the failure was
+ * caused by |a| having no inverse mod |n| then |*out_no_inverse| will be set
+ * to one; otherwise it will be set to zero. */
+int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                           const BN_MONT_CTX *mont, RAND *rng, BN_CTX *ctx);
 
 /* BN_mod_inverse_no_branch acts like |BN_mod_inverse_ex| except that it aims
  * to have better protection from side channel attacks. */
