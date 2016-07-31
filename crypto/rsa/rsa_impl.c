@@ -72,8 +72,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
                               BN_BLINDING *blinding, RAND *rng);
 
 
-static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
-                                      size_t min_bits, size_t max_bits) {
+int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
+                                       size_t min_bits, size_t max_bits) {
   unsigned rsa_bits = BN_num_bits(n);
 
   if (rsa_bits < min_bits) {
@@ -179,7 +179,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (!check_modulus_and_exponent(&n, &e, min_bits, max_bits)) {
+  if (!GFp_rsa_check_modulus_and_exponent(&n, &e, min_bits, max_bits)) {
     goto err;
   }
 
@@ -315,7 +315,10 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * works when the CRT isn't used. That attack is much less likely to succeed
    * than the CRT attack, but there have likely been improvements since 1997.
    *
-   * This check is very cheap assuming |e| is small, which it almost always is. */
+   * This check is very cheap assuming |e| is small, which it almost always is.
+   * Note that this is the only validation of |e| that is done other than
+   * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
+   * doesn't validate its mathematical relations to |d| or |p| or |q|. */
   if (!BN_mod_exp_mont(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;

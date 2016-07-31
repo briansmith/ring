@@ -138,15 +138,12 @@ err:
 int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   assert(ctx);
 
-  BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp_times_q;
+  BIGNUM n, pm1, qm1, dmp1, dmq1, iqmp_times_q;
   int ok = 0;
 
   BN_init(&n);
   BN_init(&pm1);
   BN_init(&qm1);
-  BN_init(&lcm);
-  BN_init(&gcd);
-  BN_init(&de);
   BN_init(&dmp1);
   BN_init(&dmq1);
   BN_init(&iqmp_times_q);
@@ -177,15 +174,7 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   }
 
   if (/* n = pq */
-      !BN_mul(&n, key->p, key->q, ctx) ||
-      /* lcm = lcm(p-1, q-1) */
-      !BN_sub(&pm1, key->p, BN_value_one()) ||
-      !BN_sub(&qm1, key->q, BN_value_one()) ||
-      !BN_mul(&lcm, &pm1, &qm1, ctx) ||
-      !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
-      !BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
-      /* de = d*e mod lcm(p-1, q-1) */
-      !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
+      !BN_mul(&n, key->p, key->q, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
@@ -195,14 +184,19 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
     goto out;
   }
 
-  if (!BN_is_one(&de)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
-    goto out;
-  }
+  /* In a valid key, |d*e mod lcm(p-1, q-1) == 1|. We don't check this because
+   * we decided to omit the code that would be used to compute least common
+   * multiples. Instead, we check that |p| and |q| are consistent with
+   * |n| above and with |d| below. We never use |d| for any actual
+   * computations. When we actually do a private key operation, we verify that
+   * the result computed using all of these variables is correct using |e|.
+   * Further, above we verify that the |e| is small. */
 
   if (/* dmp1 = d mod (p-1) */
+      !BN_sub(&pm1, key->p, BN_value_one()) ||
       !BN_mod(&dmp1, key->d, &pm1, ctx) ||
       /* dmq1 = d mod (q-1) */
+      !BN_sub(&qm1, key->q, BN_value_one()) ||
       !BN_mod(&dmq1, key->d, &qm1, ctx) ||
       /* iqmp = q^-1 mod p */
       !BN_mod_mul(&iqmp_times_q, key->iqmp, key->q, key->p, ctx)) {
@@ -224,9 +218,6 @@ out:
   BN_free(&n);
   BN_free(&pm1);
   BN_free(&qm1);
-  BN_free(&lcm);
-  BN_free(&gcd);
-  BN_free(&de);
   BN_free(&dmp1);
   BN_free(&dmq1);
   BN_free(&iqmp_times_q);

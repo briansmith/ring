@@ -422,11 +422,6 @@ OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 
 /* Number theory functions */
 
-/* BN_gcd sets |r| = gcd(|a|, |b|). It returns one on success and zero
- * otherwise. */
-OPENSSL_EXPORT int BN_gcd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                          BN_CTX *ctx);
-
 /* BN_mod_inverse sets |out| equal to |a|^-1, mod |n|. If |out| is NULL, a
  * fresh BIGNUM is allocated. It returns the result or NULL on error.
  *
