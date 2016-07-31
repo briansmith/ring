@@ -502,6 +502,33 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestModInv(FileTest *t, BN_CTX *ctx) {
+  ScopedBIGNUM a = GetBIGNUM(t, "A");
+  ScopedBIGNUM m = GetBIGNUM(t, "M");
+  ScopedBIGNUM mod_inv = GetBIGNUM(t, "ModInv");
+  if (!a || !m || !mod_inv) {
+    return false;
+  }
+
+  ScopedBIGNUM ret(BN_new());
+  if (!ret ||
+      !BN_mod_inverse(ret.get(), a.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "inv(A) (mod M)", mod_inv.get(), ret.get())) {
+    return false;
+  }
+
+  BN_set_flags(a.get(), BN_FLG_CONSTTIME);
+
+  if (!ret ||
+      !BN_mod_inverse(ret.get(), a.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "inv(A) (mod M) (constant-time)", mod_inv.get(),
+                          ret.get())) {
+    return false;
+  }
+
+  return true;
+}
+
 struct Test {
   const char *name;
   bool (*func)(FileTest *t, BN_CTX *ctx);
@@ -517,6 +544,7 @@ static const Test kTests[] = {
     {"Quotient", TestQuotient},
     {"ModMul", TestModMul},
     {"ModExp", TestModExp},
+    {"ModInv", TestModInv},
 };
 
 static bool RunTest(FileTest *t, void *arg) {
