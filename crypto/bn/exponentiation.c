@@ -992,7 +992,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   /* prepare a^1 in Montgomery domain */
   if (a->neg || BN_ucmp(a, m) >= 0) {
-    if (!BN_mod(&am, a, m, ctx) ||
+    if (!BN_nnmod(&am, a, m, ctx) ||
         !BN_to_montgomery(&am, &am, mont, ctx)) {
       goto err;
     }

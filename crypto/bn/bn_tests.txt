@@ -9880,6 +9880,41 @@ M = 7eacffe21f88413af94155a2a8e37f70a431a59653738afda04a1bec72d0d9ed
 #
 # These test vectors satisfy A ^ E = ModExp (mod M) and 0 <= ModExp < M.
 
+ModExp = 00
+A = -01
+E = 01
+M = 01
+
+ModExp = 01
+A = -02
+E = 01
+M = 03
+
+ModExp = 01
+A = -01
+E = 02
+M = 03
+
+ModExp = 01
+A = -02
+E = 02
+M = 03
+
+ModExp = 00
+A = -03
+E = 02
+M = 03
+
+ModExp = 02
+A = -04
+E = 01
+M = 03
+
+ModExp = 01
+A = -04
+E = 02
+M = 03
+
 # Regression test for carry propagation bug in sqr8x_reduction.
 ModExp = 19324b647d967d644b3219
 A = 050505050505
