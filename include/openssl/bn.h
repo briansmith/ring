@@ -327,7 +327,7 @@ OPENSSL_EXPORT int BN_cmp(const BIGNUM *a, const BIGNUM *b);
 
 /* BN_cmp_word is like |BN_cmp| except it takes its second argument as a
  * |BN_ULONG| instead of a |BIGNUM|. */
-int BN_cmp_word(const BIGNUM *a, BN_ULONG b);
+OPENSSL_EXPORT int BN_cmp_word(const BIGNUM *a, BN_ULONG b);
 
 /* BN_ucmp returns a value less than, equal to or greater than zero if the
  * absolute value of |a| is less than, equal to or greater than the absolute
