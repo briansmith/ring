@@ -194,7 +194,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   }
 
   if (!BN_mod(Ri, R, &tmod, ctx) ||
-      BN_mod_inverse(Ri, Ri, &tmod, ctx) == NULL ||
+      BN_mod_inverse_vartime(Ri, Ri, &tmod, ctx) == NULL ||
       !BN_lshift(Ri, Ri, BN_MONT_CTX_N0_LIMBS * BN_BITS2)) {
     goto err; /* R*Ri */
   }

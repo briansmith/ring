@@ -514,17 +514,8 @@ static bool TestModInv(FileTest *t, BN_CTX *ctx) {
 
   ScopedBIGNUM ret(BN_new());
   if (!ret ||
-      !BN_mod_inverse(ret.get(), a.get(), m.get(), ctx) ||
+      !BN_mod_inverse_vartime(ret.get(), a.get(), m.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "inv(A) (mod M)", mod_inv.get(), ret.get())) {
-    return false;
-  }
-
-  BN_set_flags(a.get(), BN_FLG_CONSTTIME);
-
-  if (!ret ||
-      !BN_mod_inverse(ret.get(), a.get(), m.get(), ctx) ||
-      !ExpectBIGNUMsEqual(t, "inv(A) (mod M) (constant-time)", mod_inv.get(),
-                          ret.get())) {
     return false;
   }
 
@@ -948,36 +939,23 @@ static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
       int no_inverse;
 
       if (base_value >= mod_value &&
-          BN_mod_inverse(r.get(), base.get(), mod.get(), ctx) != NULL) {
-        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
+          BN_mod_inverse_vartime(r.get(), base.get(), mod.get(), ctx) != NULL) {
+        fprintf(stderr, "BN_mod_inverse_vartime(%d, %d) succeeded!\n",
                 (int)base_value, (int)mod_value);
-        return false;
-      }
-      if (base_value >= mod_value &&
-          BN_mod_inverse_no_branch(r.get(), &no_inverse, base.get(), mod.get(),
-                                   ctx) != NULL) {
-        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
-          (int)base_value, (int)mod_value);
         return false;
       }
       if (base_value >= mod_value &&
           BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(), mont.get(),
                                  rng, ctx)) {
-        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
+        fprintf(stderr, "BN_mod_inverse_blinded(%d, %d) succeeded!\n",
           (int)base_value, (int)mod_value);
         return false;
       }
 
       BN_set_negative(base.get(), 1);
 
-      if (BN_mod_inverse(r.get(), base.get(), mod.get(), ctx) != NULL) {
-        fprintf(stderr, "BN_mod_inverse(%d, %d) succeeded!\n",
-                -(int)base_value, (int)mod_value);
-        return false;
-      }
-      if (BN_mod_inverse_no_branch(r.get(), &no_inverse, base.get(), mod.get(),
-                                   ctx) != NULL) {
-        fprintf(stderr, "BN_mod_inverse_no_branch(%d, %d) succeeded!\n",
+      if (BN_mod_inverse_vartime(r.get(), base.get(), mod.get(), ctx) != NULL) {
+        fprintf(stderr, "BN_mod_inverse_vartime(%d, %d) succeeded!\n",
                 -(int)base_value, (int)mod_value);
         return false;
       }
