@@ -96,42 +96,9 @@
 #include "../test/bn_test_util.h"
 
 
+/* Prototypes to avoid -Wmissing-prototypes warnings. */
 extern "C" int bssl_bn_test_main(RAND *rng);
 
-
-// This program tests the BIGNUM implementation. It takes an optional -bc
-// argument to write a transcript compatible with the UNIX bc utility.
-//
-// TODO(davidben): Rather than generate random inputs and depend on bc to check
-// the results, most of these tests should use known answers.
-
-static bool TestBN2BinPadded(RAND *rng);
-static bool TestHex2BN();
-static bool TestRand(RAND *rng);
-static bool TestNegativeZero(BN_CTX *ctx);
-static bool TestBadModulus(BN_CTX *ctx);
-static bool TestExpModZero(RAND *rng);
-static bool RunTest(FileTest *t, void *arg);
-
-
-extern "C" int bssl_bn_test_main(RAND *rng) {
-  ScopedBN_CTX ctx(BN_CTX_new());
-  if (!ctx) {
-    return 1;
-  }
-
-
-  if (!TestBN2BinPadded(rng) ||
-      !TestHex2BN() ||
-      !TestRand(rng) ||
-      !TestNegativeZero(ctx.get()) ||
-      !TestBadModulus(ctx.get()) ||
-      !TestExpModZero(rng)) {
-    return 1;
-  }
-
-  return FileTestMain(RunTest, ctx.get(), "crypto/bn/bn_tests.txt");
-}
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   BIGNUM *raw = NULL;
@@ -858,4 +825,22 @@ static bool TestExpModZero(RAND *rng) {
   }
 
   return true;
+}
+
+extern "C" int bssl_bn_test_main(RAND *rng) {
+  ScopedBN_CTX ctx(BN_CTX_new());
+  if (!ctx) {
+    return 1;
+  }
+
+  if (!TestBN2BinPadded(rng) ||
+      !TestHex2BN() ||
+      !TestRand(rng) ||
+      !TestNegativeZero(ctx.get()) ||
+      !TestBadModulus(ctx.get()) ||
+      !TestExpModZero(rng)) {
+    return 1;
+  }
+
+  return FileTestMain(RunTest, ctx.get(), "crypto/bn/bn_tests.txt");
 }
