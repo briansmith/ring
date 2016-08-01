@@ -368,8 +368,7 @@ SSL_SESSION *SSL_magic_pending_session_ptr(void) {
   return (SSL_SESSION *)&g_pending_session_magic;
 }
 
-SSL_SESSION *SSL_get_session(const SSL *ssl)
-{
+SSL_SESSION *SSL_get_session(const SSL *ssl) {
   /* Once the handshake completes we return the established session. Otherwise
    * we return the intermediate session, either |session| (for resumption) or
    * |new_session| if doing a full handshake. */

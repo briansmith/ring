@@ -3379,7 +3379,7 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_OP_TLS_ROLLBACK_BUG 0
 #define SSL_VERIFY_CLIENT_ONCE 0
 
-/* SSL_cache_hit calls |SSL_session_resumed|. */
+/* SSL_cache_hit calls |SSL_session_reused|. */
 OPENSSL_EXPORT int SSL_cache_hit(SSL *ssl);
 
 /* SSL_get_default_timeout returns |SSL_DEFAULT_SESSION_TIMEOUT|. */
