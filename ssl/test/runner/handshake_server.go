@@ -851,6 +851,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		}
 	}
 
+	if len(c.config.Bugs.SendALPN) > 0 {
+		serverExtensions.alpnProtocol = c.config.Bugs.SendALPN
+	}
+
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateNPNAtAllVersions {
 		if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
 			// Although sending an empty NPN extension is reasonable, Firefox has

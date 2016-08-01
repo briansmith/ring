@@ -139,7 +139,7 @@ int custom_ext_parse_serverhello(SSL *ssl, int *out_alert, uint16_t value,
       !(ssl->s3->tmp.custom_extensions.sent & (1u << index))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
     ERR_add_error_dataf("extension: %u", (unsigned)value);
-    *out_alert = SSL_AD_DECODE_ERROR;
+    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
     return 0;
   }
 
