@@ -171,13 +171,13 @@ static int TestDigest(const TestVector *test) {
       return false;
     }
   }
-  uint8_t digest[EVP_MAX_MD_SIZE];
+  std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(test->md.func())]);
   unsigned digest_len;
-  if (!EVP_DigestFinal_ex(ctx.get(), digest, &digest_len)) {
+  if (!EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len)) {
     fprintf(stderr, "EVP_DigestFinal_ex failed\n");
     return false;
   }
-  if (!CompareDigest(test, digest, digest_len)) {
+  if (!CompareDigest(test, digest.get(), digest_len)) {
     return false;
   }
 
@@ -198,7 +198,7 @@ static int TestDigest(const TestVector *test) {
       }
     }
   }
-  if (!EVP_DigestFinal_ex(ctx.get(), digest, &digest_len)) {
+  if (!EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len)) {
     fprintf(stderr, "EVP_DigestFinal_ex failed\n");
     return false;
   }
@@ -206,19 +206,19 @@ static int TestDigest(const TestVector *test) {
     fprintf(stderr, "EVP_MD_size output incorrect\n");
     return false;
   }
-  if (!CompareDigest(test, digest, digest_len)) {
+  if (!CompareDigest(test, digest.get(), digest_len)) {
     return false;
   }
 
   // Test the one-shot function.
   if (test->md.one_shot_func && test->repeat == 1) {
     uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
-                                          strlen(test->input), digest);
-    if (out != digest) {
+                                          strlen(test->input), digest.get());
+    if (out != digest.get()) {
       fprintf(stderr, "one_shot_func gave incorrect return\n");
       return false;
     }
-    if (!CompareDigest(test, digest, EVP_MD_size(test->md.func()))) {
+    if (!CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()))) {
       return false;
     }
 
