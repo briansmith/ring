@@ -809,6 +809,13 @@ static int ssl3_get_client_hello(SSL *ssl) {
     if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
       ssl->s3->tmp.cert_request = 0;
     }
+
+    if (!ssl->s3->tmp.cert_request) {
+      /* OpenSSL returns X509_V_OK when no certificates are requested. This is
+       * classed by them as a bug, but it's assumed by at least nginx. */
+      ssl->verify_result = X509_V_OK;
+      ssl->s3->new_session->verify_result = X509_V_OK;
+    }
   }
 
   /* Now that the cipher is known, initialize the handshake hash. */
@@ -1244,13 +1251,18 @@ static int ssl3_get_client_certificate(SSL *ssl) {
   if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE) {
     if (ssl->version == SSL3_VERSION &&
         ssl->s3->tmp.message_type == SSL3_MT_CLIENT_KEY_EXCHANGE) {
-      /* In SSL 3.0, the Certificate message is omitted to signal no certificate. */
+      /* In SSL 3.0, the Certificate message is omitted to signal no
+       * certificate. */
       if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return -1;
       }
 
+      /* OpenSSL returns X509_V_OK when no certificates are received. This is
+       * classed by them as a bug, but it's assumed by at least nginx. */
+      ssl->verify_result = X509_V_OK;
+      ssl->s3->new_session->verify_result = X509_V_OK;
       ssl->s3->tmp.reuse_message = 1;
       return 1;
     }
@@ -1297,6 +1309,10 @@ static int ssl3_get_client_certificate(SSL *ssl) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       goto err;
     }
+
+    /* OpenSSL returns X509_V_OK when no certificates are received. This is
+     * classed by them as a bug, but it's assumed by at least nginx. */
+    ssl->verify_result = X509_V_OK;
   } else {
     /* The hash would have been filled in. */
     if (ssl->ctx->retain_only_sha256_of_client_certs) {

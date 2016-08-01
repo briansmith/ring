@@ -490,6 +490,11 @@ static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
                                                         SSL_HANDSHAKE *hs) {
   if (!ssl->s3->tmp.cert_request) {
+    /* OpenSSL returns X509_V_OK when no certificates are requested. This is
+     * classed by them as a bug, but it's assumed by at least nginx. */
+    ssl->verify_result = X509_V_OK;
+    ssl->s3->new_session->verify_result = X509_V_OK;
+
     /* Skip this state. */
     hs->state = state_process_client_finished;
     return ssl_hs_ok;

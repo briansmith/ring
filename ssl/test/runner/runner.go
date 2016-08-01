@@ -2730,90 +2730,83 @@ func addClientAuthTests() {
 				},
 			})
 		}
+
+		testCases = append(testCases, testCase{
+			name: "NoClientCertificate-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				ClientAuth: RequireAnyClientCert,
+			},
+			shouldFail:         true,
+			expectedLocalError: "client didn't provide a certificate",
+		})
+
+		testCases = append(testCases, testCase{
+			// Even if not configured to expect a certificate, OpenSSL will
+			// return X509_V_OK as the verify_result.
+			testType: serverTest,
+			name:     "NoClientCertificateRequested-Server-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+			},
+			flags: []string{
+				"-expect-verify-result",
+			},
+			// TODO(davidben): Switch this to true when TLS 1.3
+			// supports session resumption.
+			resumeSession: ver.version < VersionTLS13,
+		})
+
+		testCases = append(testCases, testCase{
+			// If a client certificate is not provided, OpenSSL will still
+			// return X509_V_OK as the verify_result.
+			testType: serverTest,
+			name:     "NoClientCertificate-Server-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+			},
+			flags: []string{
+				"-expect-verify-result",
+				"-verify-peer",
+			},
+			// TODO(davidben): Switch this to true when TLS 1.3
+			// supports session resumption.
+			resumeSession: ver.version < VersionTLS13,
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RequireAnyClientCertificate-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+			},
+			flags:         []string{"-require-any-client-certificate"},
+			shouldFail:    true,
+			expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
+		})
+
+		if ver.version != VersionSSL30 {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "SkipClientCertificate-" + ver.name,
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						SkipClientCertificate: true,
+					},
+				},
+				// Setting SSL_VERIFY_PEER allows anonymous clients.
+				flags:         []string{"-verify-peer"},
+				shouldFail:    true,
+				expectedError: ":UNEXPECTED_MESSAGE:",
+			})
+		}
 	}
-
-	testCases = append(testCases, testCase{
-		name: "NoClientCertificate",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			ClientAuth: RequireAnyClientCert,
-		},
-		shouldFail:         true,
-		expectedLocalError: "client didn't provide a certificate",
-	})
-
-	testCases = append(testCases, testCase{
-		name: "NoClientCertificate-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			ClientAuth: RequireAnyClientCert,
-		},
-		shouldFail:         true,
-		expectedLocalError: "client didn't provide a certificate",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "RequireAnyClientCertificate",
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		flags:         []string{"-require-any-client-certificate"},
-		shouldFail:    true,
-		expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "RequireAnyClientCertificate-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-		},
-		flags:         []string{"-require-any-client-certificate"},
-		shouldFail:    true,
-		expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "RequireAnyClientCertificate-SSL3",
-		config: Config{
-			MaxVersion: VersionSSL30,
-		},
-		flags:         []string{"-require-any-client-certificate"},
-		shouldFail:    true,
-		expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "SkipClientCertificate",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				SkipClientCertificate: true,
-			},
-		},
-		// Setting SSL_VERIFY_PEER allows anonymous clients.
-		flags:         []string{"-verify-peer"},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "SkipClientCertificate-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SkipClientCertificate: true,
-			},
-		},
-		// Setting SSL_VERIFY_PEER allows anonymous clients.
-		flags:         []string{"-verify-peer"},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
-	})
 
 	// Client auth is only legal in certificate-based ciphers.
 	testCases = append(testCases, testCase{
