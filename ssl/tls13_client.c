@@ -323,6 +323,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
       !CBS_stow(&context, &ssl->s3->hs->cert_context,
                 &ssl->s3->hs->cert_context_len) ||
       !CBS_get_u16_length_prefixed(&cbs, &supported_signature_algorithms) ||
+      CBS_len(&supported_signature_algorithms) == 0 ||
       !tls1_parse_peer_sigalgs(ssl, &supported_signature_algorithms)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);

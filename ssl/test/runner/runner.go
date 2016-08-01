@@ -5662,8 +5662,11 @@ func addSignatureAlgorithmTests() {
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		shouldFail:    true,
-		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		shouldFail: true,
+		// An empty CertificateRequest signature algorithm list is a
+		// syntax error in TLS 1.3.
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
 	})
 
 	testCases = append(testCases, testCase{
