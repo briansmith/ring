@@ -240,11 +240,32 @@ OPENSSL_EXPORT int SSL_is_server(SSL *ssl);
  * In DTLS, if |rbio| is blocking, it must handle
  * |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| control requests to set read timeouts.
  *
- * If |rbio| (respectively, |wbio|) is the same as the currently configured
- * |BIO| for reading (respectively, writing), that side is left untouched and is
- * not freed. Using this behavior and calling this function if |ssl| already has
- * |BIO|s configured is deprecated. */
+ * If |rbio| is the same as the currently configured |BIO| for reading, that
+ * side is left untouched and is not freed.
+ *
+ * If |wbio| is the same as the currently configured |BIO| for writing AND |ssl|
+ * is not currently configured to read from and write to the same |BIO|, that
+ * side is left untouched and is not freed. This asymmetry is present for
+ * historical reasons.
+ *
+ * Due to the very complex historical behavior of this function, calling this
+ * function if |ssl| already has |BIO|s configured is deprecated. Prefer
+ * |SSL_set0_rbio| and |SSL_set0_wbio| instead. */
 OPENSSL_EXPORT void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio);
+
+/* SSL_set0_rbio configures |ssl| to write to |rbio|. It takes ownership of
+ * |rbio|.
+ *
+ * Note that, although this function and |SSL_set0_wbio| may be called on the
+ * same |BIO|, each call takes a reference. Use |BIO_up_ref| to balance this. */
+OPENSSL_EXPORT void SSL_set0_rbio(SSL *ssl, BIO *rbio);
+
+/* SSL_set0_wbio configures |ssl| to write to |wbio|. It takes ownership of
+ * |wbio|.
+ *
+ * Note that, although this function and |SSL_set0_rbio| may be called on the
+ * same |BIO|, each call takes a reference. Use |BIO_up_ref| to balance this. */
+OPENSSL_EXPORT void SSL_set0_wbio(SSL *ssl, BIO *wbio);
 
 /* SSL_get_rbio returns the |BIO| that |ssl| reads from. */
 OPENSSL_EXPORT BIO *SSL_get_rbio(const SSL *ssl);

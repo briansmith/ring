@@ -1278,9 +1278,9 @@ static bool TestSessionDuplication() {
   SSL_SESSION *session0 = SSL_get_session(client.get());
   ScopedSSL_SESSION session1(SSL_SESSION_dup(session0, 1));
   if (!session1) {
-    return false; 
+    return false;
   }
-  
+
   uint8_t *s0_bytes, *s1_bytes;
   size_t s0_len, s1_len;
 
@@ -1394,6 +1394,63 @@ static bool TestSetFD() {
   // ASan builds will implicitly test that the internal |BIO| reference-counting
   // is correct.
 
+  return true;
+}
+
+static bool TestSetBIO() {
+  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
+  }
+
+  ScopedSSL ssl(SSL_new(ctx.get()));
+  ScopedBIO bio1(BIO_new(BIO_s_mem())), bio2(BIO_new(BIO_s_mem())),
+      bio3(BIO_new(BIO_s_mem()));
+  if (!ssl || !bio1 || !bio2 || !bio3) {
+    return false;
+  }
+
+  // SSL_set_bio takes one reference when the parameters are the same.
+  BIO_up_ref(bio1.get());
+  SSL_set_bio(ssl.get(), bio1.get(), bio1.get());
+
+  // Repeating the call does nothing.
+  SSL_set_bio(ssl.get(), bio1.get(), bio1.get());
+
+  // It takes one reference each when the parameters are different.
+  BIO_up_ref(bio2.get());
+  BIO_up_ref(bio3.get());
+  SSL_set_bio(ssl.get(), bio2.get(), bio3.get());
+
+  // Repeating the call does nothing.
+  SSL_set_bio(ssl.get(), bio2.get(), bio3.get());
+
+  // It takes one reference when changing only wbio.
+  BIO_up_ref(bio1.get());
+  SSL_set_bio(ssl.get(), bio2.get(), bio1.get());
+
+  // It takes one reference when changing only rbio and the two are different.
+  BIO_up_ref(bio3.get());
+  SSL_set_bio(ssl.get(), bio3.get(), bio1.get());
+
+  // If setting wbio to rbio, it takes no additional references.
+  SSL_set_bio(ssl.get(), bio3.get(), bio3.get());
+
+  // From there, wbio may be switched to something else.
+  BIO_up_ref(bio1.get());
+  SSL_set_bio(ssl.get(), bio3.get(), bio1.get());
+
+  // If setting rbio to wbio, it takes no additional references.
+  SSL_set_bio(ssl.get(), bio1.get(), bio1.get());
+
+  // From there, rbio may be switched to something else, but, for historical
+  // reasons, it takes a reference to both parameters.
+  BIO_up_ref(bio1.get());
+  BIO_up_ref(bio2.get());
+  SSL_set_bio(ssl.get(), bio2.get(), bio1.get());
+
+  // ASAN builds will implicitly test that the internal |BIO| reference-counting
+  // is correct.
   return true;
 }
 
@@ -1546,6 +1603,7 @@ int main() {
       !TestOneSidedShutdown() ||
       !TestSessionDuplication() ||
       !TestSetFD() ||
+      !TestSetBIO() ||
       !TestGetPeerCertificate() ||
       !TestRetainOnlySHA256OfCerts()) {
     ERR_print_errors_fp(stderr);

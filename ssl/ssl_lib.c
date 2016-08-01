@@ -528,12 +528,12 @@ void SSL_set_accept_state(SSL *ssl) {
   ssl->handshake_func = ssl3_accept;
 }
 
-static void ssl_set_rbio(SSL *ssl, BIO *rbio) {
+void SSL_set0_rbio(SSL *ssl, BIO *rbio) {
   BIO_free_all(ssl->rbio);
   ssl->rbio = rbio;
 }
 
-static void ssl_set_wbio(SSL *ssl, BIO *wbio) {
+void SSL_set0_wbio(SSL *ssl, BIO *wbio) {
   /* If the output buffering BIO is still in place, remove it. */
   if (ssl->bbio != NULL) {
     ssl->wbio = BIO_pop(ssl->wbio);
@@ -552,25 +552,34 @@ void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
   /* For historical reasons, this function has many different cases in ownership
    * handling. */
 
+  /* If nothing has changed, do nothing */
+  if (rbio == SSL_get_rbio(ssl) && wbio == SSL_get_wbio(ssl)) {
+    return;
+  }
+
   /* If the two arguments are equal, one fewer reference is granted than
    * taken. */
   if (rbio != NULL && rbio == wbio) {
     BIO_up_ref(rbio);
   }
 
-  /* If at most one of rbio or wbio is changed, only adopt one reference. */
+  /* If only the wbio is changed, adopt only one reference. */
   if (rbio == SSL_get_rbio(ssl)) {
-    ssl_set_wbio(ssl, wbio);
+    SSL_set0_wbio(ssl, wbio);
     return;
   }
-  if (wbio == SSL_get_wbio(ssl)) {
-    ssl_set_rbio(ssl, rbio);
+
+  /* There is an asymmetry here for historical reasons. If only the rbio is
+   * changed AND the rbio and wbio were originally different, then we only adopt
+   * one reference. */
+  if (wbio == SSL_get_wbio(ssl) && SSL_get_rbio(ssl) != SSL_get_wbio(ssl)) {
+    SSL_set0_rbio(ssl, rbio);
     return;
   }
 
   /* Otherwise, adopt both references. */
-  ssl_set_rbio(ssl, rbio);
-  ssl_set_wbio(ssl, wbio);
+  SSL_set0_rbio(ssl, rbio);
+  SSL_set0_wbio(ssl, wbio);
 }
 
 BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
@@ -1158,9 +1167,11 @@ int SSL_set_wfd(SSL *ssl, int fd) {
       return 0;
     }
     BIO_set_fd(bio, fd, BIO_NOCLOSE);
-    SSL_set_bio(ssl, rbio, bio);
+    SSL_set0_wbio(ssl, bio);
   } else {
-    SSL_set_bio(ssl, rbio, rbio);
+    /* Copy the rbio over to the wbio. */
+    BIO_up_ref(rbio);
+    SSL_set0_wbio(ssl, rbio);
   }
 
   return 1;
@@ -1176,9 +1187,11 @@ int SSL_set_rfd(SSL *ssl, int fd) {
       return 0;
     }
     BIO_set_fd(bio, fd, BIO_NOCLOSE);
-    SSL_set_bio(ssl, bio, wbio);
+    SSL_set0_rbio(ssl, bio);
   } else {
-    SSL_set_bio(ssl, wbio, wbio);
+    /* Copy the wbio over to the rbio. */
+    BIO_up_ref(wbio);
+    SSL_set0_rbio(ssl, wbio);
   }
   return 1;
 }
