@@ -235,12 +235,6 @@ int tls13_process_certificate(SSL *ssl) {
     ssl->s3->new_session->peer_sha256_valid = 1;
   }
 
-  X509 *leaf = sk_X509_value(chain, 0);
-  if (!ssl->server && !ssl_check_leaf_certificate(ssl, leaf)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    goto err;
-  }
-
   int verify_ret = ssl_verify_cert_chain(ssl, chain);
   /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
   if (ssl->verify_mode != SSL_VERIFY_NONE && verify_ret <= 0) {
@@ -254,13 +248,7 @@ int tls13_process_certificate(SSL *ssl) {
   ssl->s3->new_session->verify_result = ssl->verify_result;
 
   X509_free(ssl->s3->new_session->peer);
-  /* For historical reasons, the client and server differ on whether the chain
-   * includes the leaf. */
-  if (ssl->server) {
-    ssl->s3->new_session->peer = sk_X509_shift(chain);
-  } else {
-    ssl->s3->new_session->peer = X509_up_ref(leaf);
-  }
+  ssl->s3->new_session->peer = X509_up_ref(sk_X509_value(chain, 0));
 
   sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
   ssl->s3->new_session->cert_chain = chain;

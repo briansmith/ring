@@ -366,6 +366,15 @@ static enum ssl_hs_wait_t do_process_server_certificate(SSL *ssl,
     return ssl_hs_error;
   }
 
+  /* Check the certificate matches the cipher suite.
+   *
+   * TODO(davidben): Remove this check when switching to the new TLS 1.3 cipher
+   * suite negotiation. */
+  if (!ssl_check_leaf_certificate(ssl, ssl->s3->new_session->peer)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    return ssl_hs_error;
+  }
+
   hs->state = state_process_server_certificate_verify;
   return ssl_hs_read_message;
 }
