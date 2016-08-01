@@ -218,8 +218,7 @@ int tls13_process_certificate(SSL *ssl) {
     }
 
     /* Servers may be configured to accept anonymous clients. */
-    if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
-        (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
+    if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       goto err;

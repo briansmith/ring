@@ -1276,8 +1276,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
     if (ssl->version == SSL3_VERSION &&
         ssl->s3->tmp.message_type == SSL3_MT_CLIENT_KEY_EXCHANGE) {
       /* In SSL 3.0, the Certificate message is omitted to signal no certificate. */
-      if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
-          (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
+      if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return -1;
@@ -1320,8 +1319,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       goto err;
-    } else if ((ssl->verify_mode & SSL_VERIFY_PEER) &&
-               (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
+    } else if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
       /* Fail for TLS only if we required a certificate */
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
