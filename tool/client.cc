@@ -119,6 +119,21 @@ static void KeyLogCallback(const SSL *ssl, const char *line) {
   fflush(g_keylog_file);
 }
 
+static ScopedBIO session_out;
+
+static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
+  if (session_out) {
+    if (!PEM_write_bio_SSL_SESSION(session_out.get(), session) ||
+        BIO_flush(session_out.get()) <= 0) {
+      fprintf(stderr, "Error while saving session:\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return 0;
+    }
+  }
+
+  return 0;
+}
+
 bool Client(const std::vector<std::string> &args) {
   if (!InitSocketLibrary()) {
     return false;
@@ -239,6 +254,16 @@ bool Client(const std::vector<std::string> &args) {
     }
   }
 
+  if (args_map.count("-session-out") != 0) {
+    session_out.reset(BIO_new_file(args_map["-session-out"].c_str(), "wb"));
+    if (!session_out) {
+      fprintf(stderr, "Error while saving session:\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    SSL_CTX_sess_set_new_cb(ctx.get(), NewSessionCallback);
+  }
+
   int sock = -1;
   if (!Connect(&sock, args_map["-connect"])) {
     return false;
@@ -293,16 +318,6 @@ bool Client(const std::vector<std::string> &args) {
 
   fprintf(stderr, "Connected.\n");
   PrintConnectionInfo(ssl.get());
-
-  if (args_map.count("-session-out") != 0) {
-    ScopedBIO out(BIO_new_file(args_map["-session-out"].c_str(), "wb"));
-    if (!out ||
-        !PEM_write_bio_SSL_SESSION(out.get(), SSL_get0_session(ssl.get()))) {
-      fprintf(stderr, "Error while saving session:\n");
-      ERR_print_errors_cb(PrintErrorCallback, stderr);
-      return false;
-    }
-  }
 
   bool ok = TransferData(ssl.get(), sock);
 
