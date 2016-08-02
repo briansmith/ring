@@ -2037,7 +2037,8 @@ int ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
   CBS peer_key;
   uint16_t group;
   if (!CBS_get_u16(contents, &group) ||
-      !CBS_get_u16_length_prefixed(contents, &peer_key)) {
+      !CBS_get_u16_length_prefixed(contents, &peer_key) ||
+      CBS_len(contents) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
@@ -2073,7 +2074,8 @@ int ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
   uint16_t group_id;
   CBS key_shares;
   if (!tls1_get_shared_group(ssl, &group_id) ||
-      !CBS_get_u16_length_prefixed(contents, &key_shares)) {
+      !CBS_get_u16_length_prefixed(contents, &key_shares) ||
+      CBS_len(contents) != 0) {
     return 0;
   }
 
