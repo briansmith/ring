@@ -1092,16 +1092,10 @@ f_err:
 }
 
 static int ssl3_verify_server_cert(SSL *ssl) {
-  int ret = ssl_verify_cert_chain(ssl, ssl->s3->new_session->cert_chain);
-  if (ssl->verify_mode != SSL_VERIFY_NONE && ret <= 0) {
-    int al = ssl_verify_alarm_type(ssl->verify_result);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-    return ret;
+  if (!ssl_verify_cert_chain(ssl, ssl->s3->new_session->cert_chain)) {
+    return -1;
   }
 
-  /* Otherwise the error is non-fatal, but we keep verify_result. */
-  ERR_clear_error();
   ssl->s3->new_session->verify_result = ssl->verify_result;
   return 1;
 }

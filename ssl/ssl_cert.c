@@ -319,13 +319,25 @@ int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain) {
     X509_STORE_CTX_set_verify_cb(&ctx, ssl->verify_callback);
   }
 
+  int verify_ret;
   if (ssl->ctx->app_verify_callback != NULL) {
-    ret = ssl->ctx->app_verify_callback(&ctx, ssl->ctx->app_verify_arg);
+    verify_ret = ssl->ctx->app_verify_callback(&ctx, ssl->ctx->app_verify_arg);
   } else {
-    ret = X509_verify_cert(&ctx);
+    verify_ret = X509_verify_cert(&ctx);
   }
 
   ssl->verify_result = ctx.error;
+
+  /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
+  if (verify_ret <= 0 && ssl->verify_mode != SSL_VERIFY_NONE) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL,
+                    ssl_verify_alarm_type(ssl->verify_result));
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+    goto err;
+  }
+
+  ERR_clear_error();
+  ret = 1;
 
 err:
   X509_STORE_CTX_cleanup(&ctx);

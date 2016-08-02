@@ -1313,12 +1313,15 @@ static int ssl3_get_client_certificate(SSL *ssl) {
     /* No client certificate so the handshake buffer may be discarded. */
     ssl3_free_handshake_buffer(ssl);
 
-    /* TLS does not mind 0 certs returned */
+    /* In SSL 3.0, sending no certificate is signaled by omitting the
+     * Certificate message. */
     if (ssl->version == SSL3_VERSION) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       goto err;
-    } else if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
+    }
+
+    if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
       /* Fail for TLS only if we required a certificate */
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -1330,10 +1333,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
       ssl->s3->new_session->peer_sha256_valid = 1;
     }
 
-    if (ssl_verify_cert_chain(ssl, chain) <= 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL,
-                      ssl_verify_alarm_type(ssl->verify_result));
+    if (!ssl_verify_cert_chain(ssl, chain)) {
       goto err;
     }
   }

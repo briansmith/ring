@@ -234,15 +234,9 @@ int tls13_process_certificate(SSL *ssl) {
     ssl->s3->new_session->peer_sha256_valid = 1;
   }
 
-  int verify_ret = ssl_verify_cert_chain(ssl, chain);
-  /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
-  if (ssl->verify_mode != SSL_VERIFY_NONE && verify_ret <= 0) {
-    int al = ssl_verify_alarm_type(ssl->verify_result);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+  if (!ssl_verify_cert_chain(ssl, chain)) {
     goto err;
   }
-  ERR_clear_error();
 
   ssl->s3->new_session->verify_result = ssl->verify_result;
 
