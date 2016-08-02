@@ -458,8 +458,11 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
     return ssl_hs_ok;
   }
 
+  const int allow_anonymous =
+      (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0;
+
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
-      !tls13_process_certificate(ssl) ||
+      !tls13_process_certificate(ssl, allow_anonymous) ||
       !ssl->method->hash_current_message(ssl)) {
     return ssl_hs_error;
   }

@@ -181,7 +181,7 @@ err:
   return 0;
 }
 
-int tls13_process_certificate(SSL *ssl) {
+int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
   CBS cbs, context;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8_length_prefixed(&cbs, &context) ||
@@ -191,12 +191,12 @@ int tls13_process_certificate(SSL *ssl) {
     return 0;
   }
 
+  const int retain_sha256 =
+      ssl->server && ssl->ctx->retain_only_sha256_of_client_certs;
   int ret = 0;
   uint8_t alert;
   STACK_OF(X509) *chain = ssl_parse_cert_chain(
-      ssl, &alert, ssl->ctx->retain_only_sha256_of_client_certs
-                       ? ssl->s3->new_session->peer_sha256
-                       : NULL,
+      ssl, &alert, retain_sha256 ? ssl->s3->new_session->peer_sha256 : NULL,
       &cbs);
   if (chain == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -210,15 +210,7 @@ int tls13_process_certificate(SSL *ssl) {
   }
 
   if (sk_X509_num(chain) == 0) {
-    /* Clients must receive a certificate from the server. */
-    if (!ssl->server) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
-    }
-
-    /* Servers may be configured to accept anonymous clients. */
-    if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
+    if (!allow_anonymous) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       goto err;
@@ -229,10 +221,7 @@ int tls13_process_certificate(SSL *ssl) {
     goto err;
   }
 
-  if (ssl->server && ssl->ctx->retain_only_sha256_of_client_certs) {
-    /* The hash was filled in by |ssl_parse_cert_chain|. */
-    ssl->s3->new_session->peer_sha256_valid = 1;
-  }
+  ssl->s3->new_session->peer_sha256_valid = retain_sha256;
 
   if (!ssl_verify_cert_chain(ssl, chain)) {
     goto err;

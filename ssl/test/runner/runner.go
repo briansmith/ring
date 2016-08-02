@@ -1430,7 +1430,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":DECODE_ERROR:",
+			expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
 		},
 		{
 			name:             "TLSFatalBadPackets",

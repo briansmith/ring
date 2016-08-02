@@ -361,7 +361,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
 static enum ssl_hs_wait_t do_process_server_certificate(SSL *ssl,
                                                         SSL_HANDSHAKE *hs) {
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
-      !tls13_process_certificate(ssl) ||
+      !tls13_process_certificate(ssl, 0 /* certificate required */) ||
       !ssl->method->hash_current_message(ssl)) {
     return ssl_hs_error;
   }

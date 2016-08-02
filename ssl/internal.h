@@ -919,7 +919,7 @@ int tls13_post_handshake(SSL *ssl);
  * it returns one. Otherwise, it sends an alert and returns zero. */
 int tls13_check_message_type(SSL *ssl, int type);
 
-int tls13_process_certificate(SSL *ssl);
+int tls13_process_certificate(SSL *ssl, int allow_anonymous);
 int tls13_process_certificate_verify(SSL *ssl);
 int tls13_process_finished(SSL *ssl);
 
