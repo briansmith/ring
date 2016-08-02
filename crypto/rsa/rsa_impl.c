@@ -198,7 +198,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (!BN_mod_exp_mont(&result, &f, &e, &n, ctx, NULL) ||
+  if (!BN_mod_exp_mont_vartime(&result, &f, &e, &n, ctx, NULL) ||
       !BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -319,7 +319,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * Note that this is the only validation of |e| that is done other than
    * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
    * doesn't validate its mathematical relations to |d| or |p| or |q|. */
-  if (!BN_mod_exp_mont(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }

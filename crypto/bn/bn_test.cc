@@ -451,20 +451,14 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
   }
 
   if (BN_is_odd(m.get())) {
-    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-    if (!mont ||
-        !BN_MONT_CTX_set(mont.get(), m.get(), ctx)) {
-      return false;
-    }
-
-    // |BN_mod_exp_mont| requires the input to already be reduced mod |m|
-    // unless |e| is zero (purely due to the ordering of how these special
+    // |BN_mod_exp_mont_vartime| requires the input to already be reduced mod
+    // |m| unless |e| is zero (purely due to the ordering of how these special
     // cases are handled). // |BN_mod_exp_mont_consttime| doesn't have the same
     // requirement simply because we haven't gotten around to it yet.
     int expected_ok = BN_cmp(a.get(), m.get()) < 0 || BN_is_zero(e.get());
 
-    // First test with a NULL |BN_MONT_CTX|.
-    int ok = BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, NULL);
+    int ok = BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(), ctx,
+                                     nullptr);
     if (ok != expected_ok) {
       return false;
     }
@@ -481,14 +475,21 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
-    // Now test with a non-NULL |BN_MONT_CTX|.
-    ok = BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, mont.get());
+    // Test with a non-NULL |BN_MONT_CTX|.
+    ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
+    if (!mont ||
+        !BN_MONT_CTX_set(mont.get(), m.get(), ctx)) {
+      return false;
+    }
+
+    ok = BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(), ctx,
+                                 mont.get());
     if (ok != expected_ok) {
       return false;
     }
-    if (ok &&
-        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
-                            ret.get())) {
+    if ((ok &&
+         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
+                             ret.get()))) {
       return false;
     }
 
@@ -781,9 +782,9 @@ static bool TestBadModulus(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (BN_mod_exp_mont(a.get(), BN_value_one(), BN_value_one(), zero.get(), ctx,
-                      NULL)) {
-    fprintf(stderr, "BN_mod_exp_mont with zero modulus succeeded!\n");
+  if (BN_mod_exp_mont_vartime(a.get(), BN_value_one(), BN_value_one(),
+                              zero.get(), ctx, nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont_vartime with zero modulus succeeded!\n");
     return 0;
   }
   ERR_clear_error();
@@ -813,9 +814,9 @@ static bool TestBadModulus(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (BN_mod_exp_mont(a.get(), BN_value_one(), BN_value_one(), b.get(), ctx,
-                      NULL)) {
-    fprintf(stderr, "BN_mod_exp_mont with even modulus succeeded!\n");
+  if (BN_mod_exp_mont_vartime(a.get(), BN_value_one(), BN_value_one(), b.get(),
+                              ctx, nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont_vartime with even modulus succeeded!\n");
     return 0;
   }
   ERR_clear_error();
@@ -838,8 +839,8 @@ static bool TestExpModZero(RAND *rng) {
   }
   BN_zero(zero.get());
 
-  if (!BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
-                       nullptr) ||
+  if (!BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(), BN_value_one(),
+                               nullptr, nullptr) ||
       !BN_is_zero(r.get()) ||
       !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
                                  nullptr, nullptr) ||
@@ -883,9 +884,9 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
         }
 
         if (base_value >= mod_value &&
-            BN_mod_exp_mont(r.get(), base.get(), exp.get(), mod.get(), ctx,
-                            mont.get())) {
-          fprintf(stderr, "BN_mod_exp_mont(%d, %d, %d) succeeded!\n",
+            BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(), mod.get(),
+                                    ctx, nullptr)) {
+          fprintf(stderr, "BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
                   (int)base_value, (int)exp_value, (int)mod_value);
           return false;
         }
@@ -900,9 +901,9 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
 
         BN_set_negative(base.get(), 1);
 
-        if (BN_mod_exp_mont(r.get(), base.get(), exp.get(), mod.get(), ctx,
-                            mont.get())) {
-          fprintf(stderr, "BN_mod_exp_mont(%d, %d, %d) succeeded!\n",
+        if (BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(), mod.get(),
+                                    ctx, nullptr)) {
+          fprintf(stderr, "BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
                   -(int)base_value, (int)exp_value, (int)mod_value);
           return false;
         }
