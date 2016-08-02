@@ -342,6 +342,10 @@ void bn_correct_top(BIGNUM *bn) {
     }
     bn->top = tmp_top;
   }
+
+  if (bn->top == 0) {
+    bn->neg = 0;
+  }
 }
 
 int BN_get_flags(const BIGNUM *bn, int flags) {
