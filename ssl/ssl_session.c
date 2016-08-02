@@ -845,17 +845,6 @@ void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time) {
   CRYPTO_MUTEX_unlock_write(&ctx->lock);
 }
 
-int ssl_clear_bad_session(SSL *ssl) {
-  if (ssl->session != NULL &&
-      ssl->s3->send_shutdown != ssl_shutdown_close_notify &&
-      !SSL_in_init(ssl)) {
-    SSL_CTX_remove_session(ssl->ctx, ssl->session);
-    return 1;
-  }
-
-  return 0;
-}
-
 /* locked by SSL_CTX in the calling function */
 static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *session) {
   if (session->next == NULL || session->prev == NULL) {

@@ -1210,7 +1210,6 @@ extern const SSL3_ENC_METHOD SSLv3_enc_data;
 #define SSL_TICKET_ALLOW_DHE_RESUMPTION 2
 #define SSL_TICKET_ALLOW_PSK_RESUMPTION 4
 
-int ssl_clear_bad_session(SSL *ssl);
 CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);

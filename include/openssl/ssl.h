@@ -397,14 +397,7 @@ OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
  *
  * |SSL_shutdown| returns -1 on failure. The caller should pass the return value
  * into |SSL_get_error| to determine how to proceed. If the underlying |BIO| is
- * non-blocking, both stages may require retry.
- *
- * |SSL_shutdown| must be called to retain |ssl|'s session in the session
- * cache. Use |SSL_CTX_set_quiet_shutdown| to configure |SSL_shutdown| to
- * neither send nor wait for close_notify but still retain the session.
- *
- * TODO(davidben): Is there any point in the session cache interaction? Remove
- * it? */
+ * non-blocking, both stages may require retry. */
 OPENSSL_EXPORT int SSL_shutdown(SSL *ssl);
 
 /* SSL_CTX_set_quiet_shutdown sets quiet shutdown on |ctx| to |mode|. If

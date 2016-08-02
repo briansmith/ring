@@ -456,9 +456,6 @@ int ssl3_send_alert(SSL *ssl, int level, int desc) {
   }
 
   if (level == SSL3_AL_FATAL) {
-    if (ssl->session != NULL) {
-      SSL_CTX_remove_session(ssl->ctx, ssl->session);
-    }
     ssl->s3->send_shutdown = ssl_shutdown_fatal_alert;
   } else if (level == SSL3_AL_WARNING && desc == SSL_AD_CLOSE_NOTIFY) {
     ssl->s3->send_shutdown = ssl_shutdown_close_notify;

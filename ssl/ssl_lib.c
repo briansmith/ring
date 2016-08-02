@@ -494,7 +494,6 @@ void SSL_free(SSL *ssl) {
   ssl_cipher_preference_list_free(ssl->cipher_list);
   sk_SSL_CIPHER_free(ssl->cipher_list_by_id);
 
-  ssl_clear_bad_session(ssl);
   SSL_SESSION_free(ssl->session);
 
   ssl_cert_free(ssl->cert);
@@ -2893,11 +2892,6 @@ int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);
     return 0;
-  }
-
-  if (ssl_clear_bad_session(ssl)) {
-    SSL_SESSION_free(ssl->session);
-    ssl->session = NULL;
   }
 
   /* SSL_clear may be called before or after the |ssl| is initialized in either
