@@ -679,14 +679,12 @@ static int ssl3_get_client_hello(SSL *ssl) {
    * extensions are not normally parsed until later. This detects the EMS
    * extension for the resumption decision and it's checked against the result
    * of the normal parse later in this function. */
-  const uint8_t *ems_data;
-  size_t ems_len;
+  CBS ems;
   int have_extended_master_secret =
       ssl->version != SSL3_VERSION &&
-      SSL_early_callback_ctx_extension_get(&early_ctx,
-                                           TLSEXT_TYPE_extended_master_secret,
-                                           &ems_data, &ems_len) &&
-      ems_len == 0;
+      ssl_early_callback_get_extension(&early_ctx, &ems,
+                                       TLSEXT_TYPE_extended_master_secret) &&
+      CBS_len(&ems) == 0;
 
   int has_session = 0;
   if (session != NULL) {

@@ -1374,6 +1374,9 @@ int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster
 int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
                             const uint8_t *in, size_t in_len);
 
+int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
+                                     CBS *out, uint16_t extension_type);
+
 /* tls1_get_grouplist sets |*out_group_ids| and |*out_group_ids_len| to the
  * list of allowed group IDs. If |get_peer_groups| is non-zero, return the
  * peer's group list. Otherwise, return the preferred list. */

@@ -71,17 +71,14 @@ static int resolve_ecdhe_secret(SSL *ssl, int *out_need_retry,
     return tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len);
   }
 
-  const uint8_t *key_share_buf = NULL;
-  size_t key_share_len = 0;
   CBS key_share;
-  if (!SSL_early_callback_ctx_extension_get(early_ctx, TLSEXT_TYPE_key_share,
-                                            &key_share_buf, &key_share_len)) {
+  if (!ssl_early_callback_get_extension(early_ctx, &key_share,
+                                        TLSEXT_TYPE_key_share)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
     return ssl_hs_error;
   }
 
-  CBS_init(&key_share, key_share_buf, key_share_len);
   int found_key_share;
   uint8_t *dhe_secret;
   size_t dhe_secret_len;

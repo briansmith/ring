@@ -269,31 +269,39 @@ int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
   return 1;
 }
 
-int SSL_early_callback_ctx_extension_get(
-    const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
-    const uint8_t **out_data, size_t *out_len) {
+int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
+                                     CBS *out, uint16_t extension_type) {
   CBS extensions;
-
   CBS_init(&extensions, ctx->extensions, ctx->extensions_len);
-
   while (CBS_len(&extensions) != 0) {
+    /* Decode the next extension. */
     uint16_t type;
     CBS extension;
-
-    /* Decode the next extension. */
     if (!CBS_get_u16(&extensions, &type) ||
         !CBS_get_u16_length_prefixed(&extensions, &extension)) {
       return 0;
     }
 
     if (type == extension_type) {
-      *out_data = CBS_data(&extension);
-      *out_len = CBS_len(&extension);
+      *out = extension;
       return 1;
     }
   }
 
   return 0;
+}
+
+int SSL_early_callback_ctx_extension_get(
+    const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
+    const uint8_t **out_data, size_t *out_len) {
+  CBS cbs;
+  if (!ssl_early_callback_get_extension(ctx, &cbs, extension_type)) {
+    return 0;
+  }
+
+  *out_data = CBS_data(&cbs);
+  *out_len = CBS_len(&cbs);
+  return 1;
 }
 
 static const uint16_t kDefaultGroups[] = {
