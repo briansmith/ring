@@ -1375,7 +1375,7 @@ int SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
 }
 
 int SSL_set_mtu(SSL *ssl, unsigned mtu) {
-  if (!SSL_IS_DTLS(ssl) || mtu < dtls1_min_mtu()) {
+  if (!SSL_is_dtls(ssl) || mtu < dtls1_min_mtu()) {
     return 0;
   }
   ssl->d1->mtu = mtu;
@@ -2644,7 +2644,7 @@ int ssl3_can_false_start(const SSL *ssl) {
   const SSL_CIPHER *const cipher = SSL_get_current_cipher(ssl);
 
   /* False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN. */
-  return !SSL_IS_DTLS(ssl) &&
+  return !SSL_is_dtls(ssl) &&
       SSL_version(ssl) == TLS1_2_VERSION &&
       (ssl->s3->alpn_selected || ssl->s3->next_proto_neg_seen) &&
       cipher != NULL &&
@@ -2688,7 +2688,7 @@ int ssl_get_full_version_range(const SSL *ssl, uint16_t *out_min_version,
   /* For historical reasons, |SSL_OP_NO_DTLSv1| aliases |SSL_OP_NO_TLSv1|, but
    * DTLS 1.0 should be mapped to TLS 1.1. */
   uint32_t options = ssl->options;
-  if (SSL_IS_DTLS(ssl)) {
+  if (SSL_is_dtls(ssl)) {
     options &= ~SSL_OP_NO_TLSv1_1;
     if (options & SSL_OP_NO_DTLSv1) {
       options |= SSL_OP_NO_TLSv1_1;
@@ -2775,7 +2775,9 @@ uint16_t ssl3_protocol_version(const SSL *ssl) {
   return ssl->method->version_from_wire(ssl->version);
 }
 
-int SSL_is_server(SSL *ssl) { return ssl->server; }
+int SSL_is_server(const SSL *ssl) { return ssl->server; }
+
+int SSL_is_dtls(const SSL *ssl) { return ssl->method->is_dtls; }
 
 void SSL_CTX_set_select_certificate_cb(
     SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *)) {
@@ -2833,7 +2835,7 @@ static uint64_t be_to_u64(const uint8_t in[8]) {
 
 uint64_t SSL_get_read_sequence(const SSL *ssl) {
   /* TODO(davidben): Internally represent sequence numbers as uint64_t. */
-  if (SSL_IS_DTLS(ssl)) {
+  if (SSL_is_dtls(ssl)) {
     /* max_seq_num already includes the epoch. */
     assert(ssl->d1->r_epoch == (ssl->d1->bitmap.max_seq_num >> 48));
     return ssl->d1->bitmap.max_seq_num;
@@ -2843,7 +2845,7 @@ uint64_t SSL_get_read_sequence(const SSL *ssl) {
 
 uint64_t SSL_get_write_sequence(const SSL *ssl) {
   uint64_t ret = be_to_u64(ssl->s3->write_sequence);
-  if (SSL_IS_DTLS(ssl)) {
+  if (SSL_is_dtls(ssl)) {
     assert((ret >> 48) == 0);
     ret |= ((uint64_t)ssl->d1->w_epoch) << 48;
   }
@@ -2938,7 +2940,7 @@ int SSL_clear(SSL *ssl) {
     return 0;
   }
 
-  if (SSL_IS_DTLS(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
+  if (SSL_is_dtls(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
     ssl->d1->mtu = mtu;
   }
 

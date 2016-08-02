@@ -231,7 +231,10 @@ OPENSSL_EXPORT void SSL_set_accept_state(SSL *ssl);
 
 /* SSL_is_server returns one if |ssl| is configured as a server and zero
  * otherwise. */
-OPENSSL_EXPORT int SSL_is_server(SSL *ssl);
+OPENSSL_EXPORT int SSL_is_server(const SSL *ssl);
+
+/* SSL_is_dtls returns one if |ssl| is a DTLS connection and zero otherwise. */
+OPENSSL_EXPORT int SSL_is_dtls(const SSL *ssl);
 
 /* SSL_set_bio configures |ssl| to read from |rbio| and write to |wbio|. |ssl|
  * takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|

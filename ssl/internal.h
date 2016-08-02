@@ -961,9 +961,6 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 
 #define TLSEXT_CHANNEL_ID_SIZE 128
 
-/* Check if an SSL structure is using DTLS */
-#define SSL_IS_DTLS(ssl) (ssl->method->is_dtls)
-
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define NAMED_CURVE_TYPE 3
 

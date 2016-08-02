@@ -153,7 +153,7 @@ void dtls1_start_timer(SSL *ssl) {
 }
 
 int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
-  if (!SSL_IS_DTLS(ssl)) {
+  if (!SSL_is_dtls(ssl)) {
     return 0;
   }
 
@@ -254,7 +254,7 @@ int DTLSv1_handle_timeout(SSL *ssl) {
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
 
-  if (!SSL_IS_DTLS(ssl)) {
+  if (!SSL_is_dtls(ssl)) {
     return -1;
   }
 

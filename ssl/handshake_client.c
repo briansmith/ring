@@ -221,7 +221,7 @@ int ssl3_connect(SSL *ssl) {
           goto end;
         }
 
-        if (!SSL_IS_DTLS(ssl) || ssl->d1->send_cookie) {
+        if (!SSL_is_dtls(ssl) || ssl->d1->send_cookie) {
           ssl->s3->tmp.next_state = SSL3_ST_CR_SRVR_HELLO_A;
         } else {
           ssl->s3->tmp.next_state = DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
@@ -230,7 +230,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A:
-        assert(SSL_IS_DTLS(ssl));
+        assert(SSL_is_dtls(ssl));
         ret = dtls1_get_hello_verify(ssl);
         if (ret <= 0) {
           goto end;
@@ -655,7 +655,7 @@ int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
     return 0;
   }
 
-  if (SSL_IS_DTLS(ssl)) {
+  if (SSL_is_dtls(ssl)) {
     if (!CBB_add_u8_length_prefixed(body, &child) ||
         !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
       return 0;
@@ -663,7 +663,7 @@ int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
   }
 
   size_t header_len =
-      SSL_IS_DTLS(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+      SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
   if (!ssl_write_client_cipher_list(ssl, body, min_version, max_version,
                                     real_max_version) ||
       !CBB_add_u8(body, 1 /* one compression method */) ||
@@ -719,7 +719,7 @@ static int ssl3_send_client_hello(SSL *ssl) {
 
   /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
    * renegerate the client_random. The random must be reused. */
-  if ((!SSL_IS_DTLS(ssl) || !ssl->d1->send_cookie) &&
+  if ((!SSL_is_dtls(ssl) || !ssl->d1->send_cookie) &&
       !RAND_bytes(ssl->s3->client_random, sizeof(ssl->s3->client_random))) {
     goto err;
   }

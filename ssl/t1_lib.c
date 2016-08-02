@@ -225,7 +225,7 @@ int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
   ctx->session_id_len = CBS_len(&session_id);
 
   /* Skip past DTLS cookie */
-  if (SSL_IS_DTLS(ctx->ssl)) {
+  if (SSL_is_dtls(ctx->ssl)) {
     CBS cookie;
 
     if (!CBS_get_u8_length_prefixed(&client_hello, &cookie)) {
@@ -1279,7 +1279,7 @@ static int ext_npn_add_clienthello(SSL *ssl, CBB *out) {
   if (ssl->s3->initial_handshake_complete ||
       ssl->ctx->next_proto_select_cb == NULL ||
       (ssl->options & SSL_OP_DISABLE_NPN) ||
-      SSL_IS_DTLS(ssl)) {
+      SSL_is_dtls(ssl)) {
     return 1;
   }
 
@@ -1305,7 +1305,7 @@ static int ext_npn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
    * extension in the ClientHello and thus this function should never have been
    * called. */
   assert(!ssl->s3->initial_handshake_complete);
-  assert(!SSL_IS_DTLS(ssl));
+  assert(!SSL_is_dtls(ssl));
   assert(ssl->ctx->next_proto_select_cb != NULL);
   assert(!(ssl->options & SSL_OP_DISABLE_NPN));
 
@@ -1366,7 +1366,7 @@ static int ext_npn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
        * |next_proto_neg_seen|. */
       ssl->s3->alpn_selected != NULL ||
       ssl->ctx->next_protos_advertised_cb == NULL ||
-      SSL_IS_DTLS(ssl)) {
+      SSL_is_dtls(ssl)) {
     return 1;
   }
 
@@ -1615,7 +1615,7 @@ static void ext_channel_id_init(SSL *ssl) {
 
 static int ext_channel_id_add_clienthello(SSL *ssl, CBB *out) {
   if (!ssl->tlsext_channel_id_enabled ||
-      SSL_IS_DTLS(ssl)) {
+      SSL_is_dtls(ssl)) {
     return 1;
   }
 
@@ -1637,7 +1637,7 @@ static int ext_channel_id_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  assert(!SSL_IS_DTLS(ssl));
+  assert(!SSL_is_dtls(ssl));
   assert(ssl->tlsext_channel_id_enabled);
 
   if (CBS_len(contents) != 0) {
@@ -1652,7 +1652,7 @@ static int ext_channel_id_parse_clienthello(SSL *ssl, uint8_t *out_alert,
                                             CBS *contents) {
   if (contents == NULL ||
       !ssl->tlsext_channel_id_enabled ||
-      SSL_IS_DTLS(ssl)) {
+      SSL_is_dtls(ssl)) {
     return 1;
   }
 
@@ -1840,7 +1840,7 @@ static int ext_srtp_add_serverhello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/rfc4492#section-5.1.2 */
 
 static int ssl_any_ec_cipher_suites_enabled(const SSL *ssl) {
-  if (ssl->version < TLS1_VERSION && !SSL_IS_DTLS(ssl)) {
+  if (ssl->version < TLS1_VERSION && !SSL_is_dtls(ssl)) {
     return 0;
   }
 
@@ -2424,7 +2424,7 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
     goto err;
   }
 
-  if (!SSL_IS_DTLS(ssl)) {
+  if (!SSL_is_dtls(ssl)) {
     header_len += 2 + CBB_len(&extensions);
     if (header_len > 0xff && header_len < 0x200) {
       /* Add padding to workaround bugs in F5 terminators. See RFC 7685.

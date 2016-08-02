@@ -652,7 +652,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
   /* Load the client random. */
   memcpy(ssl->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
 
-  if (SSL_IS_DTLS(ssl)) {
+  if (SSL_is_dtls(ssl)) {
     CBS cookie;
 
     if (!CBS_get_u8_length_prefixed(&client_hello, &cookie) ||
