@@ -2031,9 +2031,9 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
   return CBB_flush(out);
 }
 
-int ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
-                                    size_t *out_secret_len, uint8_t *out_alert,
-                                    CBS *contents) {
+int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
+                                        size_t *out_secret_len,
+                                        uint8_t *out_alert, CBS *contents) {
   CBS peer_key;
   uint16_t group;
   if (!CBS_get_u16(contents, &group) ||
@@ -2067,10 +2067,10 @@ int ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
   return 1;
 }
 
-int ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
-                                    uint8_t **out_secret,
-                                    size_t *out_secret_len, uint8_t *out_alert,
-                                    CBS *contents) {
+int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
+                                        uint8_t **out_secret,
+                                        size_t *out_secret_len,
+                                        uint8_t *out_alert, CBS *contents) {
   uint16_t group_id;
   CBS key_shares;
   if (!tls1_get_shared_group(ssl, &group_id) ||
@@ -2114,7 +2114,7 @@ int ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
   return 1;
 }
 
-int ext_key_share_add_serverhello(SSL *ssl, CBB *out) {
+int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out) {
   if (ssl->s3->tmp.new_cipher->algorithm_mkey != SSL_kECDHE) {
     return 1;
   }

@@ -926,14 +926,14 @@ enum ssl_private_key_result_t tls13_prepare_certificate_verify(
     SSL *ssl, int is_first_run);
 int tls13_prepare_finished(SSL *ssl);
 
-int ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
-                                    size_t *out_secret_len, uint8_t *out_alert,
-                                    CBS *contents);
-int ext_key_share_parse_clienthello(SSL *ssl,
-                                    int *out_found, uint8_t **out_secret,
-                                    size_t *out_secret_len, uint8_t *out_alert,
-                                    CBS *contents);
-int ext_key_share_add_serverhello(SSL *ssl, CBB *out);
+int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
+                                        size_t *out_secret_len,
+                                        uint8_t *out_alert, CBS *contents);
+int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
+                                        uint8_t **out_secret,
+                                        size_t *out_secret_len,
+                                        uint8_t *out_alert, CBS *contents);
+int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out);
 
 int ssl_add_client_hello_body(SSL *ssl, CBB *body);
 

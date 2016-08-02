@@ -84,8 +84,9 @@ static int resolve_ecdhe_secret(SSL *ssl, int *out_need_retry,
   uint8_t *dhe_secret;
   size_t dhe_secret_len;
   uint8_t alert;
-  if (!ext_key_share_parse_clienthello(ssl, &found_key_share, &dhe_secret,
-                                       &dhe_secret_len, &alert, &key_share)) {
+  if (!ssl_ext_key_share_parse_clienthello(ssl, &found_key_share, &dhe_secret,
+                                           &dhe_secret_len, &alert,
+                                           &key_share)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
   }
@@ -311,7 +312,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
-      !ext_key_share_add_serverhello(ssl, &extensions) ||
+      !ssl_ext_key_share_add_serverhello(ssl, &extensions) ||
       !ssl->method->finish_message(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return ssl_hs_error;

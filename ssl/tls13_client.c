@@ -238,8 +238,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     uint8_t *dhe_secret;
     size_t dhe_secret_len;
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!ext_key_share_parse_serverhello(ssl, &dhe_secret, &dhe_secret_len,
-                                         &alert, &key_share)) {
+    if (!ssl_ext_key_share_parse_serverhello(ssl, &dhe_secret, &dhe_secret_len,
+                                             &alert, &key_share)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
