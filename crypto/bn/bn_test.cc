@@ -474,6 +474,13 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
+    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), m.get(), ctx,
+                                   nullptr) ||
+        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
+                            ret.get())) {
+      return false;
+    }
+
     // Now test with a non-NULL |BN_MONT_CTX|.
     ok = BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, mont.get());
     if (ok != expected_ok) {
@@ -486,7 +493,7 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
     }
 
     if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), m.get(), ctx,
-                                   NULL) ||
+                                   mont.get()) ||
         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
                             ret.get())) {
       return false;
