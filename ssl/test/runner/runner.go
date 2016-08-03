@@ -3413,40 +3413,64 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		if config.protocol == dtls && !vers.hasDTLS {
 			continue
 		}
-		tests = append(tests, testCase{
-			testType: clientTest,
-			name:     "CertificateVerificationSucceed-" + vers.name,
-			config: Config{
-				MaxVersion: vers.version,
-			},
-			flags: []string{
-				"-verify-peer",
-			},
-			resumeSession: vers.version != VersionTLS13,
-		})
-		tests = append(tests, testCase{
-			testType: clientTest,
-			name:     "CertificateVerificationFail-" + vers.name,
-			config: Config{
-				MaxVersion: vers.version,
-			},
-			flags: []string{
-				"-verify-fail",
-				"-verify-peer",
-			},
-			shouldFail:    true,
-			expectedError: ":CERTIFICATE_VERIFY_FAILED:",
-		})
+		for _, testType := range []testType{clientTest, serverTest} {
+			suffix := "-Client"
+			if testType == serverTest {
+				suffix = "-Server"
+			}
+			suffix += "-" + vers.name
+
+			flag := "-verify-peer"
+			if testType == serverTest {
+				flag = "-require-any-client-certificate"
+			}
+
+			tests = append(tests, testCase{
+				testType: testType,
+				name:     "CertificateVerificationSucceed" + suffix,
+				config: Config{
+					MaxVersion:   vers.version,
+					Certificates: []Certificate{rsaCertificate},
+				},
+				flags: []string{
+					flag,
+					"-expect-verify-result",
+				},
+				// TODO(davidben): Enable this when resumption is
+				// implemented in TLS 1.3.
+				resumeSession: vers.version != VersionTLS13,
+			})
+			tests = append(tests, testCase{
+				testType: testType,
+				name:     "CertificateVerificationFail" + suffix,
+				config: Config{
+					MaxVersion:   vers.version,
+					Certificates: []Certificate{rsaCertificate},
+				},
+				flags: []string{
+					flag,
+					"-verify-fail",
+				},
+				shouldFail:    true,
+				expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+			})
+		}
+
+		// By default, the client is in a soft fail mode where the peer
+		// certificate is verified but failures are non-fatal.
 		tests = append(tests, testCase{
 			testType: clientTest,
 			name:     "CertificateVerificationSoftFail-" + vers.name,
 			config: Config{
-				MaxVersion: vers.version,
+				MaxVersion:   vers.version,
+				Certificates: []Certificate{rsaCertificate},
 			},
 			flags: []string{
 				"-verify-fail",
 				"-expect-verify-result",
 			},
+			// TODO(davidben): Enable this when resumption is
+			// implemented in TLS 1.3.
 			resumeSession: vers.version != VersionTLS13,
 		})
 	}

@@ -1212,19 +1212,18 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
-  if (!config->is_server) {
-    /* Clients should expect a peer certificate chain iff this was not a PSK
-     * cipher suite. */
-    if (config->psk.empty()) {
-      if (SSL_get_peer_cert_chain(ssl) == nullptr) {
-        fprintf(stderr, "Missing peer certificate chain!\n");
-        return false;
-      }
-    } else if (SSL_get_peer_cert_chain(ssl) != nullptr) {
-      fprintf(stderr, "Unexpected peer certificate chain!\n");
+  if (!config->psk.empty()) {
+    if (SSL_get_peer_cert_chain(ssl) != nullptr) {
+      fprintf(stderr, "Received peer certificate on a PSK cipher.\n");
+      return false;
+    }
+  } else if (!config->is_server || config->require_any_client_certificate) {
+    if (SSL_get_peer_cert_chain(ssl) == nullptr) {
+      fprintf(stderr, "Received no peer certificate but expected one.\n");
       return false;
     }
   }
+
   return true;
 }
 
