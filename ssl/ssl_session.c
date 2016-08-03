@@ -669,20 +669,6 @@ enum ssl_session_result_t ssl_get_prev_session(
     goto no_session;
   }
 
-  if ((ssl->verify_mode & SSL_VERIFY_PEER) && ssl->sid_ctx_length == 0) {
-    /* We can't be sure if this session is being used out of context, which is
-     * especially important for SSL_VERIFY_PEER. The application should have
-     * used SSL[_CTX]_set_session_id_context.
-     *
-     * For this error case, we generate an error instead of treating the event
-     * like a cache miss (otherwise it would be easy for applications to
-     * effectively disable the session cache by accident without anyone
-     * noticing). */
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SESSION_ID_CONTEXT_UNINITIALIZED);
-    SSL_SESSION_free(session);
-    return ssl_session_error;
-  }
-
   struct timeval now;
   ssl_get_current_time(ssl, &now);
   if (session->timeout < (long)now.tv_sec - session->time) {
