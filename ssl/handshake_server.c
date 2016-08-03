@@ -885,11 +885,12 @@ static int ssl3_send_server_hello(SSL *ssl) {
     ssl->s3->tlsext_channel_id_valid = 0;
   }
 
-  const uint32_t current_time = time(NULL);
-  ssl->s3->server_random[0] = current_time >> 24;
-  ssl->s3->server_random[1] = current_time >> 16;
-  ssl->s3->server_random[2] = current_time >> 8;
-  ssl->s3->server_random[3] = current_time;
+  struct timeval now;
+  ssl_get_current_time(ssl, &now);
+  ssl->s3->server_random[0] = now.tv_sec >> 24;
+  ssl->s3->server_random[1] = now.tv_sec >> 16;
+  ssl->s3->server_random[2] = now.tv_sec >> 8;
+  ssl->s3->server_random[3] = now.tv_sec;
   if (!RAND_bytes(ssl->s3->server_random + 4, SSL3_RANDOM_SIZE - 4)) {
     return -1;
   }

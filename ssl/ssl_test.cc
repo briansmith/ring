@@ -34,6 +34,15 @@
 #include "test/scoped_types.h"
 #include "../crypto/test/test_util.h"
 
+#if defined(OPENSSL_WINDOWS)
+/* Windows defines struct timeval in winsock2.h. */
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
+#else
+#include <sys/time.h>
+#endif
+
 
 struct ExpectedCipher {
   unsigned long id;
@@ -1840,6 +1849,71 @@ static bool TestSessionIDContext() {
   return true;
 }
 
+static timeval g_current_time;
+
+static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
+  *out_clock = g_current_time;
+}
+
+static bool TestSessionTimeout() {
+  ScopedX509 cert = GetTestCertificate();
+  ScopedEVP_PKEY key = GetTestKey();
+  if (!cert || !key) {
+    return false;
+  }
+
+  for (uint16_t version : kVersions) {
+    // TODO(davidben): Enable this when TLS 1.3 resumption is implemented.
+    if (version == TLS1_3_VERSION) {
+      continue;
+    }
+
+    ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
+    ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+    if (!server_ctx || !client_ctx ||
+        !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+        !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
+      return false;
+    }
+
+    SSL_CTX_set_min_version(client_ctx.get(), version);
+    SSL_CTX_set_max_version(client_ctx.get(), version);
+    SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+
+    SSL_CTX_set_min_version(server_ctx.get(), version);
+    SSL_CTX_set_max_version(server_ctx.get(), version);
+    SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
+    SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
+
+    ScopedSSL_SESSION session =
+        CreateClientSession(client_ctx.get(), server_ctx.get());
+    if (!session) {
+      fprintf(stderr, "Error getting session (version = %04x).\n", version);
+      return false;
+    }
+
+    // Advance the clock just behind the timeout.
+    g_current_time.tv_sec += SSL_DEFAULT_SESSION_TIMEOUT;
+
+    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
+                             true /* expect session reused */)) {
+      fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+      return false;
+    }
+
+    // Advance the clock one more second.
+    g_current_time.tv_sec++;
+
+    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
+                             false /* expect session not reused */)) {
+      fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -1872,7 +1946,8 @@ int main() {
       !TestGetPeerCertificate() ||
       !TestRetainOnlySHA256OfCerts() ||
       !TestClientHello() ||
-      !TestSessionIDContext()) {
+      !TestSessionIDContext() ||
+      !TestSessionTimeout()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }

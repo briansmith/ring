@@ -66,13 +66,6 @@
 
 #include "internal.h"
 
-#if defined(OPENSSL_WINDOWS)
-#include <sys/timeb.h>
-#else
-#include <sys/socket.h>
-#include <sys/time.h>
-#endif
-
 
 /* DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
  * before starting to decrease the MTU. */
@@ -81,8 +74,6 @@
 /* DTLS1_MAX_TIMEOUTS is the maximum number of timeouts to expire
  * before failing the DTLS handshake. */
 #define DTLS1_MAX_TIMEOUTS                     12
-
-static void get_current_time(const SSL *ssl, struct timeval *out_clock);
 
 int dtls1_new(SSL *ssl) {
   DTLS1_STATE *d1;
@@ -139,7 +130,7 @@ void dtls1_start_timer(SSL *ssl) {
   }
 
   /* Set timeout to current time */
-  get_current_time(ssl, &ssl->d1->next_timeout);
+  ssl_get_current_time(ssl, &ssl->d1->next_timeout);
 
   /* Add duration to current time */
   ssl->d1->next_timeout.tv_sec += ssl->d1->timeout_duration_ms / 1000;
@@ -162,9 +153,8 @@ int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
     return 0;
   }
 
-  /* Get current time */
   struct timeval timenow;
-  get_current_time(ssl, &timenow);
+  ssl_get_current_time(ssl, &timenow);
 
   /* If timer already expired, set remaining time to 0 */
   if (ssl->d1->next_timeout.tv_sec < timenow.tv_sec ||
@@ -271,22 +261,6 @@ int DTLSv1_handle_timeout(SSL *ssl) {
 
   dtls1_start_timer(ssl);
   return dtls1_retransmit_outgoing_messages(ssl);
-}
-
-static void get_current_time(const SSL *ssl, struct timeval *out_clock) {
-  if (ssl->ctx->current_time_cb != NULL) {
-    ssl->ctx->current_time_cb(ssl, out_clock);
-    return;
-  }
-
-#if defined(OPENSSL_WINDOWS)
-  struct _timeb time;
-  _ftime(&time);
-  out_clock->tv_sec = time.time;
-  out_clock->tv_usec = time.millitm * 1000;
-#else
-  gettimeofday(out_clock, NULL);
-#endif
 }
 
 void dtls1_expect_flight(SSL *ssl) {

@@ -864,7 +864,9 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
   SSL_CTX_enable_tls_channel_id(ssl_ctx.get());
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
-  SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
+  if (config->is_dtls) {
+    SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
+  }
 
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
   SSL_CTX_sess_set_new_cb(ssl_ctx.get(), NewSessionCallback);

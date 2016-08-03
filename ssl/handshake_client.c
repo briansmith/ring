@@ -710,8 +710,10 @@ static int ssl3_send_client_hello(SSL *ssl) {
   if (ssl->session != NULL) {
     uint16_t session_version =
         ssl->method->version_from_wire(ssl->session->ssl_version);
+    struct timeval now;
+    ssl_get_current_time(ssl, &now);
     if (ssl->session->session_id_length == 0 || ssl->session->not_resumable ||
-        ssl->session->timeout < (long)(time(NULL) - ssl->session->time) ||
+        ssl->session->timeout < (long)now.tv_sec - ssl->session->time ||
         session_version < min_version || session_version > max_version) {
       SSL_set_session(ssl, NULL);
     }

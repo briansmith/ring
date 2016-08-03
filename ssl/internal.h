@@ -1479,6 +1479,8 @@ int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
                             uint16_t signature_algorithm);
 void ssl_set_client_disabled(SSL *ssl);
 
+void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock);
+
 
 #if defined(__cplusplus)
 } /* extern C */

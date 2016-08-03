@@ -170,7 +170,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
   session->verify_result = X509_V_ERR_INVALID_CALL;
   session->references = 1;
   session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-  session->time = (unsigned long)time(NULL);
+  session->time = (long)time(NULL);
   CRYPTO_new_ex_data(&session->ex_data);
   return session;
 }
@@ -418,6 +418,11 @@ int ssl_get_new_session(SSL *ssl, int is_server) {
   if (session == NULL) {
     return 0;
   }
+
+  /* Fill in the time from the |SSL_CTX|'s clock. */
+  struct timeval now;
+  ssl_get_current_time(ssl, &now);
+  session->time = now.tv_sec;
 
   /* If the context has a default timeout, use it over the default. */
   if (ssl->initial_ctx->session_timeout != 0) {
@@ -678,7 +683,9 @@ enum ssl_session_result_t ssl_get_prev_session(
     return ssl_session_error;
   }
 
-  if (session->timeout < (long)(time(NULL) - session->time)) {
+  struct timeval now;
+  ssl_get_current_time(ssl, &now);
+  if (session->timeout < (long)now.tv_sec - session->time) {
     if (from_cache) {
       /* The session was from the cache, so remove it. */
       SSL_CTX_remove_session(ssl->initial_ctx, session);
