@@ -913,9 +913,9 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
-/* avoid leaking exponent information through timing, BN_mod_exp_mont() will
- * call BN_mod_exp_mont_consttime, BN_div() will call BN_div_no_branch,
- * BN_mod_inverse() will call BN_mod_inverse_no_branch. */
+/* Avoid leaking exponent information through timing. |BN_mod_exp_mont| will
+ * call |BN_mod_exp_mont_consttime| and |BN_mod_inverse| will call
+ * |BN_mod_inverse_no_branch|. */
 #define BN_FLG_CONSTTIME 0x04
 
 

@@ -590,17 +590,9 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     if (!mod_exp(result, f, rsa, ctx)) {
       goto err;
     }
-  } else {
-    BIGNUM local_d;
-    BIGNUM *d = NULL;
-
-    BN_init(&local_d);
-    d = &local_d;
-    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-
-    if (!BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
-      goto err;
-    }
+  } else if (!BN_mod_exp_mont_consttime(result, f, rsa->d, rsa->n, ctx,
+                                        rsa->mont_n)) {
+    goto err;
   }
 
   /* Verify the result to protect against fault attacks as described in the
@@ -658,8 +650,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(rsa->iqmp != NULL);
 
   BIGNUM *r1, *m1, *vrfy;
-  BIGNUM local_dmp1, local_dmq1, local_c, local_r1;
-  BIGNUM *dmp1, *dmq1, *c, *pr1;
   int ret = 0;
   size_t i, num_additional_primes = 0;
 
@@ -677,23 +667,9 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  {
-    BIGNUM local_p, local_q;
-    BIGNUM *p = NULL, *q = NULL;
-
-    /* Make sure BN_mod in Montgomery initialization uses BN_FLG_CONSTTIME. */
-    BN_init(&local_p);
-    p = &local_p;
-    BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
-
-    BN_init(&local_q);
-    q = &local_q;
-    BN_with_flags(q, rsa->q, BN_FLG_CONSTTIME);
-
-    if (!BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, p, ctx) ||
-        !BN_MONT_CTX_set_locked(&rsa->mont_q, &rsa->lock, q, ctx)) {
-      goto err;
-    }
+  if (!BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, rsa->p, ctx) ||
+      !BN_MONT_CTX_set_locked(&rsa->mont_q, &rsa->lock, rsa->q, ctx)) {
+    goto err;
   }
 
   if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx)) {
@@ -701,30 +677,22 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   }
 
   /* compute I mod q */
-  c = &local_c;
-  BN_with_flags(c, I, BN_FLG_CONSTTIME);
-  if (!BN_mod(r1, c, rsa->q, ctx)) {
+  if (!BN_mod(r1, I, rsa->q, ctx)) {
     goto err;
   }
 
   /* compute r1^dmq1 mod q */
-  dmq1 = &local_dmq1;
-  BN_with_flags(dmq1, rsa->dmq1, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont_consttime(m1, r1, dmq1, rsa->q, ctx, rsa->mont_q)) {
+  if (!BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1, rsa->q, ctx, rsa->mont_q)) {
     goto err;
   }
 
   /* compute I mod p */
-  c = &local_c;
-  BN_with_flags(c, I, BN_FLG_CONSTTIME);
-  if (!BN_mod(r1, c, rsa->p, ctx)) {
+  if (!BN_mod(r1, I, rsa->p, ctx)) {
     goto err;
   }
 
   /* compute r1^dmp1 mod p */
-  dmp1 = &local_dmp1;
-  BN_with_flags(dmp1, rsa->dmp1, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont_consttime(r0, r1, dmp1, rsa->p, ctx, rsa->mont_p)) {
+  if (!BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1, rsa->p, ctx, rsa->mont_p)) {
     goto err;
   }
 
@@ -743,11 +711,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  /* Turn BN_FLG_CONSTTIME flag on before division operation */
-  pr1 = &local_r1;
-  BN_with_flags(pr1, r1, BN_FLG_CONSTTIME);
-
-  if (!BN_mod(r0, pr1, rsa->p, ctx)) {
+  if (!BN_mod(r0, r1, rsa->p, ctx)) {
     goto err;
   }
 
@@ -771,30 +735,23 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   for (i = 0; i < num_additional_primes; i++) {
     /* multi-prime RSA. */
-    BIGNUM local_exp, local_prime;
-    BIGNUM *exp = &local_exp, *prime = &local_prime;
     RSA_additional_prime *ap =
         sk_RSA_additional_prime_value(rsa->additional_primes, i);
 
-    BN_with_flags(exp, ap->exp, BN_FLG_CONSTTIME);
-    BN_with_flags(prime, ap->prime, BN_FLG_CONSTTIME);
-
     /* c will already point to a BIGNUM with the correct flags. */
-    if (!BN_mod(r1, c, prime, ctx)) {
+    if (!BN_mod(r1, I, ap->prime, ctx)) {
       goto err;
     }
 
-    if (!BN_MONT_CTX_set_locked(&ap->mont, &rsa->lock, prime, ctx) ||
-        !BN_mod_exp_mont_consttime(m1, r1, exp, prime, ctx, ap->mont)) {
+    if (!BN_MONT_CTX_set_locked(&ap->mont, &rsa->lock, ap->prime, ctx) ||
+        !BN_mod_exp_mont_consttime(m1, r1, ap->exp, ap->prime, ctx, ap->mont)) {
       goto err;
     }
-
-    BN_set_flags(m1, BN_FLG_CONSTTIME);
 
     if (!BN_sub(m1, m1, r0) ||
         !BN_mul(m1, m1, ap->coeff, ctx) ||
-        !BN_mod(m1, m1, prime, ctx) ||
-        (BN_is_negative(m1) && !BN_add(m1, m1, prime)) ||
+        !BN_mod(m1, m1, ap->prime, ctx) ||
+        (BN_is_negative(m1) && !BN_add(m1, m1, ap->prime)) ||
         !BN_mul(m1, m1, ap->r, ctx) ||
         !BN_add(r0, r0, m1)) {
       goto err;
@@ -811,8 +768,8 @@ err:
 int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
                                    BIGNUM *e_value, BN_GENCB *cb) {
   BIGNUM *r0 = NULL, *r1 = NULL, *r2 = NULL, *r3 = NULL, *tmp;
-  BIGNUM local_r0, local_d, local_p;
-  BIGNUM *pr0, *d, *p;
+  BIGNUM local_r0, local_p;
+  BIGNUM *pr0, *p;
   int prime_bits, ok = -1, n = 0, i, j;
   BN_CTX *ctx = NULL;
   STACK_OF(RSA_additional_prime) *additional_primes = NULL;
@@ -1047,24 +1004,19 @@ int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
     goto err; /* d */
   }
 
-  /* set up d for correct BN_FLG_CONSTTIME flag */
-  d = &local_d;
-  BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-
   /* calculate d mod (p-1) */
-  if (!BN_mod(rsa->dmp1, d, r1, ctx)) {
+  if (!BN_mod(rsa->dmp1, rsa->d, r1, ctx)) {
     goto err;
   }
 
   /* calculate d mod (q-1) */
-  if (!BN_mod(rsa->dmq1, d, r2, ctx)) {
+  if (!BN_mod(rsa->dmq1, rsa->d, r2, ctx)) {
     goto err;
   }
 
   /* calculate inverse of q mod p */
   p = &local_p;
   BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
-
   if (!BN_mod_inverse(rsa->iqmp, rsa->q, p, ctx)) {
     goto err;
   }
