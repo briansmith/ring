@@ -345,32 +345,6 @@ int asn1_const_Finish(ASN1_const_CTX *c)
     return _asn1_Finish(c);
 }
 
-int asn1_GetSequence(ASN1_const_CTX *c, long *length)
-{
-    const unsigned char *q;
-
-    q = c->p;
-    c->inf = ASN1_get_object(&(c->p), &(c->slen), &(c->tag), &(c->xclass),
-                             *length);
-    if (c->inf & 0x80) {
-        c->error = ASN1_R_BAD_GET_ASN1_OBJECT_CALL;
-        return (0);
-    }
-    if (c->tag != V_ASN1_SEQUENCE) {
-        c->error = ASN1_R_EXPECTING_AN_ASN1_SEQUENCE;
-        return (0);
-    }
-    (*length) -= (c->p - q);
-    if (c->max && (*length < 0)) {
-        c->error = ASN1_R_ASN1_LENGTH_MISMATCH;
-        return (0);
-    }
-    if (c->inf == (1 | V_ASN1_CONSTRUCTED))
-        c->slen = *length + *(c->pp) - c->p;
-    c->eos = 0;
-    return (1);
-}
-
 int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str)
 {
     if (str == NULL)
