@@ -1023,10 +1023,16 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
     }
   }
 
-  /* Now use a single explicit inversion to replace every
-   * non-zero points[i]->Z by its inverse. */
-
-  if (!BN_mod_inverse(tmp, prod_Z[num - 1], &group->field, ctx)) {
+  /* Now use a single explicit inversion to replace every non-zero points[i]->Z
+   * by its inverse. We use |BN_mod_inverse_odd| instead of doing a constant-
+   * time inversion using Fermat's Little Theorem because this function is
+   * usually only used for converting multiples of a public key point to
+   * affine, and a public key point isn't secret. If we were to use Fermat's
+   * Little Theorem then the cost of the inversion would usually be so high
+   * that converting the multiples to affine would be counterproductive. */
+  int no_inverse;
+  if (!BN_mod_inverse_odd(tmp, &no_inverse, prod_Z[num - 1], &group->field,
+                          ctx)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }

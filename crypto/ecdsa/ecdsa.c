@@ -176,7 +176,8 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     goto err;
   }
   /* calculate tmp1 = inv(S) mod order */
-  if (!BN_mod_inverse(u2, sig->s, order, ctx)) {
+  int no_inverse;
+  if (!BN_mod_inverse_odd(u2, &no_inverse, sig->s, order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
