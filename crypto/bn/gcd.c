@@ -670,7 +670,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 
   if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
-      !bn_mod_inverse_ex(out, out_no_inverse, out, &mont->N, ctx) ||
+      !bn_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;
