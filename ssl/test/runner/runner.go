@@ -1925,22 +1925,44 @@ func addBasicTests() {
 			expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
 		},
 		{
-			name:              "SendWarningAlerts-Pass",
+			name: "SendWarningAlerts-Pass",
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
 			sendWarningAlerts: 4,
 		},
 		{
-			protocol:          dtls,
-			name:              "SendWarningAlerts-DTLS-Pass",
+			protocol: dtls,
+			name:     "SendWarningAlerts-DTLS-Pass",
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
 			sendWarningAlerts: 4,
 		},
 		{
-			name:              "SendWarningAlerts",
+			name: "SendWarningAlerts-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendWarningAlerts:  4,
+			shouldFail:         true,
+			expectedError:      ":BAD_ALERT:",
+			expectedLocalError: "remote error: error decoding message",
+		},
+		{
+			name: "SendWarningAlerts",
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
 			sendWarningAlerts: 5,
 			shouldFail:        true,
 			expectedError:     ":TOO_MANY_WARNING_ALERTS:",
 		},
 		{
-			name:              "SendWarningAlerts-Async",
+			name: "SendWarningAlerts-Async",
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
 			sendWarningAlerts: 5,
 			flags:             []string{"-async"},
 			shouldFail:        true,
@@ -3685,6 +3707,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		tests = append(tests, testCase{
 			name: "Shutdown-Shim",
 			config: Config{
+				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
 					ExpectCloseNotify: true,
 				},

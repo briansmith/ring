@@ -429,6 +429,14 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
       return ssl_open_record_close_notify;
     }
 
+    /* Warning alerts do not exist in TLS 1.3. */
+    if (ssl->s3->have_version &&
+        ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ALERT);
+      return ssl_open_record_error;
+    }
+
     ssl->s3->warning_alert_count++;
     if (ssl->s3->warning_alert_count > kMaxWarningAlerts) {
       *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
