@@ -221,7 +221,7 @@ int CBB_flush(CBB *cbb) {
     /* For ASN.1 we assume that we'll only need a single byte for the length.
      * If that turned out to be incorrect, we have to move the contents along
      * in order to make space. */
-    size_t len_len;
+    uint8_t len_len;
     uint8_t initial_length_byte;
 
     assert (cbb->child->pending_len_len == 1);
@@ -243,7 +243,7 @@ int CBB_flush(CBB *cbb) {
       initial_length_byte = 0x80 | 1;
     } else {
       len_len = 1;
-      initial_length_byte = len;
+      initial_length_byte = (uint8_t)len;
       len = 0;
     }
 
@@ -262,7 +262,7 @@ int CBB_flush(CBB *cbb) {
 
   for (i = cbb->child->pending_len_len - 1; i < cbb->child->pending_len_len;
        i--) {
-    cbb->base->buf[cbb->child->offset + i] = len;
+    cbb->base->buf[cbb->child->offset + i] = (uint8_t)len;
     len >>= 8;
   }
   if (len != 0) {
@@ -292,7 +292,7 @@ size_t CBB_len(const CBB *cbb) {
 }
 
 static int cbb_add_length_prefixed(CBB *cbb, CBB *out_contents,
-                                   size_t len_len) {
+                                   uint8_t len_len) {
   uint8_t *prefix_bytes;
 
   if (!CBB_flush(cbb)) {

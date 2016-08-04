@@ -217,9 +217,9 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
 #endif
 
   if (state->buf_used) {
-    unsigned int todo = 16 - state->buf_used;
+    unsigned todo = 16 - state->buf_used;
     if (todo > in_len) {
-      todo = in_len;
+      todo = (unsigned)in_len;
     }
     for (i = 0; i < todo; i++) {
       state->buf[state->buf_used + i] = in[i];
@@ -245,7 +245,7 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
     for (i = 0; i < in_len; i++) {
       state->buf[i] = in[i];
     }
-    state->buf_used = in_len;
+    state->buf_used = (unsigned)in_len;
   }
 }
 

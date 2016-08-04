@@ -215,10 +215,14 @@ int OBJ_obj2nid(const ASN1_OBJECT *obj) {
 }
 
 int OBJ_cbs2nid(const CBS *cbs) {
+  if (CBS_len(cbs) > INT_MAX) {
+    return NID_undef;
+  }
+
   ASN1_OBJECT obj;
   memset(&obj, 0, sizeof(obj));
   obj.data = CBS_data(cbs);
-  obj.length = CBS_len(cbs);
+  obj.length = (int)CBS_len(cbs);
 
   return OBJ_obj2nid(&obj);
 }

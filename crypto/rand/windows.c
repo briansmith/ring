@@ -39,7 +39,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   while (requested > 0) {
     ULONG output_bytes_this_pass = ULONG_MAX;
     if (requested < output_bytes_this_pass) {
-      output_bytes_this_pass = requested;
+      output_bytes_this_pass = (ULONG)requested;
     }
     if (RtlGenRandom(out, output_bytes_this_pass) == FALSE) {
       abort();

@@ -111,7 +111,7 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
 
   if (sizeof(ctx->data) - ctx->data_used > in_len) {
     memcpy(&ctx->data[ctx->data_used], in, in_len);
-    ctx->data_used += in_len;
+    ctx->data_used += (unsigned)in_len;
     return;
   }
 
@@ -152,14 +152,14 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
     memcpy(ctx->data, in, in_len);
   }
 
-  ctx->data_used = in_len;
+  ctx->data_used = (unsigned)in_len;
 
   if (total > INT_MAX) {
     /* We cannot signal an error, but we can at least avoid making *out_len
      * negative. */
     total = 0;
   }
-  *out_len = total;
+  *out_len = (int)total;
 }
 
 void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len) {
@@ -172,7 +172,11 @@ void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len) {
   out[encoded++] = '\n';
   out[encoded] = '\0';
   ctx->data_used = 0;
-  *out_len = encoded;
+
+  /* ctx->data_used is bounded by sizeof(ctx->data), so this does not
+   * overflow. */
+  assert(encoded <= INT_MAX);
+  *out_len = (int)encoded;
 }
 
 size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
@@ -344,7 +348,7 @@ int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
     *out_len = 0;
     return -1;
   }
-  *out_len = bytes_out;
+  *out_len = (int)bytes_out;
 
   if (ctx->eof_seen) {
     return 0;
@@ -434,5 +438,5 @@ int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
   }
   assert(dst_len <= INT_MAX);
 
-  return dst_len;
+  return (int)dst_len;
 }

@@ -100,7 +100,7 @@ typedef struct stack_st {
   void **data;
   /* sorted is non-zero if the values pointed to by |data| are in ascending
    * order, based on |comp|. */
-  size_t sorted;
+  int sorted;
   /* num_alloc contains the number of pointers allocated in the buffer pointed
    * to by |data|, which may be larger than |num|. */
   size_t num_alloc;

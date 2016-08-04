@@ -263,10 +263,10 @@ static int aead_ssl3_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   total += len;
   assert(total == in_len);
 
-  /* Remove CBC padding and MAC. This would normally be timing-sensitive, but SSLv3 CBC
-   * ciphers are already broken. Support will be removed eventually.
+  /* Remove CBC padding and MAC. This would normally be timing-sensitive, but
+   * SSLv3 CBC ciphers are already broken. Support will be removed eventually.
    * https://www.openssl.org/~bodo/ssl-poodle.pdf */
-  unsigned data_len;
+  size_t data_len;
   if (EVP_CIPHER_CTX_mode(&ssl3_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE) {
     unsigned padding_length = out[total - 1];
     if (total < padding_length + 1 + mac_len) {

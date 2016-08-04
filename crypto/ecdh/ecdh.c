@@ -66,6 +66,7 @@
 
 #include <openssl/ecdh.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -142,7 +143,12 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
     memcpy(out, buf, outlen);
   }
 
-  ret = outlen;
+  if (outlen > INT_MAX) {
+    OPENSSL_PUT_ERROR(ECDH, ERR_R_OVERFLOW);
+    goto err;
+  }
+
+  ret = (int)outlen;
 
 err:
   OPENSSL_free(buf);
