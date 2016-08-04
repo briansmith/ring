@@ -54,8 +54,13 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#if !defined(__STDC_FORMAT_MACROS)
+#define __STDC_FORMAT_MACROS
+#endif
+
 #include <openssl/obj.h>
 
+#include <inttypes.h>
 #include <limits.h>
 #include <string.h>
 
@@ -409,148 +414,109 @@ ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
   return op;
 }
 
-int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj, int dont_return_name) {
-  int i, n = 0, len, nid, first, use_bn;
-  BIGNUM *bl;
-  unsigned long l;
-  const unsigned char *p;
-  char tbuf[DECIMAL_SIZE(i) + DECIMAL_SIZE(l) + 2];
-
-  if (out && out_len > 0) {
-    out[0] = 0;
+static int strlcpy_int(char *dst, const char *src, int dst_size) {
+  size_t ret = BUF_strlcpy(dst, src, dst_size < 0 ? 0 : (size_t)dst_size);
+  if (ret > INT_MAX) {
+    OPENSSL_PUT_ERROR(OBJ, ERR_R_OVERFLOW);
+    return -1;
   }
+  return (int)ret;
+}
 
-  if (obj == NULL || obj->data == NULL) {
-    return 0;
-  }
-
-  if (!dont_return_name && (nid = OBJ_obj2nid(obj)) != NID_undef) {
-    const char *s;
-    s = OBJ_nid2ln(nid);
-    if (s == NULL) {
-      s = OBJ_nid2sn(nid);
+static int parse_oid_component(CBS *cbs, uint64_t *out) {
+  uint64_t v = 0;
+  uint8_t b;
+  do {
+    if (!CBS_get_u8(cbs, &b)) {
+      return 0;
     }
-    if (s) {
-      if (out) {
-        BUF_strlcpy(out, s, out_len);
-      }
-      return strlen(s);
+    if ((v >> (64 - 7)) != 0) {
+      /* The component is too large. */
+      return 0;
     }
-  }
-
-  len = obj->length;
-  p = obj->data;
-
-  first = 1;
-  bl = NULL;
-
-  while (len > 0) {
-    l = 0;
-    use_bn = 0;
-    for (;;) {
-      unsigned char c = *p++;
-      len--;
-      if (len == 0 && (c & 0x80)) {
-        goto err;
-      }
-      if (use_bn) {
-        if (!BN_add_word(bl, c & 0x7f)) {
-          goto err;
-        }
-      } else {
-        l |= c & 0x7f;
-      }
-      if (!(c & 0x80)) {
-        break;
-      }
-      if (!use_bn && (l > (ULONG_MAX >> 7L))) {
-        if (!bl && !(bl = BN_new())) {
-          goto err;
-        }
-        if (!BN_set_word(bl, l)) {
-          goto err;
-        }
-        use_bn = 1;
-      }
-      if (use_bn) {
-        if (!BN_lshift(bl, bl, 7)) {
-          goto err;
-        }
-      } else {
-        l <<= 7L;
-      }
+    if (v == 0 && b == 0x80) {
+      /* The component must be minimally encoded. */
+      return 0;
     }
+    v = (v << 7) | (b & 0x7f);
 
-    if (first) {
-      first = 0;
-      if (l >= 80) {
-        i = 2;
-        if (use_bn) {
-          if (!BN_sub_word(bl, 80)) {
-            goto err;
-          }
-        } else {
-          l -= 80;
-        }
-      } else {
-        i = (int)(l / 40);
-        l -= (long)(i * 40);
-      }
-      if (out && out_len > 1) {
-        *out++ = i + '0';
-        *out = '0';
-        out_len--;
-      }
-      n++;
-    }
+    /* Components end at an octet with the high bit cleared. */
+  } while (b & 0x80);
 
-    if (use_bn) {
-      char *bndec;
-      bndec = BN_bn2dec(bl);
-      if (!bndec) {
-        goto err;
+  *out = v;
+  return 1;
+}
+
+static int add_decimal(CBB *out, uint64_t v) {
+  char buf[DECIMAL_SIZE(uint64_t) + 1];
+  BIO_snprintf(buf, sizeof(buf), "%" PRIu64, v);
+  return CBB_add_bytes(out, (const uint8_t *)buf, strlen(buf));
+}
+
+int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
+                int dont_return_name) {
+  if (!dont_return_name) {
+    int nid = OBJ_obj2nid(obj);
+    if (nid != NID_undef) {
+      const char *name = OBJ_nid2ln(nid);
+      if (name == NULL) {
+        name = OBJ_nid2sn(nid);
       }
-      i = strlen(bndec);
-      if (out) {
-        if (out_len > 1) {
-          *out++ = '.';
-          *out = 0;
-          out_len--;
-        }
-        BUF_strlcpy(out, bndec, out_len);
-        if (i > out_len) {
-          out += out_len;
-          out_len = 0;
-        } else {
-          out += i;
-          out_len -= i;
-        }
+      if (name != NULL) {
+        return strlcpy_int(out, name, out_len);
       }
-      n++;
-      n += i;
-      OPENSSL_free(bndec);
-    } else {
-      BIO_snprintf(tbuf, sizeof(tbuf), ".%lu", l);
-      i = strlen(tbuf);
-      if (out && out_len > 0) {
-        BUF_strlcpy(out, tbuf, out_len);
-        if (i > out_len) {
-          out += out_len;
-          out_len = 0;
-        } else {
-          out += i;
-          out_len -= i;
-        }
-      }
-      n += i;
     }
   }
 
-  BN_free(bl);
-  return n;
+  CBB cbb;
+  if (!CBB_init(&cbb, 32)) {
+    goto err;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, obj->data, obj->length);
+
+  /* The first component is 40 * value1 + value2, where value1 is 0, 1, or 2. */
+  uint64_t v;
+  if (!parse_oid_component(&cbs, &v)) {
+    goto err;
+  }
+
+  if (v >= 80) {
+    if (!CBB_add_bytes(&cbb, (const uint8_t *)"2.", 2) ||
+        !add_decimal(&cbb, v - 80)) {
+      goto err;
+    }
+  } else if (!add_decimal(&cbb, v / 40) ||
+             !CBB_add_u8(&cbb, '.') ||
+             !add_decimal(&cbb, v % 40)) {
+    goto err;
+  }
+
+  while (CBS_len(&cbs) != 0) {
+    if (!parse_oid_component(&cbs, &v) ||
+        !CBB_add_u8(&cbb, '.') ||
+        !add_decimal(&cbb, v)) {
+      goto err;
+    }
+  }
+
+  uint8_t *txt;
+  size_t txt_len;
+  if (!CBB_add_u8(&cbb, '\0') ||
+      !CBB_finish(&cbb, &txt, &txt_len)) {
+    goto err;
+  }
+
+  int ret = strlcpy_int(out, (const char *)txt, out_len);
+  OPENSSL_free(txt);
+  return ret;
 
 err:
-  BN_free(bl);
+  CBB_cleanup(&cbb);
+  if (out_len > 0) {
+    out[0] = '\0';
+  }
   return -1;
 }
 

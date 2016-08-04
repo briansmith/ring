@@ -182,6 +182,51 @@ static bool TestObj2Txt() {
     return false;
   }
 
+  ASN1_OBJECT obj;
+  memset(&obj, 0, sizeof(obj));
+
+  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
+    fprintf(stderr, "OBJ_obj2txt accepted the empty OID.\n");
+    return false;
+  }
+
+  // kNonMinimalOID is kBasicConstraints with the final component non-minimally
+  // encoded.
+  static const uint8_t kNonMinimalOID[] = {
+      0x55, 0x1d, 0x80, 0x13,
+  };
+  obj.data = kNonMinimalOID;
+  obj.length = sizeof(kNonMinimalOID);
+  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
+    fprintf(stderr, "OBJ_obj2txt accepted non-minimal OIDs.\n");
+    return false;
+  }
+
+  // kOverflowOID is the DER representation of
+  // 1.2.840.113554.4.1.72585.18446744073709551616. (The final value is 2^64.)
+  static const uint8_t kOverflowOID[] = {
+      0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09,
+      0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00,
+  };
+  obj.data = kOverflowOID;
+  obj.length = sizeof(kOverflowOID);
+  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
+    fprintf(stderr, "OBJ_obj2txt accepted an OID with a large component.\n");
+    return false;
+  }
+
+  // kInvalidOID is a mis-encoded version of kBasicConstraints with the final
+  // octet having the high bit set.
+  static const uint8_t kInvalidOID[] = {
+      0x55, 0x1d, 0x93,
+  };
+  obj.data = kInvalidOID;
+  obj.length = sizeof(kInvalidOID);
+  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
+    fprintf(stderr, "OBJ_obj2txt accepted a mis-encoded OID.\n");
+    return false;
+  }
+
   return true;
 }
 
