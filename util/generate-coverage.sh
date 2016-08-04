@@ -28,7 +28,7 @@ fi
 
 cd "$BUILD"
 cmake "$SRC" -GNinja -DCMAKE_C_FLAGS='-fprofile-arcs -ftest-coverage' \
-  -DCMAKE_CXX_FLAGS='-fprofile-arcs -ftest-coverage' -DCMAKE_ASM_FLAGS='-Wa,-g'
+  -DCMAKE_CXX_FLAGS='-fprofile-arcs -ftest-coverage'
 ninja
 
 cp -r "$SRC/crypto" "$SRC/decrepit" "$SRC/include" "$SRC/ssl" "$SRC/tool" \
