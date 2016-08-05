@@ -233,7 +233,7 @@ OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
  * what you want before turning to these. */
 
 /* bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
- * until |top| is zero. */
+ * until |top| is zero. If |bn| is zero, |bn->neg| is set to zero. */
 OPENSSL_EXPORT void bn_correct_top(BIGNUM *bn);
 
 /* bn_wexpand ensures that |bn| has at least |words| works of space without
