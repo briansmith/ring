@@ -723,7 +723,7 @@ static bool TestNegativeZero(BN_CTX *ctx) {
     return false;
   }
   if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
-    fprintf(stderr, "Multiplication test failed!\n");
+    fprintf(stderr, "Multiplication test failed.\n");
     return false;
   }
 
@@ -737,7 +737,7 @@ static bool TestNegativeZero(BN_CTX *ctx) {
     return false;
   }
   if (!BN_is_zero(d.get()) || BN_is_negative(d.get())) {
-    fprintf(stderr, "Division test failed!\n");
+    fprintf(stderr, "Division test failed.\n");
     return false;
   }
 
@@ -749,7 +749,15 @@ static bool TestNegativeZero(BN_CTX *ctx) {
     return false;
   }
   if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
-    fprintf(stderr, "Division test failed!\n");
+    fprintf(stderr, "Division test failed.\n");
+    return false;
+  }
+
+  // Test that BN_set_negative will not produce a negative zero.
+  BN_zero(a.get());
+  BN_set_negative(a.get(), 1);
+  if (BN_is_negative(a.get())) {
+    fprintf(stderr, "BN_set_negative produced a negative zero.\n");
     return false;
   }
 
@@ -768,27 +776,31 @@ static bool TestBadModulus(BN_CTX *ctx) {
   BN_zero(zero.get());
 
   if (BN_div(a.get(), b.get(), BN_value_one(), zero.get(), ctx)) {
-    fprintf(stderr, "Division by zero succeeded!\n");
+    fprintf(stderr, "Division by zero unexpectedly succeeded.\n");
     return false;
   }
   ERR_clear_error();
 
   if (BN_mod_exp_mont_vartime(a.get(), BN_value_one(), BN_value_one(),
                               zero.get(), ctx, nullptr)) {
-    fprintf(stderr, "BN_mod_exp_mont_vartime with zero modulus succeeded!\n");
+    fprintf(stderr, "BN_mod_exp_mont_vartime with zero modulus unexpectedly "
+            "succeeded.\n");
     return 0;
   }
   ERR_clear_error();
 
   if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
                                 zero.get(), ctx, nullptr)) {
-    fprintf(stderr, "BN_mod_exp_mont_consttime with zero modulus succeeded!\n");
+    fprintf(stderr,
+            "BN_mod_exp_mont_consttime with zero modulus unexpectedly "
+            "succeeded.\n");
     return 0;
   }
   ERR_clear_error();
 
   if (BN_MONT_CTX_set(mont.get(), zero.get(), ctx)) {
-    fprintf(stderr, "BN_MONT_CTX_set succeeded for zero modulus!\n");
+    fprintf(stderr,
+            "BN_MONT_CTX_set unexpectedly succeeded for zero modulus.\n");
     return false;
   }
   ERR_clear_error();
@@ -800,21 +812,25 @@ static bool TestBadModulus(BN_CTX *ctx) {
   }
 
   if (BN_MONT_CTX_set(mont.get(), b.get(), ctx)) {
-    fprintf(stderr, "BN_MONT_CTX_set succeeded for even modulus!\n");
+    fprintf(stderr,
+            "BN_MONT_CTX_set unexpectedly succeeded for even modulus.\n");
     return false;
   }
   ERR_clear_error();
 
   if (BN_mod_exp_mont_vartime(a.get(), BN_value_one(), BN_value_one(), b.get(),
                               ctx, nullptr)) {
-    fprintf(stderr, "BN_mod_exp_mont_vartime with even modulus succeeded!\n");
+    fprintf(stderr, "BN_mod_exp_mont_vartime with even modulus unexpectedly "
+            "succeeded!\n");
     return 0;
   }
   ERR_clear_error();
 
   if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
                                 b.get(), ctx, nullptr)) {
-    fprintf(stderr, "BN_mod_exp_mont_consttime with even modulus succeeded!\n");
+    fprintf(stderr,
+            "BN_mod_exp_mont_consttime with even modulus unexpectedly "
+            "succeeded.\n");
     return 0;
   }
   ERR_clear_error();
