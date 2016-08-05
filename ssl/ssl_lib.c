@@ -2088,11 +2088,12 @@ void ssl_update_cache(SSL *ssl, int mode) {
     if (use_internal_cache) {
       SSL_CTX_add_session(ctx, ssl->s3->established_session);
     }
-    if (ctx->new_session_cb != NULL &&
-        !ctx->new_session_cb(ssl, SSL_SESSION_up_ref(
-            ssl->s3->established_session))) {
-      /* |new_session_cb|'s return value signals whether it took ownership. */
-      SSL_SESSION_free(ssl->s3->established_session);
+    if (ctx->new_session_cb != NULL) {
+      SSL_SESSION_up_ref(ssl->s3->established_session);
+      if (!ctx->new_session_cb(ssl, ssl->s3->established_session)) {
+        /* |new_session_cb|'s return value signals whether it took ownership. */
+        SSL_SESSION_free(ssl->s3->established_session);
+      }
     }
   }
 

@@ -266,11 +266,9 @@ err:
   return 0;
 }
 
-SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session) {
-  if (session != NULL) {
-    CRYPTO_refcount_inc(&session->references);
-  }
-  return session;
+int SSL_SESSION_up_ref(SSL_SESSION *session) {
+  CRYPTO_refcount_inc(&session->references);
+  return 1;
 }
 
 void SSL_SESSION_free(SSL_SESSION *session) {
@@ -384,8 +382,11 @@ SSL_SESSION *SSL_get_session(const SSL *ssl) {
 }
 
 SSL_SESSION *SSL_get1_session(SSL *ssl) {
-  /* variant of SSL_get_session: caller really gets something */
-  return SSL_SESSION_up_ref(SSL_get_session(ssl));
+  SSL_SESSION *ret = SSL_get_session(ssl);
+  if (ret != NULL) {
+    SSL_SESSION_up_ref(ret);
+  }
+  return ret;
 }
 
 int SSL_SESSION_get_ex_new_index(long argl, void *argp,

@@ -487,7 +487,8 @@ int ssl3_accept(SSL *ssl) {
 
         SSL_SESSION_free(ssl->s3->established_session);
         if (ssl->session != NULL) {
-          ssl->s3->established_session = SSL_SESSION_up_ref(ssl->session);
+          SSL_SESSION_up_ref(ssl->session);
+          ssl->s3->established_session = ssl->session;
         } else {
           ssl->s3->established_session = ssl->s3->new_session;
           ssl->s3->established_session->not_resumable = 0;

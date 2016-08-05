@@ -508,7 +508,8 @@ int ssl3_connect(SSL *ssl) {
 
         SSL_SESSION_free(ssl->s3->established_session);
         if (ssl->session != NULL) {
-          ssl->s3->established_session = SSL_SESSION_up_ref(ssl->session);
+          SSL_SESSION_up_ref(ssl->session);
+          ssl->s3->established_session = ssl->session;
         } else {
           /* We make a copy of the session in order to maintain the immutability
            * of the new established_session due to False Start. The caller may

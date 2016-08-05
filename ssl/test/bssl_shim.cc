@@ -1421,8 +1421,8 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     } else if (config->async) {
       // The internal session cache is disabled, so install the session
       // manually.
-      GetTestState(ssl.get())->pending_session.reset(
-          SSL_SESSION_up_ref(session));
+      SSL_SESSION_up_ref(session);
+      GetTestState(ssl.get())->pending_session.reset(session);
     }
   }
 
