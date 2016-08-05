@@ -28,6 +28,7 @@
     <ClCompile Include="bn\gcd.c" />
     <ClCompile Include="bn\generic.c" />
     <ClCompile Include="bn\montgomery.c" />
+    <ClCompile Include="bn\montgomery_inv.c" />
     <ClCompile Include="bn\mul.c" />
     <ClCompile Include="bn\random.c" />
     <ClCompile Include="bn\rsaz_exp.c" />
