@@ -207,3 +207,11 @@ const SSL_METHOD *SSLv23_server_method(void) {
 const SSL_METHOD *SSLv23_client_method(void) {
   return SSLv23_method();
 }
+
+const SSL_METHOD *TLS_server_method(void) {
+  return TLS_method();
+}
+
+const SSL_METHOD *TLS_client_method(void) {
+  return TLS_method();
+}
