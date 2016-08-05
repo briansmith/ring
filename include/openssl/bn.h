@@ -455,26 +455,30 @@ OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
                                    BN_CTX *ctx);
 
-/* BN_to_montgomery sets |ret| equal to |a| in the Montgomery domain. It
- * returns one on success and zero on error. */
+/* BN_to_montgomery sets |ret| equal to |a| in the Montgomery domain. |a| is
+ * assumed to be in the range [0, n), where |n| is the Montgomery modulus. It
+ * returns one on success or zero on error. */
 OPENSSL_EXPORT int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a,
                                     const BN_MONT_CTX *mont, BN_CTX *ctx);
 
-/* BN_from_montgomery sets |ret| equal to |a| * R^-1, i.e. translates values
- * out of the Montgomery domain. It returns one on success or zero on error. */
+/* BN_from_montgomery sets |ret| equal to |a| * R^-1, i.e. translates values out
+ * of the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
+ * is the Montgomery modulus. It returns one on success or zero on error. */
 OPENSSL_EXPORT int BN_from_montgomery(BIGNUM *ret, const BIGNUM *a,
                                       const BN_MONT_CTX *mont, BN_CTX *ctx);
 
 /* BN_mod_mul_montgomery set |r| equal to |a| * |b|, in the Montgomery domain.
  * Both |a| and |b| must already be in the Montgomery domain (by
- * |BN_to_montgomery|). It returns one on success or zero on error. */
+ * |BN_to_montgomery|). In particular, |a| and |b| are assumed to be in the
+ * range [0, n), where |n| is the Montgomery modulus. It returns one on success
+ * or zero on error. */
 OPENSSL_EXPORT int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a,
                                          const BIGNUM *b,
                                          const BN_MONT_CTX *mont, BN_CTX *ctx);
 
-/* BN_reduce_montgomery returns |a % n|, where |n| is |mod_mont->N|, in
- * constant-ish time using Montgomery reduction. It must be the case that
- * |0 < a < n**2|. It returns one on success or zero on error. */
+/* BN_reduce_montgomery returns |a % n| in constant-ish time using Montgomery
+ * reduction. |a| is assumed to be in the range [0, n**2), where |n| is the
+ * Montgomery modulus. It returns one on success or zero on error. */
 int BN_reduce_montgomery(BIGNUM *r, const BIGNUM *a,
                          const BN_MONT_CTX *mod_mont, BN_CTX *ctx);
 
