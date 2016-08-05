@@ -418,14 +418,15 @@ OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 /* Number theory functions */
 
 /* BN_mod_inverse_vartime sets |out| equal to |a|^-1, mod |n|. If |out| is
- * NULL, a fresh BIGNUM is allocated. It returns the result or NULL on error.
+ * NULL, a fresh BIGNUM is allocated. It returns one on success or zero on
+ * failure.
  *
  * This function shouldn't be used for secret values; use
  * |BN_mod_inverse_blinded| instead. Or, if |n| is guaranteed to be prime, use
  * |BN_mod_exp_mont_consttime(out, a, m_minus_2, m, ctx, m_mont)|, taking
  * advantage of Fermat's Little Theorem. */
-OPENSSL_EXPORT BIGNUM *BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a,
-                                              const BIGNUM *n, BN_CTX *ctx);
+OPENSSL_EXPORT int BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a,
+                                          const BIGNUM *n, BN_CTX *ctx);
 
 /* BN_mod_inverse_blinded sets |out| equal to |a|^-1, mod |n|, where |n| is the
  * Montgomery modulus for |mont|. |a| must be non-negative and must be less

@@ -113,11 +113,10 @@
 #include "internal.h"
 
 
-static BIGNUM *bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
-                                 const BIGNUM *a, const BIGNUM *n,
-                                 BN_CTX *ctx) {
-  BIGNUM *A, *B, *X, *Y, *T, *R = NULL;
-  BIGNUM *ret = NULL;
+static int bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                             const BIGNUM *n, BN_CTX *ctx) {
+  BIGNUM *A, *B, *X, *Y, *T;
+  int ret = 0;
   int sign;
 
   *out_no_inverse = 0;
@@ -137,14 +136,7 @@ static BIGNUM *bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
     goto err;
   }
 
-  if (out == NULL) {
-    R = BN_new();
-  } else {
-    R = out;
-  }
-  if (R == NULL) {
-    goto err;
-  }
+  BIGNUM *R = out;
 
   BN_zero(Y);
   if (!BN_one(X) || BN_copy(B, a) == NULL || BN_copy(A, n) == NULL) {
@@ -283,18 +275,15 @@ static BIGNUM *bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
     }
   }
 
-  ret = R;
+  ret = 1;
 
 err:
-  if (ret == NULL && out == NULL) {
-    BN_free(R);
-  }
   BN_CTX_end(ctx);
   return ret;
 }
 
-BIGNUM *BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
-                               BN_CTX *ctx) {
+int BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
+                           BN_CTX *ctx) {
   int no_inverse;
   return bn_mod_inverse_ex(out, &no_inverse, a, n, ctx);
 }
@@ -314,7 +303,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 
   if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N, rng) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
-      bn_mod_inverse_ex(out, out_no_inverse, out, &mont->N, ctx) == NULL ||
+      !bn_mod_inverse_ex(out, out_no_inverse, out, &mont->N, ctx) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;

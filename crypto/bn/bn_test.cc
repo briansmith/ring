@@ -966,7 +966,7 @@ static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
       int no_inverse;
 
       if (base_value >= mod_value &&
-          BN_mod_inverse_vartime(r.get(), base.get(), mod.get(), ctx) != NULL) {
+          BN_mod_inverse_vartime(r.get(), base.get(), mod.get(), ctx)) {
         fprintf(stderr, "BN_mod_inverse_vartime(%d, %d) succeeded!\n",
                 (int)base_value, (int)mod_value);
         return false;
@@ -981,7 +981,7 @@ static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
 
       BN_set_negative(base.get(), 1);
 
-      if (BN_mod_inverse_vartime(r.get(), base.get(), mod.get(), ctx) != NULL) {
+      if (BN_mod_inverse_vartime(r.get(), base.get(), mod.get(), ctx)) {
         fprintf(stderr, "BN_mod_inverse_vartime(%d, %d) succeeded!\n",
                 -(int)base_value, (int)mod_value);
         return false;
