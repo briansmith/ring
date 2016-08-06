@@ -118,9 +118,6 @@
 #include "../internal.h"
 
 
-OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
-                       BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
-
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
 
@@ -145,108 +142,58 @@ void BN_MONT_CTX_free(BN_MONT_CTX *mont) {
   OPENSSL_free(mont);
 }
 
-int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
-  int ret = 0;
-  BIGNUM *Ri, *R;
-  BIGNUM tmod;
-  BN_ULONG buf[2];
+OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
+                       BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
+OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
+                       sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
+int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   if (BN_is_zero(mod)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
   }
-
-  BN_CTX_start(ctx);
-  Ri = BN_CTX_get(ctx);
-  if (Ri == NULL) {
-    goto err;
+  if (!BN_is_odd(mod)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+    return 0;
   }
-  R = &mont->RR; /* grab RR as a temp */
+  if (BN_is_negative(mod)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+
+  /* Save the modulus. */
   if (!BN_copy(&mont->N, mod)) {
-    goto err; /* Set N */
-  }
-  if (BN_get_flags(mod, BN_FLG_CONSTTIME)) {
-    BN_set_flags(&mont->N, BN_FLG_CONSTTIME);
+    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
-  mont->N.neg = 0;
-
-  BN_init(&tmod);
-  tmod.d = buf;
-  tmod.dmax = 2;
-  tmod.neg = 0;
-
-  BN_zero(R);
-  if (!BN_set_bit(R, BN_MONT_CTX_N0_LIMBS * BN_BITS2)) {
-    goto err;
-  }
-
-  tmod.top = 0;
-  buf[0] = mod->d[0];
-  if (buf[0] != 0) {
-    tmod.top = 1;
-  }
-
-  buf[1] = 0;
-  if (BN_MONT_CTX_N0_LIMBS == 2 && mod->top > 1 && mod->d[1] != 0) {
-    buf[1] = mod->d[1];
-    tmod.top = 2;
-  }
-
-  if (BN_mod_inverse(Ri, R, &tmod, ctx) == NULL) {
-    goto err;
-  }
-  if (!BN_lshift(Ri, Ri, BN_MONT_CTX_N0_LIMBS * BN_BITS2)) {
-    goto err; /* R*Ri */
-  }
-  const BIGNUM *Ri_dividend;
-  if (!BN_is_zero(Ri)) {
-    if (!BN_usub(Ri, Ri, BN_value_one())) {
-      goto err;
-    }
-    Ri_dividend = Ri;
-  } else {
-    /* Ri == 0 so Ri - 1 == -1. -1 % tmod == 0xff..ff. */
-    static const BN_ULONG kMinusOneLimbs[BN_MONT_CTX_N0_LIMBS] = {
-      BN_MASK2,
+  /* Find n0 such that n0 * N == -1 (mod r).
+   *
+   * Only certain BN_BITS2<=32 platforms actually make use of n0[1]. For the
+   * others, we could use a shorter R value and use faster |BN_ULONG|-based
+   * math instead of |uint64_t|-based math, which would be double-precision.
+   * However, currently only the assembler files know which is which. */
+  uint64_t n0 = bn_mont_n0(mod);
+  mont->n0[0] = (BN_ULONG)n0;
 #if BN_MONT_CTX_N0_LIMBS == 2
-      BN_MASK2
-#endif
-    };
-    STATIC_BIGNUM_DIAGNOSTIC_PUSH
-    static const BIGNUM kMinusOne = STATIC_BIGNUM(kMinusOneLimbs);
-    STATIC_BIGNUM_DIAGNOSTIC_POP
-    Ri_dividend = &kMinusOne;
-  }
-
-  if (!BN_div(Ri, NULL, Ri_dividend, &tmod, ctx)) {
-    goto err;
-  }
-
-  mont->n0[0] = 0;
-  if (Ri->top > 0) {
-    mont->n0[0] = Ri->d[0];
-  }
+  mont->n0[1] = (BN_ULONG)(n0 >> BN_BITS2);
+#else
   mont->n0[1] = 0;
-  if (BN_MONT_CTX_N0_LIMBS == 2 && Ri->top > 1) {
-    mont->n0[1] = Ri->d[1];
+#endif
+
+  /* Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS such that R
+   * > mod. Even though the assembly on some 32-bit platforms works with 64-bit
+   * values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
+   * BN_BITS2|, is correct because because R^2 will still be a multiple of the
+   * latter as |BN_MONT_CTX_N0_LIMBS| is either one or two. */
+  unsigned lgBigR = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
+  BN_zero(&mont->RR);
+  if (!BN_set_bit(&mont->RR, lgBigR * 2) ||
+      !BN_mod(&mont->RR, &mont->RR, &mont->N, ctx)) {
+    return 0;
   }
 
-  /* RR = (2^ri)^2 == 2^(ri*2) == 1 << (ri*2), which has its (ri*2)th bit set. */
-  int ri = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
-  BN_zero(&(mont->RR));
-  if (!BN_set_bit(&(mont->RR), ri * 2)) {
-    goto err;
-  }
-  if (!BN_mod(&(mont->RR), &(mont->RR), &(mont->N), ctx)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
+  return 1;
 }
 
 int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
@@ -385,14 +332,8 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     goto err;
   }
 
-  if (a == b) {
-    if (!BN_sqr(tmp, a, ctx)) {
-      goto err;
-    }
-  } else {
-    if (!BN_mul(tmp, a, b, ctx)) {
-      goto err;
-    }
+  if (!BN_mul(tmp, a, b, ctx)) {
+    goto err;
   }
 
   /* reduce from aRR to aR */

@@ -182,7 +182,12 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
  * Thus:
  *     dv->neg == num->neg ^ divisor->neg  (unless the result is zero)
  *     rm->neg == num->neg                 (unless the remainder is zero)
- * If 'dv' or 'rm' is NULL, the respective value is not returned. */
+ * If 'dv' or 'rm' is NULL, the respective value is not returned.
+ *
+ * This was specifically designed to contain fewer branches that may leak
+ * sensitive information; see "New Branch Prediction Vulnerabilities in OpenSSL
+ * and Necessary Software Countermeasures" by Onur Acıçmez, Shay Gueron, and
+ * Jean-Pierre Seifert. */
 int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
            BN_CTX *ctx) {
   int norm_shift, i, loop;
@@ -190,7 +195,6 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   BN_ULONG *resp, *wnump;
   BN_ULONG d0, d1;
   int num_n, div_n;
-  int no_branch = 0;
 
   /* Invalid zero-padding would have particularly bad consequences
    * so don't just rely on bn_check_top() here */
@@ -200,26 +204,9 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
     return 0;
   }
 
-  if ((num->flags & BN_FLG_CONSTTIME) != 0 ||
-      (divisor->flags & BN_FLG_CONSTTIME) != 0) {
-    no_branch = 1;
-  }
-
   if (BN_is_zero(divisor)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
-  }
-
-  if (!no_branch && BN_ucmp(num, divisor) < 0) {
-    if (rm != NULL) {
-      if (BN_copy(rm, num) == NULL) {
-        return 0;
-      }
-    }
-    if (dv != NULL) {
-      BN_zero(dv);
-    }
-    return 1;
   }
 
   BN_CTX_start(ctx);
@@ -247,26 +234,23 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   }
   snum->neg = 0;
 
-  if (no_branch) {
-    /* Since we don't know whether snum is larger than sdiv,
-     * we pad snum with enough zeroes without changing its
-     * value.
-     */
-    if (snum->top <= sdiv->top + 1) {
-      if (bn_wexpand(snum, sdiv->top + 2) == NULL) {
-        goto err;
-      }
-      for (i = snum->top; i < sdiv->top + 2; i++) {
-        snum->d[i] = 0;
-      }
-      snum->top = sdiv->top + 2;
-    } else {
-      if (bn_wexpand(snum, snum->top + 1) == NULL) {
-        goto err;
-      }
-      snum->d[snum->top] = 0;
-      snum->top++;
+  /* Since we don't want to have special-case logic for the case where snum is
+   * larger than sdiv, we pad snum with enough zeroes without changing its
+   * value. */
+  if (snum->top <= sdiv->top + 1) {
+    if (bn_wexpand(snum, sdiv->top + 2) == NULL) {
+      goto err;
     }
+    for (i = snum->top; i < sdiv->top + 2; i++) {
+      snum->d[i] = 0;
+    }
+    snum->top = sdiv->top + 2;
+  } else {
+    if (bn_wexpand(snum, snum->top + 1) == NULL) {
+      goto err;
+    }
+    snum->d[snum->top] = 0;
+    snum->top++;
   }
 
   div_n = sdiv->top;
@@ -294,21 +278,12 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   if (!bn_wexpand(res, (loop + 1))) {
     goto err;
   }
-  res->top = loop - no_branch;
+  res->top = loop - 1;
   resp = &(res->d[loop - 1]);
 
   /* space for temp */
   if (!bn_wexpand(tmp, (div_n + 1))) {
     goto err;
-  }
-
-  if (!no_branch) {
-    if (BN_ucmp(&wnum, sdiv) >= 0) {
-      bn_sub_words(wnum.d, wnum.d, sdiv->d, div_n);
-      *resp = 1;
-    } else {
-      res->top--;
-    }
   }
 
   /* if res->top == 0 then clear the neg value otherwise decrease
@@ -401,9 +376,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       rm->neg = neg;
     }
   }
-  if (no_branch) {
-    bn_correct_top(res);
-  }
+  bn_correct_top(res);
   BN_CTX_end(ctx);
   return 1;
 
@@ -424,17 +397,6 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
   return (d->neg ? BN_sub : BN_add)(r, r, d);
 }
 
-int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                     const BIGNUM *m) {
-  if (!BN_uadd(r, a, b)) {
-    return 0;
-  }
-  if (BN_ucmp(r, m) >= 0) {
-    return BN_usub(r, r, m);
-  }
-  return 1;
-}
-
 int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   if (!BN_sub(r, a, b)) {
@@ -443,94 +405,5 @@ int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   if (r->neg) {
     return BN_add(r, r, m);
   }
-  return 1;
-}
-
-int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
-               BN_CTX *ctx) {
-  BIGNUM *t;
-  int ret = 0;
-
-  BN_CTX_start(ctx);
-  t = BN_CTX_get(ctx);
-  if (t == NULL) {
-    goto err;
-  }
-
-  if (a == b) {
-    if (!BN_sqr(t, a, ctx)) {
-      goto err;
-    }
-  } else {
-    if (!BN_mul(t, a, b, ctx)) {
-      goto err;
-    }
-  }
-
-  if (!BN_nnmod(r, t, m, ctx)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
-}
-
-int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
-  if (r != a) {
-    if (BN_copy(r, a) == NULL) {
-      return 0;
-    }
-  }
-
-  while (n > 0) {
-    int max_shift;
-
-    /* 0 < r < m */
-    max_shift = BN_num_bits(m) - BN_num_bits(r);
-    /* max_shift >= 0 */
-
-    if (max_shift < 0) {
-      OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
-      return 0;
-    }
-
-    if (max_shift > n) {
-      max_shift = n;
-    }
-
-    if (max_shift) {
-      if (!BN_lshift(r, r, max_shift)) {
-        return 0;
-      }
-      n -= max_shift;
-    } else {
-      if (!BN_lshift1(r, r)) {
-        return 0;
-      }
-      --n;
-    }
-
-    /* BN_num_bits(r) <= BN_num_bits(m) */
-    if (BN_cmp(r, m) >= 0) {
-      if (!BN_sub(r, r, m)) {
-        return 0;
-      }
-    }
-  }
-
-  return 1;
-}
-
-int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
-  if (!BN_lshift1(r, a)) {
-    return 0;
-  }
-  if (BN_cmp(r, m) >= 0) {
-    return BN_sub(r, r, m);
-  }
-
   return 1;
 }

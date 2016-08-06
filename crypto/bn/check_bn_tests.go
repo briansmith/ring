@@ -10,7 +10,7 @@
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 package main
 
@@ -221,6 +221,11 @@ func main() {
 			if checkKeys(test, "A", "E", "M", "ModExp") {
 				r := new(big.Int).Exp(test.Values["A"], test.Values["E"], test.Values["M"])
 				checkResult(test, "A ^ E (mod M)", "ModExp", r)
+			}
+		case "ModInv":
+			if checkKeys(test, "A", "M", "ModInv") {
+				r := new(big.Int).ModInverse(test.Values["A"], test.Values["M"])
+				checkResult(test, "A ^ -1 (mod M)", "ModInv", r)
 			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)

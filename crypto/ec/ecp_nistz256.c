@@ -21,7 +21,7 @@
  *   "Fast Prime Field Elliptic Curve Cryptography with 256 Bit Primes"
  *   http://eprint.iacr.org/2013/816 */
 
-#include <openssl/ec.h>
+#include "ecp_nistz256.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -31,9 +31,8 @@
 #include <openssl/err.h>
 
 #include "ecp_nistz.h"
-#include "ecp_nistz256.h"
+#include "gfp_internal.h"
 #include "../bn/internal.h"
-#include "../ec/internal.h"
 #include "../internal.h"
 
 
@@ -59,8 +58,26 @@ static const BN_ULONG ONE[P256_LIMBS] = {
     TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
 };
 
+static const BN_ULONG Q[P256_LIMBS] = {
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0x00000000, 0xffffffff),
+  TOBN(0x00000000, 0x00000000),
+  TOBN(0xffffffff, 0x00000001),
+};
+
 /* Precomputed tables for the default generator */
 #include "ecp_nistz256_table.inl"
+
+/* This assumes that |x| and |y| have been each been reduced to their minimal
+ * unique representations. */
+static BN_ULONG is_infinity(const BN_ULONG x[P256_LIMBS],
+                            const BN_ULONG y[P256_LIMBS]) {
+  BN_ULONG acc = 0;
+  for (size_t i = 0; i < P256_LIMBS; ++i) {
+    acc |= x[i] | y[i];
+  }
+  return constant_time_is_zero_size_t(acc);
+}
 
 static void copy_conditional(BN_ULONG dst[P256_LIMBS],
                              const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
@@ -125,7 +142,7 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   ecp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
   ecp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
   ecp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[16 - 1], &row[15 - 1], &row[1 - 1]);
+  ecp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
@@ -180,17 +197,6 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
 
 void ecp_nistz256_point_mul_base(P256_POINT *r,
                                  const BN_ULONG g_scalar[P256_LIMBS]) {
-#if !defined(NDEBUG)
-  int is_g_scalar_zero = 1;
-  for (size_t i = 0; i < P256_LIMBS; ++i) {
-    if (g_scalar[i] != 0) {
-      is_g_scalar_zero = 0;
-      break;
-    }
-  }
-  assert(!is_g_scalar_zero);
-#endif
-
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
@@ -223,6 +229,8 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
   copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
   memcpy(p.p.Z, ONE, sizeof(ONE));
+  /* If it is at the point at infinity then p.p.X will be zero. */
+  copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
 
   for (size_t i = 1; i < 37; i++) {
     unsigned off = (index - 1) / 8;
@@ -237,61 +245,12 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
     ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
+  GFp_constant_time_limbs_reduce_once(p.p.X, Q, P256_LIMBS);
+  GFp_constant_time_limbs_reduce_once(p.p.Y, Q, P256_LIMBS);
+  GFp_constant_time_limbs_reduce_once(p.p.Z, Q, P256_LIMBS);
+
+  /* If it is at the point at infinity then p.p.X will be zero. */
+  copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
+
   memcpy(r, &p.p, sizeof(p.p));
 }
-
-/* MSVC warns us that it's dangerous to rely on the precondition that one or
- * both of |g_scalar| or |p_scalar} must be non-NULL. But, we rely on it
- * anyway. */
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable:4701)
-#endif
-
-static int ecp_nistz256_points_mul(const EC_GROUP *group, BN_ULONG r_xyz[],
-                                   const BN_ULONG g_scalar[P256_LIMBS],
-                                   const BN_ULONG p_scalar[P256_LIMBS],
-                                   const BN_ULONG p_x[P256_LIMBS],
-                                   const BN_ULONG p_y[P256_LIMBS]) {
-  (void)group;
-
-  assert((g_scalar != NULL) || (p_scalar != NULL));
-  assert((p_scalar != NULL) == (p_x != NULL));
-  assert((p_scalar != NULL) == (p_y != NULL));
-
-  alignas(32) P256_POINT p;
-  alignas(32) P256_POINT t;
-
-  if (g_scalar != NULL) {
-    ecp_nistz256_point_mul_base(&p, g_scalar);
-  }
-
-  const int p_is_infinity = g_scalar == NULL;
-  if (p_scalar != NULL) {
-    P256_POINT *out = &t;
-    if (p_is_infinity) {
-      out = &p;
-    }
-
-    ecp_nistz256_point_mul(out, p_scalar, p_x, p_y);
-
-    if (!p_is_infinity) {
-      ecp_nistz256_point_add(&p, &p, out);
-    }
-  }
-
-  memcpy(r_xyz, &p, sizeof(p));
-
-  return 1;
-}
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-
-const EC_METHOD EC_GFp_nistz256_method = {
-  ecp_nistz256_points_mul,
-  ec_GFp_mont_field_mul,
-  ec_GFp_mont_field_sqr,
-};

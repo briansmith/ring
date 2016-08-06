@@ -24,8 +24,7 @@ use untrusted;
 macro_rules! ecdh {
     ( $NAME:ident, $bits:expr, $name_str:expr, $private_key_ops:expr,
       $public_key_ops:expr, $nid:expr, $ecdh:ident,
-      $generate_private_key:ident, $public_from_private:ident,
-      $use_heap_note:expr ) =>
+      $generate_private_key:ident, $public_from_private:ident) =>
     {
         #[doc="ECDH using the NSA Suite B"]
         #[doc=$name_str]
@@ -39,8 +38,6 @@ macro_rules! ecdh {
         /// 2](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
         /// and Appendix B.3 of the NSA's [Suite B Implementer's Guide to NIST
         /// SP 800-56A](https://github.com/briansmith/ring/doc/ecdh.pdf)."
-        ///
-        #[doc=$use_heap_note]
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
             i: ec::AgreementAlgorithmImpl {
                 public_key_len: 1 + (2 * (($bits + 7) / 8)),
@@ -73,13 +70,11 @@ macro_rules! ecdh {
 
 ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &p256::PRIVATE_KEY_OPS,
       &p256::PUBLIC_KEY_OPS, 415 /*NID_X9_62_prime256v1*/, p256_ecdh,
-      p256_generate_private_key, p256_public_from_private, "");
+      p256_generate_private_key, p256_public_from_private);
 
-#[cfg(feature = "use_heap")]
 ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &p384::PRIVATE_KEY_OPS,
       &p384::PUBLIC_KEY_OPS, 715 /*NID_secp384r1*/, p384_ecdh,
-      p384_generate_private_key, p384_public_from_private,
-      "Only available when the `use_heap` default feature is enabled.");
+      p384_generate_private_key, p384_public_from_private);
 
 
 fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
@@ -122,8 +117,7 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     // information about their values can be recovered. This doesn't meet the
     // NSA guide's explicit requirement to "zeroize" them though.
     let my_private_key = private_key_as_scalar(private_key_ops, my_private_key);
-    let product =
-        try!(private_key_ops.point_mul(&my_private_key, &peer_public_key));
+    let product = private_key_ops.point_mul(&my_private_key, &peer_public_key);
 
     // NIST SP 800-56Ar2 Steps 2, 3, 4, and 5.
     // NSA Guide Steps 3 (point at infinity check) and 4.
@@ -149,19 +143,11 @@ mod tests {
     use rand::test_util::*;
     use super::super::{ops, private_key};
 
-    #[cfg(feature = "use_heap")]
     static SUPPORTED_SUITE_B_ALGS:
         [(&'static str, &'static agreement::Algorithm,
           &'static ops::CommonOps); 2] = [
         ("P-256", &agreement::ECDH_P256, &ops::p256::COMMON_OPS),
         ("P-384", &agreement::ECDH_P384, &ops::p384::COMMON_OPS),
-    ];
-
-    #[cfg(not(feature = "use_heap"))]
-    static SUPPORTED_SUITE_B_ALGS:
-        [(&'static str, &'static agreement::Algorithm,
-          &'static ops::CommonOps); 1] = [
-        ("P-256", &agreement::ECDH_P256, &ops::p256::COMMON_OPS),
     ];
 
     #[test]

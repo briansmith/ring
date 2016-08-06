@@ -152,6 +152,8 @@ extern "C" {
 #define BN_MASK2l	(0xffffffffUL)
 #define BN_MASK2h	(0xffffffff00000000UL)
 #define BN_MASK2h1	(0xffffffff80000000UL)
+#define BN_MONT_CTX_N0_LIMBS 1
+#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
 #define BN_TBIT		(0x8000000000000000UL)
 #define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
 
@@ -165,6 +167,13 @@ extern "C" {
 #define BN_MASK2l	(0xffffUL)
 #define BN_MASK2h1	(0xffff8000UL)
 #define BN_MASK2h	(0xffff0000UL)
+/* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
+ * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
+ * needs to be two words long. Only certain 32-bit platforms actually make use
+ * of n0[1] and shorter R value would suffice for the others. However,
+ * currently only the assembly files know which is which. */
+#define BN_MONT_CTX_N0_LIMBS 2
+#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
 #define BN_TBIT		(0x80000000UL)
 #define TOBN(hi, lo) lo, hi
 
@@ -190,22 +199,12 @@ extern "C" {
   }
 
 
-/* bn_get_words sets |words| to the value in |bn|, least significant word
- * first. It returns one on success or zero otherwise. */
-int bn_get_words(BN_ULONG *words, const BIGNUM *bn, size_t num);
-
-/* bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
- * least significant word first. It returns one on success or zero otherwise. */
-int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
-
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 void     bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);
 BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,int num);
 BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,int num);
 
-void bn_mul_comba4(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b);
-void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b);
 void bn_sqr_comba8(BN_ULONG *r, const BN_ULONG *a);
 void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a);
 
@@ -228,23 +227,7 @@ int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                  const BN_ULONG *np, const BN_ULONG *n0, int num);
 
-/* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
- * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
- * needs to be two words long. Only certain 32-bit platforms actually make use
- * of n0[1] and shorter R value would suffice for the others. However,
- * currently only the assembly files know which is which. */
-#if BN_BITS2 <= 32
-#define BN_MONT_CTX_N0_LIMBS 2
-#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
-#else
-#define BN_MONT_CTX_N0_LIMBS 1
-#if defined(OPENSSL_64_BIT)
-#define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
-#elif defined(OPENSSL_32_BIT)
-#define BN_MONT_CTX_N0(hi, lo) TOBN(0, lo)
-#endif
-#endif
-
+uint64_t bn_mont_n0(const BIGNUM *n);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {

@@ -72,8 +72,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
                               BN_BLINDING *blinding, RAND *rng);
 
 
-static int check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
-                                      size_t min_bits, size_t max_bits) {
+int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
+                                       size_t min_bits, size_t max_bits) {
   unsigned rsa_bits = BN_num_bits(n);
 
   if (rsa_bits < min_bits) {
@@ -179,7 +179,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (!check_modulus_and_exponent(&n, &e, min_bits, max_bits)) {
+  if (!GFp_rsa_check_modulus_and_exponent(&n, &e, min_bits, max_bits)) {
     goto err;
   }
 
@@ -198,7 +198,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (!BN_mod_exp_mont(&result, &f, &e, &n, ctx, NULL) ||
+  if (!BN_mod_exp_mont_vartime(&result, &f, &e, &n, ctx, NULL) ||
       !BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -264,8 +264,6 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
    * reduced mod |p|. */
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
   if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_p, ctx) ||
       !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->p, ctx,
                                  rsa->mont_p)) {
@@ -277,8 +275,6 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |q < q**2 < n < q**3|. Thus, |base| is
    * first reduced mod |q**2| and then reduced mod |q|. */
-  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
-  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
   if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_qq, ctx) ||
       !BN_reduce_montgomery(&tmp, &tmp, rsa->mont_q, ctx) ||
       !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->q, ctx,
@@ -315,8 +311,11 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * works when the CRT isn't used. That attack is much less likely to succeed
    * than the CRT attack, but there have likely been improvements since 1997.
    *
-   * This check is very cheap assuming |e| is small, which it almost always is. */
-  if (!BN_mod_exp_mont(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+   * This check is very cheap assuming |e| is small, which it almost always is.
+   * Note that this is the only validation of |e| that is done other than
+   * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
+   * doesn't validate its mathematical relations to |d| or |p| or |q|. */
+  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }

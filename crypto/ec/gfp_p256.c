@@ -123,8 +123,8 @@ void ecp_nistz256_select_w7(P256_POINT_AFFINE *out,
     }
   }
 
-  memcpy(&out->X, x, sizeof(x));
-  memcpy(&out->Y, y, sizeof(y));
+  memcpy(out->X, x, sizeof(x));
+  memcpy(out->Y, y, sizeof(y));
 }
 
 #endif

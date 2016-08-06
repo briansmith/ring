@@ -120,10 +120,13 @@
 
 #define BN_BLINDING_COUNTER 32
 
+const uint32_t GFp_BN_BLINDING_COUNTER = BN_BLINDING_COUNTER;
+
+/* Needs to be kept in sync with `struct BN_BLINDING` (in `src/rsa.rs`). */
 struct bn_blinding_st {
   BIGNUM *A; /* The base blinding factor, Montgomery-encoded. */
   BIGNUM *Ai; /* The inverse of the blinding factor, Montgomery-encoded. */
-  unsigned counter;
+  uint32_t counter;
 };
 
 static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng,
@@ -141,13 +144,11 @@ BN_BLINDING *BN_BLINDING_new(void) {
   if (ret->A == NULL) {
     goto err;
   }
-  BN_set_flags(ret->A, BN_FLG_CONSTTIME);
 
   ret->Ai = BN_new();
   if (ret->Ai == NULL) {
     goto err;
   }
-  BN_set_flags(ret->Ai, BN_FLG_CONSTTIME);
 
   /* The blinding values need to be created before this blinding can be used. */
   ret->counter = BN_BLINDING_COUNTER - 1;
@@ -222,39 +223,38 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng,
   int retry_counter = 32;
 
   do {
-    if (!BN_rand_range(b->A, rsa->n, rng)) {
+    if (!BN_rand_range_ex(b->A, 1, &rsa->mont_n->N, rng)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
-    /* |BN_from_montgomery| + |BN_mod_inverse_no_branch| is equivalent to, but
-     * more efficient than, |BN_mod_inverse_no_branch| + |BN_to_montgomery|. */
+    /* |BN_from_montgomery| + |BN_mod_inverse_blinded| is equivalent to, but
+     * more efficient than, |BN_mod_inverse_blinded| + |BN_to_montgomery|. */
     if (!BN_from_montgomery(b->Ai, b->A, rsa->mont_n, ctx)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
-    assert(BN_get_flags(b->Ai, BN_FLG_CONSTTIME));
     int no_inverse;
-    if (BN_mod_inverse_no_branch(b->Ai, &no_inverse, b->Ai, rsa->n, ctx) ==
-        NULL) {
-      /* this should almost never happen for good RSA keys */
-      if (no_inverse) {
-        if (retry_counter-- == 0) {
-          OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
-          return 0;
-        }
-        ERR_clear_error();
-      } else {
-        OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-        return 0;
-      }
-    } else {
+    if (BN_mod_inverse_blinded(b->Ai, &no_inverse, b->Ai, rsa->mont_n, rng,
+                               ctx)) {
       break;
+    }
+
+    if (!no_inverse) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+
+    /* For reasonably-sized RSA keys, it should almost never be the case that a
+     * random value doesn't have an inverse. */
+    if (retry_counter-- == 0) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
+      return 0;
     }
   } while (1);
 
-  if (!BN_mod_exp_mont(b->A, b->A, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont_vartime(b->A, b->A, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }

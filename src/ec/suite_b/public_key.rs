@@ -85,10 +85,7 @@ mod tests {
             let public_key = untrusted::Input::from(&public_key);
             let valid = test_case.consume_string("Result") == "P";
 
-            let curve_ops = match public_key_ops_from_curve_name(&curve_name) {
-                None => { return Ok(()); },
-                Some(curve_ops) => curve_ops,
-            };
+            let curve_ops = public_key_ops_from_curve_name(&curve_name);
 
             let result = parse_uncompressed_point(curve_ops, public_key);
             assert_eq!(valid, result.is_ok());
@@ -100,26 +97,12 @@ mod tests {
         });
     }
 
-    #[cfg(feature = "use_heap")]
     fn public_key_ops_from_curve_name(curve_name: &str)
-                                      -> Option<&'static ops::PublicKeyOps> {
+                                      -> &'static ops::PublicKeyOps {
         if curve_name == "P-256" {
-            Some(&ops::p256::PUBLIC_KEY_OPS)
+            &ops::p256::PUBLIC_KEY_OPS
         } else if curve_name == "P-384" {
-            Some(&ops::p384::PUBLIC_KEY_OPS)
-        } else {
-            panic!("Unsupported curve: {}", curve_name);
-        }
-    }
-
-
-    #[cfg(not(feature = "use_heap"))]
-    fn public_key_ops_from_curve_name(curve_name: &str)
-                                      -> Option<&'static ops::PublicKeyOps> {
-        if curve_name == "P-256" {
-            Some(&ops::p256::PUBLIC_KEY_OPS)
-        } else if curve_name == "P-384" {
-            None
+            &ops::p384::PUBLIC_KEY_OPS
         } else {
             panic!("Unsupported curve: {}", curve_name);
         }

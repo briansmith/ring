@@ -79,16 +79,7 @@ impl <'a> PrivateKey {
 }
 
 
-// When the `use_heap` feature is enabled, P-384 has the largest field
-// element size.
-#[cfg(feature = "use_heap")]
 const ELEM_MAX_BITS: usize = 384;
-
-// When the `use_heap` feature is disabled, P-384 isn't available, so X25519
-// has the largest field element size.
-#[cfg(not(feature = "use_heap"))]
-const ELEM_MAX_BITS: usize = 256;
-
 pub const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
 
 const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;

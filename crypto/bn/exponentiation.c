@@ -170,18 +170,15 @@ int bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 		 (b) >  79 ? 4 : \
 		 (b) >  23 ? 3 : 1)
 
-int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                    const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont) {
+int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
+                            const BIGNUM *m, BN_CTX *ctx,
+                            const BN_MONT_CTX *mont) {
   int i, j, bits, ret = 0, wstart, window;
   int start = 1;
   BIGNUM *d, *r;
   /* Table of variables obtained from 'ctx' */
   BIGNUM *val[TABLE_SIZE];
   BN_MONT_CTX *new_mont = NULL;
-
-  if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0) {
-    return BN_mod_exp_mont_consttime(rr, a, p, m, ctx, mont);
-  }
 
   if (!BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
@@ -569,10 +566,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   /* prepare a^1 in Montgomery domain */
   if (a->neg || BN_ucmp(a, m) >= 0) {
-    if (!BN_mod(&am, a, m, ctx) ||
-        !BN_to_montgomery(&am, &am, mont, ctx)) {
-      goto err;
-    }
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    goto err;
   } else if (!BN_to_montgomery(&am, a, mont, ctx)) {
     goto err;
   }

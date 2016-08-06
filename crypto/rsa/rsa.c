@@ -73,24 +73,12 @@ int rsa_new_end(RSA *rsa);
 int rsa_new_end(RSA *rsa) {
   assert(rsa->n != NULL);
   assert(rsa->e != NULL);
-
   assert(rsa->d != NULL);
-  assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
-
   assert(rsa->p != NULL);
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-
   assert(rsa->q != NULL);
-  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
-
   assert(rsa->dmp1 != NULL);
-  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
-
   assert(rsa->dmq1 != NULL);
-  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
-
   assert(rsa->iqmp != NULL);
-  assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -101,7 +89,6 @@ int rsa_new_end(RSA *rsa) {
 
   BIGNUM qq;
   BN_init(&qq);
-  BN_set_flags(&qq, BN_FLG_CONSTTIME);
 
   rsa->mont_n = BN_MONT_CTX_new();
   rsa->mont_p = BN_MONT_CTX_new();
@@ -123,6 +110,7 @@ int rsa_new_end(RSA *rsa) {
       !BN_to_montgomery(&qq, &qq, rsa->mont_n, ctx) ||
       !BN_MONT_CTX_set(rsa->mont_qq, &qq, ctx) ||
       !BN_to_montgomery(rsa->qmn_mont, rsa->q, rsa->mont_n, ctx) ||
+      /* Assumes p > q. */
       !BN_to_montgomery(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
     goto err;
   }
@@ -138,32 +126,26 @@ err:
 int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   assert(ctx);
 
-  BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp;
+  BIGNUM n, pm1, qm1, dmp1, dmq1, iqmp_times_q;
   int ok = 0;
 
   BN_init(&n);
   BN_init(&pm1);
   BN_init(&qm1);
-  BN_init(&lcm);
-  BN_init(&gcd);
-  BN_init(&de);
   BN_init(&dmp1);
   BN_init(&dmq1);
-  BN_init(&iqmp);
+  BN_init(&iqmp_times_q);
 
-  /* The public modulus must be at least 2048 bits. |RSAPublicKey::sign|
-   * depends on this check; without it, |RSAPublicKey::sign| would generate
-   * padding that is invalid (too few 0xFF bytes) for very small keys. */
-  if (RSA_size(key) < 256) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    goto out;
-  }
-  /* XXX: The maximum limit of 4096 bits is primarily due to lack of testing
+  /* The public modulus must be large enough. |RSAPublicKey::sign| depends on
+   * this; without it, |RSAPublicKey::sign| would generate padding that is
+   * invalid (too few 0xFF bytes) for very small keys.
+   *
+   * XXX: The maximum limit of 4096 bits is primarily due to lack of testing
    * of larger key sizes; see, in particular,
    * https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html and
    * https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html. Also,
-   * this limit might help with memory management decisions later.  */
-  if (RSA_size(key) > 512) {
+   * this limit might help with memory management decisions later. */
+  if (!GFp_rsa_check_modulus_and_exponent(key->n, key->e, 2048, 4096)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto out;
   }
@@ -180,15 +162,7 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   }
 
   if (/* n = pq */
-      !BN_mul(&n, key->p, key->q, ctx) ||
-      /* lcm = lcm(p-1, q-1) */
-      !BN_sub(&pm1, key->p, BN_value_one()) ||
-      !BN_sub(&qm1, key->q, BN_value_one()) ||
-      !BN_mul(&lcm, &pm1, &qm1, ctx) ||
-      !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
-      !BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
-      /* de = d*e mod lcm(p-1, q-1) */
-      !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
+      !BN_mul(&n, key->p, key->q, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
@@ -198,24 +172,40 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
     goto out;
   }
 
-  if (!BN_is_one(&de)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
+  /* In a valid key, |d*e mod lcm(p-1, q-1) == 1|. We don't check this because
+   * we decided to omit the code that would be used to compute least common
+   * multiples. Instead, we check that |p| and |q| are consistent with
+   * |n| above and with |d| below. We never use |d| for any actual
+   * computations. When we actually do a private key operation, we verify that
+   * the result computed using all of these variables is correct using |e|.
+   * Further, above we verify that the |e| is small. */
+
+  if (/* dmp1 = d mod (p-1) */
+      !BN_sub(&pm1, key->p, BN_value_one()) ||
+      !BN_mod(&dmp1, key->d, &pm1, ctx) ||
+      /* dmq1 = d mod (q-1) */
+      !BN_sub(&qm1, key->q, BN_value_one()) ||
+      !BN_mod(&dmq1, key->d, &qm1, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (/* dmp1 = d mod (p-1) */
-      !BN_mod(&dmp1, key->d, &pm1, ctx) ||
-      /* dmq1 = d mod (q-1) */
-      !BN_mod(&dmq1, key->d, &qm1, ctx) ||
-      /* iqmp = q^-1 mod p */
-      !BN_mod_inverse(&iqmp, key->q, key->p, ctx)) {
+  if (BN_cmp(key->iqmp, key->p) >= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto out;
+  }
+
+  /* iqmp = q^-1 mod p. Assumes p > q. */
+  if (!BN_mod_mul_montgomery(&iqmp_times_q, key->iqmp, key->q, key->mont_p,
+                             ctx) ||
+      !BN_to_montgomery(&iqmp_times_q, &iqmp_times_q, key->mont_p, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
   if (BN_cmp(&dmp1, key->dmp1) != 0 ||
       BN_cmp(&dmq1, key->dmq1) != 0 ||
-      BN_cmp(&iqmp, key->iqmp) != 0) {
+      !BN_is_one(&iqmp_times_q)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
     goto out;
   }
@@ -226,12 +216,9 @@ out:
   BN_free(&n);
   BN_free(&pm1);
   BN_free(&qm1);
-  BN_free(&lcm);
-  BN_free(&gcd);
-  BN_free(&de);
   BN_free(&dmp1);
   BN_free(&dmq1);
-  BN_free(&iqmp);
+  BN_free(&iqmp_times_q);
 
   return ok;
 }

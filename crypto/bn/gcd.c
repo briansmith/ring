@@ -112,127 +112,9 @@
 
 #include "internal.h"
 
-static BIGNUM *euclid(BIGNUM *a, BIGNUM *b) {
-  BIGNUM *t;
-  int shifts = 0;
 
-  /* 0 <= b <= a */
-  while (!BN_is_zero(b)) {
-    /* 0 < b <= a */
-
-    if (BN_is_odd(a)) {
-      if (BN_is_odd(b)) {
-        if (!BN_sub(a, a, b)) {
-          goto err;
-        }
-        if (!BN_rshift1(a, a)) {
-          goto err;
-        }
-        if (BN_cmp(a, b) < 0) {
-          t = a;
-          a = b;
-          b = t;
-        }
-      } else {
-        /* a odd - b even */
-        if (!BN_rshift1(b, b)) {
-          goto err;
-        }
-        if (BN_cmp(a, b) < 0) {
-          t = a;
-          a = b;
-          b = t;
-        }
-      }
-    } else {
-      /* a is even */
-      if (BN_is_odd(b)) {
-        if (!BN_rshift1(a, a)) {
-          goto err;
-        }
-        if (BN_cmp(a, b) < 0) {
-          t = a;
-          a = b;
-          b = t;
-        }
-      } else {
-        /* a even - b even */
-        if (!BN_rshift1(a, a)) {
-          goto err;
-        }
-        if (!BN_rshift1(b, b)) {
-          goto err;
-        }
-        shifts++;
-      }
-    }
-    /* 0 <= b <= a */
-  }
-
-  if (shifts) {
-    if (!BN_lshift(a, a, shifts)) {
-      goto err;
-    }
-  }
-
-  return a;
-
-err:
-  return NULL;
-}
-
-int BN_gcd(BIGNUM *r, const BIGNUM *in_a, const BIGNUM *in_b, BN_CTX *ctx) {
-  BIGNUM *a, *b, *t;
-  int ret = 0;
-
-  BN_CTX_start(ctx);
-  a = BN_CTX_get(ctx);
-  b = BN_CTX_get(ctx);
-
-  if (a == NULL || b == NULL) {
-    goto err;
-  }
-  if (BN_copy(a, in_a) == NULL) {
-    goto err;
-  }
-  if (BN_copy(b, in_b) == NULL) {
-    goto err;
-  }
-
-  a->neg = 0;
-  b->neg = 0;
-
-  if (BN_cmp(a, b) < 0) {
-    t = a;
-    a = b;
-    b = t;
-  }
-  t = euclid(a, b);
-  if (t == NULL) {
-    goto err;
-  }
-
-  if (BN_copy(r, t) == NULL) {
-    goto err;
-  }
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
-}
-
-BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                          const BIGNUM *n, BN_CTX *ctx) {
-  BIGNUM *A, *B, *X, *Y, *T, *R = NULL;
-  BIGNUM *ret = NULL;
-  int sign;
-
-  if ((a->flags & BN_FLG_CONSTTIME) != 0 ||
-      (n->flags & BN_FLG_CONSTTIME) != 0) {
-    return BN_mod_inverse_no_branch(out, out_no_inverse, a, n, ctx);
-  }
-
+int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                       const BIGNUM *n, BN_CTX *ctx) {
   *out_no_inverse = 0;
 
   if (!BN_is_odd(n)) {
@@ -240,35 +122,31 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     return 0;
   }
 
+  if (BN_is_negative(a) || BN_cmp(a, n) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    return 0;
+  }
+
+  BIGNUM *A, *B, *X, *Y;
+  int ret = 0;
+  int sign;
+
   BN_CTX_start(ctx);
   A = BN_CTX_get(ctx);
   B = BN_CTX_get(ctx);
   X = BN_CTX_get(ctx);
   Y = BN_CTX_get(ctx);
-  T = BN_CTX_get(ctx);
-  if (T == NULL) {
+  if (Y == NULL) {
     goto err;
   }
 
-  if (out == NULL) {
-    R = BN_new();
-  } else {
-    R = out;
-  }
-  if (R == NULL) {
-    goto err;
-  }
+  BIGNUM *R = out;
 
   BN_zero(Y);
   if (!BN_one(X) || BN_copy(B, a) == NULL || BN_copy(A, n) == NULL) {
     goto err;
   }
   A->neg = 0;
-  if (B->neg || (BN_ucmp(B, A) >= 0)) {
-    if (!BN_nnmod(B, B, A, ctx)) {
-      goto err;
-    }
-  }
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that
    *
@@ -277,10 +155,9 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
    *      sign*Y*a  ==  A   (mod |n|).
    */
 
-  /* Binary inversion algorithm; requires odd modulus.
-   * This is faster than the general algorithm if the modulus
-   * is sufficiently small (about 400 .. 500 bits on 32-bit
-   * sytems, but much more on 64-bit systems) */
+  /* Binary inversion algorithm; requires odd modulus. This is faster than the
+   * general algorithm if the modulus is sufficiently small (about 400 .. 500
+   * bits on 32-bit systems, but much more on 64-bit systems) */
   int shift;
 
   while (!BN_is_zero(B)) {
@@ -397,173 +274,37 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     }
   }
 
-  ret = R;
+  ret = 1;
 
 err:
-  if (ret == NULL && out == NULL) {
-    BN_free(R);
-  }
   BN_CTX_end(ctx);
   return ret;
 }
 
-BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
-                       BN_CTX *ctx) {
-  int no_inverse;
-  return BN_mod_inverse_ex(out, &no_inverse, a, n, ctx);
-}
-
-/* BN_mod_inverse_no_branch is a special version of BN_mod_inverse.
- * It does not contain branches that may leak sensitive information. */
-BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
-                                 const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
-  BIGNUM *A, *B, *X, *Y, *M, *D, *T, *R = NULL;
-  BIGNUM *ret = NULL;
-  int sign;
-
+int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                           const BN_MONT_CTX *mont, RAND *rng, BN_CTX *ctx) {
   *out_no_inverse = 0;
 
-  BN_CTX_start(ctx);
-  A = BN_CTX_get(ctx);
-  B = BN_CTX_get(ctx);
-  X = BN_CTX_get(ctx);
-  D = BN_CTX_get(ctx);
-  M = BN_CTX_get(ctx);
-  Y = BN_CTX_get(ctx);
-  T = BN_CTX_get(ctx);
-  if (T == NULL) {
+  if (BN_is_negative(a) || BN_cmp(a, &mont->N) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    return 0;
+  }
+
+  int ret = 0;
+  BIGNUM blinding_factor;
+  BN_init(&blinding_factor);
+
+  if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N, rng) ||
+      !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
+      !BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
+      !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;
   }
 
-  if (out == NULL) {
-    R = BN_new();
-  } else {
-    R = out;
-  }
-  if (R == NULL) {
-    goto err;
-  }
-
-  BN_zero(Y);
-  if (!BN_one(X) || BN_copy(B, a) == NULL || BN_copy(A, n) == NULL) {
-    goto err;
-  }
-  A->neg = 0;
-
-  if (B->neg || (BN_ucmp(B, A) >= 0)) {
-    BN_set_flags(B, BN_FLG_CONSTTIME);
-    if (!BN_nnmod(B, B, A, ctx)) {
-      goto err;
-    }
-  }
-  sign = -1;
-  /* From  B = a mod |n|,  A = |n|  it follows that
-   *
-   *      0 <= B < A,
-   *     -sign*X*a  ==  B   (mod |n|),
-   *      sign*Y*a  ==  A   (mod |n|).
-   */
-
-  while (!BN_is_zero(B)) {
-    BIGNUM *tmp;
-
-    /*
-     *      0 < B < A,
-     * (*) -sign*X*a  ==  B   (mod |n|),
-     *      sign*Y*a  ==  A   (mod |n|)
-     */
-
-    BN_set_flags(A, BN_FLG_CONSTTIME);
-
-    /* (D, M) := (A/B, A%B) ... */
-    if (!BN_div(D, M, A, B, ctx)) {
-      goto err;
-    }
-
-    /* Now
-     *      A = D*B + M;
-     * thus we have
-     * (**)  sign*Y*a  ==  D*B + M   (mod |n|).
-     */
-
-    tmp = A; /* keep the BIGNUM object, the value does not matter */
-
-    /* (A, B) := (B, A mod B) ... */
-    A = B;
-    B = M;
-    /* ... so we have  0 <= B < A  again */
-
-    /* Since the former  M  is now  B  and the former  B  is now  A,
-     * (**) translates into
-     *       sign*Y*a  ==  D*A + B    (mod |n|),
-     * i.e.
-     *       sign*Y*a - D*A  ==  B    (mod |n|).
-     * Similarly, (*) translates into
-     *      -sign*X*a  ==  A          (mod |n|).
-     *
-     * Thus,
-     *   sign*Y*a + D*sign*X*a  ==  B  (mod |n|),
-     * i.e.
-     *        sign*(Y + D*X)*a  ==  B  (mod |n|).
-     *
-     * So if we set  (X, Y, sign) := (Y + D*X, X, -sign),  we arrive back at
-     *      -sign*X*a  ==  B   (mod |n|),
-     *       sign*Y*a  ==  A   (mod |n|).
-     * Note that  X  and  Y  stay non-negative all the time.
-     */
-
-    if (!BN_mul(tmp, D, X, ctx)) {
-      goto err;
-    }
-    if (!BN_add(tmp, tmp, Y)) {
-      goto err;
-    }
-
-    M = Y; /* keep the BIGNUM object, the value does not matter */
-    Y = X;
-    X = tmp;
-    sign = -sign;
-  }
-
-  if (!BN_is_one(A)) {
-    *out_no_inverse = 1;
-    OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
-    goto err;
-  }
-
-  /*
-   * The while loop (Euclid's algorithm) ends when
-   *      A == gcd(a,n);
-   * we have
-   *       sign*Y*a  ==  A  (mod |n|),
-   * where  Y  is non-negative.
-   */
-
-  if (sign < 0) {
-    if (!BN_sub(Y, n, Y)) {
-      goto err;
-    }
-  }
-  /* Now  Y*a  ==  A  (mod |n|).  */
-
-  /* Y*a == 1  (mod |n|) */
-  if (!Y->neg && BN_ucmp(Y, n) < 0) {
-    if (!BN_copy(R, Y)) {
-      goto err;
-    }
-  } else {
-    if (!BN_nnmod(R, Y, n, ctx)) {
-      goto err;
-    }
-  }
-
-  ret = R;
+  ret = 1;
 
 err:
-  if (ret == NULL && out == NULL) {
-    BN_free(R);
-  }
-
-  BN_CTX_end(ctx);
+  BN_free(&blinding_factor);
   return ret;
 }
