@@ -113,9 +113,9 @@
 #include "internal.h"
 
 
-static int bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                             const BIGNUM *n, BN_CTX *ctx) {
-  BIGNUM *A, *B, *X, *Y, *T;
+static int bn_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                              const BIGNUM *n, BN_CTX *ctx) {
+  BIGNUM *A, *B, *X, *Y;
   int ret = 0;
   int sign;
 
@@ -131,8 +131,7 @@ static int bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   B = BN_CTX_get(ctx);
   X = BN_CTX_get(ctx);
   Y = BN_CTX_get(ctx);
-  T = BN_CTX_get(ctx);
-  if (T == NULL) {
+  if (Y == NULL) {
     goto err;
   }
 
@@ -155,10 +154,9 @@ static int bn_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
    *      sign*Y*a  ==  A   (mod |n|).
    */
 
-  /* Binary inversion algorithm; requires odd modulus.
-   * This is faster than the general algorithm if the modulus
-   * is sufficiently small (about 400 .. 500 bits on 32-bit
-   * sytems, but much more on 64-bit systems) */
+  /* Binary inversion algorithm; requires odd modulus. This is faster than the
+   * general algorithm if the modulus is sufficiently small (about 400 .. 500
+   * bits on 32-bit systems, but much more on 64-bit systems) */
   int shift;
 
   while (!BN_is_zero(B)) {
@@ -285,7 +283,7 @@ err:
 int BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
                            BN_CTX *ctx) {
   int no_inverse;
-  return bn_mod_inverse_ex(out, &no_inverse, a, n, ctx);
+  return bn_mod_inverse_odd(out, &no_inverse, a, n, ctx);
 }
 
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
@@ -303,7 +301,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 
   if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N, rng) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
-      !bn_mod_inverse_ex(out, out_no_inverse, out, &mont->N, ctx) ||
+      !bn_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;
