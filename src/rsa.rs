@@ -268,8 +268,8 @@ impl RSAKeyPair {
                 if version != 0 {
                     return Err(());
                 }
-                let mut n = try!(PositiveInteger::from_der(input, 0));
-                let mut e = try!(PositiveInteger::from_der(input, 0));
+                let mut n = try!(PositiveInteger::from_der(input));
+                let mut e = try!(PositiveInteger::from_der(input));
                 let mut d = try!(PositiveInteger::from_der(input));
                 let mut p = try!(PositiveInteger::from_der(input));
                 let mut q = try!(PositiveInteger::from_der(input));
