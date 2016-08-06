@@ -231,6 +231,8 @@ static int bn_mod_inverse_general(BIGNUM *out, int *out_no_inverse,
 
 int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                        const BIGNUM *n, BN_CTX *ctx) {
+  *out_no_inverse = 0;
+
   if (!BN_is_odd(n)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
@@ -244,8 +246,6 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   BIGNUM *A, *B, *X, *Y;
   int ret = 0;
   int sign;
-
-  *out_no_inverse = 0;
 
   BN_CTX_start(ctx);
   A = BN_CTX_get(ctx);
