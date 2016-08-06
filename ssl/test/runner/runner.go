@@ -20,6 +20,7 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"flag"
@@ -59,7 +60,27 @@ var (
 	deterministic      = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
 	allowUnimplemented = flag.Bool("allow-unimplemented", false, "If true, report pass even if some tests are unimplemented.")
 	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
+	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
+	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
 )
+
+// ShimConfigurations is used with the “json” package and represents a shim
+// config file.
+type ShimConfiguration struct {
+	// DisabledTests maps from a glob-based pattern to a freeform string.
+	// The glob pattern is used to exclude tests from being run and the
+	// freeform string is unparsed but expected to explain why the test is
+	// disabled.
+	DisabledTests map[string]string
+
+	// ErrorMap maps from expected error strings to the correct error
+	// string for the shim in question. For example, it might map
+	// “:NO_SHARED_CIPHER:” (a BoringSSL error string) to something
+	// like “SSL_ERROR_NO_CYPHER_OVERLAP”.
+	ErrorMap map[string]string
+}
+
+var shimConfig ShimConfiguration
 
 type testCert int
 
@@ -719,6 +740,18 @@ func acceptOrWait(listener net.Listener, waitChan chan error) (net.Conn, error) 
 	}
 }
 
+func translateExpectedError(errorStr string) string {
+	if translated, ok := shimConfig.ErrorMap[errorStr]; ok {
+		return translated
+	}
+
+	if *looseErrors {
+		return ""
+	}
+
+	return errorStr
+}
+
 func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	if !test.shouldFail && (len(test.expectedError) > 0 || len(test.expectedLocalError) > 0) {
 		panic("Error expected without shouldFail in " + test.name)
@@ -912,8 +945,8 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	}
 
 	failed := err != nil || childErr != nil
-	correctFailure := len(test.expectedError) == 0 || strings.Contains(stderr, test.expectedError) ||
-		(*looseErrors && strings.Contains(stderr, "UNTRANSLATED_ERROR"))
+	expectedError := translateExpectedError(test.expectedError)
+	correctFailure := len(expectedError) == 0 || strings.Contains(stderr, expectedError)
 
 	localError := "none"
 	if err != nil {
@@ -936,7 +969,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		case !failed && test.shouldFail:
 			msg = "unexpected success"
 		case failed && !correctFailure:
-			msg = "bad error (wanted '" + test.expectedError + "' / '" + test.expectedLocalError + "')"
+			msg = "bad error (wanted '" + expectedError + "' / '" + test.expectedLocalError + "')"
 		default:
 			panic("internal error")
 		}
@@ -8003,6 +8036,19 @@ func main() {
 	testChan := make(chan *testCase, *numWorkers)
 	doneChan := make(chan *testOutput)
 
+	if len(*shimConfigFile) != 0 {
+		encoded, err := ioutil.ReadFile(*shimConfigFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't read config file %q: %s\n", *shimConfigFile, err)
+			os.Exit(1)
+		}
+
+		if err := json.Unmarshal(encoded, &shimConfig); err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't decode config file %q: %s\n", *shimConfigFile, err)
+			os.Exit(1)
+		}
+	}
+
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
 	for i := 0; i < *numWorkers; i++ {
@@ -8022,6 +8068,21 @@ func main() {
 			}
 		}
 
+		if !*includeDisabled {
+			for pattern := range shimConfig.DisabledTests {
+				isDisabled, err := filepath.Match(pattern, testCases[i].name)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error matching pattern %q from config file: %s\n", pattern, err)
+					os.Exit(1)
+				}
+
+				if isDisabled {
+					matched = false
+					break
+				}
+			}
+		}
+
 		if matched {
 			foundTest = true
 			testChan <- &testCases[i]
@@ -8029,7 +8090,7 @@ func main() {
 	}
 
 	if !foundTest {
-		fmt.Fprintf(os.Stderr, "No tests matched %q\n", *testToRun)
+		fmt.Fprintf(os.Stderr, "No tests run\n")
 		os.Exit(1)
 	}
 
