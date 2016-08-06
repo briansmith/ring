@@ -264,8 +264,6 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
    * reduced mod |p|. */
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
   if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_p, ctx) ||
       !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->p, ctx,
                                  rsa->mont_p)) {
@@ -277,8 +275,6 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |q < q**2 < n < q**3|. Thus, |base| is
    * first reduced mod |q**2| and then reduced mod |q|. */
-  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
-  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
   if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_qq, ctx) ||
       !BN_reduce_montgomery(&tmp, &tmp, rsa->mont_q, ctx) ||
       !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->q, ctx,

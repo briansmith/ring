@@ -420,11 +420,9 @@ OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 /* BN_mod_inverse_blinded sets |out| equal to |a|^-1, mod |n|, where |n| is the
  * Montgomery modulus for |mont|. |a| must be non-negative and must be less
  * than |n|. |n| must be greater than 1. |a| is blinded (masked by a random
- * value) to protect it against side-channel attacks. |BN_mod_inverse_blinded|
- * may or may not ignore the |BN_FLG_CONSTTIME| flag on any/all of its inputs.
- * It returns one on success or zero on failure. On failure, if the failure was
- * caused by |a| having no inverse mod |n| then |*out_no_inverse| will be set
- * to one; otherwise it will be set to zero. */
+ * value) to protect it against side-channel attacks. On failure, if the
+ * failure was caused by |a| having no inverse mod |n| then |*out_no_inverse|
+ * will be set to one; otherwise it will be set to zero. */
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                            const BN_MONT_CTX *mont, RAND *rng, BN_CTX *ctx);
 
@@ -524,10 +522,6 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
-/* avoid leaking exponent information through timing, BN_mod_exp_mont() will
- * call BN_mod_exp_mont_consttime, BN_div() will call BN_div_no_branch,
- * BN_mod_inverse() will call BN_mod_inverse_no_branch. */
-#define BN_FLG_CONSTTIME 0x04
 
 
 #if defined(__cplusplus)

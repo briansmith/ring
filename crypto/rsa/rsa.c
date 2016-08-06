@@ -73,24 +73,12 @@ int rsa_new_end(RSA *rsa);
 int rsa_new_end(RSA *rsa) {
   assert(rsa->n != NULL);
   assert(rsa->e != NULL);
-
   assert(rsa->d != NULL);
-  assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
-
   assert(rsa->p != NULL);
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-
   assert(rsa->q != NULL);
-  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
-
   assert(rsa->dmp1 != NULL);
-  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
-
   assert(rsa->dmq1 != NULL);
-  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
-
   assert(rsa->iqmp != NULL);
-  assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -101,7 +89,6 @@ int rsa_new_end(RSA *rsa) {
 
   BIGNUM qq;
   BN_init(&qq);
-  BN_set_flags(&qq, BN_FLG_CONSTTIME);
 
   rsa->mont_n = BN_MONT_CTX_new();
   rsa->mont_p = BN_MONT_CTX_new();

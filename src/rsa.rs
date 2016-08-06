@@ -270,18 +270,12 @@ impl RSAKeyPair {
                 }
                 let mut n = try!(PositiveInteger::from_der(input, 0));
                 let mut e = try!(PositiveInteger::from_der(input, 0));
-                let mut d =
-                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
-                let mut p =
-                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
-                let mut q =
-                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
-                let mut dmp1 =
-                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
-                let mut dmq1 =
-                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
-                let mut iqmp =
-                    try!(PositiveInteger::from_der(input, BN_FLG_CONSTTIME));
+                let mut d = try!(PositiveInteger::from_der(input));
+                let mut p = try!(PositiveInteger::from_der(input));
+                let mut q = try!(PositiveInteger::from_der(input));
+                let mut dmp1 = try!(PositiveInteger::from_der(input));
+                let mut dmq1 = try!(PositiveInteger::from_der(input));
+                let mut iqmp = try!(PositiveInteger::from_der(input));
                 let mut rsa = std::boxed::Box::new(RSA {
                     n: n.into_raw(), e: e.into_raw(), d: d.into_raw(),
                     p: p.into_raw(), q: q.into_raw(), dmp1: dmp1.into_raw(),
@@ -403,7 +397,7 @@ struct PositiveInteger {
 #[cfg(feature = "rsa_signing")]
 impl PositiveInteger {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
-    fn from_der(input: &mut untrusted::Reader, flags: c::int)
+    fn from_der(input: &mut untrusted::Reader)
                 -> Result<PositiveInteger, ()> {
         let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
         let res = unsafe {
@@ -412,7 +406,6 @@ impl PositiveInteger {
         if res.is_null() {
             return Err(());
         }
-        unsafe { BN_set_flags(res, flags); }
         Ok(PositiveInteger { value: Some(res) })
     }
 
@@ -450,9 +443,6 @@ struct BN_BLINDING {
 #[allow(non_camel_case_types)]
 enum BN_MONT_CTX {}
 
-#[cfg(feature = "rsa_signing")]
-const BN_FLG_CONSTTIME: c::int = 4;
-
 
 #[cfg(feature = "rsa_signing")]
 extern {
@@ -460,7 +450,6 @@ extern {
     fn BN_BLINDING_free(b: *mut BN_BLINDING);
     fn BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                  -> *mut BIGNUM;
-    fn BN_set_flags(bn: *mut BIGNUM, flags: c::int);
     fn BN_free(bn: *mut BIGNUM);
     fn BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 
