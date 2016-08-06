@@ -32,7 +32,7 @@ use self::ops::*;
 //
 fn verify_affine_point_is_on_the_curve(
         ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced))
-        -> Result<(), ()> {
+        -> ::EmptyResult {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
 
@@ -47,7 +47,7 @@ fn verify_affine_point_is_on_the_curve(
 //
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> Result<ElemUnreduced, ()> {
+                                         -> ::Result<ElemUnreduced> {
     let z = ops.point_z(&p);
 
     // Verify that the point is not at infinity.
@@ -136,7 +136,7 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 // Jean-Pierre Seifert.
 fn verify_affine_point_is_on_the_curve_scaled(
         ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced),
-        a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced) -> Result<(), ()> {
+        a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced) -> ::EmptyResult {
     let lhs = ops.elem_squared(&y);
     let lhs = ops.elem_reduced(&lhs);
 

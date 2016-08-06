@@ -30,7 +30,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> ::EmptyResult {
         // NSA Guide Prerequisites:
         //
         //    Prior to accepting a verified digital signature as valid the

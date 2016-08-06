@@ -53,7 +53,7 @@
 //!     }
 //!
 //!     pub fn verify_password(&self, username: &str, attempted_password: &str)
-//!                            -> Result<(), ()> {
+//!                            -> ring::EmptyResult {
 //!         match self.storage.get(username) {
 //!            Some(actual_password) => {
 //!                let salt = self.salt(username);
@@ -208,7 +208,7 @@ fn derive_block(
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
-              previously_derived: &[u8]) -> Result<(), ()> {
+              previously_derived: &[u8]) -> ::EmptyResult {
     if previously_derived.len() == 0 {
         return Err(());
     }

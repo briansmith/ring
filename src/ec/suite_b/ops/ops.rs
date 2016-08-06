@@ -213,7 +213,7 @@ impl CommonOps {
         ElemUnreduced { limbs: ra(self.elem_sqr_mont, &a.limbs) }
     }
 
-    pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced) -> Result<(), ()> {
+    pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced) -> ::EmptyResult {
         match unsafe {
             GFp_constant_time_limbs_are_zero(a.limbs.as_ptr(), self.num_limbs)
         } {
@@ -323,7 +323,7 @@ impl PublicKeyOps {
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
-                      -> Result<Elem, ()> {
+                      -> ::Result<Elem> {
         let encoded_value =
             try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
         let mut elem_limbs =
@@ -358,7 +358,7 @@ pub struct PublicScalarOps {
 
 impl PublicScalarOps {
     pub fn scalar_parse(&self, input: &mut untrusted::Reader)
-                        -> Result<Scalar, ()> {
+                        -> ::Result<Scalar> {
         let encoded_value = try!(der::positive_integer(input));
         let limbs = try!(parse_big_endian_value_in_range(
                             encoded_value, 1,

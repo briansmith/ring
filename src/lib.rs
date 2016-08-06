@@ -127,6 +127,9 @@ pub mod rand;
 #[cfg(feature = "use_heap")] mod rsa;
 pub mod signature;
 
+mod err;
+pub use err::{Result, EmptyResult};
+
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
 
