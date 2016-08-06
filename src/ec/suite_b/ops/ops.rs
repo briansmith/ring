@@ -413,22 +413,6 @@ impl PublicScalarOps {
                        &b.limbs)
         }
     }
-<<<<<<< HEAD
-
-    pub fn twin_mult(&self, g_scalar: &Scalar, p_scalar: &Scalar,
-                     &(ref peer_x, ref peer_y): &(Elem, Elem))
-                     -> ::Result<Point> {
-        let mut p = Point::new_at_infinity();
-        try!(bssl::map_result(unsafe {
-            GFp_suite_b_public_twin_mult(
-                self.public_key_ops.common.ec_group, p.xyz.as_mut_ptr(),
-                g_scalar.limbs.as_ptr(), p_scalar.limbs.as_ptr(),
-                peer_x.limbs.as_ptr(), peer_y.limbs.as_ptr())
-        }));
-        Ok(p)
-    }
-=======
->>>>>>> upstream/master
 }
 
 
