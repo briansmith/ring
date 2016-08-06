@@ -281,12 +281,6 @@ err:
   return ret;
 }
 
-int BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
-                           BN_CTX *ctx) {
-  int no_inverse;
-  return BN_mod_inverse_odd(out, &no_inverse, a, n, ctx);
-}
-
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                            const BN_MONT_CTX *mont, RAND *rng, BN_CTX *ctx) {
   *out_no_inverse = 0;
