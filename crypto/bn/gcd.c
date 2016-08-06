@@ -113,18 +113,23 @@
 #include "internal.h"
 
 
-static int bn_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                              const BIGNUM *n, BN_CTX *ctx) {
-  BIGNUM *A, *B, *X, *Y;
-  int ret = 0;
-  int sign;
-
+int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                       const BIGNUM *n, BN_CTX *ctx) {
   *out_no_inverse = 0;
 
   if (!BN_is_odd(n)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
+
+  if (BN_is_negative(a) || BN_cmp(a, n) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    return 0;
+  }
+
+  BIGNUM *A, *B, *X, *Y;
+  int ret = 0;
+  int sign;
 
   BN_CTX_start(ctx);
   A = BN_CTX_get(ctx);
@@ -142,10 +147,6 @@ static int bn_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     goto err;
   }
   A->neg = 0;
-  if (B->neg || (BN_ucmp(B, A) >= 0)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
-    goto err;
-  }
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that
    *
@@ -283,7 +284,7 @@ err:
 int BN_mod_inverse_vartime(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
                            BN_CTX *ctx) {
   int no_inverse;
-  return bn_mod_inverse_odd(out, &no_inverse, a, n, ctx);
+  return BN_mod_inverse_odd(out, &no_inverse, a, n, ctx);
 }
 
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
@@ -301,7 +302,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 
   if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N, rng) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
-      !bn_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
+      !BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;
