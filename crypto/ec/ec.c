@@ -662,25 +662,18 @@ int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src) {
 }
 
 EC_POINT *EC_POINT_dup(const EC_POINT *a, const EC_GROUP *group) {
-  EC_POINT *t;
-  int r;
-
   if (a == NULL) {
     return NULL;
   }
 
-  t = EC_POINT_new(group);
-  if (t == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+  EC_POINT *ret = EC_POINT_new(group);
+  if (ret == NULL ||
+      !EC_POINT_copy(ret, a)) {
+    EC_POINT_free(ret);
     return NULL;
   }
-  r = EC_POINT_copy(t, a);
-  if (!r) {
-    EC_POINT_free(t);
-    return NULL;
-  } else {
-    return t;
-  }
+
+  return ret;
 }
 
 int EC_POINT_set_to_infinity(const EC_GROUP *group, EC_POINT *point) {
