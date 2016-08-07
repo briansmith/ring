@@ -525,74 +525,45 @@ void EC_GROUP_free(EC_GROUP *group) {
   OPENSSL_free(group);
 }
 
-int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
-  if (dest->meth->group_copy == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-  if (dest->meth != src->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  if (dest == src) {
-    return 1;
-  }
-
-  dest->mont_data = src->mont_data;
-
-  if (src->generator != NULL) {
-    if (dest->generator == NULL) {
-      dest->generator = EC_POINT_new(dest);
-      if (dest->generator == NULL) {
-        return 0;
-      }
-    }
-    if (!EC_POINT_copy(dest->generator, src->generator)) {
-      return 0;
-    }
-  } else {
-    EC_POINT_clear_free(dest->generator);
-    dest->generator = NULL;
-  }
-
-  if (!BN_copy(&dest->order, &src->order)) {
-    return 0;
-  }
-
-  dest->curve_name = src->curve_name;
-
-  return dest->meth->group_copy(dest, src);
-}
-
 const BN_MONT_CTX *ec_group_get_mont_data(const EC_GROUP *group) {
   return group->mont_data;
 }
 
 EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
-  EC_GROUP *t = NULL;
-  int ok = 0;
-
   if (a == NULL) {
     return NULL;
   }
 
-  t = ec_group_new(a->meth);
-  if (t == NULL) {
+  if (a->meth->group_copy == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return NULL;
   }
-  if (!ec_group_copy(t, a)) {
+
+  EC_GROUP *ret = ec_group_new(a->meth);
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  ret->mont_data = a->mont_data;
+  ret->curve_name = a->curve_name;
+
+  if (a->generator != NULL) {
+    ret->generator = EC_POINT_dup(a->generator, ret);
+    if (ret->generator == NULL) {
+      goto err;
+    }
+  }
+
+  if (!BN_copy(&ret->order, &a->order) ||
+      !ret->meth->group_copy(ret, a)) {
     goto err;
   }
 
-  ok = 1;
+  return ret;
 
 err:
-  if (!ok) {
-    EC_GROUP_free(t);
-    return NULL;
-  } else {
-    return t;
-  }
+  EC_GROUP_free(ret);
+  return NULL;
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
