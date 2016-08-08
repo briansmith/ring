@@ -414,6 +414,32 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
+	if !test.noSessionCache {
+		if config.ClientSessionCache == nil {
+			config.ClientSessionCache = NewLRUClientSessionCache(1)
+		}
+		if config.ServerSessionCache == nil {
+			config.ServerSessionCache = NewLRUServerSessionCache(1)
+		}
+	}
+	if test.testType == clientTest {
+		if len(config.Certificates) == 0 {
+			config.Certificates = []Certificate{rsaCertificate}
+		}
+	} else {
+		// Supply a ServerName to ensure a constant session cache key,
+		// rather than falling back to net.Conn.RemoteAddr.
+		if len(config.ServerName) == 0 {
+			config.ServerName = "test"
+		}
+	}
+	if *fuzzer {
+		config.Bugs.NullAllCiphers = true
+	}
+	if *deterministic {
+		config.Rand = &deterministicRand{}
+	}
+
 	conn = &timeoutConn{conn, *idleTimeout}
 
 	if test.protocol == dtls {
@@ -854,27 +880,6 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	go func() { waitChan <- shim.Wait() }()
 
 	config := test.config
-	if !test.noSessionCache {
-		config.ClientSessionCache = NewLRUClientSessionCache(1)
-		config.ServerSessionCache = NewLRUServerSessionCache(1)
-	}
-	if test.testType == clientTest {
-		if len(config.Certificates) == 0 {
-			config.Certificates = []Certificate{rsaCertificate}
-		}
-	} else {
-		// Supply a ServerName to ensure a constant session cache key,
-		// rather than falling back to net.Conn.RemoteAddr.
-		if len(config.ServerName) == 0 {
-			config.ServerName = "test"
-		}
-	}
-	if *fuzzer {
-		config.Bugs.NullAllCiphers = true
-	}
-	if *deterministic {
-		config.Rand = &deterministicRand{}
-	}
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
@@ -886,24 +891,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		var resumeConfig Config
 		if test.resumeConfig != nil {
 			resumeConfig = *test.resumeConfig
-			if len(resumeConfig.ServerName) == 0 {
-				resumeConfig.ServerName = config.ServerName
-			}
-			if len(resumeConfig.Certificates) == 0 {
-				resumeConfig.Certificates = []Certificate{rsaCertificate}
-			}
-			if test.newSessionsOnResume {
-				if !test.noSessionCache {
-					resumeConfig.ClientSessionCache = NewLRUClientSessionCache(1)
-					resumeConfig.ServerSessionCache = NewLRUServerSessionCache(1)
-				}
-			} else {
+			if !test.newSessionsOnResume {
 				resumeConfig.SessionTicketKey = config.SessionTicketKey
 				resumeConfig.ClientSessionCache = config.ClientSessionCache
 				resumeConfig.ServerSessionCache = config.ServerSessionCache
-			}
-			if *fuzzer {
-				resumeConfig.Bugs.NullAllCiphers = true
 			}
 			resumeConfig.Rand = config.Rand
 		} else {
