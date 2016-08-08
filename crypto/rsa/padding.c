@@ -596,8 +596,7 @@ err:
 int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
                                    const unsigned char *mHash,
                                    const EVP_MD *Hash, const EVP_MD *mgf1Hash,
-                                   int sLen) {
-  int i;
+                                   int sLenRequested) {
   int ret = 0;
   size_t maskedDBLen, MSBits, emLen;
   size_t hLen;
@@ -628,20 +627,23 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
     goto err;
   }
 
-  /* Negative sLen has special meanings:
+  /* Negative sLenRequested has special meanings:
    *   -1  sLen == hLen
    *   -2  salt length is maximized
    *   -N  reserved */
-  if (sLen == -1) {
+  size_t sLen;
+  if (sLenRequested == -1) {
     sLen = hLen;
-  } else if (sLen == -2) {
+  } else if (sLenRequested == -2) {
     sLen = emLen - hLen - 2;
-  } else if (sLen < -2) {
+  } else if (sLenRequested < 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
     goto err;
+  } else {
+    sLen = (size_t)sLenRequested;
   }
 
-  if (emLen - hLen - 2 < (size_t)sLen) {
+  if (emLen - hLen - 2 < sLen) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
   }
@@ -685,7 +687,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
   p += emLen - sLen - hLen - 2;
   *p++ ^= 0x1;
   if (sLen > 0) {
-    for (i = 0; i < sLen; i++) {
+    for (size_t i = 0; i < sLen; i++) {
       *p++ ^= salt[i];
     }
   }
