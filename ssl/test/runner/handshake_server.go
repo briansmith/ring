@@ -220,6 +220,19 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	if config.Bugs.ExpectNoTLS12Session {
+		if len(hs.clientHello.sessionId) > 0 {
+			return fmt.Errorf("tls: client offered an unexpected session ID")
+		}
+		if len(hs.clientHello.sessionTicket) > 0 {
+			return fmt.Errorf("tls: client offered an unexpected session ticket")
+		}
+	}
+
+	if config.Bugs.ExpectNoTLS13PSK && len(hs.clientHello.pskIdentities) > 0 {
+		return fmt.Errorf("tls: client offered unexpected PSK identities")
+	}
+
 	if config.Bugs.NegotiateVersion != 0 {
 		c.vers = config.Bugs.NegotiateVersion
 	} else if c.haveVers && config.Bugs.NegotiateVersionOnRenego != 0 {
@@ -307,22 +320,37 @@ Curves:
 
 	_, ecdsaOk := hs.cert.PrivateKey.(*ecdsa.PrivateKey)
 
-	for i, pskIdentity := range hs.clientHello.pskIdentities {
+	pskIdentities := hs.clientHello.pskIdentities
+	if len(pskIdentities) == 0 && len(hs.clientHello.sessionTicket) > 0 && c.config.Bugs.AcceptAnySession {
+		pskIdentities = [][]uint8{hs.clientHello.sessionTicket}
+	}
+	for i, pskIdentity := range pskIdentities {
 		sessionState, ok := c.decryptTicket(pskIdentity)
 		if !ok {
 			continue
 		}
-		if sessionState.vers != c.vers {
-			continue
+		if !config.Bugs.AcceptAnySession {
+			if sessionState.vers != c.vers && c.config.Bugs.AcceptAnySession {
+				continue
+			}
+			if sessionState.ticketFlags&ticketAllowDHEResumption == 0 {
+				continue
+			}
+			if sessionState.ticketExpiration.Before(c.config.time()) {
+				continue
+			}
 		}
-		if sessionState.ticketFlags&ticketAllowDHEResumption == 0 {
-			continue
-		}
-		if sessionState.ticketExpiration.Before(c.config.time()) {
-			continue
-		}
+
 		suiteId := ecdhePSKSuite(sessionState.cipherSuite)
-		suite := mutualCipherSuite(hs.clientHello.cipherSuites, suiteId)
+
+		// Check the client offered the cipher.
+		clientCipherSuites := hs.clientHello.cipherSuites
+		if config.Bugs.AcceptAnySession {
+			clientCipherSuites = []uint16{suiteId}
+		}
+		suite := mutualCipherSuite(clientCipherSuites, suiteId)
+
+		// Check the cipher is enabled by the server.
 		var found bool
 		for _, id := range config.cipherSuites() {
 			if id == sessionState.cipherSuite {
@@ -330,6 +358,7 @@ Curves:
 				break
 			}
 		}
+
 		if suite != nil && found {
 			hs.sessionState = sessionState
 			hs.suite = suite
@@ -965,13 +994,17 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 func (hs *serverHandshakeState) checkForResumption() bool {
 	c := hs.c
 
-	if len(hs.clientHello.sessionTicket) > 0 {
+	ticket := hs.clientHello.sessionTicket
+	if len(ticket) == 0 && len(hs.clientHello.pskIdentities) > 0 && c.config.Bugs.AcceptAnySession {
+		ticket = hs.clientHello.pskIdentities[0]
+	}
+	if len(ticket) > 0 {
 		if c.config.SessionTicketsDisabled {
 			return false
 		}
 
 		var ok bool
-		if hs.sessionState, ok = c.decryptTicket(hs.clientHello.sessionTicket); !ok {
+		if hs.sessionState, ok = c.decryptTicket(ticket); !ok {
 			return false
 		}
 	} else {
@@ -986,21 +1019,23 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 		}
 	}
 
-	// Never resume a session for a different SSL version.
-	if !c.config.Bugs.AllowSessionVersionMismatch && c.vers != hs.sessionState.vers {
-		return false
-	}
-
-	cipherSuiteOk := false
-	// Check that the client is still offering the ciphersuite in the session.
-	for _, id := range hs.clientHello.cipherSuites {
-		if id == hs.sessionState.cipherSuite {
-			cipherSuiteOk = true
-			break
+	if !c.config.Bugs.AcceptAnySession {
+		// Never resume a session for a different SSL version.
+		if c.vers != hs.sessionState.vers {
+			return false
 		}
-	}
-	if !cipherSuiteOk {
-		return false
+
+		cipherSuiteOk := false
+		// Check that the client is still offering the ciphersuite in the session.
+		for _, id := range hs.clientHello.cipherSuites {
+			if id == hs.sessionState.cipherSuite {
+				cipherSuiteOk = true
+				break
+			}
+		}
+		if !cipherSuiteOk {
+			return false
+		}
 	}
 
 	// Check that we also support the ciphersuite from the session.

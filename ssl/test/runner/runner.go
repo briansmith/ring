@@ -4884,17 +4884,23 @@ func addResumptionVersionTests() {
 						config: Config{
 							MaxVersion:   sessionVers.version,
 							CipherSuites: []uint16{cipher},
+							Bugs: ProtocolBugs{
+								ExpectNoTLS12Session: sessionVers.version >= VersionTLS13,
+								ExpectNoTLS13PSK:     sessionVers.version < VersionTLS13,
+							},
 						},
 						expectedVersion:       sessionVers.version,
 						expectedResumeVersion: resumeVers.version,
 					})
 				} else {
-					var localError, error string
-					if (resumeVers.version >= VersionTLS13) != (sessionVers.version >= VersionTLS13) {
-						// TLS 1.3 sessions are incompatible with TLS 1.2 sessions.
-						localError = "didResume is false, but we expected the opposite"
-					} else {
-						error = ":OLD_SESSION_VERSION_NOT_RETURNED:"
+					error := ":OLD_SESSION_VERSION_NOT_RETURNED:"
+
+					// Offering a TLS 1.3 session sends an empty session ID, so
+					// there is no way to convince a non-lookahead client the
+					// session was resumed. It will appear to the client that a
+					// stray ChangeCipherSpec was sent.
+					if resumeVers.version < VersionTLS13 && sessionVers.version >= VersionTLS13 {
+						error = ":UNEXPECTED_RECORD:"
 					}
 
 					testCases = append(testCases, testCase{
@@ -4910,12 +4916,11 @@ func addResumptionVersionTests() {
 							MaxVersion:   resumeVers.version,
 							CipherSuites: []uint16{cipher},
 							Bugs: ProtocolBugs{
-								AllowSessionVersionMismatch: true,
+								AcceptAnySession: true,
 							},
 						},
 						expectedResumeVersion: resumeVers.version,
 						shouldFail:            true,
-						expectedLocalError:    localError,
 						expectedError:         error,
 					})
 				}
@@ -4952,6 +4957,9 @@ func addResumptionVersionTests() {
 					resumeConfig: &Config{
 						MaxVersion:   resumeVers.version,
 						CipherSuites: []uint16{cipher},
+						Bugs: ProtocolBugs{
+							SendBothTickets: true,
+						},
 					},
 					expectedResumeVersion: resumeVers.version,
 				})

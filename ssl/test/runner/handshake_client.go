@@ -230,10 +230,10 @@ NextCipherSuite:
 			ticket[offset] ^= 0x40
 		}
 
-		if session.vers >= VersionTLS13 {
+		if session.vers >= VersionTLS13 || c.config.Bugs.SendBothTickets {
 			// TODO(nharper): Support sending more
 			// than one PSK identity.
-			if session.ticketFlags&ticketAllowDHEResumption != 0 {
+			if session.ticketFlags&ticketAllowDHEResumption != 0 || c.config.Bugs.SendBothTickets {
 				var found bool
 				for _, id := range hello.cipherSuites {
 					if id == session.cipherSuite {
@@ -246,22 +246,26 @@ NextCipherSuite:
 					hello.cipherSuites = append(hello.cipherSuites, ecdhePSKSuite(session.cipherSuite))
 				}
 			}
-		} else if ticket != nil {
-			hello.sessionTicket = ticket
-			// A random session ID is used to detect when the
-			// server accepted the ticket and is resuming a session
-			// (see RFC 5077).
-			sessionIdLen := 16
-			if c.config.Bugs.OversizedSessionId {
-				sessionIdLen = 33
+		}
+
+		if session.vers < VersionTLS13 || c.config.Bugs.SendBothTickets {
+			if ticket != nil {
+				hello.sessionTicket = ticket
+				// A random session ID is used to detect when the
+				// server accepted the ticket and is resuming a session
+				// (see RFC 5077).
+				sessionIdLen := 16
+				if c.config.Bugs.OversizedSessionId {
+					sessionIdLen = 33
+				}
+				hello.sessionId = make([]byte, sessionIdLen)
+				if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
+					c.sendAlert(alertInternalError)
+					return errors.New("tls: short read from Rand: " + err.Error())
+				}
+			} else {
+				hello.sessionId = session.sessionId
 			}
-			hello.sessionId = make([]byte, sessionIdLen)
-			if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
-				c.sendAlert(alertInternalError)
-				return errors.New("tls: short read from Rand: " + err.Error())
-			}
-		} else {
-			hello.sessionId = session.sessionId
 		}
 	}
 

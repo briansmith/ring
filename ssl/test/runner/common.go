@@ -635,9 +635,15 @@ type ProtocolBugs struct {
 	// return.
 	ALPNProtocol *string
 
-	// AllowSessionVersionMismatch causes the server to resume sessions
-	// regardless of the version associated with the session.
-	AllowSessionVersionMismatch bool
+	// AcceptAnySession causes the server to resume sessions regardless of
+	// the version associated with the session or cipher suite. It also
+	// causes the server to look in both TLS 1.2 and 1.3 extensions to
+	// process a ticket.
+	AcceptAnySession bool
+
+	// SendBothTickets, if true, causes the client to send tickets in both
+	// TLS 1.2 and 1.3 extensions.
+	SendBothTickets bool
 
 	// CorruptTicket causes a client to corrupt a session ticket before
 	// sending it in a resume handshake.
@@ -646,6 +652,14 @@ type ProtocolBugs struct {
 	// OversizedSessionId causes the session id that is sent with a ticket
 	// resumption attempt to be too large (33 bytes).
 	OversizedSessionId bool
+
+	// ExpectNoTLS12Session, if true, causes the server to fail the
+	// connection if either a session ID or TLS 1.2 ticket is offered.
+	ExpectNoTLS12Session bool
+
+	// ExpectNoTLS13PSK, if true, causes the server to fail the connection
+	// if a TLS 1.3 PSK is offered.
+	ExpectNoTLS13PSK bool
 
 	// RequireExtendedMasterSecret, if true, requires that the peer support
 	// the extended master secret option.
