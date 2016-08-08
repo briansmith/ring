@@ -623,6 +623,11 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
     emLen--;
   }
 
+  if (emLen < hLen + 2) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
+    goto err;
+  }
+
   /* Negative sLen has special meanings:
    *   -1  sLen == hLen
    *   -2  salt length is maximized
@@ -630,18 +635,17 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
   if (sLen == -1) {
     sLen = hLen;
   } else if (sLen == -2) {
-    if (emLen < hLen + 2) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
-      goto err;
-    }
     sLen = emLen - hLen - 2;
   } else if (sLen < -2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
     goto err;
-  } else if (emLen < hLen + sLen + 2) {
+  }
+
+  if (emLen - hLen - 2 < (size_t)sLen) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
   }
+
   if (sLen > 0) {
     salt = OPENSSL_malloc(sLen);
     if (!salt) {
