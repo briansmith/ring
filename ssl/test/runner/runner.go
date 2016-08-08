@@ -5026,6 +5026,9 @@ func addRenegotiationTests() {
 			"-expect-total-renegotiations", "1",
 		},
 	})
+
+	// Test that the server may switch ciphers on renegotiation without
+	// problems.
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-SwitchCiphers",
 		renegotiate: 1,
@@ -5052,6 +5055,27 @@ func addRenegotiationTests() {
 			"-expect-total-renegotiations", "1",
 		},
 	})
+
+	// Test that the server may not switch versions on renegotiation.
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-SwitchVersion",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			// Pick a cipher which exists at both versions.
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+			Bugs: ProtocolBugs{
+				NegotiateVersionOnRenego: VersionTLS11,
+			},
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_SSL_VERSION:",
+	})
+
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-SameClientVersion",
 		renegotiate: 1,

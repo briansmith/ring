@@ -222,6 +222,8 @@ func (hs *serverHandshakeState) readClientHello() error {
 
 	if config.Bugs.NegotiateVersion != 0 {
 		c.vers = config.Bugs.NegotiateVersion
+	} else if c.haveVers && config.Bugs.NegotiateVersionOnRenego != 0 {
+		c.vers = config.Bugs.NegotiateVersionOnRenego
 	} else {
 		c.vers, ok = config.mutualVersion(hs.clientHello.vers, c.isDTLS)
 		if !ok {

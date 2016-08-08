@@ -606,6 +606,10 @@ type ProtocolBugs struct {
 	// peer.
 	NegotiateVersion uint16
 
+	// NegotiateVersionOnRenego, if non-zero, causes the server to negotiate
+	// the specified TLS version on renegotiation rather than retaining it.
+	NegotiateVersionOnRenego uint16
+
 	// ExpectFalseStart causes the server to, on full handshakes,
 	// expect the peer to False Start; the server Finished message
 	// isn't sent until we receive an application data record
