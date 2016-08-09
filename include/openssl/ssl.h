@@ -4439,7 +4439,7 @@ typedef struct ssl3_state_st {
   uint8_t previous_client_finished_len;
   uint8_t previous_server_finished[EVP_MAX_MD_SIZE];
   uint8_t previous_server_finished_len;
-  int send_connection_binding; /* TODOEKR */
+  int send_connection_binding;
 
   /* Set if we saw the Next Protocol Negotiation extension from our peer. */
   int next_proto_neg_seen;
