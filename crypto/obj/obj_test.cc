@@ -95,8 +95,7 @@ static bool TestSignatureAlgorithms() {
 }
 
 static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
-                          bool dont_return_name,
-                          const char *expected) {
+                          bool dont_return_name, const char *expected) {
   ASN1_OBJECT obj;
   memset(&obj, 0, sizeof(obj));
   obj.data = der;
@@ -178,17 +177,16 @@ static bool TestObj2Txt() {
       !ExpectObj2Txt(kTestOID, sizeof(kTestOID), true /* don't return name */,
                      "1.2.840.113554.4.1.72585.0") ||
       !ExpectObj2Txt(kTestOID, sizeof(kTestOID), false /* return name */,
-                     "1.2.840.113554.4.1.72585.0")) {
+                     "1.2.840.113554.4.1.72585.0") ||
+      // Python depends on the empty OID successfully encoding as the empty
+      // string.
+      !ExpectObj2Txt(nullptr, 0, false /* return name */, "") ||
+      !ExpectObj2Txt(nullptr, 0, true /* don't return name */, "")) {
     return false;
   }
 
   ASN1_OBJECT obj;
   memset(&obj, 0, sizeof(obj));
-
-  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
-    fprintf(stderr, "OBJ_obj2txt accepted the empty OID.\n");
-    return false;
-  }
 
   // kNonMinimalOID is kBasicConstraints with the final component non-minimally
   // encoded.
