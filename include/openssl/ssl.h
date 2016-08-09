@@ -2163,9 +2163,6 @@ OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
  * either |X509_V_OK| or a |X509_V_ERR_*| value. */
 OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
 
-/* SSL_set_verify_result overrides the result of certificate verification. */
-OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
-
 /* SSL_get_ex_data_X509_STORE_CTX_idx returns the ex_data index used to look up
  * the |SSL| associated with an |X509_STORE_CTX| in the verify callback. */
 OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
@@ -3592,6 +3589,12 @@ OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(
 OPENSSL_EXPORT int SSL_set_private_key_digest_prefs(SSL *ssl,
                                                     const int *digest_nids,
                                                     size_t num_digests);
+
+/* SSL_set_verify_result calls |abort| unless |result| is |X509_V_OK|.
+ *
+ * TODO(davidben): Remove this function once it has been removed from
+ * netty-tcnative. */
+OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
 
 
 /* Private structures.

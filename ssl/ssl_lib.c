@@ -141,6 +141,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/bytestring.h>
@@ -2310,7 +2311,9 @@ char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len) {
 }
 
 void SSL_set_verify_result(SSL *ssl, long result) {
-  ssl->verify_result = result;
+  if (result != X509_V_OK) {
+    abort();
+  }
 }
 
 long SSL_get_verify_result(const SSL *ssl) { return ssl->verify_result; }
