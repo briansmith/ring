@@ -576,7 +576,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
 
   CBS cbs, extensions, ticket;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u32(&cbs, &session->ticket_lifetime_hint) ||
+  if (!CBS_get_u32(&cbs, &session->tlsext_tick_lifetime_hint) ||
       !CBS_get_u32(&cbs, &session->ticket_flags) ||
       !CBS_get_u32(&cbs, &session->ticket_age_add) ||
       !CBS_get_u16_length_prefixed(&cbs, &extensions) ||

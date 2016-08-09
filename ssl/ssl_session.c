@@ -252,7 +252,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int include_ticket) {
          session->original_handshake_hash_len);
   new_session->original_handshake_hash_len =
       session->original_handshake_hash_len;
-  new_session->ticket_lifetime_hint = session->ticket_lifetime_hint;
+  new_session->tlsext_tick_lifetime_hint = session->tlsext_tick_lifetime_hint;
   new_session->ticket_flags = session->ticket_flags;
   new_session->ticket_age_add = session->ticket_age_add;
   new_session->extended_master_secret = session->extended_master_secret;

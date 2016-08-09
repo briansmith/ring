@@ -261,9 +261,9 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
-  if (in->ticket_lifetime_hint > 0) {
+  if (in->tlsext_tick_lifetime_hint > 0) {
     if (!CBB_add_asn1(&session, &child, kTicketLifetimeHintTag) ||
-        !CBB_add_asn1_uint64(&child, in->ticket_lifetime_hint)) {
+        !CBB_add_asn1_uint64(&child, in->tlsext_tick_lifetime_hint)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -596,7 +596,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
                                 kHostNameTag) ||
       !SSL_SESSION_parse_string(&session, &ret->psk_identity,
                                 kPSKIdentityTag) ||
-      !SSL_SESSION_parse_u32(&session, &ret->ticket_lifetime_hint,
+      !SSL_SESSION_parse_u32(&session, &ret->tlsext_tick_lifetime_hint,
                              kTicketLifetimeHintTag, 0) ||
       !SSL_SESSION_parse_octet_string(&session, &ret->tlsext_tick,
                                       &ret->tlsext_ticklen, kTicketTag)) {

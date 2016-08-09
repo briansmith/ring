@@ -3697,7 +3697,7 @@ struct ssl_session_st {
   uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
   unsigned original_handshake_hash_len;
 
-  uint32_t ticket_lifetime_hint; /* Session lifetime hint in seconds */
+  uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
 
   uint32_t ticket_flags;
   uint32_t ticket_age_add;

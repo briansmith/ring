@@ -515,7 +515,7 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
   SSL_SESSION *session = ssl->s3->new_session;
-  session->ticket_lifetime_hint = session->timeout;
+  session->tlsext_tick_lifetime_hint = session->timeout;
   session->ticket_flags = SSL_TICKET_ALLOW_DHE_RESUMPTION;
   if (!RAND_bytes((uint8_t *)&session->ticket_age_add,
                   sizeof(session->ticket_age_add))) {
@@ -526,7 +526,7 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
   CBB cbb, body, ticket;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_NEW_SESSION_TICKET) ||
-      !CBB_add_u32(&body, session->ticket_lifetime_hint) ||
+      !CBB_add_u32(&body, session->tlsext_tick_lifetime_hint) ||
       !CBB_add_u32(&body, session->ticket_flags) ||
       !CBB_add_u32(&body, session->ticket_age_add) ||
       !CBB_add_u16(&body, 0 /* no ticket extensions */) ||

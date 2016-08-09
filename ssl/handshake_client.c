@@ -1912,9 +1912,9 @@ static int ssl3_get_new_session_ticket(SSL *ssl) {
   }
 
   CBS new_session_ticket, ticket;
-  uint32_t ticket_lifetime_hint;
+  uint32_t tlsext_tick_lifetime_hint;
   CBS_init(&new_session_ticket, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u32(&new_session_ticket, &ticket_lifetime_hint) ||
+  if (!CBS_get_u32(&new_session_ticket, &tlsext_tick_lifetime_hint) ||
       !CBS_get_u16_length_prefixed(&new_session_ticket, &ticket) ||
       CBS_len(&new_session_ticket) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -1950,7 +1950,7 @@ static int ssl3_get_new_session_ticket(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  session->ticket_lifetime_hint = ticket_lifetime_hint;
+  session->tlsext_tick_lifetime_hint = tlsext_tick_lifetime_hint;
 
   /* Generate a session ID for this session based on the session ticket. We use
    * the session ID mechanism for detecting ticket resumption. This also fits in
