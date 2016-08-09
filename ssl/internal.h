@@ -958,6 +958,20 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
                    size_t secret_len);
 
 
+/* ClientHello functions. */
+
+int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
+                            const uint8_t *in, size_t in_len);
+
+int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
+                                     CBS *out, uint16_t extension_type);
+
+STACK_OF(SSL_CIPHER) *
+    ssl_parse_client_cipher_list(SSL *ssl,
+                                 const struct ssl_early_callback_ctx *ctx,
+                                 uint16_t max_version);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -1239,8 +1253,6 @@ enum ssl_session_result_t ssl_get_prev_session(
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
                                             int include_ticket);
 
-STACK_OF(SSL_CIPHER) *
-    ssl_bytes_to_cipher_list(SSL *ssl, const CBS *cbs, uint16_t max_version);
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl);
@@ -1370,12 +1382,6 @@ int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len);
 int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);
 
-int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
-                            const uint8_t *in, size_t in_len);
-
-int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
-                                     CBS *out, uint16_t extension_type);
-
 /* tls1_get_grouplist sets |*out_group_ids| and |*out_group_ids_len| to the
  * list of allowed group IDs. If |get_peer_groups| is non-zero, return the
  * peer's group list. Otherwise, return the preferred list. */
@@ -1412,7 +1418,8 @@ int tls1_check_ec_cert(SSL *ssl, X509 *x);
 int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len);
 
 int ssl_add_serverhello_tlsext(SSL *ssl, CBB *out);
-int ssl_parse_clienthello_tlsext(SSL *ssl, CBS *cbs);
+int ssl_parse_clienthello_tlsext(
+    SSL *ssl, const struct ssl_early_callback_ctx *client_hello);
 int ssl_parse_serverhello_tlsext(SSL *ssl, CBS *cbs);
 
 #define tlsext_tick_md EVP_sha256

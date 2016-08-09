@@ -2919,6 +2919,9 @@ struct ssl_early_callback_ctx {
   SSL *ssl;
   const uint8_t *client_hello;
   size_t client_hello_len;
+  uint16_t version;
+  const uint8_t *random;
+  size_t random_len;
   const uint8_t *session_id;
   size_t session_id_len;
   const uint8_t *cipher_suites;

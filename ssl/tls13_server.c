@@ -105,36 +105,22 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  struct ssl_early_callback_ctx early_ctx;
-  if (!ssl_early_callback_init(ssl, &early_ctx, ssl->init_msg,
+  struct ssl_early_callback_ctx client_hello;
+  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
                                ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
-  CBS cbs, client_random, session_id, cipher_suites, compression_methods;
-  uint16_t client_wire_version;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&cbs, &client_wire_version) ||
-      !CBS_get_bytes(&cbs, &client_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&cbs, &session_id) ||
-      CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
-  }
-
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
-
   assert(ssl->s3->have_version);
 
   /* Load the client random. */
-  memcpy(ssl->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
+  if (client_hello.random_len != SSL3_RANDOM_SIZE) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+  memcpy(ssl->s3->client_random, client_hello.random, client_hello.random_len);
 
   SSL_set_session(ssl, NULL);
   if (!ssl_get_new_session(ssl, 1 /* server */)) {
@@ -143,41 +129,24 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->ctx->dos_protection_cb != NULL &&
-      ssl->ctx->dos_protection_cb(&early_ctx) == 0) {
+      ssl->ctx->dos_protection_cb(&client_hello) == 0) {
     /* Connection rejected for DOS reasons. */
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ACCESS_DENIED);
     return ssl_hs_error;
   }
 
-  if (!CBS_get_u16_length_prefixed(&cbs, &cipher_suites) ||
-      CBS_len(&cipher_suites) == 0 ||
-      CBS_len(&cipher_suites) % 2 != 0 ||
-      !CBS_get_u8_length_prefixed(&cbs, &compression_methods) ||
-      CBS_len(&compression_methods) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
-  }
-
   /* TLS 1.3 requires the peer only advertise the null compression. */
-  if (CBS_len(&compression_methods) != 1 ||
-      CBS_data(&compression_methods)[0] != 0) {
+  if (client_hello.compression_methods_len != 1 ||
+      client_hello.compression_methods[0] != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
   /* TLS extensions. */
-  if (!ssl_parse_clienthello_tlsext(ssl, &cbs)) {
+  if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-    return ssl_hs_error;
-  }
-
-  /* There should be nothing left over in the message. */
-  if (CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_PACKET_LENGTH);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -197,8 +166,14 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     }
   }
 
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
+
   STACK_OF(SSL_CIPHER) *ciphers =
-      ssl_bytes_to_cipher_list(ssl, &cipher_suites, max_version);
+      ssl_parse_client_cipher_list(ssl, &client_hello, max_version);
   if (ciphers == NULL) {
     return ssl_hs_error;
   }
@@ -232,7 +207,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
 
   /* Resolve ECDHE and incorporate it into the secret. */
   int need_retry;
-  if (!resolve_ecdhe_secret(ssl, &need_retry, &early_ctx)) {
+  if (!resolve_ecdhe_secret(ssl, &need_retry, &client_hello)) {
     if (need_retry) {
       hs->state = state_send_hello_retry_request;
       return ssl_hs_ok;
@@ -276,8 +251,8 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
     return ssl_hs_error;
   }
 
-  struct ssl_early_callback_ctx early_ctx;
-  if (!ssl_early_callback_init(ssl, &early_ctx, ssl->init_msg,
+  struct ssl_early_callback_ctx client_hello;
+  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
                                ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -285,7 +260,7 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
   }
 
   int need_retry;
-  if (!resolve_ecdhe_secret(ssl, &need_retry, &early_ctx)) {
+  if (!resolve_ecdhe_secret(ssl, &need_retry, &client_hello)) {
     if (need_retry) {
       /* Only send one HelloRetryRequest. */
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);

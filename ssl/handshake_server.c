@@ -534,74 +534,54 @@ static int ssl3_get_client_hello(SSL *ssl) {
   int al = SSL_AD_INTERNAL_ERROR, ret = -1;
   const SSL_CIPHER *c;
   STACK_OF(SSL_CIPHER) *ciphers = NULL;
-  struct ssl_early_callback_ctx early_ctx;
-  CBS client_hello;
-  uint16_t client_wire_version;
-  CBS client_random, session_id, cipher_suites, compression_methods;
   SSL_SESSION *session = NULL;
 
-  /* We do this so that we will respond with our native type. If we are TLSv1
-   * and we get SSLv3, we will respond with TLSv1, This down switching should
-   * be handled by a different method. If we are SSLv3, we will respond with
-   * SSLv3, even if prompted with TLSv1. */
-  switch (ssl->state) {
-    case SSL3_ST_SR_CLNT_HELLO_A: {
-      int msg_ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CLIENT_HELLO,
-                                                 ssl_hash_message);
-      if (msg_ret <= 0) {
-        return msg_ret;
-      }
-
-      ssl->state = SSL3_ST_SR_CLNT_HELLO_B;
+  if (ssl->state == SSL3_ST_SR_CLNT_HELLO_A) {
+    /* The first time around, read the ClientHello. */
+    int msg_ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CLIENT_HELLO,
+                                               ssl_hash_message);
+    if (msg_ret <= 0) {
+      return msg_ret;
     }
-      /* fallthrough */
-    case SSL3_ST_SR_CLNT_HELLO_B:
-    case SSL3_ST_SR_CLNT_HELLO_C:
-      if (!ssl_early_callback_init(ssl, &early_ctx, ssl->init_msg,
-                                   ssl->init_num)) {
-        al = SSL_AD_DECODE_ERROR;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
-        goto f_err;
-      }
 
-      if (ssl->state == SSL3_ST_SR_CLNT_HELLO_B &&
-          ssl->ctx->select_certificate_cb != NULL) {
-        ssl->state = SSL3_ST_SR_CLNT_HELLO_C;
-        switch (ssl->ctx->select_certificate_cb(&early_ctx)) {
-          case 0:
-            ssl->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
-            goto err;
-
-          case -1:
-            /* Connection rejected. */
-            al = SSL_AD_ACCESS_DENIED;
-            OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
-            goto f_err;
-
-          default:
-            /* fallthrough */;
-        }
-      }
-      ssl->state = SSL3_ST_SR_CLNT_HELLO_C;
-      break;
-
-    default:
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_STATE);
-      return -1;
+    ssl->state = SSL3_ST_SR_CLNT_HELLO_B;
   }
 
-  CBS_init(&client_hello, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&client_hello, &client_wire_version)) {
+  struct ssl_early_callback_ctx client_hello;
+  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
+                               ssl->init_num)) {
     al = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     goto f_err;
   }
 
-  uint16_t client_version = ssl->method->version_from_wire(client_wire_version);
+  if (ssl->state == SSL3_ST_SR_CLNT_HELLO_B) {
+    /* Unlike other callbacks, the early callback is not run a second time if
+     * paused. */
+    ssl->state = SSL3_ST_SR_CLNT_HELLO_C;
 
-  /* use version from inside client hello, not from record header (may differ:
-   * see RFC 2246, Appendix E, second paragraph) */
-  ssl->client_version = client_wire_version;
+    /* Run the early callback. */
+    if (ssl->ctx->select_certificate_cb != NULL) {
+      switch (ssl->ctx->select_certificate_cb(&client_hello)) {
+        case 0:
+          ssl->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
+          goto err;
+
+        case -1:
+          /* Connection rejected. */
+          al = SSL_AD_ACCESS_DENIED;
+          OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
+          goto f_err;
+
+        default:
+          /* fallthrough */;
+      }
+    }
+  }
+
+  uint16_t client_version =
+      ssl->method->version_from_wire(client_hello.version);
+  ssl->client_version = client_hello.version;
 
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
@@ -642,30 +622,16 @@ static int ssl3_get_client_hello(SSL *ssl) {
     return 1;
   }
 
-  if (!CBS_get_bytes(&client_hello, &client_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
-      CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH) {
-    al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
-  }
-
   /* Load the client random. */
-  memcpy(ssl->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
-
-  if (SSL_is_dtls(ssl)) {
-    CBS cookie;
-
-    if (!CBS_get_u8_length_prefixed(&client_hello, &cookie) ||
-        CBS_len(&cookie) > DTLS1_COOKIE_LENGTH) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto f_err;
-    }
+  if (client_hello.random_len != SSL3_RANDOM_SIZE) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
   }
+  memcpy(ssl->s3->client_random, client_hello.random, client_hello.random_len);
 
   int send_new_ticket = 0;
-  switch (ssl_get_prev_session(ssl, &session, &send_new_ticket, &early_ctx)) {
+  switch (
+      ssl_get_prev_session(ssl, &session, &send_new_ticket, &client_hello)) {
     case ssl_session_success:
       break;
     case ssl_session_error:
@@ -683,7 +649,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
   CBS ems;
   int have_extended_master_secret =
       ssl->version != SSL3_VERSION &&
-      ssl_early_callback_get_extension(&early_ctx, &ems,
+      ssl_early_callback_get_extension(&client_hello, &ems,
                                        TLSEXT_TYPE_extended_master_secret) &&
       CBS_len(&ems) == 0;
 
@@ -725,24 +691,14 @@ static int ssl3_get_client_hello(SSL *ssl) {
   }
 
   if (ssl->ctx->dos_protection_cb != NULL &&
-      ssl->ctx->dos_protection_cb(&early_ctx) == 0) {
+      ssl->ctx->dos_protection_cb(&client_hello) == 0) {
     /* Connection rejected for DOS reasons. */
     al = SSL_AD_ACCESS_DENIED;
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     goto f_err;
   }
 
-  if (!CBS_get_u16_length_prefixed(&client_hello, &cipher_suites) ||
-      CBS_len(&cipher_suites) == 0 ||
-      CBS_len(&cipher_suites) % 2 != 0 ||
-      !CBS_get_u8_length_prefixed(&client_hello, &compression_methods) ||
-      CBS_len(&compression_methods) == 0) {
-    al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
-  }
-
-  ciphers = ssl_bytes_to_cipher_list(ssl, &cipher_suites, max_version);
+  ciphers = ssl_parse_client_cipher_list(ssl, &client_hello, max_version);
   if (ciphers == NULL) {
     goto err;
   }
@@ -771,26 +727,17 @@ static int ssl3_get_client_hello(SSL *ssl) {
   }
 
   /* Only null compression is supported. */
-  if (memchr(CBS_data(&compression_methods), 0,
-             CBS_len(&compression_methods)) == NULL) {
+  if (memchr(client_hello.compression_methods, 0,
+             client_hello.compression_methods_len) == NULL) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMPRESSION_SPECIFIED);
     goto f_err;
   }
 
   /* TLS extensions. */
-  if (ssl->version >= SSL3_VERSION &&
-      !ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
+  if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     goto err;
-  }
-
-  /* There should be nothing left over in the record. */
-  if (CBS_len(&client_hello) != 0) {
-    /* wrong packet length */
-    al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_PACKET_LENGTH);
-    goto f_err;
   }
 
   if (have_extended_master_secret != ssl->s3->tmp.extended_master_secret) {
