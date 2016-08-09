@@ -721,6 +721,9 @@ OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
 OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
                                             long len);
 
+/* EVP_PKEY_get0_DH returns NULL. */
+OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
+
 
 /* Private structures. */
 

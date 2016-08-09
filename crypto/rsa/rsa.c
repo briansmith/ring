@@ -169,6 +169,42 @@ int RSA_up_ref(RSA *rsa) {
   return 1;
 }
 
+void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n, const BIGNUM **out_e,
+                  const BIGNUM **out_d) {
+  if (out_n != NULL) {
+    *out_n = rsa->n;
+  }
+  if (out_e != NULL) {
+    *out_e = rsa->e;
+  }
+  if (out_d != NULL) {
+    *out_d = rsa->d;
+  }
+}
+
+void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
+                      const BIGNUM **out_q) {
+  if (out_p != NULL) {
+    *out_p = rsa->p;
+  }
+  if (out_q != NULL) {
+    *out_q = rsa->q;
+  }
+}
+
+void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
+                         const BIGNUM **out_dmq1, const BIGNUM **out_iqmp) {
+  if (out_dmp1 != NULL) {
+    *out_dmp1 = rsa->dmp1;
+  }
+  if (out_dmq1 != NULL) {
+    *out_dmq1 = rsa->dmq1;
+  }
+  if (out_iqmp != NULL) {
+    *out_iqmp = rsa->iqmp;
+  }
+}
+
 int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   if (rsa->meth->keygen) {
     return rsa->meth->keygen(rsa, bits, e_value, cb);

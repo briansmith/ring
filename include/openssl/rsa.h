@@ -87,6 +87,30 @@ OPENSSL_EXPORT void RSA_free(RSA *rsa);
 OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 
 
+/* Properties. */
+
+/* RSA_get0_key sets |*out_n|, |*out_e|, and |*out_d|, if non-NULL, to |rsa|'s
+ * modulus, public exponent, and private exponent, respectively. If |rsa| is a
+ * public key, the private exponent will be set to NULL. */
+OPENSSL_EXPORT void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n,
+                                 const BIGNUM **out_e, const BIGNUM **out_d);
+
+/* RSA_get0_factors sets |*out_p| and |*out_q|, if non-NULL, to |rsa|'s prime
+ * factors. If |rsa| is a public key, they will be set to NULL. If |rsa| is a
+ * multi-prime key, only the first two prime factors will be reported. */
+OPENSSL_EXPORT void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
+                                     const BIGNUM **out_q);
+
+/* RSA_get0_crt_params sets |*out_dmp1|, |*out_dmq1|, and |*out_iqmp|, if
+ * non-NULL, to |rsa|'s CRT parameters. These are d (mod p-1), d (mod q-1) and
+ * q^-1 (mod p), respectively. If |rsa| is a public key, each parameter will be
+ * set to NULL. If |rsa| is a multi-prime key, only the CRT parameters for the
+ * first two primes will be reported. */
+OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
+                                        const BIGNUM **out_dmq1,
+                                        const BIGNUM **out_iqmp);
+
+
 /* Key generation. */
 
 /* RSA_generate_key_ex generates a new RSA key where the modulus has size

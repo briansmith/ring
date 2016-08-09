@@ -129,6 +129,29 @@ int DSA_up_ref(DSA *dsa) {
   return 1;
 }
 
+void DSA_get0_key(const DSA *dsa, const BIGNUM **out_pub_key,
+                  const BIGNUM **out_priv_key) {
+  if (out_pub_key != NULL) {
+    *out_pub_key = dsa->pub_key;
+  }
+  if (out_priv_key != NULL) {
+    *out_priv_key = dsa->priv_key;
+  }
+}
+
+void DSA_get0_pqg(const DSA *dsa, const BIGNUM **out_p, const BIGNUM **out_q,
+                  const BIGNUM **out_g) {
+  if (out_p != NULL) {
+    *out_p = dsa->p;
+  }
+  if (out_q != NULL) {
+    *out_q = dsa->q;
+  }
+  if (out_g != NULL) {
+    *out_g = dsa->g;
+  }
+}
+
 int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
                                size_t seed_len, int *out_counter,
                                unsigned long *out_h, BN_GENCB *cb) {

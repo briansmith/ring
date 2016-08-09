@@ -302,6 +302,8 @@ EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey) {
   return ec_key;
 }
 
+DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey) { return NULL; }
+
 int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
   if (!EVP_PKEY_set_type(pkey, type)) {
     return 0;

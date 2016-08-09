@@ -88,6 +88,20 @@ OPENSSL_EXPORT void DSA_free(DSA *dsa);
 OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
 
+/* Properties. */
+
+/* DSA_get0_key sets |*out_pub_key| and |*out_priv_key|, if non-NULL, to |dsa|'s
+ * public and private key, respectively. If |dsa| is a public key, the private
+ * key will be set to NULL. */
+OPENSSL_EXPORT void DSA_get0_key(const DSA *dsa, const BIGNUM **out_pub_key,
+                                 const BIGNUM **out_priv_key);
+
+/* DSA_get0_pqg sets |*out_p|, |*out_q|, and |*out_g|, if non-NULL, to |dsa|'s
+ * p, q, and g parameters, respectively. */
+OPENSSL_EXPORT void DSA_get0_pqg(const DSA *dsa, const BIGNUM **out_p,
+                                 const BIGNUM **out_q, const BIGNUM **out_g);
+
+
 /* Parameter generation. */
 
 /* DSA_generate_parameters_ex generates a set of DSA parameters by following

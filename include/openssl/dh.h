@@ -85,6 +85,20 @@ OPENSSL_EXPORT void DH_free(DH *dh);
 OPENSSL_EXPORT int DH_up_ref(DH *dh);
 
 
+/* Properties. */
+
+/* DH_get0_key sets |*out_pub_key| and |*out_priv_key|, if non-NULL, to |dh|'s
+ * public and private key, respectively. If |dh| is a public key, the private
+ * key will be set to NULL. */
+OPENSSL_EXPORT void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
+                                const BIGNUM **out_priv_key);
+
+/* DH_get0_pqg sets |*out_p|, |*out_q|, and |*out_g|, if non-NULL, to |dh|'s p,
+ * q, and g parameters, respectively. */
+OPENSSL_EXPORT void DH_get0_pqg(const DH *dh, const BIGNUM **out_p,
+                                const BIGNUM **out_q, const BIGNUM **out_g);
+
+
 /* Standard parameters.
  *
  * These functions return new DH objects with standard parameters. They return

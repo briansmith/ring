@@ -115,6 +115,29 @@ void DH_free(DH *dh) {
   OPENSSL_free(dh);
 }
 
+void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
+                 const BIGNUM **out_priv_key) {
+  if (out_pub_key != NULL) {
+    *out_pub_key = dh->pub_key;
+  }
+  if (out_priv_key != NULL) {
+    *out_priv_key = dh->priv_key;
+  }
+}
+
+void DH_get0_pqg(const DH *dh, const BIGNUM **out_p, const BIGNUM **out_q,
+                 const BIGNUM **out_g) {
+  if (out_p != NULL) {
+    *out_p = dh->p;
+  }
+  if (out_q != NULL) {
+    *out_q = dh->q;
+  }
+  if (out_g != NULL) {
+    *out_g = dh->g;
+  }
+}
+
 int DH_generate_parameters_ex(DH *dh, int prime_bits, int generator, BN_GENCB *cb) {
   /* We generate DH parameters as follows
    * find a prime q which is prime_bits/2 bits long.
