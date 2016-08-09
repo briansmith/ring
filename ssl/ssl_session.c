@@ -801,7 +801,6 @@ int SSL_set_session(SSL *ssl, SSL_SESSION *session) {
   ssl->session = session;
   if (session != NULL) {
     SSL_SESSION_up_ref(session);
-    ssl->verify_result = session->verify_result;
   }
 
   return 1;

@@ -285,7 +285,8 @@ void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg), void *arg) {
   c->cert_cb_arg = arg;
 }
 
-int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain) {
+int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
+                          STACK_OF(X509) *cert_chain) {
   if (cert_chain == NULL || sk_X509_num(cert_chain) == 0) {
     return 0;
   }
@@ -326,17 +327,15 @@ int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain) {
     verify_ret = X509_verify_cert(&ctx);
   }
 
-  ssl->verify_result = ctx.error;
-
   /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
   if (verify_ret <= 0 && ssl->verify_mode != SSL_VERIFY_NONE) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL,
-                    ssl_verify_alarm_type(ssl->verify_result));
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, ssl_verify_alarm_type(ctx.error));
     OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
     goto err;
   }
 
   ERR_clear_error();
+  *out_verify_result = ctx.error;
   ret = 1;
 
 err:

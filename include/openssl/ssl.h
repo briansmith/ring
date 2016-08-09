@@ -3669,9 +3669,9 @@ struct ssl_session_st {
    * |peer|, but when a server it does not. */
   STACK_OF(X509) *cert_chain;
 
-  /* when app_verify_callback accepts a session where the peer's certificate is
-   * not ok, we must remember the error for session reuse: */
-  long verify_result; /* only for servers */
+  /* verify_result is the result of certificate verification in the case of
+   * non-fatal certificate errors. */
+  long verify_result;
 
   long timeout;
   long time;
@@ -4131,7 +4131,6 @@ struct ssl_st {
   SSL_CTX *ctx;
 
   /* extra application data */
-  long verify_result;
   CRYPTO_EX_DATA ex_data;
 
   /* for server side, keep the list of CA_dn we can use */

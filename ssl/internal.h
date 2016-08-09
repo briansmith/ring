@@ -1301,7 +1301,8 @@ int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509);
 void ssl_cert_set_cert_cb(CERT *cert,
                           int (*cb)(SSL *ssl, void *arg), void *arg);
 
-int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain);
+int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
+                          STACK_OF(X509) * cert_chain);
 void ssl_update_cache(SSL *ssl, int mode);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and

@@ -712,7 +712,6 @@ static int ssl3_get_client_hello(SSL *ssl) {
       /* Use the old session. */
       ssl->session = session;
       session = NULL;
-      ssl->verify_result = ssl->session->verify_result;
       ssl->s3->session_reused = 1;
     } else {
       SSL_set_session(ssl, NULL);
@@ -813,7 +812,6 @@ static int ssl3_get_client_hello(SSL *ssl) {
     if (!ssl->s3->tmp.cert_request) {
       /* OpenSSL returns X509_V_OK when no certificates are requested. This is
        * classed by them as a bug, but it's assumed by at least NGINX. */
-      ssl->verify_result = X509_V_OK;
       ssl->s3->new_session->verify_result = X509_V_OK;
     }
   }
@@ -1261,7 +1259,6 @@ static int ssl3_get_client_certificate(SSL *ssl) {
 
       /* OpenSSL returns X509_V_OK when no certificates are received. This is
        * classed by them as a bug, but it's assumed by at least NGINX. */
-      ssl->verify_result = X509_V_OK;
       ssl->s3->new_session->verify_result = X509_V_OK;
       ssl->s3->tmp.reuse_message = 1;
       return 1;
@@ -1312,21 +1309,21 @@ static int ssl3_get_client_certificate(SSL *ssl) {
 
     /* OpenSSL returns X509_V_OK when no certificates are received. This is
      * classed by them as a bug, but it's assumed by at least NGINX. */
-    ssl->verify_result = X509_V_OK;
+    ssl->s3->new_session->verify_result = X509_V_OK;
   } else {
     /* The hash would have been filled in. */
     if (ssl->ctx->retain_only_sha256_of_client_certs) {
       ssl->s3->new_session->peer_sha256_valid = 1;
     }
 
-    if (!ssl_verify_cert_chain(ssl, chain)) {
+    if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
+                               chain)) {
       goto err;
     }
   }
 
   X509_free(ssl->s3->new_session->peer);
   ssl->s3->new_session->peer = sk_X509_shift(chain);
-  ssl->s3->new_session->verify_result = ssl->verify_result;
 
   sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
   ssl->s3->new_session->cert_chain = chain;

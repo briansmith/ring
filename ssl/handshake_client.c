@@ -1101,11 +1101,11 @@ f_err:
 }
 
 static int ssl3_verify_server_cert(SSL *ssl) {
-  if (!ssl_verify_cert_chain(ssl, ssl->s3->new_session->cert_chain)) {
+  if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
+                             ssl->s3->new_session->cert_chain)) {
     return -1;
   }
 
-  ssl->s3->new_session->verify_result = ssl->verify_result;
   return 1;
 }
 

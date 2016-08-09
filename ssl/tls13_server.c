@@ -165,7 +165,6 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     ssl->s3->session_reused = 1;
-    ssl->verify_result = session->verify_result;
     SSL_SESSION_free(session);
   }
 
@@ -492,7 +491,6 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
   if (!ssl->s3->tmp.cert_request) {
     /* OpenSSL returns X509_V_OK when no certificates are requested. This is
      * classed by them as a bug, but it's assumed by at least NGINX. */
-    ssl->verify_result = X509_V_OK;
     ssl->s3->new_session->verify_result = X509_V_OK;
 
     /* Skip this state. */
