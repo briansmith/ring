@@ -893,25 +893,11 @@ static int ext_ri_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 1;
   }
 
-  CBS fake_contents;
-  static const uint8_t kFakeExtension[] = {0};
-
   if (contents == NULL) {
-    if (ssl->s3->send_connection_binding) {
-      /* The renegotiation SCSV was received so pretend that we received a
-       * renegotiation extension. */
-      CBS_init(&fake_contents, kFakeExtension, sizeof(kFakeExtension));
-      contents = &fake_contents;
-      /* We require that the renegotiation extension is at index zero of
-       * kExtensions. */
-      ssl->s3->tmp.extensions.received |= (1u << 0);
-    } else {
-      return 1;
-    }
+    return 1;
   }
 
   CBS renegotiated_connection;
-
   if (!CBS_get_u8_length_prefixed(contents, &renegotiated_connection) ||
       CBS_len(contents) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_ENCODING_ERR);
@@ -2236,9 +2222,6 @@ static int ext_supported_groups_add_serverhello(SSL *ssl, CBB *out) {
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
-    /* The renegotiation extension must always be at index zero because the
-     * |received| and |sent| bitsets need to be tweaked when the "extension" is
-     * sent as an SCSV. */
     TLSEXT_TYPE_renegotiate,
     NULL,
     ext_ri_add_clienthello,
@@ -2513,8 +2496,7 @@ err:
 static int ssl_scan_clienthello_tlsext(
     SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
     int *out_alert) {
-  size_t i;
-  for (i = 0; i < kNumExtensions; i++) {
+  for (size_t i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
       kExtensions[i].init(ssl);
     }
@@ -2522,10 +2504,6 @@ static int ssl_scan_clienthello_tlsext(
 
   ssl->s3->tmp.extensions.received = 0;
   ssl->s3->tmp.custom_extensions.received = 0;
-  /* The renegotiation extension must always be at index zero because the
-   * |received| and |sent| bitsets need to be tweaked when the "extension" is
-   * sent as an SCSV. */
-  assert(kExtensions[0].value == TLSEXT_TYPE_renegotiate);
 
   CBS extensions;
   CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
@@ -2568,17 +2546,32 @@ static int ssl_scan_clienthello_tlsext(
     }
   }
 
-  for (i = 0; i < kNumExtensions; i++) {
-    if (!(ssl->s3->tmp.extensions.received & (1u << i))) {
-      /* Extension wasn't observed so call the callback with a NULL
-       * parameter. */
-      uint8_t alert = SSL_AD_DECODE_ERROR;
-      if (!kExtensions[i].parse_clienthello(ssl, &alert, NULL)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
-        ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
-        *out_alert = alert;
-        return 0;
-      }
+  for (size_t i = 0; i < kNumExtensions; i++) {
+    if (ssl->s3->tmp.extensions.received & (1u << i)) {
+      continue;
+    }
+
+    CBS *contents = NULL, fake_contents;
+    static const uint8_t kFakeRenegotiateExtension[] = {0};
+    if (kExtensions[i].value == TLSEXT_TYPE_renegotiate &&
+        ssl_client_cipher_list_contains_cipher(client_hello,
+                                               SSL3_CK_SCSV & 0xffff)) {
+      /* The renegotiation SCSV was received so pretend that we received a
+       * renegotiation extension. */
+      CBS_init(&fake_contents, kFakeRenegotiateExtension,
+               sizeof(kFakeRenegotiateExtension));
+      contents = &fake_contents;
+      ssl->s3->tmp.extensions.received |= (1u << i);
+    }
+
+    /* Extension wasn't observed so call the callback with a NULL
+     * parameter. */
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    if (!kExtensions[i].parse_clienthello(ssl, &alert, contents)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
+      ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+      *out_alert = alert;
+      return 0;
     }
   }
 
@@ -2640,8 +2633,10 @@ static int ssl_scan_serverhello_tlsext(SSL *ssl, CBS *cbs, int *out_alert) {
       continue;
     }
 
-    if (!(ssl->s3->tmp.extensions.sent & (1u << ext_index))) {
-      /* If the extension was never sent then it is illegal. */
+    if (!(ssl->s3->tmp.extensions.sent & (1u << ext_index)) &&
+        type != TLSEXT_TYPE_renegotiate) {
+      /* If the extension was never sent then it is illegal, except for the
+       * renegotiation extension which, in SSL 3.0, is signaled via SCSV. */
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
       ERR_add_error_dataf("extension :%u", (unsigned)type);
       *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;

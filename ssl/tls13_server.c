@@ -166,14 +166,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     }
   }
 
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
-
-  STACK_OF(SSL_CIPHER) *ciphers =
-      ssl_parse_client_cipher_list(ssl, &client_hello, max_version);
+  STACK_OF(SSL_CIPHER) *ciphers = ssl_parse_client_cipher_list(&client_hello);
   if (ciphers == NULL) {
     return ssl_hs_error;
   }

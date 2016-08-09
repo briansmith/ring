@@ -621,8 +621,6 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     if (!CBB_add_u16(&child, SSL3_CK_SCSV & 0xffff)) {
       return 0;
     }
-    /* The renegotiation extension is required to be at index zero. */
-    ssl->s3->tmp.extensions.sent |= (1u << 0);
   }
 
   if ((ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) ||

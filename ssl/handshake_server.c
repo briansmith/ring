@@ -530,6 +530,26 @@ end:
   return ret;
 }
 
+int ssl_client_cipher_list_contains_cipher(
+    const struct ssl_early_callback_ctx *client_hello, uint16_t id) {
+  CBS cipher_suites;
+  CBS_init(&cipher_suites, client_hello->cipher_suites,
+           client_hello->cipher_suites_len);
+
+  while (CBS_len(&cipher_suites) > 0) {
+    uint16_t got_id;
+    if (!CBS_get_u16(&cipher_suites, &got_id)) {
+      return 0;
+    }
+
+    if (got_id == id) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 static int ssl3_get_client_hello(SSL *ssl) {
   int al = SSL_AD_INTERNAL_ERROR, ret = -1;
   const SSL_CIPHER *c;
@@ -600,11 +620,22 @@ static int ssl3_get_client_hello(SSL *ssl) {
     if (version > max_version) {
       version = max_version;
     }
+
     if (version < min_version) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
       al = SSL_AD_PROTOCOL_VERSION;
       goto f_err;
     }
+
+    /* Handle FALLBACK_SCSV. */
+    if (ssl_client_cipher_list_contains_cipher(
+            &client_hello, SSL3_CK_FALLBACK_SCSV & 0xffff) &&
+        version < max_version) {
+      al = SSL3_AD_INAPPROPRIATE_FALLBACK;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INAPPROPRIATE_FALLBACK);
+      goto f_err;
+    }
+
     ssl->version = ssl->method->version_to_wire(version);
     ssl->s3->enc_method = ssl3_get_enc_method(version);
     assert(ssl->s3->enc_method != NULL);
@@ -698,7 +729,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
     goto f_err;
   }
 
-  ciphers = ssl_parse_client_cipher_list(ssl, &client_hello, max_version);
+  ciphers = ssl_parse_client_cipher_list(&client_hello);
   if (ciphers == NULL) {
     goto err;
   }

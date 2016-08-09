@@ -967,9 +967,10 @@ int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
                                      CBS *out, uint16_t extension_type);
 
 STACK_OF(SSL_CIPHER) *
-    ssl_parse_client_cipher_list(SSL *ssl,
-                                 const struct ssl_early_callback_ctx *ctx,
-                                 uint16_t max_version);
+    ssl_parse_client_cipher_list(const struct ssl_early_callback_ctx *ctx);
+
+int ssl_client_cipher_list_contains_cipher(
+    const struct ssl_early_callback_ctx *client_hello, uint16_t id);
 
 
 /* Underdocumented functions.
