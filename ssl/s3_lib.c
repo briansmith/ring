@@ -248,8 +248,8 @@ struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl) {
 }
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
-    struct ssl_cipher_preference_list_st *server_pref) {
+    SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
+    const struct ssl_cipher_preference_list_st *server_pref) {
   const SSL_CIPHER *c, *ret = NULL;
   STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
   size_t i;
@@ -264,6 +264,11 @@ const SSL_CIPHER *ssl3_choose_cipher(
   /* group_min contains the minimal index so far found in a group, or -1 if no
    * such value exists yet. */
   int group_min = -1;
+
+  STACK_OF(SSL_CIPHER) *clnt = ssl_parse_client_cipher_list(client_hello);
+  if (clnt == NULL) {
+    return NULL;
+  }
 
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = srvr;
@@ -317,6 +322,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
     }
   }
 
+  sk_SSL_CIPHER_free(clnt);
   return ret;
 }
 

@@ -1306,8 +1306,8 @@ int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
-    struct ssl_cipher_preference_list_st *srvr);
+    SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
+    const struct ssl_cipher_preference_list_st *srvr);
 
 int ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);

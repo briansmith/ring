@@ -553,7 +553,6 @@ int ssl_client_cipher_list_contains_cipher(
 static int ssl3_get_client_hello(SSL *ssl) {
   int al = SSL_AD_INTERNAL_ERROR, ret = -1;
   const SSL_CIPHER *c;
-  STACK_OF(SSL_CIPHER) *ciphers = NULL;
   SSL_SESSION *session = NULL;
 
   if (ssl->state == SSL3_ST_SR_CLNT_HELLO_A) {
@@ -729,32 +728,13 @@ static int ssl3_get_client_hello(SSL *ssl) {
     goto f_err;
   }
 
-  ciphers = ssl_parse_client_cipher_list(&client_hello);
-  if (ciphers == NULL) {
-    goto err;
-  }
-
   /* If it is a hit, check that the cipher is in the list. */
-  if (ssl->session != NULL) {
-    size_t j;
-    int found_cipher = 0;
-    uint32_t id = ssl->session->cipher->id;
-
-    for (j = 0; j < sk_SSL_CIPHER_num(ciphers); j++) {
-      c = sk_SSL_CIPHER_value(ciphers, j);
-      if (c->id == id) {
-        found_cipher = 1;
-        break;
-      }
-    }
-
-    if (!found_cipher) {
-      /* we need to have the cipher in the cipher list if we are asked to reuse
-       * it */
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_REQUIRED_CIPHER_MISSING);
-      goto f_err;
-    }
+  if (ssl->session != NULL &&
+      !ssl_client_cipher_list_contains_cipher(
+          &client_hello, (uint16_t)ssl->session->cipher->id)) {
+    al = SSL_AD_ILLEGAL_PARAMETER;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_REQUIRED_CIPHER_MISSING);
+    goto f_err;
   }
 
   /* Only null compression is supported. */
@@ -792,13 +772,14 @@ static int ssl3_get_client_hello(SSL *ssl) {
         goto err;
       }
     }
-    c = ssl3_choose_cipher(ssl, ciphers, ssl_get_cipher_preferences(ssl));
 
+    c = ssl3_choose_cipher(ssl, &client_hello, ssl_get_cipher_preferences(ssl));
     if (c == NULL) {
       al = SSL_AD_HANDSHAKE_FAILURE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
       goto f_err;
     }
+
     ssl->s3->new_session->cipher = c;
     ssl->s3->tmp.new_cipher = c;
 
@@ -837,7 +818,6 @@ static int ssl3_get_client_hello(SSL *ssl) {
   }
 
 err:
-  sk_SSL_CIPHER_free(ciphers);
   SSL_SESSION_free(session);
   return ret;
 }
