@@ -454,14 +454,14 @@ static int add_decimal(CBB *out, uint64_t v) {
 }
 
 int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
-                int dont_return_name) {
+                int always_return_oid) {
   /* Python depends on the empty OID successfully encoding as the empty
    * string. */
   if (obj == NULL || obj->length == 0) {
     return strlcpy_int(out, "", out_len);
   }
 
-  if (!dont_return_name) {
+  if (!always_return_oid) {
     int nid = OBJ_obj2nid(obj);
     if (nid != NID_undef) {
       const char *name = OBJ_nid2ln(nid);

@@ -95,7 +95,7 @@ static bool TestSignatureAlgorithms() {
 }
 
 static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
-                          bool dont_return_name, const char *expected) {
+                          bool always_return_oid, const char *expected) {
   ASN1_OBJECT obj;
   memset(&obj, 0, sizeof(obj));
   obj.data = der;
@@ -103,7 +103,7 @@ static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
 
   int expected_len = static_cast<int>(strlen(expected));
 
-  int len = OBJ_obj2txt(nullptr, 0, &obj, dont_return_name);
+  int len = OBJ_obj2txt(nullptr, 0, &obj, always_return_oid);
   if (len != expected_len) {
     fprintf(stderr,
             "OBJ_obj2txt of %s with out_len = 0 returned %d, wanted %d.\n",
@@ -113,7 +113,7 @@ static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
 
   char short_buf[1];
   memset(short_buf, 0xff, sizeof(short_buf));
-  len = OBJ_obj2txt(short_buf, sizeof(short_buf), &obj, dont_return_name);
+  len = OBJ_obj2txt(short_buf, sizeof(short_buf), &obj, always_return_oid);
   if (len != expected_len) {
     fprintf(stderr,
             "OBJ_obj2txt of %s with out_len = 1 returned %d, wanted %d.\n",
@@ -130,7 +130,7 @@ static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
   }
 
   char buf[256];
-  len = OBJ_obj2txt(buf, sizeof(buf), &obj, dont_return_name);
+  len = OBJ_obj2txt(buf, sizeof(buf), &obj, always_return_oid);
   if (len != expected_len) {
     fprintf(stderr,
             "OBJ_obj2txt of %s with out_len = 256 returned %d, wanted %d.\n",
