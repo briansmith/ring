@@ -117,7 +117,6 @@
 
 #include "../internal.h"
 
-
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom, RAND *rng) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
@@ -177,61 +176,23 @@ err:
   return (ret);
 }
 
-int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
-                     const BIGNUM *max_exclusive, RAND *rng) {
-  unsigned n;
-  unsigned count = 100;
+int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
 
-  if (BN_cmp_word(max_exclusive, min_inclusive) <= 0) {
+  if (BN_cmp_word(max_exclusive, 1) <= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
   }
 
-  n = BN_num_bits(max_exclusive); /* n > 0 */
-
-  /* BN_is_bit_set(range, n - 1) always holds */
-  if (n == 1) {
-    BN_zero(r);
-    return 1;
+  if (bn_wexpand(r, max_exclusive->top) == NULL) {
+    return 0;
   }
 
-  do {
-    if (!--count) {
-      OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
-      return 0;
-    }
+  if (!GFp_rand_mod(r->d, max_exclusive->d, max_exclusive->top, rng)) {
+    return 0;
+  }
 
-    if (!BN_is_bit_set(max_exclusive, n - 2) &&
-        !BN_is_bit_set(max_exclusive, n - 3)) {
-      /* range = 100..._2, so 3*range (= 11..._2) is exactly one bit longer
-       * than range. This is a common scenario when generating a random value
-       * modulo an RSA public modulus, e.g. for RSA base blinding. */
-      if (!BN_rand(r, n + 1, -1 /* don't set most significant bits */,
-                   0 /* don't set least significant bits */, rng)) {
-        return 0;
-      }
-
-      /* If r < 3*range, use r := r MOD range (which is either r, r - range, or
-       * r - 2*range). Otherwise, iterate again. Since 3*range = 11..._2, each
-       * iteration succeeds with probability >= .75. */
-      if (BN_cmp(r, max_exclusive) >= 0) {
-        if (!BN_sub(r, r, max_exclusive)) {
-          return 0;
-        }
-        if (BN_cmp(r, max_exclusive) >= 0) {
-          if (!BN_sub(r, r, max_exclusive)) {
-            return 0;
-          }
-        }
-      }
-    } else {
-      /* range = 11..._2  or  range = 101..._2 */
-      if (!BN_rand(r, n, -1, 0, rng)) {
-        return 0;
-      }
-    }
-  } while (BN_cmp_word(r, min_inclusive) < 0 ||
-           BN_cmp(r, max_exclusive) >= 0);
+  r->top = max_exclusive->top;
+  bn_correct_top(r);
 
   return 1;
 }

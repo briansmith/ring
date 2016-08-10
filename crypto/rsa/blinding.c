@@ -223,7 +223,7 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng,
   int retry_counter = 32;
 
   do {
-    if (!BN_rand_range_ex(b->A, 1, &rsa->mont_n->N, rng)) {
+    if (!BN_rand_range_ex(b->A, &rsa->mont_n->N, rng)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
