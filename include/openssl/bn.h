@@ -394,7 +394,7 @@ OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                                     const BIGNUM *m);
 
 
-/* Random and prime number generation. */
+/* Random generation. */
 
 /* BN_rand sets |rnd| to a random number of length |bits|. If |top| is zero, the
  * most-significant bit, if any, will be set. If |top| is one, the two most
@@ -408,11 +408,14 @@ OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom,
                            RAND *rng);
 
+extern int GFp_rand_mod(BN_ULONG *dest, const BN_ULONG *max_exclusive,
+                        size_t num_limbs, RAND *rand);
+
 /* BN_rand_range_ex sets |rnd| to a random value in
- * [min_inclusive..max_exclusive). It returns one on success and zero
+ * [1..max_exclusive). It returns one on success and zero
  * otherwise. */
-OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
-                                    const BIGNUM *max_exclusive, RAND *rng);
+OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive,
+                                    RAND *rng);
 
 
 /* Number theory functions */

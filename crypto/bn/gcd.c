@@ -294,7 +294,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   BIGNUM blinding_factor;
   BN_init(&blinding_factor);
 
-  if (!BN_rand_range_ex(&blinding_factor, 1, &mont->N, rng) ||
+  if (!BN_rand_range_ex(&blinding_factor, &mont->N, rng) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
       !BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {

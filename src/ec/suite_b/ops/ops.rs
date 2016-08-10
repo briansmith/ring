@@ -18,6 +18,8 @@ use {c, der, error};
 use core;
 use untrusted;
 
+pub use limb::*;
+
 /// Field elements. Field elements are always Montgomery-encoded and always
 /// fully reduced mod q; i.e. their range is [0, q).
 pub struct Elem {
@@ -98,12 +100,6 @@ impl Clone for Point {
 impl Copy for Point {
 }
 
-// XXX: Not correct for x32 ABIs.
-#[cfg(target_pointer_width = "64")] pub type Limb = u64;
-#[cfg(target_pointer_width = "32")] pub type Limb = u32;
-#[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
-#[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
-
 #[cfg(all(target_pointer_width = "32", target_endian = "little"))]
 macro_rules! limbs {
     ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
@@ -129,7 +125,6 @@ macro_rules! limbs {
     }
 }
 
-pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
 
 static ONE: ElemDecoded = ElemDecoded {
@@ -215,11 +210,9 @@ impl CommonOps {
 
     pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced)
                                    -> Result<(), error::Unspecified> {
-        match unsafe {
-            GFp_constant_time_limbs_are_zero(a.limbs.as_ptr(), self.num_limbs)
-        } {
-            0 => Ok(()),
-            _ => Err(error::Unspecified),
+        match limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) {
+            false => Ok(()),
+            true => Err(error::Unspecified),
         }
     }
 
@@ -562,8 +555,6 @@ pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
 
 
 extern {
-    fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
-                                        -> Limb;
     fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
                                            num_limbs: c::size_t);
 }
