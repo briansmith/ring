@@ -54,7 +54,6 @@
 
 #include <openssl/bn.h>
 
-#include "internal.h"
 #include "../bn/internal.h"
 
 
@@ -166,58 +165,6 @@ static const BN_ULONG dh2048_256_q[] = {
     TOBN(0xB4479976, 0x40129DA2), TOBN(0x8CF83642, 0xA709A097),
 };
 
-/* dh1024_safe_prime_1 is hard-coded in Apache httpd 2.2,
- * modules/ssl/ssl_engine_dh.c. */
-static const BN_ULONG dh1024_safe_prime_1[] = {
-    TOBN(0xE7393E0F, 0x24218EB3), TOBN(0x7DE0F4D6, 0xE2BD68B0),
-    TOBN(0x07DD62DB, 0x88AEAA74), TOBN(0x10EA9FCC, 0x9DDD3305),
-    TOBN(0xA7DBCA78, 0x74087D15), TOBN(0xDAE88600, 0x78045B07),
-    TOBN(0x33168A46, 0x1AAD3B72), TOBN(0xFF590137, 0x7BEDDCFD),
-    TOBN(0xFE324A46, 0x7A635E81), TOBN(0x5AC179BA, 0x420B2A29),
-    TOBN(0x13B4B4D7, 0x177E16D5), TOBN(0x849F912E, 0x639C72FB),
-    TOBN(0xB88174CB, 0x98BCE951), TOBN(0x0C84D239, 0xA45F520B),
-    TOBN(0x36D693D3, 0x4AFD0AD5), TOBN(0xD67DE440, 0xCBBBDC19),
-};
-
-/* dh1024_safe_prime_2 is hard-coded in nginx,
- * src/event/ngx_event_openssl.c. */
-static const BN_ULONG dh1024_safe_prime_2[] = {
-    TOBN(0x071DF045, 0xCFE16B9B), TOBN(0x88D0F65D, 0x146757DA),
-    TOBN(0x4A63AB1E, 0x58FAFD49), TOBN(0x35D8CECE, 0xEF9EA027),
-    TOBN(0x25ECE662, 0x70CC9A50), TOBN(0xF29BA5DF, 0x81DC2CA7),
-    TOBN(0x8F68B076, 0xF7D36CC8), TOBN(0x60E91A92, 0xA757E304),
-    TOBN(0x87A2BC04, 0x9BE67780), TOBN(0xBEECA565, 0xA5FDF1D2),
-    TOBN(0x5CCBBAA8, 0x922614C5), TOBN(0x6C030276, 0xE710800C),
-    TOBN(0x08EED4EB, 0x0FB3504C), TOBN(0xD958A3F5, 0x68B42D4B),
-    TOBN(0x7C43FCF5, 0x80E9CFDB), TOBN(0xBBBC2DCA, 0xD8467490),
-};
-
-/* dh1024_safe_prime_3 is offered as a parameter by several high-traffic sites,
- * including mozilla.org, as of Jan 2015. */
-static const BN_ULONG dh1024_safe_prime_3[] = {
-    TOBN(0x671746AE, 0x349E721B), TOBN(0x258A0655, 0xD75E93B2),
-    TOBN(0xD425E6FB, 0x25592EB6), TOBN(0x0C46AB04, 0xBF7CDD9A),
-    TOBN(0x0AD0BC99, 0x28968680), TOBN(0xF53907FB, 0xD0B7EB49),
-    TOBN(0x202EABB3, 0xEBC85C1D), TOBN(0x3129C693, 0x364D8C71),
-    TOBN(0x53728351, 0x2D46F195), TOBN(0xDF326DD6, 0x8C76CC85),
-    TOBN(0xF898B3F9, 0x9188E24E), TOBN(0x95EFB13C, 0x2855DFD2),
-    TOBN(0x1F5DAC48, 0x7B2241FE), TOBN(0x117B6BF7, 0x99A13D9F),
-    TOBN(0x0F97CDDA, 0x3A3468C7), TOBN(0xC9BBF5F7, 0x74A8297B)};
-
-/* dh1024_safe_prime_4 is hard-coded in Apache httpd 2.0,
- * modules/ssl/ssl_engine_dh.c. */
-static const BN_ULONG dh1024_safe_prime_4[] = {
-    TOBN(0x5085E21F, 0x0DD5C86B), TOBN(0x871538DF, 0xD823C650),
-    TOBN(0x125136F7, 0x262E56A8), TOBN(0x974E9EF1, 0x839EB5DB),
-    TOBN(0xEA9BAD99, 0x1B13A63C), TOBN(0x6044CF02, 0x3D76E05E),
-    TOBN(0x611EBBBE, 0x1BAC9B5C), TOBN(0x3E371D79, 0x4E5327DF),
-    TOBN(0x000E6EDD, 0x061CBC05), TOBN(0x2F971F3C, 0x20129B48),
-    TOBN(0xA6EF09C4, 0x3048D5A2), TOBN(0xFA15A259, 0xCBD523A6),
-    TOBN(0x2A206490, 0x4A79A770), TOBN(0x91B78182, 0x51BB055E),
-    TOBN(0x7CF180C3, 0xBDD4798E), TOBN(0xE6969D3D, 0x495BE32C)};
-
-static const BN_ULONG bn_two_data[] = {2};
-
 struct standard_parameters {
   BIGNUM p, q, g;
 };
@@ -239,15 +186,6 @@ static const struct standard_parameters dh2048_256 = {
   STATIC_BIGNUM(dh2048_256_q),
   STATIC_BIGNUM(dh2048_256_g),
 };
-
-static const BIGNUM dh1024_safe_prime[] = {
-  STATIC_BIGNUM(dh1024_safe_prime_1),
-  STATIC_BIGNUM(dh1024_safe_prime_2),
-  STATIC_BIGNUM(dh1024_safe_prime_3),
-  STATIC_BIGNUM(dh1024_safe_prime_4)
-};
-
-static const BIGNUM bn_two = STATIC_BIGNUM(bn_two_data);
 
 static DH *get_standard_parameters(const struct standard_parameters *params,
                                    const ENGINE *engine) {
@@ -312,25 +250,4 @@ BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret) {
   }
 
   return ret;
-}
-
-void DH_check_standard_parameters(DH *dh) {
-  unsigned i;
-
-  if (dh->p == NULL ||
-      dh->g == NULL ||
-      BN_num_bytes(dh->p) != (1024 / 8) ||
-      BN_cmp(dh->g, &bn_two) != 0) {
-    return;
-  }
-
-  for (i = 0; i < sizeof(dh1024_safe_prime) / sizeof(dh1024_safe_prime[0]);
-       i++) {
-    if (BN_cmp(dh->p, &dh1024_safe_prime[i]) == 0) {
-      /* The well-known DH groups are known to have safe primes. In this case
-       * we can safely reduce the size of the private key. */
-      dh->priv_length = 161;
-      break;
-    }
-  }
 }

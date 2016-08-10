@@ -67,7 +67,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../test/scoped_types.h"
 
 namespace bssl {

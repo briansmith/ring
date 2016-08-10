@@ -58,8 +58,6 @@
 
 #include <openssl/bn.h>
 
-#include "internal.h"
-
 
 int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *ret) {
   *ret = 0;

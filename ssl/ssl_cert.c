@@ -127,7 +127,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "../crypto/dh/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 

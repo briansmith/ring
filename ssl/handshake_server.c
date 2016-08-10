@@ -169,7 +169,6 @@
 
 #include "internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/dh/internal.h"
 
 
 static int ssl3_get_client_hello(SSL *ssl);

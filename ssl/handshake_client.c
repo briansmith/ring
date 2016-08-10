@@ -167,7 +167,6 @@
 #include <openssl/x509v3.h>
 
 #include "internal.h"
-#include "../crypto/dh/internal.h"
 
 
 static int ssl3_send_client_hello(SSL *ssl);
