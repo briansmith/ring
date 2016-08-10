@@ -2269,6 +2269,11 @@ func addCipherSuiteTests() {
 			// CECPQ1 ciphers must be explicitly enabled.
 			flags = append(flags, "-cipher", "DEFAULT:kCECPQ1")
 		}
+		if hasComponent(suite.name, "ECDHE-PSK") && hasComponent(suite.name, "GCM") {
+			// ECDHE_PSK AES_GCM ciphers must be explicitly enabled
+			// for now.
+			flags = append(flags, "-cipher", suite.name)
+		}
 
 		for _, ver := range tlsVersions {
 			for _, protocol := range []protocol{tls, dtls} {

@@ -1136,13 +1136,22 @@ static void ssl_cipher_apply_rule(
       if (strength_bits != SSL_CIPHER_get_bits(cp, NULL)) {
         continue;
       }
-    } else if (!(alg_mkey & cp->algorithm_mkey) ||
-               !(alg_auth & cp->algorithm_auth) ||
-               !(alg_enc & cp->algorithm_enc) ||
-               !(alg_mac & cp->algorithm_mac) ||
-               (min_version != 0 &&
-                SSL_CIPHER_get_min_version(cp) != min_version)) {
-      continue;
+    } else {
+      if (!(alg_mkey & cp->algorithm_mkey) ||
+          !(alg_auth & cp->algorithm_auth) ||
+          !(alg_enc & cp->algorithm_enc) ||
+          !(alg_mac & cp->algorithm_mac) ||
+          (min_version != 0 && SSL_CIPHER_get_min_version(cp) != min_version)) {
+        continue;
+      }
+
+      /* The following ciphers are internal implementation details of TLS 1.3
+       * resumption but are not yet finalized. Disable them by default until
+       * then. */
+      if (cp->id == TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256 ||
+          cp->id == TLS1_CK_ECDHE_PSK_WITH_AES_256_GCM_SHA384) {
+        continue;
+      }
     }
 
     /* add the cipher if it has not been added yet. */
