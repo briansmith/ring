@@ -20,15 +20,15 @@
 #include <utility>
 #include <vector>
 
-#include <openssl/bytestring.h>
+#include <openssl/c++/bytestring.h>
+#include <openssl/c++/digest.h>
 #include <openssl/crypto.h>
-#include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
 #include <openssl/rsa.h>
 
 #include "../test/scoped_types.h"
 
+namespace bssl {
 
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
 // should never use this key anywhere but in an example.
@@ -671,7 +671,7 @@ static bool Testd2i_PrivateKey(void) {
   return true;
 }
 
-int main(void) {
+static int Main(void) {
   CRYPTO_library_init();
 
   if (!TestEVP_DigestSignInit()) {
@@ -718,4 +718,10 @@ int main(void) {
 
   printf("PASS\n");
   return 0;
+}
+
+}  // namespace bssl
+
+int main() {
+  return bssl::Main();
 }

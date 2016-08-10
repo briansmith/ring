@@ -17,7 +17,7 @@
 
 #include <vector>
 
-#include <openssl/bytestring.h>
+#include <openssl/c++/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
@@ -25,6 +25,7 @@
 
 #include "../test/scoped_types.h"
 
+namespace bssl {
 
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field
 // omitted.
@@ -471,7 +472,7 @@ static bool ForEachCurve(bool (*test_func)(int nid)) {
   return true;
 }
 
-int main(void) {
+static int Main() {
   CRYPTO_library_init();
 
   if (!Testd2i_ECPrivateKey() ||
@@ -486,4 +487,10 @@ int main(void) {
 
   printf("PASS\n");
   return 0;
+}
+
+}  // namespace bssl
+
+int main() {
+  return bssl::Main();
 }

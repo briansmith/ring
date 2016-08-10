@@ -43,6 +43,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/bio.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
+#include <openssl/c++/digest.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -61,6 +62,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "scoped_types.h"
 #include "test_config.h"
 
+namespace bssl {
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
@@ -1634,7 +1636,7 @@ class StderrDelimiter {
   ~StderrDelimiter() { fprintf(stderr, "--- DONE ---\n"); }
 };
 
-int main(int argc, char **argv) {
+static int Main(int argc, char **argv) {
   // To distinguish ASan's output from ours, add a trailing message to stderr.
   // Anything following this line will be considered an error.
   StderrDelimiter delimiter;
@@ -1689,4 +1691,10 @@ int main(int argc, char **argv) {
   }
 
   return 0;
+}
+
+}  // namespace bssl
+
+int main(int argc, char **argv) {
+  return bssl::Main(argc, argv);
 }

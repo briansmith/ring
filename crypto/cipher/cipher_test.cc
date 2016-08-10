@@ -57,13 +57,13 @@
 #include <string>
 #include <vector>
 
-#include <openssl/cipher.h>
+#include <openssl/c++/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #include "../test/file_test.h"
-#include "../test/scoped_types.h"
 
+namespace bssl {
 
 static const EVP_CIPHER *GetCipher(const std::string &name) {
   if (name == "DES-CBC") {
@@ -284,7 +284,7 @@ static bool TestCipher(FileTest *t, void *arg) {
   return true;
 }
 
-int main(int argc, char **argv) {
+static int Main(int argc, char **argv) {
   CRYPTO_library_init();
 
   if (argc != 2) {
@@ -293,4 +293,10 @@ int main(int argc, char **argv) {
   }
 
   return FileTestMain(TestCipher, nullptr, argv[1]);
+}
+
+}  // namespace bssl
+
+int main(int argc, char **argv) {
+  return bssl::Main(argc, argv);
 }

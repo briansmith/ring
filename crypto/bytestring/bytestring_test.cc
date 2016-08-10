@@ -22,12 +22,13 @@
 
 #include <vector>
 
+#include <openssl/c++/bytestring.h>
 #include <openssl/crypto.h>
-#include <openssl/bytestring.h>
 
 #include "internal.h"
 #include "../test/scoped_types.h"
 
+namespace bssl {
 
 static bool TestSkip() {
   static const uint8_t kData[] = {1, 2, 3};
@@ -873,7 +874,7 @@ static bool TestStickyError() {
   return true;
 }
 
-int main(void) {
+static int Main() {
   CRYPTO_library_init();
 
   if (!TestSkip() ||
@@ -900,4 +901,10 @@ int main(void) {
 
   printf("PASS\n");
   return 0;
+}
+
+}  // namespace bssl
+
+int main() {
+  return bssl::Main();
 }

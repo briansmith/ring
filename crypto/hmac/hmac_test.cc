@@ -57,16 +57,17 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <openssl/c++/hmac.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
-#include <openssl/hmac.h>
 
 #include "../test/file_test.h"
-#include "../test/scoped_types.h"
 
+namespace bssl {
 
 static const EVP_MD *GetDigest(const std::string &name) {
   if (name == "MD5") {
@@ -157,7 +158,7 @@ static bool TestHMAC(FileTest *t, void *arg) {
   return true;
 }
 
-int main(int argc, char *argv[]) {
+static int Main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
   if (argc != 2) {
@@ -166,4 +167,10 @@ int main(int argc, char *argv[]) {
   }
 
   return FileTestMain(TestHMAC, nullptr, argv[1]);
+}
+
+}  // namespace bssl
+
+int main(int argc, char **argv) {
+  return bssl::Main(argc, argv);
 }

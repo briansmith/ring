@@ -125,15 +125,6 @@ using ScopedX509_STORE_CTX = ScopedOpenSSLType<X509_STORE_CTX, X509_STORE_CTX_fr
 
 using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
-using ScopedCBB = ScopedOpenSSLContext<CBB, void, CBB_zero, CBB_cleanup>;
-using ScopedEVP_CIPHER_CTX = ScopedOpenSSLContext<EVP_CIPHER_CTX, int,
-                                                  EVP_CIPHER_CTX_init,
-                                                  EVP_CIPHER_CTX_cleanup>;
-using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
-                                              EVP_MD_CTX_cleanup>;
-using ScopedHMAC_CTX = ScopedOpenSSLContext<HMAC_CTX, void, HMAC_CTX_init,
-                                            HMAC_CTX_cleanup>;
-
 using ScopedOpenSSLBytes = std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
 using ScopedOpenSSLString = std::unique_ptr<char, OpenSSLFree<char>>;
 
