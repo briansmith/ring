@@ -817,7 +817,10 @@ OPENSSL_EXPORT int SSL_clear_chain_certs(SSL *ssl);
  *
  * On the client, the callback may call |SSL_get0_certificate_types| and
  * |SSL_get_client_CA_list| for information on the server's certificate
- * request. */
+ * request.
+ *
+ * On the server, the callback will be called on non-resumption handshakes,
+ * after extensions have been processed. */
 OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *ctx,
                                         int (*cb)(SSL *ssl, void *arg),
                                         void *arg);

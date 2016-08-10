@@ -101,6 +101,8 @@ struct TestState {
   // operation has been retried.
   unsigned private_key_retries = 0;
   bool got_new_session = false;
+  bool ticket_decrypt_done = false;
+  bool alpn_select_done = false;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
@@ -515,6 +517,13 @@ static int NextProtoSelectCallback(SSL* ssl, uint8_t** out, uint8_t* outlen,
 
 static int AlpnSelectCallback(SSL* ssl, const uint8_t** out, uint8_t* outlen,
                               const uint8_t* in, unsigned inlen, void* arg) {
+  if (GetTestState(ssl)->alpn_select_done) {
+    fprintf(stderr, "AlpnSelectCallback called after completion.\n");
+    exit(1);
+  }
+
+  GetTestState(ssl)->alpn_select_done = true;
+
   const TestConfig *config = GetTestConfig(ssl);
   if (config->decline_alpn) {
     return SSL_TLSEXT_ERR_NOACK;
@@ -627,6 +636,10 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
       abort();
     }
     GetTestState(ssl)->handshake_done = true;
+
+    // Callbacks may be called again on a new handshake.
+    GetTestState(ssl)->ticket_decrypt_done = false;
+    GetTestState(ssl)->alpn_select_done = false;
   }
 }
 
@@ -640,6 +653,15 @@ static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
 static int TicketKeyCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
                              EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
                              int encrypt) {
+  if (!encrypt) {
+    if (GetTestState(ssl)->ticket_decrypt_done) {
+      fprintf(stderr, "TicketKeyCallback called after completion.\n");
+      return -1;
+    }
+
+    GetTestState(ssl)->ticket_decrypt_done = true;
+  }
+
   // This is just test code, so use the all-zeros key.
   static const uint8_t kZeros[16] = {0};
 

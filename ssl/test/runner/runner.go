@@ -4338,6 +4338,25 @@ func addExtensionTests() {
 			resumeSession:     resumeSession,
 		})
 
+		// Test ALPN in async mode as well to ensure that extensions callbacks are only
+		// called once.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ALPNServer-Async-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				NextProtos: []string{"foo", "bar", "baz"},
+			},
+			flags: []string{
+				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+				"-select-alpn", "foo",
+				"-async",
+			},
+			expectedNextProto:     "foo",
+			expectedNextProtoType: alpn,
+			resumeSession:         resumeSession,
+		})
+
 		var emptyString string
 		testCases = append(testCases, testCase{
 			testType: clientTest,
@@ -4500,6 +4519,26 @@ func addExtensionTests() {
 				},
 				flags:         []string{"-use-ticket-callback", "-renew-ticket"},
 				resumeSession: true,
+			})
+
+			// Test that the ticket callback is only called once when everything before
+			// it in the ClientHello is asynchronous. This corrupts the ticket so
+			// certificate selection callbacks run.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "TicketCallback-SingleCall-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						CorruptTicket: true,
+					},
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+				flags: []string{
+					"-use-ticket-callback",
+					"-async",
+				},
 			})
 
 			// Resume with an oversized session id.

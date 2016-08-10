@@ -29,6 +29,7 @@
 
 enum server_hs_state_t {
   state_process_client_hello = 0,
+  state_select_parameters,
   state_send_hello_retry_request,
   state_flush_hello_retry_request,
   state_process_second_client_hello,
@@ -150,9 +151,12 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Let cert callback update server certificates if required.
-   *
-   * TODO(davidben): Can this get run earlier? */
+  hs->state = state_select_parameters;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
+  /* Call |cert_cb| to update server certificates if required. */
   if (ssl->cert->cert_cb != NULL) {
     int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
     if (rv == 0) {
@@ -161,9 +165,17 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     if (rv < 0) {
-      hs->state = state_process_client_hello;
+      hs->state = state_select_parameters;
       return ssl_hs_x509_lookup;
     }
+  }
+
+  struct ssl_early_callback_ctx client_hello;
+  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
+                               ssl->init_num)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return ssl_hs_error;
   }
 
   const SSL_CIPHER *cipher =
@@ -528,6 +540,9 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl) {
     switch (state) {
       case state_process_client_hello:
         ret = do_process_client_hello(ssl, hs);
+        break;
+      case state_select_parameters:
+        ret = do_select_parameters(ssl, hs);
         break;
       case state_send_hello_retry_request:
         ret = do_send_hello_retry_request(ssl, hs);
