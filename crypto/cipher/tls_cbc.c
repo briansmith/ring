@@ -73,7 +73,7 @@
  * supported by TLS.) */
 #define MAX_HASH_BLOCK_SIZE 128
 
-int EVP_tls_cbc_remove_padding(unsigned *out_len,
+int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
                                const uint8_t *in, unsigned in_len,
                                unsigned block_size, unsigned mac_size) {
   unsigned padding_length, good, to_check, i;
@@ -119,8 +119,8 @@ int EVP_tls_cbc_remove_padding(unsigned *out_len,
    * bad padding would give POODLE's padding oracle. */
   padding_length = good & (padding_length + 1);
   *out_len = in_len - padding_length;
-
-  return constant_time_select_int(good, 1, -1);
+  *out_padding_ok = good;
+  return 1;
 }
 
 /* If CBC_MAC_ROTATE_IN_PLACE is defined then EVP_tls_cbc_copy_mac is performed

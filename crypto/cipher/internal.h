@@ -104,15 +104,15 @@ struct evp_aead_st {
 
 /* EVP_tls_cbc_get_padding determines the padding from the decrypted, TLS, CBC
  * record in |in|. This decrypted record should not include any "decrypted"
- * explicit IV. It sets |*out_len| to the length with the padding removed or
- * |in_len| if invalid.
+ * explicit IV. If the record is publicly invalid, it returns zero. Otherwise,
+ * it returns one and sets |*out_padding_ok| to all ones (0xfff..f) if the
+ * padding is valid and zero otherwise. It then sets |*out_len| to the length
+ * with the padding removed or |in_len| if invalid.
  *
- * block_size: the block size of the cipher used to encrypt the record.
- * returns:
- *   0: (in non-constant time) if the record is publicly invalid.
- *   1: if the padding was valid
- *  -1: otherwise. */
-int EVP_tls_cbc_remove_padding(unsigned *out_len,
+ * If the function returns one, it runs in time independent of the contents of
+ * |in|. It is also guaranteed that |*out_len| >= |mac_size|, satisfying
+ * |EVP_tls_cbc_copy_mac|'s precondition. */
+int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
                                const uint8_t *in, unsigned in_len,
                                unsigned block_size, unsigned mac_size);
 

@@ -264,20 +264,18 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   /* Remove CBC padding. Code from here on is timing-sensitive with respect to
    * |padding_ok| and |data_plus_mac_len| for CBC ciphers. */
-  int padding_ok;
-  unsigned data_plus_mac_len, data_len;
+  unsigned padding_ok, data_plus_mac_len, data_len;
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE) {
-    padding_ok = EVP_tls_cbc_remove_padding(
-        &data_plus_mac_len, out, total,
-        EVP_CIPHER_CTX_block_size(&tls_ctx->cipher_ctx),
-        (unsigned)HMAC_size(&tls_ctx->hmac_ctx));
-    /* Publicly invalid. This can be rejected in non-constant time. */
-    if (padding_ok == 0) {
+    if (!EVP_tls_cbc_remove_padding(
+            &padding_ok, &data_plus_mac_len, out, total,
+            EVP_CIPHER_CTX_block_size(&tls_ctx->cipher_ctx),
+            (unsigned)HMAC_size(&tls_ctx->hmac_ctx))) {
+      /* Publicly invalid. This can be rejected in non-constant time. */
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
       return 0;
     }
   } else {
-    padding_ok = 1;
+    padding_ok = ~0u;
     data_plus_mac_len = total;
     /* |data_plus_mac_len| = |total| = |in_len| at this point. |in_len| has
      * already been checked against the MAC size at the top of the function. */
@@ -285,9 +283,9 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
   data_len = data_plus_mac_len - HMAC_size(&tls_ctx->hmac_ctx);
 
-  /* At this point, |padding_ok| is 1 or -1. If 1, the padding is valid and the
-   * first |data_plus_mac_size| bytes after |out| are the plaintext and
-   * MAC. Either way, |data_plus_mac_size| is large enough to extract a MAC. */
+  /* At this point, if the padding is valid, the first |data_plus_mac_len| bytes
+   * after |out| are the plaintext and MAC. Otherwise, |data_plus_mac_len| is
+   * still large enough to extract a MAC, but it will be irrelevant. */
 
   /* To allow for CBC mode which changes cipher length, |ad| doesn't include the
    * length for legacy ciphers. */
@@ -338,7 +336,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * EVP_tls_cbc_remove_padding. */
   unsigned good = constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len),
                                        0);
-  good &= constant_time_eq_int(padding_ok, 1);
+  good &= padding_ok;
   if (!good) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
