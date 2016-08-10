@@ -247,7 +247,7 @@ static const BIGNUM dh1024_safe_prime[] = {
   STATIC_BIGNUM(dh1024_safe_prime_4)
 };
 
-static BIGNUM bn_two = STATIC_BIGNUM(bn_two_data);
+static const BIGNUM bn_two = STATIC_BIGNUM(bn_two_data);
 
 static DH *get_standard_parameters(const struct standard_parameters *params,
                                    const ENGINE *engine) {
@@ -277,6 +277,41 @@ DH *DH_get_2048_224(const ENGINE *engine) {
 
 DH *DH_get_2048_256(const ENGINE *engine) {
   return get_standard_parameters(&dh2048_256, engine);
+}
+
+BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret) {
+  static const BN_ULONG kPrime1536Data[] = {
+      TOBN(0xffffffff, 0xffffffff), TOBN(0xf1746c08, 0xca237327),
+      TOBN(0x670c354e, 0x4abc9804), TOBN(0x9ed52907, 0x7096966d),
+      TOBN(0x1c62f356, 0x208552bb), TOBN(0x83655d23, 0xdca3ad96),
+      TOBN(0x69163fa8, 0xfd24cf5f), TOBN(0x98da4836, 0x1c55d39a),
+      TOBN(0xc2007cb8, 0xa163bf05), TOBN(0x49286651, 0xece45b3d),
+      TOBN(0xae9f2411, 0x7c4b1fe6), TOBN(0xee386bfb, 0x5a899fa5),
+      TOBN(0x0bff5cb6, 0xf406b7ed), TOBN(0xf44c42e9, 0xa637ed6b),
+      TOBN(0xe485b576, 0x625e7ec6), TOBN(0x4fe1356d, 0x6d51c245),
+      TOBN(0x302b0a6d, 0xf25f1437), TOBN(0xef9519b3, 0xcd3a431b),
+      TOBN(0x514a0879, 0x8e3404dd), TOBN(0x020bbea6, 0x3b139b22),
+      TOBN(0x29024e08, 0x8a67cc74), TOBN(0xc4c6628b, 0x80dc1cd1),
+      TOBN(0xc90fdaa2, 0x2168c234), TOBN(0xffffffff, 0xffffffff),
+  };
+
+  static const BIGNUM kPrime1536BN = STATIC_BIGNUM(kPrime1536Data);
+
+  BIGNUM *alloc = NULL;
+  if (ret == NULL) {
+    alloc = BN_new();
+    if (alloc == NULL) {
+      return NULL;
+    }
+    ret = alloc;
+  }
+
+  if (!BN_copy(ret, &kPrime1536BN)) {
+    BN_free(alloc);
+    return NULL;
+  }
+
+  return ret;
 }
 
 void DH_check_standard_parameters(DH *dh) {

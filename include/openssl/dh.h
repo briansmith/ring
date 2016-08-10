@@ -110,6 +110,11 @@ OPENSSL_EXPORT DH *DH_get_1024_160(const ENGINE *engine);
 OPENSSL_EXPORT DH *DH_get_2048_224(const ENGINE *engine);
 OPENSSL_EXPORT DH *DH_get_2048_256(const ENGINE *engine);
 
+/* BN_get_rfc3526_prime_1536 sets |*ret| to the 1536-bit MODP group from RFC
+ * 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
+ * and returned. It returns NULL on allocation failure. */
+OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret);
+
 
 /* Parameter generation. */
 
