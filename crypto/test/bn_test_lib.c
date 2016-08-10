@@ -1,4 +1,4 @@
-/* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
+/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
  * This package is an SSL implementation written
@@ -55,7 +55,7 @@
  * [including the GNU Public Licence.]
  */
 /* ====================================================================
- * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
+ * Copyright (c) 1998-2001 The OpenSSL Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -104,65 +104,57 @@
  *
  * This product includes cryptographic software written by Eric Young
  * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com).
- *
- */
-/* ====================================================================
- * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
- *
- * Portions of the attached software ("Contribution") are developed by
- * SUN MICROSYSTEMS, INC., and are contributed to the OpenSSL project.
- *
- * The Contribution is licensed pursuant to the Eric Young open source
- * license provided above.
- *
- * The binary polynomial arithmetic software is originally written by
- * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
- * Laboratories. */
+ * Hudson (tjh@cryptsoft.com). */
 
-#ifndef OPENSSL_HEADER_BN_TEST_LIB_H
-#define OPENSSL_HEADER_BN_TEST_LIB_H
-
-#include <openssl/base.h>
 #include <openssl/bn.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+#include <openssl/err.h>
+#include <openssl/mem.h>
+#include <openssl/rand.h>
 
-/* BIGNUM functions that used to be in libcrypto, but which were removed
- * because no library code uses them anymore. They are retained here so that
- * bn_test.cc can use them to test functions that still remain in libcrypto. */
-
-/* Basic functions. */
-
-void BN_set_negative(BIGNUM *bn, int sign);
-
-/* Conversion functions. */
-
-/* BN_bn2bin serialises the absolute value of |in| to |out| as a big-endian
- * integer, which must have |BN_num_bytes| of space available. It returns the
- * number of bytes written. */
-OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
+#include "bn_test_lib.h"
+#include "../bn/internal.h"
 
 
-/* Exponentiation. */
+int BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
+  uint8_t *buf = NULL;
+  int ret = 0, bit, bytes, mask;
 
-/* BN_exp sets |r| equal to |a|^{|p|}. It does so with a square-and-multiply
- * algorithm that leaks side-channel information. It returns one on success or
- * zero otherwise. */
-OPENSSL_EXPORT int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                          BN_CTX *ctx);
+  if (rnd == NULL) {
+    return 0;
+  }
 
+  if (bits == 0) {
+    BN_zero(rnd);
+    return 1;
+  }
 
-/* Random generation. */
+  bytes = (bits + 7) / 8;
+  bit = (bits - 1) % 8;
+  mask = 0xff << (bit + 1);
 
-/* BN_rand sets |rnd| to a random number of length |bits|. The
- * most-significant bit, if any, will always be set. */
-OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, RAND *rng);
+  buf = OPENSSL_malloc(bytes);
+  if (buf == NULL) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
 
-#if defined(__cplusplus)
+  /* Make a random number. */
+  if (!RAND_bytes(rng, buf, bytes)) {
+    goto err;
+  }
+
+  /* Ensure top bit is always set, and higher bits are not. */
+  buf[0] |= (1 << bit);
+  buf[0] &= ~mask;
+
+  if (!BN_bin2bn(buf, bytes, rnd)) {
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  OPENSSL_free(buf);
+  return (ret);
 }
-#endif
-
-#endif /* OPENSSL_HEADER_BN_TEST_LIB_H */

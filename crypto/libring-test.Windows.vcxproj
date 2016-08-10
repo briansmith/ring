@@ -26,6 +26,7 @@
     <ClCompile Include="poly1305/poly1305_test.cc" />
 
     <ClCompile Include="test/bn_test_convert.c" />
+    <ClCompile Include="test/bn_test_lib.c" />
     <ClCompile Include="test/file_test.cc" />
   </ItemGroup>
   <ItemGroup>

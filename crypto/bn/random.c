@@ -117,67 +117,8 @@
 
 #include "../internal.h"
 
-int BN_rand(BIGNUM *rnd, int bits, int top, int bottom, RAND *rng) {
-  uint8_t *buf = NULL;
-  int ret = 0, bit, bytes, mask;
-
-  if (rnd == NULL) {
-    return 0;
-  }
-
-  if (bits == 0) {
-    BN_zero(rnd);
-    return 1;
-  }
-
-  bytes = (bits + 7) / 8;
-  bit = (bits - 1) % 8;
-  mask = 0xff << (bit + 1);
-
-  buf = OPENSSL_malloc(bytes);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  /* Make a random number and set the top and bottom bits. */
-  if (!RAND_bytes(rng, buf, bytes)) {
-    goto err;
-  }
-
-  if (top != -1) {
-    if (top && bits > 1) {
-      if (bit == 0) {
-        buf[0] = 1;
-        buf[1] |= 0x80;
-      } else {
-        buf[0] |= (3 << (bit - 1));
-      }
-    } else {
-      buf[0] |= (1 << bit);
-    }
-  }
-
-  buf[0] &= ~mask;
-
-  /* set bottom bit if requested */
-  if (bottom)  {
-    buf[bytes - 1] |= 1;
-  }
-
-  if (!BN_bin2bn(buf, bytes, rnd)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  OPENSSL_free(buf);
-  return (ret);
-}
 
 int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
-
   if (BN_cmp_word(max_exclusive, 1) <= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
