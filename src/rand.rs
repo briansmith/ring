@@ -133,6 +133,7 @@ mod sysrand {
                   not(feature = "dev_urandom_fallback")))))]
 mod urandom {
     extern crate std;
+    use error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         lazy_static! {
@@ -143,7 +144,7 @@ mod urandom {
         match *FILE {
             Ok(ref file) => {
                 use self::std::io::Read;
-                (&*file).read_exact(dest).map_err(|_| ())
+                (&*file).read_exact(dest).map_err(|_| error::Unspecified)
             },
             Err(_) => Err(error::Unspecified),
         }
@@ -153,6 +154,7 @@ mod urandom {
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
     extern crate std;
+    use error;
 
     enum Mechanism {
         Sysrand,
