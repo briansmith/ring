@@ -10,6 +10,9 @@ In some cases, BoringSSL-specific code may be necessary. In that case, the
 `OPENSSL_IS_BORINGSSL` preprocessor macro may be used in `#ifdef`s. This macro
 should also be used in lieu of the presence of any particular function to detect
 OpenSSL vs BoringSSL in configure scripts, etc., where those are necessary.
+Before using the preprocessor, however, contact the BoringSSL maintainers about
+the missing APIs. If not an intentionally removed feature, BoringSSL will
+typically add compatibility functions for convenience.
 
 For convenience, BoringSSL defines upstream's `OPENSSL_NO_*` feature macros
 corresponding to removed features. These may also be used to disable code which
