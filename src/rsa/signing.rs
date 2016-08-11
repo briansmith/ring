@@ -16,40 +16,12 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, error};
+use {bssl, c, der, error};
 use rand;
 use std;
-use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
-            PositiveInteger, RSAPadding};
+use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free, padding,
+            PositiveInteger};
 use untrusted;
-
-impl RSAPadding {
-    // Implement padding procedure per EMSA-PKCS1-v1_5,
-    // https://tools.ietf.org/html/rfc3447#section-9.2.
-    fn pad(&self, msg: &[u8], out: &mut [u8])
-           -> Result<(), error::Unspecified> {
-        let digest_len = self.digestinfo_prefix.len() +
-                         self.digest_alg.output_len;
-
-        // Require at least 8 bytes of padding. Since we disallow keys smaller
-        // than 2048 bits, this should never happen anyway.
-        debug_assert!(out.len() >= digest_len + 11);
-        let pad_len = out.len() - digest_len - 3;
-        out[0] = 0;
-        out[1] = 1;
-        for i in 0..pad_len {
-            out[2 + i] = 0xff;
-        }
-        out[2 + pad_len] = 0;
-
-        let (digest_prefix, digest_dst) = out[3 + pad_len..]
-            .split_at_mut(self.digestinfo_prefix.len());
-        digest_prefix.copy_from_slice(self.digestinfo_prefix);
-        digest_dst.copy_from_slice(
-            digest::digest(self.digest_alg, msg).as_ref());
-        Ok(())
-    }
-}
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
 ///
@@ -239,14 +211,14 @@ impl RSASigningState {
     /// platforms, it is done less perfectly. To help mitigate the current
     /// imperfections, and for defense-in-depth, base blinding is always done.
     /// Exponent blinding is not done, but it may be done in the future.
-    pub fn sign(&mut self, padding_alg: &'static RSAPadding,
+    pub fn sign(&mut self, padding_alg: &'static padding::Encoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
         if signature.len() != self.key_pair.public_modulus_len() {
             return Err(error::Unspecified);
         }
 
-        try!(padding_alg.pad(msg, signature));
+        try!(padding_alg.encode(msg, signature));
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
             GFp_rsa_private_transform(&self.key_pair.rsa,

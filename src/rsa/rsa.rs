@@ -14,72 +14,18 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {c, core, der, digest, error};
+use {c, core, der, error};
 use untrusted;
 
+mod padding;
 
-pub struct RSAPadding {
-    digest_alg: &'static digest::Algorithm,
-    digestinfo_prefix: &'static [u8],
-}
-
-macro_rules! rsa_pkcs1_padding {
-    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
-      $doc_str:expr ) => {
-        #[doc=$doc_str]
-        /// Feature: `rsa_signing`.
-        pub static $PADDING_ALGORITHM: RSAPadding = RSAPadding {
-            digest_alg: $digest_alg,
-            digestinfo_prefix: $digestinfo_prefix,
-        };
-    }
-}
-
-rsa_pkcs1_padding!(RSA_PKCS1_SHA1, &digest::SHA1,
-                   &SHA1_PKCS1_DIGESTINFO_PREFIX,
-                   "Signing using RSA with PKCS#1 1.5 padding and SHA-1.");
-rsa_pkcs1_padding!(RSA_PKCS1_SHA256, &digest::SHA256,
-                   &SHA256_PKCS1_DIGESTINFO_PREFIX,
-                   "Signing using RSA with PKCS#1 1.5 padding and SHA-256.");
-rsa_pkcs1_padding!(RSA_PKCS1_SHA384, &digest::SHA384,
-                   &SHA384_PKCS1_DIGESTINFO_PREFIX,
-                   "Signing using RSA with PKCS#1 1.5 padding and SHA3846.");
-rsa_pkcs1_padding!(RSA_PKCS1_SHA512, &digest::SHA512,
-                   &SHA512_PKCS1_DIGESTINFO_PREFIX,
-                   "Signing using RSA with PKCS#1 1.5 padding and SHA-512.");
-
-macro_rules! pkcs1_digestinfo_prefix {
-    ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
-      [ $( $digest_oid:expr ),* ] ) => {
-        static $name: [u8; 2 + 8 + $digest_oid_len] = [
-            der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
-                der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
-                    der::Tag::OID as u8, $digest_oid_len, $( $digest_oid ),*,
-                    der::Tag::Null as u8, 0,
-                der::Tag::OctetString as u8, $digest_len,
-        ];
-    }
-}
-
-pkcs1_digestinfo_prefix!(
-    SHA1_PKCS1_DIGESTINFO_PREFIX, 20, 5, [ 0x2b, 0x0e, 0x03, 0x02, 0x1a ]);
-
-pkcs1_digestinfo_prefix!(
-    SHA256_PKCS1_DIGESTINFO_PREFIX, 32, 9,
-    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01 ]);
-
-pkcs1_digestinfo_prefix!(
-    SHA384_PKCS1_DIGESTINFO_PREFIX, 48, 9,
-    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02 ]);
-
-pkcs1_digestinfo_prefix!(
-    SHA512_PKCS1_DIGESTINFO_PREFIX, 64, 9,
-    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
+// `RSA_PKCS1_SHA1` is intentionally not exposed.
+pub use self::padding::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512};
 
 
-/// Parameters for RSA signing and verification.
+/// Parameters for RSA verification.
 pub struct RSAParameters {
-    padding_alg: &'static RSAPadding,
+    padding_alg: &'static padding::Verification,
     min_bits: usize,
 }
 

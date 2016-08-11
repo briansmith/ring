@@ -16,7 +16,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, digest, error, private, signature};
+use {bssl, c, error, private, signature};
 use super::{BIGNUM, PositiveInteger, RSAParameters, parse_public_key};
 use untrusted;
 
@@ -46,7 +46,7 @@ macro_rules! rsa_pkcs1 {
     }
 }
 
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1, 2048, &super::RSA_PKCS1_SHA1,
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1, 2048, &super::padding::RSA_PKCS1_SHA1,
            "Verification of signatures using RSA keys of 2048-8192 bits,
             PKCS#1.5 padding, and SHA-1.");
 rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, 2048, &super::RSA_PKCS1_SHA256,
@@ -108,45 +108,7 @@ pub fn verify_rsa(params: &RSAParameters,
                                params.min_bits, MAX_BITS)
     }));
 
-    untrusted::Input::from(decoded).read_all(error::Unspecified, |decoded| {
-        if try!(decoded.read_byte()) != 0 || try!(decoded.read_byte()) != 1 {
-            return Err(error::Unspecified);
-        }
-
-        let mut ps_len = 0;
-        loop {
-            match try!(decoded.read_byte()) {
-                0xff => {
-                    ps_len += 1;
-                },
-                0x00 => {
-                    break;
-                },
-                _ => {
-                    return Err(error::Unspecified);
-                },
-            }
-        }
-        if ps_len < 8 {
-            return Err(error::Unspecified);
-        }
-
-        let decoded_digestinfo_prefix = try!(decoded.skip_and_get_input(
-                    params.padding_alg.digestinfo_prefix.len()));
-        if decoded_digestinfo_prefix != params.padding_alg.digestinfo_prefix {
-            return Err(error::Unspecified);
-        }
-
-        let digest_alg = params.padding_alg.digest_alg;
-        let decoded_digest =
-            try!(decoded.skip_and_get_input(digest_alg.output_len));
-        let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-        if decoded_digest != digest.as_ref() {
-            return Err(error::Unspecified);
-        }
-
-        Ok(())
-    })
+    params.padding_alg.verify(msg, untrusted::Input::from(decoded))
 }
 
 extern {

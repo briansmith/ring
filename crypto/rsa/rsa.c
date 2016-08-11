@@ -128,9 +128,9 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
   GFp_BN_init(&dmq1);
   GFp_BN_init(&iqmp_times_q);
 
-  /* The public modulus must be large enough. |RSAPublicKey::sign| depends on
-   * this; without it, |RSAPublicKey::sign| would generate padding that is
-   * invalid (too few 0xFF bytes) for very small keys.
+  /* The public modulus must be large enough. |PKCS1::encode| depends on this;
+   * without it, |PKCS1::encode| would generate padding that is invalid (too
+   * few 0xFF bytes) for very small keys.
    *
    * XXX: The maximum limit of 4096 bits is primarily due to lack of testing
    * of larger key sizes; see, in particular,
