@@ -15,13 +15,13 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use {c, ec, rand};
+use {c, ec, error, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 
 #[allow(unsafe_code)]
 pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
-                            -> Result<ec::PrivateKey, ()> {
+                            -> Result<ec::PrivateKey, error::Unspecified> {
     // NSA Guide Appendix B.2: "Key Pair Generation by Testing Candidates".
 
     // TODO: The NSA guide also suggests, in appendix B.1, another mechanism
@@ -76,7 +76,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
         return Ok(candidate_private_key);
     }
 
-    Err(())
+    Err(error::Unspecified)
 }
 
 
@@ -112,7 +112,7 @@ fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
 
 pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
                             my_private_key: &ec::PrivateKey)
-                            -> Result<(), ()> {
+                            -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
@@ -130,7 +130,7 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
 pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
                                        x_out: Option<&mut [u8]>,
                                        y_out: Option<&mut [u8]>, p: &Point)
-                                       -> Result<(), ()> {
+                                       -> Result<(), error::Unspecified> {
     let z = ops.common.point_z(&p);
 
     // Since we restrict our private key to the range [1, n), the curve has

@@ -14,7 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use {der, digest, signature};
+use {der, digest, error, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
@@ -30,7 +30,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> Result<(), error::Unspecified> {
         // NSA Guide Prerequisites:
         //
         //    Prior to accepting a verified digital signature as valid the
@@ -53,8 +53,9 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let (r, s) = try!(signature.read_all((), |input| {
-            der::nested(input, der::Tag::Sequence, (), |input| {
+        let (r, s) = try!(signature.read_all(error::Unspecified, |input| {
+            der::nested(input, der::Tag::Sequence, error::Unspecified,
+                        |input| {
                 let r = try!(self.ops.scalar_parse(input));
                 let s = try!(self.ops.scalar_parse(input));
                 Ok((r, s))
@@ -119,7 +120,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
             }
         }
 
-        Err(())
+        Err(error::Unspecified)
     }
 }
 

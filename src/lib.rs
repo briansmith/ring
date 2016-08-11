@@ -116,6 +116,8 @@ pub mod constant_time;
 #[doc(hidden)]
 pub mod der;
 
+pub mod error;
+
 #[path = "digest/digest.rs"] pub mod digest;
 #[path = "ec/ec.rs"] mod ec;
 pub mod hkdf;

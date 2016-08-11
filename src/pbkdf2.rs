@@ -37,6 +37,10 @@
 //! const CREDENTIAL_LEN: usize = 32; // digest::SHA256.output_len()
 //! pub type Credential = [u8; CREDENTIAL_LEN];
 //!
+//! enum Error {
+//!     WrongUsernameOrPassword
+//! }
+//!
 //! struct PasswordDatabase {
 //!     pbkdf2_iterations: usize,
 //!     db_salt_component: [u8; 16],
@@ -55,16 +59,17 @@
 //!     }
 //!
 //!     pub fn verify_password(&self, username: &str, attempted_password: &str)
-//!                            -> Result<(), ()> {
+//!                            -> Result<(), Error> {
 //!         match self.storage.get(username) {
 //!            Some(actual_password) => {
 //!                let salt = self.salt(username);
 //!                pbkdf2::verify(PBKDF2_PRF, self.pbkdf2_iterations, &salt,
 //!                               attempted_password.as_bytes(),
 //!                               actual_password)
+//!                     .map_err(|_| Error::WrongUsernameOrPassword)
 //!            },
 //!
-//!            None => Err(())
+//!            None => Err(Error::WrongUsernameOrPassword)
 //!         }
 //!     }
 //!
@@ -107,7 +112,7 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use {constant_time, digest, hmac, polyfill};
+use {constant_time, digest, error, hmac, polyfill};
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///
@@ -210,9 +215,9 @@ fn derive_block(
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
-              previously_derived: &[u8]) -> Result<(), ()> {
+              previously_derived: &[u8]) -> Result<(), error::Unspecified> {
     if previously_derived.len() == 0 {
-        return Err(());
+        return Err(error::Unspecified);
     }
 
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
@@ -244,7 +249,7 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     }
 
     if matches == 0 {
-        return Err(());
+        return Err(error::Unspecified);
     }
 
     Ok(())
@@ -267,14 +272,15 @@ pub static HMAC_SHA512: PRF  = PRF {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{digest, test, pbkdf2};
+    use super::super::{digest, error, pbkdf2, test};
 
     #[test]
     pub fn pkbdf2_tests() {
         test::from_file("src/pbkdf2_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
-                try!(test_case.consume_digest_alg("Hash").ok_or(()));
+                try!(test_case.consume_digest_alg("Hash")
+                              .ok_or(error::Unspecified));
             let iterations = test_case.consume_usize("c");
             let secret = test_case.consume_bytes("P");
             let salt = test_case.consume_bytes("S");
@@ -282,7 +288,7 @@ mod tests {
             let verify_expected_result = test_case.consume_string("Verify");
             let verify_expected_result = match verify_expected_result.as_str() {
                 "OK" => Ok(()),
-                "Err" => Err(()),
+                "Err" => Err(error::Unspecified),
                 _ => panic!("Unsupported value of \"Verify\"")
             };
 

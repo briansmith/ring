@@ -28,13 +28,13 @@
 
 #![allow(unsafe_code)]
 
-use c;
+use {c, error};
 use core;
 
 /// A secure random number generator.
 pub trait SecureRandom {
     /// Fills `dest` with random bytes.
-    fn fill(&self, dest: &mut [u8]) -> Result<(), ()>;
+    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
 }
 
 /// A secure random number generator where the random values come directly
@@ -91,14 +91,14 @@ impl SystemRandom {
     /// but allows callers to avoid the annoying step of needing to
     /// `use rand::SecureRandom` just to call `fill` on a `SystemRandom`.
     #[inline(always)]
-    pub fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
         fill_impl(dest)
     }
 }
 
 impl SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
         fill_impl(dest)
     }
 }
@@ -115,9 +115,9 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
-    use bssl;
+    use {bssl, error};
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         for mut chunk in
                 dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
             try!(bssl::map_result(unsafe {
@@ -134,7 +134,7 @@ mod sysrand {
 mod urandom {
     extern crate std;
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         lazy_static! {
             static ref FILE: Result<std::fs::File, std::io::Error> =
                 std::fs::File::open("/dev/urandom");
@@ -145,7 +145,7 @@ mod urandom {
                 use self::std::io::Read;
                 (&*file).read_exact(dest).map_err(|_| ())
             },
-            Err(_) => Err(()),
+            Err(_) => Err(error::Unspecified),
         }
     }
 }
@@ -159,7 +159,7 @@ mod sysrand_or_urandom {
         DevURandom,
     }
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), ()> {
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         lazy_static! {
             static ref MECHANISM: Mechanism = {
                 let mut dummy = [0u8; 1];
@@ -221,6 +221,7 @@ extern {
 #[cfg(test)]
 pub mod test_util {
     use core;
+    use error;
     use super::*;
 
     /// An implementation of `SecureRandom` that always fills the output slice
@@ -230,7 +231,7 @@ pub mod test_util {
     }
 
     impl SecureRandom for FixedByteRandom {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             for d in dest {
                 *d = self.byte
             }
@@ -246,7 +247,7 @@ pub mod test_util {
     }
 
     impl <'a> SecureRandom for FixedSliceRandom<'a> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             assert_eq!(dest.len(), self.bytes.len());
             for i in 0..self.bytes.len() {
                 dest[i] = self.bytes[i];
@@ -268,7 +269,7 @@ pub mod test_util {
     }
 
     impl <'a> SecureRandom for FixedSliceSequenceRandom<'a> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), ()> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
             assert_eq!(dest.len(), bytes.len());

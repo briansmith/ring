@@ -116,7 +116,7 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-use digest;
+use {digest, error};
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -209,7 +209,8 @@ impl TestCase {
 /// or until all the test vectors have been read. `f` can indicate failure
 /// either by returning `Err()` or by panicking.
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
-                    where F: FnMut(&str, &mut TestCase) -> Result<(), ()> {
+                    where F: FnMut(&str, &mut TestCase)
+                    -> Result<(), error::Unspecified> {
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
@@ -237,7 +238,7 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
                     Err("Test didn't consume all attributes.")
                 }
             },
-            Ok(Err(_)) => Err("Test returned Err(())."),
+            Ok(Err(_)) => Err("Test returned Err(error::Unspecified)."),
             Err(_) => Err("Test panicked."),
         };
 
@@ -366,7 +367,7 @@ fn parse_test_case(current_section: &mut String,
 
 #[cfg(test)]
 mod tests {
-    use test;
+    use {error, test};
 
     #[test]
     fn one_ok() {
@@ -381,7 +382,7 @@ mod tests {
     fn one_err() {
         test::from_file("src/test_1_tests.txt", |_, test_case| {
             let _ = test_case.consume_string("Key");
-            Err(())
+            Err(error::Unspecified)
         });
     }
 
@@ -405,7 +406,7 @@ mod tests {
             let result = if n != test_to_fail {
                 Ok(())
             } else {
-                Err(())
+                Err(error::Unspecified)
             };
             n += 1;
             result

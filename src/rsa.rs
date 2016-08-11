@@ -16,7 +16,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, signature};
+use {bssl, c, der, digest, error, signature};
 
 #[cfg(feature = "rsa_signing")]
 use rand;
@@ -36,7 +36,8 @@ pub struct RSAPadding {
 impl RSAPadding {
     // Implement padding procedure per EMSA-PKCS1-v1_5,
     // https://tools.ietf.org/html/rfc3447#section-9.2.
-    fn pad(&self, msg: &[u8], out: &mut [u8]) -> Result<(), ()> {
+    fn pad(&self, msg: &[u8], out: &mut [u8])
+           -> Result<(), error::Unspecified> {
         let digest_len =
             self.digestinfo_prefix.len() + self.digest_alg.output_len;
 
@@ -70,7 +71,7 @@ pub struct RSAParameters {
 
 impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> Result<(), error::Unspecified> {
         const MAX_BITS: usize = 8192;
 
         let (n, e) = try!(parse_public_key(public_key));
@@ -78,7 +79,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
 
         let mut decoded = [0u8; (MAX_BITS + 7) / 8];
         if signature.len() > decoded.len() {
-            return Err(());
+            return Err(error::Unspecified);
         }
         let decoded = &mut decoded[..signature.len()];
         try!(bssl::map_result(unsafe {
@@ -88,10 +89,10 @@ impl signature::VerificationAlgorithm for RSAParameters {
                                    self.min_bits, MAX_BITS)
         }));
 
-        untrusted::Input::from(decoded).read_all((), |decoded| {
+        untrusted::Input::from(decoded).read_all(error::Unspecified, |decoded| {
             if try!(decoded.read_byte()) != 0 ||
                try!(decoded.read_byte()) != 1 {
-                return Err(());
+                return Err(error::Unspecified);
             }
 
             let mut ps_len = 0;
@@ -99,18 +100,18 @@ impl signature::VerificationAlgorithm for RSAParameters {
                 match try!(decoded.read_byte()) {
                     0xff => { ps_len += 1; },
                     0x00 => { break; },
-                    _ => { return Err(()); }
+                    _ => { return Err(error::Unspecified); }
                 }
             }
             if ps_len < 8 {
-                return Err(());
+                return Err(error::Unspecified);
             }
 
             let decoded_digestinfo_prefix =
                 try!(decoded.skip_and_get_input(
                         self.padding_alg.digestinfo_prefix.len()));
             if decoded_digestinfo_prefix != self.padding_alg.digestinfo_prefix {
-                return Err(());
+                return Err(error::Unspecified);
             }
 
             let digest_alg = self.padding_alg.digest_alg;
@@ -118,7 +119,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
                 try!(decoded.skip_and_get_input(digest_alg.output_len));
             let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
             if decoded_digest != digest.as_ref() {
-                return Err(());
+                return Err(error::Unspecified);
             }
 
             Ok(())
@@ -211,9 +212,9 @@ pkcs1_digestinfo_prefix!(
 
 
 fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
-                        Result<(&'a [u8], &'a [u8]), ()> {
-    input.read_all((), |input| {
-        der::nested(input, der::Tag::Sequence, (), |input| {
+                        Result<(&'a [u8], &'a [u8]), error::Unspecified> {
+    input.read_all(error::Unspecified, |input| {
+        der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
             let e = try!(der::positive_integer(input));
             Ok((n.as_slice_less_safe(), e.as_slice_less_safe()))
@@ -263,12 +264,14 @@ impl RSAKeyPair {
     ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
-    pub fn from_der(input: untrusted::Input) -> Result<RSAKeyPair, ()> {
-        input.read_all((), |input| {
-            der::nested(input, der::Tag::Sequence, (), |input| {
+    pub fn from_der(input: untrusted::Input)
+                    -> Result<RSAKeyPair, error::Unspecified> {
+        input.read_all(error::Unspecified, |input| {
+            der::nested(input, der::Tag::Sequence, error::Unspecified,
+                        |input| {
                 let version = try!(der::small_nonnegative_integer(input));
                 if version != 0 {
-                    return Err(());
+                    return Err(error::Unspecified);
                 }
                 let mut n = try!(PositiveInteger::from_der(input));
                 let mut e = try!(PositiveInteger::from_der(input));
@@ -293,7 +296,7 @@ impl RSAKeyPair {
                 }));
                 let blinding = unsafe { BN_BLINDING_new() };
                 if blinding.is_null() {
-                    return Err(());
+                    return Err(error::Unspecified);
                 }
 
                 Ok(RSAKeyPair {
@@ -331,9 +334,9 @@ impl RSAKeyPair {
     /// Exponent blinding is not done, but it may be done in the future.
     pub fn sign(&self, padding_alg: &'static RSAPadding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
-                -> Result<(), ()> {
+                -> Result<(), error::Unspecified> {
         if signature.len() != self.public_modulus_len() {
-            return Err(());
+            return Err(error::Unspecified);
         }
 
         try!(padding_alg.pad(msg, signature));
@@ -400,13 +403,13 @@ struct PositiveInteger {
 impl PositiveInteger {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
     fn from_der(input: &mut untrusted::Reader)
-                -> Result<PositiveInteger, ()> {
+                -> Result<PositiveInteger, error::Unspecified> {
         let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
         let res = unsafe {
             BN_bin2bn(bytes.as_ptr(), bytes.len(), std::ptr::null_mut())
         };
         if res.is_null() {
-            return Err(());
+            return Err(error::Unspecified);
         }
         Ok(PositiveInteger { value: Some(res) })
     }
@@ -481,7 +484,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {der, test, signature};
+    use {der, error, signature, test};
 
     #[cfg(feature = "rsa_signing")]
     use rand;
@@ -519,8 +522,9 @@ mod tests {
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(public_key.read_all((), |input| {
-                der::nested(input, der::Tag::Sequence, (), |input| {
+            assert!(public_key.read_all(error::Unspecified, |input| {
+                der::nested(input, der::Tag::Sequence, error::Unspecified,
+                            |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));
                     Ok(())

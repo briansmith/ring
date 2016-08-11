@@ -14,7 +14,7 @@
 
 //! X25519 Key agreement.
 
-use {agreement, bssl, c, ec, rand};
+use {agreement, bssl, c, ec, error, rand};
 use untrusted;
 
 
@@ -38,7 +38,7 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
 };
 
 fn x25519_generate_private_key(rng: &rand::SecureRandom)
-                               -> Result<ec::PrivateKey, ()> {
+                               -> Result<ec::PrivateKey, error::Unspecified> {
     let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
     try!(rng.fill(&mut result.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]));
     Ok(result)
@@ -46,7 +46,8 @@ fn x25519_generate_private_key(rng: &rand::SecureRandom)
 
 #[allow(unsafe_code)]
 fn x25519_public_from_private(public_out: &mut [u8],
-                              private_key: &ec::PrivateKey) -> Result<(), ()> {
+                              private_key: &ec::PrivateKey)
+                              -> Result<(), error::Unspecified> {
     debug_assert_eq!(public_out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     unsafe {
         GFp_x25519_public_from_private(public_out.as_mut_ptr(),
@@ -57,7 +58,8 @@ fn x25519_public_from_private(public_out: &mut [u8],
 
 #[allow(unsafe_code)]
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
-               peer_public_key: untrusted::Input) -> Result<(), ()> {
+               peer_public_key: untrusted::Input)
+               -> Result<(), error::Unspecified> {
     debug_assert_eq!(out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     debug_assert_eq!(peer_public_key.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
     bssl::map_result(unsafe {
@@ -79,7 +81,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {agreement, test};
+    use {agreement, error, test};
     use std;
     use untrusted;
 
@@ -127,13 +129,13 @@ mod tests {
     }
 
     fn x25519_(private_key: &[u8], public_key: &[u8])
-               -> Result<std::vec::Vec<u8>, ()> {
+               -> Result<std::vec::Vec<u8>, error::Unspecified> {
         let private_key =
             agreement::EphemeralPrivateKey::from_test_vector(
                 &agreement::X25519, private_key);
         let public_key = untrusted::Input::from(public_key);
         agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
-                                   (), |agreed_value| {
+                                   error::Unspecified, |agreed_value| {
             Ok(std::vec::Vec::from(agreed_value))
         })
     }

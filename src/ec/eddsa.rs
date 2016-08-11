@@ -16,7 +16,7 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, rand, signature};
+use {bssl, c, error, rand, signature};
 use untrusted;
 
 /// Parameters for EdDSA signing and verification.
@@ -40,7 +40,8 @@ impl<'a> Ed25519KeyPair {
     /// Generates a new random key pair. There is no way to extract the private
     /// key bytes to save them. If you need to save the private key bytes for
     /// future use then use `generate_serializable()` instead.
-    pub fn generate(rng: &rand::SecureRandom) -> Result<Ed25519KeyPair, ()> {
+    pub fn generate(rng: &rand::SecureRandom)
+                    -> Result<Ed25519KeyPair, error::Unspecified> {
         Ed25519KeyPair::generate_serializable(rng)
             .map(|(key_pair, _)| key_pair)
     }
@@ -50,7 +51,8 @@ impl<'a> Ed25519KeyPair {
     /// extract the private key bytes from an `Ed25519KeyPair`, so extracting
     /// the values from the `Ed25519KeyPairBytes` is the only way to get them.
     pub fn generate_serializable(rng: &rand::SecureRandom)
-            -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes), ()> {
+            -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
+                      error::Unspecified> {
         let mut bytes = Ed25519KeyPairBytes {
             private_key: [0; 32],
             public_key: [0; 32],
@@ -78,7 +80,7 @@ impl<'a> Ed25519KeyPair {
     /// public and private components of the key pair. This also detects
     /// corruption that might have occurred during storage of the key pair.
     pub fn from_bytes(private_key: &[u8], public_key: &[u8])
-                      -> Result<Ed25519KeyPair, ()> {
+                      -> Result<Ed25519KeyPair, error::Unspecified> {
         let pair =
             try!(Ed25519KeyPair::from_bytes_unchecked(private_key, public_key));
         let mut public_key_check = [0; 32];
@@ -87,17 +89,17 @@ impl<'a> Ed25519KeyPair {
                                             pair.private_public.as_ptr());
         }
         if public_key != public_key_check {
-            return Err(());
+            return Err(error::Unspecified);
         }
         Ok(pair)
     }
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
-                            -> Result<Ed25519KeyPair, ()> {
+                            -> Result<Ed25519KeyPair, error::Unspecified> {
         if private_key.len() != 32 {
-            return Err(());
+            return Err(error::Unspecified);
         } else if public_key.len() != 32 {
-            return Err(());
+            return Err(error::Unspecified);
         }
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
         for i in 0..32 {
@@ -133,10 +135,10 @@ pub static ED25519: EdDSAParameters = EdDSAParameters { };
 
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()> {
+              signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
         if public_key.len() != 32 || signature.len() != 64 {
-            return Err(())
+            return Err(error::Unspecified);
         }
         let msg = msg.as_slice_less_safe();
         let signature = signature.as_slice_less_safe();

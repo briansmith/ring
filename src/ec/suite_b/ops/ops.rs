@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-use {c, der};
+use {c, der, error};
 use core;
 use untrusted;
 
@@ -213,12 +213,13 @@ impl CommonOps {
         ElemUnreduced { limbs: ra(self.elem_sqr_mont, &a.limbs) }
     }
 
-    pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced) -> Result<(), ()> {
+    pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced)
+                                   -> Result<(), error::Unspecified> {
         match unsafe {
             GFp_constant_time_limbs_are_zero(a.limbs.as_ptr(), self.num_limbs)
         } {
             0 => Ok(()),
-            _ => Err(()),
+            _ => Err(error::Unspecified),
         }
     }
 
@@ -323,7 +324,7 @@ impl PublicKeyOps {
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
-                      -> Result<Elem, ()> {
+                      -> Result<Elem, error::Unspecified> {
         let encoded_value =
             try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
         let mut elem_limbs =
@@ -358,7 +359,7 @@ pub struct PublicScalarOps {
 
 impl PublicScalarOps {
     pub fn scalar_parse(&self, input: &mut untrusted::Reader)
-                        -> Result<Scalar, ()> {
+                        -> Result<Scalar, error::Unspecified> {
         let encoded_value = try!(der::positive_integer(input));
         let limbs = try!(parse_big_endian_value_in_range(
                             encoded_value, 1,
@@ -423,17 +424,17 @@ impl PublicScalarOps {
 // big-endian encoding of bytes into an least-significant-limb-first array of
 // native-endian limbs, padded with zeros, and for validating that the value is
 // in the given range.
-fn parse_big_endian_value_in_range(input: untrusted::Input, min_inclusive: Limb,
-                                   max_exclusive: &[Limb])
-                                   -> Result<[Limb; MAX_LIMBS], ()> {
+fn parse_big_endian_value_in_range(
+        input: untrusted::Input, min_inclusive: Limb, max_exclusive: &[Limb])
+        -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
     let num_limbs = max_exclusive.len();
     let result = try!(parse_big_endian_value(input, num_limbs));
     if !limbs_less_than_limbs(&result[..num_limbs], max_exclusive) {
-        return Err(());
+        return Err(error::Unspecified);
     }
     if result[0] < min_inclusive &&
        result[1..num_limbs].iter().all(|limb| *limb == 0) {
-        return Err(());
+        return Err(error::Unspecified);
     }
     Ok(result)
 }
@@ -507,9 +508,9 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // encoding of bytes into an least-significant-limb-first array of
 // native-endian limbs, padded with zeros.
 pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
-                              -> Result<[Limb; MAX_LIMBS], ()> {
+                              -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
     if input.len() == 0 {
-        return Err(());
+        return Err(error::Unspecified);
     }
 
     // `bytes_in_current_limb` is the number of bytes in the current limb.
@@ -524,10 +525,10 @@ pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
         (input.len() / LIMB_BYTES) +
         (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
     if num_encoded_limbs > num_limbs {
-        return Err(());
+        return Err(error::Unspecified);
     }
 
-    input.read_all((), |input| {
+    input.read_all(error::Unspecified, |input| {
         let mut result = [0; MAX_LIMBS];
         for i in 0..num_encoded_limbs {
             let mut limb: Limb = 0;
@@ -570,10 +571,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
+    use {error, test};
     use std;
     use super::*;
     use super::parse_big_endian_value_in_range;
-    use test;
     use untrusted;
 
     #[test]
@@ -793,7 +794,8 @@ mod tests {
     fn parse_big_endian_value_test() {
         // Empty input.
         let inp = untrusted::Input::from(&[]);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS), Err(()));
+        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
+                   Err(error::Unspecified));
 
         // Less than a full limb.
         let inp = [0xfe];
@@ -848,9 +850,9 @@ mod tests {
                    if cfg!(target_pointer_width = "64") {
                         Ok(out)
                    } else {
-                        Err(())
+                        Err(error::Unspecified)
                    });
-        assert_eq!(parse_big_endian_value(inp, 1), Err(()));
+        assert_eq!(parse_big_endian_value(inp, 1), Err(error::Unspecified));
     }
 
     #[test]

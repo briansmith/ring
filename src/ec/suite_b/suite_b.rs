@@ -14,7 +14,7 @@
 
 //! Elliptic curve operations on P-256 & P-384.
 
-
+use error;
 use self::ops::*;
 
 
@@ -32,7 +32,7 @@ use self::ops::*;
 //
 fn verify_affine_point_is_on_the_curve(
         ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced))
-        -> Result<(), ()> {
+        -> Result<(), error::Unspecified> {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
 
@@ -47,7 +47,8 @@ fn verify_affine_point_is_on_the_curve(
 //
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> Result<ElemUnreduced, ()> {
+                                         -> Result<ElemUnreduced,
+                                                   error::Unspecified> {
     let z = ops.point_z(&p);
 
     // Verify that the point is not at infinity.
@@ -136,7 +137,8 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 // Jean-Pierre Seifert.
 fn verify_affine_point_is_on_the_curve_scaled(
         ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced),
-        a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced) -> Result<(), ()> {
+        a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced)
+        -> Result<(), error::Unspecified> {
     let lhs = ops.elem_squared(&y);
     let lhs = ops.elem_reduced(&lhs);
 
@@ -147,7 +149,7 @@ fn verify_affine_point_is_on_the_curve_scaled(
     let rhs = ops.elem_reduced(&rhs);
 
     if !ops.elems_are_equal(&lhs, &rhs) {
-        return Err(());
+        return Err(error::Unspecified);
     }
 
     Ok(())

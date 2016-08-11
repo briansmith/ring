@@ -24,7 +24,7 @@
 //! # extern crate untrusted;
 //! # extern crate ring;
 //! #
-//! # fn x25519_agreement_example() -> Result<(), ()> {
+//! # fn x25519_agreement_example() -> Result<(), ring::error::Unspecified> {
 //! use ring::{agreement, rand};
 //! use untrusted;
 //!
@@ -60,10 +60,9 @@
 //! // is X25519 since we just generated it.
 //! let peer_public_key_alg = &agreement::X25519;
 //!
-//! let error_value = ();
-//!
 //! agreement::agree_ephemeral(my_private_key, peer_public_key_alg,
-//!                            peer_public_key, error_value, |_key_material| {
+//!                            peer_public_key, ring::error::Unspecified,
+//!                            |_key_material| {
 //!     // In a real application, we'd apply a KDF to the key material and the
 //!     // public keys (as recommended in RFC 7748) and then derive session
 //!     // keys from the result. We omit all that here.
@@ -77,7 +76,7 @@
 
 
 
-use {ec, rand};
+use {ec, error, rand};
 use untrusted;
 
 
@@ -111,7 +110,7 @@ impl <'a> EphemeralPrivateKey {
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
     pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
-                    -> Result<EphemeralPrivateKey, ()> {
+                    -> Result<EphemeralPrivateKey, error::Unspecified> {
         // NSA Guide Step 1.
         //
         // This only handles the key generation part of step 1. The rest of
@@ -141,7 +140,8 @@ impl <'a> EphemeralPrivateKey {
     ///
     /// `out.len()` must be equal to the value returned by `public_key_len`.
     #[inline(always)]
-    pub fn compute_public_key(&self, out: &mut [u8]) -> Result<(), ()> {
+    pub fn compute_public_key(&self, out: &mut [u8])
+                              -> Result<(), error::Unspecified> {
         // NSA Guide Step 1.
         //
         // Obviously, this only handles the part of Step 1 between the private
@@ -164,8 +164,8 @@ impl <'a> EphemeralPrivateKey {
 /// the key is used for only one key agreement.
 ///
 /// `peer_public_key_alg` is the algorithm/curve for the peer's public key
-/// point; `agree_ephemeral` will return `Err(())` if it does not match
-/// `my_private_key's` algorithm/curve.
+/// point; `agree_ephemeral` will return `Err(error_value)` if it does not
+/// match `my_private_key's` algorithm/curve.
 ///
 /// `peer_pubic_key` is the peer's public key. `agree_ephemeral` verifies that
 /// it is encoded in the standard form for the algorithm and that the key is

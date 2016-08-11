@@ -120,11 +120,14 @@ pub mod slice {
 macro_rules! slice_as_array_ref {
     ($slice:expr, $len:expr) => {
         {
+            use error;
+
             #[allow(unsafe_code)]
             fn slice_as_array_ref<'a, T>(slice: &'a [T])
-                                         -> Result<&'a [T; $len], ()> {
+                                         -> Result<&'a [T; $len],
+                                                   error::Unspecified> {
                 if slice.len() != $len {
-                    return Err(());
+                    return Err(error::Unspecified);
                 }
                 Ok(unsafe {
                     &*(slice.as_ptr() as *const [T; $len])
@@ -140,11 +143,14 @@ macro_rules! slice_as_array_ref {
 macro_rules! slice_as_array_ref_mut {
     ($slice:expr, $len:expr) => {
         {
+            use error;
+
             #[allow(unsafe_code)]
             fn slice_as_array_ref<'a, T>(slice: &'a mut [T])
-                                         -> Result<&'a mut [T; $len], ()> {
+                                         -> Result<&'a mut [T; $len],
+                                                   error::Unspecified> {
                 if slice.len() != $len {
-                    return Err(());
+                    return Err(error::Unspecified);
                 }
                 Ok(unsafe {
                     &mut *(slice.as_mut_ptr() as *mut [T; $len])

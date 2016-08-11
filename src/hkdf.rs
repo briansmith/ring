@@ -132,14 +132,16 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{test, hkdf, hmac};
+    use super::*;
+    use {error, hmac, test};
 
     #[test]
     pub fn hkdf_tests() {
         test::from_file("src/hkdf_tests.txt",|section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
-                try!(test_case.consume_digest_alg("Hash").ok_or(()));
+                try!(test_case.consume_digest_alg("Hash")
+                              .ok_or(error::Unspecified));
             let secret = test_case.consume_bytes("IKM");
             let salt = test_case.consume_bytes("salt");
             let info = test_case.consume_bytes("info");
@@ -153,7 +155,7 @@ mod tests {
             let salt = hmac::SigningKey::new(digest_alg, &salt);
 
             let mut out = vec![0u8; out.len()];
-            hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
+            extract_and_expand(&salt, &secret, &info, &mut out);
             assert_eq!(out, out);
 
             Ok(())

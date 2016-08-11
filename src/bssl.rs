@@ -12,12 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use c;
+use {c, error};
 
-pub fn map_result(bssl_result: c::int) -> Result<(), ()> {
+pub fn map_result(bssl_result: c::int) -> Result<(), error::Unspecified> {
     match bssl_result {
         1 => Ok(()),
-        _ => Err(())
+        _ => Err(error::Unspecified)
     }
 }
 

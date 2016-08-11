@@ -16,21 +16,23 @@
 
 #![allow(unsafe_code)]
 
-use c;
+use {c, error};
 
-/// Returns `Ok(())` if `a == b` and `Err(())` otherwise. The comparison of
-/// `a` and `b` is done in constant time with respect to the contents of each,
-/// but NOT in constant time with respect to the lengths of `a` and `b`.
-pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), ()> {
+/// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
+/// The comparison of `a` and `b` is done in constant time with respect to the
+/// contents of each, but NOT in constant time with respect to the lengths of
+/// `a` and `b`.
+pub fn verify_slices_are_equal(a: &[u8], b: &[u8])
+                               -> Result<(), error::Unspecified> {
     if a.len() != b.len() {
-        return Err(());
+        return Err(error::Unspecified);
     }
     let result = unsafe {
         CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len())
     };
     match result {
         0 => Ok(()),
-        _ => Err(())
+        _ => Err(error::Unspecified)
     }
 }
 

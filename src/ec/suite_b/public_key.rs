@@ -15,6 +15,7 @@
 //! Functionality shared by operations on public keys (ECDSA verification and
 //! ECDH agreement).
 
+use error;
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 use untrusted;
@@ -29,16 +30,17 @@ use untrusted;
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
                                     input: untrusted::Input<'a>)
-                                    -> Result<(Elem, Elem), ()> {
+                                    -> Result<(Elem, Elem),
+                                              error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
     // affine representation." (We do it by inspection since we only accept
     // the affine representation.)
-    let (x, y) = try!(input.read_all((), |input| {
+    let (x, y) = try!(input.read_all(error::Unspecified, |input| {
         // The encoding must be 4, which is the encoding for "uncompressed".
         let encoding = try!(input.read_byte());
         if encoding != 4 {
-            return Err(());
+            return Err(error::Unspecified);
         }
 
         // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the

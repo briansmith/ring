@@ -28,7 +28,7 @@
 mod chacha20_poly1305;
 mod aes_gcm;
 
-use {constant_time, init, polyfill};
+use {constant_time, error, init, polyfill};
 
 pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -55,7 +55,7 @@ impl OpeningKey {
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<OpeningKey, ()> {
+               -> Result<OpeningKey, error::Unspecified> {
         let mut key = OpeningKey {
             key: Key {
                 algorithm: algorithm,
@@ -89,12 +89,15 @@ impl OpeningKey {
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
-                     in_out: &mut [u8], ad: &[u8]) -> Result<usize, ()> {
+                     in_out: &mut [u8], ad: &[u8])
+                     -> Result<usize, error::Unspecified> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let ciphertext_and_tag_len =
-        try!(in_out.len().checked_sub(in_prefix_len).ok_or(()));
+        try!(in_out.len().checked_sub(in_prefix_len)
+                         .ok_or(error::Unspecified));
     let ciphertext_len =
-        try!(ciphertext_and_tag_len.checked_sub(TAG_LEN).ok_or(()));
+        try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
+                                   .ok_or(error::Unspecified));
     try!(check_per_nonce_max_bytes(ciphertext_len));
     let (in_out, received_tag) =
         in_out.split_at_mut(in_prefix_len + ciphertext_len);
@@ -122,7 +125,7 @@ impl SealingKey {
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<SealingKey, ()> {
+               -> Result<SealingKey, error::Unspecified> {
         let mut key = SealingKey {
             key: Key {
                 algorithm: algorithm,
@@ -163,13 +166,14 @@ impl SealingKey {
 /// Go analog: [`AEAD.Seal`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
-                     -> Result<usize, ()> {
+                     -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.max_overhead_len() {
-        return Err(());
+        return Err(error::Unspecified);
     }
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let in_out_len =
-        try!(in_out.len().checked_sub(out_suffix_capacity).ok_or(()));
+        try!(in_out.len().checked_sub(out_suffix_capacity)
+                         .ok_or(error::Unspecified));
     try!(check_per_nonce_max_bytes(in_out_len));
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
@@ -197,11 +201,11 @@ impl Key {
     /// XXX: Assumes self.algorithm is already filled in.
     ///
     /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
-    fn init(&mut self, key_bytes: &[u8]) -> Result<(), ()> {
+    fn init(&mut self, key_bytes: &[u8]) -> Result<(), error::Unspecified> {
         init::init_once();
 
         if key_bytes.len() != self.algorithm.key_len() {
-            return Err(());
+            return Err(error::Unspecified);
         }
 
         let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut self.ctx_buf);
@@ -219,14 +223,15 @@ impl Key {
 ///
 /// Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
-    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
+    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
     seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
               in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-              -> Result<(), ()>,
+              -> Result<(), error::Unspecified>,
     open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
              in_out: &mut [u8], in_prefix_len: usize,
-             tag_out: &mut [u8; TAG_LEN], ad: &[u8]) -> Result<(), ()>,
+             tag_out: &mut [u8; TAG_LEN], ad: &[u8])
+             -> Result<(), error::Unspecified>,
 
     key_len: usize,
 }
@@ -271,9 +276,10 @@ const NONCE_LEN: usize = 96 / 8;
 
 /// |CRYPTO_chacha_20| uses a 32-bit block counter, so we disallow individual
 /// operations that work on more than 256GB at a time, for all AEADs.
-fn check_per_nonce_max_bytes(in_out_len: usize) -> Result<(), ()> {
+fn check_per_nonce_max_bytes(in_out_len: usize)
+                             -> Result<(), error::Unspecified> {
     if polyfill::u64_from_usize(in_out_len) >= (1u64 << 32) * 64 - 64 {
-        return Err(())
+        return Err(error::Unspecified)
     }
     Ok(())
 }
@@ -281,7 +287,7 @@ fn check_per_nonce_max_bytes(in_out_len: usize) -> Result<(), ()> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{aead, test};
+    use super::super::{aead, error, test};
     use std::vec::Vec;
 
     pub fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
@@ -408,8 +414,8 @@ mod tests {
                         assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
                     },
                     Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
-                        assert_eq!(Err(()), s_result);
-                        assert_eq!(Err(()), o_result);
+                        assert_eq!(Err(error::Unspecified), s_result);
+                        assert_eq!(Err(error::Unspecified), o_result);
                     },
                     Some(error) => {
                         unreachable!("Unexpected error test case: {}", error);
@@ -469,14 +475,15 @@ mod tests {
     // XXX: This test isn't that great in terms of how it tests
     // `open_in_place`. It should be constructing a valid ciphertext using the
     // unsupported nonce size using a different implementation that supports
-    // non-standard nonce sizes. So, when `open_in_place` returns `Err(())`, we
-    // don't know if it is because it rejected the non-standard nonce size or
-    // because it tried to process the input with the wrong nonce. But at least
-    // we're verifying that `open_in_place` won't crash or access out-of-bounds
-    // memory (when run under valgrind or similar). The AES-128-GCM tests have
-    // some WRONG_NONCE_LENGTH test cases that tests this more correctly.
+    // non-standard nonce sizes. So, when `open_in_place` returns
+    // `Err(error::Unspecified)`, we don't know if it is because it rejected
+    // the non-standard nonce size or because it tried to process the input
+    // with the wrong nonce. But at least we're verifying that `open_in_place`
+    // won't crash or access out-of-bounds memory (when run under valgrind or
+    // similar). The AES-128-GCM tests have some WRONG_NONCE_LENGTH test cases
+    // that tests this more correctly.
     fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm)
-                             -> Result<(), ()> {
+                             -> Result<(), error::Unspecified> {
         let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len];
         let o_key =

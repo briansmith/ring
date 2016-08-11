@@ -42,7 +42,7 @@
 //!
 //! use ring::{rand, signature};
 //!
-//! # fn sign_and_verify_ed25519() -> Result<(), ()> {
+//! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
 //! // Generate a key pair.
 //! let rng = rand::SystemRandom::new();
 //! let (generated, generated_bytes) =
@@ -96,7 +96,7 @@
 //! use ring::{rand, signature};
 //!
 //! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-//! # fn sign_and_verify_rsa() -> Result<(), ()> {
+//! # fn sign_and_verify_rsa() -> Result<(), ring::error::Unspecified> {
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
@@ -126,13 +126,15 @@
 //! # }
 //! #
 //! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap")))]
-//! # fn sign_and_verify_rsa() -> Result<(), ()> { Ok(()) }
+//! # fn sign_and_verify_rsa() -> Result<(), ring::error::Unspecified> {
+//! #     Ok(())
+//! # }
 //! #
 //! # fn main() { sign_and_verify_rsa().unwrap() }
 //! ```
 
 
-use init;
+use {error, init};
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
@@ -214,7 +216,7 @@ pub trait VerificationAlgorithm : Sync {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), ()>;
+              signature: untrusted::Input) -> Result<(), error::Unspecified>;
 }
 
 /// Verify the signature `signature` of message `msg` with the public key
@@ -230,18 +232,22 @@ pub trait VerificationAlgorithm : Sync {
 ///
 /// use ring::signature;
 ///
+/// enum Error {
+///     InvalidSignature,
+/// }
+///
 /// # #[cfg(feature = "use_heap")]
 /// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
 ///                            msg: untrusted::Input, sig: untrusted::Input)
-///                            -> Result<(), ()> {
+///                            -> Result<(), Error> {
 ///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key,
-///                      msg, sig)
+///                      msg, sig).map_err(|_| Error::InvalidSignature)
 /// }
 /// # fn main() { }
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
               msg: untrusted::Input, signature: untrusted::Input)
-              -> Result<(), ()> {
+              -> Result<(), error::Unspecified> {
     init::init_once();
     alg.verify(public_key, msg, signature)
 }
