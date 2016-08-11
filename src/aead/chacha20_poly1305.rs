@@ -22,10 +22,11 @@ const POLY1305_STATE_LEN: usize = 256;
 const POLY1305_KEY_LEN: usize = 32;
 
 
-/// ChaCha20-Poly1305 as described in
-/// [RFC 7539](https://tools.ietf.org/html/rfc7539).
+/// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
 /// The keys are 256 bits long and the nonces are 96 bits long.
+///
+/// [RFC 7539]: https://tools.ietf.org/html/rfc7539
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: CHACHA20_KEY_LEN,
     init: init,
@@ -67,13 +68,16 @@ fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
 
 
 /// The old ChaCha20-Poly13065 construction used in OpenSSH's
-/// [chacha20-poly1305@openssh.com](http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305)
-/// and the experimental TLS cipher suites with IDs `0xCC13` (ECDHE-RSA) and
-/// `0xCC14` (ECDHE-ECDSA). Use `CHACHA20_POLY1305` instead.
+/// [chacha20-poly1305@openssh.com] and the experimental TLS cipher suites with
+/// IDs `0xCC13` (ECDHE-RSA) and `0xCC14` (ECDHE-ECDSA). Use
+/// `CHACHA20_POLY1305` instead.
 ///
 /// The keys are 256 bits long and the nonces are 96 bits. The first four bytes
 /// of the nonce must be `[0, 0, 0, 0]` in order to interoperate with other
 /// implementations, which use 64-bit nonces.
+///
+/// [chacha20-poly1305@openssh.com]:
+///     http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305
 pub static CHACHA20_POLY1305_OLD: aead::Algorithm = aead::Algorithm {
     key_len: CHACHA20_KEY_LEN,
     init: init,

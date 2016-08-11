@@ -14,7 +14,7 @@
 
 //! HMAC-based Extract-and-Expand Key Derivation Function.
 //!
-//! HKDF is specified in [RFC 5869](https://tools.ietf.org/html/rfc5869).
+//! HKDF is specified in [RFC 5869].
 //!
 //! In most situations, it is best to use `extract_and_expand` to do both the
 //! HKDF-Extract and HKDF-Expand as one atomic operation. It is only necessary
@@ -26,6 +26,8 @@
 //! construct the `SigningKey` once and reuse it. Given a digest algorithm
 //! `digest_alg` and a salt `salt: &[u8]`, the `SigningKey` should be
 //! constructed as `hmac::SigningKey::new(digest_alg, salt)`.
+//!
+//! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
 
 use hmac;

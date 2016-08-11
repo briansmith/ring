@@ -231,9 +231,8 @@ pub struct RSAKeyPair {
 
 #[cfg(feature = "rsa_signing")]
 impl RSAKeyPair {
-    /// Parse a private key in DER-encoded ASN.1 `RSAPrivateKey` form (see [RFC
-    /// 3447
-    /// Appendix A.1.2](https://tools.ietf.org/html/rfc3447#appendix-A.1.2)).
+    /// Parse a private key in DER-encoded ASN.1 `RSAPrivateKey` form (see
+    /// [RFC 3447 Appendix A.1.2]).
     ///
     /// Only two-prime keys (version 0) keys are supported. The public modulus
     /// (n) must be at least 2048 bits. Currently, the public modulus must be
@@ -261,6 +260,9 @@ impl RSAKeyPair {
     /// different format like PKCS#8, which isn't supported yet. An upcoming
     /// version of *ring* will likely replace the support for the
     /// `RSAPrivateKey` format with support for the PKCS#8 format.
+    ///
+    /// [RFC 3447 Appendix A.1.2]:
+    ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
     pub fn from_der(input: untrusted::Input) -> Result<RSAKeyPair, ()> {
         input.read_all((), |input| {
             der::nested(input, der::Tag::Sequence, (), |input| {

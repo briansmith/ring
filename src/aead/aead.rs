@@ -15,13 +15,15 @@
 //! Authenticated Encryption with Associated Data (AEAD).
 //!
 //! See [Authenticated encryption: relations among notions and analysis of the
-//! generic composition
-//! paradigm](http://www-cse.ucsd.edu/~mihir/papers/oem.html) for an
-//! introduction to the concept of AEADs.
+//! generic composition paradigm][AEAD] for an introduction to the concept of
+//! AEADs.
 //!
 //! C analog: `openssl/aead.h`
 //!
-//! Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
+//! Go analog: [`crypto.cipher.AEAD`]
+//!
+//! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
+//! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 mod chacha20_poly1305;
 mod aes_gcm;
@@ -36,7 +38,7 @@ pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
 ///
 /// C analog: `EVP_AEAD_CTX` with direction `evp_aead_open`
 ///
-/// Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
+/// Go analog: [`crypto.cipher.AEAD`]
 pub struct OpeningKey {
     key: Key,
 }

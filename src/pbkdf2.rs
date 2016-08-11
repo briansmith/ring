@@ -17,11 +17,13 @@
 //! Use `derive` to derive PBKDF2 outputs. Use `verify` to verify secret
 //! against previously-derived outputs.
 //!
-//! PBKDF2 is specified in
-//! [RFC 2898 Section 5.2](https://tools.ietf.org/html/rfc2898#section-5.2)
-//! with test vectors given in [RFC 6070](https://tools.ietf.org/html/rfc6070).
-//! See also [NIST Special Publication
-//! 800-132](http://csrc.nist.gov/publications/nistpubs/800-132/nist-sp800-132.pdf).
+//! PBKDF2 is specified in [RFC 2898 Section 5.2] with test vectors given in
+//! [RFC 6070]. See also [NIST Special Publication 800-132].
+//!
+//! [RFC 2898 Section 5.2]: https://tools.ietf.org/html/rfc2898#section-5.2
+//! [RFC 6070]: https://tools.ietf.org/html/rfc6070
+//! [NIST Special Publication 800-132]:
+//!    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
 //!
 //! # Examples
 //!

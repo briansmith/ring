@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! HMAC is specified in [RFC 2104](https://tools.ietf.org/html/rfc2104).
+//! HMAC is specified in [RFC 2104].
 //!
 //! After a `SigningKey` or `VerificationKey` is constructed, it can be used
 //! for multiple signing or verification operations. Separating the
@@ -51,11 +51,9 @@
 //!
 //! All keys used during the key derivation should be `SigningKey`s;
 //! `SigningContext` should usually be used for the HMAC calculations. The
-//! [code for
-//! `ring::pbkdf2`](https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs)
-//! and the [code for
-//! `ring::hkdf`](https://github.com/briansmith/ring/blob/master/src/hkdf.rs)
-//! are good examples of how to use `ring::hmac` efficiently for key derivation.
+//! [code for `ring::pbkdf2`] and the [code for `ring::hkdf`] are good
+//! examples of how to use `ring::hmac` efficiently for key derivation.
+//!
 //!
 //! # Examples:
 //!
@@ -147,6 +145,13 @@
 //! #
 //! # fn main() { main_with_result().unwrap() }
 //! ```
+//!
+//! [RFC 2104]: https://tools.ietf.org/html/rfc2104
+//! [code for `ring::pbkdf2`]:
+//!     https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs
+//! [code for `ring::hkdf`]:
+//!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
+
 
 use {constant_time, digest, rand};
 
@@ -159,10 +164,14 @@ impl SigningKey {
     /// Generate an HMAC signing key for the given digest algorithm using
     /// |ring::rand|. The key will be `digest_alg.chaining_len` bytes long. The
     /// key size choice is based on the recommendation of
-    /// [NIST SP 800-107, Section 5.3.4: Security Effect of the HMAC
-    /// Key](http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf)
-    /// and is consistent with the key lengths chosen for TLS as described in
-    /// [RFC 5246, Appendix C](https://tools.ietf.org/html/rfc5246#appendix-C).
+    /// [NIST SP 800-107], Section 5.3.4: Security Effect of the HMAC
+    /// Key, and is consistent with the key lengths chosen for TLS as
+    /// described in [RFC 5246, Appendix C].
+    ///
+    /// [NIST SP 800-107]:
+    ///     http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf
+    /// [RFC 5246, Appendix C]:
+    ///     https://tools.ietf.org/html/rfc5246#appendix-C
     pub fn generate(digest_alg: &'static digest::Algorithm,
                     rng: &rand::SecureRandom) -> Result<SigningKey, ()> {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for

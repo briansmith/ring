@@ -124,9 +124,11 @@ impl<'a> Ed25519KeyPair {
 }
 
 
-/// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
+/// Verification of [Ed25519] signatures.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
+///
+/// [Ed25519]: https://ed25519.cr.yp.to/
 pub static ED25519: EdDSAParameters = EdDSAParameters { };
 
 impl signature::VerificationAlgorithm for EdDSAParameters {

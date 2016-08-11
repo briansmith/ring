@@ -53,15 +53,13 @@ pub trait SecureRandom {
 /// implemented by reading from `/dev/urandom`. (This is something that should
 /// be improved, at least for platforms that offer something better.)
 ///
-/// On Linux, `fill()` will use the
-/// [`getrandom`](http://man7.org/linux/man-pages/man2/getrandom.2.html)
-/// syscall. If the kernel is too old to support `getrandom` then by default
-/// `fill()` falls back to reading from `/dev/urandom`. This decision is made
-/// the first time `fill` *succeeds*. The fallback to `/dev/urandom` can be
-/// disabled by disabling the `dev_urandom_fallback` default feature; this
-/// should be done whenever the target system is known to support `getrandom`.
-/// Library crates should avoid explicitly enabling the `dev_urandom_fallback`
-/// feature.
+/// On Linux, `fill()` will use the [`getrandom`] syscall. If the kernel is too
+/// old to support `getrandom` then by default `fill()` falls back to reading
+/// from `/dev/urandom`. This decision is made the first time `fill`
+/// *succeeds*. The fallback to `/dev/urandom` can be disabled by disabling the
+/// `dev_urandom_fallback` default feature; this should be done whenever the
+/// target system is known to support `getrandom`. Library crates should avoid
+/// explicitly enabling the `dev_urandom_fallback` feature.
 ///
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
@@ -78,6 +76,8 @@ pub trait SecureRandom {
 /// through. When the fallback is enabled, allow file opening, `getrandom`,
 /// and `read` up until the first call to `fill()` succeeds. After that, allow
 /// `getrandom` and `read`.
+///
+/// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
 pub struct SystemRandom;
 
 impl SystemRandom {

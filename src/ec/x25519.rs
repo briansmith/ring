@@ -18,14 +18,14 @@ use {agreement, bssl, c, ec, rand};
 use untrusted;
 
 
-/// X25519 (ECDH using Curve25519).
+/// X25519 (ECDH using Curve25519) as described in [RFC 7748].
 ///
-/// Public keys are encoding as described in
-/// [RFC rfc7748](https://tools.ietf.org/html/rfc7748). All computations and
-/// checks are done as described in RFC 7748. Key agreement will fail if the
+/// Everything is as described in RFC 7748. Key agreement will fail if the
 /// result of the X25519 operation is zero; see the notes on the
-/// "all-zero value" in
-/// [RFC 7748 section 6.1](https://tools.ietf.org/html/rfc7748#section-6.1).
+/// "all-zero value" in [RFC 7748 section 6.1].
+///
+/// [RFC 7748]: https://tools.ietf.org/html/rfc7748
+/// [RFC 7748 section 6.1]: https://tools.ietf.org/html/rfc7748#section-6.1
 pub static X25519: agreement::Algorithm = agreement::Algorithm {
     i: ec::AgreementAlgorithmImpl {
         public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,

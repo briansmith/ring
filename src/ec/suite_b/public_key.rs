@@ -20,12 +20,13 @@ use super::verify_affine_point_is_on_the_curve;
 use untrusted;
 
 /// Parses a public key encoded in uncompressed form. The key is validated
-/// using the ECC Partial Public-Key Validation Routine from [NIST SP 800-56A,
-/// revision
-/// 2](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
-/// Section 5.6.2.3.3, the NSA's "Suite B Implementer's Guide to NIST
-/// SP 800-56A," Appendix B.3, and the NSA's "Suite B Implementer's Guide to
-/// FIPS 186-3 (ECDSA)," Appendix A.3.
+/// using the ECC Partial Public-Key Validation Routine from
+/// [NIST SP 800-56A, revision 2] Section 5.6.2.3.3, the NSA's
+/// "Suite B Implementer's Guide to NIST SP 800-56A," Appendix B.3, and the
+/// NSA's "Suite B Implementer's Guide to FIPS 186-3 (ECDSA)," Appendix A.3.
+///
+/// [NIST SP 800-56A, revision 2]:
+///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
                                     input: untrusted::Input<'a>)
                                     -> Result<(Elem, Elem), ()> {
