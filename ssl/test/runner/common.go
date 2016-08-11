@@ -875,8 +875,8 @@ type ProtocolBugs struct {
 	NegotiateALPNAndNPN bool
 
 	// SendALPN, if non-empty, causes the server to send the specified
-	// string in the ALPN extension regardless of whether the client
-	// advertised it.
+	// string in the ALPN extension regardless of the content or presence of
+	// the client offer.
 	SendALPN string
 
 	// SendEmptySessionTicket, if true, causes the server to send an empty

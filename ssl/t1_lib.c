@@ -1517,6 +1517,32 @@ static int ext_alpn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
+  /* Check that the protcol name is one of the ones we advertised. */
+  int protocol_ok = 0;
+  CBS client_protocol_name_list, client_protocol_name;
+  CBS_init(&client_protocol_name_list, ssl->alpn_client_proto_list,
+           ssl->alpn_client_proto_list_len);
+  while (CBS_len(&client_protocol_name_list) > 0) {
+    if (!CBS_get_u8_length_prefixed(&client_protocol_name_list,
+                                    &client_protocol_name)) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return 0;
+    }
+
+    if (CBS_len(&client_protocol_name) == CBS_len(&protocol_name) &&
+        memcmp(CBS_data(&client_protocol_name), CBS_data(&protocol_name),
+               CBS_len(&protocol_name)) == 0) {
+      protocol_ok = 1;
+      break;
+    }
+  }
+
+  if (!protocol_ok) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+
   if (!CBS_stow(&protocol_name, &ssl->s3->alpn_selected,
                 &ssl->s3->alpn_selected_len)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
