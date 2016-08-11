@@ -126,9 +126,12 @@ pub mod hkdf;
 pub mod hmac;
 mod init;
 pub mod pbkdf2;
-
 pub mod rand;
-#[cfg(feature = "use_heap")] mod rsa;
+
+#[cfg(feature = "use_heap")]
+#[path = "rsa/rsa.rs"]
+mod rsa;
+
 pub mod signature;
 
 #[cfg(any(feature = "use_heap", test))]

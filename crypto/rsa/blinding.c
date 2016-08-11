@@ -122,7 +122,7 @@
 
 const uint32_t GFp_BN_BLINDING_COUNTER = BN_BLINDING_COUNTER;
 
-/* Needs to be kept in sync with `struct BN_BLINDING` (in `src/rsa.rs`). */
+/* Needs to be kept in sync with `struct BN_BLINDING` (in `src/rsa/rsa.rs`). */
 struct bn_blinding_st {
   BIGNUM *A; /* The base blinding factor, Montgomery-encoded. */
   BIGNUM *Ai; /* The inverse of the blinding factor, Montgomery-encoded. */

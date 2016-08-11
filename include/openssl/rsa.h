@@ -90,7 +90,7 @@ OPENSSL_EXPORT int RSA_check_key(const RSA *rsa, BN_CTX *ctx);
 
 /* Private functions. */
 
-/* Needs to be kept in sync with `struct RSA` (in `src/rsa.rs`). */
+/* Needs to be kept in sync with `struct RSA` (in `src/rsa/rsa.rs`). */
 struct rsa_st {
   BIGNUM *n;
   BIGNUM *e;

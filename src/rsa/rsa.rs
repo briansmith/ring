@@ -500,7 +500,8 @@ mod tests {
 
     #[test]
     fn test_signature_rsa_pkcs1_verify() {
-        test::from_file("src/rsa_pkcs1_verify_tests.txt", |section, test_case| {
+        test::from_file("src/rsa/rsa_pkcs1_verify_tests.txt",
+                        |section, test_case| {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
@@ -550,7 +551,8 @@ mod tests {
     #[test]
     fn test_signature_rsa_pkcs1_sign() {
         let rng = rand::SystemRandom::new();
-        test::from_file("src/rsa_pkcs1_sign_tests.txt", |section, test_case| {
+        test::from_file("src/rsa/rsa_pkcs1_sign_tests.txt",
+                        |section, test_case| {
             let digest_name = test_case.consume_string("Digest");
             // Note that SHA-1 isn't recognized here because we don't expose
             // PKCS#1 SHA-1 signing, because we don't have test vectors for it.
