@@ -96,7 +96,9 @@
 #[cfg(feature = "internal_benches")]
 extern crate test as bench;
 
-#[cfg(unix)]
+#[cfg(any(all(unix,
+              any(not(target_os = "linux"),
+                  feature = "dev_urandom_fallback"))))]
 #[macro_use]
 extern crate lazy_static;
 

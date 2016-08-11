@@ -128,6 +128,7 @@ mod sysrand {
     }
 }
 
+// Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(unix,
           not(all(target_os = "linux",
                   not(feature = "dev_urandom_fallback")))))]
@@ -151,6 +152,7 @@ mod urandom {
     }
 }
 
+// Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
     extern crate std;
