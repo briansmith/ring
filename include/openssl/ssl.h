@@ -671,8 +671,8 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 /* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
- * receipt of ChangeCipherSpec and Finished. This mode enables full-handshakes
- * to 'complete' in one RTT. See draft-bmoeller-tls-falsestart-01.
+ * receipt of ChangeCipherSpec and Finished. This mode enables full handshakes
+ * to 'complete' in one RTT. See RFC 7918.
  *
  * When False Start is enabled, |SSL_do_handshake| may succeed before the
  * handshake has completely finished. |SSL_write| will function at this point,
