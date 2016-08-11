@@ -198,7 +198,8 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int include_ticket) {
     }
   }
   if (session->peer != NULL) {
-    new_session->peer = X509_up_ref(session->peer);
+    X509_up_ref(session->peer);
+    new_session->peer = session->peer;
   }
   if (session->cert_chain != NULL) {
     new_session->cert_chain = X509_chain_up_ref(session->cert_chain);

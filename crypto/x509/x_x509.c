@@ -142,10 +142,10 @@ IMPLEMENT_ASN1_FUNCTIONS(X509)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(X509)
 
-X509 *X509_up_ref(X509 *x)
+int X509_up_ref(X509 *x)
 {
     CRYPTO_refcount_inc(&x->references);
-    return x;
+    return 1;
 }
 
 int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused * unused,

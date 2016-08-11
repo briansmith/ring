@@ -217,9 +217,10 @@ X509_STORE *X509_STORE_new(void)
     return NULL;
 }
 
-void X509_STORE_up_ref(X509_STORE *store)
+int X509_STORE_up_ref(X509_STORE *store)
 {
     CRYPTO_refcount_inc(&store->references);
+    return 1;
 }
 
 static void cleanup(X509_OBJECT *a)
@@ -395,7 +396,7 @@ int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x)
     return ret;
 }
 
-void X509_OBJECT_up_ref_count(X509_OBJECT *a)
+int X509_OBJECT_up_ref_count(X509_OBJECT *a)
 {
     switch (a->type) {
     case X509_LU_X509:
@@ -405,6 +406,7 @@ void X509_OBJECT_up_ref_count(X509_OBJECT *a)
         X509_CRL_up_ref(a->data.crl);
         break;
     }
+    return 1;
 }
 
 void X509_OBJECT_free_contents(X509_OBJECT *a)
@@ -515,12 +517,12 @@ STACK_OF (X509) * X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm)
     for (i = 0; i < cnt; i++, idx++) {
         obj = sk_X509_OBJECT_value(ctx->ctx->objs, idx);
         x = obj->data.x509;
-        if (!sk_X509_push(sk, X509_up_ref(x))) {
+        if (!sk_X509_push(sk, x)) {
             CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
-            X509_free(x);
             sk_X509_pop_free(sk, X509_free);
             return NULL;
         }
+        X509_up_ref(x);
     }
     CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
     return sk;

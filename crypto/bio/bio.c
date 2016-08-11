@@ -114,9 +114,9 @@ int BIO_free(BIO *bio) {
   return 1;
 }
 
-BIO *BIO_up_ref(BIO *bio) {
+int BIO_up_ref(BIO *bio) {
   CRYPTO_refcount_inc(&bio->references);
-  return bio;
+  return 1;
 }
 
 void BIO_vfree(BIO *bio) {

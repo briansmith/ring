@@ -84,7 +84,7 @@ OPENSSL_EXPORT DSA *DSA_new(void);
  * reference count drops to zero. */
 OPENSSL_EXPORT void DSA_free(DSA *dsa);
 
-/* DSA_up_ref increments the reference count of |dsa|. */
+/* DSA_up_ref increments the reference count of |dsa| and returns one. */
 OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
 

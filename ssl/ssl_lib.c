@@ -1019,7 +1019,8 @@ X509 *SSL_get_peer_certificate(const SSL *ssl) {
   if (session == NULL || session->peer == NULL) {
     return NULL;
   }
-  return X509_up_ref(session->peer);
+  X509_up_ref(session->peer);
+  return session->peer;
 }
 
 STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {

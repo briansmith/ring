@@ -83,7 +83,7 @@ OPENSSL_EXPORT RSA *RSA_new_method(const ENGINE *engine);
  * reference count drops to zero. */
 OPENSSL_EXPORT void RSA_free(RSA *rsa);
 
-/* RSA_up_ref increments the reference count of |rsa|. */
+/* RSA_up_ref increments the reference count of |rsa| and returns one. */
 OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 
 

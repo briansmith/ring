@@ -96,8 +96,8 @@ OPENSSL_EXPORT int BIO_free(BIO *bio);
  * TODO(fork): remove. */
 OPENSSL_EXPORT void BIO_vfree(BIO *bio);
 
-/* BIO_up_ref increments the reference count of |bio| and returns it. */
-OPENSSL_EXPORT BIO *BIO_up_ref(BIO *bio);
+/* BIO_up_ref increments the reference count of |bio| and returns one. */
+OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 
 
 /* Basic I/O. */

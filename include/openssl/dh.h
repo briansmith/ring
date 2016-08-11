@@ -81,7 +81,7 @@ OPENSSL_EXPORT DH *DH_new(void);
  * count drops to zero. */
 OPENSSL_EXPORT void DH_free(DH *dh);
 
-/* DH_up_ref increments the reference count of |dh|. */
+/* DH_up_ref increments the reference count of |dh| and returns one. */
 OPENSSL_EXPORT int DH_up_ref(DH *dh);
 
 

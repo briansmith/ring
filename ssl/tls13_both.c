@@ -230,7 +230,9 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
   ssl->s3->new_session->verify_result = ssl->verify_result;
 
   X509_free(ssl->s3->new_session->peer);
-  ssl->s3->new_session->peer = X509_up_ref(sk_X509_value(chain, 0));
+  X509 *leaf = sk_X509_value(chain, 0);
+  X509_up_ref(leaf);
+  ssl->s3->new_session->peer = leaf;
 
   sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
   ssl->s3->new_session->cert_chain = chain;

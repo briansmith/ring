@@ -255,7 +255,8 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
         level++;
         x = sk_X509_value(certs, i);
         cache = policy_cache_set(x);
-        level->cert = X509_up_ref(x);
+        X509_up_ref(x);
+        level->cert = x;
 
         if (!cache->anyPolicy)
             level->flags |= X509_V_FLAG_INHIBIT_ANY;

@@ -1039,7 +1039,8 @@ static int ssl3_get_server_certificate(SSL *ssl) {
   ssl->s3->new_session->cert_chain = chain;
 
   X509_free(ssl->s3->new_session->peer);
-  ssl->s3->new_session->peer = X509_up_ref(leaf);
+  X509_up_ref(leaf);
+  ssl->s3->new_session->peer = leaf;
 
   return 1;
 

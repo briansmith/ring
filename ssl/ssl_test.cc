@@ -811,7 +811,8 @@ static bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
     return false;
   }
   // Do not configure a reading BIO, but record what's written to a memory BIO.
-  SSL_set_bio(ssl, nullptr /* rbio */, BIO_up_ref(bio.get()));
+  BIO_up_ref(bio.get());
+  SSL_set_bio(ssl, nullptr /* rbio */, bio.get());
   int ret = SSL_connect(ssl);
   if (ret > 0) {
     // SSL_connect should fail without a BIO to write to.

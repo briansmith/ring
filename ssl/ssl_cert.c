@@ -171,7 +171,8 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->dh_tmp_cb = cert->dh_tmp_cb;
 
   if (cert->x509 != NULL) {
-    ret->x509 = X509_up_ref(cert->x509);
+    X509_up_ref(cert->x509);
+    ret->x509 = cert->x509;
   }
 
   if (cert->privatekey != NULL) {
