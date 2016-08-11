@@ -198,7 +198,7 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
     // to the caller.
 
-    // NSA Gudie Prerequisite 3, "Prior to or during the key-agreement process,
+    // NSA Guide Prerequisite 3, "Prior to or during the key-agreement process,
     // each party shall obtain the identifier associated with the other party
     // during the key-agreement scheme," is delegated to the caller.
 
