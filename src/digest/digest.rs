@@ -481,7 +481,7 @@ mod tests {
     /// Test vectors from BoringSSL.
     #[test]
     fn test_bssl() {
-        test::from_file("src/digest_tests.txt", |section, test_case| {
+        test::from_file("src/digest/digest_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
             let input = test_case.consume_bytes("Input");
