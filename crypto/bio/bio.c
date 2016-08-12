@@ -555,3 +555,82 @@ void BIO_set_retry_special(BIO *bio) {
 }
 
 int BIO_set_write_buffer_size(BIO *bio, int buffer_size) { return 0; }
+
+static struct CRYPTO_STATIC_MUTEX g_index_lock = CRYPTO_STATIC_MUTEX_INIT;
+static int g_index = BIO_TYPE_START;
+
+int BIO_get_new_index(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&g_index_lock);
+  // If |g_index| exceeds 255, it will collide with the flags bits.
+  int ret = g_index > 255 ? -1 : g_index++;
+  CRYPTO_STATIC_MUTEX_unlock_write(&g_index_lock);
+  return ret;
+}
+
+BIO_METHOD *BIO_meth_new(int type, const char *name) {
+  BIO_METHOD *method = OPENSSL_malloc(sizeof(BIO_METHOD));
+  if (method == NULL) {
+    return NULL;
+  }
+  OPENSSL_memset(method, 0, sizeof(BIO_METHOD));
+  method->type = type;
+  method->name = name;
+  return method;
+}
+
+void BIO_meth_free(BIO_METHOD *method) {
+  OPENSSL_free(method);
+}
+
+int BIO_meth_set_create(BIO_METHOD *method,
+                        int (*create)(BIO *)) {
+  method->create = create;
+  return 1;
+}
+
+int BIO_meth_set_destroy(BIO_METHOD *method,
+                         int (*destroy)(BIO *)) {
+  method->destroy = destroy;
+  return 1;
+}
+
+int BIO_meth_set_write(BIO_METHOD *method,
+                       int (*write)(BIO *, const char *, int)) {
+  method->bwrite = write;
+  return 1;
+}
+
+int BIO_meth_set_read(BIO_METHOD *method,
+                      int (*read)(BIO *, char *, int)) {
+  method->bread = read;
+  return 1;
+}
+
+int BIO_meth_set_gets(BIO_METHOD *method,
+                      int (*gets)(BIO *, char *, int)) {
+  method->bgets = gets;
+  return 1;
+}
+
+int BIO_meth_set_ctrl(BIO_METHOD *method,
+                      long (*ctrl)(BIO *, int, long, void *)) {
+  method->ctrl = ctrl;
+  return 1;
+}
+
+void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
+
+void *BIO_get_data(BIO *bio) { return bio->ptr; }
+
+void BIO_set_init(BIO *bio, int init) { bio->init = init; }
+
+int BIO_get_init(BIO *bio) { return bio->init; }
+
+void BIO_set_shutdown(BIO *bio, int shutdown) { bio->shutdown = shutdown; }
+
+int BIO_get_shutdown(BIO *bio) { return bio->shutdown; }
+
+int BIO_meth_set_puts(BIO_METHOD *method, int (*puts)(BIO *, const char *)) {
+  // Ignore the parameter. We implement |BIO_puts| using |BIO_write|.
+  return 1;
+}

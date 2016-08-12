@@ -570,6 +570,14 @@ void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {
   ctx->default_passwd_callback = cb;
 }
 
+pem_password_cb *SSL_CTX_get_default_passwd_cb(const SSL_CTX *ctx) {
+  return ctx->default_passwd_callback;
+}
+
 void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx, void *data) {
   ctx->default_passwd_callback_userdata = data;
+}
+
+void *SSL_CTX_get_default_passwd_cb_userdata(const SSL_CTX *ctx) {
+  return ctx->default_passwd_callback_userdata;
 }

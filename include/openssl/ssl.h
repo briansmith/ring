@@ -1074,10 +1074,19 @@ OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
 OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx,
                                                   pem_password_cb *cb);
 
+// SSL_CTX_get_default_passwd_cb returns the callback set by
+// |SSL_CTX_set_default_passwd_cb|.
+OPENSSL_EXPORT pem_password_cb *SSL_CTX_get_default_passwd_cb(
+    const SSL_CTX *ctx);
+
 // SSL_CTX_set_default_passwd_cb_userdata sets the userdata parameter for
 // |ctx|'s password callback.
 OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx,
                                                            void *data);
+
+// SSL_CTX_get_default_passwd_cb_userdata returns the userdata parameter set by
+// |SSL_CTX_set_default_passwd_cb_userdata|.
+OPENSSL_EXPORT void *SSL_CTX_get_default_passwd_cb_userdata(const SSL_CTX *ctx);
 
 
 // Custom private keys.
@@ -1718,6 +1727,26 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 // |session| cannot be used without leaking a correlator.
 OPENSSL_EXPORT int SSL_SESSION_should_be_single_use(const SSL_SESSION *session);
 
+// SSL_SESSION_is_resumable returns one if |session| is resumable and zero
+// otherwise.
+OPENSSL_EXPORT int SSL_SESSION_is_resumable(const SSL_SESSION *session);
+
+// SSL_SESSION_has_ticket returns one if |session| has a ticket and zero
+// otherwise.
+OPENSSL_EXPORT int SSL_SESSION_has_ticket(const SSL_SESSION *session);
+
+// SSL_SESSION_get0_ticket sets |*out_ticket| and |*out_len| to |session|'s
+// ticket, or NULL and zero if it does not have one. |out_ticket| may be NULL
+// if only the ticket length is needed.
+OPENSSL_EXPORT void SSL_SESSION_get0_ticket(const SSL_SESSION *session,
+                                            const uint8_t **out_ticket,
+                                            size_t *out_len);
+
+// SSL_SESSION_get_ticket_lifetime_hint returns ticket lifetime hint of
+// |session| in seconds or zero if none was set.
+OPENSSL_EXPORT uint32_t
+SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session);
+
 
 // Session caching.
 //
@@ -1945,18 +1974,14 @@ OPENSSL_EXPORT void (*SSL_CTX_sess_get_remove_cb(SSL_CTX *ctx))(
 //
 // If the internal session cache is enabled, the callback is only consulted if
 // the internal cache does not return a match.
-//
-// The callback's |id| parameter is not const for historical reasons, but the
-// contents may not be modified.
 OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
-    SSL_CTX *ctx,
-    SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *id, int id_len,
-                                   int *out_copy));
+    SSL_CTX *ctx, SSL_SESSION *(*get_session_cb)(SSL *ssl, const uint8_t *id,
+                                                 int id_len, int *out_copy));
 
 // SSL_CTX_sess_get_get_cb returns the callback set by
 // |SSL_CTX_sess_set_get_cb|.
 OPENSSL_EXPORT SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
-    SSL *ssl, uint8_t *id, int id_len, int *out_copy);
+    SSL *ssl, const uint8_t *id, int id_len, int *out_copy);
 
 // SSL_magic_pending_session_ptr returns a magic |SSL_SESSION|* which indicates
 // that the session isn't currently unavailable. |SSL_get_error| will then
@@ -3985,6 +4010,24 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
 // the session.
 OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 
+#define OPENSSL_INIT_NO_LOAD_SSL_STRINGS 0
+#define OPENSSL_INIT_LOAD_SSL_STRINGS 0
+#define OPENSSL_INIT_SSL_DEFAULT 0
+
+// OPENSSL_init_ssl calls |CRYPTO_library_init| and returns one.
+OPENSSL_EXPORT int OPENSSL_init_ssl(uint64_t opts,
+                                    const OPENSSL_INIT_SETTINGS *settings);
+
+#if !defined(BORINGSSL_NO_CXX)
+// SSL_CTX_sess_set_get_cb is a legacy C++ overload of |SSL_CTX_sess_set_get_cb|
+// which supports the old callback signature.
+//
+// TODO(davidben): Remove this once Node is compatible with OpenSSL 1.1.0.
+extern "C++" OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
+    SSL_CTX *ctx, SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *id,
+                                                 int id_len, int *out_copy));
+#endif
+
 
 // Private structures.
 //
@@ -4233,8 +4276,10 @@ struct ssl_ctx_st {
   // it.
   int (*new_session_cb)(SSL *ssl, SSL_SESSION *sess);
   void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess);
-  SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *data, int len,
+  SSL_SESSION *(*get_session_cb)(SSL *ssl, const uint8_t *data, int len,
                                  int *copy);
+  SSL_SESSION *(*get_session_cb_legacy)(SSL *ssl, uint8_t *data, int len,
+                                        int *copy);
 
   CRYPTO_refcount_t references;
 

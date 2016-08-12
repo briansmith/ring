@@ -2176,6 +2176,11 @@ void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *sk)
     ctx->untrusted = sk;
 }
 
+STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(X509_STORE_CTX *ctx)
+{
+    return ctx->untrusted;
+}
+
 void X509_STORE_CTX_set0_crls(X509_STORE_CTX *ctx, STACK_OF(X509_CRL) *sk)
 {
     ctx->crls = sk;

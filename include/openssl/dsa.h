@@ -101,6 +101,21 @@ OPENSSL_EXPORT void DSA_get0_key(const DSA *dsa, const BIGNUM **out_pub_key,
 OPENSSL_EXPORT void DSA_get0_pqg(const DSA *dsa, const BIGNUM **out_p,
                                  const BIGNUM **out_q, const BIGNUM **out_g);
 
+// DSA_set0_key sets |dsa|'s public and private key to |pub_key| and |priv_key|,
+// respectively, if non-NULL. On success, it takes ownership of each argument
+// and returns one. Otherwise, it returns zero.
+//
+// |priv_key| may be NULL, but |pub_key| must either be non-NULL or already
+// configured on |dsa|.
+OPENSSL_EXPORT int DSA_set0_key(DSA *dsa, BIGNUM *pub_key, BIGNUM *priv_key);
+
+// DSA_set0_pqg sets |dsa|'s parameters to |p|, |q|, and |g|, if non-NULL, and
+// takes ownership of them. On success, it takes ownership of each argument and
+// returns one. Otherwise, it returns zero.
+//
+// Each argument must either be non-NULL or already configured on |dsa|.
+OPENSSL_EXPORT int DSA_set0_pqg(DSA *dsa, BIGNUM *p, BIGNUM *q, BIGNUM *g);
+
 
 // Parameter generation.
 

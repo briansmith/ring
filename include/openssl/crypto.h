@@ -63,7 +63,7 @@ OPENSSL_EXPORT int FIPS_mode(void);
 
 // OPENSSL_VERSION_TEXT contains a string the identifies the version of
 // “OpenSSL”. node.js requires a version number in this text.
-#define OPENSSL_VERSION_TEXT "OpenSSL 1.0.2 (compatible; BoringSSL)"
+#define OPENSSL_VERSION_TEXT "OpenSSL 1.1.0 (compatible; BoringSSL)"
 
 #define SSLEAY_VERSION 0
 
@@ -71,9 +71,19 @@ OPENSSL_EXPORT int FIPS_mode(void);
 // "BoringSSL".
 OPENSSL_EXPORT const char *SSLeay_version(int unused);
 
+#define OPENSSL_VERSION 0
+
+// OpenSSL_version is a compatibility function that returns the string
+// "BoringSSL".
+OPENSSL_EXPORT const char *OpenSSL_version(int unused);
+
 // SSLeay is a compatibility function that returns OPENSSL_VERSION_NUMBER from
 // base.h.
 OPENSSL_EXPORT unsigned long SSLeay(void);
+
+// OpenSSL_version_num is a compatibility function that returns
+// OPENSSL_VERSION_NUMBER from base.h.
+OPENSSL_EXPORT unsigned long OpenSSL_version_num(void);
 
 // CRYPTO_malloc_init returns one.
 OPENSSL_EXPORT int CRYPTO_malloc_init(void);
@@ -86,6 +96,19 @@ OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
+
+#define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS 0
+#define OPENSSL_INIT_LOAD_CRYPTO_STRINGS 0
+#define OPENSSL_INIT_ADD_ALL_CIPHERS 0
+#define OPENSSL_INIT_ADD_ALL_DIGESTS 0
+#define OPENSSL_INIT_NO_ADD_ALL_CIPHERS 0
+#define OPENSSL_INIT_NO_ADD_ALL_DIGESTS 0
+#define OPENSSL_INIT_LOAD_CONFIG 0
+#define OPENSSL_INIT_NO_LOAD_CONFIG 0
+
+// OPENSSL_init_crypto calls |CRYPTO_library_init| and returns one.
+OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
+                                       const OPENSSL_INIT_SETTINGS *settings);
 
 
 #if defined(__cplusplus)

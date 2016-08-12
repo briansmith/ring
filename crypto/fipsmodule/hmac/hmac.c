@@ -87,11 +87,28 @@ void HMAC_CTX_init(HMAC_CTX *ctx) {
   EVP_MD_CTX_init(&ctx->md_ctx);
 }
 
+HMAC_CTX *HMAC_CTX_new(void) {
+  HMAC_CTX *ctx = OPENSSL_malloc(sizeof(HMAC_CTX));
+  if (ctx != NULL) {
+    HMAC_CTX_init(ctx);
+  }
+  return ctx;
+}
+
 void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
   EVP_MD_CTX_cleanup(&ctx->i_ctx);
   EVP_MD_CTX_cleanup(&ctx->o_ctx);
   EVP_MD_CTX_cleanup(&ctx->md_ctx);
   OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
+}
+
+void HMAC_CTX_free(HMAC_CTX *ctx) {
+  if (ctx == NULL) {
+    return;
+  }
+
+  HMAC_CTX_cleanup(ctx);
+  OPENSSL_free(ctx);
 }
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
@@ -191,6 +208,11 @@ int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
 
   dest->md = src->md;
   return 1;
+}
+
+void HMAC_CTX_reset(HMAC_CTX *ctx) {
+  HMAC_CTX_cleanup(ctx);
+  HMAC_CTX_init(ctx);
 }
 
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {

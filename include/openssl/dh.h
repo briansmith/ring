@@ -92,10 +92,21 @@ OPENSSL_EXPORT int DH_up_ref(DH *dh);
 OPENSSL_EXPORT void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
                                 const BIGNUM **out_priv_key);
 
+// DH_set0_key sets |dh|'s public and private key to the specified values. If
+// NULL, the field is left unchanged. On success, it takes ownership of each
+// argument and returns one. Otherwise, it returns zero.
+OPENSSL_EXPORT int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
+
 // DH_get0_pqg sets |*out_p|, |*out_q|, and |*out_g|, if non-NULL, to |dh|'s p,
 // q, and g parameters, respectively.
 OPENSSL_EXPORT void DH_get0_pqg(const DH *dh, const BIGNUM **out_p,
                                 const BIGNUM **out_q, const BIGNUM **out_g);
+
+// DH_set0_pqg sets |dh|'s p, q, and g parameters to the specified values.  If
+// NULL, the field is left unchanged. On success, it takes ownership of each
+// argument and returns one. Otherwise, it returns zero. |q| may be NULL, but
+// |p| and |g| must either be specified or already configured on |dh|.
+OPENSSL_EXPORT int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
 
 
 // Standard parameters.

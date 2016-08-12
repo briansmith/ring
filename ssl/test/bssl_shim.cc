@@ -854,7 +854,7 @@ static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
   *out_pkey = GetTestState(ssl)->channel_id.release();
 }
 
-static SSL_SESSION *GetSessionCallback(SSL *ssl, uint8_t *data, int len,
+static SSL_SESSION *GetSessionCallback(SSL *ssl, const uint8_t *data, int len,
                                        int *copy) {
   TestState *async_state = GetTestState(ssl);
   if (async_state->session) {

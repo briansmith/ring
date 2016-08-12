@@ -172,6 +172,22 @@ int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   return OPENSSL_memcmp(a->data, b->data, a->length);
 }
 
+const uint8_t *OBJ_get0_data(const ASN1_OBJECT *obj) {
+  if (obj == NULL) {
+    return NULL;
+  }
+
+  return obj->data;
+}
+
+size_t OBJ_length(const ASN1_OBJECT *obj) {
+  if (obj == NULL || obj->length < 0) {
+    return 0;
+  }
+
+  return (size_t)obj->length;
+}
+
 // obj_cmp is called to search the kNIDsInOIDOrder array. The |key| argument is
 // an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
 // unsigned int in the array.

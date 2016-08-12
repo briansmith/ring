@@ -6,17 +6,27 @@ BoringSSL support, provided they do not use removed APIs. In general, see if the
 library compiles and, on failure, consult the documentation in the header files
 and see if problematic features can be removed.
 
-In some cases, BoringSSL-specific code may be necessary. In that case, the
-`OPENSSL_IS_BORINGSSL` preprocessor macro may be used in `#ifdef`s. This macro
-should also be used in lieu of the presence of any particular function to detect
-OpenSSL vs BoringSSL in configure scripts, etc., where those are necessary.
-Before using the preprocessor, however, contact the BoringSSL maintainers about
-the missing APIs. If not an intentionally removed feature, BoringSSL will
-typically add compatibility functions for convenience.
+BoringSSL's `OPENSSL_VERSION_NUMBER` matches the OpenSSL version it targets.
+Version checks for OpenSSL should ideally work as-is in BoringSSL. BoringSSL
+also defines upstream's `OPENSSL_NO_*` feature macros corresponding to removed
+features. If the preprocessor is needed, use these version checks or feature
+macros where possible, especially when patching third-party projects. Such
+patches are more generally useful to OpenSSL consumers and thus more
+appropriate to send upstream.
 
-For convenience, BoringSSL defines upstream's `OPENSSL_NO_*` feature macros
-corresponding to removed features. These may also be used to disable code which
-uses a removed feature.
+In some cases, BoringSSL-specific code may be necessary. Use the
+`OPENSSL_IS_BORINGSSL` preprocessor macro in `#ifdef`s. However, first contact
+the BoringSSL maintainers about the missing APIs. We will typically add
+compatibility functions for convenience. In particular, *contact BoringSSL
+maintainers before working around missing OpenSSL 1.1.0 accessors*. BoringSSL
+was originally derived from OpenSSL 1.0.2 but now targets OpenSSL 1.1.0. Some
+newer APIs may be missing but can be added on request. (Not all projects have
+been ported to OpenSSL 1.1.0, so BoringSSL also remains largely compatible with
+OpenSSL 1.0.2.)
+
+The `OPENSSL_IS_BORINGSSL` macro may also be used to distinguish OpenSSL from
+BoringSSL in configure scripts. Do not use the presence or absence of particular
+symbols to detect BoringSSL.
 
 Note: BoringSSL does *not* have a stable API or ABI. It must be updated with its
 consumers. It is not suitable for, say, a system library in a traditional Linux
@@ -39,15 +49,19 @@ code, particularly to avoid compiler warnings.
 Most notably, the `STACK_OF(T)` types have all been converted to use `size_t`
 instead of `int` for indices and lengths.
 
-### Reference counts
+### Reference counts and opaque types
 
 Some external consumers increment reference counts directly by calling
-`CRYPTO_add` with the corresponding `CRYPTO_LOCK_*` value.
+`CRYPTO_add` with the corresponding `CRYPTO_LOCK_*` value. These APIs no longer
+exist in BoringSSL. Instead, code which increments reference counts should call
+the corresponding `FOO_up_ref` function, such as `EVP_PKEY_up_ref`.
 
-These APIs no longer exist in BoringSSL. Instead, code which increments
-reference counts should call the corresponding `FOO_up_ref` function, such as
-`EVP_PKEY_up_ref`. Note that not all of these APIs are present in OpenSSL and
-may require `#ifdef`s.
+BoringSSL also hides some structs which were previously exposed in OpenSSL
+1.0.2, particularly in libssl. Use the relevant accessors instead.
+
+Note that some of these APIs were added in OpenSSL 1.1.0, so projects which do
+not yet support 1.1.0 may need additional `#ifdef`s. Projects supporting OpenSSL
+1.1.0 should not require modification.
 
 ### Error codes
 

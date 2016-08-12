@@ -193,6 +193,69 @@ void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
   }
 }
 
+int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
+  if ((rsa->n == NULL && n == NULL) ||
+      (rsa->e == NULL && e == NULL)) {
+    return 0;
+  }
+
+  if (n != NULL) {
+    BN_free(rsa->n);
+    rsa->n = n;
+  }
+  if (e != NULL) {
+    BN_free(rsa->e);
+    rsa->e = e;
+  }
+  if (d != NULL) {
+    BN_free(rsa->d);
+    rsa->d = d;
+  }
+
+  return 1;
+}
+
+int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q) {
+  if ((rsa->p == NULL && p == NULL) ||
+      (rsa->q == NULL && q == NULL)) {
+    return 0;
+  }
+
+  if (p != NULL) {
+    BN_free(rsa->p);
+    rsa->p = p;
+  }
+  if (q != NULL) {
+    BN_free(rsa->q);
+    rsa->q = q;
+  }
+
+  return 1;
+}
+
+int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
+  if ((rsa->dmp1 == NULL && dmp1 == NULL) ||
+      (rsa->dmq1 == NULL && dmq1 == NULL) ||
+      (rsa->iqmp == NULL && iqmp == NULL)) {
+    return 0;
+  }
+
+  if (dmp1 != NULL) {
+    BN_free(rsa->dmp1);
+    rsa->dmp1 = dmp1;
+  }
+  if (dmq1 != NULL) {
+    BN_free(rsa->dmq1);
+    rsa->dmq1 = dmq1;
+  }
+  if (iqmp != NULL) {
+    BN_free(rsa->iqmp);
+    rsa->iqmp = iqmp;
+  }
+
+  return 1;
+}
+
 int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                        int padding) {
   size_t out_len;

@@ -153,6 +153,46 @@ void DSA_get0_pqg(const DSA *dsa, const BIGNUM **out_p, const BIGNUM **out_q,
   }
 }
 
+int DSA_set0_key(DSA *dsa, BIGNUM *pub_key, BIGNUM *priv_key) {
+  if (dsa->pub_key == NULL && pub_key == NULL) {
+    return 0;
+  }
+
+  if (pub_key != NULL) {
+    BN_free(dsa->pub_key);
+    dsa->pub_key = pub_key;
+  }
+  if (priv_key != NULL) {
+    BN_free(dsa->priv_key);
+    dsa->priv_key = priv_key;
+  }
+
+  return 1;
+}
+
+int DSA_set0_pqg(DSA *dsa, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
+  if ((dsa->p == NULL && p == NULL) ||
+      (dsa->q == NULL && q == NULL) ||
+      (dsa->g == NULL && g == NULL)) {
+    return 0;
+  }
+
+  if (p != NULL) {
+    BN_free(dsa->p);
+    dsa->p = p;
+  }
+  if (q != NULL) {
+    BN_free(dsa->q);
+    dsa->q = q;
+  }
+  if (g != NULL) {
+    BN_free(dsa->g);
+    dsa->g = g;
+  }
+
+  return 1;
+}
+
 int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
                                size_t seed_len, int *out_counter,
                                unsigned long *out_h, BN_GENCB *cb) {

@@ -218,6 +218,18 @@ OPENSSL_EXPORT void BIO_clear_retry_flags(BIO *bio);
 // values.
 OPENSSL_EXPORT int BIO_method_type(const BIO *bio);
 
+// These are passed to the BIO callback
+#define BIO_CB_FREE 0x01
+#define BIO_CB_READ 0x02
+#define BIO_CB_WRITE 0x03
+#define BIO_CB_PUTS 0x04
+#define BIO_CB_GETS 0x05
+#define BIO_CB_CTRL 0x06
+
+// The callback is called before and after the underling operation,
+// The BIO_CB_RETURN flag indicates if it is after the call
+#define BIO_CB_RETURN 0x80
+
 // bio_info_cb is the type of a callback function that can be called for most
 // BIO operations. The |event| argument is one of |BIO_CB_*| and can be ORed
 // with |BIO_CB_RETURN| if the callback is being made after the operation in
@@ -347,6 +359,11 @@ OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
 // Memory BIOs support |BIO_gets| and |BIO_puts|.
 //
 // |BIO_ctrl_pending| returns the number of bytes currently stored.
+
+// BIO_NOCLOSE and |BIO_CLOSE| can be used as symbolic arguments when a "close
+// flag" is passed to a BIO function.
+#define BIO_NOCLOSE 0
+#define BIO_CLOSE 1
 
 // BIO_s_mem returns a |BIO_METHOD| that uses a in-memory buffer.
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
@@ -589,22 +606,72 @@ OPENSSL_EXPORT size_t BIO_ctrl_get_write_guarantee(BIO *bio);
 OPENSSL_EXPORT int BIO_shutdown_wr(BIO *bio);
 
 
-// BIO_NOCLOSE and |BIO_CLOSE| can be used as symbolic arguments when a "close
-// flag" is passed to a BIO function.
-#define BIO_NOCLOSE 0
-#define BIO_CLOSE 1
+// Custom BIOs.
+//
+// Consumers can create custom |BIO|s by filling in a |BIO_METHOD| and using
+// low-level control functions to set state.
 
-// These are passed to the BIO callback
-#define BIO_CB_FREE 0x01
-#define BIO_CB_READ 0x02
-#define BIO_CB_WRITE 0x03
-#define BIO_CB_PUTS 0x04
-#define BIO_CB_GETS 0x05
-#define BIO_CB_CTRL 0x06
+// BIO_get_new_index returns a new "type" value for a custom |BIO|.
+OPENSSL_EXPORT int BIO_get_new_index(void);
 
-// The callback is called before and after the underling operation,
-// The BIO_CB_RETURN flag indicates if it is after the call
-#define BIO_CB_RETURN 0x80
+// BIO_meth_new returns a newly-allocated |BIO_METHOD| or NULL on allocation
+// error. The |type| specifies the type that will be returned by
+// |BIO_method_type|. If this is unnecessary, this value may be zero. The |name|
+// parameter is vestigial and may be NULL.
+//
+// Use the |BIO_meth_set_*| functions below to initialize the |BIO_METHOD|. The
+// function implementations may use |BIO_set_data| and |BIO_get_data| to add
+// method-specific state to associated |BIO|s. Additionally, |BIO_set_init| must
+// be called after an associated |BIO| is fully initialized.
+OPENSSL_EXPORT BIO_METHOD *BIO_meth_new(int type, const char *name);
+
+// BIO_meth_free releases memory associated with |method|.
+OPENSSL_EXPORT void BIO_meth_free(BIO_METHOD *method);
+
+// BIO_meth_set_create sets a function to be called on |BIO_new| for |method|
+// and returns one. The function should return one on success and zero on
+// error.
+OPENSSL_EXPORT int BIO_meth_set_create(BIO_METHOD *method,
+                                       int (*create)(BIO *));
+
+// BIO_meth_set_destroy sets a function to release data associated with a |BIO|
+// and returns one. The function's return value is ignored.
+OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
+                                        int (*destroy)(BIO *));
+
+// BIO_meth_set_write sets the implementation of |BIO_write| for |method| and
+// returns one.
+OPENSSL_EXPORT int BIO_meth_set_write(BIO_METHOD *method,
+                                      int (*write)(BIO *, const char *, int));
+
+// BIO_meth_set_read sets the implementation of |BIO_read| for |method| and
+// returns one.
+OPENSSL_EXPORT int BIO_meth_set_read(BIO_METHOD *method,
+                                     int (*read)(BIO *, char *, int));
+
+// BIO_meth_set_gets sets the implementation of |BIO_gets| for |method| and
+// returns one.
+OPENSSL_EXPORT int BIO_meth_set_gets(BIO_METHOD *method,
+                                     int (*gets)(BIO *, char *, int));
+
+// BIO_meth_set_ctrl sets the implementation of |BIO_ctrl| for |method| and
+// returns one.
+OPENSSL_EXPORT int BIO_meth_set_ctrl(BIO_METHOD *method,
+                                     long (*ctrl)(BIO *, int, long, void *));
+
+// BIO_set_data sets custom data on |bio|. It may be retried with
+// |BIO_get_data|.
+OPENSSL_EXPORT void BIO_set_data(BIO *bio, void *ptr);
+
+// BIO_get_data returns custom data on |bio| set by |BIO_get_data|.
+OPENSSL_EXPORT void *BIO_get_data(BIO *bio);
+
+// BIO_set_init sets whether |bio| has been fully initialized. Until fully
+// initialized, |BIO_read| and |BIO_write| will fail.
+OPENSSL_EXPORT void BIO_set_init(BIO *bio, int init);
+
+// BIO_get_init returns whether |bio| has been fully initialized.
+OPENSSL_EXPORT int BIO_get_init(BIO *bio);
 
 // These are values of the |cmd| argument to |BIO_ctrl|.
 #define BIO_CTRL_RESET		1  // opt - rewind/zero etc
@@ -642,6 +709,17 @@ OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);
 
 // BIO_set_write_buffer_size returns zero.
 OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
+
+// BIO_set_shutdown sets a method-specific "shutdown" bit on |bio|.
+OPENSSL_EXPORT void BIO_set_shutdown(BIO *bio, int shutdown);
+
+// BIO_get_shutdown returns the method-specific "shutdown" bit.
+OPENSSL_EXPORT int BIO_get_shutdown(BIO *bio);
+
+// BIO_meth_set_puts returns one. |BIO_puts| is implemented with |BIO_write| in
+// BoringSSL.
+OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
+                                     int (*puts)(BIO *, const char *));
 
 
 // Private functions
@@ -681,9 +759,15 @@ OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 #define BIO_TYPE_ASN1 (22 | 0x0200)  // filter
 #define BIO_TYPE_COMP (23 | 0x0200)  // filter
 
+// |BIO_TYPE_DESCRIPTOR| denotes that the |BIO| responds to the |BIO_C_SET_FD|
+// (|BIO_set_fd|) and |BIO_C_GET_FD| (|BIO_get_fd|) control hooks.
 #define BIO_TYPE_DESCRIPTOR 0x0100  // socket, fd, connect or accept
 #define BIO_TYPE_FILTER 0x0200
 #define BIO_TYPE_SOURCE_SINK 0x0400
+
+// BIO_TYPE_START is the first user-allocated |BIO| type. No pre-defined type,
+// flag bits aside, may exceed this value.
+#define BIO_TYPE_START 128
 
 struct bio_method_st {
   int type;

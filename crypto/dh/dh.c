@@ -124,6 +124,20 @@ void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
   }
 }
 
+int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {
+  if (pub_key != NULL) {
+    BN_free(dh->pub_key);
+    dh->pub_key = pub_key;
+  }
+
+  if (priv_key != NULL) {
+    BN_free(dh->priv_key);
+    dh->priv_key = priv_key;
+  }
+
+  return 1;
+}
+
 void DH_get0_pqg(const DH *dh, const BIGNUM **out_p, const BIGNUM **out_q,
                  const BIGNUM **out_g) {
   if (out_p != NULL) {
@@ -135,6 +149,30 @@ void DH_get0_pqg(const DH *dh, const BIGNUM **out_p, const BIGNUM **out_q,
   if (out_g != NULL) {
     *out_g = dh->g;
   }
+}
+
+int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
+  if ((dh->p == NULL && p == NULL) ||
+      (dh->g == NULL && g == NULL)) {
+    return 0;
+  }
+
+  if (p != NULL) {
+    BN_free(dh->p);
+    dh->p = p;
+  }
+
+  if (q != NULL) {
+    BN_free(dh->q);
+    dh->q = q;
+  }
+
+  if (g == NULL) {
+    BN_free(dh->g);
+    dh->g = g;
+  }
+
+  return 1;
 }
 
 int DH_generate_parameters_ex(DH *dh, int prime_bits, int generator, BN_GENCB *cb) {

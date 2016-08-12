@@ -108,6 +108,29 @@ OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
                                         const BIGNUM **out_dmq1,
                                         const BIGNUM **out_iqmp);
 
+// RSA_set0_key sets |rsa|'s modulus, public exponent, and private exponent to
+// |n|, |e|, and |d| respectively, if non-NULL. On success, it takes ownership
+// of each argument and returns one. Otherwise, it returns zero.
+//
+// |d| may be NULL, but |n| and |e| must either be non-NULL or already
+// configured on |rsa|.
+OPENSSL_EXPORT int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d);
+
+// RSA_set0_factors sets |rsa|'s prime factors to |p| and |q|, if non-NULL, and
+// takes ownership of them. On success, it takes ownership of each argument and
+// returns one. Otherwise, it returns zero.
+//
+// Each argument must either be non-NULL or already configured on |rsa|.
+OPENSSL_EXPORT int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q);
+
+// RSA_set0_crt_params sets |rsa|'s CRT parameters to |dmp1|, |dmq1|, and
+// |iqmp|, if non-NULL, and takes ownership of them. On success, it takes
+// ownership of its parameters and returns one. Otherwise, it returns zero.
+//
+// Each argument must either be non-NULL or already configured on |rsa|.
+OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
+                                       BIGNUM *iqmp);
+
 
 // Key generation.
 
