@@ -76,10 +76,14 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
 /// modulus and `e` is the public key exponent. `msg` is the message and
 /// `signature` is the signature.
 //
-// The test coverage for this function almost completely depends on the test
-// coverage for the `signature::VerificationAlgorithm` implementation for
-// `RSAParameters`. If we change that, test coverage for `verify_rsa()` will
-// need to be reconsidered.
+// There are a small number of tests that test `verify_rsa` directly, but the
+// test coverage for this function mostly depends on the test coverage for the
+// `signature::VerificationAlgorithm` implementation for `RSAParameters`. If we
+// change that, test coverage for `verify_rsa()` will need to be reconsidered.
+// (The NIST test vectors were originally in a form that was optimized for
+// testing `verify_rsa` directly, but the testing work for RSA PKCS#1
+// verification was done during the implementation of
+// `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
 pub fn verify_rsa(params: &RSAParameters,
                   (n, e): (untrusted::Input, untrusted::Input),
                   msg: untrusted::Input, signature: untrusted::Input)
