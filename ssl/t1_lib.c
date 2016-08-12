@@ -2193,7 +2193,8 @@ static int ext_supported_groups_add_clienthello(SSL *ssl, CBB *out) {
 
 static int ext_supported_groups_parse_serverhello(SSL *ssl, uint8_t *out_alert,
                                                   CBS *contents) {
-  /* This extension is not expected to be echoed by servers and is ignored. */
+  /* This extension is not expected to be echoed by servers in TLS 1.2, but some
+   * BigIP servers send it nonetheless, so do not enforce this. */
   return 1;
 }
 
