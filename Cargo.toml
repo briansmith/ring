@@ -2,6 +2,7 @@
 authors = ["Brian Smith <brian@briansmith.org>"]
 build = "build.rs"
 description = "A Rust interface for a simplification of BoringSSL's libcrypto."
+documentation = "https://briansmith.org/rustdoc/ring/"
 license-file = "LICENSE"
 name = "ring"
 readme = "README.md"

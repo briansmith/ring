@@ -34,6 +34,8 @@
 //!     <td>Enable RSA signing (<code>RSAKeyPair</code> and related things).
 //! </table>
 
+#![doc(html_root_url="https://briansmith.org/rustdoc/")]
+
 #![allow(
     missing_copy_implementations,
     missing_debug_implementations,
