@@ -870,20 +870,8 @@ static int ssl3_send_server_hello(SSL *ssl) {
     return -1;
   }
 
-  /* Fill in the TLS 1.2 downgrade signal. See draft-ietf-tls-tls13-14.
-   *
-   * TODO(davidben): Also implement the TLS 1.1 sentinel when things have
-   * settled down. */
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return -1;
-  }
-  if (max_version >= TLS1_3_VERSION &&
-      ssl3_protocol_version(ssl) <= TLS1_2_VERSION) {
-    static const uint8_t kDowngradeTLS12[8] = {0x44, 0x4f, 0x57, 0x4e,
-                                               0x47, 0x52, 0x44, 0x01};
-    memcpy(ssl->s3->server_random + SSL3_RANDOM_SIZE - 8, kDowngradeTLS12, 8);
-  }
+  /* TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
+   * 1.3 is finalized and we are not implementing a draft version. */
 
   const SSL_SESSION *session = ssl->s3->new_session;
   if (ssl->session != NULL) {

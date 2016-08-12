@@ -880,20 +880,8 @@ static int ssl3_get_server_hello(SSL *ssl) {
   /* Copy over the server random. */
   memcpy(ssl->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
-  /* Check for a TLS 1.3 downgrade signal. See draft-ietf-tls-tls13-14.
-   *
-   * TODO(davidben): Also implement the TLS 1.1 sentinel when things have
-   * settled down. */
-  static const uint8_t kDowngradeTLS12[8] = {0x44, 0x4f, 0x57, 0x4e,
-                                             0x47, 0x52, 0x44, 0x01};
-  if (real_max_version >= TLS1_3_VERSION &&
-      ssl3_protocol_version(ssl) <= TLS1_2_VERSION &&
-      memcmp(ssl->s3->server_random + SSL3_RANDOM_SIZE - 8, kDowngradeTLS12,
-             8) == 0) {
-    al = SSL_AD_ILLEGAL_PARAMETER;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DOWNGRADE_DETECTED);
-    goto f_err;
-  }
+  /* TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
+   * 1.3 is finalized and we are not implementing a draft version. */
 
   if (!ssl->s3->initial_handshake_complete && ssl->session != NULL &&
       ssl->session->session_id_length != 0 &&

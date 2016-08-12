@@ -4207,8 +4207,8 @@ func addVersionNegotiationTests() {
 				NegotiateVersion: VersionTLS12,
 			},
 		},
-		shouldFail:    true,
-		expectedError: ":DOWNGRADE_DETECTED:",
+		// TODO(davidben): This test should fail once TLS 1.3 is final
+		// and the fallback signal restored.
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -4218,8 +4218,8 @@ func addVersionNegotiationTests() {
 				SendClientVersion: VersionTLS12,
 			},
 		},
-		shouldFail:         true,
-		expectedLocalError: "tls: downgrade from TLS 1.3 detected",
+		// TODO(davidben): This test should fail once TLS 1.3 is final
+		// and the fallback signal restored.
 	})
 
 	// Test that FALLBACK_SCSV is sent and that the downgrade signal works
@@ -4236,8 +4236,8 @@ func addVersionNegotiationTests() {
 			"-max-version", strconv.Itoa(VersionTLS13),
 			"-fallback-version", strconv.Itoa(VersionTLS12),
 		},
-		shouldFail:    true,
-		expectedError: ":DOWNGRADE_DETECTED:",
+		// TODO(davidben): This test should fail once TLS 1.3 is final
+		// and the fallback signal restored.
 	})
 	testCases = append(testCases, testCase{
 		name: "Downgrade-TLS12-Client-FallbackEqualsMax",
