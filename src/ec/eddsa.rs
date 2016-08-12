@@ -172,7 +172,7 @@ mod tests {
     /// Test vectors from BoringSSL.
     #[test]
     fn test_signature_ed25519() {
-        test::from_file("src/ed25519_tests.txt", |section, test_case| {
+        test::from_file("src/ec/ed25519_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let private_key = test_case.consume_bytes("PRIV");
             assert_eq!(64, private_key.len());
