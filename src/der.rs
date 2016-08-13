@@ -130,17 +130,17 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
                 return Ok(value);
             }
 
-            let after_leading_zero = input.mark();
-            let second_byte = try!(input.read_byte());
-            if (second_byte & 0x80) == 0 {
-                // A leading zero is only allowed when the value's high bit
-                // is set.
-                return Err(error::Unspecified);
-            }
-
-            let _ = input.skip_to_end();
-            let r = try!(input.get_input_between_marks(after_leading_zero,
-                                                       input.mark()));
+            let r = input.skip_to_end();
+            try!(r.read_all(error::Unspecified, |input| {
+                let second_byte = try!(input.read_byte());
+                if (second_byte & 0x80) == 0 {
+                    // A leading zero is only allowed when the value's high bit
+                    // is set.
+                    return Err(error::Unspecified);
+                }
+                let _ = input.skip_to_end();
+                Ok(())
+            }));
             try!(check_minimum(r, min_value));
             return Ok(r);
         }
