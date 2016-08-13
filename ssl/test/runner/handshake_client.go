@@ -79,10 +79,6 @@ func (c *Conn) clientHandshake() error {
 		customExtension:         c.config.Bugs.CustomExtension,
 	}
 
-	if c.config.Bugs.SendClientVersion != 0 {
-		hello.vers = c.config.Bugs.SendClientVersion
-	}
-
 	if c.config.Bugs.NoExtendedMasterSecret {
 		hello.extendedMasterSecret = false
 	}
@@ -267,6 +263,10 @@ NextCipherSuite:
 		} else {
 			hello.sessionId = session.sessionId
 		}
+	}
+
+	if c.config.Bugs.SendClientVersion != 0 {
+		hello.vers = c.config.Bugs.SendClientVersion
 	}
 
 	var helloBytes []byte
