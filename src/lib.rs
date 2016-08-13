@@ -15,7 +15,7 @@
 //! Safe, fast, small crypto using Rust with BoringSSL's cryptography
 //! primitives.
 //!
-//! git clone https://github.com/briansmith/ring
+//! <code>git clone https://github.com/briansmith/ring</code>
 //!
 //! # Feature Flags
 //!
