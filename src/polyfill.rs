@@ -46,6 +46,14 @@ pub mod slice {
     }
 
     #[inline(always)]
+    pub fn u32_from_le_u8(buffer: &[u8; 4]) -> u32 {
+        u32::from(buffer[0]) |
+        u32::from(buffer[1]) << 8 |
+        u32::from(buffer[2]) << 16 |
+        u32::from(buffer[3]) << 24
+    }
+
+    #[inline(always)]
     pub fn be_u8_from_u32(value: u32) -> [u8; 4] {
         [((value >> 24) & 0xff) as u8,
          ((value >> 16) & 0xff) as u8,
