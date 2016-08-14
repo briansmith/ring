@@ -286,17 +286,11 @@ func getSigner(version uint16, key interface{}, config *Config, sigAlg signature
 	case signatureECDSAWithP521AndSHA512:
 		return &ecdsaSigner{version, config, elliptic.P521(), crypto.SHA512}, nil
 	case signatureRSAPSSWithSHA256:
-		if version >= VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
-			return &rsaPSSSigner{crypto.SHA256}, nil
-		}
+		return &rsaPSSSigner{crypto.SHA256}, nil
 	case signatureRSAPSSWithSHA384:
-		if version >= VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
-			return &rsaPSSSigner{crypto.SHA384}, nil
-		}
+		return &rsaPSSSigner{crypto.SHA384}, nil
 	case signatureRSAPSSWithSHA512:
-		if version >= VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
-			return &rsaPSSSigner{crypto.SHA512}, nil
-		}
+		return &rsaPSSSigner{crypto.SHA512}, nil
 	}
 
 	return nil, fmt.Errorf("unsupported signature algorithm %04x", sigAlg)

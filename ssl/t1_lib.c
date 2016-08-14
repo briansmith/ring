@@ -543,14 +543,21 @@ static const uint16_t kDefaultTLS13SignatureAlgorithms[] = {
 };
 
 size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs) {
-  uint16_t version;
-  if (ssl->s3->have_version) {
-    version = ssl3_protocol_version(ssl);
-  } else {
-    version = ssl->method->version_from_wire(ssl->client_version);
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    assert(0);  /* This should never happen. */
+
+    /* Return an empty list. */
+    ERR_clear_error();
+    *psigs = NULL;
+    return 0;
   }
 
-  if (version >= TLS1_3_VERSION) {
+  /* TODO(davidben): Once TLS 1.3 has finalized, probably just advertise the
+   * same algorithm list regardless, as long as no fallback is needed. Note this
+   * may require care due to lingering NSS servers affected by
+   * https://bugzilla.mozilla.org/show_bug.cgi?id=1119983 */
+  if (max_version >= TLS1_3_VERSION) {
     *psigs = kDefaultTLS13SignatureAlgorithms;
     return sizeof(kDefaultTLS13SignatureAlgorithms) /
            sizeof(kDefaultTLS13SignatureAlgorithms[0]);
