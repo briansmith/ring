@@ -1734,19 +1734,17 @@ err:
   return ret;
 }
 
-const EC_METHOD *EC_GFp_nistp256_method(void) {
-  static const EC_METHOD ret = {
-      ec_GFp_simple_group_init,
-      ec_GFp_simple_group_finish,
-      ec_GFp_simple_group_copy,
-      ec_GFp_simple_group_set_curve,
-      ec_GFp_nistp256_point_get_affine_coordinates,
-      ec_GFp_nistp256_points_mul,
-      ec_GFp_simple_field_mul, ec_GFp_simple_field_sqr,
-      0 /* field_encode */, 0 /* field_decode */,
-  };
-
-  return &ret;
-}
+const EC_METHOD EC_GFp_nistp256_method = {
+    ec_GFp_simple_group_init,
+    ec_GFp_simple_group_finish,
+    ec_GFp_simple_group_copy,
+    ec_GFp_simple_group_set_curve,
+    ec_GFp_nistp256_point_get_affine_coordinates,
+    ec_GFp_nistp256_points_mul,
+    ec_GFp_simple_field_mul,
+    ec_GFp_simple_field_sqr,
+    NULL /* field_encode */,
+    NULL /* field_decode */,
+};
 
 #endif  /* 64_BIT && !WINDOWS */

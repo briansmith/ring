@@ -294,8 +294,7 @@ err:
   return ret;
 }
 
-const EC_METHOD *EC_GFp_mont_method(void) {
-  static const EC_METHOD ret = {
+const EC_METHOD EC_GFp_mont_method = {
     ec_GFp_mont_group_init,
     ec_GFp_mont_group_finish,
     ec_GFp_mont_group_copy,
@@ -306,7 +305,4 @@ const EC_METHOD *EC_GFp_mont_method(void) {
     ec_GFp_mont_field_sqr,
     ec_GFp_mont_field_encode,
     ec_GFp_mont_field_decode,
-  };
-
-  return &ret;
-}
+};

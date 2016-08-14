@@ -109,7 +109,7 @@ struct ec_method_st {
                       BN_CTX *); /* e.g. from Montgomery */
 } /* EC_METHOD */;
 
-const EC_METHOD* EC_GFp_mont_method(void);
+extern const EC_METHOD EC_GFp_mont_method;
 
 struct ec_group_st {
   const EC_METHOD *meth;
@@ -222,12 +222,12 @@ int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group,
 
 void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 
-const EC_METHOD *EC_GFp_nistp224_method(void);
-const EC_METHOD *EC_GFp_nistp256_method(void);
+extern const EC_METHOD EC_GFp_nistp224_method;
+extern const EC_METHOD EC_GFp_nistp256_method;
 
-/* Returns GFp methods using montgomery multiplication, with x86-64
- * optimized P256. See http://eprint.iacr.org/2013/816. */
-const EC_METHOD *EC_GFp_nistz256_method(void);
+/* EC_GFp_nistz256_method is a GFp method using montgomery multiplication, with
+ * x86-64 optimized P256. See http://eprint.iacr.org/2013/816. */
+extern const EC_METHOD EC_GFp_nistz256_method;
 
 struct ec_key_st {
   EC_GROUP *group;
@@ -262,7 +262,7 @@ struct built_in_curve {
   uint8_t oid[8];
   uint8_t oid_len;
   const struct curve_data *data;
-  const EC_METHOD *(*method)(void);
+  const EC_METHOD *method;
 };
 
 /* OPENSSL_built_in_curves is terminated with an entry where |nid| is
