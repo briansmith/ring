@@ -99,6 +99,8 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
 
     // TODO: deal with link-time-optimization flag.
 
+    let lib_path = Path::new(out_dir).join("lib");
+
     if !use_msbuild {
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
         // process.
@@ -158,24 +160,34 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("/p:OutRootDir={}/", out_dir),
         ];
         if !use_prepackaged_asm {
-            run_command_with_args(&msbuild, &args);
-            println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
+            let mut asm_args = args.clone();
+            asm_args.push(String::from("crypto/libring-asm.Windows.vcxproj"));
+            run_command_with_args(&msbuild, &asm_args);
         } else {
-            let mut core_args = args.clone();
-            core_args.push(String::from("crypto/libring.Windows.vcxproj"));
-            run_command_with_args(&msbuild, &core_args);
+            let pregenerated_lib_name =
+                format!("msvc-{}-asm-{}.lib", LIB_NAME, arch);
+            let mut pregenerated_lib = std::path::PathBuf::from("pregenerated");
+            pregenerated_lib.push(pregenerated_lib_name);
 
-            let mut test_args = args.clone();
-            test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
-            run_command_with_args(&msbuild, &test_args);
+            let ring_asm_lib_name = format!("{}-asm.lib", LIB_NAME);
+            let mut ring_asm_lib = lib_path.clone();
+            ring_asm_lib.push(&ring_asm_lib_name);
+            println!("{:?} -> {:?}", &pregenerated_lib, &ring_asm_lib);
 
-            println!("cargo:rustc-link-search=native=pregenerated");
-            println!("cargo:rustc-link-lib=static=msvc-{}-asm-{}", LIB_NAME,
-                     arch);
+            std::fs::create_dir_all(&lib_path).unwrap();
+            let _ = std::fs::copy(&pregenerated_lib, &ring_asm_lib).unwrap();
         }
+        println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
+
+        let mut core_args = args.clone();
+        core_args.push(String::from("crypto/libring.Windows.vcxproj"));
+        run_command_with_args(&msbuild, &core_args);
+
+        let mut test_args = args.clone();
+        test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
+        run_command_with_args(&msbuild, &test_args);
     }
 
-    let lib_path = Path::new(out_dir).join("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
     println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
 
