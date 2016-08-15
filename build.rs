@@ -113,25 +113,43 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
         ];
-        run_command_with_args("make", &args);
-
+        run_command_with_args(&"make", &args);
     } else {
+        let arch = target_triple[0];
+        let (platform, optional_amd64) = match arch {
+            "i686" => ("Win32", None),
+            "x86_64" => ("x64", Some("amd64")),
+            _ => panic!("unexpected ARCH: {}", arch)
+        };
+
+        fn find_msbuild_exe(program_files_env_var: &str,
+                            optional_amd64: Option<&str>)
+                            -> Result<std::ffi::OsString, ()> {
+            let program_files = env::var(program_files_env_var).unwrap();
+            let mut msbuild = std::path::PathBuf::from(&program_files);
+            msbuild.push("MSBuild");
+            msbuild.push("14.0");
+            msbuild.push("bin");
+            if let Some(amd64) = optional_amd64 {
+                msbuild.push(amd64);
+            }
+            msbuild.push("msbuild.exe");
+            let _ = try!(std::fs::metadata(&msbuild).map_err(|_| ()));
+            Ok(msbuild.into_os_string())
+        }
+
+        let msbuild =
+            find_msbuild_exe("ProgramFiles", optional_amd64)
+                .or_else(|_| find_msbuild_exe("ProgramFiles(x86)",
+                                              optional_amd64))
+                .unwrap();
+
         // .gitignore isn't packaged, so if it exists then this is not a
         // packaged build. Otherwise, assume it is a packaged build, and use
         // the prepackaged libs so that we don't require Perl and Yasm being
         // installed.
         let use_prepackaged_asm = std::fs::metadata(".gitignore").is_err();
 
-        // TODO: This assumes that the package is being built under a
-        // {VS2013,VS2015} {x86,x64} Native Tools Command Prompt. It would be
-        // nice if we didn't require that to be the case. At least it should be
-        // documented.
-        let arch = target_triple[0];
-        let platform = match arch {
-            "i686" => "Win32",
-            "x86_64" => "x64",
-            _ => panic!("unexpected ARCH: {}", arch)
-        };
         let configuration = if disable_opt { "Debug" } else { "Release" };
         let args = vec![
             format!("/m:{}", num_jobs),
@@ -140,16 +158,16 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("/p:OutRootDir={}/", out_dir),
         ];
         if !use_prepackaged_asm {
-            run_command_with_args("msbuild", &args);
+            run_command_with_args(&msbuild, &args);
             println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
         } else {
             let mut core_args = args.clone();
             core_args.push(String::from("crypto/libring.Windows.vcxproj"));
-            run_command_with_args("msbuild", &core_args);
+            run_command_with_args(&msbuild, &core_args);
 
             let mut test_args = args.clone();
             test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
-            run_command_with_args("msbuild", &test_args);
+            run_command_with_args(&msbuild, &test_args);
 
             println!("cargo:rustc-link-search=native=pregenerated");
             println!("cargo:rustc-link-lib=static=msvc-{}-asm-{}", LIB_NAME,
@@ -171,13 +189,14 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
     Ok(())
 }
 
-fn run_command_with_args(command_name: &str, args: &Vec<String>) {
+fn run_command_with_args<S>(command_name: S, args: &Vec<String>)
+                            where S: AsRef<std::ffi::OsStr> + Copy {
     if !std::process::Command::new(command_name)
             .args(&args)
             .status()
             .unwrap_or_else(|e| { panic!("failed to execute {}: {}",
-                            command_name, e); })
+                            command_name.as_ref().to_str().unwrap(), e); })
             .success() {
-        panic!("{} execution failed", command_name);
+        panic!("{} execution failed", command_name.as_ref().to_str().unwrap());
     }
 }
