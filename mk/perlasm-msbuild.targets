@@ -23,10 +23,24 @@
     <MakeDir Directories="$(IntDir)"/>
   </Target>
 
+  <PropertyGroup>
+    <ComputeLibInputsTargets>
+      $(ComputeLibInputsTargets);
+      ComputeGenerateAsmOutput;
+    </ComputeLibInputsTargets>
+  </PropertyGroup>
+
+  <Target Name="ComputeGenerateAsmOutput">
+    <ItemGroup>
+      <Lib Include="$(IntDir)%(PerlAsm.Filename).obj" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Because this uses `%(PerlAsm.Identity)`, it will be invoked for each
+       <PerlAsm> item. -->
   <Target
       Name="GenerateAsm"
       DependsOnTargets="CreateIntDir"
-      BeforeTargets="ClCompile"
       Inputs="%(PerlAsm.Identity);
               ../crypto/perlasm/arm-xlate.pl;
               ../crypto/perlasm/x86_64-xlate.pl;
