@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/aead.h>
@@ -87,10 +88,12 @@ static uint64_t time_now() {
 }
 #endif
 
+static uint64_t g_timeout_seconds = 1;
+
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
-  // kTotalMS is the total amount of time that we'll aim to measure a function
+  // total_us is the total amount of time that we'll aim to measure a function
   // for.
-  static const uint64_t kTotalUS = 1000000;
+  const uint64_t total_us = g_timeout_seconds * 1000000;
   uint64_t start = time_now(), now, delta;
   unsigned done = 0, iterations_between_time_checks;
 
@@ -121,7 +124,7 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
     }
 
     now = time_now();
-    if (now - start > kTotalUS) {
+    if (now - start > total_us) {
       break;
     }
   }
@@ -543,14 +546,34 @@ static bool SpeedNewHope(const std::string &selected) {
   return true;
 }
 
+static const struct argument kArguments[] = {
+    {
+     "-filter", kOptionalArgument,
+     "A filter on the speed tests to run",
+    },
+    {
+     "-timeout", kOptionalArgument,
+     "The number of seconds to run each test for (default is 1)",
+    },
+    {
+     "", kOptionalArgument, "",
+    },
+};
+
 bool Speed(const std::vector<std::string> &args) {
-  std::string selected;
-  if (args.size() > 1) {
-    fprintf(stderr, "Usage: bssl speed [speed test selector, i.e. 'RNG']\n");
+  std::map<std::string, std::string> args_map;
+  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+    PrintUsage(kArguments);
     return false;
   }
-  if (args.size() > 0) {
-    selected = args[0];
+
+  std::string selected;
+  if (args_map.count("-filter") != 0) {
+    selected = args_map["-filter"];
+  }
+
+  if (args_map.count("-timeout") != 0) {
+    g_timeout_seconds = atoi(args_map["-timeout"].c_str());
   }
 
   RSA *key = RSA_private_key_from_bytes(kDERRSAPrivate2048,
