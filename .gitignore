@@ -1,4 +1,5 @@
 build/
+pregenerated/
 ssl/test/runner/runner
 *.swp
 *.swo

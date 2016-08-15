@@ -99,10 +99,7 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
 
     // TODO: deal with link-time-optimization flag.
 
-    let command_name;
-    let args;
     if !use_msbuild {
-        command_name = "make";
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
         // process.
         let cmake_build_type = if disable_opt {
@@ -110,42 +107,54 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         } else {
             "RELWITHDEBINFO"
         };
-        args = vec![
+        let args = vec![
             format!("-j{}", num_jobs),
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
         ];
+        run_command_with_args("make", &args);
+
     } else {
+        // .gitignore isn't packaged, so if it exists then this is not a
+        // packaged build. Otherwise, assume it is a packaged build, and use
+        // the prepackaged libs so that we don't require Perl and Yasm being
+        // installed.
+        let use_prepackaged_asm = std::fs::metadata(".gitignore").is_err();
+
         // TODO: This assumes that the package is being built under a
         // {VS2013,VS2015} {x86,x64} Native Tools Command Prompt. It would be
         // nice if we didn't require that to be the case. At least it should be
         // documented.
-        command_name = "msbuild";
-        let platform = match target_triple[0] {
+        let arch = target_triple[0];
+        let platform = match arch {
             "i686" => "Win32",
             "x86_64" => "x64",
-            _ => panic!("unexpected ARCH: {}", target_triple[0])
+            _ => panic!("unexpected ARCH: {}", arch)
         };
         let configuration = if disable_opt { "Debug" } else { "Release" };
-        args = vec![
-            format!("{}.sln", LIB_NAME),
+        let args = vec![
             format!("/m:{}", num_jobs),
             format!("/p:Platform={}", platform),
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),
         ];
+        if !use_prepackaged_asm {
+            run_command_with_args("msbuild", &args);
+            println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
+        } else {
+            let mut core_args = args.clone();
+            core_args.push(String::from("crypto/libring.Windows.vcxproj"));
+            run_command_with_args("msbuild", &core_args);
 
-        println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
-    }
+            let mut test_args = args.clone();
+            test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
+            run_command_with_args("msbuild", &test_args);
 
-    if !std::process::Command::new(command_name)
-            .args(&args)
-            .status()
-            .unwrap_or_else(|e| { panic!("failed to execute {}: {}",
-                            command_name, e); })
-            .success() {
-        panic!("{} execution failed", command_name);
+            println!("cargo:rustc-link-search=native=pregenerated");
+            println!("cargo:rustc-link-lib=static=msvc-{}-asm-{}", LIB_NAME,
+                     arch);
+        }
     }
 
     let lib_path = Path::new(out_dir).join("lib");
@@ -160,4 +169,15 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
     }
 
     Ok(())
+}
+
+fn run_command_with_args(command_name: &str, args: &Vec<String>) {
+    if !std::process::Command::new(command_name)
+            .args(&args)
+            .status()
+            .unwrap_or_else(|e| { panic!("failed to execute {}: {}",
+                            command_name, e); })
+            .success() {
+        panic!("{} execution failed", command_name);
+    }
 }

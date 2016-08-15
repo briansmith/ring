@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="GenerateAsm;Build" ToolsVersion="14.0"
+<Project DefaultTargets="Everything" ToolsVersion="14.0"
     xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <ProjectGuid>{5A09BA1C-748F-40A2-B7F0-8108A08FE6A8}</ProjectGuid>
@@ -57,4 +57,20 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="..\mk\perlasm-msbuild.targets" />
+
+  <Target Name="CopyToPregenerated"
+          Condition="'$(RING_PREGENERATED)' == 'GENERATE'"
+          DependsOnTargets="GenerateAsm;Build">
+    <PropertyGroup>
+      <TargetNameSuffix
+          Condition="'$(ProcessorArchitecture)' == 'x86'">i686</TargetNameSuffix>
+      <TargetNameSuffix
+          Condition="'$(ProcessorArchitecture)' == 'amd64'">x86_64</TargetNameSuffix>
+    </PropertyGroup>
+    <Makedir Directories="../pregenerated"/>
+    <Copy SourceFiles="$(OutputPath)$(TargetName).lib"
+          DestinationFiles="../pregenerated/msvc-$(TargetName)-$(TargetNameSuffix).lib"/>
+  </Target>
+
+  <Target Name="Everything" DependsOnTargets="GenerateAsm;Build;CopyToPregenerated"/>
 </Project>
