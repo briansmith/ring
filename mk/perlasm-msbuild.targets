@@ -19,8 +19,13 @@
    <YasmMachine>x86</YasmMachine>
   </PropertyGroup>
 
+  <Target Name="CreateIntDir">
+    <MakeDir Directories="$(IntDir)"/>
+  </Target>
+
   <Target
       Name="GenerateAsm"
+      DependsOnTargets="CreateIntDir"
       BeforeTargets="ClCompile"
       Inputs="%(PerlAsm.Identity);../crypto/perlasm/*.pl"
       Outputs="$(IntDir)%(PerlAsm.FileName).obj">
