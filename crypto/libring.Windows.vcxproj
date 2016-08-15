@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="GenerateAsm;Build" ToolsVersion="14.0"
+<Project DefaultTargets="Build" ToolsVersion="14.0"
     xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F4C0A1B6-5E09-41C8-8242-3E1F6762FB18}</ProjectGuid>
@@ -64,41 +64,6 @@
     <ClInclude Include="rand\internal.h" />
     <ClInclude Include="rsa\internal.h" />
   </ItemGroup>
-  <ItemGroup Condition="'$(ProcessorArchitecture)' == 'x86'">
-    <PerlAsm Include="aes/asm/aes-586.pl" />
-    <PerlAsm Include="aes/asm/aesni-x86.pl" />
-    <PerlAsm Include="aes/asm/vpaes-x86.pl" />
-    <PerlAsm Include="bn/asm/x86-mont.pl" />
-    <PerlAsm Include="chacha/asm/chacha-x86.pl" />
-    <PerlAsm Include="ec/asm/ecp_nistz256-x86.pl" />
-    <PerlAsm Include="modes/asm/ghash-x86.pl" />
-    <PerlAsm Include="poly1305/asm/poly1305-x86.pl" />
-    <PerlAsm Include="sha/asm/sha256-586.pl" />
-    <PerlAsm Include="sha/asm/sha512-586.pl" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(ProcessorArchitecture)' == 'amd64'">
-    <PerlAsm Include="aes/asm/aes-x86_64.pl" />
-    <PerlAsm Include="aes/asm/aesni-x86_64.pl" />
-    <PerlAsm Include="aes/asm/bsaes-x86_64.pl" />
-    <PerlAsm Include="aes/asm/vpaes-x86_64.pl" />
-    <PerlAsm Include="bn/asm/rsaz-avx2.pl" />
-    <PerlAsm Include="bn/asm/x86_64-mont.pl" />
-    <PerlAsm Include="bn/asm/x86_64-mont5.pl" />
-    <PerlAsm Include="chacha/asm/chacha-x86_64.pl" />
-    <!-- XXX: curve25519/asm/x25519-asm-x86_64.S doesn't support Windows. -->
-    <ClCompile Include="curve25519\x25519-x86_64.c" />
-    <PerlAsm Include="ec/asm/ecp_nistz256-x86_64.pl" />
-    <PerlAsm Include="ec/asm/p256-x86_64-asm.pl" />
-    <PerlAsm Include="modes/asm/aesni-gcm-x86_64.pl" />
-    <PerlAsm Include="modes/asm/ghash-x86_64.pl" />
-    <PerlAsm Include="poly1305/asm/poly1305-x86_64.pl" />
-    <PerlAsm Include="sha/asm/sha256-x86_64.pl">
-      <AdditionalDependencies>sha/asm/sha-x86_64.pl</AdditionalDependencies>
-    </PerlAsm>
-    <PerlAsm Include="sha/asm/sha512-x86_64.pl">
-      <AdditionalDependencies>sha/asm/sha-x86_64.pl</AdditionalDependencies>
-    </PerlAsm>
-  </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\include</AdditionalIncludeDirectories>
@@ -106,7 +71,4 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\mk\perlasm-msbuild.targets" />
-  </ImportGroup>
 </Project>

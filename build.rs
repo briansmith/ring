@@ -135,6 +135,8 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),
         ];
+
+        println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
     }
 
     if !std::process::Command::new(command_name)
