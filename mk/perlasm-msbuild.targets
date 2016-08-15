@@ -27,7 +27,13 @@
       Name="GenerateAsm"
       DependsOnTargets="CreateIntDir"
       BeforeTargets="ClCompile"
-      Inputs="%(PerlAsm.Identity);../crypto/perlasm/*.pl"
+      Inputs="%(PerlAsm.Identity);
+              ../crypto/perlasm/arm-xlate.pl;
+              ../crypto/perlasm/x86_64-xlate.pl;
+              ../crypto/perlasm/x86asm.pl;
+              ../crypto/perlasm/x86gas.pl;
+              ../crypto/perlasm/x86masm.pl;
+              ../crypto/perlasm/x86nasm.pl"
       Outputs="$(IntDir)%(PerlAsm.FileName).obj">
     <Message Text="Generating code: %(PerlAsm.Identity)" />
     <Exec Command="perl.exe %(PerlAsm.Identity) $(PerlAsmFlags) $(IntDir)%(PerlAsm.FileName).asm"/>
