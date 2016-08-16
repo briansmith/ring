@@ -49,6 +49,7 @@
 #include <openssl/type_check.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include "internal.h"
 
@@ -68,27 +69,15 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     n = (n + 1) % 16;
   }
 
-#if STRICT_ALIGNMENT
-  if (((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
-    size_t l = 0;
-    while (l < len) {
-      if (n == 0) {
-        (*block)(ivec, ivec, key);
-      }
-      out[l] = in[l] ^ ivec[n];
-      ++l;
-      n = (n + 1) % 16;
-    }
-
-    *num = n;
-    return;
-  }
-#endif
-
   while (len >= 16) {
     (*block)(ivec, ivec, key);
     for (; n < 16; n += sizeof(size_t)) {
-      *(size_t *)(out + n) = *(size_t *)(in + n) ^ *(size_t *)(ivec + n);
+      size_t a, b;
+      memcpy(&a, in + n, sizeof(size_t));
+      memcpy(&b, ivec + n, sizeof(size_t));
+
+      const size_t c = a ^ b;
+      memcpy(out + n, &c, sizeof(size_t));
     }
     len -= 16;
     out += 16;
