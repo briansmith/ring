@@ -311,7 +311,7 @@ int DH_generate_key(DH *dh) {
         priv_bits = p_bits - 1;
       }
 
-      if (!BN_rand(priv_key, priv_bits, 0, 0)) {
+      if (!BN_rand(priv_key, priv_bits, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY)) {
         goto err;
       }
     }

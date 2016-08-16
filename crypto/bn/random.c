@@ -123,6 +123,17 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
     return 0;
   }
 
+  if (top != BN_RAND_TOP_ANY && top != BN_RAND_TOP_ONE &&
+      top != BN_RAND_TOP_TWO) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  if (bottom != BN_RAND_BOTTOM_ANY && bottom != BN_RAND_BOTTOM_ODD) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   if (bits == 0) {
     BN_zero(rnd);
     return 1;
@@ -143,8 +154,8 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
     goto err;
   }
 
-  if (top != -1) {
-    if (top && bits > 1) {
+  if (top != BN_RAND_TOP_ANY) {
+    if (top == BN_RAND_TOP_TWO && bits > 1) {
       if (bit == 0) {
         buf[0] = 1;
         buf[1] |= 0x80;
@@ -158,8 +169,8 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
 
   buf[0] &= ~mask;
 
-  /* set bottom bit if requested */
-  if (bottom)  {
+  /* Set the bottom bit if requested, */
+  if (bottom == BN_RAND_BOTTOM_ODD)  {
     buf[bytes - 1] |= 1;
   }
 
@@ -210,8 +221,7 @@ int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
       /* range = 100..._2, so 3*range (= 11..._2) is exactly one bit longer
        * than range. This is a common scenario when generating a random value
        * modulo an RSA public modulus, e.g. for RSA base blinding. */
-      if (!BN_rand(r, n + 1, -1 /* don't set most significant bits */,
-                   0 /* don't set least significant bits */)) {
+      if (!BN_rand(r, n + 1, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
         return 0;
       }
 
@@ -230,7 +240,7 @@ int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
       }
     } else {
       /* range = 11..._2  or  range = 101..._2 */
-      if (!BN_rand(r, n, -1, 0)) {
+      if (!BN_rand(r, n, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
         return 0;
       }
     }

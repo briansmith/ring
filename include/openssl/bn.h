@@ -577,15 +577,27 @@ OPENSSL_EXPORT BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p,
 
 /* Random and prime number generation. */
 
-/* BN_rand sets |rnd| to a random number of length |bits|. If |top| is zero, the
- * most-significant bit, if any, will be set. If |top| is one, the two most
- * significant bits, if any, will be set.
+/* The following are values for the |top| parameter of |BN_rand|. */
+#define BN_RAND_TOP_ANY    -1
+#define BN_RAND_TOP_ONE     0
+#define BN_RAND_TOP_TWO     1
+
+/* The following are values for the |bottom| parameter of |BN_rand|. */
+#define BN_RAND_BOTTOM_ANY  0
+#define BN_RAND_BOTTOM_ODD  1
+
+/* BN_rand sets |rnd| to a random number of length |bits|. It returns one on
+ * success and zero otherwise.
  *
- * If |top| is -1 then no extra action will be taken and |BN_num_bits(rnd)| may
- * not equal |bits| if the most significant bits randomly ended up as zeros.
+ * |top| must be one of the |BN_RAND_TOP_*| values. If |BN_RAND_TOP_ONE|, the
+ * most-significant bit, if any, will be set. If |BN_RAND_TOP_TWO|, the two
+ * most significant bits, if any, will be set. If |BN_RAND_TOP_ANY|, no extra
+ * action will be taken and |BN_num_bits(rnd)| may not equal |bits| if the most
+ * significant bits randomly ended up as zeros.
  *
- * If |bottom| is non-zero, the least-significant bit, if any, will be set. The
- * function returns one on success or zero otherwise. */
+ * |bottom| must be one of the |BN_RAND_BOTTOM_*| values. If
+ * |BN_RAND_BOTTOM_ODD|, the least-significant bit, if any, will be set. If
+ * |BN_RAND_BOTTOM_ANY|, no extra action will be taken. */
 OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom);
 
 /* BN_pseudo_rand is an alias for |BN_rand|. */

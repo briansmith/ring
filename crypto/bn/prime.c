@@ -651,7 +651,7 @@ static int probable_prime(BIGNUM *rnd, int bits) {
   char is_single_word = bits <= BN_BITS2;
 
 again:
-  if (!BN_rand(rnd, bits, 1, 1)) {
+  if (!BN_rand(rnd, bits, BN_RAND_TOP_TWO, BN_RAND_BOTTOM_ODD)) {
     return 0;
   }
 
@@ -735,7 +735,7 @@ static int probable_prime_dh(BIGNUM *rnd, int bits, const BIGNUM *add,
     goto err;
   }
 
-  if (!BN_rand(rnd, bits, 0, 1)) {
+  if (!BN_rand(rnd, bits, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ODD)) {
     goto err;
   }
 
@@ -798,7 +798,7 @@ static int probable_prime_dh_safe(BIGNUM *p, int bits, const BIGNUM *padd,
     goto err;
   }
 
-  if (!BN_rand(q, bits, 0, 1)) {
+  if (!BN_rand(q, bits, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ODD)) {
     goto err;
   }
 
