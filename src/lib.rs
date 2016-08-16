@@ -136,7 +136,7 @@ mod rsa;
 
 pub mod signature;
 
-#[cfg(any(feature = "use_heap", test))]
+#[cfg(all(feature = "use_heap", test))]
 pub mod test;
 
 #[cfg(test)]
