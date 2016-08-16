@@ -33,3 +33,6 @@ If adding a new test, these files may be a good starting point:
  * `test_config.h`, `test_config.cc`: the command-line flags which control the
    shim's behavior.
  * `bssl_shim.cc`: the shim binary itself.
+
+For porting the test suite to a different implementation see
+[PORTING.md](./PORTING.md).
