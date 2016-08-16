@@ -20,7 +20,7 @@ import shutil
 latest_clang = "clang-3.9"
 
 rusts = [
-    "stable",
+    "1.9.0",
     "nightly",
     "beta",
 ]
