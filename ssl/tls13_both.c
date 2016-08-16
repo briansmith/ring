@@ -28,6 +28,11 @@
 #include "internal.h"
 
 
+/* kMaxKeyUpdates is the number of consecutive KeyUpdates that will be
+ * processed. Without this limit an attacker could force unbounded processing
+ * without being able to return application data. */
+static const uint8_t kMaxKeyUpdates = 32;
+
 int tls13_handshake(SSL *ssl) {
   SSL_HANDSHAKE *hs = ssl->s3->hs;
 
@@ -403,8 +408,17 @@ static int tls13_receive_key_update(SSL *ssl) {
 
 int tls13_post_handshake(SSL *ssl) {
   if (ssl->s3->tmp.message_type == SSL3_MT_KEY_UPDATE) {
+    ssl->s3->key_update_count++;
+    if (ssl->s3->key_update_count > kMaxKeyUpdates) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+      return 0;
+    }
+
     return tls13_receive_key_update(ssl);
   }
+
+  ssl->s3->key_update_count = 0;
 
   if (ssl->s3->tmp.message_type == SSL3_MT_NEW_SESSION_TICKET &&
       !ssl->server) {

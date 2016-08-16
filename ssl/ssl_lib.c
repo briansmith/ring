@@ -722,6 +722,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     int got_handshake;
     int ret = ssl->method->read_app_data(ssl, &got_handshake, buf, num, peek);
     if (ret > 0 || !got_handshake) {
+      ssl->s3->key_update_count = 0;
       return ret;
     }
 

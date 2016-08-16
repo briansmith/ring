@@ -4290,6 +4290,9 @@ typedef struct ssl3_state_st {
    * received. */
   uint8_t warning_alert_count;
 
+  /* key_update_count is the number of consecutive KeyUpdates received. */
+  uint8_t key_update_count;
+
   /* aead_read_ctx is the current read cipher state. */
   SSL_AEAD_CTX *aead_read_ctx;
 
@@ -4807,6 +4810,7 @@ OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 #define SSL_R_DUPLICATE_EXTENSION 257
 #define SSL_R_MISSING_KEY_SHARE 258
 #define SSL_R_INVALID_ALPN_PROTOCOL 259
+#define SSL_R_TOO_MANY_KEY_UPDATES 260
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
