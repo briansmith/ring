@@ -65,37 +65,6 @@
 
 #include "asn1_locl.h"
 
-#if 0
-int i2d_ASN1_UTCTIME(ASN1_UTCTIME *a, unsigned char **pp)
-{
-    return (i2d_ASN1_bytes((ASN1_STRING *)a, pp,
-                           V_ASN1_UTCTIME, V_ASN1_UNIVERSAL));
-}
-
-ASN1_UTCTIME *d2i_ASN1_UTCTIME(ASN1_UTCTIME **a, unsigned char **pp,
-                               long length)
-{
-    ASN1_UTCTIME *ret = NULL;
-
-    ret = (ASN1_UTCTIME *)d2i_ASN1_bytes((ASN1_STRING **)a, pp, length,
-                                         V_ASN1_UTCTIME, V_ASN1_UNIVERSAL);
-    if (ret == NULL) {
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_NESTED_ASN1_ERROR);
-        return (NULL);
-    }
-    if (!ASN1_UTCTIME_check(ret)) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_TIME_FORMAT);
-        goto err;
-    }
-
-    return (ret);
- err:
-    if ((ret != NULL) && ((a == NULL) || (*a != ret)))
-        M_ASN1_UTCTIME_free(ret);
-    return (NULL);
-}
-
-#endif
 
 int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d)
 {

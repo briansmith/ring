@@ -7,7 +7,6 @@ add_library(
 
   a_bitstr.c
   a_bool.c
-  a_bytes.c
   a_d2i_fp.c
   a_dup.c
   a_enum.c

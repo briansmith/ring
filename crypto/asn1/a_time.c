@@ -77,17 +77,6 @@ IMPLEMENT_ASN1_MSTRING(ASN1_TIME, B_ASN1_TIME)
 
 IMPLEMENT_ASN1_FUNCTIONS(ASN1_TIME)
 
-#if 0
-int i2d_ASN1_TIME(ASN1_TIME *a, unsigned char **pp)
-{
-    if (a->type == V_ASN1_UTCTIME || a->type == V_ASN1_GENERALIZEDTIME)
-        return (i2d_ASN1_bytes((ASN1_STRING *)a, pp,
-                               a->type, V_ASN1_UNIVERSAL));
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_A_TIME);
-    return -1;
-}
-#endif
-
 ASN1_TIME *ASN1_TIME_set(ASN1_TIME *s, time_t t)
 {
     return ASN1_TIME_adj(s, t, 0, 0);

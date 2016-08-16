@@ -861,8 +861,6 @@ OPENSSL_EXPORT BIGNUM *ASN1_ENUMERATED_to_BN(ASN1_ENUMERATED *ai,BIGNUM *bn);
 /* given a string, return the correct type, max is the maximum length */
 OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int max);
 
-OPENSSL_EXPORT int i2d_ASN1_bytes(ASN1_STRING *a, unsigned char **pp, int tag, int xclass);
-OPENSSL_EXPORT ASN1_STRING *d2i_ASN1_bytes(ASN1_STRING **a, const unsigned char **pp, long length, int Ptag, int Pclass);
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 /* type is one or more of the B_ASN1_ values. */
 OPENSSL_EXPORT ASN1_STRING *d2i_ASN1_type_bytes(ASN1_STRING **a,const unsigned char **pp, long length,int type);
