@@ -88,7 +88,7 @@ purpose of evaluating the success or failure of the test suite.
 
 ### Malloc Tests
 
-The test runner can only be used to stress malloc failure
+The test runner can also be used to stress malloc failure
 codepaths. If passed `-malloc-test=0`, the runner will run each test
 repeatedly with an incrementing `MALLOC_NUMBER_TO_FAIL` environment
 variable. The shim should then replace the malloc implementation with
