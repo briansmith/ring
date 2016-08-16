@@ -731,10 +731,6 @@ typedef struct BIT_STRING_BITNAME_st {
 		(ASN1_UTF8STRING *)d2i_ASN1_type_bytes\
 		((ASN1_STRING **)a,pp,l,B_ASN1_UTF8STRING)
 
-  /* for the is_set parameter to i2d_ASN1_SET */
-#define IS_SEQUENCE	0
-#define IS_SET		1
-
 DECLARE_ASN1_FUNCTIONS_fname(ASN1_TYPE, ASN1_ANY, ASN1_TYPE)
 
 OPENSSL_EXPORT int ASN1_TYPE_get(ASN1_TYPE *a);
@@ -841,13 +837,6 @@ OPENSSL_EXPORT ASN1_TIME *ASN1_TIME_adj(ASN1_TIME *s,time_t t, int offset_day, l
 OPENSSL_EXPORT int ASN1_TIME_check(ASN1_TIME *t);
 OPENSSL_EXPORT ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *t, ASN1_GENERALIZEDTIME **out);
 OPENSSL_EXPORT int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
-
-OPENSSL_EXPORT int i2d_ASN1_SET(STACK_OF(OPENSSL_BLOCK) *a, unsigned char **pp, i2d_of_void *i2d, int ex_tag, int ex_class, int is_set);
-OPENSSL_EXPORT STACK_OF(OPENSSL_BLOCK) *d2i_ASN1_SET(STACK_OF(OPENSSL_BLOCK) **a,
-			      const unsigned char **pp,
-			      long length, d2i_of_void *d2i,
-			      void (*free_func)(OPENSSL_BLOCK), int ex_tag,
-			      int ex_class);
 
 OPENSSL_EXPORT int i2a_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *a);
 OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp,ASN1_INTEGER *bs,char *buf,int size);
@@ -977,16 +966,7 @@ DECLARE_ASN1_FUNCTIONS(NETSCAPE_X509)
 
 int ASN1_UNIVERSALSTRING_to_string(ASN1_UNIVERSALSTRING *s);
 
-OPENSSL_EXPORT STACK_OF(OPENSSL_BLOCK) *ASN1_seq_unpack(const unsigned char *buf, int len, d2i_of_void *d2i, void (*free_func)(OPENSSL_BLOCK));
-OPENSSL_EXPORT unsigned char *ASN1_seq_pack(STACK_OF(OPENSSL_BLOCK) *safes, i2d_of_void *i2d, unsigned char **buf, int *len );
-OPENSSL_EXPORT void *ASN1_unpack_string(ASN1_STRING *oct, d2i_of_void *d2i);
 OPENSSL_EXPORT void *ASN1_item_unpack(ASN1_STRING *oct, const ASN1_ITEM *it);
-OPENSSL_EXPORT ASN1_STRING *ASN1_pack_string(void *obj, i2d_of_void *i2d, ASN1_OCTET_STRING **oct);
-
-#define ASN1_pack_string_of(type,obj,i2d,oct) \
-    (ASN1_pack_string(CHECKED_PTR_OF(type, obj), \
-		      CHECKED_I2D_OF(type, i2d), \
-		      oct))
 
 OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it, ASN1_OCTET_STRING **oct);
 
