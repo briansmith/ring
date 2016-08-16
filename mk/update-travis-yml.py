@@ -38,9 +38,7 @@ linux_compilers = [
     # "clang-3.9",
 
     # Newest clang and GCC.
-    # XXX: clang builds are disabled because the LLVM project turned off its
-    # APT servers, which we need to download clang.
-    # "clang-3.8",
+    "clang-3.8",
 
     "gcc-5",
     "gcc-6",
