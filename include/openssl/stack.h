@@ -180,14 +180,12 @@ typedef struct stack_st {
 typedef char *OPENSSL_STRING;
 
 DEFINE_SPECIAL_STACK_OF(OPENSSL_STRING, char)
-DEFINE_SPECIAL_STACK_OF(OPENSSL_BLOCK, uint8_t)
 
 /* The make_macros.sh script in this directory parses the following lines and
  * generates the stack_macros.h file that contains macros for the following
  * types of stacks:
  *
- * SPECIAL_STACK_OF:OPENSSL_STRING
- * SPECIAL_STACK_OF:OPENSSL_BLOCK */
+ * SPECIAL_STACK_OF:OPENSSL_STRING */
 
 #define IN_STACK_H
 #include <openssl/stack_macros.h>
