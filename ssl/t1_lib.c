@@ -2094,6 +2094,7 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
     }
     OPENSSL_free(ssl->s3->hs->key_share_bytes);
     ssl->s3->hs->key_share_bytes = NULL;
+    ssl->s3->hs->key_share_bytes_len = 0;
 
     groups = &ssl->s3->hs->retry_group;
     groups_len = 1;
@@ -2241,6 +2242,10 @@ int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out) {
       !CBB_flush(out)) {
     return 0;
   }
+
+  OPENSSL_free(ssl->s3->hs->public_key);
+  ssl->s3->hs->public_key = NULL;
+  ssl->s3->hs->public_key_len = 0;
 
   ssl->s3->new_session->key_exchange_info = group_id;
   return 1;

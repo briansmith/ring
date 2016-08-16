@@ -896,13 +896,21 @@ struct ssl_handshake_st {
   uint8_t secret[EVP_MAX_MD_SIZE];
   uint8_t traffic_secret_0[EVP_MAX_MD_SIZE];
 
+  /* groups is the set of active ECDH offers from the client in TLS 1.3. */
   SSL_ECDH_CTX *groups;
   size_t groups_len;
-  /* retry_group is the group ID selected by the server in HelloRetryRequest. */
+
+  /* retry_group is the group ID selected by the server in HelloRetryRequest in
+   * TLS 1.3. */
   uint16_t retry_group;
-  /* key_share_bytes is the value of the previously sent KeyShare extension. */
+
+  /* key_share_bytes is the value of the previously sent KeyShare extension by
+   * the client in TLS 1.3. */
   uint8_t *key_share_bytes;
   size_t key_share_bytes_len;
+
+  /* public_key, for servers, is the key share to be sent to the client in TLS
+   * 1.3. */
   uint8_t *public_key;
   size_t public_key_len;
 
@@ -967,6 +975,10 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
 int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
 
 int ssl_add_client_hello_body(SSL *ssl, CBB *body);
+
+/* ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
+ * should be called once the version is known to be TLS 1.2 or earlier. */
+void ssl_clear_tls13_state(SSL *ssl);
 
 
 /* SSLKEYLOGFILE functions. */

@@ -677,3 +677,11 @@ int tls13_process_new_session_ticket(SSL *ssl) {
   SSL_SESSION_free(session);
   return 1;
 }
+
+void ssl_clear_tls13_state(SSL *ssl) {
+  ssl_handshake_clear_groups(ssl->s3->hs);
+
+  OPENSSL_free(ssl->s3->hs->key_share_bytes);
+  ssl->s3->hs->key_share_bytes = NULL;
+  ssl->s3->hs->key_share_bytes_len = 0;
+}

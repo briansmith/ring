@@ -865,6 +865,8 @@ static int ssl3_get_server_hello(SSL *ssl) {
     return 1;
   }
 
+  ssl_clear_tls13_state(ssl);
+
   if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
