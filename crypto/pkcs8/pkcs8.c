@@ -71,6 +71,7 @@
 #include <openssl/x509.h>
 
 #include "internal.h"
+#include "../internal.h"
 #include "../bytestring/internal.h"
 
 
@@ -310,7 +311,7 @@ static const struct pbe_suite kBuiltinPBE[] = {
 
 static const struct pbe_suite *get_pbe_suite(int pbe_nid) {
   unsigned i;
-  for (i = 0; i < sizeof(kBuiltinPBE) / sizeof(kBuiltinPBE[0]); i++) {
+  for (i = 0; i < OPENSSL_ARRAY_SIZE(kBuiltinPBE); i++) {
     if (kBuiltinPBE[i].pbe_nid == pbe_nid) {
       return &kBuiltinPBE[i];
     }

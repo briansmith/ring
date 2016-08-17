@@ -40,6 +40,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <algorithm>
 
+#include "../internal.h"
 #include "../test/scoped_types.h"
 
 
@@ -206,9 +207,8 @@ static bool TestZeroCopyBioPairs() {
 
   // Transfer bytes from bio1_application_send_buffer to
   // bio2_application_recv_buffer in various ways.
-  for (size_t i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
-    for (size_t j = 0; j < sizeof(kPartialLengths) / sizeof(kPartialLengths[0]);
-         j++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kLengths); i++) {
+    for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(kPartialLengths); j++) {
       size_t total_write = 0;
       size_t total_read = 0;
 
@@ -293,7 +293,7 @@ static bool TestPrintf() {
     return false;
   }
 
-  for (size_t i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kLengths); i++) {
     char string[1024];
     if (kLengths[i] >= sizeof(string)) {
       fprintf(stderr, "Bad test string length\n");

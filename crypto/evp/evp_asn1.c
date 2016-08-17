@@ -65,6 +65,7 @@
 #include <openssl/rsa.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
@@ -80,7 +81,7 @@ static int parse_key_type(CBS *cbs, int *out_type) {
   }
 
   unsigned i;
-  for (i = 0; i < sizeof(kASN1Methods)/sizeof(kASN1Methods[0]); i++) {
+  for (i = 0; i < OPENSSL_ARRAY_SIZE(kASN1Methods); i++) {
     const EVP_PKEY_ASN1_METHOD *method = kASN1Methods[i];
     if (CBS_len(&oid) == method->oid_len &&
         memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {

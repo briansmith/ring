@@ -85,9 +85,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../crypto/test/file_test.h"
-#include "../crypto/test/scoped_types.h"
-#include "../crypto/test/test_util.h"
+#include "../internal.h"
+#include "../test/file_test.h"
+#include "../test/scoped_types.h"
+#include "../test/test_util.h"
 
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
@@ -867,7 +868,7 @@ static const MPITest kMPITests[] = {
 static bool TestMPI() {
   uint8_t scratch[8];
 
-  for (size_t i = 0; i < sizeof(kMPITests) / sizeof(kMPITests[0]); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMPITests); i++) {
     const MPITest &test = kMPITests[i];
     ScopedBIGNUM bn(ASCIIToBIGNUM(test.base10));
     const size_t mpi_len = BN_bn2mpi(bn.get(), NULL);

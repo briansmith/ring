@@ -32,6 +32,7 @@
 
 #include "internal.h"
 #include "test/scoped_types.h"
+#include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
 
 #if defined(OPENSSL_WINDOWS)
@@ -763,7 +764,7 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
 
 static bool TestCipherGetRFCName(void) {
   for (size_t i = 0;
-       i < sizeof(kCipherRFCNameTests) / sizeof(kCipherRFCNameTests[0]); i++) {
+       i < OPENSSL_ARRAY_SIZE(kCipherRFCNameTests); i++) {
     const CIPHER_RFC_NAME_TEST *test = &kCipherRFCNameTests[i];
     std::string rfc_name;
     if (!CipherGetRFCName(&rfc_name, test->id & 0xffff)) {

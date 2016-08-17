@@ -26,6 +26,7 @@
 #include <openssl/crypto.h>
 
 #include "internal.h"
+#include "../internal.h"
 #include "../test/scoped_types.h"
 
 namespace bssl {
@@ -730,8 +731,7 @@ static const ASN1InvalidUint64Test kASN1InvalidUint64Tests[] = {
 };
 
 static bool TestASN1Uint64() {
-  for (size_t i = 0; i < sizeof(kASN1Uint64Tests) / sizeof(kASN1Uint64Tests[0]);
-       i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kASN1Uint64Tests); i++) {
     const ASN1Uint64Test *test = &kASN1Uint64Tests[i];
     CBS cbs;
     uint64_t value;
@@ -760,9 +760,7 @@ static bool TestASN1Uint64() {
     }
   }
 
-  for (size_t i = 0;
-       i < sizeof(kASN1InvalidUint64Tests) / sizeof(kASN1InvalidUint64Tests[0]);
-       i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kASN1InvalidUint64Tests); i++) {
     const ASN1InvalidUint64Test *test = &kASN1InvalidUint64Tests[i];
     CBS cbs;
     uint64_t value;

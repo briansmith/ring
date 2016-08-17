@@ -2667,7 +2667,7 @@ const struct {
     {TLS1_3_VERSION, SSL_OP_NO_TLSv1_3},
 };
 
-static const size_t kVersionsLen = sizeof(kVersions) / sizeof(kVersions[0]);
+static const size_t kVersionsLen = OPENSSL_ARRAY_SIZE(kVersions);
 
 int ssl_get_full_version_range(const SSL *ssl, uint16_t *out_min_version,
                                uint16_t *out_fallback_version,

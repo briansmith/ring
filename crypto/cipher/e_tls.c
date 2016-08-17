@@ -25,7 +25,7 @@
 #include <openssl/sha.h>
 #include <openssl/type_check.h>
 
-#include "../crypto/internal.h"
+#include "../internal.h"
 #include "internal.h"
 
 
