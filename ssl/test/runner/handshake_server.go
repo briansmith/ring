@@ -430,6 +430,10 @@ Curves:
 			}
 		}
 
+		if config.Bugs.ExpectMissingKeyShare && selectedKeyShare != nil {
+			return errors.New("tls: expected missing key share")
+		}
+
 		sendHelloRetryRequest := selectedKeyShare == nil
 		if config.Bugs.UnnecessaryHelloRetryRequest {
 			sendHelloRetryRequest = true
@@ -451,6 +455,7 @@ Curves:
 			}
 			hs.writeServerHash(helloRetryRequestMsg.marshal())
 			c.writeRecord(recordTypeHandshake, helloRetryRequestMsg.marshal())
+			c.flushHandshake()
 
 			// Read new ClientHello.
 			newMsg, err := c.readHandshake()

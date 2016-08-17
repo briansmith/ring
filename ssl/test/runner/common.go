@@ -1041,6 +1041,11 @@ type ProtocolBugs struct {
 	// HelloRequest in the same record as Finished.
 	PackHelloRequestWithFinished bool
 
+	// ExpectMissingKeyShare, if true, causes the TLS server to fail the
+	// connection if the selected curve appears in the client's initial
+	// ClientHello. That is, it requires that a HelloRetryRequest be sent.
+	ExpectMissingKeyShare bool
+
 	// SendExtraFinished, if true, causes an extra Finished message to be
 	// sent.
 	SendExtraFinished bool
