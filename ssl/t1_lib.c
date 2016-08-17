@@ -3070,7 +3070,7 @@ int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
                                                       SSL_SIGN_ECDSA_SHA1};
     peer_sigalgs = kDefaultPeerAlgorithms;
     peer_sigalgs_len =
-        sizeof(kDefaultPeerAlgorithms) / sizeof(kDefaultPeerAlgorithms);
+        sizeof(kDefaultPeerAlgorithms) / sizeof(kDefaultPeerAlgorithms[0]);
   }
 
   for (i = 0; i < sigalgs_len; i++) {

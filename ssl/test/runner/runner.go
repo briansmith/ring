@@ -5814,7 +5814,7 @@ func addSignatureAlgorithmTests() {
 	// Test that, if the list is missing, the peer falls back to SHA-1 in
 	// TLS 1.2, but not TLS 1.3.
 	testCases = append(testCases, testCase{
-		name: "ClientAuth-SHA1-Fallback",
+		name: "ClientAuth-SHA1-Fallback-RSA",
 		config: Config{
 			MaxVersion: VersionTLS12,
 			ClientAuth: RequireAnyClientCert,
@@ -5833,16 +5833,55 @@ func addSignatureAlgorithmTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "ServerAuth-SHA1-Fallback",
+		name:     "ServerAuth-SHA1-Fallback-RSA",
 		config: Config{
-			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			MaxVersion: VersionTLS12,
 			VerifySignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPKCS1WithSHA1,
 			},
 			Bugs: ProtocolBugs{
 				NoSignatureAlgorithms: true,
 			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		name: "ClientAuth-SHA1-Fallback-ECDSA",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			ClientAuth: RequireAnyClientCert,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
+			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ServerAuth-SHA1-Fallback-ECDSA",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
+			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
 		},
 	})
 
