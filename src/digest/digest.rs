@@ -221,7 +221,7 @@ impl Clone for Context {
 /// # Examples:
 ///
 /// ```
-/// # #[cfg(any(feature = "use_heap", test))]
+/// # #[cfg(feature = "use_heap")]
 /// # fn main() {
 /// use ring::{digest, test};
 ///
@@ -232,7 +232,7 @@ impl Clone for Context {
 /// assert_eq!(&expected, &actual.as_ref());
 /// # }
 ///
-/// # #[cfg(not(any(feature = "use_heap", test)))]
+/// # #[cfg(not(feature = "use_heap"))]
 /// # fn main() { }
 /// ```
 pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
