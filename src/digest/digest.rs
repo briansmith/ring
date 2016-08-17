@@ -299,22 +299,14 @@ pub struct Algorithm {
                        [u64; MAX_OUTPUT_LEN / 8],
 
     initial_state: [u64; MAX_CHAINING_LEN / 8],
-
-    /// The OpenSSL/BoringSSL NID for the algorithm. For all the algorithms
-    /// defined in this module, `a.nid == b.nid` implies that `a` and `b` are
-    /// references to the same algorithm.
-    pub nid: c::int,
 }
 
 impl core::fmt::Debug for Algorithm {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-        match self.nid {
-            64 => fmt.write_str("SHA-1"),
-            672 => fmt.write_str("SHA-256"),
-            673 => fmt.write_str("SHA-384"),
-            674 => fmt.write_str("SHA-512"),
-            _ => unreachable!(),
-        }
+        // This would have to change if/when we add other algorithms with the
+        // same output lengths.
+        let n = if self.output_len == 20 { 1 } else { self.output_len * 8 };
+        write!(fmt, "SHA-{:?}", n)
     }
 }
 
@@ -334,7 +326,6 @@ pub static SHA1: Algorithm = Algorithm {
         u32x2!(0xc3d2e1f0u32, 0u32),
         0, 0, 0, 0, 0,
     ],
-    nid: 64, // NID_sha1
 };
 
 /// SHA-256 as specified in [FIPS 180-4].
@@ -354,8 +345,6 @@ pub static SHA256: Algorithm = Algorithm {
         u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
         0, 0, 0, 0,
     ],
-    nid: 672, // NID_sha256
-
 };
 
 /// SHA-384 as specified in [FIPS 180-4].
@@ -378,7 +367,6 @@ pub static SHA384: Algorithm = Algorithm {
         0xdb0c2e0d64f98fa7,
         0x47b5481dbefa4fa4,
     ],
-    nid: 673, // NID_sha384
 };
 
 /// SHA-512 as specified in [FIPS 180-4].
@@ -401,7 +389,6 @@ pub static SHA512: Algorithm = Algorithm {
         0x1f83d9abfb41bd6b,
         0x5be0cd19137e2179,
     ],
-    nid: 674, // NID_sha512
 };
 
 #[inline(always)]

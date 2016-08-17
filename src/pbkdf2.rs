@@ -272,15 +272,18 @@ pub static HMAC_SHA512: PRF  = PRF {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{digest, error, pbkdf2, test};
+    use {error, pbkdf2, test};
 
     #[test]
     pub fn pkbdf2_tests() {
         test::from_file("src/pbkdf2_tests.txt", |section, test_case| {
             assert_eq!(section, "");
-            let digest_alg =
-                try!(test_case.consume_digest_alg("Hash")
-                              .ok_or(error::Unspecified));
+            let prf_digest_alg = &test_case.consume_string("Hash");
+            let prf = match prf_digest_alg.as_ref() {
+                "SHA256" => &pbkdf2::HMAC_SHA256,
+                "SHA512" => &pbkdf2::HMAC_SHA512,
+                _ => panic!("Unexpected digest algorithm in PBKDF2 test"),
+            };
             let iterations = test_case.consume_usize("c");
             let secret = test_case.consume_bytes("P");
             let salt = test_case.consume_bytes("S");
@@ -290,14 +293,6 @@ mod tests {
                 "OK" => Ok(()),
                 "Err" => Err(error::Unspecified),
                 _ => panic!("Unsupported value of \"Verify\"")
-            };
-
-            let prf = if digest_alg.nid ==  digest::SHA256.nid {
-                &pbkdf2::HMAC_SHA256
-            } else if digest_alg.nid == digest::SHA512.nid {
-                &pbkdf2::HMAC_SHA512
-            } else {
-                unimplemented!();
             };
 
             {
