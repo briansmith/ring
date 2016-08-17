@@ -27,7 +27,7 @@
 #![allow(unsafe_code)]
 
 use {c, init, polyfill};
-use core;
+use core::{self, fmt};
 
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111
@@ -262,6 +262,16 @@ impl AsRef<[u8]> for Digest {
     }
 }
 
+impl fmt::Debug for Digest {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(fmt, "{:?}:", self.algorithm));
+        for byte in self.as_ref() {
+            try!(write!(fmt, "{:02x}", byte));
+        }
+        Ok(())
+    }
+}
+
 /// A digest algorithm.
 ///
 /// C analog: `EVP_MD`
@@ -294,6 +304,18 @@ pub struct Algorithm {
     /// defined in this module, `a.nid == b.nid` implies that `a` and `b` are
     /// references to the same algorithm.
     pub nid: c::int,
+}
+
+impl fmt::Debug for Algorithm {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self.nid {
+            64 => fmt.write_str("SHA-1"),
+            672 => fmt.write_str("SHA-256"),
+            673 => fmt.write_str("SHA-384"),
+            674 => fmt.write_str("SHA-512"),
+            _ => unreachable!(),
+        }
+    }
 }
 
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
@@ -734,4 +756,30 @@ mod tests {
         0x49, 0x1A, 0x6B, 0xEC, 0x9C, 0x98, 0xC8, 0x19,
         0xA6, 0xA9, 0x88, 0x3E, 0x2F, 0x09, 0xB9, 0x9A
     ]);
+
+    #[test]
+    fn test_fmt_algorithm() {
+        assert_eq!("SHA-1", &format!("{:?}", digest::SHA1));
+        assert_eq!("SHA-256", &format!("{:?}", digest::SHA256));
+        assert_eq!("SHA-384", &format!("{:?}", digest::SHA384));
+        assert_eq!("SHA-512", &format!("{:?}", digest::SHA512));
+    }
+
+    #[test]
+    fn test_fmt_digest() {
+        assert_eq!("SHA-1:b7e23ec29af22b0b4e41da31e868d57226121c84",
+                   &format!("{:?}", digest::digest(&digest::SHA1, b"hello, world")));
+        assert_eq!("SHA-256:09ca7e4eaa6e8ae9c7d261167129184883644d\
+                    07dfba7cbfbc4c8a2e08360d5b",
+                   &format!("{:?}", digest::digest(&digest::SHA256, b"hello, world")));
+        assert_eq!("SHA-384:1fcdb6059ce05172a26bbe2a3ccc88ed5a8cd5\
+                    fc53edfd9053304d429296a6da23b1cd9e5c9ed3bb34f0\
+                    0418a70cdb7e",
+                   &format!("{:?}", digest::digest(&digest::SHA384, b"hello, world")));
+        assert_eq!("SHA-512:8710339dcb6814d0d9d2290ef422285c9322b7\
+                    163951f9a0ca8f883d3305286f44139aa374848e4174f5\
+                    aada663027e4548637b6d19894aec4fb6c46a139fbf9",
+                   &format!("{:?}", digest::digest(&digest::SHA512, b"hello, world")));
+
+    }
 }
