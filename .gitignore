@@ -1,5 +1,6 @@
 build/
 ssl/test/runner/runner
+*.orig
 *.swp
 *.swo
 doc/*.html
