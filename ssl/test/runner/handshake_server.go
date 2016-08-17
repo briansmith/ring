@@ -350,10 +350,15 @@ Curves:
 		}
 		suite := mutualCipherSuite(clientCipherSuites, suiteId)
 
-		// Check the cipher is enabled by the server.
+		// Check the cipher is enabled by the server or is a resumption
+		// suite of one enabled by the server. Account for the cipher
+		// change on resume.
+		//
+		// TODO(davidben): The ecdhePSKSuite mess will be gone with the
+		// new cipher negotiation scheme.
 		var found bool
 		for _, id := range config.cipherSuites() {
-			if id == sessionState.cipherSuite {
+			if ecdhePSKSuite(id) == suiteId {
 				found = true
 				break
 			}

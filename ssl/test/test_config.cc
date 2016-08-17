@@ -46,7 +46,6 @@ T *FindField(TestConfig *config, const Flag<T> (&flags)[N], const char *flag) {
 const Flag<bool> kBoolFlags[] = {
   { "-server", &TestConfig::is_server },
   { "-dtls", &TestConfig::is_dtls },
-  { "-resume", &TestConfig::resume },
   { "-fallback-scsv", &TestConfig::fallback_scsv },
   { "-require-any-client-certificate",
     &TestConfig::require_any_client_certificate },
@@ -143,6 +142,7 @@ const Flag<std::string> kBase64Flags[] = {
 
 const Flag<int> kIntFlags[] = {
   { "-port", &TestConfig::port },
+  { "-resume-count", &TestConfig::resume_count },
   { "-min-version", &TestConfig::min_version },
   { "-max-version", &TestConfig::max_version },
   { "-fallback-version", &TestConfig::fallback_version },

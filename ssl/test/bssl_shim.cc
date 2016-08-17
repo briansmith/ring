@@ -1699,17 +1699,20 @@ static int Main(int argc, char **argv) {
   }
 
   ScopedSSL_SESSION session;
-  if (!DoExchange(&session, ssl_ctx.get(), &config, false /* is_resume */,
-                  NULL /* session */)) {
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
+  for (int i = 0; i < config.resume_count + 1; i++) {
+    bool is_resume = i > 0;
+    if (is_resume && !config.is_server && !session) {
+      fprintf(stderr, "No session to offer.\n");
+      return 1;
+    }
 
-  if (config.resume &&
-      !DoExchange(NULL, ssl_ctx.get(), &config, true /* is_resume */,
-                  session.get())) {
-    ERR_print_errors_fp(stderr);
-    return 1;
+    ScopedSSL_SESSION offer_session = std::move(session);
+    if (!DoExchange(&session, ssl_ctx.get(), &config, is_resume,
+                    offer_session.get())) {
+      fprintf(stderr, "Connection %d failed.\n", i + 1);
+      ERR_print_errors_fp(stderr);
+      return 1;
+    }
   }
 
   return 0;

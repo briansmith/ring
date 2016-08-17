@@ -203,10 +203,24 @@ NextCipherSuite:
 			// Check that the ciphersuite/version used for the
 			// previous session are still valid.
 			cipherSuiteOk := false
-			for _, id := range hello.cipherSuites {
-				if id == candidateSession.cipherSuite {
-					cipherSuiteOk = true
-					break
+			if candidateSession.vers >= VersionTLS13 {
+				// Account for ciphers changing on resumption.
+				//
+				// TODO(davidben): This will be gone with the
+				// new cipher negotiation scheme.
+				resumeCipher := ecdhePSKSuite(candidateSession.cipherSuite)
+				for _, id := range hello.cipherSuites {
+					if ecdhePSKSuite(id) == resumeCipher {
+						cipherSuiteOk = true
+						break
+					}
+				}
+			} else {
+				for _, id := range hello.cipherSuites {
+					if id == candidateSession.cipherSuite {
+						cipherSuiteOk = true
+						break
+					}
 				}
 			}
 
@@ -234,17 +248,8 @@ NextCipherSuite:
 			// TODO(nharper): Support sending more
 			// than one PSK identity.
 			if session.ticketFlags&ticketAllowDHEResumption != 0 || c.config.Bugs.SendBothTickets {
-				var found bool
-				for _, id := range hello.cipherSuites {
-					if id == session.cipherSuite {
-						found = true
-						break
-					}
-				}
-				if found {
-					hello.pskIdentities = [][]uint8{ticket}
-					hello.cipherSuites = append(hello.cipherSuites, ecdhePSKSuite(session.cipherSuite))
-				}
+				hello.pskIdentities = [][]uint8{ticket}
+				hello.cipherSuites = append(hello.cipherSuites, ecdhePSKSuite(session.cipherSuite))
 			}
 		}
 
