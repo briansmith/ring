@@ -168,6 +168,11 @@
  * to avoid downstream churn. */
 OPENSSL_DECLARE_ERROR_REASON(SSL, UNKNOWN_PROTOCOL)
 
+/* The following errors are no longer emitted, but are used in nginx without
+ * #ifdefs. */
+OPENSSL_DECLARE_ERROR_REASON(SSL, BLOCK_CIPHER_PAD_IS_WRONG)
+OPENSSL_DECLARE_ERROR_REASON(SSL, NO_CIPHERS_SPECIFIED)
+
 /* Some error codes are special. Ensure the make_errors.go script never
  * regresses this. */
 OPENSSL_COMPILE_ASSERT(SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
