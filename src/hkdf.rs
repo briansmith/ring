@@ -150,13 +150,13 @@ mod tests {
             // have to consume it to make test::from_file happy.
             let _ = test_case.consume_bytes("PRK");
 
-            let out = test_case.consume_bytes("OKM");
+            let expected_out = test_case.consume_bytes("OKM");
 
             let salt = hmac::SigningKey::new(digest_alg, &salt);
 
-            let mut out = vec![0u8; out.len()];
+            let mut out = vec![0u8; expected_out.len()];
             extract_and_expand(&salt, &secret, &info, &mut out);
-            assert_eq!(out, out);
+            assert_eq!(out, expected_out);
 
             Ok(())
         });
