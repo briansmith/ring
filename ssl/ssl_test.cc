@@ -1106,6 +1106,36 @@ static ScopedEVP_PKEY GetTestKey() {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
+static ScopedX509 GetECDSATestCertificate() {
+  static const char kCertPEM[] =
+      "-----BEGIN CERTIFICATE-----\n"
+      "MIIBzzCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC\n"
+      "QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp\n"
+      "dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ\n"
+      "BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l\n"
+      "dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni\n"
+      "v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa\n"
+      "HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw\n"
+      "HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ\n"
+      "BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E\n"
+      "BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=\n"
+      "-----END CERTIFICATE-----\n";
+  ScopedBIO bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
+  return ScopedX509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}
+
+static ScopedEVP_PKEY GetECDSATestKey() {
+  static const char kKeyPEM[] =
+      "-----BEGIN PRIVATE KEY-----\n"
+      "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgBw8IcnrUoEqc3VnJ\n"
+      "TYlodwi1b8ldMHcO6NHJzgqLtGqhRANCAATmK2niv2Wfl74vHg2UikzVl2u3qR4N\n"
+      "Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB\n"
+      "-----END PRIVATE KEY-----\n";
+  ScopedBIO bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
+  return ScopedEVP_PKEY(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+}
+
 static bool ConnectClientAndServer(ScopedSSL *out_client, ScopedSSL *out_server,
                                    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
                                    SSL_SESSION *session) {
@@ -1906,6 +1936,77 @@ static bool TestSessionTimeout() {
   return true;
 }
 
+static int SwitchContext(SSL *ssl, int *out_alert, void *arg) {
+  SSL_CTX *ctx = reinterpret_cast<SSL_CTX*>(arg);
+  SSL_set_SSL_CTX(ssl, ctx);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+static bool TestSNICallback() {
+  ScopedX509 cert = GetTestCertificate();
+  ScopedEVP_PKEY key = GetTestKey();
+  ScopedX509 cert2 = GetECDSATestCertificate();
+  ScopedEVP_PKEY key2 = GetECDSATestKey();
+  if (!cert || !key || !cert2 || !key2) {
+    return false;
+  }
+
+  // At each version, test that switching the |SSL_CTX| at the SNI callback
+  // behaves correctly.
+  for (uint16_t version : kVersions) {
+    if (version == SSL3_VERSION) {
+      continue;
+    }
+
+    static const uint16_t kECDSAWithSHA256 = SSL_SIGN_ECDSA_SECP256R1_SHA256;
+
+    ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
+    ScopedSSL_CTX server_ctx2(SSL_CTX_new(TLS_method()));
+    ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+    if (!server_ctx || !server_ctx2 || !client_ctx ||
+        !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+        !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+        !SSL_CTX_use_certificate(server_ctx2.get(), cert2.get()) ||
+        !SSL_CTX_use_PrivateKey(server_ctx2.get(), key2.get()) ||
+        // Historically signing preferences would be lost in some cases with the
+        // SNI callback, which triggers the TLS 1.2 SHA-1 default. To ensure
+        // this doesn't happen when |version| is TLS 1.2, configure the private
+        // key to only sign SHA-256.
+        !SSL_CTX_set_signing_algorithm_prefs(server_ctx2.get(),
+                                             &kECDSAWithSHA256, 1)) {
+      return false;
+    }
+
+    SSL_CTX_set_min_version(client_ctx.get(), version);
+    SSL_CTX_set_max_version(client_ctx.get(), version);
+    SSL_CTX_set_min_version(server_ctx.get(), version);
+    SSL_CTX_set_max_version(server_ctx.get(), version);
+    SSL_CTX_set_min_version(server_ctx2.get(), version);
+    SSL_CTX_set_max_version(server_ctx2.get(), version);
+
+    SSL_CTX_set_tlsext_servername_callback(server_ctx.get(), SwitchContext);
+    SSL_CTX_set_tlsext_servername_arg(server_ctx.get(), server_ctx2.get());
+
+    ScopedSSL client, server;
+    if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                server_ctx.get(), nullptr)) {
+      fprintf(stderr, "Handshake failed at version %04x.\n", version);
+      return false;
+    }
+
+    // The client should have received |cert2|.
+    ScopedX509 peer(SSL_get_peer_certificate(client.get()));
+    if (!peer ||
+        X509_cmp(peer.get(), cert2.get()) != 0) {
+      fprintf(stderr, "Incorrect certificate received at version %04x.\n",
+              version);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -1939,7 +2040,8 @@ int main() {
       !TestRetainOnlySHA256OfCerts() ||
       !TestClientHello() ||
       !TestSessionIDContext() ||
-      !TestSessionTimeout()) {
+      !TestSessionTimeout() ||
+      !TestSNICallback()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }

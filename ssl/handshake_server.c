@@ -1194,13 +1194,12 @@ static int ssl3_send_certificate_request(SSL *ssl) {
 
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     const uint16_t *sigalgs;
-    size_t sigalgs_len = tls12_get_psigalgs(ssl, &sigalgs);
+    size_t num_sigalgs = tls12_get_psigalgs(ssl, &sigalgs);
     if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
       goto err;
     }
 
-    size_t i;
-    for (i = 0; i < sigalgs_len; i++) {
+    for (size_t i = 0; i < num_sigalgs; i++) {
       if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
         goto err;
       }

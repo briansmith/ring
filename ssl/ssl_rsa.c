@@ -336,17 +336,28 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
   ctx->cert->key_method = key_method;
 }
 
-int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
-                                    size_t prefs_len) {
-  ssl->cert->sigalgs_len = 0;
-  ssl->cert->sigalgs = BUF_memdup(prefs, prefs_len * sizeof(prefs[0]));
-  if (ssl->cert->sigalgs == NULL) {
+static int set_signing_algorithm_prefs(CERT *cert, const uint16_t *prefs,
+                                       size_t num_prefs) {
+  cert->num_sigalgs = 0;
+  cert->sigalgs = BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
+  if (cert->sigalgs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  ssl->cert->sigalgs_len = prefs_len;
+  cert->num_sigalgs = num_prefs;
 
   return 1;
+}
+
+int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
+                                        size_t num_prefs) {
+  return set_signing_algorithm_prefs(ctx->cert, prefs, num_prefs);
+}
+
+
+int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
+                                    size_t num_prefs) {
+  return set_signing_algorithm_prefs(ssl->cert, prefs, num_prefs);
 }
 
 OPENSSL_COMPILE_ASSERT(sizeof(int) >= 2 * sizeof(uint16_t),
@@ -356,7 +367,7 @@ int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
                                      size_t num_digests) {
   OPENSSL_free(ssl->cert->sigalgs);
 
-  ssl->cert->sigalgs_len = 0;
+  ssl->cert->num_sigalgs = 0;
   ssl->cert->sigalgs = OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
   if (ssl->cert->sigalgs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -369,27 +380,27 @@ int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
   for (size_t i = 0; i < num_digests; i++) {
     switch (digest_nids[i]) {
       case NID_sha1:
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA1;
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] = SSL_SIGN_ECDSA_SHA1;
-        ssl->cert->sigalgs_len += 2;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA1;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] = SSL_SIGN_ECDSA_SHA1;
+        ssl->cert->num_sigalgs += 2;
         break;
       case NID_sha256:
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA256;
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] =
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA256;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
             SSL_SIGN_ECDSA_SECP256R1_SHA256;
-        ssl->cert->sigalgs_len += 2;
+        ssl->cert->num_sigalgs += 2;
         break;
       case NID_sha384:
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA384;
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] =
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA384;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
             SSL_SIGN_ECDSA_SECP384R1_SHA384;
-        ssl->cert->sigalgs_len += 2;
+        ssl->cert->num_sigalgs += 2;
         break;
       case NID_sha512:
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len] = SSL_SIGN_RSA_PKCS1_SHA512;
-        ssl->cert->sigalgs[ssl->cert->sigalgs_len + 1] =
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA512;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
             SSL_SIGN_ECDSA_SECP521R1_SHA512;
-        ssl->cert->sigalgs_len += 2;
+        ssl->cert->num_sigalgs += 2;
         break;
     }
   }
