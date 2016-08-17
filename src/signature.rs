@@ -134,7 +134,7 @@
 //! ```
 
 
-use {error, init};
+use {error, init, private};
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
@@ -207,12 +207,7 @@ impl<'a> Signature {
 }
 
 /// A signature verification algorithm.
-///
-/// Don't implement this trait yourself. This is intended for implementation by
-/// *ring* types only. *ring* may assume there are no implementations of this
-/// trait outside the *ring* crate, which may cause external implementations to
-/// not work as one might expect.
-pub trait VerificationAlgorithm : Sync {
+pub trait VerificationAlgorithm : Sync + private::Private {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,

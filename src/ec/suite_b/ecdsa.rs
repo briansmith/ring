@@ -14,7 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use {der, digest, error, signature};
+use {der, digest, error, private, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
@@ -123,6 +123,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         Err(error::Unspecified)
     }
 }
+
+impl private::Private for ECDSAParameters { }
 
 
 /// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then

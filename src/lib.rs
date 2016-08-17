@@ -139,6 +139,22 @@ pub mod signature;
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
 
+mod private {
+    /// Traits that are designed to only be implemented internally in *ring*.
+    //
+    // Usage:
+    // ```
+    // use private;
+    //
+    // pub trait MyType : private::Private {
+    //     // [...]
+    // }
+    //
+    // impl private::Private for MyType { }
+    // ```
+    pub trait Private { }
+}
+
 #[cfg(test)]
 mod tests {
     bssl_test_rng!(test_bn, bssl_bn_test_main);

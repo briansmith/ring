@@ -16,7 +16,7 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, error, rand, signature};
+use {bssl, c, error, private, rand, signature};
 use untrusted;
 
 /// Parameters for EdDSA signing and verification.
@@ -148,6 +148,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         })
     }
 }
+
+impl private::Private for EdDSAParameters { }
 
 
 extern  {

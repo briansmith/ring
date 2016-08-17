@@ -16,7 +16,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, digest, error, signature};
+use {bssl, c, der, digest, error, private, signature};
 
 #[cfg(feature = "rsa_signing")]
 use rand;
@@ -126,6 +126,8 @@ impl signature::VerificationAlgorithm for RSAParameters {
         })
     }
 }
+
+impl private::Private for RSAParameters { }
 
 macro_rules! rsa_pkcs1_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
