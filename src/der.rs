@@ -94,7 +94,7 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
 pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
                                  error: E, decoder: F) -> Result<R, E>
                                  where F : FnOnce(&mut untrusted::Reader<'a>)
-                                 -> Result<R, E> {
+                                                  -> Result<R, E> {
     let inner = try!(expect_tag_and_get_value(input, tag).map_err(|_| error));
     inner.read_all(error, decoder)
 }
@@ -185,14 +185,14 @@ mod tests {
 
     fn with_good_i<F, R>(value: &[u8], f: F)
                          where F: FnOnce(&mut untrusted::Reader)
-                         -> Result<R, error::Unspecified> {
+                                         -> Result<R, error::Unspecified> {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_ok());
     }
 
     fn with_bad_i<F, R>(value: &[u8], f: F)
                         where F: FnOnce(&mut untrusted::Reader)
-                         -> Result<R, error::Unspecified> {
+                                        -> Result<R, error::Unspecified> {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_err());
     }
