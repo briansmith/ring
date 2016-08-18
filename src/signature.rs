@@ -189,6 +189,10 @@ pub use rsa::verification::{
     RSA_PKCS1_2048_8192_SHA512,
 
     RSA_PKCS1_3072_8192_SHA384,
+
+    RSA_PSS_2048_8192_SHA256,
+    RSA_PSS_2048_8192_SHA384,
+    RSA_PSS_2048_8192_SHA512,
 };
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
