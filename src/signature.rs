@@ -161,7 +161,7 @@ pub use ec::eddsa::{
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::RSAKeyPair;
+pub use rsa::signing::RSAKeyPair;
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
@@ -175,9 +175,10 @@ pub use rsa::{
 };
 
 #[cfg(feature = "use_heap")]
-pub use rsa::{
-    RSAParameters,
+pub use rsa::RSAParameters;
 
+#[cfg(feature = "use_heap")]
+pub use rsa::verification::{
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA384,
