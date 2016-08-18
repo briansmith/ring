@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-/// RSA PKCS#1 1.5 signatures.
+/// RSA signatures.
 
 use {c, core, der, error};
 use untrusted;
@@ -20,8 +20,12 @@ use untrusted;
 mod padding;
 
 // `RSA_PKCS1_SHA1` is intentionally not exposed.
-pub use self::padding::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512};
+pub use self::padding::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512,
+                        RSA_PSS_SHA256, RSA_PSS_SHA384, RSA_PSS_SHA512};
 
+
+// Maximum RSA modulus size supported for signature verification (in bits).
+const PUBLIC_MODULUS_MAX_LEN: usize = 8192;
 
 /// Parameters for RSA verification.
 pub struct RSAParameters {
@@ -83,6 +87,12 @@ impl PositiveInteger {
         self.value = core::ptr::null_mut();
         res
     }
+
+    fn length_in_bits(&self) -> usize {
+        unsafe {
+            GFp_BN_num_bits(self.as_ref())
+        }
+    }
 }
 
 impl<'a> Drop for PositiveInteger {
@@ -105,6 +115,7 @@ extern {
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                      -> *mut BIGNUM;
     fn GFp_BN_free(bn: *mut BIGNUM);
+    fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
 }
 
 #[cfg(feature = "rsa_signing")]
