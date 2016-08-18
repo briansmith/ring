@@ -256,17 +256,19 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     goto err;
   }
 
+  const BIGNUM *p = &rsa->mont_p->N;
+  const BIGNUM *q = &rsa->mont_q->N;
+
   /* Extra reductions would be required if |p < q| and |p == q| is just plain
    * wrong. */
-  assert(BN_cmp(rsa->q, rsa->p) < 0);
+  assert(BN_cmp(q, p) < 0);
 
   /* mp := base^dmp1 mod p.
    *
    * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
    * reduced mod |p|. */
   if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_p, ctx) ||
-      !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->p, ctx,
-                                 rsa->mont_p)) {
+      !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, ctx, rsa->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -277,8 +279,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * first reduced mod |q**2| and then reduced mod |q|. */
   if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_qq, ctx) ||
       !BN_reduce_montgomery(&tmp, &tmp, rsa->mont_q, ctx) ||
-      !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->q, ctx,
-                                 rsa->mont_q)) {
+      !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, ctx, rsa->mont_q)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }

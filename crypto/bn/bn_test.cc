@@ -468,13 +468,6 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
-    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), m.get(), ctx,
-                                   nullptr) ||
-        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
-                            ret.get())) {
-      return false;
-    }
-
     // Test with a non-NULL |BN_MONT_CTX|.
     ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
     if (!mont ||
@@ -493,7 +486,7 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
-    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), m.get(), ctx,
+    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), ctx,
                                    mont.get()) ||
         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
                             ret.get())) {
@@ -795,15 +788,6 @@ static bool TestBadModulus(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
-                                zero.get(), ctx, nullptr)) {
-    fprintf(stderr,
-            "BN_mod_exp_mont_consttime with zero modulus unexpectedly "
-            "succeeded.\n");
-    return 0;
-  }
-  ERR_clear_error();
-
   if (BN_MONT_CTX_set(mont.get(), zero.get(), ctx)) {
     fprintf(stderr,
             "BN_MONT_CTX_set unexpectedly succeeded for zero modulus.\n");
@@ -832,31 +816,25 @@ static bool TestBadModulus(BN_CTX *ctx) {
   }
   ERR_clear_error();
 
-  if (BN_mod_exp_mont_consttime(a.get(), BN_value_one(), BN_value_one(),
-                                b.get(), ctx, nullptr)) {
-    fprintf(stderr,
-            "BN_mod_exp_mont_consttime with even modulus unexpectedly "
-            "succeeded.\n");
-    return 0;
-  }
-  ERR_clear_error();
-
   return true;
 }
 
 // TestExpModZero tests that 1**0 mod 1 == 0.
-static bool TestExpModZero(RAND *rng) {
+static bool TestExpModZero(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
   if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0, rng)) {
     return false;
   }
   BN_zero(zero.get());
 
+  ScopedBN_MONT_CTX one_mont(BN_MONT_CTX_new());
   if (!BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(), BN_value_one(),
                                nullptr, nullptr) ||
       !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
-                                 nullptr, nullptr) ||
+      !one_mont ||
+      !BN_MONT_CTX_set(one_mont.get(), BN_value_one(), ctx) ||
+      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), nullptr,
+                                 one_mont.get()) ||
       !BN_is_zero(r.get())) {
     return false;
   }
@@ -905,8 +883,8 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
         }
 
         if (base_value >= mod_value &&
-            BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(), mod.get(),
-                                      ctx, mont.get())) {
+            BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(), ctx,
+                                      mont.get())) {
           fprintf(stderr, "BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
                   (int)base_value, (int)exp_value, (int)mod_value);
           return false;
@@ -920,8 +898,8 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
                   -(int)base_value, (int)exp_value, (int)mod_value);
           return false;
         }
-        if (BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
-                                      mod.get(), ctx, mont.get())) {
+        if (BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(), ctx,
+                                      mont.get())) {
           fprintf(stderr, "BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
                   -(int)base_value, (int)exp_value, (int)mod_value);
           return false;
@@ -1078,7 +1056,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestRand(rng) ||
       !TestNegativeZero(ctx.get()) ||
       !TestBadModulus(ctx.get()) ||
-      !TestExpModZero(rng) ||
+      !TestExpModZero(rng, ctx.get()) ||
       !TestExpModRejectUnreduced(ctx.get()) ||
       !TestModInvRejectUnreduced(rng, ctx.get()) ||
       !TestCmpWord()) {

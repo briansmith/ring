@@ -449,8 +449,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * http://www.daemonology.net/hyperthreading-considered-harmful/)
  */
 int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                              const BIGNUM *m, BN_CTX *ctx,
-                              const BN_MONT_CTX *mont) {
+                              BN_CTX *ctx, const BN_MONT_CTX *mont) {
   int i, bits, ret = 0, window, wvalue;
   int top;
   BN_MONT_CTX *new_mont = NULL;
@@ -460,6 +459,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int powerbufLen = 0;
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
+
+  const BIGNUM *m = &mont->N;
 
   if (!BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
@@ -476,15 +477,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       return 1;
     }
     return BN_one(rr);
-  }
-
-  /* Allocate a montgomery context if it was not supplied by the caller. */
-  if (mont == NULL) {
-    new_mont = BN_MONT_CTX_new();
-    if (new_mont == NULL || !BN_MONT_CTX_set(new_mont, m, ctx)) {
-      goto err;
-    }
-    mont = new_mont;
   }
 
 #ifdef RSAZ_ENABLED
