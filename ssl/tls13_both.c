@@ -28,44 +28,6 @@
 #include "internal.h"
 
 
-SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl)) {
-  SSL_HANDSHAKE *hs = OPENSSL_malloc(sizeof(SSL_HANDSHAKE));
-  if (hs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-  memset(hs, 0, sizeof(SSL_HANDSHAKE));
-  hs->do_handshake = do_handshake;
-  hs->wait = ssl_hs_ok;
-  return hs;
-}
-
-void ssl_handshake_clear_groups(SSL_HANDSHAKE *hs) {
-  if (hs->groups == NULL) {
-    return;
-  }
-
-  for (size_t i = 0; i < hs->groups_len; i++) {
-    SSL_ECDH_CTX_cleanup(&hs->groups[i]);
-  }
-  OPENSSL_free(hs->groups);
-  hs->groups = NULL;
-  hs->groups_len = 0;
-}
-
-void ssl_handshake_free(SSL_HANDSHAKE *hs) {
-  if (hs == NULL) {
-    return;
-  }
-
-  OPENSSL_cleanse(hs->secret, sizeof(hs->secret));
-  OPENSSL_cleanse(hs->traffic_secret_0, sizeof(hs->traffic_secret_0));
-  ssl_handshake_clear_groups(hs);
-  OPENSSL_free(hs->key_share_bytes);
-  OPENSSL_free(hs->public_key);
-  OPENSSL_free(hs);
-}
-
 int tls13_handshake(SSL *ssl) {
   SSL_HANDSHAKE *hs = ssl->s3->hs;
 
