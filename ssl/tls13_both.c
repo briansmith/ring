@@ -63,7 +63,6 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   ssl_handshake_clear_groups(hs);
   OPENSSL_free(hs->key_share_bytes);
   OPENSSL_free(hs->public_key);
-  OPENSSL_free(hs->cert_context);
   OPENSSL_free(hs);
 }
 
@@ -329,11 +328,10 @@ int tls13_process_finished(SSL *ssl) {
 }
 
 int tls13_prepare_certificate(SSL *ssl) {
-  CBB cbb, body, context;
+  CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
-      !CBB_add_u8_length_prefixed(&body, &context) ||
-      !CBB_add_bytes(&context, ssl->s3->hs->cert_context,
-                     ssl->s3->hs->cert_context_len) ||
+      /* The request context is always empty in the handshake. */
+      !CBB_add_u8(&body, 0) ||
       !ssl_add_cert_chain(ssl, &body) ||
       !ssl->method->finish_message(ssl, &cbb)) {
     CBB_cleanup(&cbb);

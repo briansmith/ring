@@ -673,6 +673,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		var ok bool
 		certReq, ok = msg.(*certificateRequestMsg)
 		if ok {
+			if len(certReq.requestContext) != 0 {
+				return errors.New("tls: non-empty certificate request context sent in handshake")
+			}
+
 			if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
 				certReq.signatureAlgorithms = c.config.signSignatureAlgorithms()
 			}

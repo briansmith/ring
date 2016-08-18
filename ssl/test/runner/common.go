@@ -1049,6 +1049,10 @@ type ProtocolBugs struct {
 	// SendExtraFinished, if true, causes an extra Finished message to be
 	// sent.
 	SendExtraFinished bool
+
+	// SendRequestContext, if not empty, is the request context to send in
+	// a TLS 1.3 CertificateRequest.
+	SendRequestContext []byte
 }
 
 func (c *Config) serverInit() {

@@ -906,9 +906,6 @@ struct ssl_handshake_st {
   uint8_t *public_key;
   size_t public_key_len;
 
-  uint8_t *cert_context;
-  size_t cert_context_len;
-
   uint8_t session_tickets_sent;
 } /* SSL_HANDSHAKE */;
 

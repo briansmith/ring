@@ -3125,7 +3125,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				MaxVersion: VersionTLS13,
 				MinVersion: VersionTLS13,
 			},
-			resumeSession:        true,
+			resumeSession: true,
 		})
 
 		tests = append(tests, testCase{
@@ -3135,7 +3135,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				MaxVersion: VersionTLS13,
 				MinVersion: VersionTLS13,
 			},
-			resumeSession:        true,
+			resumeSession: true,
 		})
 
 		tests = append(tests, testCase{
@@ -8006,6 +8006,24 @@ func addTLS13HandshakeTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":WRONG_CURVE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "TLS13-RequestContextInHandshake",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+			ClientAuth: RequireAnyClientCert,
+			Bugs: ProtocolBugs{
+				SendRequestContext: []byte("request context"),
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		shouldFail:    true,
+		expectedError: ":DECODE_ERROR:",
 	})
 }
 

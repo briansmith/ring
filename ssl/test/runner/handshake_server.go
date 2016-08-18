@@ -596,6 +596,7 @@ Curves:
 			certReq := &certificateRequestMsg{
 				hasSignatureAlgorithm: true,
 				hasRequestContext:     true,
+				requestContext:        config.Bugs.SendRequestContext,
 			}
 			if !config.Bugs.NoSignatureAlgorithms {
 				certReq.signatureAlgorithms = config.verifySignatureAlgorithms()

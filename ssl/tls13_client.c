@@ -394,8 +394,8 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
   CBS cbs, context, supported_signature_algorithms;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8_length_prefixed(&cbs, &context) ||
-      !CBS_stow(&context, &ssl->s3->hs->cert_context,
-                &ssl->s3->hs->cert_context_len) ||
+      /* The request context is always empty during the handshake. */
+      CBS_len(&context) != 0 ||
       !CBS_get_u16_length_prefixed(&cbs, &supported_signature_algorithms) ||
       CBS_len(&supported_signature_algorithms) == 0 ||
       !tls1_parse_peer_sigalgs(ssl, &supported_signature_algorithms)) {
