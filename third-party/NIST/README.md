@@ -1,5 +1,8 @@
 # NIST Test Vectors
 
+[CAVP](CAVP) contains a number of test cases from the [NIST Individual Component
+Testing](http://csrc.nist.gov/groups/STM/cavp/component-testing.html) suite.
+
 [SHAVS](SHAVS) contains the [SHA Test Vectors for Hashing Byte-Oriented
 Messages](http://csrc.nist.gov/groups/STM/cavp/documents/shs/shabytetestvectors.zip)
 from [Secure Hash Algorithm Validation System
