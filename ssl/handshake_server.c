@@ -812,7 +812,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
 
     if (!ssl->s3->tmp.cert_request) {
       /* OpenSSL returns X509_V_OK when no certificates are requested. This is
-       * classed by them as a bug, but it's assumed by at least nginx. */
+       * classed by them as a bug, but it's assumed by at least NGINX. */
       ssl->verify_result = X509_V_OK;
       ssl->s3->new_session->verify_result = X509_V_OK;
     }
@@ -1260,7 +1260,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
       }
 
       /* OpenSSL returns X509_V_OK when no certificates are received. This is
-       * classed by them as a bug, but it's assumed by at least nginx. */
+       * classed by them as a bug, but it's assumed by at least NGINX. */
       ssl->verify_result = X509_V_OK;
       ssl->s3->new_session->verify_result = X509_V_OK;
       ssl->s3->tmp.reuse_message = 1;
@@ -1311,7 +1311,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
     }
 
     /* OpenSSL returns X509_V_OK when no certificates are received. This is
-     * classed by them as a bug, but it's assumed by at least nginx. */
+     * classed by them as a bug, but it's assumed by at least NGINX. */
     ssl->verify_result = X509_V_OK;
   } else {
     /* The hash would have been filled in. */

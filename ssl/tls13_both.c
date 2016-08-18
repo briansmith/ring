@@ -178,7 +178,7 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
     }
 
     /* OpenSSL returns X509_V_OK when no certificates are requested. This is
-     * classed by them as a bug, but it's assumed by at least nginx. */
+     * classed by them as a bug, but it's assumed by at least NGINX. */
     ssl->verify_result = X509_V_OK;
     ssl->s3->new_session->verify_result = X509_V_OK;
 
