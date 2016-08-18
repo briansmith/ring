@@ -182,18 +182,7 @@ typedef __uint128_t uint128_t;
  *
  * The following methods return a bitmask of all ones (0xff...f) for true and 0
  * for false. This is useful for choosing a value based on the result of a
- * conditional in constant time. For example,
- *
- * if (a < b) {
- *   c = a;
- * } else {
- *   c = b;
- * }
- *
- * can be written as
- *
- * size_t lt = constant_time_lt_size_t(a, b);
- * c = constant_time_select_size_t(lt, a, b); */
+ * conditional in constant time. */
 
 /* constant_time_msb returns the given value with the MSB copied to all the
  * other bits. */
@@ -255,13 +244,6 @@ static inline size_t constant_time_select_size_t(size_t mask, size_t a,
                                                  size_t b) {
   return (mask & a) | (~mask & b);
 }
-
-/* constant_time_lt_size_t returns 0xff..f if a < b and 0 otherwise. Derived
- * from BoringSSL's |constant_time_lt|. */
-static inline size_t constant_time_lt_size_t(size_t a, size_t b) {
-  return constant_time_msb_size_t(a^((a^b)|((a-b)^a)));
-}
-
 
 
 /* Bridge to Rust-based SHA-512 implementation. */
