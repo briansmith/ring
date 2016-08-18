@@ -129,8 +129,6 @@ typedef struct x509_object_st
 		} data;
 	} X509_OBJECT;
 
-typedef struct x509_lookup_st X509_LOOKUP;
-
 DECLARE_STACK_OF(X509_LOOKUP)
 DECLARE_STACK_OF(X509_OBJECT)
 

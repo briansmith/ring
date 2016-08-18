@@ -913,6 +913,23 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(BIGNUM, BN_free)
+BORINGSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
+BORINGSSL_MAKE_DELETER(BN_MONT_CTX, BN_MONT_CTX_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define BN_R_ARG2_LT_ARG3 100

@@ -18,7 +18,6 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
-#include "../crypto/test/scoped_types.h"
 #include "internal.h"
 
 
@@ -51,9 +50,9 @@ bool GenerateRSAKey(const std::vector<std::string> &args) {
     return false;
   }
 
-  ScopedRSA rsa(RSA_new());
-  ScopedBIGNUM e(BN_new());
-  ScopedBIO bio(BIO_new_fp(stdout, BIO_NOCLOSE));
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<BIO> bio(BIO_new_fp(stdout, BIO_NOCLOSE));
 
   if (!BN_set_word(e.get(), RSA_F4) ||
       !RSA_generate_multi_prime_key(rsa.get(), bits, nprimes, e.get(), NULL) ||

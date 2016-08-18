@@ -895,6 +895,21 @@ struct bio_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(BIO, BIO_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define BIO_R_BAD_FOPEN_MODE 100

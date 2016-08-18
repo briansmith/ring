@@ -158,6 +158,21 @@ OPENSSL_EXPORT void OPENSSL_config(CONF_MUST_BE_NULL *config_name);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(CONF, NCONF_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define CONF_R_LIST_CANNOT_BE_NULL 100

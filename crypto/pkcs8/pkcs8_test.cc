@@ -21,8 +21,6 @@
 #include <openssl/pkcs8.h>
 #include <openssl/x509.h>
 
-#include "../test/scoped_types.h"
-
 
 /* kDER is a PKCS#8 encrypted private key. It was generated with:
  *
@@ -64,14 +62,14 @@ static const uint8_t kDER[] = {
 
 static bool test(const uint8_t *der, size_t der_len) {
   const uint8_t *data = der;
-  ScopedX509_SIG sig(d2i_X509_SIG(NULL, &data, der_len));
+  bssl::UniquePtr<X509_SIG> sig(d2i_X509_SIG(NULL, &data, der_len));
   if (sig.get() == NULL || data != der + der_len) {
     fprintf(stderr, "d2i_X509_SIG failed or did not consume all bytes.\n");
     return false;
   }
 
   static const char kPassword[] = "testing";
-  ScopedPKCS8_PRIV_KEY_INFO keypair(PKCS8_decrypt(sig.get(), kPassword, -1));
+  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> keypair(PKCS8_decrypt(sig.get(), kPassword, -1));
   if (!keypair) {
     fprintf(stderr, "PKCS8_decrypt failed.\n");
     ERR_print_errors_fp(stderr);

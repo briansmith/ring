@@ -19,7 +19,6 @@
 #include <openssl/crypto.h>
 #include <openssl/rand.h>
 
-#include "../test/scoped_types.h"
 #include "internal.h"
 
 
@@ -28,7 +27,7 @@ static const int kNumTests = 10;
 
 static bool TestKeys(void) {
   // Alice generates a public key.
-  ScopedNEWHOPE_POLY sk(NEWHOPE_POLY_new());
+  bssl::UniquePtr<NEWHOPE_POLY> sk(NEWHOPE_POLY_new());
   uint8_t offer_msg[NEWHOPE_OFFERMSG_LENGTH];
   NEWHOPE_offer(offer_msg, sk.get());
 
@@ -58,7 +57,7 @@ static bool TestKeys(void) {
 static bool TestInvalidSK(void) {
   // Alice generates a public key.
   uint8_t offer_msg[NEWHOPE_OFFERMSG_LENGTH];
-  ScopedNEWHOPE_POLY sk(NEWHOPE_POLY_new());
+  bssl::UniquePtr<NEWHOPE_POLY> sk(NEWHOPE_POLY_new());
   NEWHOPE_offer(offer_msg, sk.get());
 
   // Bob derives a secret key and creates a response.
@@ -93,7 +92,7 @@ static bool TestInvalidSK(void) {
 
 static bool TestInvalidAcceptMsg(void) {
   // Alice generates a public key.
-  ScopedNEWHOPE_POLY sk(NEWHOPE_POLY_new());
+  bssl::UniquePtr<NEWHOPE_POLY> sk(NEWHOPE_POLY_new());
   uint8_t offer_msg[NEWHOPE_OFFERMSG_LENGTH];
   NEWHOPE_offer(offer_msg, sk.get());
 

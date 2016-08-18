@@ -24,9 +24,8 @@
 #include <openssl/c++/digest.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
-
-#include "../test/scoped_types.h"
 
 namespace bssl {
 
@@ -357,13 +356,13 @@ static const uint8_t kInvalidPrivateKey[] = {
     0x48, 0x30, 0x01, 0xaa, 0x02, 0x86, 0xc0, 0x30, 0xdf, 0xe9, 0x80,
 };
 
-static ScopedEVP_PKEY LoadExampleRSAKey() {
-  ScopedRSA rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
+static bssl::UniquePtr<EVP_PKEY> LoadExampleRSAKey() {
+  bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
                                            sizeof(kExampleRSAKeyDER)));
   if (!rsa) {
     return nullptr;
   }
-  ScopedEVP_PKEY pkey(EVP_PKEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
     return nullptr;
   }
@@ -371,7 +370,7 @@ static ScopedEVP_PKEY LoadExampleRSAKey() {
 }
 
 static bool TestEVP_DigestSignInit(void) {
-  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
   ScopedEVP_MD_CTX md_ctx;
   if (!pkey ||
       !EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
@@ -409,7 +408,7 @@ static bool TestEVP_DigestSignInit(void) {
 }
 
 static bool TestEVP_DigestVerifyInit(void) {
-  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
   ScopedEVP_MD_CTX md_ctx;
   if (!pkey ||
       !EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL,
@@ -422,12 +421,12 @@ static bool TestEVP_DigestVerifyInit(void) {
 }
 
 static bool TestVerifyRecover() {
-  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
   if (!pkey) {
     return false;
   }
 
-  ScopedRSA rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(pkey.get()));
   if (!rsa) {
     return false;
   }
@@ -444,7 +443,7 @@ static bool TestVerifyRecover() {
   }
 
   size_t out_len;
-  ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
   if (!EVP_PKEY_verify_recover_init(ctx.get()) ||
       !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_PADDING) ||
       !EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()) ||
@@ -502,7 +501,7 @@ static bool TestVerifyRecover() {
 static bool TestValidPrivateKey(const uint8_t *input, size_t input_len,
                                 int expected_id) {
   const uint8_t *p = input;
-  ScopedEVP_PKEY pkey(d2i_AutoPrivateKey(NULL, &p, input_len));
+  bssl::UniquePtr<EVP_PKEY> pkey(d2i_AutoPrivateKey(NULL, &p, input_len));
   if (!pkey || p != input + input_len) {
     fprintf(stderr, "d2i_AutoPrivateKey failed\n");
     return false;
@@ -556,7 +555,7 @@ static bool Testd2i_AutoPrivateKey() {
   }
 
   const uint8_t *p = kInvalidPrivateKey;
-  ScopedEVP_PKEY pkey(d2i_AutoPrivateKey(NULL, &p, sizeof(kInvalidPrivateKey)));
+  bssl::UniquePtr<EVP_PKEY> pkey(d2i_AutoPrivateKey(NULL, &p, sizeof(kInvalidPrivateKey)));
   if (pkey) {
     fprintf(stderr, "Parsed invalid private key\n");
     return false;
@@ -569,14 +568,14 @@ static bool Testd2i_AutoPrivateKey() {
 // TestEVP_PKCS82PKEY tests loading a bad key in PKCS8 format.
 static bool TestEVP_PKCS82PKEY(void) {
   const uint8_t *derp = kExampleBadECKeyDER;
-  ScopedPKCS8_PRIV_KEY_INFO p8inf(
+  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(
       d2i_PKCS8_PRIV_KEY_INFO(NULL, &derp, sizeof(kExampleBadECKeyDER)));
   if (!p8inf || derp != kExampleBadECKeyDER + sizeof(kExampleBadECKeyDER)) {
     fprintf(stderr, "Failed to parse key\n");
     return false;
   }
 
-  ScopedEVP_PKEY pkey(EVP_PKCS82PKEY(p8inf.get()));
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKCS82PKEY(p8inf.get()));
   if (pkey) {
     fprintf(stderr, "Imported invalid EC key\n");
     return false;
@@ -588,7 +587,7 @@ static bool TestEVP_PKCS82PKEY(void) {
 
 // TestEVPMarshalEmptyPublicKey tests |EVP_marshal_public_key| on an empty key.
 static bool TestEVPMarshalEmptyPublicKey(void) {
-  ScopedEVP_PKEY empty(EVP_PKEY_new());
+  bssl::UniquePtr<EVP_PKEY> empty(EVP_PKEY_new());
   if (!empty) {
     return false;
   }
@@ -608,7 +607,7 @@ static bool TestEVPMarshalEmptyPublicKey(void) {
 // Testd2i_PrivateKey tests |d2i_PrivateKey|.
 static bool Testd2i_PrivateKey(void) {
   const uint8_t *derp = kExampleRSAKeyDER;
-  ScopedEVP_PKEY pkey(d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &derp,
+  bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &derp,
                                      sizeof(kExampleRSAKeyDER)));
   if (!pkey || derp != kExampleRSAKeyDER + sizeof(kExampleRSAKeyDER)) {
     fprintf(stderr, "Failed to import raw RSA key.\n");

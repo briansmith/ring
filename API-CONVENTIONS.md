@@ -85,8 +85,8 @@ release resources when the final reference is released. For OpenSSL
 compatibility, these functions return `int`, but callers may assume they always
 successfully return one because reference counts use saturating arithmetic.
 
-C++ consumers are recommended to use `std:unique_ptr` with a custom deallocator
-to manage heap-allocated objects.
+C++ consumers are recommended to use `bssl::UniquePtr` to manage heap-allocated
+objects.
 
 
 ### Stack-allocated types

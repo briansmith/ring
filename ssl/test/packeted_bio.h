@@ -18,8 +18,6 @@
 #include <openssl/base.h>
 #include <openssl/bio.h>
 
-#include "../../crypto/test/scoped_types.h"
-
 #if defined(OPENSSL_WINDOWS)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
@@ -38,7 +36,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 // continues reading, subject to the read deadline. Otherwise, it fails
 // immediately. The caller must then call |PacketedBioAdvanceClock| before
 // retrying |BIO_read|.
-ScopedBIO PacketedBioCreate(bool advance_clock);
+bssl::UniquePtr<BIO> PacketedBioCreate(bool advance_clock);
 
 // PacketedBioGetClock returns the current time for |bio|.
 timeval PacketedBioGetClock(const BIO *bio);

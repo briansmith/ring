@@ -31,7 +31,6 @@
 #include <openssl/x509.h>
 
 #include "internal.h"
-#include "test/scoped_types.h"
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
 
@@ -320,7 +319,7 @@ static void PrintCipherPreferenceList(ssl_cipher_preference_list_st *list) {
 }
 
 static bool TestCipherRule(const CipherTest &t) {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
@@ -352,7 +351,7 @@ static bool TestCipherRule(const CipherTest &t) {
 }
 
 static bool TestRuleDoesNotIncludeNull(const char *rule) {
-  ScopedSSL_CTX ctx(SSL_CTX_new(SSLv23_server_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_server_method()));
   if (!ctx) {
     return false;
   }
@@ -370,7 +369,7 @@ static bool TestRuleDoesNotIncludeNull(const char *rule) {
 }
 
 static bool TestRuleDoesNotIncludeCECPQ1(const char *rule) {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
@@ -395,7 +394,7 @@ static bool TestCipherRules() {
   }
 
   for (const char *rule : kBadRules) {
-    ScopedSSL_CTX ctx(SSL_CTX_new(SSLv23_server_method()));
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_server_method()));
     if (!ctx) {
       return false;
     }
@@ -631,7 +630,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify the SSL_SESSION decodes.
-  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(input.data(), input.size()));
+  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(input.data(), input.size()));
   if (!session) {
     fprintf(stderr, "SSL_SESSION_from_bytes failed\n");
     return false;
@@ -639,7 +638,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
 
   // Verify the SSL_SESSION encoding round-trips.
   size_t encoded_len;
-  ScopedOpenSSLBytes encoded;
+  bssl::UniquePtr<uint8_t> encoded;
   uint8_t *encoded_raw;
   if (!SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len)) {
     fprintf(stderr, "SSL_SESSION_to_bytes failed\n");
@@ -700,7 +699,7 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify that the SSL_SESSION fails to decode.
-  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(input.data(), input.size()));
+  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(input.data(), input.size()));
   if (session) {
     fprintf(stderr, "SSL_SESSION_from_bytes unexpectedly succeeded\n");
     return false;
@@ -711,7 +710,7 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
 
 static bool TestDefaultVersion(uint16_t min_version, uint16_t max_version,
                                const SSL_METHOD *(*method)(void)) {
-  ScopedSSL_CTX ctx(SSL_CTX_new(method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method()));
   if (!ctx) {
     return false;
   }
@@ -728,7 +727,7 @@ static bool CipherGetRFCName(std::string *out, uint16_t value) {
   if (cipher == NULL) {
     return false;
   }
-  ScopedOpenSSLString rfc_name(SSL_CIPHER_get_rfc_name(cipher));
+  bssl::UniquePtr<char> rfc_name(SSL_CIPHER_get_rfc_name(cipher));
   if (!rfc_name) {
     return false;
   }
@@ -794,12 +793,12 @@ static bool TestCipherGetRFCName(void) {
 
 // CreateSessionWithTicket returns a sample |SSL_SESSION| with the ticket
 // replaced for one of length |ticket_len| or nullptr on failure.
-static ScopedSSL_SESSION CreateSessionWithTicket(size_t ticket_len) {
+static bssl::UniquePtr<SSL_SESSION> CreateSessionWithTicket(size_t ticket_len) {
   std::vector<uint8_t> der;
   if (!DecodeBase64(&der, kOpenSSLSession)) {
     return nullptr;
   }
-  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(der.data(), der.size()));
+  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(der.data(), der.size()));
   if (!session) {
     return nullptr;
   }
@@ -819,7 +818,7 @@ static ScopedSSL_SESSION CreateSessionWithTicket(size_t ticket_len) {
 }
 
 static bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
-  ScopedBIO bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   if (!bio) {
     return false;
   }
@@ -846,12 +845,12 @@ static bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
 // |ticket_len| and records the ClientHello. It returns the length of the
 // ClientHello, not including the record header, on success and zero on error.
 static size_t GetClientHelloLen(size_t ticket_len) {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
-  ScopedSSL_SESSION session = CreateSessionWithTicket(ticket_len);
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_SESSION> session = CreateSessionWithTicket(ticket_len);
   if (!ctx || !session) {
     return 0;
   }
-  ScopedSSL ssl(SSL_new(ctx.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl || !SSL_set_session(ssl.get(), session.get())) {
     return 0;
   }
@@ -916,11 +915,11 @@ static bool TestPaddingExtension() {
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
 // before configuring as a server.
 static bool TestClientCAList() {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
-  ScopedSSL ssl(SSL_new(ctx.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl) {
     return false;
   }
@@ -974,8 +973,8 @@ static bool ExpectCache(SSL_CTX *ctx,
   return actual == expected_copy;
 }
 
-static ScopedSSL_SESSION CreateTestSession(uint32_t number) {
-  ScopedSSL_SESSION ret(SSL_SESSION_new());
+static bssl::UniquePtr<SSL_SESSION> CreateTestSession(uint32_t number) {
+  bssl::UniquePtr<SSL_SESSION> ret(SSL_SESSION_new());
   if (!ret) {
     return nullptr;
   }
@@ -988,15 +987,15 @@ static ScopedSSL_SESSION CreateTestSession(uint32_t number) {
 
 // Test that the internal session cache behaves as expected.
 static bool TestInternalSessionCache() {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
 
   // Prepare 10 test sessions.
-  std::vector<ScopedSSL_SESSION> sessions;
+  std::vector<bssl::UniquePtr<SSL_SESSION>> sessions;
   for (int i = 0; i < 10; i++) {
-    ScopedSSL_SESSION session = CreateTestSession(i);
+    bssl::UniquePtr<SSL_SESSION> session = CreateTestSession(i);
     if (!session) {
       return false;
     }
@@ -1032,7 +1031,7 @@ static bool TestInternalSessionCache() {
 
   // Although collisions should be impossible (256-bit session IDs), the cache
   // must handle them gracefully.
-  ScopedSSL_SESSION collision(CreateTestSession(7));
+  bssl::UniquePtr<SSL_SESSION> collision(CreateTestSession(7));
   if (!collision || !SSL_CTX_add_session(ctx.get(), collision.get())) {
     return false;
   }
@@ -1075,7 +1074,7 @@ static uint16_t EpochFromSequence(uint64_t seq) {
   return static_cast<uint16_t>(seq >> 48);
 }
 
-static ScopedX509 GetTestCertificate() {
+static bssl::UniquePtr<X509> GetTestCertificate() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
       "MIICWDCCAcGgAwIBAgIJAPuwTC6rEJsMMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV\n"
@@ -1092,11 +1091,11 @@ static ScopedX509 GetTestCertificate() {
       "T5oQpHL9z/cCDLAKCKRa4uV0fhEdOWBqyR9p8y5jJtye72t6CuFUV5iqcpF4BH4f\n"
       "j2VNHwsSrJwkD4QUGlUtH7vwnQmyCFxZMmWAJg==\n"
       "-----END CERTIFICATE-----\n";
-  ScopedBIO bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return ScopedX509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
+  return bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static ScopedEVP_PKEY GetTestKey() {
+static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
   static const char kKeyPEM[] =
       "-----BEGIN RSA PRIVATE KEY-----\n"
       "MIICXgIBAAKBgQDYK8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92\n"
@@ -1113,12 +1112,12 @@ static ScopedEVP_PKEY GetTestKey() {
       "tfDwbqkta4xcux67//khAkEAvvRXLHTaa6VFzTaiiO8SaFsHV3lQyXOtMrBpB5jd\n"
       "moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==\n"
       "-----END RSA PRIVATE KEY-----\n";
-  ScopedBIO bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return ScopedEVP_PKEY(
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
+  return bssl::UniquePtr<EVP_PKEY>(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static ScopedX509 GetECDSATestCertificate() {
+static bssl::UniquePtr<X509> GetECDSATestCertificate() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
       "MIIBzzCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC\n"
@@ -1132,26 +1131,26 @@ static ScopedX509 GetECDSATestCertificate() {
       "BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E\n"
       "BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=\n"
       "-----END CERTIFICATE-----\n";
-  ScopedBIO bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return ScopedX509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
+  return bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static ScopedEVP_PKEY GetECDSATestKey() {
+static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
   static const char kKeyPEM[] =
       "-----BEGIN PRIVATE KEY-----\n"
       "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgBw8IcnrUoEqc3VnJ\n"
       "TYlodwi1b8ldMHcO6NHJzgqLtGqhRANCAATmK2niv2Wfl74vHg2UikzVl2u3qR4N\n"
       "Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB\n"
       "-----END PRIVATE KEY-----\n";
-  ScopedBIO bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return ScopedEVP_PKEY(
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
+  return bssl::UniquePtr<EVP_PKEY>(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static bool ConnectClientAndServer(ScopedSSL *out_client, ScopedSSL *out_server,
+static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client, bssl::UniquePtr<SSL> *out_server,
                                    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
                                    SSL_SESSION *session) {
-  ScopedSSL client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
+  bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
   if (!client || !server) {
     return false;
   }
@@ -1199,21 +1198,21 @@ static bool ConnectClientAndServer(ScopedSSL *out_client, ScopedSSL *out_server,
 }
 
 static bool TestSequenceNumber(bool dtls) {
-  ScopedSSL_CTX client_ctx(SSL_CTX_new(dtls ? DTLS_method() : TLS_method()));
-  ScopedSSL_CTX server_ctx(SSL_CTX_new(dtls ? DTLS_method() : TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(dtls ? DTLS_method() : TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(dtls ? DTLS_method() : TLS_method()));
   if (!client_ctx || !server_ctx) {
     return false;
   }
 
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key ||
       !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
     return false;
   }
 
-  ScopedSSL client, server;
+  bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
                               server_ctx.get(), nullptr /* no session */)) {
     return false;
@@ -1268,21 +1267,21 @@ static bool TestSequenceNumber(bool dtls) {
 }
 
 static bool TestOneSidedShutdown() {
-  ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
-  ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   if (!client_ctx || !server_ctx) {
     return false;
   }
 
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key ||
       !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
     return false;
   }
 
-  ScopedSSL client, server;
+  bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
                               server_ctx.get(), nullptr /* no session */)) {
     return false;
@@ -1323,28 +1322,28 @@ static bool TestOneSidedShutdown() {
   return true;
 }
 static bool TestSessionDuplication() {
-  ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
-  ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   if (!client_ctx || !server_ctx) {
     return false;
   }
 
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key ||
       !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
     return false;
   }
 
-  ScopedSSL client, server;
+  bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
                               server_ctx.get(), nullptr /* no session */)) {
     return false;
   }
 
   SSL_SESSION *session0 = SSL_get_session(client.get());
-  ScopedSSL_SESSION session1(SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
+  bssl::UniquePtr<SSL_SESSION> session1(SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
   if (!session1) {
     return false;
   }
@@ -1355,12 +1354,12 @@ static bool TestSessionDuplication() {
   if (!SSL_SESSION_to_bytes(session0, &s0_bytes, &s0_len)) {
     return false;
   }
-  ScopedOpenSSLBytes free_s0(s0_bytes);
+  bssl::UniquePtr<uint8_t> free_s0(s0_bytes);
 
   if (!SSL_SESSION_to_bytes(session1.get(), &s1_bytes, &s1_len)) {
     return false;
   }
-  ScopedOpenSSLBytes free_s1(s1_bytes);
+  bssl::UniquePtr<uint8_t> free_s1(s1_bytes);
 
   return s0_len == s1_len && memcmp(s0_bytes, s1_bytes, s0_len) == 0;
 }
@@ -1383,13 +1382,13 @@ static bool ExpectFDs(const SSL *ssl, int rfd, int wfd) {
 }
 
 static bool TestSetFD() {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
 
   // Test setting different read and write FDs.
-  ScopedSSL ssl(SSL_new(ctx.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl ||
       !SSL_set_rfd(ssl.get(), 1) ||
       !SSL_set_wfd(ssl.get(), 2) ||
@@ -1466,13 +1465,13 @@ static bool TestSetFD() {
 }
 
 static bool TestSetBIO() {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
 
-  ScopedSSL ssl(SSL_new(ctx.get()));
-  ScopedBIO bio1(BIO_new(BIO_s_mem())), bio2(BIO_new(BIO_s_mem())),
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  bssl::UniquePtr<BIO> bio1(BIO_new(BIO_s_mem())), bio2(BIO_new(BIO_s_mem())),
       bio3(BIO_new(BIO_s_mem()));
   if (!ssl || !bio1 || !bio2 || !bio3) {
     return false;
@@ -1529,15 +1528,15 @@ static uint16_t kVersions[] = {
 static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) { return 1; }
 
 static bool TestGetPeerCertificate() {
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key) {
     return false;
   }
 
   for (uint16_t version : kVersions) {
     // Configure both client and server to accept any certificate.
-    ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     if (!ctx ||
         !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
         !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
@@ -1549,14 +1548,14 @@ static bool TestGetPeerCertificate() {
         ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_cert_verify_callback(ctx.get(), VerifySucceed, NULL);
 
-    ScopedSSL client, server;
+    bssl::UniquePtr<SSL> client, server;
     if (!ConnectClientAndServer(&client, &server, ctx.get(), ctx.get(),
                                 nullptr /* no session */)) {
       return false;
     }
 
     // Client and server should both see the leaf certificate.
-    ScopedX509 peer(SSL_get_peer_certificate(server.get()));
+    bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(server.get()));
     if (!peer || X509_cmp(cert.get(), peer.get()) != 0) {
       fprintf(stderr, "%x: Server peer certificate did not match.\n", version);
       return false;
@@ -1585,8 +1584,8 @@ static bool TestGetPeerCertificate() {
 }
 
 static bool TestRetainOnlySHA256OfCerts() {
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key) {
     return false;
   }
@@ -1596,7 +1595,7 @@ static bool TestRetainOnlySHA256OfCerts() {
   if (cert_der_len < 0) {
     return false;
   }
-  ScopedOpenSSLBytes free_cert_der(cert_der);
+  bssl::UniquePtr<uint8_t> free_cert_der(cert_der);
 
   uint8_t cert_sha256[SHA256_DIGEST_LENGTH];
   SHA256(cert_der, cert_der_len, cert_sha256);
@@ -1604,7 +1603,7 @@ static bool TestRetainOnlySHA256OfCerts() {
   for (uint16_t version : kVersions) {
     // Configure both client and server to accept any certificate, but the
     // server must retain only the SHA-256 of the peer.
-    ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     if (!ctx ||
         !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
         !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
@@ -1617,14 +1616,14 @@ static bool TestRetainOnlySHA256OfCerts() {
     SSL_CTX_set_cert_verify_callback(ctx.get(), VerifySucceed, NULL);
     SSL_CTX_set_retain_only_sha256_of_client_certs(ctx.get(), 1);
 
-    ScopedSSL client, server;
+    bssl::UniquePtr<SSL> client, server;
     if (!ConnectClientAndServer(&client, &server, ctx.get(), ctx.get(),
                                 nullptr /* no session */)) {
       return false;
     }
 
     // The peer certificate has been dropped.
-    ScopedX509 peer(SSL_get_peer_certificate(server.get()));
+    bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(server.get()));
     if (peer) {
       fprintf(stderr, "%x: Peer certificate was retained.\n", version);
       return false;
@@ -1647,7 +1646,7 @@ static bool TestRetainOnlySHA256OfCerts() {
 
 static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
                                size_t expected_len) {
-  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx) {
     return false;
   }
@@ -1657,7 +1656,7 @@ static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
   if (!SSL_CTX_set_cipher_list(ctx.get(), "!RC4:CHACHA20:ALL")) {
     return false;
   }
-  ScopedSSL ssl(SSL_new(ctx.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl) {
     return false;
   }
@@ -1814,7 +1813,7 @@ static bool TestClientHello() {
   return true;
 }
 
-static ScopedSSL_SESSION g_last_session;
+static bssl::UniquePtr<SSL_SESSION> g_last_session;
 
 static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
   // Save the most recent session.
@@ -1822,13 +1821,13 @@ static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
   return 1;
 }
 
-static ScopedSSL_SESSION CreateClientSession(SSL_CTX *client_ctx,
+static bssl::UniquePtr<SSL_SESSION> CreateClientSession(SSL_CTX *client_ctx,
                                              SSL_CTX *server_ctx) {
   g_last_session = nullptr;
   SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
 
   // Connect client and server to get a session.
-  ScopedSSL client, server;
+  bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
                               nullptr /* no session */)) {
     fprintf(stderr, "Failed to connect client and server.\n");
@@ -1850,7 +1849,7 @@ static ScopedSSL_SESSION CreateClientSession(SSL_CTX *client_ctx,
 static bool ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
                                 SSL_SESSION *session,
                                 bool reused) {
-  ScopedSSL client, server;
+  bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx,
                               server_ctx, session)) {
     fprintf(stderr, "Failed to connect client and server.\n");
@@ -1873,8 +1872,8 @@ static bool ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
 }
 
 static bool TestSessionIDContext() {
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key) {
     return false;
   }
@@ -1883,8 +1882,8 @@ static bool TestSessionIDContext() {
   static const uint8_t kContext2[] = {2};
 
   for (uint16_t version : kVersions) {
-    ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
-    ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !client_ctx ||
         !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
         !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
@@ -1901,7 +1900,7 @@ static bool TestSessionIDContext() {
     SSL_CTX_set_max_version(server_ctx.get(), version);
     SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
 
-    ScopedSSL_SESSION session =
+    bssl::UniquePtr<SSL_SESSION> session =
         CreateClientSession(client_ctx.get(), server_ctx.get());
     if (!session) {
       fprintf(stderr, "Error getting session (version = %04x).\n", version);
@@ -1939,15 +1938,15 @@ static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
 }
 
 static bool TestSessionTimeout() {
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!cert || !key) {
     return false;
   }
 
   for (uint16_t version : kVersions) {
-    ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
-    ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !client_ctx ||
         !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
         !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
@@ -1963,7 +1962,7 @@ static bool TestSessionTimeout() {
     SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
     SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
 
-    ScopedSSL_SESSION session =
+    bssl::UniquePtr<SSL_SESSION> session =
         CreateClientSession(client_ctx.get(), server_ctx.get());
     if (!session) {
       fprintf(stderr, "Error getting session (version = %04x).\n", version);
@@ -1999,10 +1998,10 @@ static int SwitchContext(SSL *ssl, int *out_alert, void *arg) {
 }
 
 static bool TestSNICallback() {
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
-  ScopedX509 cert2 = GetECDSATestCertificate();
-  ScopedEVP_PKEY key2 = GetECDSATestKey();
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  bssl::UniquePtr<X509> cert2 = GetECDSATestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key2 = GetECDSATestKey();
   if (!cert || !key || !cert2 || !key2) {
     return false;
   }
@@ -2016,9 +2015,9 @@ static bool TestSNICallback() {
 
     static const uint16_t kECDSAWithSHA256 = SSL_SIGN_ECDSA_SECP256R1_SHA256;
 
-    ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
-    ScopedSSL_CTX server_ctx2(SSL_CTX_new(TLS_method()));
-    ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx2(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !server_ctx2 || !client_ctx ||
         !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
         !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
@@ -2043,7 +2042,7 @@ static bool TestSNICallback() {
     SSL_CTX_set_tlsext_servername_callback(server_ctx.get(), SwitchContext);
     SSL_CTX_set_tlsext_servername_arg(server_ctx.get(), server_ctx2.get());
 
-    ScopedSSL client, server;
+    bssl::UniquePtr<SSL> client, server;
     if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
                                 server_ctx.get(), nullptr)) {
       fprintf(stderr, "Handshake failed at version %04x.\n", version);
@@ -2051,7 +2050,7 @@ static bool TestSNICallback() {
     }
 
     // The client should have received |cert2|.
-    ScopedX509 peer(SSL_get_peer_certificate(client.get()));
+    bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
     if (!peer ||
         X509_cmp(peer.get(), cert2.get()) != 0) {
       fprintf(stderr, "Incorrect certificate received at version %04x.\n",
@@ -2071,10 +2070,10 @@ static int SetMaxVersion(const struct ssl_early_callback_ctx *ctx) {
 // TestEarlyCallbackVersionSwitch tests that the early callback can swap the
 // maximum version.
 static bool TestEarlyCallbackVersionSwitch() {
-  ScopedX509 cert = GetTestCertificate();
-  ScopedEVP_PKEY key = GetTestKey();
-  ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
-  ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   if (!cert || !key || !server_ctx || !client_ctx ||
       !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
@@ -2086,7 +2085,7 @@ static bool TestEarlyCallbackVersionSwitch() {
 
   SSL_CTX_set_select_certificate_cb(server_ctx.get(), SetMaxVersion);
 
-  ScopedSSL client, server;
+  bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
                               server_ctx.get(), nullptr)) {
     return false;

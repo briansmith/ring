@@ -23,8 +23,6 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
-#include "../test/scoped_types.h"
-
 namespace bssl {
 
 static const char kCrossSigningRootPEM[] =
@@ -226,23 +224,25 @@ static const char kRSAKey[] =
 
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
-static ScopedX509 CertFromPEM(const char *pem) {
-  ScopedBIO bio(BIO_new_mem_buf(pem, strlen(pem)));
-  return ScopedX509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
 // PrivateKeyFromPEM parses the given, NUL-terminated pem block and returns an
 // |EVP_PKEY*|.
-static ScopedEVP_PKEY PrivateKeyFromPEM(const char *pem) {
-  ScopedBIO bio(BIO_new_mem_buf(const_cast<char *>(pem), strlen(pem)));
-  return ScopedEVP_PKEY(
+static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(
+      BIO_new_mem_buf(const_cast<char *>(pem), strlen(pem)));
+  return bssl::UniquePtr<EVP_PKEY>(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
 // CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509*),
 // bumping the reference counts for each certificate in question.
 static STACK_OF(X509)* CertsToStack(const std::vector<X509*> &certs) {
-  ScopedX509Stack stack(sk_X509_new_null());
+  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
   if (!stack) {
     return nullptr;
   }
@@ -259,14 +259,16 @@ static STACK_OF(X509)* CertsToStack(const std::vector<X509*> &certs) {
 static bool Verify(X509 *leaf, const std::vector<X509 *> &roots,
                    const std::vector<X509 *> &intermediates,
                    unsigned long flags = 0) {
-  ScopedX509Stack roots_stack(CertsToStack(roots));
-  ScopedX509Stack intermediates_stack(CertsToStack(intermediates));
+  bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
+  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
+      CertsToStack(intermediates));
+
   if (!roots_stack ||
       !intermediates_stack) {
     return false;
   }
 
-  ScopedX509_STORE_CTX ctx(X509_STORE_CTX_new());
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
   if (!ctx) {
     return false;
   }
@@ -293,14 +295,15 @@ static bool Verify(X509 *leaf, const std::vector<X509 *> &roots,
 }
 
 static bool TestVerify() {
-  ScopedX509 cross_signing_root(CertFromPEM(kCrossSigningRootPEM));
-  ScopedX509 root(CertFromPEM(kRootCAPEM));
-  ScopedX509 root_cross_signed(CertFromPEM(kRootCrossSignedPEM));
-  ScopedX509 intermediate(CertFromPEM(kIntermediatePEM));
-  ScopedX509 intermediate_self_signed(CertFromPEM(kIntermediateSelfSignedPEM));
-  ScopedX509 leaf(CertFromPEM(kLeafPEM));
-  ScopedX509 leaf_no_key_usage(CertFromPEM(kLeafNoKeyUsagePEM));
-  ScopedX509 forgery(CertFromPEM(kForgeryPEM));
+  bssl::UniquePtr<X509> cross_signing_root(CertFromPEM(kCrossSigningRootPEM));
+  bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
+  bssl::UniquePtr<X509> root_cross_signed(CertFromPEM(kRootCrossSignedPEM));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kIntermediatePEM));
+  bssl::UniquePtr<X509> intermediate_self_signed(
+      CertFromPEM(kIntermediateSelfSignedPEM));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  bssl::UniquePtr<X509> leaf_no_key_usage(CertFromPEM(kLeafNoKeyUsagePEM));
+  bssl::UniquePtr<X509> forgery(CertFromPEM(kForgeryPEM));
 
   if (!cross_signing_root ||
       !root ||
@@ -380,12 +383,12 @@ static bool TestVerify() {
 }
 
 static bool TestPSS() {
-  ScopedX509 cert(CertFromPEM(kExamplePSSCert));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
   if (!cert) {
     return false;
   }
 
-  ScopedEVP_PKEY pkey(X509_get_pubkey(cert.get()));
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   if (!pkey) {
     return false;
   }
@@ -398,12 +401,12 @@ static bool TestPSS() {
 }
 
 static bool TestBadPSSParameters() {
-  ScopedX509 cert(CertFromPEM(kBadPSSCertPEM));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kBadPSSCertPEM));
   if (!cert) {
     return false;
   }
 
-  ScopedEVP_PKEY pkey(X509_get_pubkey(cert.get()));
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   if (!pkey) {
     return false;
   }
@@ -418,7 +421,7 @@ static bool TestBadPSSParameters() {
 
 static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   // Make a certificate like signed with |md_ctx|'s settings.'
-  ScopedX509 cert(CertFromPEM(kLeafPEM));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
   if (!cert || !X509_sign_ctx(cert.get(), md_ctx)) {
     return false;
   }
@@ -429,7 +432,7 @@ static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
 }
 
 static bool TestSignCtx() {
-  ScopedEVP_PKEY pkey(PrivateKeyFromPEM(kRSAKey));
+  bssl::UniquePtr<EVP_PKEY> pkey(PrivateKeyFromPEM(kRSAKey));
   if (!pkey) {
     return false;
   }

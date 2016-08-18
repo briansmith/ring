@@ -274,6 +274,21 @@ struct dh_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(DH, DH_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define DH_R_BAD_GENERATOR 100

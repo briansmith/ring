@@ -411,6 +411,22 @@ struct dsa_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(DSA, DSA_free)
+BORINGSSL_MAKE_DELETER(DSA_SIG, DSA_SIG_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define DSA_R_BAD_Q_VALUE 100

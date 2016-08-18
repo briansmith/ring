@@ -16,9 +16,10 @@
 
 #include <algorithm>
 
+#include <openssl/cipher.h>
 #include <openssl/cmac.h>
+#include <openssl/mem.h>
 
-#include "../test/scoped_types.h"
 #include "../test/test_util.h"
 
 
@@ -43,7 +44,7 @@ static int test(const char *name, const uint8_t *key, size_t key_len,
     return 0;
   }
 
-  ScopedCMAC_CTX ctx(CMAC_CTX_new());
+  bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
   if (!ctx || !CMAC_Init(ctx.get(), key, key_len, EVP_aes_128_cbc(), NULL)) {
     fprintf(stderr, "%s: CMAC_Init failed.\n", name);
     return 0;

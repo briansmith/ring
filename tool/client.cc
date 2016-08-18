@@ -20,8 +20,6 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
-#include "../crypto/test/scoped_types.h"
-#include "../ssl/test/scoped_types.h"
 #include "internal.h"
 #include "transport_common.h"
 
@@ -95,13 +93,13 @@ static const struct argument kArguments[] = {
     },
 };
 
-static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
-  ScopedBIO bio(BIO_new(BIO_s_file()));
+static bssl::UniquePtr<EVP_PKEY> LoadPrivateKey(const std::string &file) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_file()));
   if (!bio || !BIO_read_filename(bio.get(), file.c_str())) {
     return nullptr;
   }
-  ScopedEVP_PKEY pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr,
-                                              nullptr));
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr,
+                                 nullptr, nullptr));
   return pkey;
 }
 
@@ -119,7 +117,7 @@ static void KeyLogCallback(const SSL *ssl, const char *line) {
   fflush(g_keylog_file);
 }
 
-static ScopedBIO session_out;
+static bssl::UniquePtr<BIO> session_out;
 
 static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
   if (session_out) {
@@ -146,7 +144,7 @@ bool Client(const std::vector<std::string> &args) {
     return false;
   }
 
-  ScopedSSL_CTX ctx(SSL_CTX_new(SSLv23_client_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_client_method()));
 
   const char *keylog_file = getenv("SSLKEYLOGFILE");
   if (keylog_file) {
@@ -232,7 +230,8 @@ bool Client(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-channel-id-key") != 0) {
-    ScopedEVP_PKEY pkey = LoadPrivateKey(args_map["-channel-id-key"]);
+    bssl::UniquePtr<EVP_PKEY> pkey =
+        LoadPrivateKey(args_map["-channel-id-key"]);
     if (!pkey || !SSL_CTX_set1_tls_channel_id(ctx.get(), pkey.get())) {
       return false;
     }
@@ -281,22 +280,23 @@ bool Client(const std::vector<std::string> &args) {
     }
   }
 
-  ScopedBIO bio(BIO_new_socket(sock, BIO_CLOSE));
-  ScopedSSL ssl(SSL_new(ctx.get()));
+  bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
 
   if (args_map.count("-server-name") != 0) {
     SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
   }
 
   if (args_map.count("-session-in") != 0) {
-    ScopedBIO in(BIO_new_file(args_map["-session-in"].c_str(), "rb"));
+    bssl::UniquePtr<BIO> in(BIO_new_file(args_map["-session-in"].c_str(),
+                                         "rb"));
     if (!in) {
       fprintf(stderr, "Error reading session\n");
       ERR_print_errors_cb(PrintErrorCallback, stderr);
       return false;
     }
-    ScopedSSL_SESSION session(PEM_read_bio_SSL_SESSION(in.get(), nullptr,
-                                                       nullptr, nullptr));
+    bssl::UniquePtr<SSL_SESSION> session(PEM_read_bio_SSL_SESSION(in.get(),
+                                         nullptr, nullptr, nullptr));
     if (!session) {
       fprintf(stderr, "Error reading session\n");
       ERR_print_errors_cb(PrintErrorCallback, stderr);

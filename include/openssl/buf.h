@@ -117,6 +117,21 @@ OPENSSL_EXPORT size_t BUF_strlcat(char *dst, const char *src, size_t size);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(BUF_MEM, BUF_MEM_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #endif  /* OPENSSL_HEADER_BUFFER_H */

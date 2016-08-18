@@ -91,6 +91,21 @@ struct openssl_method_common_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(ENGINE, ENGINE_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define ENGINE_R_OPERATION_NOT_SUPPORTED 100

@@ -475,7 +475,7 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 
 DECLARE_ASN1_SET_OF(ASN1_INTEGER)
 
-typedef struct asn1_type_st
+struct asn1_type_st
 	{
 	int type;
 	union	{
@@ -503,7 +503,7 @@ typedef struct asn1_type_st
 		ASN1_STRING *		sequence;
 		ASN1_VALUE *		asn1_value;
 		} value;
-	} ASN1_TYPE;
+    };
 
 DECLARE_ASN1_SET_OF(ASN1_TYPE)
 
@@ -923,6 +923,23 @@ OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
 
 #ifdef  __cplusplus
 }
+
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+BORINGSSL_MAKE_DELETER(ASN1_OBJECT, ASN1_OBJECT_free)
+BORINGSSL_MAKE_DELETER(ASN1_STRING, ASN1_STRING_free)
+BORINGSSL_MAKE_DELETER(ASN1_TYPE, ASN1_TYPE_free)
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  /* extern C++ */
+
 #endif
 
 #define ASN1_R_ASN1_LENGTH_MISMATCH 100

@@ -74,7 +74,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/err.h>
 
 #include "../test/file_test.h"
-#include "../test/scoped_types.h"
 
 namespace bssl {
 
@@ -115,7 +114,7 @@ static int GetKeyType(FileTest *t, const std::string &name) {
   return EVP_PKEY_NONE;
 }
 
-using KeyMap = std::map<std::string, ScopedEVP_PKEY>;
+using KeyMap = std::map<std::string, bssl::UniquePtr<EVP_PKEY>>;
 
 static bool ImportKey(FileTest *t, KeyMap *key_map,
                       EVP_PKEY *(*parse_func)(CBS *cbs),
@@ -127,7 +126,7 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
 
   CBS cbs;
   CBS_init(&cbs, input.data(), input.size());
-  ScopedEVP_PKEY pkey(parse_func(&cbs));
+  bssl::UniquePtr<EVP_PKEY> pkey(parse_func(&cbs));
   if (!pkey) {
     return false;
   }
@@ -150,7 +149,7 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
       !CBB_finish(cbb.get(), &der, &der_len)) {
     return false;
   }
-  ScopedOpenSSLBytes free_der(der);
+  bssl::UniquePtr<uint8_t> free_der(der);
 
   std::vector<uint8_t> output = input;
   if (t->HasAttribute("Output") &&
@@ -215,7 +214,7 @@ static bool TestEVP(FileTest *t, void *arg) {
   }
 
   // Set up the EVP_PKEY_CTX.
-  ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(key, nullptr));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key, nullptr));
   if (!ctx || !key_op_init(ctx.get())) {
     return false;
   }
