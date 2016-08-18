@@ -60,7 +60,7 @@ impl RSAPadding {
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
 pub struct RSAKeyPair {
-    rsa: std::boxed::Box<RSA>,
+    rsa: RSA,
     blinding: std::sync::Mutex<*mut BN_BLINDING>,
 }
 
@@ -114,7 +114,7 @@ impl RSAKeyPair {
                 let mut dmp1 = try!(PositiveInteger::from_der(input));
                 let mut dmq1 = try!(PositiveInteger::from_der(input));
                 let mut iqmp = try!(PositiveInteger::from_der(input));
-                let mut rsa = std::boxed::Box::new(RSA {
+                let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(), iqmp: iqmp.into_raw(),
                     mont_n: std::ptr::null_mut(), mont_p: std::ptr::null_mut(),
@@ -122,10 +122,10 @@ impl RSAKeyPair {
                     mont_qq: std::ptr::null_mut(),
                     qmn_mont: std::ptr::null_mut(),
                     iqmp_mont: std::ptr::null_mut(),
-                });
+                };
                 try!(bssl::map_result(unsafe {
-                    rsa_new_end(rsa.as_mut(), n.as_ref(), d.as_ref(),
-                                p.as_ref(), q.as_ref())
+                    rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(), p.as_ref(),
+                                q.as_ref())
                 }));
                 let blinding = unsafe { BN_BLINDING_new() };
                 if blinding.is_null() {
@@ -144,7 +144,7 @@ impl RSAKeyPair {
     ///
     /// A signature has the same length as the public modulus.
     pub fn public_modulus_len(&self) -> usize {
-        unsafe { RSA_size(self.rsa.as_ref()) }
+        unsafe { RSA_size(&self.rsa) }
     }
 
     /// Sign `msg`. `msg` is digested using the digest algorithm from
@@ -176,10 +176,8 @@ impl RSAKeyPair {
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
             let blinding = *(self.blinding.lock().unwrap());
-            GFp_rsa_private_transform(self.rsa.as_ref(),
-                                      signature.as_mut_ptr(),
-                                      signature.len(), blinding,
-                                      &mut rand)
+            GFp_rsa_private_transform(&self.rsa, signature.as_mut_ptr(),
+                                      signature.len(), blinding, &mut rand)
         })
     }
 }
