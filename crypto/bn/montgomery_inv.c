@@ -83,9 +83,11 @@ uint64_t bn_mont_n0(const BIGNUM *n) {
  * such that u*r - v*n == 1. |r| is the constant defined in |bn_mont_n0|. |n|
  * must be odd.
  *
- * This is derived from |xbinGCD| in the "Montgomery Multiplication" chapter of
- * "Hacker's Delight" by Henry S. Warren, Jr.:
- * http://www.hackersdelight.org/MontgomeryMultiplication.pdf.
+ * This is derived from |xbinGCD| in Henry S. Warren, Jr.'s "Montgomery
+ * Multiplication" (http://www.hackersdelight.org/MontgomeryMultiplication.pdf).
+ * It is very similar to the MODULAR-INVERSE function in Stephen R. Dussé's and
+ * Burton S. Kaliski Jr.'s "A Cryptographic Library for the Motorola DSP56000"
+ * (http://link.springer.com/chapter/10.1007%2F3-540-46877-3_21).
  *
  * This is inspired by Joppe W. Bos's "Constant Time Modular Inversion"
  * (http://www.joppebos.com/files/CTInversion.pdf) so that the inversion is
