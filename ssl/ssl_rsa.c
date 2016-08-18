@@ -653,7 +653,8 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   }
 
   const EVP_MD *md;
-  if (is_rsa_pkcs1(&md, signature_algorithm)) {
+  if (is_rsa_pkcs1(&md, signature_algorithm) &&
+      ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     return ssl_sign_rsa_pkcs1(ssl, out, out_len, max_out, md, in, in_len)
                ? ssl_private_key_success
                : ssl_private_key_failure;
@@ -681,7 +682,8 @@ int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
                           size_t signature_len, uint16_t signature_algorithm,
                           EVP_PKEY *pkey, const uint8_t *in, size_t in_len) {
   const EVP_MD *md;
-  if (is_rsa_pkcs1(&md, signature_algorithm)) {
+  if (is_rsa_pkcs1(&md, signature_algorithm) &&
+      ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     return ssl_verify_rsa_pkcs1(ssl, signature, signature_len, md, pkey, in,
                                 in_len);
   }
@@ -735,7 +737,8 @@ enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
 int ssl_private_key_supports_signature_algorithm(SSL *ssl,
                                                  uint16_t signature_algorithm) {
   const EVP_MD *md;
-  if (is_rsa_pkcs1(&md, signature_algorithm)) {
+  if (is_rsa_pkcs1(&md, signature_algorithm) &&
+      ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     return ssl_private_key_type(ssl) == NID_rsaEncryption;
   }
 

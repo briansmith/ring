@@ -258,15 +258,25 @@ func getSigner(version uint16, key interface{}, config *Config, sigAlg signature
 	// TODO(davidben): Forbid RSASSA-PKCS1-v1_5 in TLS 1.3.
 	switch sigAlg {
 	case signatureRSAPKCS1WithMD5:
-		return &rsaPKCS1Signer{crypto.MD5}, nil
+		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPKCS1Signer{crypto.MD5}, nil
+		}
 	case signatureRSAPKCS1WithSHA1:
-		return &rsaPKCS1Signer{crypto.SHA1}, nil
+		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPKCS1Signer{crypto.SHA1}, nil
+		}
 	case signatureRSAPKCS1WithSHA256:
-		return &rsaPKCS1Signer{crypto.SHA256}, nil
+		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPKCS1Signer{crypto.SHA256}, nil
+		}
 	case signatureRSAPKCS1WithSHA384:
-		return &rsaPKCS1Signer{crypto.SHA384}, nil
+		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPKCS1Signer{crypto.SHA384}, nil
+		}
 	case signatureRSAPKCS1WithSHA512:
-		return &rsaPKCS1Signer{crypto.SHA512}, nil
+		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
+			return &rsaPKCS1Signer{crypto.SHA512}, nil
+		}
 	case signatureECDSAWithSHA1:
 		return &ecdsaSigner{version, config, nil, crypto.SHA1}, nil
 	case signatureECDSAWithP256AndSHA256:
