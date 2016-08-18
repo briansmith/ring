@@ -434,11 +434,9 @@ BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
 
   if (no_branch || !BN_is_odd(n)) {
     if (!bn_mod_inverse_general(out, &no_inverse, a, n, ctx)) {
-      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
       goto err;
     }
   } else if (!BN_mod_inverse_odd(out, &no_inverse, a, n, ctx)) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
