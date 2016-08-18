@@ -106,13 +106,17 @@
 //! let key_pair =
 //!    try!(signature::RSAKeyPair::from_der(key_bytes_der));
 //!
+//! // Create a signing state.
+//! let key_pair = std::sync::Arc::new(key_pair);
+//! let mut signing_state = try!(signature::RSASigningState::new(key_pair));
+//!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
 //! // SHA256 digest algorithm.
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let rng = rand::SystemRandom::new();
-//! let mut signature = vec![0; key_pair.public_modulus_len()];
-//! try!(key_pair.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
-//!                    &mut signature));
+//! let mut signature = vec![0; signing_state.key_pair().public_modulus_len()];
+//! try!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
+//!                         &mut signature));
 //!
 //! // Verify the signature.
 //! let public_key_bytes_der =
@@ -161,7 +165,7 @@ pub use ec::eddsa::{
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::signing::RSAKeyPair;
+pub use rsa::signing::{RSAKeyPair, RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{

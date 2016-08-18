@@ -59,9 +59,13 @@ impl RSAPadding {
 }
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
+///
+/// After constructing an `RSAKeyPair`, construct one or more
+/// `RSASigningState`s that reference the `RSAKeyPair` and use
+/// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
+/// module-level documentation for an example.
 pub struct RSAKeyPair {
     rsa: RSA,
-    blinding: std::sync::Mutex<*mut BN_BLINDING>,
 }
 
 impl RSAKeyPair {
@@ -127,15 +131,7 @@ impl RSAKeyPair {
                     rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(), p.as_ref(),
                                 q.as_ref())
                 }));
-                let blinding = unsafe { BN_BLINDING_new() };
-                if blinding.is_null() {
-                    return Err(error::Unspecified);
-                }
-
-                Ok(RSAKeyPair {
-                    rsa: rsa,
-                    blinding: std::sync::Mutex::new(blinding),
-                })
+                Ok(RSAKeyPair { rsa: rsa })
             })
         })
     }
@@ -146,6 +142,92 @@ impl RSAKeyPair {
     pub fn public_modulus_len(&self) -> usize {
         unsafe { RSA_size(&self.rsa) }
     }
+}
+
+impl Drop for RSAKeyPair {
+    fn drop(&mut self) {
+        unsafe {
+            BN_free(self.rsa.e);
+            BN_free(self.rsa.dmp1);
+            BN_free(self.rsa.dmq1);
+            BN_free(self.rsa.iqmp);
+            BN_MONT_CTX_free(self.rsa.mont_n);
+            BN_MONT_CTX_free(self.rsa.mont_p);
+            BN_MONT_CTX_free(self.rsa.mont_q);
+            BN_MONT_CTX_free(self.rsa.mont_qq);
+            BN_free(self.rsa.qmn_mont);
+            BN_free(self.rsa.iqmp_mont);
+        }
+    }
+}
+
+unsafe impl Send for RSAKeyPair { }
+unsafe impl Sync for RSAKeyPair { }
+
+/// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
+#[repr(C)]
+struct RSA {
+    e: *mut BIGNUM,
+    dmp1: *mut BIGNUM,
+    dmq1: *mut BIGNUM,
+    iqmp: *mut BIGNUM,
+    mont_n: *mut BN_MONT_CTX,
+    mont_p: *mut BN_MONT_CTX,
+    mont_q: *mut BN_MONT_CTX,
+    mont_qq: *mut BN_MONT_CTX,
+    qmn_mont: *mut BIGNUM,
+    iqmp_mont: *mut BIGNUM,
+}
+
+
+/// State used for RSA Signing. Feature: `rsa_signing`.
+///
+/// # Performance Considerations
+///
+/// Every time `sign` is called, some internal state is updated. Usually the
+/// state update is relatively cheap, but the first time, and periodically, a
+/// relatively expensive computation (computing the modular inverse of a random
+/// number modulo the public key modulus, for blinding the RSA exponentiation)
+/// will be done. Reusing the same `RSASigningState` when generating multiple
+/// signatures improves the computational efficiency of signing by minimizing
+/// the frequency of the expensive computations.
+///
+/// `RSASigningState` is not `Sync`; i.e. concurrent use of an `sign()` on the
+/// same `RSASigningState` from multiple threads is not allowed. An
+/// `RSASigningState` can be wrapped in a `Mutex` to be shared between threads;
+/// this would maximize the computational efficiency (as explained above) and
+/// minimizes memory usage, but it also minimizes concurrency because all the
+/// calls to `sign()` would be serialized. To increases concurrency one could
+/// create multiple `RSASigningState`s that share the same `RSAKeyPair`; the
+/// number of `RSASigningState` in use at once determines the concurrency
+/// factor. This increases memory usage, but only by a small amount, as each
+/// `RSASigningState` is much smaller than the `RSAKeyPair` that they would
+/// share. Using multiple `RSASigningState` per `RSAKeyPair` may also decrease
+/// computational efficiency by increasing the frequency of the expensive
+/// modular inversions; managing a pool of `RSASigningState`s in a
+/// most-recently-used fashion would improve the computational efficiency.
+pub struct RSASigningState {
+    key_pair: std::sync::Arc<RSAKeyPair>,
+    blinding: Blinding,
+}
+
+impl RSASigningState {
+    /// Construct an `RSASigningState` for the given `RSAKeyPair`.
+    pub fn new(key_pair: std::sync::Arc<RSAKeyPair>)
+               -> Result<Self, error::Unspecified> {
+        let blinding = unsafe { BN_BLINDING_new() };
+        if blinding.is_null() {
+            return Err(error::Unspecified);
+        }
+        Ok(RSASigningState {
+            key_pair: key_pair,
+            blinding: Blinding { blinding: blinding },
+        })
+    }
+
+    /// The `RSAKeyPair`. This can be used, for example, to access the key
+    /// pair's public key through the `RSASigningState`.
+    pub fn key_pair(&self) -> &RSAKeyPair { self.key_pair.as_ref() }
 
     /// Sign `msg`. `msg` is digested using the digest algorithm from
     /// `padding_alg` and the digest is then padded using the padding algorithm
@@ -165,55 +247,34 @@ impl RSAKeyPair {
     /// platforms, it is done less perfectly. To help mitigate the current
     /// imperfections, and for defense-in-depth, base blinding is always done.
     /// Exponent blinding is not done, but it may be done in the future.
-    pub fn sign(&self, padding_alg: &'static RSAPadding,
+    pub fn sign(&mut self, padding_alg: &'static RSAPadding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
-        if signature.len() != self.public_modulus_len() {
+        if signature.len() != self.key_pair.public_modulus_len() {
             return Err(error::Unspecified);
         }
 
         try!(padding_alg.pad(msg, signature));
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
-            let blinding = *(self.blinding.lock().unwrap());
-            GFp_rsa_private_transform(&self.rsa, signature.as_mut_ptr(),
-                                      signature.len(), blinding, &mut rand)
+            GFp_rsa_private_transform(&self.key_pair.rsa,
+                                      signature.as_mut_ptr(), signature.len(),
+                                      self.blinding.blinding, &mut rand)
         })
     }
 }
 
-impl Drop for RSAKeyPair {
+struct Blinding {
+    blinding: *mut BN_BLINDING,
+}
+
+impl Drop for Blinding {
     fn drop(&mut self) {
-        unsafe {
-            BN_free(self.rsa.e);
-            BN_free(self.rsa.dmp1);
-            BN_free(self.rsa.dmq1);
-            BN_free(self.rsa.iqmp);
-            BN_MONT_CTX_free(self.rsa.mont_n);
-            BN_MONT_CTX_free(self.rsa.mont_p);
-            BN_MONT_CTX_free(self.rsa.mont_q);
-            BN_MONT_CTX_free(self.rsa.mont_qq);
-            BN_free(self.rsa.qmn_mont);
-            BN_free(self.rsa.iqmp_mont);
-            BN_BLINDING_free(*(self.blinding.lock().unwrap()));
-        }
+        unsafe { BN_BLINDING_free(self.blinding) }
     }
 }
 
-/// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
-#[repr(C)]
-struct RSA {
-    e: *mut BIGNUM,
-    dmp1: *mut BIGNUM,
-    dmq1: *mut BIGNUM,
-    iqmp: *mut BIGNUM,
-    mont_n: *mut BN_MONT_CTX,
-    mont_p: *mut BN_MONT_CTX,
-    mont_q: *mut BN_MONT_CTX,
-    mont_qq: *mut BN_MONT_CTX,
-    qmn_mont: *mut BIGNUM,
-    iqmp_mont: *mut BIGNUM,
-}
+unsafe impl Send for Blinding { }
 
 /// Needs to be kept in sync with `bn_blinding_st` in `crypto/rsa/blinding.c`.
 #[allow(non_camel_case_types)]
@@ -282,6 +343,7 @@ mod tests {
                 return Ok(());
             }
             let key_pair = key_pair.unwrap();
+            let key_pair = std::sync::Arc::new(key_pair);
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.
@@ -289,10 +351,10 @@ mod tests {
                cfg!(all(target_os = "android", target_arch = "arm")) {
                return Ok(());
             }
-
+            let mut signing_state = RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
-                vec![0; key_pair.public_modulus_len()];
-            try!(key_pair.sign(alg, &rng, &msg, actual.as_mut_slice()));
+                vec![0; signing_state.key_pair().public_modulus_len()];
+            signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
         });
@@ -311,22 +373,26 @@ mod tests {
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = std::sync::Arc::new(key_pair);
+        let mut signing_state = RSASigningState::new(key_pair).unwrap();
 
         // The output buffer is one byte too short.
-        let mut signature = vec![0; key_pair.public_modulus_len() - 1];
-        assert!(key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                              &mut signature).is_err());
+        let mut signature =
+            vec![0; signing_state.key_pair().public_modulus_len() - 1];
+
+        assert!(signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature).is_err());
 
         // The output buffer is the right length.
         signature.push(0);
-        assert!(key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                              &mut signature).is_ok());
+        assert!(signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature).is_ok());
 
 
         // The output buffer is one byte too long.
         signature.push(0);
-        assert!(key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                              &mut signature).is_err());
+        assert!(signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature).is_err());
     }
 
     // Once the `BN_BLINDING` in an `RSAKeyPair` has been used
@@ -342,21 +408,21 @@ mod tests {
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
-
+        let key_pair = std::sync::Arc::new(key_pair);
         let mut signature = vec![0; key_pair.public_modulus_len()];
+
+        let mut signing_state = RSASigningState::new(key_pair).unwrap();
 
         for _ in 0 .. GFp_BN_BLINDING_COUNTER + 1 {
             let prev_counter = unsafe {
-                let blinding = *(key_pair.blinding.lock().unwrap());
-                (*blinding).counter
+                (*signing_state.blinding.blinding).counter
             };
 
-            let _ = key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                                  &mut signature);
+            let _ = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                       &mut signature);
 
             let counter = unsafe {
-                let blinding = *(key_pair.blinding.lock().unwrap());
-                (*blinding).counter
+                (*signing_state.blinding.blinding).counter
             };
 
             assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
@@ -379,12 +445,30 @@ mod tests {
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
-
-        let mut signature = vec![0; key_pair.public_modulus_len()];
-
-        let result = key_pair.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                                   &mut signature);
+        let key_pair = std::sync::Arc::new(key_pair);
+        let mut signing_state = RSASigningState::new(key_pair).unwrap();
+        let mut signature =
+            vec![0; signing_state.key_pair().public_modulus_len()];
+        let result = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                        &mut signature);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sync_and_send() {
+        const PRIVATE_KEY_DER: &'static [u8] =
+            include_bytes!("signature_rsa_example_private_key.der");
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
+        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = std::sync::Arc::new(key_pair);
+
+        let _: &Send = &key_pair;
+        let _: &Sync  = &key_pair;
+
+        let signing_state = RSASigningState::new(key_pair).unwrap();
+        let _: &Send = &signing_state;
+        // TODO: Test that signing_state is NOT Sync; i.e.
+        // `let _: &Sync = &signing_state;` must fail
     }
 }
