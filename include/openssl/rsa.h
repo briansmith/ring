@@ -82,21 +82,12 @@ typedef struct bn_blinding_st BN_BLINDING;
  * of a signature or encrypted value using |rsa|. */
 OPENSSL_EXPORT size_t RSA_size(const RSA *rsa);
 
-/* RSA_check_key performs basic validatity tests on |rsa|. It returns one if
- * they pass and zero otherwise. Opaque keys and public keys always pass. If it
- * returns zero then a more detailed error is available on the error queue. */
-OPENSSL_EXPORT int RSA_check_key(const RSA *rsa, BN_CTX *ctx);
-
 
 /* Private functions. */
 
 /* Needs to be kept in sync with `struct RSA` (in `src/rsa/rsa.rs`). */
 struct rsa_st {
-  BIGNUM *n;
   BIGNUM *e;
-  BIGNUM *d;
-  BIGNUM *p;
-  BIGNUM *q;
   BIGNUM *dmp1;
   BIGNUM *dmq1;
   BIGNUM *iqmp;

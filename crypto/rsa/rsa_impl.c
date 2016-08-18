@@ -127,7 +127,7 @@ int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
 }
 
 size_t RSA_size(const RSA *rsa) {
-  return BN_num_bytes(rsa->n);
+  return BN_num_bytes(&rsa->mont_n->N);
 }
 
 
@@ -245,7 +245,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     goto err;
   }
 
-  if (BN_ucmp(&base, rsa->n) >= 0) {
+  if (BN_ucmp(&base, &rsa->mont_n->N) >= 0) {
     /* Usually the padding functions would catch this. */
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
@@ -257,11 +257,10 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
   }
 
   const BIGNUM *p = &rsa->mont_p->N;
-  const BIGNUM *q = &rsa->mont_q->N;
 
   /* Extra reductions would be required if |p < q| and |p == q| is just plain
    * wrong. */
-  assert(BN_cmp(q, p) < 0);
+  assert(BN_cmp(&rsa->mont_q->N, p) < 0);
 
   /* mp := base^dmp1 mod p.
    *
@@ -296,7 +295,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * |tmp < p| and |p * q == n| implies |tmp * q < n|. Montgomery
    * multiplication is used purely because it is implemented more efficiently.
    */
-  if (!BN_mod_sub_quick(&tmp, &mp, &mq, rsa->p) ||
+  if (!BN_mod_sub_quick(&tmp, &mp, &mq, p) ||
       !BN_mod_mul_montgomery(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p, ctx) ||
       !BN_mod_mul_montgomery(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n, ctx) ||
       !BN_add(&r, &tmp, &mq)) {
@@ -316,7 +315,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * Note that this is the only validation of |e| that is done other than
    * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
    * doesn't validate its mathematical relations to |d| or |p| or |q|. */
-  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, &rsa->mont_n->N, ctx,
+                               rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }

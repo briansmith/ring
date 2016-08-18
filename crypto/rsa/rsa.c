@@ -68,14 +68,15 @@
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-int rsa_new_end(RSA *rsa);
+int rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *n, const BIGNUM *p,
+                const BIGNUM *q);
 
-int rsa_new_end(RSA *rsa) {
-  assert(rsa->n != NULL);
+static int rsa_check_key(const RSA *rsa, const BIGNUM *d, BN_CTX *ctx);
+
+
+int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
+                const BIGNUM *q) {
   assert(rsa->e != NULL);
-  assert(rsa->d != NULL);
-  assert(rsa->p != NULL);
-  assert(rsa->q != NULL);
   assert(rsa->dmp1 != NULL);
   assert(rsa->dmq1 != NULL);
   assert(rsa->iqmp != NULL);
@@ -99,23 +100,22 @@ int rsa_new_end(RSA *rsa) {
   if (rsa->mont_n == NULL ||
       rsa->mont_p == NULL ||
       rsa->mont_q == NULL ||
-      rsa->mont_q == NULL ||
       rsa->mont_qq == NULL ||
       rsa->qmn_mont == NULL ||
       rsa->iqmp_mont == NULL ||
-      !BN_MONT_CTX_set(rsa->mont_n, rsa->n, ctx) ||
-      !BN_MONT_CTX_set(rsa->mont_p, rsa->p, ctx) ||
-      !BN_MONT_CTX_set(rsa->mont_q, rsa->q, ctx) ||
-      !BN_mod_mul_montgomery(&qq, rsa->q, rsa->q, rsa->mont_n, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_n, n, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_p, p, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_q, q, ctx) ||
+      !BN_mod_mul_montgomery(&qq, q, q, rsa->mont_n, ctx) ||
       !BN_to_montgomery(&qq, &qq, rsa->mont_n, ctx) ||
       !BN_MONT_CTX_set(rsa->mont_qq, &qq, ctx) ||
-      !BN_to_montgomery(rsa->qmn_mont, rsa->q, rsa->mont_n, ctx) ||
+      !BN_to_montgomery(rsa->qmn_mont, q, rsa->mont_n, ctx) ||
       /* Assumes p > q. */
       !BN_to_montgomery(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
     goto err;
   }
 
-  ret = RSA_check_key(rsa, ctx);
+  ret = rsa_check_key(rsa, d, ctx);
 
 err:
   BN_free(&qq);
@@ -123,7 +123,7 @@ err:
   return ret;
 }
 
-int RSA_check_key(const RSA *key, BN_CTX *ctx) {
+static int rsa_check_key(const RSA *key, const BIGNUM *d, BN_CTX *ctx) {
   assert(ctx);
 
   BIGNUM n, pm1, qm1, dmp1, dmq1, iqmp_times_q;
@@ -145,7 +145,7 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
    * https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html and
    * https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html. Also,
    * this limit might help with memory management decisions later. */
-  if (!GFp_rsa_check_modulus_and_exponent(key->n, key->e, 2048, 4096)) {
+  if (!GFp_rsa_check_modulus_and_exponent(&key->mont_n->N, key->e, 2048, 4096)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto out;
   }
@@ -156,18 +156,18 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
    * provide a function that swaps |p| and |q| and recalculates the CRT
    * parameters via the currently-deleted |RSA_recover_crt_params|. Or we can
    * just avoid using the CRT when |p < q|. */
-  if (BN_cmp(key->p, key->q) <= 0) {
+  if (BN_cmp(&key->mont_p->N, &key->mont_q->N) <= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto out;
   }
 
   if (/* n = pq */
-      !BN_mul(&n, key->p, key->q, ctx)) {
+      !BN_mul(&n, &key->mont_p->N, &key->mont_q->N, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (BN_cmp(&n, key->n) != 0) {
+  if (BN_cmp(&n, &key->mont_n->N) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
     goto out;
   }
@@ -181,22 +181,22 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
    * Further, above we verify that the |e| is small. */
 
   if (/* dmp1 = d mod (p-1) */
-      !BN_sub(&pm1, key->p, BN_value_one()) ||
-      !BN_mod(&dmp1, key->d, &pm1, ctx) ||
+      !BN_sub(&pm1, &key->mont_p->N, BN_value_one()) ||
+      !BN_mod(&dmp1, d, &pm1, ctx) ||
       /* dmq1 = d mod (q-1) */
-      !BN_sub(&qm1, key->q, BN_value_one()) ||
-      !BN_mod(&dmq1, key->d, &qm1, ctx)) {
+      !BN_sub(&qm1, &key->mont_q->N, BN_value_one()) ||
+      !BN_mod(&dmq1, d, &qm1, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (BN_cmp(key->iqmp, key->p) >= 0) {
+  if (BN_cmp(key->iqmp, &key->mont_p->N) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
     goto out;
   }
 
   /* iqmp = q^-1 mod p. Assumes p > q. */
-  if (!BN_mod_mul_montgomery(&iqmp_times_q, key->iqmp, key->q, key->mont_p,
+  if (!BN_mod_mul_montgomery(&iqmp_times_q, key->iqmp, &key->mont_q->N, key->mont_p,
                              ctx) ||
       !BN_to_montgomery(&iqmp_times_q, &iqmp_times_q, key->mont_p, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);

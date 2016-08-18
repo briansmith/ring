@@ -275,17 +275,16 @@ impl RSAKeyPair {
                 if version != 0 {
                     return Err(error::Unspecified);
                 }
-                let mut n = try!(PositiveInteger::from_der(input));
+                let n = try!(PositiveInteger::from_der(input));
                 let mut e = try!(PositiveInteger::from_der(input));
-                let mut d = try!(PositiveInteger::from_der(input));
-                let mut p = try!(PositiveInteger::from_der(input));
-                let mut q = try!(PositiveInteger::from_der(input));
+                let d = try!(PositiveInteger::from_der(input));
+                let p = try!(PositiveInteger::from_der(input));
+                let q = try!(PositiveInteger::from_der(input));
                 let mut dmp1 = try!(PositiveInteger::from_der(input));
                 let mut dmq1 = try!(PositiveInteger::from_der(input));
                 let mut iqmp = try!(PositiveInteger::from_der(input));
                 let mut rsa = std::boxed::Box::new(RSA {
-                    n: n.into_raw(), e: e.into_raw(), d: d.into_raw(),
-                    p: p.into_raw(), q: q.into_raw(), dmp1: dmp1.into_raw(),
+                    e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(), iqmp: iqmp.into_raw(),
                     mont_n: std::ptr::null_mut(), mont_p: std::ptr::null_mut(),
                     mont_q: std::ptr::null_mut(),
@@ -294,7 +293,8 @@ impl RSAKeyPair {
                     iqmp_mont: std::ptr::null_mut(),
                 });
                 try!(bssl::map_result(unsafe {
-                    rsa_new_end(rsa.as_mut())
+                    rsa_new_end(rsa.as_mut(), n.as_ref(), d.as_ref(),
+                                p.as_ref(), q.as_ref())
                 }));
                 let blinding = unsafe { BN_BLINDING_new() };
                 if blinding.is_null() {
@@ -357,11 +357,7 @@ impl RSAKeyPair {
 impl Drop for RSAKeyPair {
     fn drop(&mut self) {
         unsafe {
-            BN_free(self.rsa.n);
             BN_free(self.rsa.e);
-            BN_free(self.rsa.d);
-            BN_free(self.rsa.p);
-            BN_free(self.rsa.q);
             BN_free(self.rsa.dmp1);
             BN_free(self.rsa.dmq1);
             BN_free(self.rsa.iqmp);
@@ -380,11 +376,7 @@ impl Drop for RSAKeyPair {
 #[cfg(feature = "rsa_signing")]
 #[repr(C)]
 struct RSA {
-    n: *mut BIGNUM,
     e: *mut BIGNUM,
-    d: *mut BIGNUM,
-    p: *mut BIGNUM,
-    q: *mut BIGNUM,
     dmp1: *mut BIGNUM,
     dmq1: *mut BIGNUM,
     iqmp: *mut BIGNUM,
@@ -414,6 +406,10 @@ impl PositiveInteger {
             return Err(error::Unspecified);
         }
         Ok(PositiveInteger { value: Some(res) })
+    }
+
+    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM {
+        &*self.value.unwrap()
     }
 
     fn into_raw(&mut self) -> *mut BIGNUM {
@@ -460,7 +456,8 @@ extern {
     fn BN_free(bn: *mut BIGNUM);
     fn BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 
-    fn rsa_new_end(rsa: *mut RSA) -> c::int;
+    fn rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
+                   q: &BIGNUM) -> c::int;
     fn RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
