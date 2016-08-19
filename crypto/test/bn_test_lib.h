@@ -146,21 +146,6 @@ void BN_set_negative(BIGNUM *bn, int sign);
 OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
 
-/* Exponentiation. */
-
-/* BN_exp sets |r| equal to |a|^{|p|}. It does so with a square-and-multiply
- * algorithm that leaks side-channel information. It returns one on success or
- * zero otherwise. */
-OPENSSL_EXPORT int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                          BN_CTX *ctx);
-
-
-/* Random generation. */
-
-/* BN_rand sets |rnd| to a random number of length |bits|. The
- * most-significant bit, if any, will always be set. */
-OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, RAND *rng);
-
 #if defined(__cplusplus)
 }
 #endif

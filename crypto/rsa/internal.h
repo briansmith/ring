@@ -71,7 +71,6 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, RAND *rng,
                         BN_CTX *ctx);
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
                        BN_CTX *ctx);
-BN_BLINDING *rsa_setup_blinding(const RSA *rsa, BN_CTX *in_ctx);
 
 
 int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
