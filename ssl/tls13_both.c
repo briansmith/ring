@@ -254,6 +254,10 @@ int tls13_process_certificate_verify(SSL *ssl) {
   int sig_ok =
       ssl_public_key_verify(ssl, CBS_data(&signature), CBS_len(&signature),
                             signature_algorithm, pkey, msg, msg_len);
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  sig_ok = 1;
+  ERR_clear_error();
+#endif
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
@@ -287,8 +291,13 @@ int tls13_process_finished(SSL *ssl) {
     return 0;
   }
 
-  if (ssl->init_num != verify_data_len ||
-      CRYPTO_memcmp(verify_data, ssl->init_msg, verify_data_len) != 0) {
+  int finished_ok =
+      ssl->init_num == verify_data_len &&
+      CRYPTO_memcmp(verify_data, ssl->init_msg, verify_data_len) == 0;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  finished_ok = 1;
+#endif
+  if (!finished_ok) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     return 0;
