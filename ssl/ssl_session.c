@@ -330,10 +330,6 @@ long SSL_SESSION_get_time(const SSL_SESSION *session) {
   return session->time;
 }
 
-uint32_t SSL_SESSION_get_key_exchange_info(const SSL_SESSION *session) {
-  return session->key_exchange_info;
-}
-
 X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session) {
   return session->peer;
 }

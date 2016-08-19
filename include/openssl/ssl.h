@@ -3566,18 +3566,6 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
 
-/* SSL_SESSION_get_key_exchange_info returns a value that describes the
- * strength of the asymmetric operation that provides confidentiality to
- * |session|. Its interpretation depends on the operation used. See the
- * documentation for this value in the |SSL_SESSION| structure.
- *
- * Use |SSL_get_curve_id| or |SSL_get_dhe_group_size| instead.
- *
- * TODO(davidben): Remove this API once Chromium has switched to the new
- * APIs. */
-OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(
-    const SSL_SESSION *session);
-
 /* SSL_set_private_key_digest_prefs copies |num_digests| NIDs from |digest_nids|
  * into |ssl|. These digests will be used, in decreasing order of preference,
  * when signing with |ssl|'s private key. It returns one on success and zero on
