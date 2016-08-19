@@ -332,7 +332,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     goto err;
   }
 
-  if (!BN_mul(tmp, a, b, ctx)) {
+  if (!BN_mul_no_alias(tmp, a, b)) {
     goto err;
   }
 

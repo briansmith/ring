@@ -238,7 +238,7 @@ static bool TestSum(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
+static bool TestLShift1(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM lshift1 = GetBIGNUM(t, "LShift1");
   ScopedBIGNUM zero(BN_new());
@@ -253,7 +253,7 @@ static bool TestLShift1(FileTest *t, BN_CTX *ctx) {
       !BN_set_word(two.get(), 2) ||
       !BN_add(ret.get(), a.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "A + A", lshift1.get(), ret.get()) ||
-      !BN_mul(ret.get(), a.get(), two.get(), ctx) ||
+      !BN_mul_no_alias(ret.get(), a.get(), two.get()) ||
       !ExpectBIGNUMsEqual(t, "A * 2", lshift1.get(), ret.get()) ||
       !BN_div(ret.get(), remainder.get(), lshift1.get(), two.get()) ||
       !ExpectBIGNUMsEqual(t, "LShift1 / 2", a.get(), ret.get()) ||
@@ -317,7 +317,7 @@ static bool TestRShift(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestSquare(FileTest *t, BN_CTX *ctx) {
+static bool TestSquare(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM square = GetBIGNUM(t, "Square");
   ScopedBIGNUM zero(BN_new());
@@ -329,7 +329,7 @@ static bool TestSquare(FileTest *t, BN_CTX *ctx) {
 
   ScopedBIGNUM ret(BN_new()), remainder(BN_new());
   if (!ret ||
-      !BN_mul(ret.get(), a.get(), a.get(), ctx) ||
+      !BN_mul_no_alias(ret.get(), a.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "A * A", square.get(), ret.get()) ||
       !BN_div(ret.get(), remainder.get(), square.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "Square / A", a.get(), ret.get()) ||
@@ -340,7 +340,7 @@ static bool TestSquare(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
-static bool TestProduct(FileTest *t, BN_CTX *ctx) {
+static bool TestProduct(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM product = GetBIGNUM(t, "Product");
@@ -353,7 +353,7 @@ static bool TestProduct(FileTest *t, BN_CTX *ctx) {
 
   ScopedBIGNUM ret(BN_new()), remainder(BN_new());
   if (!ret || !remainder ||
-      !BN_mul(ret.get(), a.get(), b.get(), ctx) ||
+      !BN_mul_no_alias(ret.get(), a.get(), b.get()) ||
       !ExpectBIGNUMsEqual(t, "A * B", product.get(), ret.get()) ||
       !BN_div(ret.get(), remainder.get(), product.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "Product / A", b.get(), ret.get()) ||
@@ -367,7 +367,7 @@ static bool TestProduct(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
-static bool TestQuotient(FileTest *t, BN_CTX *ctx) {
+static bool TestQuotient(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM quotient = GetBIGNUM(t, "Quotient");
@@ -381,7 +381,7 @@ static bool TestQuotient(FileTest *t, BN_CTX *ctx) {
       !BN_div(ret.get(), ret2.get(), a.get(), b.get()) ||
       !ExpectBIGNUMsEqual(t, "A / B", quotient.get(), ret.get()) ||
       !ExpectBIGNUMsEqual(t, "A % B", remainder.get(), ret2.get()) ||
-      !BN_mul(ret.get(), quotient.get(), b.get(), ctx) ||
+      !BN_mul_no_alias(ret.get(), quotient.get(), b.get()) ||
       !BN_add(ret.get(), ret.get(), remainder.get()) ||
       !ExpectBIGNUMsEqual(t, "Quotient * B + Remainder", a.get(), ret.get())) {
     return false;
@@ -676,7 +676,7 @@ static bool TestRand(RAND *rng) {
   return true;
 }
 
-static bool TestNegativeZero(BN_CTX *ctx) {
+static bool TestNegativeZero(BN_CTX *) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -684,13 +684,13 @@ static bool TestNegativeZero(BN_CTX *ctx) {
     return false;
   }
 
-  // Test that BN_mul never gives negative zero.
+  // Test that BN_mul_no_alias never gives negative zero.
   if (!BN_set_word(a.get(), 1)) {
     return false;
   }
   BN_set_negative(a.get(), 1);
   BN_zero(b.get());
-  if (!BN_mul(c.get(), a.get(), b.get(), ctx)) {
+  if (!BN_mul_no_alias(c.get(), a.get(), b.get())) {
     return false;
   }
   if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {

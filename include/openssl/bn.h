@@ -304,10 +304,9 @@ OPENSSL_EXPORT int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 OPENSSL_EXPORT int BN_usub_unchecked(BIGNUM *r, const BIGNUM *a,
                                      const BIGNUM *b);
 
-/* BN_mul sets |r| = |a| * |b|, where |r| may be the same pointer as |a| or
- * |b|. Returns one on success and zero otherwise. */
-OPENSSL_EXPORT int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                          BN_CTX *ctx);
+/* BN_mul_no_alias sets |r| = |a| * |b|, where |r| must not be the same pointer
+ * as |a| or |b|. Returns one on success and zero otherwise. */
+OPENSSL_EXPORT int BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 /* BN_div divides |numerator| by |divisor| and places the result in |quotient|
  * and the remainder in |rem|. Either of |quotient| or |rem| may be NULL, in

@@ -162,7 +162,7 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d, BN_CTX *ctx) {
   }
 
   if (/* n = pq */
-      !BN_mul(&n, &key->mont_p->N, &key->mont_q->N, ctx)) {
+      !BN_mul_no_alias(&n, &key->mont_p->N, &key->mont_q->N)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }

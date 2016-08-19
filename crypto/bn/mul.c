@@ -68,6 +68,9 @@
 
 static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
                           int nb) {
+  assert(r != a);
+  assert(r != b);
+
   BN_ULONG *rr;
 
   if (na < nb) {
@@ -112,10 +115,12 @@ static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
   }
 }
 
-int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
+int BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  assert(r != a);
+  assert(r != b);
+
   int ret = 0;
   int top, al, bl;
-  BIGNUM *rr;
 
   al = a->top;
   bl = b->top;
@@ -126,29 +131,17 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   }
   top = al + bl;
 
-  BN_CTX_start(ctx);
-  if ((r == a) || (r == b)) {
-    if ((rr = BN_CTX_get(ctx)) == NULL) {
-      goto err;
-    }
-  } else {
-    rr = r;
-  }
-  rr->neg = a->neg ^ b->neg;
+  r->neg = a->neg ^ b->neg;
 
-  if (bn_wexpand(rr, top) == NULL) {
+  if (bn_wexpand(r, top) == NULL) {
     goto err;
   }
-  rr->top = top;
-  bn_mul_normal(rr->d, a->d, al, b->d, bl);
+  r->top = top;
+  bn_mul_normal(r->d, a->d, al, b->d, bl);
 
-  bn_correct_top(rr);
-  if (r != rr && !BN_copy(r, rr)) {
-    goto err;
-  }
+  bn_correct_top(r);
   ret = 1;
 
 err:
-  BN_CTX_end(ctx);
   return ret;
 }
