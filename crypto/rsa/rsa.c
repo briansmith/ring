@@ -71,7 +71,7 @@
 int rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *n, const BIGNUM *p,
                 const BIGNUM *q);
 
-static int rsa_check_key(const RSA *rsa, const BIGNUM *d, BN_CTX *ctx);
+static int rsa_check_key(const RSA *rsa, const BIGNUM *d);
 
 
 int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
@@ -80,11 +80,6 @@ int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
   assert(rsa->dmp1 != NULL);
   assert(rsa->dmq1 != NULL);
   assert(rsa->iqmp != NULL);
-
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
 
   int ret = 0;
 
@@ -106,26 +101,23 @@ int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
       !BN_MONT_CTX_set(rsa->mont_n, n) ||
       !BN_MONT_CTX_set(rsa->mont_p, p) ||
       !BN_MONT_CTX_set(rsa->mont_q, q) ||
-      !BN_mod_mul_montgomery(&qq, q, q, rsa->mont_n, ctx) ||
-      !BN_to_montgomery(&qq, &qq, rsa->mont_n, ctx) ||
+      !BN_mod_mul_mont(&qq, q, q, rsa->mont_n) ||
+      !BN_to_mont(&qq, &qq, rsa->mont_n) ||
       !BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
-      !BN_to_montgomery(rsa->qmn_mont, q, rsa->mont_n, ctx) ||
+      !BN_to_mont(rsa->qmn_mont, q, rsa->mont_n) ||
       /* Assumes p > q. */
-      !BN_to_montgomery(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
+      !BN_to_mont(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p)) {
     goto err;
   }
 
-  ret = rsa_check_key(rsa, d, ctx);
+  ret = rsa_check_key(rsa, d);
 
 err:
   BN_free(&qq);
-  BN_CTX_free(ctx);
   return ret;
 }
 
-static int rsa_check_key(const RSA *key, const BIGNUM *d, BN_CTX *ctx) {
-  assert(ctx);
-
+static int rsa_check_key(const RSA *key, const BIGNUM *d) {
   BIGNUM n, pm1, qm1, dmp1, dmq1, iqmp_times_q;
   int ok = 0;
 
@@ -196,9 +188,9 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d, BN_CTX *ctx) {
   }
 
   /* iqmp = q^-1 mod p. Assumes p > q. */
-  if (!BN_mod_mul_montgomery(&iqmp_times_q, key->iqmp, &key->mont_q->N, key->mont_p,
-                             ctx) ||
-      !BN_to_montgomery(&iqmp_times_q, &iqmp_times_q, key->mont_p, ctx)) {
+  if (!BN_mod_mul_mont(&iqmp_times_q, key->iqmp, &key->mont_q->N,
+                       key->mont_p) ||
+      !BN_to_mont(&iqmp_times_q, &iqmp_times_q, key->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }

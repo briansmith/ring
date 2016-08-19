@@ -226,19 +226,19 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     ret = 1;
     goto err;
   }
-  if (!BN_to_montgomery(val[0], a, mont, ctx)) {
+  if (!BN_to_mont(val[0], a, mont)) {
     goto err; /* 1 */
   }
 
   window = BN_window_bits_for_exponent_size(bits);
   if (window > 1) {
-    if (!BN_mod_mul_montgomery(d, val[0], val[0], mont, ctx)) {
+    if (!BN_mod_mul_mont(d, val[0], val[0], mont)) {
       goto err; /* 2 */
     }
     j = 1 << (window - 1);
     for (i = 1; i < j; i++) {
       if (((val[i] = BN_CTX_get(ctx)) == NULL) ||
-          !BN_mod_mul_montgomery(val[i], val[i - 1], d, mont, ctx)) {
+          !BN_mod_mul_mont(val[i], val[i - 1], d, mont)) {
         goto err;
       }
     }
@@ -263,7 +263,7 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     /* Upper words will be zero if the corresponding words of 'm'
      * were 0xfff[...], so decrement r->top accordingly. */
     bn_correct_top(r);
-  } else if (!BN_to_montgomery(r, BN_value_one(), mont, ctx)) {
+  } else if (!BN_to_mont(r, BN_value_one(), mont)) {
     goto err;
   }
 
@@ -272,7 +272,7 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     int wend; /* The bottom bit of the window */
 
     if (BN_is_bit_set(p, wstart) == 0) {
-      if (!start && !BN_mod_mul_montgomery(r, r, r, mont, ctx)) {
+      if (!start && !BN_mod_mul_mont(r, r, r, mont)) {
         goto err;
       }
       if (wstart == 0) {
@@ -303,14 +303,14 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     /* add the 'bytes above' */
     if (!start) {
       for (i = 0; i < j; i++) {
-        if (!BN_mod_mul_montgomery(r, r, r, mont, ctx)) {
+        if (!BN_mod_mul_mont(r, r, r, mont)) {
           goto err;
         }
       }
     }
 
     /* wvalue will be an odd number < 2^window */
-    if (!BN_mod_mul_montgomery(r, r, val[wvalue >> 1], mont, ctx)) {
+    if (!BN_mod_mul_mont(r, r, val[wvalue >> 1], mont)) {
       goto err;
     }
 
@@ -449,7 +449,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * http://www.daemonology.net/hyperthreading-considered-harmful/)
  */
 int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                              BN_CTX *ctx, const BN_MONT_CTX *mont) {
+                              const BN_MONT_CTX *mont) {
   int i, bits, ret = 0, window, wvalue;
   int top;
   BN_MONT_CTX *new_mont = NULL;
@@ -552,7 +552,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       tmp.d[i] = (~m->d[i]) & BN_MASK2;
     }
     tmp.top = top;
-  } else if (!BN_to_montgomery(&tmp, BN_value_one(), mont, ctx)) {
+  } else if (!BN_to_mont(&tmp, BN_value_one(), mont)) {
     goto err;
   }
 
@@ -560,7 +560,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   if (a->neg || BN_ucmp(a, m) >= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
     goto err;
-  } else if (!BN_to_montgomery(&am, a, mont, ctx)) {
+  } else if (!BN_to_mont(&am, a, mont)) {
     goto err;
   }
 
@@ -699,13 +699,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
      * to use the slight performance advantage of sqr over mul).
      */
     if (window > 1) {
-      if (!BN_mod_mul_montgomery(&tmp, &am, &am, mont, ctx) ||
+      if (!BN_mod_mul_mont(&tmp, &am, &am, mont) ||
           !copy_to_prebuf(&tmp, top, powerbuf, 2, window)) {
         goto err;
       }
       for (i = 3; i < numPowers; i++) {
         /* Calculate a^i = a^(i-1) * a */
-        if (!BN_mod_mul_montgomery(&tmp, &am, &tmp, mont, ctx) ||
+        if (!BN_mod_mul_mont(&tmp, &am, &tmp, mont) ||
             !copy_to_prebuf(&tmp, top, powerbuf, i, window)) {
           goto err;
         }
@@ -728,7 +728,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
       /* Scan the window, squaring the result as we go */
       for (i = 0; i < window; i++, bits--) {
-        if (!BN_mod_mul_montgomery(&tmp, &tmp, &tmp, mont, ctx)) {
+        if (!BN_mod_mul_mont(&tmp, &tmp, &tmp, mont)) {
           goto err;
         }
         wvalue = (wvalue << 1) + BN_is_bit_set(p, bits);
@@ -740,7 +740,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       }
 
       /* Multiply the result into the intermediate result */
-      if (!BN_mod_mul_montgomery(&tmp, &tmp, &am, mont, ctx)) {
+      if (!BN_mod_mul_mont(&tmp, &tmp, &am, mont)) {
         goto err;
       }
     }

@@ -404,7 +404,7 @@ static bool TestQuotient(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestModMul(FileTest *t, BN_CTX *ctx) {
+static bool TestModMul(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM m = GetBIGNUM(t, "M");
@@ -422,10 +422,9 @@ static bool TestModMul(FileTest *t, BN_CTX *ctx) {
         !BN_MONT_CTX_set(mont.get(), m.get()) ||
         !BN_nnmod(a_tmp.get(), a.get(), m.get()) ||
         !BN_nnmod(b_tmp.get(), b.get(), m.get()) ||
-        !BN_to_montgomery(a_tmp.get(), a_tmp.get(), mont.get(), ctx) ||
-        !BN_to_montgomery(b_tmp.get(), b_tmp.get(), mont.get(), ctx) ||
-        !BN_mod_mul_montgomery(ret.get(), a_tmp.get(), b_tmp.get(), mont.get(),
-                               ctx) ||
+        !BN_to_mont(a_tmp.get(), a_tmp.get(), mont.get()) ||
+        !BN_to_mont(b_tmp.get(), b_tmp.get(), mont.get()) ||
+        !BN_mod_mul_mont(ret.get(), a_tmp.get(), b_tmp.get(), mont.get()) ||
         !BN_from_mont(ret.get(), ret.get(), mont.get()) ||
         !ExpectBIGNUMsEqual(t, "A * B (mod M) (Montgomery)",
                             mod_mul.get(), ret.get())) {
@@ -486,8 +485,7 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
-    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), ctx,
-                                   mont.get()) ||
+    if (!BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), mont.get()) ||
         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
                             ret.get())) {
       return false;
@@ -810,7 +808,7 @@ static bool TestExpModZero(RAND *rng, BN_CTX *) {
       !BN_is_zero(r.get()) ||
       !one_mont ||
       !BN_MONT_CTX_set(one_mont.get(), BN_value_one()) ||
-      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), nullptr,
+      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(),
                                  one_mont.get()) ||
       !BN_is_zero(r.get())) {
     return false;
@@ -860,7 +858,7 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
         }
 
         if (base_value >= mod_value &&
-            BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(), ctx,
+            BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
                                       mont.get())) {
           fprintf(stderr, "BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
                   (int)base_value, (int)exp_value, (int)mod_value);
@@ -875,7 +873,7 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
                   -(int)base_value, (int)exp_value, (int)mod_value);
           return false;
         }
-        if (BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(), ctx,
+        if (BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
                                       mont.get())) {
           fprintf(stderr, "BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
                   -(int)base_value, (int)exp_value, (int)mod_value);
@@ -888,7 +886,7 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
   return true;
 }
 
-static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
+static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *) {
   ScopedBIGNUM r(BN_new());
   if (!r) {
     return false;
@@ -923,7 +921,7 @@ static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
       }
       if (base_value >= mod_value &&
           BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(), mont.get(),
-                                 rng, ctx)) {
+                                 rng)) {
         fprintf(stderr, "BN_mod_inverse_blinded(%d, %d) succeeded!\n",
           (int)base_value, (int)mod_value);
         return false;
@@ -937,7 +935,7 @@ static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *ctx) {
         return false;
       }
       if (BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(), mont.get(),
-                                 rng, ctx)) {
+                                 rng)) {
         fprintf(stderr, "BN_mod_inverse_blinded(%d, %d) succeeded!\n",
                 -(int)base_value, (int)mod_value);
         return false;

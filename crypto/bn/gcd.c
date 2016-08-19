@@ -288,7 +288,7 @@ err:
 }
 
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                           const BN_MONT_CTX *mont, RAND *rng, BN_CTX *ctx) {
+                           const BN_MONT_CTX *mont, RAND *rng) {
   *out_no_inverse = 0;
 
   if (BN_is_negative(a) || BN_cmp(a, &mont->N) >= 0) {
@@ -301,9 +301,9 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   BN_init(&blinding_factor);
 
   if (!BN_rand_range_ex(&blinding_factor, &mont->N, rng) ||
-      !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
+      !BN_mod_mul_mont(out, &blinding_factor, a, mont) ||
       !BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N) ||
-      !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
+      !BN_mod_mul_mont(out, &blinding_factor, out, mont)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;
   }

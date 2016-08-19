@@ -413,7 +413,7 @@ OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive,
  * failure was caused by |a| having no inverse mod |n| then |*out_no_inverse|
  * will be set to one; otherwise it will be set to zero. */
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                           const BN_MONT_CTX *mont, RAND *rng, BN_CTX *ctx);
+                           const BN_MONT_CTX *mont, RAND *rng);
 
 /* BN_mod_inverse_odd sets |out| equal to |a|^-1, mod |n|. |a| must be
  * non-negative and must be less than |n|. |n| must be odd. This function
@@ -443,11 +443,11 @@ OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
  * returns one on success and zero on error. */
 OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod);
 
-/* BN_to_montgomery sets |ret| equal to |a| in the Montgomery domain. |a| is
- * assumed to be in the range [0, n), where |n| is the Montgomery modulus. It
- * returns one on success or zero on error. */
-OPENSSL_EXPORT int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a,
-                                    const BN_MONT_CTX *mont, BN_CTX *ctx);
+/* BN_to_mont sets |ret| equal to |a| in the Montgomery domain. |a| is assumed
+ * to be in the range [0, n), where |n| is the Montgomery modulus. It returns
+ * one on success or zero on error. */
+OPENSSL_EXPORT int BN_to_mont(BIGNUM *ret, const BIGNUM *a,
+                              const BN_MONT_CTX *mont);
 
 /* BN_from_mont sets |ret| equal to |a| * R^-1, i.e. translates values out of
  * the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
@@ -455,20 +455,17 @@ OPENSSL_EXPORT int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a,
 OPENSSL_EXPORT int BN_from_mont(BIGNUM *ret, const BIGNUM *a,
                                 const BN_MONT_CTX *mont);
 
-/* BN_mod_mul_montgomery set |r| equal to |a| * |b|, in the Montgomery domain.
- * Both |a| and |b| must already be in the Montgomery domain (by
- * |BN_to_montgomery|). In particular, |a| and |b| are assumed to be in the
- * range [0, n), where |n| is the Montgomery modulus. It returns one on success
- * or zero on error. */
-OPENSSL_EXPORT int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a,
-                                         const BIGNUM *b,
-                                         const BN_MONT_CTX *mont, BN_CTX *ctx);
+/* BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain. Both
+ * |a| and |b| must already be in the Montgomery domain (by |BN_to_mont|). In
+ * particular, |a| and |b| are assumed to be in the range [0, n), where |n| is
+ * the Montgomery modulus. It returns one on success or zero on error. */
+OPENSSL_EXPORT int BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                                   const BN_MONT_CTX *mont);
 
 /* BN_reduce_montgomery returns |a % n| in constant-ish time using Montgomery
  * reduction. |a| is assumed to be in the range [0, n**2), where |n| is the
  * Montgomery modulus. It returns one on success or zero on error. */
-int BN_reduce_montgomery(BIGNUM *r, const BIGNUM *a,
-                         const BN_MONT_CTX *mod_mont, BN_CTX *ctx);
+int BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont);
 
 
 /* Exponentiation. */
@@ -479,7 +476,7 @@ OPENSSL_EXPORT int BN_mod_exp_mont_vartime(BIGNUM *r, const BIGNUM *a,
                                            const BN_MONT_CTX *mont);
 
 OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
-                                             const BIGNUM *p, BN_CTX *ctx,
+                                             const BIGNUM *p,
                                              const BN_MONT_CTX *mont);
 
 

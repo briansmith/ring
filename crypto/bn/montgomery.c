@@ -196,9 +196,8 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   return 1;
 }
 
-int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
-                     BN_CTX *ctx) {
-  return BN_mod_mul_montgomery(ret, a, &mont->RR, mont, ctx);
+int BN_to_mont(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont) {
+  return BN_mod_mul_mont(ret, a, &mont->RR, mont);
 }
 
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
@@ -306,11 +305,8 @@ err:
   return ret;
 }
 
-int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                          const BN_MONT_CTX *mont, BN_CTX *ctx) {
-  BIGNUM *tmp;
-  int ret = 0;
-
+int BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                    const BN_MONT_CTX *mont) {
   int num = mont->N.top;
 
   /* bn_mul_mont requires at least four limbs, at least for x86. */
@@ -325,30 +321,25 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     return 1;
   }
 
-  BN_CTX_start(ctx);
-  tmp = BN_CTX_get(ctx);
-  if (tmp == NULL) {
-    goto err;
-  }
+  BIGNUM tmp;
+  BN_init(&tmp);
 
-  if (!BN_mul_no_alias(tmp, a, b)) {
-    goto err;
-  }
+  int ret = 0;
 
-  /* reduce from aRR to aR */
-  if (!BN_from_montgomery_word(r, tmp, mont)) {
+  if (!BN_mul_no_alias(&tmp, a, b) ||
+      !BN_from_montgomery_word(r, &tmp, mont)) {
     goto err;
   }
 
   ret = 1;
 
 err:
-  BN_CTX_end(ctx);
+  BN_free(&tmp);
+
   return ret;
 }
 
-int BN_reduce_montgomery(BIGNUM *r, const BIGNUM *a,
-                         const BN_MONT_CTX *mod_mont, BN_CTX *ctx) {
+int BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont) {
   BIGNUM tmp;
   BN_init(&tmp);
   if (!BN_copy(&tmp, a)) {
@@ -358,8 +349,8 @@ int BN_reduce_montgomery(BIGNUM *r, const BIGNUM *a,
 
   int ret = 0;
 
-  if (!BN_from_montgomery_word(r, &tmp, mod_mont) ||
-      !BN_to_montgomery(r, r, mod_mont, ctx)) {
+  if (!BN_from_montgomery_word(r, &tmp, mont) ||
+      !BN_to_mont(r, r, mont)) {
     goto err;
   }
 

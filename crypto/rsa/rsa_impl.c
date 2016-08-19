@@ -266,8 +266,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
    * reduced mod |p|. */
-  if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_p, ctx) ||
-      !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, ctx, rsa->mont_p)) {
+  if (!BN_reduce_mont(&tmp, &base, rsa->mont_p) ||
+      !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -276,9 +276,9 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |q < q**2 < n < q**3|. Thus, |base| is
    * first reduced mod |q**2| and then reduced mod |q|. */
-  if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_qq, ctx) ||
-      !BN_reduce_montgomery(&tmp, &tmp, rsa->mont_q, ctx) ||
-      !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, ctx, rsa->mont_q)) {
+  if (!BN_reduce_mont(&tmp, &base, rsa->mont_qq) ||
+      !BN_reduce_mont(&tmp, &tmp, rsa->mont_q) ||
+      !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->mont_q)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -296,8 +296,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * multiplication is used purely because it is implemented more efficiently.
    */
   if (!BN_mod_sub_quick(&tmp, &mp, &mq, p) ||
-      !BN_mod_mul_montgomery(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p, ctx) ||
-      !BN_mod_mul_montgomery(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n, ctx) ||
+      !BN_mod_mul_mont(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p) ||
+      !BN_mod_mul_mont(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n) ||
       !BN_add(&r, &tmp, &mq)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -326,7 +326,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     goto err;
   }
 
-  if (!BN_BLINDING_invert(&r, blinding, rsa->mont_n, ctx) ||
+  if (!BN_BLINDING_invert(&r, blinding, rsa->mont_n) ||
       !BN_bn2bin_padded(inout, len, &r)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
