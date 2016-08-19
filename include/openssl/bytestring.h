@@ -125,6 +125,7 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 
 /* Parsing ASN.1 */
 
+/* The following values are tag numbers for UNIVERSAL elements. */
 #define CBS_ASN1_BOOLEAN 0x1
 #define CBS_ASN1_INTEGER 0x2
 #define CBS_ASN1_BITSTRING 0x3
@@ -148,8 +149,27 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 #define CBS_ASN1_UNIVERSALSTRING 0x1c
 #define CBS_ASN1_BMPSTRING 0x1e
 
+/* CBS_ASN1_CONSTRUCTED may be ORed into a tag to toggle the constructed
+ * bit. |CBS| and |CBB| APIs consider the constructed bit to be part of the
+ * tag. */
 #define CBS_ASN1_CONSTRUCTED 0x20
+
+/* The following values specify the constructed bit or tag class and may be ORed
+ * into a tag number to produce the final tag. If none is used, the tag will be
+ * UNIVERSAL.
+ *
+ * Note that although they currently match the DER serialization, consumers must
+ * use these bits rather than make assumptions about the representation. This is
+ * to allow for tag numbers beyond 31 in the future. */
+#define CBS_ASN1_APPLICATION 0x40
 #define CBS_ASN1_CONTEXT_SPECIFIC 0x80
+#define CBS_ASN1_PRIVATE 0xc0
+
+/* CBS_ASN1_CLASS_MASK may be ANDed with a tag to query its class. */
+#define CBS_ASN1_CLASS_MASK 0xc0
+
+/* CBS_ASN1_TAG_NUMBER_MASK may be ANDed with a tag to query its number. */
+#define CBS_ASN1_TAG_NUMBER_MASK 0x1f
 
 /* CBS_get_asn1 sets |*out| to the contents of DER-encoded, ASN.1 element (not
  * including tag and length bytes) and advances |cbs| over it. The ASN.1
@@ -345,7 +365,7 @@ OPENSSL_EXPORT int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents);
  * the object. Passing in |tag| number 31 will return in an error since only
  * single octet identifiers are supported. It returns one on success or zero
  * on error. */
-OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag);
+OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag);
 
 /* CBB_add_bytes appends |len| bytes from |data| to |cbb|. It returns one on
  * success and zero otherwise. */

@@ -327,15 +327,18 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
   return cbb_add_length_prefixed(cbb, out_contents, 3);
 }
 
-int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag) {
-  if ((tag & 0x1f) == 0x1f) {
-    /* Long form identifier octets are not supported. */
+int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
+  if (tag > 0xff ||
+      (tag & 0x1f) == 0x1f) {
+    /* Long form identifier octets are not supported. Further, all current valid
+     * tag serializations are 8 bits. */
     cbb->base->error = 1;
     return 0;
   }
 
   if (!CBB_flush(cbb) ||
-      !CBB_add_u8(cbb, tag)) {
+      /* |tag|'s representation matches the DER encoding. */
+      !CBB_add_u8(cbb, (uint8_t)tag)) {
     return 0;
   }
 
