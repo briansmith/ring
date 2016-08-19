@@ -132,7 +132,7 @@ extern "C" {
 #endif
 
 
-/* BN provides support for working with arbitary sized integers. For example,
+/* BN provides support for working with arbitrary sized integers. For example,
  * although the largest integer supported by the compiler might be 64 bits, BN
  * will allow you to work with numbers until you run out of memory. */
 
