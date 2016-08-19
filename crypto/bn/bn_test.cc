@@ -426,7 +426,7 @@ static bool TestModMul(FileTest *t, BN_CTX *ctx) {
         !BN_to_montgomery(b_tmp.get(), b_tmp.get(), mont.get(), ctx) ||
         !BN_mod_mul_montgomery(ret.get(), a_tmp.get(), b_tmp.get(), mont.get(),
                                ctx) ||
-        !BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx) ||
+        !BN_from_mont(ret.get(), ret.get(), mont.get()) ||
         !ExpectBIGNUMsEqual(t, "A * B (mod M) (Montgomery)",
                             mod_mul.get(), ret.get())) {
       return false;

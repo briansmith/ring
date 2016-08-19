@@ -287,22 +287,21 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   return 1;
 }
 
-int BN_from_montgomery(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont,
-                       BN_CTX *ctx) {
-  int ret = 0;
-  BIGNUM *t;
+int BN_from_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont) {
+  BIGNUM tmp;
+  BN_init(&tmp);
 
-  BN_CTX_start(ctx);
-  t = BN_CTX_get(ctx);
-  if (t == NULL ||
-      !BN_copy(t, a)) {
+  int ret = 0;
+
+  if (!BN_copy(&tmp, a) ||
+      !BN_from_montgomery_word(r, &tmp, mont)) {
     goto err;
   }
 
-  ret = BN_from_montgomery_word(r, t, mont);
+  ret = 1;
 
 err:
-  BN_CTX_end(ctx);
+  BN_free(&tmp);
 
   return ret;
 }

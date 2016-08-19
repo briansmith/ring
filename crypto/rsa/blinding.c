@@ -230,7 +230,7 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng,
 
     /* |BN_from_montgomery| + |BN_mod_inverse_blinded| is equivalent to, but
      * more efficient than, |BN_mod_inverse_blinded| + |BN_to_montgomery|. */
-    if (!BN_from_montgomery(b->Ai, b->A, rsa->mont_n, ctx)) {
+    if (!BN_from_mont(b->Ai, b->A, rsa->mont_n)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }

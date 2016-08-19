@@ -322,7 +322,7 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
   }
 
-  if (!BN_from_montgomery(rr, r, mont, ctx)) {
+  if (!BN_from_mont(rr, r, mont)) {
     goto err;
   }
   ret = 1;
@@ -747,7 +747,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
 
   /* Convert the final result from montgomery to standard format */
-  if (!BN_from_montgomery(rr, &tmp, mont, ctx)) {
+  if (!BN_from_mont(rr, &tmp, mont)) {
     goto err;
   }
   ret = 1;
