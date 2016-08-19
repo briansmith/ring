@@ -228,6 +228,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
 uint64_t bn_mont_n0(const BIGNUM *n);
+int bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n);
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 #define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
