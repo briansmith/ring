@@ -6796,7 +6796,10 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags:           []string{"-enable-all-curves"},
+			flags: []string{
+				"-enable-all-curves",
+				"-expect-curve-id", strconv.Itoa(int(curve.id)),
+			},
 			expectedCurveID: curve.id,
 		})
 		testCases = append(testCases, testCase{
@@ -6806,7 +6809,10 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags:           []string{"-enable-all-curves"},
+			flags: []string{
+				"-enable-all-curves",
+				"-expect-curve-id", strconv.Itoa(int(curve.id)),
+			},
 			expectedCurveID: curve.id,
 		})
 		testCases = append(testCases, testCase{
@@ -6817,7 +6823,10 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags:           []string{"-enable-all-curves"},
+			flags: []string{
+				"-enable-all-curves",
+				"-expect-curve-id", strconv.Itoa(int(curve.id)),
+			},
 			expectedCurveID: curve.id,
 		})
 		testCases = append(testCases, testCase{
@@ -6828,7 +6837,10 @@ func addCurveTests() {
 				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				CurvePreferences: []CurveID{curve.id},
 			},
-			flags:           []string{"-enable-all-curves"},
+			flags: []string{
+				"-enable-all-curves",
+				"-expect-curve-id", strconv.Itoa(int(curve.id)),
+			},
 			expectedCurveID: curve.id,
 		})
 	}
@@ -7066,9 +7078,9 @@ func addCECPQ1Tests() {
 	})
 }
 
-func addKeyExchangeInfoTests() {
+func addDHEGroupSizeTests() {
 	testCases = append(testCases, testCase{
-		name: "KeyExchangeInfo-DHE-Client",
+		name: "DHEGroupSize-Client",
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
@@ -7083,33 +7095,13 @@ func addKeyExchangeInfoTests() {
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "KeyExchangeInfo-DHE-Server",
+		name:     "DHEGroupSize-Server",
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
 		// bssl_shim as a server configures a 2048-bit DHE group.
 		flags: []string{"-expect-dhe-group-size", "2048"},
-	})
-
-	testCases = append(testCases, testCase{
-		name: "KeyExchangeInfo-ECDHE-Client",
-		config: Config{
-			MaxVersion:       VersionTLS12,
-			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			CurvePreferences: []CurveID{CurveX25519},
-		},
-		flags: []string{"-expect-curve-id", "29", "-enable-all-curves"},
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "KeyExchangeInfo-ECDHE-Server",
-		config: Config{
-			MaxVersion:       VersionTLS12,
-			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			CurvePreferences: []CurveID{CurveX25519},
-		},
-		flags: []string{"-expect-curve-id", "29", "-enable-all-curves"},
 	})
 }
 
@@ -8200,7 +8192,7 @@ func main() {
 	addRSAClientKeyExchangeTests()
 	addCurveTests()
 	addCECPQ1Tests()
-	addKeyExchangeInfoTests()
+	addDHEGroupSizeTests()
 	addTLS13RecordTests()
 	addAllStateMachineCoverageTests()
 	addChangeCipherSpecTests()

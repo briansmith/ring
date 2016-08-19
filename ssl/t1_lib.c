@@ -2145,8 +2145,8 @@ int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents) {
   CBS peer_key;
-  uint16_t group;
-  if (!CBS_get_u16(contents, &group) ||
+  uint16_t group_id;
+  if (!CBS_get_u16(contents, &group_id) ||
       !CBS_get_u16_length_prefixed(contents, &peer_key) ||
       CBS_len(contents) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -2155,7 +2155,7 @@ int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
 
   SSL_ECDH_CTX *group_ctx = NULL;
   for (size_t i = 0; i < ssl->s3->hs->groups_len; i++) {
-    if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->groups[i]) == group) {
+    if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->groups[i]) == group_id) {
       group_ctx = &ssl->s3->hs->groups[i];
       break;
     }
@@ -2173,6 +2173,7 @@ int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
     return 0;
   }
 
+  ssl->s3->new_session->key_exchange_info = group_id;
   ssl_handshake_clear_groups(ssl->s3->hs);
   return 1;
 }
@@ -2242,6 +2243,7 @@ int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out) {
     return 0;
   }
 
+  ssl->s3->new_session->key_exchange_info = group_id;
   return 1;
 }
 
