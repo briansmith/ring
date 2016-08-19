@@ -435,7 +435,7 @@ static bool TestModMul(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestModExp(FileTest *t, BN_CTX *ctx) {
+static bool TestModExp(FileTest *t, BN_CTX *) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM e = GetBIGNUM(t, "E");
   ScopedBIGNUM m = GetBIGNUM(t, "M");
@@ -456,7 +456,7 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
     // requirement simply because we haven't gotten around to it yet.
     int expected_ok = BN_cmp(a.get(), m.get()) < 0 || BN_is_zero(e.get());
 
-    int ok = BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(), ctx,
+    int ok = BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(),
                                      nullptr);
     if (ok != expected_ok) {
       return false;
@@ -474,7 +474,7 @@ static bool TestModExp(FileTest *t, BN_CTX *ctx) {
       return false;
     }
 
-    ok = BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(), ctx,
+    ok = BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(),
                                  mont.get());
     if (ok != expected_ok) {
       return false;
@@ -738,7 +738,7 @@ static bool TestNegativeZero(BN_CTX *) {
   return true;
 }
 
-static bool TestBadModulus(BN_CTX *ctx) {
+static bool TestBadModulus(BN_CTX *) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM zero(BN_new());
@@ -756,7 +756,7 @@ static bool TestBadModulus(BN_CTX *ctx) {
   ERR_clear_error();
 
   if (BN_mod_exp_mont_vartime(a.get(), BN_value_one(), BN_value_one(),
-                              zero.get(), ctx, nullptr)) {
+                              zero.get(), nullptr)) {
     fprintf(stderr, "BN_mod_exp_mont_vartime with zero modulus unexpectedly "
             "succeeded.\n");
     return 0;
@@ -784,7 +784,7 @@ static bool TestBadModulus(BN_CTX *ctx) {
   ERR_clear_error();
 
   if (BN_mod_exp_mont_vartime(a.get(), BN_value_one(), BN_value_one(), b.get(),
-                              ctx, nullptr)) {
+                              nullptr)) {
     fprintf(stderr, "BN_mod_exp_mont_vartime with even modulus unexpectedly "
             "succeeded!\n");
     return 0;
@@ -804,7 +804,7 @@ static bool TestExpModZero(RAND *rng, BN_CTX *) {
 
   ScopedBN_MONT_CTX one_mont(BN_MONT_CTX_new());
   if (!BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(), BN_value_one(),
-                               nullptr, nullptr) ||
+                               nullptr) ||
       !BN_is_zero(r.get()) ||
       !one_mont ||
       !BN_MONT_CTX_set(one_mont.get(), BN_value_one()) ||
@@ -817,7 +817,7 @@ static bool TestExpModZero(RAND *rng, BN_CTX *) {
   return true;
 }
 
-static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
+static bool TestExpModRejectUnreduced(BN_CTX *) {
   ScopedBIGNUM r(BN_new());
   if (!r) {
     return false;
@@ -851,7 +851,7 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
 
         if (base_value >= mod_value &&
             BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(), mod.get(),
-                                    ctx, nullptr)) {
+                                    nullptr)) {
           fprintf(stderr, "BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
                   (int)base_value, (int)exp_value, (int)mod_value);
           return false;
@@ -868,7 +868,7 @@ static bool TestExpModRejectUnreduced(BN_CTX *ctx) {
         BN_set_negative(base.get(), 1);
 
         if (BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(), mod.get(),
-                                    ctx, nullptr)) {
+                                    nullptr)) {
           fprintf(stderr, "BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
                   -(int)base_value, (int)exp_value, (int)mod_value);
           return false;

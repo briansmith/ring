@@ -171,13 +171,11 @@ int bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 		 (b) >  23 ? 3 : 1)
 
 int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                            const BIGNUM *m, BN_CTX *ctx,
-                            const BN_MONT_CTX *mont) {
-  int i, j, bits, ret = 0, wstart, window;
+                            const BIGNUM *m, const BN_MONT_CTX *mont) {
+  int j, bits, ret = 0, wstart, window;
   int start = 1;
-  BIGNUM *d, *r;
-  /* Table of variables obtained from 'ctx' */
   BIGNUM *val[TABLE_SIZE];
+  size_t val_len = 0;
   BN_MONT_CTX *new_mont = NULL;
 
   if (!BN_is_odd(m)) {
@@ -204,13 +202,17 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     return 0;
   }
 
-  BN_CTX_start(ctx);
-  d = BN_CTX_get(ctx);
-  r = BN_CTX_get(ctx);
-  val[0] = BN_CTX_get(ctx);
-  if (!d || !r || !val[0]) {
+  BIGNUM d;
+  BN_init(&d);
+
+  BIGNUM r;
+  BN_init(&r);
+
+  val[0] = BN_new();
+  if (val[0] == NULL) {
     goto err;
   }
+  ++val_len;
 
   /* Allocate a montgomery context if it was not supplied by the caller. */
   if (mont == NULL) {
@@ -232,13 +234,17 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   window = BN_window_bits_for_exponent_size(bits);
   if (window > 1) {
-    if (!BN_mod_mul_mont(d, val[0], val[0], mont)) {
+    if (!BN_mod_mul_mont(&d, val[0], val[0], mont)) {
       goto err; /* 2 */
     }
     j = 1 << (window - 1);
-    for (i = 1; i < j; i++) {
-      if (((val[i] = BN_CTX_get(ctx)) == NULL) ||
-          !BN_mod_mul_mont(val[i], val[i - 1], d, mont)) {
+    for (int i = 1; i < j; i++) {
+      val[i] = BN_new();
+      if (val[i] == NULL) {
+        goto err;
+      }
+      ++val_len;
+      if (!BN_mod_mul_mont(val[i], val[i - 1], &d, mont)) {
         goto err;
       }
     }
@@ -251,19 +257,19 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   j = m->top; /* borrow j */
   if (m->d[j - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    if (bn_wexpand(r, j) == NULL) {
+    if (bn_wexpand(&r, j) == NULL) {
       goto err;
     }
     /* 2^(top*BN_BITS2) - m */
-    r->d[0] = (0 - m->d[0]) & BN_MASK2;
-    for (i = 1; i < j; i++) {
-      r->d[i] = (~m->d[i]) & BN_MASK2;
+    r.d[0] = (0 - m->d[0]) & BN_MASK2;
+    for (int i = 1; i < j; i++) {
+      r.d[i] = (~m->d[i]) & BN_MASK2;
     }
-    r->top = j;
+    r.top = j;
     /* Upper words will be zero if the corresponding words of 'm'
-     * were 0xfff[...], so decrement r->top accordingly. */
-    bn_correct_top(r);
-  } else if (!BN_to_mont(r, BN_value_one(), mont)) {
+     * were 0xfff[...], so decrement r.top accordingly. */
+    bn_correct_top(&r);
+  } else if (!BN_to_mont(&r, BN_value_one(), mont)) {
     goto err;
   }
 
@@ -272,7 +278,7 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     int wend; /* The bottom bit of the window */
 
     if (BN_is_bit_set(p, wstart) == 0) {
-      if (!start && !BN_mod_mul_mont(r, r, r, mont)) {
+      if (!start && !BN_mod_mul_mont(&r, &r, &r, mont)) {
         goto err;
       }
       if (wstart == 0) {
@@ -287,7 +293,7 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
      * before the end of the window */
     wvalue = 1;
     wend = 0;
-    for (i = 1; i < window; i++) {
+    for (int i = 1; i < window; i++) {
       if (wstart - i < 0) {
         break;
       }
@@ -302,15 +308,15 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     j = wend + 1;
     /* add the 'bytes above' */
     if (!start) {
-      for (i = 0; i < j; i++) {
-        if (!BN_mod_mul_mont(r, r, r, mont)) {
+      for (int i = 0; i < j; i++) {
+        if (!BN_mod_mul_mont(&r, &r, &r, mont)) {
           goto err;
         }
       }
     }
 
     /* wvalue will be an odd number < 2^window */
-    if (!BN_mod_mul_mont(r, r, val[wvalue >> 1], mont)) {
+    if (!BN_mod_mul_mont(&r, &r, val[wvalue >> 1], mont)) {
       goto err;
     }
 
@@ -322,14 +328,18 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
   }
 
-  if (!BN_from_mont(rr, r, mont)) {
+  if (!BN_from_mont(rr, &r, mont)) {
     goto err;
   }
   ret = 1;
 
 err:
   BN_MONT_CTX_free(new_mont);
-  BN_CTX_end(ctx);
+  for (size_t i = 0; i < val_len; ++i) {
+    BN_free(val[i]);
+  }
+  BN_free(&r);
+  BN_free(&d);
   return ret;
 }
 

@@ -157,8 +157,6 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
   BIGNUM result;
   BN_init(&result);
 
-  BN_CTX *ctx = NULL;
-
   int ret = 0;
 
   if (BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
@@ -193,12 +191,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    goto err;
-  }
-
-  if (!BN_mod_exp_mont_vartime(&result, &f, &e, &n, ctx, NULL) ||
+  if (!BN_mod_exp_mont_vartime(&result, &f, &e, &n, NULL) ||
       !BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -211,7 +204,6 @@ err:
   BN_free(&e);
   BN_free(&f);
   BN_free(&result);
-  BN_CTX_free(ctx);
   return ret;
 }
 
@@ -226,11 +218,6 @@ err:
  */
 int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
                               BN_BLINDING *blinding, RAND *rng) {
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
-
   int ret = 0;
 
   BIGNUM base, r, tmp, mp, mq, vrfy;
@@ -251,7 +238,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     goto err;
   }
 
-  if (!BN_BLINDING_convert(&base, blinding, rsa, rng, ctx)) {
+  if (!BN_BLINDING_convert(&base, blinding, rsa, rng)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -315,7 +302,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * Note that this is the only validation of |e| that is done other than
    * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
    * doesn't validate its mathematical relations to |d| or |p| or |q|. */
-  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, &rsa->mont_n->N, ctx,
+  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, &rsa->mont_n->N,
                                rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -335,7 +322,6 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
   ret = 1;
 
 err:
-  BN_CTX_free(ctx);
   BN_free(&r);
   BN_free(&tmp);
   BN_free(&mp);
