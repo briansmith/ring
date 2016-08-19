@@ -315,8 +315,7 @@ OPENSSL_EXPORT int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
  * towards zero; thus if |numerator| is negative, the remainder will be zero or
  * negative. It returns one on success or zero on error. */
 OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
-                          const BIGNUM *numerator, const BIGNUM *divisor,
-                          BN_CTX *ctx);
+                          const BIGNUM *numerator, const BIGNUM *divisor);
 
 
 /* Comparison functions */
@@ -379,14 +378,14 @@ OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 /* Modulo arithmetic. */
 
 /* BN_mod is a helper macro that calls |BN_div| and discards the quotient. */
-#define BN_mod(rem, numerator, divisor, ctx) \
-  BN_div(NULL, (rem), (numerator), (divisor), (ctx))
+#define BN_mod(rem, numerator, divisor) \
+  BN_div(NULL, (rem), (numerator), (divisor))
 
 /* BN_nnmod is a non-negative modulo function. It acts like |BN_mod|, but 0 <=
  * |rem| < |divisor| is always true. It returns one on success and zero on
  * error. */
 OPENSSL_EXPORT int BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
-                            const BIGNUM *divisor, BN_CTX *ctx);
+                            const BIGNUM *divisor);
 
 /* BN_mod_sub_quick acts like |BN_mod_sub| but requires that |a| and |b| be
  * non-negative and less than |m|. */
@@ -427,7 +426,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
  * |n| then |*out_no_inverse| will be set to one; otherwise it will be set to
  * zero. */
 int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                       const BIGNUM *n, BN_CTX *ctx);
+                       const BIGNUM *n);
 
 
 /* Montgomery arithmetic. */
@@ -443,8 +442,7 @@ OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 
 /* BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|. It
  * returns one on success and zero on error. */
-OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
-                                   BN_CTX *ctx);
+OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod);
 
 /* BN_to_montgomery sets |ret| equal to |a| in the Montgomery domain. |a| is
  * assumed to be in the range [0, n), where |n| is the Montgomery modulus. It

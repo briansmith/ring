@@ -147,7 +147,7 @@ OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
                        sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
-int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
+int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   if (BN_is_zero(mod)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
@@ -189,7 +189,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   unsigned lgBigR = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
   BN_zero(&mont->RR);
   if (!BN_set_bit(&mont->RR, lgBigR * 2) ||
-      !BN_mod(&mont->RR, &mont->RR, &mont->N, ctx)) {
+      !BN_mod(&mont->RR, &mont->RR, &mont->N)) {
     return 0;
   }
 

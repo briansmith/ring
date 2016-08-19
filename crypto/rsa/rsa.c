@@ -103,12 +103,12 @@ int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
       rsa->mont_qq == NULL ||
       rsa->qmn_mont == NULL ||
       rsa->iqmp_mont == NULL ||
-      !BN_MONT_CTX_set(rsa->mont_n, n, ctx) ||
-      !BN_MONT_CTX_set(rsa->mont_p, p, ctx) ||
-      !BN_MONT_CTX_set(rsa->mont_q, q, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_n, n) ||
+      !BN_MONT_CTX_set(rsa->mont_p, p) ||
+      !BN_MONT_CTX_set(rsa->mont_q, q) ||
       !BN_mod_mul_montgomery(&qq, q, q, rsa->mont_n, ctx) ||
       !BN_to_montgomery(&qq, &qq, rsa->mont_n, ctx) ||
-      !BN_MONT_CTX_set(rsa->mont_qq, &qq, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
       !BN_to_montgomery(rsa->qmn_mont, q, rsa->mont_n, ctx) ||
       /* Assumes p > q. */
       !BN_to_montgomery(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
@@ -182,10 +182,10 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d, BN_CTX *ctx) {
 
   if (/* dmp1 = d mod (p-1) */
       !BN_sub(&pm1, &key->mont_p->N, BN_value_one()) ||
-      !BN_mod(&dmp1, d, &pm1, ctx) ||
+      !BN_mod(&dmp1, d, &pm1) ||
       /* dmq1 = d mod (q-1) */
       !BN_sub(&qm1, &key->mont_q->N, BN_value_one()) ||
-      !BN_mod(&dmq1, d, &qm1, ctx)) {
+      !BN_mod(&dmq1, d, &qm1)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }

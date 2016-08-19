@@ -215,7 +215,7 @@ int BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   /* Allocate a montgomery context if it was not supplied by the caller. */
   if (mont == NULL) {
     new_mont = BN_MONT_CTX_new();
-    if (new_mont == NULL || !BN_MONT_CTX_set(new_mont, m, ctx)) {
+    if (new_mont == NULL || !BN_MONT_CTX_set(new_mont, m)) {
       goto err;
     }
     mont = new_mont;

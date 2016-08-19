@@ -114,7 +114,7 @@
 
 
 int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                       const BIGNUM *n, BN_CTX *ctx) {
+                       const BIGNUM *n) {
   *out_no_inverse = 0;
 
   if (!BN_is_odd(n)) {
@@ -127,26 +127,28 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     return 0;
   }
 
-  BIGNUM *A, *B, *X, *Y;
+  BIGNUM A;
+  BN_init(&A);
+
+  BIGNUM B;
+  BN_init(&B);
+
+  BIGNUM X;
+  BN_init(&X);
+
+  BIGNUM Y;
+  BN_init(&Y);
+
   int ret = 0;
   int sign;
 
-  BN_CTX_start(ctx);
-  A = BN_CTX_get(ctx);
-  B = BN_CTX_get(ctx);
-  X = BN_CTX_get(ctx);
-  Y = BN_CTX_get(ctx);
-  if (Y == NULL) {
-    goto err;
-  }
-
   BIGNUM *R = out;
 
-  BN_zero(Y);
-  if (!BN_one(X) || BN_copy(B, a) == NULL || BN_copy(A, n) == NULL) {
+  BN_zero(&Y);
+  if (!BN_one(&X) || BN_copy(&B, a) == NULL || BN_copy(&A, n) == NULL) {
     goto err;
   }
-  A->neg = 0;
+  A.neg = 0;
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that
    *
@@ -160,7 +162,7 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
    * bits on 32-bit systems, but much more on 64-bit systems) */
   int shift;
 
-  while (!BN_is_zero(B)) {
+  while (!BN_is_zero(&B)) {
     /*      0 < B < |n|,
      *      0 < A <= |n|,
      * (1) -sign*X*a  ==  B   (mod |n|),
@@ -170,44 +172,44 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
      * and divide  X  by the same value mod |n|.
      * When we're done, (1) still holds. */
     shift = 0;
-    while (!BN_is_bit_set(B, shift)) {
+    while (!BN_is_bit_set(&B, shift)) {
       /* note that 0 < B */
       shift++;
 
-      if (BN_is_odd(X)) {
-        if (!BN_uadd(X, X, n)) {
+      if (BN_is_odd(&X)) {
+        if (!BN_uadd(&X, &X, n)) {
           goto err;
         }
       }
       /* now X is even, so we can easily divide it by two */
-      if (!BN_rshift1(X, X)) {
+      if (!BN_rshift1(&X, &X)) {
         goto err;
       }
     }
     if (shift > 0) {
-      if (!BN_rshift(B, B, shift)) {
+      if (!BN_rshift(&B, &B, shift)) {
         goto err;
       }
     }
 
     /* Same for A and Y. Afterwards, (2) still holds. */
     shift = 0;
-    while (!BN_is_bit_set(A, shift)) {
+    while (!BN_is_bit_set(&A, shift)) {
       /* note that 0 < A */
       shift++;
 
-      if (BN_is_odd(Y)) {
-        if (!BN_uadd(Y, Y, n)) {
+      if (BN_is_odd(&Y)) {
+        if (!BN_uadd(&Y, &Y, n)) {
           goto err;
         }
       }
       /* now Y is even */
-      if (!BN_rshift1(Y, Y)) {
+      if (!BN_rshift1(&Y, &Y)) {
         goto err;
       }
     }
     if (shift > 0) {
-      if (!BN_rshift(A, A, shift)) {
+      if (!BN_rshift(&A, &A, shift)) {
         goto err;
       }
     }
@@ -222,29 +224,29 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
      * (2)  sign*Y*a  ==  A   (mod |n|),
      *
      * and that either  A  or  B  is even in the next iteration. */
-    if (BN_ucmp(B, A) >= 0) {
+    if (BN_ucmp(&B, &A) >= 0) {
       /* -sign*(X + Y)*a == B - A  (mod |n|) */
-      if (!BN_uadd(X, X, Y)) {
+      if (!BN_uadd(&X, &X, &Y)) {
         goto err;
       }
       /* NB: we could use BN_mod_add_quick(X, X, Y, n), but that
        * actually makes the algorithm slower */
-      if (!BN_usub(B, B, A)) {
+      if (!BN_usub(&B, &B, &A)) {
         goto err;
       }
     } else {
       /*  sign*(X + Y)*a == A - B  (mod |n|) */
-      if (!BN_uadd(Y, Y, X)) {
+      if (!BN_uadd(&Y, &Y, &X)) {
         goto err;
       }
       /* as above, BN_mod_add_quick(Y, Y, X, n) would slow things down */
-      if (!BN_usub(A, A, B)) {
+      if (!BN_usub(&A, &A, &B)) {
         goto err;
       }
     }
   }
 
-  if (!BN_is_one(A)) {
+  if (!BN_is_one(&A)) {
     *out_no_inverse = 1;
     OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
     goto err;
@@ -257,19 +259,19 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
    * where  Y  is non-negative. */
 
   if (sign < 0) {
-    if (!BN_sub(Y, n, Y)) {
+    if (!BN_sub(&Y, n, &Y)) {
       goto err;
     }
   }
   /* Now  Y*a  ==  A  (mod |n|).  */
 
   /* Y*a == 1  (mod |n|) */
-  if (!Y->neg && BN_ucmp(Y, n) < 0) {
-    if (!BN_copy(R, Y)) {
+  if (!Y.neg && BN_ucmp(&Y, n) < 0) {
+    if (!BN_copy(R, &Y)) {
       goto err;
     }
   } else {
-    if (!BN_nnmod(R, Y, n, ctx)) {
+    if (!BN_nnmod(R, &Y, n)) {
       goto err;
     }
   }
@@ -277,7 +279,11 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   ret = 1;
 
 err:
-  BN_CTX_end(ctx);
+  BN_free(&A);
+  BN_free(&B);
+  BN_free(&X);
+  BN_free(&Y);
+
   return ret;
 }
 
@@ -296,7 +302,7 @@ int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 
   if (!BN_rand_range_ex(&blinding_factor, &mont->N, rng) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, a, mont, ctx) ||
-      !BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N, ctx) ||
+      !BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N) ||
       !BN_mod_mul_montgomery(out, &blinding_factor, out, mont, ctx)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
     goto err;
