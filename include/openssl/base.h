@@ -113,7 +113,6 @@ extern "C" {
  * items. */
 #define OPENSSL_EXPORT
 
-typedef struct bignum_ctx BN_CTX;
 typedef struct bignum_st BIGNUM;
 typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;

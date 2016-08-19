@@ -45,7 +45,6 @@ struct OpenSSLDeleter {
         typedef std::unique_ptr<T, OpenSSLDeleter<T, func>> Name
 
 SCOPED_OPENSSL_TYPE(ScopedBIGNUM, BIGNUM, BN_free);
-SCOPED_OPENSSL_TYPE(ScopedBN_CTX, BN_CTX, BN_CTX_free);
 SCOPED_OPENSSL_TYPE(ScopedBN_MONT_CTX, BN_MONT_CTX, BN_MONT_CTX_free);
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

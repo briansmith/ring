@@ -152,7 +152,7 @@ static bool ExpectBIGNUMsEqual(FileTest *t, const char *operation,
   return false;
 }
 
-static bool TestSum(FileTest *t, BN_CTX *) {
+static bool TestSum(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM sum = GetBIGNUM(t, "Sum");
@@ -238,7 +238,7 @@ static bool TestSum(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestLShift1(FileTest *t, BN_CTX *) {
+static bool TestLShift1(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM lshift1 = GetBIGNUM(t, "LShift1");
   ScopedBIGNUM zero(BN_new());
@@ -279,7 +279,7 @@ static bool TestLShift1(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestLShift(FileTest *t, BN_CTX *) {
+static bool TestLShift(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM lshift = GetBIGNUM(t, "LShift");
   int n = 0;
@@ -299,7 +299,7 @@ static bool TestLShift(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestRShift(FileTest *t, BN_CTX *) {
+static bool TestRShift(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM rshift = GetBIGNUM(t, "RShift");
   int n = 0;
@@ -317,7 +317,7 @@ static bool TestRShift(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestSquare(FileTest *t, BN_CTX *) {
+static bool TestSquare(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM square = GetBIGNUM(t, "Square");
   ScopedBIGNUM zero(BN_new());
@@ -340,7 +340,7 @@ static bool TestSquare(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestProduct(FileTest *t, BN_CTX *) {
+static bool TestProduct(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM product = GetBIGNUM(t, "Product");
@@ -367,7 +367,7 @@ static bool TestProduct(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestQuotient(FileTest *t, BN_CTX *) {
+static bool TestQuotient(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM quotient = GetBIGNUM(t, "Quotient");
@@ -404,7 +404,7 @@ static bool TestQuotient(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestModMul(FileTest *t, BN_CTX *) {
+static bool TestModMul(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM b = GetBIGNUM(t, "B");
   ScopedBIGNUM m = GetBIGNUM(t, "M");
@@ -435,7 +435,7 @@ static bool TestModMul(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestModExp(FileTest *t, BN_CTX *) {
+static bool TestModExp(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM e = GetBIGNUM(t, "E");
   ScopedBIGNUM m = GetBIGNUM(t, "M");
@@ -495,7 +495,7 @@ static bool TestModExp(FileTest *t, BN_CTX *) {
   return true;
 }
 
-static bool TestModInv(FileTest *t, BN_CTX *) {
+static bool TestModInv(FileTest *t) {
   ScopedBIGNUM a = GetBIGNUM(t, "A");
   ScopedBIGNUM m = GetBIGNUM(t, "M");
   ScopedBIGNUM mod_inv = GetBIGNUM(t, "ModInv");
@@ -517,7 +517,7 @@ static bool TestModInv(FileTest *t, BN_CTX *) {
 
 struct Test {
   const char *name;
-  bool (*func)(FileTest *t, BN_CTX *ctx);
+  bool (*func)(FileTest *t);
 };
 
 static const Test kTests[] = {
@@ -533,13 +533,12 @@ static const Test kTests[] = {
     {"ModInv", TestModInv},
 };
 
-static bool RunTest(FileTest *t, void *arg) {
-  BN_CTX *ctx = reinterpret_cast<BN_CTX *>(arg);
+static bool RunTest(FileTest *t, void *) {
   for (const Test &test : kTests) {
     if (t->GetType() != test.name) {
       continue;
     }
-    return test.func(t, ctx);
+    return test.func(t);
   }
   t->PrintLine("Unknown test type: %s", t->GetType().c_str());
   return false;
@@ -674,7 +673,7 @@ static bool TestRand(RAND *rng) {
   return true;
 }
 
-static bool TestNegativeZero(BN_CTX *) {
+static bool TestNegativeZero() {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -738,7 +737,7 @@ static bool TestNegativeZero(BN_CTX *) {
   return true;
 }
 
-static bool TestBadModulus(BN_CTX *) {
+static bool TestBadModulus() {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM zero(BN_new());
@@ -795,7 +794,7 @@ static bool TestBadModulus(BN_CTX *) {
 }
 
 // TestExpModZero tests that 1**0 mod 1 == 0.
-static bool TestExpModZero(RAND *rng, BN_CTX *) {
+static bool TestExpModZero(RAND *rng) {
   ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
   if (!zero || !a || !r || !BN_rand(a.get(), 1024, rng)) {
     return false;
@@ -817,7 +816,7 @@ static bool TestExpModZero(RAND *rng, BN_CTX *) {
   return true;
 }
 
-static bool TestExpModRejectUnreduced(BN_CTX *) {
+static bool TestExpModRejectUnreduced() {
   ScopedBIGNUM r(BN_new());
   if (!r) {
     return false;
@@ -886,7 +885,7 @@ static bool TestExpModRejectUnreduced(BN_CTX *) {
   return true;
 }
 
-static bool TestModInvRejectUnreduced(RAND *rng, BN_CTX *) {
+static bool TestModInvRejectUnreduced(RAND *rng) {
   ScopedBIGNUM r(BN_new());
   if (!r) {
     return false;
@@ -1019,22 +1018,17 @@ static bool TestCmpWord() {
 }
 
 extern "C" int bssl_bn_test_main(RAND *rng) {
-  ScopedBN_CTX ctx(BN_CTX_new());
-  if (!ctx) {
-    return 1;
-  }
-
   if (!TestBN2BinPadded(rng) ||
       !TestHex2BN() ||
       !TestRand(rng) ||
-      !TestNegativeZero(ctx.get()) ||
-      !TestBadModulus(ctx.get()) ||
-      !TestExpModZero(rng, ctx.get()) ||
-      !TestExpModRejectUnreduced(ctx.get()) ||
-      !TestModInvRejectUnreduced(rng, ctx.get()) ||
+      !TestNegativeZero() ||
+      !TestBadModulus() ||
+      !TestExpModZero(rng) ||
+      !TestExpModRejectUnreduced() ||
+      !TestModInvRejectUnreduced(rng) ||
       !TestCmpWord()) {
     return 1;
   }
 
-  return FileTestMain(RunTest, ctx.get(), "crypto/bn/bn_tests.txt");
+  return FileTestMain(RunTest, nullptr, "crypto/bn/bn_tests.txt");
 }

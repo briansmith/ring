@@ -242,43 +242,6 @@ OPENSSL_EXPORT void bn_correct_top(BIGNUM *bn);
 OPENSSL_EXPORT BIGNUM *bn_wexpand(BIGNUM *bn, size_t words);
 
 
-/* BIGNUM pools.
- *
- * Certain BIGNUM operations need to use many temporary variables and
- * allocating and freeing them can be quite slow. Thus such opertions typically
- * take a |BN_CTX| parameter, which contains a pool of |BIGNUMs|. The |ctx|
- * argument to a public function may be NULL, in which case a local |BN_CTX|
- * will be created just for the lifetime of that call.
- *
- * A function must call |BN_CTX_start| first. Then, |BN_CTX_get| may be called
- * repeatedly to obtain temporary |BIGNUM|s. All |BN_CTX_get| calls must be made
- * before calling any other functions that use the |ctx| as an argument.
- *
- * Finally, |BN_CTX_end| must be called before returning from the function.
- * When |BN_CTX_end| is called, the |BIGNUM| pointers obtained from
- * |BN_CTX_get| become invalid. */
-
-/* BN_CTX_new returns a new, empty BN_CTX or NULL on allocation failure. */
-OPENSSL_EXPORT BN_CTX *BN_CTX_new(void);
-
-/* BN_CTX_free frees all BIGNUMs contained in |ctx| and then frees |ctx|
- * itself. */
-OPENSSL_EXPORT void BN_CTX_free(BN_CTX *ctx);
-
-/* BN_CTX_start "pushes" a new entry onto the |ctx| stack and allows future
- * calls to |BN_CTX_get|. */
-OPENSSL_EXPORT void BN_CTX_start(BN_CTX *ctx);
-
-/* BN_CTX_get returns a new |BIGNUM|, or NULL on allocation failure. Once
- * |BN_CTX_get| has returned NULL, all future calls will also return NULL until
- * |BN_CTX_end| is called. */
-OPENSSL_EXPORT BIGNUM *BN_CTX_get(BN_CTX *ctx);
-
-/* BN_CTX_end invalidates all |BIGNUM|s returned from |BN_CTX_get| since the
- * matching |BN_CTX_start| call. */
-OPENSSL_EXPORT void BN_CTX_end(BN_CTX *ctx);
-
-
 /* Simple arithmetic */
 
 /* BN_add sets |r| = |a| + |b|, where |r| may be the same pointer as either |a|

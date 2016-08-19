@@ -22,7 +22,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/bn.c \
   crypto/bn/cmp.c \
   crypto/bn/convert.c \
-  crypto/bn/ctx.c \
   crypto/bn/div.c \
   crypto/bn/exponentiation.c \
   crypto/bn/gcd.c \

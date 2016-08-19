@@ -23,7 +23,6 @@
     <ClCompile Include="bn\bn.c" />
     <ClCompile Include="bn\cmp.c" />
     <ClCompile Include="bn\convert.c" />
-    <ClCompile Include="bn\ctx.c" />
     <ClCompile Include="bn\div.c" />
     <ClCompile Include="bn\exponentiation.c" />
     <ClCompile Include="bn\gcd.c" />
