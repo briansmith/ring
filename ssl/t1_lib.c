@@ -807,6 +807,16 @@ static int ext_sni_add_serverhello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/rfc5746 */
 
 static int ext_ri_add_clienthello(SSL *ssl, CBB *out) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  /* Renegotiation indication is not necessary in TLS 1.3. */
+  if (min_version >= TLS1_3_VERSION) {
+    return 1;
+  }
+
   CBB contents, prev_finished;
   if (!CBB_add_u16(out, TLSEXT_TYPE_renegotiate) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
@@ -954,7 +964,13 @@ static void ext_ems_init(SSL *ssl) {
 }
 
 static int ext_ems_add_clienthello(SSL *ssl, CBB *out) {
-  if (ssl->version == SSL3_VERSION) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  /* Extended master secret is not necessary in TLS 1.3. */
+  if (min_version >= TLS1_3_VERSION || max_version <= SSL3_VERSION) {
     return 1;
   }
 
@@ -1023,7 +1039,14 @@ static int ext_ems_add_serverhello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/rfc5077 */
 
 static int ext_ticket_add_clienthello(SSL *ssl, CBB *out) {
-  if (SSL_get_options(ssl) & SSL_OP_NO_TICKET) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  /* TLS 1.3 uses a different ticket extension. */
+  if (min_version >= TLS1_3_VERSION ||
+      SSL_get_options(ssl) & SSL_OP_NO_TICKET) {
     return 1;
   }
 
