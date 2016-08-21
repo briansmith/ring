@@ -239,13 +239,20 @@ mod tests {
         assert!(range.are_limbs_within(&[1, 0]));
         assert!(range.are_limbs_within(&[0, 1]));
 
-        let limbs = &[0xdeadbeef, 0xdeadbeef];
+        let limbs = &[0x12345678, 0xdeadbeef];
         let range = Range::from_max_exclusive(limbs);
-        assert!(!range.are_limbs_within(&[0xdeadbeef, 0xdeadbeef]));
-        assert!(range.are_limbs_within(&[0xdeadbeee, 0xdeadbeef]));
-        assert!(range.are_limbs_within(&[0xdeadbeef, 0xdeadbeee]));
-        assert!(!range.are_limbs_within(&[0xdeadbeff, 0xdeadbeef]));
-        assert!(!range.are_limbs_within(&[0xdeadbeef, 0xdeadbeff]));
+        assert!(!range.are_limbs_within(&[0x12345678, 0xdeadbeef]));
+        assert!(range.are_limbs_within(&[0x12345678 - 1, 0xdeadbeef]));
+        assert!(range.are_limbs_within(&[0x12345678, 0xdeadbeef - 1]));
+        assert!(!range.are_limbs_within(&[0x12345678 + 0x10, 0xdeadbeef]));
+        assert!(!range.are_limbs_within(&[0x12345678, 0xdeadbeef + 0x10]));
+
+        let limbs = &[0, 1];
+        let range = Range::from_max_exclusive(limbs);
+        assert!(!range.are_limbs_within(&[0, 0]));
+        assert!(range.are_limbs_within(&[1, 0]));
+        assert!(!range.are_limbs_within(&[0, 1]));
+        assert!(range.are_limbs_within(&[Limb::max_value(), 0]));
 
         let limbs = &[2];
         let range = Range::from_max_exclusive(limbs);
