@@ -164,19 +164,16 @@ mod tests {
     use super::*;
     use rand;
 
-    #[cfg(target_pointer_width = "64")]
-    const MAX_LIMB: Limb = 0xffffffffffffffff;
-
-    #[cfg(target_pointer_width = "32")]
-    const MAX_LIMB: Limb = 0xffffffff;
-
     #[test]
     fn test_limbs_in_range() {
-        let limbs = &[MAX_LIMB, MAX_LIMB];
+        let limbs = &[Limb::max_value(), Limb::max_value()];
         let range = Range::from_max_exclusive(limbs);
-        assert!(!range.are_limbs_within(&[MAX_LIMB, MAX_LIMB]));
-        assert!(range.are_limbs_within(&[MAX_LIMB, MAX_LIMB-1]));
-        assert!(range.are_limbs_within(&[MAX_LIMB-1, MAX_LIMB]));
+        assert!(!range.are_limbs_within(&[Limb::max_value(),
+                                          Limb::max_value()]));
+        assert!(range.are_limbs_within(&[Limb::max_value(),
+                                         Limb::max_value() - 1]));
+        assert!(range.are_limbs_within(&[Limb::max_value() - 1,
+                                         Limb::max_value()]));
         assert!(!range.are_limbs_within(&[0, 0]));
         assert!(range.are_limbs_within(&[1, 0]));
         assert!(range.are_limbs_within(&[0, 1]));
@@ -201,7 +198,7 @@ mod tests {
         let rng = rand::SystemRandom::new();
 
         let mut dest: [Limb; 2] = [0; 2];
-        let limbs = &[MAX_LIMB, MAX_LIMB];
+        let limbs = &[Limb::max_value(), Limb::max_value()];
         let range = Range::from_max_exclusive(limbs);
         assert!(range.sample_into_limbs(&mut dest, &rng).is_ok());
         assert!(dest.iter().any( |b| *b > 0 ));
