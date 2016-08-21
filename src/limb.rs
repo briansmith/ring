@@ -28,6 +28,23 @@ use {rand, polyfill, c, core, error};
 #[cfg(target_pointer_width = "64")] const LIMB_BITS_U32: u32 = 64;
 #[cfg(target_pointer_width = "32")] const LIMB_BITS_U32: u32 = 32;
 
+#[cfg(target_pointer_width = "64")]
+#[allow(trivial_numeric_casts)] // XXX: workaround compiler bug.
+#[derive(Debug, PartialEq)]
+#[repr(u64)]
+pub enum LimbMask {
+    True = 0xffff_ffff_ffff_ffff,
+    False = 0,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[allow(trivial_numeric_casts)] // XXX: workaround compiler bug.
+#[derive(Debug, PartialEq)]
+#[repr(u32)]
+pub enum LimbMask {
+    True = 0xffff_ffff,
+    False = 0,
+}
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
@@ -39,7 +56,8 @@ pub struct Range<'a> {
 
 impl <'a> Range<'a> {
     pub fn from_max_exclusive(max_exclusive: &[Limb]) -> Range {
-        debug_assert!(!limbs_are_zero_constant_time(max_exclusive));
+        debug_assert_eq!(limbs_are_zero_constant_time(max_exclusive),
+                         LimbMask::False);
         debug_assert!(max_exclusive[max_exclusive.len() - 1] > 0);
 
         Range {
@@ -53,11 +71,11 @@ impl <'a> Range<'a> {
     pub fn are_limbs_within(&self, limbs: &[Limb]) -> bool {
         assert_eq!(self.max_exclusive.len(), limbs.len());
 
-        let is_gt_zero = !limbs_are_zero_constant_time(limbs);
+        let is_zero = limbs_are_zero_constant_time(limbs);
         let is_lt_max =
             limbs_less_than_limbs_constant_time(limbs, self.max_exclusive);
 
-        is_lt_max && is_gt_zero
+        is_zero == LimbMask::False && is_lt_max == LimbMask::True
     }
 
     /// Chooses a positive integer within the range and stores it into `dest`.
@@ -151,28 +169,29 @@ fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
 }
 
 #[allow(unsafe_code)]
-pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb]) -> bool {
+#[inline]
+pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb])
+                                           -> LimbMask {
     assert_eq!(a.len(), b.len());
-    let result = unsafe {
+    unsafe {
         GFp_constant_time_limbs_lt_limbs(a.as_ptr(), b.as_ptr(), b.len())
-    };
-    result != 0
+    }
 }
 
 #[allow(unsafe_code)]
-pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> bool {
-    let result = unsafe {
+#[inline]
+pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
+    unsafe {
         GFp_constant_time_limbs_are_zero(limbs.as_ptr(), limbs.len())
-    };
-    result != 0
+    }
 }
 
 extern {
     fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
-                                        -> Limb;
+                                        -> LimbMask;
 
     fn GFp_constant_time_limbs_lt_limbs(a: *const Limb, b: *const Limb,
-                                        num_limbs: c::size_t) -> Limb;
+                                        num_limbs: c::size_t) -> LimbMask;
 }
 
 #[cfg(test)]

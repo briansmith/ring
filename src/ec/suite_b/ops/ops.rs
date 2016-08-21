@@ -211,8 +211,8 @@ impl CommonOps {
     pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced)
                                    -> Result<(), error::Unspecified> {
         match limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) {
-            false => Ok(()),
-            true => Err(error::Unspecified),
+            LimbMask::False => Ok(()),
+            _ => Err(error::Unspecified),
         }
     }
 
