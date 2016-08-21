@@ -25,6 +25,9 @@ use {rand, polyfill, c, core, error};
 #[cfg(target_pointer_width = "32")] pub type Limb = u32;
 #[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
 #[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
+#[cfg(target_pointer_width = "64")] const LIMB_BITS_U32: u32 = 64;
+#[cfg(target_pointer_width = "32")] const LIMB_BITS_U32: u32 = 32;
+
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
@@ -42,12 +45,6 @@ impl <'a> Range<'a> {
         Range {
             max_exclusive: max_exclusive
         }
-    }
-
-    fn leading_zero_bits(&self) -> usize {
-        let most_significant_limb =
-            self.max_exclusive[self.max_exclusive.len() - 1];
-        most_significant_limb.leading_zeros() as usize
     }
 
     /// Are these little-endian limbs within the range?
@@ -75,7 +72,12 @@ impl <'a> Range<'a> {
                          -> Result<(), error::Unspecified> {
         assert_eq!(self.max_exclusive.len(), dest.len());
 
-        let bits_to_mask = self.leading_zero_bits();
+        let most_significant_limb =
+            self.max_exclusive[self.max_exclusive.len() - 1];
+        debug_assert!(most_significant_limb > 0);
+        let most_significant_limb_mask =
+            most_significant_limb_mask_variable_time(most_significant_limb);
+        debug_assert!(most_significant_limb_mask != 0);
 
         // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
         // what specific value would be better, but it seems bad to try 100
@@ -85,11 +87,7 @@ impl <'a> Range<'a> {
                 let mut dest_as_bytes = limbs_as_bytes_mut(dest);
                 try!(rng.fill(&mut dest_as_bytes));
             }
-
-            if bits_to_mask > 0 {
-                let mask: Limb = (1 << (LIMB_BITS - bits_to_mask)) - 1;
-                dest[self.max_exclusive.len() - 1] &= mask;
-            }
+            dest[self.max_exclusive.len() - 1] &= most_significant_limb_mask;
 
             if self.are_limbs_within(&dest) {
                 return Ok(());
@@ -98,7 +96,20 @@ impl <'a> Range<'a> {
 
         Err(error::Unspecified)
     }
+}
 
+/// Returns a mask that has the same number of leading zeros as
+/// `most_significant_limb`, with all the following bits set.
+fn most_significant_limb_mask_variable_time(most_significant_limb: Limb)
+                                            -> Limb {
+    const ONE: Limb = 1;
+
+    let bits_to_mask_off = most_significant_limb.leading_zeros();
+    if bits_to_mask_off == 0 {
+        Limb::max_value()
+    } else {
+        (ONE << (LIMB_BITS_U32 - bits_to_mask_off)) - 1
+    }
 }
 
 #[allow(unsafe_code)]
@@ -162,7 +173,33 @@ extern {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::most_significant_limb_mask_variable_time;
     use rand;
+
+    #[test]
+    fn test_most_significant_limb_mask() {
+        assert_eq!(0, most_significant_limb_mask_variable_time(0));
+
+        for i in 0..LIMB_BITS {
+           let x = 1 << i;
+            let expected = if i == LIMB_BITS - 1 {
+                Limb::max_value()
+            } else {
+                (1 << (i + 1)) - 1
+            };
+            assert_eq!(expected, most_significant_limb_mask_variable_time(x),
+                       "for {:?}", x);
+            assert_eq!(expected,
+                       most_significant_limb_mask_variable_time(x | 1),
+                       "for {:?}", x | 1);
+            assert_eq!(expected,
+                       most_significant_limb_mask_variable_time(x | (x >> 1)),
+                       "for {:?}", x | (x >> 1));
+            assert_eq!(expected,
+                       most_significant_limb_mask_variable_time(expected),
+                       "for {:?}", expected);
+        }
+    }
 
     #[test]
     fn test_limbs_in_range() {
