@@ -572,8 +572,7 @@ static bool TestBN2BinPadded(RAND *rng) {
 
   // Test a random numbers at various byte lengths.
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
-    if (!BN_rand(n.get(), bytes * 8, 0 /* make sure top bit is 1 */,
-                 0 /* don't modify bottom bit */, rng)) {
+    if (!BN_rand(n.get(), bytes * 8, rng)) {
       return false;
     }
     if (BN_num_bytes(n.get()) != bytes ||
@@ -661,37 +660,15 @@ static bool TestRand(RAND *rng) {
     return false;
   }
 
-  // Test BN_rand accounts for degenerate cases with |top| and |bottom|
-  // parameters.
-  if (!BN_rand(bn.get(), 0, 0 /* top */, 0 /* bottom */, rng) ||
-      !BN_is_zero(bn.get())) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
-    return false;
-  }
-  if (!BN_rand(bn.get(), 0, 1 /* top */, 1 /* bottom */, rng) ||
+  // Test BN_rand accounts for degenerate cases
+  if (!BN_rand(bn.get(), 0, rng) ||
       !BN_is_zero(bn.get())) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
 
-  if (!BN_rand(bn.get(), 1, 0 /* top */, 0 /* bottom */, rng) ||
+  if (!BN_rand(bn.get(), 1, rng) ||
       !BN_is_word(bn.get(), 1)) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
-    return false;
-  }
-  if (!BN_rand(bn.get(), 1, 1 /* top */, 0 /* bottom */, rng) ||
-      !BN_is_word(bn.get(), 1)) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
-    return false;
-  }
-  if (!BN_rand(bn.get(), 1, -1 /* top */, 1 /* bottom */, rng) ||
-      !BN_is_word(bn.get(), 1)) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
-    return false;
-  }
-
-  if (!BN_rand(bn.get(), 2, 1 /* top */, 0 /* bottom */, rng) ||
-      !BN_is_word(bn.get(), 3)) {
     fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
@@ -822,7 +799,7 @@ static bool TestBadModulus(BN_CTX *ctx) {
 // TestExpModZero tests that 1**0 mod 1 == 0.
 static bool TestExpModZero(RAND *rng, BN_CTX *ctx) {
   ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
-  if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0, rng)) {
+  if (!zero || !a || !r || !BN_rand(a.get(), 1024, rng)) {
     return false;
   }
   BN_zero(zero.get());

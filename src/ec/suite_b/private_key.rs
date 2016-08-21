@@ -15,7 +15,7 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use {c, ec, error, rand};
+use {ec, error, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 
@@ -180,25 +180,9 @@ fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
     }
 }
 
-#[allow(unsafe_code)]
 fn scalar_is_in_range(ops: &CommonOps, candidate_scalar: &Scalar) -> bool {
-    let is_zero = unsafe {
-        GFp_constant_time_limbs_are_zero(candidate_scalar.limbs.as_ptr(),
-                                         ops.num_limbs)
-    };
-    let is_lt_n = unsafe {
-        GFp_constant_time_limbs_lt_limbs(candidate_scalar.limbs.as_ptr(),
-                                         ops.n.limbs.as_ptr(),
-                                         ops.num_limbs)
-    };
-    (is_zero == 0) && (is_lt_n != 0)
-}
-
-extern {
-    fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
-                                        -> Limb;
-    fn GFp_constant_time_limbs_lt_limbs(a: *const Limb, b: *const Limb,
-                                        num_limbs: c::size_t) -> Limb;
+    let range = Range::from_max_exclusive(&ops.n.limbs[..ops.num_limbs]);
+    range.are_limbs_within(&candidate_scalar.limbs[..ops.num_limbs])
 }
 
 #[cfg(test)]
