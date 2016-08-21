@@ -108,14 +108,7 @@
 
 #include <openssl/bn.h>
 
-#include <string.h>
-
 #include <openssl/err.h>
-#include <openssl/mem.h>
-#include <openssl/rand.h>
-#include <openssl/type_check.h>
-
-#include "../internal.h"
 
 
 int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {

@@ -28,8 +28,14 @@
 
 #![allow(unsafe_code)]
 
-use {c, error};
+#[cfg(any(target_os = "linux", windows, test))]
+use c;
+
+#[cfg(test)]
 use core;
+
+use error;
+
 
 /// A secure random number generator.
 pub trait SecureRandom {
@@ -198,6 +204,7 @@ impl <'a> RAND<'a> {
     }
 }
 
+#[cfg(test)]
 #[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]

@@ -30,7 +30,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include <openssl/rand.h>
+#include <openssl/base.h>
 
 #include <assert.h>
 #include <stddef.h>

@@ -110,9 +110,9 @@
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/rand.h>
 
 #include "bn_test_lib.h"
+#include "rand.h"
 #include "../bn/internal.h"
 
 
