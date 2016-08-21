@@ -2204,7 +2204,7 @@ func addBasicTests() {
 				// elliptic curves, so no extensions are
 				// involved.
 				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 				Bugs: ProtocolBugs{
 					SendV2ClientHello: true,
 				},
@@ -2226,7 +2226,7 @@ func addBasicTests() {
 				// elliptic curves, so no extensions are
 				// involved.
 				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 				Bugs: ProtocolBugs{
 					SendV2ClientHello: true,
 				},
@@ -2527,24 +2527,24 @@ func addCipherSuiteTests() {
 		{
 			// Test that the null case (where no version-specific ciphers are set)
 			// works as expected.
-			"RC4-SHA:AES128-SHA", // default ciphers
-			"",                   // no ciphers specifically for TLS ≥ 1.0
-			"",                   // no ciphers specifically for TLS ≥ 1.1
+			"DES-CBC3-SHA:AES128-SHA", // default ciphers
+			"", // no ciphers specifically for TLS ≥ 1.0
+			"", // no ciphers specifically for TLS ≥ 1.1
 			map[uint16]uint16{
-				VersionSSL30: TLS_RSA_WITH_RC4_128_SHA,
-				VersionTLS10: TLS_RSA_WITH_RC4_128_SHA,
-				VersionTLS11: TLS_RSA_WITH_RC4_128_SHA,
-				VersionTLS12: TLS_RSA_WITH_RC4_128_SHA,
+				VersionSSL30: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+				VersionTLS10: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+				VersionTLS11: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+				VersionTLS12: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 			},
 		},
 		{
 			// With ciphers_tls10 set, TLS 1.0, 1.1 and 1.2 should get a different
 			// cipher.
-			"RC4-SHA:AES128-SHA", // default
-			"AES128-SHA",         // these ciphers for TLS ≥ 1.0
-			"",                   // no ciphers specifically for TLS ≥ 1.1
+			"DES-CBC3-SHA:AES128-SHA", // default
+			"AES128-SHA",              // these ciphers for TLS ≥ 1.0
+			"",                        // no ciphers specifically for TLS ≥ 1.1
 			map[uint16]uint16{
-				VersionSSL30: TLS_RSA_WITH_RC4_128_SHA,
+				VersionSSL30: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 				VersionTLS10: TLS_RSA_WITH_AES_128_CBC_SHA,
 				VersionTLS11: TLS_RSA_WITH_AES_128_CBC_SHA,
 				VersionTLS12: TLS_RSA_WITH_AES_128_CBC_SHA,
@@ -2553,12 +2553,12 @@ func addCipherSuiteTests() {
 		{
 			// With ciphers_tls11 set, TLS 1.1 and 1.2 should get a different
 			// cipher.
-			"RC4-SHA:AES128-SHA", // default
-			"",                   // no ciphers specifically for TLS ≥ 1.0
-			"AES128-SHA",         // these ciphers for TLS ≥ 1.1
+			"DES-CBC3-SHA:AES128-SHA", // default
+			"",           // no ciphers specifically for TLS ≥ 1.0
+			"AES128-SHA", // these ciphers for TLS ≥ 1.1
 			map[uint16]uint16{
-				VersionSSL30: TLS_RSA_WITH_RC4_128_SHA,
-				VersionTLS10: TLS_RSA_WITH_RC4_128_SHA,
+				VersionSSL30: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+				VersionTLS10: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 				VersionTLS11: TLS_RSA_WITH_AES_128_CBC_SHA,
 				VersionTLS12: TLS_RSA_WITH_AES_128_CBC_SHA,
 			},
@@ -2566,11 +2566,11 @@ func addCipherSuiteTests() {
 		{
 			// With both ciphers_tls10 and ciphers_tls11 set, ciphers_tls11 should
 			// mask ciphers_tls10 for TLS 1.1 and 1.2.
-			"RC4-SHA:AES128-SHA", // default
-			"AES128-SHA",         // these ciphers for TLS ≥ 1.0
-			"AES256-SHA",         // these ciphers for TLS ≥ 1.1
+			"DES-CBC3-SHA:AES128-SHA", // default
+			"AES128-SHA",              // these ciphers for TLS ≥ 1.0
+			"AES256-SHA",              // these ciphers for TLS ≥ 1.1
 			map[uint16]uint16{
-				VersionSSL30: TLS_RSA_WITH_RC4_128_SHA,
+				VersionSSL30: TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 				VersionTLS10: TLS_RSA_WITH_AES_128_CBC_SHA,
 				VersionTLS11: TLS_RSA_WITH_AES_256_CBC_SHA,
 				VersionTLS12: TLS_RSA_WITH_AES_256_CBC_SHA,
@@ -2594,7 +2594,7 @@ func addCipherSuiteTests() {
 				config: Config{
 					MaxVersion:   version,
 					MinVersion:   version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA, TLS_RSA_WITH_AES_128_CBC_SHA, TLS_RSA_WITH_AES_256_CBC_SHA},
+					CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA, TLS_RSA_WITH_AES_128_CBC_SHA, TLS_RSA_WITH_AES_256_CBC_SHA},
 				},
 				flags:          flags,
 				expectedCipher: expectedCipherSuite,
@@ -3722,7 +3722,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				// elliptic curves, so no extensions are
 				// involved.
 				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 				Bugs: ProtocolBugs{
 					SendV2ClientHello: true,
 				},
@@ -5188,7 +5188,7 @@ func addRenegotiationTests() {
 		renegotiate: 1,
 		config: Config{
 			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+			CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 		},
 		renegotiateCiphers: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		flags: []string{
@@ -5203,7 +5203,7 @@ func addRenegotiationTests() {
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
-		renegotiateCiphers: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+		renegotiateCiphers: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 		flags: []string{
 			"-renegotiate-freely",
 			"-expect-total-renegotiations", "1",
@@ -6764,7 +6764,7 @@ func addRSAClientKeyExchangeTests() {
 				// version are different, to detect if the
 				// server uses the wrong one.
 				MaxVersion:   VersionTLS11,
-				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 				Bugs: ProtocolBugs{
 					BadRSAClientKeyExchange: bad,
 				},
