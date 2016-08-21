@@ -158,9 +158,19 @@ pub unsafe extern fn GFp_rand_mod(dest: *mut Limb, max_exclusive: *const Limb,
 }
 
 
+#[cfg(all(test, target_pointer_width = "64"))]
+fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
+    polyfill::slice::u64_as_u8(src)
+}
+
 #[cfg(target_pointer_width = "64")]
 fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
     polyfill::slice::u64_as_u8_mut(src)
+}
+
+#[cfg(all(test, target_pointer_width = "32"))]
+fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
+    polyfill::slice::u32_as_u8(src)
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -196,9 +206,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::most_significant_limb_mask_variable_time;
+    use core;
     use rand;
+    use super::*;
+    use super::{limbs_as_bytes, most_significant_limb_mask_variable_time};
 
     #[test]
     fn test_most_significant_limb_mask() {
@@ -288,5 +299,78 @@ mod tests {
         let range = Range::from_max_exclusive(limbs);
         assert!(range.sample_into_limbs(&mut dest, &rng).is_ok());
         assert!(dest.iter().any( |b| *b > 0 ));
+    }
+
+    #[test]
+    fn test_random_generation_retries() {
+        // Generates a string of bytes 0x00...00, which will always result in
+        // a scalar value of zero.
+        let random_00 = rand::test_util::FixedByteRandom { byte: 0 };
+
+        // Generates a string of bytes 0xFF...FF, which will be larger than the
+        // group order of any curve that is supported.
+        let random_ff = rand::test_util::FixedByteRandom { byte: 0xff };
+
+        let max_exclusive = [Limb::max_value(), Limb::max_value() >> 1];
+
+        let range = Range::from_max_exclusive(&max_exclusive);
+
+        // Test that a generated zero is rejected and that `sample_into_limbs`
+        // gives up after a while of only getting zeros.
+        {
+            let mut result = [0, 0];
+            assert!(range.sample_into_limbs(&mut result, &random_00).is_err());
+        }
+
+        // Test that a generated value larger than `max_exclusive` is rejected
+        // and that `sample_into_limbs` gives up after a while of only getting
+        // values larger than the group order.
+        {
+            let mut result = [0, 0];
+            assert!(range.sample_into_limbs(&mut result, &random_ff).is_err());
+        }
+
+        // Test that a generated value exactly equal `max_exclusive` is
+        // rejected and that `generate` gives up after a while of only getting
+        // that value from the PRNG.
+        let max_exclusive_bytes = limbs_as_bytes(&max_exclusive);
+        {
+            let rng = rand::test_util::FixedSliceRandom {
+                bytes: &max_exclusive_bytes
+            };
+            let mut result = [0, 0];
+            assert!(range.sample_into_limbs(&mut result, &rng).is_err());
+        }
+
+        let max_exclusive_minus_1 = [max_exclusive[0] - 1, max_exclusive[1]];
+
+        // Test that a generated value exactly equal to `mex_exclusive - 1` is
+        // accepted.
+        let max_exclusive_minus_1_bytes =
+            limbs_as_bytes(&max_exclusive_minus_1);
+        {
+            let rng = rand::test_util::FixedSliceRandom {
+                bytes: max_exclusive_minus_1_bytes
+            };
+            let mut result = [0, 0];
+            range.sample_into_limbs(&mut result, &rng).unwrap();
+            assert_eq!(&max_exclusive_minus_1, &result);
+        }
+
+        // Test recovery from initial RNG failure.
+        {
+            let bytes = [
+                &max_exclusive_bytes[..],
+                &[0u8; 2 * LIMB_BYTES],
+                &max_exclusive_minus_1_bytes[..],
+            ];
+            let rng = rand::test_util::FixedSliceSequenceRandom {
+                bytes: &bytes,
+                current: core::cell::UnsafeCell::new(0),
+            };
+            let mut result = [0, 0];
+            range.sample_into_limbs(&mut result, &rng).unwrap();
+            assert_eq!(&max_exclusive_minus_1, &result);
+        }
     }
 }
