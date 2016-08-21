@@ -13,6 +13,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! Unsigned multi-precision integer arithmetic.
+//!
+//! Limbs ordered least-significant-limb to most-significant-limb. The bits
+//! limbs use the native endianness.
+
 use {rand, polyfill, c, core, error};
 
 // XXX: Not correct for x32 ABIs.
@@ -23,9 +28,8 @@ use {rand, polyfill, c, core, error};
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-/// References a positive integer range `[1..max_exclusive)` where
-/// `max_exclusive` is a slice of limbs ordered least-significant-limb to
-/// most-significant-limb (and the limbs use the native endianness).
+/// References a positive integer range `[1..max_exclusive)`.
+/// `max_exclusive` is assumed to be public, not secret.
 pub struct Range<'a> {
     pub max_exclusive: &'a [Limb],
 }
@@ -64,9 +68,7 @@ impl <'a> Range<'a> {
     //
     // TODO: DRY-up with `ec::suite_b::private_key::generate_private_key`?
     //
-    /// Chooses a positive integer within the range and stores it into `dest`
-    /// encoded as limbs ordered least-significant-limb to
-    /// most-significant-limb.
+    /// Chooses a positive integer within the range and stores it into `dest`.
     ///
     /// This function is intended to be suitable for generating private keys.
     fn sample_into_limbs(&self, dest: &mut [Limb], rng: &rand::SecureRandom)
