@@ -22,7 +22,12 @@ use super::verify_affine_point_is_on_the_curve;
 #[allow(unsafe_code)]
 pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
                             -> Result<ec::PrivateKey, error::Unspecified> {
-    // NSA Guide Appendix B.2: "Key Pair Generation by Testing Candidates".
+    // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
+    // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
+    // "Key Pair Generation by Testing Candidates".
+    //
+    // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf.
+    // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf.
 
     // TODO: The NSA guide also suggests, in appendix B.1, another mechanism
     // that would avoid the need to use `rng.fill()` more than once. It works

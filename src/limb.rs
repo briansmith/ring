@@ -60,16 +60,21 @@ impl <'a> Range<'a> {
         is_lt_max && is_gt_zero
     }
 
-    // Loosely based on NSA Guide Appendix B.2:
-    // "Key Pair Generation by Testing Candidates".
-    //
-    // TODO: DRY-up with `ec::suite_b::private_key::generate_private_key`?
-    //
     /// Chooses a positive integer within the range and stores it into `dest`.
     ///
     /// This function is intended to be suitable for generating private keys.
+    //
+    // TODO: DRY-up with `ec::suite_b::private_key::generate_private_key`.
     fn sample_into_limbs(&self, dest: &mut [Limb], rng: &rand::SecureRandom)
                          -> Result<(), error::Unspecified> {
+        // Loosely based on [NSA Suite B Implementer's Guide to ECDSA]
+        // Appendix A.1.2, and
+        // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
+        // "Key Pair Generation by Testing Candidates".
+        //
+        // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf.
+        // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf.
+
         assert_eq!(self.max_exclusive.len(), dest.len());
 
         let most_significant_limb =
