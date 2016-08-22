@@ -146,6 +146,13 @@ void BN_set_negative(BIGNUM *bn, int sign);
 OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
 
+/* Random generation. */
+
+/* BN_rand sets |rnd| to a random number of length |bits|. The
+ * most-significant bit, if any, will always be set. */
+OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, RAND *rng);
+
+
 #if defined(__cplusplus)
 }
 #endif
