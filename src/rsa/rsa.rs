@@ -14,7 +14,7 @@
 
 /// RSA signatures.
 
-use {bits, c, core, der, error};
+use {bits, c, core, der, error, limb};
 use untrusted;
 
 mod padding;
@@ -36,6 +36,15 @@ pub use self::padding::{
 
 // Maximum RSA modulus size supported for signature verification (in bytes).
 const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = 8192 / 8;
+
+// Keep in sync with the documentation comment for `RSAKeyPair` and
+// `PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX` in rsa.c.
+const PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX: usize = 4096;
+
+const PRIVATE_KEY_PUBLIC_MODULUS_LIMBS_MAX: usize =
+    (PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX + limb::LIMB_BITS - 1) /
+    limb::LIMB_BITS;
+
 
 /// Parameters for RSA verification.
 pub struct RSAParameters {
@@ -132,6 +141,12 @@ extern {
     fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
 
+mod blinding;
+
+// Really a private method; only has public visibility so that C compilation
+// can see it.
+#[doc(hidden)]
+pub use rsa::blinding::GFp_rand_mod;
 
 #[cfg(test)]
 mod tests {
