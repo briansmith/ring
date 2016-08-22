@@ -153,10 +153,10 @@ impl TestCase {
     /// empty (zero-length) value is represented as "".
     pub fn consume_bytes(&mut self, key: &str) -> Vec<u8> {
         let mut s = self.consume_string(key);
-        if s.starts_with("\"") {
+        if s.starts_with('\"') {
             // The value is a quoted strong.
             // XXX: We don't deal with any inner quotes.
-            if !s.ends_with("\"") {
+            if !s.ends_with('\"') {
                 panic!("expected quoted string, found {}", s);
             }
             let _ = s.pop();
@@ -218,13 +218,8 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
     let mut current_section = String::from("");
     let mut failed = false;
 
-    loop {
-        let mut test_case =
-                match parse_test_case(&mut current_section, &mut lines) {
-            Some(test_case) => test_case,
-            None => { break; },
-        };
-
+    while let Some(mut test_case) = parse_test_case(&mut current_section, 
+                                                    &mut lines) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
         }));
@@ -321,7 +316,7 @@ fn parse_test_case(current_section: &mut String,
             },
 
             // A blank line ends a test case if the test case isn't empty.
-            Some(ref line) if line.len() == 0 => {
+            Some(ref line) if line.is_empty() => {
                 if !is_first_line {
                     return Some(TestCase {
                         attributes: attributes,
@@ -331,11 +326,11 @@ fn parse_test_case(current_section: &mut String,
             },
 
             // Comments start with '#'; ignore them.
-            Some(ref line) if line.starts_with("#") => { },
+            Some(ref line) if line.starts_with('#') => { },
 
-            Some(ref line) if line.starts_with("[") => {
+            Some(ref line) if line.starts_with('[') => {
                 assert!(is_first_line);
-                assert!(line.ends_with("]"));
+                assert!(line.ends_with(']'));
                 current_section.truncate(0);
                 current_section.push_str(line);
                 let _ = current_section.pop();

@@ -141,7 +141,7 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     let mut counter = make_counter(0, nonce);
     {
         let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(update, tag_out, chacha20_key, &counter, ad, &ciphertext);
+        aead_poly1305(update, tag_out, chacha20_key, &counter, ad, ciphertext);
     }
     counter[0] = 1;
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
@@ -201,7 +201,7 @@ fn aead_poly1305(update: UpdateFn, tag_out: &mut [u8; aead::TAG_LEN],
     debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
         ChaCha20_ctr32(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
-                       POLY1305_KEY_LEN, chacha20_key, &counter);
+                       POLY1305_KEY_LEN, chacha20_key, counter);
     }
     let mut ctx = [0u8; POLY1305_STATE_LEN];
     poly1305_init(&mut ctx, &poly1305_key);

@@ -158,7 +158,9 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     let mut idx: u32 = 0;
 
     for chunk in out.chunks_mut(output_len) {
-        idx = idx.checked_add(1).expect("derived key too long");
+        idx = idx.checked_add(1).expect("derived kmanual implementation of an assign operation, #[warn(assign_op_pattern)] on by default
+   --> src/pbkdf2.rs:248:9
+ey too long");
         derive_block(&secret, iterations, salt, idx, chunk);
     }
 }
@@ -169,7 +171,7 @@ fn derive_block(
         salt: &[u8],
         idx: u32,
         out: &mut [u8]) {
-    let mut ctx = hmac::SigningContext::with_key(&secret);
+    let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
     ctx.update(&polyfill::slice::be_u8_from_u32(idx));
 
@@ -186,7 +188,7 @@ fn derive_block(
         }
         remaining -= 1;
 
-        u = hmac::sign(&secret, u.as_ref());
+        u = hmac::sign(secret, u.as_ref());
     }
 }
 
@@ -197,14 +199,14 @@ fn derive_block(
 /// comparison will fail if `previously_derived` is empty (has a length of
 /// zero).
 ///
-/// | Parameter                | RFC 2898 Section 5.2 Term
-/// |--------------------------|---------------------------------------
-/// | prf                      | PRF
-/// | iterations               | c (iteration count)
-/// | salt                     | S (salt)
-/// | secret                   | P (password)
-/// | previously_derived       | dk (derived key)
-/// | previously_derived.len() | dkLen (derived key length)
+/// | Parameter                  | RFC 2898 Section 5.2 Term
+/// |----------------------------|---------------------------------------
+/// | `prf`                      | PRF
+/// | `iterations`               | c (iteration count)
+/// | `salt`                     | S (salt)
+/// | `secret`                   | P (password)
+/// | `previously_derived`       | dk (derived key)
+/// | `previously_derived.len()` | dkLen (derived key length)
 ///
 /// C analog: `PKCS5_PBKDF2_HMAC` + `CRYPTO_memcmp`
 ///
@@ -245,7 +247,7 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
                 0
             };
 
-        matches = matches & current_block_matches;
+        matches &= current_block_matches;
     }
 
     if matches == 0 {

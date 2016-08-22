@@ -96,9 +96,7 @@ impl<'a> Ed25519KeyPair {
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
                             -> Result<Ed25519KeyPair, error::Unspecified> {
-        if private_key.len() != 32 {
-            return Err(error::Unspecified);
-        } else if public_key.len() != 32 {
+        if private_key.len() != 32 || public_key.len() != 32 {
             return Err(error::Unspecified);
         }
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };

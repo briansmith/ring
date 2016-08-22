@@ -77,7 +77,7 @@ impl <'a> PrivateKey {
         if out.len() != alg.public_key_len {
             return Err(error::Unspecified);
         }
-        (alg.public_from_private)(out, &self)
+        (alg.public_from_private)(out, self)
     }
 }
 

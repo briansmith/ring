@@ -33,7 +33,7 @@ pub struct ElemDecoded {
 }
 
 /// Field elements that are Montgomery-encoded and unreduced. Their values are
-/// in the range [0, 2**LIMB_BITS).
+/// in the range [0, 2**`LIMB_BITS`).
 #[derive(Clone)]
 pub struct ElemUnreduced {
     limbs: [Limb; MAX_LIMBS],
@@ -67,7 +67,7 @@ impl Scalar {
 }
 
 /// A `Scalar`, except Montgomery-encoded, and not reduced. The range is
-/// [0, 2**LIMB_BITS).
+/// [0, 2**`LIMB_BITS`).
 #[derive(Clone, Copy)]
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
@@ -167,7 +167,7 @@ impl CommonOps {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     #[inline]
@@ -299,7 +299,7 @@ impl PrivateKeyOps {
 
     #[inline]
     pub fn elem_inverse(&self, a: &ElemUnreduced) -> ElemUnreduced {
-        (self.elem_inv)(&a)
+        (self.elem_inv)(a)
     }
 }
 
@@ -368,7 +368,7 @@ impl PublicScalarOps {
         // `a` must not be zero.
         assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
 
-        (self.scalar_inv_to_mont_impl)(&a)
+        (self.scalar_inv_to_mont_impl)(a)
     }
 
     #[inline]
@@ -390,7 +390,7 @@ impl PublicScalarOps {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     pub fn elem_decoded_less_than(&self, a: &ElemDecoded, b: &ElemDecoded)
@@ -441,7 +441,7 @@ fn elem_sqr_mul(ops: &CommonOps, a: &ElemUnreduced, squarings: usize,
     for _ in 1..squarings {
         ops.elem_square(&mut tmp);
     }
-    ops.elem_product(&tmp, &b)
+    ops.elem_product(&tmp, b)
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
@@ -451,7 +451,7 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced, squarings: usize,
     for _ in 0..squarings {
         ops.elem_square(acc);
     }
-    ops.elem_mul(acc, &b)
+    ops.elem_mul(acc, b)
 }
 
 
@@ -502,7 +502,7 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // native-endian limbs, padded with zeros.
 pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
                               -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
-    if input.len() == 0 {
+    if input.is_empty() {
         return Err(error::Unspecified);
     }
 

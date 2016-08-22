@@ -159,8 +159,8 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
 /// Parse as integer with a value in the in the range [0, 255], returning its
 /// numeric value. This is typically used for parsing version numbers.
 #[inline]
-pub fn small_nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>)
-                                     -> Result<u8, error::Unspecified> {
+pub fn small_nonnegative_integer(input: &mut untrusted::Reader)
+                                 -> Result<u8, error::Unspecified> {
     let value = try!(nonnegative_integer(input, 0));
     value.read_all(error::Unspecified, |input| {
         let r = try!(input.read_byte());

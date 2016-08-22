@@ -213,8 +213,8 @@ pkcs1_digestinfo_prefix!(
     [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
 
 
-fn parse_public_key<'a>(input: untrusted::Input<'a>) ->
-                        Result<(&'a [u8], &'a [u8]), error::Unspecified> {
+fn parse_public_key(input: untrusted::Input) ->
+                    Result<(&[u8], &[u8]), error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
