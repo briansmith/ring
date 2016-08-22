@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {c, der, error};
+use {der, error};
 use core;
 use untrusted;
 
@@ -243,10 +243,7 @@ impl CommonOps {
     fn reduced_limbs(&self, a: &[Limb; MAX_LIMBS], p: &[Limb; MAX_LIMBS])
                      -> [Limb; MAX_LIMBS] {
         let mut r = *a;
-        unsafe {
-            GFp_constant_time_limbs_reduce_once(r.as_mut_ptr(), p.as_ptr(),
-                                                self.num_limbs);
-        }
+        limbs_reduce_once_constant_time(&mut r, p);
         r
     }
 }
@@ -531,12 +528,6 @@ pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
         }
     }
     false
-}
-
-
-extern {
-    fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
-                                           num_limbs: c::size_t);
 }
 
 

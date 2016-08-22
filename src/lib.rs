@@ -141,14 +141,14 @@ pub mod rand;
 
 mod limb;
 
-// Really a private method; only has public visibility so that C compilation
-// can see it.
-#[doc(hidden)]
-pub use limb::GFp_rand_mod;
-
 #[cfg(feature = "use_heap")]
 #[path = "rsa/rsa.rs"]
 mod rsa;
+
+// Really a private method; only has public visibility so that C compilation
+// can see it.
+#[doc(hidden)]
+pub use rsa::GFp_rand_mod;
 
 pub mod signature;
 
