@@ -38,6 +38,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
     // and switch to the other mechanism.
 
     let num_limbs = ops.common.num_limbs;
+    let range = Range::from_max_exclusive(&ops.common.n.limbs[..num_limbs]);
 
     // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
     // what specific value would be better, but it seems bad to try 100 times.
@@ -71,7 +72,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
         // other than being less error prone w.r.t. accidentally generating
         // zero-valued keys.
         let scalar = private_key_as_scalar_(ops, &candidate_private_key);
-        if !scalar_is_in_range(ops.common, &scalar) {
+        if !range.are_limbs_within(&scalar.limbs[..num_limbs]) {
             continue;
         }
 
@@ -92,8 +93,11 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
 #[inline]
 pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
                              -> Scalar {
+    let num_limbs = ops.common.num_limbs;
+    let range = Range::from_max_exclusive(&ops.common.n.limbs[..num_limbs]);
+
     let r = private_key_as_scalar_(ops, private_key);
-    assert!(scalar_is_in_range(&ops.common, &r));
+    assert!(range.are_limbs_within(&r.limbs[..num_limbs]));
     r
 }
 
@@ -183,11 +187,6 @@ fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
             limb >>= 8;
         }
     }
-}
-
-fn scalar_is_in_range(ops: &CommonOps, candidate_scalar: &Scalar) -> bool {
-    let range = Range::from_max_exclusive(&ops.n.limbs[..ops.num_limbs]);
-    range.are_limbs_within(&candidate_scalar.limbs[..ops.num_limbs])
 }
 
 #[cfg(test)]
