@@ -111,7 +111,7 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 &static_label("ssse3_data");
 &static_label("pic_point");
 
-&function_begin("ChaCha20_ctr32");
+&function_begin("GFp_ChaCha20_ctr32");
 	&xor	("eax","eax");
 	&cmp	("eax",&wparam(2));		# len==0?
 	&je	(&label("no_data"));
@@ -349,7 +349,7 @@ if ($xmm) {
 &set_label("done");
 	&stack_pop(33);
 &set_label("no_data");
-&function_end("ChaCha20_ctr32");
+&function_end("GFp_ChaCha20_ctr32");
 
 if ($xmm) {
 my ($xa,$xa_,$xb,$xb_,$xc,$xc_,$xd,$xd_)=map("xmm$_",(0..7));

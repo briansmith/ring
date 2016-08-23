@@ -124,8 +124,8 @@ fn seal(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
     debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        ChaCha20_ctr32(in_out.as_mut_ptr(), in_out.as_ptr(), in_out.len(),
-                       chacha20_key, &counter);
+        GFp_ChaCha20_ctr32(in_out.as_mut_ptr(), in_out.as_ptr(), in_out.len(),
+                           chacha20_key, &counter);
     }
     counter[0] = 0;
     aead_poly1305(update, tag_out, chacha20_key, &counter, ad, in_out);
@@ -154,15 +154,17 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
         // https://rt.openssl.org/Ticket/Display.html?id=4362
         if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
            in_prefix_len != 0 {
-            ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
-                           in_out[in_prefix_len..].as_ptr(),
-                           in_out.len() - in_prefix_len, chacha20_key,
-                           &counter);
+            GFp_ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
+                               in_out[in_prefix_len..].as_ptr(),
+                               in_out.len() - in_prefix_len, chacha20_key,
+                               &counter);
             core::ptr::copy(in_out[in_prefix_len..].as_ptr(),
                             in_out.as_mut_ptr(), in_out.len() - in_prefix_len);
         } else {
-            ChaCha20_ctr32(in_out.as_mut_ptr(), in_out[in_prefix_len..].as_ptr(),
-                           in_out.len() - in_prefix_len, chacha20_key, &counter);
+            GFp_ChaCha20_ctr32(in_out.as_mut_ptr(),
+                               in_out[in_prefix_len..].as_ptr(),
+                               in_out.len() - in_prefix_len, chacha20_key,
+                               &counter);
         }
     }
     Ok(())
@@ -195,8 +197,8 @@ fn aead_poly1305(update: UpdateFn, tag_out: &mut [u8; aead::TAG_LEN],
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
     debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        ChaCha20_ctr32(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
-                       POLY1305_KEY_LEN, chacha20_key, counter);
+        GFp_ChaCha20_ctr32(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
+                           POLY1305_KEY_LEN, chacha20_key, &counter);
     }
     let mut ctx = [0u8; POLY1305_STATE_LEN];
     poly1305_init(&mut ctx, &poly1305_key);
@@ -241,8 +243,9 @@ fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
 }
 
 extern {
-    fn ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
-                      key: &[u32; CHACHA20_KEY_LEN / 4], counter: &[u32; 4]);
+    fn GFp_ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
+                          key: &[u32; CHACHA20_KEY_LEN / 4],
+                          counter: &[u32; 4]);
     fn GFp_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
                             key: &[u8; POLY1305_KEY_LEN]);
     fn GFp_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
@@ -254,7 +257,7 @@ extern {
 #[cfg(test)]
 mod tests {
     use {aead, c, polyfill, test};
-    use super::{ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter};
+    use super::{GFp_ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter};
 
     bssl_test!(test_poly1305, bssl_poly1305_test_main);
 
@@ -328,8 +331,8 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-          ChaCha20_ctr32(in_out_buf.as_mut_ptr(), input[..len].as_ptr(),
-                         len, key, &ctr);
+          GFp_ChaCha20_ctr32(in_out_buf.as_mut_ptr(), input[..len].as_ptr(),
+                             len, key, &ctr);
         }
         assert_eq!(&in_out_buf[..len], expected);
 
@@ -348,9 +351,9 @@ mod tests {
             for offset in 0..(max_offset + 1) {
               in_out_buf[alignment+offset..][..len].copy_from_slice(input);
               unsafe {
-                  ChaCha20_ctr32(in_out_buf[alignment..].as_mut_ptr(),
-                                 in_out_buf[alignment + offset..].as_ptr(),
-                                 len, key, ctr);
+                  GFp_ChaCha20_ctr32(in_out_buf[alignment..].as_mut_ptr(),
+                                     in_out_buf[alignment + offset..].as_ptr(),
+                                     len, key, ctr);
                   assert_eq!(&in_out_buf[alignment..][..len], expected);
               }
             }

@@ -200,10 +200,10 @@ my @x=map("\"$_\"",@x);
 ########################################################################
 # Generic code path that handles all lengths on pre-SSSE3 processors.
 $code.=<<___;
-.globl	ChaCha20_ctr32
-.type	ChaCha20_ctr32,\@function,5
+.globl	GFp_ChaCha20_ctr32
+.type	GFp_ChaCha20_ctr32,\@function,5
 .align	64
-ChaCha20_ctr32:
+GFp_ChaCha20_ctr32:
 	cmp	\$0,$len
 	je	.Lno_data
 	mov	GFp_ia32cap_P+4(%rip),%r10
@@ -364,7 +364,7 @@ $code.=<<___;
 	pop	%rbx
 .Lno_data:
 	ret
-.size	ChaCha20_ctr32,.-ChaCha20_ctr32
+.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
 ___
 
 ########################################################################

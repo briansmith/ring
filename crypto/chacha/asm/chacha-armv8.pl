@@ -130,10 +130,10 @@ $code.=<<___;
 #endif
 .asciz	"ChaCha20 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 
-.globl	ChaCha20_ctr32
-.type	ChaCha20_ctr32,%function
+.globl	GFp_ChaCha20_ctr32
+.type	GFp_ChaCha20_ctr32,%function
 .align	5
-ChaCha20_ctr32:
+GFp_ChaCha20_ctr32:
 	cbz	$len,.Labort
 	adr	@x[0],.LGFp_armcap_P
 	cmp	$len,#192
@@ -324,7 +324,7 @@ $code.=<<___;
 	ldp	x27,x28,[x29,#80]
 	ldp	x29,x30,[sp],#96
 	ret
-.size	ChaCha20_ctr32,.-ChaCha20_ctr32
+.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
 ___
 
 {{{
