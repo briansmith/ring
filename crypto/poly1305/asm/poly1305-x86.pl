@@ -65,7 +65,7 @@ if ($sse2) {
 #	unsigned __int32 r[4];		# key value base 2^32
 
 &align(64);
-&function_begin("poly1305_init");
+&function_begin("GFp_poly1305_init_asm");
 	&mov	("edi",&wparam(0));		# context
 	&mov	("esi",&wparam(1));		# key
 	&mov	("ebp",&wparam(2));		# function table
@@ -86,8 +86,8 @@ if ($sse2) {
     &set_label("pic_point");
 	&blindpop("ebx");
 
-	&lea	("eax",&DWP("poly1305_blocks-".&label("pic_point"),"ebx"));
-	&lea	("edx",&DWP("poly1305_emit-".&label("pic_point"),"ebx"));
+	&lea	("eax",&DWP("GFp_poly1305_blocks-".&label("pic_point"),"ebx"));
+	&lea	("edx",&DWP("GFp_poly1305_emit-".&label("pic_point"),"ebx"));
 
 	&picmeup("edi","GFp_ia32cap_P","ebx",&label("pic_point"));
 	&mov	("ecx",&DWP(0,"edi"));
@@ -126,14 +126,14 @@ if ($sse2) {
 
 	&mov	("eax",$sse2);
 &set_label("nokey");
-&function_end("poly1305_init");
+&function_end("GFp_poly1305_init_asm");
 
 ($h0,$h1,$h2,$h3,$h4,
  $d0,$d1,$d2,$d3,
  $r0,$r1,$r2,$r3,
      $s1,$s2,$s3)=map(4*$_,(0..15));
 
-&function_begin("poly1305_blocks");
+&function_begin("GFp_poly1305_blocks");
 	&mov	("edi",&wparam(0));		# ctx
 	&mov	("esi",&wparam(1));		# inp
 	&mov	("ecx",&wparam(2));		# len
@@ -302,9 +302,9 @@ if ($sse2) {
 	&mov	(&DWP(4*3,"edx"),"esi");
 	&mov	(&DWP(4*4,"edx"),"edi");
 &set_label("nodata");
-&function_end("poly1305_blocks");
+&function_end("GFp_poly1305_blocks");
 
-&function_begin("poly1305_emit");
+&function_begin("GFp_poly1305_emit");
 	&mov	("ebp",&wparam(0));		# context
 &set_label("enter_emit");
 	&mov	("edi",&wparam(1));		# output
@@ -355,7 +355,7 @@ if ($sse2) {
 	&mov	(&DWP(4*1,"edi"),"ebx");
 	&mov	(&DWP(4*2,"edi"),"ecx");
 	&mov	(&DWP(4*3,"edi"),"edx");
-&function_end("poly1305_emit");
+&function_end("GFp_poly1305_emit");
 
 if ($sse2) {
 ########################################################################

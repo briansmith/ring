@@ -53,10 +53,10 @@ OPENSSL_COMPILE_ASSERT(POLY1305_BLOCK_STATE_SIZE >=
  * |POLY1305_BLOCK_STATE_SIZE| is taken from OpenSSL. */
 #endif
 
-int poly1305_init(void *ctx, const uint8_t key[16], void *out_func);
-void poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
-                     uint32_t padbit);
-void poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]);
+int GFp_poly1305_init_asm(void *ctx, const uint8_t key[16], void *out_func);
+void GFp_poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
+                         uint32_t padbit);
+void GFp_poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]);
 
 struct poly1305_state_st {
   alignas(8) uint8_t opaque[POLY1305_BLOCK_STATE_SIZE];
@@ -82,9 +82,9 @@ void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
    * And, for platforms that have such conditional logic also in the ASM code,
    * it seems it would be better to move the conditional logic out of the asm
    * and into the higher-level code. */
-  if (!poly1305_init(state.opaque, key, &state.func)) {
-    state.func.blocks = poly1305_blocks;
-    state.func.emit = poly1305_emit;
+  if (!GFp_poly1305_init_asm(state.opaque, key, &state.func)) {
+    state.func.blocks = GFp_poly1305_blocks;
+    state.func.emit = GFp_poly1305_emit;
   }
 
   state.buf_used = 0;
