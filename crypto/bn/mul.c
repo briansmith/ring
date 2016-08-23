@@ -62,10 +62,6 @@
 #include "internal.h"
 
 
-#define BN_MUL_RECURSIVE_SIZE_NORMAL 16
-#define BN_SQR_RECURSIVE_SIZE_NORMAL BN_MUL_RECURSIVE_SIZE_NORMAL
-
-
 static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
                           int nb) {
   assert(r != a);
