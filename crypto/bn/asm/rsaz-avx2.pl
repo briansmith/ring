@@ -1725,12 +1725,12 @@ ___
 }
 
 $code.=<<___;
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 .globl	rsaz_avx2_eligible
 .type	rsaz_avx2_eligible,\@abi-omnipotent
 .align	32
 rsaz_avx2_eligible:
-	mov	OPENSSL_ia32cap_P+8(%rip),%eax
+	mov	GFp_ia32cap_P+8(%rip),%eax
 ___
 $code.=<<___	if ($addx);
 	mov	\$`1<<8|1<<19`,%ecx

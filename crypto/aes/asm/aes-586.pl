@@ -1183,7 +1183,7 @@ sub enclast()
 	&call   (&label("pic_point"));          # make it PIC!
 	&set_label("pic_point");
 	&blindpop($tbl);
-	&picmeup($s0,"OPENSSL_ia32cap_P",$tbl,&label("pic_point")) if (!$x86only);
+	&picmeup($s0,"GFp_ia32cap_P",$tbl,&label("pic_point")) if (!$x86only);
 	&lea    ($tbl,&DWP(&label("AES_Te")."-".&label("pic_point"),$tbl));
 
 	# pick Te4 copy which can't "overlap" with stack frame or key schedule

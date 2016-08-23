@@ -60,7 +60,7 @@ $addx=0;
 
 $code.=<<___;
 .text
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 
 # The polynomial
 .align 64
@@ -197,7 +197,7 @@ ecp_nistz256_mul_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 ___
 $code.=<<___;
 .Lmul_mont:
@@ -478,7 +478,7 @@ ecp_nistz256_sqr_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 ___
 $code.=<<___;
 	push	%rbp
@@ -1005,7 +1005,7 @@ $code.=<<___;
 ecp_nistz256_select_w5:
 ___
 $code.=<<___	if ($avx>1);
-	mov	OPENSSL_ia32cap_P+8(%rip), %eax
+	mov	GFp_ia32cap_P+8(%rip), %eax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w5
 ___
@@ -1102,7 +1102,7 @@ $code.=<<___;
 ecp_nistz256_select_w7:
 ___
 $code.=<<___	if ($avx>1);
-	mov	OPENSSL_ia32cap_P+8(%rip), %eax
+	mov	GFp_ia32cap_P+8(%rip), %eax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w7
 ___
@@ -1604,7 +1604,7 @@ ecp_nistz256_point_double:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lpoint_doublex
 ___
@@ -1834,7 +1834,7 @@ ecp_nistz256_point_add:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lpoint_addx
 ___
@@ -2202,7 +2202,7 @@ ecp_nistz256_point_add_affine:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lpoint_add_affinex
 ___

@@ -69,7 +69,7 @@ open OUT,">$output";
 
 &asm_init($ARGV[0],$0);
 
-&external_label("OPENSSL_ia32cap_P");
+&external_label("GFp_ia32cap_P");
 &static_label("key_const");
 
 if ($PREFIX eq "aesni")	{ $movekey=\&movups; }
@@ -673,7 +673,7 @@ if ($PREFIX eq "aesni") {
 	&blindpop("ebx");
 	&lea	("ebx",&DWP(&label("key_const")."-".&label("pic"),"ebx"));
 
-	&picmeup("ebp","OPENSSL_ia32cap_P","ebx",&label("key_const"));
+	&picmeup("ebp","GFp_ia32cap_P","ebx",&label("key_const"));
 	&movups	("xmm0",&QWP(0,"eax"));	# pull first 128 bits of *userKey
 	&xorps	("xmm4","xmm4");	# low dword of xmm4 is assumed 0
 	&mov	("ebp",&DWP(4,"ebp"));

@@ -78,7 +78,7 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 
 .globl	GFp_bn_mul_mont
 .type	GFp_bn_mul_mont,\@function,6
@@ -90,7 +90,7 @@ GFp_bn_mul_mont:
 	jb	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%r11d
+	mov	GFp_ia32cap_P+8(%rip),%r11d
 ___
 $code.=<<___;
 	cmp	$ap,$bp
@@ -794,7 +794,7 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%eax
+	mov	GFp_ia32cap_P+8(%rip),%eax
 	and	\$0x80100,%eax
 	cmp	\$0x80100,%eax
 	jne	.Lsqr8x_nox

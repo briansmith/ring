@@ -205,7 +205,7 @@ K256:
 .word	0				@ terminator
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 .LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lsha256_block_data_order
+.word	GFp_armcap_P-.Lsha256_block_data_order
 #endif
 .align	5
 
@@ -220,7 +220,7 @@ sha256_block_data_order:
 #endif
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 	ldr	r12,.LOPENSSL_armcap
-	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
+	ldr	r12,[r3,r12]		@ GFp_armcap_P
 #ifdef	__APPLE__
 	ldr	r12,[r12]
 #endif
@@ -676,8 +676,8 @@ $code.=<<___;
 .asciz  "SHA256 block transform for ARMv4/NEON/ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.comm   OPENSSL_armcap_P,4,4
-.hidden OPENSSL_armcap_P
+.comm   GFp_armcap_P,4,4
+.hidden GFp_armcap_P
 #endif
 ___
 

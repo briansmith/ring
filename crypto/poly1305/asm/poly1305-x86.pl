@@ -50,7 +50,7 @@ if ($sse2) {
 	&static_label("const_sse2");
 	&static_label("enter_blocks");
 	&static_label("enter_emit");
-	&external_label("OPENSSL_ia32cap_P");
+	&external_label("GFp_ia32cap_P");
 
 	# This may be set to 2, but valgrind can't do AVX2 on 32-bit. Without a
 	# way to verify test coverage, keep it disabled.
@@ -89,7 +89,7 @@ if ($sse2) {
 	&lea	("eax",&DWP("poly1305_blocks-".&label("pic_point"),"ebx"));
 	&lea	("edx",&DWP("poly1305_emit-".&label("pic_point"),"ebx"));
 
-	&picmeup("edi","OPENSSL_ia32cap_P","ebx",&label("pic_point"));
+	&picmeup("edi","GFp_ia32cap_P","ebx",&label("pic_point"));
 	&mov	("ecx",&DWP(0,"edi"));
 	&and	("ecx",1<<26|1<<24);
 	&cmp	("ecx",1<<26|1<<24);		# SSE2 and XMM?

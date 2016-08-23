@@ -85,7 +85,7 @@ int GFp_has_aes_hardware(void);
 
 #define VPAES
 static char vpaes_capable(void) {
-  return (OPENSSL_ia32cap_P[1] & (1 << (41 - 32))) != 0;
+  return (GFp_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
 
 #if defined(OPENSSL_X86_64)
@@ -228,7 +228,7 @@ static aes_ctr_f aes_ctr(void) {
 
 #if defined(AESNI)
 static char aesni_capable(void) {
-  return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
+  return (GFp_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
 #endif
 

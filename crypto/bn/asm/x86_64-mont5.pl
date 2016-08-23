@@ -67,7 +67,7 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 
 .globl	GFp_bn_mul_mont_gather5
 .type	GFp_bn_mul_mont_gather5,\@function,6
@@ -77,7 +77,7 @@ GFp_bn_mul_mont_gather5:
 	jnz	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%r11d
+	mov	GFp_ia32cap_P+8(%rip),%r11d
 ___
 $code.=<<___;
 	jmp	.Lmul4x_enter
@@ -999,7 +999,7 @@ $code.=<<___;
 GFp_bn_power5:
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%r11d
+	mov	GFp_ia32cap_P+8(%rip),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
 	je	.Lpowerx5_enter
@@ -2060,7 +2060,7 @@ bn_from_mont8x:
 	movq	%r10, %xmm3		# -num
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%r11d
+	mov	GFp_ia32cap_P+8(%rip),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
 	jne	.Lfrom_mont_nox

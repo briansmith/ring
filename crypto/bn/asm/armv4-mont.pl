@@ -101,7 +101,7 @@ $code=<<___;
 #if __ARM_MAX_ARCH__>=7
 .align	5
 .LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lbn_mul_mont
+.word	GFp_armcap_P-.Lbn_mul_mont
 #endif
 
 .global	GFp_bn_mul_mont
@@ -732,8 +732,8 @@ $code.=<<___;
 .asciz	"Montgomery multiplication for ARMv4/NEON, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if __ARM_MAX_ARCH__>=7
-.comm	OPENSSL_armcap_P,4,4
-.hidden	OPENSSL_armcap_P
+.comm	GFp_armcap_P,4,4
+.hidden	GFp_armcap_P
 #endif
 ___
 

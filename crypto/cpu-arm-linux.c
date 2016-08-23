@@ -284,11 +284,11 @@ static int has_broken_neon(const STRING_PIECE *cpuinfo) {
          cpuinfo_field_equals(cpuinfo, "CPU revision", "0");
 }
 
-extern uint32_t OPENSSL_armcap_P;
+extern uint32_t GFp_armcap_P;
 
 static int g_has_broken_neon;
 
-void OPENSSL_cpuid_setup(void) {
+void GFp_cpuid_setup(void) {
   char *cpuinfo_data;
   size_t cpuinfo_len;
   if (!read_file(&cpuinfo_data, &cpuinfo_len, "/proc/cpuinfo")) {
@@ -324,7 +324,7 @@ void OPENSSL_cpuid_setup(void) {
 
   /* Matching OpenSSL, only report other features if NEON is present. */
   if (hwcap & HWCAP_NEON) {
-    OPENSSL_armcap_P |= ARMV7_NEON;
+    GFp_armcap_P |= ARMV7_NEON;
 
     /* Some ARMv8 Android devices don't expose AT_HWCAP2. Fall back to
      * /proc/cpuinfo. See https://crbug.com/596156. */
@@ -337,16 +337,16 @@ void OPENSSL_cpuid_setup(void) {
     }
 
     if (hwcap2 & HWCAP2_AES) {
-      OPENSSL_armcap_P |= ARMV8_AES;
+      GFp_armcap_P |= ARMV8_AES;
     }
     if (hwcap2 & HWCAP2_PMULL) {
-      OPENSSL_armcap_P |= ARMV8_PMULL;
+      GFp_armcap_P |= ARMV8_PMULL;
     }
     if (hwcap2 & HWCAP2_SHA1) {
-      OPENSSL_armcap_P |= ARMV8_SHA1;
+      GFp_armcap_P |= ARMV8_SHA1;
     }
     if (hwcap2 & HWCAP2_SHA2) {
-      OPENSSL_armcap_P |= ARMV8_SHA256;
+      GFp_armcap_P |= ARMV8_SHA256;
     }
   }
 

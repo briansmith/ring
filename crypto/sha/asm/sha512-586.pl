@@ -58,7 +58,7 @@ open STDOUT,">$output";
 $sse2=0;
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-&external_label("OPENSSL_ia32cap_P") if ($sse2);
+&external_label("GFp_ia32cap_P") if ($sse2);
 
 $Tlo=&DWP(0,"esp");	$Thi=&DWP(4,"esp");
 $Alo=&DWP(8,"esp");	$Ahi=&DWP(8+4,"esp");
@@ -305,7 +305,7 @@ sub BODY_00_15_x86 {
 	&mov	(&DWP(12,"esp"),"ebx");	# saved sp
 
 if ($sse2) {
-	&picmeup("edx","OPENSSL_ia32cap_P",$K512,&label("K512"));
+	&picmeup("edx","GFp_ia32cap_P",$K512,&label("K512"));
 	&mov	("ecx",&DWP(0,"edx"));
 	&test	("ecx",1<<26);
 	&jz	(&label("loop_x86"));

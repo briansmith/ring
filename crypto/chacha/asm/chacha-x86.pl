@@ -119,7 +119,7 @@ if ($xmm) {
 	&call	(&label("pic_point"));
 &set_label("pic_point");
 	&blindpop("eax");
-	&picmeup("ebp","OPENSSL_ia32cap_P","eax",&label("pic_point"));
+	&picmeup("ebp","GFp_ia32cap_P","eax",&label("pic_point"));
 	&test	(&DWP(0,"ebp"),1<<24);		# test FXSR bit
 	&jz	(&label("x86"));
 	&test	(&DWP(4,"ebp"),1<<9);		# test SSSE3 bit

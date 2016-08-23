@@ -376,7 +376,7 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
 
 #if defined(GHASH_ASM_X86_OR_64)
   if (GFp_gcm_clmul_enabled()) {
-    if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
+    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       GFp_gcm_init_avx(Htable, H);
     } else {
       GFp_gcm_init_clmul(Htable, H);
@@ -405,7 +405,7 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
 
 #if defined(GHASH_ASM_X86_OR_64)
   if (GFp_gcm_clmul_enabled()) {
-    if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
+    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       ctx->gmult = GFp_gcm_gmult_avx;
       ctx->ghash = GFp_gcm_ghash_avx;
     } else {
@@ -416,7 +416,7 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
   }
 #endif
 #if defined(GHASH_ASM_X86)
-  if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
+  if (GFp_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
     ctx->gmult = GFp_gcm_gmult_4bit_mmx;
     ctx->ghash = GFp_gcm_ghash_4bit_mmx;
     return;
@@ -858,8 +858,8 @@ void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 int GFp_gcm_clmul_enabled(void) {
 #ifdef GHASH_ASM
-  return OPENSSL_ia32cap_P[0] & (1 << 24) &&  /* check FXSR bit */
-    OPENSSL_ia32cap_P[1] & (1 << 1);  /* check PCLMULQDQ bit */
+  return GFp_ia32cap_P[0] & (1 << 24) &&  /* check FXSR bit */
+    GFp_ia32cap_P[1] & (1 << 1);  /* check PCLMULQDQ bit */
 #else
   return 0;
 #endif

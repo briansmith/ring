@@ -176,7 +176,7 @@ sub BODY_00_15() {
 	 &add	($A,$T);		# h += T
 }
 
-&external_label("OPENSSL_ia32cap_P")		if (!$i386);
+&external_label("GFp_ia32cap_P")		if (!$i386);
 
 &function_begin("sha256_block_data_order");
 	&mov	("esi",wparam(0));	# ctx
@@ -199,7 +199,7 @@ sub BODY_00_15() {
 	&mov	(&DWP(8,"esp"),"eax");	# inp+num*128
 	&mov	(&DWP(12,"esp"),"ebx");	# saved sp
 						if (!$i386 && $xmm) {
-	&picmeup("edx","OPENSSL_ia32cap_P",$K256,&label("K256"));
+	&picmeup("edx","GFp_ia32cap_P",$K256,&label("K256"));
 	&mov	("ecx",&DWP(0,"edx"));
 	&mov	("ebx",&DWP(4,"edx"));
 	&test	("ecx",1<<20);		# check for P4

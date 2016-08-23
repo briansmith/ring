@@ -210,7 +210,7 @@ ___
 
 $code=<<___;
 .text
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 
 .globl	GFp_gcm_gmult_4bit
 .type	GFp_gcm_gmult_4bit,\@function,2
@@ -637,7 +637,7 @@ if ($do4xaggr) {
 my ($Xl,$Xm,$Xh,$Hkey3,$Hkey4)=map("%xmm$_",(11..15));
 
 $code.=<<___;
-	mov		OPENSSL_ia32cap_P+4(%rip),%eax
+	mov		GFp_ia32cap_P+4(%rip),%eax
 	cmp		\$0x30,$len
 	jb		.Lskip4x
 

@@ -110,7 +110,7 @@ ___
 $code.=<<___;
 .text
 
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 
 .globl	poly1305_init
 .hidden	poly1305_init
@@ -134,7 +134,7 @@ poly1305_init:
 	lea	poly1305_emit(%rip),%r11
 ___
 $code.=<<___	if ($avx);
-	mov	OPENSSL_ia32cap_P+4(%rip),%r9
+	mov	GFp_ia32cap_P+4(%rip),%r9
 	lea	poly1305_blocks_avx(%rip),%rax
 	lea	poly1305_emit_avx(%rip),%rcx
 	bt	\$`60-32`,%r9		# AVX?

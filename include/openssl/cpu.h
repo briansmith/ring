@@ -72,7 +72,7 @@ extern "C" {
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
+/* GFp_ia32cap_P contains the Intel CPUID bits when running on an x86 or
  * x86-64 system.
  *
  *   Index 0:
@@ -90,7 +90,7 @@ extern "C" {
  *
  * Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
  * bits in XCR0, so it is not necessary to check those. */
-extern uint32_t OPENSSL_ia32cap_P[4];
+extern uint32_t GFp_ia32cap_P[4];
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)

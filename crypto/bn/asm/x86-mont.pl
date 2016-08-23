@@ -38,7 +38,7 @@ open STDOUT,">$output";
 $sse2=0;
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-&external_label("OPENSSL_ia32cap_P") if ($sse2);
+&external_label("GFp_ia32cap_P") if ($sse2);
 
 &function_begin("GFp_bn_mul_mont");
 
@@ -114,7 +114,7 @@ $mul1="mm5";
 $temp="mm6";
 $mask="mm7";
 
-	&picmeup("eax","OPENSSL_ia32cap_P");
+	&picmeup("eax","GFp_ia32cap_P");
 	&bt	(&DWP(0,"eax"),26);
 	&jnc	(&label("non_sse2"));
 

@@ -93,7 +93,7 @@ poly1305_init:
 	and	r4,r4,r10
 
 #if	__ARM_MAX_ARCH__>=7
-	ldr	r12,[r11,r12]		@ OPENSSL_armcap_P
+	ldr	r12,[r11,r12]		@ GFp_armcap_P
 # ifdef	__APPLE__
 	ldr	r12,[r12]
 # endif
@@ -1221,7 +1221,7 @@ poly1305_emit_neon:
 .Lzeros:
 .long	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 .LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lpoly1305_init
+.word	GFp_armcap_P-.Lpoly1305_init
 #endif
 ___
 }	}
@@ -1229,7 +1229,7 @@ $code.=<<___;
 .asciz	"Poly1305 for ARMv4/NEON, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if	__ARM_MAX_ARCH__>=7
-.comm   OPENSSL_armcap_P,4,4
+.comm   GFp_armcap_P,4,4
 #endif
 ___
 

@@ -47,7 +47,7 @@ $code.=<<___;
 .text
 
 // forward "declarations" are required for Apple
-.extern	OPENSSL_armcap_P
+.extern	GFp_armcap_P
 .globl	poly1305_blocks
 .globl	poly1305_emit
 
@@ -63,11 +63,11 @@ poly1305_init:
 	b.eq	.Lno_key
 
 #ifdef	__ILP32__
-	ldrsw	$t1,.LOPENSSL_armcap_P
+	ldrsw	$t1,.LGFp_armcap_P
 #else
-	ldr	$t1,.LOPENSSL_armcap_P
+	ldr	$t1,.LGFp_armcap_P
 #endif
-	adr	$t0,.LOPENSSL_armcap_P
+	adr	$t0,.LGFp_armcap_P
 
 	ldp	$r0,$r1,[$inp]		// load key
 	mov	$s1,#0xfffffffc0fffffff
@@ -905,11 +905,11 @@ poly1305_emit_neon:
 .align	5
 .Lzeros:
 .long	0,0,0,0,0,0,0,0
-.LOPENSSL_armcap_P:
+.LGFp_armcap_P:
 #ifdef	__ILP32__
-.long	OPENSSL_armcap_P-.
+.long	GFp_armcap_P-.
 #else
-.quad	OPENSSL_armcap_P-.
+.quad	GFp_armcap_P-.
 #endif
 .asciz	"Poly1305 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2

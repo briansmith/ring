@@ -266,7 +266,7 @@ WORD64(0x5fcb6fab,0x3ad6faec, 0x6c44198c,0x4a475817)
 .size	K512,.-K512
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 .LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lsha512_block_data_order
+.word	GFp_armcap_P-.Lsha512_block_data_order
 .skip	32-4
 #else
 .skip	32
@@ -283,7 +283,7 @@ sha512_block_data_order:
 #endif
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 	ldr	r12,.LOPENSSL_armcap
-	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
+	ldr	r12,[r3,r12]		@ GFp_armcap_P
 #ifdef	__APPLE__
 	ldr	r12,[r12]
 #endif
@@ -641,8 +641,8 @@ $code.=<<___;
 .asciz	"SHA512 block transform for ARMv4/NEON, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.comm	OPENSSL_armcap_P,4,4
-.hidden	OPENSSL_armcap_P
+.comm	GFp_armcap_P,4,4
+.hidden	GFp_armcap_P
 #endif
 ___
 

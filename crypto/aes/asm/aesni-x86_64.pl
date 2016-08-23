@@ -195,7 +195,7 @@ $movkey = $PREFIX eq "aesni" ? "movups" : "movups";
 		("%rdi","%rsi","%rdx","%rcx");	# Unix order
 
 $code=".text\n";
-$code.=".extern	OPENSSL_ia32cap_P\n";
+$code.=".extern	GFp_ia32cap_P\n";
 
 $rounds="%eax";	# input to and changed by aesni_[en|de]cryptN !!!
 # this is natural Unix argument order for public $PREFIX_[ecb|cbc]_encrypt ...
@@ -667,7 +667,7 @@ $code.=<<___;
 	lea	7($ctr),%r9
 	 mov	%r10d,0x60+12(%rsp)
 	bswap	%r9d
-	 mov	OPENSSL_ia32cap_P+4(%rip),%r10d 
+	 mov	GFp_ia32cap_P+4(%rip),%r10d 
 	xor	$key0,%r9d
 	 and	\$`1<<26|1<<22`,%r10d		# isolate XSAVE+MOVBE
 	mov	%r9d,0x70+12(%rsp)
@@ -1169,7 +1169,7 @@ __aesni_set_encrypt_key:
 	mov	\$`1<<28|1<<11`,%r10d	# AVX and XOP bits
 	movups	($inp),%xmm0		# pull first 128 bits of *userKey
 	xorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
-	and	OPENSSL_ia32cap_P+4(%rip),%r10d
+	and	GFp_ia32cap_P+4(%rip),%r10d
 	lea	16($key),%rax		# %rax is used as modifiable copy of $key
 	cmp	\$256,$bits
 	je	.L14rounds
