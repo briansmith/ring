@@ -370,81 +370,69 @@ int BN_hex2bn(BIGNUM **outp, const char *in) {
 }
 
 char *BN_bn2dec(const BIGNUM *a) {
-  int i = 0, num, ok = 0;
-  char *buf = NULL;
-  char *p;
-  BIGNUM *t = NULL;
-  BN_ULONG *bn_data = NULL, *lp;
-  int bn_data_num;
-
-  /* get an upper bound for the length of the decimal integer
-   * num <= (BN_num_bits(a) + 1) * log(2)
-   *     <= 3 * BN_num_bits(a) * 0.1001 + log(2) + 1     (rounding error)
-   *     <= BN_num_bits(a)/10 + BN_num_bits/1000 + 1 + 1
-   */
-  i = BN_num_bits(a) * 3;
-  num = i / 10 + i / 1000 + 1 + 1;
-  bn_data_num = num / BN_DEC_NUM + 1;
-  bn_data = OPENSSL_malloc(bn_data_num * sizeof(BN_ULONG));
-  buf = OPENSSL_malloc(num + 3);
-  if ((buf == NULL) || (bn_data == NULL)) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  t = BN_dup(a);
-  if (t == NULL) {
-    goto err;
+  /* It is easier to print strings little-endian, so we assemble it in reverse
+   * and fix at the end. */
+  BIGNUM *copy = NULL;
+  CBB cbb;
+  if (!CBB_init(&cbb, 16) ||
+      !CBB_add_u8(&cbb, 0 /* trailing NUL */)) {
+    goto cbb_err;
   }
 
-#define BUF_REMAIN (num + 3 - (size_t)(p - buf))
-  p = buf;
-  lp = bn_data;
-
-  if (BN_is_negative(t)) {
-    *p++ = '-';
-  }
-
-  if (BN_is_zero(t)) {
-    *(p++) = '0';
-    *(p++) = '\0';
+  if (BN_is_zero(a)) {
+    if (!CBB_add_u8(&cbb, '0')) {
+      goto cbb_err;
+    }
   } else {
-    while (!BN_is_zero(t)) {
-      *lp = BN_div_word(t, BN_DEC_CONV);
-      if (*lp == (BN_ULONG)-1) {
+    copy = BN_dup(a);
+    if (copy == NULL) {
+      goto err;
+    }
+
+    while (!BN_is_zero(copy)) {
+      BN_ULONG word = BN_div_word(copy, BN_DEC_CONV);
+      if (word == (BN_ULONG)-1) {
         goto err;
       }
-      lp++;
-      if (lp - bn_data >= bn_data_num) {
-        goto err;
+
+      const int add_leading_zeros = !BN_is_zero(copy);
+      for (int i = 0; i < BN_DEC_NUM && (add_leading_zeros || word != 0); i++) {
+        if (!CBB_add_u8(&cbb, '0' + word % 10)) {
+          goto cbb_err;
+        }
+        word /= 10;
       }
-    }
-    lp--;
-    /* We now have a series of blocks, BN_DEC_NUM chars
-     * in length, where the last one needs truncation.
-     * The blocks need to be reversed in order. */
-    BIO_snprintf(p, BUF_REMAIN, BN_DEC_FMT1, *lp);
-    while (*p) {
-      p++;
-    }
-    while (lp != bn_data) {
-      lp--;
-      BIO_snprintf(p, BUF_REMAIN, BN_DEC_FMT2, *lp);
-      while (*p) {
-        p++;
-      }
+      assert(word == 0);
     }
   }
-  ok = 1;
 
+  if (BN_is_negative(a) &&
+      !CBB_add_u8(&cbb, '-')) {
+    goto cbb_err;
+  }
+
+  uint8_t *data;
+  size_t len;
+  if (!CBB_finish(&cbb, &data, &len)) {
+    goto cbb_err;
+  }
+
+  /* Reverse the buffer. */
+  for (size_t i = 0; i < len/2; i++) {
+    uint8_t tmp = data[i];
+    data[i] = data[len - 1 - i];
+    data[len - 1 - i] = tmp;
+  }
+
+  BN_free(copy);
+  return (char *)data;
+
+cbb_err:
+  OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
 err:
-  OPENSSL_free(bn_data);
-  BN_free(t);
-  if (!ok) {
-    OPENSSL_free(buf);
-    buf = NULL;
-  }
-
-  return buf;
+  BN_free(copy);
+  CBB_cleanup(&cbb);
+  return NULL;
 }
 
 int BN_dec2bn(BIGNUM **outp, const char *in) {

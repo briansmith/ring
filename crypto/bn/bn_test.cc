@@ -1402,6 +1402,41 @@ static bool TestCmpWord() {
   return true;
 }
 
+static bool TestBN2Dec() {
+  static const char *kBN2DecTests[] = {
+      "0",
+      "1",
+      "-1",
+      "100",
+      "-100",
+      "123456789012345678901234567890",
+      "-123456789012345678901234567890",
+      "123456789012345678901234567890123456789012345678901234567890",
+      "-123456789012345678901234567890123456789012345678901234567890",
+  };
+
+  for (const char *test : kBN2DecTests) {
+    ScopedBIGNUM bn;
+    int ret = DecimalToBIGNUM(&bn, test);
+    if (ret == 0) {
+      return false;
+    }
+
+    ScopedOpenSSLString dec(BN_bn2dec(bn.get()));
+    if (!dec) {
+      fprintf(stderr, "BN_bn2dec failed on %s.\n", test);
+      return false;
+    }
+
+    if (strcmp(dec.get(), test) != 0) {
+      fprintf(stderr, "BN_bn2dec gave %s, wanted %s.\n", dec.get(), test);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
@@ -1426,7 +1461,8 @@ int main(int argc, char *argv[]) {
       !TestBadModulus(ctx.get()) ||
       !TestExpModZero() ||
       !TestSmallPrime(ctx.get()) ||
-      !TestCmpWord()) {
+      !TestCmpWord() ||
+      !TestBN2Dec()) {
     return 1;
   }
 
