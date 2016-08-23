@@ -126,7 +126,7 @@ int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
   return 1;
 }
 
-size_t RSA_size(const RSA *rsa) {
+size_t GFp_RSA_size(const RSA *rsa) {
   return GFp_BN_num_bytes(&rsa->mont_n->N);
 }
 

@@ -68,14 +68,14 @@
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-int rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *n, const BIGNUM *p,
-                const BIGNUM *q);
+int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *n, const BIGNUM *p,
+                    const BIGNUM *q);
 
 static int rsa_check_key(const RSA *rsa, const BIGNUM *d);
 
 
-int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
-                const BIGNUM *q) {
+int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
+                    const BIGNUM *q) {
   assert(rsa->e != NULL);
   assert(rsa->dmp1 != NULL);
   assert(rsa->dmq1 != NULL);

@@ -127,8 +127,8 @@ impl RSAKeyPair {
                     iqmp_mont: std::ptr::null_mut(),
                 };
                 try!(bssl::map_result(unsafe {
-                    rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(), p.as_ref(),
-                                q.as_ref())
+                    GFp_rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(),
+                                    p.as_ref(), q.as_ref())
                 }));
                 Ok(RSAKeyPair { rsa: rsa })
             })
@@ -138,7 +138,9 @@ impl RSAKeyPair {
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
-    pub fn public_modulus_len(&self) -> usize { unsafe { RSA_size(&self.rsa) } }
+    pub fn public_modulus_len(&self) -> usize {
+        unsafe { GFp_RSA_size(&self.rsa) }
+    }
 }
 
 impl Drop for RSAKeyPair {
@@ -284,9 +286,9 @@ struct BN_BLINDING {
 extern {
     fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
-                   q: &BIGNUM) -> c::int;
-    fn RSA_size(rsa: *const RSA) -> c::size_t;
+    fn GFp_rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
+                       q: &BIGNUM) -> c::int;
+    fn GFp_RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
 #[allow(improper_ctypes)]
