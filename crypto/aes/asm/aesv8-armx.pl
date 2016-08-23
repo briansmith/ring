@@ -247,60 +247,6 @@ $code.=<<___;
 	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
 	ret
 .size	${prefix}_set_encrypt_key,.-${prefix}_set_encrypt_key
-
-.globl	${prefix}_set_decrypt_key
-.type	${prefix}_set_decrypt_key,%function
-.align	5
-${prefix}_set_decrypt_key:
-___
-$code.=<<___	if ($flavour =~ /64/);
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-___
-$code.=<<___	if ($flavour !~ /64/);
-	stmdb	sp!,{r4,lr}
-___
-$code.=<<___;
-	bl	.Lenc_key
-
-	cmp	x0,#0
-	b.ne	.Ldec_key_abort
-
-	sub	$out,$out,#240		// restore original $out
-	mov	x4,#-16
-	add	$inp,$out,x12,lsl#4	// end of key schedule
-
-	vld1.32	{v0.16b},[$out]
-	vld1.32	{v1.16b},[$inp]
-	vst1.32	{v0.16b},[$inp],x4
-	vst1.32	{v1.16b},[$out],#16
-
-.Loop_imc:
-	vld1.32	{v0.16b},[$out]
-	vld1.32	{v1.16b},[$inp]
-	aesimc	v0.16b,v0.16b
-	aesimc	v1.16b,v1.16b
-	vst1.32	{v0.16b},[$inp],x4
-	vst1.32	{v1.16b},[$out],#16
-	cmp	$inp,$out
-	b.hi	.Loop_imc
-
-	vld1.32	{v0.16b},[$out]
-	aesimc	v0.16b,v0.16b
-	vst1.32	{v0.16b},[$inp]
-
-	eor	x0,x0,x0		// return value
-.Ldec_key_abort:
-___
-$code.=<<___	if ($flavour !~ /64/);
-	ldmia	sp!,{r4,pc}
-___
-$code.=<<___	if ($flavour =~ /64/);
-	ldp	x29,x30,[sp],#16
-	ret
-___
-$code.=<<___;
-.size	${prefix}_set_decrypt_key,.-${prefix}_set_decrypt_key
 ___
 }}}
 {{{

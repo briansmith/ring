@@ -83,22 +83,9 @@ typedef struct aes_key_st AES_KEY;
 OPENSSL_EXPORT int AES_set_encrypt_key(const uint8_t *key, unsigned bits,
                                        AES_KEY *aeskey);
 
-/* AES_set_decrypt_key configures |aeskey| to decrypt with the |bits|-bit key,
- * |key|.
- *
- * WARNING: unlike other OpenSSL functions, this returns zero on success and a
- * negative number on error. */
-OPENSSL_EXPORT int AES_set_decrypt_key(const uint8_t *key, unsigned bits,
-                                       AES_KEY *aeskey);
-
 /* AES_encrypt encrypts a single block from |in| to |out| with |key|. The |in|
  * and |out| pointers may overlap. */
 OPENSSL_EXPORT void AES_encrypt(const uint8_t *in, uint8_t *out,
-                                const AES_KEY *key);
-
-/* AES_decrypt decrypts a single block from |in| to |out| with |key|. The |in|
- * and |out| pointers may overlap. */
-OPENSSL_EXPORT void AES_decrypt(const uint8_t *in, uint8_t *out,
                                 const AES_KEY *key);
 
 

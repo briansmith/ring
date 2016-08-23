@@ -801,7 +801,6 @@ $code.=<<___;
 .text
 
 .extern	asm_AES_encrypt
-.extern	asm_AES_decrypt
 
 .type	_bsaes_encrypt8,\@abi-omnipotent
 .align	64
@@ -866,68 +865,6 @@ $code.=<<___;
 	pxor	@XMM[8], @XMM[1]
 	ret
 .size	_bsaes_encrypt8,.-_bsaes_encrypt8
-
-.type	_bsaes_decrypt8,\@abi-omnipotent
-.align	64
-_bsaes_decrypt8:
-	lea	.LBS0(%rip), $const	# constants table
-
-	movdqa	($key), @XMM[9]		# round 0 key
-	lea	0x10($key), $key
-	movdqa	-0x30($const), @XMM[8]	# .LM0ISR
-	pxor	@XMM[9], @XMM[0]	# xor with round0 key
-	pxor	@XMM[9], @XMM[1]
-	pxor	@XMM[9], @XMM[2]
-	pxor	@XMM[9], @XMM[3]
-	 pshufb	@XMM[8], @XMM[0]
-	 pshufb	@XMM[8], @XMM[1]
-	pxor	@XMM[9], @XMM[4]
-	pxor	@XMM[9], @XMM[5]
-	 pshufb	@XMM[8], @XMM[2]
-	 pshufb	@XMM[8], @XMM[3]
-	pxor	@XMM[9], @XMM[6]
-	pxor	@XMM[9], @XMM[7]
-	 pshufb	@XMM[8], @XMM[4]
-	 pshufb	@XMM[8], @XMM[5]
-	 pshufb	@XMM[8], @XMM[6]
-	 pshufb	@XMM[8], @XMM[7]
-___
-	&bitslice	(@XMM[0..7, 8..11]);
-$code.=<<___;
-	dec	$rounds
-	jmp	.Ldec_sbox
-.align	16
-.Ldec_loop:
-___
-	&ShiftRows	(@XMM[0..7, 8]);
-$code.=".Ldec_sbox:\n";
-	&InvSbox	(@XMM[0..7, 8..15]);
-$code.=<<___;
-	dec	$rounds
-	jl	.Ldec_done
-___
-	&InvMixColumns	(@XMM[0,1,6,4,2,7,3,5, 8..15]);
-$code.=<<___;
-	movdqa	-0x10($const), @XMM[8]	# .LISR
-	jnz	.Ldec_loop
-	movdqa	-0x20($const), @XMM[8]	# .LISRM0
-	jmp	.Ldec_loop
-.align	16
-.Ldec_done:
-___
-	&bitslice	(@XMM[0,1,6,4,2,7,3,5, 8..11]);
-$code.=<<___;
-	movdqa	($key), @XMM[8]		# last round key
-	pxor	@XMM[8], @XMM[6]
-	pxor	@XMM[8], @XMM[4]
-	pxor	@XMM[8], @XMM[2]
-	pxor	@XMM[8], @XMM[7]
-	pxor	@XMM[8], @XMM[3]
-	pxor	@XMM[8], @XMM[5]
-	pxor	@XMM[8], @XMM[0]
-	pxor	@XMM[8], @XMM[1]
-	ret
-.size	_bsaes_decrypt8,.-_bsaes_decrypt8
 ___
 }
 {
@@ -1091,53 +1028,6 @@ bsaes_encrypt_128:
 	ja	.Lenc128_loop
 	ret
 .size	bsaes_encrypt_128,.-bsaes_encrypt_128
-
-.globl	bsaes_dec_key_convert
-.type	bsaes_dec_key_convert,\@function,2
-.align	16
-bsaes_dec_key_convert:
-	mov	240($inp),%r10d		# pass rounds
-	mov	$inp,%rcx		# pass key
-	mov	$out,%rax		# pass key schedule
-	call	_bsaes_key_convert
-	pxor	($out),%xmm7		# fix up round 0 key
-	movdqa	%xmm6,(%rax)		# save last round key
-	movdqa	%xmm7,($out)
-	ret
-.size	bsaes_dec_key_convert,.-bsaes_dec_key_convert
-
-.globl	bsaes_decrypt_128
-.type	bsaes_decrypt_128,\@function,4
-.align	16
-bsaes_decrypt_128:
-.Ldec128_loop:
-	movdqu	0x00($inp), @XMM[0]	# load input
-	movdqu	0x10($inp), @XMM[1]
-	movdqu	0x20($inp), @XMM[2]
-	movdqu	0x30($inp), @XMM[3]
-	movdqu	0x40($inp), @XMM[4]
-	movdqu	0x50($inp), @XMM[5]
-	movdqu	0x60($inp), @XMM[6]
-	movdqu	0x70($inp), @XMM[7]
-	mov	$key, %rax		# pass the $key
-	lea	0x80($inp), $inp
-	mov	\$10,%r10d
-
-	call	_bsaes_decrypt8
-
-	movdqu	@XMM[0], 0x00($out)	# write output
-	movdqu	@XMM[1], 0x10($out)
-	movdqu	@XMM[6], 0x20($out)
-	movdqu	@XMM[4], 0x30($out)
-	movdqu	@XMM[2], 0x40($out)
-	movdqu	@XMM[7], 0x50($out)
-	movdqu	@XMM[3], 0x60($out)
-	movdqu	@XMM[5], 0x70($out)
-	lea	0x80($out), $out
-	sub	\$0x80,$len
-	ja	.Ldec128_loop
-	ret
-.size	bsaes_decrypt_128,.-bsaes_decrypt_128
 ___
 }
 {

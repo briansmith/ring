@@ -106,8 +106,6 @@ sub aescommon
 sub aesimc	{ aescommon(0xdb,@_); }
 sub aesenc	{ aescommon(0xdc,@_); }
 sub aesenclast	{ aescommon(0xdd,@_); }
-sub aesdec	{ aescommon(0xde,@_); }
-sub aesdeclast	{ aescommon(0xdf,@_); }
 
 # Inline version of internal aesni_[en|de]crypt1
 { my $sn;
@@ -194,25 +192,6 @@ sub aesni_generate1	# fully unrolled loop
 	&pxor	($inout0,$inout0);
 	&ret	();
 &function_end_B("${PREFIX}_encrypt");
-
-# void $PREFIX_decrypt (const void *inp,void *out,const AES_KEY *key);
-&aesni_generate1("dec") if(!$inline);
-&function_begin_B("${PREFIX}_decrypt");
-	&mov	("eax",&wparam(0));
-	&mov	($key,&wparam(2));
-	&movups	($inout0,&QWP(0,"eax"));
-	&mov	($rounds,&DWP(240,$key));
-	&mov	("eax",&wparam(1));
-	if ($inline)
-	{   &aesni_inline_generate1("dec");	}
-	else
-	{   &call	("_aesni_decrypt1");	}
-	&pxor	($rndkey0,$rndkey0);		# clear register bank
-	&pxor	($rndkey1,$rndkey1);
-	&movups	(&QWP(0,"eax"),$inout0);
-	&pxor	($inout0,$inout0);
-	&ret	();
-&function_end_B("${PREFIX}_decrypt");
 
 # _aesni_[en|de]cryptN are private interfaces, N denotes interleave
 # factor. Why 3x subroutine were originally used in loops? Even though
@@ -402,13 +381,9 @@ sub aesni_generate6
     &function_end_B("_aesni_${p}rypt6");
 }
 &aesni_generate2("enc") if ($PREFIX eq "aesni");
-&aesni_generate2("dec");
 &aesni_generate3("enc") if ($PREFIX eq "aesni");
-&aesni_generate3("dec");
 &aesni_generate4("enc") if ($PREFIX eq "aesni");
-&aesni_generate4("dec");
 &aesni_generate6("enc") if ($PREFIX eq "aesni");
-&aesni_generate6("dec");
 
 if ($PREFIX eq "aesni") {
 
@@ -1062,49 +1037,6 @@ if ($PREFIX eq "aesni") {
 	&call	("_aesni_set_encrypt_key");
 	&ret	();
 &function_end_B("${PREFIX}_set_encrypt_key");
-
-# int $PREFIX_set_decrypt_key (const unsigned char *userKey, int bits,
-#                              AES_KEY *key)
-&function_begin_B("${PREFIX}_set_decrypt_key");
-	&mov	("eax",&wparam(0));
-	&mov	($rounds,&wparam(1));
-	&mov	($key,&wparam(2));
-	&call	("_aesni_set_encrypt_key");
-	&mov	($key,&wparam(2));
-	&shl	($rounds,4);	# rounds-1 after _aesni_set_encrypt_key
-	&test	("eax","eax");
-	&jnz	(&label("dec_key_ret"));
-	&lea	("eax",&DWP(16,$key,$rounds));	# end of key schedule
-
-	&$movekey	("xmm0",&QWP(0,$key));	# just swap
-	&$movekey	("xmm1",&QWP(0,"eax"));
-	&$movekey	(&QWP(0,"eax"),"xmm0");
-	&$movekey	(&QWP(0,$key),"xmm1");
-	&lea		($key,&DWP(16,$key));
-	&lea		("eax",&DWP(-16,"eax"));
-
-&set_label("dec_key_inverse");
-	&$movekey	("xmm0",&QWP(0,$key));	# swap and inverse
-	&$movekey	("xmm1",&QWP(0,"eax"));
-	&aesimc		("xmm0","xmm0");
-	&aesimc		("xmm1","xmm1");
-	&lea		($key,&DWP(16,$key));
-	&lea		("eax",&DWP(-16,"eax"));
-	&$movekey	(&QWP(16,"eax"),"xmm0");
-	&$movekey	(&QWP(-16,$key),"xmm1");
-	&cmp		("eax",$key);
-	&ja		(&label("dec_key_inverse"));
-
-	&$movekey	("xmm0",&QWP(0,$key));	# inverse middle
-	&aesimc		("xmm0","xmm0");
-	&$movekey	(&QWP(0,$key),"xmm0");
-
-	&pxor		("xmm0","xmm0");
-	&pxor		("xmm1","xmm1");
-	&xor		("eax","eax");		# return success
-&set_label("dec_key_ret");
-	&ret	();
-&function_end_B("${PREFIX}_set_decrypt_key");
 
 &set_label("key_const",64);
 &data_word(0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d);
