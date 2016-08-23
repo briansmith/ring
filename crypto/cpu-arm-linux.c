@@ -353,6 +353,6 @@ void OPENSSL_cpuid_setup(void) {
   OPENSSL_free(cpuinfo_data);
 }
 
-int CRYPTO_has_broken_NEON(void) { return g_has_broken_neon; }
+int GFp_has_broken_NEON(void) { return g_has_broken_neon; }
 
 #endif /* OPENSSL_ARM && !OPENSSL_STATIC_ARMCAP */

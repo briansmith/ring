@@ -932,11 +932,11 @@ my $const = "r6";	# shared with _bsaes_encrypt8_alt
 my $keysched = "sp";
 
 $code.=<<___;
-.extern	AES_encrypt
-.global	bsaes_ctr32_encrypt_blocks
-.type	bsaes_ctr32_encrypt_blocks,%function
+.extern	GFp_AES_encrypt
+.global	GFp_bsaes_ctr32_encrypt_blocks
+.type	GFp_bsaes_ctr32_encrypt_blocks,%function
 .align	5
-bsaes_ctr32_encrypt_blocks:
+GFp_bsaes_ctr32_encrypt_blocks:
 	cmp	$len, #8			@ use plain AES for
 	blo	.Lctr_enc_short			@ small sizes
 
@@ -1138,7 +1138,7 @@ bsaes_ctr32_encrypt_blocks:
 	mov	r1, sp			@ output on the stack
 	mov	r2, r7			@ key
 
-	bl	AES_encrypt
+	bl	GFp_AES_encrypt
 
 	vld1.8	{@XMM[0]}, [r4]!	@ load input
 	vld1.8	{@XMM[1]}, [sp]		@ load encrypted counter
@@ -1159,7 +1159,7 @@ bsaes_ctr32_encrypt_blocks:
 	vstmia		sp!, {q0-q1}
 
 	ldmia	sp!, {r4-r8, pc}
-.size	bsaes_ctr32_encrypt_blocks,.-bsaes_ctr32_encrypt_blocks
+.size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;

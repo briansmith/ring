@@ -74,7 +74,7 @@ OPENSSL_COMPILE_ASSERT(sizeof(poly1305_state) >=
                        poly1305_state_too_small);
 
 
-void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
+void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st state;
 
   /* TODO XXX: It seems at least some implementations |poly1305_init| always
@@ -97,8 +97,8 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   memcpy(statep, &state, sizeof(state));
 }
 
-void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
-                            size_t in_len) {
+void GFp_poly1305_update(poly1305_state *statep, const uint8_t *in,
+                         size_t in_len) {
   struct poly1305_state_st state;
   memcpy(&state, statep, sizeof(state));
 
@@ -133,7 +133,7 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
   memcpy(statep, &state, sizeof(state));
 }
 
-void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
+void GFp_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   struct poly1305_state_st state;
   memcpy(&state, statep, sizeof(state));
 
@@ -146,4 +146,4 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   state.func.emit(state.opaque, mac, state.nonce);
 }
 
-const size_t CRYPTO_POLY1305_STATE_LEN = sizeof(struct poly1305_state_st);
+const size_t GFp_POLY1305_STATE_LEN = sizeof(struct poly1305_state_st);

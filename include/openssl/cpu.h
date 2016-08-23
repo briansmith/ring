@@ -110,14 +110,14 @@ extern uint32_t OPENSSL_ia32cap_P[4];
 
 #if !defined(OPENSSL_STATIC_ARMCAP)
 
-/* CRYPTO_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
+/* GFp_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
  * unit. Note that |OPENSSL_armcap_P| also exists and contains the same
  * information in a form that's easier for assembly to use. */
-OPENSSL_EXPORT char CRYPTO_is_NEON_capable_at_runtime(void);
+OPENSSL_EXPORT char GFp_is_NEON_capable_at_runtime(void);
 
-/* CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
+/* GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
  * this is known statically then it returns one immediately. */
-static inline int CRYPTO_is_NEON_capable(void) {
+static inline int GFp_is_NEON_capable(void) {
   /* Only statically skip the runtime lookup on aarch64. On arm, one CPU is
    * known to have a broken NEON unit which is known to fail with on some
    * hand-written NEON assembly. For now, continue to apply the workaround even
@@ -126,27 +126,27 @@ static inline int CRYPTO_is_NEON_capable(void) {
 #if defined(__ARM_NEON__) && !defined(OPENSSL_ARM)
   return 1;
 #else
-  return CRYPTO_is_NEON_capable_at_runtime();
+  return GFp_is_NEON_capable_at_runtime();
 #endif
 }
 
 #if defined(OPENSSL_ARM)
-/* CRYPTO_has_broken_NEON returns one if the current CPU is known to have a
+/* GFp_has_broken_NEON returns one if the current CPU is known to have a
  * broken NEON unit. See https://crbug.com/341598. */
-OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
+OPENSSL_EXPORT int GFp_has_broken_NEON(void);
 #endif
 
-/* CRYPTO_is_ARMv8_AES_capable returns true if the current CPU supports the
+/* GFp_is_ARMv8_AES_capable returns true if the current CPU supports the
  * ARMv8 AES instruction. */
-int CRYPTO_is_ARMv8_AES_capable(void);
+int GFp_is_ARMv8_AES_capable(void);
 
-/* CRYPTO_is_ARMv8_PMULL_capable returns true if the current CPU supports the
+/* GFp_is_ARMv8_PMULL_capable returns true if the current CPU supports the
  * ARMv8 PMULL instruction. */
-int CRYPTO_is_ARMv8_PMULL_capable(void);
+int GFp_is_ARMv8_PMULL_capable(void);
 
 #else
 
-static inline int CRYPTO_is_NEON_capable(void) {
+static inline int GFp_is_NEON_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
   return 1;
 #else
@@ -154,7 +154,7 @@ static inline int CRYPTO_is_NEON_capable(void) {
 #endif
 }
 
-static inline int CRYPTO_is_ARMv8_AES_capable(void) {
+static inline int GFp_is_ARMv8_AES_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_AES)
   return 1;
 #else
@@ -162,7 +162,7 @@ static inline int CRYPTO_is_ARMv8_AES_capable(void) {
 #endif
 }
 
-static inline int CRYPTO_is_ARMv8_PMULL_capable(void) {
+static inline int GFp_is_ARMv8_PMULL_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_PMULL)
   return 1;
 #else

@@ -732,7 +732,7 @@ static int fe_isnonzero(const fe f) {
   fe_tobytes(s, f);
 
   static const uint8_t zero[32] = {0};
-  return CRYPTO_memcmp(s, zero, sizeof(zero)) != 0;
+  return GFp_memcmp(s, zero, sizeof(zero)) != 0;
 }
 
 /* return 1 if f is in {1,3,5,...,q-2}
@@ -4700,7 +4700,7 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
   uint8_t rcheck[32];
   x25519_ge_tobytes(rcheck, &R);
 
-  return CRYPTO_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
+  return GFp_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
 }
 
 
@@ -4846,7 +4846,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                                const uint8_t point[32]) {
 #if defined(BORINGSSL_X25519_NEON)
-  if (CRYPTO_is_NEON_capable()) {
+  if (GFp_is_NEON_capable()) {
     x25519_NEON(out, scalar, point);
     return;
   }
@@ -4871,7 +4871,7 @@ int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
   static const uint8_t kZeros[32] = {0};
   x25519_scalar_mult(out_shared_key, private_key, peer_public_value);
   /* The all-zero output results when the input is a point of small order. */
-  return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
+  return GFp_memcmp(kZeros, out_shared_key, 32) != 0;
 }
 
 #if defined(BORINGSSL_X25519_X86_64)
@@ -4891,7 +4891,7 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
 void GFp_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]) {
 #if defined(BORINGSSL_X25519_NEON)
-  if (CRYPTO_is_NEON_capable()) {
+  if (GFp_is_NEON_capable()) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
     return;

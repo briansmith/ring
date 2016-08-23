@@ -286,7 +286,8 @@ static const uint32_t rcon[] = {
     /* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
 };
 
-int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
+int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
+                            AES_KEY *aeskey) {
   uint32_t *rk;
   int i = 0;
   uint32_t temp;
@@ -360,7 +361,7 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   return 0;
 }
 
-void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
 #ifndef FULL_UNROLL
@@ -554,14 +555,14 @@ void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 
 #define HWAES
 static int hwaes_capable(void) {
-  return CRYPTO_is_ARMv8_AES_capable();
+  return GFp_is_ARMv8_AES_capable();
 }
 
-int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+int GFp_aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
+                               AES_KEY *key);
+int GFp_aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
+                               AES_KEY *key);
+void GFp_aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 #endif
 
@@ -570,25 +571,27 @@ void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
  * always hidden and wrapped by these C functions, which can be so
  * controlled. */
 
-void asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+void GFp_asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 #if defined(HWAES)
   if (hwaes_capable()) {
-    aes_v8_encrypt(in, out, key);
+    GFp_aes_v8_encrypt(in, out, key);
     return;
   }
 #endif
-  asm_AES_encrypt(in, out, key);
+  GFp_asm_AES_encrypt(in, out, key);
 }
 
-int asm_AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey);
-int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
+int GFp_asm_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
+                                AES_KEY *aeskey);
+int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
+                            AES_KEY *aeskey) {
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return aes_v8_set_encrypt_key(key, bits, aeskey);
+    return GFp_aes_v8_set_encrypt_key(key, bits, aeskey);
   }
 #endif
-  return asm_AES_set_encrypt_key(key, bits, aeskey);
+  return GFp_asm_AES_set_encrypt_key(key, bits, aeskey);
 }
 
 #endif  /* OPENSSL_NO_ASM || (!OPENSSL_X86 && !OPENSSL_X86_64 && !OPENSSL_ARM) */

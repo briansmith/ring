@@ -800,7 +800,7 @@ ___
 $code.=<<___;
 .text
 
-.extern	asm_AES_encrypt
+.extern	GFp_asm_AES_encrypt
 
 .type	_bsaes_encrypt8,\@abi-omnipotent
 .align	64
@@ -990,10 +990,10 @@ my ($arg1,$arg2,$arg3,$arg4,$arg5,$arg6)=$win64	? ("%rcx","%rdx","%r8","%r9","%r
 my ($inp,$out,$len,$key)=("%r12","%r13","%r14","%r15");
 
 $code.=<<___;
-.globl	bsaes_ctr32_encrypt_blocks
-.type	bsaes_ctr32_encrypt_blocks,\@abi-omnipotent
+.globl	GFp_bsaes_ctr32_encrypt_blocks
+.type	GFp_bsaes_ctr32_encrypt_blocks,\@abi-omnipotent
 .align	16
-bsaes_ctr32_encrypt_blocks:
+GFp_bsaes_ctr32_encrypt_blocks:
 	mov	%rsp, %rax
 .Lctr_enc_prologue:
 	push	%rbp
@@ -1170,7 +1170,7 @@ $code.=<<___;
 	lea	0x20(%rbp), $arg1
 	lea	0x30(%rbp), $arg2
 	lea	($key), $arg3
-	call	asm_AES_encrypt
+	call	GFp_asm_AES_encrypt
 	movdqu	($inp), @XMM[1]
 	lea	16($inp), $inp
 	mov	0x2c(%rbp), %eax	# load 32-bit counter
@@ -1220,7 +1220,7 @@ $code.=<<___;
 	mov	%rax, %rbp
 .Lctr_enc_epilogue:
 	ret
-.size	bsaes_ctr32_encrypt_blocks,.-bsaes_ctr32_encrypt_blocks
+.size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;

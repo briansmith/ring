@@ -308,7 +308,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     goto err;
   }
   if (vrfy.top != base.top ||
-      CRYPTO_memcmp(vrfy.d, base.d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
+      GFp_memcmp(vrfy.d, base.d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }

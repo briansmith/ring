@@ -35,11 +35,11 @@
 #include <assert.h>
 #include <stddef.h>
 
-/* CRYPTO_sysrand_chunk fills |len| bytes at |buf| with entropy from the
- * operating system. |len| must be no more than |CRYPTO_sysrand_chunk_max_le|.
+/* GFp_sysrand_chunk fills |len| bytes at |buf| with entropy from the
+ * operating system. |len| must be no more than |GFp_sysrand_chunk_max_len|.
  * It returns one on success, -1 if it failed because the operating system
  * doesn't offer such an API, or zero otherwise. */
-int CRYPTO_sysrand_chunk(void *buf, size_t len);
+int GFp_sysrand_chunk(void *buf, size_t len);
 
 #if defined(OPENSSL_WINDOWS)
 
@@ -58,10 +58,10 @@ int CRYPTO_sysrand_chunk(void *buf, size_t len);
 
 #pragma warning(pop)
 
-const size_t CRYPTO_sysrand_chunk_max_len = ULONG_MAX;
+const size_t GFp_sysrand_chunk_max_len = ULONG_MAX;
 
-int CRYPTO_sysrand_chunk(void *out, size_t requested) {
-  assert(requested <= CRYPTO_sysrand_chunk_max_len);
+int GFp_sysrand_chunk(void *out, size_t requested) {
+  assert(requested <= GFp_sysrand_chunk_max_len);
   return RtlGenRandom(out, (ULONG)requested) ? 1 : 0;
 }
 
@@ -92,10 +92,10 @@ int CRYPTO_sysrand_chunk(void *out, size_t requested) {
 /* http://man7.org/linux/man-pages/man2/getrandom.2.html: "Calling
  * getrandom() to read /dev/urandom for small values (<= 256) of buflen is
  * the preferred mode of usage." */
-const size_t CRYPTO_sysrand_chunk_max_len = 256;
+const size_t GFp_sysrand_chunk_max_len = 256;
 
-int CRYPTO_sysrand_chunk(void *out, size_t requested) {
-  assert(requested <= CRYPTO_sysrand_chunk_max_len);
+int GFp_sysrand_chunk(void *out, size_t requested) {
+  assert(requested <= GFp_sysrand_chunk_max_len);
   if (syscall(SYS_getrandom, out, requested, 0u) < 0) {
     if (errno == ENOSYS) {
       return -1;

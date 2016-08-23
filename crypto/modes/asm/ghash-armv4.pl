@@ -169,10 +169,10 @@ rem_4bit_get:
 	nop
 .size	rem_4bit_get,.-rem_4bit_get
 
-.global	gcm_ghash_4bit
-.type	gcm_ghash_4bit,%function
+.global	GFp_gcm_ghash_4bit
+.type	GFp_gcm_ghash_4bit,%function
 .align	4
-gcm_ghash_4bit:
+GFp_gcm_ghash_4bit:
 #if defined(__thumb2__)
 	adr	r12,rem_4bit
 #else
@@ -283,11 +283,11 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	gcm_ghash_4bit,.-gcm_ghash_4bit
+.size	GFp_gcm_ghash_4bit,.-GFp_gcm_ghash_4bit
 
-.global	gcm_gmult_4bit
-.type	gcm_gmult_4bit,%function
-gcm_gmult_4bit:
+.global	GFp_gcm_gmult_4bit
+.type	GFp_gcm_gmult_4bit,%function
+GFp_gcm_gmult_4bit:
 	stmdb	sp!,{r4-r11,lr}
 	ldrb	$nlo,[$Xi,#15]
 	b	rem_4bit_get
@@ -366,7 +366,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	gcm_gmult_4bit,.-gcm_gmult_4bit
+.size	GFp_gcm_gmult_4bit,.-GFp_gcm_gmult_4bit
 ___
 {
 my ($Xl,$Xm,$Xh,$IN)=map("q$_",(0..3));
@@ -421,10 +421,10 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	gcm_init_neon
-.type	gcm_init_neon,%function
+.global	GFp_gcm_init_neon
+.type	GFp_gcm_init_neon,%function
 .align	4
-gcm_init_neon:
+GFp_gcm_init_neon:
 	vld1.64		$IN#hi,[r1]!		@ load H
 	vmov.i8		$t0,#0xe1
 	vld1.64		$IN#lo,[r1]
@@ -440,12 +440,12 @@ gcm_init_neon:
 	vstmia		r0,{$IN}
 
 	ret					@ bx lr
-.size	gcm_init_neon,.-gcm_init_neon
+.size	GFp_gcm_init_neon,.-GFp_gcm_init_neon
 
-.global	gcm_gmult_neon
-.type	gcm_gmult_neon,%function
+.global	GFp_gcm_gmult_neon
+.type	GFp_gcm_gmult_neon,%function
 .align	4
-gcm_gmult_neon:
+GFp_gcm_gmult_neon:
 	vld1.64		$IN#hi,[$Xi]!		@ load Xi
 	vld1.64		$IN#lo,[$Xi]!
 	vmov.i64	$k48,#0x0000ffffffffffff
@@ -458,12 +458,12 @@ gcm_gmult_neon:
 	veor		$Hhl,$Hlo,$Hhi		@ Karatsuba pre-processing
 	mov		$len,#16
 	b		.Lgmult_neon
-.size	gcm_gmult_neon,.-gcm_gmult_neon
+.size	GFp_gcm_gmult_neon,.-GFp_gcm_gmult_neon
 
-.global	gcm_ghash_neon
-.type	gcm_ghash_neon,%function
+.global	GFp_gcm_ghash_neon
+.type	GFp_gcm_ghash_neon,%function
 .align	4
-gcm_ghash_neon:
+GFp_gcm_ghash_neon:
 	vld1.64		$Xl#hi,[$Xi]!		@ load Xi
 	vld1.64		$Xl#lo,[$Xi]!
 	vmov.i64	$k48,#0x0000ffffffffffff
@@ -524,7 +524,7 @@ $code.=<<___;
 	vst1.64		$Xl#lo,[$Xi]
 
 	ret					@ bx lr
-.size	gcm_ghash_neon,.-gcm_ghash_neon
+.size	GFp_gcm_ghash_neon,.-GFp_gcm_ghash_neon
 #endif
 ___
 }

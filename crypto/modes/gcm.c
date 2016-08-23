@@ -141,7 +141,7 @@ static const size_t rem_4bit[16] = {
     PACK(0xE100), PACK(0xFD20), PACK(0xD940), PACK(0xC560),
     PACK(0x9180), PACK(0x8DA0), PACK(0xA9C0), PACK(0xB5E0)};
 
-static void gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
+static void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
   u128 Z;
   int cnt = 15;
   size_t rem, nlo, nhi;
@@ -191,13 +191,13 @@ static void gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
   to_be_u64_ptr(Xi + 8, Z.lo);
 }
 
-/* Streamed gcm_mult_4bit, see CRYPTO_gcm128_[en|de]crypt for
+/* Streamed gcm_mult_4bit, see GFp_gcm128_[en|de]crypt for
  * details... Compiler-generated code doesn't seem to give any
  * performance improvement, at least not on x86[_64]. It's here
  * mostly as reference and a placeholder for possible future
  * non-trivial optimization[s]... */
-static void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
-                           const uint8_t *inp, size_t len) {
+static void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
+                               const uint8_t *inp, size_t len) {
   u128 Z;
   int cnt;
   size_t rem, nlo, nhi;
@@ -252,14 +252,15 @@ static void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
   } while (inp += 16, len -= 16);
 }
 #else /* GHASH_ASM */
-void gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
-                    size_t len);
+void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
+                        const uint8_t *inp, size_t len);
 #endif
 
-#define GCM_MUL(ctx, Xi) gcm_gmult_4bit(ctx->Xi, ctx->Htable)
+#define GCM_MUL(ctx, Xi) GFp_gcm_gmult_4bit(ctx->Xi, ctx->Htable)
 #if defined(GHASH_ASM)
-#define GHASH(ctx, in, len) gcm_ghash_4bit((ctx)->Xi, (ctx)->Htable, in, len)
+#define GHASH(ctx, in, len) \
+    GFp_gcm_ghash_4bit((ctx)->Xi, (ctx)->Htable, in, len)
 /* GHASH_CHUNK is "stride parameter" missioned to mitigate cache
  * trashing effect. In other words idea is to hash data while it's
  * still in L1 cache after encryption pass... */
@@ -273,41 +274,41 @@ void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 
 #define GHASH_ASM_X86_OR_64
 #define GCM_FUNCREF_4BIT
-void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
-                     size_t len);
+void GFp_gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
+void GFp_gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16],
+                         const uint8_t *inp, size_t len);
 
 #if defined(OPENSSL_X86)
-#define gcm_init_avx gcm_init_clmul
-#define gcm_gmult_avx gcm_gmult_clmul
-#define gcm_ghash_avx gcm_ghash_clmul
+#define GFp_gcm_init_avx GFp_gcm_init_clmul
+#define GFp_gcm_gmult_avx GFp_gcm_gmult_clmul
+#define GFp_gcm_ghash_avx GFp_gcm_ghash_clmul
 #else
-void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
-                   size_t len);
+void GFp_gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
+void GFp_gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
+                       size_t len);
 #define AESNI_GCM
 static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, aes_ctr_f stream) {
-  return stream == aesni_ctr32_encrypt_blocks &&
-         ctx->ghash == gcm_ghash_avx;
+  return stream == GFp_aesni_ctr32_encrypt_blocks &&
+         ctx->ghash == GFp_gcm_ghash_avx;
 }
 
-size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint8_t Xi[16]);
-size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint8_t Xi[16]);
+size_t GFp_aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                             const void *key, uint8_t ivec[16], uint8_t Xi[16]);
+size_t GFp_aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
+                             const void *key, uint8_t ivec[16], uint8_t Xi[16]);
 #endif
 
 #if defined(OPENSSL_X86)
 #define GHASH_ASM_X86
-void gcm_gmult_4bit_mmx(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
-                        size_t len);
+void GFp_gcm_gmult_4bit_mmx(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16],
+                            const uint8_t *inp, size_t len);
 
-void gcm_gmult_4bit_x86(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_4bit_x86(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
-                        size_t len);
+void GFp_gcm_gmult_4bit_x86(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_4bit_x86(uint8_t Xi[16], const u128 Htable[16],
+                            const uint8_t *inp, size_t len);
 #endif
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
@@ -317,19 +318,19 @@ void gcm_ghash_4bit_x86(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in
 #if __ARM_MAX_ARCH__ >= 8
 #define ARM_PMULL_ASM
 #define GCM_FUNCREF_4BIT
-void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
-                  size_t len);
+void GFp_gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
+void GFp_gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
+                      size_t len);
 #endif
 
 #if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
 #define GCM_FUNCREF_4BIT
 /* 32-bit ARM also has support for doing GCM with NEON instructions. */
-void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
-                    size_t len);
+void GFp_gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
+void GFp_gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
+void GFp_gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16],
+                        const uint8_t *inp, size_t len);
 #endif
 
 #endif /* Platform */
@@ -348,7 +349,7 @@ void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
                                const uint64_t H[2]);
 
-void CRYPTO_gcm128_init_serialized(
+void GFp_gcm128_init_serialized(
     uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
     aes_block_f block) {
   static const alignas(16) uint8_t ZEROS[16] = { 0 };
@@ -374,24 +375,24 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
   /* Keep in sync with |gcm128_init_gmult_ghash|. */
 
 #if defined(GHASH_ASM_X86_OR_64)
-  if (crypto_gcm_clmul_enabled()) {
+  if (GFp_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
-      gcm_init_avx(Htable, H);
+      GFp_gcm_init_avx(Htable, H);
     } else {
-      gcm_init_clmul(Htable, H);
+      GFp_gcm_init_clmul(Htable, H);
     }
     return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
-  if (CRYPTO_is_ARMv8_PMULL_capable()) {
-    gcm_init_v8(Htable, H);
+  if (GFp_is_ARMv8_PMULL_capable()) {
+    GFp_gcm_init_v8(Htable, H);
     return;
   }
 #endif
 #if defined(OPENSSL_ARM)
-  if (CRYPTO_is_NEON_capable()) {
-    gcm_init_neon(Htable, H);
+  if (GFp_is_NEON_capable()) {
+    GFp_gcm_init_neon(Htable, H);
     return;
   }
 #endif
@@ -403,50 +404,50 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
   /* Keep in sync with |gcm128_init_htable|. */
 
 #if defined(GHASH_ASM_X86_OR_64)
-  if (crypto_gcm_clmul_enabled()) {
+  if (GFp_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
-      ctx->gmult = gcm_gmult_avx;
-      ctx->ghash = gcm_ghash_avx;
+      ctx->gmult = GFp_gcm_gmult_avx;
+      ctx->ghash = GFp_gcm_ghash_avx;
     } else {
-      ctx->gmult = gcm_gmult_clmul;
-      ctx->ghash = gcm_ghash_clmul;
+      ctx->gmult = GFp_gcm_gmult_clmul;
+      ctx->ghash = GFp_gcm_ghash_clmul;
     }
     return;
   }
 #endif
 #if defined(GHASH_ASM_X86)
   if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
-    ctx->gmult = gcm_gmult_4bit_mmx;
-    ctx->ghash = gcm_ghash_4bit_mmx;
+    ctx->gmult = GFp_gcm_gmult_4bit_mmx;
+    ctx->ghash = GFp_gcm_ghash_4bit_mmx;
     return;
   } else {
-    ctx->gmult = gcm_gmult_4bit_x86;
-    ctx->ghash = gcm_ghash_4bit_x86;
+    ctx->gmult = GFp_gcm_gmult_4bit_x86;
+    ctx->ghash = GFp_gcm_ghash_4bit_x86;
     return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
-  if (CRYPTO_is_ARMv8_PMULL_capable()) {
-    ctx->gmult = gcm_gmult_v8;
-    ctx->ghash = gcm_ghash_v8;
+  if (GFp_is_ARMv8_PMULL_capable()) {
+    ctx->gmult = GFp_gcm_gmult_v8;
+    ctx->ghash = GFp_gcm_ghash_v8;
     return;
   }
 #endif
 #if defined(OPENSSL_ARM)
-  if (CRYPTO_is_NEON_capable()) {
-    ctx->gmult = gcm_gmult_neon;
-    ctx->ghash = gcm_ghash_neon;
+  if (GFp_is_NEON_capable()) {
+    ctx->gmult = GFp_gcm_gmult_neon;
+    ctx->ghash = GFp_gcm_ghash_neon;
     return;
   }
 #endif
 
 #if !defined(GHASH_ASM_X86)
-  ctx->gmult = gcm_gmult_4bit;
-  ctx->ghash = gcm_ghash_4bit;
+  ctx->gmult = GFp_gcm_gmult_4bit;
+  ctx->ghash = GFp_gcm_ghash_4bit;
 #endif
 }
 
-void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
+void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
                         aes_block_f block,
                         const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN],
                         const uint8_t *iv) {
@@ -467,7 +468,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   gcm128_init_gmult_ghash(ctx);
 }
 
-int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
+int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   assert(ctx->len.u[0] == 0);
   assert(ctx->len.u[1] == 0);
 
@@ -497,7 +498,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   return 1;
 }
 
-int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
+int GFp_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const unsigned char *in, unsigned char *out,
                           size_t len) {
   assert(ctx->len.u[1] == 0);
@@ -583,7 +584,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
+int GFp_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const unsigned char *in, unsigned char *out,
                           size_t len) {
   assert(ctx->len.u[1] == 0);
@@ -671,7 +672,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 aes_ctr_f stream) {
   assert(ctx->len.u[1] == 0);
@@ -693,7 +694,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_encrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi);
+    size_t bulk = GFp_aesni_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -750,7 +751,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 aes_ctr_f stream) {
   assert(ctx->len.u[1] == 0);
@@ -772,7 +773,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_decrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi);
+    size_t bulk = GFp_aesni_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -834,7 +835,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
+void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
   uint64_t alen = ctx->len.u[0] << 3;
   uint64_t clen = ctx->len.u[1] << 3;
 #ifdef GCM_FUNCREF_4BIT
@@ -855,7 +856,7 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
 }
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-int crypto_gcm_clmul_enabled(void) {
+int GFp_gcm_clmul_enabled(void) {
 #ifdef GHASH_ASM
   return OPENSSL_ia32cap_P[0] & (1 << 24) &&  /* check FXSR bit */
     OPENSSL_ia32cap_P[1] & (1 << 1);  /* check PCLMULQDQ bit */

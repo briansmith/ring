@@ -176,7 +176,7 @@ sub aesni_generate1	# fully unrolled loop
 
 # void $PREFIX_encrypt (const void *inp,void *out,const AES_KEY *key);
 &aesni_generate1("enc") if (!$inline);
-&function_begin_B("${PREFIX}_encrypt");
+&function_begin_B("GFp_${PREFIX}_encrypt");
 	&mov	("eax",&wparam(0));
 	&mov	($key,&wparam(2));
 	&movups	($inout0,&QWP(0,"eax"));
@@ -191,7 +191,7 @@ sub aesni_generate1	# fully unrolled loop
 	&movups	(&QWP(0,"eax"),$inout0);
 	&pxor	($inout0,$inout0);
 	&ret	();
-&function_end_B("${PREFIX}_encrypt");
+&function_end_B("GFp_${PREFIX}_encrypt");
 
 # _aesni_[en|de]cryptN are private interfaces, N denotes interleave
 # factor. Why 3x subroutine were originally used in loops? Even though
@@ -388,9 +388,9 @@ sub aesni_generate6
 if ($PREFIX eq "aesni") {
 
 ######################################################################
-# void aesni_ctr32_encrypt_blocks (const void *in, void *out,
-#                         size_t blocks, const AES_KEY *key,
-#                         const char *ivec);
+# void GFp_aesni_ctr32_encrypt_blocks (const void *in, void *out,
+#                                      size_t blocks, const AES_KEY *key,
+#                                      const char *ivec);
 #
 # Handles only complete blocks, operates on 32-bit counter and
 # does not update *ivec! (see crypto/modes/ctr128.c for details)
@@ -403,7 +403,7 @@ if ($PREFIX eq "aesni") {
 #	64	2nd triplet of counter vector
 #	80	saved %esp
 
-&function_begin("aesni_ctr32_encrypt_blocks");
+&function_begin("GFp_aesni_ctr32_encrypt_blocks");
 	&mov	($inp,&wparam(0));
 	&mov	($out,&wparam(1));
 	&mov	($len,&wparam(2));
@@ -645,7 +645,7 @@ if ($PREFIX eq "aesni") {
 	&movdqa	(&QWP(64,"esp"),"xmm0");
 	&pxor	("xmm7","xmm7");
 	&mov	("esp",&DWP(80,"esp"));
-&function_end("aesni_ctr32_encrypt_blocks");
+&function_end("GFp_aesni_ctr32_encrypt_blocks");
 }
 
 ######################################################################
@@ -1030,13 +1030,13 @@ if ($PREFIX eq "aesni") {
 
 # int $PREFIX_set_encrypt_key (const unsigned char *userKey, int bits,
 #                              AES_KEY *key)
-&function_begin_B("${PREFIX}_set_encrypt_key");
+&function_begin_B("GFp_${PREFIX}_set_encrypt_key");
 	&mov	("eax",&wparam(0));
 	&mov	($rounds,&wparam(1));
 	&mov	($key,&wparam(2));
 	&call	("_aesni_set_encrypt_key");
 	&ret	();
-&function_end_B("${PREFIX}_set_encrypt_key");
+&function_end_B("GFp_${PREFIX}_set_encrypt_key");
 
 &set_label("key_const",64);
 &data_word(0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d);

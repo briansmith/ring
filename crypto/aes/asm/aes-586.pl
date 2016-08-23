@@ -1162,8 +1162,8 @@ sub enclast()
 	&data_word(0x00000000, 0x00000000, 0x00000000, 0x00000000);
 &function_end_B("_x86_AES_encrypt");
 
-# void asm_AES_encrypt (const void *inp,void *out,const AES_KEY *key);
-&function_begin("asm_AES_encrypt");
+# void GFp_asm_AES_encrypt (const void *inp,void *out,const AES_KEY *key);
+&function_begin("GFp_asm_AES_encrypt");
 	&mov	($acc,&wparam(0));		# load inp
 	&mov	($key,&wparam(2));		# load key
 
@@ -1219,7 +1219,7 @@ sub enclast()
 	&mov	(&DWP(4,$acc),$s1);
 	&mov	(&DWP(8,$acc),$s2);
 	&mov	(&DWP(12,$acc),$s3);
-&function_end("asm_AES_encrypt");
+&function_end("GFp_asm_AES_encrypt");
 
 #--------------------------------------------------------------------#
 
@@ -1592,10 +1592,10 @@ sub enckey()
 
 # int asm_AES_set_encrypt_key(const unsigned char *userKey, const int bits,
 #                             AES_KEY *key)
-&function_begin_B("asm_AES_set_encrypt_key");
+&function_begin_B("GFp_asm_AES_set_encrypt_key");
 	&call	("_x86_AES_set_encrypt_key");
 	&ret	();
-&function_end_B("asm_AES_set_encrypt_key");
+&function_end_B("GFp_asm_AES_set_encrypt_key");
 
 &asciz("AES for x86, CRYPTOGAMS by <appro\@openssl.org>");
 

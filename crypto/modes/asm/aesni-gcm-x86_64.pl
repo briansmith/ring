@@ -397,14 +397,14 @@ _aesni_ctr32_ghash_6x:
 ___
 ######################################################################
 #
-# size_t aesni_gcm_[en|de]crypt(const void *inp, void *out, size_t len,
+# size_t GFp_aesni_gcm_[en|de]crypt(const void *inp, void *out, size_t len,
 #		const AES_KEY *key, unsigned char iv[16],
 #		struct { u128 Xi,H,Htbl[9]; } *Xip);
 $code.=<<___;
-.globl	aesni_gcm_decrypt
-.type	aesni_gcm_decrypt,\@function,6
+.globl	GFp_aesni_gcm_decrypt
+.type	GFp_aesni_gcm_decrypt,\@function,6
 .align	32
-aesni_gcm_decrypt:
+GFp_aesni_gcm_decrypt:
 	xor	$ret,$ret
 
 	# We call |_aesni_ctr32_ghash_6x|, which requires at least 96 (0x60)
@@ -527,7 +527,7 @@ $code.=<<___;
 .Lgcm_dec_abort:
 	mov	$ret,%rax		# return value
 	ret
-.size	aesni_gcm_decrypt,.-aesni_gcm_decrypt
+.size	GFp_aesni_gcm_decrypt,.-GFp_aesni_gcm_decrypt
 ___
 
 $code.=<<___;
@@ -622,10 +622,10 @@ _aesni_ctr32_6x:
 	jmp	.Loop_ctr32
 .size	_aesni_ctr32_6x,.-_aesni_ctr32_6x
 
-.globl	aesni_gcm_encrypt
-.type	aesni_gcm_encrypt,\@function,6
+.globl	GFp_aesni_gcm_encrypt
+.type	GFp_aesni_gcm_encrypt,\@function,6
 .align	32
-aesni_gcm_encrypt:
+GFp_aesni_gcm_encrypt:
 	xor	$ret,$ret
 
 	# We call |_aesni_ctr32_6x| twice, each call consuming 96 bytes of
@@ -921,7 +921,7 @@ $code.=<<___;
 .Lgcm_enc_abort:
 	mov	$ret,%rax		# return value
 	ret
-.size	aesni_gcm_encrypt,.-aesni_gcm_encrypt
+.size	GFp_aesni_gcm_encrypt,.-GFp_aesni_gcm_encrypt
 ___
 
 $code.=<<___;
@@ -1041,13 +1041,13 @@ gcm_se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_aesni_gcm_decrypt
-	.rva	.LSEH_end_aesni_gcm_decrypt
+	.rva	.LSEH_begin_GFp_aesni_gcm_decrypt
+	.rva	.LSEH_end_GFp_aesni_gcm_decrypt
 	.rva	.LSEH_gcm_dec_info
 
-	.rva	.LSEH_begin_aesni_gcm_encrypt
-	.rva	.LSEH_end_aesni_gcm_encrypt
-	.rva	.LSEH_gcm_enc_info
+	.rva	.LSEH_begin_GFp_aesni_gcm_encrypt
+	.rva	.LSEH_end_GFp_aesni_gcm_encrypt
+	.rva	.LSEH_GFp_gcm_enc_info
 .section	.xdata
 .align	8
 .LSEH_gcm_dec_info:
@@ -1064,19 +1064,19 @@ ___
 $code=<<___;	# assembler is too old
 .text
 
-.globl	aesni_gcm_encrypt
-.type	aesni_gcm_encrypt,\@abi-omnipotent
-aesni_gcm_encrypt:
+.globl	GFp_aesni_gcm_encrypt
+.type	GFp_aesni_gcm_encrypt,\@abi-omnipotent
+GFp_aesni_gcm_encrypt:
 	xor	%eax,%eax
 	ret
-.size	aesni_gcm_encrypt,.-aesni_gcm_encrypt
+.size	GFp_aesni_gcm_encrypt,.-GFp_aesni_gcm_encrypt
 
-.globl	aesni_gcm_decrypt
-.type	aesni_gcm_decrypt,\@abi-omnipotent
-aesni_gcm_decrypt:
+.globl	GFp_aesni_gcm_decrypt
+.type	GFp_aesni_gcm_decrypt,\@abi-omnipotent
+GFp_aesni_gcm_decrypt:
 	xor	%eax,%eax
 	ret
-.size	aesni_gcm_decrypt,.-aesni_gcm_decrypt
+.size	GFp_aesni_gcm_decrypt,.-GFp_aesni_gcm_decrypt
 ___
 }}}
 

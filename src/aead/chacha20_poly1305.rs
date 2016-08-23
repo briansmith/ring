@@ -217,34 +217,37 @@ fn poly1305_update_length(ctx: &mut [u8; POLY1305_STATE_LEN], len: usize) {
 }
 
 
-/// Safe wrapper around |CRYPTO_poly1305_init|.
 #[inline(always)]
 fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
                  key: &[u8; POLY1305_KEY_LEN]) {
-    unsafe { CRYPTO_poly1305_init(state, key) }
+    unsafe {
+        GFp_poly1305_init(state, key)
+    }
 }
 
-/// Safe wrapper around |CRYPTO_poly1305_finish|.
 #[inline(always)]
 fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
                    tag_out: &mut [u8; aead::TAG_LEN]) {
-    unsafe { CRYPTO_poly1305_finish(state, tag_out) }
+    unsafe {
+        GFp_poly1305_finish(state, tag_out)
+    }
 }
 
-/// Safe wrapper around |CRYPTO_poly1305_update|.
 #[inline(always)]
 fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
-    unsafe { CRYPTO_poly1305_update(state, in_.as_ptr(), in_.len()) }
+    unsafe {
+        GFp_poly1305_update(state, in_.as_ptr(), in_.len())
+    }
 }
 
 extern {
     fn ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
                       key: &[u32; CHACHA20_KEY_LEN / 4], counter: &[u32; 4]);
-    fn CRYPTO_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
+    fn GFp_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
                             key: &[u8; POLY1305_KEY_LEN]);
-    fn CRYPTO_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
+    fn GFp_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
                               mac: &mut [u8; aead::TAG_LEN]);
-    fn CRYPTO_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
+    fn GFp_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
                               in_: *const u8, in_len: c::size_t);
 }
 
@@ -270,7 +273,7 @@ mod tests {
     #[test]
     pub fn test_poly1305_state_len() {
         assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
-                   (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
+                   (GFp_POLY1305_STATE_LEN + 255) / 256);
     }
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
@@ -355,6 +358,6 @@ mod tests {
     }
 
     extern {
-        static CRYPTO_POLY1305_STATE_LEN: c::size_t;
+        static GFp_POLY1305_STATE_LEN: c::size_t;
     }
 }
