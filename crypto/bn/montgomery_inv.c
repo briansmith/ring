@@ -31,11 +31,11 @@ OPENSSL_COMPILE_ASSERT(sizeof(uint64_t) ==
 /* LG_LITTLE_R is log_2(r). */
 #define LG_LITTLE_R (BN_MONT_CTX_N0_LIMBS * BN_BITS2)
 
-uint64_t bn_mont_n0(const BIGNUM *n) {
+uint64_t GFp_bn_mont_n0(const BIGNUM *n) {
   /* These conditions are checked by the caller, |BN_MONT_CTX_set|. */
-  assert(!BN_is_zero(n));
-  assert(!BN_is_negative(n));
-  assert(BN_is_odd(n));
+  assert(!GFp_BN_is_zero(n));
+  assert(!GFp_BN_is_negative(n));
+  assert(GFp_BN_is_odd(n));
 
   /* r == 2**(BN_MONT_CTX_N0_LIMBS * BN_BITS2) and LG_LITTLE_R == lg(r). This
    * ensures that we can do integer division by |r| by simply ignoring

@@ -74,7 +74,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
 
 int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
                                        size_t min_bits, size_t max_bits) {
-  unsigned rsa_bits = BN_num_bits(n);
+  unsigned rsa_bits = GFp_BN_num_bits(n);
 
   if (rsa_bits < min_bits) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
@@ -98,7 +98,7 @@ int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
    * [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx */
   static const unsigned kMaxExponentBits = 33;
 
-  unsigned e_bits = BN_num_bits(e);
+  unsigned e_bits = GFp_BN_num_bits(e);
 
   if (e_bits < 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
@@ -108,7 +108,7 @@ int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
-  if (!BN_is_odd(e)) {
+  if (!GFp_BN_is_odd(e)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
@@ -121,13 +121,13 @@ int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
     return 0;
   }
-  assert(BN_ucmp(n, e) > 0);
+  assert(GFp_BN_ucmp(n, e) > 0);
 
   return 1;
 }
 
 size_t RSA_size(const RSA *rsa) {
-  return BN_num_bytes(&rsa->mont_n->N);
+  return GFp_BN_num_bytes(&rsa->mont_n->N);
 }
 
 
@@ -146,26 +146,26 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
                            const uint8_t *in, size_t in_len, size_t min_bits,
                            size_t max_bits) {
   BIGNUM n;
-  BN_init(&n);
+  GFp_BN_init(&n);
 
   BIGNUM e;
-  BN_init(&e);
+  GFp_BN_init(&e);
 
   BIGNUM f;
-  BN_init(&f);
+  GFp_BN_init(&f);
 
   BIGNUM result;
-  BN_init(&result);
+  GFp_BN_init(&result);
 
   int ret = 0;
 
-  if (BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
-      BN_bin2bn(public_key_e, public_key_e_len, &e) == NULL) {
+  if (GFp_BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
+      GFp_BN_bin2bn(public_key_e, public_key_e_len, &e) == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
-  unsigned rsa_size = BN_num_bytes(&n); /* RSA_size((n, e)); */
+  unsigned rsa_size = GFp_BN_num_bytes(&n); /* RSA_size((n, e)); */
 
   if (out_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
@@ -181,18 +181,18 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (BN_bin2bn(in, in_len, &f) == NULL) {
+  if (GFp_BN_bin2bn(in, in_len, &f) == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
-  if (BN_ucmp(&f, &n) >= 0) {
+  if (GFp_BN_ucmp(&f, &n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  if (!BN_mod_exp_mont_vartime(&result, &f, &e, &n, NULL) ||
-      !BN_bn2bin_padded(out, out_len, &result)) {
+  if (!GFp_BN_mod_exp_mont_vartime(&result, &f, &e, &n, NULL) ||
+      !GFp_BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -200,10 +200,10 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
   ret = 1;
 
 err:
-  BN_free(&n);
-  BN_free(&e);
-  BN_free(&f);
-  BN_free(&result);
+  GFp_BN_free(&n);
+  GFp_BN_free(&e);
+  GFp_BN_free(&f);
+  GFp_BN_free(&result);
   return ret;
 }
 
@@ -221,24 +221,24 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
   int ret = 0;
 
   BIGNUM base, r, tmp, mp, mq, vrfy;
-  BN_init(&base);
-  BN_init(&r);
-  BN_init(&tmp);
-  BN_init(&mp);
-  BN_init(&mq);
-  BN_init(&vrfy);
+  GFp_BN_init(&base);
+  GFp_BN_init(&r);
+  GFp_BN_init(&tmp);
+  GFp_BN_init(&mp);
+  GFp_BN_init(&mq);
+  GFp_BN_init(&vrfy);
 
-  if (BN_bin2bn(inout, len, &base) == NULL) {
+  if (GFp_BN_bin2bn(inout, len, &base) == NULL) {
     goto err;
   }
 
-  if (BN_ucmp(&base, &rsa->mont_n->N) >= 0) {
+  if (GFp_BN_ucmp(&base, &rsa->mont_n->N) >= 0) {
     /* Usually the padding functions would catch this. */
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  if (!BN_BLINDING_convert(&base, blinding, rsa, rng)) {
+  if (!GFp_BN_BLINDING_convert(&base, blinding, rsa, rng)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -247,14 +247,14 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
 
   /* Extra reductions would be required if |p < q| and |p == q| is just plain
    * wrong. */
-  assert(BN_cmp(&rsa->mont_q->N, p) < 0);
+  assert(GFp_BN_cmp(&rsa->mont_q->N, p) < 0);
 
   /* mp := base^dmp1 mod p.
    *
    * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
    * reduced mod |p|. */
-  if (!BN_reduce_mont(&tmp, &base, rsa->mont_p) ||
-      !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->mont_p)) {
+  if (!GFp_BN_reduce_mont(&tmp, &base, rsa->mont_p) ||
+      !GFp_BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -263,9 +263,9 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |q < q**2 < n < q**3|. Thus, |base| is
    * first reduced mod |q**2| and then reduced mod |q|. */
-  if (!BN_reduce_mont(&tmp, &base, rsa->mont_qq) ||
-      !BN_reduce_mont(&tmp, &tmp, rsa->mont_q) ||
-      !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->mont_q)) {
+  if (!GFp_BN_reduce_mont(&tmp, &base, rsa->mont_qq) ||
+      !GFp_BN_reduce_mont(&tmp, &tmp, rsa->mont_q) ||
+      !GFp_BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->mont_q)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -273,7 +273,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
   /* Combine them with Garner's algorithm.
    *
    * |0 <= mq < q < p| and |0 <= mp < p| implies |(-q) < (mp - mq) < p|, so
-   * |BN_mod_sub_quick| can be used.
+   * |GFp_BN_mod_sub_quick| can be used.
    *
    * In each multiplication, the Montgomery factor cancels out because |tmp| is
    * not Montgomery-encoded but the second input is.
@@ -282,10 +282,10 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * |tmp < p| and |p * q == n| implies |tmp * q < n|. Montgomery
    * multiplication is used purely because it is implemented more efficiently.
    */
-  if (!BN_mod_sub_quick(&tmp, &mp, &mq, p) ||
-      !BN_mod_mul_mont(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p) ||
-      !BN_mod_mul_mont(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n) ||
-      !BN_add(&r, &tmp, &mq)) {
+  if (!GFp_BN_mod_sub_quick(&tmp, &mp, &mq, p) ||
+      !GFp_BN_mod_mul_mont(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p) ||
+      !GFp_BN_mod_mul_mont(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n) ||
+      !GFp_BN_add(&r, &tmp, &mq)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -302,8 +302,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    * Note that this is the only validation of |e| that is done other than
    * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
    * doesn't validate its mathematical relations to |d| or |p| or |q|. */
-  if (!BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, &rsa->mont_n->N,
-                               rsa->mont_n)) {
+  if (!GFp_BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, &rsa->mont_n->N,
+                                   rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -313,8 +313,8 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     goto err;
   }
 
-  if (!BN_BLINDING_invert(&r, blinding, rsa->mont_n) ||
-      !BN_bn2bin_padded(inout, len, &r)) {
+  if (!GFp_BN_BLINDING_invert(&r, blinding, rsa->mont_n) ||
+      !GFp_BN_bn2bin_padded(inout, len, &r)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -322,11 +322,11 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
   ret = 1;
 
 err:
-  BN_free(&r);
-  BN_free(&tmp);
-  BN_free(&mp);
-  BN_free(&mq);
-  BN_free(&vrfy);
+  GFp_BN_free(&r);
+  GFp_BN_free(&tmp);
+  GFp_BN_free(&mp);
+  GFp_BN_free(&mq);
+  GFp_BN_free(&vrfy);
 
   return ret;
 }

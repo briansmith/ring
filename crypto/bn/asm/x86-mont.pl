@@ -40,7 +40,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
 &external_label("OPENSSL_ia32cap_P") if ($sse2);
 
-&function_begin("bn_mul_mont");
+&function_begin("GFp_bn_mul_mont");
 
 $i="edx";
 $j="ecx";
@@ -575,7 +575,7 @@ $sbit=$num;
 
 	&mov	("esp",$_sp);		# pull saved stack pointer
 	&mov	("eax",1);
-&function_end("bn_mul_mont");
+&function_end("GFp_bn_mul_mont");
 
 &asciz("Montgomery Multiplication for x86, CRYPTOGAMS by <appro\@openssl.org>");
 

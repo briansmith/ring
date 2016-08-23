@@ -53,7 +53,7 @@ void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
     BN_MONT_CTX_N0(0xccd1c8aa, 0xee00bc4f)
   };
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
+  GFp_bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
 }
 #endif
 

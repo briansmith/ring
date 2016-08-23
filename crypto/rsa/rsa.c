@@ -84,36 +84,36 @@ int rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
   int ret = 0;
 
   BIGNUM qq;
-  BN_init(&qq);
+  GFp_BN_init(&qq);
 
-  rsa->mont_n = BN_MONT_CTX_new();
-  rsa->mont_p = BN_MONT_CTX_new();
-  rsa->mont_q = BN_MONT_CTX_new();
-  rsa->mont_qq = BN_MONT_CTX_new();
-  rsa->qmn_mont = BN_new();
-  rsa->iqmp_mont = BN_new();
+  rsa->mont_n = GFp_BN_MONT_CTX_new();
+  rsa->mont_p = GFp_BN_MONT_CTX_new();
+  rsa->mont_q = GFp_BN_MONT_CTX_new();
+  rsa->mont_qq = GFp_BN_MONT_CTX_new();
+  rsa->qmn_mont = GFp_BN_new();
+  rsa->iqmp_mont = GFp_BN_new();
   if (rsa->mont_n == NULL ||
       rsa->mont_p == NULL ||
       rsa->mont_q == NULL ||
       rsa->mont_qq == NULL ||
       rsa->qmn_mont == NULL ||
       rsa->iqmp_mont == NULL ||
-      !BN_MONT_CTX_set(rsa->mont_n, n) ||
-      !BN_MONT_CTX_set(rsa->mont_p, p) ||
-      !BN_MONT_CTX_set(rsa->mont_q, q) ||
-      !BN_mod_mul_mont(&qq, q, q, rsa->mont_n) ||
-      !BN_to_mont(&qq, &qq, rsa->mont_n) ||
-      !BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
-      !BN_to_mont(rsa->qmn_mont, q, rsa->mont_n) ||
+      !GFp_BN_MONT_CTX_set(rsa->mont_n, n) ||
+      !GFp_BN_MONT_CTX_set(rsa->mont_p, p) ||
+      !GFp_BN_MONT_CTX_set(rsa->mont_q, q) ||
+      !GFp_BN_mod_mul_mont(&qq, q, q, rsa->mont_n) ||
+      !GFp_BN_to_mont(&qq, &qq, rsa->mont_n) ||
+      !GFp_BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
+      !GFp_BN_to_mont(rsa->qmn_mont, q, rsa->mont_n) ||
       /* Assumes p > q. */
-      !BN_to_mont(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p)) {
+      !GFp_BN_to_mont(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p)) {
     goto err;
   }
 
   ret = rsa_check_key(rsa, d);
 
 err:
-  BN_free(&qq);
+  GFp_BN_free(&qq);
   return ret;
 }
 
@@ -121,12 +121,12 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
   BIGNUM n, pm1, qm1, dmp1, dmq1, iqmp_times_q;
   int ok = 0;
 
-  BN_init(&n);
-  BN_init(&pm1);
-  BN_init(&qm1);
-  BN_init(&dmp1);
-  BN_init(&dmq1);
-  BN_init(&iqmp_times_q);
+  GFp_BN_init(&n);
+  GFp_BN_init(&pm1);
+  GFp_BN_init(&qm1);
+  GFp_BN_init(&dmp1);
+  GFp_BN_init(&dmq1);
+  GFp_BN_init(&iqmp_times_q);
 
   /* The public modulus must be large enough. |RSAPublicKey::sign| depends on
    * this; without it, |RSAPublicKey::sign| would generate padding that is
@@ -148,18 +148,18 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
    * provide a function that swaps |p| and |q| and recalculates the CRT
    * parameters via the currently-deleted |RSA_recover_crt_params|. Or we can
    * just avoid using the CRT when |p < q|. */
-  if (BN_cmp(&key->mont_p->N, &key->mont_q->N) <= 0) {
+  if (GFp_BN_cmp(&key->mont_p->N, &key->mont_q->N) <= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto out;
   }
 
   if (/* n = pq */
-      !BN_mul_no_alias(&n, &key->mont_p->N, &key->mont_q->N)) {
+      !GFp_BN_mul_no_alias(&n, &key->mont_p->N, &key->mont_q->N)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (BN_cmp(&n, &key->mont_n->N) != 0) {
+  if (GFp_BN_cmp(&n, &key->mont_n->N) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
     goto out;
   }
@@ -173,31 +173,31 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
    * Further, above we verify that the |e| is small. */
 
   if (/* dmp1 = d mod (p-1) */
-      !BN_sub(&pm1, &key->mont_p->N, BN_value_one()) ||
-      !BN_mod(&dmp1, d, &pm1) ||
+      !GFp_BN_sub(&pm1, &key->mont_p->N, GFp_BN_value_one()) ||
+      !GFp_BN_mod(&dmp1, d, &pm1) ||
       /* dmq1 = d mod (q-1) */
-      !BN_sub(&qm1, &key->mont_q->N, BN_value_one()) ||
-      !BN_mod(&dmq1, d, &qm1)) {
+      !GFp_BN_sub(&qm1, &key->mont_q->N, GFp_BN_value_one()) ||
+      !GFp_BN_mod(&dmq1, d, &qm1)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (BN_cmp(key->iqmp, &key->mont_p->N) >= 0) {
+  if (GFp_BN_cmp(key->iqmp, &key->mont_p->N) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
     goto out;
   }
 
   /* iqmp = q^-1 mod p. Assumes p > q. */
-  if (!BN_mod_mul_mont(&iqmp_times_q, key->iqmp, &key->mont_q->N,
-                       key->mont_p) ||
-      !BN_to_mont(&iqmp_times_q, &iqmp_times_q, key->mont_p)) {
+  if (!GFp_BN_mod_mul_mont(&iqmp_times_q, key->iqmp, &key->mont_q->N,
+                           key->mont_p) ||
+      !GFp_BN_to_mont(&iqmp_times_q, &iqmp_times_q, key->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (BN_cmp(&dmp1, key->dmp1) != 0 ||
-      BN_cmp(&dmq1, key->dmq1) != 0 ||
-      !BN_is_one(&iqmp_times_q)) {
+  if (GFp_BN_cmp(&dmp1, key->dmp1) != 0 ||
+      GFp_BN_cmp(&dmq1, key->dmq1) != 0 ||
+      !GFp_BN_is_one(&iqmp_times_q)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
     goto out;
   }
@@ -205,12 +205,12 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
   ok = 1;
 
 out:
-  BN_free(&n);
-  BN_free(&pm1);
-  BN_free(&qm1);
-  BN_free(&dmp1);
-  BN_free(&dmq1);
-  BN_free(&iqmp_times_q);
+  GFp_BN_free(&n);
+  GFp_BN_free(&pm1);
+  GFp_BN_free(&qm1);
+  GFp_BN_free(&dmp1);
+  GFp_BN_free(&dmq1);
+  GFp_BN_free(&iqmp_times_q);
 
   return ok;
 }

@@ -104,11 +104,11 @@ $code=<<___;
 .word	OPENSSL_armcap_P-.Lbn_mul_mont
 #endif
 
-.global	bn_mul_mont
-.type	bn_mul_mont,%function
+.global	GFp_bn_mul_mont
+.type	GFp_bn_mul_mont,%function
 
 .align	5
-bn_mul_mont:
+GFp_bn_mul_mont:
 .Lbn_mul_mont:
 	ldr	ip,[sp,#4]		@ load num
 	stmdb	sp!,{r0,r2}		@ sp points at argument block
@@ -278,7 +278,7 @@ bn_mul_mont:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	bn_mul_mont,.-bn_mul_mont
+.size	GFp_bn_mul_mont,.-GFp_bn_mul_mont
 ___
 {
 my ($A0,$A1,$A2,$A3)=map("d$_",(0..3));

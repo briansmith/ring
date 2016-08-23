@@ -65,10 +65,11 @@ extern "C" {
 #endif
 
 
-BN_BLINDING *BN_BLINDING_new(void);
-void BN_BLINDING_free(BN_BLINDING *b);
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, RAND *rng);
-int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont);
+BN_BLINDING *GFp_BN_BLINDING_new(void);
+void GFp_BN_BLINDING_free(BN_BLINDING *b);
+int GFp_BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa,
+                            RAND *rng);
+int GFp_BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont);
 
 
 int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
