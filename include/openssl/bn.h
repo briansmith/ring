@@ -327,7 +327,7 @@ OPENSSL_EXPORT int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn);
 OPENSSL_EXPORT void bn_correct_top(BIGNUM *bn);
 
 /* bn_wexpand ensures that |bn| has at least |words| works of space without
- * altering its value. It returns one on success or zero on allocation
+ * altering its value. It returns |bn| on success or NULL on allocation
  * failure. */
 OPENSSL_EXPORT BIGNUM *bn_wexpand(BIGNUM *bn, size_t words);
 
