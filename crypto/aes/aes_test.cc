@@ -45,25 +45,6 @@ static bool TestAES(const uint8_t *key, size_t key_len,
     return false;
   }
 
-  if (AES_set_decrypt_key(key, key_len * 8, &aes_key) != 0) {
-    fprintf(stderr, "AES_set_decrypt_key failed\n");
-    return false;
-  }
-
-  // Test decryption.
-  AES_decrypt(ciphertext, block, &aes_key);
-  if (memcmp(block, plaintext, AES_BLOCK_SIZE) != 0) {
-    fprintf(stderr, "AES_decrypt gave the wrong output\n");
-    return false;
-  }
-
-  // Test in-place decryption.
-  memcpy(block, ciphertext, AES_BLOCK_SIZE);
-  AES_decrypt(block, block, &aes_key);
-  if (memcmp(block, plaintext, AES_BLOCK_SIZE) != 0) {
-    fprintf(stderr, "AES_decrypt gave the wrong output\n");
-    return false;
-  }
   return true;
 }
 

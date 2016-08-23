@@ -164,112 +164,6 @@ _vpaes_encrypt_core:
 	pshufb	%xmm1,	%xmm0
 	ret
 .size	_vpaes_encrypt_core,.-_vpaes_encrypt_core
-	
-##
-##  Decryption core
-##
-##  Same API as encryption core.
-##
-.type	_vpaes_decrypt_core,\@abi-omnipotent
-.align	16
-_vpaes_decrypt_core:
-	mov	%rdx,	%r9		# load key
-	mov	240(%rdx),%eax
-	movdqa	%xmm9,	%xmm1
-	movdqa	.Lk_dipt(%rip), %xmm2	# iptlo
-	pandn	%xmm0,	%xmm1
-	mov	%rax,	%r11
-	psrld	\$4,	%xmm1
-	movdqu	(%r9),	%xmm5		# round0 key
-	shl	\$4,	%r11
-	pand	%xmm9,	%xmm0
-	pshufb	%xmm0,	%xmm2
-	movdqa	.Lk_dipt+16(%rip), %xmm0 # ipthi
-	xor	\$0x30,	%r11
-	lea	.Lk_dsbd(%rip),%r10
-	pshufb	%xmm1,	%xmm0
-	and	\$0x30,	%r11
-	pxor	%xmm5,	%xmm2
-	movdqa	.Lk_mc_forward+48(%rip), %xmm5
-	pxor	%xmm2,	%xmm0
-	add	\$16,	%r9
-	add	%r10,	%r11
-	jmp	.Ldec_entry
-
-.align 16
-.Ldec_loop:
-##
-##  Inverse mix columns
-##
-	movdqa  -0x20(%r10),%xmm4	# 4 : sb9u
-	movdqa  -0x10(%r10),%xmm1	# 0 : sb9t
-	pshufb	%xmm2,	%xmm4		# 4 = sb9u
-	pshufb	%xmm3,	%xmm1		# 0 = sb9t
-	pxor	%xmm4,	%xmm0
-	movdqa  0x00(%r10),%xmm4	# 4 : sbdu
-	pxor	%xmm1,	%xmm0		# 0 = ch
-	movdqa  0x10(%r10),%xmm1	# 0 : sbdt
-
-	pshufb	%xmm2,	%xmm4		# 4 = sbdu
-	pshufb	%xmm5,	%xmm0		# MC ch
-	pshufb	%xmm3,	%xmm1		# 0 = sbdt
-	pxor	%xmm4,	%xmm0		# 4 = ch
-	movdqa  0x20(%r10),%xmm4	# 4 : sbbu
-	pxor	%xmm1,	%xmm0		# 0 = ch
-	movdqa  0x30(%r10),%xmm1	# 0 : sbbt
-
-	pshufb	%xmm2,	%xmm4		# 4 = sbbu
-	pshufb	%xmm5,	%xmm0		# MC ch
-	pshufb	%xmm3,	%xmm1		# 0 = sbbt
-	pxor	%xmm4,	%xmm0		# 4 = ch
-	movdqa  0x40(%r10),%xmm4	# 4 : sbeu
-	pxor	%xmm1,	%xmm0		# 0 = ch
-	movdqa  0x50(%r10),%xmm1	# 0 : sbet
-
-	pshufb	%xmm2,	%xmm4		# 4 = sbeu
-	pshufb	%xmm5,	%xmm0		# MC ch
-	pshufb	%xmm3,	%xmm1		# 0 = sbet
-	pxor	%xmm4,	%xmm0		# 4 = ch
-	add	\$16, %r9		# next round key
-	palignr	\$12,	%xmm5,	%xmm5
-	pxor	%xmm1,	%xmm0		# 0 = ch
-	sub	\$1,%rax		# nr--
-
-.Ldec_entry:
-	# top of round
-	movdqa  %xmm9, 	%xmm1	# 1 : i
-	pandn	%xmm0, 	%xmm1	# 1 = i<<4
-	movdqa	%xmm11, %xmm2	# 2 : a/k
-	psrld	\$4,    %xmm1	# 1 = i
-	pand	%xmm9, 	%xmm0	# 0 = k
-	pshufb  %xmm0,  %xmm2	# 2 = a/k
-	movdqa	%xmm10,	%xmm3	# 3 : 1/i
-	pxor	%xmm1,	%xmm0	# 0 = j
-	pshufb  %xmm1, 	%xmm3	# 3 = 1/i
-	movdqa	%xmm10,	%xmm4	# 4 : 1/j
-	pxor	%xmm2, 	%xmm3	# 3 = iak = 1/i + a/k
-	pshufb	%xmm0, 	%xmm4	# 4 = 1/j
-	pxor	%xmm2, 	%xmm4	# 4 = jak = 1/j + a/k
-	movdqa	%xmm10,	%xmm2	# 2 : 1/iak
-	pshufb  %xmm3,	%xmm2	# 2 = 1/iak
-	movdqa	%xmm10, %xmm3	# 3 : 1/jak
-	pxor	%xmm0, 	%xmm2	# 2 = io
-	pshufb  %xmm4,  %xmm3	# 3 = 1/jak
-	movdqu	(%r9),	%xmm0
-	pxor	%xmm1,  %xmm3	# 3 = jo
-	jnz	.Ldec_loop
-
-	# middle of last round
-	movdqa	0x60(%r10), %xmm4	# 3 : sbou
-	pshufb  %xmm2,  %xmm4	# 4 = sbou
-	pxor	%xmm0,  %xmm4	# 4 = sb1u + k
-	movdqa	0x70(%r10), %xmm0	# 0 : sbot
-	movdqa	-0x160(%r11), %xmm2	# .Lk_sr-.Lk_dsbd=-0x160
-	pshufb  %xmm3,	%xmm0	# 0 = sb1t
-	pxor	%xmm4,	%xmm0	# 0 = A
-	pshufb	%xmm2,	%xmm0
-	ret
-.size	_vpaes_decrypt_core,.-_vpaes_decrypt_core
 
 ########################################################
 ##                                                    ##
@@ -294,20 +188,8 @@ _vpaes_schedule_core:
 	call	_vpaes_schedule_transform
 	movdqa	%xmm0,	%xmm7
 
-	lea	.Lk_sr(%rip),%r10
-	test	%rcx,	%rcx
-	jnz	.Lschedule_am_decrypting
-
 	# encrypting, output zeroth round key after transform
 	movdqu	%xmm0,	(%rdx)
-	jmp	.Lschedule_go
-
-.Lschedule_am_decrypting:
-	# decrypting, output zeroth round key after shiftrows
-	movdqa	(%r8,%r10),%xmm1
-	pshufb  %xmm1,	%xmm3
-	movdqu	%xmm3,	(%rdx)
-	xor	\$0x30, %r8
 
 .Lschedule_go:
 	cmp	\$192,	%esi
@@ -420,8 +302,6 @@ _vpaes_schedule_core:
 .Lschedule_mangle_last:
 	# schedule last round key from xmm0
 	lea	.Lk_deskew(%rip),%r11	# prepare to deskew
-	test	%rcx, 	%rcx
-	jnz	.Lschedule_mangle_last_dec
 
 	# encrypting
 	movdqa	(%r8,%r10),%xmm1
@@ -602,8 +482,6 @@ _vpaes_schedule_transform:
 _vpaes_schedule_mangle:
 	movdqa	%xmm0,	%xmm4	# save xmm0 for later
 	movdqa	.Lk_mc_forward(%rip),%xmm5
-	test	%rcx, 	%rcx
-	jnz	.Lschedule_mangle_dec
 
 	# encrypting
 	add	\$16,	%rdx
@@ -614,48 +492,6 @@ _vpaes_schedule_mangle:
 	pxor	%xmm4,	%xmm3
 	pshufb	%xmm5,	%xmm4
 	pxor	%xmm4,	%xmm3
-
-	jmp	.Lschedule_mangle_both
-.align	16
-.Lschedule_mangle_dec:
-	# inverse mix columns
-	lea	.Lk_dksd(%rip),%r11
-	movdqa	%xmm9,	%xmm1
-	pandn	%xmm4,	%xmm1
-	psrld	\$4,	%xmm1	# 1 = hi
-	pand	%xmm9,	%xmm4	# 4 = lo
-
-	movdqa	0x00(%r11), %xmm2
-	pshufb	%xmm4,	%xmm2
-	movdqa	0x10(%r11), %xmm3
-	pshufb	%xmm1,	%xmm3
-	pxor	%xmm2,	%xmm3
-	pshufb	%xmm5,	%xmm3
-
-	movdqa	0x20(%r11), %xmm2
-	pshufb	%xmm4,	%xmm2
-	pxor	%xmm3,	%xmm2
-	movdqa	0x30(%r11), %xmm3
-	pshufb	%xmm1,	%xmm3
-	pxor	%xmm2,	%xmm3
-	pshufb	%xmm5,	%xmm3
-
-	movdqa	0x40(%r11), %xmm2
-	pshufb	%xmm4,	%xmm2
-	pxor	%xmm3,	%xmm2
-	movdqa	0x50(%r11), %xmm3
-	pshufb	%xmm1,	%xmm3
-	pxor	%xmm2,	%xmm3
-	pshufb	%xmm5,	%xmm3
-
-	movdqa	0x60(%r11), %xmm2
-	pshufb	%xmm4,	%xmm2
-	pxor	%xmm3,	%xmm2
-	movdqa	0x70(%r11), %xmm3
-	pshufb	%xmm1,	%xmm3
-	pxor	%xmm2,	%xmm3
-
-	add	\$-16,	%rdx
 
 .Lschedule_mangle_both:
 	movdqa	(%r8,%r10),%xmm1
@@ -717,59 +553,6 @@ $code.=<<___;
 	ret
 .size	${PREFIX}_set_encrypt_key,.-${PREFIX}_set_encrypt_key
 
-.globl	${PREFIX}_set_decrypt_key
-.type	${PREFIX}_set_decrypt_key,\@function,3
-.align	16
-${PREFIX}_set_decrypt_key:
-___
-$code.=<<___ if ($win64);
-	lea	-0xb8(%rsp),%rsp
-	movaps	%xmm6,0x10(%rsp)
-	movaps	%xmm7,0x20(%rsp)
-	movaps	%xmm8,0x30(%rsp)
-	movaps	%xmm9,0x40(%rsp)
-	movaps	%xmm10,0x50(%rsp)
-	movaps	%xmm11,0x60(%rsp)
-	movaps	%xmm12,0x70(%rsp)
-	movaps	%xmm13,0x80(%rsp)
-	movaps	%xmm14,0x90(%rsp)
-	movaps	%xmm15,0xa0(%rsp)
-.Ldec_key_body:
-___
-$code.=<<___;
-	mov	%esi,%eax
-	shr	\$5,%eax
-	add	\$5,%eax
-	mov	%eax,240(%rdx)	# AES_KEY->rounds = nbits/32+5;
-	shl	\$4,%eax
-	lea	16(%rdx,%rax),%rdx
-
-	mov	\$1,%ecx
-	mov	%esi,%r8d
-	shr	\$1,%r8d
-	and	\$32,%r8d
-	xor	\$32,%r8d	# nbits==192?0:32
-	call	_vpaes_schedule_core
-___
-$code.=<<___ if ($win64);
-	movaps	0x10(%rsp),%xmm6
-	movaps	0x20(%rsp),%xmm7
-	movaps	0x30(%rsp),%xmm8
-	movaps	0x40(%rsp),%xmm9
-	movaps	0x50(%rsp),%xmm10
-	movaps	0x60(%rsp),%xmm11
-	movaps	0x70(%rsp),%xmm12
-	movaps	0x80(%rsp),%xmm13
-	movaps	0x90(%rsp),%xmm14
-	movaps	0xa0(%rsp),%xmm15
-	lea	0xb8(%rsp),%rsp
-.Ldec_key_epilogue:
-___
-$code.=<<___;
-	xor	%eax,%eax
-	ret
-.size	${PREFIX}_set_decrypt_key,.-${PREFIX}_set_decrypt_key
-
 .globl	${PREFIX}_encrypt
 .type	${PREFIX}_encrypt,\@function,3
 .align	16
@@ -812,49 +595,6 @@ ___
 $code.=<<___;
 	ret
 .size	${PREFIX}_encrypt,.-${PREFIX}_encrypt
-
-.globl	${PREFIX}_decrypt
-.type	${PREFIX}_decrypt,\@function,3
-.align	16
-${PREFIX}_decrypt:
-___
-$code.=<<___ if ($win64);
-	lea	-0xb8(%rsp),%rsp
-	movaps	%xmm6,0x10(%rsp)
-	movaps	%xmm7,0x20(%rsp)
-	movaps	%xmm8,0x30(%rsp)
-	movaps	%xmm9,0x40(%rsp)
-	movaps	%xmm10,0x50(%rsp)
-	movaps	%xmm11,0x60(%rsp)
-	movaps	%xmm12,0x70(%rsp)
-	movaps	%xmm13,0x80(%rsp)
-	movaps	%xmm14,0x90(%rsp)
-	movaps	%xmm15,0xa0(%rsp)
-.Ldec_body:
-___
-$code.=<<___;
-	movdqu	(%rdi),%xmm0
-	call	_vpaes_preheat
-	call	_vpaes_decrypt_core
-	movdqu	%xmm0,(%rsi)
-___
-$code.=<<___ if ($win64);
-	movaps	0x10(%rsp),%xmm6
-	movaps	0x20(%rsp),%xmm7
-	movaps	0x30(%rsp),%xmm8
-	movaps	0x40(%rsp),%xmm9
-	movaps	0x50(%rsp),%xmm10
-	movaps	0x60(%rsp),%xmm11
-	movaps	0x70(%rsp),%xmm12
-	movaps	0x80(%rsp),%xmm13
-	movaps	0x90(%rsp),%xmm14
-	movaps	0xa0(%rsp),%xmm15
-	lea	0xb8(%rsp),%rsp
-.Ldec_epilogue:
-___
-$code.=<<___;
-	ret
-.size	${PREFIX}_decrypt,.-${PREFIX}_decrypt
 ___
 $code.=<<___;
 ##
@@ -936,50 +676,6 @@ _vpaes_consts:
 .Lk_deskew:	# deskew tables: inverts the sbox's "skew"
 	.quad	0x07E4A34047A4E300, 0x1DFEB95A5DBEF91A
 	.quad	0x5F36B5DC83EA6900, 0x2841C2ABF49D1E77
-
-##
-##  Decryption stuff
-##  Key schedule constants
-##
-.Lk_dksd:	# decryption key schedule: invskew x*D
-	.quad	0xFEB91A5DA3E44700, 0x0740E3A45A1DBEF9
-	.quad	0x41C277F4B5368300, 0x5FDC69EAAB289D1E
-.Lk_dksb:	# decryption key schedule: invskew x*B
-	.quad	0x9A4FCA1F8550D500, 0x03D653861CC94C99
-	.quad	0x115BEDA7B6FC4A00, 0xD993256F7E3482C8
-.Lk_dkse:	# decryption key schedule: invskew x*E + 0x63
-	.quad	0xD5031CCA1FC9D600, 0x53859A4C994F5086
-	.quad	0xA23196054FDC7BE8, 0xCD5EF96A20B31487
-.Lk_dks9:	# decryption key schedule: invskew x*9
-	.quad	0xB6116FC87ED9A700, 0x4AED933482255BFC
-	.quad	0x4576516227143300, 0x8BB89FACE9DAFDCE
-
-##
-##  Decryption stuff
-##  Round function constants
-##
-.Lk_dipt:	# decryption input transform
-	.quad	0x0F505B040B545F00, 0x154A411E114E451A
-	.quad	0x86E383E660056500, 0x12771772F491F194
-
-.Lk_dsb9:	# decryption sbox output *9*u, *9*t
-	.quad	0x851C03539A86D600, 0xCAD51F504F994CC9
-	.quad	0xC03B1789ECD74900, 0x725E2C9EB2FBA565
-.Lk_dsbd:	# decryption sbox output *D*u, *D*t
-	.quad	0x7D57CCDFE6B1A200, 0xF56E9B13882A4439
-	.quad	0x3CE2FAF724C6CB00, 0x2931180D15DEEFD3
-.Lk_dsbb:	# decryption sbox output *B*u, *B*t
-	.quad	0xD022649296B44200, 0x602646F6B0F2D404
-	.quad	0xC19498A6CD596700, 0xF3FF0C3E3255AA6B
-.Lk_dsbe:	# decryption sbox output *E*u, *E*t
-	.quad	0x46F2929626D4D000, 0x2242600464B4F6B0
-	.quad	0x0C55A6CDFFAAC100, 0x9467F36B98593E32
-.Lk_dsbo:	# decryption sbox final output
-	.quad	0x1387EA537EF94000, 0xC7AA6DB9D4943E2D
-	.quad	0x12D7560F93441D00, 0xCA4B8159D8C58E9C
-.asciz	"Vector Permutation AES for x86_64/SSSE3, Mike Hamburg (Stanford University)"
-.align	64
-.size	_vpaes_consts,.-_vpaes_consts
 ___
 
 if ($win64) {
@@ -1076,17 +772,9 @@ se_handler:
 	.rva	.LSEH_end_${PREFIX}_set_encrypt_key
 	.rva	.LSEH_info_${PREFIX}_set_encrypt_key
 
-	.rva	.LSEH_begin_${PREFIX}_set_decrypt_key
-	.rva	.LSEH_end_${PREFIX}_set_decrypt_key
-	.rva	.LSEH_info_${PREFIX}_set_decrypt_key
-
 	.rva	.LSEH_begin_${PREFIX}_encrypt
 	.rva	.LSEH_end_${PREFIX}_encrypt
 	.rva	.LSEH_info_${PREFIX}_encrypt
-
-	.rva	.LSEH_begin_${PREFIX}_decrypt
-	.rva	.LSEH_end_${PREFIX}_decrypt
-	.rva	.LSEH_info_${PREFIX}_decrypt
 
 .section	.xdata
 .align	8
@@ -1094,18 +782,10 @@ se_handler:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_key_body,.Lenc_key_epilogue	# HandlerData[]
-.LSEH_info_${PREFIX}_set_decrypt_key:
-	.byte	9,0,0,0
-	.rva	se_handler
-	.rva	.Ldec_key_body,.Ldec_key_epilogue	# HandlerData[]
 .LSEH_info_${PREFIX}_encrypt:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_body,.Lenc_epilogue		# HandlerData[]
-.LSEH_info_${PREFIX}_decrypt:
-	.byte	9,0,0,0
-	.rva	se_handler
-	.rva	.Ldec_body,.Ldec_epilogue		# HandlerData[]
 ___
 }
 

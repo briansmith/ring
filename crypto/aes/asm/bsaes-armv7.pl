@@ -733,82 +733,6 @@ $code.=<<___;
 # undef __thumb2__
 #endif
 
-.type	_bsaes_decrypt8,%function
-.align	4
-_bsaes_decrypt8:
-	adr	$const,_bsaes_decrypt8
-	vldmia	$key!, {@XMM[9]}		@ round 0 key
-#ifdef	__APPLE__
-	adr	$const,.LM0ISR
-#else
-	add	$const,$const,#.LM0ISR-_bsaes_decrypt8
-#endif
-
-	vldmia	$const!, {@XMM[8]}		@ .LM0ISR
-	veor	@XMM[10], @XMM[0], @XMM[9]	@ xor with round0 key
-	veor	@XMM[11], @XMM[1], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[0])`, {@XMM[10]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[0])`, {@XMM[10]}, `&Dhi(@XMM[8])`
-	veor	@XMM[12], @XMM[2], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[1])`, {@XMM[11]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[1])`, {@XMM[11]}, `&Dhi(@XMM[8])`
-	veor	@XMM[13], @XMM[3], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[2])`, {@XMM[12]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[2])`, {@XMM[12]}, `&Dhi(@XMM[8])`
-	veor	@XMM[14], @XMM[4], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[3])`, {@XMM[13]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[3])`, {@XMM[13]}, `&Dhi(@XMM[8])`
-	veor	@XMM[15], @XMM[5], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[4])`, {@XMM[14]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[4])`, {@XMM[14]}, `&Dhi(@XMM[8])`
-	veor	@XMM[10], @XMM[6], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[5])`, {@XMM[15]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[5])`, {@XMM[15]}, `&Dhi(@XMM[8])`
-	veor	@XMM[11], @XMM[7], @XMM[9]
-	 vtbl.8	`&Dlo(@XMM[6])`, {@XMM[10]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[6])`, {@XMM[10]}, `&Dhi(@XMM[8])`
-	 vtbl.8	`&Dlo(@XMM[7])`, {@XMM[11]}, `&Dlo(@XMM[8])`
-	 vtbl.8	`&Dhi(@XMM[7])`, {@XMM[11]}, `&Dhi(@XMM[8])`
-___
-	&bitslice	(@XMM[0..7, 8..11]);
-$code.=<<___;
-	sub	$rounds,$rounds,#1
-	b	.Ldec_sbox
-.align	4
-.Ldec_loop:
-___
-	&ShiftRows	(@XMM[0..7, 8..12]);
-$code.=".Ldec_sbox:\n";
-	&InvSbox	(@XMM[0..7, 8..15]);
-$code.=<<___;
-	subs	$rounds,$rounds,#1
-	bcc	.Ldec_done
-___
-	&InvMixColumns	(@XMM[0,1,6,4,2,7,3,5, 8..15]);
-$code.=<<___;
-	vldmia	$const, {@XMM[12]}		@ .LISR
-	ite	eq				@ Thumb2 thing, sanity check in ARM
-	addeq	$const,$const,#0x10
-	bne	.Ldec_loop
-	vldmia	$const, {@XMM[12]}		@ .LISRM0
-	b	.Ldec_loop
-.align	4
-.Ldec_done:
-___
-	&bitslice	(@XMM[0,1,6,4,2,7,3,5, 8..11]);
-$code.=<<___;
-	vldmia	$key, {@XMM[8]}			@ last round key
-	veor	@XMM[6], @XMM[6], @XMM[8]
-	veor	@XMM[4], @XMM[4], @XMM[8]
-	veor	@XMM[2], @XMM[2], @XMM[8]
-	veor	@XMM[7], @XMM[7], @XMM[8]
-	veor	@XMM[3], @XMM[3], @XMM[8]
-	veor	@XMM[5], @XMM[5], @XMM[8]
-	veor	@XMM[0], @XMM[0], @XMM[8]
-	veor	@XMM[1], @XMM[1], @XMM[8]
-	bx	lr
-.size	_bsaes_decrypt8,.-_bsaes_decrypt8
-
 .type	_bsaes_const,%object
 .align	6
 _bsaes_const:
@@ -1052,56 +976,6 @@ bsaes_encrypt_128:
 	vldmia	sp!,{d8-d15}
 	ldmia	sp!,{r4-r6,pc}
 .size	bsaes_encrypt_128,.-bsaes_encrypt_128
-
-.globl	bsaes_dec_key_convert
-.type	bsaes_dec_key_convert,%function
-.align	4
-bsaes_dec_key_convert:
-	stmdb	sp!,{r4-r6,lr}
-	vstmdb	sp!,{d8-d15}		@ ABI specification says so
-
-	ldr	r5,[$inp,#240]			@ pass rounds
-	mov	r4,$inp				@ pass key
-	mov	r12,$out			@ pass key schedule
-	bl	_bsaes_key_convert
-	vldmia	$out, {@XMM[6]}
-	vstmia	r12,  {@XMM[15]}		@ save last round key
-	veor	@XMM[7], @XMM[7], @XMM[6]	@ fix up round 0 key
-	vstmia	$out, {@XMM[7]}
-
-	vldmia	sp!,{d8-d15}
-	ldmia	sp!,{r4-r6,pc}
-.size	bsaes_dec_key_convert,.-bsaes_dec_key_convert
-
-.globl	bsaes_decrypt_128
-.type	bsaes_decrypt_128,%function
-.align	4
-bsaes_decrypt_128:
-	stmdb	sp!,{r4-r6,lr}
-	vstmdb	sp!,{d8-d15}		@ ABI specification says so
-.Ldec128_loop:
-	vld1.8	{@XMM[0]-@XMM[1]}, [$inp]!	@ load input
-	vld1.8	{@XMM[2]-@XMM[3]}, [$inp]!
-	mov	r4,$key				@ pass the key
-	vld1.8	{@XMM[4]-@XMM[5]}, [$inp]!
-	mov	r5,#10				@ pass rounds
-	vld1.8	{@XMM[6]-@XMM[7]}, [$inp]!
-
-	bl	_bsaes_decrypt8
-
-	vst1.8	{@XMM[0]-@XMM[1]}, [$out]!	@ write output
-	vst1.8	{@XMM[6]}, [$out]!
-	vst1.8	{@XMM[4]}, [$out]!
-	vst1.8	{@XMM[2]}, [$out]!
-	vst1.8	{@XMM[7]}, [$out]!
-	vst1.8	{@XMM[3]}, [$out]!
-	subs	$len,$len,#0x80
-	vst1.8	{@XMM[5]}, [$out]!
-	bhi	.Ldec128_loop
-
-	vldmia	sp!,{d8-d15}
-	ldmia	sp!,{r4-r6,pc}
-.size	bsaes_decrypt_128,.-bsaes_decrypt_128
 ___
 }
 {
