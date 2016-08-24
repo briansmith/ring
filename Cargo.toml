@@ -7,7 +7,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.2.3"
+version = "0.3.0"
 keywords = [ "crypto", "rand", "signature", "AEAD", "RSA" ]
 
 exclude = [
@@ -78,6 +78,7 @@ include = [
     "src/ec/suite_b/suite_b_public_key_tests.txt",
     "src/ec/x25519.rs",
     "src/error.rs",
+    "src/limb.rs",
     "src/hkdf.rs",
     "src/hkdf_tests.txt",
     "src/hmac.rs",
@@ -219,10 +220,12 @@ include = [
     "crypto/sha/asm/sha512-armv8.pl",
     "crypto/sha/asm/sha512-x86_64.pl",
     "crypto/test/bn_test_convert.c",
+    "crypto/test/bn_test_lib.c",
     "crypto/test/bn_test_lib.h",
     "crypto/test/bn_test_util.h",
     "crypto/test/file_test.cc",
     "crypto/test/file_test.h",
+    "crypto/test/rand.h",
     "crypto/test/scoped_types.h",
     "include/openssl/aes.h",
     "include/openssl/arm_arch.h",
@@ -232,7 +235,6 @@ include = [
     "include/openssl/err.h",
     "include/openssl/mem.h",
     "include/openssl/opensslconf.h",
-    "include/openssl/rand.h",
     "include/openssl/rsa.h",
     "include/openssl/type_check.h",
     "examples/checkdigest.rs",
