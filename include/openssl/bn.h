@@ -221,6 +221,10 @@ OPENSSL_EXPORT int BN_one(BIGNUM *bn);
  * allocation failure. */
 OPENSSL_EXPORT int BN_set_word(BIGNUM *bn, BN_ULONG value);
 
+/* BN_set_u64 sets |bn| to |value|. It returns one on success or zero on
+ * allocation failure. */
+OPENSSL_EXPORT int BN_set_u64(BIGNUM *bn, uint64_t value);
+
 /* BN_set_negative sets the sign of |bn|. */
 OPENSSL_EXPORT void BN_set_negative(BIGNUM *bn, int sign);
 

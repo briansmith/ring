@@ -266,6 +266,28 @@ int BN_set_word(BIGNUM *bn, BN_ULONG value) {
   return 1;
 }
 
+int BN_set_u64(BIGNUM *bn, uint64_t value) {
+#if BN_BITS2 == 64
+  return BN_set_word(bn, value);
+#elif BN_BITS2 == 32
+  if (value <= BN_MASK2) {
+    return BN_set_word(bn, (BN_ULONG)value);
+  }
+
+  if (bn_wexpand(bn, 2) == NULL) {
+    return 0;
+  }
+
+  bn->neg = 0;
+  bn->d[0] = (BN_ULONG)value;
+  bn->d[1] = (BN_ULONG)(value >> 32);
+  bn->top = 2;
+  return 1;
+#else
+#error "BN_BITS2 must be 32 or 64."
+#endif
+}
+
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   if (bn_wexpand(bn, num) == NULL) {
     return 0;
