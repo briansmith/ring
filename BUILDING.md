@@ -14,7 +14,7 @@ The directory containing yasm.exe must be in `%PATH%`, where yasm.exe is
 [Yasm](http://yasm.tortall.net/Download.html) 1.3 or later. 
 
 The directory containing perl.exe must be in `%PATH%`.
-[Strawberry Perl](strawberryperl.com) is recommended. 
+[Strawberry Perl](http://strawberryperl.com) is recommended. 
 
 *ring* uses Visual Studio's native build system (msbuild) on Windows to build
 its C, C++, and assembly language parts, so it must be able to find MSBuild.
