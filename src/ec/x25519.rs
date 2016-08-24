@@ -61,7 +61,9 @@ fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input)
                -> Result<(), error::Unspecified> {
     debug_assert_eq!(out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
-    debug_assert_eq!(peer_public_key.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
+    if peer_public_key.len() != X25519_ELEM_SCALAR_PUBLIC_KEY_LEN {
+        return Err(error::Unspecified);
+    }
     bssl::map_result(unsafe {
         GFp_x25519_ecdh(out.as_mut_ptr(), my_private_key.bytes.as_ptr(),
                         peer_public_key.as_slice_less_safe().as_ptr())
