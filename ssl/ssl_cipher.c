@@ -168,6 +168,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
+#ifdef BORINGSSL_ENABLE_RC4_TLS
     /* Cipher 04 */
     {
      SSL3_TXT_RSA_RC4_128_MD5,
@@ -189,6 +190,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
+#endif
 
     /* Cipher 0A */
     {
@@ -297,6 +299,7 @@ static const SSL_CIPHER kCiphers[] = {
 
     /* PSK cipher suites. */
 
+#ifdef BORINGSSL_ENABLE_RC4_TLS
     /* Cipher 8A */
     {
      TLS1_TXT_PSK_WITH_RC4_128_SHA,
@@ -307,6 +310,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
+#endif
 
     /* Cipher 8C */
     {
@@ -422,6 +426,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA384,
     },
 
+#ifdef BORINGSSL_ENABLE_RC4_TLS
     /* Cipher C007 */
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_RC4_128_SHA,
@@ -432,6 +437,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
+#endif
 
     /* Cipher C009 */
     {
@@ -455,6 +461,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
+#ifdef BORINGSSL_ENABLE_RC4_TLS
     /* Cipher C011 */
     {
      TLS1_TXT_ECDHE_RSA_WITH_RC4_128_SHA,
@@ -465,6 +472,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
+#endif
 
     /* Cipher C013 */
     {
@@ -845,6 +853,7 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
       *out_fixed_iv_len = 12;
       break;
 
+#ifdef BORINGSSL_ENABLE_RC4_TLS
     case SSL_RC4:
       switch (cipher->algorithm_mac) {
         case SSL_MD5:
@@ -867,6 +876,7 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
           return 0;
       }
       break;
+#endif
 
     case SSL_AES128:
       switch (cipher->algorithm_mac) {
