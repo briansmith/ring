@@ -35,8 +35,8 @@ impl RSAPadding {
     // https://tools.ietf.org/html/rfc3447#section-9.2.
     fn pad(&self, msg: &[u8], out: &mut [u8])
            -> Result<(), error::Unspecified> {
-        let digest_len =
-            self.digestinfo_prefix.len() + self.digest_alg.output_len;
+        let digest_len = self.digestinfo_prefix.len() +
+                         self.digest_alg.output_len;
 
         // Require at least 8 bytes of padding. Since we disallow keys smaller
         // than 2048 bits, this should never happen anyway.
@@ -104,8 +104,7 @@ impl RSAKeyPair {
     pub fn from_der(input: untrusted::Input)
                     -> Result<RSAKeyPair, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified,
-                        |input| {
+            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
                 let version = try!(der::small_nonnegative_integer(input));
                 if version != 0 {
                     return Err(error::Unspecified);
@@ -139,9 +138,7 @@ impl RSAKeyPair {
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
-    pub fn public_modulus_len(&self) -> usize {
-        unsafe { RSA_size(&self.rsa) }
-    }
+    pub fn public_modulus_len(&self) -> usize { unsafe { RSA_size(&self.rsa) } }
 }
 
 impl Drop for RSAKeyPair {
@@ -161,8 +158,8 @@ impl Drop for RSAKeyPair {
     }
 }
 
-unsafe impl Send for RSAKeyPair { }
-unsafe impl Sync for RSAKeyPair { }
+unsafe impl Send for RSAKeyPair {}
+unsafe impl Sync for RSAKeyPair {}
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
 #[repr(C)]
@@ -269,12 +266,10 @@ struct Blinding {
 }
 
 impl Drop for Blinding {
-    fn drop(&mut self) {
-        unsafe { BN_BLINDING_free(self.blinding) }
-    }
+    fn drop(&mut self) { unsafe { BN_BLINDING_free(self.blinding) } }
 }
 
-unsafe impl Send for Blinding { }
+unsafe impl Send for Blinding {}
 
 /// Needs to be kept in sync with `bn_blinding_st` in `crypto/rsa/blinding.c`.
 #[allow(non_camel_case_types)]
@@ -312,7 +307,9 @@ mod tests {
     use super::super::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512};
     use untrusted;
 
-    extern { static GFp_BN_BLINDING_COUNTER: u32; }
+    extern {
+        static GFp_BN_BLINDING_COUNTER: u32;
+    }
 
     #[test]
     fn test_signature_rsa_pkcs1_sign() {
@@ -349,7 +346,7 @@ mod tests {
             // TODO: re-enable these tests on Android ARM.
             if section == "Skipped on Android ARM due to Travis CI Timeouts" &&
                cfg!(all(target_os = "android", target_arch = "arm")) {
-               return Ok(());
+                return Ok(());
             }
             let mut signing_state = RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
@@ -413,17 +410,13 @@ mod tests {
 
         let mut signing_state = RSASigningState::new(key_pair).unwrap();
 
-        for _ in 0 .. GFp_BN_BLINDING_COUNTER + 1 {
-            let prev_counter = unsafe {
-                (*signing_state.blinding.blinding).counter
-            };
+        for _ in 0..(GFp_BN_BLINDING_COUNTER + 1) {
+            let prev_counter =
+                unsafe { (*signing_state.blinding.blinding).counter };
 
-            let _ = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                                       &mut signature);
+            let _ = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature);
 
-            let counter = unsafe {
-                (*signing_state.blinding.blinding).counter
-            };
+            let counter = unsafe { (*signing_state.blinding.blinding).counter };
 
             assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
         }
@@ -449,8 +442,8 @@ mod tests {
         let mut signing_state = RSASigningState::new(key_pair).unwrap();
         let mut signature =
             vec![0; signing_state.key_pair().public_modulus_len()];
-        let result = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                                        &mut signature);
+        let result =
+            signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature);
 
         assert!(result.is_err());
     }
@@ -464,7 +457,7 @@ mod tests {
         let key_pair = std::sync::Arc::new(key_pair);
 
         let _: &Send = &key_pair;
-        let _: &Sync  = &key_pair;
+        let _: &Sync = &key_pair;
 
         let signing_state = RSASigningState::new(key_pair).unwrap();
         let _: &Send = &signing_state;

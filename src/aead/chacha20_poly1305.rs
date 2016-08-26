@@ -50,14 +50,13 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
          ad)
 }
 
-fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
-                            ad: &[u8], ciphertext: &[u8]) {
+fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
+                            ciphertext: &[u8]) {
     fn update_padded_16(state: &mut [u8; POLY1305_STATE_LEN], data: &[u8]) {
         poly1305_update(state, data);
         if data.len() % 16 != 0 {
             static PADDING: [u8; 16] = [0u8; 16];
-            poly1305_update(state,
-                            &PADDING[..PADDING.len() - (data.len() % 16)])
+            poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
         }
     }
     update_padded_16(state, ad);
@@ -157,7 +156,8 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
            in_prefix_len != 0 {
             ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
                            in_out[in_prefix_len..].as_ptr(),
-                           in_out.len() - in_prefix_len, chacha20_key, &counter);
+                           in_out.len() - in_prefix_len, chacha20_key,
+                           &counter);
             core::ptr::copy(in_out[in_prefix_len..].as_ptr(),
                             in_out.as_mut_ptr(), in_out.len() - in_prefix_len);
         } else {
@@ -221,26 +221,20 @@ fn poly1305_update_length(ctx: &mut [u8; POLY1305_STATE_LEN], len: usize) {
 #[inline(always)]
 fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
                  key: &[u8; POLY1305_KEY_LEN]) {
-    unsafe {
-        CRYPTO_poly1305_init(state, key)
-    }
+    unsafe { CRYPTO_poly1305_init(state, key) }
 }
 
 /// Safe wrapper around |CRYPTO_poly1305_finish|.
 #[inline(always)]
 fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
                    tag_out: &mut [u8; aead::TAG_LEN]) {
-    unsafe {
-        CRYPTO_poly1305_finish(state, tag_out)
-    }
+    unsafe { CRYPTO_poly1305_finish(state, tag_out) }
 }
 
 /// Safe wrapper around |CRYPTO_poly1305_update|.
 #[inline(always)]
 fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
-    unsafe {
-        CRYPTO_poly1305_update(state, in_.as_ptr(), in_.len())
-    }
+    unsafe { CRYPTO_poly1305_update(state, in_.as_ptr(), in_.len()) }
 }
 
 extern {
@@ -276,7 +270,7 @@ mod tests {
     #[test]
     pub fn test_poly1305_state_len() {
         assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
-                    (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
+                   (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
     }
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32

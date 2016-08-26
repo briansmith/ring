@@ -203,15 +203,15 @@ impl Context {
 // XXX: This should just be `#[derive(Clone)]` but that doesn't work because
 // `[u8; 128]` doesn't implement `Clone`.
 impl Clone for Context {
-   fn clone(&self) -> Context {
+    fn clone(&self) -> Context {
         Context {
             state: self.state,
             pending: self.pending,
             completed_data_blocks: self.completed_data_blocks,
             num_pending: self.num_pending,
-            algorithm: self.algorithm
+            algorithm: self.algorithm,
         }
-   }
+    }
 }
 
 /// Returns the digest of `data` using the given digest algorithm.
@@ -225,7 +225,8 @@ impl Clone for Context {
 /// # fn main() {
 /// use ring::{digest, test};
 ///
-/// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
+/// let expected_hex =
+///     "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
 /// let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
 /// let actual = digest::digest(&digest::SHA256, b"hello, world");
 ///
@@ -295,8 +296,8 @@ pub struct Algorithm {
 
     block_data_order: unsafe extern fn(state: &mut [u64; MAX_CHAINING_LEN / 8],
                                        data: *const u8, num: c::size_t),
-    format_output: fn (input: &[u64; MAX_CHAINING_LEN / 8]) ->
-                       [u64; MAX_OUTPUT_LEN / 8],
+    format_output: fn(input: &[u64; MAX_CHAINING_LEN / 8])
+                      -> [u64; MAX_OUTPUT_LEN / 8],
 
     initial_state: [u64; MAX_CHAINING_LEN / 8],
 }
@@ -305,7 +306,11 @@ impl core::fmt::Debug for Algorithm {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         // This would have to change if/when we add other algorithms with the
         // same output lengths.
-        let n = if self.output_len == 20 { 1 } else { self.output_len * 8 };
+        let n = if self.output_len == 20 {
+            1
+        } else {
+            self.output_len * 8
+        };
         write!(fmt, "SHA-{:?}", n)
     }
 }
@@ -409,30 +414,26 @@ pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 fn sha256_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
                         -> [u64; MAX_OUTPUT_LEN / 8] {
     let in32 = &polyfill::slice::u64_as_u32(input)[..8];
-    [
-        u32x2!(in32[0].to_be(), in32[1].to_be()),
-        u32x2!(in32[2].to_be(), in32[3].to_be()),
-        u32x2!(in32[4].to_be(), in32[5].to_be()),
-        u32x2!(in32[6].to_be(), in32[7].to_be()),
-        0,
-        0,
-        0,
-        0,
-    ]
+    [u32x2!(in32[0].to_be(), in32[1].to_be()),
+     u32x2!(in32[2].to_be(), in32[3].to_be()),
+     u32x2!(in32[4].to_be(), in32[5].to_be()),
+     u32x2!(in32[6].to_be(), in32[7].to_be()),
+     0,
+     0,
+     0,
+     0]
 }
 
 fn sha512_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
                         -> [u64; MAX_OUTPUT_LEN / 8] {
-    [
-        input[0].to_be(),
-        input[1].to_be(),
-        input[2].to_be(),
-        input[3].to_be(),
-        input[4].to_be(),
-        input[5].to_be(),
-        input[6].to_be(),
-        input[7].to_be(),
-    ]
+    [input[0].to_be(),
+     input[1].to_be(),
+     input[2].to_be(),
+     input[3].to_be(),
+     input[4].to_be(),
+     input[5].to_be(),
+     input[6].to_be(),
+     input[7].to_be()]
 }
 
 /// Calculates the SHA-512 digest of the concatenation of |part1| through
@@ -554,7 +555,7 @@ mod tests {
         }
 
         fn run_known_answer_test(digest_alg: &'static digest::Algorithm,
-                                 file_name: &str, ) {
+                                 file_name: &str) {
             let section_name = &format!("L = {}", digest_alg.output_len);
             test::from_file(file_name, |section, test_case| {
                 assert_eq!(section_name, section);

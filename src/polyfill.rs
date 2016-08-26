@@ -20,16 +20,14 @@
 use core;
 
 #[inline(always)]
-pub fn u64_from_usize(x: usize) -> u64 {
-    x as u64
-}
+pub fn u64_from_usize(x: usize) -> u64 { x as u64 }
 
 /// `core::num::Wrapping` doesn't support `rotate_left`.
-/// There is no usable trait for `rotate_left`, so this polyfill just hard-codes u32.
-/// https://github.com/rust-lang/rust/issues/32463
+/// There is no usable trait for `rotate_left`, so this polyfill just
+/// hard-codes u32. https://github.com/rust-lang/rust/issues/32463
 #[inline(always)]
 pub fn wrapping_rotate_left_u32(x: core::num::Wrapping<u32>, n: u32)
-                            -> core::num::Wrapping<u32> {
+                                -> core::num::Wrapping<u32> {
     core::num::Wrapping(x.0.rotate_left(n))
 }
 
@@ -85,7 +83,8 @@ pub mod slice {
     #[inline(always)]
     pub fn u64_as_u8(src: &[u64]) -> &[u8] {
         unsafe {
-            core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8)
+            core::slice::from_raw_parts(src.as_ptr() as *const u8,
+                                        src.len() * 8)
         }
     }
 
@@ -93,7 +92,8 @@ pub mod slice {
     #[inline(always)]
     pub fn u64_as_u8_mut(src: &mut [u64]) -> &mut [u8] {
         unsafe {
-            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 8)
+            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8,
+                                            src.len() * 8)
         }
     }
 
@@ -111,7 +111,8 @@ pub mod slice {
     #[allow(dead_code)] // Only used on 32-bit builds currently
     pub fn u32_as_u8_mut<'a>(src: &'a mut [u32]) -> &'a mut [u8] {
         unsafe {
-            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 4)
+            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8,
+                                            src.len() * 4)
         }
     }
 
@@ -119,7 +120,8 @@ pub mod slice {
     #[inline(always)]
     pub fn u64_as_u32(src: &[u64]) -> &[u32] {
         unsafe {
-            core::slice::from_raw_parts(src.as_ptr() as *const u32, src.len() * 2)
+            core::slice::from_raw_parts(src.as_ptr() as *const u32,
+                                        src.len() * 2)
         }
     }
 
@@ -127,7 +129,8 @@ pub mod slice {
     #[inline(always)]
     pub fn u64_as_u32_mut(src: &mut [u64]) -> &mut [u32] {
         unsafe {
-            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u32, src.len() * 2)
+            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u32,
+                                            src.len() * 2)
         }
     }
 
@@ -135,8 +138,7 @@ pub mod slice {
     pub fn as_wrapping_mut<T>(src: &mut [T]) -> &mut [core::num::Wrapping<T>] {
         unsafe {
             core::slice::from_raw_parts_mut(
-                src.as_mut_ptr() as *mut core::num::Wrapping<T>,
-                src.len())
+                src.as_mut_ptr() as *mut core::num::Wrapping<T>, src.len())
         }
     }
 }

@@ -17,7 +17,7 @@ use {c, error};
 pub fn map_result(bssl_result: c::int) -> Result<(), error::Unspecified> {
     match bssl_result {
         1 => Ok(()),
-        _ => Err(error::Unspecified)
+        _ => Err(error::Unspecified),
     }
 }
 

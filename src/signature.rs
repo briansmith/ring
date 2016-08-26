@@ -206,13 +206,11 @@ impl<'a> Signature {
     }
 
     /// Returns a reference to the signature's encoded value.
-    pub fn as_slice(&'a self) -> &'a [u8] {
-        &self.value[..]
-    }
+    pub fn as_slice(&'a self) -> &'a [u8] { &self.value[..] }
 }
 
 /// A signature verification algorithm.
-pub trait VerificationAlgorithm : Sync + private::Private {
+pub trait VerificationAlgorithm: Sync + private::Private {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,

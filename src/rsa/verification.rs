@@ -41,26 +41,34 @@ impl signature::VerificationAlgorithm for RSAParameters {
                                    self.min_bits, MAX_BITS)
         }));
 
-        untrusted::Input::from(decoded).read_all(error::Unspecified, |decoded| {
-            if try!(decoded.read_byte()) != 0 ||
-               try!(decoded.read_byte()) != 1 {
+        untrusted::Input::from(decoded).read_all(error::Unspecified,
+                                                 |decoded| {
+            if try!(decoded.read_byte()) != 0 {
+                return Err(error::Unspecified);
+            }
+            if try!(decoded.read_byte()) != 1 {
                 return Err(error::Unspecified);
             }
 
             let mut ps_len = 0;
             loop {
                 match try!(decoded.read_byte()) {
-                    0xff => { ps_len += 1; },
-                    0x00 => { break; },
-                    _ => { return Err(error::Unspecified); }
+                    0xff => {
+                        ps_len += 1;
+                    },
+                    0x00 => {
+                        break;
+                    },
+                    _ => {
+                        return Err(error::Unspecified);
+                    },
                 }
             }
             if ps_len < 8 {
                 return Err(error::Unspecified);
             }
 
-            let decoded_digestinfo_prefix =
-                try!(decoded.skip_and_get_input(
+            let decoded_digestinfo_prefix = try!(decoded.skip_and_get_input(
                         self.padding_alg.digestinfo_prefix.len()));
             if decoded_digestinfo_prefix != self.padding_alg.digestinfo_prefix {
                 return Err(error::Unspecified);
@@ -79,7 +87,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
     }
 }
 
-impl private::Private for RSAParameters { }
+impl private::Private for RSAParameters {}
 
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
@@ -117,9 +125,9 @@ extern {
                               public_key_n_len: c::size_t,
                               public_key_e: *const u8,
                               public_key_e_len: c::size_t,
-                              ciphertext: *const u8, ciphertext_len: c::size_t,
-                              min_bits: c::size_t, max_bits: c::size_t)
-                              -> c::int;
+                              ciphertext: *const u8,
+                              ciphertext_len: c::size_t, min_bits: c::size_t,
+                              max_bits: c::size_t) -> c::int;
 }
 
 #[cfg(test)]

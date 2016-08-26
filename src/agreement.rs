@@ -72,7 +72,8 @@
 //! # fn main() { x25519_agreement_example().unwrap() }
 //! ```
 
-// The "NSA Guide" steps here are from from section 3.1, "Ephemeral Unified Model."
+// The "NSA Guide" steps here are from from section 3.1, "Ephemeral Unified
+// Model."
 
 
 
@@ -105,7 +106,7 @@ pub struct EphemeralPrivateKey {
     alg: &'static Algorithm,
 }
 
-impl <'a> EphemeralPrivateKey {
+impl<'a> EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
@@ -116,8 +117,7 @@ impl <'a> EphemeralPrivateKey {
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
         Ok(EphemeralPrivateKey {
-            private_key:
-                try!(ec::PrivateKey::generate(&alg.i, rng)),
+            private_key: try!(ec::PrivateKey::generate(&alg.i, rng)),
             alg: alg,
         })
     }
@@ -151,9 +151,7 @@ impl <'a> EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&'a self) -> &'a [u8] {
-        self.private_key.bytes()
-    }
+    pub fn bytes(&'a self) -> &'a [u8] { self.private_key.bytes() }
 }
 
 /// Performs a key agreement with an ephemeral private key and the given public

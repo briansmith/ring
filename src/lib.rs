@@ -108,10 +108,15 @@ extern crate std;
 
 extern crate untrusted;
 
-#[macro_use] mod bssl;
-#[macro_use] mod polyfill;
+#[macro_use]
+mod bssl;
 
-#[path = "aead/aead.rs"] pub mod aead;
+#[macro_use]
+mod polyfill;
+
+#[path = "aead/aead.rs"]
+pub mod aead;
+
 pub mod agreement;
 mod c;
 pub mod constant_time;
@@ -121,8 +126,12 @@ pub mod der;
 
 pub mod error;
 
-#[path = "digest/digest.rs"] pub mod digest;
-#[path = "ec/ec.rs"] mod ec;
+#[path = "digest/digest.rs"]
+pub mod digest;
+
+#[path = "ec/ec.rs"]
+mod ec;
+
 pub mod hkdf;
 pub mod hmac;
 mod init;
@@ -158,7 +167,7 @@ mod private {
     //
     // impl private::Private for MyType { }
     // ```
-    pub trait Private { }
+    pub trait Private {}
 }
 
 #[cfg(test)]

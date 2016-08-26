@@ -23,24 +23,22 @@ pub struct AgreementAlgorithmImpl {
 
     pub nid: c::int,
 
-    generate_private_key:
-        fn(rng: &rand::SecureRandom) -> Result<PrivateKey, error::Unspecified>,
+    generate_private_key: fn(rng: &rand::SecureRandom)
+                             -> Result<PrivateKey, error::Unspecified>,
 
-    public_from_private:
-        fn(public_out: &mut [u8], private_key: &PrivateKey)
-           -> Result<(), error::Unspecified>,
+    public_from_private: fn(public_out: &mut [u8], private_key: &PrivateKey)
+                            -> Result<(), error::Unspecified>,
 
-    pub ecdh:
-        fn(out: &mut [u8], private_key: &PrivateKey,
-           peer_public_key: untrusted::Input)
-           -> Result<(), error::Unspecified>,
+    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey,
+                 peer_public_key: untrusted::Input)
+                 -> Result<(), error::Unspecified>,
 }
 
 pub struct PrivateKey {
     bytes: [u8; SCALAR_MAX_BYTES],
 }
 
-impl <'a> PrivateKey {
+impl<'a> PrivateKey {
     pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
                     -> Result<PrivateKey, error::Unspecified> {
         init::init_once();
@@ -51,12 +49,9 @@ impl <'a> PrivateKey {
     pub fn from_test_vector(alg: &AgreementAlgorithmImpl, test_vector: &[u8])
                             -> PrivateKey {
         init::init_once();
-        let mut result = PrivateKey {
-            bytes: [0; SCALAR_MAX_BYTES],
-        };
+        let mut result = PrivateKey { bytes: [0; SCALAR_MAX_BYTES] };
         {
-            let private_key_bytes =
-                &mut result.bytes[..alg.elem_and_scalar_len];
+            let private_key_bytes = &mut result.bytes[..alg.elem_and_scalar_len];
             assert_eq!(test_vector.len(), private_key_bytes.len());
             for i in 0..private_key_bytes.len() {
                 private_key_bytes[i] = test_vector[i];
@@ -66,9 +61,7 @@ impl <'a> PrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&'a self) -> &'a [u8] {
-        &self.bytes[..]
-    }
+    pub fn bytes(&'a self) -> &'a [u8] { &self.bytes[..] }
 
     #[inline(always)]
     pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,

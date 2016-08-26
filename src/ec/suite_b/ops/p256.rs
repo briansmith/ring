@@ -14,8 +14,7 @@
 
 use c;
 use super::*;
-use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc, ab_assign, ra,
-            rab};
+use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc, ab_assign, ra, rab};
 
 macro_rules! p256_limbs {
     [$limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
@@ -127,9 +126,7 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
 }
 
 
-pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
-    common: &COMMON_OPS,
-};
+pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps { common: &COMMON_OPS };
 
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
@@ -137,8 +134,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     private_key_ops: &PRIVATE_KEY_OPS,
 
     q_minus_n: ElemDecoded {
-        limbs: p256_limbs![0, 0, 0, 0,
-                           0x43190553, 0x58e8617b, 0x0c46353d, 0x039cdaae],
+        limbs: p256_limbs![0, 0, 0, 0, 0x43190553, 0x58e8617b, 0x0c46353d,
+                           0x039cdaae],
     },
 
     scalar_inv_to_mont_impl: p256_scalar_inv_to_mont,

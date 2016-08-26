@@ -34,7 +34,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         p: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
                        0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffe,
                        0xffffffff, 0x00000000, 0x00000000, 0xffffffff],
-        rr: limbs![0, 0, 0, 1, 2, 0, 0xfffffffe, 0, 2, 0, 0xfffffffe, 1 ],
+        rr: limbs![0, 0, 0, 1, 2, 0, 0xfffffffe, 0, 2, 0, 0xfffffffe, 1],
     },
 
     n: ElemDecoded {
@@ -87,8 +87,7 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut ElemUnreduced, squarings: usize,
-                   b: &ElemUnreduced) {
+    fn sqr_mul_acc(a: &mut ElemUnreduced, squarings: usize, b: &ElemUnreduced) {
         elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
     }
 
@@ -156,9 +155,7 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Point {
 }
 
 
-pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
-    common: &COMMON_OPS,
-};
+pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps { common: &COMMON_OPS };
 
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
@@ -166,8 +163,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     private_key_ops: &PRIVATE_KEY_OPS,
 
     q_minus_n: ElemDecoded {
-        limbs: p384_limbs![0, 0, 0, 0,
-                           0, 0, 0x389cb27e, 0x0bc8d21f,
+        limbs: p384_limbs![0, 0, 0, 0, 0, 0, 0x389cb27e, 0x0bc8d21f,
                            0x1313e696, 0x333ad68c, 0xa7e5f24c, 0xb74f5885],
     },
 
@@ -204,8 +200,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &ScalarMont, squarings: usize, b: &ScalarMont)
-               -> ScalarMont {
+    fn sqr_mul(a: &ScalarMont, squarings: usize, b: &ScalarMont) -> ScalarMont {
         debug_assert!(squarings >= 1);
         let mut tmp = sqr(a);
         for _ in 1..squarings {
@@ -331,8 +326,8 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 unsafe extern fn GFp_p384_elem_sqr_mont(
         r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
         a: *const Limb/*[COMMON_OPS.num_limbs]*/) {
-  // XXX: Inefficient. TODO: Make a dedicated squaring routine.
-  GFp_p384_elem_mul_mont(r, a, a);
+    // XXX: Inefficient. TODO: Make a dedicated squaring routine.
+    GFp_p384_elem_mul_mont(r, a, a);
 }
 
 

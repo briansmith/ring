@@ -27,5 +27,4 @@ extern {
 }
 
 #[cfg(all(target_arch = "aarch64", target_os = "ios"))]
-pub fn init_once() {
-}
+pub fn init_once() {}

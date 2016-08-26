@@ -43,9 +43,8 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
     // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
     // what specific value would be better, but it seems bad to try 100 times.
     for _ in 0..100 {
-        let mut candidate_private_key = ec::PrivateKey {
-            bytes: [0; ec::SCALAR_MAX_BYTES],
-        };
+        let mut candidate_private_key =
+            ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
 
         // NSA Guide Steps 1, 2, and 3.
         //
@@ -91,8 +90,8 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
 // private key that way, which means we have to convert it to a Scalar whenever
 // we need to use it.
 #[inline]
-pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
-                             -> Scalar {
+pub fn private_key_as_scalar(ops: &PrivateKeyOps,
+                             private_key: &ec::PrivateKey) -> Scalar {
     let num_limbs = ops.common.num_limbs;
     let range = Range::from_max_exclusive(&ops.common.n.limbs[..num_limbs]);
 
@@ -112,7 +111,7 @@ fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
         let mut limb = 0;
         for j in 0..LIMB_BYTES {
             limb = (limb << 8) |
-                    (bytes[((num_limbs - i - 1) * LIMB_BYTES) + j] as Limb);
+                   (bytes[((num_limbs - i - 1) * LIMB_BYTES) + j] as Limb);
         }
         limbs[i] = limb;
     }
@@ -120,8 +119,8 @@ fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
 }
 
 pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
-                            my_private_key: &ec::PrivateKey)
-                            -> Result<(), error::Unspecified> {
+                           my_private_key: &ec::PrivateKey)
+                           -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
@@ -182,8 +181,8 @@ fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
     for i in 0..num_limbs {
         let mut limb = limbs[i];
         for j in 0..LIMB_BYTES {
-            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)]
-                = (limb & 0xff) as u8;
+            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
+                (limb & 0xff) as u8;
             limb >>= 8;
         }
     }

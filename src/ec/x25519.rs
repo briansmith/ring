@@ -95,8 +95,8 @@ mod tests {
 
         fn expect_iterated_x25519(expected_result: &str,
                                   range: std::ops::Range<usize>,
-                                  k: &mut std::vec::Vec<u8>, u:
-                                  &mut std::vec::Vec<u8>) {
+                                  k: &mut std::vec::Vec<u8>,
+                                  u: &mut std::vec::Vec<u8>) {
             for _ in range {
                 let new_k = x25519(k, u);
                 *u = k.clone();
@@ -133,8 +133,8 @@ mod tests {
     fn x25519_(private_key: &[u8], public_key: &[u8])
                -> Result<std::vec::Vec<u8>, error::Unspecified> {
         let private_key =
-            agreement::EphemeralPrivateKey::from_test_vector(
-                &agreement::X25519, private_key);
+            agreement::EphemeralPrivateKey::from_test_vector(&agreement::X25519,
+                                                             private_key);
         let public_key = untrusted::Input::from(public_key);
         agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
                                    error::Unspecified, |agreed_value| {
@@ -147,7 +147,7 @@ mod tests {
             Ok(v) => v,
             Err(msg) => {
                 panic!("{} in {}", msg, s);
-            }
+            },
         }
     }
 }

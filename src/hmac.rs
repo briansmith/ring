@@ -201,7 +201,7 @@ impl SigningKey {
         let mut key = SigningKey {
             ctx_prototype: SigningContext {
                 inner: digest::Context::new(digest_alg),
-                outer: digest::Context::new(digest_alg)
+                outer: digest::Context::new(digest_alg),
             },
         };
 
@@ -263,9 +263,7 @@ impl SigningContext {
     /// zero or more times until `finish` is called.
     ///
     /// C analog: `HMAC_Update`
-    pub fn update(&mut self, data: &[u8]) {
-        self.inner.update(data);
-    }
+    pub fn update(&mut self, data: &[u8]) { self.inner.update(data); }
 
     /// Finalizes the HMAC calculation and returns the HMAC value. `sign`
     /// consumes the context so it cannot be (mis-)used after `sign` has been
@@ -300,7 +298,7 @@ pub fn sign(key: &SigningKey, data: &[u8]) -> digest::Digest {
 
 /// A key to use for HMAC authentication.
 pub struct VerificationKey {
-    wrapped: SigningKey
+    wrapped: SigningKey,
 }
 
 impl VerificationKey {
@@ -356,7 +354,7 @@ mod tests {
         let mut rng = rand::SystemRandom::new();
 
         const HELLO_WORLD_GOOD: &'static [u8] = b"hello, world";
-        const HELLO_WORLD_BAD:  &'static [u8] = b"hello, worle";
+        const HELLO_WORLD_BAD: &'static [u8] = b"hello, worle";
 
         for d in &digest::test_util::ALL_ALGORITHMS {
             let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
@@ -379,7 +377,7 @@ mod tests {
 
             let digest_alg = match digest_alg {
                 Some(digest_alg) => digest_alg,
-                None => { return Ok(()); } // Unsupported digest algorithm
+                None => { return Ok(()); }, // Unsupported digest algorithm
             };
 
             try!(hmac_test_case_inner(digest_alg, &key_value[..], &input[..],

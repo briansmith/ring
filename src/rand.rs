@@ -124,8 +124,7 @@ mod sysrand {
     use {bssl, error};
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        for mut chunk in
-                dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
+        for mut chunk in dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
             try!(bssl::map_result(unsafe {
                 super::CRYPTO_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
             }));
@@ -197,11 +196,9 @@ pub struct RAND<'a> {
     pub rng: &'a SecureRandom,
 }
 
-impl <'a> RAND<'a> {
+impl<'a> RAND<'a> {
     /// Wraps `rng` in a `RAND` so it can be passed to non-Rust code.
-    pub fn new(rng: &'a SecureRandom) -> RAND<'a> {
-        RAND { rng: rng }
-    }
+    pub fn new(rng: &'a SecureRandom) -> RAND<'a> { RAND { rng: rng } }
 }
 
 #[cfg(test)]
@@ -214,7 +211,7 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
 
     match (*(*rng).rng).fill(dest) {
         Ok(()) => 1,
-        _ => 0
+        _ => 0,
     }
 }
 
@@ -235,7 +232,7 @@ pub mod test_util {
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
     pub struct FixedByteRandom {
-        pub byte: u8
+        pub byte: u8,
     }
 
     impl SecureRandom for FixedByteRandom {
@@ -254,7 +251,7 @@ pub mod test_util {
         pub bytes: &'a [u8],
     }
 
-    impl <'a> SecureRandom for FixedSliceRandom<'a> {
+    impl<'a> SecureRandom for FixedSliceRandom<'a> {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             assert_eq!(dest.len(), self.bytes.len());
             for i in 0..self.bytes.len() {
@@ -276,7 +273,7 @@ pub mod test_util {
         pub current: core::cell::UnsafeCell<usize>,
     }
 
-    impl <'a> SecureRandom for FixedSliceSequenceRandom<'a> {
+    impl<'a> SecureRandom for FixedSliceSequenceRandom<'a> {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
@@ -291,7 +288,7 @@ pub mod test_util {
         }
     }
 
-    impl <'a> Drop for FixedSliceSequenceRandom<'a> {
+    impl<'a> Drop for FixedSliceSequenceRandom<'a> {
         fn drop(&mut self) {
             // Ensure that `fill()` was called exactly the right number of
             // times.

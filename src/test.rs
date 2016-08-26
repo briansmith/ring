@@ -144,7 +144,7 @@ impl TestCase {
             "SHA256" => Some(&digest::SHA256),
             "SHA384" => Some(&digest::SHA384),
             "SHA512" => Some(&digest::SHA512),
-            _ => panic!("Unsupported digest algorithm: {}", name)
+            _ => panic!("Unsupported digest algorithm: {}", name),
         }
     }
 
@@ -168,7 +168,7 @@ impl TestCase {
                 Ok(s) => s,
                 Err(ref err_str) => {
                     panic!("{} in {}", err_str, s);
-                }
+                },
             }
         }
     }
@@ -190,7 +190,8 @@ impl TestCase {
     /// Like `consume_string()` except it returns `None` if the test case
     /// doesn't have the attribute.
     pub fn consume_optional_string(&mut self, key: &str) -> Option<String> {
-        for &mut (ref name, ref value, ref mut consumed) in &mut self.attributes {
+        for &mut (ref name, ref value, ref mut consumed) in
+                &mut self.attributes {
             if key == name {
                 if *consumed {
                     panic!("Attribute {} was already consumed", key);
@@ -220,9 +221,10 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
 
     while let Some(mut test_case) = parse_test_case(&mut current_section,
                                                     &mut lines) {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            f(&current_section, &mut test_case)
-        }));
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                f(&current_section, &mut test_case)
+            }));
         let result = match result {
             Ok(Ok(())) => {
                 if !test_case.attributes.iter().any(
@@ -284,8 +286,8 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
 
 type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
 
-fn parse_test_case(current_section: &mut String,
-                   lines: &mut FileLines) -> Option<TestCase> {
+fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
+                   -> Option<TestCase> {
     let mut attributes = Vec::new();
 
     let mut is_first_line = true;
@@ -310,23 +312,19 @@ fn parse_test_case(current_section: &mut String,
 
             // End of the file on a non-empty test cases ends the test case.
             None => {
-                return Some(TestCase {
-                    attributes: attributes,
-                });
+                return Some(TestCase { attributes: attributes });
             },
 
             // A blank line ends a test case if the test case isn't empty.
             Some(ref line) if line.is_empty() => {
                 if !is_first_line {
-                    return Some(TestCase {
-                        attributes: attributes,
-                    });
+                    return Some(TestCase { attributes: attributes });
                 }
                 // Ignore leading blank lines.
             },
 
             // Comments start with '#'; ignore them.
-            Some(ref line) if line.starts_with('#') => { },
+            Some(ref line) if line.starts_with('#') => {},
 
             Some(ref line) if line.starts_with('[') => {
                 assert!(is_first_line);
@@ -354,7 +352,7 @@ fn parse_test_case(current_section: &mut String,
 
                 // Checking is_none() ensures we don't accept duplicate keys.
                 attributes.push((String::from(key), String::from(value), false));
-            }
+            },
         }
     }
 }
@@ -390,9 +388,17 @@ mod tests {
         });
     }
 
-    #[test] #[should_panic(expected = "Test failed.")] fn first_err()  { err_one(0) }
-    #[test] #[should_panic(expected = "Test failed.")] fn middle_err() { err_one(1) }
-    #[test] #[should_panic(expected = "Test failed.")] fn last_err()   { err_one(2) }
+    #[test]
+    #[should_panic(expected = "Test failed.")]
+    fn first_err() { err_one(0) }
+
+    #[test]
+    #[should_panic(expected = "Test failed.")]
+    fn middle_err() { err_one(1) }
+
+    #[test]
+    #[should_panic(expected = "Test failed.")]
+    fn last_err() { err_one(2) }
 
     fn err_one(test_to_fail: usize) {
         let mut n = 0;
@@ -408,9 +414,17 @@ mod tests {
         });
     }
 
-    #[test] #[should_panic(expected = "Test failed.")] fn first_panic()  { panic_one(0) }
-    #[test] #[should_panic(expected = "Test failed.")] fn middle_panic() { panic_one(1) }
-    #[test] #[should_panic(expected = "Test failed.")] fn last_panic()   { panic_one(2) }
+    #[test]
+    #[should_panic(expected = "Test failed.")]
+    fn first_panic() { panic_one(0) }
+
+    #[test]
+    #[should_panic(expected = "Test failed.")]
+    fn middle_panic() { panic_one(1) }
+
+    #[test]
+    #[should_panic(expected = "Test failed.")]
+    fn last_panic() { panic_one(2) }
 
     fn panic_one(test_to_fail: usize) {
         let mut n = 0;
@@ -427,16 +441,12 @@ mod tests {
     #[test]
     #[should_panic(expected = "Syntax error: Expected Key = Value.")]
     fn syntax_error() {
-        test::from_file("src/test_1_syntax_error_tests.txt", |_, _| {
-            Ok(())
-        });
+        test::from_file("src/test_1_syntax_error_tests.txt", |_, _| Ok(()));
     }
 
     #[test]
     #[should_panic]
     fn file_not_found() {
-        test::from_file("src/test_file_not_found_tests.txt", |_, _| {
-            Ok(())
-        });
+        test::from_file("src/test_file_not_found_tests.txt", |_, _| Ok(()));
     }
 }

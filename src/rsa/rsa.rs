@@ -101,8 +101,8 @@ pub struct RSAParameters {
     min_bits: usize,
 }
 
-fn parse_public_key(input: untrusted::Input) ->
-                    Result<(&[u8], &[u8]), error::Unspecified> {
+fn parse_public_key(input: untrusted::Input)
+                    -> Result<(&[u8], &[u8]), error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
@@ -133,9 +133,7 @@ impl PositiveInteger {
         Ok(PositiveInteger { value: Some(res) })
     }
 
-    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM {
-        &*self.value.unwrap()
-    }
+    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value.unwrap() }
 
     fn into_raw(&mut self) -> *mut BIGNUM {
         let res = self.value.unwrap();
@@ -149,8 +147,10 @@ impl PositiveInteger {
 impl Drop for PositiveInteger {
     fn drop(&mut self) {
         match self.value {
-            Some(val) => unsafe { BN_free(val); },
-            None => { },
+            Some(val) => unsafe {
+                BN_free(val);
+            },
+            None => {},
         }
     }
 }
