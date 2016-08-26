@@ -88,14 +88,14 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     }
 
     let b_1 = &a;
-    let b_11     = sqr_mul(&b_1,  0 +  1, &b_1);
+    let b_11     = sqr_mul(b_1,   0 +  1, b_1);
     let f        = sqr_mul(&b_11, 0 +  2, &b_11);
     let ff       = sqr_mul(&f,    0 +  4, &f);
     let ffff     = sqr_mul(&ff,   0 +  8, &ff);
     let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff);
 
     // ffffffff00000001
-    let mut acc = sqr_mul(&ffffffff, 31 + 1, &b_1);
+    let mut acc = sqr_mul(&ffffffff, 31 + 1, b_1);
 
     // ffffffff00000001000000000000000000000000ffffffff
     sqr_mul_acc(&mut acc, 96 + 32, &ffffffff);
@@ -114,7 +114,7 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
 
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffffd
     sqr_mul_acc(&mut acc, 0 + 2, &b_11);
-    sqr_mul(&acc, 1 + 1, &b_1)
+    sqr_mul(&acc, 1 + 1, b_1)
 }
 
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
@@ -174,7 +174,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
             GFp_p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(),
                                          a.limbs.as_ptr(), squarings)
         }
-        mul(&tmp, &b)
+        mul(&tmp, b)
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.

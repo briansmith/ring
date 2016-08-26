@@ -299,7 +299,7 @@ impl PrivateKeyOps {
 
     #[inline]
     pub fn elem_inverse(&self, a: &ElemUnreduced) -> ElemUnreduced {
-        (self.elem_inv)(&a)
+        (self.elem_inv)(a)
     }
 }
 
@@ -368,7 +368,7 @@ impl PublicScalarOps {
         // `a` must not be zero.
         assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
 
-        (self.scalar_inv_to_mont_impl)(&a)
+        (self.scalar_inv_to_mont_impl)(a)
     }
 
     #[inline]
@@ -441,7 +441,7 @@ fn elem_sqr_mul(ops: &CommonOps, a: &ElemUnreduced, squarings: usize,
     for _ in 1..squarings {
         ops.elem_square(&mut tmp);
     }
-    ops.elem_product(&tmp, &b)
+    ops.elem_product(&tmp, b)
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
@@ -451,7 +451,7 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced, squarings: usize,
     for _ in 0..squarings {
         ops.elem_square(acc);
     }
-    ops.elem_mul(acc, &b)
+    ops.elem_mul(acc, b)
 }
 
 

@@ -71,7 +71,7 @@ pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
     // length of the extract step (the length of the digest). Consequently, the
     // `SigningKey` constructor will automatically do the right thing for a
     // zero-length string.
-    let prk = hmac::sign(&salt, secret);
+    let prk = hmac::sign(salt, secret);
     hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref())
 }
 
@@ -99,7 +99,7 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
     assert!(out.len() <= 255 * digest_alg.output_len);
     assert!(digest_alg.block_len >= digest_alg.output_len);
 
-    let mut ctx = hmac::SigningContext::with_key(&prk);
+    let mut ctx = hmac::SigningContext::with_key(prk);
 
     let mut n = 1u8;
     let mut pos = 0;
@@ -124,7 +124,7 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
         }
         pos += digest_alg.output_len;
 
-        ctx = hmac::SigningContext::with_key(&prk);
+        ctx = hmac::SigningContext::with_key(prk);
         ctx.update(t_bytes);
         n += 1;
     }

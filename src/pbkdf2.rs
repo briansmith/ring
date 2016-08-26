@@ -169,7 +169,7 @@ fn derive_block(
         salt: &[u8],
         idx: u32,
         out: &mut [u8]) {
-    let mut ctx = hmac::SigningContext::with_key(&secret);
+    let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
     ctx.update(&polyfill::slice::be_u8_from_u32(idx));
 
@@ -186,7 +186,7 @@ fn derive_block(
         }
         remaining -= 1;
 
-        u = hmac::sign(&secret, u.as_ref());
+        u = hmac::sign(secret, u.as_ref());
     }
 }
 
