@@ -633,6 +633,10 @@ static enum ssl_session_result_t ssl_lookup_session(
     session = ssl->initial_ctx->get_session_cb(ssl, (uint8_t *)session_id,
                                                session_id_len, &copy);
 
+    if (session == NULL) {
+      return ssl_session_success;
+    }
+
     if (session == SSL_magic_pending_session_ptr()) {
       return ssl_session_retry;
     }
@@ -646,8 +650,7 @@ static enum ssl_session_result_t ssl_lookup_session(
     }
 
     /* Add the externally cached session to the internal cache if necessary. */
-    if (session != NULL &&
-        !(ssl->initial_ctx->session_cache_mode &
+    if (!(ssl->initial_ctx->session_cache_mode &
           SSL_SESS_CACHE_NO_INTERNAL_STORE)) {
       SSL_CTX_add_session(ssl->initial_ctx, session);
     }
