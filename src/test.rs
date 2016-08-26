@@ -218,13 +218,8 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
     let mut current_section = String::from("");
     let mut failed = false;
 
-    loop {
-        let mut test_case =
-                match parse_test_case(&mut current_section, &mut lines) {
-            Some(test_case) => test_case,
-            None => { break; },
-        };
-
+    while let Some(mut test_case) = parse_test_case(&mut current_section,
+                                                    &mut lines) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
         }));
