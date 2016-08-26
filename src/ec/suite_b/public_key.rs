@@ -28,10 +28,8 @@ use untrusted;
 ///
 /// [NIST SP 800-56A, revision 2]:
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
-pub fn parse_uncompressed_point<'a>(ops: &PublicKeyOps,
-                                    input: untrusted::Input<'a>)
-                                    -> Result<(Elem, Elem),
-                                              error::Unspecified> {
+pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
+                                -> Result<(Elem, Elem), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
     // affine representation." (We do it by inspection since we only accept

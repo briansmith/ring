@@ -75,7 +75,7 @@ pub mod slice {
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
-    pub fn u64_as_u8<'a>(src: &'a [u64]) -> &'a [u8] {
+    pub fn u64_as_u8(src: &[u64]) -> &[u8] {
         unsafe {
             core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8)
         }
@@ -83,7 +83,7 @@ pub mod slice {
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
-    pub fn u64_as_u8_mut<'a>(src: &'a mut [u64]) -> &'a mut [u8] {
+    pub fn u64_as_u8_mut(src: &mut [u64]) -> &mut [u8] {
         unsafe {
             core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 8)
         }
@@ -109,7 +109,7 @@ pub mod slice {
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
-    pub fn u64_as_u32<'a>(src: &'a [u64]) -> &'a [u32] {
+    pub fn u64_as_u32(src: &[u64]) -> &[u32] {
         unsafe {
             core::slice::from_raw_parts(src.as_ptr() as *const u32, src.len() * 2)
         }
@@ -117,14 +117,14 @@ pub mod slice {
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
-    pub fn u64_as_u32_mut<'a>(src: &'a mut [u64]) -> &'a mut [u32] {
+    pub fn u64_as_u32_mut(src: &mut [u64]) -> &mut [u32] {
         unsafe {
             core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u32, src.len() * 2)
         }
     }
 
     #[inline(always)]
-    pub fn as_wrapping_mut<'a, T>(src: &'a mut [T]) -> &'a mut [core::num::Wrapping<T>] {
+    pub fn as_wrapping_mut<T>(src: &mut [T]) -> &mut [core::num::Wrapping<T>] {
         unsafe {
             core::slice::from_raw_parts_mut(
                 src.as_mut_ptr() as *mut core::num::Wrapping<T>,
@@ -141,9 +141,8 @@ macro_rules! slice_as_array_ref {
             use error;
 
             #[allow(unsafe_code)]
-            fn slice_as_array_ref<'a, T>(slice: &'a [T])
-                                         -> Result<&'a [T; $len],
-                                                   error::Unspecified> {
+            fn slice_as_array_ref<T>(slice: &[T])
+                                     -> Result<&[T; $len], error::Unspecified> {
                 if slice.len() != $len {
                     return Err(error::Unspecified);
                 }
@@ -164,9 +163,9 @@ macro_rules! slice_as_array_ref_mut {
             use error;
 
             #[allow(unsafe_code)]
-            fn slice_as_array_ref<'a, T>(slice: &'a mut [T])
-                                         -> Result<&'a mut [T; $len],
-                                                   error::Unspecified> {
+            fn slice_as_array_ref<T>(slice: &mut [T])
+                                     -> Result<&mut [T; $len],
+                                               error::Unspecified> {
                 if slice.len() != $len {
                     return Err(error::Unspecified);
                 }
