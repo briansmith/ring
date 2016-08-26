@@ -321,7 +321,7 @@ fn parse_test_case(current_section: &mut String,
             },
 
             // A blank line ends a test case if the test case isn't empty.
-            Some(ref line) if line.len() == 0 => {
+            Some(ref line) if line.is_empty() => {
                 if !is_first_line {
                     return Some(TestCase {
                         attributes: attributes,

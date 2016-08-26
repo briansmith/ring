@@ -502,7 +502,7 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
 // native-endian limbs, padded with zeros.
 pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
                               -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
-    if input.len() == 0 {
+    if input.is_empty() {
         return Err(error::Unspecified);
     }
 
