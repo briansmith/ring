@@ -574,9 +574,6 @@ typedef struct BIT_STRING_BITNAME_st {
 		(const ASN1_STRING *)a,(const ASN1_STRING *)b)
 #define M_ASN1_OCTET_STRING_set(a,b,c)	ASN1_STRING_set((ASN1_STRING *)a,b,c)
 #define M_ASN1_OCTET_STRING_print(a,b)	ASN1_STRING_print(a,(ASN1_STRING *)b)
-#define M_i2d_ASN1_OCTET_STRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_OCTET_STRING,\
-		V_ASN1_UNIVERSAL)
 
 #define B_ASN1_TIME \
 			B_ASN1_UTCTIME | \
@@ -609,59 +606,26 @@ typedef struct BIT_STRING_BITNAME_st {
 
 #define M_ASN1_PRINTABLE_new()	ASN1_STRING_type_new(V_ASN1_T61STRING)
 #define M_ASN1_PRINTABLE_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_PRINTABLE(a,pp) i2d_ASN1_bytes((ASN1_STRING *)a,\
-		pp,a->type,V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_PRINTABLE(a,pp,l) \
-		d2i_ASN1_type_bytes((ASN1_STRING **)a,pp,l, \
-			B_ASN1_PRINTABLE)
 
 #define M_DIRECTORYSTRING_new() ASN1_STRING_type_new(V_ASN1_PRINTABLESTRING)
 #define M_DIRECTORYSTRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_DIRECTORYSTRING(a,pp) i2d_ASN1_bytes((ASN1_STRING *)a,\
-						pp,a->type,V_ASN1_UNIVERSAL)
-#define M_d2i_DIRECTORYSTRING(a,pp,l) \
-		d2i_ASN1_type_bytes((ASN1_STRING **)a,pp,l, \
-			B_ASN1_DIRECTORYSTRING)
 
 #define M_DISPLAYTEXT_new() ASN1_STRING_type_new(V_ASN1_VISIBLESTRING)
 #define M_DISPLAYTEXT_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_DISPLAYTEXT(a,pp) i2d_ASN1_bytes((ASN1_STRING *)a,\
-						pp,a->type,V_ASN1_UNIVERSAL)
-#define M_d2i_DISPLAYTEXT(a,pp,l) \
-		d2i_ASN1_type_bytes((ASN1_STRING **)a,pp,l, \
-			B_ASN1_DISPLAYTEXT)
 
 #define M_ASN1_PRINTABLESTRING_new() (ASN1_PRINTABLESTRING *)\
 		ASN1_STRING_type_new(V_ASN1_PRINTABLESTRING)
 #define M_ASN1_PRINTABLESTRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_PRINTABLESTRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_PRINTABLESTRING,\
-		V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_PRINTABLESTRING(a,pp,l) \
-		(ASN1_PRINTABLESTRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_PRINTABLESTRING)
 
 #define M_ASN1_T61STRING_new()	(ASN1_T61STRING *)\
 		ASN1_STRING_type_new(V_ASN1_T61STRING)
 #define M_ASN1_T61STRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_T61STRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_T61STRING,\
-		V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_T61STRING(a,pp,l) \
-		(ASN1_T61STRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_T61STRING)
 
 #define M_ASN1_IA5STRING_new()	(ASN1_IA5STRING *)\
 		ASN1_STRING_type_new(V_ASN1_IA5STRING)
 #define M_ASN1_IA5STRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
 #define M_ASN1_IA5STRING_dup(a)	\
 		(ASN1_IA5STRING *)ASN1_STRING_dup((const ASN1_STRING *)a)
-#define M_i2d_ASN1_IA5STRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_IA5STRING,\
-			V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_IA5STRING(a,pp,l) \
-		(ASN1_IA5STRING *)d2i_ASN1_type_bytes((ASN1_STRING **)a,pp,l,\
-			B_ASN1_IA5STRING)
 
 #define M_ASN1_UTCTIME_new()	(ASN1_UTCTIME *)\
 		ASN1_STRING_type_new(V_ASN1_UTCTIME)
@@ -684,52 +648,22 @@ typedef struct BIT_STRING_BITNAME_st {
 #define M_ASN1_GENERALSTRING_new()	(ASN1_GENERALSTRING *)\
 		ASN1_STRING_type_new(V_ASN1_GENERALSTRING)
 #define M_ASN1_GENERALSTRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_GENERALSTRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_GENERALSTRING,\
-			V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_GENERALSTRING(a,pp,l) \
-		(ASN1_GENERALSTRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_GENERALSTRING)
 
 #define M_ASN1_UNIVERSALSTRING_new()	(ASN1_UNIVERSALSTRING *)\
 		ASN1_STRING_type_new(V_ASN1_UNIVERSALSTRING)
 #define M_ASN1_UNIVERSALSTRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_UNIVERSALSTRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_UNIVERSALSTRING,\
-			V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_UNIVERSALSTRING(a,pp,l) \
-		(ASN1_UNIVERSALSTRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_UNIVERSALSTRING)
 
 #define M_ASN1_BMPSTRING_new()	(ASN1_BMPSTRING *)\
 		ASN1_STRING_type_new(V_ASN1_BMPSTRING)
 #define M_ASN1_BMPSTRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_BMPSTRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_BMPSTRING,\
-			V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_BMPSTRING(a,pp,l) \
-		(ASN1_BMPSTRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_BMPSTRING)
 
 #define M_ASN1_VISIBLESTRING_new()	(ASN1_VISIBLESTRING *)\
 		ASN1_STRING_type_new(V_ASN1_VISIBLESTRING)
 #define M_ASN1_VISIBLESTRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_VISIBLESTRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_VISIBLESTRING,\
-			V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_VISIBLESTRING(a,pp,l) \
-		(ASN1_VISIBLESTRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_VISIBLESTRING)
 
 #define M_ASN1_UTF8STRING_new()	(ASN1_UTF8STRING *)\
 		ASN1_STRING_type_new(V_ASN1_UTF8STRING)
 #define M_ASN1_UTF8STRING_free(a)	ASN1_STRING_free((ASN1_STRING *)a)
-#define M_i2d_ASN1_UTF8STRING(a,pp) \
-		i2d_ASN1_bytes((ASN1_STRING *)a,pp,V_ASN1_UTF8STRING,\
-			V_ASN1_UNIVERSAL)
-#define M_d2i_ASN1_UTF8STRING(a,pp,l) \
-		(ASN1_UTF8STRING *)d2i_ASN1_type_bytes\
-		((ASN1_STRING **)a,pp,l,B_ASN1_UTF8STRING)
 
 DECLARE_ASN1_FUNCTIONS_fname(ASN1_TYPE, ASN1_ANY, ASN1_TYPE)
 
@@ -862,8 +796,6 @@ OPENSSL_EXPORT BIGNUM *ASN1_ENUMERATED_to_BN(ASN1_ENUMERATED *ai,BIGNUM *bn);
 OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int max);
 
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
-/* type is one or more of the B_ASN1_ values. */
-OPENSSL_EXPORT ASN1_STRING *d2i_ASN1_type_bytes(ASN1_STRING **a,const unsigned char **pp, long length,int type);
 
 /* PARSING */
 OPENSSL_EXPORT int asn1_Finish(ASN1_CTX *c);
