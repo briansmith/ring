@@ -98,7 +98,8 @@ impl<'a> Ed25519KeyPair {
                             -> Result<Ed25519KeyPair, error::Unspecified> {
         if private_key.len() != 32 {
             return Err(error::Unspecified);
-        } else if public_key.len() != 32 {
+        }
+        if public_key.len() != 32 {
             return Err(error::Unspecified);
         }
         let mut pair = Ed25519KeyPair { private_public: [0; 64] };
