@@ -153,10 +153,10 @@ impl TestCase {
     /// empty (zero-length) value is represented as "".
     pub fn consume_bytes(&mut self, key: &str) -> Vec<u8> {
         let mut s = self.consume_string(key);
-        if s.starts_with("\"") {
+        if s.starts_with('\"') {
             // The value is a quoted strong.
             // XXX: We don't deal with any inner quotes.
-            if !s.ends_with("\"") {
+            if !s.ends_with('\"') {
                 panic!("expected quoted string, found {}", s);
             }
             let _ = s.pop();
@@ -331,11 +331,11 @@ fn parse_test_case(current_section: &mut String,
             },
 
             // Comments start with '#'; ignore them.
-            Some(ref line) if line.starts_with("#") => { },
+            Some(ref line) if line.starts_with('#') => { },
 
-            Some(ref line) if line.starts_with("[") => {
+            Some(ref line) if line.starts_with('[') => {
                 assert!(is_first_line);
-                assert!(line.ends_with("]"));
+                assert!(line.ends_with(']'));
                 current_section.truncate(0);
                 current_section.push_str(line);
                 let _ = current_section.pop();
