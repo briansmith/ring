@@ -14,9 +14,9 @@
 
 //! Cryptographic pseudo-random number generation.
 //!
-//! An application should create a single SystemRandom and then use it for all
-//! randomness generation. Functions that generate random bytes should take a
-//! `&SecureRandom` parameter instead of instantiating their own. Besides
+//! An application should create a single `SystemRandom` and then use it for
+//! all randomness generation. Functions that generate random bytes should take
+//! a `&SecureRandom` parameter instead of instantiating their own. Besides
 //! being more efficient, this also helps document where non-deterministic
 //! (random) outputs occur. Taking a reference to a `SecureRandom` also helps
 //! with testing techniques like fuzzing, where it is useful to use a

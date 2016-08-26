@@ -93,7 +93,7 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     }
 
     let b_1 = &a;
-    let b_11    = sqr_mul(&b_1,    0 + 1, &b_1);
+    let b_11    = sqr_mul(b_1,     0 + 1, b_1);
     let f       = sqr_mul(&b_11,   0 + 2, &b_11);
     let ff      = sqr_mul(&f,      0 + 4, &f);
     let ffff    = sqr_mul(&ff,     0 + 8, &ff);
@@ -118,7 +118,7 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     sqr_mul_acc(&mut acc, 0 + 2, &b_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[111]
-    sqr_mul_acc(&mut acc, 0 + 1, &b_1);
+    sqr_mul_acc(&mut acc, 0 + 1, b_1);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffff
     sqr_mul_acc(&mut acc, 1 + 28, &fffffff);
@@ -133,7 +133,7 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
     // 0000000000000000fffffffd
     sqr_mul_acc(&mut acc, 0 + 2, &b_11);
-    sqr_mul(&acc, 1 + 1, &b_1)
+    sqr_mul(&acc, 1 + 1, b_1)
 }
 
 

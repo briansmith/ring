@@ -342,7 +342,7 @@ pub fn verify(key: &VerificationKey, data: &[u8], signature: &[u8])
 /// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
 pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
                            -> Result<(), error::Unspecified> {
-    constant_time::verify_slices_are_equal(sign(&key, data).as_ref(), signature)
+    constant_time::verify_slices_are_equal(sign(key, data).as_ref(), signature)
 }
 
 #[cfg(test)]

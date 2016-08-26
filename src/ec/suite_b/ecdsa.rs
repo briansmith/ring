@@ -103,7 +103,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded,
                           x: &ElemUnreduced, z2: &ElemUnreduced) -> bool {
             let cops = ops.public_key_ops.common;
-            let r_jacobian = cops.elem_mul_mixed(&z2, r);
+            let r_jacobian = cops.elem_mul_mixed(z2, r);
             let x_decoded = cops.elem_decoded(x);
             ops.elem_decoded_equals(&r_jacobian, &x_decoded)
         }

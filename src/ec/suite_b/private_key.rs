@@ -140,7 +140,7 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
                                        x_out: Option<&mut [u8]>,
                                        y_out: Option<&mut [u8]>, p: &Point)
                                        -> Result<(), error::Unspecified> {
-    let z = ops.common.point_z(&p);
+    let z = ops.common.point_z(p);
 
     // Since we restrict our private key to the range [1, n), the curve has
     // prime order, and we verify that the peer's point is on the curve,
@@ -148,8 +148,8 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     // instead of `debug_assert!` anyway
     assert!(ops.common.elem_verify_is_not_zero(&z).is_ok());
 
-    let x = ops.common.point_x(&p);
-    let y = ops.common.point_y(&p);
+    let x = ops.common.point_x(p);
+    let y = ops.common.point_y(p);
 
     let z_inv = ops.elem_inverse(&z);
     let zz_inv = ops.common.elem_squared(&z_inv);

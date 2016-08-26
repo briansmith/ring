@@ -95,7 +95,7 @@ impl std::error::Error for Unspecified {
     fn cause(&self) -> Option<&std::error::Error> { None }
 
     #[inline]
-    fn description(&self) -> &str { &"ring::error::Unspecified" }
+    fn description(&self) -> &str { "ring::error::Unspecified" }
 }
 
 impl From<untrusted::EndOfInput> for Unspecified {

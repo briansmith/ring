@@ -49,13 +49,13 @@ fn verify_affine_point_is_on_the_curve(
 fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
                                          -> Result<ElemUnreduced,
                                                    error::Unspecified> {
-    let z = ops.point_z(&p);
+    let z = ops.point_z(p);
 
     // Verify that the point is not at infinity.
     try!(ops.elem_verify_is_not_zero(&z));
 
-    let x = ops.point_x(&p);
-    let y = ops.point_y(&p);
+    let x = ops.point_x(p);
+    let y = ops.point_y(p);
 
     // We are given Jacobian coordinates (x, y, z). So, we have:
     //
@@ -139,12 +139,12 @@ fn verify_affine_point_is_on_the_curve_scaled(
         ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced),
         a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced)
         -> Result<(), error::Unspecified> {
-    let lhs = ops.elem_squared(&y);
+    let lhs = ops.elem_squared(y);
     let lhs = ops.elem_reduced(&lhs);
 
-    let mut rhs = ops.elem_squared(&x);
+    let mut rhs = ops.elem_squared(x);
     ops.elem_add(&mut rhs, a_scaled);
-    ops.elem_mul(&mut rhs, &x);
+    ops.elem_mul(&mut rhs, x);
     ops.elem_add(&mut rhs, b_scaled);
     let rhs = ops.elem_reduced(&rhs);
 

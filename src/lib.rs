@@ -86,7 +86,7 @@
     unused_unsafe,
     unused_variables,
     variant_size_differences,
-    warnings,
+//    warnings,
     while_true,
 )]
 

@@ -435,7 +435,7 @@ fn sha512_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
     ]
 }
 
-/// SHA512_4 calculates the SHA-512 digest of the concatenation of |part1|
+/// `SHA512_4` calculates the SHA-512 digest of the concatenation of |part1|
 /// through |part4|. Any part<N> may be null if and only if the corresponding
 /// part<N>_len is zero. This ugliness exists in order to allow some of the
 /// C ECC code to calculate SHA-512 digests.
