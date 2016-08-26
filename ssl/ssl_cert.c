@@ -335,6 +335,8 @@ int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
     verify_ret = X509_verify_cert(&ctx);
   }
 
+  *out_verify_result = ctx.error;
+
   /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
   if (verify_ret <= 0 && ssl->verify_mode != SSL_VERIFY_NONE) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, ssl_verify_alarm_type(ctx.error));
@@ -343,7 +345,6 @@ int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
   }
 
   ERR_clear_error();
-  *out_verify_result = ctx.error;
   ret = 1;
 
 err:
