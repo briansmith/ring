@@ -167,7 +167,7 @@ impl CommonOps {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     #[inline]
@@ -390,7 +390,7 @@ impl PublicScalarOps {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     pub fn elem_decoded_less_than(&self, a: &ElemDecoded, b: &ElemDecoded)
