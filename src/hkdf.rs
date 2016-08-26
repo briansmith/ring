@@ -59,11 +59,11 @@ pub fn extract_and_expand(salt: &hmac::SigningKey, secret: &[u8], info: &[u8],
 
 /// The HKDF-Extract operation.
 ///
-/// | Parameter               | RFC 5869 Term
-/// |-------------------------|--------------
-/// | salt.digest_algorithm() | Hash
-/// | secret                  | IKM (Input Keying Material)
-/// | [return value]          | PRK
+/// | Parameter                 | RFC 5869 Term
+/// |---------------------------|--------------
+/// | `salt.digest_algorithm()` | Hash
+/// | `secret`                  | IKM (Input Keying Material)
+/// | [return value]            | PRK
 pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
     // The spec says that if no salt is provided then a key of
     // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are

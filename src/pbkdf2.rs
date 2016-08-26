@@ -197,14 +197,14 @@ fn derive_block(
 /// comparison will fail if `previously_derived` is empty (has a length of
 /// zero).
 ///
-/// | Parameter                | RFC 2898 Section 5.2 Term
-/// |--------------------------|---------------------------------------
-/// | prf                      | PRF
-/// | iterations               | c (iteration count)
-/// | salt                     | S (salt)
-/// | secret                   | P (password)
-/// | previously_derived       | dk (derived key)
-/// | previously_derived.len() | dkLen (derived key length)
+/// | Parameter                  | RFC 2898 Section 5.2 Term
+/// |----------------------------|---------------------------------------
+/// | `prf`                      | PRF
+/// | `iterations`               | c (iteration count)
+/// | `salt`                     | S (salt)
+/// | `secret`                   | P (password)
+/// | `previously_derived`       | dk (derived key)
+/// | `previously_derived.len()` | dkLen (derived key length)
 ///
 /// C analog: `PKCS5_PBKDF2_HMAC` + `CRYPTO_memcmp`
 ///

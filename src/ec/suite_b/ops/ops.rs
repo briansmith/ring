@@ -33,7 +33,7 @@ pub struct ElemDecoded {
 }
 
 /// Field elements that are Montgomery-encoded and unreduced. Their values are
-/// in the range [0, 2**LIMB_BITS).
+/// in the range [0, 2**`LIMB_BITS`).
 #[derive(Clone)]
 pub struct ElemUnreduced {
     limbs: [Limb; MAX_LIMBS],
@@ -67,7 +67,7 @@ impl Scalar {
 }
 
 /// A `Scalar`, except Montgomery-encoded, and not reduced. The range is
-/// [0, 2**LIMB_BITS).
+/// [0, 2**`LIMB_BITS`).
 #[derive(Clone, Copy)]
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
