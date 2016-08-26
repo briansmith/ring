@@ -245,7 +245,7 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
                 0
             };
 
-        matches = matches & current_block_matches;
+        matches &= current_block_matches;
     }
 
     if matches == 0 {
