@@ -41,6 +41,7 @@
 	["crypto/dsa/dsa_test"],
 	["crypto/ec/ec_test"],
 	["crypto/ec/example_mul"],
+	["crypto/ecdh/ecdh_test", "crypto/ecdh/ecdh_tests.txt"],
 	["crypto/ecdsa/ecdsa_test"],
 	["crypto/err/err_test"],
 	["crypto/evp/evp_extra_test"],
