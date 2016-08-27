@@ -263,7 +263,6 @@ extern {
 mod tests {
     use {aead, c};
 
-    bssl_test!(test_chacha, bssl_chacha_test_main);
     bssl_test!(test_poly1305, bssl_poly1305_test_main);
 
     #[test]
@@ -283,6 +282,93 @@ mod tests {
         assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
                     (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
     }
+
+    const MAX_OFFSET: usize = 259;
+
+    use {error, test};
+
+    /// Test that everything works correctly when the input pointer is offset
+    /// from the output pointer by various degrees.
+    fn test_align_offset(input: &[u8], output: &[u8],
+                         key: &[u32; super::CHACHA20_KEY_LEN / 4], ctr: &[u32; 4],
+                         len: usize,alignment: usize, offset: usize)
+                         -> Result<(), error::Unspecified> {
+        let in_shift = offset + alignment;
+        let mut buf = vec![0; len + in_shift];
+        println!("Cloning {}, {}, {}", len, offset, alignment);
+        buf[in_shift..in_shift + len].clone_from_slice(&input[..len]);
+
+        unsafe {
+            let in_ptr = buf.as_ptr().offset(in_shift as isize);
+            let out_ptr = buf.as_mut_ptr().offset(alignment as isize);
+            super::ChaCha20_ctr32(out_ptr, in_ptr, len, key, ctr);
+        }
+
+        if buf[alignment..alignment + len] != output[..len] {
+            println!("Mismatch at length {} with in-place offset {} and aligmment {}.",
+                     len, offset, alignment);
+            return Err(error::Unspecified);
+        }
+        Ok(())
+    }
+
+    /// Converting key from slice of bytes
+    fn convert_key(key_value: &[u8]) -> [u32; super::CHACHA20_KEY_LEN / 4] {
+        assert_eq!(key_value.len(), super::CHACHA20_KEY_LEN);
+        let mut key = [0u32; super::CHACHA20_KEY_LEN / 4];
+        for (i, val) in key.iter_mut().enumerate() {
+            *val = (0..4).map(|j| (key_value[4*i+j] as u32) << (3-j)*8).sum();
+        }
+        key
+    }
+
+    /// Converting counter and nonce from slice of bytes
+    fn convert_ctr(key_value: &[u8]) -> [u32; 4] {
+        assert_eq!(key_value.len(), 4*4);
+        let mut ctr = [0u32; 4];
+        for (i, val) in ctr.iter_mut().enumerate() {
+            *val = (0..4).map(|j| (key_value[4*i+j] as u32) << (3-j)*8).sum();
+        }
+        ctr
+    }
+
+    #[test]
+    pub fn test_chacha20_ctr32() {
+        test::from_file("src/aead/chacha20_test.txt", |section, test_case| {
+            let len = 10;
+
+            assert_eq!(section, "");
+            let key_value = test_case.consume_bytes("Key");
+            let counter_value = test_case.consume_bytes("CounterAndNonce");
+            let input = test_case.consume_bytes("Input");
+            let output = test_case.consume_bytes("Output");
+
+            let mut buf = vec![0; len];
+            let key = convert_key(&key_value);
+            let ctr = convert_ctr(&counter_value);
+
+            unsafe {
+                super::ChaCha20_ctr32(buf.as_mut_ptr(), input.as_ptr(), len, &key, &ctr);
+            }
+            assert_eq!(buf, &output[..len]);
+
+            println!("First test done");
+
+            for alignment in 0..16 {
+                if cfg!(any(target_arch = "arm", target_arch = "x86")) {
+                    try!(test_align_offset(&input, &output, &key, &ctr, len, alignment, 0));
+                } else {
+                    for offset in 0..MAX_OFFSET + 1 {
+                        try!(test_align_offset(&input, &output, &key, &ctr,
+                                               len, alignment, offset));
+                    }
+                }
+            }
+
+            Ok(())
+        });
+    }
+
 
     extern {
         static CRYPTO_POLY1305_STATE_LEN: c::size_t;
