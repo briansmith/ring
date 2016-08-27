@@ -1,4 +1,6 @@
 // Copyright 2015-2016 Brian Smith.
+// Portions Copyright (c) 2015, Google Inc.
+// Portions Copyright (c) 2016, Google Inc.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -199,11 +201,11 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {aead, c, polyfill, test};
-    use super::{GFp_ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter};
-
-    bssl_test!(test_poly1305, bssl_poly1305_test_main);
-
+    use {aead, c, error, polyfill, test};
+    use core;
+    use super::{GFp_ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter,
+                POLY1305_STATE_LEN, POLY1305_KEY_LEN, poly1305_init,
+                poly1305_finish, poly1305_update};
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
@@ -212,8 +214,82 @@ mod tests {
 
     #[test]
     pub fn test_poly1305_state_len() {
-        assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
+        assert_eq!((POLY1305_STATE_LEN + 255) / 256,
                    (unsafe { GFp_POLY1305_STATE_LEN } + 255) / 256);
+    }
+
+    // Adapted from BoringSSL's crypto/poly1305/poly1305_test.cc.
+    #[test]
+    pub fn test_poly1305() {
+        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let key = test_case.consume_bytes("Key");
+            let key = slice_as_array_ref!(&key, POLY1305_KEY_LEN).unwrap();
+            let input = test_case.consume_bytes("Input");
+            let expected_mac = test_case.consume_bytes("MAC");
+            let expected_mac = slice_as_array_ref!(&expected_mac,
+                                                   aead::TAG_LEN).unwrap();
+
+            // Test single-shot operation.
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut actual_mac = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            poly1305_update(&mut state, &input);
+            poly1305_finish(&mut state, &mut actual_mac);
+            assert_eq!(expected_mac[..], actual_mac[..]);
+
+            // Test streaming byte-by-byte.
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut actual_mac = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            for chunk in input.chunks(1) {
+                poly1305_update(&mut state, chunk);
+            }
+            poly1305_finish(&mut state, &mut actual_mac);
+            assert_eq!(&expected_mac[..], &actual_mac[..]);
+
+            try!(test_poly1305_simd(0, key, &input, expected_mac));
+            try!(test_poly1305_simd(16, key, &input, expected_mac));
+            try!(test_poly1305_simd(32, key, &input, expected_mac));
+            try!(test_poly1305_simd(48, key, &input, expected_mac));
+
+            Ok(())
+        })
+    }
+
+    fn test_poly1305_simd(excess: usize, key: &[u8; POLY1305_KEY_LEN],
+                          input: &[u8], expected_mac: &[u8; aead::TAG_LEN])
+                          -> Result<(), error::Unspecified> {
+        let mut state = [0u8; POLY1305_STATE_LEN];
+        poly1305_init(&mut state, &key);
+
+        // Some implementations begin in non-SIMD mode and upgrade on demand.
+        // Stress the upgrade path.
+        let init = core::cmp::min(input.len(), 16);
+        poly1305_update(&mut state, &input[..init]);
+
+        let long_chunk_len = 128 + excess;
+        for chunk in input[init..].chunks(long_chunk_len + excess) {
+            if chunk.len() > long_chunk_len {
+                let (long, short) = chunk.split_at(long_chunk_len);
+
+                // Feed 128 + |excess| bytes to test SIMD mode.
+                poly1305_update(&mut state, long);
+
+                // Feed |excess| bytes to ensure SIMD mode can handle short
+                // inputs.
+                poly1305_update(&mut state, short);
+            } else {
+                // Handle the last chunk.
+                poly1305_update(&mut state, chunk);
+            }
+        }
+
+        let mut actual_mac = [0u8; aead::TAG_LEN];
+        poly1305_finish(&mut state, &mut actual_mac);
+        assert_eq!(expected_mac, &actual_mac, "SIMD pattern failed.");
+
+        Ok(())
     }
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32

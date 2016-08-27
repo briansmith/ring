@@ -133,7 +133,6 @@ RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes_test.cc \
   crypto/bn/bn_test.cc \
   crypto/constant_time_test.c \
-  crypto/poly1305/poly1305_test.cc \
   crypto/test/bn_test_convert.c \
   crypto/test/bn_test_lib.c \
   crypto/test/file_test.cc \
