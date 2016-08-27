@@ -256,11 +256,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {aead, c, polyfill, test};
-    use super::{GFp_ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter};
-
-    bssl_test!(test_poly1305, bssl_poly1305_test_main);
-
+    use {aead, c, error, polyfill, test};
+    use super::{GFp_ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter,
+                POLY1305_STATE_LEN, POLY1305_KEY_LEN, poly1305_init,
+                poly1305_finish, poly1305_update};
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
@@ -275,8 +274,90 @@ mod tests {
 
     #[test]
     pub fn test_poly1305_state_len() {
-        assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
+        assert_eq!((POLY1305_STATE_LEN + 255) / 256,
                    (GFp_POLY1305_STATE_LEN + 255) / 256);
+    }
+
+    fn test_simd(excess: usize, key: [u8; POLY1305_KEY_LEN],
+                 input: &[u8], mac: [u8; aead::TAG_LEN])
+                 -> Result<(), error::Unspecified> {
+        let mut state = [0u8; POLY1305_STATE_LEN];
+        let mut mac_out = [0u8; aead::TAG_LEN];
+        poly1305_init(&mut state, &key);
+
+        // Feed 16 bytes in. Some implementations begin in non-SIMD mode and
+        // upgrade on-demand. Stress the upgrade path.
+        let init = if input.len() < 16 { input.len() } else { 16 };
+
+        poly1305_update(&mut state, &input[..init]);
+        for chunk in input[init..].chunks(128 + 2 * excess) {
+            let (long, short) = if chunk.len() < (128 + excess) {
+                (chunk, &[][..])
+            } else {
+                chunk.split_at(128 + excess)
+            };
+            // Feed 128 + |excess| bytes to test SIMD mode
+            poly1305_update(&mut state, long);
+            // Feed |excess| bytes to ensure SIMD mode can handle short inputs
+            if !short.is_empty() {
+                poly1305_update(&mut state, short);
+            }
+        }
+        poly1305_finish(&mut state, &mut mac_out);
+        if mac != mac_out {
+            println!("SIMD pattern {} failed.", excess);
+            return Err(error::Unspecified);
+        }
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_poly1305() {
+        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let key_bytes = test_case.consume_bytes("Key");
+            let input = test_case.consume_bytes("Input");
+            let mac_bytes = test_case.consume_bytes("MAC");
+
+            let key = {
+                assert_eq!(key_bytes.len(), POLY1305_KEY_LEN);
+                let mut buf = [0u8; POLY1305_KEY_LEN];
+                buf.clone_from_slice(&key_bytes);
+                buf
+            };
+
+            let mac = {
+                assert_eq!(mac_bytes.len(), aead::TAG_LEN);
+                let mut buf = [0u8; aead::TAG_LEN];
+                buf.clone_from_slice(&mac_bytes);
+                buf
+            };
+
+            // Test single-shot operation
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut mac_out = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            poly1305_update(&mut state, &input);
+            poly1305_finish(&mut state, &mut mac_out);
+            assert_eq!(mac, mac_out);
+
+            // Test streaming byte-by-byte
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut mac_out = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            for chunk in input.chunks(1) {
+                poly1305_update(&mut state, chunk);
+            }
+            poly1305_finish(&mut state, &mut mac_out);
+            assert_eq!(mac, mac_out);
+
+            try!(test_simd(0, key, &input, mac));
+            try!(test_simd(16, key, &input, mac));
+            try!(test_simd(32, key, &input, mac));
+            try!(test_simd(48, key, &input, mac));
+
+            Ok(())
+        })
     }
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
@@ -290,7 +371,7 @@ mod tests {
     // This test exists largely as a canary for detecting if/when that type of
     // problem spreads to other platforms.
     #[test]
-    pub fn chacha20_tests() {
+    pub fn test_chacha20_ctr32() {
         test::from_file("src/aead/chacha_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
