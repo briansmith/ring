@@ -371,6 +371,6 @@ mod tests {
 
 
     extern {
-        static CRYPTO_POLY1305_STATE_LEN: c::size_t; 
+        static CRYPTO_POLY1305_STATE_LEN: c::size_t;
     }
 }
