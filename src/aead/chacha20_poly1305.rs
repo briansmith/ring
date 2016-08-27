@@ -177,16 +177,11 @@ fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
 
 #[inline]
 fn make_counter(counter: u32, nonce: &[u8; aead::NONCE_LEN]) -> [u32; 4] {
-    fn from_le_bytes(bytes: &[u8]) -> u32 {
-        u32::from(bytes[0]) |
-            (u32::from(bytes[1]) << 8) |
-            (u32::from(bytes[2]) << 16) |
-            (u32::from(bytes[3]) << 24)
-    }
+    use polyfill::slice::u32_from_le_u8;
     [counter.to_le(),
-     from_le_bytes(&nonce[0..4]),
-     from_le_bytes(&nonce[4..8]),
-     from_le_bytes(&nonce[8..12])]
+     u32_from_le_u8(slice_as_array_ref!(&nonce[0..4], 4).unwrap()),
+     u32_from_le_u8(slice_as_array_ref!(&nonce[4..8], 4).unwrap()),
+     u32_from_le_u8(slice_as_array_ref!(&nonce[8..12], 4).unwrap())]
 }
 
 type UpdateFn = fn(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
@@ -261,9 +256,9 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {aead, c};
+    use {aead, c, polyfill, test};
+    use super::{ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter};
 
-    bssl_test!(test_chacha, bssl_chacha_test_main);
     bssl_test!(test_poly1305, bssl_poly1305_test_main);
 
     #[test]
@@ -282,6 +277,86 @@ mod tests {
     pub fn test_poly1305_state_len() {
         assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
                     (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
+    }
+
+    // This verifies the encryption functionality provided by ChaCha20_ctr32
+    // is successful when either computed on disjoint input/output buffers,
+    // or on overlapping input/output buffers. On some branches of the 32-bit
+    // x86 and ARM code the in-place operation fails in some situations where
+    // the input/output buffers are not exactly overlapping. Such failures are
+    // dependent not only on the degree of overlapping but also the length of
+    // the data. `open()` works around that by moving the input data to the
+    // output location so that the buffers exactly overlap, for those targets.
+    // This test exists largely as a canary for detecting if/when that type of
+    // problem spreads to other platforms.
+    #[test]
+    pub fn chacha20_tests() {
+        test::from_file("src/aead/chacha_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+
+            let key_bytes = test_case.consume_bytes("Key");
+            let mut key = [0u32; CHACHA20_KEY_LEN / 4];
+            for ki in 0..(CHACHA20_KEY_LEN / 4) {
+                let kb =
+                    slice_as_array_ref!(&key_bytes[ki * 4..][..4], 4).unwrap();
+                key[ki] = polyfill::slice::u32_from_le_u8(kb);
+            }
+
+            let ctr = test_case.consume_usize("Ctr");
+            let nonce_bytes = test_case.consume_bytes("Nonce");
+            let nonce = slice_as_array_ref!(&nonce_bytes,
+                                            aead::NONCE_LEN).unwrap();
+            let ctr = make_counter(ctr as u32, &nonce);
+            let input = test_case.consume_bytes("Input");
+            let output = test_case.consume_bytes("Output");
+
+            // Pre-allocate buffer for use in test_cases.
+            let mut in_out_buf = vec![0u8; input.len() + 276];
+
+            // Run the test case over all prefixes of the input because the
+            // behavior of ChaCha20 implementation changes dependent on the
+            // length of the input.
+            for len in 0..(input.len() + 1) {
+                chacha20_test_case_inner(&key, &ctr, &input[..len],
+                                         &output[..len], len, &mut in_out_buf);
+            }
+
+            Ok(())
+        });
+    }
+
+    fn chacha20_test_case_inner(key: &[u32; CHACHA20_KEY_LEN / 4],
+                                ctr: &[u32; 4], input: &[u8], expected: &[u8],
+                                len: usize, in_out_buf: &mut [u8]) {
+        // Straightforward encryption into disjoint buffers is computed
+        // correctly.
+        unsafe {
+          ChaCha20_ctr32(in_out_buf.as_mut_ptr(), input[..len].as_ptr(),
+                         len, key, &ctr);
+        }
+        assert_eq!(&in_out_buf[..len], expected);
+
+        // Do not test offset buffers for x86 and ARM architectures (see above
+        // for rationale).
+        let max_offset = if cfg!(any(target_arch = "x86", target_arch = "arm")){
+            0
+        } else {
+            259
+        };
+
+        // Check that in-place encryption works successfully when the pointers
+        // to the input/output buffers are (partially) overlapping.
+        for alignment in 0..16 {
+            for offset in 0..(max_offset + 1) {
+              in_out_buf[alignment+offset..][..len].copy_from_slice(input);
+              unsafe {
+                  ChaCha20_ctr32(in_out_buf[alignment..].as_mut_ptr(),
+                                 in_out_buf[alignment + offset..].as_ptr(),
+                                 len, key, ctr);
+                  assert_eq!(&in_out_buf[alignment..][..len], expected);
+              }
+            }
+        }
     }
 
     extern {
