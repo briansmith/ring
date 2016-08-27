@@ -213,14 +213,18 @@ mod tests {
     fn test_signature_rsa_primitive_verification() {
         test::from_file("src/rsa/rsa_primitive_verify_tests.txt", |section, test_case| {
             assert_eq!(section, "");
-            let msg = test_case.consume_bytes("Msg");
-            let sig = test_case.consume_bytes("Sig");
             let n = test_case.consume_bytes("n");
             let e = test_case.consume_bytes("e");
-            verify_rsa(&RSA_PKCS1_2048_8192_SHA256,
-                       (untrusted::Input::from(&n), untrusted::Input::from(&e)),
-                       untrusted::Input::from(&msg),
-                       untrusted::Input::from(&sig))
+            let msg = test_case.consume_bytes("Msg");
+            let sig = test_case.consume_bytes("Sig");
+            let expected = test_case.consume_string("Result");
+            let result = verify_rsa(&RSA_PKCS1_2048_8192_SHA256,
+                                    (untrusted::Input::from(&n),
+                                     untrusted::Input::from(&e)),
+                                    untrusted::Input::from(&msg),
+                                    untrusted::Input::from(&sig));
+            assert_eq!(result.is_ok(), expected == "Pass");
+            Ok(())
         })
     }
 }
