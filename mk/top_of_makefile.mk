@@ -42,6 +42,10 @@ TARGET_ABI = $(TARGET_SYS)
 TARGET_VENDOR = unknow
 TARGET_SYS = linux
 else
+	
+# If we find `bsd` in the target system, we can assume a target triple is OK,
+# so skip the error here.
+ifeq (,$(findstring bsd,$(TARGET_SYS)))
 define NEWLINE
 
 
@@ -56,6 +60,7 @@ $(error TARGET must be of the form \
         Android example:	TARGET=arm-linux-androideabi $(NEWLINE)\
 \
         NOTE: Use "i586" instead of "x86")
+endif
 endif
 endif
 
