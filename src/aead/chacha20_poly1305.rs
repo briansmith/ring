@@ -259,8 +259,6 @@ extern {
                               in_: *const u8, in_len: c::size_t);
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use {aead, c};
@@ -269,7 +267,6 @@ mod tests {
 
     #[test]
     pub fn test_chacha20_poly1305() {
-        assert!(true);
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
             "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
