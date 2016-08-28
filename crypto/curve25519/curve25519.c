@@ -961,7 +961,7 @@ static void fe_pow22523(fe out, const fe z) {
   fe_mul(out, t0, z);
 }
 
-void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
+static void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
   fe recip;
   fe x;
   fe y;
@@ -991,7 +991,7 @@ static const fe d = {-10913610, 13857413, -15372611, 6949391,   114729,
 static const fe sqrtm1 = {-32595792, -7943725,  9377950,  3500415, 12389472,
                           -272473,   -25146209, -2005654, 326686,  11406482};
 
-int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
   fe v;
   fe v3;
@@ -1047,13 +1047,6 @@ static void ge_p3_0(ge_p3 *h) {
   fe_0(h->T);
 }
 
-static void ge_cached_0(ge_cached *h) {
-  fe_1(h->YplusX);
-  fe_1(h->YminusX);
-  fe_1(h->Z);
-  fe_0(h->T2d);
-}
-
 static void ge_precomp_0(ge_precomp *h) {
   fe_1(h->yplusx);
   fe_1(h->yminusx);
@@ -1071,7 +1064,7 @@ static const fe d2 = {-21827239, -5839606,  -30745221, 13898782, 229458,
                       15978800,  -12551817, -6495438,  29715968, 9444199};
 
 /* r = p */
-void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
+static void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
   fe_add(r->YplusX, p->Y, p->X);
   fe_sub(r->YminusX, p->Y, p->X);
   fe_copy(r->Z, p->Z);
@@ -1079,25 +1072,18 @@ void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
 }
 
 /* r = p */
-void x25519_ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p) {
+static void x25519_ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p) {
   fe_mul(r->X, p->X, p->T);
   fe_mul(r->Y, p->Y, p->Z);
   fe_mul(r->Z, p->Z, p->T);
 }
 
 /* r = p */
-void x25519_ge_p1p1_to_p3(ge_p3 *r, const ge_p1p1 *p) {
+static void x25519_ge_p1p1_to_p3(ge_p3 *r, const ge_p1p1 *p) {
   fe_mul(r->X, p->X, p->T);
   fe_mul(r->Y, p->Y, p->Z);
   fe_mul(r->Z, p->Z, p->T);
   fe_mul(r->T, p->X, p->Y);
-}
-
-/* r = p */
-static void ge_p1p1_to_cached(ge_cached *r, const ge_p1p1 *p) {
-  ge_p3 t;
-  x25519_ge_p1p1_to_p3(&t, p);
-  x25519_ge_p3_to_cached(r, &t);
 }
 
 /* r = 2 * p */
@@ -1155,7 +1141,7 @@ static void ge_msub(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
 }
 
 /* r = p + q */
-void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
+static void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe t0;
 
   fe_add(r->X, p->Y, p->X);
@@ -1172,7 +1158,7 @@ void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
 }
 
 /* r = p - q */
-void x25519_ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
+static void x25519_ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe t0;
 
   fe_add(r->X, p->Y, p->X);
@@ -1204,7 +1190,9 @@ static void cmov(ge_precomp *t, const ge_precomp *u, uint8_t b) {
   fe_cmov(t->xy2d, u->xy2d, b);
 }
 
-void x25519_ge_scalarmult_small_precomp(
+#if defined(OPENSSL_SMALL)
+
+static void x25519_ge_scalarmult_small_precomp(
     ge_p3 *h, const uint8_t a[32], const uint8_t precomp_table[15 * 2 * 32]) {
   /* precomp_table is first expanded into matching |ge_precomp|
    * elements. */
@@ -1255,8 +1243,6 @@ void x25519_ge_scalarmult_small_precomp(
     x25519_ge_p1p1_to_p3(h, &r);
   }
 }
-
-#if defined(OPENSSL_SMALL)
 
 /* This block of code replaces the standard base-point table with a much smaller
  * one. The standard table is 30,720 bytes while this one is just 960.
@@ -1349,7 +1335,7 @@ static const uint8_t k25519SmallPrecomp[15 * 2 * 32] = {
     0x45, 0xc9, 0x8b, 0x17, 0x79, 0xe7, 0xc7, 0x90, 0x99, 0x3a, 0x18, 0x25,
 };
 
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
+static void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
   x25519_ge_scalarmult_small_precomp(h, a, k25519SmallPrecomp);
 }
 
@@ -3503,7 +3489,7 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
  *
  * Preconditions:
  *   a[31] <= 127 */
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
+static void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
   signed char e[64];
   signed char carry;
   ge_p1p1 r;
@@ -3552,67 +3538,6 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
 }
 
 #endif
-
-static void cmov_cached(ge_cached *t, ge_cached *u, uint8_t b) {
-  fe_cmov(t->YplusX, u->YplusX, b);
-  fe_cmov(t->YminusX, u->YminusX, b);
-  fe_cmov(t->Z, u->Z, b);
-  fe_cmov(t->T2d, u->T2d, b);
-}
-
-/* r = scalar * A.
- * where a = a[0]+256*a[1]+...+256^31 a[31]. */
-void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A) {
-  ge_p2 Ai_p2[8];
-  ge_cached Ai[16];
-  ge_p1p1 t;
-
-  ge_cached_0(&Ai[0]);
-  x25519_ge_p3_to_cached(&Ai[1], A);
-  ge_p3_to_p2(&Ai_p2[1], A);
-
-  unsigned i;
-  for (i = 2; i < 16; i += 2) {
-    ge_p2_dbl(&t, &Ai_p2[i / 2]);
-    ge_p1p1_to_cached(&Ai[i], &t);
-    if (i < 8) {
-      x25519_ge_p1p1_to_p2(&Ai_p2[i], &t);
-    }
-    x25519_ge_add(&t, A, &Ai[i]);
-    ge_p1p1_to_cached(&Ai[i + 1], &t);
-    if (i < 7) {
-      x25519_ge_p1p1_to_p2(&Ai_p2[i + 1], &t);
-    }
-  }
-
-  ge_p2_0(r);
-  ge_p3 u;
-
-  for (i = 0; i < 256; i += 4) {
-    ge_p2_dbl(&t, r);
-    x25519_ge_p1p1_to_p2(r, &t);
-    ge_p2_dbl(&t, r);
-    x25519_ge_p1p1_to_p2(r, &t);
-    ge_p2_dbl(&t, r);
-    x25519_ge_p1p1_to_p2(r, &t);
-    ge_p2_dbl(&t, r);
-    x25519_ge_p1p1_to_p3(&u, &t);
-
-    uint8_t index = scalar[31 - i/8];
-    index >>= 4 - (i & 4);
-    index &= 0xf;
-
-    unsigned j;
-    ge_cached selected;
-    ge_cached_0(&selected);
-    for (j = 0; j < 16; j++) {
-      cmov_cached(&selected, &Ai[j], equal(j, index));
-    }
-
-    x25519_ge_add(&t, &u, &selected);
-    x25519_ge_p1p1_to_p2(r, &t);
-  }
-}
 
 static void slide(signed char *r, const uint8_t *a) {
   int i;
@@ -3798,7 +3723,7 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
  *   s[0]+256*s[1]+...+256^31*s[31] = s mod l
  *   where l = 2^252 + 27742317777372353535851937790883648493.
  *   Overwrites s in place. */
-void x25519_sc_reduce(uint8_t *s) {
+static void x25519_sc_reduce(uint8_t *s) {
   int64_t s0 = 2097151 & load_3(s);
   int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
   int64_t s2 = 2097151 & (load_3(s + 5) >> 2);
@@ -4632,7 +4557,7 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
 
 void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512_4(az, sizeof(az), in, 32, NULL, 0, NULL, 0, NULL, 0);
+  GFp_SHA512_4(az, sizeof(az), in, 32, NULL, 0, NULL, 0, NULL, 0);
 
   az[0] &= 248;
   az[31] &= 63;
@@ -4646,15 +4571,15 @@ void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]) {
 void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
                       size_t message_len, const uint8_t private_key[64]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
+  GFp_SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
 
   az[0] &= 248;
   az[31] &= 63;
   az[31] |= 64;
 
   uint8_t nonce[SHA512_DIGEST_LENGTH];
-  SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
-           NULL, 0);
+  GFp_SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
+               NULL, 0);
 
   x25519_sc_reduce(nonce);
   ge_p3 R;
@@ -4662,8 +4587,8 @@ void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
   ge_p3_tobytes(out_sig, &R);
 
   uint8_t hram[SHA512_DIGEST_LENGTH];
-  SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
-           message_len, NULL, 0);
+  GFp_SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
+               message_len, NULL, 0);
 
   x25519_sc_reduce(hram);
   sc_muladd(out_sig + 32, hram, az, nonce);
@@ -4689,8 +4614,8 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
   memcpy(scopy, signature + 32, 32);
 
   uint8_t h[SHA512_DIGEST_LENGTH];
-  SHA512_4(h, sizeof(h), signature, 32, public_key, 32, message, message_len,
-           NULL, 0);
+  GFp_SHA512_4(h, sizeof(h), signature, 32, public_key, 32, message,
+               message_len, NULL, 0);
 
   x25519_sc_reduce(h);
 
@@ -4708,7 +4633,7 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
 
 static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                                const uint8_t point[32]) {
-  x25519_x86_64(out, scalar, point);
+  GFp_x25519_x86_64(out, scalar, point);
 }
 
 #else
@@ -4847,7 +4772,7 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                                const uint8_t point[32]) {
 #if defined(BORINGSSL_X25519_NEON)
   if (GFp_is_NEON_capable()) {
-    x25519_NEON(out, scalar, point);
+    GFp_x25519_NEON(out, scalar, point);
     return;
   }
 #endif
@@ -4893,7 +4818,7 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
 #if defined(BORINGSSL_X25519_NEON)
   if (GFp_is_NEON_capable()) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
-    x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
+    GFp_x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
     return;
   }
 #endif

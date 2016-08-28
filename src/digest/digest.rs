@@ -443,11 +443,11 @@ fn sha512_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
 #[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]
-pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
-                       part1: *const u8, part1_len: c::size_t,
-                       part2: *const u8, part2_len: c::size_t,
-                       part3: *const u8, part3_len: c::size_t,
-                       part4: *const u8, part4_len: c::size_t) {
+pub extern fn GFp_SHA512_4(out: *mut u8, out_len: c::size_t,
+                           part1: *const u8, part1_len: c::size_t,
+                           part2: *const u8, part2_len: c::size_t,
+                           part3: *const u8, part3_len: c::size_t,
+                           part4: *const u8, part4_len: c::size_t) {
     fn maybe_update(ctx: &mut Context, part: *const u8, part_len: c::size_t) {
         if part_len != 0 {
             assert!(!part.is_null());
