@@ -362,6 +362,7 @@ mod tests {
         })
     }
 
+
     // This verifies the encryption functionality provided by ChaCha20_ctr32
     // is successful when either computed on disjoint input/output buffers,
     // or on overlapping input/output buffers. On some branches of the 32-bit
@@ -418,30 +419,32 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-            ChaCha20_ctr32(buf.as_mut_ptr(), input.as_ptr(), len, key, ctr);
+            ChaCha20_ctr32(buf.as_mut_ptr(), input[..len].as_ptr(),
+                           len, key, ctr);
         }
         assert_eq!(&buf[..len], output);
 
         // Do not test offset buffers for x86 and ARM architectures (see above
         // for rationale).
-        let max_offset = if cfg!(any(target_arch = "x86", target_arch = "arm")){
-            0
-        } else {
-            259
-        };
+        let max_offset =
+            if cfg!(any(target_arch = "x86", target_arch = "arm")) {
+                0
+            } else {
+                259
+            };
 
         // Check that in-place encryption works successfully when the pointers
         // to the input/output buffers are (partially) overlapping.
         for alignment in 0..16 {
             for offset in 0..(max_offset + 1) {
                 let input_offset = alignment + offset;
-                buf[input_offset..input_offset + len].copy_from_slice(input);
+                buf[input_offset..][..len].copy_from_slice(input);
                 unsafe {
                     ChaCha20_ctr32(buf[alignment..].as_mut_ptr(),
                                    buf[input_offset..].as_ptr(),
                                    len, key, ctr);
                 }
-                assert_eq!(&buf[alignment..alignment + len], output);
+                assert_eq!(&buf[alignment..][..len], output);
             }
         }
     }

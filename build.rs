@@ -19,7 +19,6 @@
     const_err,
     dead_code,
     deprecated,
-    drop_with_repr_extern,
     exceeding_bitshifts,
     fat_ptr_transmutes,
     improper_ctypes,
