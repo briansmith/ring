@@ -50,14 +50,12 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
          ad)
 }
 
-fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
-                            ad: &[u8], ciphertext: &[u8]) {
+fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8], ciphertext: &[u8]) {
     fn update_padded_16(state: &mut [u8; POLY1305_STATE_LEN], data: &[u8]) {
         poly1305_update(state, data);
         if data.len() % 16 != 0 {
             static PADDING: [u8; 16] = [0u8; 16];
-            poly1305_update(state,
-                            &PADDING[..PADDING.len() - (data.len() % 16)])
+            poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
         }
     }
     update_padded_16(state, ad);
@@ -153,8 +151,7 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
         // has this limitation and come up with a better solution.
         //
         // https://rt.openssl.org/Ticket/Display.html?id=4362
-        if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
-           in_prefix_len != 0 {
+        if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
             ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
                            in_out[in_prefix_len..].as_ptr(),
                            in_out.len() - in_prefix_len, chacha20_key, &counter);
@@ -170,9 +167,8 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
 
 fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
               -> Result<&[u32; CHACHA20_KEY_LEN / 4], error::Unspecified> {
-    slice_as_array_ref!(
-        &polyfill::slice::u64_as_u32(ctx)[..(CHACHA20_KEY_LEN / 4)],
-        CHACHA20_KEY_LEN / 4)
+    slice_as_array_ref!(&polyfill::slice::u64_as_u32(ctx)[..(CHACHA20_KEY_LEN / 4)],
+                        CHACHA20_KEY_LEN / 4)
 }
 
 #[inline]
@@ -219,31 +215,23 @@ fn poly1305_update_length(ctx: &mut [u8; POLY1305_STATE_LEN], len: usize) {
 
 /// Safe wrapper around |CRYPTO_poly1305_init|.
 #[inline(always)]
-fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
-                 key: &[u8; POLY1305_KEY_LEN]) {
-    unsafe {
-        CRYPTO_poly1305_init(state, key)
-    }
+fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN], key: &[u8; POLY1305_KEY_LEN]) {
+    unsafe { CRYPTO_poly1305_init(state, key) }
 }
 
 /// Safe wrapper around |CRYPTO_poly1305_finish|.
 #[inline(always)]
-fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
-                   tag_out: &mut [u8; aead::TAG_LEN]) {
-    unsafe {
-        CRYPTO_poly1305_finish(state, tag_out)
-    }
+fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN], tag_out: &mut [u8; aead::TAG_LEN]) {
+    unsafe { CRYPTO_poly1305_finish(state, tag_out) }
 }
 
 /// Safe wrapper around |CRYPTO_poly1305_update|.
 #[inline(always)]
 fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
-    unsafe {
-        CRYPTO_poly1305_update(state, in_.as_ptr(), in_.len())
-    }
+    unsafe { CRYPTO_poly1305_update(state, in_.as_ptr(), in_.len()) }
 }
 
-extern {
+extern "C" {
     fn ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
                       key: &[u32; CHACHA20_KEY_LEN / 4], counter: &[u32; 4]);
     fn CRYPTO_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
@@ -257,27 +245,25 @@ extern {
 #[cfg(test)]
 mod tests {
     use {aead, test, error, c, polyfill};
-    use super::{ChaCha20_ctr32, CHACHA20_KEY_LEN,
-        POLY1305_STATE_LEN, POLY1305_KEY_LEN,
-        poly1305_init, poly1305_update, poly1305_finish,
-        make_counter, };
+    use super::{ChaCha20_ctr32, CHACHA20_KEY_LEN, POLY1305_STATE_LEN, POLY1305_KEY_LEN,
+                poly1305_init, poly1305_update, poly1305_finish, make_counter};
 
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
-            "crypto/cipher/test/chacha20_poly1305_tests.txt");
+                               "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
 
     #[test]
     pub fn test_chacha20_poly1305_old() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305_OLD,
-            "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
+                               "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
     }
 
     #[test]
     pub fn test_poly1305_state_len() {
         assert_eq!((POLY1305_STATE_LEN + 255) / 256,
-                    (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
+                   (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
     }
 
     fn test_simd(excess: usize, key: [u8; POLY1305_KEY_LEN],
@@ -289,10 +275,10 @@ mod tests {
 
         // Feed 16 bytes in. Some implementations begin in non-SIMD mode and
         // upgrade on-demand. Stress the upgrade path.
-        let init = if input.len() < 16 {input.len()} else {16};
+        let init = if input.len() < 16 { input.len() } else { 16 };
 
         poly1305_update(&mut state, &input[..init]);
-        for chunk in input[init..].chunks(128 + 2*excess) {
+        for chunk in input[init..].chunks(128 + 2 * excess) {
             let (long, short) = if chunk.len() < (128 + excess) {
                 (chunk, &[][..])
             } else {
@@ -343,7 +329,7 @@ mod tests {
             poly1305_finish(&mut state, &mut mac_out);
             assert_eq!(mac, mac_out);
 
-            //Test streaming byte-by-byte
+            // Test streaming byte-by-byte
             let mut state = [0u8; POLY1305_STATE_LEN];
             let mut mac_out = [0u8; aead::TAG_LEN];
             poly1305_init(&mut state, &key);
@@ -419,19 +405,17 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-            ChaCha20_ctr32(buf.as_mut_ptr(), input[..len].as_ptr(),
-                           len, key, ctr);
+            ChaCha20_ctr32(buf.as_mut_ptr(), input[..len].as_ptr(), len, key, ctr);
         }
         assert_eq!(&buf[..len], output);
 
         // Do not test offset buffers for x86 and ARM architectures (see above
         // for rationale).
-        let max_offset =
-            if cfg!(any(target_arch = "x86", target_arch = "arm")) {
-                0
-            } else {
-                259
-            };
+        let max_offset = if cfg!(any(target_arch = "x86", target_arch = "arm")) {
+            0
+        } else {
+            259
+        };
 
         // Check that in-place encryption works successfully when the pointers
         // to the input/output buffers are (partially) overlapping.
@@ -449,7 +433,7 @@ mod tests {
         }
     }
 
-    extern {
+    extern "C" {
         static CRYPTO_POLY1305_STATE_LEN: c::size_t;
     }
 }
