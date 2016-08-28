@@ -26,6 +26,15 @@ add_executable(
   $<TARGET_OBJECTS:test_support>
 )
 
+add_executable(
+  ecdsa_verify_test
+
+  ecdsa_verify_test.cc
+
+  $<TARGET_OBJECTS:test_support>
+)
+
 target_link_libraries(ecdsa_test crypto)
 target_link_libraries(ecdsa_sign_test crypto)
-add_dependencies(all_tests ecdsa_test ecdsa_sign_test)
+target_link_libraries(ecdsa_verify_test crypto)
+add_dependencies(all_tests ecdsa_test ecdsa_sign_test ecdsa_verify_test)
