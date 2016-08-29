@@ -57,9 +57,9 @@ x25519_x86_64__38:         .quad 38
 .text
 .p2align 5
 
-.globl C_ABI(x25519_x86_64_freeze)
-HIDDEN C_ABI(x25519_x86_64_freeze)
-C_ABI(x25519_x86_64_freeze):
+.globl C_ABI(GFp_x25519_x86_64_freeze)
+HIDDEN C_ABI(GFp_x25519_x86_64_freeze)
+C_ABI(GFp_x25519_x86_64_freeze):
 mov %rsp,%r11
 and $31,%r11
 add $64,%r11
@@ -141,9 +141,9 @@ mov %rsi,%rdx
 ret
 
 .p2align 5
-.globl C_ABI(x25519_x86_64_mul)
-HIDDEN C_ABI(x25519_x86_64_mul)
-C_ABI(x25519_x86_64_mul):
+.globl C_ABI(GFp_x25519_x86_64_mul)
+HIDDEN C_ABI(GFp_x25519_x86_64_mul)
+C_ABI(GFp_x25519_x86_64_mul):
 mov %rsp,%r11
 and $31,%r11
 add $96,%r11
@@ -320,9 +320,9 @@ mov %rsi,%rdx
 ret
 
 .p2align 5
-.globl C_ABI(x25519_x86_64_square)
-HIDDEN C_ABI(x25519_x86_64_square)
-C_ABI(x25519_x86_64_square):
+.globl C_ABI(GFp_x25519_x86_64_square)
+HIDDEN C_ABI(GFp_x25519_x86_64_square)
+C_ABI(GFp_x25519_x86_64_square):
 mov %rsp,%r11
 and $31,%r11
 add $64,%r11
@@ -462,9 +462,9 @@ mov %rsi,%rdx
 ret
 
 .p2align 5
-.globl C_ABI(x25519_x86_64_ladderstep)
-HIDDEN C_ABI(x25519_x86_64_ladderstep)
-C_ABI(x25519_x86_64_ladderstep):
+.globl C_ABI(GFp_x25519_x86_64_ladderstep)
+HIDDEN C_ABI(GFp_x25519_x86_64_ladderstep)
+C_ABI(GFp_x25519_x86_64_ladderstep):
 mov %rsp,%r11
 and $31,%r11
 add $352,%r11
@@ -1850,9 +1850,9 @@ mov %rsi,%rdx
 ret
 
 .p2align 5
-.globl C_ABI(x25519_x86_64_work_cswap)
-HIDDEN C_ABI(x25519_x86_64_work_cswap)
-C_ABI(x25519_x86_64_work_cswap):
+.globl C_ABI(GFp_x25519_x86_64_work_cswap)
+HIDDEN C_ABI(GFp_x25519_x86_64_work_cswap)
+C_ABI(GFp_x25519_x86_64_work_cswap):
 mov %rsp,%r11
 and $31,%r11
 add $0,%r11

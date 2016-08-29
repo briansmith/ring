@@ -62,14 +62,14 @@
 #include "internal.h"
 
 
-BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
+BIGNUM *GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   size_t num_words;
   unsigned m;
   BN_ULONG word = 0;
   BIGNUM *bn = NULL;
 
   if (ret == NULL) {
-    ret = bn = BN_new();
+    ret = bn = GFp_BN_new();
   }
 
   if (ret == NULL) {
@@ -83,14 +83,14 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
 
   num_words = ((len - 1) / BN_BYTES) + 1;
   m = (len - 1) % BN_BYTES;
-  if (bn_wexpand(ret, num_words) == NULL) {
+  if (GFp_bn_wexpand(ret, num_words) == NULL) {
     if (bn) {
-      BN_free(bn);
+      GFp_BN_free(bn);
     }
     return NULL;
   }
 
-  /* |bn_wexpand| must check bounds on |num_words| to write it into
+  /* |GFp_bn_wexpand| must check bounds on |num_words| to write it into
    * |ret->dmax|. */
   assert(num_words <= INT_MAX);
   ret->top = (int)num_words;
@@ -107,7 +107,7 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
 
   /* need to call this due to clear byte at top if avoiding having the top bit
    * set (-ve number) */
-  bn_correct_top(ret);
+  GFp_bn_correct_top(ret);
   return ret;
 }
 
@@ -140,12 +140,12 @@ static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
   return constant_time_select_ulong(constant_time_le_size_t(in->top, i), 0, l);
 }
 
-int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
+int GFp_BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
   size_t i;
   BN_ULONG l;
 
   /* Special case for |in| = 0. Just branch as the probability is negligible. */
-  if (BN_is_zero(in)) {
+  if (GFp_BN_is_zero(in)) {
     memset(out, 0, len);
     return 1;
   }

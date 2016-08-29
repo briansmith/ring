@@ -125,7 +125,7 @@ impl PositiveInteger {
                 -> Result<PositiveInteger, error::Unspecified> {
         let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
         let res = unsafe {
-            BN_bin2bn(bytes.as_ptr(), bytes.len(), core::ptr::null_mut())
+            GFp_BN_bin2bn(bytes.as_ptr(), bytes.len(), core::ptr::null_mut())
         };
         if res.is_null() {
             return Err(error::Unspecified);
@@ -148,7 +148,7 @@ impl Drop for PositiveInteger {
     fn drop(&mut self) {
         match self.value {
             Some(val) => unsafe {
-                BN_free(val);
+                GFp_BN_free(val);
             },
             None => {},
         }
@@ -171,8 +171,8 @@ pub mod signing;
 
 #[cfg(feature = "rsa_signing")]
 extern {
-    fn BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
-                 -> *mut BIGNUM;
-    fn BN_free(bn: *mut BIGNUM);
-    fn BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
+    fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
+                     -> *mut BIGNUM;
+    fn GFp_BN_free(bn: *mut BIGNUM);
+    fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }

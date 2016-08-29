@@ -101,14 +101,14 @@ $code=<<___;
 #if __ARM_MAX_ARCH__>=7
 .align	5
 .LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lbn_mul_mont
+.word	GFp_armcap_P-.Lbn_mul_mont
 #endif
 
-.global	bn_mul_mont
-.type	bn_mul_mont,%function
+.global	GFp_bn_mul_mont
+.type	GFp_bn_mul_mont,%function
 
 .align	5
-bn_mul_mont:
+GFp_bn_mul_mont:
 .Lbn_mul_mont:
 	ldr	ip,[sp,#4]		@ load num
 	stmdb	sp!,{r0,r2}		@ sp points at argument block
@@ -278,7 +278,7 @@ bn_mul_mont:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	bn_mul_mont,.-bn_mul_mont
+.size	GFp_bn_mul_mont,.-GFp_bn_mul_mont
 ___
 {
 my ($A0,$A1,$A2,$A3)=map("d$_",(0..3));
@@ -732,8 +732,8 @@ $code.=<<___;
 .asciz	"Montgomery multiplication for ARMv4/NEON, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if __ARM_MAX_ARCH__>=7
-.comm	OPENSSL_armcap_P,4,4
-.hidden	OPENSSL_armcap_P
+.comm	GFp_armcap_P,4,4
+.hidden	GFp_armcap_P
 #endif
 ___
 

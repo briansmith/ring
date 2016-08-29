@@ -64,7 +64,7 @@
 #include "internal.h"
 
 
-int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   const BIGNUM *tmp;
   int a_neg = a->neg, ret;
 
@@ -82,13 +82,13 @@ int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     }
 
     /* we are now a - b */
-    if (BN_ucmp(a, b) < 0) {
-      if (!BN_usub_unchecked(r, b, a)) {
+    if (GFp_BN_ucmp(a, b) < 0) {
+      if (!GFp_BN_usub_unchecked(r, b, a)) {
         return 0;
       }
       r->neg = 1;
     } else {
-      if (!BN_usub_unchecked(r, a, b)) {
+      if (!GFp_BN_usub_unchecked(r, a, b)) {
         return 0;
       }
       r->neg = 0;
@@ -96,12 +96,12 @@ int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     return 1;
   }
 
-  ret = BN_uadd(r, a, b);
+  ret = GFp_BN_uadd(r, a, b);
   r->neg = a_neg;
   return ret;
 }
 
-int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   int max, min, dif;
   BN_ULONG *ap, *bp, *rp, carry, t1, t2;
   const BIGNUM *tmp;
@@ -115,7 +115,7 @@ int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   min = b->top;
   dif = max - min;
 
-  if (bn_wexpand(r, max + 1) == NULL) {
+  if (GFp_bn_wexpand(r, max + 1) == NULL) {
     return 0;
   }
 
@@ -125,7 +125,7 @@ int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   bp = b->d;
   rp = r->d;
 
-  carry = bn_add_words(rp, ap, bp, min);
+  carry = GFp_bn_add_words(rp, ap, bp, min);
   rp += min;
   ap += min;
   bp += min;
@@ -159,7 +159,7 @@ int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   int max;
   int add = 0, neg = 0;
   const BIGNUM *tmp;
@@ -186,7 +186,7 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   }
 
   if (add) {
-    if (!BN_uadd(r, a, b)) {
+    if (!GFp_BN_uadd(r, a, b)) {
       return 0;
     }
 
@@ -197,17 +197,17 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   /* We are actually doing a - b :-) */
 
   max = (a->top > b->top) ? a->top : b->top;
-  if (bn_wexpand(r, max) == NULL) {
+  if (GFp_bn_wexpand(r, max) == NULL) {
     return 0;
   }
 
-  if (BN_ucmp(a, b) < 0) {
-    if (!BN_usub_unchecked(r, b, a)) {
+  if (GFp_BN_ucmp(a, b) < 0) {
+    if (!GFp_BN_usub_unchecked(r, b, a)) {
       return 0;
     }
     r->neg = 1;
   } else {
-    if (!BN_usub_unchecked(r, a, b)) {
+    if (!GFp_BN_usub_unchecked(r, a, b)) {
       return 0;
     }
     r->neg = 0;
@@ -216,15 +216,15 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  assert(!BN_is_negative(a));
-  assert(!BN_is_negative(b));
-  assert(BN_cmp(a, b) >= 0);
-  return BN_usub_unchecked(r, a, b);
+int GFp_BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  assert(!GFp_BN_is_negative(a));
+  assert(!GFp_BN_is_negative(b));
+  assert(GFp_BN_cmp(a, b) >= 0);
+  return GFp_BN_usub_unchecked(r, a, b);
 }
 
 
-int BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   int max, min, dif;
   register BN_ULONG t1, t2, *ap, *bp, *rp;
   int i, carry;
@@ -239,7 +239,7 @@ int BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     return 0;
   }
 
-  if (bn_wexpand(r, max) == NULL) {
+  if (GFp_bn_wexpand(r, max) == NULL) {
     return 0;
   }
 
@@ -285,7 +285,7 @@ int BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 
   r->top = max;
   r->neg = 0;
-  bn_correct_top(r);
+  GFp_bn_correct_top(r);
 
   return 1;
 }

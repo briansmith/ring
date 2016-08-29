@@ -341,7 +341,7 @@ pub static SHA256: Algorithm = Algorithm {
     chaining_len: 256 / 8,
     block_len: 512 / 8,
     len_len: 64 / 8,
-    block_data_order: sha256_block_data_order,
+    block_data_order: GFp_sha256_block_data_order,
     format_output: sha256_format_output,
     initial_state: [
         u32x2!(0x6a09e667u32, 0xbb67ae85u32),
@@ -360,7 +360,7 @@ pub static SHA384: Algorithm = Algorithm {
     chaining_len: 512 / 8,
     block_len: 1024 / 8,
     len_len: 128 / 8,
-    block_data_order: sha512_block_data_order,
+    block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: [
         0xcbbb9d5dc1059ed8,
@@ -382,7 +382,7 @@ pub static SHA512: Algorithm = Algorithm {
     chaining_len: 512 / 8,
     block_len: 1024 / 8,
     len_len: 128 / 8,
-    block_data_order: sha512_block_data_order,
+    block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: [
         0x6a09e667f3bcc908,
@@ -443,11 +443,11 @@ fn sha512_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
 #[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]
-pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
-                       part1: *const u8, part1_len: c::size_t,
-                       part2: *const u8, part2_len: c::size_t,
-                       part3: *const u8, part3_len: c::size_t,
-                       part4: *const u8, part4_len: c::size_t) {
+pub extern fn GFp_SHA512_4(out: *mut u8, out_len: c::size_t,
+                           part1: *const u8, part1_len: c::size_t,
+                           part2: *const u8, part2_len: c::size_t,
+                           part3: *const u8, part3_len: c::size_t,
+                           part4: *const u8, part4_len: c::size_t) {
     fn maybe_update(ctx: &mut Context, part: *const u8, part_len: c::size_t) {
         if part_len != 0 {
             assert!(!part.is_null());
@@ -467,10 +467,10 @@ pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
 }
 
 extern {
-    fn sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                               data: *const u8, num: c::size_t);
-    fn sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                               data: *const u8, num: c::size_t);
+    fn GFp_sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
+                                   data: *const u8, num: c::size_t);
+    fn GFp_sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
+                                   data: *const u8, num: c::size_t);
 }
 
 #[cfg(test)]

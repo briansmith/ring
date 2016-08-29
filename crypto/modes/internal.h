@@ -102,7 +102,7 @@ struct gcm128_context {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
  * used. */
-int crypto_gcm_clmul_enabled(void);
+int GFp_gcm_clmul_enabled(void);
 #endif
 
 
@@ -122,62 +122,61 @@ typedef void (*aes_ctr_f)(const uint8_t *in, uint8_t *out, size_t blocks,
 
 typedef struct gcm128_context GCM128_CONTEXT;
 
-OPENSSL_EXPORT void CRYPTO_gcm128_init_serialized(
+OPENSSL_EXPORT void GFp_gcm128_init_serialized(
     uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
     aes_block_f block);
 
-OPENSSL_EXPORT void CRYPTO_gcm128_init(
+OPENSSL_EXPORT void GFp_gcm128_init(
     GCM128_CONTEXT *ctx, const AES_KEY *key, aes_block_f block,
     const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const uint8_t *iv);
 
-/* CRYPTO_gcm128_aad sets the authenticated data for an instance of GCM.
- * This must be called before and data is encrypted. It returns one on success
- * and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
-                                     size_t len);
-
-/* CRYPTO_gcm128_encrypt encrypts |len| bytes from |in| to |out|. The |key|
- * must be the same key that was passed to |CRYPTO_gcm128_init|. It returns one
- * on success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx,
-                                         const AES_KEY *key, const uint8_t *in,
-                                         uint8_t *out, size_t len);
-
-/* CRYPTO_gcm128_decrypt decrypts |len| bytes from |in| to |out|. The |key|
- * must be the same key that was passed to |CRYPTO_gcm128_init|. It returns one
- * on success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx,
-                                         const AES_KEY *key, const uint8_t *in,
-                                         uint8_t *out, size_t len);
-
-/* CRYPTO_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using
- * a CTR function that only handles the bottom 32 bits of the nonce, like
- * |CRYPTO_ctr128_encrypt_ctr32|. The |key| must be the same key that was
- * passed to |CRYPTO_gcm128_init|. It returns one on success and zero
+/* GFp_gcm128_aad sets the authenticated data for an instance of GCM. This must
+ * be called before and data is encrypted. It returns one on success and zero
  * otherwise. */
-OPENSSL_EXPORT int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
-                                               const AES_KEY *key,
-                                               const uint8_t *in, uint8_t *out,
-                                               size_t len, aes_ctr_f stream);
+OPENSSL_EXPORT int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
+                                  size_t len);
 
-/* CRYPTO_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using
- * a CTR function that only handles the bottom 32 bits of the nonce, like
- * |CRYPTO_ctr128_encrypt_ctr32|. The |key| must be the same key that was
- * passed to |CRYPTO_gcm128_init|. It returns one on success and zero
- * otherwise. */
-OPENSSL_EXPORT int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
-                                               const AES_KEY *key,
-                                               const uint8_t *in, uint8_t *out,
-                                               size_t len, aes_ctr_f stream);
+/* GFp_gcm128_encrypt encrypts |len| bytes from |in| to |out|. The |key| must
+ * be the same key that was passed to |GFp_gcm128_init|. It returns one on
+ * success and zero otherwise. */
+OPENSSL_EXPORT int GFp_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                                      const uint8_t *in, uint8_t *out,
+                                      size_t len);
 
-/* CRYPTO_gcm128_tag calculates the authenticator and copies it into |tag|. */
-OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]);
+/* GFp_gcm128_decrypt decrypts |len| bytes from |in| to |out|. The |key| must
+ * be the same key that was passed to |GFp_gcm128_init|. It returns one on
+ * success and zero otherwise. */
+OPENSSL_EXPORT int GFp_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                                      const uint8_t *in, uint8_t *out,
+                                      size_t len);
+
+/* GFp_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using a CTR
+ * function that only handles the bottom 32 bits of the nonce, like
+ * |GFp_ctr128_encrypt_ctr32|. The |key| must be the same key that was passed
+ * to |GFp_gcm128_init|. It returns one on success and zero otherwise. */
+OPENSSL_EXPORT int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
+                                            const AES_KEY *key,
+                                            const uint8_t *in, uint8_t *out,
+                                            size_t len, aes_ctr_f stream);
+
+/* GFp_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using a CTR
+ * function that only handles the bottom 32 bits of the nonce, like
+ * |GFp_ctr128_encrypt_ctr32|. The |key| must be the same key that was passed
+ * to |GFp_gcm128_init|. It returns one on success and zero otherwise. */
+OPENSSL_EXPORT int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
+                                            const AES_KEY *key,
+                                            const uint8_t *in, uint8_t *out,
+                                            size_t len, aes_ctr_f stream);
+
+/* GFp_gcm128_tag calculates the authenticator and copies it into |tag|. */
+OPENSSL_EXPORT void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]);
 
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
-void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
-                                const AES_KEY *key, const uint8_t *ivec);
+void GFp_aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                    size_t blocks, const AES_KEY *key,
+                                    const uint8_t *ivec);
 #endif
 
 #if defined(__cplusplus)

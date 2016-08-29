@@ -125,7 +125,7 @@ int BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
   }
 
   if (bits == 0) {
-    BN_zero(rnd);
+    GFp_BN_zero(rnd);
     return 1;
   }
 
@@ -148,7 +148,7 @@ int BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
   buf[0] |= (1 << bit);
   buf[0] &= ~mask;
 
-  if (!BN_bin2bn(buf, bytes, rnd)) {
+  if (!GFp_BN_bin2bn(buf, bytes, rnd)) {
     goto err;
   }
 

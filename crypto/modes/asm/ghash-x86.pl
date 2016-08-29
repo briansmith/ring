@@ -261,7 +261,7 @@ sub deposit_rem_4bit {
 
 $suffix = $x86only ? "" : "_x86";
 
-&function_begin("gcm_gmult_4bit".$suffix);
+&function_begin("GFp_gcm_gmult_4bit".$suffix);
 	&stack_push(16+4+1);			# +1 for stack alignment
 	&mov	($inp,&wparam(0));		# load Xi
 	&mov	($Htbl,&wparam(1));		# load Htable
@@ -292,9 +292,9 @@ $suffix = $x86only ? "" : "_x86";
 	&mov	(&DWP(4,$inp),$Zhl);
 	&mov	(&DWP(0,$inp),$Zhh);
 	&stack_pop(16+4+1);
-&function_end("gcm_gmult_4bit".$suffix);
+&function_end("GFp_gcm_gmult_4bit".$suffix);
 
-&function_begin("gcm_ghash_4bit".$suffix);
+&function_begin("GFp_gcm_ghash_4bit".$suffix);
 	&stack_push(16+4+1);			# +1 for 64-bit alignment
 	&mov	($Zll,&wparam(0));		# load Xi
 	&mov	($Htbl,&wparam(1));		# load Htable
@@ -340,7 +340,7 @@ $suffix = $x86only ? "" : "_x86";
 	&mov	(&DWP(4,$inp),$Zhl);
 	&mov	(&DWP(0,$inp),$Zhh);
 	&stack_pop(16+4+1);
-&function_end("gcm_ghash_4bit".$suffix);
+&function_end("GFp_gcm_ghash_4bit".$suffix);
 
 if (!$x86only) {{{
 
@@ -422,7 +422,7 @@ $S=12;		# shift factor for rem_4bit
 }
 &function_end_B("_mmx_gmult_4bit_inner");
 
-&function_begin("gcm_gmult_4bit_mmx");
+&function_begin("GFp_gcm_gmult_4bit_mmx");
 	&mov	($inp,&wparam(0));	# load Xi
 	&mov	($Htbl,&wparam(1));	# load Htable
 
@@ -441,11 +441,11 @@ $S=12;		# shift factor for rem_4bit
 	&mov	(&DWP(4,$inp),$Zhl);
 	&mov	(&DWP(8,$inp),$Zlh);
 	&mov	(&DWP(0,$inp),$Zhh);
-&function_end("gcm_gmult_4bit_mmx");
+&function_end("GFp_gcm_gmult_4bit_mmx");
 
 # Streamed version performs 20% better on P4, 7% on Opteron,
 # 10% on Core2 and PIII...
-&function_begin("gcm_ghash_4bit_mmx");
+&function_begin("GFp_gcm_ghash_4bit_mmx");
 	&mov	($Zhh,&wparam(0));	# load Xi
 	&mov	($Htbl,&wparam(1));	# load Htable
 	&mov	($inp,&wparam(2));	# load in
@@ -495,10 +495,10 @@ $S=12;		# shift factor for rem_4bit
 	&mov	(&DWP(0,$inp),$Zhh);
 
 	&stack_pop(4+1);
-&function_end("gcm_ghash_4bit_mmx");
+&function_end("GFp_gcm_ghash_4bit_mmx");
 
 }} else {{	# "June" MMX version...
-		# ... has slower "April" gcm_gmult_4bit_mmx with folded
+		# ... has slower "April" GFp_gcm_gmult_4bit_mmx with folded
 		# loop. This is done to conserve code size...
 $S=16;		# shift factor for rem_4bit
 
@@ -595,7 +595,7 @@ sub mmx_loop() {
 	&bswap	($Zhh);
 }
 
-&function_begin("gcm_gmult_4bit_mmx");
+&function_begin("GFp_gcm_gmult_4bit_mmx");
 	&mov	($inp,&wparam(0));	# load Xi
 	&mov	($Htbl,&wparam(1));	# load Htable
 
@@ -613,7 +613,7 @@ sub mmx_loop() {
 	&mov	(&DWP(4,$inp),$Zhl);
 	&mov	(&DWP(8,$inp),$Zlh);
 	&mov	(&DWP(0,$inp),$Zhh);
-&function_end("gcm_gmult_4bit_mmx");
+&function_end("GFp_gcm_gmult_4bit_mmx");
 
 ######################################################################
 # Below subroutine is "528B" variant of "4-bit" GCM GHASH function
@@ -622,7 +622,7 @@ sub mmx_loop() {
 
 &static_label("rem_8bit");
 
-&function_begin("gcm_ghash_4bit_mmx");
+&function_begin("GFp_gcm_ghash_4bit_mmx");
 { my ($Zlo,$Zhi) = ("mm7","mm6");
   my $rem_8bit = "esi";
   my $Htbl = "ebx";
@@ -817,7 +817,7 @@ sub mmx_loop() {
     &mov	("esp",&DWP(528+16+12,"esp"));	# restore original %esp
     &emms	();
 }
-&function_end("gcm_ghash_4bit_mmx");
+&function_end("GFp_gcm_ghash_4bit_mmx");
 }}
 
 if ($sse2) {{
@@ -862,7 +862,7 @@ my ($Xhi,$Xi,$Hkey,$HK)=@_;
 sub clmul64x64_T3 {
 # Even though this subroutine offers visually better ILP, it
 # was empirically found to be a tad slower than above version.
-# At least in gcm_ghash_clmul context. But it's just as well,
+# At least in GFp_gcm_ghash_clmul context. But it's just as well,
 # because loop modulo-scheduling is possible only thanks to
 # minimized "register" pressure...
 my ($Xhi,$Xi,$Hkey)=@_;
@@ -923,7 +923,7 @@ my ($Xhi,$Xi) = @_;
 	&pxor		($Xi,$Xhi)		#
 }
 
-&function_begin_B("gcm_init_clmul");
+&function_begin_B("GFp_gcm_init_clmul");
 	&mov		($Htbl,&wparam(0));
 	&mov		($Xip,&wparam(1));
 
@@ -964,9 +964,9 @@ my ($Xhi,$Xi) = @_;
 	&movdqu		(&QWP(32,$Htbl),$T2);	# save Karatsuba "salt"
 
 	&ret		();
-&function_end_B("gcm_init_clmul");
+&function_end_B("GFp_gcm_init_clmul");
 
-&function_begin_B("gcm_gmult_clmul");
+&function_begin_B("GFp_gcm_gmult_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 
@@ -988,9 +988,9 @@ my ($Xhi,$Xi) = @_;
 	&movdqu		(&QWP(0,$Xip),$Xi);
 
 	&ret	();
-&function_end_B("gcm_gmult_clmul");
+&function_end_B("GFp_gcm_gmult_clmul");
 
-&function_begin("gcm_ghash_clmul");
+&function_begin("GFp_gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 	&mov		($inp,&wparam(2));
@@ -1139,7 +1139,7 @@ my ($Xhi,$Xi) = @_;
 &set_label("done");
 	&pshufb		($Xi,$T3);
 	&movdqu		(&QWP(0,$Xip),$Xi);
-&function_end("gcm_ghash_clmul");
+&function_end("GFp_gcm_ghash_clmul");
 
 } else {		# Algorith 5. Kept for reference purposes.
 
@@ -1188,7 +1188,7 @@ my ($Xhi,$Xi)=@_;
 	&pxor		($Xi,$Xhi);		#
 }
 
-&function_begin_B("gcm_init_clmul");
+&function_begin_B("GFp_gcm_init_clmul");
 	&mov		($Htbl,&wparam(0));
 	&mov		($Xip,&wparam(1));
 
@@ -1209,9 +1209,9 @@ my ($Xhi,$Xi)=@_;
 	&movdqu		(&QWP(16,$Htbl),$Xi);	# save H^2
 
 	&ret		();
-&function_end_B("gcm_init_clmul");
+&function_end_B("GFp_gcm_init_clmul");
 
-&function_begin_B("gcm_gmult_clmul");
+&function_begin_B("GFp_gcm_gmult_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 
@@ -1232,9 +1232,9 @@ my ($Xhi,$Xi)=@_;
 	&movdqu		(&QWP(0,$Xip),$Xi);
 
 	&ret	();
-&function_end_B("gcm_gmult_clmul");
+&function_end_B("GFp_gcm_gmult_clmul");
 
-&function_begin("gcm_ghash_clmul");
+&function_begin("GFp_gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 	&mov		($inp,&wparam(2));
@@ -1320,7 +1320,7 @@ my ($Xhi,$Xi)=@_;
 &set_label("done");
 	&pshufb		($Xi,$T3);
 	&movdqu		(&QWP(0,$Xip),$Xi);
-&function_end("gcm_ghash_clmul");
+&function_end("GFp_gcm_ghash_clmul");
 
 }
 

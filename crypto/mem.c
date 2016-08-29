@@ -56,7 +56,7 @@
 
 #include <openssl/mem.h>
 
-int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
+int GFp_memcmp(const void *in_a, const void *in_b, size_t len) {
   const uint8_t *a = in_a;
   const uint8_t *b = in_b;
   uint8_t x = 0;

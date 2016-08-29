@@ -29,8 +29,8 @@ extern "C" {
     !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_NO_ASM)
 #define BORINGSSL_X25519_X86_64
 
-void x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
-                   const uint8_t point[32]);
+void GFp_x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
+                       const uint8_t point[32]);
 #endif
 
 
@@ -38,8 +38,8 @@ void x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
 #define BORINGSSL_X25519_NEON
 
 /* x25519_NEON is defined in asm/x25519-arm.S. */
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]);
+void GFp_x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
+                     const uint8_t point[32]);
 #endif
 
 /* fe means field element. Here the field is \Z/(2^255-19). An element t,
@@ -92,19 +92,6 @@ typedef struct {
   fe Z;
   fe T2d;
 } ge_cached;
-
-void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h);
-int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s);
-void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p);
-void x25519_ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p);
-void x25519_ge_p1p1_to_p3(ge_p3 *r, const ge_p1p1 *p);
-void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q);
-void x25519_ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q);
-void x25519_ge_scalarmult_small_precomp(
-    ge_p3 *h, const uint8_t a[32], const uint8_t precomp_table[15 * 2 * 32]);
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
-void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A);
-void x25519_sc_reduce(uint8_t *s);
 
 
 #if defined(__cplusplus)

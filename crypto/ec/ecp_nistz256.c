@@ -40,16 +40,16 @@ typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void ecp_nistz256_point_mul_base(P256_POINT *r,
+void GFp_nistz256_point_mul_base(P256_POINT *r,
                                  const BN_ULONG g_scalar[P256_LIMBS]);
-void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
+void GFp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
                             const BN_ULONG p_x[P256_LIMBS],
                             const BN_ULONG p_y[P256_LIMBS]);
 
 
 /* Functions implemented in assembly */
 /* Modular neg: res = -a mod P */
-void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
+void GFp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
 
 
 /* One converted into the Montgomery domain */
@@ -96,15 +96,15 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
   }
 }
 
-void ecp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
-void ecp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
+void GFp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
+void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
                             const P256_POINT *b);
-void ecp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
+void GFp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
 
 
 /* r = p * p_scalar */
-void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
+void GFp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
                             const BN_ULONG p_x[P256_LIMBS],
                             const BN_ULONG p_y[P256_LIMBS]) {
   static const unsigned kWindowSize = 5;
@@ -128,21 +128,21 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   memcpy(row[1 - 1].Y, p_y, P256_LIMBS * BN_BYTES);
   memcpy(row[1 - 1].Z, ONE, P256_LIMBS * BN_BYTES);
 
-  ecp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
-  ecp_nistz256_point_double(&row[4 - 1], &row[2 - 1]);
-  ecp_nistz256_point_double(&row[6 - 1], &row[3 - 1]);
-  ecp_nistz256_point_double(&row[8 - 1], &row[4 - 1]);
-  ecp_nistz256_point_double(&row[12 - 1], &row[6 - 1]);
-  ecp_nistz256_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
-  ecp_nistz256_point_double(&row[14 - 1], &row[7 - 1]);
-  ecp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
-  ecp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
-  ecp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  ecp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
+  GFp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
+  GFp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
+  GFp_nistz256_point_double(&row[4 - 1], &row[2 - 1]);
+  GFp_nistz256_point_double(&row[6 - 1], &row[3 - 1]);
+  GFp_nistz256_point_double(&row[8 - 1], &row[4 - 1]);
+  GFp_nistz256_point_double(&row[12 - 1], &row[6 - 1]);
+  GFp_nistz256_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
+  GFp_nistz256_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
+  GFp_nistz256_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
+  GFp_nistz256_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
+  GFp_nistz256_point_double(&row[14 - 1], &row[7 - 1]);
+  GFp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
+  GFp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
+  GFp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
+  GFp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
@@ -158,7 +158,7 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
   assert(!recoded_is_negative);
-  ecp_nistz256_select_w5(r, table, recoded);
+  GFp_nistz256_select_w5(r, table, recoded);
 
   while (index >= kWindowSize) {
     if (index != START_INDEX) {
@@ -168,20 +168,20 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
       raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
       booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
 
-      ecp_nistz256_select_w5(&h, table, recoded);
-      ecp_nistz256_neg(tmp, h.Y);
+      GFp_nistz256_select_w5(&h, table, recoded);
+      GFp_nistz256_neg(tmp, h.Y);
       copy_conditional(h.Y, tmp, recoded_is_negative);
 
-      ecp_nistz256_point_add(r, r, &h);
+      GFp_nistz256_point_add(r, r, &h);
     }
 
     index -= kWindowSize;
 
-    ecp_nistz256_point_double(r, r);
-    ecp_nistz256_point_double(r, r);
-    ecp_nistz256_point_double(r, r);
-    ecp_nistz256_point_double(r, r);
-    ecp_nistz256_point_double(r, r);
+    GFp_nistz256_point_double(r, r);
+    GFp_nistz256_point_double(r, r);
+    GFp_nistz256_point_double(r, r);
+    GFp_nistz256_point_double(r, r);
+    GFp_nistz256_point_double(r, r);
   }
 
   /* Final window */
@@ -189,13 +189,13 @@ void ecp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   raw_wvalue = (raw_wvalue << 1) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-  ecp_nistz256_select_w5(&h, table, recoded);
-  ecp_nistz256_neg(tmp, h.Y);
+  GFp_nistz256_select_w5(&h, table, recoded);
+  GFp_nistz256_neg(tmp, h.Y);
   copy_conditional(h.Y, tmp, recoded_is_negative);
-  ecp_nistz256_point_add(r, r, &h);
+  GFp_nistz256_point_add(r, r, &h);
 }
 
-void ecp_nistz256_point_mul_base(P256_POINT *r,
+void GFp_nistz256_point_mul_base(P256_POINT *r,
                                  const BN_ULONG g_scalar[P256_LIMBS]) {
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
@@ -223,9 +223,9 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
   const PRECOMP256_ROW *const precomputed_table =
-      (const PRECOMP256_ROW *)ecp_nistz256_precomputed;
-  ecp_nistz256_select_w7(&p.a, precomputed_table[0], recoded);
-  ecp_nistz256_neg(p.p.Z, p.p.Y);
+      (const PRECOMP256_ROW *)GFp_nistz256_precomputed;
+  GFp_nistz256_select_w7(&p.a, precomputed_table[0], recoded);
+  GFp_nistz256_neg(p.p.Z, p.p.Y);
   copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
   memcpy(p.p.Z, ONE, sizeof(ONE));
@@ -239,10 +239,10 @@ void ecp_nistz256_point_mul_base(P256_POINT *r,
     index += kWindowSize;
 
     booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-    ecp_nistz256_select_w7(&t.a, precomputed_table[i], recoded);
-    ecp_nistz256_neg(t.p.Z, t.a.Y);
+    GFp_nistz256_select_w7(&t.a, precomputed_table[i], recoded);
+    GFp_nistz256_neg(t.p.Z, t.a.Y);
     copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
-    ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+    GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
   GFp_constant_time_limbs_reduce_once(p.p.X, Q, P256_LIMBS);

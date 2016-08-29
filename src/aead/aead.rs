@@ -277,7 +277,7 @@ const TAG_LEN: usize = 128 / 8;
 const NONCE_LEN: usize = 96 / 8;
 
 
-/// |CRYPTO_chacha_20| uses a 32-bit block counter, so we disallow individual
+/// |GFp_chacha_20| uses a 32-bit block counter, so we disallow individual
 /// operations that work on more than 256GB at a time, for all AEADs.
 fn check_per_nonce_max_bytes(in_out_len: usize)
                              -> Result<(), error::Unspecified> {

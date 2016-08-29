@@ -91,8 +91,8 @@
   }
 
 
-BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
-                          BN_ULONG w) {
+BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
+                              BN_ULONG w) {
   BN_ULONG c1 = 0;
 
   assert(num >= 0);
@@ -120,7 +120,8 @@ BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
   return c1;
 }
 
-BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w) {
+BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
+                          BN_ULONG w) {
   BN_ULONG c1 = 0;
 
   assert(num >= 0);
@@ -146,8 +147,8 @@ BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w) {
   return c1;
 }
 
-BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                      int n) {
+BN_ULONG GFp_bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                          int n) {
   BN_ULONG c, l, t;
 
   assert(n >= 0);
@@ -201,8 +202,8 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   return (BN_ULONG)c;
 }
 
-BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                      int n) {
+BN_ULONG GFp_bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                          int n) {
   BN_ULONG t1, t2;
   int c = 0;
 

@@ -926,69 +926,17 @@ _bsaes_key_convert:
 ___
 }
 
-if (0) {		# following four functions are unsupported interface
-			# used for benchmarking...
-$code.=<<___;
-.globl	bsaes_enc_key_convert
-.type	bsaes_enc_key_convert,%function
-.align	4
-bsaes_enc_key_convert:
-	stmdb	sp!,{r4-r6,lr}
-	vstmdb	sp!,{d8-d15}		@ ABI specification says so
-
-	ldr	r5,[$inp,#240]			@ pass rounds
-	mov	r4,$inp				@ pass key
-	mov	r12,$out			@ pass key schedule
-	bl	_bsaes_key_convert
-	veor	@XMM[7],@XMM[7],@XMM[15]	@ fix up last round key
-	vstmia	r12, {@XMM[7]}			@ save last round key
-
-	vldmia	sp!,{d8-d15}
-	ldmia	sp!,{r4-r6,pc}
-.size	bsaes_enc_key_convert,.-bsaes_enc_key_convert
-
-.globl	bsaes_encrypt_128
-.type	bsaes_encrypt_128,%function
-.align	4
-bsaes_encrypt_128:
-	stmdb	sp!,{r4-r6,lr}
-	vstmdb	sp!,{d8-d15}		@ ABI specification says so
-.Lenc128_loop:
-	vld1.8	{@XMM[0]-@XMM[1]}, [$inp]!	@ load input
-	vld1.8	{@XMM[2]-@XMM[3]}, [$inp]!
-	mov	r4,$key				@ pass the key
-	vld1.8	{@XMM[4]-@XMM[5]}, [$inp]!
-	mov	r5,#10				@ pass rounds
-	vld1.8	{@XMM[6]-@XMM[7]}, [$inp]!
-
-	bl	_bsaes_encrypt8
-
-	vst1.8	{@XMM[0]-@XMM[1]}, [$out]!	@ write output
-	vst1.8	{@XMM[4]}, [$out]!
-	vst1.8	{@XMM[6]}, [$out]!
-	vst1.8	{@XMM[3]}, [$out]!
-	vst1.8	{@XMM[7]}, [$out]!
-	vst1.8	{@XMM[2]}, [$out]!
-	subs	$len,$len,#0x80
-	vst1.8	{@XMM[5]}, [$out]!
-	bhi	.Lenc128_loop
-
-	vldmia	sp!,{d8-d15}
-	ldmia	sp!,{r4-r6,pc}
-.size	bsaes_encrypt_128,.-bsaes_encrypt_128
-___
-}
 {
 my ($inp,$out,$len,$key, $ctr,$fp,$rounds)=(map("r$_",(0..3,8..10)));
 my $const = "r6";	# shared with _bsaes_encrypt8_alt
 my $keysched = "sp";
 
 $code.=<<___;
-.extern	AES_encrypt
-.global	bsaes_ctr32_encrypt_blocks
-.type	bsaes_ctr32_encrypt_blocks,%function
+.extern	GFp_AES_encrypt
+.global	GFp_bsaes_ctr32_encrypt_blocks
+.type	GFp_bsaes_ctr32_encrypt_blocks,%function
 .align	5
-bsaes_ctr32_encrypt_blocks:
+GFp_bsaes_ctr32_encrypt_blocks:
 	cmp	$len, #8			@ use plain AES for
 	blo	.Lctr_enc_short			@ small sizes
 
@@ -1190,7 +1138,7 @@ bsaes_ctr32_encrypt_blocks:
 	mov	r1, sp			@ output on the stack
 	mov	r2, r7			@ key
 
-	bl	AES_encrypt
+	bl	GFp_AES_encrypt
 
 	vld1.8	{@XMM[0]}, [r4]!	@ load input
 	vld1.8	{@XMM[1]}, [sp]		@ load encrypted counter
@@ -1211,7 +1159,7 @@ bsaes_ctr32_encrypt_blocks:
 	vstmia		sp!, {q0-q1}
 
 	ldmia	sp!, {r4-r8, pc}
-.size	bsaes_ctr32_encrypt_blocks,.-bsaes_ctr32_encrypt_blocks
+.size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;

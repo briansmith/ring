@@ -24,22 +24,22 @@ static bool TestAES(const uint8_t *key, size_t key_len,
                     const uint8_t plaintext[AES_BLOCK_SIZE],
                     const uint8_t ciphertext[AES_BLOCK_SIZE]) {
   AES_KEY aes_key;
-  if (AES_set_encrypt_key(key, key_len * 8, &aes_key) != 0) {
-    fprintf(stderr, "AES_set_encrypt_key failed\n");
+  if (GFp_AES_set_encrypt_key(key, key_len * 8, &aes_key) != 0) {
+    fprintf(stderr, "GFp_AES_set_encrypt_key failed\n");
     return false;
   }
 
   // Test encryption.
   uint8_t block[AES_BLOCK_SIZE];
-  AES_encrypt(plaintext, block, &aes_key);
+  GFp_AES_encrypt(plaintext, block, &aes_key);
   if (memcmp(block, ciphertext, AES_BLOCK_SIZE) != 0) {
-    fprintf(stderr, "AES_encrypt gave the wrong output\n");
+    fprintf(stderr, "GFp_AES_encrypt gave the wrong output\n");
     return false;
   }
 
   // Test in-place encryption.
   memcpy(block, plaintext, AES_BLOCK_SIZE);
-  AES_encrypt(block, block, &aes_key);
+  GFp_AES_encrypt(block, block, &aes_key);
   if (memcmp(block, ciphertext, AES_BLOCK_SIZE) != 0) {
     fprintf(stderr, "AES_encrypt gave the wrong output\n");
     return false;

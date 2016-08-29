@@ -111,13 +111,13 @@
 #include <openssl/err.h>
 
 
-int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
-  if (BN_cmp_word(max_exclusive, 1) <= 0) {
+int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
+  if (GFp_BN_cmp_word(max_exclusive, 1) <= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
   }
 
-  if (bn_wexpand(r, max_exclusive->top) == NULL) {
+  if (GFp_bn_wexpand(r, max_exclusive->top) == NULL) {
     return 0;
   }
 
@@ -126,7 +126,7 @@ int BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
   }
 
   r->top = max_exclusive->top;
-  bn_correct_top(r);
+  GFp_bn_correct_top(r);
 
   return 1;
 }

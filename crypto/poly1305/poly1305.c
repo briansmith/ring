@@ -53,10 +53,10 @@ OPENSSL_COMPILE_ASSERT(POLY1305_BLOCK_STATE_SIZE >=
  * |POLY1305_BLOCK_STATE_SIZE| is taken from OpenSSL. */
 #endif
 
-int poly1305_init(void *ctx, const uint8_t key[16], void *out_func);
-void poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
-                     uint32_t padbit);
-void poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]);
+int GFp_poly1305_init_asm(void *ctx, const uint8_t key[16], void *out_func);
+void GFp_poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
+                         uint32_t padbit);
+void GFp_poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]);
 
 struct poly1305_state_st {
   alignas(8) uint8_t opaque[POLY1305_BLOCK_STATE_SIZE];
@@ -74,7 +74,7 @@ OPENSSL_COMPILE_ASSERT(sizeof(poly1305_state) >=
                        poly1305_state_too_small);
 
 
-void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
+void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st state;
 
   /* TODO XXX: It seems at least some implementations |poly1305_init| always
@@ -82,9 +82,9 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
    * And, for platforms that have such conditional logic also in the ASM code,
    * it seems it would be better to move the conditional logic out of the asm
    * and into the higher-level code. */
-  if (!poly1305_init(state.opaque, key, &state.func)) {
-    state.func.blocks = poly1305_blocks;
-    state.func.emit = poly1305_emit;
+  if (!GFp_poly1305_init_asm(state.opaque, key, &state.func)) {
+    state.func.blocks = GFp_poly1305_blocks;
+    state.func.emit = GFp_poly1305_emit;
   }
 
   state.buf_used = 0;
@@ -97,8 +97,8 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   memcpy(statep, &state, sizeof(state));
 }
 
-void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
-                            size_t in_len) {
+void GFp_poly1305_update(poly1305_state *statep, const uint8_t *in,
+                         size_t in_len) {
   struct poly1305_state_st state;
   memcpy(&state, statep, sizeof(state));
 
@@ -133,7 +133,7 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
   memcpy(statep, &state, sizeof(state));
 }
 
-void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
+void GFp_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   struct poly1305_state_st state;
   memcpy(&state, statep, sizeof(state));
 
@@ -146,4 +146,4 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   state.func.emit(state.opaque, mac, state.nonce);
 }
 
-const size_t CRYPTO_POLY1305_STATE_LEN = sizeof(struct poly1305_state_st);
+const size_t GFp_POLY1305_STATE_LEN = sizeof(struct poly1305_state_st);

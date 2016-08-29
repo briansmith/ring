@@ -71,7 +71,7 @@ static BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return NULL;
   }
-  return bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
+  return GFp_bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
 }
 
 /* decode_hex decodes |in_len| bytes of hex data from |in| and updates |bn|. */
@@ -147,21 +147,21 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
 
   /* in is the start of the hex digits, and it is 'i' long */
   if (*outp == NULL) {
-    ret = BN_new();
+    ret = GFp_BN_new();
     if (ret == NULL) {
       return 0;
     }
   } else {
     ret = *outp;
-    BN_zero(ret);
+    GFp_BN_zero(ret);
   }
 
   if (!decode(ret, in, i)) {
     goto err;
   }
 
-  bn_correct_top(ret);
-  if (!BN_is_zero(ret)) {
+  GFp_bn_correct_top(ret);
+  if (!GFp_BN_is_zero(ret)) {
     ret->neg = neg;
   }
 
@@ -170,7 +170,7 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
 
 err:
   if (*outp == NULL) {
-    BN_free(ret);
+    GFp_BN_free(ret);
   }
 
   return 0;
@@ -184,7 +184,7 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   size_t n, i;
   BN_ULONG l;
 
-  n = i = BN_num_bytes(in);
+  n = i = GFp_BN_num_bytes(in);
   while (i--) {
     l = in->d[i / BN_BYTES];
     *(out++) = (unsigned char)(l >> (8 * (i % BN_BYTES))) & 0xff;
@@ -193,7 +193,7 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
 }
 
 void BN_set_negative(BIGNUM *bn, int sign) {
-  if (sign && !BN_is_zero(bn)) {
+  if (sign && !GFp_BN_is_zero(bn)) {
     bn->neg = 1;
   } else {
     bn->neg = 0;

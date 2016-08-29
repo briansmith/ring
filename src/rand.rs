@@ -124,9 +124,9 @@ mod sysrand {
     use {bssl, error};
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        for mut chunk in dest.chunks_mut(super::CRYPTO_sysrand_chunk_max_len) {
+        for mut chunk in dest.chunks_mut(super::GFp_sysrand_chunk_max_len) {
             try!(bssl::map_result(unsafe {
-                super::CRYPTO_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
+                super::GFp_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
             }));
         }
         Ok(())
@@ -173,7 +173,7 @@ mod sysrand_or_urandom {
             static ref MECHANISM: Mechanism = {
                 let mut dummy = [0u8; 1];
                 if unsafe {
-                    super::CRYPTO_sysrand_chunk(dummy.as_mut_ptr(),
+                    super::GFp_sysrand_chunk(dummy.as_mut_ptr(),
                                                dummy.len()) } == -1 {
                     Mechanism::DevURandom
                 } else {
@@ -218,8 +218,8 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
 
 #[cfg(any(target_os = "linux", windows))]
 extern {
-    static CRYPTO_sysrand_chunk_max_len: c::size_t;
-    fn CRYPTO_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
+    static GFp_sysrand_chunk_max_len: c::size_t;
+    fn GFp_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
 }
 
 
@@ -335,7 +335,7 @@ mod tests {
     }
 
     #[cfg(any(target_os = "linux", windows))]
-    fn max_chunk_len() -> usize { super::CRYPTO_sysrand_chunk_max_len }
+    fn max_chunk_len() -> usize { super::GFp_sysrand_chunk_max_len }
 
     #[cfg(not(any(target_os = "linux", windows)))]
     fn max_chunk_len() -> usize {

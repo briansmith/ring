@@ -21,9 +21,9 @@ use rand;
 use std;
 use super::{
     BIGNUM,
-    BN_free,
+    GFp_BN_free,
     BN_MONT_CTX,
-    BN_MONT_CTX_free,
+    GFp_BN_MONT_CTX_free,
     PositiveInteger,
 
     RSAPadding,
@@ -127,8 +127,8 @@ impl RSAKeyPair {
                     iqmp_mont: std::ptr::null_mut(),
                 };
                 try!(bssl::map_result(unsafe {
-                    rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(), p.as_ref(),
-                                q.as_ref())
+                    GFp_rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(),
+                                    p.as_ref(), q.as_ref())
                 }));
                 Ok(RSAKeyPair { rsa: rsa })
             })
@@ -138,22 +138,24 @@ impl RSAKeyPair {
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
-    pub fn public_modulus_len(&self) -> usize { unsafe { RSA_size(&self.rsa) } }
+    pub fn public_modulus_len(&self) -> usize {
+        unsafe { GFp_RSA_size(&self.rsa) }
+    }
 }
 
 impl Drop for RSAKeyPair {
     fn drop(&mut self) {
         unsafe {
-            BN_free(self.rsa.e);
-            BN_free(self.rsa.dmp1);
-            BN_free(self.rsa.dmq1);
-            BN_free(self.rsa.iqmp);
-            BN_MONT_CTX_free(self.rsa.mont_n);
-            BN_MONT_CTX_free(self.rsa.mont_p);
-            BN_MONT_CTX_free(self.rsa.mont_q);
-            BN_MONT_CTX_free(self.rsa.mont_qq);
-            BN_free(self.rsa.qmn_mont);
-            BN_free(self.rsa.iqmp_mont);
+            GFp_BN_free(self.rsa.e);
+            GFp_BN_free(self.rsa.dmp1);
+            GFp_BN_free(self.rsa.dmq1);
+            GFp_BN_free(self.rsa.iqmp);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_n);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_p);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_q);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_qq);
+            GFp_BN_free(self.rsa.qmn_mont);
+            GFp_BN_free(self.rsa.iqmp_mont);
         }
     }
 }
@@ -212,7 +214,7 @@ impl RSASigningState {
     /// Construct an `RSASigningState` for the given `RSAKeyPair`.
     pub fn new(key_pair: std::sync::Arc<RSAKeyPair>)
                -> Result<Self, error::Unspecified> {
-        let blinding = unsafe { BN_BLINDING_new() };
+        let blinding = unsafe { GFp_BN_BLINDING_new() };
         if blinding.is_null() {
             return Err(error::Unspecified);
         }
@@ -266,7 +268,7 @@ struct Blinding {
 }
 
 impl Drop for Blinding {
-    fn drop(&mut self) { unsafe { BN_BLINDING_free(self.blinding) } }
+    fn drop(&mut self) { unsafe { GFp_BN_BLINDING_free(self.blinding) } }
 }
 
 unsafe impl Send for Blinding {}
@@ -282,11 +284,11 @@ struct BN_BLINDING {
 
 
 extern {
-    fn BN_BLINDING_new() -> *mut BN_BLINDING;
-    fn BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
-                   q: &BIGNUM) -> c::int;
-    fn RSA_size(rsa: *const RSA) -> c::size_t;
+    fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
+    fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
+    fn GFp_rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
+                       q: &BIGNUM) -> c::int;
+    fn GFp_RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
 #[allow(improper_ctypes)]

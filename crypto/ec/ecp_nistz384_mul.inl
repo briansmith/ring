@@ -25,7 +25,7 @@
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void ecp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
+void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]);
 
@@ -43,11 +43,11 @@ static void add_precomputed_w5(P384_POINT *r, unsigned wvalue,
   GFp_p384_elem_neg(tmp, h.Y);
   copy_conditional(h.Y, tmp, recoded_is_negative);
 
-  ecp_nistz384_point_add(r, r, &h);
+  GFp_nistz384_point_add(r, r, &h);
 }
 
 /* r = p * p_scalar */
-void ecp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
+void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]) {
   static const unsigned kWindowSize = 5;
@@ -71,21 +71,21 @@ void ecp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   memcpy(row[1 - 1].Y, p_y, P384_LIMBS * BN_BYTES);
   memcpy(row[1 - 1].Z, ONE, P384_LIMBS * BN_BYTES);
 
-  ecp_nistz384_point_double(&row[2 - 1], &row[1 - 1]);
-  ecp_nistz384_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
-  ecp_nistz384_point_double(&row[4 - 1], &row[2 - 1]);
-  ecp_nistz384_point_double(&row[6 - 1], &row[3 - 1]);
-  ecp_nistz384_point_double(&row[8 - 1], &row[4 - 1]);
-  ecp_nistz384_point_double(&row[12 - 1], &row[6 - 1]);
-  ecp_nistz384_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
-  ecp_nistz384_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
-  ecp_nistz384_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
-  ecp_nistz384_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
-  ecp_nistz384_point_double(&row[14 - 1], &row[7 - 1]);
-  ecp_nistz384_point_double(&row[10 - 1], &row[5 - 1]);
-  ecp_nistz384_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
-  ecp_nistz384_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  ecp_nistz384_point_double(&row[16 - 1], &row[8 - 1]);
+  GFp_nistz384_point_double(&row[2 - 1], &row[1 - 1]);
+  GFp_nistz384_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
+  GFp_nistz384_point_double(&row[4 - 1], &row[2 - 1]);
+  GFp_nistz384_point_double(&row[6 - 1], &row[3 - 1]);
+  GFp_nistz384_point_double(&row[8 - 1], &row[4 - 1]);
+  GFp_nistz384_point_double(&row[12 - 1], &row[6 - 1]);
+  GFp_nistz384_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
+  GFp_nistz384_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
+  GFp_nistz384_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
+  GFp_nistz384_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
+  GFp_nistz384_point_double(&row[14 - 1], &row[7 - 1]);
+  GFp_nistz384_point_double(&row[10 - 1], &row[5 - 1]);
+  GFp_nistz384_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
+  GFp_nistz384_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
+  GFp_nistz384_point_double(&row[16 - 1], &row[8 - 1]);
 
   static const unsigned START_INDEX = 384 - 4;
   unsigned index = START_INDEX;
@@ -112,11 +112,11 @@ void ecp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
 
     index -= kWindowSize;
 
-    ecp_nistz384_point_double(r, r);
-    ecp_nistz384_point_double(r, r);
-    ecp_nistz384_point_double(r, r);
-    ecp_nistz384_point_double(r, r);
-    ecp_nistz384_point_double(r, r);
+    GFp_nistz384_point_double(r, r);
+    GFp_nistz384_point_double(r, r);
+    GFp_nistz384_point_double(r, r);
+    GFp_nistz384_point_double(r, r);
+    GFp_nistz384_point_double(r, r);
   }
 
   /* Final window */

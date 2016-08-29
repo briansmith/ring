@@ -75,7 +75,7 @@ pub struct Point {
     // `ops.num_limbs` elements are the X coordinate, the next
     // `ops.num_limbs` elements are the Y coordinate, and the next
     // `ops.num_limbs` elements are the Z coordinate. This layout is dictated
-    // by the requirements of the ecp_nistz256 code.
+    // by the requirements of the GFp_nistz256 code.
     xyz: [Limb; 3 * MAX_LIMBS],
 }
 
@@ -628,7 +628,7 @@ mod tests {
         })
     }
 
-    // XXX: There's no `ecp_nistz256_sub` in *ring*; it's logic is inlined into
+    // XXX: There's no `GFp_nistz256_sub` in *ring*; it's logic is inlined into
     // the point arithmetic functions. Thus, we can't test it.
 
     #[test]
@@ -669,7 +669,7 @@ mod tests {
         })
     }
 
-    // XXX: There's no `ecp_nistz256_div_by_2` in *ring*; it's logic is inlined
+    // XXX: There's no `GFp_nistz256_div_by_2` in *ring*; it's logic is inlined
     // into the point arithmetic functions. Thus, we can't test it.
 
     #[test]
@@ -706,9 +706,9 @@ mod tests {
     #[test]
     fn p256_elem_neg_test() {
         extern {
-            fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
+            fn GFp_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
-        elem_neg_test(&p256::COMMON_OPS, ecp_nistz256_neg,
+        elem_neg_test(&p256::COMMON_OPS, GFp_nistz256_neg,
                       "src/ec/suite_b/ops/p256_neg_tests.txt");
     }
 

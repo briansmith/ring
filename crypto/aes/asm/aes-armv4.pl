@@ -184,22 +184,22 @@ AES_Te:
 .word	0x1B000000, 0x36000000, 0, 0, 0, 0, 0, 0
 .size	AES_Te,.-AES_Te
 
-@ void asm_AES_encrypt(const unsigned char *in, unsigned char *out,
-@ 		       const AES_KEY *key) {
-.global asm_AES_encrypt
-.type   asm_AES_encrypt,%function
+@ void GFp_asm_AES_encrypt(const unsigned char *in, unsigned char *out,
+@ 		                   const AES_KEY *key) {
+.global GFp_asm_AES_encrypt
+.type   GFp_asm_AES_encrypt,%function
 .align	5
-asm_AES_encrypt:
+GFp_asm_AES_encrypt:
 #ifndef	__thumb2__
-	sub	r3,pc,#8		@ asm_AES_encrypt
+	sub	r3,pc,#8		@ GFp_asm_AES_encrypt
 #else
-	adr	r3,asm_AES_encrypt
+	adr	r3,GFp_asm_AES_encrypt
 #endif
 	stmdb   sp!,{r1,r4-r12,lr}
 #ifdef	__APPLE__
 	adr	$tbl,AES_Te
 #else
-	sub	$tbl,r3,#asm_AES_encrypt-AES_Te	@ Te
+	sub	$tbl,r3,#GFp_asm_AES_encrypt-AES_Te	@ Te
 #endif
 	mov	$rounds,r0		@ inp
 	mov	$key,r2
@@ -296,7 +296,7 @@ asm_AES_encrypt:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	asm_AES_encrypt,.-asm_AES_encrypt
+.size	GFp_asm_AES_encrypt,.-GFp_asm_AES_encrypt
 
 .type   _armv4_AES_encrypt,%function
 .align	2
@@ -435,15 +435,15 @@ _armv4_AES_encrypt:
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_encrypt,.-_armv4_AES_encrypt
 
-.global asm_AES_set_encrypt_key
-.type   asm_AES_set_encrypt_key,%function
+.global GFp_asm_AES_set_encrypt_key
+.type   GFp_asm_AES_set_encrypt_key,%function
 .align	5
-asm_AES_set_encrypt_key:
+GFp_asm_AES_set_encrypt_key:
 _armv4_AES_set_encrypt_key:
 #ifndef	__thumb2__
-	sub	r3,pc,#8		@ asm_AES_set_encrypt_key
+	sub	r3,pc,#8		@ GFp_asm_AES_set_encrypt_key
 #else
-	adr	r3,asm_AES_set_encrypt_key
+	adr	r3,GFp_asm_AES_set_encrypt_key
 #endif
 	teq	r0,#0
 #ifdef	__thumb2__
@@ -691,7 +691,7 @@ _armv4_AES_set_encrypt_key:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	asm_AES_set_encrypt_key,.-asm_AES_set_encrypt_key
+.size	GFp_asm_AES_set_encrypt_key,.-GFp_asm_AES_set_encrypt_key
 
 .asciz	"AES for ARMv4, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2

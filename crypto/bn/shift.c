@@ -63,7 +63,7 @@
 #include "internal.h"
 
 
-int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
+int GFp_BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, nw, lb, rb;
   BN_ULONG *t, *f;
   BN_ULONG l;
@@ -75,7 +75,7 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
 
   r->neg = a->neg;
   nw = n / BN_BITS2;
-  if (bn_wexpand(r, a->top + nw + 1) == NULL) {
+  if (GFp_bn_wexpand(r, a->top + nw + 1) == NULL) {
     return 0;
   }
   lb = n % BN_BITS2;
@@ -96,23 +96,23 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   }
   memset(t, 0, nw * sizeof(t[0]));
   r->top = a->top + nw + 1;
-  bn_correct_top(r);
+  GFp_bn_correct_top(r);
 
   return 1;
 }
 
-int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
+int GFp_BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   BN_ULONG *ap, *rp, t, c;
   int i;
 
   if (r != a) {
     r->neg = a->neg;
-    if (bn_wexpand(r, a->top + 1) == NULL) {
+    if (GFp_bn_wexpand(r, a->top + 1) == NULL) {
       return 0;
     }
     r->top = a->top;
   } else {
-    if (bn_wexpand(r, a->top + 1) == NULL) {
+    if (GFp_bn_wexpand(r, a->top + 1) == NULL) {
       return 0;
     }
   }
@@ -132,7 +132,7 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   return 1;
 }
 
-int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
+int GFp_BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, j, nw, lb, rb;
   BN_ULONG *t, *f;
   BN_ULONG l, tmp;
@@ -146,13 +146,13 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   rb = n % BN_BITS2;
   lb = BN_BITS2 - rb;
   if (nw >= a->top || a->top == 0) {
-    BN_zero(r);
+    GFp_BN_zero(r);
     return 1;
   }
-  i = (BN_num_bits(a) - n + (BN_BITS2 - 1)) / BN_BITS2;
+  i = (GFp_BN_num_bits(a) - n + (BN_BITS2 - 1)) / BN_BITS2;
   if (r != a) {
     r->neg = a->neg;
-    if (bn_wexpand(r, i) == NULL) {
+    if (GFp_bn_wexpand(r, i) == NULL) {
       return 0;
     }
   } else {
@@ -185,19 +185,19 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   return 1;
 }
 
-int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
+int GFp_BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   BN_ULONG *ap, *rp, t, c;
   int i, j;
 
-  if (BN_is_zero(a)) {
-    BN_zero(r);
+  if (GFp_BN_is_zero(a)) {
+    GFp_BN_zero(r);
     return 1;
   }
   i = a->top;
   ap = a->d;
   j = i - (ap[i - 1] == 1);
   if (a != r) {
-    if (bn_wexpand(r, j) == NULL) {
+    if (GFp_bn_wexpand(r, j) == NULL) {
       return 0;
     }
     r->neg = a->neg;
@@ -218,7 +218,7 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   return 1;
 }
 
-int BN_set_bit(BIGNUM *a, int n) {
+int GFp_BN_set_bit(BIGNUM *a, int n) {
   int i, j, k;
 
   if (n < 0) {
@@ -228,7 +228,7 @@ int BN_set_bit(BIGNUM *a, int n) {
   i = n / BN_BITS2;
   j = n % BN_BITS2;
   if (a->top <= i) {
-    if (bn_wexpand(a, i + 1) == NULL) {
+    if (GFp_bn_wexpand(a, i + 1) == NULL) {
       return 0;
     }
     for (k = a->top; k < i + 1; k++) {
@@ -242,7 +242,7 @@ int BN_set_bit(BIGNUM *a, int n) {
   return 1;
 }
 
-int BN_is_bit_set(const BIGNUM *a, int n) {
+int GFp_BN_is_bit_set(const BIGNUM *a, int n) {
   int i, j;
 
   if (n < 0) {
