@@ -37,10 +37,10 @@ typedef struct {
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void ecp_nistz384_point_double(P384_POINT *r, const P384_POINT *a);
-void ecp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
+void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a);
+void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
                             const P384_POINT *b);
-void ecp_nistz384_point_add_affine(P384_POINT *r, const P384_POINT *a,
+void GFp_nistz384_point_add_affine(P384_POINT *r, const P384_POINT *a,
                                    const P384_POINT_AFFINE *b);
 
 
