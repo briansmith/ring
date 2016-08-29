@@ -85,11 +85,11 @@ my ($r_ptr,$a_ptr,$b_ptr)=("%rdi","%rsi","%rdx");
 $code.=<<___;
 
 ################################################################################
-# void ecp_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
-.globl	ecp_nistz256_add
-.type	ecp_nistz256_add,\@function,3
+# void GFp_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
+.globl	GFp_nistz256_add
+.type	GFp_nistz256_add,\@function,3
 .align	32
-ecp_nistz256_add:
+GFp_nistz256_add:
 	push	%r12
 	push	%r13
 
@@ -128,14 +128,14 @@ ecp_nistz256_add:
 	pop %r13
 	pop %r12
 	ret
-.size	ecp_nistz256_add,.-ecp_nistz256_add
+.size	GFp_nistz256_add,.-GFp_nistz256_add
 
 ################################################################################
-# void ecp_nistz256_neg(uint64_t res[4], uint64_t a[4]);
-.globl	ecp_nistz256_neg
-.type	ecp_nistz256_neg,\@function,2
+# void GFp_nistz256_neg(uint64_t res[4], uint64_t a[4]);
+.globl	GFp_nistz256_neg
+.type	GFp_nistz256_neg,\@function,2
 .align	32
-ecp_nistz256_neg:
+GFp_nistz256_neg:
 	push	%r12
 	push	%r13
 
@@ -174,7 +174,7 @@ ecp_nistz256_neg:
 	pop %r13
 	pop %r12
 	ret
-.size	ecp_nistz256_neg,.-ecp_nistz256_neg
+.size	GFp_nistz256_neg,.-GFp_nistz256_neg
 ___
 }
 {
@@ -185,15 +185,15 @@ my ($poly1,$poly3)=($acc6,$acc7);
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_mul_mont(
+# void GFp_nistz256_mul_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t b[4]);
 
-.globl	ecp_nistz256_mul_mont
-.type	ecp_nistz256_mul_mont,\@function,3
+.globl	GFp_nistz256_mul_mont
+.type	GFp_nistz256_mul_mont,\@function,3
 .align	32
-ecp_nistz256_mul_mont:
+GFp_nistz256_mul_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
@@ -246,7 +246,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_mul_mont,.-ecp_nistz256_mul_mont
+.size	GFp_nistz256_mul_mont,.-GFp_nistz256_mul_mont
 
 .type	__ecp_nistz256_mul_montq,\@abi-omnipotent
 .align	32
@@ -465,16 +465,16 @@ __ecp_nistz256_mul_montq:
 .size	__ecp_nistz256_mul_montq,.-__ecp_nistz256_mul_montq
 
 ################################################################################
-# void ecp_nistz256_sqr_mont(
+# void GFp_nistz256_sqr_mont(
 #   uint64_t res[4],
 #   uint64_t a[4]);
 
 # we optimize the square according to S.Gueron and V.Krasnov,
 # "Speeding up Big-Number Squaring"
-.globl	ecp_nistz256_sqr_mont
-.type	ecp_nistz256_sqr_mont,\@function,2
+.globl	GFp_nistz256_sqr_mont
+.type	GFp_nistz256_sqr_mont,\@function,2
 .align	32
-ecp_nistz256_sqr_mont:
+GFp_nistz256_sqr_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
@@ -522,7 +522,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_sqr_mont,.-ecp_nistz256_sqr_mont
+.size	GFp_nistz256_sqr_mont,.-GFp_nistz256_sqr_mont
 
 .type	__ecp_nistz256_sqr_montq,\@abi-omnipotent
 .align	32
@@ -998,11 +998,11 @@ my ($M1,$T2a,$T2b,$TMP2,$M2,$T2a,$T2b,$TMP2)=map("%xmm$_",(8..15));
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
-.globl	ecp_nistz256_select_w5
-.type	ecp_nistz256_select_w5,\@abi-omnipotent
+# void GFp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
+.globl	GFp_nistz256_select_w5
+.type	GFp_nistz256_select_w5,\@abi-omnipotent
 .align	32
-ecp_nistz256_select_w5:
+GFp_nistz256_select_w5:
 ___
 $code.=<<___	if ($avx>1);
 	mov	GFp_ia32cap_P+8(%rip), %eax
@@ -1011,7 +1011,7 @@ $code.=<<___	if ($avx>1);
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_select_w5:
+.LSEH_begin_GFp_nistz256_select_w5:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -1088,18 +1088,18 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_select_w5:
+.LSEH_end_GFp_nistz256_select_w5:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_select_w5,.-ecp_nistz256_select_w5
+.size	GFp_nistz256_select_w5,.-GFp_nistz256_select_w5
 
 ################################################################################
-# void ecp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
-.globl	ecp_nistz256_select_w7
-.type	ecp_nistz256_select_w7,\@abi-omnipotent
+# void GFp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	GFp_nistz256_select_w7
+.type	GFp_nistz256_select_w7,\@abi-omnipotent
 .align	32
-ecp_nistz256_select_w7:
+GFp_nistz256_select_w7:
 ___
 $code.=<<___	if ($avx>1);
 	mov	GFp_ia32cap_P+8(%rip), %eax
@@ -1108,7 +1108,7 @@ $code.=<<___	if ($avx>1);
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_select_w7:
+.LSEH_begin_GFp_nistz256_select_w7:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -1174,11 +1174,11 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_select_w7:
+.LSEH_end_GFp_nistz256_select_w7:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_select_w7,.-ecp_nistz256_select_w7
+.size	GFp_nistz256_select_w7,.-GFp_nistz256_select_w7
 ___
 }
 if ($avx>1) {
@@ -1189,16 +1189,16 @@ my ($M1,$T1a,$T1b,$T1c,$TMP1)=map("%ymm$_",(10..14));
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
-.type	ecp_nistz256_avx2_select_w5,\@abi-omnipotent
+# void GFp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
+.type	GFp_nistz256_avx2_select_w5,\@abi-omnipotent
 .align	32
-ecp_nistz256_avx2_select_w5:
+GFp_nistz256_avx2_select_w5:
 .Lavx2_select_w5:
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_avx2_select_w5:
+.LSEH_begin_GFp_nistz256_avx2_select_w5:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0xc5,0xf8,0x29,0x70,0xe0	#vmovaps %xmm6, -0x20(%rax)
 	.byte	0xc5,0xf8,0x29,0x78,0xf0	#vmovaps %xmm7, -0x10(%rax)
@@ -1276,11 +1276,11 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_avx2_select_w5:
+.LSEH_end_GFp_nistz256_avx2_select_w5:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_avx2_select_w5,.-ecp_nistz256_avx2_select_w5
+.size	GFp_nistz256_avx2_select_w5,.-GFp_nistz256_avx2_select_w5
 ___
 }
 if ($avx>1) {
@@ -1293,17 +1293,17 @@ my ($M2,$T2a,$T2b,$TMP2)=map("%ymm$_",(12..15));
 $code.=<<___;
 
 ################################################################################
-# void ecp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
-.globl	ecp_nistz256_avx2_select_w7
-.type	ecp_nistz256_avx2_select_w7,\@abi-omnipotent
+# void GFp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	GFp_nistz256_avx2_select_w7
+.type	GFp_nistz256_avx2_select_w7,\@abi-omnipotent
 .align	32
-ecp_nistz256_avx2_select_w7:
+GFp_nistz256_avx2_select_w7:
 .Lavx2_select_w7:
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_avx2_select_w7:
+.LSEH_begin_GFp_nistz256_avx2_select_w7:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0xc5,0xf8,0x29,0x70,0xe0	#vmovaps %xmm6, -0x20(%rax)
 	.byte	0xc5,0xf8,0x29,0x78,0xf0	#vmovaps %xmm7, -0x10(%rax)
@@ -1396,21 +1396,21 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_avx2_select_w7:
+.LSEH_end_GFp_nistz256_avx2_select_w7:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
+.size	GFp_nistz256_avx2_select_w7,.-GFp_nistz256_avx2_select_w7
 ___
 } else {
 $code.=<<___;
-.globl	ecp_nistz256_avx2_select_w7
-.type	ecp_nistz256_avx2_select_w7,\@function,3
+.globl	GFp_nistz256_avx2_select_w7
+.type	GFp_nistz256_avx2_select_w7,\@function,3
 .align	32
-ecp_nistz256_avx2_select_w7:
+GFp_nistz256_avx2_select_w7:
 	.byte	0x0f,0x0b	# ud2
 	ret
-.size	ecp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
+.size	GFp_nistz256_avx2_select_w7,.-GFp_nistz256_avx2_select_w7
 ___
 }
 {{{
@@ -1597,10 +1597,10 @@ sub gen_double () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	ecp_nistz256_point_double
-.type	ecp_nistz256_point_double,\@function,2
+.globl	GFp_nistz256_point_double
+.type	GFp_nistz256_point_double,\@function,2
 .align	32
-ecp_nistz256_point_double:
+GFp_nistz256_point_double:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
@@ -1614,9 +1614,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	ecp_nistz256_point_doublex,\@function,2
+.type	GFp_nistz256_point_doublex,\@function,2
 .align	32
-ecp_nistz256_point_doublex:
+GFp_nistz256_point_doublex:
 .Lpoint_doublex:
 ___
     }
@@ -1694,7 +1694,7 @@ $code.=<<___;
 	call	__ecp_nistz256_sqr_mont$x	# p256_sqr_mont(res_y, S);
 ___
 {
-######## ecp_nistz256_div_by_2(res_y, res_y); ##########################
+######## GFp_nistz256_div_by_2(res_y, res_y); ##########################
 # operate in 4-5-6-7 "name space" that matches squaring output
 #
 my ($poly1,$poly3)=($a_ptr,$t1);
@@ -1806,7 +1806,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_point_double$sfx,.-ecp_nistz256_point_double$sfx
+.size	GFp_nistz256_point_double$sfx,.-GFp_nistz256_point_double$sfx
 ___
 }
 &gen_double("q");
@@ -1827,10 +1827,10 @@ sub gen_add () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	ecp_nistz256_point_add
-.type	ecp_nistz256_point_add,\@function,3
+.globl	GFp_nistz256_point_add
+.type	GFp_nistz256_point_add,\@function,3
 .align	32
-ecp_nistz256_point_add:
+GFp_nistz256_point_add:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
@@ -1844,9 +1844,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	ecp_nistz256_point_addx,\@function,3
+.type	GFp_nistz256_point_addx,\@function,3
 .align	32
-ecp_nistz256_point_addx:
+GFp_nistz256_point_addx:
 .Lpoint_addx:
 ___
     }
@@ -2175,7 +2175,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_point_add$sfx,.-ecp_nistz256_point_add$sfx
+.size	GFp_nistz256_point_add$sfx,.-GFp_nistz256_point_add$sfx
 ___
 }
 &gen_add("q");
@@ -2195,10 +2195,10 @@ sub gen_add_affine () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	ecp_nistz256_point_add_affine
-.type	ecp_nistz256_point_add_affine,\@function,3
+.globl	GFp_nistz256_point_add_affine
+.type	GFp_nistz256_point_add_affine,\@function,3
 .align	32
-ecp_nistz256_point_add_affine:
+GFp_nistz256_point_add_affine:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
@@ -2212,9 +2212,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	ecp_nistz256_point_add_affinex,\@function,3
+.type	GFp_nistz256_point_add_affinex,\@function,3
 .align	32
-ecp_nistz256_point_add_affinex:
+GFp_nistz256_point_add_affinex:
 .Lpoint_add_affinex:
 ___
     }
@@ -2479,7 +2479,7 @@ $code.=<<___;
 	pop	%rbx
 	pop	%rbp
 	ret
-.size	ecp_nistz256_point_add_affine$sfx,.-ecp_nistz256_point_add_affine$sfx
+.size	GFp_nistz256_point_add_affine$sfx,.-GFp_nistz256_point_add_affine$sfx
 ___
 }
 &gen_add_affine("q");

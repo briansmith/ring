@@ -156,14 +156,14 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 &function_end_B("_ecp_nistz256_div_by_2");
 
 ########################################################################
-# void ecp_nistz256_add(BN_ULONG edi[8],const BN_ULONG esi[8],
+# void GFp_nistz256_add(BN_ULONG edi[8],const BN_ULONG esi[8],
 #					const BN_ULONG ebp[8]);
-&function_begin("ecp_nistz256_add");
+&function_begin("GFp_nistz256_add");
 	&mov	("esi",&wparam(1));
 	&mov	("ebp",&wparam(2));
 	&mov	("edi",&wparam(0));
 	&call	("_ecp_nistz256_add");
-&function_end("ecp_nistz256_add");
+&function_end("GFp_nistz256_add");
 
 &function_begin_B("_ecp_nistz256_add");
 	&mov	("eax",&DWP(0,"esi"));
@@ -298,8 +298,8 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 &function_end_B("_ecp_nistz256_sub");
 
 ########################################################################
-# void ecp_nistz256_neg(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("ecp_nistz256_neg");
+# void GFp_nistz256_neg(BN_ULONG edi[8],const BN_ULONG esi[8]);
+&function_begin("GFp_nistz256_neg");
 	&mov	("ebp",&wparam(1));
 	&mov	("edi",&wparam(0));
 
@@ -318,7 +318,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&call	("_ecp_nistz256_sub");
 
 	&stack_pop(8);
-&function_end("ecp_nistz256_neg");
+&function_end("GFp_nistz256_neg");
 
 &function_begin_B("_picup_eax");
 	&mov	("eax",&DWP(0,"esp"));
@@ -326,9 +326,9 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 &function_end_B("_picup_eax");
 
 ########################################################################
-# void ecp_nistz256_mul_mont(BN_ULONG edi[8],const BN_ULONG esi[8],
+# void GFp_nistz256_mul_mont(BN_ULONG edi[8],const BN_ULONG esi[8],
 #					     const BN_ULONG ebp[8]);
-&function_begin("ecp_nistz256_mul_mont");
+&function_begin("GFp_nistz256_mul_mont");
 	&mov	("esi",&wparam(1));
 	&mov	("ebp",&wparam(2));
 						if ($sse2) {
@@ -338,7 +338,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&mov	("eax",&DWP(0,"eax"));		}
 	&mov	("edi",&wparam(0));
 	&call	("_ecp_nistz256_mul_mont");
-&function_end("ecp_nistz256_mul_mont");
+&function_end("GFp_nistz256_mul_mont");
 
 &function_begin_B("_ecp_nistz256_mul_mont");
 						if ($sse2) {
@@ -951,10 +951,10 @@ for ($i=0;$i<7;$i++) {
 # ecp_nistz256.c
 #
 ########################################################################
-# void ecp_nistz256_point_double(P256_POINT *out,const P256_POINT *inp);
+# void GFp_nistz256_point_double(P256_POINT *out,const P256_POINT *inp);
 #
 &static_label("point_double_shortcut");
-&function_begin("ecp_nistz256_point_double");
+&function_begin("GFp_nistz256_point_double");
 {   my ($S,$M,$Zsqr,$in_x,$tmp0)=map(32*$_,(0..4));
 
 	&mov	("esi",&wparam(1));
@@ -1094,12 +1094,12 @@ for ($i=0;$i<7;$i++) {
 	&call	("_ecp_nistz256_sub");		# p256_sub(res_y, S, res_y);
 
 	&stack_pop(8*5+1);
-} &function_end("ecp_nistz256_point_double");
+} &function_end("GFp_nistz256_point_double");
 
 ########################################################################
-# void ecp_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
+# void GFp_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
 #					      const P256_POINT *in2);
-&function_begin("ecp_nistz256_point_add");
+&function_begin("GFp_nistz256_point_add");
 {   my ($res_x,$res_y,$res_z,
 	$in1_x,$in1_y,$in1_z,
 	$in2_x,$in2_y,$in2_z,
@@ -1372,13 +1372,13 @@ for ($i=0;$i<7;$i++) {
     }
     &set_label("add_done");
 	&stack_pop(8*18+5);
-} &function_end("ecp_nistz256_point_add");
+} &function_end("GFp_nistz256_point_add");
 
 ########################################################################
-# void ecp_nistz256_point_add_affine(P256_POINT *out,
+# void GFp_nistz256_point_add_affine(P256_POINT *out,
 #				     const P256_POINT *in1,
 #				     const P256_POINT_AFFINE *in2);
-&function_begin("ecp_nistz256_point_add_affine");
+&function_begin("GFp_nistz256_point_add_affine");
 {
     my ($res_x,$res_y,$res_z,
 	$in1_x,$in1_y,$in1_z,
@@ -1582,7 +1582,7 @@ for ($i=0;$i<7;$i++) {
 	&mov	(&DWP($i,"edi"),"eax");
     }
 	&stack_pop(8*15+3);
-} &function_end("ecp_nistz256_point_add_affine");
+} &function_end("GFp_nistz256_point_add_affine");
 
 &asm_finish();
 

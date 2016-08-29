@@ -34,9 +34,9 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep);
 
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_X86)
-void ecp_nistz256_sqr_mont(Elem r, const Elem a) {
+void GFp_nistz256_sqr_mont(Elem r, const Elem a) {
   /* XXX: Inefficient. TODO: optimize with dedicated squaring routine. */
-  ecp_nistz256_mul_mont(r, a, a);
+  GFp_nistz256_mul_mont(r, a, a);
 }
 #endif
 
@@ -84,7 +84,7 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
                        size_t_and_gfp_limb_are_different_sizes);
 
 
-void ecp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
+void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index) {
   assert(index >= 0);
   size_t index_as_size_t = (size_t)index; /* XXX: constant time? */
@@ -107,7 +107,7 @@ void ecp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   memcpy(&out->Z, z, sizeof(z));
 }
 
-void ecp_nistz256_select_w7(P256_POINT_AFFINE *out,
+void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const P256_POINT_AFFINE table[64], int index) {
   assert(index >= 0);
   size_t index_as_size_t = (size_t)index; /* XXX: constant time? */
