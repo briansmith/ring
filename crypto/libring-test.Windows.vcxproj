@@ -20,7 +20,6 @@
   <ItemGroup>
     <ClCompile Include="constant_time_test.c" />
 
-    <ClCompile Include="aes/aes_test.cc" />
     <ClCompile Include="bn/bn_test.cc" />
 
     <ClCompile Include="test/bn_test_convert.c" />

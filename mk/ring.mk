@@ -130,7 +130,6 @@ RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
   $(NULL)
 
 RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
-  crypto/aes/aes_test.cc \
   crypto/bn/bn_test.cc \
   crypto/constant_time_test.c \
   crypto/test/bn_test_convert.c \
