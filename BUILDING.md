@@ -43,7 +43,7 @@ Note in particular that if you are cross-compiling an x86 build on a 64-bit
 version of Linux, then you need to have the proper gcc-multilibs and
 g++-multilibs packages or equivalent installed.
 
-Moreover, when building on OpenBSD, NetBSD, or FreeBSD either `make` or `gmake`
+Moreover, when building on OpenBSD, NetBSD, or FreeBSD, either `make` or `gmake`
 can be used to build. When building, `MAKE_COMMAND` can be provided to specify
 which build automation tool is preferred.
 
