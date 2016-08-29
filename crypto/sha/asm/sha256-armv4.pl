@@ -209,12 +209,12 @@ K256:
 #endif
 .align	5
 
-.global	sha256_block_data_order
-.type	sha256_block_data_order,%function
-sha256_block_data_order:
+.global	GFp_sha256_block_data_order
+.type	GFp_sha256_block_data_order,%function
+GFp_sha256_block_data_order:
 .Lsha256_block_data_order:
 #if __ARM_ARCH__<7 && !defined(__thumb2__)
-	sub	r3,pc,#8		@ sha256_block_data_order
+	sub	r3,pc,#8		@ GFp_sha256_block_data_order
 #else
 	adr	r3,.Lsha256_block_data_order
 #endif
@@ -286,7 +286,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	sha256_block_data_order,.-sha256_block_data_order
+.size	GFp_sha256_block_data_order,.-GFp_sha256_block_data_order
 ___
 ######################################################################
 # NEON stuff
@@ -466,7 +466,6 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	sha256_block_data_order_neon
 .type	sha256_block_data_order_neon,%function
 .align	5
 .skip	16

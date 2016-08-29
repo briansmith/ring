@@ -121,7 +121,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 if ($output =~ /512/) {
-	$func="sha512_block_data_order";
+	$func="GFp_sha512_block_data_order";
 	$TABLE="K512";
 	$SZ=8;
 	@ROT=($A,$B,$C,$D,$E,$F,$G,$H)=("%rax","%rbx","%rcx","%rdx",
@@ -133,7 +133,7 @@ if ($output =~ /512/) {
 	@sigma1=(19,61, 6);
 	$rounds=80;
 } else {
-	$func="sha256_block_data_order";
+	$func="GFp_sha256_block_data_order";
 	$TABLE="K256";
 	$SZ=4;
 	@ROT=($A,$B,$C,$D,$E,$F,$G,$H)=("%eax","%ebx","%ecx","%edx",
@@ -522,9 +522,9 @@ my ($Wi,$ABEF,$CDGH,$TMP,$BSWAP,$ABEF_SAVE,$CDGH_SAVE)=map("%xmm$_",(0..2,7..10)
 my @MSG=map("%xmm$_",(3..6));
 
 $code.=<<___;
-.type	sha256_block_data_order_shaext,\@function,3
+.type	GFp_sha256_block_data_order_shaext,\@function,3
 .align	64
-sha256_block_data_order_shaext:
+GFp_sha256_block_data_order_shaext:
 _shaext_shortcut:
 ___
 $code.=<<___ if ($win64);
@@ -669,7 +669,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
-.size	sha256_block_data_order_shaext,.-sha256_block_data_order_shaext
+.size	GFp_sha256_block_data_order_shaext,.-GFp_sha256_block_data_order_shaext
 ___
 }}}
 {{{

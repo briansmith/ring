@@ -272,12 +272,12 @@ WORD64(0x5fcb6fab,0x3ad6faec, 0x6c44198c,0x4a475817)
 .skip	32
 #endif
 
-.global	sha512_block_data_order
-.type	sha512_block_data_order,%function
-sha512_block_data_order:
+.global	GFp_sha512_block_data_order
+.type	GFp_sha512_block_data_order,%function
+GFp_sha512_block_data_order:
 .Lsha512_block_data_order:
 #if __ARM_ARCH__<7 && !defined(__thumb2__)
-	sub	r3,pc,#8		@ sha512_block_data_order
+	sub	r3,pc,#8		@ GFp_sha512_block_data_order
 #else
 	adr	r3,.Lsha512_block_data_order
 #endif
@@ -491,7 +491,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	sha512_block_data_order,.-sha512_block_data_order
+.size	GFp_sha512_block_data_order,.-GFp_sha512_block_data_order
 ___
 
 {
@@ -598,7 +598,6 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	sha512_block_data_order_neon
 .type	sha512_block_data_order_neon,%function
 .align	4
 sha512_block_data_order_neon:

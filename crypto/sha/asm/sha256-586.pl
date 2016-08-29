@@ -178,7 +178,7 @@ sub BODY_00_15() {
 
 &external_label("GFp_ia32cap_P")		if (!$i386);
 
-&function_begin("sha256_block_data_order");
+&function_begin("GFp_sha256_block_data_order");
 	&mov	("esi",wparam(0));	# ctx
 	&mov	("edi",wparam(1));	# inp
 	&mov	("eax",wparam(2));	# num
@@ -1273,7 +1273,7 @@ sub bodyx_00_15 () {			# +10%
 						}
 						}
 						}}}
-&function_end_B("sha256_block_data_order");
+&function_end_B("GFp_sha256_block_data_order");
 
 &asm_finish();
 
