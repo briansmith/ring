@@ -980,56 +980,6 @@ _bsaes_key_convert:
 ___
 }
 
-if (0 && !$win64) {	# following four functions are unsupported interface
-			# used for benchmarking...
-$code.=<<___;
-.globl	bsaes_enc_key_convert
-.type	bsaes_enc_key_convert,\@function,2
-.align	16
-bsaes_enc_key_convert:
-	mov	240($inp),%r10d		# pass rounds
-	mov	$inp,%rcx		# pass key
-	mov	$out,%rax		# pass key schedule
-	call	_bsaes_key_convert
-	pxor	%xmm6,%xmm7		# fix up last round key
-	movdqa	%xmm7,(%rax)		# save last round key
-	ret
-.size	bsaes_enc_key_convert,.-bsaes_enc_key_convert
-
-.globl	bsaes_encrypt_128
-.type	bsaes_encrypt_128,\@function,4
-.align	16
-bsaes_encrypt_128:
-.Lenc128_loop:
-	movdqu	0x00($inp), @XMM[0]	# load input
-	movdqu	0x10($inp), @XMM[1]
-	movdqu	0x20($inp), @XMM[2]
-	movdqu	0x30($inp), @XMM[3]
-	movdqu	0x40($inp), @XMM[4]
-	movdqu	0x50($inp), @XMM[5]
-	movdqu	0x60($inp), @XMM[6]
-	movdqu	0x70($inp), @XMM[7]
-	mov	$key, %rax		# pass the $key
-	lea	0x80($inp), $inp
-	mov	\$10,%r10d
-
-	call	_bsaes_encrypt8
-
-	movdqu	@XMM[0], 0x00($out)	# write output
-	movdqu	@XMM[1], 0x10($out)
-	movdqu	@XMM[4], 0x20($out)
-	movdqu	@XMM[6], 0x30($out)
-	movdqu	@XMM[3], 0x40($out)
-	movdqu	@XMM[7], 0x50($out)
-	movdqu	@XMM[2], 0x60($out)
-	movdqu	@XMM[5], 0x70($out)
-	lea	0x80($out), $out
-	sub	\$0x80,$len
-	ja	.Lenc128_loop
-	ret
-.size	bsaes_encrypt_128,.-bsaes_encrypt_128
-___
-}
 {
 ######################################################################
 #
