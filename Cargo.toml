@@ -103,7 +103,6 @@ include = [
     "src/test_1_tests.txt",
     "src/test_3_tests.txt",
     "crypto/aes/aes.c",
-    "crypto/aes/aes_test.cc",
     "crypto/aes/asm/aes-586.pl",
     "crypto/aes/asm/aes-armv4.pl",
     "crypto/aes/asm/aes-x86_64.pl",

@@ -58,11 +58,9 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     open: aes_gcm_open,
 };
 
-fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8])
-                -> Result<(), error::Unspecified> {
+fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified> {
     bssl::map_result(unsafe {
-        evp_aead_aes_gcm_init(ctx_buf.as_mut_ptr(),
-                              ctx_buf.len(), key.as_ptr(), key.len())
+        evp_aead_aes_gcm_init(ctx_buf.as_mut_ptr(), ctx_buf.len(), key.as_ptr(), key.len())
     })
 }
 
@@ -113,10 +111,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
+    use {c, test};
     use super::super::super::aead;
     use super::super::tests::test_aead;
-
-    bssl_test!(test_aes, bssl_aes_test_main);
+    use super::AES_MAX_ROUNDS;
 
     #[test]
     pub fn test_aes_gcm_128() {
@@ -128,5 +126,57 @@ mod tests {
     pub fn test_aes_gcm_256() {
         test_aead(&aead::AES_256_GCM,
                   "crypto/cipher/test/aes_256_gcm_tests.txt");
+    }
+
+    fn convert_block(data: &[u8]) -> [u8; AES_BLOCK_SIZE] {
+        let mut buf = [0u8; AES_BLOCK_SIZE];
+        buf.clone_from_slice(data);
+        buf
+    }
+
+    #[test]
+    pub fn test_aes() {
+        test::from_file("src/aead/aes_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let key = test_case.consume_bytes("Key");
+            let input = convert_block(&test_case.consume_bytes("Input"));
+            let output = convert_block(&test_case.consume_bytes("Output"));
+
+            let mut aes_key = AesKey {
+                rd_key: [0u32; 4 * (AES_MAX_ROUNDS + 1)],
+                rounds: 0,
+            };
+
+            unsafe {
+                // Key setup
+                if AES_set_encrypt_key(key.as_ptr(), key.len() * 8, &mut aes_key) != 0 {
+                    panic!("Failed to set aes key");
+                }
+
+                // Encryption into separate buffer
+                let mut buf = [0u8; AES_BLOCK_SIZE];
+                AES_encrypt(input.as_ptr(), buf.as_mut_ptr(), &aes_key);
+                assert_eq!(buf, output);
+
+                // In-place encryption
+                buf.clone_from_slice(&input[..]);
+                AES_encrypt(buf.as_ptr(), buf.as_mut_ptr(), &aes_key);
+                assert_eq!(buf, output);
+            };
+            Ok(())
+        })
+    }
+
+    const AES_BLOCK_SIZE: usize = 16;
+
+    #[repr(C)]
+    pub struct AesKey {
+        pub rd_key: [u32; 4 * (AES_MAX_ROUNDS + 1)],
+        pub rounds: usize,
+    }
+
+    extern "C" {
+        fn AES_set_encrypt_key(key: *const u8, bits: usize, aes_key: *mut AesKey) -> c::int;
+        fn AES_encrypt(in_: *const u8, out: *mut u8, key: *const AesKey);
     }
 }
