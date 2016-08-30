@@ -79,7 +79,12 @@ func (c *Conn) clientHandshake() error {
 		customExtension:         c.config.Bugs.CustomExtension,
 	}
 
-	if c.config.Bugs.NoExtendedMasterSecret {
+	disableEMS := c.config.Bugs.NoExtendedMasterSecret
+	if c.cipherSuite != nil {
+		disableEMS = c.config.Bugs.NoExtendedMasterSecretOnRenegotiation
+	}
+
+	if disableEMS {
 		hello.extendedMasterSecret = false
 	}
 

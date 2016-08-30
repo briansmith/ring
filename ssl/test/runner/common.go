@@ -666,8 +666,14 @@ type ProtocolBugs struct {
 	RequireExtendedMasterSecret bool
 
 	// NoExtendedMasterSecret causes the client and server to behave as if
-	// they didn't support an extended master secret.
+	// they didn't support an extended master secret in the initial
+	// handshake.
 	NoExtendedMasterSecret bool
+
+	// NoExtendedMasterSecretOnRenegotiation causes the client and server to
+	// behave as if they didn't support an extended master secret in
+	// renegotiation handshakes.
+	NoExtendedMasterSecretOnRenegotiation bool
 
 	// EmptyRenegotiationInfo causes the renegotiation extension to be
 	// empty in a renegotiation handshake.

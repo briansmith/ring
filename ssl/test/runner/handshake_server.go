@@ -961,7 +961,11 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	}
 
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions {
-		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
+		disableEMS := config.Bugs.NoExtendedMasterSecret
+		if c.cipherSuite != nil {
+			disableEMS = config.Bugs.NoExtendedMasterSecretOnRenegotiation
+		}
+		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !disableEMS
 	}
 
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateChannelIDAtAllVersions {

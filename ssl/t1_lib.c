@@ -958,10 +958,6 @@ static int ext_ri_add_serverhello(SSL *ssl, CBB *out) {
  *
  * https://tools.ietf.org/html/rfc7627 */
 
-static void ext_ems_init(SSL *ssl) {
-  ssl->s3->tmp.extended_master_secret = 0;
-}
-
 static int ext_ems_add_clienthello(SSL *ssl, CBB *out) {
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
@@ -983,6 +979,17 @@ static int ext_ems_add_clienthello(SSL *ssl, CBB *out) {
 
 static int ext_ems_parse_serverhello(SSL *ssl, uint8_t *out_alert,
                                      CBS *contents) {
+  /* Whether EMS is negotiated may not change on renegotation. */
+  if (ssl->s3->initial_handshake_complete) {
+    if ((contents != NULL) != ssl->s3->tmp.extended_master_secret) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_EMS_MISMATCH);
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+      return 0;
+    }
+
+    return 1;
+  }
+
   if (contents == NULL) {
     return 1;
   }
@@ -2381,7 +2388,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_extended_master_secret,
-    ext_ems_init,
+    NULL,
     ext_ems_add_clienthello,
     ext_ems_parse_serverhello,
     ext_ems_parse_clienthello,

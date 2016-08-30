@@ -3034,6 +3034,57 @@ func addExtendedMasterSecretTests() {
 			}
 		}
 	}
+
+	// Switching EMS on renegotiation is forbidden.
+	testCases = append(testCases, testCase{
+		name: "ExtendedMasterSecret-Renego-NoEMS",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				NoExtendedMasterSecret:                true,
+				NoExtendedMasterSecretOnRenegotiation: true,
+			},
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		name: "ExtendedMasterSecret-Renego-Upgrade",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				NoExtendedMasterSecret: true,
+			},
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_EMS_MISMATCH:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "ExtendedMasterSecret-Renego-Downgrade",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				NoExtendedMasterSecretOnRenegotiation: true,
+			},
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_EMS_MISMATCH:",
+	})
 }
 
 type stateMachineTestConfig struct {
