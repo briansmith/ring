@@ -2096,6 +2096,43 @@ static bool TestSNICallback() {
   return true;
 }
 
+static int SetMaxVersion(const struct ssl_early_callback_ctx *ctx) {
+  SSL_set_max_version(ctx->ssl, TLS1_2_VERSION);
+  return 1;
+}
+
+// TestEarlyCallbackVersionSwitch tests that the early callback can swap the
+// maximum version.
+static bool TestEarlyCallbackVersionSwitch() {
+  ScopedX509 cert = GetTestCertificate();
+  ScopedEVP_PKEY key = GetTestKey();
+  ScopedSSL_CTX server_ctx(SSL_CTX_new(TLS_method()));
+  ScopedSSL_CTX client_ctx(SSL_CTX_new(TLS_method()));
+  if (!cert || !key || !server_ctx || !client_ctx ||
+      !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
+    return false;
+  }
+
+  SSL_CTX_set_max_version(client_ctx.get(), TLS1_3_VERSION);
+  SSL_CTX_set_max_version(server_ctx.get(), TLS1_3_VERSION);
+
+  SSL_CTX_set_select_certificate_cb(server_ctx.get(), SetMaxVersion);
+
+  ScopedSSL client, server;
+  if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
+                              server_ctx.get(), nullptr)) {
+    return false;
+  }
+
+  if (SSL_version(client.get()) != TLS1_2_VERSION) {
+    fprintf(stderr, "Early callback failed to switch the maximum version.\n");
+    return false;
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -2130,7 +2167,8 @@ int main() {
       !TestClientHello() ||
       !TestSessionIDContext() ||
       !TestSessionTimeout() ||
-      !TestSNICallback()) {
+      !TestSNICallback() ||
+      !TestEarlyCallbackVersionSwitch()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
