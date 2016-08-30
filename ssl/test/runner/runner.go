@@ -6305,6 +6305,31 @@ func addSignatureAlgorithmTests() {
 		shouldFail:    true,
 		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
+
+	// Test that RSA-PSS is enabled by default for TLS 1.2.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "RSA-PSS-Default-Verify",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			SignSignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPSSWithSHA256,
+			},
+		},
+		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "RSA-PSS-Default-Sign",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPSSWithSHA256,
+			},
+		},
+		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
+	})
 }
 
 // timeouts is the retransmit schedule for BoringSSL. It doubles and
