@@ -318,7 +318,7 @@ int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server) {
   uint8_t key[EVP_MAX_MD_SIZE];
   size_t key_len = EVP_MD_size(digest);
 
-  uint8_t *traffic_secret;
+  const uint8_t *traffic_secret;
   const char *label;
   if (is_server) {
     label = "server finished";
