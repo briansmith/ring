@@ -228,7 +228,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    SSL_set_session(ssl, NULL);
+    ssl_set_session(ssl, NULL);
   } else {
     if (!ssl_get_new_session(ssl, 0)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);

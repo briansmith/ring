@@ -728,7 +728,7 @@ static int ssl3_send_client_hello(SSL *ssl) {
         ssl->session->not_resumable ||
         !ssl_session_is_time_valid(ssl, ssl->session) ||
         session_version < min_version || session_version > max_version) {
-      SSL_set_session(ssl, NULL);
+      ssl_set_session(ssl, NULL);
     }
   }
 
@@ -896,7 +896,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
   } else {
     /* The session wasn't resumed. Create a fresh SSL_SESSION to
      * fill out. */
-    SSL_set_session(ssl, NULL);
+    ssl_set_session(ssl, NULL);
     if (!ssl_get_new_session(ssl, 0 /* client */)) {
       goto f_err;
     }

@@ -1262,6 +1262,8 @@ int ssl_session_is_context_valid(const SSL *ssl, const SSL_SESSION *session);
  * it has expired. */
 int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
 
+void ssl_set_session(SSL *ssl, SSL_SESSION *session);
+
 enum ssl_session_result_t {
   ssl_session_success,
   ssl_session_error,

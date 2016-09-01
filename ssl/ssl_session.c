@@ -136,6 +136,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/err.h>
@@ -482,7 +483,7 @@ int ssl_get_new_session(SSL *ssl, int is_server) {
 
   SSL_SESSION_free(ssl->s3->new_session);
   ssl->s3->new_session = session;
-  SSL_set_session(ssl, NULL);
+  ssl_set_session(ssl, NULL);
   return 1;
 
 err:
@@ -792,8 +793,18 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
 }
 
 int SSL_set_session(SSL *ssl, SSL_SESSION *session) {
+  /* SSL_set_session may only be called before the handshake has started. */
+  if (ssl->state != SSL_ST_INIT || ssl->s3->initial_handshake_complete) {
+    abort();
+  }
+
+  ssl_set_session(ssl, session);
+  return 1;
+}
+
+void ssl_set_session(SSL *ssl, SSL_SESSION *session) {
   if (ssl->session == session) {
-    return 1;
+    return;
   }
 
   SSL_SESSION_free(ssl->session);
@@ -801,8 +812,6 @@ int SSL_set_session(SSL *ssl, SSL_SESSION *session) {
   if (session != NULL) {
     SSL_SESSION_up_ref(session);
   }
-
-  return 1;
 }
 
 long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout) {
