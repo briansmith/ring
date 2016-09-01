@@ -196,6 +196,11 @@ int ssl3_connect(SSL *ssl) {
     state = ssl->state;
 
     switch (ssl->state) {
+      case SSL_ST_INIT:
+        ssl->state = SSL_ST_CONNECT;
+        skip = 1;
+        break;
+
       case SSL_ST_CONNECT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 

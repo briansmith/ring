@@ -197,6 +197,11 @@ int ssl3_accept(SSL *ssl) {
     state = ssl->state;
 
     switch (ssl->state) {
+      case SSL_ST_INIT:
+        ssl->state = SSL_ST_ACCEPT;
+        skip = 1;
+        break;
+
       case SSL_ST_ACCEPT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 

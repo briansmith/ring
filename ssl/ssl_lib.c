@@ -393,6 +393,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->min_version = ctx->min_version;
   ssl->max_version = ctx->max_version;
 
+  ssl->state = SSL_ST_INIT;
+
   /* RFC 6347 states that implementations SHOULD use an initial timer value of
    * 1 second. */
   ssl->initial_timeout_duration_ms = 1000;
@@ -529,13 +531,11 @@ void SSL_free(SSL *ssl) {
 
 void SSL_set_connect_state(SSL *ssl) {
   ssl->server = 0;
-  ssl->state = SSL_ST_CONNECT;
   ssl->handshake_func = ssl3_connect;
 }
 
 void SSL_set_accept_state(SSL *ssl) {
   ssl->server = 1;
-  ssl->state = SSL_ST_ACCEPT;
   ssl->handshake_func = ssl3_accept;
 }
 
@@ -681,7 +681,7 @@ static int ssl_do_renegotiate(SSL *ssl) {
 
   /* Begin a new handshake. */
   ssl->s3->total_renegotiations++;
-  ssl->state = SSL_ST_CONNECT;
+  ssl->state = SSL_ST_INIT;
   return 1;
 
 no_renegotiation:
@@ -2887,25 +2887,13 @@ int SSL_clear(SSL *ssl) {
     return 0;
   }
 
-  /* SSL_clear may be called before or after the |ssl| is initialized in either
-   * accept or connect state. In the latter case, SSL_clear should preserve the
-   * half and reset |ssl->state| accordingly. */
-  if (ssl->handshake_func != NULL) {
-    if (ssl->server) {
-      SSL_set_accept_state(ssl);
-    } else {
-      SSL_set_connect_state(ssl);
-    }
-  } else {
-    assert(ssl->state == 0);
-  }
-
   /* TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
    * |SSL_clear| because it is per-connection state rather than configuration
    * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
    * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
    * |ssl3_new|. */
 
+  ssl->state = SSL_ST_INIT;
   ssl->rwstate = SSL_NOTHING;
 
   BUF_MEM_free(ssl->init_buf);
