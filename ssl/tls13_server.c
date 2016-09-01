@@ -141,10 +141,8 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
 
   uint16_t resumption_cipher;
   if (session != NULL &&
-      /* We currently only support ECDHE-PSK resumption. */
-      ((session->ticket_flags & SSL_TICKET_ALLOW_DHE_RESUMPTION) == 0 ||
-       /* Only resume if the session's version matches. */
-       session->ssl_version != ssl->version ||
+      /* Only resume if the session's version matches. */
+      (session->ssl_version != ssl->version ||
        !ssl_cipher_get_ecdhe_psk_cipher(session->cipher, &resumption_cipher) ||
        !ssl_client_cipher_list_contains_cipher(&client_hello,
                                                resumption_cipher))) {
@@ -556,22 +554,21 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
   SSL_SESSION *session = ssl->s3->new_session;
   session->tlsext_tick_lifetime_hint = session->timeout;
-  session->ticket_flags = SSL_TICKET_ALLOW_DHE_RESUMPTION;
-  if (!RAND_bytes((uint8_t *)&session->ticket_age_add,
-                  sizeof(session->ticket_age_add))) {
-    return 0;
-  }
-  session->ticket_age_add_valid = 1;
 
-  CBB cbb, body, ticket;
+  /* TODO(svaldez): Add support for sending 0RTT through TicketEarlyDataInfo
+   * extension. */
+
+  CBB cbb, body, ke_modes, auth_modes, ticket;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_NEW_SESSION_TICKET) ||
       !CBB_add_u32(&body, session->tlsext_tick_lifetime_hint) ||
-      !CBB_add_u32(&body, session->ticket_flags) ||
-      !CBB_add_u32(&body, session->ticket_age_add) ||
-      !CBB_add_u16(&body, 0 /* no ticket extensions */) ||
+      !CBB_add_u8_length_prefixed(&body, &ke_modes) ||
+      !CBB_add_u8(&ke_modes, SSL_PSK_DHE_KE) ||
+      !CBB_add_u8_length_prefixed(&body, &auth_modes) ||
+      !CBB_add_u8(&auth_modes, SSL_PSK_AUTH) ||
       !CBB_add_u16_length_prefixed(&body, &ticket) ||
       !ssl_encrypt_ticket(ssl, &ticket, session) ||
+      !CBB_add_u16(&body, 0 /* no ticket extensions */) ||
       !ssl->method->finish_message(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return ssl_hs_error;

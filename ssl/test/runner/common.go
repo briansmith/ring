@@ -189,11 +189,16 @@ const (
 	SRTP_AES128_CM_HMAC_SHA1_32        = 0x0002
 )
 
-// TicketFlags values (see draft-ietf-tls-tls13-14, section 4.4.1)
+// PskKeyExchangeMode values (see draft-ietf-tls-tls13-15)
 const (
-	ticketAllowEarlyData     = 1
-	ticketAllowDHEResumption = 2
-	ticketAllowPSKResumption = 4
+	pskKEMode    = 0
+	pskDHEKEMode = 1
+)
+
+// PskAuthenticationMode values (see draft-ietf-tls-tls13-15)
+const (
+	pskAuthMode     = 0
+	pskSignAuthMode = 1
 )
 
 // ConnectionState records basic TLS details about the connection.
@@ -243,8 +248,6 @@ type ClientSessionState struct {
 	ocspResponse         []byte
 	ticketCreationTime   time.Time
 	ticketExpiration     time.Time
-	ticketFlags          uint32
-	ticketAgeAdd         uint32
 }
 
 // ClientSessionCache is a cache of ClientSessionState objects that can be used
@@ -913,6 +916,13 @@ type ProtocolBugs struct {
 	// SendEmptySessionTicket, if true, causes the server to send an empty
 	// session ticket.
 	SendEmptySessionTicket bool
+
+	// SnedPSKKeyExchangeModes, if present, determines the PSK key exchange modes
+	// to send.
+	SendPSKKeyExchangeModes []byte
+
+	// SendPSKAuthModes, if present, determines the PSK auth modes to send.
+	SendPSKAuthModes []byte
 
 	// FailIfSessionOffered, if true, causes the server to fail any
 	// connections where the client offers a non-empty session ID or session

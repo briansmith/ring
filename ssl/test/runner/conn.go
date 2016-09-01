@@ -1402,6 +1402,23 @@ func (c *Conn) handlePostHandshakeMessage() error {
 				return nil
 			}
 
+			var foundKE, foundAuth bool
+			for _, mode := range newSessionTicket.keModes {
+				if mode == pskDHEKEMode {
+					foundKE = true
+				}
+			}
+			for _, mode := range newSessionTicket.authModes {
+				if mode == pskAuthMode {
+					foundAuth = true
+				}
+			}
+
+			// Ignore the ticket if the server preferences do not match a mode we implement.
+			if !foundKE || !foundAuth {
+				return nil
+			}
+
 			session := &ClientSessionState{
 				sessionTicket:      newSessionTicket.ticket,
 				vers:               c.vers,
@@ -1412,8 +1429,6 @@ func (c *Conn) handlePostHandshakeMessage() error {
 				ocspResponse:       c.ocspResponse,
 				ticketCreationTime: c.config.time(),
 				ticketExpiration:   c.config.time().Add(time.Duration(newSessionTicket.ticketLifetime) * time.Second),
-				ticketFlags:        newSessionTicket.ticketFlags,
-				ticketAgeAdd:       newSessionTicket.ticketAgeAdd,
 			}
 
 			cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
@@ -1693,17 +1708,19 @@ func (c *Conn) SendNewSessionTicket() error {
 		peerCertificatesRaw = append(peerCertificatesRaw, cert.Raw)
 	}
 
-	var ageAdd uint32
-	if err := binary.Read(c.config.rand(), binary.LittleEndian, &ageAdd); err != nil {
-		return err
-	}
-
 	// TODO(davidben): Allow configuring these values.
 	m := &newSessionTicketMsg{
 		version:        c.vers,
 		ticketLifetime: uint32(24 * time.Hour / time.Second),
-		ticketFlags:    ticketAllowDHEResumption | ticketAllowPSKResumption,
-		ticketAgeAdd:   ageAdd,
+		keModes:        []byte{pskDHEKEMode},
+		authModes:      []byte{pskAuthMode},
+	}
+
+	if len(c.config.Bugs.SendPSKKeyExchangeModes) != 0 {
+		m.keModes = c.config.Bugs.SendPSKKeyExchangeModes
+	}
+	if len(c.config.Bugs.SendPSKAuthModes) != 0 {
+		m.authModes = c.config.Bugs.SendPSKAuthModes
 	}
 
 	state := sessionState{
@@ -1713,8 +1730,6 @@ func (c *Conn) SendNewSessionTicket() error {
 		certificates:       peerCertificatesRaw,
 		ticketCreationTime: c.config.time(),
 		ticketExpiration:   c.config.time().Add(time.Duration(m.ticketLifetime) * time.Second),
-		ticketFlags:        m.ticketFlags,
-		ticketAgeAdd:       ageAdd,
 	}
 
 	if !c.config.Bugs.SendEmptySessionTicket {

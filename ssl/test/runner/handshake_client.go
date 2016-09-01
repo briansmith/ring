@@ -261,10 +261,20 @@ NextCipherSuite:
 		if session.vers >= VersionTLS13 || c.config.Bugs.SendBothTickets {
 			// TODO(nharper): Support sending more
 			// than one PSK identity.
-			if session.ticketFlags&ticketAllowDHEResumption != 0 || c.config.Bugs.SendBothTickets {
-				hello.pskIdentities = [][]uint8{ticket}
-				hello.cipherSuites = append(hello.cipherSuites, ecdhePSKSuite(session.cipherSuite))
+			psk := pskIdentity{
+				keModes:   []byte{pskDHEKEMode},
+				authModes: []byte{pskAuthMode},
+				ticket:    ticket,
 			}
+			if len(c.config.Bugs.SendPSKKeyExchangeModes) != 0 {
+				psk.keModes = c.config.Bugs.SendPSKKeyExchangeModes
+			}
+			if len(c.config.Bugs.SendPSKAuthModes) != 0 {
+				psk.authModes = c.config.Bugs.SendPSKAuthModes
+			}
+
+			hello.pskIdentities = []pskIdentity{psk}
+			hello.cipherSuites = append(hello.cipherSuites, ecdhePSKSuite(session.cipherSuite))
 		}
 
 		if session.vers < VersionTLS13 || c.config.Bugs.SendBothTickets {

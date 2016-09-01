@@ -3715,7 +3715,6 @@ struct ssl_session_st {
 
   uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
 
-  uint32_t ticket_flags;
   uint32_t ticket_age_add;
 
   /* extended_master_secret is true if the master secret in this session was

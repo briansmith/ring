@@ -400,18 +400,39 @@ Curves:
 
 	pskIdentities := hs.clientHello.pskIdentities
 	if len(pskIdentities) == 0 && len(hs.clientHello.sessionTicket) > 0 && c.config.Bugs.AcceptAnySession {
-		pskIdentities = [][]uint8{hs.clientHello.sessionTicket}
+		psk := pskIdentity{
+			keModes:   []byte{pskDHEKEMode},
+			authModes: []byte{pskAuthMode},
+			ticket:    hs.clientHello.sessionTicket,
+		}
+		pskIdentities = []pskIdentity{psk}
 	}
 	for i, pskIdentity := range pskIdentities {
-		sessionState, ok := c.decryptTicket(pskIdentity)
+		foundKE := false
+		foundAuth := false
+
+		for _, keMode := range pskIdentity.keModes {
+			if keMode == pskDHEKEMode {
+				foundKE = true
+			}
+		}
+
+		for _, authMode := range pskIdentity.authModes {
+			if authMode == pskAuthMode {
+				foundAuth = true
+			}
+		}
+
+		if !foundKE || !foundAuth {
+			continue
+		}
+
+		sessionState, ok := c.decryptTicket(pskIdentity.ticket)
 		if !ok {
 			continue
 		}
 		if !config.Bugs.AcceptAnySession {
 			if sessionState.vers != c.vers && c.config.Bugs.AcceptAnySession {
-				continue
-			}
-			if sessionState.ticketFlags&ticketAllowDHEResumption == 0 {
 				continue
 			}
 			if sessionState.ticketExpiration.Before(c.config.time()) {
@@ -1090,7 +1111,7 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 
 	ticket := hs.clientHello.sessionTicket
 	if len(ticket) == 0 && len(hs.clientHello.pskIdentities) > 0 && c.config.Bugs.AcceptAnySession {
-		ticket = hs.clientHello.pskIdentities[0]
+		ticket = hs.clientHello.pskIdentities[0].ticket
 	}
 	if len(ticket) > 0 {
 		if c.config.SessionTicketsDisabled {

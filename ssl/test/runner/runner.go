@@ -2118,19 +2118,6 @@ func addBasicTests() {
 			expectMessageDropped: true,
 		},
 		{
-			// In TLS 1.2 and below, empty NewSessionTicket messages
-			// mean the server changed its mind on sending a ticket.
-			name: "SendEmptySessionTicket",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					SendEmptySessionTicket: true,
-					FailIfSessionOffered:   true,
-				},
-			},
-			flags: []string{"-expect-no-session"},
-		},
-		{
 			name:        "BadHelloRequest-1",
 			renegotiate: 1,
 			config: Config{
@@ -7572,6 +7559,105 @@ func addTLS13RecordTests() {
 	})
 }
 
+func addSessionTicketTests() {
+	testCases = append(testCases, testCase{
+		// In TLS 1.2 and below, empty NewSessionTicket messages
+		// mean the server changed its mind on sending a ticket.
+		name: "SendEmptySessionTicket",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendEmptySessionTicket: true,
+			},
+		},
+		flags: []string{"-expect-no-session"},
+	})
+
+	// Test that the server ignores unknown PSK modes.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-SendUnknownModeSessionTicket-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKKeyExchangeModes: []byte{0x1a, pskDHEKEMode, 0x2a},
+				SendPSKAuthModes:        []byte{0x1a, pskAuthMode, 0x2a},
+			},
+		},
+		resumeSession:         true,
+		expectedResumeVersion: VersionTLS13,
+	})
+
+	// Test that the server declines sessions with no matching key exchange mode.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-SendBadKEModeSessionTicket-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKKeyExchangeModes: []byte{0x1a},
+			},
+		},
+		resumeSession:        true,
+		expectResumeRejected: true,
+	})
+
+	// Test that the server declines sessions with no matching auth mode.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-SendBadAuthModeSessionTicket-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKAuthModes: []byte{0x1a},
+			},
+		},
+		resumeSession:        true,
+		expectResumeRejected: true,
+	})
+
+	// Test that the client ignores unknown PSK modes.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-SendUnknownModeSessionTicket-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKKeyExchangeModes: []byte{0x1a, pskDHEKEMode, 0x2a},
+				SendPSKAuthModes:        []byte{0x1a, pskAuthMode, 0x2a},
+			},
+		},
+		resumeSession:         true,
+		expectedResumeVersion: VersionTLS13,
+	})
+
+	// Test that the client ignores tickets with no matching key exchange mode.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-SendBadKEModeSessionTicket-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKKeyExchangeModes: []byte{0x1a},
+			},
+		},
+		flags: []string{"-expect-no-session"},
+	})
+
+	// Test that the client ignores tickets with no matching auth mode.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-SendBadAuthModeSessionTicket-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKAuthModes: []byte{0x1a},
+			},
+		},
+		flags: []string{"-expect-no-session"},
+	})
+}
+
 func addChangeCipherSpecTests() {
 	// Test missing ChangeCipherSpecs.
 	testCases = append(testCases, testCase{
@@ -8642,6 +8728,7 @@ func main() {
 	addCurveTests()
 	addCECPQ1Tests()
 	addDHEGroupSizeTests()
+	addSessionTicketTests()
 	addTLS13RecordTests()
 	addAllStateMachineCoverageTests()
 	addChangeCipherSpecTests()

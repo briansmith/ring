@@ -1272,10 +1272,12 @@ typedef struct dtls1_state_st {
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
 
-/* From draft-ietf-tls-tls13-14, used in determining ticket validity. */
-#define SSL_TICKET_ALLOW_EARLY_DATA 1
-#define SSL_TICKET_ALLOW_DHE_RESUMPTION 2
-#define SSL_TICKET_ALLOW_PSK_RESUMPTION 4
+/* From draft-ietf-tls-tls13-15, used in determining PSK modes. */
+#define SSL_PSK_KE        0x0
+#define SSL_PSK_DHE_KE    0x1
+
+#define SSL_PSK_AUTH      0x0
+#define SSL_PSK_SIGN_AUTH 0x1
 
 CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
