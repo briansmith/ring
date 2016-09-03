@@ -159,6 +159,7 @@ type clientHelloMsg struct {
 	srtpMasterKeyIdentifier string
 	sctListSupported        bool
 	customExtension         string
+	hasGREASEExtension      bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -199,7 +200,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		eqUint16s(m.srtpProtectionProfiles, m1.srtpProtectionProfiles) &&
 		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier &&
 		m.sctListSupported == m1.sctListSupported &&
-		m.customExtension == m1.customExtension
+		m.customExtension == m1.customExtension &&
+		m.hasGREASEExtension == m1.hasGREASEExtension
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -705,6 +707,10 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			m.customExtension = string(data[:length])
 		}
 		data = data[length:]
+
+		if isGREASEValue(extension) {
+			m.hasGREASEExtension = true
+		}
 	}
 
 	return true

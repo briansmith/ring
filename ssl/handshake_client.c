@@ -579,6 +579,18 @@ end:
   return ret;
 }
 
+uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
+  /* Use the client_random for entropy. This both avoids calling |RAND_bytes| on
+   * a single byte repeatedly and ensures the values are deterministic. This
+   * allows the same ClientHello be sent twice for a HelloRetryRequest or the
+   * same group be advertised in both supported_groups and key_shares. */
+  uint16_t ret = ssl->s3->client_random[index];
+  /* This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16. */
+  ret = (ret & 0xf0) | 0x0a;
+  ret |= ret << 8;
+  return ret;
+}
+
 static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
                                         uint16_t min_version,
                                         uint16_t max_version) {
@@ -587,6 +599,12 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
 
   CBB child;
   if (!CBB_add_u16_length_prefixed(out, &child)) {
+    return 0;
+  }
+
+  /* Add a fake cipher suite. See draft-davidben-tls-grease-01. */
+  if (ssl->ctx->grease_enabled &&
+      !CBB_add_u16(&child, ssl_get_grease_value(ssl, ssl_grease_cipher))) {
     return 0;
   }
 

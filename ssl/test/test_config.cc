@@ -105,6 +105,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-null-client-ca-list", &TestConfig::use_null_client_ca_list },
   { "-send-alert", &TestConfig::send_alert },
   { "-peek-then-read", &TestConfig::peek_then_read },
+  { "-enable-grease", &TestConfig::enable_grease },
 };
 
 const Flag<std::string> kStringFlags[] = {

@@ -2309,6 +2309,26 @@ func addBasicTests() {
 			expectedError:      ":INVALID_COMPRESSION_LIST:",
 			expectedLocalError: "remote error: illegal parameter",
 		},
+		{
+			name: "GREASE-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					ExpectGREASE: true,
+				},
+			},
+			flags: []string{"-enable-grease"},
+		},
+		{
+			name: "GREASE-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectGREASE: true,
+				},
+			},
+			flags: []string{"-enable-grease"},
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

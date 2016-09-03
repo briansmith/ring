@@ -246,11 +246,13 @@ func (hs *serverHandshakeState) readClientHello() error {
 	}
 	c.haveVers = true
 
-	var scsvFound bool
+	var scsvFound, greaseFound bool
 	for _, cipherSuite := range hs.clientHello.cipherSuites {
 		if cipherSuite == fallbackSCSV {
 			scsvFound = true
-			break
+		}
+		if isGREASEValue(cipherSuite) {
+			greaseFound = true
 		}
 	}
 
@@ -258,6 +260,36 @@ func (hs *serverHandshakeState) readClientHello() error {
 		return errors.New("tls: no fallback SCSV found when expected")
 	} else if scsvFound && !config.Bugs.FailIfNotFallbackSCSV {
 		return errors.New("tls: fallback SCSV found when not expected")
+	}
+
+	if !greaseFound && config.Bugs.ExpectGREASE {
+		return errors.New("tls: no GREASE cipher suite value found")
+	}
+
+	greaseFound = false
+	for _, curve := range hs.clientHello.supportedCurves {
+		if isGREASEValue(uint16(curve)) {
+			greaseFound = true
+			break
+		}
+	}
+
+	if !greaseFound && config.Bugs.ExpectGREASE {
+		return errors.New("tls: no GREASE curve value found")
+	}
+
+	if len(hs.clientHello.keyShares) > 0 {
+		greaseFound = false
+		for _, keyShare := range hs.clientHello.keyShares {
+			if isGREASEValue(uint16(keyShare.group)) {
+				greaseFound = true
+				break
+			}
+		}
+
+		if !greaseFound && config.Bugs.ExpectGREASE {
+			return errors.New("tls: no GREASE curve value found")
+		}
 	}
 
 	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
@@ -1002,6 +1034,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.ticketSupported = true
 	}
 
+	if !hs.clientHello.hasGREASEExtension && config.Bugs.ExpectGREASE {
+		return errors.New("tls: no GREASE extension found")
+	}
+
 	return nil
 }
 
@@ -1672,4 +1708,8 @@ func isTLS12Cipher(id uint16) bool {
 	}
 	// Unknown cipher.
 	return false
+}
+
+func isGREASEValue(val uint16) bool {
+	return val&0x0f0f == 0x0a0a && val&0xff == val >> 8
 }

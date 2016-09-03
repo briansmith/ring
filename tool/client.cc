@@ -89,6 +89,10 @@ static const struct argument kArguments[] = {
       " values: 'smtp'",
     },
     {
+     "-grease", kBooleanArgument,
+     "Enable GREASE",
+    },
+    {
      "", kOptionalArgument, "",
     },
 };
@@ -267,6 +271,10 @@ bool Client(const std::vector<std::string> &args) {
     }
     SSL_CTX_set_session_cache_mode(ctx.get(), SSL_SESS_CACHE_CLIENT);
     SSL_CTX_sess_set_new_cb(ctx.get(), NewSessionCallback);
+  }
+
+  if (args_map.count("-grease") != 0) {
+    SSL_CTX_set_grease_enabled(ctx.get(), 1);
   }
 
   int sock = -1;

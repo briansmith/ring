@@ -942,6 +942,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_client_CA_list(ssl_ctx.get(), nullptr);
   }
 
+  if (config->enable_grease) {
+    SSL_CTX_set_grease_enabled(ssl_ctx.get(), 1);
+  }
+
   return ssl_ctx;
 }
 

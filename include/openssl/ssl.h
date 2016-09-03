@@ -3101,6 +3101,10 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl);
 OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 
+/* SSL_CTX_set_grease_enabled configures whether client sockets on |ctx| should
+ * enable GREASE. See draft-davidben-tls-grease-01. */
+OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
+
 
 /* Deprecated functions. */
 
@@ -3992,10 +3996,14 @@ struct ssl_ctx_st {
   /* If true, a client will request certificate timestamps. */
   unsigned signed_cert_timestamps_enabled:1;
 
-  /* tlsext_channel_id_enabled is copied from the |SSL_CTX|. For a server,
-   * means that we'll accept Channel IDs from clients. For a client, means that
-   * we'll advertise support. */
+  /* tlsext_channel_id_enabled is one if Channel ID is enabled and zero
+   * otherwise. For a server, means that we'll accept Channel IDs from clients.
+   * For a client, means that we'll advertise support. */
   unsigned tlsext_channel_id_enabled:1;
+
+  /* grease_enabled is one if draft-davidben-tls-grease-01 is enabled and zero
+   * otherwise. */
+  unsigned grease_enabled:1;
 
   /* extra_certs is a dummy value included for compatibility.
    * TODO(agl): remove once node.js no longer references this. */

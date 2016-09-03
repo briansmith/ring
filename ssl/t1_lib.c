@@ -2106,6 +2106,15 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
 
     group_id = ssl->s3->hs->retry_group;
   } else {
+    /* Add a fake group. See draft-davidben-tls-grease-01. */
+    if (ssl->ctx->grease_enabled &&
+        (!CBB_add_u16(&kse_bytes,
+                      ssl_get_grease_value(ssl, ssl_grease_group)) ||
+         !CBB_add_u16(&kse_bytes, 1 /* length */) ||
+         !CBB_add_u8(&kse_bytes, 0 /* one byte key share */))) {
+      return 0;
+    }
+
     /* Predict the most preferred group. */
     const uint16_t *groups;
     size_t groups_len;
@@ -2290,6 +2299,13 @@ static int ext_supported_groups_add_clienthello(SSL *ssl, CBB *out) {
   if (!CBB_add_u16(out, TLSEXT_TYPE_supported_groups) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &groups_bytes)) {
+    return 0;
+  }
+
+  /* Add a fake group. See draft-davidben-tls-grease-01. */
+  if (ssl->ctx->grease_enabled &&
+      !CBB_add_u16(&groups_bytes,
+                   ssl_get_grease_value(ssl, ssl_grease_group))) {
     return 0;
   }
 
@@ -2546,6 +2562,16 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
     }
   }
 
+  uint16_t grease_ext1 = 0;
+  if (ssl->ctx->grease_enabled) {
+    /* Add a fake empty extension. See draft-davidben-tls-grease-01. */
+    grease_ext1 = ssl_get_grease_value(ssl, ssl_grease_extension1);
+    if (!CBB_add_u16(&extensions, grease_ext1) ||
+        !CBB_add_u16(&extensions, 0 /* zero length */)) {
+      goto err;
+    }
+  }
+
   for (size_t i = 0; i < kNumExtensions; i++) {
     const size_t len_before = CBB_len(&extensions);
     if (!kExtensions[i].add_clienthello(ssl, &extensions)) {
@@ -2561,6 +2587,24 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
 
   if (!custom_ext_add_clienthello(ssl, &extensions)) {
     goto err;
+  }
+
+  if (ssl->ctx->grease_enabled) {
+    /* Add a fake non-empty extension. See draft-davidben-tls-grease-01. */
+    uint16_t grease_ext2 = ssl_get_grease_value(ssl, ssl_grease_extension2);
+
+    /* The two fake extensions must not have the same value. GREASE values are
+     * of the form 0x1a1a, 0x2a2a, 0x3a3a, etc., so XOR to generate a different
+     * one. */
+    if (grease_ext1 == grease_ext2) {
+      grease_ext2 ^= 0x1010;
+    }
+
+    if (!CBB_add_u16(&extensions, grease_ext2) ||
+        !CBB_add_u16(&extensions, 1 /* one byte length */) ||
+        !CBB_add_u8(&extensions, 0 /* single zero byte as contents */)) {
+      goto err;
+    }
   }
 
   if (!SSL_is_dtls(ssl)) {
