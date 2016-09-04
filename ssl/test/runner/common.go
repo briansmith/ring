@@ -1059,6 +1059,10 @@ type ProtocolBugs struct {
 	// SendRequestContext, if not empty, is the request context to send in
 	// a TLS 1.3 CertificateRequest.
 	SendRequestContext []byte
+
+	// SendSNIWarningAlert, if true, causes the server to send an
+	// unrecognized_name alert before the ServerHello.
+	SendSNIWarningAlert bool
 }
 
 func (c *Config) serverInit() {

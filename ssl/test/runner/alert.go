@@ -41,6 +41,7 @@ const (
 	alertNoRenegotiation        alert = 100
 	alertMissingExtension       alert = 109
 	alertUnsupportedExtension   alert = 110
+	alertUnrecognizedName       alert = 112
 	alertUnknownPSKIdentity     alert = 115
 )
 
@@ -70,6 +71,7 @@ var alertText = map[alert]string{
 	alertNoRenegotiation:        "no renegotiation",
 	alertMissingExtension:       "missing extension",
 	alertUnsupportedExtension:   "unsupported extension",
+	alertUnrecognizedName:       "unrecognized name",
 	alertUnknownPSKIdentity:     "unknown PSK identity",
 }
 

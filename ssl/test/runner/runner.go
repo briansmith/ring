@@ -2247,6 +2247,15 @@ func addBasicTests() {
 				},
 			},
 		},
+		{
+			name: "SendSNIWarningAlert",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendSNIWarningAlert: true,
+				},
+			},
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

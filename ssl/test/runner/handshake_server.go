@@ -1139,6 +1139,10 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	hs.writeClientHash(hs.clientHello.marshal())
 	hs.writeServerHash(hs.hello.marshal())
 
+	if config.Bugs.SendSNIWarningAlert {
+		c.SendAlert(alertLevelWarning, alertUnrecognizedName)
+	}
+
 	c.writeRecord(recordTypeHandshake, hs.hello.marshal())
 
 	if !isPSK {
