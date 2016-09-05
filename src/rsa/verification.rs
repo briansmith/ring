@@ -17,7 +17,7 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, digest, error, private, signature};
-use super::{RSAParameters, parse_public_key};
+use super::{BIGNUM, PositiveInteger, RSAParameters, parse_public_key};
 use untrusted;
 
 
@@ -40,13 +40,12 @@ fn verify(params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input),
         return Err(error::Unspecified);
     }
 
-    let n = n.as_slice_less_safe();
-    let e = e.as_slice_less_safe();
+    let n = try!(PositiveInteger::from_be_bytes(n));
+    let e = try!(PositiveInteger::from_be_bytes(e));
     let decoded = &mut decoded[..signature.len()];
     try!(bssl::map_result(unsafe {
-        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(),
-                               n.as_ptr(), n.len(), e.as_ptr(), e.len(),
-                               signature.as_ptr(), signature.len(),
+        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
+                               e.as_ref(), signature.as_ptr(), signature.len(),
                                params.min_bits, MAX_BITS)
     }));
 
@@ -121,10 +120,8 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
 
 extern {
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
-                              public_key_n: *const u8,
-                              public_key_n_len: c::size_t,
-                              public_key_e: *const u8,
-                              public_key_e_len: c::size_t,
+                              public_key_n: *const BIGNUM,
+                              public_key_e: *const BIGNUM,
                               ciphertext: *const u8,
                               ciphertext_len: c::size_t, min_bits: c::size_t,
                               max_bits: c::size_t) -> c::int;

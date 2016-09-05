@@ -74,11 +74,9 @@ int GFp_BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont);
 
 int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
                                        size_t min_bits, size_t max_bits);
-int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
-                           const uint8_t *public_key_n, size_t public_key_n_len,
-                           const uint8_t *public_key_e, size_t public_key_e_len,
-                           const uint8_t *in, size_t in_len, size_t min_bits,
-                           size_t max_bits);
+int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
+                           const BIGNUM *e, const uint8_t *in, size_t in_len,
+                           size_t min_bits, size_t max_bits);
 
 
 #if defined(__cplusplus)
