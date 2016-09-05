@@ -142,17 +142,16 @@ static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
 
 static int cbb_buffer_add_u(struct cbb_buffer_st *base, uint32_t v,
                             size_t len_len) {
-  uint8_t *buf;
-  size_t i;
-
   if (len_len == 0) {
     return 1;
   }
+
+  uint8_t *buf;
   if (!cbb_buffer_add(base, &buf, len_len)) {
     return 0;
   }
 
-  for (i = len_len - 1; i < len_len; i--) {
+  for (size_t i = len_len - 1; i < len_len; i--) {
     buf[i] = v;
     v >>= 8;
   }
@@ -440,14 +439,13 @@ void CBB_discard_child(CBB *cbb) {
 
 int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
   CBB child;
-  size_t i;
   int started = 0;
 
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
     return 0;
   }
 
-  for (i = 0; i < 8; i++) {
+  for (size_t i = 0; i < 8; i++) {
     uint8_t byte = (value >> 8*(7-i)) & 0xff;
     if (!started) {
       if (byte == 0) {

@@ -2533,13 +2533,12 @@ void SSL_CTX_set_current_time_cb(SSL_CTX *ctx,
 static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
   static const char hextable[] = "0123456789abcdef";
   uint8_t *out;
-  size_t i;
 
   if (!CBB_add_space(cbb, &out, in_len * 2)) {
     return 0;
   }
 
-  for (i = 0; i < in_len; i++) {
+  for (size_t i = 0; i < in_len; i++) {
     *(out++) = (uint8_t)hextable[in[i] >> 4];
     *(out++) = (uint8_t)hextable[in[i] & 0xf];
   }
@@ -2708,9 +2707,8 @@ int ssl_get_full_version_range(const SSL *ssl, uint16_t *out_min_version,
    * as a min/max range by picking the lowest contiguous non-empty range of
    * enabled protocols. Note that this means it is impossible to set a maximum
    * version of the higest supported TLS version in a future-proof way. */
-  size_t i;
   int any_enabled = 0;
-  for (i = 0; i < kVersionsLen; i++) {
+  for (size_t i = 0; i < kVersionsLen; i++) {
     /* Only look at the versions already enabled. */
     if (min_version > kVersions[i].version) {
       continue;

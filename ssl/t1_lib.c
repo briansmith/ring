@@ -382,14 +382,13 @@ int tls1_get_shared_group(SSL *ssl, uint16_t *out_group_id) {
 int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
                     const int *curves, size_t ncurves) {
   uint16_t *group_ids;
-  size_t i;
 
   group_ids = OPENSSL_malloc(ncurves * sizeof(uint16_t));
   if (group_ids == NULL) {
     return 0;
   }
 
-  for (i = 0; i < ncurves; i++) {
+  for (size_t i = 0; i < ncurves; i++) {
     if (!ssl_nid_to_group_id(&group_ids[i], curves[i])) {
       OPENSSL_free(group_ids);
       return 0;
@@ -1739,8 +1738,7 @@ static int ext_srtp_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
-  size_t i;
-  for (i = 0; i < num_profiles; i++) {
+  for (size_t i = 0; i < num_profiles; i++) {
     if (!CBB_add_u16(&profile_ids,
                      sk_SRTP_PROTECTION_PROFILE_value(profiles, i)->id)) {
       return 0;
@@ -1787,8 +1785,7 @@ static int ext_srtp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
   /* Check to see if the server gave us something we support (and presumably
    * offered). */
-  size_t i;
-  for (i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(profiles); i++) {
+  for (size_t i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(profiles); i++) {
     const SRTP_PROTECTION_PROFILE *profile =
         sk_SRTP_PROTECTION_PROFILE_value(profiles, i);
 
@@ -1823,8 +1820,7 @@ static int ext_srtp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
       SSL_get_srtp_profiles(ssl);
 
   /* Pick the server's most preferred profile. */
-  size_t i;
-  for (i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(server_profiles); i++) {
+  for (size_t i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(server_profiles); i++) {
     const SRTP_PROTECTION_PROFILE *server_profile =
         sk_SRTP_PROTECTION_PROFILE_value(server_profiles, i);
 
@@ -1877,8 +1873,7 @@ static int ssl_any_ec_cipher_suites_enabled(const SSL *ssl) {
 
   const STACK_OF(SSL_CIPHER) *cipher_stack = SSL_get_ciphers(ssl);
 
-  size_t i;
-  for (i = 0; i < sk_SSL_CIPHER_num(cipher_stack); i++) {
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(cipher_stack); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(cipher_stack, i);
 
     const uint32_t alg_k = cipher->algorithm_mkey;
@@ -2279,8 +2274,7 @@ static int ext_supported_groups_add_clienthello(SSL *ssl, CBB *out) {
   size_t groups_len;
   tls1_get_grouplist(ssl, 0, &groups, &groups_len);
 
-  size_t i;
-  for (i = 0; i < groups_len; i++) {
+  for (size_t i = 0; i < groups_len; i++) {
     if (!CBB_add_u16(&groups_bytes, groups[i])) {
       return 0;
     }
@@ -2318,8 +2312,7 @@ static int ext_supported_groups_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   }
 
   const size_t num_groups = CBS_len(&supported_group_list) / 2;
-  size_t i;
-  for (i = 0; i < num_groups; i++) {
+  for (size_t i = 0; i < num_groups; i++) {
     if (!CBS_get_u16(&supported_group_list,
                      &ssl->s3->tmp.peer_supported_group_list[i])) {
       goto err;
@@ -2524,14 +2517,13 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
   ssl->s3->tmp.extensions.sent = 0;
   ssl->s3->tmp.custom_extensions.sent = 0;
 
-  size_t i;
-  for (i = 0; i < kNumExtensions; i++) {
+  for (size_t i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
       kExtensions[i].init(ssl);
     }
   }
 
-  for (i = 0; i < kNumExtensions; i++) {
+  for (size_t i = 0; i < kNumExtensions; i++) {
     const size_t len_before = CBB_len(&extensions);
     if (!kExtensions[i].add_clienthello(ssl, &extensions)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
@@ -2787,8 +2779,7 @@ static int ssl_scan_serverhello_tlsext(SSL *ssl, CBS *cbs, int *out_alert) {
     }
   }
 
-  size_t i;
-  for (i = 0; i < kNumExtensions; i++) {
+  for (size_t i = 0; i < kNumExtensions; i++) {
     if (!(received & (1u << i))) {
       /* Extension wasn't observed so call the callback with a NULL
        * parameter. */

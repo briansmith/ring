@@ -709,9 +709,7 @@ int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx) {
 
 int EC_POINTs_make_affine(const EC_GROUP *group, size_t num, EC_POINT *points[],
                           BN_CTX *ctx) {
-  size_t i;
-
-  for (i = 0; i < num; i++) {
+  for (size_t i = 0; i < num; i++) {
     if (group->meth != points[i]->meth) {
       OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
       return 0;

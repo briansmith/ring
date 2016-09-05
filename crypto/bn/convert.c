@@ -160,9 +160,6 @@ static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
 }
 
 int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
-  size_t i;
-  BN_ULONG l;
-
   /* Special case for |in| = 0. Just branch as the probability is negligible. */
   if (BN_is_zero(in)) {
     memset(out, 0, len);
@@ -175,7 +172,7 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
     return 0;
   }
   if ((len % BN_BYTES) != 0) {
-    l = read_word_padded(in, len / BN_BYTES);
+    BN_ULONG l = read_word_padded(in, len / BN_BYTES);
     if (l >> (8 * (len % BN_BYTES)) != 0) {
       return 0;
     }
@@ -188,9 +185,9 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
    * leading zero octets is low.
    *
    * See Falko Stenzke, "Manger's Attack revisited", ICICS 2010. */
-  i = len;
+  size_t i = len;
   while (i--) {
-    l = read_word_padded(in, i / BN_BYTES);
+    BN_ULONG l = read_word_padded(in, i / BN_BYTES);
     *(out++) = (uint8_t)(l >> (8 * (i % BN_BYTES))) & 0xff;
   }
   return 1;

@@ -142,10 +142,9 @@ static bool CompareDigest(const TestVector *test,
                           const uint8_t *digest,
                           size_t digest_len) {
   static const char kHexTable[] = "0123456789abcdef";
-  size_t i;
   char digest_hex[2*EVP_MAX_MD_SIZE + 1];
 
-  for (i = 0; i < digest_len; i++) {
+  for (size_t i = 0; i < digest_len; i++) {
     digest_hex[2*i] = kHexTable[digest[i] >> 4];
     digest_hex[2*i + 1] = kHexTable[digest[i] & 0xf];
   }

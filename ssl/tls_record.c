@@ -139,8 +139,7 @@ static int ssl_needs_record_splitting(const SSL *ssl) {
 }
 
 int ssl_record_sequence_update(uint8_t *seq, size_t seq_len) {
-  size_t i;
-  for (i = seq_len - 1; i < seq_len; i--) {
+  for (size_t i = seq_len - 1; i < seq_len; i--) {
     ++seq[i];
     if (seq[i] != 0) {
       return 1;

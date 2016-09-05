@@ -244,8 +244,7 @@ int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
     return 0;
   }
 
-  size_t i;
-  for (i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
+  for (size_t i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
     void *ptr = CRYPTO_get_ex_data(from, i + ex_data_class->num_reserved);
@@ -274,8 +273,7 @@ void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
     return;
   }
 
-  size_t i;
-  for (i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
+  for (size_t i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
     if (func_pointer->free_func) {

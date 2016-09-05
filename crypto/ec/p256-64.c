@@ -94,8 +94,7 @@ static void smallfelem_to_bin32(u8 out[32], const smallfelem in) {
 
 /* To preserve endianness when using BN_bn2bin and BN_bin2bn. */
 static void flip_endian(u8 *out, const u8 *in, size_t len) {
-  size_t i;
-  for (i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     out[i] = in[len - 1 - i];
   }
 }
@@ -719,8 +718,7 @@ static void felem_contract(smallfelem out, const felem in) {
    * each u64, from most-significant to least significant. For each one, if
    * all words so far have been equal (m is all ones) then a non-equal
    * result is the answer. Otherwise we continue. */
-  size_t i;
-  for (i = 3; i < 4; i--) {
+  for (size_t i = 3; i < 4; i--) {
     u64 equal;
     uint128_t a = ((uint128_t)kPrime[i]) - out[i];
     /* if out[i] > kPrime[i] then a will underflow and the high 64-bits
@@ -810,7 +808,6 @@ static void felem_inv(felem out, const felem in) {
   /* each e_I will hold |in|^{2^I - 1} */
   felem e2, e4, e8, e16, e32, e64;
   longfelem tmp;
-  size_t i;
 
   felem_square(tmp, in);
   felem_reduce(ftmp, tmp); /* 2^1 */
@@ -835,47 +832,47 @@ static void felem_inv(felem out, const felem in) {
   felem_mul(tmp, ftmp, e4);
   felem_reduce(ftmp, tmp); /* 2^8 - 2^0 */
   felem_assign(e8, ftmp);
-  for (i = 0; i < 8; i++) {
+  for (size_t i = 0; i < 8; i++) {
     felem_square(tmp, ftmp);
     felem_reduce(ftmp, tmp);
   } /* 2^16 - 2^8 */
   felem_mul(tmp, ftmp, e8);
   felem_reduce(ftmp, tmp); /* 2^16 - 2^0 */
   felem_assign(e16, ftmp);
-  for (i = 0; i < 16; i++) {
+  for (size_t i = 0; i < 16; i++) {
     felem_square(tmp, ftmp);
     felem_reduce(ftmp, tmp);
   } /* 2^32 - 2^16 */
   felem_mul(tmp, ftmp, e16);
   felem_reduce(ftmp, tmp); /* 2^32 - 2^0 */
   felem_assign(e32, ftmp);
-  for (i = 0; i < 32; i++) {
+  for (size_t i = 0; i < 32; i++) {
     felem_square(tmp, ftmp);
     felem_reduce(ftmp, tmp);
   } /* 2^64 - 2^32 */
   felem_assign(e64, ftmp);
   felem_mul(tmp, ftmp, in);
   felem_reduce(ftmp, tmp); /* 2^64 - 2^32 + 2^0 */
-  for (i = 0; i < 192; i++) {
+  for (size_t i = 0; i < 192; i++) {
     felem_square(tmp, ftmp);
     felem_reduce(ftmp, tmp);
   } /* 2^256 - 2^224 + 2^192 */
 
   felem_mul(tmp, e64, e32);
   felem_reduce(ftmp2, tmp); /* 2^64 - 2^0 */
-  for (i = 0; i < 16; i++) {
+  for (size_t i = 0; i < 16; i++) {
     felem_square(tmp, ftmp2);
     felem_reduce(ftmp2, tmp);
   } /* 2^80 - 2^16 */
   felem_mul(tmp, ftmp2, e16);
   felem_reduce(ftmp2, tmp); /* 2^80 - 2^0 */
-  for (i = 0; i < 8; i++) {
+  for (size_t i = 0; i < 8; i++) {
     felem_square(tmp, ftmp2);
     felem_reduce(ftmp2, tmp);
   } /* 2^88 - 2^8 */
   felem_mul(tmp, ftmp2, e8);
   felem_reduce(ftmp2, tmp); /* 2^88 - 2^0 */
-  for (i = 0; i < 4; i++) {
+  for (size_t i = 0; i < 4; i++) {
     felem_square(tmp, ftmp2);
     felem_reduce(ftmp2, tmp);
   } /* 2^92 - 2^4 */
@@ -1008,8 +1005,7 @@ static void point_double_small(smallfelem x_out, smallfelem y_out,
 
 /* copy_conditional copies in to out iff mask is all ones. */
 static void copy_conditional(felem out, const felem in, limb mask) {
-  size_t i;
-  for (i = 0; i < NLIMBS; ++i) {
+  for (size_t i = 0; i < NLIMBS; ++i) {
     const limb tmp = mask & (in[i] ^ out[i]);
     out[i] ^= tmp;
   }
@@ -1017,9 +1013,8 @@ static void copy_conditional(felem out, const felem in, limb mask) {
 
 /* copy_small_conditional copies in to out iff mask is all ones. */
 static void copy_small_conditional(felem out, const smallfelem in, limb mask) {
-  size_t i;
   const u64 mask64 = mask;
-  for (i = 0; i < NLIMBS; ++i) {
+  for (size_t i = 0; i < NLIMBS; ++i) {
     out[i] = ((limb)(in[i] & mask64)) | (out[i] & ~mask);
   }
 }
@@ -1407,8 +1402,7 @@ static void select_point(const u64 idx, size_t size,
   u64 *outlimbs = &out[0][0];
   memset(outlimbs, 0, 3 * sizeof(smallfelem));
 
-  size_t i;
-  for (i = 0; i < size; i++) {
+  for (size_t i = 0; i < size; i++) {
     const u64 *inlimbs = (const u64 *)&pre_comp[i][0][0];
     u64 mask = i ^ idx;
     mask |= mask >> 4;
@@ -1416,8 +1410,7 @@ static void select_point(const u64 idx, size_t size,
     mask |= mask >> 1;
     mask &= 1;
     mask--;
-    size_t j;
-    for (j = 0; j < NLIMBS * 3; j++) {
+    for (size_t j = 0; j < NLIMBS * 3; j++) {
       outlimbs[j] |= inlimbs[j] & mask;
     }
   }
@@ -1639,8 +1632,7 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
      * i.e., they contribute nothing to the linear combination. */
     memset(secrets, 0, num_points * sizeof(felem_bytearray));
     memset(pre_comp, 0, num_points * 17 * 3 * sizeof(smallfelem));
-    size_t i;
-    for (i = 0; i < num_points; ++i) {
+    for (size_t i = 0; i < num_points; ++i) {
       if (i == num) {
         /* we didn't have a valid precomputation, so we pick the generator. */
         p = EC_GROUP_get0_generator(group);
@@ -1674,8 +1666,7 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
         felem_shrink(pre_comp[i][1][0], x_out);
         felem_shrink(pre_comp[i][1][1], y_out);
         felem_shrink(pre_comp[i][1][2], z_out);
-        size_t j;
-        for (j = 2; j <= 16; ++j) {
+        for (size_t j = 2; j <= 16; ++j) {
           if (j & 1) {
             point_add_small(pre_comp[i][j][0], pre_comp[i][j][1],
                             pre_comp[i][j][2], pre_comp[i][1][0],

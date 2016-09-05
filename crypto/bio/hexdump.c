@@ -86,7 +86,6 @@ static char to_char(uint8_t b) {
  * |ctx|. */
 static int hexdump_write(struct hexdump_ctx *ctx, const uint8_t *data,
                          size_t len) {
-  size_t i;
   char buf[10];
   unsigned l;
 
@@ -95,7 +94,7 @@ static int hexdump_write(struct hexdump_ctx *ctx, const uint8_t *data,
    * ^ offset                          ^ extra space           ^ ASCII of line
    */
 
-  for (i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     if (ctx->used == 0) {
       /* The beginning of a line. */
       BIO_indent(ctx->bio, ctx->indent, UINT_MAX);

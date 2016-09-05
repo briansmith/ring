@@ -229,8 +229,7 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, CBS *out, uint8_t type,
   /* XOR the fixed nonce, if necessary. */
   if (aead->xor_fixed_nonce) {
     assert(nonce_len == aead->fixed_nonce_len);
-    size_t i;
-    for (i = 0; i < aead->fixed_nonce_len; i++) {
+    for (size_t i = 0; i < aead->fixed_nonce_len; i++) {
       nonce[i] ^= aead->fixed_nonce[i];
     }
   }
@@ -316,8 +315,7 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   /* XOR the fixed nonce, if necessary. */
   if (aead->xor_fixed_nonce) {
     assert(nonce_len == aead->fixed_nonce_len);
-    size_t i;
-    for (i = 0; i < aead->fixed_nonce_len; i++) {
+    for (size_t i = 0; i < aead->fixed_nonce_len; i++) {
       nonce[i] ^= aead->fixed_nonce[i];
     }
   }

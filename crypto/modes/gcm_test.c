@@ -257,9 +257,6 @@ static int from_hex(uint8_t *out, char in) {
 
 static int decode_hex(uint8_t **out, size_t *out_len, const char *in,
                       unsigned test_num, const char *description) {
-  uint8_t *buf = NULL;
-  size_t i;
-
   if (in == NULL) {
     *out = NULL;
     *out_len = 0;
@@ -269,16 +266,16 @@ static int decode_hex(uint8_t **out, size_t *out_len, const char *in,
   size_t len = strlen(in);
   if (len & 1) {
     fprintf(stderr, "%u: Odd-length %s input.\n", test_num, description);
-    goto err;
+    return 0;
   }
 
-  buf = OPENSSL_malloc(len / 2);
+  uint8_t *buf = OPENSSL_malloc(len / 2);
   if (buf == NULL) {
     fprintf(stderr, "%u: malloc failure.\n", test_num);
     goto err;
   }
 
-  for (i = 0; i < len; i += 2) {
+  for (size_t i = 0; i < len; i += 2) {
     uint8_t v, v2;
     if (!from_hex(&v, in[i]) ||
         !from_hex(&v2, in[i+1])) {

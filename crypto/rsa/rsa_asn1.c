@@ -329,10 +329,10 @@ int RSA_marshal_private_key(CBB *cbb, const RSA *rsa) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
       return 0;
     }
-    size_t i;
-    for (i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes); i++) {
+    for (size_t i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes);
+         i++) {
       RSA_additional_prime *ap =
-              sk_RSA_additional_prime_value(rsa->additional_primes, i);
+          sk_RSA_additional_prime_value(rsa->additional_primes, i);
       CBB other_prime_info;
       if (!CBB_add_asn1(&other_prime_infos, &other_prime_info,
                         CBS_ASN1_SEQUENCE) ||

@@ -594,8 +594,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
   STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
 
   int any_enabled = 0;
-  size_t i;
-  for (i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     /* Skip disabled ciphers */
     if ((cipher->algorithm_mkey & ssl->cert->mask_k) ||

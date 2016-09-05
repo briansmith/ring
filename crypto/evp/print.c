@@ -121,15 +121,13 @@ static int bn_print(BIO *bp, const char *number, const BIGNUM *num,
 }
 
 static void update_buflen(const BIGNUM *b, size_t *pbuflen) {
-  size_t i;
-
   if (!b) {
     return;
   }
 
-  i = BN_num_bytes(b);
-  if (*pbuflen < i) {
-    *pbuflen = i;
+  size_t len = BN_num_bytes(b);
+  if (*pbuflen < len) {
+    *pbuflen = len;
   }
 }
 
@@ -154,10 +152,8 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
     update_buflen(rsa->iqmp, &buf_len);
 
     if (rsa->additional_primes != NULL) {
-      size_t i;
-
-      for (i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes);
-           i++) {
+      for (size_t i = 0;
+           i < sk_RSA_additional_prime_num(rsa->additional_primes); i++) {
         const RSA_additional_prime *ap =
             sk_RSA_additional_prime_value(rsa->additional_primes, i);
         update_buflen(ap->prime, &buf_len);
@@ -211,13 +207,11 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
 
     if (rsa->additional_primes != NULL &&
         sk_RSA_additional_prime_num(rsa->additional_primes) > 0) {
-      size_t i;
-
       if (BIO_printf(out, "otherPrimeInfos:\n") <= 0) {
         goto err;
       }
-      for (i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes);
-           i++) {
+      for (size_t i = 0;
+           i < sk_RSA_additional_prime_num(rsa->additional_primes); i++) {
         const RSA_additional_prime *ap =
             sk_RSA_additional_prime_value(rsa->additional_primes, i);
 
@@ -483,8 +477,7 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
 static size_t kPrintMethodsLen = OPENSSL_ARRAY_SIZE(kPrintMethods);
 
 static EVP_PKEY_PRINT_METHOD *find_method(int type) {
-  size_t i;
-  for (i = 0; i < kPrintMethodsLen; i++) {
+  for (size_t i = 0; i < kPrintMethodsLen; i++) {
     if (kPrintMethods[i].type == type) {
       return &kPrintMethods[i];
     }

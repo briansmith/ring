@@ -1145,8 +1145,7 @@ static int add_cert_types(SSL *ssl, CBB *cbb) {
   int have_ecdsa_sign = 0;
   const uint16_t *sig_algs;
   size_t sig_algs_len = tls12_get_psigalgs(ssl, &sig_algs);
-  size_t i;
-  for (i = 0; i < sig_algs_len; i++) {
+  for (size_t i = 0; i < sig_algs_len; i++) {
     switch (sig_algs[i]) {
       case SSL_SIGN_RSA_PKCS1_SHA512:
       case SSL_SIGN_RSA_PKCS1_SHA384:
@@ -1494,8 +1493,7 @@ static int ssl3_get_client_key_exchange(SSL *ssl) {
     size_t padding_len = decrypt_len - premaster_secret_len;
     uint8_t good = constant_time_eq_int_8(decrypt_buf[0], 0) &
                    constant_time_eq_int_8(decrypt_buf[1], 2);
-    size_t i;
-    for (i = 2; i < padding_len - 1; i++) {
+    for (size_t i = 2; i < padding_len - 1; i++) {
       good &= ~constant_time_is_zero_8(decrypt_buf[i]);
     }
     good &= constant_time_is_zero_8(decrypt_buf[padding_len - 1]);
@@ -1509,7 +1507,7 @@ static int ssl3_get_client_key_exchange(SSL *ssl) {
 
     /* Select, in constant time, either the decrypted premaster or the random
      * premaster based on |good|. */
-    for (i = 0; i < premaster_secret_len; i++) {
+    for (size_t i = 0; i < premaster_secret_len; i++) {
       premaster_secret[i] = constant_time_select_8(
           good, decrypt_buf[padding_len + i], premaster_secret[i]);
     }

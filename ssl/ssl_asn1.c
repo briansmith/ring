@@ -340,8 +340,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    size_t i;
-    for (i = 0; i < sk_X509_num(in->cert_chain); i++) {
+    for (size_t i = 0; i < sk_X509_num(in->cert_chain); i++) {
       if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->cert_chain, i))) {
         goto err;
       }

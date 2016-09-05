@@ -115,7 +115,6 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
    * exist callers which intend the latter, but the former is an awkward edge
    * case. Fix to API to avoid this. */
   if (md != ctx->md || key != NULL) {
-    size_t i;
     uint8_t pad[EVP_MAX_MD_BLOCK_SIZE];
     uint8_t key_block[EVP_MAX_MD_BLOCK_SIZE];
     unsigned key_block_len;
@@ -139,7 +138,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       memset(&key_block[key_block_len], 0, sizeof(key_block) - key_block_len);
     }
 
-    for (i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
+    for (size_t i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
       pad[i] = 0x36 ^ key_block[i];
     }
     if (!EVP_DigestInit_ex(&ctx->i_ctx, md, impl) ||
@@ -147,7 +146,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       return 0;
     }
 
-    for (i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
+    for (size_t i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
       pad[i] = 0x5c ^ key_block[i];
     }
     if (!EVP_DigestInit_ex(&ctx->o_ctx, md, impl) ||

@@ -353,14 +353,14 @@ static int aes_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t len) {
   size_t bl = ctx->cipher->block_size;
-  size_t i;
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
 
   if (len < bl) {
     return 1;
   }
 
-  for (i = 0, len -= bl; i <= len; i += bl) {
+  len -= bl;
+  for (size_t i = 0; i <= len; i += bl) {
     (*dat->block)(in + i, out + i, &dat->ks);
   }
 

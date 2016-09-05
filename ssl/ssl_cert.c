@@ -364,8 +364,7 @@ STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
     return NULL;
   }
 
-  size_t i;
-  for (i = 0; i < sk_X509_NAME_num(list); i++) {
+  for (size_t i = 0; i < sk_X509_NAME_num(list); i++) {
       X509_NAME *name = X509_NAME_dup(sk_X509_NAME_value(list, i));
     if (name == NULL || !sk_X509_NAME_push(ret, name)) {
       X509_NAME_free(name);
@@ -544,8 +543,7 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
       return 0;
     }
 
-    size_t i;
-    for (i = 0; i < sk_X509_num(chain); i++) {
+    for (size_t i = 0; i < sk_X509_num(chain); i++) {
       x = sk_X509_value(chain, i);
       if (!ssl_add_cert_with_length(&child, x)) {
         return 0;
@@ -562,8 +560,7 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
     /* Don't leave errors in the queue */
     ERR_clear_error();
 
-    size_t i;
-    for (i = 0; i < sk_X509_num(xs_ctx.chain); i++) {
+    for (size_t i = 0; i < sk_X509_num(xs_ctx.chain); i++) {
       x = sk_X509_value(xs_ctx.chain, i);
       if (!ssl_add_cert_with_length(&child, x)) {
         X509_STORE_CTX_cleanup(&xs_ctx);

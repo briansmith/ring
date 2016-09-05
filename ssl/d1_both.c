@@ -217,7 +217,6 @@ static uint8_t bit_range(size_t start, size_t end) {
  * and |frag->reassembly| must not be NULL. */
 static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
                                    size_t end) {
-  size_t i;
   size_t msg_len = frag->msg_len;
 
   if (frag->reassembly == NULL || start > end || end > msg_len) {
@@ -231,7 +230,7 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
     frag->reassembly[start >> 3] |= bit_range(start & 7, end & 7);
   } else {
     frag->reassembly[start >> 3] |= bit_range(start & 7, 8);
-    for (i = (start >> 3) + 1; i < (end >> 3); i++) {
+    for (size_t i = (start >> 3) + 1; i < (end >> 3); i++) {
       frag->reassembly[i] = 0xff;
     }
     if ((end & 7) != 0) {
@@ -240,7 +239,7 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
   }
 
   /* Check if the fragment is complete. */
-  for (i = 0; i < (msg_len >> 3); i++) {
+  for (size_t i = 0; i < (msg_len >> 3); i++) {
     if (frag->reassembly[i] != 0xff) {
       return;
     }
@@ -681,8 +680,7 @@ err:
 }
 
 void dtls_clear_outgoing_messages(SSL *ssl) {
-  size_t i;
-  for (i = 0; i < ssl->d1->outgoing_messages_len; i++) {
+  for (size_t i = 0; i < ssl->d1->outgoing_messages_len; i++) {
     OPENSSL_free(ssl->d1->outgoing_messages[i].data);
     ssl->d1->outgoing_messages[i].data = NULL;
   }
@@ -816,8 +814,7 @@ int dtls1_retransmit_outgoing_messages(SSL *ssl) {
   assert(ssl_is_wbio_buffered(ssl));
 
   int ret = -1;
-  size_t i;
-  for (i = 0; i < ssl->d1->outgoing_messages_len; i++) {
+  for (size_t i = 0; i < ssl->d1->outgoing_messages_len; i++) {
     if (dtls1_retransmit_message(ssl, &ssl->d1->outgoing_messages[i]) <= 0) {
       goto err;
     }

@@ -252,7 +252,6 @@ const SSL_CIPHER *ssl3_choose_cipher(
     const struct ssl_cipher_preference_list_st *server_pref) {
   const SSL_CIPHER *c, *ret = NULL;
   STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
-  size_t i;
   int ok;
   size_t cipher_index;
   uint32_t alg_k, alg_a, mask_k, mask_a;
@@ -282,7 +281,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
 
   ssl_get_compatible_server_ciphers(ssl, &mask_k, &mask_a);
 
-  for (i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
     c = sk_SSL_CIPHER_value(prio, i);
 
     ok = 1;

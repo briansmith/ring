@@ -1047,8 +1047,7 @@ static void ssl_cipher_collect_ciphers(const SSL_PROTOCOL_METHOD *ssl_method,
   /* The set of ciphers is static, but some subset may be unsupported by
    * |ssl_method|, so the list may be smaller. */
   size_t co_list_num = 0;
-  size_t i;
-  for (i = 0; i < kCiphersLen; i++) {
+  for (size_t i = 0; i < kCiphersLen; i++) {
     const SSL_CIPHER *cipher = &kCiphers[i];
     if (ssl_method->supports_cipher(cipher)) {
       co_list[co_list_num].cipher = cipher;
@@ -1067,7 +1066,7 @@ static void ssl_cipher_collect_ciphers(const SSL_PROTOCOL_METHOD *ssl_method,
     if (co_list_num > 1) {
       co_list[0].next = &co_list[1];
 
-      for (i = 1; i < co_list_num - 1; i++) {
+      for (size_t i = 1; i < co_list_num - 1; i++) {
         co_list[i].prev = &co_list[i - 1];
         co_list[i].next = &co_list[i + 1];
       }

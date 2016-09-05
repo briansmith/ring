@@ -155,11 +155,10 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
     return 0;
   }
 
-  size_t i;
-  for (i = 0; i < S_len; i++) {
+  for (size_t i = 0; i < S_len; i++) {
     I[i] = salt[i % salt_len];
   }
-  for (i = 0; i < P_len; i++) {
+  for (size_t i = 0; i < P_len; i++) {
     I[i + S_len] = pass_raw[i % pass_raw_len];
   }
 
@@ -178,8 +177,7 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
         !EVP_DigestFinal_ex(&ctx, A, &A_len)) {
       goto err;
     }
-    int iter;
-    for (iter = 1; iter < iterations; iter++) {
+    for (int iter = 1; iter < iterations; iter++) {
       if (!EVP_DigestInit_ex(&ctx, md, NULL) ||
           !EVP_DigestUpdate(&ctx, A, A_len) ||
           !EVP_DigestFinal_ex(&ctx, A, &A_len)) {
@@ -198,7 +196,7 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
     /* B. Concatenate copies of A_i to create a string B of length v bits (the
      * final copy of A_i may be truncated to create B). */
     uint8_t B[EVP_MAX_MD_BLOCK_SIZE];
-    for (i = 0; i < block_size; i++) {
+    for (size_t i = 0; i < block_size; i++) {
       B[i] = A[i % A_len];
     }
 
@@ -206,10 +204,9 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
      * where k=ceiling(s/v)+ceiling(p/v), modify I by setting I_j=(I_j+B+1) mod
      * 2^v for each j. */
     assert(I_len % block_size == 0);
-    for (i = 0; i < I_len; i += block_size) {
+    for (size_t i = 0; i < I_len; i += block_size) {
       unsigned carry = 1;
-      size_t j;
-      for (j = block_size - 1; j < block_size; j--) {
+      for (size_t j = block_size - 1; j < block_size; j--) {
         carry += I[i + j] + B[j];
         I[i + j] = (uint8_t)carry;
         carry >>= 8;

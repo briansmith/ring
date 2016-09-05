@@ -504,8 +504,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
 };
 
 static const SSL_ECDH_METHOD *method_from_group_id(uint16_t group_id) {
-  size_t i;
-  for (i = 0; i < OPENSSL_ARRAY_SIZE(kMethods); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMethods); i++) {
     if (kMethods[i].group_id == group_id) {
       return &kMethods[i];
     }
@@ -514,8 +513,7 @@ static const SSL_ECDH_METHOD *method_from_group_id(uint16_t group_id) {
 }
 
 static const SSL_ECDH_METHOD *method_from_nid(int nid) {
-  size_t i;
-  for (i = 0; i < OPENSSL_ARRAY_SIZE(kMethods); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMethods); i++) {
     if (kMethods[i].nid == nid) {
       return &kMethods[i];
     }

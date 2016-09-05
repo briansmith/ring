@@ -104,8 +104,7 @@ static int des_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   in_len -= ctx->cipher->block_size;
 
   EVP_DES_KEY *dat = (EVP_DES_KEY *) ctx->cipher_data;
-  size_t i;
-  for (i = 0; i <= in_len; i += ctx->cipher->block_size) {
+  for (size_t i = 0; i <= in_len; i += ctx->cipher->block_size) {
     DES_ecb_encrypt((DES_cblock *) (in + i), (DES_cblock *) (out + i),
                     &dat->ks.ks, ctx->encrypt);
   }
@@ -189,8 +188,7 @@ static int des_ede_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   in_len -= ctx->cipher->block_size;
 
   DES_EDE_KEY *dat = (DES_EDE_KEY *) ctx->cipher_data;
-  size_t i;
-  for (i = 0; i <= in_len; i += ctx->cipher->block_size) {
+  for (size_t i = 0; i <= in_len; i += ctx->cipher->block_size) {
     DES_ecb3_encrypt((DES_cblock *) (in + i), (DES_cblock *) (out + i),
                      &dat->ks.ks[0], &dat->ks.ks[1], &dat->ks.ks[2],
                      ctx->encrypt);

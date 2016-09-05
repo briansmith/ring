@@ -20,10 +20,9 @@
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
   const uint8_t *data = reinterpret_cast<const uint8_t*>(in);
-  size_t i;
 
   fputs(msg, fp);
-  for (i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     fprintf(fp, "%02x", data[i]);
   }
   fputs("\n", fp);

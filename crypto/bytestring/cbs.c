@@ -88,13 +88,12 @@ int CBS_mem_equal(const CBS *cbs, const uint8_t *data, size_t len) {
 
 static int cbs_get_u(CBS *cbs, uint32_t *out, size_t len) {
   uint32_t result = 0;
-  size_t i;
   const uint8_t *data;
 
   if (!cbs_get(cbs, &data, len)) {
     return 0;
   }
-  for (i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     result <<= 8;
     result |= data[i];
   }

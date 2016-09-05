@@ -516,11 +516,10 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
     ctx->Yi.c[15] = 1;
     ctr = 1;
   } else {
-    size_t i;
     uint64_t len0 = len;
 
     while (len >= 16) {
-      for (i = 0; i < 16; ++i) {
+      for (size_t i = 0; i < 16; ++i) {
         ctx->Yi.c[i] ^= iv[i];
       }
       GCM_MUL(ctx, Yi);
@@ -528,7 +527,7 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
       len -= 16;
     }
     if (len) {
-      for (i = 0; i < len; ++i) {
+      for (size_t i = 0; i < len; ++i) {
         ctx->Yi.c[i] ^= iv[i];
       }
       GCM_MUL(ctx, Yi);

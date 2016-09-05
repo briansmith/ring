@@ -192,8 +192,7 @@ static void bin28_to_felem(felem out, const u8 in[28]) {
 }
 
 static void felem_to_bin28(u8 out[28], const felem in) {
-  size_t i;
-  for (i = 0; i < 7; ++i) {
+  for (size_t i = 0; i < 7; ++i) {
     out[i] = in[0] >> (8 * i);
     out[i + 7] = in[1] >> (8 * i);
     out[i + 14] = in[2] >> (8 * i);
@@ -203,8 +202,7 @@ static void felem_to_bin28(u8 out[28], const felem in) {
 
 /* To preserve endianness when using BN_bn2bin and BN_bin2bn */
 static void flip_endian(u8 *out, const u8 *in, size_t len) {
-  size_t i;
-  for (i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     out[i] = in[len - 1 - i];
   }
 }
@@ -524,7 +522,6 @@ static limb felem_is_zero(const felem in) {
 static void felem_inv(felem out, const felem in) {
   felem ftmp, ftmp2, ftmp3, ftmp4;
   widefelem tmp;
-  size_t i;
 
   felem_square(tmp, in);
   felem_reduce(ftmp, tmp); /* 2 */
@@ -544,7 +541,7 @@ static void felem_inv(felem out, const felem in) {
   felem_reduce(ftmp, tmp); /* 2^6 - 1 */
   felem_square(tmp, ftmp);
   felem_reduce(ftmp2, tmp); /* 2^7 - 2 */
-  for (i = 0; i < 5; ++i) { /* 2^12 - 2^6 */
+  for (size_t i = 0; i < 5; ++i) { /* 2^12 - 2^6 */
     felem_square(tmp, ftmp2);
     felem_reduce(ftmp2, tmp);
   }
@@ -552,7 +549,7 @@ static void felem_inv(felem out, const felem in) {
   felem_reduce(ftmp2, tmp); /* 2^12 - 1 */
   felem_square(tmp, ftmp2);
   felem_reduce(ftmp3, tmp); /* 2^13 - 2 */
-  for (i = 0; i < 11; ++i) {/* 2^24 - 2^12 */
+  for (size_t i = 0; i < 11; ++i) {/* 2^24 - 2^12 */
     felem_square(tmp, ftmp3);
     felem_reduce(ftmp3, tmp);
   }
@@ -560,7 +557,7 @@ static void felem_inv(felem out, const felem in) {
   felem_reduce(ftmp2, tmp); /* 2^24 - 1 */
   felem_square(tmp, ftmp2);
   felem_reduce(ftmp3, tmp); /* 2^25 - 2 */
-  for (i = 0; i < 23; ++i) {/* 2^48 - 2^24 */
+  for (size_t i = 0; i < 23; ++i) {/* 2^48 - 2^24 */
     felem_square(tmp, ftmp3);
     felem_reduce(ftmp3, tmp);
   }
@@ -568,7 +565,7 @@ static void felem_inv(felem out, const felem in) {
   felem_reduce(ftmp3, tmp); /* 2^48 - 1 */
   felem_square(tmp, ftmp3);
   felem_reduce(ftmp4, tmp); /* 2^49 - 2 */
-  for (i = 0; i < 47; ++i) {/* 2^96 - 2^48 */
+  for (size_t i = 0; i < 47; ++i) {/* 2^96 - 2^48 */
     felem_square(tmp, ftmp4);
     felem_reduce(ftmp4, tmp);
   }
@@ -576,13 +573,13 @@ static void felem_inv(felem out, const felem in) {
   felem_reduce(ftmp3, tmp); /* 2^96 - 1 */
   felem_square(tmp, ftmp3);
   felem_reduce(ftmp4, tmp); /* 2^97 - 2 */
-  for (i = 0; i < 23; ++i) {/* 2^120 - 2^24 */
+  for (size_t i = 0; i < 23; ++i) {/* 2^120 - 2^24 */
     felem_square(tmp, ftmp4);
     felem_reduce(ftmp4, tmp);
   }
   felem_mul(tmp, ftmp2, ftmp4);
   felem_reduce(ftmp2, tmp); /* 2^120 - 1 */
-  for (i = 0; i < 6; ++i) { /* 2^126 - 2^6 */
+  for (size_t i = 0; i < 6; ++i) { /* 2^126 - 2^6 */
     felem_square(tmp, ftmp2);
     felem_reduce(ftmp2, tmp);
   }
@@ -592,7 +589,7 @@ static void felem_inv(felem out, const felem in) {
   felem_reduce(ftmp, tmp); /* 2^127 - 2 */
   felem_mul(tmp, ftmp, in);
   felem_reduce(ftmp, tmp); /* 2^127 - 1 */
-  for (i = 0; i < 97; ++i) {/* 2^224 - 2^97 */
+  for (size_t i = 0; i < 97; ++i) {/* 2^224 - 2^97 */
     felem_square(tmp, ftmp);
     felem_reduce(ftmp, tmp);
   }
@@ -604,10 +601,9 @@ static void felem_inv(felem out, const felem in) {
  * if icopy == 1, copy in to out,
  * if icopy == 0, copy out to itself. */
 static void copy_conditional(felem out, const felem in, limb icopy) {
-  size_t i;
   /* icopy is a (64-bit) 0 or 1, so copy is either all-zero or all-one */
   const limb copy = -icopy;
-  for (i = 0; i < 4; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     const limb tmp = copy & (in[i] ^ out[i]);
     out[i] ^= tmp;
   }
@@ -866,8 +862,7 @@ static void select_point(const u64 idx, size_t size,
   limb *outlimbs = &out[0][0];
   memset(outlimbs, 0, 3 * sizeof(felem));
 
-  size_t i;
-  for (i = 0; i < size; i++) {
+  for (size_t i = 0; i < size; i++) {
     const limb *inlimbs = &pre_comp[i][0][0];
     u64 mask = i ^ idx;
     mask |= mask >> 4;
@@ -875,8 +870,7 @@ static void select_point(const u64 idx, size_t size,
     mask |= mask >> 1;
     mask &= 1;
     mask--;
-    size_t j;
-    for (j = 0; j < 4 * 3; j++) {
+    for (size_t j = 0; j < 4 * 3; j++) {
       outlimbs[j] |= inlimbs[j] & mask;
     }
   }
@@ -1082,8 +1076,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
      * i.e., they contribute nothing to the linear combination */
     memset(secrets, 0, num_points * sizeof(felem_bytearray));
     memset(pre_comp, 0, num_points * 17 * 3 * sizeof(felem));
-    size_t i;
-    for (i = 0; i < num_points; ++i) {
+    for (size_t i = 0; i < num_points; ++i) {
       if (i == num) {
         /* the generator */
         p = EC_GROUP_get0_generator(group);
@@ -1121,8 +1114,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
         felem_assign(pre_comp[i][1][1], y_out);
         felem_assign(pre_comp[i][1][2], z_out);
 
-        size_t j;
-        for (j = 2; j <= 16; ++j) {
+        for (size_t j = 2; j <= 16; ++j) {
           if (j & 1) {
             point_add(pre_comp[i][j][0], pre_comp[i][j][1], pre_comp[i][j][2],
                       pre_comp[i][1][0], pre_comp[i][1][1], pre_comp[i][1][2],
