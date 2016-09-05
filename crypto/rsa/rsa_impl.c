@@ -140,17 +140,9 @@ size_t GFp_RSA_size(const RSA *rsa) {
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
-int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
-                           const uint8_t *public_key_n, size_t public_key_n_len,
-                           const uint8_t *public_key_e, size_t public_key_e_len,
-                           const uint8_t *in, size_t in_len, size_t min_bits,
-                           size_t max_bits) {
-  BIGNUM n;
-  GFp_BN_init(&n);
-
-  BIGNUM e;
-  GFp_BN_init(&e);
-
+int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
+                           const BIGNUM *e, const uint8_t *in, size_t in_len,
+                           size_t min_bits, size_t max_bits) {
   BIGNUM f;
   GFp_BN_init(&f);
 
@@ -158,14 +150,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
   GFp_BN_init(&result);
 
   int ret = 0;
-
-  if (GFp_BN_bin2bn(public_key_n, public_key_n_len, &n) == NULL ||
-      GFp_BN_bin2bn(public_key_e, public_key_e_len, &e) == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  unsigned rsa_size = GFp_BN_num_bytes(&n); /* RSA_size((n, e)); */
+  unsigned rsa_size = GFp_BN_num_bytes(n); /* RSA_size((n, e)); */
 
   if (out_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
@@ -177,7 +162,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (!GFp_rsa_check_modulus_and_exponent(&n, &e, min_bits, max_bits)) {
+  if (!GFp_rsa_check_modulus_and_exponent(n, e, min_bits, max_bits)) {
     goto err;
   }
 
@@ -186,12 +171,12 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (GFp_BN_ucmp(&f, &n) >= 0) {
+  if (GFp_BN_ucmp(&f, n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  if (!GFp_BN_mod_exp_mont_vartime(&result, &f, &e, &n, NULL) ||
+  if (!GFp_BN_mod_exp_mont_vartime(&result, &f, e, n, NULL) ||
       !GFp_BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -200,8 +185,6 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
   ret = 1;
 
 err:
-  GFp_BN_free(&n);
-  GFp_BN_free(&e);
   GFp_BN_free(&f);
   GFp_BN_free(&result);
   return ret;
