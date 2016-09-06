@@ -256,10 +256,12 @@ bool Client(const std::vector<std::string> &args) {
   if (args_map.count("-session-out") != 0) {
     session_out.reset(BIO_new_file(args_map["-session-out"].c_str(), "wb"));
     if (!session_out) {
-      fprintf(stderr, "Error while saving session:\n");
+      fprintf(stderr, "Error while opening %s:\n",
+              args_map["-session-out"].c_str());
       ERR_print_errors_cb(PrintErrorCallback, stderr);
       return false;
     }
+    SSL_CTX_set_session_cache_mode(ctx.get(), SSL_SESS_CACHE_CLIENT);
     SSL_CTX_sess_set_new_cb(ctx.get(), NewSessionCallback);
   }
 
