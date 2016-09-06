@@ -626,18 +626,6 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     if (!CBB_add_u16(&child, ssl_cipher_get_value(cipher))) {
       return 0;
     }
-    /* Add PSK ciphers for TLS 1.3 resumption. */
-    uint16_t session_version;
-    if (ssl->session != NULL &&
-        ssl->method->version_from_wire(&session_version,
-                                       ssl->session->ssl_version) &&
-        session_version >= TLS1_3_VERSION) {
-      uint16_t resumption_cipher;
-      if (ssl_cipher_get_ecdhe_psk_cipher(cipher, &resumption_cipher) &&
-          !CBB_add_u16(&child, resumption_cipher)) {
-        return 0;
-      }
-    }
   }
 
   /* If all ciphers were disabled, return the error to the caller. */
@@ -952,14 +940,14 @@ static int ssl3_get_server_hello(SSL *ssl) {
   }
 
   if (ssl->session != NULL) {
-    if (ssl->session->cipher != c) {
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
-      goto f_err;
-    }
     if (ssl->session->ssl_version != ssl->version) {
       al = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_VERSION_NOT_RETURNED);
+      goto f_err;
+    }
+    if (ssl->session->cipher != c) {
+      al = SSL_AD_ILLEGAL_PARAMETER;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
       goto f_err;
     }
     if (!ssl_session_is_context_valid(ssl, ssl->session)) {

@@ -396,7 +396,10 @@ Curves:
 		}
 	}
 
-	_, ecdsaOk := hs.cert.PrivateKey.(*ecdsa.PrivateKey)
+	if !supportedCurve {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: no curve supported by both client and server")
+	}
 
 	pskIdentities := hs.clientHello.pskIdentities
 	if len(pskIdentities) == 0 && len(hs.clientHello.sessionTicket) > 0 && c.config.Bugs.AcceptAnySession {
@@ -431,46 +434,43 @@ Curves:
 		if !ok {
 			continue
 		}
-		if !config.Bugs.AcceptAnySession {
+		if config.Bugs.AcceptAnySession {
+			// Replace the cipher suite with one known to work, to
+			// test cross-version resumption attempts.
+			sessionState.cipherSuite = TLS_AES_128_GCM_SHA256
+		} else {
 			if sessionState.vers != c.vers && c.config.Bugs.AcceptAnySession {
 				continue
 			}
 			if sessionState.ticketExpiration.Before(c.config.time()) {
 				continue
 			}
-		}
 
-		suiteId := ecdhePSKSuite(sessionState.cipherSuite)
-
-		// Check the client offered the cipher.
-		clientCipherSuites := hs.clientHello.cipherSuites
-		if config.Bugs.AcceptAnySession {
-			clientCipherSuites = []uint16{suiteId}
-		}
-		suite := mutualCipherSuite(clientCipherSuites, suiteId)
-
-		// Check the cipher is enabled by the server or is a resumption
-		// suite of one enabled by the server. Account for the cipher
-		// change on resume.
-		//
-		// TODO(davidben): The ecdhePSKSuite mess will be gone with the
-		// new cipher negotiation scheme.
-		var found bool
-		for _, id := range config.cipherSuites() {
-			if ecdhePSKSuite(id) == suiteId {
-				found = true
-				break
+			cipherSuiteOk := false
+			// Check that the client is still offering the ciphersuite in the session.
+			for _, id := range hs.clientHello.cipherSuites {
+				if id == sessionState.cipherSuite {
+					cipherSuiteOk = true
+					break
+				}
+			}
+			if !cipherSuiteOk {
+				continue
 			}
 		}
 
-		if suite != nil && found {
-			hs.sessionState = sessionState
-			hs.suite = suite
-			hs.hello.hasPSKIdentity = true
-			hs.hello.pskIdentity = uint16(i)
-			c.didResume = true
-			break
+		// Check that we also support the ciphersuite from the session.
+		suite := c.tryCipherSuite(sessionState.cipherSuite, c.config.cipherSuites(), c.vers, true, true)
+		if suite == nil {
+			continue
 		}
+
+		hs.sessionState = sessionState
+		hs.suite = suite
+		hs.hello.hasPSKIdentity = true
+		hs.hello.pskIdentity = uint16(i)
+		c.didResume = true
+		break
 	}
 
 	// If not resuming, select the cipher suite.
@@ -485,7 +485,7 @@ Curves:
 		}
 
 		for _, id := range preferenceList {
-			if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, supportedCurve, ecdsaOk, false); hs.suite != nil {
+			if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, true, true); hs.suite != nil {
 				break
 			}
 		}
@@ -505,9 +505,11 @@ Curves:
 	hs.finishedHash.discardHandshakeBuffer()
 	hs.writeClientHash(hs.clientHello.marshal())
 
+	hs.hello.useCertAuth = hs.sessionState == nil
+
 	// Resolve PSK and compute the early secret.
 	var psk []byte
-	if hs.suite.flags&suitePSK != 0 {
+	if hs.sessionState != nil {
 		psk = deriveResumptionPSK(hs.suite, hs.sessionState.masterSecret)
 		hs.finishedHash.setResumptionContext(deriveResumptionContext(hs.suite, hs.sessionState.masterSecret))
 	} else {
@@ -517,9 +519,23 @@ Curves:
 
 	earlySecret := hs.finishedHash.extractKey(hs.finishedHash.zeroSecret(), psk)
 
+	if config.Bugs.OmitServerHelloSignatureAlgorithms {
+		hs.hello.useCertAuth = false
+	} else if config.Bugs.IncludeServerHelloSignatureAlgorithms {
+		hs.hello.useCertAuth = true
+	}
+
+	hs.hello.hasKeyShare = true
+	if hs.sessionState != nil && config.Bugs.NegotiatePSKResumption {
+		hs.hello.hasKeyShare = false
+	}
+	if config.Bugs.MissingKeyShare {
+		hs.hello.hasKeyShare = false
+	}
+
 	// Resolve ECDHE and compute the handshake secret.
 	var ecdheSecret []byte
-	if hs.suite.flags&suiteECDHE != 0 && !config.Bugs.MissingKeyShare {
+	if hs.hello.hasKeyShare {
 		// Look for the key share corresponding to our selected curve.
 		var selectedKeyShare *keyShareEntry
 		for i := range hs.clientHello.keyShares {
@@ -671,7 +687,7 @@ Curves:
 	c.out.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite)
 	c.in.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite)
 
-	if hs.suite.flags&suitePSK == 0 {
+	if hs.hello.useCertAuth {
 		if hs.clientHello.ocspStapling {
 			encryptedExtensions.extensions.ocspResponse = hs.cert.OCSPStaple
 		}
@@ -696,7 +712,7 @@ Curves:
 		c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal())
 	}
 
-	if hs.suite.flags&suitePSK == 0 {
+	if hs.hello.useCertAuth {
 		if config.ClientAuth >= RequestClientCert {
 			// Request a client certificate
 			certReq := &certificateRequestMsg{
@@ -757,7 +773,7 @@ Curves:
 
 		hs.writeServerHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
-	} else {
+	} else if hs.sessionState != nil {
 		// Pick up certificates from the session instead.
 		if len(hs.sessionState.certificates) > 0 {
 			if _, err := hs.processCertsFromClient(hs.sessionState.certificates); err != nil {
@@ -968,7 +984,7 @@ Curves:
 	}
 
 	for _, id := range preferenceList {
-		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, hs.ellipticOk, hs.ecdsaOk, true); hs.suite != nil {
+		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, hs.ellipticOk, hs.ecdsaOk); hs.suite != nil {
 			break
 		}
 	}
@@ -1134,7 +1150,11 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 		}
 	}
 
-	if !c.config.Bugs.AcceptAnySession {
+	if c.config.Bugs.AcceptAnySession {
+		// Replace the cipher suite with one known to work, to test
+		// cross-version resumption attempts.
+		hs.sessionState.cipherSuite = TLS_RSA_WITH_AES_128_CBC_SHA
+	} else {
 		// Never resume a session for a different SSL version.
 		if c.vers != hs.sessionState.vers {
 			return false
@@ -1154,7 +1174,8 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 	}
 
 	// Check that we also support the ciphersuite from the session.
-	hs.suite = c.tryCipherSuite(hs.sessionState.cipherSuite, c.config.cipherSuites(), hs.sessionState.vers, hs.ellipticOk, hs.ecdsaOk, true)
+	hs.suite = c.tryCipherSuite(hs.sessionState.cipherSuite, c.config.cipherSuites(), c.vers, hs.ellipticOk, hs.ecdsaOk)
+
 	if hs.suite == nil {
 		return false
 	}
@@ -1726,7 +1747,7 @@ func (hs *serverHandshakeState) writeHash(msg []byte, seqno uint16) {
 
 // tryCipherSuite returns a cipherSuite with the given id if that cipher suite
 // is acceptable to use.
-func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version uint16, ellipticOk, ecdsaOk, pskOk bool) *cipherSuite {
+func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version uint16, ellipticOk, ecdsaOk bool) *cipherSuite {
 	for _, supported := range supportedCipherSuites {
 		if id == supported {
 			var candidate *cipherSuite
@@ -1740,10 +1761,14 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 			if candidate == nil {
 				continue
 			}
+
 			// Don't select a ciphersuite which we can't
 			// support for this client.
-			if (candidate.flags&suitePSK != 0) && !pskOk {
-				continue
+			if version >= VersionTLS13 || candidate.flags&suiteTLS13 != 0 {
+				if version < VersionTLS13 || candidate.flags&suiteTLS13 == 0 {
+					continue
+				}
+				return candidate
 			}
 			if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
 				continue
@@ -1752,9 +1777,6 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 				continue
 			}
 			if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
-				continue
-			}
-			if version >= VersionTLS13 && candidate.flags&suiteTLS13 == 0 {
 				continue
 			}
 			if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {

@@ -101,38 +101,20 @@ func (cs cipherSuite) hash() crypto.Hash {
 	return crypto.SHA256
 }
 
-// TODO(nharper): Remove this function when TLS 1.3 cipher suites get
-// refactored to break out the AEAD/PRF from everything else. Once that's
-// done, this won't be necessary anymore.
-func ecdhePSKSuite(id uint16) uint16 {
-	switch id {
-	case TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-		TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-		TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256:
-		return TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256
-	case TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256:
-		return TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256
-	case TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-		TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384:
-		return TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384
-	}
-	return 0
-}
-
 var cipherSuites = []*cipherSuite{
 	// Ciphersuite order is chosen so that ECDHE comes before plain RSA
 	// and RC4 comes before AES (because of the Lucky13 attack).
-	{TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteTLS13, nil, nil, aeadCHACHA20POLY1305},
-	{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdheRSAKA, suiteECDHE | suiteTLS12 | suiteTLS13, nil, nil, aeadCHACHA20POLY1305},
+	{TLS_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, nil, suiteTLS13, nil, nil, aeadCHACHA20POLY1305},
+	{TLS_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, nil, suiteTLS13, nil, nil, aeadAESGCM},
+	{TLS_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, nil, suiteTLS13 | suiteSHA384, nil, nil, aeadAESGCM},
+	{TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
+	{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdheRSAKA, suiteECDHE | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
 	{TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256_OLD, 32, 0, noIV, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12, nil, nil, aeadCHACHA20POLY1305Old},
 	{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256_OLD, 32, 0, noIV, ecdheRSAKA, suiteECDHE | suiteTLS12, nil, nil, aeadCHACHA20POLY1305Old},
-	{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, ecdheRSAKA, suiteECDHE | suiteTLS12 | suiteTLS13, nil, nil, aeadAESGCM},
-	{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteTLS13, nil, nil, aeadAESGCM},
-	{TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdheRSAKA, suiteECDHE | suiteTLS12 | suiteTLS13 | suiteSHA384, nil, nil, aeadAESGCM},
-	{TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteTLS13 | suiteSHA384, nil, nil, aeadAESGCM},
+	{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, ecdheRSAKA, suiteECDHE | suiteTLS12, nil, nil, aeadAESGCM},
+	{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12, nil, nil, aeadAESGCM},
+	{TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdheRSAKA, suiteECDHE | suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
+	{TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
 	{TLS_ECDHE_RSA_WITH_RC4_128_SHA, 16, 20, noIV, ecdheRSAKA, suiteECDHE | suiteNoDTLS, cipherRC4, macSHA1, nil},
 	{TLS_ECDHE_ECDSA_WITH_RC4_128_SHA, 16, 20, noIV, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteNoDTLS, cipherRC4, macSHA1, nil},
 	{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, ecdheRSAKA, suiteECDHE | suiteTLS12, cipherAES, macSHA256, nil},
@@ -164,9 +146,7 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, ecdheRSAKA, suiteECDHE, cipher3DES, macSHA1, nil},
 	{TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, dheRSAKA, 0, cipher3DES, macSHA1, nil},
 	{TLS_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, rsaKA, 0, cipher3DES, macSHA1, nil},
-	{TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdhePSKKA, suiteECDHE | suitePSK | suiteTLS12 | suiteTLS13, nil, nil, aeadCHACHA20POLY1305},
-	{TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, ecdhePSKKA, suiteECDHE | suitePSK | suiteTLS12 | suiteTLS13, nil, nil, aeadAESGCM},
-	{TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdhePSKKA, suiteECDHE | suitePSK | suiteTLS12 | suiteTLS13 | suiteSHA384, nil, nil, aeadAESGCM},
+	{TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdhePSKKA, suiteECDHE | suitePSK | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
 	{TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
 	{TLS_PSK_WITH_RC4_128_SHA, 16, 20, noIV, pskKA, suiteNoDTLS | suitePSK, cipherRC4, macSHA1, nil},
@@ -562,8 +542,9 @@ const (
 const (
 	TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256_OLD   uint16 = 0xcc13
 	TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256_OLD uint16 = 0xcc14
-	TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256             uint16 = 0xd001
-	TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384             uint16 = 0xd002
+	TLS_AES_128_GCM_SHA256                            uint16 = 0x1301
+	TLS_AES_256_GCM_SHA384                            uint16 = 0x1302
+	TLS_CHACHA20_POLY1305_SHA256                      uint16 = 0x1303
 	TLS_CECPQ1_RSA_WITH_CHACHA20_POLY1305_SHA256      uint16 = 0x16b7
 	TLS_CECPQ1_ECDSA_WITH_CHACHA20_POLY1305_SHA256    uint16 = 0x16b8
 	TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384            uint16 = 0x16b9

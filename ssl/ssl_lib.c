@@ -1515,7 +1515,8 @@ uint16_t SSL_get_curve_id(const SSL *ssl) {
   SSL_SESSION *session = SSL_get_session(ssl);
   if (session == NULL ||
       session->cipher == NULL ||
-      !SSL_CIPHER_is_ECDHE(session->cipher)) {
+      (ssl3_protocol_version(ssl) < TLS1_3_VERSION &&
+       !SSL_CIPHER_is_ECDHE(session->cipher))) {
     return 0;
   }
 
@@ -2030,6 +2031,12 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
 
 void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a) {
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    *out_mask_k = SSL_kGENERIC;
+    *out_mask_a = SSL_aGENERIC;
+    return;
+  }
+
   uint32_t mask_k = 0;
   uint32_t mask_a = 0;
 

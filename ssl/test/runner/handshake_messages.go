@@ -779,6 +779,7 @@ type serverHelloMsg struct {
 	keyShare            keyShareEntry
 	hasPSKIdentity      bool
 	pskIdentity         uint16
+	useCertAuth         bool
 	earlyDataIndication bool
 	compressionMethod   uint8
 	extensions          serverExtensions
@@ -830,6 +831,10 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(extensionPreSharedKey)
 			extensions.addU16(2) // Length
 			extensions.addU16(m.pskIdentity)
+		}
+		if m.useCertAuth {
+			extensions.addU16(extensionSignatureAlgorithms)
+			extensions.addU16(0) // Length
 		}
 		if m.earlyDataIndication {
 			extensions.addU16(extensionEarlyData)
@@ -928,6 +933,11 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				}
 				m.pskIdentity = uint16(d[0])<<8 | uint16(d[1])
 				m.hasPSKIdentity = true
+			case extensionSignatureAlgorithms:
+				if len(d) != 0 {
+					return false
+				}
+				m.useCertAuth = true
 			case extensionEarlyData:
 				if len(d) != 0 {
 					return false

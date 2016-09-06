@@ -172,12 +172,14 @@ extern "C" {
 /* SSL_kPSK is only set for plain PSK, not ECDHE_PSK. */
 #define SSL_kPSK 0x00000008L
 #define SSL_kCECPQ1 0x00000010L
+#define SSL_kGENERIC 0x00000020L
 
 /* Bits for |algorithm_auth| (server authentication). */
 #define SSL_aRSA 0x00000001L
 #define SSL_aECDSA 0x00000002L
 /* SSL_aPSK is set for both PSK and ECDHE_PSK. */
 #define SSL_aPSK 0x00000004L
+#define SSL_aGENERIC 0x00000008L
 
 #define SSL_aCERT (SSL_aRSA | SSL_aECDSA)
 
@@ -240,11 +242,6 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
-
-/* ssl_cipher_get_resumption_cipher returns the cipher suite id of the cipher
- * matching |cipher| with PSK enabled. */
-int ssl_cipher_get_ecdhe_psk_cipher(const SSL_CIPHER *cipher,
-                                    uint16_t *out_cipher);
 
 /* ssl_cipher_get_key_type returns the |EVP_PKEY_*| value corresponding to the
  * server key used in |cipher| or |EVP_PKEY_NONE| if there is none. */

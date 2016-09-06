@@ -562,7 +562,7 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define DTLS1_VERSION 0xfeff
 #define DTLS1_2_VERSION 0xfefd
 
-#define TLS1_3_DRAFT_VERSION 0x7f0e
+#define TLS1_3_DRAFT_VERSION 0x7f0f
 
 /* SSL_CTX_set_min_proto_version sets the minimum protocol version for |ctx| to
  * |version|. If |version| is zero, the default minimum version is used. It
@@ -1197,7 +1197,8 @@ OPENSSL_EXPORT uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher);
 OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
- * method used by |cipher|. For example, "ECDHE_ECDSA". */
+ * method used by |cipher|. For example, "ECDHE_ECDSA". TLS 1.3 AEAD-only
+ * ciphers return the string "GENERIC". */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
@@ -4807,6 +4808,7 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 #define SSL_R_RENEGOTIATION_EMS_MISMATCH 263
 #define SSL_R_DUPLICATE_KEY_SHARE 264
 #define SSL_R_NO_GROUPS_SPECIFIED 265
+#define SSL_R_NO_SHARED_GROUP 266
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
