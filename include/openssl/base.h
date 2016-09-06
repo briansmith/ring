@@ -300,17 +300,21 @@ typedef void *OPENSSL_BLOCK;
 #if defined(__cplusplus)
 }  /* extern C */
 
-extern "C++" {
-
 // MSVC doesn't set __cplusplus to 201103 to indicate C++11 support (see
 // https://connect.microsoft.com/VisualStudio/feedback/details/763051/a-value-of-predefined-macro-cplusplus-is-still-199711l)
 // so MSVC is just assumed to support C++11.
-#if defined(BORINGSSL_NO_CXX) || (__cplusplus < 201103L && !defined(_MSC_VER))
+#if !defined(BORINGSSL_NO_CXX) && __cplusplus < 201103L && !defined(_MSC_VER)
+#define BORINGSSL_NO_CXX
+#endif
+
+#if defined(BORINGSSL_NO_CXX)
 
 #define BORINGSSL_MAKE_DELETER(type, deleter)
 #define BORINGSSL_MAKE_STACK_DELETER(type, deleter)
 
 #else
+
+extern "C++" {
 
 #include <memory>
 
@@ -320,21 +324,44 @@ namespace internal {
 
 template <class T> struct Deleter {};
 
+template <typename T, typename CleanupRet, void (*init)(T *),
+          CleanupRet (*cleanup)(T *)>
+class StackAllocated {
+ public:
+  StackAllocated() { init(&ctx_); }
+  ~StackAllocated() { cleanup(&ctx_); }
+
+  T *get() { return &ctx_; }
+  const T *get() const { return &ctx_; }
+
+  void Reset() {
+    cleanup(&ctx_);
+    init(&ctx_);
+  }
+
+ private:
+  T ctx_;
+};
+
+}  // namespace internal
+
 #define BORINGSSL_MAKE_DELETER(type, deleter)       \
+  namespace internal {                              \
     template <> struct Deleter<type> {              \
       void operator()(type* ptr) { deleter(ptr); }  \
-    };
+    };                                              \
+  }
 
 // This makes a unique_ptr to STACK_OF(type) that owns all elements on the
 // stack, i.e. it uses sk_pop_free() to clean up.
 #define BORINGSSL_MAKE_STACK_DELETER(type, deleter)  \
+  namespace internal {                              \
     template <> struct Deleter<STACK_OF(type)> {     \
       void operator()(STACK_OF(type)* ptr) {         \
         sk_##type##_pop_free(ptr, deleter);          \
       }                                              \
-    };
-
-}  // namespace internal
+    };                                               \
+  }
 
 // Holds ownership of heap-allocated BoringSSL structures. Sample usage:
 //   bssl::UniquePtr<BIO> rsa(RSA_new());
@@ -344,9 +371,9 @@ using UniquePtr = std::unique_ptr<T, internal::Deleter<T>>;
 
 }  // namespace bssl
 
-#endif  // C++ allowed?
-
 }  /* extern C++ */
+
+#endif  // !BORINGSSL_NO_CXX
 
 #endif
 

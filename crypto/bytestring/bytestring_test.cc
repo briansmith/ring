@@ -22,7 +22,7 @@
 
 #include <vector>
 
-#include <openssl/c++/bytestring.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 
 #include "internal.h"

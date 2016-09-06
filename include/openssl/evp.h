@@ -754,13 +754,8 @@ struct evp_pkey_st {
 extern "C++" {
 namespace bssl {
 
-namespace internal {
-
-BORINGSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
 BORINGSSL_MAKE_DELETER(EVP_PKEY, EVP_PKEY_free)
 BORINGSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

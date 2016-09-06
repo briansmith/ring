@@ -17,7 +17,7 @@
 
 #include <vector>
 
-#include <openssl/c++/aead.h>
+#include <openssl/aead.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 

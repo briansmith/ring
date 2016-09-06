@@ -57,7 +57,7 @@
 #include <string>
 #include <vector>
 
-#include <openssl/c++/cipher.h>
+#include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 

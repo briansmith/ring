@@ -62,7 +62,7 @@
 #include <vector>
 
 #include <openssl/bn.h>
-#include <openssl/c++/bytestring.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>

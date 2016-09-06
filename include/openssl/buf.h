@@ -122,11 +122,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(BUF_MEM, BUF_MEM_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

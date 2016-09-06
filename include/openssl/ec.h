@@ -361,12 +361,8 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(EC_POINT, EC_POINT_free)
 BORINGSSL_MAKE_DELETER(EC_GROUP, EC_GROUP_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

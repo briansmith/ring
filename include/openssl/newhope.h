@@ -147,11 +147,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(NEWHOPE_POLY, NEWHOPE_POLY_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

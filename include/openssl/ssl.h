@@ -4651,13 +4651,9 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(SSL, SSL_free)
 BORINGSSL_MAKE_DELETER(SSL_CTX, SSL_CTX_free)
 BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

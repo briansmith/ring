@@ -17,8 +17,8 @@
 
 #include <vector>
 
-#include <openssl/c++/bytestring.h>
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>

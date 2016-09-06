@@ -900,11 +900,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(BIO, BIO_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

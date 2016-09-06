@@ -18,8 +18,8 @@
 
 #include <memory>
 
-#include <openssl/c++/digest.h>
 #include <openssl/crypto.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>

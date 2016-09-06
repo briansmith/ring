@@ -17,8 +17,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/c++/digest.h>
 #include <openssl/crypto.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>

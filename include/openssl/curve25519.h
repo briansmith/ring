@@ -172,11 +172,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(SPAKE2_CTX, SPAKE2_CTX_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

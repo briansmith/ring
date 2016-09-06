@@ -928,13 +928,9 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(ASN1_OBJECT, ASN1_OBJECT_free)
 BORINGSSL_MAKE_DELETER(ASN1_STRING, ASN1_STRING_free)
 BORINGSSL_MAKE_DELETER(ASN1_TYPE, ASN1_TYPE_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

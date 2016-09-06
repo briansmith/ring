@@ -199,11 +199,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(ECDSA_SIG, ECDSA_SIG_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

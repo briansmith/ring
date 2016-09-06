@@ -192,12 +192,8 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(PKCS12, PKCS12_free)
 BORINGSSL_MAKE_DELETER(PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

@@ -416,12 +416,8 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(DSA, DSA_free)
 BORINGSSL_MAKE_DELETER(DSA_SIG, DSA_SIG_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

@@ -43,10 +43,10 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/bio.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
-#include <openssl/c++/digest.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/dh.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>

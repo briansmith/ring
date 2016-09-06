@@ -20,9 +20,9 @@
 #include <utility>
 #include <vector>
 
-#include <openssl/c++/bytestring.h>
-#include <openssl/c++/digest.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/pkcs8.h>
 #include <openssl/rsa.h>

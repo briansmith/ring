@@ -76,11 +76,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(CMAC_CTX, CMAC_CTX_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

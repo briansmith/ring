@@ -333,6 +333,21 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx,
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+
+namespace bssl {
+
+using ScopedEVP_AEAD_CTX =
+    internal::StackAllocated<EVP_AEAD_CTX, void, EVP_AEAD_CTX_zero,
+                             EVP_AEAD_CTX_cleanup>;
+
+}  // namespace bssl
+
+}  // extern C++
+#endif
+
 #endif
 
 #endif  /* OPENSSL_HEADER_AEAD_H */

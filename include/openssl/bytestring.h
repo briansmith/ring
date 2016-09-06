@@ -416,6 +416,20 @@ OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+
+namespace bssl {
+
+using ScopedCBB = internal::StackAllocated<CBB, void, CBB_zero, CBB_cleanup>;
+
+}  // namespace bssl
+
+}  // extern C++
+#endif
+
 #endif
 
 #endif  /* OPENSSL_HEADER_BYTESTRING_H */

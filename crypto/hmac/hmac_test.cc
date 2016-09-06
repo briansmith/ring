@@ -61,9 +61,9 @@
 #include <string>
 #include <vector>
 
-#include <openssl/c++/hmac.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
+#include <openssl/hmac.h>
 
 #include "../test/file_test.h"
 

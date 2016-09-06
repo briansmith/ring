@@ -540,6 +540,23 @@ struct evp_cipher_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+
+namespace bssl {
+
+BORINGSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
+
+using ScopedEVP_CIPHER_CTX =
+    internal::StackAllocated<EVP_CIPHER_CTX, int, EVP_CIPHER_CTX_init,
+                             EVP_CIPHER_CTX_cleanup>;
+
+}  // namespace bssl
+
+}  // extern C++
+#endif
+
 #endif
 
 #define CIPHER_R_AES_KEY_SETUP_FAILED 100

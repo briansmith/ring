@@ -918,13 +918,9 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(BIGNUM, BN_free)
 BORINGSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 BORINGSSL_MAKE_DELETER(BN_MONT_CTX, BN_MONT_CTX_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

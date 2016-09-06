@@ -326,11 +326,7 @@ extern "C++" {
 
 namespace bssl {
 
-namespace internal {
-
 BORINGSSL_MAKE_DELETER(EC_KEY, EC_KEY_free)
-
-}  // namespace internal
 
 }  // namespace bssl
 

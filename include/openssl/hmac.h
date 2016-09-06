@@ -155,6 +155,20 @@ struct hmac_ctx_st {
 
 #if defined(__cplusplus)
 }  /* extern C */
+
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+
+namespace bssl {
+
+using ScopedHMAC_CTX =
+    internal::StackAllocated<HMAC_CTX, void, HMAC_CTX_init, HMAC_CTX_cleanup>;
+
+}  // namespace bssl
+
+}  // extern C++
+#endif
+
 #endif
 
 #endif  /* OPENSSL_HEADER_HMAC_H */

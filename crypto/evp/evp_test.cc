@@ -68,7 +68,7 @@ OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
-#include <openssl/c++/bytestring.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
