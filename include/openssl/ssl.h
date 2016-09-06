@@ -1653,7 +1653,7 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 /* SSL_SESS_CACHE_SERVER enables session caching for a server. */
 #define SSL_SESS_CACHE_SERVER 0x0002
 
-/* SSL_SESS_CACHE_SERVER enables session caching for both client and server. */
+/* SSL_SESS_CACHE_BOTH enables session caching for both client and server. */
 #define SSL_SESS_CACHE_BOTH (SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER)
 
 /* SSL_SESS_CACHE_NO_AUTO_CLEAR disables automatically calling
