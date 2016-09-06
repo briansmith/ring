@@ -897,6 +897,8 @@ struct ssl_handshake_st {
   uint8_t secret[EVP_MAX_MD_SIZE];
   uint8_t traffic_secret_0[EVP_MAX_MD_SIZE];
 
+  int use_cert_auth;
+
   SSL_ECDH_CTX *groups;
   size_t groups_len;
   /* retry_group is the group ID selected by the server in HelloRetryRequest. */

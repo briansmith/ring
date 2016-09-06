@@ -1192,7 +1192,7 @@ static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   }
 
   /* OCSP stapling is forbidden on a non-certificate cipher. */
-  if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+  if (!ssl->s3->hs->use_cert_auth) {
     return 0;
   }
 
@@ -1245,7 +1245,7 @@ static int ext_ocsp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
   if (!ssl->s3->tmp.ocsp_stapling_requested ||
       ssl->ctx->ocsp_response_length == 0 ||
-      !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+      !ssl->s3->hs->use_cert_auth) {
     return 1;
   }
 
