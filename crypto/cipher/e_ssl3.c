@@ -97,8 +97,6 @@ static int aead_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   size_t mac_key_len = EVP_MD_size(md);
   size_t enc_key_len = EVP_CIPHER_key_length(cipher);
   assert(mac_key_len + enc_key_len + EVP_CIPHER_iv_length(cipher) == key_len);
-  /* Although EVP_rc4() is a variable-length cipher, the default key size is
-   * correct for SSL3. */
 
   AEAD_SSL3_CTX *ssl3_ctx = OPENSSL_malloc(sizeof(AEAD_SSL3_CTX));
   if (ssl3_ctx == NULL) {
@@ -297,16 +295,6 @@ static int aead_ssl3_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-static int aead_ssl3_get_rc4_state(const EVP_AEAD_CTX *ctx, const RC4_KEY **out_key) {
-  AEAD_SSL3_CTX *ssl3_ctx = (AEAD_SSL3_CTX *)ctx->aead_state;
-  if (EVP_CIPHER_CTX_cipher(&ssl3_ctx->cipher_ctx) != EVP_rc4()) {
-    return 0;
-  }
-
-  *out_key = (RC4_KEY*) ssl3_ctx->cipher_ctx.cipher_data;
-  return 1;
-}
-
 static int aead_ssl3_get_iv(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
                             size_t *out_iv_len) {
   AEAD_SSL3_CTX *ssl3_ctx = (AEAD_SSL3_CTX *)ctx->aead_state;
@@ -318,18 +306,6 @@ static int aead_ssl3_get_iv(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
   *out_iv = ssl3_ctx->cipher_ctx.iv;
   *out_iv_len = iv_len;
   return 1;
-}
-
-static int aead_rc4_md5_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                  size_t key_len, size_t tag_len,
-                                  enum evp_aead_direction_t dir) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_md5());
-}
-
-static int aead_rc4_sha1_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                   size_t key_len, size_t tag_len,
-                                   enum evp_aead_direction_t dir) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_sha1());
 }
 
 static int aead_aes_128_cbc_sha1_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -360,34 +336,6 @@ static int aead_null_sha1_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                         EVP_sha1());
 }
 
-static const EVP_AEAD aead_rc4_md5_ssl3 = {
-    MD5_DIGEST_LENGTH + 16, /* key len (MD5 + RC4) */
-    0,                      /* nonce len */
-    MD5_DIGEST_LENGTH,      /* overhead */
-    MD5_DIGEST_LENGTH,      /* max tag length */
-    NULL, /* init */
-    aead_rc4_md5_ssl3_init,
-    aead_ssl3_cleanup,
-    aead_ssl3_seal,
-    aead_ssl3_open,
-    aead_ssl3_get_rc4_state,
-    NULL, /* get_iv */
-};
-
-static const EVP_AEAD aead_rc4_sha1_ssl3 = {
-    SHA_DIGEST_LENGTH + 16, /* key len (SHA1 + RC4) */
-    0,                      /* nonce len */
-    SHA_DIGEST_LENGTH,      /* overhead */
-    SHA_DIGEST_LENGTH,      /* max tag length */
-    NULL, /* init */
-    aead_rc4_sha1_ssl3_init,
-    aead_ssl3_cleanup,
-    aead_ssl3_seal,
-    aead_ssl3_open,
-    aead_ssl3_get_rc4_state,
-    NULL, /* get_iv */
-};
-
 static const EVP_AEAD aead_aes_128_cbc_sha1_ssl3 = {
     SHA_DIGEST_LENGTH + 16 + 16, /* key len (SHA1 + AES128 + IV) */
     0,                           /* nonce len */
@@ -398,7 +346,6 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_ssl3 = {
     aead_ssl3_cleanup,
     aead_ssl3_seal,
     aead_ssl3_open,
-    NULL,                        /* get_rc4_state */
     aead_ssl3_get_iv,
 };
 
@@ -412,7 +359,6 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_ssl3 = {
     aead_ssl3_cleanup,
     aead_ssl3_seal,
     aead_ssl3_open,
-    NULL,                        /* get_rc4_state */
     aead_ssl3_get_iv,
 };
 
@@ -426,7 +372,6 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_ssl3 = {
     aead_ssl3_cleanup,
     aead_ssl3_seal,
     aead_ssl3_open,
-    NULL,                        /* get_rc4_state */
     aead_ssl3_get_iv,
 };
 
@@ -440,13 +385,8 @@ static const EVP_AEAD aead_null_sha1_ssl3 = {
     aead_ssl3_cleanup,
     aead_ssl3_seal,
     aead_ssl3_open,
-    NULL,                       /* get_rc4_state */
     NULL,                       /* get_iv */
 };
-
-const EVP_AEAD *EVP_aead_rc4_md5_ssl3(void) { return &aead_rc4_md5_ssl3; }
-
-const EVP_AEAD *EVP_aead_rc4_sha1_ssl3(void) { return &aead_rc4_sha1_ssl3; }
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_ssl3(void) {
   return &aead_aes_128_cbc_sha1_ssl3;

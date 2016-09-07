@@ -154,10 +154,10 @@ static const CipherTest kCipherTests[] = {
     // only the selected ciphers.
     {
         // To simplify things, banish all but {ECDHE_RSA,RSA} x
-        // {CHACHA20,AES_256_CBC,AES_128_CBC,RC4} x SHA1.
+        // {CHACHA20,AES_256_CBC,AES_128_CBC} x SHA1.
         "!kEDH:!AESGCM:!3DES:!SHA256:!MD5:!SHA384:"
         // Order some ciphers backwards by strength.
-        "ALL:-CHACHA20:-AES256:-AES128:-RC4:-ALL:"
+        "ALL:-CHACHA20:-AES256:-AES128:-ALL:"
         // Select ECDHE ones and sort them by strength. Ties should resolve
         // based on the order above.
         "kECDHE:@STRENGTH:-ALL:"
@@ -168,13 +168,7 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
-#ifdef BORINGSSL_ENABLE_RC4_TLS
-            {TLS1_CK_ECDHE_RSA_WITH_RC4_128_SHA, 0},
-#endif
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0},
-#ifdef BORINGSSL_ENABLE_RC4_TLS
-            {SSL3_CK_RSA_RC4_128_SHA, 0},
-#endif
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_256_SHA, 0},
         },
@@ -258,9 +252,6 @@ static const char *kMustNotIncludeNull[] = {
   "DEFAULT",
   "ALL:!eNULL",
   "ALL:!NULL",
-#ifdef BORINGSSL_ENABLE_RC4_TLS
-  "MEDIUM",
-#endif
   "HIGH",
   "FIPS",
   "SHA",
@@ -274,9 +265,6 @@ static const char *kMustNotIncludeNull[] = {
 static const char *kMustNotIncludeCECPQ1[] = {
   "ALL",
   "DEFAULT",
-#ifdef BORINGSSL_ENABLE_RC4_TLS
-  "MEDIUM",
-#endif
   "HIGH",
   "FIPS",
   "SHA",
@@ -742,9 +730,6 @@ typedef struct {
 
 static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
   { SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA" },
-#ifdef BORINGSSL_ENABLE_RC4_TLS
-  { SSL3_CK_RSA_RC4_128_MD5, "TLS_RSA_WITH_RC4_MD5" },
-#endif
   { TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA" },
   { TLS1_CK_DHE_RSA_WITH_AES_256_SHA, "TLS_DHE_RSA_WITH_AES_256_CBC_SHA" },
   { TLS1_CK_DHE_RSA_WITH_AES_256_SHA256,
@@ -759,9 +744,6 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
     "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256" },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
     "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" },
-#ifdef BORINGSSL_ENABLE_RC4_TLS
-  { TLS1_CK_PSK_WITH_RC4_128_SHA, "TLS_PSK_WITH_RC4_SHA" },
-#endif
   { TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
     "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA" },
   { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
@@ -1655,7 +1637,7 @@ static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
   SSL_CTX_set_max_version(ctx.get(), version);
   // Our default cipher list varies by CPU capabilities, so manually place the
   // ChaCha20 ciphers in front.
-  if (!SSL_CTX_set_cipher_list(ctx.get(), "!RC4:CHACHA20:ALL")) {
+  if (!SSL_CTX_set_cipher_list(ctx.get(), "CHACHA20:ALL")) {
     return false;
   }
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));

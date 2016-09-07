@@ -95,8 +95,6 @@ struct evp_aead_st {
               const uint8_t *in, size_t in_len, const uint8_t *ad,
               size_t ad_len);
 
-  int (*get_rc4_state)(const EVP_AEAD_CTX *ctx, const RC4_KEY **out_key);
-
   int (*get_iv)(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
                 size_t *out_len);
 };

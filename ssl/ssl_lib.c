@@ -2793,16 +2793,6 @@ void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject) {
       ssl, reject ? ssl_renegotiate_never : ssl_renegotiate_freely);
 }
 
-int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
-                      const RC4_KEY **write_key) {
-  if (ssl->s3->aead_read_ctx == NULL || ssl->s3->aead_write_ctx == NULL) {
-    return 0;
-  }
-
-  return EVP_AEAD_CTX_get_rc4_state(&ssl->s3->aead_read_ctx->ctx, read_key) &&
-         EVP_AEAD_CTX_get_rc4_state(&ssl->s3->aead_write_ctx->ctx, write_key);
-}
-
 int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
                 const uint8_t **out_write_iv, size_t *out_iv_len) {
   if (ssl->s3->aead_read_ctx == NULL || ssl->s3->aead_write_ctx == NULL) {

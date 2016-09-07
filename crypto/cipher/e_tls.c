@@ -71,8 +71,6 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   size_t enc_key_len = EVP_CIPHER_key_length(cipher);
   assert(mac_key_len + enc_key_len +
          (implicit_iv ? EVP_CIPHER_iv_length(cipher) : 0) == key_len);
-  /* Although EVP_rc4() is a variable-length cipher, the default key size is
-   * correct for TLS. */
 
   AEAD_TLS_CTX *tls_ctx = OPENSSL_malloc(sizeof(AEAD_TLS_CTX));
   if (tls_ctx == NULL) {
@@ -348,20 +346,6 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-static int aead_rc4_md5_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                 size_t key_len, size_t tag_len,
-                                 enum evp_aead_direction_t dir) {
-  return aead_tls_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_md5(),
-                       0);
-}
-
-static int aead_rc4_sha1_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                  size_t key_len, size_t tag_len,
-                                  enum evp_aead_direction_t dir) {
-  return aead_tls_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_sha1(),
-                       0);
-}
-
 static int aead_aes_128_cbc_sha1_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                           size_t key_len, size_t tag_len,
                                           enum evp_aead_direction_t dir) {
@@ -429,17 +413,6 @@ static int aead_des_ede3_cbc_sha1_tls_implicit_iv_init(
                        EVP_sha1(), 1);
 }
 
-static int aead_rc4_tls_get_rc4_state(const EVP_AEAD_CTX *ctx,
-                                      const RC4_KEY **out_key) {
-  const AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX*) ctx->aead_state;
-  if (EVP_CIPHER_CTX_cipher(&tls_ctx->cipher_ctx) != EVP_rc4()) {
-    return 0;
-  }
-
-  *out_key = (const RC4_KEY*) tls_ctx->cipher_ctx.cipher_data;
-  return 1;
-}
-
 static int aead_tls_get_iv(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
                            size_t *out_iv_len) {
   const AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX*) ctx->aead_state;
@@ -460,34 +433,6 @@ static int aead_null_sha1_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                        EVP_sha1(), 1 /* implicit iv */);
 }
 
-static const EVP_AEAD aead_rc4_md5_tls = {
-    MD5_DIGEST_LENGTH + 16, /* key len (MD5 + RC4) */
-    0,                      /* nonce len */
-    MD5_DIGEST_LENGTH,      /* overhead */
-    MD5_DIGEST_LENGTH,      /* max tag length */
-    NULL,                   /* init */
-    aead_rc4_md5_tls_init,
-    aead_tls_cleanup,
-    aead_tls_seal,
-    aead_tls_open,
-    aead_rc4_tls_get_rc4_state, /* get_rc4_state */
-    NULL,                       /* get_iv */
-};
-
-static const EVP_AEAD aead_rc4_sha1_tls = {
-    SHA_DIGEST_LENGTH + 16, /* key len (SHA1 + RC4) */
-    0,                      /* nonce len */
-    SHA_DIGEST_LENGTH,      /* overhead */
-    SHA_DIGEST_LENGTH,      /* max tag length */
-    NULL,                   /* init */
-    aead_rc4_sha1_tls_init,
-    aead_tls_cleanup,
-    aead_tls_seal,
-    aead_tls_open,
-    aead_rc4_tls_get_rc4_state, /* get_rc4_state */
-    NULL,                       /* get_iv */
-};
-
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     SHA_DIGEST_LENGTH + 16, /* key len (SHA1 + AES128) */
     16,                     /* nonce len (IV) */
@@ -498,7 +443,6 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                   /* get_rc4_state */
     NULL,                   /* get_iv */
 };
 
@@ -512,7 +456,6 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                        /* get_rc4_state */
     aead_tls_get_iv,             /* get_iv */
 };
 
@@ -526,7 +469,6 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                      /* get_rc4_state */
     NULL,                      /* get_iv */
 };
 
@@ -540,7 +482,6 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                   /* get_rc4_state */
     NULL,                   /* get_iv */
 };
 
@@ -554,7 +495,6 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                        /* get_rc4_state */
     aead_tls_get_iv,             /* get_iv */
 };
 
@@ -568,7 +508,6 @@ static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                      /* get_rc4_state */
     NULL,                      /* get_iv */
 };
 
@@ -582,7 +521,6 @@ static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                      /* get_rc4_state */
     NULL,                      /* get_iv */
 };
 
@@ -596,7 +534,6 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                   /* get_rc4_state */
     NULL,                   /* get_iv */
 };
 
@@ -610,7 +547,6 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                       /* get_rc4_state */
     aead_tls_get_iv,            /* get_iv */
 };
 
@@ -624,13 +560,8 @@ static const EVP_AEAD aead_null_sha1_tls = {
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    NULL,                       /* get_rc4_state */
     NULL,                       /* get_iv */
 };
-
-const EVP_AEAD *EVP_aead_rc4_md5_tls(void) { return &aead_rc4_md5_tls; }
-
-const EVP_AEAD *EVP_aead_rc4_sha1_tls(void) { return &aead_rc4_sha1_tls; }
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void) {
   return &aead_aes_128_cbc_sha1_tls;

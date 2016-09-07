@@ -266,9 +266,6 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
  * unpredictable. They only accept an |ad| parameter of length 11 (the standard
  * TLS one with length omitted). */
 
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_tls(void);
-
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls_implicit_iv(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void);
@@ -292,8 +289,6 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_null_sha1_tls(void);
  * and may not be used concurrently. They only accept an |ad| parameter of
  * length 9 (the standard TLS one with length and version omitted). */
 
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_ssl3(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_ssl3(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_ssl3(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_ssl3(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_ssl3(void);
@@ -314,11 +309,6 @@ enum evp_aead_direction_t {
 OPENSSL_EXPORT int EVP_AEAD_CTX_init_with_direction(
     EVP_AEAD_CTX *ctx, const EVP_AEAD *aead, const uint8_t *key, size_t key_len,
     size_t tag_len, enum evp_aead_direction_t dir);
-
-/* EVP_AEAD_CTX_get_rc4_state sets |*out_key| to point to an RC4 key structure.
- * It returns one on success or zero if |ctx| doesn't have an RC4 key. */
-OPENSSL_EXPORT int EVP_AEAD_CTX_get_rc4_state(const EVP_AEAD_CTX *ctx,
-                                              const RC4_KEY **out_key);
 
 /* EVP_AEAD_CTX_get_iv sets |*out_len| to the length of the IV for |ctx| and
  * sets |*out_iv| to point to that many bytes of the current IV. This is only
