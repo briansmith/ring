@@ -48,10 +48,17 @@ fn x25519_generate_private_key(rng: &rand::SecureRandom)
 fn x25519_public_from_private(public_out: &mut [u8],
                               private_key: &ec::PrivateKey)
                               -> Result<(), error::Unspecified> {
-    debug_assert_eq!(public_out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
+    let public_out =
+        try!(slice_as_array_ref_mut!(public_out,
+                                     X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+    // XXX: This shouldn't require dynamic checks, but rustc can't slice an
+    // array reference to a shorter array reference. TODO(perf): Fix this.
+    let private_key =
+        try!(slice_as_array_ref!(
+                &private_key.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
+                X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
     unsafe {
-        GFp_x25519_public_from_private(public_out.as_mut_ptr(),
-                                       private_key.bytes.as_ptr());
+        GFp_x25519_public_from_private(public_out, private_key);
     }
     Ok(())
 }
@@ -60,13 +67,19 @@ fn x25519_public_from_private(public_out: &mut [u8],
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input)
                -> Result<(), error::Unspecified> {
-    debug_assert_eq!(out.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
-    if peer_public_key.len() != X25519_ELEM_SCALAR_PUBLIC_KEY_LEN {
-        return Err(error::Unspecified);
-    }
+    let out =
+        try!(slice_as_array_ref_mut!(out, X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+    // XXX: This shouldn't require dynamic checks, but rustc can't slice an
+    // array reference to a shorter array reference. TODO(perf): Fix this.
+    let my_private_key =
+        try!(slice_as_array_ref!(
+                &my_private_key.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
+                X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+    let peer_public_key =
+        try!(slice_as_array_ref!(peer_public_key.as_slice_less_safe(),
+                                 X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
     bssl::map_result(unsafe {
-        GFp_x25519_ecdh(out.as_mut_ptr(), my_private_key.bytes.as_ptr(),
-                        peer_public_key.as_slice_less_safe().as_ptr())
+        GFp_x25519_ecdh(out, my_private_key, peer_public_key)
     })
 }
 
@@ -74,11 +87,13 @@ fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
 const X25519_ELEM_SCALAR_PUBLIC_KEY_LEN: usize = 32;
 
 extern {
-    fn GFp_x25519_ecdh(out_shared_key: *mut u8/*[32]*/,
-                       private_key: *const u8/*[u32]*/,
-                       peer_public_value: *const u8/*[32]*/) -> c::int;
-    fn GFp_x25519_public_from_private(public_key_out: *mut u8,
-                                      private_key: *const u8);
+    fn GFp_x25519_ecdh(
+        out_shared_key: &mut [u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
+        private_key: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
+        peer_public_value: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]) -> c::int;
+    fn GFp_x25519_public_from_private(
+        public_key_out: &mut [u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
+        private_key: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]);
 }
 
 #[cfg(test)]
