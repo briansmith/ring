@@ -247,11 +247,11 @@ extern {
                           key: &[u32; CHACHA20_KEY_LEN / 4],
                           counter: &[u32; 4]);
     fn GFp_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
-                            key: &[u8; POLY1305_KEY_LEN]);
+                         key: &[u8; POLY1305_KEY_LEN]);
     fn GFp_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
-                              mac: &mut [u8; aead::TAG_LEN]);
+                           mac: &mut [u8; aead::TAG_LEN]);
     fn GFp_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
-                              in_: *const u8, in_len: c::size_t);
+                           in_: *const u8, in_len: c::size_t);
 }
 
 #[cfg(test)]
