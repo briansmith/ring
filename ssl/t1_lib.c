@@ -308,9 +308,6 @@ static const uint16_t kDefaultGroups[] = {
     SSL_CURVE_X25519,
     SSL_CURVE_SECP256R1,
     SSL_CURVE_SECP384R1,
-#if defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_CURVE_SECP521R1,
-#endif
 };
 
 void tls1_get_grouplist(SSL *ssl, const uint16_t **out_group_ids,
@@ -464,8 +461,7 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
 #endif
     SSL_SIGN_RSA_PKCS1_SHA384,
 
-    /* TODO(davidben): Remove this entry and SSL_CURVE_SECP521R1 from
-     * kDefaultGroups. */
+    /* TODO(davidben): Remove this. */
 #if defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_ECDSA_SECP521R1_SHA512,
 #endif
