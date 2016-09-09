@@ -40,6 +40,8 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #elif defined(OPENSSL_APPLE)
 #include <sys/time.h>
+#else
+#include <time.h>
 #endif
 
 #include "internal.h"
