@@ -791,6 +791,10 @@ type ProtocolBugs struct {
 	// type to be sent with the wrong value.
 	SendWrongMessageType byte
 
+	// SendTrailingMessageData, if non-zero, causes messages of the
+	// specified type to be sent with trailing data.
+	SendTrailingMessageData byte
+
 	// FragmentMessageTypeMismatch, if true, causes all non-initial
 	// handshake fragments in DTLS to have the wrong message type.
 	FragmentMessageTypeMismatch bool

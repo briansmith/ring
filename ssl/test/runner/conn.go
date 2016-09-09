@@ -955,11 +955,28 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
-	if wrongType := c.config.Bugs.SendWrongMessageType; wrongType != 0 {
-		if typ == recordTypeHandshake && data[0] == wrongType {
+	if msgType := c.config.Bugs.SendWrongMessageType; msgType != 0 {
+		if typ == recordTypeHandshake && data[0] == msgType {
 			newData := make([]byte, len(data))
 			copy(newData, data)
 			newData[0] += 42
+			data = newData
+		}
+	}
+
+	if msgType := c.config.Bugs.SendTrailingMessageData; msgType != 0 {
+		if typ == recordTypeHandshake && data[0] == msgType {
+			newData := make([]byte, len(data))
+			copy(newData, data)
+
+			// Add a 0 to the body.
+			newData = append(newData, 0)
+			// Fix the header.
+			newLen := len(newData) - 4
+			newData[1] = byte(newLen >> 16)
+			newData[2] = byte(newLen >> 8)
+			newData[3] = byte(newLen)
+
 			data = newData
 		}
 	}

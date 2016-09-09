@@ -7914,6 +7914,32 @@ func addWrongMessageTypeTests() {
 	}
 }
 
+func addTrailingMessageDataTests() {
+	for _, t := range makePerMessageTests() {
+		t.test.name = "TrailingMessageData-" + t.test.name
+		t.test.config.Bugs.SendTrailingMessageData = t.messageType
+		t.test.shouldFail = true
+		t.test.expectedError = ":DECODE_ERROR:"
+		t.test.expectedLocalError = "remote error: error decoding message"
+
+		if t.test.config.MaxVersion >= VersionTLS13 && t.messageType == typeServerHello {
+			// In TLS 1.3, a bad ServerHello means the client sends
+			// an unencrypted alert while the server expects
+			// encryption, so the alert is not readable by runner.
+			t.test.expectedLocalError = "local error: bad record MAC"
+		}
+
+		if t.messageType == typeFinished {
+			// Bad Finished messages read as the verify data having
+			// the wrong length.
+			t.test.expectedError = ":DIGEST_CHECK_FAILED:"
+			t.test.expectedLocalError = "remote error: error decrypting message"
+		}
+
+		testCases = append(testCases, t.test)
+	}
+}
+
 func addTLS13HandshakeTests() {
 	testCases = append(testCases, testCase{
 		testType: clientTest,
@@ -8289,6 +8315,7 @@ func main() {
 	addAllStateMachineCoverageTests()
 	addChangeCipherSpecTests()
 	addWrongMessageTypeTests()
+	addTrailingMessageDataTests()
 	addTLS13HandshakeTests()
 
 	var wg sync.WaitGroup

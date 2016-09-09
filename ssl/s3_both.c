@@ -314,18 +314,14 @@ int ssl3_get_finished(SSL *ssl) {
   }
 
   size_t finished_len = ssl->s3->tmp.peer_finish_md_len;
-  if (finished_len != ssl->init_num) {
-    al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DIGEST_LENGTH);
-    goto f_err;
-  }
 
-  int finished_ret =
-      CRYPTO_memcmp(ssl->init_msg, ssl->s3->tmp.peer_finish_md, finished_len);
+  int finished_ok = ssl->init_num == finished_len &&
+                    CRYPTO_memcmp(ssl->init_msg, ssl->s3->tmp.peer_finish_md,
+                                  finished_len) == 0;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  finished_ret = 0;
+  finished_ok = 1;
 #endif
-  if (finished_ret != 0) {
+  if (!finished_ok) {
     al = SSL_AD_DECRYPT_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     goto f_err;

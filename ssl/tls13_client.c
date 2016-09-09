@@ -419,6 +419,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
   if (!CBS_get_u16_length_prefixed(&cbs, &extensions) ||
       CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    sk_X509_NAME_pop_free(ca_sk, X509_NAME_free);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }

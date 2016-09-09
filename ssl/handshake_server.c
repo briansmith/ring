@@ -1730,8 +1730,13 @@ static int ssl3_get_next_proto(SSL *ssl) {
   CBS_init(&next_protocol, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8_length_prefixed(&next_protocol, &selected_protocol) ||
       !CBS_get_u8_length_prefixed(&next_protocol, &padding) ||
-      CBS_len(&next_protocol) != 0 ||
-      !CBS_stow(&selected_protocol, &ssl->s3->next_proto_negotiated,
+      CBS_len(&next_protocol) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return 0;
+  }
+
+  if (!CBS_stow(&selected_protocol, &ssl->s3->next_proto_negotiated,
                 &ssl->s3->next_proto_negotiated_len)) {
     return 0;
   }
@@ -1780,7 +1785,8 @@ static int ssl3_get_channel_id(SSL *ssl) {
       CBS_len(&encrypted_extensions) != 0 ||
       extension_type != TLSEXT_TYPE_channel_id ||
       CBS_len(&extension) != TLSEXT_CHANNEL_ID_SIZE) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return -1;
   }
 
