@@ -85,20 +85,15 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL *ssl,
     return ssl_hs_error;
   }
 
-  for (size_t i = 0; i < ssl->s3->hs->groups_len; i++) {
-    /* Check that the HelloRetryRequest does not request a key share that was
-     * provided in the initial ClientHello.
-     *
-     * TODO(svaldez): Don't enforce this check when the HelloRetryRequest is due
-     * to a cookie. */
-    if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->groups[i]) == group_id) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-      return ssl_hs_error;
-    }
+  /* Check that the HelloRetryRequest does not request the key share that was
+   * provided in the initial ClientHello. */
+  if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->ecdh_ctx) == group_id) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+    return ssl_hs_error;
   }
 
-  ssl_handshake_clear_groups(ssl->s3->hs);
+  SSL_ECDH_CTX_cleanup(&ssl->s3->hs->ecdh_ctx);
   ssl->s3->hs->retry_group = group_id;
 
   hs->state = state_send_second_client_hello;
@@ -679,7 +674,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
 }
 
 void ssl_clear_tls13_state(SSL *ssl) {
-  ssl_handshake_clear_groups(ssl->s3->hs);
+  SSL_ECDH_CTX_cleanup(&ssl->s3->hs->ecdh_ctx);
 
   OPENSSL_free(ssl->s3->hs->key_share_bytes);
   ssl->s3->hs->key_share_bytes = NULL;

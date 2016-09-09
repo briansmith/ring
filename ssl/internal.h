@@ -896,9 +896,8 @@ struct ssl_handshake_st {
   uint8_t secret[EVP_MAX_MD_SIZE];
   uint8_t traffic_secret_0[EVP_MAX_MD_SIZE];
 
-  /* groups is the set of active ECDH offers from the client in TLS 1.3. */
-  SSL_ECDH_CTX *groups;
-  size_t groups_len;
+  /* ecdh_ctx is the active client ECDH offer in TLS 1.3. */
+  SSL_ECDH_CTX ecdh_ctx;
 
   /* retry_group is the group ID selected by the server in HelloRetryRequest in
    * TLS 1.3. */
@@ -929,8 +928,6 @@ struct ssl_handshake_st {
 } /* SSL_HANDSHAKE */;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
-
-void ssl_handshake_clear_groups(SSL_HANDSHAKE *hs);
 
 /* ssl_handshake_free releases all memory associated with |hs|. */
 void ssl_handshake_free(SSL_HANDSHAKE *hs);

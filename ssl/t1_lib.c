@@ -2093,8 +2093,7 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
-  const uint16_t *groups;
-  size_t groups_len;
+  uint16_t group_id;
   if (ssl->s3->hs->retry_group) {
     /* Append the new key share to the old list. */
     if (!CBB_add_bytes(&kse_bytes, ssl->s3->hs->key_share_bytes,
@@ -2105,35 +2104,27 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
     ssl->s3->hs->key_share_bytes = NULL;
     ssl->s3->hs->key_share_bytes_len = 0;
 
-    groups = &ssl->s3->hs->retry_group;
-    groups_len = 1;
+    group_id = ssl->s3->hs->retry_group;
   } else {
+    /* Predict the most preferred group. */
+    const uint16_t *groups;
+    size_t groups_len;
     tls1_get_grouplist(ssl, 0 /* local groups */, &groups, &groups_len);
-    /* Only send the top two preferred key shares. */
-    if (groups_len > 2) {
-      groups_len = 2;
+    if (groups_len == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_GROUPS_SPECIFIED);
+      return 0;
     }
+
+    group_id = groups[0];
   }
 
-  ssl->s3->hs->groups = OPENSSL_malloc(groups_len * sizeof(SSL_ECDH_CTX));
-  if (ssl->s3->hs->groups == NULL) {
+  CBB key_exchange;
+  if (!CBB_add_u16(&kse_bytes, group_id) ||
+      !CBB_add_u16_length_prefixed(&kse_bytes, &key_exchange) ||
+      !SSL_ECDH_CTX_init(&ssl->s3->hs->ecdh_ctx, group_id) ||
+      !SSL_ECDH_CTX_offer(&ssl->s3->hs->ecdh_ctx, &key_exchange) ||
+      !CBB_flush(&kse_bytes)) {
     return 0;
-  }
-  memset(ssl->s3->hs->groups, 0, groups_len * sizeof(SSL_ECDH_CTX));
-  ssl->s3->hs->groups_len = groups_len;
-
-  for (size_t i = 0; i < groups_len; i++) {
-    if (!CBB_add_u16(&kse_bytes, groups[i])) {
-      return 0;
-    }
-
-    CBB key_exchange;
-    if (!CBB_add_u16_length_prefixed(&kse_bytes, &key_exchange) ||
-        !SSL_ECDH_CTX_init(&ssl->s3->hs->groups[i], groups[i]) ||
-        !SSL_ECDH_CTX_offer(&ssl->s3->hs->groups[i], &key_exchange) ||
-        !CBB_flush(&kse_bytes)) {
-      return 0;
-    }
   }
 
   if (!ssl->s3->hs->retry_group) {
@@ -2162,28 +2153,21 @@ int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
     return 0;
   }
 
-  SSL_ECDH_CTX *group_ctx = NULL;
-  for (size_t i = 0; i < ssl->s3->hs->groups_len; i++) {
-    if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->groups[i]) == group_id) {
-      group_ctx = &ssl->s3->hs->groups[i];
-      break;
-    }
-  }
-
-  if (group_ctx == NULL) {
+  if (SSL_ECDH_CTX_get_id(&ssl->s3->hs->ecdh_ctx) != group_id) {
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
     return 0;
   }
 
-  if (!SSL_ECDH_CTX_finish(group_ctx, out_secret, out_secret_len, out_alert,
-                           CBS_data(&peer_key), CBS_len(&peer_key))) {
+  if (!SSL_ECDH_CTX_finish(&ssl->s3->hs->ecdh_ctx, out_secret, out_secret_len,
+                           out_alert, CBS_data(&peer_key),
+                           CBS_len(&peer_key))) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
 
   ssl->s3->new_session->key_exchange_info = group_id;
-  ssl_handshake_clear_groups(ssl->s3->hs);
+  SSL_ECDH_CTX_cleanup(&ssl->s3->hs->ecdh_ctx);
   return 1;
 }
 
