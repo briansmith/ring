@@ -1063,6 +1063,10 @@ type ProtocolBugs struct {
 	// SendSNIWarningAlert, if true, causes the server to send an
 	// unrecognized_name alert before the ServerHello.
 	SendSNIWarningAlert bool
+
+	// SendCompressionMethods, if not nil, is the compression method list to
+	// send in the ClientHello.
+	SendCompressionMethods []byte
 }
 
 func (c *Config) serverInit() {

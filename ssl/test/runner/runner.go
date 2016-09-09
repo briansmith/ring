@@ -2256,6 +2256,55 @@ func addBasicTests() {
 				},
 			},
 		},
+		{
+			testType: serverTest,
+			name:     "ExtraCompressionMethods-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendCompressionMethods: []byte{1, 2, 3, compressionNone, 4, 5, 6},
+				},
+			},
+		},
+		{
+			testType: serverTest,
+			name:     "ExtraCompressionMethods-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendCompressionMethods: []byte{1, 2, 3, compressionNone, 4, 5, 6},
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":INVALID_COMPRESSION_LIST:",
+			expectedLocalError: "remote error: illegal parameter",
+		},
+		{
+			testType: serverTest,
+			name:     "NoNullCompression-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendCompressionMethods: []byte{1, 2, 3, 4, 5, 6},
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":NO_COMPRESSION_SPECIFIED:",
+			expectedLocalError: "remote error: illegal parameter",
+		},
+		{
+			testType: serverTest,
+			name:     "NoNullCompression-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendCompressionMethods: []byte{1, 2, 3, 4, 5, 6},
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":INVALID_COMPRESSION_LIST:",
+			expectedLocalError: "remote error: illegal parameter",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

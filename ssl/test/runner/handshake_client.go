@@ -92,6 +92,10 @@ func (c *Conn) clientHandshake() error {
 		hello.supportedCurves = nil
 	}
 
+	if c.config.Bugs.SendCompressionMethods != nil {
+		hello.compressionMethods = c.config.Bugs.SendCompressionMethods
+	}
+
 	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
 		if c.config.Bugs.BadRenegotiationInfo {
 			hello.secureRenegotiation = append(hello.secureRenegotiation, c.clientVerify...)
