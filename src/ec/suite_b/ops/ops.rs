@@ -541,7 +541,7 @@ extern {
                                            num_limbs: c::size_t);
 }
 
-
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {error, test};

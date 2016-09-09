@@ -75,6 +75,11 @@ benchmarks are only useful for people hacking on the implementation of *ring*.
 (The benchmarks for the *ring* API are in the
 [crypto-bench](https://github.com/briansmith/crypto-bench) project.)
 
+The `native_rust` feature attempts to use pure Rust code for algorithm
+implementations. This work is currently incomplete, and therefore some features
+do not yet have native Rust implementations, in which case *ring* will fallback
+to using the assembly version.
+
 The `slow_tests` feature runs additional tests that are too slow to run during
 a normal edit-compile-test cycle.
 

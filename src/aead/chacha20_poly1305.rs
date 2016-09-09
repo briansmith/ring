@@ -254,6 +254,7 @@ extern {
                            in_: *const u8, in_len: c::size_t);
 }
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {aead, c, polyfill, test};

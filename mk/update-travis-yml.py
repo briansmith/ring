@@ -57,12 +57,13 @@ compilers = {
     "arm-linux-androideabi" : [ "arm-linux-androideabi-gcc" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
+    "mipsel-unknown-linux-gnu" : [ "mipsel-linux-gnu-gcc"],
     "x86_64-unknown-linux-gnu" : linux_compilers,
     "x86_64-apple-darwin" : osx_compilers,
 }
 
 feature_sets = [
-    "--features=rsa_signing",
+    "rsa_signing",
     "",
 ]
 
@@ -88,6 +89,7 @@ targets = {
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
         "arm-unknown-linux-gnueabihf",
+        "mipsel-unknown-linux-gnu"
     ],
 }
 
@@ -163,10 +165,15 @@ def format_entry(os, target, compiler, rust, mode, features):
         sources = sorted(list(set(sources_with_dups)))
 
     # TODO: Use trusty for everything?
-    if arch in ["aarch64", "arm"] and sys != "androideabi":
+    if arch in ["aarch64", "arm", "mipsel"] and sys != "androideabi":
         template += """
       dist: trusty
       sudo: required"""
+
+    if arch in ["mipsel"]:
+        features = "\"--features=native_rust " + features + "\""
+    else:
+        features = "--features=" + features
 
     if sys == "linux":
         if packages:
@@ -217,6 +224,10 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
     if target == "arm-linux-androideabi":
         packages += ["expect",
                      "openjdk-6-jre-headless"]
+    if target == "mipsel-unknown-linux-gnu":
+        packages += ["gcc-mipsel-linux-gnu",
+                     "g++-mipsel-linux-gnu",
+                     "libc6-dev-mipsel-cross"]
 
     if arch == "i686":
         if kcov == True:
@@ -243,13 +254,16 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libelf-dev",
                          "libdw-dev",
                          "binutils-dev"]
-    elif arch not in ["aarch64", "arm"]:
+    elif arch not in ["aarch64", "arm", "mipsel"]:
         raise ValueError("unexpected arch: %s" % arch)
 
     return packages
 
 def get_sources_for_package(package):
+    deb_toolchain = "debian-sid"
     ubuntu_toolchain = "ubuntu-toolchain-r-test"
+    if "mipsel" in package:
+        return [deb_toolchain]
     if package.startswith("clang-"):
         if package == latest_clang:
             llvm_toolchain = "llvm-toolchain-precise"

@@ -66,7 +66,7 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
     Ok((x, y))
 }
 
-
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use test;

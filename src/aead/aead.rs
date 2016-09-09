@@ -288,6 +288,7 @@ fn check_per_nonce_max_bytes(in_out_len: usize)
 }
 
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use super::super::{aead, error, test};

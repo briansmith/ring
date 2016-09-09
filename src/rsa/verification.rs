@@ -130,6 +130,7 @@ extern {
                               max_bits: c::size_t) -> c::int;
 }
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {der, error, signature, test};

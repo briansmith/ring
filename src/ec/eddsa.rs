@@ -162,7 +162,7 @@ extern  {
                           public_key: *const u8/*[32]*/) -> c::int;
 }
 
-
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {test, rand, signature};

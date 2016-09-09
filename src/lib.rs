@@ -172,6 +172,7 @@ mod private {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "native_rust"))]
     bssl_test_rng!(test_bn, bssl_bn_test_main);
     bssl_test!(test_constant_time, bssl_constant_time_test_main);
 }

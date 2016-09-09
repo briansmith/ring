@@ -96,6 +96,7 @@ extern {
         private_key: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]);
 }
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {agreement, error, test};

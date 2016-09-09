@@ -14,6 +14,8 @@
 
 #[allow(unsafe_code)]
 #[inline(always)]
+#[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "x86_64",
+          target_arch = "aarch64"))]
 #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
 pub fn init_once() {
     extern crate std;
@@ -21,10 +23,15 @@ pub fn init_once() {
     INIT.call_once(|| unsafe { GFp_cpuid_setup() });
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "x86_64",
+          target_arch = "aarch64"))]
 #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
 extern {
     fn GFp_cpuid_setup();
 }
 
-#[cfg(all(target_arch = "aarch64", target_os = "ios"))]
+
+#[cfg(any(not(any(target_arch = "x86", target_arch = "arm",
+              target_arch = "x86_64")),
+          all(target_arch = "aarch64", target_os = "ios")))]
 pub fn init_once() {}

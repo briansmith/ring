@@ -34,11 +34,20 @@ arm-linux-androideabi)
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
   export PATH=$HOME/android/android-sdk-linux/tools:$PATH
   ;;
+mipsel-unknown-linux-gnu)
+  export QEMU_LD_PREFIX=/usr/mipsel-linux-gnu
+  ;;
 *)
   ;;
 esac
 
-if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
+if [[ "$TARGET_X" =~ ^mipsel ]]; then
+  # Need to remove debian-sid as a source or subsequent update will attempt to
+  # install updated binutils from debian-sid
+  sudo sed -i '/debian/d' /etc/apt/sources.list
+fi
+
+if [[ "$TARGET_X" =~ ^(arm|aarch64|mipsel) && ! "$TARGET_X" =~ android ]]; then
   # We need a newer QEMU than Travis has.
   # sudo is needed until the PPA and its packages are whitelisted.
   # See https://github.com/travis-ci/apt-source-whitelist/issues/271

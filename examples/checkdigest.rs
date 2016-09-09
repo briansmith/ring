@@ -38,6 +38,9 @@ fn print_usage(program_name: &str) {
 
 fn run(digest_name: &str, expected_digest_hex: &str,
        file_path: &std::path::Path) -> Result<(), &'static str> {
+    if cfg!(feature = "native_rust") {
+        return Err("unsupported digest algorithm");
+    }
     let digest_alg = match digest_name {
         "sha256" => &digest::SHA256,
         "sha384" => &digest::SHA384,

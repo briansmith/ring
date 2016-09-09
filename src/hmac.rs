@@ -78,7 +78,10 @@
 //! # Ok(())
 //! # }
 //! #
+//! # #[cfg(not(feature = "native_rust"))]
 //! # fn main() { main_with_result().unwrap() }
+//! # #[cfg(feature = "native_rust")]
+//! # fn main() { }
 //! ```
 //!
 //! ## Using the one-shot API:
@@ -107,7 +110,10 @@
 //! # Ok(())
 //! # }
 //! #
+//! # #[cfg(not(feature = "native_rust"))]
 //! # fn main() { main_with_result().unwrap() }
+//! # #[cfg(feature = "native_rust")]
+//! # fn main() { }
 //! ```
 //!
 //! ## Using the multi-part API:
@@ -143,7 +149,10 @@
 //! # Ok(())
 //! # }
 //! #
+//! # #[cfg(not(feature = "native_rust"))]
 //! # fn main() { main_with_result().unwrap() }
+//! # #[cfg(feature = "native_rust")]
+//! # fn main() { }
 //! ```
 //!
 //! [RFC 2104]: https://tools.ietf.org/html/rfc2104
@@ -343,6 +352,7 @@ pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
     constant_time::verify_slices_are_equal(sign(key, data).as_ref(), signature)
 }
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {digest, error, hmac, rand, test};

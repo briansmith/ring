@@ -81,7 +81,10 @@
 //! # Ok(())
 //! # }
 //!
+//! # #[cfg(not(feature = "native_rust"))]
 //! # fn main() { sign_and_verify_ed25519().unwrap() }
+//! # #[cfg(feature = "native_rust")]
+//! # fn main() { }
 //! ```
 //!
 //! ## Signing and verifying with RSA (PKCS#1 1.5 padding)
@@ -95,7 +98,8 @@
 //!
 //! use ring::{rand, signature};
 //!
-//! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+//! # #[cfg(all(feature = "rsa_signing", feature = "use_heap",
+//! #            not(feature = "native_rust")))]
 //! # fn sign_and_verify_rsa() -> Result<(), ring::error::Unspecified> {
 //!
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
@@ -129,7 +133,8 @@
 //! # Ok(())
 //! # }
 //! #
-//! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap")))]
+//! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap",
+//! #               not(feature = "native_rust"))))]
 //! # fn sign_and_verify_rsa() -> Result<(), ring::error::Unspecified> {
 //! #     Ok(())
 //! # }

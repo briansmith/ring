@@ -130,6 +130,7 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
     }
 }
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use super::*;

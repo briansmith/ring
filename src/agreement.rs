@@ -221,7 +221,7 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     kdf(shared_key)
 }
 
-
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {test, rand};

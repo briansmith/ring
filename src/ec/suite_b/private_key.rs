@@ -188,6 +188,7 @@ fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
     }
 }
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 pub mod test_util {
     use super::super::ops::Limb;

@@ -48,6 +48,8 @@ mod sha1;
 /// ```
 /// use ring::digest;
 ///
+/// # #[cfg(not(feature = "native_rust"))]
+/// # fn main() {
 /// let one_shot = digest::digest(&digest::SHA384, b"hello, world");
 ///
 /// let mut ctx = digest::Context::new(&digest::SHA384);
@@ -57,6 +59,9 @@ mod sha1;
 /// let multi_part = ctx.finish();
 ///
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
+/// # }
+/// # #[cfg(feature = "native_rust")]
+/// # fn main() { }
 /// ```
 pub struct Context {
     // We use u64 to try to ensure 64-bit alignment/padding.
@@ -218,7 +223,7 @@ impl Clone for Context {
 /// # Examples:
 ///
 /// ```
-/// # #[cfg(feature = "use_heap")]
+/// # #[cfg(all(feature = "use_heap", not(feature = "native_rust")))]
 /// # fn main() {
 /// use ring::{digest, test};
 ///
@@ -230,7 +235,7 @@ impl Clone for Context {
 /// assert_eq!(&expected, &actual.as_ref());
 /// # }
 ///
-/// # #[cfg(not(feature = "use_heap"))]
+/// # #[cfg(any(not(feature = "use_heap"), feature = "native_rust"))]
 /// # fn main() { }
 /// ```
 pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
@@ -484,10 +489,15 @@ pub mod test_util {
 
 #[cfg(test)]
 mod tests {
+    use super::super::digest;
+
+    #[cfg(not(feature = "native_rust"))]
     use std::vec::Vec;
-    use super::super::{digest, test};
+    #[cfg(not(feature = "native_rust"))]
+    use super::super::test;
 
     /// Test vectors from BoringSSL.
+    #[cfg(not(feature = "native_rust"))]
     #[test]
     fn test_bssl() {
         test::from_file("src/digest/digest_tests.txt", |section, test_case| {
@@ -622,8 +632,11 @@ mod tests {
         }
 
         shavs_tests!(SHA1);
+        #[cfg(not(feature = "native_rust"))]
         shavs_tests!(SHA256);
+        #[cfg(not(feature = "native_rust"))]
         shavs_tests!(SHA384);
+        #[cfg(not(feature = "native_rust"))]
         shavs_tests!(SHA512);
     }
 
@@ -667,8 +680,11 @@ mod tests {
         }
     }
     test_i_u_f!(test_i_u_f_sha1, digest::SHA1);
+    #[cfg(not(feature = "native_rust"))]
     test_i_u_f!(test_i_u_f_sha256, digest::SHA256);
+    #[cfg(not(feature = "native_rust"))]
     test_i_u_f!(test_i_u_f_sha384, digest::SHA384);
+    #[cfg(not(feature = "native_rust"))]
     test_i_u_f!(test_i_u_f_sha512, digest::SHA512);
 
     /// See https://bugzilla.mozilla.org/show_bug.cgi?id=610162. This tests the
@@ -720,12 +736,14 @@ mod tests {
         0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD, 0x65,
         0x3C, 0x20, 0xE4, 0xBD
     ]);
+    #[cfg(not(feature = "native_rust"))]
     test_large_digest!(test_large_digest_sha256, digest::SHA256, 256 / 8, [
         0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB,
         0x7F, 0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE, 0xD6,
         0x65, 0x4C, 0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7,
         0x07, 0x97, 0xC5, 0xDD, 0xAE, 0x5C, 0x68, 0xBD
     ]);
+    #[cfg(not(feature = "native_rust"))]
     test_large_digest!(test_large_digest_sha384, digest::SHA384, 384 / 8, [
         0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5,
         0xBB, 0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87, 0x0E,
@@ -734,6 +752,7 @@ mod tests {
         0xB0, 0x68, 0xCD, 0x19, 0x3E, 0x39, 0x90, 0x02,
         0xE1, 0x58, 0x5D, 0x66, 0xC4, 0x55, 0x11, 0x9B
     ]);
+    #[cfg(not(feature = "native_rust"))]
     test_large_digest!(test_large_digest_sha512, digest::SHA512, 512 / 8, [
         0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55,
         0xF8, 0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60, 0x04,
@@ -748,9 +767,11 @@ mod tests {
     #[test]
     fn test_fmt_algorithm() {
         assert_eq!("SHA-1", &format!("{:?}", digest::SHA1));
-        assert_eq!("SHA-256", &format!("{:?}", digest::SHA256));
-        assert_eq!("SHA-384", &format!("{:?}", digest::SHA384));
-        assert_eq!("SHA-512", &format!("{:?}", digest::SHA512));
+        if cfg!(not(feature = "native_rust")) {
+            assert_eq!("SHA-256", &format!("{:?}", digest::SHA256));
+            assert_eq!("SHA-384", &format!("{:?}", digest::SHA384));
+            assert_eq!("SHA-512", &format!("{:?}", digest::SHA512));
+        }
     }
 
     #[test]
@@ -758,20 +779,25 @@ mod tests {
         assert_eq!("SHA-1:b7e23ec29af22b0b4e41da31e868d57226121c84",
                    &format!("{:?}",
                             digest::digest(&digest::SHA1, b"hello, world")));
-        assert_eq!("SHA-256:09ca7e4eaa6e8ae9c7d261167129184883644d\
-                    07dfba7cbfbc4c8a2e08360d5b",
-                   &format!("{:?}",
-                            digest::digest(&digest::SHA256, b"hello, world")));
-        assert_eq!("SHA-384:1fcdb6059ce05172a26bbe2a3ccc88ed5a8cd5\
-                    fc53edfd9053304d429296a6da23b1cd9e5c9ed3bb34f0\
-                    0418a70cdb7e",
-                   &format!("{:?}",
-                            digest::digest(&digest::SHA384, b"hello, world")));
-        assert_eq!("SHA-512:8710339dcb6814d0d9d2290ef422285c9322b7\
-                    163951f9a0ca8f883d3305286f44139aa374848e4174f5\
-                    aada663027e4548637b6d19894aec4fb6c46a139fbf9",
-                   &format!("{:?}",
-                            digest::digest(&digest::SHA512, b"hello, world")));
+        if cfg!(not(feature = "native_rust")) {
+            assert_eq!("SHA-256:09ca7e4eaa6e8ae9c7d261167129184883644d\
+                        07dfba7cbfbc4c8a2e08360d5b",
+                       &format!("{:?}",
+                                digest::digest(&digest::SHA256,
+                                               b"hello, world")));
+            assert_eq!("SHA-384:1fcdb6059ce05172a26bbe2a3ccc88ed5a8cd5\
+                        fc53edfd9053304d429296a6da23b1cd9e5c9ed3bb34f0\
+                        0418a70cdb7e",
+                       &format!("{:?}",
+                                digest::digest(&digest::SHA384,
+                                               b"hello, world")));
+            assert_eq!("SHA-512:8710339dcb6814d0d9d2290ef422285c9322b7\
+                        163951f9a0ca8f883d3305286f44139aa374848e4174f5\
+                        aada663027e4548637b6d19894aec4fb6c46a139fbf9",
+                       &format!("{:?}",
+                                digest::digest(&digest::SHA512,
+                                               b"hello, world")));
+        }
 
     }
 }

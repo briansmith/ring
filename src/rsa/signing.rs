@@ -299,6 +299,7 @@ extern {
 }
 
 
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use rand;

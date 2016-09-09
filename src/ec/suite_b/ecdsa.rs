@@ -248,7 +248,7 @@ ecdsa!(ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
 ecdsa!(ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
        "Verification of ECDSA signatures using the P-384 curve and SHA-512.");
 
-
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use {digest, test, signature};

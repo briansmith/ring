@@ -107,7 +107,7 @@ extern {
                         ad: *const u8, ad_len: c::size_t) -> c::int;
 }
 
-
+#[cfg(not(feature = "native_rust"))]
 #[cfg(test)]
 mod tests {
     use super::super::super::aead;
