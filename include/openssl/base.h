@@ -335,7 +335,23 @@ namespace bssl {
 
 namespace internal {
 
-template <class T> struct Deleter {};
+template <typename T>
+struct DeleterImpl {};
+
+template <typename T>
+struct Deleter {
+  void operator()(T *ptr) {
+    // Rather than specialize Deleter for each type, we specialize
+    // DeleterImpl. This allows bssl::UniquePtr<T> to be used while only
+    // including base.h as long as the destructor is not emitted. This matches
+    // std::unique_ptr's behavior on forward-declared types.
+    //
+    // DeleterImpl itself is specialized in the corresponding module's header
+    // and must be included to release an object. If not included, the compiler
+    // will error that DeleterImpl<T> does not have a method Free.
+    DeleterImpl<T>::Free(ptr);
+  }
+};
 
 template <typename T, typename CleanupRet, void (*init)(T *),
           CleanupRet (*cleanup)(T *)>
@@ -358,22 +374,24 @@ class StackAllocated {
 
 }  // namespace internal
 
-#define BORINGSSL_MAKE_DELETER(type, deleter)       \
-  namespace internal {                              \
-    template <> struct Deleter<type> {              \
-      void operator()(type* ptr) { deleter(ptr); }  \
-    };                                              \
+#define BORINGSSL_MAKE_DELETER(type, deleter)     \
+  namespace internal {                            \
+  template <>                                     \
+  struct DeleterImpl<type> {                      \
+    static void Free(type *ptr) { deleter(ptr); } \
+  };                                              \
   }
 
 // This makes a unique_ptr to STACK_OF(type) that owns all elements on the
 // stack, i.e. it uses sk_pop_free() to clean up.
-#define BORINGSSL_MAKE_STACK_DELETER(type, deleter)  \
+#define BORINGSSL_MAKE_STACK_DELETER(type, deleter) \
   namespace internal {                              \
-    template <> struct Deleter<STACK_OF(type)> {     \
-      void operator()(STACK_OF(type)* ptr) {         \
-        sk_##type##_pop_free(ptr, deleter);          \
-      }                                              \
-    };                                               \
+  template <>                                       \
+  struct DeleterImpl<STACK_OF(type)> {              \
+    static void Free(STACK_OF(type) *ptr) {         \
+      sk_##type##_pop_free(ptr, deleter);           \
+    }                                               \
+  };                                                \
   }
 
 // Holds ownership of heap-allocated BoringSSL structures. Sample usage:
