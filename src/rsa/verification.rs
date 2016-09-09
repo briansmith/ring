@@ -17,74 +17,97 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, digest, error, private, signature};
-use super::{RSAParameters, parse_public_key};
+use super::{BIGNUM, PositiveInteger, RSAParameters, parse_public_key};
 use untrusted;
 
 
 impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
-        const MAX_BITS: usize = 8192;
-
         let (n, e) = try!(parse_public_key(public_key));
-        let signature = signature.as_slice_less_safe();
+        verify_rsa(self, (n, e), msg, signature)
+    }
+}
 
-        let mut decoded = [0u8; (MAX_BITS + 7) / 8];
-        if signature.len() > decoded.len() {
+/// Lower-level verification function for RSA signatures.
+///
+/// When the public key is in DER-encoded PKCS#1 ASN.1 format, it is
+/// recommended to use `ring::signature::verify()` with
+/// `ring::signature::RSA_PKCS1_*`, because `ring::signature::verify()`
+/// will handle the parsing in that case.
+///
+/// Otherwise, this function can be used to pass in the raw bytes for the
+/// public key components as `untrusted::Input` arguments.
+///
+/// Takes an `RSAParameters` static to determine the parameters used,
+/// a tuple containing the parts of the public key (in big-endian byte
+/// order, without any zero padding), a message and a signature
+/// (whose length should match the length of public exponent, `n`).
+//
+// There are a small number of tests that test `verify_rsa` directly, but the
+// test coverage for this function mostly depends on the test coverage for the
+// `signature::VerificationAlgorithm` implementation for `RSAParameters`. If we
+// change that, test coverage for `verify_rsa()` will need to be reconsidered.
+// (The NIST test vectors were originally in a form that was optimized for
+// testing `verify_rsa` directly, but the testing work for RSA PKCS#1
+// verification was done during the implementation of
+// `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
+pub fn verify_rsa(params: &RSAParameters,
+                  (n, e): (untrusted::Input, untrusted::Input),
+                  msg: untrusted::Input, signature: untrusted::Input)
+        -> Result<(), error::Unspecified> {
+    const MAX_BITS: usize = 8192;
+
+    let signature = signature.as_slice_less_safe();
+    let mut decoded = [0u8; (MAX_BITS + 7) / 8];
+    if signature.len() > decoded.len() {
+        return Err(error::Unspecified);
+    }
+
+    let n = try!(PositiveInteger::from_be_bytes(n));
+    let e = try!(PositiveInteger::from_be_bytes(e));
+    let decoded = &mut decoded[..signature.len()];
+    try!(bssl::map_result(unsafe {
+        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
+                               e.as_ref(), signature.as_ptr(), signature.len(),
+                               params.min_bits, MAX_BITS)
+    }));
+
+    untrusted::Input::from(decoded).read_all(error::Unspecified, |decoded| {
+        if try!(decoded.read_byte()) != 0 ||
+           try!(decoded.read_byte()) != 1 {
             return Err(error::Unspecified);
         }
-        let decoded = &mut decoded[..signature.len()];
-        try!(bssl::map_result(unsafe {
-            GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(),
-                                   n.as_ptr(), n.len(), e.as_ptr(), e.len(),
-                                   signature.as_ptr(), signature.len(),
-                                   self.min_bits, MAX_BITS)
-        }));
 
-        untrusted::Input::from(decoded).read_all(error::Unspecified,
-                                                 |decoded| {
-            if try!(decoded.read_byte()) != 0 {
-                return Err(error::Unspecified);
+        let mut ps_len = 0;
+        loop {
+            match try!(decoded.read_byte()) {
+                0xff => { ps_len += 1; },
+                0x00 => { break; },
+                _ => { return Err(error::Unspecified); }
             }
-            if try!(decoded.read_byte()) != 1 {
-                return Err(error::Unspecified);
-            }
+        }
+        if ps_len < 8 {
+            return Err(error::Unspecified);
+        }
 
-            let mut ps_len = 0;
-            loop {
-                match try!(decoded.read_byte()) {
-                    0xff => {
-                        ps_len += 1;
-                    },
-                    0x00 => {
-                        break;
-                    },
-                    _ => {
-                        return Err(error::Unspecified);
-                    },
-                }
-            }
-            if ps_len < 8 {
-                return Err(error::Unspecified);
-            }
+        let padding = params.padding_alg;
+        let decoded_digestinfo_prefix =
+            try!(decoded.skip_and_get_input(padding.digestinfo_prefix.len()));
+        if decoded_digestinfo_prefix != padding.digestinfo_prefix {
+            return Err(error::Unspecified);
+        }
 
-            let decoded_digestinfo_prefix = try!(decoded.skip_and_get_input(
-                        self.padding_alg.digestinfo_prefix.len()));
-            if decoded_digestinfo_prefix != self.padding_alg.digestinfo_prefix {
-                return Err(error::Unspecified);
-            }
+        let digest_alg = padding.digest_alg;
+        let decoded_digest =
+            try!(decoded.skip_and_get_input(digest_alg.output_len));
+        let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
+        if decoded_digest != digest.as_ref() {
+            return Err(error::Unspecified);
+        }
 
-            let digest_alg = self.padding_alg.digest_alg;
-            let decoded_digest =
-                try!(decoded.skip_and_get_input(digest_alg.output_len));
-            let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-            if decoded_digest != digest.as_ref() {
-                return Err(error::Unspecified);
-            }
-
-            Ok(())
-        })
-    }
+        Ok(())
+    })
 }
 
 impl private::Private for RSAParameters {}
@@ -121,10 +144,8 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
 
 extern {
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
-                              public_key_n: *const u8,
-                              public_key_n_len: c::size_t,
-                              public_key_e: *const u8,
-                              public_key_e_len: c::size_t,
+                              public_key_n: *const BIGNUM,
+                              public_key_e: *const BIGNUM,
                               ciphertext: *const u8,
                               ciphertext_len: c::size_t, min_bits: c::size_t,
                               max_bits: c::size_t) -> c::int;
@@ -184,5 +205,26 @@ mod tests {
 
             Ok(())
         });
+    }
+
+    // Test for `primitive::verify()`. Read public key parts from a file
+    // and use them to verify a signature.
+    #[test]
+    fn test_signature_rsa_primitive_verification() {
+        test::from_file("src/rsa/rsa_primitive_verify_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let n = test_case.consume_bytes("n");
+            let e = test_case.consume_bytes("e");
+            let msg = test_case.consume_bytes("Msg");
+            let sig = test_case.consume_bytes("Sig");
+            let expected = test_case.consume_string("Result");
+            let result = verify_rsa(&RSA_PKCS1_2048_8192_SHA256,
+                                    (untrusted::Input::from(&n),
+                                     untrusted::Input::from(&e)),
+                                    untrusted::Input::from(&msg),
+                                    untrusted::Input::from(&sig));
+            assert_eq!(result.is_ok(), expected == "Pass");
+            Ok(())
+        })
     }
 }

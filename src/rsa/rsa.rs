@@ -14,14 +14,9 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {der, digest, error};
+use {c, core, der, digest, error};
 use untrusted;
 
-#[cfg(feature = "rsa_signing")]
-use c;
-
-#[cfg(feature = "rsa_signing")]
-use core;
 
 pub struct RSAPadding {
     digest_alg: &'static digest::Algorithm,
@@ -101,29 +96,39 @@ pub struct RSAParameters {
     min_bits: usize,
 }
 
-fn parse_public_key(input: untrusted::Input)
-                    -> Result<(&[u8], &[u8]), error::Unspecified> {
+
+fn parse_public_key(input: untrusted::Input) ->
+                    Result<(untrusted::Input, untrusted::Input),
+                           error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
             let e = try!(der::positive_integer(input));
-            Ok((n.as_slice_less_safe(), e.as_slice_less_safe()))
+            Ok((n, e))
         })
     })
 }
 
-#[cfg(feature = "rsa_signing")]
 struct PositiveInteger {
     value: Option<*mut BIGNUM>,
 }
 
 #[allow(unsafe_code)]
-#[cfg(feature = "rsa_signing")]
 impl PositiveInteger {
+    #[cfg(feature = "rsa_signing")]
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
     fn from_der(input: &mut untrusted::Reader)
                 -> Result<PositiveInteger, error::Unspecified> {
-        let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
+        Self::from_be_bytes(try!(der::positive_integer(input)))
+    }
+
+    // Turns a sequence of big-endian bytes into a Positive Integer.
+    fn from_be_bytes(input: untrusted::Input)
+                     -> Result<PositiveInteger, error::Unspecified> {
+        if input.len() > 0 && input.as_slice_less_safe()[0] == 0 {
+            return Err(error::Unspecified);
+        }
+        let bytes = input.as_slice_less_safe();
         let res = unsafe {
             GFp_BN_bin2bn(bytes.as_ptr(), bytes.len(), core::ptr::null_mut())
         };
@@ -135,6 +140,7 @@ impl PositiveInteger {
 
     unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value.unwrap() }
 
+    #[cfg(feature = "rsa_signing")]
     fn into_raw(&mut self) -> *mut BIGNUM {
         let res = self.value.unwrap();
         self.value = None;
@@ -143,7 +149,6 @@ impl PositiveInteger {
 }
 
 #[allow(unsafe_code)]
-#[cfg(feature = "rsa_signing")]
 impl Drop for PositiveInteger {
     fn drop(&mut self) {
         match self.value {
@@ -162,17 +167,19 @@ enum BN_MONT_CTX {}
 
 pub mod verification;
 
-#[cfg(feature = "rsa_signing")]
 enum BIGNUM {}
 
 #[cfg(feature = "rsa_signing")]
 pub mod signing;
 
 
-#[cfg(feature = "rsa_signing")]
 extern {
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                      -> *mut BIGNUM;
     fn GFp_BN_free(bn: *mut BIGNUM);
+}
+
+#[cfg(feature = "rsa_signing")]
+extern {
     fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
