@@ -7,7 +7,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.4.0"
+version = "0.4.1"
 keywords = [ "crypto", "rand", "signature", "AEAD", "RSA" ]
 
 exclude = [
@@ -94,6 +94,8 @@ include = [
     "src/rsa/rsa_pkcs1_verify_tests.txt",
     "src/rsa/signature_rsa_example_private_key.der",
     "src/rsa/signature_rsa_example_public_key.der",
+    "src/rsa/signing.rs",
+    "src/rsa/verification.rs",
     "src/signature.rs",
     "src/test.rs",
     "src/test_1_syntax_error_tests.txt",
