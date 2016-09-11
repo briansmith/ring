@@ -123,22 +123,12 @@ int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
   return 1;
 }
 
-/* If CBC_MAC_ROTATE_IN_PLACE is defined then EVP_tls_cbc_copy_mac is performed
- * with variable accesses in a 64-byte-aligned buffer. Assuming that this fits
- * into a single or pair of cache-lines, then the variable memory accesses don't
- * actually affect the timing. CPUs with smaller cache-lines [if any] are not
- * multi-core and are not considered vulnerable to cache-timing attacks. */
-#define CBC_MAC_ROTATE_IN_PLACE
-
 void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
                           const uint8_t *in, unsigned in_len,
                           unsigned orig_len) {
-#if defined(CBC_MAC_ROTATE_IN_PLACE)
-  uint8_t rotated_mac_buf[64 + EVP_MAX_MD_SIZE];
-  uint8_t *rotated_mac;
-#else
-  uint8_t rotated_mac[EVP_MAX_MD_SIZE];
-#endif
+  uint8_t rotated_mac1[EVP_MAX_MD_SIZE], rotated_mac2[EVP_MAX_MD_SIZE];
+  uint8_t *rotated_mac = rotated_mac1;
+  uint8_t *rotated_mac_tmp = rotated_mac2;
 
   /* mac_end is the index of |in| just after the end of the MAC. */
   unsigned mac_end = in_len;
@@ -152,10 +142,6 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
   assert(orig_len >= in_len);
   assert(in_len >= md_size);
   assert(md_size <= EVP_MAX_MD_SIZE);
-
-#if defined(CBC_MAC_ROTATE_IN_PLACE)
-  rotated_mac = rotated_mac_buf + ((0 - (size_t)rotated_mac_buf) & 63);
-#endif
 
   /* This information is public so it's safe to branch based on it. */
   if (orig_len > md_size + 255 + 1) {
@@ -250,27 +236,30 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
     j &= constant_time_lt(j, md_size);
   }
 
-/* Now rotate the MAC */
-#if defined(CBC_MAC_ROTATE_IN_PLACE)
-  j = 0;
-  for (i = 0; i < md_size; i++) {
-    /* in case cache-line is 32 bytes, touch second line */
-    ((volatile uint8_t *)rotated_mac)[rotate_offset ^ 32];
-    out[j++] = rotated_mac[rotate_offset++];
-    rotate_offset &= constant_time_lt(rotate_offset, md_size);
-  }
-#else
-  memset(out, 0, md_size);
-  rotate_offset = md_size - rotate_offset;
-  rotate_offset &= constant_time_lt(rotate_offset, md_size);
-  for (i = 0; i < md_size; i++) {
-    for (j = 0; j < md_size; j++) {
-      out[j] |= rotated_mac[i] & constant_time_eq_8(j, rotate_offset);
+  /* Now rotate the MAC. We rotate in log(md_size) steps, one for each bit
+   * position. */
+  for (unsigned offset = 1; offset < md_size;
+       offset <<= 1, rotate_offset >>= 1) {
+    /* Rotate by |offset| iff the corresponding bit is set in
+     * |rotate_offset|, placing the result in |rotated_mac_tmp|. */
+    const uint8_t skip_rotate = (rotate_offset & 1) - 1;
+    for (i = 0, j = offset; i < md_size; i++, j++) {
+      if (j >= md_size) {
+        j -= md_size;
+      }
+      rotated_mac_tmp[i] =
+          constant_time_select_8(skip_rotate, rotated_mac[i], rotated_mac[j]);
     }
-    rotate_offset++;
-    rotate_offset &= constant_time_lt(rotate_offset, md_size);
+
+    /* Swap pointers so |rotated_mac| contains the (possibly) rotated value.
+     * Note the number of iterations and thus the identity of these pointers is
+     * public information. */
+    uint8_t *tmp = rotated_mac;
+    rotated_mac = rotated_mac_tmp;
+    rotated_mac_tmp = tmp;
   }
-#endif
+
+  memcpy(out, rotated_mac, md_size);
 }
 
 /* u32toBE serialises an unsigned, 32-bit number (n) as four bytes at (p) in
