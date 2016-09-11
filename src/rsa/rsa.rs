@@ -53,7 +53,7 @@ rsa_pkcs1_padding!(RSA_PKCS1_SHA512, &digest::SHA512,
                    &SHA512_PKCS1_DIGESTINFO_PREFIX,
                    "Signing using RSA with PKCS#1 1.5 padding and SHA-512.");
 
-                   macro_rules! pkcs1_digestinfo_prefix {
+macro_rules! pkcs1_digestinfo_prefix {
     ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
       [ $( $digest_oid:expr ),* ] ) => {
         static $name: [u8; 2 + 8 + $digest_oid_len] = [
