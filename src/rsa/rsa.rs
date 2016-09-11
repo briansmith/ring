@@ -124,12 +124,18 @@ impl PositiveInteger {
     // Turns a sequence of big-endian bytes into a Positive Integer.
     fn from_be_bytes(input: untrusted::Input)
                      -> Result<PositiveInteger, error::Unspecified> {
-        if input.len() > 0 && input.as_slice_less_safe()[0] == 0 {
+        // Reject empty inputs.
+        if input.len() == 0 {
             return Err(error::Unspecified);
         }
-        let bytes = input.as_slice_less_safe();
+        // Reject leading zeros. Also reject the value zero ([0]) because zero
+        // isn't positive.
+        if untrusted::Reader::new(input).peek(0) {
+            return Err(error::Unspecified);
+        }
         let res = unsafe {
-            GFp_BN_bin2bn(bytes.as_ptr(), bytes.len(), core::ptr::null_mut())
+            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
+                          core::ptr::null_mut())
         };
         if res.is_null() {
             return Err(error::Unspecified);
@@ -181,4 +187,37 @@ extern {
 #[cfg(feature = "rsa_signing")]
 extern {
     fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::PositiveInteger;
+    use untrusted;
+
+    #[test]
+    fn test_positive_integer_from_be_bytes_empty() {
+        // Empty values are rejected.
+        assert!(PositiveInteger::from_be_bytes(
+                    untrusted::Input::from(&[])).is_err());
+    }
+
+    #[test]
+    fn test_positive_integer_from_be_bytes_zero() {
+        // The zero value is rejected.
+        assert!(PositiveInteger::from_be_bytes(
+                    untrusted::Input::from(&[0])).is_err());
+        // A zero with a leading zero is rejected.
+        assert!(PositiveInteger::from_be_bytes(
+                    untrusted::Input::from(&[0, 0])).is_err());
+        // A non-zero value with a leading zero is rejected.
+        assert!(PositiveInteger::from_be_bytes(
+                    untrusted::Input::from(&[0, 1])).is_err());
+        // A non-zero value with no leading zeros is accepted.
+        assert!(PositiveInteger::from_be_bytes(
+                    untrusted::Input::from(&[1])).is_ok());
+        // A non-zero value with that ends in a zero byte is accepted.
+        assert!(PositiveInteger::from_be_bytes(
+                    untrusted::Input::from(&[1, 0])).is_ok());
+    }
 }
