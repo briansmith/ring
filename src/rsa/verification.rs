@@ -72,9 +72,12 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
 /// `untrusted::Input` arguments.
 ///
 /// `params` determine what algorithm parameters (padding, digest algorithm,
-/// key length range, etc.) are used in the verification. `n` is the public key
-/// modulus and `e` is the public key exponent. `msg` is the message and
-/// `signature` is the signature.
+/// key length range, etc.) are used in the verification. `msg` is the message
+/// and `signature` is the signature.
+///
+/// `n` is the public key modulus and `e` is the public key exponent. Both are
+/// interpreted as unsigned big-endian encoded values. Both must be positive
+/// and neither may have any leading zeros.
 //
 // There are a small number of tests that test `verify_rsa` directly, but the
 // test coverage for this function mostly depends on the test coverage for the
