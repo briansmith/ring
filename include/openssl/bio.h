@@ -152,6 +152,11 @@ OPENSSL_EXPORT long BIO_int_ctrl(BIO *bp, int cmd, long larg, int iarg);
  * otherwise. */
 OPENSSL_EXPORT int BIO_reset(BIO *bio);
 
+/* BIO_eof returns non-zero when |bio| has reached end-of-file. The precise
+ * meaning of which depends on the concrete type of |bio|. Note that in the
+ * case of BIO_pair this always returns non-zero. */
+OPENSSL_EXPORT int BIO_eof(BIO *bio);
+
 /* BIO_set_flags ORs |flags| with |bio->flags|. */
 OPENSSL_EXPORT void BIO_set_flags(BIO *bio, int flags);
 

@@ -243,6 +243,10 @@ int BIO_reset(BIO *bio) {
   return BIO_ctrl(bio, BIO_CTRL_RESET, 0, NULL);
 }
 
+int BIO_eof(BIO *bio) {
+  return BIO_ctrl(bio, BIO_CTRL_EOF, 0, NULL);
+}
+
 void BIO_set_flags(BIO *bio, int flags) {
   bio->flags |= flags;
 }
