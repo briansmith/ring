@@ -412,7 +412,9 @@ mod tests {
 
         let mut signing_state = RSASigningState::new(key_pair).unwrap();
 
-        for _ in 0..(GFp_BN_BLINDING_COUNTER + 1) {
+        let blinding_counter = unsafe { GFp_BN_BLINDING_COUNTER };
+
+        for _ in 0..(blinding_counter + 1) {
             let prev_counter =
                 unsafe { (*signing_state.blinding.blinding).counter };
 
@@ -420,7 +422,7 @@ mod tests {
 
             let counter = unsafe { (*signing_state.blinding.blinding).counter };
 
-            assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
+            assert_eq!(counter, (prev_counter + 1) % blinding_counter);
         }
     }
 

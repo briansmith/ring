@@ -56,8 +56,8 @@ macro_rules! define_metrics_tests {
         fn $test_c_metrics() {
             use std::mem;
 
-            let c_align = $c_align;
-            let c_size = $c_size;
+            let c_align = unsafe { $c_align };
+            let c_size = unsafe { $c_size };
 
             // XXX: Remove these assertions and these uses of `as` when Rust
             // supports implicit coercion of `u16` to `usize`.

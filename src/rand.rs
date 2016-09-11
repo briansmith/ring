@@ -124,7 +124,8 @@ mod sysrand {
     use {bssl, error};
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        for mut chunk in dest.chunks_mut(super::GFp_sysrand_chunk_max_len) {
+        let chunk_len = unsafe { super::GFp_sysrand_chunk_max_len };
+        for mut chunk in dest.chunks_mut(chunk_len) {
             try!(bssl::map_result(unsafe {
                 super::GFp_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
             }));
@@ -335,7 +336,7 @@ mod tests {
     }
 
     #[cfg(any(target_os = "linux", windows))]
-    fn max_chunk_len() -> usize { super::GFp_sysrand_chunk_max_len }
+    fn max_chunk_len() -> usize { unsafe { super::GFp_sysrand_chunk_max_len } }
 
     #[cfg(not(any(target_os = "linux", windows)))]
     fn max_chunk_len() -> usize {

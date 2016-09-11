@@ -276,7 +276,7 @@ mod tests {
     #[test]
     pub fn test_poly1305_state_len() {
         assert_eq!((super::POLY1305_STATE_LEN + 255) / 256,
-                   (GFp_POLY1305_STATE_LEN + 255) / 256);
+                   (unsafe { GFp_POLY1305_STATE_LEN } + 255) / 256);
     }
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
