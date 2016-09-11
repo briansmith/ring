@@ -36,9 +36,11 @@
 
 #![doc(html_root_url="https://briansmith.org/rustdoc/")]
 
+// Bring back `unused_unsafe` when Rust 1.13 goes stable.
 #![allow(
     missing_copy_implementations,
     missing_debug_implementations,
+    unused_unsafe,
 )]
 #![deny(
     const_err,
@@ -82,7 +84,6 @@
     unused_parens,
     unused_qualifications,
     unused_results,
-    unused_unsafe,
     unused_variables,
     variant_size_differences,
     warnings,
