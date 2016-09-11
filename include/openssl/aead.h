@@ -82,10 +82,8 @@ extern "C" {
  * permits implicit context to be authenticated but may be empty if not needed.
  *
  * The "seal" and "open" operations may work in-place if the |out| and |in|
- * arguments are equal. They may also be used to shift the data left inside the
- * same buffer if |out| is less than |in|. However, |out| may not point inside
- * the input data otherwise the input may be overwritten before it has been
- * read. This situation will cause an error.
+ * arguments are equal. Otherwise, if |out| and |in| alias, input data may be
+ * overwritten before it is read. This situation will cause an error.
  *
  * The "seal" and "open" operations return one on success and zero on error. */
 
