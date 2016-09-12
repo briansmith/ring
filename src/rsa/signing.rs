@@ -19,15 +19,8 @@
 use {bssl, c, der, digest, error};
 use rand;
 use std;
-use super::{
-    BIGNUM,
-    GFp_BN_free,
-    BN_MONT_CTX,
-    GFp_BN_MONT_CTX_free,
-    PositiveInteger,
-
-    RSAPadding,
-};
+use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
+            PositiveInteger, RSAPadding};
 use untrusted;
 
 impl RSAPadding {
@@ -49,8 +42,8 @@ impl RSAPadding {
         }
         out[2 + pad_len] = 0;
 
-        let (digest_prefix, digest_dst) = out[3 + pad_len..].split_at_mut(
-            self.digestinfo_prefix.len());
+        let (digest_prefix, digest_dst) = out[3 + pad_len..]
+            .split_at_mut(self.digestinfo_prefix.len());
         digest_prefix.copy_from_slice(self.digestinfo_prefix);
         digest_dst.copy_from_slice(
             digest::digest(self.digest_alg, msg).as_ref());

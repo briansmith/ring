@@ -121,7 +121,8 @@ impl PositiveInteger {
             return Err(error::Unspecified);
         }
         let res = unsafe {
-            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
+            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(),
+                          input.len(),
                           core::ptr::null_mut())
         };
         if res.is_null() {
