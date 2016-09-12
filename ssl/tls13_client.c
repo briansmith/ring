@@ -267,9 +267,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
 
   ssl->s3->new_session->cipher = cipher;
   ssl->s3->tmp.new_cipher = cipher;
-  if (ssl_cipher_uses_certificate_auth(cipher)) {
-    hs->use_cert_auth = 1;
-  }
 
   /* The PRF hash is now known. Set up the key schedule. */
   static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
@@ -383,7 +380,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
   ssl->s3->tmp.cert_request = 0;
 
   /* CertificateRequest may only be sent in certificate-based ciphers. */
-  if (!ssl->s3->hs->use_cert_auth) {
+  if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     hs->state = state_process_server_finished;
     return ssl_hs_ok;
   }

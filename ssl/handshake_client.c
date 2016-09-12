@@ -264,7 +264,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_A:
-        if (ssl->s3->hs->use_cert_auth) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_get_server_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -288,7 +288,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_VERIFY_SERVER_CERT:
-        if (ssl->s3->hs->use_cert_auth) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_verify_server_cert(ssl);
           if (ret <= 0) {
             goto end;
@@ -308,7 +308,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:
-        if (ssl->s3->hs->use_cert_auth) {
+        if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
           ret = ssl3_get_certificate_request(ssl);
           if (ret <= 0) {
             goto end;
@@ -952,9 +952,6 @@ static int ssl3_get_server_hello(SSL *ssl) {
     ssl->s3->new_session->cipher = c;
   }
   ssl->s3->tmp.new_cipher = c;
-  if (ssl_cipher_uses_certificate_auth(c)) {
-    ssl->s3->hs->use_cert_auth = 1;
-  }
 
   /* Now that the cipher is known, initialize the handshake hash. */
   if (!ssl3_init_handshake_hash(ssl)) {
@@ -964,7 +961,8 @@ static int ssl3_get_server_hello(SSL *ssl) {
   /* If doing a full handshake, the server may request a client certificate
    * which requires hashing the handshake transcript. Otherwise, the handshake
    * buffer may be released. */
-  if (ssl->session != NULL || !ssl->s3->hs->use_cert_auth) {
+  if (ssl->session != NULL ||
+      !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     ssl3_free_handshake_buffer(ssl);
   }
 
@@ -1286,7 +1284,7 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
            CBS_len(&server_key_exchange_orig) - CBS_len(&server_key_exchange));
 
   /* ServerKeyExchange should be signed by the server's public key. */
-  if (ssl->s3->hs->use_cert_auth) {
+  if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     pkey = X509_get_pubkey(ssl->s3->new_session->peer);
     if (pkey == NULL) {
       goto err;

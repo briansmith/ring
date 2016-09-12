@@ -230,10 +230,6 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
 
     ssl->s3->new_session->cipher = cipher;
     ssl->s3->tmp.new_cipher = cipher;
-
-    if (ssl_cipher_uses_certificate_auth(cipher)) {
-      hs->use_cert_auth = 1;
-    }
   } else {
     uint16_t resumption_cipher;
     if (!ssl_cipher_get_ecdhe_psk_cipher(ssl->s3->new_session->cipher,
@@ -243,7 +239,6 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     ssl->s3->tmp.new_cipher = SSL_get_cipher_by_value(resumption_cipher);
-    hs->use_cert_auth = 0;
   }
 
   ssl->method->received_flight(ssl);
@@ -386,7 +381,7 @@ static enum ssl_hs_wait_t do_send_certificate_request(SSL *ssl,
   /* Determine whether to request a client certificate. */
   ssl->s3->tmp.cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
   /* CertificateRequest may only be sent in certificate-based ciphers. */
-  if (!ssl->s3->hs->use_cert_auth) {
+  if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     ssl->s3->tmp.cert_request = 0;
   }
 
@@ -431,7 +426,7 @@ err:
 
 static enum ssl_hs_wait_t do_send_server_certificate(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
-  if (!ssl->s3->hs->use_cert_auth) {
+  if (!ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     hs->state = state_send_server_finished;
     return ssl_hs_ok;
   }
