@@ -7968,32 +7968,6 @@ func addTLS13HandshakeTests() {
 	})
 
 	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ClientHelloMissingKeyShare",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				MissingKeyShare: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":MISSING_KEY_SHARE:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "MissingKeyShare",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				MissingKeyShare: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":MISSING_KEY_SHARE:",
-	})
-
-	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "DuplicateKeyShares",
 		config: Config{
