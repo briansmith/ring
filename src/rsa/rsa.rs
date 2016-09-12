@@ -61,19 +61,6 @@ macro_rules! pkcs1_digestinfo_prefix {
     }
 }
 
-macro_rules! pkcs1_digestinfo_prefix {
-    ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
-      [ $( $digest_oid:expr ),* ] ) => {
-        static $name: [u8; 2 + 8 + $digest_oid_len] = [
-            der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
-                der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
-                    der::Tag::OID as u8, $digest_oid_len, $( $digest_oid ),*,
-                    der::Tag::Null as u8, 0,
-                der::Tag::OctetString as u8, $digest_len,
-        ];
-    }
-}
-
 pkcs1_digestinfo_prefix!(
     SHA1_PKCS1_DIGESTINFO_PREFIX, 20, 5, [ 0x2b, 0x0e, 0x03, 0x02, 0x1a ]);
 
