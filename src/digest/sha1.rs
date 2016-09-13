@@ -24,9 +24,14 @@ const CHAINING_WORDS: usize = CHAINING_LEN / 4;
 
 type W32 = Wrapping<u32>;
 
-#[inline] fn ch(x: W32, y: W32, z: W32) -> W32 { (x & y) | (!x & z) }
-#[inline] fn parity(x: W32, y: W32, z: W32) -> W32 { x ^ y ^ z }
-#[inline] fn maj(x: W32, y: W32, z: W32) -> W32 { (x & y) | (x & z) | (y & z) }
+#[inline]
+fn ch(x: W32, y: W32, z: W32) -> W32 { (x & y) | (!x & z) }
+
+#[inline]
+fn parity(x: W32, y: W32, z: W32) -> W32 { x ^ y ^ z }
+
+#[inline]
+fn maj(x: W32, y: W32, z: W32) -> W32 { (x & y) | (x & z) | (y & z) }
 
 /// The main purpose in retaining this is to support legacy protocols and OCSP,
 /// none of which need a fast SHA-1 implementation.
@@ -34,8 +39,7 @@ type W32 = Wrapping<u32>;
 /// Unlike SHA-256, SHA-384, and SHA-512,
 /// there is no assembly language implementation.
 pub unsafe extern fn block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                                      data: *const u8,
-                                      num: c::size_t) {
+                                      data: *const u8, num: c::size_t) {
     let data = data as *const [u8; BLOCK_LEN];
     let blocks = core::slice::from_raw_parts(data, num);
     block_data_order_safe(state, blocks)
@@ -71,7 +75,7 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8],
                 20...39 => (0x6ed9eba1, parity(b, c, d)),
                 40...59 => (0x8f1bbcdc, maj(b, c, d)),
                 60...79 => (0xca62c1d6, parity(b, c, d)),
-                _ => unreachable!()
+                _ => unreachable!(),
             };
             let tt = polyfill::wrapping_rotate_left_u32(a, 5) + f + e +
                      Wrapping(k) + w[t];

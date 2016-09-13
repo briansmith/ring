@@ -21,9 +21,9 @@ use rand;
 use std;
 use super::{
     BIGNUM,
-    BN_free,
+    GFp_BN_free,
     BN_MONT_CTX,
-    BN_MONT_CTX_free,
+    GFp_BN_MONT_CTX_free,
     PositiveInteger,
 
     RSAPadding,
@@ -35,8 +35,8 @@ impl RSAPadding {
     // https://tools.ietf.org/html/rfc3447#section-9.2.
     fn pad(&self, msg: &[u8], out: &mut [u8])
            -> Result<(), error::Unspecified> {
-        let digest_len =
-            self.digestinfo_prefix.len() + self.digest_alg.output_len;
+        let digest_len = self.digestinfo_prefix.len() +
+                         self.digest_alg.output_len;
 
         // Require at least 8 bytes of padding. Since we disallow keys smaller
         // than 2048 bits, this should never happen anyway.
@@ -104,8 +104,7 @@ impl RSAKeyPair {
     pub fn from_der(input: untrusted::Input)
                     -> Result<RSAKeyPair, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified,
-                        |input| {
+            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
                 let version = try!(der::small_nonnegative_integer(input));
                 if version != 0 {
                     return Err(error::Unspecified);
@@ -128,8 +127,8 @@ impl RSAKeyPair {
                     iqmp_mont: std::ptr::null_mut(),
                 };
                 try!(bssl::map_result(unsafe {
-                    rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(), p.as_ref(),
-                                q.as_ref())
+                    GFp_rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(),
+                                    p.as_ref(), q.as_ref())
                 }));
                 Ok(RSAKeyPair { rsa: rsa })
             })
@@ -140,29 +139,29 @@ impl RSAKeyPair {
     ///
     /// A signature has the same length as the public modulus.
     pub fn public_modulus_len(&self) -> usize {
-        unsafe { RSA_size(&self.rsa) }
+        unsafe { GFp_RSA_size(&self.rsa) }
     }
 }
 
 impl Drop for RSAKeyPair {
     fn drop(&mut self) {
         unsafe {
-            BN_free(self.rsa.e);
-            BN_free(self.rsa.dmp1);
-            BN_free(self.rsa.dmq1);
-            BN_free(self.rsa.iqmp);
-            BN_MONT_CTX_free(self.rsa.mont_n);
-            BN_MONT_CTX_free(self.rsa.mont_p);
-            BN_MONT_CTX_free(self.rsa.mont_q);
-            BN_MONT_CTX_free(self.rsa.mont_qq);
-            BN_free(self.rsa.qmn_mont);
-            BN_free(self.rsa.iqmp_mont);
+            GFp_BN_free(self.rsa.e);
+            GFp_BN_free(self.rsa.dmp1);
+            GFp_BN_free(self.rsa.dmq1);
+            GFp_BN_free(self.rsa.iqmp);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_n);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_p);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_q);
+            GFp_BN_MONT_CTX_free(self.rsa.mont_qq);
+            GFp_BN_free(self.rsa.qmn_mont);
+            GFp_BN_free(self.rsa.iqmp_mont);
         }
     }
 }
 
-unsafe impl Send for RSAKeyPair { }
-unsafe impl Sync for RSAKeyPair { }
+unsafe impl Send for RSAKeyPair {}
+unsafe impl Sync for RSAKeyPair {}
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
 #[repr(C)]
@@ -215,7 +214,7 @@ impl RSASigningState {
     /// Construct an `RSASigningState` for the given `RSAKeyPair`.
     pub fn new(key_pair: std::sync::Arc<RSAKeyPair>)
                -> Result<Self, error::Unspecified> {
-        let blinding = unsafe { BN_BLINDING_new() };
+        let blinding = unsafe { GFp_BN_BLINDING_new() };
         if blinding.is_null() {
             return Err(error::Unspecified);
         }
@@ -269,12 +268,10 @@ struct Blinding {
 }
 
 impl Drop for Blinding {
-    fn drop(&mut self) {
-        unsafe { BN_BLINDING_free(self.blinding) }
-    }
+    fn drop(&mut self) { unsafe { GFp_BN_BLINDING_free(self.blinding) } }
 }
 
-unsafe impl Send for Blinding { }
+unsafe impl Send for Blinding {}
 
 /// Needs to be kept in sync with `bn_blinding_st` in `crypto/rsa/blinding.c`.
 #[allow(non_camel_case_types)]
@@ -287,11 +284,11 @@ struct BN_BLINDING {
 
 
 extern {
-    fn BN_BLINDING_new() -> *mut BN_BLINDING;
-    fn BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
-                   q: &BIGNUM) -> c::int;
-    fn RSA_size(rsa: *const RSA) -> c::size_t;
+    fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
+    fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
+    fn GFp_rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
+                       q: &BIGNUM) -> c::int;
+    fn GFp_RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
 #[allow(improper_ctypes)]
@@ -312,7 +309,9 @@ mod tests {
     use super::super::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512};
     use untrusted;
 
-    extern { static GFp_BN_BLINDING_COUNTER: u32; }
+    extern {
+        static GFp_BN_BLINDING_COUNTER: u32;
+    }
 
     #[test]
     fn test_signature_rsa_pkcs1_sign() {
@@ -349,7 +348,7 @@ mod tests {
             // TODO: re-enable these tests on Android ARM.
             if section == "Skipped on Android ARM due to Travis CI Timeouts" &&
                cfg!(all(target_os = "android", target_arch = "arm")) {
-               return Ok(());
+                return Ok(());
             }
             let mut signing_state = RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
@@ -413,17 +412,13 @@ mod tests {
 
         let mut signing_state = RSASigningState::new(key_pair).unwrap();
 
-        for _ in 0 .. GFp_BN_BLINDING_COUNTER + 1 {
-            let prev_counter = unsafe {
-                (*signing_state.blinding.blinding).counter
-            };
+        for _ in 0..(GFp_BN_BLINDING_COUNTER + 1) {
+            let prev_counter =
+                unsafe { (*signing_state.blinding.blinding).counter };
 
-            let _ = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                                       &mut signature);
+            let _ = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature);
 
-            let counter = unsafe {
-                (*signing_state.blinding.blinding).counter
-            };
+            let counter = unsafe { (*signing_state.blinding.blinding).counter };
 
             assert_eq!(counter, (prev_counter + 1) % GFp_BN_BLINDING_COUNTER);
         }
@@ -449,8 +444,8 @@ mod tests {
         let mut signing_state = RSASigningState::new(key_pair).unwrap();
         let mut signature =
             vec![0; signing_state.key_pair().public_modulus_len()];
-        let result = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
-                                        &mut signature);
+        let result =
+            signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature);
 
         assert!(result.is_err());
     }
@@ -464,7 +459,7 @@ mod tests {
         let key_pair = std::sync::Arc::new(key_pair);
 
         let _: &Send = &key_pair;
-        let _: &Sync  = &key_pair;
+        let _: &Sync = &key_pair;
 
         let signing_state = RSASigningState::new(key_pair).unwrap();
         let _: &Send = &signing_state;

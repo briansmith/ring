@@ -131,7 +131,7 @@ struct bn_blinding_st {
 
 static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng);
 
-BN_BLINDING *BN_BLINDING_new(void) {
+BN_BLINDING *GFp_BN_BLINDING_new(void) {
   BN_BLINDING *ret = OPENSSL_malloc(sizeof(BN_BLINDING));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
@@ -139,12 +139,12 @@ BN_BLINDING *BN_BLINDING_new(void) {
   }
   memset(ret, 0, sizeof(BN_BLINDING));
 
-  ret->A = BN_new();
+  ret->A = GFp_BN_new();
   if (ret->A == NULL) {
     goto err;
   }
 
-  ret->Ai = BN_new();
+  ret->Ai = GFp_BN_new();
   if (ret->Ai == NULL) {
     goto err;
   }
@@ -155,17 +155,17 @@ BN_BLINDING *BN_BLINDING_new(void) {
   return ret;
 
 err:
-  BN_BLINDING_free(ret);
+  GFp_BN_BLINDING_free(ret);
   return NULL;
 }
 
-void BN_BLINDING_free(BN_BLINDING *r) {
+void GFp_BN_BLINDING_free(BN_BLINDING *r) {
   if (r == NULL) {
     return;
   }
 
-  BN_free(r->A);
-  BN_free(r->Ai);
+  GFp_BN_free(r->A);
+  GFp_BN_free(r->Ai);
   OPENSSL_free(r);
 }
 
@@ -177,8 +177,8 @@ static int bn_blinding_update(BN_BLINDING *b, const RSA *rsa, RAND *rng) {
     }
     b->counter = 0;
   } else {
-    if (!BN_mod_mul_mont(b->A, b->A, b->A, rsa->mont_n) ||
-        !BN_mod_mul_mont(b->Ai, b->Ai, b->Ai, rsa->mont_n)) {
+    if (!GFp_BN_mod_mul_mont(b->A, b->A, b->A, rsa->mont_n) ||
+        !GFp_BN_mod_mul_mont(b->Ai, b->Ai, b->Ai, rsa->mont_n)) {
       goto err;
     }
   }
@@ -195,42 +195,44 @@ err:
   return 0;
 }
 
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, RAND *rng) {
-  /* |n| is not Montgomery-encoded and |b->A| is. |BN_mod_mul_mont| cancels one
+int GFp_BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa,
+                            RAND *rng) {
+  /* |n| is not Montgomery-encoded and |b->A| is. |GFp_BN_mod_mul_mont| cancels one
    * Montgomery factor, so the resulting value of |n| is unencoded.
    */
   if (!bn_blinding_update(b, rsa, rng) ||
-      !BN_mod_mul_mont(n, n, b->A, rsa->mont_n)) {
+      !GFp_BN_mod_mul_mont(n, n, b->A, rsa->mont_n)) {
     return 0;
   }
 
   return 1;
 }
 
-int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont) {
-  /* |n| is not Montgomery-encoded and |b->Ai| is. |BN_mod_mul_mont| cancels
+int GFp_BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont) {
+  /* |n| is not Montgomery-encoded and |b->Ai| is. |GFp_BN_mod_mul_mont| cancels
    * one Montgomery factor, so the resulting value of |n| is unencoded. */
-  return BN_mod_mul_mont(n, n, b->Ai, mont);
+  return GFp_BN_mod_mul_mont(n, n, b->Ai, mont);
 }
 
 static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng) {
   int retry_counter = 32;
 
   do {
-    if (!BN_rand_range_ex(b->A, &rsa->mont_n->N, rng)) {
+    if (!GFp_BN_rand_range_ex(b->A, &rsa->mont_n->N, rng)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
-    /* |BN_from_montgomery| + |BN_mod_inverse_blinded| is equivalent to, but
-     * more efficient than, |BN_mod_inverse_blinded| + |BN_to_montgomery|. */
-    if (!BN_from_mont(b->Ai, b->A, rsa->mont_n)) {
+    /* |GFp_BN_from_mont| + |GFp_BN_mod_inverse_blinded| is equivalent to,
+     * but more efficient than, |GFp_BN_mod_inverse_blinded| + |GFp_BN_to_mont|.
+     */
+    if (!GFp_BN_from_mont(b->Ai, b->A, rsa->mont_n)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
     int no_inverse;
-    if (BN_mod_inverse_blinded(b->Ai, &no_inverse, b->Ai, rsa->mont_n, rng)) {
+    if (GFp_BN_mod_inverse_blinded(b->Ai, &no_inverse, b->Ai, rsa->mont_n, rng)) {
       break;
     }
 
@@ -247,13 +249,13 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng) {
     }
   } while (1);
 
-  if (!BN_mod_exp_mont_vartime(b->A, b->A, rsa->e, &rsa->mont_n->N,
-                               rsa->mont_n)) {
+  if (!GFp_BN_mod_exp_mont_vartime(b->A, b->A, rsa->e, &rsa->mont_n->N,
+                                   rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  if (!BN_to_mont(b->A, b->A, rsa->mont_n)) {
+  if (!GFp_BN_to_mont(b->A, b->A, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }

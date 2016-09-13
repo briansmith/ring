@@ -36,8 +36,8 @@ macro_rules! define_metrics_tests {
                               $get_c_size_fn, 1);
     };
 
-    ( $name:ident, $test_c_metrics:ident, $get_c_align_fn:ident,
-      $get_c_size_fn:ident, $expected_align_factor:expr ) =>
+    ( $name:ident, $test_c_metrics:ident, $c_align:ident, $c_size:ident,
+      $expected_align_factor:expr ) =>
     {
         #[cfg(test)]
         extern {
@@ -46,8 +46,8 @@ macro_rules! define_metrics_tests {
             // because even 8-bit and 16-bit microcontrollers have no trouble
             // with it, and because `u16` is always as smaller or smaller than
             // `usize`.
-            fn $get_c_align_fn() -> u16;
-            fn $get_c_size_fn() -> u16;
+            static $c_align: u16;
+            static $c_size: u16;
         }
 
         #[cfg(test)]
@@ -56,8 +56,8 @@ macro_rules! define_metrics_tests {
         fn $test_c_metrics() {
             use std::mem;
 
-            let c_align = unsafe { $get_c_align_fn() };
-            let c_size = unsafe { $get_c_size_fn() };
+            let c_align = $c_align;
+            let c_size = $c_size;
 
             // XXX: Remove these assertions and these uses of `as` when Rust
             // supports implicit coercion of `u16` to `usize`.
@@ -80,11 +80,11 @@ macro_rules! define_metrics_tests {
     }
 }
 
-define_type!(int, i32, test_int_metrics, ring_int_align, ring_int_size,
+define_type!(int, i32, test_int_metrics, GFp_int_align, GFp_int_size,
              "The C `int` type. Equivalent to `libc::int`.");
 
 define_type!(
-  size_t, usize, test_size_t_metrics, ring_size_t_align, ring_size_t_size,
+  size_t, usize, test_size_t_metrics, GFp_size_t_align, GFp_size_t_size,
   "The C `size_t` type from `<stdint.h>`.
 
   ISO C's `size_t` is defined to be the type of the result of the
@@ -123,19 +123,19 @@ define_type!(
     should have explicit casts using `num::cast` or other methods that avoid
     unintended truncation. Such code will then work on all platforms.");
 
-define_metrics_tests!(i8, test_i8_metrics, ring_int8_t_align, ring_int8_t_size);
-define_metrics_tests!(u8, test_u8_metrics, ring_uint8_t_align,
-                      ring_uint8_t_size);
+define_metrics_tests!(i8, test_i8_metrics, GFp_int8_t_align, GFp_int8_t_size);
+define_metrics_tests!(u8, test_u8_metrics, GFp_uint8_t_align,
+                      GFp_uint8_t_size);
 
-define_metrics_tests!(i16, test_i16_metrics, ring_int16_t_align,
-                      ring_int16_t_size);
-define_metrics_tests!(u16, test_u16_metrics, ring_uint16_t_align,
-                      ring_uint16_t_size);
+define_metrics_tests!(i16, test_i16_metrics, GFp_int16_t_align,
+                      GFp_int16_t_size);
+define_metrics_tests!(u16, test_u16_metrics, GFp_uint16_t_align,
+                      GFp_uint16_t_size);
 
-define_metrics_tests!(i32, test_i32_metrics, ring_int32_t_align,
-                      ring_int32_t_size);
-define_metrics_tests!(u32, test_u32_metrics, ring_uint32_t_align,
-                      ring_uint32_t_size);
+define_metrics_tests!(i32, test_i32_metrics, GFp_int32_t_align,
+                      GFp_int32_t_size);
+define_metrics_tests!(u32, test_u32_metrics, GFp_uint32_t_align,
+                      GFp_uint32_t_size);
 
 #[cfg(all(test,
           not(all(target_arch = "x86",
@@ -150,7 +150,7 @@ const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
                       target_os = "ios")))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 
-define_metrics_tests!(i64, test_i64_metrics, ring_int64_t_align,
-                      ring_int64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
-define_metrics_tests!(u64, test_u64_metrics, ring_uint64_t_align,
-                      ring_uint64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+define_metrics_tests!(i64, test_i64_metrics, GFp_int64_t_align,
+                      GFp_int64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+define_metrics_tests!(u64, test_u64_metrics, GFp_uint64_t_align,
+                      GFp_uint64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);

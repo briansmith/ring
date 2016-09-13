@@ -139,8 +139,8 @@ use {constant_time, digest, error, hmac, polyfill};
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
-pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
-              out: &mut [u8]) {
+pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8],
+              secret: &[u8], out: &mut [u8]) {
     assert!(iterations >= 1);
 
     let output_len = prf.digest_alg.output_len;
@@ -163,12 +163,8 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     }
 }
 
-fn derive_block(
-        secret: &hmac::SigningKey,
-        iterations: usize,
-        salt: &[u8],
-        idx: u32,
-        out: &mut [u8]) {
+fn derive_block(secret: &hmac::SigningKey, iterations: usize, salt: &[u8],
+                idx: u32, out: &mut [u8]) {
     let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
     ctx.update(&polyfill::slice::be_u8_from_u32(idx));
@@ -214,8 +210,9 @@ fn derive_block(
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
-pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
-              previously_derived: &[u8]) -> Result<(), error::Unspecified> {
+pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8],
+              secret: &[u8], previously_derived: &[u8])
+              -> Result<(), error::Unspecified> {
     if previously_derived.len() == 0 {
         return Err(error::Unspecified);
     }
@@ -261,14 +258,10 @@ pub struct PRF {
 }
 
 /// HMAC-SHA256.
-pub static HMAC_SHA256: PRF  = PRF {
-    digest_alg: &digest::SHA256,
-};
+pub static HMAC_SHA256: PRF = PRF { digest_alg: &digest::SHA256 };
 
 /// HMAC-SHA512.
-pub static HMAC_SHA512: PRF  = PRF {
-    digest_alg: &digest::SHA512,
-};
+pub static HMAC_SHA512: PRF = PRF { digest_alg: &digest::SHA512 };
 
 #[cfg(test)]
 mod tests {
@@ -289,11 +282,12 @@ mod tests {
             let salt = test_case.consume_bytes("S");
             let dk = test_case.consume_bytes("DK");
             let verify_expected_result = test_case.consume_string("Verify");
-            let verify_expected_result = match verify_expected_result.as_str() {
-                "OK" => Ok(()),
-                "Err" => Err(error::Unspecified),
-                _ => panic!("Unsupported value of \"Verify\"")
-            };
+            let verify_expected_result =
+                match verify_expected_result.as_str() {
+                    "OK" => Ok(()),
+                    "Err" => Err(error::Unspecified),
+                    _ => panic!("Unsupported value of \"Verify\""),
+                };
 
             {
                 let mut out = vec![0u8; dk.len()];

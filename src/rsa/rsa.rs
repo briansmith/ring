@@ -101,8 +101,8 @@ pub struct RSAParameters {
     min_bits: usize,
 }
 
-fn parse_public_key(input: untrusted::Input) ->
-                    Result<(&[u8], &[u8]), error::Unspecified> {
+fn parse_public_key(input: untrusted::Input)
+                    -> Result<(&[u8], &[u8]), error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
@@ -125,7 +125,7 @@ impl PositiveInteger {
                 -> Result<PositiveInteger, error::Unspecified> {
         let bytes = try!(der::positive_integer(input)).as_slice_less_safe();
         let res = unsafe {
-            BN_bin2bn(bytes.as_ptr(), bytes.len(), core::ptr::null_mut())
+            GFp_BN_bin2bn(bytes.as_ptr(), bytes.len(), core::ptr::null_mut())
         };
         if res.is_null() {
             return Err(error::Unspecified);
@@ -133,9 +133,7 @@ impl PositiveInteger {
         Ok(PositiveInteger { value: Some(res) })
     }
 
-    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM {
-        &*self.value.unwrap()
-    }
+    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value.unwrap() }
 
     fn into_raw(&mut self) -> *mut BIGNUM {
         let res = self.value.unwrap();
@@ -149,8 +147,10 @@ impl PositiveInteger {
 impl Drop for PositiveInteger {
     fn drop(&mut self) {
         match self.value {
-            Some(val) => unsafe { BN_free(val); },
-            None => { },
+            Some(val) => unsafe {
+                GFp_BN_free(val);
+            },
+            None => {},
         }
     }
 }
@@ -171,8 +171,8 @@ pub mod signing;
 
 #[cfg(feature = "rsa_signing")]
 extern {
-    fn BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
-                 -> *mut BIGNUM;
-    fn BN_free(bn: *mut BIGNUM);
-    fn BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
+    fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
+                     -> *mut BIGNUM;
+    fn GFp_BN_free(bn: *mut BIGNUM);
+    fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }

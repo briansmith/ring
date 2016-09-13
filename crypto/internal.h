@@ -143,8 +143,8 @@ extern "C" {
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64)
-/* OPENSSL_cpuid_setup initializes OPENSSL_ia32cap_P. */
-void OPENSSL_cpuid_setup(void);
+/* GFp_cpuid_setup initializes GFp_ia32cap_P. */
+void GFp_cpuid_setup(void);
 #endif
 
 #define OPENSSL_LITTLE_ENDIAN 1
@@ -248,11 +248,11 @@ static inline size_t constant_time_select_size_t(size_t mask, size_t a,
 
 /* Bridge to Rust-based SHA-512 implementation. */
 
-extern void SHA512_4(uint8_t *out, size_t out_len,
-                     const uint8_t *part1, size_t part1_len,
-                     const uint8_t *part2, size_t part2_len,
-                     const uint8_t *part3, size_t part3_len,
-                     const uint8_t *part4, size_t part4_len);
+extern void GFp_SHA512_4(uint8_t *out, size_t out_len,
+                         const uint8_t *part1, size_t part1_len,
+                         const uint8_t *part2, size_t part2_len,
+                         const uint8_t *part3, size_t part3_len,
+                         const uint8_t *part4, size_t part4_len);
 
 #define SHA512_DIGEST_LENGTH 64
 

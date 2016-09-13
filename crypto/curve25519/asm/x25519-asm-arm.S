@@ -24,10 +24,10 @@
 .text
 .align 4
 
-.global x25519_NEON
-.hidden x25519_NEON
-.type x25519_NEON, %function
-x25519_NEON:
+.global GFp_x25519_NEON
+.hidden GFp_x25519_NEON
+.type GFp_x25519_NEON, %function
+GFp_x25519_NEON:
 vpush {q4,q5,q6,q7}
 mov r12,sp
 sub sp,sp,#736

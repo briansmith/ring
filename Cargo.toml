@@ -41,6 +41,7 @@ include = [
 
     "src/aead/aead.rs",
     "src/aead/aes_gcm.rs",
+    "src/aead/aes_tests.txt",
     "src/aead/chacha20_poly1305.rs",
     "src/aead/aes_test.txt",
     "src/aead/chacha_tests.txt",
@@ -142,7 +143,6 @@ include = [
     "crypto/chacha/asm/chacha-armv8.pl",
     "crypto/chacha/asm/chacha-x86.pl",
     "crypto/chacha/asm/chacha-x86_64.pl",
-    "crypto/chacha/chacha_test.cc",
     "crypto/cipher/e_aes.c",
     "crypto/cipher/internal.h",
     "crypto/cipher/test/aes_128_gcm_tests.txt",

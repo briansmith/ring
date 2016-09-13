@@ -51,8 +51,8 @@ use hmac;
 /// # Panics
 ///
 /// `extract_and_expand` panics if `expand` panics.
-pub fn extract_and_expand(salt: &hmac::SigningKey, secret: &[u8], info: &[u8],
-                          out: &mut [u8]) {
+pub fn extract_and_expand(salt: &hmac::SigningKey, secret: &[u8],
+                          info: &[u8], out: &mut [u8]) {
     let prk = extract(salt, secret);
     expand(&prk, info, out)
 }
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     pub fn hkdf_tests() {
-        test::from_file("src/hkdf_tests.txt",|section, test_case| {
+        test::from_file("src/hkdf_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
                 try!(test_case.consume_digest_alg("Hash")

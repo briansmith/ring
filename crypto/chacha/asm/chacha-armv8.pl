@@ -115,27 +115,27 @@ $code.=<<___;
 
 .text
 
-.extern	OPENSSL_armcap_P
+.extern	GFp_armcap_P
 
 .align	5
 .Lsigma:
 .quad	0x3320646e61707865,0x6b20657479622d32		// endian-neutral
 .Lone:
 .long	1,0,0,0
-.LOPENSSL_armcap_P:
+.LGFp_armcap_P:
 #ifdef	__ILP32__
-.long	OPENSSL_armcap_P-.
+.long	GFp_armcap_P-.
 #else
-.quad	OPENSSL_armcap_P-.
+.quad	GFp_armcap_P-.
 #endif
 .asciz	"ChaCha20 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 
-.globl	ChaCha20_ctr32
-.type	ChaCha20_ctr32,%function
+.globl	GFp_ChaCha20_ctr32
+.type	GFp_ChaCha20_ctr32,%function
 .align	5
-ChaCha20_ctr32:
+GFp_ChaCha20_ctr32:
 	cbz	$len,.Labort
-	adr	@x[0],.LOPENSSL_armcap_P
+	adr	@x[0],.LGFp_armcap_P
 	cmp	$len,#192
 	b.lo	.Lshort
 #ifdef	__ILP32__
@@ -324,7 +324,7 @@ $code.=<<___;
 	ldp	x27,x28,[x29,#80]
 	ldp	x29,x30,[sp],#96
 	ret
-.size	ChaCha20_ctr32,.-ChaCha20_ctr32
+.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
 ___
 
 {{{

@@ -189,7 +189,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   };
   /* XXX: Not (clearly) constant-time; inefficient. TODO: Add a dedicated
    * squaring routine. */
-  bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
+  GFp_bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
 static inline void elem_mul_by_2(Elem r, const Elem a) {
@@ -242,7 +242,7 @@ void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
     BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
   };
   /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
+  GFp_bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 

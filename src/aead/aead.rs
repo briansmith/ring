@@ -51,7 +51,8 @@ impl OpeningKey {
     /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
     ///            `evp_aead_open`, `EVP_AEAD_CTX_init`.
     ///
-    /// Go analog: [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
+    /// Go analog:
+    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
@@ -59,8 +60,8 @@ impl OpeningKey {
         let mut key = OpeningKey {
             key: Key {
                 algorithm: algorithm,
-                ctx_buf: [0; KEY_CTX_BUF_ELEMS]
-            }
+                ctx_buf: [0; KEY_CTX_BUF_ELEMS],
+            },
         };
         try!(key.key.init(key_bytes));
         Ok(key)
@@ -121,7 +122,8 @@ impl SealingKey {
     /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
     ///            `evp_aead_seal`, `EVP_AEAD_CTX_init`.
     ///
-    /// Go analog: [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
+    /// Go analog:
+    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
@@ -130,7 +132,7 @@ impl SealingKey {
             key: Key {
                 algorithm: algorithm,
                 ctx_buf: [0; KEY_CTX_BUF_ELEMS],
-            }
+            },
         };
         try!(key.key.init(key_bytes));
         Ok(key)
@@ -221,7 +223,8 @@ impl Key {
 ///
 /// C analog: `EVP_AEAD`
 ///
-/// Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
+/// Go analog:
+///     [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
@@ -249,7 +252,7 @@ impl Algorithm {
     /// C analog: `EVP_AEAD_max_overhead`
     ///
     /// Go analog:
-    /// [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
+    ///   [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn max_overhead_len(&self) -> usize { TAG_LEN }
 
@@ -258,7 +261,7 @@ impl Algorithm {
     /// C analog: `EVP_AEAD_nonce_length`
     ///
     /// Go analog:
-    /// [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
+    ///   [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
@@ -274,12 +277,12 @@ const TAG_LEN: usize = 128 / 8;
 const NONCE_LEN: usize = 96 / 8;
 
 
-/// |CRYPTO_chacha_20| uses a 32-bit block counter, so we disallow individual
+/// |GFp_chacha_20| uses a 32-bit block counter, so we disallow individual
 /// operations that work on more than 256GB at a time, for all AEADs.
 fn check_per_nonce_max_bytes(in_out_len: usize)
                              -> Result<(), error::Unspecified> {
     if polyfill::u64_from_usize(in_out_len) >= (1u64 << 32) * 64 - 64 {
-        return Err(error::Unspecified)
+        return Err(error::Unspecified);
     }
     Ok(())
 }
@@ -411,7 +414,8 @@ mod tests {
                         assert_eq!(Ok(ct.len()), s_result);
                         assert_eq!(&ct[..], &s_in_out[..ct.len()]);
                         assert_eq!(Ok(plaintext.len()), o_result);
-                        assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
+                        assert_eq!(&plaintext[..],
+                                   &o_in_out[..plaintext.len()]);
                     },
                     Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
                         assert_eq!(Err(error::Unspecified), s_result);
@@ -419,7 +423,7 @@ mod tests {
                     },
                     Some(error) => {
                         unreachable!("Unexpected error test case: {}", error);
-                    }
+                    },
                 };
             }
 
@@ -432,10 +436,8 @@ mod tests {
         let key_data = vec![0u8; key_len * 2];
 
         // Key is the right size.
-        assert!(aead::OpeningKey::new(aead_alg, &key_data[..key_len])
-                    .is_ok());
-        assert!(aead::SealingKey::new(aead_alg, &key_data[..key_len])
-                    .is_ok());
+        assert!(aead::OpeningKey::new(aead_alg, &key_data[..key_len]).is_ok());
+        assert!(aead::SealingKey::new(aead_alg, &key_data[..key_len]).is_ok());
 
         // Key is one byte too small.
         assert!(aead::OpeningKey::new(aead_alg, &key_data[..(key_len - 1)])
@@ -486,10 +488,8 @@ mod tests {
                              -> Result<(), error::Unspecified> {
         let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len];
-        let o_key =
-            try!(aead::OpeningKey::new(aead_alg, &key_data[..key_len]));
-        let s_key =
-            try!(aead::SealingKey::new(aead_alg, &key_data[..key_len]));
+        let o_key = try!(aead::OpeningKey::new(aead_alg, &key_data[..key_len]));
+        let s_key = try!(aead::SealingKey::new(aead_alg, &key_data[..key_len]));
 
         let nonce_len = aead_alg.nonce_len();
 

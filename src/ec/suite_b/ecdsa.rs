@@ -54,8 +54,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
         let (r, s) = try!(signature.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified,
-                        |input| {
+            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
                 let r = try!(self.ops.scalar_parse(input));
                 let s = try!(self.ops.scalar_parse(input));
                 Ok((r, s))
@@ -80,8 +79,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = twin_mul(self.ops.private_key_ops, &u1, &u2,
-                               &peer_pub_key);
+        let product =
+            twin_mul(self.ops.private_key_ops, &u1, &u2, &peer_pub_key);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
@@ -124,7 +123,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     }
 }
 
-impl private::Private for ECDSAParameters { }
+impl private::Private for ECDSAParameters {}
 
 
 /// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
@@ -178,10 +177,9 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
     if !limbs_less_than_limbs(&limbs[..num_limbs], n) {
         let mut carried_bit = 0;
         for i in 0..num_limbs {
-            let next_carried_bit =
-                limbs[num_limbs - i - 1] << (LIMB_BITS - 1);
-            limbs[num_limbs - i - 1] =
-                (limbs[num_limbs - i - 1] >> 1) | carried_bit;
+            let next_carried_bit = limbs[num_limbs - i - 1] << (LIMB_BITS - 1);
+            limbs[num_limbs - i - 1] = (limbs[num_limbs - i - 1] >> 1) |
+                                       carried_bit;
             carried_bit = next_carried_bit;
         }
         debug_assert!(limbs_less_than_limbs(&limbs[..num_limbs], &n));
@@ -261,7 +259,7 @@ mod tests {
     #[test]
     fn signature_ecdsa_verify_test() {
         test::from_file("src/ec/suite_b/ecdsa_verify_tests.txt",
-                       |section, test_case| {
+                        |section, test_case| {
             assert_eq!(section, "");
 
             let curve_name = test_case.consume_string("Curve");
@@ -278,8 +276,8 @@ mod tests {
 
             let expected_result = test_case.consume_string("Result");
 
-            let (alg, _, _) =
-                alg_from_curve_and_digest(&curve_name, &digest_name);
+            let (alg, _, _) = alg_from_curve_and_digest(&curve_name,
+                                                        &digest_name);
 
             let actual_result = signature::verify(alg, public_key, msg, sig);
             assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
@@ -291,7 +289,7 @@ mod tests {
     #[test]
     fn ecdsa_digest_scalar_test() {
         test::from_file("src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
-                       |section, test_case| {
+                        |section, test_case| {
             assert_eq!(section, "");
 
             let curve_name = test_case.consume_string("Curve");
@@ -301,8 +299,8 @@ mod tests {
 
             let output = test_case.consume_bytes("Output");
 
-            let (_, ops, digest_alg) =
-                alg_from_curve_and_digest(&curve_name, &digest_name);
+            let (_, ops, digest_alg) = alg_from_curve_and_digest(&curve_name,
+                                                                 &digest_name);
 
             let num_limbs = ops.public_key_ops.common.num_limbs;
             assert_eq!(input.len(), digest_alg.output_len);

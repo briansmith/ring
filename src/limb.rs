@@ -54,15 +54,13 @@ pub struct Range<'a> {
     pub max_exclusive: &'a [Limb],
 }
 
-impl <'a> Range<'a> {
+impl<'a> Range<'a> {
     pub fn from_max_exclusive(max_exclusive: &[Limb]) -> Range {
         debug_assert_eq!(limbs_are_zero_constant_time(max_exclusive),
                          LimbMask::False);
         debug_assert!(max_exclusive[max_exclusive.len() - 1] > 0);
 
-        Range {
-            max_exclusive: max_exclusive
-        }
+        Range { max_exclusive: max_exclusive }
     }
 
     /// Are these little-endian limbs within the range?
@@ -72,8 +70,8 @@ impl <'a> Range<'a> {
         assert_eq!(self.max_exclusive.len(), limbs.len());
 
         let is_zero = limbs_are_zero_constant_time(limbs);
-        let is_lt_max =
-            limbs_less_than_limbs_constant_time(limbs, self.max_exclusive);
+        let is_lt_max = limbs_less_than_limbs_constant_time(limbs,
+                                                            self.max_exclusive);
 
         is_zero == LimbMask::False && is_lt_max == LimbMask::True
     }
@@ -145,8 +143,9 @@ pub unsafe extern fn GFp_rand_mod(dest: *mut Limb, max_exclusive: *const Limb,
     const ERR: c::int = 0;
     const SUCCESS: c::int = 1;
 
-    let range = Range::from_max_exclusive(
-        core::slice::from_raw_parts(max_exclusive, num_limbs));
+    let range =
+        Range::from_max_exclusive(core::slice::from_raw_parts(max_exclusive,
+                                                              num_limbs));
     let mut dest = core::slice::from_raw_parts_mut(dest, num_limbs);
 
     let result = range.sample_into_limbs(&mut dest, (*rng).rng);
@@ -180,20 +179,15 @@ fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
 
 #[allow(unsafe_code)]
 #[inline]
-pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb])
-                                           -> LimbMask {
+pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb]) -> LimbMask {
     assert_eq!(a.len(), b.len());
-    unsafe {
-        GFp_constant_time_limbs_lt_limbs(a.as_ptr(), b.as_ptr(), b.len())
-    }
+    unsafe { GFp_constant_time_limbs_lt_limbs(a.as_ptr(), b.as_ptr(), b.len()) }
 }
 
 #[allow(unsafe_code)]
 #[inline]
 pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
-    unsafe {
-        GFp_constant_time_limbs_are_zero(limbs.as_ptr(), limbs.len())
-    }
+    unsafe { GFp_constant_time_limbs_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
 extern {
@@ -216,7 +210,7 @@ mod tests {
         assert_eq!(0, most_significant_limb_mask_variable_time(0));
 
         for i in 0..LIMB_BITS {
-           let x = 1 << i;
+            let x = 1 << i;
             let expected = if i == LIMB_BITS - 1 {
                 Limb::max_value()
             } else {
@@ -280,13 +274,13 @@ mod tests {
         let limbs = &[Limb::max_value(), Limb::max_value()];
         let range = Range::from_max_exclusive(limbs);
         assert!(range.sample_into_limbs(&mut dest, &rng).is_ok());
-        assert!(dest.iter().any( |b| *b > 0 ));
+        assert!(dest.iter().any(|b| *b > 0));
 
         let mut dest: [Limb; 2] = [0; 2];
         let limbs = &[0xdeadbeef, 0xdeadbeef];
         let range = Range::from_max_exclusive(limbs);
         assert!(range.sample_into_limbs(&mut dest, &rng).is_ok());
-        assert!(dest.iter().any( |b| *b > 0 ));
+        assert!(dest.iter().any(|b| *b > 0));
 
         let mut dest: [Limb; 1] = [0; 1];
         let limbs = &[2];
@@ -298,7 +292,7 @@ mod tests {
         let limbs = &[1 << (LIMB_BITS - 1)];
         let range = Range::from_max_exclusive(limbs);
         assert!(range.sample_into_limbs(&mut dest, &rng).is_ok());
-        assert!(dest.iter().any( |b| *b > 0 ));
+        assert!(dest.iter().any(|b| *b > 0));
     }
 
     #[test]
@@ -336,7 +330,7 @@ mod tests {
         let max_exclusive_bytes = limbs_as_bytes(&max_exclusive);
         {
             let rng = rand::test_util::FixedSliceRandom {
-                bytes: &max_exclusive_bytes
+                bytes: &max_exclusive_bytes,
             };
             let mut result = [0, 0];
             assert!(range.sample_into_limbs(&mut result, &rng).is_err());
@@ -350,7 +344,7 @@ mod tests {
             limbs_as_bytes(&max_exclusive_minus_1);
         {
             let rng = rand::test_util::FixedSliceRandom {
-                bytes: max_exclusive_minus_1_bytes
+                bytes: max_exclusive_minus_1_bytes,
             };
             let mut result = [0, 0];
             range.sample_into_limbs(&mut result, &rng).unwrap();

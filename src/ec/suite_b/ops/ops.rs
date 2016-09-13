@@ -40,15 +40,11 @@ pub struct ElemUnreduced {
 }
 
 impl ElemUnreduced {
-    fn zero() -> ElemUnreduced {
-        ElemUnreduced { limbs: [0; MAX_LIMBS] }
-    }
+    fn zero() -> ElemUnreduced { ElemUnreduced { limbs: [0; MAX_LIMBS] } }
 }
 
-impl <'a> From<&'a Elem> for ElemUnreduced {
-    fn from(a: &Elem) -> ElemUnreduced {
-        ElemUnreduced { limbs: a.limbs }
-    }
+impl<'a> From<&'a Elem> for ElemUnreduced {
+    fn from(a: &Elem) -> ElemUnreduced { ElemUnreduced { limbs: a.limbs } }
 }
 
 
@@ -79,26 +75,21 @@ pub struct Point {
     // `ops.num_limbs` elements are the X coordinate, the next
     // `ops.num_limbs` elements are the Y coordinate, and the next
     // `ops.num_limbs` elements are the Z coordinate. This layout is dictated
-    // by the requirements of the ecp_nistz256 code.
+    // by the requirements of the GFp_nistz256 code.
     xyz: [Limb; 3 * MAX_LIMBS],
 }
 
 impl Point {
-    pub fn new_at_infinity() -> Point {
-        Point { xyz: [0; 3 * MAX_LIMBS] }
-    }
+    pub fn new_at_infinity() -> Point { Point { xyz: [0; 3 * MAX_LIMBS] } }
 }
 
 // Cannot be derived because `xyz` is too large on 32-bit platforms to have a
 // built-in implementation of `Clone`.
 impl Clone for Point {
-    fn clone(&self) -> Self {
-        Point { xyz: self.xyz }
-    }
+    fn clone(&self) -> Self { Point { xyz: self.xyz } }
 }
 
-impl Copy for Point {
-}
+impl Copy for Point {}
 
 #[cfg(all(target_pointer_width = "32", target_endian = "little"))]
 macro_rules! limbs {
@@ -127,9 +118,8 @@ macro_rules! limbs {
 
 pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
 
-static ONE: ElemDecoded = ElemDecoded {
-    limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-};
+static ONE: ElemDecoded =
+    ElemDecoded { limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] };
 
 
 /// Operations and values needed by all curve operations.
@@ -182,7 +172,7 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_mul_mixed(&self, a: &ElemUnreduced, b: &ElemDecoded)
-                           -> ElemDecoded {
+                          -> ElemDecoded {
         let unreduced = rab(self.elem_mul_mont, &a.limbs, &b.limbs);
         ElemDecoded { limbs: self.reduced_limbs(&unreduced, &self.q.p) }
     }
@@ -404,7 +394,7 @@ impl PublicScalarOps {
                             -> ElemDecoded {
         ElemDecoded {
             limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
-                       &b.limbs)
+                       &b.limbs),
         }
     }
 }
@@ -445,8 +435,8 @@ fn elem_sqr_mul(ops: &CommonOps, a: &ElemUnreduced, squarings: usize,
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced, squarings: usize,
-                    b: &ElemUnreduced) {
+fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced,
+                    squarings: usize, b: &ElemUnreduced) {
     debug_assert!(squarings >= 1);
     for _ in 0..squarings {
         ops.elem_square(acc);
@@ -460,9 +450,7 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced, squarings: usize,
 fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
        a: &[Limb; MAX_LIMBS], b: &[Limb; MAX_LIMBS]) -> [Limb; MAX_LIMBS] {
     let mut r = [0; MAX_LIMBS];
-    unsafe {
-        f(r.as_mut_ptr(), a.as_ptr(), b.as_ptr())
-    }
+    unsafe { f(r.as_mut_ptr(), a.as_ptr(), b.as_ptr()) }
     r
 }
 
@@ -471,28 +459,22 @@ fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 #[inline]
 fn a_assign(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
             a: &mut [Limb; MAX_LIMBS]) {
-    unsafe {
-        f(a.as_mut_ptr(), a.as_ptr())
-    }
+    unsafe { f(a.as_mut_ptr(), a.as_ptr()) }
 }
 
 // a = f(a, b);
 #[inline]
 fn ab_assign(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
              a: &mut [Limb; MAX_LIMBS], b: &[Limb; MAX_LIMBS]) {
-    unsafe {
-        f(a.as_mut_ptr(), a.as_ptr(), b.as_ptr())
-    }
+    unsafe { f(a.as_mut_ptr(), a.as_ptr(), b.as_ptr()) }
 }
 
 // let r = f(a); return r;
 #[inline]
-fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
-      a: &[Limb; MAX_LIMBS]) -> [Limb; MAX_LIMBS] {
+fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &[Limb; MAX_LIMBS])
+      -> [Limb; MAX_LIMBS] {
     let mut r = [0; MAX_LIMBS];
-    unsafe {
-        f(r.as_mut_ptr(), a.as_ptr())
-    }
+    unsafe { f(r.as_mut_ptr(), a.as_ptr()) }
     r
 }
 
@@ -546,8 +528,8 @@ pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
             core::cmp::Ordering::Less => {
                 return true;
             },
-            core::cmp::Ordering::Equal => { }, // keep going
-            core::cmp::Ordering::Greater => { break; }
+            core::cmp::Ordering::Equal => {}, // keep going
+            core::cmp::Ordering::Greater => { break; },
         }
     }
     false
@@ -569,14 +551,10 @@ mod tests {
     use untrusted;
 
     #[test]
-    fn p256_elem_reduced_test() {
-        test_elem_reduced(&p256::COMMON_OPS);
-    }
+    fn p256_elem_reduced_test() { test_elem_reduced(&p256::COMMON_OPS); }
 
     #[test]
-    fn p384_elem_reduced_test() {
-        test_elem_reduced(&p384::COMMON_OPS);
-    }
+    fn p384_elem_reduced_test() { test_elem_reduced(&p384::COMMON_OPS); }
 
     fn test_elem_reduced(ops: &CommonOps) {
         let zero = ElemUnreduced::zero();
@@ -640,19 +618,17 @@ mod tests {
 
             let mut actual_sum = a.clone();
             ops.public_key_ops.common.elem_add(&mut actual_sum, &b);
-            assert_limbs_are_equal(cops, &actual_sum.limbs,
-                                   &expected_sum.limbs);
+            assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
             let mut actual_sum = b.clone();
             ops.public_key_ops.common.elem_add(&mut actual_sum, &a);
-            assert_limbs_are_equal(cops, &actual_sum.limbs,
-                                   &expected_sum.limbs);
+            assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
             Ok(())
         })
     }
 
-    // XXX: There's no `ecp_nistz256_sub` in *ring*; it's logic is inlined into
+    // XXX: There's no `GFp_nistz256_sub` in *ring*; it's logic is inlined into
     // the point arithmetic functions. Thus, we can't test it.
 
     #[test]
@@ -693,7 +669,7 @@ mod tests {
         })
     }
 
-    // XXX: There's no `ecp_nistz256_div_by_2` in *ring*; it's logic is inlined
+    // XXX: There's no `GFp_nistz256_div_by_2` in *ring*; it's logic is inlined
     // into the point arithmetic functions. Thus, we can't test it.
 
     #[test]
@@ -730,9 +706,9 @@ mod tests {
     #[test]
     fn p256_elem_neg_test() {
         extern {
-            fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
+            fn GFp_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
-        elem_neg_test(&p256::COMMON_OPS, ecp_nistz256_neg,
+        elem_neg_test(&p256::COMMON_OPS, GFp_nistz256_neg,
                       "src/ec/suite_b/ops/p256_neg_tests.txt");
     }
 
@@ -798,30 +774,28 @@ mod tests {
         let inp = [0xbe, 0xef, 0xf0, 0x0d];
         let inp = untrusted::Input::from(&inp);
         assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0, 0, 0xbeeff00d]));
+                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xbeeff00d]));
 
         // A whole number of limbs (2 for 32-bit, 1 for 64-bit).
         let inp = [0xfe, 0xed, 0xde, 0xad, 0xbe, 0xef, 0xf0, 0x0d];
         let inp = untrusted::Input::from(&inp);
         assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0, 0xfeeddead, 0xbeeff00d]));
+                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xfeeddead,
+                             0xbeeff00d]));
 
         // One limb - 1 for 32-bit.
         let inp = [0xef, 0xf0, 0x0d];
         let inp = untrusted::Input::from(&inp);
         assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0, 0, 0xeff00d]));
+                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xeff00d]));
 
         // Two limbs - 1 for 64-bit, four limbs - 1 for 32-bit.
         let inp = [     0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8,
                    0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0];
         let inp = untrusted::Input::from(&inp);
         assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0,
-                             0x000e0d0c, 0x0b0a0908, 0x07060504, 0x03020100]));
+                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0x000e0d0c, 0x0b0a0908,
+                             0x07060504, 0x03020100]));
 
         // One limb + 1 for for 32-bit, half a limb + 1 for 64-bit.
         let inp = [0x4, 0x3, 0x2, 0x1, 0x0];
@@ -832,16 +806,16 @@ mod tests {
         // A whole number of limbs + 1.
         let inp = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00];
         let inp = untrusted::Input::from(&inp);
-        let out = limbs![0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0x88, 0x77665544, 0x33221100];
+        let out = limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x77665544,
+                         0x33221100];
         assert_eq!(parse_big_endian_value(inp, 3), Ok(out));
 
         // The input is longer than will fit in the given number of limbs.
         assert_eq!(parse_big_endian_value(inp, 2),
                    if cfg!(target_pointer_width = "64") {
-                        Ok(out)
+                       Ok(out)
                    } else {
-                        Err(error::Unspecified)
+                       Err(error::Unspecified)
                    });
         assert_eq!(parse_big_endian_value(inp, 1), Err(error::Unspecified));
     }
@@ -859,7 +833,7 @@ mod tests {
     }
 
     fn point_sum_test(ops: &PrivateKeyOps, file_path: &str) {
-         test::from_file(file_path, |section, test_case| {
+        test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_jacobian_point(ops, test_case, "a");
@@ -893,7 +867,7 @@ mod tests {
                 TestPoint::Infinity => {
                     panic!("can't be inf.");
                 },
-                TestPoint::Affine(x, y) => (x, y)
+                TestPoint::Affine(x, y) => (x, y),
             };
             let expected_result = consume_point(ops, test_case, "r");
             let actual_result = ops.point_mul(&p_scalar, &(x, y));
@@ -905,16 +879,14 @@ mod tests {
 
     #[test]
     fn p256_point_mul_base_test() {
-        point_mul_base_tests(
-            &p256::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p256_point_mul_base_tests.txt");
+        point_mul_base_tests(&p256::PRIVATE_KEY_OPS,
+                             "src/ec/suite_b/ops/p256_point_mul_base_tests.txt");
     }
 
     #[test]
     fn p384_point_mul_base_test() {
-        point_mul_base_tests(
-            &p384::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p384_point_mul_base_tests.txt");
+        point_mul_base_tests(&p384::PRIVATE_KEY_OPS,
+                             "src/ec/suite_b/ops/p384_point_mul_base_tests.txt");
     }
 
     fn point_mul_base_tests(ops: &PrivateKeyOps, file_path: &str) {
@@ -956,7 +928,7 @@ mod tests {
                     cops.elem_reduced(&cops.elem_product(&actual_y, &zzz_inv));
                 assert!(cops.elems_are_equal(&x_aff, &expected_x));
                 assert!(cops.elems_are_equal(&y_aff, &expected_y));
-            }
+            },
         }
     }
 
@@ -1019,9 +991,8 @@ mod tests {
             if actual[i] != expected[i] {
                 let mut s = std::string::String::new();
                 for j in 0..ops.num_limbs {
-                    let formatted =
-                        format!("{:016x}",
-                                actual[ops.num_limbs - j - 1]);
+                    let formatted = format!("{:016x}",
+                                            actual[ops.num_limbs - j - 1]);
                     s.push_str(&formatted);
                 }
                 print!("\n");
@@ -1035,7 +1006,7 @@ mod tests {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
         ElemUnreduced {
-            limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap()
+            limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap(),
         }
     }
 

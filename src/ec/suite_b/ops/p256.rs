@@ -14,8 +14,7 @@
 
 use c;
 use super::*;
-use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc, ab_assign, ra,
-            rab};
+use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc, ab_assign, ra, rab};
 
 macro_rules! p256_limbs {
     [$limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
@@ -51,11 +50,11 @@ pub static COMMON_OPS: CommonOps = CommonOps {
                            0xacf005cd, 0x78843090, 0xd89cdf62, 0x29c4bddf],
     },
 
-    elem_add_impl: ecp_nistz256_add,
-    elem_mul_mont: ecp_nistz256_mul_mont,
-    elem_sqr_mont: ecp_nistz256_sqr_mont,
+    elem_add_impl: GFp_nistz256_add,
+    elem_mul_mont: GFp_nistz256_mul_mont,
+    elem_sqr_mont: GFp_nistz256_sqr_mont,
 
-    point_add_jacobian_impl: ecp_nistz256_point_add,
+    point_add_jacobian_impl: GFp_nistz256_point_add,
 };
 
 
@@ -63,7 +62,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv: p256_elem_inv,
     point_mul_base_impl: p256_point_mul_base_impl,
-    point_mul_impl: ecp_nistz256_point_mul,
+    point_mul_impl: GFp_nistz256_point_mul,
 };
 
 fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
@@ -120,16 +119,14 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
     let mut r = Point::new_at_infinity();
     unsafe {
-        ecp_nistz256_point_mul_base(r.xyz.as_mut_ptr(),
+        GFp_nistz256_point_mul_base(r.xyz.as_mut_ptr(),
                                     g_scalar.limbs.as_ptr());
     }
     r
 }
 
 
-pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
-    common: &COMMON_OPS,
-};
+pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps { common: &COMMON_OPS };
 
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
@@ -137,8 +134,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     private_key_ops: &PRIVATE_KEY_OPS,
 
     q_minus_n: ElemDecoded {
-        limbs: p256_limbs![0, 0, 0, 0,
-                           0x43190553, 0x58e8617b, 0x0c46353d, 0x039cdaae],
+        limbs: p256_limbs![0, 0, 0, 0, 0x43190553, 0x58e8617b, 0x0c46353d,
+                           0x039cdaae],
     },
 
     scalar_inv_to_mont_impl: p256_scalar_inv_to_mont,
@@ -273,23 +270,23 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 
 
 extern {
-    fn ecp_nistz256_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
+    fn GFp_nistz256_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                         a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                         b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn ecp_nistz256_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
+    fn GFp_nistz256_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                              b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn ecp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
+    fn GFp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
-    fn ecp_nistz256_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+    fn GFp_nistz256_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                               a: *const Limb/*[3][COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
-    fn ecp_nistz256_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+    fn GFp_nistz256_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                               p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,
                               p_y: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn ecp_nistz256_point_mul_base(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
+    fn GFp_nistz256_point_mul_base(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                                    g_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/);
 
     fn GFp_p256_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,

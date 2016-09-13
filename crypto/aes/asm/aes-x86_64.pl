@@ -583,13 +583,13 @@ $code.=<<___;
 .size	_x86_64_AES_encrypt_compact,.-_x86_64_AES_encrypt_compact
 ___
 
-# void asm_AES_encrypt (const void *inp,void *out,const AES_KEY *key);
+# void GFp_asm_AES_encrypt (const void *inp,void *out,const AES_KEY *key);
 $code.=<<___;
 .align	16
-.globl	asm_AES_encrypt
-.type	asm_AES_encrypt,\@function,3
-.hidden	asm_AES_encrypt
-asm_AES_encrypt:
+.globl	GFp_asm_AES_encrypt
+.type	GFp_asm_AES_encrypt,\@function,3
+.hidden	GFp_asm_AES_encrypt
+GFp_asm_AES_encrypt:
 	push	%rbx
 	push	%rbp
 	push	%r12
@@ -649,7 +649,7 @@ asm_AES_encrypt:
 	lea	48(%rsi),%rsp
 .Lenc_epilogue:
 	ret
-.size	asm_AES_encrypt,.-asm_AES_encrypt
+.size	GFp_asm_AES_encrypt,.-GFp_asm_AES_encrypt
 ___
 
 #------------------------------------------------------------------#
@@ -681,12 +681,13 @@ $code.=<<___;
 ___
 }
 
-# int asm_AES_set_encrypt_key(const unsigned char *userKey, const int bits, AES_KEY *key)
+# int GFp_asm_AES_set_encrypt_key(const unsigned char *userKey, const int bits,
+#                                 AES_KEY *key)
 $code.=<<___;
 .align	16
-.globl asm_AES_set_encrypt_key
-.type  asm_AES_set_encrypt_key,\@function,3
-asm_AES_set_encrypt_key:
+.globl GFp_asm_AES_set_encrypt_key
+.type  GFp_asm_AES_set_encrypt_key,\@function,3
+GFp_asm_AES_set_encrypt_key:
 	push	%rbx
 	push	%rbp
 	push	%r12			# redundant, but allows to share 
@@ -703,7 +704,7 @@ asm_AES_set_encrypt_key:
 	add	\$56,%rsp
 .Lenc_key_epilogue:
 	ret
-.size asm_AES_set_encrypt_key,.-asm_AES_set_encrypt_key
+.size GFp_asm_AES_set_encrypt_key,.-GFp_asm_AES_set_encrypt_key
 
 .type	_x86_64_AES_set_encrypt_key,\@abi-omnipotent
 .align	16
@@ -1219,21 +1220,21 @@ key_se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_asm_AES_encrypt
-	.rva	.LSEH_end_asm_AES_encrypt
-	.rva	.LSEH_info_asm_AES_encrypt
+	.rva	.LSEH_begin_GFp_asm_AES_encrypt
+	.rva	.LSEH_end_GFp_asm_AES_encrypt
+	.rva	.LSEH_info_GFp_asm_AES_encrypt
 
-	.rva	.LSEH_begin_asm_AES_set_encrypt_key
-	.rva	.LSEH_end_asm_AES_set_encrypt_key
-	.rva	.LSEH_info_asm_AES_set_encrypt_key
+	.rva	.LSEH_begin_GFp_asm_AES_set_encrypt_key
+	.rva	.LSEH_end_GFp_asm_AES_set_encrypt_key
+	.rva	.LSEH_info_GFp_asm_AES_set_encrypt_key
 
 .section	.xdata
 .align	8
-.LSEH_info_asm_AES_encrypt:
+.LSEH_info_GFp_asm_AES_encrypt:
 	.byte	9,0,0,0
 	.rva	block_se_handler
 	.rva	.Lenc_prologue,.Lenc_epilogue	# HandlerData[]
-.LSEH_info_asm_AES_set_encrypt_key:
+.LSEH_info_GFp_asm_AES_set_encrypt_key:
 	.byte	9,0,0,0
 	.rva	key_se_handler
 	.rva	.Lenc_key_prologue,.Lenc_key_epilogue	# HandlerData[]

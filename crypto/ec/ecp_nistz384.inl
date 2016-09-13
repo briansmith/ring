@@ -37,7 +37,7 @@ static BN_ULONG is_infinity(const BN_ULONG x[P384_LIMBS],
 }
 
 /* Point double: r = 2*a */
-void ecp_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
+void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
   BN_ULONG S[P384_LIMBS];
   BN_ULONG M[P384_LIMBS];
   BN_ULONG Zsqr[P384_LIMBS];
@@ -82,7 +82,7 @@ void ecp_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
 }
 
 /* Point addition: r = a+b */
-void ecp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
+void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
                             const P384_POINT *b) {
   BN_ULONG U2[P384_LIMBS], S2[P384_LIMBS];
   BN_ULONG U1[P384_LIMBS], S1[P384_LIMBS];
@@ -126,7 +126,7 @@ void ecp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
    * so no constant time violation */
   if (is_equal(U1, U2) && !in1infty && !in2infty) {
     if (is_equal(S1, S2)) {
-      ecp_nistz384_point_double(r, a);
+      GFp_nistz384_point_double(r, a);
     } else {
       memset(r, 0, sizeof(*r));
     }

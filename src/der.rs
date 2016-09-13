@@ -19,8 +19,8 @@
 use untrusted;
 use error;
 
-pub const CONSTRUCTED : u8 = 1 << 5;
-pub const CONTEXT_SPECIFIC : u8 = 2 << 6;
+pub const CONSTRUCTED: u8 = 1 << 5;
+pub const CONTEXT_SPECIFIC: u8 = 2 << 6;
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
@@ -82,7 +82,7 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
         },
         _ => {
             return Err(error::Unspecified); // We don't support longer lengths.
-        }
+        },
     };
 
     let inner = try!(input.skip_and_get_input(length));
@@ -200,44 +200,41 @@ mod tests {
     static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
 
     static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], u8)] =
-    &[
-        (&[0x02, 0x01, 0x01], 0x01),
-        (&[0x02, 0x01, 0x02], 0x02),
-        (&[0x02, 0x01, 0x7e], 0x7e),
-        (&[0x02, 0x01, 0x7f], 0x7f),
+        &[(&[0x02, 0x01, 0x01], 0x01),
+          (&[0x02, 0x01, 0x02], 0x02),
+          (&[0x02, 0x01, 0x7e], 0x7e),
+          (&[0x02, 0x01, 0x7f], 0x7f),
 
-        // Values that need to have an 0x00 prefix to disambiguate them from
-        // them from negative values.
-        (&[0x02, 0x02, 0x00, 0x80], 0x80),
-        (&[0x02, 0x02, 0x00, 0x81], 0x81),
-        (&[0x02, 0x02, 0x00, 0xfe], 0xfe),
-        (&[0x02, 0x02, 0x00, 0xff], 0xff),
-    ];
+          // Values that need to have an 0x00 prefix to disambiguate them from
+          // them from negative values.
+          (&[0x02, 0x02, 0x00, 0x80], 0x80),
+          (&[0x02, 0x02, 0x00, 0x81], 0x81),
+          (&[0x02, 0x02, 0x00, 0xfe], 0xfe),
+          (&[0x02, 0x02, 0x00, 0xff], 0xff)];
 
-    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] = &[
-        &[], // At end of input
-        &[0x02], // Tag only
-        &[0x02, 0x00], // Empty value
+    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] =
+        &[&[], // At end of input
+          &[0x02], // Tag only
+          &[0x02, 0x00], // Empty value
 
-        // Length mismatch
-        &[0x02, 0x00, 0x01],
-        &[0x02, 0x01],
-        &[0x02, 0x01, 0x00, 0x01],
-        &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
-        &[0x02, 0x02, 0x01],
+          // Length mismatch
+          &[0x02, 0x00, 0x01],
+          &[0x02, 0x01],
+          &[0x02, 0x01, 0x00, 0x01],
+          &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
+          &[0x02, 0x02, 0x01],
 
-        // Negative values
-        &[0x02, 0x01, 0x80],
-        &[0x02, 0x01, 0xfe],
-        &[0x02, 0x01, 0xff],
+          // Negative values
+          &[0x02, 0x01, 0x80],
+          &[0x02, 0x01, 0xfe],
+          &[0x02, 0x01, 0xff],
 
-        // Values that have an unnecessary leading 0x00
-        &[0x02, 0x02, 0x00, 0x00],
-        &[0x02, 0x02, 0x00, 0x01],
-        &[0x02, 0x02, 0x00, 0x02],
-        &[0x02, 0x02, 0x00, 0x7e],
-        &[0x02, 0x02, 0x00, 0x7f],
-    ];
+          // Values that have an unnecessary leading 0x00
+          &[0x02, 0x02, 0x00, 0x00],
+          &[0x02, 0x02, 0x00, 0x01],
+          &[0x02, 0x02, 0x00, 0x02],
+          &[0x02, 0x02, 0x00, 0x7e],
+          &[0x02, 0x02, 0x00, 0x7f]];
 
     #[test]
     fn test_small_nonnegative_integer() {
@@ -269,7 +266,7 @@ mod tests {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
                 assert_eq!(try!(positive_integer(input)),
-                                untrusted::Input::from(&test_out[..]));
+                           untrusted::Input::from(&test_out[..]));
                 Ok(())
             });
         }

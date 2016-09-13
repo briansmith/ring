@@ -64,9 +64,9 @@
 
 
 #if !defined(BN_ULLONG)
-/* bn_div_words divides a double-width |h|,|l| by |d| and returns the result,
- * which must fit in a |BN_ULONG|. */
-static BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
+/* GFp_bn_div_words divides a double-width |h|,|l| by |d| and returns the
+ * result, which must fit in a |BN_ULONG|. */
+static BN_ULONG GFp_bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
   BN_ULONG dh, dl, q, ret = 0, th, tl, t;
   int i, count = 2;
 
@@ -74,7 +74,7 @@ static BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
     return BN_MASK2;
   }
 
-  i = BN_num_bits_word(d);
+  i = GFp_BN_num_bits_word(d);
   assert((i == BN_BITS2) || (h <= (BN_ULONG)1 << i));
 
   i = BN_BITS2 - i;
@@ -136,8 +136,9 @@ static BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
 }
 #endif /* !defined(BN_ULLONG) */
 
-static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
-                                    BN_ULONG n0, BN_ULONG n1, BN_ULONG d0) {
+static inline void GFp_bn_div_rem_words(BN_ULONG *quotient_out,
+                                        BN_ULONG *rem_out, BN_ULONG n0,
+                                        BN_ULONG n1, BN_ULONG d0) {
   /* GCC and Clang generate function calls to |__udivdi3| and |__umoddi3| when
    * the |BN_ULLONG|-based C code is used.
    *
@@ -171,14 +172,15 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
   BN_ULLONG n = (((BN_ULLONG)n0) << BN_BITS2) | n1;
   *quotient_out = (BN_ULONG)(n / d0);
 #else
-  *quotient_out = bn_div_words(n0, n1, d0);
+  *quotient_out = GFp_bn_div_words(n0, n1, d0);
 #endif
   *rem_out = n1 - (*quotient_out * d0);
 #endif
 }
 
-/* BN_div computes  dv := num / divisor,  rounding towards
- * zero, and sets up rm  such that  dv*divisor + rm = num  holds.
+/* GFp_BN_div computes  dv := num / divisor,  rounding towards zero, and sets
+ * up rm  such that  dv*divisor + rm = num  holds.
+ *
  * Thus:
  *     dv->neg == num->neg ^ divisor->neg  (unless the result is zero)
  *     rm->neg == num->neg                 (unless the remainder is zero)
@@ -188,7 +190,8 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
  * sensitive information; see "New Branch Prediction Vulnerabilities in OpenSSL
  * and Necessary Software Countermeasures" by Onur Acıçmez, Shay Gueron, and
  * Jean-Pierre Seifert. */
-int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
+int GFp_BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num,
+               const BIGNUM *divisor) {
   int norm_shift, i, loop;
   BN_ULONG *resp, *wnump;
   BN_ULONG d0, d1;
@@ -202,24 +205,24 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
     return 0;
   }
 
-  if (BN_is_zero(divisor)) {
+  if (GFp_BN_is_zero(divisor)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
   }
 
   BIGNUM snum;
-  BN_init(&snum);
+  GFp_BN_init(&snum);
 
   BIGNUM sdiv;
-  BN_init(&sdiv);
+  GFp_BN_init(&sdiv);
 
   BIGNUM tmp;
-  BN_init(&tmp);
+  GFp_BN_init(&tmp);
 
   BIGNUM res_tmp;
-  BN_init(&res_tmp);
+  GFp_BN_init(&res_tmp);
 
-  BIGNUM wnum; /* Weak; do not |BN_free|. */
+  BIGNUM wnum; /* Weak; do not |GFp_BN_free|. */
 
   BIGNUM *res; /* weak pointer */
   if (dv == NULL) {
@@ -231,13 +234,13 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
   int ret = 0;
 
   /* First we normalise the numbers */
-  norm_shift = BN_BITS2 - ((BN_num_bits(divisor)) % BN_BITS2);
-  if (!(BN_lshift(&sdiv, divisor, norm_shift))) {
+  norm_shift = BN_BITS2 - ((GFp_BN_num_bits(divisor)) % BN_BITS2);
+  if (!(GFp_BN_lshift(&sdiv, divisor, norm_shift))) {
     goto err;
   }
   sdiv.neg = 0;
   norm_shift += BN_BITS2;
-  if (!(BN_lshift(&snum, num, norm_shift))) {
+  if (!(GFp_BN_lshift(&snum, num, norm_shift))) {
     goto err;
   }
   snum.neg = 0;
@@ -246,7 +249,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
    * larger than sdiv, we pad snum with enough zeroes without changing its
    * value. */
   if (snum.top <= sdiv.top + 1) {
-    if (bn_wexpand(&snum, sdiv.top + 2) == NULL) {
+    if (GFp_bn_wexpand(&snum, sdiv.top + 2) == NULL) {
       goto err;
     }
     for (i = snum.top; i < sdiv.top + 2; i++) {
@@ -254,7 +257,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
     }
     snum.top = sdiv.top + 2;
   } else {
-    if (bn_wexpand(&snum, snum.top + 1) == NULL) {
+    if (GFp_bn_wexpand(&snum, snum.top + 1) == NULL) {
       goto err;
     }
     snum.d[snum.top] = 0;
@@ -271,7 +274,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
   wnum.neg = 0;
   wnum.d = &(snum.d[loop]);
   wnum.top = div_n;
-  /* only needed when BN_ucmp messes up the values between top and max */
+  /* only needed when |GFp_BN_ucmp| messes up the values between top and max */
   wnum.dmax = snum.dmax - loop; /* so we don't step out of bounds */
 
   /* Get the top 2 words of sdiv */
@@ -284,14 +287,14 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
 
   /* Setup to 'res' */
   res->neg = (num->neg ^ divisor->neg);
-  if (!bn_wexpand(res, (loop + 1))) {
+  if (!GFp_bn_wexpand(res, (loop + 1))) {
     goto err;
   }
   res->top = loop - 1;
   resp = &(res->d[loop - 1]);
 
   /* space for temp */
-  if (!bn_wexpand(&tmp, (div_n + 1))) {
+  if (!GFp_bn_wexpand(&tmp, (div_n + 1))) {
     goto err;
   }
 
@@ -315,7 +318,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
       q = BN_MASK2;
     } else {
       /* n0 < d0 */
-      bn_div_rem_words(&q, &rem, n0, n1, d0);
+      GFp_bn_div_rem_words(&q, &rem, n0, n1, d0);
 
 #ifdef BN_ULLONG
       BN_ULLONG t2 = (BN_ULLONG)d1 * q;
@@ -350,19 +353,19 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
 #endif /* !BN_ULLONG */
     }
 
-    l0 = bn_mul_words(tmp.d, sdiv.d, div_n, q);
+    l0 = GFp_bn_mul_words(tmp.d, sdiv.d, div_n, q);
     tmp.d[div_n] = l0;
     wnum.d--;
     /* ingore top values of the bignums just sub the two
-     * BN_ULONG arrays with bn_sub_words */
-    if (bn_sub_words(wnum.d, wnum.d, tmp.d, div_n + 1)) {
+     * BN_ULONG arrays with GFp_bn_sub_words */
+    if (GFp_bn_sub_words(wnum.d, wnum.d, tmp.d, div_n + 1)) {
       /* Note: As we have considered only the leading
        * two BN_ULONGs in the calculation of q, sdiv * q
        * might be greater than wnum (but then (q-1) * sdiv
        * is less or equal than wnum)
        */
       q--;
-      if (bn_add_words(wnum.d, wnum.d, sdiv.d, div_n)) {
+      if (GFp_bn_add_words(wnum.d, wnum.d, sdiv.d, div_n)) {
         /* we can't have an overflow here (assuming
          * that q != 0, but if q == 0 then tmp is
          * zero anyway) */
@@ -372,33 +375,32 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor) {
     /* store part of the result */
     *resp = q;
   }
-  bn_correct_top(&snum);
+  GFp_bn_correct_top(&snum);
   if (rm != NULL) {
-    /* Keep a copy of the neg flag in num because if rm==num
-     * BN_rshift() will overwrite it.
-     */
+    /* Keep a copy of the neg flag in num because if rm==num |GFp_BN_rshift|
+     * will overwrite it. */
     int neg = num->neg;
-    if (!BN_rshift(rm, &snum, norm_shift)) {
+    if (!GFp_BN_rshift(rm, &snum, norm_shift)) {
       goto err;
     }
-    if (!BN_is_zero(rm)) {
+    if (!GFp_BN_is_zero(rm)) {
       rm->neg = neg;
     }
   }
-  bn_correct_top(res);
+  GFp_bn_correct_top(res);
   ret = 1;
 
 err:
-  BN_free(&tmp);
-  BN_free(&snum);
-  BN_free(&sdiv);
-  BN_free(&res_tmp);
+  GFp_BN_free(&tmp);
+  GFp_BN_free(&snum);
+  GFp_BN_free(&sdiv);
+  GFp_BN_free(&res_tmp);
 
   return ret;
 }
 
-int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d) {
-  if (!(BN_mod(r, m, d))) {
+int GFp_BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d) {
+  if (!(GFp_BN_mod(r, m, d))) {
     return 0;
   }
   if (!r->neg) {
@@ -406,16 +408,16 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d) {
   }
 
   /* now -|d| < r < 0, so we have to set r := r + |d|. */
-  return (d->neg ? BN_sub : BN_add)(r, r, d);
+  return (d->neg ? GFp_BN_sub : GFp_BN_add)(r, r, d);
 }
 
-int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                     const BIGNUM *m) {
-  if (!BN_sub(r, a, b)) {
+int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m) {
+  if (!GFp_BN_sub(r, a, b)) {
     return 0;
   }
   if (r->neg) {
-    return BN_add(r, r, m);
+    return GFp_BN_add(r, r, m);
   }
   return 1;
 }

@@ -13,7 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 /* This is the precomputed constant time access table for the code in
- * ecp_nistz256.c, for the default generator. The table consists of 37
+ * GFp_nistz256.c, for the default generator. The table consists of 37
  * subtables, each subtable contains 64 affine points. The affine points are
  * encoded as eight uint64's, four for the x coordinate and four for the y.
  * Both values are in little-endian order. There are 37 tables because a
@@ -25,7 +25,7 @@
  * lead to invalid ELF files being produced. */
 
 static const alignas(4096) BN_ULONG
-    ecp_nistz256_precomputed[37][64 * sizeof(P256_POINT_AFFINE) /
+    GFp_nistz256_precomputed[37][64 * sizeof(P256_POINT_AFFINE) /
                                  sizeof(BN_ULONG)] = {
         {TOBN(0x79e730d4, 0x18a9143c), TOBN(0x75ba95fc, 0x5fedb601),
          TOBN(0x79fb732b, 0x77622510), TOBN(0x18905f76, 0xa53755c6),

@@ -27,15 +27,13 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8])
     if a.len() != b.len() {
         return Err(error::Unspecified);
     }
-    let result = unsafe {
-        CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len())
-    };
+    let result = unsafe { GFp_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
     match result {
         0 => Ok(()),
-        _ => Err(error::Unspecified)
+        _ => Err(error::Unspecified),
     }
 }
 
 extern {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn GFp_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }

@@ -62,8 +62,8 @@
 #include "internal.h"
 
 
-static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
-                          int nb) {
+static void GFp_bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
+                              int nb) {
   assert(r != a);
   assert(r != b);
 
@@ -82,36 +82,36 @@ static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
   }
   rr = &(r[na]);
   if (nb <= 0) {
-    (void)bn_mul_words(r, a, na, 0);
+    (void)GFp_bn_mul_words(r, a, na, 0);
     return;
   } else {
-    rr[0] = bn_mul_words(r, a, na, b[0]);
+    rr[0] = GFp_bn_mul_words(r, a, na, b[0]);
   }
 
   for (;;) {
     if (--nb <= 0) {
       return;
     }
-    rr[1] = bn_mul_add_words(&(r[1]), a, na, b[1]);
+    rr[1] = GFp_bn_mul_add_words(&(r[1]), a, na, b[1]);
     if (--nb <= 0) {
       return;
     }
-    rr[2] = bn_mul_add_words(&(r[2]), a, na, b[2]);
+    rr[2] = GFp_bn_mul_add_words(&(r[2]), a, na, b[2]);
     if (--nb <= 0) {
       return;
     }
-    rr[3] = bn_mul_add_words(&(r[3]), a, na, b[3]);
+    rr[3] = GFp_bn_mul_add_words(&(r[3]), a, na, b[3]);
     if (--nb <= 0) {
       return;
     }
-    rr[4] = bn_mul_add_words(&(r[4]), a, na, b[4]);
+    rr[4] = GFp_bn_mul_add_words(&(r[4]), a, na, b[4]);
     rr += 4;
     r += 4;
     b += 4;
   }
 }
 
-int BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   assert(r != a);
   assert(r != b);
 
@@ -122,20 +122,20 @@ int BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   bl = b->top;
 
   if ((al == 0) || (bl == 0)) {
-    BN_zero(r);
+    GFp_BN_zero(r);
     return 1;
   }
   top = al + bl;
 
   r->neg = a->neg ^ b->neg;
 
-  if (bn_wexpand(r, top) == NULL) {
+  if (GFp_bn_wexpand(r, top) == NULL) {
     goto err;
   }
   r->top = top;
-  bn_mul_normal(r->d, a->d, al, b->d, bl);
+  GFp_bn_mul_normal(r->d, a->d, al, b->d, bl);
 
-  bn_correct_top(r);
+  GFp_bn_correct_top(r);
   ret = 1;
 
 err:

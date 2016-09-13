@@ -29,11 +29,11 @@
 typedef struct { uint64_t v[5]; } fe25519;
 
 /* These functions are defined in asm/x25519-x86_64.S */
-void x25519_x86_64_work_cswap(fe25519 *, uint64_t);
-void x25519_x86_64_mul(fe25519 *out, const fe25519 *a, const fe25519 *b);
-void x25519_x86_64_square(fe25519 *out, const fe25519 *a);
-void x25519_x86_64_freeze(fe25519 *);
-void x25519_x86_64_ladderstep(fe25519 *work);
+void GFp_x25519_x86_64_work_cswap(fe25519 *, uint64_t);
+void GFp_x25519_x86_64_mul(fe25519 *out, const fe25519 *a, const fe25519 *b);
+void GFp_x25519_x86_64_square(fe25519 *out, const fe25519 *a);
+void GFp_x25519_x86_64_freeze(fe25519 *);
+void GFp_x25519_x86_64_ladderstep(fe25519 *work);
 
 static void fe25519_setint(fe25519 *r, unsigned v) {
   r->v[0] = v;
@@ -47,7 +47,7 @@ static void fe25519_setint(fe25519 *r, unsigned v) {
 static void fe25519_pack(unsigned char r[32], const fe25519 *x) {
   fe25519 t;
   t = *x;
-  x25519_x86_64_freeze(&t);
+  GFp_x25519_x86_64_freeze(&t);
 
   r[0] = (uint8_t)(t.v[0] & 0xff);
   r[1] = (uint8_t)((t.v[0] >> 8) & 0xff);
@@ -146,52 +146,52 @@ static void fe25519_invert(fe25519 *r, const fe25519 *x) {
   fe25519 t;
   int i;
 
-  /* 2 */ x25519_x86_64_square(&z2, x);
-  /* 4 */ x25519_x86_64_square(&t, &z2);
-  /* 8 */ x25519_x86_64_square(&t, &t);
-  /* 9 */ x25519_x86_64_mul(&z9, &t, x);
-  /* 11 */ x25519_x86_64_mul(&z11, &z9, &z2);
-  /* 22 */ x25519_x86_64_square(&t, &z11);
-  /* 2^5 - 2^0 = 31 */ x25519_x86_64_mul(&z2_5_0, &t, &z9);
+  /* 2 */ GFp_x25519_x86_64_square(&z2, x);
+  /* 4 */ GFp_x25519_x86_64_square(&t, &z2);
+  /* 8 */ GFp_x25519_x86_64_square(&t, &t);
+  /* 9 */ GFp_x25519_x86_64_mul(&z9, &t, x);
+  /* 11 */ GFp_x25519_x86_64_mul(&z11, &z9, &z2);
+  /* 22 */ GFp_x25519_x86_64_square(&t, &z11);
+  /* 2^5 - 2^0 = 31 */ GFp_x25519_x86_64_mul(&z2_5_0, &t, &z9);
 
-  /* 2^6 - 2^1 */ x25519_x86_64_square(&t, &z2_5_0);
-  /* 2^20 - 2^10 */ for (i = 1; i < 5; i++) { x25519_x86_64_square(&t, &t); }
-  /* 2^10 - 2^0 */ x25519_x86_64_mul(&z2_10_0, &t, &z2_5_0);
+  /* 2^6 - 2^1 */ GFp_x25519_x86_64_square(&t, &z2_5_0);
+  /* 2^20 - 2^10 */ for (i = 1; i < 5; i++) { GFp_x25519_x86_64_square(&t, &t); }
+  /* 2^10 - 2^0 */ GFp_x25519_x86_64_mul(&z2_10_0, &t, &z2_5_0);
 
-  /* 2^11 - 2^1 */ x25519_x86_64_square(&t, &z2_10_0);
-  /* 2^20 - 2^10 */ for (i = 1; i < 10; i++) { x25519_x86_64_square(&t, &t); }
-  /* 2^20 - 2^0 */ x25519_x86_64_mul(&z2_20_0, &t, &z2_10_0);
+  /* 2^11 - 2^1 */ GFp_x25519_x86_64_square(&t, &z2_10_0);
+  /* 2^20 - 2^10 */ for (i = 1; i < 10; i++) { GFp_x25519_x86_64_square(&t, &t); }
+  /* 2^20 - 2^0 */ GFp_x25519_x86_64_mul(&z2_20_0, &t, &z2_10_0);
 
-  /* 2^21 - 2^1 */ x25519_x86_64_square(&t, &z2_20_0);
-  /* 2^40 - 2^20 */ for (i = 1; i < 20; i++) { x25519_x86_64_square(&t, &t); }
-  /* 2^40 - 2^0 */ x25519_x86_64_mul(&t, &t, &z2_20_0);
+  /* 2^21 - 2^1 */ GFp_x25519_x86_64_square(&t, &z2_20_0);
+  /* 2^40 - 2^20 */ for (i = 1; i < 20; i++) { GFp_x25519_x86_64_square(&t, &t); }
+  /* 2^40 - 2^0 */ GFp_x25519_x86_64_mul(&t, &t, &z2_20_0);
 
-  /* 2^41 - 2^1 */ x25519_x86_64_square(&t, &t);
-  /* 2^50 - 2^10 */ for (i = 1; i < 10; i++) { x25519_x86_64_square(&t, &t); }
-  /* 2^50 - 2^0 */ x25519_x86_64_mul(&z2_50_0, &t, &z2_10_0);
+  /* 2^41 - 2^1 */ GFp_x25519_x86_64_square(&t, &t);
+  /* 2^50 - 2^10 */ for (i = 1; i < 10; i++) { GFp_x25519_x86_64_square(&t, &t); }
+  /* 2^50 - 2^0 */ GFp_x25519_x86_64_mul(&z2_50_0, &t, &z2_10_0);
 
-  /* 2^51 - 2^1 */ x25519_x86_64_square(&t, &z2_50_0);
-  /* 2^100 - 2^50 */ for (i = 1; i < 50; i++) { x25519_x86_64_square(&t, &t); }
-  /* 2^100 - 2^0 */ x25519_x86_64_mul(&z2_100_0, &t, &z2_50_0);
+  /* 2^51 - 2^1 */ GFp_x25519_x86_64_square(&t, &z2_50_0);
+  /* 2^100 - 2^50 */ for (i = 1; i < 50; i++) { GFp_x25519_x86_64_square(&t, &t); }
+  /* 2^100 - 2^0 */ GFp_x25519_x86_64_mul(&z2_100_0, &t, &z2_50_0);
 
-  /* 2^101 - 2^1 */ x25519_x86_64_square(&t, &z2_100_0);
+  /* 2^101 - 2^1 */ GFp_x25519_x86_64_square(&t, &z2_100_0);
   /* 2^200 - 2^100 */ for (i = 1; i < 100; i++) {
-    x25519_x86_64_square(&t, &t);
+    GFp_x25519_x86_64_square(&t, &t);
   }
-  /* 2^200 - 2^0 */ x25519_x86_64_mul(&t, &t, &z2_100_0);
+  /* 2^200 - 2^0 */ GFp_x25519_x86_64_mul(&t, &t, &z2_100_0);
 
-  /* 2^201 - 2^1 */ x25519_x86_64_square(&t, &t);
-  /* 2^250 - 2^50 */ for (i = 1; i < 50; i++) { x25519_x86_64_square(&t, &t); }
-  /* 2^250 - 2^0 */ x25519_x86_64_mul(&t, &t, &z2_50_0);
+  /* 2^201 - 2^1 */ GFp_x25519_x86_64_square(&t, &t);
+  /* 2^250 - 2^50 */ for (i = 1; i < 50; i++) { GFp_x25519_x86_64_square(&t, &t); }
+  /* 2^250 - 2^0 */ GFp_x25519_x86_64_mul(&t, &t, &z2_50_0);
 
-  /* 2^251 - 2^1 */ x25519_x86_64_square(&t, &t);
-  /* 2^252 - 2^2 */ x25519_x86_64_square(&t, &t);
-  /* 2^253 - 2^3 */ x25519_x86_64_square(&t, &t);
+  /* 2^251 - 2^1 */ GFp_x25519_x86_64_square(&t, &t);
+  /* 2^252 - 2^2 */ GFp_x25519_x86_64_square(&t, &t);
+  /* 2^253 - 2^3 */ GFp_x25519_x86_64_square(&t, &t);
 
-  /* 2^254 - 2^4 */ x25519_x86_64_square(&t, &t);
+  /* 2^254 - 2^4 */ GFp_x25519_x86_64_square(&t, &t);
 
-  /* 2^255 - 2^5 */ x25519_x86_64_square(&t, &t);
-  /* 2^255 - 21 */ x25519_x86_64_mul(r, &t, &z11);
+  /* 2^255 - 2^5 */ GFp_x25519_x86_64_square(&t, &t);
+  /* 2^255 - 21 */ GFp_x25519_x86_64_mul(r, &t, &z11);
 }
 
 static void mladder(fe25519 *xr, fe25519 *zr, const uint8_t s[32]) {
@@ -212,8 +212,8 @@ static void mladder(fe25519 *xr, fe25519 *zr, const uint8_t s[32]) {
       const uint8_t bit = 1 & (s[i] >> j);
       const uint64_t swap = bit ^ prevbit;
       prevbit = bit;
-      x25519_x86_64_work_cswap(work + 1, swap);
-      x25519_x86_64_ladderstep(work);
+      GFp_x25519_x86_64_work_cswap(work + 1, swap);
+      GFp_x25519_x86_64_ladderstep(work);
       j -= 1;
     }
     j = 7;
@@ -223,8 +223,8 @@ static void mladder(fe25519 *xr, fe25519 *zr, const uint8_t s[32]) {
   *zr = work[2];
 }
 
-void x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
-                  const uint8_t point[32]) {
+void GFp_x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
+                       const uint8_t point[32]) {
   uint8_t e[32];
   memcpy(e, scalar, sizeof(e));
 
@@ -237,7 +237,7 @@ void x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
   fe25519_unpack(&t, point);
   mladder(&t, &z, e);
   fe25519_invert(&z, &z);
-  x25519_x86_64_mul(&t, &t, &z);
+  GFp_x25519_x86_64_mul(&t, &t, &z);
   fe25519_pack(out, &t);
 }
 

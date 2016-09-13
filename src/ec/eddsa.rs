@@ -42,8 +42,7 @@ impl<'a> Ed25519KeyPair {
     /// future use then use `generate_serializable()` instead.
     pub fn generate(rng: &rand::SecureRandom)
                     -> Result<Ed25519KeyPair, error::Unspecified> {
-        Ed25519KeyPair::generate_serializable(rng)
-            .map(|(key_pair, _)| key_pair)
+        Ed25519KeyPair::generate_serializable(rng).map(|(key_pair, _)| key_pair)
     }
 
     /// Generates a new key pair and returns the key pair as both an
@@ -81,8 +80,8 @@ impl<'a> Ed25519KeyPair {
     /// corruption that might have occurred during storage of the key pair.
     pub fn from_bytes(private_key: &[u8], public_key: &[u8])
                       -> Result<Ed25519KeyPair, error::Unspecified> {
-        let pair =
-            try!(Ed25519KeyPair::from_bytes_unchecked(private_key, public_key));
+        let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
+                                                             public_key));
         let mut public_key_check = [0; 32];
         unsafe {
             GFp_ed25519_public_from_private(public_key_check.as_mut_ptr(),
@@ -111,9 +110,7 @@ impl<'a> Ed25519KeyPair {
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
-    pub fn public_key_bytes(&'a self) -> &'a [u8] {
-        &self.private_public[32..]
-    }
+    pub fn public_key_bytes(&'a self) -> &'a [u8] { &self.private_public[32..] }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
@@ -132,7 +129,7 @@ impl<'a> Ed25519KeyPair {
 /// Ed25519 uses SHA-512 as the digest algorithm.
 ///
 /// [Ed25519]: https://ed25519.cr.yp.to/
-pub static ED25519: EdDSAParameters = EdDSAParameters { };
+pub static ED25519: EdDSAParameters = EdDSAParameters {};
 
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
@@ -150,7 +147,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     }
 }
 
-impl private::Private for EdDSAParameters { }
+impl private::Private for EdDSAParameters {}
 
 
 extern  {
@@ -203,8 +200,7 @@ mod tests {
     #[test]
     fn test_ed25519_from_bytes_misuse() {
         let rng = rand::SystemRandom::new();
-        let (_, bytes) =
-            Ed25519KeyPair::generate_serializable(&rng).unwrap();
+        let (_, bytes) = Ed25519KeyPair::generate_serializable(&rng).unwrap();
 
         assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
                                            &bytes.public_key).is_ok());

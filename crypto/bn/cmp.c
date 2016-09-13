@@ -59,7 +59,7 @@
 #include "internal.h"
 
 
-int BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
   int i;
   BN_ULONG t1, t2, *ap, *bp;
 
@@ -81,7 +81,7 @@ int BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
   return 0;
 }
 
-int BN_cmp(const BIGNUM *a, const BIGNUM *b) {
+int GFp_BN_cmp(const BIGNUM *a, const BIGNUM *b) {
   int i;
   int gt, lt;
   BN_ULONG t1, t2;
@@ -130,7 +130,7 @@ int BN_cmp(const BIGNUM *a, const BIGNUM *b) {
   return 0;
 }
 
-int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
+int GFp_BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
   switch (bn->top) {
     case 1:
       return bn->d[0] == w;
@@ -141,25 +141,25 @@ int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
   }
 }
 
-int BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
+int GFp_BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
   BIGNUM b_bn;
-  BN_init(&b_bn);
+  GFp_BN_init(&b_bn);
 
   b_bn.d = &b;
   b_bn.top = b > 0;
   b_bn.dmax = 1;
   b_bn.flags = BN_FLG_STATIC_DATA;
-  return BN_cmp(a, &b_bn);
+  return GFp_BN_cmp(a, &b_bn);
 }
 
-int BN_is_zero(const BIGNUM *bn) {
+int GFp_BN_is_zero(const BIGNUM *bn) {
   return bn->top == 0;
 }
 
-int BN_is_one(const BIGNUM *bn) {
-  return bn->neg == 0 && BN_abs_is_word(bn, 1);
+int GFp_BN_is_one(const BIGNUM *bn) {
+  return bn->neg == 0 && GFp_BN_abs_is_word(bn, 1);
 }
 
-int BN_is_odd(const BIGNUM *bn) {
+int GFp_BN_is_odd(const BIGNUM *bn) {
   return bn->top > 0 && (bn->d[0] & 1) == 1;
 }

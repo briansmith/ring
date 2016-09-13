@@ -65,7 +65,7 @@
 #include "internal.h"
 
 
-BIGNUM *BN_new(void) {
+BIGNUM *GFp_BN_new(void) {
   BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
 
   if (bn == NULL) {
@@ -79,11 +79,11 @@ BIGNUM *BN_new(void) {
   return bn;
 }
 
-void BN_init(BIGNUM *bn) {
+void GFp_BN_init(BIGNUM *bn) {
   memset(bn, 0, sizeof(BIGNUM));
 }
 
-void BN_free(BIGNUM *bn) {
+void GFp_BN_free(BIGNUM *bn) {
   if (bn == NULL) {
     return;
   }
@@ -99,12 +99,12 @@ void BN_free(BIGNUM *bn) {
   }
 }
 
-BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src) {
+BIGNUM *GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
   if (src == dest) {
     return dest;
   }
 
-  if (bn_wexpand(dest, src->top) == NULL) {
+  if (GFp_bn_wexpand(dest, src->top) == NULL) {
     return NULL;
   }
 
@@ -115,7 +115,7 @@ BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src) {
   return dest;
 }
 
-const BIGNUM *BN_value_one(void) {
+const BIGNUM *GFp_BN_value_one(void) {
   static const BN_ULONG kOneLimbs[1] = { 1 };
   STATIC_BIGNUM_DIAGNOSTIC_PUSH
   static const BIGNUM kOne = STATIC_BIGNUM(kOneLimbs);
@@ -124,9 +124,9 @@ const BIGNUM *BN_value_one(void) {
   return &kOne;
 }
 
-/* BN_num_bits_word returns the minimum number of bits needed to represent the
- * value in |l|. */
-unsigned BN_num_bits_word(BN_ULONG l) {
+/* GFp_BN_num_bits_word returns the minimum number of bits needed to represent
+ * the value in |l|. */
+unsigned GFp_BN_num_bits_word(BN_ULONG l) {
   static const unsigned char bits[256] = {
       0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
       5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
@@ -174,35 +174,35 @@ unsigned BN_num_bits_word(BN_ULONG l) {
   }
 }
 
-unsigned BN_num_bits(const BIGNUM *bn) {
+unsigned GFp_BN_num_bits(const BIGNUM *bn) {
   const int max = bn->top - 1;
 
-  if (BN_is_zero(bn)) {
+  if (GFp_BN_is_zero(bn)) {
     return 0;
   }
 
-  return max*BN_BITS2 + BN_num_bits_word(bn->d[max]);
+  return max*BN_BITS2 + GFp_BN_num_bits_word(bn->d[max]);
 }
 
-unsigned BN_num_bytes(const BIGNUM *bn) {
-  return (BN_num_bits(bn) + 7) / 8;
+unsigned GFp_BN_num_bytes(const BIGNUM *bn) {
+  return (GFp_BN_num_bits(bn) + 7) / 8;
 }
 
-void BN_zero(BIGNUM *bn) {
+void GFp_BN_zero(BIGNUM *bn) {
   bn->top = bn->neg = 0;
 }
 
-int BN_one(BIGNUM *bn) {
-  return BN_set_word(bn, 1);
+int GFp_BN_one(BIGNUM *bn) {
+  return GFp_BN_set_word(bn, 1);
 }
 
-int BN_set_word(BIGNUM *bn, BN_ULONG value) {
+int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value) {
   if (value == 0) {
-    BN_zero(bn);
+    GFp_BN_zero(bn);
     return 1;
   }
 
-  if (bn_wexpand(bn, 1) == NULL) {
+  if (GFp_bn_wexpand(bn, 1) == NULL) {
     return 0;
   }
 
@@ -212,11 +212,11 @@ int BN_set_word(BIGNUM *bn, BN_ULONG value) {
   return 1;
 }
 
-int BN_is_negative(const BIGNUM *bn) {
+int GFp_BN_is_negative(const BIGNUM *bn) {
   return bn->neg != 0;
 }
 
-BIGNUM *bn_wexpand(BIGNUM *bn, size_t words) {
+BIGNUM *GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   BN_ULONG *a;
 
   if (words <= (size_t)bn->dmax) {
@@ -248,7 +248,7 @@ BIGNUM *bn_wexpand(BIGNUM *bn, size_t words) {
   return bn;
 }
 
-void bn_correct_top(BIGNUM *bn) {
+void GFp_bn_correct_top(BIGNUM *bn) {
   BN_ULONG *ftl;
   int tmp_top = bn->top;
 
@@ -266,10 +266,10 @@ void bn_correct_top(BIGNUM *bn) {
   }
 }
 
-int BN_get_flags(const BIGNUM *bn, int flags) {
+int GFp_BN_get_flags(const BIGNUM *bn, int flags) {
   return bn->flags & flags;
 }
 
-void BN_set_flags(BIGNUM *bn, int flags) {
+void GFp_BN_set_flags(BIGNUM *bn, int flags) {
   bn->flags |= flags;
 }

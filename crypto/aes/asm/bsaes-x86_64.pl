@@ -800,7 +800,7 @@ ___
 $code.=<<___;
 .text
 
-.extern	asm_AES_encrypt
+.extern	GFp_asm_AES_encrypt
 
 .type	_bsaes_encrypt8,\@abi-omnipotent
 .align	64
@@ -980,56 +980,6 @@ _bsaes_key_convert:
 ___
 }
 
-if (0 && !$win64) {	# following four functions are unsupported interface
-			# used for benchmarking...
-$code.=<<___;
-.globl	bsaes_enc_key_convert
-.type	bsaes_enc_key_convert,\@function,2
-.align	16
-bsaes_enc_key_convert:
-	mov	240($inp),%r10d		# pass rounds
-	mov	$inp,%rcx		# pass key
-	mov	$out,%rax		# pass key schedule
-	call	_bsaes_key_convert
-	pxor	%xmm6,%xmm7		# fix up last round key
-	movdqa	%xmm7,(%rax)		# save last round key
-	ret
-.size	bsaes_enc_key_convert,.-bsaes_enc_key_convert
-
-.globl	bsaes_encrypt_128
-.type	bsaes_encrypt_128,\@function,4
-.align	16
-bsaes_encrypt_128:
-.Lenc128_loop:
-	movdqu	0x00($inp), @XMM[0]	# load input
-	movdqu	0x10($inp), @XMM[1]
-	movdqu	0x20($inp), @XMM[2]
-	movdqu	0x30($inp), @XMM[3]
-	movdqu	0x40($inp), @XMM[4]
-	movdqu	0x50($inp), @XMM[5]
-	movdqu	0x60($inp), @XMM[6]
-	movdqu	0x70($inp), @XMM[7]
-	mov	$key, %rax		# pass the $key
-	lea	0x80($inp), $inp
-	mov	\$10,%r10d
-
-	call	_bsaes_encrypt8
-
-	movdqu	@XMM[0], 0x00($out)	# write output
-	movdqu	@XMM[1], 0x10($out)
-	movdqu	@XMM[4], 0x20($out)
-	movdqu	@XMM[6], 0x30($out)
-	movdqu	@XMM[3], 0x40($out)
-	movdqu	@XMM[7], 0x50($out)
-	movdqu	@XMM[2], 0x60($out)
-	movdqu	@XMM[5], 0x70($out)
-	lea	0x80($out), $out
-	sub	\$0x80,$len
-	ja	.Lenc128_loop
-	ret
-.size	bsaes_encrypt_128,.-bsaes_encrypt_128
-___
-}
 {
 ######################################################################
 #
@@ -1040,10 +990,10 @@ my ($arg1,$arg2,$arg3,$arg4,$arg5,$arg6)=$win64	? ("%rcx","%rdx","%r8","%r9","%r
 my ($inp,$out,$len,$key)=("%r12","%r13","%r14","%r15");
 
 $code.=<<___;
-.globl	bsaes_ctr32_encrypt_blocks
-.type	bsaes_ctr32_encrypt_blocks,\@abi-omnipotent
+.globl	GFp_bsaes_ctr32_encrypt_blocks
+.type	GFp_bsaes_ctr32_encrypt_blocks,\@abi-omnipotent
 .align	16
-bsaes_ctr32_encrypt_blocks:
+GFp_bsaes_ctr32_encrypt_blocks:
 	mov	%rsp, %rax
 .Lctr_enc_prologue:
 	push	%rbp
@@ -1220,7 +1170,7 @@ $code.=<<___;
 	lea	0x20(%rbp), $arg1
 	lea	0x30(%rbp), $arg2
 	lea	($key), $arg3
-	call	asm_AES_encrypt
+	call	GFp_asm_AES_encrypt
 	movdqu	($inp), @XMM[1]
 	lea	16($inp), $inp
 	mov	0x2c(%rbp), %eax	# load 32-bit counter
@@ -1270,7 +1220,7 @@ $code.=<<___;
 	mov	%rax, %rbp
 .Lctr_enc_epilogue:
 	ret
-.size	bsaes_ctr32_encrypt_blocks,.-bsaes_ctr32_encrypt_blocks
+.size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;

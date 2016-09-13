@@ -87,7 +87,7 @@ $addx=0;
 
 $code.=<<___;
 .text
-.extern	OPENSSL_ia32cap_P
+.extern	GFp_ia32cap_P
 
 # Constants for computations modulo ord(p256)
 .align 64
@@ -117,7 +117,7 @@ GFp_p256_scalar_mul_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 	cmp	\$0x80100, %ecx
 	je	ecp_nistz256_ord_mul_montx
 ___
@@ -625,7 +625,7 @@ GFp_p256_scalar_sqr_rep_mont:
 ___
 $code.=<<___	if ($addx);
 	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
+	and	GFp_ia32cap_P+8(%rip), %ecx
 	cmp	\$0x80100, %ecx
 	je	ecp_nistz256_ord_sqr_montx
 ___

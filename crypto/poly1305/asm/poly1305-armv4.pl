@@ -49,12 +49,13 @@ $code.=<<___;
 .code	32
 #endif
 
-.globl	poly1305_emit
-.globl	poly1305_blocks
-.globl	poly1305_init
-.type	poly1305_init,%function
+.globl	GFp_poly1305_emit
+.globl	GFp_poly1305_blocks
+.globl	GFp_poly1305_init_asm
+
+.type	GFp_poly1305_init_asm,%function
 .align	5
-poly1305_init:
+GFp_poly1305_init_asm:
 .Lpoly1305_init:
 	stmdb	sp!,{r4-r11}
 
@@ -93,7 +94,7 @@ poly1305_init:
 	and	r4,r4,r10
 
 #if	__ARM_MAX_ARCH__>=7
-	ldr	r12,[r11,r12]		@ OPENSSL_armcap_P
+	ldr	r12,[r11,r12]		@ GFp_armcap_P
 # ifdef	__APPLE__
 	ldr	r12,[r12]
 # endif
@@ -111,12 +112,12 @@ poly1305_init:
 	tst	r12,#ARMV7_NEON		@ check for NEON
 # ifdef	__APPLE__
 	adr	r9,poly1305_blocks_neon
-	adr	r11,poly1305_blocks
+	adr	r11,GFp_poly1305_blocks
 #  ifdef __thumb2__
 	it	ne
 #  endif
 	movne	r11,r9
-	adr	r12,poly1305_emit
+	adr	r12,GFp_poly1305_emit
 	adr	r10,poly1305_emit_neon
 #  ifdef __thumb2__
 	it	ne
@@ -126,9 +127,9 @@ poly1305_init:
 #  ifdef __thumb2__
 	itete	eq
 #  endif
-	addeq	r12,r11,#(poly1305_emit-.Lpoly1305_init)
+	addeq	r12,r11,#(GFp_poly1305_emit-.Lpoly1305_init)
 	addne	r12,r11,#(poly1305_emit_neon-.Lpoly1305_init)
-	addeq	r11,r11,#(poly1305_blocks-.Lpoly1305_init)
+	addeq	r11,r11,#(GFp_poly1305_blocks-.Lpoly1305_init)
 	addne	r11,r11,#(poly1305_blocks_neon-.Lpoly1305_init)
 # endif
 # ifdef	__thumb2__
@@ -169,16 +170,16 @@ poly1305_init:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	poly1305_init,.-poly1305_init
+.size	GFp_poly1305_init_asm,.-GFp_poly1305_init_asm
 ___
 {
 my ($h0,$h1,$h2,$h3,$h4,$r0,$r1,$r2,$r3)=map("r$_",(4..12));
 my ($s1,$s2,$s3)=($r1,$r2,$r3);
 
 $code.=<<___;
-.type	poly1305_blocks,%function
+.type	GFp_poly1305_blocks,%function
 .align	5
-poly1305_blocks:
+GFp_poly1305_blocks:
 	stmdb	sp!,{r3-r11,lr}
 
 	ands	$len,$len,#-16
@@ -332,7 +333,7 @@ poly1305_blocks:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	poly1305_blocks,.-poly1305_blocks
+.size	GFp_poly1305_blocks,.-GFp_poly1305_blocks
 ___
 }
 {
@@ -341,9 +342,9 @@ my ($h0,$h1,$h2,$h3,$h4,$g0,$g1,$g2,$g3)=map("r$_",(3..11));
 my $g4=$h4;
 
 $code.=<<___;
-.type	poly1305_emit,%function
+.type	GFp_poly1305_emit,%function
 .align	5
-poly1305_emit:
+GFp_poly1305_emit:
 	stmdb	sp!,{r4-r11}
 .Lpoly1305_emit_enter:
 
@@ -433,7 +434,7 @@ poly1305_emit:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	poly1305_emit,.-poly1305_emit
+.size	GFp_poly1305_emit,.-GFp_poly1305_emit
 ___
 {
 my ($R0,$R1,$S1,$R2,$S2,$R3,$S3,$R4,$S4) = map("d$_",(0..9));
@@ -670,7 +671,7 @@ poly1305_blocks_neon:
 	cmp	$len,#64
 	bhs	.Lenter_neon
 	tst	ip,ip			@ is_base2_26?
-	beq	poly1305_blocks
+	beq	GFp_poly1305_blocks
 
 .Lenter_neon:
 	stmdb	sp!,{r4-r7}
@@ -1221,7 +1222,7 @@ poly1305_emit_neon:
 .Lzeros:
 .long	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 .LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lpoly1305_init
+.word	GFp_armcap_P-.Lpoly1305_init
 #endif
 ___
 }	}
@@ -1229,7 +1230,7 @@ $code.=<<___;
 .asciz	"Poly1305 for ARMv4/NEON, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if	__ARM_MAX_ARCH__>=7
-.comm   OPENSSL_armcap_P,4,4
+.comm   GFp_armcap_P,4,4
 #endif
 ___
 

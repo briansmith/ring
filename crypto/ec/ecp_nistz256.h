@@ -36,16 +36,16 @@ typedef struct {
 } P256_POINT_AFFINE;
 
 
-void ecp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
+void GFp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
                            const BN_ULONG a[P256_LIMBS],
                            const BN_ULONG b[P256_LIMBS]);
-void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
+void GFp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
                            const BN_ULONG a[P256_LIMBS]);
 
 /* Functions that perform constant time access to the precomputed tables */
-void ecp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
+void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index);
-void ecp_nistz256_select_w7(P256_POINT_AFFINE *out,
+void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const P256_POINT_AFFINE table[64], int index);
 
 

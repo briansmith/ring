@@ -58,7 +58,7 @@ open STDOUT,">$output";
 $sse2=0;
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-&external_label("OPENSSL_ia32cap_P") if ($sse2);
+&external_label("GFp_ia32cap_P") if ($sse2);
 
 $Tlo=&DWP(0,"esp");	$Thi=&DWP(4,"esp");
 $Alo=&DWP(8,"esp");	$Ahi=&DWP(8+4,"esp");
@@ -283,7 +283,7 @@ sub BODY_00_15_x86 {
 }
 
 
-&function_begin("sha512_block_data_order");
+&function_begin("GFp_sha512_block_data_order");
 	&mov	("esi",wparam(0));	# ctx
 	&mov	("edi",wparam(1));	# inp
 	&mov	("eax",wparam(2));	# num
@@ -305,7 +305,7 @@ sub BODY_00_15_x86 {
 	&mov	(&DWP(12,"esp"),"ebx");	# saved sp
 
 if ($sse2) {
-	&picmeup("edx","OPENSSL_ia32cap_P",$K512,&label("K512"));
+	&picmeup("edx","GFp_ia32cap_P",$K512,&label("K512"));
 	&mov	("ecx",&DWP(0,"edx"));
 	&test	("ecx",1<<26);
 	&jz	(&label("loop_x86"));
@@ -908,7 +908,7 @@ sub BODY_00_15_ssse3 {		# "phase-less" copy of BODY_00_15_sse2
 
 	&data_word(0x04050607,0x00010203);	# byte swap
 	&data_word(0x0c0d0e0f,0x08090a0b);	# mask
-&function_end_B("sha512_block_data_order");
+&function_end_B("GFp_sha512_block_data_order");
 &asciz("SHA512 block transform for x86, CRYPTOGAMS by <appro\@openssl.org>");
 
 &asm_finish();

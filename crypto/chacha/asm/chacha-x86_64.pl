@@ -61,7 +61,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 $code.=<<___;
 .text
 
-.extern OPENSSL_ia32cap_P
+.extern GFp_ia32cap_P
 
 .align	64
 .Lzero:
@@ -200,13 +200,13 @@ my @x=map("\"$_\"",@x);
 ########################################################################
 # Generic code path that handles all lengths on pre-SSSE3 processors.
 $code.=<<___;
-.globl	ChaCha20_ctr32
-.type	ChaCha20_ctr32,\@function,5
+.globl	GFp_ChaCha20_ctr32
+.type	GFp_ChaCha20_ctr32,\@function,5
 .align	64
-ChaCha20_ctr32:
+GFp_ChaCha20_ctr32:
 	cmp	\$0,$len
 	je	.Lno_data
-	mov	OPENSSL_ia32cap_P+4(%rip),%r10
+	mov	GFp_ia32cap_P+4(%rip),%r10
 	test	\$`1<<(41-32)`,%r10d
 	jnz	.LChaCha20_ssse3
 
@@ -364,7 +364,7 @@ $code.=<<___;
 	pop	%rbx
 .Lno_data:
 	ret
-.size	ChaCha20_ctr32,.-ChaCha20_ctr32
+.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
 ___
 
 ########################################################################
@@ -672,7 +672,7 @@ ChaCha20_4x:
 	mov		%r10,%r11
 ___
 $code.=<<___	if ($avx>1);
-	shr		\$32,%r10		# OPENSSL_ia32cap_P+8
+	shr		\$32,%r10		# GFp_ia32cap_P+8
 	test		\$`1<<5`,%r10		# test AVX2
 	jnz		.LChaCha20_8x
 ___

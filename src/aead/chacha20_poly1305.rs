@@ -11,6 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// Portions Copyright (c) 2015, Google Inc.
 
 #![allow(unsafe_code)]
 
@@ -50,12 +51,14 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
          ad)
 }
 
-fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8], ciphertext: &[u8]) {
+fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
+                            ciphertext: &[u8]) {
     fn update_padded_16(state: &mut [u8; POLY1305_STATE_LEN], data: &[u8]) {
         poly1305_update(state, data);
         if data.len() % 16 != 0 {
             static PADDING: [u8; 16] = [0u8; 16];
-            poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
+            poly1305_update(state,
+                            &PADDING[..PADDING.len() - (data.len() % 16)])
         }
     }
     update_padded_16(state, ad);
@@ -110,7 +113,7 @@ fn chacha20_poly1305_update_old(state: &mut [u8; POLY1305_STATE_LEN],
 
 /// Copies |key| into |ctx_buf|.
 pub fn init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified> {
-    polyfill::slice::fill_from_slice(&mut ctx_buf[..key.len()], key);
+    ctx_buf[..key.len()].copy_from_slice(key);
     Ok(())
 }
 
@@ -123,8 +126,8 @@ fn seal(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
     debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        ChaCha20_ctr32(in_out.as_mut_ptr(), in_out.as_ptr(), in_out.len(),
-                       chacha20_key, &counter);
+        GFp_ChaCha20_ctr32(in_out.as_mut_ptr(), in_out.as_ptr(), in_out.len(),
+                           chacha20_key, &counter);
     }
     counter[0] = 0;
     aead_poly1305(update, tag_out, chacha20_key, &counter, ad, in_out);
@@ -151,15 +154,19 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
         // has this limitation and come up with a better solution.
         //
         // https://rt.openssl.org/Ticket/Display.html?id=4362
-        if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
-            ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
-                           in_out[in_prefix_len..].as_ptr(),
-                           in_out.len() - in_prefix_len, chacha20_key, &counter);
+        if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
+           in_prefix_len != 0 {
+            GFp_ChaCha20_ctr32(in_out[in_prefix_len..].as_mut_ptr(),
+                               in_out[in_prefix_len..].as_ptr(),
+                               in_out.len() - in_prefix_len, chacha20_key,
+                               &counter);
             core::ptr::copy(in_out[in_prefix_len..].as_ptr(),
                             in_out.as_mut_ptr(), in_out.len() - in_prefix_len);
         } else {
-            ChaCha20_ctr32(in_out.as_mut_ptr(), in_out[in_prefix_len..].as_ptr(),
-                           in_out.len() - in_prefix_len, chacha20_key, &counter);
+            GFp_ChaCha20_ctr32(in_out.as_mut_ptr(),
+                               in_out[in_prefix_len..].as_ptr(),
+                               in_out.len() - in_prefix_len, chacha20_key,
+                               &counter);
         }
     }
     Ok(())
@@ -191,8 +198,8 @@ fn aead_poly1305(update: UpdateFn, tag_out: &mut [u8; aead::TAG_LEN],
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
     debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        ChaCha20_ctr32(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
-                       POLY1305_KEY_LEN, chacha20_key, counter);
+        GFp_ChaCha20_ctr32(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
+                           POLY1305_KEY_LEN, chacha20_key, &counter);
     }
     let mut ctx = [0u8; POLY1305_STATE_LEN];
     poly1305_init(&mut ctx, &poly1305_key);
@@ -213,41 +220,47 @@ fn poly1305_update_length(ctx: &mut [u8; POLY1305_STATE_LEN], len: usize) {
 }
 
 
-/// Safe wrapper around |CRYPTO_poly1305_init|.
 #[inline(always)]
-fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN], key: &[u8; POLY1305_KEY_LEN]) {
-    unsafe { CRYPTO_poly1305_init(state, key) }
+fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
+                 key: &[u8; POLY1305_KEY_LEN]) {
+    unsafe {
+        GFp_poly1305_init(state, key)
+    }
 }
 
-/// Safe wrapper around |CRYPTO_poly1305_finish|.
 #[inline(always)]
-fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN], tag_out: &mut [u8; aead::TAG_LEN]) {
-    unsafe { CRYPTO_poly1305_finish(state, tag_out) }
+fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
+                   tag_out: &mut [u8; aead::TAG_LEN]) {
+    unsafe {
+        GFp_poly1305_finish(state, tag_out)
+    }
 }
 
-/// Safe wrapper around |CRYPTO_poly1305_update|.
 #[inline(always)]
 fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
-    unsafe { CRYPTO_poly1305_update(state, in_.as_ptr(), in_.len()) }
+    unsafe {
+        GFp_poly1305_update(state, in_.as_ptr(), in_.len())
+    }
 }
 
-extern "C" {
-    fn ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
-                      key: &[u32; CHACHA20_KEY_LEN / 4], counter: &[u32; 4]);
-    fn CRYPTO_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
-                            key: &[u8; POLY1305_KEY_LEN]);
-    fn CRYPTO_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
-                              mac: &mut [u8; aead::TAG_LEN]);
-    fn CRYPTO_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
-                              in_: *const u8, in_len: c::size_t);
+extern {
+    fn GFp_ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
+                          key: &[u32; CHACHA20_KEY_LEN / 4],
+                          counter: &[u32; 4]);
+    fn GFp_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
+                         key: &[u8; POLY1305_KEY_LEN]);
+    fn GFp_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
+                           mac: &mut [u8; aead::TAG_LEN]);
+    fn GFp_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
+                           in_: *const u8, in_len: c::size_t);
 }
 
 #[cfg(test)]
 mod tests {
-    use {aead, test, error, c, polyfill};
-    use super::{ChaCha20_ctr32, CHACHA20_KEY_LEN, POLY1305_STATE_LEN, POLY1305_KEY_LEN,
-                poly1305_init, poly1305_update, poly1305_finish, make_counter};
-
+    use {aead, c, error, polyfill, test};
+    use super::{GFp_ChaCha20_ctr32, CHACHA20_KEY_LEN, make_counter,
+                POLY1305_STATE_LEN, POLY1305_KEY_LEN, poly1305_init,
+                poly1305_finish, poly1305_update};
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
@@ -263,14 +276,50 @@ mod tests {
     #[test]
     pub fn test_poly1305_state_len() {
         assert_eq!((POLY1305_STATE_LEN + 255) / 256,
-                   (CRYPTO_POLY1305_STATE_LEN + 255) / 256);
+                   (GFp_POLY1305_STATE_LEN + 255) / 256);
     }
 
-    fn test_simd(excess: usize, key: [u8; POLY1305_KEY_LEN],
-                 input: &[u8], mac: [u8; aead::TAG_LEN])
+    #[test]
+    pub fn test_poly1305() {
+        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let key = test_case.consume_bytes("Key");
+            let key = slice_as_array_ref!(&key, POLY1305_KEY_LEN).unwrap();
+            let input = test_case.consume_bytes("Input");
+            let expected_mac = test_case.consume_bytes("MAC");
+            let expected_mac = slice_as_array_ref!(&expected_mac, aead::TAG_LEN).unwrap();
+
+            // Test single-shot operation.
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut actual_mac = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            poly1305_update(&mut state, &input);
+            poly1305_finish(&mut state, &mut actual_mac);
+            assert_eq!(expected_mac[..], actual_mac[..]);
+
+            // Test streaming byte-by-byte.
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut actual_mac = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            for chunk in input.chunks(1) {
+                poly1305_update(&mut state, chunk);
+            }
+            poly1305_finish(&mut state, &mut actual_mac);
+            assert_eq!(&expected_mac[..], &actual_mac[..]);
+
+            try!(test_simd(0, key, &input, expected_mac));
+            try!(test_simd(16, key, &input, expected_mac));
+            try!(test_simd(32, key, &input, expected_mac));
+            try!(test_simd(48, key, &input, expected_mac));
+
+            Ok(())
+        })
+    }
+
+    fn test_simd(excess: usize, key: &[u8; POLY1305_KEY_LEN],
+                 input: &[u8], expected_mac: &[u8; aead::TAG_LEN])
                  -> Result<(), error::Unspecified> {
         let mut state = [0u8; POLY1305_STATE_LEN];
-        let mut mac_out = [0u8; aead::TAG_LEN];
         poly1305_init(&mut state, &key);
 
         // Feed 16 bytes in. Some implementations begin in non-SIMD mode and
@@ -279,75 +328,24 @@ mod tests {
 
         poly1305_update(&mut state, &input[..init]);
         for chunk in input[init..].chunks(128 + 2 * excess) {
-            let (long, short) = if chunk.len() < (128 + excess) {
+            let (long, short) = if chunk.len() < 128 + excess {
                 (chunk, &[][..])
             } else {
                 chunk.split_at(128 + excess)
             };
-            // Feed 128 + |excess| bytes to test SIMD mode
+            // Feed 128 + |excess| bytes to test SIMD mode.
             poly1305_update(&mut state, long);
-            // Feed |excess| bytes to ensure SIMD mode can handle short inputs
+            // Feed |excess| bytes to ensure SIMD mode can handle short inputs.
             if !short.is_empty() {
                 poly1305_update(&mut state, short);
             }
         }
-        poly1305_finish(&mut state, &mut mac_out);
-        if mac != mac_out {
-            println!("SIMD pattern {} failed.", excess);
-            return Err(error::Unspecified);
-        }
+
+        let mut actual_mac = [0u8; aead::TAG_LEN];
+        poly1305_finish(&mut state, &mut actual_mac);
+        assert_eq!(expected_mac, &actual_mac, "SIMD pattern failed.");
         Ok(())
     }
-
-    #[test]
-    pub fn test_poly1305() {
-        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
-            assert_eq!(section, "");
-            let key_bytes = test_case.consume_bytes("Key");
-            let input = test_case.consume_bytes("Input");
-            let mac_bytes = test_case.consume_bytes("MAC");
-
-            let key = {
-                assert_eq!(key_bytes.len(), POLY1305_KEY_LEN);
-                let mut buf = [0u8; POLY1305_KEY_LEN];
-                buf.clone_from_slice(&key_bytes);
-                buf
-            };
-
-            let mac = {
-                assert_eq!(mac_bytes.len(), aead::TAG_LEN);
-                let mut buf = [0u8; aead::TAG_LEN];
-                buf.clone_from_slice(&mac_bytes);
-                buf
-            };
-
-            // Test single-shot operation
-            let mut state = [0u8; POLY1305_STATE_LEN];
-            let mut mac_out = [0u8; aead::TAG_LEN];
-            poly1305_init(&mut state, &key);
-            poly1305_update(&mut state, &input);
-            poly1305_finish(&mut state, &mut mac_out);
-            assert_eq!(mac, mac_out);
-
-            // Test streaming byte-by-byte
-            let mut state = [0u8; POLY1305_STATE_LEN];
-            let mut mac_out = [0u8; aead::TAG_LEN];
-            poly1305_init(&mut state, &key);
-            for chunk in input.chunks(1) {
-                poly1305_update(&mut state, chunk);
-            }
-            poly1305_finish(&mut state, &mut mac_out);
-            assert_eq!(mac, mac_out);
-
-            try!(test_simd(0, key, &input, mac));
-            try!(test_simd(16, key, &input, mac));
-            try!(test_simd(32, key, &input, mac));
-            try!(test_simd(48, key, &input, mac));
-
-            Ok(())
-        })
-    }
-
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
     // is successful when either computed on disjoint input/output buffers,
@@ -405,7 +403,8 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-            ChaCha20_ctr32(buf.as_mut_ptr(), input[..len].as_ptr(), len, key, ctr);
+            GFp_ChaCha20_ctr32(buf.as_mut_ptr(), input[..len].as_ptr(),
+                             len, key, &ctr);
         }
         assert_eq!(&buf[..len], output);
 
@@ -424,7 +423,7 @@ mod tests {
                 let input_offset = alignment + offset;
                 buf[input_offset..][..len].copy_from_slice(input);
                 unsafe {
-                    ChaCha20_ctr32(buf[alignment..].as_mut_ptr(),
+                    GFp_ChaCha20_ctr32(buf[alignment..].as_mut_ptr(),
                                    buf[input_offset..].as_ptr(),
                                    len, key, ctr);
                 }
@@ -434,6 +433,6 @@ mod tests {
     }
 
     extern "C" {
-        static CRYPTO_POLY1305_STATE_LEN: c::size_t;
+        static GFp_POLY1305_STATE_LEN: c::size_t;
     }
 }
