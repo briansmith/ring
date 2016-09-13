@@ -11,6 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// Portions Copyright (c) 2015, Google Inc.
 
 #![allow(unsafe_code)]
 
@@ -56,7 +57,8 @@ fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
         poly1305_update(state, data);
         if data.len() % 16 != 0 {
             static PADDING: [u8; 16] = [0u8; 16];
-            poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
+            poly1305_update(state,
+                            &PADDING[..PADDING.len() - (data.len() % 16)])
         }
     }
     update_padded_16(state, ad);
@@ -172,9 +174,8 @@ fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
 
 fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
               -> Result<&[u32; CHACHA20_KEY_LEN / 4], error::Unspecified> {
-    slice_as_array_ref!(
-        &polyfill::slice::u64_as_u32(ctx)[..(CHACHA20_KEY_LEN / 4)],
-        CHACHA20_KEY_LEN / 4)
+    slice_as_array_ref!(&polyfill::slice::u64_as_u32(ctx)[..(CHACHA20_KEY_LEN / 4)],
+                        CHACHA20_KEY_LEN / 4)
 }
 
 #[inline]
@@ -263,13 +264,13 @@ mod tests {
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
-            "crypto/cipher/test/chacha20_poly1305_tests.txt");
+                               "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
 
     #[test]
     pub fn test_chacha20_poly1305_old() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305_OLD,
-            "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
+                               "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
     }
 
     #[test]
@@ -278,11 +279,47 @@ mod tests {
                    (GFp_POLY1305_STATE_LEN + 255) / 256);
     }
 
-    fn test_simd(excess: usize, key: [u8; POLY1305_KEY_LEN],
-                 input: &[u8], mac: [u8; aead::TAG_LEN])
+    #[test]
+    pub fn test_poly1305() {
+        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let key = test_case.consume_bytes("Key");
+            let key = slice_as_array_ref!(&key, POLY1305_KEY_LEN).unwrap();
+            let input = test_case.consume_bytes("Input");
+            let expected_mac = test_case.consume_bytes("MAC");
+            let expected_mac = slice_as_array_ref!(&expected_mac, aead::TAG_LEN).unwrap();
+
+            // Test single-shot operation.
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut actual_mac = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            poly1305_update(&mut state, &input);
+            poly1305_finish(&mut state, &mut actual_mac);
+            assert_eq!(expected_mac[..], actual_mac[..]);
+
+            // Test streaming byte-by-byte.
+            let mut state = [0u8; POLY1305_STATE_LEN];
+            let mut actual_mac = [0u8; aead::TAG_LEN];
+            poly1305_init(&mut state, &key);
+            for chunk in input.chunks(1) {
+                poly1305_update(&mut state, chunk);
+            }
+            poly1305_finish(&mut state, &mut actual_mac);
+            assert_eq!(&expected_mac[..], &actual_mac[..]);
+
+            try!(test_simd(0, key, &input, expected_mac));
+            try!(test_simd(16, key, &input, expected_mac));
+            try!(test_simd(32, key, &input, expected_mac));
+            try!(test_simd(48, key, &input, expected_mac));
+
+            Ok(())
+        })
+    }
+
+    fn test_simd(excess: usize, key: &[u8; POLY1305_KEY_LEN],
+                 input: &[u8], expected_mac: &[u8; aead::TAG_LEN])
                  -> Result<(), error::Unspecified> {
         let mut state = [0u8; POLY1305_STATE_LEN];
-        let mut mac_out = [0u8; aead::TAG_LEN];
         poly1305_init(&mut state, &key);
 
         // Feed 16 bytes in. Some implementations begin in non-SIMD mode and
@@ -291,73 +328,23 @@ mod tests {
 
         poly1305_update(&mut state, &input[..init]);
         for chunk in input[init..].chunks(128 + 2 * excess) {
-            let (long, short) = if chunk.len() < (128 + excess) {
+            let (long, short) = if chunk.len() < 128 + excess {
                 (chunk, &[][..])
             } else {
                 chunk.split_at(128 + excess)
             };
-            // Feed 128 + |excess| bytes to test SIMD mode
+            // Feed 128 + |excess| bytes to test SIMD mode.
             poly1305_update(&mut state, long);
-            // Feed |excess| bytes to ensure SIMD mode can handle short inputs
+            // Feed |excess| bytes to ensure SIMD mode can handle short inputs.
             if !short.is_empty() {
                 poly1305_update(&mut state, short);
             }
         }
-        poly1305_finish(&mut state, &mut mac_out);
-        if mac != mac_out {
-            println!("SIMD pattern {} failed.", excess);
-            return Err(error::Unspecified);
-        }
+
+        let mut actual_mac = [0u8; aead::TAG_LEN];
+        poly1305_finish(&mut state, &mut actual_mac);
+        assert_eq!(expected_mac, &actual_mac, "SIMD pattern failed.");
         Ok(())
-    }
-
-    #[test]
-    pub fn test_poly1305() {
-        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
-            assert_eq!(section, "");
-            let key_bytes = test_case.consume_bytes("Key");
-            let input = test_case.consume_bytes("Input");
-            let mac_bytes = test_case.consume_bytes("MAC");
-
-            let key = {
-                assert_eq!(key_bytes.len(), POLY1305_KEY_LEN);
-                let mut buf = [0u8; POLY1305_KEY_LEN];
-                buf.clone_from_slice(&key_bytes);
-                buf
-            };
-
-            let mac = {
-                assert_eq!(mac_bytes.len(), aead::TAG_LEN);
-                let mut buf = [0u8; aead::TAG_LEN];
-                buf.clone_from_slice(&mac_bytes);
-                buf
-            };
-
-            // Test single-shot operation
-            let mut state = [0u8; POLY1305_STATE_LEN];
-            let mut mac_out = [0u8; aead::TAG_LEN];
-            poly1305_init(&mut state, &key);
-            poly1305_update(&mut state, &input);
-            poly1305_finish(&mut state, &mut mac_out);
-            assert_eq!(mac, mac_out);
-
-            // Test streaming byte-by-byte
-            let mut state = [0u8; POLY1305_STATE_LEN];
-            let mut mac_out = [0u8; aead::TAG_LEN];
-            poly1305_init(&mut state, &key);
-            for chunk in input.chunks(1) {
-                poly1305_update(&mut state, chunk);
-            }
-            poly1305_finish(&mut state, &mut mac_out);
-            assert_eq!(mac, mac_out);
-
-            try!(test_simd(0, key, &input, mac));
-            try!(test_simd(16, key, &input, mac));
-            try!(test_simd(32, key, &input, mac));
-            try!(test_simd(48, key, &input, mac));
-
-            Ok(())
-        })
     }
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
@@ -376,30 +363,34 @@ mod tests {
             assert_eq!(section, "");
 
             let key_bytes = test_case.consume_bytes("Key");
-            let mut key = [0u32; CHACHA20_KEY_LEN / 4];
-            for ki in 0..(CHACHA20_KEY_LEN / 4) {
-                let kb =
-                    slice_as_array_ref!(&key_bytes[ki * 4..][..4], 4).unwrap();
-                key[ki] = polyfill::slice::u32_from_le_u8(kb);
-            }
-
             let ctr = test_case.consume_usize("Ctr");
             let nonce_bytes = test_case.consume_bytes("Nonce");
-            let nonce = slice_as_array_ref!(&nonce_bytes,
-                                            aead::NONCE_LEN).unwrap();
-            let ctr = make_counter(ctr as u32, &nonce);
             let input = test_case.consume_bytes("Input");
             let output = test_case.consume_bytes("Output");
 
+            assert_eq!(key_bytes.len(), CHACHA20_KEY_LEN);
+            let key = {
+                let mut buf = [0u32; CHACHA20_KEY_LEN / 4];
+                for (val, chunk) in buf.iter_mut().zip(key_bytes.chunks(4)) {
+                    let arr_ref = slice_as_array_ref!(chunk, 4).unwrap();
+                    *val = polyfill::slice::u32_from_le_u8(arr_ref);
+                }
+                buf
+            };
+
+            let nonce = slice_as_array_ref!(&nonce_bytes, aead::NONCE_LEN).unwrap();
+            let counter = make_counter(ctr as u32, &nonce);
+
+
             // Pre-allocate buffer for use in test_cases.
-            let mut in_out_buf = vec![0u8; input.len() + 276];
+            let mut buf = vec![0u8; input.len() + 276];
 
             // Run the test case over all prefixes of the input because the
             // behavior of ChaCha20 implementation changes dependent on the
             // length of the input.
             for len in 0..(input.len() + 1) {
-                chacha20_test_case_inner(&key, &ctr, &input[..len],
-                                         &output[..len], len, &mut in_out_buf);
+                chacha20_test_case_inner(&key, &counter, &input[..len],
+                                         &output[..len], len, &mut buf);
             }
 
             Ok(())
@@ -407,41 +398,41 @@ mod tests {
     }
 
     fn chacha20_test_case_inner(key: &[u32; CHACHA20_KEY_LEN / 4],
-                                ctr: &[u32; 4], input: &[u8], expected: &[u8],
-                                len: usize, in_out_buf: &mut [u8]) {
+                                ctr: &[u32; 4], input: &[u8], output: &[u8],
+                                len: usize, buf: &mut [u8]) {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-          GFp_ChaCha20_ctr32(in_out_buf.as_mut_ptr(), input[..len].as_ptr(),
+            GFp_ChaCha20_ctr32(buf.as_mut_ptr(), input[..len].as_ptr(),
                              len, key, &ctr);
         }
-        assert_eq!(&in_out_buf[..len], expected);
+        assert_eq!(&buf[..len], output);
 
         // Do not test offset buffers for x86 and ARM architectures (see above
         // for rationale).
-        let max_offset =
-            if cfg!(any(target_arch = "x86", target_arch = "arm")) {
-                0
-            } else {
-                259
-            };
+        let max_offset = if cfg!(any(target_arch = "x86", target_arch = "arm")) {
+            0
+        } else {
+            259
+        };
 
         // Check that in-place encryption works successfully when the pointers
         // to the input/output buffers are (partially) overlapping.
         for alignment in 0..16 {
             for offset in 0..(max_offset + 1) {
-              in_out_buf[alignment+offset..][..len].copy_from_slice(input);
-              unsafe {
-                  GFp_ChaCha20_ctr32(in_out_buf[alignment..].as_mut_ptr(),
-                                     in_out_buf[alignment + offset..].as_ptr(),
-                                     len, key, ctr);
-                  assert_eq!(&in_out_buf[alignment..][..len], expected);
-              }
+                let input_offset = alignment + offset;
+                buf[input_offset..][..len].copy_from_slice(input);
+                unsafe {
+                    GFp_ChaCha20_ctr32(buf[alignment..].as_mut_ptr(),
+                                   buf[input_offset..].as_ptr(),
+                                   len, key, ctr);
+                }
+                assert_eq!(&buf[alignment..][..len], output);
             }
         }
     }
 
-    extern {
+    extern "C" {
         static GFp_POLY1305_STATE_LEN: c::size_t;
     }
 }

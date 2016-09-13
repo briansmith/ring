@@ -68,7 +68,7 @@ extern "C" {
 #define AES_BLOCK_SIZE 16
 
 /* aes_key_st should be an opaque type, but EVP requires that the size be
- * known. */
+ * known.  Keep this in sync with AES_KEY in aes_gcm.rs. */
 struct aes_key_st {
   uint32_t rd_key[4 * (AES_MAXNR + 1)];
   unsigned rounds;
