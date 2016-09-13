@@ -205,6 +205,8 @@ struct asn1_object_st
 	int flags;	/* Should we free this one */
 	};
 
+DECLARE_STACK_OF(ASN1_OBJECT)
+
 #define ASN1_STRING_FLAG_BITS_LEFT 0x08 /* Set if 0x07 has bits left value */
 /* This indicates that the ASN1_STRING is not a real value but just a place
  * holder for the location where indefinite length constructed data should
@@ -927,6 +929,8 @@ OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
 extern "C++" {
 
 namespace bssl {
+
+BORINGSSL_MAKE_STACK_DELETER(ASN1_OBJECT, ASN1_OBJECT_free)
 
 BORINGSSL_MAKE_DELETER(ASN1_OBJECT, ASN1_OBJECT_free)
 BORINGSSL_MAKE_DELETER(ASN1_STRING, ASN1_STRING_free)
