@@ -74,9 +74,6 @@ static const uint8_t sigma[16] = { 'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
                                    '2', '-', 'b', 'y', 't', 'e', ' ', 'k' };
 
 #define ROTATE(v, n) (((v) << (n)) | ((v) >> (32 - (n))))
-#define XOR(v, w) ((v) ^ (w))
-#define PLUS(x, y) ((x) + (y))
-#define PLUSONE(v) (PLUS((v), 1))
 
 #define U32TO8_LITTLE(p, v)    \
   {                            \
@@ -87,11 +84,11 @@ static const uint8_t sigma[16] = { 'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
   }
 
 /* QUARTERROUND updates a, b, c, d with a ChaCha "quarter" round. */
-#define QUARTERROUND(a,b,c,d) \
-  x[a] = PLUS(x[a],x[b]); x[d] = ROTATE(XOR(x[d],x[a]),16); \
-  x[c] = PLUS(x[c],x[d]); x[b] = ROTATE(XOR(x[b],x[c]),12); \
-  x[a] = PLUS(x[a],x[b]); x[d] = ROTATE(XOR(x[d],x[a]), 8); \
-  x[c] = PLUS(x[c],x[d]); x[b] = ROTATE(XOR(x[b],x[c]), 7);
+#define QUARTERROUND(a, b, c, d)                \
+  x[a] += x[b]; x[d] = ROTATE(x[d] ^ x[a], 16); \
+  x[c] += x[d]; x[b] = ROTATE(x[b] ^ x[c], 12); \
+  x[a] += x[b]; x[d] = ROTATE(x[d] ^ x[a],  8); \
+  x[c] += x[d]; x[b] = ROTATE(x[b] ^ x[c],  7);
 
 /* chacha_core performs 20 rounds of ChaCha on the input words in
  * |input| and writes the 64 output bytes to |output|. */
@@ -112,7 +109,7 @@ static void chacha_core(uint8_t output[64], const uint32_t input[16]) {
   }
 
   for (i = 0; i < 16; ++i) {
-    x[i] = PLUS(x[i], input[i]);
+    x[i] += input[i];
   }
   for (i = 0; i < 16; ++i) {
     U32TO8_LITTLE(output + 4 * i, x[i]);
