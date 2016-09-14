@@ -2524,6 +2524,11 @@ void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
   ctx->keylog_callback = cb;
 }
 
+void (*SSL_CTX_get_keylog_callback(const SSL_CTX *ctx))(const SSL *ssl,
+                                                        const char *line) {
+  return ctx->keylog_callback;
+}
+
 void SSL_CTX_set_current_time_cb(SSL_CTX *ctx,
                                  void (*cb)(const SSL *ssl,
                                             struct timeval *out_clock)) {

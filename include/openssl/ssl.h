@@ -2847,6 +2847,11 @@ OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
 OPENSSL_EXPORT void SSL_CTX_set_keylog_callback(
     SSL_CTX *ctx, void (*cb)(const SSL *ssl, const char *line));
 
+/* SSL_CTX_get_keylog_callback returns the callback configured by
+ * |SSL_CTX_set_keylog_callback|. */
+OPENSSL_EXPORT void (*SSL_CTX_get_keylog_callback(const SSL_CTX *ctx))(
+    const SSL *ssl, const char *line);
+
 /* SSL_CTX_set_current_time_cb configures a callback to retrieve the current
  * time, which should be set in |*out_clock|. This can be used for testing
  * purposes; for example, a callback can be configured that returns a time
