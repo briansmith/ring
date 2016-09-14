@@ -269,7 +269,7 @@ static int decode_hex(uint8_t **out, size_t *out_len, const char *in,
     return 0;
   }
 
-  uint8_t *buf = OPENSSL_malloc(len / 2);
+  uint8_t *buf = reinterpret_cast<uint8_t *>(OPENSSL_malloc(len / 2));
   if (buf == NULL) {
     fprintf(stderr, "%u: malloc failure.\n", test_num);
     goto err;
@@ -332,7 +332,7 @@ static int run_test_case(unsigned test_num, const struct test_case *test) {
     goto out;
   }
 
-  out = OPENSSL_malloc(plaintext_len);
+  out = reinterpret_cast<uint8_t *>(OPENSSL_malloc(plaintext_len));
   if (plaintext_len != 0 && out == NULL) {
     goto out;
   }

@@ -57,7 +57,7 @@ perlasm(ghashv8-armx.${ASM_EXT} asm/ghashv8-armx.pl)
 add_executable(
   gcm_test
 
-  gcm_test.c
+  gcm_test.cc
 
   $<TARGET_OBJECTS:test_support>
 )
