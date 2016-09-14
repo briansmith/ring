@@ -26,11 +26,13 @@ pub struct ECDSAParameters {
     digest_alg: &'static digest::Algorithm,
 }
 
-impl signature::VerificationAlgorithm for ECDSAParameters {
+impl signature::PrehashedVerificationAlgorithm for ECDSAParameters {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
-    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), error::Unspecified> {
+    fn verify_prehashed(&self, public_key: untrusted::Input,
+                        msg_digest: &digest::Digest,
+                        signature: untrusted::Input)
+                        -> Result<(), error::Unspecified> {
         // NSA Guide Prerequisites:
         //
         //    Prior to accepting a verified digital signature as valid the
@@ -65,7 +67,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // Hash(M)."
         // NSA Guide Step 3: "Convert the bit string H to an integer e as
         // described in Appendix B.2."
-        let e = digest_scalar(self.ops, self.digest_alg, msg);
+        let e = digest_scalar(self.ops, msg_digest);
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
@@ -121,13 +123,15 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
 
         Err(error::Unspecified)
     }
+
+    fn digest_algorithm(&self) -> &'static digest::Algorithm {
+        self.digest_alg
+    }
 }
 
 impl private::Private for ECDSAParameters {}
 
-
-/// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
-/// convert the digest to a scalar in the range [0, n) as described in
+/// Convert the digest `digest` to a scalar in the range [0, n) as described in
 /// NIST's FIPS 186-4 Section 4.2. Note that this is one of the few cases where
 /// a `Scalar` is allowed to have the value zero.
 ///
@@ -152,9 +156,7 @@ impl private::Private for ECDSAParameters {}
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-fn digest_scalar(ops: &PublicScalarOps, digest_alg: &'static digest::Algorithm,
-                 msg: untrusted::Input) -> Scalar {
-    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
+fn digest_scalar(ops: &PublicScalarOps, digest: &digest::Digest) -> Scalar {
     digest_scalar_(ops, digest.as_ref())
 }
 
@@ -320,9 +322,8 @@ mod tests {
     }
 
     fn alg_from_curve_and_digest(curve_name: &str, digest_name: &str)
-                                 -> (&'static signature::VerificationAlgorithm,
-                                     &'static PublicScalarOps,
-                                     &'static digest::Algorithm) {
+            -> (&'static signature::VerificationAlgorithm,
+                &'static PublicScalarOps, &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA1" {
                 (&signature::ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS,
