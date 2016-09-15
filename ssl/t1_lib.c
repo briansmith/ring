@@ -1966,27 +1966,6 @@ static int ext_ec_point_add_serverhello(SSL *ssl, CBB *out) {
   return ext_ec_point_add_extension(ssl, out);
 }
 
-
-/* Draft Version Extension */
-
-static int ext_draft_version_add_clienthello(SSL *ssl, CBB *out) {
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
-      max_version < TLS1_3_VERSION) {
-    return 1;
-  }
-
-  CBB contents;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_draft_version) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16(&contents, TLS1_3_DRAFT_VERSION)) {
-    return 0;
-  }
-
-  return CBB_flush(out);
-}
-
-
 /* Pre Shared Key
  *
  * https://tools.ietf.org/html/draft-ietf-tls-tls13-14 */
@@ -2279,6 +2258,41 @@ int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Supported Versions
+ *
+ * https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.1 */
+
+static int ext_supported_versions_add_clienthello(SSL *ssl, CBB *out) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  if (max_version <= TLS1_2_VERSION) {
+    return 1;
+  }
+
+  CBB contents, versions;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_supported_versions) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u8_length_prefixed(&contents, &versions)) {
+    return 0;
+  }
+
+  for (uint16_t version = max_version; version >= min_version; version--) {
+    if (!CBB_add_u16(&versions, ssl->method->version_to_wire(version))) {
+      return 0;
+    }
+  }
+
+  if (!CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+
 /* Negotiated Groups
  *
  * https://tools.ietf.org/html/rfc4492#section-5.1.2
@@ -2476,14 +2490,6 @@ static const struct tls_extension kExtensions[] = {
     ext_ec_point_add_serverhello,
   },
   {
-    TLSEXT_TYPE_draft_version,
-    NULL,
-    ext_draft_version_add_clienthello,
-    forbid_parse_serverhello,
-    ignore_parse_clienthello,
-    dont_add_serverhello,
-  },
-  {
     TLSEXT_TYPE_key_share,
     NULL,
     ext_key_share_add_clienthello,
@@ -2495,6 +2501,14 @@ static const struct tls_extension kExtensions[] = {
     TLSEXT_TYPE_pre_shared_key,
     NULL,
     ext_pre_shared_key_add_clienthello,
+    forbid_parse_serverhello,
+    ignore_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_supported_versions,
+    NULL,
+    ext_supported_versions_add_clienthello,
     forbid_parse_serverhello,
     ignore_parse_clienthello,
     dont_add_serverhello,

@@ -951,6 +951,10 @@ static int set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
     return 1;
   }
 
+  if (version == TLS1_3_VERSION) {
+    version = TLS1_3_DRAFT_VERSION;
+  }
+
   return method->version_from_wire(out, version);
 }
 
@@ -963,6 +967,10 @@ static int set_max_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
       *out = TLS1_2_VERSION;
     }
     return 1;
+  }
+
+  if (version == TLS1_3_VERSION) {
+    version = TLS1_3_DRAFT_VERSION;
   }
 
   return method->version_from_wire(out, version);
@@ -2109,7 +2117,8 @@ void ssl_update_cache(SSL *ssl, int mode) {
 
 static const char *ssl_get_version(int version) {
   switch (version) {
-    case TLS1_3_VERSION:
+    /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
+    case TLS1_3_DRAFT_VERSION:
       return "TLSv1.3";
 
     case TLS1_2_VERSION:
@@ -2271,7 +2280,14 @@ int SSL_get_shutdown(const SSL *ssl) {
   return ret;
 }
 
-int SSL_version(const SSL *ssl) { return ssl->version; }
+int SSL_version(const SSL *ssl) {
+  /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
+  if (ssl->version == TLS1_3_DRAFT_VERSION) {
+    return TLS1_3_VERSION;
+  }
+
+  return ssl->version;
+}
 
 SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl) { return ssl->ctx; }
 
@@ -2962,7 +2978,7 @@ void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
       version = 0;
       break;
     default:
-      version = ssl->version;
+      version = SSL_version(ssl);
   }
 
   ssl->msg_callback(is_write, version, content_type, buf, len, ssl,

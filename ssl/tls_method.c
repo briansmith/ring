@@ -71,8 +71,10 @@ static int ssl3_version_from_wire(uint16_t *out_version,
     case TLS1_VERSION:
     case TLS1_1_VERSION:
     case TLS1_2_VERSION:
-    case TLS1_3_VERSION:
       *out_version = wire_version;
+      return 1;
+    case TLS1_3_DRAFT_VERSION:
+      *out_version = TLS1_3_VERSION;
       return 1;
   }
 
@@ -85,8 +87,9 @@ static uint16_t ssl3_version_to_wire(uint16_t version) {
     case TLS1_VERSION:
     case TLS1_1_VERSION:
     case TLS1_2_VERSION:
-    case TLS1_3_VERSION:
       return version;
+    case TLS1_3_VERSION:
+      return TLS1_3_DRAFT_VERSION;
   }
 
   /* It is an error to use this function with an invalid version. */

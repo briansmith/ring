@@ -57,6 +57,7 @@ func (c *Conn) clientHandshake() error {
 		return errors.New("tls: NextProtos values too large")
 	}
 
+	minVersion := c.config.minVersion(c.isDTLS)
 	maxVersion := c.config.maxVersion(c.isDTLS)
 	hello := &clientHelloMsg{
 		isDTLS:                  c.isDTLS,
@@ -74,7 +75,7 @@ func (c *Conn) clientHandshake() error {
 		duplicateExtension:      c.config.Bugs.DuplicateExtension,
 		channelIDSupported:      c.config.ChannelID != nil,
 		npnLast:                 c.config.Bugs.SwapNPNAndALPN,
-		extendedMasterSecret:    c.config.maxVersion(c.isDTLS) >= VersionTLS10,
+		extendedMasterSecret:    maxVersion >= VersionTLS10,
 		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
 		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
 		customExtension:         c.config.Bugs.CustomExtension,
@@ -235,8 +236,8 @@ NextCipherSuite:
 				}
 			}
 
-			versOk := candidateSession.vers >= c.config.minVersion(c.isDTLS) &&
-				candidateSession.vers <= c.config.maxVersion(c.isDTLS)
+			versOk := candidateSession.vers >= minVersion &&
+				candidateSession.vers <= maxVersion
 			if ticketOk && versOk && cipherSuiteOk {
 				session = candidateSession
 			}
@@ -283,6 +284,19 @@ NextCipherSuite:
 				hello.sessionId = session.sessionId
 			}
 		}
+	}
+
+	if maxVersion == VersionTLS13 && !c.config.Bugs.OmitSupportedVersions {
+		if hello.vers >= VersionTLS13 {
+			hello.vers = VersionTLS12
+		}
+		for version := maxVersion; version >= minVersion; version-- {
+			hello.supportedVersions = append(hello.supportedVersions, versionToWire(version, c.isDTLS))
+		}
+	}
+
+	if len(c.config.Bugs.SendSupportedVersions) > 0 {
+		hello.supportedVersions = c.config.Bugs.SendSupportedVersions
 	}
 
 	if c.config.Bugs.SendClientVersion != 0 {
@@ -366,12 +380,13 @@ NextCipherSuite:
 
 	serverVersion, ok := wireToVersion(serverWireVersion, c.isDTLS)
 	if ok {
-		c.vers, ok = c.config.mutualVersion(serverVersion, c.isDTLS)
+		ok = c.config.isSupportedVersion(serverVersion, c.isDTLS)
 	}
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
 		return fmt.Errorf("tls: server selected unsupported protocol version %x", c.vers)
 	}
+	c.vers = serverVersion
 	c.haveVers = true
 
 	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)

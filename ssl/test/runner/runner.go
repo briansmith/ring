@@ -4084,6 +4084,7 @@ func addVersionNegotiationTests() {
 			flags = append(flags, vers.flag)
 		}
 
+		// Test configuring the runner's maximum version.
 		for _, runnerVers := range tlsVersions {
 			protocols := []protocol{tls}
 			if runnerVers.hasDTLS && shimVers.hasDTLS {
@@ -4171,34 +4172,117 @@ func addVersionNegotiationTests() {
 		}
 	}
 
+	// Test the version extension at all versions.
+	for _, vers := range tlsVersions {
+		protocols := []protocol{tls}
+		if vers.hasDTLS {
+			protocols = append(protocols, dtls)
+		}
+		for _, protocol := range protocols {
+			suffix := vers.name
+			if protocol == dtls {
+				suffix += "-DTLS"
+			}
+
+			wireVersion := versionToWire(vers.version, protocol == dtls)
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: serverTest,
+				name:     "VersionNegotiationExtension-" + suffix,
+				config: Config{
+					Bugs: ProtocolBugs{
+						SendSupportedVersions: []uint16{0x1111, wireVersion, 0x2222},
+					},
+				},
+				expectedVersion: vers.version,
+			})
+		}
+
+	}
+
+	// If all versions are unknown, negotiation fails.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "NoSupportedVersions",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSupportedVersions: []uint16{0x1111},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSUPPORTED_PROTOCOL:",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "NoSupportedVersions-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSupportedVersions: []uint16{0x1111},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSUPPORTED_PROTOCOL:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ClientHelloVersionTooHigh",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendClientVersion:     0x0304,
+				OmitSupportedVersions: true,
+			},
+		},
+		expectedVersion: VersionTLS12,
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ConflictingVersionNegotiation",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendClientVersion:     0x0304,
+				SendSupportedVersions: []uint16{0x0303},
+			},
+		},
+		expectedVersion: VersionTLS12,
+	})
+
 	// Test for version tolerance.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "MinorVersionTolerance",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0x03ff,
+				SendClientVersion:     0x03ff,
+				OmitSupportedVersions: true,
 			},
 		},
-		expectedVersion: VersionTLS13,
+		expectedVersion: VersionTLS12,
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "MajorVersionTolerance",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0x0400,
+				SendClientVersion:     0x0400,
+				OmitSupportedVersions: true,
 			},
 		},
-		expectedVersion: VersionTLS13,
+		expectedVersion: VersionTLS12,
 	})
+
 	testCases = append(testCases, testCase{
 		protocol: dtls,
 		testType: serverTest,
 		name:     "MinorVersionTolerance-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0xfe00,
+				SendClientVersion:     0xfe00,
+				OmitSupportedVersions: true,
 			},
 		},
 		expectedVersion: VersionTLS12,
@@ -4209,7 +4293,8 @@ func addVersionNegotiationTests() {
 		name:     "MajorVersionTolerance-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0xfdff,
+				SendClientVersion:     0xfdff,
+				OmitSupportedVersions: true,
 			},
 		},
 		expectedVersion: VersionTLS12,
@@ -4221,7 +4306,8 @@ func addVersionNegotiationTests() {
 		name:     "VersionTooLow",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0x0200,
+				SendClientVersion:     0x0200,
+				OmitSupportedVersions: true,
 			},
 		},
 		shouldFail:    true,
@@ -4317,12 +4403,20 @@ func addMinimumVersionTests() {
 					}
 				}
 
+				// Test the client enforces minimum
+				// versions. Use the NegotiateVersion bug to
+				// ensure the server does not decline to select
+				// a version first. This may occur if the
+				// versions extension is used.
 				testCases = append(testCases, testCase{
 					protocol: protocol,
 					testType: clientTest,
 					name:     "MinimumVersion-Client-" + suffix,
 					config: Config{
 						MaxVersion: runnerVers.version,
+						Bugs: ProtocolBugs{
+							NegotiateVersion: runnerVers.version,
+						},
 					},
 					flags:              flags,
 					expectedVersion:    expectedVersion,
@@ -4336,6 +4430,9 @@ func addMinimumVersionTests() {
 					name:     "MinimumVersion-Client2-" + suffix,
 					config: Config{
 						MaxVersion: runnerVers.version,
+						Bugs: ProtocolBugs{
+							NegotiateVersion: runnerVers.version,
+						},
 					},
 					flags:              []string{"-min-version", shimVersFlag},
 					expectedVersion:    expectedVersion,

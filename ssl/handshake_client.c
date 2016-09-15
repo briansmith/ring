@@ -731,6 +731,10 @@ static int ssl3_send_client_hello(SSL *ssl) {
      * key exchange, the ClientHello version is checked in the premaster secret.
      * Some servers fail when this value changes. */
     ssl->client_version = ssl->version;
+
+    if (max_version >= TLS1_3_VERSION) {
+      ssl->client_version = ssl->method->version_to_wire(TLS1_2_VERSION);
+    }
   }
 
   /* If the configured session has expired or was created at a disabled

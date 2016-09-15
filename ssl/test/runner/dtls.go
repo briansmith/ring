@@ -33,8 +33,10 @@ func versionToWire(vers uint16, isDTLS bool) uint16 {
 		}
 	} else {
 		switch vers {
-		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13:
+		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
 			return vers
+		case VersionTLS13:
+			return tls13DraftVersion
 		}
 	}
 
@@ -51,8 +53,10 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 		}
 	} else {
 		switch vers {
-		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13:
+		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
 			return vers, true
+		case tls13DraftVersion:
+			return VersionTLS13, true
 		}
 	}
 

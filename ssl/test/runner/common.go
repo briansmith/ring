@@ -26,9 +26,8 @@ const (
 	VersionTLS13 = 0x0304
 )
 
-// The draft version of TLS 1.3 that is implemented here and sent in the draft
-// indicator extension.
-const tls13DraftVersion = 14
+// A draft version of TLS 1.3 that is sent over the wire for the current draft.
+const tls13DraftVersion = 0x7f0e
 
 const (
 	maxPlaintext        = 16384        // maximum plaintext payload length
@@ -93,11 +92,11 @@ const (
 	extensionKeyShare                   uint16 = 40    // draft-ietf-tls-tls13-13
 	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-13
 	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-13
+	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-16
 	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-13
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
-	extensionTLS13Draft                 uint16 = 0xff02
 	extensionChannelID                  uint16 = 30032 // not IANA assigned
 )
 
@@ -600,6 +599,14 @@ type ProtocolBugs struct {
 	// SendClientVersion, if non-zero, causes the client to send the
 	// specified value in the ClientHello version field.
 	SendClientVersion uint16
+
+	// OmitSupportedVersions, if true, causes the client to omit the
+	// supported versions extension.
+	OmitSupportedVersions bool
+
+	// SendSupportedVersions, if non-empty, causes the client to send a
+	// supported versions extension with the values from array.
+	SendSupportedVersions []uint16
 
 	// NegotiateVersion, if non-zero, causes the server to negotiate the
 	// specifed TLS version rather than the version supported by either
@@ -1188,24 +1195,10 @@ func (c *Config) defaultCurves() map[CurveID]bool {
 	return defaultCurves
 }
 
-// mutualVersion returns the protocol version to use given the advertised
-// version of the peer.
-func (c *Config) mutualVersion(vers uint16, isDTLS bool) (uint16, bool) {
-	// There is no such thing as DTLS 1.1.
-	if isDTLS && vers == VersionTLS11 {
-		vers = VersionTLS10
-	}
-
-	minVersion := c.minVersion(isDTLS)
-	maxVersion := c.maxVersion(isDTLS)
-
-	if vers < minVersion {
-		return 0, false
-	}
-	if vers > maxVersion {
-		vers = maxVersion
-	}
-	return vers, true
+// isSupportedVersion returns true if the specified protocol version is
+// acceptable.
+func (c *Config) isSupportedVersion(vers uint16, isDTLS bool) bool {
+	return c.minVersion(isDTLS) <= vers && vers <= c.maxVersion(isDTLS)
 }
 
 // getCertificateForName returns the best certificate for the given name,

@@ -543,12 +543,6 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  /* Only support SSLv3/TLS and DTLS. */
-  if ((ssl_version >> 8) != SSL3_VERSION_MAJOR &&
-      (ssl_version >> 8) != (DTLS1_VERSION >> 8)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
-    goto err;
-  }
   ret->ssl_version = ssl_version;
 
   CBS cipher;

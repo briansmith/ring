@@ -204,7 +204,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 			return fmt.Errorf("tls: client offered different version on renego")
 		}
 	}
+
 	c.clientVersion = hs.clientHello.vers
+
+	// Convert the ClientHello wire version to a protocol version.
 	var clientVersion uint16
 	if c.isDTLS {
 		if hs.clientHello.vers <= 0xfefd {
@@ -213,9 +216,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 			clientVersion = VersionTLS10
 		}
 	} else {
-		if hs.clientHello.vers >= VersionTLS13 {
-			clientVersion = VersionTLS13
-		} else if hs.clientHello.vers >= VersionTLS12 {
+		if hs.clientHello.vers >= VersionTLS12 {
 			clientVersion = VersionTLS12
 		} else if hs.clientHello.vers >= VersionTLS11 {
 			clientVersion = VersionTLS11
@@ -230,12 +231,34 @@ func (hs *serverHandshakeState) readClientHello() error {
 		c.vers = config.Bugs.NegotiateVersion
 	} else if c.haveVers && config.Bugs.NegotiateVersionOnRenego != 0 {
 		c.vers = config.Bugs.NegotiateVersionOnRenego
-	} else {
-		c.vers, ok = config.mutualVersion(clientVersion, c.isDTLS)
-		if !ok {
+	} else if len(hs.clientHello.supportedVersions) > 0 {
+		// Use the versions extension if supplied.
+		var foundVersion bool
+		for _, extVersion := range hs.clientHello.supportedVersions {
+			extVersion, ok = wireToVersion(extVersion, c.isDTLS)
+			if !ok {
+				continue
+			}
+			if config.isSupportedVersion(extVersion, c.isDTLS) {
+				c.vers = extVersion
+				foundVersion = true
+				break
+			}
+		}
+		if !foundVersion {
 			c.sendAlert(alertProtocolVersion)
+			return errors.New("tls: client did not offer any supported protocol versions")
+		}
+	} else {
+		// Otherwise, use the legacy ClientHello version.
+		version := clientVersion
+		if maxVersion := config.maxVersion(c.isDTLS); version > maxVersion {
+			version = maxVersion
+		}
+		if version == 0 || !config.isSupportedVersion(version, c.isDTLS) {
 			return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
 		}
+		c.vers = version
 	}
 	c.haveVers = true
 
@@ -500,7 +523,7 @@ Curves:
 		ResendHelloRetryRequest:
 			// Send HelloRetryRequest.
 			helloRetryRequestMsg := helloRetryRequestMsg{
-				vers:          c.vers,
+				vers:          versionToWire(c.vers, c.isDTLS),
 				cipherSuite:   hs.hello.cipherSuite,
 				selectedGroup: selectedCurve,
 			}

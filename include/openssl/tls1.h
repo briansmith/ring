@@ -209,15 +209,8 @@ extern "C" {
 #define TLSEXT_TYPE_key_share 40
 #define TLSEXT_TYPE_pre_shared_key 41
 #define TLSEXT_TYPE_early_data 42
+#define TLSEXT_TYPE_supported_versions 43
 #define TLSEXT_TYPE_cookie 44
-
-/* TLSEXT_TYPE_draft_version is the extension used to advertise the TLS 1.3
- * draft implemented.
- *
- * See
- * https://github.com/tlswg/tls13-spec/wiki/Implementations#version-negotiation
- */
-#define TLSEXT_TYPE_draft_version 0xff02
 
 /* ExtensionType value from RFC5746 */
 #define TLSEXT_TYPE_renegotiate 0xff01
