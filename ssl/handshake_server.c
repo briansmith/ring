@@ -637,7 +637,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
 
         case -1:
           /* Connection rejected. */
-          al = SSL_AD_ACCESS_DENIED;
+          al = SSL_AD_HANDSHAKE_FAILURE;
           OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
           goto f_err;
 
@@ -733,7 +733,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
     if (ssl->ctx->dos_protection_cb != NULL &&
         ssl->ctx->dos_protection_cb(&client_hello) == 0) {
       /* Connection rejected for DOS reasons. */
-      al = SSL_AD_ACCESS_DENIED;
+      al = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
       goto f_err;
     }

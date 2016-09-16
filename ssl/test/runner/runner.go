@@ -1706,7 +1706,7 @@ func addBasicTests() {
 			flags:              []string{"-fail-early-callback"},
 			shouldFail:         true,
 			expectedError:      ":CONNECTION_REJECTED:",
-			expectedLocalError: "remote error: access denied",
+			expectedLocalError: "remote error: handshake failure",
 		},
 		{
 			protocol: dtls,
@@ -4004,10 +4004,11 @@ func addDDoSCallbackTests() {
 			config: Config{
 				MaxVersion: VersionTLS12,
 			},
-			flags:         []string{"-install-ddos-callback", failFlag},
-			resumeSession: resume,
-			shouldFail:    true,
-			expectedError: ":CONNECTION_REJECTED:",
+			flags:              []string{"-install-ddos-callback", failFlag},
+			resumeSession:      resume,
+			shouldFail:         true,
+			expectedError:      ":CONNECTION_REJECTED:",
+			expectedLocalError: "remote error: internal error",
 		})
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -4015,10 +4016,11 @@ func addDDoSCallbackTests() {
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
-			flags:         []string{"-install-ddos-callback", failFlag},
-			resumeSession: resume,
-			shouldFail:    true,
-			expectedError: ":CONNECTION_REJECTED:",
+			flags:              []string{"-install-ddos-callback", failFlag},
+			resumeSession:      resume,
+			shouldFail:         true,
+			expectedError:      ":CONNECTION_REJECTED:",
+			expectedLocalError: "remote error: internal error",
 		})
 	}
 }
