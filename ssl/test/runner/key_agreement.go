@@ -915,7 +915,7 @@ func (ka *pskKeyAgreement) generateServerKeyExchange(config *Config, cert *Certi
 
 	if baseSkx != nil {
 		bytes = append(bytes, baseSkx.key...)
-	} else if config.PreSharedKeyIdentity == "" {
+	} else if config.PreSharedKeyIdentity == "" && !config.Bugs.AlwaysSendPreSharedKeyIdentityHint {
 		// ServerKeyExchange is optional if the identity hint is empty
 		// and there would otherwise be no ServerKeyExchange.
 		return nil, nil

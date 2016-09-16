@@ -2443,7 +2443,11 @@ int SSL_use_psk_identity_hint(SSL *ssl, const char *identity_hint) {
   OPENSSL_free(ssl->psk_identity_hint);
   ssl->psk_identity_hint = NULL;
 
-  if (identity_hint != NULL) {
+  /* Treat the empty hint as not supplying one. Plain PSK makes it possible to
+   * send either no hint (omit ServerKeyExchange) or an empty hint, while
+   * ECDHE_PSK can only spell empty hint. Having different capabilities is odd,
+   * so we interpret empty and missing as identical. */
+  if (identity_hint != NULL && identity_hint[0] != '\0') {
     ssl->psk_identity_hint = BUF_strdup(identity_hint);
     if (ssl->psk_identity_hint == NULL) {
       return 0;

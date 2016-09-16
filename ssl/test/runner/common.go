@@ -1071,6 +1071,11 @@ type ProtocolBugs struct {
 	// SendCompressionMethods, if not nil, is the compression method list to
 	// send in the ClientHello.
 	SendCompressionMethods []byte
+
+	// AlwaysSendPreSharedKeyIdentityHint, if true, causes the server to
+	// always send a ServerKeyExchange for PSK ciphers, even if the identity
+	// hint is empty.
+	AlwaysSendPreSharedKeyIdentityHint bool
 }
 
 func (c *Config) serverInit() {

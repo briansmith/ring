@@ -2567,6 +2567,32 @@ func addCipherSuiteTests() {
 		},
 	})
 
+	// Test empty ECDHE_PSK identity hints work as expected.
+	testCases = append(testCases, testCase{
+		name: "EmptyECDHEPSKHint",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+		},
+		flags: []string{"-psk", "secret"},
+	})
+
+	// Test empty PSK identity hints work as expected, even if an explicit
+	// ServerKeyExchange is sent.
+	testCases = append(testCases, testCase{
+		name: "ExplicitEmptyPSKHint",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+			Bugs: ProtocolBugs{
+				AlwaysSendPreSharedKeyIdentityHint: true,
+			},
+		},
+		flags: []string{"-psk", "secret"},
+	})
+
 	// versionSpecificCiphersTest specifies a test for the TLS 1.0 and TLS
 	// 1.1 specific cipher suite settings. A server is setup with the given
 	// cipher lists and then a connection is made for each member of

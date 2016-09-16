@@ -1160,8 +1160,13 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
       goto f_err;
     }
 
-    /* Save the identity hint as a C string. */
-    if (!CBS_strdup(&psk_identity_hint, &ssl->s3->hs->peer_psk_identity_hint)) {
+    /* Save non-empty identity hints as a C string. Empty identity hints we
+     * treat as missing. Plain PSK makes it possible to send either no hint
+     * (omit ServerKeyExchange) or an empty hint, while ECDHE_PSK can only spell
+     * empty hint. Having different capabilities is odd, so we interpret empty
+     * and missing as identical. */
+    if (CBS_len(&psk_identity_hint) != 0 &&
+        !CBS_strdup(&psk_identity_hint, &ssl->s3->hs->peer_psk_identity_hint)) {
       al = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto f_err;

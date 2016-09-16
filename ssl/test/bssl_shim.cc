@@ -552,7 +552,13 @@ static unsigned PskClientCallback(SSL *ssl, const char *hint,
                                   uint8_t *out_psk, unsigned max_psk_len) {
   const TestConfig *config = GetTestConfig(ssl);
 
-  if (strcmp(hint ? hint : "", config->psk_identity.c_str()) != 0) {
+  if (config->psk_identity.empty()) {
+    if (hint != nullptr) {
+      fprintf(stderr, "Server PSK hint was non-null.\n");
+      return 0;
+    }
+  } else if (hint == nullptr ||
+             strcmp(hint, config->psk_identity.c_str()) != 0) {
     fprintf(stderr, "Server PSK hint did not match.\n");
     return 0;
   }
