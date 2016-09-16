@@ -1116,20 +1116,13 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
   }
 
   if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_KEY_EXCHANGE) {
+    /* Some ciphers (pure PSK) have an optional ServerKeyExchange message. */
     if (ssl_cipher_requires_server_key_exchange(ssl->s3->tmp.new_cipher)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return -1;
     }
 
-    /* In plain PSK ciphersuite, ServerKeyExchange may be omitted to send no
-     * identity hint. */
-    if (ssl->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK) {
-      /* TODO(davidben): This should be reset in one place with the rest of the
-       * handshake state. */
-      OPENSSL_free(ssl->s3->tmp.peer_psk_identity_hint);
-      ssl->s3->tmp.peer_psk_identity_hint = NULL;
-    }
     ssl->s3->tmp.reuse_message = 1;
     return 1;
   }
@@ -1168,7 +1161,7 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
     }
 
     /* Save the identity hint as a C string. */
-    if (!CBS_strdup(&psk_identity_hint, &ssl->s3->tmp.peer_psk_identity_hint)) {
+    if (!CBS_strdup(&psk_identity_hint, &ssl->s3->hs->peer_psk_identity_hint)) {
       al = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto f_err;
@@ -1542,7 +1535,7 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
     char identity[PSK_MAX_IDENTITY_LEN + 1];
     memset(identity, 0, sizeof(identity));
     psk_len = ssl->psk_client_callback(
-        ssl, ssl->s3->tmp.peer_psk_identity_hint, identity, sizeof(identity),
+        ssl, ssl->s3->hs->peer_psk_identity_hint, identity, sizeof(identity),
         psk, sizeof(psk));
     if (psk_len == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);

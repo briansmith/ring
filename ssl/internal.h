@@ -922,6 +922,10 @@ struct ssl_handshake_st {
   size_t num_peer_sigalgs;
 
   uint8_t session_tickets_sent;
+
+  /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
+   * server when using a TLS 1.2 PSK key exchange. */
+  char *peer_psk_identity_hint;
 } /* SSL_HANDSHAKE */;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
