@@ -256,6 +256,10 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      const uint8_t *in, size_t in_len,
                                      const uint8_t *ad, size_t ad_len);
 
+/* EVP_AEAD_CTX_aead returns the underlying AEAD for |ctx|, or NULL if one has
+ * not been set. */
+OPENSSL_EXPORT const EVP_AEAD *EVP_AEAD_CTX_aead(const EVP_AEAD_CTX *ctx);
+
 
 /* TLS-specific AEAD algorithms.
  *

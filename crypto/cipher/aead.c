@@ -144,6 +144,8 @@ error:
   return 0;
 }
 
+const EVP_AEAD *EVP_AEAD_CTX_aead(const EVP_AEAD_CTX *ctx) { return ctx->aead; }
+
 int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
                         size_t *out_len) {
   if (ctx->aead->get_iv == NULL) {
