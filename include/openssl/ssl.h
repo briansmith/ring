@@ -1259,9 +1259,9 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   corresponding |k*| or |a*| cipher rule. |RSA| is an alias for |kRSA|, not
  *   |aRSA|.
  *
- *   |3DES|, |RC4|, |AES128|, |AES256|, |AES|, |AESGCM|, |CHACHA20| match
- *   ciphers whose bulk cipher use the corresponding encryption scheme. Note
- *   that |AES|, |AES128|, and |AES256| match both CBC and GCM ciphers.
+ *   |3DES|, |AES128|, |AES256|, |AES|, |AESGCM|, |CHACHA20| match ciphers
+ *   whose bulk cipher use the corresponding encryption scheme. Note that
+ *   |AES|, |AES128|, and |AES256| match both CBC and GCM ciphers.
  *
  *   |MD5|, |SHA1|, |SHA256|, and |SHA384| match legacy cipher suites using the
  *   corresponding hash function in their MAC. AEADs are matched by none of
@@ -1277,7 +1277,7 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   |kEDH|, |EDH|, |kEECDH|, and |EECDH| are legacy aliases for |kDHE|, |DHE|,
  *   |kECDHE|, and |ECDHE|, respectively.
  *
- *   |MEDIUM| and |HIGH| match RC4-based ciphers and all others, respectively.
+ *   |HIGH| is an alias for |ALL|.
  *
  *   |FIPS| is an alias for |HIGH|.
  *

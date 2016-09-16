@@ -62,7 +62,6 @@ var (
 	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
 	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
-	includeRC4         = flag.Bool("include-rc4", false, "If true, test RC4 ciphersuites.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -2311,19 +2310,6 @@ func addBasicTests() {
 
 func addCipherSuiteTests() {
 	const bogusCipher = 0xfe00
-
-	if *includeRC4 {
-		testCipherSuites = append(testCipherSuites, []struct {
-			name string
-			id   uint16
-		}{
-			{"ECDHE-ECDSA-RC4-SHA", TLS_ECDHE_ECDSA_WITH_RC4_128_SHA},
-			{"ECDHE-RSA-RC4-SHA", TLS_ECDHE_RSA_WITH_RC4_128_SHA},
-			{"PSK-RC4-SHA", TLS_PSK_WITH_RC4_128_SHA},
-			{"RC4-MD5", TLS_RSA_WITH_RC4_128_MD5},
-			{"RC4-SHA", TLS_RSA_WITH_RC4_128_SHA},
-		}...)
-	}
 
 	for _, suite := range testCipherSuites {
 		const psk = "12345"
