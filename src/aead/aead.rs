@@ -30,7 +30,7 @@ mod aes_gcm;
 
 use {constant_time, error, init, polyfill};
 
-pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
+pub use self::chacha20_poly1305::CHACHA20_POLY1305;
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
 
 /// A key for authenticating and decrypting (&ldquo;opening&rdquo;)

@@ -29,96 +29,22 @@ const POLY1305_KEY_LEN: usize = 32;
 /// [RFC 7539]: https://tools.ietf.org/html/rfc7539
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: CHACHA20_KEY_LEN,
-    init: init,
+    init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
 };
+
+/// Copies |key| into |ctx_buf|.
+pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8])
+                              -> Result<(), error::Unspecified> {
+    ctx_buf[..key.len()].copy_from_slice(key);
+    Ok(())
+}
 
 fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                           tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
                           -> Result<(), error::Unspecified> {
-    seal(chacha20_poly1305_update, ctx, nonce, in_out, tag_out, ad)
-}
-
-fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-                          nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                          in_prefix_len: usize,
-                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                          -> Result<(), error::Unspecified> {
-    open(chacha20_poly1305_update, ctx, nonce, in_out, in_prefix_len, tag_out,
-         ad)
-}
-
-fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
-                            ciphertext: &[u8]) {
-    fn update_padded_16(state: &mut [u8; POLY1305_STATE_LEN], data: &[u8]) {
-        poly1305_update(state, data);
-        if data.len() % 16 != 0 {
-            static PADDING: [u8; 16] = [0u8; 16];
-            poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
-        }
-    }
-    update_padded_16(state, ad);
-    update_padded_16(state, ciphertext);
-    poly1305_update_length(state, ad.len());
-    poly1305_update_length(state, ciphertext.len());
-}
-
-
-/// The old ChaCha20-Poly13065 construction used in OpenSSH's
-/// [chacha20-poly1305@openssh.com] and the experimental TLS cipher suites with
-/// IDs `0xCC13` (ECDHE-RSA) and `0xCC14` (ECDHE-ECDSA). Use
-/// `CHACHA20_POLY1305` instead.
-///
-/// The keys are 256 bits long and the nonces are 96 bits. The first four bytes
-/// of the nonce must be `[0, 0, 0, 0]` in order to interoperate with other
-/// implementations, which use 64-bit nonces.
-///
-/// [chacha20-poly1305@openssh.com]:
-///     http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305
-pub static CHACHA20_POLY1305_OLD: aead::Algorithm = aead::Algorithm {
-    key_len: CHACHA20_KEY_LEN,
-    init: init,
-    seal: chacha20_poly1305_old_seal,
-    open: chacha20_poly1305_old_open,
-};
-
-fn chacha20_poly1305_old_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-                              nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                              tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                              -> Result<(), error::Unspecified> {
-    seal(chacha20_poly1305_update_old, ctx, nonce, in_out, tag_out, ad)
-}
-
-fn chacha20_poly1305_old_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-                              nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                              in_prefix_len: usize,
-                              tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                              -> Result<(), error::Unspecified> {
-    open(chacha20_poly1305_update_old, ctx, nonce, in_out, in_prefix_len,
-         tag_out, ad)
-}
-
-fn chacha20_poly1305_update_old(state: &mut [u8; POLY1305_STATE_LEN],
-                                ad: &[u8], ciphertext: &[u8]) {
-    poly1305_update(state, ad);
-    poly1305_update_length(state, ad.len());
-    poly1305_update(state, ciphertext);
-    poly1305_update_length(state, ciphertext.len());
-}
-
-
-/// Copies |key| into |ctx_buf|.
-pub fn init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified> {
-    ctx_buf[..key.len()].copy_from_slice(key);
-    Ok(())
-}
-
-fn seal(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-        nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-        tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-        -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = make_counter(1, nonce);
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
@@ -128,19 +54,20 @@ fn seal(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                            chacha20_key, &counter);
     }
     counter[0] = 0;
-    aead_poly1305(update, tag_out, chacha20_key, &counter, ad, in_out);
+    aead_poly1305(tag_out, chacha20_key, &counter, ad, in_out);
     Ok(())
 }
 
-fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-        nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8], in_prefix_len: usize,
-        tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-        -> Result<(), error::Unspecified> {
+fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                          nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+                          in_prefix_len: usize,
+                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
+                          -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = make_counter(0, nonce);
     {
         let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(update, tag_out, chacha20_key, &counter, ad, ciphertext);
+        aead_poly1305(tag_out, chacha20_key, &counter, ad, ciphertext);
     }
     counter[0] = 1;
     debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
@@ -189,7 +116,7 @@ fn make_counter(counter: u32, nonce: &[u8; aead::NONCE_LEN]) -> [u32; 4] {
 type UpdateFn = fn(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
                    ciphertext: &[u8]);
 
-fn aead_poly1305(update: UpdateFn, tag_out: &mut [u8; aead::TAG_LEN],
+fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN],
                  chacha20_key: &[u32; CHACHA20_KEY_LEN / 4],
                  counter: &[u32; 4], ad: &[u8], ciphertext: &[u8]) {
     debug_assert_eq!(counter[0], 0);
@@ -202,12 +129,26 @@ fn aead_poly1305(update: UpdateFn, tag_out: &mut [u8; aead::TAG_LEN],
     }
     let mut ctx = [0u8; POLY1305_STATE_LEN];
     poly1305_init(&mut ctx, &poly1305_key);
-    update(&mut ctx, ad, ciphertext);
+    poly1305_update_padded_16(&mut ctx, ad);
+    poly1305_update_padded_16(&mut ctx, ciphertext);
+    poly1305_update_length(&mut ctx, ad.len());
+    poly1305_update_length(&mut ctx, ciphertext.len());
     poly1305_finish(&mut ctx, tag_out);
+}
+
+#[inline]
+fn poly1305_update_padded_16(state: &mut [u8; POLY1305_STATE_LEN],
+                                data: &[u8]) {
+    poly1305_update(state, data);
+    if data.len() % 16 != 0 {
+        static PADDING: [u8; 16] = [0u8; 16];
+        poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
+    }
 }
 
 /// Updates the Poly1305 context |ctx| with the 64-bit little-endian encoded
 /// length value |len|.
+#[inline]
 fn poly1305_update_length(ctx: &mut [u8; POLY1305_STATE_LEN], len: usize) {
     let mut j = len;
     let mut length_bytes = [0u8; 8];
@@ -265,12 +206,6 @@ mod tests {
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
             "crypto/cipher/test/chacha20_poly1305_tests.txt");
-    }
-
-    #[test]
-    pub fn test_chacha20_poly1305_old() {
-        aead::tests::test_aead(&aead::CHACHA20_POLY1305_OLD,
-            "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
     }
 
     #[test]
