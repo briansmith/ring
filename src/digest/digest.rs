@@ -24,8 +24,6 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-#![allow(unsafe_code)]
-
 use {c, init, polyfill};
 use core;
 

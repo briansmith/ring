@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![allow(unsafe_code)]
-
 use {aead, bssl, c, error, polyfill};
 
 const AES_128_KEY_LEN: usize = 128 / 8;

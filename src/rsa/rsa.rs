@@ -45,7 +45,6 @@ struct PositiveInteger {
     value: Option<*mut BIGNUM>,
 }
 
-#[allow(unsafe_code)]
 impl PositiveInteger {
     #[cfg(feature = "rsa_signing")]
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
@@ -87,7 +86,6 @@ impl PositiveInteger {
     }
 }
 
-#[allow(unsafe_code)]
 impl Drop for PositiveInteger {
     fn drop(&mut self) {
         match self.value {

@@ -12,7 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[allow(unsafe_code)]
 #[inline(always)]
 #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
 pub fn init_once() {

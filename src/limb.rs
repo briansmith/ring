@@ -133,7 +133,6 @@ fn most_significant_limb_mask_variable_time(most_significant_limb: Limb)
     }
 }
 
-#[allow(unsafe_code)]
 #[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]
@@ -177,14 +176,12 @@ fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
     polyfill::slice::u32_as_u8_mut(src)
 }
 
-#[allow(unsafe_code)]
 #[inline]
 pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb]) -> LimbMask {
     assert_eq!(a.len(), b.len());
     unsafe { GFp_constant_time_limbs_lt_limbs(a.as_ptr(), b.as_ptr(), b.len()) }
 }
 
-#[allow(unsafe_code)]
 #[inline]
 pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { GFp_constant_time_limbs_are_zero(limbs.as_ptr(), limbs.len()) }

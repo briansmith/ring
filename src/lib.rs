@@ -39,6 +39,7 @@
 #![allow(
     missing_copy_implementations,
     missing_debug_implementations,
+    unsafe_code,
     // TODO: Deny `unused_unsafe` when Rust 1.13 goes stable.
     unused_unsafe,
 )]
@@ -69,7 +70,6 @@
     unknown_crate_types,
     unknown_lints,
     unreachable_code,
-    unsafe_code,
     unstable_features,
     unused_allocation,
     unused_assignments,

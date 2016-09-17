@@ -15,8 +15,6 @@
 //! Polyfills for functionality that will (hopefully) be added to Rust's
 //! standard library soon.
 
-#![allow(unsafe_code)]
-
 use core;
 
 #[inline(always)]
@@ -139,7 +137,6 @@ macro_rules! slice_as_array_ref {
         {
             use error;
 
-            #[allow(unsafe_code)]
             fn slice_as_array_ref<T>(slice: &[T])
                                      -> Result<&[T; $len], error::Unspecified> {
                 if slice.len() != $len {
@@ -161,7 +158,6 @@ macro_rules! slice_as_array_ref_mut {
         {
             use error;
 
-            #[allow(unsafe_code)]
             fn slice_as_array_ref<T>(slice: &mut [T])
                                      -> Result<&mut [T; $len],
                                                error::Unspecified> {

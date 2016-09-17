@@ -52,7 +52,6 @@ macro_rules! define_metrics_tests {
 
         #[cfg(test)]
         #[test]
-        #[allow(unsafe_code)]
         fn $test_c_metrics() {
             use std::mem;
 

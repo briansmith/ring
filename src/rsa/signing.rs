@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![allow(unsafe_code)]
-
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, der, error};

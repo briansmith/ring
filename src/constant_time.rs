@@ -14,8 +14,6 @@
 
 //! Constant-time operations.
 
-#![allow(unsafe_code)]
-
 use {c, error};
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.

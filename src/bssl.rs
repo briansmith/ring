@@ -31,7 +31,6 @@ pub fn map_result(bssl_result: c::int) -> Result<(), error::Unspecified> {
 macro_rules! bssl_test {
     ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
         #[test]
-        #[allow(unsafe_code)]
         fn $fn_name() {
             use $crate::{c, init};
             extern {
@@ -54,7 +53,7 @@ macro_rules! bssl_test {
 macro_rules! bssl_test_rng {
     ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
         #[test]
-        #[allow(improper_ctypes, unsafe_code)]
+        #[allow(improper_ctypes)]
         fn $fn_name() {
             use $crate::{c, init, rand};
             extern {

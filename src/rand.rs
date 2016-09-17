@@ -26,8 +26,6 @@
 //! documentation for more details.
 
 
-#![allow(unsafe_code)]
-
 #[cfg(any(target_os = "linux", windows, test))]
 use c;
 

@@ -141,7 +141,6 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
 }
 
 
-#[allow(unsafe_code)]
 #[cfg(test)]
 mod tests {
     use core;

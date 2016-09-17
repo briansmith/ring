@@ -44,7 +44,6 @@ fn x25519_generate_private_key(rng: &rand::SecureRandom)
     Ok(result)
 }
 
-#[allow(unsafe_code)]
 fn x25519_public_from_private(public_out: &mut [u8],
                               private_key: &ec::PrivateKey)
                               -> Result<(), error::Unspecified> {
@@ -63,7 +62,6 @@ fn x25519_public_from_private(public_out: &mut [u8],
     Ok(())
 }
 
-#[allow(unsafe_code)]
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input)
                -> Result<(), error::Unspecified> {
