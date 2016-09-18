@@ -131,6 +131,10 @@ impl<'a> EphemeralPrivateKey {
         }
     }
 
+    /// The key exchange algorithm.
+    #[inline]
+    pub fn algorithm(&self) -> &'static Algorithm { self.alg }
+
     /// The size in bytes of the encoded public key.
     #[inline(always)]
     pub fn public_key_len(&self) -> usize { self.alg.i.public_key_len }
