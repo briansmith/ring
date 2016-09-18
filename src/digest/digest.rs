@@ -242,6 +242,7 @@ pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
 /// A calculated digest value.
 ///
 /// Use `as_ref` to get the value as a `&[u8]`.
+#[derive(Clone, Copy)]
 pub struct Digest {
     value: [u64; MAX_OUTPUT_LEN / 8],
     algorithm: &'static Algorithm,
