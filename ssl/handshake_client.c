@@ -581,8 +581,7 @@ end:
 
 static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
                                         uint16_t min_version,
-                                        uint16_t max_version,
-                                        uint16_t real_max_version) {
+                                        uint16_t max_version) {
   /* Prepare disabled cipher masks. */
   ssl_set_client_disabled(ssl);
 
@@ -636,8 +635,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     }
   }
 
-  if ((ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) ||
-      real_max_version > max_version) {
+  if (ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) {
     if (!CBB_add_u16(&child, SSL3_CK_FALLBACK_SCSV & 0xffff)) {
       return 0;
     }
@@ -647,9 +645,8 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
 }
 
 int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
-  uint16_t min_version, max_version, real_max_version;
-  if (!ssl_get_full_version_range(ssl, &min_version, &max_version,
-                                  &real_max_version)) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
     return 0;
   }
 
@@ -676,8 +673,7 @@ int ssl_add_client_hello_body(SSL *ssl, CBB *body) {
 
   size_t header_len =
       SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
-  if (!ssl_write_client_cipher_list(ssl, body, min_version, max_version,
-                                    real_max_version) ||
+  if (!ssl_write_client_cipher_list(ssl, body, min_version, max_version) ||
       !CBB_add_u8(body, 1 /* one compression method */) ||
       !CBB_add_u8(body, 0 /* null compression */) ||
       !ssl_add_clienthello_tlsext(ssl, body, header_len + CBB_len(body))) {
@@ -837,9 +833,8 @@ static int ssl3_get_server_hello(SSL *ssl) {
 
   server_version = ssl->method->version_from_wire(server_wire_version);
 
-  uint16_t min_version, max_version, real_max_version;
-  if (!ssl_get_full_version_range(ssl, &min_version, &max_version,
-                                  &real_max_version) ||
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
       server_version < min_version || server_version > max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
     al = SSL_AD_PROTOCOL_VERSION;

@@ -66,7 +66,6 @@ struct TestConfig {
   std::string expected_signed_cert_timestamps;
   int min_version = 0;
   int max_version = 0;
-  int fallback_version = 0;
   int mtu = 0;
   bool implicit_handshake = false;
   bool use_early_callback = false;
