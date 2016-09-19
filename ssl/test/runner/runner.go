@@ -6930,6 +6930,20 @@ func addRSAClientKeyExchangeTests() {
 			expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
 		})
 	}
+
+	// The server must compare whatever was in ClientHello.version for the
+	// RSA premaster.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SendClientVersion-RSA",
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x1234,
+			},
+		},
+		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
+	})
 }
 
 var testCurves = []struct {
