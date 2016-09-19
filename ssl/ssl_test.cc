@@ -1523,11 +1523,11 @@ static bool TestGetPeerCertificate() {
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     if (!ctx ||
         !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
-        !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+        !SSL_CTX_use_PrivateKey(ctx.get(), key.get()) ||
+        !SSL_CTX_set_min_version(ctx.get(), version) ||
+        !SSL_CTX_set_max_version(ctx.get(), version)) {
       return false;
     }
-    SSL_CTX_set_min_version(ctx.get(), version);
-    SSL_CTX_set_max_version(ctx.get(), version);
     SSL_CTX_set_verify(
         ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_cert_verify_callback(ctx.get(), VerifySucceed, NULL);
@@ -1590,11 +1590,11 @@ static bool TestRetainOnlySHA256OfCerts() {
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     if (!ctx ||
         !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
-        !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+        !SSL_CTX_use_PrivateKey(ctx.get(), key.get()) ||
+        !SSL_CTX_set_min_version(ctx.get(), version) ||
+        !SSL_CTX_set_max_version(ctx.get(), version)) {
       return false;
     }
-    SSL_CTX_set_min_version(ctx.get(), version);
-    SSL_CTX_set_max_version(ctx.get(), version);
     SSL_CTX_set_verify(
         ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_cert_verify_callback(ctx.get(), VerifySucceed, NULL);
@@ -1631,15 +1631,14 @@ static bool TestRetainOnlySHA256OfCerts() {
 static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
                                size_t expected_len) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
+  if (!ctx ||
+      !SSL_CTX_set_max_version(ctx.get(), version) ||
+      // Our default cipher list varies by CPU capabilities, so manually place
+      // the ChaCha20 ciphers in front.
+      !SSL_CTX_set_cipher_list(ctx.get(), "CHACHA20:ALL")) {
     return false;
   }
-  SSL_CTX_set_max_version(ctx.get(), version);
-  // Our default cipher list varies by CPU capabilities, so manually place the
-  // ChaCha20 ciphers in front.
-  if (!SSL_CTX_set_cipher_list(ctx.get(), "CHACHA20:ALL")) {
-    return false;
-  }
+
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl) {
     return false;
@@ -1872,16 +1871,15 @@ static bool TestSessionIDContext() {
         !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
         !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
         !SSL_CTX_set_session_id_context(server_ctx.get(), kContext1,
-                                        sizeof(kContext1))) {
+                                        sizeof(kContext1)) ||
+        !SSL_CTX_set_min_version(client_ctx.get(), version) ||
+        !SSL_CTX_set_max_version(client_ctx.get(), version) ||
+        !SSL_CTX_set_min_version(server_ctx.get(), version) ||
+        !SSL_CTX_set_max_version(server_ctx.get(), version)) {
       return false;
     }
 
-    SSL_CTX_set_min_version(client_ctx.get(), version);
-    SSL_CTX_set_max_version(client_ctx.get(), version);
     SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
-
-    SSL_CTX_set_min_version(server_ctx.get(), version);
-    SSL_CTX_set_max_version(server_ctx.get(), version);
     SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
 
     bssl::UniquePtr<SSL_SESSION> session =
@@ -1933,16 +1931,16 @@ static bool TestSessionTimeout() {
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !client_ctx ||
         !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
-        !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
+        !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+        !SSL_CTX_set_min_version(client_ctx.get(), version) ||
+        !SSL_CTX_set_max_version(client_ctx.get(), version) ||
+        !SSL_CTX_set_min_version(server_ctx.get(), version) ||
+        !SSL_CTX_set_max_version(server_ctx.get(), version)) {
       return false;
     }
 
-    SSL_CTX_set_min_version(client_ctx.get(), version);
-    SSL_CTX_set_max_version(client_ctx.get(), version);
     SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
 
-    SSL_CTX_set_min_version(server_ctx.get(), version);
-    SSL_CTX_set_max_version(server_ctx.get(), version);
     SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
     SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
 
@@ -2012,16 +2010,15 @@ static bool TestSNICallback() {
         // this doesn't happen when |version| is TLS 1.2, configure the private
         // key to only sign SHA-256.
         !SSL_CTX_set_signing_algorithm_prefs(server_ctx2.get(),
-                                             &kECDSAWithSHA256, 1)) {
+                                             &kECDSAWithSHA256, 1) ||
+        !SSL_CTX_set_min_version(client_ctx.get(), version) ||
+        !SSL_CTX_set_max_version(client_ctx.get(), version) ||
+        !SSL_CTX_set_min_version(server_ctx.get(), version) ||
+        !SSL_CTX_set_max_version(server_ctx.get(), version) ||
+        !SSL_CTX_set_min_version(server_ctx2.get(), version) ||
+        !SSL_CTX_set_max_version(server_ctx2.get(), version)) {
       return false;
     }
-
-    SSL_CTX_set_min_version(client_ctx.get(), version);
-    SSL_CTX_set_max_version(client_ctx.get(), version);
-    SSL_CTX_set_min_version(server_ctx.get(), version);
-    SSL_CTX_set_max_version(server_ctx.get(), version);
-    SSL_CTX_set_min_version(server_ctx2.get(), version);
-    SSL_CTX_set_max_version(server_ctx2.get(), version);
 
     SSL_CTX_set_tlsext_servername_callback(server_ctx.get(), SwitchContext);
     SSL_CTX_set_tlsext_servername_arg(server_ctx.get(), server_ctx2.get());
@@ -2047,7 +2044,10 @@ static bool TestSNICallback() {
 }
 
 static int SetMaxVersion(const struct ssl_early_callback_ctx *ctx) {
-  SSL_set_max_version(ctx->ssl, TLS1_2_VERSION);
+  if (!SSL_set_max_version(ctx->ssl, TLS1_2_VERSION)) {
+    return -1;
+  }
+
   return 1;
 }
 
@@ -2060,12 +2060,11 @@ static bool TestEarlyCallbackVersionSwitch() {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   if (!cert || !key || !server_ctx || !client_ctx ||
       !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
-      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
+      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+      !SSL_CTX_set_max_version(client_ctx.get(), TLS1_3_VERSION) ||
+      !SSL_CTX_set_max_version(server_ctx.get(), TLS1_3_VERSION)) {
     return false;
   }
-
-  SSL_CTX_set_max_version(client_ctx.get(), TLS1_3_VERSION);
-  SSL_CTX_set_max_version(server_ctx.get(), TLS1_3_VERSION);
 
   SSL_CTX_set_select_certificate_cb(server_ctx.get(), SetMaxVersion);
 
@@ -2077,6 +2076,58 @@ static bool TestEarlyCallbackVersionSwitch() {
 
   if (SSL_version(client.get()) != TLS1_2_VERSION) {
     fprintf(stderr, "Early callback failed to switch the maximum version.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestSetVersion() {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
+  }
+
+  if (!SSL_CTX_set_max_version(ctx.get(), TLS1_VERSION) ||
+      !SSL_CTX_set_max_version(ctx.get(), TLS1_1_VERSION) ||
+      !SSL_CTX_set_min_version(ctx.get(), TLS1_VERSION) ||
+      !SSL_CTX_set_min_version(ctx.get(), TLS1_1_VERSION)) {
+    fprintf(stderr, "Could not set valid TLS version.\n");
+    return false;
+  }
+
+  if (SSL_CTX_set_max_version(ctx.get(), DTLS1_VERSION) ||
+      SSL_CTX_set_max_version(ctx.get(), 0x0200) ||
+      SSL_CTX_set_max_version(ctx.get(), 0x1234) ||
+      SSL_CTX_set_min_version(ctx.get(), DTLS1_VERSION) ||
+      SSL_CTX_set_min_version(ctx.get(), 0x0200) ||
+      SSL_CTX_set_min_version(ctx.get(), 0x1234)) {
+    fprintf(stderr, "Unexpectedly set invalid TLS version.\n");
+    return false;
+  }
+
+  ctx.reset(SSL_CTX_new(DTLS_method()));
+  if (!ctx) {
+    return false;
+  }
+
+  if (!SSL_CTX_set_max_version(ctx.get(), DTLS1_VERSION) ||
+      !SSL_CTX_set_max_version(ctx.get(), DTLS1_2_VERSION) ||
+      !SSL_CTX_set_min_version(ctx.get(), DTLS1_VERSION) ||
+      !SSL_CTX_set_min_version(ctx.get(), DTLS1_2_VERSION)) {
+    fprintf(stderr, "Could not set valid DTLS version.\n");
+    return false;
+  }
+
+  if (SSL_CTX_set_max_version(ctx.get(), TLS1_VERSION) ||
+      SSL_CTX_set_max_version(ctx.get(), 0xfefe /* DTLS 1.1 */) ||
+      SSL_CTX_set_max_version(ctx.get(), 0xfffe /* DTLS 0.1 */) ||
+      SSL_CTX_set_max_version(ctx.get(), 0x1234) ||
+      SSL_CTX_set_min_version(ctx.get(), TLS1_VERSION) ||
+      SSL_CTX_set_min_version(ctx.get(), 0xfefe /* DTLS 1.1 */) ||
+      SSL_CTX_set_min_version(ctx.get(), 0xfffe /* DTLS 0.1 */) ||
+      SSL_CTX_set_min_version(ctx.get(), 0x1234)) {
+    fprintf(stderr, "Unexpectedly set invalid DTLS version.\n");
     return false;
   }
 
@@ -2118,7 +2169,8 @@ int main() {
       !TestSessionIDContext() ||
       !TestSessionTimeout() ||
       !TestSNICallback() ||
-      !TestEarlyCallbackVersionSwitch()) {
+      !TestEarlyCallbackVersionSwitch() ||
+      !TestSetVersion()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }

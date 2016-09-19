@@ -564,12 +564,30 @@ static int negotiate_version(
     return 0;
   }
 
-  uint16_t client_version =
-      ssl->method->version_from_wire(client_hello->version);
-  ssl->client_version = client_hello->version;
+  /* For TLS versions which use ClientHello.version, convert it to a version we
+   * are aware of. */
+  uint16_t version = 0;
+  if (SSL_is_dtls(ssl)) {
+    if (client_hello->version <= DTLS1_2_VERSION) {
+      version = TLS1_2_VERSION;
+    } else if (client_hello->version <= DTLS1_VERSION) {
+      version = TLS1_1_VERSION;
+    }
+  } else {
+    if (client_hello->version >= TLS1_3_VERSION) {
+      version = TLS1_3_VERSION;
+    } else if (client_hello->version >= TLS1_2_VERSION) {
+      version = TLS1_2_VERSION;
+    } else if (client_hello->version >= TLS1_1_VERSION) {
+      version = TLS1_1_VERSION;
+    } else if (client_hello->version >= TLS1_VERSION) {
+      version = TLS1_VERSION;
+    } else if (client_hello->version >= SSL3_VERSION) {
+      version = SSL3_VERSION;
+    }
+  }
 
-  /* Select the version to use. */
-  uint16_t version = client_version;
+  /* Apply our minimum and maximum version. */
   if (version > max_version) {
     version = max_version;
   }
@@ -589,6 +607,7 @@ static int negotiate_version(
     return 0;
   }
 
+  ssl->client_version = client_hello->version;
   ssl->version = ssl->method->version_to_wire(version);
   ssl->s3->enc_method = ssl3_get_enc_method(version);
   assert(ssl->s3->enc_method != NULL);

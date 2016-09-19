@@ -949,20 +949,20 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   return SSL_ERROR_SYSCALL;
 }
 
-void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
-  ctx->min_version = ctx->method->version_from_wire(version);
+int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
+  return ctx->method->version_from_wire(&ctx->min_version, version);
 }
 
-void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
-  ctx->max_version = ctx->method->version_from_wire(version);
+int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
+  return ctx->method->version_from_wire(&ctx->max_version, version);
 }
 
-void SSL_set_min_version(SSL *ssl, uint16_t version) {
-  ssl->min_version = ssl->method->version_from_wire(version);
+int SSL_set_min_version(SSL *ssl, uint16_t version) {
+  return ssl->method->version_from_wire(&ssl->min_version, version);
 }
 
-void SSL_set_max_version(SSL *ssl, uint16_t version) {
-  ssl->max_version = ssl->method->version_from_wire(version);
+int SSL_set_max_version(SSL *ssl, uint16_t version) {
+  return ssl->method->version_from_wire(&ssl->max_version, version);
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
@@ -2750,7 +2750,15 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
 
 uint16_t ssl3_protocol_version(const SSL *ssl) {
   assert(ssl->s3->have_version);
-  return ssl->method->version_from_wire(ssl->version);
+  uint16_t version;
+  if (!ssl->method->version_from_wire(&version, ssl->version)) {
+    /* TODO(davidben): Use the internal version representation for ssl->version
+     * and map to the public API representation at API boundaries. */
+    assert(0);
+    return 0;
+  }
+
+  return version;
 }
 
 int SSL_is_server(const SSL *ssl) { return ssl->server; }

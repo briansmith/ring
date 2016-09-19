@@ -609,9 +609,11 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
       return 0;
     }
     /* Add PSK ciphers for TLS 1.3 resumption. */
+    uint16_t session_version;
     if (ssl->session != NULL &&
-        ssl->method->version_from_wire(ssl->session->ssl_version) >=
-            TLS1_3_VERSION) {
+        ssl->method->version_from_wire(&session_version,
+                                       ssl->session->ssl_version) &&
+        session_version >= TLS1_3_VERSION) {
       uint16_t resumption_cipher;
       if (ssl_cipher_get_ecdhe_psk_cipher(cipher, &resumption_cipher) &&
           !CBB_add_u16(&child, resumption_cipher)) {
@@ -716,9 +718,10 @@ static int ssl3_send_client_hello(SSL *ssl) {
   /* If the configured session has expired or was created at a disabled
    * version, drop it. */
   if (ssl->session != NULL) {
-    uint16_t session_version =
-        ssl->method->version_from_wire(ssl->session->ssl_version);
-    if ((session_version < TLS1_3_VERSION &&
+    uint16_t session_version;
+    if (!ssl->method->version_from_wire(&session_version,
+                                        ssl->session->ssl_version) ||
+        (session_version < TLS1_3_VERSION &&
          ssl->session->session_id_length == 0) ||
         ssl->session->not_resumable ||
         !ssl_session_is_time_valid(ssl, ssl->session) ||
@@ -797,7 +800,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
   CERT *ct = ssl->cert;
   int al = SSL_AD_INTERNAL_ERROR;
   CBS server_hello, server_random, session_id;
-  uint16_t server_wire_version, server_version, cipher_suite;
+  uint16_t server_wire_version, cipher_suite;
   uint8_t compression_method;
 
   int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
@@ -831,10 +834,9 @@ static int ssl3_get_server_hello(SSL *ssl) {
     goto f_err;
   }
 
-  server_version = ssl->method->version_from_wire(server_wire_version);
-
-  uint16_t min_version, max_version;
+  uint16_t min_version, max_version, server_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
+      !ssl->method->version_from_wire(&server_version, server_wire_version) ||
       server_version < min_version || server_version > max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
     al = SSL_AD_PROTOCOL_VERSION;

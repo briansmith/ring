@@ -1090,14 +1090,10 @@ struct ssl_protocol_method_st {
   uint16_t min_version;
   /* max_version is the maximum implemented version. */
   uint16_t max_version;
-  /* version_from_wire maps |wire_version| to a protocol version. For
-   * SSLv3/TLS, the version is returned as-is. For DTLS, the corresponding TLS
-   * version is used. Note that this mapping is not injective but preserves
-   * comparisons.
-   *
-   * TODO(davidben): To normalize some DTLS-specific code, move away from using
-   * the wire version except at API boundaries. */
-  uint16_t (*version_from_wire)(uint16_t wire_version);
+  /* version_from_wire maps |wire_version| to a protocol version. On success, it
+   * sets |*out_version| to the result and returns one. If the version is
+   * unknown, it returns zero. */
+  int (*version_from_wire)(uint16_t *out_version, uint16_t wire_version);
   /* version_to_wire maps |version| to the wire representation. It is an error
    * to call it with an invalid version. */
   uint16_t (*version_to_wire)(uint16_t version);

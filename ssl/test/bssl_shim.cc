@@ -814,9 +814,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
-  if (!config->is_dtls) {
-    // Enable TLS 1.3 for tests.
-    SSL_CTX_set_max_version(ssl_ctx.get(), TLS1_3_VERSION);
+  // Enable TLS 1.3 for tests.
+  if (!config->is_dtls &&
+      !SSL_CTX_set_max_version(ssl_ctx.get(), TLS1_3_VERSION)) {
+    return nullptr;
   }
 
   std::string cipher_list = "ALL";
@@ -1364,11 +1365,13 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       !SSL_enable_signed_cert_timestamps(ssl.get())) {
     return false;
   }
-  if (config->min_version != 0) {
-    SSL_set_min_version(ssl.get(), (uint16_t)config->min_version);
+  if (config->min_version != 0 &&
+      !SSL_set_min_version(ssl.get(), (uint16_t)config->min_version)) {
+    return false;
   }
-  if (config->max_version != 0) {
-    SSL_set_max_version(ssl.get(), (uint16_t)config->max_version);
+  if (config->max_version != 0 &&
+      !SSL_set_max_version(ssl.get(), (uint16_t)config->max_version)) {
+    return false;
   }
   if (config->mtu != 0) {
     SSL_set_options(ssl.get(), SSL_OP_NO_QUERY_MTU);

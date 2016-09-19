@@ -565,20 +565,20 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define TLS1_3_DRAFT_VERSION 14
 
 /* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
- * |version|. */
-OPENSSL_EXPORT void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
+ * |version|. It returns one on success and zero if |version| is invalid. */
+OPENSSL_EXPORT int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
 
 /* SSL_CTX_set_max_version sets the maximum protocol version for |ctx| to
- * |version|. */
-OPENSSL_EXPORT void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
+ * |version|. It returns one on success and zero if |version| is invalid. */
+OPENSSL_EXPORT int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
 
 /* SSL_set_min_version sets the minimum protocol version for |ssl| to
- * |version|. */
-OPENSSL_EXPORT void SSL_set_min_version(SSL *ssl, uint16_t version);
+ * |version|. It returns one on success and zero if |version| is invalid. */
+OPENSSL_EXPORT int SSL_set_min_version(SSL *ssl, uint16_t version);
 
 /* SSL_set_max_version sets the maximum protocol version for |ssl| to
- * |version|. */
-OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
+ * |version|. It returns one on success and zero if |version| is invalid. */
+OPENSSL_EXPORT int SSL_set_max_version(SSL *ssl, uint16_t version);
 
 /* SSL_version returns the TLS or DTLS protocol version used by |ssl|, which is
  * one of the |*_VERSION| values. (E.g. |TLS1_2_VERSION|.) Before the version

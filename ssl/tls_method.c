@@ -56,6 +56,7 @@
 
 #include <openssl/ssl.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/buf.h>
@@ -63,11 +64,35 @@
 #include "internal.h"
 
 
-static uint16_t ssl3_version_from_wire(uint16_t wire_version) {
-  return wire_version;
+static int ssl3_version_from_wire(uint16_t *out_version,
+                                  uint16_t wire_version) {
+  switch (wire_version) {
+    case SSL3_VERSION:
+    case TLS1_VERSION:
+    case TLS1_1_VERSION:
+    case TLS1_2_VERSION:
+    case TLS1_3_VERSION:
+      *out_version = wire_version;
+      return 1;
+  }
+
+  return 0;
 }
 
-static uint16_t ssl3_version_to_wire(uint16_t version) { return version; }
+static uint16_t ssl3_version_to_wire(uint16_t version) {
+  switch (version) {
+    case SSL3_VERSION:
+    case TLS1_VERSION:
+    case TLS1_1_VERSION:
+    case TLS1_2_VERSION:
+    case TLS1_3_VERSION:
+      return version;
+  }
+
+  /* It is an error to use this function with an invalid version. */
+  assert(0);
+  return 0;
+}
 
 static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   if (ssl->s3->rrec.length != 0) {

@@ -1038,12 +1038,14 @@ static int ext_ticket_add_clienthello(SSL *ssl, CBB *out) {
    * advertise the extension to avoid potentially breaking servers which carry
    * over the state from the previous handshake, such as OpenSSL servers
    * without upstream's 3c3f0259238594d77264a78944d409f2127642c4. */
+  uint16_t session_version;
   if (!ssl->s3->initial_handshake_complete &&
       ssl->session != NULL &&
       ssl->session->tlsext_tick != NULL &&
       /* Don't send TLS 1.3 session tickets in the ticket extension. */
-      ssl->method->version_from_wire(ssl->session->ssl_version) <
-          TLS1_3_VERSION) {
+      ssl->method->version_from_wire(&session_version,
+                                     ssl->session->ssl_version) &&
+      session_version < TLS1_3_VERSION) {
     ticket_data = ssl->session->tlsext_tick;
     ticket_len = ssl->session->tlsext_ticklen;
   }
@@ -1107,7 +1109,12 @@ static int ext_ticket_add_serverhello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1 */
 
 static int ext_sigalgs_add_clienthello(SSL *ssl, CBB *out) {
-  if (ssl->method->version_from_wire(ssl->client_version) < TLS1_2_VERSION) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  if (max_version < TLS1_2_VERSION) {
     return 1;
   }
 
@@ -1990,9 +1997,11 @@ static int ext_pre_shared_key_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
+  uint16_t session_version;
   if (max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      ssl->method->version_from_wire(ssl->session->ssl_version) <
-          TLS1_3_VERSION) {
+      !ssl->method->version_from_wire(&session_version,
+                                      ssl->session->ssl_version) ||
+      session_version < TLS1_3_VERSION) {
     return 1;
   }
 
