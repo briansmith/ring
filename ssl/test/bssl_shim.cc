@@ -1020,11 +1020,33 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
       // trigger a retransmit, so disconnect the write quota.
       AsyncBioEnforceWriteQuota(test_state->async_bio, false);
     }
-    ret = SSL_read(ssl, out, max_out);
+    ret = config->peek_then_read ? SSL_peek(ssl, out, max_out)
+                                 : SSL_read(ssl, out, max_out);
     if (config->async) {
       AsyncBioEnforceWriteQuota(test_state->async_bio, true);
     }
   } while (config->async && RetryAsync(ssl, ret));
+
+  if (config->peek_then_read && ret > 0) {
+    std::unique_ptr<uint8_t[]> buf(new uint8_t[static_cast<size_t>(ret)]);
+
+    // SSL_peek should synchronously return the same data.
+    int ret2 = SSL_peek(ssl, buf.get(), ret);
+    if (ret2 != ret ||
+        memcmp(buf.get(), out, ret) != 0) {
+      fprintf(stderr, "First and second SSL_peek did not match.\n");
+      return -1;
+    }
+
+    // SSL_read should synchronously return the same data and consume it.
+    ret2 = SSL_read(ssl, buf.get(), ret);
+    if (ret2 != ret ||
+        memcmp(buf.get(), out, ret) != 0) {
+      fprintf(stderr, "SSL_peek and SSL_read did not match.\n");
+      return -1;
+    }
+  }
+
   return ret;
 }
 

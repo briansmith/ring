@@ -112,6 +112,7 @@ struct TestConfig {
   int initial_timeout_duration_ms = 0;
   bool use_null_client_ca_list = false;
   bool send_alert = false;
+  bool peek_then_read = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

@@ -104,6 +104,7 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::use_old_client_cert_callback },
   { "-use-null-client-ca-list", &TestConfig::use_null_client_ca_list },
   { "-send-alert", &TestConfig::send_alert },
+  { "-peek-then-read", &TestConfig::peek_then_read },
 };
 
 const Flag<std::string> kStringFlags[] = {
