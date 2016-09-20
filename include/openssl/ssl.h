@@ -4010,8 +4010,15 @@ struct ssl_ctx_st {
 };
 
 struct ssl_st {
+  /* method is the method table corresponding to the current protocol (DTLS or
+   * TLS). */
+  const SSL_PROTOCOL_METHOD *method;
+
   /* version is the protocol version. */
   int version;
+
+  /* state contains one of the SSL3_ST_* values. */
+  int state;
 
   /* max_version is the maximum acceptable protocol version. Note this version
    * is normalized in DTLS. */
@@ -4026,9 +4033,7 @@ struct ssl_st {
    * normalized in DTLS. */
   uint16_t fallback_version;
 
-  /* method is the method table corresponding to the current protocol (DTLS or
-   * TLS). */
-  const SSL_PROTOCOL_METHOD *method;
+  uint16_t max_send_fragment;
 
   /* There are 2 BIO's even though they are normally both the same. This is so
    * data can be read and written to different handlers */
@@ -4049,14 +4054,6 @@ struct ssl_st {
 
   int (*handshake_func)(SSL *);
 
-  /* Imagine that here's a boolean member "init" that is switched as soon as
-   * SSL_set_{accept/connect}_state is called for the first time, so that
-   * "state" and "handshake_func" are properly initialized.  But as
-   * handshake_func is == 0 until then, we use this test instead of an "init"
-   * member. */
-
-  int state;    /* where we are */
-
   BUF_MEM *init_buf; /* buffer used during init */
 
   /* init_msg is a pointer to the current handshake message body. */
@@ -4070,10 +4067,6 @@ struct ssl_st {
 
   struct ssl3_state_st *s3;  /* SSLv3 variables */
   struct dtls1_state_st *d1; /* DTLSv1 variables */
-
-  /* initial_timeout_duration_ms is the default DTLS timeout duration in
-   * milliseconds. It's used to initialize the timer any time it's restarted. */
-  unsigned initial_timeout_duration_ms;
 
   /* callback that allows applications to peek at protocol messages */
   void (*msg_callback)(int write_p, int version, int content_type,
@@ -4096,6 +4089,10 @@ struct ssl_st {
    * returned.  This is needed for non-blocking IO so we know what request
    * needs re-doing when in SSL_accept or SSL_connect */
   int rwstate;
+
+  /* initial_timeout_duration_ms is the default DTLS timeout duration in
+   * milliseconds. It's used to initialize the timer any time it's restarted. */
+  unsigned initial_timeout_duration_ms;
 
   /* the session_id_context is used to ensure sessions are only reused
    * in the appropriate context */
@@ -4135,10 +4132,7 @@ struct ssl_st {
   uint32_t max_cert_list;
   int client_version; /* what was passed, used for
                        * SSLv3/TLS rollback check */
-  uint16_t max_send_fragment;
   char *tlsext_hostname;
-  /* RFC4507 session ticket expected to be received or sent */
-  int tlsext_ticket_expected;
   size_t supported_group_list_len;
   uint16_t *supported_group_list; /* our list */
 
@@ -4192,6 +4186,9 @@ struct ssl_st {
    * means that we'll accept Channel IDs from clients. For a client, means that
    * we'll advertise support. */
   unsigned tlsext_channel_id_enabled:1;
+
+  /* RFC4507 session ticket expected to be received or sent */
+  unsigned tlsext_ticket_expected:1;
 
   /* TODO(agl): remove once node.js not longer references this. */
   int tlsext_status_type;
