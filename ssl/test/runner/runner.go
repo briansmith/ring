@@ -988,7 +988,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			panic("internal error")
 		}
 
-		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s", msg, localError, childError, stdout, stderr)
+		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s\n%s", msg, localError, childError, stdout, stderr, extraStderr)
 	}
 
 	if !*useValgrind && (len(extraStderr) > 0 || (!failed && len(stderr) > 0)) {
