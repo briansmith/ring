@@ -226,6 +226,7 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
   BIO *out = BIO_new(BIO_s_mem());
   SSL_set_bio(server, in, out);
   SSL_set_accept_state(server);
+  SSL_set_max_version(server, TLS1_3_VERSION);
 
   BIO_write(in, buf, len);
   if (SSL_do_handshake(server) == 1) {
