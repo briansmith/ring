@@ -311,11 +311,11 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   /* Lock the SSL_CTX to the specified version, for compatibility with legacy
    * uses of SSL_METHOD. */
   if (method->version != 0) {
-    SSL_CTX_set_max_version(ret, method->version);
-    SSL_CTX_set_min_version(ret, method->version);
+    SSL_CTX_set_max_proto_version(ret, method->version);
+    SSL_CTX_set_min_proto_version(ret, method->version);
   } else if (!method->method->is_dtls) {
     /* TODO(svaldez): Enable TLS 1.3 by default once fully implemented. */
-    SSL_CTX_set_max_version(ret, TLS1_2_VERSION);
+    SSL_CTX_set_max_proto_version(ret, TLS1_2_VERSION);
   }
 
   return ret;
@@ -949,19 +949,19 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   return SSL_ERROR_SYSCALL;
 }
 
-int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
+int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version) {
   return ctx->method->version_from_wire(&ctx->min_version, version);
 }
 
-int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
+int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
   return ctx->method->version_from_wire(&ctx->max_version, version);
 }
 
-int SSL_set_min_version(SSL *ssl, uint16_t version) {
+int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
   return ssl->method->version_from_wire(&ssl->min_version, version);
 }
 
-int SSL_set_max_version(SSL *ssl, uint16_t version) {
+int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
   return ssl->method->version_from_wire(&ssl->max_version, version);
 }
 
@@ -3002,4 +3002,20 @@ void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock) {
 #else
   gettimeofday(out_clock, NULL);
 #endif
+}
+
+int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
+  return SSL_CTX_set_min_proto_version(ctx, version);
+}
+
+int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
+  return SSL_CTX_set_max_proto_version(ctx, version);
+}
+
+int SSL_set_min_version(SSL *ssl, uint16_t version) {
+  return SSL_set_min_proto_version(ssl, version);
+}
+
+int SSL_set_max_version(SSL *ssl, uint16_t version) {
+  return SSL_set_max_proto_version(ssl, version);
 }

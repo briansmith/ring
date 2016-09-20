@@ -816,7 +816,7 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
 
   // Enable TLS 1.3 for tests.
   if (!config->is_dtls &&
-      !SSL_CTX_set_max_version(ssl_ctx.get(), TLS1_3_VERSION)) {
+      !SSL_CTX_set_max_proto_version(ssl_ctx.get(), TLS1_3_VERSION)) {
     return nullptr;
   }
 
@@ -1366,11 +1366,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
   if (config->min_version != 0 &&
-      !SSL_set_min_version(ssl.get(), (uint16_t)config->min_version)) {
+      !SSL_set_min_proto_version(ssl.get(), (uint16_t)config->min_version)) {
     return false;
   }
   if (config->max_version != 0 &&
-      !SSL_set_max_version(ssl.get(), (uint16_t)config->max_version)) {
+      !SSL_set_max_proto_version(ssl.get(), (uint16_t)config->max_version)) {
     return false;
   }
   if (config->mtu != 0) {

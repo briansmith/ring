@@ -564,21 +564,21 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 #define TLS1_3_DRAFT_VERSION 14
 
-/* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
+/* SSL_CTX_set_min_proto_version sets the minimum protocol version for |ctx| to
  * |version|. It returns one on success and zero if |version| is invalid. */
-OPENSSL_EXPORT int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
+OPENSSL_EXPORT int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version);
 
-/* SSL_CTX_set_max_version sets the maximum protocol version for |ctx| to
+/* SSL_CTX_set_max_proto_version sets the maximum protocol version for |ctx| to
  * |version|. It returns one on success and zero if |version| is invalid. */
-OPENSSL_EXPORT int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
+OPENSSL_EXPORT int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version);
 
-/* SSL_set_min_version sets the minimum protocol version for |ssl| to
+/* SSL_set_min_proto_version sets the minimum protocol version for |ssl| to
  * |version|. It returns one on success and zero if |version| is invalid. */
-OPENSSL_EXPORT int SSL_set_min_version(SSL *ssl, uint16_t version);
+OPENSSL_EXPORT int SSL_set_min_proto_version(SSL *ssl, uint16_t version);
 
-/* SSL_set_max_version sets the maximum protocol version for |ssl| to
+/* SSL_set_max_proto_version sets the maximum protocol version for |ssl| to
  * |version|. It returns one on success and zero if |version| is invalid. */
-OPENSSL_EXPORT int SSL_set_max_version(SSL *ssl, uint16_t version);
+OPENSSL_EXPORT int SSL_set_max_proto_version(SSL *ssl, uint16_t version);
 
 /* SSL_version returns the TLS or DTLS protocol version used by |ssl|, which is
  * one of the |*_VERSION| values. (E.g. |TLS1_2_VERSION|.) Before the version
@@ -608,7 +608,8 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 #define SSL_OP_DISABLE_NPN 0x00800000L
 
 /* The following flags toggle individual protocol versions. This is deprecated.
- * Use |SSL_CTX_set_min_version| and |SSL_CTX_set_max_version| instead. */
+ * Use |SSL_CTX_set_min_proto_version| and |SSL_CTX_set_max_proto_version|
+ * instead. */
 #define SSL_OP_NO_SSLv3 0x02000000L
 #define SSL_OP_NO_TLSv1 0x04000000L
 #define SSL_OP_NO_TLSv1_2 0x08000000L
@@ -3134,8 +3135,9 @@ OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
 
 /* These version-specific methods behave exactly like |TLS_method| and
- * |DTLS_method| except they also call |SSL_CTX_set_min_version| and
- * |SSL_CTX_set_max_version| to lock connections to that protocol version. */
+ * |DTLS_method| except they also call |SSL_CTX_set_min_proto_version| and
+ * |SSL_CTX_set_max_proto_version| to lock connections to that protocol
+ * version. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
@@ -3563,6 +3565,18 @@ OPENSSL_EXPORT int SSL_set_private_key_digest_prefs(SSL *ssl,
  * TODO(davidben): Remove this function once it has been removed from
  * netty-tcnative. */
 OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
+
+/* SSL_CTX_set_min_version calls |SSL_CTX_set_min_proto_version|. */
+OPENSSL_EXPORT int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
+
+/* SSL_CTX_set_max_version calls |SSL_CTX_set_max_proto_version|. */
+OPENSSL_EXPORT int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
+
+/* SSL_set_min_version calls |SSL_set_min_proto_version|. */
+OPENSSL_EXPORT int SSL_set_min_version(SSL *ssl, uint16_t version);
+
+/* SSL_set_max_version calls |SSL_set_max_proto_version|. */
+OPENSSL_EXPORT int SSL_set_max_version(SSL *ssl, uint16_t version);
 
 
 /* Private structures.
