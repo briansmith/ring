@@ -198,7 +198,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_discard;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, 0, SSL3_RT_HEADER, in,
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, in,
                       DTLS1_RT_HEADER_LENGTH);
 
   uint16_t epoch = (((uint16_t)sequence[0]) << 8) | sequence[1];
@@ -302,7 +302,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   *out_len = DTLS1_RT_HEADER_LENGTH + ciphertext_len;
 
-  ssl_do_msg_callback(ssl, 1 /* write */, 0, SSL3_RT_HEADER, out,
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, out,
                       DTLS1_RT_HEADER_LENGTH);
 
   return 1;

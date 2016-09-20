@@ -181,7 +181,7 @@ static int ssl3_do_write(SSL *ssl, int type, const uint8_t *data, size_t len) {
 
   /* ssl3_write_bytes writes the data in its entirety. */
   assert((size_t)ret == len);
-  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, type, data, len);
+  ssl_do_msg_callback(ssl, 1 /* write */, type, data, len);
   return 1;
 }
 
@@ -477,7 +477,7 @@ static int read_v2_client_hello(SSL *ssl, int *out_is_v2_client_hello) {
     return -1;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL2_VERSION, 0,
+  ssl_do_msg_callback(ssl, 0 /* read */, 0 /* V2ClientHello */,
                       CBS_data(&v2_client_hello), CBS_len(&v2_client_hello));
 
   uint8_t msg_type;
@@ -631,8 +631,8 @@ again:
   }
 
   /* We have now received a complete message. */
-  ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
-                      ssl->init_buf->data, ssl->init_buf->length);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, ssl->init_buf->data,
+                      ssl->init_buf->length);
 
   ssl->s3->tmp.message_type = ((const uint8_t *)ssl->init_buf->data)[0];
   ssl->init_msg = (uint8_t*)ssl->init_buf->data + SSL3_HM_HEADER_LENGTH;

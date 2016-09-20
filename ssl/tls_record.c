@@ -232,7 +232,7 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_partial;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, 0, SSL3_RT_HEADER, in,
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, in,
                       SSL3_RT_HEADER_LENGTH);
 
   /* Decrypt the body in-place. */
@@ -349,7 +349,7 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
 
   *out_len = SSL3_RT_HEADER_LENGTH + ciphertext_len;
 
-  ssl_do_msg_callback(ssl, 1 /* write */, 0, SSL3_RT_HEADER, out,
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, out,
                       SSL3_RT_HEADER_LENGTH);
   return 1;
 }
@@ -414,7 +414,7 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
     return ssl_open_record_error;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_ALERT, in, in_len);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_ALERT, in, in_len);
 
   const uint8_t alert_level = in[0];
   const uint8_t alert_descr = in[1];

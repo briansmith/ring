@@ -437,8 +437,8 @@ int dtls1_get_message(SSL *ssl, int msg_type,
     return -1;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, ssl->version, SSL3_RT_HANDSHAKE,
-                      frag->data, ssl->init_num + DTLS1_HM_HEADER_LENGTH);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, frag->data,
+                      ssl->init_num + DTLS1_HM_HEADER_LENGTH);
   return 1;
 }
 
@@ -567,9 +567,8 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
     return ret;
   }
 
-  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version,
-                      SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
-                      sizeof(kChangeCipherSpec));
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_CHANGE_CIPHER_SPEC,
+                      kChangeCipherSpec, sizeof(kChangeCipherSpec));
   return 1;
 }
 
@@ -667,8 +666,7 @@ static int dtls1_do_handshake_write(SSL *ssl, size_t *out_offset,
     offset += todo;
   } while (CBS_len(&body) != 0);
 
-  ssl_do_msg_callback(ssl, 1 /* write */, ssl->version, SSL3_RT_HANDSHAKE, in,
-                      len);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, in, len);
 
   ret = 1;
 

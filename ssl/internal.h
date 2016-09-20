@@ -683,7 +683,7 @@ void dtls_clear_outgoing_messages(SSL *ssl);
 void ssl_do_info_callback(const SSL *ssl, int type, int value);
 
 /* ssl_do_msg_callback calls |ssl|'s message callback, if set. */
-void ssl_do_msg_callback(SSL *ssl, int is_write, int version, int content_type,
+void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
                          const void *buf, size_t len);
 
 

@@ -2913,12 +2913,29 @@ void ssl_do_info_callback(const SSL *ssl, int type, int value) {
   }
 }
 
-void ssl_do_msg_callback(SSL *ssl, int is_write, int version, int content_type,
+void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
                          const void *buf, size_t len) {
-  if (ssl->msg_callback != NULL) {
-    ssl->msg_callback(is_write, version, content_type, buf, len, ssl,
-                      ssl->msg_callback_arg);
+  if (ssl->msg_callback == NULL) {
+    return;
   }
+
+  /* |version| is zero when calling for |SSL3_RT_HEADER| and |SSL2_VERSION| for
+   * a V2ClientHello. */
+  int version;
+  switch (content_type) {
+    case 0:
+      /* V2ClientHello */
+      version = SSL2_VERSION;
+      break;
+    case SSL3_RT_HEADER:
+      version = 0;
+      break;
+    default:
+      version = ssl->version;
+  }
+
+  ssl->msg_callback(is_write, version, content_type, buf, len, ssl,
+                    ssl->msg_callback_arg);
 }
 
 int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }

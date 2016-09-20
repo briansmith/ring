@@ -2801,7 +2801,10 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
  * For each handshake message, ChangeCipherSpec, and alert, |version| is the
  * protocol version and |content_type| is the corresponding record type. The
  * |len| bytes from |buf| contain the handshake message, one-byte
- * ChangeCipherSpec body, and two-byte alert, respectively. */
+ * ChangeCipherSpec body, and two-byte alert, respectively.
+ *
+ * For a V2ClientHello, |version| is |SSL2_VERSION|, |content_type| is zero, and
+ * the |len| bytes from |buf| contain the V2ClientHello structure. */
 OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
     SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
                              const void *buf, size_t len, SSL *ssl, void *arg));
