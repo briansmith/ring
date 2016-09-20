@@ -724,7 +724,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 }
 
 func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
-	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full"}
+	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--quiet"}
 	if dbAttach {
 		valgrindArgs = append(valgrindArgs, "--db-attach=yes", "--db-command=xterm -e gdb -nw %f %p")
 	}
@@ -937,12 +937,15 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	listener = nil
 
 	childErr := <-waitChan
+	var isValgrindError bool
 	if exitError, ok := childErr.(*exec.ExitError); ok {
 		switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
 		case 88:
 			return errMoreMallocs
 		case 89:
 			return errUnimplemented
+		case 99:
+			isValgrindError = true
 		}
 	}
 
@@ -991,8 +994,12 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s\n%s", msg, localError, childError, stdout, stderr, extraStderr)
 	}
 
-	if !*useValgrind && (len(extraStderr) > 0 || (!failed && len(stderr) > 0)) {
+	if len(extraStderr) > 0 || (!failed && len(stderr) > 0) {
 		return fmt.Errorf("unexpected error output:\n%s\n%s", stderr, extraStderr)
+	}
+
+	if *useValgrind && isValgrindError {
+		return fmt.Errorf("valgrind error:\n%s\n%s", stderr, extraStderr)
 	}
 
 	return nil
