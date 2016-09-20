@@ -442,9 +442,6 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 	if *fuzzer {
 		config.Bugs.NullAllCiphers = true
 	}
-	if *deterministic {
-		config.Rand = &deterministicRand{}
-	}
 
 	conn = &timeoutConn{conn, *idleTimeout}
 
@@ -902,6 +899,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	go func() { waitChan <- shim.Wait() }()
 
 	config := test.config
+
+	if *deterministic {
+		config.Rand = &deterministicRand{}
+	}
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {

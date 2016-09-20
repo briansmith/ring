@@ -335,7 +335,7 @@ func (c *Conn) dtlsSealRecord(typ recordType, data []byte) (b *block, err error)
 			// use the sequence number as the nonce.
 			explicitIVIsSeq = true
 		}
-	} else if c.out.cipher != nil {
+	} else if _, ok := c.out.cipher.(nullCipher); !ok && c.out.cipher != nil {
 		panic("Unknown cipher")
 	}
 	b.resize(recordHeaderLen + explicitIVLen + len(data))

@@ -200,7 +200,7 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 	hc.incEpoch()
 
 	if config.Bugs.NullAllCiphers {
-		hc.cipher = nil
+		hc.cipher = nullCipher{}
 		hc.mac = nil
 	}
 	return nil
@@ -210,6 +210,9 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret, phase []byte, side trafficDirection) {
 	hc.version = version
 	hc.cipher = deriveTrafficAEAD(version, suite, secret, phase, side)
+	if hc.config.Bugs.NullAllCiphers {
+		hc.cipher = nullCipher{}
+	}
 	hc.trafficSecret = secret
 	hc.incEpoch()
 }
@@ -423,18 +426,6 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recor
 			if err != nil {
 				return false, 0, 0, alertBadRecordMAC
 			}
-			if hc.version >= VersionTLS13 {
-				i := len(payload)
-				for i > 0 && payload[i-1] == 0 {
-					i--
-				}
-				payload = payload[:i]
-				if len(payload) == 0 {
-					return false, 0, 0, alertUnexpectedMessage
-				}
-				contentType = recordType(payload[len(payload)-1])
-				payload = payload[:len(payload)-1]
-			}
 			b.resize(recordHeaderLen + explicitIVLen + len(payload))
 		case cbcMode:
 			blockSize := c.BlockSize()
@@ -472,6 +463,20 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recor
 			break
 		default:
 			panic("unknown cipher type")
+		}
+
+		if hc.version >= VersionTLS13 {
+			i := len(payload)
+			for i > 0 && payload[i-1] == 0 {
+				i--
+			}
+			payload = payload[:i]
+			if len(payload) == 0 {
+				return false, 0, 0, alertUnexpectedMessage
+			}
+			contentType = recordType(payload[len(payload)-1])
+			payload = payload[:len(payload)-1]
+			b.resize(recordHeaderLen + len(payload))
 		}
 	}
 
@@ -545,29 +550,26 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 
 	// encrypt
 	if hc.cipher != nil {
+		// Add TLS 1.3 padding.
+		if hc.version >= VersionTLS13 {
+			paddingLen := hc.config.Bugs.RecordPadding
+			if hc.config.Bugs.OmitRecordContents {
+				b.resize(recordHeaderLen + paddingLen)
+			} else {
+				b.resize(len(b.data) + 1 + paddingLen)
+				b.data[len(b.data)-paddingLen-1] = byte(typ)
+			}
+			for i := 0; i < paddingLen; i++ {
+				b.data[len(b.data)-paddingLen+i] = 0
+			}
+		}
+
 		switch c := hc.cipher.(type) {
 		case cipher.Stream:
 			c.XORKeyStream(payload, payload)
 		case *tlsAead:
 			payloadLen := len(b.data) - recordHeaderLen - explicitIVLen
-			paddingLen := 0
-			if hc.version >= VersionTLS13 {
-				payloadLen++
-				paddingLen = hc.config.Bugs.RecordPadding
-			}
-			if hc.config.Bugs.OmitRecordContents {
-				payloadLen = 0
-			}
-			b.resize(recordHeaderLen + explicitIVLen + payloadLen + paddingLen + c.Overhead())
-			if hc.version >= VersionTLS13 {
-				if !hc.config.Bugs.OmitRecordContents {
-					b.data[payloadLen+recordHeaderLen-1] = byte(typ)
-				}
-				for i := 0; i < hc.config.Bugs.RecordPadding; i++ {
-					b.data[payloadLen+recordHeaderLen+i] = 0
-				}
-				payloadLen += paddingLen
-			}
+			b.resize(len(b.data) + c.Overhead())
 			nonce := hc.outSeq[:]
 			if c.explicitNonce {
 				nonce = b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]

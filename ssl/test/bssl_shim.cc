@@ -640,7 +640,7 @@ static int DDoSCallback(const struct ssl_early_callback_ctx *early_context) {
 static void InfoCallback(const SSL *ssl, int type, int val) {
   if (type == SSL_CB_HANDSHAKE_DONE) {
     if (GetTestConfig(ssl)->handshake_never_done) {
-      fprintf(stderr, "handshake completed\n");
+      fprintf(stderr, "Handshake unexpectedly completed.\n");
       // Abort before any expected error code is printed, to ensure the overall
       // test fails.
       abort();
