@@ -121,13 +121,18 @@
 #include <stdalign.h>
 #endif
 
-#if defined(OPENSSL_NO_THREADS)
-#elif defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_NO_THREADS) && \
+    (!defined(OPENSSL_WINDOWS) || defined(__MINGW32__))
+#include <pthread.h>
+#define OPENSSL_PTHREADS
+#endif
+
+#if !defined(OPENSSL_NO_THREADS) && !defined(OPENSSL_PTHREADS) && \
+    defined(OPENSSL_WINDOWS)
+#define OPENSSL_WINDOWS_THREADS
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
-#else
-#include <pthread.h>
 #endif
 
 #if defined(__cplusplus)
@@ -304,25 +309,17 @@ static inline int constant_time_select_int(unsigned int mask, int a, int b) {
 
 /* Thread-safe initialisation. */
 
-/* Android's mingw-w64 has some prototypes for INIT_ONCE, but is missing
- * others. Work around the missing ones.
- *
- * TODO(davidben): Remove this once Android's mingw-w64 is upgraded. See
- * b/26523949. */
-#if defined(__MINGW32__) && !defined(INIT_ONCE_STATIC_INIT)
-typedef RTL_RUN_ONCE INIT_ONCE;
-#define INIT_ONCE_STATIC_INIT RTL_RUN_ONCE_INIT
-#endif
-
 #if defined(OPENSSL_NO_THREADS)
 typedef uint32_t CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT 0
-#elif defined(OPENSSL_WINDOWS)
+#elif defined(OPENSSL_WINDOWS_THREADS)
 typedef INIT_ONCE CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT INIT_ONCE_STATIC_INIT
-#else
+#elif defined(OPENSSL_PTHREADS)
 typedef pthread_once_t CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
+#else
+#error "Unknown threading library"
 #endif
 
 /* CRYPTO_once calls |init| exactly once per process. This is thread-safe: if
@@ -373,16 +370,18 @@ struct CRYPTO_STATIC_MUTEX {
   char padding;  /* Empty structs have different sizes in C and C++. */
 };
 #define CRYPTO_STATIC_MUTEX_INIT { 0 }
-#elif defined(OPENSSL_WINDOWS)
+#elif defined(OPENSSL_WINDOWS_THREADS)
 struct CRYPTO_STATIC_MUTEX {
   SRWLOCK lock;
 };
 #define CRYPTO_STATIC_MUTEX_INIT { SRWLOCK_INIT }
-#else
+#elif defined(OPENSSL_PTHREADS)
 struct CRYPTO_STATIC_MUTEX {
   pthread_rwlock_t lock;
 };
 #define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
+#else
+#error "Unknown threading library"
 #endif
 
 /* CRYPTO_MUTEX_init initialises |lock|. If |lock| is a static variable, use a
