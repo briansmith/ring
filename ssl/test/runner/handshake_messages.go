@@ -142,6 +142,7 @@ type clientHelloMsg struct {
 	supportedPoints         []uint8
 	hasKeyShares            bool
 	keyShares               []keyShareEntry
+	trailingKeyShareData    bool
 	pskIdentities           [][]uint8
 	hasEarlyData            bool
 	earlyDataContext        []byte
@@ -181,6 +182,7 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		bytes.Equal(m.supportedPoints, m1.supportedPoints) &&
 		m.hasKeyShares == m1.hasKeyShares &&
 		eqKeyShareEntryLists(m.keyShares, m1.keyShares) &&
+		m.trailingKeyShareData == m1.trailingKeyShareData &&
 		eqByteSlices(m.pskIdentities, m1.pskIdentities) &&
 		m.hasEarlyData == m1.hasEarlyData &&
 		bytes.Equal(m.earlyDataContext, m1.earlyDataContext) &&
@@ -299,6 +301,10 @@ func (m *clientHelloMsg) marshal() []byte {
 			keyShares.addU16(uint16(keyShare.group))
 			keyExchange := keyShares.addU16LengthPrefixed()
 			keyExchange.addBytes(keyShare.keyExchange)
+		}
+
+		if m.trailingKeyShareData {
+			keyShares.addU8(0)
 		}
 	}
 	if len(m.pskIdentities) > 0 {

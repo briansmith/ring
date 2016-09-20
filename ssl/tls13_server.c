@@ -88,7 +88,7 @@ static int resolve_ecdhe_secret(SSL *ssl, int *out_need_retry,
   int found_key_share;
   uint8_t *dhe_secret;
   size_t dhe_secret_len;
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_ext_key_share_parse_clienthello(ssl, &found_key_share, &dhe_secret,
                                            &dhe_secret_len, &alert,
                                            &key_share)) {

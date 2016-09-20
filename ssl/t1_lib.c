@@ -2196,41 +2196,66 @@ int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
   if (!tls1_get_shared_group(ssl, &group_id) ||
       !CBS_get_u16_length_prefixed(contents, &key_shares) ||
       CBS_len(contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
   }
 
-  *out_found = 0;
+  /* Find the corresponding key share. */
+  int found = 0;
+  CBS peer_key;
   while (CBS_len(&key_shares) > 0) {
     uint16_t id;
-    CBS peer_key;
+    CBS peer_key_tmp;
     if (!CBS_get_u16(&key_shares, &id) ||
-        !CBS_get_u16_length_prefixed(&key_shares, &peer_key)) {
+        !CBS_get_u16_length_prefixed(&key_shares, &peer_key_tmp)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return 0;
     }
 
-    if (id != group_id || *out_found) {
-      continue;
-    }
+    if (id == group_id) {
+      if (found) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_KEY_SHARE);
+        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+        return 0;
+      }
 
-    SSL_ECDH_CTX group;
-    memset(&group, 0, sizeof(SSL_ECDH_CTX));
-    CBB public_key;
-    if (!CBB_init(&public_key, 0) ||
-        !SSL_ECDH_CTX_init(&group, group_id) ||
-        !SSL_ECDH_CTX_accept(&group, &public_key, out_secret, out_secret_len,
-                             out_alert, CBS_data(&peer_key),
-                             CBS_len(&peer_key)) ||
-        !CBB_finish(&public_key, &ssl->s3->hs->public_key,
-                    &ssl->s3->hs->public_key_len)) {
-      SSL_ECDH_CTX_cleanup(&group);
-      CBB_cleanup(&public_key);
-      return 0;
+      found = 1;
+      peer_key = peer_key_tmp;
+      /* Continue parsing the structure to keep peers honest. */
     }
-    SSL_ECDH_CTX_cleanup(&group);
-
-    *out_found = 1;
   }
 
+  if (!found) {
+    *out_found = 0;
+    *out_secret = NULL;
+    *out_secret_len = 0;
+    return 1;
+  }
+
+  /* Compute the DH secret. */
+  uint8_t *secret = NULL;
+  size_t secret_len;
+  SSL_ECDH_CTX group;
+  memset(&group, 0, sizeof(SSL_ECDH_CTX));
+  CBB public_key;
+  if (!CBB_init(&public_key, 32) ||
+      !SSL_ECDH_CTX_init(&group, group_id) ||
+      !SSL_ECDH_CTX_accept(&group, &public_key, &secret, &secret_len,
+                           out_alert, CBS_data(&peer_key),
+                           CBS_len(&peer_key)) ||
+      !CBB_finish(&public_key, &ssl->s3->hs->public_key,
+                  &ssl->s3->hs->public_key_len)) {
+    OPENSSL_free(secret);
+    SSL_ECDH_CTX_cleanup(&group);
+    CBB_cleanup(&public_key);
+    return 0;
+  }
+
+  SSL_ECDH_CTX_cleanup(&group);
+
+  *out_secret = secret;
+  *out_secret_len = secret_len;
+  *out_found = 1;
   return 1;
 }
 

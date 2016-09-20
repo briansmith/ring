@@ -113,6 +113,7 @@ func (c *Conn) clientHandshake() error {
 	if hello.vers >= VersionTLS13 {
 		keyShares = make(map[CurveID]ecdhCurve)
 		hello.hasKeyShares = true
+		hello.trailingKeyShareData = c.config.Bugs.TrailingKeyShareData
 		curvesToSend := c.config.defaultCurves()
 		for _, curveID := range hello.supportedCurves {
 			if !curvesToSend[curveID] {

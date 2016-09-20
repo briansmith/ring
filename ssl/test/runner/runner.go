@@ -7978,6 +7978,8 @@ func addTLS13HandshakeTests() {
 				DuplicateKeyShares: true,
 			},
 		},
+		shouldFail:    true,
+		expectedError: ":DUPLICATE_KEY_SHARE:",
 	})
 
 	testCases = append(testCases, testCase{
@@ -8171,6 +8173,19 @@ func addTLS13HandshakeTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		shouldFail:    true,
+		expectedError: ":DECODE_ERROR:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-TrailingKeyShareData",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				TrailingKeyShareData: true,
+			},
 		},
 		shouldFail:    true,
 		expectedError: ":DECODE_ERROR:",

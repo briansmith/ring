@@ -1076,6 +1076,10 @@ type ProtocolBugs struct {
 	// always send a ServerKeyExchange for PSK ciphers, even if the identity
 	// hint is empty.
 	AlwaysSendPreSharedKeyIdentityHint bool
+
+	// TrailingKeyShareData, if true, causes the client key share list to
+	// include a trailing byte.
+	TrailingKeyShareData bool
 }
 
 func (c *Config) serverInit() {
