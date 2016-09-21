@@ -79,7 +79,7 @@ class Android(object):
 """
 
   def ExtraFiles(self):
-    return ['android_compat_hacks.c', 'android_compat_keywrap.c']
+    return ['android_compat_keywrap.c']
 
   def PrintVariableSection(self, out, name, files):
     out.write('%s := \\\n' % name)

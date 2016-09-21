@@ -158,9 +158,6 @@
 #include <sys/time.h>
 #endif
 
-/* wpa_supplicant expects to get the version functions from ssl.h */
-#include <openssl/crypto.h>
-
 /* Forward-declare struct timeval. On Windows, it is defined in winsock2.h and
  * Windows headers define too many macros to be included in public headers.
  * However, only a forward declaration is needed. */
@@ -1589,15 +1586,11 @@ OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *session);
  * TODO(davidben): This should return a const X509 *. */
 OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session);
 
-/* TODO(davidben): Remove this when wpa_supplicant in Android has synced with
- * upstream. */
-#if !defined(BORINGSSL_SUPPRESS_ACCESSORS)
 /* SSL_SESSION_get_master_key writes up to |max_out| bytes of |session|'s master
  * secret to |out| and returns the number of bytes written. If |max_out| is
  * zero, it returns the size of the master secret. */
 OPENSSL_EXPORT size_t SSL_SESSION_get_master_key(const SSL_SESSION *session,
                                                  uint8_t *out, size_t max_out);
-#endif
 
 /* SSL_SESSION_set_time sets |session|'s creation time to |time| and returns
  * |time|. This function may be useful in writing tests but otherwise should not
@@ -3076,9 +3069,6 @@ OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
  * peer. If not applicable, it returns zero. */
 OPENSSL_EXPORT uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl);
 
-/* TODO(davidben): Remove this when wpa_supplicant in Android has synced with
- * upstream. */
-#if !defined(BORINGSSL_SUPPRESS_ACCESSORS)
 /* SSL_get_client_random writes up to |max_out| bytes of the most recent
  * handshake's client_random to |out| and returns the number of bytes written.
  * If |max_out| is zero, it returns the size of the client_random. */
@@ -3090,7 +3080,6 @@ OPENSSL_EXPORT size_t SSL_get_client_random(const SSL *ssl, uint8_t *out,
  * If |max_out| is zero, it returns the size of the server_random. */
 OPENSSL_EXPORT size_t SSL_get_server_random(const SSL *ssl, uint8_t *out,
                                             size_t max_out);
-#endif
 
 /* SSL_get_pending_cipher returns the cipher suite for the current handshake or
  * NULL if one has not been negotiated yet or there is no pending handshake. */
@@ -4157,12 +4146,6 @@ struct ssl_st {
   /* renegotiate_mode controls how peer renegotiation attempts are handled. */
   enum ssl_renegotiate_mode_t renegotiate_mode;
 
-  /* These fields are always NULL and exist only to keep wpa_supplicant happy
-   * about the change to EVP_AEAD. They are only needed for EAP-FAST, which we
-   * don't support. */
-  EVP_CIPHER_CTX *enc_read_ctx;
-  EVP_MD_CTX *read_hash;
-
   /* verify_mode is a bitmask of |SSL_VERIFY_*| values. */
   uint8_t verify_mode;
 
@@ -4398,10 +4381,6 @@ typedef struct ssl3_state_st {
      * didn't use it to create the master secret initially. */
     char extended_master_secret;
 
-    /* new_mac_secret_size is unused and exists only until wpa_supplicant can
-     * be updated. It is only needed for EAP-FAST, which we don't support. */
-    uint8_t new_mac_secret_size;
-
     /* Client-only: in_false_start is one if there is a pending handshake in
      * False Start. The client may write data at this point. */
     char in_false_start;
@@ -4474,19 +4453,6 @@ typedef struct ssl3_state_st {
    *     each are big-endian values. */
   uint8_t tlsext_channel_id[64];
 } SSL3_STATE;
-
-
-/* Android compatibility section (hidden).
- *
- * These functions are declared, temporarily, for Android because
- * wpa_supplicant will take a little time to sync with upstream. Outside of
- * Android they'll have no definition. */
-
-OPENSSL_EXPORT int SSL_set_session_ticket_ext(SSL *s, void *ext_data,
-                                              int ext_len);
-OPENSSL_EXPORT int SSL_set_session_secret_cb(SSL *s, void *cb, void *arg);
-OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
-OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 
 
 /* Nodejs compatibility section (hidden).

@@ -739,14 +739,6 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
 #define BIO_CTRL_DUP	12
 
 
-/* Android compatibility section.
- *
- * A previous version of BoringSSL used in Android renamed ERR_print_errors_fp
- * to BIO_print_errors_fp. It has subsequently been renamed back to
- * ERR_print_errors_fp. */
-#define BIO_print_errors_fp ERR_print_errors_fp
-
-
 /* Deprecated functions. */
 
 /* BIO_f_base64 returns a filter |BIO| that base64-encodes data written into
