@@ -1080,6 +1080,10 @@ type ProtocolBugs struct {
 	// TrailingKeyShareData, if true, causes the client key share list to
 	// include a trailing byte.
 	TrailingKeyShareData bool
+
+	// InvalidChannelIDSignature, if true, causes the client to generate an
+	// invalid Channel ID signature.
+	InvalidChannelIDSignature bool
 }
 
 func (c *Config) serverInit() {

@@ -1349,6 +1349,9 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		writeIntPadded(channelID[32:64], c.config.ChannelID.Y)
 		writeIntPadded(channelID[64:96], r)
 		writeIntPadded(channelID[96:128], s)
+		if c.config.Bugs.InvalidChannelIDSignature {
+			channelID[64] ^= 1
+		}
 		channelIDMsg.channelID = channelID
 
 		c.channelID = &c.config.ChannelID.PublicKey

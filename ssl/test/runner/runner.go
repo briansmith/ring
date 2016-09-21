@@ -5010,6 +5010,22 @@ func addExtensionTests() {
 		},
 		flags: []string{"-advertise-npn", "\x03foo\x03bar\x03baz"},
 	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "InvalidChannelIDSignature",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			ChannelID:  channelIDKey,
+			Bugs: ProtocolBugs{
+				InvalidChannelIDSignature: true,
+			},
+		},
+		flags:              []string{"-enable-channel-id"},
+		shouldFail:         true,
+		expectedError:      ":CHANNEL_ID_SIGNATURE_INVALID:",
+		expectedLocalError: "remote error: error decrypting message",
+	})
 }
 
 func addResumptionVersionTests() {
