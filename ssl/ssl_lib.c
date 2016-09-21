@@ -305,17 +305,12 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     ret->options |= SSL_OP_NO_TICKET;
   }
 
-  ret->min_version = ret->method->min_version;
-  ret->max_version = ret->method->max_version;
-
   /* Lock the SSL_CTX to the specified version, for compatibility with legacy
    * uses of SSL_METHOD. */
-  if (method->version != 0) {
-    SSL_CTX_set_max_proto_version(ret, method->version);
-    SSL_CTX_set_min_proto_version(ret, method->version);
-  } else if (!method->method->is_dtls) {
-    /* TODO(svaldez): Enable TLS 1.3 by default once fully implemented. */
-    SSL_CTX_set_max_proto_version(ret, TLS1_2_VERSION);
+  if (!SSL_CTX_set_max_proto_version(ret, method->version) ||
+      !SSL_CTX_set_min_proto_version(ret, method->version)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    goto err2;
   }
 
   return ret;
@@ -949,20 +944,44 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   return SSL_ERROR_SYSCALL;
 }
 
+static int set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
+                           uint16_t version) {
+  if (version == 0) {
+    *out = method->min_version;
+    return 1;
+  }
+
+  return method->version_from_wire(out, version);
+}
+
+static int set_max_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
+                           uint16_t version) {
+  if (version == 0) {
+    *out = method->max_version;
+    /* TODO(svaldez): Enable TLS 1.3 by default once fully implemented. */
+    if (*out > TLS1_2_VERSION) {
+      *out = TLS1_2_VERSION;
+    }
+    return 1;
+  }
+
+  return method->version_from_wire(out, version);
+}
+
 int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version) {
-  return ctx->method->version_from_wire(&ctx->min_version, version);
+  return set_min_version(ctx->method, &ctx->min_version, version);
 }
 
 int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
-  return ctx->method->version_from_wire(&ctx->max_version, version);
+  return set_max_version(ctx->method, &ctx->max_version, version);
 }
 
 int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
-  return ssl->method->version_from_wire(&ssl->min_version, version);
+  return set_min_version(ssl->method, &ssl->min_version, version);
 }
 
 int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
-  return ssl->method->version_from_wire(&ssl->max_version, version);
+  return set_max_version(ssl->method, &ssl->max_version, version);
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {

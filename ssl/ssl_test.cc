@@ -2106,6 +2106,19 @@ static bool TestSetVersion() {
     return false;
   }
 
+  if (!SSL_CTX_set_max_proto_version(ctx.get(), 0) ||
+      !SSL_CTX_set_min_proto_version(ctx.get(), 0)) {
+    fprintf(stderr, "Could not set default TLS version.\n");
+    return false;
+  }
+
+  if (ctx->min_version != SSL3_VERSION ||
+      ctx->max_version != TLS1_2_VERSION) {
+    fprintf(stderr, "Default TLS versions were incorrect (%04x and %04x).\n",
+            ctx->min_version, ctx->max_version);
+    return false;
+  }
+
   ctx.reset(SSL_CTX_new(DTLS_method()));
   if (!ctx) {
     return false;
@@ -2128,6 +2141,19 @@ static bool TestSetVersion() {
       SSL_CTX_set_min_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */) ||
       SSL_CTX_set_min_proto_version(ctx.get(), 0x1234)) {
     fprintf(stderr, "Unexpectedly set invalid DTLS version.\n");
+    return false;
+  }
+
+  if (!SSL_CTX_set_max_proto_version(ctx.get(), 0) ||
+      !SSL_CTX_set_min_proto_version(ctx.get(), 0)) {
+    fprintf(stderr, "Could not set default DTLS version.\n");
+    return false;
+  }
+
+  if (ctx->min_version != TLS1_1_VERSION ||
+      ctx->max_version != TLS1_2_VERSION) {
+    fprintf(stderr, "Default DTLS versions were incorrect (%04x and %04x).\n",
+            ctx->min_version, ctx->max_version);
     return false;
   }
 
