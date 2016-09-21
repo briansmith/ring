@@ -165,13 +165,13 @@ const (
 	signatureECDSAWithP521AndSHA512 signatureAlgorithm = 0x0603
 
 	// RSASSA-PSS algorithms
-	signatureRSAPSSWithSHA256 signatureAlgorithm = 0x0700
-	signatureRSAPSSWithSHA384 signatureAlgorithm = 0x0701
-	signatureRSAPSSWithSHA512 signatureAlgorithm = 0x0702
+	signatureRSAPSSWithSHA256 signatureAlgorithm = 0x0804
+	signatureRSAPSSWithSHA384 signatureAlgorithm = 0x0805
+	signatureRSAPSSWithSHA512 signatureAlgorithm = 0x0806
 
 	// EdDSA algorithms
-	signatureEd25519 signatureAlgorithm = 0x0703
-	signatureEd448   signatureAlgorithm = 0x0704
+	signatureEd25519 signatureAlgorithm = 0x0807
+	signatureEd448   signatureAlgorithm = 0x0808
 )
 
 // supportedSignatureAlgorithms contains the default supported signature
