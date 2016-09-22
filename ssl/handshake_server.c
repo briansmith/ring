@@ -1839,7 +1839,11 @@ static int ssl3_get_channel_id(SSL *ssl) {
 
   /* We stored the handshake hash in |tlsext_channel_id| the first time that we
    * were called. */
-  if (!ECDSA_do_verify(channel_id_hash, channel_id_hash_len, &sig, key)) {
+  int sig_ok = ECDSA_do_verify(channel_id_hash, channel_id_hash_len, &sig, key);
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  sig_ok = 1;
+#endif
+  if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     ssl->s3->tlsext_channel_id_valid = 0;
