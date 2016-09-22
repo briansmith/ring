@@ -3013,7 +3013,10 @@ void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock) {
     return;
   }
 
-#if defined(OPENSSL_WINDOWS)
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  out_clock->tv_sec = 1234;
+  out_clock->tv_usec = 1234;
+#elif defined(OPENSSL_WINDOWS)
   struct _timeb time;
   _ftime(&time);
   out_clock->tv_sec = time.time;

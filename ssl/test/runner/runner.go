@@ -442,6 +442,9 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 	if *fuzzer {
 		config.Bugs.NullAllCiphers = true
 	}
+	if *deterministic {
+		config.Time = func() time.Time { return time.Unix(1234, 1234) }
+	}
 
 	conn = &timeoutConn{conn, *idleTimeout}
 

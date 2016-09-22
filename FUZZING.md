@@ -60,4 +60,6 @@ When `-DFUZZ=1` is passed into CMake, BoringSSL builds with `BORINGSSL_UNSAFE_FU
 
 * Treat every cipher as the NULL cipher.
 
+* Use a hard-coded time instead of the actual time.
+
 This is to prevent the fuzzer from getting stuck at a cryptographic invariant in the protocol.
