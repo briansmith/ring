@@ -366,7 +366,7 @@ type testCase struct {
 
 var testCases []testCase
 
-func writeTranscript(test *testCase, isResume bool, data []byte) {
+func writeTranscript(test *testCase, num int, data []byte) {
 	if len(data) == 0 {
 		return
 	}
@@ -387,13 +387,7 @@ func writeTranscript(test *testCase, isResume bool, data []byte) {
 		return
 	}
 
-	name := test.name
-	if isResume {
-		name += "-Resume"
-	} else {
-		name += "-Normal"
-	}
-
+	name := fmt.Sprintf("%s-%d", test.name, num)
 	if err := ioutil.WriteFile(path.Join(dir, name), data, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing %s: %s\n", name, err)
 	}
@@ -419,7 +413,7 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 	return t.Conn.Write(b)
 }
 
-func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
+func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, num int) error {
 	if !test.noSessionCache {
 		if config.ClientSessionCache == nil {
 			config.ClientSessionCache = NewLRUClientSessionCache(1)
@@ -470,7 +464,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 		}
 		if len(*transcriptDir) != 0 {
 			defer func() {
-				writeTranscript(test, isResume, connDebug.Transcript())
+				writeTranscript(test, num, connDebug.Transcript())
 			}()
 		}
 
@@ -909,7 +903,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
-		err = doExchange(test, &config, conn, false /* not a resumption */)
+		err = doExchange(test, &config, conn, false /* not a resumption */, 0)
 		conn.Close()
 	}
 
@@ -929,7 +923,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		var connResume net.Conn
 		connResume, err = acceptOrWait(listener, waitChan)
 		if err == nil {
-			err = doExchange(test, &resumeConfig, connResume, true /* resumption */)
+			err = doExchange(test, &resumeConfig, connResume, true /* resumption */, i+1)
 			connResume.Close()
 		}
 	}
