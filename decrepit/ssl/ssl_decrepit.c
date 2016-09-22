@@ -114,111 +114,51 @@
 
 #include <dirent.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
 
-typedef struct {
-  DIR *dir;
-  struct dirent dirent;
-} OPENSSL_DIR_CTX;
-
-static const char *OPENSSL_DIR_read(OPENSSL_DIR_CTX **ctx,
-                                    const char *directory) {
-  struct dirent *dirent;
-
-  if (ctx == NULL || directory == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  errno = 0;
-  if (*ctx == NULL) {
-    *ctx = malloc(sizeof(OPENSSL_DIR_CTX));
-    if (*ctx == NULL) {
-      errno = ENOMEM;
-      return 0;
-    }
-    memset(*ctx, 0, sizeof(OPENSSL_DIR_CTX));
-
-    (*ctx)->dir = opendir(directory);
-    if ((*ctx)->dir == NULL) {
-      int save_errno = errno; /* Probably not needed, but I'm paranoid */
-      free(*ctx);
-      *ctx = NULL;
-      errno = save_errno;
-      return 0;
-    }
-  }
-
-  if (readdir_r((*ctx)->dir, &(*ctx)->dirent, &dirent) != 0 ||
-      dirent == NULL) {
+int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
+                                       const char *path) {
+  DIR *dir = opendir(path);
+  if (dir == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
+    ERR_add_error_data(3, "opendir('", dir, "')");
     return 0;
   }
 
-  return (*ctx)->dirent.d_name;
-}
-
-static int OPENSSL_DIR_end(OPENSSL_DIR_CTX **ctx) {
-  if (ctx != NULL && *ctx != NULL) {
-    int r = closedir((*ctx)->dir);
-    free(*ctx);
-    *ctx = NULL;
-    return r == 0;
-  }
-
-  errno = EINVAL;
-  return 0;
-}
-
-
-/* Add a directory of certs to a stack.
- *
- * \param stack the stack to append to.
- * \param dir the directory to append from. All files in this directory will be
- *     examined as potential certs. Any that are acceptable to
- *     SSL_add_dir_cert_subjects_to_stack() that are not already in the stack will
- *     be included.
- * \return 1 for success, 0 for failure. Note that in the case of failure some
- *     certs may have been added to \c stack. */
-int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
-                                       const char *dir) {
-  OPENSSL_DIR_CTX *d = NULL;
-  const char *filename;
   int ret = 0;
+  for (;;) {
+    /* |readdir| may fail with or without setting |errno|. */
+    errno = 0;
+    struct dirent *dirent = readdir(dir);
+    if (dirent == NULL) {
+      if (errno) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
+        ERR_add_error_data(3, "readdir('", path, "')");
+      } else {
+        ret = 1;
+      }
+      break;
+    }
 
-  /* Note that a side effect is that the CAs will be sorted by name */
-  while ((filename = OPENSSL_DIR_read(&d, dir))) {
     char buf[1024];
-    int r;
-
-    if (strlen(dir) + strlen(filename) + 2 > sizeof(buf)) {
+    if (strlen(path) + strlen(dirent->d_name) + 2 > sizeof(buf)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PATH_TOO_LONG);
-      goto err;
+      break;
     }
 
-    r = BIO_snprintf(buf, sizeof buf, "%s/%s", dir, filename);
-    if (r <= 0 || r >= (int)sizeof(buf) ||
+    int r = BIO_snprintf(buf, sizeof(buf), "%s/%s", path, dirent->d_name);
+    if (r <= 0 ||
+        r >= (int)sizeof(buf) ||
         !SSL_add_file_cert_subjects_to_stack(stack, buf)) {
-      goto err;
+      break;
     }
   }
 
-  if (errno) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
-    ERR_add_error_data(3, "OPENSSL_DIR_read(&ctx, '", dir, "')");
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  if (d) {
-    OPENSSL_DIR_end(&d);
-  }
+  closedir(dir);
   return ret;
 }
 
