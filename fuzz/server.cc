@@ -14,8 +14,13 @@
 
 #include <assert.h>
 
+#include <openssl/bio.h>
+#include <openssl/dh.h>
+#include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <openssl/ssl.h>
+#include <openssl/x509.h>
 
 static const uint8_t kCertificateDER[] = {
     0x30, 0x82, 0x02, 0xff, 0x30, 0x82, 0x01, 0xe7, 0xa0, 0x03, 0x02, 0x01,
@@ -188,6 +193,27 @@ static const uint8_t kRSAPrivateKeyDER[] = {
     0x98, 0x46, 0x89, 0x82, 0x40,
 };
 
+static const uint8_t kOCSPResponse[] = {0x01, 0x02, 0x03, 0x04};
+static const uint8_t kSCT[] = {0x05, 0x06, 0x07, 0x08};
+
+static int ALPNSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *out_len,
+                              const uint8_t *in, unsigned in_len, void *arg) {
+  static const uint8_t kProtocol[] = {'a', 'a'};
+  *out = kProtocol;
+  *out_len = sizeof(kProtocol);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+static int NPNAdvertiseCallback(SSL *ssl, const uint8_t **out,
+                                unsigned *out_len, void *arg) {
+  static const uint8_t kProtocols[] = {
+      0x01, 'a', 0x02, 'a', 'a', 0x03, 'a', 'a', 'a',
+  };
+  *out = kProtocols;
+  *out_len = sizeof(kProtocols);
+  return SSL_TLSEXT_ERR_OK;
+}
+
 struct GlobalState {
   GlobalState()
       : ctx(SSL_CTX_new(SSLv23_method())) {
@@ -207,6 +233,12 @@ struct GlobalState {
 
     SSL_CTX_use_certificate(ctx, cert);
     X509_free(cert);
+
+    SSL_CTX_set_ocsp_response(ctx, kOCSPResponse, sizeof(kOCSPResponse));
+    SSL_CTX_set_signed_cert_timestamp_list(ctx, kSCT, sizeof(kSCT));
+
+    SSL_CTX_set_alpn_select_cb(ctx, ALPNSelectCallback, nullptr);
+    SSL_CTX_set_next_protos_advertised_cb(ctx, NPNAdvertiseCallback, nullptr);
   }
 
   ~GlobalState() {
@@ -221,12 +253,29 @@ static GlobalState g_state;
 extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
   RAND_reset_for_fuzzing();
 
+  // TODO(davidben): Extract an SSL_SESSION from |buf| and preconfigure the
+  // session cache with it, so both tickets and session IDs are fuzzed. Record
+  // server resumption transcripts with them.
+
+  // TODO(davidben): Fuzz accepting a client certificate. The trouble is
+  // configuring a CertificateRequest causes the server to require a client
+  // Certificate, so all the transcripts break and we lose coverage, while most
+  // other features may be declined without changing the peer's half.
+
   SSL *server = SSL_new(g_state.ctx);
   BIO *in = BIO_new(BIO_s_mem());
   BIO *out = BIO_new(BIO_s_mem());
   SSL_set_bio(server, in, out);
   SSL_set_accept_state(server);
   SSL_set_max_version(server, TLS1_3_VERSION);
+  SSL_enable_tls_channel_id(server);
+
+  // Enable ciphers that are off by default.
+  SSL_set_cipher_list(server, "ALL:kCECPQ1:NULL-SHA");
+
+  DH *dh = DH_get_1024_160(nullptr);
+  SSL_set_tmp_dh(server, dh);
+  DH_free(dh);
 
   BIO_write(in, buf, len);
   if (SSL_do_handshake(server) == 1) {
