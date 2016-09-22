@@ -62,6 +62,8 @@ When `-DFUZZ=1` is passed into CMake, BoringSSL builds with `BORINGSSL_UNSAFE_FU
 
 * Use a hard-coded time instead of the actual time.
 
+* Tickets are unencrypted and the MAC check is performed but ignored.
+
 This is to prevent the fuzzer from getting stuck at a cryptographic invariant in the protocol.
 
 ## TLS transcripts

@@ -2963,7 +2963,12 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
   }
   HMAC_Update(&hmac_ctx, ticket, ticket_len - mac_len);
   HMAC_Final(&hmac_ctx, mac, NULL);
-  if (CRYPTO_memcmp(mac, ticket + (ticket_len - mac_len), mac_len) != 0) {
+  int mac_ok =
+      CRYPTO_memcmp(mac, ticket + (ticket_len - mac_len), mac_len) == 0;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  mac_ok = 1;
+#endif
+  if (!mac_ok) {
     goto done;
   }
 
@@ -2976,6 +2981,11 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
     ret = 0;
     goto done;
   }
+  size_t plaintext_len;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  memcpy(plaintext, ciphertext, ciphertext_len);
+  plaintext_len = ciphertext_len;
+#else
   if (ciphertext_len >= INT_MAX) {
     goto done;
   }
@@ -2986,9 +2996,11 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
     ERR_clear_error(); /* Don't leave an error on the queue. */
     goto done;
   }
+  plaintext_len = (size_t)(len1 + len2);
+#endif
 
   /* Decode the session. */
-  SSL_SESSION *session = SSL_SESSION_from_bytes(plaintext, len1 + len2);
+  SSL_SESSION *session = SSL_SESSION_from_bytes(plaintext, plaintext_len);
   if (session == NULL) {
     ERR_clear_error(); /* Don't leave an error on the queue. */
     goto done;

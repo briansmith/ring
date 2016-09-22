@@ -548,8 +548,12 @@ int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session) {
     goto err;
   }
 
-  int len;
   size_t total = 0;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  memcpy(ptr, session_buf, session_len);
+  total = session_len;
+#else
+  int len;
   if (!EVP_EncryptUpdate(&ctx, ptr + total, &len, session_buf, session_len)) {
     goto err;
   }
@@ -558,6 +562,7 @@ int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session) {
     goto err;
   }
   total += len;
+#endif
   if (!CBB_did_write(out, total)) {
     goto err;
   }
