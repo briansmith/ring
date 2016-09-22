@@ -5000,7 +5000,7 @@ func addExtensionTests() {
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "NPN-Server",
+		name:     "NPN-Declined-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			NextProtos: []string{"bar"},
