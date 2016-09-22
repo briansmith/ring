@@ -63,3 +63,26 @@ When `-DFUZZ=1` is passed into CMake, BoringSSL builds with `BORINGSSL_UNSAFE_FU
 * Use a hard-coded time instead of the actual time.
 
 This is to prevent the fuzzer from getting stuck at a cryptographic invariant in the protocol.
+
+## TLS transcripts
+
+The `client` and `server` corpora are seeded from the test suite. The test suite has a `-fuzzer` flag which mirrors the fuzzer mode changes above and a `-deterministic` flag which removes all non-determinism on the Go side. Not all tests pass, so `ssl/test/runner/fuzzer_mode.json` contains the necessary suppressions. To run the tests against a fuzzer-mode `bssl_shim`, run:
+
+```
+cd ssl/test/runner
+go test -fuzzer -deterministic -shim-config fuzzer_mode.json
+```
+
+For a different build directory from `build/`, pass the appropriate `-shim-path` flag. If those tests pass, record a set of transcripts with:
+
+```
+go test -fuzzer -deterministic -transcript-dir /tmp/transcripts/
+```
+
+Note the suppressions file is ignored so disabled tests record transcripts too. Then merge into the existing corpora:
+
+```
+cd build/
+./fuzz/client -max_len=50000 -merge=1 ../fuzz/client_corpus /tmp/transcripts/tls/client
+./fuzz/server -max_len=50000 -merge=1 ../fuzz/server_corpus /tmp/transcripts/tls/server
+```
