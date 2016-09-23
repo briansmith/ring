@@ -763,8 +763,7 @@ int ssl_private_key_supports_signature_algorithm(SSL *ssl,
       return 1;
     }
 
-    /* TODO(davidben): Remove support for EVP_PKEY_EC keys. */
-    return curve != NID_undef && (type == EVP_PKEY_EC || type == curve);
+    return curve != NID_undef && type == curve;
   }
 
   if (is_rsa_pss(&md, signature_algorithm)) {
