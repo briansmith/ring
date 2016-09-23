@@ -86,7 +86,7 @@ typedef enum {
    * is. */
   POINT_CONVERSION_COMPRESSED = 2,
 
-  /* POINT_CONVERSION_COMPRESSED indicates that the point is encoded as
+  /* POINT_CONVERSION_UNCOMPRESSED indicates that the point is encoded as
    * z||x||y, where z is the octet 0x04. */
   POINT_CONVERSION_UNCOMPRESSED = 4,
 
