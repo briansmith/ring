@@ -42,7 +42,7 @@ die "can't locate arm-xlate.pl";
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
-$prefix="aes_v8";
+$prefix="aes_hw";
 
 $code=<<___;
 #include <openssl/arm_arch.h>

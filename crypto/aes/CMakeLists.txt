@@ -39,6 +39,14 @@ if (${ARCH} STREQUAL "aarch64")
   )
 endif()
 
+if (${ARCH} STREQUAL "ppc64le")
+  set(
+    AES_ARCH_SOURCES
+
+    aesp8-ppc.${ASM_EXT}
+  )
+endif()
+
 add_library(
   aes
 
@@ -60,6 +68,7 @@ perlasm(aesni-x86.${ASM_EXT} asm/aesni-x86.pl)
 perlasm(aes-armv4.${ASM_EXT} asm/aes-armv4.pl)
 perlasm(bsaes-armv7.${ASM_EXT} asm/bsaes-armv7.pl)
 perlasm(aesv8-armx.${ASM_EXT} asm/aesv8-armx.pl)
+perlasm(aesp8-ppc.${ASM_EXT} asm/aesp8-ppc.pl)
 
 add_executable(
   aes_test

@@ -125,18 +125,15 @@ static int hwaes_capable(void) {
   return CRYPTO_is_ARMv8_AES_capable();
 }
 
-int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, const int enc);
-void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                 const AES_KEY *key, const uint8_t ivec[16]);
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_PPC64LE)
 
-#endif  /* OPENSSL_ARM */
+#define HWAES
+static int hwaes_capable(void) {
+  return CRYPTO_is_PPC64LE_vcrypto_capable();
+}
+
+#endif  /* OPENSSL_PPC64LE */
+
 
 #if defined(BSAES)
 /* On platforms where BSAES gets defined (just above), then these functions are
@@ -202,39 +199,50 @@ static void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 }
 #endif
 
-#if !defined(HWAES)
+#if defined(HWAES)
+int aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
+                           AES_KEY *key);
+int aes_hw_set_decrypt_key(const uint8_t *user_key, const int bits,
+                           AES_KEY *key);
+void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_hw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                        const AES_KEY *key, uint8_t *ivec, const int enc);
+void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+                                 const AES_KEY *key, const uint8_t ivec[16]);
+#else
 /* If HWAES isn't defined then we provide dummy functions for each of the hwaes
  * functions. */
 static int hwaes_capable(void) {
   return 0;
 }
 
-static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits,
+static int aes_hw_set_encrypt_key(const uint8_t *user_key, int bits,
                                   AES_KEY *key) {
   abort();
 }
 
-static int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits,
+static int aes_hw_set_decrypt_key(const uint8_t *user_key, int bits,
                                   AES_KEY *key) {
   abort();
 }
 
-static void aes_v8_encrypt(const uint8_t *in, uint8_t *out,
+static void aes_hw_encrypt(const uint8_t *in, uint8_t *out,
                            const AES_KEY *key) {
   abort();
 }
 
-static void aes_v8_decrypt(const uint8_t *in, uint8_t *out,
+static void aes_hw_decrypt(const uint8_t *in, uint8_t *out,
                            const AES_KEY *key) {
   abort();
 }
 
-static void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+static void aes_hw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                                const AES_KEY *key, uint8_t *ivec, int enc) {
   abort();
 }
 
-static void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+static void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
                                         size_t len, const AES_KEY *key,
                                         const uint8_t ivec[16]) {
   abort();
@@ -281,11 +289,11 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
   if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) && !enc) {
     if (hwaes_capable()) {
-      ret = aes_v8_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-      dat->block = (block128_f)aes_v8_decrypt;
+      ret = aes_hw_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
+      dat->block = (block128_f)aes_hw_decrypt;
       dat->stream.cbc = NULL;
       if (mode == EVP_CIPH_CBC_MODE) {
-        dat->stream.cbc = (cbc128_f)aes_v8_cbc_encrypt;
+        dat->stream.cbc = (cbc128_f)aes_hw_cbc_encrypt;
       }
     } else if (bsaes_capable() && mode == EVP_CIPH_CBC_MODE) {
       ret = AES_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
@@ -303,13 +311,13 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
           mode == EVP_CIPH_CBC_MODE ? (cbc128_f)AES_cbc_encrypt : NULL;
     }
   } else if (hwaes_capable()) {
-    ret = aes_v8_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-    dat->block = (block128_f)aes_v8_encrypt;
+    ret = aes_hw_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
+    dat->block = (block128_f)aes_hw_encrypt;
     dat->stream.cbc = NULL;
     if (mode == EVP_CIPH_CBC_MODE) {
-      dat->stream.cbc = (cbc128_f)aes_v8_cbc_encrypt;
+      dat->stream.cbc = (cbc128_f)aes_hw_cbc_encrypt;
     } else if (mode == EVP_CIPH_CTR_MODE) {
-      dat->stream.ctr = (ctr128_f)aes_v8_ctr32_encrypt_blocks;
+      dat->stream.ctr = (ctr128_f)aes_hw_ctr32_encrypt_blocks;
     }
   } else if (bsaes_capable() && mode == EVP_CIPH_CTR_MODE) {
     ret = AES_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
@@ -406,14 +414,14 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   }
 
   if (hwaes_capable()) {
-    aes_v8_set_encrypt_key(key, key_len * 8, aes_key);
+    aes_hw_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_v8_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_hw_encrypt);
     }
     if (out_block) {
-      *out_block = (block128_f) aes_v8_encrypt;
+      *out_block = (block128_f) aes_hw_encrypt;
     }
-    return (ctr128_f)aes_v8_ctr32_encrypt_blocks;
+    return (ctr128_f)aes_hw_ctr32_encrypt_blocks;
   }
 
   if (bsaes_capable()) {

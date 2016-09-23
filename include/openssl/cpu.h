@@ -165,6 +165,14 @@ static inline int CRYPTO_is_ARMv8_PMULL_capable(void) {
 #endif  /* OPENSSL_STATIC_ARMCAP */
 #endif  /* OPENSSL_ARM || OPENSSL_AARCH64 */
 
+#if defined(OPENSSL_PPC64LE)
+
+/* CRYPTO_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
+ * the Vector.AES category of instructions. */
+int CRYPTO_is_PPC64LE_vcrypto_capable(void);
+
+#endif  /* OPENSSL_PPC64LE */
+
 
 #if defined(__cplusplus)
 }  /* extern C */

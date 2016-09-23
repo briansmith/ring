@@ -141,8 +141,8 @@ extern "C" {
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
-    defined(OPENSSL_AARCH64)
-/* OPENSSL_cpuid_setup initializes OPENSSL_ia32cap_P. */
+    defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
+/* OPENSSL_cpuid_setup initializes the platform-specific feature cache. */
 void OPENSSL_cpuid_setup(void);
 #endif
 
