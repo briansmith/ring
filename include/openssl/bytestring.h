@@ -327,8 +327,10 @@ OPENSSL_EXPORT void CBB_cleanup(CBB *cbb);
 OPENSSL_EXPORT int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);
 
 /* CBB_flush causes any pending length prefixes to be written out and any child
- * |CBB| objects of |cbb| to be invalidated. It returns one on success or zero
- * on error. */
+ * |CBB| objects of |cbb| to be invalidated. This allows |cbb| to continue to be
+ * used after the children go out of scope, e.g. when local |CBB| objects are
+ * added as children to a |CBB| that persists after a function returns. This
+ * function returns one on success or zero on error. */
 OPENSSL_EXPORT int CBB_flush(CBB *cbb);
 
 /* CBB_data returns a pointer to the bytes written to |cbb|. It does not flush
