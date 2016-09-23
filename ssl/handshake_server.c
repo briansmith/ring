@@ -1796,109 +1796,17 @@ static int ssl3_get_next_proto(SSL *ssl) {
 
 /* ssl3_get_channel_id reads and verifies a ClientID handshake message. */
 static int ssl3_get_channel_id(SSL *ssl) {
-  int ret = -1;
-  uint8_t channel_id_hash[EVP_MAX_MD_SIZE];
-  size_t channel_id_hash_len;
-  const uint8_t *p;
-  uint16_t extension_type;
-  EC_GROUP *p256 = NULL;
-  EC_KEY *key = NULL;
-  EC_POINT *point = NULL;
-  ECDSA_SIG sig;
-  BIGNUM x, y;
-  CBS encrypted_extensions, extension;
-
   int msg_ret = ssl->method->ssl_get_message(ssl, SSL3_MT_CHANNEL_ID,
                                              ssl_dont_hash_message);
   if (msg_ret <= 0) {
     return msg_ret;
   }
 
-  /* Before incorporating the EncryptedExtensions message to the handshake
-   * hash, compute the hash that should have been signed. */
-  if (!tls1_channel_id_hash(ssl, channel_id_hash, &channel_id_hash_len)) {
+  if (!tls1_verify_channel_id(ssl) ||
+      !ssl->method->hash_current_message(ssl)) {
     return -1;
   }
-  assert(channel_id_hash_len == SHA256_DIGEST_LENGTH);
-
-  if (!ssl->method->hash_current_message(ssl)) {
-    return -1;
-  }
-
-  CBS_init(&encrypted_extensions, ssl->init_msg, ssl->init_num);
-
-  /* EncryptedExtensions could include multiple extensions, but the only
-   * extension that could be negotiated is Channel ID, so there can only be one
-   * entry. */
-  if (!CBS_get_u16(&encrypted_extensions, &extension_type) ||
-      !CBS_get_u16_length_prefixed(&encrypted_extensions, &extension) ||
-      CBS_len(&encrypted_extensions) != 0 ||
-      extension_type != TLSEXT_TYPE_channel_id ||
-      CBS_len(&extension) != TLSEXT_CHANNEL_ID_SIZE) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return -1;
-  }
-
-  p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
-  if (!p256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_P256_SUPPORT);
-    return -1;
-  }
-
-  BN_init(&x);
-  BN_init(&y);
-  sig.r = BN_new();
-  sig.s = BN_new();
-  if (sig.r == NULL || sig.s == NULL) {
-    goto err;
-  }
-
-  p = CBS_data(&extension);
-  if (BN_bin2bn(p + 0, 32, &x) == NULL ||
-      BN_bin2bn(p + 32, 32, &y) == NULL ||
-      BN_bin2bn(p + 64, 32, sig.r) == NULL ||
-      BN_bin2bn(p + 96, 32, sig.s) == NULL) {
-    goto err;
-  }
-
-  point = EC_POINT_new(p256);
-  if (!point ||
-      !EC_POINT_set_affine_coordinates_GFp(p256, point, &x, &y, NULL)) {
-    goto err;
-  }
-
-  key = EC_KEY_new();
-  if (!key || !EC_KEY_set_group(key, p256) ||
-      !EC_KEY_set_public_key(key, point)) {
-    goto err;
-  }
-
-  /* We stored the handshake hash in |tlsext_channel_id| the first time that we
-   * were called. */
-  int sig_ok = ECDSA_do_verify(channel_id_hash, channel_id_hash_len, &sig, key);
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  sig_ok = 1;
-#endif
-  if (!sig_ok) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-    ssl->s3->tlsext_channel_id_valid = 0;
-    goto err;
-  }
-
-  memcpy(ssl->s3->tlsext_channel_id, p, 64);
-  ret = 1;
-
-err:
-  BN_free(&x);
-  BN_free(&y);
-  BN_free(sig.r);
-  BN_free(sig.s);
-  EC_KEY_free(key);
-  EC_POINT_free(point);
-  EC_GROUP_free(p256);
-  return ret;
+  return 1;
 }
 
 static int ssl3_send_new_session_ticket(SSL *ssl) {

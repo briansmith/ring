@@ -1831,16 +1831,8 @@ static int ssl3_send_channel_id(SSL *ssl) {
 
   assert(ssl->state == SSL3_ST_CW_CHANNEL_ID_A);
 
-  if (ssl->tlsext_channel_id_private == NULL &&
-      ssl->ctx->channel_id_cb != NULL) {
-    EVP_PKEY *key = NULL;
-    ssl->ctx->channel_id_cb(ssl, &key);
-    if (key != NULL &&
-        !SSL_set1_tls_channel_id(ssl, key)) {
-      EVP_PKEY_free(key);
-      return -1;
-    }
-    EVP_PKEY_free(key);
+  if (!ssl_do_channel_id_callback(ssl)) {
+    return -1;
   }
 
   if (ssl->tlsext_channel_id_private == NULL) {
@@ -1848,55 +1840,17 @@ static int ssl3_send_channel_id(SSL *ssl) {
     return -1;
   }
 
-  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(ssl->tlsext_channel_id_private);
-  if (ec_key == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  int ret = -1;
-  BIGNUM *x = BN_new();
-  BIGNUM *y = BN_new();
-  ECDSA_SIG *sig = NULL;
-  if (x == NULL || y == NULL ||
-      !EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(ec_key),
-                                           EC_KEY_get0_public_key(ec_key),
-                                           x, y, NULL)) {
-    goto err;
-  }
-
-  uint8_t digest[EVP_MAX_MD_SIZE];
-  size_t digest_len;
-  if (!tls1_channel_id_hash(ssl, digest, &digest_len)) {
-    goto err;
-  }
-
-  sig = ECDSA_do_sign(digest, digest_len, ec_key);
-  if (sig == NULL) {
-    goto err;
-  }
-
-  CBB cbb, body, child;
+  CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
-      !CBB_add_u16(&body, TLSEXT_TYPE_channel_id) ||
-      !CBB_add_u16_length_prefixed(&body, &child) ||
-      !BN_bn2cbb_padded(&child, 32, x) || !BN_bn2cbb_padded(&child, 32, y) ||
-      !BN_bn2cbb_padded(&child, 32, sig->r) ||
-      !BN_bn2cbb_padded(&child, 32, sig->s) ||
+      !tls1_write_channel_id(ssl, &body) ||
       !ssl->method->finish_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
-    goto err;
+    return -1;
   }
 
   ssl->state = SSL3_ST_CW_CHANNEL_ID_B;
-  ret = ssl->method->write_message(ssl);
-
-err:
-  BN_free(x);
-  BN_free(y);
-  ECDSA_SIG_free(sig);
-  return ret;
+  return ssl->method->write_message(ssl);
 }
 
 static int ssl3_get_new_session_ticket(SSL *ssl) {

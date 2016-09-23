@@ -3940,33 +3940,54 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 		})
 
-		// Client sends a Channel ID.
-		tests = append(tests, testCase{
-			name: "ChannelID-Client",
-			config: Config{
-				MaxVersion:       VersionTLS12,
-				RequestChannelID: true,
-			},
-			flags:           []string{"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile)},
-			resumeSession:   true,
-			expectChannelID: true,
-		})
+		// Test Channel ID
+		for _, ver := range tlsVersions {
+			if ver.version < VersionTLS12 {
+				continue
+			}
+			// Client sends a Channel ID.
+			tests = append(tests, testCase{
+				name: "ChannelID-Client-" + ver.name,
+				config: Config{
+					MaxVersion:       ver.version,
+					RequestChannelID: true,
+				},
+				flags:           []string{"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile)},
+				resumeSession:   true,
+				expectChannelID: true,
+			})
 
-		// Server accepts a Channel ID.
-		tests = append(tests, testCase{
-			testType: serverTest,
-			name:     "ChannelID-Server",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				ChannelID:  channelIDKey,
-			},
-			flags: []string{
-				"-expect-channel-id",
-				base64.StdEncoding.EncodeToString(channelIDBytes),
-			},
-			resumeSession:   true,
-			expectChannelID: true,
-		})
+			// Server accepts a Channel ID.
+			tests = append(tests, testCase{
+				testType: serverTest,
+				name:     "ChannelID-Server-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					ChannelID:  channelIDKey,
+				},
+				flags: []string{
+					"-expect-channel-id",
+					base64.StdEncoding.EncodeToString(channelIDBytes),
+				},
+				resumeSession:   true,
+				expectChannelID: true,
+			})
+
+			tests = append(tests, testCase{
+				testType: serverTest,
+				name:     "InvalidChannelIDSignature-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					ChannelID:  channelIDKey,
+					Bugs: ProtocolBugs{
+						InvalidChannelIDSignature: true,
+					},
+				},
+				flags:         []string{"-enable-channel-id"},
+				shouldFail:    true,
+				expectedError: ":CHANNEL_ID_SIGNATURE_INVALID:",
+			})
+		}
 
 		// Channel ID and NPN at the same time, to ensure their relative
 		// ordering is correct.
@@ -5171,19 +5192,6 @@ func addExtensionTests() {
 		expectedError: ":ERROR_PARSING_EXTENSION:",
 	})
 	testCases = append(testCases, testCase{
-		name: "ChannelID-Forbidden-TLS13",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			RequestChannelID: true,
-			Bugs: ProtocolBugs{
-				NegotiateChannelIDAtAllVersions: true,
-			},
-		},
-		flags:         []string{"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile)},
-		shouldFail:    true,
-		expectedError: ":ERROR_PARSING_EXTENSION:",
-	})
-	testCases = append(testCases, testCase{
 		name: "Ticket-Forbidden-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS12,
@@ -5205,37 +5213,12 @@ func addExtensionTests() {
 	// implicit in every test.)
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "ChannelID-Declined-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			ChannelID:  channelIDKey,
-		},
-		flags: []string{"-enable-channel-id"},
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
 		name:     "NPN-Declined-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			NextProtos: []string{"bar"},
 		},
 		flags: []string{"-advertise-npn", "\x03foo\x03bar\x03baz"},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "InvalidChannelIDSignature",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			ChannelID:  channelIDKey,
-			Bugs: ProtocolBugs{
-				InvalidChannelIDSignature: true,
-			},
-		},
-		flags:              []string{"-enable-channel-id"},
-		shouldFail:         true,
-		expectedError:      ":CHANNEL_ID_SIGNATURE_INVALID:",
-		expectedLocalError: "remote error: error decrypting message",
 	})
 
 	// OpenSSL sends the status_request extension on resumption in TLS 1.2. Test that this is

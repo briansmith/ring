@@ -820,6 +820,17 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 	}
 
+	if encryptedExtensions.extensions.channelIDRequested {
+		channelIDHash := crypto.SHA256.New()
+		channelIDHash.Write(hs.finishedHash.certificateVerifyInput(channelIDContextTLS13))
+		channelIDMsgBytes, err := hs.writeChannelIDMessage(channelIDHash.Sum(nil))
+		if err != nil {
+			return err
+		}
+		hs.writeClientHash(channelIDMsgBytes)
+		c.writeRecord(recordTypeHandshake, channelIDMsgBytes)
+	}
+
 	// Send a client Finished message.
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.clientSum(clientHandshakeTrafficSecret)
@@ -1169,11 +1180,6 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		return errors.New("server advertised unrequested Channel ID extension")
 	}
 
-	if serverExtensions.channelIDRequested && c.vers >= VersionTLS13 {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("server advertised Channel ID over TLS 1.3")
-	}
-
 	if serverExtensions.extendedMasterSecret && c.vers >= VersionTLS13 {
 		return errors.New("tls: server advertised extended master secret over TLS 1.3")
 	}
@@ -1346,31 +1352,14 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 	}
 
 	if hs.serverHello.extensions.channelIDRequested {
-		channelIDMsg := new(channelIDMsg)
-		if c.config.ChannelID.Curve != elliptic.P256() {
-			return fmt.Errorf("tls: Channel ID is not on P-256.")
-		}
 		var resumeHash []byte
 		if isResume {
 			resumeHash = hs.session.handshakeHash
 		}
-		r, s, err := ecdsa.Sign(c.config.rand(), c.config.ChannelID, hs.finishedHash.hashForChannelID(resumeHash))
+		channelIDMsgBytes, err := hs.writeChannelIDMessage(hs.finishedHash.hashForChannelID(resumeHash))
 		if err != nil {
 			return err
 		}
-		channelID := make([]byte, 128)
-		writeIntPadded(channelID[0:32], c.config.ChannelID.X)
-		writeIntPadded(channelID[32:64], c.config.ChannelID.Y)
-		writeIntPadded(channelID[64:96], r)
-		writeIntPadded(channelID[96:128], s)
-		if c.config.Bugs.InvalidChannelIDSignature {
-			channelID[64] ^= 1
-		}
-		channelIDMsg.channelID = channelID
-
-		c.channelID = &c.config.ChannelID.PublicKey
-
-		channelIDMsgBytes := channelIDMsg.marshal()
 		hs.writeHash(channelIDMsgBytes, seqno)
 		seqno++
 		postCCSMsgs = append(postCCSMsgs, channelIDMsgBytes)
@@ -1429,6 +1418,31 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		c.flushHandshake()
 	}
 	return nil
+}
+
+func (hs *clientHandshakeState) writeChannelIDMessage(channelIDHash []byte) ([]byte, error) {
+	c := hs.c
+	channelIDMsg := new(channelIDMsg)
+	if c.config.ChannelID.Curve != elliptic.P256() {
+		return nil, fmt.Errorf("tls: Channel ID is not on P-256.")
+	}
+	r, s, err := ecdsa.Sign(c.config.rand(), c.config.ChannelID, channelIDHash)
+	if err != nil {
+		return nil, err
+	}
+	channelID := make([]byte, 128)
+	writeIntPadded(channelID[0:32], c.config.ChannelID.X)
+	writeIntPadded(channelID[32:64], c.config.ChannelID.Y)
+	writeIntPadded(channelID[64:96], r)
+	writeIntPadded(channelID[96:128], s)
+	if c.config.Bugs.InvalidChannelIDSignature {
+		channelID[64] ^= 1
+	}
+	channelIDMsg.channelID = channelID
+
+	c.channelID = &c.config.ChannelID.PublicKey
+
+	return channelIDMsg.marshal(), nil
 }
 
 func (hs *clientHandshakeState) writeClientHash(msg []byte) {

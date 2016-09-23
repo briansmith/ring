@@ -79,6 +79,11 @@ int tls13_handshake(SSL *ssl) {
         hs->wait = ssl_hs_ok;
         return -1;
 
+      case ssl_hs_channel_id_lookup:
+        ssl->rwstate = SSL_CHANNEL_ID_LOOKUP;
+        hs->wait = ssl_hs_ok;
+        return -1;
+
       case ssl_hs_private_key_operation:
         ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
         hs->wait = ssl_hs_ok;
@@ -105,8 +110,9 @@ int tls13_handshake(SSL *ssl) {
   }
 }
 
-static int tls13_get_cert_verify_signature_input(SSL *ssl, uint8_t **out,
-                                                 size_t *out_len, int server) {
+int tls13_get_cert_verify_signature_input(
+    SSL *ssl, uint8_t **out, size_t *out_len,
+    enum ssl_cert_verify_context_t cert_verify_context) {
   CBB cbb;
   if (!CBB_init(&cbb, 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
     goto err;
@@ -118,17 +124,27 @@ static int tls13_get_cert_verify_signature_input(SSL *ssl, uint8_t **out,
     }
   }
 
-  if (server) {
+  const uint8_t *context;
+  size_t context_len;
+  if (cert_verify_context == ssl_cert_verify_server) {
     /* Include the NUL byte. */
     static const char kContext[] = "TLS 1.3, server CertificateVerify";
-    if (!CBB_add_bytes(&cbb, (const uint8_t *)kContext, sizeof(kContext))) {
-      goto err;
-    }
-  } else {
+    context = (const uint8_t *)kContext;
+    context_len = sizeof(kContext);
+  } else if (cert_verify_context == ssl_cert_verify_client) {
     static const char kContext[] = "TLS 1.3, client CertificateVerify";
-    if (!CBB_add_bytes(&cbb, (const uint8_t *)kContext, sizeof(kContext))) {
-      goto err;
-    }
+    context = (const uint8_t *)kContext;
+    context_len = sizeof(kContext);
+  } else if (cert_verify_context == ssl_cert_verify_channel_id) {
+    static const char kContext[] = "TLS 1.3, Channel ID";
+    context = (const uint8_t *)kContext;
+    context_len = sizeof(kContext);
+  } else {
+    goto err;
+  }
+
+  if (!CBB_add_bytes(&cbb, context, context_len)) {
+    goto err;
   }
 
   uint8_t context_hashes[2 * EVP_MAX_MD_SIZE];
@@ -245,8 +261,9 @@ int tls13_process_certificate_verify(SSL *ssl) {
   }
   ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
 
-  if (!tls13_get_cert_verify_signature_input(ssl, &msg, &msg_len,
-                                             !ssl->server)) {
+  if (!tls13_get_cert_verify_signature_input(
+          ssl, &msg, &msg_len,
+          ssl->server ? ssl_cert_verify_client : ssl_cert_verify_server)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     goto err;
   }
@@ -352,8 +369,9 @@ enum ssl_private_key_result_t tls13_prepare_certificate_verify(
 
   enum ssl_private_key_result_t sign_result;
   if (is_first_run) {
-    if (!tls13_get_cert_verify_signature_input(ssl, &msg, &msg_len,
-                                               ssl->server)) {
+    if (!tls13_get_cert_verify_signature_input(
+            ssl, &msg, &msg_len,
+            ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       goto err;
     }

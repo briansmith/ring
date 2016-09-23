@@ -900,6 +900,27 @@ ResendHelloRetryRequest:
 		}
 	}
 
+	if encryptedExtensions.extensions.channelIDRequested {
+		msg, err := c.readHandshake()
+		if err != nil {
+			return err
+		}
+		channelIDMsg, ok := msg.(*channelIDMsg)
+		if !ok {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(channelIDMsg, msg)
+		}
+		channelIDHash := crypto.SHA256.New()
+		channelIDHash.Write(hs.finishedHash.certificateVerifyInput(channelIDContextTLS13))
+		channelID, err := verifyChannelIDMessage(channelIDMsg, channelIDHash.Sum(nil))
+		if err != nil {
+			return err
+		}
+		c.channelID = channelID
+
+		hs.writeClientHash(channelIDMsg.marshal())
+	}
+
 	// Read the client Finished message.
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -1126,10 +1147,8 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !disableEMS
 	}
 
-	if c.vers < VersionTLS13 || config.Bugs.NegotiateChannelIDAtAllVersions {
-		if hs.clientHello.channelIDSupported && config.RequestChannelID {
-			serverExtensions.channelIDRequested = true
-		}
+	if hs.clientHello.channelIDSupported && config.RequestChannelID {
+		serverExtensions.channelIDRequested = true
 	}
 
 	if hs.clientHello.srtpProtectionProfiles != nil {
@@ -1568,20 +1587,13 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 			c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(channelIDMsg, msg)
 		}
-		x := new(big.Int).SetBytes(channelIDMsg.channelID[0:32])
-		y := new(big.Int).SetBytes(channelIDMsg.channelID[32:64])
-		r := new(big.Int).SetBytes(channelIDMsg.channelID[64:96])
-		s := new(big.Int).SetBytes(channelIDMsg.channelID[96:128])
-		if !elliptic.P256().IsOnCurve(x, y) {
-			return errors.New("tls: invalid channel ID public key")
-		}
-		channelID := &ecdsa.PublicKey{elliptic.P256(), x, y}
 		var resumeHash []byte
 		if isResume {
 			resumeHash = hs.sessionState.handshakeHash
 		}
-		if !ecdsa.Verify(channelID, hs.finishedHash.hashForChannelID(resumeHash), r, s) {
-			return errors.New("tls: invalid channel ID signature")
+		channelID, err := verifyChannelIDMessage(channelIDMsg, hs.finishedHash.hashForChannelID(resumeHash))
+		if err != nil {
+			return err
 		}
 		c.channelID = channelID
 
@@ -1763,6 +1775,21 @@ func (hs *serverHandshakeState) processCertsFromClient(certificates [][]byte) (c
 	}
 
 	return nil, nil
+}
+
+func verifyChannelIDMessage(channelIDMsg *channelIDMsg, channelIDHash []byte) (*ecdsa.PublicKey, error) {
+	x := new(big.Int).SetBytes(channelIDMsg.channelID[0:32])
+	y := new(big.Int).SetBytes(channelIDMsg.channelID[32:64])
+	r := new(big.Int).SetBytes(channelIDMsg.channelID[64:96])
+	s := new(big.Int).SetBytes(channelIDMsg.channelID[96:128])
+	if !elliptic.P256().IsOnCurve(x, y) {
+		return nil, errors.New("tls: invalid channel ID public key")
+	}
+	channelID := &ecdsa.PublicKey{elliptic.P256(), x, y}
+	if !ecdsa.Verify(channelID, channelIDHash, r, s) {
+		return nil, errors.New("tls: invalid channel ID signature")
+	}
+	return channelID, nil
 }
 
 func (hs *serverHandshakeState) writeServerHash(msg []byte) {

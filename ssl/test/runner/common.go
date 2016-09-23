@@ -1028,10 +1028,6 @@ type ProtocolBugs struct {
 	// Renegotiation Info to be negotiated at all versions.
 	NegotiateRenegotiationInfoAtAllVersions bool
 
-	// NegotiateChannelIDAtAllVersions, if true, causes Channel ID to be
-	// negotiated at all versions.
-	NegotiateChannelIDAtAllVersions bool
-
 	// NegotiateNPNAtAllVersions, if true, causes NPN to be negotiated at
 	// all versions.
 	NegotiateNPNAtAllVersions bool

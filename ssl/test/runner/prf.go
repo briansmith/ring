@@ -442,6 +442,7 @@ func (h *finishedHash) deriveSecret(secret, label []byte) []byte {
 var (
 	clientCertificateVerifyContextTLS13 = []byte("TLS 1.3, client CertificateVerify")
 	serverCertificateVerifyContextTLS13 = []byte("TLS 1.3, server CertificateVerify")
+	channelIDContextTLS13               = []byte("TLS 1.3, Channel ID")
 )
 
 // certificateVerifyMessage returns the input to be signed for CertificateVerify

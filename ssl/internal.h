@@ -878,6 +878,7 @@ enum ssl_hs_wait_t {
   ssl_hs_flush,
   ssl_hs_flush_and_read_message,
   ssl_hs_x509_lookup,
+  ssl_hs_channel_id_lookup,
   ssl_hs_private_key_operation,
 };
 
@@ -1059,6 +1060,21 @@ int ssl_add_client_hello_body(SSL *ssl, CBB *body);
 /* ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
  * should be called once the version is known to be TLS 1.2 or earlier. */
 void ssl_clear_tls13_state(SSL *ssl);
+
+enum ssl_cert_verify_context_t {
+  ssl_cert_verify_server,
+  ssl_cert_verify_client,
+  ssl_cert_verify_channel_id,
+};
+
+/* tls13_get_cert_verify_signature_input generates the message to be signed for
+ * TLS 1.3's CertificateVerify message. |cert_verify_context| determines the
+ * type of signature. It sets |*out| and |*out_len| to a newly allocated buffer
+ * containing the result. The caller must free it with |OPENSSL_free| to release
+ * it. This function returns one on success and zero on failure. */
+int tls13_get_cert_verify_signature_input(
+    SSL *ssl, uint8_t **out, size_t *out_len,
+    enum ssl_cert_verify_context_t cert_verify_context);
 
 
 /* SSLKEYLOGFILE functions. */
@@ -1808,12 +1824,28 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len);
 
+/* tls1_verify_channel_id processes the current message as a Channel ID message,
+ * and verifies the signature. If the key is valid, it saves the Channel ID and
+ * returns one. Otherwise, it returns zero. */
+int tls1_verify_channel_id(SSL *ssl);
+
+/* tls1_write_channel_id generates a Channel ID message and puts the output in
+ * |cbb|. |ssl->tlsext_channel_id_private| must already be set before calling.
+ * This function returns one on success and zero on error. */
+int tls1_write_channel_id(SSL *ssl, CBB *cbb);
+
 /* tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
  * it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
  * one on success and zero on failure. */
 int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len);
 
 int tls1_record_handshake_hashes_for_channel_id(SSL *ssl);
+
+/* ssl_do_channel_id_callback checks runs |ssl->ctx->channel_id_cb| if
+ * necessary. It returns one on success and zero on fatal error. Note that, on
+ * success, |ssl->tlsext_channel_id_private| may be unset, in which case the
+ * operation should be retried later. */
+int ssl_do_channel_id_callback(SSL *ssl);
 
 /* ssl3_can_false_start returns one if |ssl| is allowed to False Start and zero
  * otherwise. */
