@@ -82,13 +82,10 @@ class FileTest {
   // |kReadError|.
   ReadResult ReadNext();
 
-  // PrintLine is a variant of printf which prepends the line number and appends
-  // a trailing newline.
-  void PrintLine(const char *format, ...)
-#ifdef __GNUC__
-      __attribute__((__format__(__printf__, 2, 3)))
-#endif
-  ;
+  // PrintLine is a simple printer that prints strings the concatenation of
+  // |*p1|, |*p2|, and |*p3|, prepending the line number and appending a
+  // trailing newline.
+  void PrintLine(const char *p1, const char *p2 = "", const char *p3 = "");
 
   unsigned start_line() const { return start_line_; }
 
