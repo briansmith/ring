@@ -15,7 +15,8 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, error, private, signature};
-use super::{BIGNUM, PositiveInteger, RSAParameters, parse_public_key};
+use bn::{BIGNUM, PositiveInteger};
+use super::{RSAParameters, parse_public_key};
 use untrusted;
 
 

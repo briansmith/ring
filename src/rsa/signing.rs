@@ -15,10 +15,11 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, der, error};
+use bn::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
+         PositiveInteger};
 use rand;
 use std;
-use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free, padding,
-            PositiveInteger};
+use super::padding;
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
