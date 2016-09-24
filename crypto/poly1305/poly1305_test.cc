@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include <vector>
+#include <string>
 
 #include "internal.h"
 #include "../internal.h"
@@ -72,7 +73,7 @@ static bool TestSIMD(FileTest *t, unsigned excess,
   alignas(16) uint8_t out[16];
   GFp_poly1305_finish(&state, out);
   if (!t->ExpectBytesEqual(mac.data(), mac.size(), out, 16)) {
-    t->PrintLine("SIMD pattern %u failed.", excess);
+    t->PrintLine("SIMD pattern ", std::to_string(excess).c_str(), " failed.");
     return false;
   }
 
