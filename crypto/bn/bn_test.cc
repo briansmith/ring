@@ -115,7 +115,7 @@ static ScopedBIGNUM GetBIGNUM(FileTest *t, const char *attribute) {
 
   ScopedBIGNUM ret;
   if (HexToBIGNUM(&ret, hex.c_str()) != static_cast<int>(hex.size())) {
-    t->PrintLine("Could not decode '%s'.", hex.c_str());
+    t->PrintLine("Could not decode '", hex.c_str(), "'.");
     return nullptr;
   }
   return ret;
@@ -148,7 +148,7 @@ static bool ExpectBIGNUMsEqual(FileTest *t, const char *operation,
   if (GFp_BN_cmp(expected, actual) == 0) {
     return true;
   }
-  t->PrintLine("Got wrong value for %s", operation);
+  t->PrintLine("Got wrong value for ", operation);
   return false;
 }
 
@@ -542,7 +542,7 @@ static bool RunTest(FileTest *t, void *) {
     }
     return test.func(t);
   }
-  t->PrintLine("Unknown test type: %s", t->GetType().c_str());
+  t->PrintLine("Unknown test type: ", t->GetType().c_str());
   return false;
 }
 
