@@ -24,7 +24,6 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -78,7 +77,7 @@ FileTest::ReadResult FileTest::ReadNext() {
   // If the previous test had unused attributes, it is an error.
   if (!unused_attributes_.empty()) {
     for (const std::string &key : unused_attributes_) {
-      PrintLine("Unused attribute: %s", key.c_str());
+      PrintLine("Unused attribute: ", key.c_str());
     }
     return kReadError;
   }
@@ -135,15 +134,8 @@ FileTest::ReadResult FileTest::ReadNext() {
   }
 }
 
-void FileTest::PrintLine(const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-
-  fprintf(stderr, "Line %u: ", start_line_);
-  vfprintf(stderr, format, args);
-  fprintf(stderr, "\n");
-
-  va_end(args);
+void FileTest::PrintLine(const char *p1, const char *p2, const char *p3) {
+  fprintf(stderr, "Line %u: %s%s%s\n", start_line_, p1, p2, p3);
 }
 
 const std::string &FileTest::GetType() {
@@ -155,7 +147,7 @@ bool FileTest::GetAttribute(std::string *out_value, const std::string &key) {
   OnKeyUsed(key);
   auto iter = attributes_.find(key);
   if (iter == attributes_.end()) {
-    PrintLine("Missing attribute '%s'.", key.c_str());
+    PrintLine("Missing attribute '", key.c_str(), "'.");
     return false;
   }
   *out_value = iter->second;
@@ -196,14 +188,14 @@ bool FileTest::GetBytesOrDefault(std::vector<uint8_t> *out, bool *is_default,
   }
 
   if (value.size() % 2 != 0) {
-    PrintLine("Error decoding value: %s", value.c_str());
+    PrintLine("Error decoding value: ", value.c_str());
     return false;
   }
   out->reserve(value.size() / 2);
   for (size_t i = 0; i < value.size(); i += 2) {
     uint8_t hi, lo;
     if (!FromHexDigit(&hi, value[i]) || !FromHexDigit(&lo, value[i+1])) {
-      PrintLine("Error decoding value: %s", value.c_str());
+      PrintLine("Error decoding value: ", value.c_str());
       return false;
     }
     out->push_back((hi << 4) | lo);
@@ -242,8 +234,8 @@ bool FileTest::ExpectBytesEqual(const uint8_t *expected, size_t expected_len,
 
   std::string expected_hex = EncodeHex(expected, expected_len);
   std::string actual_hex = EncodeHex(actual, actual_len);
-  PrintLine("Expected: %s", expected_hex.c_str());
-  PrintLine("Actual:   %s", actual_hex.c_str());
+  PrintLine("Expected: ", expected_hex.c_str());
+  PrintLine("Actual:   ", actual_hex.c_str());
   return false;
 }
 
