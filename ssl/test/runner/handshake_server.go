@@ -205,7 +205,39 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 	c.clientVersion = hs.clientHello.vers
-	clientVersion := wireToVersion(c.clientVersion, c.isDTLS)
+	var clientVersion uint16
+	if c.isDTLS {
+		if hs.clientHello.vers <= 0xfefd {
+			clientVersion = VersionTLS12
+		} else if hs.clientHello.vers <= 0xfeff {
+			clientVersion = VersionTLS10
+		}
+	} else {
+		if hs.clientHello.vers >= VersionTLS13 {
+			clientVersion = VersionTLS13
+		} else if hs.clientHello.vers >= VersionTLS12 {
+			clientVersion = VersionTLS12
+		} else if hs.clientHello.vers >= VersionTLS11 {
+			clientVersion = VersionTLS11
+		} else if hs.clientHello.vers >= VersionTLS10 {
+			clientVersion = VersionTLS10
+		} else if hs.clientHello.vers >= VersionSSL30 {
+			clientVersion = VersionSSL30
+		}
+	}
+
+	if config.Bugs.NegotiateVersion != 0 {
+		c.vers = config.Bugs.NegotiateVersion
+	} else if c.haveVers && config.Bugs.NegotiateVersionOnRenego != 0 {
+		c.vers = config.Bugs.NegotiateVersionOnRenego
+	} else {
+		c.vers, ok = config.mutualVersion(clientVersion, c.isDTLS)
+		if !ok {
+			c.sendAlert(alertProtocolVersion)
+			return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+		}
+	}
+	c.haveVers = true
 
 	// Reject < 1.2 ClientHellos with signature_algorithms.
 	if clientVersion < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
@@ -233,19 +265,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 	if config.Bugs.ExpectNoTLS13PSK && len(hs.clientHello.pskIdentities) > 0 {
 		return fmt.Errorf("tls: client offered unexpected PSK identities")
 	}
-
-	if config.Bugs.NegotiateVersion != 0 {
-		c.vers = config.Bugs.NegotiateVersion
-	} else if c.haveVers && config.Bugs.NegotiateVersionOnRenego != 0 {
-		c.vers = config.Bugs.NegotiateVersionOnRenego
-	} else {
-		c.vers, ok = config.mutualVersion(clientVersion, c.isDTLS)
-		if !ok {
-			c.sendAlert(alertProtocolVersion)
-			return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", clientVersion)
-		}
-	}
-	c.haveVers = true
 
 	var scsvFound, greaseFound bool
 	for _, cipherSuite := range hs.clientHello.cipherSuites {
@@ -311,12 +330,9 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	config := c.config
 
 	hs.hello = &serverHelloMsg{
-		isDTLS: c.isDTLS,
-		vers:   versionToWire(c.vers, c.isDTLS),
-	}
-
-	if config.Bugs.SendServerHelloVersion != 0 {
-		hs.hello.vers = config.Bugs.SendServerHelloVersion
+		isDTLS:       c.isDTLS,
+		vers:         versionToWire(c.vers, c.isDTLS),
+		versOverride: config.Bugs.SendServerHelloVersion,
 	}
 
 	hs.hello.random = make([]byte, 32)
@@ -818,11 +834,8 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 	hs.hello = &serverHelloMsg{
 		isDTLS:            c.isDTLS,
 		vers:              versionToWire(c.vers, c.isDTLS),
+		versOverride:      config.Bugs.SendServerHelloVersion,
 		compressionMethod: compressionNone,
-	}
-
-	if config.Bugs.SendServerHelloVersion != 0 {
-		hs.hello.vers = config.Bugs.SendServerHelloVersion
 	}
 
 	hs.hello.random = make([]byte, 32)

@@ -4102,14 +4102,18 @@ func addVersionNegotiationTests() {
 
 				shimVersFlag := strconv.Itoa(int(versionToWire(shimVers.version, protocol == dtls)))
 
+				// Determine the expected initial record-layer versions.
 				clientVers := shimVers.version
 				if clientVers > VersionTLS10 {
 					clientVers = VersionTLS10
 				}
+				clientVers = versionToWire(clientVers, protocol == dtls)
 				serverVers := expectedVersion
 				if expectedVersion >= VersionTLS13 {
 					serverVers = VersionTLS10
 				}
+				serverVers = versionToWire(serverVers, protocol == dtls)
+
 				testCases = append(testCases, testCase{
 					protocol: protocol,
 					testType: clientTest,

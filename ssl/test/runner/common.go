@@ -736,8 +736,8 @@ type ProtocolBugs struct {
 	// across a renego.
 	RequireSameRenegoClientVersion bool
 
-	// ExpectInitialRecordVersion, if non-zero, is the expected
-	// version of the records before the version is determined.
+	// ExpectInitialRecordVersion, if non-zero, is the expected value of
+	// record-layer version field before the version is determined.
 	ExpectInitialRecordVersion uint16
 
 	// MaxPacketLength, if non-zero, is the maximum acceptable size for a

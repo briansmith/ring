@@ -364,8 +364,10 @@ NextCipherSuite:
 		return fmt.Errorf("tls: received unexpected message of type %T when waiting for HelloRetryRequest or ServerHello", msg)
 	}
 
-	var ok bool
-	c.vers, ok = c.config.mutualVersion(wireToVersion(serverWireVersion, c.isDTLS), c.isDTLS)
+	serverVersion, ok := wireToVersion(serverWireVersion, c.isDTLS)
+	if ok {
+		c.vers, ok = c.config.mutualVersion(serverVersion, c.isDTLS)
+	}
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
 		return fmt.Errorf("tls: server selected unsupported protocol version %x", c.vers)

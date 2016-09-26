@@ -719,6 +719,7 @@ type serverHelloMsg struct {
 	raw                 []byte
 	isDTLS              bool
 	vers                uint16
+	versOverride        uint16
 	random              []byte
 	sessionId           []byte
 	cipherSuite         uint16
@@ -739,8 +740,20 @@ func (m *serverHelloMsg) marshal() []byte {
 	handshakeMsg := newByteBuilder()
 	handshakeMsg.addU8(typeServerHello)
 	hello := handshakeMsg.addU24LengthPrefixed()
-	vers := wireToVersion(m.vers, m.isDTLS)
-	hello.addU16(m.vers)
+
+	// m.vers is used both to determine the format of the rest of the
+	// ServerHello and to override the value, so include a second version
+	// field.
+	vers, ok := wireToVersion(m.vers, m.isDTLS)
+	if !ok {
+		panic("unknown version")
+	}
+	if m.versOverride != 0 {
+		hello.addU16(m.versOverride)
+	} else {
+		hello.addU16(m.vers)
+	}
+
 	hello.addBytes(m.random)
 	if vers < VersionTLS13 {
 		sessionId := hello.addU8LengthPrefixed()
@@ -787,7 +800,10 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.raw = data
 	m.vers = uint16(data[4])<<8 | uint16(data[5])
-	vers := wireToVersion(m.vers, m.isDTLS)
+	vers, ok := wireToVersion(m.vers, m.isDTLS)
+	if !ok {
+		return false
+	}
 	m.random = data[6:38]
 	data = data[38:]
 	if vers < VersionTLS13 {

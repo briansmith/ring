@@ -25,16 +25,38 @@ import (
 
 func versionToWire(vers uint16, isDTLS bool) uint16 {
 	if isDTLS {
-		return ^(vers - 0x0201)
+		switch vers {
+		case VersionTLS12:
+			return 0xfefd
+		case VersionTLS10:
+			return 0xfeff
+		}
+	} else {
+		switch vers {
+		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13:
+			return vers
+		}
 	}
-	return vers
+
+	panic("unknown version")
 }
 
-func wireToVersion(vers uint16, isDTLS bool) uint16 {
+func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 	if isDTLS {
-		return ^vers + 0x0201
+		switch vers {
+		case 0xfefd:
+			return VersionTLS12, true
+		case 0xfeff:
+			return VersionTLS10, true
+		}
+	} else {
+		switch vers {
+		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13:
+			return vers, true
+		}
 	}
-	return vers
+
+	return 0, false
 }
 
 func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
@@ -70,15 +92,15 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 		return 0, nil, errors.New("dtls: failed to read record header")
 	}
 	typ := recordType(b.data[0])
-	vers := wireToVersion(uint16(b.data[1])<<8|uint16(b.data[2]), c.isDTLS)
+	vers := uint16(b.data[1])<<8 | uint16(b.data[2])
 	// Alerts sent near version negotiation do not have a well-defined
 	// record-layer version prior to TLS 1.3. (In TLS 1.3, the record-layer
 	// version is irrelevant.)
 	if typ != recordTypeAlert {
 		if c.haveVers {
-			if vers != c.vers {
+			if wireVers := versionToWire(c.vers, c.isDTLS); vers != wireVers {
 				c.sendAlert(alertProtocolVersion)
-				return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, c.vers))
+				return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, wireVers))
 			}
 		} else {
 			// Pre-version-negotiation alerts may be sent with any version.
