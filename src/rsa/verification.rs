@@ -14,8 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, error, private, signature};
-use bn::{BIGNUM, PositiveInteger};
+use {bn, bssl, c, core, error, private, signature};
 use super::{RSAParameters, parse_public_key};
 use untrusted;
 
@@ -61,6 +60,86 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
            "Verification of signatures using RSA keys of 3072-8192 bits,
             PKCS#1.5 padding, and SHA-384.");
 
+extern {
+    fn GFp_rsa_check_modulus_and_exponent(n: *const bn::BIGNUM,
+                                          e: *const bn::BIGNUM,
+                                          min_bits: c::size_t,
+                                          max_bits: c::size_t) -> c::int;
+}
+
+fn rsa_public_decrypt(out: &mut [u8], public_key_n: &bn::PositiveInteger,
+                      public_key_e: &bn::PositiveInteger, ciphertext: &[u8],
+                      min_bits: usize, max_bits: usize)
+                      -> Result<(), error::Unspecified> {
+    // We define this closure as a translation of `goto`. We still want
+    // to use an early-return code style, but we also need to manually
+    // free any |BIGNUM| heap-allocated using a foreign call.
+    let mut decrypt = |f: *mut bn::BIGNUM, result: *mut bn::BIGNUM| {
+        let rsa_size: usize = unsafe {
+            bn::GFp_BN_num_bytes(public_key_n.as_ref())
+        };
+
+        if out.len() != rsa_size {
+            // RSA_R_OUTPUT_BUFFER_TOO_SMALL
+            return Err(error::Unspecified);
+        }
+
+        if ciphertext.len() != rsa_size {
+            // RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN
+            return Err(error::Unspecified);
+        }
+
+        try!(bssl::map_result(unsafe {
+            GFp_rsa_check_modulus_and_exponent(public_key_n.as_ref(),
+                                               public_key_e.as_ref(),
+                                               min_bits, max_bits)
+        }));
+
+        let ret = unsafe {
+            bn::GFp_BN_bin2bn(ciphertext.as_ptr(), ciphertext.len(), f)
+        };
+        if ret.is_null() {
+            return Err(error::Unspecified);
+        }
+
+        if unsafe { bn::GFp_BN_ucmp(f, public_key_n.as_ref()) } >= 0 {
+            // RSA_R_DATA_TOO_LARGE_FOR_MODULUS
+            return Err(error::Unspecified);
+        }
+
+        try!(bssl::map_result(unsafe {
+            bn::GFp_BN_mod_exp_mont_vartime(result, f, public_key_e.as_ref(),
+                                        public_key_n.as_ref(),
+                                        core::ptr::null())
+        }));
+
+        try!(bssl::map_result(unsafe {
+            bn::GFp_BN_bn2bin_padded(out.as_mut_ptr(), out.len(), result)
+        }));
+
+        Ok(())
+    };
+
+    let f: *mut bn::BIGNUM = unsafe { bn::GFp_BN_new() };
+    if f.is_null() {
+        return Err(error::Unspecified);
+    }
+
+    let result: *mut bn::BIGNUM = unsafe { bn::GFp_BN_new() };
+    if result.is_null() {
+        return Err(error::Unspecified);
+    }
+
+    let res = decrypt(f, result);
+
+    unsafe {
+        bn::GFp_BN_free(result);
+        bn::GFp_BN_free(f);
+    }
+
+    res
+}
+
 /// Lower-level API for the verification of RSA signatures.
 ///
 /// When the public key is in DER-encoded PKCS#1 ASN.1 format, it is
@@ -98,26 +177,16 @@ pub fn verify_rsa(params: &RSAParameters,
         return Err(error::Unspecified);
     }
 
-    let n = try!(PositiveInteger::from_be_bytes(n));
-    let e = try!(PositiveInteger::from_be_bytes(e));
+    let n = try!(bn::PositiveInteger::from_be_bytes(n));
+    let e = try!(bn::PositiveInteger::from_be_bytes(e));
     let decoded = &mut decoded[..signature.len()];
-    try!(bssl::map_result(unsafe {
-        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
-                               e.as_ref(), signature.as_ptr(), signature.len(),
-                               params.min_bits, MAX_BITS)
-    }));
+
+    try!(rsa_public_decrypt(decoded, &n, &e, signature, params.min_bits,
+                            MAX_BITS));
 
     params.padding_alg.verify(msg, untrusted::Input::from(decoded))
 }
 
-extern {
-    fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
-                              public_key_n: *const BIGNUM,
-                              public_key_e: *const BIGNUM,
-                              ciphertext: *const u8,
-                              ciphertext_len: c::size_t, min_bits: c::size_t,
-                              max_bits: c::size_t) -> c::int;
-}
 
 #[cfg(test)]
 mod tests {
