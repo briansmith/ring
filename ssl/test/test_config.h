@@ -114,6 +114,7 @@ struct TestConfig {
   bool send_alert = false;
   bool peek_then_read = false;
   bool enable_grease = false;
+  int max_cert_list = 0;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

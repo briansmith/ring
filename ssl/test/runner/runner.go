@@ -2331,6 +2331,46 @@ func addBasicTests() {
 		},
 	}
 	testCases = append(testCases, basicTests...)
+
+	// Test that very large messages can be received.
+	cert := rsaCertificate
+	for i := 0; i < 50; i++ {
+		cert.Certificate = append(cert.Certificate, cert.Certificate[0])
+	}
+	testCases = append(testCases, testCase{
+		name: "LargeMessage",
+		config: Config{
+			Certificates: []Certificate{cert},
+		},
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "LargeMessage-DTLS",
+		config: Config{
+			Certificates: []Certificate{cert},
+		},
+	})
+
+	// They are rejected if the maximum certificate chain length is capped.
+	testCases = append(testCases, testCase{
+		name: "LargeMessage-Reject",
+		config: Config{
+			Certificates: []Certificate{cert},
+		},
+		flags:         []string{"-max-cert-list", "16384"},
+		shouldFail:    true,
+		expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "LargeMessage-Reject-DTLS",
+		config: Config{
+			Certificates: []Certificate{cert},
+		},
+		flags:         []string{"-max-cert-list", "16384"},
+		shouldFail:    true,
+		expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+	})
 }
 
 func addCipherSuiteTests() {

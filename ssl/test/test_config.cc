@@ -155,6 +155,7 @@ const Flag<int> kIntFlags[] = {
   { "-expect-curve-id", &TestConfig::expect_curve_id },
   { "-expect-dhe-group-size", &TestConfig::expect_dhe_group_size },
   { "-initial-timeout-duration-ms", &TestConfig::initial_timeout_duration_ms },
+  { "-max-cert-list", &TestConfig::max_cert_list },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

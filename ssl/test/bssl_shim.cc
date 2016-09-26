@@ -1440,6 +1440,9 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     DTLSv1_set_initial_timeout_duration(ssl.get(),
                                         config->initial_timeout_duration_ms);
   }
+  if (config->max_cert_list > 0) {
+    SSL_set_max_cert_list(ssl.get(), config->max_cert_list);
+  }
 
   int sock = Connect(config->port);
   if (sock == -1) {
