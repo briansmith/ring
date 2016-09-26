@@ -40,7 +40,7 @@ type rsaKeyAgreement struct {
 
 func (ka *rsaKeyAgreement) generateServerKeyExchange(config *Config, cert *Certificate, clientHello *clientHelloMsg, hello *serverHelloMsg) (*serverKeyExchangeMsg, error) {
 	// Save the client version for comparison later.
-	ka.clientVersion = versionToWire(clientHello.vers, clientHello.isDTLS)
+	ka.clientVersion = clientHello.vers
 
 	if !config.Bugs.RSAEphemeralKey {
 		return nil, nil
@@ -128,7 +128,7 @@ func (ka *rsaKeyAgreement) processClientKeyExchange(config *Config, cert *Certif
 	// RFC 4346.
 	vers := uint16(preMasterSecret[0])<<8 | uint16(preMasterSecret[1])
 	if ka.clientVersion != vers {
-		return nil, errors.New("tls: invalid version in RSA premaster")
+		return nil, fmt.Errorf("tls: invalid version in RSA premaster (got %04x, wanted %04x)", vers, ka.clientVersion)
 	}
 	return preMasterSecret, nil
 }
@@ -144,7 +144,6 @@ func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 	if bad == RSABadValueWrongVersion {
 		vers ^= 1
 	}
-	vers = versionToWire(vers, clientHello.isDTLS)
 	preMasterSecret[0] = byte(vers >> 8)
 	preMasterSecret[1] = byte(vers)
 	_, err := io.ReadFull(config.rand(), preMasterSecret[2:])

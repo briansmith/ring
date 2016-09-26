@@ -4194,7 +4194,7 @@ func addVersionNegotiationTests() {
 		name:     "MinorVersionTolerance-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0x03ff,
+				SendClientVersion: 0xfe00,
 			},
 		},
 		expectedVersion: VersionTLS12,
@@ -4205,7 +4205,7 @@ func addVersionNegotiationTests() {
 		name:     "MajorVersionTolerance-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0x0400,
+				SendClientVersion: 0xfdff,
 			},
 		},
 		expectedVersion: VersionTLS12,
@@ -4229,9 +4229,7 @@ func addVersionNegotiationTests() {
 		name:     "VersionTooLow-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				// 0x0201 is the lowest version expressable in
-				// DTLS.
-				SendClientVersion: 0x0201,
+				SendClientVersion: 0xffff,
 			},
 		},
 		shouldFail:    true,

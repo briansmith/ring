@@ -205,14 +205,15 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 	c.clientVersion = hs.clientHello.vers
+	clientVersion := wireToVersion(c.clientVersion, c.isDTLS)
 
 	// Reject < 1.2 ClientHellos with signature_algorithms.
-	if c.clientVersion < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
+	if clientVersion < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
 		return fmt.Errorf("tls: client included signature_algorithms before TLS 1.2")
 	}
 
 	// Check the client cipher list is consistent with the version.
-	if hs.clientHello.vers < VersionTLS12 {
+	if clientVersion < VersionTLS12 {
 		for _, id := range hs.clientHello.cipherSuites {
 			if isTLS12Cipher(id) {
 				return fmt.Errorf("tls: client offered TLS 1.2 cipher before TLS 1.2")
@@ -238,10 +239,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 	} else if c.haveVers && config.Bugs.NegotiateVersionOnRenego != 0 {
 		c.vers = config.Bugs.NegotiateVersionOnRenego
 	} else {
-		c.vers, ok = config.mutualVersion(hs.clientHello.vers, c.isDTLS)
+		c.vers, ok = config.mutualVersion(clientVersion, c.isDTLS)
 		if !ok {
 			c.sendAlert(alertProtocolVersion)
-			return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+			return fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", clientVersion)
 		}
 	}
 	c.haveVers = true
@@ -311,7 +312,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 
 	hs.hello = &serverHelloMsg{
 		isDTLS: c.isDTLS,
-		vers:   c.vers,
+		vers:   versionToWire(c.vers, c.isDTLS),
 	}
 
 	if config.Bugs.SendServerHelloVersion != 0 {
@@ -816,7 +817,7 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 
 	hs.hello = &serverHelloMsg{
 		isDTLS:            c.isDTLS,
-		vers:              c.vers,
+		vers:              versionToWire(c.vers, c.isDTLS),
 		compressionMethod: compressionNone,
 	}
 
@@ -1711,5 +1712,5 @@ func isTLS12Cipher(id uint16) bool {
 }
 
 func isGREASEValue(val uint16) bool {
-	return val&0x0f0f == 0x0a0a && val&0xff == val >> 8
+	return val&0x0f0f == 0x0a0a && val&0xff == val>>8
 }

@@ -597,8 +597,8 @@ type ProtocolBugs struct {
 	// send a NewSessionTicket message during an abbreviated handshake.
 	RenewTicketOnResume bool
 
-	// SendClientVersion, if non-zero, causes the client to send a different
-	// TLS version in the ClientHello than the maximum supported version.
+	// SendClientVersion, if non-zero, causes the client to send the
+	// specified value in the ClientHello version field.
 	SendClientVersion uint16
 
 	// NegotiateVersion, if non-zero, causes the server to negotiate the
@@ -1040,7 +1040,7 @@ type ProtocolBugs struct {
 	SecondHelloRetryRequest bool
 
 	// SendServerHelloVersion, if non-zero, causes the server to send the
-	// specified version in ServerHello rather than the true version.
+	// specified value in ServerHello version field.
 	SendServerHelloVersion uint16
 
 	// SkipHelloRetryRequest, if true, causes the TLS 1.3 server to not send

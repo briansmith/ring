@@ -212,8 +212,7 @@ func (m *clientHelloMsg) marshal() []byte {
 	handshakeMsg := newByteBuilder()
 	handshakeMsg.addU8(typeClientHello)
 	hello := handshakeMsg.addU24LengthPrefixed()
-	vers := versionToWire(m.vers, m.isDTLS)
-	hello.addU16(vers)
+	hello.addU16(m.vers)
 	hello.addBytes(m.random)
 	sessionId := hello.addU8LengthPrefixed()
 	sessionId.addBytes(m.sessionId)
@@ -420,7 +419,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 	m.raw = data
-	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
+	m.vers = uint16(data[4])<<8 | uint16(data[5])
 	m.random = data[6:38]
 	sessionIdLen := int(data[38])
 	if sessionIdLen > 32 || len(data) < 39+sessionIdLen {
@@ -740,21 +739,21 @@ func (m *serverHelloMsg) marshal() []byte {
 	handshakeMsg := newByteBuilder()
 	handshakeMsg.addU8(typeServerHello)
 	hello := handshakeMsg.addU24LengthPrefixed()
-	vers := versionToWire(m.vers, m.isDTLS)
-	hello.addU16(vers)
+	vers := wireToVersion(m.vers, m.isDTLS)
+	hello.addU16(m.vers)
 	hello.addBytes(m.random)
-	if m.vers < VersionTLS13 {
+	if vers < VersionTLS13 {
 		sessionId := hello.addU8LengthPrefixed()
 		sessionId.addBytes(m.sessionId)
 	}
 	hello.addU16(m.cipherSuite)
-	if m.vers < VersionTLS13 {
+	if vers < VersionTLS13 {
 		hello.addU8(m.compressionMethod)
 	}
 
 	extensions := hello.addU16LengthPrefixed()
 
-	if m.vers >= VersionTLS13 {
+	if vers >= VersionTLS13 {
 		if m.hasKeyShare {
 			extensions.addU16(extensionKeyShare)
 			keyShare := extensions.addU16LengthPrefixed()
@@ -772,7 +771,7 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(0) // Length
 		}
 	} else {
-		m.extensions.marshal(extensions, m.vers)
+		m.extensions.marshal(extensions, vers)
 		if extensions.len() == 0 {
 			hello.discardChild()
 		}
@@ -787,10 +786,11 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 	m.raw = data
-	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
+	m.vers = uint16(data[4])<<8 | uint16(data[5])
+	vers := wireToVersion(m.vers, m.isDTLS)
 	m.random = data[6:38]
 	data = data[38:]
-	if m.vers < VersionTLS13 {
+	if vers < VersionTLS13 {
 		sessionIdLen := int(data[0])
 		if sessionIdLen > 32 || len(data) < 1+sessionIdLen {
 			return false
@@ -803,7 +803,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
 	data = data[2:]
-	if m.vers < VersionTLS13 {
+	if vers < VersionTLS13 {
 		if len(data) < 1 {
 			return false
 		}
@@ -826,7 +826,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 
-	if m.vers >= VersionTLS13 {
+	if vers >= VersionTLS13 {
 		for len(data) != 0 {
 			if len(data) < 4 {
 				return false
@@ -871,7 +871,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 		}
-	} else if !m.extensions.unmarshal(data, m.vers) {
+	} else if !m.extensions.unmarshal(data, vers) {
 		return false
 	}
 
@@ -1873,7 +1873,7 @@ func (m *helloVerifyRequestMsg) marshal() []byte {
 	x[1] = uint8(length >> 16)
 	x[2] = uint8(length >> 8)
 	x[3] = uint8(length)
-	vers := versionToWire(m.vers, true)
+	vers := m.vers
 	x[4] = uint8(vers >> 8)
 	x[5] = uint8(vers)
 	x[6] = uint8(len(m.cookie))
@@ -1887,7 +1887,7 @@ func (m *helloVerifyRequestMsg) unmarshal(data []byte) bool {
 		return false
 	}
 	m.raw = data
-	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), true)
+	m.vers = uint16(data[4])<<8 | uint16(data[5])
 	cookieLen := int(data[6])
 	if cookieLen > 32 || len(data) != 7+cookieLen {
 		return false
