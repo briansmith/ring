@@ -222,12 +222,108 @@ static const char kRSAKey[] =
 "-----END RSA PRIVATE KEY-----\n";
 
 
+static const char kCRLTestRoot[] =
+"-----BEGIN CERTIFICATE-----\n"
+"MIIDbzCCAlegAwIBAgIJAODri7v0dDUFMA0GCSqGSIb3DQEBCwUAME4xCzAJBgNV\n"
+"BAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYwFAYDVQQHDA1Nb3VudGFpbiBW\n"
+"aWV3MRIwEAYDVQQKDAlCb3JpbmdTU0wwHhcNMTYwOTI2MTUwNjI2WhcNMjYwOTI0\n"
+"MTUwNjI2WjBOMQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQG\n"
+"A1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJQm9yaW5nU1NMMIIBIjANBgkq\n"
+"hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3B\n"
+"S/dUBpbrzd1aeFzNlI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+\n"
+"5R/Du0iCb1tCZIPY07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWp\n"
+"uRqO6rctN9qUoMlTIAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n\n"
+"8H922qmvPNA9idmX9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbL\n"
+"P2o9orxGx7aCtnnBZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABo1Aw\n"
+"TjAdBgNVHQ4EFgQUWPt3N5cZ/CRvubbrkqfBnAqhq94wHwYDVR0jBBgwFoAUWPt3\n"
+"N5cZ/CRvubbrkqfBnAqhq94wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOC\n"
+"AQEAORu6M0MOwXy+3VEBwNilfTxyqDfruQsc1jA4PT8Oe8zora1WxE1JB4q2FJOz\n"
+"EAuM3H/NXvEnBuN+ITvKZAJUfm4NKX97qmjMJwLKWe1gVv+VQTr63aR7mgWJReQN\n"
+"XdMztlVeZs2dppV6uEg3ia1X0G7LARxGpA9ETbMyCpb39XxlYuTClcbA5ftDN99B\n"
+"3Xg9KNdd++Ew22O3HWRDvdDpTO/JkzQfzi3sYwUtzMEonENhczJhGf7bQMmvL/w5\n"
+"24Wxj4Z7KzzWIHsNqE/RIs6RV3fcW61j/mRgW2XyoWnMVeBzvcJr9NXp4VQYmFPw\n"
+"amd8GKMZQvP0ufGnUn7D7uartA==\n"
+"-----END CERTIFICATE-----\n";
+
+static const char kCRLTestLeaf[] =
+"-----BEGIN CERTIFICATE-----\n"
+"MIIDkDCCAnigAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwTjELMAkGA1UEBhMCVVMx\n"
+"EzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDU1vdW50YWluIFZpZXcxEjAQ\n"
+"BgNVBAoMCUJvcmluZ1NTTDAeFw0xNjA5MjYxNTA4MzFaFw0xNzA5MjYxNTA4MzFa\n"
+"MEsxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRIwEAYDVQQKDAlC\n"
+"b3JpbmdTU0wxEzARBgNVBAMMCmJvcmluZy5zc2wwggEiMA0GCSqGSIb3DQEBAQUA\n"
+"A4IBDwAwggEKAoIBAQDc5v1S1M0W+QWM+raWfO0LH8uvqEwuJQgODqMaGnSlWUx9\n"
+"8iQcnWfjyPja3lWg9K62hSOFDuSyEkysKHDxijz5R93CfLcfnVXjWQDJe7EJTTDP\n"
+"ozEvxN6RjAeYv7CF000euYr3QT5iyBjg76+bon1p0jHZBJeNPP1KqGYgyxp+hzpx\n"
+"e0gZmTlGAXd8JQK4v8kpdYwD6PPifFL/jpmQpqOtQmH/6zcLjY4ojmqpEdBqIKIX\n"
+"+saA29hMq0+NK3K+wgg31RU+cVWxu3tLOIiesETkeDgArjWRS1Vkzbi4v9SJxtNu\n"
+"OZuAxWiynRJw3JwH/OFHYZIvQqz68ZBoj96cepjPAgMBAAGjezB5MAkGA1UdEwQC\n"
+"MAAwLAYJYIZIAYb4QgENBB8WHU9wZW5TU0wgR2VuZXJhdGVkIENlcnRpZmljYXRl\n"
+"MB0GA1UdDgQWBBTGn0OVVh/aoYt0bvEKG+PIERqnDzAfBgNVHSMEGDAWgBRY+3c3\n"
+"lxn8JG+5tuuSp8GcCqGr3jANBgkqhkiG9w0BAQsFAAOCAQEAd2nM8gCQN2Dc8QJw\n"
+"XSZXyuI3DBGGCHcay/3iXu0JvTC3EiQo8J6Djv7WLI0N5KH8mkm40u89fJAB2lLZ\n"
+"ShuHVtcC182bOKnePgwp9CNwQ21p0rDEu/P3X46ZvFgdxx82E9xLa0tBB8PiPDWh\n"
+"lV16jbaKTgX5AZqjnsyjR5o9/mbZVupZJXx5Syq+XA8qiJfstSYJs4KyKK9UOjql\n"
+"ICkJVKpi2ahDBqX4MOH4SLfzVk8pqSpviS6yaA1RXqjpkxiN45WWaXDldVHMSkhC\n"
+"5CNXsXi4b1nAntu89crwSLA3rEwzCWeYj+BX7e1T9rr3oJdwOU/2KQtW1js1yQUG\n"
+"tjJMFw==\n"
+"-----END CERTIFICATE-----\n";
+
+static const char kBasicCRL[] =
+"-----BEGIN X509 CRL-----\n"
+"MIIBpzCBkAIBATANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE\n"
+"CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ\n"
+"Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNV\n"
+"HRQEAwIBATANBgkqhkiG9w0BAQsFAAOCAQEAnrBKKgvd9x9zwK9rtUvVeFeJ7+LN\n"
+"ZEAc+a5oxpPNEsJx6hXoApYEbzXMxuWBQoCs5iEBycSGudct21L+MVf27M38KrWo\n"
+"eOkq0a2siqViQZO2Fb/SUFR0k9zb8xl86Zf65lgPplALun0bV/HT7MJcl04Tc4os\n"
+"dsAReBs5nqTGNEd5AlC1iKHvQZkM//MD51DspKnDpsDiUVi54h9C1SpfZmX8H2Vv\n"
+"diyu0fZ/bPAM3VAGawatf/SyWfBMyKpoPXEG39oAzmjjOj8en82psn7m474IGaho\n"
+"/vBbhl1ms5qQiLYPjm4YELtnXQoFyC72tBjbdFd/ZE9k4CNKDbxFUXFbkw==\n"
+"-----END X509 CRL-----\n";
+
+static const char kRevokedCRL[] =
+"-----BEGIN X509 CRL-----\n"
+"MIIBvjCBpwIBATANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE\n"
+"CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ\n"
+"Qm9yaW5nU1NMFw0xNjA5MjYxNTEyNDRaFw0xNjEwMjYxNTEyNDRaMBUwEwICEAAX\n"
+"DTE2MDkyNjE1MTIyNlqgDjAMMAoGA1UdFAQDAgECMA0GCSqGSIb3DQEBCwUAA4IB\n"
+"AQCUGaM4DcWzlQKrcZvI8TMeR8BpsvQeo5BoI/XZu2a8h//PyRyMwYeaOM+3zl0d\n"
+"sjgCT8b3C1FPgT+P2Lkowv7rJ+FHJRNQkogr+RuqCSPTq65ha4WKlRGWkMFybzVH\n"
+"NloxC+aU3lgp/NlX9yUtfqYmJek1CDrOOGPrAEAwj1l/BUeYKNGqfBWYJQtPJu+5\n"
+"OaSvIYGpETCZJscUWODmLEb/O3DM438vLvxonwGqXqS0KX37+CHpUlyhnSovxXxp\n"
+"Pz4aF+L7OtczxL0GYtD2fR9B7TDMqsNmHXgQrixvvOY7MUdLGbd4RfJL3yA53hyO\n"
+"xzfKY2TzxLiOmctG0hXFkH5J\n"
+"-----END X509 CRL-----\n";
+
+static const char kBadIssuerCRL[] =
+"-----BEGIN X509 CRL-----\n"
+"MIIBwjCBqwIBATANBgkqhkiG9w0BAQsFADBSMQswCQYDVQQGEwJVUzETMBEGA1UE\n"
+"CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzEWMBQGA1UECgwN\n"
+"Tm90IEJvcmluZ1NTTBcNMTYwOTI2MTUxMjQ0WhcNMTYxMDI2MTUxMjQ0WjAVMBMC\n"
+"AhAAFw0xNjA5MjYxNTEyMjZaoA4wDDAKBgNVHRQEAwIBAjANBgkqhkiG9w0BAQsF\n"
+"AAOCAQEAlBmjOA3Fs5UCq3GbyPEzHkfAabL0HqOQaCP12btmvIf/z8kcjMGHmjjP\n"
+"t85dHbI4Ak/G9wtRT4E/j9i5KML+6yfhRyUTUJKIK/kbqgkj06uuYWuFipURlpDB\n"
+"cm81RzZaMQvmlN5YKfzZV/clLX6mJiXpNQg6zjhj6wBAMI9ZfwVHmCjRqnwVmCUL\n"
+"TybvuTmkryGBqREwmSbHFFjg5ixG/ztwzON/Ly78aJ8Bql6ktCl9+/gh6VJcoZ0q\n"
+"L8V8aT8+Ghfi+zrXM8S9BmLQ9n0fQe0wzKrDZh14EK4sb7zmOzFHSxm3eEXyS98g\n"
+"Od4cjsc3ymNk88S4jpnLRtIVxZB+SQ==\n"
+"-----END X509 CRL-----\n";
+
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
 static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   return bssl::UniquePtr<X509>(
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}
+
+// CRLFromPEM parses the given, NUL-terminated pem block and returns an
+// |X509_CRL*|.
+static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  return bssl::UniquePtr<X509_CRL>(
+      PEM_read_bio_X509_CRL(bio.get(), nullptr, nullptr, nullptr));
 }
 
 // PrivateKeyFromPEM parses the given, NUL-terminated pem block and returns an
@@ -256,34 +352,58 @@ static STACK_OF(X509)* CertsToStack(const std::vector<X509*> &certs) {
   return stack.release();
 }
 
-static bool Verify(X509 *leaf, const std::vector<X509 *> &roots,
+// CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL STACK_OF(X509_CRL*),
+// bumping the reference counts for each CRL in question.
+static STACK_OF(X509_CRL)* CRLsToStack(const std::vector<X509_CRL*> &crls) {
+  bssl::UniquePtr<STACK_OF(X509_CRL)> stack(sk_X509_CRL_new_null());
+  if (!stack) {
+    return nullptr;
+  }
+  for (auto crl : crls) {
+    if (!sk_X509_CRL_push(stack.get(), crl)) {
+      return nullptr;
+    }
+    X509_CRL_up_ref(crl);
+  }
+
+  return stack.release();
+}
+
+static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
                    const std::vector<X509 *> &intermediates,
+                   const std::vector<X509_CRL *> &crls,
                    unsigned long flags = 0) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
+  bssl::UniquePtr<STACK_OF(X509_CRL)> crls_stack(CRLsToStack(crls));
 
   if (!roots_stack ||
-      !intermediates_stack) {
-    return false;
+      !intermediates_stack ||
+      !crls_stack) {
+    return X509_V_ERR_UNSPECIFIED;
   }
 
   bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-  if (!ctx) {
-    return false;
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  if (!ctx ||
+      !store) {
+    return X509_V_ERR_UNSPECIFIED;
   }
-  if (!X509_STORE_CTX_init(ctx.get(), nullptr /* no X509_STORE */, leaf,
+
+  if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
                            intermediates_stack.get())) {
-    return false;
+    return X509_V_ERR_UNSPECIFIED;
   }
 
   X509_STORE_CTX_trusted_stack(ctx.get(), roots_stack.get());
+  X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
   X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new();
   if (param == nullptr) {
-    return false;
+    return X509_V_ERR_UNSPECIFIED;
   }
-  X509_VERIFY_PARAM_set_time(param, 1452807555 /* Jan 14th, 2016 */);
+  X509_VERIFY_PARAM_set_time(param, 1474934400 /* Sep 27th, 2016 */);
   X509_VERIFY_PARAM_set_depth(param, 16);
   if (flags) {
     X509_VERIFY_PARAM_set_flags(param, flags);
@@ -291,7 +411,11 @@ static bool Verify(X509 *leaf, const std::vector<X509 *> &roots,
   X509_STORE_CTX_set0_param(ctx.get(), param);
 
   ERR_clear_error();
-  return X509_verify_cert(ctx.get()) == 1;
+  if (X509_verify_cert(ctx.get()) != 1) {
+    return X509_STORE_CTX_get_error(ctx.get());
+  }
+
+  return X509_V_OK;
 }
 
 static bool TestVerify() {
@@ -318,31 +442,37 @@ static bool TestVerify() {
   }
 
   std::vector<X509*> empty;
-  if (Verify(leaf.get(), empty, empty)) {
+  std::vector<X509_CRL*> empty_crls;
+  if (Verify(leaf.get(), empty, empty, empty_crls) !=
+      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
     fprintf(stderr, "Leaf verified with no roots!\n");
     return false;
   }
 
-  if (Verify(leaf.get(), empty, {intermediate.get()})) {
+  if (Verify(leaf.get(), empty, {intermediate.get()}, empty_crls) !=
+      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
     fprintf(stderr, "Leaf verified with no roots!\n");
     return false;
   }
 
-  if (!Verify(leaf.get(), {root.get()}, {intermediate.get()})) {
+  if (Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls) !=
+      X509_V_OK) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Basic chain didn't verify.\n");
     return false;
   }
 
-  if (!Verify(leaf.get(), {cross_signing_root.get()},
-              {intermediate.get(), root_cross_signed.get()})) {
+  if (Verify(leaf.get(), {cross_signing_root.get()},
+             {intermediate.get(), root_cross_signed.get()},
+             empty_crls) != X509_V_OK) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Cross-signed chain didn't verify.\n");
     return false;
   }
 
-  if (!Verify(leaf.get(), {cross_signing_root.get(), root.get()},
-              {intermediate.get(), root_cross_signed.get()})) {
+  if (Verify(leaf.get(), {cross_signing_root.get(), root.get()},
+             {intermediate.get(), root_cross_signed.get()},
+             empty_crls) != X509_V_OK) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Cross-signed chain with root didn't verify.\n");
     return false;
@@ -350,22 +480,25 @@ static bool TestVerify() {
 
   /* This is the “altchains” test – we remove the cross-signing CA but include
    * the cross-sign in the intermediates. */
-  if (!Verify(leaf.get(), {root.get()},
-              {intermediate.get(), root_cross_signed.get()})) {
+  if (Verify(leaf.get(), {root.get()},
+             {intermediate.get(), root_cross_signed.get()},
+             empty_crls) != X509_V_OK) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Chain with cross-sign didn't backtrack to find root.\n");
     return false;
   }
 
   if (Verify(leaf.get(), {root.get()},
-             {intermediate.get(), root_cross_signed.get()},
-             X509_V_FLAG_NO_ALT_CHAINS)) {
+             {intermediate.get(), root_cross_signed.get()}, empty_crls,
+             X509_V_FLAG_NO_ALT_CHAINS) !=
+      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
     fprintf(stderr, "Altchains test still passed when disabled.\n");
     return false;
   }
 
   if (Verify(forgery.get(), {intermediate_self_signed.get()},
-             {leaf_no_key_usage.get()})) {
+             {leaf_no_key_usage.get()},
+             empty_crls) != X509_V_ERR_INVALID_CA) {
     fprintf(stderr, "Basic constraints weren't checked.\n");
     return false;
   }
@@ -374,8 +507,53 @@ static bool TestVerify() {
    * of roots and intermediates. This is a regression test for CVE-2015-1793. */
   if (Verify(forgery.get(),
              {intermediate_self_signed.get(), root_cross_signed.get()},
-             {leaf_no_key_usage.get(), intermediate.get()})) {
+             {leaf_no_key_usage.get(), intermediate.get()},
+             empty_crls) != X509_V_ERR_INVALID_CA) {
     fprintf(stderr, "Basic constraints weren't checked.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestCRL() {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kCRLTestLeaf));
+  bssl::UniquePtr<X509_CRL> basic_crl(CRLFromPEM(kBasicCRL));
+  bssl::UniquePtr<X509_CRL> revoked_crl(CRLFromPEM(kRevokedCRL));
+  bssl::UniquePtr<X509_CRL> bad_issuer_crl(CRLFromPEM(kBadIssuerCRL));
+
+  if (!root ||
+      !leaf ||
+      !basic_crl ||
+      !revoked_crl ||
+      !bad_issuer_crl) {
+    fprintf(stderr, "Failed to parse certificates\n");
+    return false;
+  }
+
+  if (Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+             X509_V_FLAG_CRL_CHECK) != X509_V_OK) {
+    fprintf(stderr, "Cert with CRL didn't verify.\n");
+    return false;
+  }
+
+  if (Verify(leaf.get(), {root.get()}, {root.get()},
+             {basic_crl.get(), revoked_crl.get()},
+             X509_V_FLAG_CRL_CHECK) != X509_V_ERR_CERT_REVOKED) {
+    fprintf(stderr, "Revoked CRL wasn't checked.\n");
+    return false;
+  }
+
+  if (Verify(leaf.get(), {root.get()}, {root.get()}, {},
+             X509_V_FLAG_CRL_CHECK) != X509_V_ERR_UNABLE_TO_GET_CRL) {
+    fprintf(stderr, "CRLs were not required.\n");
+    return false;
+  }
+
+  if (Verify(leaf.get(), {root.get()}, {root.get()}, {bad_issuer_crl.get()},
+             X509_V_FLAG_CRL_CHECK) != X509_V_ERR_UNABLE_TO_GET_CRL) {
+    fprintf(stderr, "Bad CRL issuer was unnoticed.\n");
     return false;
   }
 
@@ -464,6 +642,7 @@ static int Main() {
   CRYPTO_library_init();
 
   if (!TestVerify() ||
+      !TestCRL() ||
       !TestPSS() ||
       !TestBadPSSParameters() ||
       !TestSignCtx()) {
