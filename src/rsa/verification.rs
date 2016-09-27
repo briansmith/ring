@@ -121,10 +121,7 @@ fn rsa_public_decrypt(out: &mut [u8], public_key_n: &bn::PositiveInteger,
     };
 
     let mut f = bn::BIGNUM::new();
-    unsafe { bn::GFp_BN_init(&mut f) };
-
     let mut result = bn::BIGNUM::new();
-    unsafe { bn::GFp_BN_init(&mut result) };
 
     let res = decrypt(&mut f, &mut result);
 

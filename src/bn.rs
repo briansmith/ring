@@ -37,13 +37,15 @@ pub struct BIGNUM {
 
 impl BIGNUM {
     pub fn new() -> BIGNUM {
-        BIGNUM {
+        let mut bignum = BIGNUM {
             d: core::ptr::null_mut(),
             top: 0,
             dmax: 0,
             neg: 0,
             flags: 0,
-        }
+        };
+        unsafe { GFp_BN_init(&mut bignum) };
+        bignum
     }
 }
 
