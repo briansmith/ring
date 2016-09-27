@@ -26,6 +26,7 @@ import json
 OS_ARCH_COMBOS = [
     ('linux', 'arm', 'linux32', [], 'S'),
     ('linux', 'aarch64', 'linux64', [], 'S'),
+    ('linux', 'ppc64le', 'ppc64le', [], 'S'),
     ('linux', 'x86', 'elf', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
     ('linux', 'x86_64', 'elf', [], 'S'),
     ('mac', 'x86', 'macosx', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
@@ -586,6 +587,8 @@ def ArchForAsmFilename(filename):
     return ['aarch64']
   elif 'arm' in filename:
     return ['arm']
+  elif 'ppc' in filename:
+    return ['ppc64le']
   else:
     raise ValueError('Unknown arch for asm filename: ' + filename)
 
