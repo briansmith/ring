@@ -71,9 +71,9 @@ fn rsa_public_decrypt(out: &mut [u8], public_key_n: &bn::PositiveInteger,
                       public_key_e: &bn::PositiveInteger, ciphertext: &[u8],
                       min_bits: usize, max_bits: usize)
                       -> Result<(), error::Unspecified> {
-    // We define this closure as a translation of `goto`. We still want
-    // to use an early-return code style, but we also need to manually
-    // free any |BIGNUM| heap-allocated using a foreign call.
+    // We define this closure as a translation of `goto`. We want to use
+    // an early-return code style, but we also need to manually free any
+    // heap-allocated |BIGNUM| substructures using a foreign call.
     let mut decrypt = |f: *mut bn::BIGNUM, result: *mut bn::BIGNUM| {
         let rsa_size: usize = unsafe {
             bn::GFp_BN_num_bytes(public_key_n.as_ref())
@@ -120,21 +120,29 @@ fn rsa_public_decrypt(out: &mut [u8], public_key_n: &bn::PositiveInteger,
         Ok(())
     };
 
-    let f: *mut bn::BIGNUM = unsafe { bn::GFp_BN_new() };
-    if f.is_null() {
-        return Err(error::Unspecified);
-    }
+    let mut f = bn::BIGNUM {
+        d: core::ptr::null_mut(),
+        top: 0,
+        dmax: 0,
+        neg: 0,
+        flags: 0,
+    };
+    unsafe { bn::GFp_BN_init(&mut f) };
 
-    let result: *mut bn::BIGNUM = unsafe { bn::GFp_BN_new() };
-    if result.is_null() {
-        return Err(error::Unspecified);
-    }
+    let mut result = bn::BIGNUM {
+        d: core::ptr::null_mut(),
+        top: 0,
+        dmax: 0,
+        neg: 0,
+        flags: 0,
+    };
+    unsafe { bn::GFp_BN_init(&mut result) };
 
-    let res = decrypt(f, result);
+    let res = decrypt(&mut f, &mut result);
 
     unsafe {
-        bn::GFp_BN_free(result);
-        bn::GFp_BN_free(f);
+        bn::GFp_BN_free(&mut result);
+        bn::GFp_BN_free(&mut f);
     }
 
     res

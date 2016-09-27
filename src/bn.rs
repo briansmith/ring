@@ -22,7 +22,18 @@ use der;
 use untrusted;
 
 
-pub enum BIGNUM {}
+#[allow(non_camel_case_types)]
+pub enum BN_ULONG {}
+
+/// Needs to be kept in sync with `struct bignum_st` (in `include/openssl/bn.h`)
+#[repr(C)]
+pub struct BIGNUM {
+    pub d: *mut BN_ULONG,
+    pub top: c::int,
+    pub dmax: c::int,
+    pub neg: c::int,
+    pub flags: c::int,
+}
 
 extern {
     pub fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
@@ -31,10 +42,10 @@ extern {
                                 in_: *const BIGNUM)
                                 -> c::int;
     pub fn GFp_BN_free(bn: *mut BIGNUM);
+    pub fn GFp_BN_init(bn: *mut BIGNUM);
     pub fn GFp_BN_mod_exp_mont_vartime(rr: *mut BIGNUM, a: *const BIGNUM,
                                        p: *const BIGNUM, m: *const BIGNUM,
                                        mont: *const BN_MONT_CTX) -> c::int;
-    pub fn GFp_BN_new() -> *mut BIGNUM;
     pub fn GFp_BN_num_bytes(bn: *const BIGNUM) -> usize;
     pub fn GFp_BN_ucmp(a: *const BIGNUM, b: *const BIGNUM) -> c::int;
 }
