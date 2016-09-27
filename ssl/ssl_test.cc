@@ -1505,8 +1505,12 @@ static bool TestSetBIO() {
   return true;
 }
 
-static uint16_t kVersions[] = {
+static uint16_t kTLSVersions[] = {
     SSL3_VERSION, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_VERSION, TLS1_3_VERSION,
+};
+
+static uint16_t kDTLSVersions[] = {
+    DTLS1_VERSION, DTLS1_2_VERSION,
 };
 
 static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) { return 1; }
@@ -1518,7 +1522,7 @@ static bool TestGetPeerCertificate() {
     return false;
   }
 
-  for (uint16_t version : kVersions) {
+  for (uint16_t version : kTLSVersions) {
     // Configure both client and server to accept any certificate.
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     if (!ctx ||
@@ -1584,7 +1588,7 @@ static bool TestRetainOnlySHA256OfCerts() {
   uint8_t cert_sha256[SHA256_DIGEST_LENGTH];
   SHA256(cert_der, cert_der_len, cert_sha256);
 
-  for (uint16_t version : kVersions) {
+  for (uint16_t version : kTLSVersions) {
     // Configure both client and server to accept any certificate, but the
     // server must retain only the SHA-256 of the peer.
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -1864,7 +1868,7 @@ static bool TestSessionIDContext() {
   static const uint8_t kContext1[] = {1};
   static const uint8_t kContext2[] = {2};
 
-  for (uint16_t version : kVersions) {
+  for (uint16_t version : kTLSVersions) {
     bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !client_ctx ||
@@ -1926,7 +1930,7 @@ static bool TestSessionTimeout() {
     return false;
   }
 
-  for (uint16_t version : kVersions) {
+  for (uint16_t version : kTLSVersions) {
     bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !client_ctx ||
@@ -1990,7 +1994,7 @@ static bool TestSNICallback() {
 
   // At each version, test that switching the |SSL_CTX| at the SNI callback
   // behaves correctly.
-  for (uint16_t version : kVersions) {
+  for (uint16_t version : kTLSVersions) {
     if (version == SSL3_VERSION) {
       continue;
     }
@@ -2160,6 +2164,51 @@ static bool TestSetVersion() {
   return true;
 }
 
+static bool TestVersions() {
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  if (!cert || !key) {
+    return false;
+  }
+
+  for (bool is_dtls : std::vector<bool>{false, true}) {
+    const SSL_METHOD *method = is_dtls ? DTLS_method() : TLS_method();
+    const char *name = is_dtls ? "DTLS" : "TLS";
+    const uint16_t *versions = is_dtls ? kDTLSVersions : kTLSVersions;
+    size_t num_versions = is_dtls ? OPENSSL_ARRAY_SIZE(kDTLSVersions)
+                                  : OPENSSL_ARRAY_SIZE(kTLSVersions);
+    for (size_t i = 0; i < num_versions; i++) {
+      uint16_t version = versions[i];
+      bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(method));
+      bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(method));
+      bssl::UniquePtr<SSL> client, server;
+      if (!server_ctx || !client_ctx ||
+          !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+          !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+          !SSL_CTX_set_min_proto_version(client_ctx.get(), version) ||
+          !SSL_CTX_set_max_proto_version(client_ctx.get(), version) ||
+          !SSL_CTX_set_min_proto_version(server_ctx.get(), version) ||
+          !SSL_CTX_set_max_proto_version(server_ctx.get(), version) ||
+          !ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                  server_ctx.get(), nullptr /* no session */)) {
+        fprintf(stderr, "Failed to connect %s at version %04x.\n", name,
+                version);
+        return false;
+      }
+
+      if (SSL_version(client.get()) != version ||
+          SSL_version(server.get()) != version) {
+        fprintf(stderr,
+                "%s version mismatch. Got %04x and %04x, wanted %04x.\n", name,
+                SSL_version(client.get()), SSL_version(server.get()), version);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -2196,7 +2245,8 @@ int main() {
       !TestSessionTimeout() ||
       !TestSNICallback() ||
       !TestEarlyCallbackVersionSwitch() ||
-      !TestSetVersion()) {
+      !TestSetVersion() ||
+      !TestVersions()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
