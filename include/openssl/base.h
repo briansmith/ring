@@ -361,6 +361,9 @@ class StackAllocated {
   StackAllocated() { init(&ctx_); }
   ~StackAllocated() { cleanup(&ctx_); }
 
+  StackAllocated(const StackAllocated<T, CleanupRet, init, cleanup> &) = delete;
+  T& operator=(const StackAllocated<T, CleanupRet, init, cleanup> &) = delete;
+
   T *get() { return &ctx_; }
   const T *get() const { return &ctx_; }
 
