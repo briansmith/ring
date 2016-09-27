@@ -2279,6 +2279,12 @@ static int ext_supported_versions_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
+  /* Add a fake version. See draft-davidben-tls-grease-01. */
+  if (ssl->ctx->grease_enabled &&
+      !CBB_add_u16(&versions, ssl_get_grease_value(ssl, ssl_grease_version))) {
+    return 0;
+  }
+
   for (uint16_t version = max_version; version >= min_version; version--) {
     if (!CBB_add_u16(&versions, ssl->method->version_to_wire(version))) {
       return 0;

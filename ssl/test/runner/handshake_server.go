@@ -233,13 +233,16 @@ func (hs *serverHandshakeState) readClientHello() error {
 		c.vers = config.Bugs.NegotiateVersionOnRenego
 	} else if len(hs.clientHello.supportedVersions) > 0 {
 		// Use the versions extension if supplied.
-		var foundVersion bool
+		var foundVersion, foundGREASE bool
 		for _, extVersion := range hs.clientHello.supportedVersions {
+			if isGREASEValue(extVersion) {
+				foundGREASE = true
+			}
 			extVersion, ok = wireToVersion(extVersion, c.isDTLS)
 			if !ok {
 				continue
 			}
-			if config.isSupportedVersion(extVersion, c.isDTLS) {
+			if config.isSupportedVersion(extVersion, c.isDTLS) && !foundVersion {
 				c.vers = extVersion
 				foundVersion = true
 				break
@@ -248,6 +251,9 @@ func (hs *serverHandshakeState) readClientHello() error {
 		if !foundVersion {
 			c.sendAlert(alertProtocolVersion)
 			return errors.New("tls: client did not offer any supported protocol versions")
+		}
+		if config.Bugs.ExpectGREASE && !foundGREASE {
+			return errors.New("tls: no GREASE version value found")
 		}
 	} else {
 		// Otherwise, use the legacy ClientHello version.

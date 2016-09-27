@@ -1021,6 +1021,7 @@ enum ssl_grease_index_t {
   ssl_grease_group,
   ssl_grease_extension1,
   ssl_grease_extension2,
+  ssl_grease_version,
 };
 
 /* ssl_get_grease_value returns a GREASE value for |ssl|. For a given
