@@ -1066,12 +1066,12 @@ static int hwaes_capable(void) {
   return CRYPTO_is_ARMv8_AES_capable();
 }
 
-int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
+int aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
                            AES_KEY *key);
-int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
+int aes_hw_set_decrypt_key(const uint8_t *user_key, const int bits,
                            AES_KEY *key);
-void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 #else
 
@@ -1079,19 +1079,19 @@ static int hwaes_capable(void) {
   return 0;
 }
 
-static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+static int aes_hw_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
   abort();
 }
 
-static int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+static int aes_hw_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
   abort();
 }
 
-static void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   abort();
 }
 
-static void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   abort();
 }
 
@@ -1106,7 +1106,7 @@ static void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) 
 void asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   if (hwaes_capable()) {
-    aes_v8_encrypt(in, out, key);
+    aes_hw_encrypt(in, out, key);
   } else {
     asm_AES_encrypt(in, out, key);
   }
@@ -1115,7 +1115,7 @@ void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 void asm_AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   if (hwaes_capable()) {
-    aes_v8_decrypt(in, out, key);
+    aes_hw_decrypt(in, out, key);
   } else {
     asm_AES_decrypt(in, out, key);
   }
@@ -1124,7 +1124,7 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 int asm_AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey);
 int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   if (hwaes_capable()) {
-    return aes_v8_set_encrypt_key(key, bits, aeskey);
+    return aes_hw_set_encrypt_key(key, bits, aeskey);
   } else {
     return asm_AES_set_encrypt_key(key, bits, aeskey);
   }
@@ -1133,7 +1133,7 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
 int asm_AES_set_decrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey);
 int AES_set_decrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   if (hwaes_capable()) {
-    return aes_v8_set_decrypt_key(key, bits, aeskey);
+    return aes_hw_set_decrypt_key(key, bits, aeskey);
   } else {
     return asm_AES_set_decrypt_key(key, bits, aeskey);
   }
