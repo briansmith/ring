@@ -35,6 +35,18 @@ pub struct BIGNUM {
     pub flags: c::int,
 }
 
+impl BIGNUM {
+    pub fn new() -> BIGNUM {
+        BIGNUM {
+            d: core::ptr::null_mut(),
+            top: 0,
+            dmax: 0,
+            neg: 0,
+            flags: 0,
+        }
+    }
+}
+
 extern {
     pub fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                          -> *mut BIGNUM;
