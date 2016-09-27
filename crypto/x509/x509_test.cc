@@ -545,7 +545,8 @@ static bool TestCRL() {
     return false;
   }
 
-  if (Verify(leaf.get(), {root.get()}, {root.get()}, {},
+  std::vector<X509_CRL *> empty_crls;
+  if (Verify(leaf.get(), {root.get()}, {root.get()}, empty_crls,
              X509_V_FLAG_CRL_CHECK) != X509_V_ERR_UNABLE_TO_GET_CRL) {
     fprintf(stderr, "CRLs were not required.\n");
     return false;
