@@ -139,16 +139,28 @@ OPENSSL_EXPORT void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out,
                                        uint8_t *ivec, int *num, int enc);
 
 
-/* Android compatibility section.
+/* AES key wrap.
  *
- * These functions are declared, temporarily, for Android because
- * wpa_supplicant will take a little time to sync with upstream. Outside of
- * Android they'll have no definition. */
+ * These functions implement AES Key Wrap mode, as defined in RFC 3394. They
+ * should never be used except to interoperate with existing systems that use
+ * this mode. */
 
-OPENSSL_EXPORT int AES_wrap_key(AES_KEY *key, const uint8_t *iv, uint8_t *out,
-                                const uint8_t *in, unsigned in_len);
-OPENSSL_EXPORT int AES_unwrap_key(AES_KEY *key, const uint8_t *iv, uint8_t *out,
-                                  const uint8_t *in, unsigned in_len);
+/* AES_wrap_key performs AES key wrap on |in| which must be a multiple of 8
+ * bytes. |iv| must point to an 8 byte value or be NULL to use the default IV.
+ * |key| must have been configured for encryption. On success, it writes
+ * |in_len| + 8 bytes to |out| and returns |in_len| + 8. Otherwise, it returns
+ * -1. */
+OPENSSL_EXPORT int AES_wrap_key(const AES_KEY *key, const uint8_t *iv,
+                                uint8_t *out, const uint8_t *in, size_t in_len);
+
+/* AES_unwrap_key performs AES key unwrap on |in| which must be a multiple of 8
+ * bytes. |iv| must point to an 8 byte value or be NULL to use the default IV.
+ * |key| must have been configured for decryption. On success, it writes
+ * |in_len| - 8 bytes to |out| and returns |in_len| - 8. Otherwise, it returns
+ * -1. */
+OPENSSL_EXPORT int AES_unwrap_key(const AES_KEY *key, const uint8_t *iv,
+                                  uint8_t *out, const uint8_t *in,
+                                  size_t in_len);
 
 
 #if defined(__cplusplus)

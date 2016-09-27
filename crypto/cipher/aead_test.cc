@@ -316,8 +316,6 @@ static const struct KnownAEAD kAEADs[] = {
   { "aes-128-cbc-sha1-ssl3", EVP_aead_aes_128_cbc_sha1_ssl3, true },
   { "aes-256-cbc-sha1-ssl3", EVP_aead_aes_256_cbc_sha1_ssl3, true },
   { "des-ede3-cbc-sha1-ssl3", EVP_aead_des_ede3_cbc_sha1_ssl3, true },
-  { "aes-128-key-wrap", EVP_aead_aes_128_key_wrap, true },
-  { "aes-256-key-wrap", EVP_aead_aes_256_key_wrap, true },
   { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256, false },
   { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256, false },
   { "", NULL, false },

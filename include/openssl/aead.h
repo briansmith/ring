@@ -105,20 +105,6 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
  * suites. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305_old(void);
 
-/* EVP_aead_aes_128_key_wrap is AES-128 Key Wrap mode. This should never be
- * used except to interoperate with existing systems that use this mode.
- *
- * If the nonce is empty then the default nonce will be used, otherwise it must
- * be eight bytes long. The input must be a multiple of eight bytes long. No
- * additional data can be given to this mode. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap(void);
-
-/* EVP_aead_aes_256_key_wrap is AES-256 in Key Wrap mode. This should never be
- * used except to interoperate with existing systems that use this mode.
- *
- * See |EVP_aead_aes_128_key_wrap| for details. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
-
 /* EVP_aead_aes_128_ctr_hmac_sha256 is AES-128 in CTR mode with HMAC-SHA256 for
  * authentication. The nonce is 12 bytes; the bottom 32-bits are used as the
  * block counter, thus the maximum plaintext size is 64GB. */

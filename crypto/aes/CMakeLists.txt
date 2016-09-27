@@ -53,6 +53,7 @@ add_library(
   OBJECT
 
   aes.c
+  key_wrap.c
   mode_wrappers.c
 
   ${AES_ARCH_SOURCES}
