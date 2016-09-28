@@ -121,8 +121,8 @@ if(NOT WIN32)
 endif()
 
 if(FUZZ)
-  if(!CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    message("You need to build with Clang for fuzzing to work")
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "You need to build with Clang for fuzzing to work")
   endif()
 
   add_definitions(-DBORINGSSL_UNSAFE_FUZZER_MODE)
