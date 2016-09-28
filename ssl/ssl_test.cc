@@ -56,6 +56,13 @@ struct CipherTest {
   std::vector<ExpectedCipher> expected;
 };
 
+struct CurveTest {
+  // The rule string to apply.
+  const char *rule;
+  // The list of expected curves, in order.
+  std::vector<uint16_t> expected;
+};
+
 static const CipherTest kCipherTests[] = {
     // Selecting individual ciphers should work.
     {
@@ -286,6 +293,33 @@ static const char *kMustNotIncludeCECPQ1[] = {
   "CHACHA20",
 };
 
+static const CurveTest kCurveTests[] = {
+  {
+    "P-256",
+    { SSL_CURVE_SECP256R1 },
+  },
+  {
+    "P-256:P-384:P-521:X25519",
+    {
+      SSL_CURVE_SECP256R1,
+      SSL_CURVE_SECP384R1,
+      SSL_CURVE_SECP521R1,
+      SSL_CURVE_X25519,
+    },
+  },
+};
+
+static const char *kBadCurvesLists[] = {
+  "",
+  ":",
+  "::",
+  "P-256::X25519",
+  "RSA:P-256",
+  "P-256:RSA",
+  "X25519:P-256:",
+  ":X25519:P-256",
+};
+
 static void PrintCipherPreferenceList(ssl_cipher_preference_list_st *list) {
   bool in_group = false;
   for (size_t i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
@@ -403,6 +437,55 @@ static bool TestCipherRules() {
     if (!TestRuleDoesNotIncludeCECPQ1(rule)) {
       return false;
     }
+  }
+
+  return true;
+}
+
+static bool TestCurveRule(const CurveTest &t) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
+  }
+
+  if (!SSL_CTX_set1_curves_list(ctx.get(), t.rule)) {
+    fprintf(stderr, "Error testing curves list '%s'\n", t.rule);
+    return false;
+  }
+
+  // Compare the two lists.
+  if (ctx->supported_group_list_len != t.expected.size()) {
+    fprintf(stderr, "Error testing curves list '%s': length\n", t.rule);
+    return false;
+  }
+
+  for (size_t i = 0; i < t.expected.size(); i++) {
+    if (t.expected[i] != ctx->supported_group_list[i]) {
+      fprintf(stderr, "Error testing curves list '%s': mismatch\n", t.rule);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool TestCurveRules() {
+  for (const CurveTest &test : kCurveTests) {
+    if (!TestCurveRule(test)) {
+      return false;
+    }
+  }
+
+  for (const char *rule : kBadCurvesLists) {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_server_method()));
+    if (!ctx) {
+      return false;
+    }
+    if (SSL_CTX_set1_curves_list(ctx.get(), rule)) {
+      fprintf(stderr, "Curves list '%s' unexpectedly succeeded\n", rule);
+      return false;
+    }
+    ERR_clear_error();
   }
 
   return true;
@@ -2213,6 +2296,7 @@ int main() {
   CRYPTO_library_init();
 
   if (!TestCipherRules() ||
+      !TestCurveRules() ||
       !TestSSL_SESSIONEncoding(kOpenSSLSession) ||
       !TestSSL_SESSIONEncoding(kCustomSession) ||
       !TestSSL_SESSIONEncoding(kBoringSSLSession) ||

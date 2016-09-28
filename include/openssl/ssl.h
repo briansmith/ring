@@ -1934,6 +1934,18 @@ OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
 OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
                                    size_t curves_len);
 
+/* SSL_CTX_set1_curves_list sets the preferred curves for |ctx| to be the
+ * colon-separated list |curves|. Each element of |curves| should be a curve
+ * name (e.g. P-256, X25519, ...). It returns one on success and zero on
+ * failure. */
+OPENSSL_EXPORT int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves);
+
+/* SSL_set1_curves_list sets the preferred curves for |ssl| to be the
+ * colon-separated list |curves|. Each element of |curves| should be a curve
+ * name (e.g. P-256, X25519, ...). It returns one on success and zero on
+ * failure. */
+OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
+
 /* SSL_CURVE_* define TLS curve IDs. */
 #define SSL_CURVE_SECP256R1 23
 #define SSL_CURVE_SECP384R1 24
@@ -4514,6 +4526,7 @@ typedef struct ssl3_state_st {
 #define SSL_CTRL_SESS_NUMBER doesnt_exist
 #define SSL_CTRL_SET_CHANNEL_ID doesnt_exist
 #define SSL_CTRL_SET_CURVES doesnt_exist
+#define SSL_CTRL_SET_CURVES_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist

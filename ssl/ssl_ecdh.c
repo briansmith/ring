@@ -521,6 +521,16 @@ static const SSL_ECDH_METHOD *method_from_nid(int nid) {
   return NULL;
 }
 
+static const SSL_ECDH_METHOD *method_from_name(const char *name, size_t len) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMethods); i++) {
+    if (len == strlen(kMethods[i].name) &&
+        !strncmp(kMethods[i].name, name, len)) {
+      return &kMethods[i];
+    }
+  }
+  return NULL;
+}
+
 const char* SSL_get_curve_name(uint16_t group_id) {
   const SSL_ECDH_METHOD *method = method_from_group_id(group_id);
   if (method == NULL) {
@@ -531,6 +541,15 @@ const char* SSL_get_curve_name(uint16_t group_id) {
 
 int ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {
   const SSL_ECDH_METHOD *method = method_from_nid(nid);
+  if (method == NULL) {
+    return 0;
+  }
+  *out_group_id = method->group_id;
+  return 1;
+}
+
+int ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) {
+  const SSL_ECDH_METHOD *method = method_from_name(name, len);
   if (method == NULL) {
     return 0;
   }

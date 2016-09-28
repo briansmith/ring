@@ -402,6 +402,49 @@ int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
   return 1;
 }
 
+int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
+                         const char *curves) {
+  uint16_t *group_ids = NULL;
+  size_t ncurves = 0;
+
+  const char *col;
+  const char *ptr = curves;
+
+  do {
+    col = strchr(ptr, ':');
+
+    uint16_t group_id;
+    if (!ssl_name_to_group_id(&group_id, ptr,
+                              col ? (size_t)(col - ptr) : strlen(ptr))) {
+      goto err;
+    }
+
+    uint16_t *new_group_ids = OPENSSL_realloc(group_ids,
+                                              (ncurves + 1) * sizeof(uint16_t));
+    if (new_group_ids == NULL) {
+      goto err;
+    }
+    group_ids = new_group_ids;
+
+    group_ids[ncurves] = group_id;
+    ncurves++;
+
+    if (col) {
+      ptr = col + 1;
+    }
+  } while (col);
+
+  OPENSSL_free(*out_group_ids);
+  *out_group_ids = group_ids;
+  *out_group_ids_len = ncurves;
+
+  return 1;
+
+err:
+  OPENSSL_free(group_ids);
+  return 0;
+}
+
 /* tls1_curve_params_from_ec_key sets |*out_group_id| and |*out_comp_id| to the
  * TLS group ID and point format, respectively, for |ec|. It returns one on
  * success and zero on failure. */

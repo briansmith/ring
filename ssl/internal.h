@@ -609,6 +609,11 @@ struct ssl_ecdh_method_st {
  * zero. */
 int ssl_nid_to_group_id(uint16_t *out_group_id, int nid);
 
+/* ssl_name_to_group_id looks up the group corresponding to the |name| string
+ * of length |len|. On success, it sets |*out_group_id| to the group ID and
+ * returns one. Otherwise, it returns zero. */
+int ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
+
 /* SSL_ECDH_CTX_init sets up |ctx| for use with curve |group_id|. It returns one
  * on success and zero on error. */
 int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t group_id);
@@ -1471,6 +1476,13 @@ int tls1_get_shared_group(SSL *ssl, uint16_t *out_group_id);
  * |*out_group_ids_len|. Otherwise, it returns zero. */
 int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
                     const int *curves, size_t ncurves);
+
+/* tls1_set_curves_list converts the string of curves pointed to by |curves|
+ * into a newly allocated array of TLS group IDs. On success, the function
+ * returns one and writes the array to |*out_group_ids| and its size to
+ * |*out_group_ids_len|. Otherwise, it returns zero. */
+int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
+                         const char *curves);
 
 /* tls1_check_ec_cert returns one if |x| is an ECC certificate with curve and
  * point format compatible with the client's preferences. Otherwise it returns
