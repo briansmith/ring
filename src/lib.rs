@@ -119,6 +119,7 @@ mod polyfill;
 pub mod aead;
 
 pub mod agreement;
+mod bn;
 mod c;
 pub mod constant_time;
 

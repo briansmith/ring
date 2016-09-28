@@ -452,6 +452,7 @@ OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
 
 /* Private functions */
 
+/* Needs to be kept in sync with `struct BIGNUM` (in `src/bn.rs`) */
 struct bignum_st {
   BN_ULONG *d; /* Pointer to an array of 'BN_BITS2' bit chunks in little-endian
                   order. */
