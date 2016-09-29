@@ -14,17 +14,27 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, error, private, signature};
+use {bssl, c, digest, error, private};
+use signature::PrehashedVerificationAlgorithm;
 use super::{BIGNUM, PositiveInteger, RSAParameters, parse_public_key};
 use untrusted;
 
 
-impl signature::VerificationAlgorithm for RSAParameters {
-    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input)
-              -> Result<(), error::Unspecified> {
+impl PrehashedVerificationAlgorithm for RSAParameters {
+    fn verify_prehashed(&self, public_key: untrusted::Input,
+                        msg_digest: &digest::Digest,
+                        signature: untrusted::Input)
+                        -> Result<(), error::Unspecified> {
+        // TODO: test this.
+        if msg_digest.algorithm() != self.digest_algorithm() {
+            return Err(error::Unspecified);
+        }
         let public_key = try!(parse_public_key(public_key));
-        verify_rsa(self, public_key, msg, signature)
+        verify_rsa_prehashed(self, public_key, msg_digest, signature)
+    }
+
+    fn digest_algorithm(&self) -> &'static digest::Algorithm {
+        self.padding_alg.digest_algorithm()
     }
 }
 
@@ -89,6 +99,16 @@ pub fn verify_rsa(params: &RSAParameters,
                   (n, e): (untrusted::Input, untrusted::Input),
                   msg: untrusted::Input, signature: untrusted::Input)
                   -> Result<(), error::Unspecified> {
+    let msg_digest = digest::digest(&params.digest_algorithm(),
+                                    msg.as_slice_less_safe());
+    verify_rsa_prehashed(params, (n, e), &msg_digest, signature)
+}
+
+pub fn verify_rsa_prehashed(params: &RSAParameters,
+                            (n, e): (untrusted::Input, untrusted::Input),
+                            msg_digest: &digest::Digest,
+                            signature: untrusted::Input)
+                            -> Result<(), error::Unspecified> {
     const MAX_BITS: usize = 8192;
 
     let signature = signature.as_slice_less_safe();
@@ -106,7 +126,8 @@ pub fn verify_rsa(params: &RSAParameters,
                                params.min_bits, MAX_BITS)
     }));
 
-    params.padding_alg.verify(msg, untrusted::Input::from(decoded))
+    params.padding_alg.verify_prehashed(msg_digest,
+                                        untrusted::Input::from(decoded))
 }
 
 extern {

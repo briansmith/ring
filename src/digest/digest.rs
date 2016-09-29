@@ -298,6 +298,13 @@ pub struct Algorithm {
     initial_state: [u64; MAX_CHAINING_LEN / 8],
 }
 
+impl PartialEq for Algorithm {
+    #[inline]
+    fn eq(&self, other: &Algorithm) -> bool {
+        self.initial_state == other.initial_state
+    }
+}
+
 impl core::fmt::Debug for Algorithm {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         // This would have to change if/when we add other algorithms with the

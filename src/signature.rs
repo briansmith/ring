@@ -137,8 +137,7 @@
 //! # fn main() { sign_and_verify_rsa().unwrap() }
 //! ```
 
-
-use {error, init, private};
+use {digest, error, init, private};
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
@@ -224,6 +223,28 @@ pub trait VerificationAlgorithm: Sync + private::Private {
               signature: untrusted::Input) -> Result<(), error::Unspecified>;
 }
 
+/// A signature verification algorithm.
+pub trait PrehashedVerificationAlgorithm: Sync + private::Private {
+    /// Verify the signature `signature` of the message digest `msg_digest`
+    /// with the public key `public_key`.
+    fn verify_prehashed(&self, public_key: untrusted::Input,
+                        msg_digest: &digest::Digest,
+                        signature: untrusted::Input)
+                        -> Result<(), error::Unspecified>;
+
+    /// TODO: doc.
+    fn digest_algorithm(&self) -> &'static digest::Algorithm;
+}
+
+impl<T> VerificationAlgorithm for T where T:PrehashedVerificationAlgorithm {
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), error::Unspecified> {
+        let msg_digest = digest::digest(self.digest_algorithm(),
+                                        msg.as_slice_less_safe());
+        self.verify_prehashed(public_key, &msg_digest, signature)
+    }
+}
+
 /// Verify the signature `signature` of message `msg` with the public key
 /// `public_key` using the algorithm `alg`.
 ///
@@ -250,11 +271,21 @@ pub trait VerificationAlgorithm: Sync + private::Private {
 /// }
 /// # fn main() { }
 /// ```
-pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
+pub fn verify(alg: &'static VerificationAlgorithm, public_key: untrusted::Input,
               msg: untrusted::Input, signature: untrusted::Input)
               -> Result<(), error::Unspecified> {
     init::init_once();
     alg.verify(public_key, msg, signature)
+}
+
+/// TODO: doc
+pub fn verify_prehashed(alg: &'static PrehashedVerificationAlgorithm,
+                        public_key: untrusted::Input,
+                        msg_digest: &digest::Digest,
+                        signature: untrusted::Input)
+                        -> Result<(), error::Unspecified> {
+    init::init_once();
+    alg.verify_prehashed(public_key, msg_digest, signature)
 }
 
 

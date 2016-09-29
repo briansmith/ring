@@ -24,8 +24,11 @@ pub trait Encoding: Sync {
 
 /// The term "Verification" comes from RFC 3447.
 pub trait Verification: Sync {
-    fn verify(&self, msg: untrusted::Input, encoded: untrusted::Input)
-              -> Result<(), error::Unspecified>;
+    fn verify_prehashed(&self, msg_digest: &digest::Digest,
+                        encoded: untrusted::Input)
+                        -> Result<(), error::Unspecified>;
+
+    fn digest_algorithm(&self) -> &'static digest::Algorithm;
 }
 
 pub struct PKCS1 {
@@ -63,8 +66,9 @@ impl Encoding for PKCS1 {
 }
 
 impl Verification for PKCS1 {
-    fn verify(&self, msg: untrusted::Input, encoded: untrusted::Input)
-              -> Result<(), error::Unspecified> {
+    fn verify_prehashed(&self, msg_digest: &digest::Digest,
+                        encoded: untrusted::Input)
+                        -> Result<(), error::Unspecified> {
         encoded.read_all(error::Unspecified, |decoded| {
             if try!(decoded.read_byte()) != 0 ||
                try!(decoded.read_byte()) != 1 {
@@ -98,13 +102,14 @@ impl Verification for PKCS1 {
             let digest_alg = self.digest_alg;
             let decoded_digest =
                 try!(decoded.skip_and_get_input(digest_alg.output_len));
-            let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-            if decoded_digest != digest.as_ref() {
+            if decoded_digest != msg_digest.as_ref() {
                 return Err(error::Unspecified);
             }
             Ok(())
         })
     }
+
+    fn digest_algorithm(&self) -> &'static digest::Algorithm { self.digest_alg }
 }
 
 macro_rules! rsa_pkcs1_padding {
