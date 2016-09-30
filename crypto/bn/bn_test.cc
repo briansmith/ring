@@ -340,7 +340,7 @@ static bool TestSquare(FileTest *t, BN_CTX *ctx) {
   BN_zero(zero.get());
 
   bssl::UniquePtr<BIGNUM> ret(BN_new()), remainder(BN_new());
-  if (!ret ||
+  if (!ret || !remainder ||
       !BN_sqr(ret.get(), a.get(), ctx) ||
       !ExpectBIGNUMsEqual(t, "A^2", square.get(), ret.get()) ||
       !BN_mul(ret.get(), a.get(), a.get(), ctx) ||
@@ -876,6 +876,10 @@ static bool TestMPI() {
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMPITests); i++) {
     const MPITest &test = kMPITests[i];
     bssl::UniquePtr<BIGNUM> bn(ASCIIToBIGNUM(test.base10));
+    if (!bn) {
+      return false;
+    }
+
     const size_t mpi_len = BN_bn2mpi(bn.get(), NULL);
     if (mpi_len > sizeof(scratch)) {
       fprintf(stderr, "MPI test #%u: MPI size is too large to test.\n",
