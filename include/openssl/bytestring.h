@@ -190,6 +190,14 @@ OPENSSL_EXPORT int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value);
  * element is malformed. */
 OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value);
 
+/* CBS_get_any_asn1 sets |*out| to contain the next ASN.1 element from |*cbs|
+ * (not including tag and length bytes), sets |*out_tag| to the tag number, and
+ * advances |*cbs|. It returns one on success and zero on error. Either of |out|
+ * and |out_tag| may be NULL to ignore the value.
+ *
+ * Tag numbers greater than 30 are not supported (i.e. short form only). */
+OPENSSL_EXPORT int CBS_get_any_asn1(CBS *cbs, CBS *out, unsigned *out_tag);
+
 /* CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
  * |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
  * the tag number and |*out_header_len| to the length of the ASN.1 header. Each

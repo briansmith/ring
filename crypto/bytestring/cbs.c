@@ -262,6 +262,20 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   return CBS_get_bytes(cbs, out, len);
 }
 
+int CBS_get_any_asn1(CBS *cbs, CBS *out, unsigned *out_tag) {
+  size_t header_len;
+  if (!CBS_get_any_asn1_element(cbs, out, out_tag, &header_len)) {
+    return 0;
+  }
+
+  if (!CBS_skip(out, header_len)) {
+    assert(0);
+    return 0;
+  }
+
+  return 1;
+}
+
 int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
                                     size_t *out_header_len) {
   return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len,

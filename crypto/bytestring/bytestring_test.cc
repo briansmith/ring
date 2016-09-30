@@ -231,6 +231,25 @@ static bool TestGetASN1() {
     return false;
   }
 
+  unsigned tag;
+  CBS_init(&data, kData1, sizeof(kData1));
+  if (!CBS_get_any_asn1(&data, &contents, &tag) ||
+      tag != CBS_ASN1_SEQUENCE ||
+      CBS_len(&contents) != 2 ||
+      memcmp(CBS_data(&contents), "\x01\x02", 2) != 0) {
+    return false;
+  }
+
+  size_t header_len;
+  CBS_init(&data, kData1, sizeof(kData1));
+  if (!CBS_get_any_asn1_element(&data, &contents, &tag, &header_len) ||
+      tag != CBS_ASN1_SEQUENCE ||
+      header_len != 2 ||
+      CBS_len(&contents) != 4 ||
+      memcmp(CBS_data(&contents), "\x30\x02\x01\x02", 2) != 0) {
+    return false;
+  }
+
   return true;
 }
 
