@@ -98,6 +98,9 @@ enough calls to reach the number, the shim should fail with exit code
 
 See `crypto/test/malloc.cc` for an example malloc implementation.
 
+Note these tests are slow and will hit Go's test timeout. Pass `-timeout 72h` to
+avoid crashing after 10 minutes.
+
 
 ## Example: Running Against NSS
 
