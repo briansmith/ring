@@ -4387,6 +4387,7 @@ func addVersionNegotiationTests() {
 				NegotiateVersion: VersionTLS12,
 			},
 		},
+		expectedVersion: VersionTLS12,
 		// TODO(davidben): This test should fail once TLS 1.3 is final
 		// and the fallback signal restored.
 	})
@@ -4395,9 +4396,10 @@ func addVersionNegotiationTests() {
 		name:     "Downgrade-TLS12-Server",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: VersionTLS12,
+				SendSupportedVersions: []uint16{VersionTLS12},
 			},
 		},
+		expectedVersion: VersionTLS12,
 		// TODO(davidben): This test should fail once TLS 1.3 is final
 		// and the fallback signal restored.
 	})
