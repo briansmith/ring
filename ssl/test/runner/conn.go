@@ -1345,7 +1345,9 @@ func (c *Conn) Write(b []byte) (int, error) {
 	}
 
 	if c.config.Bugs.SendKeyUpdateBeforeEveryAppDataRecord {
-		c.sendKeyUpdateLocked()
+		if err := c.sendKeyUpdateLocked(); err != nil {
+			return 0, err
+		}
 	}
 
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
@@ -1736,6 +1738,10 @@ func (c *Conn) SendKeyUpdate() error {
 }
 
 func (c *Conn) sendKeyUpdateLocked() error {
+	if c.vers < VersionTLS13 {
+		return errors.New("tls: attempted to send KeyUpdate before TLS 1.3")
+	}
+
 	m := new(keyUpdateMsg)
 	if _, err := c.writeRecord(recordTypeHandshake, m.marshal()); err != nil {
 		return err
