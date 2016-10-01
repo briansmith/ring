@@ -79,9 +79,6 @@ class Android(object):
 
 """
 
-  def ExtraFiles(self):
-    return ['android_compat_keywrap.c']
-
   def PrintVariableSection(self, out, name, files):
     out.write('%s := \\\n' % name)
     for f in sorted(files):
@@ -96,7 +93,7 @@ class Android(object):
       blueprint.write('cc_defaults {\n')
       blueprint.write('    name: "libcrypto_sources",\n')
       blueprint.write('    srcs: [\n')
-      for f in sorted(files['crypto'] + self.ExtraFiles()):
+      for f in sorted(files['crypto']):
         blueprint.write('        "%s",\n' % f)
       blueprint.write('    ],\n')
       blueprint.write('    target: {\n')
@@ -161,24 +158,13 @@ class Android(object):
     with open('sources.mk', 'w+') as makefile:
       makefile.write(self.header)
 
-      crypto_files = files['crypto'] + self.ExtraFiles()
-      self.PrintVariableSection(makefile, 'crypto_sources', crypto_files)
+      self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
 
       for ((osname, arch), asm_files) in asm_outputs:
         if osname != 'linux':
           continue
         self.PrintVariableSection(
             makefile, '%s_%s_sources' % (osname, arch), asm_files)
-
-
-class AndroidStandalone(Android):
-  """AndroidStandalone is for Android builds outside of the Android-system, i.e.
-
-  for applications that wish wish to ship BoringSSL.
-  """
-
-  def ExtraFiles(self):
-    return []
 
 
 class Bazel(object):
@@ -710,7 +696,7 @@ def main(platforms):
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(usage='Usage: %prog [--prefix=<path>]'
-      ' [android|android-standalone|bazel|gn|gyp]')
+      ' [android|bazel|gn|gyp]')
   parser.add_option('--prefix', dest='prefix',
       help='For Bazel, prepend argument to all source files')
   options, args = parser.parse_args(sys.argv[1:])
@@ -724,8 +710,6 @@ if __name__ == '__main__':
   for s in args:
     if s == 'android':
       platforms.append(Android())
-    elif s == 'android-standalone':
-      platforms.append(AndroidStandalone())
     elif s == 'bazel':
       platforms.append(Bazel())
     elif s == 'gn':
