@@ -117,7 +117,10 @@ fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
     Scalar::from_limbs_unchecked(&limbs)
 }
 
-// Is scalar within (0, max_exclusive)?
+// Is scalar within [1, max_exclusive)? Constant-time with respect to the
+// actual value *only if* it is actually in range; in other words, this won't
+// leak anything about a valid value, but it might leak something about an
+// invalid value.
 fn is_scalar_within_range(scalar: &Scalar, max_exclusive: &[Limb]) -> bool {
     let limbs = &scalar.limbs[..max_exclusive.len()];
     let eq_zero = limbs_are_zero_constant_time(limbs);
