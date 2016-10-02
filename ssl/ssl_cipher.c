@@ -1179,12 +1179,11 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
   uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
   uint16_t min_version;
   const char *l, *buf;
-  int multi, skip_rule, rule, retval, ok, in_group = 0, has_group = 0;
+  int multi, skip_rule, rule, ok, in_group = 0, has_group = 0;
   size_t j, buf_len;
   uint32_t cipher_id;
   char ch;
 
-  retval = 1;
   l = rule_str;
   for (;;) {
     ch = *l;
@@ -1210,8 +1209,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       } else if (!(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z') &&
                  !(ch >= '0' && ch <= '9')) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_OPERATOR_IN_GROUP);
-        retval = in_group = 0;
-        break;
+        return 0;
       } else {
         rule = CIPHER_ADD;
       }
@@ -1230,8 +1228,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
     } else if (ch == '[') {
       if (in_group) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_NESTED_GROUP);
-        retval = in_group = 0;
-        break;
+        return 0;
       }
       in_group = 1;
       has_group = 1;
@@ -1245,8 +1242,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
      * Otherwise the in_group bits will get mixed up. */
     if (has_group && rule != CIPHER_ADD) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS);
-      retval = in_group = 0;
-      break;
+      return 0;
     }
 
     if (ITEM_SEP(ch)) {
@@ -1360,7 +1356,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       }
 
       if (ok == 0) {
-        retval = 0;
+        return 0;
       }
 
       /* We do not support any "multi" options together with "@", so throw away
@@ -1376,10 +1372,10 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 
   if (in_group) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
-    retval = 0;
+    return 0;
   }
 
-  return retval;
+  return 1;
 }
 
 STACK_OF(SSL_CIPHER) *
