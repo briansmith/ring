@@ -115,13 +115,11 @@ mod tests {
 
     #[test]
     pub fn test_aes_gcm_128() {
-        test_aead(&aead::AES_128_GCM,
-                  "crypto/cipher/test/aes_128_gcm_tests.txt");
+        test_aead(&aead::AES_128_GCM, "src/aead/aes_128_gcm_tests.txt");
     }
 
     #[test]
     pub fn test_aes_gcm_256() {
-        test_aead(&aead::AES_256_GCM,
-                  "crypto/cipher/test/aes_256_gcm_tests.txt");
+        test_aead(&aead::AES_256_GCM, "src/aead/aes_256_gcm_tests.txt");
     }
 }

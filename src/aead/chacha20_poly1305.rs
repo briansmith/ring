@@ -203,7 +203,7 @@ mod tests {
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
-            "crypto/cipher/test/chacha20_poly1305_tests.txt");
+            "src/aead/chacha20_poly1305_tests.txt");
     }
 
     #[test]
