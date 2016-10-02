@@ -1277,9 +1277,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
         /* We hit something we cannot deal with, it is no command or separator
          * nor alphanumeric, so we call this an error. */
         OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
-        retval = in_group = 0;
-        l++;
-        break;
+        return 0;
       }
 
       if (rule == CIPHER_SPECIAL) {

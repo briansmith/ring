@@ -252,6 +252,8 @@ static const char *kBadRules[] = {
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:!FOO",
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:-FOO",
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:@STRENGTH",
+  // Opcode supplied, but missing selector.
+  "+",
 };
 
 static const char *kMustNotIncludeNull[] = {
