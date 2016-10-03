@@ -3153,6 +3153,9 @@ OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
 /* SSL_COMP_get_name returns NULL. */
 OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
 
+/* SSL_COMP_free_compression_methods does nothing. */
+OPENSSL_EXPORT void SSL_COMP_free_compression_methods(void);
+
 /* SSLv23_method calls |TLS_method|. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
 

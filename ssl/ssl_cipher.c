@@ -1996,6 +1996,8 @@ int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm) { return 1; }
 
 const char *SSL_COMP_get_name(const COMP_METHOD *comp) { return NULL; }
 
+void SSL_COMP_free_compression_methods(void) {}
+
 int ssl_cipher_get_key_type(const SSL_CIPHER *cipher) {
   uint32_t alg_a = cipher->algorithm_auth;
 
