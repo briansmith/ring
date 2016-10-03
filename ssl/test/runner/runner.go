@@ -4468,31 +4468,15 @@ func addMinimumVersionTests() {
 
 				var expectedVersion uint16
 				var shouldFail bool
-				var expectedClientError, expectedServerError string
-				var expectedClientLocalError, expectedServerLocalError string
+				var expectedError, expectedLocalError string
 				if runnerVers.version >= shimVers.version {
 					expectedVersion = runnerVers.version
 				} else {
 					shouldFail = true
-					expectedServerError = ":UNSUPPORTED_PROTOCOL:"
-					expectedServerLocalError = "remote error: protocol version not supported"
-					if shimVers.version >= VersionTLS13 && runnerVers.version <= VersionTLS11 {
-						// If the client's minimum version is TLS 1.3 and the runner's
-						// maximum is below TLS 1.2, the runner will fail to select a
-						// cipher before the shim rejects the selected version.
-						expectedClientError = ":SSLV3_ALERT_HANDSHAKE_FAILURE:"
-						expectedClientLocalError = "tls: no cipher suite supported by both client and server"
-					} else {
-						expectedClientError = expectedServerError
-						expectedClientLocalError = expectedServerLocalError
-					}
+					expectedError = ":UNSUPPORTED_PROTOCOL:"
+					expectedLocalError = "remote error: protocol version not supported"
 				}
 
-				// Test the client enforces minimum
-				// versions. Use the NegotiateVersion bug to
-				// ensure the server does not decline to select
-				// a version first. This may occur if the
-				// versions extension is used.
 				testCases = append(testCases, testCase{
 					protocol: protocol,
 					testType: clientTest,
@@ -4500,14 +4484,18 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 						Bugs: ProtocolBugs{
-							NegotiateVersion: runnerVers.version,
+							// Ensure the server does not decline to
+							// select a version (versions extension) or
+							// cipher (some ciphers depend on versions).
+							NegotiateVersion:            runnerVers.version,
+							IgnorePeerCipherPreferences: shouldFail,
 						},
 					},
 					flags:              flags,
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedClientError,
-					expectedLocalError: expectedClientLocalError,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -4516,14 +4504,18 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 						Bugs: ProtocolBugs{
-							NegotiateVersion: runnerVers.version,
+							// Ensure the server does not decline to
+							// select a version (versions extension) or
+							// cipher (some ciphers depend on versions).
+							NegotiateVersion:            runnerVers.version,
+							IgnorePeerCipherPreferences: shouldFail,
 						},
 					},
 					flags:              []string{"-min-version", shimVersFlag},
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedClientError,
-					expectedLocalError: expectedClientLocalError,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 
 				testCases = append(testCases, testCase{
@@ -4536,8 +4528,8 @@ func addMinimumVersionTests() {
 					flags:              flags,
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedServerError,
-					expectedLocalError: expectedServerLocalError,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -4549,8 +4541,8 @@ func addMinimumVersionTests() {
 					flags:              []string{"-min-version", shimVersFlag},
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
-					expectedError:      expectedServerError,
-					expectedLocalError: expectedServerLocalError,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 			}
 		}
