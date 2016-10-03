@@ -644,9 +644,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	handshakeSecret := hs.finishedHash.extractKey(earlySecret, ecdheSecret)
 
 	// Switch to handshake traffic keys.
-	handshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, handshakeTrafficLabel)
-	c.out.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, clientWrite)
-	c.in.useTrafficSecret(c.vers, hs.suite, handshakeTrafficSecret, handshakePhase, serverWrite)
+	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, clientHandshakeTrafficLabel)
+	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, handshakePhase, clientWrite)
+	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, serverHandshakeTrafficLabel)
+	c.in.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, handshakePhase, serverWrite)
 
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -756,7 +757,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		return unexpectedMessageError(serverFinished, msg)
 	}
 
-	verify := hs.finishedHash.serverSum(handshakeTrafficSecret)
+	verify := hs.finishedHash.serverSum(serverHandshakeTrafficSecret)
 	if len(verify) != len(serverFinished.verifyData) ||
 		subtle.ConstantTimeCompare(verify, serverFinished.verifyData) != 1 {
 		c.sendAlert(alertHandshakeFailure)
@@ -768,7 +769,8 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	// The various secrets do not incorporate the client's final leg, so
 	// derive them now before updating the handshake context.
 	masterSecret := hs.finishedHash.extractKey(handshakeSecret, zeroSecret)
-	trafficSecret := hs.finishedHash.deriveSecret(masterSecret, applicationTrafficLabel)
+	clientTrafficSecret := hs.finishedHash.deriveSecret(masterSecret, clientApplicationTrafficLabel)
+	serverTrafficSecret := hs.finishedHash.deriveSecret(masterSecret, serverApplicationTrafficLabel)
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
@@ -813,7 +815,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Send a client Finished message.
 	finished := new(finishedMsg)
-	finished.verifyData = hs.finishedHash.clientSum(handshakeTrafficSecret)
+	finished.verifyData = hs.finishedHash.clientSum(clientHandshakeTrafficSecret)
 	if c.config.Bugs.BadFinished {
 		finished.verifyData[0]++
 	}
@@ -830,8 +832,8 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.flushHandshake()
 
 	// Switch to application data keys.
-	c.out.useTrafficSecret(c.vers, hs.suite, trafficSecret, applicationPhase, clientWrite)
-	c.in.useTrafficSecret(c.vers, hs.suite, trafficSecret, applicationPhase, serverWrite)
+	c.out.useTrafficSecret(c.vers, hs.suite, clientTrafficSecret, applicationPhase, clientWrite)
+	c.in.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, applicationPhase, serverWrite)
 
 	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(masterSecret, resumptionLabel)

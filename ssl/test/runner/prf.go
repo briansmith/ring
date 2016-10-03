@@ -119,6 +119,7 @@ var extendedMasterSecretLabel = []byte("extended master secret")
 var keyExpansionLabel = []byte("key expansion")
 var clientFinishedLabel = []byte("client finished")
 var serverFinishedLabel = []byte("server finished")
+var finishedLabel = []byte("finished")
 var channelIDLabel = []byte("TLS Channel ID signature\x00")
 var channelIDResumeLabel = []byte("Resumption\x00")
 
@@ -311,7 +312,7 @@ func (h finishedHash) clientSum(baseKey []byte) []byte {
 		return out
 	}
 
-	clientFinishedKey := hkdfExpandLabel(h.hash, baseKey, clientFinishedLabel, nil, h.hash.Size())
+	clientFinishedKey := hkdfExpandLabel(h.hash, baseKey, finishedLabel, nil, h.hash.Size())
 	finishedHMAC := hmac.New(h.hash.New, clientFinishedKey)
 	finishedHMAC.Write(h.appendContextHashes(nil))
 	return finishedHMAC.Sum(nil)
@@ -330,7 +331,7 @@ func (h finishedHash) serverSum(baseKey []byte) []byte {
 		return out
 	}
 
-	serverFinishedKey := hkdfExpandLabel(h.hash, baseKey, serverFinishedLabel, nil, h.hash.Size())
+	serverFinishedKey := hkdfExpandLabel(h.hash, baseKey, finishedLabel, nil, h.hash.Size())
 	finishedHMAC := hmac.New(h.hash.New, serverFinishedKey)
 	finishedHMAC.Write(h.appendContextHashes(nil))
 	return finishedHMAC.Sum(nil)
@@ -417,11 +418,14 @@ func (h *finishedHash) appendContextHashes(b []byte) []byte {
 
 // The following are labels for traffic secret derivation in TLS 1.3.
 var (
-	earlyTrafficLabel       = []byte("early traffic secret")
-	handshakeTrafficLabel   = []byte("handshake traffic secret")
-	applicationTrafficLabel = []byte("application traffic secret")
-	exporterLabel           = []byte("exporter master secret")
-	resumptionLabel         = []byte("resumption master secret")
+	earlyTrafficLabel             = []byte("client early traffic secret")
+	clientHandshakeTrafficLabel   = []byte("client handshake traffic secret")
+	serverHandshakeTrafficLabel   = []byte("server handshake traffic secret")
+	clientApplicationTrafficLabel = []byte("client application traffic secret")
+	serverApplicationTrafficLabel = []byte("server application traffic secret")
+	applicationTrafficLabel       = []byte("application traffic secret")
+	exporterLabel                 = []byte("exporter master secret")
+	resumptionLabel               = []byte("resumption master secret")
 )
 
 // deriveSecret implements TLS 1.3's Derive-Secret function, as defined in
@@ -474,11 +478,7 @@ const (
 func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret, phase []byte, side trafficDirection) interface{} {
 	label := make([]byte, 0, len(phase)+2+16)
 	label = append(label, phase...)
-	if side == clientWrite {
-		label = append(label, []byte(", client write key")...)
-	} else {
-		label = append(label, []byte(", server write key")...)
-	}
+	label = append(label, []byte(", key")...)
 	key := hkdfExpandLabel(suite.hash(), secret, label, nil, suite.keyLen)
 
 	label = label[:len(label)-3] // Remove "key" from the end.

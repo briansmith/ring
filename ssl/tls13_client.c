@@ -536,9 +536,9 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
   if (!tls13_set_traffic_key(ssl, type_data, evp_aead_open,
-                             hs->traffic_secret_0, hs->hash_len) ||
+                             hs->server_traffic_secret_0, hs->hash_len) ||
       !tls13_set_traffic_key(ssl, type_data, evp_aead_seal,
-                             hs->traffic_secret_0, hs->hash_len) ||
+                             hs->client_traffic_secret_0, hs->hash_len) ||
       !tls13_finalize_keys(ssl)) {
     return ssl_hs_error;
   }

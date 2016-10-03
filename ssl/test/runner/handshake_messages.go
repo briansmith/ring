@@ -2094,14 +2094,32 @@ func (*helloRequestMsg) unmarshal(data []byte) bool {
 }
 
 type keyUpdateMsg struct {
+	raw              []byte
+	keyUpdateRequest byte
 }
 
-func (*keyUpdateMsg) marshal() []byte {
-	return []byte{typeKeyUpdate, 0, 0, 0}
+func (m *keyUpdateMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	return []byte{typeKeyUpdate, 0, 0, 1, m.keyUpdateRequest}
 }
 
-func (*keyUpdateMsg) unmarshal(data []byte) bool {
-	return len(data) == 4
+func (m *keyUpdateMsg) unmarshal(data []byte) bool {
+	m.raw = data
+
+	if len(data) != 5 {
+		return false
+	}
+
+	length := int(data[1])<<16 | int(data[2])<<8 | int(data[3])
+	if len(data)-4 != length {
+		return false
+	}
+
+	m.keyUpdateRequest = data[4]
+	return m.keyUpdateRequest == keyUpdateNotRequested || m.keyUpdateRequest == keyUpdateRequested
 }
 
 func eqUint16s(x, y []uint16) bool {

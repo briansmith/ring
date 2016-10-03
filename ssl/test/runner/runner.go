@@ -359,6 +359,8 @@ type testCase struct {
 	// sendKeyUpdates is the number of consecutive key updates to send
 	// before and after the test message.
 	sendKeyUpdates int
+	// keyUpdateRequest is the KeyUpdateRequest value to send in KeyUpdate messages.
+	keyUpdateRequest byte
 	// expectMessageDropped, if true, means the test message is expected to
 	// be dropped by the client rather than echoed back.
 	expectMessageDropped bool
@@ -616,7 +618,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 	}
 
 	for i := 0; i < test.sendKeyUpdates; i++ {
-		if err := tlsConn.SendKeyUpdate(); err != nil {
+		if err := tlsConn.SendKeyUpdate(test.keyUpdateRequest); err != nil {
 			return err
 		}
 	}
@@ -678,7 +680,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 		tlsConn.Write(testMessage)
 
 		for i := 0; i < test.sendKeyUpdates; i++ {
-			tlsConn.SendKeyUpdate()
+			tlsConn.SendKeyUpdate(test.keyUpdateRequest)
 		}
 
 		for i := 0; i < test.sendEmptyRecords; i++ {
@@ -1981,13 +1983,14 @@ func addBasicTests() {
 			expectedError:     ":TOO_MANY_WARNING_ALERTS:",
 		},
 		{
-			name: "SendKeyUpdates",
+			name: "TooManyKeyUpdates",
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
-			sendKeyUpdates: 33,
-			shouldFail:     true,
-			expectedError:  ":TOO_MANY_KEY_UPDATES:",
+			sendKeyUpdates:   33,
+			keyUpdateRequest: keyUpdateNotRequested,
+			shouldFail:       true,
+			expectedError:    ":TOO_MANY_KEY_UPDATES:",
 		},
 		{
 			name: "EmptySessionID",
@@ -2195,14 +2198,22 @@ func addBasicTests() {
 			expectedError: ":WRONG_VERSION_NUMBER:",
 		},
 		{
-			testType: clientTest,
-			name:     "KeyUpdate",
+			name: "KeyUpdate",
 			config: Config{
 				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					SendKeyUpdateBeforeEveryAppDataRecord: true,
-				},
 			},
+			sendKeyUpdates:   1,
+			keyUpdateRequest: keyUpdateNotRequested,
+		},
+		{
+			name: "KeyUpdate-InvalidRequestMode",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendKeyUpdates:   1,
+			keyUpdateRequest: 42,
+			shouldFail:       true,
+			expectedError:    ":DECODE_ERROR:",
 		},
 		{
 			name: "SendSNIWarningAlert",
@@ -8723,11 +8734,10 @@ func addPeekTests() {
 		name: "Peek-KeyUpdate",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendKeyUpdateBeforeEveryAppDataRecord: true,
-			},
 		},
-		flags: []string{"-peek-then-read"},
+		sendKeyUpdates:   1,
+		keyUpdateRequest: keyUpdateNotRequested,
+		flags:            []string{"-peek-then-read"},
 	})
 }
 

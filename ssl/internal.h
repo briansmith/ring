@@ -896,7 +896,8 @@ struct ssl_handshake_st {
   size_t hash_len;
   uint8_t resumption_hash[EVP_MAX_MD_SIZE];
   uint8_t secret[EVP_MAX_MD_SIZE];
-  uint8_t traffic_secret_0[EVP_MAX_MD_SIZE];
+  uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE];
+  uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE];
 
   union {
     /* sent is a bitset where the bits correspond to elements of kExtensions
@@ -1346,6 +1347,11 @@ extern const SSL3_ENC_METHOD SSLv3_enc_data;
 
 #define SSL_PSK_AUTH      0x0
 #define SSL_PSK_SIGN_AUTH 0x1
+
+/* From draft-ietf-tls-tls13-16, used in determining whether to respond with a
+ * KeyUpdate. */
+#define SSL_KEY_UPDATE_NOT_REQUESTED 0
+#define SSL_KEY_UPDATE_REQUESTED 1
 
 CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);

@@ -459,7 +459,7 @@ static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
   if (!tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len) ||
       !tls13_derive_traffic_secret_0(ssl) ||
       !tls13_set_traffic_key(ssl, type_data, evp_aead_seal,
-                             hs->traffic_secret_0, hs->hash_len)) {
+                             hs->server_traffic_secret_0, hs->hash_len)) {
     return ssl_hs_error;
   }
 
@@ -523,7 +523,7 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
       !ssl->method->hash_current_message(ssl) ||
       /* evp_aead_seal keys have already been switched. */
       !tls13_set_traffic_key(ssl, type_data, evp_aead_open,
-                             hs->traffic_secret_0, hs->hash_len) ||
+                             hs->client_traffic_secret_0, hs->hash_len) ||
       !tls13_finalize_keys(ssl)) {
     return ssl_hs_error;
   }
