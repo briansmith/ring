@@ -2445,12 +2445,18 @@ func addCipherSuiteTests() {
 					shouldServerFail = true
 				}
 
+				var sendCipherSuite uint16
 				var expectedServerError, expectedClientError string
+				serverCipherSuites := []uint16{suite.id}
 				if shouldServerFail {
 					expectedServerError = ":NO_SHARED_CIPHER:"
 				}
 				if shouldClientFail {
 					expectedClientError = ":WRONG_CIPHER_RETURNED:"
+					// Configure the server to select ciphers as normal but
+					// select an incompatible cipher in ServerHello.
+					serverCipherSuites = nil
+					sendCipherSuite = suite.id
 				}
 
 				testCases = append(testCases, testCase{
@@ -2466,8 +2472,7 @@ func addCipherSuiteTests() {
 						PreSharedKey:         []byte(psk),
 						PreSharedKeyIdentity: pskIdentity,
 						Bugs: ProtocolBugs{
-							EnableAllCiphers:            shouldServerFail,
-							IgnorePeerCipherPreferences: shouldServerFail,
+							AdvertiseAllConfiguredCiphers: true,
 						},
 					},
 					certFile:      certFile,
@@ -2485,13 +2490,13 @@ func addCipherSuiteTests() {
 					config: Config{
 						MinVersion:           ver.version,
 						MaxVersion:           ver.version,
-						CipherSuites:         []uint16{suite.id},
+						CipherSuites:         serverCipherSuites,
 						Certificates:         []Certificate{cert},
 						PreSharedKey:         []byte(psk),
 						PreSharedKeyIdentity: pskIdentity,
 						Bugs: ProtocolBugs{
-							EnableAllCiphers:            shouldClientFail,
 							IgnorePeerCipherPreferences: shouldClientFail,
+							SendCipherSuite:             sendCipherSuite,
 						},
 					},
 					flags:         flags,
@@ -2631,6 +2636,20 @@ func addCipherSuiteTests() {
 		name:     "UnknownCipher",
 		config: Config{
 			CipherSuites: []uint16{bogusCipher, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				AdvertiseAllConfiguredCiphers: true,
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "UnknownCipher-TLS13",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{bogusCipher, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				AdvertiseAllConfiguredCiphers: true,
+			},
 		},
 	})
 

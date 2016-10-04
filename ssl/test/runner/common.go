@@ -860,9 +860,9 @@ type ProtocolBugs struct {
 	// be packed into records, up to the largest size record available.
 	PackHandshakeFlight bool
 
-	// EnableAllCiphers, if true, causes all configured ciphers to be
-	// enabled.
-	EnableAllCiphers bool
+	// AdvertiseAllConfiguredCiphers, if true, causes the client to
+	// advertise all configured cipher suite values.
+	AdvertiseAllConfiguredCiphers bool
 
 	// EmptyCertificateList, if true, causes the server to send an empty
 	// certificate list in the Certificate message.

@@ -486,12 +486,7 @@ Curves:
 
 	// Resolve PSK and compute the early secret.
 	var psk []byte
-	// The only way for hs.suite to be a PSK suite yet for there to be
-	// no sessionState is if config.Bugs.EnableAllCiphers is true and
-	// the test runner forced us to negotiated a PSK suite. It doesn't
-	// really matter what we do here so long as we continue the
-	// handshake and let the client error out.
-	if hs.suite.flags&suitePSK != 0 && hs.sessionState != nil {
+	if hs.suite.flags&suitePSK != 0 {
 		psk = deriveResumptionPSK(hs.suite, hs.sessionState.masterSecret)
 		hs.finishedHash.setResumptionContext(deriveResumptionContext(hs.suite, hs.sessionState.masterSecret))
 	} else {
@@ -743,9 +738,7 @@ Curves:
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
 	} else {
 		// Pick up certificates from the session instead.
-		// hs.sessionState may be nil if config.Bugs.EnableAllCiphers is
-		// true.
-		if hs.sessionState != nil && len(hs.sessionState.certificates) > 0 {
+		if len(hs.sessionState.certificates) > 0 {
 			if _, err := hs.processCertsFromClient(hs.sessionState.certificates); err != nil {
 				return err
 			}
@@ -1728,25 +1721,23 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 			}
 			// Don't select a ciphersuite which we can't
 			// support for this client.
-			if !c.config.Bugs.EnableAllCiphers {
-				if (candidate.flags&suitePSK != 0) && !pskOk {
-					continue
-				}
-				if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
-					continue
-				}
-				if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
-					continue
-				}
-				if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
-					continue
-				}
-				if version >= VersionTLS13 && candidate.flags&suiteTLS13 == 0 {
-					continue
-				}
-				if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
-					continue
-				}
+			if (candidate.flags&suitePSK != 0) && !pskOk {
+				continue
+			}
+			if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
+				continue
+			}
+			if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
+				continue
+			}
+			if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
+				continue
+			}
+			if version >= VersionTLS13 && candidate.flags&suiteTLS13 == 0 {
+				continue
+			}
+			if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
+				continue
 			}
 			return candidate
 		}

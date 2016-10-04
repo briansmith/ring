@@ -162,20 +162,22 @@ NextCipherSuite:
 			if suite.id != suiteId {
 				continue
 			}
-			if !c.config.Bugs.EnableAllCiphers {
-				// Don't advertise TLS 1.2-only cipher suites unless
-				// we're attempting TLS 1.2.
-				if maxVersion < VersionTLS12 && suite.flags&suiteTLS12 != 0 {
-					continue
-				}
-				// Don't advertise non-DTLS cipher suites in DTLS.
-				if c.isDTLS && suite.flags&suiteNoDTLS != 0 {
-					continue
-				}
+			// Don't advertise TLS 1.2-only cipher suites unless
+			// we're attempting TLS 1.2.
+			if maxVersion < VersionTLS12 && suite.flags&suiteTLS12 != 0 {
+				continue
+			}
+			// Don't advertise non-DTLS cipher suites in DTLS.
+			if c.isDTLS && suite.flags&suiteNoDTLS != 0 {
+				continue
 			}
 			hello.cipherSuites = append(hello.cipherSuites, suiteId)
 			continue NextCipherSuite
 		}
+	}
+
+	if c.config.Bugs.AdvertiseAllConfiguredCiphers {
+		hello.cipherSuites = possibleCipherSuites
 	}
 
 	if c.config.Bugs.SendRenegotiationSCSV {
