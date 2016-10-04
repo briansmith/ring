@@ -1250,6 +1250,10 @@ static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
       return 0;
     }
 
+    /* Note this does not check for resumption in TLS 1.2. Sending
+     * status_request here does not make sense, but OpenSSL does so and the
+     * specification does not say anything. Tolerate it but ignore it. */
+
     ssl->s3->tmp.certificate_status_expected = 1;
     return 1;
   }
@@ -1489,7 +1493,11 @@ static int ext_sct_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  /* Session resumption uses the original session information. */
+  /* Session resumption uses the original session information. The extension
+   * should not be sent on resumption, but RFC 6962 did not make it a
+   * requirement, so tolerate this.
+   *
+   * TODO(davidben): Enforce this anyway. */
   if (!ssl->s3->session_reused &&
       !CBS_stow(
           contents,

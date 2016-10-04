@@ -5009,6 +5009,9 @@ func addExtensionTests() {
 			},
 			resumeSession: true,
 		})
+
+		// The SCT extension did not specify that it must only be sent on resumption as it
+		// should have, so test that we tolerate but ignore it.
 		testCases = append(testCases, testCase{
 			name: "SendSCTListOnResume-" + ver.name,
 			config: Config{
@@ -5024,6 +5027,7 @@ func addExtensionTests() {
 			},
 			resumeSession: true,
 		})
+
 		testCases = append(testCases, testCase{
 			name:     "SignedCertificateTimestampList-Server-" + ver.name,
 			testType: serverTest,
@@ -5218,6 +5222,43 @@ func addExtensionTests() {
 		shouldFail:         true,
 		expectedError:      ":CHANNEL_ID_SIGNATURE_INVALID:",
 		expectedLocalError: "remote error: error decrypting message",
+	})
+
+	// OpenSSL sends the status_request extension on resumption in TLS 1.2. Test that this is
+	// tolerated.
+	testCases = append(testCases, testCase{
+		name: "SendOCSPResponseOnResume-TLS12",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendOCSPResponseOnResume: []byte("bogus"),
+			},
+		},
+		flags: []string{
+			"-enable-ocsp-stapling",
+			"-expect-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+		resumeSession: true,
+	})
+
+	// Beginning TLS 1.3, enforce this does not happen.
+	testCases = append(testCases, testCase{
+		name: "SendOCSPResponseOnResume-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendOCSPResponseOnResume: []byte("bogus"),
+			},
+		},
+		flags: []string{
+			"-enable-ocsp-stapling",
+			"-expect-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+		resumeSession: true,
+		shouldFail:    true,
+		expectedError: ":ERROR_PARSING_EXTENSION:",
 	})
 }
 

@@ -958,6 +958,11 @@ type ProtocolBugs struct {
 	// supplied SCT list in resumption handshakes.
 	SendSCTListOnResume []byte
 
+	// SendOCSPResponseOnResume, if not nil, causes the server to advertise
+	// OCSP stapling in resumption handshakes and, if applicable, send the
+	// supplied stapled response.
+	SendOCSPResponseOnResume []byte
+
 	// CECPQ1BadX25519Part corrupts the X25519 part of a CECPQ1 key exchange, as
 	// a trivial proof that it is actually used.
 	CECPQ1BadX25519Part bool

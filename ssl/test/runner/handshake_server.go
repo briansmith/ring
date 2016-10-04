@@ -662,6 +662,13 @@ Curves:
 		if hs.clientHello.sctListSupported {
 			encryptedExtensions.extensions.sctList = hs.cert.SignedCertificateTimestampList
 		}
+	} else {
+		if config.Bugs.SendOCSPResponseOnResume != nil {
+			encryptedExtensions.extensions.ocspResponse = config.Bugs.SendOCSPResponseOnResume
+		}
+		if config.Bugs.SendSCTListOnResume != nil {
+			encryptedExtensions.extensions.sctList = config.Bugs.SendSCTListOnResume
+		}
 	}
 
 	// Send EncryptedExtensions.
@@ -1164,6 +1171,12 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 
 	if c.config.Bugs.SendSCTListOnResume != nil {
 		hs.hello.extensions.sctList = c.config.Bugs.SendSCTListOnResume
+	}
+
+	if c.config.Bugs.SendOCSPResponseOnResume != nil {
+		// There is no way, syntactically, to send an OCSP response on a
+		// resumption handshake.
+		hs.hello.extensions.ocspStapling = true
 	}
 
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
