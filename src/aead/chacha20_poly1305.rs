@@ -166,6 +166,10 @@ fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
     }
 }
 
+// XXX: The BoringSSL code says that `poly1305_finish` requires a
+// 16-byte-aligned output, but we're not ensuring 16-byte alignment because we
+// can't in Rust yet. Where does this alignment requirement come from?
+// TODO: address this.
 #[inline(always)]
 fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
                    tag_out: &mut [u8; aead::TAG_LEN]) {
