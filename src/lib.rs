@@ -50,7 +50,6 @@
     exceeding_bitshifts,
     fat_ptr_transmutes,
     improper_ctypes,
-    match_of_unit_variant_via_paren_dotdot,
     missing_docs,
     mutable_transmutes,
     no_mangle_const_items,
