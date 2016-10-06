@@ -113,7 +113,13 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
         ];
-        run_command_with_args(&"make", &args);
+
+        // If `MAKE_COMMAND` is set, we will use the env target to build with.
+        // Otherwise, we will default to using `make`.
+        match env::var("MAKE_COMMAND") {
+            Ok(command) => run_command_with_args(&command, &args),
+            _ => run_command_with_args(&"make", &args),
+        }
     } else {
         let arch = target_triple[0];
         let (platform, optional_amd64) = match arch {
