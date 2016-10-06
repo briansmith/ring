@@ -4358,37 +4358,12 @@ typedef struct ssl3_state_st {
       uint16_t received;
     } custom_extensions;
 
-    /* should_ack_sni is used by a server and indicates that the SNI extension
-     * should be echoed in the ServerHello. */
-    unsigned should_ack_sni:1;
-
-    /* Client-only: ca_names contains the list of CAs received in a
-     * CertificateRequest message. */
-    STACK_OF(X509_NAME) *ca_names;
-
-    /* Client-only: certificate_types contains the set of certificate types
-     * received in a CertificateRequest message. */
-    uint8_t *certificate_types;
-    size_t num_certificate_types;
-
     uint8_t *key_block;
     uint8_t key_block_length;
 
     uint8_t new_mac_secret_len;
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
-
-    /* cert_request is true if a client certificate was requested and false
-     * otherwise. */
-    unsigned cert_request:1;
-
-    /* certificate_status_expected is true if OCSP stapling was negotiated and
-     * the server is expected to send a CertificateStatus message. (This is
-     * used on both the client and server sides.) */
-    unsigned certificate_status_expected:1;
-
-    /* ocsp_stapling_requested is true if a client requested OCSP stapling. */
-    unsigned ocsp_stapling_requested:1;
 
     /* Server-only: peer_supported_group_list contains the supported group IDs
      * advertised by the peer. This is only set on the server's end. The server
@@ -4403,10 +4378,6 @@ typedef struct ssl3_state_st {
      * messages, but it doesn't matter if the session that's being resumed
      * didn't use it to create the master secret initially. */
     char extended_master_secret;
-
-    /* Client-only: in_false_start is one if there is a pending handshake in
-     * False Start. The client may write data at this point. */
-    char in_false_start;
 
     /* peer_signature_algorithm is the signature algorithm used to authenticate
      * the peer, or zero if not applicable. */

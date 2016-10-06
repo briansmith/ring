@@ -154,6 +154,8 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   OPENSSL_free(hs->public_key);
   OPENSSL_free(hs->peer_sigalgs);
   OPENSSL_free(hs->peer_psk_identity_hint);
+  sk_X509_NAME_pop_free(hs->ca_names, X509_NAME_free);
+  OPENSSL_free(hs->certificate_types);
   OPENSSL_free(hs);
 }
 

@@ -603,6 +603,31 @@ static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
 }
 
 static int CertCallback(SSL *ssl, void *arg) {
+  const TestConfig *config = GetTestConfig(ssl);
+
+  // Check the CertificateRequest metadata is as expected.
+  //
+  // TODO(davidben): Test |SSL_get_client_CA_list|.
+  if (!SSL_is_server(ssl) &&
+      !config->expected_certificate_types.empty()) {
+    const uint8_t *certificate_types;
+    size_t certificate_types_len =
+        SSL_get0_certificate_types(ssl, &certificate_types);
+    if (certificate_types_len != config->expected_certificate_types.size() ||
+        memcmp(certificate_types,
+               config->expected_certificate_types.data(),
+               certificate_types_len) != 0) {
+      fprintf(stderr, "certificate types mismatch\n");
+      return 0;
+    }
+  }
+
+  // The certificate will be installed via other means.
+  if (!config->async || config->use_early_callback ||
+      config->use_old_client_cert_callback) {
+    return 1;
+  }
+
   if (!GetTestState(ssl)->cert_ready) {
     return -1;
   }
@@ -1153,19 +1178,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
-  if (!config->expected_certificate_types.empty()) {
-    const uint8_t *certificate_types;
-    size_t certificate_types_len =
-        SSL_get0_certificate_types(ssl, &certificate_types);
-    if (certificate_types_len != config->expected_certificate_types.size() ||
-        memcmp(certificate_types,
-               config->expected_certificate_types.data(),
-               certificate_types_len) != 0) {
-      fprintf(stderr, "certificate types mismatch\n");
-      return false;
-    }
-  }
-
   if (!config->expected_next_proto.empty()) {
     const uint8_t *next_proto;
     unsigned next_proto_len;
@@ -1309,13 +1321,14 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {
     return false;
   }
-  if (!config->use_early_callback && !config->use_old_client_cert_callback) {
-    if (config->async) {
-      SSL_set_cert_cb(ssl.get(), CertCallback, NULL);
-    } else if (!InstallCertificate(ssl.get())) {
-      return false;
-    }
+  // Install the certificate synchronously if nothing else will handle it.
+  if (!config->use_early_callback &&
+      !config->use_old_client_cert_callback &&
+      !config->async &&
+      !InstallCertificate(ssl.get())) {
+    return false;
   }
+  SSL_set_cert_cb(ssl.get(), CertCallback, nullptr);
   if (config->require_any_client_certificate) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                    NULL);

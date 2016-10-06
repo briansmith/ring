@@ -395,7 +395,11 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
    * |SSL_set_connect_state|. If |handshake_func| is NULL, |ssl| is in an
    * indeterminate mode and |ssl->server| is unset. */
   if (ssl->handshake_func != NULL && !ssl->server) {
-    return ssl->s3->tmp.ca_names;
+    if (ssl->s3->hs != NULL) {
+      return ssl->s3->hs->ca_names;
+    }
+
+    return NULL;
   }
 
   if (ssl->client_CA != NULL) {

@@ -359,8 +359,6 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL *ssl,
 
 static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
                                                          SSL_HANDSHAKE *hs) {
-  ssl->s3->tmp.cert_request = 0;
-
   /* CertificateRequest may only be sent in non-resumption handshakes. */
   if (ssl->s3->session_reused) {
     hs->state = state_process_server_finished;
@@ -403,9 +401,9 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL *ssl,
     return ssl_hs_error;
   }
 
-  ssl->s3->tmp.cert_request = 1;
-  sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
-  ssl->s3->tmp.ca_names = ca_sk;
+  ssl->s3->hs->cert_request = 1;
+  sk_X509_NAME_pop_free(ssl->s3->hs->ca_names, X509_NAME_free);
+  ssl->s3->hs->ca_names = ca_sk;
 
   if (!ssl->method->hash_current_message(ssl)) {
     return ssl_hs_error;
@@ -458,7 +456,7 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL *ssl,
 
 static enum ssl_hs_wait_t do_certificate_callback(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* The peer didn't request a certificate. */
-  if (!ssl->s3->tmp.cert_request) {
+  if (!ssl->s3->hs->cert_request) {
     hs->state = state_send_client_finished;
     return ssl_hs_ok;
   }

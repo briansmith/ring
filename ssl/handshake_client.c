@@ -276,7 +276,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_STATUS_A:
-        if (ssl->s3->tmp.certificate_status_expected) {
+        if (ssl->s3->hs->certificate_status_expected) {
           ret = ssl3_get_cert_status(ssl);
           if (ret <= 0) {
             goto end;
@@ -331,7 +331,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_A:
       case SSL3_ST_CW_CERT_B:
       case SSL3_ST_CW_CERT_C:
-        if (ssl->s3->tmp.cert_request) {
+        if (ssl->s3->hs->cert_request) {
           ret = ssl3_send_client_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -354,7 +354,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
       case SSL3_ST_CW_CERT_VRFY_C:
-        if (ssl->s3->tmp.cert_request) {
+        if (ssl->s3->hs->cert_request) {
           ret = ssl3_send_cert_verify(ssl);
           if (ret <= 0) {
             goto end;
@@ -440,7 +440,7 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_FALSE_START:
         ssl->state = SSL3_ST_CR_SESSION_TICKET_A;
-        ssl->s3->tmp.in_false_start = 1;
+        ssl->s3->hs->in_false_start = 1;
 
         ssl_free_wbio_buffer(ssl);
         ret = 1;
@@ -541,10 +541,7 @@ int ssl3_connect(SSL *ssl) {
         ssl->s3->hs = NULL;
 
         const int is_initial_handshake = !ssl->s3->initial_handshake_complete;
-
-        ssl->s3->tmp.in_false_start = 0;
         ssl->s3->initial_handshake_complete = 1;
-
         if (is_initial_handshake) {
           /* Renegotiations do not participate in session resumption. */
           ssl_update_cache(ssl, SSL_SESS_CACHE_CLIENT);
@@ -1385,8 +1382,6 @@ static int ssl3_get_certificate_request(SSL *ssl) {
     return msg_ret;
   }
 
-  ssl->s3->tmp.cert_request = 0;
-
   if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_HELLO_DONE) {
     ssl->s3->tmp.reuse_message = 1;
     /* If we get here we don't need the handshake buffer as we won't be doing
@@ -1412,8 +1407,8 @@ static int ssl3_get_certificate_request(SSL *ssl) {
     return -1;
   }
 
-  if (!CBS_stow(&certificate_types, &ssl->s3->tmp.certificate_types,
-                &ssl->s3->tmp.num_certificate_types)) {
+  if (!CBS_stow(&certificate_types, &ssl->s3->hs->certificate_types,
+                &ssl->s3->hs->num_certificate_types)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;
   }
@@ -1442,9 +1437,9 @@ static int ssl3_get_certificate_request(SSL *ssl) {
     return -1;
   }
 
-  ssl->s3->tmp.cert_request = 1;
-  sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
-  ssl->s3->tmp.ca_names = ca_sk;
+  ssl->s3->hs->cert_request = 1;
+  sk_X509_NAME_pop_free(ssl->s3->hs->ca_names, X509_NAME_free);
+  ssl->s3->hs->ca_names = ca_sk;
   return 1;
 }
 
@@ -1494,7 +1489,7 @@ static int ssl3_send_client_certificate(SSL *ssl) {
     }
 
     if (!ssl_has_certificate(ssl)) {
-      ssl->s3->tmp.cert_request = 0;
+      ssl->s3->hs->cert_request = 0;
       /* Without a client certificate, the handshake buffer may be released. */
       ssl3_free_handshake_buffer(ssl);
 

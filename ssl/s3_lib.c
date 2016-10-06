@@ -207,8 +207,6 @@ void ssl3_free(SSL *ssl) {
   OPENSSL_free(ssl->s3->tmp.peer_key);
   OPENSSL_free(ssl->s3->tmp.server_params);
 
-  sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
-  OPENSSL_free(ssl->s3->tmp.certificate_types);
   OPENSSL_free(ssl->s3->tmp.peer_supported_group_list);
   SSL_SESSION_free(ssl->s3->new_session);
   SSL_SESSION_free(ssl->s3->established_session);

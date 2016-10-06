@@ -922,11 +922,42 @@ struct ssl_handshake_st {
   /* num_peer_sigalgs is the number of entries in |peer_sigalgs|. */
   size_t num_peer_sigalgs;
 
+  /* session_tickets_sent, in TLS 1.3, is the number of tickets the server has
+   * sent. */
   uint8_t session_tickets_sent;
+
+  /* cert_request is one if a client certificate was requested and zero
+   * otherwise. */
+  unsigned cert_request:1;
+
+  /* certificate_status_expected is one if OCSP stapling was negotiated and the
+   * server is expected to send a CertificateStatus message. (This is used on
+   * both the client and server sides.) */
+  unsigned certificate_status_expected:1;
+
+  /* ocsp_stapling_requested is one if a client requested OCSP stapling. */
+  unsigned ocsp_stapling_requested:1;
+
+  /* should_ack_sni is used by a server and indicates that the SNI extension
+   * should be echoed in the ServerHello. */
+  unsigned should_ack_sni:1;
+
+  /* in_false_start is one if there is a pending client handshake in False
+   * Start. The client may write data at this point. */
+  unsigned in_false_start:1;
 
   /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
    * server when using a TLS 1.2 PSK key exchange. */
   char *peer_psk_identity_hint;
+
+  /* ca_names, on the client, contains the list of CAs received in a
+   * CertificateRequest message. */
+  STACK_OF(X509_NAME) *ca_names;
+
+  /* certificate_types, on the client, contains the set of certificate types
+   * received in a CertificateRequest message. */
+  uint8_t *certificate_types;
+  size_t num_certificate_types;
 } /* SSL_HANDSHAKE */;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
