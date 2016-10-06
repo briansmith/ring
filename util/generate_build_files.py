@@ -99,7 +99,7 @@ class Android(object):
       blueprint.write('    target: {\n')
 
       for ((osname, arch), asm_files) in asm_outputs:
-        if osname != 'linux':
+        if osname != 'linux' or arch == 'ppc64le':
           continue
         if arch == 'aarch64':
           arch = 'arm64'
