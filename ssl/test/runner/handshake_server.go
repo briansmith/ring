@@ -469,8 +469,16 @@ Curves:
 		hs.suite = suite
 		hs.hello.hasPSKIdentity = true
 		hs.hello.pskIdentity = uint16(i)
+		if config.Bugs.SelectPSKIdentityOnResume != 0 {
+			hs.hello.pskIdentity = config.Bugs.SelectPSKIdentityOnResume
+		}
 		c.didResume = true
 		break
+	}
+
+	if config.Bugs.AlwaysSelectPSKIdentity {
+		hs.hello.hasPSKIdentity = true
+		hs.hello.pskIdentity = 0
 	}
 
 	// If not resuming, select the cipher suite.

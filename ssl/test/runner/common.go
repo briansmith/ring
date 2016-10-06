@@ -1030,6 +1030,14 @@ type ProtocolBugs struct {
 	// resumption.
 	NegotiatePSKResumption bool
 
+	// AlwaysSelectPSKIdentity, if true, causes the server in TLS 1.3 to
+	// always acknowledge a session, regardless of one was offered.
+	AlwaysSelectPSKIdentity bool
+
+	// SelectPSKIdentityOnResume, if non-zero, causes the server to select
+	// the specified PSK identity index rather than the actual value.
+	SelectPSKIdentityOnResume uint16
+
 	// OmitServerHelloSignatureAlgorithms, if true, causes the server to omit the
 	// signature_algorithms extension in the ServerHello.
 	OmitServerHelloSignatureAlgorithms bool

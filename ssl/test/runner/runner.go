@@ -8559,6 +8559,31 @@ func addTLS13HandshakeTests() {
 		shouldFail:    true,
 		expectedError: ":DECODE_ERROR:",
 	})
+
+	testCases = append(testCases, testCase{
+		name: "TLS13-AlwaysSelectPSKIdentity",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				AlwaysSelectPSKIdentity: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "TLS13-InvalidPSKIdentity",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SelectPSKIdentityOnResume: 1,
+			},
+		},
+		resumeSession: true,
+		shouldFail:    true,
+		expectedError: ":PSK_IDENTITY_NOT_FOUND:",
+	})
 }
 
 func addPeekTests() {
