@@ -7110,6 +7110,39 @@ func addCustomExtensionTests() {
 		expectedError:      ":UNEXPECTED_EXTENSION:",
 		expectedLocalError: "remote error: unsupported extension",
 	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "UnknownUnencryptedExtension-Client-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				CustomUnencryptedExtension: expectedContents,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+		// The shim must send an alert, but alerts at this point do not
+		// get successfully decrypted by the runner.
+		expectedLocalError: "local error: bad record MAC",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "UnexpectedUnencryptedExtension-Client-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendUnencryptedALPN: "foo",
+			},
+		},
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+		// The shim must send an alert, but alerts at this point do not
+		// get successfully decrypted by the runner.
+		expectedLocalError: "local error: bad record MAC",
+	})
 
 	// Test a known but unoffered extension from the server.
 	testCases = append(testCases, testCase{

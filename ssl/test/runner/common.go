@@ -888,6 +888,10 @@ type ProtocolBugs struct {
 	// that will be added to client/server hellos.
 	CustomExtension string
 
+	// CustomUnencryptedExtension, if not empty, contains the contents of
+	// an extension that will be added to ServerHello in TLS 1.3.
+	CustomUnencryptedExtension string
+
 	// ExpectedCustomExtension, if not nil, contains the expected contents
 	// of a custom extension.
 	ExpectedCustomExtension *string
@@ -921,6 +925,10 @@ type ProtocolBugs struct {
 	// string in the ALPN extension regardless of the content or presence of
 	// the client offer.
 	SendALPN string
+
+	// SendUnencryptedALPN, if non-empty, causes the server to send the
+	// specified string in a ServerHello ALPN extension in TLS 1.3.
+	SendUnencryptedALPN string
 
 	// SendEmptySessionTicket, if true, causes the server to send an empty
 	// session ticket.
