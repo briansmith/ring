@@ -898,6 +898,27 @@ struct ssl_handshake_st {
   uint8_t secret[EVP_MAX_MD_SIZE];
   uint8_t traffic_secret_0[EVP_MAX_MD_SIZE];
 
+  union {
+    /* sent is a bitset where the bits correspond to elements of kExtensions
+     * in t1_lib.c. Each bit is set if that extension was sent in a
+     * ClientHello. It's not used by servers. */
+    uint32_t sent;
+    /* received is a bitset, like |sent|, but is used by servers to record
+     * which extensions were received from a client. */
+    uint32_t received;
+  } extensions;
+
+  union {
+    /* sent is a bitset where the bits correspond to elements of
+     * |client_custom_extensions| in the |SSL_CTX|. Each bit is set if that
+     * extension was sent in a ClientHello. It's not used by servers. */
+    uint16_t sent;
+    /* received is a bitset, like |sent|, but is used by servers to record
+     * which custom extensions were received from a client. The bits here
+     * correspond to |server_custom_extensions|. */
+    uint16_t received;
+  } custom_extensions;
+
   /* ecdh_ctx is the active client ECDH offer in TLS 1.3. */
   SSL_ECDH_CTX ecdh_ctx;
 

@@ -2604,12 +2604,11 @@ static const struct tls_extension kExtensions[] = {
 #define kNumExtensions (sizeof(kExtensions) / sizeof(struct tls_extension))
 
 OPENSSL_COMPILE_ASSERT(kNumExtensions <=
-                           sizeof(((SSL *)NULL)->s3->tmp.extensions.sent) * 8,
+                           sizeof(((SSL_HANDSHAKE *)NULL)->extensions.sent) * 8,
                        too_many_extensions_for_sent_bitset);
-OPENSSL_COMPILE_ASSERT(kNumExtensions <=
-                           sizeof(((SSL *)NULL)->s3->tmp.extensions.received) *
-                               8,
-                       too_many_extensions_for_received_bitset);
+OPENSSL_COMPILE_ASSERT(
+    kNumExtensions <= sizeof(((SSL_HANDSHAKE *)NULL)->extensions.received) * 8,
+    too_many_extensions_for_received_bitset);
 
 static const struct tls_extension *tls_extension_find(uint32_t *out_index,
                                                       uint16_t value) {
@@ -2642,8 +2641,8 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
     goto err;
   }
 
-  ssl->s3->tmp.extensions.sent = 0;
-  ssl->s3->tmp.custom_extensions.sent = 0;
+  ssl->s3->hs->extensions.sent = 0;
+  ssl->s3->hs->custom_extensions.sent = 0;
 
   for (size_t i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
@@ -2670,7 +2669,7 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
     }
 
     if (CBB_len(&extensions) != len_before) {
-      ssl->s3->tmp.extensions.sent |= (1u << i);
+      ssl->s3->hs->extensions.sent |= (1u << i);
     }
   }
 
@@ -2745,7 +2744,7 @@ int ssl_add_serverhello_tlsext(SSL *ssl, CBB *out) {
 
   unsigned i;
   for (i = 0; i < kNumExtensions; i++) {
-    if (!(ssl->s3->tmp.extensions.received & (1u << i))) {
+    if (!(ssl->s3->hs->extensions.received & (1u << i))) {
       /* Don't send extensions that were not received. */
       continue;
     }
@@ -2783,8 +2782,8 @@ static int ssl_scan_clienthello_tlsext(
     }
   }
 
-  ssl->s3->tmp.extensions.received = 0;
-  ssl->s3->tmp.custom_extensions.received = 0;
+  ssl->s3->hs->extensions.received = 0;
+  ssl->s3->hs->custom_extensions.received = 0;
 
   CBS extensions;
   CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
@@ -2817,7 +2816,7 @@ static int ssl_scan_clienthello_tlsext(
       continue;
     }
 
-    ssl->s3->tmp.extensions.received |= (1u << ext_index);
+    ssl->s3->hs->extensions.received |= (1u << ext_index);
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!ext->parse_clienthello(ssl, &alert, &extension)) {
       *out_alert = alert;
@@ -2828,7 +2827,7 @@ static int ssl_scan_clienthello_tlsext(
   }
 
   for (size_t i = 0; i < kNumExtensions; i++) {
-    if (ssl->s3->tmp.extensions.received & (1u << i)) {
+    if (ssl->s3->hs->extensions.received & (1u << i)) {
       continue;
     }
 
@@ -2842,7 +2841,7 @@ static int ssl_scan_clienthello_tlsext(
       CBS_init(&fake_contents, kFakeRenegotiateExtension,
                sizeof(kFakeRenegotiateExtension));
       contents = &fake_contents;
-      ssl->s3->tmp.extensions.received |= (1u << i);
+      ssl->s3->hs->extensions.received |= (1u << i);
     }
 
     /* Extension wasn't observed so call the callback with a NULL
@@ -2914,7 +2913,7 @@ static int ssl_scan_serverhello_tlsext(SSL *ssl, CBS *cbs, int *out_alert) {
       continue;
     }
 
-    if (!(ssl->s3->tmp.extensions.sent & (1u << ext_index)) &&
+    if (!(ssl->s3->hs->extensions.sent & (1u << ext_index)) &&
         type != TLSEXT_TYPE_renegotiate) {
       /* If the extension was never sent then it is illegal, except for the
        * renegotiation extension which, in SSL 3.0, is signaled via SCSV. */
