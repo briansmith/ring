@@ -4394,9 +4394,6 @@ typedef struct ssl3_state_st {
   uint8_t previous_server_finished_len;
   int send_connection_binding;
 
-  /* Set if we saw the Next Protocol Negotiation extension from our peer. */
-  int next_proto_neg_seen;
-
   /* Next protocol negotiation. For the client, this is the protocol that we
    * sent in NextProtocol and is set when handling ServerHello extensions.
    *

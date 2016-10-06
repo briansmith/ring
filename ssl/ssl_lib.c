@@ -2697,7 +2697,8 @@ int ssl3_can_false_start(const SSL *ssl) {
   /* False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN. */
   return !SSL_is_dtls(ssl) &&
       SSL_version(ssl) == TLS1_2_VERSION &&
-      (ssl->s3->alpn_selected || ssl->s3->next_proto_neg_seen) &&
+      (ssl->s3->alpn_selected != NULL ||
+       ssl->s3->next_proto_negotiated != NULL) &&
       cipher != NULL &&
       (cipher->algorithm_mkey == SSL_kECDHE ||
        cipher->algorithm_mkey == SSL_kCECPQ1) &&

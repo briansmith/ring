@@ -382,7 +382,7 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CW_NEXT_PROTO_A:
       case SSL3_ST_CW_NEXT_PROTO_B:
-        if (ssl->s3->next_proto_neg_seen) {
+        if (ssl->s3->hs->next_proto_neg_seen) {
           ret = ssl3_send_next_proto(ssl);
           if (ret <= 0) {
             goto end;

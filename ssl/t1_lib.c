@@ -1328,10 +1328,6 @@ static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
  *
  * https://htmlpreview.github.io/?https://github.com/agl/technotes/blob/master/nextprotoneg.html */
 
-static void ext_npn_init(SSL *ssl) {
-  ssl->s3->next_proto_neg_seen = 0;
-}
-
 static int ext_npn_add_clienthello(SSL *ssl, CBB *out) {
   if (ssl->s3->initial_handshake_complete ||
       ssl->ctx->next_proto_select_cb == NULL ||
@@ -1401,7 +1397,7 @@ static int ext_npn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   }
 
   ssl->s3->next_proto_negotiated_len = selected_len;
-  ssl->s3->next_proto_neg_seen = 1;
+  ssl->s3->hs->next_proto_neg_seen = 1;
 
   return 1;
 }
@@ -1427,14 +1423,14 @@ static int ext_npn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 1;
   }
 
-  ssl->s3->next_proto_neg_seen = 1;
+  ssl->s3->hs->next_proto_neg_seen = 1;
   return 1;
 }
 
 static int ext_npn_add_serverhello(SSL *ssl, CBB *out) {
   /* |next_proto_neg_seen| might have been cleared when an ALPN extension was
    * parsed. */
-  if (!ssl->s3->next_proto_neg_seen) {
+  if (!ssl->s3->hs->next_proto_neg_seen) {
     return 1;
   }
 
@@ -1444,7 +1440,7 @@ static int ext_npn_add_serverhello(SSL *ssl, CBB *out) {
   if (ssl->ctx->next_protos_advertised_cb(
           ssl, &npa, &npa_len, ssl->ctx->next_protos_advertised_cb_arg) !=
       SSL_TLSEXT_ERR_OK) {
-    ssl->s3->next_proto_neg_seen = 0;
+    ssl->s3->hs->next_proto_neg_seen = 0;
     return 1;
   }
 
@@ -1567,7 +1563,7 @@ static int ext_alpn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   assert(!ssl->s3->initial_handshake_complete);
   assert(ssl->alpn_client_proto_list != NULL);
 
-  if (ssl->s3->next_proto_neg_seen) {
+  if (ssl->s3->hs->next_proto_neg_seen) {
     /* NPN and ALPN may not be negotiated in the same connection. */
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_BOTH_NPN_AND_ALPN);
@@ -1633,7 +1629,7 @@ static int ext_alpn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   }
 
   /* ALPN takes precedence over NPN. */
-  ssl->s3->next_proto_neg_seen = 0;
+  ssl->s3->hs->next_proto_neg_seen = 0;
 
   CBS protocol_name_list;
   if (!CBS_get_u16_length_prefixed(contents, &protocol_name_list) ||
@@ -2518,7 +2514,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_next_proto_neg,
-    ext_npn_init,
+    NULL,
     ext_npn_add_clienthello,
     ext_npn_parse_serverhello,
     ext_npn_parse_clienthello,

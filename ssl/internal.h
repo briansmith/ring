@@ -967,6 +967,9 @@ struct ssl_handshake_st {
    * Start. The client may write data at this point. */
   unsigned in_false_start:1;
 
+  /* next_proto_neg_seen is one of NPN was negotiated. */
+  unsigned next_proto_neg_seen:1;
+
   /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
    * server when using a TLS 1.2 PSK key exchange. */
   char *peer_psk_identity_hint;
