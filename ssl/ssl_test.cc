@@ -269,6 +269,7 @@ static const char *kMustNotIncludeNull[] = {
   "SSLv3",
   "TLSv1",
   "TLSv1.2",
+  "GENERIC",
 };
 
 static const char *kMustNotIncludeCECPQ1[] = {
@@ -293,6 +294,7 @@ static const char *kMustNotIncludeCECPQ1[] = {
   "AES256",
   "AESGCM",
   "CHACHA20",
+  "GENERIC",
 };
 
 static const CurveTest kCurveTests[] = {

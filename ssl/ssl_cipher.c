@@ -738,6 +738,9 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"TLSv1", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, SSL3_VERSION},
     {"TLSv1.2", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, TLS1_2_VERSION},
 
+    /* AEAD-only ciphers for TLS 1.3. */
+    {"GENERIC", SSL_kGENERIC, SSL_aGENERIC, ~0u, ~0u, 0},
+
     /* Legacy strength classes. */
     {"HIGH", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, 0},
     {"FIPS", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, 0},
