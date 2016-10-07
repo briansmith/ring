@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <functional>
+#include <string>
 #include <vector>
 
 #include <assert.h>
