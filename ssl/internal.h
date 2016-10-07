@@ -1539,11 +1539,6 @@ int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
 int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
                          const char *curves);
 
-/* tls1_check_ec_cert returns one if |x| is an ECC certificate with curve and
- * point format compatible with the client's preferences. Otherwise it returns
- * zero. */
-int tls1_check_ec_cert(SSL *ssl, X509 *x);
-
 /* ssl_add_clienthello_tlsext writes ClientHello extensions to |out|. It
  * returns one on success and zero on failure. The |header_len| argument is the
  * length of the ClientHello written so far and is used to compute the padding

@@ -445,47 +445,6 @@ err:
   return 0;
 }
 
-/* tls1_curve_params_from_ec_key sets |*out_group_id| and |*out_comp_id| to the
- * TLS group ID and point format, respectively, for |ec|. It returns one on
- * success and zero on failure. */
-static int tls1_curve_params_from_ec_key(uint16_t *out_group_id,
-                                         uint8_t *out_comp_id, EC_KEY *ec) {
-  int nid;
-  uint16_t id;
-  const EC_GROUP *grp;
-
-  if (ec == NULL) {
-    return 0;
-  }
-
-  grp = EC_KEY_get0_group(ec);
-  if (grp == NULL) {
-    return 0;
-  }
-
-  /* Determine group ID */
-  nid = EC_GROUP_get_curve_name(grp);
-  if (!ssl_nid_to_group_id(&id, nid)) {
-    return 0;
-  }
-
-  /* Set the named group ID. Arbitrary explicit groups are not supported. */
-  *out_group_id = id;
-
-  if (out_comp_id) {
-    if (EC_KEY_get0_public_key(ec) == NULL) {
-      return 0;
-    }
-    if (EC_KEY_get_conv_form(ec) == POINT_CONVERSION_COMPRESSED) {
-      *out_comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime;
-    } else {
-      *out_comp_id = TLSEXT_ECPOINTFORMAT_uncompressed;
-    }
-  }
-
-  return 1;
-}
-
 /* tls1_check_group_id returns one if |group_id| is consistent with both our
  * and the peer's group preferences. Note: if called as the client, only our
  * preferences are checked; the peer (the server) does not send preferences. */
@@ -520,35 +479,6 @@ int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
   }
 
   return 1;
-}
-
-int tls1_check_ec_cert(SSL *ssl, X509 *x) {
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    /* In TLS 1.3, the ECDSA curve is negotiated via signature algorithms. */
-    return 1;
-  }
-
-  EVP_PKEY *pkey = X509_get_pubkey(x);
-  if (pkey == NULL) {
-    return 0;
-  }
-
-  int ret = 0;
-  uint16_t group_id;
-  uint8_t comp_id;
-  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
-  if (ec_key == NULL ||
-      !tls1_curve_params_from_ec_key(&group_id, &comp_id, ec_key) ||
-      !tls1_check_group_id(ssl, group_id) ||
-      comp_id != TLSEXT_ECPOINTFORMAT_uncompressed) {
-    goto done;
-  }
-
-  ret = 1;
-
-done:
-  EVP_PKEY_free(pkey);
-  return ret;
 }
 
 /* List of supported signature algorithms and hashes. Should make this
