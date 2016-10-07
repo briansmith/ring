@@ -1509,10 +1509,8 @@ int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster
                                 size_t premaster_len);
 
 /* tls1_get_grouplist sets |*out_group_ids| and |*out_group_ids_len| to the
- * list of allowed group IDs. If |get_peer_groups| is non-zero, return the
- * peer's group list. Otherwise, return the preferred list. */
-void tls1_get_grouplist(SSL *ssl, int get_peer_groups,
-                        const uint16_t **out_group_ids,
+ * locally-configured group preference list. */
+void tls1_get_grouplist(SSL *ssl, const uint16_t **out_group_ids,
                         size_t *out_group_ids_len);
 
 /* tls1_check_group_id returns one if |group_id| is consistent with

@@ -70,7 +70,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL *ssl,
 
   const uint16_t *groups;
   size_t groups_len;
-  tls1_get_grouplist(ssl, 0 /* local groups */, &groups, &groups_len);
+  tls1_get_grouplist(ssl, &groups, &groups_len);
   int found = 0;
   for (size_t i = 0; i < groups_len; i++) {
     if (groups[i] == group_id) {
