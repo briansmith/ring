@@ -1819,12 +1819,13 @@ func (m *certificateVerifyMsg) unmarshal(data []byte) bool {
 }
 
 type newSessionTicketMsg struct {
-	raw            []byte
-	version        uint16
-	ticketLifetime uint32
-	keModes        []byte
-	authModes      []byte
-	ticket         []byte
+	raw                []byte
+	version            uint16
+	ticketLifetime     uint32
+	keModes            []byte
+	authModes          []byte
+	ticket             []byte
+	hasGREASEExtension bool
 }
 
 func (m *newSessionTicketMsg) marshal() []byte {
@@ -1913,7 +1914,24 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 		if len(data) < extsLength {
 			return false
 		}
+		extensions := data[:extsLength]
 		data = data[extsLength:]
+
+		for len(extensions) > 0 {
+			if len(extensions) < 4 {
+				return false
+			}
+			extValue := uint16(extensions[0])<<8 | uint16(extensions[1])
+			extLength := int(extensions[2])<<8 | int(extensions[3])
+			if len(extensions) < 4+extLength {
+				return false
+			}
+			extensions = extensions[4+extLength:]
+
+			if isGREASEValue(extValue) {
+				m.hasGREASEExtension = true
+			}
+		}
 	}
 
 	if len(data) > 0 {

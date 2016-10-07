@@ -541,7 +541,7 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
   /* TODO(svaldez): Add support for sending 0RTT through TicketEarlyDataInfo
    * extension. */
 
-  CBB cbb, body, ke_modes, auth_modes, ticket;
+  CBB cbb, body, ke_modes, auth_modes, ticket, extensions;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_NEW_SESSION_TICKET) ||
       !CBB_add_u32(&body, session->tlsext_tick_lifetime_hint) ||
@@ -551,16 +551,31 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
       !CBB_add_u8(&auth_modes, SSL_PSK_AUTH) ||
       !CBB_add_u16_length_prefixed(&body, &ticket) ||
       !ssl_encrypt_ticket(ssl, &ticket, session) ||
-      !CBB_add_u16(&body, 0 /* no ticket extensions */) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
-    return ssl_hs_error;
+      !CBB_add_u16_length_prefixed(&body, &extensions)) {
+    goto err;
+  }
+
+  /* Add a fake extension. See draft-davidben-tls-grease-01. */
+  if (ssl->ctx->grease_enabled) {
+    if (!CBB_add_u16(&extensions,
+                     ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
+        !CBB_add_u16(&extensions, 0 /* empty */)) {
+      goto err;
+    }
+  }
+
+  if (!ssl->method->finish_message(ssl, &cbb)) {
+    goto err;
   }
 
   hs->session_tickets_sent++;
 
   hs->state = state_flush_new_session_ticket;
   return ssl_hs_write_message;
+
+err:
+  CBB_cleanup(&cbb);
+  return ssl_hs_error;
 }
 
 /* TLS 1.3 recommends single-use tickets, so issue multiple tickets in case the

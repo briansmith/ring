@@ -3114,8 +3114,8 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl);
 OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 
-/* SSL_CTX_set_grease_enabled configures whether client sockets on |ctx| should
- * enable GREASE. See draft-davidben-tls-grease-01. */
+/* SSL_CTX_set_grease_enabled configures whether sockets on |ctx| should enable
+ * GREASE. See draft-davidben-tls-grease-01. */
 OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
 
 

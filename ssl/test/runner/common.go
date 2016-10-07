@@ -1127,8 +1127,8 @@ type ProtocolBugs struct {
 	// invalid Channel ID signature.
 	InvalidChannelIDSignature bool
 
-	// ExpectGREASE, if true, causes the server to reject a ClientHello
-	// unless it contains GREASE values. See draft-davidben-tls-grease-01.
+	// ExpectGREASE, if true, causes messages without GREASE values to be
+	// rejected. See draft-davidben-tls-grease-01.
 	ExpectGREASE bool
 }
 
