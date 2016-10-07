@@ -97,25 +97,6 @@ class FileTest {
   // |stderr| otherwise.
   bool GetAttribute(std::string *out_value, const std::string &key);
 
-  // GetBytes looks up the attribute with key |key| and decodes it as a byte
-  // string. On success, it writes the result to |*out| and returns
-  // true. Otherwise it returns false with an error to |stderr|. The value may
-  // be either a hexadecimal string or a quoted ASCII string. It returns true on
-  // success and returns false with an error to |stderr| on failure.
-  bool GetBytes(std::vector<uint8_t> *out, const std::string &key);
-
-  // GetBytesOrDefault looks up the attribute with key |key|. If the value is
-  // encoded as "DEFAULT", without the quotes, then it sets |*is_default| to
-  // true and returns true, leaving |out| untouched. Otherwise it sets
-  // |*is_default| to false and works identically to |GetBytes|.
-  bool GetBytesOrDefault(std::vector<uint8_t> *out, bool *is_default,
-                         const std::string &key);
-
-  // ExpectBytesEqual returns true if |expected| and |actual| are equal.
-  // Otherwise, it returns false and prints a message to |stderr|.
-  bool ExpectBytesEqual(const uint8_t *expected, size_t expected_len,
-                        const uint8_t *actual, size_t actual_len);
-
  private:
   void ClearTest();
   void OnKeyUsed(const std::string &key);
