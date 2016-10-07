@@ -943,6 +943,12 @@ struct ssl_handshake_st {
   /* num_peer_sigalgs is the number of entries in |peer_sigalgs|. */
   size_t num_peer_sigalgs;
 
+  /* peer_supported_group_list contains the supported group IDs advertised by
+   * the peer. This is only set on the server's end. The server does not
+   * advertise this extension to the client. */
+  uint16_t *peer_supported_group_list;
+  size_t peer_supported_group_list_len;
+
   /* session_tickets_sent, in TLS 1.3, is the number of tickets the server has
    * sent. */
   uint8_t session_tickets_sent;

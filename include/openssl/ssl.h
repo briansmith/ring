@@ -4344,12 +4344,6 @@ typedef struct ssl3_state_st {
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
 
-    /* Server-only: peer_supported_group_list contains the supported group IDs
-     * advertised by the peer. This is only set on the server's end. The server
-     * does not advertise this extension to the client. */
-    uint16_t *peer_supported_group_list;
-    size_t peer_supported_group_list_len;
-
     /* extended_master_secret indicates whether the extended master secret
      * computation is used in this handshake. Note that this is different from
      * whether it was used for the current session. If this is a resumption

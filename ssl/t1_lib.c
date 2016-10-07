@@ -341,11 +341,11 @@ int tls1_get_shared_group(SSL *ssl, uint16_t *out_group_id) {
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     pref = groups;
     pref_len = groups_len;
-    supp = ssl->s3->tmp.peer_supported_group_list;
-    supp_len = ssl->s3->tmp.peer_supported_group_list_len;
+    supp = ssl->s3->hs->peer_supported_group_list;
+    supp_len = ssl->s3->hs->peer_supported_group_list_len;
   } else {
-    pref = ssl->s3->tmp.peer_supported_group_list;
-    pref_len = ssl->s3->tmp.peer_supported_group_list_len;
+    pref = ssl->s3->hs->peer_supported_group_list;
+    pref_len = ssl->s3->hs->peer_supported_group_list_len;
     supp = groups;
     supp_len = groups_len;
   }
@@ -2259,12 +2259,6 @@ static int ext_supported_versions_add_clienthello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/rfc4492#section-5.1.2
  * https://tools.ietf.org/html/draft-ietf-tls-tls13-12#section-6.3.2.2 */
 
-static void ext_supported_groups_init(SSL *ssl) {
-  OPENSSL_free(ssl->s3->tmp.peer_supported_group_list);
-  ssl->s3->tmp.peer_supported_group_list = NULL;
-  ssl->s3->tmp.peer_supported_group_list_len = 0;
-}
-
 static int ext_supported_groups_add_clienthello(SSL *ssl, CBB *out) {
   if (!ssl_any_ec_cipher_suites_enabled(ssl)) {
     return 1;
@@ -2318,9 +2312,9 @@ static int ext_supported_groups_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  ssl->s3->tmp.peer_supported_group_list = OPENSSL_malloc(
+  ssl->s3->hs->peer_supported_group_list = OPENSSL_malloc(
       CBS_len(&supported_group_list));
-  if (ssl->s3->tmp.peer_supported_group_list == NULL) {
+  if (ssl->s3->hs->peer_supported_group_list == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
@@ -2328,19 +2322,19 @@ static int ext_supported_groups_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   const size_t num_groups = CBS_len(&supported_group_list) / 2;
   for (size_t i = 0; i < num_groups; i++) {
     if (!CBS_get_u16(&supported_group_list,
-                     &ssl->s3->tmp.peer_supported_group_list[i])) {
+                     &ssl->s3->hs->peer_supported_group_list[i])) {
       goto err;
     }
   }
 
   assert(CBS_len(&supported_group_list) == 0);
-  ssl->s3->tmp.peer_supported_group_list_len = num_groups;
+  ssl->s3->hs->peer_supported_group_list_len = num_groups;
 
   return 1;
 
 err:
-  OPENSSL_free(ssl->s3->tmp.peer_supported_group_list);
-  ssl->s3->tmp.peer_supported_group_list = NULL;
+  OPENSSL_free(ssl->s3->hs->peer_supported_group_list);
+  ssl->s3->hs->peer_supported_group_list = NULL;
   *out_alert = SSL_AD_INTERNAL_ERROR;
   return 0;
 }
@@ -2479,7 +2473,7 @@ static const struct tls_extension kExtensions[] = {
    * https://crbug.com/363583. */
   {
     TLSEXT_TYPE_supported_groups,
-    ext_supported_groups_init,
+    NULL,
     ext_supported_groups_add_clienthello,
     ext_supported_groups_parse_serverhello,
     ext_supported_groups_parse_clienthello,
