@@ -1515,9 +1515,8 @@ void tls1_get_grouplist(SSL *ssl, int get_peer_groups,
                         const uint16_t **out_group_ids,
                         size_t *out_group_ids_len);
 
-/* tls1_check_group_id returns one if |group_id| is consistent with both our
- * and the peer's group preferences. Note: if called as the client, only our
- * preferences are checked; the peer (the server) does not send preferences. */
+/* tls1_check_group_id returns one if |group_id| is consistent with
+ * locally-configured group preferences. */
 int tls1_check_group_id(SSL *ssl, uint16_t group_id);
 
 /* tls1_get_shared_group sets |*out_group_id| to the first preferred shared

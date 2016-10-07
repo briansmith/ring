@@ -445,40 +445,17 @@ err:
   return 0;
 }
 
-/* tls1_check_group_id returns one if |group_id| is consistent with both our
- * and the peer's group preferences. Note: if called as the client, only our
- * preferences are checked; the peer (the server) does not send preferences. */
 int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
   const uint16_t *groups;
-  size_t groups_len, i, get_peer_groups;
-
-  /* Check against our list, then the peer's list. */
-  for (get_peer_groups = 0; get_peer_groups <= 1; get_peer_groups++) {
-    if (get_peer_groups && !ssl->server) {
-      /* Servers do not present a preference list so, if we are a client, only
-       * check our list. */
-      continue;
-    }
-
-    tls1_get_grouplist(ssl, get_peer_groups, &groups, &groups_len);
-    if (get_peer_groups && groups_len == 0) {
-      /* Clients are not required to send a supported_groups extension. In this
-       * case, the server is free to pick any group it likes. See RFC 4492,
-       * section 4, paragraph 3. */
-      continue;
-    }
-    for (i = 0; i < groups_len; i++) {
-      if (groups[i] == group_id) {
-        break;
-      }
-    }
-
-    if (i == groups_len) {
-      return 0;
+  size_t groups_len;
+  tls1_get_grouplist(ssl, 0 /* local groups */, &groups, &groups_len);
+  for (size_t i = 0; i < groups_len; i++) {
+    if (groups[i] == group_id) {
+      return 1;
     }
   }
 
-  return 1;
+  return 0;
 }
 
 /* List of supported signature algorithms and hashes. Should make this
