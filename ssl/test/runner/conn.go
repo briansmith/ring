@@ -1714,10 +1714,11 @@ func (c *Conn) SendNewSessionTicket() error {
 
 	// TODO(davidben): Allow configuring these values.
 	m := &newSessionTicketMsg{
-		version:        c.vers,
-		ticketLifetime: uint32(24 * time.Hour / time.Second),
-		keModes:        []byte{pskDHEKEMode},
-		authModes:      []byte{pskAuthMode},
+		version:         c.vers,
+		ticketLifetime:  uint32(24 * time.Hour / time.Second),
+		keModes:         []byte{pskDHEKEMode},
+		authModes:       []byte{pskAuthMode},
+		customExtension: c.config.Bugs.CustomTicketExtension,
 	}
 
 	if len(c.config.Bugs.SendPSKKeyExchangeModes) != 0 {

@@ -100,6 +100,11 @@ const (
 	extensionChannelID                  uint16 = 30032 // not IANA assigned
 )
 
+// TLS ticket extension numbers
+const (
+	ticketExtensionCustom uint16 = 1234 // not IANA assigned
+)
+
 // TLS signaling cipher suite values
 const (
 	scsvRenegotiation uint16 = 0x00ff
@@ -886,6 +891,10 @@ type ProtocolBugs struct {
 	// ExpectedCustomExtension, if not nil, contains the expected contents
 	// of a custom extension.
 	ExpectedCustomExtension *string
+
+	// CustomTicketExtension, if not empty, contains the contents of an
+	// extension what will be added to NewSessionTicket in TLS 1.3.
+	CustomTicketExtension string
 
 	// NoCloseNotify, if true, causes the close_notify alert to be skipped
 	// on connection shutdown.

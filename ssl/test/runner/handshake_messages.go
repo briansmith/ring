@@ -1825,6 +1825,7 @@ type newSessionTicketMsg struct {
 	keModes            []byte
 	authModes          []byte
 	ticket             []byte
+	customExtension    string
 	hasGREASEExtension bool
 }
 
@@ -1847,11 +1848,11 @@ func (m *newSessionTicketMsg) marshal() []byte {
 	ticket.addBytes(m.ticket)
 
 	if m.version >= VersionTLS13 {
-		// Send no extensions.
-		//
-		// TODO(davidben): Add an option to send a custom extension to
-		// test we correctly ignore unknown ones.
-		body.addU16(0)
+		extensions := body.addU16LengthPrefixed()
+		if len(m.customExtension) > 0 {
+			extensions.addU16(ticketExtensionCustom)
+			extensions.addU16LengthPrefixed().addBytes([]byte(m.customExtension))
+		}
 	}
 
 	m.raw = ticketMsg.finish()
