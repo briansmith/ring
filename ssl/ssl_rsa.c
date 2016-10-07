@@ -65,6 +65,7 @@
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "internal.h"
 
@@ -215,6 +216,19 @@ static int ssl_set_cert(CERT *c, X509 *x) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     EVP_PKEY_free(pkey);
     return 0;
+  }
+
+  /* An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
+   * certificates, so sanity-check the key usage extension. */
+  if (pkey->type == EVP_PKEY_EC) {
+    /* This call populates extension flags (ex_flags). */
+    X509_check_purpose(x, -1, 0);
+    if ((x->ex_flags & EXFLAG_KUSAGE) &&
+        !(x->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+      EVP_PKEY_free(pkey);
+      return 0;
+    }
   }
 
   if (c->privatekey != NULL) {

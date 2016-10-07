@@ -151,7 +151,6 @@
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
-#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -2046,17 +2045,7 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
       mask_k |= SSL_kRSA;
       mask_a |= SSL_aRSA;
     } else if (ssl_is_ecdsa_key_type(type)) {
-      /* An ECC certificate may be usable for ECDSA cipher suites depending on
-       * the key usage extension and on the client's group preferences. */
-      X509 *x = ssl->cert->x509;
-      /* This call populates extension flags (ex_flags). */
-      X509_check_purpose(x, -1, 0);
-      int ecdsa_ok = (x->ex_flags & EXFLAG_KUSAGE)
-                         ? (x->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)
-                         : 1;
-      if (ecdsa_ok && tls1_check_ec_cert(ssl, x)) {
-        mask_a |= SSL_aECDSA;
-      }
+      mask_a |= SSL_aECDSA;
     }
   }
 
