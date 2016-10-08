@@ -635,8 +635,10 @@ int SSL_accept(SSL *ssl) {
 }
 
 static int ssl_do_renegotiate(SSL *ssl) {
-  /* We do not accept renegotiations as a server. */
-  if (ssl->server) {
+  /* We do not accept renegotiations as a server or SSL 3.0. SSL 3.0 will be
+   * removed entirely in the future and requires retaining more data for
+   * renegotiation_info. */
+  if (ssl->server || ssl->version == SSL3_VERSION) {
     goto no_renegotiation;
   }
 
