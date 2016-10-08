@@ -543,11 +543,32 @@ Curves:
 		hs.hello.hasKeyShare = false
 	}
 
-	// Resolve ECDHE and compute the handshake secret.
-	var ecdheSecret []byte
+	firstHelloRetryRequest := true
+
+ResendHelloRetryRequest:
+	var sendHelloRetryRequest bool
+	helloRetryRequest := &helloRetryRequestMsg{
+		vers:                versionToWire(c.vers, c.isDTLS),
+		duplicateExtensions: config.Bugs.DuplicateHelloRetryRequestExtensions,
+	}
+
+	if config.Bugs.AlwaysSendHelloRetryRequest {
+		sendHelloRetryRequest = true
+	}
+
+	if config.Bugs.SendHelloRetryRequestCookie != nil {
+		sendHelloRetryRequest = true
+		helloRetryRequest.cookie = config.Bugs.SendHelloRetryRequestCookie
+	}
+
+	if len(config.Bugs.CustomHelloRetryRequestExtension) > 0 {
+		sendHelloRetryRequest = true
+		helloRetryRequest.customExtension = config.Bugs.CustomHelloRetryRequestExtension
+	}
+
+	var selectedKeyShare *keyShareEntry
 	if hs.hello.hasKeyShare {
 		// Look for the key share corresponding to our selected curve.
-		var selectedKeyShare *keyShareEntry
 		for i := range hs.clientHello.keyShares {
 			if hs.clientHello.keyShares[i].group == selectedCurve {
 				selectedKeyShare = &hs.clientHello.keyShares[i]
@@ -559,67 +580,80 @@ Curves:
 			return errors.New("tls: expected missing key share")
 		}
 
-		sendHelloRetryRequest := selectedKeyShare == nil
-		if config.Bugs.UnnecessaryHelloRetryRequest {
+		if selectedKeyShare == nil {
+			helloRetryRequest.hasSelectedGroup = true
+			helloRetryRequest.selectedGroup = selectedCurve
 			sendHelloRetryRequest = true
 		}
-		if config.Bugs.SkipHelloRetryRequest {
-			sendHelloRetryRequest = false
+	}
+
+	if config.Bugs.SendHelloRetryRequestCurve != 0 {
+		helloRetryRequest.hasSelectedGroup = true
+		helloRetryRequest.selectedGroup = config.Bugs.SendHelloRetryRequestCurve
+		sendHelloRetryRequest = true
+	}
+
+	if config.Bugs.SkipHelloRetryRequest {
+		sendHelloRetryRequest = false
+	}
+
+	if sendHelloRetryRequest {
+		hs.writeServerHash(helloRetryRequest.marshal())
+		c.writeRecord(recordTypeHandshake, helloRetryRequest.marshal())
+		c.flushHandshake()
+
+		// Read new ClientHello.
+		newMsg, err := c.readHandshake()
+		if err != nil {
+			return err
 		}
-		if sendHelloRetryRequest {
-			firstTime := true
-		ResendHelloRetryRequest:
-			// Send HelloRetryRequest.
-			helloRetryRequestMsg := helloRetryRequestMsg{
-				vers:          versionToWire(c.vers, c.isDTLS),
-				cipherSuite:   hs.hello.cipherSuite,
-				selectedGroup: selectedCurve,
-			}
-			if config.Bugs.SendHelloRetryRequestCurve != 0 {
-				helloRetryRequestMsg.selectedGroup = config.Bugs.SendHelloRetryRequestCurve
-			}
-			hs.writeServerHash(helloRetryRequestMsg.marshal())
-			c.writeRecord(recordTypeHandshake, helloRetryRequestMsg.marshal())
-			c.flushHandshake()
+		newClientHello, ok := newMsg.(*clientHelloMsg)
+		if !ok {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(newClientHello, newMsg)
+		}
+		hs.writeClientHash(newClientHello.marshal())
 
-			// Read new ClientHello.
-			newMsg, err := c.readHandshake()
-			if err != nil {
-				return err
-			}
-			newClientHello, ok := newMsg.(*clientHelloMsg)
-			if !ok {
-				c.sendAlert(alertUnexpectedMessage)
-				return unexpectedMessageError(newClientHello, newMsg)
-			}
-			hs.writeClientHash(newClientHello.marshal())
+		// Check that the new ClientHello matches the old ClientHello,
+		// except for relevant modifications.
+		//
+		// TODO(davidben): Make this check more precise.
+		oldClientHelloCopy := *hs.clientHello
+		oldClientHelloCopy.raw = nil
+		oldClientHelloCopy.hasEarlyData = false
+		oldClientHelloCopy.earlyDataContext = nil
+		newClientHelloCopy := *newClientHello
+		newClientHelloCopy.raw = nil
 
-			// Check that the new ClientHello matches the old ClientHello, except for
-			// the addition of the new KeyShareEntry at the end of the list, and
-			// removing the EarlyDataIndication extension (if present).
-			newKeyShares := newClientHello.keyShares
-			if len(newKeyShares) == 0 || newKeyShares[len(newKeyShares)-1].group != selectedCurve {
+		if helloRetryRequest.hasSelectedGroup {
+			newKeyShares := newClientHelloCopy.keyShares
+			if len(newKeyShares) == 0 || newKeyShares[len(newKeyShares)-1].group != helloRetryRequest.selectedGroup {
 				return errors.New("tls: KeyShare from HelloRetryRequest not present in new ClientHello")
 			}
-			oldClientHelloCopy := *hs.clientHello
-			oldClientHelloCopy.raw = nil
-			oldClientHelloCopy.hasEarlyData = false
-			oldClientHelloCopy.earlyDataContext = nil
-			newClientHelloCopy := *newClientHello
-			newClientHelloCopy.raw = nil
-			newClientHelloCopy.keyShares = newKeyShares[:len(newKeyShares)-1]
-			if !oldClientHelloCopy.equal(&newClientHelloCopy) {
-				return errors.New("tls: new ClientHello does not match")
-			}
-
-			if firstTime && config.Bugs.SecondHelloRetryRequest {
-				firstTime = false
-				goto ResendHelloRetryRequest
-			}
-
 			selectedKeyShare = &newKeyShares[len(newKeyShares)-1]
+			newClientHelloCopy.keyShares = newKeyShares[:len(newKeyShares)-1]
 		}
 
+		if len(helloRetryRequest.cookie) > 0 {
+			if !bytes.Equal(newClientHelloCopy.tls13Cookie, helloRetryRequest.cookie) {
+				return errors.New("tls: cookie from HelloRetryRequest not present in new ClientHello")
+			}
+			newClientHelloCopy.tls13Cookie = nil
+		}
+
+		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
+			return errors.New("tls: new ClientHello does not match")
+		}
+
+		if firstHelloRetryRequest && config.Bugs.SecondHelloRetryRequest {
+			firstHelloRetryRequest = false
+			goto ResendHelloRetryRequest
+		}
+	}
+
+	// Resolve ECDHE and compute the handshake secret.
+	var ecdheSecret []byte
+	if hs.hello.hasKeyShare {
 		// Once a curve has been selected and a key share identified,
 		// the server needs to generate a public value and send it in
 		// the ServerHello.

@@ -2030,8 +2030,8 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
   }
 
   uint16_t group_id;
-  if (ssl->s3->hs->retry_group) {
-    /* Append the new key share to the old list. */
+  if (ssl->s3->hs->received_hello_retry_request) {
+    /* Replay the old key shares. */
     if (!CBB_add_bytes(&kse_bytes, ssl->s3->hs->key_share_bytes,
                        ssl->s3->hs->key_share_bytes_len)) {
       return 0;
@@ -2041,6 +2041,12 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
     ssl->s3->hs->key_share_bytes_len = 0;
 
     group_id = ssl->s3->hs->retry_group;
+
+    /* We received a HelloRetryRequest without a new curve, so there is no new
+     * share to append. Leave |ecdh_ctx| as-is. */
+    if (group_id == 0) {
+      return CBB_flush(out);
+    }
   } else {
     /* Add a fake group. See draft-davidben-tls-grease-01. */
     if (ssl->ctx->grease_enabled &&
@@ -2072,7 +2078,7 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
-  if (!ssl->s3->hs->retry_group) {
+  if (!ssl->s3->hs->received_hello_retry_request) {
     /* Save the contents of the extension to repeat it in the second
      * ClientHello. */
     ssl->s3->hs->key_share_bytes_len = CBB_len(&kse_bytes);
@@ -2254,6 +2260,32 @@ static int ext_supported_versions_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
+  return 1;
+}
+
+
+/* Cookie
+ *
+ * https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.2 */
+
+static int ext_cookie_add_clienthello(SSL *ssl, CBB *out) {
+  if (ssl->s3->hs->cookie == NULL) {
+    return 1;
+  }
+
+  CBB contents, cookie;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_cookie) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &cookie) ||
+      !CBB_add_bytes(&cookie, ssl->s3->hs->cookie, ssl->s3->hs->cookie_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  /* The cookie is no longer needed in memory. */
+  OPENSSL_free(ssl->s3->hs->cookie);
+  ssl->s3->hs->cookie = NULL;
+  ssl->s3->hs->cookie_len = 0;
   return 1;
 }
 
@@ -2468,6 +2500,14 @@ static const struct tls_extension kExtensions[] = {
     TLSEXT_TYPE_supported_versions,
     NULL,
     ext_supported_versions_add_clienthello,
+    forbid_parse_serverhello,
+    ignore_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_cookie,
+    NULL,
+    ext_cookie_add_clienthello,
     forbid_parse_serverhello,
     ignore_parse_clienthello,
     dont_add_serverhello,

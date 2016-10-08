@@ -469,11 +469,6 @@ type ProtocolBugs struct {
 	// than the negotiated one.
 	SendCurve CurveID
 
-	// SendHelloRetryRequestCurve, if non-zero, causes the server to send
-	// the specified curve in HelloRetryRequest rather than the negotiated
-	// one.
-	SendHelloRetryRequestCurve CurveID
-
 	// InvalidECDHPoint, if true, causes the ECC points in
 	// ServerKeyExchange or ClientKeyExchange messages to be invalid.
 	InvalidECDHPoint bool
@@ -906,6 +901,10 @@ type ProtocolBugs struct {
 	// extension what will be added to NewSessionTicket in TLS 1.3.
 	CustomTicketExtension string
 
+	// CustomTicketExtension, if not empty, contains the contents of an
+	// extension what will be added to HelloRetryRequest in TLS 1.3.
+	CustomHelloRetryRequestExtension string
+
 	// NoCloseNotify, if true, causes the close_notify alert to be skipped
 	// on connection shutdown.
 	NoCloseNotify bool
@@ -1092,13 +1091,25 @@ type ProtocolBugs struct {
 	// include the KeyShare extension in the EncryptedExtensions block.
 	EncryptedExtensionsWithKeyShare bool
 
-	// UnnecessaryHelloRetryRequest, if true, causes the TLS 1.3 server to
-	// send a HelloRetryRequest regardless of whether it needs to.
-	UnnecessaryHelloRetryRequest bool
+	// AlwaysSendHelloRetryRequest, if true, causes a HelloRetryRequest to
+	// be sent by the server, even if empty.
+	AlwaysSendHelloRetryRequest bool
 
 	// SecondHelloRetryRequest, if true, causes the TLS 1.3 server to send
 	// two HelloRetryRequests instead of one.
 	SecondHelloRetryRequest bool
+
+	// SendHelloRetryRequestCurve, if non-zero, causes the server to send
+	// the specified curve in a HelloRetryRequest.
+	SendHelloRetryRequestCurve CurveID
+
+	// SendHelloRetryRequestCookie, if not nil, contains a cookie to be
+	// sent by the server in HelloRetryRequest.
+	SendHelloRetryRequestCookie []byte
+
+	// DuplicateHelloRetryRequestExtensions, if true, causes all
+	// HelloRetryRequest extensions to be sent twice.
+	DuplicateHelloRetryRequestExtensions bool
 
 	// SendServerHelloVersion, if non-zero, causes the server to send the
 	// specified value in ServerHello version field.

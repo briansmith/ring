@@ -389,34 +389,41 @@ NextCipherSuite:
 	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
 	var secondHelloBytes []byte
 	if haveHelloRetryRequest {
-		var hrrCurveFound bool
+		if len(helloRetryRequest.cookie) > 0 {
+			hello.tls13Cookie = helloRetryRequest.cookie
+		}
+
 		if c.config.Bugs.MisinterpretHelloRetryRequestCurve != 0 {
+			helloRetryRequest.hasSelectedGroup = true
 			helloRetryRequest.selectedGroup = c.config.Bugs.MisinterpretHelloRetryRequestCurve
 		}
-		group := helloRetryRequest.selectedGroup
-		for _, curveID := range hello.supportedCurves {
-			if group == curveID {
-				hrrCurveFound = true
-				break
+		if helloRetryRequest.hasSelectedGroup {
+			var hrrCurveFound bool
+			group := helloRetryRequest.selectedGroup
+			for _, curveID := range hello.supportedCurves {
+				if group == curveID {
+					hrrCurveFound = true
+					break
+				}
 			}
+			if !hrrCurveFound || keyShares[group] != nil {
+				c.sendAlert(alertHandshakeFailure)
+				return errors.New("tls: received invalid HelloRetryRequest")
+			}
+			curve, ok := curveForCurveID(group)
+			if !ok {
+				return errors.New("tls: Unable to get curve requested in HelloRetryRequest")
+			}
+			publicKey, err := curve.offer(c.config.rand())
+			if err != nil {
+				return err
+			}
+			keyShares[group] = curve
+			hello.keyShares = append(hello.keyShares, keyShareEntry{
+				group:       group,
+				keyExchange: publicKey,
+			})
 		}
-		if !hrrCurveFound || keyShares[group] != nil {
-			c.sendAlert(alertHandshakeFailure)
-			return errors.New("tls: received invalid HelloRetryRequest")
-		}
-		curve, ok := curveForCurveID(group)
-		if !ok {
-			return errors.New("tls: Unable to get curve requested in HelloRetryRequest")
-		}
-		publicKey, err := curve.offer(c.config.rand())
-		if err != nil {
-			return err
-		}
-		keyShares[group] = curve
-		hello.keyShares = append(hello.keyShares, keyShareEntry{
-			group:       group,
-			keyExchange: publicKey,
-		})
 
 		if c.config.Bugs.SecondClientHelloMissingKeyShare {
 			hello.hasKeyShares = false
@@ -468,7 +475,7 @@ NextCipherSuite:
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
 	}
 
-	if haveHelloRetryRequest && (helloRetryRequest.cipherSuite != serverHello.cipherSuite || helloRetryRequest.selectedGroup != serverHello.keyShare.group) {
+	if haveHelloRetryRequest && helloRetryRequest.hasSelectedGroup && helloRetryRequest.selectedGroup != serverHello.keyShare.group {
 		c.sendAlert(alertHandshakeFailure)
 		return errors.New("tls: ServerHello parameters did not match HelloRetryRequest")
 	}

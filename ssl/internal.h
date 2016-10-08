@@ -923,9 +923,15 @@ struct ssl_handshake_st {
   /* ecdh_ctx is the current ECDH instance. */
   SSL_ECDH_CTX ecdh_ctx;
 
+  unsigned received_hello_retry_request:1;
+
   /* retry_group is the group ID selected by the server in HelloRetryRequest in
    * TLS 1.3. */
   uint16_t retry_group;
+
+  /* cookie is the value of the cookie received from the server, if any. */
+  uint8_t *cookie;
+  size_t cookie_len;
 
   /* key_share_bytes is the value of the previously sent KeyShare extension by
    * the client in TLS 1.3. */
