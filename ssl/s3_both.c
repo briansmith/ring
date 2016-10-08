@@ -240,12 +240,12 @@ int ssl3_send_finished(SSL *ssl, int a, int b) {
     return ssl->method->write_message(ssl);
   }
 
-  int n = ssl->s3->enc_method->final_finish_mac(ssl, ssl->server,
-                                                ssl->s3->tmp.finish_md);
-  if (n == 0) {
+  uint8_t finished[EVP_MAX_MD_SIZE];
+  size_t finished_len =
+      ssl->s3->enc_method->final_finish_mac(ssl, ssl->server, finished);
+  if (finished_len == 0) {
     return 0;
   }
-  ssl->s3->tmp.finish_md_len = n;
 
   /* Log the master secret, if logging is enabled. */
   if (!ssl_log_secret(ssl, "CLIENT_RANDOM",
@@ -254,21 +254,18 @@ int ssl3_send_finished(SSL *ssl, int a, int b) {
     return 0;
   }
 
-  /* Copy the finished so we can use it for renegotiation checks */
+  /* Copy the finished so we can use it for renegotiation checks. */
   if (ssl->server) {
-    assert(n <= EVP_MAX_MD_SIZE);
-    memcpy(ssl->s3->previous_server_finished, ssl->s3->tmp.finish_md, n);
-    ssl->s3->previous_server_finished_len = n;
+    memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+    ssl->s3->previous_server_finished_len = finished_len;
   } else {
-    assert(n <= EVP_MAX_MD_SIZE);
-    memcpy(ssl->s3->previous_client_finished, ssl->s3->tmp.finish_md, n);
-    ssl->s3->previous_client_finished_len = n;
+    memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+    ssl->s3->previous_client_finished_len = finished_len;
   }
 
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
-      !CBB_add_bytes(&body, ssl->s3->tmp.finish_md,
-                     ssl->s3->tmp.finish_md_len) ||
+      !CBB_add_bytes(&body, finished, finished_len) ||
       !ssl->method->finish_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
@@ -279,21 +276,7 @@ int ssl3_send_finished(SSL *ssl, int a, int b) {
   return ssl->method->write_message(ssl);
 }
 
-/* ssl3_take_mac calculates the Finished MAC for the handshakes messages seen
- * so far. */
-static void ssl3_take_mac(SSL *ssl) {
-  /* If no new cipher setup then return immediately: other functions will set
-   * the appropriate error. */
-  if (ssl->s3->tmp.new_cipher == NULL) {
-    return;
-  }
-
-  ssl->s3->tmp.peer_finish_md_len = ssl->s3->enc_method->final_finish_mac(
-      ssl, !ssl->server, ssl->s3->tmp.peer_finish_md);
-}
-
 int ssl3_get_finished(SSL *ssl) {
-  int al;
   int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_FINISHED,
                                          ssl_dont_hash_message);
   if (ret <= 0) {
@@ -301,44 +284,35 @@ int ssl3_get_finished(SSL *ssl) {
   }
 
   /* Snapshot the finished hash before incorporating the new message. */
-  ssl3_take_mac(ssl);
-  if (!ssl->method->hash_current_message(ssl)) {
-    goto err;
+  uint8_t finished[EVP_MAX_MD_SIZE];
+  size_t finished_len =
+      ssl->s3->enc_method->final_finish_mac(ssl, !ssl->server, finished);
+  if (finished_len == 0 ||
+      !ssl->method->hash_current_message(ssl)) {
+    return -1;
   }
 
-  size_t finished_len = ssl->s3->tmp.peer_finish_md_len;
-
   int finished_ok = ssl->init_num == finished_len &&
-                    CRYPTO_memcmp(ssl->init_msg, ssl->s3->tmp.peer_finish_md,
-                                  finished_len) == 0;
+                    CRYPTO_memcmp(ssl->init_msg, finished, finished_len) == 0;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   finished_ok = 1;
 #endif
   if (!finished_ok) {
-    al = SSL_AD_DECRYPT_ERROR;
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
-    goto f_err;
+    return -1;
   }
 
-  /* Copy the finished so we can use it for renegotiation checks */
+  /* Copy the finished so we can use it for renegotiation checks. */
   if (ssl->server) {
-    assert(finished_len <= EVP_MAX_MD_SIZE);
-    memcpy(ssl->s3->previous_client_finished, ssl->s3->tmp.peer_finish_md,
-           finished_len);
+    memcpy(ssl->s3->previous_client_finished, finished, finished_len);
     ssl->s3->previous_client_finished_len = finished_len;
   } else {
-    assert(finished_len <= EVP_MAX_MD_SIZE);
-    memcpy(ssl->s3->previous_server_finished, ssl->s3->tmp.peer_finish_md,
-           finished_len);
+    memcpy(ssl->s3->previous_server_finished, finished, finished_len);
     ssl->s3->previous_server_finished_len = finished_len;
   }
 
   return 1;
-
-f_err:
-  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-err:
-  return 0;
 }
 
 int ssl3_send_change_cipher_spec(SSL *ssl) {

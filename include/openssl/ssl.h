@@ -4323,11 +4323,6 @@ typedef struct ssl3_state_st {
    * TODO(davidben): Move everything not needed after the handshake completes to
    * |hs| and remove this. */
   struct {
-    uint8_t finish_md[EVP_MAX_MD_SIZE];
-    uint8_t finish_md_len;
-    uint8_t peer_finish_md[EVP_MAX_MD_SIZE];
-    uint8_t peer_finish_md_len;
-
     int message_type;
 
     /* used to hold the new cipher we are going to use */
