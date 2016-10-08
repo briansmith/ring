@@ -919,7 +919,7 @@ struct ssl_handshake_st {
     uint16_t received;
   } custom_extensions;
 
-  /* ecdh_ctx is the active client ECDH offer in TLS 1.3. */
+  /* ecdh_ctx is the current ECDH instance. */
   SSL_ECDH_CTX ecdh_ctx;
 
   /* retry_group is the group ID selected by the server in HelloRetryRequest in
@@ -948,6 +948,15 @@ struct ssl_handshake_st {
    * advertise this extension to the client. */
   uint16_t *peer_supported_group_list;
   size_t peer_supported_group_list_len;
+
+  /* peer_key is the peer's ECDH key for a TLS 1.2 client. */
+  uint8_t *peer_key;
+  size_t peer_key_len;
+
+  /* server_params, in TLS 1.2, stores the ServerKeyExchange parameters to be
+   * signed while the signature is being computed. */
+  uint8_t *server_params;
+  size_t server_params_len;
 
   /* session_tickets_sent, in TLS 1.3, is the number of tickets the server has
    * sent. */

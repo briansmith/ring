@@ -4355,18 +4355,6 @@ typedef struct ssl3_state_st {
     /* peer_signature_algorithm is the signature algorithm used to authenticate
      * the peer, or zero if not applicable. */
     uint16_t peer_signature_algorithm;
-
-    /* ecdh_ctx is the current ECDH instance. */
-    SSL_ECDH_CTX ecdh_ctx;
-
-    /* peer_key is the peer's ECDH key. */
-    uint8_t *peer_key;
-    uint16_t peer_key_len;
-
-    /* server_params stores the ServerKeyExchange parameters to be signed while
-     * the signature is being computed. */
-    uint8_t *server_params;
-    uint32_t server_params_len;
   } tmp;
 
   /* new_session is the new mutable session being established by the current
