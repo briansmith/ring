@@ -2931,9 +2931,7 @@ func addClientAuthTests() {
 			flags: []string{
 				"-expect-verify-result",
 			},
-			// TODO(davidben): Switch this to true when TLS 1.3
-			// supports session resumption.
-			resumeSession: ver.version < VersionTLS13,
+			resumeSession: true,
 		})
 
 		testCases = append(testCases, testCase{
@@ -2949,9 +2947,7 @@ func addClientAuthTests() {
 				"-expect-verify-result",
 				"-verify-peer",
 			},
-			// TODO(davidben): Switch this to true when TLS 1.3
-			// supports session resumption.
-			resumeSession: ver.version < VersionTLS13,
+			resumeSession: true,
 		})
 
 		testCases = append(testCases, testCase{
