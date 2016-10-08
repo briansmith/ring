@@ -2018,7 +2018,7 @@ static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
-  if (max_version < TLS1_3_VERSION || !ssl_any_ec_cipher_suites_enabled(ssl)) {
+  if (max_version < TLS1_3_VERSION) {
     return 1;
   }
 
