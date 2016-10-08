@@ -3471,14 +3471,15 @@ OPENSSL_EXPORT int SSL_want(const SSL *ssl);
 
  /* SSL_get_finished writes up to |count| bytes of the Finished message sent by
   * |ssl| to |buf|. It returns the total untruncated length or zero if none has
-  * been sent yet.
+  * been sent yet. At SSL 3.0 or TLS 1.3 and later, it returns zero.
   *
   * Use |SSL_get_tls_unique| instead. */
 OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 
  /* SSL_get_peer_finished writes up to |count| bytes of the Finished message
   * received from |ssl|'s peer to |buf|. It returns the total untruncated length
-  * or zero if none has been received yet.
+  * or zero if none has been received yet. At SSL 3.0 or TLS 1.3 and later, it
+  * returns zero.
   *
   * Use |SSL_get_tls_unique| instead. */
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,

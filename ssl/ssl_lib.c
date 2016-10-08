@@ -1064,6 +1064,13 @@ STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
 
 int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
                        size_t max_out) {
+  /* tls-unique is not defined for SSL 3.0 or TLS 1.3. */
+  if (!ssl->s3->initial_handshake_complete ||
+      ssl3_protocol_version(ssl) < TLS1_VERSION ||
+      ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    goto err;
+  }
+
   /* The tls-unique value is the first Finished message in the handshake, which
    * is the client's in a full handshake and the server's for a resumption. See
    * https://tools.ietf.org/html/rfc5929#section-3.1. */
@@ -1076,11 +1083,6 @@ int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
     }
     finished = ssl->s3->previous_server_finished;
     finished_len = ssl->s3->previous_server_finished_len;
-  }
-
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl->version < TLS1_VERSION) {
-    goto err;
   }
 
   *out_len = finished_len;
@@ -1232,30 +1234,32 @@ int SSL_set_rfd(SSL *ssl, int fd) {
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
-  size_t ret = 0;
-
-  if (ssl->s3 != NULL) {
-    ret = ssl->s3->tmp.finish_md_len;
-    if (count > ret) {
-      count = ret;
-    }
-    memcpy(buf, ssl->s3->tmp.finish_md, count);
+  if (!ssl->s3->initial_handshake_complete ||
+      ssl3_protocol_version(ssl) < TLS1_VERSION ||
+      ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    return 0;
   }
 
+  size_t ret = ssl->s3->tmp.finish_md_len;
+  if (count > ret) {
+    count = ret;
+  }
+  memcpy(buf, ssl->s3->tmp.finish_md, count);
   return ret;
 }
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
-  size_t ret = 0;
-
-  if (ssl->s3 != NULL) {
-    ret = ssl->s3->tmp.peer_finish_md_len;
-    if (count > ret) {
-      count = ret;
-    }
-    memcpy(buf, ssl->s3->tmp.peer_finish_md, count);
+  if (!ssl->s3->initial_handshake_complete ||
+      ssl3_protocol_version(ssl) < TLS1_VERSION ||
+      ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    return 0;
   }
 
+  size_t ret = ssl->s3->tmp.peer_finish_md_len;
+  if (count > ret) {
+    count = ret;
+  }
+  memcpy(buf, ssl->s3->tmp.peer_finish_md, count);
   return ret;
 }
 
