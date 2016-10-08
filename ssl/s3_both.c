@@ -254,13 +254,21 @@ int ssl3_send_finished(SSL *ssl, int a, int b) {
     return 0;
   }
 
-  /* Copy the finished so we can use it for renegotiation checks. */
-  if (ssl->server) {
-    memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-    ssl->s3->previous_server_finished_len = finished_len;
-  } else {
-    memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-    ssl->s3->previous_client_finished_len = finished_len;
+  /* Copy the Finished so we can use it for renegotiation checks. */
+  if (ssl->version != SSL3_VERSION) {
+    if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
+        finished_len > sizeof(ssl->s3->previous_server_finished)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return -1;
+    }
+
+    if (ssl->server) {
+      memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+      ssl->s3->previous_server_finished_len = finished_len;
+    } else {
+      memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+      ssl->s3->previous_client_finished_len = finished_len;
+    }
   }
 
   CBB cbb, body;
@@ -303,13 +311,21 @@ int ssl3_get_finished(SSL *ssl) {
     return -1;
   }
 
-  /* Copy the finished so we can use it for renegotiation checks. */
-  if (ssl->server) {
-    memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-    ssl->s3->previous_client_finished_len = finished_len;
-  } else {
-    memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-    ssl->s3->previous_server_finished_len = finished_len;
+  /* Copy the Finished so we can use it for renegotiation checks. */
+  if (ssl->version != SSL3_VERSION) {
+    if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
+        finished_len > sizeof(ssl->s3->previous_server_finished)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return -1;
+    }
+
+    if (ssl->server) {
+      memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+      ssl->s3->previous_client_finished_len = finished_len;
+    } else {
+      memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+      ssl->s3->previous_server_finished_len = finished_len;
+    }
   }
 
   return 1;

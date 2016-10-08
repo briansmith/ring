@@ -4366,9 +4366,9 @@ typedef struct ssl3_state_st {
   unsigned session_reused:1;
 
   /* Connection binding to prevent renegotiation attacks */
-  uint8_t previous_client_finished[EVP_MAX_MD_SIZE];
+  uint8_t previous_client_finished[12];
   uint8_t previous_client_finished_len;
-  uint8_t previous_server_finished[EVP_MAX_MD_SIZE];
+  uint8_t previous_server_finished[12];
   uint8_t previous_server_finished_len;
   int send_connection_binding;
 

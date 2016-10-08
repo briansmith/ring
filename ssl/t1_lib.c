@@ -720,6 +720,9 @@ static int ext_ri_add_clienthello(SSL *ssl, CBB *out) {
     return 1;
   }
 
+  assert(ssl->s3->initial_handshake_complete ==
+         (ssl->s3->previous_client_finished_len != 0));
+
   CBB contents, prev_finished;
   if (!CBB_add_u16(out, TLSEXT_TYPE_renegotiate) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
@@ -765,6 +768,10 @@ static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   /* Check for logic errors */
   assert(!expected_len || ssl->s3->previous_client_finished_len);
   assert(!expected_len || ssl->s3->previous_server_finished_len);
+  assert(ssl->s3->initial_handshake_complete ==
+         (ssl->s3->previous_client_finished_len != 0));
+  assert(ssl->s3->initial_handshake_complete ==
+         (ssl->s3->previous_server_finished_len != 0));
 
   /* Parse out the extension contents. */
   CBS renegotiated_connection;
@@ -823,10 +830,9 @@ static int ext_ri_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  /* Check that the extension matches */
-  if (!CBS_mem_equal(&renegotiated_connection,
-                     ssl->s3->previous_client_finished,
-                     ssl->s3->previous_client_finished_len)) {
+  /* Check that the extension matches. We do not support renegotiation as a
+   * server, so this must be empty. */
+  if (CBS_len(&renegotiated_connection) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
@@ -838,19 +844,17 @@ static int ext_ri_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 }
 
 static int ext_ri_add_serverhello(SSL *ssl, CBB *out) {
+  /* Renegotiation isn't supported as a server so this function should never be
+   * called after the initial handshake. */
+  assert(!ssl->s3->initial_handshake_complete);
+
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
     return 1;
   }
 
-  CBB contents, prev_finished;
   if (!CBB_add_u16(out, TLSEXT_TYPE_renegotiate) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u8_length_prefixed(&contents, &prev_finished) ||
-      !CBB_add_bytes(&prev_finished, ssl->s3->previous_client_finished,
-                     ssl->s3->previous_client_finished_len) ||
-      !CBB_add_bytes(&prev_finished, ssl->s3->previous_server_finished,
-                     ssl->s3->previous_server_finished_len) ||
-      !CBB_flush(out)) {
+      !CBB_add_u16(out, 1 /* length */) ||
+      !CBB_add_u8(out, 0 /* empty renegotiation info */)) {
     return 0;
   }
 
