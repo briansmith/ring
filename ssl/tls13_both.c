@@ -178,7 +178,7 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
   if (sk_X509_num(chain) == 0) {
     if (!allow_anonymous) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_CERTIFICATE_REQUIRED);
       goto err;
     }
 

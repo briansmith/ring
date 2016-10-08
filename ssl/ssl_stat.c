@@ -476,6 +476,9 @@ const char *SSL_alert_desc_string_long(int value) {
     case TLS1_AD_INTERNAL_ERROR:
       return "internal error";
 
+    case SSL3_AD_INAPPROPRIATE_FALLBACK:
+      return "inappropriate fallback";
+
     case TLS1_AD_USER_CANCELLED:
       return "user canceled";
 
@@ -500,8 +503,8 @@ const char *SSL_alert_desc_string_long(int value) {
     case TLS1_AD_UNKNOWN_PSK_IDENTITY:
       return "unknown PSK identity";
 
-    case SSL3_AD_INAPPROPRIATE_FALLBACK:
-      return "inappropriate fallback";
+    case TLS1_AD_CERTIFICATE_REQUIRED:
+      return "certificate required";
 
     default:
       return "unknown";

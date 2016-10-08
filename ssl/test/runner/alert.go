@@ -43,6 +43,7 @@ const (
 	alertUnsupportedExtension   alert = 110
 	alertUnrecognizedName       alert = 112
 	alertUnknownPSKIdentity     alert = 115
+	alertCertificateRequired    alert = 116
 )
 
 var alertText = map[alert]string{
@@ -73,6 +74,7 @@ var alertText = map[alert]string{
 	alertUnsupportedExtension:   "unsupported extension",
 	alertUnrecognizedName:       "unrecognized name",
 	alertUnknownPSKIdentity:     "unknown PSK identity",
+	alertCertificateRequired:    "certificate required",
 }
 
 func (e alert) String() string {

@@ -830,7 +830,7 @@ Curves:
 			// The client didn't actually send a certificate
 			switch config.ClientAuth {
 			case RequireAnyClientCert, RequireAndVerifyClientCert:
-				c.sendAlert(alertBadCertificate)
+				c.sendAlert(alertCertificateRequired)
 				return errors.New("tls: client didn't provide a certificate")
 			}
 		}

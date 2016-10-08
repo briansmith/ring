@@ -2950,6 +2950,12 @@ func addClientAuthTests() {
 			resumeSession: true,
 		})
 
+		certificateRequired := "remote error: certificate required"
+		if ver.version < VersionTLS13 {
+			// Prior to TLS 1.3, the generic handshake_failure alert
+			// was used.
+			certificateRequired = "remote error: handshake failure"
+		}
 		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     "RequireAnyClientCertificate-" + ver.name,
@@ -2957,9 +2963,10 @@ func addClientAuthTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 			},
-			flags:         []string{"-require-any-client-certificate"},
-			shouldFail:    true,
-			expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
+			flags:              []string{"-require-any-client-certificate"},
+			shouldFail:         true,
+			expectedError:      ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
+			expectedLocalError: certificateRequired,
 		})
 
 		if ver.version != VersionSSL30 {
