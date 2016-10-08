@@ -76,7 +76,7 @@
 
 
 int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
-                     EC_KEY *priv_key,
+                     const EC_KEY *priv_key,
                      void *(*kdf)(const void *in, size_t inlen, void *out,
                                   size_t *outlen)) {
   const BIGNUM *const priv = EC_KEY_get0_private_key(priv_key);

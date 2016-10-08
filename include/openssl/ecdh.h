@@ -85,10 +85,9 @@ extern "C" {
  * return value. Otherwise, as many bytes of the shared key as will fit are
  * copied directly to, at most, |outlen| bytes at |out|. It returns the number
  * of bytes written to |out|, or -1 on error. */
-OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
-                                    const EC_POINT *pub_key, EC_KEY *priv_key,
-                                    void *(*kdf)(const void *in, size_t inlen,
-                                                 void *out, size_t *outlen));
+OPENSSL_EXPORT int ECDH_compute_key(
+    void *out, size_t outlen, const EC_POINT *pub_key, const EC_KEY *priv_key,
+    void *(*kdf)(const void *in, size_t inlen, void *out, size_t *outlen));
 
 
 #if defined(__cplusplus)
