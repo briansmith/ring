@@ -137,6 +137,7 @@ pub mod hkdf;
 pub mod hmac;
 mod init;
 pub mod pbkdf2;
+mod poly1305;
 pub mod rand;
 
 mod limb;

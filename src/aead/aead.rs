@@ -28,7 +28,7 @@
 mod chacha20_poly1305;
 mod aes_gcm;
 
-use {constant_time, error, init, polyfill};
+use {constant_time, error, init, poly1305, polyfill};
 
 pub use self::chacha20_poly1305::CHACHA20_POLY1305;
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -271,7 +271,7 @@ impl Algorithm {
 pub const MAX_OVERHEAD_LEN: usize = TAG_LEN;
 
 // All the AEADs we support use 128-bit tags.
-const TAG_LEN: usize = 128 / 8;
+const TAG_LEN: usize = poly1305::TAG_LEN;
 
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;

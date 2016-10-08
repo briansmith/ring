@@ -1,6 +1,4 @@
 // Copyright 2015-2016 Brian Smith.
-// Portions Copyright (c) 2015, Google Inc.
-// Portions Copyright (c) 2016, Google Inc.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -14,11 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {aead, c, chacha, error, polyfill};
-
-const POLY1305_STATE_LEN: usize = 256;
-const POLY1305_KEY_LEN: usize = 32;
-
+use {aead, chacha, error, poly1305, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -75,177 +69,49 @@ fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
         chacha::KEY_LEN_IN_BYTES / 4)
 }
 
-type UpdateFn = fn(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
-                   ciphertext: &[u8]);
-
-fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN],
-                 chacha20_key: &chacha::Key, counter: &chacha::Counter,
-                 ad: &[u8], ciphertext: &[u8]) {
+fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,
+                 counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8]) {
     debug_assert_eq!(counter[0], 0);
-    let mut poly1305_key = [0u8; POLY1305_KEY_LEN];
+    let mut poly1305_key = [0u8; poly1305::KEY_LEN];
     chacha::chacha20_xor_in_place(chacha20_key, counter, &mut poly1305_key);
-    let mut ctx = [0u8; POLY1305_STATE_LEN];
-    poly1305_init(&mut ctx, &poly1305_key);
+    let mut ctx = poly1305::SigningContext::with_key(&poly1305_key);
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
     poly1305_update_length(&mut ctx, ad.len());
     poly1305_update_length(&mut ctx, ciphertext.len());
-    poly1305_finish(&mut ctx, tag_out);
+    ctx.sign(tag_out);
 }
 
 #[inline]
-fn poly1305_update_padded_16(state: &mut [u8; POLY1305_STATE_LEN],
-                                data: &[u8]) {
-    poly1305_update(state, data);
+fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
+    ctx.update(data);
     if data.len() % 16 != 0 {
         static PADDING: [u8; 16] = [0u8; 16];
-        poly1305_update(state, &PADDING[..PADDING.len() - (data.len() % 16)])
+        ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
     }
 }
 
 /// Updates the Poly1305 context |ctx| with the 64-bit little-endian encoded
 /// length value |len|.
 #[inline]
-fn poly1305_update_length(ctx: &mut [u8; POLY1305_STATE_LEN], len: usize) {
+fn poly1305_update_length(ctx: &mut poly1305::SigningContext, len: usize) {
     let mut j = len;
     let mut length_bytes = [0u8; 8];
     for b in &mut length_bytes {
         *b = j as u8;
         j >>= 8;
     }
-    poly1305_update(ctx, &length_bytes);
+    ctx.update(&length_bytes);
 }
 
-
-#[inline(always)]
-fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
-                 key: &[u8; POLY1305_KEY_LEN]) {
-    unsafe {
-        GFp_poly1305_init(state, key)
-    }
-}
-
-// XXX: The BoringSSL code says that `poly1305_finish` requires a
-// 16-byte-aligned output, but we're not ensuring 16-byte alignment because we
-// can't in Rust yet. Where does this alignment requirement come from?
-// TODO: address this.
-#[inline(always)]
-fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
-                   tag_out: &mut [u8; aead::TAG_LEN]) {
-    unsafe {
-        GFp_poly1305_finish(state, tag_out)
-    }
-}
-
-#[inline(always)]
-fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
-    unsafe {
-        GFp_poly1305_update(state, in_.as_ptr(), in_.len())
-    }
-}
-
-extern {
-    fn GFp_poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
-                         key: &[u8; POLY1305_KEY_LEN]);
-    fn GFp_poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN],
-                           mac: &mut [u8; aead::TAG_LEN]);
-    fn GFp_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
-                           in_: *const u8, in_len: c::size_t);
-}
 
 #[cfg(test)]
 mod tests {
-    use {aead, c, error, test};
-    use core;
-    use super::{POLY1305_STATE_LEN, POLY1305_KEY_LEN, poly1305_init,
-                poly1305_finish, poly1305_update};
+    use aead;
+
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
             "src/aead/chacha20_poly1305_tests.txt");
-    }
-
-    #[test]
-    pub fn test_poly1305_state_len() {
-        assert_eq!((POLY1305_STATE_LEN + 255) / 256,
-                   (unsafe { GFp_POLY1305_STATE_LEN } + 255) / 256);
-    }
-
-    // Adapted from BoringSSL's crypto/poly1305/poly1305_test.cc.
-    #[test]
-    pub fn test_poly1305() {
-        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
-            assert_eq!(section, "");
-            let key = test_case.consume_bytes("Key");
-            let key = slice_as_array_ref!(&key, POLY1305_KEY_LEN).unwrap();
-            let input = test_case.consume_bytes("Input");
-            let expected_mac = test_case.consume_bytes("MAC");
-            let expected_mac = slice_as_array_ref!(&expected_mac,
-                                                   aead::TAG_LEN).unwrap();
-
-            // Test single-shot operation.
-            let mut state = [0u8; POLY1305_STATE_LEN];
-            let mut actual_mac = [0u8; aead::TAG_LEN];
-            poly1305_init(&mut state, &key);
-            poly1305_update(&mut state, &input);
-            poly1305_finish(&mut state, &mut actual_mac);
-            assert_eq!(expected_mac[..], actual_mac[..]);
-
-            // Test streaming byte-by-byte.
-            let mut state = [0u8; POLY1305_STATE_LEN];
-            let mut actual_mac = [0u8; aead::TAG_LEN];
-            poly1305_init(&mut state, &key);
-            for chunk in input.chunks(1) {
-                poly1305_update(&mut state, chunk);
-            }
-            poly1305_finish(&mut state, &mut actual_mac);
-            assert_eq!(&expected_mac[..], &actual_mac[..]);
-
-            try!(test_poly1305_simd(0, key, &input, expected_mac));
-            try!(test_poly1305_simd(16, key, &input, expected_mac));
-            try!(test_poly1305_simd(32, key, &input, expected_mac));
-            try!(test_poly1305_simd(48, key, &input, expected_mac));
-
-            Ok(())
-        })
-    }
-
-    fn test_poly1305_simd(excess: usize, key: &[u8; POLY1305_KEY_LEN],
-                          input: &[u8], expected_mac: &[u8; aead::TAG_LEN])
-                          -> Result<(), error::Unspecified> {
-        let mut state = [0u8; POLY1305_STATE_LEN];
-        poly1305_init(&mut state, &key);
-
-        // Some implementations begin in non-SIMD mode and upgrade on demand.
-        // Stress the upgrade path.
-        let init = core::cmp::min(input.len(), 16);
-        poly1305_update(&mut state, &input[..init]);
-
-        let long_chunk_len = 128 + excess;
-        for chunk in input[init..].chunks(long_chunk_len + excess) {
-            if chunk.len() > long_chunk_len {
-                let (long, short) = chunk.split_at(long_chunk_len);
-
-                // Feed 128 + |excess| bytes to test SIMD mode.
-                poly1305_update(&mut state, long);
-
-                // Feed |excess| bytes to ensure SIMD mode can handle short
-                // inputs.
-                poly1305_update(&mut state, short);
-            } else {
-                // Handle the last chunk.
-                poly1305_update(&mut state, chunk);
-            }
-        }
-
-        let mut actual_mac = [0u8; aead::TAG_LEN];
-        poly1305_finish(&mut state, &mut actual_mac);
-        assert_eq!(expected_mac, &actual_mac, "SIMD pattern failed.");
-
-        Ok(())
-    }
-
-    extern {
-        static GFp_POLY1305_STATE_LEN: c::size_t;
     }
 }
