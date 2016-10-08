@@ -16,7 +16,10 @@
 use {c, polyfill};
 use core;
 use core::num::Wrapping;
-use super::MAX_CHAINING_LEN;
+
+// XXX: This duplicates super::State. TODO: Remove the duplication, but be wary
+// of https://github.com/rust-lang/rust/issues/30905.
+type State = [u64; super::MAX_CHAINING_LEN / 8];
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
@@ -38,15 +41,14 @@ fn maj(x: W32, y: W32, z: W32) -> W32 { (x & y) | (x & z) | (y & z) }
 /// This implementation therefore favors size and simplicity over speed.
 /// Unlike SHA-256, SHA-384, and SHA-512,
 /// there is no assembly language implementation.
-pub unsafe extern fn block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
+pub unsafe extern fn block_data_order(state: &mut State,
                                       data: *const u8, num: c::size_t) {
     let data = data as *const [u8; BLOCK_LEN];
     let blocks = core::slice::from_raw_parts(data, num);
     block_data_order_safe(state, blocks)
 }
 
-fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                         blocks: &[[u8; BLOCK_LEN]]) {
+fn block_data_order_safe(state: &mut State, blocks: &[[u8; BLOCK_LEN]]) {
     let state = polyfill::slice::u64_as_u32_mut(state);
     let state = polyfill::slice::as_wrapping_mut(state);
     let state = &mut state[..CHAINING_WORDS];

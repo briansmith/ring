@@ -58,7 +58,7 @@ mod sha1;
 /// ```
 pub struct Context {
     // We use u64 to try to ensure 64-bit alignment/padding.
-    state: [u64; MAX_CHAINING_LEN / 8],
+    state: State,
 
     // Note that SHA-512 has a 128-bit input bit counter, but this
     // implementation only supports up to 2^64-1 input bits for all algorithms,
@@ -242,7 +242,7 @@ pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
 /// Use `as_ref` to get the value as a `&[u8]`.
 #[derive(Clone, Copy)]
 pub struct Digest {
-    value: [u64; MAX_OUTPUT_LEN / 8],
+    value: Output,
     algorithm: &'static Algorithm,
 }
 
@@ -290,12 +290,11 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern fn(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                                       data: *const u8, num: c::size_t),
-    format_output: fn(input: &[u64; MAX_CHAINING_LEN / 8])
-                      -> [u64; MAX_OUTPUT_LEN / 8],
+    block_data_order: unsafe extern fn(state: &mut State, data: *const u8,
+                                       num: c::size_t),
+    format_output: fn(input: &State) -> Output,
 
-    initial_state: [u64; MAX_CHAINING_LEN / 8],
+    initial_state: State,
 }
 
 impl core::fmt::Debug for Algorithm {
@@ -395,6 +394,9 @@ pub static SHA512: Algorithm = Algorithm {
 #[inline(always)]
 fn widen_u64(x: usize) -> u64 { x as u64 }
 
+type State = [u64; MAX_CHAINING_LEN / 8];
+type Output = [u64; MAX_OUTPUT_LEN / 8];
+
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in
 /// this module.
 pub const MAX_BLOCK_LEN: usize = 1024 / 8;
@@ -407,21 +409,19 @@ pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
-fn sha256_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
-                        -> [u64; MAX_OUTPUT_LEN / 8] {
-    let in32 = &polyfill::slice::u64_as_u32(input)[..8];
-    [u32x2!(in32[0].to_be(), in32[1].to_be()),
-     u32x2!(in32[2].to_be(), in32[3].to_be()),
-     u32x2!(in32[4].to_be(), in32[5].to_be()),
-     u32x2!(in32[6].to_be(), in32[7].to_be()),
+fn sha256_format_output(input: &State) -> Output {
+    let input = &polyfill::slice::u64_as_u32(input)[..8];
+    [u32x2!(input[0].to_be(), input[1].to_be()),
+     u32x2!(input[2].to_be(), input[3].to_be()),
+     u32x2!(input[4].to_be(), input[5].to_be()),
+     u32x2!(input[6].to_be(), input[7].to_be()),
      0,
      0,
      0,
      0]
 }
 
-fn sha512_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
-                        -> [u64; MAX_OUTPUT_LEN / 8] {
+fn sha512_format_output(input: &State) -> Output {
     [input[0].to_be(),
      input[1].to_be(),
      input[2].to_be(),
@@ -463,10 +463,10 @@ pub extern fn GFp_SHA512_4(out: *mut u8, out_len: c::size_t,
 }
 
 extern {
-    fn GFp_sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                                   data: *const u8, num: c::size_t);
-    fn GFp_sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
-                                   data: *const u8, num: c::size_t);
+    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8,
+                                   num: c::size_t);
+    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8,
+                                   num: c::size_t);
 }
 
 #[cfg(test)]
