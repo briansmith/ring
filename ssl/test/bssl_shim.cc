@@ -33,7 +33,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <ws2tcpip.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
-#pragma comment(lib, "Ws2_32.lib")
+OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #endif
 
 #include <assert.h>

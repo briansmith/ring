@@ -40,7 +40,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
 typedef int ssize_t;
-#pragma comment(lib, "Ws2_32.lib")
+OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #endif
 
 #include <openssl/err.h>
