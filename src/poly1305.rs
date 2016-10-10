@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use c;
+use {c, constant_time, error};
 
 pub struct SigningContext {
     state: State,
@@ -42,6 +42,19 @@ impl SigningContext {
     pub fn sign(mut self, tag_out: &mut Tag) {
         unsafe { GFp_poly1305_finish(&mut self.state, tag_out); }
     }
+}
+
+pub fn verify(key: &Key, msg: &[u8], tag: &Tag)
+              -> Result<(), error::Unspecified> {
+    let mut calculated_tag = [0u8; TAG_LEN];
+    sign(key, msg, &mut calculated_tag);
+    constant_time::verify_slices_are_equal(&calculated_tag[..], tag)
+}
+
+pub fn sign(key: &Key, msg: &[u8], tag: &mut Tag) {
+    let mut ctx = SigningContext::with_key(key);
+    ctx.update(msg);
+    ctx.sign(tag)
 }
 
 /// A Poly1305 key.
@@ -97,6 +110,12 @@ mod tests {
                 ctx.sign(&mut actual_mac);
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
+            {
+                let mut actual_mac = [0; TAG_LEN];
+                sign(key, &input, &mut actual_mac);
+                assert_eq!(&expected_mac[..], &actual_mac[..]);
+            }
+            assert_eq!(Ok(()), verify(key, &input, &expected_mac));
 
             // Test streaming byte-by-byte.
             {

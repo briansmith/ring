@@ -45,6 +45,7 @@ include = [
     "src/aead/aes_gcm.rs",
     "src/aead/aes_tests.txt",
     "src/aead/chacha20_poly1305.rs",
+    "src/aead/chacha20_poly1305_openssh.rs",
     "src/aead/chacha20_poly1305_tests.txt",
     "src/agreement.rs",
     "src/bssl.rs",

@@ -19,6 +19,14 @@ use polyfill::slice::u32_from_le_u8;
 
 pub type Key = [u32; KEY_LEN_IN_BYTES / 4];
 
+pub fn key_from_bytes(key_bytes: &[u8; KEY_LEN_IN_BYTES]) -> Key {
+    let mut key = [0u32; KEY_LEN_IN_BYTES / 4];
+    for (key_u32, key_u8_4) in key.iter_mut().zip(key_bytes.chunks(4)) {
+        *key_u32 = u32_from_le_u8(slice_as_array_ref!(key_u8_4, 4).unwrap());
+    }
+    key
+}
+
 #[inline]
 pub fn chacha20_xor_in_place(key: &Key, counter: &Counter, in_out: &mut [u8]) {
     chacha20_xor_inner(key, counter, in_out.as_ptr(), in_out.len(),
@@ -78,7 +86,7 @@ pub const NONCE_LEN: usize = 12; /* 96 bits */
 
 #[cfg(test)]
 mod tests {
-    use {polyfill, test};
+    use test;
     use super::*;
     use super::GFp_ChaCha20_ctr32;
 
@@ -97,13 +105,9 @@ mod tests {
         test::from_file("src/chacha_tests.txt", |section, test_case| {
             assert_eq!(section, "");
 
-            let key_bytes = test_case.consume_bytes("Key");
-            let mut key = [0u32; KEY_LEN_IN_BYTES / 4];
-            for ki in 0..(KEY_LEN_IN_BYTES / 4) {
-                let kb =
-                    slice_as_array_ref!(&key_bytes[ki * 4..][..4], 4).unwrap();
-                key[ki] = polyfill::slice::u32_from_le_u8(kb);
-            }
+            let key = test_case.consume_bytes("Key");
+            let key = try!(slice_as_array_ref!(&key, KEY_LEN_IN_BYTES));
+            let key = key_from_bytes(key);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce_bytes = test_case.consume_bytes("Nonce");

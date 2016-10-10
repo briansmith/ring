@@ -25,6 +25,8 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
+pub mod chacha20_poly1305_openssh;
+
 mod chacha20_poly1305;
 mod aes_gcm;
 
