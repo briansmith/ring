@@ -60,6 +60,11 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#if defined(__MINGW32__)
+/* stdio.h is needed on MinGW for __MINGW_PRINTF_FORMAT. */
+#include <stdio.h>
+#endif
+
 #include <openssl/opensslconf.h>
 
 #if defined(BORINGSSL_PREFIX)
@@ -158,8 +163,17 @@ extern "C" {
 
 
 #if defined(__GNUC__)
+/* MinGW has two different printf implementations. Ensure the format macro
+ * matches the selected implementation. See
+ * https://sourceforge.net/p/mingw-w64/wiki2/gnu%20printf/. */
+#if defined(__MINGW_PRINTF_FORMAT)
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
-        __attribute__((__format__(__printf__, string_index, first_to_check)))
+  __attribute__(                                                 \
+      (__format__(__MINGW_PRINTF_FORMAT, string_index, first_to_check)))
+#else
+#define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
+  __attribute__((__format__(__printf__, string_index, first_to_check)))
+#endif
 #else
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
 #endif
