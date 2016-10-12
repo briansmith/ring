@@ -14,8 +14,7 @@
 
 #include <openssl/evp.h>
 
-extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
-  const uint8_t *bufp = buf;
-  EVP_PKEY_free(d2i_AutoPrivateKey(NULL, &bufp, len));
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+  EVP_PKEY_free(d2i_AutoPrivateKey(NULL, &buf, len));
   return 0;
 }

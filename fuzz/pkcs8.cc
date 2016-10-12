@@ -16,7 +16,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 
-extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   CBS cbs;
   CBS_init(&cbs, buf, len);
   EVP_PKEY *pkey = EVP_parse_private_key(&cbs);

@@ -448,7 +448,7 @@ static const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
     },
 };
 
-extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
 
   // If the number of functions exceeds this limit then the code needs to do
