@@ -43,6 +43,10 @@ Note in particular that if you are cross-compiling an x86 build on a 64-bit
 version of Linux, then you need to have the proper gcc-multilibs and
 g++-multilibs packages or equivalent installed.
 
+On some platforms, you may need to specify `MAKE` variable for pointing to
+correct GNU make command. By default, *ring* uses `gmake` on BSD systems, and
+`make` on other platforms including Linux and Mac OS X.
+
 
 
 This Sucks. What are you doing to fix it?

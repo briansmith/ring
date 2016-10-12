@@ -113,7 +113,17 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
         ];
-        run_command_with_args(&"make", &args);
+        // If $MAKE is given, use it as the make command. If not, use `gmake` for
+        // BSD systems and `make` for other systems.
+        let make = env::var_os("MAKE").unwrap_or_else(|| {
+            let m = if target_triple[2].contains("bsd") {
+                "gmake"
+            } else {
+                "make"
+            };
+            std::ffi::OsString::from(m)
+        });
+        run_command_with_args(&make, &args);
     } else {
         let arch = target_triple[0];
         let (platform, optional_amd64) = match arch {
