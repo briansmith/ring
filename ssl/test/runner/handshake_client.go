@@ -455,7 +455,7 @@ NextCipherSuite:
 	}
 
 	// Check for downgrade signals in the server random, per
-	// draft-ietf-tls-tls13-14, section 6.3.1.2.
+	// draft-ietf-tls-tls13-16, section 4.1.3.
 	if c.vers <= VersionTLS12 && c.config.maxVersion(c.isDTLS) >= VersionTLS13 {
 		if bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS13) {
 			c.sendAlert(alertProtocolVersion)

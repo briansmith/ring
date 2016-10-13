@@ -1347,7 +1347,7 @@ typedef struct dtls1_state_st {
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
 
-/* From draft-ietf-tls-tls13-15, used in determining PSK modes. */
+/* From draft-ietf-tls-tls13-16, used in determining PSK modes. */
 #define SSL_PSK_KE        0x0
 #define SSL_PSK_DHE_KE    0x1
 

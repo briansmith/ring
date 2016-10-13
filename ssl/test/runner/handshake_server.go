@@ -956,8 +956,8 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		c.sendAlert(alertInternalError)
 		return false, err
 	}
-	// Signal downgrades in the server random, per draft-ietf-tls-tls13-14,
-	// section 6.3.1.2.
+	// Signal downgrades in the server random, per draft-ietf-tls-tls13-16,
+	// section 4.1.3.
 	if c.vers <= VersionTLS12 && config.maxVersion(c.isDTLS) >= VersionTLS13 {
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS13)
 	}

@@ -1908,7 +1908,7 @@ static int ext_ec_point_add_serverhello(SSL *ssl, CBB *out) {
 
 /* Pre Shared Key
  *
- * https://tools.ietf.org/html/draft-ietf-tls-tls13-15 */
+ * https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.6 */
 
 static int ext_pre_shared_key_add_clienthello(SSL *ssl, CBB *out) {
   uint16_t min_version, max_version;
@@ -2010,7 +2010,7 @@ int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out) {
 
 /* Key Share
  *
- * https://tools.ietf.org/html/draft-ietf-tls-tls13-12 */
+ * https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.5 */
 
 static int ext_key_share_add_clienthello(SSL *ssl, CBB *out) {
   uint16_t min_version, max_version;
@@ -2293,7 +2293,7 @@ static int ext_cookie_add_clienthello(SSL *ssl, CBB *out) {
 /* Negotiated Groups
  *
  * https://tools.ietf.org/html/rfc4492#section-5.1.2
- * https://tools.ietf.org/html/draft-ietf-tls-tls13-12#section-6.3.2.2 */
+ * https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.4 */
 
 static int ext_supported_groups_add_clienthello(SSL *ssl, CBB *out) {
   if (!ssl_any_ec_cipher_suites_enabled(ssl)) {

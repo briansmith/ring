@@ -27,7 +27,7 @@ const (
 )
 
 // A draft version of TLS 1.3 that is sent over the wire for the current draft.
-const tls13DraftVersion = 0x7f0f
+const tls13DraftVersion = 0x7f10
 
 const (
 	maxPlaintext        = 16384        // maximum plaintext payload length
@@ -57,8 +57,8 @@ const (
 	typeServerHello         uint8 = 2
 	typeHelloVerifyRequest  uint8 = 3
 	typeNewSessionTicket    uint8 = 4
-	typeHelloRetryRequest   uint8 = 6 // draft-ietf-tls-tls13-13
-	typeEncryptedExtensions uint8 = 8 // draft-ietf-tls-tls13-13
+	typeHelloRetryRequest   uint8 = 6 // draft-ietf-tls-tls13-16
+	typeEncryptedExtensions uint8 = 8 // draft-ietf-tls-tls13-16
 	typeCertificate         uint8 = 11
 	typeServerKeyExchange   uint8 = 12
 	typeCertificateRequest  uint8 = 13
@@ -67,7 +67,7 @@ const (
 	typeClientKeyExchange   uint8 = 16
 	typeFinished            uint8 = 20
 	typeCertificateStatus   uint8 = 22
-	typeKeyUpdate           uint8 = 24  // draft-ietf-tls-tls13-13
+	typeKeyUpdate           uint8 = 24  // draft-ietf-tls-tls13-16
 	typeNextProtocol        uint8 = 67  // Not IANA assigned
 	typeChannelID           uint8 = 203 // Not IANA assigned
 )
@@ -89,11 +89,11 @@ const (
 	extensionSignedCertificateTimestamp uint16 = 18
 	extensionExtendedMasterSecret       uint16 = 23
 	extensionSessionTicket              uint16 = 35
-	extensionKeyShare                   uint16 = 40    // draft-ietf-tls-tls13-13
-	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-13
-	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-13
+	extensionKeyShare                   uint16 = 40    // draft-ietf-tls-tls13-16
+	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-16
+	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-16
 	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-16
-	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-13
+	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-16
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
@@ -194,13 +194,13 @@ const (
 	SRTP_AES128_CM_HMAC_SHA1_32        = 0x0002
 )
 
-// PskKeyExchangeMode values (see draft-ietf-tls-tls13-15)
+// PskKeyExchangeMode values (see draft-ietf-tls-tls13-16)
 const (
 	pskKEMode    = 0
 	pskDHEKEMode = 1
 )
 
-// PskAuthenticationMode values (see draft-ietf-tls-tls13-15)
+// PskAuthenticationMode values (see draft-ietf-tls-tls13-16)
 const (
 	pskAuthMode     = 0
 	pskSignAuthMode = 1
@@ -1535,7 +1535,7 @@ func isSupportedSignatureAlgorithm(sigAlg signatureAlgorithm, sigAlgs []signatur
 }
 
 var (
-	// See draft-ietf-tls-tls13-13, section 6.3.1.2.
+	// See draft-ietf-tls-tls13-16, section 6.3.1.2.
 	downgradeTLS13 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x01}
 	downgradeTLS12 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x00}
 )
