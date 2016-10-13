@@ -15,6 +15,8 @@
     "CECPQ1-*-BadX25519Part": "Fuzzer mode does not notice a bad premaster secret.",
 
     "TrailingMessageData-TLS13-ServerHello": "Fuzzer mode will not read the peer's alert as a MAC error",
+    "UnexpectedUnencryptedExtension-Client-TLS13": "Fuzzer mode will not read the peer's alert as a MAC error",
+    "UnknownUnencryptedExtension-Client-TLS13": "Fuzzer mode will not read the peer's alert as a MAC error",
     "WrongMessageType-TLS13-ServerHello": "Fuzzer mode will not read the peer's alert as a MAC error",
 
     "*Auth-Verify-RSA-PKCS1-*-TLS13": "Fuzzer mode always accepts a signature.",
