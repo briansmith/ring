@@ -12,7 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/crypto.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/pem.h>
 
@@ -32,5 +33,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
 
   BIO_free(bio);
 
+  ERR_clear_error();
   return 0;
 }

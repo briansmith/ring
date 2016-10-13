@@ -16,6 +16,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/dh.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -289,5 +290,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   }
   SSL_free(server);
 
+  ERR_clear_error();
   return 0;
 }

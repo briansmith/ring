@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 
@@ -27,5 +28,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     OPENSSL_free(der);
   }
   X509_free(x509);
+  ERR_clear_error();
   return 0;
 }
