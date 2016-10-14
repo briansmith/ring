@@ -126,7 +126,7 @@ if(FUZZ)
   endif()
 
   add_definitions(-DBORINGSSL_UNSAFE_FUZZER_MODE)
-  set(RUNNER_ARGS "-fuzzer")
+  set(RUNNER_ARGS "-fuzzer" "-deterministic" "-shim-config" "fuzzer_mode.json")
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls,8bit-counters")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls,8bit-counters")
