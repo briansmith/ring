@@ -26,9 +26,13 @@
 
 // This file isn't built on ARM or Aarch64 because we link statically in those
 // builds and trying to override malloc in a static link doesn't work. It also
-// requires glibc.
+// requires glibc. It's also disabled on ASan builds as this interferes with
+// ASan's malloc interceptor.
+//
+// TODO(davidben): See if this and ASan's and MSan's interceptors can be made to
+// coexist.
 #if defined(__linux__) && defined(OPENSSL_GLIBC) && !defined(OPENSSL_ARM) && \
-    !defined(OPENSSL_AARCH64)
+    !defined(OPENSSL_AARCH64) && !defined(OPENSSL_ASAN)
 
 #include <errno.h>
 #include <signal.h>
@@ -54,24 +58,10 @@ static char failure_enabled = 0, break_on_fail = 0;
 static int in_call = 0;
 
 extern "C" {
-
-#if defined(OPENSSL_ASAN)
-#define REAL_MALLOC __interceptor_malloc
-#define REAL_CALLOC __interceptor_calloc
-#define REAL_REALLOC __interceptor_realloc
-#define REAL_FREE __interceptor_free
-#else
-#define REAL_MALLOC __libc_malloc
-#define REAL_CALLOC __libc_calloc
-#define REAL_REALLOC __libc_realloc
-#define REAL_FREE __libc_free
-#endif
-
 /* These are other names for the standard allocation functions. */
-extern void *REAL_MALLOC(size_t size);
-extern void *REAL_CALLOC(size_t num_elems, size_t size);
-extern void *REAL_REALLOC(void *ptr, size_t size);
-extern void REAL_FREE(void *ptr);
+extern void *__libc_malloc(size_t size);
+extern void *__libc_calloc(size_t num_elems, size_t size);
+extern void *__libc_realloc(void *ptr, size_t size);
 }
 
 static void exit_handler(void) {
@@ -134,7 +124,7 @@ void *malloc(size_t size) {
     return NULL;
   }
 
-  return REAL_MALLOC(size);
+  return __libc_malloc(size);
 }
 
 void *calloc(size_t num_elems, size_t size) {
@@ -143,7 +133,7 @@ void *calloc(size_t num_elems, size_t size) {
     return NULL;
   }
 
-  return REAL_CALLOC(num_elems, size);
+  return __libc_calloc(num_elems, size);
 }
 
 void *realloc(void *ptr, size_t size) {
@@ -152,11 +142,7 @@ void *realloc(void *ptr, size_t size) {
     return NULL;
   }
 
-  return REAL_REALLOC(ptr, size);
-}
-
-void free(void *ptr) {
-  REAL_FREE(ptr);
+  return __libc_realloc(ptr, size);
 }
 
 }  // extern "C"
