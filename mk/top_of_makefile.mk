@@ -141,6 +141,9 @@ IOS_VERSION_FLAG = -mios-version-min=$(IOS_MIN_VERSION)
 ifeq ($(TARGET_ARCH_BASE),aarch64)
 CFLAGS += -arch arm64
 CXXFLAGS += -arch arm64
+else ifeq ($(TARGET_ARCH_BASE),armv7)
+CFLAGS += -arch $(TARGET_ARCH_BASE) -mfpu=neon
+CXXFLAGS += -arch $(TARGET_ARCH_BASE) -mfpu=neon
 else
 CFLAGS += -arch $(TARGET_ARCH_BASE)
 CXXFLAGS += -arch $(TARGET_ARCH_BASE)
