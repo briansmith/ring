@@ -357,7 +357,7 @@ func (h finishedHash) hashForChannelID(resumeHash []byte) []byte {
 		hash.Write(channelIDResumeLabel)
 		hash.Write(resumeHash)
 	}
-	hash.Write(h.server.Sum(nil))
+	hash.Write(h.Sum())
 	return hash.Sum(nil)
 }
 

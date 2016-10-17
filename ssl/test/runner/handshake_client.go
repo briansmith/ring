@@ -1293,7 +1293,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		vers:               c.vers,
 		cipherSuite:        hs.suite.id,
 		masterSecret:       hs.masterSecret,
-		handshakeHash:      hs.finishedHash.server.Sum(nil),
+		handshakeHash:      hs.finishedHash.Sum(),
 		serverCertificates: c.peerCertificates,
 		sctList:            c.sctList,
 		ocspResponse:       c.ocspResponse,

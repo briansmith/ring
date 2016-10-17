@@ -1630,7 +1630,7 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 		cipherSuite:   hs.suite.id,
 		masterSecret:  hs.masterSecret,
 		certificates:  hs.certsFromClient,
-		handshakeHash: hs.finishedHash.server.Sum(nil),
+		handshakeHash: hs.finishedHash.Sum(),
 	}
 
 	if !hs.hello.extensions.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
