@@ -441,11 +441,41 @@ int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
   return 0;
 }
 
-/* List of supported signature algorithms and hashes. Should make this
- * customisable at some point, for now include everything we support. */
+/* kVerifySignatureAlgorithms is the default list of accepted signature
+ * algorithms for verifying. */
+static const uint16_t kVerifySignatureAlgorithms[] = {
+    /* For now, do not enable RSA-PSS signature algorithms on Android's system
+     * BoringSSL. Once TLS 1.3 is finalized and the change in Chrome has stuck,
+     * restore them. */
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_RSA_PSS_SHA512,
+#endif
+    SSL_SIGN_RSA_PKCS1_SHA512,
+    /* TODO(davidben): Remove this entry and SSL_CURVE_SECP521R1 from
+     * kDefaultGroups. */
+#if defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_ECDSA_SECP521R1_SHA512,
+#endif
 
-static const uint16_t kDefaultSignatureAlgorithms[] = {
-    /* For now, do not ship RSA-PSS signature algorithms on Android's system
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_RSA_PSS_SHA384,
+#endif
+    SSL_SIGN_RSA_PKCS1_SHA384,
+    SSL_SIGN_ECDSA_SECP384R1_SHA384,
+
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_RSA_PSS_SHA256,
+#endif
+    SSL_SIGN_RSA_PKCS1_SHA256,
+    SSL_SIGN_ECDSA_SECP256R1_SHA256,
+
+    SSL_SIGN_RSA_PKCS1_SHA1,
+};
+
+/* kSignSignatureAlgorithms is the default list of supported signature
+ * algorithms for signing. */
+static const uint16_t kSignSignatureAlgorithms[] = {
+    /* For now, do not enable RSA-PSS signature algorithms on Android's system
      * BoringSSL. Once TLS 1.3 is finalized and the change in Chrome has stuck,
      * restore them. */
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
@@ -470,30 +500,23 @@ static const uint16_t kDefaultSignatureAlgorithms[] = {
     SSL_SIGN_ECDSA_SHA1,
 };
 
-size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs) {
-  *psigs = kDefaultSignatureAlgorithms;
-  return OPENSSL_ARRAY_SIZE(kDefaultSignatureAlgorithms);
+size_t tls12_get_verify_sigalgs(const SSL *ssl, const uint16_t **out) {
+  *out = kVerifySignatureAlgorithms;
+  return OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
 }
 
 int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg) {
-  const uint16_t *sent_sigs;
-  size_t sent_sigslen, i;
-
-  /* Check signature matches a type we sent */
-  sent_sigslen = tls12_get_psigalgs(ssl, &sent_sigs);
-  for (i = 0; i < sent_sigslen; i++) {
-    if (sigalg == sent_sigs[i]) {
-      break;
+  const uint16_t *verify_sigalgs;
+  size_t num_verify_sigalgs = tls12_get_verify_sigalgs(ssl, &verify_sigalgs);
+  for (size_t i = 0; i < num_verify_sigalgs; i++) {
+    if (sigalg == verify_sigalgs[i]) {
+      return 1;
     }
   }
 
-  if (i == sent_sigslen) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return 0;
-  }
-
-  return 1;
+  OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+  *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+  return 0;
 }
 
 /* Get a mask of disabled algorithms: an algorithm is disabled if it isn't
@@ -506,10 +529,10 @@ void ssl_set_client_disabled(SSL *ssl) {
   c->mask_a = 0;
   c->mask_k = 0;
 
-  /* Now go through all signature algorithms seeing if we support any for RSA,
-   * DSA, ECDSA. Do this for all versions not just TLS 1.2. */
+  /* Now go through all signature algorithms seeing if we support any for RSA or
+   * ECDSA. Do this for all versions not just TLS 1.2. */
   const uint16_t *sigalgs;
-  size_t num_sigalgs = tls12_get_psigalgs(ssl, &sigalgs);
+  size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
   for (size_t i = 0; i < num_sigalgs; i++) {
     switch (sigalgs[i]) {
       case SSL_SIGN_RSA_PSS_SHA512:
@@ -1052,7 +1075,7 @@ static int ext_sigalgs_add_clienthello(SSL *ssl, CBB *out) {
   }
 
   const uint16_t *sigalgs;
-  const size_t num_sigalgs = tls12_get_psigalgs(ssl, &sigalgs);
+  const size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
 
   CBB contents, sigalgs_cbb;
   if (!CBB_add_u16(out, TLSEXT_TYPE_signature_algorithms) ||
@@ -3144,11 +3167,11 @@ int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out) {
     return 0;
   }
 
-  const uint16_t *sigalgs;
-  size_t num_sigalgs = tls12_get_psigalgs(ssl, &sigalgs);
-  if (cert->sigalgs != NULL) {
-    sigalgs = cert->sigalgs;
-    num_sigalgs = cert->num_sigalgs;
+  const uint16_t *sigalgs = cert->sigalgs;
+  size_t num_sigalgs = cert->num_sigalgs;
+  if (sigalgs == NULL) {
+    sigalgs = kSignSignatureAlgorithms;
+    num_sigalgs = OPENSSL_ARRAY_SIZE(kSignSignatureAlgorithms);
   }
 
   const uint16_t *peer_sigalgs = hs->peer_sigalgs;

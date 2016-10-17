@@ -381,7 +381,7 @@ static enum ssl_hs_wait_t do_send_certificate_request(SSL *ssl,
   }
 
   const uint16_t *sigalgs;
-  size_t num_sigalgs = tls12_get_psigalgs(ssl, &sigalgs);
+  size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
   if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
     goto err;
   }

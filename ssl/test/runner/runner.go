@@ -5884,19 +5884,28 @@ func addSignatureAlgorithmTests() {
 				continue
 			}
 
-			var shouldFail bool
+			var shouldSignFail, shouldVerifyFail bool
 			// ecdsa_sha1 does not exist in TLS 1.3.
 			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
-				shouldFail = true
+				shouldSignFail = true
+				shouldVerifyFail = true
 			}
 			// RSA-PKCS1 does not exist in TLS 1.3.
 			if ver.version == VersionTLS13 && hasComponent(alg.name, "PKCS1") {
-				shouldFail = true
+				shouldSignFail = true
+				shouldVerifyFail = true
+			}
+
+			// BoringSSL will sign SHA-1 and SHA-512 with ECDSA but not accept them.
+			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 {
+				shouldVerifyFail = true
 			}
 
 			var signError, verifyError string
-			if shouldFail {
+			if shouldSignFail {
 				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+			}
+			if shouldVerifyFail {
 				verifyError = ":WRONG_SIGNATURE_TYPE:"
 			}
 
@@ -5918,7 +5927,7 @@ func addSignatureAlgorithmTests() {
 					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
 					"-enable-all-curves",
 				},
-				shouldFail:                     shouldFail,
+				shouldFail:                     shouldSignFail,
 				expectedError:                  signError,
 				expectedPeerSignatureAlgorithm: alg.id,
 			})
@@ -5933,11 +5942,10 @@ func addSignatureAlgorithmTests() {
 						alg.id,
 					},
 					Bugs: ProtocolBugs{
-						SkipECDSACurveCheck:          shouldFail,
-						IgnoreSignatureVersionChecks: shouldFail,
-						// The client won't advertise 1.3-only algorithms after
-						// version negotiation.
-						IgnorePeerSignatureAlgorithmPreferences: shouldFail,
+						SkipECDSACurveCheck:          shouldVerifyFail,
+						IgnoreSignatureVersionChecks: shouldVerifyFail,
+						// Some signature algorithms may not be advertised.
+						IgnorePeerSignatureAlgorithmPreferences: shouldVerifyFail,
 					},
 				},
 				flags: []string{
@@ -5945,7 +5953,7 @@ func addSignatureAlgorithmTests() {
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
 					"-enable-all-curves",
 				},
-				shouldFail:    shouldFail,
+				shouldFail:    shouldVerifyFail,
 				expectedError: verifyError,
 			})
 
@@ -5966,7 +5974,7 @@ func addSignatureAlgorithmTests() {
 					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
 					"-enable-all-curves",
 				},
-				shouldFail:                     shouldFail,
+				shouldFail:                     shouldSignFail,
 				expectedError:                  signError,
 				expectedPeerSignatureAlgorithm: alg.id,
 			})
@@ -5981,19 +5989,21 @@ func addSignatureAlgorithmTests() {
 						alg.id,
 					},
 					Bugs: ProtocolBugs{
-						SkipECDSACurveCheck:          shouldFail,
-						IgnoreSignatureVersionChecks: shouldFail,
+						SkipECDSACurveCheck:          shouldVerifyFail,
+						IgnoreSignatureVersionChecks: shouldVerifyFail,
+						// Some signature algorithms may not be advertised.
+						IgnorePeerSignatureAlgorithmPreferences: shouldVerifyFail,
 					},
 				},
 				flags: []string{
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
 					"-enable-all-curves",
 				},
-				shouldFail:    shouldFail,
+				shouldFail:    shouldVerifyFail,
 				expectedError: verifyError,
 			})
 
-			if !shouldFail {
+			if !shouldVerifyFail {
 				testCases = append(testCases, testCase{
 					testType: serverTest,
 					name:     "ClientAuth-InvalidSignature" + suffix,
@@ -6034,7 +6044,7 @@ func addSignatureAlgorithmTests() {
 				})
 			}
 
-			if ver.version >= VersionTLS12 && !shouldFail {
+			if ver.version >= VersionTLS12 && !shouldSignFail {
 				testCases = append(testCases, testCase{
 					name: "ClientAuth-Sign-Negotiate" + suffix,
 					config: Config{

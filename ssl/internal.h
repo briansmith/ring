@@ -1111,6 +1111,27 @@ enum ssl_grease_index_t {
 uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index);
 
 
+/* Signature algorithms. */
+
+/* tls1_parse_peer_sigalgs parses |sigalgs| as the list of peer signature
+ * algorithms and them on |ssl|. It returns one on success and zero on error. */
+int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
+
+/* tls1_choose_signature_algorithm sets |*out| to a signature algorithm for use
+ * with |ssl|'s private key based on the peer's preferences and the algorithms
+ * supported. It returns one on success and zero on error. */
+int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out);
+
+/* tls12_get_verify_sigalgs sets |*out| to the signature algorithms acceptable
+ * for the peer signature and returns the length of the list. */
+size_t tls12_get_verify_sigalgs(const SSL *ssl, const uint16_t **out);
+
+/* tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
+ * signature. It returns one on success and zero on error, setting |*out_alert|
+ * to an alert to send. */
+int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -1812,20 +1833,7 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
 uint16_t ssl3_protocol_version(const SSL *ssl);
 
 uint32_t ssl_get_algorithm_prf(const SSL *ssl);
-int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
 
-/* tls1_choose_signature_algorithm sets |*out| to a signature algorithm for use
- * with |ssl|'s private key based on the peer's preferences and the digests
- * supported. It returns one on success and zero on error. */
-int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out);
-
-size_t tls12_get_psigalgs(SSL *ssl, const uint16_t **psigs);
-
-/* tls12_check_peer_sigalg checks that |signature_algorithm| is consistent with
- * |ssl|'s sent, supported signature algorithms and returns 1. Otherwise it
- * returns 0 and writes an alert into |*out_alert|. */
-int tls12_check_peer_sigalg(SSL *ssl, int *out_alert,
-                            uint16_t signature_algorithm);
 void ssl_set_client_disabled(SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock);

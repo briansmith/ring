@@ -1194,8 +1194,8 @@ static int add_cert_types(SSL *ssl, CBB *cbb) {
   int have_rsa_sign = 0;
   int have_ecdsa_sign = 0;
   const uint16_t *sig_algs;
-  size_t sig_algs_len = tls12_get_psigalgs(ssl, &sig_algs);
-  for (size_t i = 0; i < sig_algs_len; i++) {
+  size_t num_sig_algs = tls12_get_verify_sigalgs(ssl, &sig_algs);
+  for (size_t i = 0; i < num_sig_algs; i++) {
     switch (sig_algs[i]) {
       case SSL_SIGN_RSA_PKCS1_SHA512:
       case SSL_SIGN_RSA_PKCS1_SHA384:
@@ -1242,7 +1242,7 @@ static int ssl3_send_certificate_request(SSL *ssl) {
 
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     const uint16_t *sigalgs;
-    size_t num_sigalgs = tls12_get_psigalgs(ssl, &sigalgs);
+    size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
     if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
       goto err;
     }
