@@ -227,8 +227,8 @@ void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param)
 /* Macro to test if a field should be copied from src to dest */
 
 #define test_x509_verify_param_copy(field, def) \
-        (to_overwrite || \
-                ((src->field != def) && (to_default || (dest->field == def))))
+  (to_overwrite ||                              \
+   ((src->field != (def)) && (to_default || (dest->field == (def)))))
 
 /* As above but for ID fields */
 
@@ -513,7 +513,7 @@ const char *X509_VERIFY_PARAM_get0_name(const X509_VERIFY_PARAM *param)
 static const X509_VERIFY_PARAM_ID _empty_id =
     { NULL, 0U, NULL, NULL, 0, NULL, 0 };
 
-#define vpm_empty_id (X509_VERIFY_PARAM_ID *)&_empty_id
+#define vpm_empty_id ((X509_VERIFY_PARAM_ID *)&_empty_id)
 
 /*
  * Default verify parameters: these are used for various applications and can

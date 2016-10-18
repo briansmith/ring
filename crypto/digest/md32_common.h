@@ -140,29 +140,39 @@ extern "C" {
 
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
 
-#define HOST_c2l(c, l)                        \
-  (void)(l = (((uint32_t)(*((c)++))) << 24),  \
-         l |= (((uint32_t)(*((c)++))) << 16), \
-         l |= (((uint32_t)(*((c)++))) << 8), l |= (((uint32_t)(*((c)++)))))
+#define HOST_c2l(c, l)                     \
+  do {                                     \
+    (l) = (((uint32_t)(*((c)++))) << 24);  \
+    (l) |= (((uint32_t)(*((c)++))) << 16); \
+    (l) |= (((uint32_t)(*((c)++))) << 8);  \
+    (l) |= (((uint32_t)(*((c)++))));       \
+  } while (0)
 
-#define HOST_l2c(l, c)                             \
-  (void)(*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
-         *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-         *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-         *((c)++) = (uint8_t)(((l)) & 0xff))
+#define HOST_l2c(l, c)                        \
+  do {                                        \
+    *((c)++) = (uint8_t)(((l) >> 24) & 0xff); \
+    *((c)++) = (uint8_t)(((l) >> 16) & 0xff); \
+    *((c)++) = (uint8_t)(((l) >> 8) & 0xff);  \
+    *((c)++) = (uint8_t)(((l)) & 0xff);       \
+  } while (0)
 
 #elif defined(DATA_ORDER_IS_LITTLE_ENDIAN)
 
-#define HOST_c2l(c, l)                                                     \
-  (void)(l = (((uint32_t)(*((c)++)))), l |= (((uint32_t)(*((c)++))) << 8), \
-         l |= (((uint32_t)(*((c)++))) << 16),                              \
-         l |= (((uint32_t)(*((c)++))) << 24))
+#define HOST_c2l(c, l)                     \
+  do {                                     \
+    (l) = (((uint32_t)(*((c)++))));        \
+    (l) |= (((uint32_t)(*((c)++))) << 8);  \
+    (l) |= (((uint32_t)(*((c)++))) << 16); \
+    (l) |= (((uint32_t)(*((c)++))) << 24); \
+  } while (0)
 
-#define HOST_l2c(l, c)                             \
-  (void)(*((c)++) = (uint8_t)(((l)) & 0xff),       \
-         *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-         *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-         *((c)++) = (uint8_t)(((l) >> 24) & 0xff))
+#define HOST_l2c(l, c)                        \
+  do {                                        \
+    *((c)++) = (uint8_t)(((l)) & 0xff);       \
+    *((c)++) = (uint8_t)(((l) >> 8) & 0xff);  \
+    *((c)++) = (uint8_t)(((l) >> 16) & 0xff); \
+    *((c)++) = (uint8_t)(((l) >> 24) & 0xff); \
+  } while (0)
 
 #endif /* DATA_ORDER */
 

@@ -188,10 +188,10 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #endif
 
 
-#define STATIC_BIGNUM(x)                                \
-  {                                                     \
-    (BN_ULONG *)x, sizeof(x) / sizeof(BN_ULONG),        \
-    sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
+#define STATIC_BIGNUM(x)                                    \
+  {                                                         \
+    (BN_ULONG *)(x), sizeof(x) / sizeof(BN_ULONG),          \
+        sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
   }
 
 #if defined(BN_ULLONG)

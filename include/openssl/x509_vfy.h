@@ -110,7 +110,7 @@ certificate chain.
 */
 
 /* The following are legacy constants that should not be used. */
-#define X509_LU_RETRY		-1
+#define X509_LU_RETRY		(-1)
 #define X509_LU_FAIL		0
 
 #define X509_LU_X509		1

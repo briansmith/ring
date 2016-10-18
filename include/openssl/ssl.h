@@ -2898,7 +2898,7 @@ OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
-#define SSL_MAX_CERT_LIST_DEFAULT 1024 * 100
+#define SSL_MAX_CERT_LIST_DEFAULT (1024 * 100)
 
 /* SSL_CTX_get_max_cert_list returns the maximum length, in bytes, of a peer
  * certificate chain accepted by |ctx|. */
@@ -3343,14 +3343,14 @@ OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *s);
 /* SSL_get_server_tmp_key returns zero. */
 OPENSSL_EXPORT int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
 
-#define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)arg))
+#define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)(arg)))
 #define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
 #define SSL_SESSION_set_app_data(s, a) \
-  (SSL_SESSION_set_ex_data(s, 0, (char *)a))
+  (SSL_SESSION_set_ex_data(s, 0, (char *)(a)))
 #define SSL_SESSION_get_app_data(s) (SSL_SESSION_get_ex_data(s, 0))
 #define SSL_CTX_get_app_data(ctx) (SSL_CTX_get_ex_data(ctx, 0))
 #define SSL_CTX_set_app_data(ctx, arg) \
-  (SSL_CTX_set_ex_data(ctx, 0, (char *)arg))
+  (SSL_CTX_set_ex_data(ctx, 0, (char *)(arg)))
 
 #define OpenSSL_add_ssl_algorithms() SSL_library_init()
 #define SSLeay_add_ssl_algorithms() SSL_library_init()

@@ -80,7 +80,7 @@
         : "+m"(r), "+d"(high)                                          \
         : "r"(carry), "g"(0)                                           \
         : "cc");                                                       \
-    carry = high;                                                      \
+    (carry) = high;                                                    \
   } while (0)
 
 #define mul(r, a, word, carry)                                         \
@@ -91,7 +91,8 @@
         : "+r"(carry), "+d"(high)                                      \
         : "a"(low), "g"(0)                                             \
         : "cc");                                                       \
-    (r) = carry, carry = high;                                         \
+    (r) = (carry);                                                     \
+    (carry) = high;                                                    \
   } while (0)
 #undef sqr
 #define sqr(r0, r1, a) asm("mulq %2" : "=a"(r0), "=d"(r1) : "a"(a) : "cc");
@@ -256,14 +257,14 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
         : "cc");                             \
   } while (0)
 
-#define sqr_add_c(a, i, c0, c1, c2)          \
-  do {                                       \
-    BN_ULONG t1, t2;                         \
-    asm("mulq %2" : "=a"(t1), "=d"(t2) : "a"(a[i]) : "cc"); \
-    asm("addq %3,%0; adcq %4,%1; adcq %5,%2" \
-        : "+r"(c0), "+r"(c1), "+r"(c2)       \
-        : "r"(t1), "r"(t2), "g"(0)           \
-        : "cc");                             \
+#define sqr_add_c(a, i, c0, c1, c2)                           \
+  do {                                                        \
+    BN_ULONG t1, t2;                                          \
+    asm("mulq %2" : "=a"(t1), "=d"(t2) : "a"((a)[i]) : "cc"); \
+    asm("addq %3,%0; adcq %4,%1; adcq %5,%2"                  \
+        : "+r"(c0), "+r"(c1), "+r"(c2)                        \
+        : "r"(t1), "r"(t2), "g"(0)                            \
+        : "cc");                                              \
   } while (0)
 
 #define mul_add_c2(a, b, c0, c1, c2)         \

@@ -230,7 +230,7 @@ X509_NAME *dpname;
 /* All existing reasons */
 #define CRLDP_ALL_REASONS	0x807f
 
-#define CRL_REASON_NONE				-1
+#define CRL_REASON_NONE				(-1)
 #define CRL_REASON_UNSPECIFIED			0
 #define CRL_REASON_KEY_COMPROMISE		1
 #define CRL_REASON_CA_COMPROMISE		2
@@ -376,8 +376,8 @@ struct ISSUING_DIST_POINT_st
 /* onlysomereasons present */
 #define IDP_REASONS	0x40
 
-#define X509V3_conf_err(val) ERR_add_error_data(6, "section:", val->section, \
-",name:", val->name, ",value:", val->value);
+#define X509V3_conf_err(val) ERR_add_error_data(6, "section:", (val)->section, \
+",name:", (val)->name, ",value:", (val)->value);
 
 #define X509V3_set_ctx_test(ctx) \
 			X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, CTX_TEST)
@@ -389,7 +389,7 @@ struct ISSUING_DIST_POINT_st
 			(X509V3_EXT_I2V)i2v_ASN1_BIT_STRING, \
 			(X509V3_EXT_V2I)v2i_ASN1_BIT_STRING, \
 			NULL, NULL, \
-			(void *)table}
+			(void *)(table)}
 
 #define EXT_IA5STRING(nid) { nid, 0, ASN1_ITEM_ref(ASN1_IA5STRING), \
 			0,0,0,0, \

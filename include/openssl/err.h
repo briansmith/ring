@@ -467,7 +467,7 @@ enum {
 #define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
 
 #define ERR_PACK(lib, reason)                                              \
-  (((((uint32_t)lib) & 0xff) << 24) | ((((uint32_t)reason) & 0xfff)))
+  (((((uint32_t)(lib)) & 0xff) << 24) | ((((uint32_t)(reason)) & 0xfff)))
 
 #define ERR_GET_LIB(packed_error) ((int)(((packed_error) >> 24) & 0xff))
 #define ERR_GET_FUNC(packed_error) 0

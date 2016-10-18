@@ -64,45 +64,51 @@ extern "C" {
 #endif
 
 
-#define c2l(c, l)                                                 \
-  (l = ((uint32_t)(*((c)++))), l |= ((uint32_t)(*((c)++))) << 8L, \
-   l |= ((uint32_t)(*((c)++))) << 16L, l |= ((uint32_t)(*((c)++))) << 24L)
+#define c2l(c, l)                         \
+  do {                                    \
+    (l) = ((uint32_t)(*((c)++)));         \
+    (l) |= ((uint32_t)(*((c)++))) << 8L;  \
+    (l) |= ((uint32_t)(*((c)++))) << 16L; \
+    (l) |= ((uint32_t)(*((c)++))) << 24L; \
+  } while (0)
 
-#define l2c(l, c)                                   \
-  (*((c)++) = (unsigned char)(((l)) & 0xff),        \
-   *((c)++) = (unsigned char)(((l) >> 8L) & 0xff),  \
-   *((c)++) = (unsigned char)(((l) >> 16L) & 0xff), \
-   *((c)++) = (unsigned char)(((l) >> 24L) & 0xff))
+#define l2c(l, c)                                    \
+  do {                                               \
+    *((c)++) = (unsigned char)(((l)) & 0xff);        \
+    *((c)++) = (unsigned char)(((l) >> 8L) & 0xff);  \
+    *((c)++) = (unsigned char)(((l) >> 16L) & 0xff); \
+    *((c)++) = (unsigned char)(((l) >> 24L) & 0xff); \
+  } while (0)
 
 /* NOTE - c is not incremented as per c2l */
-#define c2ln(c, l1, l2, n)                   \
-  {                                          \
-    c += n;                                  \
-    l1 = l2 = 0;                             \
-    switch (n) {                             \
-      case 8:                                \
-        l2 = ((uint32_t)(*(--(c)))) << 24L;  \
-      case 7:                                \
-        l2 |= ((uint32_t)(*(--(c)))) << 16L; \
-      case 6:                                \
-        l2 |= ((uint32_t)(*(--(c)))) << 8L;  \
-      case 5:                                \
-        l2 |= ((uint32_t)(*(--(c))));        \
-      case 4:                                \
-        l1 = ((uint32_t)(*(--(c)))) << 24L;  \
-      case 3:                                \
-        l1 |= ((uint32_t)(*(--(c)))) << 16L; \
-      case 2:                                \
-        l1 |= ((uint32_t)(*(--(c)))) << 8L;  \
-      case 1:                                \
-        l1 |= ((uint32_t)(*(--(c))));        \
-    }                                        \
-  }
+#define c2ln(c, l1, l2, n)                     \
+  do {                                         \
+    (c) += (n);                                \
+    (l1) = (l2) = 0;                           \
+    switch (n) {                               \
+      case 8:                                  \
+        (l2) = ((uint32_t)(*(--(c)))) << 24L;  \
+      case 7:                                  \
+        (l2) |= ((uint32_t)(*(--(c)))) << 16L; \
+      case 6:                                  \
+        (l2) |= ((uint32_t)(*(--(c)))) << 8L;  \
+      case 5:                                  \
+        (l2) |= ((uint32_t)(*(--(c))));        \
+      case 4:                                  \
+        (l1) = ((uint32_t)(*(--(c)))) << 24L;  \
+      case 3:                                  \
+        (l1) |= ((uint32_t)(*(--(c)))) << 16L; \
+      case 2:                                  \
+        (l1) |= ((uint32_t)(*(--(c)))) << 8L;  \
+      case 1:                                  \
+        (l1) |= ((uint32_t)(*(--(c))));        \
+    }                                          \
+  } while (0)
 
 /* NOTE - c is not incremented as per l2c */
 #define l2cn(l1, l2, c, n)                                \
-  {                                                       \
-    c += n;                                               \
+  do {                                                    \
+    (c) += (n);                                           \
     switch (n) {                                          \
       case 8:                                             \
         *(--(c)) = (unsigned char)(((l2) >> 24L) & 0xff); \
@@ -121,7 +127,7 @@ extern "C" {
       case 1:                                             \
         *(--(c)) = (unsigned char)(((l1)) & 0xff);        \
     }                                                     \
-  }
+  } while (0)
 
 /* IP and FP
  * The problem is more of a geometric problem that random bit fiddling.
@@ -160,44 +166,50 @@ When I finally started to think of the problem in 2D
 I first got ~42 operations without xors.  When I remembered
 how to use xors :-) I got it to its final state.
 */
-#define PERM_OP(a, b, t, n, m) \
-  ((t) = ((((a) >> (n)) ^ (b)) & (m)), (b) ^= (t), (a) ^= ((t) << (n)))
+#define PERM_OP(a, b, t, n, m)          \
+  do {                                  \
+    (t) = ((((a) >> (n)) ^ (b)) & (m)); \
+    (b) ^= (t);                         \
+    (a) ^= ((t) << (n));                \
+  } while (0)
 
 #define IP(l, r)                        \
-  {                                     \
+  do {                                  \
     uint32_t tt;                        \
     PERM_OP(r, l, tt, 4, 0x0f0f0f0fL);  \
     PERM_OP(l, r, tt, 16, 0x0000ffffL); \
     PERM_OP(r, l, tt, 2, 0x33333333L);  \
     PERM_OP(l, r, tt, 8, 0x00ff00ffL);  \
     PERM_OP(r, l, tt, 1, 0x55555555L);  \
-  }
+  } while (0)
 
 #define FP(l, r)                        \
-  {                                     \
+  do {                                  \
     uint32_t tt;                        \
     PERM_OP(l, r, tt, 1, 0x55555555L);  \
     PERM_OP(r, l, tt, 8, 0x00ff00ffL);  \
     PERM_OP(l, r, tt, 2, 0x33333333L);  \
     PERM_OP(r, l, tt, 16, 0x0000ffffL); \
     PERM_OP(l, r, tt, 4, 0x0f0f0f0fL);  \
-  }
+  } while (0)
 
 #define LOAD_DATA(ks, R, S, u, t, E0, E1) \
-  u = R ^ ks->subkeys[S][0];              \
-  t = R ^ ks->subkeys[S][1]
+  do {                                    \
+    (u) = (R) ^ (ks)->subkeys[S][0];      \
+    (t) = (R) ^ (ks)->subkeys[S][1];      \
+  } while (0)
 
 #define D_ENCRYPT(ks, LL, R, S)                                                \
-  {                                                                            \
+  do {                                                                         \
     LOAD_DATA(ks, R, S, u, t, E0, E1);                                         \
     t = ROTATE(t, 4);                                                          \
-    LL ^=                                                                      \
+    (LL) ^=                                                                    \
         DES_SPtrans[0][(u >> 2L) & 0x3f] ^ DES_SPtrans[2][(u >> 10L) & 0x3f] ^ \
         DES_SPtrans[4][(u >> 18L) & 0x3f] ^                                    \
         DES_SPtrans[6][(u >> 26L) & 0x3f] ^ DES_SPtrans[1][(t >> 2L) & 0x3f] ^ \
         DES_SPtrans[3][(t >> 10L) & 0x3f] ^                                    \
         DES_SPtrans[5][(t >> 18L) & 0x3f] ^ DES_SPtrans[7][(t >> 26L) & 0x3f]; \
-  }
+  } while (0)
 
 #define ITERATIONS 16
 #define HALF_ITERATIONS 8

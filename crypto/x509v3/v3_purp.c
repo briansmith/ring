@@ -647,7 +647,7 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
  * key types.
  */
 #define KU_TLS \
-        KU_DIGITAL_SIGNATURE|KU_KEY_ENCIPHERMENT|KU_KEY_AGREEMENT
+        (KU_DIGITAL_SIGNATURE|KU_KEY_ENCIPHERMENT|KU_KEY_AGREEMENT)
 
 static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                     int ca)

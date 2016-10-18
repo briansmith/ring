@@ -119,7 +119,10 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 #define HASH_BLOCK_DATA_ORDER sha1_block_data_order
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
-  ((a) = (ia ^ ib ^ ic ^ id), ix = (a) = ROTATE((a), 1))
+  do {                                 \
+    (a) = ((ia) ^ (ib) ^ (ic) ^ (id)); \
+    (ix) = (a) = ROTATE((a), 1);       \
+  } while (0)
 
 #ifndef SHA1_ASM
 static
@@ -143,34 +146,46 @@ void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define F_40_59(b, c, d) (((b) & (c)) | (((b) | (c)) & (d)))
 #define F_60_79(b, c, d) F_20_39(b, c, d)
 
-#define BODY_00_15(i, a, b, c, d, e, f, xi)                           \
-  (f) = xi + (e) + K_00_19 + ROTATE((a), 5) + F_00_19((b), (c), (d)); \
-  (b) = ROTATE((b), 30);
+#define BODY_00_15(i, a, b, c, d, e, f, xi)                               \
+  do {                                                                    \
+    (f) = (xi) + (e) + K_00_19 + ROTATE((a), 5) + F_00_19((b), (c), (d)); \
+    (b) = ROTATE((b), 30);                                                \
+  } while (0)
 
-#define BODY_16_19(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)       \
-  Xupdate(f, xi, xa, xb, xc, xd);                                 \
-  (f) += (e) + K_00_19 + ROTATE((a), 5) + F_00_19((b), (c), (d)); \
-  (b) = ROTATE((b), 30);
+#define BODY_16_19(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)         \
+  do {                                                              \
+    Xupdate(f, xi, xa, xb, xc, xd);                                 \
+    (f) += (e) + K_00_19 + ROTATE((a), 5) + F_00_19((b), (c), (d)); \
+    (b) = ROTATE((b), 30);                                          \
+  } while (0)
 
-#define BODY_20_31(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)       \
-  Xupdate(f, xi, xa, xb, xc, xd);                                 \
-  (f) += (e) + K_20_39 + ROTATE((a), 5) + F_20_39((b), (c), (d)); \
-  (b) = ROTATE((b), 30);
+#define BODY_20_31(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)         \
+  do {                                                              \
+    Xupdate(f, xi, xa, xb, xc, xd);                                 \
+    (f) += (e) + K_20_39 + ROTATE((a), 5) + F_20_39((b), (c), (d)); \
+    (b) = ROTATE((b), 30);                                          \
+  } while (0)
 
-#define BODY_32_39(i, a, b, c, d, e, f, xa, xb, xc, xd)           \
-  Xupdate(f, xa, xa, xb, xc, xd);                                 \
-  (f) += (e) + K_20_39 + ROTATE((a), 5) + F_20_39((b), (c), (d)); \
-  (b) = ROTATE((b), 30);
+#define BODY_32_39(i, a, b, c, d, e, f, xa, xb, xc, xd)             \
+  do {                                                              \
+    Xupdate(f, xa, xa, xb, xc, xd);                                 \
+    (f) += (e) + K_20_39 + ROTATE((a), 5) + F_20_39((b), (c), (d)); \
+    (b) = ROTATE((b), 30);                                          \
+  } while (0)
 
-#define BODY_40_59(i, a, b, c, d, e, f, xa, xb, xc, xd)           \
-  Xupdate(f, xa, xa, xb, xc, xd);                                 \
-  (f) += (e) + K_40_59 + ROTATE((a), 5) + F_40_59((b), (c), (d)); \
-  (b) = ROTATE((b), 30);
+#define BODY_40_59(i, a, b, c, d, e, f, xa, xb, xc, xd)             \
+  do {                                                              \
+    Xupdate(f, xa, xa, xb, xc, xd);                                 \
+    (f) += (e) + K_40_59 + ROTATE((a), 5) + F_40_59((b), (c), (d)); \
+    (b) = ROTATE((b), 30);                                          \
+  } while (0)
 
-#define BODY_60_79(i, a, b, c, d, e, f, xa, xb, xc, xd)               \
-  Xupdate(f, xa, xa, xb, xc, xd);                                     \
-  (f) = xa + (e) + K_60_79 + ROTATE((a), 5) + F_60_79((b), (c), (d)); \
-  (b) = ROTATE((b), 30);
+#define BODY_60_79(i, a, b, c, d, e, f, xa, xb, xc, xd)                   \
+  do {                                                                    \
+    Xupdate(f, xa, xa, xb, xc, xd);                                       \
+    (f) = (xa) + (e) + K_60_79 + ROTATE((a), 5) + F_60_79((b), (c), (d)); \
+    (b) = ROTATE((b), 30);                                                \
+  } while (0)
 
 #ifdef X
 #undef X
@@ -199,51 +214,51 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
   E = state[4];
 
   for (;;) {
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(0) = l;
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(1) = l;
     BODY_00_15(0, A, B, C, D, E, T, X(0));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(2) = l;
     BODY_00_15(1, T, A, B, C, D, E, X(1));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(3) = l;
     BODY_00_15(2, E, T, A, B, C, D, X(2));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(4) = l;
     BODY_00_15(3, D, E, T, A, B, C, X(3));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(5) = l;
     BODY_00_15(4, C, D, E, T, A, B, X(4));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(6) = l;
     BODY_00_15(5, B, C, D, E, T, A, X(5));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(7) = l;
     BODY_00_15(6, A, B, C, D, E, T, X(6));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(8) = l;
     BODY_00_15(7, T, A, B, C, D, E, X(7));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(9) = l;
     BODY_00_15(8, E, T, A, B, C, D, X(8));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(10) = l;
     BODY_00_15(9, D, E, T, A, B, C, X(9));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(11) = l;
     BODY_00_15(10, C, D, E, T, A, B, X(10));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(12) = l;
     BODY_00_15(11, B, C, D, E, T, A, X(11));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(13) = l;
     BODY_00_15(12, A, B, C, D, E, T, X(12));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(14) = l;
     BODY_00_15(13, T, A, B, C, D, E, X(13));
-    (void)HOST_c2l(data, l);
+    HOST_c2l(data, l);
     X(15) = l;
     BODY_00_15(14, E, T, A, B, C, D, X(14));
     BODY_00_15(15, D, E, T, A, B, C, X(15));

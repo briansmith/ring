@@ -114,23 +114,23 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 
-#define R0(a, b, c, d, k, s, t)        \
-  {                                    \
-    a += ((k) + (t)+F((b), (c), (d))); \
-    a = ROTATE(a, s);                  \
-  };
+#define R0(a, b, c, d, k, s, t)            \
+  do {                                     \
+    (a) += ((k) + (t) + F((b), (c), (d))); \
+    (a) = ROTATE(a, s);                    \
+  } while (0)
 
-#define R1(a, b, c, d, k, s, t)        \
-  {                                    \
-    a += ((k) + (t)+G((b), (c), (d))); \
-    a = ROTATE(a, s);                  \
-  };
+#define R1(a, b, c, d, k, s, t)            \
+  do {                                     \
+    (a) += ((k) + (t) + G((b), (c), (d))); \
+    (a) = ROTATE(a, s);                    \
+  } while (0)
 
-#define R2(a, b, c, d, k, s, t)        \
-  {                                    \
-    a += ((k) + (t)+H((b), (c), (d))); \
-    a = ROTATE(a, s);                  \
-  };
+#define R2(a, b, c, d, k, s, t)            \
+  do {                                     \
+    (a) += ((k) + (t) + H((b), (c), (d))); \
+    (a) = ROTATE(a, s);                    \
+  } while (0)
 
 void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
   uint32_t A, B, C, D, l;

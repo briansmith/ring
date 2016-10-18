@@ -291,7 +291,7 @@ static const uint32_t DES_SPtrans[8][64] = {
 
 #define HPERM_OP(a, t, n, m)                  \
   ((t) = ((((a) << (16 - (n))) ^ (a)) & (m)), \
-   (a) = (a) ^ (t) ^ (t >> (16 - (n))))
+   (a) = (a) ^ (t) ^ ((t) >> (16 - (n))))
 
 void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
   static const int shifts2[16] = {0, 0, 1, 1, 1, 1, 1, 1,

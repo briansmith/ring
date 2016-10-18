@@ -79,15 +79,15 @@ static void ripemd160_block_data_order(uint32_t h[5], const uint8_t *data,
   do {                         \
     unsigned long ll;          \
     ll = (c)->h[0];            \
-    (void)HOST_l2c(ll, (s));   \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[1];            \
-    (void)HOST_l2c(ll, (s));   \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[2];            \
-    (void)HOST_l2c(ll, (s));   \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[3];            \
-    (void)HOST_l2c(ll, (s));   \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[4];            \
-    (void)HOST_l2c(ll, (s));   \
+    HOST_l2c(ll, (s));         \
   } while (0)
 #define HASH_BLOCK_DATA_ORDER ripemd160_block_data_order
 
