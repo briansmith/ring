@@ -352,6 +352,8 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
 
 static int set_signing_algorithm_prefs(CERT *cert, const uint16_t *prefs,
                                        size_t num_prefs) {
+  OPENSSL_free(cert->sigalgs);
+
   cert->num_sigalgs = 0;
   cert->sigalgs = BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
   if (cert->sigalgs == NULL) {
