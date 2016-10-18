@@ -325,7 +325,7 @@ static const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
         return;
       }
 
-      SSL_CTX_set_signed_cert_timestamp_list(
+      SSL_CTX_set_ocsp_response(
           ctx, reinterpret_cast<const uint8_t *>(ocsp_data.data()),
           ocsp_data.size());
     },
