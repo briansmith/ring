@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 

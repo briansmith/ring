@@ -154,7 +154,7 @@ bool Accept(int *out_sock, const std::string &port) {
   memset(&addr, 0, sizeof(addr));
 
   addr.sin6_family = AF_INET6;
-  addr.sin6_addr = in6addr_any;
+  addr.sin6_addr = IN6ADDR_ANY_INIT;
   addr.sin6_port = htons(atoi(port.c_str()));
 
   bool ok = false;
