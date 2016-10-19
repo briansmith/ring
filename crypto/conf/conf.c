@@ -786,3 +786,5 @@ int CONF_modules_load_file(CONF_MUST_BE_NULL *filename, const char *appname,
 void CONF_modules_free(void) {}
 
 void OPENSSL_config(CONF_MUST_BE_NULL *config_name) {}
+
+void OPENSSL_no_config(void) {}
