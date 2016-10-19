@@ -59,6 +59,8 @@ static const uint8_t kDefaultIV[] = {
     0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6,
 };
 
+static const unsigned kBound = 6;
+
 int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
                  const uint8_t *in, size_t in_len) {
   /* See RFC 3394, section 2.2.1. */
@@ -77,7 +79,7 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
 
   size_t n = in_len / 8;
 
-  for (unsigned j = 0; j < 6; j++) {
+  for (unsigned j = 0; j < kBound; j++) {
     for (size_t i = 1; i <= n; i++) {
       memcpy(A + 8, out + 8 * i, 8);
       AES_encrypt(A, A, key);
@@ -113,7 +115,7 @@ int AES_unwrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
 
   size_t n = (in_len / 8) - 1;
 
-  for (unsigned j = 5; j < 6; j--) {
+  for (unsigned j = kBound - 1; j < kBound; j--) {
     for (size_t i = n; i > 0; i--) {
       uint32_t t = (uint32_t)(n * j + i);
       A[7] ^= t & 0xff;
