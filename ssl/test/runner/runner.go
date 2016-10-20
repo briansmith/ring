@@ -2299,10 +2299,13 @@ func addBasicTests() {
 			config: Config{
 				MaxVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
+					// TLS 1.3 servers are expected to
+					// always enable GREASE. TLS 1.3 is new,
+					// so there is no existing ecosystem to
+					// worry about.
 					ExpectGREASE: true,
 				},
 			},
-			flags: []string{"-enable-grease"},
 		},
 	}
 	testCases = append(testCases, basicTests...)

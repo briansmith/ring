@@ -574,12 +574,10 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
   }
 
   /* Add a fake extension. See draft-davidben-tls-grease-01. */
-  if (ssl->ctx->grease_enabled) {
-    if (!CBB_add_u16(&extensions,
-                     ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
-        !CBB_add_u16(&extensions, 0 /* empty */)) {
-      goto err;
-    }
+  if (!CBB_add_u16(&extensions,
+                   ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
+      !CBB_add_u16(&extensions, 0 /* empty */)) {
+    goto err;
   }
 
   if (!ssl->method->finish_message(ssl, &cbb)) {
