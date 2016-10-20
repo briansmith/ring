@@ -3350,44 +3350,33 @@ int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
     return 1;
   }
 
-  int ret = 0;
-  EVP_MD_CTX ctx;
+  SHA256_CTX ctx;
 
-  EVP_MD_CTX_init(&ctx);
-  if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), NULL)) {
-    goto err;
-  }
-
+  SHA256_Init(&ctx);
   static const char kClientIDMagic[] = "TLS Channel ID signature";
-  EVP_DigestUpdate(&ctx, kClientIDMagic, sizeof(kClientIDMagic));
+  SHA256_Update(&ctx, kClientIDMagic, sizeof(kClientIDMagic));
 
   if (ssl->session != NULL) {
     static const char kResumptionMagic[] = "Resumption";
-    EVP_DigestUpdate(&ctx, kResumptionMagic, sizeof(kResumptionMagic));
+    SHA256_Update(&ctx, kResumptionMagic, sizeof(kResumptionMagic));
     if (ssl->session->original_handshake_hash_len == 0) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
+      return 0;
     }
-    EVP_DigestUpdate(&ctx, ssl->session->original_handshake_hash,
-                     ssl->session->original_handshake_hash_len);
+    SHA256_Update(&ctx, ssl->session->original_handshake_hash,
+                  ssl->session->original_handshake_hash_len);
   }
 
   uint8_t handshake_hash[EVP_MAX_MD_SIZE];
   int handshake_hash_len = tls1_handshake_digest(ssl, handshake_hash,
                                                  sizeof(handshake_hash));
   if (handshake_hash_len < 0) {
-    goto err;
+    return 0;
   }
-  EVP_DigestUpdate(&ctx, handshake_hash, (size_t)handshake_hash_len);
-  unsigned len_u;
-  EVP_DigestFinal_ex(&ctx, out, &len_u);
-  *out_len = len_u;
-
-  ret = 1;
-
-err:
-  EVP_MD_CTX_cleanup(&ctx);
-  return ret;
+  SHA256_Update(&ctx, handshake_hash, (size_t)handshake_hash_len);
+  SHA256_Final(out, &ctx);
+  *out_len = SHA256_DIGEST_LENGTH;
+  return 1;
 }
 
 /* tls1_record_handshake_hashes_for_channel_id records the current handshake
