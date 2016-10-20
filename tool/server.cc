@@ -103,25 +103,25 @@ bool Server(const std::vector<std::string> &args) {
     return false;
   }
 
-  SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
-  SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  SSL_CTX_set_options(ctx.get(), SSL_OP_NO_SSLv3);
 
   // Server authentication is required.
   std::string key_file = "server.pem";
   if (args_map.count("-key") != 0) {
     key_file = args_map["-key"];
   }
-  if (!SSL_CTX_use_PrivateKey_file(ctx, key_file.c_str(), SSL_FILETYPE_PEM)) {
+  if (!SSL_CTX_use_PrivateKey_file(ctx.get(), key_file.c_str(), SSL_FILETYPE_PEM)) {
     fprintf(stderr, "Failed to load private key: %s\n", key_file.c_str());
     return false;
   }
-  if (!SSL_CTX_use_certificate_chain_file(ctx, key_file.c_str())) {
+  if (!SSL_CTX_use_certificate_chain_file(ctx.get(), key_file.c_str())) {
     fprintf(stderr, "Failed to load cert chain: %s\n", key_file.c_str());
     return false;
   }
 
   if (args_map.count("-cipher") != 0 &&
-      !SSL_CTX_set_cipher_list(ctx, args_map["-cipher"].c_str())) {
+      !SSL_CTX_set_cipher_list(ctx.get(), args_map["-cipher"].c_str())) {
     fprintf(stderr, "Failed setting cipher list\n");
     return false;
   }
@@ -133,7 +133,7 @@ bool Server(const std::vector<std::string> &args) {
               args_map["-max-version"].c_str());
       return false;
     }
-    if (!SSL_CTX_set_max_proto_version(ctx, version)) {
+    if (!SSL_CTX_set_max_proto_version(ctx.get(), version)) {
       return false;
     }
   }
@@ -145,13 +145,13 @@ bool Server(const std::vector<std::string> &args) {
               args_map["-min-version"].c_str());
       return false;
     }
-    if (!SSL_CTX_set_min_proto_version(ctx, version)) {
+    if (!SSL_CTX_set_min_proto_version(ctx.get(), version)) {
       return false;
     }
   }
 
   if (args_map.count("-ocsp-response") != 0 &&
-      !LoadOCSPResponse(ctx, args_map["-ocsp-response"].c_str())) {
+      !LoadOCSPResponse(ctx.get(), args_map["-ocsp-response"].c_str())) {
     fprintf(stderr, "Failed to load OCSP response: %s\n", args_map["-ocsp-response"].c_str());
     return false;
   }
@@ -162,23 +162,19 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   BIO *bio = BIO_new_socket(sock, BIO_CLOSE);
-  SSL *ssl = SSL_new(ctx);
-  SSL_set_bio(ssl, bio, bio);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  SSL_set_bio(ssl.get(), bio, bio);
 
-  int ret = SSL_accept(ssl);
+  int ret = SSL_accept(ssl.get());
   if (ret != 1) {
-    int ssl_err = SSL_get_error(ssl, ret);
+    int ssl_err = SSL_get_error(ssl.get(), ret);
     fprintf(stderr, "Error while connecting: %d\n", ssl_err);
     ERR_print_errors_cb(PrintErrorCallback, stderr);
     return false;
   }
 
   fprintf(stderr, "Connected.\n");
-  PrintConnectionInfo(ssl);
+  PrintConnectionInfo(ssl.get());
 
-  bool ok = TransferData(ssl, sock);
-
-  SSL_free(ssl);
-  SSL_CTX_free(ctx);
-  return ok;
+  return TransferData(ssl.get(), sock);
 }

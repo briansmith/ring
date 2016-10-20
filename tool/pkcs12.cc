@@ -120,23 +120,22 @@ bool DoPKCS12(const std::vector<std::string> &args) {
   CBS_init(&pkcs12, contents.get(), size);
 
   EVP_PKEY *key;
-  STACK_OF(X509) *certs = sk_X509_new_null();
+  bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
 
-  if (!PKCS12_get_key_and_certs(&key, certs, &pkcs12, password)) {
+  if (!PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, password)) {
     fprintf(stderr, "Failed to parse PKCS#12 data:\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
+  bssl::UniquePtr<EVP_PKEY> key_owned(key);
 
   if (key != NULL) {
     PEM_write_PrivateKey(stdout, key, NULL, NULL, 0, NULL, NULL);
-    EVP_PKEY_free(key);
   }
 
-  for (size_t i = 0; i < sk_X509_num(certs); i++) {
-    PEM_write_X509(stdout, sk_X509_value(certs, i));
+  for (size_t i = 0; i < sk_X509_num(certs.get()); i++) {
+    PEM_write_X509(stdout, sk_X509_value(certs.get(), i));
   }
-  sk_X509_pop_free(certs, X509_free);
 
   return true;
 }

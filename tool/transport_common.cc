@@ -268,16 +268,15 @@ void PrintConnectionInfo(const SSL *ssl) {
   fprintf(stderr, "  ALPN protocol: %.*s\n", alpn_len, alpn);
 
   // Print the server cert subject and issuer names.
-  X509 *peer = SSL_get_peer_certificate(ssl);
-  if (peer != NULL) {
+  bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
+  if (peer != nullptr) {
     fprintf(stderr, "  Cert subject: ");
-    X509_NAME_print_ex_fp(stderr, X509_get_subject_name(peer), 0,
+    X509_NAME_print_ex_fp(stderr, X509_get_subject_name(peer.get()), 0,
                           XN_FLAG_ONELINE);
     fprintf(stderr, "\n  Cert issuer: ");
-    X509_NAME_print_ex_fp(stderr, X509_get_issuer_name(peer), 0,
+    X509_NAME_print_ex_fp(stderr, X509_get_issuer_name(peer.get()), 0,
                           XN_FLAG_ONELINE);
     fprintf(stderr, "\n");
-    X509_free(peer);
   }
 }
 
