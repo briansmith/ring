@@ -1024,14 +1024,12 @@ static bool TestASN1() {
     }
 
     // Test the value serializes correctly.
-    CBB cbb;
+    bssl::ScopedCBB cbb;
     uint8_t *der;
     size_t der_len;
-    CBB_zero(&cbb);
-    if (!CBB_init(&cbb, 0) ||
-        !BN_marshal_asn1(&cbb, bn.get()) ||
-        !CBB_finish(&cbb, &der, &der_len)) {
-      CBB_cleanup(&cbb);
+    if (!CBB_init(cbb.get(), 0) ||
+        !BN_marshal_asn1(cbb.get(), bn.get()) ||
+        !CBB_finish(cbb.get(), &der, &der_len)) {
       return false;
     }
     bssl::UniquePtr<uint8_t> delete_der(der);
@@ -1114,16 +1112,13 @@ static bool TestASN1() {
   if (!bn) {
     return false;
   }
-  CBB cbb;
-  CBB_zero(&cbb);
-  if (!CBB_init(&cbb, 0) ||
-      BN_marshal_asn1(&cbb, bn.get())) {
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 0) ||
+      BN_marshal_asn1(cbb.get(), bn.get())) {
     fprintf(stderr, "Serialized negative number.\n");
-    CBB_cleanup(&cbb);
     return false;
   }
   ERR_clear_error();
-  CBB_cleanup(&cbb);
 
   return true;
 }

@@ -382,9 +382,10 @@ static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-// CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509*),
+// CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509),
 // bumping the reference counts for each certificate in question.
-static STACK_OF(X509)* CertsToStack(const std::vector<X509*> &certs) {
+static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
+    const std::vector<X509 *> &certs) {
   bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
   if (!stack) {
     return nullptr;
@@ -396,12 +397,13 @@ static STACK_OF(X509)* CertsToStack(const std::vector<X509*> &certs) {
     X509_up_ref(cert);
   }
 
-  return stack.release();
+  return stack;
 }
 
-// CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL STACK_OF(X509_CRL*),
-// bumping the reference counts for each CRL in question.
-static STACK_OF(X509_CRL)* CRLsToStack(const std::vector<X509_CRL*> &crls) {
+// CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
+// STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
+static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
+    const std::vector<X509_CRL *> &crls) {
   bssl::UniquePtr<STACK_OF(X509_CRL)> stack(sk_X509_CRL_new_null());
   if (!stack) {
     return nullptr;
@@ -413,7 +415,7 @@ static STACK_OF(X509_CRL)* CRLsToStack(const std::vector<X509_CRL*> &crls) {
     X509_CRL_up_ref(crl);
   }
 
-  return stack.release();
+  return stack;
 }
 
 static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
