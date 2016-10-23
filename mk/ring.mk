@@ -14,7 +14,12 @@
 
 RING_PREFIX ?= ring/
 
-RING_CPPFLAGS = -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
+RING_CPPFLAGS = -I$(RING_PREFIX)include
+ifneq (, $(filter openbsd freebsd, $(TARGET_SYS)))
+RING_CPPFLAGS += -D_BSD_SOURCE
+else
+RING_CPPFLAGS += -D_XOPEN_SOURCE=700
+endif
 
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \

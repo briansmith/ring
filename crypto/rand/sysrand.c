@@ -105,4 +105,24 @@ int GFp_sysrand_chunk(void *out, size_t requested) {
   return 1;
 }
 
+#elif defined(__OpenBSD__) || defined(__FreeBSD__)
+
+#include <limits.h>
+#include <stdlib.h>
+
+// DEBUG:
+#include <stdio.h>
+
+const size_t GFp_sysrand_chunk_max_len = ULONG_MAX;
+
+int GFp_sysrand_chunk(void *out, size_t requested) {
+    // DEBUG:
+    printf("calling arc4rand_buf()\n");
+
+    assert(requested <= GFp_sysrand_chunk_max_len);
+    // This function never fails so let's always return 1.
+    arc4random_buf(out, requested);
+    return 1;
+}
+
 #endif

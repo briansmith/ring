@@ -25,8 +25,11 @@
 //! (seccomp filters on Linux in particular). See `SystemRandom`'s
 //! documentation for more details.
 
-
-#[cfg(any(target_os = "linux", windows, test))]
+#[cfg(any(target_os = "linux",
+          target_os = "openbsd",
+          target_os = "freebsd",
+          windows,
+          test))]
 use c;
 
 #[cfg(test)]
@@ -107,17 +110,25 @@ impl SecureRandom for SystemRandom {
     }
 }
 
-#[cfg(not(any(target_os = "linux", windows)))]
+#[cfg(not(any(target_os = "linux",
+              target_os = "openbsd",
+              target_os = "freebsd",
+              windows)))]
 use self::urandom::fill as fill_impl;
 
 #[cfg(any(all(target_os = "linux", not(feature = "dev_urandom_fallback")),
+          target_os = "openbsd",
+          target_os = "freebsd",
           windows))]
 use self::sysrand::fill as fill_impl;
 
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
-#[cfg(any(target_os = "linux", windows))]
+#[cfg(any(target_os = "linux",
+          target_os = "openbsd",
+          target_os = "freebsd",
+          windows))]
 mod sysrand {
     use {bssl, error};
 
@@ -134,8 +145,10 @@ mod sysrand {
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(unix,
-          not(all(target_os = "linux",
-                  not(feature = "dev_urandom_fallback")))))]
+          not(any(all(target_os = "linux",
+                      not(feature = "dev_urandom_fallback")),
+                  target_os = "openbsd",
+                  target_os = "freebsd"))))]
 mod urandom {
     extern crate std;
     use error;
@@ -215,7 +228,10 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
 }
 
 
-#[cfg(any(target_os = "linux", windows))]
+#[cfg(any(windows,
+          target_os = "linux",
+          target_os = "openbsd",
+          target_os = "freebsd"))]
 extern {
     static GFp_sysrand_chunk_max_len: c::size_t;
     fn GFp_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
@@ -333,10 +349,16 @@ mod tests {
         }
     }
 
-    #[cfg(any(target_os = "linux", windows))]
+    #[cfg(any(target_os = "linux",
+              target_os = "openbsd",
+              target_os = "freebsd",
+              windows))]
     fn max_chunk_len() -> usize { unsafe { super::GFp_sysrand_chunk_max_len } }
 
-    #[cfg(not(any(target_os = "linux", windows)))]
+    #[cfg(not(any(target_os = "linux",
+                  target_os = "openbsd",
+                  target_os = "freebsd",
+                  windows)))]
     fn max_chunk_len() -> usize {
         use core;
         core::usize::MAX
