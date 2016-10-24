@@ -160,7 +160,7 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #define BN_TBIT		(0x8000000000000000UL)
 #define BN_DEC_CONV	(10000000000000000000UL)
 #define BN_DEC_NUM	19
-#define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
+#define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
 
 #elif defined(OPENSSL_32_BIT)
 
@@ -181,7 +181,7 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #define BN_TBIT		(0x80000000UL)
 #define BN_DEC_CONV	(1000000000UL)
 #define BN_DEC_NUM	9
-#define TOBN(hi, lo) lo, hi
+#define TOBN(hi, lo) (lo), (hi)
 
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
