@@ -31,47 +31,15 @@
 #include <openssl/err.h>
 
 #include "../bn/internal.h"
-#include "../ec/internal.h"
 #include "../internal.h"
+#include "internal.h"
+#include "p256-x86_64.h"
 
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
     !defined(OPENSSL_SMALL)
 
-
-#define P256_LIMBS (256 / BN_BITS2)
-
-typedef struct {
-  BN_ULONG X[P256_LIMBS];
-  BN_ULONG Y[P256_LIMBS];
-  BN_ULONG Z[P256_LIMBS];
-} P256_POINT;
-
-typedef struct {
-  BN_ULONG X[P256_LIMBS];
-  BN_ULONG Y[P256_LIMBS];
-} P256_POINT_AFFINE;
-
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
-
-/* Modular neg: res = -a mod P. */
-void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
-/* Montgomery mul: res = a*b*2^-256 mod P. */
-void ecp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS],
-                           const BN_ULONG b[P256_LIMBS]);
-/* Montgomery sqr: res = a*a*2^-256 mod P. */
-void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS]);
-/* Convert a number from Montgomery domain, by multiplying with 1. */
-void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
-                            const BN_ULONG in[P256_LIMBS]);
-
-
-/* Functions that perform constant time access to the precomputed tables */
-void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT *in_t, int index);
-void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,
-                            const P256_POINT_AFFINE *in_t, int index);
 
 /* One converted into the Montgomery domain */
 static const BN_ULONG ONE[P256_LIMBS] = {
@@ -121,12 +89,6 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
     dst[7] = (src[7] & mask1) ^ (dst[7] & mask2);
   }
 }
-
-void ecp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
-void ecp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
-                            const P256_POINT *b);
-void ecp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
-                                   const P256_POINT_AFFINE *b);
 
 /* r = in^-1 mod p */
 static void ecp_nistz256_mod_inverse(BN_ULONG r[P256_LIMBS],
