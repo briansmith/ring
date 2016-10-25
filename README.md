@@ -129,14 +129,14 @@ Online Automated Testing
 Travis CI is used for Android, Linux, and macOS. Appveyor is used for Windows.
 The tests are run in debug and release configurations, for the current release
 of each Rust channel (Stable, Beta, Nightly), for each configuration listed in
-the table below.
+the table below. The C compilers listed are used for compiling the C portions.
 
 <table>
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td rowspan=2>Linux</td>
     <td>x86, x86_64</td>
     <td>GCC 4.6, GCC 5, GCC 6, Clang 3.8</td>
-    <td rowspan=4><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
+    <td rowspan=4><a href=https://travis-ci.org/briansmith/ring/branches>Build Status</a></td>
 </tr>
 <tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>
     <td>GCC (Ubuntu/Linaro 4.8.4-2ubuntu1~14.04.1), tested using
@@ -155,7 +155,7 @@ the table below.
 <tr><td>Windows</td>
     <td>x86, x86_64</td>
     <td>MSVC 2015 Update 3 (14.0)</td>
-    <td><a title="Build Status" href=https://ci.appveyor.com/project/briansmith/ring/branch/master><img src=https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/master?svg=true></a>
+    <td><a href=https://ci.appveyor.com/project/briansmith/ring/branch/master>Build Status</a></td>
 </tr>
 </table>
 
