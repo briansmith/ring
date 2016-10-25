@@ -68,14 +68,6 @@
 #if defined(OPENSSL_WINDOWS)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
-
-/* Work around a clang-cl bug: SecureZeroMemory() below uses __stosb() but
- * windows.h only declares that intrinsic and then uses `#pragma intrinsic` for
- * it.  clang-cl doesn't implement `#pragma intrinsic` yet; it instead defines
- * the function as an always-inline symbol in its intrin.h.
- * TODO(thakis): Remove this once http://llvm.org/PR19898 is fixed.
- */
-#include <intrin.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #else
 #include <strings.h>
