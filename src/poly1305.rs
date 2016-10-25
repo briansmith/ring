@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use {c, constant_time, error};
+use {c, chacha, constant_time, error};
 
 pub struct SigningContext {
     state: State,
@@ -23,11 +23,11 @@ pub struct SigningContext {
 
 impl SigningContext {
     #[inline]
-    pub fn with_key(key: &Key) -> SigningContext {
+    pub fn from_key(key: Key) -> SigningContext {
         let mut ctx = SigningContext {
             state: [0u8; STATE_LEN],
         };
-        unsafe { GFp_poly1305_init(&mut ctx.state, key); }
+        unsafe { GFp_poly1305_init(&mut ctx.state, &key.bytes); }
         ctx
     }
 
@@ -44,21 +44,39 @@ impl SigningContext {
     }
 }
 
-pub fn verify(key: &Key, msg: &[u8], tag: &Tag)
+pub fn verify(key: Key, msg: &[u8], tag: &Tag)
               -> Result<(), error::Unspecified> {
     let mut calculated_tag = [0u8; TAG_LEN];
     sign(key, msg, &mut calculated_tag);
     constant_time::verify_slices_are_equal(&calculated_tag[..], tag)
 }
 
-pub fn sign(key: &Key, msg: &[u8], tag: &mut Tag) {
-    let mut ctx = SigningContext::with_key(key);
+pub fn sign(key: Key, msg: &[u8], tag: &mut Tag) {
+    let mut ctx = SigningContext::from_key(key);
     ctx.update(msg);
     ctx.sign(tag)
 }
 
 /// A Poly1305 key.
-pub type Key = [u8; KEY_LEN];
+pub struct Key {
+    bytes: KeyBytes,
+}
+
+impl Key {
+    pub fn derive_using_chacha(chacha20_key: &chacha::Key,
+                               counter: &chacha::Counter) -> Key {
+        let mut bytes = [0u8; KEY_LEN];
+        chacha::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
+        Key { bytes: bytes }
+    }
+
+    #[cfg(test)]
+    pub fn from_test_vector(bytes: &[u8; KEY_LEN]) -> Key {
+        Key { bytes: *bytes }
+    }
+}
+
+type KeyBytes = [u8; KEY_LEN];
 
 /// The length of a `key`.
 pub const KEY_LEN: usize = 32;
@@ -73,7 +91,7 @@ type State = [u8; STATE_LEN];
 const STATE_LEN: usize = 256;
 
 extern {
-    fn GFp_poly1305_init(state: &mut State, key: &Key);
+    fn GFp_poly1305_init(state: &mut State, key: &KeyBytes);
     fn GFp_poly1305_finish(state: &mut State, mac: &mut Tag);
     fn GFp_poly1305_update(state: &State, in_: *const u8, in_len: c::size_t);
 }
@@ -104,22 +122,28 @@ mod tests {
 
             // Test single-shot operation.
             {
-                let mut ctx = SigningContext::with_key(&key);
+                let key = Key::from_test_vector(&key);
+                let mut ctx = SigningContext::from_key(key);
                 ctx.update(&input);
                 let mut actual_mac = [0; TAG_LEN];
                 ctx.sign(&mut actual_mac);
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
             {
+                let key = Key::from_test_vector(&key);
                 let mut actual_mac = [0; TAG_LEN];
                 sign(key, &input, &mut actual_mac);
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
-            assert_eq!(Ok(()), verify(key, &input, &expected_mac));
+            {
+                let key = Key::from_test_vector(&key);
+                assert_eq!(Ok(()), verify(key, &input, &expected_mac));
+            }
 
             // Test streaming byte-by-byte.
             {
-                let mut ctx = SigningContext::with_key(&key);
+                let key = Key::from_test_vector(&key);
+                let mut ctx = SigningContext::from_key(key);
                 for chunk in input.chunks(1) {
                     ctx.update(chunk);
                 }
@@ -137,10 +161,11 @@ mod tests {
         })
     }
 
-    fn test_poly1305_simd(excess: usize, key: &[u8; KEY_LEN],
-                          input: &[u8], expected_mac: &[u8; TAG_LEN])
+    fn test_poly1305_simd(excess: usize, key: &[u8; KEY_LEN], input: &[u8],
+                          expected_mac: &[u8; TAG_LEN])
                           -> Result<(), error::Unspecified> {
-        let mut ctx = SigningContext::with_key(key);
+        let key = Key::from_test_vector(&key);
+        let mut ctx = SigningContext::from_key(key);
 
         // Some implementations begin in non-SIMD mode and upgrade on demand.
         // Stress the upgrade path.

@@ -72,9 +72,8 @@ fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
 fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,
                  counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8]) {
     debug_assert_eq!(counter[0], 0);
-    let mut poly1305_key = [0u8; poly1305::KEY_LEN];
-    chacha::chacha20_xor_in_place(chacha20_key, counter, &mut poly1305_key);
-    let mut ctx = poly1305::SigningContext::with_key(&poly1305_key);
+    let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
+    let mut ctx = poly1305::SigningContext::from_key(key);
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
     poly1305_update_length(&mut ctx, ad.len());

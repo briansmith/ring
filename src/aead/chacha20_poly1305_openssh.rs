@@ -65,10 +65,10 @@ impl SealingKey {
                                           data_and_padding_in_out);
         }
 
-        let mut poly_key = [0; poly1305::KEY_LEN];
         counter[0] = 0;
-        chacha::chacha20_xor_in_place(&self.key.k_2, &counter, &mut poly_key);
-        poly1305::sign(&poly_key, plaintext_in_ciphertext_out, tag_out);
+        let poly_key = poly1305::Key::derive_using_chacha(&self.key.k_2,
+                                                          &counter);
+        poly1305::sign(poly_key, plaintext_in_ciphertext_out, tag_out);
     }
 }
 
@@ -116,9 +116,9 @@ impl OpeningKey {
         // We must verify the tag before decrypting so that
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
-        let mut poly_key = [0; poly1305::KEY_LEN];
-        chacha::chacha20_xor_in_place(&self.key.k_2, &counter, &mut poly_key);
-        try!(poly1305::verify(&poly_key, ciphertext_in_plaintext_out, tag));
+        let poly_key = poly1305::Key::derive_using_chacha(&self.key.k_2,
+                                                          &counter);
+        try!(poly1305::verify(poly_key, ciphertext_in_plaintext_out, tag));
 
         let plaintext_in_ciphertext_out =
             &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
