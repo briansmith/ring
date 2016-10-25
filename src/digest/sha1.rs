@@ -17,9 +17,10 @@ use {c, polyfill};
 use core;
 use core::num::Wrapping;
 
-// XXX: This duplicates super::State. TODO: Remove the duplication, but be wary
-// of https://github.com/rust-lang/rust/issues/30905.
-type State = [u64; super::MAX_CHAINING_LEN / 8];
+// XXX: This duplicates super::State and shouldn't need to be public.
+// TODO: Remove the duplication, but be wary of
+// https://github.com/rust-lang/rust/issues/30905.
+pub type State = super::State;
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
