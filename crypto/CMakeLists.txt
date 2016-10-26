@@ -64,6 +64,7 @@ add_subdirectory(err)
 add_subdirectory(buf)
 add_subdirectory(base64)
 add_subdirectory(bytestring)
+add_subdirectory(pool)
 
 # Level 0.2 - depends on nothing but itself
 add_subdirectory(sha)
@@ -136,6 +137,7 @@ add_library(
   $<TARGET_OBJECTS:err>
   $<TARGET_OBJECTS:base64>
   $<TARGET_OBJECTS:bytestring>
+  $<TARGET_OBJECTS:pool>
   $<TARGET_OBJECTS:sha>
   $<TARGET_OBJECTS:md4>
   $<TARGET_OBJECTS:md5>
