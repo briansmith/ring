@@ -126,73 +126,8 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         });
         run_command_with_args(&make, &args);
     } else {
-        let arch = target_triple[0];
-        let (platform, optional_amd64) = match arch {
-            "i686" => ("Win32", None),
-            "x86_64" => ("x64", Some("amd64")),
-            _ => panic!("unexpected ARCH: {}", arch),
-        };
-
-        fn find_msbuild_exe(program_files_env_var: &str,
-                            optional_amd64: Option<&str>)
-                            -> Result<std::ffi::OsString, ()> {
-            let program_files = env::var(program_files_env_var).unwrap();
-            let mut msbuild = PathBuf::from(&program_files);
-            msbuild.push("MSBuild");
-            msbuild.push("14.0");
-            msbuild.push("bin");
-            if let Some(amd64) = optional_amd64 {
-                msbuild.push(amd64);
-            }
-            msbuild.push("msbuild.exe");
-            let _ = try!(std::fs::metadata(&msbuild).map_err(|_| ()));
-            Ok(msbuild.into_os_string())
-        }
-
-        let msbuild = find_msbuild_exe("ProgramFiles", optional_amd64)
-            .or_else(|_| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
-            .unwrap();
-
-        // .gitignore isn't packaged, so if it exists then this is not a
-        // packaged build. Otherwise, assume it is a packaged build, and use
-        // the prepackaged libs so that we don't require Perl and Yasm being
-        // installed.
-        let use_prepackaged_asm = std::fs::metadata(".gitignore").is_err();
-
-        let configuration = if disable_opt { "Debug" } else { "Release" };
-        let args = vec![
-            format!("/m:{}", num_jobs),
-            format!("/p:Platform={}", platform),
-            format!("/p:Configuration={}", configuration),
-            format!("/p:OutRootDir={}/", out_dir),
-        ];
-        if !use_prepackaged_asm {
-            let mut asm_args = args.clone();
-            asm_args.push(String::from("crypto/libring-asm.Windows.vcxproj"));
-            run_command_with_args(&msbuild, &asm_args);
-        } else {
-            let pregenerated_lib_name =
-                format!("msvc-{}-asm-{}.lib", LIB_NAME, arch);
-            let mut pregenerated_lib = PathBuf::from("pregenerated");
-            pregenerated_lib.push(pregenerated_lib_name);
-
-            let ring_asm_lib_name = format!("{}-asm.lib", LIB_NAME);
-            let mut ring_asm_lib = lib_path.clone();
-            ring_asm_lib.push(&ring_asm_lib_name);
-            println!("{:?} -> {:?}", &pregenerated_lib, &ring_asm_lib);
-
-            std::fs::create_dir_all(&lib_path).unwrap();
-            let _ = std::fs::copy(&pregenerated_lib, &ring_asm_lib).unwrap();
-        }
-        println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
-
-        let mut core_args = args.clone();
-        core_args.push(String::from("crypto/libring.Windows.vcxproj"));
-        run_command_with_args(&msbuild, &core_args);
-
-        let mut test_args = args.clone();
-        test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
-        run_command_with_args(&msbuild, &test_args);
+        build_msvc(&target_triple, disable_opt, &num_jobs, lib_path.clone(),
+                   out_dir);
     }
 
     println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
@@ -206,6 +141,77 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
     }
 
     Ok(())
+}
+
+fn build_msvc(target_triple: &[&str], disable_opt: bool, num_jobs: &str,
+              lib_path: PathBuf, out_dir: &str) {
+    let arch = target_triple[0];
+    let (platform, optional_amd64) = match arch {
+        "i686" => ("Win32", None),
+        "x86_64" => ("x64", Some("amd64")),
+        _ => panic!("unexpected ARCH: {}", arch),
+    };
+
+    fn find_msbuild_exe(program_files_env_var: &str,
+                        optional_amd64: Option<&str>)
+                        -> Result<std::ffi::OsString, ()> {
+        let program_files = env::var(program_files_env_var).unwrap();
+        let mut msbuild = PathBuf::from(&program_files);
+        msbuild.push("MSBuild");
+        msbuild.push("14.0");
+        msbuild.push("bin");
+        if let Some(amd64) = optional_amd64 {
+            msbuild.push(amd64);
+        }
+        msbuild.push("msbuild.exe");
+        let _ = try!(std::fs::metadata(&msbuild).map_err(|_| ()));
+        Ok(msbuild.into_os_string())
+    }
+
+    let msbuild = find_msbuild_exe("ProgramFiles", optional_amd64)
+        .or_else(|_| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
+        .unwrap();
+
+    // .gitignore isn't packaged, so if it exists then this is not a
+    // packaged build. Otherwise, assume it is a packaged build, and use
+    // the prepackaged libs so that we don't require Perl and Yasm being
+    // installed.
+    let use_prepackaged_asm = std::fs::metadata(".gitignore").is_err();
+
+    let configuration = if disable_opt { "Debug" } else { "Release" };
+    let args = vec![
+        format!("/m:{}", num_jobs),
+        format!("/p:Platform={}", platform),
+        format!("/p:Configuration={}", configuration),
+        format!("/p:OutRootDir={}/", out_dir),
+    ];
+    if !use_prepackaged_asm {
+        let mut asm_args = args.clone();
+        asm_args.push(String::from("crypto/libring-asm.Windows.vcxproj"));
+        run_command_with_args(&msbuild, &asm_args);
+    } else {
+        let pregenerated_lib_name =
+            format!("msvc-{}-asm-{}.lib", LIB_NAME, arch);
+        let mut pregenerated_lib = PathBuf::from("pregenerated");
+        pregenerated_lib.push(pregenerated_lib_name);
+
+        let ring_asm_lib_name = format!("{}-asm.lib", LIB_NAME);
+        let mut ring_asm_lib = lib_path.clone();
+        ring_asm_lib.push(&ring_asm_lib_name);
+        println!("{:?} -> {:?}", &pregenerated_lib, &ring_asm_lib);
+
+        std::fs::create_dir_all(&lib_path).unwrap();
+        let _ = std::fs::copy(&pregenerated_lib, &ring_asm_lib).unwrap();
+    }
+    println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
+
+    let mut core_args = args.clone();
+    core_args.push(String::from("crypto/libring.Windows.vcxproj"));
+    run_command_with_args(&msbuild, &core_args);
+
+    let mut test_args = args.clone();
+    test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
+    run_command_with_args(&msbuild, &test_args);
 }
 
 fn run_command_with_args<S>(command_name: S, args: &Vec<String>)
