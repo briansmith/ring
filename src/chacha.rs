@@ -44,11 +44,11 @@ pub fn chacha20_xor_overlapping(key: &Key, counter: &Counter,
     let len = in_out.len() - in_prefix_len;
     if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
             in_prefix_len != 0 {
-        chacha20_xor_in_place(key, &counter, &mut in_out[in_prefix_len..]);
         unsafe {
             core::ptr::copy(in_out[in_prefix_len..].as_ptr(),
                             in_out.as_mut_ptr(), len);
         }
+        chacha20_xor_in_place(key, &counter, &mut in_out[..len]);
     } else {
         chacha20_xor_inner(key, counter, in_out[in_prefix_len..].as_ptr(),
                            len, in_out.as_mut_ptr());
