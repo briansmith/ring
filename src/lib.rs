@@ -40,6 +40,9 @@
     missing_copy_implementations,
     missing_debug_implementations,
     unsafe_code,
+    // TODO: Deny `unused_qualifications` after
+    // https://github.com/rust-lang/rust/issues/37345 is fixed.
+    unused_qualifications,
     // TODO: Deny `unused_unsafe` when Rust 1.13 goes stable.
     unused_unsafe,
 )]
@@ -81,7 +84,6 @@
     unused_must_use,
     unused_mut,
     unused_parens,
-    unused_qualifications,
     unused_results,
     unused_variables,
     variant_size_differences,
