@@ -12,11 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+// TODO: Deny `unused_qualifications` after
+// https://github.com/rust-lang/rust/issues/37345 is fixed.
 #![allow(
     box_pointers, // TODO
     missing_docs,
-    // TODO: Deny `unused_qualifications` after
-    // https://github.com/rust-lang/rust/issues/37345 is fixed.
     unused_qualifications)]
 #![deny(
     const_err,
@@ -115,8 +115,8 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
         ];
-        // If $MAKE is given, use it as the make command. If not, use `gmake` for
-        // BSD systems and `make` for other systems.
+        // If $MAKE is given, use it as the make command. If not, use `gmake`
+        // for BSD systems and `make` for other systems.
         let make = env::var_os("MAKE").unwrap_or_else(|| {
             let m = if target_triple[2].contains("bsd") {
                 "gmake"
@@ -131,7 +131,7 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         let (platform, optional_amd64) = match arch {
             "i686" => ("Win32", None),
             "x86_64" => ("x64", Some("amd64")),
-            _ => panic!("unexpected ARCH: {}", arch)
+            _ => panic!("unexpected ARCH: {}", arch),
         };
 
         fn find_msbuild_exe(program_files_env_var: &str,
@@ -150,11 +150,9 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             Ok(msbuild.into_os_string())
         }
 
-        let msbuild =
-            find_msbuild_exe("ProgramFiles", optional_amd64)
-                .or_else(|_| find_msbuild_exe("ProgramFiles(x86)",
-                                              optional_amd64))
-                .unwrap();
+        let msbuild = find_msbuild_exe("ProgramFiles", optional_amd64)
+            .or_else(|_| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
+            .unwrap();
 
         // .gitignore isn't packaged, so if it exists then this is not a
         // packaged build. Otherwise, assume it is a packaged build, and use
@@ -212,13 +210,18 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
 }
 
 fn run_command_with_args<S>(command_name: S, args: &Vec<String>)
-                            where S: AsRef<std::ffi::OsStr> + Copy {
-    if !std::process::Command::new(command_name)
-            .args(&args)
-            .status()
-            .unwrap_or_else(|e| { panic!("failed to execute {}: {}",
-                            command_name.as_ref().to_str().unwrap(), e); })
-            .success() {
+    where S: AsRef<std::ffi::OsStr> + Copy
+{
+    let status = std::process::Command::new(command_name)
+        .args(&args)
+        .status()
+        .unwrap_or_else(|e| {
+            panic!("failed to execute {}: {}",
+                   command_name.as_ref().to_str().unwrap(),
+                   e);
+        });
+
+    if !status.success() {
         panic!("{} execution failed", command_name.as_ref().to_str().unwrap());
     }
 }
