@@ -442,62 +442,73 @@ int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
 }
 
 /* kVerifySignatureAlgorithms is the default list of accepted signature
- * algorithms for verifying. */
+ * algorithms for verifying.
+ *
+ * For now, RSA-PSS signature algorithms are not enabled on Android's system
+ * BoringSSL. Once the change in Chrome has stuck and the values are finalized,
+ * restore them. */
 static const uint16_t kVerifySignatureAlgorithms[] = {
-    /* For now, do not enable RSA-PSS signature algorithms on Android's system
-     * BoringSSL. Once TLS 1.3 is finalized and the change in Chrome has stuck,
-     * restore them. */
+    /* Prefer SHA-256 algorithms. */
+    SSL_SIGN_ECDSA_SECP256R1_SHA256,
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_SIGN_RSA_PSS_SHA512,
+    SSL_SIGN_RSA_PSS_SHA256,
 #endif
-    SSL_SIGN_RSA_PKCS1_SHA512,
+    SSL_SIGN_RSA_PKCS1_SHA256,
+
+    /* Larger hashes are acceptable. */
+    SSL_SIGN_ECDSA_SECP384R1_SHA384,
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_RSA_PSS_SHA384,
+#endif
+    SSL_SIGN_RSA_PKCS1_SHA384,
+
     /* TODO(davidben): Remove this entry and SSL_CURVE_SECP521R1 from
      * kDefaultGroups. */
 #if defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_ECDSA_SECP521R1_SHA512,
 #endif
-
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_SIGN_RSA_PSS_SHA384,
-#endif
-    SSL_SIGN_RSA_PKCS1_SHA384,
-    SSL_SIGN_ECDSA_SECP384R1_SHA384,
-
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_SIGN_RSA_PSS_SHA256,
-#endif
-    SSL_SIGN_RSA_PKCS1_SHA256,
-    SSL_SIGN_ECDSA_SECP256R1_SHA256,
-
-    SSL_SIGN_RSA_PKCS1_SHA1,
-};
-
-/* kSignSignatureAlgorithms is the default list of supported signature
- * algorithms for signing. */
-static const uint16_t kSignSignatureAlgorithms[] = {
-    /* For now, do not enable RSA-PSS signature algorithms on Android's system
-     * BoringSSL. Once TLS 1.3 is finalized and the change in Chrome has stuck,
-     * restore them. */
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA512,
 #endif
     SSL_SIGN_RSA_PKCS1_SHA512,
-    SSL_SIGN_ECDSA_SECP521R1_SHA512,
 
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_SIGN_RSA_PSS_SHA384,
-#endif
-    SSL_SIGN_RSA_PKCS1_SHA384,
-    SSL_SIGN_ECDSA_SECP384R1_SHA384,
+    /* For now, SHA-1 is still accepted but least preferable. */
+    SSL_SIGN_RSA_PKCS1_SHA1,
 
+};
+
+/* kSignSignatureAlgorithms is the default list of supported signature
+ * algorithms for signing.
+ *
+ * For now, RSA-PSS signature algorithms are not enabled on Android's system
+ * BoringSSL. Once the change in Chrome has stuck and the values are finalized,
+ * restore them. */
+static const uint16_t kSignSignatureAlgorithms[] = {
+    /* Prefer SHA-256 algorithms. */
+    SSL_SIGN_ECDSA_SECP256R1_SHA256,
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA256,
 #endif
     SSL_SIGN_RSA_PKCS1_SHA256,
-    SSL_SIGN_ECDSA_SECP256R1_SHA256,
 
-    SSL_SIGN_RSA_PKCS1_SHA1,
+    /* If needed, sign larger hashes.
+     *
+     * TODO(davidben): Determine which of these may be pruned. */
+    SSL_SIGN_ECDSA_SECP384R1_SHA384,
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_RSA_PSS_SHA384,
+#endif
+    SSL_SIGN_RSA_PKCS1_SHA384,
+
+    SSL_SIGN_ECDSA_SECP521R1_SHA512,
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    SSL_SIGN_RSA_PSS_SHA512,
+#endif
+    SSL_SIGN_RSA_PKCS1_SHA512,
+
+    /* If the peer supports nothing else, sign with SHA-1. */
     SSL_SIGN_ECDSA_SHA1,
+    SSL_SIGN_RSA_PKCS1_SHA1,
 };
 
 size_t tls12_get_verify_sigalgs(const SSL *ssl, const uint16_t **out) {
