@@ -107,7 +107,17 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     let mut calculated_tag = [0u8; TAG_LEN];
     try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
                                   in_prefix_len, &mut calculated_tag, ad));
-    try!(constant_time::verify_slices_are_equal(&calculated_tag, received_tag));
+    if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
+            .is_err() {
+        // Zero out the plaintext so that it isn't accidentally leaked or used
+        // after verification fails. It would be safest if we could check the
+        // tag before decrypting, but some `open` implementations interleave
+        // authentication with decryption for performance.
+        for b in &mut in_out[ciphertext_len..] {
+            *b = 0;
+        }
+        return Err(error::Unspecified);
+    }
     Ok(ciphertext_len) // `ciphertext_len` is also the plaintext length.
 }
 
