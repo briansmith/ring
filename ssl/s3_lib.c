@@ -240,6 +240,17 @@ struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl) {
   return NULL;
 }
 
+int ssl_is_valid_cipher(SSL *ssl, const SSL_CIPHER *cipher) {
+  /* Check the TLS version. */
+  if (SSL_CIPHER_get_min_version(cipher) > ssl3_protocol_version(ssl) ||
+      SSL_CIPHER_get_max_version(cipher) < ssl3_protocol_version(ssl)) {
+    return 0;
+  }
+
+  return sk_SSL_CIPHER_find(ssl_get_cipher_preferences(ssl)->ciphers,
+                            NULL, cipher);
+}
+
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
     const struct ssl_cipher_preference_list_st *server_pref) {

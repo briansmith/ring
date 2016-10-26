@@ -128,6 +128,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-cipher", &TestConfig::cipher },
   { "-cipher-tls10", &TestConfig::cipher_tls10 },
   { "-cipher-tls11", &TestConfig::cipher_tls11 },
+  { "-resume-cipher", &TestConfig::resume_cipher },
   { "-export-label", &TestConfig::export_label },
   { "-export-context", &TestConfig::export_context },
 };

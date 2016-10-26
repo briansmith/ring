@@ -5367,6 +5367,31 @@ func addResumptionVersionTests() {
 		}
 	}
 
+	// Sessions with disabled ciphers are not resumed.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-CipherMismatch",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		flags:                []string{"-cipher", "AES128", "-resume-cipher", "AES256"},
+		shouldFail:           false,
+		expectResumeRejected: true,
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-CipherMismatch-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		flags:                []string{"-cipher", "AES128", "-resume-cipher", "AES256"},
+		shouldFail:           false,
+		expectResumeRejected: true,
+	})
+
 	testCases = append(testCases, testCase{
 		name:          "Resume-Client-CipherMismatch",
 		resumeSession: true,

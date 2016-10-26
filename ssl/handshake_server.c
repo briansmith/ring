@@ -771,7 +771,10 @@ static int ssl3_get_client_hello(SSL *ssl) {
           ssl->version == session->ssl_version &&
           /* If the client offers the EMS extension, but the previous session
            * didn't use it, then negotiate a new session. */
-          have_extended_master_secret == session->extended_master_secret;
+          have_extended_master_secret == session->extended_master_secret &&
+          /* Only resume if the session's cipher is still valid under the
+           * current configuration. */
+          ssl_is_valid_cipher(ssl, session->cipher);
     }
 
     if (has_session) {

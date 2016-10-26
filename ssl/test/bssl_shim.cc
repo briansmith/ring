@@ -1456,6 +1456,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (config->max_cert_list > 0) {
     SSL_set_max_cert_list(ssl.get(), config->max_cert_list);
   }
+  if (is_resume &&
+      !config->resume_cipher.empty() &&
+      !SSL_set_cipher_list(ssl.get(), config->resume_cipher.c_str())) {
+    return false;
+  }
 
   int sock = Connect(config->port);
   if (sock == -1) {

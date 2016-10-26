@@ -76,6 +76,7 @@ struct TestConfig {
   std::string cipher;
   std::string cipher_tls10;
   std::string cipher_tls11;
+  std::string resume_cipher;
   bool handshake_never_done = false;
   int export_keying_material = 0;
   std::string export_label;
