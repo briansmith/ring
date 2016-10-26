@@ -399,7 +399,7 @@ static const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
         return;
       }
       SSL_CTX_set1_curves(ctx, reinterpret_cast<const int *>(curves.data()),
-                          curves.size());
+                          curves.size() / sizeof(int));
     },
     [](SSL_CTX *ctx, CBS *cbs) {
       std::string curves;
