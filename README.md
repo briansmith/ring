@@ -90,9 +90,9 @@ contribute already, see these curated lists of open issues:
   Bugs that we think newcomers might find best to start with. Note that what
   makes a bug a good fit depends a lot on the developer's background and not
   just the hardness of the work.
-* [oxidation](https://github.com/briansmith/ring/labels/oxidation): Replacing
+* [oxidation](https://github.com/briansmith/ring/projects/1): Replacing
   C code with Rust code.
-* [tls-1.3](https://github.com/briansmith/ring/labels/tls-1.3): Issues blocking
+* [tls-1.3](https://github.com/briansmith/ring/projects/2): Issues blocking
   a complete implementation of TLS 1.3:
 * [rsa](https://github.com/briansmith/ring/labels/rsa): The primary *ring*
   developer is less interested in RSA than ECC and other things, and it would
