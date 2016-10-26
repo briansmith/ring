@@ -269,7 +269,7 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 /* SSL_AEAD_CTX contains information about an AEAD that is being used to encrypt
  * an SSL connection. */
-struct ssl_aead_ctx_st {
+typedef struct ssl_aead_ctx_st {
   const SSL_CIPHER *cipher;
   EVP_AEAD_CTX ctx;
   /* fixed_nonce contains any bytes of the nonce that are fixed for all
@@ -294,7 +294,7 @@ struct ssl_aead_ctx_st {
   /* xor_fixed_nonce is non-zero if the fixed nonce should be XOR'd into the
    * variable nonce rather than prepended. */
   char xor_fixed_nonce;
-} /* SSL_AEAD_CTX */;
+} SSL_AEAD_CTX;
 
 /* SSL_AEAD_CTX_new creates a newly-allocated |SSL_AEAD_CTX| using the supplied
  * key material. It returns NULL on error. Only one of |SSL_AEAD_CTX_open| or
@@ -557,9 +557,11 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 
 /* ECDH groups. */
 
+typedef struct ssl_ecdh_ctx_st SSL_ECDH_CTX;
+
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
-struct ssl_ecdh_method_st {
+typedef struct ssl_ecdh_method_st {
   int nid;
   uint16_t group_id;
   const char name[8];
@@ -599,7 +601,12 @@ struct ssl_ecdh_method_st {
    * be passed to |offer| or |accept|. It returns one on success and zero on
    * error. */
   int (*add_key)(CBB *cbb, CBB *out_contents);
-} /* SSL_ECDH_METHOD */;
+} SSL_ECDH_METHOD;
+
+struct ssl_ecdh_ctx_st {
+  const SSL_ECDH_METHOD *method;
+  void *data;
+};
 
 /* ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
  * sets |*out_group_id| to the group ID and returns one. Otherwise, it returns
@@ -882,7 +889,7 @@ enum ssl_hs_wait_t {
   ssl_hs_private_key_operation,
 };
 
-struct ssl_handshake_st {
+typedef struct ssl_handshake_st {
   /* wait contains the operation |do_handshake| is currently blocking on or
    * |ssl_hs_ok| if none. */
   enum ssl_hs_wait_t wait;
@@ -1005,7 +1012,7 @@ struct ssl_handshake_st {
    * received in a CertificateRequest message. */
   uint8_t *certificate_types;
   size_t num_certificate_types;
-} /* SSL_HANDSHAKE */;
+} SSL_HANDSHAKE;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
 
@@ -1287,7 +1294,7 @@ struct ssl_protocol_method_st {
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
  * of a mess of functions, but hell, think of it as an opaque structure. */
-struct ssl3_enc_method {
+typedef struct ssl3_enc_method {
   /* prf computes the PRF function for |ssl|. It writes |out_len| bytes to
    * |out|, using |secret| as the secret and |label| as the label. |seed1| and
    * |seed2| are concatenated to form the seed parameter. It returns one on
@@ -1297,7 +1304,7 @@ struct ssl3_enc_method {
              size_t label_len, const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len);
   int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
-};
+} SSL3_ENC_METHOD;
 
 typedef struct ssl3_record_st {
   /* type is the record type. */

@@ -3613,9 +3613,6 @@ OPENSSL_EXPORT int SSL_set_max_version(SSL *ssl, uint16_t version);
  * deprecated. */
 
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
-typedef struct ssl3_enc_method SSL3_ENC_METHOD;
-typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
-typedef struct ssl_handshake_st SSL_HANDSHAKE;
 
 struct ssl_cipher_st {
   /* name is the OpenSSL name for the cipher. */
@@ -3630,12 +3627,6 @@ struct ssl_cipher_st {
   uint32_t algorithm_mac;
   uint32_t algorithm_prf;
 };
-
-typedef struct ssl_ecdh_method_st SSL_ECDH_METHOD;
-typedef struct ssl_ecdh_ctx_st {
-  const SSL_ECDH_METHOD *method;
-  void *data;
-} SSL_ECDH_CTX;
 
 #define SSL_MAX_SSL_SESSION_ID_LENGTH 32
 #define SSL_MAX_SID_CTX_LENGTH 32
