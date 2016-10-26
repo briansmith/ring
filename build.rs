@@ -67,8 +67,7 @@
 )]
 
 use std::env;
-use std::path::Path;
-
+use std::path::{Path, PathBuf};
 
 const LIB_NAME: &'static str = "ring";
 
@@ -138,7 +137,7 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
                             optional_amd64: Option<&str>)
                             -> Result<std::ffi::OsString, ()> {
             let program_files = env::var(program_files_env_var).unwrap();
-            let mut msbuild = std::path::PathBuf::from(&program_files);
+            let mut msbuild = PathBuf::from(&program_files);
             msbuild.push("MSBuild");
             msbuild.push("14.0");
             msbuild.push("bin");
@@ -174,7 +173,7 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         } else {
             let pregenerated_lib_name =
                 format!("msvc-{}-asm-{}.lib", LIB_NAME, arch);
-            let mut pregenerated_lib = std::path::PathBuf::from("pregenerated");
+            let mut pregenerated_lib = PathBuf::from("pregenerated");
             pregenerated_lib.push(pregenerated_lib_name);
 
             let ring_asm_lib_name = format!("{}-asm.lib", LIB_NAME);
