@@ -599,6 +599,12 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
 
   struct timeval now;
   ssl_get_current_time(ssl, &now);
+
+  /* Reject tickets from the future to avoid underflow. */
+  if ((long)now.tv_sec < session->time) {
+    return 0;
+  }
+
   return session->timeout >= (long)now.tv_sec - session->time;
 }
 

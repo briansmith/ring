@@ -31,10 +31,9 @@ const uint8_t kOpcodeTimeout = 'T';
 const uint8_t kOpcodeTimeoutAck = 't';
 
 struct PacketedBio {
-  explicit PacketedBio(bool advance_clock_arg)
-      : advance_clock(advance_clock_arg) {
+  PacketedBio(timeval *clock_arg, bool advance_clock_arg)
+      : clock(clock_arg), advance_clock(advance_clock_arg) {
     memset(&timeout, 0, sizeof(timeout));
-    memset(&clock, 0, sizeof(clock));
     memset(&read_deadline, 0, sizeof(read_deadline));
   }
 
@@ -47,14 +46,14 @@ struct PacketedBio {
       return true;
     }
 
-    if (clock.tv_sec == read_deadline.tv_sec) {
-      return clock.tv_usec < read_deadline.tv_usec;
+    if (clock->tv_sec == read_deadline.tv_sec) {
+      return clock->tv_usec < read_deadline.tv_usec;
     }
-    return clock.tv_sec < read_deadline.tv_sec;
+    return clock->tv_sec < read_deadline.tv_sec;
   }
 
   timeval timeout;
-  timeval clock;
+  timeval *clock;
   timeval read_deadline;
   bool advance_clock;
 };
@@ -64,10 +63,6 @@ PacketedBio *GetData(BIO *bio) {
     return NULL;
   }
   return (PacketedBio *)bio->ptr;
-}
-
-const PacketedBio *GetData(const BIO *bio) {
-  return GetData(const_cast<BIO*>(bio));
 }
 
 // ReadAll reads |len| bytes from |bio| into |out|. It returns 1 on success and
@@ -272,17 +267,13 @@ const BIO_METHOD g_packeted_bio_method = {
 
 }  // namespace
 
-bssl::UniquePtr<BIO> PacketedBioCreate(bool advance_clock) {
+bssl::UniquePtr<BIO> PacketedBioCreate(timeval *clock, bool advance_clock) {
   bssl::UniquePtr<BIO> bio(BIO_new(&g_packeted_bio_method));
   if (!bio) {
     return nullptr;
   }
-  bio->ptr = new PacketedBio(advance_clock);
+  bio->ptr = new PacketedBio(clock, advance_clock);
   return bio;
-}
-
-timeval PacketedBioGetClock(const BIO *bio) {
-  return GetData(bio)->clock;
 }
 
 bool PacketedBioAdvanceClock(BIO *bio) {
@@ -295,10 +286,10 @@ bool PacketedBioAdvanceClock(BIO *bio) {
     return false;
   }
 
-  data->clock.tv_usec += data->timeout.tv_usec;
-  data->clock.tv_sec += data->clock.tv_usec / 1000000;
-  data->clock.tv_usec %= 1000000;
-  data->clock.tv_sec += data->timeout.tv_sec;
+  data->clock->tv_usec += data->timeout.tv_usec;
+  data->clock->tv_sec += data->clock->tv_usec / 1000000;
+  data->clock->tv_usec %= 1000000;
+  data->clock->tv_sec += data->timeout.tv_sec;
   memset(&data->timeout, 0, sizeof(data->timeout));
   return true;
 }

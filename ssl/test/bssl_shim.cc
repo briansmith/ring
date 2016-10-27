@@ -594,8 +594,10 @@ static unsigned PskServerCallback(SSL *ssl, const char *identity,
   return config->psk.size();
 }
 
+static timeval g_clock;
+
 static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
-  *out_clock = PacketedBioGetClock(GetTestState(ssl)->packeted_bio);
+  *out_clock = g_clock;
 }
 
 static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
@@ -923,9 +925,7 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
   SSL_CTX_enable_tls_channel_id(ssl_ctx.get());
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
-  if (config->is_dtls) {
-    SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
-  }
+  SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
 
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
   SSL_CTX_sess_set_new_cb(ssl_ctx.get(), NewSessionCallback);
@@ -1473,7 +1473,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
   if (config->is_dtls) {
-    bssl::UniquePtr<BIO> packeted = PacketedBioCreate(!config->async);
+    bssl::UniquePtr<BIO> packeted = PacketedBioCreate(&g_clock, !config->async);
     if (!packeted) {
       return false;
     }
@@ -1747,6 +1747,11 @@ static int Main(int argc, char **argv) {
   if (!ParseConfig(argc - 1, argv + 1, &config)) {
     return Usage(argv[0]);
   }
+
+  // Some code treats the zero time special, so initialize the clock to a
+  // non-zero time.
+  g_clock.tv_sec = 1234;
+  g_clock.tv_usec = 1234;
 
   bssl::UniquePtr<SSL_CTX> ssl_ctx = SetupCtx(&config);
   if (!ssl_ctx) {

@@ -2047,6 +2047,9 @@ static bool TestSessionTimeout() {
   }
 
   for (uint16_t version : kTLSVersions) {
+    static const int kStartTime = 1000;
+    g_current_time.tv_sec = kStartTime;
+
     bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     if (!server_ctx || !client_ctx ||
@@ -2082,6 +2085,15 @@ static bool TestSessionTimeout() {
 
     // Advance the clock one more second.
     g_current_time.tv_sec++;
+
+    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
+                             false /* expect session not reused */)) {
+      fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+      return false;
+    }
+
+    // Rewind the clock to before the session was minted.
+    g_current_time.tv_sec = kStartTime - 1;
 
     if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
                              false /* expect session not reused */)) {
