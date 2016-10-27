@@ -349,6 +349,14 @@ impl PublicScalarOps {
         Ok(Scalar { limbs: limbs })
     }
 
+    // See the documentation for `reduced_limbs()` for the limitations of this
+    // function.
+    pub fn scalar_from_unreduced_limbs(&self, unreduced: &[Limb; MAX_LIMBS])
+                                       -> Scalar {
+        let cops = self.public_key_ops.common;
+        Scalar { limbs: cops.reduced_limbs(unreduced, &cops.n.limbs) }
+    }
+
     /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.
     pub fn scalar_inv_to_mont(&self, a: &Scalar) -> ScalarMont {
         let num_limbs = self.public_key_ops.common.num_limbs;
@@ -361,9 +369,8 @@ impl PublicScalarOps {
 
     #[inline]
     pub fn scalar_mul_mixed(&self, a: &Scalar, b: &ScalarMont) -> Scalar {
-        let cops = self.public_key_ops.common;
         let unreduced = rab(self.scalar_mul_mont, &a.limbs, &b.limbs);
-        Scalar { limbs: cops.reduced_limbs(&unreduced, &cops.n.limbs) }
+        self.scalar_from_unreduced_limbs(&unreduced)
     }
 
     #[inline]

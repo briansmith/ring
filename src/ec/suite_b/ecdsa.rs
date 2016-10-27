@@ -170,21 +170,11 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
     };
 
     // XXX: unwrap
-    let mut limbs =
+    let limbs =
         parse_big_endian_value(untrusted::Input::from(digest), num_limbs)
             .unwrap();
-    let n = &ops.public_key_ops.common.n.limbs[..num_limbs];
-    if !limbs_less_than_limbs(&limbs[..num_limbs], n) {
-        let mut carried_bit = 0;
-        for i in 0..num_limbs {
-            let next_carried_bit = limbs[num_limbs - i - 1] << (LIMB_BITS - 1);
-            limbs[num_limbs - i - 1] = (limbs[num_limbs - i - 1] >> 1) |
-                                       carried_bit;
-            carried_bit = next_carried_bit;
-        }
-        debug_assert!(limbs_less_than_limbs(&limbs[..num_limbs], &n));
-    }
-    Scalar::from_limbs_unchecked(&limbs)
+
+    ops.scalar_from_unreduced_limbs(&limbs)
 }
 
 fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
