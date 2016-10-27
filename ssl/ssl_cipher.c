@@ -781,125 +781,93 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
   *out_mac_secret_len = 0;
   *out_fixed_iv_len = 0;
 
-  switch (cipher->algorithm_enc) {
-    case SSL_AES128GCM:
+  if (cipher->algorithm_mac == SSL_AEAD) {
+    if (cipher->algorithm_enc == SSL_AES128GCM) {
       *out_aead = EVP_aead_aes_128_gcm();
       *out_fixed_iv_len = 4;
-      break;
-
-    case SSL_AES256GCM:
+    } else if (cipher->algorithm_enc == SSL_AES256GCM) {
       *out_aead = EVP_aead_aes_256_gcm();
       *out_fixed_iv_len = 4;
-      break;
-
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
-    case SSL_CHACHA20POLY1305_OLD:
+    } else if (cipher->algorithm_enc == SSL_CHACHA20POLY1305_OLD) {
       *out_aead = EVP_aead_chacha20_poly1305_old();
       *out_fixed_iv_len = 0;
-      break;
 #endif
-
-    case SSL_CHACHA20POLY1305:
+    } else if (cipher->algorithm_enc == SSL_CHACHA20POLY1305) {
       *out_aead = EVP_aead_chacha20_poly1305();
       *out_fixed_iv_len = 12;
-      break;
-
-    case SSL_AES128:
-      switch (cipher->algorithm_mac) {
-        case SSL_SHA1:
-          if (version == SSL3_VERSION) {
-            *out_aead = EVP_aead_aes_128_cbc_sha1_ssl3();
-            *out_fixed_iv_len = 16;
-          } else if (version == TLS1_VERSION) {
-            *out_aead = EVP_aead_aes_128_cbc_sha1_tls_implicit_iv();
-            *out_fixed_iv_len = 16;
-          } else {
-            *out_aead = EVP_aead_aes_128_cbc_sha1_tls();
-          }
-          *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          break;
-        case SSL_SHA256:
-          *out_aead = EVP_aead_aes_128_cbc_sha256_tls();
-          *out_mac_secret_len = SHA256_DIGEST_LENGTH;
-          break;
-        default:
-          return 0;
-      }
-      break;
-
-    case SSL_AES256:
-      switch (cipher->algorithm_mac) {
-        case SSL_SHA1:
-          if (version == SSL3_VERSION) {
-            *out_aead = EVP_aead_aes_256_cbc_sha1_ssl3();
-            *out_fixed_iv_len = 16;
-          } else if (version == TLS1_VERSION) {
-            *out_aead = EVP_aead_aes_256_cbc_sha1_tls_implicit_iv();
-            *out_fixed_iv_len = 16;
-          } else {
-            *out_aead = EVP_aead_aes_256_cbc_sha1_tls();
-          }
-          *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          break;
-        case SSL_SHA256:
-          *out_aead = EVP_aead_aes_256_cbc_sha256_tls();
-          *out_mac_secret_len = SHA256_DIGEST_LENGTH;
-          break;
-        case SSL_SHA384:
-          *out_aead = EVP_aead_aes_256_cbc_sha384_tls();
-          *out_mac_secret_len = SHA384_DIGEST_LENGTH;
-          break;
-        default:
-          return 0;
-      }
-      break;
-
-    case SSL_3DES:
-      switch (cipher->algorithm_mac) {
-        case SSL_SHA1:
-          if (version == SSL3_VERSION) {
-            *out_aead = EVP_aead_des_ede3_cbc_sha1_ssl3();
-            *out_fixed_iv_len = 8;
-          } else if (version == TLS1_VERSION) {
-            *out_aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
-            *out_fixed_iv_len = 8;
-          } else {
-            *out_aead = EVP_aead_des_ede3_cbc_sha1_tls();
-          }
-          *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          break;
-        default:
-          return 0;
-      }
-      break;
-
-    case SSL_eNULL:
-      switch (cipher->algorithm_mac) {
-        case SSL_SHA1:
-          if (version == SSL3_VERSION) {
-            *out_aead = EVP_aead_null_sha1_ssl3();
-          } else {
-            *out_aead = EVP_aead_null_sha1_tls();
-          }
-          *out_mac_secret_len = SHA_DIGEST_LENGTH;
-          break;
-        default:
-          return 0;
-      }
-      break;
-
-    default:
+    } else {
       return 0;
+    }
+
+    /* In TLS 1.3, the iv_len is equal to the AEAD nonce length whereas the code
+     * above computes the TLS 1.2 construction. */
+    if (version >= TLS1_3_VERSION) {
+      *out_fixed_iv_len = EVP_AEAD_nonce_length(*out_aead);
+    }
+  } else if (cipher->algorithm_mac == SSL_SHA1) {
+    if (cipher->algorithm_enc == SSL_eNULL) {
+      if (version == SSL3_VERSION) {
+        *out_aead = EVP_aead_null_sha1_ssl3();
+      } else {
+        *out_aead = EVP_aead_null_sha1_tls();
+      }
+    } else if (cipher->algorithm_enc == SSL_3DES) {
+      if (version == SSL3_VERSION) {
+        *out_aead = EVP_aead_des_ede3_cbc_sha1_ssl3();
+        *out_fixed_iv_len = 8;
+      } else if (version == TLS1_VERSION) {
+        *out_aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
+        *out_fixed_iv_len = 8;
+      } else {
+        *out_aead = EVP_aead_des_ede3_cbc_sha1_tls();
+      }
+    } else if (cipher->algorithm_enc == SSL_AES128) {
+      if (version == SSL3_VERSION) {
+        *out_aead = EVP_aead_aes_128_cbc_sha1_ssl3();
+        *out_fixed_iv_len = 16;
+      } else if (version == TLS1_VERSION) {
+        *out_aead = EVP_aead_aes_128_cbc_sha1_tls_implicit_iv();
+        *out_fixed_iv_len = 16;
+      } else {
+        *out_aead = EVP_aead_aes_128_cbc_sha1_tls();
+      }
+    } else if (cipher->algorithm_enc == SSL_AES256) {
+      if (version == SSL3_VERSION) {
+        *out_aead = EVP_aead_aes_256_cbc_sha1_ssl3();
+        *out_fixed_iv_len = 16;
+      } else if (version == TLS1_VERSION) {
+        *out_aead = EVP_aead_aes_256_cbc_sha1_tls_implicit_iv();
+        *out_fixed_iv_len = 16;
+      } else {
+        *out_aead = EVP_aead_aes_256_cbc_sha1_tls();
+      }
+    } else {
+      return 0;
+    }
+
+    *out_mac_secret_len = SHA_DIGEST_LENGTH;
+  } else if (cipher->algorithm_mac == SSL_SHA256) {
+    if (cipher->algorithm_enc == SSL_AES128) {
+      *out_aead = EVP_aead_aes_128_cbc_sha256_tls();
+    } else if (cipher->algorithm_enc == SSL_AES256) {
+      *out_aead = EVP_aead_aes_256_cbc_sha256_tls();
+    } else {
+      return 0;
+    }
+
+    *out_mac_secret_len = SHA256_DIGEST_LENGTH;
+  } else if (cipher->algorithm_mac == SSL_SHA384) {
+      if (cipher->algorithm_enc != SSL_AES256) {
+        return 0;
+      }
+
+      *out_aead = EVP_aead_aes_256_cbc_sha384_tls();
+      *out_mac_secret_len = SHA384_DIGEST_LENGTH;
+  } else {
+    return 0;
   }
 
-  /* In TLS 1.3, the iv_len is equal to the AEAD nonce length whereas the code
-   * above computes the TLS 1.2 construction.
-   *
-   * TODO(davidben,svaldez): Avoid computing the wrong value and fixing it. */
-  if (version >= TLS1_3_VERSION) {
-    *out_fixed_iv_len = EVP_AEAD_nonce_length(*out_aead);
-    assert(*out_fixed_iv_len >= 8);
-  }
   return 1;
 }
 
