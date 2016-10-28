@@ -2032,6 +2032,27 @@ static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
   return std::move(g_last_session);
 }
 
+static int SwitchSessionIDContextSNI(SSL *ssl, int *out_alert, void *arg) {
+  static const uint8_t kContext[] = {3};
+
+  if (!SSL_set_session_id_context(ssl, kContext, sizeof(kContext))) {
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+
+static int SwitchSessionIDContextEarly(
+    const struct ssl_early_callback_ctx *ctx) {
+  static const uint8_t kContext[] = {3};
+
+  if (!SSL_set_session_id_context(ctx->ssl, kContext, sizeof(kContext))) {
+    return -1;
+  }
+
+  return 1;
+}
+
 static bool TestSessionIDContext() {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
@@ -2084,6 +2105,39 @@ static bool TestSessionIDContext() {
       fprintf(stderr,
               "Error connection with different context (version = %04x).\n",
               version);
+      return false;
+    }
+
+    // Change the session ID context back and install an SNI callback to switch
+    // it.
+    if (!SSL_CTX_set_session_id_context(server_ctx.get(), kContext1,
+                                        sizeof(kContext1))) {
+      return false;
+    }
+
+    SSL_CTX_set_tlsext_servername_callback(server_ctx.get(),
+                                           SwitchSessionIDContextSNI);
+
+    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
+                             false /* expect session not reused */)) {
+      fprintf(
+          stderr,
+          "Error connection with different context (version = %04x, SNI).\n",
+          version);
+      return false;
+    }
+
+    // Switch the session ID context with the early callback instead.
+    SSL_CTX_set_tlsext_servername_callback(server_ctx.get(), nullptr);
+    SSL_CTX_set_select_certificate_cb(server_ctx.get(),
+                                      SwitchSessionIDContextEarly);
+
+    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
+                             false /* expect session not reused */)) {
+      fprintf(
+          stderr,
+          "Error connection with different context (version = %04x, early).\n",
+          version);
       return false;
     }
   }
