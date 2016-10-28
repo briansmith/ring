@@ -187,9 +187,12 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 
 
 macro_rules! ecdsa {
-    ( $VERIFY_ALGORITHM:ident, $ecdsa_verify_ops:expr, $digest_alg:expr,
-      $doc_str:expr ) => {
-        #[doc=$doc_str]
+    ( $ecdsa_verify_ops:expr, $digest_alg:expr, $VERIFY_ALGORITHM_ASN1:ident,
+      $doc_str_asn1:expr ) => {
+        #[doc=$doc_str_asn1]
+        ///
+        /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
+        /// described in [RFC 3279 Section 2.2.3].
         ///
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in
@@ -202,9 +205,6 @@ macro_rules! ecdsa {
         /// equivalent to ECC Full Public-Key Validation for prime-order curves
         /// like this one.
         ///
-        /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
-        /// described in [RFC 3279 Section 2.2.3].
-        ///
         /// [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
         ///     http://www.secg.org/sec1-v2.pdf
         /// [NIST Special Publication 800-56A, revision 2]:
@@ -213,36 +213,36 @@ macro_rules! ecdsa {
         ///     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
         /// [RFC 3279 Section 2.2.3]:
         ///     https://tools.ietf.org/html/rfc3279#section-2.2.3
-        pub static $VERIFY_ALGORITHM: ECDSAParameters = ECDSAParameters {
+        pub static $VERIFY_ALGORITHM_ASN1: ECDSAParameters = ECDSAParameters {
             ops: $ecdsa_verify_ops,
             digest_alg: $digest_alg,
         };
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
+ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA1, ECDSA_P256_SHA1_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-1.");
-ecdsa!(ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
+ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P256_SHA256_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-256.");
-ecdsa!(ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
+ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA384, ECDSA_P256_SHA384_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-384.");
-ecdsa!(ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
+ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA512, ECDSA_P256_SHA512_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-512.");
 
-ecdsa!(ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
+ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA1, ECDSA_P384_SHA1_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
         curve and SHA-1.");
-ecdsa!(ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
+ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P384_SHA256_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
         curve and SHA-256.");
-ecdsa!(ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
+ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA384, ECDSA_P384_SHA384_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
         curve and SHA-384.");
-ecdsa!(ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
+ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA512, ECDSA_P384_SHA512_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
         curve and SHA-512.");
 
