@@ -62,6 +62,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
+#include <openssl/pool.h>
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -103,7 +104,13 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         ret->akid = NULL;
         ret->aux = NULL;
         ret->crldp = NULL;
+        ret->buf = NULL;
         CRYPTO_new_ex_data(&ret->ex_data);
+        break;
+
+    case ASN1_OP_D2I_PRE:
+        CRYPTO_BUFFER_free(ret->buf);
+        ret->buf = NULL;
         break;
 
     case ASN1_OP_D2I_POST:
@@ -121,6 +128,7 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         policy_cache_free(ret->policy_cache);
         GENERAL_NAMES_free(ret->altname);
         NAME_CONSTRAINTS_free(ret->nc);
+        CRYPTO_BUFFER_free(ret->buf);
 
         if (ret->name != NULL)
             OPENSSL_free(ret->name);
@@ -141,6 +149,31 @@ ASN1_SEQUENCE_ref(X509, x509_cb) = {
 IMPLEMENT_ASN1_FUNCTIONS(X509)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(X509)
+
+X509 *d2i_X509_from_buffer(CRYPTO_BUFFER *buf) {
+  X509 *x509 = X509_new();
+  if (x509 == NULL) {
+    return NULL;
+  }
+
+  x509->cert_info->enc.alias_only_on_next_parse = 1;
+
+  const uint8_t *inp = CRYPTO_BUFFER_data(buf);
+  X509 *x509p = x509;
+  X509 *ret = d2i_X509(&x509p, &inp, CRYPTO_BUFFER_len(buf));
+  if (ret == NULL ||
+      (inp - CRYPTO_BUFFER_data(buf)) != (ptrdiff_t) CRYPTO_BUFFER_len(buf)) {
+    X509_free(x509);
+    return NULL;
+  }
+  assert(x509p == x509);
+  assert(ret == x509);
+
+  CRYPTO_BUFFER_up_ref(buf);
+  ret->buf = buf;
+
+  return ret;
+}
 
 int X509_up_ref(X509 *x)
 {

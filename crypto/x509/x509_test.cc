@@ -17,10 +17,12 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
+#include <openssl/pool.h>
 #include <openssl/x509.h>
 
 namespace bssl {
@@ -744,6 +746,196 @@ static bool TestSignCtx() {
   return true;
 }
 
+static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
+                     const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return false;
+  }
+
+  char *name, *header;
+  uint8_t *data;
+  long data_len;
+  if (!PEM_read_bio(bio.get(), &name, &header, &data, &data_len)) {
+    fprintf(stderr, "failed to read PEM data.\n");
+    return false;
+  }
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+
+  out->reset(data);
+  *out_len = data_len;
+
+  return true;
+}
+
+static bool TestFromBuffer() {
+  size_t data_len;
+  bssl::UniquePtr<uint8_t> data;
+  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
+    return false;
+  }
+
+  bssl::UniquePtr<CRYPTO_BUFFER> buf(
+      CRYPTO_BUFFER_new(data.get(), data_len, nullptr));
+  if (!buf) {
+    return false;
+  }
+
+  bssl::UniquePtr<X509> root(d2i_X509_from_buffer(buf.get()));
+  if (!root) {
+    return false;
+  }
+
+  const uint8_t *enc_pointer = root->cert_info->enc.enc;
+  const uint8_t *buf_pointer = CRYPTO_BUFFER_data(buf.get());
+  if (enc_pointer < buf_pointer ||
+      enc_pointer >= buf_pointer + CRYPTO_BUFFER_len(buf.get())) {
+    fprintf(stderr, "TestFromBuffer: enc does not alias the buffer.\n");
+    return false;
+  }
+
+  buf.reset();
+
+  /* This ensures the X509 took a reference to |buf|, otherwise this will be a
+   * reference to free memory and ASAN should notice. */
+  if (enc_pointer[0] != CBS_ASN1_SEQUENCE) {
+    fprintf(stderr, "TestFromBuffer: enc data is not a SEQUENCE.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestFromBufferTrailingData() {
+  size_t data_len;
+  bssl::UniquePtr<uint8_t> data;
+  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
+    return false;
+  }
+
+  std::unique_ptr<uint8_t[]> trailing_data(new uint8_t[data_len + 1]);
+  memcpy(trailing_data.get(), data.get(), data_len);
+
+  bssl::UniquePtr<CRYPTO_BUFFER> buf_trailing_data(
+      CRYPTO_BUFFER_new(trailing_data.get(), data_len + 1, nullptr));
+  if (!buf_trailing_data) {
+    return false;
+  }
+
+  bssl::UniquePtr<X509> root_trailing_data(
+      d2i_X509_from_buffer(buf_trailing_data.get()));
+  if (root_trailing_data) {
+    fprintf(stderr, "TestFromBuffer: trailing data was not rejected.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestFromBufferModified() {
+  size_t data_len;
+  bssl::UniquePtr<uint8_t> data;
+  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
+    return false;
+  }
+
+  bssl::UniquePtr<CRYPTO_BUFFER> buf(
+      CRYPTO_BUFFER_new(data.get(), data_len, nullptr));
+  if (!buf) {
+    return false;
+  }
+
+  bssl::UniquePtr<X509> root(d2i_X509_from_buffer(buf.get()));
+  if (!root) {
+    return false;
+  }
+
+  bssl::UniquePtr<ASN1_INTEGER> fourty_two(ASN1_INTEGER_new());
+  ASN1_INTEGER_set(fourty_two.get(), 42);
+  X509_set_serialNumber(root.get(), fourty_two.get());
+
+  if (i2d_X509(root.get(), nullptr) != static_cast<long>(data_len)) {
+    fprintf(stderr,
+            "TestFromBuffer: i2d_X509 gives different answer before marking as "
+            "modified.\n");
+    return false;
+  }
+
+  X509_CINF_set_modified(root->cert_info);
+
+  if (i2d_X509(root.get(), nullptr) == static_cast<long>(data_len)) {
+    fprintf(stderr,
+            "TestFromBuffer: i2d_X509 gives same answer after marking as "
+            "modified.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestFromBufferReused() {
+  size_t data_len;
+  bssl::UniquePtr<uint8_t> data;
+  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
+    return false;
+  }
+
+  bssl::UniquePtr<CRYPTO_BUFFER> buf(
+      CRYPTO_BUFFER_new(data.get(), data_len, nullptr));
+  if (!buf) {
+    return false;
+  }
+
+  bssl::UniquePtr<X509> root(d2i_X509_from_buffer(buf.get()));
+  if (!root) {
+    return false;
+  }
+
+  size_t data2_len;
+  bssl::UniquePtr<uint8_t> data2;
+  if (!PEMToDER(&data2, &data2_len, kLeafPEM)) {
+    return false;
+  }
+
+  X509 *x509p = root.get();
+  const uint8_t *inp = data2.get();
+  X509 *ret = d2i_X509(&x509p, &inp, data2_len);
+  if (ret != root.get()) {
+    fprintf(stderr,
+            "TestFromBuffer: d2i_X509 parsed into a different object.\n");
+    return false;
+  }
+
+  // Free |data2| and ensure that |root| took its own copy. Otherwise the
+  // following will trigger a use-after-free.
+  data2.reset();
+
+  const long i2d_len = i2d_X509(root.get(), nullptr);
+  if (i2d_len < 0) {
+    return false;
+  }
+  std::unique_ptr<uint8_t[]> i2d(new uint8_t[i2d_len]);
+  uint8_t *outp = i2d.get();
+  i2d_X509(root.get(), &outp);
+
+  if (!PEMToDER(&data2, &data2_len, kLeafPEM)) {
+    return false;
+  }
+  if (i2d_len != static_cast<long>(data2_len) ||
+      memcmp(data2.get(), i2d.get(), i2d_len) != 0) {
+    fprintf(stderr, "TestFromBufferReused: i2d gave wrong result.\n");
+    return false;
+  }
+
+  if (root->buf != NULL) {
+    fprintf(stderr, "TestFromBufferReused: X509.buf was not cleared.\n");
+    return false;
+  }
+
+  return true;
+}
+
 static int Main() {
   CRYPTO_library_init();
 
@@ -751,7 +943,11 @@ static int Main() {
       !TestCRL() ||
       !TestPSS() ||
       !TestBadPSSParameters() ||
-      !TestSignCtx()) {
+      !TestSignCtx() ||
+      !TestFromBuffer() ||
+      !TestFromBufferTrailingData() ||
+      !TestFromBufferModified() ||
+      !TestFromBufferReused()) {
     return 1;
   }
 
