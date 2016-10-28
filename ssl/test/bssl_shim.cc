@@ -776,6 +776,20 @@ static int CustomExtensionParseCallback(SSL *ssl, unsigned extension_value,
   return 1;
 }
 
+static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
+  // SNI must be accessible from the SNI callback.
+  const TestConfig *config = GetTestConfig(ssl);
+  const char *server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  if (server_name == nullptr ||
+      std::string(server_name) != config->expected_server_name) {
+    fprintf(stderr, "servername mismatch (got %s; want %s)\n", server_name,
+            config->expected_server_name.c_str());
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
@@ -969,6 +983,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
 
   if (config->enable_grease) {
     SSL_CTX_set_grease_enabled(ssl_ctx.get(), 1);
+  }
+
+  if (!config->expected_server_name.empty()) {
+    SSL_CTX_set_tlsext_servername_callback(ssl_ctx.get(), ServerNameCallback);
   }
 
   return ssl_ctx;
@@ -1171,7 +1189,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
   if (!config->expected_server_name.empty()) {
     const char *server_name =
         SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
-    if (server_name != config->expected_server_name) {
+    if (server_name == nullptr ||
+        server_name != config->expected_server_name) {
       fprintf(stderr, "servername mismatch (got %s; want %s)\n",
               server_name, config->expected_server_name.c_str());
       return false;

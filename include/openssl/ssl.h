@@ -2331,9 +2331,9 @@ OPENSSL_EXPORT int SSL_get_servername_type(const SSL *ssl);
 
 /* SSL_CTX_set_tlsext_servername_callback configures |callback| to be called on
  * the server after ClientHello extensions have been parsed and returns one.
- * The callback may use |SSL_get_servername| to examine the server_name extension
- * and returns a |SSL_TLSEXT_ERR_*| value. The value of |arg| may be set by
- * calling |SSL_CTX_set_tlsext_servername_arg|.
+ * The callback may use |SSL_get_servername| to examine the server_name
+ * extension and returns a |SSL_TLSEXT_ERR_*| value. The value of |arg| may be
+ * set by calling |SSL_CTX_set_tlsext_servername_arg|.
  *
  * If the callback returns |SSL_TLSEXT_ERR_NOACK|, the server_name extension is
  * not acknowledged in the ServerHello. If the return value is
