@@ -137,14 +137,15 @@ struct Key {
 
 impl Key {
     pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
+        // The first half becomes K_2 and the second half becomes K_1.
         Key {
             k_1: chacha::key_from_bytes(
                     slice_as_array_ref!(
-                        &key_material[..chacha::KEY_LEN_IN_BYTES],
+                        &key_material[chacha::KEY_LEN_IN_BYTES..],
                         chacha::KEY_LEN_IN_BYTES).unwrap()),
             k_2: chacha::key_from_bytes(
                     slice_as_array_ref!(
-                        &key_material[chacha::KEY_LEN_IN_BYTES..],
+                        &key_material[..chacha::KEY_LEN_IN_BYTES],
                         chacha::KEY_LEN_IN_BYTES).unwrap()),
         }
     }
