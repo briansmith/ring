@@ -191,7 +191,7 @@ const uint8_t *CRYPTO_BUFFER_data(const CRYPTO_BUFFER *buf) {
   return buf->data;
 }
 
-const size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf) {
+size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf) {
   return buf->len;
 }
 

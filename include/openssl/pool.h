@@ -62,7 +62,7 @@ OPENSSL_EXPORT const uint8_t *CRYPTO_BUFFER_data(const CRYPTO_BUFFER *buf);
 
 /* CRYPTO_BUFFER_len returns the length, in bytes, of the data contained in
  * |buf|. */
-OPENSSL_EXPORT const size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf);
+OPENSSL_EXPORT size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf);
 
 /* CRYPTO_BUFFER_init_CBS initialises |out| to point at the data from |buf|. */
 OPENSSL_EXPORT void CRYPTO_BUFFER_init_CBS(const CRYPTO_BUFFER *buf, CBS *out);
