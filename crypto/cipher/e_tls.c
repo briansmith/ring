@@ -262,7 +262,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   /* Remove CBC padding. Code from here on is timing-sensitive with respect to
    * |padding_ok| and |data_plus_mac_len| for CBC ciphers. */
-  unsigned padding_ok, data_plus_mac_len, data_len;
+  unsigned padding_ok, data_plus_mac_len;
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE) {
     if (!EVP_tls_cbc_remove_padding(
             &padding_ok, &data_plus_mac_len, out, total,
@@ -279,7 +279,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
      * already been checked against the MAC size at the top of the function. */
     assert(data_plus_mac_len >= HMAC_size(&tls_ctx->hmac_ctx));
   }
-  data_len = data_plus_mac_len - HMAC_size(&tls_ctx->hmac_ctx);
+  unsigned data_len = data_plus_mac_len - HMAC_size(&tls_ctx->hmac_ctx);
 
   /* At this point, if the padding is valid, the first |data_plus_mac_len| bytes
    * after |out| are the plaintext and MAC. Otherwise, |data_plus_mac_len| is
