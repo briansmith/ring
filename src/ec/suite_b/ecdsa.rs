@@ -220,9 +220,6 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA1, ECDSA_P256_SHA1_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
-        curve and SHA-1.");
 ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P256_SHA256_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-256.");
@@ -233,9 +230,6 @@ ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA512, ECDSA_P256_SHA512_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-512.");
 
-ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA1, ECDSA_P384_SHA1_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
-        curve and SHA-1.");
 ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P384_SHA256_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
         curve and SHA-256.");
@@ -322,10 +316,7 @@ mod tests {
                                      &'static PublicScalarOps,
                                      &'static digest::Algorithm) {
         if curve_name == "P-256" {
-            if digest_name == "SHA1" {
-                (&signature::ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA1)
-            } else if digest_name == "SHA256" {
+            if digest_name == "SHA256" {
                 (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
@@ -338,10 +329,7 @@ mod tests {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
-            if digest_name == "SHA1" {
-                (&signature::ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA1)
-            } else if digest_name == "SHA256" {
+            if digest_name == "SHA256" {
                 (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
