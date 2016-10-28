@@ -4357,6 +4357,19 @@ func addVersionNegotiationTests() {
 		expectedVersion: VersionTLS12,
 	})
 
+	// Test that the maximum version is selected regardless of the
+	// client-sent order.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "IgnoreClientVersionOrder",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSupportedVersions: []uint16{VersionTLS12, tls13DraftVersion},
+			},
+		},
+		expectedVersion: VersionTLS13,
+	})
+
 	// Test for version tolerance.
 	testCases = append(testCases, testCase{
 		testType: serverTest,

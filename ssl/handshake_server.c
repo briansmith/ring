@@ -578,6 +578,9 @@ static int negotiate_version(
       return 0;
     }
 
+    /* Choose the newest commonly-supported version advertised by the client.
+     * The client orders the versions according to its preferences, but we're
+     * not required to honor the client's preferences. */
     int found_version = 0;
     while (CBS_len(&versions) != 0) {
       uint16_t ext_version;
@@ -590,10 +593,10 @@ static int negotiate_version(
         continue;
       }
       if (min_version <= ext_version &&
-          ext_version <= max_version) {
+          ext_version <= max_version &&
+          (!found_version || version < ext_version)) {
         version = ext_version;
         found_version = 1;
-        break;
       }
     }
 
