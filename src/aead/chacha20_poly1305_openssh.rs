@@ -154,7 +154,7 @@ fn make_counter(sequence_number: u32) -> chacha::Counter {
     let mut sequence_number = sequence_number;
     let mut nonce = [0; chacha::NONCE_LEN];
     for i in 0..4 {
-        nonce[chacha::NONCE_LEN - (4 - i)] = (sequence_number % 0x100) as u8;
+        nonce[chacha::NONCE_LEN - 1 - i] = (sequence_number % 0x100) as u8;
         sequence_number /= 0x100;
     }
     chacha::make_counter(&nonce, 0)
