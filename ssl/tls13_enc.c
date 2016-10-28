@@ -159,8 +159,8 @@ int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
   /* Look up cipher suite properties. */
   const EVP_AEAD *aead;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
-  size_t mac_secret_len, fixed_iv_len;
-  if (!ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
+  size_t discard;
+  if (!ssl_cipher_get_evp_aead(&aead, &discard, &discard,
                                SSL_get_session(ssl)->cipher,
                                ssl3_protocol_version(ssl))) {
     return 0;
