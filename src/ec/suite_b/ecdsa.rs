@@ -221,22 +221,30 @@ macro_rules! ecdsa {
 }
 
 ecdsa!(ECDSA_P256_SHA1_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA1,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-1.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
+        curve and SHA-1.");
 ecdsa!(ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA256,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-256.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
+        curve and SHA-256.");
 ecdsa!(ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA384,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-384.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
+        curve and SHA-384.");
 ecdsa!(ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS, &digest::SHA512,
-       "Verification of ECDSA signatures using the P-256 curve and SHA-512.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
+        curve and SHA-512.");
 
 ecdsa!(ECDSA_P384_SHA1_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA1,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-1.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
+        curve and SHA-1.");
 ecdsa!(ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA256,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-256.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
+        curve and SHA-256.");
 ecdsa!(ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA384,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-384.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
+        curve and SHA-384.");
 ecdsa!(ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS, &digest::SHA512,
-       "Verification of ECDSA signatures using the P-384 curve and SHA-512.");
+       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
+        curve and SHA-512.");
 
 
 #[cfg(test)]
