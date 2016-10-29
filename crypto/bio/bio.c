@@ -460,12 +460,8 @@ static int print_bio(const char *str, size_t len, void *bio) {
   return BIO_write((BIO *)bio, str, len);
 }
 
-void BIO_print_errors(BIO *bio) {
-  ERR_print_errors_cb(print_bio, bio);
-}
-
 void ERR_print_errors(BIO *bio) {
-  BIO_print_errors(bio);
+  ERR_print_errors_cb(print_bio, bio);
 }
 
 /* bio_read_all reads everything from |bio| and prepends |prefix| to it. On
