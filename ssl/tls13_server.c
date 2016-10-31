@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/aead.h>
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -171,6 +172,48 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
+static const SSL_CIPHER *choose_tls13_cipher(
+    const SSL *ssl, const struct ssl_early_callback_ctx *client_hello) {
+  if (client_hello->cipher_suites_len % 2 != 0) {
+    return NULL;
+  }
+
+  CBS cipher_suites;
+  CBS_init(&cipher_suites, client_hello->cipher_suites,
+           client_hello->cipher_suites_len);
+
+  const int aes_is_fine = EVP_has_aes_hardware();
+
+  const SSL_CIPHER *best = NULL;
+  while (CBS_len(&cipher_suites) > 0) {
+    uint16_t cipher_suite;
+    if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
+      return NULL;
+    }
+
+    const SSL_CIPHER *candidate = SSL_get_cipher_by_value(cipher_suite);
+    if (candidate == NULL || !ssl_is_valid_cipher(ssl, candidate)) {
+      continue;
+    }
+
+    /* TLS 1.3 removes legacy ciphers, so honor the client order, but prefer
+     * ChaCha20 if we do not have AES hardware. */
+    if (aes_is_fine) {
+      return candidate;
+    }
+
+    if (candidate->algorithm_enc == SSL_CHACHA20POLY1305) {
+      return candidate;
+    }
+
+    if (best == NULL) {
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
 static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
   if (!ssl->s3->session_reused) {
     /* Call |cert_cb| to update server certificates if required. */
@@ -197,8 +240,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl->s3->session_reused) {
-    const SSL_CIPHER *cipher =
-        ssl3_choose_cipher(ssl, &client_hello, ssl_get_cipher_preferences(ssl));
+    const SSL_CIPHER *cipher = choose_tls13_cipher(ssl, &client_hello);
     if (cipher == NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);

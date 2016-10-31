@@ -40,6 +40,7 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include <inttypes.h>
 #include <string.h>
 
+#include <openssl/aead.h>
 #include <openssl/bio.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
@@ -1319,6 +1320,25 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
       return false;
     }
   }
+
+  uint16_t cipher_id =
+      static_cast<uint16_t>(SSL_CIPHER_get_id(SSL_get_current_cipher(ssl)));
+  if (config->expect_cipher_aes != 0 &&
+      EVP_has_aes_hardware() &&
+      static_cast<uint16_t>(config->expect_cipher_aes) != cipher_id) {
+    fprintf(stderr, "Cipher ID was %04x, wanted %04x (has AES hardware)\n",
+            cipher_id, static_cast<uint16_t>(config->expect_cipher_aes));
+    return false;
+  }
+
+  if (config->expect_cipher_no_aes != 0 &&
+      !EVP_has_aes_hardware() &&
+      static_cast<uint16_t>(config->expect_cipher_no_aes) != cipher_id) {
+    fprintf(stderr, "Cipher ID was %04x, wanted %04x (no AES hardware)\n",
+            cipher_id, static_cast<uint16_t>(config->expect_cipher_no_aes));
+    return false;
+  }
+
 
   if (!config->psk.empty()) {
     if (SSL_get_peer_cert_chain(ssl) != nullptr) {

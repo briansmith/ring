@@ -738,9 +738,6 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"TLSv1", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, SSL3_VERSION},
     {"TLSv1.2", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, TLS1_2_VERSION},
 
-    /* AEAD-only ciphers for TLS 1.3. */
-    {"GENERIC", SSL_kGENERIC, SSL_aGENERIC, ~0u, ~0u, 0},
-
     /* Legacy strength classes. */
     {"HIGH", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, 0},
     {"FIPS", ~SSL_kCECPQ1, ~0u, ~SSL_eNULL, ~0u, 0},
@@ -943,7 +940,9 @@ static void ssl_cipher_collect_ciphers(const SSL_PROTOCOL_METHOD *ssl_method,
   size_t co_list_num = 0;
   for (size_t i = 0; i < kCiphersLen; i++) {
     const SSL_CIPHER *cipher = &kCiphers[i];
-    if (ssl_method->supports_cipher(cipher)) {
+    if (ssl_method->supports_cipher(cipher) &&
+        /* TLS 1.3 ciphers do not participate in this mechanism. */
+        cipher->algorithm_mkey != SSL_kGENERIC) {
       co_list[co_list_num].cipher = cipher;
       co_list[co_list_num].next = NULL;
       co_list[co_list_num].prev = NULL;
@@ -1386,11 +1385,8 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   /* Now arrange all ciphers by preference:
    * TODO(davidben): Compute this order once and copy it. */
 
-  /* Everything else being equal, prefer TLS 1.3 ciphers then ECDHE_ECDSA then
-   * ECDHE_RSA over other key exchange mechanisms */
-
-  ssl_cipher_apply_rule(0, SSL_kGENERIC, SSL_aGENERIC, ~0u, ~0u, 0, CIPHER_ADD,
-                        -1, 0, &head, &tail);
+  /* Everything else being equal, prefer ECDHE_ECDSA and ECDHE_RSA over other
+   * key exchange mechanisms */
   ssl_cipher_apply_rule(0, SSL_kECDHE, SSL_aECDSA, ~0u, ~0u, 0, CIPHER_ADD, -1,
                         0, &head, &tail);
   ssl_cipher_apply_rule(0, SSL_kECDHE, ~0u, ~0u, ~0u, 0, CIPHER_ADD, -1, 0,

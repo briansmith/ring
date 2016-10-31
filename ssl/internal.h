@@ -1658,6 +1658,9 @@ OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
 
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
+
+/* ssl_get_cipher_preferences returns the cipher preference list for TLS 1.2 and
+ * below. */
 const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
     const SSL *ssl);
 
@@ -1712,7 +1715,7 @@ int ssl3_output_cert_chain(SSL *ssl);
 
 /* ssl_is_valid_cipher checks that |cipher| is valid according to the current
  * server configuration in |ssl|. It returns 1 if valid, and 0 otherwise. */
-int ssl_is_valid_cipher(SSL *ssl, const SSL_CIPHER *cipher);
+int ssl_is_valid_cipher(const SSL *ssl, const SSL_CIPHER *cipher);
 
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, const struct ssl_early_callback_ctx *client_hello,

@@ -152,6 +152,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/aead.h>
 #include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
@@ -605,30 +606,48 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     return 0;
   }
 
-  STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
-
-  int any_enabled = 0;
-  for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
-    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
-    /* Skip disabled ciphers */
-    if ((cipher->algorithm_mkey & ssl->cert->mask_k) ||
-        (cipher->algorithm_auth & ssl->cert->mask_a)) {
-      continue;
+  /* Add TLS 1.3 ciphers. Order ChaCha20-Poly1305 relative to AES-GCM based on
+   * hardware support. */
+  if (max_version >= TLS1_3_VERSION) {
+    if (!EVP_has_aes_hardware() &&
+        !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
+      return 0;
     }
-    if (SSL_CIPHER_get_min_version(cipher) > max_version ||
-        SSL_CIPHER_get_max_version(cipher) < min_version) {
-      continue;
+    if (!CBB_add_u16(&child, TLS1_CK_AES_128_GCM_SHA256 & 0xffff) ||
+        !CBB_add_u16(&child, TLS1_CK_AES_256_GCM_SHA384 & 0xffff)) {
+      return 0;
     }
-    any_enabled = 1;
-    if (!CBB_add_u16(&child, ssl_cipher_get_value(cipher))) {
+    if (EVP_has_aes_hardware() &&
+        !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return 0;
     }
   }
 
-  /* If all ciphers were disabled, return the error to the caller. */
-  if (!any_enabled) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
-    return 0;
+  if (min_version < TLS1_3_VERSION) {
+    STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
+    int any_enabled = 0;
+    for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
+      const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
+      /* Skip disabled ciphers */
+      if ((cipher->algorithm_mkey & ssl->cert->mask_k) ||
+          (cipher->algorithm_auth & ssl->cert->mask_a)) {
+        continue;
+      }
+      if (SSL_CIPHER_get_min_version(cipher) > max_version ||
+          SSL_CIPHER_get_max_version(cipher) < min_version) {
+        continue;
+      }
+      any_enabled = 1;
+      if (!CBB_add_u16(&child, ssl_cipher_get_value(cipher))) {
+        return 0;
+      }
+    }
+
+    /* If all ciphers were disabled, return the error to the caller. */
+    if (!any_enabled && max_version < TLS1_3_VERSION) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+      return 0;
+    }
   }
 
   /* For SSLv3, the SCSV is added. Otherwise the renegotiation extension is

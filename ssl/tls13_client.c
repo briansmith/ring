@@ -218,12 +218,9 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Check if the cipher is disabled. */
-  if ((cipher->algorithm_mkey & ssl->cert->mask_k) ||
-      (cipher->algorithm_auth & ssl->cert->mask_a) ||
-      SSL_CIPHER_get_min_version(cipher) > ssl3_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(cipher) < ssl3_protocol_version(ssl) ||
-      !sk_SSL_CIPHER_find(ssl_get_ciphers_by_id(ssl), NULL, cipher)) {
+  /* Check if the cipher is a TLS 1.3 cipher. */
+  if (SSL_CIPHER_get_min_version(cipher) > ssl3_protocol_version(ssl) ||
+      SSL_CIPHER_get_max_version(cipher) < ssl3_protocol_version(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;

@@ -5508,26 +5508,6 @@ func addResumptionVersionTests() {
 		expectResumeRejected: true,
 	})
 
-	testCases = append(testCases, testCase{
-		testType:      serverTest,
-		name:          "Resume-Server-DeclineBadCipher-2-TLS13",
-		resumeSession: true,
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				FilterTicket: func(in []byte) ([]byte, error) {
-					return SetShimTicketCipherSuite(in, TLS_AES_256_GCM_SHA384)
-				},
-			},
-		},
-		flags: []string{
-			"-cipher", "AES128",
-			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
-		},
-		expectResumeRejected: true,
-	})
-
 	// Sessions may not be resumed at a different cipher.
 	testCases = append(testCases, testCase{
 		name:          "Resume-Client-CipherMismatch",
@@ -8973,6 +8953,58 @@ func addTLS13HandshakeTests() {
 	})
 }
 
+func addTLS13CipherPreferenceTests() {
+	// Test that client preference is honored if the shim has AES hardware
+	// and ChaCha20-Poly1305 is preferred otherwise.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-Server-ChaCha20-AES",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_CHACHA20_POLY1305_SHA256,
+				TLS_AES_128_GCM_SHA256,
+			},
+		},
+		flags: []string{
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-Server-AES-ChaCha20",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_CHACHA20_POLY1305_SHA256,
+			},
+		},
+		flags: []string{
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_128_GCM_SHA256)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+
+	// Test that the client orders ChaCha20-Poly1305 and AES-GCM based on
+	// whether it has AES hardware.
+	testCases = append(testCases, testCase{
+		name: "TLS13-CipherPreference-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Use the client cipher order. (This is the default but
+			// is listed to be explicit.)
+			PreferServerCipherSuites: false,
+		},
+		flags: []string{
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_128_GCM_SHA256)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+}
+
 func addPeekTests() {
 	// Test SSL_peek works, including on empty records.
 	testCases = append(testCases, testCase{
@@ -9160,6 +9192,7 @@ func main() {
 	addWrongMessageTypeTests()
 	addTrailingMessageDataTests()
 	addTLS13HandshakeTests()
+	addTLS13CipherPreferenceTests()
 	addPeekTests()
 
 	var wg sync.WaitGroup

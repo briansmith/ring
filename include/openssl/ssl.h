@@ -1306,7 +1306,12 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   [ECDHE-ECDSA-CHACHA20-POLY1305|ECDHE-ECDSA-AES128-GCM-SHA256]
  *
  * Once an equal-preference group is used, future directives must be
- * opcode-less. */
+ * opcode-less.
+ *
+ * TLS 1.3 ciphers do not participate in this mechanism and instead have a
+ * built-in preference order. Functions to set cipher lists do not affect TLS
+ * 1.3, and functions to query the cipher list do not include TLS 1.3
+ * ciphers. */
 
 /* SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
  * substituted when a cipher string starts with 'DEFAULT'. */

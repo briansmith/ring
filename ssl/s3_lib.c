@@ -241,15 +241,21 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
   return NULL;
 }
 
-int ssl_is_valid_cipher(SSL *ssl, const SSL_CIPHER *cipher) {
+int ssl_is_valid_cipher(const SSL *ssl, const SSL_CIPHER *cipher) {
   /* Check the TLS version. */
-  if (SSL_CIPHER_get_min_version(cipher) > ssl3_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(cipher) < ssl3_protocol_version(ssl)) {
+  uint16_t version = ssl3_protocol_version(ssl);
+  if (SSL_CIPHER_get_min_version(cipher) > version ||
+      SSL_CIPHER_get_max_version(cipher) < version) {
     return 0;
   }
 
-  return sk_SSL_CIPHER_find(ssl_get_cipher_preferences(ssl)->ciphers,
-                            NULL, cipher);
+  /* TLS 1.3 ciphers are not configurable. */
+  if (version >= TLS1_3_VERSION) {
+    return 1;
+  }
+
+  return sk_SSL_CIPHER_find(ssl_get_cipher_preferences(ssl)->ciphers, NULL,
+                            cipher);
 }
 
 const SSL_CIPHER *ssl3_choose_cipher(
