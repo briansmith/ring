@@ -211,6 +211,13 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
   ssl->s3->tmp.new_cipher = ssl->s3->new_session->cipher;
   ssl->method->received_flight(ssl);
 
+  /* Resolve ALPN after the cipher suite is selected. HTTP/2 negotiation depends
+   * on the cipher suite. */
+  uint8_t alert;
+  if (!ssl_negotiate_alpn(ssl, &alert, &client_hello)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
+  }
 
   /* The PRF hash is now known. */
   size_t hash_len =

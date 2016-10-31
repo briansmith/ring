@@ -2347,6 +2347,64 @@ static bool TestVersions() {
   return true;
 }
 
+// Tests that that |SSL_get_pending_cipher| is available during the ALPN
+// selection callback.
+static bool TestALPNCipherAvailable() {
+  static const uint8_t kALPNProtos[] = {0x03, 'f', 'o', 'o'};
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  if (!cert || !key) {
+    return false;
+  }
+
+  for (uint16_t version : kTLSVersions) {
+    // SSL 3.0 lacks extensions.
+    if (version == SSL3_VERSION) {
+      continue;
+    }
+
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    if (!ctx ||
+        !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
+        !SSL_CTX_use_PrivateKey(ctx.get(), key.get()) ||
+        !SSL_CTX_set_min_proto_version(ctx.get(), version) ||
+        !SSL_CTX_set_max_proto_version(ctx.get(), version) ||
+        SSL_CTX_set_alpn_protos(ctx.get(), kALPNProtos, sizeof(kALPNProtos)) !=
+            0) {
+      return false;
+    }
+
+    // The ALPN callback does not fail the handshake on error, so have the
+    // callback write a boolean.
+    bool pending_cipher_known = false;
+    SSL_CTX_set_alpn_select_cb(
+        ctx.get(),
+        [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+           unsigned in_len, void *arg) -> int {
+          bool *result = reinterpret_cast<bool *>(arg);
+          *result = SSL_get_pending_cipher(ssl) != nullptr;
+          return SSL_TLSEXT_ERR_NOACK;
+        },
+        &pending_cipher_known);
+
+    bssl::UniquePtr<SSL> client, server;
+    if (!ConnectClientAndServer(&client, &server, ctx.get(), ctx.get(),
+                                nullptr /* no session */)) {
+      return false;
+    }
+
+    if (!pending_cipher_known) {
+      fprintf(stderr,
+              "%x: The pending cipher was not known in the ALPN callback.\n",
+              version);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -2384,7 +2442,8 @@ int main() {
       !TestSNICallback() ||
       !TestEarlyCallbackVersionSwitch() ||
       !TestSetVersion() ||
-      !TestVersions()) {
+      !TestVersions() ||
+      !TestALPNCipherAvailable()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }

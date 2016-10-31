@@ -1342,10 +1342,6 @@ static int ext_npn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 
   if (contents == NULL ||
       ssl->s3->initial_handshake_complete ||
-      /* If the ALPN extension is seen before NPN, ignore it. (If ALPN is seen
-       * afterwards, parsing the ALPN extension will clear
-       * |next_proto_neg_seen|. */
-      ssl->s3->alpn_selected != NULL ||
       ssl->ctx->next_protos_advertised_cb == NULL ||
       SSL_is_dtls(ssl)) {
     return 1;
@@ -1545,14 +1541,14 @@ static int ext_alpn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   return 1;
 }
 
-static int ext_alpn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
-                                      CBS *contents) {
-  if (contents == NULL) {
-    return 1;
-  }
-
+int ssl_negotiate_alpn(SSL *ssl, uint8_t *out_alert,
+                       const struct ssl_early_callback_ctx *client_hello) {
+  CBS contents;
   if (ssl->ctx->alpn_select_cb == NULL ||
-      ssl->s3->initial_handshake_complete) {
+      !ssl_early_callback_get_extension(
+          client_hello, &contents,
+          TLSEXT_TYPE_application_layer_protocol_negotiation)) {
+    /* Ignore ALPN if not configured or no extension was supplied. */
     return 1;
   }
 
@@ -1560,9 +1556,11 @@ static int ext_alpn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   ssl->s3->hs->next_proto_neg_seen = 0;
 
   CBS protocol_name_list;
-  if (!CBS_get_u16_length_prefixed(contents, &protocol_name_list) ||
-      CBS_len(contents) != 0 ||
+  if (!CBS_get_u16_length_prefixed(&contents, &protocol_name_list) ||
+      CBS_len(&contents) != 0 ||
       CBS_len(&protocol_name_list) < 2) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
+    *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
 
@@ -1574,6 +1572,8 @@ static int ext_alpn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
         /* Empty protocol names are forbidden. */
         CBS_len(&protocol_name) == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
+      *out_alert = SSL_AD_DECODE_ERROR;
       return 0;
     }
   }
@@ -2461,7 +2461,8 @@ static const struct tls_extension kExtensions[] = {
     ext_alpn_init,
     ext_alpn_add_clienthello,
     ext_alpn_parse_serverhello,
-    ext_alpn_parse_clienthello,
+    /* ALPN is negotiated late in |ssl_negotiate_alpn|. */
+    ignore_parse_clienthello,
     ext_alpn_add_serverhello,
   },
   {

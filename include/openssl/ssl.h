@@ -2389,7 +2389,10 @@ OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
  * |*out_len| to the selected protocol and return |SSL_TLSEXT_ERR_OK| on
  * success. It does not pass ownership of the buffer. Otherwise, it should
  * return |SSL_TLSEXT_ERR_NOACK|. Other |SSL_TLSEXT_ERR_*| values are
- * unimplemented and will be treated as |SSL_TLSEXT_ERR_NOACK|. */
+ * unimplemented and will be treated as |SSL_TLSEXT_ERR_NOACK|.
+ *
+ * The cipher suite is selected before negotiating ALPN. The callback may use
+ * |SSL_get_pending_cipher| to query the cipher suite. */
 OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(
     SSL_CTX *ctx, int (*cb)(SSL *ssl, const uint8_t **out, uint8_t *out_len,
                             const uint8_t *in, unsigned in_len, void *arg),

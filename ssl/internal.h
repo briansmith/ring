@@ -1083,6 +1083,12 @@ int tls13_get_cert_verify_signature_input(
     SSL *ssl, uint8_t **out, size_t *out_len,
     enum ssl_cert_verify_context_t cert_verify_context);
 
+/* ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
+ * one on successful negotiation or if nothing was negotiated. It returns zero
+ * and sets |*out_alert| to an alert on error. */
+int ssl_negotiate_alpn(SSL *ssl, uint8_t *out_alert,
+                       const struct ssl_early_callback_ctx *client_hello);
+
 
 /* SSLKEYLOGFILE functions. */
 

@@ -556,7 +556,7 @@ int ssl_client_cipher_list_contains_cipher(
 }
 
 static int negotiate_version(
-    SSL *ssl, int *out_alert,
+    SSL *ssl, uint8_t *out_alert,
     const struct ssl_early_callback_ctx *client_hello) {
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
@@ -665,7 +665,8 @@ unsupported_protocol:
 }
 
 static int ssl3_get_client_hello(SSL *ssl) {
-  int al = SSL_AD_INTERNAL_ERROR, ret = -1;
+  uint8_t al = SSL_AD_INTERNAL_ERROR;
+  int ret = -1;
   SSL_SESSION *session = NULL;
 
   if (ssl->state == SSL3_ST_SR_CLNT_HELLO_A) {
@@ -885,6 +886,12 @@ static int ssl3_get_client_hello(SSL *ssl) {
        * classed by them as a bug, but it's assumed by at least NGINX. */
       ssl->s3->new_session->verify_result = X509_V_OK;
     }
+  }
+
+  /* Resolve ALPN after the cipher suite is selected. HTTP/2 negotiation depends
+   * on the cipher suite. */
+  if (!ssl_negotiate_alpn(ssl, &al, &client_hello)) {
+    goto f_err;
   }
 
   /* Now that the cipher is known, initialize the handshake hash. */
