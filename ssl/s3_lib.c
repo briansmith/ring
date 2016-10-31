@@ -220,7 +220,8 @@ void ssl3_free(SSL *ssl) {
   ssl->s3 = NULL;
 }
 
-struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl) {
+const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
+    const SSL *ssl) {
   if (ssl->cipher_list != NULL) {
     return ssl->cipher_list;
   }

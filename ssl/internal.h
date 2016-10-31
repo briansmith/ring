@@ -1652,7 +1652,8 @@ OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
 
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
-struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl);
+const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
+    const SSL *ssl);
 
 int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain);
 int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain);
