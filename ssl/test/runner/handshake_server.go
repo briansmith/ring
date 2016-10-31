@@ -158,7 +158,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD
 		// be always DTLS 1.0
 		helloVerifyRequest := &helloVerifyRequestMsg{
-			vers:   VersionTLS10,
+			vers:   versionToWire(VersionTLS10, c.isDTLS),
 			cookie: make([]byte, 32),
 		}
 		if _, err := io.ReadFull(c.config.rand(), helloVerifyRequest.cookie); err != nil {
