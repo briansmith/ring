@@ -1839,26 +1839,6 @@ static int ext_srtp_add_serverhello(SSL *ssl, CBB *out) {
  *
  * https://tools.ietf.org/html/rfc4492#section-5.1.2 */
 
-static int ssl_any_ec_cipher_suites_enabled(const SSL *ssl) {
-  if (ssl->version < TLS1_VERSION && !SSL_is_dtls(ssl)) {
-    return 0;
-  }
-
-  const STACK_OF(SSL_CIPHER) *cipher_stack = SSL_get_ciphers(ssl);
-
-  for (size_t i = 0; i < sk_SSL_CIPHER_num(cipher_stack); i++) {
-    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(cipher_stack, i);
-
-    const uint32_t alg_k = cipher->algorithm_mkey;
-    const uint32_t alg_a = cipher->algorithm_auth;
-    if ((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
 static int ext_ec_point_add_extension(SSL *ssl, CBB *out) {
   CBB contents, formats;
   if (!CBB_add_u16(out, TLSEXT_TYPE_ec_point_formats) ||
@@ -1873,10 +1853,6 @@ static int ext_ec_point_add_extension(SSL *ssl, CBB *out) {
 }
 
 static int ext_ec_point_add_clienthello(SSL *ssl, CBB *out) {
-  if (!ssl_any_ec_cipher_suites_enabled(ssl)) {
-    return 1;
-  }
-
   return ext_ec_point_add_extension(ssl, out);
 }
 
@@ -2322,10 +2298,6 @@ static int ext_cookie_add_clienthello(SSL *ssl, CBB *out) {
  * https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.4 */
 
 static int ext_supported_groups_add_clienthello(SSL *ssl, CBB *out) {
-  if (!ssl_any_ec_cipher_suites_enabled(ssl)) {
-    return 1;
-  }
-
   CBB contents, groups_bytes;
   if (!CBB_add_u16(out, TLSEXT_TYPE_supported_groups) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
