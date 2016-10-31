@@ -33,6 +33,9 @@ extern "C" {
  * sometimes referred to as “curve25519”, but “X25519” is a more precise name.
  * See http://cr.yp.to/ecdh.html and https://tools.ietf.org/html/rfc7748. */
 
+#define X25519_PRIVATE_KEY_LEN 32
+#define X25519_PUBLIC_VALUE_LEN 32
+
 /* X25519_keypair sets |out_public_value| and |out_private_key| to a freshly
  * generated, public–private key pair. */
 OPENSSL_EXPORT void X25519_keypair(uint8_t out_public_value[32],
