@@ -505,6 +505,11 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     return 0;
   }
 
+  /* Exporters may not be used in the middle of a renegotiation. */
+  if (SSL_in_init(ssl) && !SSL_in_false_start(ssl)) {
+    return 0;
+  }
+
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
     return tls13_export_keying_material(ssl, out, out_len, label, label_len,
                                         context, context_len, use_context);

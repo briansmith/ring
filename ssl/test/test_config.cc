@@ -106,6 +106,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-send-alert", &TestConfig::send_alert },
   { "-peek-then-read", &TestConfig::peek_then_read },
   { "-enable-grease", &TestConfig::enable_grease },
+  { "-use-exporter-between-reads", &TestConfig::use_exporter_between_reads },
 };
 
 const Flag<std::string> kStringFlags[] = {

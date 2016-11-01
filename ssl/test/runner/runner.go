@@ -7022,6 +7022,7 @@ func addExportKeyingMaterialTests() {
 			useExportContext:     true,
 		})
 	}
+
 	testCases = append(testCases, testCase{
 		name: "ExportKeyingMaterial-SSL3",
 		config: Config{
@@ -7033,6 +7034,47 @@ func addExportKeyingMaterialTests() {
 		useExportContext:     true,
 		shouldFail:           true,
 		expectedError:        "failed to export keying material",
+	})
+
+	// Exporters work during a False Start.
+	testCases = append(testCases, testCase{
+		name: "ExportKeyingMaterial-FalseStart",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+			Bugs: ProtocolBugs{
+				ExpectFalseStart: true,
+			},
+		},
+		flags: []string{
+			"-false-start",
+			"-advertise-alpn", "\x03foo",
+		},
+		shimWritesFirst:      true,
+		exportKeyingMaterial: 1024,
+		exportLabel:          "label",
+		exportContext:        "context",
+		useExportContext:     true,
+	})
+
+	// Exporters do not work in the middle of a renegotiation. Test this by
+	// triggering the exporter after every SSL_read call and configuring the
+	// shim to run asynchronously.
+	testCases = append(testCases, testCase{
+		name: "ExportKeyingMaterial-Renegotiate",
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-async",
+			"-use-exporter-between-reads",
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+		shouldFail:    true,
+		expectedError: "failed to export keying material",
 	})
 }
 

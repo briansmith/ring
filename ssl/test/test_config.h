@@ -116,6 +116,7 @@ struct TestConfig {
   bool enable_grease = false;
   int max_cert_list = 0;
   std::string ticket_key;
+  bool use_exporter_between_reads = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

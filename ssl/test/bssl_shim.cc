@@ -1078,6 +1078,16 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
     if (config->async) {
       AsyncBioEnforceWriteQuota(test_state->async_bio, true);
     }
+
+    // Run the exporter after each read. This is to test that the exporter fails
+    // during a renegotiation.
+    if (config->use_exporter_between_reads) {
+      uint8_t buf;
+      if (!SSL_export_keying_material(ssl, &buf, 1, NULL, 0, NULL, 0, 0)) {
+        fprintf(stderr, "failed to export keying material\n");
+        return -1;
+      }
+    }
   } while (config->async && RetryAsync(ssl, ret));
 
   if (config->peek_then_read && ret > 0) {
