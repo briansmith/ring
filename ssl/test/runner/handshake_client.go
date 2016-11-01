@@ -260,6 +260,10 @@ NextCipherSuite:
 			}
 
 			hello.pskIdentities = []pskIdentity{psk}
+
+			if c.config.Bugs.ExtraPSKIdentity {
+				hello.pskIdentities = append(hello.pskIdentities, psk)
+			}
 		}
 
 		if session.vers < VersionTLS13 || c.config.Bugs.SendBothTickets {

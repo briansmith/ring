@@ -1982,7 +1982,7 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
       !CBS_get_u8_length_prefixed(&identity, &ke_modes) ||
       !CBS_get_u8_length_prefixed(&identity, &auth_modes) ||
       !CBS_get_u16_length_prefixed(&identity, &ticket) ||
-      CBS_len(&identity) != 0) {
+      CBS_len(contents) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }

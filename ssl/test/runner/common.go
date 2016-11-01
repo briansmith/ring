@@ -1052,6 +1052,10 @@ type ProtocolBugs struct {
 	// the specified PSK identity index rather than the actual value.
 	SelectPSKIdentityOnResume uint16
 
+	// ExtraPSKIdentity, if true, causes the client to send an extra PSK
+	// identity.
+	ExtraPSKIdentity bool
+
 	// OmitServerHelloSignatureAlgorithms, if true, causes the server to omit the
 	// signature_algorithms extension in the ServerHello.
 	OmitServerHelloSignatureAlgorithms bool

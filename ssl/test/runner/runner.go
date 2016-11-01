@@ -8783,6 +8783,18 @@ func addTLS13HandshakeTests() {
 		expectedError: ":PSK_IDENTITY_NOT_FOUND:",
 	})
 
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-ExtraPSKIdentity",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExtraPSKIdentity: true,
+			},
+		},
+		resumeSession: true,
+	})
+
 	// Test that unknown NewSessionTicket extensions are tolerated.
 	testCases = append(testCases, testCase{
 		name: "TLS13-CustomTicketExtension",
