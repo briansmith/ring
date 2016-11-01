@@ -1904,6 +1904,10 @@ static int Main(int argc, char **argv) {
       ERR_print_errors_fp(stderr);
       return 1;
     }
+
+    if (config.resumption_delay != 0) {
+      g_clock.tv_sec += config.resumption_delay;
+    }
   }
 
   return 0;

@@ -20,26 +20,18 @@
 #include <openssl/aead.h>
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
-#include <openssl/hmac.h>
 #include <openssl/hkdf.h>
+#include <openssl/hmac.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
 
 
-int tls13_init_key_schedule(SSL *ssl, const uint8_t *resumption_ctx,
-                            size_t resumption_ctx_len) {
+int tls13_init_key_schedule(SSL *ssl) {
   SSL_HANDSHAKE *hs = ssl->s3->hs;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
 
   hs->hash_len = EVP_MD_size(digest);
-
-  /* Save the hash of the resumption context. */
-  unsigned resumption_hash_len;
-  if (!EVP_Digest(resumption_ctx, resumption_ctx_len, hs->resumption_hash,
-                  &resumption_hash_len, digest, NULL)) {
-    return 0;
-  }
 
   /* Initialize the secret to the zero key. */
   memset(hs->secret, 0, hs->hash_len);
@@ -89,22 +81,17 @@ static int hkdf_expand_label(uint8_t *out, const EVP_MD *digest,
   return ret;
 }
 
-int tls13_get_context_hashes(SSL *ssl, uint8_t *out, size_t *out_len) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-
+int tls13_get_context_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
   unsigned handshake_len = 0;
   int ok = EVP_MD_CTX_copy_ex(&ctx, &ssl->s3->handshake_hash) &&
            EVP_DigestFinal_ex(&ctx, out, &handshake_len);
   EVP_MD_CTX_cleanup(&ctx);
-  if (!ok) {
-    return 0;
+  if (ok) {
+    *out_len = handshake_len;
   }
-
-  memcpy(out + handshake_len, hs->resumption_hash, hs->hash_len);
-  *out_len = handshake_len + hs->hash_len;
-  return 1;
+  return ok;
 }
 
 /* derive_secret derives a secret of length |len| and writes the result in |out|
@@ -115,45 +102,22 @@ static int derive_secret(SSL *ssl, uint8_t *out, size_t len,
   SSL_HANDSHAKE *hs = ssl->s3->hs;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
 
-  uint8_t context_hashes[2 * EVP_MAX_MD_SIZE];
-  size_t context_hashes_len;
-  if (!tls13_get_context_hashes(ssl, context_hashes, &context_hashes_len)) {
+  uint8_t context_hash[EVP_MAX_MD_SIZE];
+  size_t context_hash_len;
+  if (!tls13_get_context_hash(ssl, context_hash, &context_hash_len)) {
     return 0;
   }
 
   return hkdf_expand_label(out, digest, hs->secret, hs->hash_len, label,
-                           label_len, context_hashes, context_hashes_len, len);
+                           label_len, context_hash, context_hash_len, len);
 }
 
-int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
-                          enum evp_aead_direction_t direction,
+int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
                           const uint8_t *traffic_secret,
                           size_t traffic_secret_len) {
   if (traffic_secret_len > 0xff) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return 0;
-  }
-
-  const char *key_label, *iv_label;
-  switch (type) {
-    case type_early_handshake:
-      key_label = "early handshake key expansion, key";
-      iv_label = "early handshake key expansion, iv";
-      break;
-    case type_early_data:
-      key_label = "early application data key expansion, key";
-      iv_label = "early application data key expansion, iv";
-      break;
-    case type_handshake:
-      key_label = "handshake key expansion, key";
-      iv_label = "handshake key expansion, iv";
-      break;
-    case type_data:
-      key_label = "application data key expansion, key";
-      iv_label = "application data key expansion, iv";
-      break;
-    default:
-      return 0;
   }
 
   /* Look up cipher suite properties. */
@@ -170,8 +134,7 @@ int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
   size_t key_len = EVP_AEAD_key_length(aead);
   uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
   if (!hkdf_expand_label(key, digest, traffic_secret, traffic_secret_len,
-                         (const uint8_t *)key_label, strlen(key_label), NULL, 0,
-                         key_len)) {
+                         (const uint8_t *)"key", 3, NULL, 0, key_len)) {
     return 0;
   }
 
@@ -179,8 +142,7 @@ int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
   size_t iv_len = EVP_AEAD_nonce_length(aead);
   uint8_t iv[EVP_AEAD_MAX_NONCE_LENGTH];
   if (!hkdf_expand_label(iv, digest, traffic_secret, traffic_secret_len,
-                         (const uint8_t *)iv_label, strlen(iv_label), NULL, 0,
-                         iv_len)) {
+                         (const uint8_t *)"iv", 2, NULL, 0, iv_len)) {
     return 0;
   }
 
@@ -241,26 +203,29 @@ int tls13_set_handshake_traffic(SSL *ssl) {
   }
 
   if (ssl->server) {
-    if (!tls13_set_traffic_key(ssl, type_handshake, evp_aead_open,
-                               client_traffic_secret, hs->hash_len) ||
-        !tls13_set_traffic_key(ssl, type_handshake, evp_aead_seal,
-                               server_traffic_secret, hs->hash_len)) {
+    if (!tls13_set_traffic_key(ssl, evp_aead_open, client_traffic_secret,
+                               hs->hash_len) ||
+        !tls13_set_traffic_key(ssl, evp_aead_seal, server_traffic_secret,
+                               hs->hash_len)) {
       return 0;
     }
   } else {
-    if (!tls13_set_traffic_key(ssl, type_handshake, evp_aead_open,
-                               server_traffic_secret, hs->hash_len) ||
-        !tls13_set_traffic_key(ssl, type_handshake, evp_aead_seal,
-                               client_traffic_secret, hs->hash_len)) {
+    if (!tls13_set_traffic_key(ssl, evp_aead_open, server_traffic_secret,
+                               hs->hash_len) ||
+        !tls13_set_traffic_key(ssl, evp_aead_seal, client_traffic_secret,
+                               hs->hash_len)) {
       return 0;
     }
   }
   return 1;
 }
 
-int tls13_derive_traffic_secret_0(SSL *ssl) {
+static const char kTLS13LabelExporter[] = "exporter master secret";
+
+int tls13_derive_application_secrets(SSL *ssl) {
   SSL_HANDSHAKE *hs = ssl->s3->hs;
 
+  ssl->s3->exporter_secret_len = hs->hash_len;
   return derive_secret(ssl, hs->client_traffic_secret_0, hs->hash_len,
                        (const uint8_t *)kTLS13LabelClientApplicationTraffic,
                        strlen(kTLS13LabelClientApplicationTraffic)) &&
@@ -270,7 +235,10 @@ int tls13_derive_traffic_secret_0(SSL *ssl) {
                        (const uint8_t *)kTLS13LabelServerApplicationTraffic,
                        strlen(kTLS13LabelServerApplicationTraffic)) &&
          ssl_log_secret(ssl, "SERVER_TRAFFIC_SECRET_0",
-                        hs->server_traffic_secret_0, hs->hash_len);
+                        hs->server_traffic_secret_0, hs->hash_len) &&
+         derive_secret(ssl, ssl->s3->exporter_secret, hs->hash_len,
+                       (const uint8_t *)kTLS13LabelExporter,
+                       strlen(kTLS13LabelExporter));
 }
 
 static const char kTLS13LabelApplicationTraffic[] =
@@ -296,27 +264,36 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
     return 0;
   }
 
-  return tls13_set_traffic_key(ssl, type_data, direction, secret, secret_len);
+  return tls13_set_traffic_key(ssl, direction, secret, secret_len);
 }
 
-static const char kTLS13LabelExporter[] = "exporter master secret";
 static const char kTLS13LabelResumption[] = "resumption master secret";
 
-int tls13_finalize_keys(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+int tls13_derive_resumption_secret(SSL *ssl) {
+  ssl->s3->new_session->master_key_length = ssl->s3->hs->hash_len;
+  return derive_secret(ssl, ssl->s3->new_session->master_key,
+                       ssl->s3->new_session->master_key_length,
+                       (const uint8_t *)kTLS13LabelResumption,
+                       strlen(kTLS13LabelResumption));
+}
 
-  ssl->s3->exporter_secret_len = hs->hash_len;
-  ssl->s3->new_session->master_key_length = hs->hash_len;
-  if (!derive_secret(
-          ssl, ssl->s3->exporter_secret, ssl->s3->exporter_secret_len,
-          (const uint8_t *)kTLS13LabelExporter, strlen(kTLS13LabelExporter)) ||
-      !derive_secret(ssl, ssl->s3->new_session->master_key,
-                     ssl->s3->new_session->master_key_length,
-                     (const uint8_t *)kTLS13LabelResumption,
-                     strlen(kTLS13LabelResumption))) {
+static const char kTLS13LabelFinished[] = "finished";
+
+/* tls13_verify_data sets |out| to be the HMAC of |context| using a derived
+ * Finished key for both Finished messages and the PSK binder. */
+static int tls13_verify_data(const EVP_MD *digest, uint8_t *out,
+                             size_t *out_len, const uint8_t *secret,
+                             size_t hash_len, uint8_t *context,
+                             size_t context_len) {
+  uint8_t key[EVP_MAX_MD_SIZE];
+  unsigned len;
+  if (!hkdf_expand_label(key, digest, secret, hash_len,
+                         (const uint8_t *)kTLS13LabelFinished,
+                         strlen(kTLS13LabelFinished), NULL, 0, hash_len) ||
+      HMAC(digest, key, hash_len, context, context_len, out, &len) == NULL) {
     return 0;
   }
-
+  *out_len = len;
   return 1;
 }
 
@@ -324,52 +301,21 @@ int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server) {
   SSL_HANDSHAKE *hs = ssl->s3->hs;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
 
-  uint8_t key[EVP_MAX_MD_SIZE];
-  size_t key_len = EVP_MD_size(digest);
-
   const uint8_t *traffic_secret;
-  const char *label = "finished";
   if (is_server == ssl->server) {
     traffic_secret = ssl->s3->write_traffic_secret;
   } else {
     traffic_secret = ssl->s3->read_traffic_secret;
   }
 
-  uint8_t context_hashes[2 * EVP_MAX_MD_SIZE];
-  size_t context_hashes_len;
-  unsigned len;
-  if (!hkdf_expand_label(key, digest, traffic_secret, hs->hash_len,
-                         (const uint8_t *)label, strlen(label), NULL, 0,
-                         hs->hash_len) ||
-      !tls13_get_context_hashes(ssl, context_hashes, &context_hashes_len) ||
-      HMAC(digest, key, key_len, context_hashes, context_hashes_len, out,
-           &len) == NULL) {
+  uint8_t context_hash[EVP_MAX_MD_SIZE];
+  size_t context_hash_len;
+  if (!tls13_get_context_hash(ssl, context_hash, &context_hash_len) ||
+      !tls13_verify_data(digest, out, out_len, traffic_secret, hs->hash_len,
+                         context_hash, context_hash_len)) {
     return 0;
   }
-  *out_len = len;
   return 1;
-}
-
-static const char kTLS13LabelResumptionPSK[] = "resumption psk";
-static const char kTLS13LabelResumptionContext[] = "resumption context";
-
-int tls13_resumption_psk(SSL *ssl, uint8_t *out, size_t out_len,
-                         const SSL_SESSION *session) {
-  const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
-  return hkdf_expand_label(out, digest, session->master_key,
-                           session->master_key_length,
-                           (const uint8_t *)kTLS13LabelResumptionPSK,
-                           strlen(kTLS13LabelResumptionPSK), NULL, 0, out_len);
-}
-
-int tls13_resumption_context(SSL *ssl, uint8_t *out, size_t out_len,
-                             const SSL_SESSION *session) {
-  const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
-  return hkdf_expand_label(out, digest, session->master_key,
-                           session->master_key_length,
-                           (const uint8_t *)kTLS13LabelResumptionContext,
-                           strlen(kTLS13LabelResumptionContext), NULL, 0,
-                           out_len);
 }
 
 int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
@@ -387,4 +333,116 @@ int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   return hkdf_expand_label(out, digest, ssl->s3->exporter_secret,
                            ssl->s3->exporter_secret_len, (const uint8_t *)label,
                            label_len, hash, hash_len, out_len);
+}
+
+static const char kTLS13LabelPSKBinder[] = "resumption psk binder key";
+
+static int tls13_psk_binder(SSL *ssl, uint8_t *out, const EVP_MD *digest,
+                            uint8_t *psk, size_t psk_len, uint8_t *context,
+                            size_t context_len, size_t hash_len) {
+  uint8_t binder_context[EVP_MAX_MD_SIZE];
+  unsigned binder_context_len;
+  if (!EVP_Digest(NULL, 0, binder_context, &binder_context_len, digest, NULL)) {
+    return 0;
+  }
+
+  uint8_t early_secret[EVP_MAX_MD_SIZE] = {0};
+  size_t early_secret_len;
+  if (!HKDF_extract(early_secret, &early_secret_len, digest, psk, hash_len,
+                    NULL, 0)) {
+    return 0;
+  }
+
+  uint8_t binder_key[EVP_MAX_MD_SIZE] = {0};
+  size_t len;
+  if (!hkdf_expand_label(binder_key, digest, early_secret, hash_len,
+                         (const uint8_t *)kTLS13LabelPSKBinder,
+                         strlen(kTLS13LabelPSKBinder), binder_context,
+                         binder_context_len, hash_len) ||
+      !tls13_verify_data(digest, out, &len, binder_key, hash_len, context,
+                         context_len)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int tls13_write_psk_binder(SSL *ssl, uint8_t *msg, size_t len) {
+  const EVP_MD *digest =
+      ssl_get_handshake_digest(ssl->session->cipher->algorithm_prf);
+  size_t hash_len = EVP_MD_size(digest);
+
+  if (len < hash_len + 3) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  uint8_t context[EVP_MAX_MD_SIZE];
+  unsigned context_len;
+  if (!EVP_DigestInit_ex(&ctx, digest, NULL) ||
+      !EVP_DigestUpdate(&ctx, ssl->s3->handshake_buffer->data,
+                        ssl->s3->handshake_buffer->length) ||
+      !EVP_DigestUpdate(&ctx, msg, len - hash_len - 3) ||
+      !EVP_DigestFinal_ex(&ctx, context, &context_len)) {
+    EVP_MD_CTX_cleanup(&ctx);
+    return 0;
+  }
+
+  EVP_MD_CTX_cleanup(&ctx);
+
+  uint8_t verify_data[EVP_MAX_MD_SIZE] = {0};
+  if (!tls13_psk_binder(ssl, verify_data, digest, ssl->session->master_key,
+                        ssl->session->master_key_length, context,
+                        context_len, hash_len)) {
+    return 0;
+  }
+
+  memcpy(msg + len - hash_len, verify_data, hash_len);
+  return 1;
+}
+
+int tls13_verify_psk_binder(SSL *ssl, SSL_SESSION *session,
+                            CBS *binders) {
+  const EVP_MD *digest =
+      ssl_get_handshake_digest(session->cipher->algorithm_prf);
+  size_t hash_len = EVP_MD_size(digest);
+
+  /* Get the full ClientHello, including message header. It must be large enough
+   * to exclude the binders. */
+  CBS message;
+  ssl->method->get_current_message(ssl, &message);
+  if (CBS_len(&message) < CBS_len(binders) + 2) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  /* Hash a ClientHello prefix up to the binders. For now, this assumes we only
+   * ever verify PSK binders on initial ClientHellos. */
+  uint8_t context[EVP_MAX_MD_SIZE];
+  unsigned context_len;
+  if (!EVP_Digest(CBS_data(&message), CBS_len(&message) - CBS_len(binders) - 2,
+                  context, &context_len, digest, NULL)) {
+    return 0;
+  }
+
+  uint8_t verify_data[EVP_MAX_MD_SIZE] = {0};
+  CBS binder;
+  if (!tls13_psk_binder(ssl, verify_data, digest, session->master_key,
+                        session->master_key_length, context, context_len,
+                        hash_len) ||
+      /* We only consider the first PSK, so compare against the first binder. */
+      !CBS_get_u8_length_prefixed(binders, &binder)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  if (CBS_len(&binder) != hash_len ||
+      CRYPTO_memcmp(CBS_data(&binder), verify_data, hash_len) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
+    return 0;
+  }
+
+  return 1;
 }

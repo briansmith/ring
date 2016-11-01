@@ -27,7 +27,7 @@ const (
 )
 
 // A draft version of TLS 1.3 that is sent over the wire for the current draft.
-const tls13DraftVersion = 0x7f10
+const tls13DraftVersion = 0x7f12
 
 const (
 	maxPlaintext        = 16384        // maximum plaintext payload length
@@ -94,6 +94,7 @@ const (
 	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-16
 	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-16
 	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-16
+	extensionPSKKeyExchangeModes        uint16 = 45    // draft-ietf-tls-tls13-18
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
@@ -200,12 +201,6 @@ const (
 	pskDHEKEMode = 1
 )
 
-// PskAuthenticationMode values (see draft-ietf-tls-tls13-16)
-const (
-	pskAuthMode     = 0
-	pskSignAuthMode = 1
-)
-
 // KeyUpdateRequest values (see draft-ietf-tls-tls13-16, section 4.5.3)
 const (
 	keyUpdateNotRequested = 0
@@ -259,6 +254,7 @@ type ClientSessionState struct {
 	ocspResponse         []byte
 	ticketCreationTime   time.Time
 	ticketExpiration     time.Time
+	ticketAgeAdd         uint32
 }
 
 // ClientSessionCache is a cache of ClientSessionState objects that can be used
@@ -947,12 +943,17 @@ type ProtocolBugs struct {
 	// session ticket.
 	SendEmptySessionTicket bool
 
-	// SnedPSKKeyExchangeModes, if present, determines the PSK key exchange modes
+	// SendPSKKeyExchangeModes, if present, determines the PSK key exchange modes
 	// to send.
 	SendPSKKeyExchangeModes []byte
 
-	// SendPSKAuthModes, if present, determines the PSK auth modes to send.
-	SendPSKAuthModes []byte
+	// ExpectNoNewSessionTicket, if present, means that the client will fail upon
+	// receipt of a NewSessionTicket message.
+	ExpectNoNewSessionTicket bool
+
+	// ExpectTicketAge, if non-zero, is the expected age of the ticket that the
+	// server receives from the client.
+	ExpectTicketAge time.Duration
 
 	// FailIfSessionOffered, if true, causes the server to fail any
 	// connections where the client offers a non-empty session ID or session
@@ -998,6 +999,26 @@ type ProtocolBugs struct {
 	// OCSP stapling in resumption handshakes and, if applicable, send the
 	// supplied stapled response.
 	SendOCSPResponseOnResume []byte
+
+	// SendExtensionOnCertificate, if not nil, causes the runner to send the
+	// supplied bytes in the extensions on the Certificate message.
+	SendExtensionOnCertificate []byte
+
+	// SendOCSPOnIntermediates, if not nil, causes the server to send the
+	// supplied OCSP on intermediate certificates in the Certificate message.
+	SendOCSPOnIntermediates []byte
+
+	// SendSCTOnIntermediates, if not nil, causes the server to send the
+	// supplied SCT on intermediate certificates in the Certificate message.
+	SendSCTOnIntermediates []byte
+
+	// SendDuplicateCertExtensions, if true, causes the server to send an extra
+	// copy of the OCSP/SCT extensions in the Certificate message.
+	SendDuplicateCertExtensions bool
+
+	// ExpectNoExtensionsOnIntermediate, if true, causes the client to
+	// reject extensions on intermediate certificates.
+	ExpectNoExtensionsOnIntermediate bool
 
 	// CECPQ1BadX25519Part corrupts the X25519 part of a CECPQ1 key exchange, as
 	// a trivial proof that it is actually used.
@@ -1063,14 +1084,6 @@ type ProtocolBugs struct {
 	// ExtraPSKIdentity, if true, causes the client to send an extra PSK
 	// identity.
 	ExtraPSKIdentity bool
-
-	// OmitServerHelloSignatureAlgorithms, if true, causes the server to omit the
-	// signature_algorithms extension in the ServerHello.
-	OmitServerHelloSignatureAlgorithms bool
-
-	// IncludeServerHelloSignatureAlgorithms, if true, causes the server to
-	// include the signature_algorithms extension in all ServerHellos.
-	IncludeServerHelloSignatureAlgorithms bool
 
 	// MissingKeyShare, if true, causes the TLS 1.3 implementation to skip
 	// sending a key_share extension and use the zero ECDHE secret
@@ -1168,6 +1181,21 @@ type ProtocolBugs struct {
 	// ExpectGREASE, if true, causes messages without GREASE values to be
 	// rejected. See draft-davidben-tls-grease-01.
 	ExpectGREASE bool
+
+	// SendShortPSKBinder, if true, causes the client to send a PSK binder
+	// that is one byte shorter than it should be.
+	SendShortPSKBinder bool
+
+	// SendInvalidPSKBinder, if true, causes the client to send an invalid
+	// PSK binder.
+	SendInvalidPSKBinder bool
+
+	// SendNoPSKBinder, if true, causes the client to send no PSK binders.
+	SendNoPSKBinder bool
+
+	// PSKBinderFirst, if true, causes the client to send the PSK Binder
+	// extension as the first extension instead of the last extension.
+	PSKBinderFirst bool
 }
 
 func (c *Config) serverInit() {

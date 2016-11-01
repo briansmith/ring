@@ -120,6 +120,7 @@ struct TestConfig {
   int expect_cipher_aes = 0;
   int expect_cipher_no_aes = 0;
   std::string expect_peer_cert_file;
+  int resumption_delay = 0;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

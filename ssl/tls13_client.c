@@ -165,11 +165,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL *ssl,
 
 static enum ssl_hs_wait_t do_send_second_client_hello(SSL *ssl,
                                                       SSL_HANDSHAKE *hs) {
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO) ||
-      !ssl_add_client_hello_body(ssl, &body) ||
-      !ssl_complete_message(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
+  if (!ssl_write_client_hello(ssl)) {
     return ssl_hs_error;
   }
 
@@ -227,8 +223,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
 
   /* Parse out the extensions. */
-  int have_key_share = 0, have_pre_shared_key = 0, have_sigalgs = 0;
-  CBS key_share, pre_shared_key, sigalgs;
+  int have_key_share = 0, have_pre_shared_key = 0;
+  CBS key_share, pre_shared_key;
   while (CBS_len(&extensions) != 0) {
     uint16_t type;
     CBS extension;
@@ -258,15 +254,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
         pre_shared_key = extension;
         have_pre_shared_key = 1;
         break;
-      case TLSEXT_TYPE_signature_algorithms:
-        if (have_sigalgs) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          return ssl_hs_error;
-        }
-        sigalgs = extension;
-        have_sigalgs = 1;
-        break;
       default:
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
@@ -274,8 +261,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* We only support PSK_AUTH and PSK_DHE_KE. */
-  if (!have_key_share || have_sigalgs == have_pre_shared_key) {
+  /* We only support PSK_DHE_KE. */
+  if (!have_key_share) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
@@ -337,20 +324,17 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
 
   /* Derive resumption material. */
-  uint8_t resumption_ctx[EVP_MAX_MD_SIZE] = {0};
   uint8_t psk_secret[EVP_MAX_MD_SIZE] = {0};
   if (ssl->s3->session_reused) {
-    if (!tls13_resumption_context(ssl, resumption_ctx, hash_len,
-                                  ssl->s3->new_session) ||
-        !tls13_resumption_psk(ssl, psk_secret, hash_len,
-                              ssl->s3->new_session)) {
+    if (hash_len != (size_t) ssl->s3->new_session->master_key_length) {
       return ssl_hs_error;
     }
+    memcpy(psk_secret, ssl->s3->new_session->master_key, hash_len);
   }
 
   /* Set up the key schedule, hash in the ClientHello, and incorporate the PSK
    * into the running secret. */
-  if (!tls13_init_key_schedule(ssl, resumption_ctx, hash_len) ||
+  if (!tls13_init_key_schedule(ssl) ||
       !tls13_advance_key_schedule(ssl, psk_secret, hash_len)) {
     return ssl_hs_error;
   }
@@ -369,12 +353,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
   OPENSSL_free(dhe_secret);
-
-  if (have_sigalgs &&
-      CBS_len(&sigalgs) != 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
-  }
 
   /* If there was no HelloRetryRequest, the version negotiation logic has
    * already hashed the message. */
@@ -505,7 +483,7 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL *ssl,
       !ssl_hash_current_message(ssl) ||
       /* Update the secret to the master secret and derive traffic keys. */
       !tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len) ||
-      !tls13_derive_traffic_secret_0(ssl)) {
+      !tls13_derive_application_secrets(ssl)) {
     return ssl_hs_error;
   }
 
@@ -621,11 +599,11 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
-  if (!tls13_set_traffic_key(ssl, type_data, evp_aead_open,
-                             hs->server_traffic_secret_0, hs->hash_len) ||
-      !tls13_set_traffic_key(ssl, type_data, evp_aead_seal,
-                             hs->client_traffic_secret_0, hs->hash_len) ||
-      !tls13_finalize_keys(ssl)) {
+  if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->server_traffic_secret_0,
+                             hs->hash_len) ||
+      !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_traffic_secret_0,
+                             hs->hash_len) ||
+      !tls13_derive_resumption_secret(ssl)) {
     return ssl_hs_error;
   }
 
@@ -711,13 +689,10 @@ int tls13_process_new_session_ticket(SSL *ssl) {
 
   ssl_session_refresh_time(ssl, session);
 
-  CBS cbs, ke_modes, auth_modes, ticket, extensions;
+  CBS cbs, ticket, extensions;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u32(&cbs, &session->tlsext_tick_lifetime_hint) ||
-      !CBS_get_u8_length_prefixed(&cbs, &ke_modes) ||
-      CBS_len(&ke_modes) == 0 ||
-      !CBS_get_u8_length_prefixed(&cbs, &auth_modes) ||
-      CBS_len(&auth_modes) == 0 ||
+      !CBS_get_u32(&cbs, &session->ticket_age_add) ||
       !CBS_get_u16_length_prefixed(&cbs, &ticket) ||
       !CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen) ||
       !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
@@ -728,13 +703,10 @@ int tls13_process_new_session_ticket(SSL *ssl) {
     return 0;
   }
 
+  session->ticket_age_add_valid = 1;
   session->not_resumable = 0;
 
-  /* Ignore the ticket unless the server preferences are compatible with us. */
-  if (memchr(CBS_data(&ke_modes), SSL_PSK_DHE_KE, CBS_len(&ke_modes)) != NULL &&
-      memchr(CBS_data(&auth_modes), SSL_PSK_AUTH, CBS_len(&auth_modes)) !=
-          NULL &&
-      ssl->ctx->new_session_cb != NULL &&
+  if (ssl->ctx->new_session_cb != NULL &&
       ssl->ctx->new_session_cb(ssl, session)) {
     /* |new_session_cb|'s return value signals that it took ownership. */
     return 1;

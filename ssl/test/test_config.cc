@@ -161,6 +161,7 @@ const Flag<int> kIntFlags[] = {
   { "-max-cert-list", &TestConfig::max_cert_list },
   { "-expect-cipher-aes", &TestConfig::expect_cipher_aes },
   { "-expect-cipher-no-aes", &TestConfig::expect_cipher_no_aes },
+  { "-resumption-delay", &TestConfig::resumption_delay },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

@@ -748,6 +748,10 @@ void ssl_write_buffer_clear(SSL *ssl);
  * configured and zero otherwise. */
 int ssl_has_certificate(const SSL *ssl);
 
+/* ssl_parse_x509 parses a X509 certificate from |cbs|. It returns NULL
+ * on error. */
+X509 *ssl_parse_x509(CBS *cbs);
+
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
  * by a TLS Certificate message. On success, it returns a newly-allocated
  * |X509| list and advances |cbs|. Otherwise, it returns NULL and sets
@@ -792,21 +796,19 @@ int ssl_do_client_cert_cb(SSL *ssl, int *out_should_retry);
 /* TLS 1.3 key derivation. */
 
 /* tls13_init_key_schedule initializes the handshake hash and key derivation
- * state with the given resumption context. The cipher suite and PRF hash must
- * have been selected at this point. It returns one on success and zero on
- * error. */
-int tls13_init_key_schedule(SSL *ssl, const uint8_t *resumption_ctx,
-                            size_t resumption_ctx_len);
+ * state. The cipher suite and PRF hash must have been selected at this point.
+ * It returns one on success and zero on error. */
+int tls13_init_key_schedule(SSL *ssl);
 
 /* tls13_advance_key_schedule incorporates |in| into the key schedule with
  * HKDF-Extract. It returns one on success and zero on error. */
 int tls13_advance_key_schedule(SSL *ssl, const uint8_t *in, size_t len);
 
-/* tls13_get_context_hashes writes Hash(Handshake Context) +
- * Hash(resumption_context) to |out| which much have room for at least 2 *
- * |EVP_MAX_MD_SIZE| bytes. On success, it returns one and sets |*out_len| to
- * the number of bytes written. Otherwise, it returns zero. */
-int tls13_get_context_hashes(SSL *ssl, uint8_t *out, size_t *out_len);
+/* tls13_get_context_hash writes Hash(Handshake Context) to |out| which must
+ * have room for at least |EVP_MAX_MD_SIZE| bytes. On success, it returns one
+ * and sets |*out_len| to the number of bytes written. Otherwise, it returns
+ * zero. */
+int tls13_get_context_hash(SSL *ssl, uint8_t *out, size_t *out_len);
 
 enum tls_record_type_t {
   type_early_handshake,
@@ -815,11 +817,9 @@ enum tls_record_type_t {
   type_data,
 };
 
-/* tls13_set_traffic_key sets the read or write traffic keys to |traffic_secret|
- * for the given traffic phase |type|. It returns one on success and zero on
- * error. */
-int tls13_set_traffic_key(SSL *ssl, enum tls_record_type_t type,
-                          enum evp_aead_direction_t direction,
+/* tls13_set_traffic_key sets the read or write traffic keys to
+ * |traffic_secret|. It returns one on success and zero on error. */
+int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
                           const uint8_t *traffic_secret,
                           size_t traffic_secret_len);
 
@@ -832,15 +832,15 @@ int tls13_set_handshake_traffic(SSL *ssl);
  * returns one on success and zero on error. */
 int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction);
 
-/* tls13_derive_traffic_secret_0 derives the initial application data traffic
- * secret based on the handshake transcripts and |master_secret|. It returns one
- * on success and zero on error. */
-int tls13_derive_traffic_secret_0(SSL *ssl);
+/* tls13_derive_application_secrets derives the initial application data traffic
+ * and exporter secrets based on the handshake transcripts and |master_secret|.
+ * It returns one on success and zero on error. */
+int tls13_derive_application_secrets(SSL *ssl);
 
-/* tls13_finalize_keys derives the |exporter_secret| and |resumption_secret|. */
-int tls13_finalize_keys(SSL *ssl);
+/* tls13_derive_resumption_secret derives the |resumption_secret|. */
+int tls13_derive_resumption_secret(SSL *ssl);
 
-/* tls13_export_keying_material provides and exporter interface to use the
+/* tls13_export_keying_material provides an exporter interface to use the
  * |exporter_secret|. */
 int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                  const char *label, size_t label_len,
@@ -853,17 +853,15 @@ int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
  * 0 for the Client Finished. */
 int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server);
 
-/* tls13_resumption_psk calculates the PSK to use for the resumption of
- * |session| and stores the result in |out|. It returns one on success, and
- * zero on failure. */
-int tls13_resumption_psk(SSL *ssl, uint8_t *out, size_t out_len,
-                         const SSL_SESSION *session);
+/* tls13_write_psk_binder calculates the PSK binder value and replaces the last
+ * bytes of |msg| with the resulting value. It returns 1 on success, and 0 on
+ * failure. */
+int tls13_write_psk_binder(SSL *ssl, uint8_t *msg, size_t len);
 
-/* tls13_resumption_context derives the context to be used for the handshake
- * transcript on the resumption of |session|. It returns one on success, and
- * zero on failure. */
-int tls13_resumption_context(SSL *ssl, uint8_t *out, size_t out_len,
-                             const SSL_SESSION *session);
+/* tls13_verify_psk_binder verifies that the handshake transcript, truncated
+ * up to the binders has a valid signature using the value of |session|'s
+ * resumption secret. It returns 1 on success, and 0 on failure. */
+int tls13_verify_psk_binder(SSL *ssl, SSL_SESSION *session, CBS *binders);
 
 
 /* Handshake functions. */
@@ -893,7 +891,6 @@ typedef struct ssl_handshake_st {
   int state;
 
   size_t hash_len;
-  uint8_t resumption_hash[EVP_MAX_MD_SIZE];
   uint8_t secret[EVP_MAX_MD_SIZE];
   uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE];
   uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE];
@@ -922,7 +919,18 @@ typedef struct ssl_handshake_st {
   /* ecdh_ctx is the current ECDH instance. */
   SSL_ECDH_CTX ecdh_ctx;
 
+  /* scts_requested is one if the SCT extension is in the ClientHello. */
+  unsigned scts_requested:1;
+
+  /* needs_psk_binder if the ClientHello has a placeholder PSK binder to be
+   * filled in. */
+  unsigned needs_psk_binder:1;
+
   unsigned received_hello_retry_request:1;
+
+  /* accept_psk_mode stores whether the client's PSK mode is compatible with our
+   * preferences. */
+  unsigned accept_psk_mode:1;
 
   /* retry_group is the group ID selected by the server in HelloRetryRequest in
    * TLS 1.3. */
@@ -1054,14 +1062,20 @@ int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
                                         uint8_t *out_alert, CBS *contents);
 int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out);
 
+int ssl_ext_pre_shared_key_add_clienthello(SSL *ssl, CBB *out);
 int ssl_ext_pre_shared_key_parse_serverhello(SSL *ssl, uint8_t *out_alert,
                                              CBS *contents);
 int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
                                              SSL_SESSION **out_session,
+                                             CBS *out_binders,
                                              uint8_t *out_alert, CBS *contents);
 int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
 
-int ssl_add_client_hello_body(SSL *ssl, CBB *body);
+int ssl_ext_psk_key_exchange_modes_parse_clienthello(SSL *ssl,
+                                                     uint8_t *out_alert,
+                                                     CBS *contents);
+
+int ssl_write_client_hello(SSL *ssl);
 
 /* ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
  * should be called once the version is known to be TLS 1.2 or earlier. */
@@ -1598,12 +1612,9 @@ typedef struct dtls1_state_st {
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
 
-/* From draft-ietf-tls-tls13-16, used in determining PSK modes. */
-#define SSL_PSK_KE        0x0
-#define SSL_PSK_DHE_KE    0x1
-
-#define SSL_PSK_AUTH      0x0
-#define SSL_PSK_SIGN_AUTH 0x1
+/* From draft-ietf-tls-tls13-18, used in determining PSK modes. */
+#define SSL_PSK_KE     0x0
+#define SSL_PSK_DHE_KE 0x1
 
 /* From draft-ietf-tls-tls13-16, used in determining whether to respond with a
  * KeyUpdate. */

@@ -115,6 +115,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -446,6 +447,20 @@ int ssl_has_certificate(const SSL *ssl) {
   return ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl);
 }
 
+X509 *ssl_parse_x509(CBS *cbs) {
+  if (CBS_len(cbs) > LONG_MAX) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return NULL;
+  }
+  const uint8_t *ptr = CBS_data(cbs);
+  X509 *ret = d2i_X509(NULL, &ptr, (long)CBS_len(cbs));
+  if (ret == NULL) {
+    return NULL;
+  }
+  CBS_skip(cbs, ptr - CBS_data(cbs));
+  return ret;
+}
+
 STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
                                      uint8_t *out_leaf_sha256, CBS *cbs) {
   STACK_OF(X509) *ret = sk_X509_new_null();
@@ -476,10 +491,8 @@ STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
       SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
     }
 
-    /* A u24 length cannot overflow a long. */
-    const uint8_t *data = CBS_data(&certificate);
-    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
-    if (x == NULL || data != CBS_data(&certificate) + CBS_len(&certificate)) {
+    x = ssl_parse_x509(&certificate);
+    if (x == NULL || CBS_len(&certificate) != 0) {
       *out_alert = SSL_AD_DECODE_ERROR;
       goto err;
     }

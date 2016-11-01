@@ -110,14 +110,36 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   memcpy(ssl->s3->client_random, client_hello.random, client_hello.random_len);
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  SSL_SESSION *session = NULL;
-  CBS pre_shared_key;
-  if (ssl_early_callback_get_extension(&client_hello, &pre_shared_key,
-                                       TLSEXT_TYPE_pre_shared_key) &&
-      !ssl_ext_pre_shared_key_parse_clienthello(ssl, &session, &alert,
-                                                &pre_shared_key)) {
+  CBS psk_key_exchange_modes;
+  if (ssl_early_callback_get_extension(&client_hello, &psk_key_exchange_modes,
+                                       TLSEXT_TYPE_psk_key_exchange_modes) &&
+      !ssl_ext_psk_key_exchange_modes_parse_clienthello(
+          ssl, &alert, &psk_key_exchange_modes)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
+  }
+
+  SSL_SESSION *session = NULL;
+  CBS binders;
+  if (hs->accept_psk_mode) {
+    CBS pre_shared_key;
+    if (ssl_early_callback_get_extension(&client_hello, &pre_shared_key,
+                                         TLSEXT_TYPE_pre_shared_key)) {
+      /* Verify that the pre_shared_key extension is the last extension in
+       * ClientHello. */
+      if (CBS_data(&pre_shared_key) + CBS_len(&pre_shared_key) !=
+          client_hello.extensions + client_hello.extensions_len) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        return 0;
+      }
+
+      if (!ssl_ext_pre_shared_key_parse_clienthello(ssl, &session, &binders,
+                                                    &alert, &pre_shared_key)) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+        return 0;
+      }
+    }
   }
 
   if (session != NULL &&
@@ -136,6 +158,13 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
   } else {
+    /* Check the PSK binder. */
+    if (!tls13_verify_psk_binder(ssl, session, &binders)) {
+      SSL_SESSION_free(session);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+      return ssl_hs_error;
+    }
+
     /* Only authentication information carries over in TLS 1.3. */
     ssl->s3->new_session = SSL_SESSION_dup(session, SSL_SESSION_DUP_AUTH_ONLY);
     if (ssl->s3->new_session == NULL) {
@@ -266,20 +295,17 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
       EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
 
   /* Derive resumption material. */
-  uint8_t resumption_ctx[EVP_MAX_MD_SIZE] = {0};
   uint8_t psk_secret[EVP_MAX_MD_SIZE] = {0};
   if (ssl->s3->session_reused) {
-    if (!tls13_resumption_context(ssl, resumption_ctx, hash_len,
-                                  ssl->s3->new_session) ||
-        !tls13_resumption_psk(ssl, psk_secret, hash_len,
-                              ssl->s3->new_session)) {
+    if (hash_len != (size_t) ssl->s3->new_session->master_key_length) {
       return ssl_hs_error;
     }
+    memcpy(psk_secret, ssl->s3->new_session->master_key, hash_len);
   }
 
   /* Set up the key schedule, hash in the ClientHello, and incorporate the PSK
    * into the running secret. */
-  if (!tls13_init_key_schedule(ssl, resumption_ctx, hash_len) ||
+  if (!tls13_init_key_schedule(ssl) ||
       !tls13_advance_key_schedule(ssl, psk_secret, hash_len)) {
     return ssl_hs_error;
   }
@@ -367,18 +393,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(ssl, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(ssl, &extensions)) {
-    goto err;
-  }
-
-  if (!ssl->s3->session_reused) {
-    if (!CBB_add_u16(&extensions, TLSEXT_TYPE_signature_algorithms) ||
-        !CBB_add_u16(&extensions, 0)) {
-      goto err;
-    }
-  }
-
-  if (!ssl_complete_message(ssl, &cbb)) {
+      !ssl_ext_key_share_add_serverhello(ssl, &extensions) ||
+      !ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 
@@ -509,9 +525,9 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* Update the secret to the master secret and derive traffic keys. */
   if (!tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len) ||
-      !tls13_derive_traffic_secret_0(ssl) ||
-      !tls13_set_traffic_key(ssl, type_data, evp_aead_seal,
-                             hs->server_traffic_secret_0, hs->hash_len)) {
+      !tls13_derive_application_secrets(ssl) ||
+      !tls13_set_traffic_key(ssl, evp_aead_seal, hs->server_traffic_secret_0,
+                             hs->hash_len)) {
     return ssl_hs_error;
   }
 
@@ -590,9 +606,9 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
       !tls13_process_finished(ssl) ||
       !ssl_hash_current_message(ssl) ||
       /* evp_aead_seal keys have already been switched. */
-      !tls13_set_traffic_key(ssl, type_data, evp_aead_open,
-                             hs->client_traffic_secret_0, hs->hash_len) ||
-      !tls13_finalize_keys(ssl)) {
+      !tls13_set_traffic_key(ssl, evp_aead_open, hs->client_traffic_secret_0,
+                             hs->hash_len) ||
+      !tls13_derive_resumption_secret(ssl)) {
     return ssl_hs_error;
   }
 
@@ -611,19 +627,26 @@ static const int kNumTickets = 2;
 
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
+  /* If the client doesn't accept resumption with PSK_DHE_KE, don't send a
+   * session ticket. */
+  if (!hs->accept_psk_mode) {
+    hs->state = state_done;
+    return ssl_hs_ok;
+  }
+
   SSL_SESSION *session = ssl->s3->new_session;
+  if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
+    goto err;
+  }
 
   /* TODO(svaldez): Add support for sending 0RTT through TicketEarlyDataInfo
    * extension. */
 
-  CBB cbb, body, ke_modes, auth_modes, ticket, extensions;
+  CBB cbb, body, ticket, extensions;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_NEW_SESSION_TICKET) ||
       !CBB_add_u32(&body, session->timeout) ||
-      !CBB_add_u8_length_prefixed(&body, &ke_modes) ||
-      !CBB_add_u8(&ke_modes, SSL_PSK_DHE_KE) ||
-      !CBB_add_u8_length_prefixed(&body, &auth_modes) ||
-      !CBB_add_u8(&auth_modes, SSL_PSK_AUTH) ||
+      !CBB_add_u32(&body, session->ticket_age_add) ||
       !CBB_add_u16_length_prefixed(&body, &ticket) ||
       !ssl_encrypt_ticket(ssl, &ticket, session) ||
       !CBB_add_u16_length_prefixed(&body, &extensions)) {

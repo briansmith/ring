@@ -205,13 +205,14 @@ extern "C" {
 /* ExtensionType value from RFC4507 */
 #define TLSEXT_TYPE_session_ticket 35
 
-/* ExtensionType values from draft-ietf-tls-tls13-16 */
+/* ExtensionType values from draft-ietf-tls-tls13-18 */
 #define TLSEXT_TYPE_supported_groups 10
 #define TLSEXT_TYPE_key_share 40
 #define TLSEXT_TYPE_pre_shared_key 41
 #define TLSEXT_TYPE_early_data 42
 #define TLSEXT_TYPE_supported_versions 43
 #define TLSEXT_TYPE_cookie 44
+#define TLSEXT_TYPE_psk_key_exchange_modes 45
 
 /* ExtensionType value from RFC5746 */
 #define TLSEXT_TYPE_renegotiate 0xff01

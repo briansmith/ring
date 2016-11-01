@@ -480,12 +480,16 @@ func ecdhePSKKA(version uint16) keyAgreement {
 func mutualCipherSuite(have []uint16, want uint16) *cipherSuite {
 	for _, id := range have {
 		if id == want {
-			for _, suite := range cipherSuites {
-				if suite.id == want {
-					return suite
-				}
-			}
-			return nil
+			return cipherSuiteFromID(id)
+		}
+	}
+	return nil
+}
+
+func cipherSuiteFromID(id uint16) *cipherSuite {
+	for _, suite := range cipherSuites {
+		if suite.id == id {
+			return suite
 		}
 	}
 	return nil

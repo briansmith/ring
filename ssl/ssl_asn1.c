@@ -511,20 +511,6 @@ static int SSL_SESSION_parse_u32(CBS *cbs, uint32_t *out, unsigned tag,
   return 1;
 }
 
-static X509 *parse_x509(CBS *cbs) {
-  if (CBS_len(cbs) > LONG_MAX) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-    return NULL;
-  }
-  const uint8_t *ptr = CBS_data(cbs);
-  X509 *ret = d2i_X509(NULL, &ptr, (long)CBS_len(cbs));
-  if (ret == NULL) {
-    return NULL;
-  }
-  CBS_skip(cbs, ptr - CBS_data(cbs));
-  return ret;
-}
-
 static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   SSL_SESSION *ret = SSL_SESSION_new();
   if (ret == NULL) {
@@ -593,7 +579,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   X509_free(ret->x509_peer);
   ret->x509_peer = NULL;
   if (has_peer) {
-    ret->x509_peer = parse_x509(&peer);
+    ret->x509_peer = ssl_parse_x509(&peer);
     if (ret->x509_peer == NULL) {
       goto err;
     }
@@ -679,7 +665,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
       goto err;
     }
     while (CBS_len(&cert_chain) > 0) {
-      X509 *x509 = parse_x509(&cert_chain);
+      X509 *x509 = ssl_parse_x509(&cert_chain);
       if (x509 == NULL) {
         goto err;
       }
