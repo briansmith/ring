@@ -1853,6 +1853,16 @@ static int ext_ec_point_add_extension(SSL *ssl, CBB *out) {
 }
 
 static int ext_ec_point_add_clienthello(SSL *ssl, CBB *out) {
+  uint16_t min_version, max_version;
+  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+    return 0;
+  }
+
+  /* The point format extension is unneccessary in TLS 1.3. */
+  if (min_version >= TLS1_3_VERSION) {
+    return 1;
+  }
+
   return ext_ec_point_add_extension(ssl, out);
 }
 
