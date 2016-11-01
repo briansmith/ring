@@ -97,7 +97,7 @@
 /* An SSL_SESSION is serialized as the following ASN.1 structure:
  *
  * SSLSession ::= SEQUENCE {
- *     version                     INTEGER (1),  -- ignored
+ *     version                     INTEGER (1),  -- session structure version
  *     sslVersion                  INTEGER,      -- protocol version number
  *     cipher                      OCTET STRING, -- two bytes long
  *     sessionID                   OCTET STRING,
