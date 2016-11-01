@@ -2047,58 +2047,68 @@ static bool TestSessionTimeout() {
   }
 
   for (uint16_t version : kTLSVersions) {
-    static const int kStartTime = 1000;
-    g_current_time.tv_sec = kStartTime;
+    for (bool server_test : std::vector<bool>{false, true}) {
+      static const int kStartTime = 1000;
+      g_current_time.tv_sec = kStartTime;
 
-    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-    if (!server_ctx || !client_ctx ||
-        !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
-        !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
-        !SSL_CTX_set_min_proto_version(client_ctx.get(), version) ||
-        !SSL_CTX_set_max_proto_version(client_ctx.get(), version) ||
-        !SSL_CTX_set_min_proto_version(server_ctx.get(), version) ||
-        !SSL_CTX_set_max_proto_version(server_ctx.get(), version)) {
-      return false;
-    }
+      bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+      bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+      if (!server_ctx || !client_ctx ||
+          !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+          !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+          !SSL_CTX_set_min_proto_version(client_ctx.get(), version) ||
+          !SSL_CTX_set_max_proto_version(client_ctx.get(), version) ||
+          !SSL_CTX_set_min_proto_version(server_ctx.get(), version) ||
+          !SSL_CTX_set_max_proto_version(server_ctx.get(), version)) {
+        return false;
+      }
 
-    SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+      SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+      SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
 
-    SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
-    SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
+      // Both client and server must enforce session timeouts.
+      if (server_test) {
+        SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
+      } else {
+        SSL_CTX_set_current_time_cb(client_ctx.get(), CurrentTimeCallback);
+      }
 
-    bssl::UniquePtr<SSL_SESSION> session =
-        CreateClientSession(client_ctx.get(), server_ctx.get());
-    if (!session) {
-      fprintf(stderr, "Error getting session (version = %04x).\n", version);
-      return false;
-    }
+      bssl::UniquePtr<SSL_SESSION> session =
+          CreateClientSession(client_ctx.get(), server_ctx.get());
+      if (!session) {
+        fprintf(stderr, "Error getting session (version = %04x).\n", version);
+        return false;
+      }
 
-    // Advance the clock just behind the timeout.
-    g_current_time.tv_sec += SSL_DEFAULT_SESSION_TIMEOUT;
+      // Advance the clock just behind the timeout.
+      g_current_time.tv_sec += SSL_DEFAULT_SESSION_TIMEOUT;
 
-    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
-                             true /* expect session reused */)) {
-      fprintf(stderr, "Error resuming session (version = %04x).\n", version);
-      return false;
-    }
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               session.get(),
+                               true /* expect session reused */)) {
+        fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+        return false;
+      }
 
-    // Advance the clock one more second.
-    g_current_time.tv_sec++;
+      // Advance the clock one more second.
+      g_current_time.tv_sec++;
 
-    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
-                             false /* expect session not reused */)) {
-      fprintf(stderr, "Error resuming session (version = %04x).\n", version);
-      return false;
-    }
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               session.get(),
+                               false /* expect session not reused */)) {
+        fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+        return false;
+      }
 
-    // Rewind the clock to before the session was minted.
-    g_current_time.tv_sec = kStartTime - 1;
+      // Rewind the clock to before the session was minted.
+      g_current_time.tv_sec = kStartTime - 1;
 
-    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
-                             false /* expect session not reused */)) {
-      fprintf(stderr, "Error resuming session (version = %04x).\n", version);
-      return false;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               session.get(),
+                               false /* expect session not reused */)) {
+        fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+        return false;
+      }
     }
   }
 
