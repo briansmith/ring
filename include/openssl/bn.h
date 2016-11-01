@@ -582,7 +582,7 @@ OPENSSL_EXPORT BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p,
 /* Random and prime number generation. */
 
 /* The following are values for the |top| parameter of |BN_rand|. */
-#define BN_RAND_TOP_ANY    -1
+#define BN_RAND_TOP_ANY    (-1)
 #define BN_RAND_TOP_ONE     0
 #define BN_RAND_TOP_TWO     1
 

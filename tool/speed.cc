@@ -298,7 +298,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
          SpeedHashChunk(md, name + " (8192 bytes)", 8192);
 }
 
-static bool SpeedRandomChunk(const std::string name, size_t chunk_len) {
+static bool SpeedRandomChunk(const std::string &name, size_t chunk_len) {
   uint8_t scratch[8192];
 
   if (chunk_len > sizeof(scratch)) {

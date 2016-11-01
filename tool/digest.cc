@@ -64,8 +64,9 @@ struct Source {
   };
 
   Source() : is_stdin_(false) {}
-  Source(Type) : is_stdin_(true) {}
-  Source(const std::string &name) : is_stdin_(false), filename_(name) {}
+  explicit Source(Type) : is_stdin_(true) {}
+  explicit Source(const std::string &name)
+      : is_stdin_(false), filename_(name) {}
 
   bool is_stdin() const { return is_stdin_; }
   const std::string &filename() const { return filename_; }

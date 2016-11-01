@@ -59,7 +59,7 @@ static void PrintSocketError(const char *func) {
 
 class ScopedSocket {
  public:
-  ScopedSocket(int sock) : sock_(sock) {}
+  explicit ScopedSocket(int sock) : sock_(sock) {}
   ~ScopedSocket() {
     closesocket(sock_);
   }
