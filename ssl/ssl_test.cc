@@ -23,11 +23,14 @@
 
 #include <openssl/base64.h>
 #include <openssl/bio.h>
+#include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 
 #include "internal.h"
@@ -1972,6 +1975,41 @@ static bool ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
   return true;
 }
 
+static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
+                                                         SSL_CTX *server_ctx,
+                                                         SSL_SESSION *session) {
+  g_last_session = nullptr;
+  SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
+
+  bssl::UniquePtr<SSL> client, server;
+  if (!ConnectClientAndServer(&client, &server, client_ctx,
+                              server_ctx, session)) {
+    fprintf(stderr, "Failed to connect client and server.\n");
+    return nullptr;
+  }
+
+  if (SSL_session_reused(client.get()) != SSL_session_reused(server.get())) {
+    fprintf(stderr, "Client and server were inconsistent.\n");
+    return nullptr;
+  }
+
+  if (!SSL_session_reused(client.get())) {
+    fprintf(stderr, "Session was not reused.\n");
+    return nullptr;
+  }
+
+  // Run the read loop to account for post-handshake tickets in TLS 1.3.
+  SSL_read(client.get(), nullptr, 0);
+
+  SSL_CTX_sess_set_new_cb(client_ctx, nullptr);
+
+  if (!g_last_session) {
+    fprintf(stderr, "Client did not receive a renewed session.\n");
+    return nullptr;
+  }
+  return std::move(g_last_session);
+}
+
 static bool TestSessionIDContext() {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
@@ -2037,6 +2075,28 @@ static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
   *out_clock = g_current_time;
 }
 
+static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
+                               EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
+                               int encrypt) {
+  static const uint8_t kZeros[16] = {0};
+
+  if (encrypt) {
+    memcpy(key_name, kZeros, sizeof(kZeros));
+    RAND_bytes(iv, 16);
+  } else if (memcmp(key_name, kZeros, 16) != 0) {
+    return 0;
+  }
+
+  if (!HMAC_Init_ex(hmac_ctx, kZeros, sizeof(kZeros), EVP_sha256(), NULL) ||
+      !EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), NULL, kZeros, iv, encrypt)) {
+    return -1;
+  }
+
+  // Returning two from the callback in decrypt mode renews the
+  // session in TLS 1.2 and below.
+  return encrypt ? 1 : 2;
+}
+
 static bool TestSessionTimeout() {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
@@ -2070,6 +2130,9 @@ static bool TestSessionTimeout() {
       } else {
         SSL_CTX_set_current_time_cb(client_ctx.get(), CurrentTimeCallback);
       }
+
+      // Configure a ticket callback which renews tickets.
+      SSL_CTX_set_tlsext_ticket_key_cb(server_ctx.get(), RenewTicketCallback);
 
       bssl::UniquePtr<SSL_SESSION> session =
           CreateClientSession(client_ctx.get(), server_ctx.get());
@@ -2105,6 +2168,49 @@ static bool TestSessionTimeout() {
                                session.get(),
                                false /* expect session not reused */)) {
         fprintf(stderr, "Error resuming session (version = %04x).\n", version);
+        return false;
+      }
+
+      // SSL 3.0 cannot renew sessions.
+      if (version == SSL3_VERSION) {
+        continue;
+      }
+
+      // Renew the session 10 seconds before expiration.
+      g_current_time.tv_sec = kStartTime + SSL_DEFAULT_SESSION_TIMEOUT - 10;
+      bssl::UniquePtr<SSL_SESSION> new_session = ExpectSessionRenewed(
+          client_ctx.get(), server_ctx.get(), session.get());
+      if (!new_session) {
+        fprintf(stderr, "Error renewing session (version = %04x).\n", version);
+        return false;
+      }
+
+      // This new session is not the same object as before.
+      if (session.get() == new_session.get()) {
+        fprintf(stderr, "New and old sessions alias (version = %04x).\n",
+                version);
+        return false;
+      }
+
+      // The new session is usable just before the old expiration.
+      g_current_time.tv_sec = kStartTime + SSL_DEFAULT_SESSION_TIMEOUT - 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               true /* expect session reused */)) {
+        fprintf(stderr, "Error resuming renewed session (version = %04x).\n",
+                version);
+        return false;
+      }
+
+      // Renewal does not extend the lifetime, so it is not usable beyond the
+      // old expiration.
+      g_current_time.tv_sec = kStartTime + SSL_DEFAULT_SESSION_TIMEOUT + 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               false /* expect session not reused */)) {
+        fprintf(stderr,
+                "Renewed session's lifetime is too long (version = %04x).\n",
+                version);
         return false;
       }
     }
