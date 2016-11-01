@@ -85,6 +85,15 @@ OPENSSL_EXPORT int ED25519_verify(const uint8_t *message, size_t message_len,
                                   const uint8_t signature[64],
                                   const uint8_t public_key[32]);
 
+/* ED25519_keypair_from_seed calculates a public and private key from an
+ * Ed25519 “seed”. Seed values are not exposed by this API (although they
+ * happen to be the first 32 bytes of a private key) so this function is for
+ * interoperating with systems that may store just a seed instead of a full
+ * private key. */
+OPENSSL_EXPORT void ED25519_keypair_from_seed(uint8_t out_public_key[32],
+                                              uint8_t out_private_key[64],
+                                              const uint8_t seed[32]);
+
 
 /* SPAKE2.
  *

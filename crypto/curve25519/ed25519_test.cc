@@ -53,11 +53,30 @@ static bool TestSignature(FileTest *t, void *arg) {
   return true;
 }
 
+static bool TestKeypairFromSeed() {
+  uint8_t public_key1[32], private_key1[64];
+  ED25519_keypair(public_key1, private_key1);
+
+  uint8_t seed[32];
+  memcpy(seed, private_key1, sizeof(seed));
+
+  uint8_t public_key2[32], private_key2[64];
+  ED25519_keypair_from_seed(public_key2, private_key2, seed);
+
+  if (memcmp(public_key1, public_key2, sizeof(public_key1)) != 0 ||
+      memcmp(private_key1, private_key2, sizeof(private_key1)) != 0) {
+    fprintf(stderr, "TestKeypairFromSeed: resulting keypairs did not match.\n");
+    return false;
+  }
+
+  return true;
+}
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "%s <test input.txt>\n", argv[0]);
     return 1;
   }
 
-  return FileTestMain(TestSignature, nullptr, argv[1]);
+  return TestKeypairFromSeed() && FileTestMain(TestSignature, nullptr, argv[1]);
 }
