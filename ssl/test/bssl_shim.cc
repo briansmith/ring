@@ -989,6 +989,12 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_tlsext_servername_callback(ssl_ctx.get(), ServerNameCallback);
   }
 
+  if (!config->ticket_key.empty() &&
+      !SSL_CTX_set_tlsext_ticket_keys(ssl_ctx.get(), config->ticket_key.data(),
+                                      config->ticket_key.size())) {
+    return nullptr;
+  }
+
   return ssl_ctx;
 }
 
@@ -1474,11 +1480,6 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   if (config->max_cert_list > 0) {
     SSL_set_max_cert_list(ssl.get(), config->max_cert_list);
-  }
-  if (is_resume &&
-      !config->resume_cipher.empty() &&
-      !SSL_set_cipher_list(ssl.get(), config->resume_cipher.c_str())) {
-    return false;
   }
 
   int sock = Connect(config->port);

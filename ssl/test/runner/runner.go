@@ -4896,7 +4896,10 @@ func addExtensionTests() {
 			config: Config{
 				MaxVersion: ver.version,
 				Bugs: ProtocolBugs{
-					CorruptTicket: true,
+					FilterTicket: func(in []byte) ([]byte, error) {
+						in[len(in)-1] ^= 1
+						return in, nil
+					},
 				},
 			},
 			resumeSession:        true,
@@ -4934,7 +4937,10 @@ func addExtensionTests() {
 			config: Config{
 				MaxVersion: ver.version,
 				Bugs: ProtocolBugs{
-					CorruptTicket: true,
+					FilterTicket: func(in []byte) ([]byte, error) {
+						in[len(in)-1] ^= 1
+						return in, nil
+					},
 				},
 			},
 			resumeSession:        true,
@@ -5380,31 +5386,149 @@ func addResumptionVersionTests() {
 		}
 	}
 
-	// Sessions with disabled ciphers are not resumed.
+	// Make sure shim ticket mutations are functional.
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
-		name:          "Resume-Server-CipherMismatch",
+		name:          "ShimTicketRewritable",
+		resumeSession: true,
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					in, err := SetShimTicketVersion(in, VersionTLS12)
+					if err != nil {
+						return nil, err
+					}
+					return SetShimTicketCipherSuite(in, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+				},
+			},
+		},
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+	})
+
+	// Resumptions are declined if the version does not match.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-DeclineCrossVersion",
 		resumeSession: true,
 		config: Config{
 			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketVersion(in, VersionTLS13)
+				},
+			},
 		},
-		flags:                []string{"-cipher", "AES128", "-resume-cipher", "AES256"},
-		shouldFail:           false,
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
 		expectResumeRejected: true,
 	})
 
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
-		name:          "Resume-Server-CipherMismatch-TLS13",
+		name:          "Resume-Server-DeclineCrossVersion-TLS13",
 		resumeSession: true,
 		config: Config{
 			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketVersion(in, VersionTLS12)
+				},
+			},
 		},
-		flags:                []string{"-cipher", "AES128", "-resume-cipher", "AES256"},
-		shouldFail:           false,
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
 		expectResumeRejected: true,
 	})
 
+	// Resumptions are declined if the cipher is invalid or disabled.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-DeclineBadCipher",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketCipherSuite(in, TLS_AES_128_GCM_SHA256)
+				},
+			},
+		},
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+		expectResumeRejected: true,
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-DeclineBadCipher-2",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketCipherSuite(in, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
+				},
+			},
+		},
+		flags: []string{
+			"-cipher", "AES128",
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+		expectResumeRejected: true,
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-DeclineBadCipher-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketCipherSuite(in, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+				},
+			},
+		},
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+		expectResumeRejected: true,
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-DeclineBadCipher-2-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketCipherSuite(in, TLS_AES_256_GCM_SHA384)
+				},
+			},
+		},
+		flags: []string{
+			"-cipher", "AES128",
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+		expectResumeRejected: true,
+	})
+
+	// Sessions may not be resumed at a different cipher.
 	testCases = append(testCases, testCase{
 		name:          "Resume-Client-CipherMismatch",
 		resumeSession: true,

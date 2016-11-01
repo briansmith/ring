@@ -234,14 +234,15 @@ NextCipherSuite:
 
 	if session != nil && c.config.time().Before(session.ticketExpiration) {
 		ticket := session.sessionTicket
-		if c.config.Bugs.CorruptTicket && len(ticket) > 0 {
+		if c.config.Bugs.FilterTicket != nil && len(ticket) > 0 {
+			// Copy the ticket so FilterTicket may act in-place.
 			ticket = make([]byte, len(session.sessionTicket))
 			copy(ticket, session.sessionTicket)
-			offset := 40
-			if offset >= len(ticket) {
-				offset = len(ticket) - 1
+
+			ticket, err = c.config.Bugs.FilterTicket(ticket)
+			if err != nil {
+				return err
 			}
-			ticket[offset] ^= 0x40
 		}
 
 		if session.vers >= VersionTLS13 || c.config.Bugs.SendBothTickets {

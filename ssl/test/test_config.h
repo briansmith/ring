@@ -76,7 +76,6 @@ struct TestConfig {
   std::string cipher;
   std::string cipher_tls10;
   std::string cipher_tls11;
-  std::string resume_cipher;
   bool handshake_never_done = false;
   int export_keying_material = 0;
   std::string export_label;
@@ -116,6 +115,7 @@ struct TestConfig {
   bool peek_then_read = false;
   bool enable_grease = false;
   int max_cert_list = 0;
+  std::string ticket_key;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

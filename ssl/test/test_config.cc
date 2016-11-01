@@ -128,7 +128,6 @@ const Flag<std::string> kStringFlags[] = {
   { "-cipher", &TestConfig::cipher },
   { "-cipher-tls10", &TestConfig::cipher_tls10 },
   { "-cipher-tls11", &TestConfig::cipher_tls11 },
-  { "-resume-cipher", &TestConfig::resume_cipher },
   { "-export-label", &TestConfig::export_label },
   { "-export-context", &TestConfig::export_context },
 };
@@ -141,6 +140,7 @@ const Flag<std::string> kBase64Flags[] = {
     &TestConfig::expected_signed_cert_timestamps },
   { "-ocsp-response", &TestConfig::ocsp_response },
   { "-signed-cert-timestamps", &TestConfig::signed_cert_timestamps },
+  { "-ticket-key", &TestConfig::ticket_key },
 };
 
 const Flag<int> kIntFlags[] = {

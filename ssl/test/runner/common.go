@@ -661,9 +661,9 @@ type ProtocolBugs struct {
 	// TLS 1.2 and 1.3 extensions.
 	SendBothTickets bool
 
-	// CorruptTicket causes a client to corrupt a session ticket before
-	// sending it in a resume handshake.
-	CorruptTicket bool
+	// FilterTicket, if not nil, causes the client to modify a session
+	// ticket before sending it in a resume handshake.
+	FilterTicket func([]byte) ([]byte, error)
 
 	// OversizedSessionId causes the session id that is sent with a ticket
 	// resumption attempt to be too large (33 bytes).
