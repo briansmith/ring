@@ -2377,16 +2377,19 @@ static bool TestALPNCipherAvailable() {
 
     // The ALPN callback does not fail the handshake on error, so have the
     // callback write a boolean.
-    bool pending_cipher_known = false;
+    std::pair<uint16_t, bool> callback_state(version, false);
     SSL_CTX_set_alpn_select_cb(
         ctx.get(),
         [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
            unsigned in_len, void *arg) -> int {
-          bool *result = reinterpret_cast<bool *>(arg);
-          *result = SSL_get_pending_cipher(ssl) != nullptr;
+          auto state = reinterpret_cast<std::pair<uint16_t, bool>*>(arg);
+          if (SSL_get_pending_cipher(ssl) != nullptr &&
+              SSL_version(ssl) == state->first) {
+            state->second = true;
+          }
           return SSL_TLSEXT_ERR_NOACK;
         },
-        &pending_cipher_known);
+        &callback_state);
 
     bssl::UniquePtr<SSL> client, server;
     if (!ConnectClientAndServer(&client, &server, ctx.get(), ctx.get(),
@@ -2394,7 +2397,7 @@ static bool TestALPNCipherAvailable() {
       return false;
     }
 
-    if (!pending_cipher_known) {
+    if (!callback_state.second) {
       fprintf(stderr,
               "%x: The pending cipher was not known in the ALPN callback.\n",
               version);
