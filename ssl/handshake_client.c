@@ -821,8 +821,6 @@ f_err:
 }
 
 static int ssl3_get_server_hello(SSL *ssl) {
-  STACK_OF(SSL_CIPHER) *sk;
-  const SSL_CIPHER *c;
   CERT *ct = ssl->cert;
   int al = SSL_AD_INTERNAL_ERROR;
   CBS server_hello, server_random, session_id;
@@ -930,26 +928,19 @@ static int ssl3_get_server_hello(SSL *ssl) {
            CBS_len(&session_id));
   }
 
-  c = SSL_get_cipher_by_value(cipher_suite);
+  const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
   if (c == NULL) {
     /* unknown cipher */
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
     goto f_err;
   }
-  /* If the cipher is disabled then we didn't sent it in the ClientHello, so if
-   * the server selected it, it's an error. */
+
+  /* The cipher must be allowed in the selected version and enabled. */
   if ((c->algorithm_mkey & ct->mask_k) || (c->algorithm_auth & ct->mask_a) ||
       SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl)) {
-    al = SSL_AD_ILLEGAL_PARAMETER;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
-    goto f_err;
-  }
-
-  sk = ssl_get_ciphers_by_id(ssl);
-  if (!sk_SSL_CIPHER_find(sk, NULL, c)) {
-    /* we did not say we would use this cipher */
+      SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl) ||
+      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), NULL, c)) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     goto f_err;

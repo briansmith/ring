@@ -230,14 +230,12 @@ const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf);
 
 /* ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
  * |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
- * |ssl_cipher_preference_list_st| containing the result.
- * |*out_cipher_list_by_id| is set to a list of selected ciphers sorted by
- * id. It returns |(*out_cipher_list)->ciphers| on success and NULL on
+ * |ssl_cipher_preference_list_st| containing the result. It returns
+ * |(*out_cipher_list)->ciphers| on success and NULL on
  * failure. */
 STACK_OF(SSL_CIPHER) *
 ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
                        struct ssl_cipher_preference_list_st **out_cipher_list,
-                       STACK_OF(SSL_CIPHER) **out_cipher_list_by_id,
                        const char *rule_str);
 
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
@@ -1682,7 +1680,6 @@ void ssl_update_cache(SSL *ssl, int mode);
 void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a);
 
-STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *ssl);
 int ssl_verify_alarm_type(long type);
 
 int ssl3_get_finished(SSL *ssl);

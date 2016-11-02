@@ -758,10 +758,6 @@ static int ssl_cipher_id_cmp(const void *in_a, const void *in_b) {
   }
 }
 
-static int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **a, const SSL_CIPHER **b) {
-  return ssl_cipher_id_cmp(*a, *b);
-}
-
 const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
   SSL_CIPHER c;
 
@@ -1356,10 +1352,9 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 STACK_OF(SSL_CIPHER) *
 ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
                        struct ssl_cipher_preference_list_st **out_cipher_list,
-                       STACK_OF(SSL_CIPHER) **out_cipher_list_by_id,
                        const char *rule_str) {
   int ok;
-  STACK_OF(SSL_CIPHER) *cipherstack = NULL, *tmp_cipher_list = NULL;
+  STACK_OF(SSL_CIPHER) *cipherstack = NULL;
   const char *rule_p;
   CIPHER_ORDER *co_list = NULL, *head = NULL, *tail = NULL, *curr;
   uint8_t *in_group_flags = NULL;
@@ -1485,10 +1480,6 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   OPENSSL_free(co_list); /* Not needed any longer */
   co_list = NULL;
 
-  tmp_cipher_list = sk_SSL_CIPHER_dup(cipherstack);
-  if (tmp_cipher_list == NULL) {
-    goto err;
-  }
   pref_list = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
   if (!pref_list) {
     goto err;
@@ -1507,26 +1498,12 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   *out_cipher_list = pref_list;
   pref_list = NULL;
 
-  if (out_cipher_list_by_id != NULL) {
-    sk_SSL_CIPHER_free(*out_cipher_list_by_id);
-    *out_cipher_list_by_id = tmp_cipher_list;
-    tmp_cipher_list = NULL;
-    (void) sk_SSL_CIPHER_set_cmp_func(*out_cipher_list_by_id,
-                                      ssl_cipher_ptr_id_cmp);
-
-    sk_SSL_CIPHER_sort(*out_cipher_list_by_id);
-  } else {
-    sk_SSL_CIPHER_free(tmp_cipher_list);
-    tmp_cipher_list = NULL;
-  }
-
   return cipherstack;
 
 err:
   OPENSSL_free(co_list);
   OPENSSL_free(in_group_flags);
   sk_SSL_CIPHER_free(cipherstack);
-  sk_SSL_CIPHER_free(tmp_cipher_list);
   if (pref_list) {
     OPENSSL_free(pref_list->in_group_flags);
   }

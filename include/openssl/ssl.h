@@ -3787,8 +3787,6 @@ struct ssl_ctx_st {
   uint16_t min_version;
 
   struct ssl_cipher_preference_list_st *cipher_list;
-  /* same as above but sorted for lookup */
-  STACK_OF(SSL_CIPHER) *cipher_list_by_id;
 
   /* cipher_list_tls10 is the list of ciphers when TLS 1.0 or greater is in
    * use. This only applies to server connections as, for clients, the version
@@ -4090,7 +4088,6 @@ struct ssl_st {
 
   /* crypto */
   struct ssl_cipher_preference_list_st *cipher_list;
-  STACK_OF(SSL_CIPHER) *cipher_list_by_id;
 
   /* session info */
 
