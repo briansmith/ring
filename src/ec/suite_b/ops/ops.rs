@@ -14,7 +14,7 @@
 
 use arithmetic::montgomery::*;
 use core::marker::PhantomData;
-use {der, error, limb};
+use {error, limb};
 use untrusted;
 
 pub use limb::*; // XXX
@@ -295,11 +295,10 @@ pub struct PublicScalarOps {
 }
 
 impl PublicScalarOps {
-    pub fn scalar_parse(&self, input: &mut untrusted::Reader)
+    pub fn scalar_parse(&self, input: untrusted::Input)
                         -> Result<Scalar, error::Unspecified> {
-        let encoded_value = try!(der::positive_integer(input));
         let limbs = try!(parse_big_endian_value_in_range(
-                            encoded_value, 1,
+                            input, 1,
                             &self.public_key_ops.common.n.limbs[
                                 ..self.public_key_ops.common.num_limbs]));
         Ok(Scalar {
@@ -307,6 +306,11 @@ impl PublicScalarOps {
             m: PhantomData,
             encoding: PhantomData,
         })
+    }
+
+    // The (maximum) length of a scalar, not including any padding.
+    pub fn scalar_bytes_len(&self) -> usize {
+        self.public_key_ops.common.num_limbs * LIMB_BYTES
     }
 
     /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.

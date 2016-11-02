@@ -26,6 +26,11 @@ use untrusted;
 pub struct ECDSAParameters {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
+    split_rs:
+        for<'a> fn(ops: &'static PublicScalarOps,
+                   input: &mut untrusted::Reader<'a>)
+                   -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
+                             error::Unspecified>,
 }
 
 impl signature::VerificationAlgorithm for ECDSAParameters {
@@ -53,15 +58,13 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         let peer_pub_key =
             try!(parse_uncompressed_point(self.ops.public_key_ops, public_key));
 
+        let (r, s) = try!(signature.read_all(
+            error::Unspecified, |input| (self.split_rs)(self.ops, input)));
+
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let (r, s) = try!(signature.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let r = try!(self.ops.scalar_parse(input));
-                let s = try!(self.ops.scalar_parse(input));
-                Ok((r, s))
-            })
-        }));
+        let r = try!(self.ops.scalar_parse(r));
+        let s = try!(self.ops.scalar_parse(s));
 
         // NSA Guide Step 2: "Use the selected hash function to compute H =
         // Hash(M)."
@@ -127,6 +130,26 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
 
 impl private::Private for ECDSAParameters {}
 
+fn split_rs_fixed<'a>(
+        ops: &'static PublicScalarOps, input: &mut untrusted::Reader<'a>)
+        -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
+                  error::Unspecified> {
+    let coord_len = ops.scalar_bytes_len();
+    let r = try!(input.skip_and_get_input(coord_len));
+    let s = try!(input.skip_and_get_input(coord_len));
+    Ok((r, s))
+}
+
+fn split_rs_asn1<'a>(
+        _ops: &'static PublicScalarOps, input: &mut untrusted::Reader<'a>)
+        -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
+                  error::Unspecified> {
+    der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
+        let r = try!(der::positive_integer(input));
+        let s = try!(der::positive_integer(input));
+        Ok((r, s))
+    })
+}
 
 /// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
 /// convert the digest to a scalar in the range [0, n) as described in
@@ -199,6 +222,28 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 }
 
 
+/// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-256 curve and SHA-256.
+///
+/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P256_SHA256_FIXED: ECDSAParameters = ECDSAParameters {
+    ops: &p256::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA256,
+    split_rs: split_rs_fixed,
+};
+
+/// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-384 curve and SHA-384.
+///
+/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P384_SHA384_FIXED: ECDSAParameters = ECDSAParameters {
+    ops: &p384::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA384,
+    split_rs: split_rs_fixed,
+};
+
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
 /// and SHA-256.
 ///
@@ -207,6 +252,7 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 pub static ECDSA_P256_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
+    split_rs: split_rs_asn1,
 };
 
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
@@ -222,6 +268,7 @@ pub static ECDSA_P256_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
 pub static ECDSA_P256_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
+    split_rs: split_rs_asn1,
 };
 
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
@@ -237,6 +284,7 @@ pub static ECDSA_P256_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
 pub static ECDSA_P384_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
+    split_rs: split_rs_asn1,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
@@ -247,6 +295,7 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
 pub static ECDSA_P384_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
+    split_rs: split_rs_asn1,
 };
 
 
@@ -279,6 +328,36 @@ mod tests {
 
             let (alg, _, _) =
                 alg_from_curve_and_digest_asn1(&curve_name, &digest_name);
+
+            let actual_result = signature::verify(alg, public_key, msg, sig);
+            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
+
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn signature_ecdsa_verify_fixed_test() {
+        test::from_file("src/ec/suite_b/ecdsa_verify_fixed_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let digest_name = test_case.consume_string("Digest");
+
+            let msg = test_case.consume_bytes("Msg");
+            let msg = untrusted::Input::from(&msg);
+
+            let public_key = test_case.consume_bytes("Q");
+            let public_key = untrusted::Input::from(&public_key);
+
+            let sig = test_case.consume_bytes("Sig");
+            let sig = untrusted::Input::from(&sig);
+
+            let expected_result = test_case.consume_string("Result");
+
+            let (alg, _, _) =
+                alg_from_curve_and_digest_fixed(&curve_name, &digest_name);
 
             let actual_result = signature::verify(alg, public_key, msg, sig);
             assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
@@ -342,6 +421,24 @@ mod tests {
             }
         }
     }
+
+    fn alg_from_curve_and_digest_fixed(curve_name: &str, digest_name: &str)
+            -> (&'static signature::VerificationAlgorithm,
+                &'static PublicScalarOps, &'static digest::Algorithm) {
+        match (curve_name, digest_name) {
+            ("P-256", "SHA256") =>
+                (&signature::ECDSA_P256_SHA256_FIXED, &p256::PUBLIC_SCALAR_OPS,
+                 &digest::SHA256),
+            ("P-384", "SHA384") =>
+                (&signature::ECDSA_P384_SHA384_FIXED, &p384::PUBLIC_SCALAR_OPS,
+                 &digest::SHA384),
+            _ => {
+                panic!("Unsupported curve+digest: {}+{}", curve_name,
+                       digest_name);
+            }
+        }
+    }
+
 }
 
 #[cfg(feature = "internal_benches")]

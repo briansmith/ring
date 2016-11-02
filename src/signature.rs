@@ -57,6 +57,24 @@
 //! in the NSA guide, ECC Partial Public-Key Validation is equivalent to ECC
 //! Full Public-Key Validation for prime-order curves like this one.
 //!
+//! ## `ECDSA_*_FIXED` Details: Fixed-length (PKCS#11-style) ECDSA Signatures
+//!
+//! The signature is *r*||*s*, where || denotes concatenation, and where both
+//! *r* and *s* are both big-endian-encoded values that are left-padded to the
+//! maximum length. A P-256 signature will be 64 bytes long (two 32-byte
+//! components) and a P-384 signature will be 96 bytes long (two 48-byte
+//! components). This is the form of ECDSA signature used PKCS#11 and DNSSEC.
+//!
+//! The public key is encoding in uncompressed form using the
+//! Octet-String-to-Elliptic-Curve-Point algorithm in
+//! [SEC 1: Elliptic Curve Cryptography, Version 2.0].
+//!
+//! During verification, the public key is validated using the ECC Partial
+//! Public-Key Validation Routine from Section 5.6.2.3.3 of
+//! [NIST Special Publication 800-56A, revision 2] and Appendix A.3 of the
+//! NSA's [Suite B implementer's guide to FIPS 186-3]. Note that, as explained
+//! in the NSA guide, ECC Partial Public-Key Validation is equivalent to ECC
+//! Full Public-Key Validation for prime-order curves like this one.
 //!
 //! ## `RSA_PKCS1_*` Details: RSA PKCS#1 1.5 Signatures
 //!
@@ -247,11 +265,11 @@ use untrusted;
 pub use ec::suite_b::ecdsa::{
     ECDSAParameters,
 
-    ECDSA_P256_SHA256_ASN1,
+    ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
     ECDSA_P256_SHA384_ASN1,
 
     ECDSA_P384_SHA256_ASN1,
-    ECDSA_P384_SHA384_ASN1,
+    ECDSA_P384_SHA384_ASN1, ECDSA_P384_SHA384_FIXED,
 };
 
 pub use ec::eddsa::{

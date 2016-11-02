@@ -57,6 +57,7 @@ include = [
     "src/ec/suite_b/ecdsa.rs",
     "src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
     "src/ec/suite_b/ecdsa_verify_asn1_tests.txt",
+    "src/ec/suite_b/ecdsa_verify_fixed_tests.txt",
     "src/ec/suite_b/ops/ops.rs",
     "src/ec/suite_b/ops/p256.rs",
     "src/ec/suite_b/ops/p256_elem_mul_tests.txt",
