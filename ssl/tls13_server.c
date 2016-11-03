@@ -597,6 +597,10 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
   }
 
   ssl->method->received_flight(ssl);
+
+  /* Refresh the session timestamp so that it is measured from ticket
+   * issuance. */
+  ssl_session_refresh_time(ssl, ssl->s3->new_session);
   hs->state = state_send_new_session_ticket;
   return ssl_hs_ok;
 }
@@ -608,7 +612,6 @@ static const int kNumTickets = 2;
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
   SSL_SESSION *session = ssl->s3->new_session;
-  session->tlsext_tick_lifetime_hint = session->timeout;
 
   /* TODO(svaldez): Add support for sending 0RTT through TicketEarlyDataInfo
    * extension. */
@@ -616,7 +619,7 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
   CBB cbb, body, ke_modes, auth_modes, ticket, extensions;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_NEW_SESSION_TICKET) ||
-      !CBB_add_u32(&body, session->tlsext_tick_lifetime_hint) ||
+      !CBB_add_u32(&body, session->timeout) ||
       !CBB_add_u8_length_prefixed(&body, &ke_modes) ||
       !CBB_add_u8(&ke_modes, SSL_PSK_DHE_KE) ||
       !CBB_add_u8_length_prefixed(&body, &auth_modes) ||

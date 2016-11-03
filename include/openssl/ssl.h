@@ -3682,7 +3682,11 @@ struct ssl_session_st {
    * non-fatal certificate errors. */
   long verify_result;
 
+  /* timeout is the lifetime of the session in seconds, measured from |time|. */
   long timeout;
+
+  /* time is the time the session was issued, measured in seconds from the UNIX
+   * epoch. */
   long time;
 
   const SSL_CIPHER *cipher;

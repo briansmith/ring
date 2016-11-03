@@ -2097,6 +2097,38 @@ static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
   return encrypt ? 1 : 2;
 }
 
+static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
+  static const uint8_t kZeros[16] = {0};
+
+  if (session->tlsext_ticklen < 16 + 16 + SHA256_DIGEST_LENGTH) {
+    return false;
+  }
+
+  const uint8_t *iv = session->tlsext_tick + 16;
+  const uint8_t *ciphertext = session->tlsext_tick + 16 + 16;
+  size_t len = session->tlsext_ticklen - 16 - 16 - SHA256_DIGEST_LENGTH;
+  std::unique_ptr<uint8_t[]> plaintext(new uint8_t[len]);
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  int len1, len2;
+  if (!EVP_DecryptInit_ex(ctx.get(), EVP_aes_128_cbc(), nullptr, kZeros, iv) ||
+      !EVP_DecryptUpdate(ctx.get(), plaintext.get(), &len1, ciphertext, len) ||
+      !EVP_DecryptFinal_ex(ctx.get(), plaintext.get() + len1, &len2)) {
+    return false;
+  }
+
+  len = static_cast<size_t>(len1 + len2);
+
+  bssl::UniquePtr<SSL_SESSION> server_session(
+      SSL_SESSION_from_bytes(plaintext.get(), len));
+  if (!server_session) {
+    return false;
+  }
+
+  *out = server_session->time;
+  return true;
+}
+
 static bool TestSessionTimeout() {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
@@ -2188,6 +2220,25 @@ static bool TestSessionTimeout() {
       // This new session is not the same object as before.
       if (session.get() == new_session.get()) {
         fprintf(stderr, "New and old sessions alias (version = %04x).\n",
+                version);
+        return false;
+      }
+
+      // Check the sessions have timestamps measured from issuance.
+      long session_time = 0;
+      if (server_test) {
+        if (!GetServerTicketTime(&session_time, new_session.get())) {
+          fprintf(stderr, "Failed to decode session ticket (version = %04x).\n",
+                  version);
+          return false;
+        }
+      } else {
+        session_time = new_session->time;
+      }
+
+      if (session_time != g_current_time.tv_sec) {
+        fprintf(stderr,
+                "New session is not measured from issuance (version = %04x).\n",
                 version);
         return false;
       }

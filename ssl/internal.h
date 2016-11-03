@@ -1654,6 +1654,10 @@ enum ssl_session_result_t ssl_get_prev_session(
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
                                             int dup_flags);
 
+/* ssl_session_refresh_time updates |session|'s start time to the current time,
+ * adjusting the timeout so the expiration time is unchanged. */
+void ssl_session_refresh_time(SSL *ssl, SSL_SESSION *session);
+
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
 

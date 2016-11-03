@@ -709,6 +709,8 @@ int tls13_process_new_session_ticket(SSL *ssl) {
     return 0;
   }
 
+  ssl_session_refresh_time(ssl, session);
+
   CBS cbs, ke_modes, auth_modes, ticket, extensions;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u32(&cbs, &session->tlsext_tick_lifetime_hint) ||

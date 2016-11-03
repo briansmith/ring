@@ -1904,6 +1904,9 @@ static int ssl3_get_new_session_ticket(SSL *ssl) {
     }
   }
 
+  /* |tlsext_tick_lifetime_hint| is measured from when the ticket was issued. */
+  ssl_session_refresh_time(ssl, session);
+
   if (!CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;

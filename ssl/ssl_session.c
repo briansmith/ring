@@ -285,6 +285,31 @@ err:
   return 0;
 }
 
+void ssl_session_refresh_time(SSL *ssl, SSL_SESSION *session) {
+  struct timeval now;
+  ssl_get_current_time(ssl, &now);
+
+  /* To avoid overflows and underflows, if we've gone back in time or any value
+   * is negative, update the time, but mark the session expired. */
+  if (session->time > now.tv_sec ||
+      session->time < 0 ||
+      now.tv_sec < 0) {
+    session->time = now.tv_sec;
+    session->timeout = 0;
+    return;
+  }
+
+  /* Adjust the session time and timeout. If the session has already expired,
+   * clamp the timeout at zero. */
+  long delta = now.tv_sec - session->time;
+  session->time = now.tv_sec;
+  if (session->timeout < delta) {
+    session->timeout = 0;
+  } else {
+    session->timeout -= delta;
+  }
+}
+
 int SSL_SESSION_up_ref(SSL_SESSION *session) {
   CRYPTO_refcount_inc(&session->references);
   return 1;

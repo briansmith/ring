@@ -1827,20 +1827,36 @@ static int ssl3_send_new_session_ticket(SSL *ssl) {
     return ssl->method->write_message(ssl);
   }
 
+  const SSL_SESSION *session;
+  SSL_SESSION *session_copy = NULL;
+  if (ssl->session == NULL) {
+    /* Fix the timeout to measure from the ticket issuance time. */
+    ssl_session_refresh_time(ssl, ssl->s3->new_session);
+    session = ssl->s3->new_session;
+  } else {
+    /* We are renewing an existing session. Duplicate the session to adjust the
+     * timeout. */
+    session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
+    if (session_copy == NULL) {
+      return -1;
+    }
+
+    ssl_session_refresh_time(ssl, session_copy);
+    session = session_copy;
+  }
+
   CBB cbb, body, ticket;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
-                                 SSL3_MT_NEW_SESSION_TICKET) ||
-      /* Ticket lifetime hint (advisory only): We leave this unspecified for
-       * resumed session (for simplicity), and guess that tickets for new
-       * sessions will live as long as their sessions. */
-      !CBB_add_u32(&body,
-                   ssl->session != NULL ? 0 : ssl->s3->new_session->timeout) ||
-      !CBB_add_u16_length_prefixed(&body, &ticket) ||
-      !ssl_encrypt_ticket(ssl, &ticket, ssl->session != NULL
-                                            ? ssl->session
-                                            : ssl->s3->new_session) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
+  int ok =
+      ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_NEW_SESSION_TICKET) &&
+      CBB_add_u32(&body, session->timeout) &&
+      CBB_add_u16_length_prefixed(&body, &ticket) &&
+      ssl_encrypt_ticket(ssl, &ticket, session) &&
+      ssl->method->finish_message(ssl, &cbb);
+
+  SSL_SESSION_free(session_copy);
+  CBB_cleanup(&cbb);
+
+  if (!ok) {
     return -1;
   }
 
