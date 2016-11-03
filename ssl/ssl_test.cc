@@ -2142,7 +2142,7 @@ static bool TestSessionTimeout() {
       }
 
       // Advance the clock just behind the timeout.
-      g_current_time.tv_sec += SSL_DEFAULT_SESSION_TIMEOUT;
+      g_current_time.tv_sec += SSL_DEFAULT_SESSION_TIMEOUT - 1;
 
       if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
                                session.get(),

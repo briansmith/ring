@@ -605,7 +605,7 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
     return 0;
   }
 
-  return session->timeout >= (long)now.tv_sec - session->time;
+  return session->timeout > (long)now.tv_sec - session->time;
 }
 
 /* ssl_lookup_session looks up |session_id| in the session cache and sets
