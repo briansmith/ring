@@ -197,6 +197,11 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
   }
 
   if (in->time != 0) {
+    if (in->time < 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+      goto err;
+    }
+
     if (!CBB_add_asn1(&session, &child, kTimeTag) ||
         !CBB_add_asn1_uint64(&child, in->time)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -205,6 +210,11 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
   }
 
   if (in->timeout != 0) {
+    if (in->timeout < 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+      goto err;
+    }
+
     if (!CBB_add_asn1(&session, &child, kTimeoutTag) ||
         !CBB_add_asn1_uint64(&child, in->timeout)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
