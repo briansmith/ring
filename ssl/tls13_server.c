@@ -47,7 +47,7 @@ enum server_hs_state_t {
   state_process_channel_id,
   state_process_client_finished,
   state_send_new_session_ticket,
-  state_flush_new_session_ticket,
+  state_flush_new_session_tickets,
   state_done,
 };
 
@@ -601,6 +601,10 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
   return ssl_hs_ok;
 }
 
+/* TLS 1.3 recommends single-use tickets, so issue multiple tickets in case the
+ * client makes several connections before getting a renewal. */
+static const int kNumTickets = 2;
+
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
   SSL_SESSION *session = ssl->s3->new_session;
@@ -635,8 +639,12 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
   }
 
   hs->session_tickets_sent++;
+  if (hs->session_tickets_sent >= kNumTickets) {
+    hs->state = state_flush_new_session_tickets;
+  } else {
+    hs->state = state_send_new_session_ticket;
+  }
 
-  hs->state = state_flush_new_session_ticket;
   return ssl_hs_write_message;
 
 err:
@@ -644,17 +652,9 @@ err:
   return ssl_hs_error;
 }
 
-/* TLS 1.3 recommends single-use tickets, so issue multiple tickets in case the
- * client makes several connections before getting a renewal. */
-static const int kNumTickets = 2;
-
-static enum ssl_hs_wait_t do_flush_new_session_ticket(SSL *ssl,
-                                                      SSL_HANDSHAKE *hs) {
-  if (hs->session_tickets_sent >= kNumTickets) {
-    hs->state = state_done;
-  } else {
-    hs->state = state_send_new_session_ticket;
-  }
+static enum ssl_hs_wait_t do_flush_new_session_tickets(SSL *ssl,
+                                                       SSL_HANDSHAKE *hs) {
+  hs->state = state_done;
   return ssl_hs_flush;
 }
 
@@ -719,8 +719,8 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl) {
       case state_send_new_session_ticket:
         ret = do_send_new_session_ticket(ssl, hs);
         break;
-      case state_flush_new_session_ticket:
-        ret = do_flush_new_session_ticket(ssl, hs);
+      case state_flush_new_session_tickets:
+        ret = do_flush_new_session_tickets(ssl, hs);
         break;
       case state_done:
         ret = ssl_hs_ok;
