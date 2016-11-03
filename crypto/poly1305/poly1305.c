@@ -29,13 +29,6 @@
 #define POLY1305_BLOCK_STATE_SIZE 192
 
 
-/* We can assume little-endian. */
-static uint32_t U8TO32_LE(const uint8_t *m) {
-  uint32_t r;
-  memcpy(&r, m, sizeof(r));
-  return r;
-}
-
 #if defined(OPENSSL_X86)
 /* See comment above |_poly1305_init_sse2| in poly1305-x86.pl. */
 OPENSSL_COMPILE_ASSERT(POLY1305_BLOCK_STATE_SIZE >= 4 * (5 + 1 + 4 + 2 + 4 * 9),
@@ -88,10 +81,10 @@ void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   }
 
   state.buf_used = 0;
-  state.nonce[0] = U8TO32_LE(key + 16);
-  state.nonce[1] = U8TO32_LE(key + 20);
-  state.nonce[2] = U8TO32_LE(key + 24);
-  state.nonce[3] = U8TO32_LE(key + 28);
+  state.nonce[0] = from_le_u32_ptr(key + 16);
+  state.nonce[1] = from_le_u32_ptr(key + 20);
+  state.nonce[2] = from_le_u32_ptr(key + 24);
+  state.nonce[3] = from_le_u32_ptr(key + 28);
 
   memset(statep, 0, sizeof(*statep));
   memcpy(statep, &state, sizeof(state));
