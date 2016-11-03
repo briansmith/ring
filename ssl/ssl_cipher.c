@@ -1353,9 +1353,7 @@ STACK_OF(SSL_CIPHER) *
 ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
                        struct ssl_cipher_preference_list_st **out_cipher_list,
                        const char *rule_str) {
-  int ok;
   STACK_OF(SSL_CIPHER) *cipherstack = NULL;
-  const char *rule_p;
   CIPHER_ORDER *co_list = NULL, *head = NULL, *tail = NULL, *curr;
   uint8_t *in_group_flags = NULL;
   unsigned int num_in_group_flags = 0;
@@ -1436,22 +1434,20 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 
   /* If the rule_string begins with DEFAULT, apply the default rule before
    * using the (possibly available) additional rules. */
-  ok = 1;
-  rule_p = rule_str;
+  const char *rule_p = rule_str;
   if (strncmp(rule_str, "DEFAULT", 7) == 0) {
-    ok = ssl_cipher_process_rulestr(ssl_method, SSL_DEFAULT_CIPHER_LIST, &head,
-                                    &tail);
+    if (!ssl_cipher_process_rulestr(ssl_method, SSL_DEFAULT_CIPHER_LIST, &head,
+                                    &tail)) {
+      goto err;
+    }
     rule_p += 7;
     if (*rule_p == ':') {
       rule_p++;
     }
   }
 
-  if (ok && strlen(rule_p) > 0) {
-    ok = ssl_cipher_process_rulestr(ssl_method, rule_p, &head, &tail);
-  }
-
-  if (!ok) {
+  if (*rule_p != '\0' &&
+      !ssl_cipher_process_rulestr(ssl_method, rule_p, &head, &tail)) {
     goto err;
   }
 
