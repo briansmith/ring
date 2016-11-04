@@ -102,8 +102,8 @@
  *     cipher                      OCTET STRING, -- two bytes long
  *     sessionID                   OCTET STRING,
  *     masterKey                   OCTET STRING,
- *     time                    [1] INTEGER OPTIONAL, -- seconds since UNIX epoch
- *     timeout                 [2] INTEGER OPTIONAL, -- in seconds
+ *     time                    [1] INTEGER, -- seconds since UNIX epoch
+ *     timeout                 [2] INTEGER, -- in seconds
  *     peer                    [3] Certificate OPTIONAL,
  *     sessionIDContext        [4] OCTET STRING OPTIONAL,
  *     verifyResult            [5] INTEGER OPTIONAL,  -- one of X509_V_* codes
@@ -196,30 +196,26 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     goto err;
   }
 
-  if (in->time != 0) {
-    if (in->time < 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-      goto err;
-    }
-
-    if (!CBB_add_asn1(&session, &child, kTimeTag) ||
-        !CBB_add_asn1_uint64(&child, in->time)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
+  if (in->time < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
   }
 
-  if (in->timeout != 0) {
-    if (in->timeout < 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-      goto err;
-    }
+  if (!CBB_add_asn1(&session, &child, kTimeTag) ||
+      !CBB_add_asn1_uint64(&child, in->time)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
 
-    if (!CBB_add_asn1(&session, &child, kTimeoutTag) ||
-        !CBB_add_asn1_uint64(&child, in->timeout)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
+  if (in->timeout < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+
+  if (!CBB_add_asn1(&session, &child, kTimeoutTag) ||
+      !CBB_add_asn1_uint64(&child, in->timeout)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
   }
 
   /* The peer certificate is only serialized if the SHA-256 isn't
@@ -573,11 +569,20 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   memcpy(ret->master_key, CBS_data(&master_key), CBS_len(&master_key));
   ret->master_key_length = CBS_len(&master_key);
 
-  if (!SSL_SESSION_parse_long(&session, &ret->time, kTimeTag, time(NULL)) ||
-      !SSL_SESSION_parse_long(&session, &ret->timeout, kTimeoutTag, 3)) {
+  CBS child;
+  uint64_t time, timeout;
+  if (!CBS_get_asn1(&session, &child, kTimeTag) ||
+      !CBS_get_asn1_uint64(&child, &time) ||
+      time > LONG_MAX ||
+      !CBS_get_asn1(&session, &child, kTimeoutTag) ||
+      !CBS_get_asn1_uint64(&child, &timeout) ||
+      timeout > LONG_MAX) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
+
+  ret->time = (long)time;
+  ret->timeout = (long)timeout;
 
   CBS peer;
   int has_peer;
@@ -615,7 +620,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   }
 
   if (CBS_peek_asn1_tag(&session, kPeerSHA256Tag)) {
-    CBS child, peer_sha256;
+    CBS peer_sha256;
     if (!CBS_get_asn1(&session, &child, kPeerSHA256Tag) ||
         !CBS_get_asn1(&child, &peer_sha256, CBS_ASN1_OCTETSTRING) ||
         CBS_len(&peer_sha256) != sizeof(ret->peer_sha256) ||
