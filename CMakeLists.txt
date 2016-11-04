@@ -125,8 +125,13 @@ if(FUZZ)
     message(FATAL_ERROR "You need to build with Clang for fuzzing to work")
   endif()
 
-  add_definitions(-DBORINGSSL_UNSAFE_FUZZER_MODE)
-  set(RUNNER_ARGS "-fuzzer" "-deterministic" "-shim-config" "fuzzer_mode.json")
+  add_definitions(-DBORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+  set(RUNNER_ARGS "-deterministic")
+
+  if(NOT NO_FUZZER_MODE)
+    add_definitions(-DBORINGSSL_UNSAFE_FUZZER_MODE)
+    set(RUNNER_ARGS ${RUNNER_ARGS} "-fuzzer" "-shim-config" "fuzzer_mode.json")
+  endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls,8bit-counters")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls,8bit-counters")

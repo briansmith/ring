@@ -14,7 +14,7 @@
 
 #include <openssl/rand.h>
 
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 
 #include <string.h>
 
@@ -44,4 +44,4 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   g_num_calls++;
 }
 
-#endif  /* BORINGSSL_UNSAFE_FUZZER_MODE */
+#endif  /* BORINGSSL_UNSAFE_DETERMINISTIC_MODE */

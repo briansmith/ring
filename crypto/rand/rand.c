@@ -73,7 +73,7 @@ static void rand_thread_state_free(void *state) {
 }
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
-    !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 
 /* These functions are defined in asm/rdrand-x86_64.pl */
 extern int CRYPTO_rdrand(uint8_t out[8]);
