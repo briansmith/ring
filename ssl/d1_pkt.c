@@ -377,7 +377,7 @@ int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
     return -1;
   }
 
-  size_t max_out = len + ssl_max_seal_overhead(ssl);
+  size_t max_out = len + SSL_max_seal_overhead(ssl);
   uint8_t *out;
   size_t ciphertext_len;
   if (!ssl_write_buffer_init(ssl, &out, max_out) ||

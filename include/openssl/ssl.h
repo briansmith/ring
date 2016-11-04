@@ -3127,6 +3127,10 @@ OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
  * GREASE. See draft-davidben-tls-grease-01. */
 OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
 
+/* SSL_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
+ * record with |ssl|. */
+OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
+
 
 /* Deprecated functions. */
 

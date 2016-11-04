@@ -174,7 +174,7 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl) {
   }
 }
 
-size_t ssl_max_seal_overhead(const SSL *ssl) {
+size_t SSL_max_seal_overhead(const SSL *ssl) {
   size_t ret = SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
   if (SSL_is_dtls(ssl)) {
     ret += DTLS1_RT_HEADER_LENGTH;

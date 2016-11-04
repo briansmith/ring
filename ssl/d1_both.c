@@ -527,10 +527,10 @@ static void dtls1_update_mtu(SSL *ssl) {
 /* dtls1_max_record_size returns the maximum record body length that may be
  * written without exceeding the MTU. It accounts for any buffering installed on
  * the write BIO. If no record may be written, it returns zero. */
-static size_t dtls1_max_record_size(SSL *ssl) {
+static size_t dtls1_max_record_size(const SSL *ssl) {
   size_t ret = ssl->d1->mtu;
 
-  size_t overhead = ssl_max_seal_overhead(ssl);
+  size_t overhead = SSL_max_seal_overhead(ssl);
   if (ret <= overhead) {
     return 0;
   }

@@ -418,13 +418,6 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
  * buffer-free APIs are available. */
 size_t ssl_seal_align_prefix_len(const SSL *ssl);
 
-/* ssl_max_seal_overhead returns the maximum overhead of sealing a record with
- * |ssl|.
- *
- * TODO(davidben): Expose this as part of public API once the high-level
- * buffer-free APIs are available. */
-size_t ssl_max_seal_overhead(const SSL *ssl);
-
 /* tls_seal_record seals a new record of type |type| and body |in| and writes it
  * to |out|. At most |max_out| bytes will be written. It returns one on success
  * and zero on error. If enabled, |tls_seal_record| implements TLS 1.0 CBC 1/n-1
@@ -432,7 +425,7 @@ size_t ssl_max_seal_overhead(const SSL *ssl);
  *
  * For a large record, the bulk of the ciphertext will begin
  * |ssl_seal_align_prefix_len| bytes into out. Aligning |out| appropriately may
- * improve performance. It writes at most |in_len| + |ssl_max_seal_overhead|
+ * improve performance. It writes at most |in_len| + |SSL_max_seal_overhead|
  * bytes to |out|.
  *
  * |in| and |out| may not alias. */
