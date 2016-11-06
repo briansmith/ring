@@ -226,9 +226,6 @@ ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P256_SHA256_ASN1,
 ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA384, ECDSA_P256_SHA384_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
         curve and SHA-384.");
-ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA512, ECDSA_P256_SHA512_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
-        curve and SHA-512.");
 
 ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P384_SHA256_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
@@ -236,9 +233,6 @@ ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P384_SHA256_ASN1,
 ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA384, ECDSA_P384_SHA384_ASN1,
        "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
         curve and SHA-384.");
-ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA512, ECDSA_P384_SHA512_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
-        curve and SHA-512.");
 
 
 #[cfg(test)]
@@ -322,9 +316,6 @@ mod tests {
             } else if digest_name == "SHA384" {
                 (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
-            } else if digest_name == "SHA512" {
-                (&signature::ECDSA_P256_SHA512_ASN1, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
@@ -335,9 +326,6 @@ mod tests {
             } else if digest_name == "SHA384" {
                 (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
-            } else if digest_name == "SHA512" {
-                (&signature::ECDSA_P384_SHA512_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA512)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
