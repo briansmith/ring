@@ -476,8 +476,6 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL_ST_OK:
-        /* Clean a few things up. */
-        ssl3_cleanup_key_block(ssl);
         ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         /* If we aren't retaining peer certificates then we can discard it

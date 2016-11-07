@@ -200,7 +200,6 @@ void ssl3_free(SSL *ssl) {
     return;
   }
 
-  ssl3_cleanup_key_block(ssl);
   ssl_read_buffer_clear(ssl);
   ssl_write_buffer_clear(ssl);
 

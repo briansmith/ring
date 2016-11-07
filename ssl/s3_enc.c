@@ -209,15 +209,6 @@ static int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
   return 1;
 }
 
-void ssl3_cleanup_key_block(SSL *ssl) {
-  if (ssl->s3->tmp.key_block != NULL) {
-    OPENSSL_cleanse(ssl->s3->tmp.key_block, ssl->s3->tmp.key_block_length);
-    OPENSSL_free(ssl->s3->tmp.key_block);
-    ssl->s3->tmp.key_block = NULL;
-  }
-  ssl->s3->tmp.key_block_length = 0;
-}
-
 int ssl3_init_handshake_buffer(SSL *ssl) {
   ssl3_free_handshake_buffer(ssl);
   ssl3_free_handshake_hash(ssl);

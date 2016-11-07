@@ -507,8 +507,6 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL_ST_OK:
-        /* Clean a few things up. */
-        ssl3_cleanup_key_block(ssl);
         ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         SSL_SESSION_free(ssl->s3->established_session);

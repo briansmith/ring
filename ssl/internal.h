@@ -1003,6 +1003,10 @@ typedef struct ssl_handshake_st {
    * received in a CertificateRequest message. */
   uint8_t *certificate_types;
   size_t num_certificate_types;
+
+  /* key_block is the record-layer key block for TLS 1.2 and earlier. */
+  uint8_t *key_block;
+  uint8_t key_block_len;
 } SSL_HANDSHAKE;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
@@ -1435,9 +1439,6 @@ typedef struct ssl3_state_st {
 
     int reuse_message;
 
-    uint8_t *key_block;
-    uint8_t key_block_length;
-
     uint8_t new_mac_secret_len;
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
@@ -1681,7 +1682,6 @@ int ssl_verify_alarm_type(long type);
 
 int ssl3_get_finished(SSL *ssl);
 int ssl3_send_change_cipher_spec(SSL *ssl);
-void ssl3_cleanup_key_block(SSL *ssl);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_message(SSL *ssl, int msg_type,
                      enum ssl_hash_message_t hash_message);
