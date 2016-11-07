@@ -214,13 +214,13 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
     goto err;
   }
 
-  X509_free(ssl->s3->new_session->peer);
+  X509_free(ssl->s3->new_session->x509_peer);
   X509 *leaf = sk_X509_value(chain, 0);
   X509_up_ref(leaf);
-  ssl->s3->new_session->peer = leaf;
+  ssl->s3->new_session->x509_peer = leaf;
 
-  sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
-  ssl->s3->new_session->cert_chain = chain;
+  sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
+  ssl->s3->new_session->x509_chain = chain;
   chain = NULL;
 
   ret = 1;
@@ -232,7 +232,7 @@ err:
 
 int tls13_process_certificate_verify(SSL *ssl) {
   int ret = 0;
-  X509 *peer = ssl->s3->new_session->peer;
+  X509 *peer = ssl->s3->new_session->x509_peer;
   EVP_PKEY *pkey = NULL;
   uint8_t *msg = NULL;
   size_t msg_len;

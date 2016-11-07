@@ -1049,14 +1049,14 @@ static int ssl3_get_server_certificate(SSL *ssl) {
     goto err;
   }
 
-  /* NOTE: Unlike the server half, the client's copy of |cert_chain| includes
+  /* NOTE: Unlike the server half, the client's copy of |x509_chain| includes
    * the leaf. */
-  sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
-  ssl->s3->new_session->cert_chain = chain;
+  sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
+  ssl->s3->new_session->x509_chain = chain;
 
-  X509_free(ssl->s3->new_session->peer);
+  X509_free(ssl->s3->new_session->x509_peer);
   X509_up_ref(leaf);
-  ssl->s3->new_session->peer = leaf;
+  ssl->s3->new_session->x509_peer = leaf;
 
   return 1;
 
@@ -1108,7 +1108,7 @@ f_err:
 
 static int ssl3_verify_server_cert(SSL *ssl) {
   if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
-                             ssl->s3->new_session->cert_chain)) {
+                             ssl->s3->new_session->x509_chain)) {
     return -1;
   }
 
@@ -1282,7 +1282,7 @@ static int ssl3_get_server_key_exchange(SSL *ssl) {
 
   /* ServerKeyExchange should be signed by the server's public key. */
   if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
-    pkey = X509_get_pubkey(ssl->s3->new_session->peer);
+    pkey = X509_get_pubkey(ssl->s3->new_session->x509_peer);
     if (pkey == NULL) {
       goto err;
     }
@@ -1570,7 +1570,7 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
       goto err;
     }
 
-    EVP_PKEY *pkey = X509_get_pubkey(ssl->s3->new_session->peer);
+    EVP_PKEY *pkey = X509_get_pubkey(ssl->s3->new_session->x509_peer);
     if (pkey == NULL) {
       goto err;
     }

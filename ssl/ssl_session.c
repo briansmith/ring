@@ -199,13 +199,13 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
       goto err;
     }
   }
-  if (session->peer != NULL) {
-    X509_up_ref(session->peer);
-    new_session->peer = session->peer;
+  if (session->x509_peer != NULL) {
+    X509_up_ref(session->x509_peer);
+    new_session->x509_peer = session->x509_peer;
   }
-  if (session->cert_chain != NULL) {
-    new_session->cert_chain = X509_chain_up_ref(session->cert_chain);
-    if (new_session->cert_chain == NULL) {
+  if (session->x509_chain != NULL) {
+    new_session->x509_chain = X509_chain_up_ref(session->x509_chain);
+    if (new_session->x509_chain == NULL) {
       goto err;
     }
   }
@@ -325,8 +325,8 @@ void SSL_SESSION_free(SSL_SESSION *session) {
 
   OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
-  X509_free(session->peer);
-  sk_X509_pop_free(session->cert_chain, X509_free);
+  X509_free(session->x509_peer);
+  sk_X509_pop_free(session->x509_chain, X509_free);
   OPENSSL_free(session->tlsext_hostname);
   OPENSSL_free(session->tlsext_tick);
   OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
@@ -357,7 +357,7 @@ long SSL_SESSION_get_time(const SSL_SESSION *session) {
 }
 
 X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session) {
-  return session->peer;
+  return session->x509_peer;
 }
 
 size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,

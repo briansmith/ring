@@ -1171,10 +1171,9 @@ enum ssl_hash_message_t {
 };
 
 typedef struct cert_st {
-  X509 *x509;
   EVP_PKEY *privatekey;
-  /* Chain for this certificate */
-  STACK_OF(X509) *chain;
+  X509 *x509_leaf;
+  STACK_OF(X509) *x509_chain;
 
   /* key_method, if non-NULL, is a set of callbacks to call for private key
    * operations. */

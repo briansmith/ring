@@ -158,9 +158,9 @@ CERT *ssl_cert_dup(CERT *cert) {
   }
   memset(ret, 0, sizeof(CERT));
 
-  if (cert->x509 != NULL) {
-    X509_up_ref(cert->x509);
-    ret->x509 = cert->x509;
+  if (cert->x509_leaf != NULL) {
+    X509_up_ref(cert->x509_leaf);
+    ret->x509_leaf = cert->x509_leaf;
   }
 
   if (cert->privatekey != NULL) {
@@ -168,9 +168,9 @@ CERT *ssl_cert_dup(CERT *cert) {
     ret->privatekey = cert->privatekey;
   }
 
-  if (cert->chain) {
-    ret->chain = X509_chain_up_ref(cert->chain);
-    if (!ret->chain) {
+  if (cert->x509_chain) {
+    ret->x509_chain = X509_chain_up_ref(cert->x509_chain);
+    if (!ret->x509_chain) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -220,12 +220,12 @@ void ssl_cert_clear_certs(CERT *cert) {
     return;
   }
 
-  X509_free(cert->x509);
-  cert->x509 = NULL;
+  X509_free(cert->x509_leaf);
+  cert->x509_leaf = NULL;
   EVP_PKEY_free(cert->privatekey);
   cert->privatekey = NULL;
-  sk_X509_pop_free(cert->chain, X509_free);
-  cert->chain = NULL;
+  sk_X509_pop_free(cert->x509_chain, X509_free);
+  cert->x509_chain = NULL;
   cert->key_method = NULL;
 }
 
@@ -244,8 +244,8 @@ void ssl_cert_free(CERT *c) {
 }
 
 int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
-  sk_X509_pop_free(cert->chain, X509_free);
-  cert->chain = chain;
+  sk_X509_pop_free(cert->x509_chain, X509_free);
+  cert->x509_chain = chain;
   return 1;
 }
 
@@ -269,10 +269,10 @@ int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
 }
 
 int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
-  if (cert->chain == NULL) {
-    cert->chain = sk_X509_new_null();
+  if (cert->x509_chain == NULL) {
+    cert->x509_chain = sk_X509_new_null();
   }
-  if (cert->chain == NULL || !sk_X509_push(cert->chain, x509)) {
+  if (cert->x509_chain == NULL || !sk_X509_push(cert->x509_chain, x509)) {
     return 0;
   }
 
@@ -443,7 +443,7 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
 }
 
 int ssl_has_certificate(const SSL *ssl) {
-  return ssl->cert->x509 != NULL && ssl_has_private_key(ssl);
+  return ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl);
 }
 
 STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
@@ -528,7 +528,7 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   }
 
   CERT *cert = ssl->cert;
-  X509 *x = cert->x509;
+  X509 *x = cert->x509_leaf;
 
   CBB child;
   if (!CBB_add_u24_length_prefixed(cbb, &child)) {
@@ -537,7 +537,7 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   }
 
   int no_chain = 0;
-  STACK_OF(X509) *chain = cert->chain;
+  STACK_OF(X509) *chain = cert->x509_chain;
   if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || chain != NULL) {
     no_chain = 1;
   }
@@ -763,7 +763,7 @@ int SSL_clear_chain_certs(SSL *ssl) {
 }
 
 int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
-  *out_chain = ctx->cert->chain;
+  *out_chain = ctx->cert->x509_chain;
   return 1;
 }
 
@@ -773,7 +773,7 @@ int SSL_CTX_get_extra_chain_certs(const SSL_CTX *ctx,
 }
 
 int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
-  *out_chain = ssl->cert->chain;
+  *out_chain = ssl->cert->x509_chain;
   return 1;
 }
 

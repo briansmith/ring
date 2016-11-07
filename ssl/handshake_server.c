@@ -482,10 +482,10 @@ int ssl3_accept(SSL *ssl) {
          * now. */
         if (ssl->s3->new_session != NULL &&
             ssl->ctx->retain_only_sha256_of_client_certs) {
-          X509_free(ssl->s3->new_session->peer);
-          ssl->s3->new_session->peer = NULL;
-          sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
-          ssl->s3->new_session->cert_chain = NULL;
+          X509_free(ssl->s3->new_session->x509_peer);
+          ssl->s3->new_session->x509_peer = NULL;
+          sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
+          ssl->s3->new_session->x509_chain = NULL;
         }
 
         SSL_SESSION_free(ssl->s3->established_session);
@@ -1380,12 +1380,12 @@ static int ssl3_get_client_certificate(SSL *ssl) {
     }
   }
 
-  X509_free(ssl->s3->new_session->peer);
-  ssl->s3->new_session->peer = sk_X509_shift(chain);
+  X509_free(ssl->s3->new_session->x509_peer);
+  ssl->s3->new_session->x509_peer = sk_X509_shift(chain);
 
-  sk_X509_pop_free(ssl->s3->new_session->cert_chain, X509_free);
-  ssl->s3->new_session->cert_chain = chain;
-  /* Inconsistency alert: cert_chain does *not* include the peer's own
+  sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
+  ssl->s3->new_session->x509_chain = chain;
+  /* Inconsistency alert: x509_chain does *not* include the peer's own
    * certificate, while we do include it in s3_clnt.c */
 
   return 1;
@@ -1667,7 +1667,7 @@ err:
 static int ssl3_get_cert_verify(SSL *ssl) {
   int al, ret = 0;
   CBS certificate_verify, signature;
-  X509 *peer = ssl->s3->new_session->peer;
+  X509 *peer = ssl->s3->new_session->x509_peer;
   EVP_PKEY *pkey = NULL;
 
   /* Only RSA and ECDSA client certificates are supported, so a

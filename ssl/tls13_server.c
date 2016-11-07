@@ -542,8 +542,8 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
 
   /* For historical reasons, the server's copy of the chain does not include the
    * leaf while the client's does. */
-  if (sk_X509_num(ssl->s3->new_session->cert_chain) > 0) {
-    X509_free(sk_X509_shift(ssl->s3->new_session->cert_chain));
+  if (sk_X509_num(ssl->s3->new_session->x509_chain) > 0) {
+    X509_free(sk_X509_shift(ssl->s3->new_session->x509_chain));
   }
 
   hs->state = state_process_client_certificate_verify;
@@ -552,7 +552,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
 
 static enum ssl_hs_wait_t do_process_client_certificate_verify(
     SSL *ssl, SSL_HANDSHAKE *hs) {
-  if (ssl->s3->new_session->peer == NULL) {
+  if (ssl->s3->new_session->x509_peer == NULL) {
     /* Skip this state. */
     hs->state = state_process_channel_id;
     return ssl_hs_ok;

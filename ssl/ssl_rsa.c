@@ -134,13 +134,14 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
     return 0;
   }
 
-  if (c->x509 != NULL) {
+  X509 *x509_leaf = c->x509_leaf;
+  if (x509_leaf != NULL) {
     /* Sanity-check that the private key and the certificate match, unless the
      * key is opaque (in case of, say, a smartcard). */
     if (!EVP_PKEY_is_opaque(pkey) &&
-        !X509_check_private_key(c->x509, pkey)) {
-      X509_free(c->x509);
-      c->x509 = NULL;
+        !X509_check_private_key(x509_leaf, pkey)) {
+      X509_free(c->x509_leaf);
+      c->x509_leaf = NULL;
       return 0;
     }
   }
@@ -248,9 +249,9 @@ static int ssl_set_cert(CERT *c, X509 *x) {
 
   EVP_PKEY_free(pkey);
 
-  X509_free(c->x509);
+  X509_free(c->x509_leaf);
   X509_up_ref(x);
-  c->x509 = x;
+  c->x509_leaf = x;
 
   return 1;
 }

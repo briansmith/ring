@@ -220,12 +220,12 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
 
   /* The peer certificate is only serialized if the SHA-256 isn't
    * serialized instead. */
-  if (in->peer && !in->peer_sha256_valid) {
+  if (in->x509_peer && !in->peer_sha256_valid) {
     if (!CBB_add_asn1(&session, &child, kPeerTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    if (!ssl_add_cert_to_cbb(&child, in->peer)) {
+    if (!ssl_add_cert_to_cbb(&child, in->x509_peer)) {
       goto err;
     }
   }
@@ -340,13 +340,13 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
 
   /* The certificate chain is only serialized if the leaf's SHA-256 isn't
    * serialized instead. */
-  if (in->cert_chain != NULL && !in->peer_sha256_valid) {
+  if (in->x509_chain != NULL && !in->peer_sha256_valid) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    for (size_t i = 0; i < sk_X509_num(in->cert_chain); i++) {
-      if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->cert_chain, i))) {
+    for (size_t i = 0; i < sk_X509_num(in->x509_chain); i++) {
+      if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->x509_chain, i))) {
         goto err;
       }
     }
@@ -590,11 +590,11 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  X509_free(ret->peer);
-  ret->peer = NULL;
+  X509_free(ret->x509_peer);
+  ret->x509_peer = NULL;
   if (has_peer) {
-    ret->peer = parse_x509(&peer);
-    if (ret->peer == NULL) {
+    ret->x509_peer = parse_x509(&peer);
+    if (ret->x509_peer == NULL) {
       goto err;
     }
     if (CBS_len(&peer) != 0) {
@@ -670,11 +670,11 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  sk_X509_pop_free(ret->cert_chain, X509_free);
-  ret->cert_chain = NULL;
+  sk_X509_pop_free(ret->x509_chain, X509_free);
+  ret->x509_chain = NULL;
   if (has_cert_chain) {
-    ret->cert_chain = sk_X509_new_null();
-    if (ret->cert_chain == NULL) {
+    ret->x509_chain = sk_X509_new_null();
+    if (ret->x509_chain == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -683,7 +683,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
       if (x509 == NULL) {
         goto err;
       }
-      if (!sk_X509_push(ret->cert_chain, x509)) {
+      if (!sk_X509_push(ret->x509_chain, x509)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         X509_free(x509);
         goto err;
