@@ -149,6 +149,7 @@
 #include <openssl/hmac.h>
 #include <openssl/lhash.h>
 #include <openssl/pem.h>
+#include <openssl/pool.h>
 #include <openssl/ssl3.h>
 #include <openssl/thread.h>
 #include <openssl/tls1.h>
@@ -3706,6 +3707,11 @@ struct ssl_session_st {
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
   char *psk_identity;
+
+  /* certs contains the certificate chain from the peer, starting with the leaf
+   * certificate. */
+  STACK_OF(CRYPTO_BUFFER) *certs;
+
   /* x509_peer is the peer's certificate. */
   X509 *x509_peer;
 
@@ -3772,6 +3778,11 @@ struct ssl_session_st {
 
   /* ticket_age_add_valid is non-zero if |ticket_age_add| is valid. */
   unsigned ticket_age_add_valid:1;
+
+  /* x509_chain_should_include_leaf is true if the |STACK_OF(X509)| certificate
+   * chain should include the leaf certificate. Due to history, this is false
+   * for server sessions and true for client sessions. */
+  unsigned x509_chain_should_include_leaf:1;
 };
 
 /* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with

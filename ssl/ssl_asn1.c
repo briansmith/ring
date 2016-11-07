@@ -122,6 +122,7 @@
  *     keyExchangeInfo         [18] INTEGER OPTIONAL,
  *     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
  *     ticketAgeAdd            [21] OCTET STRING OPTIONAL,
+ *     x509ChainIncludeLeaf    [22] BOOLEAN OPTIONAL,
  * }
  *
  * Note: historically this serialization has included other optional
@@ -132,7 +133,16 @@
  *     compressionMethod       [11] OCTET STRING OPTIONAL,
  *     srpUsername             [12] OCTET STRING OPTIONAL,
  *     ticketFlags             [20] INTEGER OPTIONAL,
- */
+ *
+ *
+ * When serialising, the first element of |certChain| does not duplicate the
+ * contents of |peer|, but that was not always true. When parsing, the returned
+ * |x509_chain| sometimes needs to contain the leaf certificate at the
+ * beginning (clients) and sometimes not (servers). The |x509ChainIncludeLeaf|
+ * value specifies whether this duplication should be done for the in-memory
+ * representation. If not given, the parsing code looks to see whether the
+ * first cert in |certChain| matches the |peer| and assumes that it's parsing
+ * old session data and thus that |x509ChainIncludeLeaf| should be true. */
 
 static const unsigned kVersion = 1;
 
@@ -170,6 +180,8 @@ static const int kCertChainTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 19;
 static const int kTicketAgeAddTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 21;
+static const int kX509ChainIncludeLeafTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 22;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -218,14 +230,12 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     goto err;
   }
 
-  /* The peer certificate is only serialized if the SHA-256 isn't
-   * serialized instead. */
-  if (in->x509_peer && !in->peer_sha256_valid) {
-    if (!CBB_add_asn1(&session, &child, kPeerTag)) {
+  if (sk_CRYPTO_BUFFER_num(in->certs) > 0 && !in->peer_sha256_valid) {
+    const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, 0);
+    if (!CBB_add_asn1(&session, &child, kPeerTag) ||
+        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
+                       CRYPTO_BUFFER_len(buffer))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    if (!ssl_add_cert_to_cbb(&child, in->x509_peer)) {
       goto err;
     }
   }
@@ -340,13 +350,18 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
 
   /* The certificate chain is only serialized if the leaf's SHA-256 isn't
    * serialized instead. */
-  if (in->x509_chain != NULL && !in->peer_sha256_valid) {
+  if (in->certs != NULL &&
+      !in->peer_sha256_valid &&
+      sk_CRYPTO_BUFFER_num(in->certs) > 1) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    for (size_t i = 0; i < sk_X509_num(in->x509_chain); i++) {
-      if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->x509_chain, i))) {
+    for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(in->certs); i++) {
+      const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, i);
+      if (!CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
+                         CRYPTO_BUFFER_len(buffer))) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
       }
     }
@@ -356,6 +371,15 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     if (!CBB_add_asn1(&session, &child, kTicketAgeAddTag) ||
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
         !CBB_add_u32(&child2, in->ticket_age_add)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  if (in->x509_chain_should_include_leaf) {
+    if (!CBB_add_asn1(&session, &child, kX509ChainIncludeLeafTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_BOOLEAN) ||
+        !CBB_add_u8(&child2, 0xff)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -572,22 +596,12 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
 
   CBS peer;
   int has_peer;
-  if (!CBS_get_optional_asn1(&session, &peer, &has_peer, kPeerTag)) {
+  if (!CBS_get_optional_asn1(&session, &peer, &has_peer, kPeerTag) ||
+      (has_peer && CBS_len(&peer) == 0)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  X509_free(ret->x509_peer);
-  ret->x509_peer = NULL;
-  if (has_peer) {
-    ret->x509_peer = ssl_parse_x509(&peer);
-    if (ret->x509_peer == NULL) {
-      goto err;
-    }
-    if (CBS_len(&peer) != 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-      goto err;
-    }
-  }
+  /* |peer| is processed with the certificate chain. */
 
   if (!SSL_SESSION_parse_bounded_octet_string(
           &session, ret->sid_ctx, &ret->sid_ctx_length, sizeof(ret->sid_ctx),
@@ -650,28 +664,70 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   }
 
   CBS cert_chain;
+  CBS_init(&cert_chain, NULL, 0);
   int has_cert_chain;
   if (!CBS_get_optional_asn1(&session, &cert_chain, &has_cert_chain,
-                             kCertChainTag)) {
+                             kCertChainTag) ||
+      (has_cert_chain && CBS_len(&cert_chain) == 0)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  sk_X509_pop_free(ret->x509_chain, X509_free);
-  ret->x509_chain = NULL;
-  if (has_cert_chain) {
-    ret->x509_chain = sk_X509_new_null();
-    if (ret->x509_chain == NULL) {
+  sk_CRYPTO_BUFFER_pop_free(ret->certs, CRYPTO_BUFFER_free);
+  ret->certs = NULL;
+
+  int x509_chain_should_include_leaf_default = 0;
+
+  if (has_peer || has_cert_chain) {
+    ret->certs = sk_CRYPTO_BUFFER_new_null();
+    if (ret->certs == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    while (CBS_len(&cert_chain) > 0) {
-      X509 *x509 = ssl_parse_x509(&cert_chain);
-      if (x509 == NULL) {
+
+    if (has_peer) {
+      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&peer, NULL);
+      if (buffer == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
       }
-      if (!sk_X509_push(ret->x509_chain, x509)) {
+
+      if (!sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
+        CRYPTO_BUFFER_free(buffer);
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        X509_free(x509);
+        goto err;
+      }
+    }
+
+    size_t chain_i = 0;
+    while (CBS_len(&cert_chain) > 0) {
+      chain_i++;
+
+      CBS cert;
+      if (!CBS_get_any_asn1_element(&cert_chain, &cert, NULL, NULL) ||
+          CBS_len(&cert) == 0) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+        goto err;
+      }
+
+      if (has_peer && chain_i == 1) {
+        /* If a certificate was parsed from |peer| then it may, or may not, be
+         * duplicated as the first element of |cert_chain|. */
+        if (CBS_len(&peer) == CBS_len(&cert) &&
+            memcmp(CBS_data(&peer), CBS_data(&cert), CBS_len(&peer)) == 0) {
+          x509_chain_should_include_leaf_default = 1;
+          continue;
+        }
+      }
+
+      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&cert, NULL);
+      if (buffer == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
+
+      if (!sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
+        CRYPTO_BUFFER_free(buffer);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
       }
     }
@@ -688,10 +744,24 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   }
   ret->ticket_age_add_valid = age_add_present;
 
+  int x509_chain_should_include_leaf;
+  if (!CBS_get_optional_asn1_bool(&session, &x509_chain_should_include_leaf,
+                                  kX509ChainIncludeLeafTag,
+                                  x509_chain_should_include_leaf_default)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+
   if (CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
+
+  if (!x509_chain_from_buffers(&ret->x509_chain, ret->certs)) {
+    goto err;
+  }
+
+  ssl_session_set_x509_peer(ret, x509_chain_should_include_leaf);
 
   return ret;
 

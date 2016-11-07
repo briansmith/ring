@@ -748,18 +748,30 @@ void ssl_write_buffer_clear(SSL *ssl);
  * configured and zero otherwise. */
 int ssl_has_certificate(const SSL *ssl);
 
-/* ssl_parse_x509 parses a X509 certificate from |cbs|. It returns NULL
- * on error. */
-X509 *ssl_parse_x509(CBS *cbs);
+/* x509_chain_from_buffers parses a number of X.509 certificates from |buffers|
+ * and sets |*out| to a corresponding stack of |X509*|. It returns one on
+ * success or zero on error. */
+int x509_chain_from_buffers(STACK_OF(X509) **out,
+                            STACK_OF(CRYPTO_BUFFER) *buffers);
+
+/* ssl_session_set_x509_peer sets |sess->x509_peer| to the first element of
+ * |sess->x509_chain| and copies |chain_should_include_leaf| to
+ * |sess->x509_chain_should_include_leaf|. If |chain_should_include_leaf| is
+ * true then |x509_peer| is a additional reference to the first element of the
+ * chain. Otherwise the first element of the chain is removed and |x509_peer|
+ * is the only reference to it. */
+void ssl_session_set_x509_peer(SSL_SESSION *sess,
+                               int chain_should_include_leaf);
 
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
- * by a TLS Certificate message. On success, it returns a newly-allocated
- * |X509| list and advances |cbs|. Otherwise, it returns NULL and sets
- * |*out_alert| to an alert to send to the peer. If the list is non-empty and
- * |out_leaf_sha256| is non-NULL, it writes the SHA-256 hash of the leaf to
- * |out_leaf_sha256|. */
-STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
-                                     uint8_t *out_leaf_sha256, CBS *cbs);
+ * by a TLS Certificate message. On success, it returns newly-allocated
+ * |CRYPTO_BUFFER| and |X509| lists, advances |cbs| and returns one. Otherwise,
+ * it returns zero and sets |*out_alert| to an alert to send to the peer. If
+ * the list is non-empty and |out_leaf_sha256| is non-NULL, it writes the
+ * SHA-256 hash of the leaf to |out_leaf_sha256|. */
+int ssl_parse_cert_chain(SSL *ssl, STACK_OF(CRYPTO_BUFFER) **out_buffers,
+                         STACK_OF(X509) **out_x509s, uint8_t *out_alert,
+                         uint8_t *out_leaf_sha256, CBS *cbs);
 
 /* ssl_add_cert_to_cbb adds |x509| to |cbb|. It returns one on success and zero
  * on error. */

@@ -557,6 +557,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
   if (sk_X509_num(ssl->s3->new_session->x509_chain) > 0) {
     X509_free(sk_X509_shift(ssl->s3->new_session->x509_chain));
   }
+  ssl->s3->new_session->x509_chain_should_include_leaf = 0;
 
   hs->state = state_process_client_certificate_verify;
   return ssl_hs_read_message;
