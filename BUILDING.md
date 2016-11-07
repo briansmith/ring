@@ -1,71 +1,72 @@
 Building *ring*
 ===============
 
-*ring*'s Rust crate is named ```ring```. You can build it
-using ```cargo build --release``` and you can run the tests
-with ```cargo test --release```.
+*ring*'s Rust crate is named `ring`. See https://crates.io/crates/ring to see
+what the latest version is and to see how to add a dependency on it to your
+project.
+
+When hacking on *ring* itself, you can build it using `cargo build` and
+`cargo test` as usual. *ring* includes some C, C++, and assembly language
+components, and its build script (build.rs) builds all those things
+automatically.
 
 
 
 Building *ring* on Windows
 --------------------------
 
-The directory containing yasm.exe must be in `%PATH%`, where yasm.exe is
-[Yasm](http://yasm.tortall.net/Download.html) 1.3 or later. 
+On Windows, *ring* supports the x86_64-pc-windows-msvc and i686-pc-windows-msvc
+targets best. These targets require Visual Studio 2015 Update 3 or later to be
+installed; currently it isn't enough to install the “Visual C++ Build Tools
+2015” package ([#337]). Patches to get it working on other variants, including
+in particular Visual Studio “15” ([#338]), ARM platforms, Windows Universal
+Platform, Windows XP compatibility (the v140_xp toolchain; [#339]), and the
+-gnu targets ([#330]) are welcome.
 
-The directory containing perl.exe must be in `%PATH%`.
-[Strawberry Perl](http://strawberryperl.com) is recommended. 
+Currently, *ring*'s build script (build.rs) uses Visual Studio's MSBuild to
+build its non-Rust components, so it must be able to find MSBuild. Cargo
+usually sets things up so that it mostly works automatically, at least when the
+host architecture is the target architecture. If you have trouble building,
+make sure that there isn't an old version of msbuild.exe ahead of MSBuild 14.0
+in `%PATH%`. Failing that, try starting the build from within "VS2015 Native
+Tools Command Prompt." In the near future, we plan to remove the dependencies
+on MSBuild ([https://github.com/briansmith/ring/issues/340]).
 
-*ring* uses Visual Studio's native build system (msbuild) on Windows to build
-its C, C++, and assembly language parts, so it must be able to find MSBuild.
-Visual Studio 2015 Update 2 (and later) is supported. It seems Cargo sets
-things up so that it mostly works automatically, at least when the host
-architecture is the target architecture. Because using MSBuild in
-`cargo build` is a little unusual, I would be particularly grateful if you
-could report any problems building (or using) *ring* that might be due to this.
-
-If you have trouble building, make sure that there isn't an old version of
-`msbuild` ahead of MSBuild 14.0 in your `%PATH%`. Failing that, try starting
-the build from within a "Visual Studio Native Tools Command Prompt."
+When building a packaged release (e.g. from crates.io), it is not necessary to
+have Yasm or Perl. When building from Git, the directories containing yasm.exe
+and perl.exe must be in `%PATH%`, where yasm.exe is
+[Yasm](http://yasm.tortall.net/Download.html) 1.3 or later and where perl.exe
+is recommended to be [Strawberry Perl](http://strawberryperl.com). (Packaged
+releases contain precompiled libraries comtaining the assembly language code
+for x86_64-pc-windows-msvc and i686-pc-windows-msvc targets.)
 
 
 
 Building *ring* on Other Platforms
 ----------------------------------
 
-For building the C code (and C++ code for some tests), GCC 4.6 and later, and
-Clang 3.5 and later are currently supported. Other compilers probably work.
-Perl is required for preprocessing the assembly language code. A makefile,
-requiring GNU make, drives the build of the non-Rust code. Variables like
-`$(CC)`, `$(CXX)`, `$(AS)`, etc. are supported.
+Currently, *ring*'s build script (build.rs) uses GNU make on non-Windows
+platforms. By default it tries to invoke GNU make using `make` on non-BSD
+platforms (including in particular Linux and macOS) and `gmake` on BSD
+platforms. This can be overriden with the `$MAKE` environment variable. Work is
+underway to remove the GNU make dependency completely ([#321]).
+
+A C and C++ compiler is required; GCC 4.6 or later, and Clang 3.5 or later are
+currently supported best. Other compilers probably work. Environment variables
+like `$(CC)`, `$(CXX)`, `$(AS)`, etc. are supported for controlling this.
+
+Perl is required for preprocessing the assembly language code. In the near
+future, packaged releases won't require Perl because we'll include the
+preprocessed assembly language code in the packages ([#334]; this is already
+the case for \*-pc-windows-msvc targets).
 
 Note in particular that if you are cross-compiling an x86 build on a 64-bit
 version of Linux, then you need to have the proper gcc-multilibs and
 g++-multilibs packages or equivalent installed.
 
-On some platforms, you may need to specify `MAKE` variable for pointing to
-correct GNU make command. By default, *ring* uses `gmake` on BSD systems, and
-`make` on other platforms including Linux and Mac OS X.
 
 
-
-This Sucks. What are you doing to fix it?
-----------------------------------------
-
-We are fully aware that this sucks. We want to get rid of the dependencies on
-GNU make, msbuild, Perl, and Yasm.
-
-If/when we get around to packaging *ring* as a crate on crates.io, we should
-implement some workarounds to ensure that Perl, Yasm, etc. aren't required.
-For example, we can generate the assembly language code from Perlasm for all
-platforms, and then package the generated assembly language code into the
-crate. That would avoid the need for Perl for *users* of the crate. We could
-take this idea further to eliminate most of the other dependencies (C compilers,
-C++ compilers, assemblers, GNU make, msbuild, etc.) for *users* of the crate.
-
-
-
-Additional features that are useful for Development
+Additional Features that are Useful for Development
 ---------------------------------------------------
 
 The `use_heap` feature enables functionality that uses the heap. This is on by
@@ -91,3 +92,13 @@ fails. For small (embedded) targets, use
 `cargo test --release --no-run --features=test_logging` to build the tests, and
 then run the tests on the target with `<executable-name> --nocapture' to see
 the log.
+
+
+[#321]: https://github.com/briansmith/ring/pull/321
+[#330]: https://github.com/briansmith/ring/issues/330
+[#334]: https://github.com/briansmith/ring/issues/334
+[#336]: https://github.com/briansmith/ring/issues/336
+[#337]: https://github.com/briansmith/ring/issues/337
+[#338]: https://github.com/briansmith/ring/issues/338
+[#339]: https://github.com/briansmith/ring/issues/339
+[#340]: https://github.com/briansmith/ring/issues/340
