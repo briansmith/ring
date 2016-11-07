@@ -782,7 +782,7 @@ static bool TestFromBuffer() {
     return false;
   }
 
-  bssl::UniquePtr<X509> root(d2i_X509_from_buffer(buf.get()));
+  bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
   if (!root) {
     return false;
   }
@@ -824,7 +824,7 @@ static bool TestFromBufferTrailingData() {
   }
 
   bssl::UniquePtr<X509> root_trailing_data(
-      d2i_X509_from_buffer(buf_trailing_data.get()));
+      X509_parse_from_buffer(buf_trailing_data.get()));
   if (root_trailing_data) {
     fprintf(stderr, "TestFromBuffer: trailing data was not rejected.\n");
     return false;
@@ -846,7 +846,7 @@ static bool TestFromBufferModified() {
     return false;
   }
 
-  bssl::UniquePtr<X509> root(d2i_X509_from_buffer(buf.get()));
+  bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
   if (!root) {
     return false;
   }
@@ -857,8 +857,8 @@ static bool TestFromBufferModified() {
 
   if (i2d_X509(root.get(), nullptr) != static_cast<long>(data_len)) {
     fprintf(stderr,
-            "TestFromBuffer: i2d_X509 gives different answer before marking as "
-            "modified.\n");
+            "TestFromBufferModified: i2d_X509 gives different answer before "
+            "marking as modified.\n");
     return false;
   }
 
@@ -866,8 +866,8 @@ static bool TestFromBufferModified() {
 
   if (i2d_X509(root.get(), nullptr) == static_cast<long>(data_len)) {
     fprintf(stderr,
-            "TestFromBuffer: i2d_X509 gives same answer after marking as "
-            "modified.\n");
+            "TestFromBufferModified: i2d_X509 gives same answer after marking "
+            "as modified.\n");
     return false;
   }
 
@@ -887,7 +887,7 @@ static bool TestFromBufferReused() {
     return false;
   }
 
-  bssl::UniquePtr<X509> root(d2i_X509_from_buffer(buf.get()));
+  bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
   if (!root) {
     return false;
   }
@@ -903,7 +903,13 @@ static bool TestFromBufferReused() {
   X509 *ret = d2i_X509(&x509p, &inp, data2_len);
   if (ret != root.get()) {
     fprintf(stderr,
-            "TestFromBuffer: d2i_X509 parsed into a different object.\n");
+            "TestFromBufferReused: d2i_X509 parsed into a different object.\n");
+    return false;
+  }
+
+  if (root->buf != nullptr) {
+    fprintf(stderr,
+            "TestFromBufferReused: d2i_X509 didn't clear |buf| pointer.\n");
     return false;
   }
 
@@ -911,19 +917,18 @@ static bool TestFromBufferReused() {
   // following will trigger a use-after-free.
   data2.reset();
 
-  const long i2d_len = i2d_X509(root.get(), nullptr);
+  uint8_t *i2d = nullptr;
+  int i2d_len = i2d_X509(root.get(), &i2d);
   if (i2d_len < 0) {
     return false;
   }
-  std::unique_ptr<uint8_t[]> i2d(new uint8_t[i2d_len]);
-  uint8_t *outp = i2d.get();
-  i2d_X509(root.get(), &outp);
+  bssl::UniquePtr<uint8_t> i2d_storage(i2d);
 
   if (!PEMToDER(&data2, &data2_len, kLeafPEM)) {
     return false;
   }
   if (i2d_len != static_cast<long>(data2_len) ||
-      memcmp(data2.get(), i2d.get(), i2d_len) != 0) {
+      memcmp(data2.get(), i2d, i2d_len) != 0) {
     fprintf(stderr, "TestFromBufferReused: i2d gave wrong result.\n");
     return false;
   }

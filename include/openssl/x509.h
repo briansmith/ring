@@ -638,11 +638,11 @@ OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *data,const EVP_MD *type,
 		unsigned char *md, unsigned int *len);
 #endif
 
-/* d2i_X509_from_buffer parses an X.509 structure from |buf| and returns a
+/* X509_parse_from_buffer parses an X.509 structure from |buf| and returns a
  * fresh X509 or NULL on error. There must not be any trailing data in |buf|.
  * The returned structure (if any) holds a reference to |buf| rather than
  * copying parts of it as a normal |d2i_X509| call would do. */
-OPENSSL_EXPORT X509 *d2i_X509_from_buffer(CRYPTO_BUFFER *buf);
+OPENSSL_EXPORT X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf);
 
 #ifndef OPENSSL_NO_FP_API
 OPENSSL_EXPORT X509 *d2i_X509_fp(FILE *fp, X509 **x509);

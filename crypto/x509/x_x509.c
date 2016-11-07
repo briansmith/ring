@@ -150,7 +150,7 @@ IMPLEMENT_ASN1_FUNCTIONS(X509)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(X509)
 
-X509 *d2i_X509_from_buffer(CRYPTO_BUFFER *buf) {
+X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf) {
   X509 *x509 = X509_new();
   if (x509 == NULL) {
     return NULL;
