@@ -186,53 +186,55 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 }
 
 
-macro_rules! ecdsa {
-    ( $ecdsa_verify_ops:expr, $digest_alg:expr, $VERIFY_ALGORITHM_ASN1:ident,
-      $doc_str_asn1:expr ) => {
-        #[doc=$doc_str_asn1]
-        ///
-        /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
-        /// described in [RFC 3279 Section 2.2.3].
-        ///
-        /// Public keys are encoding in uncompressed form using the
-        /// Octet-String-to-Elliptic-Curve-Point algorithm in
-        /// [SEC 1: Elliptic Curve Cryptography, Version 2.0]. Public keys are
-        /// validated during key agreement as described in using the ECC
-        /// Partial Public-Key Validation Routine from Section 5.6.2.3.3 of
-        /// [NIST Special Publication 800-56A, revision 2] and Appendix A.3 of
-        /// the NSA's [Suite B implementer's guide to FIPS 186-3]. Note that,
-        /// as explained in the NSA guide, ECC Partial Public-Key Validation is
-        /// equivalent to ECC Full Public-Key Validation for prime-order curves
-        /// like this one.
-        ///
-        /// [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
-        ///     http://www.secg.org/sec1-v2.pdf
-        /// [NIST Special Publication 800-56A, revision 2]:
-        ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
-        /// [Suite B implementer's guide to FIPS 186-3]:
-        ///     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
-        /// [RFC 3279 Section 2.2.3]:
-        ///     https://tools.ietf.org/html/rfc3279#section-2.2.3
-        pub static $VERIFY_ALGORITHM_ASN1: ECDSAParameters = ECDSAParameters {
-            ops: $ecdsa_verify_ops,
-            digest_alg: $digest_alg,
-        };
-    }
-}
+/// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
+/// and SHA-256.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P256_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
+    ops: &p256::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA256,
+};
 
-ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P256_SHA256_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
-        curve and SHA-256.");
-ecdsa!(&p256::PUBLIC_SCALAR_OPS, &digest::SHA384, ECDSA_P256_SHA384_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-256
-        curve and SHA-384.");
+/// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
+/// the P-256 curve and SHA-384.
+///
+/// In most situations, P-256 should be used only with SHA-256 and P-384
+/// should be used only with SHA-384. However, in some cases, particularly TLS
+/// on the web, it is necessary to support P-256 with SHA-384 for compatibility
+/// with widely-deployed implementations that do not follow these guidelines.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P256_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
+    ops: &p256::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA384,
+};
 
-ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA256, ECDSA_P384_SHA256_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
-        curve and SHA-256.");
-ecdsa!(&p384::PUBLIC_SCALAR_OPS, &digest::SHA384, ECDSA_P384_SHA384_ASN1,
-       "Verification of ASN.1 DER-encoded ECDSA signatures using the P-384
-        curve and SHA-384.");
+/// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
+/// the P-384 curve and SHA-256.
+///
+/// In most situations, P-256 should be used only with SHA-256 and P-384
+/// should be used only with SHA-384. However, in some cases, particularly TLS
+/// on the web, it is necessary to support P-256 with SHA-384 for compatibility
+/// with widely-deployed implementations that do not follow these guidelines.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P384_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
+    ops: &p384::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA256,
+};
+
+/// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
+/// and SHA-384.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P384_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
+    ops: &p384::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA384,
+};
 
 
 #[cfg(test)]

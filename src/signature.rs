@@ -32,6 +32,31 @@
 //! requiring signing large messages. An interface for efficiently supporting
 //! larger messages may be added later.
 //!
+//! # `ECDSA_*_ASN1` Details: ASN.1-encoded ECDSA signatures
+//!
+//! The signature is a ASN.1 DER-encoded `Ecdsa-Sig-Value` as described in
+//! [RFC 3279 Section 2.2.3]. This is the form of ECDSA signature used in
+//! X.509-related structures and in TLS's `ServerKeyExchange` messages.
+//!
+//! Public keys are encoding in uncompressed form using the
+//! Octet-String-to-Elliptic-Curve-Point algorithm in
+//! [SEC 1: Elliptic Curve Cryptography, Version 2.0]. Public keys are
+//! validated during key agreement as described in using the ECC Partial
+//! Public-Key Validation Routine from Section 5.6.2.3.3 of
+//! [NIST Special Publication 800-56A, revision 2] and Appendix A.3 of the
+//! NSA's [Suite B implementer's guide to FIPS 186-3]. Note that, as explained
+//! in the NSA guide, ECC Partial Public-Key Validation is equivalent to ECC
+//! Full Public-Key Validation for prime-order curves like this one.
+//!
+//! [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
+//!     http://www.secg.org/sec1-v2.pdf
+//! [NIST Special Publication 800-56A, revision 2]:
+//!     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+//! [Suite B implementer's guide to FIPS 186-3]:
+//!     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
+//! [RFC 3279 Section 2.2.3]:
+//!     https://tools.ietf.org/html/rfc3279#section-2.2.3
+//!
 //! # Examples
 //!
 //! ## Signing and verifying with Ed25519
