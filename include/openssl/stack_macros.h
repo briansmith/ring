@@ -1014,6 +1014,91 @@
                    copy_func),                                        \
       CHECKED_CAST(void (*)(void *), void (*)(CONF_VALUE *), free_func)))
 
+/* CRYPTO_BUFFER */
+#define sk_CRYPTO_BUFFER_new(comp)                 \
+  ((STACK_OF(CRYPTO_BUFFER) *)sk_new(CHECKED_CAST( \
+      stack_cmp_func,                              \
+      int (*)(const CRYPTO_BUFFER **a, const CRYPTO_BUFFER **b), comp)))
+
+#define sk_CRYPTO_BUFFER_new_null() ((STACK_OF(CRYPTO_BUFFER) *)sk_new_null())
+
+#define sk_CRYPTO_BUFFER_num(sk) \
+  sk_num(CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_BUFFER) *, sk))
+
+#define sk_CRYPTO_BUFFER_zero(sk) \
+  sk_zero(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk));
+
+#define sk_CRYPTO_BUFFER_value(sk, i) \
+  ((CRYPTO_BUFFER *)sk_value(         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_BUFFER) *, sk), (i)))
+
+#define sk_CRYPTO_BUFFER_set(sk, i, p)                            \
+  ((CRYPTO_BUFFER *)sk_set(                                       \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), (i), \
+      CHECKED_CAST(void *, CRYPTO_BUFFER *, p)))
+
+#define sk_CRYPTO_BUFFER_free(sk) \
+  sk_free(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk))
+
+#define sk_CRYPTO_BUFFER_pop_free(sk, free_func)             \
+  sk_pop_free(                                               \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), \
+      CHECKED_CAST(void (*)(void *), void (*)(CRYPTO_BUFFER *), free_func))
+
+#define sk_CRYPTO_BUFFER_insert(sk, p, where)                      \
+  sk_insert(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), \
+            CHECKED_CAST(void *, CRYPTO_BUFFER *, p), (where))
+
+#define sk_CRYPTO_BUFFER_delete(sk, where) \
+  ((CRYPTO_BUFFER *)sk_delete(             \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), (where)))
+
+#define sk_CRYPTO_BUFFER_delete_ptr(sk, p)                   \
+  ((CRYPTO_BUFFER *)sk_delete_ptr(                           \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), \
+      CHECKED_CAST(void *, CRYPTO_BUFFER *, p)))
+
+#define sk_CRYPTO_BUFFER_find(sk, out_index, p)                               \
+  sk_find(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), (out_index), \
+          CHECKED_CAST(void *, CRYPTO_BUFFER *, p))
+
+#define sk_CRYPTO_BUFFER_shift(sk) \
+  ((CRYPTO_BUFFER *)sk_shift(      \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk)))
+
+#define sk_CRYPTO_BUFFER_push(sk, p)                             \
+  sk_push(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk), \
+          CHECKED_CAST(void *, CRYPTO_BUFFER *, p))
+
+#define sk_CRYPTO_BUFFER_pop(sk) \
+  ((CRYPTO_BUFFER *)sk_pop(      \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk)))
+
+#define sk_CRYPTO_BUFFER_dup(sk)      \
+  ((STACK_OF(CRYPTO_BUFFER) *)sk_dup( \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_BUFFER) *, sk)))
+
+#define sk_CRYPTO_BUFFER_sort(sk) \
+  sk_sort(CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk))
+
+#define sk_CRYPTO_BUFFER_is_sorted(sk) \
+  sk_is_sorted(                        \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_BUFFER) *, sk))
+
+#define sk_CRYPTO_BUFFER_set_cmp_func(sk, comp)                                \
+  ((int (*)(const CRYPTO_BUFFER **a, const CRYPTO_BUFFER **b))sk_set_cmp_func( \
+      CHECKED_CAST(_STACK *, STACK_OF(CRYPTO_BUFFER) *, sk),                   \
+      CHECKED_CAST(stack_cmp_func,                                             \
+                   int (*)(const CRYPTO_BUFFER **a, const CRYPTO_BUFFER **b),  \
+                   comp)))
+
+#define sk_CRYPTO_BUFFER_deep_copy(sk, copy_func, free_func)               \
+  ((STACK_OF(CRYPTO_BUFFER) *)sk_deep_copy(                                \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_BUFFER) *, sk),   \
+      CHECKED_CAST(void *(*)(void *), CRYPTO_BUFFER *(*)(CRYPTO_BUFFER *), \
+                   copy_func),                                             \
+      CHECKED_CAST(void (*)(void *), void (*)(CRYPTO_BUFFER *), free_func)))
+
 /* CRYPTO_EX_DATA_FUNCS */
 #define sk_CRYPTO_EX_DATA_FUNCS_new(comp)                                      \
   ((STACK_OF(CRYPTO_EX_DATA_FUNCS) *)sk_new(CHECKED_CAST(                      \
