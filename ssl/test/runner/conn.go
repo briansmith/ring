@@ -753,16 +753,18 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 	// record-layer version prior to TLS 1.3. (In TLS 1.3, the record-layer
 	// version is irrelevant.)
 	if typ != recordTypeAlert {
+		var expect uint16
 		if c.haveVers {
-			if vers != c.vers && c.vers < VersionTLS13 {
-				c.sendAlert(alertProtocolVersion)
-				return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, c.vers))
+			expect = c.vers
+			if c.vers >= VersionTLS13 {
+				expect = VersionTLS10
 			}
 		} else {
-			if expect := c.config.Bugs.ExpectInitialRecordVersion; expect != 0 && vers != expect {
-				c.sendAlert(alertProtocolVersion)
-				return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, expect))
-			}
+			expect = c.config.Bugs.ExpectInitialRecordVersion
+		}
+		if expect != 0 && vers != expect {
+			c.sendAlert(alertProtocolVersion)
+			return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: received record with version %x when expecting version %x", vers, expect))
 		}
 	}
 	if n > maxCiphertext {
@@ -1062,6 +1064,12 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 			// TLS 1.3 fixes the version number in the record
 			// layer to {3, 1}.
 			vers = VersionTLS10
+		}
+		if c.config.Bugs.SendRecordVersion != 0 {
+			vers = c.config.Bugs.SendRecordVersion
+		}
+		if c.vers == 0 && c.config.Bugs.SendInitialRecordVersion != 0 {
+			vers = c.config.Bugs.SendInitialRecordVersion
 		}
 		b.data[1] = byte(vers >> 8)
 		b.data[2] = byte(vers)

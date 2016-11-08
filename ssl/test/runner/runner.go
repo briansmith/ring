@@ -5735,6 +5735,8 @@ func addRenegotiationTests() {
 			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 			Bugs: ProtocolBugs{
 				NegotiateVersionOnRenego: VersionTLS11,
+				// Avoid failing early at the record layer.
+				SendRecordVersion: VersionTLS12,
 			},
 		},
 		renegotiate: 1,
@@ -9103,6 +9105,53 @@ func addPeekTests() {
 	})
 }
 
+func addRecordVersionTests() {
+	for _, ver := range tlsVersions {
+		// Test that the record version is enforced.
+		testCases = append(testCases, testCase{
+			name: "CheckRecordVersion-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendRecordVersion: 0x03ff,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_VERSION_NUMBER:",
+		})
+
+		// Test that the ClientHello may use any record version, for
+		// compatibility reasons.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "LooseInitialRecordVersion-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendInitialRecordVersion: 0x03ff,
+				},
+			},
+		})
+
+		// Test that garbage ClientHello record versions are rejected.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "GarbageInitialRecordVersion-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendInitialRecordVersion: 0xffff,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_VERSION_NUMBER:",
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -9222,6 +9271,7 @@ func main() {
 	addTLS13HandshakeTests()
 	addTLS13CipherPreferenceTests()
 	addPeekTests()
+	addRecordVersionTests()
 
 	var wg sync.WaitGroup
 

@@ -753,8 +753,16 @@ type ProtocolBugs struct {
 	RequireSameRenegoClientVersion bool
 
 	// ExpectInitialRecordVersion, if non-zero, is the expected value of
-	// record-layer version field before the version is determined.
+	// record-layer version field before the protocol version is determined.
 	ExpectInitialRecordVersion uint16
+
+	// SendRecordVersion, if non-zero, is the value to send as the
+	// record-layer version.
+	SendRecordVersion uint16
+
+	// SendInitialRecordVersion, if non-zero, is the value to send as the
+	// record-layer version before the protocol version is determined.
+	SendInitialRecordVersion uint16
 
 	// MaxPacketLength, if non-zero, is the maximum acceptable size for a
 	// packet.

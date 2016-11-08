@@ -210,9 +210,20 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_partial;
   }
 
-  /* Check that the major version in the record matches. As of TLS 1.3, the
-   * minor version is no longer checked. */
-  if ((version >> 8) != SSL3_VERSION_MAJOR) {
+  int version_ok;
+  if (ssl->s3->aead_read_ctx == NULL) {
+    /* Only check the first byte. Enforcing beyond that can prevent decoding
+     * version negotiation failure alerts. */
+    version_ok = (version >> 8) == SSL3_VERSION_MAJOR;
+  } else if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+    /* Earlier versions of TLS switch the record version. */
+    version_ok = version == ssl->version;
+  } else {
+    /* Starting TLS 1.3, the version field is frozen at {3, 1}. */
+    version_ok = version == TLS1_VERSION;
+  }
+
+  if (!version_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
     *out_alert = SSL_AD_PROTOCOL_VERSION;
     return ssl_open_record_error;
