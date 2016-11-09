@@ -1960,6 +1960,7 @@ int ssl_ext_pre_shared_key_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
+  /* We only advertise one PSK identity, so the only legal index is zero. */
   if (psk_id != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
     *out_alert = SSL_AD_UNKNOWN_PSK_IDENTITY;
