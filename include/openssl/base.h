@@ -189,6 +189,10 @@ extern "C" {
 #define OPENSSL_MSVC_PRAGMA(arg)
 #endif
 
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+#define BORINGSSL_UNSAFE_DETERMINISTIC_MODE
+#endif
 
 /* CRYPTO_THREADID is a dummy value. */
 typedef int CRYPTO_THREADID;
