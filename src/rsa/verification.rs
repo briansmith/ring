@@ -132,16 +132,12 @@ mod tests {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
-            let alg = if digest_name == "SHA1" {
-                &RSA_PKCS1_2048_8192_SHA1
-            } else if digest_name == "SHA256" {
-                &RSA_PKCS1_2048_8192_SHA256
-            } else if digest_name == "SHA384" {
-                &RSA_PKCS1_2048_8192_SHA384
-            } else if digest_name == "SHA512" {
-                &RSA_PKCS1_2048_8192_SHA512
-            } else {
-                panic!("Unsupported digest: {}", digest_name);
+            let alg = match digest_name.as_ref() {
+                "SHA1" => &RSA_PKCS1_2048_8192_SHA1,
+                "SHA256" => &RSA_PKCS1_2048_8192_SHA256,
+                "SHA384" => &RSA_PKCS1_2048_8192_SHA384,
+                "SHA512" => &RSA_PKCS1_2048_8192_SHA512,
+                _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
             let public_key = test_case.consume_bytes("Key");

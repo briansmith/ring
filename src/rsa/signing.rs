@@ -284,16 +284,11 @@ mod tests {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
-            // Note that SHA-1 isn't recognized here because we don't expose
-            // PKCS#1 SHA-1 signing, because we don't have test vectors for it.
-            let alg = if digest_name == "SHA256" {
-                &RSA_PKCS1_SHA256
-            } else if digest_name == "SHA384" {
-                &RSA_PKCS1_SHA384
-            } else if digest_name == "SHA512" {
-                &RSA_PKCS1_SHA512
-            } else {
-                panic!("Unsupported digest: {}", digest_name);
+            let alg = match digest_name.as_ref() {
+                "SHA256" => &RSA_PKCS1_SHA256,
+                "SHA384" => &RSA_PKCS1_SHA384,
+                "SHA512" => &RSA_PKCS1_SHA512,
+                _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
             let private_key = test_case.consume_bytes("Key");
