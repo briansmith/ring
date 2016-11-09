@@ -481,7 +481,8 @@ int ssl_parse_cert_chain(SSL *ssl, STACK_OF(CRYPTO_BUFFER) **out_buffers,
       SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
     }
 
-    CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&certificate, NULL);
+    CRYPTO_BUFFER *buffer =
+        CRYPTO_BUFFER_new_from_CBS(&certificate, ssl->ctx->pool);
     if (buffer == NULL) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);

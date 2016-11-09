@@ -1080,6 +1080,10 @@ uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode) {
 
 uint32_t SSL_get_mode(const SSL *ssl) { return ssl->mode; }
 
+void SSL_CTX_set0_buffer_pool(SSL_CTX *ctx, CRYPTO_BUFFER_POOL *pool) {
+  ctx->pool = pool;
+}
+
 X509 *SSL_get_peer_certificate(const SSL *ssl) {
   if (ssl == NULL) {
     return NULL;
