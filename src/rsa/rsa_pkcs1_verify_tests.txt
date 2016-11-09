@@ -125,23 +125,15 @@ Sig = dfc9e4e1c3106605f5b847463dc1809b58494d981d6c067aa9085c9147db821a50bff823e7
 Result = F
 
 
-# NIST RSA PKCS#1 1.5 Test Vectors for FIPS 186-4 from SigVer15_186-3.rsp in
+# RSA PKCS#1 1.5 Test Vectors for FIPS 186-4 from SigVer15_186-3.rsp in
 # http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip
 # accessible from
-# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors.
-#
-# These test vectors only test weird values of |e|; in particular, they don't
-# test e in { 3, 65537 }, which are the most common values. Also, they only
-# test public keys with moduli of 2048 or 3072 bits. Also, it isn't clear which
-# edge cases these vectors attempt to test.
-#
-# The [mod = XXX] headings have been made into comments. The "d = 0" values
-# were removed as they are not useful for this test. Some values had a leading
-# "0" prepended to them because the file_test framework requires every byte to
-# be encoded with two digits.
+# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors
+# with SHA-384 digest d63a32378adebdd6450ce72175b76baf06e137d1d0091c18af157ee772baec79df341125789e4f23529aad7c13270b5a
+# filtered and reformatted using convert_nist_rsa_test_vectors.py.
 #
 # Digest = SHAAlg.
-# Key is (n, e) encoded in an ASN.1 sequence.
+# Key is (n, e) encoded in an ASN.1 (DER) sequence.
 # Sig = S.
 
 # [mod = 2048]

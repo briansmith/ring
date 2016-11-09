@@ -1,21 +1,12 @@
-# NIST RSA PKCS#1 1.5 Test Vectors for FIPS 186-4 from SigGen15_186-3.txt in
+# RSA PKCS#1 1.5 Test Vectors for FIPS 186-4 from SigGen15_186-3.txt in
 # http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip
 # accessible from
-# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors.
-# Generated with the help of the utils/siggen.py script.
-#
-# These test vectors only test weird values of |e|; in particular, they don't
-# test e in { 3, 65537 }, which are the most common values. Also, they only
-# test public keys with moduli of 2048 or 3072 bits. Also, it isn't clear which
-# edge cases these vectors attempt to test.
-#
-# The [mod = XXX] headings have been made into comments. The "d = 0" values
-# were removed as they are not useful for this test. Some values had a leading
-# "0" prepended to them because the file_test framework requires every byte to
-# be encoded with two digits.
+# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors
+# with SHA-384 digest ccf23d868984de1112f2b6d089bff30ae3aceaee371655111a6e746487549a5f8661a7f43b9333b3d3f453068140e1cd
+# filtered and reformatted using convert_nist_rsa_test_vectors.py.
 #
 # Digest = SHAAlg.
-# Key is a DER-formatted PKCS1-encoded RSA private key.
+# Key is an ASN.1 (DER) RSAPrivateKey.
 # Sig = S.
 
 # [mod = 2048]
@@ -381,6 +372,7 @@ Key = 308206e40201000282018100dca98304b729e819b340e26cecb730aecbd8930e334c731493
 Msg = 132cf50c66ac4cc54339751a0ebb865e1d3d320562fc905c4abd1e78e464066c46c3a0c02db0371ee35a104d66dda864c6133e37cfad9116e883ebb73b295e7016c34ea9911a309272ef90114d8f59fff0a75193fe5ae31ed99121f9c59209bc4bd507b1dc12bc89b79ffe4d0df9209762a1730136290cdee58ec828ccc88eba
 Sig = b12503b7b2f783618884174bcb9be10877960431ed6363c807e12db71b8b6bd9d6401d064e253740158e8b900152d37faf20333a7d80b3d47c7c7a3fa12091ce31cd8aae272a4da15fe2cb5cfdea541195a469c96bcf695e0b526dfa48a59003c6763af8136392c4b8d24db314746f42aca550acc65e074913ab82232eb8593509158a8ba34bc0f0e3125a834a3ed2d6a8cb1d085f234ae868b86aea8d6f82e13a08842485066e48aae4837873150f44475e12602b552dcb34d1f9fdaadbc6bff5134c6fc76263888be67efe63ee1840fa08c49938858a9d48b1058d18976bf2e3bfc625552f75b3ea44eb91dd366865f240a0c336a0110e0fa09d09cd94c70cbc8895ae3d44ae3dff545f0e8c8cc662ecd40f9099a952494396c6b423ebb463409969281cdd54ad87a308e487ce19745b30d5da76b98d2aa9a007a55783b3037e5b8662322810bdd11d86dc3f61451149391fb2f14ed9c17c751623a4042ce7edb875ee27bcd1f19d6dc9283ad06d15e097e2b0b15a7eb7128adbca0aa6adcc
 Result = Pass
+
 
 # Additional test vectors.
 
