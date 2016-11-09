@@ -304,6 +304,10 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     ret->options |= SSL_OP_NO_TICKET;
   }
 
+  /* Disable the auto-chaining feature by default. Once this has stuck without
+   * problems, the feature will be removed entirely. */
+  ret->mode = SSL_MODE_NO_AUTO_CHAIN;
+
   /* Lock the SSL_CTX to the specified version, for compatibility with legacy
    * uses of SSL_METHOD. */
   if (!SSL_CTX_set_max_proto_version(ret, method->version) ||

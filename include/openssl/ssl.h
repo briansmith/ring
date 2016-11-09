@@ -670,8 +670,9 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 #define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
 
 /* SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
- * before sending certificates to the peer.
- * TODO(davidben): Remove this behavior. https://crbug.com/486295. */
+ * before sending certificates to the peer. This flag is set (and the feature
+ * disabled) by default.
+ * TODO(davidben): Remove this behavior. https://crbug.com/boringssl/42. */
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 /* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
