@@ -28,7 +28,6 @@ import sys, copy
 
 DIGEST_OUTPUT_LENGTHS = {
     'SHA1': 80,
-    'SHA224': 112,
     'SHA256': 128,
     'SHA384': 192,
     'SHA512': 256
@@ -41,6 +40,19 @@ def debug(str, flag):
     if flag:
         sys.stderr.write(str + "\n")
         sys.stderr.flush()
+
+# Some fields in the input files are encoded without a leading "0", but
+# `x.decode('hex')` requires every byte to be encoded with two hex digits.
+def from_hex(hex):
+    return (hex if len(hex) % 2 == 0 else "0" + hex).decode('hex')
+
+def to_hex(bytes):
+    return ''.join('{:02x}'.format(ord(b)) for b in bytes)
+
+# Some fields in the input files are encoded without a leading "0", but the
+# *ring* test framework requires every byte to be encoded with two hex digits.
+def reformat_hex(hex):
+    return to_hex(from_hex(hex))
 
 def parse(fn, last_field):
     '''Parse input test vector file, leaving out comments and empty lines, and
@@ -62,11 +74,6 @@ def parse(fn, last_field):
     return cases
 
 def print_sign_test(case, n, e, d, padding_alg):
-    # Can only support moduli which are a whole number of bytes
-    if n.bit_length() % 8 != 0:
-        debug("Skipping due to modulus (not a whole number of bytes).", DEBUG)
-        return
-
     # Recover the prime factors and CRT numbers.
     p, q = rsa.rsa_recover_prime_factors(n, e, d)
     # cryptography returns p, q with p < q by default. *ring* requires
@@ -85,13 +92,15 @@ def print_sign_test(case, n, e, d, padding_alg):
     msg = case['Msg'].decode('hex')
 
     # Recalculate and compare the signature to validate our processing.
-    if padding_alg == 'PKCS':
+    if padding_alg == 'PKCS#1 1.5':
         sig = key.sign(msg, padding.PKCS1v15(),
                        getattr(hashes, case['SHAAlg'])())
-        hex_sig = ''.join('{:02x}'.format(ord(c)) for c in sig)
+        hex_sig = to_hex(sig)
         assert hex_sig == case['S']
-    elif padding_alg != "PSS":
+    elif padding_alg == "PSS":
         # PSS is randomised, can't recompute this way
+        pass
+    else:
         print "Invalid padding algorithm"
         quit()
 
@@ -99,15 +108,17 @@ def print_sign_test(case, n, e, d, padding_alg):
     der = key.private_bytes(serialization.Encoding.DER,
                             serialization.PrivateFormat.TraditionalOpenSSL,
                             serialization.NoEncryption())
-    hex_der = ''.join('{:02x}'.format(ord(c)) for c in der)
 
     # Print the test case data in the format used by *ring* test files.
     print 'Digest = %s' % case['SHAAlg']
-    print 'Key = %s' % hex_der
-    print 'Msg = %s' % case['Msg']
-    print 'Salt = %s' % case['SaltVal']
-    print 'Sig = %s' % case['S']
-    print 'Result = P'
+    print 'Key = %s' % to_hex(der)
+    print 'Msg = %s' % reformat_hex(case['Msg'])
+
+    if padding_alg == "PSS":
+        print 'Salt = %s' % reformat_hex(case['SaltVal'])
+
+    print 'Sig = %s' % reformat_hex(case['S'])
+    print 'Result = Pass'
     print ''
 
 def print_verify_test(case, n, e):
@@ -117,28 +128,35 @@ def print_verify_test(case, n, e):
 
     der = key.public_bytes(serialization.Encoding.DER,
                            serialization.PublicFormat.PKCS1)
-    hex_der = ''.join('{:02x}'.format(ord(c)) for c in der)
 
     # Print the test case data in the format used by *ring* test files.
     print 'Digest = %s' % case['SHAAlg']
-    print 'Key = %s' % hex_der
-    print 'Msg = %s' % case['Msg']
-    print 'Sig = %s' % case['S']
+    print 'Key = %s' % to_hex(der)
+    print 'Msg = %s' % reformat_hex(case['Msg'])
+    print 'Sig = %s' % reformat_hex(case['S'])
     print 'Result = %s' % case['Result']
     print ''
 
-
 def main(fn, test_type, padding_alg):
     # File header
-    print "# NIST RSA PSS Test Vectors for FIPS 186-4 from %s in\n" % fn + \
-    "# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip\n" + \
-    "# accessible from" + \
-    "# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors.\n" + \
-    "# Generated with the help of the util/generate-rsa-signing-tests.py script.\n" + \
-    "#\n" + \
-    "# Digest = SHAAlg.\n" + \
-    "# Key is a DER-formatted PKCS1-encoded RSA key.\n" + \
-    "# Sig = S.\n\n"
+    print "# RSA %(padding_alg)s Test Vectors for FIPS 186-4 from %(fn)s in" % \
+            { "fn": fn, "padding_alg": padding_alg }
+    print "# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip"
+    print "# accessible from"
+    print "# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors"
+    print "# filtered and reformatted using convert_nist_rsa_test_vectors.py."
+    print "#"
+    print "# Digest = SHAAlg."
+    if test_type == "verify":
+        print "# Key is (n, e) encoded in an ASN.1 (DER) sequence."
+    elif test_type == "sign":
+        print "# Key is an ASN.1 (DER) RSAPrivateKey."
+    else:
+        print "Invalid test_type: %s" % test_type
+        quit()
+
+    print "# Sig = S."
+    print
 
     num_cases = 0
 
@@ -147,10 +165,11 @@ def main(fn, test_type, padding_alg):
     # Otherwise, for signing tests, it is dependent on the padding used.
     if test_type == "verify":
         last_field = "Result"
-    elif padding_alg == "PSS":
-        last_field = "SaltVal"
     else:
-        last_field = "S"
+        if padding_alg == "PSS":
+            last_field = "SaltVal"
+        else:
+            last_field = "S"
 
     for case in parse(fn, last_field):
         if case['SHAAlg'] == 'SHA224':
@@ -158,16 +177,16 @@ def main(fn, test_type, padding_alg):
             debug("Skipping due to use of SHA224", DEBUG)
             continue
 
-        if case['SHAAlg'] == 'SHA1' and padding_alg == 'PSS':
-            # SHA1 with PSS not supported in *ring.
-            debug("Skipping due to use of SHA1 and PSS.", DEBUG)
-            continue
-
-        # We only support PSS where the salt length is equal to the output
-        # length of the hash algorithm
         if padding_alg == "PSS":
+            if case['SHAAlg'] == 'SHA1':
+                # SHA-1 with PSS not supported in *ring*.
+                debug("Skipping due to use of SHA1 and PSS.", DEBUG)
+                continue
+
+            # *ring* only supports PSS where the salt length is equal to the
+            # output length of the hash algorithm.
             if len(case['SaltVal']) * 2 != DIGEST_OUTPUT_LENGTHS[case['SHAAlg']]:
-                debug("Skipping due to incorrect salt length.", DEBUG)
+                debug("Skipping due to unsupported salt length.", DEBUG)
                 continue
 
         # Read private key components.
@@ -175,15 +194,15 @@ def main(fn, test_type, padding_alg):
         e = int(case['e'], 16)
         d = int(case['d'], 16)
 
-        if n.bit_length() < 2048:
+        if n.bit_length() // 8 < 2048 // 8:
             debug("Skipping due to modulus length (too small).", DEBUG)
             continue
 
-        if n.bit_length() > 4096:
-            debug("Skipping due to modulus length (too large).", DEBUG)
-            continue
-
         if test_type == 'sign':
+            if n.bit_length() > 4096:
+                debug("Skipping due to modulus length (too large).", DEBUG)
+                continue
+
             print_sign_test(case, n, e, d, padding_alg)
         else:
             print_verify_test(case, n, e)
@@ -202,7 +221,7 @@ if __name__ == '__main__':
         if 'PSS' in fn:
             pad_alg = 'PSS'
         elif '15' in fn:
-            pad_alg = 'PKCS'
+            pad_alg = 'PKCS#1 1.5'
         else:
             print "Could not determine padding algorithm,"
             quit()
