@@ -175,9 +175,6 @@ pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
 
-// Fixed prefix used in the computation of PSS encoding and verification.
-const PSS_PREFIX_ZEROS: [u8; 8] = [0u8; 8];
-
 #[cfg(feature = "rsa_signing")]
 // Maximum supported length of the salt in bytes.
 // In practice, this is constrained by the maximum digest length.
@@ -207,8 +204,7 @@ impl Encoding for PSS {
         let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
         let digest_len = self.digest_alg.output_len;
 
-        // Step 2.
-        let m_hash = digest::digest(self.digest_alg, msg);
+        // Steps 1 and 2 are done later, out of order.
 
         // Step 3: where we assume the digest and salt are of equal length.
         if em_len < 2 + (2 * digest_len) {
@@ -220,13 +216,8 @@ impl Encoding for PSS {
         let salt = &mut salt[..digest_len];
         try!(rng.fill(salt));
 
-        // Step 5 and 6: compute hash value of:
-        //     (0x)00 00 00 00 00 00 00 00 || m_hash || salt
-        let mut ctx = digest::Context::new(self.digest_alg);
-        ctx.update(&PSS_PREFIX_ZEROS);
-        ctx.update(m_hash.as_ref());
-        ctx.update(salt);
-        let h_hash = ctx.finish();
+        // Step 5 and 6.
+        let h_hash = pss_digest(self.digest_alg, msg, salt);
 
         // Re-order steps 7,8, 9 and 10 so that we first output the db mask
         // into `em`, and then XOR the value of db.
@@ -283,9 +274,8 @@ impl Verification for PSS {
         // The rest of this function is EMSA-PSS-VERIFY from
         // https://tools.ietf.org/html/rfc3447#section-9.1.2.
 
-        // Steps 1 and 2.
+        // Steps 1 and 2 are done later, out of order.
         let digest_len = self.digest_alg.output_len;
-        let m_hash = digest::digest(self.digest_alg, msg.as_slice_less_safe());
 
         // Step 3: where we assume the digest and salt are of equal length.
         if em_len < 2 + (2 * digest_len) {
@@ -339,16 +329,12 @@ impl Verification for PSS {
         // Step 11.
         let salt = &db[db.len() - digest_len..];
 
-        // Step 12 and 13: compute hash value of:
-        //     (0x)00 00 00 00 00 00 00 00 || m_hash || salt
-        let mut ctx = digest::Context::new(self.digest_alg);
-        ctx.update(&PSS_PREFIX_ZEROS);
-        ctx.update(m_hash.as_ref());
-        ctx.update(salt);
-        let h_hash_check = ctx.finish();
+        // Step 12 and 13.
+        let h_prime = pss_digest(self.digest_alg, msg.as_slice_less_safe(),
+                                 salt);
 
         // Step 14.
-        if h_hash != h_hash_check.as_ref() {
+        if h_hash != h_prime.as_ref() {
             return Err(error::Unspecified);
         }
 
@@ -375,6 +361,23 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8])
     }
 
     Ok(())
+}
+
+fn pss_digest(digest_alg: &'static digest::Algorithm, msg: &[u8], salt: &[u8])
+              -> digest::Digest {
+    // Fixed prefix.
+    const PREFIX_ZEROS: [u8; 8] = [0u8; 8];
+
+    // Steps 1 & 2 for both encoding and verification. Step 1 is delegated to
+    // the digest implementation.
+    let m_hash = digest::digest(digest_alg, msg);
+
+    // Encoding step 5 and 6, Verification step 12 and 13.
+    let mut ctx = digest::Context::new(digest_alg);
+    ctx.update(&PREFIX_ZEROS);
+    ctx.update(m_hash.as_ref());
+    ctx.update(salt);
+    ctx.finish()
 }
 
 macro_rules! rsa_pss_padding {
