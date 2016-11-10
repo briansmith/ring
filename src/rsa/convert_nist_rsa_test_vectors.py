@@ -24,6 +24,7 @@ Requires the cryptography library from pyca.
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+import hashlib
 import sys, copy
 
 DIGEST_OUTPUT_LENGTHS = {
@@ -138,13 +139,15 @@ def print_verify_test(case, n, e):
     print ''
 
 def main(fn, test_type, padding_alg):
+    input_file_digest = hashlib.sha384(open(fn, 'rb').read()).hexdigest()
     # File header
     print "# RSA %(padding_alg)s Test Vectors for FIPS 186-4 from %(fn)s in" % \
             { "fn": fn, "padding_alg": padding_alg }
     print "# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip"
     print "# accessible from"
     print "# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors"
-    print "# filtered and reformatted using convert_nist_rsa_test_vectors.py."
+    print "# with SHA-384 digest %s" % (input_file_digest)
+    print "# filtered and reformatted using util/generate-rsa-signing-tests.py."
     print "#"
     print "# Digest = SHAAlg."
     if test_type == "verify":
