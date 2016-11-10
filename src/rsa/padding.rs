@@ -73,7 +73,7 @@ impl Verification for PKCS1 {
         let em = m;
 
         if try!(em.read_byte()) != 0 ||
-            try!(em.read_byte()) != 1 {
+           try!(em.read_byte()) != 1 {
             return Err(error::Unspecified);
         }
 
@@ -186,7 +186,7 @@ impl Encoding for PSS {
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: usize,
               rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
-        // The `m` this function fills is the big-endian-encoded value of `m`
+        // The `m_out` this function fills is the big-endian-encoded value of `m`
         // from the specification, padded to `k` bytes, where `k` is the length
         // in bytes of the public modulus. The spec says "Note that emLen will
         // be one less than k if modBits - 1 is divisible by 8 and equal to k
@@ -198,22 +198,17 @@ impl Encoding for PSS {
         } else {
             m_out
         };
-        let em_bits = mod_bits - 1;
-        let em_len = (em_bits + 7) / 8;
-        assert_eq!(em_len, em.len());
-        let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
-        let digest_len = self.digest_alg.output_len;
+        assert_eq!(em.len(), metrics.em_len);
 
         // Steps 1 and 2 are done later, out of order.
 
-        // Step 3: where we assume the digest and salt are of equal length.
-        if em_len < 2 + (2 * digest_len) {
-            return Err(error::Unspecified);
-        }
+        // Step 3.
+        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
+        assert_eq!(em.len(), metrics.em_len);
 
         // Step 4.
         let mut salt = [0u8; MAX_SALT_LEN];
-        let salt = &mut salt[..digest_len];
+        let salt = &mut salt[..metrics.s_len];
         try!(rng.fill(salt));
 
         // Step 5 and 6.
@@ -223,25 +218,24 @@ impl Encoding for PSS {
         // into `em`, and then XOR the value of db.
 
         // Step 9. First output the mask into the out buffer.
-        let db_len = em_len - digest_len - 1;
-        try!(mgf1(self.digest_alg, h_hash.as_ref(), &mut em[..db_len]));
+        try!(mgf1(self.digest_alg, h_hash.as_ref(),
+                  &mut em[..metrics.db_len]));
 
         // Steps 7, 8 and 10: XOR into output the value of db:
         //     PS || 0x01 || salt
         // Where PS is all zeros.
-        let pad_len = db_len - digest_len - 1;
-        em[pad_len] ^= 0x01;
-        for i in 0..digest_len {
-            em[pad_len + 1 + i] ^= salt[i];
+        em[metrics.ps_len] ^= 0x01;
+        for i in 0..metrics.s_len {
+            em[metrics.ps_len + 1 + i] ^= salt[i];
         }
 
         // Step 11.
-        em[0] &= top_byte_mask;
+        em[0] &= metrics.top_byte_mask;
 
         // Step 12. Finalise output as:
         //     masked_db || h_hash || 0xbc
-        em[db_len..][..digest_len].copy_from_slice(h_hash.as_ref());
-        em[db_len + digest_len] = 0xbc;
+        em[metrics.db_len..][..metrics.h_len].copy_from_slice(h_hash.as_ref());
+        em[metrics.db_len + metrics.h_len] = 0xbc;
 
         Ok(())
     }
@@ -267,40 +261,34 @@ impl Verification for PSS {
             }
         };
         let em = m;
-        let em_bits = mod_bits - 1;
-        let em_len = (em_bits + 7) / 8;
-        let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
 
         // The rest of this function is EMSA-PSS-VERIFY from
         // https://tools.ietf.org/html/rfc3447#section-9.1.2.
 
         // Steps 1 and 2 are done later, out of order.
-        let digest_len = self.digest_alg.output_len;
 
-        // Step 3: where we assume the digest and salt are of equal length.
-        if em_len < 2 + (2 * digest_len) {
-            return Err(error::Unspecified);
-        }
+        // Step 3.
+        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
 
-        // Steps 4 and 5: Parse encoded message as:
-        //     masked_db || h_hash || 0xbc
-        let db_len = em_len - digest_len - 1;
-        let masked_db = try!(em.skip_and_get_input(db_len));
-        let h_hash = try!(em.skip_and_get_input(digest_len));
+        // Step 5, out of order.
+        let masked_db = try!(em.skip_and_get_input(metrics.db_len));
+        let h_hash = try!(em.skip_and_get_input(metrics.h_len));
+
+        // Step 4.
         if try!(em.read_byte()) != 0xbc {
             return Err(error::Unspecified);
         }
 
         // Step 7.
         let mut db = [0u8; super::PUBLIC_MODULUS_MAX_LEN / 8];
-        let db = &mut db[..db_len];
+        let db = &mut db[..metrics.db_len];
 
         try!(mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db));
 
         try!(masked_db.read_all(error::Unspecified, |masked_bytes| {
             // Step 6. Check the top bits of first byte are zero.
             let b = try!(masked_bytes.read_byte());
-            if b & !top_byte_mask != 0 {
+            if b & !metrics.top_byte_mask != 0 {
                 return Err(error::Unspecified);
             }
             db[0] ^= b;
@@ -313,21 +301,21 @@ impl Verification for PSS {
         }));
 
         // Step 9.
-        db[0] &= top_byte_mask;
+        db[0] &= metrics.top_byte_mask;
 
         // Step 10.
-        let pad_len = db.len() - digest_len - 1;
-        for i in 0..pad_len {
+        let ps_len = metrics.ps_len;
+        for i in 0..ps_len {
             if db[i] != 0 {
                 return Err(error::Unspecified);
             }
         }
-        if db[pad_len] != 1 {
+        if db[metrics.ps_len] != 1 {
             return Err(error::Unspecified);
         }
 
         // Step 11.
-        let salt = &db[db.len() - digest_len..];
+        let salt = &db[(db.len() - metrics.s_len)..];
 
         // Step 12 and 13.
         let h_prime =
@@ -339,6 +327,54 @@ impl Verification for PSS {
         }
 
         Ok(())
+    }
+}
+
+struct PSSMetrics {
+    #[cfg_attr(not(feature = "rsa_signing"), allow(dead_code))] em_len: usize,
+    db_len: usize,
+    ps_len: usize,
+    s_len: usize,
+    h_len: usize,
+    top_byte_mask: u8,
+}
+
+impl PSSMetrics {
+    fn new(digest_alg: &'static digest::Algorithm, mod_bits: usize)
+           -> Result<PSSMetrics, error::Unspecified> {
+        let em_bits = mod_bits - 1;
+        let em_len = (em_bits + 7) / 8;
+        let leading_zero_bits = (8 * em_len) - em_bits;
+        debug_assert!(leading_zero_bits < 8);
+        let top_byte_mask = 0xffu8 >> leading_zero_bits;
+
+        let h_len = digest_alg.output_len;
+
+        // We require the salt length to be equal to the digest length.
+        let s_len = h_len;
+
+        // Step 3 of both `EMSA-PSS-ENCODE` is `EMSA-PSS-VERIFY` requires that
+        // we reject inputs where "emLen < hLen + sLen + 2". The definition of
+        // `emBits` in RFC 3447 Sections 9.1.1 and 9.1.2 says `emBits` must be
+        // "at least 8hLen + 8sLen + 9". Since 9 bits requires two bytes, these
+        // two conditions are equivalent. 9 bits are required as the 0x01
+        // before the salt requires 1 bit and the 0xbc after the digest
+        // requires 8 bits.
+        let db_len = try!(em_len.checked_sub(1 + s_len)
+                                .ok_or(error::Unspecified));
+        let ps_len = try!(db_len.checked_sub(h_len + 1)
+                                .ok_or(error::Unspecified));
+
+        debug_assert!(em_bits >= (8 * h_len) + (8 * s_len) + 9);
+
+        Ok(PSSMetrics {
+            em_len: em_len,
+            db_len: db_len,
+            ps_len: ps_len,
+            s_len: s_len,
+            h_len: h_len,
+            top_byte_mask: top_byte_mask,
+        })
     }
 }
 
