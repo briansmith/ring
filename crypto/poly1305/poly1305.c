@@ -61,6 +61,11 @@ struct poly1305_state_st {
   uint8_t key[16];
 };
 
+static inline struct poly1305_state_st *poly1305_aligned_state(
+    poly1305_state *state) {
+  return (struct poly1305_state_st *)(((uintptr_t)state + 63) & ~63);
+}
+
 /* poly1305_blocks updates |state| given some amount of input data. This
  * function may only be called with a |len| that is not a multiple of 16 at the
  * end of the data. Otherwise the input must be buffered into 16 byte blocks. */
@@ -159,7 +164,7 @@ poly1305_donna_atmost15bytes:
 }
 
 void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
-  struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
+  struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint32_t t0, t1, t2, t3;
 
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
@@ -207,7 +212,7 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
 void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
                             size_t in_len) {
   unsigned int i;
-  struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
+  struct poly1305_state_st *state = poly1305_aligned_state(statep);
 
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
   if (CRYPTO_is_NEON_capable()) {
@@ -250,7 +255,7 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
 }
 
 void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
-  struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
+  struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint64_t f0, f1, f2, f3;
   uint32_t g0, g1, g2, g3, g4;
   uint32_t b, nb;
