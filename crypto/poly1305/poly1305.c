@@ -27,7 +27,6 @@
 
 #if defined(OPENSSL_WINDOWS) || !defined(OPENSSL_X86_64)
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM)
 /* We can assume little-endian. */
 static uint32_t U8TO32_LE(const uint8_t *m) {
   uint32_t r;
@@ -36,19 +35,6 @@ static uint32_t U8TO32_LE(const uint8_t *m) {
 }
 
 static void U32TO8_LE(uint8_t *m, uint32_t v) { memcpy(m, &v, sizeof(v)); }
-#else
-static uint32_t U8TO32_LE(const uint8_t *m) {
-  return (uint32_t)m[0] | (uint32_t)m[1] << 8 | (uint32_t)m[2] << 16 |
-         (uint32_t)m[3] << 24;
-}
-
-static void U32TO8_LE(uint8_t *m, uint32_t v) {
-  m[0] = v;
-  m[1] = v >> 8;
-  m[2] = v >> 16;
-  m[3] = v >> 24;
-}
-#endif
 
 static uint64_t mul32x32_64(uint32_t a, uint32_t b) { return (uint64_t)a * b; }
 
