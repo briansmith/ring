@@ -2488,7 +2488,8 @@ func addCipherSuiteTests() {
 				if !shouldClientFail {
 					// Ensure the maximum record size is accepted.
 					testCases = append(testCases, testCase{
-						name: prefix + ver.name + "-" + suite.name + "-LargeRecord",
+						protocol: protocol,
+						name:     prefix + ver.name + "-" + suite.name + "-LargeRecord",
 						config: Config{
 							MinVersion:           ver.version,
 							MaxVersion:           ver.version,
@@ -2499,6 +2500,33 @@ func addCipherSuiteTests() {
 						},
 						flags:      flags,
 						messageLen: maxPlaintext,
+					})
+
+					// Test bad records for all ciphers. Bad records are fatal in TLS
+					// and ignored in DTLS.
+					var shouldFail bool
+					var expectedError string
+					if protocol == tls {
+						shouldFail = true
+						expectedError = ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"
+					}
+
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						name:     prefix + ver.name + "-" + suite.name + "-BadRecord",
+						config: Config{
+							MinVersion:           ver.version,
+							MaxVersion:           ver.version,
+							CipherSuites:         []uint16{suite.id},
+							Certificates:         []Certificate{cert},
+							PreSharedKey:         []byte(psk),
+							PreSharedKeyIdentity: pskIdentity,
+						},
+						flags:            flags,
+						damageFirstWrite: true,
+						messageLen:       maxPlaintext,
+						shouldFail:       shouldFail,
+						expectedError:    expectedError,
 					})
 				}
 			}
