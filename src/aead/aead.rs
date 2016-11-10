@@ -113,7 +113,7 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
         // after verification fails. It would be safest if we could check the
         // tag before decrypting, but some `open` implementations interleave
         // authentication with decryption for performance.
-        for b in &mut in_out[ciphertext_len..] {
+        for b in &mut in_out[..ciphertext_len] {
             *b = 0;
         }
         return Err(error::Unspecified);
