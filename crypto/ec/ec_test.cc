@@ -26,8 +26,6 @@
 #include <openssl/nid.h>
 
 
-namespace bssl {
-
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field
 // omitted.
 static const uint8_t kECKeyWithoutPublic[] = {
@@ -112,7 +110,7 @@ static bssl::UniquePtr<EC_KEY> DecodeECPrivateKey(const uint8_t *in,
 // EncodeECPrivateKey encodes |key| as an ECPrivateKey structure into |*out|. It
 // returns true on success or false on error.
 static bool EncodeECPrivateKey(std::vector<uint8_t> *out, const EC_KEY *key) {
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   uint8_t *der;
   size_t der_len;
   if (!CBB_init(cbb.get(), 0) ||
@@ -474,7 +472,7 @@ static bool ForEachCurve(bool (*test_func)(int nid)) {
   return true;
 }
 
-static int Main() {
+int main() {
   CRYPTO_library_init();
 
   if (!Testd2i_ECPrivateKey() ||
@@ -489,10 +487,4 @@ static int Main() {
 
   printf("PASS\n");
   return 0;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }
