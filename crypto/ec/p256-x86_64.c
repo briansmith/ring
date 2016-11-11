@@ -73,6 +73,11 @@ static unsigned booth_recode_w7(unsigned in) {
   return (d << 1) + (s & 1);
 }
 
+/* copy_conditional copies |src| to |dst| if |move| is one and leaves it as-is
+ * if |move| is zero.
+ *
+ * WARNING: this breaks the usual convention of constant-time functions
+ * returning masks. */
 static void copy_conditional(BN_ULONG dst[P256_LIMBS],
                              const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
   BN_ULONG mask1 = ((BN_ULONG)0) - move;
@@ -88,6 +93,29 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
     dst[6] = (src[6] & mask1) ^ (dst[6] & mask2);
     dst[7] = (src[7] & mask1) ^ (dst[7] & mask2);
   }
+}
+
+/* is_not_zero returns one iff in != 0 and zero otherwise.
+ *
+ * WARNING: this breaks the usual convention of constant-time functions
+ * returning masks.
+ *
+ * (define-fun is_not_zero ((in (_ BitVec 64))) (_ BitVec 64)
+ *   (bvlshr (bvor in (bvsub #x0000000000000000 in)) #x000000000000003f)
+ * )
+ *
+ * (declare-fun x () (_ BitVec 64))
+ *
+ * (assert (and (= x #x0000000000000000) (= (is_not_zero x) #x0000000000000001)))
+ * (check-sat)
+ *
+ * (assert (and (not (= x #x0000000000000000)) (= (is_not_zero x) #x0000000000000000)))
+ * (check-sat)
+ * */
+static BN_ULONG is_not_zero(BN_ULONG in) {
+  in |= (0 - in);
+  in >>= BN_BITS2 - 1;
+  return in;
 }
 
 /* ecp_nistz256_mod_inverse_mont sets |r| to (|in| * 2^-256)^-1 * 2^256 mod p.
@@ -410,7 +438,11 @@ static int ecp_nistz256_points_mul(
     ecp_nistz256_neg(p.p.Z, p.p.Y);
     copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
 
-    memcpy(p.p.Z, ONE, sizeof(ONE));
+    /* Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
+     * is infinity and |ONE| otherwise. |p| was computed from the table, so it
+     * is infinity iff |wvalue >> 1| is zero.  */
+    memset(p.p.Z, 0, sizeof(p.p.Z));
+    copy_conditional(p.p.Z, ONE, is_not_zero(wvalue >> 1));
 
     for (i = 1; i < 37; i++) {
       unsigned off = (index - 1) / 8;
