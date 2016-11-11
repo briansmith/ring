@@ -90,9 +90,11 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
   }
 }
 
-/* r = in^-1 mod p */
-static void ecp_nistz256_mod_inverse(BN_ULONG r[P256_LIMBS],
-                                     const BN_ULONG in[P256_LIMBS]) {
+/* ecp_nistz256_mod_inverse_mont sets |r| to (|in| * 2^-256)^-1 * 2^256 mod p.
+ * That is, |r| is the modular inverse of |in| for input and output in the
+ * Montgomery domain. */
+static void ecp_nistz256_mod_inverse_mont(BN_ULONG r[P256_LIMBS],
+                                          const BN_ULONG in[P256_LIMBS]) {
   /* The poly is ffffffff 00000001 00000000 00000000 00000000 ffffffff ffffffff
      ffffffff
      We use FLT and used poly-2 as exponent */
@@ -478,7 +480,7 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
     return 0;
   }
 
-  ecp_nistz256_mod_inverse(z_inv3, point_z);
+  ecp_nistz256_mod_inverse_mont(z_inv3, point_z);
   ecp_nistz256_sqr_mont(z_inv2, z_inv3);
 
   /* TODO(davidben): The two calls to |ecp_nistz256_from_mont| may be factored
