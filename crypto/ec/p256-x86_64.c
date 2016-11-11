@@ -515,13 +515,15 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   ecp_nistz256_mod_inverse_mont(z_inv3, point_z);
   ecp_nistz256_sqr_mont(z_inv2, z_inv3);
 
-  /* TODO(davidben): The two calls to |ecp_nistz256_from_mont| may be factored
-   * into one call now that other operations also reduce mod P. */
+  /* Instead of using |ecp_nistz256_from_mont| to convert the |x| coordinate
+   * and then calling |ecp_nistz256_from_mont| again to convert the |y|
+   * coordinate below, convert the common factor |z_inv2| once now, saving one
+   * reduction. */
+  ecp_nistz256_from_mont(z_inv2, z_inv2);
 
   if (x != NULL) {
     BN_ULONG x_aff[P256_LIMBS];
     ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
-    ecp_nistz256_from_mont(x_aff, x_aff);
     if (!bn_set_words(x, x_aff, P256_LIMBS)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
@@ -532,7 +534,6 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
     BN_ULONG y_aff[P256_LIMBS];
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
     ecp_nistz256_mul_mont(y_aff, z_inv3, point_y);
-    ecp_nistz256_from_mont(y_aff, y_aff);
     if (!bn_set_words(y, y_aff, P256_LIMBS)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
