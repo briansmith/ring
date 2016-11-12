@@ -633,6 +633,18 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
   return session->timeout > (long)now.tv_sec - session->time;
 }
 
+int ssl_session_is_resumable(const SSL *ssl, const SSL_SESSION *session) {
+  return ssl_session_is_context_valid(ssl, session) &&
+         /* The session must not be expired. */
+         ssl_session_is_time_valid(ssl, session) &&
+         /* Only resume if the session's version matches the negotiated
+           * version. */
+         ssl->version == session->ssl_version &&
+         /* Only resume if the session's cipher is still valid under the
+          * current configuration. */
+         ssl_is_valid_cipher(ssl, session->cipher);
+}
+
 /* ssl_lookup_session looks up |session_id| in the session cache and sets
  * |*out_session| to an |SSL_SESSION| object if found. The caller takes
  * ownership of the result. */
@@ -693,15 +705,8 @@ static enum ssl_session_result_t ssl_lookup_session(
     }
   }
 
-  if (session == NULL) {
-    return ssl_session_success;
-  }
-
-  if (!ssl_session_is_context_valid(ssl, session)) {
-    /* The client did not offer a suitable ticket or session ID. */
-    SSL_SESSION_free(session);
-    session = NULL;
-  } else if (!ssl_session_is_time_valid(ssl, session)) {
+  if (session != NULL &&
+      !ssl_session_is_time_valid(ssl, session)) {
     /* The session was from the cache, so remove it. */
     SSL_CTX_remove_session(ssl->initial_ctx, session);
     SSL_SESSION_free(session);
@@ -713,8 +718,8 @@ static enum ssl_session_result_t ssl_lookup_session(
 }
 
 enum ssl_session_result_t ssl_get_prev_session(
-    SSL *ssl, SSL_SESSION **out_session, int *out_send_ticket,
-    const struct ssl_early_callback_ctx *ctx) {
+    SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
+    int *out_renew_ticket, const struct ssl_early_callback_ctx *ctx) {
   /* This is used only by servers. */
   assert(ssl->server);
   SSL_SESSION *session = NULL;
@@ -743,11 +748,8 @@ enum ssl_session_result_t ssl_get_prev_session(
   }
 
   *out_session = session;
-  if (session != NULL) {
-    *out_send_ticket = renew_ticket;
-  } else {
-    *out_send_ticket = tickets_supported;
-  }
+  *out_tickets_supported = tickets_supported;
+  *out_renew_ticket = renew_ticket;
   return ssl_session_success;
 }
 

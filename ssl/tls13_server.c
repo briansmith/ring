@@ -143,11 +143,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
 
   if (session != NULL &&
-      /* Only resume if the session's version matches. */
-      (session->ssl_version != ssl->version ||
-       !ssl_client_cipher_list_contains_cipher(
-           &client_hello, (uint16_t)SSL_CIPHER_get_id(session->cipher)) ||
-       !ssl_is_valid_cipher(ssl, session->cipher))) {
+      !ssl_session_is_resumable(ssl, session)) {
     SSL_SESSION_free(session);
     session = NULL;
   }
@@ -268,7 +264,16 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl->s3->session_reused) {
+  if (ssl->s3->session_reused) {
+    /* Clients may not offer sessions containing unsupported ciphers. */
+    if (!ssl_client_cipher_list_contains_cipher(
+            &client_hello,
+            (uint16_t)SSL_CIPHER_get_id(ssl->s3->new_session->cipher))) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_REQUIRED_CIPHER_MISSING);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return ssl_hs_error;
+    }
+  } else {
     const SSL_CIPHER *cipher = choose_tls13_cipher(ssl, &client_hello);
     if (cipher == NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);

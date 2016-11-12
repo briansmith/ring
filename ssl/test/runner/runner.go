@@ -5633,6 +5633,7 @@ func addResumptionVersionTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
+				ExpectNewTicket: true,
 				FilterTicket: func(in []byte) ([]byte, error) {
 					return SetShimTicketVersion(in, VersionTLS13)
 				},
@@ -5672,6 +5673,7 @@ func addResumptionVersionTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
+				ExpectNewTicket: true,
 				FilterTicket: func(in []byte) ([]byte, error) {
 					return SetShimTicketCipherSuite(in, TLS_AES_128_GCM_SHA256)
 				},
@@ -5691,6 +5693,7 @@ func addResumptionVersionTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
+				ExpectNewTicket: true,
 				FilterTicket: func(in []byte) ([]byte, error) {
 					return SetShimTicketCipherSuite(in, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
 				},
@@ -5721,6 +5724,46 @@ func addResumptionVersionTests() {
 			base64.StdEncoding.EncodeToString(TestShimTicketKey),
 		},
 		expectResumeRejected: true,
+	})
+
+	// Clients must not advertise a session without also advertising the
+	// cipher.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-UnofferedCipher",
+		resumeSession: true,
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
+		},
+		resumeConfig: &Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
+			Bugs: ProtocolBugs{
+				SendCipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":REQUIRED_CIPHER_MISSING:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-UnofferedCipher-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_CHACHA20_POLY1305_SHA256},
+		},
+		resumeConfig: &Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_CHACHA20_POLY1305_SHA256},
+			Bugs: ProtocolBugs{
+				SendCipherSuites: []uint16{TLS_AES_128_GCM_SHA256},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":REQUIRED_CIPHER_MISSING:",
 	})
 
 	// Sessions may not be resumed at a different cipher.

@@ -3133,12 +3133,6 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
   memcpy(session->session_id, session_id, session_id_len);
   session->session_id_length = session_id_len;
 
-  if (!ssl_session_is_context_valid(ssl, session) ||
-      !ssl_session_is_time_valid(ssl, session)) {
-    SSL_SESSION_free(session);
-    session = NULL;
-  }
-
   *out_session = session;
 
 done:

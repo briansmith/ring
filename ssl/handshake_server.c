@@ -730,9 +730,9 @@ static int ssl3_get_client_hello(SSL *ssl) {
            client_hello.random_len);
 
     /* Determine whether we are doing session resumption. */
-    int send_new_ticket = 0;
-    switch (
-        ssl_get_prev_session(ssl, &session, &send_new_ticket, &client_hello)) {
+    int tickets_supported = 0, renew_ticket = 0;
+    switch (ssl_get_prev_session(ssl, &session, &tickets_supported,
+                                 &renew_ticket, &client_hello)) {
       case ssl_session_success:
         break;
       case ssl_session_error:
@@ -741,7 +741,6 @@ static int ssl3_get_client_hello(SSL *ssl) {
         ssl->rwstate = SSL_PENDING_SESSION;
         goto err;
     }
-    ssl->s3->hs->ticket_expected = send_new_ticket;
 
     /* The EMS state is needed when making the resumption decision, but
      * extensions are not normally parsed until later. This detects the EMS
@@ -754,7 +753,6 @@ static int ssl3_get_client_hello(SSL *ssl) {
                                          TLSEXT_TYPE_extended_master_secret) &&
         CBS_len(&ems) == 0;
 
-    int has_session = 0;
     if (session != NULL) {
       if (session->extended_master_secret &&
           !have_extended_master_secret) {
@@ -765,24 +763,23 @@ static int ssl3_get_client_hello(SSL *ssl) {
         goto f_err;
       }
 
-      has_session =
-          /* Only resume if the session's version matches the negotiated
-           * version: most clients do not accept a mismatch. */
-          ssl->version == session->ssl_version &&
+      if (!ssl_session_is_resumable(ssl, session) ||
           /* If the client offers the EMS extension, but the previous session
            * didn't use it, then negotiate a new session. */
-          have_extended_master_secret == session->extended_master_secret &&
-          /* Only resume if the session's cipher is still valid under the
-           * current configuration. */
-          ssl_is_valid_cipher(ssl, session->cipher);
+          have_extended_master_secret != session->extended_master_secret) {
+        SSL_SESSION_free(session);
+        session = NULL;
+      }
     }
 
-    if (has_session) {
+    if (session != NULL) {
       /* Use the old session. */
+      ssl->s3->hs->ticket_expected = renew_ticket;
       ssl->session = session;
       session = NULL;
       ssl->s3->session_reused = 1;
     } else {
+      ssl->s3->hs->ticket_expected = tickets_supported;
       ssl_set_session(ssl, NULL);
       if (!ssl_get_new_session(ssl, 1 /* server */)) {
         goto err;

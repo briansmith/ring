@@ -1651,6 +1651,10 @@ int ssl_session_is_context_valid(const SSL *ssl, const SSL_SESSION *session);
  * it has expired. */
 int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
 
+/* ssl_session_is_resumable returns one if |session| is resumable for |ssl| and
+ * zero otherwise. */
+int ssl_session_is_resumable(const SSL *ssl, const SSL_SESSION *session);
+
 void ssl_set_session(SSL *ssl, SSL_SESSION *session);
 
 enum ssl_session_result_t {
@@ -1660,14 +1664,13 @@ enum ssl_session_result_t {
 };
 
 /* ssl_get_prev_session looks up the previous session based on |ctx|. On
- * success, it sets |*out_session| to the session or NULL if none was found. It
- * sets |*out_send_ticket| to whether a ticket should be sent at the end of the
- * handshake. If the session could not be looked up synchronously, it returns
+ * success, it sets |*out_session| to the session or NULL if none was found. If
+ * the session could not be looked up synchronously, it returns
  * |ssl_session_retry| and should be called again. Otherwise, it returns
  * |ssl_session_error|.  */
 enum ssl_session_result_t ssl_get_prev_session(
-    SSL *ssl, SSL_SESSION **out_session, int *out_send_ticket,
-    const struct ssl_early_callback_ctx *ctx);
+    SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
+    int *out_renew_ticket, const struct ssl_early_callback_ctx *ctx);
 
 /* The following flags determine which parts of the session are duplicated. */
 #define SSL_SESSION_DUP_AUTH_ONLY 0x0

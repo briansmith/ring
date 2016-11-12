@@ -309,6 +309,10 @@ NextCipherSuite:
 		hello.vers = c.config.Bugs.SendClientVersion
 	}
 
+	if c.config.Bugs.SendCipherSuites != nil {
+		hello.cipherSuites = c.config.Bugs.SendCipherSuites
+	}
+
 	var helloBytes []byte
 	if c.config.Bugs.SendV2ClientHello {
 		// Test that the peer left-pads random.

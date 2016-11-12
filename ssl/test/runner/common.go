@@ -769,6 +769,11 @@ type ProtocolBugs struct {
 	// the server believes it has actually negotiated.
 	SendCipherSuite uint16
 
+	// SendCipherSuites, if not nil, is the cipher suite list that the
+	// client will send in the ClientHello. This does not affect the cipher
+	// the client believes it has actually offered.
+	SendCipherSuites []uint16
+
 	// AppDataBeforeHandshake, if not nil, causes application data to be
 	// sent immediately before the first handshake message.
 	AppDataBeforeHandshake []byte
