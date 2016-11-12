@@ -262,7 +262,7 @@ include = [
 name = "ring"
 
 [dependencies]
-untrusted = "0.3"
+untrusted = "0.3.2"
 
 [target.'cfg(unix)'.dependencies]
 lazy_static = "0.2.1"
