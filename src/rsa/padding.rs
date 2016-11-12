@@ -217,24 +217,32 @@ impl Encoding for PSS {
         // the out buffer, and then XOR the value of db.
 
         // Step 9. First output the mask into the out buffer.
-        try!(mgf1(self.digest_alg, h_hash.as_ref(),
-                  &mut em[..metrics.db_len]));
+       let (mut masked_db, mut digest_terminator) =
+            em.split_at_mut(metrics.db_len);
+        try!(mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db));
 
-        // Steps 7, 8 and 10: XOR into output the value of db:
-        //     PS || 0x01 || salt
-        // Where PS is all zeros.
-        em[metrics.ps_len] ^= 0x01;
-        for i in 0..metrics.s_len {
-            em[metrics.ps_len + 1 + i] ^= salt[i];
+        {
+            // Steps 7.
+            let masked_db = masked_db.into_iter();
+            // `PS` is all zero bytes, so skipping `ps_len` bytes is equivalent
+            // to XORing PS onto `db`.
+            let mut masked_db = masked_db.skip(metrics.ps_len);
+
+            // Step 8.
+            *try!(masked_db.next().ok_or(error::Unspecified)) ^= 0x01;
+
+            // Step 10.
+            for (masked_db_b, salt_b) in masked_db.zip(salt) {
+                *masked_db_b ^= *salt_b;
+            }
         }
 
         // Step 11.
-        em[0] &= metrics.top_byte_mask;
+        masked_db[0] &= metrics.top_byte_mask;
 
         // Step 12. Finalise output as:
-        //     masked_db || h_hash || 0xbc
-        em[metrics.db_len..][..metrics.h_len].copy_from_slice(h_hash.as_ref());
-        em[metrics.db_len + metrics.h_len] = 0xbc;
+        digest_terminator[..metrics.h_len].copy_from_slice(h_hash.as_ref());
+        digest_terminator[metrics.h_len] = 0xbc;
 
         Ok(())
     }
