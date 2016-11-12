@@ -45,6 +45,7 @@ add_library(
 
   OBJECT
 
+  sha1-altivec.c
   sha1.c
   sha256.c
   sha512.c
