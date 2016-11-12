@@ -4200,9 +4200,6 @@ struct ssl_st {
    * we'll advertise support. */
   unsigned tlsext_channel_id_enabled:1;
 
-  /* RFC4507 session ticket expected to be received or sent */
-  unsigned tlsext_ticket_expected:1;
-
   /* TODO(agl): remove once node.js not longer references this. */
   int tlsext_status_type;
 };

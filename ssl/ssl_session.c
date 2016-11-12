@@ -473,7 +473,7 @@ int ssl_get_new_session(SSL *ssl, int is_server) {
   session->ssl_version = ssl->version;
 
   if (is_server) {
-    if (ssl->tlsext_ticket_expected) {
+    if (ssl->s3->hs->ticket_expected) {
       /* Don't set session IDs for sessions resumed with tickets. This will keep
        * them out of the session cache. */
       session->session_id_length = 0;

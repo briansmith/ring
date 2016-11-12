@@ -991,6 +991,10 @@ typedef struct ssl_handshake_st {
   /* next_proto_neg_seen is one of NPN was negotiated. */
   unsigned next_proto_neg_seen:1;
 
+  /* ticket_expected is one if a TLS 1.2 NewSessionTicket message is to be sent
+   * or received. */
+  unsigned ticket_expected:1;
+
   /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
    * server when using a TLS 1.2 PSK key exchange. */
   char *peer_psk_identity_hint;

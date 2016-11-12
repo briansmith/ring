@@ -2081,7 +2081,7 @@ void ssl_update_cache(SSL *ssl, int mode) {
    * decides to renew the ticket. Once the handshake is completed, it should be
    * inserted into the cache. */
   if (ssl->s3->established_session != ssl->session ||
-      (!ssl->server && ssl->tlsext_ticket_expected)) {
+      (!ssl->server && ssl->s3->hs->ticket_expected)) {
     if (use_internal_cache) {
       SSL_CTX_add_session(ctx, ssl->s3->established_session);
     }

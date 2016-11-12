@@ -1030,8 +1030,6 @@ static int ext_ticket_add_clienthello(SSL *ssl, CBB *out) {
 
 static int ext_ticket_parse_serverhello(SSL *ssl, uint8_t *out_alert,
                                         CBS *contents) {
-  ssl->tlsext_ticket_expected = 0;
-
   if (contents == NULL) {
     return 1;
   }
@@ -1049,17 +1047,16 @@ static int ext_ticket_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  ssl->tlsext_ticket_expected = 1;
+  ssl->s3->hs->ticket_expected = 1;
   return 1;
 }
 
 static int ext_ticket_add_serverhello(SSL *ssl, CBB *out) {
-  if (!ssl->tlsext_ticket_expected) {
+  if (!ssl->s3->hs->ticket_expected) {
     return 1;
   }
 
-  /* If |SSL_OP_NO_TICKET| is set, |tlsext_ticket_expected| should never be
-   * true. */
+  /* If |SSL_OP_NO_TICKET| is set, |ticket_expected| should never be true. */
   assert((SSL_get_options(ssl) & SSL_OP_NO_TICKET) == 0);
 
   if (!CBB_add_u16(out, TLSEXT_TYPE_session_ticket) ||

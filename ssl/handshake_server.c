@@ -415,7 +415,7 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_SESSION_TICKET_A:
       case SSL3_ST_SW_SESSION_TICKET_B:
-        if (ssl->tlsext_ticket_expected) {
+        if (ssl->s3->hs->ticket_expected) {
           ret = ssl3_send_new_session_ticket(ssl);
           if (ret <= 0) {
             goto end;
@@ -501,15 +501,13 @@ int ssl3_accept(SSL *ssl) {
         /* remove buffering on output */
         ssl_free_wbio_buffer(ssl);
 
+        ssl->s3->initial_handshake_complete = 1;
+        ssl_update_cache(ssl, SSL_SESS_CACHE_SERVER);
+
         ssl_handshake_free(ssl->s3->hs);
         ssl->s3->hs = NULL;
 
-        ssl->s3->initial_handshake_complete = 1;
-
-        ssl_update_cache(ssl, SSL_SESS_CACHE_SERVER);
-
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
-
         ret = 1;
         goto end;
 
@@ -743,7 +741,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
         ssl->rwstate = SSL_PENDING_SESSION;
         goto err;
     }
-    ssl->tlsext_ticket_expected = send_new_ticket;
+    ssl->s3->hs->ticket_expected = send_new_ticket;
 
     /* The EMS state is needed when making the resumption decision, but
      * extensions are not normally parsed until later. This detects the EMS

@@ -448,7 +448,7 @@ int ssl3_connect(SSL *ssl) {
         goto end;
 
       case SSL3_ST_CR_SESSION_TICKET_A:
-        if (ssl->tlsext_ticket_expected) {
+        if (ssl->s3->hs->ticket_expected) {
           ret = ssl3_get_new_session_ticket(ssl);
           if (ret <= 0) {
             goto end;
@@ -536,15 +536,15 @@ int ssl3_connect(SSL *ssl) {
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(ssl);
 
-        ssl_handshake_free(ssl->s3->hs);
-        ssl->s3->hs = NULL;
-
         const int is_initial_handshake = !ssl->s3->initial_handshake_complete;
         ssl->s3->initial_handshake_complete = 1;
         if (is_initial_handshake) {
           /* Renegotiations do not participate in session resumption. */
           ssl_update_cache(ssl, SSL_SESS_CACHE_CLIENT);
         }
+
+        ssl_handshake_free(ssl->s3->hs);
+        ssl->s3->hs = NULL;
 
         ret = 1;
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
@@ -1881,10 +1881,9 @@ static int ssl3_get_new_session_ticket(SSL *ssl) {
 
   if (CBS_len(&ticket) == 0) {
     /* RFC 5077 allows a server to change its mind and send no ticket after
-     * negotiating the extension. The value of |tlsext_ticket_expected| is
-     * checked in |ssl_update_cache| so is cleared here to avoid an unnecessary
-     * update. */
-    ssl->tlsext_ticket_expected = 0;
+     * negotiating the extension. The value of |ticket_expected| is checked in
+     * |ssl_update_cache| so is cleared here to avoid an unnecessary update. */
+    ssl->s3->hs->ticket_expected = 0;
     return 1;
   }
 
