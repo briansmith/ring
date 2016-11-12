@@ -209,9 +209,9 @@ int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
                         size_t *out_len) {
   if (!CBB_finish(cbb, out_msg, out_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(*out_msg);
     return 0;
   }
+
   return 1;
 }
 
@@ -231,7 +231,7 @@ int ssl3_queue_message(SSL *ssl, uint8_t *msg, size_t len) {
 }
 
 int ssl_complete_message(SSL *ssl, CBB *cbb) {
-  uint8_t *msg = NULL;
+  uint8_t *msg;
   size_t len;
   if (!ssl->method->finish_message(ssl, cbb, &msg, &len) ||
       !ssl->method->queue_message(ssl, msg, len)) {

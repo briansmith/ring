@@ -738,6 +738,7 @@ int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
 
 int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
                          size_t *out_len) {
+  *out_msg = NULL;
   if (!CBB_finish(cbb, out_msg, out_len) ||
       *out_len < DTLS1_HM_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
