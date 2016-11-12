@@ -106,23 +106,6 @@ impl RSAKeyPair {
     }
 }
 
-impl Drop for RSAKeyPair {
-    fn drop(&mut self) {
-        unsafe {
-            GFp_BN_free(self.rsa.e);
-            GFp_BN_free(self.rsa.dmp1);
-            GFp_BN_free(self.rsa.dmq1);
-            GFp_BN_free(self.rsa.iqmp);
-            GFp_BN_MONT_CTX_free(self.rsa.mont_n);
-            GFp_BN_MONT_CTX_free(self.rsa.mont_p);
-            GFp_BN_MONT_CTX_free(self.rsa.mont_q);
-            GFp_BN_MONT_CTX_free(self.rsa.mont_qq);
-            GFp_BN_free(self.rsa.qmn_mont);
-            GFp_BN_free(self.rsa.iqmp_mont);
-        }
-    }
-}
-
 unsafe impl Send for RSAKeyPair {}
 unsafe impl Sync for RSAKeyPair {}
 
@@ -139,6 +122,23 @@ struct RSA {
     mont_qq: *mut BN_MONT_CTX,
     qmn_mont: *mut BIGNUM,
     iqmp_mont: *mut BIGNUM,
+}
+
+impl Drop for RSA {
+    fn drop(&mut self) {
+        unsafe {
+            GFp_BN_free(self.e);
+            GFp_BN_free(self.dmp1);
+            GFp_BN_free(self.dmq1);
+            GFp_BN_free(self.iqmp);
+            GFp_BN_MONT_CTX_free(self.mont_n);
+            GFp_BN_MONT_CTX_free(self.mont_p);
+            GFp_BN_MONT_CTX_free(self.mont_q);
+            GFp_BN_MONT_CTX_free(self.mont_qq);
+            GFp_BN_free(self.qmn_mont);
+            GFp_BN_free(self.iqmp_mont);
+        }
+    }
 }
 
 
