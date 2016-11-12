@@ -329,7 +329,7 @@ int tls13_prepare_certificate(SSL *ssl) {
       /* The request context is always empty in the handshake. */
       !CBB_add_u8(&body, 0) ||
       !ssl_add_cert_chain(ssl, &body) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return 0;
   }
@@ -387,7 +387,7 @@ enum ssl_private_key_result_t tls13_prepare_certificate_verify(
   }
 
   if (!CBB_did_write(&child, sig_len) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 
@@ -412,7 +412,7 @@ int tls13_prepare_finished(SSL *ssl) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
       !CBB_add_bytes(&body, verify_data, verify_data_len) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return 0;
   }

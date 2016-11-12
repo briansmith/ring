@@ -764,7 +764,7 @@ static int ssl3_send_client_hello(SSL *ssl) {
   CBB body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO) ||
       !ssl_add_client_hello_body(ssl, &body) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 
@@ -1676,7 +1676,7 @@ static int ssl3_send_client_key_exchange(SSL *ssl) {
 
   /* The message must be added to the finished hash before calculating the
    * master secret. */
-  if (!ssl->method->finish_message(ssl, &cbb)) {
+  if (!ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
   ssl->state = SSL3_ST_CW_KEY_EXCH_B;
@@ -1793,7 +1793,7 @@ static int ssl3_send_cert_verify(SSL *ssl) {
   }
 
   if (!CBB_did_write(&child, sig_len) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 
@@ -1822,7 +1822,7 @@ static int ssl3_send_next_proto(SSL *ssl) {
                      ssl->s3->next_proto_negotiated_len) ||
       !CBB_add_u8_length_prefixed(&body, &child) ||
       !CBB_add_bytes(&child, kZero, padding_len) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1851,7 +1851,7 @@ static int ssl3_send_channel_id(SSL *ssl) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
       !tls1_write_channel_id(ssl, &body) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;

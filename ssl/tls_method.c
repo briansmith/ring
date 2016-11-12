@@ -140,6 +140,7 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_supports_cipher,
     ssl3_init_message,
     ssl3_finish_message,
+    ssl3_queue_message,
     ssl3_write_message,
     ssl3_send_change_cipher_spec,
     ssl3_expect_flight,

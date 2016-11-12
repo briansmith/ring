@@ -205,18 +205,21 @@ int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   return 1;
 }
 
-int ssl3_finish_message(SSL *ssl, CBB *cbb) {
-  if (ssl->s3->pending_message != NULL) {
+int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
+                        size_t *out_len) {
+  if (!CBB_finish(cbb, out_msg, out_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    OPENSSL_free(*out_msg);
     return 0;
   }
+  return 1;
+}
 
-  uint8_t *msg = NULL;
-  size_t len;
-  if (!CBB_finish(cbb, &msg, &len) ||
+int ssl3_queue_message(SSL *ssl, uint8_t *msg, size_t len) {
+  if (ssl->s3->pending_message != NULL ||
       len > 0xffffffffu) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     OPENSSL_free(msg);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
@@ -224,6 +227,17 @@ int ssl3_finish_message(SSL *ssl, CBB *cbb) {
 
   ssl->s3->pending_message = msg;
   ssl->s3->pending_message_len = (uint32_t)len;
+  return 1;
+}
+
+int ssl_complete_message(SSL *ssl, CBB *cbb) {
+  uint8_t *msg = NULL;
+  size_t len;
+  if (!ssl->method->finish_message(ssl, cbb, &msg, &len) ||
+      !ssl->method->queue_message(ssl, msg, len)) {
+    return 0;
+  }
+
   return 1;
 }
 
@@ -284,7 +298,7 @@ int ssl3_send_finished(SSL *ssl, int a, int b) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
       !CBB_add_bytes(&body, finished, finished_len) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -352,7 +366,7 @@ int ssl3_output_cert_chain(SSL *ssl) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
       !ssl_add_cert_chain(ssl, &body) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return 0;

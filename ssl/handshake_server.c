@@ -964,7 +964,7 @@ static int ssl3_send_server_hello(SSL *ssl) {
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
       !ssl_add_serverhello_tlsext(ssl, &body) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1003,7 +1003,7 @@ static int ssl3_send_certificate_status(SSL *ssl) {
       !CBB_add_u24_length_prefixed(&body, &ocsp_response) ||
       !CBB_add_bytes(&ocsp_response, ssl->ctx->ocsp_response,
                      ssl->ctx->ocsp_response_length) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1184,7 +1184,7 @@ static int ssl3_send_server_key_exchange(SSL *ssl) {
     }
   }
 
-  if (!ssl->method->finish_message(ssl, &cbb)) {
+  if (!ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 
@@ -1266,7 +1266,7 @@ static int ssl3_send_certificate_request(SSL *ssl) {
   }
 
   if (!ssl_add_client_CA_list(ssl, &body) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 
@@ -1286,7 +1286,7 @@ static int ssl3_send_server_hello_done(SSL *ssl) {
 
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO_DONE) ||
-      !ssl->method->finish_message(ssl, &cbb)) {
+      !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1849,7 +1849,7 @@ static int ssl3_send_new_session_ticket(SSL *ssl) {
       CBB_add_u32(&body, session->timeout) &&
       CBB_add_u16_length_prefixed(&body, &ticket) &&
       ssl_encrypt_ticket(ssl, &ticket, session) &&
-      ssl->method->finish_message(ssl, &cbb);
+      ssl_complete_message(ssl, &cbb);
 
   SSL_SESSION_free(session_copy);
   CBB_cleanup(&cbb);

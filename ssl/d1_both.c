@@ -736,21 +736,22 @@ int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   return 1;
 }
 
-int dtls1_finish_message(SSL *ssl, CBB *cbb) {
-  uint8_t *msg = NULL;
-  size_t len;
-  if (!CBB_finish(cbb, &msg, &len) ||
-      len > 0xffffffffu ||
-      len < DTLS1_HM_HEADER_LENGTH) {
+int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
+                         size_t *out_len) {
+  if (!CBB_finish(cbb, out_msg, out_len) ||
+      *out_len < DTLS1_HM_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(msg);
+    OPENSSL_free(*out_msg);
     return 0;
   }
 
   /* Fix up the header. Copy the fragment length into the total message
    * length. */
-  memcpy(msg + 1, msg + DTLS1_HM_HEADER_LENGTH - 3, 3);
+  memcpy(*out_msg + 1, *out_msg + DTLS1_HM_HEADER_LENGTH - 3, 3);
+  return 1;
+}
 
+int dtls1_queue_message(SSL *ssl, uint8_t *msg, size_t len) {
   ssl3_update_handshake_hash(ssl, msg, len);
 
   ssl->d1->handshake_write_seq++;
