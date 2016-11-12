@@ -42,7 +42,7 @@ fn parse_public_key(input: untrusted::Input)
 }
 
 struct PositiveInteger {
-    value: Option<*mut BIGNUM>,
+    value: *mut BIGNUM,
 }
 
 impl PositiveInteger {
@@ -65,36 +65,28 @@ impl PositiveInteger {
         if untrusted::Reader::new(input).peek(0) {
             return Err(error::Unspecified);
         }
-        let res = unsafe {
-            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(),
-                          input.len(),
+        let value = unsafe {
+            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
                           core::ptr::null_mut())
         };
-        if res.is_null() {
+        if value.is_null() {
             return Err(error::Unspecified);
         }
-        Ok(PositiveInteger { value: Some(res) })
+        Ok(PositiveInteger { value: value })
     }
 
-    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value.unwrap() }
+    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value }
 
     #[cfg(feature = "rsa_signing")]
-    fn into_raw(&mut self) -> *mut BIGNUM {
-        let res = self.value.unwrap();
-        self.value = None;
+    fn into_raw(mut self) -> *mut BIGNUM {
+        let res = self.value;
+        self.value = core::ptr::null_mut();
         res
     }
 }
 
-impl Drop for PositiveInteger {
-    fn drop(&mut self) {
-        match self.value {
-            Some(val) => unsafe {
-                GFp_BN_free(val);
-            },
-            None => {},
-        }
-    }
+impl<'a> Drop for PositiveInteger {
+    fn drop(&mut self) { unsafe { GFp_BN_free(self.value); } }
 }
 
 #[cfg(feature = "rsa_signing")]

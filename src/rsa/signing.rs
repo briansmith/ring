@@ -73,13 +73,13 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
                 let n = try!(PositiveInteger::from_der(input));
-                let mut e = try!(PositiveInteger::from_der(input));
+                let e = try!(PositiveInteger::from_der(input));
                 let d = try!(PositiveInteger::from_der(input));
                 let p = try!(PositiveInteger::from_der(input));
                 let q = try!(PositiveInteger::from_der(input));
-                let mut dmp1 = try!(PositiveInteger::from_der(input));
-                let mut dmq1 = try!(PositiveInteger::from_der(input));
-                let mut iqmp = try!(PositiveInteger::from_der(input));
+                let dmp1 = try!(PositiveInteger::from_der(input));
+                let dmq1 = try!(PositiveInteger::from_der(input));
+                let iqmp = try!(PositiveInteger::from_der(input));
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(), iqmp: iqmp.into_raw(),
