@@ -98,7 +98,7 @@ impl<'a> Range<'a> {
         debug_assert!(most_significant_limb > 0);
         let most_significant_limb_mask =
             most_significant_limb_mask_variable_time(most_significant_limb);
-        debug_assert!(most_significant_limb_mask != 0);
+        debug_assert_ne!(most_significant_limb_mask, 0);
 
         // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
         // what specific value would be better, but it seems bad to try 100

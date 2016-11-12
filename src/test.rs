@@ -348,7 +348,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
 
                 // Don't allow the value to be ommitted. An empty value can be
                 // represented as an empty quoted string.
-                assert!(value.len() != 0);
+                assert_ne!(value.len(), 0);
 
                 // Checking is_none() ensures we don't accept duplicate keys.
                 attributes.push((String::from(key), String::from(value), false));
