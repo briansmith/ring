@@ -24,9 +24,14 @@ deps = {
 deps_os = {
   'android': {
     'boringssl/util/bot/android_tools':
-      Var('chromium_git') + '/android_tools.git' + '@' + 'af1c5a4cd6329ccdcf8c2bc93d9eea02f9d74869',
+      Var('chromium_git') + '/android_tools.git' + '@' + 'c02a002b48d6637714ef98f0e4bf6952b9c4cf10',
   },
 }
+
+recurse_deps = [
+  # android_tools pulls in the NDK from a separate repository.
+  'boringssl/util/bot/android_tools',
+]
 
 hooks = [
   {

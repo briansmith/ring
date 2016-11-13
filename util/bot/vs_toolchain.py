@@ -19,7 +19,7 @@ import gyp
 
 
 TOOLCHAIN_VERSION = '2015'
-TOOLCHAIN_HASH = '95ddda401ec5678f15eeed01d2bee08fcbc5ee97'
+TOOLCHAIN_HASH = 'd5dc33b15d1b2c086f2f6632e2fd15882f80dbd3'
 
 
 def SetEnvironmentAndGetRuntimeDllDirs():
