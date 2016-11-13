@@ -24,9 +24,8 @@ pub trait Encoding: Sync {
 
 /// The term "Verification" comes from RFC 3447.
 pub trait Verification: Sync {
-    fn verify(&self, msg: untrusted::Input, encoded: untrusted::Input,
-              public_modulus_len_in_bits: usize)
-              -> Result<(), error::Unspecified>;
+    fn verify(&self, msg: untrusted::Input, m: untrusted::Input,
+              mod_bits: usize) -> Result<(), error::Unspecified>;
 }
 
 pub struct PKCS1 {
@@ -64,17 +63,17 @@ impl Encoding for PKCS1 {
 }
 
 impl Verification for PKCS1 {
-    fn verify(&self, msg: untrusted::Input, encoded: untrusted::Input, _: usize)
-              -> Result<(), error::Unspecified> {
-        encoded.read_all(error::Unspecified, |decoded| {
-            if try!(decoded.read_byte()) != 0 ||
-               try!(decoded.read_byte()) != 1 {
+    fn verify(&self, msg: untrusted::Input, m: untrusted::Input,
+              _mod_bits: usize) -> Result<(), error::Unspecified> {
+        m.read_all(error::Unspecified, |em| {
+            if try!(em.read_byte()) != 0 ||
+               try!(em.read_byte()) != 1 {
                 return Err(error::Unspecified);
             }
 
             let mut ps_len = 0;
             loop {
-                match try!(decoded.read_byte()) {
+                match try!(em.read_byte()) {
                     0xff => {
                         ps_len += 1;
                     },
@@ -90,15 +89,15 @@ impl Verification for PKCS1 {
                 return Err(error::Unspecified);
             }
 
-            let decoded_digestinfo_prefix = try!(decoded.skip_and_get_input(
+            let em_digestinfo_prefix = try!(em.skip_and_get_input(
                         self.digestinfo_prefix.len()));
-            if decoded_digestinfo_prefix != self.digestinfo_prefix {
+            if em_digestinfo_prefix != self.digestinfo_prefix {
                 return Err(error::Unspecified);
             }
 
             let digest_alg = self.digest_alg;
             let decoded_digest =
-                try!(decoded.skip_and_get_input(digest_alg.output_len));
+                try!(em.skip_and_get_input(digest_alg.output_len));
             let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
             if decoded_digest != digest.as_ref() {
                 return Err(error::Unspecified);
@@ -162,10 +161,10 @@ pkcs1_digestinfo_prefix!(
     [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
 
 
-/// PSS Padding as described in https://tools.ietf.org/html/rfc3447#section-9.1.
-/// It generates a random salt equal in length to the output of the specified
-/// digest algorithm and uses MGF1 with that digest algorihtm as the mask
-/// generating function.
+/// PSS padding as described in [RFC 3447 Section 8.1]. The mask generation
+/// function is MGF1 using the signature's digest's algorithm.
+///
+/// [RFC 3447 Section 8.1]: https://tools.ietf.org/html/rfc3447#section-8.1
 pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
@@ -174,22 +173,35 @@ pub struct PSS {
 const PSS_PREFIX_ZEROS: [u8; 8] = [0u8; 8];
 
 impl Verification for PSS {
-    // PSS verification as specified in
-    // https://tools.ietf.org/html/rfc3447#section-9.1.2
-    fn verify(&self, msg: untrusted::Input, encoded: untrusted::Input,
-              public_modulus_len_in_bits: usize)
-              -> Result<(), error::Unspecified> {
-        // Number of bytes required to encode message. The maximum length is
-        // given by the length of the public modulus in bits minus 1.
-        let em_len = 1 + (public_modulus_len_in_bits - 2) / 8;
-        assert_eq!(encoded.len(), em_len);
-        // Create a bit mask to match the size of the modulus used.
-        let top_byte_mask = 0xffu8 >>
-            (7 - ((public_modulus_len_in_bits - 2) % 8));
-        encoded.read_all(error::Unspecified, |em| {
-            let digest_len = self.digest_alg.output_len;
+    // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
+    // where steps 1, 2(a), and 2(b) have been done for us.
+    fn verify(&self, msg: untrusted::Input, m: untrusted::Input,
+              mod_bits: usize) -> Result<(), error::Unspecified> {
+        m.read_all(error::Unspecified, |m| {
+            // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is
+            // the big-endian-encoded value of `m` from the specification,
+            // padded to `k` bytes, where `k` is the length in bytes of the
+            // public modulus. The spec says "Note that emLen will be one less
+            // than k if modBits - 1 is divisible by 8 and equal to k
+            // otherwise," where `k` is the length in octets of the RSA public
+            // modulus `n`. In other words, `em` might have an extra leading
+            // zero byte that we need to strip before we start the PSS decoding
+            // steps which is an artifact of the `Verification` interface.
+            if (mod_bits - 1) % 8 == 0 {
+                if try!(m.read_byte()) != 0 {
+                    return Err(error::Unspecified);
+                }
+            };
+            let em = m;
+            let em_bits = mod_bits - 1;
+            let em_len = (em_bits + 7) / 8;
+            let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
 
-            // Step 2.
+            // The rest of this function is EMSA-PSS-VERIFY from
+            // https://tools.ietf.org/html/rfc3447#section-9.1.2.
+
+            // Steps 1 and 2.
+            let digest_len = self.digest_alg.output_len;
             let m_hash = digest::digest(self.digest_alg,
                                         msg.as_slice_less_safe());
 
