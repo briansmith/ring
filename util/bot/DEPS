@@ -28,7 +28,7 @@ deps_os = {
   },
 }
 
-recurse_deps = [
+recursedeps = [
   # android_tools pulls in the NDK from a separate repository.
   'boringssl/util/bot/android_tools',
 ]
