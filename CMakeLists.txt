@@ -47,6 +47,9 @@ elseif(MSVC)
       "C4127" # conditional expression is constant
       "C4200" # nonstandard extension used : zero-sized array in
               # struct/union.
+      "C4204" # nonstandard extension used: non-constant aggregate initializer
+      "C4221" # nonstandard extension used : 'identifier' : cannot be
+              # initialized using address of automatic variable
       "C4242" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',

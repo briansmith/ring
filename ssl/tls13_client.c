@@ -24,6 +24,7 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -67,95 +68,71 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL *ssl,
     return ssl_hs_error;
   }
 
-  while (CBS_len(&extensions) != 0) {
-    uint16_t type;
-    CBS extension;
-    if (!CBS_get_u16(&extensions, &type) ||
-        !CBS_get_u16_length_prefixed(&extensions, &extension)) {
+  int have_cookie, have_key_share;
+  CBS cookie, key_share;
+  const SSL_EXTENSION_TYPE ext_types[] = {
+      {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
+      {TLSEXT_TYPE_cookie, &have_cookie, &cookie},
+  };
+
+  uint8_t alert;
+  if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+                            OPENSSL_ARRAY_SIZE(ext_types))) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
+  }
+
+  if (have_cookie) {
+    CBS cookie_value;
+    if (!CBS_get_u16_length_prefixed(&cookie, &cookie_value) ||
+        CBS_len(&cookie_value) == 0 ||
+        CBS_len(&cookie) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
 
-    switch (type) {
-      case TLSEXT_TYPE_cookie: {
-        if (hs->cookie != NULL) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          return ssl_hs_error;
-        }
-
-        /* Cookies may be requested whether or not advertised, so no need to
-         * check. */
-
-        CBS cookie;
-        if (!CBS_get_u16_length_prefixed(&extension, &cookie) ||
-            CBS_len(&cookie) == 0 ||
-            CBS_len(&extension) != 0) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-          return ssl_hs_error;
-        }
-
-        if (!CBS_stow(&cookie, &hs->cookie, &hs->cookie_len)) {
-          return ssl_hs_error;
-        }
-        break;
-      }
-
-      case TLSEXT_TYPE_key_share: {
-        if (hs->retry_group != 0) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          return ssl_hs_error;
-        }
-
-        /* key_share is always advertised, so no need to check. */
-
-        uint16_t group_id;
-        if (!CBS_get_u16(&extension, &group_id) ||
-            CBS_len(&extension) != 0) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-          return ssl_hs_error;
-        }
-
-        /* The group must be supported. */
-        const uint16_t *groups;
-        size_t groups_len;
-        tls1_get_grouplist(ssl, &groups, &groups_len);
-        int found = 0;
-        for (size_t i = 0; i < groups_len; i++) {
-          if (groups[i] == group_id) {
-            found = 1;
-            break;
-          }
-        }
-
-        if (!found) {
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-          return ssl_hs_error;
-        }
-
-        /* Check that the HelloRetryRequest does not request the key share that
-         * was provided in the initial ClientHello. */
-        if (SSL_ECDH_CTX_get_id(&hs->ecdh_ctx) == group_id) {
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-          return ssl_hs_error;
-        }
-
-        SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
-        hs->retry_group = group_id;
-        break;
-      }
-
-      default:
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-        return ssl_hs_error;
+    if (!CBS_stow(&cookie_value, &hs->cookie, &hs->cookie_len)) {
+      return ssl_hs_error;
     }
+  }
+
+  if (have_key_share) {
+    uint16_t group_id;
+    if (!CBS_get_u16(&key_share, &group_id) || CBS_len(&key_share) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+
+    /* The group must be supported. */
+    const uint16_t *groups;
+    size_t groups_len;
+    tls1_get_grouplist(ssl, &groups, &groups_len);
+    int found = 0;
+    for (size_t i = 0; i < groups_len; i++) {
+      if (groups[i] == group_id) {
+        found = 1;
+        break;
+      }
+    }
+
+    if (!found) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+      return ssl_hs_error;
+    }
+
+    /* Check that the HelloRetryRequest does not request the key share that
+     * was provided in the initial ClientHello. */
+    if (SSL_ECDH_CTX_get_id(&hs->ecdh_ctx) == group_id) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+      return ssl_hs_error;
+    }
+
+    SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
+    hs->retry_group = group_id;
   }
 
   hs->received_hello_retry_request = 1;
@@ -225,40 +202,16 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* Parse out the extensions. */
   int have_key_share = 0, have_pre_shared_key = 0;
   CBS key_share, pre_shared_key;
-  while (CBS_len(&extensions) != 0) {
-    uint16_t type;
-    CBS extension;
-    if (!CBS_get_u16(&extensions, &type) ||
-        !CBS_get_u16_length_prefixed(&extensions, &extension)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      return ssl_hs_error;
-    }
+  const SSL_EXTENSION_TYPE ext_types[] = {
+      {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
+      {TLSEXT_TYPE_pre_shared_key, &have_pre_shared_key, &pre_shared_key},
+  };
 
-    switch (type) {
-      case TLSEXT_TYPE_key_share:
-        if (have_key_share) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          return ssl_hs_error;
-        }
-        key_share = extension;
-        have_key_share = 1;
-        break;
-      case TLSEXT_TYPE_pre_shared_key:
-        if (have_pre_shared_key) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-          return ssl_hs_error;
-        }
-        pre_shared_key = extension;
-        have_pre_shared_key = 1;
-        break;
-      default:
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-        return ssl_hs_error;
-    }
+  uint8_t alert;
+  if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+                            OPENSSL_ARRAY_SIZE(ext_types))) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
   }
 
   /* We only support PSK_DHE_KE. */
@@ -268,7 +221,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  uint8_t alert = SSL_AD_DECODE_ERROR;
+  alert = SSL_AD_DECODE_ERROR;
   if (have_pre_shared_key) {
     if (ssl->session == NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);

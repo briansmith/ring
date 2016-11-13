@@ -1102,6 +1102,21 @@ int tls13_get_cert_verify_signature_input(
 int ssl_negotiate_alpn(SSL *ssl, uint8_t *out_alert,
                        const struct ssl_early_callback_ctx *client_hello);
 
+typedef struct {
+  uint16_t type;
+  int *out_present;
+  CBS *out_data;
+} SSL_EXTENSION_TYPE;
+
+/* ssl_parse_extensions parses a TLS extensions block out of |cbs| and advances
+ * it. It writes the parsed extensions to pointers denoted by |ext_types|. On
+ * success, it fills in the |out_present| and |out_data| fields and returns one.
+ * Otherwise, it sets |*out_alert| to an alert to send and returns zero. Unknown
+ * extensions are rejected. */
+int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
+                         const SSL_EXTENSION_TYPE *ext_types,
+                         size_t num_ext_types);
+
 
 /* SSLKEYLOGFILE functions. */
 

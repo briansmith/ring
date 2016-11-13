@@ -25,6 +25,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -221,40 +222,16 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
     /* Parse out the extensions. */
     int have_status_request = 0, have_sct = 0;
     CBS status_request, sct;
-    while (CBS_len(&extensions) != 0) {
-      uint16_t type;
-      CBS extension;
-      if (!CBS_get_u16(&extensions, &type) ||
-          !CBS_get_u16_length_prefixed(&extensions, &extension)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        goto err;
-      }
+    const SSL_EXTENSION_TYPE ext_types[] = {
+        {TLSEXT_TYPE_status_request, &have_status_request, &status_request},
+        {TLSEXT_TYPE_certificate_timestamp, &have_sct, &sct},
+    };
 
-      switch (type) {
-        case TLSEXT_TYPE_status_request:
-          if (have_status_request) {
-            OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-            ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-            goto err;
-          }
-          status_request = extension;
-          have_status_request = 1;
-          break;
-        case TLSEXT_TYPE_certificate_timestamp:
-          if (have_sct) {
-            OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-            ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-            goto err;
-          }
-          sct = extension;
-          have_sct = 1;
-          break;
-        default:
-          OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-          goto err;
-      }
+    uint8_t alert;
+    if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+                              OPENSSL_ARRAY_SIZE(ext_types))) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      goto err;
     }
 
     /* All Certificate extensions are parsed, but only the leaf extensions are

@@ -767,3 +767,51 @@ int ssl_verify_alarm_type(long type) {
 
   return al;
 }
+
+int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
+                         const SSL_EXTENSION_TYPE *ext_types,
+                         size_t num_ext_types) {
+  /* Reset everything. */
+  for (size_t i = 0; i < num_ext_types; i++) {
+    *ext_types[i].out_present = 0;
+    CBS_init(ext_types[i].out_data, NULL, 0);
+  }
+
+  CBS copy = *cbs;
+  while (CBS_len(&copy) != 0) {
+    uint16_t type;
+    CBS data;
+    if (!CBS_get_u16(&copy, &type) ||
+        !CBS_get_u16_length_prefixed(&copy, &data)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return 0;
+    }
+
+    const SSL_EXTENSION_TYPE *ext_type = NULL;
+    for (size_t i = 0; i < num_ext_types; i++) {
+      if (type == ext_types[i].type) {
+        ext_type = &ext_types[i];
+        break;
+      }
+    }
+
+    if (ext_type == NULL) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+      *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+      return 0;
+    }
+
+    /* Duplicate ext_types are forbidden. */
+    if (*ext_type->out_present) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+      return 0;
+    }
+
+    *ext_type->out_present = 1;
+    *ext_type->out_data = data;
+  }
+
+  return 1;
+}
