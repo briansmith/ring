@@ -24,7 +24,7 @@ pub trait Encoding: Sync {
 
 /// The term "Verification" comes from RFC 3447.
 pub trait Verification: Sync {
-    fn verify(&self, msg: untrusted::Input, m: untrusted::Input,
+    fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
               mod_bits: usize) -> Result<(), error::Unspecified>;
 }
 
@@ -63,47 +63,48 @@ impl Encoding for PKCS1 {
 }
 
 impl Verification for PKCS1 {
-    fn verify(&self, msg: untrusted::Input, m: untrusted::Input,
+    fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
               _mod_bits: usize) -> Result<(), error::Unspecified> {
-        m.read_all(error::Unspecified, |em| {
-            if try!(em.read_byte()) != 0 ||
-               try!(em.read_byte()) != 1 {
-                return Err(error::Unspecified);
-            }
+        let em = m;
 
-            let mut ps_len = 0;
-            loop {
-                match try!(em.read_byte()) {
-                    0xff => {
-                        ps_len += 1;
-                    },
-                    0x00 => {
-                        break;
-                    },
-                    _ => {
-                        return Err(error::Unspecified);
-                    },
-                }
-            }
-            if ps_len < 8 {
-                return Err(error::Unspecified);
-            }
+        if try!(em.read_byte()) != 0 ||
+            try!(em.read_byte()) != 1 {
+            return Err(error::Unspecified);
+        }
 
-            let em_digestinfo_prefix = try!(em.skip_and_get_input(
-                        self.digestinfo_prefix.len()));
-            if em_digestinfo_prefix != self.digestinfo_prefix {
-                return Err(error::Unspecified);
+        let mut ps_len = 0;
+        loop {
+            match try!(em.read_byte()) {
+                0xff => {
+                    ps_len += 1;
+                },
+                0x00 => {
+                    break;
+                },
+                _ => {
+                    return Err(error::Unspecified);
+                },
             }
+        }
+        if ps_len < 8 {
+            return Err(error::Unspecified);
+        }
 
-            let digest_alg = self.digest_alg;
-            let decoded_digest =
-                try!(em.skip_and_get_input(digest_alg.output_len));
-            let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-            if decoded_digest != digest.as_ref() {
-                return Err(error::Unspecified);
-            }
-            Ok(())
-        })
+        let em_digestinfo_prefix = try!(em.skip_and_get_input(
+                    self.digestinfo_prefix.len()));
+        if em_digestinfo_prefix != self.digestinfo_prefix {
+            return Err(error::Unspecified);
+        }
+
+        let digest_alg = self.digest_alg;
+        let decoded_digest =
+            try!(em.skip_and_get_input(digest_alg.output_len));
+        let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
+        if decoded_digest != digest.as_ref() {
+            return Err(error::Unspecified);
+        }
+
+        Ok(())
     }
 }
 
@@ -175,102 +176,100 @@ const PSS_PREFIX_ZEROS: [u8; 8] = [0u8; 8];
 impl Verification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
-    fn verify(&self, msg: untrusted::Input, m: untrusted::Input,
+    fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
               mod_bits: usize) -> Result<(), error::Unspecified> {
-        m.read_all(error::Unspecified, |m| {
-            // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is
-            // the big-endian-encoded value of `m` from the specification,
-            // padded to `k` bytes, where `k` is the length in bytes of the
-            // public modulus. The spec says "Note that emLen will be one less
-            // than k if modBits - 1 is divisible by 8 and equal to k
-            // otherwise," where `k` is the length in octets of the RSA public
-            // modulus `n`. In other words, `em` might have an extra leading
-            // zero byte that we need to strip before we start the PSS decoding
-            // steps which is an artifact of the `Verification` interface.
-            if (mod_bits - 1) % 8 == 0 {
-                if try!(m.read_byte()) != 0 {
-                    return Err(error::Unspecified);
-                }
-            };
-            let em = m;
-            let em_bits = mod_bits - 1;
-            let em_len = (em_bits + 7) / 8;
-            let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
-
-            // The rest of this function is EMSA-PSS-VERIFY from
-            // https://tools.ietf.org/html/rfc3447#section-9.1.2.
-
-            // Steps 1 and 2.
-            let digest_len = self.digest_alg.output_len;
-            let m_hash = digest::digest(self.digest_alg,
-                                        msg.as_slice_less_safe());
-
-            // Step 3: where we assume the digest and salt are of equal length.
-            if em_len < 2 + (2 * digest_len) {
+        // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is the
+        // big-endian-encoded value of `m` from the specification, padded to
+        // `k` bytes, where `k` is the length in bytes of the public modulus.
+        // The spec. says "Note that emLen will be one less than k if
+        // modBits - 1 is divisible by 8 and equal to k otherwise," where `k`
+        // is the length in octets of the RSA public modulus `n`. In other
+        // words, `em` might have an extra leading zero byte that we need to
+        // strip before we start the PSS decoding steps which is an artifact of
+        // the `Verification` interface.
+        if (mod_bits - 1) % 8 == 0 {
+            if try!(m.read_byte()) != 0 {
                 return Err(error::Unspecified);
             }
+        };
+        let em = m;
+        let em_bits = mod_bits - 1;
+        let em_len = (em_bits + 7) / 8;
+        let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
 
-            // Steps 4 and 5: Parse encoded message as:
-            //     masked_db || h_hash || 0xbc
-            let db_len = em_len - digest_len - 1;
-            let masked_db = try!(em.skip_and_get_input(db_len));
-            let h_hash = try!(em.skip_and_get_input(digest_len));
-            if try!(em.read_byte()) != 0xbc {
+        // The rest of this function is EMSA-PSS-VERIFY from
+        // https://tools.ietf.org/html/rfc3447#section-9.1.2.
+
+        // Steps 1 and 2.
+        let digest_len = self.digest_alg.output_len;
+        let m_hash = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+
+        // Step 3: where we assume the digest and salt are of equal length.
+        if em_len < 2 + (2 * digest_len) {
+            return Err(error::Unspecified);
+        }
+
+        // Steps 4 and 5: Parse encoded message as:
+        //     masked_db || h_hash || 0xbc
+        let db_len = em_len - digest_len - 1;
+        let masked_db = try!(em.skip_and_get_input(db_len));
+        let h_hash = try!(em.skip_and_get_input(digest_len));
+        if try!(em.read_byte()) != 0xbc {
+            return Err(error::Unspecified);
+        }
+
+        // Step 7.
+        let mut db = [0u8; super::PUBLIC_MODULUS_MAX_LEN / 8];
+        let db = &mut db[..db_len];
+
+        try!(mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db));
+
+        try!(masked_db.read_all(error::Unspecified, |masked_bytes| {
+            // Step 6. Check the top bits of first byte are zero.
+            let b = try!(masked_bytes.read_byte());
+            if b & !top_byte_mask != 0 {
                 return Err(error::Unspecified);
             }
+            db[0] ^= b;
 
-            // Step 7.
-            let mut db = [0u8; super::PUBLIC_MODULUS_MAX_LEN / 8];
-            let db = &mut db[..db_len];
-
-            try!(mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db));
-
-            try!(masked_db.read_all(error::Unspecified, |masked_bytes| {
-                // Step 6. Check the top bits of first byte are zero.
-                let b = try!(masked_bytes.read_byte());
-                if b & !top_byte_mask != 0 {
-                    return Err(error::Unspecified);
-                }
-                db[0] ^= b;
-
-                // Step 8.
-                for i in 1..db.len() {
-                    db[i] ^= try!(masked_bytes.read_byte());
-                }
-                Ok(())
-            }));
-
-            // Step 9.
-            db[0] &= top_byte_mask;
-
-            // Step 10.
-            let pad_len = db.len() - digest_len - 1;
-            for i in 0..pad_len {
-                if db[i] != 0 {
-                    return Err(error::Unspecified);
-                }
-            }
-            if db[pad_len] != 1 {
-                return Err(error::Unspecified);
-            }
-
-            // Step 11.
-            let salt = &db[db.len() - digest_len..];
-
-            // Step 12 and 13: compute hash value of:
-            //     (0x)00 00 00 00 00 00 00 00 || m_hash || salt
-            let mut ctx = digest::Context::new(self.digest_alg);
-            ctx.update(&PSS_PREFIX_ZEROS);
-            ctx.update(m_hash.as_ref());
-            ctx.update(salt);
-            let h_hash_check = ctx.finish();
-
-            // Step 14.
-            if h_hash != h_hash_check.as_ref() {
-                return Err(error::Unspecified);
+            // Step 8.
+            for i in 1..db.len() {
+                db[i] ^= try!(masked_bytes.read_byte());
             }
             Ok(())
-        })
+        }));
+
+        // Step 9.
+        db[0] &= top_byte_mask;
+
+        // Step 10.
+        let pad_len = db.len() - digest_len - 1;
+        for i in 0..pad_len {
+            if db[i] != 0 {
+                return Err(error::Unspecified);
+            }
+        }
+        if db[pad_len] != 1 {
+            return Err(error::Unspecified);
+        }
+
+        // Step 11.
+        let salt = &db[db.len() - digest_len..];
+
+        // Step 12 and 13: compute hash value of:
+        //     (0x)00 00 00 00 00 00 00 00 || m_hash || salt
+        let mut ctx = digest::Context::new(self.digest_alg);
+        ctx.update(&PSS_PREFIX_ZEROS);
+        ctx.update(m_hash.as_ref());
+        ctx.update(salt);
+        let h_hash_check = ctx.finish();
+
+        // Step 14.
+        if h_hash != h_hash_check.as_ref() {
+            return Err(error::Unspecified);
+        }
+
+        Ok(())
     }
 }
 
@@ -314,7 +313,7 @@ rsa_pss_padding!(RSA_PSS_SHA512, &digest::SHA512,
 
 #[cfg(test)]
 mod test {
-    use test;
+    use {error, test};
     use super::*;
     use untrusted;
 
@@ -341,7 +340,9 @@ mod test {
             let bit_len = test_case.consume_usize("Len");
             let expected_result = test_case.consume_string("Result");
 
-            let actual_result = alg.verify(msg, encoded, bit_len);
+            let actual_result =
+                encoded.read_all(error::Unspecified,
+                                 |m| alg.verify(msg, m, bit_len));
             assert_eq!(actual_result.is_ok(), expected_result == "P");
 
             Ok(())

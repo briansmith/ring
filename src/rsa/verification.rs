@@ -124,8 +124,9 @@ pub fn verify_rsa(params: &RSAParameters,
                                params.min_bits, PUBLIC_MODULUS_MAX_LEN)
     }));
 
-    params.padding_alg.verify(msg, untrusted::Input::from(decoded),
-                              n.length_in_bits())
+    untrusted::Input::from(decoded).read_all(
+        error::Unspecified,
+        |m| params.padding_alg.verify(msg, m, n.length_in_bits()))
 }
 
 extern {
