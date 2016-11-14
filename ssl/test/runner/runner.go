@@ -1709,6 +1709,50 @@ func addBasicTests() {
 			expectedLocalError: "remote error: handshake failure",
 		},
 		{
+			name: "FailCertCallback-Client-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				ClientAuth: RequestClientCert,
+			},
+			flags:              []string{"-fail-cert-callback"},
+			shouldFail:         true,
+			expectedError:      ":CERT_CB_ERROR:",
+			expectedLocalError: "remote error: internal error",
+		},
+		{
+			testType: serverTest,
+			name:     "FailCertCallback-Server-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
+			flags:              []string{"-fail-cert-callback"},
+			shouldFail:         true,
+			expectedError:      ":CERT_CB_ERROR:",
+			expectedLocalError: "remote error: internal error",
+		},
+		{
+			name: "FailCertCallback-Client-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				ClientAuth: RequestClientCert,
+			},
+			flags:              []string{"-fail-cert-callback"},
+			shouldFail:         true,
+			expectedError:      ":CERT_CB_ERROR:",
+			expectedLocalError: "remote error: internal error",
+		},
+		{
+			testType: serverTest,
+			name:     "FailCertCallback-Server-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			flags:              []string{"-fail-cert-callback"},
+			shouldFail:         true,
+			expectedError:      ":CERT_CB_ERROR:",
+			expectedLocalError: "remote error: internal error",
+		},
+		{
 			protocol: dtls,
 			name:     "FragmentMessageTypeMismatch-DTLS",
 			config: Config{

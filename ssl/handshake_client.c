@@ -1476,6 +1476,7 @@ static int ssl3_send_client_certificate(SSL *ssl) {
         return -1;
       }
       if (ret == 0) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return -1;
       }

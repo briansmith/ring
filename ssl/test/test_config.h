@@ -73,6 +73,7 @@ struct TestConfig {
   bool install_ddos_callback = false;
   bool fail_ddos_callback = false;
   bool fail_second_ddos_callback = false;
+  bool fail_cert_callback = false;
   std::string cipher;
   std::string cipher_tls10;
   std::string cipher_tls11;

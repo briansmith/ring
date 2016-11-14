@@ -665,6 +665,10 @@ static int CertCallback(SSL *ssl, void *arg) {
     }
   }
 
+  if (config->fail_cert_callback) {
+    return 0;
+  }
+
   // The certificate will be installed via other means.
   if (!config->async || config->use_early_callback ||
       config->use_old_client_cert_callback) {
