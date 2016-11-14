@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use {bits, der, digest, error, polyfill};
+use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
 use untrusted;
 
 #[cfg(feature = "rsa_signing")]
@@ -289,7 +290,7 @@ impl Verification for PSS {
         }
 
         // Step 7.
-        let mut db = [0u8; super::PUBLIC_MODULUS_MAX_LEN / 8];
+        let mut db = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let db = &mut db[..metrics.db_len];
 
         try!(mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db));

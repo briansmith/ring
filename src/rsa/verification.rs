@@ -15,8 +15,8 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bssl, c, error, private, signature};
-use super::{BIGNUM, PositiveInteger, PUBLIC_MODULUS_MAX_LEN, RSAParameters,
-            parse_public_key};
+use super::{BIGNUM, PositiveInteger, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+            RSAParameters, parse_public_key};
 use untrusted;
 
 
@@ -110,7 +110,7 @@ pub fn verify_rsa(params: &RSAParameters,
                   msg: untrusted::Input, signature: untrusted::Input)
                   -> Result<(), error::Unspecified> {
     let signature = signature.as_slice_less_safe();
-    let mut decoded = [0u8; (PUBLIC_MODULUS_MAX_LEN + 7) / 8];
+    let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
     if signature.len() > decoded.len() {
         return Err(error::Unspecified);
     }
@@ -121,7 +121,8 @@ pub fn verify_rsa(params: &RSAParameters,
     try!(bssl::map_result(unsafe {
         GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
                                e.as_ref(), signature.as_ptr(), signature.len(),
-                               params.min_bits, PUBLIC_MODULUS_MAX_LEN)
+                               params.min_bits,
+                               PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN * 8)
     }));
 
     untrusted::Input::from(decoded).read_all(
