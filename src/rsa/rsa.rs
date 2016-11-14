@@ -93,10 +93,9 @@ impl<'a> Drop for PositiveInteger {
 #[allow(non_camel_case_types)]
 enum BN_MONT_CTX {}
 
+enum BIGNUM {}
 
 pub mod verification;
-
-enum BIGNUM {}
 
 #[cfg(feature = "rsa_signing")]
 pub mod signing;
