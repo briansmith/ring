@@ -72,8 +72,10 @@ impl Verification for PKCS1 {
               _mod_bits: usize) -> Result<(), error::Unspecified> {
         let em = m;
 
-        if try!(em.read_byte()) != 0 ||
-            try!(em.read_byte()) != 1 {
+        if try!(em.read_byte()) != 0 {
+            return Err(error::Unspecified);
+        }
+        if try!(em.read_byte()) != 1 {
             return Err(error::Unspecified);
         }
 
@@ -310,13 +312,13 @@ impl Verification for PSS {
         db[0] &= metrics.top_byte_mask;
 
         // Step 10.
-        let pad_len = db.len() - metrics.s_len - 1;
-        for i in 0..pad_len {
+        let ps_len = metrics.ps_len;
+        for i in 0..ps_len {
             if db[i] != 0 {
                 return Err(error::Unspecified);
             }
         }
-        if db[pad_len] != 1 {
+        if db[metrics.ps_len] != 1 {
             return Err(error::Unspecified);
         }
 
@@ -337,7 +339,7 @@ impl Verification for PSS {
 }
 
 struct PSSMetrics {
-    em_len: usize,
+    #[cfg_attr(not(feature = "rsa_signing"), allow(dead_code))] em_len: usize,
     db_len: usize,
     ps_len: usize,
     s_len: usize,
