@@ -353,7 +353,7 @@ impl PSSMetrics {
         let em_bits = mod_bits - 1;
         let em_len = (em_bits + 7) / 8;
         let leading_zero_bits = (8 * em_len) - em_bits;
-        assert!(leading_zero_bits < 8);
+        debug_assert!(leading_zero_bits < 8);
         let top_byte_mask = 0xffu8 >> leading_zero_bits;
 
         let h_len = digest_alg.output_len;
