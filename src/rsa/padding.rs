@@ -21,9 +21,8 @@ use rand;
 /// The term "Encoding" comes from RFC 3447.
 #[cfg(feature = "rsa_signing")]
 pub trait Encoding: Sync {
-    fn encode(&self, msg: &[u8], out: &mut [u8],
-              public_modulus_len_in_bits: usize, rng: &rand::SecureRandom)
-              -> Result<(), error::Unspecified>;
+    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: usize,
+              rng: &rand::SecureRandom) -> Result<(), error::Unspecified>;
 }
 
 /// The term "Verification" comes from RFC 3447.
@@ -41,23 +40,25 @@ pub struct PKCS1 {
 impl Encoding for PKCS1 {
     // Implement padding procedure per EMSA-PKCS1-v1_5,
     // https://tools.ietf.org/html/rfc3447#section-9.2.
-    fn encode(&self, msg: &[u8], out: &mut [u8], _: usize,
-              _: &rand::SecureRandom) -> Result<(), error::Unspecified> {
+    fn encode(&self, msg: &[u8], m_out: &mut [u8], _mod_bits: usize,
+              _rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
+        let em = m_out;
+
         let digest_len = self.digestinfo_prefix.len() +
                          self.digest_alg.output_len;
 
         // Require at least 8 bytes of padding. Since we disallow keys smaller
         // than 2048 bits, this should never happen anyway.
-        debug_assert!(out.len() >= digest_len + 11);
-        let pad_len = out.len() - digest_len - 3;
-        out[0] = 0;
-        out[1] = 1;
+        debug_assert!(em.len() >= digest_len + 11);
+        let pad_len = em.len() - digest_len - 3;
+        em[0] = 0;
+        em[1] = 1;
         for i in 0..pad_len {
-            out[2 + i] = 0xff;
+            em[2 + i] = 0xff;
         }
-        out[2 + pad_len] = 0;
+        em[2 + pad_len] = 0;
 
-        let (digest_prefix, digest_dst) = out[3 + pad_len..]
+        let (digest_prefix, digest_dst) = em[3 + pad_len..]
             .split_at_mut(self.digestinfo_prefix.len());
         digest_prefix.copy_from_slice(self.digestinfo_prefix);
         digest_dst.copy_from_slice(
@@ -186,12 +187,25 @@ const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
 impl Encoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
-    fn encode(&self, msg: &[u8], out: &mut [u8],
-              public_modulus_len_in_bits: usize, rng: &rand::SecureRandom)
-              -> Result<(), error::Unspecified> {
+    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: usize,
+              rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
+        // The `m` this function fills is the big-endian-encoded value of `m`
+        // from the specification, padded to `k` bytes, where `k` is the length
+        // in bytes of the public modulus. The spec says "Note that emLen will
+        // be one less than k if modBits - 1 is divisible by 8 and equal to k
+        // otherwise." In other words we might need to prefix `em` with a
+        // leading zero byte to form a correct value of `m`.
+        let em = if (mod_bits - 1) % 8 == 0 {
+            m_out[0] = 0;
+            &mut m_out[1..]
+        } else {
+            m_out
+        };
+        let em_bits = mod_bits - 1;
+        let em_len = (em_bits + 7) / 8;
+        assert_eq!(em_len, em.len());
+        let top_byte_mask = 0xffu8 >> ((8 * em_len) - em_bits);
         let digest_len = self.digest_alg.output_len;
-        let em_len = out.len();
-        assert_eq!(em_len, 1 + (public_modulus_len_in_bits - 2) / 8);
 
         // Step 2.
         let m_hash = digest::digest(self.digest_alg, msg);
@@ -214,30 +228,29 @@ impl Encoding for PSS {
         ctx.update(salt);
         let h_hash = ctx.finish();
 
-        // Re-order steps 7,8, 9 and 10 so that we first output the db mask into
-        // the out buffer, and then XOR the value of db.
+        // Re-order steps 7,8, 9 and 10 so that we first output the db mask
+        // into `em`, and then XOR the value of db.
 
         // Step 9. First output the mask into the out buffer.
         let db_len = em_len - digest_len - 1;
-        // let db_mask = &mut out[..db_len];
-        try!(mgf1(self.digest_alg, h_hash.as_ref(), &mut out[..db_len]));
+        try!(mgf1(self.digest_alg, h_hash.as_ref(), &mut em[..db_len]));
 
         // Steps 7, 8 and 10: XOR into output the value of db:
         //     PS || 0x01 || salt
         // Where PS is all zeros.
         let pad_len = db_len - digest_len - 1;
-        out[pad_len] ^= 0x01;
+        em[pad_len] ^= 0x01;
         for i in 0..digest_len {
-            out[pad_len + 1 + i] ^= salt[i];
+            em[pad_len + 1 + i] ^= salt[i];
         }
 
         // Step 11.
-        out[0] &= 0xff >> (7 - ((public_modulus_len_in_bits - 2) % 8));
+        em[0] &= top_byte_mask;
 
         // Step 12. Finalise output as:
         //     masked_db || h_hash || 0xbc
-        out[db_len..][..digest_len].copy_from_slice(h_hash.as_ref());
-        out[db_len + digest_len] = 0xbc;
+        em[db_len..][..digest_len].copy_from_slice(h_hash.as_ref());
+        em[db_len + digest_len] = 0xbc;
 
         Ok(())
     }
