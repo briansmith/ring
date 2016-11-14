@@ -624,7 +624,28 @@ int SSL_do_handshake(SSL *ssl) {
     return 1;
   }
 
-  return ssl->handshake_func(ssl);
+  /* Set up a new handshake if necessary. */
+  if (ssl->state == SSL_ST_INIT && ssl->s3->hs == NULL) {
+    ssl->s3->hs = ssl_handshake_new(ssl);
+    if (ssl->s3->hs == NULL) {
+      return -1;
+    }
+  }
+
+  /* Run the handshake. */
+  assert(ssl->s3->hs != NULL);
+  int ret = ssl->handshake_func(ssl->s3->hs);
+  if (ret <= 0) {
+    return ret;
+  }
+
+  /* Destroy the handshake object if the handshake has completely finished. */
+  if (!SSL_in_init(ssl)) {
+    ssl_handshake_free(ssl->s3->hs);
+    ssl->s3->hs = NULL;
+  }
+
+  return 1;
 }
 
 int SSL_connect(SSL *ssl) {

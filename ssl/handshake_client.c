@@ -186,7 +186,8 @@ static int ssl3_send_next_proto(SSL *ssl);
 static int ssl3_send_channel_id(SSL *ssl);
 static int ssl3_get_new_session_ticket(SSL *ssl);
 
-int ssl3_connect(SSL *ssl) {
+int ssl3_connect(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   int ret = -1;
   int state, skip = 0;
 
@@ -204,12 +205,6 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL_ST_CONNECT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
-
-        ssl->s3->hs = ssl_handshake_new(tls13_client_handshake);
-        if (ssl->s3->hs == NULL) {
-          ret = -1;
-          goto end;
-        }
 
         if (!ssl_init_wbio_buffer(ssl)) {
           ret = -1;
@@ -277,7 +272,7 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CR_CERT_STATUS_A:
-        if (ssl->s3->hs->certificate_status_expected) {
+        if (hs->certificate_status_expected) {
           ret = ssl3_get_cert_status(ssl);
           if (ret <= 0) {
             goto end;
@@ -332,7 +327,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_A:
       case SSL3_ST_CW_CERT_B:
       case SSL3_ST_CW_CERT_C:
-        if (ssl->s3->hs->cert_request) {
+        if (hs->cert_request) {
           ret = ssl3_send_client_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -355,7 +350,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
       case SSL3_ST_CW_CERT_VRFY_C:
-        if (ssl->s3->hs->cert_request) {
+        if (hs->cert_request) {
           ret = ssl3_send_cert_verify(ssl);
           if (ret <= 0) {
             goto end;
@@ -383,7 +378,7 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_CW_NEXT_PROTO_A:
       case SSL3_ST_CW_NEXT_PROTO_B:
-        if (ssl->s3->hs->next_proto_neg_seen) {
+        if (hs->next_proto_neg_seen) {
           ret = ssl3_send_next_proto(ssl);
           if (ret <= 0) {
             goto end;
@@ -441,14 +436,14 @@ int ssl3_connect(SSL *ssl) {
 
       case SSL3_ST_FALSE_START:
         ssl->state = SSL3_ST_CR_SESSION_TICKET_A;
-        ssl->s3->hs->in_false_start = 1;
+        hs->in_false_start = 1;
 
         ssl_free_wbio_buffer(ssl);
         ret = 1;
         goto end;
 
       case SSL3_ST_CR_SESSION_TICKET_A:
-        if (ssl->s3->hs->ticket_expected) {
+        if (hs->ticket_expected) {
           ret = ssl3_get_new_session_ticket(ssl);
           if (ret <= 0) {
             goto end;
@@ -542,9 +537,6 @@ int ssl3_connect(SSL *ssl) {
           /* Renegotiations do not participate in session resumption. */
           ssl_update_cache(ssl, SSL_SESS_CACHE_CLIENT);
         }
-
-        ssl_handshake_free(ssl->s3->hs);
-        ssl->s3->hs = NULL;
 
         ret = 1;
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
@@ -894,6 +886,7 @@ static int ssl3_get_server_hello(SSL *ssl) {
 
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
     ssl->state = SSL_ST_TLS13;
+    ssl->s3->hs->do_tls13_handshake = tls13_client_handshake;
     return 1;
   }
 

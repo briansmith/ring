@@ -4051,6 +4051,8 @@ struct ssl_ctx_st {
   int freelist_max_len;
 };
 
+typedef struct ssl_handshake_st SSL_HANDSHAKE;
+
 struct ssl_st {
   /* method is the method table corresponding to the current protocol (DTLS or
    * TLS). */
@@ -4089,7 +4091,7 @@ struct ssl_st {
    * with a better mechanism. */
   BIO *bbio;
 
-  int (*handshake_func)(SSL *);
+  int (*handshake_func)(SSL_HANDSHAKE *hs);
 
   BUF_MEM *init_buf; /* buffer used during init */
 

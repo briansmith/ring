@@ -95,7 +95,7 @@ int tls13_handshake(SSL *ssl) {
     }
 
     /* Run the state machine again. */
-    hs->wait = hs->do_handshake(ssl);
+    hs->wait = hs->do_tls13_handshake(ssl);
     if (hs->wait == ssl_hs_error) {
       /* Don't loop around to avoid a stray |SSL_R_SSL_HANDSHAKE_FAILURE| the
        * first time around. */

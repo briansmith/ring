@@ -185,7 +185,8 @@ static int ssl3_get_next_proto(SSL *ssl);
 static int ssl3_get_channel_id(SSL *ssl);
 static int ssl3_send_new_session_ticket(SSL *ssl);
 
-int ssl3_accept(SSL *ssl) {
+int ssl3_accept(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   uint32_t alg_a;
   int ret = -1;
   int state, skip = 0;
@@ -204,12 +205,6 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL_ST_ACCEPT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
-
-        ssl->s3->hs = ssl_handshake_new(tls13_server_handshake);
-        if (ssl->s3->hs == NULL) {
-          ret = -1;
-          goto end;
-        }
 
         /* Enable a write buffer. This groups handshake messages within a flight
          * into a single write. */
@@ -271,7 +266,7 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CERT_STATUS_A:
       case SSL3_ST_SW_CERT_STATUS_B:
-        if (ssl->s3->hs->certificate_status_expected) {
+        if (hs->certificate_status_expected) {
           ret = ssl3_send_certificate_status(ssl);
           if (ret <= 0) {
             goto end;
@@ -303,7 +298,7 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CERT_REQ_A:
       case SSL3_ST_SW_CERT_REQ_B:
-        if (ssl->s3->hs->cert_request) {
+        if (hs->cert_request) {
           ret = ssl3_send_certificate_request(ssl);
           if (ret <= 0) {
             goto end;
@@ -325,7 +320,7 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_CERT_A:
-        if (ssl->s3->hs->cert_request) {
+        if (hs->cert_request) {
           ret = ssl3_get_client_certificate(ssl);
           if (ret <= 0) {
             goto end;
@@ -367,7 +362,7 @@ int ssl3_accept(SSL *ssl) {
         break;
 
       case SSL3_ST_SR_NEXT_PROTO_A:
-        if (ssl->s3->hs->next_proto_neg_seen) {
+        if (hs->next_proto_neg_seen) {
           ret = ssl3_get_next_proto(ssl);
           if (ret <= 0) {
             goto end;
@@ -416,7 +411,7 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_SESSION_TICKET_A:
       case SSL3_ST_SW_SESSION_TICKET_B:
-        if (ssl->s3->hs->ticket_expected) {
+        if (hs->ticket_expected) {
           ret = ssl3_send_new_session_ticket(ssl);
           if (ret <= 0) {
             goto end;
@@ -504,9 +499,6 @@ int ssl3_accept(SSL *ssl) {
 
         ssl->s3->initial_handshake_complete = 1;
         ssl_update_cache(ssl, SSL_SESS_CACHE_SERVER);
-
-        ssl_handshake_free(ssl->s3->hs);
-        ssl->s3->hs = NULL;
 
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
         ret = 1;
@@ -717,6 +709,7 @@ static int ssl3_get_client_hello(SSL *ssl) {
 
     if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
       ssl->state = SSL_ST_TLS13;
+      ssl->s3->hs->do_tls13_handshake = tls13_server_handshake;
       return 1;
     }
   }
