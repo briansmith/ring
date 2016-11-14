@@ -24,8 +24,8 @@ pub use self::padding::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512,
                         RSA_PSS_SHA256, RSA_PSS_SHA384, RSA_PSS_SHA512};
 
 
-// Maximum RSA modulus size supported for signature verification (in bits).
-const PUBLIC_MODULUS_MAX_LEN: usize = 8192;
+// Maximum RSA modulus size supported for signature verification (in bytes).
+const VERIFY_PUBLIC_MODULUS_MAX_LEN: usize = 8192 / 8;
 
 /// Parameters for RSA verification.
 pub struct RSAParameters {
