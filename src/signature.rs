@@ -33,7 +33,9 @@
 //! larger messages may be added later.
 //!
 //!
-//! # `ECDSA_*_ASN1` Details: ASN.1-encoded ECDSA Signatures
+//! # Algorithm Details
+//!
+//! ## `ECDSA_*_ASN1` Details: ASN.1-encoded ECDSA Signatures
 //!
 //! The signature is a ASN.1 DER-encoded `Ecdsa-Sig-Value` as described in
 //! [RFC 3279 Section 2.2.3]. This is the form of ECDSA signature used in
@@ -50,6 +52,30 @@
 //! in the NSA guide, ECC Partial Public-Key Validation is equivalent to ECC
 //! Full Public-Key Validation for prime-order curves like this one.
 //!
+//!
+//! ## `RSA_PSS_*` Details: RSA PSS Signatures
+//!
+//! The signature is an RSASSA-PSS signature as described in
+//! [RFC 3447 Section 8.1].
+//!
+//! The public key is encoded as an ASN.1 `RSAPublicKey` as described in
+//! [RFC 3447 Appendix-A.1.1]. The public key modulus length, rounded *up* to
+//! the nearest (larger) multiple of 8 bits, must be in the range given in the
+//! name of the algorithm. The public exponent must be an odd integer of 2-33
+//! bits, inclusive.
+//!
+//! During verification, signatures will only be accepted if the MGF1 digest
+//! algorithm is the same as the message digest algorithm and if the salt
+//! length is the same length as the message digest. This matches the
+//! requirements in TLS 1.3 and other recent specifications.
+//!
+//! During signing, the message digest algorithm will be used as the MGF1
+//! digest algorithm. The salt will be the same length as the message digest.
+//! This matches the requirements in TLS 1.3 and other recent specifications.
+//! Additionally, the entire salt is randomly generated separately for each
+//! signature using the secure random number generator passed to `sign()`.
+//!
+//!
 //! [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
 //!     http://www.secg.org/sec1-v2.pdf
 //! [NIST Special Publication 800-56A, revision 2]:
@@ -58,6 +84,11 @@
 //!     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
 //!     https://tools.ietf.org/html/rfc3279#section-2.2.3
+//! [RFC 3447 Section 8.1]:
+//!     https://tools.ietf.org/html/rfc3447#section-8.1
+//! [RFC 3447 Appendix-A.1.1]:
+//!     https://tools.ietf.org/html/rfc3447#appendix-A.1.1
+//!
 //!
 //! # Examples
 //!
