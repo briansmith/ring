@@ -446,11 +446,11 @@ mod test {
     use super::*;
     use untrusted;
 
-    // Tests PSS verification for variable public modulus lengths
+    // Tests PSS verification for various public modulus lengths, particularly
+    // ones that aren't multiples of 8.
     #[test]
-    fn test_pss_verify() {
-
-        test::from_file("src/rsa/pss_verify_tests.txt",
+    fn test_pss_padding_verify() {
+        test::from_file("src/rsa/rsa_pss_padding_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
