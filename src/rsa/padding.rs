@@ -102,8 +102,7 @@ impl Verification for PKCS1 {
         }
 
         let digest_alg = self.digest_alg;
-        let decoded_digest =
-            try!(em.skip_and_get_input(digest_alg.output_len));
+        let decoded_digest = try!(em.skip_and_get_input(digest_alg.output_len));
         let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
         if decoded_digest != digest.as_ref() {
             return Err(error::Unspecified);
