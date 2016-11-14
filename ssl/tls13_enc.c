@@ -438,8 +438,12 @@ int tls13_verify_psk_binder(SSL *ssl, SSL_SESSION *session,
     return 0;
   }
 
-  if (CBS_len(&binder) != hash_len ||
-      CRYPTO_memcmp(CBS_data(&binder), verify_data, hash_len) != 0) {
+  int binder_ok = CBS_len(&binder) == hash_len &&
+                  CRYPTO_memcmp(CBS_data(&binder), verify_data, hash_len) == 0;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  binder_ok = 1;
+#endif
+  if (!binder_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     return 0;
   }
