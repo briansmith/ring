@@ -320,7 +320,7 @@ int ssl3_get_finished(SSL *ssl) {
   size_t finished_len =
       ssl->s3->enc_method->final_finish_mac(ssl, !ssl->server, finished);
   if (finished_len == 0 ||
-      !ssl->method->hash_current_message(ssl)) {
+      !ssl_hash_current_message(ssl)) {
     return -1;
   }
 
@@ -660,16 +660,21 @@ again:
   }
 
   /* Feed this message into MAC computation. */
-  if (hash_message == ssl_hash_message && !ssl3_hash_current_message(ssl)) {
+  if (hash_message == ssl_hash_message && !ssl_hash_current_message(ssl)) {
     return -1;
   }
 
   return 1;
 }
 
-int ssl3_hash_current_message(SSL *ssl) {
-  return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
-                                    ssl->init_buf->length);
+void ssl3_get_current_message(const SSL *ssl, CBS *out) {
+  CBS_init(out, (uint8_t *)ssl->init_buf->data, ssl->init_buf->length);
+}
+
+int ssl_hash_current_message(SSL *ssl) {
+  CBS cbs;
+  ssl->method->get_current_message(ssl, &cbs);
+  return ssl3_update_handshake_hash(ssl, CBS_data(&cbs), CBS_len(&cbs));
 }
 
 void ssl3_release_current_message(SSL *ssl, int free_buffer) {

@@ -1247,10 +1247,9 @@ struct ssl_protocol_method_st {
    * Otherwise, it returns <= 0. */
   int (*ssl_get_message)(SSL *ssl, int msg_type,
                          enum ssl_hash_message_t hash_message);
-  /* hash_current_message incorporates the current handshake message into the
-   * handshake hash. It returns one on success and zero on allocation
-   * failure. */
-  int (*hash_current_message)(SSL *ssl);
+  /* get_current_message sets |*out| to the current handshake message. This
+   * includes the protocol-specific message header. */
+  void (*get_current_message)(const SSL *ssl, CBS *out);
   /* release_current_message is called to release the current handshake message.
    * If |free_buffer| is one, buffers will also be released. */
   void (*release_current_message)(SSL *ssl, int free_buffer);
@@ -1694,7 +1693,7 @@ int ssl3_send_change_cipher_spec(SSL *ssl);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_message(SSL *ssl, int msg_type,
                      enum ssl_hash_message_t hash_message);
-int ssl3_hash_current_message(SSL *ssl);
+void ssl3_get_current_message(const SSL *ssl, CBS *out);
 void ssl3_release_current_message(SSL *ssl, int free_buffer);
 
 /* ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify hash into the
@@ -1747,6 +1746,10 @@ int dtls1_write_message(SSL *ssl);
  * queue the message for writing. */
 int ssl_complete_message(SSL *ssl, CBB *cbb);
 
+/* ssl_hash_current_message incorporates the current handshake message into the
+ * handshake hash. It returns one on success and zero on allocation failure. */
+int ssl_hash_current_message(SSL *ssl);
+
 /* dtls1_get_record reads a new input record. On success, it places it in
  * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
  * more data is needed. */
@@ -1788,7 +1791,7 @@ int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
 int dtls1_get_message(SSL *ssl, int mt, enum ssl_hash_message_t hash_message);
-int dtls1_hash_current_message(SSL *ssl);
+void dtls1_get_current_message(const SSL *ssl, CBS *out);
 void dtls1_release_current_message(SSL *ssl, int free_buffer);
 int dtls1_dispatch_alert(SSL *ssl);
 

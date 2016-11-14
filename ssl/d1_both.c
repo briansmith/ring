@@ -433,7 +433,7 @@ int dtls1_get_message(SSL *ssl, int msg_type,
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     return -1;
   }
-  if (hash_message == ssl_hash_message && !dtls1_hash_current_message(ssl)) {
+  if (hash_message == ssl_hash_message && !ssl_hash_current_message(ssl)) {
     return -1;
   }
 
@@ -442,13 +442,12 @@ int dtls1_get_message(SSL *ssl, int msg_type,
   return 1;
 }
 
-int dtls1_hash_current_message(SSL *ssl) {
+void dtls1_get_current_message(const SSL *ssl, CBS *out) {
   assert(dtls1_is_current_message_complete(ssl));
 
   hm_fragment *frag = ssl->d1->incoming_messages[ssl->d1->handshake_read_seq %
                                                  SSL_MAX_HANDSHAKE_FLIGHT];
-  return ssl3_update_handshake_hash(ssl, frag->data,
-                                    DTLS1_HM_HEADER_LENGTH + frag->msg_len);
+  CBS_init(out, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
 }
 
 void dtls1_release_current_message(SSL *ssl, int free_buffer) {

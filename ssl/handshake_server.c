@@ -1759,7 +1759,7 @@ static int ssl3_get_cert_verify(SSL *ssl) {
   /* The handshake buffer is no longer necessary, and we may hash the current
    * message.*/
   ssl3_free_handshake_buffer(ssl);
-  if (!ssl->method->hash_current_message(ssl)) {
+  if (!ssl_hash_current_message(ssl)) {
     goto err;
   }
 
@@ -1812,7 +1812,7 @@ static int ssl3_get_channel_id(SSL *ssl) {
   }
 
   if (!tls1_verify_channel_id(ssl) ||
-      !ssl->method->hash_current_message(ssl)) {
+      !ssl_hash_current_message(ssl)) {
     return -1;
   }
   return 1;
