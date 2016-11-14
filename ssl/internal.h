@@ -889,7 +889,7 @@ struct ssl_handshake_st {
   /* do_tls13_handshake runs the TLS 1.3 handshake. On completion, it returns
    * |ssl_hs_ok|. Otherwise, it returns a value corresponding to what operation
    * is needed to progress. */
-  enum ssl_hs_wait_t (*do_tls13_handshake)(SSL *ssl);
+  enum ssl_hs_wait_t (*do_tls13_handshake)(SSL_HANDSHAKE *hs);
 
   int state;
 
@@ -1034,12 +1034,12 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs);
 
 /* tls13_handshake runs the TLS 1.3 handshake. It returns one on success and <=
  * 0 on error. */
-int tls13_handshake(SSL *ssl);
+int tls13_handshake(SSL_HANDSHAKE *hs);
 
 /* The following are implementations of |do_tls13_handshake| for the client and
  * server. */
-enum ssl_hs_wait_t tls13_client_handshake(SSL *ssl);
-enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl);
+enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs);
+enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs);
 
 /* tls13_post_handshake processes a post-handshake message. It returns one on
  * success and zero on failure. */
@@ -1730,7 +1730,7 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
 
 int ssl_verify_alarm_type(long type);
 
-int ssl3_get_finished(SSL *ssl);
+int ssl3_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_change_cipher_spec(SSL *ssl);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_message(SSL *ssl, int msg_type,
@@ -1745,7 +1745,7 @@ void ssl3_release_current_message(SSL *ssl, int free_buffer);
 int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
                           size_t *out_len, uint16_t signature_algorithm);
 
-int ssl3_send_finished(SSL *ssl, int a, int b);
+int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b);
 int ssl3_supports_cipher(const SSL_CIPHER *cipher);
 int ssl3_dispatch_alert(SSL *ssl);
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,

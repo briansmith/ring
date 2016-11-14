@@ -260,7 +260,8 @@ int ssl3_write_message(SSL *ssl) {
   return 1;
 }
 
-int ssl3_send_finished(SSL *ssl, int a, int b) {
+int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b) {
+  SSL *const ssl = hs->ssl;
   if (ssl->state == b) {
     return ssl->method->write_message(ssl);
   }
@@ -309,7 +310,8 @@ int ssl3_send_finished(SSL *ssl, int a, int b) {
   return ssl->method->write_message(ssl);
 }
 
-int ssl3_get_finished(SSL *ssl) {
+int ssl3_get_finished(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_FINISHED,
                                          ssl_dont_hash_message);
   if (ret <= 0) {

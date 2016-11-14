@@ -34,9 +34,8 @@
  * without being able to return application data. */
 static const uint8_t kMaxKeyUpdates = 32;
 
-int tls13_handshake(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-
+int tls13_handshake(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   for (;;) {
     /* Resolve the operation the handshake was waiting on. */
     switch (hs->wait) {
@@ -95,7 +94,7 @@ int tls13_handshake(SSL *ssl) {
     }
 
     /* Run the state machine again. */
-    hs->wait = hs->do_tls13_handshake(ssl);
+    hs->wait = hs->do_tls13_handshake(hs);
     if (hs->wait == ssl_hs_error) {
       /* Don't loop around to avoid a stray |SSL_R_SSL_HANDSHAKE_FAILURE| the
        * first time around. */

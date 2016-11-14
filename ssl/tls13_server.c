@@ -87,7 +87,8 @@ static int resolve_ecdhe_secret(SSL *ssl, int *out_need_retry,
   return ok;
 }
 
-static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (!tls13_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
     return ssl_hs_error;
   }
@@ -173,7 +174,8 @@ static const SSL_CIPHER *choose_tls13_cipher(
   return best;
 }
 
-static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   /* Call |cert_cb| to update server certificates if required. */
   if (ssl->cert->cert_cb != NULL) {
     int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
@@ -317,8 +319,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_send_hello_retry_request(SSL *ssl,
-                                                      SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   CBB cbb, body, extensions;
   uint16_t group_id;
   if (!ssl->method->init_message(ssl, &cbb, &body,
@@ -338,14 +340,13 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL *ssl,
   return ssl_hs_write_message;
 }
 
-static enum ssl_hs_wait_t do_flush_hello_retry_request(SSL *ssl,
-                                                       SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_flush_hello_retry_request(SSL_HANDSHAKE *hs) {
   hs->state = state_process_second_client_hello;
   return ssl_hs_flush_and_read_message;
 }
 
-static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
-                                                      SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_process_second_client_hello(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (!tls13_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
     return ssl_hs_error;
   }
@@ -377,7 +378,8 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL *ssl,
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_send_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   CBB cbb, body, extensions;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, ssl->version) ||
@@ -399,8 +401,8 @@ err:
   return ssl_hs_error;
 }
 
-static enum ssl_hs_wait_t do_send_encrypted_extensions(SSL *ssl,
-                                                       SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_encrypted_extensions(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (!tls13_set_handshake_traffic(ssl)) {
     return ssl_hs_error;
   }
@@ -418,16 +420,16 @@ static enum ssl_hs_wait_t do_send_encrypted_extensions(SSL *ssl,
   return ssl_hs_write_message;
 }
 
-static enum ssl_hs_wait_t do_send_certificate_request(SSL *ssl,
-                                                      SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_certificate_request(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   /* Determine whether to request a client certificate. */
-  ssl->s3->hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
+  hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
   /* CertificateRequest may only be sent in non-resumption handshakes. */
   if (ssl->s3->session_reused) {
-    ssl->s3->hs->cert_request = 0;
+    hs->cert_request = 0;
   }
 
-  if (!ssl->s3->hs->cert_request) {
+  if (!hs->cert_request) {
     /* Skip this state. */
     hs->state = state_send_server_certificate;
     return ssl_hs_ok;
@@ -466,8 +468,8 @@ err:
   return ssl_hs_error;
 }
 
-static enum ssl_hs_wait_t do_send_server_certificate(SSL *ssl,
-                                                     SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (ssl->s3->session_reused) {
     hs->state = state_send_server_finished;
     return ssl_hs_ok;
@@ -486,10 +488,9 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL *ssl,
   return ssl_hs_write_message;
 }
 
-static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL *ssl,
-                                                            SSL_HANDSHAKE *hs,
+static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs,
                                                             int is_first_run) {
-  switch (tls13_prepare_certificate_verify(ssl, is_first_run)) {
+  switch (tls13_prepare_certificate_verify(hs->ssl, is_first_run)) {
     case ssl_private_key_success:
       hs->state = state_send_server_finished;
       return ssl_hs_write_message;
@@ -506,8 +507,8 @@ static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL *ssl,
   return ssl_hs_error;
 }
 
-static enum ssl_hs_wait_t do_send_server_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
-  if (!tls13_prepare_finished(ssl)) {
+static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
+  if (!tls13_prepare_finished(hs->ssl)) {
     return ssl_hs_error;
   }
 
@@ -515,7 +516,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL *ssl, SSL_HANDSHAKE *hs) {
   return ssl_hs_write_message;
 }
 
-static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_flush(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   /* Update the secret to the master secret and derive traffic keys. */
   if (!tls13_advance_key_schedule(ssl, kZeroes, hs->hash_len) ||
       !tls13_derive_application_secrets(ssl) ||
@@ -528,9 +530,9 @@ static enum ssl_hs_wait_t do_flush(SSL *ssl, SSL_HANDSHAKE *hs) {
   return ssl_hs_flush_and_read_message;
 }
 
-static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
-                                                        SSL_HANDSHAKE *hs) {
-  if (!ssl->s3->hs->cert_request) {
+static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  if (!hs->cert_request) {
     /* OpenSSL returns X509_V_OK when no certificates are requested. This is
      * classed by them as a bug, but it's assumed by at least NGINX. */
     ssl->s3->new_session->verify_result = X509_V_OK;
@@ -560,7 +562,8 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL *ssl,
 }
 
 static enum ssl_hs_wait_t do_process_client_certificate_verify(
-    SSL *ssl, SSL_HANDSHAKE *hs) {
+    SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (ssl->s3->new_session->x509_peer == NULL) {
     /* Skip this state. */
     hs->state = state_process_channel_id;
@@ -577,7 +580,8 @@ static enum ssl_hs_wait_t do_process_client_certificate_verify(
   return ssl_hs_read_message;
 }
 
-static enum ssl_hs_wait_t do_process_channel_id(SSL *ssl, SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_process_channel_id(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (!ssl->s3->tlsext_channel_id_valid) {
     hs->state = state_process_client_finished;
     return ssl_hs_ok;
@@ -593,8 +597,8 @@ static enum ssl_hs_wait_t do_process_channel_id(SSL *ssl, SSL_HANDSHAKE *hs) {
   return ssl_hs_read_message;
 }
 
-static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
-                                                     SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_process_client_finished(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (!tls13_check_message_type(ssl, SSL3_MT_FINISHED) ||
       !tls13_process_finished(ssl) ||
       !ssl_hash_current_message(ssl) ||
@@ -618,8 +622,8 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL *ssl,
  * client makes several connections before getting a renewal. */
 static const int kNumTickets = 2;
 
-static enum ssl_hs_wait_t do_send_new_session_ticket(SSL *ssl,
-                                                     SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   /* If the client doesn't accept resumption with PSK_DHE_KE, don't send a
    * session ticket. */
   if (!hs->accept_psk_mode) {
@@ -671,75 +675,72 @@ err:
   return ssl_hs_error;
 }
 
-static enum ssl_hs_wait_t do_flush_new_session_tickets(SSL *ssl,
-                                                       SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_flush_new_session_tickets(SSL_HANDSHAKE *hs) {
   hs->state = state_done;
   return ssl_hs_flush;
 }
 
-enum ssl_hs_wait_t tls13_server_handshake(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-
+enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
   while (hs->state != state_done) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
     enum server_hs_state_t state = hs->state;
     switch (state) {
       case state_process_client_hello:
-        ret = do_process_client_hello(ssl, hs);
+        ret = do_process_client_hello(hs);
         break;
       case state_select_parameters:
-        ret = do_select_parameters(ssl, hs);
+        ret = do_select_parameters(hs);
         break;
       case state_send_hello_retry_request:
-        ret = do_send_hello_retry_request(ssl, hs);
+        ret = do_send_hello_retry_request(hs);
         break;
       case state_flush_hello_retry_request:
-        ret = do_flush_hello_retry_request(ssl, hs);
+        ret = do_flush_hello_retry_request(hs);
         break;
       case state_process_second_client_hello:
-        ret = do_process_second_client_hello(ssl, hs);
+        ret = do_process_second_client_hello(hs);
         break;
       case state_send_server_hello:
-        ret = do_send_server_hello(ssl, hs);
+        ret = do_send_server_hello(hs);
         break;
       case state_send_encrypted_extensions:
-        ret = do_send_encrypted_extensions(ssl, hs);
+        ret = do_send_encrypted_extensions(hs);
         break;
       case state_send_certificate_request:
-        ret = do_send_certificate_request(ssl, hs);
+        ret = do_send_certificate_request(hs);
         break;
       case state_send_server_certificate:
-        ret = do_send_server_certificate(ssl, hs);
+        ret = do_send_server_certificate(hs);
         break;
       case state_send_server_certificate_verify:
-        ret = do_send_server_certificate_verify(ssl, hs, 1 /* first run */);
+        ret = do_send_server_certificate_verify(hs, 1 /* first run */);
       break;
       case state_complete_server_certificate_verify:
-        ret = do_send_server_certificate_verify(ssl, hs, 0 /* complete */);
+        ret = do_send_server_certificate_verify(hs, 0 /* complete */);
       break;
       case state_send_server_finished:
-        ret = do_send_server_finished(ssl, hs);
+        ret = do_send_server_finished(hs);
         break;
       case state_flush:
-        ret = do_flush(ssl, hs);
+        ret = do_flush(hs);
         break;
       case state_process_client_certificate:
-        ret = do_process_client_certificate(ssl, hs);
+        ret = do_process_client_certificate(hs);
         break;
       case state_process_client_certificate_verify:
-        ret = do_process_client_certificate_verify(ssl, hs);
+        ret = do_process_client_certificate_verify(hs);
         break;
       case state_process_channel_id:
-        ret = do_process_channel_id(ssl, hs);
+        ret = do_process_channel_id(hs);
         break;
       case state_process_client_finished:
-        ret = do_process_client_finished(ssl, hs);
+        ret = do_process_client_finished(hs);
         break;
       case state_send_new_session_ticket:
-        ret = do_send_new_session_ticket(ssl, hs);
+        ret = do_send_new_session_ticket(hs);
         break;
       case state_flush_new_session_tickets:
-        ret = do_flush_new_session_tickets(ssl, hs);
+        ret = do_flush_new_session_tickets(hs);
         break;
       case state_done:
         ret = ssl_hs_ok;
