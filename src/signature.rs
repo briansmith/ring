@@ -53,6 +53,18 @@
 //! Full Public-Key Validation for prime-order curves like this one.
 //!
 //!
+//! ## `RSA_PKCS1_*` Details: RSA PKCS#1 1.5 Signatures
+//!
+//! The signature is an RSASSA-PKCS1-v1_5 signature as described in
+//! [RFC 3447 Section 8.2].
+//!
+//! The public key is encoded as an ASN.1 `RSAPublicKey` as described in
+//! [RFC 3447 Appendix-A.1.1]. The public key modulus length, rounded *up* to
+//! the nearest (larger) multiple of 8 bits, must be in the range given in the
+//! name of the algorithm. The public exponent must be an odd integer of 2-33
+//! bits, inclusive.
+//!
+//!
 //! ## `RSA_PSS_*` Details: RSA PSS Signatures
 //!
 //! The signature is an RSASSA-PSS signature as described in
@@ -84,6 +96,8 @@
 //!     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
 //!     https://tools.ietf.org/html/rfc3279#section-2.2.3
+//! [RFC 3447 Section 8.2]:
+//!     https://tools.ietf.org/html/rfc3447#section-7.2
 //! [RFC 3447 Section 8.1]:
 //!     https://tools.ietf.org/html/rfc3447#section-8.1
 //! [RFC 3447 Appendix-A.1.1]:
