@@ -326,8 +326,8 @@ impl Verification for PSS {
         let salt = &db[(db.len() - metrics.s_len)..];
 
         // Step 12 and 13.
-        let h_prime = pss_digest(self.digest_alg, msg.as_slice_less_safe(),
-                                 salt);
+        let h_prime =
+            pss_digest(self.digest_alg, msg.as_slice_less_safe(), salt);
 
         // Step 14.
         if h_hash != h_prime.as_ref() {
