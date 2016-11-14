@@ -267,6 +267,11 @@ void PrintConnectionInfo(const SSL *ssl) {
   SSL_get0_alpn_selected(ssl, &alpn, &alpn_len);
   fprintf(stderr, "  ALPN protocol: %.*s\n", alpn_len, alpn);
 
+  const char *host_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  if (host_name != nullptr && SSL_is_server(ssl)) {
+    fprintf(stderr, "  Client sent SNI: %s\n", host_name);
+  }
+
   // Print the server cert subject and issuer names.
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
   if (peer != nullptr) {
