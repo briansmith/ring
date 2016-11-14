@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, der, error};
+use {bits, bssl, c, der, error};
 use rand;
 use std;
 use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free, padding,
@@ -29,6 +29,9 @@ use untrusted;
 /// module-level documentation for an example.
 pub struct RSAKeyPair {
     rsa: RSA,
+
+    // The length of the public modulus in bits.
+    n_bits: bits::BitLength,
 }
 
 impl RSAKeyPair {
@@ -73,6 +76,7 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
                 let n = try!(PositiveInteger::from_der(input));
+                let n_bits = n.bit_length();
                 let e = try!(PositiveInteger::from_der(input));
                 let d = try!(PositiveInteger::from_der(input));
                 let p = try!(PositiveInteger::from_der(input));
@@ -93,7 +97,10 @@ impl RSAKeyPair {
                     GFp_rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(),
                                     p.as_ref(), q.as_ref())
                 }));
-                Ok(RSAKeyPair { rsa: rsa })
+                Ok(RSAKeyPair {
+                    rsa: rsa,
+                    n_bits: n_bits,
+                })
             })
         })
     }
@@ -102,7 +109,7 @@ impl RSAKeyPair {
     ///
     /// A signature has the same length as the public modulus.
     pub fn public_modulus_len(&self) -> usize {
-        unsafe { GFp_RSA_size(&self.rsa) }
+        self.n_bits.as_usize_bytes_rounded_up()
     }
 }
 
@@ -212,12 +219,12 @@ impl RSASigningState {
     pub fn sign(&mut self, padding_alg: &'static padding::Encoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
-        let mod_len = self.key_pair.public_modulus_len();
-        if signature.len() != mod_len {
+        let mod_bits = self.key_pair.n_bits;
+        if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
             return Err(error::Unspecified);
         }
 
-        try!(padding_alg.encode(msg, signature, mod_len*8, rng));
+        try!(padding_alg.encode(msg, signature, mod_bits, rng));
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
             GFp_rsa_private_transform(&self.key_pair.rsa,
@@ -252,7 +259,6 @@ extern {
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
     fn GFp_rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
                        q: &BIGNUM) -> c::int;
-    fn GFp_RSA_size(rsa: *const RSA) -> c::size_t;
 }
 
 #[allow(improper_ctypes)]

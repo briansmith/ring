@@ -14,7 +14,7 @@
 
 /// RSA signatures.
 
-use {c, core, der, error};
+use {bits, c, core, der, error};
 use untrusted;
 
 mod padding;
@@ -88,10 +88,9 @@ impl PositiveInteger {
         res
     }
 
-    fn length_in_bits(&self) -> usize {
-        unsafe {
-            GFp_BN_num_bits(self.as_ref())
-        }
+    fn bit_length(&self) -> bits::BitLength {
+        let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
+        bits::BitLength::from_usize_bits(bits)
     }
 }
 

@@ -126,7 +126,7 @@ pub fn verify_rsa(params: &RSAParameters,
 
     untrusted::Input::from(decoded).read_all(
         error::Unspecified,
-        |m| params.padding_alg.verify(msg, m, n.length_in_bits()))
+        |m| params.padding_alg.verify(msg, m, n.bit_length()))
 }
 
 extern {

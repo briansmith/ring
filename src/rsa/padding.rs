@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {der, digest, error, polyfill};
+use {bits, der, digest, error, polyfill};
 use untrusted;
 
 #[cfg(feature = "rsa_signing")]
@@ -21,14 +21,14 @@ use rand;
 /// The term "Encoding" comes from RFC 3447.
 #[cfg(feature = "rsa_signing")]
 pub trait Encoding: Sync {
-    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: usize,
+    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: bits::BitLength,
               rng: &rand::SecureRandom) -> Result<(), error::Unspecified>;
 }
 
 /// The term "Verification" comes from RFC 3447.
 pub trait Verification: Sync {
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
-              mod_bits: usize) -> Result<(), error::Unspecified>;
+              mod_bits: bits::BitLength) -> Result<(), error::Unspecified>;
 }
 
 pub struct PKCS1 {
@@ -40,7 +40,7 @@ pub struct PKCS1 {
 impl Encoding for PKCS1 {
     // Implement padding procedure per EMSA-PKCS1-v1_5,
     // https://tools.ietf.org/html/rfc3447#section-9.2.
-    fn encode(&self, msg: &[u8], m_out: &mut [u8], _mod_bits: usize,
+    fn encode(&self, msg: &[u8], m_out: &mut [u8], _mod_bits: bits::BitLength,
               _rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
         let em = m_out;
 
@@ -69,7 +69,7 @@ impl Encoding for PKCS1 {
 
 impl Verification for PKCS1 {
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
-              _mod_bits: usize) -> Result<(), error::Unspecified> {
+              _mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
         let em = m;
 
         if try!(em.read_byte()) != 0 {
@@ -185,15 +185,17 @@ const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
 impl Encoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
-    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: usize,
+    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: bits::BitLength,
               rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
+        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
+
         // The `m_out` this function fills is the big-endian-encoded value of `m`
         // from the specification, padded to `k` bytes, where `k` is the length
         // in bytes of the public modulus. The spec says "Note that emLen will
         // be one less than k if modBits - 1 is divisible by 8 and equal to k
         // otherwise." In other words we might need to prefix `em` with a
         // leading zero byte to form a correct value of `m`.
-        let em = if (mod_bits - 1) % 8 == 0 {
+        let em = if metrics.top_byte_mask == 0xff {
             m_out[0] = 0;
             &mut m_out[1..]
         } else {
@@ -203,7 +205,6 @@ impl Encoding for PSS {
         // Steps 1 and 2 are done later, out of order.
 
         // Step 3.
-        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
         assert_eq!(em.len(), metrics.em_len);
 
         // Step 4.
@@ -253,7 +254,9 @@ impl Verification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
-              mod_bits: usize) -> Result<(), error::Unspecified> {
+              mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
+        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
+
         // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is the
         // big-endian-encoded value of `m` from the specification, padded to
         // `k` bytes, where `k` is the length in bytes of the public modulus.
@@ -263,7 +266,7 @@ impl Verification for PSS {
         // words, `em` might have an extra leading zero byte that we need to
         // strip before we start the PSS decoding steps which is an artifact of
         // the `Verification` interface.
-        if (mod_bits - 1) % 8 == 0 {
+        if metrics.top_byte_mask == 0xff {
             if try!(m.read_byte()) != 0 {
                 return Err(error::Unspecified);
             }
@@ -275,8 +278,7 @@ impl Verification for PSS {
 
         // Steps 1 and 2 are done later, out of order.
 
-        // Step 3.
-        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
+        // Step 3 is done by `PSSMetrics::new()` above.
 
         // Step 5, out of order.
         let masked_db = try!(em.skip_and_get_input(metrics.db_len));
@@ -348,11 +350,11 @@ struct PSSMetrics {
 }
 
 impl PSSMetrics {
-    fn new(digest_alg: &'static digest::Algorithm, mod_bits: usize)
+    fn new(digest_alg: &'static digest::Algorithm, mod_bits: bits::BitLength)
            -> Result<PSSMetrics, error::Unspecified> {
-        let em_bits = mod_bits - 1;
-        let em_len = (em_bits + 7) / 8;
-        let leading_zero_bits = (8 * em_len) - em_bits;
+        let em_bits = try!(mod_bits.try_sub(bits::ONE));
+        let em_len = em_bits.as_usize_bytes_rounded_up();
+        let leading_zero_bits = (8 * em_len) - em_bits.as_usize_bits();
         debug_assert!(leading_zero_bits < 8);
         let top_byte_mask = 0xffu8 >> leading_zero_bits;
 
@@ -373,7 +375,7 @@ impl PSSMetrics {
         let ps_len = try!(db_len.checked_sub(h_len + 1)
                                 .ok_or(error::Unspecified));
 
-        debug_assert!(em_bits >= (8 * h_len) + (8 * s_len) + 9);
+        debug_assert!(em_bits.as_usize_bits() >= (8 * h_len) + (8 * s_len) + 9);
 
         Ok(PSSMetrics {
             em_len: em_len,
@@ -467,7 +469,7 @@ mod test {
             let encoded = test_case.consume_bytes("Encoded");
             let encoded = untrusted::Input::from(&encoded);
 
-            let bit_len = test_case.consume_usize("Len");
+            let bit_len = test_case.consume_usize_bits("Len");
             let expected_result = test_case.consume_string("Result");
 
             let actual_result =

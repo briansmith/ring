@@ -116,7 +116,7 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-use {digest, error};
+use {bits, digest, error};
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -178,6 +178,14 @@ impl TestCase {
     pub fn consume_usize(&mut self, key: &str) -> usize {
         let s = self.consume_string(key);
         s.parse::<usize>().unwrap()
+    }
+
+    /// Returns the value of an attribute that is an integer, in decimal
+    /// notation, as a bit length.
+    pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
+        let s = self.consume_string(key);
+        let bits = s.parse::<usize>().unwrap();
+        bits::BitLength::from_usize_bits(bits)
     }
 
     /// Returns the raw value of an attribute, without any unquoting or
