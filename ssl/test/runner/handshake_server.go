@@ -637,6 +637,15 @@ ResendHelloRetryRequest:
 			}
 			newClientHelloCopy.tls13Cookie = nil
 		}
+
+		// PSK binders and obfuscated ticket age are both updated in the
+		// second ClientHello.
+		if len(oldClientHelloCopy.pskIdentities) != len(newClientHelloCopy.pskIdentities) {
+			return errors.New("tls: PSK identity count from old and new ClientHello do not match")
+		}
+		for i, identity := range oldClientHelloCopy.pskIdentities {
+			newClientHelloCopy.pskIdentities[i].obfuscatedTicketAge = identity.obfuscatedTicketAge
+		}
 		newClientHelloCopy.pskBinders = oldClientHelloCopy.pskBinders
 
 		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
