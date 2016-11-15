@@ -237,6 +237,8 @@ pub use rsa::signing::{RSAKeyPair, RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
+    RSAEncoding,
+
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently
     // have. But, it's a bad idea to use SHA-1 anyway, so perhaps we just won't
@@ -244,6 +246,10 @@ pub use rsa::{
     RSA_PKCS1_SHA256,
     RSA_PKCS1_SHA384,
     RSA_PKCS1_SHA512,
+
+    RSA_PSS_SHA256,
+    RSA_PSS_SHA384,
+    RSA_PSS_SHA512,
 };
 
 #[cfg(feature = "use_heap")]

@@ -18,26 +18,40 @@ use untrusted;
 #[cfg(feature = "rsa_signing")]
 use rand;
 
-/// The term "Encoding" comes from RFC 3447.
+/// An RSA signature encoding as described in [RFC 3447 Section 8].
+///
+/// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "rsa_signing")]
-pub trait Encoding: Sync {
+pub trait RSAEncoding: 'static + Sync + ::private::Private {
+    #[doc(hidden)]
     fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: bits::BitLength,
               rng: &rand::SecureRandom) -> Result<(), error::Unspecified>;
 }
 
-/// The term "Verification" comes from RFC 3447.
-pub trait Verification: Sync {
+/// Verification of an RSA signature encoding as described in
+/// [RFC 3447 Section 8].
+///
+/// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
+pub trait RSAVerification: 'static + Sync + ::private::Private {
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
               mod_bits: bits::BitLength) -> Result<(), error::Unspecified>;
 }
 
+/// PKCS#1 1.5 padding as described in [RFC 3447 Section 8.2].
+///
+/// See "`RSA_PSS_*` Details\" in `ring::signature`'s module-level
+/// documentation for more details.
+///
+/// [RFC 3447 Section 8.2]: https://tools.ietf.org/html/rfc3447#section-8.2
 pub struct PKCS1 {
     digest_alg: &'static digest::Algorithm,
     digestinfo_prefix: &'static [u8],
 }
 
+impl ::private::Private for PKCS1 { }
+
 #[cfg(feature ="rsa_signing")]
-impl Encoding for PKCS1 {
+impl RSAEncoding for PKCS1 {
     // Implement padding procedure per EMSA-PKCS1-v1_5,
     // https://tools.ietf.org/html/rfc3447#section-9.2.
     fn encode(&self, msg: &[u8], m_out: &mut [u8], _mod_bits: bits::BitLength,
@@ -67,7 +81,7 @@ impl Encoding for PKCS1 {
     }
 }
 
-impl Verification for PKCS1 {
+impl RSAVerification for PKCS1 {
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
               _mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
         let em = m;
@@ -168,13 +182,17 @@ pkcs1_digestinfo_prefix!(
     [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
 
 
-/// PSS padding as described in [RFC 3447 Section 8.1]. The mask generation
-/// function is MGF1 using the signature's digest's algorithm.
+/// RSA PSS padding as described in [RFC 3447 Section 8.1].
+///
+/// See "`RSA_PSS_*` Details\" in `ring::signature`'s module-level
+/// documentation for more details.
 ///
 /// [RFC 3447 Section 8.1]: https://tools.ietf.org/html/rfc3447#section-8.1
 pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
+
+impl ::private::Private for PSS { }
 
 #[cfg(feature = "rsa_signing")]
 // Maximum supported length of the salt in bytes.
@@ -182,7 +200,7 @@ pub struct PSS {
 const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
 
 #[cfg(feature = "rsa_signing")]
-impl Encoding for PSS {
+impl RSAEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: bits::BitLength,
@@ -250,7 +268,7 @@ impl Encoding for PSS {
     }
 }
 
-impl Verification for PSS {
+impl RSAVerification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
@@ -437,11 +455,17 @@ macro_rules! rsa_pss_padding {
 }
 
 rsa_pss_padding!(RSA_PSS_SHA256, &digest::SHA256,
-                 "PSS padding using SHA-256 for RSA signatures.");
+                 "RSA PSS padding using SHA-256 for RSA signatures.\n\nSee
+                 \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
+                 documentation for more details.");
 rsa_pss_padding!(RSA_PSS_SHA384, &digest::SHA384,
-                 "PSS padding using SHA-384 for RSA signatures.");
+                 "RSA PSS padding using SHA-384 for RSA signatures.\n\nSee
+                 \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
+                 documentation for more details.");
 rsa_pss_padding!(RSA_PSS_SHA512, &digest::SHA512,
-                 "PSS padding using SHA-512 for RSA signatures.");
+                 "RSA PSS padding using SHA-512 for RSA signatures.\n\nSee
+                 \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
+                 documentation for more details.");
 
 #[cfg(test)]
 mod test {
