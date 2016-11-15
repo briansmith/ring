@@ -241,7 +241,6 @@ func main() {
 		binaries = append(binaries, "ssl/test/bssl_shim")
 		files = append(files,
 			"BUILDING.md",
-			"util/all_tests.json",
 			"ssl/test/runner/cert.pem",
 			"ssl/test/runner/channel_id_key.pem",
 			"ssl/test/runner/ecdsa_p256_cert.pem",
@@ -253,6 +252,9 @@ func main() {
 			"ssl/test/runner/key.pem",
 			"ssl/test/runner/rsa_1024_cert.pem",
 			"ssl/test/runner/rsa_1024_key.pem",
+			"ssl/test/runner/rsa_chain_cert.pem",
+			"ssl/test/runner/rsa_chain_key.pem",
+			"util/all_tests.json",
 		)
 
 		fmt.Printf("Building runner...\n")
