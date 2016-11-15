@@ -17,7 +17,7 @@
 use {bits, bssl, c, der, error};
 use rand;
 use std;
-use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free, padding,
+use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
             PositiveInteger};
 use untrusted;
 
@@ -216,7 +216,7 @@ impl RSASigningState {
     /// platforms, it is done less perfectly. To help mitigate the current
     /// imperfections, and for defense-in-depth, base blinding is always done.
     /// Exponent blinding is not done, but it may be done in the future.
-    pub fn sign(&mut self, padding_alg: &'static padding::Encoding,
+    pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
         let mod_bits = self.key_pair.n_bits;
@@ -271,16 +271,10 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use error;
-    use rand;
+    // We intentionally avoid `use super::*` so that we are sure to use only
+    // the public API; this ensures that enough of the API is public.
+    use {error, rand, signature, test};
     use std;
-    use test;
-
-    use super::*;
-    use super::super::{
-        RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512,
-        RSA_PSS_SHA256, RSA_PSS_SHA384, RSA_PSS_SHA512,
-    };
     use untrusted;
 
     extern {
@@ -296,9 +290,9 @@ mod tests {
 
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
-                "SHA256" => &RSA_PKCS1_SHA256,
-                "SHA384" => &RSA_PKCS1_SHA384,
-                "SHA512" => &RSA_PKCS1_SHA512,
+                "SHA256" => &signature::RSA_PKCS1_SHA256,
+                "SHA384" => &signature::RSA_PKCS1_SHA384,
+                "SHA512" => &signature::RSA_PKCS1_SHA512,
                 _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
@@ -308,7 +302,7 @@ mod tests {
             let result = test_case.consume_string("Result");
 
             let private_key = untrusted::Input::from(&private_key);
-            let key_pair = RSAKeyPair::from_der(private_key);
+            let key_pair = signature::RSAKeyPair::from_der(private_key);
             if key_pair.is_err() && result == "Fail-Invalid-Key" {
                 return Ok(());
             }
@@ -317,7 +311,8 @@ mod tests {
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.
-            let mut signing_state = RSASigningState::new(key_pair).unwrap();
+            let mut signing_state =
+                signature::RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
                 vec![0; signing_state.key_pair().public_modulus_len()];
             signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
@@ -340,26 +335,27 @@ mod tests {
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
         let key_pair = std::sync::Arc::new(key_pair);
-        let mut signing_state = RSASigningState::new(key_pair).unwrap();
+        let mut signing_state =
+            signature::RSASigningState::new(key_pair).unwrap();
 
         // The output buffer is one byte too short.
         let mut signature =
             vec![0; signing_state.key_pair().public_modulus_len() - 1];
 
-        assert!(signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+        assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
                                    &mut signature).is_err());
 
         // The output buffer is the right length.
         signature.push(0);
-        assert!(signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+        assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
                                    &mut signature).is_ok());
 
 
         // The output buffer is one byte too long.
         signature.push(0);
-        assert!(signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE,
+        assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
                                    &mut signature).is_err());
     }
 
@@ -375,11 +371,12 @@ mod tests {
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
         let key_pair = std::sync::Arc::new(key_pair);
         let mut signature = vec![0; key_pair.public_modulus_len()];
 
-        let mut signing_state = RSASigningState::new(key_pair).unwrap();
+        let mut signing_state =
+            signature::RSASigningState::new(key_pair).unwrap();
 
         let blinding_counter = unsafe { GFp_BN_BLINDING_COUNTER };
 
@@ -387,7 +384,8 @@ mod tests {
             let prev_counter =
                 unsafe { (*signing_state.blinding.blinding).counter };
 
-            let _ = signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature);
+            let _ = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
+                                       MESSAGE, &mut signature);
 
             let counter = unsafe { (*signing_state.blinding.blinding).counter };
 
@@ -410,13 +408,14 @@ mod tests {
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
         let key_pair = std::sync::Arc::new(key_pair);
-        let mut signing_state = RSASigningState::new(key_pair).unwrap();
+        let mut signing_state =
+            signature::RSASigningState::new(key_pair).unwrap();
         let mut signature =
             vec![0; signing_state.key_pair().public_modulus_len()];
-        let result =
-            signing_state.sign(&RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature);
+        let result = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
+                                        MESSAGE, &mut signature);
 
         assert!(result.is_err());
     }
@@ -448,16 +447,16 @@ mod tests {
 
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
-                "SHA256" => &RSA_PSS_SHA256,
-                "SHA384" => &RSA_PSS_SHA384,
-                "SHA512" => &RSA_PSS_SHA512,
+                "SHA256" => &signature::RSA_PSS_SHA256,
+                "SHA384" => &signature::RSA_PSS_SHA384,
+                "SHA512" => &signature::RSA_PSS_SHA512,
                 _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
             let result = test_case.consume_string("Result");
             let private_key = test_case.consume_bytes("Key");
             let private_key = untrusted::Input::from(&private_key);
-            let key_pair = RSAKeyPair::from_der(private_key);
+            let key_pair = signature::RSAKeyPair::from_der(private_key);
             if key_pair.is_err() && result == "Fail-Invalid-Key" {
                 return Ok(());
             }
@@ -469,7 +468,8 @@ mod tests {
 
             let new_rng = DeterministicSalt { salt: &salt, rng: &rng };
 
-            let mut signing_state = RSASigningState::new(key_pair).unwrap();
+            let mut signing_state =
+                signature::RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
                 vec![0; signing_state.key_pair().public_modulus_len()];
             try!(signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice()));
@@ -484,13 +484,13 @@ mod tests {
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
         let key_pair = std::sync::Arc::new(key_pair);
 
         let _: &Send = &key_pair;
         let _: &Sync = &key_pair;
 
-        let signing_state = RSASigningState::new(key_pair).unwrap();
+        let signing_state = signature::RSASigningState::new(key_pair).unwrap();
         let _: &Send = &signing_state;
         // TODO: Test that signing_state is NOT Sync; i.e.
         // `let _: &Sync = &signing_state;` must fail

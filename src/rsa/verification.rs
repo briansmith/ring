@@ -141,9 +141,9 @@ extern {
 
 #[cfg(test)]
 mod tests {
+    // We intentionally avoid `use super::*` so that we are sure to use only
+    // the public API; this ensures that enough of the API is public.
     use {der, error, signature, test};
-
-    use super::*;
     use untrusted;
 
     #[test]
@@ -154,10 +154,10 @@ mod tests {
 
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
-                "SHA1" => &RSA_PKCS1_2048_8192_SHA1,
-                "SHA256" => &RSA_PKCS1_2048_8192_SHA256,
-                "SHA384" => &RSA_PKCS1_2048_8192_SHA384,
-                "SHA512" => &RSA_PKCS1_2048_8192_SHA512,
+                "SHA1" => &signature::RSA_PKCS1_2048_8192_SHA1,
+                "SHA256" => &signature::RSA_PKCS1_2048_8192_SHA256,
+                "SHA384" => &signature::RSA_PKCS1_2048_8192_SHA384,
+                "SHA512" => &signature::RSA_PKCS1_2048_8192_SHA512,
                 _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
@@ -199,9 +199,9 @@ mod tests {
 
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
-                "SHA256" => &RSA_PSS_2048_8192_SHA256,
-                "SHA384" => &RSA_PSS_2048_8192_SHA384,
-                "SHA512" => &RSA_PSS_2048_8192_SHA512,
+                "SHA256" => &signature::RSA_PSS_2048_8192_SHA256,
+                "SHA384" => &signature::RSA_PSS_2048_8192_SHA384,
+                "SHA512" => &signature::RSA_PSS_2048_8192_SHA512,
                 _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
@@ -247,11 +247,10 @@ mod tests {
             let msg = test_case.consume_bytes("Msg");
             let sig = test_case.consume_bytes("Sig");
             let expected = test_case.consume_string("Result");
-            let result = verify_rsa(&RSA_PKCS1_2048_8192_SHA256,
-                                    (untrusted::Input::from(&n),
-                                     untrusted::Input::from(&e)),
-                                    untrusted::Input::from(&msg),
-                                    untrusted::Input::from(&sig));
+            let result = signature::primitive::verify_rsa(
+                &signature::RSA_PKCS1_2048_8192_SHA256,
+                (untrusted::Input::from(&n), untrusted::Input::from(&e)),
+                untrusted::Input::from(&msg), untrusted::Input::from(&sig));
             assert_eq!(result.is_ok(), expected == "Pass");
             Ok(())
         })
