@@ -71,25 +71,13 @@ This is to prevent the fuzzer from getting stuck at a cryptographic invariant in
 
 ## TLS transcripts
 
-The `client` and `server` corpora are seeded from the test suite. The test suite has a `-fuzzer` flag which mirrors the fuzzer mode changes above and a `-deterministic` flag which removes all non-determinism on the Go side. Not all tests pass, so `ssl/test/runner/fuzzer_mode.json` contains the necessary suppressions. To run the tests against a fuzzer-mode `bssl_shim`, run:
+The `client` and `server` corpora are seeded from the test suite. The test suite has a `-fuzzer` flag which mirrors the fuzzer mode changes above and a `-deterministic` flag which removes all non-determinism on the Go side. Not all tests pass, so `ssl/test/runner/fuzzer_mode.json` contains the necessary suppressions. The `run_tests` target will pass appropriate command-line flags.
+
+There are separate corpora, `client_corpus_no_fuzzer_mode` and `server_corpus_no_fuzzer_mode`. These are transcripts for fuzzers with only `BORINGSSL_UNSAFE_DETERMINISTIC_MODE` defined. To build in this mode, pass `-DNO_FUZZER_MODE=1` into CMake. This configuration is run in the same way but without `-fuzzer` and `-shim-path` flags.
+
+If both sets of tests pass, refresh the fuzzer corpora with `refresh_ssl_corpora.sh`:
 
 ```
-cd ssl/test/runner
-go test -fuzzer -deterministic -shim-config fuzzer_mode.json
+cd fuzz
+./refresh_fuzzer_corpora.sh /path/to/fuzzer/mode/build /path/to/non/fuzzer/mode/build
 ```
-
-For a different build directory from `build/`, pass the appropriate `-shim-path` flag. If those tests pass, record a set of transcripts with:
-
-```
-go test -fuzzer -deterministic -transcript-dir /tmp/transcripts/
-```
-
-Note the suppressions file is ignored so disabled tests record transcripts too. Then merge into the existing corpora:
-
-```
-cd build/
-./fuzz/client -max_len=50000 -merge=1 ../fuzz/client_corpus /tmp/transcripts/tls/client
-./fuzz/server -max_len=50000 -merge=1 ../fuzz/server_corpus /tmp/transcripts/tls/server
-```
-
-There are separate corpora, `fuzz/client_corpus_no_fuzzer_mode` and `fuzz/server_corpus_no_fuzzer_mode`. These are transcripts for fuzzers with only `BORINGSSL_UNSAFE_DETERMINISTIC_MODE` defined. To build in this mode, pass `-DNO_FUZZER_MODE=1` into CMake. These corpora are updated the same way, but without the `-fuzzer` and `-shim-config` flags.
