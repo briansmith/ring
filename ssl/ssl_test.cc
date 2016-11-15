@@ -891,7 +891,11 @@ static bssl::UniquePtr<SSL_SESSION> CreateSessionWithTicket(uint16_t version,
   session->tlsext_ticklen = ticket_len;
 
   // Fix up the timeout.
+#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+  session->time = 1234;
+#else
   session->time = time(NULL);
+#endif
   return session;
 }
 
@@ -2116,17 +2120,20 @@ static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
 }
 
 static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
-  static const uint8_t kZeros[16] = {0};
-
   if (session->tlsext_ticklen < 16 + 16 + SHA256_DIGEST_LENGTH) {
     return false;
   }
 
-  const uint8_t *iv = session->tlsext_tick + 16;
   const uint8_t *ciphertext = session->tlsext_tick + 16 + 16;
   size_t len = session->tlsext_ticklen - 16 - 16 - SHA256_DIGEST_LENGTH;
   std::unique_ptr<uint8_t[]> plaintext(new uint8_t[len]);
 
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // Fuzzer-mode tickets are unencrypted.
+  memcpy(plaintext.get(), ciphertext, len);
+#else
+  static const uint8_t kZeros[16] = {0};
+  const uint8_t *iv = session->tlsext_tick + 16;
   bssl::ScopedEVP_CIPHER_CTX ctx;
   int len1, len2;
   if (!EVP_DecryptInit_ex(ctx.get(), EVP_aes_128_cbc(), nullptr, kZeros, iv) ||
@@ -2136,6 +2143,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
   }
 
   len = static_cast<size_t>(len1 + len2);
+#endif
 
   bssl::UniquePtr<SSL_SESSION> server_session(
       SSL_SESSION_from_bytes(plaintext.get(), len));
