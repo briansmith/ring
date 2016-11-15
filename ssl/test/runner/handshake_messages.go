@@ -150,7 +150,6 @@ type clientHelloMsg struct {
 	pskKEModes              []byte
 	pskBinders              [][]uint8
 	hasEarlyData            bool
-	earlyDataContext        []byte
 	tls13Cookie             []byte
 	ticketSupported         bool
 	sessionTicket           []uint8
@@ -196,7 +195,6 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		bytes.Equal(m.pskKEModes, m1.pskKEModes) &&
 		eqByteSlices(m.pskBinders, m1.pskBinders) &&
 		m.hasEarlyData == m1.hasEarlyData &&
-		bytes.Equal(m.earlyDataContext, m1.earlyDataContext) &&
 		bytes.Equal(m.tls13Cookie, m1.tls13Cookie) &&
 		m.ticketSupported == m1.ticketSupported &&
 		bytes.Equal(m.sessionTicket, m1.sessionTicket) &&
@@ -342,10 +340,7 @@ func (m *clientHelloMsg) marshal() []byte {
 	}
 	if m.hasEarlyData {
 		extensions.addU16(extensionEarlyData)
-		earlyDataIndication := extensions.addU16LengthPrefixed()
-
-		context := earlyDataIndication.addU8LengthPrefixed()
-		context.addBytes(m.earlyDataContext)
+		extensions.addU16(0) // The length is zero.
 	}
 	if len(m.tls13Cookie) > 0 {
 		extensions.addU16(extensionCookie)
@@ -518,7 +513,6 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.keyShares = nil
 	m.pskIdentities = nil
 	m.hasEarlyData = false
-	m.earlyDataContext = nil
 	m.ticketSupported = false
 	m.sessionTicket = nil
 	m.signatureAlgorithms = nil
@@ -707,15 +701,10 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			m.pskKEModes = data[1:length]
 		case extensionEarlyData:
 			// draft-ietf-tls-tls13 section 6.3.2.5
-			if length < 1 {
-				return false
-			}
-			l := int(data[0])
-			if length != l+1 {
+			if length != 0 {
 				return false
 			}
 			m.hasEarlyData = true
-			m.earlyDataContext = data[1:length]
 		case extensionCookie:
 			if length < 2 {
 				return false

@@ -619,7 +619,6 @@ ResendHelloRetryRequest:
 		oldClientHelloCopy := *hs.clientHello
 		oldClientHelloCopy.raw = nil
 		oldClientHelloCopy.hasEarlyData = false
-		oldClientHelloCopy.earlyDataContext = nil
 		newClientHelloCopy := *newClientHello
 		newClientHelloCopy.raw = nil
 

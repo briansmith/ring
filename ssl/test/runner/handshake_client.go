@@ -443,7 +443,6 @@ NextCipherSuite:
 		}
 
 		hello.hasEarlyData = false
-		hello.earlyDataContext = nil
 		hello.raw = nil
 
 		if len(hello.pskIdentities) > 0 {
