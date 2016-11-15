@@ -154,10 +154,7 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
   }
 
   // Coordinates must be fully-reduced.
-  if (BN_is_negative(x.get()) ||
-      BN_is_negative(y.get()) ||
-      BN_is_negative(z.get()) ||
-      BN_cmp(x.get(), p.get()) >= 0 ||
+  if (BN_cmp(x.get(), p.get()) >= 0 ||
       BN_cmp(y.get(), p.get()) >= 0 ||
       BN_cmp(z.get(), p.get()) >= 0) {
     return false;
