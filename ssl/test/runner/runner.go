@@ -62,6 +62,7 @@ var (
 	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
 	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
+	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -9468,10 +9469,7 @@ func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sy
 	for test := range c {
 		var err error
 
-		if *mallocTest < 0 {
-			statusChan <- statusMsg{test: test, started: true}
-			err = runTest(test, shimPath, -1)
-		} else {
+		if *mallocTest >= 0 {
 			for mallocNumToFail := int64(*mallocTest); ; mallocNumToFail++ {
 				statusChan <- statusMsg{test: test, started: true}
 				if err = runTest(test, shimPath, mallocNumToFail); err != errMoreMallocs {
@@ -9481,6 +9479,14 @@ func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sy
 					break
 				}
 			}
+		} else if *repeatUntilFailure {
+			for err == nil {
+				statusChan <- statusMsg{test: test, started: true}
+				err = runTest(test, shimPath, -1)
+			}
+		} else {
+			statusChan <- statusMsg{test: test, started: true}
+			err = runTest(test, shimPath, -1)
 		}
 		statusChan <- statusMsg{test: test, err: err}
 	}
@@ -9640,6 +9646,11 @@ func main() {
 		if matched {
 			foundTest = true
 			testChan <- &testCases[i]
+
+			// Only run one test if repeating until failure.
+			if *repeatUntilFailure {
+				break
+			}
 		}
 	}
 
