@@ -161,13 +161,11 @@ mod private {
     //
     // Usage:
     // ```
-    // use private;
-    //
-    // pub trait MyType : private::Private {
+    // pub trait MyType : ::private::Private {
     //     // [...]
     // }
     //
-    // impl private::Private for MyType { }
+    // impl ::private::Private for MyType { }
     // ```
     pub trait Private {}
 }

@@ -17,7 +17,7 @@
 use {bits, bssl, c, der, error};
 use rand;
 use std;
-use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free, padding,
+use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
             PositiveInteger};
 use untrusted;
 
@@ -216,7 +216,7 @@ impl RSASigningState {
     /// platforms, it is done less perfectly. To help mitigate the current
     /// imperfections, and for defense-in-depth, base blinding is always done.
     /// Exponent blinding is not done, but it may be done in the future.
-    pub fn sign(&mut self, padding_alg: &'static padding::Encoding,
+    pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
         let mod_bits = self.key_pair.n_bits;
