@@ -131,6 +131,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-cipher-tls11", &TestConfig::cipher_tls11 },
   { "-export-label", &TestConfig::export_label },
   { "-export-context", &TestConfig::export_context },
+  { "-expect-peer-cert-file", &TestConfig::expect_peer_cert_file },
 };
 
 const Flag<std::string> kBase64Flags[] = {

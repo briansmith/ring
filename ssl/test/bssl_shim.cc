@@ -138,12 +138,46 @@ static TestState *GetTestState(const SSL *ssl) {
   return (TestState *)SSL_get_ex_data(ssl, g_state_index);
 }
 
-static bssl::UniquePtr<X509> LoadCertificate(const std::string &file) {
+static bool LoadCertificate(bssl::UniquePtr<X509> *out_x509,
+                            bssl::UniquePtr<STACK_OF(X509)> *out_chain,
+                            const std::string &file) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_file()));
   if (!bio || !BIO_read_filename(bio.get(), file.c_str())) {
-    return nullptr;
+    return false;
   }
-  return bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), NULL, NULL, NULL));
+
+  out_x509->reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  if (!*out_x509) {
+    return false;
+  }
+
+  out_chain->reset(sk_X509_new_null());
+  if (!*out_chain) {
+    return false;
+  }
+
+  // Keep reading the certificate chain.
+  for (;;) {
+    bssl::UniquePtr<X509> cert(
+        PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+    if (!cert) {
+      break;
+    }
+
+    if (!sk_X509_push(out_chain->get(), cert.get())) {
+      return false;
+    }
+    cert.release();  // sk_X509_push takes ownership.
+  }
+
+  uint32_t err = ERR_peek_last_error();
+  if (ERR_GET_LIB(err) != ERR_LIB_PEM ||
+      ERR_GET_REASON(err) != PEM_R_NO_START_LINE) {
+    return false;
+}
+
+  ERR_clear_error();
+  return true;
 }
 
 static bssl::UniquePtr<EVP_PKEY> LoadPrivateKey(const std::string &file) {
@@ -321,6 +355,7 @@ struct Free {
 };
 
 static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
+                           bssl::UniquePtr<STACK_OF(X509)> *out_chain,
                            bssl::UniquePtr<EVP_PKEY> *out_pkey) {
   const TestConfig *config = GetTestConfig(ssl);
 
@@ -359,11 +394,9 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
       return false;
     }
   }
-  if (!config->cert_file.empty()) {
-    *out_x509 = LoadCertificate(config->cert_file.c_str());
-    if (!*out_x509) {
-      return false;
-    }
+  if (!config->cert_file.empty() &&
+      !LoadCertificate(out_x509, out_chain, config->cert_file.c_str())) {
+    return false;
   }
   if (!config->ocsp_response.empty() &&
       !SSL_CTX_set_ocsp_response(SSL_get_SSL_CTX(ssl),
@@ -376,8 +409,9 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
 
 static bool InstallCertificate(SSL *ssl) {
   bssl::UniquePtr<X509> x509;
+  bssl::UniquePtr<STACK_OF(X509)> chain;
   bssl::UniquePtr<EVP_PKEY> pkey;
-  if (!GetCertificate(ssl, &x509, &pkey)) {
+  if (!GetCertificate(ssl, &x509, &chain, &pkey)) {
     return false;
   }
 
@@ -393,6 +427,11 @@ static bool InstallCertificate(SSL *ssl) {
   }
 
   if (x509 && !SSL_use_certificate(ssl, x509.get())) {
+    return false;
+  }
+
+  if (sk_X509_num(chain.get()) > 0 &&
+      !SSL_set1_chain(ssl, chain.get())) {
     return false;
   }
 
@@ -457,8 +496,9 @@ static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
   }
 
   bssl::UniquePtr<X509> x509;
+  bssl::UniquePtr<STACK_OF(X509)> chain;
   bssl::UniquePtr<EVP_PKEY> pkey;
-  if (!GetCertificate(ssl, &x509, &pkey)) {
+  if (!GetCertificate(ssl, &x509, &chain, &pkey)) {
     return -1;
   }
 
@@ -467,7 +507,7 @@ static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
     return 0;
   }
 
-  // Asynchronous private keys are not supported with client_cert_cb.
+  // Chains and asynchronous private keys are not supported with client_cert_cb.
   *out_x509 = x509.release();
   *out_pkey = pkey.release();
   return 1;
@@ -1349,6 +1389,46 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     if (SSL_get_peer_cert_chain(ssl) == nullptr) {
       fprintf(stderr, "Received no peer certificate but expected one.\n");
       return false;
+    }
+  }
+
+  if (!config->expect_peer_cert_file.empty()) {
+    bssl::UniquePtr<X509> expect_leaf;
+    bssl::UniquePtr<STACK_OF(X509)> expect_chain;
+    if (!LoadCertificate(&expect_leaf, &expect_chain,
+                         config->expect_peer_cert_file)) {
+      return false;
+    }
+
+    // For historical reasons, clients report a chain with a leaf and servers
+    // without.
+    if (!config->is_server) {
+      if (!sk_X509_insert(expect_chain.get(), expect_leaf.get(), 0)) {
+        return false;
+      }
+      X509_up_ref(expect_leaf.get());  // sk_X509_push takes ownership.
+    }
+
+    bssl::UniquePtr<X509> leaf(SSL_get_peer_certificate(ssl));
+    STACK_OF(X509) *chain = SSL_get_peer_cert_chain(ssl);
+    if (X509_cmp(leaf.get(), expect_leaf.get()) != 0) {
+      fprintf(stderr, "Received a different leaf certificate than expected.\n");
+      return false;
+    }
+
+    if (sk_X509_num(chain) != sk_X509_num(expect_chain.get())) {
+      fprintf(stderr, "Received a chain of length %zu instead of %zu.\n",
+              sk_X509_num(chain), sk_X509_num(expect_chain.get()));
+      return false;
+    }
+
+    for (size_t i = 0; i < sk_X509_num(chain); i++) {
+      if (X509_cmp(sk_X509_value(chain, i),
+                   sk_X509_value(expect_chain.get(), i)) != 0) {
+        fprintf(stderr, "Chain certificate %zu did not match.\n",
+                i + 1);
+        return false;
+      }
     }
   }
 

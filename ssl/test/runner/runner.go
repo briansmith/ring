@@ -87,6 +87,7 @@ type testCert int
 const (
 	testCertRSA testCert = iota
 	testCertRSA1024
+	testCertRSAChain
 	testCertECDSAP256
 	testCertECDSAP384
 	testCertECDSAP521
@@ -95,6 +96,7 @@ const (
 const (
 	rsaCertificateFile       = "cert.pem"
 	rsa1024CertificateFile   = "rsa_1024_cert.pem"
+	rsaChainCertificateFile  = "rsa_chain_cert.pem"
 	ecdsaP256CertificateFile = "ecdsa_p256_cert.pem"
 	ecdsaP384CertificateFile = "ecdsa_p384_cert.pem"
 	ecdsaP521CertificateFile = "ecdsa_p521_cert.pem"
@@ -103,6 +105,7 @@ const (
 const (
 	rsaKeyFile       = "key.pem"
 	rsa1024KeyFile   = "rsa_1024_key.pem"
+	rsaChainKeyFile  = "rsa_chain_key.pem"
 	ecdsaP256KeyFile = "ecdsa_p256_key.pem"
 	ecdsaP384KeyFile = "ecdsa_p384_key.pem"
 	ecdsaP521KeyFile = "ecdsa_p521_key.pem"
@@ -112,6 +115,7 @@ const (
 var (
 	rsaCertificate       Certificate
 	rsa1024Certificate   Certificate
+	rsaChainCertificate  Certificate
 	ecdsaP256Certificate Certificate
 	ecdsaP384Certificate Certificate
 	ecdsaP521Certificate Certificate
@@ -133,6 +137,12 @@ var testCerts = []struct {
 		certFile: rsa1024CertificateFile,
 		keyFile:  rsa1024KeyFile,
 		cert:     &rsa1024Certificate,
+	},
+	{
+		id:       testCertRSAChain,
+		certFile: rsaChainCertificateFile,
+		keyFile:  rsaChainKeyFile,
+		cert:     &rsaChainCertificate,
 	},
 	{
 		id:       testCertECDSAP256,
@@ -364,6 +374,9 @@ type testCase struct {
 	// expectMessageDropped, if true, means the test message is expected to
 	// be dropped by the client rather than echoed back.
 	expectMessageDropped bool
+	// expectPeerCertificate, if not nil, is the certificate chain the peer
+	// is expected to send.
+	expectPeerCertificate *Certificate
 }
 
 var testCases []testCase
@@ -579,6 +592,17 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 
 	if expected := test.expectedCurveID; expected != 0 && expected != connState.CurveID {
 		return fmt.Errorf("expected peer to use curve %04x, but got %04x", expected, connState.CurveID)
+	}
+
+	if test.expectPeerCertificate != nil {
+		if len(connState.PeerCertificates) != len(test.expectPeerCertificate.Certificate) {
+			return fmt.Errorf("expected peer to send %d certificates, but got %d", len(connState.PeerCertificates), len(test.expectPeerCertificate.Certificate))
+		}
+		for i, cert := range connState.PeerCertificates {
+			if !bytes.Equal(cert.Raw, test.expectPeerCertificate.Certificate[i]) {
+				return fmt.Errorf("peer certificate %d did not match", i+1)
+			}
+		}
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -9152,6 +9176,42 @@ func addRecordVersionTests() {
 	}
 }
 
+func addCertificateTests() {
+	// Test that a certificate chain with intermediate may be sent and
+	// received as both client and server.
+	for _, ver := range tlsVersions {
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "SendReceiveIntermediate-Client-" + ver.name,
+			config: Config{
+				Certificates: []Certificate{rsaChainCertificate},
+				ClientAuth:   RequireAnyClientCert,
+			},
+			expectPeerCertificate: &rsaChainCertificate,
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaChainKeyFile),
+				"-expect-peer-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "SendReceiveIntermediate-Server-" + ver.name,
+			config: Config{
+				Certificates: []Certificate{rsaChainCertificate},
+			},
+			expectPeerCertificate: &rsaChainCertificate,
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaChainKeyFile),
+				"-require-any-client-certificate",
+				"-expect-peer-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
+			},
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -9272,6 +9332,7 @@ func main() {
 	addTLS13CipherPreferenceTests()
 	addPeekTests()
 	addRecordVersionTests()
+	addCertificateTests()
 
 	var wg sync.WaitGroup
 
