@@ -182,6 +182,10 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
     }
   }
 
+  if (r->top == 0) {
+    r->neg = 0;
+  }
+
   return 1;
 }
 
@@ -214,6 +218,10 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
     c = (t & 1) ? BN_TBIT : 0;
   }
   r->top = j;
+
+  if (r->top == 0) {
+    r->neg = 0;
+  }
 
   return 1;
 }

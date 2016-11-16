@@ -628,6 +628,10 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     a->top--;
   }
 
+  if (a->top == 0) {
+    a->neg = 0;
+  }
+
   ret >>= j;
   return ret;
 }
