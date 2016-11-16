@@ -430,7 +430,7 @@ Curves:
 				// test cross-version resumption attempts.
 				sessionState.cipherSuite = TLS_AES_128_GCM_SHA256
 			} else {
-				if sessionState.vers != c.vers && c.config.Bugs.AcceptAnySession {
+				if sessionState.vers != c.vers {
 					continue
 				}
 				if sessionState.ticketExpiration.Before(c.config.time()) {
