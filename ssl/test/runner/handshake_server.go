@@ -385,6 +385,36 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		return err
 	}
 
+	// Select the cipher suite.
+	var preferenceList, supportedList []uint16
+	if config.PreferServerCipherSuites {
+		preferenceList = config.cipherSuites()
+		supportedList = hs.clientHello.cipherSuites
+	} else {
+		preferenceList = hs.clientHello.cipherSuites
+		supportedList = config.cipherSuites()
+	}
+
+	for _, id := range preferenceList {
+		if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, true, true); hs.suite != nil {
+			break
+		}
+	}
+
+	if hs.suite == nil {
+		c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: no cipher suite supported by both client and server")
+	}
+
+	hs.hello.cipherSuite = hs.suite.id
+	if c.config.Bugs.SendCipherSuite != 0 {
+		hs.hello.cipherSuite = c.config.Bugs.SendCipherSuite
+	}
+
+	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
+	hs.finishedHash.discardHandshakeBuffer()
+	hs.writeClientHash(hs.clientHello.marshal())
+
 	supportedCurve := false
 	var selectedCurve CurveID
 	preferredCurves := config.curvePreferences()
@@ -425,30 +455,16 @@ Curves:
 				continue
 			}
 
-			if config.Bugs.AcceptAnySession {
-				// Replace the cipher suite with one known to work, to
-				// test cross-version resumption attempts.
-				sessionState.cipherSuite = TLS_AES_128_GCM_SHA256
-			} else {
+			if !config.Bugs.AcceptAnySession {
 				if sessionState.vers != c.vers {
 					continue
 				}
 				if sessionState.ticketExpiration.Before(c.config.time()) {
 					continue
 				}
-
-				cipherSuiteOk := false
-				// Check that the client is still offering the ciphersuite in the session.
-				for _, id := range hs.clientHello.cipherSuites {
-					if id == sessionState.cipherSuite {
-						cipherSuiteOk = true
-						break
-					}
-				}
-				if !cipherSuiteOk {
+				if sessionState.cipherSuite != hs.suite.id {
 					continue
 				}
-
 			}
 
 			clientTicketAge := time.Duration(uint32(pskIdentity.obfuscatedTicketAge-sessionState.ticketAgeAdd)) * time.Millisecond
@@ -457,14 +473,7 @@ Curves:
 				return errors.New("tls: invalid ticket age")
 			}
 
-			// Check that we also support the ciphersuite from the session.
-			suite := c.tryCipherSuite(sessionState.cipherSuite, c.config.cipherSuites(), c.vers, true, true)
-			if suite == nil {
-				continue
-			}
-
 			hs.sessionState = sessionState
-			hs.suite = suite
 			hs.hello.hasPSKIdentity = true
 			hs.hello.pskIdentity = uint16(i)
 			pskIndex = i
@@ -489,38 +498,6 @@ Curves:
 			return err
 		}
 	}
-
-	// If not resuming, select the cipher suite.
-	if hs.suite == nil {
-		var preferenceList, supportedList []uint16
-		if config.PreferServerCipherSuites {
-			preferenceList = config.cipherSuites()
-			supportedList = hs.clientHello.cipherSuites
-		} else {
-			preferenceList = hs.clientHello.cipherSuites
-			supportedList = config.cipherSuites()
-		}
-
-		for _, id := range preferenceList {
-			if hs.suite = c.tryCipherSuite(id, supportedList, c.vers, true, true); hs.suite != nil {
-				break
-			}
-		}
-	}
-
-	if hs.suite == nil {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("tls: no cipher suite supported by both client and server")
-	}
-
-	hs.hello.cipherSuite = hs.suite.id
-	if c.config.Bugs.SendCipherSuite != 0 {
-		hs.hello.cipherSuite = c.config.Bugs.SendCipherSuite
-	}
-
-	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
-	hs.finishedHash.discardHandshakeBuffer()
-	hs.writeClientHash(hs.clientHello.marshal())
 
 	// Resolve PSK and compute the early secret.
 	var psk []byte
