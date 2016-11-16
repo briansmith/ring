@@ -640,9 +640,8 @@ int ssl_session_is_resumable(const SSL *ssl, const SSL_SESSION *session) {
          /* Only resume if the session's version matches the negotiated
            * version. */
          ssl->version == session->ssl_version &&
-         /* Only resume if the session's cipher is still valid under the
-          * current configuration. */
-         ssl_is_valid_cipher(ssl, session->cipher);
+         /* Only resume if the session's cipher matches the negotiated one. */
+         ssl->s3->tmp.new_cipher == session->cipher;
 }
 
 /* ssl_lookup_session looks up |session_id| in the session cache and sets

@@ -5729,6 +5729,54 @@ func addResumptionVersionTests() {
 		expectResumeRejected: true,
 	})
 
+	// Sessions are not resumed if they do not use the preferred cipher.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-CipherNotPreferred",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ExpectNewTicket: true,
+				FilterTicket: func(in []byte) ([]byte, error) {
+					return SetShimTicketCipherSuite(in, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+				},
+			},
+		},
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+		shouldFail:           false,
+		expectResumeRejected: true,
+	})
+
+	// TLS 1.3 allows sessions to be resumed at a different cipher if their
+	// PRF hashes match, but BoringSSL will always decline such resumptions.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-CipherNotPreferred-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_CHACHA20_POLY1305_SHA256, TLS_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				FilterTicket: func(in []byte) ([]byte, error) {
+					// If the client (runner) offers ChaCha20-Poly1305 first, the
+					// server (shim) always prefers it. Switch it to AES-GCM.
+					return SetShimTicketCipherSuite(in, TLS_AES_128_GCM_SHA256)
+				},
+			},
+		},
+		flags: []string{
+			"-ticket-key",
+			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+		},
+		shouldFail:           false,
+		expectResumeRejected: true,
+	})
+
+	// Sessions may not be resumed if they contain another version's cipher.
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
 		name:          "Resume-Server-DeclineBadCipher-TLS13",
@@ -5748,8 +5796,9 @@ func addResumptionVersionTests() {
 		expectResumeRejected: true,
 	})
 
-	// Clients must not advertise a session without also advertising the
-	// cipher.
+	// If the client does not offer the cipher from the session, decline to
+	// resume. Clients are forbidden from doing this, but BoringSSL selects
+	// the cipher first, so we only decline.
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
 		name:          "Resume-Server-UnofferedCipher",
@@ -5765,10 +5814,13 @@ func addResumptionVersionTests() {
 				SendCipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 			},
 		},
-		shouldFail:    true,
-		expectedError: ":REQUIRED_CIPHER_MISSING:",
+		expectResumeRejected: true,
 	})
 
+	// In TLS 1.3, clients may advertise a cipher list which does not
+	// include the selected cipher. Test that we tolerate this. Servers may
+	// resume at another cipher if the PRF matches, but BoringSSL will
+	// always decline.
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
 		name:          "Resume-Server-UnofferedCipher-TLS13",
@@ -5784,8 +5836,7 @@ func addResumptionVersionTests() {
 				SendCipherSuites: []uint16{TLS_AES_128_GCM_SHA256},
 			},
 		},
-		shouldFail:    true,
-		expectedError: ":REQUIRED_CIPHER_MISSING:",
+		expectResumeRejected: true,
 	})
 
 	// Sessions may not be resumed at a different cipher.

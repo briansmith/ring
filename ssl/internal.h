@@ -1743,10 +1743,6 @@ int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
 
-/* ssl_is_valid_cipher checks that |cipher| is valid according to the current
- * server configuration in |ssl|. It returns 1 if valid, and 0 otherwise. */
-int ssl_is_valid_cipher(const SSL *ssl, const SSL_CIPHER *cipher);
-
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
     const struct ssl_cipher_preference_list_st *srvr);
