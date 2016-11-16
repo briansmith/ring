@@ -57,7 +57,6 @@ mod sha1;
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
 /// ```
 pub struct Context {
-    // We use u64 to try to ensure 64-bit alignment/padding.
     state: State,
 
     // Note that SHA-512 has a 128-bit input bit counter, but this
@@ -394,7 +393,9 @@ pub static SHA512: Algorithm = Algorithm {
 #[inline(always)]
 fn widen_u64(x: usize) -> u64 { x as u64 }
 
+// We use u64 to try to ensure 64-bit alignment/padding.
 type State = [u64; MAX_CHAINING_LEN / 8];
+
 type Output = [u64; MAX_OUTPUT_LEN / 8];
 
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in
