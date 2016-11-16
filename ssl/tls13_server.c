@@ -63,7 +63,7 @@ static int resolve_ecdhe_secret(SSL *ssl, int *out_need_retry,
                                         TLSEXT_TYPE_key_share)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
-    return ssl_hs_error;
+    return 0;
   }
 
   int found_key_share;
@@ -105,7 +105,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* Load the client random. */
   if (client_hello.random_len != SSL3_RANDOM_SIZE) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
+    return ssl_hs_error;
   }
   memcpy(ssl->s3->client_random, client_hello.random, client_hello.random_len);
 
@@ -116,7 +116,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
       !ssl_ext_psk_key_exchange_modes_parse_clienthello(
           ssl, &alert, &psk_key_exchange_modes)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    return 0;
+    return ssl_hs_error;
   }
 
   SSL_SESSION *session = NULL;
@@ -131,13 +131,13 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
           client_hello.extensions + client_hello.extensions_len) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-        return 0;
+        return ssl_hs_error;
       }
 
       if (!ssl_ext_pre_shared_key_parse_clienthello(ssl, &session, &binders,
                                                     &alert, &pre_shared_key)) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-        return 0;
+        return ssl_hs_error;
       }
     }
   }
@@ -582,7 +582,7 @@ static enum ssl_hs_wait_t do_process_client_certificate_verify(
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
       !tls13_process_certificate_verify(ssl) ||
       !ssl_hash_current_message(ssl)) {
-    return 0;
+    return ssl_hs_error;
   }
 
   hs->state = state_process_channel_id;

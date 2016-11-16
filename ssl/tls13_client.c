@@ -421,7 +421,7 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
       !tls13_process_certificate_verify(ssl) ||
       !ssl_hash_current_message(ssl)) {
-    return 0;
+    return ssl_hs_error;
   }
 
   hs->state = state_process_server_finished;
