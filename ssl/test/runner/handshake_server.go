@@ -437,12 +437,6 @@ Curves:
 					continue
 				}
 
-				clientTicketAge := time.Duration(uint32(pskIdentity.obfuscatedTicketAge-sessionState.ticketAgeAdd)) * time.Millisecond
-				if config.Bugs.ExpectTicketAge != 0 && clientTicketAge != config.Bugs.ExpectTicketAge {
-					c.sendAlert(alertHandshakeFailure)
-					return errors.New("tls: invalid ticket age")
-				}
-
 				cipherSuiteOk := false
 				// Check that the client is still offering the ciphersuite in the session.
 				for _, id := range hs.clientHello.cipherSuites {
@@ -455,6 +449,12 @@ Curves:
 					continue
 				}
 
+			}
+
+			clientTicketAge := time.Duration(uint32(pskIdentity.obfuscatedTicketAge-sessionState.ticketAgeAdd)) * time.Millisecond
+			if config.Bugs.ExpectTicketAge != 0 && clientTicketAge != config.Bugs.ExpectTicketAge {
+				c.sendAlert(alertHandshakeFailure)
+				return errors.New("tls: invalid ticket age")
 			}
 
 			// Check that we also support the ciphersuite from the session.
