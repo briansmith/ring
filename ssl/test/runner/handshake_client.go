@@ -223,11 +223,17 @@ NextCipherSuite:
 			// Check that the ciphersuite/version used for the
 			// previous session are still valid.
 			cipherSuiteOk := false
-			for _, id := range hello.cipherSuites {
-				if id == candidateSession.cipherSuite {
-					cipherSuiteOk = true
-					break
+			if candidateSession.vers <= VersionTLS12 {
+				for _, id := range hello.cipherSuites {
+					if id == candidateSession.cipherSuite {
+						cipherSuiteOk = true
+						break
+					}
 				}
+			} else {
+				// TLS 1.3 allows the cipher to change on
+				// resumption.
+				cipherSuiteOk = true
 			}
 
 			versOk := candidateSession.vers >= minVersion &&
@@ -623,9 +629,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			c.sendAlert(alertUnknownPSKIdentity)
 			return errors.New("tls: server sent unknown PSK identity")
 		}
-		if hs.session.cipherSuite != hs.suite.id {
+		sessionCipher := cipherSuiteFromID(hs.session.cipherSuite)
+		if sessionCipher == nil || sessionCipher.hash() != hs.suite.hash() {
 			c.sendAlert(alertHandshakeFailure)
-			return errors.New("tls: server sent invalid cipher suite")
+			return errors.New("tls: server resumed an invalid session for the cipher suite")
 		}
 		psk = hs.session.masterSecret
 		c.didResume = true

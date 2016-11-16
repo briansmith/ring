@@ -462,7 +462,8 @@ Curves:
 				if sessionState.ticketExpiration.Before(c.config.time()) {
 					continue
 				}
-				if sessionState.cipherSuite != hs.suite.id {
+				sessionCipher := cipherSuiteFromID(sessionState.cipherSuite)
+				if sessionCipher == nil || sessionCipher.hash() != hs.suite.hash() {
 					continue
 				}
 			}
