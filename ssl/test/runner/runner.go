@@ -5805,8 +5805,24 @@ func addResumptionVersionTests() {
 		expectedError: ":OLD_SESSION_CIPHER_NOT_RETURNED:",
 	})
 
+	// Session resumption in TLS 1.3 may change the cipher suite if the PRF
+	// matches.
 	testCases = append(testCases, testCase{
 		name:          "Resume-Client-CipherMismatch-TLS13",
+		resumeSession: true,
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_AES_128_GCM_SHA256},
+		},
+		resumeConfig: &Config{
+			MaxVersion:   VersionTLS13,
+			CipherSuites: []uint16{TLS_CHACHA20_POLY1305_SHA256},
+		},
+	})
+
+	// Session resumption in TLS 1.3 is forbidden if the PRF does not match.
+	testCases = append(testCases, testCase{
+		name:          "Resume-Client-PRFMismatch-TLS13",
 		resumeSession: true,
 		config: Config{
 			MaxVersion:   VersionTLS13,
@@ -5820,7 +5836,7 @@ func addResumptionVersionTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":OLD_SESSION_CIPHER_NOT_RETURNED:",
+		expectedError: ":OLD_SESSION_PRF_HASH_MISMATCH:",
 	})
 
 	testCases = append(testCases, testCase{
