@@ -38,10 +38,14 @@ fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
                           -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
-    let mut counter = chacha::make_counter(nonce, 1);
+    let mut counter = chacha::make_counter(nonce, 0);
+    let mut auth_storage = poly1305::SigningContextStorage::new();
+    let mut auth_ctx = poly1305_begin(&mut auth_storage, &chacha20_key,
+                                      &counter, ad);
+    counter[0] = 1;
     chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
-    counter[0] = 0;
-    aead_poly1305(tag_out, chacha20_key, &counter, ad, in_out);
+    auth_ctx.update_padded(in_out);
+    poly1305_end((auth_ctx, ad.len(), in_out.len()), tag_out);
     Ok(())
 }
 
@@ -52,13 +56,18 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = chacha::make_counter(nonce, 0);
-    {
+    let mut auth_storage = poly1305::SigningContextStorage::new();
+    let auth_state = { // Borrow `in_out`.
         let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(tag_out, chacha20_key, &counter, ad, ciphertext);
-    }
+        let mut auth_ctx =
+            poly1305_begin(&mut auth_storage, &chacha20_key, &counter, ad);
+        auth_ctx.update_padded(ciphertext);
+        (auth_ctx, ad.len(), ciphertext.len())
+    };
     counter[0] = 1;
     chacha::chacha20_xor_overlapping(&chacha20_key, &counter, in_out,
                                      in_prefix_len);
+    poly1305_end(auth_state, tag_out);
     Ok(())
 }
 
@@ -69,27 +78,23 @@ fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
         chacha::KEY_LEN_IN_BYTES / 4)
 }
 
-fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,
-                 counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8]) {
+fn poly1305_begin<'a>(storage: &'a mut poly1305::SigningContextStorage,
+                      chacha20_key: &chacha::Key, counter: &chacha::Counter,
+                      ad: &[u8]) -> poly1305::SigningContext<'a> {
     debug_assert_eq!(counter[0], 0);
     let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
-    let mut ctx = poly1305::SigningContext::from_key(key);
-    poly1305_update_padded_16(&mut ctx, ad);
-    poly1305_update_padded_16(&mut ctx, ciphertext);
-    let lengths =
-        [polyfill::u64_from_usize(ad.len()).to_le(),
-         polyfill::u64_from_usize(ciphertext.len()).to_le()];
-    ctx.update(polyfill::slice::u64_as_u8(&lengths));
-    ctx.sign(tag_out);
+    let mut ctx = poly1305::SigningContext::new(storage, key);
+    ctx.update_padded(ad);
+    ctx
 }
 
-#[inline]
-fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
-    ctx.update(data);
-    if data.len() % 16 != 0 {
-        static PADDING: [u8; 16] = [0u8; 16];
-        ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
-    }
+fn poly1305_end((ctx, ad_len, ciphertext_len):
+                    (poly1305::SigningContext, usize, usize),
+                tag_out: &mut [u8; aead::TAG_LEN]) {
+    let lengths =
+        [polyfill::u64_from_usize(ad_len).to_le(),
+         polyfill::u64_from_usize(ciphertext_len).to_le()];
+    ctx.update_padded_final(polyfill::slice::u64_as_u8(&lengths), tag_out);
 }
 
 
