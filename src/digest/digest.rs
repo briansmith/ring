@@ -127,8 +127,9 @@ impl Context {
                                                   num_blocks);
             }
             self.completed_data_blocks =
-                self.completed_data_blocks.checked_add(widen_u64(num_blocks))
-                                          .unwrap();
+                self.completed_data_blocks
+                    .checked_add(polyfill::u64_from_usize(num_blocks))
+                    .unwrap();
         }
         if num_to_save_for_later > 0 {
             self.pending[..num_to_save_for_later]
@@ -167,11 +168,11 @@ impl Context {
             &mut self.pending[padding_pos..(self.algorithm.block_len - 8)], 0);
 
         // Output the length, in bits, in big endian order.
-        let mut completed_data_bits: u64 =
-            self.completed_data_blocks
-                .checked_mul(widen_u64(self.algorithm.block_len)).unwrap()
-                .checked_add(widen_u64(self.num_pending)).unwrap()
-                .checked_mul(8).unwrap();
+        let mut completed_data_bits: u64 = self.completed_data_blocks
+            .checked_mul(polyfill::u64_from_usize(self.algorithm.block_len))
+            .unwrap()
+            .checked_add(polyfill::u64_from_usize(self.num_pending)).unwrap()
+            .checked_mul(8).unwrap();
 
         for b in (&mut self.pending[(self.algorithm.block_len - 8)..
                                     self.algorithm.block_len]).into_iter().rev() {
@@ -389,9 +390,6 @@ pub static SHA512: Algorithm = Algorithm {
         0x5be0cd19137e2179,
     ],
 };
-
-#[inline(always)]
-fn widen_u64(x: usize) -> u64 { x as u64 }
 
 // We use u64 to try to ensure 64-bit alignment/padding.
 type State = [u64; MAX_CHAINING_LEN / 8];
