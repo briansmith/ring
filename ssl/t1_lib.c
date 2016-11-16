@@ -2007,9 +2007,14 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
 
   /* TLS 1.3 session tickets are renewed separately as part of the
    * NewSessionTicket. */
-  int renew;
-  return tls_process_ticket(ssl, out_session, &renew, CBS_data(&ticket),
-                            CBS_len(&ticket), NULL, 0);
+  int unused_renew;
+  if (!tls_process_ticket(ssl, out_session, &unused_renew, CBS_data(&ticket),
+                          CBS_len(&ticket), NULL, 0)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  return 1;
 }
 
 int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out) {
