@@ -74,22 +74,12 @@ fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,
     debug_assert_eq!(counter[0], 0);
     let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
     let mut ctx = poly1305::SigningContext::from_key(key);
-    poly1305_update_padded_16(&mut ctx, ad);
-    poly1305_update_padded_16(&mut ctx, ciphertext);
+    ctx.update_padded(ad);
+    ctx.update_padded(ciphertext);
     let lengths =
         [polyfill::u64_from_usize(ad.len()).to_le(),
          polyfill::u64_from_usize(ciphertext.len()).to_le()];
-    ctx.update(polyfill::slice::u64_as_u8(&lengths));
-    ctx.sign(tag_out);
-}
-
-#[inline]
-fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
-    ctx.update(data);
-    if data.len() % 16 != 0 {
-        static PADDING: [u8; 16] = [0u8; 16];
-        ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
-    }
+    ctx.update_padded_final(polyfill::slice::u64_as_u8(&lengths), tag_out);
 }
 
 
