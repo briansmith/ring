@@ -461,8 +461,6 @@ mod test {
     use super::*;
     use untrusted;
 
-    // Tests PSS verification for various public modulus lengths, particularly
-    // ones that aren't multiples of 8.
     #[test]
     fn test_pss_padding_verify() {
         test::from_file("src/rsa/rsa_pss_padding_tests.txt",
@@ -472,6 +470,8 @@ mod test {
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
                 "SHA256" => &RSA_PSS_SHA256,
+                "SHA384" => &RSA_PSS_SHA384,
+                "SHA512" => &RSA_PSS_SHA512,
                 _ =>  { panic!("Unsupported digest: {}", digest_name) }
             };
 
@@ -480,7 +480,7 @@ mod test {
             let m_hash = digest::digest(alg.digest_alg(),
                                         msg.as_slice_less_safe());
 
-            let encoded = test_case.consume_bytes("Encoded");
+            let encoded = test_case.consume_bytes("EM");
             let encoded = untrusted::Input::from(&encoded);
 
             let bit_len = test_case.consume_usize_bits("Len");
