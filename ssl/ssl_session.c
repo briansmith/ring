@@ -234,6 +234,13 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   memcpy(new_session->peer_sha256, session->peer_sha256, SHA256_DIGEST_LENGTH);
   new_session->peer_sha256_valid = session->peer_sha256_valid;
 
+  if (session->tlsext_hostname != NULL) {
+    new_session->tlsext_hostname = BUF_strdup(session->tlsext_hostname);
+    if (new_session->tlsext_hostname == NULL) {
+      goto err;
+    }
+  }
+
   new_session->timeout = session->timeout;
   new_session->time = session->time;
 
@@ -244,13 +251,6 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
            session->session_id_length);
 
     new_session->key_exchange_info = session->key_exchange_info;
-
-    if (session->tlsext_hostname != NULL) {
-      new_session->tlsext_hostname = BUF_strdup(session->tlsext_hostname);
-      if (new_session->tlsext_hostname == NULL) {
-        goto err;
-      }
-    }
 
     memcpy(new_session->original_handshake_hash,
            session->original_handshake_hash,

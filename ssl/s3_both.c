@@ -169,6 +169,7 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
     OPENSSL_free(hs->key_block);
   }
 
+  OPENSSL_free(hs->hostname);
   OPENSSL_free(hs);
 }
 

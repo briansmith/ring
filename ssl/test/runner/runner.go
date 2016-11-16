@@ -4852,6 +4852,8 @@ func addExtensionTests() {
 			config: Config{
 				MaxVersion: ver.version,
 				NextProtos: []string{"foo", "bar", "baz"},
+				// Prior to TLS 1.3, exercise the asynchronous session callback.
+				SessionTicketsDisabled: ver.version < VersionTLS13,
 			},
 			flags: []string{
 				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",

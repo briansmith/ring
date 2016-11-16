@@ -1019,6 +1019,9 @@ typedef struct ssl_handshake_st {
   /* key_block is the record-layer key block for TLS 1.2 and earlier. */
   uint8_t *key_block;
   uint8_t key_block_len;
+
+  /* hostname, on the server, is the value of the SNI extension. */
+  char *hostname;
 } SSL_HANDSHAKE;
 
 SSL_HANDSHAKE *ssl_handshake_new(enum ssl_hs_wait_t (*do_handshake)(SSL *ssl));
@@ -1070,10 +1073,6 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
                                              CBS *out_binders,
                                              uint8_t *out_alert, CBS *contents);
 int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
-
-int ssl_ext_psk_key_exchange_modes_parse_clienthello(SSL *ssl,
-                                                     uint8_t *out_alert,
-                                                     CBS *contents);
 
 int ssl_write_client_hello(SSL *ssl);
 

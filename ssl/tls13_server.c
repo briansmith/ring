@@ -109,36 +109,39 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   }
   memcpy(ssl->s3->client_random, client_hello.random, client_hello.random_len);
 
-  uint8_t alert = SSL_AD_DECODE_ERROR;
-  CBS psk_key_exchange_modes;
-  if (ssl_early_callback_get_extension(&client_hello, &psk_key_exchange_modes,
-                                       TLSEXT_TYPE_psk_key_exchange_modes) &&
-      !ssl_ext_psk_key_exchange_modes_parse_clienthello(
-          ssl, &alert, &psk_key_exchange_modes)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+  /* TLS 1.3 requires the peer only advertise the null compression. */
+  if (client_hello.compression_methods_len != 1 ||
+      client_hello.compression_methods[0] != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
-  SSL_SESSION *session = NULL;
-  CBS binders;
-  if (hs->accept_psk_mode) {
-    CBS pre_shared_key;
-    if (ssl_early_callback_get_extension(&client_hello, &pre_shared_key,
-                                         TLSEXT_TYPE_pre_shared_key)) {
-      /* Verify that the pre_shared_key extension is the last extension in
-       * ClientHello. */
-      if (CBS_data(&pre_shared_key) + CBS_len(&pre_shared_key) !=
-          client_hello.extensions + client_hello.extensions_len) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-        return ssl_hs_error;
-      }
+  /* TLS extensions. */
+  if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
+    return ssl_hs_error;
+  }
 
-      if (!ssl_ext_pre_shared_key_parse_clienthello(ssl, &session, &binders,
-                                                    &alert, &pre_shared_key)) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-        return ssl_hs_error;
-      }
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  SSL_SESSION *session = NULL;
+  CBS pre_shared_key, binders;
+  if (hs->accept_psk_mode &&
+      ssl_early_callback_get_extension(&client_hello, &pre_shared_key,
+                                       TLSEXT_TYPE_pre_shared_key)) {
+    /* Verify that the pre_shared_key extension is the last extension in
+     * ClientHello. */
+    if (CBS_data(&pre_shared_key) + CBS_len(&pre_shared_key) !=
+        client_hello.extensions + client_hello.extensions_len) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return ssl_hs_error;
+    }
+
+    if (!ssl_ext_pre_shared_key_parse_clienthello(ssl, &session, &binders,
+                                                  &alert, &pre_shared_key)) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return ssl_hs_error;
     }
   }
 
@@ -176,20 +179,6 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
     /* Connection rejected for DOS reasons. */
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
-
-  /* TLS 1.3 requires the peer only advertise the null compression. */
-  if (client_hello.compression_methods_len != 1 ||
-      client_hello.compression_methods[0] != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return ssl_hs_error;
-  }
-
-  /* TLS extensions. */
-  if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
   }
 
@@ -282,6 +271,15 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
     }
 
     ssl->s3->new_session->cipher = cipher;
+
+    /* On new sessions, stash the SNI value in the session. */
+    if (ssl->s3->hs->hostname != NULL) {
+      ssl->s3->new_session->tlsext_hostname = BUF_strdup(ssl->s3->hs->hostname);
+      if (ssl->s3->new_session->tlsext_hostname == NULL) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        return ssl_hs_error;
+      }
+    }
   }
 
   ssl->s3->tmp.new_cipher = ssl->s3->new_session->cipher;

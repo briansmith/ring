@@ -231,6 +231,7 @@ int ssl3_accept(SSL *ssl) {
       case SSL3_ST_SR_CLNT_HELLO_B:
       case SSL3_ST_SR_CLNT_HELLO_C:
       case SSL3_ST_SR_CLNT_HELLO_D:
+      case SSL3_ST_SR_CLNT_HELLO_E:
         ret = ssl3_get_client_hello(ssl);
         if (ssl->state == SSL_ST_TLS13) {
           break;
@@ -729,6 +730,24 @@ static int ssl3_get_client_hello(SSL *ssl) {
     memcpy(ssl->s3->client_random, client_hello.random,
            client_hello.random_len);
 
+    /* Only null compression is supported. */
+    if (memchr(client_hello.compression_methods, 0,
+               client_hello.compression_methods_len) == NULL) {
+      al = SSL_AD_ILLEGAL_PARAMETER;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMPRESSION_SPECIFIED);
+      goto f_err;
+    }
+
+    /* TLS extensions. */
+    if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
+      goto err;
+    }
+
+    ssl->state = SSL3_ST_SR_CLNT_HELLO_D;
+  }
+
+  if (ssl->state == SSL3_ST_SR_CLNT_HELLO_D) {
     /* Determine whether we are doing session resumption. */
     int tickets_supported = 0, renew_ticket = 0;
     switch (ssl_get_prev_session(ssl, &session, &tickets_supported,
@@ -742,20 +761,9 @@ static int ssl3_get_client_hello(SSL *ssl) {
         goto err;
     }
 
-    /* The EMS state is needed when making the resumption decision, but
-     * extensions are not normally parsed until later. This detects the EMS
-     * extension for the resumption decision and it's checked against the result
-     * of the normal parse later in this function. */
-    CBS ems;
-    int have_extended_master_secret =
-        ssl->version != SSL3_VERSION &&
-        ssl_early_callback_get_extension(&client_hello, &ems,
-                                         TLSEXT_TYPE_extended_master_secret) &&
-        CBS_len(&ems) == 0;
-
     if (session != NULL) {
       if (session->extended_master_secret &&
-          !have_extended_master_secret) {
+          !ssl->s3->tmp.extended_master_secret) {
         /* A ClientHello without EMS that attempts to resume a session with EMS
          * is fatal to the connection. */
         al = SSL_AD_HANDSHAKE_FAILURE;
@@ -766,7 +774,8 @@ static int ssl3_get_client_hello(SSL *ssl) {
       if (!ssl_session_is_resumable(ssl, session) ||
           /* If the client offers the EMS extension, but the previous session
            * didn't use it, then negotiate a new session. */
-          have_extended_master_secret != session->extended_master_secret) {
+          ssl->s3->tmp.extended_master_secret !=
+              session->extended_master_secret) {
         SSL_SESSION_free(session);
         session = NULL;
       }
@@ -799,32 +808,12 @@ static int ssl3_get_client_hello(SSL *ssl) {
       goto f_err;
     }
 
-    /* Only null compression is supported. */
-    if (memchr(client_hello.compression_methods, 0,
-               client_hello.compression_methods_len) == NULL) {
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMPRESSION_SPECIFIED);
-      goto f_err;
-    }
-
-    /* TLS extensions. */
-    if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-      goto err;
-    }
-
-    if (have_extended_master_secret != ssl->s3->tmp.extended_master_secret) {
-      al = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_EMS_STATE_INCONSISTENT);
-      goto f_err;
-    }
-
-    ssl->state = SSL3_ST_SR_CLNT_HELLO_D;
+    ssl->state = SSL3_ST_SR_CLNT_HELLO_E;
   }
 
   /* Determine the remaining connection parameters. This is a separate state so
    * |cert_cb| does not cause earlier logic to run multiple times. */
-  assert(ssl->state == SSL3_ST_SR_CLNT_HELLO_D);
+  assert(ssl->state == SSL3_ST_SR_CLNT_HELLO_E);
 
   if (ssl->session != NULL) {
     /* Check that the cipher is in the list. */
@@ -861,6 +850,15 @@ static int ssl3_get_client_hello(SSL *ssl) {
 
     ssl->s3->new_session->cipher = c;
     ssl->s3->tmp.new_cipher = c;
+
+    /* On new sessions, stash the SNI value in the session. */
+    if (ssl->s3->hs->hostname != NULL) {
+      ssl->s3->new_session->tlsext_hostname = BUF_strdup(ssl->s3->hs->hostname);
+      if (ssl->s3->new_session->tlsext_hostname == NULL) {
+        al = SSL_AD_INTERNAL_ERROR;
+        goto f_err;
+      }
+    }
 
     /* Determine whether to request a client certificate. */
     ssl->s3->hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
