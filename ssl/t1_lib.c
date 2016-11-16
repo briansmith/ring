@@ -1421,11 +1421,6 @@ static int ext_sct_add_serverhello(SSL *ssl, CBB *out) {
  *
  * https://tools.ietf.org/html/rfc7301 */
 
-static void ext_alpn_init(SSL *ssl) {
-  OPENSSL_free(ssl->s3->alpn_selected);
-  ssl->s3->alpn_selected = NULL;
-}
-
 static int ext_alpn_add_clienthello(SSL *ssl, CBB *out) {
   if (ssl->alpn_client_proto_list == NULL ||
       ssl->s3->initial_handshake_complete) {
@@ -2517,7 +2512,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_application_layer_protocol_negotiation,
-    ext_alpn_init,
+    NULL,
     ext_alpn_add_clienthello,
     ext_alpn_parse_serverhello,
     /* ALPN is negotiated late in |ssl_negotiate_alpn|. */
