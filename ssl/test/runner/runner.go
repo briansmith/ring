@@ -5197,6 +5197,25 @@ func addExtensionTests() {
 			expectedSCTList: testSCTList,
 			resumeSession:   true,
 		})
+
+		// Test that certificate-related extensions are not sent unsolicited.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "UnsolicitedCertificateExtensions-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					NoOCSPStapling:                true,
+					NoSignedCertificateTimestamps: true,
+				},
+			},
+			flags: []string{
+				"-ocsp-response",
+				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				"-signed-cert-timestamps",
+				base64.StdEncoding.EncodeToString(testSCTList),
+			},
+		})
 	}
 
 	testCases = append(testCases, testCase{

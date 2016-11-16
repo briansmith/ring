@@ -1397,8 +1397,16 @@ static int ext_sct_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
 static int ext_sct_parse_clienthello(SSL *ssl, uint8_t *out_alert,
                                      CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
   ssl->s3->hs->scts_requested = 1;
-  return contents == NULL || CBS_len(contents) == 0;
+  return 1;
 }
 
 static int ext_sct_add_serverhello(SSL *ssl, CBB *out) {

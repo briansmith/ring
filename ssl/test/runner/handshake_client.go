@@ -64,8 +64,8 @@ func (c *Conn) clientHandshake() error {
 		vers:                    versionToWire(maxVersion, c.isDTLS),
 		compressionMethods:      []uint8{compressionNone},
 		random:                  make([]byte, 32),
-		ocspStapling:            true,
-		sctListSupported:        true,
+		ocspStapling:            !c.config.Bugs.NoOCSPStapling,
+		sctListSupported:        !c.config.Bugs.NoSignedCertificateTimestamps,
 		serverName:              c.config.ServerName,
 		supportedCurves:         c.config.curvePreferences(),
 		pskKEModes:              []byte{pskDHEKEMode},
@@ -729,21 +729,28 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 		hs.writeServerHash(certMsg.marshal())
 
+		// Check for unsolicited extensions.
+		for i, cert := range certMsg.certificates {
+			if c.config.Bugs.NoOCSPStapling && cert.ocspResponse != nil {
+				c.sendAlert(alertUnsupportedExtension)
+				return errors.New("tls: unexpected OCSP response in the server certificate")
+			}
+			if c.config.Bugs.NoSignedCertificateTimestamps && cert.sctList != nil {
+				c.sendAlert(alertUnsupportedExtension)
+				return errors.New("tls: unexpected SCT list in the server certificate")
+			}
+			if i > 0 && c.config.Bugs.ExpectNoExtensionsOnIntermediate && (cert.ocspResponse != nil || cert.sctList != nil) {
+				c.sendAlert(alertUnsupportedExtension)
+				return errors.New("tls: unexpected extensions in the server certificate")
+			}
+		}
+
 		if err := hs.verifyCertificates(certMsg); err != nil {
 			return err
 		}
 		leaf := c.peerCertificates[0]
 		c.ocspResponse = certMsg.certificates[0].ocspResponse
 		c.sctList = certMsg.certificates[0].sctList
-
-		if c.config.Bugs.ExpectNoExtensionsOnIntermediate {
-			for _, cert := range certMsg.certificates[1:] {
-				if cert.ocspResponse != nil || cert.sctList != nil {
-					c.sendAlert(alertUnsupportedExtension)
-					return errors.New("tls: unexpected extensions in the client certificate")
-				}
-			}
-		}
 
 		msg, err = c.readHandshake()
 		if err != nil {
@@ -1212,8 +1219,16 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		return errors.New("tls: server advertised OCSP in ServerHello over TLS 1.3")
 	}
 
+	if serverExtensions.ocspStapling && c.config.Bugs.NoOCSPStapling {
+		return errors.New("tls: server advertised unrequested OCSP extension")
+	}
+
 	if len(serverExtensions.sctList) > 0 && c.vers >= VersionTLS13 {
 		return errors.New("tls: server advertised SCTs in ServerHello over TLS 1.3")
+	}
+
+	if len(serverExtensions.sctList) > 0 && c.config.Bugs.NoSignedCertificateTimestamps {
+		return errors.New("tls: server advertised unrequested SCTs")
 	}
 
 	if serverExtensions.srtpProtectionProfile != 0 {

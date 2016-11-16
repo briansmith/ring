@@ -1201,6 +1201,14 @@ type ProtocolBugs struct {
 	// PSKBinderFirst, if true, causes the client to send the PSK Binder
 	// extension as the first extension instead of the last extension.
 	PSKBinderFirst bool
+
+	// NoOCSPStapling, if true, causes the client to not request OCSP
+	// stapling.
+	NoOCSPStapling bool
+
+	// NoSignedCertificateTimestamps, if true, causes the client to not
+	// request signed certificate timestamps.
+	NoSignedCertificateTimestamps bool
 }
 
 func (c *Config) serverInit() {
