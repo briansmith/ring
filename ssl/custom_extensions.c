@@ -90,7 +90,7 @@ static int custom_ext_add_hello(SSL *ssl, CBB *extensions) {
             !CBB_add_bytes(&contents_cbb, contents, contents_len) ||
             !CBB_flush(extensions)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          ERR_add_error_dataf("extension: %u", (unsigned) ext->value);
+          ERR_add_error_dataf("extension %u", (unsigned) ext->value);
           if (ext->free_callback && 0 < contents_len) {
             ext->free_callback(ssl, ext->value, contents, ext->add_arg);
           }
@@ -113,7 +113,7 @@ static int custom_ext_add_hello(SSL *ssl, CBB *extensions) {
       default:
         ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
         OPENSSL_PUT_ERROR(SSL, SSL_R_CUSTOM_EXTENSION_ERROR);
-        ERR_add_error_dataf("extension: %u", (unsigned) ext->value);
+        ERR_add_error_dataf("extension %u", (unsigned) ext->value);
         return 0;
     }
   }
@@ -136,7 +136,7 @@ int custom_ext_parse_serverhello(SSL *ssl, int *out_alert, uint16_t value,
       /* Also, if we didn't send the extension, that's also unacceptable. */
       !(ssl->s3->hs->custom_extensions.sent & (1u << index))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-    ERR_add_error_dataf("extension: %u", (unsigned)value);
+    ERR_add_error_dataf("extension %u", (unsigned)value);
     *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
     return 0;
   }
@@ -145,7 +145,7 @@ int custom_ext_parse_serverhello(SSL *ssl, int *out_alert, uint16_t value,
       !ext->parse_callback(ssl, value, CBS_data(extension), CBS_len(extension),
                            out_alert, ext->parse_arg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CUSTOM_EXTENSION_ERROR);
-    ERR_add_error_dataf("extension: %u", (unsigned)ext->value);
+    ERR_add_error_dataf("extension %u", (unsigned)ext->value);
     return 0;
   }
 
@@ -169,7 +169,7 @@ int custom_ext_parse_clienthello(SSL *ssl, int *out_alert, uint16_t value,
       !ext->parse_callback(ssl, value, CBS_data(extension), CBS_len(extension),
                            out_alert, ext->parse_arg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CUSTOM_EXTENSION_ERROR);
-    ERR_add_error_dataf("extension: %u", (unsigned)ext->value);
+    ERR_add_error_dataf("extension %u", (unsigned)ext->value);
     return 0;
   }
 

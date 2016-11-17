@@ -2651,7 +2651,7 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
     const size_t len_before = CBB_len(&extensions);
     if (!kExtensions[i].add_clienthello(ssl, &extensions)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
-      ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+      ERR_add_error_dataf("extension %u", (unsigned)kExtensions[i].value);
       goto err;
     }
 
@@ -2744,7 +2744,7 @@ int ssl_add_serverhello_tlsext(SSL *ssl, CBB *out) {
 
     if (!kExtensions[i].add_serverhello(ssl, &extensions)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
-      ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+      ERR_add_error_dataf("extension %u", (unsigned)kExtensions[i].value);
       goto err;
     }
   }
@@ -2814,7 +2814,7 @@ static int ssl_scan_clienthello_tlsext(
     if (!ext->parse_clienthello(ssl, &alert, &extension)) {
       *out_alert = alert;
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
-      ERR_add_error_dataf("extension: %u", (unsigned)type);
+      ERR_add_error_dataf("extension %u", (unsigned)type);
       return 0;
     }
   }
@@ -2842,7 +2842,7 @@ static int ssl_scan_clienthello_tlsext(
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!kExtensions[i].parse_clienthello(ssl, &alert, contents)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
-      ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+      ERR_add_error_dataf("extension %u", (unsigned)kExtensions[i].value);
       *out_alert = alert;
       return 0;
     }
@@ -2921,7 +2921,7 @@ static int ssl_scan_serverhello_tlsext(SSL *ssl, CBS *cbs, int *out_alert) {
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!ext->parse_serverhello(ssl, &alert, &extension)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
-      ERR_add_error_dataf("extension: %u", (unsigned)type);
+      ERR_add_error_dataf("extension %u", (unsigned)type);
       *out_alert = alert;
       return 0;
     }
@@ -2934,7 +2934,7 @@ static int ssl_scan_serverhello_tlsext(SSL *ssl, CBS *cbs, int *out_alert) {
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!kExtensions[i].parse_serverhello(ssl, &alert, NULL)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
-        ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+        ERR_add_error_dataf("extension %u", (unsigned)kExtensions[i].value);
         *out_alert = alert;
         return 0;
       }
