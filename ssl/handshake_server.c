@@ -353,7 +353,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
           goto end;
         }
 
-        if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_SERVER_READ)) {
+        if (!tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_READ)) {
           ret = -1;
           goto end;
         }
@@ -429,7 +429,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         }
         ssl->state = SSL3_ST_SW_FINISHED_A;
 
-        if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+        if (!tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
           ret = -1;
           goto end;
         }

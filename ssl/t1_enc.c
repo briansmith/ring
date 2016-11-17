@@ -258,8 +258,9 @@ static int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
   return 1;
 }
 
-static int tls1_setup_key_block(SSL *ssl) {
-  if (ssl->s3->hs->key_block_len != 0) {
+static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  if (hs->key_block_len != 0) {
     return 1;
   }
 
@@ -310,14 +311,15 @@ static int tls1_setup_key_block(SSL *ssl) {
   }
 
   assert(key_block_len < 256);
-  ssl->s3->hs->key_block_len = (uint8_t)key_block_len;
-  ssl->s3->hs->key_block = keyblock;
+  hs->key_block_len = (uint8_t)key_block_len;
+  hs->key_block = keyblock;
   return 1;
 }
 
-int tls1_change_cipher_state(SSL *ssl, int which) {
+int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
+  SSL *const ssl = hs->ssl;
   /* Ensure the key block is set up. */
-  if (!tls1_setup_key_block(ssl)) {
+  if (!tls1_setup_key_block(hs)) {
     return 0;
   }
 
@@ -333,9 +335,9 @@ int tls1_change_cipher_state(SSL *ssl, int which) {
   size_t mac_secret_len = ssl->s3->tmp.new_mac_secret_len;
   size_t key_len = ssl->s3->tmp.new_key_len;
   size_t iv_len = ssl->s3->tmp.new_fixed_iv_len;
-  assert((mac_secret_len + key_len + iv_len) * 2 == ssl->s3->hs->key_block_len);
+  assert((mac_secret_len + key_len + iv_len) * 2 == hs->key_block_len);
 
-  const uint8_t *key_data = ssl->s3->hs->key_block;
+  const uint8_t *key_data = hs->key_block;
   const uint8_t *client_write_mac_secret = key_data;
   key_data += mac_secret_len;
   const uint8_t *server_write_mac_secret = key_data;
