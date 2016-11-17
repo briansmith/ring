@@ -69,6 +69,8 @@
 
 #include <altivec.h>
 
+void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+
 static uint32_t rotate(uint32_t a, int n) { return (a << n) | (a >> (32 - n)); }
 
 typedef vector unsigned int vec_uint32_t;
