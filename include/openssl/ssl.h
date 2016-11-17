@@ -3116,6 +3116,14 @@ OPENSSL_EXPORT size_t SSL_get_server_random(const SSL *ssl, uint8_t *out,
  * NULL if one has not been negotiated yet or there is no pending handshake. */
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl);
 
+/* SSL_set_retain_only_sha256_of_client_certs, on a server, sets whether only
+ * the SHA-256 hash of peer's certificate should be saved in memory and in the
+ * session. This can save memory, ticket size and session cache space. If
+ * enabled, |SSL_get_peer_certificate| will return NULL after the handshake
+ * completes. See the |peer_sha256| field of |SSL_SESSION| for the hash. */
+OPENSSL_EXPORT void SSL_set_retain_only_sha256_of_client_certs(SSL *ssl,
+                                                               int enable);
+
 /* SSL_CTX_set_retain_only_sha256_of_client_certs, on a server, sets whether
  * only the SHA-256 hash of peer's certificate should be saved in memory and in
  * the session. This can save memory, ticket size and session cache space. If
@@ -4199,6 +4207,11 @@ struct ssl_st {
    * means that we'll accept Channel IDs from clients. For a client, means that
    * we'll advertise support. */
   unsigned tlsext_channel_id_enabled:1;
+
+  /* retain_only_sha256_of_client_certs is true if we should compute the SHA256
+   * hash of the peer's certificate and then discard it to save memory and
+   * session space. Only effective on the server side. */
+  unsigned retain_only_sha256_of_client_certs:1;
 
   /* TODO(agl): remove once node.js not longer references this. */
   int tlsext_status_type;

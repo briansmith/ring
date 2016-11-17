@@ -482,7 +482,7 @@ int ssl3_accept(SSL *ssl) {
         /* If we aren't retaining peer certificates then we can discard it
          * now. */
         if (ssl->s3->new_session != NULL &&
-            ssl->ctx->retain_only_sha256_of_client_certs) {
+            ssl->retain_only_sha256_of_client_certs) {
           X509_free(ssl->s3->new_session->x509_peer);
           ssl->s3->new_session->x509_peer = NULL;
           sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
@@ -1313,7 +1313,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
   uint8_t alert;
   STACK_OF(X509) *chain = ssl_parse_cert_chain(
-      ssl, &alert, ssl->ctx->retain_only_sha256_of_client_certs
+      ssl, &alert, ssl->retain_only_sha256_of_client_certs
                        ? ssl->s3->new_session->peer_sha256
                        : NULL,
       &certificate_msg);
@@ -1352,7 +1352,7 @@ static int ssl3_get_client_certificate(SSL *ssl) {
     ssl->s3->new_session->verify_result = X509_V_OK;
   } else {
     /* The hash would have been filled in. */
-    if (ssl->ctx->retain_only_sha256_of_client_certs) {
+    if (ssl->retain_only_sha256_of_client_certs) {
       ssl->s3->new_session->peer_sha256_valid = 1;
     }
 

@@ -9532,6 +9532,87 @@ func addCertificateTests() {
 	}
 }
 
+func addRetainOnlySHA256ClientCertTests() {
+	for _, ver := range tlsVersions {
+		// Test that enabling
+		// SSL_CTX_set_retain_only_sha256_of_client_certs without
+		// actually requesting a client certificate is a no-op.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RetainOnlySHA256-NoCert-" + ver.name,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+			},
+			flags: []string{
+				"-retain-only-sha256-client-cert-initial",
+				"-retain-only-sha256-client-cert-resume",
+			},
+			resumeSession: true,
+		})
+
+		// Test that when retaining only a SHA-256 certificate is
+		// enabled, the hash appears as expected.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RetainOnlySHA256-Cert-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			flags: []string{
+				"-verify-peer",
+				"-retain-only-sha256-client-cert-initial",
+				"-retain-only-sha256-client-cert-resume",
+				"-expect-sha256-client-cert-initial",
+				"-expect-sha256-client-cert-resume",
+			},
+			resumeSession: true,
+		})
+
+		// Test that when the config changes from on to off, a
+		// resumption is rejected because the server now wants the full
+		// certificate chain.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RetainOnlySHA256-OnOff-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			flags: []string{
+				"-verify-peer",
+				"-retain-only-sha256-client-cert-initial",
+				"-expect-sha256-client-cert-initial",
+			},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		})
+
+		// Test that when the config changes from off to on, a
+		// resumption is rejected because the server now wants just the
+		// hash.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RetainOnlySHA256-OffOn-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			flags: []string{
+				"-verify-peer",
+				"-retain-only-sha256-client-cert-resume",
+				"-expect-sha256-client-cert-resume",
+			},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -9658,6 +9739,7 @@ func main() {
 	addPeekTests()
 	addRecordVersionTests()
 	addCertificateTests()
+	addRetainOnlySHA256ClientCertTests()
 
 	var wg sync.WaitGroup
 

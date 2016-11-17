@@ -412,6 +412,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   assert(ssl->sid_ctx_length <= sizeof ssl->sid_ctx);
   memcpy(&ssl->sid_ctx, &ctx->sid_ctx, sizeof(ssl->sid_ctx));
   ssl->verify_callback = ctx->default_verify_callback;
+  ssl->retain_only_sha256_of_client_certs =
+      ctx->retain_only_sha256_of_client_certs;
 
   ssl->param = X509_VERIFY_PARAM_new();
   if (!ssl->param) {
@@ -2906,6 +2908,10 @@ const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl) {
     return NULL;
   }
   return ssl->s3->tmp.new_cipher;
+}
+
+void SSL_set_retain_only_sha256_of_client_certs(SSL *ssl, int enabled) {
+  ssl->retain_only_sha256_of_client_certs = !!enabled;
 }
 
 void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx, int enabled) {

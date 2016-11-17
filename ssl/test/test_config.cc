@@ -108,6 +108,14 @@ const Flag<bool> kBoolFlags[] = {
   { "-peek-then-read", &TestConfig::peek_then_read },
   { "-enable-grease", &TestConfig::enable_grease },
   { "-use-exporter-between-reads", &TestConfig::use_exporter_between_reads },
+  { "-retain-only-sha256-client-cert-initial",
+    &TestConfig::retain_only_sha256_client_cert_initial },
+  { "-retain-only-sha256-client-cert-resume",
+    &TestConfig::retain_only_sha256_client_cert_resume },
+  { "-expect-sha256-client-cert-initial",
+    &TestConfig::expect_sha256_client_cert_initial },
+  { "-expect-sha256-client-cert-resume",
+    &TestConfig::expect_sha256_client_cert_resume },
 };
 
 const Flag<std::string> kStringFlags[] = {
