@@ -1061,22 +1061,22 @@ enum ssl_private_key_result_t tls13_prepare_certificate_verify(
 int tls13_prepare_finished(SSL_HANDSHAKE *hs);
 int tls13_process_new_session_ticket(SSL *ssl);
 
-int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
+int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents);
-int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
+int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
                                         uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents);
-int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out);
+int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
-int ssl_ext_pre_shared_key_parse_serverhello(SSL *ssl, uint8_t *out_alert,
-                                             CBS *contents);
-int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
+int ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
+                                             uint8_t *out_alert, CBS *contents);
+int ssl_ext_pre_shared_key_parse_clienthello(SSL_HANDSHAKE *hs,
                                              SSL_SESSION **out_session,
                                              CBS *out_binders,
                                              uint8_t *out_alert, CBS *contents);
-int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
+int ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 /* ssl_is_sct_list_valid does a shallow parse of the SCT list in |contents| and
  * returns one iff it's valid. */

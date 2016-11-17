@@ -230,7 +230,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (!ssl_ext_pre_shared_key_parse_serverhello(ssl, &alert,
+    if (!ssl_ext_pre_shared_key_parse_serverhello(hs, &alert,
                                                   &pre_shared_key)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
@@ -293,7 +293,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   /* Resolve ECDHE and incorporate it into the secret. */
   uint8_t *dhe_secret;
   size_t dhe_secret_len;
-  if (!ssl_ext_key_share_parse_serverhello(ssl, &dhe_secret, &dhe_secret_len,
+  if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &dhe_secret_len,
                                            &alert, &key_share)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;

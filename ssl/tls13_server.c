@@ -71,7 +71,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
   uint8_t *dhe_secret;
   size_t dhe_secret_len;
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_ext_key_share_parse_clienthello(ssl, &found_key_share, &dhe_secret,
+  if (!ssl_ext_key_share_parse_clienthello(hs, &found_key_share, &dhe_secret,
                                            &dhe_secret_len, &alert,
                                            &key_share)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -223,7 +223,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (!ssl_ext_pre_shared_key_parse_clienthello(ssl, &session, &binders,
+    if (!ssl_ext_pre_shared_key_parse_clienthello(hs, &session, &binders,
                                                   &alert, &pre_shared_key)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
@@ -388,8 +388,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
-      !ssl_ext_pre_shared_key_add_serverhello(ssl, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(ssl, &extensions) ||
+      !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
+      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
       !ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
