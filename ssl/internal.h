@@ -509,12 +509,12 @@ struct ssl_custom_extension {
 
 void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
 
-int custom_ext_add_clienthello(SSL *ssl, CBB *extensions);
-int custom_ext_parse_serverhello(SSL *ssl, int *out_alert, uint16_t value,
-                                 const CBS *extension);
-int custom_ext_parse_clienthello(SSL *ssl, int *out_alert, uint16_t value,
-                                 const CBS *extension);
-int custom_ext_add_serverhello(SSL *ssl, CBB *extensions);
+int custom_ext_add_clienthello(SSL_HANDSHAKE *hs, CBB *extensions);
+int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
+                                 uint16_t value, const CBS *extension);
+int custom_ext_parse_clienthello(SSL_HANDSHAKE *hs, int *out_alert,
+                                 uint16_t value, const CBS *extension);
+int custom_ext_add_serverhello(SSL_HANDSHAKE *hs, CBB *extensions);
 
 
 /* Handshake hash.

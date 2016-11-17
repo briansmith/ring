@@ -2775,7 +2775,7 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
     }
   }
 
-  if (!custom_ext_add_clienthello(ssl, &extensions)) {
+  if (!custom_ext_add_clienthello(hs, &extensions)) {
     goto err;
   }
 
@@ -2864,7 +2864,7 @@ int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out) {
     }
   }
 
-  if (!custom_ext_add_serverhello(ssl, &extensions)) {
+  if (!custom_ext_add_serverhello(hs, &extensions)) {
     goto err;
   }
 
@@ -2918,7 +2918,7 @@ static int ssl_scan_clienthello_tlsext(
         tls_extension_find(&ext_index, type);
 
     if (ext == NULL) {
-      if (!custom_ext_parse_clienthello(ssl, out_alert, type, &extension)) {
+      if (!custom_ext_parse_clienthello(hs, out_alert, type, &extension)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
         return 0;
       }
@@ -3019,7 +3019,7 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
         tls_extension_find(&ext_index, type);
 
     if (ext == NULL) {
-      if (!custom_ext_parse_serverhello(ssl, out_alert, type, &extension)) {
+      if (!custom_ext_parse_serverhello(hs, out_alert, type, &extension)) {
         return 0;
       }
       continue;
