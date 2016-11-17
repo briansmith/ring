@@ -1826,7 +1826,6 @@ int ssl_init_wbio_buffer(SSL *ssl);
 void ssl_free_wbio_buffer(SSL *ssl);
 
 int tls1_change_cipher_state(SSL *ssl, int which);
-int tls1_setup_key_block(SSL *ssl);
 int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len);
 int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);
