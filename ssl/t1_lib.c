@@ -1910,7 +1910,7 @@ static size_t ext_pre_shared_key_clienthello_length(SSL *ssl) {
   return 15 + ssl->session->tlsext_ticklen + binder_len;
 }
 
-int ssl_ext_pre_shared_key_add_clienthello(SSL *ssl, CBB *out) {
+static int ext_pre_shared_key_add_clienthello(SSL *ssl, CBB *out) {
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
     return 0;
@@ -2713,7 +2713,7 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
   }
 
   /* The PSK extension must be last, including after the padding. */
-  if (!ssl_ext_pre_shared_key_add_clienthello(ssl, &extensions)) {
+  if (!ext_pre_shared_key_add_clienthello(ssl, &extensions)) {
     goto err;
   }
 

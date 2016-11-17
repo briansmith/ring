@@ -1065,7 +1065,6 @@ int ssl_ext_key_share_parse_clienthello(SSL *ssl, int *out_found,
                                         uint8_t *out_alert, CBS *contents);
 int ssl_ext_key_share_add_serverhello(SSL *ssl, CBB *out);
 
-int ssl_ext_pre_shared_key_add_clienthello(SSL *ssl, CBB *out);
 int ssl_ext_pre_shared_key_parse_serverhello(SSL *ssl, uint8_t *out_alert,
                                              CBS *contents);
 int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
