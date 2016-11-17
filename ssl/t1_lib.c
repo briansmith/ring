@@ -1357,6 +1357,7 @@ static int ext_sct_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
   /* TLS 1.3 SCTs are included in the Certificate extensions. */
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
 
@@ -1364,7 +1365,7 @@ static int ext_sct_parse_serverhello(SSL *ssl, uint8_t *out_alert,
    * ClientHello and thus this function should never have been called. */
   assert(ssl->signed_cert_timestamps_enabled);
 
-  if (CBS_len(contents) == 0) {
+  if (!ssl_is_sct_list_valid(contents)) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
@@ -3468,4 +3469,27 @@ int ssl_do_channel_id_callback(SSL *ssl) {
   int ret = SSL_set1_tls_channel_id(ssl, key);
   EVP_PKEY_free(key);
   return ret;
+}
+
+int ssl_is_sct_list_valid(const CBS *contents) {
+  /* Shallow parse the SCT list for sanity. By the RFC
+   * (https://tools.ietf.org/html/rfc6962#section-3.3) neither the list nor any
+   * of the SCTs may be empty. */
+  CBS copy = *contents;
+  CBS sct_list;
+  if (!CBS_get_u16_length_prefixed(&copy, &sct_list) ||
+      CBS_len(&copy) != 0 ||
+      CBS_len(&sct_list) == 0) {
+    return 0;
+  }
+
+  while (CBS_len(&sct_list) > 0) {
+    CBS sct;
+    if (!CBS_get_u16_length_prefixed(&sct_list, &sct) ||
+        CBS_len(&sct) == 0) {
+      return 0;
+    }
+  }
+
+  return 1;
 }

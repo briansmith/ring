@@ -269,7 +269,8 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
         goto err;
       }
 
-      if (CBS_len(&sct) == 0) {
+      if (!ssl_is_sct_list_valid(&sct)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         goto err;
       }

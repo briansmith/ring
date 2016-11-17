@@ -169,10 +169,10 @@ var channelIDKey *ecdsa.PrivateKey
 var channelIDBytes []byte
 
 var testOCSPResponse = []byte{1, 2, 3, 4}
-var testSCTList = []byte{5, 6, 7, 8}
+var testSCTList = []byte{0, 6, 0, 4, 5, 6, 7, 8}
 
 var testOCSPExtension = append([]byte{byte(extensionStatusRequest) >> 8, byte(extensionStatusRequest), 0, 8, statusTypeOCSP, 0, 0, 4}, testOCSPResponse...)
-var testSCTExtension = append([]byte{byte(extensionSignedCertificateTimestamp) >> 8, byte(extensionSignedCertificateTimestamp), 0, 4}, testSCTList...)
+var testSCTExtension = append([]byte{byte(extensionSignedCertificateTimestamp) >> 8, byte(extensionSignedCertificateTimestamp), 0, byte(len(testSCTList))}, testSCTList...)
 
 func initCertificates() {
 	for i := range testCerts {
@@ -5169,6 +5169,10 @@ func addExtensionTests() {
 			resumeSession: true,
 		})
 
+		var differentSCTList []byte
+		differentSCTList = append(differentSCTList, testSCTList...)
+		differentSCTList[len(differentSCTList)-1] ^= 1
+
 		// The SCT extension did not specify that it must only be sent on resumption as it
 		// should have, so test that we tolerate but ignore it.
 		testCases = append(testCases, testCase{
@@ -5176,7 +5180,7 @@ func addExtensionTests() {
 			config: Config{
 				MaxVersion: ver.version,
 				Bugs: ProtocolBugs{
-					SendSCTListOnResume: []byte("bogus"),
+					SendSCTListOnResume: differentSCTList,
 				},
 			},
 			flags: []string{
@@ -5199,6 +5203,42 @@ func addExtensionTests() {
 			},
 			expectedSCTList: testSCTList,
 			resumeSession:   true,
+		})
+
+		emptySCTListCert := *testCerts[0].cert
+		emptySCTListCert.SignedCertificateTimestampList = []byte{0, 0}
+
+		// Test empty SCT list.
+		testCases = append(testCases, testCase{
+			name:     "SignedCertificateTimestampListEmpty-Client-" + ver.name,
+			testType: clientTest,
+			config: Config{
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{emptySCTListCert},
+			},
+			flags: []string{
+				"-enable-signed-cert-timestamps",
+			},
+			shouldFail:    true,
+			expectedError: ":ERROR_PARSING_EXTENSION:",
+		})
+
+		emptySCTCert := *testCerts[0].cert
+		emptySCTCert.SignedCertificateTimestampList = []byte{0, 6, 0, 2, 1, 2, 0, 0}
+
+		// Test empty SCT in non-empty list.
+		testCases = append(testCases, testCase{
+			name:     "SignedCertificateTimestampListEmptySCT-Client-" + ver.name,
+			testType: clientTest,
+			config: Config{
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{emptySCTCert},
+			},
+			flags: []string{
+				"-enable-signed-cert-timestamps",
+			},
+			shouldFail:    true,
+			expectedError: ":ERROR_PARSING_EXTENSION:",
 		})
 
 		// Test that certificate-related extensions are not sent unsolicited.
@@ -5437,6 +5477,10 @@ func addExtensionTests() {
 		expectedError: ":UNEXPECTED_EXTENSION:",
 	})
 
+	var differentSCTList []byte
+	differentSCTList = append(differentSCTList, testSCTList...)
+	differentSCTList[len(differentSCTList)-1] ^= 1
+
 	// Test that extensions on intermediates are allowed but ignored.
 	testCases = append(testCases, testCase{
 		name: "IgnoreExtensionsOnIntermediates-TLS13",
@@ -5448,7 +5492,7 @@ func addExtensionTests() {
 				// the intermediate's extensions do not override the
 				// leaf's.
 				SendOCSPOnIntermediates: []byte{1, 3, 3, 7},
-				SendSCTOnIntermediates:  []byte{1, 3, 3, 7},
+				SendSCTOnIntermediates:  differentSCTList,
 			},
 		},
 		flags: []string{

@@ -1073,6 +1073,10 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
                                              uint8_t *out_alert, CBS *contents);
 int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
 
+/* ssl_is_sct_list_valid does a shallow parse of the SCT list in |contents| and
+ * returns one iff it's valid. */
+int ssl_is_sct_list_valid(const CBS *contents);
+
 int ssl_write_client_hello(SSL *ssl);
 
 /* ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
