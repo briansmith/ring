@@ -266,7 +266,7 @@ class Bazel(object):
               out.write('          "%s",\n' % arg)
           out.write('      ],\n')
 
-        out.write('      copts = copts,\n')
+        out.write('      copts = copts + ["-DBORINGSSL_SHARED_LIBRARY"],\n')
 
         if len(data_files) > 0:
           out.write('      data = [\n')
