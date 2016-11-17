@@ -894,7 +894,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     return 1;
   }
 
-  ssl_clear_tls13_state(ssl);
+  ssl_clear_tls13_state(hs);
 
   if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);

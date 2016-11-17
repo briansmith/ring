@@ -27,8 +27,8 @@
 #include "internal.h"
 
 
-int tls13_init_key_schedule(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
 
   hs->hash_len = EVP_MD_size(digest);
@@ -44,9 +44,10 @@ int tls13_init_key_schedule(SSL *ssl) {
   return 1;
 }
 
-int tls13_advance_key_schedule(SSL *ssl, const uint8_t *in, size_t len) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-  const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
+int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
+                               size_t len) {
+  const EVP_MD *digest =
+      ssl_get_handshake_digest(ssl_get_algorithm_prf(hs->ssl));
 
   return HKDF_extract(hs->secret, &hs->hash_len, digest, in, len, hs->secret,
                       hs->hash_len);
@@ -97,9 +98,9 @@ int tls13_get_context_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
 /* derive_secret derives a secret of length |len| and writes the result in |out|
  * with the given label and the current base secret and most recently-saved
  * handshake context. It returns one on success and zero on error. */
-static int derive_secret(SSL *ssl, uint8_t *out, size_t len,
+static int derive_secret(SSL_HANDSHAKE *hs, uint8_t *out, size_t len,
                          const uint8_t *label, size_t label_len) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  SSL *const ssl = hs->ssl;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
@@ -184,17 +185,16 @@ static const char kTLS13LabelClientApplicationTraffic[] =
 static const char kTLS13LabelServerApplicationTraffic[] =
     "server application traffic secret";
 
-int tls13_set_handshake_traffic(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-
+int tls13_set_handshake_traffic(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   uint8_t client_traffic_secret[EVP_MAX_MD_SIZE];
   uint8_t server_traffic_secret[EVP_MAX_MD_SIZE];
-  if (!derive_secret(ssl, client_traffic_secret, hs->hash_len,
+  if (!derive_secret(hs, client_traffic_secret, hs->hash_len,
                      (const uint8_t *)kTLS13LabelClientHandshakeTraffic,
                      strlen(kTLS13LabelClientHandshakeTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
                       client_traffic_secret, hs->hash_len) ||
-      !derive_secret(ssl, server_traffic_secret, hs->hash_len,
+      !derive_secret(hs, server_traffic_secret, hs->hash_len,
                      (const uint8_t *)kTLS13LabelServerHandshakeTraffic,
                      strlen(kTLS13LabelServerHandshakeTraffic)) ||
       !ssl_log_secret(ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
@@ -222,21 +222,20 @@ int tls13_set_handshake_traffic(SSL *ssl) {
 
 static const char kTLS13LabelExporter[] = "exporter master secret";
 
-int tls13_derive_application_secrets(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-
+int tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   ssl->s3->exporter_secret_len = hs->hash_len;
-  return derive_secret(ssl, hs->client_traffic_secret_0, hs->hash_len,
+  return derive_secret(hs, hs->client_traffic_secret_0, hs->hash_len,
                        (const uint8_t *)kTLS13LabelClientApplicationTraffic,
                        strlen(kTLS13LabelClientApplicationTraffic)) &&
          ssl_log_secret(ssl, "CLIENT_TRAFFIC_SECRET_0",
                         hs->client_traffic_secret_0, hs->hash_len) &&
-         derive_secret(ssl, hs->server_traffic_secret_0, hs->hash_len,
+         derive_secret(hs, hs->server_traffic_secret_0, hs->hash_len,
                        (const uint8_t *)kTLS13LabelServerApplicationTraffic,
                        strlen(kTLS13LabelServerApplicationTraffic)) &&
          ssl_log_secret(ssl, "SERVER_TRAFFIC_SECRET_0",
                         hs->server_traffic_secret_0, hs->hash_len) &&
-         derive_secret(ssl, ssl->s3->exporter_secret, hs->hash_len,
+         derive_secret(hs, ssl->s3->exporter_secret, hs->hash_len,
                        (const uint8_t *)kTLS13LabelExporter,
                        strlen(kTLS13LabelExporter));
 }
@@ -269,14 +268,15 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 
 static const char kTLS13LabelResumption[] = "resumption master secret";
 
-int tls13_derive_resumption_secret(SSL *ssl) {
+int tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (ssl->s3->hs->hash_len > SSL_MAX_MASTER_KEY_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  ssl->s3->new_session->master_key_length = ssl->s3->hs->hash_len;
-  return derive_secret(ssl, ssl->s3->new_session->master_key,
+  ssl->s3->new_session->master_key_length = hs->hash_len;
+  return derive_secret(hs, ssl->s3->new_session->master_key,
                        ssl->s3->new_session->master_key_length,
                        (const uint8_t *)kTLS13LabelResumption,
                        strlen(kTLS13LabelResumption));
@@ -302,8 +302,9 @@ static int tls13_verify_data(const EVP_MD *digest, uint8_t *out,
   return 1;
 }
 
-int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
+                       int is_server) {
+  SSL *const ssl = hs->ssl;
   const EVP_MD *digest = ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl));
 
   const uint8_t *traffic_secret;

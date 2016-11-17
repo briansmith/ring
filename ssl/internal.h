@@ -798,11 +798,12 @@ int ssl_do_client_cert_cb(SSL *ssl, int *out_should_retry);
 /* tls13_init_key_schedule initializes the handshake hash and key derivation
  * state. The cipher suite and PRF hash must have been selected at this point.
  * It returns one on success and zero on error. */
-int tls13_init_key_schedule(SSL *ssl);
+int tls13_init_key_schedule(SSL_HANDSHAKE *hs);
 
 /* tls13_advance_key_schedule incorporates |in| into the key schedule with
  * HKDF-Extract. It returns one on success and zero on error. */
-int tls13_advance_key_schedule(SSL *ssl, const uint8_t *in, size_t len);
+int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
+                               size_t len);
 
 /* tls13_get_context_hash writes Hash(Handshake Context) to |out| which must
  * have room for at least |EVP_MAX_MD_SIZE| bytes. On success, it returns one
@@ -826,7 +827,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
 /* tls13_set_handshake_traffic derives the handshake traffic secret and
  * switches both read and write traffic to it. It returns one on success and
  * zero on error. */
-int tls13_set_handshake_traffic(SSL *ssl);
+int tls13_set_handshake_traffic(SSL_HANDSHAKE *hs);
 
 /* tls13_rotate_traffic_key derives the next read or write traffic secret. It
  * returns one on success and zero on error. */
@@ -835,10 +836,10 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction);
 /* tls13_derive_application_secrets derives the initial application data traffic
  * and exporter secrets based on the handshake transcripts and |master_secret|.
  * It returns one on success and zero on error. */
-int tls13_derive_application_secrets(SSL *ssl);
+int tls13_derive_application_secrets(SSL_HANDSHAKE *hs);
 
 /* tls13_derive_resumption_secret derives the |resumption_secret|. */
-int tls13_derive_resumption_secret(SSL *ssl);
+int tls13_derive_resumption_secret(SSL_HANDSHAKE *hs);
 
 /* tls13_export_keying_material provides an exporter interface to use the
  * |exporter_secret|. */
@@ -851,7 +852,8 @@ int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
  * the integrity of the Finished message, and stores the result in |out| and
  * length in |out_len|. |is_server| is 1 if this is for the Server Finished and
  * 0 for the Client Finished. */
-int tls13_finished_mac(SSL *ssl, uint8_t *out, size_t *out_len, int is_server);
+int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out,
+                       size_t *out_len, int is_server);
 
 /* tls13_write_psk_binder calculates the PSK binder value and replaces the last
  * bytes of |msg| with the resulting value. It returns 1 on success, and 0 on
@@ -1051,12 +1053,12 @@ int tls13_check_message_type(SSL *ssl, int type);
 
 int tls13_process_certificate(SSL *ssl, int allow_anonymous);
 int tls13_process_certificate_verify(SSL *ssl);
-int tls13_process_finished(SSL *ssl);
+int tls13_process_finished(SSL_HANDSHAKE *hs);
 
-int tls13_prepare_certificate(SSL *ssl);
+int tls13_prepare_certificate(SSL_HANDSHAKE *hs);
 enum ssl_private_key_result_t tls13_prepare_certificate_verify(
-    SSL *ssl, int is_first_run);
-int tls13_prepare_finished(SSL *ssl);
+    SSL_HANDSHAKE *hs, int is_first_run);
+int tls13_prepare_finished(SSL_HANDSHAKE *hs);
 int tls13_process_new_session_ticket(SSL *ssl);
 
 int ssl_ext_key_share_parse_serverhello(SSL *ssl, uint8_t **out_secret,
@@ -1084,7 +1086,7 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs);
 
 /* ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
  * should be called once the version is known to be TLS 1.2 or earlier. */
-void ssl_clear_tls13_state(SSL *ssl);
+void ssl_clear_tls13_state(SSL_HANDSHAKE *hs);
 
 enum ssl_cert_verify_context_t {
   ssl_cert_verify_server,
