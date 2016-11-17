@@ -498,7 +498,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         ssl_free_wbio_buffer(ssl);
 
         ssl->s3->initial_handshake_complete = 1;
-        ssl_update_cache(ssl, SSL_SESS_CACHE_SERVER);
+        ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
 
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
         ret = 1;
@@ -759,7 +759,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
     /* Negotiate the cipher suite. This must be done after |cert_cb| so the
      * certificate is finalized. */
     ssl->s3->tmp.new_cipher =
-        ssl3_choose_cipher(ssl, &client_hello, ssl_get_cipher_preferences(ssl));
+        ssl3_choose_cipher(hs, &client_hello, ssl_get_cipher_preferences(ssl));
     if (ssl->s3->tmp.new_cipher == NULL) {
       al = SSL_AD_HANDSHAKE_FAILURE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
@@ -813,7 +813,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, NULL);
-    if (!ssl_get_new_session(ssl, 1 /* server */)) {
+    if (!ssl_get_new_session(hs, 1 /* server */)) {
       goto err;
     }
 
@@ -864,7 +864,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
 
   /* HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
    * deferred. Complete it now. */
-  if (!ssl_negotiate_alpn(ssl, &al, &client_hello)) {
+  if (!ssl_negotiate_alpn(hs, &al, &client_hello)) {
     goto f_err;
   }
 
@@ -1053,7 +1053,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     } else if (alg_k & SSL_kECDHE) {
       /* Determine the group to use. */
       uint16_t group_id;
-      if (!tls1_get_shared_group(ssl, &group_id)) {
+      if (!tls1_get_shared_group(hs, &group_id)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_ECDH_KEY);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
@@ -1100,7 +1100,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     /* Determine the signature algorithm. */
     uint16_t signature_algorithm;
-    if (!tls1_choose_signature_algorithm(ssl, &signature_algorithm)) {
+    if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
       goto err;
     }
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {

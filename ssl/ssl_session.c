@@ -449,7 +449,8 @@ void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
   return CRYPTO_get_ex_data(&session->ex_data, idx);
 }
 
-int ssl_get_new_session(SSL *ssl, int is_server) {
+int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
+  SSL *const ssl = hs->ssl;
   if (ssl->mode & SSL_MODE_NO_SESSION_CREATION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SESSION_MAY_NOT_BE_CREATED);
     return 0;
@@ -470,7 +471,7 @@ int ssl_get_new_session(SSL *ssl, int is_server) {
   session->ssl_version = ssl->version;
 
   if (is_server) {
-    if (ssl->s3->hs->ticket_expected) {
+    if (hs->ticket_expected) {
       /* Don't set session IDs for sessions resumed with tickets. This will keep
        * them out of the session cache. */
       session->session_id_length = 0;

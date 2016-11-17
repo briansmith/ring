@@ -241,8 +241,9 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
 }
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
+    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello,
     const struct ssl_cipher_preference_list_st *server_pref) {
+  SSL *const ssl = hs->ssl;
   const SSL_CIPHER *c, *ret = NULL;
   STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
   int ok;
@@ -272,7 +273,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
     allow = srvr;
   }
 
-  ssl_get_compatible_server_ciphers(ssl, &mask_k, &mask_a);
+  ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
 
   for (size_t i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
     c = sk_SSL_CIPHER_value(prio, i);

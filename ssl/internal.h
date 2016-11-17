@@ -1106,7 +1106,7 @@ int tls13_get_cert_verify_signature_input(
 /* ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
  * one on successful negotiation or if nothing was negotiated. It returns zero
  * and sets |*out_alert| to an alert on error. */
-int ssl_negotiate_alpn(SSL *ssl, uint8_t *out_alert,
+int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                        const struct ssl_early_callback_ctx *client_hello);
 
 typedef struct {
@@ -1178,13 +1178,14 @@ uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index);
 /* Signature algorithms. */
 
 /* tls1_parse_peer_sigalgs parses |sigalgs| as the list of peer signature
- * algorithms and them on |ssl|. It returns one on success and zero on error. */
-int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
+ * algorithms and saves them on |hs|. It returns one on success and zero on
+ * error. */
+int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *sigalgs);
 
 /* tls1_choose_signature_algorithm sets |*out| to a signature algorithm for use
- * with |ssl|'s private key based on the peer's preferences and the algorithms
+ * with |hs|'s private key based on the peer's preferences and the algorithms
  * supported. It returns one on success and zero on error. */
-int tls1_choose_signature_algorithm(SSL *ssl, uint16_t *out);
+int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out);
 
 /* tls12_get_verify_sigalgs sets |*out| to the signature algorithms acceptable
  * for the peer signature and returns the length of the list. */
@@ -1655,7 +1656,7 @@ CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
-int ssl_get_new_session(SSL *ssl, int is_server);
+int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
 
 /* ssl_session_is_context_valid returns one if |session|'s session ID context
@@ -1721,13 +1722,13 @@ void ssl_cert_set_cert_cb(CERT *cert,
 
 int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
                           STACK_OF(X509) * cert_chain);
-void ssl_update_cache(SSL *ssl, int mode);
+void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
  * authentication cipher suite masks compatible with the server configuration
- * and current ClientHello parameters of |ssl|. It sets |*out_mask_k| to the key
+ * and current ClientHello parameters of |hs|. It sets |*out_mask_k| to the key
  * exchange mask and |*out_mask_a| to the authentication mask. */
-void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
+void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a);
 
 int ssl_verify_alarm_type(long type);
@@ -1760,7 +1761,7 @@ int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *ssl, const struct ssl_early_callback_ctx *client_hello,
+    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello,
     const struct ssl_cipher_preference_list_st *srvr);
 
 int ssl3_new(SSL *ssl);
@@ -1859,7 +1860,7 @@ int tls1_check_group_id(SSL *ssl, uint16_t group_id);
 /* tls1_get_shared_group sets |*out_group_id| to the first preferred shared
  * group between client and server preferences and returns one. If none may be
  * found, it returns zero. */
-int tls1_get_shared_group(SSL *ssl, uint16_t *out_group_id);
+int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id);
 
 /* tls1_set_curves converts the array of |ncurves| NIDs pointed to by |curves|
  * into a newly allocated array of TLS group IDs. On success, the function

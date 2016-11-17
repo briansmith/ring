@@ -511,7 +511,7 @@ enum ssl_private_key_result_t tls13_prepare_certificate_verify(
   CBB_zero(&cbb);
 
   uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(ssl, &signature_algorithm)) {
+  if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
     goto err;
   }
   if (!ssl->method->init_message(ssl, &cbb, &body,

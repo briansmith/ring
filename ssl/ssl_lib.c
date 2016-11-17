@@ -2059,8 +2059,9 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
   return ssl->s3->hs->num_certificate_types;
 }
 
-void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
+void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a) {
+  SSL *const ssl = hs->ssl;
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
     *out_mask_k = SSL_kGENERIC;
     *out_mask_a = SSL_aGENERIC;
@@ -2086,7 +2087,7 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
 
   /* Check for a shared group to consider ECDHE ciphers. */
   uint16_t unused;
-  if (tls1_get_shared_group(ssl, &unused)) {
+  if (tls1_get_shared_group(hs, &unused)) {
     mask_k |= SSL_kECDHE;
   }
 
@@ -2103,7 +2104,8 @@ void ssl_get_compatible_server_ciphers(SSL *ssl, uint32_t *out_mask_k,
   *out_mask_a = mask_a;
 }
 
-void ssl_update_cache(SSL *ssl, int mode) {
+void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
+  SSL *const ssl = hs->ssl;
   SSL_CTX *ctx = ssl->initial_ctx;
   /* Never cache sessions with empty session IDs. */
   if (ssl->s3->established_session->session_id_length == 0 ||
@@ -2119,7 +2121,7 @@ void ssl_update_cache(SSL *ssl, int mode) {
    * decides to renew the ticket. Once the handshake is completed, it should be
    * inserted into the cache. */
   if (ssl->s3->established_session != ssl->session ||
-      (!ssl->server && ssl->s3->hs->ticket_expected)) {
+      (!ssl->server && hs->ticket_expected)) {
     if (use_internal_cache) {
       SSL_CTX_add_session(ctx, ssl->s3->established_session);
     }
