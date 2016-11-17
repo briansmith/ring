@@ -57,4 +57,4 @@ add_executable(
 target_link_libraries(example_mul crypto)
 target_link_libraries(ec_test crypto)
 target_link_libraries(p256-x86_64_test crypto)
-add_dependencies(all_tests example_mul ec_test)
+add_dependencies(all_tests example_mul ec_test p256-x86_64_test)
