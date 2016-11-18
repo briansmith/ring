@@ -59,7 +59,6 @@ int GFp_sysrand_chunk(void *buf, size_t len);
 #pragma warning(pop)
 
 int GFp_sysrand_chunk(void *out, size_t requested) {
-  assert(requested <= GFp_sysrand_chunk_max_len);
   return RtlGenRandom(out, (ULONG)requested) ? 1 : 0;
 }
 
