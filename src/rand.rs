@@ -328,12 +328,12 @@ mod tests {
             }
 
             // Make sure we didn't forget to finish filling in the rest of the
-            // buffer after we filled in the first chunk, especially in the
+            // buffer after we filled in the first chunk.
             // case in the `SysRandOrDevURandom::Undecided` case. As above, we
             // only do this when there are at least 96 bytes after the first
             // chunk to avoid false positives.
-            if *len > 256 + 96 {
-                assert!(buf[256..].iter().any(|x| *x != 0));
+            if *len > 96 {
+                assert!(buf[buf.len() - 96 ..].iter().any(|x| *x != 0));
             }
         }
     }
