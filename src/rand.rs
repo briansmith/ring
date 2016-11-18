@@ -129,9 +129,10 @@ mod sysrand {
             };
             if r < 0 {
                 return Err(error::Unspecified);
-            } else {
-                read_len += r as usize;
             }
+            // XXX: If r == 0 then this is a busy wait loop waiting for the
+            //      kernel entropy pool to be initialized
+            read_len += r as usize;
         }
         Ok(())
     }
