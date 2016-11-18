@@ -5560,6 +5560,17 @@ func addExtensionTests() {
 		shouldFail:    true,
 		expectedError: ":DUPLICATE_EXTENSION:",
 	})
+
+	testCases = append(testCases, testCase{
+		name:     "SignedCertificateTimestampListInvalid-Server",
+		testType: serverTest,
+		flags: []string{
+			"-signed-cert-timestamps",
+			base64.StdEncoding.EncodeToString([]byte{0, 0}),
+		},
+		shouldFail: true,
+		expectedError: ":INVALID_SCT_LIST:",
+	})
 }
 
 func addResumptionVersionTests() {

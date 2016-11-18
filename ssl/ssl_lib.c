@@ -1779,16 +1779,15 @@ void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
 
 int SSL_CTX_set_signed_cert_timestamp_list(SSL_CTX *ctx, const uint8_t *list,
                                            size_t list_len) {
-  OPENSSL_free(ctx->signed_cert_timestamp_list);
-  ctx->signed_cert_timestamp_list_length = 0;
-
-  ctx->signed_cert_timestamp_list = BUF_memdup(list, list_len);
-  if (ctx->signed_cert_timestamp_list == NULL) {
+  CBS sct_list;
+  CBS_init(&sct_list, list, list_len);
+  if (!ssl_is_sct_list_valid(&sct_list)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SCT_LIST);
     return 0;
   }
-  ctx->signed_cert_timestamp_list_length = list_len;
 
-  return 1;
+  return CBS_stow(&sct_list, &ctx->signed_cert_timestamp_list,
+                  &ctx->signed_cert_timestamp_list_length);
 }
 
 int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
