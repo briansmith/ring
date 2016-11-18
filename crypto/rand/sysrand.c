@@ -101,8 +101,8 @@ int GFp_sysrand_chunk(void *out, size_t requested) {
 
   int r = syscall(SYS_getrandom, out, requested, 0u);
   if (r < 0) {
-    // EINTR and EAGAIN are normal, and we can try again. Other error codes are fatal.
-    if (errno == EINTR || errno == EAGAIN) {
+    // EINTR is normal, and we can try again. Other error codes are fatal.
+    if (errno == EINTR) {
       return 0;
     }
     return -1;
