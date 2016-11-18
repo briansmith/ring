@@ -33,6 +33,7 @@
 #include <openssl/base.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <stddef.h>
 
 /* GFp_sysrand_chunk fills |len| bytes at |buf| with entropy from the
@@ -42,8 +43,6 @@
 int GFp_sysrand_chunk(void *buf, size_t len);
 
 #if defined(OPENSSL_WINDOWS)
-
-#include <limits.h>
 
 #pragma warning(push, 3)
 
@@ -59,7 +58,14 @@ int GFp_sysrand_chunk(void *buf, size_t len);
 #pragma warning(pop)
 
 int GFp_sysrand_chunk(void *out, size_t requested) {
-  return RtlGenRandom(out, (ULONG)requested) ? 1 : 0;
+  if (requested > ULONG_MAX) {
+    requested = ULONG_MAX;
+  }
+  if (requested > (size_t) INT_MAX) {
+    requested = INT_MAX;
+  }
+
+  return RtlGenRandom(out, (ULONG)requested) ? (int) requested : 0;
 }
 
 #elif defined(__linux__)
@@ -86,6 +92,13 @@ int GFp_sysrand_chunk(void *out, size_t requested) {
 #endif
 
 int GFp_sysrand_chunk(void *out, size_t requested) {
+  if (requested > ULONG_MAX) {
+    requested = ULONG_MAX;
+  }
+  if (requested > (size_t) INT_MAX) {
+    requested = INT_MAX;
+  }
+
   int r = syscall(SYS_getrandom, out, requested, 0u);
   if (r < 0) {
     // EINTR and EAGAIN are normal, and we can try again. Other error codes are fatal.
