@@ -1378,16 +1378,22 @@ static bool TestSequenceNumber(bool is_dtls, const SSL_METHOD *method,
   return true;
 }
 
-static bool TestOneSidedShutdown() {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  if (!client_ctx || !server_ctx) {
-    return false;
+static bool TestOneSidedShutdown(bool is_dtls, const SSL_METHOD *method,
+                                 uint16_t version) {
+  // SSL_shutdown is a no-op in DTLS.
+  if (is_dtls) {
+    return true;
   }
 
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(method));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(method));
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  if (!cert || !key ||
+  if (!client_ctx || !server_ctx || !cert || !key ||
+      !SSL_CTX_set_min_proto_version(server_ctx.get(), version) ||
+      !SSL_CTX_set_max_proto_version(server_ctx.get(), version) ||
+      !SSL_CTX_set_min_proto_version(client_ctx.get(), version) ||
+      !SSL_CTX_set_max_proto_version(client_ctx.get(), version) ||
       !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
     return false;
@@ -1433,6 +1439,7 @@ static bool TestOneSidedShutdown() {
 
   return true;
 }
+
 static bool TestSessionDuplication() {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -2648,7 +2655,7 @@ int main() {
       !TestClientCAList() ||
       !TestInternalSessionCache() ||
       !ForEachVersion(TestSequenceNumber) ||
-      !TestOneSidedShutdown() ||
+      !ForEachVersion(TestOneSidedShutdown) ||
       !TestSessionDuplication() ||
       !TestSetFD() ||
       !TestSetBIO() ||
