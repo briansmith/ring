@@ -119,7 +119,10 @@ mod polyfill;
 pub mod aead;
 
 pub mod agreement;
+
+#[cfg(feature = "use_heap")]
 mod bits;
+
 mod c;
 mod chacha;
 pub mod constant_time;

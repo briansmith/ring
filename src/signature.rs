@@ -272,6 +272,7 @@ pub use rsa::verification::{
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
 /// formats, as it also handles the parsing.
+#[cfg(feature = "use_heap")]
 pub mod primitive {
     pub use rsa::verification::verify_rsa;
 }
