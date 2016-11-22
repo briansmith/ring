@@ -53,79 +53,54 @@ impl ::private::Private for PKCS1 { }
 
 #[cfg(feature ="rsa_signing")]
 impl RSAEncoding for PKCS1 {
-    // Implement padding procedure per EMSA-PKCS1-v1_5,
-    // https://tools.ietf.org/html/rfc3447#section-9.2.
     fn encode(&self, msg: &[u8], m_out: &mut [u8], _mod_bits: bits::BitLength,
               _rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
-        let em = m_out;
-
-        let digest_len = self.digestinfo_prefix.len() +
-                         self.digest_alg.output_len;
-
-        // Require at least 8 bytes of padding. Since we disallow keys smaller
-        // than 2048 bits, this should never happen anyway.
-        debug_assert!(em.len() >= digest_len + 11);
-        let pad_len = em.len() - digest_len - 3;
-        em[0] = 0;
-        em[1] = 1;
-        for i in 0..pad_len {
-            em[2 + i] = 0xff;
-        }
-        em[2 + pad_len] = 0;
-
-        let (digest_prefix, digest_dst) = em[3 + pad_len..]
-            .split_at_mut(self.digestinfo_prefix.len());
-        digest_prefix.copy_from_slice(self.digestinfo_prefix);
-        digest_dst.copy_from_slice(
-            digest::digest(self.digest_alg, msg).as_ref());
+        pkcs1_encode(&self, msg, m_out);
         Ok(())
     }
 }
 
 impl RSAVerification for PKCS1 {
     fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
-              _mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
-        let em = m;
-
-        if try!(em.read_byte()) != 0 ||
-           try!(em.read_byte()) != 1 {
+              mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
+        // `mod_bits.as_usize_bytes_rounded_up() <=
+        //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa()`.
+        let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
+        let calculated =
+            &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
+        pkcs1_encode(&self, msg.as_slice_less_safe(), calculated);
+        if m.skip_to_end() != polyfill::ref_from_mut_ref(calculated) {
             return Err(error::Unspecified);
         }
-
-        let mut ps_len = 0;
-        loop {
-            match try!(em.read_byte()) {
-                0xff => {
-                    ps_len += 1;
-                },
-                0x00 => {
-                    break;
-                },
-                _ => {
-                    return Err(error::Unspecified);
-                },
-            }
-        }
-        if ps_len < 8 {
-            return Err(error::Unspecified);
-        }
-
-        let em_digestinfo_prefix = try!(em.skip_and_get_input(
-                    self.digestinfo_prefix.len()));
-        if em_digestinfo_prefix != self.digestinfo_prefix {
-            return Err(error::Unspecified);
-        }
-
-        let digest_alg = self.digest_alg;
-        let decoded_digest =
-            try!(em.skip_and_get_input(digest_alg.output_len));
-        let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-        if decoded_digest != digest.as_ref() {
-            return Err(error::Unspecified);
-        }
-
         Ok(())
     }
+}
+
+// Implement padding procedure per EMSA-PKCS1-v1_5,
+// https://tools.ietf.org/html/rfc3447#section-9.2. This is used by both
+// verification and signing so it needs to be able to handle moduli of the
+// minimum and maximum sizes for both operations.
+fn pkcs1_encode(pkcs1: &PKCS1, msg: &[u8], m_out: &mut [u8]) {
+    let em = m_out;
+
+    let digest_len =
+        pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len;
+
+    // The specification requires at least 8 bytes of padding. Since we
+    // disallow keys smaller than 2048 bits, this should always be true.
+    assert!(em.len() >= digest_len + 11);
+    let pad_len = em.len() - digest_len - 3;
+    em[0] = 0;
+    em[1] = 1;
+    for i in 0..pad_len {
+        em[2 + i] = 0xff;
+    }
+    em[2 + pad_len] = 0;
+
+    let (digest_prefix, digest_dst) = em[3 + pad_len..]
+        .split_at_mut(pkcs1.digestinfo_prefix.len());
+    digest_prefix.copy_from_slice(pkcs1.digestinfo_prefix);
+    digest_dst.copy_from_slice(digest::digest(pkcs1.digest_alg, msg).as_ref());
 }
 
 macro_rules! rsa_pkcs1_padding {
