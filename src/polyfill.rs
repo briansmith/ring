@@ -17,6 +17,11 @@
 
 use core;
 
+// A better name for the `&*` idiom for removing the mutability from a
+// reference.
+#[inline(always)]
+pub fn ref_from_mut_ref<'a, T: ?Sized>(x: &'a mut T) -> &'a T { x }
+
 #[inline(always)]
 pub fn u64_from_usize(x: usize) -> u64 { x as u64 }
 
