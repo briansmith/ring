@@ -477,6 +477,13 @@ SSL *SSL_new(SSL_CTX *ctx) {
       ssl->ctx->signed_cert_timestamps_enabled;
   ssl->ocsp_stapling_enabled = ssl->ctx->ocsp_stapling_enabled;
 
+  ssl->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
+
+  /* If the context has a default timeout, use it over the default. */
+  if (ctx->session_timeout != 0) {
+    ssl->session_timeout = ctx->session_timeout;
+  }
+
   return ssl;
 
 err:
