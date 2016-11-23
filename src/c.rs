@@ -80,7 +80,9 @@ macro_rules! define_metrics_tests {
 }
 
 define_type!(int, i32, test_int_metrics, GFp_int_align, GFp_int_size,
-             "The C `int` type. Equivalent to `libc::int`.");
+             "The C `int` type. Equivalent to `libc::c_int`.");
+define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
+             "The C `long` type. Equivalent to `libc::c_long`.");
 
 define_type!(
   size_t, usize, test_size_t_metrics, GFp_size_t_align, GFp_size_t_size,
