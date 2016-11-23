@@ -270,6 +270,11 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 static const char kTLS13LabelResumption[] = "resumption master secret";
 
 int tls13_derive_resumption_secret(SSL *ssl) {
+  if (ssl->s3->hs->hash_len > SSL_MAX_MASTER_KEY_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
   ssl->s3->new_session->master_key_length = ssl->s3->hs->hash_len;
   return derive_secret(ssl, ssl->s3->new_session->master_key,
                        ssl->s3->new_session->master_key_length,
