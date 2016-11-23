@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bits, bssl, c, der, error};
+use {bits, bssl, c, der, digest, error};
 use rand;
 use std;
 use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
@@ -224,7 +224,8 @@ impl RSASigningState {
             return Err(error::Unspecified);
         }
 
-        try!(padding_alg.encode(msg, signature, mod_bits, rng));
+        let m_hash = digest::digest(padding_alg.digest_alg(), msg);
+        try!(padding_alg.encode(&m_hash, signature, mod_bits, rng));
         let mut rand = rand::RAND::new(rng);
         bssl::map_result(unsafe {
             GFp_rsa_private_transform(&self.key_pair.rsa,

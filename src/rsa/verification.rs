@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, error, private, signature};
+use {bssl, c, digest, error, private, signature};
 use super::{BIGNUM, PositiveInteger, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
             RSAParameters, parse_public_key};
 use untrusted;
@@ -125,9 +125,12 @@ pub fn verify_rsa(params: &RSAParameters,
                                PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN * 8)
     }));
 
+    let m_hash = digest::digest(params.padding_alg.digest_alg(),
+                                msg.as_slice_less_safe());
+
     untrusted::Input::from(decoded).read_all(
         error::Unspecified,
-        |m| params.padding_alg.verify(msg, m, n.bit_length()))
+        |m| params.padding_alg.verify(&m_hash, m, n.bit_length()))
 }
 
 extern {

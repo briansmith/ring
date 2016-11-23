@@ -19,22 +19,30 @@ use untrusted;
 #[cfg(feature = "rsa_signing")]
 use rand;
 
+/// Common features of both RSA padding encoding and RSA padding verification.
+pub trait RSAPadding: 'static + Sync + ::private::Private {
+    // The digest algorithm used for digesting the message (and maybe for
+    // other things).
+    fn digest_alg(&self) -> &'static digest::Algorithm;
+}
+
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "rsa_signing")]
-pub trait RSAEncoding: 'static + Sync + ::private::Private {
+pub trait RSAEncoding: RSAPadding {
     #[doc(hidden)]
-    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: bits::BitLength,
-              rng: &rand::SecureRandom) -> Result<(), error::Unspecified>;
+    fn encode(&self, m_hash: &digest::Digest, m_out: &mut [u8],
+              mod_bits: bits::BitLength, rng: &rand::SecureRandom)
+              -> Result<(), error::Unspecified>;
 }
 
 /// Verification of an RSA signature encoding as described in
 /// [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
-pub trait RSAVerification: 'static + Sync + ::private::Private {
-    fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
+pub trait RSAVerification: RSAPadding {
+    fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
               mod_bits: bits::BitLength) -> Result<(), error::Unspecified>;
 }
 
@@ -51,24 +59,29 @@ pub struct PKCS1 {
 
 impl ::private::Private for PKCS1 { }
 
+impl RSAPadding for PKCS1 {
+    fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
+}
+
 #[cfg(feature ="rsa_signing")]
 impl RSAEncoding for PKCS1 {
-    fn encode(&self, msg: &[u8], m_out: &mut [u8], _mod_bits: bits::BitLength,
-              _rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
-        pkcs1_encode(&self, msg, m_out);
+    fn encode(&self, m_hash: &digest::Digest, m_out: &mut [u8],
+              _mod_bits: bits::BitLength, _rng: &rand::SecureRandom)
+              -> Result<(), error::Unspecified> {
+        pkcs1_encode(&self, m_hash, m_out);
         Ok(())
     }
 }
 
 impl RSAVerification for PKCS1 {
-    fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
+    fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
               mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
         // `mod_bits.as_usize_bytes_rounded_up() <=
         //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa()`.
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated =
             &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
-        pkcs1_encode(&self, msg.as_slice_less_safe(), calculated);
+        pkcs1_encode(&self, m_hash, calculated);
         if m.skip_to_end() != polyfill::ref_from_mut_ref(calculated) {
             return Err(error::Unspecified);
         }
@@ -80,7 +93,7 @@ impl RSAVerification for PKCS1 {
 // https://tools.ietf.org/html/rfc3447#section-9.2. This is used by both
 // verification and signing so it needs to be able to handle moduli of the
 // minimum and maximum sizes for both operations.
-fn pkcs1_encode(pkcs1: &PKCS1, msg: &[u8], m_out: &mut [u8]) {
+fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
     let em = m_out;
 
     let digest_len =
@@ -100,7 +113,7 @@ fn pkcs1_encode(pkcs1: &PKCS1, msg: &[u8], m_out: &mut [u8]) {
     let (digest_prefix, digest_dst) = em[3 + pad_len..]
         .split_at_mut(pkcs1.digestinfo_prefix.len());
     digest_prefix.copy_from_slice(pkcs1.digestinfo_prefix);
-    digest_dst.copy_from_slice(digest::digest(pkcs1.digest_alg, msg).as_ref());
+    digest_dst.copy_from_slice(m_hash.as_ref());
 }
 
 macro_rules! rsa_pkcs1_padding {
@@ -174,12 +187,17 @@ impl ::private::Private for PSS { }
 // In practice, this is constrained by the maximum digest length.
 const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
 
+impl RSAPadding for PSS {
+    fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
+}
+
 #[cfg(feature = "rsa_signing")]
 impl RSAEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
-    fn encode(&self, msg: &[u8], m_out: &mut [u8], mod_bits: bits::BitLength,
-              rng: &rand::SecureRandom) -> Result<(), error::Unspecified> {
+    fn encode(&self, m_hash: &digest::Digest, m_out: &mut [u8],
+              mod_bits: bits::BitLength, rng: &rand::SecureRandom)
+              -> Result<(), error::Unspecified> {
         let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
 
         // The `m_out` this function fills is the big-endian-encoded value of `m`
@@ -196,7 +214,7 @@ impl RSAEncoding for PSS {
         };
         assert_eq!(em.len(), metrics.em_len);
 
-        // Steps 1 and 2 are done later, out of order.
+        // Steps 1 and 2 are done by the caller to produce `m_hash`.
 
         // Step 3 is done by `PSSMetrics::new()` above.
 
@@ -206,7 +224,7 @@ impl RSAEncoding for PSS {
         try!(rng.fill(salt));
 
         // Step 5 and 6.
-        let h_hash = pss_digest(self.digest_alg, msg, salt);
+        let h_hash = pss_digest(self.digest_alg, m_hash, salt);
 
         // Re-order steps 7, 8, 9 and 10 so that we first output the db mask
         // into `em`, and then XOR the value of db.
@@ -246,7 +264,7 @@ impl RSAEncoding for PSS {
 impl RSAVerification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
-    fn verify(&self, msg: untrusted::Input, m: &mut untrusted::Reader,
+    fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
               mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
         let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
 
@@ -269,7 +287,7 @@ impl RSAVerification for PSS {
         // The rest of this function is EMSA-PSS-VERIFY from
         // https://tools.ietf.org/html/rfc3447#section-9.1.2.
 
-        // Steps 1 and 2 are done later, out of order.
+        // Steps 1 and 2 are done by the caller to produce `m_hash`.
 
         // Step 3 is done by `PSSMetrics::new()` above.
 
@@ -321,8 +339,7 @@ impl RSAVerification for PSS {
         let salt = &db[(db.len() - metrics.s_len)..];
 
         // Step 12 and 13.
-        let h_prime =
-            pss_digest(self.digest_alg, msg.as_slice_less_safe(), salt);
+        let h_prime = pss_digest(self.digest_alg, m_hash, salt);
 
         // Step 14.
         if h_hash != h_prime.as_ref() {
@@ -402,14 +419,10 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8])
     Ok(())
 }
 
-fn pss_digest(digest_alg: &'static digest::Algorithm, msg: &[u8], salt: &[u8])
-              -> digest::Digest {
+fn pss_digest(digest_alg: &'static digest::Algorithm, m_hash: &digest::Digest,
+              salt: &[u8]) -> digest::Digest {
     // Fixed prefix.
     const PREFIX_ZEROS: [u8; 8] = [0u8; 8];
-
-    // Steps 1 & 2 for both encoding and verification. Step 1 is delegated to
-    // the digest implementation.
-    let m_hash = digest::digest(digest_alg, msg);
 
     // Encoding step 5 and 6, Verification step 12 and 13.
     let mut ctx = digest::Context::new(digest_alg);
@@ -444,7 +457,7 @@ rsa_pss_padding!(RSA_PSS_SHA512, &digest::SHA512,
 
 #[cfg(test)]
 mod test {
-    use {error, test};
+    use {digest, error, test};
     use super::*;
     use untrusted;
 
@@ -464,6 +477,8 @@ mod test {
 
             let msg = test_case.consume_bytes("Msg");
             let msg = untrusted::Input::from(&msg);
+            let m_hash = digest::digest(alg.digest_alg(),
+                                        msg.as_slice_less_safe());
 
             let encoded = test_case.consume_bytes("Encoded");
             let encoded = untrusted::Input::from(&encoded);
@@ -473,7 +488,7 @@ mod test {
 
             let actual_result =
                 encoded.read_all(error::Unspecified,
-                                 |m| alg.verify(msg, m, bit_len));
+                                 |m| alg.verify(&m_hash, m, bit_len));
             assert_eq!(actual_result.is_ok(), expected_result == "P");
 
             Ok(())
