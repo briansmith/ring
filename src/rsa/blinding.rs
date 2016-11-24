@@ -246,7 +246,7 @@ fn select_sampling_params(max_exclusive: &[Limb]) -> SamplingParams {
 
 #[cfg(test)]
 mod tests {
-    use {core,rand};
+    use {core, rand, test};
     use limb::*;
 
     #[test]
@@ -418,11 +418,11 @@ mod tests {
 
         // Generates a string of bytes 0x00...00, which will always result in
         // a scalar value of zero.
-        let random_00 = rand::test_util::FixedByteRandom { byte: 0 };
+        let random_00 = test::rand::FixedByteRandom { byte: 0x00 };
 
         // Generates a string of bytes 0xFF...FF, which will be larger than the
         // group order of any curve that is supported.
-        let random_ff = rand::test_util::FixedByteRandom { byte: 0xff };
+        let random_ff = test::rand::FixedByteRandom { byte: 0xff };
 
         let max_exclusive = [Limb::max_value(), Limb::max_value() >> 1];
 
@@ -457,7 +457,7 @@ mod tests {
         // that value from the PRNG.
         let max_exclusive_bytes = limbs_as_bytes(&max_exclusive);
         {
-            let rng = rand::test_util::FixedSliceRandom {
+            let rng = test::rand::FixedSliceRandom {
                 bytes: &max_exclusive_bytes
             };
             let mut result = [0, 0];
@@ -471,7 +471,7 @@ mod tests {
         let max_exclusive_minus_1_bytes =
             limbs_as_bytes(&max_exclusive_minus_1);
         {
-            let rng = rand::test_util::FixedSliceRandom {
+            let rng = test::rand::FixedSliceRandom {
                 bytes: max_exclusive_minus_1_bytes
             };
             let mut result = [0, 0];
@@ -486,7 +486,7 @@ mod tests {
                 &[0u8; 2 * LIMB_BYTES],
                 &max_exclusive_minus_1_bytes[..],
             ];
-            let rng = rand::test_util::FixedSliceSequenceRandom {
+            let rng = test::rand::FixedSliceSequenceRandom {
                 bytes: &bytes,
                 current: core::cell::UnsafeCell::new(0),
             };

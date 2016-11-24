@@ -370,6 +370,88 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
     }
 }
 
+/// Deterministic implementations of `ring::rand::SecureRandom`.
+///
+/// These implementations are particularly useful for testing implementations
+/// of randomized algorithms & protocols using known-answer-tests where the
+/// test vectors contain the random seed to use. They are also especially
+/// useful for some types of fuzzing.
+#[allow(missing_docs)]
+pub mod rand {
+    use core;
+    use {error, rand};
+
+    /// An implementation of `SecureRandom` that always fills the output slice
+    /// with the given byte.
+    pub struct FixedByteRandom {
+        pub byte: u8,
+    }
+
+    impl rand::SecureRandom for FixedByteRandom {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            for d in dest {
+                *d = self.byte
+            }
+            Ok(())
+        }
+    }
+
+    /// An implementation of `SecureRandom` that always fills the output slice
+    /// with the slice in `bytes`. The length of the slice given to `slice`
+    /// must match exactly.
+    pub struct FixedSliceRandom<'a> {
+        pub bytes: &'a [u8],
+    }
+
+    impl<'a> rand::SecureRandom for FixedSliceRandom<'a> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            assert_eq!(dest.len(), self.bytes.len());
+            for i in 0..self.bytes.len() {
+                dest[i] = self.bytes[i];
+            }
+            Ok(())
+        }
+    }
+
+    /// An implementation of `SecureRandom` where each slice in `bytes` is a
+    /// test vector for one call to `fill()`.
+    ///
+    /// The first slice in `bytes` is the output for the first call to
+    /// `fill()`, the second slice is the output for the second call to
+    /// `fill()`, etc. The output slice passed to `fill()` must have exactly
+    /// the length of the corresponding entry in `bytes`. `current` must be
+    /// initialized to zero. `fill()` must be called exactly once for each
+    /// entry in `bytes`.
+    pub struct FixedSliceSequenceRandom<'a> {
+        /// The value.
+        pub bytes: &'a [&'a [u8]],
+        pub current: core::cell::UnsafeCell<usize>,
+    }
+
+    impl<'a> rand::SecureRandom for FixedSliceSequenceRandom<'a> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            let current = unsafe { *self.current.get() };
+            let bytes = self.bytes[current];
+            assert_eq!(dest.len(), bytes.len());
+            for i in 0..bytes.len() {
+                dest[i] = bytes[i];
+            }
+            // Remember that we returned this slice and prepare to return
+            // the next one, if any.
+            unsafe { *self.current.get() += 1 };
+            Ok(())
+        }
+    }
+
+    impl<'a> Drop for FixedSliceSequenceRandom<'a> {
+        fn drop(&mut self) {
+            // Ensure that `fill()` was called exactly the right number of
+            // times.
+            assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

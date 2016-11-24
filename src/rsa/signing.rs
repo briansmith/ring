@@ -404,7 +404,7 @@ mod tests {
         // Stub RNG that is constantly 0. In `bn_blinding_create_param`, this
         // causes the candidate blinding factors to always be 0, which has no
         // inverse, so `BN_mod_inverse_no_branch` fails.
-        let rng = rand::test_util::FixedByteRandom { byte: 0x00 };
+        let rng = test::rand::FixedByteRandom { byte: 0x00 };
 
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
