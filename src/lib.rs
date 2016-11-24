@@ -151,6 +151,7 @@ mod rsa;
 
 // Really a private method; only has public visibility so that C compilation
 // can see it.
+#[cfg(feature = "use_heap")]
 #[doc(hidden)]
 pub use rsa::GFp_rand_mod;
 
@@ -177,6 +178,8 @@ mod private {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "use_heap")]
     bssl_test_rng!(test_bn, bssl_bn_test_main);
+
     bssl_test!(test_constant_time, bssl_constant_time_test_main);
 }

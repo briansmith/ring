@@ -19,6 +19,7 @@ use core;
 
 // A better name for the `&*` idiom for removing the mutability from a
 // reference.
+#[cfg(feature = "use_heap")]
 #[inline(always)]
 pub fn ref_from_mut_ref<'a, T: ?Sized>(x: &'a mut T) -> &'a T { x }
 
