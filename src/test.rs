@@ -379,7 +379,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
 #[allow(missing_docs)]
 pub mod rand {
     use core;
-    use {error, rand};
+    use {error, polyfill, rand};
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -389,9 +389,7 @@ pub mod rand {
 
     impl rand::SecureRandom for FixedByteRandom {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-            for d in dest {
-                *d = self.byte
-            }
+            polyfill::slice::fill(dest, self.byte);
             Ok(())
         }
     }
@@ -405,10 +403,7 @@ pub mod rand {
 
     impl<'a> rand::SecureRandom for FixedSliceRandom<'a> {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-            assert_eq!(dest.len(), self.bytes.len());
-            for i in 0..self.bytes.len() {
-                dest[i] = self.bytes[i];
-            }
+            dest.copy_from_slice(self.bytes);
             Ok(())
         }
     }
@@ -432,10 +427,7 @@ pub mod rand {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
-            assert_eq!(dest.len(), bytes.len());
-            for i in 0..bytes.len() {
-                dest[i] = bytes[i];
-            }
+            dest.copy_from_slice(bytes);
             // Remember that we returned this slice and prepare to return
             // the next one, if any.
             unsafe { *self.current.get() += 1 };
