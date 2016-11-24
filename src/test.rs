@@ -409,7 +409,7 @@ pub mod rand {
     }
 
     /// An implementation of `SecureRandom` where each slice in `bytes` is a
-    /// test vector for one call to `fill()`.
+    /// test vector for one call to `fill()`. *Not thread-safe.*
     ///
     /// The first slice in `bytes` is the output for the first call to
     /// `fill()`, the second slice is the output for the second call to
