@@ -284,7 +284,7 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
                                              EC_POINT *point, const BIGNUM *x,
                                              int y_bit, BN_CTX *ctx) {
   if (BN_is_negative(x) || BN_cmp(x, &group->field) >= 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSION_BIT);
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSED_POINT);
     return 0;
   }
 
