@@ -17,8 +17,8 @@
 use {bits, bssl, c, der, digest, error};
 use rand;
 use std;
-use super::{BIGNUM, GFp_BN_free, BN_MONT_CTX, GFp_BN_MONT_CTX_free,
-            PositiveInteger};
+use super::bigint;
+use super::bigint::{GFp_BN_free, GFp_BN_MONT_CTX_free};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -75,15 +75,15 @@ impl RSAKeyPair {
                 if version != 0 {
                     return Err(error::Unspecified);
                 }
-                let n = try!(PositiveInteger::from_der(input));
+                let n = try!(bigint::Positive::from_der(input));
                 let n_bits = n.bit_length();
-                let e = try!(PositiveInteger::from_der(input));
-                let d = try!(PositiveInteger::from_der(input));
-                let p = try!(PositiveInteger::from_der(input));
-                let q = try!(PositiveInteger::from_der(input));
-                let dmp1 = try!(PositiveInteger::from_der(input));
-                let dmq1 = try!(PositiveInteger::from_der(input));
-                let iqmp = try!(PositiveInteger::from_der(input));
+                let e = try!(bigint::Positive::from_der(input));
+                let d = try!(bigint::Positive::from_der(input));
+                let p = try!(bigint::Positive::from_der(input));
+                let q = try!(bigint::Positive::from_der(input));
+                let dmp1 = try!(bigint::Positive::from_der(input));
+                let dmq1 = try!(bigint::Positive::from_der(input));
+                let iqmp = try!(bigint::Positive::from_der(input));
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(),
@@ -119,15 +119,15 @@ unsafe impl Sync for RSAKeyPair {}
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
 #[repr(C)]
 struct RSA {
-    e: *mut BIGNUM,
-    dmp1: *mut BIGNUM,
-    dmq1: *mut BIGNUM,
-    mont_n: *mut BN_MONT_CTX,
-    mont_p: *mut BN_MONT_CTX,
-    mont_q: *mut BN_MONT_CTX,
-    mont_qq: *mut BN_MONT_CTX,
-    qmn_mont: *mut BIGNUM,
-    iqmp_mont: *mut BIGNUM,
+    e: *mut bigint::BIGNUM,
+    dmp1: *mut bigint::BIGNUM,
+    dmq1: *mut bigint::BIGNUM,
+    mont_n: *mut bigint::BN_MONT_CTX,
+    mont_p: *mut bigint::BN_MONT_CTX,
+    mont_q: *mut bigint::BN_MONT_CTX,
+    mont_qq: *mut bigint::BN_MONT_CTX,
+    qmn_mont: *mut bigint::BIGNUM,
+    iqmp_mont: *mut bigint::BIGNUM,
 }
 
 impl Drop for RSA {
@@ -247,8 +247,8 @@ unsafe impl Send for Blinding {}
 #[allow(non_camel_case_types)]
 #[repr(C)]
 struct BN_BLINDING {
-    a: *mut BIGNUM,
-    ai: *mut BIGNUM,
+    a: *mut bigint::BIGNUM,
+    ai: *mut bigint::BIGNUM,
     counter: u32,
 }
 
@@ -256,8 +256,9 @@ struct BN_BLINDING {
 extern {
     fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn GFp_rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
-                       q: &BIGNUM, iqmp: &BIGNUM) -> c::int;
+    fn GFp_rsa_new_end(rsa: *mut RSA, n: &bigint::BIGNUM, d: &bigint::BIGNUM,
+                       p: &bigint::BIGNUM, q: &bigint::BIGNUM,
+                       iqmp: &bigint::BIGNUM) -> c::int;
 }
 
 #[allow(improper_ctypes)]

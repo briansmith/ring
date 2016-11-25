@@ -14,7 +14,7 @@
 
 /// RSA signatures.
 
-use {bits, c, core, der, error, limb};
+use {der, error, limb};
 use untrusted;
 
 mod padding;
@@ -64,118 +64,15 @@ fn parse_public_key(input: untrusted::Input)
     })
 }
 
-struct PositiveInteger {
-    value: *mut BIGNUM,
-}
-
-impl PositiveInteger {
-    #[cfg(feature = "rsa_signing")]
-    // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
-    fn from_der(input: &mut untrusted::Reader)
-                -> Result<PositiveInteger, error::Unspecified> {
-        Self::from_be_bytes(try!(der::positive_integer(input)))
-    }
-
-    // Turns a sequence of big-endian bytes into a Positive Integer.
-    fn from_be_bytes(input: untrusted::Input)
-                     -> Result<PositiveInteger, error::Unspecified> {
-        // Reject empty inputs.
-        if input.len() == 0 {
-            return Err(error::Unspecified);
-        }
-        // Reject leading zeros. Also reject the value zero ([0]) because zero
-        // isn't positive.
-        if untrusted::Reader::new(input).peek(0) {
-            return Err(error::Unspecified);
-        }
-        let value = unsafe {
-            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
-                          core::ptr::null_mut())
-        };
-        if value.is_null() {
-            return Err(error::Unspecified);
-        }
-        Ok(PositiveInteger { value: value })
-    }
-
-    unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value }
-
-    #[cfg(feature = "rsa_signing")]
-    fn into_raw(mut self) -> *mut BIGNUM {
-        let res = self.value;
-        self.value = core::ptr::null_mut();
-        res
-    }
-
-    fn bit_length(&self) -> bits::BitLength {
-        let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
-        bits::BitLength::from_usize_bits(bits)
-    }
-}
-
-impl<'a> Drop for PositiveInteger {
-    fn drop(&mut self) { unsafe { GFp_BN_free(self.value); } }
-}
-
-#[cfg(feature = "rsa_signing")]
-#[allow(non_camel_case_types)]
-enum BN_MONT_CTX {}
-
-enum BIGNUM {}
-
 pub mod verification;
 
 #[cfg(feature = "rsa_signing")]
 pub mod signing;
 
-
-extern {
-    fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
-                     -> *mut BIGNUM;
-    fn GFp_BN_free(bn: *mut BIGNUM);
-    fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
-}
-
-#[cfg(feature = "rsa_signing")]
-extern {
-    fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
-}
-
+mod bigint;
 mod blinding;
 
 // Really a private method; only has public visibility so that C compilation
 // can see it.
 #[doc(hidden)]
 pub use rsa::blinding::GFp_rand_mod;
-
-#[cfg(test)]
-mod tests {
-    use super::PositiveInteger;
-    use untrusted;
-
-    #[test]
-    fn test_positive_integer_from_be_bytes_empty() {
-        // Empty values are rejected.
-        assert!(PositiveInteger::from_be_bytes(
-                    untrusted::Input::from(&[])).is_err());
-    }
-
-    #[test]
-    fn test_positive_integer_from_be_bytes_zero() {
-        // The zero value is rejected.
-        assert!(PositiveInteger::from_be_bytes(
-                    untrusted::Input::from(&[0])).is_err());
-        // A zero with a leading zero is rejected.
-        assert!(PositiveInteger::from_be_bytes(
-                    untrusted::Input::from(&[0, 0])).is_err());
-        // A non-zero value with a leading zero is rejected.
-        assert!(PositiveInteger::from_be_bytes(
-                    untrusted::Input::from(&[0, 1])).is_err());
-        // A non-zero value with no leading zeros is accepted.
-        assert!(PositiveInteger::from_be_bytes(
-                    untrusted::Input::from(&[1])).is_ok());
-        // A non-zero value with that ends in a zero byte is accepted.
-        assert!(PositiveInteger::from_be_bytes(
-                    untrusted::Input::from(&[1, 0])).is_ok());
-    }
-}
