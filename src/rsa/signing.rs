@@ -86,7 +86,7 @@ impl RSAKeyPair {
                 let iqmp = try!(PositiveInteger::from_der(input));
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
-                    dmq1: dmq1.into_raw(), iqmp: iqmp.into_raw(),
+                    dmq1: dmq1.into_raw(),
                     mont_n: std::ptr::null_mut(), mont_p: std::ptr::null_mut(),
                     mont_q: std::ptr::null_mut(),
                     mont_qq: std::ptr::null_mut(),
@@ -95,7 +95,7 @@ impl RSAKeyPair {
                 };
                 try!(bssl::map_result(unsafe {
                     GFp_rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(),
-                                    p.as_ref(), q.as_ref())
+                                    p.as_ref(), q.as_ref(), iqmp.as_ref())
                 }));
                 Ok(RSAKeyPair {
                     rsa: rsa,
@@ -122,7 +122,6 @@ struct RSA {
     e: *mut BIGNUM,
     dmp1: *mut BIGNUM,
     dmq1: *mut BIGNUM,
-    iqmp: *mut BIGNUM,
     mont_n: *mut BN_MONT_CTX,
     mont_p: *mut BN_MONT_CTX,
     mont_q: *mut BN_MONT_CTX,
@@ -137,7 +136,6 @@ impl Drop for RSA {
             GFp_BN_free(self.e);
             GFp_BN_free(self.dmp1);
             GFp_BN_free(self.dmq1);
-            GFp_BN_free(self.iqmp);
             GFp_BN_MONT_CTX_free(self.mont_n);
             GFp_BN_MONT_CTX_free(self.mont_p);
             GFp_BN_MONT_CTX_free(self.mont_q);
@@ -259,7 +257,7 @@ extern {
     fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
     fn GFp_rsa_new_end(rsa: *mut RSA, n: &BIGNUM, d: &BIGNUM, p: &BIGNUM,
-                       q: &BIGNUM) -> c::int;
+                       q: &BIGNUM, iqmp: &BIGNUM) -> c::int;
 }
 
 #[allow(improper_ctypes)]

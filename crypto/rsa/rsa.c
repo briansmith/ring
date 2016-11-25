@@ -69,22 +69,26 @@
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *n, const BIGNUM *p,
-                    const BIGNUM *q);
+                    const BIGNUM *q, const BIGNUM *iqmp);
 
 static int rsa_check_key(const RSA *rsa, const BIGNUM *d);
 
 
 int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
-                    const BIGNUM *q) {
+                    const BIGNUM *q, const BIGNUM *iqmp) {
   assert(rsa->e != NULL);
   assert(rsa->dmp1 != NULL);
   assert(rsa->dmq1 != NULL);
-  assert(rsa->iqmp != NULL);
 
   int ret = 0;
 
   BIGNUM qq;
   GFp_BN_init(&qq);
+
+  if (!(GFp_BN_cmp(iqmp, p) < 0)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto err;
+  }
 
   rsa->mont_n = GFp_BN_MONT_CTX_new();
   rsa->mont_p = GFp_BN_MONT_CTX_new();
@@ -106,7 +110,7 @@ int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
       !GFp_BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
       !GFp_BN_to_mont(rsa->qmn_mont, q, rsa->mont_n) ||
       /* Assumes p > q. */
-      !GFp_BN_to_mont(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p)) {
+      !GFp_BN_to_mont(rsa->iqmp_mont, iqmp, rsa->mont_p)) {
     goto err;
   }
 
@@ -187,15 +191,9 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
     goto out;
   }
 
-  if (GFp_BN_cmp(key->iqmp, &key->mont_p->N) >= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
-    goto out;
-  }
-
   /* iqmp = q^-1 mod p. Assumes p > q. */
-  if (!GFp_BN_mod_mul_mont(&iqmp_times_q, key->iqmp, &key->mont_q->N,
-                           key->mont_p) ||
-      !GFp_BN_to_mont(&iqmp_times_q, &iqmp_times_q, key->mont_p)) {
+  if (!GFp_BN_mod_mul_mont(&iqmp_times_q, key->iqmp_mont, &key->mont_q->N,
+                           key->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }

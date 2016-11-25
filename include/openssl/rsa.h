@@ -90,7 +90,6 @@ struct rsa_st {
   BIGNUM *e;
   BIGNUM *dmp1;
   BIGNUM *dmq1;
-  BIGNUM *iqmp;
 
   /* Used to cache montgomery values. The creation of these values is protected
    * by |lock|. */
