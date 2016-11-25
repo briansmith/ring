@@ -594,6 +594,29 @@ static bool TestModSqrt(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestNotModSquare(FileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> not_mod_square = GetBIGNUM(t, "NotModSquare");
+  bssl::UniquePtr<BIGNUM> p = GetBIGNUM(t, "P");
+  bssl::UniquePtr<BIGNUM> ret(BN_new());
+  if (!not_mod_square || !p || !ret) {
+    return false;
+  }
+
+  if (BN_mod_sqrt(ret.get(), not_mod_square.get(), p.get(), ctx)) {
+    t->PrintLine("BN_mod_sqrt unexpectedly succeeded.");
+    return false;
+  }
+
+  uint32_t err = ERR_peek_error();
+  if (ERR_GET_LIB(err) == ERR_LIB_BN &&
+      ERR_GET_REASON(err) == BN_R_NOT_A_SQUARE) {
+    ERR_clear_error();
+    return true;
+  }
+
+  return false;
+}
+
 static bool TestModInv(FileTest *t, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
   bssl::UniquePtr<BIGNUM> m = GetBIGNUM(t, "M");
@@ -638,6 +661,7 @@ static const Test kTests[] = {
     {"ModExp", TestModExp},
     {"Exp", TestExp},
     {"ModSqrt", TestModSqrt},
+    {"NotModSquare", TestNotModSquare},
     {"ModInv", TestModInv},
 };
 
