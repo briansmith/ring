@@ -381,19 +381,7 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
 
   if (y_bit != BN_is_odd(y)) {
     if (BN_is_zero(y)) {
-      int kron;
-
-      kron = BN_kronecker(x, &group->field, ctx);
-      if (kron == -2) {
-        goto err;
-      }
-
-      if (kron == 1) {
-        OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSION_BIT);
-      } else {
-        /* BN_mod_sqrt() should have cought this error (not a square) */
-        OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSED_POINT);
-      }
+      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSION_BIT);
       goto err;
     }
     if (!BN_usub(y, &group->field, y)) {
