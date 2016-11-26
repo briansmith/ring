@@ -17,7 +17,7 @@
 // XXX TODO: Remove this once RSA verification has been done in Rust.
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
 
-use {bits, c, der, error, untrusted};
+use {bits, bssl, c, der, error, untrusted};
 use core;
 
 /// Non-negative, non-zero integers.
@@ -69,9 +69,9 @@ impl Positive {
     }
 
     pub fn into_raw(mut self) -> *mut BIGNUM {
-        let res = self.value;
+        let r = self.value;
         self.value = core::ptr::null_mut();
-        res
+        r
     }
 
     pub fn bit_length(&self) -> bits::BitLength {
@@ -106,6 +106,19 @@ impl OddPositive {
     pub fn into_raw(self) -> *mut BIGNUM {
         self.0.into_raw()
     }
+
+    pub fn into_modulus(self) -> Result<Modulus, error::Unspecified> {
+        let r = Modulus(unsafe { GFp_BN_MONT_CTX_new() });
+        if r.0.is_null() {
+            return Err(error::Unspecified);
+        }
+        // XXX: This makes a copy of `self`'s `BIGNUM`. TODO: change this to a
+        // move.
+        try!(bssl::map_result(unsafe {
+            GFp_BN_MONT_CTX_set(&mut *r.0, self.as_ref())
+        }));
+        Ok(r)
+    }
 }
 
 impl core::ops::Deref for OddPositive {
@@ -114,6 +127,21 @@ impl core::ops::Deref for OddPositive {
     fn deref(&self) -> &Self::Target { &self.0 }
 }
 
+
+/// A modulus that can be used for Montgomery math.
+pub struct Modulus(*mut BN_MONT_CTX);
+
+impl Modulus {
+    pub fn into_raw(mut self) -> *mut BN_MONT_CTX {
+        let r = self.0;
+        self.0 = core::ptr::null_mut();
+        r
+    }
+}
+
+impl Drop for Modulus {
+    fn drop(&mut self) { unsafe { GFp_BN_MONT_CTX_free(self.0); } }
+}
 
 #[allow(non_camel_case_types)]
 pub enum BN_MONT_CTX {}
@@ -127,6 +155,8 @@ extern {
     pub fn GFp_BN_free(bn: *mut BIGNUM);
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
+    fn GFp_BN_MONT_CTX_new() -> *mut BN_MONT_CTX;
+    fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;
     pub fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
 

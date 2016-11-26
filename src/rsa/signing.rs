@@ -140,18 +140,20 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
+                let n = try!(n.into_modulus());
+                let p = try!(p.into_modulus());
+                let q = try!(q.into_modulus());
+
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
-                    dmq1: dmq1.into_raw(),
-                    mont_n: std::ptr::null_mut(), mont_p: std::ptr::null_mut(),
-                    mont_q: std::ptr::null_mut(),
+                    dmq1: dmq1.into_raw(), mont_n: n.into_raw(),
+                    mont_p: p.into_raw(), mont_q: q.into_raw(),
                     mont_qq: std::ptr::null_mut(),
                     qmn_mont: std::ptr::null_mut(),
                     iqmp_mont: std::ptr::null_mut(),
                 };
                 try!(bssl::map_result(unsafe {
-                    GFp_rsa_new_end(&mut rsa, n.as_ref(), d.as_ref(),
-                                    p.as_ref(), q.as_ref(), iqmp.as_ref())
+                    GFp_rsa_new_end(&mut rsa, d.as_ref(), iqmp.as_ref())
                 }));
                 Ok(RSAKeyPair {
                     rsa: rsa,
@@ -312,8 +314,7 @@ struct BN_BLINDING {
 extern {
     fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn GFp_rsa_new_end(rsa: *mut RSA, n: &bigint::BIGNUM, d: &bigint::BIGNUM,
-                       p: &bigint::BIGNUM, q: &bigint::BIGNUM,
+    fn GFp_rsa_new_end(rsa: *mut RSA, d: &bigint::BIGNUM,
                        iqmp: &bigint::BIGNUM) -> c::int;
 }
 

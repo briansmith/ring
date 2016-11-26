@@ -68,22 +68,29 @@
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *n, const BIGNUM *p,
-                    const BIGNUM *q, const BIGNUM *iqmp);
+int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *iqmp);
 
 static int rsa_check_key(const RSA *rsa, const BIGNUM *d);
 
 
-int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
-                    const BIGNUM *q, const BIGNUM *iqmp) {
+int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d, const BIGNUM *iqmp) {
   assert(rsa->e != NULL);
+  assert(GFp_BN_is_odd(rsa->e));
+  assert(rsa->dmp1 != NULL);
+  assert(rsa->dmq1 != NULL);
+  assert(rsa->mont_n != NULL);
+  assert(rsa->mont_p != NULL);
+  assert(rsa->mont_q != NULL);
+
+  const BIGNUM *n = &rsa->mont_n->N;
+  const BIGNUM *p = &rsa->mont_p->N;
+  const BIGNUM *q = &rsa->mont_q->N;
+
   assert(GFp_BN_is_odd(rsa->e));
   assert(GFp_BN_cmp(rsa->e, n) < 0);
   assert(GFp_BN_cmp(d, n) < 0);
   assert(GFp_BN_cmp(p, n) < 0);
   assert(GFp_BN_cmp(q, p) < 0);
-  assert(rsa->dmp1 != NULL);
-  assert(rsa->dmq1 != NULL);
   assert(GFp_BN_cmp(iqmp, p) < 0);
 
   int ret = 0;
@@ -91,21 +98,12 @@ int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
   BIGNUM qq;
   GFp_BN_init(&qq);
 
-  rsa->mont_n = GFp_BN_MONT_CTX_new();
-  rsa->mont_p = GFp_BN_MONT_CTX_new();
-  rsa->mont_q = GFp_BN_MONT_CTX_new();
   rsa->mont_qq = GFp_BN_MONT_CTX_new();
   rsa->qmn_mont = GFp_BN_new();
   rsa->iqmp_mont = GFp_BN_new();
-  if (rsa->mont_n == NULL ||
-      rsa->mont_p == NULL ||
-      rsa->mont_q == NULL ||
-      rsa->mont_qq == NULL ||
+  if (rsa->mont_qq == NULL ||
       rsa->qmn_mont == NULL ||
       rsa->iqmp_mont == NULL ||
-      !GFp_BN_MONT_CTX_set(rsa->mont_n, n) ||
-      !GFp_BN_MONT_CTX_set(rsa->mont_p, p) ||
-      !GFp_BN_MONT_CTX_set(rsa->mont_q, q) ||
       !GFp_BN_to_mont(rsa->qmn_mont, q, rsa->mont_n) ||
       !GFp_BN_mod_mul_mont(&qq, rsa->qmn_mont, q, rsa->mont_n) ||
       !GFp_BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
