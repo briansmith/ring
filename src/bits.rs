@@ -33,6 +33,12 @@ impl BitLength {
     }
 
     #[inline]
+    pub fn half_rounded_up(&self) -> BitLength {
+        let round_up = self.0 & 1;
+        BitLength((self.0 / 2) + round_up)
+    }
+
+    #[inline]
     pub fn as_usize_bits(&self) -> usize { self.0 }
 
     #[inline]

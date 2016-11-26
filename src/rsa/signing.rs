@@ -105,6 +105,10 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
+                let half_n_bits = n_bits.half_rounded_up();
+                if p.bit_length() != half_n_bits {
+                    return Err(error::Unspecified);
+                }
                 let p = try!(p.into_odd_positive());
                 if !(p < d) {
                     return Err(error::Unspecified);
@@ -117,6 +121,28 @@ impl RSAKeyPair {
                 // |q > p|. (|p == q| is just wrong.)
                 let q = try!(q.into_odd_positive());
                 if !(q < p) {
+                    return Err(error::Unspecified);
+                }
+
+                let n = try!(n.into_modulus::<N>());
+
+                // Verify that p * q == n. We restrict ourselves to modular
+                // multiplication. We rely on the fact that we've verified
+                // 0 < q < p < n. We check that q and p are close to sqrt(n)
+                // and then assume that these preconditions are enough to
+                // let us assume that checking p * q == 0 (mod n) is equivalent
+                // to checking p * q == n.
+                 let q_mod_n = {
+                    let q = try!(q.try_clone());
+                    try!(q.into_elem(&n))
+                };
+                let p_mod_n = {
+                    let p = try!(p.try_clone());
+                    try!(p.into_elem_decoded(&n))
+                };
+                let pq_mod_n =
+                    try!(bigint::elem_mul_mixed(&q_mod_n, &p_mod_n, &n));
+                if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
 
@@ -140,16 +166,15 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                let n = try!(n.into_modulus());
-                let p = try!(p.into_modulus());
-                let q = try!(q.into_modulus());
+                let p = try!(p.into_modulus::<P>());
+                let q = try!(q.into_modulus::<Q>());
 
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(), mont_n: n.into_raw(),
                     mont_p: p.into_raw(), mont_q: q.into_raw(),
                     mont_qq: std::ptr::null_mut(),
-                    qmn_mont: std::ptr::null_mut(),
+                    qmn_mont: q_mod_n.into_raw_montgomery_encoded(),
                     iqmp_mont: std::ptr::null_mut(),
                 };
                 try!(bssl::map_result(unsafe {
@@ -173,6 +198,17 @@ impl RSAKeyPair {
 
 unsafe impl Send for RSAKeyPair {}
 unsafe impl Sync for RSAKeyPair {}
+
+
+enum N {}
+unsafe impl bigint::Field for N {}
+
+enum P {}
+unsafe impl bigint::Field for P {}
+
+enum Q {}
+unsafe impl bigint::Field for Q {}
+
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
 #[repr(C)]

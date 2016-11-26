@@ -118,6 +118,10 @@
 #include "../internal.h"
 
 
+/* Avoid -Wmissing-prototypes warnings. */
+const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont);
+
+
 BN_MONT_CTX *GFp_BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
 
@@ -194,6 +198,10 @@ int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   }
 
   return 1;
+}
+
+const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont) {
+  return &mont->N;
 }
 
 int GFp_BN_to_mont(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont) {
