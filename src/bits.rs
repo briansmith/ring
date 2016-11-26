@@ -14,18 +14,16 @@
 
 use error;
 
+/// XXX: When `const_fn` is implemented then make the value private to force
+/// the constructors to be used.
 #[derive(Clone, Copy, Eq, PartialEq)]
-pub struct BitLength {
-    bits: usize,
-}
+pub struct BitLength(pub usize);
 
 // Lengths measured in bits, where all arithmetic is guaranteed not to
 // overflow.
 impl BitLength {
     #[inline]
-    pub fn from_usize_bits(bits: usize) -> BitLength {
-        BitLength { bits: bits }
-    }
+    pub fn from_usize_bits(bits: usize) -> BitLength { BitLength(bits) }
 
     #[inline]
     pub fn from_usize_bytes(bytes: usize)
@@ -35,26 +33,25 @@ impl BitLength {
     }
 
     #[inline]
-    pub fn as_usize_bits(&self) -> usize { self.bits }
+    pub fn as_usize_bits(&self) -> usize { self.0 }
 
     #[inline]
     pub fn as_usize_bytes_rounded_up(&self) -> usize {
-        // Equivalent to (self.bits + 7) / 8, except with no potential for
+        // Equivalent to (self.0 + 7) / 8, except with no potential for
         // overflow and without branches.
 
-        // Branchless round_up = if self.bits & 0b111 != 0 { 1 } else { 0 };
-        let round_up = ((self.bits >> 2) | (self.bits >> 1) | self.bits) & 1;
+        // Branchless round_up = if self.0 & 0b111 != 0 { 1 } else { 0 };
+        let round_up = ((self.0 >> 2) | (self.0 >> 1) | self.0) & 1;
 
-        (self.bits / 8) + round_up
+        (self.0 / 8) + round_up
     }
 
     #[inline]
     pub fn try_sub(self, other: BitLength)
                    -> Result<BitLength, error::Unspecified> {
-        let sum =
-            try!(self.bits.checked_sub(other.bits).ok_or(error::Unspecified));
-        Ok(BitLength { bits: sum })
+        let sum = try!(self.0.checked_sub(other.0).ok_or(error::Unspecified));
+        Ok(BitLength(sum))
     }
 }
 
-pub const ONE: BitLength = BitLength { bits: 1 };
+pub const ONE: BitLength = BitLength(1);
