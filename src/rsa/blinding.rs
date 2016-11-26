@@ -47,19 +47,18 @@ fn set_to_rand_mod(out: &mut [Limb], max_exclusive: &[Limb],
                    -> Result<(), error::Unspecified> {
     assert_eq!(out.len(), max_exclusive.len());
     assert!(out.len() >= 1);
-    assert!(out.len() <= rsa::PRIVATE_KEY_PUBLIC_MODULUS_LIMBS_MAX);
+    assert!(out.len() <= rsa::PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS);
     assert!(max_exclusive.len() >= 1);
-    assert!(max_exclusive.len() <=
-                rsa::PRIVATE_KEY_PUBLIC_MODULUS_LIMBS_MAX);
+    assert!(max_exclusive.len() <= rsa::PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS);
 
     let sampling_params = select_sampling_params(max_exclusive);
 
     // Make copies of `out` and `max_exclusive` that are padded on the most
     // significant end by at least one zero limb. This is needed to handle the
     // `sampling_params.extend_limbs_by_one` case.
-    let mut tmp_out = [0; rsa::PRIVATE_KEY_PUBLIC_MODULUS_LIMBS_MAX + 1];
+    let mut tmp_out = [0; rsa::PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS + 1];
     tmp_out[..out.len()].copy_from_slice(&out);
-    let mut tmp_max = [0; rsa::PRIVATE_KEY_PUBLIC_MODULUS_LIMBS_MAX + 1];
+    let mut tmp_max = [0; rsa::PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS + 1];
     tmp_max[..max_exclusive.len()].copy_from_slice(&max_exclusive);
     let extra_limb = if sampling_params.extend_limbs_by_one { 1 } else { 0 };
 
@@ -503,7 +502,7 @@ mod bench {
     use limb::*;
     use super::{Range, SamplingParams};
 
-    const MAX_LIMBS: usize = rsa::RSA_PUBLIC_KEY_MODULUS_LIMBS_MAX;
+    const MAX_LIMBS: usize = rsa::RSA_PUBLIC_KEY_MODULUS_MAX_LIMBS;
 
     // Baseline with which to compare the effect of the `0b100...` optimization
     #[bench]

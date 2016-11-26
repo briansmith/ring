@@ -38,11 +38,11 @@ pub use self::padding::{
 const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = 8192 / 8;
 
 // Keep in sync with the documentation comment for `RSAKeyPair` and
-// `PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX` in rsa.c.
-const PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX: usize = 4096;
+// `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` in rsa.c.
+const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: usize = 4096;
 
-const PRIVATE_KEY_PUBLIC_MODULUS_LIMBS_MAX: usize =
-    (PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX + limb::LIMB_BITS - 1) /
+const PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS: usize =
+    (PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS + limb::LIMB_BITS - 1) /
     limb::LIMB_BITS;
 
 
