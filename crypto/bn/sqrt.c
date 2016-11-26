@@ -456,7 +456,9 @@ int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx) {
   }
 
   /* We estimate that the square root of an n-bit number is 2^{n/2}. */
-  BN_lshift(estimate, BN_value_one(), BN_num_bits(in)/2);
+  if (!BN_lshift(estimate, BN_value_one(), BN_num_bits(in)/2)) {
+    goto err;
+  }
 
   /* This is Newton's method for finding a root of the equation |estimate|^2 -
    * |in| = 0. */
