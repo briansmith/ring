@@ -217,12 +217,29 @@ err:
  *       sometimes smaller windows will give better performance
  *       (thus the boundaries should be increased)
  */
-#define EC_window_bits_for_scalar_size(b)                                      \
-  ((size_t)((b) >= 2000 ? 6 : (b) >= 800 ? 5 : (b) >= 300                      \
-                                                   ? 4                         \
-                                                   : (b) >= 70 ? 3 : (b) >= 20 \
-                                                                         ? 2   \
-                                                                         : 1))
+static size_t window_bits_for_scalar_size(size_t b) {
+  if (b >= 2000) {
+    return 6;
+  }
+
+  if (b >= 800) {
+    return 5;
+  }
+
+  if (b >= 300) {
+    return 4;
+  }
+
+  if (b >= 70) {
+    return 3;
+  }
+
+  if (b >= 20) {
+    return 2;
+  }
+
+  return 1;
+}
 
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                 const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
@@ -294,7 +311,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     size_t bits;
 
     bits = i < num ? BN_num_bits(scalars[i]) : BN_num_bits(g_scalar);
-    wsize[i] = EC_window_bits_for_scalar_size(bits);
+    wsize[i] = window_bits_for_scalar_size(bits);
     num_val += (size_t)1 << (wsize[i] - 1);
     wNAF[i + 1] = NULL; /* make sure we always have a pivot */
     wNAF[i] =
@@ -364,7 +381,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     }
   }
 
-#if 1 /* optional; EC_window_bits_for_scalar_size assumes we do this step */
+#if 1 /* optional; window_bits_for_scalar_size assumes we do this step */
   if (!EC_POINTs_make_affine(group, num_val, val, ctx)) {
     goto err;
   }
