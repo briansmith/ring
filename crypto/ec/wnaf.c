@@ -90,10 +90,10 @@
  * with the exception that the most significant digit may be only
  * w-1 zeros away from that next non-zero digit.
  */
-static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
+static int8_t *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
   int window_val;
   int ok = 0;
-  signed char *r = NULL;
+  int8_t *r = NULL;
   int sign = 1;
   int bit, next_bit, mask;
   size_t len = 0, j;
@@ -109,7 +109,7 @@ static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
     return r;
   }
 
-  /* 'signed char' can represent integers with absolute values less than 2^7 */
+  /* 'int8_t' can represent integers with absolute values less than 2^7. */
   if (w <= 0 || w > 7) {
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -248,7 +248,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   int r_is_inverted = 0;
   int r_is_at_infinity = 1;
   size_t *wsize = NULL;      /* individual window sizes */
-  signed char **wNAF = NULL; /* individual wNAFs */
+  int8_t **wNAF = NULL; /* individual wNAFs */
   size_t *wNAF_len = NULL;
   size_t max_len = 0;
   size_t num_val;
@@ -442,7 +442,7 @@ err:
   OPENSSL_free(wsize);
   OPENSSL_free(wNAF_len);
   if (wNAF != NULL) {
-    signed char **w;
+    int8_t **w;
 
     for (w = wNAF; *w != NULL; w++) {
       OPENSSL_free(*w);
