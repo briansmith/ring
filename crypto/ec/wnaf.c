@@ -109,9 +109,8 @@ static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
     return r;
   }
 
-  if (w <= 0 || w > 7) /* 'signed char' can represent integers with absolute
-                          values less than 2^7 */
-  {
+  /* 'signed char' can represent integers with absolute values less than 2^7 */
+  if (w <= 0 || w > 7) {
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -129,20 +128,18 @@ static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
   }
 
   len = BN_num_bits(scalar);
-  r = OPENSSL_malloc(
-      len +
-      1); /* modified wNAF may be one digit longer than binary representation
-           * (*ret_len will be set to the actual length, i.e. at most
-           * BN_num_bits(scalar) + 1) */
+  /* The modified wNAF may be one digit longer than binary representation
+   * (*ret_len will be set to the actual length, i.e. at most
+   * BN_num_bits(scalar) + 1). */
+  r = OPENSSL_malloc(len + 1);
   if (r == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   window_val = scalar->d[0] & mask;
   j = 0;
-  while ((window_val != 0) ||
-         (j + w + 1 < len)) /* if j+w+1 >= len, window_val will not increase */
-  {
+  /* If j+w+1 >= len, window_val will not increase. */
+  while (window_val != 0 || j + w + 1 < len) {
     int digit = 0;
 
     /* 0 <= window_val <= 2^(w+1) */
@@ -174,9 +171,8 @@ static signed char *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
 
       window_val -= digit;
 
-      /* now window_val is 0 or 2^(w+1) in standard wNAF generation;
-       * for modified window NAFs, it may also be 2^w
-       */
+      /* Now window_val is 0 or 2^(w+1) in standard wNAF generation;
+       * for modified window NAFs, it may also be 2^w. */
       if (window_val != 0 && window_val != next_bit && window_val != bit) {
         OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
         goto err;
