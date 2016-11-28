@@ -97,6 +97,49 @@ impl RSAKeyPair {
                     n, e, bits::BitLength::from_usize_bits(2048),
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS));
 
+                let d = try!(d.into_odd_positive());
+                if !(e < d) {
+                    return Err(error::Unspecified);
+                }
+                if !(d < n) {
+                    return Err(error::Unspecified);
+                }
+
+                let p = try!(p.into_odd_positive());
+                if !(p < d) {
+                    return Err(error::Unspecified);
+                }
+                if p.bit_length() != q.bit_length() {
+                    return Err(error::Unspecified);
+                }
+                // XXX: |p < q| is actual OK, it seems, but our implementation
+                // of CRT-based moduluar exponentiation used requires that
+                // |q > p|. (|p == q| is just wrong.)
+                let q = try!(q.into_odd_positive());
+                if !(q < p) {
+                    return Err(error::Unspecified);
+                }
+
+                // We need to prove that `dmp1` < p - 1`. If we verify
+                // `dmp1 < p` then we'll know that either `dmp1 == p - 1` or
+                // `dmp1 < p - 1`. Since `p` is odd, `p - 1` is even. `d` is
+                // odd, and an odd number modulo an even number is odd.
+                // Therefore `dmp1` must be odd. But then it cannot be `p - 1`
+                // and so we know `dmp1 < p - 1`.
+                let dmp1 = try!(dmp1.into_odd_positive());
+                if !(dmp1 < p) {
+                    return Err(error::Unspecified);
+                }
+                // The same argument can be used to prove `dmq1 < q - 1`.
+                let dmq1 = try!(dmq1.into_odd_positive());
+                if !(dmq1 < q) {
+                    return Err(error::Unspecified);
+                }
+
+                if !(&iqmp < &p) {
+                    return Err(error::Unspecified);
+                }
+
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(),

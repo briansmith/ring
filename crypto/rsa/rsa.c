@@ -79,18 +79,17 @@ int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
   assert(rsa->e != NULL);
   assert(GFp_BN_is_odd(rsa->e));
   assert(GFp_BN_cmp(rsa->e, n) < 0);
+  assert(GFp_BN_cmp(d, n) < 0);
+  assert(GFp_BN_cmp(p, n) < 0);
+  assert(GFp_BN_cmp(q, p) < 0);
   assert(rsa->dmp1 != NULL);
   assert(rsa->dmq1 != NULL);
+  assert(GFp_BN_cmp(iqmp, p) < 0);
 
   int ret = 0;
 
   BIGNUM qq;
   GFp_BN_init(&qq);
-
-  if (!(GFp_BN_cmp(iqmp, p) < 0)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
-    goto err;
-  }
 
   rsa->mont_n = GFp_BN_MONT_CTX_new();
   rsa->mont_p = GFp_BN_MONT_CTX_new();
@@ -132,17 +131,6 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
   GFp_BN_init(&dmp1);
   GFp_BN_init(&dmq1);
   GFp_BN_init(&iqmp_times_q);
-
-  /* Technically |p < q| may be legal, but the implementation of |mod_exp| has
-   * been optimized such that it is now required that |p > q|. |p == q| is
-   * definitely *not* OK. To support keys with |p < q| in the future, we can
-   * provide a function that swaps |p| and |q| and recalculates the CRT
-   * parameters via the currently-deleted |RSA_recover_crt_params|. Or we can
-   * just avoid using the CRT when |p < q|. */
-  if (GFp_BN_cmp(&key->mont_p->N, &key->mont_q->N) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    goto out;
-  }
 
   if (/* n = pq */
       !GFp_BN_mul_no_alias(&n, &key->mont_p->N, &key->mont_q->N)) {
