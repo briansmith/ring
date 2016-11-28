@@ -198,6 +198,8 @@ pub struct ElemDecoded<F: Field> {
 
 impl<F: Field> ElemDecoded<F> {
     pub fn is_zero(&self) -> bool { self.value.is_zero() }
+
+    pub fn is_one(&self) -> bool { self.value.is_one() }
 }
 
 // `a` * `b` (mod `m`).
@@ -231,6 +233,11 @@ impl Nonnegative {
     fn is_zero(&self) -> bool {
         let is_zero = unsafe { GFp_BN_is_zero(self.as_ref()) };
         is_zero != 0
+    }
+
+    fn is_one(&self) -> bool {
+        let is_one = unsafe { GFp_BN_is_one(self.as_ref()) };
+        is_one != 0
     }
 
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
@@ -283,6 +290,7 @@ extern {
     fn GFp_BN_cmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
+    fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
     pub fn GFp_BN_free(bn: *mut BIGNUM);
 

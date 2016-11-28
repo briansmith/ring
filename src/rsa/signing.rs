@@ -162,11 +162,19 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                if !(&iqmp < &p) {
+                let p = try!(p.into_modulus::<P>());
+
+                let iqmp = try!(iqmp.into_elem(&p));
+                let q_mod_p = {
+                    let q = try!(q.try_clone());
+                    try!(q.into_elem_decoded(&p))
+                };
+                let iqmp_times_q_mod_p =
+                    try!(bigint::elem_mul_mixed(&iqmp, &q_mod_p, &p));
+                if !iqmp_times_q_mod_p.is_one() {
                     return Err(error::Unspecified);
                 }
 
-                let p = try!(p.into_modulus::<P>());
                 let q = try!(q.into_modulus::<Q>());
 
                 let mut rsa = RSA {
@@ -175,10 +183,10 @@ impl RSAKeyPair {
                     mont_p: p.into_raw(), mont_q: q.into_raw(),
                     mont_qq: std::ptr::null_mut(),
                     qmn_mont: q_mod_n.into_raw_montgomery_encoded(),
-                    iqmp_mont: std::ptr::null_mut(),
+                    iqmp_mont: iqmp.into_raw_montgomery_encoded(),
                 };
                 try!(bssl::map_result(unsafe {
-                    GFp_rsa_new_end(&mut rsa, d.as_ref(), iqmp.as_ref())
+                    GFp_rsa_new_end(&mut rsa, d.as_ref())
                 }));
                 Ok(RSAKeyPair {
                     rsa: rsa,
@@ -350,8 +358,7 @@ struct BN_BLINDING {
 extern {
     fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn GFp_rsa_new_end(rsa: *mut RSA, d: &bigint::BIGNUM,
-                       iqmp: &bigint::BIGNUM) -> c::int;
+    fn GFp_rsa_new_end(rsa: *mut RSA, d: &bigint::BIGNUM) -> c::int;
 }
 
 #[allow(improper_ctypes)]
