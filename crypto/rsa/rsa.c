@@ -105,10 +105,9 @@ int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
       !GFp_BN_MONT_CTX_set(rsa->mont_n, n) ||
       !GFp_BN_MONT_CTX_set(rsa->mont_p, p) ||
       !GFp_BN_MONT_CTX_set(rsa->mont_q, q) ||
-      !GFp_BN_mod_mul_mont(&qq, q, q, rsa->mont_n) ||
-      !GFp_BN_to_mont(&qq, &qq, rsa->mont_n) ||
-      !GFp_BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
       !GFp_BN_to_mont(rsa->qmn_mont, q, rsa->mont_n) ||
+      !GFp_BN_mod_mul_mont(&qq, rsa->qmn_mont, q, rsa->mont_n) ||
+      !GFp_BN_MONT_CTX_set(rsa->mont_qq, &qq) ||
       /* Assumes p > q. */
       !GFp_BN_to_mont(rsa->iqmp_mont, iqmp, rsa->mont_p)) {
     goto err;
