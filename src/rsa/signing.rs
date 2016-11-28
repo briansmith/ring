@@ -146,6 +146,16 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
+                // XXX: We don't check that `dmp1 == d % (p - 1)` or that
+                // `dmq1 == d % (q - 1)` because we don't (in the long term)
+                // have a good way to do modulo with an even modulus. Instead
+                // we just check that `1 <= dmp1 < p - 1` and
+                // `1 <= dmq1 < q - 1`. We'll check them, to some unknown
+                // extent, when we do the private key operation, since we
+                // verify that the result of the private key operation using
+                // the CRT parameters is consistent with `n` and `e`. TODO:
+                // Either prove that what we do is sufficient, or make it so.
+                //
                 // We need to prove that `dmp1` < p - 1`. If we verify
                 // `dmp1 < p` then we'll know that either `dmp1 == p - 1` or
                 // `dmp1 < p - 1`. Since `p` is odd, `p - 1` is even. `d` is
@@ -187,19 +197,15 @@ impl RSAKeyPair {
 
                 let q = try!(q.into_modulus::<Q>());
 
-                let mut rsa = RSA {
-                    e: e.into_raw(), dmp1: dmp1.into_raw(),
-                    dmq1: dmq1.into_raw(), mont_n: n.into_raw(),
-                    mont_p: p.into_raw(), mont_q: q.into_raw(),
-                    mont_qq: qq.into_raw(),
-                    qmn_mont: q_mod_n.into_raw_montgomery_encoded(),
-                    iqmp_mont: iqmp.into_raw_montgomery_encoded(),
-                };
-                try!(bssl::map_result(unsafe {
-                    GFp_rsa_new_end(&mut rsa, d.as_ref())
-                }));
                 Ok(RSAKeyPair {
-                    rsa: rsa,
+                    rsa: RSA {
+                        e: e.into_raw(), dmp1: dmp1.into_raw(),
+                        dmq1: dmq1.into_raw(), mont_n: n.into_raw(),
+                        mont_p: p.into_raw(), mont_q: q.into_raw(),
+                        mont_qq: qq.into_raw(),
+                        qmn_mont: q_mod_n.into_raw_montgomery_encoded(),
+                        iqmp_mont: iqmp.into_raw_montgomery_encoded(),
+                    },
                     n_bits: n_bits,
                 })
             })
@@ -371,7 +377,6 @@ struct BN_BLINDING {
 extern {
     fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
     fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
-    fn GFp_rsa_new_end(rsa: *mut RSA, d: &bigint::BIGNUM) -> c::int;
 }
 
 #[allow(improper_ctypes)]

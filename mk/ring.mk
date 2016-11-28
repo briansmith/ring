@@ -46,7 +46,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/poly1305/poly1305.c \
   crypto/rand/sysrand.c \
   crypto/rsa/blinding.c \
-  crypto/rsa/rsa.c \
   crypto/rsa/rsa_impl.c \
   $(NULL)) \
   $(RING_$(TARGET_ARCH_NORMAL)_SRCS) \
