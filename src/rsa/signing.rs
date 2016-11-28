@@ -86,11 +86,6 @@ impl RSAKeyPair {
 
                 let n_bits = n.bit_length();
 
-                // The public modulus must be large enough. `pkcs1_encode`
-                // depends on this; without it, `pkcs1_encode` would generate
-                // padding that is invalid (too few 0xFF bytes) for very small
-                // keys.
-                //
                 // XXX: The maximum limit of 4096 bits is primarily due to lack
                 // of testing of larger key sizes; see, in particular,
                 // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html

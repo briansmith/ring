@@ -83,6 +83,13 @@ fn check_public_modulus_and_exponent(
     // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
     const MAX_EXPONENT_BITS: bits::BitLength = bits::BitLength(33);
 
+    // The public modulus must be large enough. `pkcs1_encode` depends on this
+    // not being small. Without it, `pkcs1_encode` would generate padding that
+    // is invalid (too few 0xFF bytes) for very small keys.
+    const N_MIN_BITS: bits::BitLength = bits::BitLength(2048);
+    assert!(n_min_bits >= N_MIN_BITS);
+    debug_assert!(MAX_EXPONENT_BITS < N_MIN_BITS);
+
     let n_bits = n.bit_length();
     let n_bits_rounded_up =
         try!(bits::BitLength::from_usize_bytes(
@@ -91,14 +98,6 @@ fn check_public_modulus_and_exponent(
         return Err(error::Unspecified);
     }
     if n_bits > n_max_bits {
-        return Err(error::Unspecified);
-    }
-
-    // Verify `n > e`. Comparing `rsa_bits` to `MAX_EXPONENT_BITS` is a small
-    // shortcut to comparing `n` and `e` directly. In reality,
-    // `MAX_EXPONENT_BITS` is much smaller than the minimum RSA key size that
-    // any application should accept.
-    if n_bits <= MAX_EXPONENT_BITS {
         return Err(error::Unspecified);
     }
 
