@@ -175,13 +175,23 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
+                let q_mod_n_decoded = {
+                    let q = try!(q.try_clone());
+                    try!(q.into_elem_decoded(&n))
+                };
+                let qq =
+                    try!(bigint::elem_mul_mixed(&q_mod_n, &q_mod_n_decoded,
+                                                &n));
+                let qq = try!(qq.into_odd_positive());
+                let qq = try!(qq.into_modulus::<QQ>());
+
                 let q = try!(q.into_modulus::<Q>());
 
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(), mont_n: n.into_raw(),
                     mont_p: p.into_raw(), mont_q: q.into_raw(),
-                    mont_qq: std::ptr::null_mut(),
+                    mont_qq: qq.into_raw(),
                     qmn_mont: q_mod_n.into_raw_montgomery_encoded(),
                     iqmp_mont: iqmp.into_raw_montgomery_encoded(),
                 };
@@ -216,6 +226,9 @@ unsafe impl bigint::Field for P {}
 
 enum Q {}
 unsafe impl bigint::Field for Q {}
+
+enum QQ {}
+unsafe impl bigint::Field for QQ {}
 
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).

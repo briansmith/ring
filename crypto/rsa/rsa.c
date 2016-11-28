@@ -81,6 +81,7 @@ int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d) {
   assert(rsa->mont_n != NULL);
   assert(rsa->mont_p != NULL);
   assert(rsa->mont_q != NULL);
+  assert(rsa->mont_qq != NULL);
   assert(rsa->qmn_mont != NULL);
   assert(rsa->iqmp_mont != NULL);
 
@@ -94,23 +95,7 @@ int GFp_rsa_new_end(RSA *rsa, const BIGNUM *d) {
   assert(GFp_BN_cmp(p, n) < 0);
   assert(GFp_BN_cmp(q, p) < 0);
 
-  int ret = 0;
-
-  BIGNUM qq;
-  GFp_BN_init(&qq);
-
-  rsa->mont_qq = GFp_BN_MONT_CTX_new();
-  if (rsa->mont_qq == NULL ||
-      !GFp_BN_mod_mul_mont(&qq, rsa->qmn_mont, q, rsa->mont_n) ||
-      !GFp_BN_MONT_CTX_set(rsa->mont_qq, &qq)) {
-    goto err;
-  }
-
-  ret = rsa_check_key(rsa, d);
-
-err:
-  GFp_BN_free(&qq);
-  return ret;
+  return rsa_check_key(rsa, d);
 }
 
 static int rsa_check_key(const RSA *key, const BIGNUM *d) {

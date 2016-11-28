@@ -200,6 +200,10 @@ impl<F: Field> ElemDecoded<F> {
     pub fn is_zero(&self) -> bool { self.value.is_zero() }
 
     pub fn is_one(&self) -> bool { self.value.is_one() }
+
+    pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
+        self.value.into_odd_positive()
+    }
 }
 
 // `a` * `b` (mod `m`).
