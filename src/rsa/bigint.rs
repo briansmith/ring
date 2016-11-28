@@ -14,10 +14,11 @@
 
 //! Mutli-precision integers.
 
-use {bits, c, error, untrusted};
+// XXX TODO: Remove this once RSA verification has been done in Rust.
+#![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
+
+use {bits, c, der, error, untrusted};
 use core;
-#[cfg(feature = "rsa_signing")]
-use der;
 
 /// Non-negative, non-zero integers.
 ///
@@ -29,7 +30,6 @@ pub struct Positive {
 }
 
 impl Positive {
-    #[cfg(feature = "rsa_signing")]
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
     pub fn from_der(input: &mut untrusted::Reader)
                     -> Result<Positive, error::Unspecified> {
@@ -60,7 +60,6 @@ impl Positive {
 
     pub unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn into_raw(mut self) -> *mut BIGNUM {
         let res = self.value;
         self.value = core::ptr::null_mut();
@@ -77,7 +76,6 @@ impl<'a> Drop for Positive {
     fn drop(&mut self) { unsafe { GFp_BN_free(self.value); } }
 }
 
-#[cfg(feature = "rsa_signing")]
 #[allow(non_camel_case_types)]
 pub enum BN_MONT_CTX {}
 
@@ -88,8 +86,6 @@ extern {
                      -> *mut BIGNUM;
     pub fn GFp_BN_free(bn: *mut BIGNUM);
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
-
-    #[cfg(feature = "rsa_signing")]
     pub fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
 
