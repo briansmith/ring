@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bssl, c, digest, error, private, signature};
+use {bits, bssl, c, digest, error, private, signature};
 use super::{bigint, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
             parse_public_key};
 use untrusted;
@@ -40,7 +40,7 @@ macro_rules! rsa_params {
         pub static $VERIFY_ALGORITHM: RSAParameters =
             RSAParameters {
                 padding_alg: $PADDING_ALGORITHM,
-                min_bits: $min_bits,
+                min_bits: bits::BitLength($min_bits),
             };
     }
 }
@@ -117,12 +117,15 @@ pub fn verify_rsa(params: &RSAParameters,
 
     let n = try!(bigint::Positive::from_be_bytes(n));
     let e = try!(bigint::Positive::from_be_bytes(e));
+    let max_bits = try!(bits::BitLength::from_usize_bytes(
+        PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN));
+    let (n, e) =
+        try!(super::check_public_modulus_and_exponent(n, e, params.min_bits,
+                                                      max_bits));
     let decoded = &mut decoded[..signature.len()];
     try!(bssl::map_result(unsafe {
         GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
-                               e.as_ref(), signature.as_ptr(), signature.len(),
-                               params.min_bits,
-                               PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN * 8)
+                               e.as_ref(), signature.as_ptr(), signature.len())
     }));
 
     let m_hash = digest::digest(params.padding_alg.digest_alg(),
@@ -138,8 +141,7 @@ extern {
                               public_key_n: *const bigint::BIGNUM,
                               public_key_e: *const bigint::BIGNUM,
                               ciphertext: *const u8,
-                              ciphertext_len: c::size_t, min_bits: c::size_t,
-                              max_bits: c::size_t) -> c::int;
+                              ciphertext_len: c::size_t) -> c::int;
 }
 
 #[cfg(test)]

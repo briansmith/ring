@@ -76,7 +76,6 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
                 let n = try!(bigint::Positive::from_der(input));
-                let n_bits = n.bit_length();
                 let e = try!(bigint::Positive::from_der(input));
                 let d = try!(bigint::Positive::from_der(input));
                 let p = try!(bigint::Positive::from_der(input));
@@ -84,6 +83,25 @@ impl RSAKeyPair {
                 let dmp1 = try!(bigint::Positive::from_der(input));
                 let dmq1 = try!(bigint::Positive::from_der(input));
                 let iqmp = try!(bigint::Positive::from_der(input));
+
+                let n_bits = n.bit_length();
+
+                // The public modulus must be large enough. `pkcs1_encode`
+                // depends on this; without it, `pkcs1_encode` would generate
+                // padding that is invalid (too few 0xFF bytes) for very small
+                // keys.
+                //
+                // XXX: The maximum limit of 4096 bits is primarily due to lack
+                // of testing of larger key sizes; see, in particular,
+                // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
+                // and
+                // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
+                // Also, this limit might help with memory management decisions
+                // later.
+                let (n, e) = try!(super::check_public_modulus_and_exponent(
+                    n, e, bits::BitLength::from_usize_bits(2048),
+                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS));
+
                 let mut rsa = RSA {
                     e: e.into_raw(), dmp1: dmp1.into_raw(),
                     dmq1: dmq1.into_raw(),

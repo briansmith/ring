@@ -72,73 +72,18 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
                               BN_BLINDING *blinding, RAND *rng);
 
 
-int GFp_rsa_check_modulus_and_exponent(const BIGNUM *n, const BIGNUM *e,
-                                       size_t min_bits, size_t max_bits) {
-  unsigned rsa_bits = GFp_BN_num_bits(n);
-
-  if (rsa_bits < min_bits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
-  }
-  /* XXX: There's may be another check for the maximum length in src/rsa/rsa.rs
-   * that subsumes this; check that when investigating the code coverage. */
-  if (rsa_bits > 16 * 1024 || rsa_bits > max_bits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
-    return 0;
-  }
-
-  /* Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-   * the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
-   * doesn't support values larger than 32 bits [3], so it is unlikely that
-   * exponents larger than 32 bits are being used for anything Windows commonly
-   * does.
-   *
-   * [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-   * [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-   * [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx */
-  static const unsigned kMaxExponentBits = 33;
-
-  unsigned e_bits = GFp_BN_num_bits(e);
-
-  if (e_bits < 2) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-  if (e_bits > kMaxExponentBits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-  if (!GFp_BN_is_odd(e)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-
-  /* Verify |n > e|. Comparing |rsa_bits| to |kMaxExponentBits| is a small
-   * shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
-   * is much smaller than the minimum RSA key size that any application should
-   * accept. */
-  if (rsa_bits <= kMaxExponentBits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
-  }
-  assert(GFp_BN_ucmp(n, e) > 0);
-
-  return 1;
-}
-
-
 /* GFp_rsa_public_decrypt decrypts the RSA signature |in| using the public key
  * with modulus |public_key_n| and exponent |public_key_e|, leaving the
  * decrypted signature in |out|. |out_len| and |in_len| must both be equal to
- * |RSA_size(rsa)|. |min_bits| and |max_bits| are the minimum and maximum
- * allowed public key modulus sizes, in bits. It returns one on success and
- * zero on failure.
+ * |RSA_size(rsa)|. The public key must have been validated prior.
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
 int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
-                           const BIGNUM *e, const uint8_t *in, size_t in_len,
-                           size_t min_bits, size_t max_bits) {
+                           const BIGNUM *e, const uint8_t *in, size_t in_len) {
+  assert(GFp_BN_is_odd(e));
+  assert(!GFp_BN_is_one(e));
+
   BIGNUM f;
   GFp_BN_init(&f);
 
@@ -155,10 +100,6 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
 
   if (in_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
-    goto err;
-  }
-
-  if (!GFp_rsa_check_modulus_and_exponent(n, e, min_bits, max_bits)) {
     goto err;
   }
 

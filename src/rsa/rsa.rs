@@ -14,7 +14,7 @@
 
 /// RSA signatures.
 
-use {der, error, limb};
+use {bits, der, error, limb};
 use untrusted;
 
 mod padding;
@@ -37,19 +37,19 @@ pub use self::padding::{
 // Maximum RSA modulus size supported for signature verification (in bytes).
 const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = 8192 / 8;
 
-// Keep in sync with the documentation comment for `RSAKeyPair` and
-// `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` in rsa.c.
-const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: usize = 4096;
+// Keep in sync with the documentation comment for `RSAKeyPair`.
+#[cfg(feature = "rsa_signing")]
+const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength =
+    bits::BitLength(4096);
 
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS: usize =
-    (PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS + limb::LIMB_BITS - 1) /
-    limb::LIMB_BITS;
+    (4096 + limb::LIMB_BITS - 1) / limb::LIMB_BITS;
 
 
 /// Parameters for RSA verification.
 pub struct RSAParameters {
     padding_alg: &'static padding::RSAVerification,
-    min_bits: usize,
+    min_bits: bits::BitLength,
 }
 
 fn parse_public_key(input: untrusted::Input)
@@ -62,6 +62,55 @@ fn parse_public_key(input: untrusted::Input)
             Ok((n, e))
         })
     })
+}
+
+fn check_public_modulus_and_exponent(
+        n: bigint::Positive, e: bigint::Positive, n_min_bits: bits::BitLength,
+        n_max_bits: bits::BitLength)
+        -> Result<(bigint::OddPositive, bigint::OddPositive),
+                  error::Unspecified> {
+    let n = try!(n.into_odd_positive());
+    let e = try!(e.into_odd_positive());
+
+    // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen
+    // as the limit based on the recommendations in [1] and [2]. Windows
+    // CryptoAPI (at least older versions) doesn't support values larger than
+    // 32 bits [3], so it is unlikely that exponents larger than 32 bits are
+    // being used for anything Windows commonly does.
+    //
+    // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
+    // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
+    // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
+    const MAX_EXPONENT_BITS: bits::BitLength = bits::BitLength(33);
+
+    let n_bits = n.bit_length();
+    let n_bits_rounded_up =
+        try!(bits::BitLength::from_usize_bytes(
+            n_bits.as_usize_bytes_rounded_up()));
+    if n_bits_rounded_up < n_min_bits {
+        return Err(error::Unspecified);
+    }
+    if n_bits > n_max_bits {
+        return Err(error::Unspecified);
+    }
+
+    // Verify `n > e`. Comparing `rsa_bits` to `MAX_EXPONENT_BITS` is a small
+    // shortcut to comparing `n` and `e` directly. In reality,
+    // `MAX_EXPONENT_BITS` is much smaller than the minimum RSA key size that
+    // any application should accept.
+    if n_bits <= MAX_EXPONENT_BITS {
+        return Err(error::Unspecified);
+    }
+
+    let e_bits = e.bit_length();
+    if e_bits < bits::BitLength::from_usize_bits(2) {
+        return Err(error::Unspecified);
+    }
+    if e_bits > MAX_EXPONENT_BITS {
+        return Err(error::Unspecified);
+    }
+
+    Ok((n, e))
 }
 
 pub mod verification;

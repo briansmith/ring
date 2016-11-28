@@ -16,7 +16,7 @@ use error;
 
 /// XXX: When `const_fn` is implemented then make the value private to force
 /// the constructors to be used.
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd)]
 pub struct BitLength(pub usize);
 
 // Lengths measured in bits, where all arithmetic is guaranteed not to

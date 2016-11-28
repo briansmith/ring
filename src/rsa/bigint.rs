@@ -60,6 +60,14 @@ impl Positive {
 
     pub unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { &*self.value }
 
+    pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
+        let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
+        if is_odd == 0 {
+            return Err(error::Unspecified);
+        }
+        Ok(OddPositive(self))
+    }
+
     pub fn into_raw(mut self) -> *mut BIGNUM {
         let res = self.value;
         self.value = core::ptr::null_mut();
@@ -76,6 +84,37 @@ impl<'a> Drop for Positive {
     fn drop(&mut self) { unsafe { GFp_BN_free(self.value); } }
 }
 
+impl core::cmp::PartialEq for Positive {
+    fn eq(&self, other: &Positive) -> bool {
+        self.partial_cmp(other) == Some(core::cmp::Ordering::Equal)
+    }
+}
+
+impl core::cmp::PartialOrd for Positive {
+    fn partial_cmp(&self, other: &Positive) -> Option<core::cmp::Ordering> {
+        let r = unsafe { GFp_BN_cmp(self.as_ref(), other.as_ref()) };
+        Some(r.cmp(&0))
+    }
+}
+
+
+/// Odd positive integers.
+#[derive(PartialEq, PartialOrd)]
+pub struct OddPositive(Positive);
+
+impl OddPositive {
+    pub fn into_raw(self) -> *mut BIGNUM {
+        self.0.into_raw()
+    }
+}
+
+impl core::ops::Deref for OddPositive {
+    type Target = Positive;
+
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+
 #[allow(non_camel_case_types)]
 pub enum BN_MONT_CTX {}
 
@@ -84,7 +123,9 @@ pub enum BIGNUM {}
 extern {
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                      -> *mut BIGNUM;
+    fn GFp_BN_cmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     pub fn GFp_BN_free(bn: *mut BIGNUM);
+    fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
     pub fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }

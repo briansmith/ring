@@ -77,6 +77,8 @@ static int rsa_check_key(const RSA *rsa, const BIGNUM *d);
 int GFp_rsa_new_end(RSA *rsa, const BIGNUM *n, const BIGNUM *d, const BIGNUM *p,
                     const BIGNUM *q, const BIGNUM *iqmp) {
   assert(rsa->e != NULL);
+  assert(GFp_BN_is_odd(rsa->e));
+  assert(GFp_BN_cmp(rsa->e, n) < 0);
   assert(rsa->dmp1 != NULL);
   assert(rsa->dmq1 != NULL);
 
@@ -130,25 +132,6 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
   GFp_BN_init(&dmp1);
   GFp_BN_init(&dmq1);
   GFp_BN_init(&iqmp_times_q);
-
-  /* The public modulus must be large enough. |PKCS1::encode| depends on this;
-   * without it, |PKCS1::encode| would generate padding that is invalid (too
-   * few 0xFF bytes) for very small keys.
-   *
-   * XXX: The maximum limit of 4096 bits is primarily due to lack of testing
-   * of larger key sizes; see, in particular,
-   * https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html and
-   * https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html. Also,
-   * this limit might help with memory management decisions later.
-   *
-   * Keep in sync with src/rsa/convert_nist_rsa_test_vectors.py and
-   * `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` in rsa.rs. */
-  static const size_t PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS = 4096;
-  if (!GFp_rsa_check_modulus_and_exponent(
-          &key->mont_n->N, key->e, 2048, PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    goto out;
-  }
 
   /* Technically |p < q| may be legal, but the implementation of |mod_exp| has
    * been optimized such that it is now required that |p > q|. |p == q| is
