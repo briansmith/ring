@@ -58,7 +58,7 @@ impl Positive {
         Ok(Positive(Nonnegative(value)))
     }
 
-    pub unsafe fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
+    pub fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
 
     pub fn into_elem<F: Field>(mut self, m: &Modulus<F>)
                                -> Result<Elem<F>, error::Unspecified> {
@@ -94,8 +94,6 @@ impl Positive {
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         self.0.into_odd_positive()
     }
-
-    pub fn into_raw(self) -> *mut BIGNUM { self.0.into_raw() }
 
     pub fn bit_length(&self) -> bits::BitLength {
         let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
@@ -143,10 +141,6 @@ impl OddPositive {
         }));
         Ok(r)
     }
-
-    pub fn into_raw(self) -> *mut BIGNUM {
-        self.0.into_raw()
-    }
 }
 
 impl core::ops::Deref for OddPositive {
@@ -166,13 +160,7 @@ pub struct Modulus<F: Field> {
 }
 
 impl<F: Field> Modulus<F> {
-    unsafe fn as_ref(&self) -> &BN_MONT_CTX { &*self.ctx }
-
-    pub fn into_raw(mut self) -> *mut BN_MONT_CTX {
-        let r = self.ctx;
-        self.ctx = core::ptr::null_mut();
-        r
-    }
+    pub fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
 }
 
 impl<F: Field> Drop for Modulus<F> {
@@ -186,8 +174,8 @@ pub struct Elem<F: Field> {
 }
 
 impl<F: Field> Elem<F> {
-    pub fn into_raw_montgomery_encoded(self) -> *mut BIGNUM {
-        self.value.into_raw()
+    pub fn as_ref_montgomery_encoded<'a>(&'a self) -> &'a BIGNUM {
+        self.value.as_ref()
     }
 }
 
@@ -256,12 +244,6 @@ impl Nonnegative {
         }
         Ok(OddPositive(Positive(self)))
     }
-
-    fn into_raw(mut self) -> *mut BIGNUM {
-        let r = self.0;
-        self.0 = core::ptr::null_mut();
-        r
-    }
 }
 
 impl Drop for Nonnegative {
@@ -296,7 +278,7 @@ extern {
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
-    pub fn GFp_BN_free(bn: *mut BIGNUM);
+    fn GFp_BN_free(bn: *mut BIGNUM);
 
     // `r` and `a` may alias.
     fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
@@ -312,7 +294,7 @@ extern {
     fn GFp_BN_MONT_CTX_new() -> *mut BN_MONT_CTX;
     fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;
     fn GFp_BN_MONT_CTX_get0_n<'a>(ctx: &'a BN_MONT_CTX) -> &'a BIGNUM;
-    pub fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
+    fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
 
 #[cfg(test)]

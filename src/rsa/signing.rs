@@ -18,7 +18,6 @@ use {bits, bssl, c, der, digest, error};
 use rand;
 use std;
 use super::bigint;
-use super::bigint::{GFp_BN_free, GFp_BN_MONT_CTX_free};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -28,11 +27,24 @@ use untrusted;
 /// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
 /// module-level documentation for an example.
 pub struct RSAKeyPair {
-    rsa: RSA,
+    n: bigint::Modulus<N>,
+    e: bigint::OddPositive,
+    p: bigint::Modulus<P>,
+    q: bigint::Modulus<Q>,
+    dmp1: bigint::OddPositive,
+    dmq1: bigint::OddPositive,
+    iqmp: bigint::Elem<P>,
 
-    // The length of the public modulus in bits.
+    qq: bigint::Modulus<QQ>,
+    q_mod_n: bigint::Elem<N>,
+
     n_bits: bits::BitLength,
 }
+
+// `RSAKeyPair` is immutable after construction, which makes it both `Sync` and
+// `Send` automatically, even though its components aren't.
+unsafe impl Send for RSAKeyPair {}
+unsafe impl Sync for RSAKeyPair {}
 
 impl RSAKeyPair {
     /// Parse a private key in DER-encoded ASN.1 `RSAPrivateKey` form (see
@@ -198,14 +210,15 @@ impl RSAKeyPair {
                 let q = try!(q.into_modulus::<Q>());
 
                 Ok(RSAKeyPair {
-                    rsa: RSA {
-                        e: e.into_raw(), dmp1: dmp1.into_raw(),
-                        dmq1: dmq1.into_raw(), mont_n: n.into_raw(),
-                        mont_p: p.into_raw(), mont_q: q.into_raw(),
-                        mont_qq: qq.into_raw(),
-                        qmn_mont: q_mod_n.into_raw_montgomery_encoded(),
-                        iqmp_mont: iqmp.into_raw_montgomery_encoded(),
-                    },
+                    n: n,
+                    e: e,
+                    p: p,
+                    q: q,
+                    dmp1: dmp1,
+                    dmq1: dmq1,
+                    iqmp: iqmp,
+                    q_mod_n: q_mod_n,
+                    qq: qq,
                     n_bits: n_bits,
                 })
             })
@@ -219,9 +232,6 @@ impl RSAKeyPair {
         self.n_bits.as_usize_bytes_rounded_up()
     }
 }
-
-unsafe impl Send for RSAKeyPair {}
-unsafe impl Sync for RSAKeyPair {}
 
 
 enum N {}
@@ -239,32 +249,16 @@ unsafe impl bigint::Field for QQ {}
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
 #[repr(C)]
-struct RSA {
-    e: *mut bigint::BIGNUM,
-    dmp1: *mut bigint::BIGNUM,
-    dmq1: *mut bigint::BIGNUM,
-    mont_n: *mut bigint::BN_MONT_CTX,
-    mont_p: *mut bigint::BN_MONT_CTX,
-    mont_q: *mut bigint::BN_MONT_CTX,
-    mont_qq: *mut bigint::BN_MONT_CTX,
-    qmn_mont: *mut bigint::BIGNUM,
-    iqmp_mont: *mut bigint::BIGNUM,
-}
-
-impl Drop for RSA {
-    fn drop(&mut self) {
-        unsafe {
-            GFp_BN_free(self.e);
-            GFp_BN_free(self.dmp1);
-            GFp_BN_free(self.dmq1);
-            GFp_BN_MONT_CTX_free(self.mont_n);
-            GFp_BN_MONT_CTX_free(self.mont_p);
-            GFp_BN_MONT_CTX_free(self.mont_q);
-            GFp_BN_MONT_CTX_free(self.mont_qq);
-            GFp_BN_free(self.qmn_mont);
-            GFp_BN_free(self.iqmp_mont);
-        }
-    }
+struct RSA<'a> {
+    e: &'a bigint::BIGNUM,
+    dmp1: &'a bigint::BIGNUM,
+    dmq1: &'a bigint::BIGNUM,
+    mont_n: &'a bigint::BN_MONT_CTX,
+    mont_p: &'a bigint::BN_MONT_CTX,
+    mont_q: &'a bigint::BN_MONT_CTX,
+    mont_qq: &'a bigint::BN_MONT_CTX,
+    qmn_mont: &'a bigint::BIGNUM,
+    iqmp_mont: &'a bigint::BIGNUM,
 }
 
 
@@ -343,13 +337,27 @@ impl RSASigningState {
             return Err(error::Unspecified);
         }
 
+        let key = self.key_pair();
+        let rsa =  RSA {
+            e: key.e.as_ref(),
+            dmp1: key.dmp1.as_ref(),
+            dmq1: key.dmq1.as_ref(),
+            mont_n: key.n.as_ref(),
+            mont_p: key.p.as_ref(),
+            mont_q: key.q.as_ref(),
+            mont_qq: key.qq.as_ref(),
+            qmn_mont: key.q_mod_n.as_ref_montgomery_encoded(),
+            iqmp_mont: key.iqmp.as_ref_montgomery_encoded(),
+        };
+
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         try!(padding_alg.encode(&m_hash, signature, mod_bits, rng));
         let mut rand = rand::RAND::new(rng);
+
         bssl::map_result(unsafe {
-            GFp_rsa_private_transform(&self.key_pair.rsa,
-                                      signature.as_mut_ptr(), signature.len(),
-                                      self.blinding.blinding, &mut rand)
+            GFp_rsa_private_transform(&rsa, signature.as_mut_ptr(),
+                                      signature.len(), self.blinding.blinding,
+                                      &mut rand)
         })
     }
 }
