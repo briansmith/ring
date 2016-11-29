@@ -37,6 +37,7 @@ The recommended values of `max_len` for each test are:
 | `pkcs8`       | 2048            |
 | `privkey`     | 2048            |
 | `server`      | 4096            |
+| `session`     | 8192            |
 | `spki`        | 1024            |
 | `read_pem`    | 512             |
 | `ssl_ctx_api` | 256             |
