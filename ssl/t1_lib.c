@@ -2034,6 +2034,7 @@ int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out) {
 /* Pre-Shared Key Exchange Modes
  *
  * https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.7 */
+
 static int ext_psk_key_exchange_modes_add_clienthello(SSL *ssl, CBB *out) {
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
@@ -2074,6 +2075,35 @@ static int ext_psk_key_exchange_modes_parse_clienthello(SSL *ssl,
   ssl->s3->hs->accept_psk_mode =
       memchr(CBS_data(&ke_modes), SSL_PSK_DHE_KE, CBS_len(&ke_modes)) != NULL;
 
+  return 1;
+}
+
+
+/* Early Data Indication
+ *
+ * https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.8 */
+
+static int ext_early_data_add_clienthello(SSL *ssl, CBB *out) {
+  /* TODO(svaldez): Support 0RTT. */
+  return 1;
+}
+
+static int ext_early_data_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                            CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  if (CBS_len(contents) != 0) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return 0;
+  }
+
+  /* Since we don't currently accept 0-RTT, we have to skip past any early data
+   * the client might have sent. */
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    ssl->s3->skip_early_data = 1;
+  }
   return 1;
 }
 
@@ -2558,6 +2588,14 @@ static const struct tls_extension kExtensions[] = {
     ext_psk_key_exchange_modes_add_clienthello,
     forbid_parse_serverhello,
     ext_psk_key_exchange_modes_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_early_data,
+    NULL,
+    ext_early_data_add_clienthello,
+    forbid_parse_serverhello,
+    ext_early_data_parse_clienthello,
     dont_add_serverhello,
   },
   {

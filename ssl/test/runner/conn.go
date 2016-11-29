@@ -1768,3 +1768,16 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 	c.out.doKeyUpdate(c, true)
 	return nil
 }
+
+func (c *Conn) sendFakeEarlyData(len int) error {
+	// Assemble a fake early data record. This does not use writeRecord
+	// because the record layer may be using different keys at this point.
+	payload := make([]byte, 5+len)
+	payload[0] = byte(recordTypeApplicationData)
+	payload[1] = 3
+	payload[2] = 1
+	payload[3] = byte(len >> 8)
+	payload[4] = byte(len)
+	_, err := c.conn.Write(payload)
+	return err
+}

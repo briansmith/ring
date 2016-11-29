@@ -319,6 +319,10 @@ NextCipherSuite:
 		hello.cipherSuites = c.config.Bugs.SendCipherSuites
 	}
 
+	if c.config.Bugs.SendEarlyDataLength > 0 && !c.config.Bugs.OmitEarlyDataExtension {
+		hello.hasEarlyData = true
+	}
+
 	var helloBytes []byte
 	if c.config.Bugs.SendV2ClientHello {
 		// Test that the peer left-pads random.
@@ -355,6 +359,12 @@ NextCipherSuite:
 
 	if err := c.simulatePacketLoss(nil); err != nil {
 		return err
+	}
+	if c.config.Bugs.SendEarlyAlert {
+		c.sendAlert(alertHandshakeFailure)
+	}
+	if c.config.Bugs.SendEarlyDataLength > 0 {
+		c.sendFakeEarlyData(c.config.Bugs.SendEarlyDataLength)
 	}
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -452,15 +462,27 @@ NextCipherSuite:
 			hello.hasKeyShares = false
 		}
 
-		hello.hasEarlyData = false
+		hello.hasEarlyData = c.config.Bugs.SendEarlyDataOnSecondClientHello
 		hello.raw = nil
 
 		if len(hello.pskIdentities) > 0 {
 			generatePSKBinders(hello, pskCipherSuite, session.masterSecret, append(helloBytes, helloRetryRequest.marshal()...), c.config)
 		}
 		secondHelloBytes = hello.marshal()
-		c.writeRecord(recordTypeHandshake, secondHelloBytes)
+
+		if c.config.Bugs.InterleaveEarlyData {
+			c.sendFakeEarlyData(4)
+			c.writeRecord(recordTypeHandshake, secondHelloBytes[:16])
+			c.sendFakeEarlyData(4)
+			c.writeRecord(recordTypeHandshake, secondHelloBytes[16:])
+		} else {
+			c.writeRecord(recordTypeHandshake, secondHelloBytes)
+		}
 		c.flushHandshake()
+
+		if c.config.Bugs.SendEarlyDataOnSecondClientHello {
+			c.sendFakeEarlyData(4)
+		}
 
 		msg, err = c.readHandshake()
 		if err != nil {
@@ -871,6 +893,12 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	if c.config.Bugs.PartialClientFinishedWithClientHello {
 		// The first byte has already been sent.
 		c.writeRecord(recordTypeHandshake, finished.marshal()[1:])
+	} else if c.config.Bugs.InterleaveEarlyData {
+		finishedBytes := finished.marshal()
+		c.sendFakeEarlyData(4)
+		c.writeRecord(recordTypeHandshake, finishedBytes[:1])
+		c.sendFakeEarlyData(4)
+		c.writeRecord(recordTypeHandshake, finishedBytes[1:])
 	} else {
 		c.writeRecord(recordTypeHandshake, finished.marshal())
 	}

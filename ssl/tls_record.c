@@ -125,6 +125,12 @@
  * forever. */
 static const uint8_t kMaxEmptyRecords = 32;
 
+/* kMaxEarlyDataSkipped is the maximum amount of data processed when skipping
+ * over early data. Without this limit an attacker could send records at a
+ * faster rate than we can process and cause trial decryption to loop
+ * forever. */
+static const size_t kMaxEarlyDataSkipped = 16384;
+
 /* kMaxWarningAlerts is the number of consecutive warning alerts that will be
  * processed. */
 static const uint8_t kMaxWarningAlerts = 4;
@@ -246,15 +252,32 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, in,
                       SSL3_RT_HEADER_LENGTH);
 
+  *out_consumed = in_len - CBS_len(&cbs);
+
+  /* Skip early data received when expecting a second ClientHello if we rejected
+   * 0RTT. */
+  if (ssl->s3->skip_early_data &&
+      ssl->s3->aead_read_ctx == NULL &&
+      type == SSL3_RT_APPLICATION_DATA) {
+    goto skipped_data;
+  }
+
   /* Decrypt the body in-place. */
   if (!SSL_AEAD_CTX_open(ssl->s3->aead_read_ctx, out, type, version,
                          ssl->s3->read_sequence, (uint8_t *)CBS_data(&body),
                          CBS_len(&body))) {
+    if (ssl->s3->skip_early_data &&
+        ssl->s3->aead_read_ctx != NULL) {
+      ERR_clear_error();
+      goto skipped_data;
+    }
+
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
     *out_alert = SSL_AD_BAD_RECORD_MAC;
     return ssl_open_record_error;
   }
-  *out_consumed = in_len - CBS_len(&cbs);
+
+  ssl->s3->skip_early_data = 0;
 
   if (!ssl_record_sequence_update(ssl->s3->read_sequence, 8)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
@@ -310,6 +333,20 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 
   *out_type = type;
   return ssl_open_record_success;
+
+skipped_data:
+  ssl->s3->early_data_skipped += *out_consumed;
+  if (ssl->s3->early_data_skipped < *out_consumed) {
+    ssl->s3->early_data_skipped = kMaxEarlyDataSkipped + 1;
+  }
+
+  if (ssl->s3->early_data_skipped > kMaxEarlyDataSkipped) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MUCH_SKIPPED_EARLY_DATA);
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
+  }
+
+  return ssl_open_record_discard;
 }
 
 static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,

@@ -1393,6 +1393,10 @@ typedef struct ssl3_state_st {
    * completed. */
   unsigned initial_handshake_complete:1;
 
+  /* skip_early_data instructs the record layer to skip unexpected early data
+   * messages when 0RTT is rejected. */
+  unsigned skip_early_data:1;
+
   /* read_buffer holds data from the transport to be processed. */
   SSL3_BUFFER read_buffer;
   /* write_buffer holds data to be written to the transport. */
@@ -1422,6 +1426,10 @@ typedef struct ssl3_state_st {
 
   /* recv_shutdown is the shutdown state for the send half of the connection. */
   enum ssl_shutdown_t send_shutdown;
+
+  /* early_data_skipped is the amount of early data that has been skipped by the
+   * record layer. */
+  uint16_t early_data_skipped;
 
   int alert_dispatch;
   uint8_t send_alert[2];
