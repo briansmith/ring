@@ -37,8 +37,10 @@
 #![doc(html_root_url="https://briansmith.org/rustdoc/")]
 
 #![allow(
+    legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
+    unknown_lints,
     unsafe_code,
     // TODO: Deny `unused_qualifications` after
     // https://github.com/rust-lang/rust/issues/37345 is fixed.
@@ -68,7 +70,6 @@
     trivial_numeric_casts,
     unconditional_recursion,
     unknown_crate_types,
-    unknown_lints,
     unreachable_code,
     unstable_features,
     unused_allocation,
