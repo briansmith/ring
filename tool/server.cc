@@ -15,6 +15,7 @@
 #include <openssl/base.h>
 
 #include <openssl/err.h>
+#include <openssl/rand.h>
 #include <openssl/ssl.h>
 
 #include "internal.h"
@@ -40,7 +41,9 @@ static const struct argument kArguments[] = {
     },
     {
       "-key", kOptionalArgument,
-      "Private-key file to use (default is server.pem)",
+      "PEM-encoded file containing the private key, leaf certificate and "
+      "optional certificate chain. A self-signed certificate is generated "
+      "at runtime if this argument is not provided.",
     },
     {
       "-ocsp-response", kOptionalArgument,
@@ -91,6 +94,49 @@ out:
   return ret;
 }
 
+static bssl::UniquePtr<EVP_PKEY> MakeKeyPairForSelfSignedCert() {
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  if (!ec_key || !EC_KEY_generate_key(ec_key.get())) {
+    fprintf(stderr, "Failed to generate key pair.\n");
+    return nullptr;
+  }
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(EVP_PKEY_new());
+  if (!evp_pkey || !EVP_PKEY_assign_EC_KEY(evp_pkey.get(), ec_key.release())) {
+    fprintf(stderr, "Failed to assign key pair.\n");
+    return nullptr;
+  }
+  return evp_pkey;
+}
+
+static bssl::UniquePtr<X509> MakeSelfSignedCert(EVP_PKEY *evp_pkey,
+                                                const int valid_days) {
+  bssl::UniquePtr<X509> x509(X509_new());
+  uint32_t serial;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&serial), sizeof(serial));
+  ASN1_INTEGER_set(X509_get_serialNumber(x509.get()), serial);
+  X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
+  X509_gmtime_adj(X509_get_notAfter(x509.get()), 60 * 60 * 24 * valid_days);
+
+  X509_NAME* subject = X509_get_subject_name(x509.get());
+  X509_NAME_add_entry_by_txt(subject, "C", MBSTRING_ASC,
+                             reinterpret_cast<const uint8_t *>("US"), -1, -1,
+                             0);
+  X509_NAME_add_entry_by_txt(subject, "O", MBSTRING_ASC,
+                             reinterpret_cast<const uint8_t *>("BoringSSL"), -1,
+                             -1, 0);
+  X509_set_issuer_name(x509.get(), subject);
+
+  if (!X509_set_pubkey(x509.get(), evp_pkey)) {
+    fprintf(stderr, "Failed to set public key.\n");
+    return nullptr;
+  }
+  if (!X509_sign(x509.get(), evp_pkey, EVP_sha256())) {
+    fprintf(stderr, "Failed to sign certificate.\n");
+    return nullptr;
+  }
+  return x509;
+}
+
 bool Server(const std::vector<std::string> &args) {
   if (!InitSocketLibrary()) {
     return false;
@@ -107,17 +153,34 @@ bool Server(const std::vector<std::string> &args) {
   SSL_CTX_set_options(ctx.get(), SSL_OP_NO_SSLv3);
 
   // Server authentication is required.
-  std::string key_file = "server.pem";
   if (args_map.count("-key") != 0) {
-    key_file = args_map["-key"];
-  }
-  if (!SSL_CTX_use_PrivateKey_file(ctx.get(), key_file.c_str(), SSL_FILETYPE_PEM)) {
-    fprintf(stderr, "Failed to load private key: %s\n", key_file.c_str());
-    return false;
-  }
-  if (!SSL_CTX_use_certificate_chain_file(ctx.get(), key_file.c_str())) {
-    fprintf(stderr, "Failed to load cert chain: %s\n", key_file.c_str());
-    return false;
+    std::string key_file = args_map["-key"];
+    if (!SSL_CTX_use_PrivateKey_file(ctx.get(), key_file.c_str(), SSL_FILETYPE_PEM)) {
+      fprintf(stderr, "Failed to load private key: %s\n", key_file.c_str());
+      return false;
+    }
+    if (!SSL_CTX_use_certificate_chain_file(ctx.get(), key_file.c_str())) {
+      fprintf(stderr, "Failed to load cert chain: %s\n", key_file.c_str());
+      return false;
+    }
+  } else {
+    bssl::UniquePtr<EVP_PKEY> evp_pkey = MakeKeyPairForSelfSignedCert();
+    if (!evp_pkey) {
+      return false;
+    }
+    bssl::UniquePtr<X509> cert =
+        MakeSelfSignedCert(evp_pkey.get(), 365 /* valid_days */);
+    if (!cert) {
+      return false;
+    }
+    if (!SSL_CTX_use_PrivateKey(ctx.get(), evp_pkey.get())) {
+      fprintf(stderr, "Failed to set private key.\n");
+      return false;
+    }
+    if (!SSL_CTX_use_certificate(ctx.get(), cert.get())) {
+      fprintf(stderr, "Failed to set certificate.\n");
+      return false;
+    }
   }
 
   if (args_map.count("-cipher") != 0 &&
