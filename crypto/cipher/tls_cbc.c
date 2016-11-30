@@ -133,16 +133,14 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
   /* mac_end is the index of |in| just after the end of the MAC. */
   unsigned mac_end = in_len;
   unsigned mac_start = mac_end - md_size;
-  /* scan_start contains the number of bytes that we can ignore because
-   * the MAC's position can only vary by 255 bytes. */
-  unsigned scan_start = 0;
-  unsigned i, j;
-  unsigned rotate_offset;
 
   assert(orig_len >= in_len);
   assert(in_len >= md_size);
   assert(md_size <= EVP_MAX_MD_SIZE);
 
+  /* scan_start contains the number of bytes that we can ignore because
+   * the MAC's position can only vary by 255 bytes. */
+  unsigned scan_start = 0;
   /* This information is public so it's safe to branch based on it. */
   if (orig_len > md_size + 255 + 1) {
     scan_start = orig_len - (md_size + 255 + 1);
@@ -150,7 +148,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
 
   /* Ideally the next statement would be:
    *
-   *   rotate_offset = (mac_start - scan_start) % md_size;
+   *   unsigned rotate_offset = (mac_start - scan_start) % md_size;
    *
    * However, division is not a constant-time operation (at least on Intel
    * chips). Thus we enumerate the possible values of md_size and handle each
@@ -158,7 +156,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
    * by the cipher suite in the ServerHello) so our timing can vary based on
    * its value. */
 
-  rotate_offset = mac_start - scan_start;
+  unsigned rotate_offset = mac_start - scan_start;
   /* rotate_offset can be, at most, 255 (bytes of padding) + 1 (padding length)
    * + md_size = 256 + 48 (since SHA-384 is the largest hash) = 304. */
   assert(rotate_offset <= 304);
@@ -228,11 +226,10 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
   }
 
   memset(rotated_mac, 0, md_size);
-  for (i = scan_start, j = 0; i < orig_len; i++) {
+  for (unsigned i = scan_start, j = 0; i < orig_len; i++) {
     uint8_t mac_started = constant_time_ge_8(i, mac_start);
     uint8_t mac_ended = constant_time_ge_8(i, mac_end);
-    uint8_t b = in[i];
-    rotated_mac[j++] |= b & mac_started & ~mac_ended;
+    rotated_mac[j++] |= in[i] & mac_started & ~mac_ended;
     j &= constant_time_lt(j, md_size);
   }
 
@@ -243,7 +240,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
     /* Rotate by |offset| iff the corresponding bit is set in
      * |rotate_offset|, placing the result in |rotated_mac_tmp|. */
     const uint8_t skip_rotate = (rotate_offset & 1) - 1;
-    for (i = 0, j = offset; i < md_size; i++, j++) {
+    for (unsigned i = 0, j = offset; i < md_size; i++, j++) {
       if (j >= md_size) {
         j -= md_size;
       }
