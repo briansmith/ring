@@ -284,23 +284,20 @@ static enum ssl_hs_wait_t do_select_parameters(SSL *ssl, SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* The PRF hash is now known. */
+  /* The PRF hash is now known. Set up the key schedule. */
   size_t hash_len =
       EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
-
-  /* Derive resumption material. */
-  uint8_t psk_secret[EVP_MAX_MD_SIZE] = {0};
-  if (ssl->s3->session_reused) {
-    if (hash_len != (size_t) ssl->s3->new_session->master_key_length) {
-      return ssl_hs_error;
-    }
-    memcpy(psk_secret, ssl->s3->new_session->master_key, hash_len);
+  if (!tls13_init_key_schedule(ssl)) {
+    return ssl_hs_error;
   }
 
-  /* Set up the key schedule, hash in the ClientHello, and incorporate the PSK
-   * into the running secret. */
-  if (!tls13_init_key_schedule(ssl) ||
-      !tls13_advance_key_schedule(ssl, psk_secret, hash_len)) {
+  /* Incorporate the PSK into the running secret. */
+  if (ssl->s3->session_reused) {
+    if (!tls13_advance_key_schedule(ssl, ssl->s3->new_session->master_key,
+                                    ssl->s3->new_session->master_key_length)) {
+      return ssl_hs_error;
+    }
+  } else if (!tls13_advance_key_schedule(ssl, kZeroes, hash_len)) {
     return ssl_hs_error;
   }
 

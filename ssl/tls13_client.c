@@ -48,6 +48,8 @@ enum client_hs_state_t {
   state_done,
 };
 
+static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
+
 static enum ssl_hs_wait_t do_process_hello_retry_request(SSL *ssl,
                                                          SSL_HANDSHAKE *hs) {
   if (ssl->s3->tmp.message_type != SSL3_MT_HELLO_RETRY_REQUEST) {
@@ -275,20 +277,17 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL *ssl, SSL_HANDSHAKE *hs) {
   /* The PRF hash is now known. Set up the key schedule. */
   size_t hash_len =
       EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
-
-  /* Derive resumption material. */
-  uint8_t psk_secret[EVP_MAX_MD_SIZE] = {0};
-  if (ssl->s3->session_reused) {
-    if (hash_len != (size_t) ssl->s3->new_session->master_key_length) {
-      return ssl_hs_error;
-    }
-    memcpy(psk_secret, ssl->s3->new_session->master_key, hash_len);
+  if (!tls13_init_key_schedule(ssl)) {
+    return ssl_hs_error;
   }
 
-  /* Set up the key schedule, hash in the ClientHello, and incorporate the PSK
-   * into the running secret. */
-  if (!tls13_init_key_schedule(ssl) ||
-      !tls13_advance_key_schedule(ssl, psk_secret, hash_len)) {
+  /* Incorporate the PSK into the running secret. */
+  if (ssl->s3->session_reused) {
+    if (!tls13_advance_key_schedule(ssl, ssl->s3->new_session->master_key,
+                                    ssl->s3->new_session->master_key_length)) {
+      return ssl_hs_error;
+    }
+  } else if (!tls13_advance_key_schedule(ssl, kZeroes, hash_len)) {
     return ssl_hs_error;
   }
 
@@ -430,7 +429,6 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
 
 static enum ssl_hs_wait_t do_process_server_finished(SSL *ssl,
                                                      SSL_HANDSHAKE *hs) {
-  static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
   if (!tls13_check_message_type(ssl, SSL3_MT_FINISHED) ||
       !tls13_process_finished(ssl) ||
       !ssl_hash_current_message(ssl) ||
