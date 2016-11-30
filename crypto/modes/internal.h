@@ -166,10 +166,8 @@ struct gcm128_context {
     uint32_t d[4];
     uint8_t c[16];
     size_t t[16 / sizeof(size_t)];
-  } Yi, EKi, EK0, len, Xi, H;
+  } Yi, EKi, EK0, len, Xi;
 
-  /* Relative position of Xi, H and pre-computed Htable is used in some
-   * assembler modules, i.e. don't change the order! */
   u128 Htable[16];
   void (*gmult)(uint64_t Xi[2], const u128 Htable[16]);
   void (*ghash)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
