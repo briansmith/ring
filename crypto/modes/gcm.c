@@ -204,8 +204,8 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
  * performance improvement, at least not on x86[_64]. It's here
  * mostly as reference and a placeholder for possible future
  * non-trivial optimization[s]... */
-static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                           size_t len) {
+static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16],
+                           const uint8_t *inp, size_t len) {
   u128 Z;
   int cnt;
   size_t rem, nlo, nhi;
@@ -390,18 +390,14 @@ void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #endif
 #endif
 
-void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
-                        block128_f block) {
-  memset(ctx, 0, sizeof(*ctx));
-  ctx->block = block;
-
+void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
+                       u128 out_table[16], const uint8_t *gcm_key) {
   union {
     uint64_t u[2];
     uint8_t c[16];
   } H;
 
-  memset(&H, 0, sizeof(H));
-  (*block)(H.c, H.c, key);
+  memcpy(H.c, gcm_key, 16);
 
   /* H is stored in host byte order */
 #ifdef BSWAP8
@@ -419,58 +415,70 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
 #if defined(GHASH_ASM_X86_OR_64)
   if (crypto_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
-      gcm_init_avx(ctx->Htable, H.u);
-      ctx->gmult = gcm_gmult_avx;
-      ctx->ghash = gcm_ghash_avx;
+      gcm_init_avx(out_table, H.u);
+      *out_mult = gcm_gmult_avx;
+      *out_hash = gcm_ghash_avx;
     } else {
-      gcm_init_clmul(ctx->Htable, H.u);
-      ctx->gmult = gcm_gmult_clmul;
-      ctx->ghash = gcm_ghash_clmul;
+      gcm_init_clmul(out_table, H.u);
+      *out_mult = gcm_gmult_clmul;
+      *out_hash = gcm_ghash_clmul;
     }
     return;
   }
-  gcm_init_4bit(ctx->Htable, H.u);
+  gcm_init_4bit(out_table, H.u);
 #if defined(GHASH_ASM_X86) /* x86 only */
   if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
-    ctx->gmult = gcm_gmult_4bit_mmx;
-    ctx->ghash = gcm_ghash_4bit_mmx;
+    *out_mult = gcm_gmult_4bit_mmx;
+    *out_hash = gcm_ghash_4bit_mmx;
   } else {
-    ctx->gmult = gcm_gmult_4bit_x86;
-    ctx->ghash = gcm_ghash_4bit_x86;
+    *out_mult = gcm_gmult_4bit_x86;
+    *out_hash = gcm_ghash_4bit_x86;
   }
 #else
-  ctx->gmult = gcm_gmult_4bit;
-  ctx->ghash = gcm_ghash_4bit;
+  *out_mult = gcm_gmult_4bit;
+  *out_hash = gcm_ghash_4bit;
 #endif
 #elif defined(GHASH_ASM_ARM)
   if (pmull_capable()) {
-    gcm_init_v8(ctx->Htable, H.u);
-    ctx->gmult = gcm_gmult_v8;
-    ctx->ghash = gcm_ghash_v8;
+    gcm_init_v8(out_table, H.u);
+    *out_mult = gcm_gmult_v8;
+    *out_hash = gcm_ghash_v8;
   } else if (neon_capable()) {
-    gcm_init_neon(ctx->Htable, H.u);
-    ctx->gmult = gcm_gmult_neon;
-    ctx->ghash = gcm_ghash_neon;
+    gcm_init_neon(out_table, H.u);
+    *out_mult = gcm_gmult_neon;
+    *out_hash = gcm_ghash_neon;
   } else {
-    gcm_init_4bit(ctx->Htable, H.u);
-    ctx->gmult = gcm_gmult_4bit;
-    ctx->ghash = gcm_ghash_4bit;
+    gcm_init_4bit(out_table, H.u);
+    *out_mult = gcm_gmult_4bit;
+    *out_hash = gcm_ghash_4bit;
   }
 #elif defined(GHASH_ASM_PPC64LE)
   if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
-    gcm_init_p8(ctx->Htable, H.u);
-    ctx->gmult = gcm_gmult_p8;
-    ctx->ghash = gcm_ghash_p8;
+    gcm_init_p8(out_table, H.u);
+    *out_mult = gcm_gmult_p8;
+    *out_hash = gcm_ghash_p8;
   } else {
-    gcm_init_4bit(ctx->Htable, H.u);
-    ctx->gmult = gcm_gmult_4bit;
-    ctx->ghash = gcm_ghash_4bit;
+    gcm_init_4bit(out_table, H.u);
+    *out_mult = gcm_gmult_4bit;
+    *out_hash = gcm_ghash_4bit;
   }
 #else
-  gcm_init_4bit(ctx->Htable, H.u);
-  ctx->gmult = gcm_gmult_4bit;
-  ctx->ghash = gcm_ghash_4bit;
+  gcm_init_4bit(out_table, H.u);
+  *out_mult = gcm_gmult_4bit;
+  *out_hash = gcm_ghash_4bit;
 #endif
+}
+
+void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
+                        block128_f block) {
+  memset(ctx, 0, sizeof(*ctx));
+  ctx->block = block;
+
+  uint8_t gcm_key[16];
+  memset(gcm_key, 0, sizeof(gcm_key));
+  (*block)(gcm_key, gcm_key, aes_key);
+
+  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, ctx->Htable, gcm_key);
 }
 
 void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,

@@ -156,6 +156,16 @@ typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;
 
+/* gmult_func multiplies |Xi| by the GCM key and writes the result back to
+ * |Xi|. */
+typedef void (*gmult_func)(uint64_t Xi[2], const u128 Htable[16]);
+
+/* ghash_func repeatedly multiplies |Xi| by the GCM key and adds in blocks from
+ * |inp|. The result is written back to |Xi| and the |len| argument must be a
+ * multiple of 16. */
+typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
+                           const uint8_t *inp, size_t len);
+
 /* This differs from upstream's |gcm128_context| in that it does not have the
  * |key| pointer, in order to make it |memcpy|-friendly. Rather the key is
  * passed into each call that needs it. */
@@ -169,9 +179,8 @@ struct gcm128_context {
   } Yi, EKi, EK0, len, Xi;
 
   u128 Htable[16];
-  void (*gmult)(uint64_t Xi[2], const u128 Htable[16]);
-  void (*ghash)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                size_t len);
+  gmult_func gmult;
+  ghash_func ghash;
 
   unsigned int mres, ares;
   block128_f block;
@@ -219,6 +228,12 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
  * can be safely copied. */
 
 typedef struct gcm128_context GCM128_CONTEXT;
+
+/* CRYPTO_ghash_init writes a precomputed table of powers of |gcm_key| to
+ * |out_table| and sets |*out_mult| and |*out_hash| to (potentially hardware
+ * accelerated) functions for performing operations in the GHASH field. */
+void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
+                       u128 out_table[16], const uint8_t *gcm_key);
 
 /* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
  * the given key. */
