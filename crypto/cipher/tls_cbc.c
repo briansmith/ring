@@ -226,11 +226,13 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
   }
 
   memset(rotated_mac, 0, md_size);
-  for (unsigned i = scan_start, j = 0; i < orig_len; i++) {
+  for (unsigned i = scan_start, j = 0; i < orig_len; i++, j++) {
+    if (j >= md_size) {
+      j -= md_size;
+    }
     uint8_t mac_started = constant_time_ge_8(i, mac_start);
     uint8_t mac_ended = constant_time_ge_8(i, mac_end);
-    rotated_mac[j++] |= in[i] & mac_started & ~mac_ended;
-    j &= constant_time_lt(j, md_size);
+    rotated_mac[j] |= in[i] & mac_started & ~mac_ended;
   }
 
   /* Now rotate the MAC. We rotate in log(md_size) steps, one for each bit
