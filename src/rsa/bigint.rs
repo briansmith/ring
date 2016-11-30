@@ -39,13 +39,18 @@ impl Positive {
     // Turns a sequence of big-endian bytes into a Positive Integer.
     pub fn from_be_bytes(input: untrusted::Input)
                          -> Result<Positive, error::Unspecified> {
-        // Reject empty inputs.
-        if input.len() == 0 {
-            return Err(error::Unspecified);
-        }
         // Reject leading zeros. Also reject the value zero ([0]) because zero
         // isn't positive.
         if untrusted::Reader::new(input).peek(0) {
+            return Err(error::Unspecified);
+        }
+        Self::from_be_bytes_padded(input)
+    }
+
+    pub fn from_be_bytes_padded(input: untrusted::Input)
+                                -> Result<Positive, error::Unspecified> {
+        // Reject empty inputs.
+        if input.len() == 0 {
             return Err(error::Unspecified);
         }
         let value = unsafe {
@@ -55,7 +60,11 @@ impl Positive {
         if value.is_null() {
             return Err(error::Unspecified);
         }
-        Ok(Positive(Nonnegative(value)))
+        let r = Nonnegative(value);
+        if r.is_zero() {
+            return Err(error::Unspecified);
+        }
+        Ok(Positive(r))
     }
 
     pub fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
@@ -77,7 +86,7 @@ impl Positive {
         })
     }
 
-    fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
+    pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
             -> Result<ElemDecoded<F>, error::Unspecified> {
         let cmp = unsafe {
             GFp_BN_cmp(self.as_ref(), GFp_BN_MONT_CTX_get0_n(m.as_ref()))
@@ -185,9 +194,23 @@ pub struct ElemDecoded<F: Field> {
 }
 
 impl<F: Field> ElemDecoded<F> {
+    pub fn fill_be_bytes(&self, out: &mut [u8])
+                         -> Result<(), error::Unspecified> {
+        bssl::map_result(unsafe {
+            GFp_BN_bn2bin_padded(out.as_mut_ptr(), out.len(),
+                                 self.value.as_ref())
+        })
+    }
+
     pub fn is_zero(&self) -> bool { self.value.is_zero() }
 
     pub fn is_one(&self) -> bool { self.value.is_one() }
+
+    // XXX: This makes it too easy to break the invariants. TODO: Remove this
+    // ASAP.
+    pub unsafe fn as_mut_ref<'a>(&'a mut self) -> &'a mut BIGNUM {
+        self.value.as_mut_ref()
+    }
 
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         self.value.into_odd_positive()
@@ -273,6 +296,8 @@ extern {
     fn GFp_BN_new() -> *mut BIGNUM;
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
                      -> *mut BIGNUM;
+    fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
+                            -> c::int;
     fn GFp_BN_cmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;

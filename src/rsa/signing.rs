@@ -352,13 +352,20 @@ impl RSASigningState {
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         try!(padding_alg.encode(&m_hash, signature, mod_bits, rng));
+        // TODO: Avoid having `encode()` pad its output, and then remove
+        // `Positive::from_be_bytes_padded()`.
+        let base = try!(bigint::Positive::from_be_bytes_padded(
+            untrusted::Input::from(signature)));
+        let mut base = try!(base.into_elem_decoded(&key.n));
+
         let mut rand = rand::RAND::new(rng);
 
-        bssl::map_result(unsafe {
-            GFp_rsa_private_transform(&rsa, signature.as_mut_ptr(),
-                                      signature.len(), self.blinding.blinding,
-                                      &mut rand)
-        })
+        try!(bssl::map_result(unsafe {
+            GFp_rsa_private_transform(&rsa, base.as_mut_ref(),
+                                      &mut *self.blinding.blinding, &mut rand)
+        }));
+
+        base.fill_be_bytes(signature)
     }
 }
 
@@ -389,9 +396,9 @@ extern {
 
 #[allow(improper_ctypes)]
 extern {
-    fn GFp_rsa_private_transform(rsa: *const RSA, inout: *mut u8,
-                                 len: c::size_t, blinding: *mut BN_BLINDING,
-                                 rng: *mut rand::RAND) -> c::int;
+    fn GFp_rsa_private_transform(rsa: &RSA, base: &mut bigint::BIGNUM,
+                                 blinding: &mut BN_BLINDING,
+                                 rng: &mut rand::RAND) -> c::int;
 }
 
 

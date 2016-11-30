@@ -208,10 +208,11 @@ int GFp_BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa,
   return 1;
 }
 
-int GFp_BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont) {
-  /* |n| is not Montgomery-encoded and |b->Ai| is. |GFp_BN_mod_mul_mont| cancels
-   * one Montgomery factor, so the resulting value of |n| is unencoded. */
-  return GFp_BN_mod_mul_mont(n, n, b->Ai, mont);
+int GFp_BN_BLINDING_invert(BIGNUM *r, const BIGNUM *a, const BN_BLINDING *b,
+                           BN_MONT_CTX *mont) {
+  /* |a| is not Montgomery-encoded and |b->Ai| is. |GFp_BN_mod_mul_mont| cancels
+   * one Montgomery factor, so the resulting value of |r| is unencoded. */
+  return GFp_BN_mod_mul_mont(r, a, b->Ai, mont);
 }
 
 static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng) {

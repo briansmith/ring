@@ -68,7 +68,7 @@
 
 
 /* Declarations to avoid -Wmissing-prototypes warnings. */
-int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
+int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
                               BN_BLINDING *blinding, RAND *rng);
 
 
@@ -127,38 +127,26 @@ err:
   return ret;
 }
 
-/* GFp_rsa_private_transform takes a big-endian integer from |inout|,
- * calculates the d'th power of it, modulo the RSA modulus and writes the
- * result as a big-endian integer back to |inout|. |inout| is |len| bytes long
- * and |len| is always equal to |RSA_size(rsa)|. If the result of the transform
- * can be represented in fewer than |len| bytes, then |out| must be zero padded
- * on the left.
+/* GFp_rsa_private_transform takes a big-endian integer in |base| and raises it
+ * to the d'th power modulo the public modulus. The caller must ensure that
+ * |base| is less than |n|.
  *
  * It returns one on success and zero otherwise.
  */
-int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
+int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
                               BN_BLINDING *blinding, RAND *rng) {
+  assert(GFp_BN_cmp(base, &rsa->mont_n->N) < 0);
+
   int ret = 0;
 
-  BIGNUM base, r, tmp, mp, mq, vrfy;
-  GFp_BN_init(&base);
+  BIGNUM r, tmp, mp, mq, vrfy;
   GFp_BN_init(&r);
   GFp_BN_init(&tmp);
   GFp_BN_init(&mp);
   GFp_BN_init(&mq);
   GFp_BN_init(&vrfy);
 
-  if (GFp_BN_bin2bn(inout, len, &base) == NULL) {
-    goto err;
-  }
-
-  if (GFp_BN_ucmp(&base, &rsa->mont_n->N) >= 0) {
-    /* Usually the padding functions would catch this. */
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
-    goto err;
-  }
-
-  if (!GFp_BN_BLINDING_convert(&base, blinding, rsa, rng)) {
+  if (!GFp_BN_BLINDING_convert(base, blinding, rsa, rng)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -173,7 +161,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
    * reduced mod |p|. */
-  if (!GFp_BN_reduce_mont(&tmp, &base, rsa->mont_p) ||
+  if (!GFp_BN_reduce_mont(&tmp, base, rsa->mont_p) ||
       !GFp_BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->mont_p)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -183,7 +171,7 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
    *
    * |p * q == n| and |p > q| implies |q < q**2 < n < q**3|. Thus, |base| is
    * first reduced mod |q**2| and then reduced mod |q|. */
-  if (!GFp_BN_reduce_mont(&tmp, &base, rsa->mont_qq) ||
+  if (!GFp_BN_reduce_mont(&tmp, base, rsa->mont_qq) ||
       !GFp_BN_reduce_mont(&tmp, &tmp, rsa->mont_q) ||
       !GFp_BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->mont_q)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
@@ -227,14 +215,13 @@ int GFp_rsa_private_transform(RSA *rsa, uint8_t *inout, size_t len,
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
-  if (vrfy.top != base.top ||
-      GFp_memcmp(vrfy.d, base.d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
+  if (vrfy.top != base->top ||
+      GFp_memcmp(vrfy.d, base->d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
-  if (!GFp_BN_BLINDING_invert(&r, blinding, rsa->mont_n) ||
-      !GFp_BN_bn2bin_padded(inout, len, &r)) {
+  if (!GFp_BN_BLINDING_invert(base, &r, blinding, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
