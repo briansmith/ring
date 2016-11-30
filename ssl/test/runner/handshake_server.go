@@ -509,6 +509,12 @@ Curves:
 		}
 	}
 
+	// Decide whether or not to accept early data.
+	if hs.clientHello.hasEarlyData {
+		// For now, we'll reject and skip early data.
+		c.skipEarlyData = true
+	}
+
 	// Resolve PSK and compute the early secret.
 	if hs.sessionState != nil {
 		hs.finishedHash.addEntropy(hs.sessionState.masterSecret)

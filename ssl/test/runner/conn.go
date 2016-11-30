@@ -38,6 +38,7 @@ type Conn struct {
 	haveVers             bool       // version has been negotiated
 	config               *Config    // configuration passed to constructor
 	handshakeComplete    bool
+	skipEarlyData        bool
 	didResume            bool // whether this connection was a session resumption
 	extendedMasterSecret bool // whether this session used an extended master secret
 	cipherSuite          *cipherSuite
@@ -726,6 +727,7 @@ func (hc *halfConn) splitBlock(b *block, n int) (*block, *block) {
 }
 
 func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
+RestartReadRecord:
 	if c.isDTLS {
 		return c.dtlsDoReadRecord(want)
 	}
@@ -829,10 +831,24 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 	// Process message.
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
 	ok, off, encTyp, alertValue := c.in.decrypt(b)
+
+	// Handle skipping over early data.
+	if !ok && c.skipEarlyData {
+		goto RestartReadRecord
+	}
+
+	// If the server is expecting a second ClientHello (in response to
+	// a HelloRetryRequest) and the client sends early data, there
+	// won't be a decryption failure but it still needs to be skipped.
+	if c.in.cipher == nil && typ == recordTypeApplicationData && c.skipEarlyData {
+		goto RestartReadRecord
+	}
+
 	if !ok {
 		return 0, nil, c.in.setErrorLocked(c.sendAlert(alertValue))
 	}
 	b.off = off
+	c.skipEarlyData = false
 
 	if c.vers >= VersionTLS13 && c.in.cipher != nil {
 		if typ != recordTypeApplicationData {
