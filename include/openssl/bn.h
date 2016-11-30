@@ -172,9 +172,9 @@ OPENSSL_EXPORT void GFp_BN_init(BIGNUM *bn);
  * allocated on the heap, frees |bn| also. */
 OPENSSL_EXPORT void GFp_BN_free(BIGNUM *bn);
 
-/* GFp_BN_copy sets |dest| equal to |src| and returns |dest| or NULL on allocation
+/* GFp_BN_copy sets |dest| equal to |src| and returns one on success or zero on
  * failure. */
-OPENSSL_EXPORT BIGNUM *GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
+OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 
 /* GFp_BN_value_one returns a static BIGNUM with value 1. */
 OPENSSL_EXPORT const BIGNUM *GFp_BN_value_one(void);

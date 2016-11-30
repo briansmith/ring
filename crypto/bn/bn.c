@@ -99,20 +99,20 @@ void GFp_BN_free(BIGNUM *bn) {
   }
 }
 
-BIGNUM *GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
+int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
   if (src == dest) {
-    return dest;
+    return 1;
   }
 
   if (GFp_bn_wexpand(dest, src->top) == NULL) {
-    return NULL;
+    return 0;
   }
 
   memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
 
   dest->top = src->top;
   dest->neg = src->neg;
-  return dest;
+  return 1;
 }
 
 const BIGNUM *GFp_BN_value_one(void) {
