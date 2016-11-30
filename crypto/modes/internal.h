@@ -51,6 +51,8 @@
 
 #include <openssl/base.h>
 
+#include <string.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -64,90 +66,58 @@ extern "C" {
 #define STRICT_ALIGNMENT 0
 #endif
 
-#if !defined(PEDANTIC) && !defined(OPENSSL_NO_ASM)
 #if defined(__GNUC__) && __GNUC__ >= 2
-#if defined(OPENSSL_X86_64)
-#define BSWAP8(x)                 \
-  ({                              \
-    uint64_t ret = (x);           \
-    asm("bswapq %0" : "+r"(ret)); \
-    ret;                          \
-  })
-#define BSWAP4(x)                 \
-  ({                              \
-    uint32_t ret = (x);           \
-    asm("bswapl %0" : "+r"(ret)); \
-    ret;                          \
-  })
-#elif defined(OPENSSL_X86)
-#define BSWAP8(x)                                     \
-  ({                                                  \
-    uint32_t lo = (uint64_t)(x) >> 32, hi = (x);      \
-    asm("bswapl %0; bswapl %1" : "+r"(hi), "+r"(lo)); \
-    (uint64_t) hi << 32 | lo;                         \
-  })
-#define BSWAP4(x)                 \
-  ({                              \
-    uint32_t ret = (x);           \
-    asm("bswapl %0" : "+r"(ret)); \
-    ret;                          \
-  })
-#elif defined(OPENSSL_AARCH64)
-#define BSWAP8(x)                          \
-  ({                                       \
-    uint64_t ret;                          \
-    asm("rev %0,%1" : "=r"(ret) : "r"(x)); \
-    ret;                                   \
-  })
-#define BSWAP4(x)                            \
-  ({                                         \
-    uint32_t ret;                            \
-    asm("rev %w0,%w1" : "=r"(ret) : "r"(x)); \
-    ret;                                     \
-  })
-#elif defined(OPENSSL_ARM) && !defined(STRICT_ALIGNMENT)
-#define BSWAP8(x)                                     \
-  ({                                                  \
-    uint32_t lo = (uint64_t)(x) >> 32, hi = (x);      \
-    asm("rev %0,%0; rev %1,%1" : "+r"(hi), "+r"(lo)); \
-    (uint64_t) hi << 32 | lo;                         \
-  })
-#define BSWAP4(x)                                      \
-  ({                                                   \
-    uint32_t ret;                                      \
-    asm("rev %0,%1" : "=r"(ret) : "r"((uint32_t)(x))); \
-    ret;                                               \
-  })
-#endif
+static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+  return __builtin_bswap32(x);
+}
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return __builtin_bswap64(x);
+}
 #elif defined(_MSC_VER)
-#if _MSC_VER >= 1300
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <intrin.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #pragma intrinsic(_byteswap_uint64, _byteswap_ulong)
-#define BSWAP8(x) _byteswap_uint64((uint64_t)(x))
-#define BSWAP4(x) _byteswap_ulong((uint32_t)(x))
-#elif defined(OPENSSL_X86)
-__inline uint32_t _bswap4(uint32_t val) {
-  _asm mov eax, val
-  _asm bswap eax
+static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+  return _byteswap_ulong(x);
 }
-#define BSWAP4(x) _bswap4(x)
-#endif
-#endif
-#endif
 
-#if defined(BSWAP4) && !defined(STRICT_ALIGNMENT)
-#define GETU32(p) BSWAP4(*(const uint32_t *)(p))
-#define PUTU32(p, v) *(uint32_t *)(p) = BSWAP4(v)
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return _byteswap_uint64(x);
+}
 #else
-#define GETU32(p) \
-  ((uint32_t)(p)[0] << 24 | (uint32_t)(p)[1] << 16 | (uint32_t)(p)[2] << 8 | (uint32_t)(p)[3])
-#define PUTU32(p, v)                                   \
-  ((p)[0] = (uint8_t)((v) >> 24), (p)[1] = (uint8_t)((v) >> 16), \
-   (p)[2] = (uint8_t)((v) >> 8), (p)[3] = (uint8_t)(v))
+static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+  x = (x >> 16) | (x << 16);
+  x = ((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8);
+  return x;
+}
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return CRYPTO_bswap4(x >> 32) | (((uint64_t)CRYPTO_bswap4(x)) << 32);
+}
 #endif
 
+static inline uint32_t GETU32(const void *in) {
+  uint32_t v;
+  memcpy(&v, in, sizeof(v));
+  return CRYPTO_bswap4(v);
+}
+
+static inline void PUTU32(void *out, uint32_t v) {
+  v = CRYPTO_bswap4(v);
+  memcpy(out, &v, sizeof(v));
+}
+
+static inline uint32_t GETU32_aligned(const void *in) {
+  const char *alias = (const char *) in;
+  return CRYPTO_bswap4(*((const uint32_t *) alias));
+}
+
+static inline void PUTU32_aligned(void *in, uint32_t v) {
+  char *alias = (char *) in;
+  *((uint32_t *) alias) = CRYPTO_bswap4(v);
+}
 
 /* block128_f is the type of a 128-bit, block cipher. */
 typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],

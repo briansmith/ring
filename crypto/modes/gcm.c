@@ -65,14 +65,6 @@
 #define GHASH_ASM
 #endif
 
-#if defined(BSWAP4) && STRICT_ALIGNMENT == 1
-/* redefine, because alignment is ensured */
-#undef GETU32
-#define GETU32(p) BSWAP4(*(const uint32_t *)(p))
-#undef PUTU32
-#define PUTU32(p, v) *(uint32_t *)(p) = BSWAP4(v)
-#endif
-
 #define PACK(s) ((size_t)(s) << (sizeof(size_t) * 8 - 16))
 #define REDUCE1BIT(V)                                                 \
   do {                                                                \
@@ -182,21 +174,8 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
     Z.lo ^= Htable[nlo].lo;
   }
 
-#ifdef BSWAP8
-  Xi[0] = BSWAP8(Z.hi);
-  Xi[1] = BSWAP8(Z.lo);
-#else
-  uint8_t *p = (uint8_t *)Xi;
-  uint32_t v;
-  v = (uint32_t)(Z.hi >> 32);
-  PUTU32(p, v);
-  v = (uint32_t)(Z.hi);
-  PUTU32(p + 4, v);
-  v = (uint32_t)(Z.lo >> 32);
-  PUTU32(p + 8, v);
-  v = (uint32_t)(Z.lo);
-  PUTU32(p + 12, v);
-#endif
+  Xi[0] = CRYPTO_bswap8(Z.hi);
+  Xi[1] = CRYPTO_bswap8(Z.lo);
 }
 
 /* Streamed gcm_mult_4bit, see CRYPTO_gcm128_[en|de]crypt for
@@ -255,21 +234,8 @@ static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16],
       Z.lo ^= Htable[nlo].lo;
     }
 
-#ifdef BSWAP8
-    Xi[0] = BSWAP8(Z.hi);
-    Xi[1] = BSWAP8(Z.lo);
-#else
-    uint8_t *p = (uint8_t *)Xi;
-    uint32_t v;
-    v = (uint32_t)(Z.hi >> 32);
-    PUTU32(p, v);
-    v = (uint32_t)(Z.hi);
-    PUTU32(p + 4, v);
-    v = (uint32_t)(Z.lo >> 32);
-    PUTU32(p + 8, v);
-    v = (uint32_t)(Z.lo);
-    PUTU32(p + 12, v);
-#endif
+    Xi[0] = CRYPTO_bswap8(Z.hi);
+    Xi[1] = CRYPTO_bswap8(Z.lo);
   } while (inp += 16, len -= 16);
 }
 #else /* GHASH_ASM */
@@ -400,17 +366,8 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   memcpy(H.c, gcm_key, 16);
 
   /* H is stored in host byte order */
-#ifdef BSWAP8
-  H.u[0] = BSWAP8(H.u[0]);
-  H.u[1] = BSWAP8(H.u[1]);
-#else
-  uint8_t *p = H.c;
-  uint64_t hi, lo;
-  hi = (uint64_t)GETU32(p) << 32 | GETU32(p + 4);
-  lo = (uint64_t)GETU32(p + 8) << 32 | GETU32(p + 12);
-  H.u[0] = hi;
-  H.u[1] = lo;
-#endif
+  H.u[0] = CRYPTO_bswap8(H.u[0]);
+  H.u[1] = CRYPTO_bswap8(H.u[1]);
 
 #if defined(GHASH_ASM_X86_OR_64)
   if (crypto_gcm_clmul_enabled()) {
@@ -519,26 +476,15 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
       GCM_MUL(ctx, Yi);
     }
     len0 <<= 3;
-#ifdef BSWAP8
-    ctx->Yi.u[1] ^= BSWAP8(len0);
-#else
-    ctx->Yi.c[8] ^= (uint8_t)(len0 >> 56);
-    ctx->Yi.c[9] ^= (uint8_t)(len0 >> 48);
-    ctx->Yi.c[10] ^= (uint8_t)(len0 >> 40);
-    ctx->Yi.c[11] ^= (uint8_t)(len0 >> 32);
-    ctx->Yi.c[12] ^= (uint8_t)(len0 >> 24);
-    ctx->Yi.c[13] ^= (uint8_t)(len0 >> 16);
-    ctx->Yi.c[14] ^= (uint8_t)(len0 >> 8);
-    ctx->Yi.c[15] ^= (uint8_t)(len0);
-#endif
+    ctx->Yi.u[1] ^= CRYPTO_bswap8(len0);
 
     GCM_MUL(ctx, Yi);
-    ctr = GETU32(ctx->Yi.c + 12);
+    ctr = GETU32_aligned(ctx->Yi.c + 12);
   }
 
   (*ctx->block)(ctx->Yi.c, ctx->EK0.c, key);
   ++ctr;
-  PUTU32(ctx->Yi.c + 12, ctr);
+  PUTU32_aligned(ctx->Yi.c + 12, ctr);
 }
 
 int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
@@ -635,7 +581,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
     ctx->ares = 0;
   }
 
-  ctr = GETU32(ctx->Yi.c + 12);
+  ctr = GETU32_aligned(ctx->Yi.c + 12);
 
   n = ctx->mres;
   if (n) {
@@ -656,7 +602,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
       if (n == 0) {
         (*block)(ctx->Yi.c, ctx->EKi.c, key);
         ++ctr;
-        PUTU32(ctx->Yi.c + 12, ctr);
+        PUTU32_aligned(ctx->Yi.c + 12, ctr);
       }
       ctx->Xi.c[n] ^= out[i] = in[i] ^ ctx->EKi.c[n];
       n = (n + 1) % 16;
@@ -678,7 +624,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
 
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
-      PUTU32(ctx->Yi.c + 12, ctr);
+      PUTU32_aligned(ctx->Yi.c + 12, ctr);
       for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
         out_t[i] = in_t[i] ^ ctx->EKi.t[i];
       }
@@ -697,7 +643,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
 
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
-      PUTU32(ctx->Yi.c + 12, ctr);
+      PUTU32_aligned(ctx->Yi.c + 12, ctr);
       for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
         out_t[i] = in_t[i] ^ ctx->EKi.t[i];
       }
@@ -714,7 +660,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
 
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
       ctx->Xi.t[i] ^= out_t[i] = in_t[i] ^ ctx->EKi.t[i];
     }
@@ -727,7 +673,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
   if (len) {
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     while (len--) {
       ctx->Xi.c[n] ^= out[n] = in[n] ^ ctx->EKi.c[n];
       ++n;
@@ -765,7 +711,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
     ctx->ares = 0;
   }
 
-  ctr = GETU32(ctx->Yi.c + 12);
+  ctr = GETU32_aligned(ctx->Yi.c + 12);
 
   n = ctx->mres;
   if (n) {
@@ -789,7 +735,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
       if (n == 0) {
         (*block)(ctx->Yi.c, ctx->EKi.c, key);
         ++ctr;
-        PUTU32(ctx->Yi.c + 12, ctr);
+        PUTU32_aligned(ctx->Yi.c + 12, ctr);
       }
       c = in[i];
       out[i] = c ^ ctx->EKi.c[n];
@@ -814,7 +760,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
-      PUTU32(ctx->Yi.c + 12, ctr);
+      PUTU32_aligned(ctx->Yi.c + 12, ctr);
       for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
         out_t[i] = in_t[i] ^ ctx->EKi.t[i];
       }
@@ -833,7 +779,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
-      PUTU32(ctx->Yi.c + 12, ctr);
+      PUTU32_aligned(ctx->Yi.c + 12, ctr);
       for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
         out_t[i] = in_t[i] ^ ctx->EKi.t[i];
       }
@@ -849,7 +795,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
       size_t c = in_t[i];
       out_t[i] = c ^ ctx->EKi.t[i];
@@ -864,7 +810,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
   if (len) {
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     while (len--) {
       uint8_t c = in[n];
       ctx->Xi.c[n] ^= c;
@@ -929,13 +875,13 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   }
 #endif
 
-  ctr = GETU32(ctx->Yi.c + 12);
+  ctr = GETU32_aligned(ctx->Yi.c + 12);
 
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
     (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi.c);
     ctr += GHASH_CHUNK / 16;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     GHASH(ctx, out, GHASH_CHUNK);
     out += GHASH_CHUNK;
     in += GHASH_CHUNK;
@@ -948,7 +894,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
 
     (*stream)(in, out, j, key, ctx->Yi.c);
     ctr += (unsigned int)j;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     in += i;
     len -= i;
 #if defined(GHASH)
@@ -967,7 +913,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   if (len) {
     (*ctx->block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     while (len--) {
       ctx->Xi.c[n] ^= out[n] = in[n] ^ ctx->EKi.c[n];
       ++n;
@@ -1032,14 +978,14 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   }
 #endif
 
-  ctr = GETU32(ctx->Yi.c + 12);
+  ctr = GETU32_aligned(ctx->Yi.c + 12);
 
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
     GHASH(ctx, in, GHASH_CHUNK);
     (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi.c);
     ctr += GHASH_CHUNK / 16;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     out += GHASH_CHUNK;
     in += GHASH_CHUNK;
     len -= GHASH_CHUNK;
@@ -1065,7 +1011,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
 #endif
     (*stream)(in, out, j, key, ctx->Yi.c);
     ctr += (unsigned int)j;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     out += i;
     in += i;
     len -= i;
@@ -1073,7 +1019,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   if (len) {
     (*ctx->block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
-    PUTU32(ctx->Yi.c + 12, ctr);
+    PUTU32_aligned(ctx->Yi.c + 12, ctr);
     while (len--) {
       uint8_t c = in[n];
       ctx->Xi.c[n] ^= c;
@@ -1097,18 +1043,8 @@ int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag, size_t len) {
     GCM_MUL(ctx, Xi);
   }
 
-#ifdef BSWAP8
-  alen = BSWAP8(alen);
-  clen = BSWAP8(clen);
-#else
-  uint8_t *p = ctx->len.c;
-
-  ctx->len.u[0] = alen;
-  ctx->len.u[1] = clen;
-
-  alen = (uint64_t)GETU32(p) << 32 | GETU32(p + 4);
-  clen = (uint64_t)GETU32(p + 8) << 32 | GETU32(p + 12);
-#endif
+  alen = CRYPTO_bswap8(alen);
+  clen = CRYPTO_bswap8(clen);
 
   ctx->Xi.u[0] ^= alen;
   ctx->Xi.u[1] ^= clen;
