@@ -113,7 +113,7 @@ static bssl::UniquePtr<X509> MakeSelfSignedCert(EVP_PKEY *evp_pkey,
   bssl::UniquePtr<X509> x509(X509_new());
   uint32_t serial;
   RAND_bytes(reinterpret_cast<uint8_t*>(&serial), sizeof(serial));
-  ASN1_INTEGER_set(X509_get_serialNumber(x509.get()), serial);
+  ASN1_INTEGER_set(X509_get_serialNumber(x509.get()), serial >> 1);
   X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
   X509_gmtime_adj(X509_get_notAfter(x509.get()), 60 * 60 * 24 * valid_days);
 
