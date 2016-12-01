@@ -1446,6 +1446,305 @@ const EVP_AEAD *EVP_aead_aes_256_ctr_hmac_sha256(void) {
   return &aead_aes_256_ctr_hmac_sha256;
 }
 
+#if !defined(OPENSSL_SMALL)
+
+#define EVP_AEAD_AES_GCM_SIV_TAG_LEN 16
+
+struct aead_aes_gcm_siv_ctx {
+  union {
+    double align;
+    AES_KEY ks;
+  } ks;
+  block128_f kgk_block;
+  unsigned is_256:1;
+};
+
+static int aead_aes_gcm_siv_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                                 size_t key_len, size_t tag_len) {
+  const size_t key_bits = key_len * 8;
+
+  if (key_bits != 128 && key_bits != 256) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
+    return 0; /* EVP_AEAD_CTX_init should catch this. */
+  }
+
+  if (tag_len == EVP_AEAD_DEFAULT_TAG_LENGTH) {
+    tag_len = EVP_AEAD_AES_GCM_SIV_TAG_LEN;
+  }
+
+  if (tag_len != EVP_AEAD_AES_GCM_SIV_TAG_LEN) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TAG_TOO_LARGE);
+    return 0;
+  }
+
+  struct aead_aes_gcm_siv_ctx *gcm_siv_ctx =
+      OPENSSL_malloc(sizeof(struct aead_aes_gcm_siv_ctx));
+  if (gcm_siv_ctx == NULL) {
+    return 0;
+  }
+  memset(gcm_siv_ctx, 0, sizeof(struct aead_aes_gcm_siv_ctx));
+
+  if (aesni_capable()) {
+    aesni_set_encrypt_key(key, key_len * 8, &gcm_siv_ctx->ks.ks);
+    gcm_siv_ctx->kgk_block = (block128_f)aesni_encrypt;
+  } else if (hwaes_capable()) {
+    aes_hw_set_encrypt_key(key, key_len * 8, &gcm_siv_ctx->ks.ks);
+    gcm_siv_ctx->kgk_block = (block128_f)aes_hw_encrypt;
+  } else if (vpaes_capable()) {
+    vpaes_set_encrypt_key(key, key_len * 8, &gcm_siv_ctx->ks.ks);
+    gcm_siv_ctx->kgk_block = (block128_f)vpaes_encrypt;
+  } else {
+    AES_set_encrypt_key(key, key_len * 8, &gcm_siv_ctx->ks.ks);
+    gcm_siv_ctx->kgk_block = (block128_f)AES_encrypt;
+  }
+
+  gcm_siv_ctx->is_256 = (key_len == 32);
+  ctx->aead_state = gcm_siv_ctx;
+
+  return 1;
+}
+
+static void aead_aes_gcm_siv_cleanup(EVP_AEAD_CTX *ctx) {
+  struct aead_aes_gcm_siv_ctx *gcm_siv_ctx = ctx->aead_state;
+  OPENSSL_cleanse(gcm_siv_ctx, sizeof(struct aead_aes_gcm_siv_ctx));
+  OPENSSL_free(gcm_siv_ctx);
+}
+
+/* gcm_siv_crypt encrypts (or decrypts—it's the same thing) |in_len| bytes from
+ * |in| to |out|, using the block function |enc_block| with |key| in counter
+ * mode, starting at |initial_counter|. This differs from the traditional
+ * counter mode code in that the counter is handled little-endian, only the
+ * first four bytes are used and the GCM-SIV tweak to the final byte is
+ * applied. The |in| and |out| pointers may be equal but otherwise must not
+ * alias. */
+static void gcm_siv_crypt(uint8_t *out, const uint8_t *in, size_t in_len,
+                          const uint8_t initial_counter[AES_BLOCK_SIZE],
+                          block128_f enc_block, const AES_KEY *key) {
+  union {
+    uint32_t w[4];
+    uint8_t c[16];
+  } counter;
+
+  memcpy(counter.c, initial_counter, AES_BLOCK_SIZE);
+  counter.c[15] |= 0x80;
+
+  for (size_t done = 0; done < in_len;) {
+    uint8_t keystream[AES_BLOCK_SIZE];
+    enc_block(counter.c, keystream, key);
+    counter.w[0]++;
+
+    size_t todo = AES_BLOCK_SIZE;
+    if (in_len - done < todo) {
+      todo = in_len - done;
+    }
+
+    for (size_t i = 0; i < todo; i++) {
+      out[done + i] = keystream[i] ^ in[done + i];
+    }
+
+    done += todo;
+  }
+}
+
+/* gcm_siv_polyval evaluates POLYVAL at |auth_key| on the given plaintext and
+ * AD. The result is written to |out_tag|. */
+static void gcm_siv_polyval(uint8_t out_tag[16], const uint8_t *in,
+                            size_t in_len, const uint8_t *ad, size_t ad_len,
+                            const uint8_t auth_key[16]) {
+  struct polyval_ctx polyval_ctx;
+  CRYPTO_POLYVAL_init(&polyval_ctx, auth_key);
+
+  CRYPTO_POLYVAL_update_blocks(&polyval_ctx, ad, ad_len & ~15);
+
+  uint8_t scratch[16];
+  if (ad_len & 15) {
+    memset(scratch, 0, sizeof(scratch));
+    memcpy(scratch, &ad[ad_len & ~15], ad_len & 15);
+    CRYPTO_POLYVAL_update_blocks(&polyval_ctx, scratch, sizeof(scratch));
+  }
+
+  CRYPTO_POLYVAL_update_blocks(&polyval_ctx, in, in_len & ~15);
+  if (in_len & 15) {
+    memset(scratch, 0, sizeof(scratch));
+    memcpy(scratch, &in[in_len & ~15], in_len & 15);
+    CRYPTO_POLYVAL_update_blocks(&polyval_ctx, scratch, sizeof(scratch));
+  }
+
+  union {
+    uint8_t c[16];
+    struct {
+      uint64_t ad;
+      uint64_t in;
+    } bitlens;
+  } length_block;
+
+  length_block.bitlens.ad = ad_len * 8;
+  length_block.bitlens.in = in_len * 8;
+  CRYPTO_POLYVAL_update_blocks(&polyval_ctx, length_block.c,
+                               sizeof(length_block));
+
+  CRYPTO_POLYVAL_finish(&polyval_ctx, out_tag);
+  out_tag[15] &= 0x7f;
+}
+
+/* gcm_siv_record_keys contains the keys used for a specific GCM-SIV record. */
+struct gcm_siv_record_keys {
+  uint8_t auth_key[16];
+  union {
+    double align;
+    AES_KEY ks;
+  } enc_key;
+  block128_f enc_block;
+};
+
+/* gcm_siv_keys calculates the keys for a specific GCM-SIV record with the
+ * given nonce and writes them to |*out_keys|. */
+static void gcm_siv_keys(
+    const struct aead_aes_gcm_siv_ctx *gcm_siv_ctx,
+    struct gcm_siv_record_keys *out_keys,
+    const uint8_t nonce[EVP_AEAD_AES_GCM_SIV_TAG_LEN]) {
+  const AES_KEY *const key = &gcm_siv_ctx->ks.ks;
+  gcm_siv_ctx->kgk_block(nonce, out_keys->auth_key, key);
+
+  if (gcm_siv_ctx->is_256) {
+    uint8_t record_enc_key[32];
+    gcm_siv_ctx->kgk_block(out_keys->auth_key, record_enc_key + 16, key);
+    gcm_siv_ctx->kgk_block(record_enc_key + 16, record_enc_key, key);
+    aes_ctr_set_key(&out_keys->enc_key.ks, NULL, &out_keys->enc_block,
+                    record_enc_key, sizeof(record_enc_key));
+  } else {
+    uint8_t record_enc_key[16];
+    gcm_siv_ctx->kgk_block(out_keys->auth_key, record_enc_key, key);
+    aes_ctr_set_key(&out_keys->enc_key.ks, NULL, &out_keys->enc_block,
+                    record_enc_key, sizeof(record_enc_key));
+  }
+}
+
+static int aead_aes_gcm_siv_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                 size_t *out_len, size_t max_out_len,
+                                 const uint8_t *nonce, size_t nonce_len,
+                                 const uint8_t *in, size_t in_len,
+                                 const uint8_t *ad, size_t ad_len) {
+  const struct aead_aes_gcm_siv_ctx *gcm_siv_ctx = ctx->aead_state;
+  const uint64_t in_len_64 = in_len;
+  const uint64_t ad_len_64 = ad_len;
+
+  if (in_len + EVP_AEAD_AES_GCM_SIV_TAG_LEN < in_len ||
+      in_len_64 > (UINT64_C(1) << 36) ||
+      ad_len_64 >= (UINT64_C(1) << 61)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    return 0;
+  }
+
+  if (max_out_len < in_len + EVP_AEAD_AES_GCM_SIV_TAG_LEN) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  if (nonce_len != AES_BLOCK_SIZE) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    return 0;
+  }
+
+  struct gcm_siv_record_keys keys;
+  gcm_siv_keys(gcm_siv_ctx, &keys, nonce);
+
+  uint8_t tag[16];
+  gcm_siv_polyval(tag, in, in_len, ad, ad_len, keys.auth_key);
+  keys.enc_block(tag, tag, &keys.enc_key.ks);
+
+  gcm_siv_crypt(out, in, in_len, tag, keys.enc_block, &keys.enc_key.ks);
+
+  memcpy(&out[in_len], tag, EVP_AEAD_AES_GCM_SIV_TAG_LEN);
+  *out_len = in_len + EVP_AEAD_AES_GCM_SIV_TAG_LEN;
+
+  return 1;
+}
+
+static int aead_aes_gcm_siv_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                 size_t *out_len, size_t max_out_len,
+                                 const uint8_t *nonce, size_t nonce_len,
+                                 const uint8_t *in, size_t in_len,
+                                 const uint8_t *ad, size_t ad_len) {
+  const uint64_t ad_len_64 = ad_len;
+  if (ad_len_64 >= (UINT64_C(1) << 61)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    return 0;
+  }
+
+  const uint64_t in_len_64 = in_len;
+  if (in_len < EVP_AEAD_AES_GCM_SIV_TAG_LEN ||
+      in_len_64 > (UINT64_C(1) << 36) + AES_BLOCK_SIZE) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+    return 0;
+  }
+
+  const struct aead_aes_gcm_siv_ctx *gcm_siv_ctx = ctx->aead_state;
+  const size_t plaintext_len = in_len - EVP_AEAD_AES_GCM_SIV_TAG_LEN;
+
+  if (max_out_len < plaintext_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  struct gcm_siv_record_keys keys;
+  gcm_siv_keys(gcm_siv_ctx, &keys, nonce);
+
+  gcm_siv_crypt(out, in, plaintext_len, &in[plaintext_len], keys.enc_block,
+                &keys.enc_key.ks);
+
+  uint8_t expected_tag[EVP_AEAD_AES_GCM_SIV_TAG_LEN];
+  gcm_siv_polyval(expected_tag, out, plaintext_len, ad, ad_len, keys.auth_key);
+  keys.enc_block(expected_tag, expected_tag, &keys.enc_key.ks);
+
+  if (CRYPTO_memcmp(expected_tag, &in[plaintext_len], sizeof(expected_tag)) !=
+      0) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+    return 0;
+  }
+
+  *out_len = plaintext_len;
+  return 1;
+}
+
+static const EVP_AEAD aead_aes_128_gcm_siv = {
+    16,                           /* key length */
+    AES_BLOCK_SIZE,               /* nonce length */
+    EVP_AEAD_AES_GCM_SIV_TAG_LEN, /* overhead */
+    EVP_AEAD_AES_GCM_SIV_TAG_LEN, /* max tag length */
+
+    aead_aes_gcm_siv_init,
+    NULL /* init_with_direction */,
+    aead_aes_gcm_siv_cleanup,
+    aead_aes_gcm_siv_seal,
+    aead_aes_gcm_siv_open,
+    NULL /* get_iv */,
+};
+
+static const EVP_AEAD aead_aes_256_gcm_siv = {
+    32,                           /* key length */
+    AES_BLOCK_SIZE,               /* nonce length */
+    EVP_AEAD_AES_GCM_SIV_TAG_LEN, /* overhead */
+    EVP_AEAD_AES_GCM_SIV_TAG_LEN, /* max tag length */
+
+    aead_aes_gcm_siv_init,
+    NULL /* init_with_direction */,
+    aead_aes_gcm_siv_cleanup,
+    aead_aes_gcm_siv_seal,
+    aead_aes_gcm_siv_open,
+    NULL /* get_iv */,
+};
+
+const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void) {
+  return &aead_aes_128_gcm_siv;
+}
+
+const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void) {
+  return &aead_aes_256_gcm_siv;
+}
+
+#endif  /* !OPENSSL_SMALL */
+
 int EVP_has_aes_hardware(void) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   return aesni_capable() && crypto_gcm_clmul_enabled();

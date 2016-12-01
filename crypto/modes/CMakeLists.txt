@@ -48,10 +48,11 @@ add_library(
   OBJECT
 
   cbc.c
-  ctr.c
-  ofb.c
   cfb.c
+  ctr.c
   gcm.c
+  ofb.c
+  polyval.c
 
   ${MODES_ARCH_SOURCES}
 )
