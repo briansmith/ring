@@ -50,7 +50,7 @@ impl Positive {
     pub fn from_be_bytes_padded(input: untrusted::Input)
                                 -> Result<Positive, error::Unspecified> {
         // Reject empty inputs.
-        if input.len() == 0 {
+        if input.is_empty() {
             return Err(error::Unspecified);
         }
         let value = unsafe {
