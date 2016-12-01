@@ -375,52 +375,50 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
       gcm_init_avx(out_table, H.u);
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
-    } else {
-      gcm_init_clmul(out_table, H.u);
-      *out_mult = gcm_gmult_clmul;
-      *out_hash = gcm_ghash_clmul;
+      return;
     }
+
+    gcm_init_clmul(out_table, H.u);
+    *out_mult = gcm_gmult_clmul;
+    *out_hash = gcm_ghash_clmul;
     return;
   }
-  gcm_init_4bit(out_table, H.u);
 #if defined(GHASH_ASM_X86) /* x86 only */
   if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
+    gcm_init_4bit(out_table, H.u);
     *out_mult = gcm_gmult_4bit_mmx;
     *out_hash = gcm_ghash_4bit_mmx;
-  } else {
-    *out_mult = gcm_gmult_4bit_x86;
-    *out_hash = gcm_ghash_4bit_x86;
+    return;
   }
-#else
-  *out_mult = gcm_gmult_4bit;
-  *out_hash = gcm_ghash_4bit;
 #endif
 #elif defined(GHASH_ASM_ARM)
   if (pmull_capable()) {
     gcm_init_v8(out_table, H.u);
     *out_mult = gcm_gmult_v8;
     *out_hash = gcm_ghash_v8;
-  } else if (neon_capable()) {
+    return;
+  }
+
+  if (neon_capable()) {
     gcm_init_neon(out_table, H.u);
     *out_mult = gcm_gmult_neon;
     *out_hash = gcm_ghash_neon;
-  } else {
-    gcm_init_4bit(out_table, H.u);
-    *out_mult = gcm_gmult_4bit;
-    *out_hash = gcm_ghash_4bit;
+    return;
   }
 #elif defined(GHASH_ASM_PPC64LE)
   if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
     gcm_init_p8(out_table, H.u);
     *out_mult = gcm_gmult_p8;
     *out_hash = gcm_ghash_p8;
-  } else {
-    gcm_init_4bit(out_table, H.u);
-    *out_mult = gcm_gmult_4bit;
-    *out_hash = gcm_ghash_4bit;
+    return;
   }
-#else
+#endif
+
   gcm_init_4bit(out_table, H.u);
+#if defined(GHASH_ASM_X86)
+  *out_mult = gcm_gmult_4bit_x86;
+  *out_hash = gcm_ghash_4bit_x86;
+#else
   *out_mult = gcm_gmult_4bit;
   *out_hash = gcm_ghash_4bit;
 #endif
