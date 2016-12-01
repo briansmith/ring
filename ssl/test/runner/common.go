@@ -1217,6 +1217,10 @@ type ProtocolBugs struct {
 	// SendNoPSKBinder, if true, causes the client to send no PSK binders.
 	SendNoPSKBinder bool
 
+	// SendExtraPSKBinder, if true, causes the client to send an extra PSK
+	// binder.
+	SendExtraPSKBinder bool
+
 	// PSKBinderFirst, if true, causes the client to send the PSK Binder
 	// extension as the first extension instead of the last extension.
 	PSKBinderFirst bool

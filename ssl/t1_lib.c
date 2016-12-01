@@ -1977,11 +1977,12 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
                                              CBS *contents) {
   /* We only process the first PSK identity since we don't support pure PSK. */
   uint32_t obfuscated_ticket_age;
-  CBS identity, ticket, binders;
-  if (!CBS_get_u16_length_prefixed(contents, &identity) ||
-      !CBS_get_u16_length_prefixed(&identity, &ticket) ||
-      !CBS_get_u32(&identity, &obfuscated_ticket_age) ||
+  CBS identities, ticket, binders;
+  if (!CBS_get_u16_length_prefixed(contents, &identities) ||
+      !CBS_get_u16_length_prefixed(&identities, &ticket) ||
+      !CBS_get_u32(&identities, &obfuscated_ticket_age) ||
       !CBS_get_u16_length_prefixed(contents, &binders) ||
+      CBS_len(&binders) == 0 ||
       CBS_len(contents) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -1990,11 +1991,38 @@ int ssl_ext_pre_shared_key_parse_clienthello(SSL *ssl,
 
   *out_binders = binders;
 
-  /* The PSK identity must have a corresponding binder. */
-  CBS binder;
-  if (!CBS_get_u8_length_prefixed(&binders, &binder)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    *out_alert = SSL_AD_DECODE_ERROR;
+  /* Check the syntax of the remaining identities, but do not process them. */
+  size_t num_identities = 1;
+  while (CBS_len(&identities) != 0) {
+    CBS unused_ticket;
+    uint32_t unused_obfuscated_ticket_age;
+    if (!CBS_get_u16_length_prefixed(&identities, &unused_ticket) ||
+        !CBS_get_u32(&identities, &unused_obfuscated_ticket_age)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return 0;
+    }
+
+    num_identities++;
+  }
+
+  /* Check the syntax of the binders. The value will be checked later if
+   * resuming. */
+  size_t num_binders = 0;
+  while (CBS_len(&binders) != 0) {
+    CBS binder;
+    if (!CBS_get_u8_length_prefixed(&binders, &binder)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return 0;
+    }
+
+    num_binders++;
+  }
+
+  if (num_identities != num_binders) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_BINDER_COUNT_MISMATCH);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 

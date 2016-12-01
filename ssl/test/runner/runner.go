@@ -5979,6 +5979,36 @@ func addResumptionVersionTests() {
 
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
+		name:          "Resume-Server-ExtraPSKBinder",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendExtraPSKBinder: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: illegal parameter",
+		expectedError:      ":PSK_IDENTITY_BINDER_COUNT_MISMATCH:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "Resume-Server-ExtraIdentityNoBinder",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExtraPSKIdentity: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: illegal parameter",
+		expectedError:      ":PSK_IDENTITY_BINDER_COUNT_MISMATCH:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
 		name:          "Resume-Server-InvalidPSKBinder",
 		resumeSession: true,
 		config: Config{
@@ -9502,7 +9532,8 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExtraPSKIdentity: true,
+				ExtraPSKIdentity:   true,
+				SendExtraPSKBinder: true,
 			},
 		},
 		resumeSession: true,

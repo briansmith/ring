@@ -1676,11 +1676,16 @@ func generatePSKBinders(hello *clientHelloMsg, pskCipherSuite *cipherSuite, psk,
 		binderLen--
 	}
 
+	numBinders := 1
+	if config.Bugs.SendExtraPSKBinder {
+		numBinders++
+	}
+
 	// Fill hello.pskBinders with appropriate length arrays of zeros so the
 	// length prefixes are correct when computing the binder over the truncated
 	// ClientHello message.
-	hello.pskBinders = make([][]byte, len(hello.pskIdentities))
-	for i := range hello.pskIdentities {
+	hello.pskBinders = make([][]byte, numBinders)
+	for i := range hello.pskBinders {
 		hello.pskBinders[i] = make([]byte, binderLen)
 	}
 
