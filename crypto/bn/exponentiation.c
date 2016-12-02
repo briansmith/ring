@@ -178,11 +178,6 @@ int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   BIGNUM *val[TABLE_SIZE];
   size_t val_len = 0;
 
-  if (!GFp_BN_is_odd(m)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
-    return 0;
-  }
-
   /* XXX: This should be after the |BN_R_INPUT_NOT_REDUCED| check, but it isn't
    * in order to allow the |test_exp_mod_zero| test to keep working. Hopefully
    * we can simplify the users of this code so that it is clear that what
@@ -449,7 +444,9 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * http://www.daemonology.net/hyperthreading-considered-harmful/)
  */
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                              const BN_MONT_CTX *mont) {
+                                  const BN_MONT_CTX *mont) {
+  const BIGNUM *m = &mont->N;
+
   int i, bits, ret = 0, window, wvalue;
   int top;
 
@@ -458,13 +455,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int powerbufLen = 0;
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
-
-  const BIGNUM *m = &mont->N;
-
-  if (!GFp_BN_is_odd(m)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
-    return 0;
-  }
 
   top = m->top;
 
