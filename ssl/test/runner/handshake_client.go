@@ -835,6 +835,20 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	hs.finishedHash.addEntropy(zeroSecret)
 	clientTrafficSecret := hs.finishedHash.deriveSecret(clientApplicationTrafficLabel)
 	serverTrafficSecret := hs.finishedHash.deriveSecret(serverApplicationTrafficLabel)
+	c.in.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, serverWrite)
+
+	// If we're expecting 0.5-RTT messages from the server, read them
+	// now.
+	for _, expectedMsg := range c.config.Bugs.ExpectHalfRTTData {
+		if err := c.readRecord(recordTypeApplicationData); err != nil {
+			return err
+		}
+		if !bytes.Equal(c.input.data[c.input.off:], expectedMsg) {
+			return errors.New("ExpectHalfRTTData: did not get expected message")
+		}
+		c.in.freeBlock(c.input)
+		c.input = nil
+	}
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
@@ -919,7 +933,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Switch to application data keys.
 	c.out.useTrafficSecret(c.vers, hs.suite, clientTrafficSecret, clientWrite)
-	c.in.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, serverWrite)
 
 	c.exporterSecret = hs.finishedHash.deriveSecret(exporterLabel)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)

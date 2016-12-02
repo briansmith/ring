@@ -858,6 +858,13 @@ ResendHelloRetryRequest:
 	// from the client certificate are sent over these keys.
 	c.out.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, serverWrite)
 
+	// Send 0.5-RTT messages.
+	for _, halfRTTMsg := range config.Bugs.SendHalfRTTData {
+		if _, err := c.writeRecord(recordTypeApplicationData, halfRTTMsg); err != nil {
+			return err
+		}
+	}
+
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {

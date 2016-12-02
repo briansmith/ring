@@ -1132,6 +1132,19 @@ type ProtocolBugs struct {
 	// data interleaved with the second ClientHello and the client Finished.
 	InterleaveEarlyData bool
 
+	// SendHalfRTTData causes a TLS 1.3 server to send the provided
+	// data in application data records before reading the client's
+	// Finished message.
+	SendHalfRTTData [][]byte
+
+	// ExpectHalfRTTData causes a TLS 1.3 client to read application
+	// data after reading the server's Finished message and before
+	// sending any other handshake messages. It checks that the
+	// application data it reads matches what is provided in
+	// ExpectHalfRTTData and errors if the number of records or their
+	// content do not match.
+	ExpectHalfRTTData [][]byte
+
 	// EmptyEncryptedExtensions, if true, causes the TLS 1.3 server to
 	// emit an empty EncryptedExtensions block.
 	EmptyEncryptedExtensions bool
