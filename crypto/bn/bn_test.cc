@@ -451,11 +451,9 @@ static bool TestModExp(FileTest *t) {
 
   if (GFp_BN_is_odd(m.get())) {
     // |GFp_BN_mod_exp_mont_vartime| requires the input to already be reduced
-    // mod |m| unless |e| is zero (purely due to the ordering of how these
-    // special cases are handled). |GFp_BN_mod_exp_mont_consttime| doesn't have
-    // the same requirement simply because we haven't gotten around to it yet.
-    int expected_ok =
-        GFp_BN_cmp(a.get(), m.get()) < 0 || GFp_BN_is_zero(e.get());
+    // mod |m|. |GFp_BN_mod_exp_mont_consttime| doesn't have the same
+    // requirement simply because we haven't gotten around to it yet.
+    int expected_ok = GFp_BN_cmp(a.get(), m.get()) < 0;
 
     ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
     if (!mont ||
@@ -775,29 +773,6 @@ static bool TestBadModulus() {
   return true;
 }
 
-// TestExpModZero tests that 1**0 mod 1 == 0.
-static bool TestExpModZero(RAND *rng) {
-  ScopedBIGNUM zero(GFp_BN_new()), a(GFp_BN_new()), r(GFp_BN_new());
-  if (!zero || !a || !r || !BN_rand(a.get(), 1024, rng)) {
-    return false;
-  }
-  GFp_BN_zero(zero.get());
-
-  ScopedBN_MONT_CTX one_mont(GFp_BN_MONT_CTX_new());
-  if (!GFp_BN_is_zero(r.get()) ||
-      !one_mont ||
-      !GFp_BN_MONT_CTX_set(one_mont.get(), GFp_BN_value_one()) ||
-      !GFp_BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(),
-                                   one_mont.get()) ||
-      !GFp_BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(),
-                                     one_mont.get()) ||
-      !GFp_BN_is_zero(r.get())) {
-    return false;
-  }
-
-  return true;
-}
-
 static bool TestExpModRejectUnreduced() {
   ScopedBIGNUM r(GFp_BN_new());
   if (!r) {
@@ -1005,7 +980,6 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestRand(rng) ||
       !TestNegativeZero() ||
       !TestBadModulus() ||
-      !TestExpModZero(rng) ||
       !TestExpModRejectUnreduced() ||
       !TestModInvRejectUnreduced(rng) ||
       !TestCmpWord()) {

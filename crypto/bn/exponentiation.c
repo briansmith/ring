@@ -169,6 +169,7 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 		 (b) >  79 ? 4 : \
 		 (b) >  23 ? 3 : 1)
 
+/* |p| must be positive. */
 int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                                 const BN_MONT_CTX *mont) {
   const BIGNUM *m = &mont->N;
@@ -183,14 +184,7 @@ int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
    * we can simplify the users of this code so that it is clear that what
    * |test_exp_mod_zero| tests doesn't need to be supported. */
   bits = GFp_BN_num_bits(p);
-  if (bits == 0) {
-    /* x**0 mod 1 is still zero. */
-    if (GFp_BN_is_one(m)) {
-      GFp_BN_zero(rr);
-      return 1;
-    }
-    return GFp_BN_one(rr);
-  }
+  assert(bits > 0);
 
   if (a->neg || GFp_BN_ucmp(a, m) >= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
@@ -441,7 +435,9 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * precomputation memory layout to limit data-dependency to a minimum
  * to protect secret exponents (cf. the hyper-threading timing attacks
  * pointed out by Colin Percival,
- * http://www.daemonology.net/hyperthreading-considered-harmful/)
+ * http://www.daemonology.net/hyperthreading-considered-harmful/).
+ *
+ * |p| must be positive.
  */
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                                   const BN_MONT_CTX *mont) {
@@ -459,14 +455,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   top = m->top;
 
   bits = GFp_BN_num_bits(p);
-  if (bits == 0) {
-    /* x**0 mod 1 is still zero. */
-    if (GFp_BN_is_one(m)) {
-      GFp_BN_zero(rr);
-      return 1;
-    }
-    return GFp_BN_one(rr);
-  }
+  assert(bits > 0);
 
 #ifdef RSAZ_ENABLED
   /* If the size of the operands allow it, perform the optimized

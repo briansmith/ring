@@ -86,6 +86,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
                            const BN_MONT_CTX *mont_n, const BIGNUM *e,
                            const uint8_t *in, size_t in_len) {
   assert(GFp_BN_is_odd(e));
+  assert(!GFp_BN_is_zero(e));
   assert(!GFp_BN_is_one(e));
 
   const BIGNUM *n = &mont_n->N;
@@ -142,6 +143,9 @@ err:
 int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
                               BN_BLINDING *blinding, RAND *rng) {
   assert(GFp_BN_cmp(base, &rsa->mont_n->N) < 0);
+  assert(!GFp_BN_is_zero(rsa->e));
+  assert(!GFp_BN_is_zero(rsa->dmp1));
+  assert(!GFp_BN_is_zero(rsa->dmq1));
 
   int ret = 0;
 
