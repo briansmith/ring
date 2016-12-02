@@ -20,21 +20,21 @@ use core;
 
 // The assembly functions we call expect the state to be 8-byte aligned. We do
 // this manually, by copying the data into an aligned slice, rather than by
-// asking the compiler to align the State struct.
-fn align(buf: &mut [u8; STATE_LEN + 7]) -> &mut State {
+// asking the compiler to align the `Opaque` struct.
+fn align(buf: &mut [u8; OPAQUE_LEN + 7]) -> &mut Opaque {
     let aligned_start = (buf.as_ptr() as usize + 7) & !7;
     let offset = aligned_start - (buf.as_ptr() as usize);
     slice_as_array_ref_mut!(
-        &mut buf[offset..(offset + STATE_LEN)],
-        STATE_LEN
+        &mut buf[offset..(offset + OPAQUE_LEN)],
+        OPAQUE_LEN
     ).unwrap()
 }
 
 impl SigningContext {
     fn with_aligned<F>(&mut self, f: F)
-        where F: FnOnce(&mut State, &mut SigningData)
+        where F: FnOnce(&mut Opaque, &mut SigningData)
     {
-        let mut buf = [0u8; STATE_LEN + 7];
+        let mut buf = [0u8; OPAQUE_LEN + 7];
         let aligned_buf = align(&mut buf);
         aligned_buf.copy_from_slice(&self.opaque[..]);
         f(aligned_buf, &mut self.data);
@@ -52,7 +52,7 @@ impl SigningContext {
         let key = slice_as_array_ref!(key, 16).unwrap();
 
         let mut ctx = SigningContext{
-            opaque: [0u8; STATE_LEN],
+            opaque: [0u8; OPAQUE_LEN],
             data: SigningData {
                 // TODO: When we can get explicit alignment, make `nonce` an
                 // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
@@ -155,12 +155,12 @@ pub fn check_state_layout() {
             Some(4 * (5 + 1 + 2 * 2 + 2 + 4 * 9))
         } else {
             // TODO(davidben): Figure out the layout of the struct. For now,
-            // `STATE_LEN` is taken from OpenSSL.
+            // `OPAQUE_LEN` is taken from OpenSSL.
             None
         };
 
     if let Some(required_state_size) = required_state_size {
-        assert!(core::mem::size_of::<State>() >= required_state_size);
+        assert!(core::mem::size_of::<Opaque>() >= required_state_size);
     }
 }
 
@@ -199,17 +199,18 @@ pub const TAG_LEN: usize = BLOCK_LEN;
 const BLOCK_LEN: usize = 16;
 
 /// The memory manipulated by the assembly.
-type State = [u8; STATE_LEN];
-const STATE_LEN: usize = 192;
+type Opaque = [u8; OPAQUE_LEN];
+
+const OPAQUE_LEN: usize = 192;
 
 #[repr(C)]
 struct Funcs {
-    blocks_fn: unsafe extern fn(*mut State, *const u8, c::size_t, u32),
-    emit_fn: unsafe extern fn(*mut State, *mut Tag, *const [u32; 4]),
+    blocks_fn: unsafe extern fn(*mut Opaque, *const u8, c::size_t, u32),
+    emit_fn: unsafe extern fn(*mut Opaque, *mut Tag, *const [u32; 4]),
 }
 
 #[inline]
-fn init(state: &mut State, key: &KeyBytes, func: *mut Funcs) -> i32 {
+fn init(state: &mut Opaque, key: &KeyBytes, func: *mut Funcs) -> i32 {
     debug_assert!(state.as_ptr() as usize % 8 == 0);
     unsafe {
         GFp_poly1305_init_asm(state, key, func)
@@ -223,7 +224,7 @@ const ALREADY_PADDED: u32 = 0;
 
 impl Funcs {
     #[inline]
-    fn blocks(&self, state: &mut State, data: &[u8], should_pad: u32) {
+    fn blocks(&self, state: &mut Opaque, data: &[u8], should_pad: u32) {
         debug_assert!(state.as_ptr() as usize % 8 == 0);
         unsafe {
             (self.blocks_fn)(state, data.as_ptr(), data.len(), should_pad);
@@ -231,7 +232,7 @@ impl Funcs {
     }
 
     #[inline]
-    fn emit(&self, state: &mut State, tag: &mut Tag, nonce: &[u32; 4]) {
+    fn emit(&self, state: &mut Opaque, tag: &mut Tag, nonce: &[u32; 4]) {
         debug_assert!(state.as_ptr() as usize % 8 == 0);
         unsafe {
              (self.emit_fn)(state, tag, nonce);
@@ -240,7 +241,7 @@ impl Funcs {
 }
 
 pub struct SigningContext {
-    opaque: State,
+    opaque: Opaque,
     data: SigningData,
 }
 
@@ -252,11 +253,11 @@ struct SigningData {
 }
 
 extern {
-    fn GFp_poly1305_init_asm(state: *mut State, key: *const KeyBytes,
+    fn GFp_poly1305_init_asm(state: *mut Opaque, key: *const KeyBytes,
                              out_func: *mut Funcs) -> c::int;
-    fn GFp_poly1305_blocks(state: *mut State, input: *const u8, len: c::size_t,
+    fn GFp_poly1305_blocks(state: *mut Opaque, input: *const u8, len: c::size_t,
                            padbit: u32);
-    fn GFp_poly1305_emit(state: *mut State, mac: *mut Tag,
+    fn GFp_poly1305_emit(state: *mut Opaque, mac: *mut Tag,
                          nonce: *const [u32; 4]);
 }
 
