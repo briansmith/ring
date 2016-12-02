@@ -15,25 +15,19 @@
 
 // TODO: enforce maximum input length.
 
-use {c, chacha, constant_time, error};
+use {c, chacha, constant_time, error, polyfill};
 use core;
-use polyfill::slice::u32_from_le_u8;
 
 // The assembly functions we call expect the state to be 8-byte aligned. We do
 // this manually, by copying the data into an aligned slice, rather than by
 // asking the compiler to align the State struct.
-fn align(buf: &mut [u8; STATE_LEN + 7]) -> &mut [u8; STATE_LEN] {
+fn align(buf: &mut [u8; STATE_LEN + 7]) -> &mut State {
     let aligned_start = (buf.as_ptr() as usize + 7) & !7;
     let offset = aligned_start - (buf.as_ptr() as usize);
     slice_as_array_ref_mut!(
-        &mut buf[offset..offset+STATE_LEN],
+        &mut buf[offset..(offset + STATE_LEN)],
         STATE_LEN
     ).unwrap()
-}
-
-#[inline]
-fn read_u32(buf: &[u8]) -> u32{
-    u32_from_le_u8(slice_as_array_ref!(buf, 4).unwrap())
 }
 
 impl SigningContext {
@@ -49,14 +43,25 @@ impl SigningContext {
 
     #[inline]
     pub fn from_key(key: Key) -> SigningContext {
+        #[inline]
+        fn read_u32(buf: &[u8]) -> u32 {
+            polyfill::slice::u32_from_le_u8(slice_as_array_ref!(buf, 4).unwrap())
+        }
+
+        let (key, nonce) = key.bytes.split_at(16);
+        let key = slice_as_array_ref!(key, 16).unwrap();
+
         let mut ctx = SigningContext{
-            opaque: [0; STATE_LEN],
+            opaque: [0u8; STATE_LEN],
             data: SigningData {
+                // TODO: When we can get explicit alignment, make `nonce` an
+                // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
+                // conversion.
                 nonce: [
-                    read_u32(&key.bytes[16..20]),
-                    read_u32(&key.bytes[20..24]),
-                    read_u32(&key.bytes[24..28]),
-                    read_u32(&key.bytes[28..32]),
+                    read_u32(&nonce[0..4]),
+                    read_u32(&nonce[4..8]),
+                    read_u32(&nonce[8..12]),
+                    read_u32(&nonce[12..16]),
                 ],
                 buf: [0; BLOCK_LEN],
                 buf_used: 0,
@@ -74,7 +79,7 @@ impl SigningContext {
             // return value assuming `init()` doesn't change `func` if it chose
             // not to initialize it. Note that this is different than what
             // BoringSSL does.
-            let _ = init(opaque, &key.bytes, &mut data.func);
+            let _ = init(opaque, key, &mut data.func);
         });
 
         ctx
@@ -161,7 +166,7 @@ pub fn check_state_layout() {
 
 /// A Poly1305 key.
 pub struct Key {
-    bytes: KeyBytes,
+    bytes: KeyAndNonceBytes,
 }
 
 impl Key {
@@ -178,7 +183,9 @@ impl Key {
     }
 }
 
-type KeyBytes = [u8; KEY_LEN];
+type KeyAndNonceBytes = [u8; 2 * BLOCK_LEN];
+
+type KeyBytes = [u8; BLOCK_LEN];
 
 /// The length of a `key`.
 pub const KEY_LEN: usize = 32;
@@ -187,7 +194,7 @@ pub const KEY_LEN: usize = 32;
 pub type Tag = [u8; TAG_LEN];
 
 /// The length of a `Tag`.
-pub const TAG_LEN: usize = 128 / 8;
+pub const TAG_LEN: usize = BLOCK_LEN;
 
 const BLOCK_LEN: usize = 16;
 
