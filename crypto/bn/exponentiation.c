@@ -170,12 +170,13 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 		 (b) >  23 ? 3 : 1)
 
 int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                                const BIGNUM *m, const BN_MONT_CTX *mont) {
+                                const BN_MONT_CTX *mont) {
+  const BIGNUM *m = &mont->N;
+
   int j, bits, ret = 0, wstart, window;
   int start = 1;
   BIGNUM *val[TABLE_SIZE];
   size_t val_len = 0;
-  BN_MONT_CTX *new_mont = NULL;
 
   if (!GFp_BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
@@ -212,15 +213,6 @@ int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     goto err;
   }
   ++val_len;
-
-  /* Allocate a montgomery context if it was not supplied by the caller. */
-  if (mont == NULL) {
-    new_mont = GFp_BN_MONT_CTX_new();
-    if (new_mont == NULL || !GFp_BN_MONT_CTX_set(new_mont, m)) {
-      goto err;
-    }
-    mont = new_mont;
-  }
 
   if (GFp_BN_is_zero(a)) {
     GFp_BN_zero(rr);
@@ -333,7 +325,6 @@ int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   ret = 1;
 
 err:
-  GFp_BN_MONT_CTX_free(new_mont);
   for (size_t i = 0; i < val_len; ++i) {
     GFp_BN_free(val[i]);
   }

@@ -73,10 +73,6 @@ int GFp_BN_BLINDING_invert(BIGNUM *r, const BIGNUM *a, const BN_BLINDING *b,
                            BN_MONT_CTX *mont);
 
 
-int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
-                           const BIGNUM *e, const uint8_t *in, size_t in_len);
-
-
 #if defined(__cplusplus)
 } /* extern C */
 #endif

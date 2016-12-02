@@ -68,21 +68,27 @@
 
 
 /* Declarations to avoid -Wmissing-prototypes warnings. */
+int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
+                           const BN_MONT_CTX *mont_n, const BIGNUM *e,
+                           const uint8_t *in, size_t in_len);
 int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
                               BN_BLINDING *blinding, RAND *rng);
 
 
 /* GFp_rsa_public_decrypt decrypts the RSA signature |in| using the public key
- * with modulus |public_key_n| and exponent |public_key_e|, leaving the
- * decrypted signature in |out|. |out_len| and |in_len| must both be equal to
- * the size of |n|. The public key must have been validated prior.
+ * with modulus |n| and exponent |e|, leaving the decrypted signature in |out|.
+ * |out_len| and |in_len| must both be equal to the size of |n|. The public key
+ * must have been validated prior.
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
-int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
-                           const BIGNUM *e, const uint8_t *in, size_t in_len) {
+int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
+                           const BN_MONT_CTX *mont_n, const BIGNUM *e,
+                           const uint8_t *in, size_t in_len) {
   assert(GFp_BN_is_odd(e));
   assert(!GFp_BN_is_one(e));
+
+  const BIGNUM *n = &mont_n->N;
 
   BIGNUM f;
   GFp_BN_init(&f);
@@ -113,7 +119,7 @@ int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len, const BIGNUM *n,
     goto err;
   }
 
-  if (!GFp_BN_mod_exp_mont_vartime(&result, &f, e, n, NULL) ||
+  if (!GFp_BN_mod_exp_mont_vartime(&result, &f, e, mont_n) ||
       !GFp_BN_bn2bin_padded(out, out_len, &result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -210,8 +216,7 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
    * Note that this is the only validation of |e| that is done other than
    * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
    * doesn't validate its mathematical relations to |d| or |p| or |q|. */
-  if (!GFp_BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, &rsa->mont_n->N,
-                                   rsa->mont_n)) {
+  if (!GFp_BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }

@@ -115,6 +115,9 @@ pub fn verify_rsa(params: &RSAParameters,
         return Err(error::Unspecified);
     }
 
+    enum N {}
+    unsafe impl bigint::Field for N {}
+
     let n = try!(bigint::Positive::from_be_bytes(n));
     let e = try!(bigint::Positive::from_be_bytes(e));
     let max_bits = try!(bits::BitLength::from_usize_bytes(
@@ -122,6 +125,9 @@ pub fn verify_rsa(params: &RSAParameters,
     let (n, e) =
         try!(super::check_public_modulus_and_exponent(n, e, params.min_bits,
                                                       max_bits));
+    let n_bits = n.bit_length();
+    let n = try!(n.into_modulus::<N>());
+
     let decoded = &mut decoded[..signature.len()];
     try!(bssl::map_result(unsafe {
         GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
@@ -132,16 +138,14 @@ pub fn verify_rsa(params: &RSAParameters,
                                 msg.as_slice_less_safe());
 
     untrusted::Input::from(decoded).read_all(
-        error::Unspecified,
-        |m| params.padding_alg.verify(&m_hash, m, n.bit_length()))
+        error::Unspecified, |m| params.padding_alg.verify(&m_hash, m, n_bits))
 }
 
 extern {
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
-                              public_key_n: *const bigint::BIGNUM,
-                              public_key_e: *const bigint::BIGNUM,
-                              ciphertext: *const u8,
-                              ciphertext_len: c::size_t) -> c::int;
+                              mont_n: &bigint::BN_MONT_CTX, e: &bigint::BIGNUM,
+                              ciphertext: *const u8, ciphertext_len: c::size_t)
+                              -> c::int;
 }
 
 #[cfg(test)]

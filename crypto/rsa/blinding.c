@@ -250,8 +250,7 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, RAND *rng) {
     }
   } while (1);
 
-  if (!GFp_BN_mod_exp_mont_vartime(b->A, b->A, rsa->e, &rsa->mont_n->N,
-                                   rsa->mont_n)) {
+  if (!GFp_BN_mod_exp_mont_vartime(b->A, b->A, rsa->e, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }

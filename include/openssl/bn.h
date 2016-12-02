@@ -442,7 +442,7 @@ int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont);
 /* Exponentiation. */
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_vartime(BIGNUM *r, const BIGNUM *a,
-                                               const BIGNUM *p, const BIGNUM *m,
+                                               const BIGNUM *p,
                                                const BN_MONT_CTX *mont);
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,

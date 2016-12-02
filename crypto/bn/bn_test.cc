@@ -457,26 +457,14 @@ static bool TestModExp(FileTest *t) {
     int expected_ok =
         GFp_BN_cmp(a.get(), m.get()) < 0 || GFp_BN_is_zero(e.get());
 
-    int ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(),
-                                         nullptr);
-    if (ok != expected_ok) {
-      return false;
-    }
-    if ((ok &&
-         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
-                             ret.get()))) {
-      return false;
-    }
-
-    // Test with a non-NULL |BN_MONT_CTX|.
     ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
     if (!mont ||
         !GFp_BN_MONT_CTX_set(mont.get(), m.get())) {
       return false;
     }
 
-    ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(),
-                                     mont.get());
+    int ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(),
+                                         mont.get());
     if (ok != expected_ok) {
       return false;
     }
@@ -759,14 +747,8 @@ static bool TestBadModulus() {
   }
   ERR_clear_error();
 
-  if (GFp_BN_mod_exp_mont_vartime(a.get(), GFp_BN_value_one(),
-                                  GFp_BN_value_one(), zero.get(), nullptr)) {
-    fprintf(stderr, "GFp_BN_mod_exp_mont_vartime with zero modulus unexpectedly "
-            "succeeded.\n");
-    return 0;
-  }
-  ERR_clear_error();
-
+  // |GFp_BN_mod_exp_mont_vartime| and |GFp_BN_mod_exp_mont_consttime| require
+  // this.
   if (GFp_BN_MONT_CTX_set(mont.get(), zero.get())) {
     fprintf(stderr,
             "GFp_BN_MONT_CTX_set unexpectedly succeeded for zero modulus.\n");
@@ -774,24 +756,19 @@ static bool TestBadModulus() {
   }
   ERR_clear_error();
 
+
   // Some operations also may not be used with an even modulus.
 
   if (!GFp_BN_set_word(b.get(), 16)) {
     return false;
   }
 
+  // |GFp_BN_mod_exp_mont_vartime| and |GFp_BN_mod_exp_mont_consttime| require
+  // this.
   if (GFp_BN_MONT_CTX_set(mont.get(), b.get())) {
     fprintf(stderr,
             "GFp_BN_MONT_CTX_set unexpectedly succeeded for even modulus.\n");
     return false;
-  }
-  ERR_clear_error();
-
-  if (GFp_BN_mod_exp_mont_vartime(a.get(), GFp_BN_value_one(),
-                                  GFp_BN_value_one(), b.get(), nullptr)) {
-    fprintf(stderr, "GFp_BN_mod_exp_mont_vartime with even modulus unexpectedly "
-            "succeeded!\n");
-    return 0;
   }
   ERR_clear_error();
 
@@ -807,11 +784,11 @@ static bool TestExpModZero(RAND *rng) {
   GFp_BN_zero(zero.get());
 
   ScopedBN_MONT_CTX one_mont(GFp_BN_MONT_CTX_new());
-  if (!GFp_BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(),
-                                   GFp_BN_value_one(), nullptr) ||
-      !GFp_BN_is_zero(r.get()) ||
+  if (!GFp_BN_is_zero(r.get()) ||
       !one_mont ||
       !GFp_BN_MONT_CTX_set(one_mont.get(), GFp_BN_value_one()) ||
+      !GFp_BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(),
+                                   one_mont.get()) ||
       !GFp_BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(),
                                      one_mont.get()) ||
       !GFp_BN_is_zero(r.get())) {
@@ -855,7 +832,7 @@ static bool TestExpModRejectUnreduced() {
 
         if (base_value >= mod_value &&
             GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
-                                        mod.get(), nullptr)) {
+                                        mont.get())) {
           fprintf(stderr, "GFp_BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
                   (int)base_value, (int)exp_value, (int)mod_value);
           return false;
@@ -872,7 +849,7 @@ static bool TestExpModRejectUnreduced() {
         BN_set_negative(base.get(), 1);
 
         if (GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
-                                        mod.get(), nullptr)) {
+                                        mont.get())) {
           fprintf(stderr, "GFp_BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
                   -(int)base_value, (int)exp_value, (int)mod_value);
           return false;
