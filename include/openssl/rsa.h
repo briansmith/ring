@@ -76,13 +76,6 @@ extern "C" {
 typedef struct bn_blinding_st BN_BLINDING;
 
 
-/* Utility functions. */
-
-/* RSA_size returns the number of bytes in the modulus, which is also the size
- * of a signature or encrypted value using |rsa|. */
-OPENSSL_EXPORT size_t GFp_RSA_size(const RSA *rsa);
-
-
 /* Private functions. */
 
 /* Needs to be kept in sync with `struct RSA` (in `src/rsa/rsa.rs`). */

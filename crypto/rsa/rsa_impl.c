@@ -75,7 +75,7 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
 /* GFp_rsa_public_decrypt decrypts the RSA signature |in| using the public key
  * with modulus |public_key_n| and exponent |public_key_e|, leaving the
  * decrypted signature in |out|. |out_len| and |in_len| must both be equal to
- * |RSA_size(rsa)|. The public key must have been validated prior.
+ * the size of |n|. The public key must have been validated prior.
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
