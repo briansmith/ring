@@ -15,6 +15,7 @@
 """Extracts archives."""
 
 
+import hashlib
 import optparse
 import os
 import os.path
@@ -78,6 +79,22 @@ def main(args):
     # Skip archives that weren't downloaded.
     return 0
 
+  with open(archive) as f:
+    sha256 = hashlib.sha256()
+    while True:
+      chunk = f.read(1024 * 1024)
+      if not chunk:
+        break
+      sha256.update(chunk)
+    digest = sha256.hexdigest()
+
+  stamp_path = os.path.join(output, ".boringssl_archive_digest")
+  if os.path.exists(stamp_path):
+    with open(stamp_path) as f:
+      if f.read().strip() == digest:
+        print "Already up-to-date."
+        return 0
+
   if archive.endswith('.zip'):
     entries = IterateZip(archive)
   elif archive.endswith('.tar.gz'):
@@ -129,9 +146,10 @@ def main(args):
   finally:
     entries.close()
 
-  if num_extracted % 100 == 0:
-    print "Done. Extracted %d files." % (num_extracted,)
+  with open(stamp_path, 'w') as f:
+    f.write(digest)
 
+  print "Done. Extracted %d files." % (num_extracted,)
   return 0
 
 
