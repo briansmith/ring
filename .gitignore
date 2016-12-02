@@ -4,3 +4,17 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
+
+util/bot/android_tools
+util/bot/cmake-linux64
+util/bot/cmake-linux64.tar.gz
+util/bot/cmake-mac
+util/bot/cmake-mac.tar.gz
+util/bot/cmake-win32
+util/bot/cmake-win32.zip
+util/bot/gyp
+util/bot/llvm-build
+util/bot/perl-win32
+util/bot/perl-win32.zip
+util/bot/win_toolchain.json
+util/bot/yasm-win32.exe
