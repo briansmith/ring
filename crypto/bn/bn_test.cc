@@ -449,35 +449,33 @@ static bool TestModExp(FileTest *t) {
     return false;
   }
 
-  if (GFp_BN_is_odd(m.get())) {
-    // |GFp_BN_mod_exp_mont_vartime| requires the input to already be reduced
-    // mod |m|. |GFp_BN_mod_exp_mont_consttime| doesn't have the same
-    // requirement simply because we haven't gotten around to it yet.
-    int expected_ok = GFp_BN_cmp(a.get(), m.get()) < 0;
+  // |GFp_BN_mod_exp_mont_vartime| requires the input to already be reduced
+  // mod |m|. |GFp_BN_mod_exp_mont_consttime| doesn't have the same
+  // requirement simply because we haven't gotten around to it yet.
+  int expected_ok = GFp_BN_cmp(a.get(), m.get()) < 0;
 
-    ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-    if (!mont ||
-        !GFp_BN_MONT_CTX_set(mont.get(), m.get())) {
-      return false;
-    }
+  ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
+  if (!mont ||
+      !GFp_BN_MONT_CTX_set(mont.get(), m.get())) {
+    return false;
+  }
 
-    int ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(),
-                                         mont.get());
-    if (ok != expected_ok) {
-      return false;
-    }
-    if ((ok &&
-         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
-                             ret.get()))) {
-      return false;
-    }
+  int ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(),
+                                        mont.get());
+  if (ok != expected_ok) {
+    return false;
+  }
+  if ((ok &&
+        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
+                            ret.get()))) {
+    return false;
+  }
 
-    if (!GFp_BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(),
-                                       mont.get()) ||
-        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
-                            ret.get())) {
-      return false;
-    }
+  if (!GFp_BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(),
+                                      mont.get()) ||
+      !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
+                          ret.get())) {
+    return false;
   }
 
   return true;
