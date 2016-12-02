@@ -461,7 +461,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                               const BN_MONT_CTX *mont) {
   int i, bits, ret = 0, window, wvalue;
   int top;
-  BN_MONT_CTX *new_mont = NULL;
 
   int numPowers;
   unsigned char *powerbufFree = NULL;
@@ -763,7 +762,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   ret = 1;
 
 err:
-  GFp_BN_MONT_CTX_free(new_mont);
   OPENSSL_free(powerbufFree);
   return (ret);
 }
