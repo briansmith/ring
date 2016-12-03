@@ -143,7 +143,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
-  if (!ssl_write_client_hello(hs->ssl)) {
+  if (!ssl_write_client_hello(hs)) {
     return ssl_hs_error;
   }
 
@@ -328,7 +328,7 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
 
   CBS cbs;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!ssl_parse_serverhello_tlsext(ssl, &cbs)) {
+  if (!ssl_parse_serverhello_tlsext(hs, &cbs)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
   }

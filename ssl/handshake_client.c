@@ -658,7 +658,8 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
   return CBB_flush(out);
 }
 
-int ssl_write_client_hello(SSL *ssl) {
+int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
     return 0;
@@ -695,7 +696,7 @@ int ssl_write_client_hello(SSL *ssl) {
   if (!ssl_write_client_cipher_list(ssl, &body, min_version, max_version) ||
       !CBB_add_u8(&body, 1 /* one compression method */) ||
       !CBB_add_u8(&body, 0 /* null compression */) ||
-      !ssl_add_clienthello_tlsext(ssl, &body, header_len + CBB_len(&body))) {
+      !ssl_add_clienthello_tlsext(hs, &body, header_len + CBB_len(&body))) {
     goto err;
   }
 
@@ -707,7 +708,7 @@ int ssl_write_client_hello(SSL *ssl) {
 
   /* Now that the length prefixes have been computed, fill in the placeholder
    * PSK binder. */
-  if (ssl->s3->hs->needs_psk_binder &&
+  if (hs->needs_psk_binder &&
       !tls13_write_psk_binder(ssl, msg, len)) {
     OPENSSL_free(msg);
     goto err;
@@ -774,7 +775,7 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  if (!ssl_write_client_hello(ssl)) {
+  if (!ssl_write_client_hello(hs)) {
     return -1;
   }
 
@@ -997,7 +998,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* TLS extensions */
-  if (!ssl_parse_serverhello_tlsext(ssl, &server_hello)) {
+  if (!ssl_parse_serverhello_tlsext(hs, &server_hello)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     goto err;
   }

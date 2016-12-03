@@ -733,7 +733,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
     }
 
     /* TLS extensions. */
-    if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
+    if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
       goto err;
     }
@@ -940,7 +940,7 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
                      session->session_id_length) ||
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
-      !ssl_add_serverhello_tlsext(ssl, &body) ||
+      !ssl_add_serverhello_tlsext(hs, &body) ||
       !ssl_complete_message(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);

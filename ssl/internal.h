@@ -1080,7 +1080,7 @@ int ssl_ext_pre_shared_key_add_serverhello(SSL *ssl, CBB *out);
  * returns one iff it's valid. */
 int ssl_is_sct_list_valid(const CBS *contents);
 
-int ssl_write_client_hello(SSL *ssl);
+int ssl_write_client_hello(SSL_HANDSHAKE *hs);
 
 /* ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
  * should be called once the version is known to be TLS 1.2 or earlier. */
@@ -1877,12 +1877,12 @@ int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
  * returns one on success and zero on failure. The |header_len| argument is the
  * length of the ClientHello written so far and is used to compute the padding
  * length. (It does not include the record header.) */
-int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len);
+int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len);
 
-int ssl_add_serverhello_tlsext(SSL *ssl, CBB *out);
+int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
 int ssl_parse_clienthello_tlsext(
-    SSL *ssl, const struct ssl_early_callback_ctx *client_hello);
-int ssl_parse_serverhello_tlsext(SSL *ssl, CBS *cbs);
+    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello);
+int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
 
 #define tlsext_tick_md EVP_sha256
 

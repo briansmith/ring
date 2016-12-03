@@ -119,7 +119,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* TLS extensions. */
-  if (!ssl_parse_clienthello_tlsext(ssl, &client_hello)) {
+  if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
   }
@@ -410,7 +410,7 @@ static enum ssl_hs_wait_t do_send_encrypted_extensions(SSL_HANDSHAKE *hs) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_ENCRYPTED_EXTENSIONS) ||
-      !ssl_add_serverhello_tlsext(ssl, &body) ||
+      !ssl_add_serverhello_tlsext(hs, &body) ||
       !ssl_complete_message(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return ssl_hs_error;
