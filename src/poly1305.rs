@@ -111,7 +111,7 @@ impl SigningContext {
                 input = &input[todo..];
 
                 if *buf_used == BLOCK_LEN {
-                    func.blocks(opaque, buf, PAD);
+                    func.blocks(opaque, buf, Pad::Pad);
                     *buf_used = 0;
                 }
             }
@@ -119,7 +119,7 @@ impl SigningContext {
             if input.len() >= BLOCK_LEN {
                 let todo = input.len() & !(BLOCK_LEN - 1);
                 let (complete_blocks, remainder) = input.split_at(todo);
-                func.blocks(opaque, complete_blocks, PAD);
+                func.blocks(opaque, complete_blocks, Pad::Pad);
                 input = remainder;
             }
 
@@ -144,7 +144,7 @@ impl SigningContext {
                 for byte in &mut buf[(buf_used + 1)..] {
                     *byte = 0;
                 }
-                func.blocks(opaque, &buf[..], ALREADY_PADDED);
+                func.blocks(opaque, &buf[..], Pad::AlreadyPadded);
             }
 
             func.emit(opaque, tag_out, nonce);
@@ -207,6 +207,7 @@ impl Key {
 type KeyAndNonceBytes = [u8; 2 * BLOCK_LEN];
 
 type KeyBytes = [u8; BLOCK_LEN];
+type Nonce = [u32; BLOCK_LEN / 4];
 
 /// The length of a `key`.
 pub const KEY_LEN: usize = 32;
@@ -226,26 +227,28 @@ const OPAQUE_LEN: usize = 192;
 
 #[repr(C)]
 struct Funcs {
-    blocks_fn: unsafe extern fn(*mut Opaque, *const u8, c::size_t, u32),
-    emit_fn: unsafe extern fn(*mut Opaque, *mut Tag, *const [u32; 4]),
+    blocks_fn: unsafe extern fn(&mut Opaque, input: *const u8,
+                                input_len: c::size_t, should_pad: Pad),
+    emit_fn: unsafe extern fn(&mut Opaque, &mut Tag, nonce: &Nonce),
 }
 
 #[inline]
-fn init(state: &mut Opaque, key: &KeyBytes, func: *mut Funcs) -> i32 {
+fn init(state: &mut Opaque, key: &KeyBytes, func: &mut Funcs) -> i32 {
     debug_assert!(state.as_ptr() as usize % 8 == 0);
     unsafe {
         GFp_poly1305_init_asm(state, key, func)
     }
 }
 
-/// Instruct the blocks function to pad.
-const PAD: u32 = 1;
-/// Instruct the blocks function not to pad.
-const ALREADY_PADDED: u32 = 0;
+#[repr(u32)]
+enum Pad {
+    AlreadyPadded = 0,
+    Pad = 1,
+}
 
 impl Funcs {
     #[inline]
-    fn blocks(&self, state: &mut Opaque, data: &[u8], should_pad: u32) {
+    fn blocks(&self, state: &mut Opaque, data: &[u8], should_pad: Pad) {
         debug_assert!(state.as_ptr() as usize % 8 == 0);
         unsafe {
             (self.blocks_fn)(state, data.as_ptr(), data.len(), should_pad);
@@ -253,10 +256,10 @@ impl Funcs {
     }
 
     #[inline]
-    fn emit(&self, state: &mut Opaque, tag: &mut Tag, nonce: &[u32; 4]) {
+    fn emit(&self, state: &mut Opaque, tag_out: &mut Tag, nonce: &Nonce) {
         debug_assert!(state.as_ptr() as usize % 8 == 0);
         unsafe {
-             (self.emit_fn)(state, tag, nonce);
+             (self.emit_fn)(state, tag_out, nonce);
         }
     }
 }
@@ -270,12 +273,11 @@ pub struct SigningContext {
 }
 
 extern {
-    fn GFp_poly1305_init_asm(state: *mut Opaque, key: *const KeyBytes,
-                             out_func: *mut Funcs) -> c::int;
-    fn GFp_poly1305_blocks(state: *mut Opaque, input: *const u8, len: c::size_t,
-                           padbit: u32);
-    fn GFp_poly1305_emit(state: *mut Opaque, mac: *mut Tag,
-                         nonce: *const [u32; 4]);
+    fn GFp_poly1305_init_asm(state: &mut Opaque, key: &KeyBytes,
+                             out_func: &mut Funcs) -> c::int;
+    fn GFp_poly1305_blocks(state: &mut Opaque, input: *const u8, len: c::size_t,
+                           should_pad: Pad);
+    fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut Tag, nonce: &Nonce);
 }
 
 #[cfg(test)]
