@@ -15,6 +15,9 @@
 
 // TODO: enforce maximum input length.
 
+// Work around compiler bug?
+#![allow(non_shorthand_field_patterns)]
+
 use {c, chacha, constant_time, error, polyfill};
 use core;
 
@@ -30,17 +33,17 @@ fn align(buf: &mut [u8; OPAQUE_LEN + 7]) -> &mut Opaque {
     ).unwrap()
 }
 
-impl SigningContext {
-    fn with_aligned<F>(&mut self, f: F)
-        where F: FnOnce(&mut Opaque, &mut SigningData)
-    {
-        let mut buf = [0u8; OPAQUE_LEN + 7];
-        let aligned_buf = align(&mut buf);
-        aligned_buf.copy_from_slice(&self.opaque[..]);
-        f(aligned_buf, &mut self.data);
-        self.opaque.copy_from_slice(aligned_buf);
-    }
+fn with_aligned<F>(opaque: &mut Opaque, f: F)
+    where F: FnOnce(&mut Opaque)
+{
+    let mut buf = [0u8; OPAQUE_LEN + 7];
+    let aligned_buf = align(&mut buf);
+    aligned_buf.copy_from_slice(&opaque[..]);
+    f(aligned_buf);
+    opaque.copy_from_slice(aligned_buf);
+}
 
+impl SigningContext {
     #[inline]
     pub fn from_key(key: Key) -> SigningContext {
         #[inline]
@@ -53,80 +56,98 @@ impl SigningContext {
 
         let mut ctx = SigningContext{
             opaque: [0u8; OPAQUE_LEN],
-            data: SigningData {
-                // TODO: When we can get explicit alignment, make `nonce` an
-                // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
-                // conversion.
-                nonce: [
-                    read_u32(&nonce[0..4]),
-                    read_u32(&nonce[4..8]),
-                    read_u32(&nonce[8..12]),
-                    read_u32(&nonce[12..16]),
-                ],
-                buf: [0; BLOCK_LEN],
-                buf_used: 0,
-                func: Funcs {
-                    blocks_fn: GFp_poly1305_blocks,
-                    emit_fn: GFp_poly1305_emit
-                }
+            // TODO: When we can get explicit alignment, make `nonce` an
+            // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
+            // conversion.
+            nonce: [
+                read_u32(&nonce[0..4]),
+                read_u32(&nonce[4..8]),
+                read_u32(&nonce[8..12]),
+                read_u32(&nonce[12..16]),
+            ],
+            buf: [0; BLOCK_LEN],
+            buf_used: 0,
+            func: Funcs {
+                blocks_fn: GFp_poly1305_blocks,
+                emit_fn: GFp_poly1305_emit
             }
         };
 
-        ctx.with_aligned(|opaque, data| {
+        { // borrow ctx
+            let &mut SigningContext {
+                opaque: ref mut opaque,
+                func: ref mut func,
+                ..
+            } = &mut ctx;
+            with_aligned(opaque, |opaque| {
             // On some platforms `init()` doesn't initialize `funcs`. The
             // return value of `init()` indicates whether it did or not. Since
             // we already gave `func` a default value above, we can ignore the
             // return value assuming `init()` doesn't change `func` if it chose
             // not to initialize it. Note that this is different than what
             // BoringSSL does.
-            let _ = init(opaque, key, &mut data.func);
-        });
+                let _ = init(opaque, key, func);
+            });
+        }
 
         ctx
     }
 
     pub fn update(&mut self, mut input: &[u8]) {
-        self.with_aligned(|opaque, data| {
-            if data.buf_used != 0 {
-                let todo = core::cmp::min(input.len(), BLOCK_LEN - data.buf_used);
+        let &mut SigningContext {
+            opaque: ref mut opaque,
+            buf: ref mut buf,
+            buf_used: ref mut buf_used,
+            func: ref func,
+            ..
+        } = self;
+        with_aligned(opaque, |opaque: &mut Opaque| {
+            if *buf_used != 0 {
+                let todo = core::cmp::min(input.len(), BLOCK_LEN - *buf_used);
 
-                data.buf[data.buf_used .. data.buf_used + todo].copy_from_slice(
-                    &input[..todo]
-                );
-                data.buf_used += todo;
+                buf[*buf_used..(*buf_used + todo)].copy_from_slice(
+                    &input[..todo]);
+                *buf_used += todo;
                 input = &input[todo..];
 
-                if data.buf_used == BLOCK_LEN {
-                    data.func.blocks(opaque, &mut data.buf, PAD);
-                    data.buf_used = 0;
+                if *buf_used == BLOCK_LEN {
+                    func.blocks(opaque, buf, PAD);
+                    *buf_used = 0;
                 }
             }
 
             if input.len() >= BLOCK_LEN {
                 let todo = input.len() & !(BLOCK_LEN - 1);
                 let (complete_blocks, remainder) = input.split_at(todo);
-                data.func.blocks(opaque, complete_blocks, PAD);
+                func.blocks(opaque, complete_blocks, PAD);
                 input = remainder;
             }
 
             if input.len() != 0 {
-                data.buf[..input.len()].copy_from_slice(input);
-                data.buf_used = input.len();
+                buf[..input.len()].copy_from_slice(input);
+                *buf_used = input.len();
             }
         });
     }
 
     pub fn sign(mut self, tag_out: &mut Tag) {
-        self.with_aligned(|opaque, data| {
-            if data.buf_used != 0 {
-                data.buf[data.buf_used] = 1;
-                for byte in &mut data.buf[data.buf_used+1..] {
+        let &mut SigningContext {
+            opaque: ref mut opaque,
+            nonce: ref nonce,
+            buf: ref mut buf,
+            buf_used: buf_used,
+            func: ref func,
+        } = &mut self;
+        with_aligned(opaque, |opaque| {
+            if buf_used != 0 {
+                buf[buf_used] = 1;
+                for byte in &mut buf[(buf_used + 1)..] {
                     *byte = 0;
                 }
-                data.func.blocks(opaque, &data.buf[..], ALREADY_PADDED);
+                func.blocks(opaque, &buf[..], ALREADY_PADDED);
             }
 
-            data.func.emit(opaque, tag_out, &data.nonce);
+            func.emit(opaque, tag_out, nonce);
         });
     }
 }
@@ -242,10 +263,6 @@ impl Funcs {
 
 pub struct SigningContext {
     opaque: Opaque,
-    data: SigningData,
-}
-
-struct SigningData {
     nonce: [u32; 4],
     buf: [u8; BLOCK_LEN],
     buf_used: usize,
