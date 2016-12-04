@@ -644,7 +644,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	//
 	// TODO(davidben): This will need to be handled slightly earlier once
 	// 0-RTT is implemented.
-	var psk []byte
 	if hs.serverHello.hasPSKIdentity {
 		// We send at most one PSK identity.
 		if hs.session == nil || hs.serverHello.pskIdentity != 0 {
@@ -656,13 +655,11 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: server resumed an invalid session for the cipher suite")
 		}
-		psk = hs.session.masterSecret
+		hs.finishedHash.addEntropy(hs.session.masterSecret)
 		c.didResume = true
 	} else {
-		psk = zeroSecret
+		hs.finishedHash.addEntropy(zeroSecret)
 	}
-
-	earlySecret := hs.finishedHash.extractKey(zeroSecret, psk)
 
 	if !hs.serverHello.hasKeyShare {
 		c.sendAlert(alertUnsupportedExtension)
@@ -670,7 +667,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	}
 
 	// Resolve ECDHE and compute the handshake secret.
-	var ecdheSecret []byte
 	if !c.config.Bugs.MissingKeyShare && !c.config.Bugs.SecondClientHelloMissingKeyShare {
 		curve, ok := hs.keyShares[hs.serverHello.keyShare.group]
 		if !ok {
@@ -679,22 +675,19 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 		c.curveID = hs.serverHello.keyShare.group
 
-		var err error
-		ecdheSecret, err = curve.finish(hs.serverHello.keyShare.keyExchange)
+		ecdheSecret, err := curve.finish(hs.serverHello.keyShare.keyExchange)
 		if err != nil {
 			return err
 		}
+		hs.finishedHash.addEntropy(ecdheSecret)
 	} else {
-		ecdheSecret = zeroSecret
+		hs.finishedHash.addEntropy(zeroSecret)
 	}
 
-	// Compute the handshake secret.
-	handshakeSecret := hs.finishedHash.extractKey(earlySecret, ecdheSecret)
-
 	// Switch to handshake traffic keys.
-	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, clientHandshakeTrafficLabel)
+	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
-	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, serverHandshakeTrafficLabel)
+	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
 	c.in.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, serverWrite)
 
 	msg, err := c.readHandshake()
@@ -822,9 +815,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// The various secrets do not incorporate the client's final leg, so
 	// derive them now before updating the handshake context.
-	masterSecret := hs.finishedHash.extractKey(handshakeSecret, zeroSecret)
-	clientTrafficSecret := hs.finishedHash.deriveSecret(masterSecret, clientApplicationTrafficLabel)
-	serverTrafficSecret := hs.finishedHash.deriveSecret(masterSecret, serverApplicationTrafficLabel)
+	hs.finishedHash.addEntropy(zeroSecret)
+	clientTrafficSecret := hs.finishedHash.deriveSecret(clientApplicationTrafficLabel)
+	serverTrafficSecret := hs.finishedHash.deriveSecret(serverApplicationTrafficLabel)
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
@@ -911,8 +904,8 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.out.useTrafficSecret(c.vers, hs.suite, clientTrafficSecret, clientWrite)
 	c.in.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, serverWrite)
 
-	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
-	c.resumptionSecret = hs.finishedHash.deriveSecret(masterSecret, resumptionLabel)
+	c.exporterSecret = hs.finishedHash.deriveSecret(exporterLabel)
+	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 	return nil
 }
 

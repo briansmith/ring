@@ -501,14 +501,11 @@ Curves:
 	}
 
 	// Resolve PSK and compute the early secret.
-	var psk []byte
 	if hs.sessionState != nil {
-		psk = hs.sessionState.masterSecret
+		hs.finishedHash.addEntropy(hs.sessionState.masterSecret)
 	} else {
-		psk = hs.finishedHash.zeroSecret()
+		hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 	}
-
-	earlySecret := hs.finishedHash.extractKey(hs.finishedHash.zeroSecret(), psk)
 
 	hs.hello.hasKeyShare = true
 	if hs.sessionState != nil && config.Bugs.NegotiatePSKResumption {
@@ -647,7 +644,6 @@ ResendHelloRetryRequest:
 	}
 
 	// Resolve ECDHE and compute the handshake secret.
-	var ecdheSecret []byte
 	if hs.hello.hasKeyShare {
 		// Once a curve has been selected and a key share identified,
 		// the server needs to generate a public value and send it in
@@ -672,13 +668,12 @@ ResendHelloRetryRequest:
 			peerKey = selectedKeyShare.keyExchange
 		}
 
-		var publicKey []byte
-		var err error
-		publicKey, ecdheSecret, err = curve.accept(config.rand(), peerKey)
+		publicKey, ecdheSecret, err := curve.accept(config.rand(), peerKey)
 		if err != nil {
 			c.sendAlert(alertHandshakeFailure)
 			return err
 		}
+		hs.finishedHash.addEntropy(ecdheSecret)
 		hs.hello.hasKeyShare = true
 
 		curveID := selectedCurve
@@ -702,7 +697,7 @@ ResendHelloRetryRequest:
 			}
 		}
 	} else {
-		ecdheSecret = hs.finishedHash.zeroSecret()
+		hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 	}
 
 	// Send unencrypted ServerHello.
@@ -718,13 +713,10 @@ ResendHelloRetryRequest:
 	}
 	c.flushHandshake()
 
-	// Compute the handshake secret.
-	handshakeSecret := hs.finishedHash.extractKey(earlySecret, ecdheSecret)
-
 	// Switch to handshake traffic keys.
-	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, serverHandshakeTrafficLabel)
+	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
 	c.out.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, serverWrite)
-	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(handshakeSecret, clientHandshakeTrafficLabel)
+	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	c.in.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
 
 	// Send EncryptedExtensions.
@@ -842,10 +834,10 @@ ResendHelloRetryRequest:
 
 	// The various secrets do not incorporate the client's final leg, so
 	// derive them now before updating the handshake context.
-	masterSecret := hs.finishedHash.extractKey(handshakeSecret, hs.finishedHash.zeroSecret())
-	clientTrafficSecret := hs.finishedHash.deriveSecret(masterSecret, clientApplicationTrafficLabel)
-	serverTrafficSecret := hs.finishedHash.deriveSecret(masterSecret, serverApplicationTrafficLabel)
-	c.exporterSecret = hs.finishedHash.deriveSecret(masterSecret, exporterLabel)
+	hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
+	clientTrafficSecret := hs.finishedHash.deriveSecret(clientApplicationTrafficLabel)
+	serverTrafficSecret := hs.finishedHash.deriveSecret(serverApplicationTrafficLabel)
+	c.exporterSecret = hs.finishedHash.deriveSecret(exporterLabel)
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
@@ -956,7 +948,7 @@ ResendHelloRetryRequest:
 	c.in.useTrafficSecret(c.vers, hs.suite, clientTrafficSecret, clientWrite)
 
 	c.cipherSuite = hs.suite
-	c.resumptionSecret = hs.finishedHash.deriveSecret(masterSecret, resumptionLabel)
+	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 
 	// TODO(davidben): Allow configuring the number of tickets sent for
 	// testing.
