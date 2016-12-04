@@ -652,6 +652,169 @@ unsupported_protocol:
   return 0;
 }
 
+static STACK_OF(SSL_CIPHER) *
+    ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello) {
+  CBS cipher_suites;
+  CBS_init(&cipher_suites, client_hello->cipher_suites,
+           client_hello->cipher_suites_len);
+
+  STACK_OF(SSL_CIPHER) *sk = sk_SSL_CIPHER_new_null();
+  if (sk == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  while (CBS_len(&cipher_suites) > 0) {
+    uint16_t cipher_suite;
+
+    if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
+      goto err;
+    }
+
+    const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
+    if (c != NULL && !sk_SSL_CIPHER_push(sk, c)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  return sk;
+
+err:
+  sk_SSL_CIPHER_free(sk);
+  return NULL;
+}
+
+/* ssl_get_compatible_server_ciphers determines the key exchange and
+ * authentication cipher suite masks compatible with the server configuration
+ * and current ClientHello parameters of |hs|. It sets |*out_mask_k| to the key
+ * exchange mask and |*out_mask_a| to the authentication mask. */
+static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
+                                              uint32_t *out_mask_k,
+                                              uint32_t *out_mask_a) {
+  SSL *const ssl = hs->ssl;
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    *out_mask_k = SSL_kGENERIC;
+    *out_mask_a = SSL_aGENERIC;
+    return;
+  }
+
+  uint32_t mask_k = 0;
+  uint32_t mask_a = 0;
+
+  if (ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl)) {
+    int type = ssl_private_key_type(ssl);
+    if (type == NID_rsaEncryption) {
+      mask_k |= SSL_kRSA;
+      mask_a |= SSL_aRSA;
+    } else if (ssl_is_ecdsa_key_type(type)) {
+      mask_a |= SSL_aECDSA;
+    }
+  }
+
+  if (ssl->cert->dh_tmp != NULL || ssl->cert->dh_tmp_cb != NULL) {
+    mask_k |= SSL_kDHE;
+  }
+
+  /* Check for a shared group to consider ECDHE ciphers. */
+  uint16_t unused;
+  if (tls1_get_shared_group(hs, &unused)) {
+    mask_k |= SSL_kECDHE;
+  }
+
+  /* CECPQ1 ciphers are always acceptable if supported by both sides. */
+  mask_k |= SSL_kCECPQ1;
+
+  /* PSK requires a server callback. */
+  if (ssl->psk_server_callback != NULL) {
+    mask_k |= SSL_kPSK;
+    mask_a |= SSL_aPSK;
+  }
+
+  *out_mask_k = mask_k;
+  *out_mask_a = mask_a;
+}
+
+static const SSL_CIPHER *ssl3_choose_cipher(
+    SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
+    const struct ssl_cipher_preference_list_st *server_pref) {
+  SSL *const ssl = hs->ssl;
+  const SSL_CIPHER *c, *ret = NULL;
+  STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
+  int ok;
+  size_t cipher_index;
+  uint32_t alg_k, alg_a, mask_k, mask_a;
+  /* in_group_flags will either be NULL, or will point to an array of bytes
+   * which indicate equal-preference groups in the |prio| stack. See the
+   * comment about |in_group_flags| in the |ssl_cipher_preference_list_st|
+   * struct. */
+  const uint8_t *in_group_flags;
+  /* group_min contains the minimal index so far found in a group, or -1 if no
+   * such value exists yet. */
+  int group_min = -1;
+
+  STACK_OF(SSL_CIPHER) *clnt = ssl_parse_client_cipher_list(client_hello);
+  if (clnt == NULL) {
+    return NULL;
+  }
+
+  if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
+    prio = srvr;
+    in_group_flags = server_pref->in_group_flags;
+    allow = clnt;
+  } else {
+    prio = clnt;
+    in_group_flags = NULL;
+    allow = srvr;
+  }
+
+  ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
+
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
+    c = sk_SSL_CIPHER_value(prio, i);
+
+    ok = 1;
+
+    /* Check the TLS version. */
+    if (SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
+        SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl)) {
+      ok = 0;
+    }
+
+    alg_k = c->algorithm_mkey;
+    alg_a = c->algorithm_auth;
+
+    ok = ok && (alg_k & mask_k) && (alg_a & mask_a);
+
+    if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
+      if (in_group_flags != NULL && in_group_flags[i] == 1) {
+        /* This element of |prio| is in a group. Update the minimum index found
+         * so far and continue looking. */
+        if (group_min == -1 || (size_t)group_min > cipher_index) {
+          group_min = cipher_index;
+        }
+      } else {
+        if (group_min != -1 && (size_t)group_min < cipher_index) {
+          cipher_index = group_min;
+        }
+        ret = sk_SSL_CIPHER_value(allow, cipher_index);
+        break;
+      }
+    }
+
+    if (in_group_flags != NULL && in_group_flags[i] == 0 && group_min != -1) {
+      /* We are about to leave a group, but we found a match in it, so that's
+       * our answer. */
+      ret = sk_SSL_CIPHER_value(allow, group_min);
+      break;
+    }
+  }
+
+  sk_SSL_CIPHER_free(clnt);
+  return ret;
+}
+
 static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   uint8_t al = SSL_AD_INTERNAL_ERROR;

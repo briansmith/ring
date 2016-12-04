@@ -1143,9 +1143,6 @@ int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out, const uint8_t *in,
 int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
                                    CBS *out, uint16_t extension_type);
 
-STACK_OF(SSL_CIPHER) *
-    ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello);
-
 int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
                                            uint16_t id);
 
@@ -1717,13 +1714,6 @@ int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
                           STACK_OF(X509) * cert_chain);
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
-/* ssl_get_compatible_server_ciphers determines the key exchange and
- * authentication cipher suite masks compatible with the server configuration
- * and current ClientHello parameters of |hs|. It sets |*out_mask_k| to the key
- * exchange mask and |*out_mask_a| to the authentication mask. */
-void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs, uint32_t *out_mask_k,
-                                       uint32_t *out_mask_a);
-
 int ssl_verify_alarm_type(long type);
 
 int ssl3_get_finished(SSL_HANDSHAKE *hs);
@@ -1752,10 +1742,6 @@ int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len);
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
-
-const SSL_CIPHER *ssl3_choose_cipher(
-    SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
-    const struct ssl_cipher_preference_list_st *srvr);
 
 int ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);

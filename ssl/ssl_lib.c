@@ -1692,40 +1692,6 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
   return 1;
 }
 
-STACK_OF(SSL_CIPHER) *
-    ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello) {
-  CBS cipher_suites;
-  CBS_init(&cipher_suites, client_hello->cipher_suites,
-           client_hello->cipher_suites_len);
-
-  STACK_OF(SSL_CIPHER) *sk = sk_SSL_CIPHER_new_null();
-  if (sk == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  while (CBS_len(&cipher_suites) > 0) {
-    uint16_t cipher_suite;
-
-    if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
-      goto err;
-    }
-
-    const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
-    if (c != NULL && !sk_SSL_CIPHER_push(sk, c)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
-  return sk;
-
-err:
-  sk_SSL_CIPHER_free(sk);
-  return NULL;
-}
-
 const char *SSL_get_servername(const SSL *ssl, const int type) {
   if (type != TLSEXT_NAMETYPE_host_name) {
     return NULL;
@@ -2058,51 +2024,6 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
   }
   *out_types = ssl->s3->hs->certificate_types;
   return ssl->s3->hs->num_certificate_types;
-}
-
-void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs, uint32_t *out_mask_k,
-                                       uint32_t *out_mask_a) {
-  SSL *const ssl = hs->ssl;
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    *out_mask_k = SSL_kGENERIC;
-    *out_mask_a = SSL_aGENERIC;
-    return;
-  }
-
-  uint32_t mask_k = 0;
-  uint32_t mask_a = 0;
-
-  if (ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl)) {
-    int type = ssl_private_key_type(ssl);
-    if (type == NID_rsaEncryption) {
-      mask_k |= SSL_kRSA;
-      mask_a |= SSL_aRSA;
-    } else if (ssl_is_ecdsa_key_type(type)) {
-      mask_a |= SSL_aECDSA;
-    }
-  }
-
-  if (ssl->cert->dh_tmp != NULL || ssl->cert->dh_tmp_cb != NULL) {
-    mask_k |= SSL_kDHE;
-  }
-
-  /* Check for a shared group to consider ECDHE ciphers. */
-  uint16_t unused;
-  if (tls1_get_shared_group(hs, &unused)) {
-    mask_k |= SSL_kECDHE;
-  }
-
-  /* CECPQ1 ciphers are always acceptable if supported by both sides. */
-  mask_k |= SSL_kCECPQ1;
-
-  /* PSK requires a server callback. */
-  if (ssl->psk_server_callback != NULL) {
-    mask_k |= SSL_kPSK;
-    mask_a |= SSL_aPSK;
-  }
-
-  *out_mask_k = mask_k;
-  *out_mask_a = mask_a;
 }
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
