@@ -23,21 +23,15 @@ use core;
 
 // The assembly functions we call expect the state to be 8-byte aligned. We do
 // this manually, by copying the data into an aligned slice, rather than by
-// asking the compiler to align the `Opaque` struct.
-fn align(buf: &mut [u8; OPAQUE_LEN + 7]) -> &mut Opaque {
-    let aligned_start = (buf.as_ptr() as usize + 7) & !7;
-    let offset = aligned_start - (buf.as_ptr() as usize);
-    slice_as_array_ref_mut!(
-        &mut buf[offset..(offset + OPAQUE_LEN)],
-        OPAQUE_LEN
-    ).unwrap()
-}
-
 fn with_aligned<F>(opaque: &mut Opaque, f: F)
     where F: FnOnce(&mut Opaque)
 {
     let mut buf = [0u8; OPAQUE_LEN + 7];
-    let aligned_buf = align(&mut buf);
+    let aligned_start = (buf.as_ptr() as usize + 7) & !7;
+    let offset = aligned_start - (buf.as_ptr() as usize);
+    let aligned_buf =
+        slice_as_array_ref_mut!(
+            &mut buf[offset..(offset + OPAQUE_LEN)], OPAQUE_LEN).unwrap();
     aligned_buf.copy_from_slice(&opaque[..]);
     f(aligned_buf);
     opaque.copy_from_slice(aligned_buf);
