@@ -54,7 +54,7 @@ impl SigningContext {
         let (key, nonce) = key.bytes.split_at(16);
         let key = slice_as_array_ref!(key, 16).unwrap();
 
-        let mut ctx = SigningContext{
+        let mut ctx = SigningContext {
             opaque: [0u8; OPAQUE_LEN],
             // TODO: When we can get explicit alignment, make `nonce` an
             // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
