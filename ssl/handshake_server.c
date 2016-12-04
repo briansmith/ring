@@ -524,8 +524,8 @@ end:
   return ret;
 }
 
-int ssl_client_cipher_list_contains_cipher(
-    const struct ssl_early_callback_ctx *client_hello, uint16_t id) {
+int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
+                                           uint16_t id) {
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
@@ -544,9 +544,8 @@ int ssl_client_cipher_list_contains_cipher(
   return 0;
 }
 
-static int negotiate_version(
-    SSL *ssl, uint8_t *out_alert,
-    const struct ssl_early_callback_ctx *client_hello) {
+static int negotiate_version(SSL *ssl, uint8_t *out_alert,
+                             const SSL_CLIENT_HELLO *client_hello) {
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
     *out_alert = SSL_AD_PROTOCOL_VERSION;
@@ -556,8 +555,8 @@ static int negotiate_version(
   uint16_t version = 0;
   /* Check supported_versions extension if it is present. */
   CBS supported_versions;
-  if (ssl_early_callback_get_extension(client_hello, &supported_versions,
-                                       TLSEXT_TYPE_supported_versions)) {
+  if (ssl_client_hello_get_extension(client_hello, &supported_versions,
+                                     TLSEXT_TYPE_supported_versions)) {
     CBS versions;
     if (!CBS_get_u8_length_prefixed(&supported_versions, &versions) ||
         CBS_len(&supported_versions) != 0 ||
@@ -670,9 +669,9 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
     ssl->state = SSL3_ST_SR_CLNT_HELLO_B;
   }
 
-  struct ssl_early_callback_ctx client_hello;
-  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
-                               ssl->init_num)) {
+  SSL_CLIENT_HELLO client_hello;
+  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
+                             ssl->init_num)) {
     al = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     goto f_err;

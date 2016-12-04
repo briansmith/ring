@@ -2030,11 +2030,11 @@ static int SwitchSessionIDContextSNI(SSL *ssl, int *out_alert, void *arg) {
   return SSL_TLSEXT_ERR_OK;
 }
 
-static int SwitchSessionIDContextEarly(
-    const struct ssl_early_callback_ctx *ctx) {
+static int SwitchSessionIDContextEarly(const SSL_CLIENT_HELLO *client_hello) {
   static const uint8_t kContext[] = {3};
 
-  if (!SSL_set_session_id_context(ctx->ssl, kContext, sizeof(kContext))) {
+  if (!SSL_set_session_id_context(client_hello->ssl, kContext,
+                                  sizeof(kContext))) {
     return -1;
   }
 
@@ -2511,8 +2511,8 @@ static bool TestSNICallback(bool is_dtls, const SSL_METHOD *method,
   return true;
 }
 
-static int SetMaxVersion(const struct ssl_early_callback_ctx *ctx) {
-  if (!SSL_set_max_proto_version(ctx->ssl, TLS1_2_VERSION)) {
+static int SetMaxVersion(const SSL_CLIENT_HELLO *client_hello) {
+  if (!SSL_set_max_proto_version(client_hello->ssl, TLS1_2_VERSION)) {
     return -1;
   }
 

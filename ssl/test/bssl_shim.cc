@@ -438,9 +438,9 @@ static bool InstallCertificate(SSL *ssl) {
   return true;
 }
 
-static int SelectCertificateCallback(const struct ssl_early_callback_ctx *ctx) {
-  const TestConfig *config = GetTestConfig(ctx->ssl);
-  GetTestState(ctx->ssl)->early_callback_called = true;
+static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
+  const TestConfig *config = GetTestConfig(client_hello->ssl);
+  GetTestState(client_hello->ssl)->early_callback_called = true;
 
   if (!config->expected_server_name.empty()) {
     const uint8_t *extension_data;
@@ -448,9 +448,9 @@ static int SelectCertificateCallback(const struct ssl_early_callback_ctx *ctx) {
     CBS extension, server_name_list, host_name;
     uint8_t name_type;
 
-    if (!SSL_early_callback_ctx_extension_get(ctx, TLSEXT_TYPE_server_name,
-                                              &extension_data,
-                                              &extension_len)) {
+    if (!SSL_early_callback_ctx_extension_get(
+            client_hello, TLSEXT_TYPE_server_name, &extension_data,
+            &extension_len)) {
       fprintf(stderr, "Could not find server_name extension.\n");
       return -1;
     }
@@ -483,7 +483,7 @@ static int SelectCertificateCallback(const struct ssl_early_callback_ctx *ctx) {
       // Install the certificate asynchronously.
       return 0;
     }
-    if (!InstallCertificate(ctx->ssl)) {
+    if (!InstallCertificate(client_hello->ssl)) {
       return -1;
     }
   }
@@ -697,8 +697,8 @@ static SSL_SESSION *GetSessionCallback(SSL *ssl, uint8_t *data, int len,
   }
 }
 
-static int DDoSCallback(const struct ssl_early_callback_ctx *early_context) {
-  const TestConfig *config = GetTestConfig(early_context->ssl);
+static int DDoSCallback(const SSL_CLIENT_HELLO *client_hello) {
+  const TestConfig *config = GetTestConfig(client_hello->ssl);
   static int callback_num = 0;
 
   callback_num++;

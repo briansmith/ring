@@ -1100,7 +1100,7 @@ int tls13_get_cert_verify_signature_input(
  * one on successful negotiation or if nothing was negotiated. It returns zero
  * and sets |*out_alert| to an alert on error. */
 int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                       const struct ssl_early_callback_ctx *client_hello);
+                       const SSL_CLIENT_HELLO *client_hello);
 
 typedef struct {
   uint16_t type;
@@ -1137,17 +1137,17 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 
 /* ClientHello functions. */
 
-int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
-                            const uint8_t *in, size_t in_len);
+int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out, const uint8_t *in,
+                          size_t in_len);
 
-int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
-                                     CBS *out, uint16_t extension_type);
+int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
+                                   CBS *out, uint16_t extension_type);
 
 STACK_OF(SSL_CIPHER) *
-    ssl_parse_client_cipher_list(const struct ssl_early_callback_ctx *ctx);
+    ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello);
 
-int ssl_client_cipher_list_contains_cipher(
-    const struct ssl_early_callback_ctx *client_hello, uint16_t id);
+int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
+                                           uint16_t id);
 
 
 /* GREASE. */
@@ -1672,14 +1672,14 @@ enum ssl_session_result_t {
   ssl_session_retry,
 };
 
-/* ssl_get_prev_session looks up the previous session based on |ctx|. On
- * success, it sets |*out_session| to the session or NULL if none was found. If
- * the session could not be looked up synchronously, it returns
+/* ssl_get_prev_session looks up the previous session based on |client_hello|.
+ * On success, it sets |*out_session| to the session or NULL if none was found.
+ * If the session could not be looked up synchronously, it returns
  * |ssl_session_retry| and should be called again. Otherwise, it returns
  * |ssl_session_error|.  */
 enum ssl_session_result_t ssl_get_prev_session(
     SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
-    int *out_renew_ticket, const struct ssl_early_callback_ctx *ctx);
+    int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello);
 
 /* The following flags determine which parts of the session are duplicated. */
 #define SSL_SESSION_DUP_AUTH_ONLY 0x0
@@ -1754,7 +1754,7 @@ int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello,
+    SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
     const struct ssl_cipher_preference_list_st *srvr);
 
 int ssl3_new(SSL *ssl);
@@ -1876,8 +1876,8 @@ int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
 int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len);
 
 int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
-int ssl_parse_clienthello_tlsext(
-    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello);
+int ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
+                                 const SSL_CLIENT_HELLO *client_hello);
 int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
 
 #define tlsext_tick_md EVP_sha256

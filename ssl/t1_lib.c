@@ -203,29 +203,29 @@ done:
   return ret;
 }
 
-int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
-                            const uint8_t *in, size_t in_len) {
-  memset(ctx, 0, sizeof(*ctx));
-  ctx->ssl = ssl;
-  ctx->client_hello = in;
-  ctx->client_hello_len = in_len;
+int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out, const uint8_t *in,
+                          size_t in_len) {
+  memset(out, 0, sizeof(*out));
+  out->ssl = ssl;
+  out->client_hello = in;
+  out->client_hello_len = in_len;
 
   CBS client_hello, random, session_id;
-  CBS_init(&client_hello, ctx->client_hello, ctx->client_hello_len);
-  if (!CBS_get_u16(&client_hello, &ctx->version) ||
+  CBS_init(&client_hello, out->client_hello, out->client_hello_len);
+  if (!CBS_get_u16(&client_hello, &out->version) ||
       !CBS_get_bytes(&client_hello, &random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
       CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH) {
     return 0;
   }
 
-  ctx->random = CBS_data(&random);
-  ctx->random_len = CBS_len(&random);
-  ctx->session_id = CBS_data(&session_id);
-  ctx->session_id_len = CBS_len(&session_id);
+  out->random = CBS_data(&random);
+  out->random_len = CBS_len(&random);
+  out->session_id = CBS_data(&session_id);
+  out->session_id_len = CBS_len(&session_id);
 
   /* Skip past DTLS cookie */
-  if (SSL_is_dtls(ctx->ssl)) {
+  if (SSL_is_dtls(out->ssl)) {
     CBS cookie;
     if (!CBS_get_u8_length_prefixed(&client_hello, &cookie) ||
         CBS_len(&cookie) > DTLS1_COOKIE_LENGTH) {
@@ -241,16 +241,16 @@ int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
     return 0;
   }
 
-  ctx->cipher_suites = CBS_data(&cipher_suites);
-  ctx->cipher_suites_len = CBS_len(&cipher_suites);
-  ctx->compression_methods = CBS_data(&compression_methods);
-  ctx->compression_methods_len = CBS_len(&compression_methods);
+  out->cipher_suites = CBS_data(&cipher_suites);
+  out->cipher_suites_len = CBS_len(&cipher_suites);
+  out->compression_methods = CBS_data(&compression_methods);
+  out->compression_methods_len = CBS_len(&compression_methods);
 
   /* If the ClientHello ends here then it's valid, but doesn't have any
    * extensions. (E.g. SSLv3.) */
   if (CBS_len(&client_hello) == 0) {
-    ctx->extensions = NULL;
-    ctx->extensions_len = 0;
+    out->extensions = NULL;
+    out->extensions_len = 0;
     return 1;
   }
 
@@ -262,16 +262,16 @@ int ssl_early_callback_init(SSL *ssl, struct ssl_early_callback_ctx *ctx,
     return 0;
   }
 
-  ctx->extensions = CBS_data(&extensions);
-  ctx->extensions_len = CBS_len(&extensions);
+  out->extensions = CBS_data(&extensions);
+  out->extensions_len = CBS_len(&extensions);
 
   return 1;
 }
 
-int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
-                                     CBS *out, uint16_t extension_type) {
+int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
+                                   CBS *out, uint16_t extension_type) {
   CBS extensions;
-  CBS_init(&extensions, ctx->extensions, ctx->extensions_len);
+  CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
   while (CBS_len(&extensions) != 0) {
     /* Decode the next extension. */
     uint16_t type;
@@ -290,11 +290,12 @@ int ssl_early_callback_get_extension(const struct ssl_early_callback_ctx *ctx,
   return 0;
 }
 
-int SSL_early_callback_ctx_extension_get(
-    const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
-    const uint8_t **out_data, size_t *out_len) {
+int SSL_early_callback_ctx_extension_get(const SSL_CLIENT_HELLO *client_hello,
+                                         uint16_t extension_type,
+                                         const uint8_t **out_data,
+                                         size_t *out_len) {
   CBS cbs;
-  if (!ssl_early_callback_get_extension(ctx, &cbs, extension_type)) {
+  if (!ssl_client_hello_get_extension(client_hello, &cbs, extension_type)) {
     return 0;
   }
 
@@ -1533,11 +1534,11 @@ static int ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 }
 
 int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                       const struct ssl_early_callback_ctx *client_hello) {
+                       const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
   CBS contents;
   if (ssl->ctx->alpn_select_cb == NULL ||
-      !ssl_early_callback_get_extension(
+      !ssl_client_hello_get_extension(
           client_hello, &contents,
           TLSEXT_TYPE_application_layer_protocol_negotiation)) {
     /* Ignore ALPN if not configured or no extension was supplied. */
@@ -2882,9 +2883,9 @@ err:
   return 0;
 }
 
-static int ssl_scan_clienthello_tlsext(
-    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello,
-    int *out_alert) {
+static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
+                                       const SSL_CLIENT_HELLO *client_hello,
+                                       int *out_alert) {
   SSL *const ssl = hs->ssl;
   for (size_t i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
@@ -2968,8 +2969,8 @@ static int ssl_scan_clienthello_tlsext(
   return 1;
 }
 
-int ssl_parse_clienthello_tlsext(
-    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello) {
+int ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
+                                 const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
   int alert = -1;
   if (ssl_scan_clienthello_tlsext(hs, client_hello, &alert) <= 0) {

@@ -54,14 +54,14 @@ enum server_hs_state_t {
 static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
 
 static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
-                                struct ssl_early_callback_ctx *early_ctx) {
+                                SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
   *out_need_retry = 0;
 
   /* We only support connections that include an ECDHE key exchange. */
   CBS key_share;
-  if (!ssl_early_callback_get_extension(early_ctx, &key_share,
-                                        TLSEXT_TYPE_key_share)) {
+  if (!ssl_client_hello_get_extension(client_hello, &key_share,
+                                      TLSEXT_TYPE_key_share)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
     return 0;
@@ -94,9 +94,9 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  struct ssl_early_callback_ctx client_hello;
-  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
-                               ssl->init_num)) {
+  SSL_CLIENT_HELLO client_hello;
+  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
+                             ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
@@ -130,7 +130,7 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
 }
 
 static const SSL_CIPHER *choose_tls13_cipher(
-    const SSL *ssl, const struct ssl_early_callback_ctx *client_hello) {
+    const SSL *ssl, const SSL_CLIENT_HELLO *client_hello) {
   if (client_hello->cipher_suites_len % 2 != 0) {
     return NULL;
   }
@@ -191,9 +191,9 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     }
   }
 
-  struct ssl_early_callback_ctx client_hello;
-  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
-                               ssl->init_num)) {
+  SSL_CLIENT_HELLO client_hello;
+  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
+                             ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
@@ -212,8 +212,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   SSL_SESSION *session = NULL;
   CBS pre_shared_key, binders;
   if (hs->accept_psk_mode &&
-      ssl_early_callback_get_extension(&client_hello, &pre_shared_key,
-                                       TLSEXT_TYPE_pre_shared_key)) {
+      ssl_client_hello_get_extension(&client_hello, &pre_shared_key,
+                                     TLSEXT_TYPE_pre_shared_key)) {
     /* Verify that the pre_shared_key extension is the last extension in
      * ClientHello. */
     if (CBS_data(&pre_shared_key) + CBS_len(&pre_shared_key) !=
@@ -352,9 +352,9 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  struct ssl_early_callback_ctx client_hello;
-  if (!ssl_early_callback_init(ssl, &client_hello, ssl->init_msg,
-                               ssl->init_num)) {
+  SSL_CLIENT_HELLO client_hello;
+  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
+                             ssl->init_num)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;

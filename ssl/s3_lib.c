@@ -241,7 +241,7 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
 }
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL_HANDSHAKE *hs, const struct ssl_early_callback_ctx *client_hello,
+    SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
     const struct ssl_cipher_preference_list_st *server_pref) {
   SSL *const ssl = hs->ssl;
   const SSL_CIPHER *c, *ret = NULL;

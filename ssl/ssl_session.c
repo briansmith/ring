@@ -722,7 +722,7 @@ static enum ssl_session_result_t ssl_lookup_session(
 
 enum ssl_session_result_t ssl_get_prev_session(
     SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
-    int *out_renew_ticket, const struct ssl_early_callback_ctx *ctx) {
+    int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello) {
   /* This is used only by servers. */
   assert(ssl->server);
   SSL_SESSION *session = NULL;
@@ -734,17 +734,18 @@ enum ssl_session_result_t ssl_get_prev_session(
   const int tickets_supported =
       !(SSL_get_options(ssl) & SSL_OP_NO_TICKET) &&
       ssl->version > SSL3_VERSION &&
-      SSL_early_callback_ctx_extension_get(ctx, TLSEXT_TYPE_session_ticket,
-                                           &ticket, &ticket_len);
+      SSL_early_callback_ctx_extension_get(
+          client_hello, TLSEXT_TYPE_session_ticket, &ticket, &ticket_len);
   if (tickets_supported && ticket_len > 0) {
     if (!tls_process_ticket(ssl, &session, &renew_ticket, ticket, ticket_len,
-                            ctx->session_id, ctx->session_id_len)) {
+                            client_hello->session_id,
+                            client_hello->session_id_len)) {
       return ssl_session_error;
     }
   } else {
     /* The client didn't send a ticket, so the session ID is a real ID. */
     enum ssl_session_result_t lookup_ret = ssl_lookup_session(
-        ssl, &session, ctx->session_id, ctx->session_id_len);
+        ssl, &session, client_hello->session_id, client_hello->session_id_len);
     if (lookup_ret != ssl_session_success) {
       return lookup_ret;
     }

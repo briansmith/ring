@@ -2951,10 +2951,11 @@ OPENSSL_EXPORT int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
                                              size_t max_send_fragment);
 
-/* ssl_early_callback_ctx is passed to certain callbacks that are called very
- * early on during the server handshake. At this point, much of the SSL* hasn't
- * been filled out and only the ClientHello can be depended on. */
-struct ssl_early_callback_ctx {
+/* ssl_early_callback_ctx (aka |SSL_CLIENT_HELLO|) is passed to certain
+ * callbacks that are called very early on during the server handshake. At this
+ * point, much of the SSL* hasn't been filled out and only the ClientHello can
+ * be depended on. */
+typedef struct ssl_early_callback_ctx {
   SSL *ssl;
   const uint8_t *client_hello;
   size_t client_hello_len;
@@ -2969,15 +2970,15 @@ struct ssl_early_callback_ctx {
   size_t compression_methods_len;
   const uint8_t *extensions;
   size_t extensions_len;
-};
+} SSL_CLIENT_HELLO;
 
-/* SSL_early_callback_ctx_extension_get searches the extensions in |ctx| for an
- * extension of the given type. If not found, it returns zero. Otherwise it
- * sets |out_data| to point to the extension contents (not including the type
- * and length bytes), sets |out_len| to the length of the extension contents
- * and returns one. */
+/* SSL_early_callback_ctx_extension_get searches the extensions in
+ * |client_hello| for an extension of the given type. If not found, it returns
+ * zero. Otherwise it sets |out_data| to point to the extension contents (not
+ * including the type and length bytes), sets |out_len| to the length of the
+ * extension contents and returns one. */
 OPENSSL_EXPORT int SSL_early_callback_ctx_extension_get(
-    const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
+    const SSL_CLIENT_HELLO *client_hello, uint16_t extension_type,
     const uint8_t **out_data, size_t *out_len);
 
 /* SSL_CTX_set_select_certificate_cb sets a callback that is called before most
@@ -2987,19 +2988,19 @@ OPENSSL_EXPORT int SSL_early_callback_ctx_extension_get(
  * pause the handshake to perform an asynchronous operation. If paused,
  * |SSL_get_error| will return |SSL_ERROR_PENDING_CERTIFICATE|.
  *
- * Note: The |ssl_early_callback_ctx| is only valid for the duration of the
- * callback and is not valid while the handshake is paused. Further, unlike with
- * most callbacks, when the handshake loop is resumed, it will not call the
- * callback a second time. The caller must finish reconfiguring the connection
- * before resuming the handshake. */
+ * Note: The |SSL_CLIENT_HELLO| is only valid for the duration of the callback
+ * and is not valid while the handshake is paused. Further, unlike with most
+ * callbacks, when the handshake loop is resumed, it will not call the callback
+ * a second time. The caller must finish reconfiguring the connection before
+ * resuming the handshake. */
 OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(
-    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
+    SSL_CTX *ctx, int (*cb)(const SSL_CLIENT_HELLO *));
 
 /* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
  * resumption decision for a ClientHello has been made. It can return one to
  * allow the handshake to continue or zero to cause the handshake to abort. */
 OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
-    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
+    SSL_CTX *ctx, int (*cb)(const SSL_CLIENT_HELLO *));
 
 /* SSL_ST_* are possible values for |SSL_state| and the bitmasks that make them
  * up. */
@@ -3925,12 +3926,12 @@ struct ssl_ctx_st {
    * with an error and cause SSL_get_error to return
    * SSL_ERROR_PENDING_CERTIFICATE. Note: when the handshake loop is resumed, it
    * will not call the callback a second time. */
-  int (*select_certificate_cb)(const struct ssl_early_callback_ctx *);
+  int (*select_certificate_cb)(const SSL_CLIENT_HELLO *);
 
   /* dos_protection_cb is called once the resumption decision for a ClientHello
    * has been made. It returns one to continue the handshake or zero to
    * abort. */
-  int (*dos_protection_cb) (const struct ssl_early_callback_ctx *);
+  int (*dos_protection_cb) (const SSL_CLIENT_HELLO *);
 
   /* Maximum amount of data to send in one fragment. actual record size can be
    * more than this due to padding and MAC overheads. */

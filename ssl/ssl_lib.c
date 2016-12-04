@@ -1693,9 +1693,10 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
 }
 
 STACK_OF(SSL_CIPHER) *
-    ssl_parse_client_cipher_list(const struct ssl_early_callback_ctx *ctx) {
+    ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello) {
   CBS cipher_suites;
-  CBS_init(&cipher_suites, ctx->cipher_suites, ctx->cipher_suites_len);
+  CBS_init(&cipher_suites, client_hello->cipher_suites,
+           client_hello->cipher_suites_len);
 
   STACK_OF(SSL_CIPHER) *sk = sk_SSL_CIPHER_new_null();
   if (sk == NULL) {
@@ -2843,13 +2844,13 @@ int SSL_is_server(const SSL *ssl) { return ssl->server; }
 
 int SSL_is_dtls(const SSL *ssl) { return ssl->method->is_dtls; }
 
-void SSL_CTX_set_select_certificate_cb(
-    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *)) {
+void SSL_CTX_set_select_certificate_cb(SSL_CTX *ctx,
+                                       int (*cb)(const SSL_CLIENT_HELLO *)) {
   ctx->select_certificate_cb = cb;
 }
 
-void SSL_CTX_set_dos_protection_cb(
-    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *)) {
+void SSL_CTX_set_dos_protection_cb(SSL_CTX *ctx,
+                                   int (*cb)(const SSL_CLIENT_HELLO *)) {
   ctx->dos_protection_cb = cb;
 }
 
