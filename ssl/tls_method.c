@@ -97,6 +97,12 @@ static uint16_t ssl3_version_to_wire(uint16_t version) {
   return 0;
 }
 
+static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
+
+static void ssl3_expect_flight(SSL *ssl) {}
+
+static void ssl3_received_flight(SSL *ssl) {}
+
 static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   if (ssl->s3->rrec.length != 0) {
     /* There may not be unprocessed record data at a cipher change. */

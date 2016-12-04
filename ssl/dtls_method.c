@@ -94,6 +94,14 @@ static uint16_t dtls1_version_to_wire(uint16_t version) {
   return 0;
 }
 
+static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
+  return cipher->algorithm_enc != SSL_eNULL;
+}
+
+static void dtls1_expect_flight(SSL *ssl) { dtls1_start_timer(ssl); }
+
+static void dtls1_received_flight(SSL *ssl) { dtls1_stop_timer(ssl); }
+
 static int dtls1_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   /* Cipher changes are illegal when there are buffered incoming messages. */
   if (dtls_has_incoming_messages(ssl)) {

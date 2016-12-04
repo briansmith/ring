@@ -1735,7 +1735,6 @@ int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
                           size_t *out_len, uint16_t signature_algorithm);
 
 int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b);
-int ssl3_supports_cipher(const SSL_CIPHER *cipher);
 int ssl3_dispatch_alert(SSL *ssl);
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek);
@@ -1755,9 +1754,6 @@ int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
 int ssl3_queue_message(SSL *ssl, uint8_t *msg, size_t len);
 int ssl3_write_message(SSL *ssl);
-
-void ssl3_expect_flight(SSL *ssl);
-void ssl3_received_flight(SSL *ssl);
 
 int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
@@ -1798,10 +1794,7 @@ int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
                          CBS *out_body);
 int dtls1_check_timeout_num(SSL *ssl);
 int dtls1_handshake_write(SSL *ssl);
-void dtls1_expect_flight(SSL *ssl);
-void dtls1_received_flight(SSL *ssl);
 
-int dtls1_supports_cipher(const SSL_CIPHER *cipher);
 void dtls1_start_timer(SSL *ssl);
 void dtls1_stop_timer(SSL *ssl);
 int dtls1_is_timer_expired(SSL *ssl);

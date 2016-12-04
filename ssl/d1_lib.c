@@ -113,10 +113,6 @@ void dtls1_free(SSL *ssl) {
   ssl->d1 = NULL;
 }
 
-int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
-  return cipher->algorithm_enc != SSL_eNULL;
-}
-
 void DTLSv1_set_initial_timeout_duration(SSL *ssl, unsigned int duration_ms) {
   ssl->initial_timeout_duration_ms = duration_ms;
 }
@@ -259,12 +255,4 @@ int DTLSv1_handle_timeout(SSL *ssl) {
 
   dtls1_start_timer(ssl);
   return dtls1_retransmit_outgoing_messages(ssl);
-}
-
-void dtls1_expect_flight(SSL *ssl) {
-  dtls1_start_timer(ssl);
-}
-
-void dtls1_received_flight(SSL *ssl) {
-  dtls1_stop_timer(ssl);
 }
