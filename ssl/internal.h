@@ -811,13 +811,6 @@ int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
  * zero. */
 int tls13_get_context_hash(SSL *ssl, uint8_t *out, size_t *out_len);
 
-enum tls_record_type_t {
-  type_early_handshake,
-  type_early_data,
-  type_handshake,
-  type_data,
-};
-
 /* tls13_set_traffic_key sets the read or write traffic keys to
  * |traffic_secret|. It returns one on success and zero on error. */
 int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
