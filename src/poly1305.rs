@@ -68,17 +68,13 @@ impl SigningContext {
         };
 
         ctx.with_aligned(|opaque, data| {
-            let set_fns = init(opaque, &key.bytes, &mut data.func) == 0;
-            // TODO XXX: It seems at least some implementations |poly1305_init|
-            // always return the same value, so this conditional logic isn't
-            // always necessary. And, for platforms that have such conditional
-            // logic also in the ASM code, it seems it would be better to move
-            // the conditional logic out of the asm and into the higher-level
-            // code.
-            if !set_fns {
-                data.func.blocks_fn = GFp_poly1305_blocks;
-                data.func.emit_fn = GFp_poly1305_emit;
-            }
+            // On some platforms `init()` doesn't initialize `funcs`. The
+            // return value of `init()` indicates whether it did or not. Since
+            // we already gave `func` a default value above, we can ignore the
+            // return value assuming `init()` doesn't change `func` if it chose
+            // not to initialize it. Note that this is different than what
+            // BoringSSL does.
+            let _ = init(opaque, &key.bytes, &mut data.func);
         });
 
         ctx
