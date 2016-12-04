@@ -1706,13 +1706,6 @@ void ssl_cipher_preference_list_free(
 const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
     const SSL *ssl);
 
-int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain);
-int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain);
-int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509);
-int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509);
-void ssl_cert_set_cert_cb(CERT *cert,
-                          int (*cb)(SSL *ssl, void *arg), void *arg);
-
 int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
                           STACK_OF(X509) * cert_chain);
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);

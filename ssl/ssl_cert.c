@@ -244,13 +244,13 @@ void ssl_cert_free(CERT *c) {
   OPENSSL_free(c);
 }
 
-int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
+static int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
   sk_X509_pop_free(cert->x509_chain, X509_free);
   cert->x509_chain = chain;
   return 1;
 }
 
-int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
+static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
   STACK_OF(X509) *dchain;
   if (chain == NULL) {
     return ssl_cert_set0_chain(cert, NULL);
@@ -269,7 +269,7 @@ int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
   return 1;
 }
 
-int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
+static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
   if (cert->x509_chain == NULL) {
     cert->x509_chain = sk_X509_new_null();
   }
@@ -280,7 +280,7 @@ int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
   return 1;
 }
 
-int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
+static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
   if (!ssl_cert_add0_chain_cert(cert, x509)) {
     return 0;
   }
@@ -289,7 +289,8 @@ int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
   return 1;
 }
 
-void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg), void *arg) {
+static void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg),
+                                 void *arg) {
   c->cert_cb = cb;
   c->cert_cb_arg = arg;
 }
@@ -773,6 +774,15 @@ int SSL_CTX_clear_extra_chain_certs(SSL_CTX *ctx) {
 
 int SSL_clear_chain_certs(SSL *ssl) {
   return SSL_set0_chain(ssl, NULL);
+}
+
+void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
+                         void *arg) {
+  ssl_cert_set_cert_cb(ctx->cert, cb, arg);
+}
+
+void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
+  ssl_cert_set_cert_cb(ssl->cert, cb, arg);
 }
 
 int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
