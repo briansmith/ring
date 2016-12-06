@@ -78,8 +78,7 @@ typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
  * |key| pointer, in order to make it |memcpy|-friendly. See openssl/modes.h
  * for more info. */
 struct gcm128_context {
-  /* Following 6 names follow names in GCM specification */
-  alignas(16) uint8_t EKi[16];
+  /* Following names follow names in GCM specification */
   alignas(16) uint8_t EK0[16];
   alignas(16) uint8_t Xi[16];
   alignas(16) struct {
@@ -124,7 +123,7 @@ OPENSSL_EXPORT void GFp_gcm128_init_serialized(
 
 OPENSSL_EXPORT void GFp_gcm128_init(
     GCM128_CONTEXT *ctx, const AES_KEY *key, aes_block_f block,
-    const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const uint8_t *iv);
+    const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const uint8_t iv[12]);
 
 /* GFp_gcm128_aad sets the authenticated data for an instance of GCM. This must
  * be called before and data is encrypted. It returns one on success and zero

@@ -528,10 +528,11 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     out += i;
   }
   if (len) {
-    (*ctx->block)(Yi, ctx->EKi, key);
+    alignas(16) uint8_t EKi[16];
+    (*ctx->block)(Yi, EKi, key);
     size_t n = 0;
     while (len--) {
-      ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
+      ctx->Xi[n] ^= out[n] = in[n] ^ EKi[n];
       ++n;
     }
     GCM_MUL(ctx, Xi);
@@ -586,12 +587,13 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     len -= i;
   }
   if (len) {
-    (*ctx->block)(Yi, ctx->EKi, key);
+    alignas(16) uint8_t EKi[16];
+    (*ctx->block)(Yi, EKi, key);
     size_t n = 0;
     while (len--) {
       uint8_t c = in[n];
       ctx->Xi[n] ^= c;
-      out[n] = c ^ ctx->EKi[n];
+      out[n] = c ^ EKi[n];
       ++n;
     }
     GCM_MUL(ctx, Xi);
