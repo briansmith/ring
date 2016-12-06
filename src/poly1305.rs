@@ -229,7 +229,7 @@ struct Funcs {
 
 #[inline]
 fn init(state: &mut Opaque, key: &KeyBytes, func: &mut Funcs) -> i32 {
-    debug_assert!(state.as_ptr() as usize % 8 == 0);
+    debug_assert_eq!(state.as_ptr() as usize % 8, 0);
     unsafe {
         GFp_poly1305_init_asm(state, key, func)
     }
@@ -244,7 +244,7 @@ enum Pad {
 impl Funcs {
     #[inline]
     fn blocks(&self, state: &mut Opaque, data: &[u8], should_pad: Pad) {
-        debug_assert!(state.as_ptr() as usize % 8 == 0);
+        debug_assert_eq!(state.as_ptr() as usize % 8, 0);
         unsafe {
             (self.blocks_fn)(state, data.as_ptr(), data.len(), should_pad);
         }
@@ -252,7 +252,7 @@ impl Funcs {
 
     #[inline]
     fn emit(&self, state: &mut Opaque, tag_out: &mut Tag, nonce: &Nonce) {
-        debug_assert!(state.as_ptr() as usize % 8 == 0);
+        debug_assert_eq!(state.as_ptr() as usize % 8, 0);
         unsafe {
              (self.emit_fn)(state, tag_out, nonce);
         }
