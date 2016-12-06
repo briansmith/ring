@@ -1937,13 +1937,21 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
 }
 
 
+void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx, int enabled) {
+  ctx->tlsext_channel_id_enabled = !!enabled;
+}
+
 int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx) {
-  ctx->tlsext_channel_id_enabled = 1;
+  SSL_CTX_set_tls_channel_id_enabled(ctx, 1);
   return 1;
 }
 
+void SSL_set_tls_channel_id_enabled(SSL *ssl, int enabled) {
+  ssl->tlsext_channel_id_enabled = !!enabled;
+}
+
 int SSL_enable_tls_channel_id(SSL *ssl) {
-  ssl->tlsext_channel_id_enabled = 1;
+  SSL_set_tls_channel_id_enabled(ssl, 1);
   return 1;
 }
 

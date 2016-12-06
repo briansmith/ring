@@ -981,7 +981,7 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
-  SSL_CTX_enable_tls_channel_id(ssl_ctx.get());
+  SSL_CTX_set_tls_channel_id_enabled(ssl_ctx.get(), 1);
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
   SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
@@ -1520,10 +1520,10 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   if (!config->expected_channel_id.empty() ||
       config->enable_channel_id) {
-    SSL_enable_tls_channel_id(ssl.get());
+    SSL_set_tls_channel_id_enabled(ssl.get(), 1);
   }
   if (!config->send_channel_id.empty()) {
-    SSL_enable_tls_channel_id(ssl.get());
+    SSL_set_tls_channel_id_enabled(ssl.get(), 1);
     if (!config->async) {
       // The async case will be supplied by |ChannelIdCallback|.
       bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(config->send_channel_id);

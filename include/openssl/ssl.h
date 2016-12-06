@@ -2511,15 +2511,14 @@ OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
  *
  * See draft-balfanz-tls-channelid-01. */
 
-/* SSL_CTX_enable_tls_channel_id either configures a TLS server to accept TLS
- * Channel IDs from clients, or configures a client to send TLS Channel IDs to
- * a server. It returns one. */
-OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
+/* SSL_CTX_set_tls_channel_id_enabled configures whether connections associated
+ * with |ctx| should enable Channel ID. */
+OPENSSL_EXPORT void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx,
+                                                       int enabled);
 
-/* SSL_enable_tls_channel_id either configures a TLS server to accept TLS
- * Channel IDs from clients, or configures a client to send TLS Channel IDs to
- * server. It returns one. */
-OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
+/* SSL_set_tls_channel_id_enabled configures whether |ssl| should enable Channel
+ * ID. */
+OPENSSL_EXPORT void SSL_set_tls_channel_id_enabled(SSL *ssl, int enabled);
 
 /* SSL_CTX_set1_tls_channel_id configures a TLS client to send a TLS Channel ID
  * to compatible servers. |private_key| must be a P-256 EC key. It returns one
@@ -3636,6 +3635,12 @@ OPENSSL_EXPORT int SSL_set_min_version(SSL *ssl, uint16_t version);
 
 /* SSL_set_max_version calls |SSL_set_max_proto_version|. */
 OPENSSL_EXPORT int SSL_set_max_version(SSL *ssl, uint16_t version);
+
+/* SSL_CTX_enable_tls_channel_id calls |SSL_CTX_set_tls_channel_id_enabled|. */
+OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
+
+/* SSL_enable_tls_channel_id calls |SSL_set_tls_channel_id_enabled|. */
+OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
 
 
 /* Private structures.
