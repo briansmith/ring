@@ -89,8 +89,6 @@ struct gcm128_context {
    * assembler modules, i.e. don't change the order! */
   u128 Htable[GCM128_HTABLE_LEN];
 
-  gcm128_gmult_f gmult;
-  gcm128_ghash_f ghash;
   aes_block_f block;
 };
 
