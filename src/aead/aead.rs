@@ -65,6 +65,7 @@ impl OpeningKey {
                 ctx_buf: [0; KEY_CTX_BUF_ELEMS],
             },
         };
+
         try!(key.key.init(key_bytes));
         Ok(key)
     }
@@ -105,8 +106,8 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     let (in_out, received_tag) =
         in_out.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
-                                  in_prefix_len, &mut calculated_tag, ad));
+    (key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
+                             in_prefix_len, &mut calculated_tag, ad);
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
             .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
@@ -191,7 +192,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
     try!(check_per_nonce_max_bytes(in_out_len));
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    try!((key.key.algorithm.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad));
+    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad);
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -223,7 +224,8 @@ impl Key {
         }
 
         let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut self.ctx_buf);
-        (self.algorithm.init)(ctx_buf_bytes, key_bytes)
+        (self.algorithm.init)(ctx_buf_bytes, key_bytes);
+        Ok(())
     }
 
     /// The key's AEAD algorithm.
@@ -238,16 +240,12 @@ impl Key {
 /// Go analog:
 ///     [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
-    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
-
+    init: fn(ctx_buf: &mut [u8], key: &[u8]),
     seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-              in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-              -> Result<(), error::Unspecified>,
+             in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8]),
     open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
              in_out: &mut [u8], in_prefix_len: usize,
-             tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-             -> Result<(), error::Unspecified>,
-
+             tag_out: &mut [u8; TAG_LEN], ad: &[u8]),
     key_len: usize,
 }
 

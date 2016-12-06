@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {aead, chacha, error, poly1305, polyfill};
+use {aead, chacha, poly1305, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -27,17 +27,14 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
 };
 
 /// Copies |key| into |ctx_buf|.
-pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8])
-                              -> Result<(), error::Unspecified> {
+pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8]) {
     ctx_buf[..key.len()].copy_from_slice(key);
-    Ok(())
 }
 
 fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                          -> Result<(), error::Unspecified> {
-    let chacha20_key = try!(ctx_as_key(ctx));
+                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8]) {
+    let chacha20_key = ctx_as_key(ctx);
     let mut counter = chacha::make_counter(nonce, 0);
     let mut auth_storage = poly1305::SigningContextStorage::new();
     let mut auth_ctx = poly1305_begin(&mut auth_storage, &chacha20_key,
@@ -46,15 +43,13 @@ fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
     auth_ctx.update_padded(in_out);
     poly1305_end((auth_ctx, ad.len(), in_out.len()), tag_out);
-    Ok(())
 }
 
 fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                           in_prefix_len: usize,
-                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                          -> Result<(), error::Unspecified> {
-    let chacha20_key = try!(ctx_as_key(ctx));
+                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8]) {
+    let chacha20_key = ctx_as_key(ctx);
     let mut counter = chacha::make_counter(nonce, 0);
     let mut auth_storage = poly1305::SigningContextStorage::new();
     let auth_state = { // Borrow `in_out`.
@@ -68,14 +63,12 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     chacha::chacha20_xor_overlapping(&chacha20_key, &counter, in_out,
                                      in_prefix_len);
     poly1305_end(auth_state, tag_out);
-    Ok(())
 }
 
-fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
-              -> Result<&chacha::Key, error::Unspecified> {
+fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS]) -> &chacha::Key {
     slice_as_array_ref!(
         &polyfill::slice::u64_as_u32(ctx)[..(chacha::KEY_LEN_IN_BYTES / 4)],
-        chacha::KEY_LEN_IN_BYTES / 4)
+        chacha::KEY_LEN_IN_BYTES / 4).unwrap()
 }
 
 fn poly1305_begin<'a>(storage: &'a mut poly1305::SigningContextStorage,

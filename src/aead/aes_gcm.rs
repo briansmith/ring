@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {aead, c, error, polyfill};
+use {aead, c, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -38,31 +38,27 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     open: aes_gcm_open,
 };
 
-fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8])
-                -> Result<(), error::Unspecified> {
+fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) {
     unsafe {
         GFp_aes_gcm_init(ctx_buf.as_mut_ptr(), ctx_buf.len(), key.as_ptr(),
                          key.len());
     }
-    Ok(())
 }
 
 fn aes_gcm_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                 nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                tag: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                -> Result<(), error::Unspecified> {
+                tag: &mut [u8; aead::TAG_LEN], ad: &[u8]) {
     let ctx = polyfill::slice::u64_as_u8(ctx);
     unsafe {
         GFp_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(), in_out.len(), tag,
                          nonce, ad.as_ptr(), ad.len());
     }
-    Ok(())
 }
 
 fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                 nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                 in_prefix_len: usize, tag_out: &mut [u8; aead::TAG_LEN],
-                ad: &[u8]) -> Result<(), error::Unspecified> {
+                ad: &[u8])  {
     let ctx = polyfill::slice::u64_as_u8(ctx);
     unsafe {
         GFp_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(),
@@ -70,7 +66,6 @@ fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                          in_out[in_prefix_len..].as_ptr(), ad.as_ptr(),
                          ad.len());
     }
-    Ok(())
 }
 
 
