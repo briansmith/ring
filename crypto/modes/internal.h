@@ -136,20 +136,6 @@ OPENSSL_EXPORT void GFp_gcm128_init(
 OPENSSL_EXPORT int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
                                   size_t len);
 
-/* GFp_gcm128_encrypt encrypts |len| bytes from |in| to |out|. The |key| must
- * be the same key that was passed to |GFp_gcm128_init|. It returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int GFp_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                      const uint8_t *in, uint8_t *out,
-                                      size_t len);
-
-/* GFp_gcm128_decrypt decrypts |len| bytes from |in| to |out|. The |key| must
- * be the same key that was passed to |GFp_gcm128_init|. It returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int GFp_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                      const uint8_t *in, uint8_t *out,
-                                      size_t len);
-
 /* GFp_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using a CTR
  * function that only handles the bottom 32 bits of the nonce, like
  * |GFp_ctr128_encrypt_ctr32|. The |key| must be the same key that was passed
