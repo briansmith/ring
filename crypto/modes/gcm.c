@@ -608,7 +608,7 @@ void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16], uint64_t alen,
 
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 
-  uint8_t a_c_len[16];
+  alignas(16) uint8_t a_c_len[16];
   to_be_u64_ptr(a_c_len, alen << 3);
   to_be_u64_ptr(a_c_len + 8, clen << 3);
   for (size_t i = 0; i < 16; ++i) {
