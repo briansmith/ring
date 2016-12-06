@@ -343,11 +343,11 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
                                const uint64_t H[2]);
 
 void GFp_gcm128_init_serialized(
-    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
-    aes_block_f block) {
+    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key) {
   static const alignas(16) uint8_t ZEROS[16] = { 0 };
   uint8_t H_be[16];
-  (*block)(ZEROS, H_be, key);
+  aes_block_f block = GFp_aes_block();
+  block(ZEROS, H_be, key);
 
   /* H is stored in host byte order */
   alignas(16) uint64_t H[2];
@@ -442,20 +442,19 @@ static void gcm128_get_gmult_ghash(gcm128_gmult_f *gmult_out,
 }
 
 void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                        aes_block_f block,
-                        const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN],
-                        const uint8_t iv[12]) {
+                     const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN],
+                     const uint8_t iv[12]) {
   memset(ctx, 0, sizeof(*ctx));
   alignas(16) uint8_t Y1[16];
   memcpy(Y1, iv, 12);
   to_be_u32_ptr(&Y1[12], 1);
-  (block)(Y1, ctx->EK0, key);
+  aes_block_f block = GFp_aes_block();
+  block(Y1, ctx->EK0, key);
 
   OPENSSL_COMPILE_ASSERT(sizeof(ctx->Htable) == GCM128_SERIALIZED_LEN,
                          GCM128_SERIALIZED_LEN_is_wrong);
 
   memcpy(ctx->Htable, serialized_ctx, GCM128_SERIALIZED_LEN);
-  ctx->block = block;
 }
 
 int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
@@ -484,7 +483,7 @@ int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
 
 int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                              const uint8_t *in, uint8_t *out, size_t len,
-                             aes_ctr_f stream, const uint8_t nonce[12]) {
+                             const uint8_t nonce[12]) {
   gcm128_gmult_f gcm_gmult_p;
   gcm128_ghash_f gcm_ghash_p;
   gcm128_get_gmult_ghash(&gcm_gmult_p, &gcm_ghash_p);
@@ -495,6 +494,8 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   memcpy(Yi, nonce, 12);
   uint32_t ctr = 2;
   to_be_u32_ptr(&Yi[12], ctr);
+
+  aes_ctr_f stream = GFp_aes_ctr();
 
 #if defined(AESNI_GCM)
   if (aesni_gcm_enabled(stream, gcm_ghash_p)) {
@@ -530,8 +531,9 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     out += i;
   }
   if (len) {
+    aes_block_f block = GFp_aes_block();
     alignas(16) uint8_t EKi[16];
-    (*ctx->block)(Yi, EKi, key);
+    block(Yi, EKi, key);
     size_t n = 0;
     while (len--) {
       ctx->Xi[n] ^= out[n] = in[n] ^ EKi[n];
@@ -545,7 +547,7 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
 int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                              const uint8_t *in, uint8_t *out, size_t len,
-                             aes_ctr_f stream, const uint8_t nonce[12]) {
+                             const uint8_t nonce[12]) {
   gcm128_gmult_f gcm_gmult_p;
   gcm128_ghash_f gcm_ghash_p;
   gcm128_get_gmult_ghash(&gcm_gmult_p, &gcm_ghash_p);
@@ -556,6 +558,8 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   memcpy(Yi, nonce, 12);
   uint32_t ctr = 2;
   to_be_u32_ptr(&Yi[12], ctr);
+
+  aes_ctr_f stream = GFp_aes_ctr();
 
 #if defined(AESNI_GCM)
   if (aesni_gcm_enabled(stream, gcm_ghash_p)) {
@@ -590,8 +594,9 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     len -= i;
   }
   if (len) {
+    aes_block_f block = GFp_aes_block();
     alignas(16) uint8_t EKi[16];
-    (*ctx->block)(Yi, EKi, key);
+    block(Yi, EKi, key);
     size_t n = 0;
     while (len--) {
       uint8_t c = in[n];

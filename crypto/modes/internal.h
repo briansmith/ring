@@ -61,7 +61,7 @@ extern "C" {
 /* aes_block_f is a pointer to |AES_Encrypt| or a variant thereof. */
 typedef void (*aes_block_f)(const uint8_t in[16], uint8_t out[16],
                             const AES_KEY *key);
-
+aes_block_f GFp_aes_block(void);
 
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;
@@ -88,8 +88,6 @@ struct gcm128_context {
   /* Relative position of Xi, H and pre-computed Htable is used in some
    * assembler modules, i.e. don't change the order! */
   u128 Htable[GCM128_HTABLE_LEN];
-
-  aes_block_f block;
 };
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -105,6 +103,7 @@ int GFp_gcm_clmul_enabled(void);
  * AES. */
 typedef void (*aes_ctr_f)(const uint8_t *in, uint8_t *out, size_t blocks,
                           const AES_KEY *key, const uint8_t ivec[16]);
+aes_ctr_f GFp_aes_ctr(void);
 
 /* GCM.
  *
@@ -116,11 +115,10 @@ typedef void (*aes_ctr_f)(const uint8_t *in, uint8_t *out, size_t blocks,
 typedef struct gcm128_context GCM128_CONTEXT;
 
 OPENSSL_EXPORT void GFp_gcm128_init_serialized(
-    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
-    aes_block_f block);
+    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key);
 
 OPENSSL_EXPORT void GFp_gcm128_init(
-    GCM128_CONTEXT *ctx, const AES_KEY *key, aes_block_f block,
+    GCM128_CONTEXT *ctx, const AES_KEY *key,
     const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const uint8_t iv[12]);
 
 /* GFp_gcm128_aad sets the authenticated data for an instance of GCM. This must
@@ -136,7 +134,7 @@ OPENSSL_EXPORT int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
 OPENSSL_EXPORT int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
                                             const AES_KEY *key,
                                             const uint8_t *in, uint8_t *out,
-                                            size_t len, aes_ctr_f stream,
+                                            size_t len,
                                             const uint8_t nonce[12]);
 
 /* GFp_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using a CTR
@@ -146,7 +144,7 @@ OPENSSL_EXPORT int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
 OPENSSL_EXPORT int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
                                             const AES_KEY *key,
                                             const uint8_t *in, uint8_t *out,
-                                            size_t len, aes_ctr_f stream,
+                                            size_t len,
                                             const uint8_t nonce[12]);
 
 /* GFp_gcm128_tag calculates the authenticator and copies it into |tag|.
