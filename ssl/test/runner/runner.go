@@ -9728,6 +9728,8 @@ func addCertificateTests() {
 			testType: clientTest,
 			name:     "SendReceiveIntermediate-Client-" + ver.name,
 			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaChainCertificate},
 				ClientAuth:   RequireAnyClientCert,
 			},
@@ -9743,6 +9745,8 @@ func addCertificateTests() {
 			testType: serverTest,
 			name:     "SendReceiveIntermediate-Server-" + ver.name,
 			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaChainCertificate},
 			},
 			expectPeerCertificate: &rsaChainCertificate,
