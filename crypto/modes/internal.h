@@ -79,7 +79,6 @@ typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
  * for more info. */
 struct gcm128_context {
   /* Following 6 names follow names in GCM specification */
-  alignas(16) uint8_t Yi[16];
   alignas(16) uint8_t EKi[16];
   alignas(16) uint8_t EK0[16];
   alignas(16) uint8_t Xi[16];
@@ -140,7 +139,8 @@ OPENSSL_EXPORT int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
 OPENSSL_EXPORT int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
                                             const AES_KEY *key,
                                             const uint8_t *in, uint8_t *out,
-                                            size_t len, aes_ctr_f stream);
+                                            size_t len, aes_ctr_f stream,
+                                            const uint8_t nonce[12]);
 
 /* GFp_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using a CTR
  * function that only handles the bottom 32 bits of the nonce, like
@@ -149,7 +149,8 @@ OPENSSL_EXPORT int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
 OPENSSL_EXPORT int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
                                             const AES_KEY *key,
                                             const uint8_t *in, uint8_t *out,
-                                            size_t len, aes_ctr_f stream);
+                                            size_t len, aes_ctr_f stream,
+                                            const uint8_t nonce[12]);
 
 /* GFp_gcm128_tag calculates the authenticator and copies it into |tag|.
  * |alen| and |clen| must less than 2**61. */

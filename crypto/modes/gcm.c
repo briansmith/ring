@@ -444,15 +444,12 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
 void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
                         aes_block_f block,
                         const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN],
-                        const uint8_t *iv) {
-  uint32_t ctr = 1;
-
+                        const uint8_t iv[12]) {
   memset(ctx, 0, sizeof(*ctx));
-  memcpy(ctx->Yi, iv, 12);
-  to_be_u32_ptr(ctx->Yi + 12, ctr);
-  (block)(ctx->Yi, ctx->EK0, key);
-  ++ctr;
-  to_be_u32_ptr(ctx->Yi + 12, ctr);
+  alignas(16) uint8_t Y1[16];
+  memcpy(Y1, iv, 12);
+  to_be_u32_ptr(&Y1[12], 1);
+  (block)(Y1, ctx->EK0, key);
 
   OPENSSL_COMPILE_ASSERT(sizeof(ctx->Htable) == GCM128_SERIALIZED_LEN,
                          GCM128_SERIALIZED_LEN_is_wrong);
@@ -485,31 +482,34 @@ int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
 }
 
 int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                const uint8_t *in, uint8_t *out, size_t len,
-                                aes_ctr_f stream) {
-  unsigned int ctr;
+                             const uint8_t *in, uint8_t *out, size_t len,
+                             aes_ctr_f stream, const uint8_t nonce[12]) {
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
   gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 
   // TODO: replace the length checking that was here.
 
+  alignas(16) uint8_t Yi[16];
+  memcpy(Yi, nonce, 12);
+  uint32_t ctr = 2;
+  to_be_u32_ptr(&Yi[12], ctr);
+
 #if defined(AESNI_GCM)
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_encrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = GFp_aesni_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi);
+    size_t bulk = GFp_aesni_gcm_encrypt(in, out, len, key, Yi, ctx->Xi);
+    ctr = from_be_u32_ptr(&Yi[12]);
     in += bulk;
     out += bulk;
     len -= bulk;
   }
 #endif
 
-  ctr = from_be_u32_ptr(ctx->Yi + 12);
-
   while (len >= GHASH_CHUNK) {
-    (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi);
+    (*stream)(in, out, GHASH_CHUNK / 16, key, Yi);
     ctr += GHASH_CHUNK / 16;
-    to_be_u32_ptr(ctx->Yi + 12, ctr);
+    to_be_u32_ptr(&Yi[12], ctr);
     GHASH(ctx, out, GHASH_CHUNK);
     out += GHASH_CHUNK;
     in += GHASH_CHUNK;
@@ -519,18 +519,16 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (i != 0) {
     size_t j = i / 16;
 
-    (*stream)(in, out, j, key, ctx->Yi);
+    (*stream)(in, out, j, key, Yi);
     ctr += (unsigned int)j;
-    to_be_u32_ptr(ctx->Yi + 12, ctr);
+    to_be_u32_ptr(&Yi[12], ctr);
     in += i;
     len -= i;
     GHASH(ctx, out, i);
     out += i;
   }
   if (len) {
-    (*ctx->block)(ctx->Yi, ctx->EKi, key);
-    ++ctr;
-    to_be_u32_ptr(ctx->Yi + 12, ctr);
+    (*ctx->block)(Yi, ctx->EKi, key);
     size_t n = 0;
     while (len--) {
       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
@@ -543,32 +541,35 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 }
 
 int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                const uint8_t *in, uint8_t *out, size_t len,
-                                aes_ctr_f stream) {
-  unsigned int ctr;
+                             const uint8_t *in, uint8_t *out, size_t len,
+                             aes_ctr_f stream, const uint8_t nonce[12]) {
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
   gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 
   // TODO: replace the length checking that was here.
 
+  alignas(16) uint8_t Yi[16];
+  memcpy(Yi, nonce, 12);
+  uint32_t ctr = 2;
+  to_be_u32_ptr(&Yi[12], ctr);
+
 #if defined(AESNI_GCM)
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_decrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = GFp_aesni_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi);
+    size_t bulk = GFp_aesni_gcm_decrypt(in, out, len, key, Yi, ctx->Xi);
+    ctr = from_be_u32_ptr(&Yi[12]);
     in += bulk;
     out += bulk;
     len -= bulk;
   }
 #endif
 
-  ctr = from_be_u32_ptr(ctx->Yi + 12);
-
   while (len >= GHASH_CHUNK) {
     GHASH(ctx, in, GHASH_CHUNK);
-    (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi);
+    (*stream)(in, out, GHASH_CHUNK / 16, key, Yi);
     ctr += GHASH_CHUNK / 16;
-    to_be_u32_ptr(ctx->Yi + 12, ctr);
+    to_be_u32_ptr(&Yi[12], ctr);
     out += GHASH_CHUNK;
     in += GHASH_CHUNK;
     len -= GHASH_CHUNK;
@@ -577,17 +578,15 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (i != 0) {
     size_t j = i / 16;
     GHASH(ctx, in, i);
-    (*stream)(in, out, j, key, ctx->Yi);
+    (*stream)(in, out, j, key, Yi);
     ctr += (unsigned int)j;
-    to_be_u32_ptr(ctx->Yi + 12, ctr);
+    to_be_u32_ptr(&Yi[12], ctr);
     out += i;
     in += i;
     len -= i;
   }
   if (len) {
-    (*ctx->block)(ctx->Yi, ctx->EKi, key);
-    ++ctr;
-    to_be_u32_ptr(ctx->Yi + 12, ctr);
+    (*ctx->block)(Yi, ctx->EKi, key);
     size_t n = 0;
     while (len--) {
       uint8_t c = in[n];

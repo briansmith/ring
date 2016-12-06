@@ -306,7 +306,7 @@ int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
     if (!GFp_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len,
-                                  ctr)) {
+                                  ctr, nonce)) {
       return 0;
     }
   }
@@ -331,7 +331,7 @@ int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
-    if (!GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr)) {
+    if (!GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr, nonce)) {
       return 0;
     }
   }
