@@ -310,7 +310,7 @@ int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
       return 0;
     }
   }
-  GFp_gcm128_tag(&gcm, tag_out);
+  GFp_gcm128_tag(&gcm, tag_out, ad_len, in_out_len);
   return 1;
 }
 
@@ -335,7 +335,7 @@ int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
       return 0;
     }
   }
-  GFp_gcm128_tag(&gcm, tag_out);
+  GFp_gcm128_tag(&gcm, tag_out, ad_len, in_out_len);
   return 1;
 }
 

@@ -82,9 +82,6 @@ struct gcm128_context {
   alignas(16) uint8_t Yi[16];
   alignas(16) uint8_t EKi[16];
   alignas(16) uint8_t EK0[16];
-  alignas(16) struct {
-    uint64_t u[2];
-  } len;
   alignas(16) uint8_t Xi[16];
   alignas(16) struct {
     uint64_t u[2];
@@ -154,8 +151,10 @@ OPENSSL_EXPORT int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
                                             const uint8_t *in, uint8_t *out,
                                             size_t len, aes_ctr_f stream);
 
-/* GFp_gcm128_tag calculates the authenticator and copies it into |tag|. */
-OPENSSL_EXPORT void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]);
+/* GFp_gcm128_tag calculates the authenticator and copies it into |tag|.
+ * |alen| and |clen| must less than 2**61. */
+OPENSSL_EXPORT void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16],
+                                   uint64_t alen, uint64_t clen);
 
 
 #if !defined(OPENSSL_NO_ASM) && \

@@ -463,15 +463,9 @@ void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 }
 
 int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
-  assert(ctx->len.u[0] == 0);
-  assert(ctx->len.u[1] == 0);
-
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 
-  ctx->len.u[0] = len;
-  if (ctx->len.u[0] > (UINT64_C(1) << 61)) {
-    return 0;
-  }
+  // TODO: replace the length checking that was here.
 
   if (len > 0) {
     for (;;) {
@@ -493,16 +487,11 @@ int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
 int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 aes_ctr_f stream) {
-  assert(ctx->len.u[1] == 0);
-
   unsigned int ctr;
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
   gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 
-  ctx->len.u[1] = len;
-  if (ctx->len.u[1] > ((UINT64_C(1) << 36) - 32)) {
-    return 0;
-  }
+  // TODO: replace the length checking that was here.
 
 #if defined(AESNI_GCM)
   if (aesni_gcm_enabled(ctx, stream)) {
@@ -556,16 +545,11 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 aes_ctr_f stream) {
-  assert(ctx->len.u[1] == 0);
-
   unsigned int ctr;
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
   gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 
-  ctx->len.u[1] = len;
-  if (ctx->len.u[1] > ((UINT64_C(1) << 36) - 32)) {
-    return 0;
-  }
+  // TODO: replace the length checking that was here.
 
 #if defined(AESNI_GCM)
   if (aesni_gcm_enabled(ctx, stream)) {
@@ -617,15 +601,16 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
-  uint64_t alen = ctx->len.u[0] << 3;
-  uint64_t clen = ctx->len.u[1] << 3;
+void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16], uint64_t alen,
+                    uint64_t clen) {
+  assert(alen < (UINT64_C(1) << 61));
+  assert(clen < (UINT64_C(1) << 61));
 
   gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 
   uint8_t a_c_len[16];
-  to_be_u64_ptr(a_c_len, alen);
-  to_be_u64_ptr(a_c_len + 8, clen);
+  to_be_u64_ptr(a_c_len, alen << 3);
+  to_be_u64_ptr(a_c_len + 8, clen << 3);
   for (size_t i = 0; i < 16; ++i) {
     ctx->Xi[i] ^= a_c_len[i];
   }
