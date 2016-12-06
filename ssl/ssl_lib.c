@@ -2782,11 +2782,6 @@ void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
   ssl->renegotiate_mode = mode;
 }
 
-void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject) {
-  SSL_set_renegotiate_mode(
-      ssl, reject ? ssl_renegotiate_never : ssl_renegotiate_freely);
-}
-
 int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
                 const uint8_t **out_write_iv, size_t *out_iv_len) {
   if (ssl->s3->aead_read_ctx == NULL || ssl->s3->aead_write_ctx == NULL) {

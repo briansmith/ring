@@ -3150,11 +3150,6 @@ OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
 /* SSL_library_init calls |CRYPTO_library_init| and returns one. */
 OPENSSL_EXPORT int SSL_library_init(void);
 
-/* SSL_set_reject_peer_renegotiations calls |SSL_set_renegotiate_mode| with
- * |ssl_never_renegotiate| if |reject| is one and |ssl_renegotiate_freely| if
- * zero. */
-OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
-
 /* SSL_CIPHER_description writes a description of |cipher| into |buf| and
  * returns |buf|. If |buf| is NULL, it returns a newly allocated string, to be
  * freed with |OPENSSL_free|, or NULL on error.
