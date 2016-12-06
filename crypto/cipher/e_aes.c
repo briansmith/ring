@@ -125,6 +125,10 @@ void GFp_bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                     const AES_KEY *key, const uint8_t ivec[16]);
 #endif
 
+static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                     size_t len, const AES_KEY *key,
+                                     const uint8_t ivec[16]);
+
 #if defined(VPAES)
 /* On platforms where VPAES gets defined (just above), then these functions are
  * provided by asm. */
@@ -223,7 +227,7 @@ static aes_ctr_f aes_ctr(void) {
   }
 #endif
 
-  return NULL;
+  return aes_ctr32_encrypt_blocks;
 }
 
 #if defined(AESNI)
@@ -231,6 +235,28 @@ static char aesni_capable(void) {
   return (GFp_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
 #endif
+
+static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                     size_t blocks, const AES_KEY *key,
+                                     const uint8_t ivec[16]) {
+  alignas(16) uint8_t counter_plaintext[16];
+  memcpy(counter_plaintext, ivec, 16);
+  uint32_t counter = from_be_u32_ptr(&counter_plaintext[12]);
+
+  aes_block_f block = aes_block();
+
+  for (size_t current_block = 0; current_block < blocks; ++current_block) {
+    alignas(16) uint8_t counter_ciphertext[16];
+    block(counter_plaintext, counter_ciphertext, key);
+    for (size_t i = 0; i < 16; ++i) {
+      out[i] = in[i] ^ counter_ciphertext[i];
+    }
+    ++counter; // TODO: what about wrap around?
+    to_be_u32_ptr(&counter_plaintext[12], counter);
+    out += 16;
+    in += 16;
+  }
+}
 
 int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
                      size_t key_len) {
@@ -279,15 +305,9 @@ int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
-    if (ctr != NULL) {
-      if (!GFp_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len,
-                                    ctr)) {
-        return 0;
-      }
-    } else {
-      if (!GFp_gcm128_encrypt(&gcm, &ks, in_out, in_out, in_out_len)) {
-        return 0;
-      }
+    if (!GFp_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len,
+                                  ctr)) {
+      return 0;
     }
   }
   GFp_gcm128_tag(&gcm, tag_out);
@@ -311,14 +331,8 @@ int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
   }
   if (in_out_len > 0) {
     aes_ctr_f ctr = aes_ctr();
-    if (ctr != NULL) {
-      if (!GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr)) {
-        return 0;
-      }
-    } else {
-      if (!GFp_gcm128_decrypt(&gcm, &ks, in, out, in_out_len)) {
-        return 0;
-      }
+    if (!GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr)) {
+      return 0;
     }
   }
   GFp_gcm128_tag(&gcm, tag_out);
