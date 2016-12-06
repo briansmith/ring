@@ -2873,11 +2873,6 @@ void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled) {
 }
 
 int SSL_clear(SSL *ssl) {
-  if (ssl->method == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);
-    return 0;
-  }
-
   /* TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
    * |SSL_clear| because it is per-connection state rather than configuration
    * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
