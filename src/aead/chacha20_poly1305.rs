@@ -24,6 +24,7 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
+    p_max: P_MAX,
 };
 
 /// Copies |key| into |ctx_buf|.
@@ -90,10 +91,28 @@ fn poly1305_end((ctx, ad_len, ciphertext_len):
     ctx.update_padded_final(polyfill::slice::u64_as_u8(&lengths), tag_out);
 }
 
+// The counter is 32 bits. The first counter is used internally.
+const P_MAX: polyfill::SixtyFourBitOnly<usize> =
+    sixty_four_bit_only!(((1usize << 32) - 1) * chacha::BLOCK_LEN);
 
 #[cfg(test)]
 mod tests {
     use aead;
+
+    #[test]
+    pub fn test_per_nonce_max_bytes() {
+        #[cfg(target_pointer_width = "64")]
+        assert_eq!(aead::CHACHA20_POLY1305.per_invocation_max_bytes(),
+                   274_877_906_880);
+
+        #[cfg(not(target_pointer_width = "64"))]
+        {
+            use polyfill;
+            assert!(polyfill::u64_from_usize(
+                        aead::CHACHA20_POLY1305.per_invocation_max_bytes()) <
+                    274_877_906_880);
+        }
+    }
 
     #[test]
     pub fn test_chacha20_poly1305() {

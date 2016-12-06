@@ -31,6 +31,7 @@ mod chacha20_poly1305;
 mod aes_gcm;
 
 use {constant_time, error, init, poly1305, polyfill};
+use core;
 
 pub use self::chacha20_poly1305::CHACHA20_POLY1305;
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -95,6 +96,7 @@ impl OpeningKey {
 pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
                      in_out: &mut [u8], ad: &[u8])
                      -> Result<usize, error::Unspecified> {
+    let alg = key.key.algorithm;
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let ciphertext_and_tag_len =
         try!(in_out.len().checked_sub(in_prefix_len)
@@ -102,12 +104,12 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     let ciphertext_len =
         try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
                                    .ok_or(error::Unspecified));
-    try!(check_per_nonce_max_bytes(ciphertext_len));
+    try!(check_per_invocation_max_bytes(alg, ciphertext_len));
     let (in_out, received_tag) =
         in_out.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    (key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
-                             in_prefix_len, &mut calculated_tag, ad);
+    (alg.open)(&key.key.ctx_buf, nonce, in_out, in_prefix_len,
+               &mut calculated_tag, ad);
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
             .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
@@ -182,17 +184,18 @@ impl SealingKey {
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
                      -> Result<usize, error::Unspecified> {
-    if out_suffix_capacity < key.key.algorithm.max_overhead_len() {
+    let alg = key.key.algorithm;
+    if out_suffix_capacity < alg.max_overhead_len() {
         return Err(error::Unspecified);
     }
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let in_out_len =
         try!(in_out.len().checked_sub(out_suffix_capacity)
                          .ok_or(error::Unspecified));
-    try!(check_per_nonce_max_bytes(in_out_len));
+    try!(check_per_invocation_max_bytes(alg, in_out_len));
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad);
+    (alg.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad);
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -247,6 +250,9 @@ pub struct Algorithm {
              in_out: &mut [u8], in_prefix_len: usize,
              tag_out: &mut [u8; TAG_LEN], ad: &[u8]),
     key_len: usize,
+
+    // These names are from https://tools.ietf.org/html/rfc5116#section-4.
+    p_max: polyfill::SixtyFourBitOnly<usize>,
 }
 
 impl Algorithm {
@@ -274,6 +280,18 @@ impl Algorithm {
     ///   [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
+
+    /// The maximum plaintext or ciphertext length, , not including tag, allowed
+    /// in a single sealing or opening operation.
+    ///
+    /// This is *P_MAX* as described in
+    /// [RFC 5116 Section 4](https://tools.ietf.org/html/rfc5116#section-4),
+    /// clamped to `core::isize::MAX` - `max_overhead_len()`.
+    #[inline(always)]
+    pub fn per_invocation_max_bytes(&self) -> usize {
+        self.p_max.value_or_default(core::isize::MAX as usize -
+                                        self.max_overhead_len())
+    }
 }
 
 
@@ -286,12 +304,9 @@ const TAG_LEN: usize = poly1305::TAG_LEN;
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;
 
-
-/// |GFp_chacha_20| uses a 32-bit block counter, so we disallow individual
-/// operations that work on more than 256GB at a time, for all AEADs.
-fn check_per_nonce_max_bytes(in_out_len: usize)
-                             -> Result<(), error::Unspecified> {
-    if polyfill::u64_from_usize(in_out_len) >= (1u64 << 32) * 64 - 64 {
+fn check_per_invocation_max_bytes(alg: &Algorithm, in_out_len: usize)
+                                  -> Result<(), error::Unspecified> {
+    if in_out_len > alg.per_invocation_max_bytes() {
         return Err(error::Unspecified);
     }
     Ok(())

@@ -82,6 +82,9 @@ extern {
 
 pub const KEY_LEN_IN_BYTES: usize = 256 / 8;
 
+#[cfg_attr(not(target_pointer_width = "64"), allow(dead_code))]
+pub const BLOCK_LEN: usize = 64; /* 512 bits */
+
 pub const NONCE_LEN: usize = 12; /* 96 bits */
 
 #[cfg(test)]
