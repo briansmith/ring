@@ -1020,6 +1020,9 @@ struct ssl_handshake_st {
   /* ticket_expected is one if a TLS 1.2 NewSessionTicket message is to be sent
    * or received. */
   unsigned ticket_expected:1;
+
+  /* client_version is the value sent or received in the ClientHello version. */
+  uint16_t client_version;
 } /* SSL_HANDSHAKE */;
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);

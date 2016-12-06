@@ -544,8 +544,9 @@ int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
   return 0;
 }
 
-static int negotiate_version(SSL *ssl, uint8_t *out_alert,
+static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                              const SSL_CLIENT_HELLO *client_hello) {
+  SSL *const ssl = hs->ssl;
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
     *out_alert = SSL_AD_PROTOCOL_VERSION;
@@ -635,7 +636,7 @@ static int negotiate_version(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  ssl->client_version = client_hello->version;
+  hs->client_version = client_hello->version;
   ssl->version = ssl->method->version_to_wire(version);
   ssl->s3->enc_method = ssl3_get_enc_method(version);
   assert(ssl->s3->enc_method != NULL);
@@ -866,7 +867,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
 
   /* Negotiate the protocol version if we have not done so yet. */
   if (!ssl->s3->have_version) {
-    if (!negotiate_version(ssl, &al, &client_hello)) {
+    if (!negotiate_version(hs, &al, &client_hello)) {
       goto f_err;
     }
 
@@ -1708,9 +1709,9 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
     /* The premaster secret must begin with |client_version|. This too must be
      * checked in constant time (http://eprint.iacr.org/2003/052/). */
     good &= constant_time_eq_8(decrypt_buf[padding_len],
-                               (unsigned)(ssl->client_version >> 8));
+                               (unsigned)(hs->client_version >> 8));
     good &= constant_time_eq_8(decrypt_buf[padding_len + 1],
-                               (unsigned)(ssl->client_version & 0xff));
+                               (unsigned)(hs->client_version & 0xff));
 
     /* Select, in constant time, either the decrypted premaster or the random
      * premaster based on |good|. */

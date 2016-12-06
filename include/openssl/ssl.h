@@ -4169,8 +4169,6 @@ struct ssl_st {
   uint32_t options; /* protocol behaviour */
   uint32_t mode;    /* API behaviour */
   uint32_t max_cert_list;
-  int client_version; /* what was passed, used for
-                       * SSLv3/TLS rollback check */
   char *tlsext_hostname;
   size_t supported_group_list_len;
   uint16_t *supported_group_list; /* our list */

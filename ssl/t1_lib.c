@@ -2733,8 +2733,8 @@ int SSL_extension_supported(unsigned extension_value) {
 
 int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
   SSL *const ssl = hs->ssl;
-  /* don't add extensions for SSLv3 unless doing secure renegotiation */
-  if (ssl->client_version == SSL3_VERSION &&
+  /* Don't add extensions for SSLv3 unless doing secure renegotiation. */
+  if (hs->client_version == SSL3_VERSION &&
       !ssl->s3->send_connection_binding) {
     return 1;
   }

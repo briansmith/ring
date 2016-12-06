@@ -642,7 +642,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
 
   /* For SSLv3, the SCSV is added. Otherwise the renegotiation extension is
    * added. */
-  if (ssl->client_version == SSL3_VERSION &&
+  if (max_version == SSL3_VERSION &&
       !ssl->s3->initial_handshake_complete) {
     if (!CBB_add_u16(&child, SSL3_CK_SCSV & 0xffff)) {
       return 0;
@@ -675,7 +675,7 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
                     !ssl->s3->initial_handshake_complete;
 
   CBB child;
-  if (!CBB_add_u16(&body, ssl->client_version) ||
+  if (!CBB_add_u16(&body, hs->client_version) ||
       !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_u8_length_prefixed(&body, &child) ||
       (has_session &&
@@ -739,18 +739,18 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
+  uint16_t max_wire_version = ssl->method->version_to_wire(max_version);
   assert(ssl->state == SSL3_ST_CW_CLNT_HELLO_A);
   if (!ssl->s3->have_version) {
-    ssl->version = ssl->method->version_to_wire(max_version);
-    /* Only set |ssl->client_version| on the initial handshake. Renegotiations,
-     * although locked to a version, reuse the value. When using the plain RSA
-     * key exchange, the ClientHello version is checked in the premaster secret.
-     * Some servers fail when this value changes. */
-    ssl->client_version = ssl->version;
+    ssl->version = max_wire_version;
+  }
 
-    if (max_version >= TLS1_3_VERSION) {
-      ssl->client_version = ssl->method->version_to_wire(TLS1_2_VERSION);
-    }
+  /* Always advertise the ClientHello version from the original maximum version,
+   * even on renegotiation. The static RSA key exchange uses this field, and
+   * some servers fail when it changes across handshakes. */
+  hs->client_version = max_wire_version;
+  if (max_version >= TLS1_3_VERSION) {
+    hs->client_version = ssl->method->version_to_wire(TLS1_2_VERSION);
   }
 
   /* If the configured session has expired or was created at a disabled
@@ -1603,8 +1603,8 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     EVP_PKEY_free(pkey);
 
-    pms[0] = ssl->client_version >> 8;
-    pms[1] = ssl->client_version & 0xff;
+    pms[0] = hs->client_version >> 8;
+    pms[1] = hs->client_version & 0xff;
     if (!RAND_bytes(&pms[2], SSL_MAX_MASTER_KEY_LENGTH - 2)) {
       goto err;
     }
