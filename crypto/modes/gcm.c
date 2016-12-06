@@ -457,33 +457,33 @@ void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   memcpy(ctx->Htable, serialized_ctx, GCM128_SERIALIZED_LEN);
 }
 
-int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
+void GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
+  if (len == 0) {
+    return;
+  }
+
   gcm128_gmult_f gcm_gmult_p;
   gcm128_ghash_f _gcm_ghash_p;
   gcm128_get_gmult_ghash(&gcm_gmult_p, &_gcm_ghash_p);
 
   // TODO: replace the length checking that was here.
 
-  if (len > 0) {
-    for (;;) {
-      for (size_t i = 0; i < 16 && i < len; ++i) {
-        ctx->Xi[i] ^= aad[i];
-      }
-      GCM_MUL(ctx, Xi);
-      if (len <= 16) {
-        break;
-      }
-      aad += 16;
-      len -= 16;
+  for (;;) {
+    for (size_t i = 0; i < 16 && i < len; ++i) {
+      ctx->Xi[i] ^= aad[i];
     }
+    GCM_MUL(ctx, Xi);
+    if (len <= 16) {
+      break;
+    }
+    aad += 16;
+    len -= 16;
   }
-
-  return 1;
 }
 
-int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                             const uint8_t *in, uint8_t *out, size_t len,
-                             const uint8_t nonce[12]) {
+void GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                              const uint8_t *in, uint8_t *out, size_t len,
+                              const uint8_t nonce[12]) {
   gcm128_gmult_f gcm_gmult_p;
   gcm128_ghash_f gcm_ghash_p;
   gcm128_get_gmult_ghash(&gcm_gmult_p, &gcm_ghash_p);
@@ -541,13 +541,11 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     }
     GCM_MUL(ctx, Xi);
   }
-
-  return 1;
 }
 
-int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                             const uint8_t *in, uint8_t *out, size_t len,
-                             const uint8_t nonce[12]) {
+void GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                              const uint8_t *in, uint8_t *out, size_t len,
+                              const uint8_t nonce[12]) {
   gcm128_gmult_f gcm_gmult_p;
   gcm128_ghash_f gcm_ghash_p;
   gcm128_get_gmult_ghash(&gcm_gmult_p, &gcm_ghash_p);
@@ -606,8 +604,6 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     }
     GCM_MUL(ctx, Xi);
   }
-
-  return 1;
 }
 
 void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16], uint64_t alen,

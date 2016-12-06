@@ -122,30 +122,29 @@ OPENSSL_EXPORT void GFp_gcm128_init(
     const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const uint8_t iv[12]);
 
 /* GFp_gcm128_aad sets the authenticated data for an instance of GCM. This must
- * be called before and data is encrypted. It returns one on success and zero
- * otherwise. */
-OPENSSL_EXPORT int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
-                                  size_t len);
+ * be called before any data is encrypted. */
+OPENSSL_EXPORT void GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
+                                   size_t len);
 
 /* GFp_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using a CTR
  * function that only handles the bottom 32 bits of the nonce, like
  * |GFp_ctr128_encrypt_ctr32|. The |key| must be the same key that was passed
- * to |GFp_gcm128_init|. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
-                                            const AES_KEY *key,
-                                            const uint8_t *in, uint8_t *out,
-                                            size_t len,
-                                            const uint8_t nonce[12]);
+ * to |GFp_gcm128_init|. */
+OPENSSL_EXPORT void GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
+                                             const AES_KEY *key,
+                                             const uint8_t *in, uint8_t *out,
+                                             size_t len,
+                                             const uint8_t nonce[12]);
 
 /* GFp_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using a CTR
  * function that only handles the bottom 32 bits of the nonce, like
  * |GFp_ctr128_encrypt_ctr32|. The |key| must be the same key that was passed
- * to |GFp_gcm128_init|. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
-                                            const AES_KEY *key,
-                                            const uint8_t *in, uint8_t *out,
-                                            size_t len,
-                                            const uint8_t nonce[12]);
+ * to |GFp_gcm128_init|. */
+OPENSSL_EXPORT void GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
+                                             const AES_KEY *key,
+                                             const uint8_t *in, uint8_t *out,
+                                             size_t len,
+                                             const uint8_t nonce[12]);
 
 /* GFp_gcm128_tag calculates the authenticator and copies it into |tag|.
  * |alen| and |clen| must less than 2**61. */

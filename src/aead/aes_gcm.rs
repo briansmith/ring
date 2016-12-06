@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {aead, bssl, c, error, polyfill};
+use {aead, c, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -40,10 +40,11 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
 
 fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8])
                 -> Result<(), error::Unspecified> {
-    bssl::map_result(unsafe {
+    unsafe {
         GFp_aes_gcm_init(ctx_buf.as_mut_ptr(), ctx_buf.len(), key.as_ptr(),
-                         key.len())
-    })
+                         key.len());
+    }
+    Ok(())
 }
 
 fn aes_gcm_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
@@ -51,10 +52,11 @@ fn aes_gcm_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                 tag: &mut [u8; aead::TAG_LEN], ad: &[u8])
                 -> Result<(), error::Unspecified> {
     let ctx = polyfill::slice::u64_as_u8(ctx);
-    bssl::map_result(unsafe {
+    unsafe {
         GFp_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(), in_out.len(), tag,
-                         nonce, ad.as_ptr(), ad.len())
-    })
+                         nonce, ad.as_ptr(), ad.len());
+    }
+    Ok(())
 }
 
 fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
@@ -62,12 +64,13 @@ fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                 in_prefix_len: usize, tag_out: &mut [u8; aead::TAG_LEN],
                 ad: &[u8]) -> Result<(), error::Unspecified> {
     let ctx = polyfill::slice::u64_as_u8(ctx);
-    bssl::map_result(unsafe {
+    unsafe {
         GFp_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(),
                          in_out.len() - in_prefix_len, tag_out, nonce,
                          in_out[in_prefix_len..].as_ptr(), ad.as_ptr(),
-                         ad.len())
-    })
+                         ad.len());
+    }
+    Ok(())
 }
 
 
@@ -91,19 +94,19 @@ const GCM128_SERIALIZED_LEN: usize = 16 * 16;
 
 extern {
     fn GFp_aes_gcm_init(ctx_buf: *mut u8, ctx_buf_len: c::size_t,
-                        key: *const u8, key_len: c::size_t) -> c::int;
+                        key: *const u8, key_len: c::size_t);
 
     fn GFp_aes_gcm_seal(ctx_buf: *const u8, in_out: *mut u8,
                         in_out_len: c::size_t,
                         tag_out: &mut [u8; aead::TAG_LEN],
                         nonce: &[u8; aead::NONCE_LEN], ad: *const u8,
-                        ad_len: c::size_t) -> c::int;
+                        ad_len: c::size_t);
 
     fn GFp_aes_gcm_open(ctx_buf: *const u8, out: *mut u8,
                         in_out_len: c::size_t,
                         tag_out: &mut [u8; aead::TAG_LEN],
                         nonce: &[u8; aead::NONCE_LEN], in_: *const u8,
-                        ad: *const u8, ad_len: c::size_t) -> c::int;
+                        ad: *const u8, ad_len: c::size_t);
 }
 
 
