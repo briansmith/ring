@@ -4283,7 +4283,6 @@ struct ssl_st {
 #define SSL_CTRL_NEED_TMP_RSA doesnt_exist
 #define SSL_CTRL_OPTIONS doesnt_exist
 #define SSL_CTRL_SESS_NUMBER doesnt_exist
-#define SSL_CTRL_SET_CHANNEL_ID doesnt_exist
 #define SSL_CTRL_SET_CURVES doesnt_exist
 #define SSL_CTRL_SET_CURVES_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
@@ -4315,7 +4314,6 @@ struct ssl_st {
 #define SSL_CTX_clear_chain_certs SSL_CTX_clear_chain_certs
 #define SSL_CTX_clear_mode SSL_CTX_clear_mode
 #define SSL_CTX_clear_options SSL_CTX_clear_options
-#define SSL_CTX_enable_tls_channel_id SSL_CTX_enable_tls_channel_id
 #define SSL_CTX_get0_chain_certs SSL_CTX_get0_chain_certs
 #define SSL_CTX_get_extra_chain_certs SSL_CTX_get_extra_chain_certs
 #define SSL_CTX_get_max_cert_list SSL_CTX_get_max_cert_list
@@ -4331,7 +4329,6 @@ struct ssl_st {
 #define SSL_CTX_set0_chain SSL_CTX_set0_chain
 #define SSL_CTX_set1_chain SSL_CTX_set1_chain
 #define SSL_CTX_set1_curves SSL_CTX_set1_curves
-#define SSL_CTX_set1_tls_channel_id SSL_CTX_set1_tls_channel_id
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
 #define SSL_CTX_set_mode SSL_CTX_set_mode
@@ -4352,7 +4349,6 @@ struct ssl_st {
 #define SSL_clear_chain_certs SSL_clear_chain_certs
 #define SSL_clear_mode SSL_clear_mode
 #define SSL_clear_options SSL_clear_options
-#define SSL_enable_tls_channel_id SSL_enable_tls_channel_id
 #define SSL_get0_certificate_types SSL_get0_certificate_types
 #define SSL_get0_chain_certs SSL_get0_chain_certs
 #define SSL_get_max_cert_list SSL_get_max_cert_list
@@ -4360,14 +4356,12 @@ struct ssl_st {
 #define SSL_get_options SSL_get_options
 #define SSL_get_secure_renegotiation_support \
     SSL_get_secure_renegotiation_support
-#define SSL_get_tls_channel_id SSL_get_tls_channel_id
 #define SSL_need_tmp_RSA SSL_need_tmp_RSA
 #define SSL_num_renegotiations SSL_num_renegotiations
 #define SSL_session_reused SSL_session_reused
 #define SSL_set0_chain SSL_set0_chain
 #define SSL_set1_chain SSL_set1_chain
 #define SSL_set1_curves SSL_set1_curves
-#define SSL_set1_tls_channel_id SSL_set1_tls_channel_id
 #define SSL_set_max_cert_list SSL_set_max_cert_list
 #define SSL_set_max_send_fragment SSL_set_max_send_fragment
 #define SSL_set_mode SSL_set_mode
