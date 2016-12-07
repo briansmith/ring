@@ -25,7 +25,6 @@
 #include <openssl/pool.h>
 #include <openssl/x509.h>
 
-namespace bssl {
 
 static const char kCrossSigningRootPEM[] =
     "-----BEGIN CERTIFICATE-----\n"
@@ -724,7 +723,7 @@ static bool TestSignCtx() {
   }
 
   // Test PKCS#1 v1.5.
-  ScopedEVP_MD_CTX md_ctx;
+  bssl::ScopedEVP_MD_CTX md_ctx;
   if (!EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
       !SignatureRoundTrips(md_ctx.get(), pkey.get())) {
     fprintf(stderr, "RSA PKCS#1 with SHA-256 failed\n");
@@ -941,7 +940,7 @@ static bool TestFromBufferReused() {
   return true;
 }
 
-static int Main() {
+int main() {
   CRYPTO_library_init();
 
   if (!TestVerify() ||
@@ -958,10 +957,4 @@ static int Main() {
 
   printf("PASS\n");
   return 0;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }

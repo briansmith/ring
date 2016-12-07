@@ -68,7 +68,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-namespace bssl {
 
 static bool RunBasicTests();
 static bool RunRFC5114Tests();
@@ -76,7 +75,7 @@ static bool TestBadY();
 static bool TestASN1();
 static bool TestRFC3526();
 
-static int Main() {
+int main() {
   CRYPTO_library_init();
 
   if (!RunBasicTests() ||
@@ -568,7 +567,7 @@ static bool TestASN1() {
     return false;
   }
 
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   uint8_t *der;
   size_t der_len;
   if (!CBB_init(cbb.get(), 0) ||
@@ -660,10 +659,4 @@ static bool TestRFC3526() {
   }
 
   return true;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }

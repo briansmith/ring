@@ -75,7 +75,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include "../test/file_test.h"
 
-namespace bssl {
 
 // evp_test dispatches between multiple test types. PrivateKey tests take a key
 // name parameter and single block, decode it as a PEM private key, and save it
@@ -141,7 +140,7 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   }
 
   // The key must re-encode correctly.
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   uint8_t *der;
   size_t der_len;
   if (!CBB_init(cbb.get(), 0) ||
@@ -253,7 +252,7 @@ static bool TestEVP(FileTest *t, void *arg) {
   return true;
 }
 
-static int Main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   CRYPTO_library_init();
   if (argc != 2) {
     fprintf(stderr, "%s <test file.txt>\n", argv[0]);
@@ -262,10 +261,4 @@ static int Main(int argc, char *argv[]) {
 
   KeyMap map;
   return FileTestMain(TestEVP, &map, argv[1]);
-}
-
-}  // namespace bssl
-
-int main(int argc, char *argv[]) {
-  return bssl::Main(argc, argv);
 }

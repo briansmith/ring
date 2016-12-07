@@ -63,7 +63,6 @@
 
 #include "../test/file_test.h"
 
-namespace bssl {
 
 static const EVP_CIPHER *GetCipher(const std::string &name) {
   if (name == "DES-CBC") {
@@ -127,7 +126,7 @@ static bool TestOperation(FileTest *t,
 
   bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
 
-  ScopedEVP_CIPHER_CTX ctx;
+  bssl::ScopedEVP_CIPHER_CTX ctx;
   if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
                          encrypt ? 1 : 0)) {
     return false;
@@ -284,7 +283,7 @@ static bool TestCipher(FileTest *t, void *arg) {
   return true;
 }
 
-static int Main(int argc, char **argv) {
+int main(int argc, char **argv) {
   CRYPTO_library_init();
 
   if (argc != 2) {
@@ -293,10 +292,4 @@ static int Main(int argc, char **argv) {
   }
 
   return FileTestMain(TestCipher, nullptr, argv[1]);
-}
-
-}  // namespace bssl
-
-int main(int argc, char **argv) {
-  return bssl::Main(argc, argv);
 }

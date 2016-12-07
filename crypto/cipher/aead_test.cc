@@ -33,8 +33,6 @@ const EVP_AEAD* EVP_aead_aes_256_gcm_siv(void) {
 }
 #endif
 
-namespace bssl {
-
 // This program tests an AEAD against a series of test vectors from a file,
 // using the FileTest format. As an example, here's a valid test case:
 //
@@ -58,7 +56,7 @@ static bool TestAEAD(FileTest *t, void *arg) {
     return false;
   }
 
-  ScopedEVP_AEAD_CTX ctx;
+  bssl::ScopedEVP_AEAD_CTX ctx;
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.data(), key.size(),
                                         tag.size(), evp_aead_seal)) {
     t->PrintLine("Failed to init AEAD.");
@@ -208,7 +206,7 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
   const size_t max_overhead = EVP_AEAD_max_overhead(aead);
 
   std::vector<uint8_t> key(key_len, 'a');
-  ScopedEVP_AEAD_CTX ctx;
+  bssl::ScopedEVP_AEAD_CTX ctx;
   if (!EVP_AEAD_CTX_init(ctx.get(), aead, key.data(), key_len,
                          EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr)) {
     return false;
@@ -333,7 +331,7 @@ static const struct KnownAEAD kAEADs[] = {
   { "", NULL, false },
 };
 
-static int Main(int argc, char **argv) {
+int main(int argc, char **argv) {
   CRYPTO_library_init();
 
   if (argc != 3) {
@@ -370,10 +368,4 @@ static int Main(int argc, char **argv) {
   }
 
   return FileTestMain(TestAEAD, const_cast<EVP_AEAD*>(aead), argv[2]);
-}
-
-}  // namespace bssl
-
-int main(int argc, char **argv) {
-  return bssl::Main(argc, argv);
 }

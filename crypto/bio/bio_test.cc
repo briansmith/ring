@@ -263,7 +263,7 @@ static bool TestASN1() {
   return true;
 }
 
-int main(void) {
+int main() {
   CRYPTO_library_init();
 
 #if defined(OPENSSL_WINDOWS)

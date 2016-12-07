@@ -67,7 +67,6 @@
 
 #include "../test/file_test.h"
 
-namespace bssl {
 
 static const EVP_MD *GetDigest(const std::string &name) {
   if (name == "MD5") {
@@ -117,7 +116,7 @@ static bool TestHMAC(FileTest *t, void *arg) {
   }
 
   // Test using HMAC_CTX.
-  ScopedHMAC_CTX ctx;
+  bssl::ScopedHMAC_CTX ctx;
   if (!HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr) ||
       !HMAC_Update(ctx.get(), input.data(), input.size()) ||
       !HMAC_Final(ctx.get(), mac.get(), &mac_len) ||
@@ -158,7 +157,7 @@ static bool TestHMAC(FileTest *t, void *arg) {
   return true;
 }
 
-static int Main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
   if (argc != 2) {
@@ -167,10 +166,4 @@ static int Main(int argc, char *argv[]) {
   }
 
   return FileTestMain(TestHMAC, nullptr, argv[1]);
-}
-
-}  // namespace bssl
-
-int main(int argc, char **argv) {
-  return bssl::Main(argc, argv);
 }

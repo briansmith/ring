@@ -28,7 +28,6 @@
 #include "internal.h"
 #include "../internal.h"
 
-namespace bssl {
 
 static bool TestSkip() {
   static const uint8_t kData[] = {1, 2, 3};
@@ -317,7 +316,7 @@ static bool TestCBBBasic() {
 }
 
 static bool TestCBBFixed() {
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   uint8_t buf[1];
   uint8_t *out_buf;
   size_t out_size;
@@ -401,7 +400,7 @@ static bool TestCBBPrefixed() {
 }
 
 static bool TestCBBDiscardChild() {
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   CBB contents, inner_contents, inner_inner_contents;
 
   if (!CBB_init(cbb.get(), 0) ||
@@ -804,7 +803,7 @@ static bool TestCBBReserve() {
   uint8_t buf[10];
   uint8_t *ptr;
   size_t len;
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   if (!CBB_init_fixed(cbb.get(), buf, sizeof(buf)) ||
       // Too large.
       CBB_reserve(cbb.get(), &ptr, 11)) {
@@ -827,7 +826,7 @@ static bool TestCBBReserve() {
 
 static bool TestStickyError() {
   // Write an input that exceeds the limit for its length prefix.
-  ScopedCBB cbb;
+  bssl::ScopedCBB cbb;
   CBB child;
   static const uint8_t kZeros[256] = {0};
   if (!CBB_init(cbb.get(), 0) ||
@@ -890,7 +889,7 @@ static bool TestStickyError() {
   return true;
 }
 
-static int Main() {
+int main() {
   CRYPTO_library_init();
 
   if (!TestSkip() ||
@@ -917,10 +916,4 @@ static int Main() {
 
   printf("PASS\n");
   return 0;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }

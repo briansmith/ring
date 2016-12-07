@@ -65,7 +65,6 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "packeted_bio.h"
 #include "test_config.h"
 
-namespace bssl {
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
@@ -246,7 +245,7 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
       return ssl_private_key_failure;
   }
 
-  ScopedEVP_MD_CTX ctx;
+  bssl::ScopedEVP_MD_CTX ctx;
   EVP_PKEY_CTX *pctx;
   if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr,
                           test_state->private_key.get())) {
@@ -1873,7 +1872,7 @@ class StderrDelimiter {
   ~StderrDelimiter() { fprintf(stderr, "--- DONE ---\n"); }
 };
 
-static int Main(int argc, char **argv) {
+int main(int argc, char **argv) {
   // To distinguish ASan's output from ours, add a trailing message to stderr.
   // Anything following this line will be considered an error.
   StderrDelimiter delimiter;
@@ -1940,10 +1939,4 @@ static int Main(int argc, char **argv) {
   }
 
   return 0;
-}
-
-}  // namespace bssl
-
-int main(int argc, char **argv) {
-  return bssl::Main(argc, argv);
 }

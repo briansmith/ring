@@ -28,8 +28,6 @@
 #include "../internal.h"
 
 
-namespace bssl {
-
 struct MD {
   // name is the name of the digest.
   const char* name;
@@ -161,7 +159,7 @@ static bool CompareDigest(const TestVector *test,
 }
 
 static int TestDigest(const TestVector *test) {
-  ScopedEVP_MD_CTX ctx;
+  bssl::ScopedEVP_MD_CTX ctx;
 
   // Test the input provided.
   if (!EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL)) {
@@ -246,7 +244,7 @@ static int TestGetters() {
   return true;
 }
 
-static int Main() {
+int main() {
   CRYPTO_library_init();
 
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTestVectors); i++) {
@@ -262,10 +260,4 @@ static int Main() {
 
   printf("PASS\n");
   return 0;
-}
-
-}  // namespace bssl
-
-int main() {
-  return bssl::Main();
 }
