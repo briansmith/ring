@@ -263,6 +263,136 @@ static bool TestASN1() {
   return true;
 }
 
+static bool TestPair() {
+  // Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.
+  for (int i = 0; i < 2; i++) {
+    BIO *bio1, *bio2;
+    if (!BIO_new_bio_pair(&bio1, 10, &bio2, 10)) {
+      return false;
+    }
+    bssl::UniquePtr<BIO> free_bio1(bio1), free_bio2(bio2);
+
+    if (i == 1) {
+      std::swap(bio1, bio2);
+    }
+
+    // Check initial states.
+    if (BIO_ctrl_get_write_guarantee(bio1) != 10 ||
+        BIO_ctrl_get_read_request(bio1) != 0) {
+      return false;
+    }
+
+    // Data written in one end may be read out the other.
+    char buf[20];
+    if (BIO_write(bio1, "12345", 5) != 5 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 5 ||
+        BIO_read(bio2, buf, sizeof(buf)) != 5 ||
+        memcmp(buf, "12345", 5) != 0 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 10) {
+      return false;
+    }
+
+    // Attempting to write more than 10 bytes will write partially.
+    if (BIO_write(bio1, "1234567890___", 13) != 10 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 0 ||
+        BIO_write(bio1, "z", 1) != -1 ||
+        !BIO_should_write(bio1) ||
+        BIO_read(bio2, buf, sizeof(buf)) != 10 ||
+        memcmp(buf, "1234567890", 10) != 0 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 10) {
+      return false;
+    }
+
+    // Unsuccessful reads update the read request.
+    if (BIO_read(bio2, buf, 5) != -1 ||
+        !BIO_should_read(bio2) ||
+        BIO_ctrl_get_read_request(bio1) != 5) {
+      return false;
+    }
+
+    // The read request is clamped to the size of the buffer.
+    if (BIO_read(bio2, buf, 20) != -1 ||
+        !BIO_should_read(bio2) ||
+        BIO_ctrl_get_read_request(bio1) != 10) {
+      return false;
+    }
+
+    // Data may be written and read in chunks.
+    if (BIO_write(bio1, "12345", 5) != 5 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 5 ||
+        BIO_write(bio1, "67890___", 8) != 5 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 0 ||
+        BIO_read(bio2, buf, 3) != 3 ||
+        memcmp(buf, "123", 3) != 0 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 3 ||
+        BIO_read(bio2, buf, sizeof(buf)) != 7 ||
+        memcmp(buf, "4567890", 7) != 0 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 10) {
+      return false;
+    }
+
+    // Successful reads reset the read request.
+    if (BIO_ctrl_get_read_request(bio1) != 0) {
+      return false;
+    }
+
+    // Test writes and reads starting in the middle of the ring buffer and
+    // wrapping to front.
+    if (BIO_write(bio1, "abcdefgh", 8) != 8 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 2 ||
+        BIO_read(bio2, buf, 3) != 3 ||
+        memcmp(buf, "abc", 3) != 0 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 5 ||
+        BIO_write(bio1, "ijklm___", 8) != 5 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 0 ||
+        BIO_read(bio2, buf, sizeof(buf)) != 10 ||
+        memcmp(buf, "defghijklm", 10) != 0 ||
+        BIO_ctrl_get_write_guarantee(bio1) != 10) {
+      return false;
+    }
+
+    // Data may flow from both ends in parallel.
+    if (BIO_write(bio1, "12345", 5) != 5 ||
+        BIO_write(bio2, "67890", 5) != 5 ||
+        BIO_read(bio2, buf, sizeof(buf)) != 5 ||
+        memcmp(buf, "12345", 5) != 0 ||
+        BIO_read(bio1, buf, sizeof(buf)) != 5 ||
+        memcmp(buf, "67890", 5) != 0) {
+      return false;
+    }
+
+    // Closing the write end causes an EOF on the read half, after draining.
+    if (BIO_write(bio1, "12345", 5) != 5 ||
+        !BIO_shutdown_wr(bio1) ||
+        BIO_read(bio2, buf, sizeof(buf)) != 5 ||
+        memcmp(buf, "12345", 5) != 0 ||
+        BIO_read(bio2, buf, sizeof(buf)) != 0) {
+      return false;
+    }
+
+    // A closed write end may not be written to.
+    if (BIO_ctrl_get_write_guarantee(bio1) != 0 ||
+        BIO_write(bio1, "_____", 5) != -1) {
+      return false;
+    }
+
+    uint32_t err = ERR_get_error();
+    if (ERR_GET_LIB(err) != ERR_LIB_BIO ||
+        ERR_GET_REASON(err) != BIO_R_BROKEN_PIPE) {
+      return false;
+    }
+
+    // The other end is still functional.
+    if (BIO_write(bio2, "12345", 5) != 5 ||
+        BIO_read(bio1, buf, sizeof(buf)) != 5 ||
+        memcmp(buf, "12345", 5) != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -283,7 +413,8 @@ int main() {
 
   if (!TestSocketConnect() ||
       !TestPrintf() ||
-      !TestASN1()) {
+      !TestASN1() ||
+      !TestPair()) {
     return 1;
   }
 
