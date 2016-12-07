@@ -901,6 +901,13 @@ OPENSSL_EXPORT int SSL_CTX_set_ocsp_response(SSL_CTX *ctx,
                                              const uint8_t *response,
                                              size_t response_len);
 
+/* SSL_set_ocsp_response sets the OCSP reponse that is sent to clients which
+ * request it. It returns one on success and zero on error. The caller retains
+ * ownership of |response|. */
+OPENSSL_EXPORT int SSL_set_ocsp_response(SSL *ssl,
+                                         const uint8_t *response,
+                                         size_t response_len);
+
 /* SSL_SIGN_* are signature algorithm values as defined in TLS 1.3. */
 #define SSL_SIGN_RSA_PKCS1_SHA1 0x0201
 #define SSL_SIGN_RSA_PKCS1_SHA256 0x0401
@@ -4009,8 +4016,7 @@ struct ssl_ctx_st {
   size_t signed_cert_timestamp_list_length;
 
   /* OCSP response to be sent to the client, if requested. */
-  uint8_t *ocsp_response;
-  size_t ocsp_response_length;
+  CRYPTO_BUFFER *ocsp_response;
 
   /* keylog_callback, if not NULL, is the key logging callback. See
    * |SSL_CTX_set_keylog_callback|. */
@@ -4224,6 +4230,9 @@ struct ssl_st {
   /* session_timeout is the default lifetime in seconds of the session
    * created in this connection. */
   long session_timeout;
+
+  /* OCSP response to be sent to the client, if requested. */
+  CRYPTO_BUFFER *ocsp_response;
 };
 
 

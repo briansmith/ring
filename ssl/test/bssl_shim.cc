@@ -398,9 +398,8 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
     return false;
   }
   if (!config->ocsp_response.empty() &&
-      !SSL_CTX_set_ocsp_response(SSL_get_SSL_CTX(ssl),
-                                 (const uint8_t *)config->ocsp_response.data(),
-                                 config->ocsp_response.size())) {
+      !SSL_set_ocsp_response(ssl, (const uint8_t *)config->ocsp_response.data(),
+                             config->ocsp_response.size())) {
     return false;
   }
   return true;

@@ -466,14 +466,14 @@ int tls13_prepare_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->ocsp_stapling_requested &&
-      ssl->ctx->ocsp_response_length != 0) {
+      ssl->ocsp_response != NULL) {
     CBB contents, ocsp_response;
     if (!CBB_add_u16(&extensions, TLSEXT_TYPE_status_request) ||
         !CBB_add_u16_length_prefixed(&extensions, &contents) ||
         !CBB_add_u8(&contents, TLSEXT_STATUSTYPE_ocsp) ||
         !CBB_add_u24_length_prefixed(&contents, &ocsp_response) ||
-        !CBB_add_bytes(&ocsp_response, ssl->ctx->ocsp_response,
-                       ssl->ctx->ocsp_response_length) ||
+        !CBB_add_bytes(&ocsp_response, CRYPTO_BUFFER_data(ssl->ocsp_response),
+                       CRYPTO_BUFFER_len(ssl->ocsp_response)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;

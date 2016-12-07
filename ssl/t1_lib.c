@@ -1212,7 +1212,7 @@ static int ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
       !hs->ocsp_stapling_requested ||
-      ssl->ctx->ocsp_response_length == 0 ||
+      ssl->ocsp_response == NULL ||
       ssl->s3->session_reused ||
       !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     return 1;
