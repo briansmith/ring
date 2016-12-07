@@ -9228,7 +9228,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 4,
+				SendFakeEarlyDataLength: 4,
 			},
 		},
 	})
@@ -9239,8 +9239,8 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength:    4,
-				OmitEarlyDataExtension: true,
+				SendFakeEarlyDataLength: 4,
+				OmitEarlyDataExtension:  true,
 			},
 		},
 		shouldFail:    true,
@@ -9253,7 +9253,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 16384 + 1,
+				SendFakeEarlyDataLength: 16384 + 1,
 			},
 		},
 		shouldFail:    true,
@@ -9266,8 +9266,8 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 4,
-				InterleaveEarlyData: true,
+				SendFakeEarlyDataLength: 4,
+				InterleaveEarlyData:     true,
 			},
 		},
 		shouldFail:    true,
@@ -9280,7 +9280,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 4,
+				SendFakeEarlyDataLength: 4,
 			},
 		},
 		shouldFail:    true,
@@ -9294,7 +9294,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 4,
+				SendFakeEarlyDataLength: 4,
 			},
 			DefaultCurves: []CurveID{},
 		},
@@ -9306,8 +9306,8 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 4,
-				InterleaveEarlyData: true,
+				SendFakeEarlyDataLength: 4,
+				InterleaveEarlyData:     true,
 			},
 			DefaultCurves: []CurveID{},
 		},
@@ -9321,7 +9321,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyDataLength: 16384 + 1,
+				SendFakeEarlyDataLength: 16384 + 1,
 			},
 			DefaultCurves: []CurveID{},
 		},
@@ -9337,8 +9337,8 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				SendEarlyAlert:      true,
-				SendEarlyDataLength: 4,
+				SendEarlyAlert:          true,
+				SendFakeEarlyDataLength: 4,
 			},
 			DefaultCurves: []CurveID{},
 		},
@@ -10153,8 +10153,8 @@ func addShortHeaderTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				EnableShortHeader:   true,
-				SendEarlyDataLength: 1,
+				EnableShortHeader:       true,
+				SendFakeEarlyDataLength: 1,
 			},
 		},
 		flags:         []string{"-enable-short-header"},

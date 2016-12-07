@@ -324,8 +324,16 @@ NextCipherSuite:
 		hello.cipherSuites = c.config.Bugs.SendCipherSuites
 	}
 
-	if c.config.Bugs.SendEarlyDataLength > 0 && !c.config.Bugs.OmitEarlyDataExtension {
+	var sendEarlyData bool
+	if len(hello.pskIdentities) > 0 && session.maxEarlyDataSize > 0 && c.config.Bugs.SendEarlyData != nil {
 		hello.hasEarlyData = true
+		sendEarlyData = true
+	}
+	if c.config.Bugs.SendFakeEarlyDataLength > 0 {
+		hello.hasEarlyData = true
+	}
+	if c.config.Bugs.OmitEarlyDataExtension {
+		hello.hasEarlyData = false
 	}
 
 	var helloBytes []byte
@@ -368,9 +376,25 @@ NextCipherSuite:
 	if c.config.Bugs.SendEarlyAlert {
 		c.sendAlert(alertHandshakeFailure)
 	}
-	if c.config.Bugs.SendEarlyDataLength > 0 {
-		c.sendFakeEarlyData(c.config.Bugs.SendEarlyDataLength)
+	if c.config.Bugs.SendFakeEarlyDataLength > 0 {
+		c.sendFakeEarlyData(c.config.Bugs.SendFakeEarlyDataLength)
 	}
+
+	// Derive early write keys and set Conn state to allow early writes.
+	if sendEarlyData {
+		finishedHash := newFinishedHash(session.vers, pskCipherSuite)
+		finishedHash.addEntropy(session.masterSecret)
+		finishedHash.Write(helloBytes)
+		earlyTrafficSecret := finishedHash.deriveSecret(earlyTrafficLabel)
+		c.out.useTrafficSecret(session.vers, pskCipherSuite, earlyTrafficSecret, clientWrite)
+
+		for _, earlyData := range c.config.Bugs.SendEarlyData {
+			if _, err := c.writeRecord(recordTypeApplicationData, earlyData); err != nil {
+				return err
+			}
+		}
+	}
+
 	msg, err := c.readHandshake()
 	if err != nil {
 		return err
@@ -427,6 +451,7 @@ NextCipherSuite:
 	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
 	var secondHelloBytes []byte
 	if haveHelloRetryRequest {
+		c.out.resetCipher()
 		if len(helloRetryRequest.cookie) > 0 {
 			hello.tls13Cookie = helloRetryRequest.cookie
 		}
@@ -701,9 +726,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.setShortHeader()
 	}
 
-	// Switch to handshake traffic keys.
+	// Derive handshake traffic keys and switch read key to handshake
+	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
-	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
 	c.in.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, serverWrite)
 
@@ -849,6 +874,13 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.in.freeBlock(c.input)
 		c.input = nil
 	}
+
+	// Send EndOfEarlyData and then switch write key to handshake
+	// traffic key.
+	if c.out.cipher != nil {
+		c.sendAlert(alertEndOfEarlyData)
+	}
+	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{

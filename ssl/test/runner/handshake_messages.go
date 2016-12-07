@@ -824,23 +824,22 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 }
 
 type serverHelloMsg struct {
-	raw                 []byte
-	isDTLS              bool
-	vers                uint16
-	versOverride        uint16
-	random              []byte
-	sessionId           []byte
-	cipherSuite         uint16
-	hasKeyShare         bool
-	keyShare            keyShareEntry
-	hasPSKIdentity      bool
-	pskIdentity         uint16
-	earlyDataIndication bool
-	compressionMethod   uint8
-	customExtension     string
-	unencryptedALPN     string
-	shortHeader         bool
-	extensions          serverExtensions
+	raw               []byte
+	isDTLS            bool
+	vers              uint16
+	versOverride      uint16
+	random            []byte
+	sessionId         []byte
+	cipherSuite       uint16
+	hasKeyShare       bool
+	keyShare          keyShareEntry
+	hasPSKIdentity    bool
+	pskIdentity       uint16
+	compressionMethod uint8
+	customExtension   string
+	unencryptedALPN   string
+	shortHeader       bool
+	extensions        serverExtensions
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -894,10 +893,6 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(extensionPreSharedKey)
 			extensions.addU16(2) // Length
 			extensions.addU16(m.pskIdentity)
-		}
-		if m.earlyDataIndication {
-			extensions.addU16(extensionEarlyData)
-			extensions.addU16(0) // Length
 		}
 		if len(m.customExtension) > 0 {
 			extensions.addU16(extensionCustom)
@@ -1005,11 +1000,6 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				}
 				m.pskIdentity = uint16(d[0])<<8 | uint16(d[1])
 				m.hasPSKIdentity = true
-			case extensionEarlyData:
-				if len(d) != 0 {
-					return false
-				}
-				m.earlyDataIndication = true
 			case extensionShortHeader:
 				if len(d) != 0 {
 					return false
@@ -1089,6 +1079,7 @@ type serverExtensions struct {
 	customExtension         string
 	npnAfterAlpn            bool
 	hasKeyShare             bool
+	hasEarlyData            bool
 	keyShare                keyShareEntry
 	supportedPoints         []uint8
 }
@@ -1191,6 +1182,10 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		supportedPointsList := extensions.addU16LengthPrefixed()
 		supportedPoints := supportedPointsList.addU8LengthPrefixed()
 		supportedPoints.addBytes(m.supportedPoints)
+	}
+	if m.hasEarlyData {
+		extensions.addU16(extensionEarlyData)
+		extensions.addBytes([]byte{0, 0})
 	}
 }
 
@@ -1306,6 +1301,11 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 			if version < VersionTLS13 {
 				return false
 			}
+		case extensionEarlyData:
+			if version < VersionTLS13 || length != 0 {
+				return false
+			}
+			m.hasEarlyData = true
 		default:
 			// Unknown extensions are illegal from the server.
 			return false
@@ -2008,7 +2008,7 @@ type newSessionTicketMsg struct {
 	ticketLifetime         uint32
 	ticketAgeAdd           uint32
 	ticket                 []byte
-	earlyDataInfo          uint32
+	maxEarlyDataSize       uint32
 	customExtension        string
 	duplicateEarlyDataInfo bool
 	hasGREASEExtension     bool
@@ -2033,12 +2033,12 @@ func (m *newSessionTicketMsg) marshal() []byte {
 
 	if m.version >= VersionTLS13 {
 		extensions := body.addU16LengthPrefixed()
-		if m.earlyDataInfo > 0 {
+		if m.maxEarlyDataSize > 0 {
 			extensions.addU16(extensionTicketEarlyDataInfo)
-			extensions.addU16LengthPrefixed().addU32(m.earlyDataInfo)
+			extensions.addU16LengthPrefixed().addU32(m.maxEarlyDataSize)
 			if m.duplicateEarlyDataInfo {
 				extensions.addU16(extensionTicketEarlyDataInfo)
-				extensions.addU16LengthPrefixed().addU32(m.earlyDataInfo)
+				extensions.addU16LengthPrefixed().addU32(m.maxEarlyDataSize)
 			}
 		}
 		if len(m.customExtension) > 0 {
@@ -2111,7 +2111,7 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 				if length != 4 {
 					return false
 				}
-				m.earlyDataInfo = uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
+				m.maxEarlyDataSize = uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
 			default:
 				if isGREASEValue(extension) {
 					m.hasGREASEExtension = true

@@ -223,6 +223,14 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 	hc.incEpoch()
 }
 
+// resetCipher changes the cipher state back to no encryption to be able
+// to send an unencrypted ClientHello in response to HelloRetryRequest
+// after 0-RTT data was rejected.
+func (hc *halfConn) resetCipher() {
+	hc.cipher = nil
+	hc.incEpoch()
+}
+
 func (hc *halfConn) doKeyUpdate(c *Conn, isOutgoing bool) {
 	side := serverWrite
 	if c.isClient == isOutgoing {
@@ -990,7 +998,7 @@ func (c *Conn) sendAlertLocked(level byte, err alert) error {
 // L < c.out.Mutex.
 func (c *Conn) sendAlert(err alert) error {
 	level := byte(alertLevelError)
-	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertificate {
+	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertificate || err == alertEndOfEarlyData {
 		level = alertLevelWarning
 	}
 	return c.SendAlert(level, err)
@@ -1471,7 +1479,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 				return errors.New("tls: no GREASE ticket extension found")
 			}
 
-			if c.config.Bugs.ExpectTicketEarlyDataInfo && newSessionTicket.earlyDataInfo == 0 {
+			if c.config.Bugs.ExpectTicketEarlyDataInfo && newSessionTicket.maxEarlyDataSize == 0 {
 				return errors.New("tls: no ticket_early_data_info extension found")
 			}
 
@@ -1494,6 +1502,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 				ticketCreationTime: c.config.time(),
 				ticketExpiration:   c.config.time().Add(time.Duration(newSessionTicket.ticketLifetime) * time.Second),
 				ticketAgeAdd:       newSessionTicket.ticketAgeAdd,
+				maxEarlyDataSize:   newSessionTicket.maxEarlyDataSize,
 			}
 
 			cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
@@ -1789,7 +1798,7 @@ func (c *Conn) SendNewSessionTicket() error {
 	m := &newSessionTicketMsg{
 		version:                c.vers,
 		ticketLifetime:         uint32(24 * time.Hour / time.Second),
-		earlyDataInfo:          c.config.Bugs.SendTicketEarlyDataInfo,
+		maxEarlyDataSize:       c.config.Bugs.SendTicketEarlyDataInfo,
 		duplicateEarlyDataInfo: c.config.Bugs.DuplicateTicketEarlyDataInfo,
 		customExtension:        c.config.Bugs.CustomTicketExtension,
 		ticketAgeAdd:           ticketAgeAdd,
