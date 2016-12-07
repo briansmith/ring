@@ -29,6 +29,11 @@
 #include "internal.h"
 
 
+/* kMaxEarlyDataAccepted is the advertised number of plaintext bytes of early
+ * data that will be accepted. This value should be slightly below
+ * kMaxEarlyDataSkipped in tls_record.c, which is measured in ciphertext. */
+static const size_t kMaxEarlyDataAccepted = 14336;
+
 enum server_hs_state_t {
   state_process_client_hello = 0,
   state_select_parameters,
@@ -657,9 +662,6 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  /* TODO(svaldez): Add support for sending 0RTT through TicketEarlyDataInfo
-   * extension. */
-
   CBB cbb, body, ticket, extensions;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_NEW_SESSION_TICKET) ||
@@ -669,6 +671,18 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
       !ssl_encrypt_ticket(ssl, &ticket, session) ||
       !CBB_add_u16_length_prefixed(&body, &extensions)) {
     goto err;
+  }
+
+  if (ssl->ctx->enable_early_data) {
+    session->ticket_max_early_data = kMaxEarlyDataAccepted;
+
+    CBB early_data_info;
+    if (!CBB_add_u16(&extensions, TLSEXT_TYPE_ticket_early_data_info) ||
+        !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
+        !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
+        !CBB_flush(&extensions)) {
+      goto err;
+    }
   }
 
   /* Add a fake extension. See draft-davidben-tls-grease-01. */

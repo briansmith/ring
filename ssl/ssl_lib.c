@@ -874,6 +874,10 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
   return ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
 }
 
+void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
+  ctx->enable_early_data = !!enabled;
+}
+
 static int bio_retry_reason_to_error(int reason) {
   switch (reason) {
     case BIO_RR_CONNECT:

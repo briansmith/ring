@@ -2008,6 +2008,7 @@ type newSessionTicketMsg struct {
 	ticketLifetime     uint32
 	ticketAgeAdd       uint32
 	ticket             []byte
+	earlyDataInfo      uint32
 	customExtension    string
 	hasGREASEExtension bool
 }
@@ -2031,8 +2032,12 @@ func (m *newSessionTicketMsg) marshal() []byte {
 
 	if m.version >= VersionTLS13 {
 		extensions := body.addU16LengthPrefixed()
+		if m.earlyDataInfo > 0 {
+			extensions.addU16(extensionTicketEarlyDataInfo)
+			extensions.addU16LengthPrefixed().addU32(m.earlyDataInfo)
+		}
 		if len(m.customExtension) > 0 {
-			extensions.addU16(ticketExtensionCustom)
+			extensions.addU16(extensionCustom)
 			extensions.addU16LengthPrefixed().addBytes([]byte(m.customExtension))
 		}
 	}
@@ -2078,28 +2083,37 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 		if len(data) < 2 {
 			return false
 		}
-		extsLength := int(data[0])<<8 + int(data[1])
+
+		extensionsLength := int(data[0])<<8 | int(data[1])
 		data = data[2:]
-		if len(data) < extsLength {
+		if extensionsLength != len(data) {
 			return false
 		}
-		extensions := data[:extsLength]
-		data = data[extsLength:]
 
-		for len(extensions) > 0 {
-			if len(extensions) < 4 {
+		for len(data) != 0 {
+			if len(data) < 4 {
 				return false
 			}
-			extValue := uint16(extensions[0])<<8 | uint16(extensions[1])
-			extLength := int(extensions[2])<<8 | int(extensions[3])
-			if len(extensions) < 4+extLength {
+			extension := uint16(data[0])<<8 | uint16(data[1])
+			length := int(data[2])<<8 | int(data[3])
+			data = data[4:]
+			if len(data) < length {
 				return false
 			}
-			extensions = extensions[4+extLength:]
 
-			if isGREASEValue(extValue) {
-				m.hasGREASEExtension = true
+			switch extension {
+			case extensionTicketEarlyDataInfo:
+				if length != 4 {
+					return false
+				}
+				m.earlyDataInfo = uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
+			default:
+				if isGREASEValue(extension) {
+					m.hasGREASEExtension = true
+				}
 			}
+
+			data = data[length:]
 		}
 	}
 

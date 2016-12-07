@@ -2913,6 +2913,11 @@ OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
+/* SSL_CTX_set_early_data_enabled sets whether early data is allowed to be used
+ * with resumptions using |ctx|. WARNING: This is experimental and may cause
+ * interop failures until fully implemented. */
+OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
+
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
 #define SSL_MAX_CERT_LIST_DEFAULT (1024 * 100)
@@ -3758,6 +3763,10 @@ struct ssl_session_st {
 
   uint32_t ticket_age_add;
 
+  /* ticket_max_early_data is the maximum amount of data allowed to be sent as
+   * early data. If zero, 0-RTT is disallowed. */
+  uint32_t ticket_max_early_data;
+
   /* extended_master_secret is true if the master secret in this session was
    * generated using EMS and thus isn't vulnerable to the Triple Handshake
    * attack. */
@@ -4032,6 +4041,10 @@ struct ssl_ctx_st {
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */
   unsigned quiet_shutdown:1;
+
+  /* If enable_early_data is non-zero, early data can be sent and accepted over
+   * new connections. */
+  unsigned enable_early_data:1;
 
   /* ocsp_stapling_enabled is only used by client connections and indicates
    * whether OCSP stapling will be requested. */

@@ -1148,10 +1148,10 @@ typedef struct {
  * it. It writes the parsed extensions to pointers denoted by |ext_types|. On
  * success, it fills in the |out_present| and |out_data| fields and returns one.
  * Otherwise, it sets |*out_alert| to an alert to send and returns zero. Unknown
- * extensions are rejected. */
+ * extensions are rejected unless |ignore_unknown| is 1. */
 int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
                          const SSL_EXTENSION_TYPE *ext_types,
-                         size_t num_ext_types);
+                         size_t num_ext_types, int ignore_unknown);
 
 
 /* SSLKEYLOGFILE functions. */

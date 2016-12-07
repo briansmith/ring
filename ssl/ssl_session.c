@@ -276,6 +276,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
         session->original_handshake_hash_len;
     new_session->tlsext_tick_lifetime_hint = session->tlsext_tick_lifetime_hint;
     new_session->ticket_age_add = session->ticket_age_add;
+    new_session->ticket_max_early_data = session->ticket_max_early_data;
     new_session->extended_master_secret = session->extended_master_secret;
   }
 

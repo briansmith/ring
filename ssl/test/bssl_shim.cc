@@ -1045,6 +1045,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_short_header_enabled(ssl_ctx.get(), 1);
   }
 
+  if (config->enable_early_data) {
+    SSL_CTX_set_early_data_enabled(ssl_ctx.get(), 1);
+  }
+
   return ssl_ctx;
 }
 
@@ -1843,6 +1847,19 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
               "new session was%s cached, but we expected the opposite\n",
               GetTestState(ssl.get())->got_new_session ? "" : " not");
       return false;
+    }
+
+    if (expect_new_session) {
+      bool got_early_data_info =
+          GetTestState(ssl.get())->new_session->ticket_max_early_data != 0;
+      if (config->expect_early_data_info != got_early_data_info) {
+        fprintf(
+            stderr,
+            "new session did%s include ticket_early_data_info, but we expected "
+            "the opposite\n",
+            got_early_data_info ? "" : " not");
+        return false;
+      }
     }
   }
 

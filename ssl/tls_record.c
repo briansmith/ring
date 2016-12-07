@@ -125,10 +125,11 @@
  * forever. */
 static const uint8_t kMaxEmptyRecords = 32;
 
-/* kMaxEarlyDataSkipped is the maximum amount of data processed when skipping
- * over early data. Without this limit an attacker could send records at a
- * faster rate than we can process and cause trial decryption to loop
- * forever. */
+/* kMaxEarlyDataSkipped is the maximum number of rejected early data bytes that
+ * will be skipped. Without this limit an attacker could send records at a
+ * faster rate than we can process and cause trial decryption to loop forever.
+ * This value should be slightly above kMaxEarlyDataAccepted in tls13_server.c,
+ * which is measured in plaintext. */
 static const size_t kMaxEarlyDataSkipped = 16384;
 
 /* kMaxWarningAlerts is the number of consecutive warning alerts that will be

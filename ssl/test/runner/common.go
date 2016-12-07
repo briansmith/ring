@@ -95,16 +95,12 @@ const (
 	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-16
 	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-16
 	extensionPSKKeyExchangeModes        uint16 = 45    // draft-ietf-tls-tls13-18
+	extensionTicketEarlyDataInfo        uint16 = 46    // draft-ietf-tls-tls13-18
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionChannelID                  uint16 = 30032 // not IANA assigned
 	extensionShortHeader                uint16 = 27463 // not IANA assigned
-)
-
-// TLS ticket extension numbers
-const (
-	ticketExtensionCustom uint16 = 1234 // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -958,6 +954,15 @@ type ProtocolBugs struct {
 	// ExpectNoNewSessionTicket, if present, means that the client will fail upon
 	// receipt of a NewSessionTicket message.
 	ExpectNoNewSessionTicket bool
+
+	// SendTicketEarlyDataInfo, if non-zero, is the maximum amount of data that we
+	// will accept as early data, and gets sent in the ticket_early_data_info
+	// extension of the NewSessionTicket message.
+	SendTicketEarlyDataInfo uint32
+
+	// ExpectTicketEarlyDataInfo, if true, means that the client will fail upon
+	// absence of the ticket_early_data_info extension.
+	ExpectTicketEarlyDataInfo bool
 
 	// ExpectTicketAge, if non-zero, is the expected age of the ticket that the
 	// server receives from the client.
