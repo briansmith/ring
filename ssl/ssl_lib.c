@@ -2877,6 +2877,15 @@ void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled) {
 }
 
 int SSL_clear(SSL *ssl) {
+  /* In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
+   * established session to be offered the next time around. wpa_supplicant
+   * depends on this behavior, so emulate it. */
+  SSL_SESSION *session = NULL;
+  if (!ssl->server && ssl->s3->established_session != NULL) {
+    session = ssl->s3->established_session;
+    SSL_SESSION_up_ref(session);
+  }
+
   /* TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
    * |SSL_clear| because it is per-connection state rather than configuration
    * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
@@ -2902,11 +2911,17 @@ int SSL_clear(SSL *ssl) {
 
   ssl->method->ssl_free(ssl);
   if (!ssl->method->ssl_new(ssl)) {
+    SSL_SESSION_free(session);
     return 0;
   }
 
   if (SSL_is_dtls(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
     ssl->d1->mtu = mtu;
+  }
+
+  if (session != NULL) {
+    SSL_set_session(ssl, session);
+    SSL_SESSION_free(session);
   }
 
   return 1;

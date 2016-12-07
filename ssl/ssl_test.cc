@@ -1246,7 +1246,37 @@ static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client, bssl::UniquePtr<SSL> *out_server,
+static bool CompleteHandshakes(SSL *client, SSL *server) {
+  // Drive both their handshakes to completion.
+  for (;;) {
+    int client_ret = SSL_do_handshake(client);
+    int client_err = SSL_get_error(client, client_ret);
+    if (client_err != SSL_ERROR_NONE &&
+        client_err != SSL_ERROR_WANT_READ &&
+        client_err != SSL_ERROR_WANT_WRITE) {
+      fprintf(stderr, "Client error: %d\n", client_err);
+      return false;
+    }
+
+    int server_ret = SSL_do_handshake(server);
+    int server_err = SSL_get_error(server, server_ret);
+    if (server_err != SSL_ERROR_NONE &&
+        server_err != SSL_ERROR_WANT_READ &&
+        server_err != SSL_ERROR_WANT_WRITE) {
+      fprintf(stderr, "Server error: %d\n", server_err);
+      return false;
+    }
+
+    if (client_ret == 1 && server_ret == 1) {
+      break;
+    }
+  }
+
+  return true;
+}
+
+static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
+                                   bssl::UniquePtr<SSL> *out_server,
                                    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
                                    SSL_SESSION *session) {
   bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
@@ -1266,29 +1296,8 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client, bssl::Uniqu
   SSL_set_bio(client.get(), bio1, bio1);
   SSL_set_bio(server.get(), bio2, bio2);
 
-  // Drive both their handshakes to completion.
-  for (;;) {
-    int client_ret = SSL_do_handshake(client.get());
-    int client_err = SSL_get_error(client.get(), client_ret);
-    if (client_err != SSL_ERROR_NONE &&
-        client_err != SSL_ERROR_WANT_READ &&
-        client_err != SSL_ERROR_WANT_WRITE) {
-      fprintf(stderr, "Client error: %d\n", client_err);
-      return false;
-    }
-
-    int server_ret = SSL_do_handshake(server.get());
-    int server_err = SSL_get_error(server.get(), server_ret);
-    if (server_err != SSL_ERROR_NONE &&
-        server_err != SSL_ERROR_WANT_READ &&
-        server_err != SSL_ERROR_WANT_WRITE) {
-      fprintf(stderr, "Server error: %d\n", server_err);
-      return false;
-    }
-
-    if (client_ret == 1 && server_ret == 1) {
-      break;
-    }
+  if (!CompleteHandshakes(client.get(), server.get())) {
+    return false;
   }
 
   *out_client = std::move(client);
@@ -2719,6 +2728,65 @@ static bool TestALPNCipherAvailable(bool is_dtls, const SSL_METHOD *method,
   return true;
 }
 
+static bool TestSSLClearSessionResumption(bool is_dtls,
+                                          const SSL_METHOD *method,
+                                          uint16_t version) {
+  // Skip this for TLS 1.3. TLS 1.3's ticket mechanism is incompatible with this
+  // API pattern.
+  if (version == TLS1_3_VERSION) {
+    return true;
+  }
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(method));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(method));
+  if (!cert || !key || !server_ctx || !client_ctx ||
+      !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+      !SSL_CTX_set_min_proto_version(client_ctx.get(), version) ||
+      !SSL_CTX_set_max_proto_version(client_ctx.get(), version) ||
+      !SSL_CTX_set_min_proto_version(server_ctx.get(), version) ||
+      !SSL_CTX_set_max_proto_version(server_ctx.get(), version)) {
+    return false;
+  }
+
+  // Connect a client and a server.
+  bssl::UniquePtr<SSL> client, server;
+  if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
+                              server_ctx.get(), nullptr /* no session */)) {
+    return false;
+  }
+
+  if (SSL_session_reused(client.get()) ||
+      SSL_session_reused(server.get())) {
+    fprintf(stderr, "Session unexpectedly reused.\n");
+    return false;
+  }
+
+  // Reset everything.
+  if (!SSL_clear(client.get()) ||
+      !SSL_clear(server.get())) {
+    fprintf(stderr, "SSL_clear failed.\n");
+    return false;
+  }
+
+  // Attempt to connect a second time.
+  if (!CompleteHandshakes(client.get(), server.get())) {
+    fprintf(stderr, "Could not reuse SSL objects.\n");
+    return false;
+  }
+
+  // |SSL_clear| should implicitly offer the previous session to the server.
+  if (!SSL_session_reused(client.get()) ||
+      !SSL_session_reused(server.get())) {
+    fprintf(stderr, "Session was not reused in second try.\n");
+    return false;
+  }
+
+  return true;
+}
+
 static bool ForEachVersion(bool (*test_func)(bool is_dtls,
                                              const SSL_METHOD *method,
                                              uint16_t version)) {
@@ -2794,7 +2862,8 @@ int main() {
       !TestEarlyCallbackVersionSwitch() ||
       !TestSetVersion() ||
       !ForEachVersion(TestVersion) ||
-      !ForEachVersion(TestALPNCipherAvailable)) {
+      !ForEachVersion(TestALPNCipherAvailable) ||
+      !ForEachVersion(TestSSLClearSessionResumption)) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
