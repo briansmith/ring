@@ -877,14 +877,14 @@ struct ssl_handshake_st {
   /* ssl is a non-owning pointer to the parent |SSL| object. */
   SSL *ssl;
 
-  /* wait contains the operation |do_tls13_handshake| is currently blocking on
-   * or |ssl_hs_ok| if none. */
-  enum ssl_hs_wait_t wait;
-
   /* do_tls13_handshake runs the TLS 1.3 handshake. On completion, it returns
    * |ssl_hs_ok|. Otherwise, it returns a value corresponding to what operation
    * is needed to progress. */
   enum ssl_hs_wait_t (*do_tls13_handshake)(SSL_HANDSHAKE *hs);
+
+  /* wait contains the operation |do_tls13_handshake| is currently blocking on
+   * or |ssl_hs_ok| if none. */
+  enum ssl_hs_wait_t wait;
 
   int state;
 
@@ -914,25 +914,12 @@ struct ssl_handshake_st {
     uint16_t received;
   } custom_extensions;
 
-  /* ecdh_ctx is the current ECDH instance. */
-  SSL_ECDH_CTX ecdh_ctx;
-
-  /* scts_requested is one if the SCT extension is in the ClientHello. */
-  unsigned scts_requested:1;
-
-  /* needs_psk_binder if the ClientHello has a placeholder PSK binder to be
-   * filled in. */
-  unsigned needs_psk_binder:1;
-
-  unsigned received_hello_retry_request:1;
-
-  /* accept_psk_mode stores whether the client's PSK mode is compatible with our
-   * preferences. */
-  unsigned accept_psk_mode:1;
-
   /* retry_group is the group ID selected by the server in HelloRetryRequest in
    * TLS 1.3. */
   uint16_t retry_group;
+
+  /* ecdh_ctx is the current ECDH instance. */
+  SSL_ECDH_CTX ecdh_ctx;
 
   /* cookie is the value of the cookie received from the server, if any. */
   uint8_t *cookie;
@@ -970,9 +957,42 @@ struct ssl_handshake_st {
   uint8_t *server_params;
   size_t server_params_len;
 
+  /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
+   * server when using a TLS 1.2 PSK key exchange. */
+  char *peer_psk_identity_hint;
+
+  /* ca_names, on the client, contains the list of CAs received in a
+   * CertificateRequest message. */
+  STACK_OF(X509_NAME) *ca_names;
+
+  /* certificate_types, on the client, contains the set of certificate types
+   * received in a CertificateRequest message. */
+  uint8_t *certificate_types;
+  size_t num_certificate_types;
+
+  /* hostname, on the server, is the value of the SNI extension. */
+  char *hostname;
+
+  /* key_block is the record-layer key block for TLS 1.2 and earlier. */
+  uint8_t *key_block;
+  uint8_t key_block_len;
+
   /* session_tickets_sent, in TLS 1.3, is the number of tickets the server has
    * sent. */
   uint8_t session_tickets_sent;
+
+  /* scts_requested is one if the SCT extension is in the ClientHello. */
+  unsigned scts_requested:1;
+
+  /* needs_psk_binder if the ClientHello has a placeholder PSK binder to be
+   * filled in. */
+  unsigned needs_psk_binder:1;
+
+  unsigned received_hello_retry_request:1;
+
+  /* accept_psk_mode stores whether the client's PSK mode is compatible with our
+   * preferences. */
+  unsigned accept_psk_mode:1;
 
   /* cert_request is one if a client certificate was requested and zero
    * otherwise. */
@@ -1000,26 +1020,6 @@ struct ssl_handshake_st {
   /* ticket_expected is one if a TLS 1.2 NewSessionTicket message is to be sent
    * or received. */
   unsigned ticket_expected:1;
-
-  /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
-   * server when using a TLS 1.2 PSK key exchange. */
-  char *peer_psk_identity_hint;
-
-  /* ca_names, on the client, contains the list of CAs received in a
-   * CertificateRequest message. */
-  STACK_OF(X509_NAME) *ca_names;
-
-  /* certificate_types, on the client, contains the set of certificate types
-   * received in a CertificateRequest message. */
-  uint8_t *certificate_types;
-  size_t num_certificate_types;
-
-  /* key_block is the record-layer key block for TLS 1.2 and earlier. */
-  uint8_t *key_block;
-  uint8_t key_block_len;
-
-  /* hostname, on the server, is the value of the SNI extension. */
-  char *hostname;
 } /* SSL_HANDSHAKE */;
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);
@@ -1377,22 +1377,6 @@ typedef struct ssl3_state_st {
   uint8_t server_random[SSL3_RANDOM_SIZE];
   uint8_t client_random[SSL3_RANDOM_SIZE];
 
-  /* have_version is true if the connection's final version is known. Otherwise
-   * the version has not been negotiated yet. */
-  unsigned have_version:1;
-
-  /* v2_hello_done is true if the peer's V2ClientHello, if any, has been handled
-   * and future messages should use the record layer. */
-  unsigned v2_hello_done:1;
-
-  /* initial_handshake_complete is true if the initial handshake has
-   * completed. */
-  unsigned initial_handshake_complete:1;
-
-  /* skip_early_data instructs the record layer to skip unexpected early data
-   * messages when 0RTT is rejected. */
-  unsigned skip_early_data:1;
-
   /* read_buffer holds data from the transport to be processed. */
   SSL3_BUFFER read_buffer;
   /* write_buffer holds data to be written to the transport. */
@@ -1423,14 +1407,13 @@ typedef struct ssl3_state_st {
   /* recv_shutdown is the shutdown state for the send half of the connection. */
   enum ssl_shutdown_t send_shutdown;
 
+  int alert_dispatch;
+
+  int total_renegotiations;
+
   /* early_data_skipped is the amount of early data that has been skipped by the
    * record layer. */
   uint16_t early_data_skipped;
-
-  int alert_dispatch;
-  uint8_t send_alert[2];
-
-  int total_renegotiations;
 
   /* empty_record_count is the number of consecutive empty records received. */
   uint8_t empty_record_count;
@@ -1442,6 +1425,39 @@ typedef struct ssl3_state_st {
   /* key_update_count is the number of consecutive KeyUpdates received. */
   uint8_t key_update_count;
 
+  /* skip_early_data instructs the record layer to skip unexpected early data
+   * messages when 0RTT is rejected. */
+  unsigned skip_early_data:1;
+
+  /* have_version is true if the connection's final version is known. Otherwise
+   * the version has not been negotiated yet. */
+  unsigned have_version:1;
+
+  /* v2_hello_done is true if the peer's V2ClientHello, if any, has been handled
+   * and future messages should use the record layer. */
+  unsigned v2_hello_done:1;
+
+  /* initial_handshake_complete is true if the initial handshake has
+   * completed. */
+  unsigned initial_handshake_complete:1;
+
+  /* session_reused indicates whether a session was resumed. */
+  unsigned session_reused:1;
+
+  unsigned send_connection_binding:1;
+
+  /* In a client, this means that the server supported Channel ID and that a
+   * Channel ID was sent. In a server it means that we echoed support for
+   * Channel IDs and that tlsext_channel_id will be valid after the
+   * handshake. */
+  unsigned tlsext_channel_id_valid:1;
+
+  uint8_t send_alert[2];
+
+  /* pending_message is the current outgoing handshake message. */
+  uint8_t *pending_message;
+  uint32_t pending_message_len;
+
   /* aead_read_ctx is the current read cipher state. */
   SSL_AEAD_CTX *aead_read_ctx;
 
@@ -1452,30 +1468,32 @@ typedef struct ssl3_state_st {
    * version. */
   const SSL3_ENC_METHOD *enc_method;
 
-  /* pending_message is the current outgoing handshake message. */
-  uint8_t *pending_message;
-  uint32_t pending_message_len;
-
   /* hs is the handshake state for the current handshake or NULL if there isn't
    * one. */
   SSL_HANDSHAKE *hs;
 
   uint8_t write_traffic_secret[EVP_MAX_MD_SIZE];
-  uint8_t write_traffic_secret_len;
   uint8_t read_traffic_secret[EVP_MAX_MD_SIZE];
-  uint8_t read_traffic_secret_len;
   uint8_t exporter_secret[EVP_MAX_MD_SIZE];
+  uint8_t write_traffic_secret_len;
+  uint8_t read_traffic_secret_len;
   uint8_t exporter_secret_len;
+
+  /* Connection binding to prevent renegotiation attacks */
+  uint8_t previous_client_finished[12];
+  uint8_t previous_client_finished_len;
+  uint8_t previous_server_finished_len;
+  uint8_t previous_server_finished[12];
 
   /* State pertaining to the pending handshake.
    *
    * TODO(davidben): Move everything not needed after the handshake completes to
    * |hs| and remove this. */
   struct {
-    int message_type;
-
     /* used to hold the new cipher we are going to use */
     const SSL_CIPHER *new_cipher;
+
+    int message_type;
 
     /* used when SSL_ST_FLUSH_DATA is entered */
     int next_state;
@@ -1508,16 +1526,6 @@ typedef struct ssl3_state_st {
    * immutable. */
   SSL_SESSION *established_session;
 
-  /* session_reused indicates whether a session was resumed. */
-  unsigned session_reused:1;
-
-  /* Connection binding to prevent renegotiation attacks */
-  uint8_t previous_client_finished[12];
-  uint8_t previous_client_finished_len;
-  uint8_t previous_server_finished[12];
-  uint8_t previous_server_finished_len;
-  int send_connection_binding;
-
   /* Next protocol negotiation. For the client, this is the protocol that we
    * sent in NextProtocol and is set when handling ServerHello extensions.
    *
@@ -1536,11 +1544,6 @@ typedef struct ssl3_state_st {
   uint8_t *alpn_selected;
   size_t alpn_selected_len;
 
-  /* In a client, this means that the server supported Channel ID and that a
-   * Channel ID was sent. In a server it means that we echoed support for
-   * Channel IDs and that tlsext_channel_id will be valid after the
-   * handshake. */
-  char tlsext_channel_id_valid;
   /* For a server:
    *     If |tlsext_channel_id_valid| is true, then this contains the
    *     verified Channel ID from the client: a P256 point, (x,y), where
