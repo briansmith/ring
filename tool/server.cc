@@ -24,33 +24,37 @@
 
 static const struct argument kArguments[] = {
     {
-     "-accept", kRequiredArgument,
-     "The port of the server to bind on; eg 45102",
+        "-accept", kRequiredArgument,
+        "The port of the server to bind on; eg 45102",
     },
     {
-     "-cipher", kOptionalArgument,
-     "An OpenSSL-style cipher suite string that configures the offered ciphers",
+        "-cipher", kOptionalArgument,
+        "An OpenSSL-style cipher suite string that configures the offered "
+        "ciphers",
     },
     {
-     "-max-version", kOptionalArgument,
-     "The maximum acceptable protocol version",
+        "-max-version", kOptionalArgument,
+        "The maximum acceptable protocol version",
     },
     {
-     "-min-version", kOptionalArgument,
-     "The minimum acceptable protocol version",
+        "-min-version", kOptionalArgument,
+        "The minimum acceptable protocol version",
     },
     {
-      "-key", kOptionalArgument,
-      "PEM-encoded file containing the private key, leaf certificate and "
-      "optional certificate chain. A self-signed certificate is generated "
-      "at runtime if this argument is not provided.",
+        "-key", kOptionalArgument,
+        "PEM-encoded file containing the private key, leaf certificate and "
+        "optional certificate chain. A self-signed certificate is generated "
+        "at runtime if this argument is not provided.",
     },
     {
-      "-ocsp-response", kOptionalArgument,
-      "OCSP response file to send",
+        "-ocsp-response", kOptionalArgument, "OCSP response file to send",
     },
     {
-     "", kOptionalArgument, "",
+        "-loop", kBooleanArgument,
+        "The server will continue accepting new sequential connections.",
+    },
+    {
+        "", kOptionalArgument, "",
     },
 };
 
@@ -219,25 +223,30 @@ bool Server(const std::vector<std::string> &args) {
     return false;
   }
 
-  int sock = -1;
-  if (!Accept(&sock, args_map["-accept"])) {
-    return false;
-  }
+  bool result = true;
+  do {
+    int sock = -1;
+    if (!Accept(&sock, args_map["-accept"])) {
+      return false;
+    }
 
-  BIO *bio = BIO_new_socket(sock, BIO_CLOSE);
-  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
-  SSL_set_bio(ssl.get(), bio, bio);
+    BIO *bio = BIO_new_socket(sock, BIO_CLOSE);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    SSL_set_bio(ssl.get(), bio, bio);
 
-  int ret = SSL_accept(ssl.get());
-  if (ret != 1) {
-    int ssl_err = SSL_get_error(ssl.get(), ret);
-    fprintf(stderr, "Error while connecting: %d\n", ssl_err);
-    ERR_print_errors_cb(PrintErrorCallback, stderr);
-    return false;
-  }
+    int ret = SSL_accept(ssl.get());
+    if (ret != 1) {
+      int ssl_err = SSL_get_error(ssl.get(), ret);
+      fprintf(stderr, "Error while connecting: %d\n", ssl_err);
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
 
-  fprintf(stderr, "Connected.\n");
-  PrintConnectionInfo(ssl.get());
+    fprintf(stderr, "Connected.\n");
+    PrintConnectionInfo(ssl.get());
 
-  return TransferData(ssl.get(), sock);
+    result = TransferData(ssl.get(), sock);
+  } while (result && args_map.count("-loop") != 0);
+
+  return result;
 }

@@ -16,6 +16,12 @@
 
 #include <stdio.h>
 
+#if !defined(OPENSSL_WINDOWS)
+#include <sys/select.h>
+#else
+#include <winsock2.h>
+#endif
+
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
@@ -93,6 +99,10 @@ static const struct argument kArguments[] = {
      "Enable GREASE",
     },
     {
+      "-resume", kBooleanArgument,
+      "Establish a second connection resuming the original connection.",
+    },
+    {
      "", kOptionalArgument, "",
     },
 };
@@ -122,6 +132,7 @@ static void KeyLogCallback(const SSL *ssl, const char *line) {
 }
 
 static bssl::UniquePtr<BIO> session_out;
+static bssl::UniquePtr<SSL_SESSION> resume_session;
 
 static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
   if (session_out) {
@@ -132,8 +143,105 @@ static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
       return 0;
     }
   }
+  resume_session = bssl::UniquePtr<SSL_SESSION>(session);
+  return 1;
+}
 
-  return 0;
+static bool WaitForSession(SSL *ssl, int sock) {
+  fd_set read_fds;
+  FD_ZERO(&read_fds);
+
+  if (!SocketSetNonBlocking(sock, true)) {
+    return false;
+  }
+
+  while (!resume_session) {
+    FD_SET(sock, &read_fds);
+    int ret = select(sock + 1, &read_fds, NULL, NULL, NULL);
+    if (ret <= 0) {
+      perror("select");
+      return false;
+    }
+
+    uint8_t buffer[512];
+    int ssl_ret = SSL_read(ssl, buffer, sizeof(buffer));
+
+    if (ssl_ret <= 0) {
+      int ssl_err = SSL_get_error(ssl, ssl_ret);
+      if (ssl_err == SSL_ERROR_WANT_READ) {
+        continue;
+      }
+      fprintf(stderr, "Error while reading: %d\n", ssl_err);
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool DoConnection(SSL_CTX *ctx,
+                         std::map<std::string, std::string> args_map,
+                         bool (*cb)(SSL *ssl, int sock)) {
+  int sock = -1;
+  if (!Connect(&sock, args_map["-connect"])) {
+    return false;
+  }
+
+  if (args_map.count("-starttls") != 0) {
+    const std::string& starttls = args_map["-starttls"];
+    if (starttls == "smtp") {
+      if (!DoSMTPStartTLS(sock)) {
+        return false;
+      }
+    } else {
+      fprintf(stderr, "Unknown value for -starttls: %s\n", starttls.c_str());
+      return false;
+    }
+  }
+
+  bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
+
+  if (args_map.count("-server-name") != 0) {
+    SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
+  }
+
+  if (args_map.count("-session-in") != 0) {
+    bssl::UniquePtr<BIO> in(BIO_new_file(args_map["-session-in"].c_str(),
+                                         "rb"));
+    if (!in) {
+      fprintf(stderr, "Error reading session\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    bssl::UniquePtr<SSL_SESSION> session(PEM_read_bio_SSL_SESSION(in.get(),
+                                         nullptr, nullptr, nullptr));
+    if (!session) {
+      fprintf(stderr, "Error reading session\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    SSL_set_session(ssl.get(), session.get());
+  } else if (resume_session) {
+    SSL_set_session(ssl.get(), resume_session.get());
+  }
+
+  SSL_set_bio(ssl.get(), bio.get(), bio.get());
+  bio.release();
+
+  int ret = SSL_connect(ssl.get());
+  if (ret != 1) {
+    int ssl_err = SSL_get_error(ssl.get(), ret);
+    fprintf(stderr, "Error while connecting: %d\n", ssl_err);
+    ERR_print_errors_cb(PrintErrorCallback, stderr);
+    return false;
+  }
+
+  fprintf(stderr, "Connected.\n");
+  PrintConnectionInfo(ssl.get());
+
+  return cb(ssl.get(), sock);
 }
 
 bool Client(const std::vector<std::string> &args) {
@@ -261,6 +369,9 @@ bool Client(const std::vector<std::string> &args) {
     }
   }
 
+  SSL_CTX_set_session_cache_mode(ctx.get(), SSL_SESS_CACHE_CLIENT);
+  SSL_CTX_sess_set_new_cb(ctx.get(), NewSessionCallback);
+
   if (args_map.count("-session-out") != 0) {
     session_out.reset(BIO_new_file(args_map["-session-out"].c_str(), "wb"));
     if (!session_out) {
@@ -269,71 +380,16 @@ bool Client(const std::vector<std::string> &args) {
       ERR_print_errors_cb(PrintErrorCallback, stderr);
       return false;
     }
-    SSL_CTX_set_session_cache_mode(ctx.get(), SSL_SESS_CACHE_CLIENT);
-    SSL_CTX_sess_set_new_cb(ctx.get(), NewSessionCallback);
   }
 
   if (args_map.count("-grease") != 0) {
     SSL_CTX_set_grease_enabled(ctx.get(), 1);
   }
 
-  int sock = -1;
-  if (!Connect(&sock, args_map["-connect"])) {
+  if (args_map.count("-resume") != 0 &&
+      !DoConnection(ctx.get(), args_map, &WaitForSession)) {
     return false;
   }
 
-  if (args_map.count("-starttls") != 0) {
-    const std::string& starttls = args_map["-starttls"];
-    if (starttls == "smtp") {
-      if (!DoSMTPStartTLS(sock)) {
-        return false;
-      }
-    } else {
-      fprintf(stderr, "Unknown value for -starttls: %s\n", starttls.c_str());
-      return false;
-    }
-  }
-
-  bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
-  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
-
-  if (args_map.count("-server-name") != 0) {
-    SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
-  }
-
-  if (args_map.count("-session-in") != 0) {
-    bssl::UniquePtr<BIO> in(BIO_new_file(args_map["-session-in"].c_str(),
-                                         "rb"));
-    if (!in) {
-      fprintf(stderr, "Error reading session\n");
-      ERR_print_errors_cb(PrintErrorCallback, stderr);
-      return false;
-    }
-    bssl::UniquePtr<SSL_SESSION> session(PEM_read_bio_SSL_SESSION(in.get(),
-                                         nullptr, nullptr, nullptr));
-    if (!session) {
-      fprintf(stderr, "Error reading session\n");
-      ERR_print_errors_cb(PrintErrorCallback, stderr);
-      return false;
-    }
-    SSL_set_session(ssl.get(), session.get());
-  }
-
-  SSL_set_bio(ssl.get(), bio.get(), bio.get());
-  bio.release();
-
-  int ret = SSL_connect(ssl.get());
-  if (ret != 1) {
-    int ssl_err = SSL_get_error(ssl.get(), ret);
-    fprintf(stderr, "Error while connecting: %d\n", ssl_err);
-    ERR_print_errors_cb(PrintErrorCallback, stderr);
-    return false;
-  }
-
-  fprintf(stderr, "Connected.\n");
-  PrintConnectionInfo(ssl.get());
-
-  bool ok = TransferData(ssl.get(), sock);
-
-  return ok;
+  return DoConnection(ctx.get(), args_map, &TransferData);
 }
