@@ -462,34 +462,20 @@ static const BIO_METHOD *bio_s_bio(void) { return &methods_biop; }
 
 int BIO_new_bio_pair(BIO** bio1_p, size_t writebuf1_len,
                      BIO** bio2_p, size_t writebuf2_len) {
-  BIO *bio1 = NULL, *bio2 = NULL;
-  int ret = 0;
-
-  bio1 = BIO_new(bio_s_bio());
-  if (bio1 == NULL) {
-    goto err;
-  }
-  bio2 = BIO_new(bio_s_bio());
-  if (bio2 == NULL) {
-    goto err;
-  }
-
-  if (!bio_make_pair(bio1, bio2, writebuf1_len, writebuf2_len)) {
-    goto err;
-  }
-  ret = 1;
-
-err:
-  if (ret == 0) {
+  BIO *bio1 = BIO_new(bio_s_bio());
+  BIO *bio2 = BIO_new(bio_s_bio());
+  if (bio1 == NULL || bio2 == NULL ||
+      !bio_make_pair(bio1, bio2, writebuf1_len, writebuf2_len)) {
     BIO_free(bio1);
-    bio1 = NULL;
     BIO_free(bio2);
-    bio2 = NULL;
+    *bio1_p = NULL;
+    *bio2_p = NULL;
+    return 0;
   }
 
   *bio1_p = bio1;
   *bio2_p = bio2;
-  return ret;
+  return 1;
 }
 
 size_t BIO_ctrl_get_read_request(BIO *bio) {
