@@ -3639,6 +3639,17 @@ OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
 /* SSL_enable_tls_channel_id calls |SSL_set_tls_channel_id_enabled|. */
 OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
 
+/* BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
+ * that this has quite different behaviour from the version in OpenSSL (notably
+ * that it doesn't try to auto renegotiate). */
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
+
+/* BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must
+ * have been created using |BIO_f_ssl|. If |take_owership| is true, |bio| will
+ * call |SSL_free| on |ssl| when closed. It returns one on success or something
+ * other than one on error. */
+OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
+
 
 /* Private structures.
  *

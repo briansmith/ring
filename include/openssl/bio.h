@@ -679,6 +679,8 @@ OPENSSL_EXPORT int BIO_shutdown_wr(BIO *bio);
  * on one line. */
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
 
+OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);
+
 
 /* Private functions */
 

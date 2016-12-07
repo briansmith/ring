@@ -1,4 +1,5 @@
 add_subdirectory(bio)
+add_subdirectory(biossl)
 add_subdirectory(blowfish)
 add_subdirectory(cast)
 add_subdirectory(des)
@@ -17,6 +18,7 @@ add_library(
   decrepit
 
   $<TARGET_OBJECTS:bio_decrepit>
+  $<TARGET_OBJECTS:biossl_decrepit>
   $<TARGET_OBJECTS:blowfish>
   $<TARGET_OBJECTS:cast>
   $<TARGET_OBJECTS:des_decrepit>

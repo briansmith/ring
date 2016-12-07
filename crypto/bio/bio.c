@@ -604,3 +604,7 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
 
   return 1;
 }
+
+void BIO_set_retry_special(BIO *bio) {
+  bio->flags |= BIO_FLAGS_READ | BIO_FLAGS_IO_SPECIAL;
+}
