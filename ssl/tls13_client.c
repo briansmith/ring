@@ -214,13 +214,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* We only support PSK_DHE_KE. */
-  if (!have_key_share) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return ssl_hs_error;
-  }
-
   alert = SSL_AD_DECODE_ERROR;
   if (have_pre_shared_key) {
     if (ssl->session == NULL) {
@@ -286,6 +279,13 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
   } else if (!tls13_advance_key_schedule(hs, kZeroes, hash_len)) {
+    return ssl_hs_error;
+  }
+
+  if (!have_key_share) {
+    /* We do not support psk_ke and thus always require a key share. */
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
     return ssl_hs_error;
   }
 

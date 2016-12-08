@@ -8966,7 +8966,7 @@ func addTLS13HandshakeTests() {
 		},
 		resumeSession: true,
 		shouldFail:    true,
-		expectedError: ":UNEXPECTED_EXTENSION:",
+		expectedError: ":MISSING_KEY_SHARE:",
 	})
 
 	testCases = append(testCases, testCase{
@@ -8979,7 +8979,7 @@ func addTLS13HandshakeTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":UNEXPECTED_EXTENSION:",
+		expectedError: ":MISSING_KEY_SHARE:",
 	})
 
 	testCases = append(testCases, testCase{
