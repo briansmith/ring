@@ -162,8 +162,8 @@ X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf) {
   X509 *x509p = x509;
   X509 *ret = d2i_X509(&x509p, &inp, CRYPTO_BUFFER_len(buf));
   if (ret == NULL ||
-      (inp - CRYPTO_BUFFER_data(buf)) != (ptrdiff_t) CRYPTO_BUFFER_len(buf)) {
-    X509_free(x509);
+      inp - CRYPTO_BUFFER_data(buf) != (ptrdiff_t)CRYPTO_BUFFER_len(buf)) {
+    X509_free(x509p);
     return NULL;
   }
   assert(x509p == x509);
