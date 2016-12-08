@@ -1588,9 +1588,6 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (!config->check_close_notify) {
     SSL_set_quiet_shutdown(ssl.get(), 1);
   }
-  if (config->disable_npn) {
-    SSL_set_options(ssl.get(), SSL_OP_DISABLE_NPN);
-  }
   if (config->p384_only) {
     int nid = NID_secp384r1;
     if (!SSL_set1_curves(ssl.get(), &nid, 1)) {

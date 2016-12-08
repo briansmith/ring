@@ -4985,20 +4985,6 @@ func addExtensionTests() {
 				shouldFail:    true,
 				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
 			})
-
-			// Test that NPN can be disabled with SSL_OP_DISABLE_NPN.
-			testCases = append(testCases, testCase{
-				name: "DisableNPN-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					NextProtos: []string{"foo"},
-				},
-				flags: []string{
-					"-select-next-proto", "foo",
-					"-disable-npn",
-				},
-				expectNoNextProto: true,
-			})
 		}
 
 		// Test ticket behavior.

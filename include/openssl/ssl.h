@@ -608,11 +608,6 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
  * client's. */
 #define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
 
-/* SSL_OP_DISABLE_NPN configures an individual |SSL| to not advertise NPN,
- * despite |SSL_CTX_set_next_proto_select_cb| being configured on the
- * |SSL_CTX|. */
-#define SSL_OP_DISABLE_NPN 0x00800000L
-
 /* The following flags toggle individual protocol versions. This is deprecated.
  * Use |SSL_CTX_set_min_proto_version| and |SSL_CTX_set_max_proto_version|
  * instead. */

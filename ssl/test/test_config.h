@@ -102,7 +102,6 @@ struct TestConfig {
   bool renegotiate_once = false;
   bool renegotiate_freely = false;
   bool renegotiate_ignore = false;
-  bool disable_npn = false;
   int expect_peer_signature_algorithm = 0;
   bool p384_only = false;
   bool enable_all_curves = false;
