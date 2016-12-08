@@ -35,6 +35,7 @@ extern "C" {
 
 #define X25519_PRIVATE_KEY_LEN 32
 #define X25519_PUBLIC_VALUE_LEN 32
+#define X25519_SHARED_KEY_LEN 32
 
 /* X25519_keypair sets |out_public_value| and |out_private_key| to a freshly
  * generated, public–private key pair. */
