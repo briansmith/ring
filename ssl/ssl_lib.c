@@ -1194,6 +1194,11 @@ int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
   return 1;
 }
 
+const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
+  *out_len = ssl->sid_ctx_length;
+  return ssl->sid_ctx;
+}
+
 int SSL_CTX_set_purpose(SSL_CTX *ctx, int purpose) {
   return X509_VERIFY_PARAM_set_purpose(ctx->param, purpose);
 }
