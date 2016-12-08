@@ -138,8 +138,11 @@ static int rsa_check_key(const RSA *key, const BIGNUM *d) {
    * https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html. Also,
    * this limit might help with memory management decisions later.
    *
-   * Keep in sync with src/rsa/convert_nist_rsa_test_vectors.py. */
-  if (!GFp_rsa_check_modulus_and_exponent(&key->mont_n->N, key->e, 2048, 4096)) {
+   * Keep in sync with src/rsa/convert_nist_rsa_test_vectors.py and
+   * `PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX` in rsa.rs. */
+  static const size_t PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX = 4096;
+  if (!GFp_rsa_check_modulus_and_exponent(
+          &key->mont_n->N, key->e, 2048, PRIVATE_KEY_PUBLIC_MODULUS_BITS_MAX)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto out;
   }

@@ -119,7 +119,10 @@ mod polyfill;
 pub mod aead;
 
 pub mod agreement;
+
+#[cfg(feature = "use_heap")]
 mod bits;
+
 mod c;
 mod chacha;
 pub mod constant_time;
@@ -142,14 +145,14 @@ pub mod pbkdf2;
 mod poly1305;
 pub mod rand;
 
-// Really a private method; only has public visibility so that C compilation
-// can see it.
-#[doc(hidden)]
-pub use limb::GFp_rand_mod;
-
 #[cfg(feature = "use_heap")]
 #[path = "rsa/rsa.rs"]
 mod rsa;
+
+// Really a private method; only has public visibility so that C compilation
+// can see it.
+#[doc(hidden)]
+pub use rsa::GFp_rand_mod;
 
 pub mod signature;
 

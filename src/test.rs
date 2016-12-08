@@ -116,7 +116,11 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-use {bits, digest, error};
+#[cfg(feature = "use_heap")]
+use bits;
+
+use {digest, error};
+
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -182,6 +186,7 @@ impl TestCase {
 
     /// Returns the value of an attribute that is an integer, in decimal
     /// notation, as a bit length.
+    #[cfg(feature = "use_heap")]
     pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
         let s = self.consume_string(key);
         let bits = s.parse::<usize>().unwrap();
