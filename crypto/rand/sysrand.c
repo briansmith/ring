@@ -39,7 +39,7 @@
  * operating system. |len| must be no more than |GFp_sysrand_chunk_max_len|.
  * It returns one on success, -1 if it failed because the operating system
  * doesn't offer such an API, or zero otherwise. */
-int GFp_sysrand_chunk(void *buf, size_t len);
+long GFp_sysrand_chunk(void *buf, size_t len);
 
 #if defined(OPENSSL_WINDOWS)
 
@@ -58,15 +58,15 @@ int GFp_sysrand_chunk(void *buf, size_t len);
 
 #pragma warning(pop)
 
-int GFp_sysrand_chunk(void *out, size_t requested) {
+long GFp_sysrand_chunk(void *out, size_t requested) {
   if (requested > ULONG_MAX) {
     requested = ULONG_MAX;
   }
-  if (requested > (size_t)INT_MAX) {
-    requested = (size_t)INT_MAX;
+  if (requested > (size_t)LONG_MAX) {
+    requested = (size_t)LONG_MAX;
   }
 
-  return RtlGenRandom(out, (ULONG)requested) ? (int)requested : 0;
+  return RtlGenRandom(out, (ULONG)requested) ? (long)requested : 0;
 }
 
 #elif defined(__linux__)
@@ -92,8 +92,8 @@ int GFp_sysrand_chunk(void *out, size_t requested) {
 #endif
 #endif
 
-int GFp_sysrand_chunk(void *out, size_t requested) {
-  int r = syscall(SYS_getrandom, out, requested, 0u);
+long GFp_sysrand_chunk(void *out, size_t requested) {
+  long r = syscall(SYS_getrandom, out, requested, 0u);
   if (r < 0) {
     // EINTR is normal, and we can try again. Other error codes are fatal.
     if (errno == EINTR) {

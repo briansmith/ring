@@ -224,7 +224,7 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
 
 #[cfg(any(target_os = "linux", windows))]
 extern {
-    fn GFp_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
+    fn GFp_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::long;
 }
 
 
