@@ -3569,7 +3569,8 @@ int tls1_record_handshake_hashes_for_channel_id(SSL *ssl) {
     return -1;
   }
 
-  ssl->s3->new_session->original_handshake_hash_len = digest_len;
+  assert(sizeof(ssl->s3->new_session->original_handshake_hash) < 256);
+  ssl->s3->new_session->original_handshake_hash_len = (uint8_t)digest_len;
 
   return 1;
 }

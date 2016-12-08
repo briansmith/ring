@@ -473,7 +473,7 @@ static int SSL_SESSION_parse_octet_string(CBS *cbs, uint8_t **out_ptr,
 /* SSL_SESSION_parse_bounded_octet_string parses an optional ASN.1 OCTET STRING
  * explicitly tagged with |tag| of size at most |max_out|. */
 static int SSL_SESSION_parse_bounded_octet_string(
-    CBS *cbs, uint8_t *out, unsigned *out_len, unsigned max_out, unsigned tag) {
+    CBS *cbs, uint8_t *out, uint8_t *out_len, uint8_t max_out, unsigned tag) {
   CBS value;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag) ||
       CBS_len(&value) > max_out) {
@@ -481,7 +481,7 @@ static int SSL_SESSION_parse_bounded_octet_string(
     return 0;
   }
   memcpy(out, CBS_data(&value), CBS_len(&value));
-  *out_len = (unsigned)CBS_len(&value);
+  *out_len = (uint8_t)CBS_len(&value);
   return 1;
 }
 

@@ -1134,24 +1134,28 @@ err:
 }
 
 int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
-                                   unsigned sid_ctx_len) {
+                                   size_t sid_ctx_len) {
   if (sid_ctx_len > sizeof(ctx->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
-  ctx->sid_ctx_length = sid_ctx_len;
+
+  assert(sizeof(ctx->sid_ctx) < 256);
+  ctx->sid_ctx_length = (uint8_t)sid_ctx_len;
   memcpy(ctx->sid_ctx, sid_ctx, sid_ctx_len);
 
   return 1;
 }
 
 int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
-                               unsigned sid_ctx_len) {
-  if (sid_ctx_len > SSL_MAX_SID_CTX_LENGTH) {
+                               size_t sid_ctx_len) {
+  if (sid_ctx_len > sizeof(ssl->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
-  ssl->sid_ctx_length = sid_ctx_len;
+
+  assert(sizeof(ssl->sid_ctx) < 256);
+  ssl->sid_ctx_length = (uint8_t)sid_ctx_len;
   memcpy(ssl->sid_ctx, sid_ctx, sid_ctx_len);
 
   return 1;

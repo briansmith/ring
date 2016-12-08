@@ -1615,7 +1615,7 @@ OPENSSL_EXPORT long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout);
  * should not be used. */
 OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
                                                const uint8_t *sid_ctx,
-                                               unsigned sid_ctx_len);
+                                               size_t sid_ctx_len);
 
 
 /* Session caching.
@@ -1738,13 +1738,13 @@ OPENSSL_EXPORT long SSL_set_session_timeout(SSL *ssl, long timeout);
  * relevant if a server requires client auth. */
 OPENSSL_EXPORT int SSL_CTX_set_session_id_context(SSL_CTX *ctx,
                                                   const uint8_t *sid_ctx,
-                                                  unsigned sid_ctx_len);
+                                                  size_t sid_ctx_len);
 
 /* SSL_set_session_id_context sets |ssl|'s session ID context to |sid_ctx|. It
  * returns one on success and zero on error. See also
  * |SSL_CTX_set_session_id_context|. */
 OPENSSL_EXPORT int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
-                                              unsigned sid_ctx_len);
+                                              size_t sid_ctx_len);
 
 /* SSL_SESSION_CACHE_MAX_SIZE_DEFAULT is the default maximum size of a session
  * cache. */
@@ -3689,7 +3689,7 @@ struct ssl_session_st {
   /* this is used to determine whether the session is being reused in
    * the appropriate context. It is up to the application to set this,
    * via SSL_new */
-  unsigned int sid_ctx_length;
+  uint8_t sid_ctx_length;
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
   char *psk_identity;
@@ -3740,7 +3740,7 @@ struct ssl_session_st {
    * SHA-2, depending on TLS version) for the original, full handshake that
    * created a session. This is used by Channel IDs during resumption. */
   uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
-  unsigned original_handshake_hash_len;
+  uint8_t original_handshake_hash_len;
 
   uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
 
@@ -3913,7 +3913,7 @@ struct ssl_ctx_st {
   void *msg_callback_arg;
 
   int verify_mode;
-  unsigned int sid_ctx_length;
+  uint8_t sid_ctx_length;
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
   int (*default_verify_callback)(
       int ok, X509_STORE_CTX *ctx); /* called 'verify_callback' in the SSL */
@@ -4135,7 +4135,7 @@ struct ssl_st {
 
   /* the session_id_context is used to ensure sessions are only reused
    * in the appropriate context */
-  unsigned int sid_ctx_length;
+  uint8_t sid_ctx_length;
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
   /* session is the configured session to be offered by the client. This session
