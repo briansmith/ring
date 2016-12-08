@@ -253,6 +253,18 @@ OPENSSL_EXPORT BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
  * number of bytes written. */
 OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
+/* BN_le2bn sets |*ret| to the value of |len| bytes from |in|, interpreted as
+ * a little-endian number, and returns |ret|. If |ret| is NULL then a fresh
+ * |BIGNUM| is allocated and returned. It returns NULL on allocation
+ * failure. */
+OPENSSL_EXPORT BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret);
+
+/* BN_bn2le_padded serialises the absolute value of |in| to |out| as a
+ * little-endian integer, which must have |len| of space available, padding
+ * out the remainder of out with zeros. If |len| is smaller than |BN_num_bytes|,
+ * the function fails and returns 0. Otherwise, it returns 1. */
+OPENSSL_EXPORT int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in);
+
 /* BN_bn2bin_padded serialises the absolute value of |in| to |out| as a
  * big-endian integer. The integer is padded with leading zeros up to size
  * |len|. If |len| is smaller than |BN_num_bytes|, the function fails and

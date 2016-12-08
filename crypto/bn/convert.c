@@ -118,6 +118,42 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   return ret;
 }
 
+BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
+  BIGNUM *bn = NULL;
+  if (ret == NULL) {
+    bn = BN_new();
+    ret = bn;
+  }
+
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  if (len == 0) {
+    ret->top = 0;
+    ret->neg = 0;
+    return ret;
+  }
+
+  /* Reserve enough space in |ret|. */
+  size_t num_words = ((len - 1) / BN_BYTES) + 1;
+  if (!bn_wexpand(ret, num_words)) {
+    BN_free(bn);
+    return NULL;
+  }
+  ret->top = num_words;
+
+  /* Make sure the top bytes will be zeroed. */
+  ret->d[num_words - 1] = 0;
+
+  /* We only support little-endian platforms, so we can simply memcpy the
+   * internal representation. */
+  OPENSSL_memcpy(ret->d, in, len);
+
+  bn_correct_top(ret);
+  return ret;
+}
+
 size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   size_t n, i;
   BN_ULONG l;
@@ -128,6 +164,23 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
     *(out++) = (unsigned char)(l >> (8 * (i % BN_BYTES))) & 0xff;
   }
   return n;
+}
+
+int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in) {
+  /* If we don't have enough space, fail out. */
+  size_t num_bytes = BN_num_bytes(in);
+  if (len < num_bytes) {
+    return 0;
+  }
+
+  /* We only support little-endian platforms, so we can simply memcpy into the
+   * internal representation. */
+  OPENSSL_memcpy(out, in->d, num_bytes);
+
+  /* Pad out the rest of the buffer with zeroes. */
+  OPENSSL_memset(out + num_bytes, 0, len - num_bytes);
+
+  return 1;
 }
 
 /* constant_time_select_ulong returns |x| if |v| is 1 and |y| if |v| is 0. Its
