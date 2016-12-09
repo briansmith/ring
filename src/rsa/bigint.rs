@@ -35,6 +35,12 @@ pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
 }
 
 
+impl<F: Field> AsRef<BIGNUM> for Modulus<F> {
+    fn as_ref<'a>(&'a self) -> &'a BIGNUM {
+        unsafe { GFp_BN_MONT_CTX_get0_n(self.as_ref()) }
+    }
+}
+
 impl AsRef<BIGNUM> for OddPositive {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
 }
@@ -95,12 +101,7 @@ impl Positive {
 
     pub fn into_elem<F: Field>(mut self, m: &Modulus<F>)
                                -> Result<Elem<F>, error::Unspecified> {
-        let cmp = unsafe {
-            GFp_BN_cmp(self.as_ref(), GFp_BN_MONT_CTX_get0_n(m.as_ref()))
-        };
-        if !(cmp < 0) {
-            return Err(error::Unspecified);
-        }
+        try!(verify_less_than(&self, &m));
         try!(bssl::map_result(unsafe {
             GFp_BN_to_mont(self.0.as_mut_ref(), self.as_ref(), m.as_ref())
         }));
@@ -112,12 +113,7 @@ impl Positive {
 
     pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
             -> Result<ElemDecoded<F>, error::Unspecified> {
-        let cmp = unsafe {
-            GFp_BN_cmp(self.as_ref(), GFp_BN_MONT_CTX_get0_n(m.as_ref()))
-        };
-        if !(cmp < 0) {
-            return Err(error::Unspecified);
-        }
+        try!(verify_less_than(&self, &m));
         Ok(ElemDecoded {
             value: self.0,
             field: PhantomData,
