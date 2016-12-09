@@ -498,81 +498,6 @@ static const char kCustomSession[] =
 
 // kBoringSSLSession is a serialized SSL_SESSION generated from bssl client.
 static const char kBoringSSLSession[] =
-    "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"
-    "n8JzIdPmX4DkjYUiOnMDsWCOrmji9D6X52ASCWg23jrW4kOVWzeBkoEfu43XrVJk"
-    "FleW2V40fsg12DCCA30wggLmoAMCAQICAxK75jANBgkqhkiG9w0BAQUFADBOMQsw"
-    "CQYDVQQGEwJVUzEQMA4GA1UEChMHRXF1aWZheDEtMCsGA1UECxMkRXF1aWZheCBT"
-    "ZWN1cmUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTAyMDUyMTA0MDAwMFoXDTE4"
-    "MDgyMTA0MDAwMFowQjELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUdlb1RydXN0IElu"
-    "Yy4xGzAZBgNVBAMTEkdlb1RydXN0IEdsb2JhbCBDQTCCASIwDQYJKoZIhvcNAQEB"
-    "BQADggEPADCCAQoCggEBANrMGGMw/fQXIxpWflvfPGw45HG3eJHUvKHYTPioQ7YD"
-    "6U0hBwiI2lgvZjkpvQV4i5046AW3an5xpObEYKaw74DkiSgPniXW7YPzraaRx5jJ"
-    "Qhg1FJ2tmEaSLk/K8YdDwRaVVy1Q74ktgHpXrfLuX2vSAI25FPgUFTXZwEaje3LI"
-    "kb/JVSvN0Jc+nCZkzN/Ogxlxyk7m1NV7qRnNVd7I7NJeOFPlXE+MLf5QIzb8ZubL"
-    "jqQ5GQC3lQI5kQsO/jgu0R0FmvZNPm8PBx2vLB6PYDni+jZTEznUXiYr2z2oFL0y"
-    "6xgDKFIEceWrMz3hOLsHNoRinHnqFjD0X8Ar6HFr5PkCAwEAAaOB8DCB7TAfBgNV"
-    "HSMEGDAWgBRI5mj5K9KylddH2CMgEE8zmJCf1DAdBgNVHQ4EFgQUwHqYaI2J+6sF"
-    "ZAwRfap9ZbjKzE4wDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwOgYD"
-    "VR0fBDMwMTAvoC2gK4YpaHR0cDovL2NybC5nZW90cnVzdC5jb20vY3Jscy9zZWN1"
-    "cmVjYS5jcmwwTgYDVR0gBEcwRTBDBgRVHSAAMDswOQYIKwYBBQUHAgEWLWh0dHBz"
-    "Oi8vd3d3Lmdlb3RydXN0LmNvbS9yZXNvdXJjZXMvcmVwb3NpdG9yeTANBgkqhkiG"
-    "9w0BAQUFAAOBgQB24RJuTksWEoYwBrKBCM/wCMfHcX5m7sLt1Dsf//DwyE7WQziw"
-    "uTB9GNBVg6JqyzYRnOhIZqNtf7gT1Ef+i1pcc/yu2RsyGTirlzQUqpbS66McFAhJ"
-    "trvlke+DNusdVm/K2rxzY5Dkf3s+Iss9B+1fOHSc4wNQTqGvmO5h8oQ/Eg==";
-
-// kLeafInChainSession is a serialized SSL_SESSION generated from bssl client.
-// It contains a chain that includes the leaf certificate.
-static const char kLeafInChainSession[] =
     "MIIRwQIBAQICAwMEAsAvBCDdoGxGK26mR+8lM0uq6+k9xYuxPnwAjpcF9n0Yli9R"
     "kQQwbyshfWhdi5XQ1++7n2L1qqrcVlmHBPpr6yknT/u4pUrpQB5FZ7vqvNn8MdHf"
     "9rWgoQYCBFXgs7uiBAICHCCjggR6MIIEdjCCA16gAwIBAgIIf+yfD7Y6UicwDQYJ"
@@ -733,8 +658,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify the SSL_SESSION decodes.
-  bssl::UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(input.data(), input.size()));
+  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(input.data(), input.size()));
   if (!session) {
     fprintf(stderr, "SSL_SESSION_from_bytes failed\n");
     return false;
@@ -803,86 +727,12 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify that the SSL_SESSION fails to decode.
-  bssl::UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(input.data(), input.size()));
+  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(input.data(), input.size()));
   if (session) {
     fprintf(stderr, "SSL_SESSION_from_bytes unexpectedly succeeded\n");
     return false;
   }
   ERR_clear_error();
-  return true;
-}
-
-static bool TestLeafInChainSession() {
-  std::vector<uint8_t> input;
-  if (!DecodeBase64(&input, kLeafInChainSession)) {
-    return false;
-  }
-
-  bssl::UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(input.data(), input.size()));
-  if (!session) {
-    fprintf(stderr, "TestLeafInChainSession: failed to decode.\n");
-    return false;
-  }
-
-  // kLeafInChainSession contains a session where the leaf is duplicated in the
-  // certificate chain. |certs| should contain the chain without duplication,
-  // but |x509_chain| should reflect the structure from the serialised session.
-  if (X509_cmp(session->x509_peer, sk_X509_value(session->x509_chain, 0)) !=
-      0) {
-    fprintf(stderr,
-            "TestLeafInChainSession: leaf is not first element of chain.\n");
-    return false;
-  }
-
-  if (sk_X509_num(session->x509_chain) !=
-      sk_CRYPTO_BUFFER_num(session->certs)) {
-    fprintf(
-        stderr,
-        "TestLeafInChainSession: chain length differs from certs length.\n");
-    return false;
-  }
-
-  if (!session->x509_chain_should_include_leaf) {
-    fprintf(stderr,
-            "TestLeafInChainSession: x509_chain_should_include_leaf flag not "
-            "set.\n");
-    return false;
-  }
-
-  size_t encoded_len;
-  bssl::UniquePtr<uint8_t> encoded;
-  uint8_t *encoded_raw;
-  if (!SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len)) {
-    fprintf(stderr, "TestLeafInChainSession: SSL_SESSION_to_bytes failed\n");
-    return false;
-  }
-  encoded.reset(encoded_raw);
-
-  // After reencoding, the duplication should be eliminated.
-  if (encoded_len >= input.size()) {
-    fprintf(stderr,
-            "TestLeafInChainSession: reencoding didn't end up smaller\n");
-    return false;
-  }
-
-  // But the duplication should be preserved when parsing again.
-  bssl::UniquePtr<SSL_SESSION> session2(
-      SSL_SESSION_from_bytes(encoded_raw, encoded_len));
-  if (!session2) {
-    fprintf(stderr, "TestLeafInChainSession: failed to redecode.\n");
-    return false;
-  }
-
-  if (X509_cmp(session2->x509_peer, sk_X509_value(session2->x509_chain, 0)) !=
-          0 ||
-      sk_X509_num(session2->x509_chain) != sk_X509_num(session->x509_chain)) {
-    fprintf(stderr,
-            "TestLeafInChainSession: redecode didn't preserve duplication.\n");
-    return false;
-  }
-
   return true;
 }
 
@@ -2929,7 +2779,6 @@ int main() {
       !TestBadSSL_SESSIONEncoding(kBadSessionExtraField) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionVersion) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionTrailingData) ||
-      !TestLeafInChainSession() ||
       // TODO(svaldez): Update this when TLS 1.3 is enabled by default.
       !TestDefaultVersion(SSL3_VERSION, TLS1_2_VERSION, &TLS_method) ||
       !TestDefaultVersion(SSL3_VERSION, SSL3_VERSION, &SSLv3_method) ||

@@ -199,20 +199,6 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
       goto err;
     }
   }
-  if (session->certs != NULL) {
-    new_session->certs = sk_CRYPTO_BUFFER_new_null();
-    if (new_session->certs == NULL) {
-      goto err;
-    }
-    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(session->certs); i++) {
-      CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(session->certs, i);
-      CRYPTO_BUFFER_up_ref(buffer);
-      if (!sk_CRYPTO_BUFFER_push(new_session->certs, buffer)) {
-        CRYPTO_BUFFER_free(buffer);
-        goto err;
-      }
-    }
-  }
   if (session->x509_peer != NULL) {
     X509_up_ref(session->x509_peer);
     new_session->x509_peer = session->x509_peer;
@@ -340,7 +326,6 @@ void SSL_SESSION_free(SSL_SESSION *session) {
   OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
   X509_free(session->x509_peer);
-  sk_CRYPTO_BUFFER_pop_free(session->certs, CRYPTO_BUFFER_free);
   sk_X509_pop_free(session->x509_chain, X509_free);
   OPENSSL_free(session->tlsext_hostname);
   OPENSSL_free(session->tlsext_tick);
@@ -978,61 +963,6 @@ static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session) {
     session->next->prev = session;
     session->prev = (SSL_SESSION *)&(ctx->session_cache_head);
     ctx->session_cache_head = session;
-  }
-}
-
-int x509_chain_from_buffers(STACK_OF(X509) **out,
-                            STACK_OF(CRYPTO_BUFFER) *buffers) {
-  *out = NULL;
-
-  if (sk_CRYPTO_BUFFER_num(buffers) == 0) {
-    return 1;
-  }
-
-  STACK_OF(X509) *ret = sk_X509_new_null();
-  if (ret == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(buffers); i++) {
-    CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(buffers, i);
-    X509 *x509 = X509_parse_from_buffer(buffer);
-    if (x509 == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_AD_DECODE_ERROR);
-      goto err;
-    }
-    if (!sk_X509_push(ret, x509)) {
-      X509_free(x509);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
-  *out = ret;
-  return 1;
-
-err:
-  sk_X509_pop_free(ret, X509_free);
-  return 0;
-}
-
-void ssl_session_set_x509_peer(SSL_SESSION *sess,
-                               int chain_should_include_leaf) {
-  sess->x509_chain_should_include_leaf = chain_should_include_leaf;
-  X509_free(sess->x509_peer);
-  sess->x509_peer = NULL;
-
-  if (sk_X509_num(sess->x509_chain) > 0) {
-    if (chain_should_include_leaf) {
-      X509 *leaf = sk_X509_value(sess->x509_chain, 0);
-      X509_up_ref(leaf);
-      sess->x509_peer = leaf;
-    } else {
-      sess->x509_peer = sk_X509_shift(sess->x509_chain);
-      /* |sess->x509_chain| may now be empty, but code still expects it to be
-       * non-NULL. */
-    }
   }
 }
 

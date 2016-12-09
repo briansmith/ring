@@ -1466,14 +1466,13 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
 
   CBS certificate_msg;
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
-  STACK_OF(CRYPTO_BUFFER) *buffers = NULL;
-  STACK_OF(X509) *chain = NULL;
   uint8_t alert;
-  if (!ssl_parse_cert_chain(ssl, &buffers, &chain, &alert,
-                            ssl->retain_only_sha256_of_client_certs
-                                ? ssl->s3->new_session->peer_sha256
-                                : NULL,
-                            &certificate_msg)) {
+  STACK_OF(X509) *chain = ssl_parse_cert_chain(
+      ssl, &alert, ssl->retain_only_sha256_of_client_certs
+                       ? ssl->s3->new_session->peer_sha256
+                       : NULL,
+      &certificate_msg);
+  if (chain == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     goto err;
   }
@@ -1484,7 +1483,7 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  if (sk_CRYPTO_BUFFER_num(buffers) == 0) {
+  if (sk_X509_num(chain) == 0) {
     /* No client certificate so the handshake buffer may be discarded. */
     ssl3_free_handshake_buffer(ssl);
 
@@ -1525,13 +1524,10 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   ssl->s3->new_session->x509_chain = chain;
   /* Inconsistency alert: x509_chain does *not* include the peer's own
    * certificate, while we do include it in s3_clnt.c */
-  sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
-  ssl->s3->new_session->certs = buffers;
 
   return 1;
 
 err:
-  sk_CRYPTO_BUFFER_pop_free(buffers, CRYPTO_BUFFER_free);
   sk_X509_pop_free(chain, X509_free);
   return -1;
 }

@@ -448,18 +448,30 @@ int ssl_has_certificate(const SSL *ssl) {
   return ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl);
 }
 
-int ssl_parse_cert_chain(SSL *ssl, STACK_OF(CRYPTO_BUFFER) **out_buffers,
-                         STACK_OF(X509) **out_x509s, uint8_t *out_alert,
-                         uint8_t *out_leaf_sha256, CBS *cbs) {
-  *out_buffers = NULL;
+X509 *ssl_parse_x509(CBS *cbs) {
+  if (CBS_len(cbs) > LONG_MAX) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return NULL;
+  }
+  const uint8_t *ptr = CBS_data(cbs);
+  X509 *ret = d2i_X509(NULL, &ptr, (long)CBS_len(cbs));
+  if (ret == NULL) {
+    return NULL;
+  }
+  CBS_skip(cbs, ptr - CBS_data(cbs));
+  return ret;
+}
 
-  STACK_OF(CRYPTO_BUFFER) *buffers = sk_CRYPTO_BUFFER_new_null();
-  if (buffers == NULL) {
+STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
+                                     uint8_t *out_leaf_sha256, CBS *cbs) {
+  STACK_OF(X509) *ret = sk_X509_new_null();
+  if (ret == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
+    return NULL;
   }
 
+  X509 *x = NULL;
   CBS certificate_list;
   if (!CBS_get_u24_length_prefixed(cbs, &certificate_list)) {
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -469,46 +481,36 @@ int ssl_parse_cert_chain(SSL *ssl, STACK_OF(CRYPTO_BUFFER) **out_buffers,
 
   while (CBS_len(&certificate_list) > 0) {
     CBS certificate;
-    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate) ||
-        CBS_len(&certificate) == 0) {
+    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
       goto err;
     }
 
     /* Retain the hash of the leaf certificate if requested. */
-    if (sk_CRYPTO_BUFFER_num(buffers) == 0 && out_leaf_sha256 != NULL) {
+    if (sk_X509_num(ret) == 0 && out_leaf_sha256 != NULL) {
       SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
     }
 
-    CRYPTO_BUFFER *buffer =
-        CRYPTO_BUFFER_new_from_CBS(&certificate, ssl->ctx->pool);
-    if (buffer == NULL) {
+    x = ssl_parse_x509(&certificate);
+    if (x == NULL || CBS_len(&certificate) != 0) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      goto err;
+    }
+    if (!sk_X509_push(ret, x)) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-
-    if (!sk_CRYPTO_BUFFER_push(buffers, buffer)) {
-      CRYPTO_BUFFER_free(buffer);
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
+    x = NULL;
   }
 
-  STACK_OF(X509) *x509s;
-  if (!x509_chain_from_buffers(&x509s, buffers)) {
-    goto err;
-  }
-
-  *out_buffers = buffers;
-  *out_x509s = x509s;
-  return 1;
+  return ret;
 
 err:
-  sk_CRYPTO_BUFFER_pop_free(buffers, CRYPTO_BUFFER_free);
-  return 0;
+  X509_free(x);
+  sk_X509_pop_free(ret, X509_free);
+  return NULL;
 }
 
 int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509) {

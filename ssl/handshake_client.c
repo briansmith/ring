@@ -1041,15 +1041,14 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   CBS cbs;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  STACK_OF(CRYPTO_BUFFER) *buffers = NULL;
-  STACK_OF(X509) *chain = NULL;
   uint8_t alert;
-  if (!ssl_parse_cert_chain(ssl, &buffers, &chain, &alert, NULL, &cbs)) {
+  STACK_OF(X509) *chain = ssl_parse_cert_chain(ssl, &alert, NULL, &cbs);
+  if (chain == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     goto err;
   }
 
-  if (sk_CRYPTO_BUFFER_num(buffers) == 0 || CBS_len(&cbs) != 0) {
+  if (sk_X509_num(chain) == 0 || CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     goto err;
@@ -1063,11 +1062,8 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   /* NOTE: Unlike the server half, the client's copy of |x509_chain| includes
    * the leaf. */
-  sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
-  ssl->s3->new_session->certs = buffers;
   sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
   ssl->s3->new_session->x509_chain = chain;
-  ssl->s3->new_session->x509_chain_should_include_leaf = 1;
 
   X509_free(ssl->s3->new_session->x509_peer);
   X509_up_ref(leaf);
@@ -1076,7 +1072,6 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
   return 1;
 
 err:
-  sk_CRYPTO_BUFFER_pop_free(buffers, CRYPTO_BUFFER_free);
   sk_X509_pop_free(chain, X509_free);
   return -1;
 }
