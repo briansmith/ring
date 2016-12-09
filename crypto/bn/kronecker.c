@@ -144,6 +144,7 @@ int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
       i++;
     }
     if (!BN_rshift(A, A, i)) {
+      ret = -2;
       goto end;
     }
     if (i & 1) {
