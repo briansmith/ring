@@ -52,17 +52,15 @@
 
 #include <openssl/bn.h>
 
+#include <openssl/err.h>
+
 #include "internal.h"
 
 
 /* least significant word */
 #define BN_lsw(n) (((n)->top == 0) ? (BN_ULONG) 0 : (n)->d[0])
 
-/* Returns -2 for errors because both -1 and 0 are valid results. */
-int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
-  int i;
-  int ret = -2;
-  BIGNUM *A, *B, *tmp;
+int bn_jacobi(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   /* In 'tab', only odd-indexed entries are relevant:
    * For any odd BIGNUM n,
    *     tab[BN_lsw(n) & 7]
@@ -70,9 +68,22 @@ int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
    * Note that the sign of n does not matter. */
   static const int tab[8] = {0, 1, 0, -1, 0, -1, 0, 1};
 
+  /* The Jacobi symbol is only defined for odd modulus. */
+  if (!BN_is_odd(b)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+    return -2;
+  }
+
+  /* Require b be positive. */
+  if (BN_is_negative(b)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return -2;
+  }
+
+  int ret = -2;
   BN_CTX_start(ctx);
-  A = BN_CTX_get(ctx);
-  B = BN_CTX_get(ctx);
+  BIGNUM *A = BN_CTX_get(ctx);
+  BIGNUM *B = BN_CTX_get(ctx);
   if (B == NULL) {
     goto end;
   }
@@ -82,52 +93,11 @@ int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
     goto end;
   }
 
-  /* Kronecker symbol, imlemented according to Henri Cohen,
-   * "A Course in Computational Algebraic Number Theory"
-   * (algorithm 1.4.10). */
+  /* Adapted from logic to compute the Kronecker symbol, originally implemented
+   * according to Henri Cohen, "A Course in Computational Algebraic Number
+   * Theory" (algorithm 1.4.10). */
 
-  /* Cohen's step 1: */
-
-  if (BN_is_zero(B)) {
-    ret = BN_abs_is_word(A, 1);
-    goto end;
-  }
-
-  /* Cohen's step 2: */
-
-  if (!BN_is_odd(A) && !BN_is_odd(B)) {
-    ret = 0;
-    goto end;
-  }
-
-  /* now B is non-zero */
-  i = 0;
-  while (!BN_is_bit_set(B, i)) {
-    i++;
-  }
-  if (!BN_rshift(B, B, i)) {
-    goto end;
-  }
-  if (i & 1) {
-    /* i is odd */
-    /* (thus B was even, thus A must be odd!)  */
-
-    /* set 'ret' to $(-1)^{(A^2-1)/8}$ */
-    ret = tab[BN_lsw(A) & 7];
-  } else {
-    /* i is even */
-    ret = 1;
-  }
-
-  if (B->neg) {
-    B->neg = 0;
-    if (A->neg) {
-      ret = -ret;
-    }
-  }
-
-  /* now B is positive and odd, so what remains to be done is to compute the
-   * Jacobi symbol (A/B) and multiply it by 'ret' */
+  ret = 1;
 
   while (1) {
     /* Cohen's step 3: */
@@ -139,7 +109,7 @@ int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
     }
 
     /* now A is non-zero */
-    i = 0;
+    int i = 0;
     while (!BN_is_bit_set(A, i)) {
       i++;
     }
@@ -164,7 +134,7 @@ int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
       ret = -2;
       goto end;
     }
-    tmp = A;
+    BIGNUM *tmp = A;
     A = B;
     B = tmp;
     tmp->neg = 0;

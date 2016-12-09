@@ -56,6 +56,8 @@
 
 #include <openssl/err.h>
 
+#include "internal.h"
+
 
 BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   /* Compute a square root of |a| mod |p| using the Tonelli/Shanks algorithm
@@ -253,7 +255,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       }
     }
 
-    r = BN_kronecker(y, q, ctx); /* here 'q' is |p| */
+    r = bn_jacobi(y, q, ctx); /* here 'q' is |p| */
     if (r < -1) {
       goto end;
     }

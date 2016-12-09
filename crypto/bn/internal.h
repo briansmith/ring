@@ -259,6 +259,10 @@ int bn_mod_inverse_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
 int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
                                 BN_CTX *ctx, const BN_MONT_CTX *mont_p);
 
+/* bn_jacobi returns the Jacobi symbol of |a| and |b| (which is -1, 0 or 1), or
+ * -2 on error. */
+int bn_jacobi(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

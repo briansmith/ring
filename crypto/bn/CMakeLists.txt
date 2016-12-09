@@ -54,7 +54,7 @@ add_library(
   exponentiation.c
   generic.c
   gcd.c
-  kronecker.c
+  jacobi.c
   montgomery.c
   montgomery_inv.c
   mul.c
