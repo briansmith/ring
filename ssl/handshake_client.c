@@ -1274,18 +1274,6 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         !CBS_stow(&point, &hs->peer_key, &hs->peer_key_len)) {
       goto err;
     }
-  } else if (alg_k & SSL_kCECPQ1) {
-    SSL_ECDH_CTX_init_for_cecpq1(&hs->ecdh_ctx);
-    CBS key;
-    if (!CBS_get_u16_length_prefixed(&server_key_exchange, &key)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto f_err;
-    }
-
-    if (!CBS_stow(&key, &hs->peer_key, &hs->peer_key_len)) {
-      goto err;
-    }
   } else if (!(alg_k & SSL_kPSK)) {
     al = SSL_AD_UNEXPECTED_MESSAGE;
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
@@ -1634,7 +1622,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
         !CBB_flush(&body)) {
       goto err;
     }
-  } else if (alg_k & (SSL_kECDHE|SSL_kDHE|SSL_kCECPQ1)) {
+  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
     /* Generate a keypair and serialize the public half. */
     CBB child;
     if (!SSL_ECDH_CTX_add_key(&hs->ecdh_ctx, &body, &child)) {

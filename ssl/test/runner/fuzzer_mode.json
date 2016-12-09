@@ -11,8 +11,6 @@
     "*-BadRecord": "Fuzzer mode has no bad packets.",
 
     "BadRSAClientKeyExchange*": "Fuzzer mode does not notice a bad premaster secret.",
-    "CECPQ1-*-BadNewhopePart": "Fuzzer mode does not notice a bad premaster secret.",
-    "CECPQ1-*-BadX25519Part": "Fuzzer mode does not notice a bad premaster secret.",
 
     "TrailingMessageData-TLS13-ServerHello": "Fuzzer mode will not read the peer's alert as a MAC error",
     "UnexpectedUnencryptedExtension-Client-TLS13": "Fuzzer mode will not read the peer's alert as a MAC error",

@@ -1100,10 +1100,6 @@ var testCipherSuites = []struct {
 	{"ECDHE-RSA-AES256-SHA384", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384},
 	{"ECDHE-RSA-CHACHA20-POLY1305", TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
 	{"ECDHE-RSA-CHACHA20-POLY1305-OLD", TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256_OLD},
-	{"CECPQ1-RSA-CHACHA20-POLY1305-SHA256", TLS_CECPQ1_RSA_WITH_CHACHA20_POLY1305_SHA256},
-	{"CECPQ1-ECDSA-CHACHA20-POLY1305-SHA256", TLS_CECPQ1_ECDSA_WITH_CHACHA20_POLY1305_SHA256},
-	{"CECPQ1-RSA-AES256-GCM-SHA384", TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
-	{"CECPQ1-ECDSA-AES256-GCM-SHA384", TLS_CECPQ1_ECDSA_WITH_AES_256_GCM_SHA384},
 	{"PSK-AES128-CBC-SHA", TLS_PSK_WITH_AES_128_CBC_SHA},
 	{"PSK-AES256-CBC-SHA", TLS_PSK_WITH_AES_256_CBC_SHA},
 	{"ECDHE-PSK-AES128-CBC-SHA", TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA},
@@ -2464,10 +2460,6 @@ func addCipherSuiteTests() {
 		if hasComponent(suite.name, "NULL") {
 			// NULL ciphers must be explicitly enabled.
 			flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
-		}
-		if hasComponent(suite.name, "CECPQ1") {
-			// CECPQ1 ciphers must be explicitly enabled.
-			flags = append(flags, "-cipher", "DEFAULT:kCECPQ1")
 		}
 		if hasComponent(suite.name, "ECDHE-PSK") && hasComponent(suite.name, "GCM") {
 			// ECDHE_PSK AES_GCM ciphers must be explicitly enabled
@@ -4018,25 +4010,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-select-next-proto", "foo",
 			},
 			shimWritesFirst: true,
-		})
-
-		tests = append(tests, testCase{
-			name: "FalseStart-CECPQ1",
-			config: Config{
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
-				NextProtos:   []string{"foo"},
-				Bugs: ProtocolBugs{
-					ExpectFalseStart: true,
-				},
-			},
-			flags: []string{
-				"-false-start",
-				"-cipher", "DEFAULT:kCECPQ1",
-				"-select-next-proto", "foo",
-			},
-			shimWritesFirst: true,
-			resumeSession:   true,
 		})
 
 		// Server parses a V2ClientHello.
@@ -8133,69 +8106,6 @@ func addCurveTests() {
 	})
 }
 
-func addCECPQ1Tests() {
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "CECPQ1-Client-BadX25519Part",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			MinVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
-			Bugs: ProtocolBugs{
-				CECPQ1BadX25519Part: true,
-			},
-		},
-		flags:              []string{"-cipher", "kCECPQ1"},
-		shouldFail:         true,
-		expectedLocalError: "local error: bad record MAC",
-	})
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "CECPQ1-Client-BadNewhopePart",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			MinVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
-			Bugs: ProtocolBugs{
-				CECPQ1BadNewhopePart: true,
-			},
-		},
-		flags:              []string{"-cipher", "kCECPQ1"},
-		shouldFail:         true,
-		expectedLocalError: "local error: bad record MAC",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CECPQ1-Server-BadX25519Part",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			MinVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
-			Bugs: ProtocolBugs{
-				CECPQ1BadX25519Part: true,
-			},
-		},
-		flags:         []string{"-cipher", "kCECPQ1"},
-		shouldFail:    true,
-		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CECPQ1-Server-BadNewhopePart",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			MinVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384},
-			Bugs: ProtocolBugs{
-				CECPQ1BadNewhopePart: true,
-			},
-		},
-		flags:         []string{"-cipher", "kCECPQ1"},
-		shouldFail:    true,
-		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-	})
-}
-
 func addDHEGroupSizeTests() {
 	testCases = append(testCases, testCase{
 		name: "DHEGroupSize-Client",
@@ -9952,7 +9862,6 @@ func main() {
 	addCustomExtensionTests()
 	addRSAClientKeyExchangeTests()
 	addCurveTests()
-	addCECPQ1Tests()
 	addDHEGroupSizeTests()
 	addSessionTicketTests()
 	addTLS13RecordTests()

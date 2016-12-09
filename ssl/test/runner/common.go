@@ -1025,14 +1025,6 @@ type ProtocolBugs struct {
 	// reject extensions on intermediate certificates.
 	ExpectNoExtensionsOnIntermediate bool
 
-	// CECPQ1BadX25519Part corrupts the X25519 part of a CECPQ1 key exchange, as
-	// a trivial proof that it is actually used.
-	CECPQ1BadX25519Part bool
-
-	// CECPQ1BadNewhopePart corrupts the Newhope part of a CECPQ1 key exchange,
-	// as a trivial proof that it is actually used.
-	CECPQ1BadNewhopePart bool
-
 	// RecordPadding is the number of bytes of padding to add to each
 	// encrypted record in TLS 1.3.
 	RecordPadding int

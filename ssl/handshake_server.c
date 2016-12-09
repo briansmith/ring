@@ -724,9 +724,6 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
     mask_k |= SSL_kECDHE;
   }
 
-  /* CECPQ1 ciphers are always acceptable if supported by both sides. */
-  mask_k |= SSL_kCECPQ1;
-
   /* PSK requires a server callback. */
   if (ssl->psk_server_callback != NULL) {
     mask_k |= SSL_kPSK;
@@ -1231,12 +1228,6 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
           !SSL_ECDH_CTX_offer(&hs->ecdh_ctx, &child)) {
         goto err;
       }
-    } else if (alg_k & SSL_kCECPQ1) {
-      SSL_ECDH_CTX_init_for_cecpq1(&hs->ecdh_ctx);
-      if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !SSL_ECDH_CTX_offer(&hs->ecdh_ctx, &child)) {
-        goto err;
-      }
     } else {
       assert(alg_k & SSL_kPSK);
     }
@@ -1726,7 +1717,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     OPENSSL_free(decrypt_buf);
     decrypt_buf = NULL;
-  } else if (alg_k & (SSL_kECDHE|SSL_kDHE|SSL_kCECPQ1)) {
+  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
     /* Parse the ClientKeyExchange. */
     CBS peer_key;
     if (!SSL_ECDH_CTX_get_key(&hs->ecdh_ctx, &client_key_exchange, &peer_key) ||

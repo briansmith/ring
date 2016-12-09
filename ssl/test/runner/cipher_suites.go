@@ -48,9 +48,6 @@ const (
 	// client indicates that it supports ECC with a curve and point format
 	// that we're happy with.
 	suiteECDHE = 1 << iota
-	// suiteCECPQ1 indicates that the cipher suite uses the
-	// experimental, temporary, and non-standard CECPQ1 key agreement.
-	suiteCECPQ1
 	// suiteECDSA indicates that the cipher suite involves an ECDSA
 	// signature and therefore may only be selected when the server's
 	// certificate is ECDSA. If this is not set then the cipher suite is
@@ -125,10 +122,6 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384, 32, 48, ivLenAES, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteSHA384, cipherAES, macSHA384, nil},
 	{TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdheRSAKA, suiteECDHE, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdheECDSAKA, suiteECDHE | suiteECDSA, cipherAES, macSHA1, nil},
-	{TLS_CECPQ1_RSA_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, cecpq1RSAKA, suiteCECPQ1 | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
-	{TLS_CECPQ1_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, cecpq1ECDSAKA, suiteCECPQ1 | suiteECDSA | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
-	{TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, cecpq1RSAKA, suiteCECPQ1 | suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
-	{TLS_CECPQ1_ECDSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, cecpq1ECDSAKA, suiteCECPQ1 | suiteECDSA | suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
 	{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, dheRSAKA, suiteTLS12, nil, nil, aeadAESGCM},
 	{TLS_DHE_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, dheRSAKA, suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
 	{TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, dheRSAKA, suiteTLS12, cipherAES, macSHA256, nil},
@@ -425,26 +418,8 @@ func ecdheECDSAKA(version uint16) keyAgreement {
 	}
 }
 
-func cecpq1ECDSAKA(version uint16) keyAgreement {
-	return &cecpq1KeyAgreement{
-		auth: &signedKeyAgreement{
-			keyType: keyTypeECDSA,
-			version: version,
-		},
-	}
-}
-
 func ecdheRSAKA(version uint16) keyAgreement {
 	return &ecdheKeyAgreement{
-		auth: &signedKeyAgreement{
-			keyType: keyTypeRSA,
-			version: version,
-		},
-	}
-}
-
-func cecpq1RSAKA(version uint16) keyAgreement {
-	return &cecpq1KeyAgreement{
 		auth: &signedKeyAgreement{
 			keyType: keyTypeRSA,
 			version: version,
@@ -549,8 +524,4 @@ const (
 	TLS_AES_128_GCM_SHA256                            uint16 = 0x1301
 	TLS_AES_256_GCM_SHA384                            uint16 = 0x1302
 	TLS_CHACHA20_POLY1305_SHA256                      uint16 = 0x1303
-	TLS_CECPQ1_RSA_WITH_CHACHA20_POLY1305_SHA256      uint16 = 0x16b7
-	TLS_CECPQ1_ECDSA_WITH_CHACHA20_POLY1305_SHA256    uint16 = 0x16b8
-	TLS_CECPQ1_RSA_WITH_AES_256_GCM_SHA384            uint16 = 0x16b9
-	TLS_CECPQ1_ECDSA_WITH_AES_256_GCM_SHA384          uint16 = 0x16ba
 )
