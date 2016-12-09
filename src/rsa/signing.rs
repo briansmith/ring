@@ -110,21 +110,15 @@ impl RSAKeyPair {
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS));
 
                 let d = try!(d.into_odd_positive());
-                if !(e < d) {
-                    return Err(error::Unspecified);
-                }
-                if !(d < n) {
-                    return Err(error::Unspecified);
-                }
+                try!(bigint::verify_less_than(&e, &d));
+                try!(bigint::verify_less_than(&d, &n));
 
                 let half_n_bits = n_bits.half_rounded_up();
                 if p.bit_length() != half_n_bits {
                     return Err(error::Unspecified);
                 }
                 let p = try!(p.into_odd_positive());
-                if !(p < d) {
-                    return Err(error::Unspecified);
-                }
+                try!(bigint::verify_less_than(&p, &d));
                 if p.bit_length() != q.bit_length() {
                     return Err(error::Unspecified);
                 }
@@ -132,9 +126,7 @@ impl RSAKeyPair {
                 // of CRT-based moduluar exponentiation used requires that
                 // |q > p|. (|p == q| is just wrong.)
                 let q = try!(q.into_odd_positive());
-                if !(q < p) {
-                    return Err(error::Unspecified);
-                }
+                try!(bigint::verify_less_than(&q, &p));
 
                 let n = try!(n.into_modulus::<N>());
 
@@ -175,14 +167,10 @@ impl RSAKeyPair {
                 // Therefore `dmp1` must be odd. But then it cannot be `p - 1`
                 // and so we know `dmp1 < p - 1`.
                 let dmp1 = try!(dmp1.into_odd_positive());
-                if !(dmp1 < p) {
-                    return Err(error::Unspecified);
-                }
+                try!(bigint::verify_less_than(&dmp1, &p));
                 // The same argument can be used to prove `dmq1 < q - 1`.
                 let dmq1 = try!(dmq1.into_odd_positive());
-                if !(dmq1 < q) {
-                    return Err(error::Unspecified);
-                }
+                try!(bigint::verify_less_than(&dmq1, &q));
 
                 let p = try!(p.into_modulus::<P>());
 

@@ -21,12 +21,38 @@ use {bits, bssl, c, der, error, untrusted};
 use core;
 use core::marker::PhantomData;
 
+/// This is defined for comparing values instead of using `PartialOrd` because
+/// there `PartialOrd` requires `PartialEq`, which we do not otherwise require.
+/// Also, this `Result<>`-based interface is more convenient for callers' uses.
+pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
+                        B: core::convert::AsRef<BIGNUM>>(a: &A, b: &B)
+        -> Result<(), error::Unspecified> {
+    let r = unsafe { GFp_BN_cmp(a.as_ref(), b.as_ref()) };
+    if !(r < 0) {
+        return Err(error::Unspecified);
+    }
+    Ok(())
+}
+
+
+impl AsRef<BIGNUM> for OddPositive {
+    fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
+}
+
+impl AsRef<BIGNUM> for Positive {
+    fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
+}
+
+impl AsRef<BIGNUM> for Nonnegative {
+    fn as_ref<'a>(&'a self) -> &'a BIGNUM { unsafe { &*self.0 } }
+}
+
+
 /// Non-negative, non-zero integers.
 ///
 /// This set is sometimes called `Natural` or `Counting`, but texts, libraries,
 /// and standards disagree on whether to include zero in them, so we avoid
 /// those names.
-#[derive(PartialEq, PartialOrd)]
 pub struct Positive(Nonnegative);
 
 impl Positive {
@@ -66,8 +92,6 @@ impl Positive {
         }
         Ok(Positive(r))
     }
-
-    pub fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
 
     pub fn into_elem<F: Field>(mut self, m: &Modulus<F>)
                                -> Result<Elem<F>, error::Unspecified> {
@@ -110,9 +134,7 @@ impl Positive {
     }
 }
 
-
 /// Odd positive integers.
-#[derive(PartialEq, PartialOrd)]
 pub struct OddPositive(Positive);
 
 impl OddPositive {
@@ -258,7 +280,6 @@ impl Nonnegative {
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
     // this ASAP.
     unsafe fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut *self.0 }
-    fn as_ref<'a>(&'a self) -> &'a BIGNUM { unsafe { &*self.0 } }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
@@ -272,20 +293,6 @@ impl Nonnegative {
 impl Drop for Nonnegative {
     fn drop(&mut self) { unsafe { GFp_BN_free(self.0); } }
 }
-
-impl core::cmp::PartialEq for Nonnegative {
-    fn eq(&self, other: &Nonnegative) -> bool {
-        self.partial_cmp(other) == Some(core::cmp::Ordering::Equal)
-    }
-}
-
-impl core::cmp::PartialOrd for Nonnegative {
-    fn partial_cmp(&self, other: &Nonnegative) -> Option<core::cmp::Ordering> {
-        let r = unsafe { GFp_BN_cmp(self.as_ref(), other.as_ref()) };
-        Some(r.cmp(&0))
-    }
-}
-
 
 #[allow(non_camel_case_types)]
 pub enum BN_MONT_CTX {}
