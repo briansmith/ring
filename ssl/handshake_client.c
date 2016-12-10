@@ -326,7 +326,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
 
       case SSL3_ST_CW_CERT_A:
       case SSL3_ST_CW_CERT_B:
-      case SSL3_ST_CW_CERT_C:
         if (hs->cert_request) {
           ret = ssl3_send_client_certificate(hs);
           if (ret <= 0) {
@@ -1459,53 +1458,41 @@ static int ssl3_get_server_hello_done(SSL_HANDSHAKE *hs) {
 
 static int ssl3_send_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (ssl->state == SSL3_ST_CW_CERT_A) {
-    /* Call cert_cb to update the certificate. */
-    if (ssl->cert->cert_cb) {
-      int ret = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
-      if (ret < 0) {
-        ssl->rwstate = SSL_X509_LOOKUP;
-        return -1;
-      }
-      if (ret == 0) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        return -1;
-      }
-    }
-
-    ssl->state = SSL3_ST_CW_CERT_B;
-  }
-
   if (ssl->state == SSL3_ST_CW_CERT_B) {
-    /* Call client_cert_cb to update the certificate. */
-    int should_retry;
-    if (!ssl_do_client_cert_cb(ssl, &should_retry)) {
-      if (should_retry) {
-        ssl->rwstate = SSL_X509_LOOKUP;
-      }
+    return ssl->method->write_message(ssl);
+  }
+  assert(ssl->state == SSL3_ST_CW_CERT_A);
+
+  /* Call cert_cb to update the certificate. */
+  if (ssl->cert->cert_cb) {
+    int ret = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
+    if (ret < 0) {
+      ssl->rwstate = SSL_X509_LOOKUP;
       return -1;
     }
-
-    if (!ssl_has_certificate(ssl)) {
-      hs->cert_request = 0;
-      /* Without a client certificate, the handshake buffer may be released. */
-      ssl3_free_handshake_buffer(ssl);
-
-      if (ssl->version == SSL3_VERSION) {
-        /* In SSL 3.0, send no certificate by skipping both messages. */
-        ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_NO_CERTIFICATE);
-        return 1;
-      }
-    }
-
-    if (!ssl3_output_cert_chain(ssl)) {
+    if (ret == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return -1;
     }
-    ssl->state = SSL3_ST_CW_CERT_C;
   }
 
-  assert(ssl->state == SSL3_ST_CW_CERT_C);
+  if (!ssl_has_certificate(ssl)) {
+    hs->cert_request = 0;
+    /* Without a client certificate, the handshake buffer may be released. */
+    ssl3_free_handshake_buffer(ssl);
+
+    if (ssl->version == SSL3_VERSION) {
+      /* In SSL 3.0, send no certificate by skipping both messages. */
+      ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_NO_CERTIFICATE);
+      return 1;
+    }
+  }
+
+  if (!ssl3_output_cert_chain(ssl)) {
+    return -1;
+  }
+  ssl->state = SSL3_ST_CW_CERT_B;
   return ssl->method->write_message(ssl);
 }
 

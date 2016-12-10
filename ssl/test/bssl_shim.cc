@@ -488,7 +488,31 @@ static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
   return 1;
 }
 
+static bool CheckCertificateRequest(SSL *ssl) {
+  const TestConfig *config = GetTestConfig(ssl);
+
+  if (!config->expected_certificate_types.empty()) {
+    const uint8_t *certificate_types;
+    size_t certificate_types_len =
+        SSL_get0_certificate_types(ssl, &certificate_types);
+    if (certificate_types_len != config->expected_certificate_types.size() ||
+        memcmp(certificate_types,
+               config->expected_certificate_types.data(),
+               certificate_types_len) != 0) {
+      fprintf(stderr, "certificate types mismatch\n");
+      return false;
+    }
+  }
+
+  // TODO(davidben): Test |SSL_get_client_CA_list|.
+  return true;
+}
+
 static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
+  if (!CheckCertificateRequest(ssl)) {
+    return -1;
+  }
+
   if (GetTestConfig(ssl)->async && !GetTestState(ssl)->cert_ready) {
     return -1;
   }
@@ -508,6 +532,32 @@ static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
   // Chains and asynchronous private keys are not supported with client_cert_cb.
   *out_x509 = x509.release();
   *out_pkey = pkey.release();
+  return 1;
+}
+
+static int CertCallback(SSL *ssl, void *arg) {
+  const TestConfig *config = GetTestConfig(ssl);
+
+  // Check the CertificateRequest metadata is as expected.
+  if (!SSL_is_server(ssl) && !CheckCertificateRequest(ssl)) {
+    return -1;
+  }
+
+  if (config->fail_cert_callback) {
+    return 0;
+  }
+
+  // The certificate will be installed via other means.
+  if (!config->async || config->use_early_callback) {
+    return 1;
+  }
+
+  if (!GetTestState(ssl)->cert_ready) {
+    return -1;
+  }
+  if (!InstallCertificate(ssl)) {
+    return 0;
+  }
   return 1;
 }
 
@@ -641,45 +691,6 @@ static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
 
 static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
   *out_pkey = GetTestState(ssl)->channel_id.release();
-}
-
-static int CertCallback(SSL *ssl, void *arg) {
-  const TestConfig *config = GetTestConfig(ssl);
-
-  // Check the CertificateRequest metadata is as expected.
-  //
-  // TODO(davidben): Test |SSL_get_client_CA_list|.
-  if (!SSL_is_server(ssl) &&
-      !config->expected_certificate_types.empty()) {
-    const uint8_t *certificate_types;
-    size_t certificate_types_len =
-        SSL_get0_certificate_types(ssl, &certificate_types);
-    if (certificate_types_len != config->expected_certificate_types.size() ||
-        memcmp(certificate_types,
-               config->expected_certificate_types.data(),
-               certificate_types_len) != 0) {
-      fprintf(stderr, "certificate types mismatch\n");
-      return 0;
-    }
-  }
-
-  if (config->fail_cert_callback) {
-    return 0;
-  }
-
-  // The certificate will be installed via other means.
-  if (!config->async || config->use_early_callback ||
-      config->use_old_client_cert_callback) {
-    return 1;
-  }
-
-  if (!GetTestState(ssl)->cert_ready) {
-    return -1;
-  }
-  if (!InstallCertificate(ssl)) {
-    return 0;
-  }
-  return 1;
 }
 
 static SSL_SESSION *GetSessionCallback(SSL *ssl, uint8_t *data, int len,
@@ -1484,7 +1495,9 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       !InstallCertificate(ssl.get())) {
     return false;
   }
-  SSL_set_cert_cb(ssl.get(), CertCallback, nullptr);
+  if (!config->use_old_client_cert_callback) {
+    SSL_set_cert_cb(ssl.get(), CertCallback, nullptr);
+  }
   if (config->require_any_client_certificate) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                    NULL);

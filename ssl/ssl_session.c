@@ -1007,12 +1007,6 @@ void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl, int type,
   return ctx->info_callback;
 }
 
-void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl,
-                                                        X509 **out_x509,
-                                                        EVP_PKEY **out_pkey)) {
-  ctx->client_cert_cb = cb;
-}
-
 void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx,
                                void (*cb)(SSL *ssl, EVP_PKEY **pkey)) {
   ctx->channel_id_cb = cb;

@@ -38,7 +38,6 @@ enum client_hs_state_t {
   state_process_server_certificate,
   state_process_server_certificate_verify,
   state_process_server_finished,
-  state_certificate_callback,
   state_send_client_certificate,
   state_send_client_certificate_verify,
   state_complete_client_certificate_verify,
@@ -439,11 +438,11 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->received_flight(ssl);
-  hs->tls13_state = state_certificate_callback;
+  hs->tls13_state = state_send_client_certificate;
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_certificate_callback(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   /* The peer didn't request a certificate. */
   if (!hs->cert_request) {
@@ -460,25 +459,9 @@ static enum ssl_hs_wait_t do_certificate_callback(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     if (rv < 0) {
-      hs->tls13_state = state_certificate_callback;
-      return ssl_hs_x509_lookup;
-    }
-  }
-
-  hs->tls13_state = state_send_client_certificate;
-  return ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  /* Call client_cert_cb to update the certificate. */
-  int should_retry;
-  if (!ssl_do_client_cert_cb(ssl, &should_retry)) {
-    if (should_retry) {
       hs->tls13_state = state_send_client_certificate;
       return ssl_hs_x509_lookup;
     }
-    return ssl_hs_error;
   }
 
   if (!tls13_prepare_certificate(hs)) {
@@ -596,9 +579,6 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
         break;
       case state_process_server_finished:
         ret = do_process_server_finished(hs);
-        break;
-      case state_certificate_callback:
-        ret = do_certificate_callback(hs);
         break;
       case state_send_client_certificate:
         ret = do_send_client_certificate(hs);
