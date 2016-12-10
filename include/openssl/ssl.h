@@ -3465,11 +3465,6 @@ OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
     SSL_CTX *ctx,
     int (*client_cert_cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey));
 
-/* SSL_CTX_get_client_cert_cb returns the callback set by
- * |SSL_CTX_set_client_cert_cb|. */
-OPENSSL_EXPORT int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(
-      SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey);
-
 #define SSL_NOTHING 1
 #define SSL_WRITING 2
 #define SSL_READING 3

@@ -1013,11 +1013,6 @@ void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl,
   ctx->client_cert_cb = cb;
 }
 
-int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(SSL *ssl, X509 **out_x509,
-                                                EVP_PKEY **out_pkey) {
-  return ctx->client_cert_cb;
-}
-
 void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx,
                                void (*cb)(SSL *ssl, EVP_PKEY **pkey)) {
   ctx->channel_id_cb = cb;
