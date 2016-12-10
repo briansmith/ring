@@ -186,12 +186,18 @@ pub struct Modulus<F: Field> {
     field: PhantomData<F>,
 }
 
-impl<F: Field> Modulus<F> {
-    pub fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
-}
-
 impl<F: Field> Drop for Modulus<F> {
     fn drop(&mut self) { unsafe { GFp_BN_MONT_CTX_free(self.ctx); } }
+}
+
+// `Modulus` uniquely owns and references its contents.
+unsafe impl<F: Field> Send for Modulus<F> {}
+
+// `Modulus` is immutable.
+unsafe impl<F: Field> Sync for Modulus<F> {}
+
+impl<F: Field> Modulus<F> {
+    pub fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
 }
 
 /// Montgomery-encoded elements of a field.
@@ -253,6 +259,13 @@ pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: &ElemDecoded<F>, m: &Modulus<F>)
 /// Nonnegative integers: `Positive` ∪ {0}.
 struct Nonnegative(*mut BIGNUM);
 
+impl Drop for Nonnegative {
+    fn drop(&mut self) { unsafe { GFp_BN_free(self.0); } }
+}
+
+// `Nonnegative` uniquely owns and references its contents.
+unsafe impl Send for Nonnegative {}
+
 impl Nonnegative {
     fn zero() -> Result<Self, error::Unspecified> {
         let r = Nonnegative(unsafe { GFp_BN_new() });
@@ -284,10 +297,6 @@ impl Nonnegative {
         }
         Ok(OddPositive(Positive(self)))
     }
-}
-
-impl Drop for Nonnegative {
-    fn drop(&mut self) { unsafe { GFp_BN_free(self.0); } }
 }
 
 #[allow(non_camel_case_types)]

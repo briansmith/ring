@@ -41,9 +41,8 @@ pub struct RSAKeyPair {
     n_bits: bits::BitLength,
 }
 
-// `RSAKeyPair` is immutable after construction, which makes it both `Sync` and
-// `Send` automatically, even though its components aren't.
-unsafe impl Send for RSAKeyPair {}
+// `RSAKeyPair` is immutable. TODO: Make all the elements of `RSAKeyPair`
+// implement `Sync` so that it doesn't have to do this itself.
 unsafe impl Sync for RSAKeyPair {}
 
 impl RSAKeyPair {
