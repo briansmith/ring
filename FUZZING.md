@@ -23,7 +23,7 @@ Then copy `libFuzzer.a` to the top-level of your BoringSSL source directory.
 From the `build/` directory, you can then run the fuzzers. For example:
 
 ```
-./fuzz/cert -max_len=3072 -jobs=32 -workers=32 ../fuzz/cert_corpus/
+./fuzz/cert -max_len=10000 -jobs=32 -workers=32 ../fuzz/cert_corpus/
 ```
 
 The arguments to `jobs` and `workers` should be the number of cores that you wish to dedicate to fuzzing. By default, libFuzzer uses the largest test in the corpus (or 64 if empty) as the maximum test case length. The `max_len` argument overrides this.
@@ -32,7 +32,7 @@ The recommended values of `max_len` for each test are:
 
 | Test          | `max_len` value |
 |---------------|-----------------|
-| `cert`        | 3072            |
+| `cert`        | 10000           |
 | `client`      | 20000           |
 | `pkcs8`       | 2048            |
 | `privkey`     | 2048            |
