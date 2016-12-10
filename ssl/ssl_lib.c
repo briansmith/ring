@@ -877,18 +877,25 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
   return ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
 }
 
-int SSL_get_error(const SSL *ssl, int ret_code) {
-  int reason;
-  uint32_t err;
-  BIO *bio;
+static int bio_retry_reason_to_error(int reason) {
+  switch (reason) {
+    case BIO_RR_CONNECT:
+      return SSL_ERROR_WANT_CONNECT;
+    case BIO_RR_ACCEPT:
+      return SSL_ERROR_WANT_ACCEPT;
+    default:
+      return SSL_ERROR_SYSCALL;
+  }
+}
 
+int SSL_get_error(const SSL *ssl, int ret_code) {
   if (ret_code > 0) {
     return SSL_ERROR_NONE;
   }
 
   /* Make things return SSL_ERROR_SYSCALL when doing SSL_do_handshake etc,
    * where we do encode the error */
-  err = ERR_peek_error();
+  uint32_t err = ERR_peek_error();
   if (err != 0) {
     if (ERR_GET_LIB(err) == ERR_LIB_SYS) {
       return SSL_ERROR_SYSCALL;
@@ -906,79 +913,59 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SYSCALL;
   }
 
-  if (SSL_want_session(ssl)) {
-    return SSL_ERROR_PENDING_SESSION;
-  }
+  switch (ssl->rwstate) {
+    case SSL_PENDING_SESSION:
+      return SSL_ERROR_PENDING_SESSION;
 
-  if (SSL_want_certificate(ssl)) {
-    return SSL_ERROR_PENDING_CERTIFICATE;
-  }
+    case SSL_CERTIFICATE_SELECTION_PENDING:
+      return SSL_ERROR_PENDING_CERTIFICATE;
 
-  if (SSL_want_read(ssl)) {
-    bio = SSL_get_rbio(ssl);
-    if (BIO_should_read(bio)) {
-      return SSL_ERROR_WANT_READ;
-    }
-
-    if (BIO_should_write(bio)) {
-      /* This one doesn't make too much sense ... We never try to write to the
-       * rbio, and an application program where rbio and wbio are separate
-       * couldn't even know what it should wait for. However if we ever set
-       * ssl->rwstate incorrectly (so that we have SSL_want_read(ssl) instead of
-       * SSL_want_write(ssl)) and rbio and wbio *are* the same, this test works
-       * around that bug; so it might be safer to keep it. */
-      return SSL_ERROR_WANT_WRITE;
-    }
-
-    if (BIO_should_io_special(bio)) {
-      reason = BIO_get_retry_reason(bio);
-      if (reason == BIO_RR_CONNECT) {
-        return SSL_ERROR_WANT_CONNECT;
+    case SSL_READING: {
+      BIO *bio = SSL_get_rbio(ssl);
+      if (BIO_should_read(bio)) {
+        return SSL_ERROR_WANT_READ;
       }
 
-      if (reason == BIO_RR_ACCEPT) {
-        return SSL_ERROR_WANT_ACCEPT;
+      if (BIO_should_write(bio)) {
+        /* TODO(davidben): OpenSSL historically checked for writes on the read
+         * BIO. Can this be removed? */
+        return SSL_ERROR_WANT_WRITE;
       }
 
-      return SSL_ERROR_SYSCALL; /* unknown */
-    }
-  }
-
-  if (SSL_want_write(ssl)) {
-    bio = SSL_get_wbio(ssl);
-    if (BIO_should_write(bio)) {
-      return SSL_ERROR_WANT_WRITE;
-    }
-
-    if (BIO_should_read(bio)) {
-      /* See above (SSL_want_read(ssl) with BIO_should_write(bio)) */
-      return SSL_ERROR_WANT_READ;
-    }
-
-    if (BIO_should_io_special(bio)) {
-      reason = BIO_get_retry_reason(bio);
-      if (reason == BIO_RR_CONNECT) {
-        return SSL_ERROR_WANT_CONNECT;
+      if (BIO_should_io_special(bio)) {
+        return bio_retry_reason_to_error(BIO_get_retry_reason(bio));
       }
 
-      if (reason == BIO_RR_ACCEPT) {
-        return SSL_ERROR_WANT_ACCEPT;
+      break;
+    }
+
+    case SSL_WRITING: {
+      BIO *bio = SSL_get_wbio(ssl);
+      if (BIO_should_write(bio)) {
+        return SSL_ERROR_WANT_WRITE;
       }
 
-      return SSL_ERROR_SYSCALL;
+      if (BIO_should_read(bio)) {
+        /* TODO(davidben): OpenSSL historically checked for reads on the write
+         * BIO. Can this be removed? */
+        return SSL_ERROR_WANT_READ;
+      }
+
+      if (BIO_should_io_special(bio)) {
+        return bio_retry_reason_to_error(BIO_get_retry_reason(bio));
+      }
+
+      break;
     }
-  }
 
-  if (SSL_want_x509_lookup(ssl)) {
-    return SSL_ERROR_WANT_X509_LOOKUP;
-  }
+    case SSL_X509_LOOKUP:
+      return SSL_ERROR_WANT_X509_LOOKUP;
 
-  if (SSL_want_channel_id_lookup(ssl)) {
-    return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
-  }
+    case SSL_CHANNEL_ID_LOOKUP:
+      return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
 
-  if (SSL_want_private_key_operation(ssl)) {
-    return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
+    case SSL_PRIVATE_KEY_OPERATION:
+      return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
   }
 
   return SSL_ERROR_SYSCALL;
