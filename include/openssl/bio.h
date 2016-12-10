@@ -184,21 +184,11 @@ OPENSSL_EXPORT int BIO_should_retry(const BIO *bio);
  * |BIO_get_retry_reason|. */
 OPENSSL_EXPORT int BIO_should_io_special(const BIO *bio);
 
-/* BIO_RR_SSL_X509_LOOKUP indicates that an SSL BIO blocked because the SSL
- * library returned with SSL_ERROR_WANT_X509_LOOKUP.
- *
- * TODO(fork): remove. */
-#define BIO_RR_SSL_X509_LOOKUP 0x01
-
 /* BIO_RR_CONNECT indicates that a connect would have blocked */
 #define BIO_RR_CONNECT 0x02
 
 /* BIO_RR_ACCEPT indicates that an accept would have blocked */
 #define BIO_RR_ACCEPT 0x03
-
-/* BIO_RR_SSL_CHANNEL_ID_LOOKUP indicates that the ChannelID code cannot find
- * a private key for a TLS connection. */
-#define BIO_RR_SSL_CHANNEL_ID_LOOKUP 0x04
 
 /* BIO_get_retry_reason returns the special I/O operation that needs to be
  * retried. The return value is one of the |BIO_RR_*| values. */

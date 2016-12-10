@@ -31,11 +31,6 @@ static int ssl_read(BIO *bio, char *out, int outl) {
       BIO_set_retry_write(bio);
       break;
 
-    case SSL_ERROR_WANT_X509_LOOKUP:
-      BIO_set_retry_special(bio);
-      bio->retry_reason = BIO_RR_SSL_X509_LOOKUP;
-      break;
-
     case SSL_ERROR_WANT_ACCEPT:
       BIO_set_retry_special(bio);
       bio->retry_reason = BIO_RR_ACCEPT;
@@ -74,11 +69,6 @@ static int ssl_write(BIO *bio, const char *out, int outl) {
 
     case SSL_ERROR_WANT_READ:
       BIO_set_retry_read(bio);
-      break;
-
-    case SSL_ERROR_WANT_X509_LOOKUP:
-      BIO_set_retry_special(bio);
-      bio->retry_reason = BIO_RR_SSL_X509_LOOKUP;
       break;
 
     case SSL_ERROR_WANT_CONNECT:
