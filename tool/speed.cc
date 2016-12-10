@@ -29,7 +29,6 @@
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
-#include <openssl/newhope.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -537,34 +536,6 @@ static bool SpeedSPAKE2(const std::string &selected) {
   return true;
 }
 
-static bool SpeedNewHope(const std::string &selected) {
-  if (!selected.empty() && selected.find("newhope") == std::string::npos) {
-    return true;
-  }
-
-  TimeResults results;
-  bssl::UniquePtr<NEWHOPE_POLY> sk(NEWHOPE_POLY_new());
-  uint8_t acceptmsg[NEWHOPE_ACCEPTMSG_LENGTH];
-  RAND_bytes(acceptmsg, sizeof(acceptmsg));
-
-  if (!TimeFunction(&results, [&sk, &acceptmsg]() -> bool {
-        uint8_t key[SHA256_DIGEST_LENGTH];
-        uint8_t offermsg[NEWHOPE_OFFERMSG_LENGTH];
-        NEWHOPE_offer(offermsg, sk.get());
-        if (!NEWHOPE_finish(key, sk.get(), acceptmsg,
-                            NEWHOPE_ACCEPTMSG_LENGTH)) {
-          return false;
-        }
-        return true;
-      })) {
-    fprintf(stderr, "failed to exchange key.\n");
-    return false;
-  }
-
-  results.Print("newhope key exchange");
-  return true;
-}
-
 static const struct argument kArguments[] = {
     {
      "-filter", kOptionalArgument,
@@ -667,8 +638,7 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedECDH(selected) ||
       !SpeedECDSA(selected) ||
       !Speed25519(selected) ||
-      !SpeedSPAKE2(selected) ||
-      !SpeedNewHope(selected)) {
+      !SpeedSPAKE2(selected)) {
     return false;
   }
 

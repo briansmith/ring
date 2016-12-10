@@ -23,7 +23,6 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/newhope.h>
 #include <openssl/nid.h>
 
 #include "internal.h"
