@@ -1054,12 +1054,14 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	return nil
 }
 
-var tlsVersions = []struct {
+type tlsVersion struct {
 	name    string
 	version uint16
 	flag    string
 	hasDTLS bool
-}{
+}
+
+var tlsVersions = []tlsVersion{
 	{"SSL3", VersionSSL30, "-no-ssl3", false},
 	{"TLS1", VersionTLS10, "-no-tls1", true},
 	{"TLS11", VersionTLS11, "-no-tls11", false},
@@ -1067,10 +1069,12 @@ var tlsVersions = []struct {
 	{"TLS13", VersionTLS13, "-no-tls13", false},
 }
 
-var testCipherSuites = []struct {
+type testCipherSuite struct {
 	name string
 	id   uint16
-}{
+}
+
+var testCipherSuites = []testCipherSuite{
 	{"3DES-SHA", TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 	{"AES128-GCM", TLS_RSA_WITH_AES_128_GCM_SHA256},
 	{"AES128-SHA", TLS_RSA_WITH_AES_128_CBC_SHA},
@@ -2431,180 +2435,183 @@ func addBasicTests() {
 	})
 }
 
+func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol protocol) {
+	const psk = "12345"
+	const pskIdentity = "luggage combo"
+
+	var prefix string
+	if protocol == dtls {
+		if !ver.hasDTLS {
+			return
+		}
+		prefix = "D"
+	}
+
+	var cert Certificate
+	var certFile string
+	var keyFile string
+	if hasComponent(suite.name, "ECDSA") {
+		cert = ecdsaP256Certificate
+		certFile = ecdsaP256CertificateFile
+		keyFile = ecdsaP256KeyFile
+	} else {
+		cert = rsaCertificate
+		certFile = rsaCertificateFile
+		keyFile = rsaKeyFile
+	}
+
+	var flags []string
+	if hasComponent(suite.name, "PSK") {
+		flags = append(flags,
+			"-psk", psk,
+			"-psk-identity", pskIdentity)
+	}
+	if hasComponent(suite.name, "NULL") {
+		// NULL ciphers must be explicitly enabled.
+		flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
+	}
+	if hasComponent(suite.name, "ECDHE-PSK") && hasComponent(suite.name, "GCM") {
+		// ECDHE_PSK AES_GCM ciphers must be explicitly enabled
+		// for now.
+		flags = append(flags, "-cipher", suite.name)
+	}
+
+	var shouldServerFail, shouldClientFail bool
+	if hasComponent(suite.name, "ECDHE") && ver.version == VersionSSL30 {
+		// BoringSSL clients accept ECDHE on SSLv3, but
+		// a BoringSSL server will never select it
+		// because the extension is missing.
+		shouldServerFail = true
+	}
+	if isTLS12Only(suite.name) && ver.version < VersionTLS12 {
+		shouldClientFail = true
+		shouldServerFail = true
+	}
+	if !isTLS13Suite(suite.name) && ver.version >= VersionTLS13 {
+		shouldClientFail = true
+		shouldServerFail = true
+	}
+	if isTLS13Suite(suite.name) && ver.version < VersionTLS13 {
+		shouldClientFail = true
+		shouldServerFail = true
+	}
+	if !isDTLSCipher(suite.name) && protocol == dtls {
+		shouldClientFail = true
+		shouldServerFail = true
+	}
+
+	var sendCipherSuite uint16
+	var expectedServerError, expectedClientError string
+	serverCipherSuites := []uint16{suite.id}
+	if shouldServerFail {
+		expectedServerError = ":NO_SHARED_CIPHER:"
+	}
+	if shouldClientFail {
+		expectedClientError = ":WRONG_CIPHER_RETURNED:"
+		// Configure the server to select ciphers as normal but
+		// select an incompatible cipher in ServerHello.
+		serverCipherSuites = nil
+		sendCipherSuite = suite.id
+	}
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		protocol: protocol,
+		name:     prefix + ver.name + "-" + suite.name + "-server",
+		config: Config{
+			MinVersion:           ver.version,
+			MaxVersion:           ver.version,
+			CipherSuites:         []uint16{suite.id},
+			Certificates:         []Certificate{cert},
+			PreSharedKey:         []byte(psk),
+			PreSharedKeyIdentity: pskIdentity,
+			Bugs: ProtocolBugs{
+				AdvertiseAllConfiguredCiphers: true,
+			},
+		},
+		certFile:      certFile,
+		keyFile:       keyFile,
+		flags:         flags,
+		resumeSession: true,
+		shouldFail:    shouldServerFail,
+		expectedError: expectedServerError,
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		protocol: protocol,
+		name:     prefix + ver.name + "-" + suite.name + "-client",
+		config: Config{
+			MinVersion:           ver.version,
+			MaxVersion:           ver.version,
+			CipherSuites:         serverCipherSuites,
+			Certificates:         []Certificate{cert},
+			PreSharedKey:         []byte(psk),
+			PreSharedKeyIdentity: pskIdentity,
+			Bugs: ProtocolBugs{
+				IgnorePeerCipherPreferences: shouldClientFail,
+				SendCipherSuite:             sendCipherSuite,
+			},
+		},
+		flags:         flags,
+		resumeSession: true,
+		shouldFail:    shouldClientFail,
+		expectedError: expectedClientError,
+	})
+
+	if !shouldClientFail {
+		// Ensure the maximum record size is accepted.
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     prefix + ver.name + "-" + suite.name + "-LargeRecord",
+			config: Config{
+				MinVersion:           ver.version,
+				MaxVersion:           ver.version,
+				CipherSuites:         []uint16{suite.id},
+				Certificates:         []Certificate{cert},
+				PreSharedKey:         []byte(psk),
+				PreSharedKeyIdentity: pskIdentity,
+			},
+			flags:      flags,
+			messageLen: maxPlaintext,
+		})
+
+		// Test bad records for all ciphers. Bad records are fatal in TLS
+		// and ignored in DTLS.
+		var shouldFail bool
+		var expectedError string
+		if protocol == tls {
+			shouldFail = true
+			expectedError = ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"
+		}
+
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     prefix + ver.name + "-" + suite.name + "-BadRecord",
+			config: Config{
+				MinVersion:           ver.version,
+				MaxVersion:           ver.version,
+				CipherSuites:         []uint16{suite.id},
+				Certificates:         []Certificate{cert},
+				PreSharedKey:         []byte(psk),
+				PreSharedKeyIdentity: pskIdentity,
+			},
+			flags:            flags,
+			damageFirstWrite: true,
+			messageLen:       maxPlaintext,
+			shouldFail:       shouldFail,
+			expectedError:    expectedError,
+		})
+	}
+}
+
 func addCipherSuiteTests() {
 	const bogusCipher = 0xfe00
 
 	for _, suite := range testCipherSuites {
-		const psk = "12345"
-		const pskIdentity = "luggage combo"
-
-		var cert Certificate
-		var certFile string
-		var keyFile string
-		if hasComponent(suite.name, "ECDSA") {
-			cert = ecdsaP256Certificate
-			certFile = ecdsaP256CertificateFile
-			keyFile = ecdsaP256KeyFile
-		} else {
-			cert = rsaCertificate
-			certFile = rsaCertificateFile
-			keyFile = rsaKeyFile
-		}
-
-		var flags []string
-		if hasComponent(suite.name, "PSK") {
-			flags = append(flags,
-				"-psk", psk,
-				"-psk-identity", pskIdentity)
-		}
-		if hasComponent(suite.name, "NULL") {
-			// NULL ciphers must be explicitly enabled.
-			flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
-		}
-		if hasComponent(suite.name, "ECDHE-PSK") && hasComponent(suite.name, "GCM") {
-			// ECDHE_PSK AES_GCM ciphers must be explicitly enabled
-			// for now.
-			flags = append(flags, "-cipher", suite.name)
-		}
-
 		for _, ver := range tlsVersions {
 			for _, protocol := range []protocol{tls, dtls} {
-				var prefix string
-				if protocol == dtls {
-					if !ver.hasDTLS {
-						continue
-					}
-					prefix = "D"
-				}
-
-				var shouldServerFail, shouldClientFail bool
-				if hasComponent(suite.name, "ECDHE") && ver.version == VersionSSL30 {
-					// BoringSSL clients accept ECDHE on SSLv3, but
-					// a BoringSSL server will never select it
-					// because the extension is missing.
-					shouldServerFail = true
-				}
-				if isTLS12Only(suite.name) && ver.version < VersionTLS12 {
-					shouldClientFail = true
-					shouldServerFail = true
-				}
-				if !isTLS13Suite(suite.name) && ver.version >= VersionTLS13 {
-					shouldClientFail = true
-					shouldServerFail = true
-				}
-				if isTLS13Suite(suite.name) && ver.version < VersionTLS13 {
-					shouldClientFail = true
-					shouldServerFail = true
-				}
-				if !isDTLSCipher(suite.name) && protocol == dtls {
-					shouldClientFail = true
-					shouldServerFail = true
-				}
-
-				var sendCipherSuite uint16
-				var expectedServerError, expectedClientError string
-				serverCipherSuites := []uint16{suite.id}
-				if shouldServerFail {
-					expectedServerError = ":NO_SHARED_CIPHER:"
-				}
-				if shouldClientFail {
-					expectedClientError = ":WRONG_CIPHER_RETURNED:"
-					// Configure the server to select ciphers as normal but
-					// select an incompatible cipher in ServerHello.
-					serverCipherSuites = nil
-					sendCipherSuite = suite.id
-				}
-
-				testCases = append(testCases, testCase{
-					testType: serverTest,
-					protocol: protocol,
-
-					name: prefix + ver.name + "-" + suite.name + "-server",
-					config: Config{
-						MinVersion:           ver.version,
-						MaxVersion:           ver.version,
-						CipherSuites:         []uint16{suite.id},
-						Certificates:         []Certificate{cert},
-						PreSharedKey:         []byte(psk),
-						PreSharedKeyIdentity: pskIdentity,
-						Bugs: ProtocolBugs{
-							AdvertiseAllConfiguredCiphers: true,
-						},
-					},
-					certFile:      certFile,
-					keyFile:       keyFile,
-					flags:         flags,
-					resumeSession: true,
-					shouldFail:    shouldServerFail,
-					expectedError: expectedServerError,
-				})
-
-				testCases = append(testCases, testCase{
-					testType: clientTest,
-					protocol: protocol,
-					name:     prefix + ver.name + "-" + suite.name + "-client",
-					config: Config{
-						MinVersion:           ver.version,
-						MaxVersion:           ver.version,
-						CipherSuites:         serverCipherSuites,
-						Certificates:         []Certificate{cert},
-						PreSharedKey:         []byte(psk),
-						PreSharedKeyIdentity: pskIdentity,
-						Bugs: ProtocolBugs{
-							IgnorePeerCipherPreferences: shouldClientFail,
-							SendCipherSuite:             sendCipherSuite,
-						},
-					},
-					flags:         flags,
-					resumeSession: true,
-					shouldFail:    shouldClientFail,
-					expectedError: expectedClientError,
-				})
-
-				if !shouldClientFail {
-					// Ensure the maximum record size is accepted.
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						name:     prefix + ver.name + "-" + suite.name + "-LargeRecord",
-						config: Config{
-							MinVersion:           ver.version,
-							MaxVersion:           ver.version,
-							CipherSuites:         []uint16{suite.id},
-							Certificates:         []Certificate{cert},
-							PreSharedKey:         []byte(psk),
-							PreSharedKeyIdentity: pskIdentity,
-						},
-						flags:      flags,
-						messageLen: maxPlaintext,
-					})
-
-					// Test bad records for all ciphers. Bad records are fatal in TLS
-					// and ignored in DTLS.
-					var shouldFail bool
-					var expectedError string
-					if protocol == tls {
-						shouldFail = true
-						expectedError = ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:"
-					}
-
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						name:     prefix + ver.name + "-" + suite.name + "-BadRecord",
-						config: Config{
-							MinVersion:           ver.version,
-							MaxVersion:           ver.version,
-							CipherSuites:         []uint16{suite.id},
-							Certificates:         []Certificate{cert},
-							PreSharedKey:         []byte(psk),
-							PreSharedKeyIdentity: pskIdentity,
-						},
-						flags:            flags,
-						damageFirstWrite: true,
-						messageLen:       maxPlaintext,
-						shouldFail:       shouldFail,
-						expectedError:    expectedError,
-					})
-				}
+				addTestForCipherSuite(suite, ver, protocol)
 			}
 		}
 	}
