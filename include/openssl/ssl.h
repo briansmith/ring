@@ -2026,15 +2026,6 @@ OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*dh)(SSL *ssl, int is_export,
                                                       int keylength));
 
-/* SSL_get_dhe_group_size returns the number of bits in the most recently
- * completed handshake's selected group's prime, or zero if not
- * applicable. Note, however, that validating this value does not ensure the
- * server selected a secure group.
- *
- * TODO(davidben): This API currently does not work correctly if there is a
- * renegotiation in progress. Fix this. */
-OPENSSL_EXPORT unsigned SSL_get_dhe_group_size(const SSL *ssl);
-
 
 /* Certificate verification.
  *

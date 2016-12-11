@@ -1368,16 +1368,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
-  if (config->expect_dhe_group_size != 0) {
-    unsigned dhe_group_size = SSL_get_dhe_group_size(ssl);
-    if (static_cast<unsigned>(config->expect_dhe_group_size) !=
-        dhe_group_size) {
-      fprintf(stderr, "dhe_group_size was %u, wanted %d\n", dhe_group_size,
-              config->expect_dhe_group_size);
-      return false;
-    }
-  }
-
   uint16_t cipher_id =
       static_cast<uint16_t>(SSL_CIPHER_get_id(SSL_get_current_cipher(ssl)));
   if (config->expect_cipher_aes != 0 &&

@@ -242,10 +242,6 @@ void PrintConnectionInfo(const SSL *ssl) {
   if (curve != 0) {
     fprintf(stderr, "  ECDHE curve: %s\n", SSL_get_curve_name(curve));
   }
-  unsigned dhe_bits = SSL_get_dhe_group_size(ssl);
-  if (dhe_bits != 0) {
-    fprintf(stderr, "  DHE group size: %u bits\n", dhe_bits);
-  }
   uint16_t sigalg = SSL_get_peer_signature_algorithm(ssl);
   if (sigalg != 0) {
     fprintf(stderr, "  Signature algorithm: %s\n",

@@ -2424,19 +2424,6 @@ void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*callback)(SSL *ssl, int is_export,
   ssl->cert->dh_tmp_cb = callback;
 }
 
-unsigned SSL_get_dhe_group_size(const SSL *ssl) {
-  /* TODO(davidben): This checks the wrong session if there is a renegotiation in
-   * progress. */
-  SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL ||
-      session->cipher == NULL ||
-      !SSL_CIPHER_is_DHE(session->cipher)) {
-    return 0;
-  }
-
-  return session->key_exchange_info;
-}
-
 int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {
   if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
