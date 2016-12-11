@@ -242,12 +242,11 @@ impl<F: Field> ElemDecoded<F> {
 }
 
 // `a` * `b` (mod `m`).
-pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: &ElemDecoded<F>, m: &Modulus<F>)
+pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
                                 -> Result<ElemDecoded<F>, error::Unspecified> {
-    let mut r = try!(Nonnegative::zero());
+    let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(r.as_mut_ref(), a.value.as_ref(),
-                            b.value.as_ref(), m.as_ref())
+        GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(ElemDecoded {
         value: r,
@@ -320,13 +319,12 @@ extern {
     // `r` and `a` may alias.
     fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                       -> c::int;
-
-    // The use of references here implies lack of aliasing. However,
-    // `GFp_BN_mod_mul_mont` does allow `r` to alias `a` or `b` if needed; if
-    // we need that then we should change the types to pointers.
-    fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
-    fn GFp_BN_mod_mul_mont(r: &mut BIGNUM, a: &BIGNUM, b: &BIGNUM,
+    // `r` and/or 'a' and/or 'b' may alias.
+    fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                            m: &BN_MONT_CTX) -> c::int;
+
+    // The use of references here implies lack of aliasing.
+    fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
 
     fn GFp_BN_MONT_CTX_new() -> *mut BN_MONT_CTX;
     fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;

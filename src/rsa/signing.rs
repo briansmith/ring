@@ -144,7 +144,7 @@ impl RSAKeyPair {
                     try!(p.into_elem_decoded(&n))
                 };
                 let pq_mod_n =
-                    try!(bigint::elem_mul_mixed(&q_mod_n, &p_mod_n, &n));
+                    try!(bigint::elem_mul_mixed(&q_mod_n, p_mod_n, &n));
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -179,7 +179,7 @@ impl RSAKeyPair {
                     try!(q.into_elem_decoded(&p))
                 };
                 let iqmp_times_q_mod_p =
-                    try!(bigint::elem_mul_mixed(&iqmp, &q_mod_p, &p));
+                    try!(bigint::elem_mul_mixed(&iqmp, q_mod_p, &p));
                 if !iqmp_times_q_mod_p.is_one() {
                     return Err(error::Unspecified);
                 }
@@ -189,7 +189,7 @@ impl RSAKeyPair {
                     try!(q.into_elem_decoded(&n))
                 };
                 let qq =
-                    try!(bigint::elem_mul_mixed(&q_mod_n, &q_mod_n_decoded,
+                    try!(bigint::elem_mul_mixed(&q_mod_n, q_mod_n_decoded,
                                                 &n));
                 let qq = try!(qq.into_odd_positive());
                 let qq = try!(qq.into_modulus::<QQ>());
