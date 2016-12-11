@@ -112,6 +112,9 @@ fn check_public_modulus_and_exponent(
     Ok((n, e))
 }
 
+pub enum N {}
+unsafe impl bigint::Field for N {}
+
 pub mod verification;
 
 #[cfg(feature = "rsa_signing")]

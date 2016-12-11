@@ -17,7 +17,7 @@
 use {bits, bssl, c, der, digest, error};
 use rand;
 use std;
-use super::{blinding, bigint};
+use super::{blinding, bigint, N};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -220,9 +220,6 @@ impl RSAKeyPair {
     }
 }
 
-
-enum N {}
-unsafe impl bigint::Field for N {}
 
 enum P {}
 unsafe impl bigint::Field for P {}

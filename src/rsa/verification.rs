@@ -15,7 +15,7 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bits, bssl, c, digest, error, private, signature};
-use super::{bigint, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
+use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
             parse_public_key};
 use untrusted;
 
@@ -114,9 +114,6 @@ pub fn verify_rsa(params: &RSAParameters,
     if signature.len() > decoded.len() {
         return Err(error::Unspecified);
     }
-
-    enum N {}
-    unsafe impl bigint::Field for N {}
 
     let n = try!(bigint::Positive::from_be_bytes(n));
     let e = try!(bigint::Positive::from_be_bytes(e));
