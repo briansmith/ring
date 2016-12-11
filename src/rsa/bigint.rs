@@ -17,7 +17,7 @@
 // XXX TODO: Remove this once RSA verification has been done in Rust.
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
 
-use {bits, bssl, c, der, error, untrusted};
+use {bits, bssl, c, der, error, rand, untrusted};
 use core;
 use core::marker::PhantomData;
 
@@ -103,16 +103,10 @@ impl Positive {
         Ok(Positive(r))
     }
 
-    pub fn into_elem<F: Field>(mut self, m: &Modulus<F>)
+    pub fn into_elem<F: Field>(self, m: &Modulus<F>)
                                -> Result<Elem<F>, error::Unspecified> {
-        try!(verify_less_than(&self, &m));
-        try!(bssl::map_result(unsafe {
-            GFp_BN_to_mont(self.0.as_mut_ref(), self.as_ref(), m.as_ref())
-        }));
-        Ok(Elem {
-            value: self.0,
-            field: PhantomData,
-        })
+        let decoded = try!(self.into_elem_decoded(m));
+        decoded.into_elem(m)
     }
 
     pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
@@ -207,6 +201,17 @@ pub struct Elem<F: Field> {
 }
 
 impl<F: Field> Elem<F> {
+    // There's no need to convert `value` to the Montgomery domain since
+    // 0 * R**2 (mod n) == 0, so the modulus isn't even needed to construct a
+    // zero-valued element.
+    pub fn zero() -> Result<Self, error::Unspecified> {
+        let value = try!(Nonnegative::zero());
+        Ok(Elem {
+            value: value,
+            field: PhantomData,
+        })
+    }
+
     pub fn as_ref_montgomery_encoded<'a>(&'a self) -> &'a BIGNUM {
         self.value.as_ref()
     }
@@ -218,6 +223,13 @@ pub struct ElemDecoded<F: Field> {
 }
 
 impl<F: Field> ElemDecoded<F> {
+    pub fn take_storage(e: Elem<F>) -> ElemDecoded<F> {
+        ElemDecoded {
+            value: e.value,
+            field: PhantomData,
+        }
+    }
+
     pub fn fill_be_bytes(&self, out: &mut [u8])
                          -> Result<(), error::Unspecified> {
         bssl::map_result(unsafe {
@@ -234,6 +246,18 @@ impl<F: Field> ElemDecoded<F> {
     // ASAP.
     pub unsafe fn as_mut_ref<'a>(&'a mut self) -> &'a mut BIGNUM {
         self.value.as_mut_ref()
+    }
+
+    pub fn into_elem(self, m: &Modulus<F>)
+                     -> Result<Elem<F>, error::Unspecified> {
+        let mut value = self.value;
+        try!(bssl::map_result(unsafe {
+            GFp_BN_to_mont(value.as_mut_ref(), value.as_ref(), m.as_ref())
+        }));
+        Ok(Elem {
+            value: value,
+            field: PhantomData,
+        })
     }
 
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
@@ -254,6 +278,19 @@ pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
     })
 }
 
+pub fn elem_squared<F: Field>(a: Elem<F>, m: &Modulus<F>)
+                              -> Result<Elem<F>, error::Unspecified> {
+    let mut value = a.value;
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
+                            m.as_ref())
+    }));
+    Ok(Elem {
+        value: value,
+        field: PhantomData,
+    })
+}
+
 pub fn elem_exp_vartime<F: Field>(
         mut base: ElemDecoded<F>, exponent: &OddPositive, m: &Modulus<F>)
         -> Result<ElemDecoded<F>, error::Unspecified> {
@@ -264,6 +301,39 @@ pub fn elem_exp_vartime<F: Field>(
     }));
     Ok(base)
 }
+
+pub fn elem_randomize<F: Field>(a: &mut ElemDecoded<F>, m: &Modulus<F>,
+                                rng: &rand::SecureRandom)
+                                -> Result<(), error::Unspecified> {
+    let mut rand = rand::RAND::new(rng);
+    bssl::map_result(unsafe {
+        GFp_BN_rand_range_ex(a.value.as_mut_ref(), m.as_ref(), &mut rand)
+    })
+}
+
+// r = 1/a (mod m).
+pub fn elem_set_to_inverse_blinded<F: Field>(
+            r: &mut ElemDecoded<F>, a: &ElemDecoded<F>, m: &Modulus<F>,
+            rng: &rand::SecureRandom) -> Result<(), InversionError> {
+    let mut no_inverse = 0;
+    let mut rand = rand::RAND::new(rng);
+    bssl::map_result(unsafe {
+        GFp_BN_mod_inverse_blinded(r.value.as_mut_ref(), &mut no_inverse,
+                                    a.value.as_ref(), m.as_ref(), &mut rand)
+    }).map_err(|_| {
+        if no_inverse != 0 {
+            InversionError::NoInverse
+        } else {
+            InversionError::Unspecified
+        }
+    })
+}
+
+pub enum InversionError {
+    NoInverse,
+    Unspecified
+}
+
 
 /// Nonnegative integers: `Positive` ∪ {0}.
 struct Nonnegative(*mut BIGNUM);
@@ -344,6 +414,17 @@ extern {
     fn GFp_BN_MONT_CTX_get0_n<'a>(ctx: &'a BN_MONT_CTX) -> &'a BIGNUM;
     fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
+
+#[allow(improper_ctypes)]
+extern {
+    fn GFp_BN_rand_range_ex(r: &mut BIGNUM, max_exclusive: &BIGNUM,
+                            rng: &mut rand::RAND) -> c::int;
+
+    fn GFp_BN_mod_inverse_blinded(out: &mut BIGNUM, out_no_inverse: &mut c::int,
+                                  a: &BIGNUM, mont: &BN_MONT_CTX,
+                                  rng: &mut rand::RAND) -> c::int;
+}
+
 
 #[cfg(test)]
 mod tests {
