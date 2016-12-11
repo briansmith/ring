@@ -1193,7 +1193,6 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
       }
-      ssl->s3->new_session->key_exchange_info = DH_num_bits(params);
 
       /* Set up DH, generate a key, and emit the public half. */
       DH *dh = DHparams_dup(params);
@@ -1218,7 +1217,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
       }
-      ssl->s3->new_session->key_exchange_info = group_id;
+      ssl->s3->new_session->group_id = group_id;
 
       /* Set up ECDH, generate a key, and emit the public half. */
       if (!SSL_ECDH_CTX_init(&hs->ecdh_ctx, group_id) ||

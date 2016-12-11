@@ -1216,11 +1216,11 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    ssl->s3->new_session->key_exchange_info = DH_num_bits(dh);
-    if (ssl->s3->new_session->key_exchange_info < 1024) {
+    unsigned bits = DH_num_bits(dh);
+    if (bits < 1024) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DH_P_LENGTH);
       goto err;
-    } else if (ssl->s3->new_session->key_exchange_info > 4096) {
+    } else if (bits > 4096) {
       /* Overly large DHE groups are prohibitively expensive, so enforce a limit
        * to prevent a server from causing us to perform too expensive of a
        * computation. */
@@ -1248,7 +1248,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
-    ssl->s3->new_session->key_exchange_info = group_id;
+    ssl->s3->new_session->group_id = group_id;
 
     /* Ensure the group is consistent with preferences. */
     if (!tls1_check_group_id(ssl, group_id)) {

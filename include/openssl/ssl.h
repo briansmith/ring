@@ -3665,16 +3665,9 @@ struct ssl_session_st {
   CRYPTO_refcount_t references;
   int ssl_version; /* what ssl version session info is being kept in here? */
 
-  /* key_exchange_info contains an indication of the size of the asymmetric
-   * primitive used in the handshake that created this session. In the event
-   * that two asymmetric operations are used, this value applies to the one
-   * that controls the confidentiality of the connection. Its interpretation
-   * depends on the primitive that was used; as specified by the cipher suite:
-   *   DHE: the size, in bits, of the multiplicative group.
-   *   ECDHE: the TLS id for the curve.
-   *
-   * A zero indicates that the value is unknown. */
-  uint32_t key_exchange_info;
+  /* group_id is the ID of the ECDH group used to establish this session or zero
+   * if not applicable or unknown. */
+  uint16_t group_id;
 
   /* master_key, in TLS 1.2 and below, is the master secret associated with the
    * session. In TLS 1.3 and up, it is the resumption secret. */

@@ -264,7 +264,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     memcpy(new_session->session_id, session->session_id,
            session->session_id_length);
 
-    new_session->key_exchange_info = session->key_exchange_info;
+    new_session->group_id = session->group_id;
 
     memcpy(new_session->original_handshake_hash,
            session->original_handshake_hash,
