@@ -100,6 +100,7 @@ include = [
     "src/polyfill.rs",
     "src/rand.rs",
     "src/rsa/bigint.rs",
+    "src/rsa/blinding.rs",
     "src/rsa/padding.rs",
     "src/rsa/random.rs",
     "src/rsa/rsa.rs",

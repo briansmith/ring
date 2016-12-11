@@ -17,7 +17,7 @@
 use {bits, bssl, c, der, digest, error};
 use rand;
 use std;
-use super::bigint;
+use super::{blinding, bigint};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -277,20 +277,17 @@ struct RSA<'a> {
 /// most-recently-used fashion would improve the computational efficiency.
 pub struct RSASigningState {
     key_pair: std::sync::Arc<RSAKeyPair>,
-    blinding: Blinding,
+    blinding: blinding::Blinding,
 }
 
 impl RSASigningState {
     /// Construct an `RSASigningState` for the given `RSAKeyPair`.
     pub fn new(key_pair: std::sync::Arc<RSAKeyPair>)
                -> Result<Self, error::Unspecified> {
-        let blinding = unsafe { GFp_BN_BLINDING_new() };
-        if blinding.is_null() {
-            return Err(error::Unspecified);
-        }
+        let blinding = try!(blinding::Blinding::new());
         Ok(RSASigningState {
             key_pair: key_pair,
-            blinding: Blinding { blinding: blinding },
+            blinding: blinding,
         })
     }
 
@@ -316,6 +313,7 @@ impl RSASigningState {
     /// platforms, it is done less perfectly. To help mitigate the current
     /// imperfections, and for defense-in-depth, base blinding is always done.
     /// Exponent blinding is not done, but it may be done in the future.
+    #[allow(non_shorthand_field_patterns)] // Work around compiler bug.
     pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
@@ -324,7 +322,11 @@ impl RSASigningState {
             return Err(error::Unspecified);
         }
 
-        let key = self.key_pair();
+        let &mut RSASigningState {
+            key_pair: ref key,
+            blinding: ref mut blinding,
+        } = self;
+
         let rsa =  RSA {
             e: key.e.as_ref(),
             dmp1: key.dmp1.as_ref(),
@@ -349,42 +351,18 @@ impl RSASigningState {
 
         try!(bssl::map_result(unsafe {
             GFp_rsa_private_transform(&rsa, base.as_mut_ref(),
-                                      &mut *self.blinding.blinding, &mut rand)
+                                      blinding.as_mut_ref(), &mut rand)
         }));
 
         base.fill_be_bytes(signature)
     }
 }
 
-struct Blinding {
-    blinding: *mut BN_BLINDING,
-}
-
-impl Drop for Blinding {
-    fn drop(&mut self) { unsafe { GFp_BN_BLINDING_free(self.blinding) } }
-}
-
-unsafe impl Send for Blinding {}
-
-/// Needs to be kept in sync with `bn_blinding_st` in `crypto/rsa/blinding.c`.
-#[allow(non_camel_case_types)]
-#[repr(C)]
-struct BN_BLINDING {
-    a: *mut bigint::BIGNUM,
-    ai: *mut bigint::BIGNUM,
-    counter: u32,
-}
-
-
-extern {
-    fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
-    fn GFp_BN_BLINDING_free(b: *mut BN_BLINDING);
-}
 
 #[allow(improper_ctypes)]
 extern {
     fn GFp_rsa_private_transform(rsa: &RSA, base: &mut bigint::BIGNUM,
-                                 blinding: &mut BN_BLINDING,
+                                 blinding: &mut blinding::BN_BLINDING,
                                  rng: &mut rand::RAND) -> c::int;
 }
 
@@ -395,11 +373,8 @@ mod tests {
     // the public API; this ensures that enough of the API is public.
     use {error, rand, signature, test};
     use std;
+    use super::super::blinding;
     use untrusted;
-
-    extern {
-        static GFp_BN_BLINDING_COUNTER: u32;
-    }
 
     #[test]
     fn test_signature_rsa_pkcs1_sign() {
@@ -498,17 +473,13 @@ mod tests {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
 
-        let blinding_counter = unsafe { GFp_BN_BLINDING_COUNTER };
+        let blinding_counter = unsafe { blinding::GFp_BN_BLINDING_COUNTER };
 
         for _ in 0..(blinding_counter + 1) {
-            let prev_counter =
-                unsafe { (*signing_state.blinding.blinding).counter };
-
+            let prev_counter = signing_state.blinding.counter();
             let _ = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
                                        MESSAGE, &mut signature);
-
-            let counter = unsafe { (*signing_state.blinding.blinding).counter };
-
+            let counter = signing_state.blinding.counter();
             assert_eq!(counter, (prev_counter + 1) % blinding_counter);
         }
     }

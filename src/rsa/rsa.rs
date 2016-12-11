@@ -118,6 +118,10 @@ pub mod verification;
 pub mod signing;
 
 mod bigint;
+
+#[cfg(feature = "rsa_signing")]
+mod blinding;
+
 mod random;
 
 // Really a private method; only has public visibility so that C compilation
