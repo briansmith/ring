@@ -882,7 +882,9 @@ struct ssl_handshake_st {
    * or |ssl_hs_ok| if none. */
   enum ssl_hs_wait_t wait;
 
-  int state;
+  /* tls13_state is the internal state for the TLS 1.3 handshake. Its values
+   * depend on |do_tls13_handshake| but the starting state is always zero. */
+  int tls13_state;
 
   size_t hash_len;
   uint8_t secret[EVP_MAX_MD_SIZE];
