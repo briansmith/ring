@@ -167,9 +167,15 @@ int ssl3_new(SSL *ssl) {
 
   s3 = OPENSSL_malloc(sizeof *s3);
   if (s3 == NULL) {
-    goto err;
+    return 0;
   }
   memset(s3, 0, sizeof *s3);
+
+  s3->hs = ssl_handshake_new(ssl);
+  if (s3->hs == NULL) {
+    OPENSSL_free(s3);
+    return 0;
+  }
 
   EVP_MD_CTX_init(&s3->handshake_hash);
   EVP_MD_CTX_init(&s3->handshake_md5);
@@ -183,8 +189,6 @@ int ssl3_new(SSL *ssl) {
    * at the API boundary rather than in internal state. */
   ssl->version = TLS1_2_VERSION;
   return 1;
-err:
-  return 0;
 }
 
 void ssl3_free(SSL *ssl) {

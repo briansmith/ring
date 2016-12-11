@@ -631,12 +631,9 @@ int SSL_do_handshake(SSL *ssl) {
     return 1;
   }
 
-  /* Set up a new handshake if necessary. */
-  if (ssl->state == SSL_ST_INIT && ssl->s3->hs == NULL) {
-    ssl->s3->hs = ssl_handshake_new(ssl);
-    if (ssl->s3->hs == NULL) {
-      return -1;
-    }
+  if (ssl->s3->hs == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
   }
 
   /* Run the handshake. */
@@ -715,6 +712,15 @@ static int ssl_do_renegotiate(SSL *ssl) {
   }
 
   /* Begin a new handshake. */
+  if (ssl->s3->hs != NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  ssl->s3->hs = ssl_handshake_new(ssl);
+  if (ssl->s3->hs == NULL) {
+    return 0;
+  }
+
   ssl->s3->total_renegotiations++;
   ssl->state = SSL_ST_INIT;
   return 1;
