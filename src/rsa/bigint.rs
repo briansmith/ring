@@ -35,6 +35,10 @@ pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
 }
 
 
+impl<F: Field> AsRef<BN_MONT_CTX> for Modulus<F> {
+    fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
+}
+
 impl<F: Field> AsRef<BIGNUM> for Modulus<F> {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM {
         unsafe { GFp_BN_MONT_CTX_get0_n(self.as_ref()) }
@@ -195,10 +199,6 @@ unsafe impl<F: Field> Send for Modulus<F> {}
 
 // `Modulus` is immutable.
 unsafe impl<F: Field> Sync for Modulus<F> {}
-
-impl<F: Field> Modulus<F> {
-    pub fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
-}
 
 /// Montgomery-encoded elements of a field.
 pub struct Elem<F: Field> {
