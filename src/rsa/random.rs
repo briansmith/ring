@@ -13,7 +13,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! RSA blinding parameter generation.
+//! Generation of random field elements, in particular field elements in GFn
+//! where *n* is an RSA public modulus.
+//!
+//! This is also used for some randomized tests in bn_tests.cc.
 
 use {c, core, rand, error, rsa};
 use limb::*;
