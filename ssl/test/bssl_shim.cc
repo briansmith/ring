@@ -1359,11 +1359,15 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     return false;
   }
 
-  if (config->expect_curve_id != 0) {
+  int expect_curve_id = config->expect_curve_id;
+  if (is_resume && config->expect_resume_curve_id != 0) {
+    expect_curve_id = config->expect_resume_curve_id;
+  }
+  if (expect_curve_id != 0) {
     uint16_t curve_id = SSL_get_curve_id(ssl);
-    if (static_cast<uint16_t>(config->expect_curve_id) != curve_id) {
+    if (static_cast<uint16_t>(expect_curve_id) != curve_id) {
       fprintf(stderr, "curve_id was %04x, wanted %04x\n", curve_id,
-              static_cast<uint16_t>(config->expect_curve_id));
+              static_cast<uint16_t>(expect_curve_id));
       return false;
     }
   }

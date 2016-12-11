@@ -8104,6 +8104,65 @@ func addCurveTests() {
 		shouldFail:    true,
 		expectedError: ":INVALID_ENCODING:",
 	})
+
+	// The previous curve ID should be reported on TLS 1.2 resumption.
+	testCases = append(testCases, testCase{
+		name: "CurveID-Resume-Client",
+		config: Config{
+			MaxVersion:       VersionTLS12,
+			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			CurvePreferences: []CurveID{CurveX25519},
+		},
+		flags:         []string{"-expect-curve-id", strconv.Itoa(int(CurveX25519))},
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CurveID-Resume-Server",
+		config: Config{
+			MaxVersion:       VersionTLS12,
+			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			CurvePreferences: []CurveID{CurveX25519},
+		},
+		flags:         []string{"-expect-curve-id", strconv.Itoa(int(CurveX25519))},
+		resumeSession: true,
+	})
+
+	// TLS 1.3 allows resuming at a differet curve. If this happens, the new
+	// one should be reported.
+	testCases = append(testCases, testCase{
+		name: "CurveID-Resume-Client-TLS13",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveX25519},
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveP256},
+		},
+		flags: []string{
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+			"-expect-resume-curve-id", strconv.Itoa(int(CurveP256)),
+		},
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CurveID-Resume-Server-TLS13",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveX25519},
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveP256},
+		},
+		flags: []string{
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+			"-expect-resume-curve-id", strconv.Itoa(int(CurveP256)),
+		},
+		resumeSession: true,
+	})
 }
 
 func addTLS13RecordTests() {

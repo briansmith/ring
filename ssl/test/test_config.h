@@ -107,6 +107,7 @@ struct TestConfig {
   bool enable_all_curves = false;
   bool use_sparse_dh_prime = false;
   int expect_curve_id = 0;
+  int expect_resume_curve_id = 0;
   bool use_old_client_cert_callback = false;
   int initial_timeout_duration_ms = 0;
   bool use_null_client_ca_list = false;
