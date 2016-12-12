@@ -115,15 +115,6 @@ int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
   return 1;
 }
 
-const BIGNUM *GFp_BN_value_one(void) {
-  static const BN_ULONG kOneLimbs[1] = { 1 };
-  STATIC_BIGNUM_DIAGNOSTIC_PUSH
-  static const BIGNUM kOne = STATIC_BIGNUM(kOneLimbs);
-  STATIC_BIGNUM_DIAGNOSTIC_POP
-
-  return &kOne;
-}
-
 /* GFp_BN_num_bits_word returns the minimum number of bits needed to represent
  * the value in |l|. */
 unsigned GFp_BN_num_bits_word(BN_ULONG l) {

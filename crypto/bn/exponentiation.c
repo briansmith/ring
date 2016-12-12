@@ -249,7 +249,8 @@ int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     /* Upper words will be zero if the corresponding words of 'm'
      * were 0xfff[...], so decrement r.top accordingly. */
     GFp_bn_correct_top(&r);
-  } else if (!GFp_BN_to_mont(&r, GFp_BN_value_one(), mont)) {
+  } else if (!GFp_BN_set_word(&r, 1) ||
+             !GFp_BN_to_mont(&r, &r, mont)) {
     goto err;
   }
 
@@ -531,7 +532,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       tmp.d[i] = (~m->d[i]) & BN_MASK2;
     }
     tmp.top = top;
-  } else if (!GFp_BN_to_mont(&tmp, GFp_BN_value_one(), mont)) {
+  } else if (!GFp_BN_set_word(&tmp, 1) ||
+             !GFp_BN_to_mont(&tmp, &tmp, mont)) {
     goto err;
   }
 

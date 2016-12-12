@@ -730,14 +730,16 @@ static bool TestBadModulus() {
   ScopedBIGNUM a(GFp_BN_new());
   ScopedBIGNUM b(GFp_BN_new());
   ScopedBIGNUM zero(GFp_BN_new());
+  ScopedBIGNUM one(GFp_BN_new());
   ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-  if (!a || !b || !zero || !mont) {
+  if (!a || !b || !zero || !one || !mont ||
+      !GFp_BN_set_word(one.get(), 1)) {
     return false;
   }
 
   GFp_BN_zero(zero.get());
 
-  if (GFp_BN_div(a.get(), b.get(), GFp_BN_value_one(), zero.get())) {
+  if (GFp_BN_div(a.get(), b.get(), one.get(), zero.get())) {
     fprintf(stderr, "Division by zero unexpectedly succeeded.\n");
     return false;
   }
@@ -904,9 +906,15 @@ static bool TestModInvRejectUnreduced(RAND *rng) {
 static bool TestCmpWord() {
   static const BN_ULONG kMaxWord = (BN_ULONG)-1;
 
+  ScopedBIGNUM one(GFp_BN_new());
   ScopedBIGNUM r(GFp_BN_new());
-  if (!r ||
-      !GFp_BN_set_word(r.get(), 0)) {
+  if (!one ||
+      !GFp_BN_set_word(one.get(), 1) ||
+      !r) {
+    return false;
+  }
+
+  if (!GFp_BN_set_word(r.get(), 0)) {
     return false;
   }
 
@@ -950,7 +958,7 @@ static bool TestCmpWord() {
     return false;
   }
 
-  if (!GFp_BN_add(r.get(), r.get(), GFp_BN_value_one())) {
+  if (!GFp_BN_add(r.get(), r.get(), one.get())) {
     return false;
   }
 

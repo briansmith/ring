@@ -176,9 +176,6 @@ OPENSSL_EXPORT void GFp_BN_free(BIGNUM *bn);
  * failure. */
 OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 
-/* GFp_BN_value_one returns a static BIGNUM with value 1. */
-OPENSSL_EXPORT const BIGNUM *GFp_BN_value_one(void);
-
 
 /* Basic functions. */
 

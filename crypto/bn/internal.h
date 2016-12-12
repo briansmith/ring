@@ -182,23 +182,6 @@ extern "C" {
 #endif
 
 
-#if defined(__GNUC__)
-#define STATIC_BIGNUM_DIAGNOSTIC_PUSH \
-  _Pragma("GCC diagnostic push") \
-  _Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
-#define STATIC_BIGNUM_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
-#else
-#define STATIC_BIGNUM_DIAGNOSTIC_PUSH
-#define STATIC_BIGNUM_DIAGNOSTIC_POP
-#endif
-
-#define STATIC_BIGNUM(x)                                \
-  {                                                     \
-    (BN_ULONG *)x, sizeof(x) / sizeof(BN_ULONG),        \
-    sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
-  }
-
-
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                               BN_ULONG w);
 BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
