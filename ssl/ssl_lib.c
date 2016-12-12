@@ -390,8 +390,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->min_version = ctx->min_version;
   ssl->max_version = ctx->max_version;
 
-  ssl->state = SSL_ST_INIT;
-
   /* RFC 6347 states that implementations SHOULD use an initial timer value of
    * 1 second. */
   ssl->initial_timeout_duration_ms = 1000;
@@ -722,7 +720,6 @@ static int ssl_do_renegotiate(SSL *ssl) {
   }
 
   ssl->s3->total_renegotiations++;
-  ssl->state = SSL_ST_INIT;
   return 1;
 
 no_renegotiation:
@@ -2297,7 +2294,14 @@ void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl, int type,
   return ssl->info_callback;
 }
 
-int SSL_state(const SSL *ssl) { return ssl->state; }
+int SSL_state(const SSL *ssl) {
+  if (ssl->s3->hs == NULL) {
+    assert(ssl->s3->initial_handshake_complete);
+    return SSL_ST_OK;
+  }
+
+  return ssl->s3->hs->state;
+}
 
 void SSL_set_state(SSL *ssl, int state) { }
 
@@ -2613,11 +2617,11 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 }
 
 int SSL_is_init_finished(const SSL *ssl) {
-  return ssl->state == SSL_ST_OK;
+  return SSL_state(ssl) == SSL_ST_OK;
 }
 
 int SSL_in_init(const SSL *ssl) {
-  return (ssl->state & SSL_ST_INIT) != 0;
+  return (SSL_state(ssl) & SSL_ST_INIT) != 0;
 }
 
 int SSL_in_false_start(const SSL *ssl) {
@@ -2886,7 +2890,6 @@ int SSL_clear(SSL *ssl) {
    * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
    * |ssl3_new|. */
 
-  ssl->state = SSL_ST_INIT;
   ssl->rwstate = SSL_NOTHING;
 
   BUF_MEM_free(ssl->init_buf);

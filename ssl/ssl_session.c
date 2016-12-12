@@ -837,7 +837,7 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
 
 int SSL_set_session(SSL *ssl, SSL_SESSION *session) {
   /* SSL_set_session may only be called before the handshake has started. */
-  if (ssl->state != SSL_ST_INIT || ssl->s3->initial_handshake_complete) {
+  if (SSL_state(ssl) != SSL_ST_INIT || ssl->s3->initial_handshake_complete) {
     abort();
   }
 

@@ -87,7 +87,7 @@
 
 
 const char *SSL_state_string_long(const SSL *ssl) {
-  switch (ssl->state) {
+  switch (SSL_state(ssl)) {
     case SSL_ST_ACCEPT:
       return "before accept initialization";
 
@@ -243,7 +243,7 @@ const char *SSL_state_string_long(const SSL *ssl) {
 }
 
 const char *SSL_state_string(const SSL *ssl) {
-  switch (ssl->state) {
+  switch (SSL_state(ssl)) {
     case SSL_ST_ACCEPT:
       return "AINIT ";
 

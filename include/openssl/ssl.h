@@ -4058,9 +4058,6 @@ struct ssl_st {
   /* version is the protocol version. */
   int version;
 
-  /* state contains one of the SSL3_ST_* values. */
-  int state;
-
   /* max_version is the maximum acceptable protocol version. Note this version
    * is normalized in DTLS. */
   uint16_t max_version;
