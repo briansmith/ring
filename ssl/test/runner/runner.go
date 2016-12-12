@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -9794,6 +9796,63 @@ func addRetainOnlySHA256ClientCertTests() {
 	}
 }
 
+func addECDSAKeyUsageTests() {
+	p256 := elliptic.P256()
+	priv, err := ecdsa.GenerateKey(p256, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		panic(err)
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now(),
+
+		// An ECC certificate with only the keyAgreement key usgae may
+		// be used with ECDH, but not ECDSA.
+		KeyUsage:              x509.KeyUsageKeyAgreement,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		panic(err)
+	}
+
+	cert := Certificate{
+		Certificate: [][]byte{derBytes},
+		PrivateKey:  priv,
+	}
+
+	for _, ver := range tlsVersions {
+		if ver.version < VersionTLS12 {
+			continue
+		}
+
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ECDSAKeyUsage-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{cert},
+			},
+			shouldFail:    true,
+			expectedError: ":ECC_CERT_NOT_FOR_SIGNING:",
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -9919,6 +9978,7 @@ func main() {
 	addRecordVersionTests()
 	addCertificateTests()
 	addRetainOnlySHA256ClientCertTests()
+	addECDSAKeyUsageTests()
 
 	var wg sync.WaitGroup
 

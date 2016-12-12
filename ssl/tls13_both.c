@@ -209,6 +209,12 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         goto err;
       }
+      /* TLS 1.3 always uses certificate keys for signing thus the correct
+       * keyUsage is enforced. */
+      if (!ssl_cert_check_digital_signature_key_usage(&certificate)) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        goto err;
+      }
 
       if (retain_sha256) {
         /* Retain the hash of the leaf certificate if requested. */
