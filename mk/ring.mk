@@ -40,7 +40,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ec/gfp_constant_time.c \
   crypto/ec/gfp_p256.c \
   crypto/ec/gfp_p384.c \
-  crypto/ec/wnaf.c \
   crypto/mem.c \
   crypto/modes/gcm.c \
   crypto/rand/sysrand.c \

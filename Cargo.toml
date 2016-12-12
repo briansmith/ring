@@ -186,7 +186,6 @@ include = [
     "crypto/ec/gfp_limbs.inl",
     "crypto/ec/gfp_p256.c",
     "crypto/ec/gfp_p384.c",
-    "crypto/ec/wnaf.c",
     "crypto/internal.h",
     "crypto/mem.c",
     "crypto/modes/asm/aesni-gcm-x86_64.pl",
