@@ -122,6 +122,7 @@
  *     keyExchangeInfo         [18] INTEGER OPTIONAL,
  *     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
  *     ticketAgeAdd            [21] OCTET STRING OPTIONAL,
+ *     isServer                [22] BOOLEAN DEFAULT TRUE,
  * }
  *
  * Note: historically this serialization has included other optional
@@ -170,6 +171,8 @@ static const int kCertChainTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 19;
 static const int kTicketAgeAddTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 21;
+static const int kIsServerTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 22;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -340,12 +343,13 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
 
   /* The certificate chain is only serialized if the leaf's SHA-256 isn't
    * serialized instead. */
-  if (in->x509_chain != NULL && !in->peer_sha256_valid) {
+  if (in->x509_chain != NULL && !in->peer_sha256_valid &&
+      sk_X509_num(in->x509_chain) >= 2) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    for (size_t i = 0; i < sk_X509_num(in->x509_chain); i++) {
+    for (size_t i = 1; i < sk_X509_num(in->x509_chain); i++) {
       if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->x509_chain, i))) {
         goto err;
       }
@@ -356,6 +360,15 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     if (!CBB_add_asn1(&session, &child, kTicketAgeAddTag) ||
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
         !CBB_add_u32(&child2, in->ticket_age_add)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  if (!in->is_server) {
+    if (!CBB_add_asn1(&session, &child, kIsServerTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_BOOLEAN) ||
+        !CBB_add_u8(&child2, 0x00)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -658,8 +671,20 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   }
   sk_X509_pop_free(ret->x509_chain, X509_free);
   ret->x509_chain = NULL;
-  if (has_cert_chain) {
+  if (ret->x509_peer != NULL) {
     ret->x509_chain = sk_X509_new_null();
+    if (ret->x509_chain == NULL ||
+        !sk_X509_push(ret->x509_chain, ret->x509_peer)) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        goto err;
+    }
+    X509_up_ref(ret->x509_peer);
+  }
+  if (has_cert_chain) {
+    if (ret->x509_peer == NULL) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+      goto err;
+    }
     if (ret->x509_chain == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -687,6 +712,17 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     goto err;
   }
   ret->ticket_age_add_valid = age_add_present;
+
+  int is_server;
+  if (!CBS_get_optional_asn1_bool(&session, &is_server, kIsServerTag,
+                                  1 /* default to true */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+  /* TODO: in time we can include |is_server| for servers too, then we can
+     enforce that client and server sessions are never mixed up. */
+
+  ret->is_server = is_server;
 
   if (CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);

@@ -552,12 +552,6 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* For historical reasons, the server's copy of the chain does not include the
-   * leaf while the client's does. */
-  if (sk_X509_num(ssl->s3->new_session->x509_chain) > 0) {
-    X509_free(sk_X509_shift(ssl->s3->new_session->x509_chain));
-  }
-
   hs->tls13_state = state_process_client_certificate_verify;
   return ssl_hs_read_message;
 }

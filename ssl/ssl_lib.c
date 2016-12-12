@@ -1087,10 +1087,35 @@ STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
     return NULL;
   }
   SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL) {
+  if (session == NULL ||
+      session->x509_chain == NULL) {
     return NULL;
   }
-  return session->x509_chain;
+
+  if (!ssl->server) {
+    return session->x509_chain;
+  }
+
+  /* OpenSSL historically didn't include the leaf certificate in the returned
+   * certificate chain, but only for servers. */
+  if (session->x509_chain_without_leaf == NULL) {
+    session->x509_chain_without_leaf = sk_X509_new_null();
+    if (session->x509_chain_without_leaf == NULL) {
+      return NULL;
+    }
+
+    for (size_t i = 1; i < sk_X509_num(session->x509_chain); i++) {
+      X509 *cert = sk_X509_value(session->x509_chain, i);
+      if (!sk_X509_push(session->x509_chain_without_leaf, cert)) {
+        sk_X509_pop_free(session->x509_chain_without_leaf, X509_free);
+        session->x509_chain_without_leaf = NULL;
+        return NULL;
+      }
+      X509_up_ref(cert);
+    }
+  }
+
+  return session->x509_chain_without_leaf;
 }
 
 int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,

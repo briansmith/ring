@@ -1483,6 +1483,8 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
+  X509 *leaf = NULL;
+
   if (sk_X509_num(chain) == 0) {
     /* No client certificate so the handshake buffer may be discarded. */
     ssl3_free_handshake_buffer(ssl);
@@ -1506,6 +1508,7 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
      * classed by them as a bug, but it's assumed by at least NGINX. */
     ssl->s3->new_session->verify_result = X509_V_OK;
   } else {
+    leaf = sk_X509_value(chain, 0);
     /* The hash would have been filled in. */
     if (ssl->retain_only_sha256_of_client_certs) {
       ssl->s3->new_session->peer_sha256_valid = 1;
@@ -1517,13 +1520,16 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  X509_free(ssl->s3->new_session->x509_peer);
-  ssl->s3->new_session->x509_peer = sk_X509_shift(chain);
-
   sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
   ssl->s3->new_session->x509_chain = chain;
-  /* Inconsistency alert: x509_chain does *not* include the peer's own
-   * certificate, while we do include it in s3_clnt.c */
+  sk_X509_pop_free(ssl->s3->new_session->x509_chain_without_leaf, X509_free);
+  ssl->s3->new_session->x509_chain_without_leaf = NULL;
+
+  X509_free(ssl->s3->new_session->x509_peer);
+  if (leaf) {
+    X509_up_ref(leaf);
+  }
+  ssl->s3->new_session->x509_peer = leaf;
 
   return 1;
 

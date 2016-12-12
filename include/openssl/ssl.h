@@ -3698,6 +3698,13 @@ struct ssl_session_st {
    * |peer|, but when a server it does not. */
   STACK_OF(X509) *x509_chain;
 
+  /* x509_chain_without_leaf is a lazily constructed copy of |x509_chain| that
+   * omits the leaf certificate. This exists because OpenSSL, historically,
+   * didn't include the leaf certificate in the chain for a server, but did for
+   * a client. The |x509_chain| always includes it and, if an API call requires
+   * a chain without, it is stored here. */
+  STACK_OF(X509) *x509_chain_without_leaf;
+
   /* verify_result is the result of certificate verification in the case of
    * non-fatal certificate errors. */
   long verify_result;
@@ -3756,6 +3763,9 @@ struct ssl_session_st {
 
   /* ticket_age_add_valid is non-zero if |ticket_age_add| is valid. */
   unsigned ticket_age_add_valid:1;
+
+  /* is_server is true if this session was created by a server. */
+  unsigned is_server:1;
 };
 
 /* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with

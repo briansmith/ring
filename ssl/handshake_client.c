@@ -756,7 +756,8 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
    * version, drop it. */
   if (ssl->session != NULL) {
     uint16_t session_version;
-    if (!ssl->method->version_from_wire(&session_version,
+    if (ssl->session->is_server ||
+        !ssl->method->version_from_wire(&session_version,
                                         ssl->session->ssl_version) ||
         (session_version < TLS1_3_VERSION &&
          ssl->session->session_id_length == 0) ||
@@ -1059,10 +1060,10 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  /* NOTE: Unlike the server half, the client's copy of |x509_chain| includes
-   * the leaf. */
   sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
   ssl->s3->new_session->x509_chain = chain;
+  sk_X509_pop_free(ssl->s3->new_session->x509_chain_without_leaf, X509_free);
+  ssl->s3->new_session->x509_chain_without_leaf = NULL;
 
   X509_free(ssl->s3->new_session->x509_peer);
   X509_up_ref(leaf);

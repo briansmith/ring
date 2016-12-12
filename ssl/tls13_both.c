@@ -322,6 +322,8 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
   sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
   ssl->s3->new_session->x509_chain = chain;
   chain = NULL;
+  sk_X509_pop_free(ssl->s3->new_session->x509_chain_without_leaf, X509_free);
+  ssl->s3->new_session->x509_chain_without_leaf = NULL;
 
   ret = 1;
 
