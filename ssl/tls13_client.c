@@ -404,7 +404,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_process_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
-      !tls13_process_certificate(ssl, 0 /* certificate required */) ||
+      !tls13_process_certificate(hs, 0 /* certificate required */) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
   }
@@ -417,7 +417,7 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
-      !tls13_process_certificate_verify(ssl) ||
+      !tls13_process_certificate_verify(hs) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
   }

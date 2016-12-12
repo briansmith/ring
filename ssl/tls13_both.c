@@ -163,7 +163,8 @@ err:
   return 0;
 }
 
-int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
+int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
+  SSL *const ssl = hs->ssl;
   CBS cbs, context, certificate_list;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8_length_prefixed(&cbs, &context) ||
@@ -177,6 +178,7 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
       ssl->server && ssl->retain_only_sha256_of_client_certs;
   int ret = 0;
 
+  EVP_PKEY *pkey = NULL;
   STACK_OF(CRYPTO_BUFFER) *certs = sk_CRYPTO_BUFFER_new_null();
   if (certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -200,10 +202,19 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
       goto err;
     }
 
-    /* Retain the hash of the leaf certificate if requested. */
-    if (sk_CRYPTO_BUFFER_num(certs) == 0 && retain_sha256) {
-      SHA256(CBS_data(&certificate), CBS_len(&certificate),
-             ssl->s3->new_session->peer_sha256);
+    if (sk_CRYPTO_BUFFER_num(certs) == 0) {
+      pkey = ssl_cert_parse_pubkey(&certificate);
+      if (pkey == NULL) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+        goto err;
+      }
+
+      if (retain_sha256) {
+        /* Retain the hash of the leaf certificate if requested. */
+        SHA256(CBS_data(&certificate), CBS_len(&certificate),
+               ssl->s3->new_session->peer_sha256);
+      }
     }
 
     CRYPTO_BUFFER *buf =
@@ -289,6 +300,10 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
     goto err;
   }
 
+  EVP_PKEY_free(hs->peer_pubkey);
+  hs->peer_pubkey = pkey;
+  pkey = NULL;
+
   sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
   ssl->s3->new_session->certs = certs;
   certs = NULL;
@@ -326,19 +341,17 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
 
 err:
   sk_CRYPTO_BUFFER_pop_free(certs, CRYPTO_BUFFER_free);
+  EVP_PKEY_free(pkey);
   return ret;
 }
 
-int tls13_process_certificate_verify(SSL *ssl) {
+int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   int ret = 0;
-  X509 *peer = ssl->s3->new_session->x509_peer;
-  EVP_PKEY *pkey = NULL;
   uint8_t *msg = NULL;
   size_t msg_len;
 
-  /* Filter out unsupported certificate types. */
-  pkey = X509_get_pubkey(peer);
-  if (pkey == NULL) {
+  if (hs->peer_pubkey == NULL) {
     goto err;
   }
 
@@ -369,7 +382,7 @@ int tls13_process_certificate_verify(SSL *ssl) {
 
   int sig_ok =
       ssl_public_key_verify(ssl, CBS_data(&signature), CBS_len(&signature),
-                            signature_algorithm, pkey, msg, msg_len);
+                            signature_algorithm, hs->peer_pubkey, msg, msg_len);
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   sig_ok = 1;
   ERR_clear_error();
@@ -383,7 +396,6 @@ int tls13_process_certificate_verify(SSL *ssl) {
   ret = 1;
 
 err:
-  EVP_PKEY_free(pkey);
   OPENSSL_free(msg);
   return ret;
 }

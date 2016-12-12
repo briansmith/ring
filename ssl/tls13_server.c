@@ -547,7 +547,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
       (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0;
 
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
-      !tls13_process_certificate(ssl, allow_anonymous) ||
+      !tls13_process_certificate(hs, allow_anonymous) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
   }
@@ -566,7 +566,7 @@ static enum ssl_hs_wait_t do_process_client_certificate_verify(
   }
 
   if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
-      !tls13_process_certificate_verify(ssl) ||
+      !tls13_process_certificate_verify(hs) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
   }
