@@ -26,7 +26,7 @@
  * to |str_len| bytes. Actually, |str_len| must be exactly one byte more than
  * needed to encode |num_limbs| losslessly, so that there is an extra byte at
  * the end. The extra byte is useful because the caller will be breaking |str|
- * up into windows of a number of bytes (5 or 7) that isn't divisible by 8, and
+ * up into windows of a number of bits (5 or 7) that isn't divisible by 8, and
  * so it is useful for it to be able to read an extra zero byte. */
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const BN_ULONG scalar[],
