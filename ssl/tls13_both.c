@@ -177,8 +177,8 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
       ssl->server && ssl->retain_only_sha256_of_client_certs;
   int ret = 0;
 
-  STACK_OF(X509) *chain = sk_X509_new_null();
-  if (chain == NULL) {
+  STACK_OF(CRYPTO_BUFFER) *certs = sk_CRYPTO_BUFFER_new_null();
+  if (certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -193,28 +193,25 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
   while (CBS_len(&certificate_list) > 0) {
     CBS certificate, extensions;
     if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate) ||
-        !CBS_get_u16_length_prefixed(&certificate_list, &extensions)) {
+        !CBS_get_u16_length_prefixed(&certificate_list, &extensions) ||
+        CBS_len(&certificate) == 0) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
       goto err;
     }
 
     /* Retain the hash of the leaf certificate if requested. */
-    if (sk_X509_num(chain) == 0 && retain_sha256) {
+    if (sk_CRYPTO_BUFFER_num(certs) == 0 && retain_sha256) {
       SHA256(CBS_data(&certificate), CBS_len(&certificate),
              ssl->s3->new_session->peer_sha256);
     }
 
-    X509 *x = ssl_parse_x509(&certificate);
-    if (x == NULL || CBS_len(&certificate) != 0) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      X509_free(x);
-      goto err;
-    }
-    if (!sk_X509_push(chain, x)) {
+    CRYPTO_BUFFER *buf = CRYPTO_BUFFER_new_from_CBS(&certificate, NULL);
+    if (buf == NULL ||
+        !sk_CRYPTO_BUFFER_push(certs, buf)) {
+      CRYPTO_BUFFER_free(buf);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      X509_free(x);
       goto err;
     }
 
@@ -253,7 +250,7 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
         goto err;
       }
 
-      if (sk_X509_num(chain) == 1 &&
+      if (sk_CRYPTO_BUFFER_num(certs) == 1 &&
           !CBS_stow(&ocsp_response, &ssl->s3->new_session->ocsp_response,
                     &ssl->s3->new_session->ocsp_response_length)) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -274,7 +271,7 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
         goto err;
       }
 
-      if (sk_X509_num(chain) == 1 &&
+      if (sk_CRYPTO_BUFFER_num(certs) == 1 &&
           !CBS_stow(&sct,
                     &ssl->s3->new_session->tlsext_signed_cert_timestamp_list,
                     &ssl->s3->new_session
@@ -291,7 +288,17 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
     goto err;
   }
 
-  if (sk_X509_num(chain) == 0) {
+  sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
+  ssl->s3->new_session->certs = certs;
+  certs = NULL;
+
+  if (!ssl_session_x509_cache_objects(ssl->s3->new_session)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    goto err;
+  }
+
+  if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0) {
     if (!allow_anonymous) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_CERTIFICATE_REQUIRED);
@@ -310,25 +317,14 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
   ssl->s3->new_session->peer_sha256_valid = retain_sha256;
 
   if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
-                             chain)) {
+                             ssl->s3->new_session->x509_chain)) {
     goto err;
   }
-
-  X509_free(ssl->s3->new_session->x509_peer);
-  X509 *leaf = sk_X509_value(chain, 0);
-  X509_up_ref(leaf);
-  ssl->s3->new_session->x509_peer = leaf;
-
-  sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
-  ssl->s3->new_session->x509_chain = chain;
-  chain = NULL;
-  sk_X509_pop_free(ssl->s3->new_session->x509_chain_without_leaf, X509_free);
-  ssl->s3->new_session->x509_chain_without_leaf = NULL;
 
   ret = 1;
 
 err:
-  sk_X509_pop_free(chain, X509_free);
+  sk_CRYPTO_BUFFER_pop_free(certs, CRYPTO_BUFFER_free);
   return ret;
 }
 

@@ -223,12 +223,12 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
 
   /* The peer certificate is only serialized if the SHA-256 isn't
    * serialized instead. */
-  if (in->x509_peer && !in->peer_sha256_valid) {
-    if (!CBB_add_asn1(&session, &child, kPeerTag)) {
+  if (sk_CRYPTO_BUFFER_num(in->certs) > 0 && !in->peer_sha256_valid) {
+    const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, 0);
+    if (!CBB_add_asn1(&session, &child, kPeerTag) ||
+        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
+                       CRYPTO_BUFFER_len(buffer))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    if (!ssl_add_cert_to_cbb(&child, in->x509_peer)) {
       goto err;
     }
   }
@@ -343,14 +343,18 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
 
   /* The certificate chain is only serialized if the leaf's SHA-256 isn't
    * serialized instead. */
-  if (in->x509_chain != NULL && !in->peer_sha256_valid &&
-      sk_X509_num(in->x509_chain) >= 2) {
+  if (in->certs != NULL &&
+      !in->peer_sha256_valid &&
+      sk_CRYPTO_BUFFER_num(in->certs) >= 2) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    for (size_t i = 1; i < sk_X509_num(in->x509_chain); i++) {
-      if (!ssl_add_cert_to_cbb(&child, sk_X509_value(in->x509_chain, i))) {
+    for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(in->certs); i++) {
+      const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, i);
+      if (!CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
+                         CRYPTO_BUFFER_len(buffer))) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
       }
     }
@@ -585,22 +589,12 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
 
   CBS peer;
   int has_peer;
-  if (!CBS_get_optional_asn1(&session, &peer, &has_peer, kPeerTag)) {
+  if (!CBS_get_optional_asn1(&session, &peer, &has_peer, kPeerTag) ||
+      (has_peer && CBS_len(&peer) == 0)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  X509_free(ret->x509_peer);
-  ret->x509_peer = NULL;
-  if (has_peer) {
-    ret->x509_peer = ssl_parse_x509(&peer);
-    if (ret->x509_peer == NULL) {
-      goto err;
-    }
-    if (CBS_len(&peer) != 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-      goto err;
-    }
-  }
+  /* |peer| is processed with the certificate chain. */
 
   if (!SSL_SESSION_parse_bounded_octet_string(
           &session, ret->sid_ctx, &ret->sid_ctx_length, sizeof(ret->sid_ctx),
@@ -663,43 +657,56 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   }
 
   CBS cert_chain;
+  CBS_init(&cert_chain, NULL, 0);
   int has_cert_chain;
   if (!CBS_get_optional_asn1(&session, &cert_chain, &has_cert_chain,
-                             kCertChainTag)) {
+                             kCertChainTag) ||
+      (has_cert_chain && CBS_len(&cert_chain) == 0)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  sk_X509_pop_free(ret->x509_chain, X509_free);
-  ret->x509_chain = NULL;
-  if (ret->x509_peer != NULL) {
-    ret->x509_chain = sk_X509_new_null();
-    if (ret->x509_chain == NULL ||
-        !sk_X509_push(ret->x509_chain, ret->x509_peer)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        goto err;
-    }
-    X509_up_ref(ret->x509_peer);
+  if (has_cert_chain && !has_peer) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
   }
-  if (has_cert_chain) {
-    if (ret->x509_peer == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-      goto err;
-    }
-    if (ret->x509_chain == NULL) {
+  if (has_peer || has_cert_chain) {
+    ret->certs = sk_CRYPTO_BUFFER_new_null();
+    if (ret->certs == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    while (CBS_len(&cert_chain) > 0) {
-      X509 *x509 = ssl_parse_x509(&cert_chain);
-      if (x509 == NULL) {
-        goto err;
-      }
-      if (!sk_X509_push(ret->x509_chain, x509)) {
+
+    if (has_peer) {
+      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&peer, NULL);
+      if (buffer == NULL ||
+          !sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
+        CRYPTO_BUFFER_free(buffer);
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        X509_free(x509);
         goto err;
       }
     }
+
+    while (CBS_len(&cert_chain) > 0) {
+      CBS cert;
+      if (!CBS_get_any_asn1_element(&cert_chain, &cert, NULL, NULL) ||
+          CBS_len(&cert) == 0) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+        goto err;
+      }
+
+      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&cert, NULL);
+      if (buffer == NULL ||
+          !sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
+        CRYPTO_BUFFER_free(buffer);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
+    }
+  }
+
+  if (!ssl_session_x509_cache_objects(ret)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
   }
 
   CBS age_add;

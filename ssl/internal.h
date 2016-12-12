@@ -748,14 +748,21 @@ int ssl_has_certificate(const SSL *ssl);
  * on error. */
 X509 *ssl_parse_x509(CBS *cbs);
 
+/* ssl_session_x509_cache_objects fills out |sess->x509_peer| and
+ * |sess->x509_chain| from |sess->certs| and erases
+ * |sess->x509_chain_without_leaf|. It returns one on success or zero on
+ * error. */
+int ssl_session_x509_cache_objects(SSL_SESSION *sess);
+
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
  * by a TLS Certificate message. On success, it returns a newly-allocated
- * |X509| list and advances |cbs|. Otherwise, it returns NULL and sets
+ * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns NULL and sets
  * |*out_alert| to an alert to send to the peer. If the list is non-empty and
  * |out_leaf_sha256| is non-NULL, it writes the SHA-256 hash of the leaf to
  * |out_leaf_sha256|. */
-STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
-                                     uint8_t *out_leaf_sha256, CBS *cbs);
+STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
+                                              uint8_t *out_leaf_sha256,
+                                              CBS *cbs);
 
 /* ssl_add_cert_to_cbb adds |x509| to |cbb|. It returns one on success and zero
  * on error. */

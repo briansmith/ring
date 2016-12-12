@@ -3690,6 +3690,11 @@ struct ssl_session_st {
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
   char *psk_identity;
+
+  /* certs contains the certificate chain from the peer, starting with the leaf
+   * certificate. */
+  STACK_OF(CRYPTO_BUFFER) *certs;
+
   /* x509_peer is the peer's certificate. */
   X509 *x509_peer;
 

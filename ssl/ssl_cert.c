@@ -462,16 +462,16 @@ X509 *ssl_parse_x509(CBS *cbs) {
   return ret;
 }
 
-STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
-                                     uint8_t *out_leaf_sha256, CBS *cbs) {
-  STACK_OF(X509) *ret = sk_X509_new_null();
+STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
+                                              uint8_t *out_leaf_sha256,
+                                              CBS *cbs) {
+  STACK_OF(CRYPTO_BUFFER) *ret = sk_CRYPTO_BUFFER_new_null();
   if (ret == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
-  X509 *x = NULL;
   CBS certificate_list;
   if (!CBS_get_u24_length_prefixed(cbs, &certificate_list)) {
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -481,35 +481,36 @@ STACK_OF(X509) *ssl_parse_cert_chain(SSL *ssl, uint8_t *out_alert,
 
   while (CBS_len(&certificate_list) > 0) {
     CBS certificate;
-    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate)) {
+    if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate) ||
+        CBS_len(&certificate) == 0) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
       goto err;
     }
 
     /* Retain the hash of the leaf certificate if requested. */
-    if (sk_X509_num(ret) == 0 && out_leaf_sha256 != NULL) {
+    if (sk_CRYPTO_BUFFER_num(ret) == 0 && out_leaf_sha256 != NULL) {
       SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
     }
 
-    x = ssl_parse_x509(&certificate);
-    if (x == NULL || CBS_len(&certificate) != 0) {
+    CRYPTO_BUFFER *buf = CRYPTO_BUFFER_new_from_CBS(&certificate, NULL);
+    if (buf == NULL) {
       *out_alert = SSL_AD_DECODE_ERROR;
       goto err;
     }
-    if (!sk_X509_push(ret, x)) {
+
+    if (!sk_CRYPTO_BUFFER_push(ret, buf)) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
+      CRYPTO_BUFFER_free(buf);
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    x = NULL;
   }
 
   return ret;
 
 err:
-  X509_free(x);
-  sk_X509_pop_free(ret, X509_free);
+  sk_CRYPTO_BUFFER_pop_free(ret, CRYPTO_BUFFER_free);
   return NULL;
 }
 

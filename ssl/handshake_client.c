@@ -1041,39 +1041,30 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   CBS cbs;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
+
   uint8_t alert;
-  STACK_OF(X509) *chain = ssl_parse_cert_chain(ssl, &alert, NULL, &cbs);
-  if (chain == NULL) {
+  sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
+  ssl->s3->new_session->certs = ssl_parse_cert_chain(&alert, NULL, &cbs);
+  if (ssl->s3->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    goto err;
+    return -1;
   }
 
-  if (sk_X509_num(chain) == 0 || CBS_len(&cbs) != 0) {
+  if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0 ||
+      CBS_len(&cbs) != 0 ||
+      !ssl_session_x509_cache_objects(ssl->s3->new_session)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    goto err;
+    return -1;
   }
 
-  X509 *leaf = sk_X509_value(chain, 0);
+  X509 *leaf = sk_X509_value(ssl->s3->new_session->x509_chain, 0);
   if (!ssl_check_leaf_certificate(ssl, leaf)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    goto err;
+    return -1;
   }
 
-  sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
-  ssl->s3->new_session->x509_chain = chain;
-  sk_X509_pop_free(ssl->s3->new_session->x509_chain_without_leaf, X509_free);
-  ssl->s3->new_session->x509_chain_without_leaf = NULL;
-
-  X509_free(ssl->s3->new_session->x509_peer);
-  X509_up_ref(leaf);
-  ssl->s3->new_session->x509_peer = leaf;
-
   return 1;
-
-err:
-  sk_X509_pop_free(chain, X509_free);
-  return -1;
 }
 
 static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {

@@ -1466,26 +1466,27 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
 
   CBS certificate_msg;
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
+
+  sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
   uint8_t alert;
-  STACK_OF(X509) *chain = ssl_parse_cert_chain(
-      ssl, &alert, ssl->retain_only_sha256_of_client_certs
-                       ? ssl->s3->new_session->peer_sha256
-                       : NULL,
-      &certificate_msg);
-  if (chain == NULL) {
+  ssl->s3->new_session->certs =
+      ssl_parse_cert_chain(&alert, ssl->retain_only_sha256_of_client_certs
+                                       ? ssl->s3->new_session->peer_sha256
+                                       : NULL,
+                           &certificate_msg);
+  if (ssl->s3->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    goto err;
+    return -1;
   }
 
-  if (CBS_len(&certificate_msg) != 0) {
+  if (CBS_len(&certificate_msg) != 0 ||
+      !ssl_session_x509_cache_objects(ssl->s3->new_session)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    goto err;
+    return -1;
   }
 
-  X509 *leaf = NULL;
-
-  if (sk_X509_num(chain) == 0) {
+  if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0) {
     /* No client certificate so the handshake buffer may be discarded. */
     ssl3_free_handshake_buffer(ssl);
 
@@ -1494,48 +1495,32 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
     if (ssl->version == SSL3_VERSION) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-      goto err;
+      return -1;
     }
 
     if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
       /* Fail for TLS only if we required a certificate */
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-      goto err;
+      return -1;
     }
 
     /* OpenSSL returns X509_V_OK when no certificates are received. This is
      * classed by them as a bug, but it's assumed by at least NGINX. */
     ssl->s3->new_session->verify_result = X509_V_OK;
-  } else {
-    leaf = sk_X509_value(chain, 0);
-    /* The hash would have been filled in. */
-    if (ssl->retain_only_sha256_of_client_certs) {
-      ssl->s3->new_session->peer_sha256_valid = 1;
-    }
-
-    if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
-                               chain)) {
-      goto err;
-    }
+    return 1;
   }
 
-  sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
-  ssl->s3->new_session->x509_chain = chain;
-  sk_X509_pop_free(ssl->s3->new_session->x509_chain_without_leaf, X509_free);
-  ssl->s3->new_session->x509_chain_without_leaf = NULL;
-
-  X509_free(ssl->s3->new_session->x509_peer);
-  if (leaf) {
-    X509_up_ref(leaf);
+  /* The hash will have been filled in. */
+  if (ssl->retain_only_sha256_of_client_certs) {
+    ssl->s3->new_session->peer_sha256_valid = 1;
   }
-  ssl->s3->new_session->x509_peer = leaf;
 
+  if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
+                             ssl->s3->new_session->x509_chain)) {
+    return -1;
+  }
   return 1;
-
-err:
-  sk_X509_pop_free(chain, X509_free);
-  return -1;
 }
 
 static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {

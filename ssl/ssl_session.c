@@ -200,6 +200,19 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
       goto err;
     }
   }
+  if (session->certs != NULL) {
+    new_session->certs = sk_CRYPTO_BUFFER_new_null();
+    if (new_session->certs == NULL) {
+      goto err;
+    }
+    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(session->certs); i++) {
+      CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(session->certs, i);
+      if (!sk_CRYPTO_BUFFER_push(new_session->certs, buffer)) {
+        goto err;
+      }
+      CRYPTO_BUFFER_up_ref(buffer);
+    }
+  }
   if (session->x509_peer != NULL) {
     X509_up_ref(session->x509_peer);
     new_session->x509_peer = session->x509_peer;
@@ -326,6 +339,7 @@ void SSL_SESSION_free(SSL_SESSION *session) {
 
   OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
+  sk_CRYPTO_BUFFER_pop_free(session->certs, CRYPTO_BUFFER_free);
   X509_free(session->x509_peer);
   sk_X509_pop_free(session->x509_chain, X509_free);
   sk_X509_pop_free(session->x509_chain_without_leaf, X509_free);
@@ -515,6 +529,53 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
 
 err:
   SSL_SESSION_free(session);
+  return 0;
+}
+
+int ssl_session_x509_cache_objects(SSL_SESSION *sess) {
+  STACK_OF(X509) *chain = NULL;
+  const size_t num_certs = sk_CRYPTO_BUFFER_num(sess->certs);
+
+  if (num_certs > 0) {
+    chain = sk_X509_new_null();
+    if (chain == NULL) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  X509 *leaf = NULL;
+  for (size_t i = 0; i < num_certs; i++) {
+    X509 *x509 = X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(sess->certs, i));
+    if (x509 == NULL) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      goto err;
+    }
+    if (!sk_X509_push(chain, x509)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      X509_free(x509);
+      goto err;
+    }
+    if (i == 0) {
+      leaf = x509;
+    }
+  }
+
+  sk_X509_pop_free(sess->x509_chain, X509_free);
+  sess->x509_chain = chain;
+  sk_X509_pop_free(sess->x509_chain_without_leaf, X509_free);
+  sess->x509_chain_without_leaf = NULL;
+
+  X509_free(sess->x509_peer);
+  if (leaf != NULL) {
+    X509_up_ref(leaf);
+  }
+  sess->x509_peer = leaf;
+
+  return 1;
+
+err:
+  sk_X509_pop_free(chain, X509_free);
   return 0;
 }
 
