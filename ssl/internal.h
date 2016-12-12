@@ -757,10 +757,15 @@ int ssl_session_x509_cache_objects(SSL_SESSION *sess);
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
  * by a TLS Certificate message. On success, it returns a newly-allocated
  * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns NULL and sets
- * |*out_alert| to an alert to send to the peer. If the list is non-empty and
- * |out_leaf_sha256| is non-NULL, it writes the SHA-256 hash of the leaf to
- * |out_leaf_sha256|. */
+ * |*out_alert| to an alert to send to the peer.
+ *
+ * If the list is non-empty then |*out_pubkey| will be set to a freshly
+ * allocated public-key from the leaf certificate.
+ *
+ * If the list is non-empty and |out_leaf_sha256| is non-NULL, it writes the
+ * SHA-256 hash of the leaf to |out_leaf_sha256|. */
 STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
+                                              EVP_PKEY **out_pubkey,
                                               uint8_t *out_leaf_sha256,
                                               CBS *cbs,
                                               CRYPTO_BUFFER_POOL *pool);
@@ -773,6 +778,11 @@ int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509);
  * by a TLS Certificate message. If there is no certificate chain, it emits an
  * empty certificate list. It returns one on success and zero on error. */
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb);
+
+/* ssl_cert_parse_pubkey extracts the public key from the DER-encoded, X.509
+ * certificate in |in|. It returns an allocated |EVP_PKEY| or else returns NULL
+ * and pushes to the error queue. */
+EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in);
 
 /* ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
  * TLS CertificateRequest message. On success, it returns a newly-allocated
@@ -979,6 +989,9 @@ struct ssl_handshake_st {
 
   /* hostname, on the server, is the value of the SNI extension. */
   char *hostname;
+
+  /* peer_pubkey is the public key parsed from the peer's leaf certificate. */
+  EVP_PKEY *peer_pubkey;
 
   /* key_block is the record-layer key block for TLS 1.2 and earlier. */
   uint8_t *key_block;

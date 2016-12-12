@@ -120,8 +120,9 @@
 
 #include <openssl/bn.h>
 #include <openssl/buf.h>
-#include <openssl/ec_key.h>
+#include <openssl/bytestring.h>
 #include <openssl/dh.h>
+#include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/sha.h>
@@ -463,9 +464,12 @@ X509 *ssl_parse_x509(CBS *cbs) {
 }
 
 STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
+                                              EVP_PKEY **out_pubkey,
                                               uint8_t *out_leaf_sha256,
                                               CBS *cbs,
                                               CRYPTO_BUFFER_POOL *pool) {
+  *out_pubkey = NULL;
+
   STACK_OF(CRYPTO_BUFFER) *ret = sk_CRYPTO_BUFFER_new_null();
   if (ret == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
@@ -489,9 +493,16 @@ STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
       goto err;
     }
 
-    /* Retain the hash of the leaf certificate if requested. */
-    if (sk_CRYPTO_BUFFER_num(ret) == 0 && out_leaf_sha256 != NULL) {
-      SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
+    if (sk_CRYPTO_BUFFER_num(ret) == 0) {
+      *out_pubkey = ssl_cert_parse_pubkey(&certificate);
+      if (*out_pubkey == NULL) {
+        goto err;
+      }
+
+      /* Retain the hash of the leaf certificate if requested. */
+      if (out_leaf_sha256 != NULL) {
+        SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
+      }
     }
 
     CRYPTO_BUFFER *buf =
@@ -512,6 +523,8 @@ STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
   return ret;
 
 err:
+  EVP_PKEY_free(*out_pubkey);
+  *out_pubkey = NULL;
   sk_CRYPTO_BUFFER_pop_free(ret, CRYPTO_BUFFER_free);
   return NULL;
 }
@@ -592,6 +605,50 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   }
 
   return CBB_flush(cbb);
+}
+
+EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
+  /* From RFC 5280, section 4.1
+   *    Certificate  ::=  SEQUENCE  {
+   *      tbsCertificate       TBSCertificate,
+   *      signatureAlgorithm   AlgorithmIdentifier,
+   *      signatureValue       BIT STRING  }
+
+   * TBSCertificate  ::=  SEQUENCE  {
+   *      version         [0]  EXPLICIT Version DEFAULT v1,
+   *      serialNumber         CertificateSerialNumber,
+   *      signature            AlgorithmIdentifier,
+   *      issuer               Name,
+   *      validity             Validity,
+   *      subject              Name,
+   *      subjectPublicKeyInfo SubjectPublicKeyInfo,
+   *      ... } */
+  CBS buf = *in;
+
+  CBS toplevel, tbs_cert, spki;
+  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||
+      CBS_len(&buf) != 0 ||
+      !CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE) ||
+      /* version */
+      !CBS_get_optional_asn1(
+          &tbs_cert, NULL, NULL,
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+      /* serialNumber */
+      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER) ||
+      /* signature algorithm */
+      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      /* issuer */
+      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      /* validity */
+      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      /* subject */
+      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_element(&tbs_cert, &spki, CBS_ASN1_SEQUENCE)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+    return NULL;
+  }
+
+  return EVP_parse_public_key(&spki);
 }
 
 static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {

@@ -1468,11 +1468,14 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
 
   sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
+  EVP_PKEY_free(hs->peer_pubkey);
+  hs->peer_pubkey = NULL;
   uint8_t alert;
   ssl->s3->new_session->certs =
-      ssl_parse_cert_chain(&alert, ssl->retain_only_sha256_of_client_certs
-                                       ? ssl->s3->new_session->peer_sha256
-                                       : NULL,
+      ssl_parse_cert_chain(&alert, &hs->peer_pubkey,
+                           ssl->retain_only_sha256_of_client_certs
+                               ? ssl->s3->new_session->peer_sha256
+                               : NULL,
                            &certificate_msg, ssl->ctx->pool);
   if (ssl->s3->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -1794,15 +1797,13 @@ err:
 
 static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int al, ret = 0;
+  int al;
   CBS certificate_verify, signature;
-  X509 *peer = ssl->s3->new_session->x509_peer;
-  EVP_PKEY *pkey = NULL;
 
   /* Only RSA and ECDSA client certificates are supported, so a
    * CertificateVerify is required if and only if there's a client certificate.
    * */
-  if (peer == NULL) {
+  if (hs->peer_pubkey == NULL) {
     ssl3_free_handshake_buffer(ssl);
     return 1;
   }
@@ -1811,12 +1812,6 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
                                              ssl_dont_hash_message);
   if (msg_ret <= 0) {
     return msg_ret;
-  }
-
-  /* Filter out unsupported certificate types. */
-  pkey = X509_get_pubkey(peer);
-  if (pkey == NULL) {
-    goto err;
   }
 
   CBS_init(&certificate_verify, ssl->init_msg, ssl->init_num);
@@ -1833,9 +1828,9 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
       goto f_err;
     }
     ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
-  } else if (pkey->type == EVP_PKEY_RSA) {
+  } else if (hs->peer_pubkey->type == EVP_PKEY_RSA) {
     signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
-  } else if (pkey->type == EVP_PKEY_EC) {
+  } else if (hs->peer_pubkey->type == EVP_PKEY_EC) {
     signature_algorithm = SSL_SIGN_ECDSA_SHA1;
   } else {
     al = SSL_AD_UNSUPPORTED_CERTIFICATE;
@@ -1863,7 +1858,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(pkey, NULL);
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(hs->peer_pubkey, NULL);
     sig_ok = pctx != NULL &&
              EVP_PKEY_verify_init(pctx) &&
              EVP_PKEY_CTX_set_signature_md(pctx, md) &&
@@ -1873,7 +1868,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   } else {
     sig_ok = ssl_public_key_verify(
         ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        pkey, (const uint8_t *)ssl->s3->handshake_buffer->data,
+        hs->peer_pubkey, (const uint8_t *)ssl->s3->handshake_buffer->data,
         ssl->s3->handshake_buffer->length);
   }
 
@@ -1894,17 +1889,12 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  ret = 1;
+  return 1;
 
-  if (0) {
-  f_err:
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-  }
-
+f_err:
+  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
 err:
-  EVP_PKEY_free(pkey);
-
-  return ret;
+  return 0;
 }
 
 /* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It

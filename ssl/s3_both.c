@@ -171,6 +171,7 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   }
 
   OPENSSL_free(hs->hostname);
+  EVP_PKEY_free(hs->peer_pubkey);
   OPENSSL_free(hs);
 }
 

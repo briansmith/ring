@@ -1044,8 +1044,10 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   uint8_t alert;
   sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
-  ssl->s3->new_session->certs =
-      ssl_parse_cert_chain(&alert, NULL, &cbs, ssl->ctx->pool);
+  EVP_PKEY_free(hs->peer_pubkey);
+  hs->peer_pubkey = NULL;
+  ssl->s3->new_session->certs = ssl_parse_cert_chain(
+      &alert, &hs->peer_pubkey, NULL, &cbs, ssl->ctx->pool);
   if (ssl->s3->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
@@ -1123,7 +1125,6 @@ static int ssl3_verify_server_cert(SSL_HANDSHAKE *hs) {
 static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   int al;
-  EVP_PKEY *pkey = NULL;
   DH *dh = NULL;
   EC_KEY *ecdh = NULL;
   EC_POINT *srvr_ecpoint = NULL;
@@ -1276,11 +1277,6 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
 
   /* ServerKeyExchange should be signed by the server's public key. */
   if (ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
-    pkey = X509_get_pubkey(ssl->s3->new_session->x509_peer);
-    if (pkey == NULL) {
-      goto err;
-    }
-
     uint16_t signature_algorithm = 0;
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       if (!CBS_get_u16(&server_key_exchange, &signature_algorithm)) {
@@ -1292,9 +1288,9 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         goto f_err;
       }
       ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
-    } else if (pkey->type == EVP_PKEY_RSA) {
+    } else if (hs->peer_pubkey->type == EVP_PKEY_RSA) {
       signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
-    } else if (pkey->type == EVP_PKEY_EC) {
+    } else if (hs->peer_pubkey->type == EVP_PKEY_EC) {
       signature_algorithm = SSL_SIGN_ECDSA_SHA1;
     } else {
       al = SSL_AD_UNSUPPORTED_CERTIFICATE;
@@ -1327,7 +1323,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     int sig_ok = ssl_public_key_verify(
         ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        pkey, transcript_data, transcript_len);
+        hs->peer_pubkey, transcript_data, transcript_len);
     OPENSSL_free(transcript_data);
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
@@ -1350,13 +1346,11 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       goto f_err;
     }
   }
-  EVP_PKEY_free(pkey);
   return 1;
 
 f_err:
   ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
 err:
-  EVP_PKEY_free(pkey);
   DH_free(dh);
   EC_POINT_free(srvr_ecpoint);
   EC_KEY_free(ecdh);
@@ -1557,19 +1551,11 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    EVP_PKEY *pkey = X509_get_pubkey(ssl->s3->new_session->x509_peer);
-    if (pkey == NULL) {
-      goto err;
-    }
-
-    RSA *rsa = EVP_PKEY_get0_RSA(pkey);
+    RSA *rsa = EVP_PKEY_get0_RSA(hs->peer_pubkey);
     if (rsa == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      EVP_PKEY_free(pkey);
       goto err;
     }
-
-    EVP_PKEY_free(pkey);
 
     pms[0] = hs->client_version >> 8;
     pms[1] = hs->client_version & 0xff;
