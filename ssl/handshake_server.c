@@ -1473,7 +1473,7 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
       ssl_parse_cert_chain(&alert, ssl->retain_only_sha256_of_client_certs
                                        ? ssl->s3->new_session->peer_sha256
                                        : NULL,
-                           &certificate_msg);
+                           &certificate_msg, ssl->ctx->pool);
   if (ssl->s3->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;

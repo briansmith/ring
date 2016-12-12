@@ -729,6 +729,16 @@ OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
  * modes enabled for |ssl|. */
 OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 
+/* SSL_CTX_set0_buffer_pool sets a |CRYPTO_BUFFER_POOL| that will be used to
+ * store certificates. This can allow multiple connections to share
+ * certificates and thus save memory.
+ *
+ * The SSL_CTX does not take ownership of |pool| and the caller must ensure
+ * that |pool| outlives |ctx| and all objects linked to it, including |SSL|,
+ * |X509| and |SSL_SESSION| objects. Basically, don't ever free |pool|. */
+OPENSSL_EXPORT void SSL_CTX_set0_buffer_pool(SSL_CTX *ctx,
+                                             CRYPTO_BUFFER_POOL *pool);
+
 
 /* Configuring certificates and private keys.
  *
@@ -4036,6 +4046,10 @@ struct ssl_ctx_st {
    * time. It sets |*out_clock| to the current time. See
    * |SSL_CTX_set_current_time_cb|. */
   void (*current_time_cb)(const SSL *ssl, struct timeval *out_clock);
+
+  /* pool is used for all |CRYPTO_BUFFER|s in case we wish to share certificate
+   * memory. */
+  CRYPTO_BUFFER_POOL *pool;
 
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */

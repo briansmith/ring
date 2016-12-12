@@ -762,7 +762,8 @@ int ssl_session_x509_cache_objects(SSL_SESSION *sess);
  * |out_leaf_sha256|. */
 STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
                                               uint8_t *out_leaf_sha256,
-                                              CBS *cbs);
+                                              CBS *cbs,
+                                              CRYPTO_BUFFER_POOL *pool);
 
 /* ssl_add_cert_to_cbb adds |x509| to |cbb|. It returns one on success and zero
  * on error. */

@@ -677,6 +677,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     }
 
     if (has_peer) {
+      /* TODO(agl): this should use the |SSL_CTX|'s pool. */
       CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&peer, NULL);
       if (buffer == NULL ||
           !sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
@@ -694,6 +695,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
         goto err;
       }
 
+      /* TODO(agl): this should use the |SSL_CTX|'s pool. */
       CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&cert, NULL);
       if (buffer == NULL ||
           !sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {

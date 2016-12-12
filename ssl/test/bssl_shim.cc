@@ -66,6 +66,8 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "test_config.h"
 
 
+static CRYPTO_BUFFER_POOL *g_pool = nullptr;
+
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
   return close(sock);
@@ -908,6 +910,8 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
   if (!ssl_ctx) {
     return nullptr;
   }
+
+  SSL_CTX_set0_buffer_pool(ssl_ctx.get(), g_pool);
 
   // Enable TLS 1.3 for tests.
   if (!config->is_dtls &&
@@ -1914,6 +1918,8 @@ int main(int argc, char **argv) {
   if (!ParseConfig(argc - 1, argv + 1, &config)) {
     return Usage(argv[0]);
   }
+
+  g_pool = CRYPTO_BUFFER_POOL_new();
 
   // Some code treats the zero time special, so initialize the clock to a
   // non-zero time.

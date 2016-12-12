@@ -206,7 +206,8 @@ int tls13_process_certificate(SSL *ssl, int allow_anonymous) {
              ssl->s3->new_session->peer_sha256);
     }
 
-    CRYPTO_BUFFER *buf = CRYPTO_BUFFER_new_from_CBS(&certificate, NULL);
+    CRYPTO_BUFFER *buf =
+        CRYPTO_BUFFER_new_from_CBS(&certificate, ssl->ctx->pool);
     if (buf == NULL ||
         !sk_CRYPTO_BUFFER_push(certs, buf)) {
       CRYPTO_BUFFER_free(buf);

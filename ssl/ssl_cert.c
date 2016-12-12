@@ -464,7 +464,8 @@ X509 *ssl_parse_x509(CBS *cbs) {
 
 STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
                                               uint8_t *out_leaf_sha256,
-                                              CBS *cbs) {
+                                              CBS *cbs,
+                                              CRYPTO_BUFFER_POOL *pool) {
   STACK_OF(CRYPTO_BUFFER) *ret = sk_CRYPTO_BUFFER_new_null();
   if (ret == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
@@ -493,7 +494,8 @@ STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
       SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
     }
 
-    CRYPTO_BUFFER *buf = CRYPTO_BUFFER_new_from_CBS(&certificate, NULL);
+    CRYPTO_BUFFER *buf =
+        CRYPTO_BUFFER_new_from_CBS(&certificate, pool);
     if (buf == NULL) {
       *out_alert = SSL_AD_DECODE_ERROR;
       goto err;

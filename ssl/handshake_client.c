@@ -1044,7 +1044,8 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   uint8_t alert;
   sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
-  ssl->s3->new_session->certs = ssl_parse_cert_chain(&alert, NULL, &cbs);
+  ssl->s3->new_session->certs =
+      ssl_parse_cert_chain(&alert, NULL, &cbs, ssl->ctx->pool);
   if (ssl->s3->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
