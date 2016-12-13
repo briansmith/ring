@@ -119,14 +119,20 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
-    use {bssl, error};
+    use error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        let chunk_len = unsafe { super::GFp_sysrand_chunk_max_len };
-        for mut chunk in dest.chunks_mut(chunk_len) {
-            try!(bssl::map_result(unsafe {
-                super::GFp_sysrand_chunk(chunk.as_mut_ptr(), chunk.len())
-            }));
+        let mut read_len = 0;
+        while read_len < dest.len() {
+            let r = unsafe {
+                super::GFp_sysrand_chunk(dest[read_len ..].as_mut_ptr(), dest.len() - read_len)
+            };
+            if r < 0 {
+                return Err(error::Unspecified);
+            }
+            // XXX: If r == 0 then this is a busy wait loop waiting for the
+            //      kernel entropy pool to be initialized
+            read_len += r as usize;
         }
         Ok(())
     }
@@ -217,7 +223,6 @@ pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
 
 #[cfg(any(target_os = "linux", windows))]
 extern {
-    static GFp_sysrand_chunk_max_len: c::size_t;
     fn GFp_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::int;
 }
 
@@ -248,22 +253,13 @@ mod tests {
             }
 
             // Make sure we didn't forget to finish filling in the rest of the
-            // buffer after we filled in the first chunk, especially in the
+            // buffer after we filled in the first chunk.
             // case in the `SysRandOrDevURandom::Undecided` case. As above, we
             // only do this when there are at least 96 bytes after the first
             // chunk to avoid false positives.
-            if *len > 96 && *len - 96 > max_chunk_len() {
-                assert!(buf[max_chunk_len()..].iter().any(|x| *x != 0));
+            if *len > 96 {
+                assert!(buf[buf.len() - 96 ..].iter().any(|x| *x != 0));
             }
         }
-    }
-
-    #[cfg(any(target_os = "linux", windows))]
-    fn max_chunk_len() -> usize { unsafe { super::GFp_sysrand_chunk_max_len } }
-
-    #[cfg(not(any(target_os = "linux", windows)))]
-    fn max_chunk_len() -> usize {
-        use core;
-        core::usize::MAX
     }
 }

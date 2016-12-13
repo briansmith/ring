@@ -33,6 +33,7 @@
 #include <openssl/base.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <stddef.h>
 
 /* GFp_sysrand_chunk fills |len| bytes at |buf| with entropy from the
@@ -42,8 +43,6 @@
 int GFp_sysrand_chunk(void *buf, size_t len);
 
 #if defined(OPENSSL_WINDOWS)
-
-#include <limits.h>
 
 #pragma warning(push, 3)
 
@@ -58,11 +57,15 @@ int GFp_sysrand_chunk(void *buf, size_t len);
 
 #pragma warning(pop)
 
-const size_t GFp_sysrand_chunk_max_len = ULONG_MAX;
-
 int GFp_sysrand_chunk(void *out, size_t requested) {
-  assert(requested <= GFp_sysrand_chunk_max_len);
-  return RtlGenRandom(out, (ULONG)requested) ? 1 : 0;
+  if (requested > ULONG_MAX) {
+    requested = ULONG_MAX;
+  }
+  if (requested > (size_t) INT_MAX) {
+    requested = INT_MAX;
+  }
+
+  return RtlGenRandom(out, (ULONG)requested) ? (int) requested : 0;
 }
 
 #elif defined(__linux__)
@@ -88,21 +91,23 @@ int GFp_sysrand_chunk(void *out, size_t requested) {
 #endif
 #endif
 
-
-/* http://man7.org/linux/man-pages/man2/getrandom.2.html: "Calling
- * getrandom() to read /dev/urandom for small values (<= 256) of buflen is
- * the preferred mode of usage." */
-const size_t GFp_sysrand_chunk_max_len = 256;
-
 int GFp_sysrand_chunk(void *out, size_t requested) {
-  assert(requested <= GFp_sysrand_chunk_max_len);
-  if (syscall(SYS_getrandom, out, requested, 0u) < 0) {
-    if (errno == ENOSYS) {
-      return -1;
-    }
-    return 0;
+  if (requested > ULONG_MAX) {
+    requested = ULONG_MAX;
   }
-  return 1;
+  if (requested > (size_t) INT_MAX) {
+    requested = INT_MAX;
+  }
+
+  int r = syscall(SYS_getrandom, out, requested, 0u);
+  if (r < 0) {
+    // EINTR is normal, and we can try again. Other error codes are fatal.
+    if (errno == EINTR) {
+      return 0;
+    }
+    return -1;
+  }
+  return r;
 }
 
 #endif
