@@ -479,7 +479,7 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     if (gctx->key_set) {
       CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, iv, gctx->ivlen);
     } else {
-      memcpy(gctx->iv, iv, gctx->ivlen);
+      OPENSSL_memcpy(gctx->iv, iv, gctx->ivlen);
     }
     gctx->iv_set = 1;
     gctx->iv_gen = 0;
@@ -545,7 +545,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (arg <= 0 || arg > 16 || c->encrypt) {
         return 0;
       }
-      memcpy(c->buf, ptr, arg);
+      OPENSSL_memcpy(c->buf, ptr, arg);
       gctx->taglen = arg;
       return 1;
 
@@ -553,13 +553,13 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (arg <= 0 || arg > 16 || !c->encrypt || gctx->taglen < 0) {
         return 0;
       }
-      memcpy(ptr, c->buf, arg);
+      OPENSSL_memcpy(ptr, c->buf, arg);
       return 1;
 
     case EVP_CTRL_GCM_SET_IV_FIXED:
       /* Special case: -1 length restores whole IV */
       if (arg == -1) {
-        memcpy(gctx->iv, ptr, gctx->ivlen);
+        OPENSSL_memcpy(gctx->iv, ptr, gctx->ivlen);
         gctx->iv_gen = 1;
         return 1;
       }
@@ -569,7 +569,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
         return 0;
       }
       if (arg) {
-        memcpy(gctx->iv, ptr, arg);
+        OPENSSL_memcpy(gctx->iv, ptr, arg);
       }
       if (c->encrypt && !RAND_bytes(gctx->iv + arg, gctx->ivlen - arg)) {
         return 0;
@@ -585,7 +585,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (arg <= 0 || arg > gctx->ivlen) {
         arg = gctx->ivlen;
       }
-      memcpy(ptr, gctx->iv + gctx->ivlen - arg, arg);
+      OPENSSL_memcpy(ptr, gctx->iv + gctx->ivlen - arg, arg);
       /* Invocation field will be at least 8 bytes in size and
        * so no need to check wrap around or increment more than
        * last 8 bytes. */
@@ -597,7 +597,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (gctx->iv_gen == 0 || gctx->key_set == 0 || c->encrypt) {
         return 0;
       }
-      memcpy(gctx->iv + gctx->ivlen - arg, ptr, arg);
+      OPENSSL_memcpy(gctx->iv + gctx->ivlen - arg, ptr, arg);
       CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, gctx->iv, gctx->ivlen);
       gctx->iv_set = 1;
       return 1;
@@ -612,7 +612,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
         if (!gctx_out->iv) {
           return 0;
         }
-        memcpy(gctx_out->iv, gctx->iv, gctx->ivlen);
+        OPENSSL_memcpy(gctx_out->iv, gctx->iv, gctx->ivlen);
       }
       return 1;
     }
@@ -860,7 +860,7 @@ static int aesni_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     if (gctx->key_set) {
       CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, iv, gctx->ivlen);
     } else {
-      memcpy(gctx->iv, iv, gctx->ivlen);
+      OPENSSL_memcpy(gctx->iv, iv, gctx->ivlen);
     }
     gctx->iv_set = 1;
     gctx->iv_gen = 0;
@@ -1073,7 +1073,7 @@ static int aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
-  memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
+  OPENSSL_memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
   CRYPTO_gcm128_setiv(&gcm, key, nonce, nonce_len);
 
   if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
@@ -1120,7 +1120,7 @@ static int aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
-  memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
+  OPENSSL_memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
   CRYPTO_gcm128_setiv(&gcm, key, nonce, nonce_len);
 
   if (!CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
@@ -1198,8 +1198,8 @@ static void hmac_init(SHA256_CTX *out_inner, SHA256_CTX *out_outer,
                       const uint8_t hmac_key[32]) {
   static const size_t hmac_key_len = 32;
   uint8_t block[SHA256_CBLOCK];
-  memcpy(block, hmac_key, hmac_key_len);
-  memset(block + hmac_key_len, 0x36, sizeof(block) - hmac_key_len);
+  OPENSSL_memcpy(block, hmac_key, hmac_key_len);
+  OPENSSL_memset(block + hmac_key_len, 0x36, sizeof(block) - hmac_key_len);
 
   unsigned i;
   for (i = 0; i < hmac_key_len; i++) {
@@ -1209,7 +1209,7 @@ static void hmac_init(SHA256_CTX *out_inner, SHA256_CTX *out_outer,
   SHA256_Init(out_inner);
   SHA256_Update(out_inner, block, sizeof(block));
 
-  memset(block + hmac_key_len, 0x5c, sizeof(block) - hmac_key_len);
+  OPENSSL_memset(block + hmac_key_len, 0x5c, sizeof(block) - hmac_key_len);
   for (i = 0; i < hmac_key_len; i++) {
     block[i] ^= (0x36 ^ 0x5c);
   }
@@ -1284,7 +1284,7 @@ static void hmac_calculate(uint8_t out[SHA256_DIGEST_LENGTH],
                            const uint8_t *nonce, const uint8_t *ciphertext,
                            size_t ciphertext_len) {
   SHA256_CTX sha256;
-  memcpy(&sha256, inner_init_state, sizeof(sha256));
+  OPENSSL_memcpy(&sha256, inner_init_state, sizeof(sha256));
   hmac_update_uint64(&sha256, ad_len);
   hmac_update_uint64(&sha256, ciphertext_len);
   SHA256_Update(&sha256, nonce, EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN);
@@ -1297,7 +1297,7 @@ static void hmac_calculate(uint8_t out[SHA256_DIGEST_LENGTH],
                         SHA256_CBLOCK)) %
       SHA256_CBLOCK;
   uint8_t padding[SHA256_CBLOCK];
-  memset(padding, 0, num_padding);
+  OPENSSL_memset(padding, 0, num_padding);
   SHA256_Update(&sha256, padding, num_padding);
 
   SHA256_Update(&sha256, ciphertext, ciphertext_len);
@@ -1305,7 +1305,7 @@ static void hmac_calculate(uint8_t out[SHA256_DIGEST_LENGTH],
   uint8_t inner_digest[SHA256_DIGEST_LENGTH];
   SHA256_Final(inner_digest, &sha256);
 
-  memcpy(&sha256, outer_init_state, sizeof(sha256));
+  OPENSSL_memcpy(&sha256, outer_init_state, sizeof(sha256));
   SHA256_Update(&sha256, inner_digest, sizeof(inner_digest));
   SHA256_Final(out, &sha256);
 }
@@ -1317,11 +1317,11 @@ static void aead_aes_ctr_hmac_sha256_crypt(
    * bytes is pointless. However, |CRYPTO_ctr128_encrypt| requires it. */
   uint8_t partial_block_buffer[AES_BLOCK_SIZE];
   unsigned partial_block_offset = 0;
-  memset(partial_block_buffer, 0, sizeof(partial_block_buffer));
+  OPENSSL_memset(partial_block_buffer, 0, sizeof(partial_block_buffer));
 
   uint8_t counter[AES_BLOCK_SIZE];
-  memcpy(counter, nonce, EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN);
-  memset(counter + EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN, 0, 4);
+  OPENSSL_memcpy(counter, nonce, EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN);
+  OPENSSL_memset(counter + EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN, 0, 4);
 
   if (aes_ctx->ctr) {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, &aes_ctx->ks.ks, counter,
@@ -1364,7 +1364,7 @@ static int aead_aes_ctr_hmac_sha256_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t hmac_result[SHA256_DIGEST_LENGTH];
   hmac_calculate(hmac_result, &aes_ctx->inner_init_state,
                  &aes_ctx->outer_init_state, ad, ad_len, nonce, out, in_len);
-  memcpy(out + in_len, hmac_result, aes_ctx->tag_len);
+  OPENSSL_memcpy(out + in_len, hmac_result, aes_ctx->tag_len);
   *out_len = in_len + aes_ctx->tag_len;
 
   return 1;
@@ -1482,7 +1482,7 @@ static int aead_aes_gcm_siv_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   if (gcm_siv_ctx == NULL) {
     return 0;
   }
-  memset(gcm_siv_ctx, 0, sizeof(struct aead_aes_gcm_siv_ctx));
+  OPENSSL_memset(gcm_siv_ctx, 0, sizeof(struct aead_aes_gcm_siv_ctx));
 
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_len * 8, &gcm_siv_ctx->ks.ks);
@@ -1525,7 +1525,7 @@ static void gcm_siv_crypt(uint8_t *out, const uint8_t *in, size_t in_len,
     uint8_t c[16];
   } counter;
 
-  memcpy(counter.c, initial_counter, AES_BLOCK_SIZE);
+  OPENSSL_memcpy(counter.c, initial_counter, AES_BLOCK_SIZE);
   counter.c[15] |= 0x80;
 
   for (size_t done = 0; done < in_len;) {
@@ -1558,15 +1558,15 @@ static void gcm_siv_polyval(uint8_t out_tag[16], const uint8_t *in,
 
   uint8_t scratch[16];
   if (ad_len & 15) {
-    memset(scratch, 0, sizeof(scratch));
-    memcpy(scratch, &ad[ad_len & ~15], ad_len & 15);
+    OPENSSL_memset(scratch, 0, sizeof(scratch));
+    OPENSSL_memcpy(scratch, &ad[ad_len & ~15], ad_len & 15);
     CRYPTO_POLYVAL_update_blocks(&polyval_ctx, scratch, sizeof(scratch));
   }
 
   CRYPTO_POLYVAL_update_blocks(&polyval_ctx, in, in_len & ~15);
   if (in_len & 15) {
-    memset(scratch, 0, sizeof(scratch));
-    memcpy(scratch, &in[in_len & ~15], in_len & 15);
+    OPENSSL_memset(scratch, 0, sizeof(scratch));
+    OPENSSL_memcpy(scratch, &in[in_len & ~15], in_len & 15);
     CRYPTO_POLYVAL_update_blocks(&polyval_ctx, scratch, sizeof(scratch));
   }
 
@@ -1655,7 +1655,7 @@ static int aead_aes_gcm_siv_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   gcm_siv_crypt(out, in, in_len, tag, keys.enc_block, &keys.enc_key.ks);
 
-  memcpy(&out[in_len], tag, EVP_AEAD_AES_GCM_SIV_TAG_LEN);
+  OPENSSL_memcpy(&out[in_len], tag, EVP_AEAD_AES_GCM_SIV_TAG_LEN);
   *out_len = in_len + EVP_AEAD_AES_GCM_SIV_TAG_LEN;
 
   return 1;

@@ -182,7 +182,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   assert(ssl->s3->have_version);
-  memcpy(ssl->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
+                 SSL3_RANDOM_SIZE);
 
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
   if (cipher == NULL) {

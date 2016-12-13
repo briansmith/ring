@@ -283,7 +283,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   out[3] = epoch >> 8;
   out[4] = epoch & 0xff;
-  memcpy(&out[5], &seq[2], 6);
+  OPENSSL_memcpy(&out[5], &seq[2], 6);
 
   size_t ciphertext_len;
   if (!SSL_AEAD_CTX_seal(aead, out + DTLS1_RT_HEADER_LENGTH, &ciphertext_len,

@@ -291,7 +291,7 @@ static void read_from_buffer(struct rand_buffer *buf,
   size_t remaining = BUF_SIZE - buf->used;
 
   while (requested > remaining) {
-    memcpy(out, &buf->rand[buf->used], remaining);
+    OPENSSL_memcpy(out, &buf->rand[buf->used], remaining);
     buf->used += remaining;
     out += remaining;
     requested -= remaining;
@@ -304,7 +304,7 @@ static void read_from_buffer(struct rand_buffer *buf,
     remaining = BUF_SIZE;
   }
 
-  memcpy(out, &buf->rand[buf->used], requested);
+  OPENSSL_memcpy(out, &buf->rand[buf->used], requested);
   buf->used += requested;
 }
 

@@ -61,6 +61,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
 #include "internal.h"
 
 
@@ -105,7 +106,7 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(ret, 0, sizeof(EVP_PKEY_CTX));
+  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY_CTX));
 
   ret->engine = e;
   ret->pmeth = pmeth;
@@ -159,7 +160,7 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *pctx) {
     return NULL;
   }
 
-  memset(rctx, 0, sizeof(EVP_PKEY_CTX));
+  OPENSSL_memset(rctx, 0, sizeof(EVP_PKEY_CTX));
 
   rctx->pmeth = pctx->pmeth;
   rctx->engine = pctx->engine;

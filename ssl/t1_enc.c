@@ -146,6 +146,7 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -231,7 +232,7 @@ static int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
     return 1;
   }
 
-  memset(out, 0, out_len);
+  OPENSSL_memset(out, 0, out_len);
 
   uint32_t algorithm_prf = ssl_get_algorithm_prf(ssl);
   if (algorithm_prf == SSL_HANDSHAKE_MAC_DEFAULT) {
@@ -528,12 +529,13 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     return 0;
   }
 
-  memcpy(seed, ssl->s3->client_random, SSL3_RANDOM_SIZE);
-  memcpy(seed + SSL3_RANDOM_SIZE, ssl->s3->server_random, SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(seed, ssl->s3->client_random, SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(seed + SSL3_RANDOM_SIZE, ssl->s3->server_random,
+                 SSL3_RANDOM_SIZE);
   if (use_context) {
     seed[2 * SSL3_RANDOM_SIZE] = (uint8_t)(context_len >> 8);
     seed[2 * SSL3_RANDOM_SIZE + 1] = (uint8_t)context_len;
-    memcpy(seed + 2 * SSL3_RANDOM_SIZE + 2, context, context_len);
+    OPENSSL_memcpy(seed + 2 * SSL3_RANDOM_SIZE + 2, context, context_len);
   }
 
   int ret =

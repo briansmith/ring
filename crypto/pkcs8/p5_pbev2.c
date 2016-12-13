@@ -67,6 +67,7 @@
 #include <openssl/x509.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 /* PKCS#5 v2.0 password based encryption structures */
@@ -144,7 +145,7 @@ X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 	if (EVP_CIPHER_iv_length(cipher))
 		{
 		if (aiv)
-			memcpy(iv, aiv, EVP_CIPHER_iv_length(cipher));
+			OPENSSL_memcpy(iv, aiv, EVP_CIPHER_iv_length(cipher));
 		else if (!RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)))
   			goto err;
 		}
@@ -246,7 +247,7 @@ X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
 	osalt->length = saltlen;
 
 	if (salt)
-		memcpy (osalt->data, salt, saltlen);
+		OPENSSL_memcpy (osalt->data, salt, saltlen);
 	else if (!RAND_bytes(osalt->data, saltlen))
 		goto merr;
 

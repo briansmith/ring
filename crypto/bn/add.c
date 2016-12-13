@@ -314,7 +314,7 @@ int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   }
 
   if (dif > 0 && rp != ap) {
-    memcpy(rp, ap, sizeof(*rp) * dif);
+    OPENSSL_memcpy(rp, ap, sizeof(*rp) * dif);
   }
 
   r->top = max;

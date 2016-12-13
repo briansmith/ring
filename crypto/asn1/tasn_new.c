@@ -63,6 +63,9 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
+#include "../internal.h"
+
+
 static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
                                     int combine);
 static void asn1_item_clear(ASN1_VALUE **pval, const ASN1_ITEM *it);
@@ -153,7 +156,7 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
             *pval = OPENSSL_malloc(it->size);
             if (!*pval)
                 goto memerr;
-            memset(*pval, 0, it->size);
+            OPENSSL_memset(*pval, 0, it->size);
         }
         asn1_set_choice_selector(pval, -1, it);
         if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL))
@@ -178,7 +181,7 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
             *pval = OPENSSL_malloc(it->size);
             if (!*pval)
                 goto memerr;
-            memset(*pval, 0, it->size);
+            OPENSSL_memset(*pval, 0, it->size);
             asn1_refcount_set_one(pval, it);
             asn1_enc_init(pval, it);
         }

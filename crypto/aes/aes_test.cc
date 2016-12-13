@@ -21,6 +21,7 @@
 #include <openssl/aes.h>
 #include <openssl/crypto.h>
 
+#include "../internal.h"
 #include "../test/file_test.h"
 
 
@@ -54,7 +55,7 @@ static bool TestRaw(FileTest *t) {
   }
 
   // Test in-place encryption.
-  memcpy(block, plaintext.data(), AES_BLOCK_SIZE);
+  OPENSSL_memcpy(block, plaintext.data(), AES_BLOCK_SIZE);
   AES_encrypt(block, block, &aes_key);
   if (!t->ExpectBytesEqual(block, AES_BLOCK_SIZE, ciphertext.data(),
                            ciphertext.size())) {
@@ -76,7 +77,7 @@ static bool TestRaw(FileTest *t) {
   }
 
   // Test in-place decryption.
-  memcpy(block, ciphertext.data(), AES_BLOCK_SIZE);
+  OPENSSL_memcpy(block, ciphertext.data(), AES_BLOCK_SIZE);
   AES_decrypt(block, block, &aes_key);
   if (!t->ExpectBytesEqual(block, AES_BLOCK_SIZE, plaintext.data(),
                            plaintext.size())) {
@@ -123,7 +124,7 @@ static bool TestKeyWrap(FileTest *t) {
     return false;
   }
 
-  memset(buf.get(), 0, ciphertext.size());
+  OPENSSL_memset(buf.get(), 0, ciphertext.size());
   if (AES_wrap_key(&aes_key, kDefaultIV, buf.get(), plaintext.data(),
                    plaintext.size()) != static_cast<int>(ciphertext.size()) ||
       !t->ExpectBytesEqual(buf.get(), ciphertext.size(), ciphertext.data(),
@@ -146,7 +147,7 @@ static bool TestKeyWrap(FileTest *t) {
     return false;
   }
 
-  memset(buf.get(), 0, plaintext.size());
+  OPENSSL_memset(buf.get(), 0, plaintext.size());
   if (AES_unwrap_key(&aes_key, kDefaultIV, buf.get(), ciphertext.data(),
                      ciphertext.size()) != static_cast<int>(plaintext.size()) ||
       !t->ExpectBytesEqual(buf.get(), plaintext.size(), plaintext.data(),

@@ -60,6 +60,7 @@
 
 #include <openssl/nid.h>
 
+#include "../internal.h"
 #include "internal.h"
 
 
@@ -71,7 +72,7 @@ static int null_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 static int null_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                        const uint8_t *in, size_t in_len) {
   if (in != out) {
-    memcpy(out, in, in_len);
+    OPENSSL_memcpy(out, in, in_len);
   }
   return 1;
 }

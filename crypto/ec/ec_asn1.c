@@ -64,6 +64,7 @@
 
 #include "internal.h"
 #include "../bytestring/internal.h"
+#include "../internal.h"
 
 
 static const uint8_t kParametersTag =
@@ -271,7 +272,7 @@ static int parse_explicit_prime_curve(CBS *in, CBS *out_prime, CBS *out_a,
       !CBS_get_asn1(&params, &field_id, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&field_id, &field_type, CBS_ASN1_OBJECT) ||
       CBS_len(&field_type) != sizeof(kPrimeField) ||
-      memcmp(CBS_data(&field_type), kPrimeField, sizeof(kPrimeField)) != 0 ||
+      OPENSSL_memcmp(CBS_data(&field_type), kPrimeField, sizeof(kPrimeField)) != 0 ||
       !CBS_get_asn1(&field_id, out_prime, CBS_ASN1_INTEGER) ||
       !is_unsigned_integer(out_prime) ||
       CBS_len(&field_id) != 0 ||
@@ -335,7 +336,7 @@ EC_GROUP *EC_KEY_parse_curve_name(CBS *cbs) {
   for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
     const struct built_in_curve *curve = &OPENSSL_built_in_curves[i];
     if (CBS_len(&named_curve) == curve->oid_len &&
-        memcmp(CBS_data(&named_curve), curve->oid, curve->oid_len) == 0) {
+        OPENSSL_memcmp(CBS_data(&named_curve), curve->oid, curve->oid_len) == 0) {
       return EC_GROUP_new_by_curve_name(curve->nid);
     }
   }

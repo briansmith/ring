@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../../crypto/internal.h"
 #include "../../crypto/test/test_util.h"
 
 
@@ -85,7 +86,7 @@ int main(void) {
         RIPEMD160_Final(digest, &ctx);
       }
 
-      if (memcmp(digest, test.expected, sizeof(digest)) != 0) {
+      if (OPENSSL_memcmp(digest, test.expected, sizeof(digest)) != 0) {
         fprintf(stderr, "#%u: bad result with stride %u: ", test_num,
                 static_cast<unsigned>(stride));
         hexdump(stderr, "", digest, sizeof(digest));
@@ -96,7 +97,7 @@ int main(void) {
 
   static const size_t kLargeBufSize = 1000000;
   std::unique_ptr<uint8_t[]> buf(new uint8_t[kLargeBufSize]);
-  memset(buf.get(), 'a', kLargeBufSize);
+  OPENSSL_memset(buf.get(), 'a', kLargeBufSize);
   uint8_t digest[RIPEMD160_DIGEST_LENGTH];
   RIPEMD160(buf.get(), kLargeBufSize, digest);
 
@@ -104,7 +105,7 @@ int main(void) {
       0x52, 0x78, 0x32, 0x43, 0xc1, 0x69, 0x7b, 0xdb, 0xe1, 0x6d,
       0x37, 0xf9, 0x7f, 0x68, 0xf0, 0x83, 0x25, 0xdc, 0x15, 0x28};
 
-  if (memcmp(digest, kMillionADigest, sizeof(digest)) != 0) {
+  if (OPENSSL_memcmp(digest, kMillionADigest, sizeof(digest)) != 0) {
     fprintf(stderr, "Digest incorrect for “million a's” test: ");
     hexdump(stderr, "", digest, sizeof(digest));
     ok = 0;

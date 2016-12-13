@@ -422,7 +422,7 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
       return 0;
     }
 
-    memmove(out + SSL3_RT_HEADER_LENGTH, in, in_len);
+    OPENSSL_memmove(out + SSL3_RT_HEADER_LENGTH, in, in_len);
     out[SSL3_RT_HEADER_LENGTH + in_len] = type;
     in = out + SSL3_RT_HEADER_LENGTH;
     type = SSL3_RT_APPLICATION_DATA;

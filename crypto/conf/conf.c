@@ -66,6 +66,7 @@
 
 #include "conf_def.h"
 #include "internal.h"
+#include "../internal.h"
 
 
 static uint32_t conf_value_hash(const CONF_VALUE *v) {
@@ -118,7 +119,7 @@ CONF_VALUE *CONF_VALUE_new(void) {
     OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(v, 0, sizeof(CONF_VALUE));
+  OPENSSL_memset(v, 0, sizeof(CONF_VALUE));
   return v;
 }
 
@@ -353,7 +354,7 @@ err:
 static CONF_VALUE *get_section(const CONF *conf, const char *section) {
   CONF_VALUE template;
 
-  memset(&template, 0, sizeof(template));
+  OPENSSL_memset(&template, 0, sizeof(template));
   template.section = (char *) section;
   return lh_CONF_VALUE_retrieve(conf->data, &template);
 }
@@ -370,7 +371,7 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
                              const char *name) {
   CONF_VALUE template, *value;
 
-  memset(&template, 0, sizeof(template));
+  OPENSSL_memset(&template, 0, sizeof(template));
   template.section = (char *) section;
   template.name = (char *) name;
   value = lh_CONF_VALUE_retrieve(conf->data, &template);

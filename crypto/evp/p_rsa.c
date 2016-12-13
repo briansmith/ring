@@ -67,6 +67,7 @@
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 
+#include "../internal.h"
 #include "../rsa/internal.h"
 #include "internal.h"
 
@@ -97,7 +98,7 @@ static int pkey_rsa_init(EVP_PKEY_CTX *ctx) {
   if (!rctx) {
     return 0;
   }
-  memset(rctx, 0, sizeof(RSA_PKEY_CTX));
+  OPENSSL_memset(rctx, 0, sizeof(RSA_PKEY_CTX));
 
   rctx->nbits = 2048;
   rctx->pad_mode = RSA_PKCS1_PADDING;
@@ -289,7 +290,7 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
       return 0;
     }
     *out_len = ret;
-    memcpy(out, rctx->tbuf, *out_len);
+    OPENSSL_memcpy(out, rctx->tbuf, *out_len);
     return 1;
   }
 
@@ -329,7 +330,7 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
   }
 
   if (out != NULL) {
-    memcpy(out, rctx->tbuf + asn1_prefix_len, result_len);
+    OPENSSL_memcpy(out, rctx->tbuf + asn1_prefix_len, result_len);
   }
   *out_len = result_len;
 

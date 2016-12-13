@@ -147,7 +147,7 @@ CERT *ssl_cert_new(void) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(ret, 0, sizeof(CERT));
+  OPENSSL_memset(ret, 0, sizeof(CERT));
 
   return ret;
 }
@@ -158,7 +158,7 @@ CERT *ssl_cert_dup(CERT *cert) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(ret, 0, sizeof(CERT));
+  OPENSSL_memset(ret, 0, sizeof(CERT));
 
   if (cert->x509_leaf != NULL) {
     X509_up_ref(cert->x509_leaf);
@@ -707,7 +707,8 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
 
     static const uint8_t kKeyUsageOID[3] = {0x55, 0x1d, 0x0f};
     if (CBS_len(&oid) != sizeof(kKeyUsageOID) ||
-        memcmp(CBS_data(&oid), kKeyUsageOID, sizeof(kKeyUsageOID)) != 0) {
+        OPENSSL_memcmp(CBS_data(&oid), kKeyUsageOID, sizeof(kKeyUsageOID)) !=
+            0) {
       continue;
     }
 

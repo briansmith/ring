@@ -80,7 +80,7 @@ EVP_PKEY *EVP_PKEY_new(void) {
     return NULL;
   }
 
-  memset(ret, 0, sizeof(EVP_PKEY));
+  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY));
   ret->type = EVP_PKEY_NONE;
   ret->references = 1;
 

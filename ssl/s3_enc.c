@@ -144,7 +144,9 @@
 #include <openssl/md5.h>
 #include <openssl/nid.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
+
 
 static int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
                     const uint8_t *secret, size_t secret_len, const char *label,
@@ -194,7 +196,7 @@ static int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
     EVP_DigestUpdate(&md5, smd, SHA_DIGEST_LENGTH);
     if (i + MD5_DIGEST_LENGTH > out_len) {
       EVP_DigestFinal_ex(&md5, smd, NULL);
-      memcpy(out, smd, out_len - i);
+      OPENSSL_memcpy(out, smd, out_len - i);
     } else {
       EVP_DigestFinal_ex(&md5, out, NULL);
     }
@@ -269,7 +271,8 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len) {
     if (!BUF_MEM_grow(ssl->s3->handshake_buffer, new_len)) {
       return 0;
     }
-    memcpy(ssl->s3->handshake_buffer->data + new_len - in_len, in, in_len);
+    OPENSSL_memcpy(ssl->s3->handshake_buffer->data + new_len - in_len, in,
+                   in_len);
   }
 
   if (EVP_MD_CTX_md(&ssl->s3->handshake_hash) != NULL) {

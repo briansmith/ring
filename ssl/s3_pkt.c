@@ -118,6 +118,7 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -319,7 +320,7 @@ static int consume_record(SSL *ssl, uint8_t *out, int len, int peek) {
     len = (int)rr->length;
   }
 
-  memcpy(out, rr->data, len);
+  OPENSSL_memcpy(out, rr->data, len);
   if (!peek) {
     rr->length -= len;
     rr->data += len;

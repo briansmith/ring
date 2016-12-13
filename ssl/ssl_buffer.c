@@ -24,6 +24,7 @@
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -67,7 +68,7 @@ static void consume_buffer(SSL3_BUFFER *buf, size_t len) {
 
 static void clear_buffer(SSL3_BUFFER *buf) {
   OPENSSL_free(buf->buf);
-  memset(buf, 0, sizeof(SSL3_BUFFER));
+  OPENSSL_memset(buf, 0, sizeof(SSL3_BUFFER));
 }
 
 OPENSSL_COMPILE_ASSERT(DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <=

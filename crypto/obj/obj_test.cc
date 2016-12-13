@@ -20,6 +20,8 @@
 #include <openssl/crypto.h>
 #include <openssl/obj.h>
 
+#include "../internal.h"
+
 
 static bool TestBasic() {
   static const int kNID = NID_sha256WithRSAEncryption;
@@ -97,7 +99,7 @@ static bool TestSignatureAlgorithms() {
 static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
                           bool always_return_oid, const char *expected) {
   ASN1_OBJECT obj;
-  memset(&obj, 0, sizeof(obj));
+  OPENSSL_memset(&obj, 0, sizeof(obj));
   obj.data = der;
   obj.length = static_cast<int>(der_len);
 
@@ -112,7 +114,7 @@ static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
   }
 
   char short_buf[1];
-  memset(short_buf, 0xff, sizeof(short_buf));
+  OPENSSL_memset(short_buf, 0xff, sizeof(short_buf));
   len = OBJ_obj2txt(short_buf, sizeof(short_buf), &obj, always_return_oid);
   if (len != expected_len) {
     fprintf(stderr,
@@ -121,7 +123,7 @@ static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
     return false;
   }
 
-  if (memchr(short_buf, '\0', sizeof(short_buf)) == nullptr) {
+  if (OPENSSL_memchr(short_buf, '\0', sizeof(short_buf)) == nullptr) {
     fprintf(stderr,
             "OBJ_obj2txt of %s with out_len = 1 did not NUL-terminate the "
             "output.\n",
@@ -186,7 +188,7 @@ static bool TestObj2Txt() {
   }
 
   ASN1_OBJECT obj;
-  memset(&obj, 0, sizeof(obj));
+  OPENSSL_memset(&obj, 0, sizeof(obj));
 
   // kNonMinimalOID is kBasicConstraints with the final component non-minimally
   // encoded.

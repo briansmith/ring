@@ -680,7 +680,7 @@ static bool RunTest(FileTest *t, void *arg) {
 static bool TestBN2BinPadded(BN_CTX *ctx) {
   uint8_t zeros[256], out[256], reference[128];
 
-  memset(zeros, 0, sizeof(zeros));
+  OPENSSL_memset(zeros, 0, sizeof(zeros));
 
   // Test edge case at 0.
   bssl::UniquePtr<BIGNUM> n(BN_new());
@@ -689,13 +689,13 @@ static bool TestBN2BinPadded(BN_CTX *ctx) {
             "BN_bn2bin_padded failed to encode 0 in an empty buffer.\n");
     return false;
   }
-  memset(out, -1, sizeof(out));
+  OPENSSL_memset(out, -1, sizeof(out));
   if (!BN_bn2bin_padded(out, sizeof(out), n.get())) {
     fprintf(stderr,
             "BN_bn2bin_padded failed to encode 0 in a non-empty buffer.\n");
     return false;
   }
-  if (memcmp(zeros, out, sizeof(out))) {
+  if (OPENSSL_memcmp(zeros, out, sizeof(out))) {
     fprintf(stderr, "BN_bn2bin_padded did not zero buffer.\n");
     return false;
   }
@@ -724,20 +724,21 @@ static bool TestBN2BinPadded(BN_CTX *ctx) {
     }
     // Exactly right size should encode.
     if (!BN_bn2bin_padded(out, bytes, n.get()) ||
-        memcmp(out, reference, bytes) != 0) {
+        OPENSSL_memcmp(out, reference, bytes) != 0) {
       fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
       return false;
     }
     // Pad up one byte extra.
     if (!BN_bn2bin_padded(out, bytes + 1, n.get()) ||
-        memcmp(out + 1, reference, bytes) || memcmp(out, zeros, 1)) {
+        OPENSSL_memcmp(out + 1, reference, bytes) ||
+        OPENSSL_memcmp(out, zeros, 1)) {
       fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
       return false;
     }
     // Pad up to 256.
     if (!BN_bn2bin_padded(out, sizeof(out), n.get()) ||
-        memcmp(out + sizeof(out) - bytes, reference, bytes) ||
-        memcmp(out, zeros, sizeof(out) - bytes)) {
+        OPENSSL_memcmp(out + sizeof(out) - bytes, reference, bytes) ||
+        OPENSSL_memcmp(out, zeros, sizeof(out) - bytes)) {
       fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
       return false;
     }
@@ -922,7 +923,7 @@ static bool TestMPI() {
     }
 
     if (mpi_len != test.mpi_len ||
-        memcmp(test.mpi, scratch, mpi_len) != 0) {
+        OPENSSL_memcmp(test.mpi, scratch, mpi_len) != 0) {
       fprintf(stderr, "MPI test #%u failed:\n", (unsigned)i);
       hexdump(stderr, "Expected: ", test.mpi, test.mpi_len);
       hexdump(stderr, "Got:      ", scratch, mpi_len);
@@ -1062,7 +1063,8 @@ static bool TestASN1() {
     }
     bssl::UniquePtr<uint8_t> delete_der(der);
     if (der_len != test.der_len ||
-        memcmp(der, reinterpret_cast<const uint8_t*>(test.der), der_len) != 0) {
+        OPENSSL_memcmp(der, reinterpret_cast<const uint8_t *>(test.der),
+                       der_len) != 0) {
       fprintf(stderr, "Bad serialization.\n");
       return false;
     }

@@ -65,6 +65,8 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#include "../internal.h"
+
 
 static int dsa_cb(int p, int n, BN_GENCB *arg);
 
@@ -217,21 +219,21 @@ static int test_generate(FILE *out) {
 
   i = BN_bn2bin(dsa->q, buf);
   j = sizeof(fips_q);
-  if (i != j || memcmp(buf, fips_q, i) != 0) {
+  if (i != j || OPENSSL_memcmp(buf, fips_q, i) != 0) {
     fprintf(stderr, "q value is wrong\n");
     goto end;
   }
 
   i = BN_bn2bin(dsa->p, buf);
   j = sizeof(fips_p);
-  if (i != j || memcmp(buf, fips_p, i) != 0) {
+  if (i != j || OPENSSL_memcmp(buf, fips_p, i) != 0) {
     fprintf(stderr, "p value is wrong\n");
     goto end;
   }
 
   i = BN_bn2bin(dsa->g, buf);
   j = sizeof(fips_g);
-  if (i != j || memcmp(buf, fips_g, i) != 0) {
+  if (i != j || OPENSSL_memcmp(buf, fips_g, i) != 0) {
     fprintf(stderr, "g value is wrong\n");
     goto end;
   }

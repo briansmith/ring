@@ -115,6 +115,7 @@
 #include <openssl/err.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 #define BN_BLINDING_COUNTER 32
@@ -134,7 +135,7 @@ BN_BLINDING *BN_BLINDING_new(void) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(ret, 0, sizeof(BN_BLINDING));
+  OPENSSL_memset(ret, 0, sizeof(BN_BLINDING));
 
   ret->A = BN_new();
   if (ret->A == NULL) {

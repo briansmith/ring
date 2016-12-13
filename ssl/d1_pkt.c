@@ -122,6 +122,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -265,7 +266,7 @@ again:
     len = rr->length;
   }
 
-  memcpy(buf, rr->data, len);
+  OPENSSL_memcpy(buf, rr->data, len);
   if (!peek) {
     /* TODO(davidben): Should the record be truncated instead? This is a
      * datagram transport. See https://crbug.com/boringssl/65. */

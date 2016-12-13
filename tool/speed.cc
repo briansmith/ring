@@ -43,6 +43,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -208,18 +209,18 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   const size_t overhead_len = EVP_AEAD_max_overhead(aead);
 
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
-  memset(key.get(), 0, key_len);
+  OPENSSL_memset(key.get(), 0, key_len);
   std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
-  memset(nonce.get(), 0, nonce_len);
+  OPENSSL_memset(nonce.get(), 0, nonce_len);
   std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
   std::unique_ptr<uint8_t[]> out_storage(new uint8_t[chunk_len + overhead_len + kAlignment]);
   std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
-  memset(ad.get(), 0, ad_len);
+  OPENSSL_memset(ad.get(), 0, ad_len);
 
   uint8_t *const in = align(in_storage.get(), kAlignment);
-  memset(in, 0, chunk_len);
+  OPENSSL_memset(in, 0, chunk_len);
   uint8_t *const out = align(out_storage.get(), kAlignment);
-  memset(out, 0, chunk_len + overhead_len);
+  OPENSSL_memset(out, 0, chunk_len + overhead_len);
 
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.get(), key_len,
                                         EVP_AEAD_DEFAULT_TAG_LENGTH,
@@ -381,7 +382,7 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
     return false;
   }
   uint8_t digest[20];
-  memset(digest, 42, sizeof(digest));
+  OPENSSL_memset(digest, 42, sizeof(digest));
   unsigned sig_len;
 
   TimeResults results;
@@ -462,7 +463,7 @@ static bool Speed25519(const std::string &selected) {
 
   if (!TimeFunction(&results, []() -> bool {
         uint8_t out[32], in[32];
-        memset(in, 0, sizeof(in));
+        OPENSSL_memset(in, 0, sizeof(in));
         X25519_public_from_private(out, in);
         return true;
       })) {
@@ -474,8 +475,8 @@ static bool Speed25519(const std::string &selected) {
 
   if (!TimeFunction(&results, []() -> bool {
         uint8_t out[32], in1[32], in2[32];
-        memset(in1, 0, sizeof(in1));
-        memset(in2, 0, sizeof(in2));
+        OPENSSL_memset(in1, 0, sizeof(in1));
+        OPENSSL_memset(in2, 0, sizeof(in2));
         in1[0] = 1;
         in2[0] = 9;
         return X25519(out, in1, in2) == 1;

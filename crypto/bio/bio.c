@@ -75,7 +75,7 @@ BIO *BIO_new(const BIO_METHOD *method) {
     return NULL;
   }
 
-  memset(ret, 0, sizeof(BIO));
+  OPENSSL_memset(ret, 0, sizeof(BIO));
   ret->method = method;
   ret->shutdown = 1;
   ret->references = 1;
@@ -488,7 +488,7 @@ static int bio_read_all(BIO *bio, uint8_t **out, size_t *out_len,
   if (*out == NULL) {
     return 0;
   }
-  memcpy(*out, prefix, prefix_len);
+  OPENSSL_memcpy(*out, prefix, prefix_len);
   size_t done = prefix_len;
 
   for (;;) {
@@ -595,7 +595,7 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
   if (*out == NULL) {
     return 0;
   }
-  memcpy(*out, header, header_len);
+  OPENSSL_memcpy(*out, header, header_len);
   if (BIO_read(bio, (*out) + header_len, len - header_len) !=
       (int) (len - header_len)) {
     OPENSSL_free(*out);

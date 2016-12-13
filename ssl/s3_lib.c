@@ -159,6 +159,7 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -169,7 +170,7 @@ int ssl3_new(SSL *ssl) {
   if (s3 == NULL) {
     return 0;
   }
-  memset(s3, 0, sizeof *s3);
+  OPENSSL_memset(s3, 0, sizeof *s3);
 
   s3->hs = ssl_handshake_new(ssl);
   if (s3->hs == NULL) {

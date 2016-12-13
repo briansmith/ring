@@ -59,6 +59,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../internal.h"
+
 
 uint8_t *MD4(const uint8_t *data, size_t len, uint8_t *out) {
   MD4_CTX ctx;
@@ -72,7 +74,7 @@ uint8_t *MD4(const uint8_t *data, size_t len, uint8_t *out) {
 /* Implemented from RFC1186 The MD4 Message-Digest Algorithm. */
 
 int MD4_Init(MD4_CTX *md4) {
-  memset(md4, 0, sizeof(MD4_CTX));
+  OPENSSL_memset(md4, 0, sizeof(MD4_CTX));
   md4->h[0] = 0x67452301UL;
   md4->h[1] = 0xefcdab89UL;
   md4->h[2] = 0x98badcfeUL;

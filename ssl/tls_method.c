@@ -61,6 +61,7 @@
 
 #include <openssl/buf.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -112,7 +113,7 @@ static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
     return 0;
   }
 
-  memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
+  OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
   SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
   ssl->s3->aead_read_ctx = aead_ctx;
@@ -120,7 +121,7 @@ static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
 }
 
 static int ssl3_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
-  memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
+  OPENSSL_memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
 
   SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
   ssl->s3->aead_write_ctx = aead_ctx;

@@ -61,6 +61,7 @@
 #include <openssl/mem.h>
 
 #include "../ec/internal.h"
+#include "../internal.h"
 
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
@@ -88,7 +89,7 @@ int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
   /* Defend against potential laxness in the DER parser. */
   size_t der_len;
   if (!ECDSA_SIG_to_bytes(&der, &der_len, s) ||
-      der_len != sig_len || memcmp(sig, der, sig_len) != 0) {
+      der_len != sig_len || OPENSSL_memcmp(sig, der, sig_len) != 0) {
     /* This should never happen. crypto/bytestring is strictly DER. */
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_INTERNAL_ERROR);
     goto err;

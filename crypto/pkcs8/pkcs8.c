@@ -124,7 +124,7 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
   /* 1. Construct a string, D (the "diversifier"), by concatenating v/8 copies
    * of ID. */
   uint8_t D[EVP_MAX_MD_BLOCK_SIZE];
-  memset(D, id, block_size);
+  OPENSSL_memset(D, id, block_size);
 
   /* 2. Concatenate copies of the salt together to create a string S of length
    * v(ceiling(s/v)) bits (the final copy of the salt may be truncated to
@@ -186,7 +186,7 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
     }
 
     size_t todo = out_len < A_len ? out_len : A_len;
-    memcpy(out, A, todo);
+    OPENSSL_memcpy(out, A, todo);
     out += todo;
     out_len -= todo;
     if (out_len == 0) {
@@ -911,7 +911,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   }
 
   *out_key = NULL;
-  memset(&ctx, 0, sizeof(ctx));
+  OPENSSL_memset(&ctx, 0, sizeof(ctx));
 
   /* See ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-12/pkcs-12v1.pdf, section
    * four. */
@@ -1068,7 +1068,7 @@ PKCS12* d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes, size_t ber_len) 
     return NULL;
   }
 
-  memcpy(p12->ber_bytes, *ber_bytes, ber_len);
+  OPENSSL_memcpy(p12->ber_bytes, *ber_bytes, ber_len);
   p12->ber_len = ber_len;
   *ber_bytes += ber_len;
 
@@ -1193,7 +1193,7 @@ int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
     }
   } else if (password_len != -1 &&
              (password[password_len] != 0 ||
-              memchr(password, 0, password_len) != NULL)) {
+              OPENSSL_memchr(password, 0, password_len) != NULL)) {
     return 0;
   }
 

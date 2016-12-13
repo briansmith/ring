@@ -65,6 +65,8 @@
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
+#include "../internal.h"
+
 
 // kPlaintext is a sample plaintext.
 static const uint8_t kPlaintext[] = "\x54\x85\x9b\x34\x2c\x49\xea\x2a";
@@ -549,7 +551,7 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
                    ciphertext, ciphertext_len, RSA_PKCS1_PADDING) ||
       plaintext_len != kPlaintextLen ||
-      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
+      OPENSSL_memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
     fprintf(stderr, "PKCS#1 v1.5 decryption failed!\n");
     return false;
   }
@@ -566,7 +568,7 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
                    ciphertext, ciphertext_len, RSA_PKCS1_OAEP_PADDING) ||
       plaintext_len != kPlaintextLen ||
-      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
+      OPENSSL_memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
     fprintf(stderr, "OAEP decryption (encrypted data) failed!\n");
     return false;
   }
@@ -577,13 +579,13 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
                    oaep_ciphertext, oaep_ciphertext_len,
                    RSA_PKCS1_OAEP_PADDING) ||
       plaintext_len != kPlaintextLen ||
-      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
+      OPENSSL_memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
     fprintf(stderr, "OAEP decryption (test vector data) failed!\n");
     return false;
   }
 
   // Try decrypting corrupted ciphertexts.
-  memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
+  OPENSSL_memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
   for (size_t i = 0; i < oaep_ciphertext_len; i++) {
     ciphertext[i] ^= 1;
     if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
@@ -628,7 +630,7 @@ static bool TestMultiPrimeKey(int nprimes, const uint8_t *der, size_t der_size,
   if (!RSA_decrypt(rsa.get(), &out_len, out, sizeof(out), enc, enc_size,
                    RSA_PKCS1_PADDING) ||
       out_len != 11 ||
-      memcmp(out, "hello world", 11) != 0) {
+      OPENSSL_memcmp(out, "hello world", 11) != 0) {
     fprintf(stderr, "%d-prime key failed to decrypt.\n", nprimes);
     ERR_print_errors_fp(stderr);
     return false;
@@ -655,7 +657,7 @@ static bool TestMultiPrimeKeygen() {
       !RSA_decrypt(rsa.get(), &decrypted_len, decrypted, sizeof(decrypted),
                    encrypted, encrypted_len, RSA_PKCS1_PADDING) ||
       decrypted_len != sizeof(kMessage) ||
-      memcmp(decrypted, kMessage, sizeof(kMessage)) != 0) {
+      OPENSSL_memcmp(decrypted, kMessage, sizeof(kMessage)) != 0) {
     ERR_print_errors_fp(stderr);
     return false;
   }
@@ -867,7 +869,8 @@ static bool TestASN1() {
     return false;
   }
   bssl::UniquePtr<uint8_t> delete_der(der);
-  if (der_len != sizeof(kKey1) - 1 || memcmp(der, kKey1, der_len) != 0) {
+  if (der_len != sizeof(kKey1) - 1 ||
+      OPENSSL_memcmp(der, kKey1, der_len) != 0) {
     return false;
   }
 
@@ -890,7 +893,7 @@ static bool TestASN1() {
     return false;
   }
   bssl::UniquePtr<uint8_t> delete_der2(der2);
-  if (der_len != der2_len || memcmp(der, der2, der_len) != 0) {
+  if (der_len != der2_len || OPENSSL_memcmp(der, der2, der_len) != 0) {
     return false;
   }
 

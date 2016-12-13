@@ -124,6 +124,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -157,7 +158,7 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(frag, 0, sizeof(hm_fragment));
+  OPENSSL_memset(frag, 0, sizeof(hm_fragment));
   frag->type = msg_hdr->type;
   frag->seq = msg_hdr->seq;
   frag->msg_len = msg_hdr->msg_len;
@@ -195,7 +196,7 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    memset(frag->reassembly, 0, bitmask_len);
+    OPENSSL_memset(frag->reassembly, 0, bitmask_len);
   }
 
   return frag;
@@ -383,7 +384,7 @@ start:
     assert(msg_len > 0);
 
     /* Copy the body into the fragment. */
-    memcpy(frag->data + DTLS1_HM_HEADER_LENGTH + frag_off, CBS_data(&body),
+    OPENSSL_memcpy(frag->data + DTLS1_HM_HEADER_LENGTH + frag_off, CBS_data(&body),
            CBS_len(&body));
     dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
   }
@@ -489,7 +490,7 @@ int dtls_has_incoming_messages(const SSL *ssl) {
 
 int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
                          CBS *out_body) {
-  memset(out_hdr, 0x00, sizeof(struct hm_header_st));
+  OPENSSL_memset(out_hdr, 0x00, sizeof(struct hm_header_st));
 
   if (!CBS_get_u8(cbs, &out_hdr->type) ||
       !CBS_get_u24(cbs, &out_hdr->msg_len) ||
@@ -747,7 +748,7 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
 
   /* Fix up the header. Copy the fragment length into the total message
    * length. */
-  memcpy(*out_msg + 1, *out_msg + DTLS1_HM_HEADER_LENGTH - 3, 3);
+  OPENSSL_memcpy(*out_msg + 1, *out_msg + DTLS1_HM_HEADER_LENGTH - 3, 3);
   return 1;
 }
 

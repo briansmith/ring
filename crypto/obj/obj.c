@@ -123,7 +123,7 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
     goto err;
   }
   if (o->data != NULL) {
-    memcpy(data, o->data, o->length);
+    OPENSSL_memcpy(data, o->data, o->length);
   }
 
   /* once data is attached to an object, it remains const */
@@ -169,7 +169,7 @@ int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   if (ret) {
     return ret;
   }
-  return memcmp(a->data, b->data, a->length);
+  return OPENSSL_memcmp(a->data, b->data, a->length);
 }
 
 /* obj_cmp is called to search the kNIDsInOIDOrder array. The |key| argument is
@@ -185,7 +185,7 @@ static int obj_cmp(const void *key, const void *element) {
   } else if (a->length > b->length) {
     return 1;
   }
-  return memcmp(a->data, b->data, a->length);
+  return OPENSSL_memcmp(a->data, b->data, a->length);
 }
 
 int OBJ_obj2nid(const ASN1_OBJECT *obj) {
@@ -225,7 +225,7 @@ int OBJ_cbs2nid(const CBS *cbs) {
   }
 
   ASN1_OBJECT obj;
-  memset(&obj, 0, sizeof(obj));
+  OPENSSL_memset(&obj, 0, sizeof(obj));
   obj.data = CBS_data(cbs);
   obj.length = (int)CBS_len(cbs);
 
@@ -543,7 +543,7 @@ static int cmp_data(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   if (i) {
     return i;
   }
-  return memcmp(a->data, b->data, a->length);
+  return OPENSSL_memcmp(a->data, b->data, a->length);
 }
 
 static uint32_t hash_short_name(const ASN1_OBJECT *obj) {

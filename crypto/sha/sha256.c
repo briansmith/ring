@@ -60,6 +60,8 @@
 
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
@@ -68,7 +70,7 @@
 #endif
 
 int SHA224_Init(SHA256_CTX *sha) {
-  memset(sha, 0, sizeof(SHA256_CTX));
+  OPENSSL_memset(sha, 0, sizeof(SHA256_CTX));
   sha->h[0] = 0xc1059ed8UL;
   sha->h[1] = 0x367cd507UL;
   sha->h[2] = 0x3070dd17UL;
@@ -82,7 +84,7 @@ int SHA224_Init(SHA256_CTX *sha) {
 }
 
 int SHA256_Init(SHA256_CTX *sha) {
-  memset(sha, 0, sizeof(SHA256_CTX));
+  OPENSSL_memset(sha, 0, sizeof(SHA256_CTX));
   sha->h[0] = 0x6a09e667UL;
   sha->h[1] = 0xbb67ae85UL;
   sha->h[2] = 0x3c6ef372UL;

@@ -673,7 +673,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
   encoded.reset(encoded_raw);
   if (encoded_len != input.size() ||
-      memcmp(input.data(), encoded.get(), input.size()) != 0) {
+      OPENSSL_memcmp(input.data(), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "SSL_SESSION_to_bytes did not round-trip\n");
     hexdump(stderr, "Before: ", input.data(), input.size());
     hexdump(stderr, "After:  ", encoded_raw, encoded_len);
@@ -711,7 +711,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
     fprintf(stderr, "i2d_SSL_SESSION did not advance ptr correctly\n");
     return false;
   }
-  if (memcmp(input.data(), encoded.get(), input.size()) != 0) {
+  if (OPENSSL_memcmp(input.data(), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "i2d_SSL_SESSION did not round-trip\n");
     return false;
   }
@@ -838,7 +838,7 @@ static bssl::UniquePtr<SSL_SESSION> CreateSessionWithTicket(uint16_t version,
   if (session->tlsext_tick == nullptr) {
     return nullptr;
   }
-  memset(session->tlsext_tick, 'a', ticket_len);
+  OPENSSL_memset(session->tlsext_tick, 'a', ticket_len);
   session->tlsext_ticklen = ticket_len;
 
   // Fix up the timeout.
@@ -1030,8 +1030,8 @@ static bssl::UniquePtr<SSL_SESSION> CreateTestSession(uint32_t number) {
   }
 
   ret->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
-  memset(ret->session_id, 0, ret->session_id_length);
-  memcpy(ret->session_id, &number, sizeof(number));
+  OPENSSL_memset(ret->session_id, 0, ret->session_id_length);
+  OPENSSL_memcpy(ret->session_id, &number, sizeof(number));
   return ret;
 }
 
@@ -1442,7 +1442,7 @@ static bool TestSessionDuplication() {
   }
   bssl::UniquePtr<uint8_t> free_s1(s1_bytes);
 
-  return s0_len == s1_len && memcmp(s0_bytes, s1_bytes, s0_len) == 0;
+  return s0_len == s1_len && OPENSSL_memcmp(s0_bytes, s1_bytes, s0_len) == 0;
 }
 
 static bool ExpectFDs(const SSL *ssl, int rfd, int wfd) {
@@ -1711,7 +1711,8 @@ static bool TestRetainOnlySHA256OfCerts(bool is_dtls, const SSL_METHOD *method,
     return false;
   }
 
-  if (memcmp(cert_sha256, session->peer_sha256, SHA256_DIGEST_LENGTH) != 0) {
+  if (OPENSSL_memcmp(cert_sha256, session->peer_sha256, SHA256_DIGEST_LENGTH) !=
+      0) {
     fprintf(stderr, "peer_sha256 did not match.\n");
     return false;
   }
@@ -1747,10 +1748,10 @@ static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
     fprintf(stderr, "ClientHello for version %04x too short.\n", version);
     return false;
   }
-  memset(client_hello.data() + kRandomOffset, 0, SSL3_RANDOM_SIZE);
+  OPENSSL_memset(client_hello.data() + kRandomOffset, 0, SSL3_RANDOM_SIZE);
 
   if (client_hello.size() != expected_len ||
-      memcmp(client_hello.data(), expected, expected_len) != 0) {
+      OPENSSL_memcmp(client_hello.data(), expected, expected_len) != 0) {
     fprintf(stderr, "ClientHello for version %04x did not match:\n", version);
     fprintf(stderr, "Got:\n\t");
     for (size_t i = 0; i < client_hello.size(); i++) {
@@ -2097,9 +2098,9 @@ static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
   static const uint8_t kZeros[16] = {0};
 
   if (encrypt) {
-    memcpy(key_name, kZeros, sizeof(kZeros));
+    OPENSSL_memcpy(key_name, kZeros, sizeof(kZeros));
     RAND_bytes(iv, 16);
-  } else if (memcmp(key_name, kZeros, 16) != 0) {
+  } else if (OPENSSL_memcmp(key_name, kZeros, 16) != 0) {
     return 0;
   }
 
@@ -2124,7 +2125,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   // Fuzzer-mode tickets are unencrypted.
-  memcpy(plaintext.get(), ciphertext, len);
+  OPENSSL_memcpy(plaintext.get(), ciphertext, len);
 #else
   static const uint8_t kZeros[16] = {0};
   const uint8_t *iv = session->tlsext_tick + 16;

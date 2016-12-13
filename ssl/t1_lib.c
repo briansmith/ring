@@ -205,7 +205,7 @@ done:
 
 int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out, const uint8_t *in,
                           size_t in_len) {
-  memset(out, 0, sizeof(*out));
+  OPENSSL_memset(out, 0, sizeof(*out));
   out->ssl = ssl;
   out->client_hello = in;
   out->client_hello_len = in_len;
@@ -1506,8 +1506,9 @@ static int ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     }
 
     if (CBS_len(&client_protocol_name) == CBS_len(&protocol_name) &&
-        memcmp(CBS_data(&client_protocol_name), CBS_data(&protocol_name),
-               CBS_len(&protocol_name)) == 0) {
+        OPENSSL_memcmp(CBS_data(&client_protocol_name),
+                       CBS_data(&protocol_name),
+                       CBS_len(&protocol_name)) == 0) {
       protocol_ok = 1;
       break;
     }
@@ -1881,8 +1882,9 @@ static int ext_ec_point_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   /* Per RFC 4492, section 5.1.2, implementations MUST support the uncompressed
    * point format. */
-  if (memchr(CBS_data(&ec_point_format_list), TLSEXT_ECPOINTFORMAT_uncompressed,
-             CBS_len(&ec_point_format_list)) == NULL) {
+  if (OPENSSL_memchr(CBS_data(&ec_point_format_list),
+                     TLSEXT_ECPOINTFORMAT_uncompressed,
+                     CBS_len(&ec_point_format_list)) == NULL) {
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -2141,8 +2143,8 @@ static int ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
   }
 
   /* We only support tickets with PSK_DHE_KE. */
-  hs->accept_psk_mode =
-      memchr(CBS_data(&ke_modes), SSL_PSK_DHE_KE, CBS_len(&ke_modes)) != NULL;
+  hs->accept_psk_mode = OPENSSL_memchr(CBS_data(&ke_modes), SSL_PSK_DHE_KE,
+                                       CBS_len(&ke_modes)) != NULL;
 
   return 1;
 }
@@ -2343,7 +2345,7 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
   uint8_t *secret = NULL;
   size_t secret_len;
   SSL_ECDH_CTX group;
-  memset(&group, 0, sizeof(SSL_ECDH_CTX));
+  OPENSSL_memset(&group, 0, sizeof(SSL_ECDH_CTX));
   CBB public_key;
   if (!CBB_init(&public_key, 32) ||
       !SSL_ECDH_CTX_init(&group, group_id) ||
@@ -2820,7 +2822,7 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
         goto err;
       }
 
-      memset(padding_bytes, 0, padding_len);
+      OPENSSL_memset(padding_bytes, 0, padding_len);
     }
   }
 
@@ -3183,8 +3185,8 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
     }
   } else {
     /* Check the key name matches. */
-    if (memcmp(ticket, ssl_ctx->tlsext_tick_key_name,
-               SSL_TICKET_KEY_NAME_LEN) != 0) {
+    if (OPENSSL_memcmp(ticket, ssl_ctx->tlsext_tick_key_name,
+                       SSL_TICKET_KEY_NAME_LEN) != 0) {
       goto done;
     }
     if (!HMAC_Init_ex(&hmac_ctx, ssl_ctx->tlsext_tick_hmac_key,
@@ -3227,7 +3229,7 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
   }
   size_t plaintext_len;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  memcpy(plaintext, ciphertext, ciphertext_len);
+  OPENSSL_memcpy(plaintext, ciphertext, ciphertext_len);
   plaintext_len = ciphertext_len;
 #else
   if (ciphertext_len >= INT_MAX) {
@@ -3252,7 +3254,7 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
 
   /* Copy the client's session ID into the new session, to denote the ticket has
    * been accepted. */
-  memcpy(session->session_id, session_id, session_id_len);
+  OPENSSL_memcpy(session->session_id, session_id, session_id_len);
   session->session_id_length = session_id_len;
 
   *out_session = session;
@@ -3439,7 +3441,7 @@ int tls1_verify_channel_id(SSL *ssl) {
     goto err;
   }
 
-  memcpy(ssl->s3->tlsext_channel_id, p, 64);
+  OPENSSL_memcpy(ssl->s3->tlsext_channel_id, p, 64);
   ret = 1;
 
 err:

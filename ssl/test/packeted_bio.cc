@@ -21,6 +21,8 @@
 
 #include <openssl/mem.h>
 
+#include "../../crypto/internal.h"
+
 
 namespace {
 
@@ -33,8 +35,8 @@ const uint8_t kOpcodeTimeoutAck = 't';
 struct PacketedBio {
   PacketedBio(timeval *clock_arg, bool advance_clock_arg)
       : clock(clock_arg), advance_clock(advance_clock_arg) {
-    memset(&timeout, 0, sizeof(timeout));
-    memset(&read_deadline, 0, sizeof(read_deadline));
+    OPENSSL_memset(&timeout, 0, sizeof(timeout));
+    OPENSSL_memset(&read_deadline, 0, sizeof(read_deadline));
   }
 
   bool HasTimeout() const {
@@ -209,7 +211,7 @@ static int PacketedRead(BIO *bio, char *out, int outl) {
     if (outl > (int)len) {
       outl = len;
     }
-    memcpy(out, buf, outl);
+    OPENSSL_memcpy(out, buf, outl);
     OPENSSL_free(buf);
     return outl;
   }
@@ -217,7 +219,7 @@ static int PacketedRead(BIO *bio, char *out, int outl) {
 
 static long PacketedCtrl(BIO *bio, int cmd, long num, void *ptr) {
   if (cmd == BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT) {
-    memcpy(&GetData(bio)->read_deadline, ptr, sizeof(timeval));
+    OPENSSL_memcpy(&GetData(bio)->read_deadline, ptr, sizeof(timeval));
     return 1;
   }
 
@@ -290,6 +292,6 @@ bool PacketedBioAdvanceClock(BIO *bio) {
   data->clock->tv_sec += data->clock->tv_usec / 1000000;
   data->clock->tv_usec %= 1000000;
   data->clock->tv_sec += data->timeout.tv_sec;
-  memset(&data->timeout, 0, sizeof(data->timeout));
+  OPENSSL_memset(&data->timeout, 0, sizeof(data->timeout));
   return true;
 }

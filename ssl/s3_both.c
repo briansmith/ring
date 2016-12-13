@@ -127,6 +127,7 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -136,7 +137,7 @@ SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(hs, 0, sizeof(SSL_HANDSHAKE));
+  OPENSSL_memset(hs, 0, sizeof(SSL_HANDSHAKE));
   hs->ssl = ssl;
   hs->wait = ssl_hs_ok;
   hs->state = SSL_ST_INIT;
@@ -295,10 +296,10 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b) {
     }
 
     if (ssl->server) {
-      memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+      OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
       ssl->s3->previous_server_finished_len = finished_len;
     } else {
-      memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+      OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
       ssl->s3->previous_client_finished_len = finished_len;
     }
   }
@@ -353,10 +354,10 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs) {
     }
 
     if (ssl->server) {
-      memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+      OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
       ssl->s3->previous_client_finished_len = finished_len;
     } else {
-      memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+      OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
       ssl->s3->previous_server_finished_len = finished_len;
     }
   }
@@ -521,9 +522,9 @@ static int read_v2_client_hello(SSL *ssl, int *out_is_v2_client_hello) {
     rand_len = SSL3_RANDOM_SIZE;
   }
   uint8_t random[SSL3_RANDOM_SIZE];
-  memset(random, 0, SSL3_RANDOM_SIZE);
-  memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge),
-         rand_len);
+  OPENSSL_memset(random, 0, SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge),
+                 rand_len);
 
   /* Write out an equivalent SSLv3 ClientHello. */
   size_t max_v3_client_hello = SSL3_HM_HEADER_LENGTH + 2 /* version */ +

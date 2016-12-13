@@ -55,7 +55,7 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 0;
   }
 
-  memcpy(c20_ctx->key, key, key_len);
+  OPENSSL_memcpy(c20_ctx->key, key, key_len);
   c20_ctx->tag_len = tag_len;
   ctx->aead_state = c20_ctx;
 
@@ -94,7 +94,7 @@ static void aead_poly1305(aead_poly1305_update update,
                           size_t ad_len, const uint8_t *ciphertext,
                           size_t ciphertext_len) {
   alignas(16) uint8_t poly1305_key[32];
-  memset(poly1305_key, 0, sizeof(poly1305_key));
+  OPENSSL_memset(poly1305_key, 0, sizeof(poly1305_key));
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
                    c20_ctx->key, nonce, 0);
   poly1305_state ctx;
@@ -137,7 +137,7 @@ static int seal_impl(aead_poly1305_update poly1305_update,
   alignas(16) uint8_t tag[POLY1305_TAG_LEN];
   aead_poly1305(poly1305_update, tag, c20_ctx, nonce, ad, ad_len, out, in_len);
 
-  memcpy(out + in_len, tag, c20_ctx->tag_len);
+  OPENSSL_memcpy(out + in_len, tag, c20_ctx->tag_len);
   *out_len = in_len + c20_ctx->tag_len;
   return 1;
 }
@@ -261,8 +261,8 @@ static int aead_chacha20_poly1305_old_seal(
     return 0;
   }
   uint8_t nonce_96[12];
-  memset(nonce_96, 0, 4);
-  memcpy(nonce_96 + 4, nonce, 8);
+  OPENSSL_memset(nonce_96, 0, 4);
+  OPENSSL_memcpy(nonce_96 + 4, nonce, 8);
   return seal_impl(poly1305_update_old, ctx, out, out_len, max_out_len,
                    nonce_96, in, in_len, ad, ad_len);
 }
@@ -276,8 +276,8 @@ static int aead_chacha20_poly1305_old_open(
     return 0;
   }
   uint8_t nonce_96[12];
-  memset(nonce_96, 0, 4);
-  memcpy(nonce_96 + 4, nonce, 8);
+  OPENSSL_memset(nonce_96, 0, 4);
+  OPENSSL_memcpy(nonce_96 + 4, nonce, 8);
   return open_impl(poly1305_update_old, ctx, out, out_len, max_out_len,
                    nonce_96, in, in_len, ad, ad_len);
 }

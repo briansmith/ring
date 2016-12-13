@@ -73,11 +73,11 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     (*block)(ivec, ivec, key);
     for (; n < 16; n += sizeof(size_t)) {
       size_t a, b;
-      memcpy(&a, in + n, sizeof(size_t));
-      memcpy(&b, ivec + n, sizeof(size_t));
+      OPENSSL_memcpy(&a, in + n, sizeof(size_t));
+      OPENSSL_memcpy(&b, ivec + n, sizeof(size_t));
 
       const size_t c = a ^ b;
-      memcpy(out + n, &c, sizeof(size_t));
+      OPENSSL_memcpy(out + n, &c, sizeof(size_t));
     }
     len -= 16;
     out += 16;

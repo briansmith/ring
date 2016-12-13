@@ -63,6 +63,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
+
 /*
  * Custom primitive type for long handling. This converts between an
  * ASN1_INTEGER and a long directly.
@@ -117,7 +120,7 @@ static int long_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype,
     char *cp = (char *)pval;
 
     /* use memcpy, because we may not be long aligned */
-    memcpy(&ltmp, cp, sizeof(long));
+    OPENSSL_memcpy(&ltmp, cp, sizeof(long));
 
     if (ltmp == it->size)
         return -1;
@@ -186,7 +189,7 @@ static int long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
         return 0;
     }
-    memcpy(cp, &ltmp, sizeof(long));
+    OPENSSL_memcpy(cp, &ltmp, sizeof(long));
     return 1;
 }
 

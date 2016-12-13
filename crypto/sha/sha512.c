@@ -60,6 +60,8 @@
 
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 /* IMPLEMENTATION NOTES.
  *
@@ -167,7 +169,7 @@ int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
 void SHA512_Transform(SHA512_CTX *c, const uint8_t *block) {
 #ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
   if ((size_t)block % sizeof(c->u.d[0]) != 0) {
-    memcpy(c->u.p, block, sizeof(c->u.p));
+    OPENSSL_memcpy(c->u.p, block, sizeof(c->u.p));
     block = c->u.p;
   }
 #endif
@@ -196,11 +198,11 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
     size_t n = sizeof(c->u) - c->num;
 
     if (len < n) {
-      memcpy(p + c->num, data, len);
+      OPENSSL_memcpy(p + c->num, data, len);
       c->num += (unsigned int)len;
       return 1;
     } else {
-      memcpy(p + c->num, data, n), c->num = 0;
+      OPENSSL_memcpy(p + c->num, data, n), c->num = 0;
       len -= n;
       data += n;
       sha512_block_data_order(c->h, (uint64_t *)p, 1);
@@ -211,7 +213,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
 #ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
     if ((size_t)data % sizeof(c->u.d[0]) != 0) {
       while (len >= sizeof(c->u)) {
-        memcpy(p, data, sizeof(c->u));
+        OPENSSL_memcpy(p, data, sizeof(c->u));
         sha512_block_data_order(c->h, (uint64_t *)p, 1);
         len -= sizeof(c->u);
         data += sizeof(c->u);
@@ -227,7 +229,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   }
 
   if (len != 0) {
-    memcpy(p, data, len);
+    OPENSSL_memcpy(p, data, len);
     c->num = (int)len;
   }
 
@@ -241,12 +243,12 @@ int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
   p[n] = 0x80; /* There always is a room for one */
   n++;
   if (n > (sizeof(sha->u) - 16)) {
-    memset(p + n, 0, sizeof(sha->u) - n);
+    OPENSSL_memset(p + n, 0, sizeof(sha->u) - n);
     n = 0;
     sha512_block_data_order(sha->h, (uint64_t *)p, 1);
   }
 
-  memset(p + n, 0, sizeof(sha->u) - 16 - n);
+  OPENSSL_memset(p + n, 0, sizeof(sha->u) - 16 - n);
   p[sizeof(sha->u) - 1] = (uint8_t)(sha->Nl);
   p[sizeof(sha->u) - 2] = (uint8_t)(sha->Nl >> 8);
   p[sizeof(sha->u) - 3] = (uint8_t)(sha->Nl >> 16);

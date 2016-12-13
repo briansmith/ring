@@ -108,7 +108,7 @@ static int BN_to_felem(felem out, const BIGNUM *bn) {
 
   felem_bytearray b_out;
   /* BN_bn2bin eats leading zeroes */
-  memset(b_out, 0, sizeof(b_out));
+  OPENSSL_memset(b_out, 0, sizeof(b_out));
   size_t num_bytes = BN_num_bytes(bn);
   if (num_bytes > sizeof(b_out)) {
     OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
@@ -1402,7 +1402,7 @@ static void select_point(const u64 idx, size_t size,
                          const smallfelem pre_comp[/*size*/][3],
                          smallfelem out[3]) {
   u64 *outlimbs = &out[0][0];
-  memset(outlimbs, 0, 3 * sizeof(smallfelem));
+  OPENSSL_memset(outlimbs, 0, 3 * sizeof(smallfelem));
 
   for (size_t i = 0; i < size; i++) {
     const u64 *inlimbs = (const u64 *)&pre_comp[i][0][0];
@@ -1441,7 +1441,7 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
   u8 sign, digit;
 
   /* set nq to the point at infinity */
-  memset(nq, 0, 3 * sizeof(felem));
+  OPENSSL_memset(nq, 0, 3 * sizeof(felem));
 
   /* Loop over all scalars msb-to-lsb, interleaving additions of multiples
    * of the generator (two in each of the last 32 rounds) and additions of
@@ -1632,8 +1632,8 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
 
     /* we treat NULL scalars as 0, and NULL points as points at infinity,
      * i.e., they contribute nothing to the linear combination. */
-    memset(secrets, 0, num_points * sizeof(felem_bytearray));
-    memset(pre_comp, 0, num_points * 17 * 3 * sizeof(smallfelem));
+    OPENSSL_memset(secrets, 0, num_points * sizeof(felem_bytearray));
+    OPENSSL_memset(pre_comp, 0, num_points * 17 * 3 * sizeof(smallfelem));
     for (size_t i = 0; i < num_points; ++i) {
       if (i == num) {
         /* we didn't have a valid precomputation, so we pick the generator. */
@@ -1688,7 +1688,7 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
   if (g_scalar != NULL) {
     size_t num_bytes;
 
-    memset(g_secret, 0, sizeof(g_secret));
+    OPENSSL_memset(g_secret, 0, sizeof(g_secret));
     /* reduce g_scalar to 0 <= g_scalar < 2^256 */
     if (BN_num_bits(g_scalar) > 256 || BN_is_negative(g_scalar)) {
       /* this is an unusual input, and we don't guarantee

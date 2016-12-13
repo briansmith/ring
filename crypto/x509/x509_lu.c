@@ -188,7 +188,7 @@ X509_STORE *X509_STORE_new(void)
 
     if ((ret = (X509_STORE *)OPENSSL_malloc(sizeof(X509_STORE))) == NULL)
         return NULL;
-    memset(ret, 0, sizeof(*ret));
+    OPENSSL_memset(ret, 0, sizeof(*ret));
     CRYPTO_MUTEX_init(&ret->objs_lock);
     ret->objs = sk_X509_OBJECT_new(x509_object_cmp);
     if (ret->objs == NULL)

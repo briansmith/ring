@@ -21,6 +21,8 @@
 #include <openssl/crypto.h>
 #include <openssl/chacha.h>
 
+#include "../internal.h"
+
 
 static const uint8_t kKey[32] = {
     0x98, 0xbe, 0xf1, 0x46, 0x9b, 0xe7, 0x26, 0x98, 0x37, 0xa4, 0x5b,
@@ -217,15 +219,15 @@ static_assert(sizeof(kInput) == sizeof(kOutput),
 static bool TestChaCha20(size_t len) {
   std::unique_ptr<uint8_t[]> buf(new uint8_t[len]);
   CRYPTO_chacha_20(buf.get(), kInput, len, kKey, kNonce, kCounter);
-  if (memcmp(buf.get(), kOutput, len) != 0) {
+  if (OPENSSL_memcmp(buf.get(), kOutput, len) != 0) {
     fprintf(stderr, "Mismatch at length %zu.\n", len);
     return false;
   }
 
   // Test in-place.
-  memcpy(buf.get(), kInput, len);
+  OPENSSL_memcpy(buf.get(), kInput, len);
   CRYPTO_chacha_20(buf.get(), buf.get(), len, kKey, kNonce, kCounter);
-  if (memcmp(buf.get(), kOutput, len) != 0) {
+  if (OPENSSL_memcmp(buf.get(), kOutput, len) != 0) {
     fprintf(stderr, "Mismatch at length %zu, in-place.\n", len);
     return false;
   }

@@ -62,6 +62,8 @@
 #include <openssl/digest.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
@@ -130,12 +132,12 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       }
     } else {
       assert(key_len <= sizeof(key_block));
-      memcpy(key_block, key, key_len);
+      OPENSSL_memcpy(key_block, key, key_len);
       key_block_len = (unsigned)key_len;
     }
     /* Keys are then padded with zeros. */
     if (key_block_len != EVP_MAX_MD_BLOCK_SIZE) {
-      memset(&key_block[key_block_len], 0, sizeof(key_block) - key_block_len);
+      OPENSSL_memset(&key_block[key_block_len], 0, sizeof(key_block) - key_block_len);
     }
 
     for (size_t i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {

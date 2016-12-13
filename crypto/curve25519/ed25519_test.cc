@@ -17,6 +17,7 @@
 
 #include <openssl/curve25519.h>
 
+#include "../internal.h"
 #include "../test/file_test.h"
 
 
@@ -58,13 +59,13 @@ static bool TestKeypairFromSeed() {
   ED25519_keypair(public_key1, private_key1);
 
   uint8_t seed[32];
-  memcpy(seed, private_key1, sizeof(seed));
+  OPENSSL_memcpy(seed, private_key1, sizeof(seed));
 
   uint8_t public_key2[32], private_key2[64];
   ED25519_keypair_from_seed(public_key2, private_key2, seed);
 
-  if (memcmp(public_key1, public_key2, sizeof(public_key1)) != 0 ||
-      memcmp(private_key1, private_key2, sizeof(private_key1)) != 0) {
+  if (OPENSSL_memcmp(public_key1, public_key2, sizeof(public_key1)) != 0 ||
+      OPENSSL_memcmp(private_key1, private_key2, sizeof(private_key1)) != 0) {
     fprintf(stderr, "TestKeypairFromSeed: resulting keypairs did not match.\n");
     return false;
   }

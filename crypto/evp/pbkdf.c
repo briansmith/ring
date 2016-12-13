@@ -59,6 +59,8 @@
 
 #include <openssl/hmac.h>
 
+#include "../internal.h"
+
 
 int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                       const uint8_t *salt, size_t salt_len, unsigned iterations,
@@ -101,7 +103,7 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
       return 0;
     }
     HMAC_CTX_cleanup(&hctx);
-    memcpy(p, digest_tmp, cplen);
+    OPENSSL_memcpy(p, digest_tmp, cplen);
     for (j = 1; j < iterations; j++) {
       if (!HMAC_CTX_copy(&hctx, &hctx_tpl)) {
         HMAC_CTX_cleanup(&hctx_tpl);

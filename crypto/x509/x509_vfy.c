@@ -1863,7 +1863,7 @@ int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time)
         int max_length = sizeof("YYMMDDHHMMSS+hhmm") - 1;
         if (remaining < min_length || remaining > max_length)
             return 0;
-        memcpy(p, str, 10);
+        OPENSSL_memcpy(p, str, 10);
         p += 10;
         str += 10;
         remaining -= 10;
@@ -1875,7 +1875,7 @@ int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time)
         int max_length = sizeof("YYYYMMDDHHMMSS.fff+hhmm") - 1;
         if (remaining < min_length || remaining > max_length)
             return 0;
-        memcpy(p, str, 12);
+        OPENSSL_memcpy(p, str, 12);
         p += 12;
         str += 12;
         remaining -= 12;
@@ -2260,7 +2260,7 @@ X509_STORE_CTX *X509_STORE_CTX_new(void)
         OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
         return NULL;
     }
-    memset(ctx, 0, sizeof(X509_STORE_CTX));
+    OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
     return ctx;
 }
 
@@ -2278,7 +2278,7 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
 {
     int ret = 1;
 
-    memset(ctx, 0, sizeof(X509_STORE_CTX));
+    OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
     ctx->ctx = store;
     ctx->cert = x509;
     ctx->untrusted = chain;
@@ -2371,7 +2371,7 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
         X509_VERIFY_PARAM_free(ctx->param);
     }
 
-    memset(ctx, 0, sizeof(X509_STORE_CTX));
+    OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return 0;
 }
@@ -2409,7 +2409,7 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx)
         ctx->chain = NULL;
     }
     CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
-    memset(&ctx->ex_data, 0, sizeof(CRYPTO_EX_DATA));
+    OPENSSL_memset(&ctx->ex_data, 0, sizeof(CRYPTO_EX_DATA));
 }
 
 void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth)

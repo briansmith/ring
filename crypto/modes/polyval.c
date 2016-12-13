@@ -54,11 +54,11 @@ static void reverse_and_mulX_ghash(polyval_block *b) {
 
 void CRYPTO_POLYVAL_init(struct polyval_ctx *ctx, const uint8_t key[16]) {
   polyval_block H;
-  memcpy(H.c, key, 16);
+  OPENSSL_memcpy(H.c, key, 16);
   reverse_and_mulX_ghash(&H);
 
   CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, ctx->Htable, H.c);
-  memset(&ctx->S, 0, sizeof(ctx->S));
+  OPENSSL_memset(&ctx->S, 0, sizeof(ctx->S));
 }
 
 void CRYPTO_POLYVAL_update_blocks(struct polyval_ctx *ctx, const uint8_t *in,
@@ -71,7 +71,7 @@ void CRYPTO_POLYVAL_update_blocks(struct polyval_ctx *ctx, const uint8_t *in,
     if (todo > sizeof(reversed)) {
       todo = sizeof(reversed);
     }
-    memcpy(reversed, in, todo);
+    OPENSSL_memcpy(reversed, in, todo);
     in_len -= todo;
 
     size_t blocks = todo / sizeof(polyval_block);
@@ -86,7 +86,7 @@ void CRYPTO_POLYVAL_update_blocks(struct polyval_ctx *ctx, const uint8_t *in,
 void CRYPTO_POLYVAL_finish(const struct polyval_ctx *ctx, uint8_t out[16]) {
   polyval_block S = ctx->S;
   byte_reverse(&S);
-  memcpy(out, &S.c, sizeof(polyval_block));
+  OPENSSL_memcpy(out, &S.c, sizeof(polyval_block));
 }
 
 

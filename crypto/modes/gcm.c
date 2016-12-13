@@ -363,7 +363,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     uint8_t c[16];
   } H;
 
-  memcpy(H.c, gcm_key, 16);
+  OPENSSL_memcpy(H.c, gcm_key, 16);
 
   /* H is stored in host byte order */
   H.u[0] = CRYPTO_bswap8(H.u[0]);
@@ -426,11 +426,11 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 
 void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
                         block128_f block) {
-  memset(ctx, 0, sizeof(*ctx));
+  OPENSSL_memset(ctx, 0, sizeof(*ctx));
   ctx->block = block;
 
   uint8_t gcm_key[16];
-  memset(gcm_key, 0, sizeof(gcm_key));
+  OPENSSL_memset(gcm_key, 0, sizeof(gcm_key));
   (*block)(gcm_key, gcm_key, aes_key);
 
   CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, ctx->Htable, gcm_key);
@@ -453,7 +453,7 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
   ctx->mres = 0;
 
   if (len == 12) {
-    memcpy(ctx->Yi.c, iv, 12);
+    OPENSSL_memcpy(ctx->Yi.c, iv, 12);
     ctx->Yi.c[15] = 1;
     ctr = 1;
   } else {
@@ -1060,7 +1060,8 @@ int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag, size_t len) {
 
 void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag, size_t len) {
   CRYPTO_gcm128_finish(ctx, NULL, 0);
-  memcpy(tag, ctx->Xi.c, len <= sizeof(ctx->Xi.c) ? len : sizeof(ctx->Xi.c));
+  OPENSSL_memcpy(tag, ctx->Xi.c,
+                 len <= sizeof(ctx->Xi.c) ? len : sizeof(ctx->Xi.c));
 }
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)

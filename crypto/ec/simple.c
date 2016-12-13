@@ -74,6 +74,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 /* Most method functions in this file are designed to work with non-trivial
@@ -988,7 +989,7 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
   if (prod_Z == NULL) {
     goto err;
   }
-  memset(prod_Z, 0, num * sizeof(prod_Z[0]));
+  OPENSSL_memset(prod_Z, 0, num * sizeof(prod_Z[0]));
   for (size_t i = 0; i < num; i++) {
     prod_Z[i] = BN_new();
     if (prod_Z[i] == NULL) {

@@ -66,6 +66,7 @@
 #include <openssl/x509v3.h>
 
 #include "pcy_int.h"
+#include "../internal.h"
 
 /*
  * Enable this to print out the complete policy tree at various point during
@@ -238,7 +239,7 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
         return 0;
     }
 
-    memset(tree->levels, 0, n * sizeof(X509_POLICY_LEVEL));
+    OPENSSL_memset(tree->levels, 0, n * sizeof(X509_POLICY_LEVEL));
 
     tree->nlevel = n;
 

@@ -132,7 +132,7 @@ static bool TestGetASN1() {
   }
   if (!CBS_get_asn1(&data, &contents, 0x30) ||
       CBS_len(&contents) != 2 ||
-      memcmp(CBS_data(&contents), "\x01\x02", 2) != 0) {
+      OPENSSL_memcmp(CBS_data(&contents), "\x01\x02", 2) != 0) {
     return false;
   }
 
@@ -193,7 +193,7 @@ static bool TestGetASN1() {
       !CBS_get_optional_asn1(&data, &contents, &present, 0xa1) ||
       !present ||
       CBS_len(&contents) != 3 ||
-      memcmp(CBS_data(&contents), "\x04\x01\x01", 3) != 0) {
+      OPENSSL_memcmp(CBS_data(&contents), "\x04\x01\x01", 3) != 0) {
     return false;
   }
 
@@ -235,7 +235,7 @@ static bool TestGetASN1() {
   if (!CBS_get_any_asn1(&data, &contents, &tag) ||
       tag != CBS_ASN1_SEQUENCE ||
       CBS_len(&contents) != 2 ||
-      memcmp(CBS_data(&contents), "\x01\x02", 2) != 0) {
+      OPENSSL_memcmp(CBS_data(&contents), "\x01\x02", 2) != 0) {
     return false;
   }
 
@@ -245,7 +245,7 @@ static bool TestGetASN1() {
       tag != CBS_ASN1_SEQUENCE ||
       header_len != 2 ||
       CBS_len(&contents) != 4 ||
-      memcmp(CBS_data(&contents), "\x30\x02\x01\x02", 2) != 0) {
+      OPENSSL_memcmp(CBS_data(&contents), "\x30\x02\x01\x02", 2) != 0) {
     return false;
   }
 
@@ -312,7 +312,8 @@ static bool TestCBBBasic() {
   }
 
   bssl::UniquePtr<uint8_t> scoper(buf);
-  return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
+  return buf_len == sizeof(kExpected) &&
+         OPENSSL_memcmp(buf, kExpected, buf_len) == 0;
 }
 
 static bool TestCBBFixed() {
@@ -396,7 +397,8 @@ static bool TestCBBPrefixed() {
   }
 
   bssl::UniquePtr<uint8_t> scoper(buf);
-  return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
+  return buf_len == sizeof(kExpected) &&
+         OPENSSL_memcmp(buf, kExpected, buf_len) == 0;
 }
 
 static bool TestCBBDiscardChild() {
@@ -445,7 +447,8 @@ static bool TestCBBDiscardChild() {
         0, 0, 3, 0xdd, 0xdd, 0xdd,
         1, 0xff,
   };
-  return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
+  return buf_len == sizeof(kExpected) &&
+         OPENSSL_memcmp(buf, kExpected, buf_len) == 0;
 }
 
 static bool TestCBBMisuse() {
@@ -484,7 +487,7 @@ static bool TestCBBMisuse() {
   bssl::UniquePtr<uint8_t> scoper(buf);
 
   if (buf_len != 3 ||
-      memcmp(buf, "\x01\x01\x02", 3) != 0) {
+      OPENSSL_memcmp(buf, "\x01\x01\x02", 3) != 0) {
     return false;
   }
   return true;
@@ -507,7 +510,8 @@ static bool TestCBBASN1() {
   }
   bssl::UniquePtr<uint8_t> scoper(buf);
 
-  if (buf_len != sizeof(kExpected) || memcmp(buf, kExpected, buf_len) != 0) {
+  if (buf_len != sizeof(kExpected) ||
+      OPENSSL_memcmp(buf, kExpected, buf_len) != 0) {
     return false;
   }
 
@@ -525,8 +529,8 @@ static bool TestCBBASN1() {
   scoper.reset(buf);
 
   if (buf_len != 3 + 130 ||
-      memcmp(buf, "\x30\x81\x82", 3) != 0 ||
-      memcmp(buf + 3, test_data.data(), 130) != 0) {
+      OPENSSL_memcmp(buf, "\x30\x81\x82", 3) != 0 ||
+      OPENSSL_memcmp(buf + 3, test_data.data(), 130) != 0) {
     return false;
   }
 
@@ -542,8 +546,8 @@ static bool TestCBBASN1() {
   scoper.reset(buf);
 
   if (buf_len != 4 + 1000 ||
-      memcmp(buf, "\x30\x82\x03\xe8", 4) != 0 ||
-      memcmp(buf + 4, test_data.data(), 1000)) {
+      OPENSSL_memcmp(buf, "\x30\x82\x03\xe8", 4) != 0 ||
+      OPENSSL_memcmp(buf + 4, test_data.data(), 1000)) {
     return false;
   }
 
@@ -560,8 +564,9 @@ static bool TestCBBASN1() {
   scoper.reset(buf);
 
   if (buf_len != 5 + 5 + 100000 ||
-      memcmp(buf, "\x30\x83\x01\x86\xa5\x30\x83\x01\x86\xa0", 10) != 0 ||
-      memcmp(buf + 10, test_data.data(), 100000)) {
+      OPENSSL_memcmp(buf, "\x30\x83\x01\x86\xa5\x30\x83\x01\x86\xa0", 10) !=
+          0 ||
+      OPENSSL_memcmp(buf + 10, test_data.data(), 100000)) {
     return false;
   }
 
@@ -584,7 +589,7 @@ static bool DoBerConvert(const char *name,
 
   if (out == NULL) {
     if (ber_len != der_len ||
-        memcmp(der_expected, ber, ber_len) != 0) {
+        OPENSSL_memcmp(der_expected, ber, ber_len) != 0) {
       fprintf(stderr, "%s: incorrect unconverted result.\n", name);
       return false;
     }
@@ -593,7 +598,7 @@ static bool DoBerConvert(const char *name,
   }
 
   if (out_len != der_len ||
-      memcmp(out, der_expected, der_len) != 0) {
+      OPENSSL_memcmp(out, der_expected, der_len) != 0) {
     fprintf(stderr, "%s: incorrect converted result.\n", name);
     return false;
   }
@@ -702,7 +707,7 @@ static bool TestImplicitString() {
     }
 
     if (ok && (CBS_len(&out) != test.out_len ||
-               memcmp(CBS_data(&out), test.out, test.out_len) != 0)) {
+               OPENSSL_memcmp(CBS_data(&out), test.out, test.out_len) != 0)) {
       fprintf(stderr, "CBS_get_asn1_implicit_string gave the wrong output\n");
       return false;
     }
@@ -772,7 +777,8 @@ static bool TestASN1Uint64() {
       return false;
     }
     bssl::UniquePtr<uint8_t> scoper(out);
-    if (len != test->encoding_len || memcmp(out, test->encoding, len) != 0) {
+    if (len != test->encoding_len ||
+        OPENSSL_memcmp(out, test->encoding, len) != 0) {
       return false;
     }
   }

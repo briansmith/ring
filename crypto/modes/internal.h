@@ -53,6 +53,8 @@
 
 #include <string.h>
 
+#include "../internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -100,13 +102,13 @@ static inline uint64_t CRYPTO_bswap8(uint64_t x) {
 
 static inline uint32_t GETU32(const void *in) {
   uint32_t v;
-  memcpy(&v, in, sizeof(v));
+  OPENSSL_memcpy(&v, in, sizeof(v));
   return CRYPTO_bswap4(v);
 }
 
 static inline void PUTU32(void *out, uint32_t v) {
   v = CRYPTO_bswap4(v);
-  memcpy(out, &v, sizeof(v));
+  OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
 static inline uint32_t GETU32_aligned(const void *in) {

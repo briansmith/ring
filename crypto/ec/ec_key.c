@@ -91,7 +91,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
     return NULL;
   }
 
-  memset(ret, 0, sizeof(EC_KEY));
+  OPENSSL_memset(ret, 0, sizeof(EC_KEY));
 
   if (engine) {
     ret->ecdsa_meth = ENGINE_get_ECDSA_method(engine);

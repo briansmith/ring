@@ -167,7 +167,7 @@ static void cfbr_encrypt_block(const uint8_t *in, uint8_t *out, unsigned nbits,
   }
 
   /* fill in the first half of the new IV with the current IV */
-  memcpy(ovec, ivec, 16);
+  OPENSSL_memcpy(ovec, ivec, 16);
   /* construct the new IV */
   (*block)(ivec, ivec, key);
   num = (nbits + 7) / 8;
@@ -186,7 +186,7 @@ static void cfbr_encrypt_block(const uint8_t *in, uint8_t *out, unsigned nbits,
   rem = nbits % 8;
   num = nbits / 8;
   if (rem == 0) {
-    memcpy(ivec, ovec + num, 16);
+    OPENSSL_memcpy(ivec, ovec + num, 16);
   } else {
     for (n = 0; n < 16; ++n) {
       ivec[n] = ovec[n + num] << rem | ovec[n + num + 1] >> (8 - rem);

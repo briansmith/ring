@@ -166,7 +166,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  memset(session, 0, sizeof(SSL_SESSION));
+  OPENSSL_memset(session, 0, sizeof(SSL_SESSION));
 
   session->verify_result = X509_V_ERR_INVALID_CALL;
   session->references = 1;
@@ -185,11 +185,11 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   new_session->is_server = session->is_server;
   new_session->ssl_version = session->ssl_version;
   new_session->sid_ctx_length = session->sid_ctx_length;
-  memcpy(new_session->sid_ctx, session->sid_ctx, session->sid_ctx_length);
+  OPENSSL_memcpy(new_session->sid_ctx, session->sid_ctx, session->sid_ctx_length);
 
   /* Copy the key material. */
   new_session->master_key_length = session->master_key_length;
-  memcpy(new_session->master_key, session->master_key,
+  OPENSSL_memcpy(new_session->master_key, session->master_key,
          session->master_key_length);
   new_session->cipher = session->cipher;
 
@@ -245,7 +245,8 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     }
   }
 
-  memcpy(new_session->peer_sha256, session->peer_sha256, SHA256_DIGEST_LENGTH);
+  OPENSSL_memcpy(new_session->peer_sha256, session->peer_sha256,
+                 SHA256_DIGEST_LENGTH);
   new_session->peer_sha256_valid = session->peer_sha256_valid;
 
   if (session->tlsext_hostname != NULL) {
@@ -263,14 +264,14 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   /* Copy non-authentication connection properties. */
   if (dup_flags & SSL_SESSION_INCLUDE_NONAUTH) {
     new_session->session_id_length = session->session_id_length;
-    memcpy(new_session->session_id, session->session_id,
-           session->session_id_length);
+    OPENSSL_memcpy(new_session->session_id, session->session_id,
+                   session->session_id_length);
 
     new_session->group_id = session->group_id;
 
-    memcpy(new_session->original_handshake_hash,
-           session->original_handshake_hash,
-           session->original_handshake_hash_len);
+    OPENSSL_memcpy(new_session->original_handshake_hash,
+                   session->original_handshake_hash,
+                   session->original_handshake_hash_len);
     new_session->original_handshake_hash_len =
         session->original_handshake_hash_len;
     new_session->tlsext_tick_lifetime_hint = session->tlsext_tick_lifetime_hint;
@@ -387,7 +388,7 @@ size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,
   if (max_out > (size_t)session->master_key_length) {
     max_out = (size_t)session->master_key_length;
   }
-  memcpy(out, session->master_key, max_out);
+  OPENSSL_memcpy(out, session->master_key, max_out);
   return max_out;
 }
 
@@ -418,7 +419,7 @@ int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
 
   assert(sizeof(session->sid_ctx) < 256);
   session->sid_ctx_length = (uint8_t)sid_ctx_len;
-  memcpy(session->sid_ctx, sid_ctx, sid_ctx_len);
+  OPENSSL_memcpy(session->sid_ctx, sid_ctx, sid_ctx_len);
 
   return 1;
 }
@@ -517,7 +518,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     goto err;
   }
-  memcpy(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length);
+  OPENSSL_memcpy(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length);
   session->sid_ctx_length = ssl->sid_ctx_length;
 
   /* The session is marked not resumable until it is completely filled in. */
@@ -627,7 +628,7 @@ int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session) {
                       NULL)) {
       goto err;
     }
-    memcpy(key_name, tctx->tlsext_tick_key_name, 16);
+    OPENSSL_memcpy(key_name, tctx->tlsext_tick_key_name, 16);
   }
 
   uint8_t *ptr;
@@ -639,7 +640,7 @@ int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session) {
 
   size_t total = 0;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  memcpy(ptr, session_buf, session_len);
+  OPENSSL_memcpy(ptr, session_buf, session_len);
   total = session_len;
 #else
   int len;
@@ -679,7 +680,8 @@ int ssl_session_is_context_valid(const SSL *ssl, const SSL_SESSION *session) {
   }
 
   return session->sid_ctx_length == ssl->sid_ctx_length &&
-         memcmp(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length) == 0;
+         OPENSSL_memcmp(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length) ==
+             0;
 }
 
 int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
@@ -737,7 +739,7 @@ static enum ssl_session_result_t ssl_lookup_session(
     SSL_SESSION data;
     data.ssl_version = ssl->version;
     data.session_id_length = session_id_len;
-    memcpy(data.session_id, session_id, session_id_len);
+    OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 
     CRYPTO_MUTEX_lock_read(&ssl->initial_ctx->lock);
     session = lh_SSL_SESSION_retrieve(ssl->initial_ctx->sessions, &data);

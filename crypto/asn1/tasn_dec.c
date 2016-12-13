@@ -1108,7 +1108,7 @@ static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen)
             OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
             return 0;
         }
-        memcpy(buf->data + len, *p, plen);
+        OPENSSL_memcpy(buf->data + len, *p, plen);
     }
     *p += plen;
     return 1;

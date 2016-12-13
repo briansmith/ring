@@ -82,7 +82,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
     return NULL;
   }
 
-  memset(rsa, 0, sizeof(RSA));
+  OPENSSL_memset(rsa, 0, sizeof(RSA));
 
   if (engine) {
     rsa->meth = ENGINE_get_RSA_method(engine);
@@ -446,8 +446,8 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
       return 0;
     }
 
-    memcpy(signed_msg, prefix, prefix_len);
-    memcpy(signed_msg + prefix_len, msg, msg_len);
+    OPENSSL_memcpy(signed_msg, prefix, prefix_len);
+    OPENSSL_memcpy(signed_msg + prefix_len, msg, msg_len);
 
     *out_msg = signed_msg;
     *out_msg_len = signed_msg_len;
@@ -532,7 +532,7 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
     goto out;
   }
 
-  if (len != signed_msg_len || memcmp(buf, signed_msg, len) != 0) {
+  if (len != signed_msg_len || OPENSSL_memcmp(buf, signed_msg, len) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     goto out;
   }

@@ -80,7 +80,7 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   EVP_CIPHER_CTX_init(&tls_ctx->cipher_ctx);
   HMAC_CTX_init(&tls_ctx->hmac_ctx);
   assert(mac_key_len <= EVP_MAX_MD_SIZE);
-  memcpy(tls_ctx->mac_key, key, mac_key_len);
+  OPENSSL_memcpy(tls_ctx->mac_key, key, mac_key_len);
   tls_ctx->mac_key_len = (uint8_t)mac_key_len;
   tls_ctx->implicit_iv = implicit_iv;
 
@@ -182,7 +182,7 @@ static int aead_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     /* Compute padding and feed that into the cipher. */
     uint8_t padding[256];
     unsigned padding_len = block_size - ((in_len + mac_len) % block_size);
-    memset(padding, padding_len - 1, padding_len);
+    OPENSSL_memset(padding, padding_len - 1, padding_len);
     if (!EVP_EncryptUpdate(&tls_ctx->cipher_ctx, out + total, &len, padding,
                            (int)padding_len)) {
       return 0;
@@ -288,7 +288,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   /* To allow for CBC mode which changes cipher length, |ad| doesn't include the
    * length for legacy ciphers. */
   uint8_t ad_fixed[13];
-  memcpy(ad_fixed, ad, 11);
+  OPENSSL_memcpy(ad_fixed, ad, 11);
   ad_fixed[11] = (uint8_t)(data_len >> 8);
   ad_fixed[12] = (uint8_t)(data_len & 0xff);
   ad_len += 2;

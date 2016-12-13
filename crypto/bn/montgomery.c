@@ -132,7 +132,7 @@ BN_MONT_CTX *BN_MONT_CTX_new(void) {
     return NULL;
   }
 
-  memset(ret, 0, sizeof(BN_MONT_CTX));
+  OPENSSL_memset(ret, 0, sizeof(BN_MONT_CTX));
   BN_init(&ret->RR);
   BN_init(&ret->N);
 
@@ -281,7 +281,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
 
   /* clear the top words of T */
   if (max > r->top) {
-    memset(&rp[r->top], 0, (max - r->top) * sizeof(BN_ULONG));
+    OPENSSL_memset(&rp[r->top], 0, (max - r->top) * sizeof(BN_ULONG));
   }
 
   r->top = max;

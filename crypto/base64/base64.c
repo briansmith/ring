@@ -62,6 +62,8 @@
 
 #include <openssl/type_check.h>
 
+#include "../internal.h"
+
 
 /* Encoding. */
 
@@ -95,7 +97,7 @@ int EVP_EncodedLength(size_t *out_len, size_t len) {
 }
 
 void EVP_EncodeInit(EVP_ENCODE_CTX *ctx) {
-  memset(ctx, 0, sizeof(EVP_ENCODE_CTX));
+  OPENSSL_memset(ctx, 0, sizeof(EVP_ENCODE_CTX));
 }
 
 void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
@@ -110,14 +112,14 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
   assert(ctx->data_used < sizeof(ctx->data));
 
   if (sizeof(ctx->data) - ctx->data_used > in_len) {
-    memcpy(&ctx->data[ctx->data_used], in, in_len);
+    OPENSSL_memcpy(&ctx->data[ctx->data_used], in, in_len);
     ctx->data_used += (unsigned)in_len;
     return;
   }
 
   if (ctx->data_used != 0) {
     const size_t todo = sizeof(ctx->data) - ctx->data_used;
-    memcpy(&ctx->data[ctx->data_used], in, todo);
+    OPENSSL_memcpy(&ctx->data[ctx->data_used], in, todo);
     in += todo;
     in_len -= todo;
 
@@ -149,7 +151,7 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
   }
 
   if (in_len != 0) {
-    memcpy(ctx->data, in, in_len);
+    OPENSSL_memcpy(ctx->data, in, in_len);
   }
 
   ctx->data_used = (unsigned)in_len;
@@ -224,7 +226,7 @@ int EVP_DecodedLength(size_t *out_len, size_t len) {
 }
 
 void EVP_DecodeInit(EVP_ENCODE_CTX *ctx) {
-  memset(ctx, 0, sizeof(EVP_ENCODE_CTX));
+  OPENSSL_memset(ctx, 0, sizeof(EVP_ENCODE_CTX));
 }
 
 /* kBase64ASCIIToBinData maps characters (c < 128) to their base64 value, or

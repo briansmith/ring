@@ -38,9 +38,9 @@ static bool TestSelectW5() {
   // Fill a table with some garbage input.
   P256_POINT table[16];
   for (size_t i = 0; i < 16; i++) {
-    memset(table[i].X, 3 * i, sizeof(table[i].X));
-    memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
-    memset(table[i].Z, 3 * i + 2, sizeof(table[i].Z));
+    OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
+    OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
+    OPENSSL_memset(table[i].Z, 3 * i + 2, sizeof(table[i].Z));
   }
 
   for (int i = 0; i <= 16; i++) {
@@ -49,12 +49,12 @@ static bool TestSelectW5() {
 
     P256_POINT expected;
     if (i == 0) {
-      memset(&expected, 0, sizeof(expected));
+      OPENSSL_memset(&expected, 0, sizeof(expected));
     } else {
       expected = table[i-1];
     }
 
-    if (memcmp(&val, &expected, sizeof(P256_POINT)) != 0) {
+    if (OPENSSL_memcmp(&val, &expected, sizeof(P256_POINT)) != 0) {
       fprintf(stderr, "ecp_nistz256_select_w5(%d) gave the wrong value.\n", i);
       return false;
     }
@@ -67,8 +67,8 @@ static bool TestSelectW7() {
   // Fill a table with some garbage input.
   P256_POINT_AFFINE table[64];
   for (size_t i = 0; i < 64; i++) {
-    memset(table[i].X, 2 * i, sizeof(table[i].X));
-    memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
+    OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
+    OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
   }
 
   for (int i = 0; i <= 64; i++) {
@@ -77,12 +77,12 @@ static bool TestSelectW7() {
 
     P256_POINT_AFFINE expected;
     if (i == 0) {
-      memset(&expected, 0, sizeof(expected));
+      OPENSSL_memset(&expected, 0, sizeof(expected));
     } else {
       expected = table[i-1];
     }
 
-    if (memcmp(&val, &expected, sizeof(P256_POINT_AFFINE)) != 0) {
+    if (OPENSSL_memcmp(&val, &expected, sizeof(P256_POINT_AFFINE)) != 0) {
       fprintf(stderr, "ecp_nistz256_select_w7(%d) gave the wrong value.\n", i);
       return false;
     }
@@ -105,7 +105,7 @@ static bool GetFieldElement(FileTest *t, BN_ULONG out[P256_LIMBS],
 
   // |byte| contains bytes in big-endian while |out| should contain |BN_ULONG|s
   // in little-endian.
-  memset(out, 0, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memset(out, 0, P256_LIMBS * sizeof(BN_ULONG));
   for (size_t i = 0; i < bytes.size(); i++) {
     out[P256_LIMBS - 1 - (i / BN_BYTES)] <<= 8;
     out[P256_LIMBS - 1 - (i / BN_BYTES)] |= bytes[i];
@@ -127,7 +127,7 @@ static std::string FieldElementToString(const BN_ULONG a[P256_LIMBS]) {
 static bool ExpectFieldElementsEqual(FileTest *t, const char *message,
                                      const BN_ULONG expected[P256_LIMBS],
                                      const BN_ULONG actual[P256_LIMBS]) {
-  if (memcmp(expected, actual, sizeof(BN_ULONG) * P256_LIMBS) == 0) {
+  if (OPENSSL_memcmp(expected, actual, sizeof(BN_ULONG) * P256_LIMBS) == 0) {
     return true;
   }
 
@@ -160,7 +160,7 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
     return false;
   }
 
-  memset(out, 0, sizeof(P256_POINT_AFFINE));
+  OPENSSL_memset(out, 0, sizeof(P256_POINT_AFFINE));
 
   if (BN_is_zero(z.get())) {
     // The point at infinity is represented as (0, 0).
@@ -189,8 +189,8 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
     return false;
   }
 
-  memcpy(out->X, x->d, sizeof(BN_ULONG) * x->top);
-  memcpy(out->Y, y->d, sizeof(BN_ULONG) * y->top);
+  OPENSSL_memcpy(out->X, x->d, sizeof(BN_ULONG) * x->top);
+  OPENSSL_memcpy(out->Y, y->d, sizeof(BN_ULONG) * y->top);
   return true;
 }
 
@@ -209,7 +209,7 @@ static bool ExpectPointsEqual(FileTest *t, const char *message,
     return false;
   }
 
-  if (memcmp(expected, &affine, sizeof(P256_POINT_AFFINE)) != 0) {
+  if (OPENSSL_memcmp(expected, &affine, sizeof(P256_POINT_AFFINE)) != 0) {
     t->PrintLine("%s", message);
     t->PrintLine("Expected: (%s, %s)",
                  FieldElementToString(expected->X).c_str(),
@@ -237,7 +237,7 @@ static bool TestNegate(FileTest *t) {
     return false;
   }
 
-  memcpy(ret, a, sizeof(ret));
+  OPENSSL_memcpy(ret, a, sizeof(ret));
   ecp_nistz256_neg(ret, ret);
   if (!ExpectFieldElementsEqual(
           t, "In-place ecp_nistz256_neg(A) was incorrect.", b, ret)) {
@@ -251,7 +251,7 @@ static bool TestNegate(FileTest *t) {
     return false;
   }
 
-  memcpy(ret, b, sizeof(ret));
+  OPENSSL_memcpy(ret, b, sizeof(ret));
   ecp_nistz256_neg(ret, ret);
   if (!ExpectFieldElementsEqual(
           t, "In-place ecp_nistz256_neg(B) was incorrect.", a, ret)) {
@@ -282,42 +282,42 @@ static bool TestMulMont(FileTest *t) {
     return false;
   }
 
-  memcpy(ret, a, sizeof(ret));
+  OPENSSL_memcpy(ret, a, sizeof(ret));
   ecp_nistz256_mul_mont(ret, ret, b);
   if (!ExpectFieldElementsEqual(
           t, "ecp_nistz256_mul_mont(ret = A, B) was incorrect.", result, ret)) {
     return false;
   }
 
-  memcpy(ret, a, sizeof(ret));
+  OPENSSL_memcpy(ret, a, sizeof(ret));
   ecp_nistz256_mul_mont(ret, b, ret);
   if (!ExpectFieldElementsEqual(
           t, "ecp_nistz256_mul_mont(B, ret = A) was incorrect.", result, ret)) {
     return false;
   }
 
-  memcpy(ret, b, sizeof(ret));
+  OPENSSL_memcpy(ret, b, sizeof(ret));
   ecp_nistz256_mul_mont(ret, a, ret);
   if (!ExpectFieldElementsEqual(
           t, "ecp_nistz256_mul_mont(A, ret = B) was incorrect.", result, ret)) {
     return false;
   }
 
-  memcpy(ret, b, sizeof(ret));
+  OPENSSL_memcpy(ret, b, sizeof(ret));
   ecp_nistz256_mul_mont(ret, ret, a);
   if (!ExpectFieldElementsEqual(
           t, "ecp_nistz256_mul_mont(ret = B, A) was incorrect.", result, ret)) {
     return false;
   }
 
-  if (memcmp(a, b, sizeof(a)) == 0) {
+  if (OPENSSL_memcmp(a, b, sizeof(a)) == 0) {
     ecp_nistz256_sqr_mont(ret, a);
     if (!ExpectFieldElementsEqual(t, "ecp_nistz256_sqr_mont(A) was incorrect.",
                                   result, ret)) {
       return false;
     }
 
-    memcpy(ret, a, sizeof(ret));
+    OPENSSL_memcpy(ret, a, sizeof(ret));
     ecp_nistz256_sqr_mont(ret, ret);
     if (!ExpectFieldElementsEqual(
             t, "ecp_nistz256_sqr_mont(ret = A) was incorrect.", result, ret)) {
@@ -342,7 +342,7 @@ static bool TestFromMont(FileTest *t) {
     return false;
   }
 
-  memcpy(ret, a, sizeof(ret));
+  OPENSSL_memcpy(ret, a, sizeof(ret));
   ecp_nistz256_from_mont(ret, ret);
   if (!ExpectFieldElementsEqual(
           t, "ecp_nistz256_from_mont(ret = A) was incorrect.", result, ret)) {
@@ -379,28 +379,28 @@ static bool TestPointAdd(FileTest *t) {
     return false;
   }
 
-  memcpy(&ret, &a, sizeof(ret));
+  OPENSSL_memcpy(&ret, &a, sizeof(ret));
   ecp_nistz256_point_add(&ret, &ret, &b);
   if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(ret = A, B) was incorrect.",
                          &result, &ret)) {
     return false;
   }
 
-  memcpy(&ret, &a, sizeof(ret));
+  OPENSSL_memcpy(&ret, &a, sizeof(ret));
   ecp_nistz256_point_add(&ret, &b, &ret);
   if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(B, ret = A) was incorrect.",
                          &result, &ret)) {
     return false;
   }
 
-  memcpy(&ret, &b, sizeof(ret));
+  OPENSSL_memcpy(&ret, &b, sizeof(ret));
   ecp_nistz256_point_add(&ret, &a, &ret);
   if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(ret = A, B) was incorrect.",
                          &result, &ret)) {
     return false;
   }
 
-  memcpy(&ret, &b, sizeof(ret));
+  OPENSSL_memcpy(&ret, &b, sizeof(ret));
   ecp_nistz256_point_add(&ret, &ret, &a);
   if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(ret = B, A) was incorrect.",
                          &result, &ret)) {
@@ -408,7 +408,7 @@ static bool TestPointAdd(FileTest *t) {
   }
 
   P256_POINT_AFFINE a_affine, b_affine, infinity;
-  memset(&infinity, 0, sizeof(infinity));
+  OPENSSL_memset(&infinity, 0, sizeof(infinity));
   if (!PointToAffine(&a_affine, &a) ||
       !PointToAffine(&b_affine, &b)) {
     return false;
@@ -416,8 +416,8 @@ static bool TestPointAdd(FileTest *t) {
 
   // ecp_nistz256_point_add_affine does not work when a == b unless doubling the
   // point at infinity.
-  if (memcmp(&a_affine, &b_affine, sizeof(a_affine)) != 0 ||
-      memcmp(&a_affine, &infinity, sizeof(a_affine)) == 0) {
+  if (OPENSSL_memcmp(&a_affine, &b_affine, sizeof(a_affine)) != 0 ||
+      OPENSSL_memcmp(&a_affine, &infinity, sizeof(a_affine)) == 0) {
     ecp_nistz256_point_add_affine(&ret, &a, &b_affine);
     if (!ExpectPointsEqual(t,
                            "ecp_nistz256_point_add_affine(A, B) was incorrect.",
@@ -425,7 +425,7 @@ static bool TestPointAdd(FileTest *t) {
       return false;
     }
 
-    memcpy(&ret, &a, sizeof(ret));
+    OPENSSL_memcpy(&ret, &a, sizeof(ret));
     ecp_nistz256_point_add_affine(&ret, &ret, &b_affine);
     if (!ExpectPointsEqual(
             t, "ecp_nistz256_point_add_affine(ret = A, B) was incorrect.",
@@ -440,7 +440,7 @@ static bool TestPointAdd(FileTest *t) {
       return false;
     }
 
-    memcpy(&ret, &b, sizeof(ret));
+    OPENSSL_memcpy(&ret, &b, sizeof(ret));
     ecp_nistz256_point_add_affine(&ret, &ret, &a_affine);
     if (!ExpectPointsEqual(
             t, "ecp_nistz256_point_add_affine(ret = B, A) was incorrect.",
@@ -449,7 +449,7 @@ static bool TestPointAdd(FileTest *t) {
     }
   }
 
-  if (memcmp(&a, &b, sizeof(a)) == 0) {
+  if (OPENSSL_memcmp(&a, &b, sizeof(a)) == 0) {
     ecp_nistz256_point_double(&ret, &a);
     if (!ExpectPointsEqual(t, "ecp_nistz256_point_double(A) was incorrect.",
                            &result, &ret)) {

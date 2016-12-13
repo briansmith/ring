@@ -23,6 +23,7 @@
 #include <openssl/cpu.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 #if defined(OPENSSL_WINDOWS) || !defined(OPENSSL_X86_64)
@@ -30,11 +31,13 @@
 /* We can assume little-endian. */
 static uint32_t U8TO32_LE(const uint8_t *m) {
   uint32_t r;
-  memcpy(&r, m, sizeof(r));
+  OPENSSL_memcpy(&r, m, sizeof(r));
   return r;
 }
 
-static void U32TO8_LE(uint8_t *m, uint32_t v) { memcpy(m, &v, sizeof(v)); }
+static void U32TO8_LE(uint8_t *m, uint32_t v) {
+  OPENSSL_memcpy(m, &v, sizeof(v));
+}
 
 static uint64_t mul32x32_64(uint32_t a, uint32_t b) { return (uint64_t)a * b; }
 
@@ -192,7 +195,7 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   state->h4 = 0;
 
   state->buf_used = 0;
-  memcpy(state->key, key + 16, sizeof(state->key));
+  OPENSSL_memcpy(state->key, key + 16, sizeof(state->key));
 }
 
 void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,

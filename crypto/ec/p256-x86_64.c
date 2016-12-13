@@ -208,8 +208,8 @@ static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
     return 0;
   }
 
-  memset(out, 0, sizeof(BN_ULONG) * P256_LIMBS);
-  memcpy(out, in->d, sizeof(BN_ULONG) * in->top);
+  OPENSSL_memset(out, 0, sizeof(BN_ULONG) * P256_LIMBS);
+  OPENSSL_memcpy(out, in->d, sizeof(BN_ULONG) * in->top);
   return 1;
 }
 
@@ -441,7 +441,7 @@ static int ecp_nistz256_points_mul(
     /* Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
      * is infinity and |ONE| otherwise. |p| was computed from the table, so it
      * is infinity iff |wvalue >> 1| is zero.  */
-    memset(p.p.Z, 0, sizeof(p.p.Z));
+    OPENSSL_memset(p.p.Z, 0, sizeof(p.p.Z));
     copy_conditional(p.p.Z, ONE, is_not_zero(wvalue >> 1));
 
     for (i = 1; i < 37; i++) {

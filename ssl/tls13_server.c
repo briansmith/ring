@@ -25,6 +25,7 @@
 #include <openssl/rand.h>
 #include <openssl/stack.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -109,7 +110,8 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_hs_error;
   }
-  memcpy(ssl->s3->client_random, client_hello.random, client_hello.random_len);
+  OPENSSL_memcpy(ssl->s3->client_random, client_hello.random,
+                 client_hello.random_len);
 
   /* TLS 1.3 requires the peer only advertise the null compression. */
   if (client_hello.compression_methods_len != 1 ||

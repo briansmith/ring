@@ -30,7 +30,7 @@ typedef HANDLE thread_t;
 static DWORD WINAPI thread_run(LPVOID arg) {
   void (*thread_func)(void);
   /* VC really doesn't like casting between data and function pointers. */
-  memcpy(&thread_func, &arg, sizeof(thread_func));
+  OPENSSL_memcpy(&thread_func, &arg, sizeof(thread_func));
   thread_func();
   return 0;
 }
@@ -38,7 +38,7 @@ static DWORD WINAPI thread_run(LPVOID arg) {
 static int run_thread(thread_t *out_thread, void (*thread_func)(void)) {
   void *arg;
   /* VC really doesn't like casting between data and function pointers. */
-  memcpy(&arg, &thread_func, sizeof(arg));
+  OPENSSL_memcpy(&arg, &thread_func, sizeof(arg));
 
   *out_thread = CreateThread(NULL /* security attributes */,
                              0 /* default stack size */, thread_run, arg,
@@ -86,7 +86,7 @@ static void once_init(void) {
   Sleep(1 /* milliseconds */);
 #else
   struct timespec req;
-  memset(&req, 0, sizeof(req));
+  OPENSSL_memset(&req, 0, sizeof(req));
   req.tv_nsec = 1000000;
   nanosleep(&req, NULL);
 #endif

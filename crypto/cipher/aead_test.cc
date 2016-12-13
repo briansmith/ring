@@ -21,6 +21,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#include "../internal.h"
 #include "../test/file_test.h"
 
 
@@ -86,8 +87,8 @@ static bool TestAEAD(FileTest *t, void *arg) {
     }
   } else {
     out.resize(ct.size() + tag.size());
-    memcpy(out.data(), ct.data(), ct.size());
-    memcpy(out.data() + ct.size(), tag.data(), tag.size());
+    OPENSSL_memcpy(out.data(), ct.data(), ct.size());
+    OPENSSL_memcpy(out.data() + ct.size(), tag.data(), tag.size());
   }
 
   // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
@@ -170,7 +171,7 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
   EVP_AEAD_CTX ctx;
   uint8_t key[128];
 
-  memset(key, 0, sizeof(key));
+  OPENSSL_memset(key, 0, sizeof(key));
   const size_t key_len = EVP_AEAD_key_length(aead);
   if (key_len > sizeof(key)) {
     fprintf(stderr, "Key length of AEAD too long.\n");
@@ -239,7 +240,7 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
   uint8_t *out1 = buffer.data();
   uint8_t *out2 = buffer.data() + 2;
 
-  memcpy(in, kPlaintext, sizeof(kPlaintext));
+  OPENSSL_memcpy(in, kPlaintext, sizeof(kPlaintext));
   size_t out_len;
   if (EVP_AEAD_CTX_seal(ctx.get(), out1, &out_len,
                         sizeof(kPlaintext) + max_overhead, nonce.data(),
@@ -252,7 +253,7 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
   }
   ERR_clear_error();
 
-  memcpy(in, valid_encryption.data(), valid_encryption_len);
+  OPENSSL_memcpy(in, valid_encryption.data(), valid_encryption_len);
   if (EVP_AEAD_CTX_open(ctx.get(), out1, &out_len, valid_encryption_len,
                         nonce.data(), nonce_len, in, valid_encryption_len,
                         nullptr, 0) ||
@@ -265,7 +266,7 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
   ERR_clear_error();
 
   // Test with out == in, which we expect to work.
-  memcpy(in, kPlaintext, sizeof(kPlaintext));
+  OPENSSL_memcpy(in, kPlaintext, sizeof(kPlaintext));
 
   if (!EVP_AEAD_CTX_seal(ctx.get(), in, &out_len,
                          sizeof(kPlaintext) + max_overhead, nonce.data(),
@@ -275,12 +276,12 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
   }
 
   if (out_len != valid_encryption_len ||
-      memcmp(in, valid_encryption.data(), out_len) != 0) {
+      OPENSSL_memcmp(in, valid_encryption.data(), out_len) != 0) {
     fprintf(stderr, "EVP_AEAD_CTX_seal produced bad output in-place.\n");
     return false;
   }
 
-  memcpy(in, valid_encryption.data(), valid_encryption_len);
+  OPENSSL_memcpy(in, valid_encryption.data(), valid_encryption_len);
   if (!EVP_AEAD_CTX_open(ctx.get(), in, &out_len, valid_encryption_len,
                          nonce.data(), nonce_len, in, valid_encryption_len,
                          nullptr, 0)) {
@@ -289,7 +290,7 @@ static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
   }
 
   if (out_len != sizeof(kPlaintext) ||
-      memcmp(in, kPlaintext, out_len) != 0) {
+      OPENSSL_memcmp(in, kPlaintext, out_len) != 0) {
     fprintf(stderr, "EVP_AEAD_CTX_open produced bad output in-place.\n");
     return false;
   }

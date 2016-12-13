@@ -961,7 +961,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
 
   powerbuf = MOD_EXP_CTIME_ALIGN(powerbufFree);
-  memset(powerbuf, 0, powerbufLen);
+  OPENSSL_memset(powerbuf, 0, powerbufLen);
 
 #ifdef alloca
   if (powerbufLen < 3072) {

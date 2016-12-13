@@ -29,6 +29,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 static const int64_t kBottom25Bits = INT64_C(0x1ffffff);
@@ -204,15 +205,15 @@ static void fe_tobytes(uint8_t *s, const fe h) {
 
 /* h = f */
 static void fe_copy(fe h, const fe f) {
-  memmove(h, f, sizeof(int32_t) * 10);
+  OPENSSL_memmove(h, f, sizeof(int32_t) * 10);
 }
 
 /* h = 0 */
-static void fe_0(fe h) { memset(h, 0, sizeof(int32_t) * 10); }
+static void fe_0(fe h) { OPENSSL_memset(h, 0, sizeof(int32_t) * 10); }
 
 /* h = 1 */
 static void fe_1(fe h) {
-  memset(h, 0, sizeof(int32_t) * 10);
+  OPENSSL_memset(h, 0, sizeof(int32_t) * 10);
   h[0] = 1;
 }
 
@@ -4662,11 +4663,11 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   fe_neg(A.T, A.T);
 
   uint8_t pkcopy[32];
-  memcpy(pkcopy, public_key, 32);
+  OPENSSL_memcpy(pkcopy, public_key, 32);
   uint8_t rcopy[32];
-  memcpy(rcopy, signature, 32);
+  OPENSSL_memcpy(rcopy, signature, 32);
   uint8_t scopy[32];
-  memcpy(scopy, signature + 32, 32);
+  OPENSSL_memcpy(scopy, signature + 32, 32);
 
   SHA512_CTX hash_ctx;
   SHA512_Init(&hash_ctx);
@@ -4701,8 +4702,8 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[32],
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
 
-  memcpy(out_private_key, seed, 32);
-  memcpy(out_private_key + 32, out_public_key, 32);
+  OPENSSL_memcpy(out_private_key, seed, 32);
+  OPENSSL_memcpy(out_private_key + 32, out_public_key, 32);
 }
 
 
@@ -4800,7 +4801,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
 
   uint8_t e[32];
-  memcpy(e, scalar, 32);
+  OPENSSL_memcpy(e, scalar, 32);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
@@ -4916,7 +4917,7 @@ void X25519_public_from_private(uint8_t out_public_value[32],
 #endif
 
   uint8_t e[32];
-  memcpy(e, private_key, 32);
+  OPENSSL_memcpy(e, private_key, 32);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;

@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 void CBS_init(CBS *cbs, const uint8_t *data, size_t len) {
@@ -76,7 +77,7 @@ int CBS_strdup(const CBS *cbs, char **out_ptr) {
 }
 
 int CBS_contains_zero_byte(const CBS *cbs) {
-  return memchr(cbs->data, 0, cbs->len) != NULL;
+  return OPENSSL_memchr(cbs->data, 0, cbs->len) != NULL;
 }
 
 int CBS_mem_equal(const CBS *cbs, const uint8_t *data, size_t len) {
@@ -150,7 +151,7 @@ int CBS_copy_bytes(CBS *cbs, uint8_t *out, size_t len) {
   if (!cbs_get(cbs, &v, len)) {
     return 0;
   }
-  memcpy(out, v, len);
+  OPENSSL_memcpy(out, v, len);
   return 1;
 }
 

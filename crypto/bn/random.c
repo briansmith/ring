@@ -115,6 +115,9 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
+#include "../internal.h"
+
+
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
@@ -298,8 +301,8 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
     OPENSSL_PUT_ERROR(BN, BN_R_PRIVATE_KEY_TOO_LARGE);
     goto err;
   }
-  memcpy(private_bytes, priv->d, todo);
-  memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
+  OPENSSL_memcpy(private_bytes, priv->d, todo);
+  OPENSSL_memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
 
   for (attempt = 0;; attempt++) {
     for (done = 0; done < num_k_bytes;) {
@@ -318,7 +321,7 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
       if (todo > SHA512_DIGEST_LENGTH) {
         todo = SHA512_DIGEST_LENGTH;
       }
-      memcpy(k_bytes + done, digest, todo);
+      OPENSSL_memcpy(k_bytes + done, digest, todo);
       done += todo;
     }
 

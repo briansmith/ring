@@ -119,7 +119,7 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
      * we don't need to zero the 'ctx' because we just checked public
      * information
      */
-    /* memset(&ctx,0,sizeof(ctx)); */
+    /* OPENSSL_memset(&ctx,0,sizeof(ctx)); */
     ret = 1;
  err:
     EVP_MD_CTX_cleanup(&ctx);

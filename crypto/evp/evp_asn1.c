@@ -84,7 +84,7 @@ static int parse_key_type(CBS *cbs, int *out_type) {
   for (i = 0; i < OPENSSL_ARRAY_SIZE(kASN1Methods); i++) {
     const EVP_PKEY_ASN1_METHOD *method = kASN1Methods[i];
     if (CBS_len(&oid) == method->oid_len &&
-        memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {
+        OPENSSL_memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {
       *out_type = method->pkey_id;
       return 1;
     }

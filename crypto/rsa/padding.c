@@ -92,10 +92,10 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
 
   /* pad out with 0xff data */
   j = to_len - 3 - from_len;
-  memset(p, 0xff, j);
+  OPENSSL_memset(p, 0xff, j);
   p += j;
   *(p++) = 0;
-  memcpy(p, from, from_len);
+  OPENSSL_memcpy(p, from, from_len);
   return 1;
 }
 
@@ -146,7 +146,7 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned to_len,
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
     return -1;
   }
-  memcpy(to, p, j);
+  OPENSSL_memcpy(to, p, j);
 
   return j;
 }
@@ -188,7 +188,7 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
 
   *(p++) = 0;
 
-  memcpy(p, from, from_len);
+  OPENSSL_memcpy(p, from, from_len);
   return 1;
 }
 
@@ -254,7 +254,7 @@ int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,
     return -1;
   }
 
-  memcpy(to, &from[zero_index], msg_len);
+  OPENSSL_memcpy(to, &from[zero_index], msg_len);
   return (int)msg_len;
 }
 
@@ -270,7 +270,7 @@ int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
     return 0;
   }
 
-  memcpy(to, from, from_len);
+  OPENSSL_memcpy(to, from, from_len);
   return 1;
 }
 
@@ -305,7 +305,7 @@ static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
       if (!EVP_DigestFinal_ex(&ctx, digest, NULL)) {
         goto err;
       }
-      memcpy(out, digest, len);
+      OPENSSL_memcpy(out, digest, len);
       len = 0;
     }
   }
@@ -358,9 +358,9 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
   if (!EVP_Digest(param, param_len, db, NULL, md, NULL)) {
     return 0;
   }
-  memset(db + mdlen, 0, emlen - from_len - 2 * mdlen - 1);
+  OPENSSL_memset(db + mdlen, 0, emlen - from_len - 2 * mdlen - 1);
   db[emlen - from_len - mdlen - 1] = 0x01;
-  memcpy(db + emlen - from_len - mdlen, from, from_len);
+  OPENSSL_memcpy(db + emlen - from_len - mdlen, from, from_len);
   if (!RAND_bytes(seed, mdlen)) {
     return 0;
   }
@@ -471,7 +471,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
     mlen = -1;
   } else {
-    memcpy(to, db + one_index, mlen);
+    OPENSSL_memcpy(to, db + one_index, mlen);
   }
 
   OPENSSL_free(db);
@@ -579,7 +579,7 @@ int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
   if (!EVP_DigestFinal_ex(&ctx, H_, NULL)) {
     goto err;
   }
-  if (memcmp(H_, H, hLen)) {
+  if (OPENSSL_memcmp(H_, H, hLen)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     ret = 0;
   } else {

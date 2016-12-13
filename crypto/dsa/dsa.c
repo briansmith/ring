@@ -90,7 +90,7 @@ DSA *DSA_new(void) {
     return NULL;
   }
 
-  memset(dsa, 0, sizeof(DSA));
+  OPENSSL_memset(dsa, 0, sizeof(DSA));
 
   dsa->references = 1;
 
@@ -188,7 +188,7 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
       /* Only consume as much seed as is expected. */
       seed_len = qsize;
     }
-    memcpy(seed, seed_in, seed_len);
+    OPENSSL_memcpy(seed, seed_in, seed_len);
   }
 
   ctx = BN_CTX_new();
@@ -232,8 +232,8 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         /* If we come back through, use random seed next time. */
         seed_in = NULL;
       }
-      memcpy(buf, seed, qsize);
-      memcpy(buf2, seed, qsize);
+      OPENSSL_memcpy(buf, seed, qsize);
+      OPENSSL_memcpy(buf2, seed, qsize);
       /* precompute "SEED + 1" for step 7: */
       for (i = qsize - 1; i < qsize; i--) {
         buf[i]++;
@@ -763,7 +763,8 @@ int DSA_check_signature(int *out_valid, const uint8_t *digest,
 
   /* Ensure that the signature uses DER and doesn't have trailing garbage. */
   int der_len = i2d_DSA_SIG(s, &der);
-  if (der_len < 0 || (size_t)der_len != sig_len || memcmp(sig, der, sig_len)) {
+  if (der_len < 0 || (size_t)der_len != sig_len ||
+      OPENSSL_memcmp(sig, der, sig_len)) {
     goto err;
   }
 

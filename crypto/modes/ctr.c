@@ -202,7 +202,7 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out,
     in += blocks;
   }
   if (len) {
-    memset(ecount_buf, 0, 16);
+    OPENSSL_memset(ecount_buf, 0, 16);
     (*func)(ecount_buf, ecount_buf, 1, key, ivec);
     ++ctr32;
     PUTU32(ivec + 12, ctr32);

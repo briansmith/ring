@@ -77,6 +77,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 enum {
@@ -298,7 +299,7 @@ static BIO_CONNECT *BIO_CONNECT_new(void) {
   if (ret == NULL) {
     return NULL;
   }
-  memset(ret, 0, sizeof(BIO_CONNECT));
+  OPENSSL_memset(ret, 0, sizeof(BIO_CONNECT));
 
   ret->state = BIO_CONN_S_BEFORE;
   return ret;

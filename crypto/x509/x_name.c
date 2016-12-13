@@ -67,6 +67,8 @@
 #include <openssl/x509.h>
 
 #include "../asn1/asn1_locl.h"
+#include "../internal.h"
+
 
 typedef STACK_OF(X509_NAME_ENTRY) STACK_OF_X509_NAME_ENTRY;
 DECLARE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
@@ -233,7 +235,7 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
                                              local_sk_X509_NAME_ENTRY_pop_free);
         goto err;
     }
-    memcpy(nm.x->bytes->data, q, p - q);
+    OPENSSL_memcpy(nm.x->bytes->data, q, p - q);
 
     /* Convert internal representation to X509_NAME structure */
     for (i = 0; i < sk_STACK_OF_X509_NAME_ENTRY_num(intname.s); i++) {
@@ -276,7 +278,7 @@ static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
     }
     ret = a->bytes->length;
     if (out != NULL) {
-        memcpy(*out, a->bytes->data, ret);
+        OPENSSL_memcpy(*out, a->bytes->data, ret);
         *out += ret;
     }
     return ret;
@@ -336,8 +338,8 @@ static int x509_name_encode(X509_NAME *a)
  * spaces collapsed, converted to lower case and the leading SEQUENCE header
  * removed. In future we could also normalize the UTF8 too. By doing this
  * comparison of Name structures can be rapidly perfomed by just using
- * memcmp() of the canonical encoding. By omitting the leading SEQUENCE name
- * constraints of type dirName can also be checked with a simple memcmp().
+ * OPENSSL_memcmp() of the canonical encoding. By omitting the leading SEQUENCE name
+ * constraints of type dirName can also be checked with a simple OPENSSL_memcmp().
  */
 
 static int x509_name_canon(X509_NAME *a)

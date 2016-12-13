@@ -63,6 +63,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 int EVP_MD_type(const EVP_MD *md) { return md->type; }
@@ -74,7 +75,9 @@ size_t EVP_MD_size(const EVP_MD *md) { return md->md_size; }
 size_t EVP_MD_block_size(const EVP_MD *md) { return md->block_size; }
 
 
-void EVP_MD_CTX_init(EVP_MD_CTX *ctx) { memset(ctx, 0, sizeof(EVP_MD_CTX)); }
+void EVP_MD_CTX_init(EVP_MD_CTX *ctx) {
+  OPENSSL_memset(ctx, 0, sizeof(EVP_MD_CTX));
+}
 
 EVP_MD_CTX *EVP_MD_CTX_create(void) {
   EVP_MD_CTX *ctx = OPENSSL_malloc(sizeof(EVP_MD_CTX));
@@ -140,7 +143,7 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
         return 0;
       }
     }
-    memcpy(out->md_data, in->md_data, in->digest->ctx_size);
+    OPENSSL_memcpy(out->md_data, in->md_data, in->digest->ctx_size);
   }
 
   assert(in->pctx == NULL || in->pctx_ops != NULL);

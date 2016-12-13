@@ -59,6 +59,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 /* How many bignums are in each "pool item"; */
 #define BN_CTX_POOL_SIZE 16
@@ -218,7 +220,7 @@ static int BN_STACK_push(BN_STACK *st, unsigned int idx) {
       return 0;
     }
     if (st->depth) {
-      memcpy(newitems, st->indexes, st->depth * sizeof(unsigned int));
+      OPENSSL_memcpy(newitems, st->indexes, st->depth * sizeof(unsigned int));
     }
     OPENSSL_free(st->indexes);
     st->indexes = newitems;

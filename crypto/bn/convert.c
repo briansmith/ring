@@ -162,7 +162,7 @@ static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
 int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
   /* Special case for |in| = 0. Just branch as the probability is negligible. */
   if (BN_is_zero(in)) {
-    memset(out, 0, len);
+    OPENSSL_memset(out, 0, len);
     return 1;
   }
 
@@ -532,7 +532,7 @@ size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out) {
     /* If we cannot represent the number then we emit zero as the interface
      * doesn't allow an error to be signalled. */
     if (out) {
-      memset(out, 0, 4);
+      OPENSSL_memset(out, 0, 4);
     }
     return 4;
   }

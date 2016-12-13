@@ -167,6 +167,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -815,7 +816,7 @@ static int dtls1_get_hello_verify(SSL_HANDSHAKE *hs) {
     goto f_err;
   }
 
-  memcpy(ssl->d1->cookie, CBS_data(&cookie), CBS_len(&cookie));
+  OPENSSL_memcpy(ssl->d1->cookie, CBS_data(&cookie), CBS_len(&cookie));
   ssl->d1->cookie_len = CBS_len(&cookie);
 
   ssl->d1->send_cookie = 1;
@@ -913,7 +914,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* Copy over the server random. */
-  memcpy(ssl->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
   /* TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
    * 1.3 is finalized and we are not implementing a draft version. */
@@ -932,7 +933,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     }
     /* Note: session_id could be empty. */
     ssl->s3->new_session->session_id_length = CBS_len(&session_id);
-    memcpy(ssl->s3->new_session->session_id, CBS_data(&session_id),
+    OPENSSL_memcpy(ssl->s3->new_session->session_id, CBS_data(&session_id),
            CBS_len(&session_id));
   }
 
@@ -1515,7 +1516,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     char identity[PSK_MAX_IDENTITY_LEN + 1];
-    memset(identity, 0, sizeof(identity));
+    OPENSSL_memset(identity, 0, sizeof(identity));
     psk_len =
         ssl->psk_client_callback(ssl, hs->peer_psk_identity_hint, identity,
                                  sizeof(identity), psk, sizeof(psk));
@@ -1616,7 +1617,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    memset(pms, 0, pms_len);
+    OPENSSL_memset(pms, 0, pms_len);
   } else {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

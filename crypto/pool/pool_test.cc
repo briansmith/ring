@@ -17,6 +17,8 @@
 
 #include <openssl/pool.h>
 
+#include "../internal.h"
+
 
 static bool TestUnpooled() {
   static const uint8_t kData[4] = {1, 2, 3, 4};
@@ -27,7 +29,8 @@ static bool TestUnpooled() {
   }
 
   if (CRYPTO_BUFFER_len(buf.get()) != sizeof(kData) ||
-      memcmp(kData, CRYPTO_BUFFER_data(buf.get()), sizeof(kData)) != 0) {
+      OPENSSL_memcmp(kData, CRYPTO_BUFFER_data(buf.get()), sizeof(kData)) !=
+          0) {
     fprintf(stderr, "CRYPTO_BUFFER corrupted data.\n");
     return false;
   }

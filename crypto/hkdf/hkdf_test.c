@@ -262,7 +262,7 @@ int main(void) {
       return 1;
     }
     if (prk_len != test->prk_len ||
-        memcmp(prk, test->prk, test->prk_len) != 0) {
+        OPENSSL_memcmp(prk, test->prk, test->prk_len) != 0) {
       fprintf(stderr, "%zu: Resulting PRK does not match test vector\n", i);
       return 1;
     }
@@ -272,7 +272,7 @@ int main(void) {
       ERR_print_errors_fp(stderr);
       return 1;
     }
-    if (memcmp(buf, test->out, test->out_len) != 0) {
+    if (OPENSSL_memcmp(buf, test->out, test->out_len) != 0) {
       fprintf(stderr,
               "%zu: Resulting key material does not match test vector\n", i);
       return 1;
@@ -284,7 +284,7 @@ int main(void) {
       ERR_print_errors_fp(stderr);
       return 1;
     }
-    if (memcmp(buf, test->out, test->out_len) != 0) {
+    if (OPENSSL_memcmp(buf, test->out, test->out_len) != 0) {
       fprintf(stderr,
               "%zu: Resulting key material does not match test vector\n", i);
       return 1;

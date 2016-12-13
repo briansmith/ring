@@ -25,6 +25,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 typedef struct {
@@ -49,7 +50,7 @@ static int ssl3_mac(AEAD_SSL3_CTX *ssl3_ctx, uint8_t *out, unsigned *out_len,
 
   uint8_t pad[48];
   uint8_t tmp[EVP_MAX_MD_SIZE];
-  memset(pad, 0x36, pad_len);
+  OPENSSL_memset(pad, 0x36, pad_len);
   if (!EVP_MD_CTX_copy_ex(&md_ctx, &ssl3_ctx->md_ctx) ||
       !EVP_DigestUpdate(&md_ctx, pad, pad_len) ||
       !EVP_DigestUpdate(&md_ctx, ad, ad_len) ||
@@ -60,7 +61,7 @@ static int ssl3_mac(AEAD_SSL3_CTX *ssl3_ctx, uint8_t *out, unsigned *out_len,
     return 0;
   }
 
-  memset(pad, 0x5c, pad_len);
+  OPENSSL_memset(pad, 0x5c, pad_len);
   if (!EVP_MD_CTX_copy_ex(&md_ctx, &ssl3_ctx->md_ctx) ||
       !EVP_DigestUpdate(&md_ctx, pad, pad_len) ||
       !EVP_DigestUpdate(&md_ctx, tmp, md_size) ||
@@ -188,7 +189,7 @@ static int aead_ssl3_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     /* Compute padding and feed that into the cipher. */
     uint8_t padding[256];
     unsigned padding_len = block_size - ((in_len + mac_len) % block_size);
-    memset(padding, 0, padding_len - 1);
+    OPENSSL_memset(padding, 0, padding_len - 1);
     padding[padding_len - 1] = padding_len - 1;
     if (!EVP_EncryptUpdate(&ssl3_ctx->cipher_ctx, out + total, &len, padding,
                            (int)padding_len)) {

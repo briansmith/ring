@@ -881,12 +881,12 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return -1;
     }
-    memcpy(ssl->s3->client_random, client_hello.random,
-           client_hello.random_len);
+    OPENSSL_memcpy(ssl->s3->client_random, client_hello.random,
+                   client_hello.random_len);
 
     /* Only null compression is supported. */
-    if (memchr(client_hello.compression_methods, 0,
-               client_hello.compression_methods_len) == NULL) {
+    if (OPENSSL_memchr(client_hello.compression_methods, 0,
+                       client_hello.compression_methods_len) == NULL) {
       al = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMPRESSION_SPECIFIED);
       goto f_err;
@@ -1736,7 +1736,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    memset(premaster_secret, 0, premaster_secret_len);
+    OPENSSL_memset(premaster_secret, 0, premaster_secret_len);
   } else {
     al = SSL_AD_HANDSHAKE_FAILURE;
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_TYPE);

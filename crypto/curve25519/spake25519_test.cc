@@ -20,6 +20,8 @@
 
 #include <openssl/curve25519.h>
 
+#include "../internal.h"
+
 
 struct SPAKE2Run {
   bool Run() {
@@ -71,7 +73,7 @@ struct SPAKE2Run {
     }
 
     key_matches_ = (alice_key_len == bob_key_len &&
-                    memcmp(alice_key, bob_key, alice_key_len) == 0);
+                    OPENSSL_memcmp(alice_key, bob_key, alice_key_len) == 0);
 
     return true;
   }

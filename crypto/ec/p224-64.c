@@ -211,7 +211,7 @@ static void flip_endian(u8 *out, const u8 *in, size_t len) {
 static int BN_to_felem(felem out, const BIGNUM *bn) {
   /* BN_bn2bin eats leading zeroes */
   felem_bytearray b_out;
-  memset(b_out, 0, sizeof(b_out));
+  OPENSSL_memset(b_out, 0, sizeof(b_out));
   size_t num_bytes = BN_num_bytes(bn);
   if (num_bytes > sizeof(b_out) ||
       BN_is_negative(bn)) {
@@ -860,7 +860,7 @@ static void point_add(felem x3, felem y3, felem z3, const felem x1,
 static void select_point(const u64 idx, size_t size,
                          const felem pre_comp[/*size*/][3], felem out[3]) {
   limb *outlimbs = &out[0][0];
-  memset(outlimbs, 0, 3 * sizeof(felem));
+  OPENSSL_memset(outlimbs, 0, 3 * sizeof(felem));
 
   for (size_t i = 0; i < size; i++) {
     const limb *inlimbs = &pre_comp[i][0][0];
@@ -898,7 +898,7 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
   u8 sign, digit;
 
   /* set nq to the point at infinity */
-  memset(nq, 0, 3 * sizeof(felem));
+  OPENSSL_memset(nq, 0, 3 * sizeof(felem));
 
   /* Loop over all scalars msb-to-lsb, interleaving additions
    * of multiples of the generator (two in each of the last 28 rounds)
@@ -925,7 +925,7 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
         point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
                   tmp[0], tmp[1], tmp[2]);
       } else {
-        memcpy(nq, tmp, 3 * sizeof(felem));
+        OPENSSL_memcpy(nq, tmp, 3 * sizeof(felem));
         skip = 0;
       }
 
@@ -962,7 +962,7 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
           point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
                     tmp[0], tmp[1], tmp[2]);
         } else {
-          memcpy(nq, tmp, 3 * sizeof(felem));
+          OPENSSL_memcpy(nq, tmp, 3 * sizeof(felem));
           skip = 0;
         }
       }
@@ -1074,8 +1074,8 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
 
     /* we treat NULL scalars as 0, and NULL points as points at infinity,
      * i.e., they contribute nothing to the linear combination */
-    memset(secrets, 0, num_points * sizeof(felem_bytearray));
-    memset(pre_comp, 0, num_points * 17 * 3 * sizeof(felem));
+    OPENSSL_memset(secrets, 0, num_points * sizeof(felem_bytearray));
+    OPENSSL_memset(pre_comp, 0, num_points * 17 * 3 * sizeof(felem));
     for (size_t i = 0; i < num_points; ++i) {
       if (i == num) {
         /* the generator */
@@ -1131,7 +1131,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
   }
 
   if (g_scalar != NULL) {
-    memset(g_secret, 0, sizeof(g_secret));
+    OPENSSL_memset(g_secret, 0, sizeof(g_secret));
     size_t num_bytes;
     /* reduce g_scalar to 0 <= g_scalar < 2^224 */
     if (BN_num_bits(g_scalar) > 224 || BN_is_negative(g_scalar)) {

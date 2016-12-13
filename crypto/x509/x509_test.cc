@@ -25,6 +25,8 @@
 #include <openssl/pool.h>
 #include <openssl/x509.h>
 
+#include "../internal.h"
+
 
 static const char kCrossSigningRootPEM[] =
     "-----BEGIN CERTIFICATE-----\n"
@@ -839,7 +841,7 @@ static bool TestFromBufferTrailingData() {
   }
 
   std::unique_ptr<uint8_t[]> trailing_data(new uint8_t[data_len + 1]);
-  memcpy(trailing_data.get(), data.get(), data_len);
+  OPENSSL_memcpy(trailing_data.get(), data.get(), data_len);
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf_trailing_data(
       CRYPTO_BUFFER_new(trailing_data.get(), data_len + 1, nullptr));
@@ -952,7 +954,7 @@ static bool TestFromBufferReused() {
     return false;
   }
   if (i2d_len != static_cast<long>(data2_len) ||
-      memcmp(data2.get(), i2d, i2d_len) != 0) {
+      OPENSSL_memcmp(data2.get(), i2d, i2d_len) != 0) {
     fprintf(stderr, "TestFromBufferReused: i2d gave wrong result.\n");
     return false;
   }
@@ -989,7 +991,7 @@ static bool TestFailedParseFromBuffer() {
   }
 
   std::unique_ptr<uint8_t[]> data_with_trailing_byte(new uint8_t[data_len + 1]);
-  memcpy(data_with_trailing_byte.get(), data.get(), data_len);
+  OPENSSL_memcpy(data_with_trailing_byte.get(), data.get(), data_len);
   data_with_trailing_byte[data_len] = 0;
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf_with_trailing_byte(

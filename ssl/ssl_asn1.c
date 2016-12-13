@@ -91,6 +91,7 @@
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -443,7 +444,7 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
   }
 
   if (pp) {
-    memcpy(*pp, out, len);
+    OPENSSL_memcpy(*pp, out, len);
     *pp += len;
   }
   OPENSSL_free(out);
@@ -510,7 +511,7 @@ static int SSL_SESSION_parse_bounded_octet_string(
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return 0;
   }
-  memcpy(out, CBS_data(&value), CBS_len(&value));
+  OPENSSL_memcpy(out, CBS_data(&value), CBS_len(&value));
   *out_len = (uint8_t)CBS_len(&value);
   return 1;
 }
@@ -593,9 +594,9 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  memcpy(ret->session_id, CBS_data(&session_id), CBS_len(&session_id));
+  OPENSSL_memcpy(ret->session_id, CBS_data(&session_id), CBS_len(&session_id));
   ret->session_id_length = CBS_len(&session_id);
-  memcpy(ret->master_key, CBS_data(&master_key), CBS_len(&master_key));
+  OPENSSL_memcpy(ret->master_key, CBS_data(&master_key), CBS_len(&master_key));
   ret->master_key_length = CBS_len(&master_key);
 
   CBS child;
@@ -647,7 +648,8 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
       goto err;
     }
-    memcpy(ret->peer_sha256, CBS_data(&peer_sha256), sizeof(ret->peer_sha256));
+    OPENSSL_memcpy(ret->peer_sha256, CBS_data(&peer_sha256),
+                   sizeof(ret->peer_sha256));
     ret->peer_sha256_valid = 1;
   } else {
     ret->peer_sha256_valid = 0;

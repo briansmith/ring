@@ -73,6 +73,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <strings.h>
 #endif
 
+#include "internal.h"
+
 
 void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size) {
   if (ptr == NULL) {
@@ -94,7 +96,7 @@ void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size) {
     return NULL;
   }
 
-  memcpy(ret, ptr, old_size);
+  OPENSSL_memcpy(ret, ptr, old_size);
   OPENSSL_cleanse(ptr, old_size);
   OPENSSL_free(ptr);
   return ret;
@@ -104,7 +106,7 @@ void OPENSSL_cleanse(void *ptr, size_t len) {
 #if defined(OPENSSL_WINDOWS)
   SecureZeroMemory(ptr, len);
 #else
-  memset(ptr, 0, len);
+  OPENSSL_memset(ptr, 0, len);
 
 #if !defined(OPENSSL_NO_ASM)
   /* As best as we can tell, this is sufficient to break any optimisations that

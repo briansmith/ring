@@ -148,7 +148,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
 
   unsigned rotate_offset = 0;
   uint8_t mac_started = 0;
-  memset(rotated_mac, 0, md_size);
+  OPENSSL_memset(rotated_mac, 0, md_size);
   for (unsigned i = scan_start, j = 0; i < orig_len; i++, j++) {
     if (j >= md_size) {
       j -= md_size;
@@ -184,7 +184,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
     rotated_mac_tmp = tmp;
   }
 
-  memcpy(out, rotated_mac, md_size);
+  OPENSSL_memcpy(out, rotated_mac, md_size);
 }
 
 /* u32toBE serialises an unsigned, 32-bit number (n) as four bytes at (p) in
@@ -382,16 +382,16 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
 
   /* Compute the initial HMAC block. */
   bits += 8 * md_block_size;
-  memset(hmac_pad, 0, md_block_size);
+  OPENSSL_memset(hmac_pad, 0, md_block_size);
   assert(mac_secret_length <= sizeof(hmac_pad));
-  memcpy(hmac_pad, mac_secret, mac_secret_length);
+  OPENSSL_memcpy(hmac_pad, mac_secret, mac_secret_length);
   for (i = 0; i < md_block_size; i++) {
     hmac_pad[i] ^= 0x36;
   }
 
   md_transform(md_state.c, hmac_pad);
 
-  memset(length_bytes, 0, md_length_size - 4);
+  OPENSSL_memset(length_bytes, 0, md_length_size - 4);
   length_bytes[md_length_size - 4] = (uint8_t)(bits >> 24);
   length_bytes[md_length_size - 3] = (uint8_t)(bits >> 16);
   length_bytes[md_length_size - 2] = (uint8_t)(bits >> 8);
@@ -399,15 +399,15 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
 
   if (k > 0) {
     /* k is a multiple of md_block_size. */
-    memcpy(first_block, header, 13);
-    memcpy(first_block + 13, data, md_block_size - 13);
+    OPENSSL_memcpy(first_block, header, 13);
+    OPENSSL_memcpy(first_block + 13, data, md_block_size - 13);
     md_transform(md_state.c, first_block);
     for (i = 1; i < k / md_block_size; i++) {
       md_transform(md_state.c, data + md_block_size * i - 13);
     }
   }
 
-  memset(mac_out, 0, sizeof(mac_out));
+  OPENSSL_memset(mac_out, 0, sizeof(mac_out));
 
   /* We now process the final hash blocks. For each block, we construct
    * it in constant time. If the |i==index_a| then we'll include the 0x80

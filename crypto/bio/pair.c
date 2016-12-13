@@ -59,6 +59,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 struct bio_bio_st {
   BIO *peer; /* NULL if buf == NULL.
@@ -86,7 +88,7 @@ static int bio_new(BIO *bio) {
   if (b == NULL) {
     return 0;
   }
-  memset(b, 0, sizeof(struct bio_bio_st));
+  OPENSSL_memset(b, 0, sizeof(struct bio_bio_st));
 
   b->size = 17 * 1024; /* enough for one TLS record (just a default) */
   bio->ptr = b;
@@ -207,7 +209,7 @@ static int bio_read(BIO *bio, char *buf, int size_) {
     }
     assert(peer_b->offset + chunk <= peer_b->size);
 
-    memcpy(buf, peer_b->buf + peer_b->offset, chunk);
+    OPENSSL_memcpy(buf, peer_b->buf + peer_b->offset, chunk);
 
     peer_b->len -= chunk;
     if (peer_b->len) {
@@ -287,7 +289,7 @@ static int bio_write(BIO *bio, const char *buf, int num_) {
       chunk = b->size - write_offset;
     }
 
-    memcpy(b->buf + write_offset, buf, chunk);
+    OPENSSL_memcpy(b->buf + write_offset, buf, chunk);
 
     b->len += chunk;
 

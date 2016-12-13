@@ -263,7 +263,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   if (new_blindings == NULL) {
     goto err1;
   }
-  memcpy(new_blindings, rsa->blindings,
+  OPENSSL_memcpy(new_blindings, rsa->blindings,
          sizeof(BN_BLINDING *) * rsa->num_blindings);
   new_blindings[rsa->num_blindings] = ret;
 
@@ -271,7 +271,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   if (new_blindings_inuse == NULL) {
     goto err2;
   }
-  memcpy(new_blindings_inuse, rsa->blindings_inuse, rsa->num_blindings);
+  OPENSSL_memcpy(new_blindings_inuse, rsa->blindings_inuse, rsa->num_blindings);
   new_blindings_inuse[rsa->num_blindings] = 1;
   *index_used = rsa->num_blindings;
 
@@ -805,7 +805,7 @@ int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
     if (ap == NULL) {
       goto err;
     }
-    memset(ap, 0, sizeof(RSA_additional_prime));
+    OPENSSL_memset(ap, 0, sizeof(RSA_additional_prime));
     ap->prime = BN_new();
     ap->exp = BN_new();
     ap->coeff = BN_new();

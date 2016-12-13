@@ -178,7 +178,7 @@ int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
     if (!enc->enc) {
       return 0;
     }
-    memcpy(enc->enc, in, inlen);
+    OPENSSL_memcpy(enc->enc, in, inlen);
   }
 
   enc->len = inlen;
@@ -195,7 +195,7 @@ int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
     return 0;
   }
   if (out) {
-    memcpy(*out, enc->enc, enc->len);
+    OPENSSL_memcpy(*out, enc->enc, enc->len);
     *out += enc->len;
   }
   if (len) {

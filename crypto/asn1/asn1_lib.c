@@ -63,6 +63,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
+
 /* Cross-module errors from crypto/x509/i2d_pr.c. */
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_PUBLIC_KEY_TYPE)
 
@@ -401,7 +404,7 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len)
     }
     str->length = len;
     if (data != NULL) {
-        memcpy(str->data, data, len);
+        OPENSSL_memcpy(str->data, data, len);
         /* an allowance for strings :-) */
         str->data[len] = '\0';
     }
@@ -452,7 +455,7 @@ int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b)
 
     i = (a->length - b->length);
     if (i == 0) {
-        i = memcmp(a->data, b->data, a->length);
+        i = OPENSSL_memcmp(a->data, b->data, a->length);
         if (i == 0)
             return (a->type - b->type);
         else

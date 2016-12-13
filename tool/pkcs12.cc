@@ -36,6 +36,7 @@
 #include <openssl/pkcs8.h>
 #include <openssl/stack.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -106,11 +107,11 @@ bool DoPKCS12(const std::vector<std::string> &args) {
     if (n >= 0) {
       off += static_cast<size_t>(n);
     }
-  } while ((n > 0 && memchr(password, '\n', off) == NULL &&
+  } while ((n > 0 && OPENSSL_memchr(password, '\n', off) == NULL &&
             off < sizeof(password) - 1) ||
            (n == -1 && errno == EINTR));
 
-  char *newline = reinterpret_cast<char*>(memchr(password, '\n', off));
+  char *newline = reinterpret_cast<char *>(OPENSSL_memchr(password, '\n', off));
   if (newline == NULL) {
     return false;
   }

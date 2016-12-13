@@ -27,6 +27,8 @@
 #include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
 
+#include "../internal.h"
+
 
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
 // should never use this key anywhere but in an example.
@@ -469,7 +471,7 @@ static bool TestVerifyRecover() {
     return false;
   }
 
-  if (memcmp(recovered.data(), kDummyHash, sizeof(kDummyHash)) != 0) {
+  if (OPENSSL_memcmp(recovered.data(), kDummyHash, sizeof(kDummyHash)) != 0) {
     fprintf(stderr, "verify_recover got wrong value.\n");
     ERR_print_errors_fp(stderr);
     return false;

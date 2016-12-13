@@ -66,6 +66,7 @@
 
 #include "internal.h"
 #include "../bytestring/internal.h"
+#include "../internal.h"
 
 
 static int parse_integer_buggy(CBS *cbs, BIGNUM **out, int buggy) {
@@ -183,7 +184,7 @@ static RSA_additional_prime *rsa_parse_additional_prime(CBS *cbs) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  memset(ret, 0, sizeof(RSA_additional_prime));
+  OPENSSL_memset(ret, 0, sizeof(RSA_additional_prime));
 
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||

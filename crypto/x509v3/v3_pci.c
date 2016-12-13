@@ -44,6 +44,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "../internal.h"
+
+
 static int i2r_pci(X509V3_EXT_METHOD *method, PROXY_CERT_INFO_EXTENSION *ext,
                    BIO *out, int indent);
 static PROXY_CERT_INFO_EXTENSION *r2i_pci(X509V3_EXT_METHOD *method,
@@ -133,7 +136,7 @@ static int process_pci_value(CONF_VALUE *val,
                                        (*policy)->length + val_len + 1);
             if (tmp_data) {
                 (*policy)->data = tmp_data;
-                memcpy(&(*policy)->data[(*policy)->length],
+                OPENSSL_memcpy(&(*policy)->data[(*policy)->length],
                        tmp_data2, val_len);
                 (*policy)->length += val_len;
                 (*policy)->data[(*policy)->length] = '\0';
@@ -171,7 +174,7 @@ static int process_pci_value(CONF_VALUE *val,
                     break;
 
                 (*policy)->data = tmp_data;
-                memcpy(&(*policy)->data[(*policy)->length], buf, n);
+                OPENSSL_memcpy(&(*policy)->data[(*policy)->length], buf, n);
                 (*policy)->length += n;
                 (*policy)->data[(*policy)->length] = '\0';
             }
@@ -188,7 +191,7 @@ static int process_pci_value(CONF_VALUE *val,
                                        (*policy)->length + val_len + 1);
             if (tmp_data) {
                 (*policy)->data = tmp_data;
-                memcpy(&(*policy)->data[(*policy)->length],
+                OPENSSL_memcpy(&(*policy)->data[(*policy)->length],
                        val->value + 5, val_len);
                 (*policy)->length += val_len;
                 (*policy)->data[(*policy)->length] = '\0';

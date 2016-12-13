@@ -1073,7 +1073,7 @@ static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  memset(number_uses, 0, (max_strength_bits + 1) * sizeof(int));
+  OPENSSL_memset(number_uses, 0, (max_strength_bits + 1) * sizeof(int));
 
   /* Now find the strength_bits values actually used. */
   curr = *head_p;
@@ -1437,7 +1437,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   if (!pref_list->in_group_flags) {
     goto err;
   }
-  memcpy(pref_list->in_group_flags, in_group_flags, num_in_group_flags);
+  OPENSSL_memcpy(pref_list->in_group_flags, in_group_flags, num_in_group_flags);
   OPENSSL_free(in_group_flags);
   in_group_flags = NULL;
   if (*out_cipher_list != NULL) {

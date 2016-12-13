@@ -330,8 +330,8 @@ static ssl_private_key_result_t AsyncPrivateKeyComplete(
     fprintf(stderr, "Output buffer too small.\n");
     return ssl_private_key_failure;
   }
-  memcpy(out, test_state->private_key_result.data(),
-         test_state->private_key_result.size());
+  OPENSSL_memcpy(out, test_state->private_key_result.data(),
+                 test_state->private_key_result.size());
   *out_len = test_state->private_key_result.size();
 
   test_state->private_key_result.clear();
@@ -498,9 +498,9 @@ static bool CheckCertificateRequest(SSL *ssl) {
     size_t certificate_types_len =
         SSL_get0_certificate_types(ssl, &certificate_types);
     if (certificate_types_len != config->expected_certificate_types.size() ||
-        memcmp(certificate_types,
-               config->expected_certificate_types.data(),
-               certificate_types_len) != 0) {
+        OPENSSL_memcmp(certificate_types,
+                       config->expected_certificate_types.data(),
+                       certificate_types_len) != 0) {
       fprintf(stderr, "certificate types mismatch\n");
       return false;
     }
@@ -626,8 +626,8 @@ static int AlpnSelectCallback(SSL* ssl, const uint8_t** out, uint8_t* outlen,
 
   if (!config->expected_advertised_alpn.empty() &&
       (config->expected_advertised_alpn.size() != inlen ||
-       memcmp(config->expected_advertised_alpn.data(),
-              in, inlen) != 0)) {
+       OPENSSL_memcmp(config->expected_advertised_alpn.data(), in, inlen) !=
+           0)) {
     fprintf(stderr, "bad ALPN select callback inputs\n");
     exit(1);
   }
@@ -663,7 +663,7 @@ static unsigned PskClientCallback(SSL *ssl, const char *hint,
 
   BUF_strlcpy(out_identity, config->psk_identity.c_str(),
               max_identity_len);
-  memcpy(out_psk, config->psk.data(), config->psk.size());
+  OPENSSL_memcpy(out_psk, config->psk.data(), config->psk.size());
   return config->psk.size();
 }
 
@@ -681,7 +681,7 @@ static unsigned PskServerCallback(SSL *ssl, const char *identity,
     return 0;
   }
 
-  memcpy(out_psk, config->psk.data(), config->psk.size());
+  OPENSSL_memcpy(out_psk, config->psk.data(), config->psk.size());
   return config->psk.size();
 }
 
@@ -758,9 +758,9 @@ static int TicketKeyCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
   static const uint8_t kZeros[16] = {0};
 
   if (encrypt) {
-    memcpy(key_name, kZeros, sizeof(kZeros));
+    OPENSSL_memcpy(key_name, kZeros, sizeof(kZeros));
     RAND_bytes(iv, 16);
-  } else if (memcmp(key_name, kZeros, 16) != 0) {
+  } else if (OPENSSL_memcmp(key_name, kZeros, 16) != 0) {
     return 0;
   }
 
@@ -824,7 +824,7 @@ static int CustomExtensionParseCallback(SSL *ssl, unsigned extension_value,
   }
 
   if (contents_len != sizeof(kCustomExtensionContents) - 1 ||
-      memcmp(contents, kCustomExtensionContents, contents_len) != 0) {
+      OPENSSL_memcmp(contents, kCustomExtensionContents, contents_len) != 0) {
     *out_alert_value = SSL_AD_DECODE_ERROR;
     return 0;
   }
@@ -862,7 +862,7 @@ static int Connect(uint16_t port) {
     return -1;
   }
   sockaddr_in sin;
-  memset(&sin, 0, sizeof(sin));
+  OPENSSL_memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
   sin.sin_port = htons(port);
   if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
@@ -1143,7 +1143,7 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
     // SSL_peek should synchronously return the same data.
     int ret2 = SSL_peek(ssl, buf.get(), ret);
     if (ret2 != ret ||
-        memcmp(buf.get(), out, ret) != 0) {
+        OPENSSL_memcmp(buf.get(), out, ret) != 0) {
       fprintf(stderr, "First and second SSL_peek did not match.\n");
       return -1;
     }
@@ -1151,7 +1151,7 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
     // SSL_read should synchronously return the same data and consume it.
     ret2 = SSL_read(ssl, buf.get(), ret);
     if (ret2 != ret ||
-        memcmp(buf.get(), out, ret) != 0) {
+        OPENSSL_memcmp(buf.get(), out, ret) != 0) {
       fprintf(stderr, "SSL_peek and SSL_read did not match.\n");
       return -1;
     }
@@ -1265,8 +1265,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     unsigned next_proto_len;
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
     if (next_proto_len != config->expected_next_proto.size() ||
-        memcmp(next_proto, config->expected_next_proto.data(),
-               next_proto_len) != 0) {
+        OPENSSL_memcmp(next_proto, config->expected_next_proto.data(),
+                       next_proto_len) != 0) {
       fprintf(stderr, "negotiated next proto mismatch\n");
       return false;
     }
@@ -1277,8 +1277,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     unsigned alpn_proto_len;
     SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
     if (alpn_proto_len != config->expected_alpn.size() ||
-        memcmp(alpn_proto, config->expected_alpn.data(),
-               alpn_proto_len) != 0) {
+        OPENSSL_memcmp(alpn_proto, config->expected_alpn.data(),
+                       alpn_proto_len) != 0) {
       fprintf(stderr, "negotiated alpn proto mismatch\n");
       return false;
     }
@@ -1291,8 +1291,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
       return false;
     }
     if (config->expected_channel_id.size() != 64 ||
-        memcmp(config->expected_channel_id.data(),
-               channel_id, 64) != 0) {
+        OPENSSL_memcmp(config->expected_channel_id.data(), channel_id, 64) !=
+            0) {
       fprintf(stderr, "channel id mismatch\n");
       return false;
     }
@@ -1310,7 +1310,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
     if (config->expected_ocsp_response.size() != len ||
-        memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
+        OPENSSL_memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
       fprintf(stderr, "OCSP response mismatch\n");
       return false;
     }
@@ -1321,8 +1321,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     size_t len;
     SSL_get0_signed_cert_timestamp_list(ssl, &data, &len);
     if (config->expected_signed_cert_timestamps.size() != len ||
-        memcmp(config->expected_signed_cert_timestamps.data(),
-               data, len) != 0) {
+        OPENSSL_memcmp(config->expected_signed_cert_timestamps.data(), data,
+                       len) != 0) {
       fprintf(stderr, "SCT list mismatch\n");
       return false;
     }
@@ -1743,7 +1743,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     // trip up the CBC record splitting code.
     static const size_t kBufLen = 32769;
     std::unique_ptr<uint8_t[]> buf(new uint8_t[kBufLen]);
-    memset(buf.get(), 0x42, kBufLen);
+    OPENSSL_memset(buf.get(), 0x42, kBufLen);
     static const size_t kRecordSizes[] = {
         0, 1, 255, 256, 257, 16383, 16384, 16385, 32767, 32768, 32769};
     for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kRecordSizes); i++) {

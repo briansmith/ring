@@ -24,6 +24,7 @@
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -34,7 +35,7 @@ int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
   hs->hash_len = EVP_MD_size(digest);
 
   /* Initialize the secret to the zero key. */
-  memset(hs->secret, 0, hs->hash_len);
+  OPENSSL_memset(hs->secret, 0, hs->hash_len);
 
   /* Initialize the rolling hashes and release the handshake buffer. */
   if (!ssl3_init_handshake_hash(ssl)) {
@@ -166,10 +167,12 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
 
   /* Save the traffic secret. */
   if (direction == evp_aead_open) {
-    memmove(ssl->s3->read_traffic_secret, traffic_secret, traffic_secret_len);
+    OPENSSL_memmove(ssl->s3->read_traffic_secret, traffic_secret,
+                    traffic_secret_len);
     ssl->s3->read_traffic_secret_len = traffic_secret_len;
   } else {
-    memmove(ssl->s3->write_traffic_secret, traffic_secret, traffic_secret_len);
+    OPENSSL_memmove(ssl->s3->write_traffic_secret, traffic_secret,
+                    traffic_secret_len);
     ssl->s3->write_traffic_secret_len = traffic_secret_len;
   }
 
@@ -384,7 +387,7 @@ int tls13_write_psk_binder(SSL *ssl, uint8_t *msg, size_t len) {
     return 0;
   }
 
-  memcpy(msg + len - hash_len, verify_data, hash_len);
+  OPENSSL_memcpy(msg + len - hash_len, verify_data, hash_len);
   return 1;
 }
 

@@ -312,7 +312,8 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
   if (n2 < BN_MUL_RECURSIVE_SIZE_NORMAL) {
     bn_mul_normal(r, a, n2 + dna, b, n2 + dnb);
     if ((dna + dnb) < 0) {
-      memset(&r[2 * n2 + dna + dnb], 0, sizeof(BN_ULONG) * -(dna + dnb));
+      OPENSSL_memset(&r[2 * n2 + dna + dnb], 0,
+                     sizeof(BN_ULONG) * -(dna + dnb));
     }
     return;
   }
@@ -358,7 +359,7 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
     if (!zero) {
       bn_mul_comba4(&(t[n2]), t, &(t[n]));
     } else {
-      memset(&(t[n2]), 0, 8 * sizeof(BN_ULONG));
+      OPENSSL_memset(&(t[n2]), 0, 8 * sizeof(BN_ULONG));
     }
 
     bn_mul_comba4(r, a, b);
@@ -368,7 +369,7 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
     if (!zero) {
       bn_mul_comba8(&(t[n2]), t, &(t[n]));
     } else {
-      memset(&(t[n2]), 0, 16 * sizeof(BN_ULONG));
+      OPENSSL_memset(&(t[n2]), 0, 16 * sizeof(BN_ULONG));
     }
 
     bn_mul_comba8(r, a, b);
@@ -378,7 +379,7 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
     if (!zero) {
       bn_mul_recursive(&(t[n2]), t, &(t[n]), n, 0, 0, p);
     } else {
-      memset(&(t[n2]), 0, n2 * sizeof(BN_ULONG));
+      OPENSSL_memset(&(t[n2]), 0, n2 * sizeof(BN_ULONG));
     }
     bn_mul_recursive(r, a, b, n, 0, 0, p);
     bn_mul_recursive(&(r[n2]), &(a[n]), &(b[n]), n, dna, dnb, p);
@@ -473,7 +474,7 @@ static void bn_mul_part_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n,
     bn_mul_comba8(&(t[n2]), t, &(t[n]));
     bn_mul_comba8(r, a, b);
     bn_mul_normal(&(r[n2]), &(a[n]), tna, &(b[n]), tnb);
-    memset(&(r[n2 + tna + tnb]), 0, sizeof(BN_ULONG) * (n2 - tna - tnb));
+    OPENSSL_memset(&(r[n2 + tna + tnb]), 0, sizeof(BN_ULONG) * (n2 - tna - tnb));
   } else {
     p = &(t[n2 * 2]);
     bn_mul_recursive(&(t[n2]), t, &(t[n]), n, 0, 0, p);
@@ -489,14 +490,15 @@ static void bn_mul_part_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n,
 
     if (j == 0) {
       bn_mul_recursive(&(r[n2]), &(a[n]), &(b[n]), i, tna - i, tnb - i, p);
-      memset(&(r[n2 + i * 2]), 0, sizeof(BN_ULONG) * (n2 - i * 2));
+      OPENSSL_memset(&(r[n2 + i * 2]), 0, sizeof(BN_ULONG) * (n2 - i * 2));
     } else if (j > 0) {
       /* eg, n == 16, i == 8 and tn == 11 */
       bn_mul_part_recursive(&(r[n2]), &(a[n]), &(b[n]), i, tna - i, tnb - i, p);
-      memset(&(r[n2 + tna + tnb]), 0, sizeof(BN_ULONG) * (n2 - tna - tnb));
+      OPENSSL_memset(&(r[n2 + tna + tnb]), 0,
+                     sizeof(BN_ULONG) * (n2 - tna - tnb));
     } else {
       /* (j < 0) eg, n == 16, i == 8 and tn == 5 */
-      memset(&(r[n2]), 0, sizeof(BN_ULONG) * n2);
+      OPENSSL_memset(&(r[n2]), 0, sizeof(BN_ULONG) * n2);
       if (tna < BN_MUL_RECURSIVE_SIZE_NORMAL &&
           tnb < BN_MUL_RECURSIVE_SIZE_NORMAL) {
         bn_mul_normal(&(r[n2]), &(a[n]), tna, &(b[n]), tnb);
@@ -735,7 +737,7 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2, BN_ULONG *t
   if (!zero) {
     bn_sqr_recursive(&(t[n2]), t, n, p);
   } else {
-    memset(&(t[n2]), 0, n2 * sizeof(BN_ULONG));
+    OPENSSL_memset(&(t[n2]), 0, n2 * sizeof(BN_ULONG));
   }
   bn_sqr_recursive(r, a, n, p);
   bn_sqr_recursive(&(r[n2]), &(a[n]), n, p);

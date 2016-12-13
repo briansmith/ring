@@ -60,6 +60,8 @@
 
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 uint8_t *MD5(const uint8_t *data, size_t len, uint8_t *out) {
   MD5_CTX ctx;
@@ -78,7 +80,7 @@ uint8_t *MD5(const uint8_t *data, size_t len, uint8_t *out) {
 }
 
 int MD5_Init(MD5_CTX *md5) {
-  memset(md5, 0, sizeof(MD5_CTX));
+  OPENSSL_memset(md5, 0, sizeof(MD5_CTX));
   md5->h[0] = 0x67452301UL;
   md5->h[1] = 0xefcdab89UL;
   md5->h[2] = 0x98badcfeUL;

@@ -26,6 +26,7 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 #include "transport_common.h"
 
@@ -325,7 +326,8 @@ bool Client(const std::vector<std::string> &args) {
       }
       wire.push_back(static_cast<uint8_t>(len));
       wire.resize(wire.size() + len);
-      memcpy(wire.data() + wire.size() - len, alpn_protos.data() + i, len);
+      OPENSSL_memcpy(wire.data() + wire.size() - len, alpn_protos.data() + i,
+                     len);
       i = j + 1;
     }
     if (SSL_CTX_set_alpn_protos(ctx.get(), wire.data(), wire.size()) != 0) {

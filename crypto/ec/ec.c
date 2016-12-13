@@ -350,7 +350,7 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  memset(ret, 0, sizeof(EC_GROUP));
+  OPENSSL_memset(ret, 0, sizeof(EC_GROUP));
 
   ret->meth = meth;
   BN_init(&ret->order);

@@ -270,7 +270,7 @@ time_t ASN1_UTCTIME_get(const ASN1_UTCTIME *s)
     struct tm tm;
     int offset;
 
-    memset(&tm, '\0', sizeof tm);
+    OPENSSL_memset(&tm, '\0', sizeof tm);
 
 # define g2(p) (((p)[0]-'0')*10+(p)[1]-'0')
     tm.tm_year = g2(s->data);

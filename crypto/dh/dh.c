@@ -79,7 +79,7 @@ DH *DH_new(void) {
     return NULL;
   }
 
-  memset(dh, 0, sizeof(DH));
+  OPENSSL_memset(dh, 0, sizeof(DH));
 
   CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
 

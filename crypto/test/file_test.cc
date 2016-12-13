@@ -24,6 +24,8 @@
 
 #include <openssl/err.h>
 
+#include "../internal.h"
+
 
 FileTest::FileTest(const char *path) {
   file_ = fopen(path, "r");
@@ -227,7 +229,7 @@ static std::string EncodeHex(const uint8_t *in, size_t in_len) {
 bool FileTest::ExpectBytesEqual(const uint8_t *expected, size_t expected_len,
                                 const uint8_t *actual, size_t actual_len) {
   if (expected_len == actual_len &&
-      memcmp(expected, actual, expected_len) == 0) {
+      OPENSSL_memcmp(expected, actual, expected_len) == 0) {
     return true;
   }
 

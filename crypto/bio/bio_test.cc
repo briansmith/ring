@@ -79,7 +79,7 @@ static bool TestSocketConnect() {
   ScopedSocket listening_sock_closer(listening_sock);
 
   struct sockaddr_in sin;
-  memset(&sin, 0, sizeof(sin));
+  OPENSSL_memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
   if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
     PrintSocketError("inet_pton");
@@ -128,7 +128,7 @@ static bool TestSocketConnect() {
     PrintSocketError("read");
     return false;
   }
-  if (memcmp(buf, kTestMessage, sizeof(kTestMessage))) {
+  if (OPENSSL_memcmp(buf, kTestMessage, sizeof(kTestMessage))) {
     return false;
   }
 
@@ -152,7 +152,7 @@ static bool TestPrintf() {
       fprintf(stderr, "Bad test string length\n");
       return false;
     }
-    memset(string, 'a', sizeof(string));
+    OPENSSL_memset(string, 'a', sizeof(string));
     string[kLengths[i]] = '\0';
 
     int ret = BIO_printf(bio.get(), "test %s", string);
@@ -198,8 +198,8 @@ static bool ReadASN1(bool should_succeed, const uint8_t *data, size_t data_len,
     return false;
   }
 
-  if (should_succeed &&
-      (out_len != expected_len || memcmp(data, out, expected_len) != 0)) {
+  if (should_succeed && (out_len != expected_len ||
+                         OPENSSL_memcmp(data, out, expected_len) != 0)) {
     return false;
   }
 
@@ -227,8 +227,8 @@ static bool TestASN1() {
   if (!large) {
     return false;
   }
-  memset(large.get() + sizeof(kLargePrefix), 0, kLargePayloadLen);
-  memcpy(large.get(), kLargePrefix, sizeof(kLargePrefix));
+  OPENSSL_memset(large.get() + sizeof(kLargePrefix), 0, kLargePayloadLen);
+  OPENSSL_memcpy(large.get(), kLargePrefix, sizeof(kLargePrefix));
 
   if (!ReadASN1(true, large.get(), sizeof(kLargePrefix) + kLargePayloadLen,
                 sizeof(kLargePrefix) + kLargePayloadLen,
@@ -245,7 +245,7 @@ static bool TestASN1() {
   }
 
   static const uint8_t kIndefPrefix[] = {0x30, 0x80};
-  memcpy(large.get(), kIndefPrefix, sizeof(kIndefPrefix));
+  OPENSSL_memcpy(large.get(), kIndefPrefix, sizeof(kIndefPrefix));
   if (!ReadASN1(true, large.get(), sizeof(kLargePrefix) + kLargePayloadLen,
                 sizeof(kLargePrefix) + kLargePayloadLen,
                 kLargePayloadLen*2)) {
@@ -287,7 +287,7 @@ static bool TestPair() {
     if (BIO_write(bio1, "12345", 5) != 5 ||
         BIO_ctrl_get_write_guarantee(bio1) != 5 ||
         BIO_read(bio2, buf, sizeof(buf)) != 5 ||
-        memcmp(buf, "12345", 5) != 0 ||
+        OPENSSL_memcmp(buf, "12345", 5) != 0 ||
         BIO_ctrl_get_write_guarantee(bio1) != 10) {
       return false;
     }
@@ -298,7 +298,7 @@ static bool TestPair() {
         BIO_write(bio1, "z", 1) != -1 ||
         !BIO_should_write(bio1) ||
         BIO_read(bio2, buf, sizeof(buf)) != 10 ||
-        memcmp(buf, "1234567890", 10) != 0 ||
+        OPENSSL_memcmp(buf, "1234567890", 10) != 0 ||
         BIO_ctrl_get_write_guarantee(bio1) != 10) {
       return false;
     }
@@ -323,10 +323,10 @@ static bool TestPair() {
         BIO_write(bio1, "67890___", 8) != 5 ||
         BIO_ctrl_get_write_guarantee(bio1) != 0 ||
         BIO_read(bio2, buf, 3) != 3 ||
-        memcmp(buf, "123", 3) != 0 ||
+        OPENSSL_memcmp(buf, "123", 3) != 0 ||
         BIO_ctrl_get_write_guarantee(bio1) != 3 ||
         BIO_read(bio2, buf, sizeof(buf)) != 7 ||
-        memcmp(buf, "4567890", 7) != 0 ||
+        OPENSSL_memcmp(buf, "4567890", 7) != 0 ||
         BIO_ctrl_get_write_guarantee(bio1) != 10) {
       return false;
     }
@@ -341,12 +341,12 @@ static bool TestPair() {
     if (BIO_write(bio1, "abcdefgh", 8) != 8 ||
         BIO_ctrl_get_write_guarantee(bio1) != 2 ||
         BIO_read(bio2, buf, 3) != 3 ||
-        memcmp(buf, "abc", 3) != 0 ||
+        OPENSSL_memcmp(buf, "abc", 3) != 0 ||
         BIO_ctrl_get_write_guarantee(bio1) != 5 ||
         BIO_write(bio1, "ijklm___", 8) != 5 ||
         BIO_ctrl_get_write_guarantee(bio1) != 0 ||
         BIO_read(bio2, buf, sizeof(buf)) != 10 ||
-        memcmp(buf, "defghijklm", 10) != 0 ||
+        OPENSSL_memcmp(buf, "defghijklm", 10) != 0 ||
         BIO_ctrl_get_write_guarantee(bio1) != 10) {
       return false;
     }
@@ -355,9 +355,9 @@ static bool TestPair() {
     if (BIO_write(bio1, "12345", 5) != 5 ||
         BIO_write(bio2, "67890", 5) != 5 ||
         BIO_read(bio2, buf, sizeof(buf)) != 5 ||
-        memcmp(buf, "12345", 5) != 0 ||
+        OPENSSL_memcmp(buf, "12345", 5) != 0 ||
         BIO_read(bio1, buf, sizeof(buf)) != 5 ||
-        memcmp(buf, "67890", 5) != 0) {
+        OPENSSL_memcmp(buf, "67890", 5) != 0) {
       return false;
     }
 
@@ -365,7 +365,7 @@ static bool TestPair() {
     if (BIO_write(bio1, "12345", 5) != 5 ||
         !BIO_shutdown_wr(bio1) ||
         BIO_read(bio2, buf, sizeof(buf)) != 5 ||
-        memcmp(buf, "12345", 5) != 0 ||
+        OPENSSL_memcmp(buf, "12345", 5) != 0 ||
         BIO_read(bio2, buf, sizeof(buf)) != 0) {
       return false;
     }
@@ -385,7 +385,7 @@ static bool TestPair() {
     // The other end is still functional.
     if (BIO_write(bio2, "12345", 5) != 5 ||
         BIO_read(bio1, buf, sizeof(buf)) != 5 ||
-        memcmp(buf, "12345", 5) != 0) {
+        OPENSSL_memcmp(buf, "12345", 5) != 0) {
       return false;
     }
   }

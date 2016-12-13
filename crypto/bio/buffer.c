@@ -62,6 +62,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
 
 #define DEFAULT_BUFFER_SIZE 4096
 
@@ -94,7 +96,7 @@ static int buffer_new(BIO *bio) {
   if (ctx == NULL) {
     return 0;
   }
-  memset(ctx, 0, sizeof(BIO_F_BUFFER_CTX));
+  OPENSSL_memset(ctx, 0, sizeof(BIO_F_BUFFER_CTX));
 
   ctx->ibuf = OPENSSL_malloc(DEFAULT_BUFFER_SIZE);
   if (ctx->ibuf == NULL) {
@@ -158,7 +160,7 @@ static int buffer_read(BIO *bio, char *out, int outl) {
       if (i > outl) {
         i = outl;
       }
-      memcpy(out, &ctx->ibuf[ctx->ibuf_off], i);
+      OPENSSL_memcpy(out, &ctx->ibuf[ctx->ibuf_off], i);
       ctx->ibuf_off += i;
       ctx->ibuf_len -= i;
       num += i;
@@ -222,7 +224,7 @@ static int buffer_write(BIO *b, const char *in, int inl) {
     i = ctx->obuf_size - (ctx->obuf_off + ctx->obuf_len);
     /* add to buffer and return */
     if (i >= inl) {
-      memcpy(&ctx->obuf[ctx->obuf_off + ctx->obuf_len], in, inl);
+      OPENSSL_memcpy(&ctx->obuf[ctx->obuf_off + ctx->obuf_len], in, inl);
       ctx->obuf_len += inl;
       return num + inl;
     }
@@ -230,7 +232,7 @@ static int buffer_write(BIO *b, const char *in, int inl) {
     /* stuff already in buffer, so add to it first, then flush */
     if (ctx->obuf_len != 0) {
       if (i > 0) {
-        memcpy(&ctx->obuf[ctx->obuf_off + ctx->obuf_len], in, i);
+        OPENSSL_memcpy(&ctx->obuf[ctx->obuf_off + ctx->obuf_len], in, i);
         in += i;
         inl -= i;
         num += i;
