@@ -1061,8 +1061,9 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  X509 *leaf = sk_X509_value(ssl->s3->new_session->x509_chain, 0);
-  if (!ssl_check_leaf_certificate(ssl, leaf)) {
+  if (!ssl_check_leaf_certificate(
+          ssl, hs->peer_pubkey,
+          sk_CRYPTO_BUFFER_value(ssl->s3->new_session->certs, 0))) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return -1;
   }

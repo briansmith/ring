@@ -779,6 +779,12 @@ int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509);
  * empty certificate list. It returns one on success and zero on error. */
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb);
 
+/* ssl_cert_check_digital_signature_key_usage parses the DER-encoded, X.509
+ * certificate in |in| and returns one if doesn't specify a key usage or, if it
+ * does, if it includes digitalSignature. Otherwise it pushes to the error
+ * queue and returns zero. */
+int ssl_cert_check_digital_signature_key_usage(const CBS *in);
+
 /* ssl_cert_parse_pubkey extracts the public key from the DER-encoded, X.509
  * certificate in |in|. It returns an allocated |EVP_PKEY| or else returns NULL
  * and pushes to the error queue. */
@@ -796,10 +802,11 @@ STACK_OF(X509_NAME) *
  * on error. */
 int ssl_add_client_CA_list(SSL *ssl, CBB *cbb);
 
-/* ssl_check_leaf_certificate returns one if |leaf| is a suitable leaf server
- * certificate for |ssl|. Otherwise, it returns zero and pushes an error on the
- * error queue. */
-int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf);
+/* ssl_check_leaf_certificate returns one if |pkey| and |leaf| are suitable as
+ * a server's leaf certificate for |ssl|. Otherwise, it returns zero and pushes
+ * an error on the error queue. */
+int ssl_check_leaf_certificate(SSL *ssl, EVP_PKEY *pkey,
+                               const CRYPTO_BUFFER *leaf);
 
 
 /* TLS 1.3 key derivation. */

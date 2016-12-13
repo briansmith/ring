@@ -607,7 +607,10 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
-EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
+/* ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and
+ * positions |*out_tbs_cert| to cover the TBSCertificate, starting at the
+ * subjectPublicKeyInfo. */
+static int ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
   /* From RFC 5280, section 4.1
    *    Certificate  ::=  SEQUENCE  {
    *      tbsCertificate       TBSCertificate,
@@ -625,30 +628,115 @@ EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
    *      ... } */
   CBS buf = *in;
 
-  CBS toplevel, tbs_cert, spki;
+  CBS toplevel;
   if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||
       CBS_len(&buf) != 0 ||
-      !CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&toplevel, out_tbs_cert, CBS_ASN1_SEQUENCE) ||
       /* version */
       !CBS_get_optional_asn1(
-          &tbs_cert, NULL, NULL,
+          out_tbs_cert, NULL, NULL,
           CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
       /* serialNumber */
-      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER) ||
+      !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_INTEGER) ||
       /* signature algorithm */
-      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
       /* issuer */
-      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
       /* validity */
-      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
       /* subject */
-      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
+  CBS buf = *in, tbs_cert, spki;
+  if (!ssl_cert_skip_to_spki(&buf, &tbs_cert) ||
       !CBS_get_asn1_element(&tbs_cert, &spki, CBS_ASN1_SEQUENCE)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
     return NULL;
   }
 
   return EVP_parse_public_key(&spki);
+}
+
+int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
+  CBS buf = *in;
+
+  CBS tbs_cert, outer_extensions;
+  int has_extensions;
+  if (!ssl_cert_skip_to_spki(&buf, &tbs_cert) ||
+      /* subjectPublicKeyInfo */
+      !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+      /* issuerUniqueID */
+      !CBS_get_optional_asn1(
+          &tbs_cert, NULL, NULL,
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1) ||
+      /* subjectUniqueID */
+      !CBS_get_optional_asn1(
+          &tbs_cert, NULL, NULL,
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2) ||
+      !CBS_get_optional_asn1(
+          &tbs_cert, &outer_extensions, &has_extensions,
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3)) {
+    goto parse_err;
+  }
+
+  if (!has_extensions) {
+    return 1;
+  }
+
+  CBS extensions;
+  if (!CBS_get_asn1(&outer_extensions, &extensions, CBS_ASN1_SEQUENCE)) {
+    goto parse_err;
+  }
+
+  while (CBS_len(&extensions) > 0) {
+    CBS extension, oid, contents;
+    if (!CBS_get_asn1(&extensions, &extension, CBS_ASN1_SEQUENCE) ||
+        !CBS_get_asn1(&extension, &oid, CBS_ASN1_OBJECT) ||
+        (CBS_peek_asn1_tag(&extension, CBS_ASN1_BOOLEAN) &&
+         !CBS_get_asn1(&extension, NULL, CBS_ASN1_BOOLEAN)) ||
+        !CBS_get_asn1(&extension, &contents, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(&extension) != 0) {
+      goto parse_err;
+    }
+
+    static const uint8_t kKeyUsageOID[3] = {0x55, 0x1d, 0x0f};
+    if (CBS_len(&oid) != sizeof(kKeyUsageOID) ||
+        memcmp(CBS_data(&oid), kKeyUsageOID, sizeof(kKeyUsageOID)) != 0) {
+      continue;
+    }
+
+    CBS bit_string;
+    if (!CBS_get_asn1(&contents, &bit_string, CBS_ASN1_BITSTRING) ||
+        CBS_len(&contents) != 0) {
+      goto parse_err;
+    }
+
+    /* This is the KeyUsage extension. See
+     * https://tools.ietf.org/html/rfc5280#section-4.2.1.3 */
+    if (!CBS_is_valid_asn1_bitstring(&bit_string)) {
+      goto parse_err;
+    }
+
+    if (!CBS_asn1_bitstring_has_bit(&bit_string, 0)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ECC_CERT_NOT_FOR_SIGNING);
+      return 0;
+    }
+
+    return 1;
+  }
+
+  /* No KeyUsage extension found. */
+  return 1;
+
+parse_err:
+  OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+  return 0;
 }
 
 static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
@@ -833,14 +921,9 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
   return 1;
 }
 
-int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf) {
+int ssl_check_leaf_certificate(SSL *ssl, EVP_PKEY *pkey,
+                               const CRYPTO_BUFFER *leaf) {
   assert(ssl3_protocol_version(ssl) < TLS1_3_VERSION);
-
-  int ret = 0;
-  EVP_PKEY *pkey = X509_get_pubkey(leaf);
-  if (pkey == NULL) {
-    goto err;
-  }
 
   /* Check the certificate's type matches the cipher. */
   const SSL_CIPHER *cipher = ssl->s3->tmp.new_cipher;
@@ -848,24 +931,22 @@ int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf) {
   assert(expected_type != EVP_PKEY_NONE);
   if (pkey->type != expected_type) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
-    goto err;
+    return 0;
   }
 
   if (cipher->algorithm_auth & SSL_aECDSA) {
-    /* TODO(davidben): This behavior is preserved from upstream. Should key
-     * usages be checked in other cases as well? */
-    /* This call populates the ex_flags field correctly */
-    X509_check_purpose(leaf, -1, 0);
-    if ((leaf->ex_flags & EXFLAG_KUSAGE) &&
-        !(leaf->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_ECC_CERT_NOT_FOR_SIGNING);
-      goto err;
+    CBS leaf_cbs;
+    CBS_init(&leaf_cbs, CRYPTO_BUFFER_data(leaf), CRYPTO_BUFFER_len(leaf));
+    /* ECDSA and ECDH certificates use the same public key format. Instead,
+     * they are distinguished by the key usage extension in the certificate. */
+    if (!ssl_cert_check_digital_signature_key_usage(&leaf_cbs)) {
+      return 0;
     }
 
     EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
     if (ec_key == NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
-      goto err;
+      return 0;
     }
 
     /* Check the key's group and point format are acceptable. */
@@ -875,15 +956,11 @@ int ssl_check_leaf_certificate(SSL *ssl, X509 *leaf) {
         !tls1_check_group_id(ssl, group_id) ||
         EC_KEY_get_conv_form(ec_key) != POINT_CONVERSION_UNCOMPRESSED) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
-      goto err;
+      return 0;
     }
   }
 
-  ret = 1;
-
-err:
-  EVP_PKEY_free(pkey);
-  return ret;
+  return 1;
 }
 
 static int do_client_cert_cb(SSL *ssl, void *arg) {
