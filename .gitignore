@@ -24,6 +24,10 @@ doc/doc.css
 *.rsproj
 *.sln
 
+# JetBrains Junk
+.idea
+*.iml
+
 # Cargo Junk
 Cargo.lock
 target/

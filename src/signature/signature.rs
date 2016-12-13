@@ -362,6 +362,7 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
     alg.verify(public_key, msg, signature)
 }
 
+mod spki;
 
 #[cfg(test)]
 mod tests {
