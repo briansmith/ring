@@ -30,7 +30,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/montgomery_inv.c \
   crypto/bn/mul.c \
   crypto/bn/random.c \
-  crypto/bn/rsaz_exp.c \
   crypto/bn/shift.c \
   crypto/cipher/e_aes.c \
   crypto/crypto.c \
@@ -74,7 +73,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/aesni-x86_64.pl \
   crypto/aes/asm/bsaes-x86_64.pl \
   crypto/aes/asm/vpaes-x86_64.pl \
-  crypto/bn/asm/rsaz-avx2.pl \
   crypto/bn/asm/x86_64-mont.pl \
   crypto/bn/asm/x86_64-mont5.pl \
   crypto/chacha/asm/chacha-x86_64.pl \

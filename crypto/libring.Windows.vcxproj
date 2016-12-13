@@ -31,7 +31,6 @@
     <ClCompile Include="bn\montgomery_inv.c" />
     <ClCompile Include="bn\mul.c" />
     <ClCompile Include="bn\random.c" />
-    <ClCompile Include="bn\rsaz_exp.c" />
     <ClCompile Include="bn\shift.c" />
     <ClCompile Include="cipher\e_aes.c" />
     <ClCompile Include="curve25519\curve25519.c" />
@@ -49,7 +48,6 @@
   <ItemGroup>
     <ClInclude Include="aes\internal.h" />
     <ClInclude Include="bn\internal.h" />
-    <ClInclude Include="bn\rsaz_exp.h" />
     <ClInclude Include="cipher\internal.h" />
     <ClInclude Include="des\internal.h" />
     <ClInclude Include="digest\internal.h" />

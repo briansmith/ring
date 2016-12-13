@@ -120,9 +120,6 @@
 
 #if defined(OPENSSL_X86_64)
 #define OPENSSL_BN_ASM_MONT5
-#define RSAZ_ENABLED
-
-#include "rsaz_exp.h"
 
 void GFp_bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
                              const void *table, const BN_ULONG *np,
@@ -457,25 +454,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   bits = GFp_BN_num_bits(p);
   assert(bits > 0);
-
-#ifdef RSAZ_ENABLED
-  /* If the size of the operands allow it, perform the optimized
-   * RSAZ exponentiation. For further information see
-   * crypto/bn/rsaz_exp.c and accompanying assembly modules. */
-  if ((16 == a->top) && (16 == p->top) && (GFp_BN_num_bits(m) == 1024) &&
-      GFp_rsaz_avx2_eligible()) {
-    if (NULL == GFp_bn_wexpand(rr, 16)) {
-      goto err;
-    }
-    GFp_RSAZ_1024_mod_exp_avx2(rr->d, a->d, p->d, m->d, mont->RR.d,
-                               mont->n0[0]);
-    rr->top = 16;
-    rr->neg = 0;
-    GFp_bn_correct_top(rr);
-    ret = 1;
-    goto err;
-  }
-#endif
 
   /* Get the window size to use with size of p. */
   window = GFp_BN_window_bits_for_ctime_exponent_size(bits);

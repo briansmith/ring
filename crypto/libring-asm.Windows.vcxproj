@@ -32,7 +32,6 @@
     <PerlAsm Include="aes/asm/aesni-x86_64.pl" />
     <PerlAsm Include="aes/asm/bsaes-x86_64.pl" />
     <PerlAsm Include="aes/asm/vpaes-x86_64.pl" />
-    <PerlAsm Include="bn/asm/rsaz-avx2.pl" />
     <PerlAsm Include="bn/asm/x86_64-mont.pl" />
     <PerlAsm Include="bn/asm/x86_64-mont5.pl" />
     <PerlAsm Include="chacha/asm/chacha-x86_64.pl" />
