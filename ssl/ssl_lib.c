@@ -1122,6 +1122,15 @@ STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
   return session->x509_chain_without_leaf;
 }
 
+STACK_OF(X509) *SSL_get_peer_full_cert_chain(const SSL *ssl) {
+  SSL_SESSION *session = SSL_get_session(ssl);
+  if (session == NULL) {
+    return NULL;
+  }
+
+  return session->x509_chain;
+}
+
 int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
                        size_t max_out) {
   /* tls-unique is not defined for SSL 3.0 or TLS 1.3. */
