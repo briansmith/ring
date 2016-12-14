@@ -10388,7 +10388,10 @@ M = e4e784aa1fa88625a43ba0185a153a929663920be7fe674a4d33c943d3b898cff051482e7050
 
 
 # RSAZ 512-bit.
-# Note that the lengths of the inputs, especially the *bit* length of |M|, matter a lot.
+#
+# These are regression tests for code which historically reached the RSAZ-512
+# code. That has since been removed, but the test vectors remain. Note that the
+# lengths of the inputs, especially the *bit* length of |M|, matter a lot.
 
 # Control: No relationship between A and M except that A < M and they're the same number of limbs.
 ModExp = 7f34c1cd63377bc3abf2bb5b2d1bf5f06454e1e8040fe19a72245ce9731cbee1bf9e84532300776c8021ed4f3a8de508d85b4cf320bd82065a013754857b50c4
