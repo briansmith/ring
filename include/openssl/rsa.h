@@ -322,7 +322,9 @@ OPENSSL_EXPORT int RSA_recover_crt_params(RSA *rsa);
  * hash function for generating the mask. If NULL, |Hash| is used. The |sLen|
  * argument specifies the expected salt length in bytes. If |sLen| is -1 then
  * the salt length is the same as the hash length. If -2, then the salt length
- * is maximal and is taken from the size of |EM|.
+ * is recovered and all values accepted.
+ *
+ * If unsure, use -1.
  *
  * It returns one on success or zero on error. */
 OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,

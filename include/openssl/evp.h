@@ -577,7 +577,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx,
 /* EVP_PKEY_CTX_set_rsa_pss_saltlen sets the length of the salt in a PSS-padded
  * signature. A value of -1 cause the salt to be the same length as the digest
  * in the signature. A value of -2 causes the salt to be the maximum length
- * that will fit. Otherwise the value gives the size of the salt in bytes.
+ * that will fit when signing and recovered from the signature when verifying.
+ * Otherwise the value gives the size of the salt in bytes.
+ *
+ * If unsure, use -1.
  *
  * Returns one on success or zero on error. */
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
