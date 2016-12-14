@@ -69,27 +69,28 @@ fn check_public_modulus_and_exponent(
         n_max_bits: bits::BitLength)
         -> Result<(bigint::OddPositive, bigint::OddPositive),
                   error::Unspecified> {
+    // This is an incomplete implementation of NIST SP800-56Br1 Section
+    // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers to
+    // NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key Validation
+    // for RSA," "with the caveat that the length of the modulus shall be a
+    // length that is specified in this Recommendation." In SP800-89, two
+    // different sets of steps are given, one set numbered, and one set
+    // lettered. TODO: Document this in the end-user documentation for RSA
+    // keys.
+
+    // Step 3 / Step c (out of order).
     let n = try!(n.into_odd_positive());
     let e = try!(e.into_odd_positive());
 
-    // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen
-    // as the limit based on the recommendations in [1] and [2]. Windows
-    // CryptoAPI (at least older versions) doesn't support values larger than
-    // 32 bits [3], so it is unlikely that exponents larger than 32 bits are
-    // being used for anything Windows commonly does.
-    //
-    // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-    // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-    // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-    const MAX_EXPONENT_BITS: bits::BitLength = bits::BitLength(33);
-
-    // The public modulus must be large enough. `pkcs1_encode` depends on this
-    // not being small. Without it, `pkcs1_encode` would generate padding that
-    // is invalid (too few 0xFF bytes) for very small keys.
+    // `pkcs1_encode` depends on this not being small. Otherwise,
+    // `pkcs1_encode` would generate padding that is invalid (too few 0xFF
+    // bytes) for very small keys.
     const N_MIN_BITS: bits::BitLength = bits::BitLength(2048);
-    assert!(n_min_bits >= N_MIN_BITS);
-    debug_assert!(MAX_EXPONENT_BITS < N_MIN_BITS);
 
+    // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
+    // the public modulus to be exactly 2048 or 3072 bits, but we are more
+    // flexible to be compatible with other commonly-used crypto libraries.
+    assert!(n_min_bits >= N_MIN_BITS);
     let n_bits = n.bit_length();
     let n_bits_rounded_up =
         try!(bits::BitLength::from_usize_bytes(
@@ -101,6 +102,22 @@ fn check_public_modulus_and_exponent(
         return Err(error::Unspecified);
     }
 
+    // Step 2 / Step b. XXX: FIPS 186-4 seems to indicate that the minimum
+    // exponent value is 2**16 + 1, but it isn't clear if this is just for
+    // signing or also for verification. We support exponents of 3 and larger
+    // for compatibility with other commonly-used crypto libraries.
+    //
+    // Additionally, mitigate DoS attacks by limiting the exponent size. 33
+    // bits was chosen as the limit based on the recommendations in [1] and
+    // [2]. Windows CryptoAPI (at least older versions) doesn't support values
+    // larger than 32 bits [3], so it is unlikely that exponents larger than 32
+    // bits are being used for anything Windows commonly does.
+    //
+    // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
+    // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
+    // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
+    const MAX_EXPONENT_BITS: bits::BitLength = bits::BitLength(33);
+
     let e_bits = e.bit_length();
     if e_bits < bits::BitLength::from_usize_bits(2) {
         return Err(error::Unspecified);
@@ -108,6 +125,14 @@ fn check_public_modulus_and_exponent(
     if e_bits > MAX_EXPONENT_BITS {
         return Err(error::Unspecified);
     }
+
+    // If `n` is less than `e` then somebody has probably accidentally swapped
+    // them. The largest acceptable `e` is smaller than the smallest acceptable
+    // `n`, so no additional checks need to be done.
+    debug_assert!(MAX_EXPONENT_BITS < N_MIN_BITS);
+
+    // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
+    // case in most other commonly-used crypto libraries.
 
     Ok((n, e))
 }

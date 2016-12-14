@@ -254,6 +254,16 @@ pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
     })
 }
 
+pub fn elem_exp_vartime<F: Field>(
+        mut base: ElemDecoded<F>, exponent: &OddPositive, m: &Modulus<F>)
+        -> Result<ElemDecoded<F>, error::Unspecified> {
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_exp_mont_vartime(base.value.as_mut_ref(),
+                                    base.value.as_ref(), exponent.as_ref(),
+                                    m.as_ref())
+    }));
+    Ok(base)
+}
 
 /// Nonnegative integers: `Positive` ∪ {0}.
 struct Nonnegative(*mut BIGNUM);
@@ -322,6 +332,9 @@ extern {
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                            m: &BN_MONT_CTX) -> c::int;
+    // `r` and `a` may alias.
+    fn GFp_BN_mod_exp_mont_vartime(r: *mut BIGNUM, a: *const BIGNUM, p: &BIGNUM,
+                                   mont: &BN_MONT_CTX) -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
@@ -334,8 +347,9 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use super::Positive;
+    use super::*;
     use untrusted;
+    use test;
 
     #[test]
     fn test_positive_integer_from_be_bytes_empty() {
@@ -361,5 +375,53 @@ mod tests {
         // A non-zero value with that ends in a zero byte is accepted.
         assert!(Positive::from_be_bytes(
                     untrusted::Input::from(&[1, 0])).is_ok());
+    }
+
+    struct M { }
+    unsafe impl Field for M { }
+
+    #[test]
+    fn test_elem_exp_vartime() {
+        test::from_file("src/rsa/bigint_elem_exp_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let m = consume_modulus(test_case, "M");
+            let expected_result = consume_elem(test_case, "ModExp", &m);
+            let base = consume_elem(test_case, "A", &m);
+            let e = consume_odd_positive(test_case, "E");
+
+            let actual_result = elem_exp_vartime(base, &e, &m).unwrap();
+            assert_elem_eq(&actual_result, &expected_result);
+
+            Ok(())
+        })
+    }
+
+    fn consume_elem(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
+                    -> ElemDecoded<M> {
+        let bytes = test_case.consume_bytes(name);
+        let value =
+            Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
+        value.into_elem_decoded::<M>(m).unwrap()
+    }
+
+    fn consume_modulus(test_case: &mut test::TestCase, name: &str)
+                       -> Modulus<M> {
+        let value = consume_odd_positive(test_case, name);
+        value.into_modulus().unwrap()
+    }
+
+    fn consume_odd_positive(test_case: &mut test::TestCase, name: &str)
+                            -> OddPositive {
+        let bytes = test_case.consume_bytes(name);
+        let value =
+            Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
+        value.into_odd_positive().unwrap()
+    }
+
+    fn assert_elem_eq<F: Field>(a: &ElemDecoded<F>, b: &ElemDecoded<F>) {
+        let r = unsafe { GFp_BN_cmp(a.value.as_ref(), b.value.as_ref()) };
+        assert_eq!(r, 0)
     }
 }

@@ -68,71 +68,10 @@
 
 
 /* Declarations to avoid -Wmissing-prototypes warnings. */
-int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
-                           const BN_MONT_CTX *mont_n, const BIGNUM *e,
-                           const uint8_t *in, size_t in_len);
 int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
                               BN_BLINDING *blinding, RAND *rng);
 
 
-/* GFp_rsa_public_decrypt decrypts the RSA signature |in| using the public key
- * with modulus |n| and exponent |e|, leaving the decrypted signature in |out|.
- * |out_len| and |in_len| must both be equal to the size of |n|. The public key
- * must have been validated prior.
- *
- * When |rsa_public_decrypt| succeeds, the caller must then check the
- * signature value (and padding) left in |out|. */
-int GFp_rsa_public_decrypt(uint8_t *out, size_t out_len,
-                           const BN_MONT_CTX *mont_n, const BIGNUM *e,
-                           const uint8_t *in, size_t in_len) {
-  assert(GFp_BN_is_odd(e));
-  assert(!GFp_BN_is_zero(e));
-  assert(!GFp_BN_is_one(e));
-
-  const BIGNUM *n = &mont_n->N;
-
-  BIGNUM f;
-  GFp_BN_init(&f);
-
-  BIGNUM result;
-  GFp_BN_init(&result);
-
-  int ret = 0;
-  unsigned rsa_size = GFp_BN_num_bytes(n); /* RSA_size((n, e)); */
-
-  if (out_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
-    goto err;
-  }
-
-  if (in_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
-    goto err;
-  }
-
-  if (GFp_BN_bin2bn(in, in_len, &f) == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  if (GFp_BN_ucmp(&f, n) >= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
-    goto err;
-  }
-
-  if (!GFp_BN_mod_exp_mont_vartime(&result, &f, e, mont_n) ||
-      !GFp_BN_bn2bin_padded(out, out_len, &result)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  GFp_BN_free(&f);
-  GFp_BN_free(&result);
-  return ret;
-}
 
 /* GFp_rsa_private_transform takes a big-endian integer in |base| and raises it
  * to the d'th power modulo the public modulus. The caller must ensure that
