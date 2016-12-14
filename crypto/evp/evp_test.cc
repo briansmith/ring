@@ -72,6 +72,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/rsa.h>
 
 #include "../test/file_test.h"
 
@@ -111,6 +112,19 @@ static int GetKeyType(FileTest *t, const std::string &name) {
   }
   t->PrintLine("Unknown key type: '%s'", name.c_str());
   return EVP_PKEY_NONE;
+}
+
+static int GetRSAPadding(FileTest *t, int *out, const std::string &name) {
+  if (name == "PKCS1") {
+    *out = RSA_PKCS1_PADDING;
+    return true;
+  }
+  if (name == "PSS") {
+    *out = RSA_PKCS1_PSS_PADDING;
+    return true;
+  }
+  t->PrintLine("Unknown RSA padding mode: '%s'", name.c_str());
+  return false;
 }
 
 using KeyMap = std::map<std::string, bssl::UniquePtr<EVP_PKEY>>;
@@ -221,6 +235,25 @@ static bool TestEVP(FileTest *t, void *arg) {
     const EVP_MD *digest = GetDigest(t, t->GetAttributeOrDie("Digest"));
     if (digest == nullptr ||
         !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) {
+      return false;
+    }
+  }
+  if (t->HasAttribute("RSAPadding")) {
+    int padding;
+    if (!GetRSAPadding(t, &padding, t->GetAttributeOrDie("RSAPadding")) ||
+        !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), padding)) {
+      return false;
+    }
+  }
+  if (t->HasAttribute("PSSSaltLength") &&
+      !EVP_PKEY_CTX_set_rsa_pss_saltlen(
+          ctx.get(), atoi(t->GetAttributeOrDie("PSSSaltLength").c_str()))) {
+    return false;
+  }
+  if (t->HasAttribute("MGF1Digest")) {
+    const EVP_MD *digest = GetDigest(t, t->GetAttributeOrDie("MGF1Digest"));
+    if (digest == nullptr ||
+        !EVP_PKEY_CTX_set_rsa_mgf1_md(ctx.get(), digest)) {
       return false;
     }
   }

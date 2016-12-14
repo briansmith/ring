@@ -231,6 +231,11 @@ static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
         return RSA_verify(EVP_MD_type(rctx->md), tbs, tbslen, sig, siglen, rsa);
 
       case RSA_PKCS1_PSS_PADDING:
+        if (tbslen != EVP_MD_size(rctx->md)) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_LENGTH);
+          return 0;
+        }
+
         if (!setup_tbuf(rctx, ctx) ||
             !RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, siglen,
                             RSA_NO_PADDING) ||
