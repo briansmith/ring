@@ -1,0 +1,216 @@
+# ModExp tests.
+#
+# These test vectors satisfy A ^ E = ModExp (mod M) and 0 <= ModExp < M.
+
+# TODO: Replace this test.
+# regression test for carry propagation bug in sqr8x_reduction.
+# ModExp = 19324b647d967d644b3219
+# A = 050505050505
+# E = 02
+# M = 414141414141414141414127414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+
+# Tests with even exponent removed. (*ring* requires the exponent to be odd.)
+
+ModExp = 2bdf498f
+A = 21292626
+E = 0d
+M = 30d26ecb
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Tests with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 14c64646
+A = 0822df
+E = 03
+M = 30915765
+
+ModExp = 160e35a2
+A = 015ea542
+E = 05
+M = 30915765
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 30959e22
+A = 081dad
+E = 03
+M = 326dd68d
+
+ModExp = 1a1da4fa
+A = 0116adb9
+E = 05
+M = 326dd68d
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+ModExp = 168a3c5d
+A = 01f82caf
+E = 05
+M = 3ce082eb
+
+ModExp = 125c4bb8
+A = 2e9c4c07
+E = 09
+M = 3ce082eb
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 01228d1e
+A = 0a5555
+E = 03
+M = 24665b27
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 233da406
+A = 0b125f
+E = 03
+M = 33509981
+
+# Tests with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Tests with even modulus removed. (*ring* requires the modulus to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+ModExp = bbad67352704a6321809f742826bf3d1c31c0ad057bf81432abeb30dc9913c896c03e69eb1cde6b78ffcb320c4625bd38ef23a08d6c64dc86aec951b72d74b097e209ce63092959894614e3865a6153ec0ff6fda639e44071a33763f6b18edc1c22094c3f844f04a86d414c4cb618e9812991c61289360c7ba60f190f75038d0
+A = 855144760f2be2f2038d8ff628f03a902ae2e07736f2695ec980f84a1781665ab65e2b4e53d31856f431a32fd58d8a7727acee54cc54a62161b035c0293714ca294e2161ea4a48660bf084b885f504ad23ea338030460310bd19186be9030ab5136f09fe6a9223962bce385aaaf9c39fe6ed6d005fa96163fe15cdfa08fc914d
+E = bb552be12c02ae8b9e90c8beb5689ffefe3378d2c30f12a6d14496250ecce30317c642857535a741642c3df689a8d71a276d247ed482b07b50135357da6143ac2f5c74f6c739c5ff6ada21e1ab35439f6445a1019d6b607950bffb0357c6009a2bfc88cd7f4f883dc591d4eb45b1d787e85aba5c10ee4fe05ea47bf556aec94d
+M = dcc24236a1bb94c71d9ec162a6aa4697b932717e82b667cad08b6bd1bbcbddf7cd167b7458de2b0b780486b39574e749d6405f9ede774a021d6b547271523e9e84a6fdd3a98315607ccf93356f54daa9c75e1e311e1672d0dc163be13f9ed6762f7dd301f5b0a1bb2398b608f40ac357ae34fc8a87d4fef3b961cbdb806d9061
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+ModExp = 24eaead5b57883c2f454928f8edd470a344bfe07a953194f7d635d705ef13ddfc64140c8ad6f363d4c828e7c7891a6b6d4df37335de4552c319dafd1c06d1f743240082a3535df4da1475d3eea3fead20e40815fd5a0876c881c162ab65a1eda494280c258901ca953d1d039a998bf0e9aa09273bbef4865f3054663b72d75ff
+A = a31618b4532f53729ba22efb2221432fab1dbb70853d6a1159b42fd19fc949965c709b209de106a652aa422d88922ce51dae47f7f6deaf0055202e13db79ee84fc3d3c6f4c003ef96597c49d6895fa53c22ac9e4819f7048146b5272f6279424fdb389819a0b251c823c76f4bebf4f1246de455aafe82a0d34454f5039e90839
+E = 9f43dcb641f3ecf4dbc97450f2bdf3b7ec6a2f3e8e96bb1df2bf34b8d2d78e1a9018d04d960ffd0e932cfc60d3b9b923e3f9f29b3f3d61cae3a9f7245078143475c7fcb896ff200f7d94c4f2708bb42750e37c185a31c876814e4f06a00771707654e1da2fb69c16b6500b16385e3b933e2276ad3569977473f699b1c7926c3b
+M = cd607549668469b792f495c141e500871880b0611c8004293a561ec7f9ab6561f8a9b90872742386adafb5cd1890e8204ae12aec529cca0a9e382c96439137f09de9973b12c8492c62847e107deabb7dd946ffbb9d0ac73b462c481092bd65326a17f21d8d6527c47a5dba50aaa20c7048b8788a49eb3ea5f29bd5cfce24eb3b
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Tests with even exponent removed (*ring* requires the exponent be odd.)
+
+# Craft inputs whose Montgomery representation is 1, i.e., shorter than M, in
+# order to test the const time precomputation scattering/gathering.
+
+ModExp = 9442d2eca2905ad796383947b14ddfcc341f5be8fec079135c36f6f0d9b8b2212f43e08bf29c46167ff0fe16b247cd365df4417d96cc31c94db1cf44b73b0ee3ebcc4920d9b0d003b68e49c1df91e61bc7758a8a1d2d6192ff4e1590b1a792f8be3a1b83db3ad9667d14398d873faf5d885ec3a2bef955026fae6dbf64daea2b
+A = 3a4b4c57e62c5e9d1a9065191f8268fed9d5f6f424d071acef66f0662b8210f4c029ed991512e40c9c912043c816d2c4c5b53fa0e5c253e16808aad4225130dafbbb89fd4f30cdfc1c2f2179b636a7ddc4be579795820b4b9377637bd8a21a0ef5a90d0e0f865321eee23d9be2a3b7320b4012d02941b892df2c40bdc85c1898
+E = a2c56ea1362511cac0301918e15a9afe7d37edd438a5c3538d258ea01f0a6df758de07111e868b3ad8fc89b629b4955d78a1b3af902be1806410ddde25ccc6a196ba5949395c1ad5d8725b18815dc1cd5ac1c7dd17773f571e3f2e628255af14476e0494be23a4a4dfd18e23142f33d7a59c236fec61660e360d9676a747c69f
+M = ede35a3a7afac817d413373a2032abbc067b1493f709ae6e1282ee5469743391d891b904938857168802b7872d3cd7ac18ab249a9e540a86f970b1d0f310a4cc29df1cc9d4063d98c554f1a32f4ca5eba3523cdfb142e0fc609907c7a92bb0187009d97ec471db3545f42dd5fd29c07b7816085d09477ba31fcf90084660116d
+
+ModExp = a7f5844fa9e7202d4b70ee252c9846e63d3d091b0387768ded872cec53458e19df0d9b4960226e269b8ca5dd4c4eda423a67b6dbb48235c08c12c6c7c78db47287756d3ed9cecb9232f7d18d5d80b9676cb68ba4a290c97e220beb1a069976b5e6022a4c1e5ddbeec86b62dda24ffea1deda37695c9f61a8817218e6370c0679
+A = 7d6d0cc947ceb949cdc4e9e1044f5deca5bb05a491041e0d85bc4b92a0944a57c72845fad91e59010c61ad1712bd2f612d53a846a044632262a9f2e3373b062fde2484e0c165ff947f2469f743ab6e2e5e13c640fc4029b1c9213eb8473c674e7f9e95a4a5c5636d4656c1e696962340d77b322daba47d6fc894f2a2cd9e0afc
+E = b78012afe806e2344d004c739c97324256850980ac97d88c4ed9a838517639ca112e235978d21a176c33f5a68703aba0f2a05501bbe3fc8d49a000fbf530cdb431581dfaf8683cb15a2aee5e239cbc542827100da3b47babf4a16ca7c588aff9912e674abb449e0b767a15e415f4e7f2bbd6380d7131da3df8d49b13bfd35ce3
+M = b72d5c55bd2998472f1965e75a51be6155c1ba04656da8f66bcb34db36a7b1db66a89d1d05b1bde10206acf85be7b474ab689220faf1bb52ab39d8dc00512dd4e26df1179c11b973e1274db85a88c7cc2a17113abdffe58cb930ddc5f3ccc4d68b4e65c913730509f7ce5656e8bbaba9b1be177ab9f766678f018fea05da9cdf
+
+# Tests with even exponent removed (*ring* requires the exponent be odd.)
+
+ModExp = 3137a3049fd4ad2e26d870f5c998cf11bfe82101884a82e85e43facd0928cd7434a2e346ca124619769fa141bbe92ad6f36b99231032ddaec3b349a410f82b5ca36f45e56e5fb85dc63d32053dc90805d3f1854ab385281a71a57726bf97158494e7476057214ca7379ab8b70f5bdc15f70bdad3adf33c3a1f9cd1b6bbbad556
+A = 039a1dc6a4c3f14d9c350ee968d5ce139ef725952c967a2d1bedf48ace22091283525be03807e2e263d2640be77f0525247bcd07149bba50568cec5a082c87d72962cf9e43bcb5cdb1e7e9a650fb53e0ec2fad37f09a9f036c0d7dfa528fef846769f80a9a60854910ca1b4ee05dba82ed2ee018348d6b3e52a764b8ffae61e0
+E = deaee3a3f80c9f684ed7110c0653847ccc7be5ff6d982fd4b49f59b5dd35f7210b1077babbcedbc127df35cd469dc6e569a0f84e58149b5605c94b09fd7f0b098d02b4a04631328b3fae39e6c2fce25334225cab71829abdb9507cb903701559660f2c08c3b743336119d1260a0db27054cad3f28bc1b04b2289baa58fb33965
+M = 938388927d06ed3bb1286c0f06d3054cb0ee16dc7a0bbbf13a45293c09a5f40f1d611b2e1a1b0ec2ef109b508e27af4274954905cae52034f8740a744153b4d22059f0dd262ea51785522098ecacced6da07709ee6b5acc8c4e99331379a7c3de7f4e2d1431e43b19570140955b7bcba118dfbaa552cbfa2be531e8f781166ed
+
+ModExp = c15ae334455d9f4d1030cd33e734726a27c63624c2afc576238cce5e0498298a4a0c93090a0d19568b41290303c4b558f3d9dd74f9cde8798710f68569ea0d6fd971ce67ec5b54495031de3d8842b8b49288725bee5c9f72b99054d64986ccd4e18d70d5f33943f08cd694eff538f84438ea993ebaba0910c95b3a694f213510
+A = def633b955a917569df3ba8517455eef0655e7a35985edda27097a063e0d82c7c3a76dc36c5d8a71ba9d540790ddd0ea514aaed98925f9a1808eb288d387aaf9605a9ef8a333ebee7ad7057bca012efd619d5867f02266f65976ef4b16da17468426ac4f99b3e8921707e01b4de20f6f9a068e6a19d872079a27f3a44449db83
+E = a465c47b0d15d48e01bb8b1d8e3b3253e11515f6874dbed6c25818adf1a8fd927124d5593beb367f685c11e46f18415be73ccdf16fa2e93a600b728163d21d232849e5278c3749d903edad3f1c4535a2f55a2ab65e7ebc64888bd2a0527e876ecf38cec3ab1980d08138709fad8eb88ae65d960adc3f0f8e92f784fe96fcb693
+M = e43cb9ac1446154356cdc31ec771c79b0e461e22d95185bbe1a279c0945e3af07903a0cb54d553380716fcdcafb4b7cf5dc6da481dc74a8c583d75ff6c1f8e429182d200246ebc473bb56e173787987c1b7fb2dd23f5b2e438a97bc4a1df628bc044fdd1e80c0cf37030adb7b04784dab827d0dcd64f0dbf37c980612570ce11
+
+# Tests with even exponent removed (*ring* requires the exponent be odd.)
+
+# RSAZ 512-bit.
+# Note that the lengths of the inputs, especially the *bit* length of |M|, matter a lot.
+
+# Control: No relationship between A and M except that A < M and they're the same number of limbs.
+ModExp = 7f34c1cd63377bc3abf2bb5b2d1bf5f06454e1e8040fe19a72245ce9731cbee1bf9e84532300776c8021ed4f3a8de508d85b4cf320bd82065a013754857b50c4
+A = 8e4e67da6ff890643d0599387955996ef6f0c2045eb9944576ddb965ca64cdb6247727ce128ef178d4a84e5a56d2e67eb0fe389ecbf691f9244ae80f4c11b364
+E =  0be99d8f0650e540b9b191e9cf96f74881b902e32ed169ffd8a1776c3f3e80f0ac765aa14615713e1549f250a20fe4ee48c4e0c6176162fc7842a0dd64d640d1
+M = f12f2c19ee1ecf2c999b87bdafde60eace3790faad8f9adec13b14c6dfb69f8795a1d0fe65494250b59534014b918453042012952ae6f5786342999600725491
+
+# Test with negative input removed (*ring* requires reduced inputs.)
+
+# A == M - 1 == -1 (mod M) and the exponent is odd so A ^ E (mod M) == A.
+ModExp = f12f2c19ee1ecf2c999b87bdafde60eace3790faad8f9adec13b14c6dfb69f8795a1d0fe65494250b59534014b918453042012952ae6f5786342999600725490
+A = f12f2c19ee1ecf2c999b87bdafde60eace3790faad8f9adec13b14c6dfb69f8795a1d0fe65494250b59534014b918453042012952ae6f5786342999600725490
+E =  0be99d8f0650e540b9b191e9cf96f74881b902e32ed169ffd8a1776c3f3e80f0ac765aa14615713e1549f250a20fe4ee48c4e0c6176162fc7842a0dd64d640d1
+M = f12f2c19ee1ecf2c999b87bdafde60eace3790faad8f9adec13b14c6dfb69f8795a1d0fe65494250b59534014b918453042012952ae6f5786342999600725491
+
+# Test with negative input removed (*ring* requires reduced inputs.)
+
+# Test with unreduced input removed (*ring* requires reduced inputs.)
+
+# Test with negative input removed (*ring* requires reduced inputs.)
+
+# RSAZ 1024-bit.
+# Note that the lengths of the inputs, especially the *bit* length of |M|, matter a lot.
+
+# Control: No relationship between A and M except that A < M and they're the same number of limbs.
+ModExp = 8984f8c16044f9c0ad7bd72347af90f58e6e003acda92b76e3c7c4a56ea8e918409d8e9b34884d4c89d0b17cb40fe898f2627c084a0f1698e46beccbf6f48eecc281e11ea9e5135adba460ddae157f2c655b5f589ce29b254d43a960a71cede8a08dbb86be4dac22458da232fb1ec2470856827302ed772c9ddafa408c931aa7
+A = 21158da5fe20356825e72b3f5384ec57720d22f727b27ce2f945c8ee311db781add73bf8fae96b775c909bd22fca75c44c2b0584284a5bb1c07f8eefcd6b0a44047a02b185df34f897f11d4fb9a86c9eb841b4cb8d0383441fdc5af3ef385b5e8380f605d73ed41bb42eb2c2a5704d6034b3ad058dafffce83dbbfb6295daaf8
+E = ecdebd112b3b5788669449dcddbd479a203ee9ab72a9bb9c406b97623513bf0ab9a22f1f23634d269e16bfd6d3b64202b71fc355057411967b6ac70f8d9cef0a4e06819a9a18cc06bbe438243fa9759303d98be8a65dc1cb13595ee9b99f138554425d50f6fbc025d8ffa3eaea828d6f3b82a3584146bafde34da257995f0575
+M = ff3a3e023db3bba929ca4ededbace13d0d1264387b5ef62734e177eaf47a78af56b58aacc8ac5d46f5b066bafb95d93d4442bb948653613eec76837b4ffb7991cb080b6c8b403fb09bc817d026e283ee47ab2fc9af274b12f626eda2fe02004a8e27b9ed7d3b614e8955c7e7c2c0700edd079455237c4475fbd41857e206e4b7
+
+# Test vector for negative input removed (*ring* requires non-negative inputs).
+
+# A == M - 1 == -1 (mod M) and the exponent is odd so A ^ E (mod M) == A.
+ModExp = b5d257b2c50b050d42f0852eff5cfa2571157c500cd0bd9aa0b2ccdd89c531c9609d520eb81d928fb52b06da25dc713561aa0bd365ee56db9e62ac6787a85936990f44438363560f7af9e0c16f378e5b83f658252390d849401817624da97ec613a1b855fd901847352f434a777e4e32af0cb4033c7547fb6437d067fcd3d964
+A =  b5d257b2c50b050d42f0852eff5cfa2571157c500cd0bd9aa0b2ccdd89c531c9609d520eb81d928fb52b06da25dc713561aa0bd365ee56db9e62ac6787a85936990f44438363560f7af9e0c16f378e5b83f658252390d849401817624da97ec613a1b855fd901847352f434a777e4e32af0cb4033c7547fb6437d067fcd3d964
+E = 61803d4973ae68cfb2ba6770dbed70d36760fa42c01a16d1482eacf0d01adf7a917bc86ece58a73b920295c1291b90f49167ef856ecad149330e1fd49ec71392fb62d47270b53e6d4f3c8f044b80a5736753364896932abc6d872c4c5e135d1edb200597a93ceb262ff6c99079177cd10808b9ed20c8cd7352d80ac7f6963103
+M =  b5d257b2c50b050d42f0852eff5cfa2571157c500cd0bd9aa0b2ccdd89c531c9609d520eb81d928fb52b06da25dc713561aa0bd365ee56db9e62ac6787a85936990f44438363560f7af9e0c16f378e5b83f658252390d849401817624da97ec613a1b855fd901847352f434a777e4e32af0cb4033c7547fb6437d067fcd3d965
+
+# Test vectors for unreduced inputs removed (*ring* requires reduced inputs.)

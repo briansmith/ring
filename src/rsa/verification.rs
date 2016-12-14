@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bits, bssl, c, digest, error, private, signature};
+use {bits, digest, error, private, signature};
 use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
             parse_public_key};
 use untrusted;
@@ -109,12 +109,8 @@ pub fn verify_rsa(params: &RSAParameters,
                   (n, e): (untrusted::Input, untrusted::Input),
                   msg: untrusted::Input, signature: untrusted::Input)
                   -> Result<(), error::Unspecified> {
-    let signature = signature.as_slice_less_safe();
-    let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
-    if signature.len() > decoded.len() {
-        return Err(error::Unspecified);
-    }
-
+    // Partially validate the public key. See
+    // `check_public_modulus_and_exponent()` for more details.
     let n = try!(bigint::Positive::from_be_bytes(n));
     let e = try!(bigint::Positive::from_be_bytes(e));
     let max_bits = try!(bits::BitLength::from_usize_bytes(
@@ -125,25 +121,32 @@ pub fn verify_rsa(params: &RSAParameters,
     let n_bits = n.bit_length();
     let n = try!(n.into_modulus::<N>());
 
-    let decoded = &mut decoded[..signature.len()];
-    try!(bssl::map_result(unsafe {
-        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
-                               e.as_ref(), signature.as_ptr(), signature.len())
-    }));
+    // The signature must be the same length as the modulus, in bytes.
+    if signature.len() != n_bits.as_usize_bytes_rounded_up() {
+        return Err(error::Unspecified);
+    }
 
+    // RFC 8017 Section 5.2.2: RSAVP1.
+
+    // Step 1.
+    let s = try!(bigint::Positive::from_be_bytes_padded(signature));
+    let s = try!(s.into_elem_decoded::<N>(&n));
+
+    // Step 2.
+    let m = try!(bigint::elem_exp_vartime(s, &e, &n));
+
+    // Step 3.
+    let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
+    let decoded = &mut decoded[..n_bits.as_usize_bytes_rounded_up()];
+    try!(m.fill_be_bytes(decoded));
+
+    // Verify the padded message is correct.
     let m_hash = digest::digest(params.padding_alg.digest_alg(),
                                 msg.as_slice_less_safe());
-
     untrusted::Input::from(decoded).read_all(
         error::Unspecified, |m| params.padding_alg.verify(&m_hash, m, n_bits))
 }
 
-extern {
-    fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
-                              mont_n: &bigint::BN_MONT_CTX, e: &bigint::BIGNUM,
-                              ciphertext: *const u8, ciphertext_len: c::size_t)
-                              -> c::int;
-}
 
 #[cfg(test)]
 mod tests {
