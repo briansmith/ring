@@ -207,12 +207,12 @@ void RAND_enable_fork_unsafe_buffering(int fd) {
     abort();  // Already initialized
   }
 
-  if (urandom_fd == kHaveGetrandom) {
-    if (fd >= 0) {
+  if (fd >= 0) {
+    if (urandom_fd == kHaveGetrandom) {
       close(fd);
+    } else if (urandom_fd != fd) {
+      abort();  // Already initialized.
     }
-  } else if (urandom_fd != fd) {
-    abort();  // Already initialized.
   }
 }
 
