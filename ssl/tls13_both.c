@@ -358,7 +358,7 @@ int tls13_process_certificate_verify(SSL *ssl) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
     goto err;
   }
-  ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
+  ssl->s3->new_session->peer_signature_algorithm = signature_algorithm;
 
   if (!tls13_get_cert_verify_signature_input(
           ssl, &msg, &msg_len,

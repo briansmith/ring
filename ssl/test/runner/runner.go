@@ -6546,6 +6546,9 @@ func addSignatureAlgorithmTests() {
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
 					"-enable-all-curves",
 				},
+				// Resume the session to assert the peer signature
+				// algorithm is reported on both handshakes.
+				resumeSession: !shouldVerifyFail,
 				shouldFail:    shouldVerifyFail,
 				expectedError: verifyError,
 			})
@@ -6592,6 +6595,9 @@ func addSignatureAlgorithmTests() {
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
 					"-enable-all-curves",
 				},
+				// Resume the session to assert the peer signature
+				// algorithm is reported on both handshakes.
+				resumeSession: !shouldVerifyFail,
 				shouldFail:    shouldVerifyFail,
 				expectedError: verifyError,
 			})

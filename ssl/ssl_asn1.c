@@ -126,6 +126,7 @@
  *     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
  *     ticketAgeAdd            [21] OCTET STRING OPTIONAL,
  *     isServer                [22] BOOLEAN DEFAULT TRUE,
+ *     peerSignatureAlgorithm  [23] INTEGER OPTIONAL,
  * }
  *
  * Note: historically this serialization has included other optional
@@ -176,6 +177,8 @@ static const int kTicketAgeAddTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 21;
 static const int kIsServerTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 22;
+static const int kPeerSignatureAlgorithmTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 23;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -381,6 +384,13 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
+  if (in->peer_signature_algorithm != 0 &&
+      (!CBB_add_asn1(&session, &child, kPeerSignatureAlgorithmTag) ||
+       !CBB_add_asn1_uint64(&child, in->peer_signature_algorithm))) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
   if (!CBB_finish(&cbb, out_data, out_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -528,6 +538,19 @@ static int SSL_SESSION_parse_u32(CBS *cbs, uint32_t *out, unsigned tag,
     return 0;
   }
   *out = (uint32_t)value;
+  return 1;
+}
+
+static int SSL_SESSION_parse_u16(CBS *cbs, uint16_t *out, unsigned tag,
+                                 uint16_t default_value) {
+  uint64_t value;
+  if (!CBS_get_optional_asn1_uint64(cbs, &value, tag,
+                                    (uint64_t)default_value) ||
+      value > 0xffff) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    return 0;
+  }
+  *out = (uint16_t)value;
   return 1;
 }
 
@@ -748,7 +771,9 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
 
   ret->is_server = is_server;
 
-  if (CBS_len(&session) != 0) {
+  if (!SSL_SESSION_parse_u16(&session, &ret->peer_signature_algorithm,
+                             kPeerSignatureAlgorithmTag, 0) ||
+      CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }

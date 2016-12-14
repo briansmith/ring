@@ -3669,6 +3669,10 @@ struct ssl_session_st {
    * if not applicable or unknown. */
   uint16_t group_id;
 
+  /* peer_signature_algorithm is the signature algorithm used to authenticate
+   * the peer, or zero if not applicable or unknown. */
+  uint16_t peer_signature_algorithm;
+
   /* master_key, in TLS 1.2 and below, is the master secret associated with the
    * session. In TLS 1.3 and up, it is the resumption secret. */
   int master_key_length;

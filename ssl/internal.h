@@ -1531,10 +1531,6 @@ typedef struct ssl3_state_st {
      * messages, but it doesn't matter if the session that's being resumed
      * didn't use it to create the master secret initially. */
     char extended_master_secret;
-
-    /* peer_signature_algorithm is the signature algorithm used to authenticate
-     * the peer, or zero if not applicable. */
-    uint16_t peer_signature_algorithm;
   } tmp;
 
   /* new_session is the new mutable session being established by the current

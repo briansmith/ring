@@ -2843,7 +2843,14 @@ uint64_t SSL_get_write_sequence(const SSL *ssl) {
 }
 
 uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
-  return ssl->s3->tmp.peer_signature_algorithm;
+  /* TODO(davidben): This checks the wrong session if there is a renegotiation
+   * in progress. */
+  SSL_SESSION *session = SSL_get_session(ssl);
+  if (session == NULL) {
+    return 0;
+  }
+
+  return session->peer_signature_algorithm;
 }
 
 size_t SSL_get_client_random(const SSL *ssl, uint8_t *out, size_t max_out) {

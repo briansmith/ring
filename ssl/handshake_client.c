@@ -1287,7 +1287,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       if (!tls12_check_peer_sigalg(ssl, &al, signature_algorithm)) {
         goto f_err;
       }
-      ssl->s3->tmp.peer_signature_algorithm = signature_algorithm;
+      ssl->s3->new_session->peer_signature_algorithm = signature_algorithm;
     } else if (hs->peer_pubkey->type == EVP_PKEY_RSA) {
       signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
     } else if (hs->peer_pubkey->type == EVP_PKEY_EC) {

@@ -255,6 +255,8 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     }
   }
 
+  new_session->peer_signature_algorithm = session->peer_signature_algorithm;
+
   new_session->timeout = session->timeout;
   new_session->time = session->time;
 
