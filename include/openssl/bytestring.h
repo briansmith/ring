@@ -257,6 +257,15 @@ OPENSSL_EXPORT int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out,
 OPENSSL_EXPORT int CBS_get_optional_asn1_bool(CBS *cbs, int *out, unsigned tag,
                                               int default_value);
 
+/* CBS_is_valid_asn1_bitstring returns one if |cbs| is a valid ASN.1 BIT STRING
+ * and zero otherwise. */
+OPENSSL_EXPORT int CBS_is_valid_asn1_bitstring(const CBS *cbs);
+
+/* CBS_asn1_bitstring_has_bit returns one if |cbs| is a valid ASN.1 BIT STRING
+ * and the specified bit is present and set. Otherwise, it returns zero. |bit|
+ * is indexed starting from zero. */
+OPENSSL_EXPORT int CBS_asn1_bitstring_has_bit(const CBS *cbs, unsigned bit);
+
 
 /* CRYPTO ByteBuilder.
  *
