@@ -221,19 +221,7 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
     return ssl->cipher_list;
   }
 
-  if (ssl->version >= TLS1_1_VERSION && ssl->ctx->cipher_list_tls11 != NULL) {
-    return ssl->ctx->cipher_list_tls11;
-  }
-
-  if (ssl->version >= TLS1_VERSION && ssl->ctx->cipher_list_tls10 != NULL) {
-    return ssl->ctx->cipher_list_tls10;
-  }
-
-  if (ssl->ctx->cipher_list != NULL) {
-    return ssl->ctx->cipher_list;
-  }
-
-  return NULL;
+  return ssl->ctx->cipher_list;
 }
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and

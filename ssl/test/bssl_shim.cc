@@ -928,17 +928,6 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
-  if (!config->cipher_tls10.empty() &&
-      !SSL_CTX_set_cipher_list_tls10(ssl_ctx.get(),
-                                     config->cipher_tls10.c_str())) {
-    return nullptr;
-  }
-  if (!config->cipher_tls11.empty() &&
-      !SSL_CTX_set_cipher_list_tls11(ssl_ctx.get(),
-                                     config->cipher_tls11.c_str())) {
-    return nullptr;
-  }
-
   bssl::UniquePtr<DH> dh(DH_get_2048_256(NULL));
   if (!dh) {
     return nullptr;

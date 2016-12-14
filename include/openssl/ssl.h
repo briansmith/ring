@@ -1331,25 +1331,11 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  * |str| as a cipher string. It returns one on success and zero on failure. */
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
-/* SSL_CTX_set_cipher_list_tls10 configures the TLS 1.0+ cipher list for |ctx|,
- * evaluating |str| as a cipher string. It returns one on success and zero on
- * failure. If set, servers will use this cipher suite list for TLS 1.0 or
- * higher. */
-OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *ctx, const char *str);
-
-/* SSL_CTX_set_cipher_list_tls11 configures the TLS 1.1+ cipher list for |ctx|,
- * evaluating |str| as a cipher string. It returns one on success and zero on
- * failure. If set, servers will use this cipher suite list for TLS 1.1 or
- * higher. */
-OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *ctx, const char *str);
-
 /* SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
  * a cipher string. It returns one on success and zero on failure. */
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
 
-/* SSL_get_ciphers returns the cipher list for |ssl|, in order of preference. If
- * |SSL_CTX_set_cipher_list_tls10| or |SSL_CTX_set_cipher_list_tls11| has been
- * used, the corresponding list for the current version is returned. */
+/* SSL_get_ciphers returns the cipher list for |ssl|, in order of preference. */
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 
@@ -3838,21 +3824,6 @@ struct ssl_ctx_st {
   uint16_t min_version;
 
   struct ssl_cipher_preference_list_st *cipher_list;
-
-  /* cipher_list_tls10 is the list of ciphers when TLS 1.0 or greater is in
-   * use. This only applies to server connections as, for clients, the version
-   * number is known at connect time and so the cipher list can be set then. If
-   * |cipher_list_tls11| is non-NULL then this applies only to TLS 1.0
-   * connections.
-   *
-   * TODO(agl): this exists to assist in the death of SSLv3. It can hopefully
-   * be removed after that. */
-  struct ssl_cipher_preference_list_st *cipher_list_tls10;
-
-  /* cipher_list_tls11 is the list of ciphers when TLS 1.1 or greater is in
-   * use. This only applies to server connections as, for clients, the version
-   * number is known at connect time and so the cipher list can be set then. */
-  struct ssl_cipher_preference_list_st *cipher_list_tls11;
 
   X509_STORE *cert_store;
   LHASH_OF(SSL_SESSION) *sessions;

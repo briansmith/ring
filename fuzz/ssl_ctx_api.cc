@@ -347,18 +347,12 @@ static const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
       SSL_CTX_set_cipher_list(ctx, ciphers.c_str());
     },
     [](SSL_CTX *ctx, CBS *cbs) {
-      std::string ciphers;
-      if (!GetString(&ciphers, cbs)) {
-        return;
-      }
-      SSL_CTX_set_cipher_list_tls10(ctx, ciphers.c_str());
+      // This function was left blank rather than removed to avoid invalidating
+      // the existing corpus. New entries may reuse it.
     },
     [](SSL_CTX *ctx, CBS *cbs) {
-      std::string ciphers;
-      if (!GetString(&ciphers, cbs)) {
-        return;
-      }
-      SSL_CTX_set_cipher_list_tls11(ctx, ciphers.c_str());
+      // This function was left blank rather than removed to avoid invalidating
+      // the existing corpus. New entries may reuse it.
     },
     [](SSL_CTX *ctx, CBS *cbs) {
       std::string ciphers;
