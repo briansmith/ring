@@ -191,10 +191,13 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
+    use std;
+    use std::io::BufRead;
     use error;
     use super::*;
     use untrusted;
+    use rustc_serialize::base64::FromBase64;
 
     fn with_good_i<F, R>(value: &[u8], f: F)
                          where F: FnOnce(&mut untrusted::Reader)
@@ -208,6 +211,57 @@ mod tests {
                                         -> Result<R, error::Unspecified> {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_err());
+    }
+
+    type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
+
+    pub fn read_pem_section(lines: & mut FileLines, section_name: &str)
+                        -> std::vec::Vec<u8> {
+        // Skip comments and header
+        let begin_section = format!("-----BEGIN {}-----", section_name);
+        loop {
+            let line = lines.next().unwrap().unwrap();
+            if line == begin_section {
+                break;
+            }
+        }
+
+        let mut base64 = std::string::String::new();
+
+        let end_section = format!("-----END {}-----", section_name);
+        loop {
+            let line = lines.next().unwrap().unwrap();
+            if line == end_section {
+                break;
+            }
+            base64.push_str(&line);
+        }
+
+        base64.from_base64().unwrap()
+    }
+
+    macro_rules! test_parse_bad_spki_der {
+        ($fn_name:ident, $file_name:expr) => {
+            #[test]
+            fn $fn_name() {
+                test_parse_bad_spki_der($file_name)
+            }
+        }
+    }
+
+    fn test_parse_bad_spki_der(file_name: &str) {
+        let path =
+        std::path::PathBuf::from(
+            "third-party/chromium/data/verify_signed_data").join(file_name);
+        let file = std::fs::File::open(path).unwrap();
+        let mut lines = std::io::BufReader::new(&file).lines();
+
+        let spki = read_pem_section(&mut lines, "PUBLIC KEY");
+        let spki_input = untrusted::Input::from(&spki);
+        assert_eq!(Err(error::Unspecified),
+        spki_input.read_all(error::Unspecified, |input| {
+            expect_tag_and_get_value(input, Tag::Sequence)
+        }));
     }
 
     static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
@@ -290,4 +344,11 @@ mod tests {
             });
         }
     }
+
+    test_parse_bad_spki_der!(test_rsa_pkcs1_sha256_key_encoded_ber,
+                               "rsa-pkcs1-sha256-key-encoded-ber.pem" );
+    test_parse_bad_spki_der!(test_rsa_pkcs1_sha1_bad_key_der_length,
+                               "rsa-pkcs1-sha1-bad-key-der-length.pem");
+    test_parse_bad_spki_der!(test_rsa_pkcs1_sha1_bad_key_der_null,
+                               "rsa-pkcs1-sha1-bad-key-der-null.pem");
 }

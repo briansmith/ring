@@ -237,10 +237,10 @@ const RSA_PSS_SHA512: AlgorithmIdentifier = AlgorithmIdentifier {
 
 #[cfg(test)]
 mod tests {
-    use rustc_serialize::base64::FromBase64;
     use std;
     use std::io::BufRead;
     use der;
+    use der::tests::read_pem_section;
     use untrusted;
     use signature::spki;
     use signature::spki::VerifyWithSPKIError;
@@ -279,26 +279,6 @@ mod tests {
                                signature));
     }
 
-    // XXX: This is testing code that is not even in this module.
-    macro_rules! test_parse_spki_bad_outer {
-        ($fn_name:ident, $file_name:expr, $error:expr) => {
-            #[test]
-            fn $fn_name() {
-                test_parse_spki_bad_outer($file_name, $error)
-            }
-        }
-    }
-
-    fn test_parse_spki_bad_outer(file_name: &str, expected_error: VerifyWithSPKIError) {
-        let tsd = parse_test_signed_data(file_name);
-        let spki = untrusted::Input::from(&tsd.spki);
-        assert_eq!(Err(expected_error),
-        spki.read_all(VerifyWithSPKIError::BadDER, |input| {
-            der::expect_tag_and_get_value(input, der::Tag::Sequence)
-                .map_err(|_| VerifyWithSPKIError::BadDER)
-        }));
-    }
-
     // XXX: Some of the BadDER tests should have better error codes, maybe?
 
     test_verify_signature!(test_ecdsa_secp384r1_sha256_corrupted_data,
@@ -314,13 +294,6 @@ mod tests {
         &spki::ECDSA_P256_SHA256,
         Err(VerifyWithSPKIError::UnsupportedSignatureAlgorithmForPublicKey));
 
-    // TODO this only tests DER decoding, not signature logic
-    test_parse_spki_bad_outer!(test_rsa_pkcs1_sha1_bad_key_der_length,
-                               "rsa-pkcs1-sha1-bad-key-der-length.pem",
-                               VerifyWithSPKIError::BadDER);
-    test_parse_spki_bad_outer!(test_rsa_pkcs1_sha1_bad_key_der_null,
-                               "rsa-pkcs1-sha1-bad-key-der-null.pem",
-                               VerifyWithSPKIError::BadDER);
     test_verify_signature!(test_rsa_pkcs1_sha1_key_params_absent,
                              "rsa-pkcs1-sha1-key-params-absent.pem",
                              &spki::RSA_PKCS1_2048_8192_SHA1,
@@ -347,10 +320,7 @@ mod tests {
                            "rsa-pkcs1-sha256.pem",
                            &spki::RSA_PKCS1_2048_8192_SHA256,
                            Err(VerifyWithSPKIError::InvalidSignatureForPublicKey));
-    // TODO this only tests DER decoding, not signature logic
-    test_parse_spki_bad_outer!(test_rsa_pkcs1_sha256_key_encoded_ber,
-                               "rsa-pkcs1-sha256-key-encoded-ber.pem",
-                               VerifyWithSPKIError::BadDER);
+
     test_verify_signature!(test_rsa_pkcs1_sha256_spki_non_null_params,
                              "rsa-pkcs1-sha256-spki-non-null-params.pem",
                              &spki::RSA_PKCS1_2048_8192_SHA256,
@@ -426,30 +396,4 @@ mod tests {
         }
     }
 
-    type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
-
-    fn read_pem_section(lines: & mut FileLines, section_name: &str)
-                        -> std::vec::Vec<u8> {
-        // Skip comments and header
-        let begin_section = format!("-----BEGIN {}-----", section_name);
-        loop {
-            let line = lines.next().unwrap().unwrap();
-            if line == begin_section {
-                break;
-            }
-        }
-
-        let mut base64 = std::string::String::new();
-
-        let end_section = format!("-----END {}-----", section_name);
-        loop {
-            let line = lines.next().unwrap().unwrap();
-            if line == end_section {
-                break;
-            }
-            base64.push_str(&line);
-        }
-
-        base64.from_base64().unwrap()
-    }
 }
