@@ -2588,6 +2588,27 @@ static bool TestSetVersion() {
   return true;
 }
 
+static const char *GetVersionName(uint16_t version) {
+  switch (version) {
+    case SSL3_VERSION:
+      return "SSLv3";
+    case TLS1_VERSION:
+      return "TLSv1";
+    case TLS1_1_VERSION:
+      return "TLSv1.1";
+    case TLS1_2_VERSION:
+      return "TLSv1.2";
+    case TLS1_3_VERSION:
+      return "TLSv1.3";
+    case DTLS1_VERSION:
+      return "DTLSv1";
+    case DTLS1_2_VERSION:
+      return "DTLSv1.2";
+    default:
+      return "???";
+  }
+}
+
 static bool TestVersion(bool is_dtls, const SSL_METHOD *method,
                         uint16_t version) {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
@@ -2616,6 +2637,29 @@ static bool TestVersion(bool is_dtls, const SSL_METHOD *method,
       SSL_version(server.get()) != version) {
     fprintf(stderr, "Version mismatch. Got %04x and %04x, wanted %04x.\n",
             SSL_version(client.get()), SSL_version(server.get()), version);
+    return false;
+  }
+
+  // Test the version name is reported as expected.
+  const char *version_name = GetVersionName(version);
+  if (strcmp(version_name, SSL_get_version(client.get())) != 0 ||
+      strcmp(version_name, SSL_get_version(server.get())) != 0) {
+    fprintf(stderr, "Version name mismatch. Got '%s' and '%s', wanted '%s'.\n",
+            SSL_get_version(client.get()), SSL_get_version(server.get()),
+            version_name);
+    return false;
+  }
+
+  // Test SSL_SESSION reports the same name.
+  const char *client_name =
+      SSL_SESSION_get_version(SSL_get_session(client.get()));
+  const char *server_name =
+      SSL_SESSION_get_version(SSL_get_session(server.get()));
+  if (strcmp(version_name, client_name) != 0 ||
+      strcmp(version_name, server_name) != 0) {
+    fprintf(stderr,
+            "Session version name mismatch. Got '%s' and '%s', wanted '%s'.\n",
+            client_name, server_name, version_name);
     return false;
   }
 
