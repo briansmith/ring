@@ -332,6 +332,11 @@ pub trait VerificationAlgorithm: Sync + private::Private {
 /// Verify the signature `signature` of message `msg` with the public key
 /// `public_key` using the algorithm `alg`.
 ///
+/// `public_key` must be the DER-encoded ASN.1 of the key value only. Use
+/// `ring::signature::spki::verify` for the case when you have the
+/// `SubjectPublicKeyInfo` ASN.1, as is typically the case when using
+/// public keys exported by OpenSSL.
+///
 /// # Examples
 ///
 /// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
@@ -362,7 +367,9 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
     alg.verify(public_key, msg, signature)
 }
 
-mod spki;
+/// Parse a public key in SPKI format
+/// (https://tools.ietf.org/html/rfc5280#section-4.1).
+pub mod spki;
 
 #[cfg(test)]
 mod tests {

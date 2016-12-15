@@ -16,8 +16,8 @@
 //!
 //! This module contains the foundational parts of an ASN.1 DER parser.
 
-use untrusted;
 use error;
+use untrusted;
 
 pub const CONSTRUCTED: u8 = 1 << 5;
 pub const CONTEXT_SPECIFIC: u8 = 2 << 6;
@@ -173,7 +173,7 @@ pub fn bit_string_with_no_unused_bits<'a>(input: &mut untrusted::Reader<'a>)
                                               error::Unspecified> {
     nested(input, Tag::BitString, error::Unspecified, |value| {
         let unused_bits_at_end =
-        try!(value.read_byte().map_err(|_| error::Unspecified));
+            try!(value.read_byte().map_err(|_| error::Unspecified));
         if unused_bits_at_end != 0 {
             return Err(error::Unspecified);
         }
@@ -192,12 +192,10 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
 
 #[cfg(test)]
 pub mod tests {
-    use std;
-    use std::io::BufRead;
     use error;
+    use std::io::BufRead;
     use super::*;
     use untrusted;
-    use rustc_serialize::base64::FromBase64;
 
     fn with_good_i<F, R>(value: &[u8], f: F)
                          where F: FnOnce(&mut untrusted::Reader)
@@ -213,32 +211,7 @@ pub mod tests {
         assert!(r.is_err());
     }
 
-    type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
-
-    pub fn read_pem_section(lines: & mut FileLines, section_name: &str)
-                        -> std::vec::Vec<u8> {
-        // Skip comments and header
-        let begin_section = format!("-----BEGIN {}-----", section_name);
-        loop {
-            let line = lines.next().unwrap().unwrap();
-            if line == begin_section {
-                break;
-            }
-        }
-
-        let mut base64 = std::string::String::new();
-
-        let end_section = format!("-----END {}-----", section_name);
-        loop {
-            let line = lines.next().unwrap().unwrap();
-            if line == end_section {
-                break;
-            }
-            base64.push_str(&line);
-        }
-
-        base64.from_base64().unwrap()
-    }
+    include!("../tests/common/pem.rs");
 
     macro_rules! test_parse_bad_spki_der {
         ($fn_name:ident, $file_name:expr) => {

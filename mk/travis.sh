@@ -90,15 +90,29 @@ arm-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
   emulator @arm-18 -no-skin -no-boot-anim -no-audio -no-window &
   adb wait-for-device
-  adb push $target_dir/ring-* /data/ring-test
   for testfile in `find src crypto -name "*_test*.txt"`; do
+    adb shell mkdir -p /data/`dirname $testfile`
+    adb push $testfile /data/$testfile
+  done
+  for testfile in `find third-party/chromium -name "*.pem"`; do
+    adb shell mkdir -p /data/`dirname $testfile`
+    adb push $testfile /data/$testfile
+  done
+  for testfile in `find tests/test-data -type f`; do
     adb shell mkdir -p /data/`dirname $testfile`
     adb push $testfile /data/$testfile
   done
   adb shell mkdir -p /data/third-party/NIST
   adb push third-party/NIST/SHAVS /data/third-party/NIST/SHAVS
-  adb shell  'cd /data && ./ring-test' 2>&1 | tee /tmp/ring-test
-  grep "test result: ok" /tmp/ring-test
+
+  for test_binary in `find $target_dir -maxdepth 1 -executable -type f`; do
+    adb push $test_binary /data/
+    test_binary_filename=`basename $test_binary`
+    log_file="/tmp/${test_binary_filename}-ring-test.out"
+    adb shell  "cd /data && ./$test_binary_filename" 2>&1 | tee $log_file
+    grep "test result: ok" $log_file
+  done
+
   ;;
 *)
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
