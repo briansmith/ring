@@ -73,7 +73,6 @@ fn parse_spki_value(input: untrusted::Input)
 /// A signature algorithm.
 pub struct SignatureAlgorithm {
     public_key_alg_id: AlgorithmIdentifier,
-    signature_alg_id: AlgorithmIdentifier,
     verification_alg: &'static signature::VerificationAlgorithm,
 }
 
@@ -86,28 +85,24 @@ pub struct SignatureAlgorithm {
 /// ECDSA signatures using the P-256 curve and SHA-256.
 pub static ECDSA_P256_SHA256: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: ECDSA_P256,
-    signature_alg_id: ECDSA_SHA256,
     verification_alg: &signature::ECDSA_P256_SHA256_ASN1,
 };
 
 /// ECDSA signatures using the P-256 curve and SHA-384. Deprecated.
 pub static ECDSA_P256_SHA384: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: ECDSA_P256,
-    signature_alg_id: ECDSA_SHA384,
     verification_alg: &signature::ECDSA_P256_SHA384_ASN1,
 };
 
 /// ECDSA signatures using the P-384 curve and SHA-256. Deprecated.
 pub static ECDSA_P384_SHA256: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: ECDSA_P384,
-    signature_alg_id: ECDSA_SHA256,
     verification_alg: &signature::ECDSA_P384_SHA256_ASN1,
 };
 
 /// ECDSA signatures using the P-384 curve and SHA-384.
 pub static ECDSA_P384_SHA384: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: ECDSA_P384,
-    signature_alg_id: ECDSA_SHA384,
     verification_alg: &signature::ECDSA_P384_SHA384_ASN1,
 };
 
@@ -115,35 +110,30 @@ pub static ECDSA_P384_SHA384: SignatureAlgorithm = SignatureAlgorithm {
 /// Deprecated.
 pub static RSA_PKCS1_2048_8192_SHA1: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PKCS1_SHA1,
     verification_alg: &signature::RSA_PKCS1_2048_8192_SHA1,
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-256 for keys of 2048-8192 bits.
 pub static RSA_PKCS1_2048_8192_SHA256: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PKCS1_SHA256,
     verification_alg: &signature::RSA_PKCS1_2048_8192_SHA256,
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-384 for keys of 2048-8192 bits.
 pub static RSA_PKCS1_2048_8192_SHA384: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PKCS1_SHA384,
     verification_alg: &signature::RSA_PKCS1_2048_8192_SHA384,
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-512 for keys of 2048-8192 bits.
 pub static RSA_PKCS1_2048_8192_SHA512: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PKCS1_SHA512,
     verification_alg: &signature::RSA_PKCS1_2048_8192_SHA512,
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-384 for keys of 3072-8192 bits.
 pub static RSA_PKCS1_3072_8192_SHA384: SignatureAlgorithm = SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PKCS1_SHA384,
     verification_alg: &signature::RSA_PKCS1_3072_8192_SHA384,
 };
 
@@ -152,7 +142,6 @@ pub static RSA_PKCS1_3072_8192_SHA384: SignatureAlgorithm = SignatureAlgorithm {
 pub static RSA_PSS_2048_8192_SHA256_LEGACY_KEY: SignatureAlgorithm =
 SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PSS_SHA256,
     verification_alg: &signature::RSA_PSS_2048_8192_SHA256,
 };
 
@@ -161,7 +150,6 @@ SignatureAlgorithm {
 pub static RSA_PSS_2048_8192_SHA384_LEGACY_KEY: SignatureAlgorithm =
 SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PSS_SHA384,
     verification_alg: &signature::RSA_PSS_2048_8192_SHA384,
 };
 
@@ -170,7 +158,6 @@ SignatureAlgorithm {
 pub static RSA_PSS_2048_8192_SHA512_LEGACY_KEY: SignatureAlgorithm =
 SignatureAlgorithm {
     public_key_alg_id: RSA_ENCRYPTION,
-    signature_alg_id: RSA_PSS_SHA512,
     verification_alg: &signature::RSA_PSS_2048_8192_SHA512,
 };
 
@@ -194,46 +181,9 @@ const ECDSA_P384: AlgorithmIdentifier = AlgorithmIdentifier {
     asn1_id_value: include_bytes!("data/alg-ecdsa-p384.der"),
 };
 
-const ECDSA_SHA256: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-ecdsa-sha256.der"),
-};
-
-const ECDSA_SHA384: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-ecdsa-sha384.der"),
-};
-
 const RSA_ENCRYPTION: AlgorithmIdentifier = AlgorithmIdentifier {
     asn1_id_value: include_bytes!("data/alg-rsa-encryption.der"),
 };
-
-const RSA_PKCS1_SHA1: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pkcs1-sha1.der"),
-};
-
-const RSA_PKCS1_SHA256: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pkcs1-sha256.der"),
-};
-
-const RSA_PKCS1_SHA384: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pkcs1-sha384.der"),
-};
-
-const RSA_PKCS1_SHA512: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pkcs1-sha512.der"),
-};
-
-const RSA_PSS_SHA256: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pss-sha256.der"),
-};
-
-const RSA_PSS_SHA384: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pss-sha384.der"),
-};
-
-const RSA_PSS_SHA512: AlgorithmIdentifier = AlgorithmIdentifier {
-    asn1_id_value: include_bytes!("data/alg-rsa-pss-sha512.der"),
-};
-
 
 #[cfg(test)]
 mod tests {
