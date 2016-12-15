@@ -237,18 +237,35 @@ static struct rand_buffer *get_thread_local_buffer(void) {
   return buf;
 }
 
+#if defined(USE_SYS_getrandom) && defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+void __msan_unpoison(void *, size_t);
+#endif
+#endif
+
 /* fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
  * on success and zero on error. */
 static char fill_with_entropy(uint8_t *out, size_t len) {
-  ssize_t r;
-
   while (len > 0) {
+    ssize_t r;
+
     if (urandom_fd == kHaveGetrandom) {
 #if defined(USE_SYS_getrandom)
       do {
         r = syscall(SYS_getrandom, out, len, 0 /* no flags */);
       } while (r == -1 && errno == EINTR);
-#else
+
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+      if (r > 0) {
+        /* MSAN doesn't recognise |syscall| and thus doesn't notice that we
+         * have initialised the output buffer. */
+        __msan_unpoison(out, r);
+      }
+#endif /* memory_sanitizer */
+#endif /*__has_feature */
+
+#else /* USE_SYS_getrandom */
       abort();
 #endif
     } else {
