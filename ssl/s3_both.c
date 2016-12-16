@@ -149,6 +149,10 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   }
 
   OPENSSL_cleanse(hs->secret, sizeof(hs->secret));
+  OPENSSL_cleanse(hs->client_handshake_secret,
+                  sizeof(hs->client_handshake_secret));
+  OPENSSL_cleanse(hs->server_handshake_secret,
+                  sizeof(hs->server_handshake_secret));
   OPENSSL_cleanse(hs->client_traffic_secret_0,
                   sizeof(hs->client_traffic_secret_0));
   OPENSSL_cleanse(hs->server_traffic_secret_0,

@@ -833,10 +833,9 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
                           const uint8_t *traffic_secret,
                           size_t traffic_secret_len);
 
-/* tls13_set_handshake_traffic derives the handshake traffic secret and
- * switches both read and write traffic to it. It returns one on success and
- * zero on error. */
-int tls13_set_handshake_traffic(SSL_HANDSHAKE *hs);
+/* tls13_derive_handshake_secrets derives the handshake traffic secret. It
+ * returns one on success and zero on error. */
+int tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs);
 
 /* tls13_rotate_traffic_key derives the next read or write traffic secret. It
  * returns one on success and zero on error. */
@@ -914,6 +913,8 @@ struct ssl_handshake_st {
 
   size_t hash_len;
   uint8_t secret[EVP_MAX_MD_SIZE];
+  uint8_t client_handshake_secret[EVP_MAX_MD_SIZE];
+  uint8_t server_handshake_secret[EVP_MAX_MD_SIZE];
   uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE];
   uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE];
 

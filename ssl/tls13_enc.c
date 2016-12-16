@@ -185,39 +185,18 @@ static const char kTLS13LabelClientApplicationTraffic[] =
 static const char kTLS13LabelServerApplicationTraffic[] =
     "server application traffic secret";
 
-int tls13_set_handshake_traffic(SSL_HANDSHAKE *hs) {
+int tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint8_t client_traffic_secret[EVP_MAX_MD_SIZE];
-  uint8_t server_traffic_secret[EVP_MAX_MD_SIZE];
-  if (!derive_secret(hs, client_traffic_secret, hs->hash_len,
-                     (const uint8_t *)kTLS13LabelClientHandshakeTraffic,
-                     strlen(kTLS13LabelClientHandshakeTraffic)) ||
-      !ssl_log_secret(ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
-                      client_traffic_secret, hs->hash_len) ||
-      !derive_secret(hs, server_traffic_secret, hs->hash_len,
-                     (const uint8_t *)kTLS13LabelServerHandshakeTraffic,
-                     strlen(kTLS13LabelServerHandshakeTraffic)) ||
-      !ssl_log_secret(ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
-                      server_traffic_secret, hs->hash_len)) {
-    return 0;
-  }
-
-  if (ssl->server) {
-    if (!tls13_set_traffic_key(ssl, evp_aead_open, client_traffic_secret,
-                               hs->hash_len) ||
-        !tls13_set_traffic_key(ssl, evp_aead_seal, server_traffic_secret,
-                               hs->hash_len)) {
-      return 0;
-    }
-  } else {
-    if (!tls13_set_traffic_key(ssl, evp_aead_open, server_traffic_secret,
-                               hs->hash_len) ||
-        !tls13_set_traffic_key(ssl, evp_aead_seal, client_traffic_secret,
-                               hs->hash_len)) {
-      return 0;
-    }
-  }
-  return 1;
+  return derive_secret(hs, hs->client_handshake_secret, hs->hash_len,
+                       (const uint8_t *)kTLS13LabelClientHandshakeTraffic,
+                       strlen(kTLS13LabelClientHandshakeTraffic)) &&
+         ssl_log_secret(ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
+                        hs->client_handshake_secret, hs->hash_len) &&
+         derive_secret(hs, hs->server_handshake_secret, hs->hash_len,
+                       (const uint8_t *)kTLS13LabelServerHandshakeTraffic,
+                       strlen(kTLS13LabelServerHandshakeTraffic)) &&
+         ssl_log_secret(ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
+                        hs->server_handshake_secret, hs->hash_len);
 }
 
 static const char kTLS13LabelExporter[] = "exporter master secret";
