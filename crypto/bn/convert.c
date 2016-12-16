@@ -515,6 +515,24 @@ BN_ULONG BN_get_word(const BIGNUM *bn) {
   }
 }
 
+int BN_get_u64(const BIGNUM *bn, uint64_t *out) {
+  switch (bn->top) {
+    case 0:
+      *out = 0;
+      return 1;
+    case 1:
+      *out = bn->d[0];
+      return 1;
+#if defined(OPENSSL_32_BIT)
+    case 2:
+      *out = (uint64_t) bn->d[0] | (((uint64_t) bn->d[1]) << 32);
+      return 1;
+#endif
+    default:
+      return 0;
+  }
+}
+
 size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out) {
   const size_t bits = BN_num_bits(in);
   const size_t bytes = (bits + 7) / 8;

@@ -1495,7 +1495,7 @@ static bool TestBN2Dec() {
   return true;
 }
 
-static bool TestBNSetU64() {
+static bool TestBNSetGetU64() {
   static const struct {
     const char *hex;
     uint64_t value;
@@ -1517,6 +1517,36 @@ static bool TestBNSetU64() {
       ERR_print_errors_fp(stderr);
       return false;
     }
+
+    uint64_t tmp;
+    if (!BN_get_u64(bn.get(), &tmp) || tmp != test.value) {
+      fprintf(stderr, "BN_get_u64 test failed for 0x%s.\n", test.hex);
+      return false;
+    }
+
+    BN_set_negative(bn.get(), 1);
+    if (!BN_get_u64(bn.get(), &tmp) || tmp != test.value) {
+      fprintf(stderr, "BN_get_u64 test failed for -0x%s.\n", test.hex);
+      return false;
+    }
+  }
+
+  // Test that BN_get_u64 fails on large numbers.
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  if (!BN_lshift(bn.get(), BN_value_one(), 64)) {
+    return false;
+  }
+
+  uint64_t tmp;
+  if (BN_get_u64(bn.get(), &tmp)) {
+    fprintf(stderr, "BN_get_u64 of 2^64 unexpectedly succeeded.\n");
+    return false;
+  }
+
+  BN_set_negative(bn.get(), 1);
+  if (BN_get_u64(bn.get(), &tmp)) {
+    fprintf(stderr, "BN_get_u64 of -2^64 unexpectedly succeeded.\n");
+    return false;
   }
 
   return true;
@@ -1548,7 +1578,7 @@ int main(int argc, char *argv[]) {
       !TestSmallPrime(ctx.get()) ||
       !TestCmpWord() ||
       !TestBN2Dec() ||
-      !TestBNSetU64()) {
+      !TestBNSetGetU64()) {
     return 1;
   }
 
