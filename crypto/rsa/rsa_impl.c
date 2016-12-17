@@ -65,6 +65,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
+#include "../bn/internal.h"
 #include "../internal.h"
 
 
@@ -1014,10 +1015,14 @@ int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
     goto err;
   }
 
-  /* calculate inverse of q mod p */
+  /* Calculate inverse of q mod p. Note that although RSA key generation is far
+   * from constant-time, |bn_mod_inverse_secret_prime| uses the same modular
+   * exponentation logic as in RSA private key operations and, if the RSAZ-1024
+   * code is enabled, will be optimized for common RSA prime sizes. */
   p = &local_p;
   BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
-  if (!BN_mod_inverse(rsa->iqmp, rsa->q, p, ctx)) {
+  if (!BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, rsa->p, ctx) ||
+      !bn_mod_inverse_secret_prime(rsa->iqmp, rsa->q, p, ctx, rsa->mont_p)) {
     goto err;
   }
 
@@ -1026,7 +1031,9 @@ int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
         sk_RSA_additional_prime_value(additional_primes, i - 2);
     if (!BN_sub(ap->exp, ap->prime, BN_value_one()) ||
         !BN_mod(ap->exp, rsa->d, ap->exp, ctx) ||
-        !BN_mod_inverse(ap->coeff, ap->r, ap->prime, ctx)) {
+        !BN_MONT_CTX_set_locked(&ap->mont, &rsa->lock, ap->prime, ctx) ||
+        !bn_mod_inverse_secret_prime(ap->coeff, ap->r, ap->prime, ctx,
+                                     ap->mont)) {
       goto err;
     }
   }

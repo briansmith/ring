@@ -238,6 +238,18 @@ int bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n);
 #error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
 #endif
 
+/* bn_mod_inverse_prime sets |out| to the modular inverse of |a| modulo |p|,
+ * computed with Fermat's Little Theorem. It returns one on success and zero on
+ * error. If |mont_p| is NULL, one will be computed temporarily. */
+int bn_mod_inverse_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
+                         BN_CTX *ctx, const BN_MONT_CTX *mont_p);
+
+/* bn_mod_inverse_secret_prime behaves like |bn_mod_inverse_prime| but uses
+ * |BN_mod_exp_mont_consttime| instead of |BN_mod_exp_mont| in hopes of
+ * protecting the exponent. */
+int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
+                                BN_CTX *ctx, const BN_MONT_CTX *mont_p);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
