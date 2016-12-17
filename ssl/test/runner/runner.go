@@ -1315,8 +1315,9 @@ func addBasicTests() {
 					SendFallbackSCSV: true,
 				},
 			},
-			shouldFail:    true,
-			expectedError: ":INAPPROPRIATE_FALLBACK:",
+			shouldFail:         true,
+			expectedError:      ":INAPPROPRIATE_FALLBACK:",
+			expectedLocalError: "remote error: inappropriate fallback",
 		},
 		{
 			testType: serverTest,

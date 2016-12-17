@@ -37,6 +37,7 @@ const (
 	alertProtocolVersion        alert = 70
 	alertInsufficientSecurity   alert = 71
 	alertInternalError          alert = 80
+	alertInappropriateFallback  alert = 86
 	alertUserCanceled           alert = 90
 	alertNoRenegotiation        alert = 100
 	alertMissingExtension       alert = 109
@@ -68,6 +69,7 @@ var alertText = map[alert]string{
 	alertProtocolVersion:        "protocol version not supported",
 	alertInsufficientSecurity:   "insufficient security level",
 	alertInternalError:          "internal error",
+	alertInappropriateFallback:  "inappropriate fallback",
 	alertUserCanceled:           "user canceled",
 	alertNoRenegotiation:        "no renegotiation",
 	alertMissingExtension:       "missing extension",
