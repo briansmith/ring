@@ -187,9 +187,6 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
     OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
     return 0;
   }
-  if (BN_get_flags(mod, BN_FLG_CONSTTIME)) {
-    BN_set_flags(&mont->N, BN_FLG_CONSTTIME);
-  }
 
   /* Find n0 such that n0 * N == -1 (mod r).
    *

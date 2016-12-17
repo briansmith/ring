@@ -194,13 +194,6 @@ OPENSSL_EXPORT void BN_clear(BIGNUM *bn);
 /* BN_value_one returns a static BIGNUM with value 1. */
 OPENSSL_EXPORT const BIGNUM *BN_value_one(void);
 
-/* BN_with_flags initialises a stack allocated |BIGNUM| with pointers to the
- * contents of |in| but with |flags| ORed into the flags field.
- *
- * Note: the two BIGNUMs share state and so |out| should /not/ be passed to
- * |BN_free|. */
-OPENSSL_EXPORT void BN_with_flags(BIGNUM *out, const BIGNUM *in, int flags);
-
 
 /* Basic functions. */
 
@@ -232,12 +225,6 @@ OPENSSL_EXPORT void BN_set_negative(BIGNUM *bn, int sign);
 
 /* BN_is_negative returns one if |bn| is negative and zero otherwise. */
 OPENSSL_EXPORT int BN_is_negative(const BIGNUM *bn);
-
-/* BN_get_flags returns |bn->flags| & |flags|. */
-OPENSSL_EXPORT int BN_get_flags(const BIGNUM *bn, int flags);
-
-/* BN_set_flags sets |flags| on |bn|. */
-OPENSSL_EXPORT void BN_set_flags(BIGNUM *bn, int flags);
 
 
 /* Conversion functions. */
@@ -762,11 +749,10 @@ OPENSSL_EXPORT int BN_gcd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 /* BN_mod_inverse sets |out| equal to |a|^-1, mod |n|. If |out| is NULL, a
  * fresh BIGNUM is allocated. It returns the result or NULL on error.
  *
- * If either of |a| or |n| have |BN_FLG_CONSTTIME| set then the operation is
- * performed using an algorithm that avoids some branches but which isn't
- * constant-time. This function shouldn't be used for secret values, even
- * with |BN_FLG_CONSTTIME|; use |BN_mod_inverse_blinded| instead. Or, if
- * |n| is guaranteed to be prime, use
+ * If |n| is even then the operation is performed using an algorithm that avoids
+ * some branches but which isn't constant-time. This function shouldn't be used
+ * for secret values; use |BN_mod_inverse_blinded| instead. Or, if |n| is
+ * guaranteed to be prime, use
  * |BN_mod_exp_mont_consttime(out, a, m_minus_2, m, ctx, m_mont)|, taking
  * advantage of Fermat's Little Theorem. */
 OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
@@ -775,11 +761,9 @@ OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
 /* BN_mod_inverse_blinded sets |out| equal to |a|^-1, mod |n|, where |n| is the
  * Montgomery modulus for |mont|. |a| must be non-negative and must be less
  * than |n|. |n| must be greater than 1. |a| is blinded (masked by a random
- * value) to protect it against side-channel attacks. |BN_mod_inverse_blinded|
- * may or may not ignore the |BN_FLG_CONSTTIME| flag on any/all of its inputs.
- * It returns one on success or zero on failure. On failure, if the failure was
- * caused by |a| having no inverse mod |n| then |*out_no_inverse| will be set
- * to one; otherwise it will be set to zero. */
+ * value) to protect it against side-channel attacks. On failure, if the failure
+ * was caused by |a| having no inverse mod |n| then |*out_no_inverse| will be
+ * set to one; otherwise it will be set to zero. */
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                            const BN_MONT_CTX *mont, BN_CTX *ctx);
 
@@ -860,9 +844,9 @@ OPENSSL_EXPORT int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                           BN_CTX *ctx);
 
 /* BN_mod_exp sets |r| equal to |a|^{|p|} mod |m|. It does so with the best
- * algorithm for the values provided and can run in constant time if
- * |BN_FLG_CONSTTIME| is set for |p|. It returns one on success or zero
- * otherwise. */
+ * algorithm for the values provided. It returns one on success or zero
+ * otherwise. The |BN_mod_exp_mont_consttime| variant must be used if the
+ * exponent is secret. */
 OPENSSL_EXPORT int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                               const BIGNUM *m, BN_CTX *ctx);
 
@@ -930,10 +914,11 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
-/* Avoid leaking exponent information through timing. |BN_mod_exp_mont| will
- * call |BN_mod_exp_mont_consttime| and |BN_mod_inverse| will call
- * |BN_mod_inverse_no_branch|. */
-#define BN_FLG_CONSTTIME 0x04
+/* |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
+ * on it will not compile. Consumers outside BoringSSL should use the
+ * higher-level cryptographic algorithms exposed by other modules. Consumers
+ * within the library should call the appropriate timing-sensitive algorithm
+ * directly. */
 
 
 #if defined(__cplusplus)

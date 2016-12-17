@@ -140,12 +140,6 @@ int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   int i, bits, ret = 0;
   BIGNUM *v, *rr;
 
-  if ((p->flags & BN_FLG_CONSTTIME) != 0) {
-    /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-
   BN_CTX_start(ctx);
   if (r == a || r == p) {
     rr = BN_CTX_get(ctx);
@@ -437,12 +431,6 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
   BIGNUM *val[TABLE_SIZE];
   BN_RECP_CTX recp;
 
-  if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0) {
-    /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-
   bits = BN_num_bits(p);
 
   if (bits == 0) {
@@ -592,10 +580,6 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   /* Table of variables obtained from 'ctx' */
   BIGNUM *val[TABLE_SIZE];
   BN_MONT_CTX *new_mont = NULL;
-
-  if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0) {
-    return BN_mod_exp_mont_consttime(rr, a, p, m, ctx, mont);
-  }
 
   if (!BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);

@@ -632,15 +632,6 @@ static bool TestModInv(FileTest *t, BN_CTX *ctx) {
     return false;
   }
 
-  BN_set_flags(a.get(), BN_FLG_CONSTTIME);
-
-  if (!ret ||
-      !BN_mod_inverse(ret.get(), a.get(), m.get(), ctx) ||
-      !ExpectBIGNUMsEqual(t, "inv(A) (mod M) (constant-time)", mod_inv.get(),
-                          ret.get())) {
-    return false;
-  }
-
   return true;
 }
 

@@ -434,7 +434,6 @@ int DSA_generate_key(DSA *dsa) {
   int ok = 0;
   BN_CTX *ctx = NULL;
   BIGNUM *pub_key = NULL, *priv_key = NULL;
-  BIGNUM prk;
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -461,12 +460,9 @@ int DSA_generate_key(DSA *dsa) {
     }
   }
 
-  BN_init(&prk);
-  BN_with_flags(&prk, priv_key, BN_FLG_CONSTTIME);
-
   if (!BN_MONT_CTX_set_locked(&dsa->method_mont_p, &dsa->method_mont_lock,
                               dsa->p, ctx) ||
-      !BN_mod_exp_mont_consttime(pub_key, dsa->g, &prk, dsa->p, ctx,
+      !BN_mod_exp_mont_consttime(pub_key, dsa->g, priv_key, dsa->p, ctx,
                                  dsa->method_mont_p)) {
     goto err;
   }
@@ -844,8 +840,6 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
     goto err;
   }
 
-  BN_set_flags(&k, BN_FLG_CONSTTIME);
-
   if (!BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
                               (CRYPTO_MUTEX *)&dsa->method_mont_lock, dsa->p,
                               ctx) ||
@@ -873,7 +867,6 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
     goto err;
   }
 
-  BN_set_flags(&kq, BN_FLG_CONSTTIME);
   if (!BN_mod_exp_mont_consttime(r, dsa->g, &kq, dsa->p, ctx,
                                  dsa->method_mont_p)) {
     goto err;

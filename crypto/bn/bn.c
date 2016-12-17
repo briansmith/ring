@@ -172,12 +172,6 @@ const BIGNUM *BN_value_one(void) {
   return &kOne;
 }
 
-void BN_with_flags(BIGNUM *out, const BIGNUM *in, int flags) {
-  OPENSSL_memcpy(out, in, sizeof(BIGNUM));
-  out->flags &= ~BN_FLG_MALLOCED;
-  out->flags |= BN_FLG_STATIC_DATA | flags;
-}
-
 /* BN_num_bits_word returns the minimum number of bits needed to represent the
  * value in |l|. */
 unsigned BN_num_bits_word(BN_ULONG l) {
@@ -368,12 +362,4 @@ void bn_correct_top(BIGNUM *bn) {
   if (bn->top == 0) {
     bn->neg = 0;
   }
-}
-
-int BN_get_flags(const BIGNUM *bn, int flags) {
-  return bn->flags & flags;
-}
-
-void BN_set_flags(BIGNUM *bn, int flags) {
-  bn->flags |= flags;
 }
