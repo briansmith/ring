@@ -57,8 +57,8 @@ fn parse_public_key(input: untrusted::Input)
                               error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-            let n = try!(der::positive_integer(input));
-            let e = try!(der::positive_integer(input));
+            let n = try!(der::positive_integer(input).map_err(|_| error::Unspecified));
+            let e = try!(der::positive_integer(input).map_err(|_| error::Unspecified));
             Ok((n, e))
         })
     })

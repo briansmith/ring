@@ -84,7 +84,8 @@ impl RSAKeyPair {
                     -> Result<RSAKeyPair, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let version = try!(der::small_nonnegative_integer(input));
+                let version = try!(der::small_nonnegative_integer(input)
+                    .map_err(|_| error::Unspecified));
                 if version != 0 {
                     return Err(error::Unspecified);
                 }

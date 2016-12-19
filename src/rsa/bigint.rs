@@ -88,7 +88,7 @@ impl Positive {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
     pub fn from_der(input: &mut untrusted::Reader)
                     -> Result<Positive, error::Unspecified> {
-        Self::from_be_bytes(try!(der::positive_integer(input)))
+        Self::from_be_bytes(try!(der::positive_integer(input).map_err(|_| error::Unspecified)))
     }
 
     // Turns a sequence of big-endian bytes into a Positive Integer.

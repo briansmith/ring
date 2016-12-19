@@ -154,7 +154,7 @@ pub fn verify_rsa(params: &RSAParameters,
 mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
-    use {der, error, signature, test};
+    use {der, signature, test};
     use untrusted;
 
     #[test]
@@ -178,8 +178,8 @@ mod tests {
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(public_key.read_all(error::Unspecified, |input| {
-                der::nested(input, der::Tag::Sequence, error::Unspecified,
+            assert!(public_key.read_all(der::ASN1Error, |input| {
+                der::nested(input, der::Tag::Sequence, der::ASN1Error,
                             |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));
@@ -222,8 +222,8 @@ mod tests {
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(public_key.read_all(error::Unspecified, |input| {
-                der::nested(input, der::Tag::Sequence, error::Unspecified,
+            assert!(public_key.read_all(der::ASN1Error, |input| {
+                der::nested(input, der::Tag::Sequence, der::ASN1Error,
                             |input| {
                     let _ = try!(der::positive_integer(input));
                     let _ = try!(der::positive_integer(input));

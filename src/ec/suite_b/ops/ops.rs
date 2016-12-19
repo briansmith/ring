@@ -338,7 +338,7 @@ pub struct PublicScalarOps {
 impl PublicScalarOps {
     pub fn scalar_parse(&self, input: &mut untrusted::Reader)
                         -> Result<Scalar, error::Unspecified> {
-        let encoded_value = try!(der::positive_integer(input));
+        let encoded_value = try!(der::positive_integer(input).map_err(|_| error::Unspecified));
         let limbs = try!(parse_big_endian_value_in_range(
                             encoded_value, 1,
                             &self.public_key_ops.common.n.limbs[
