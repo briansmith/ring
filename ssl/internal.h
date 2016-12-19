@@ -1111,6 +1111,14 @@ struct ssl_handshake_st {
   /* early_data_offered is one if the client sent the early_data extension. */
   unsigned early_data_offered:1;
 
+  /* can_early_read is one if application data may be read at this point in the
+   * handshake. */
+  unsigned can_early_read:1;
+
+  /* can_early_write is one if application data may be written at this point in
+   * the handshake. */
+  unsigned can_early_write:1;
+
   /* next_proto_neg_seen is one of NPN was negotiated. */
   unsigned next_proto_neg_seen:1;
 
@@ -1139,8 +1147,9 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs);
 int ssl_check_message_type(SSL *ssl, int type);
 
 /* tls13_handshake runs the TLS 1.3 handshake. It returns one on success and <=
- * 0 on error. */
-int tls13_handshake(SSL_HANDSHAKE *hs);
+ * 0 on error. It sets |out_early_return| to one if we've completed the
+ * handshake early. */
+int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return);
 
 /* The following are implementations of |do_tls13_handshake| for the client and
  * server. */
@@ -1413,7 +1422,6 @@ struct ssl_protocol_method_st {
   int (*read_app_data)(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek);
   int (*read_change_cipher_spec)(SSL *ssl);
-  int (*read_end_of_early_data)(SSL *ssl);
   void (*read_close_notify)(SSL *ssl);
   int (*write_app_data)(SSL *ssl, const uint8_t *buf, int len);
   int (*dispatch_alert)(SSL *ssl);
@@ -2230,6 +2238,12 @@ int ssl_do_channel_id_callback(SSL *ssl);
 /* ssl3_can_false_start returns one if |ssl| is allowed to False Start and zero
  * otherwise. */
 int ssl3_can_false_start(const SSL *ssl);
+
+/* ssl_can_write returns one if |ssl| is allowed to write and zero otherwise. */
+int ssl_can_write(const SSL *ssl);
+
+/* ssl_can_read returns one if |ssl| is allowed to read and zero otherwise. */
+int ssl_can_read(const SSL *ssl);
 
 /* ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
  * minimum and maximum enabled protocol versions, respectively. */

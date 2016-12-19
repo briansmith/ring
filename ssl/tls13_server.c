@@ -673,6 +673,8 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
                                hs->hash_len)) {
       return ssl_hs_error;
     }
+    hs->can_early_write = 1;
+    hs->can_early_read = 1;
     hs->tls13_state = state_process_end_of_early_data;
     return ssl_hs_read_end_of_early_data;
   }

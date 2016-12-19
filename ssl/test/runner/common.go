@@ -1137,6 +1137,10 @@ type ProtocolBugs struct {
 	// send after the ClientHello.
 	SendFakeEarlyDataLength int
 
+	// SendStrayEarlyHandshake, if non-zero, causes the client to send a stray
+	// handshake record before sending end of early data.
+	SendStrayEarlyHandshake bool
+
 	// OmitEarlyDataExtension, if true, causes the early data extension to
 	// be omitted in the ClientHello.
 	OmitEarlyDataExtension bool

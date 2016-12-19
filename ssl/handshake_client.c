@@ -406,6 +406,7 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
       case SSL3_ST_FALSE_START:
         hs->state = SSL3_ST_CR_SESSION_TICKET_A;
         hs->in_false_start = 1;
+        hs->can_early_write = 1;
         ret = 1;
         goto end;
 
@@ -457,13 +458,21 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
         }
         break;
 
-      case SSL_ST_TLS13:
-        ret = tls13_handshake(hs);
+      case SSL_ST_TLS13: {
+        int early_return = 0;
+        ret = tls13_handshake(hs, &early_return);
         if (ret <= 0) {
           goto end;
         }
+
+        if (early_return) {
+          ret = 1;
+          goto end;
+        }
+
         hs->state = SSL3_ST_FINISH_CLIENT_HANDSHAKE;
         break;
+      }
 
       case SSL3_ST_FINISH_CLIENT_HANDSHAKE:
         ssl->method->release_current_message(ssl, 1 /* free_buffer */);

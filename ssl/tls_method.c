@@ -141,7 +141,6 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_release_current_message,
     ssl3_read_app_data,
     ssl3_read_change_cipher_spec,
-    ssl3_read_end_of_early_data,
     ssl3_read_close_notify,
     ssl3_write_app_data,
     ssl3_dispatch_alert,

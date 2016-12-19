@@ -33,7 +33,7 @@
  * without being able to return application data. */
 static const uint8_t kMaxKeyUpdates = 32;
 
-int tls13_handshake(SSL_HANDSHAKE *hs) {
+int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
     /* Resolve the operation the handshake was waiting on. */
@@ -65,10 +65,12 @@ int tls13_handshake(SSL_HANDSHAKE *hs) {
       }
 
       case ssl_hs_read_end_of_early_data: {
-        int ret = ssl->method->read_end_of_early_data(ssl);
-        if (ret <= 0) {
-          return ret;
+        if (ssl->s3->hs->can_early_read) {
+          /* While we are processing early data, the handshake returns early. */
+          *out_early_return = 1;
+          return 1;
         }
+        hs->wait = ssl_hs_ok;
         break;
       }
 

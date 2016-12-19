@@ -613,6 +613,14 @@ int SSL_accept(SSL *ssl) {
   return SSL_do_handshake(ssl);
 }
 
+int ssl_can_write(const SSL *ssl) {
+  return !SSL_in_init(ssl) || ssl->s3->hs->can_early_write;
+}
+
+int ssl_can_read(const SSL *ssl) {
+  return !SSL_in_init(ssl) || ssl->s3->hs->can_early_read;
+}
+
 static int ssl_do_renegotiate(SSL *ssl) {
   /* We do not accept renegotiations as a server or SSL 3.0. SSL 3.0 will be
    * removed entirely in the future and requires retaining more data for
@@ -693,7 +701,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     /* Complete the current handshake, if any. False Start will cause
      * |SSL_do_handshake| to return mid-handshake, so this may require multiple
      * iterations. */
-    while (SSL_in_init(ssl)) {
+    while (!ssl_can_read(ssl)) {
       int ret = SSL_do_handshake(ssl);
       if (ret < 0) {
         return ret;
@@ -709,6 +717,12 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     if (ret > 0 || !got_handshake) {
       ssl->s3->key_update_count = 0;
       return ret;
+    }
+
+    /* If we received an interrupt in early read (the end_of_early_data alert),
+     * loop again for the handshake to process it. */
+    if (SSL_in_init(ssl)) {
+      continue;
     }
 
     /* Handle the post-handshake message and try again. */
@@ -741,7 +755,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
   }
 
   /* If necessary, complete the handshake implicitly. */
-  if (SSL_in_init(ssl) && !SSL_in_false_start(ssl)) {
+  if (!ssl_can_write(ssl)) {
     int ret = SSL_do_handshake(ssl);
     if (ret < 0) {
       return ret;

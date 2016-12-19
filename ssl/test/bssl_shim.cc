@@ -1368,7 +1368,9 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     return false;
   }
 
-  bool expect_handshake_done = is_resume || !config->false_start;
+  bool expect_handshake_done =
+      (is_resume || !config->false_start) &&
+      !(config->is_server && SSL_early_data_accepted(ssl));
   if (expect_handshake_done != GetTestState(ssl)->handshake_done) {
     fprintf(stderr, "handshake was%s completed\n",
             GetTestState(ssl)->handshake_done ? "" : " not");
@@ -2005,8 +2007,9 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         }
 
         // After a successful read, with or without False Start, the handshake
-        // must be complete.
-        if (!GetTestState(ssl.get())->handshake_done) {
+        // must be complete unless we are doing early data.
+        if (!GetTestState(ssl.get())->handshake_done &&
+            !SSL_early_data_accepted(ssl.get())) {
           fprintf(stderr, "handshake was not completed after SSL_read\n");
           return false;
         }
