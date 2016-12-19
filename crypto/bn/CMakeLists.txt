@@ -68,7 +68,6 @@ add_library(
 
 perlasm(x86_64-mont.${ASM_EXT} asm/x86_64-mont.pl)
 perlasm(x86_64-mont5.${ASM_EXT} asm/x86_64-mont5.pl)
-perlasm(rsaz-x86_64.${ASM_EXT} asm/rsaz-x86_64.pl)
 perlasm(rsaz-avx2.${ASM_EXT} asm/rsaz-avx2.pl)
 perlasm(bn-586.${ASM_EXT} asm/bn-586.pl)
 perlasm(co-586.${ASM_EXT} asm/co-586.pl)
