@@ -450,7 +450,8 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
 static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
                    const std::vector<X509 *> &intermediates,
                    const std::vector<X509_CRL *> &crls,
-                   unsigned long flags = 0) {
+                   unsigned long flags,
+                   bool use_additional_untrusted) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -469,8 +470,14 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
     return X509_V_ERR_UNSPECIFIED;
   }
 
-  if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
-                           intermediates_stack.get())) {
+  if (use_additional_untrusted) {
+    X509_STORE_set0_additional_untrusted(store.get(),
+                                         intermediates_stack.get());
+  }
+
+  if (!X509_STORE_CTX_init(
+          ctx.get(), store.get(), leaf,
+          use_additional_untrusted ? nullptr : intermediates_stack.get())) {
     return X509_V_ERR_UNSPECIFIED;
   }
 
@@ -494,6 +501,24 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   }
 
   return X509_V_OK;
+}
+
+static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
+                   const std::vector<X509 *> &intermediates,
+                   const std::vector<X509_CRL *> &crls,
+                   unsigned long flags = 0) {
+  const int r1 = Verify(leaf, roots, intermediates, crls, flags, false);
+  const int r2 = Verify(leaf, roots, intermediates, crls, flags, true);
+
+  if (r1 != r2) {
+    fprintf(stderr,
+            "Verify with, and without, use_additional_untrusted gave different "
+            "results: %d vs %d.\n",
+            r1, r2);
+    return false;
+  }
+
+  return r1;
 }
 
 static bool TestVerify() {

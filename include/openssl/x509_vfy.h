@@ -184,6 +184,7 @@ struct x509_store_st
 	int cache; 	/* if true, stash any hits */
 	STACK_OF(X509_OBJECT) *objs;	/* Cache of all objects */
 	CRYPTO_MUTEX objs_lock;
+	STACK_OF(X509) *additional_untrusted;
 
 	/* These are external lookup methods */
 	STACK_OF(X509_LOOKUP) *get_cert_methods;
@@ -447,6 +448,11 @@ OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags);
 OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *ctx, int purpose);
 OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx, X509_VERIFY_PARAM *pm);
+/* X509_STORE_set0_additional_untrusted sets a stack of additional, untrusted
+ * certificates that are available for chain building. This function does not
+ * take ownership of the stack. */
+OPENSSL_EXPORT void X509_STORE_set0_additional_untrusted(
+    X509_STORE *ctx, STACK_OF(X509) *untrusted);
 
 OPENSSL_EXPORT void X509_STORE_set_verify_cb(X509_STORE *ctx,
 				  int (*verify_cb)(int, X509_STORE_CTX *));
