@@ -199,6 +199,10 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     }
   }
 
+  if (!ssl_auto_chain_if_needed(ssl)) {
+    return ssl_hs_error;
+  }
+
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
                              ssl->init_num)) {

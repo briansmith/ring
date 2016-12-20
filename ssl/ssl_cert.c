@@ -557,54 +557,53 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
     return CBB_add_u24(cbb, 0);
   }
 
-  CERT *cert = ssl->cert;
-  X509 *x = cert->x509_leaf;
-
   CBB child;
-  if (!CBB_add_u24_length_prefixed(cbb, &child)) {
+  if (!CBB_add_u24_length_prefixed(cbb, &child) ||
+      !ssl_add_cert_with_length(&child, ssl->cert->x509_leaf)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  int no_chain = 0;
-  STACK_OF(X509) *chain = cert->x509_chain;
-  if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || chain != NULL) {
-    no_chain = 1;
-  }
-
-  if (no_chain) {
-    if (!ssl_add_cert_with_length(&child, x)) {
+  STACK_OF(X509) *chain = ssl->cert->x509_chain;
+  for (size_t i = 0; i < sk_X509_num(chain); i++) {
+    if (!ssl_add_cert_with_length(&child, sk_X509_value(chain, i))) {
       return 0;
     }
-
-    for (size_t i = 0; i < sk_X509_num(chain); i++) {
-      x = sk_X509_value(chain, i);
-      if (!ssl_add_cert_with_length(&child, x)) {
-        return 0;
-      }
-    }
-  } else {
-    X509_STORE_CTX xs_ctx;
-
-    if (!X509_STORE_CTX_init(&xs_ctx, ssl->ctx->cert_store, x, NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
-      return 0;
-    }
-    X509_verify_cert(&xs_ctx);
-    /* Don't leave errors in the queue */
-    ERR_clear_error();
-
-    for (size_t i = 0; i < sk_X509_num(xs_ctx.chain); i++) {
-      x = sk_X509_value(xs_ctx.chain, i);
-      if (!ssl_add_cert_with_length(&child, x)) {
-        X509_STORE_CTX_cleanup(&xs_ctx);
-        return 0;
-      }
-    }
-    X509_STORE_CTX_cleanup(&xs_ctx);
   }
 
   return CBB_flush(cbb);
+}
+
+int ssl_auto_chain_if_needed(SSL *ssl) {
+  /* Only build a chain if there are no intermediates configured and the feature
+   * isn't disabled. */
+  if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
+      !ssl_has_certificate(ssl) ||
+      ssl->cert->x509_chain != NULL) {
+    return 1;
+  }
+
+  X509_STORE_CTX ctx;
+  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, ssl->cert->x509_leaf,
+                           NULL)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
+    return 0;
+  }
+
+  /* Attempt to build a chain, ignoring the result. */
+  X509_verify_cert(&ctx);
+  ERR_clear_error();
+
+  /* Configure the intermediates from any partial chain we managed to build. */
+  for (size_t i = 1; i < sk_X509_num(ctx.chain); i++) {
+    if (!SSL_add1_chain_cert(ssl, sk_X509_value(ctx.chain, i))) {
+      X509_STORE_CTX_cleanup(&ctx);
+      return 0;
+    }
+  }
+
+  X509_STORE_CTX_cleanup(&ctx);
+  return 1;
 }
 
 /* ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and

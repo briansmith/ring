@@ -487,7 +487,8 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!tls13_prepare_certificate(hs)) {
+  if (!ssl_auto_chain_if_needed(ssl) ||
+      !tls13_prepare_certificate(hs)) {
     return ssl_hs_error;
   }
 

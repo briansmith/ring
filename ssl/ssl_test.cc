@@ -2885,11 +2885,6 @@ static bool ChainsEqual(STACK_OF(X509) *chain,
 
 static bool TestAutoChain(bool is_dtls, const SSL_METHOD *method,
                           uint16_t version) {
-  if (version == TLS1_3_VERSION) {
-    // TODO(davidben): Auto-chaining does not currently work in TLS 1.3.
-    return true;
-  }
-
   bssl::UniquePtr<X509> cert = GetChainTestCertificate();
   bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
   bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();

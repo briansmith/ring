@@ -916,6 +916,10 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
       }
     }
 
+    if (!ssl_auto_chain_if_needed(ssl)) {
+      goto err;
+    }
+
     /* Negotiate the cipher suite. This must be done after |cert_cb| so the
      * certificate is finalized. */
     ssl->s3->tmp.new_cipher =
