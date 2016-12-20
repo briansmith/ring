@@ -30,7 +30,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), error::Unspecified> {
+              signature: untrusted::Input)
+              -> Result<(), error::Unspecified> {
         // NSA Guide Prerequisites:
         //
         //    Prior to accepting a verified digital signature as valid the
@@ -54,11 +55,14 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
         let (r, s) = try!(signature.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let r = try!(self.ops.scalar_parse(input));
-                let s = try!(self.ops.scalar_parse(input));
-                Ok((r, s))
-            })
+            der::nested(input,
+                        der::Tag::Sequence,
+                        error::Unspecified,
+                        |input| {
+                            let r = try!(self.ops.scalar_parse(input));
+                            let s = try!(self.ops.scalar_parse(input));
+                            Ok((r, s))
+                        })
         }));
 
         // NSA Guide Step 2: "Use the selected hash function to compute H =
@@ -100,7 +104,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // that would be necessary to compute the affine X coordinate.
         let x = self.ops.public_key_ops.common.point_x(&product);
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded,
-                          x: &ElemUnreduced, z2: &ElemUnreduced) -> bool {
+                          x: &ElemUnreduced, z2: &ElemUnreduced)
+                          -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_mul_mixed(z2, r);
             let x_decoded = cops.elem_decoded(x);
@@ -111,9 +116,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
             return Ok(());
         }
         if self.ops.elem_decoded_less_than(&r, &self.ops.q_minus_n) {
-            let r_plus_n =
-                self.ops.elem_decoded_sum(&r,
-                                          &self.ops.public_key_ops.common.n);
+            let r_plus_n = self.ops
+                .elem_decoded_sum(&r, &self.ops.public_key_ops.common.n);
             if sig_r_equals_x(self.ops, &r_plus_n, &x, &z2) {
                 return Ok(());
             }
@@ -152,8 +156,10 @@ impl private::Private for ECDSAParameters {}
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-fn digest_scalar(ops: &PublicScalarOps, digest_alg: &'static digest::Algorithm,
-                 msg: untrusted::Input) -> Scalar {
+fn digest_scalar(ops: &PublicScalarOps,
+                 digest_alg: &'static digest::Algorithm,
+                 msg: untrusted::Input)
+                 -> Scalar {
     let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
     digest_scalar_(ops, digest.as_ref())
 }
@@ -170,15 +176,16 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
     };
 
     // XXX: unwrap
-    let limbs =
-        parse_big_endian_value(untrusted::Input::from(digest), num_limbs)
-            .unwrap();
+    let limbs = parse_big_endian_value(untrusted::Input::from(digest),
+                                       num_limbs)
+        .unwrap();
 
     ops.scalar_from_unreduced_limbs(&limbs)
 }
 
 fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
-            p_xy: &(Elem, Elem)) -> Point {
+            p_xy: &(Elem, Elem))
+            -> Point {
     // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
     let scaled_g = ops.point_mul_base(g_scalar);
     let scaled_p = ops.point_mul(p_scalar, p_xy);
@@ -313,20 +320,24 @@ mod tests {
                                      &'static digest::Algorithm) {
         if curve_name == "P-256" {
             if digest_name == "SHA256" {
-                (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA256_ASN1,
+                 &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
-                (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P256_SHA384_ASN1,
+                 &p256::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
             }
         } else if curve_name == "P-384" {
             if digest_name == "SHA256" {
-                (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA256_ASN1,
+                 &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA256)
             } else if digest_name == "SHA384" {
-                (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
+                (&signature::ECDSA_P384_SHA384_ASN1,
+                 &p384::PUBLIC_SCALAR_OPS,
                  &digest::SHA384)
             } else {
                 panic!("Unsupported digest algorithm: {}", digest_name);
@@ -379,20 +390,21 @@ mod benches {
                             4a0d85d0c2e48955214783ecf50a4f0414a319c05a")
                            .unwrap();
 
-        let vectors = [
-            (untrusted::Input::from(&pub_key_1),
-             untrusted::Input::from(&msg_1),
-             untrusted::Input::from(&sig_1)),
-            (untrusted::Input::from(&pub_key_2),
-             untrusted::Input::from(&msg_2),
-             untrusted::Input::from(&sig_2)),
-        ];
+        let vectors = [(untrusted::Input::from(&pub_key_1),
+                        untrusted::Input::from(&msg_1),
+                        untrusted::Input::from(&sig_1)),
+                       (untrusted::Input::from(&pub_key_2),
+                        untrusted::Input::from(&msg_2),
+                        untrusted::Input::from(&sig_2))];
         let mut i = 0;
         bench.iter(|| {
             let (pub_key, msg, sig) = vectors[i];
             i = (i + 1) % vectors.len();
             assert!(signature::verify(&signature::ECDSA_P256_SHA256_ASN1,
-                                      pub_key, msg, sig).is_ok());
+                                      pub_key,
+                                      msg,
+                                      sig)
+                .is_ok());
         });
     }
 
@@ -438,20 +450,21 @@ mod benches {
                             51a30152ea1dd3b6ea66a0088d1fd3e9a1ef069804b7d96914\
                             8c37a0").unwrap();
 
-        let vectors = [
-            (untrusted::Input::from(&pub_key_1),
-             untrusted::Input::from(&msg_1),
-             untrusted::Input::from(&sig_1)),
-            (untrusted::Input::from(&pub_key_2),
-             untrusted::Input::from(&msg_2),
-             untrusted::Input::from(&sig_2)),
-        ];
+        let vectors = [(untrusted::Input::from(&pub_key_1),
+                        untrusted::Input::from(&msg_1),
+                        untrusted::Input::from(&sig_1)),
+                       (untrusted::Input::from(&pub_key_2),
+                        untrusted::Input::from(&msg_2),
+                        untrusted::Input::from(&sig_2))];
         let mut i = 0;
         bench.iter(|| {
             let (pub_key, msg, sig) = vectors[i];
             i = (i + 1) % vectors.len();
             assert!(signature::verify(&signature::ECDSA_P384_SHA384_ASN1,
-                                      pub_key, msg, sig).is_ok());
+                                      pub_key,
+                                      msg,
+                                      sig)
+                .is_ok());
         });
     }
 }

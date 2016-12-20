@@ -45,36 +45,56 @@ macro_rules! rsa_params {
     }
 }
 
-rsa_params!(RSA_PKCS1_2048_8192_SHA1, 2048, &super::padding::RSA_PKCS1_SHA1,
+rsa_params!(RSA_PKCS1_2048_8192_SHA1,
+            2048,
+            &super::padding::RSA_PKCS1_SHA1,
             "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
              `ring::signature`'s module-level documentation for more details.");
-rsa_params!(RSA_PKCS1_2048_8192_SHA256, 2048, &super::RSA_PKCS1_SHA256,
-            "Verification of signatures using RSA keys of 2048-8192 bits,
-             PKCS#1.5 padding, and SHA-256.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details.");
-rsa_params!(RSA_PKCS1_2048_8192_SHA384, 2048, &super::RSA_PKCS1_SHA384,
-            "Verification of signatures using RSA keys of 2048-8192 bits,
-             PKCS#1.5 padding, and SHA-384.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details.");
-rsa_params!(RSA_PKCS1_2048_8192_SHA512, 2048, &super::RSA_PKCS1_SHA512,
-            "Verification of signatures using RSA keys of 2048-8192 bits,
-             PKCS#1.5 padding, and SHA-512.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details.");
-rsa_params!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
-            "Verification of signatures using RSA keys of 3072-8192 bits,
-             PKCS#1.5 padding, and SHA-384.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PKCS1_2048_8192_SHA256,
+            2048,
+            &super::RSA_PKCS1_SHA256,
+            "Verification of signatures using RSA keys of 2048-8192 bits, \
+             PKCS#1.5 padding, and SHA-256.\n\nSee \"`RSA_PKCS1_*` Details\" \
+             in `ring::signature`'s module-level documentation \
+             for more details.");
+rsa_params!(RSA_PKCS1_2048_8192_SHA384,
+            2048,
+            &super::RSA_PKCS1_SHA384,
+            "Verification of signatures using RSA keys of 2048-8192 bits, \
+             PKCS#1.5 padding, and SHA-384.\n\nSee \"`RSA_PKCS1_*` Details\" \
+             in `ring::signature`'s module-level documentation \
+             for more details.");
+rsa_params!(RSA_PKCS1_2048_8192_SHA512,
+            2048,
+            &super::RSA_PKCS1_SHA512,
+            "Verification of signatures using RSA keys of 2048-8192 bits, \
+             PKCS#1.5 padding, and SHA-512.\n\nSee \"`RSA_PKCS1_*` Details\" \
+             in `ring::signature`'s module-level documentation \
+             for more details.");
+rsa_params!(RSA_PKCS1_3072_8192_SHA384,
+            3072,
+            &super::RSA_PKCS1_SHA384,
+            "Verification of signatures using RSA keys of 3072-8192 bits, \
+             PKCS#1.5 padding, and SHA-384.\n\nSee \"`RSA_PKCS1_*` Details\" \
+             in `ring::signature`'s module-level documentation \
+             for more details.");
 
-rsa_params!(RSA_PSS_2048_8192_SHA256, 2048, &super::RSA_PSS_SHA256,
+rsa_params!(RSA_PSS_2048_8192_SHA256,
+            2048,
+            &super::RSA_PSS_SHA256,
             "Verification of signatures using RSA keys of 2048-8192 bits,
              PSS padding, and SHA-256.\n\nSee \"`RSA_PSS_*` Details\" in
              `ring::signature`'s module-level documentation for more details.");
-rsa_params!(RSA_PSS_2048_8192_SHA384, 2048, &super::RSA_PSS_SHA384,
+rsa_params!(RSA_PSS_2048_8192_SHA384,
+            2048,
+            &super::RSA_PSS_SHA384,
             "Verification of signatures using RSA keys of 2048-8192 bits,
              PSS padding, and SHA-384.\n\nSee \"`RSA_PSS_*` Details\" in
              `ring::signature`'s module-level documentation for more details.");
-rsa_params!(RSA_PSS_2048_8192_SHA512, 2048, &super::RSA_PSS_SHA512,
+rsa_params!(RSA_PSS_2048_8192_SHA512,
+            2048,
+            &super::RSA_PSS_SHA512,
             "Verification of signatures using RSA keys of 2048-8192 bits,
              PSS padding, and SHA-512.\n\nSee \"`RSA_PSS_*` Details\" in
              `ring::signature`'s module-level documentation for more details.");
@@ -96,7 +116,6 @@ rsa_params!(RSA_PSS_2048_8192_SHA512, 2048, &super::RSA_PSS_SHA512,
 /// `n` is the public key modulus and `e` is the public key exponent. Both are
 /// interpreted as unsigned big-endian encoded values. Both must be positive
 /// and neither may have any leading zeros.
-//
 // There are a small number of tests that test `verify_rsa` directly, but the
 // test coverage for this function mostly depends on the test coverage for the
 // `signature::VerificationAlgorithm` implementation for `RSAParameters`. If we
@@ -119,29 +138,36 @@ pub fn verify_rsa(params: &RSAParameters,
     let e = try!(bigint::Positive::from_be_bytes(e));
     let max_bits = try!(bits::BitLength::from_usize_bytes(
         PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN));
-    let (n, e) =
-        try!(super::check_public_modulus_and_exponent(n, e, params.min_bits,
-                                                      max_bits));
+    let (n, e) = try!(super::check_public_modulus_and_exponent(n,
+                                                               e,
+                                                               params.min_bits,
+                                                               max_bits));
     let n_bits = n.bit_length();
     let n = try!(n.into_modulus::<N>());
 
     let decoded = &mut decoded[..signature.len()];
     try!(bssl::map_result(unsafe {
-        GFp_rsa_public_decrypt(decoded.as_mut_ptr(), decoded.len(), n.as_ref(),
-                               e.as_ref(), signature.as_ptr(), signature.len())
+        GFp_rsa_public_decrypt(decoded.as_mut_ptr(),
+                               decoded.len(),
+                               n.as_ref(),
+                               e.as_ref(),
+                               signature.as_ptr(),
+                               signature.len())
     }));
 
     let m_hash = digest::digest(params.padding_alg.digest_alg(),
                                 msg.as_slice_less_safe());
 
-    untrusted::Input::from(decoded).read_all(
-        error::Unspecified, |m| params.padding_alg.verify(&m_hash, m, n_bits))
+    untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
+        params.padding_alg.verify(&m_hash, m, n_bits)
+    })
 }
 
 extern {
     fn GFp_rsa_public_decrypt(out: *mut u8, out_len: c::size_t,
-                              mont_n: &bigint::BN_MONT_CTX, e: &bigint::BIGNUM,
-                              ciphertext: *const u8, ciphertext_len: c::size_t)
+                              mont_n: &bigint::BN_MONT_CTX,
+                              e: &bigint::BIGNUM, ciphertext: *const u8,
+                              ciphertext_len: c::size_t)
                               -> c::int;
 }
 
@@ -164,7 +190,7 @@ mod tests {
                 "SHA256" => &signature::RSA_PKCS1_2048_8192_SHA256,
                 "SHA384" => &signature::RSA_PKCS1_2048_8192_SHA384,
                 "SHA512" => &signature::RSA_PKCS1_2048_8192_SHA512,
-                _ =>  { panic!("Unsupported digest: {}", digest_name) }
+                _ => panic!("Unsupported digest: {}", digest_name),
             };
 
             let public_key = test_case.consume_bytes("Key");
@@ -174,13 +200,16 @@ mod tests {
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
             assert!(public_key.read_all(error::Unspecified, |input| {
-                der::nested(input, der::Tag::Sequence, error::Unspecified,
-                            |input| {
-                    let _ = try!(der::positive_integer(input));
-                    let _ = try!(der::positive_integer(input));
-                    Ok(())
+                    der::nested(input,
+                                der::Tag::Sequence,
+                                error::Unspecified,
+                                |input| {
+                                    let _ = try!(der::positive_integer(input));
+                                    let _ = try!(der::positive_integer(input));
+                                    Ok(())
+                                })
                 })
-            }).is_ok());
+                .is_ok());
 
             let msg = test_case.consume_bytes("Msg");
             let msg = untrusted::Input::from(&msg);
@@ -208,7 +237,7 @@ mod tests {
                 "SHA256" => &signature::RSA_PSS_2048_8192_SHA256,
                 "SHA384" => &signature::RSA_PSS_2048_8192_SHA384,
                 "SHA512" => &signature::RSA_PSS_2048_8192_SHA512,
-                _ =>  { panic!("Unsupported digest: {}", digest_name) }
+                _ => panic!("Unsupported digest: {}", digest_name),
             };
 
             let public_key = test_case.consume_bytes("Key");
@@ -218,13 +247,16 @@ mod tests {
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
             assert!(public_key.read_all(error::Unspecified, |input| {
-                der::nested(input, der::Tag::Sequence, error::Unspecified,
-                            |input| {
-                    let _ = try!(der::positive_integer(input));
-                    let _ = try!(der::positive_integer(input));
-                    Ok(())
+                    der::nested(input,
+                                der::Tag::Sequence,
+                                error::Unspecified,
+                                |input| {
+                                    let _ = try!(der::positive_integer(input));
+                                    let _ = try!(der::positive_integer(input));
+                                    Ok(())
+                                })
                 })
-            }).is_ok());
+                .is_ok());
 
             let msg = test_case.consume_bytes("Msg");
             let msg = untrusted::Input::from(&msg);

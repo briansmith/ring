@@ -90,7 +90,8 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
 // we need to use it.
 #[inline]
 pub fn private_key_as_scalar(ops: &PrivateKeyOps,
-                             private_key: &ec::PrivateKey) -> Scalar {
+                             private_key: &ec::PrivateKey)
+                             -> Scalar {
     let num_limbs = ops.common.num_limbs;
     let max_exclusive = &ops.common.n.limbs[..num_limbs];
 
@@ -136,12 +137,14 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
     let my_private_key = private_key_as_scalar(ops, my_private_key);
     let my_public_key = ops.point_mul_base(&my_private_key);
     public_out[0] = 4; // Uncompressed encoding.
-    let (x_out, y_out) =
-        (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
+    let (x_out, y_out) = (&mut public_out[1..])
+        .split_at_mut(elem_and_scalar_bytes);
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.
-    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out),
+    big_endian_affine_from_jacobian(ops,
+                                    Some(x_out),
+                                    Some(y_out),
                                     &my_public_key)
 }
 

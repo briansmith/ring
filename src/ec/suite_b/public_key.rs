@@ -27,7 +27,8 @@ use untrusted;
 /// NSA's "Suite B Implementer's Guide to FIPS 186-3 (ECDSA)," Appendix A.3.
 ///
 /// [NIST SP 800-56A, revision 2]:
-///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/\
+///      NIST.SP.800-56Ar2.pdf
 pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
                                 -> Result<(Elem, Elem), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.

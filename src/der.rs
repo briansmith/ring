@@ -40,10 +40,9 @@ pub enum Tag {
     ContextSpecificConstructed3 = CONTEXT_SPECIFIC | CONSTRUCTED | 3,
 }
 
-pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
-                                    tag: Tag)
-                                    -> Result<untrusted::Input<'a>,
-                                              error::Unspecified> {
+pub fn expect_tag_and_get_value<'a>
+    (input: &mut untrusted::Reader<'a>, tag: Tag)
+     -> Result<untrusted::Input<'a>, error::Unspecified> {
     let (actual_tag, inner) = try!(read_tag_and_get_value(input));
     if (tag as usize) != (actual_tag as usize) {
         return Err(error::Unspecified);
@@ -51,9 +50,9 @@ pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
     Ok(inner)
 }
 
-pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
-                                  -> Result<(u8, untrusted::Input<'a>),
-                                            error::Unspecified> {
+pub fn read_tag_and_get_value<'a>
+    (input: &mut untrusted::Reader<'a>)
+     -> Result<(u8, untrusted::Input<'a>), error::Unspecified> {
     let tag = try!(input.read_byte());
     if (tag & 0x1F) == 0x1F {
         return Err(error::Unspecified); // High tag number form is not allowed.
@@ -92,15 +91,17 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
 // TODO: investigate taking decoder as a reference to reduce generated code
 // size.
 pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
-                                 error: E, decoder: F) -> Result<R, E>
-                                 where F : FnOnce(&mut untrusted::Reader<'a>)
-                                                  -> Result<R, E> {
+                                 error: E, decoder: F)
+                                 -> Result<R, E>
+    where F: FnOnce(&mut untrusted::Reader<'a>) -> Result<R, E>
+{
     let inner = try!(expect_tag_and_get_value(input, tag).map_err(|_| error));
     inner.read_all(error, decoder)
 }
 
-fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
-                           -> Result<untrusted::Input<'a>, error::Unspecified> {
+fn nonnegative_integer<'a>
+    (input: &mut untrusted::Reader<'a>, min_value: u8)
+     -> Result<untrusted::Input<'a>, error::Unspecified> {
     // Verify that |input|, which has had any leading zero stripped off, is the
     // encoding of a value of at least |min_value|.
     fn check_minimum(input: untrusted::Input, min_value: u8)
@@ -171,8 +172,9 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader)
 /// Parses a positive DER integer, returning the big-endian-encoded value, sans
 /// any leading zero byte.
 #[inline]
-pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
-                            -> Result<untrusted::Input<'a>, error::Unspecified> {
+pub fn positive_integer<'a>
+    (input: &mut untrusted::Reader<'a>)
+     -> Result<untrusted::Input<'a>, error::Unspecified> {
     nonnegative_integer(input, 1)
 }
 
@@ -184,15 +186,15 @@ mod tests {
     use untrusted;
 
     fn with_good_i<F, R>(value: &[u8], f: F)
-                         where F: FnOnce(&mut untrusted::Reader)
-                                         -> Result<R, error::Unspecified> {
+        where F: FnOnce(&mut untrusted::Reader) -> Result<R, error::Unspecified>
+    {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_ok());
     }
 
     fn with_bad_i<F, R>(value: &[u8], f: F)
-                        where F: FnOnce(&mut untrusted::Reader)
-                                        -> Result<R, error::Unspecified> {
+        where F: FnOnce(&mut untrusted::Reader) -> Result<R, error::Unspecified>
+    {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_err());
     }
@@ -221,7 +223,8 @@ mod tests {
           &[0x02, 0x00, 0x01],
           &[0x02, 0x01],
           &[0x02, 0x01, 0x00, 0x01],
-          &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
+          /* Would be valid if last byte is ignored. */
+          &[0x02, 0x01, 0x01, 0x00],
           &[0x02, 0x02, 0x01],
 
           // Negative values

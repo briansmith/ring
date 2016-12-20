@@ -47,9 +47,9 @@ impl<'a> Ed25519KeyPair {
     /// `Ed25519KeyPair` and a `Ed25519KeyPairBytes`. There is no way to
     /// extract the private key bytes from an `Ed25519KeyPair`, so extracting
     /// the values from the `Ed25519KeyPairBytes` is the only way to get them.
-    pub fn generate_serializable(rng: &rand::SecureRandom)
-            -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
-                      error::Unspecified> {
+    pub fn generate_serializable
+        (rng: &rand::SecureRandom)
+         -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes), error::Unspecified> {
         let mut bytes = Ed25519KeyPairBytes {
             private_key: [0; 32],
             public_key: [0; 32],
@@ -114,8 +114,10 @@ impl<'a> Ed25519KeyPair {
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         let mut signature_bytes = [0u8; 64];
         unsafe {
-            GFp_ed25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
-                             msg.len(), self.private_public.as_ptr());
+            GFp_ed25519_sign(signature_bytes.as_mut_ptr(),
+                             msg.as_ptr(),
+                             msg.len(),
+                             self.private_public.as_ptr());
         }
         signature::Signature::new(signature_bytes)
     }
@@ -131,7 +133,8 @@ pub static ED25519: EdDSAParameters = EdDSAParameters {};
 
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), error::Unspecified> {
+              signature: untrusted::Input)
+              -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
         if public_key.len() != 32 || signature.len() != 64 {
             return Err(error::Unspecified);
@@ -139,7 +142,9 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let msg = msg.as_slice_less_safe();
         let signature = signature.as_slice_less_safe();
         bssl::map_result(unsafe {
-            GFp_ed25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
+            GFp_ed25519_verify(msg.as_ptr(),
+                               msg.len(),
+                               signature.as_ptr(),
                                public_key.as_ptr())
         })
     }
@@ -148,16 +153,18 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 impl private::Private for EdDSAParameters {}
 
 
-extern  {
-    fn GFp_ed25519_public_from_private(out: *mut u8/*[32]*/,
-                                       in_: *const u8/*[32]*/);
+extern {
+    fn GFp_ed25519_public_from_private(out: *mut u8 /* [32] */,
+                                       in_: *const u8 /* [32] */);
 
-    fn GFp_ed25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
-                        message_len: c::size_t, private_key: *const u8/*[64]*/);
+    fn GFp_ed25519_sign(out_sig: *mut u8 /* [64] */, message: *const u8,
+                        message_len: c::size_t,
+                        private_key: *const u8 /* [64] */);
 
     fn GFp_ed25519_verify(message: *const u8, message_len: c::size_t,
-                          signature: *const u8/*[64]*/,
-                          public_key: *const u8/*[32]*/) -> c::int;
+                          signature: *const u8 /* [64] */,
+                          public_key: *const u8 /* [32] */)
+                          -> c::int;
 }
 
 
@@ -180,7 +187,8 @@ mod tests {
             let expected_sig = test_case.consume_bytes("SIG");
 
             let key_pair = Ed25519KeyPair::from_bytes(&private_key[..32],
-                                                      &public_key).unwrap();
+                                                      &public_key)
+                .unwrap();
             let actual_sig = key_pair.sign(&msg);
             assert_eq!(&expected_sig[..], actual_sig.as_slice());
 
@@ -188,8 +196,11 @@ mod tests {
             let msg = untrusted::Input::from(&msg);
             let expected_sig = untrusted::Input::from(&expected_sig);
 
-            assert!(signature::verify(&signature::ED25519, public_key,
-                                      msg, expected_sig).is_ok());
+            assert!(signature::verify(&signature::ED25519,
+                                      public_key,
+                                      msg,
+                                      expected_sig)
+                .is_ok());
 
             Ok(())
         });
@@ -201,18 +212,22 @@ mod tests {
         let (_, bytes) = Ed25519KeyPair::generate_serializable(&rng).unwrap();
 
         assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
-                                           &bytes.public_key).is_ok());
+                                           &bytes.public_key)
+            .is_ok());
 
         // Truncated private key.
         assert!(Ed25519KeyPair::from_bytes(&bytes.private_key[..31],
-                                           &bytes.public_key).is_err());
+                                           &bytes.public_key)
+            .is_err());
 
         // Truncated public key.
         assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
-                                           &bytes.public_key[..31]).is_err());
+                                           &bytes.public_key[..31])
+            .is_err());
 
         // Swapped public and private key.
         assert!(Ed25519KeyPair::from_bytes(&bytes.public_key,
-                                           &bytes.private_key).is_err());
+                                           &bytes.private_key)
+            .is_err());
     }
 }

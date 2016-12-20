@@ -40,7 +40,8 @@ macro_rules! ecdh {
         /// [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
         ///     http://www.secg.org/sec1-v2.pdf
         /// [NIST Special Publication 800-56A, revision 2]:
-        ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+        ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/\
+        ///      NIST.SP.800-56Ar2.pdf
         /// [Suite B Implementer's Guide to NIST SP 800-56A]:
         ///     https://github.com/briansmith/ring/blob/master/doc/ecdh.pdf
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
@@ -74,18 +75,31 @@ macro_rules! ecdh {
     }
 }
 
-ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &p256::PRIVATE_KEY_OPS,
-      &p256::PUBLIC_KEY_OPS, 415 /*NID_X9_62_prime256v1*/, p256_ecdh,
-      p256_generate_private_key, p256_public_from_private);
+ecdh!(ECDH_P256,
+      256,
+      "P-256 (secp256r1)",
+      &p256::PRIVATE_KEY_OPS,
+      &p256::PUBLIC_KEY_OPS,
+      415, /* NID_X9_62_prime256v1 */
+      p256_ecdh,
+      p256_generate_private_key,
+      p256_public_from_private);
 
-ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &p384::PRIVATE_KEY_OPS,
-      &p384::PUBLIC_KEY_OPS, 715 /*NID_secp384r1*/, p384_ecdh,
-      p384_generate_private_key, p384_public_from_private);
+ecdh!(ECDH_P384,
+      384,
+      "P-384 (secp384r1)",
+      &p384::PRIVATE_KEY_OPS,
+      &p384::PUBLIC_KEY_OPS,
+      715, /* NID_secp384r1 */
+      p384_ecdh,
+      p384_generate_private_key,
+      p384_public_from_private);
 
 
 fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
         out: &mut [u8], my_private_key: &ec::PrivateKey,
-        peer_public_key: untrusted::Input) -> Result<(), error::Unspecified> {
+        peer_public_key: untrusted::Input)
+        -> Result<(), error::Unspecified> {
     // The NIST SP 800-56Ar2 steps are from section 5.7.1.2 Elliptic Curve
     // Cryptography Cofactor Diffie-Hellman (ECC CDH) Primitive.
     //
@@ -147,12 +161,11 @@ mod tests {
     use {agreement, ec, test};
     use super::super::{ops, private_key};
 
-    static SUPPORTED_SUITE_B_ALGS:
-        [(&'static str, &'static agreement::Algorithm,
-          &'static ops::CommonOps); 2] = [
-        ("P-256", &agreement::ECDH_P256, &ops::p256::COMMON_OPS),
-        ("P-384", &agreement::ECDH_P384, &ops::p384::COMMON_OPS),
-    ];
+    static SUPPORTED_SUITE_B_ALGS: [(&'static str,
+      &'static agreement::Algorithm,
+      &'static ops::CommonOps); 2] =
+        [("P-256", &agreement::ECDH_P256, &ops::p256::COMMON_OPS),
+         ("P-384", &agreement::ECDH_P384, &ops::p384::COMMON_OPS)];
 
     #[test]
     fn test_agreement_suite_b_ecdh_generate() {
@@ -168,13 +181,13 @@ mod tests {
             // Test that the private key value zero is rejected and that
             // `generate` gives up after a while of only getting zeros.
             assert!(agreement::EphemeralPrivateKey::generate(alg, &random_00)
-                        .is_err());
+                .is_err());
 
             // Test that the private key value larger than the group order is
             // rejected and that `generate` gives up after a while of only
             // getting values larger than the group order.
             assert!(agreement::EphemeralPrivateKey::generate(alg, &random_ff)
-                        .is_err());
+                .is_err());
 
             // Test that a private key value exactly equal to the group order
             // is rejected and that `generate` gives up after a while of only
@@ -187,7 +200,7 @@ mod tests {
                 let n_bytes = &mut n_bytes[..num_bytes];
                 let rng = test::rand::FixedSliceRandom { bytes: n_bytes };
                 assert!(agreement::EphemeralPrivateKey::generate(alg, &rng)
-                            .is_err());
+                    .is_err());
             }
 
             // Test that a private key value exactly equal to the group order
@@ -196,11 +209,10 @@ mod tests {
             {
                 let n_minus_1_bytes = &mut n_minus_1_bytes[..num_bytes];
                 n_minus_1_bytes[num_bytes - 1] -= 1;
-                let rng = test::rand::FixedSliceRandom {
-                    bytes: n_minus_1_bytes
-                };
+                let rng =
+                    test::rand::FixedSliceRandom { bytes: n_minus_1_bytes };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng)
-                                .unwrap();
+                    .unwrap();
                 assert_eq!(&n_minus_1_bytes[..], &key.bytes()[..num_bytes]);
             }
 
@@ -209,29 +221,26 @@ mod tests {
             {
                 let n_plus_1_bytes = &mut n_plus_1_bytes[..num_bytes];
                 n_plus_1_bytes[num_bytes - 1] += 1;
-                let rng = test::rand::FixedSliceRandom {
-                    bytes: n_plus_1_bytes
-                };
+                let rng =
+                    test::rand::FixedSliceRandom { bytes: n_plus_1_bytes };
                 assert!(agreement::EphemeralPrivateKey::generate(alg, &rng)
-                            .is_err());
+                    .is_err());
             }
 
             // Test recovery from initial RNG failure. The first value will be
             // n, then n + 1, then zero, the next value will be n - 1, which
             // will be accepted.
             {
-                let bytes = [
-                    &n_bytes[..num_bytes],
-                    &n_plus_1_bytes[..num_bytes],
-                    &[0u8; ec::SCALAR_MAX_BYTES][..num_bytes],
-                    &n_minus_1_bytes[..num_bytes],
-                ];
+                let bytes = [&n_bytes[..num_bytes],
+                             &n_plus_1_bytes[..num_bytes],
+                             &[0u8; ec::SCALAR_MAX_BYTES][..num_bytes],
+                             &n_minus_1_bytes[..num_bytes]];
                 let rng = test::rand::FixedSliceSequenceRandom {
                     bytes: &bytes,
                     current: core::cell::UnsafeCell::new(0),
                 };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng)
-                                .unwrap();
+                    .unwrap();
                 assert_eq!(&n_minus_1_bytes[..num_bytes],
                            &key.bytes()[..num_bytes]);
             }

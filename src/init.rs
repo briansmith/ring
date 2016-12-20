@@ -17,7 +17,9 @@ pub fn init_once() {
     #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
     {
         extern crate std;
-        extern { fn GFp_cpuid_setup(); }
+        extern {
+            fn GFp_cpuid_setup();
+        }
         static INIT: std::sync::Once = std::sync::ONCE_INIT;
         INIT.call_once(|| unsafe { GFp_cpuid_setup() });
     }

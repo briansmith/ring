@@ -23,13 +23,18 @@
 use {polyfill, c};
 
 // XXX: Not correct for x32 ABIs.
-#[cfg(target_pointer_width = "64")] pub type Limb = u64;
-#[cfg(target_pointer_width = "32")] pub type Limb = u32;
-#[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
-#[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
+#[cfg(target_pointer_width = "64")]
+pub type Limb = u64;
+#[cfg(target_pointer_width = "32")]
+pub type Limb = u32;
+#[cfg(target_pointer_width = "64")]
+pub const LIMB_BITS: usize = 64;
+#[cfg(target_pointer_width = "32")]
+pub const LIMB_BITS: usize = 32;
 
 #[cfg(target_pointer_width = "64")]
-#[allow(trivial_numeric_casts)] // XXX: workaround compiler bug.
+// XXX: workaround compiler bug.
+#[allow(trivial_numeric_casts)]
 #[derive(Debug, PartialEq)]
 #[repr(u64)]
 pub enum LimbMask {
@@ -38,7 +43,8 @@ pub enum LimbMask {
 }
 
 #[cfg(target_pointer_width = "32")]
-#[allow(trivial_numeric_casts)] // XXX: workaround compiler bug.
+// XXX: workaround compiler bug.
+#[allow(trivial_numeric_casts)]
 #[derive(Debug, PartialEq)]
 #[repr(u32)]
 pub enum LimbMask {
@@ -88,7 +94,9 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
 pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     assert_eq!(r.len(), m.len());
     unsafe {
-        GFp_constant_time_limbs_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len());
+        GFp_constant_time_limbs_reduce_once(r.as_mut_ptr(),
+                                            m.as_ptr(),
+                                            m.len());
     }
 }
 
@@ -97,7 +105,8 @@ extern {
                                         -> LimbMask;
 
     fn GFp_constant_time_limbs_lt_limbs(a: *const Limb, b: *const Limb,
-                                        num_limbs: c::size_t) -> LimbMask;
+                                        num_limbs: c::size_t)
+                                        -> LimbMask;
 
     fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
                                            num_limbs: c::size_t);

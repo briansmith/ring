@@ -41,18 +41,14 @@ pub mod slice {
 
     #[inline(always)]
     pub fn u32_from_be_u8(buffer: &[u8; 4]) -> u32 {
-        u32::from(buffer[0]) << 24 |
-        u32::from(buffer[1]) << 16 |
-        u32::from(buffer[2]) << 8 |
-        u32::from(buffer[3])
+        u32::from(buffer[0]) << 24 | u32::from(buffer[1]) << 16 |
+        u32::from(buffer[2]) << 8 | u32::from(buffer[3])
     }
 
     #[inline(always)]
     pub fn u32_from_le_u8(buffer: &[u8; 4]) -> u32 {
-        u32::from(buffer[0]) |
-        u32::from(buffer[1]) << 8 |
-        u32::from(buffer[2]) << 16 |
-        u32::from(buffer[3]) << 24
+        u32::from(buffer[0]) | u32::from(buffer[1]) << 8 |
+        u32::from(buffer[2]) << 16 | u32::from(buffer[3]) << 24
     }
 
     #[inline(always)]
@@ -64,7 +60,8 @@ pub mod slice {
     }
 
     // https://github.com/rust-lang/rust/issues/27750
-    // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
+    // https://internals.rust-lang.org/t/\
+    //  stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]
     pub fn fill(dest: &mut [u8], value: u8) {
         for d in dest {
@@ -72,7 +69,8 @@ pub mod slice {
         }
     }
 
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    // https://internals.rust-lang.org/t/\
+    //  safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u8(src: &[u64]) -> &[u8] {
         unsafe {
@@ -81,7 +79,8 @@ pub mod slice {
         }
     }
 
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    // https://internals.rust-lang.org/t/\
+    //  safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u8_mut(src: &mut [u64]) -> &mut [u8] {
         unsafe {
@@ -90,7 +89,8 @@ pub mod slice {
         }
     }
 
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    // https://internals.rust-lang.org/t/\
+    //  safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     #[allow(dead_code)] // Only used on 32-bit builds currently
     pub fn u32_as_u8<'a>(src: &'a [u32]) -> &'a [u8] {
@@ -99,7 +99,8 @@ pub mod slice {
         }
     }
 
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    // https://internals.rust-lang.org/t/\
+    //  safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     #[allow(dead_code)] // Only used on 32-bit builds currently
     pub fn u32_as_u8_mut<'a>(src: &'a mut [u32]) -> &'a mut [u8] {
@@ -109,7 +110,8 @@ pub mod slice {
         }
     }
 
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    // https://internals.rust-lang.org/t/\
+    //  safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u32(src: &[u64]) -> &[u32] {
         unsafe {
@@ -118,7 +120,8 @@ pub mod slice {
         }
     }
 
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    // https://internals.rust-lang.org/t/\
+    //  safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u32_mut(src: &mut [u64]) -> &mut [u32] {
         unsafe {

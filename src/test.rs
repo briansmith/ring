@@ -93,9 +93,11 @@
 //! stack backtrace:
 //!    0:     0x7ff654a05c7c - std::rt::lang_start::h61f4934e780b4dfc
 //!    1:     0x7ff654a04f32 - std::rt::lang_start::h61f4934e780b4dfc
-//!    2:     0x7ff6549f505d - std::panicking::rust_panic_with_hook::hfe203e3083c2b544
+//!    2:     0x7ff6549f505d - std::panicking::rust_panic_with_hook::\
+//!             hfe203e3083c2b544
 //!    3:     0x7ff654a0825b - rust_begin_unwind
-//!    4:     0x7ff6549f63af - std::panicking::begin_panic_fmt::h484cd47786497f03
+//!    4:     0x7ff6549f63af - std::panicking::begin_panic_fmt::\
+//!             h484cd47786497f03
 //!    5:     0x7ff654a07e9b - rust_begin_unwind
 //!    6:     0x7ff654a0ae95 - core::panicking::panic_fmt::h257ceb0aa351d801
 //!    7:     0x7ff654a0b190 - core::panicking::panic::h4bb1497076d04ab9
@@ -107,7 +109,8 @@
 //!   11:     0x7ff6549d51a2 - test::stats::Summary::new::ha139494ed2e4e01f
 //!   12:     0x7ff654a0a911 - _rust_maybe_catch_panic
 //!   13:     0x7ff6549d56dd - test::stats::Summary::new::ha139494ed2e4e01f
-//!   14:     0x7ff654a03783 - std::sys::thread::Thread::new::h2b08da6cd2517f79
+//!   14:     0x7ff654a03783 - std::sys::thread::Thread::new::\
+//!             h2b08da6cd2517f79
 //!   15:     0x7ff968518101 - BaseThreadInitThunk
 //! ```
 //!
@@ -204,7 +207,7 @@ impl TestCase {
     /// doesn't have the attribute.
     pub fn consume_optional_string(&mut self, key: &str) -> Option<String> {
         for &mut (ref name, ref value, ref mut consumed) in
-                &mut self.attributes {
+            &mut self.attributes {
             if key == name {
                 if *consumed {
                     panic!("Attribute {} was already consumed", key);
@@ -223,8 +226,8 @@ impl TestCase {
 /// or until all the test vectors have been read. `f` can indicate failure
 /// either by returning `Err()` or by panicking.
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
-                    where F: FnMut(&str, &mut TestCase)
-                                   -> Result<(), error::Unspecified> {
+    where F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>
+{
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
@@ -232,8 +235,8 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
     let mut current_section = String::from("");
     let mut failed = false;
 
-    while let Some(mut test_case) = parse_test_case(&mut current_section,
-                                                    &mut lines) {
+    while let Some(mut test_case) =
+        parse_test_case(&mut current_section, &mut lines) {
         let result =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 f(&current_section, &mut test_case)
@@ -272,8 +275,8 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
 /// have an even number of digits.
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
-        return Err(
-            String::from("Hex string does not have an even number of digits"));
+        return Err(String::from("Hex string does not have an even number of \
+                                 digits"));
     }
 
     fn from_hex_digit(d: u8) -> Result<u8, String> {
@@ -364,7 +367,8 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
                 assert_ne!(value.len(), 0);
 
                 // Checking is_none() ensures we don't accept duplicate keys.
-                attributes.push((String::from(key), String::from(value), false));
+                attributes.push((String::from(key),
+                                 String::from(value), false));
             },
         }
     }

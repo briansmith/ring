@@ -87,10 +87,10 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     }
 
     let b_1 = &a;
-    let b_11     = sqr_mul(b_1,   0 +  1, b_1);
-    let f        = sqr_mul(&b_11, 0 +  2, &b_11);
-    let ff       = sqr_mul(&f,    0 +  4, &f);
-    let ffff     = sqr_mul(&ff,   0 +  8, &ff);
+    let b_11 = sqr_mul(b_1, 0 + 1, b_1);
+    let f = sqr_mul(&b_11, 0 + 2, &b_11);
+    let ff = sqr_mul(&f, 0 + 4, &f);
+    let ffff = sqr_mul(&ff, 0 + 8, &ff);
     let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff);
 
     // ffffffff00000001
@@ -169,7 +169,8 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
         let mut tmp = ScalarMont { limbs: [0; MAX_LIMBS] };
         unsafe {
             GFp_p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(),
-                                         a.limbs.as_ptr(), squarings)
+                                         a.limbs.as_ptr(),
+                                         squarings)
         }
         mul(&tmp, b)
     }
@@ -179,7 +180,8 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
         debug_assert!(squarings >= 1);
         unsafe {
             GFp_p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(),
-                                         acc.limbs.as_ptr(), squarings)
+                                         acc.limbs.as_ptr(),
+                                         squarings)
         }
         ab_assign(GFp_p256_scalar_mul_mont, &mut acc.limbs, &b.limbs);
     }
@@ -205,21 +207,21 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 
     let mut d = [ScalarMont { limbs: [0; MAX_LIMBS] }; DIGIT_COUNT];
 
-    d[B_1]    = to_mont(a);
-    d[B_10]   = sqr(&d[B_1]);
-    d[B_11]   = mul(&d[B_10],   &d[B_1]);
-    d[B_101]  = sqr_mul(&d[B_10], 0 + 1, &d[B_1]);
-    d[B_111]  = mul(&d[B_101],  &d[B_10]);
+    d[B_1] = to_mont(a);
+    d[B_10] = sqr(&d[B_1]);
+    d[B_11] = mul(&d[B_10], &d[B_1]);
+    d[B_101] = sqr_mul(&d[B_10], 0 + 1, &d[B_1]);
+    d[B_111] = mul(&d[B_101], &d[B_10]);
     d[B_1010] = sqr(&d[B_101]);
     d[B_1111] = mul(&d[B_1010], &d[B_101]);
 
     // These two fork off the main star chain.
-    d[B_10101] =  sqr_mul(&d[B_1010],  0 + 1, &d[B_1]);
+    d[B_10101] = sqr_mul(&d[B_1010], 0 + 1, &d[B_1]);
     d[B_101111] = sqr_mul(&d[B_10101], 0 + 1, &d[B_101]);
 
-    let ff       = sqr_mul(&d[B_1111], 0 + 4,  &d[B_1111]);
-    let ffff     = sqr_mul(&ff,        0 + 8,  &ff);
-    let ffffffff = sqr_mul(&ffff,      0 + 16, &ffff);
+    let ff = sqr_mul(&d[B_1111], 0 + 4, &d[B_1111]);
+    let ffff = sqr_mul(&ff, 0 + 8, &ff);
+    let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff);
 
     // ffffffff00000000ffffffff
     let mut acc = sqr_mul(&ffffffff, 32 + 32, &ffffffff);
@@ -232,34 +234,32 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     //    1011110011100110111110101010110110100111000101111001111010000100
     //    1111001110111001110010101100001011111100011000110010010101001111
 
-    static REMAINING_WINDOWS: [(u8, u8); 26] = [
-        (    6, B_101111 as u8),
-        (2 + 3, B_111 as u8),
-        (2 + 2, B_11 as u8),
-        (1 + 4, B_1111 as u8),
-        (    5, B_10101 as u8),
-        (1 + 3, B_101 as u8),
-        (0 + 3, B_101 as u8),
-        (0 + 3, B_101 as u8),
-        (2 + 3, B_111 as u8),
-        (3 + 6, B_101111 as u8),
-        (2 + 4, B_1111 as u8),
-        (1 + 1, B_1 as u8),
-        (4 + 1, B_1 as u8),
-        (2 + 4, B_1111 as u8),
-        (2 + 3, B_111 as u8),
-        (1 + 3, B_111 as u8),
-        (2 + 3, B_111 as u8),
-        (2 + 3, B_101 as u8),
-        (1 + 2, B_11 as u8),
-        (4 + 6, B_101111 as u8),
-        (    2, B_11 as u8),
-        (3 + 2, B_11 as u8),
-        (3 + 2, B_11 as u8),
-        (2 + 1, B_1 as u8),
-        (2 + 5, B_10101 as u8),
-        (2 + 4, B_1111 as u8),
-    ];
+    static REMAINING_WINDOWS: [(u8, u8); 26] = [(6, B_101111 as u8),
+                                                (2 + 3, B_111 as u8),
+                                                (2 + 2, B_11 as u8),
+                                                (1 + 4, B_1111 as u8),
+                                                (5, B_10101 as u8),
+                                                (1 + 3, B_101 as u8),
+                                                (0 + 3, B_101 as u8),
+                                                (0 + 3, B_101 as u8),
+                                                (2 + 3, B_111 as u8),
+                                                (3 + 6, B_101111 as u8),
+                                                (2 + 4, B_1111 as u8),
+                                                (1 + 1, B_1 as u8),
+                                                (4 + 1, B_1 as u8),
+                                                (2 + 4, B_1111 as u8),
+                                                (2 + 3, B_111 as u8),
+                                                (1 + 3, B_111 as u8),
+                                                (2 + 3, B_111 as u8),
+                                                (2 + 3, B_101 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (4 + 6, B_101111 as u8),
+                                                (2, B_11 as u8),
+                                                (3 + 2, B_11 as u8),
+                                                (3 + 2, B_11 as u8),
+                                                (2 + 1, B_1 as u8),
+                                                (2 + 5, B_10101 as u8),
+                                                (2 + 4, B_1111 as u8)];
 
     for &(squarings, digit) in &REMAINING_WINDOWS {
         sqr_mul_acc(&mut acc, squarings as c::int, &d[digit as usize]);
@@ -270,32 +270,56 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 
 
 extern {
-    fn GFp_nistz256_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                        a: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                        b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_nistz256_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                             a: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                             b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                             a: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_nistz256_add(// [COMMON_OPS.num_limbs]
+                        r: *mut Limb,
+                        // [COMMON_OPS.num_limbs]
+                        a: *const Limb,
+                        // [COMMON_OPS.num_limbs]
+                        b: *const Limb);
+    fn GFp_nistz256_mul_mont(// [COMMON_OPS.num_limbs]
+                             r: *mut Limb,
+                             // [COMMON_OPS.num_limbs]
+                             a: *const Limb,
+                             // [COMMON_OPS.num_limbs]
+                             b: *const Limb);
+    fn GFp_nistz256_sqr_mont(// [COMMON_OPS.num_limbs]
+                             r: *mut Limb,
+                             // [COMMON_OPS.num_limbs]
+                             a: *const Limb);
 
-    fn GFp_nistz256_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
-                              a: *const Limb/*[3][COMMON_OPS.num_limbs]*/,
-                              b: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
-    fn GFp_nistz256_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
-                              p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                              p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                              p_y: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_nistz256_point_mul_base(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
-                                   g_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_nistz256_point_add(// [3][COMMON_OPS.num_limbs]
+                              r: *mut Limb,
+                              // [3][COMMON_OPS.num_limbs]
+                              a: *const Limb,
+                              // [3][COMMON_OPS.num_limbs]
+                              b: *const Limb);
+    fn GFp_nistz256_point_mul(// [3][COMMON_OPS.num_limbs]
+                              r: *mut Limb,
+                              // [COMMON_OPS.num_limbs]
+                              p_scalar: *const Limb,
+                              // [COMMON_OPS.num_limbs]
+                              p_x: *const Limb,
+                              // [COMMON_OPS.num_limbs]
+                              p_y: *const Limb);
+    fn GFp_nistz256_point_mul_base(// [3][COMMON_OPS.num_limbs]
+                                   r: *mut Limb,
+                                   // [COMMON_OPS.num_limbs]
+                                   g_scalar: *const Limb);
 
-    fn GFp_p256_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                                a: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                                b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_p256_scalar_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                                a: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                                    a: *const Limb/*[COMMON_OPS.num_limbs]*/,
+    fn GFp_p256_scalar_mul_mont(// [COMMON_OPS.num_limbs]
+                                r: *mut Limb,
+                                // [COMMON_OPS.num_limbs]
+                                a: *const Limb,
+                                // [COMMON_OPS.num_limbs]
+                                b: *const Limb);
+    fn GFp_p256_scalar_sqr_mont(// [COMMON_OPS.num_limbs]
+                                r: *mut Limb,
+                                // [COMMON_OPS.num_limbs]
+                                a: *const Limb);
+    fn GFp_p256_scalar_sqr_rep_mont(// [COMMON_OPS.num_limbs]
+                                    r: *mut Limb,
+                                    // [COMMON_OPS.num_limbs]
+                                    a: *const Limb,
                                     rep: c::int);
 }
 
@@ -305,13 +329,17 @@ mod internal_benches {
     use super::*;
     use super::super::internal_benches::*;
 
-    bench_curve!(&[
-        Scalar { limbs: LIMBS_1 },
-        Scalar { limbs: LIMBS_ALTERNATING_10, },
-        Scalar { // n - 1
-            limbs: p256_limbs![0xffffffff, 0x00000000, 0xffffffff, 0xffffffff,
-                               0xbce6faad, 0xa7179e84, 0xf3b9cac2,
-                               0xfc632551 - 1],
-        },
-    ]);
+    bench_curve!(&[Scalar { limbs: LIMBS_1 },
+                   Scalar { limbs: LIMBS_ALTERNATING_10 },
+                   Scalar {
+                       // n - 1
+                       limbs: p256_limbs![0xffffffff,
+                                          0x00000000,
+                                          0xffffffff,
+                                          0xffffffff,
+                                          0xbce6faad,
+                                          0xa7179e84,
+                                          0xf3b9cac2,
+                                          0xfc632551 - 1],
+                   }]);
 }

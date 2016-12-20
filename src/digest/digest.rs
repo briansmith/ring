@@ -109,7 +109,8 @@ impl Context {
 
             unsafe {
                 (self.algorithm.block_data_order)(&mut self.state,
-                                                  self.pending.as_ptr(), 1);
+                                                  self.pending.as_ptr(),
+                                                  1);
             }
             self.completed_data_blocks =
                 self.completed_data_blocks.checked_add(1).unwrap();
@@ -126,10 +127,9 @@ impl Context {
                                                   remaining.as_ptr(),
                                                   num_blocks);
             }
-            self.completed_data_blocks =
-                self.completed_data_blocks
-                    .checked_add(polyfill::u64_from_usize(num_blocks))
-                    .unwrap();
+            self.completed_data_blocks = self.completed_data_blocks
+                .checked_add(polyfill::u64_from_usize(num_blocks))
+                .unwrap();
         }
         if num_to_save_for_later > 0 {
             self.pending[..num_to_save_for_later]
@@ -153,35 +153,43 @@ impl Context {
         padding_pos += 1;
 
         if padding_pos > self.algorithm.block_len - self.algorithm.len_len {
-            polyfill::slice::fill(
-                &mut self.pending[padding_pos..self.algorithm.block_len], 0);
+            polyfill::slice::fill(&mut self.pending[padding_pos..self.algorithm
+                                      .block_len],
+                                  0);
             unsafe {
                 (self.algorithm.block_data_order)(&mut self.state,
-                                                  self.pending.as_ptr(), 1);
+                                                  self.pending.as_ptr(),
+                                                  1);
             }
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
             padding_pos = 0;
         }
 
-        polyfill::slice::fill(
-            &mut self.pending[padding_pos..(self.algorithm.block_len - 8)], 0);
+        let slice = self.pending[padding_pos..(self.algorithm.block_len - 8)];
+        polyfill::slice::fill(&mut slice, 0);
 
         // Output the length, in bits, in big endian order.
         let mut completed_data_bits: u64 = self.completed_data_blocks
             .checked_mul(polyfill::u64_from_usize(self.algorithm.block_len))
             .unwrap()
-            .checked_add(polyfill::u64_from_usize(self.num_pending)).unwrap()
-            .checked_mul(8).unwrap();
+            .checked_add(polyfill::u64_from_usize(self.num_pending))
+            .unwrap()
+            .checked_mul(8)
+            .unwrap();
 
-        for b in (&mut self.pending[(self.algorithm.block_len - 8)..
-                                    self.algorithm.block_len]).into_iter().rev() {
+        for b in
+            (&mut self.pending[(self.algorithm.block_len - 8)..self.algorithm
+                    .block_len])
+                .into_iter()
+                .rev() {
             *b = completed_data_bits as u8;
             completed_data_bits /= 0x100;
         }
         unsafe {
             (self.algorithm.block_data_order)(&mut self.state,
-                                              self.pending.as_ptr(), 1);
+                                              self.pending.as_ptr(),
+                                              1);
         }
 
         Digest {
@@ -290,7 +298,8 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern fn(state: &mut State, data: *const u8,
+    block_data_order: unsafe extern fn(state: &mut State,
+                                       data: *const u8,
                                        num: c::size_t),
     format_output: fn(input: &State) -> Output,
 
@@ -320,12 +329,14 @@ pub static SHA1: Algorithm = Algorithm {
     len_len: 64 / 8,
     block_data_order: sha1::block_data_order,
     format_output: sha256_format_output,
-    initial_state: [
-        u32x2!(0x67452301u32, 0xefcdab89u32),
-        u32x2!(0x98badcfeu32, 0x10325476u32),
-        u32x2!(0xc3d2e1f0u32, 0u32),
-        0, 0, 0, 0, 0,
-    ],
+    initial_state: [u32x2!(0x67452301u32, 0xefcdab89u32),
+                    u32x2!(0x98badcfeu32, 0x10325476u32),
+                    u32x2!(0xc3d2e1f0u32, 0u32),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0],
 };
 
 /// SHA-256 as specified in [FIPS 180-4].
@@ -338,13 +349,14 @@ pub static SHA256: Algorithm = Algorithm {
     len_len: 64 / 8,
     block_data_order: GFp_sha256_block_data_order,
     format_output: sha256_format_output,
-    initial_state: [
-        u32x2!(0x6a09e667u32, 0xbb67ae85u32),
-        u32x2!(0x3c6ef372u32, 0xa54ff53au32),
-        u32x2!(0x510e527fu32, 0x9b05688cu32),
-        u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
-        0, 0, 0, 0,
-    ],
+    initial_state: [u32x2!(0x6a09e667u32, 0xbb67ae85u32),
+                    u32x2!(0x3c6ef372u32, 0xa54ff53au32),
+                    u32x2!(0x510e527fu32, 0x9b05688cu32),
+                    u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
+                    0,
+                    0,
+                    0,
+                    0],
 };
 
 /// SHA-384 as specified in [FIPS 180-4].
@@ -357,16 +369,14 @@ pub static SHA384: Algorithm = Algorithm {
     len_len: 128 / 8,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
-    initial_state: [
-        0xcbbb9d5dc1059ed8,
-        0x629a292a367cd507,
-        0x9159015a3070dd17,
-        0x152fecd8f70e5939,
-        0x67332667ffc00b31,
-        0x8eb44a8768581511,
-        0xdb0c2e0d64f98fa7,
-        0x47b5481dbefa4fa4,
-    ],
+    initial_state: [0xcbbb9d5dc1059ed8,
+                    0x629a292a367cd507,
+                    0x9159015a3070dd17,
+                    0x152fecd8f70e5939,
+                    0x67332667ffc00b31,
+                    0x8eb44a8768581511,
+                    0xdb0c2e0d64f98fa7,
+                    0x47b5481dbefa4fa4],
 };
 
 /// SHA-512 as specified in [FIPS 180-4].
@@ -379,16 +389,14 @@ pub static SHA512: Algorithm = Algorithm {
     len_len: 128 / 8,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
-    initial_state: [
-        0x6a09e667f3bcc908,
-        0xbb67ae8584caa73b,
-        0x3c6ef372fe94f82b,
-        0xa54ff53a5f1d36f1,
-        0x510e527fade682d1,
-        0x9b05688c2b3e6c1f,
-        0x1f83d9abfb41bd6b,
-        0x5be0cd19137e2179,
-    ],
+    initial_state: [0x6a09e667f3bcc908,
+                    0xbb67ae8584caa73b,
+                    0x3c6ef372fe94f82b,
+                    0xa54ff53a5f1d36f1,
+                    0x510e527fade682d1,
+                    0x9b05688c2b3e6c1f,
+                    0x1f83d9abfb41bd6b,
+                    0x5be0cd19137e2179],
 };
 
 // We use u64 to try to ensure 64-bit alignment/padding.
@@ -472,12 +480,8 @@ extern {
 pub mod test_util {
     use super::super::digest;
 
-    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 4] = [
-        &digest::SHA1,
-        &digest::SHA256,
-        &digest::SHA384,
-        &digest::SHA512,
-    ];
+    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 4] =
+        [&digest::SHA1, &digest::SHA256, &digest::SHA384, &digest::SHA512];
 }
 
 #[cfg(test)]
@@ -713,35 +717,39 @@ mod tests {
             }
         }
     }
-    test_large_digest!(test_large_digest_sha1, digest::SHA1, 160 / 8, [
-        0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B,
-        0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD, 0x65,
-        0x3C, 0x20, 0xE4, 0xBD
-    ]);
-    test_large_digest!(test_large_digest_sha256, digest::SHA256, 256 / 8, [
-        0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB,
-        0x7F, 0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE, 0xD6,
-        0x65, 0x4C, 0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7,
-        0x07, 0x97, 0xC5, 0xDD, 0xAE, 0x5C, 0x68, 0xBD
-    ]);
-    test_large_digest!(test_large_digest_sha384, digest::SHA384, 384 / 8, [
-        0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5,
-        0xBB, 0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87, 0x0E,
-        0xB0, 0xEA, 0x8E, 0xEA, 0xDB, 0x82, 0x36, 0xAE,
-        0x74, 0xCF, 0x9F, 0xDC, 0x86, 0x1C, 0xE3, 0xE9,
-        0xB0, 0x68, 0xCD, 0x19, 0x3E, 0x39, 0x90, 0x02,
-        0xE1, 0x58, 0x5D, 0x66, 0xC4, 0x55, 0x11, 0x9B
-    ]);
-    test_large_digest!(test_large_digest_sha512, digest::SHA512, 512 / 8, [
-        0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55,
-        0xF8, 0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60, 0x04,
-        0x08, 0xE9, 0x49, 0xD7, 0xCD, 0x1A, 0xED, 0x22,
-        0xEB, 0x55, 0xE1, 0xFD, 0x80, 0x50, 0x3B, 0x01,
-        0x2F, 0xC6, 0xF4, 0x33, 0x86, 0xFB, 0x60, 0x75,
-        0x2D, 0xA5, 0xA9, 0x93, 0xE7, 0x00, 0x45, 0xA8,
-        0x49, 0x1A, 0x6B, 0xEC, 0x9C, 0x98, 0xC8, 0x19,
-        0xA6, 0xA9, 0x88, 0x3E, 0x2F, 0x09, 0xB9, 0x9A
-    ]);
+    test_large_digest!(test_large_digest_sha1,
+                       digest::SHA1,
+                       160 / 8,
+                       [0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B, 0xE4,
+                        0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD, 0x65, 0x3C, 0x20,
+                        0xE4, 0xBD]);
+    test_large_digest!(test_large_digest_sha256,
+                       digest::SHA256,
+                       256 / 8,
+                       [0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB, 0x7F,
+                        0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE, 0xD6, 0x65, 0x4C,
+                        0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7, 0x07, 0x97, 0xC5,
+                        0xDD, 0xAE, 0x5C, 0x68, 0xBD]);
+    test_large_digest!(test_large_digest_sha384,
+                       digest::SHA384,
+                       384 / 8,
+                       [0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5, 0xBB,
+                        0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87, 0x0E, 0xB0, 0xEA,
+                        0x8E, 0xEA, 0xDB, 0x82, 0x36, 0xAE, 0x74, 0xCF, 0x9F,
+                        0xDC, 0x86, 0x1C, 0xE3, 0xE9, 0xB0, 0x68, 0xCD, 0x19,
+                        0x3E, 0x39, 0x90, 0x02, 0xE1, 0x58, 0x5D, 0x66, 0xC4,
+                        0x55, 0x11, 0x9B]);
+    test_large_digest!(test_large_digest_sha512,
+                       digest::SHA512,
+                       512 / 8,
+                       [0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55, 0xF8,
+                        0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60, 0x04, 0x08, 0xE9,
+                        0x49, 0xD7, 0xCD, 0x1A, 0xED, 0x22, 0xEB, 0x55, 0xE1,
+                        0xFD, 0x80, 0x50, 0x3B, 0x01, 0x2F, 0xC6, 0xF4, 0x33,
+                        0x86, 0xFB, 0x60, 0x75, 0x2D, 0xA5, 0xA9, 0x93, 0xE7,
+                        0x00, 0x45, 0xA8, 0x49, 0x1A, 0x6B, 0xEC, 0x9C, 0x98,
+                        0xC8, 0x19, 0xA6, 0xA9, 0x88, 0x3E, 0x2F, 0x09, 0xB9,
+                        0x9A]);
 
     #[test]
     fn test_fmt_algorithm() {

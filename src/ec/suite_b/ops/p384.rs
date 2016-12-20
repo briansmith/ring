@@ -92,11 +92,11 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     }
 
     let b_1 = &a;
-    let b_11    = sqr_mul(b_1,     0 + 1, b_1);
-    let f       = sqr_mul(&b_11,   0 + 2, &b_11);
-    let ff      = sqr_mul(&f,      0 + 4, &f);
-    let ffff    = sqr_mul(&ff,     0 + 8, &ff);
-    let ffffff  = sqr_mul(&ffff,   0 + 8, &ff);
+    let b_11 = sqr_mul(b_1, 0 + 1, b_1);
+    let f = sqr_mul(&b_11, 0 + 2, &b_11);
+    let ff = sqr_mul(&f, 0 + 4, &f);
+    let ffff = sqr_mul(&ff, 0 + 8, &ff);
+    let ffffff = sqr_mul(&ffff, 0 + 8, &ff);
     let fffffff = sqr_mul(&ffffff, 0 + 4, &f);
 
     let b_1 = &a;
@@ -107,7 +107,8 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
         sqr_mul(&ffffffffffffff, 0 + 56, &ffffffffffffff);
 
     // ffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-    let mut acc = sqr_mul(&ffffffffffffffffffffffffffff, 0 + 112,
+    let mut acc = sqr_mul(&ffffffffffffffffffffffffffff,
+                          0 + 112,
                           &ffffffffffffffffffffffffffff);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff */
@@ -138,18 +139,19 @@ fn p384_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
 
 fn p384_point_mul_base_impl(a: &Scalar) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
-    static P384_GENERATOR: (Elem, Elem) = (
-        Elem {
-            limbs: p384_limbs![0x4d3aadc2, 0x299e1513, 0x812ff723, 0x614ede2b,
-                               0x64548684, 0x59a30eff, 0x879c3afc, 0x541b4d6e,
-                               0x20e378e2, 0xa0d6ce38, 0x3dd07566, 0x49c0b528]
-        },
-        Elem {
-            limbs: p384_limbs![0x2b78abc2, 0x5a15c5e9, 0xdd800226, 0x3969a840,
-                               0xc6c35219, 0x68f4ffd9, 0x8bade756, 0x2e83b050,
-                               0xa1bfa8bf, 0x7bb4a9ac, 0x23043dad, 0x4b03a4fe]
-        }
-    );
+    static P384_GENERATOR: (Elem, Elem) =
+        (Elem {
+             limbs: p384_limbs![0x4d3aadc2, 0x299e1513, 0x812ff723,
+                                0x614ede2b, 0x64548684, 0x59a30eff,
+                                0x879c3afc, 0x541b4d6e, 0x20e378e2,
+                                0xa0d6ce38, 0x3dd07566, 0x49c0b528],
+         },
+         Elem {
+             limbs: p384_limbs![0x2b78abc2, 0x5a15c5e9, 0xdd800226,
+                                0x3969a840, 0xc6c35219, 0x68f4ffd9,
+                                0x8bade756, 0x2e83b050, 0xa1bfa8bf,
+                                0x7bb4a9ac, 0x23043dad, 0x4b03a4fe],
+         });
 
     PRIVATE_KEY_OPS.point_mul(a, &P384_GENERATOR)
 }
@@ -194,7 +196,8 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 
     fn sqr_mut(a: &mut ScalarMont) {
         unsafe {
-            GFp_p384_scalar_mul_mont(a.limbs.as_mut_ptr(), a.limbs.as_ptr(),
+            GFp_p384_scalar_mul_mont(a.limbs.as_mut_ptr(),
+                                     a.limbs.as_ptr(),
                                      a.limbs.as_ptr())
         }
     }
@@ -237,16 +240,16 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 
     let mut d = [ScalarMont { limbs: [0; MAX_LIMBS] }; DIGIT_COUNT];
 
-    d[B_1]    = to_mont(a);
-    d[B_10]   = sqr    (&d[B_1]);
-    d[B_11]   = mul    (&d[B_10],         &d[B_1]);
-    d[B_101]  = sqr_mul(&d[B_10],  0 + 1, &d[B_1]);
-    d[B_111]  = mul    (&d[B_101],        &d[B_10]);
+    d[B_1] = to_mont(a);
+    d[B_10] = sqr(&d[B_1]);
+    d[B_11] = mul(&d[B_10], &d[B_1]);
+    d[B_101] = sqr_mul(&d[B_10], 0 + 1, &d[B_1]);
+    d[B_111] = mul(&d[B_101], &d[B_10]);
     d[B_1111] = sqr_mul(&d[B_111], 0 + 1, &d[B_1]);
 
-    let ff       = sqr_mul(&d[B_1111], 0 +  4, &d[B_1111]);
-    let ffff     = sqr_mul(&ff,        0 +  8, &ff);
-    let ffffffff = sqr_mul(&ffff,      0 + 16, &ffff);
+    let ff = sqr_mul(&d[B_1111], 0 + 4, &d[B_1111]);
+    let ffff = sqr_mul(&ff, 0 + 8, &ff);
+    let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff);
 
     let ffffffffffffffff = sqr_mul(&ffffffff, 0 + 32, &ffffffff);
 
@@ -263,56 +266,54 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     //    0101100000011010000011011011001001001000101100001010011101111010
     //    1110110011101100000110010110101011001100110001010010100101110001
 
-    static REMAINING_WINDOWS: [(u8, u8); 48] = [
-        (    2, B_11 as u8),
-        (3 + 3, B_111 as u8),
-        (1 + 2, B_11 as u8),
-        (3 + 2, B_11 as u8),
-        (1 + 1, B_1 as u8),
-        (2 + 2, B_11 as u8),
-        (1 + 2, B_11 as u8),
-        (6 + 4, B_1111 as u8),
-        (    3, B_101 as u8),
-        (4 + 2, B_11 as u8),
-        (1 + 3, B_111 as u8),
-        (2 + 3, B_101 as u8),
-        (    1, B_1 as u8),
-        (1 + 3, B_111 as u8),
-        (1 + 4, B_1111 as u8),
-        (    3, B_101 as u8),
-        (1 + 2, B_11 as u8),
-        (6 + 2, B_11 as u8),
-        (1 + 1, B_1 as u8),
-        (5 + 2, B_11 as u8),
-        (1 + 2, B_11 as u8),
-        (1 + 2, B_11 as u8),
-        (2 + 1, B_1 as u8),
-        (2 + 1, B_1 as u8),
-        (2 + 1, B_1 as u8),
-        (3 + 1, B_1 as u8),
-        (1 + 2, B_11 as u8),
-        (4 + 1, B_1 as u8),
-        (1 + 1, B_1 as u8),
-        (2 + 3, B_111 as u8),
-        (1 + 4, B_1111 as u8),
-        (1 + 1, B_1 as u8),
-        (1 + 3, B_111 as u8),
-        (1 + 2, B_11 as u8),
-        (2 + 3, B_111 as u8),
-        (1 + 2, B_11 as u8),
-        (5 + 2, B_11 as u8),
-        (2 + 1, B_1 as u8),
-        (1 + 2, B_11 as u8),
-        (1 + 3, B_101 as u8),
-        (1 + 2, B_11 as u8),
-        (2 + 2, B_11 as u8),
-        (2 + 2, B_11 as u8),
-        (3 + 3, B_101 as u8),
-        (2 + 3, B_101 as u8),
-        (2 + 1, B_1 as u8),
-        (1 + 3, B_111 as u8),
-        (3 + 1, B_1 as u8),
-    ];
+    static REMAINING_WINDOWS: [(u8, u8); 48] = [(2, B_11 as u8),
+                                                (3 + 3, B_111 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (3 + 2, B_11 as u8),
+                                                (1 + 1, B_1 as u8),
+                                                (2 + 2, B_11 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (6 + 4, B_1111 as u8),
+                                                (3, B_101 as u8),
+                                                (4 + 2, B_11 as u8),
+                                                (1 + 3, B_111 as u8),
+                                                (2 + 3, B_101 as u8),
+                                                (1, B_1 as u8),
+                                                (1 + 3, B_111 as u8),
+                                                (1 + 4, B_1111 as u8),
+                                                (3, B_101 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (6 + 2, B_11 as u8),
+                                                (1 + 1, B_1 as u8),
+                                                (5 + 2, B_11 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (2 + 1, B_1 as u8),
+                                                (2 + 1, B_1 as u8),
+                                                (2 + 1, B_1 as u8),
+                                                (3 + 1, B_1 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (4 + 1, B_1 as u8),
+                                                (1 + 1, B_1 as u8),
+                                                (2 + 3, B_111 as u8),
+                                                (1 + 4, B_1111 as u8),
+                                                (1 + 1, B_1 as u8),
+                                                (1 + 3, B_111 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (2 + 3, B_111 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (5 + 2, B_11 as u8),
+                                                (2 + 1, B_1 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (1 + 3, B_101 as u8),
+                                                (1 + 2, B_11 as u8),
+                                                (2 + 2, B_11 as u8),
+                                                (2 + 2, B_11 as u8),
+                                                (3 + 3, B_101 as u8),
+                                                (2 + 3, B_101 as u8),
+                                                (2 + 1, B_1 as u8),
+                                                (1 + 3, B_111 as u8),
+                                                (3 + 1, B_1 as u8)];
 
     for &(squarings, digit) in &REMAINING_WINDOWS[..] {
         sqr_mul_acc(&mut acc, squarings as usize, &d[digit as usize]);
@@ -332,24 +333,40 @@ unsafe extern fn GFp_p384_elem_sqr_mont(
 
 
 extern {
-    fn GFp_p384_elem_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                         a: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                         b: *const Limb/*[COMMON_OPS.num_limbs]*/);
-    fn GFp_p384_elem_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                              a: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                              b: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_p384_elem_add(// [COMMON_OPS.num_limbs]
+                         r: *mut Limb,
+                         // [COMMON_OPS.num_limbs]
+                         a: *const Limb,
+                         // [COMMON_OPS.num_limbs]
+                         b: *const Limb);
+    fn GFp_p384_elem_mul_mont(// [COMMON_OPS.num_limbs]
+                              r: *mut Limb,
+                              // [COMMON_OPS.num_limbs]
+                              a: *const Limb,
+                              // [COMMON_OPS.num_limbs]
+                              b: *const Limb);
 
-    fn GFp_nistz384_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
-                              a: *const Limb/*[3][COMMON_OPS.num_limbs]*/,
-                              b: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
-    fn GFp_nistz384_point_mul(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
-                              p_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                              p_x: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                              p_y: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_nistz384_point_add(// [3][COMMON_OPS.num_limbs]
+                              r: *mut Limb,
+                              // [3][COMMON_OPS.num_limbs]
+                              a: *const Limb,
+                              // [3][COMMON_OPS.num_limbs]
+                              b: *const Limb);
+    fn GFp_nistz384_point_mul(// [3][COMMON_OPS.num_limbs]
+                              r: *mut Limb,
+                              // [COMMON_OPS.num_limbs]
+                              p_scalar: *const Limb,
+                              // [COMMON_OPS.num_limbs]
+                              p_x: *const Limb,
+                              // [COMMON_OPS.num_limbs]
+                              p_y: *const Limb);
 
-    fn GFp_p384_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
-                                a: *const Limb/*[COMMON_OPS.num_limbs]*/,
-                                b: *const Limb/*[COMMON_OPS.num_limbs]*/);
+    fn GFp_p384_scalar_mul_mont(// [COMMON_OPS.num_limbs]
+                                r: *mut Limb,
+                                // [COMMON_OPS.num_limbs]
+                                a: *const Limb,
+                                // [COMMON_OPS.num_limbs]
+                                b: *const Limb);
 }
 
 
@@ -358,14 +375,21 @@ mod internal_benches {
     use super::*;
     use super::super::internal_benches::*;
 
-    bench_curve!(&[
-        Scalar { limbs: LIMBS_1 },
-        Scalar { limbs: LIMBS_ALTERNATING_10, },
-        Scalar { // n - 1
-            limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                               0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
-                               0x581a0db2, 0x48b0a77a, 0xecec196a,
-                               0xccc52973 - 1],
-        },
-    ]);
+    bench_curve!(&[Scalar { limbs: LIMBS_1 },
+                   Scalar { limbs: LIMBS_ALTERNATING_10 },
+                   Scalar {
+                       // n - 1
+                       limbs: p384_limbs![0xffffffff,
+                                          0xffffffff,
+                                          0xffffffff,
+                                          0xffffffff,
+                                          0xffffffff,
+                                          0xffffffff,
+                                          0xc7634d81,
+                                          0xf4372ddf,
+                                          0x581a0db2,
+                                          0x48b0a77a,
+                                          0xecec196a,
+                                          0xccc52973 - 1],
+                   }]);
 }

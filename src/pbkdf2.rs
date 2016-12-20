@@ -23,7 +23,8 @@
 //! [RFC 2898 Section 5.2]: https://tools.ietf.org/html/rfc2898#section-5.2
 //! [RFC 6070]: https://tools.ietf.org/html/rfc6070
 //! [NIST Special Publication 800-132]:
-//!    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
+//!    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/\
+//!     nistspecialpublication800-132.pdf
 //!
 //! # Examples
 //!
@@ -210,6 +211,7 @@ fn derive_block(secret: &hmac::SigningKey, iterations: usize, salt: &[u8],
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8],
               secret: &[u8], previously_derived: &[u8])
               -> Result<(), error::Unspecified> {
@@ -234,13 +236,13 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8],
         derive_block(&secret, iterations, salt, idx, derived_chunk);
 
         // XXX: This isn't fully constant-time-safe. TODO: Fix that.
-        let current_block_matches =
-            if constant_time::verify_slices_are_equal(
-                    derived_chunk, previously_derived_chunk).is_ok() {
-                1
-            } else {
-                0
-            };
+        let current_block_matches = if constant_time::verify_slices_are_equal(
+                    derived_chunk, previously_derived_chunk)
+            .is_ok() {
+            1
+        } else {
+            0
+        };
 
         matches &= current_block_matches;
     }

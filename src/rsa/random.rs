@@ -63,7 +63,11 @@ fn set_to_rand_mod(out: &mut [Limb], max_exclusive: &[Limb],
     tmp_out[..out.len()].copy_from_slice(&out);
     let mut tmp_max = [0; rsa::PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS + 1];
     tmp_max[..max_exclusive.len()].copy_from_slice(&max_exclusive);
-    let extra_limb = if sampling_params.extend_limbs_by_one { 1 } else { 0 };
+    let extra_limb = if sampling_params.extend_limbs_by_one {
+        1
+    } else {
+        0
+    };
 
     let range = Range {
         max_exclusive: &tmp_max[..(max_exclusive.len() + extra_limb)],
@@ -79,7 +83,6 @@ fn set_to_rand_mod(out: &mut [Limb], max_exclusive: &[Limb],
 
 /// References a positive integer range `[1..max_exclusive)`. `max_exclusive`
 /// is assumed to be public, not secret.
-//
 // TODO(djudd) Part of this code can potentially be pulled back into
 // `super::limb` and shared with EC key generation, without unnecessarily
 // complicating that, once specialization is stabilized.
@@ -88,7 +91,7 @@ struct Range<'a> {
     sampling_params: &'a SamplingParams,
 }
 
-impl <'a> Range<'a> {
+impl<'a> Range<'a> {
     /// Checks that `limbs` are in the range. If `limbs` is in range then it
     /// runs in constant time with respect to its value.
     fn are_limbs_within(&self, limbs: &[Limb]) -> bool {
@@ -97,7 +100,7 @@ impl <'a> Range<'a> {
         // The caller calls this in a sequence where it makes more sense to
         // check for too-large values first and return early.
         if limbs_less_than_limbs_constant_time(limbs, self.max_exclusive) !=
-                LimbMask::True {
+           LimbMask::True {
             return false;
         }
 
@@ -212,7 +215,6 @@ struct SamplingParams {
 }
 
 /// Decide implementation strategy for random sampling.
-//
 // We support a special case performance optimization for bounds of the form
 // `0b100...` - see comment in `SamplingParams`.
 //
@@ -255,19 +257,15 @@ mod tests {
     fn test_select_sampling_params() {
         use super::select_sampling_params;
 
-        let starting_with_0b100 = &[
-            1 << (LIMB_BITS - 1),
-            1 << (LIMB_BITS - 1) | 1,
-            (1 << (LIMB_BITS - 1)) | (1 << LIMB_BITS - 4),
-            (1 << (LIMB_BITS - 1)) | (Limb::max_value() >> 3),
-        ];
+        let starting_with_0b100 =
+            &[1 << (LIMB_BITS - 1),
+              1 << (LIMB_BITS - 1) | 1,
+              (1 << (LIMB_BITS - 1)) | (1 << LIMB_BITS - 4),
+              (1 << (LIMB_BITS - 1)) | (Limb::max_value() >> 3)];
 
         for l in starting_with_0b100 {
-            for x in [
-                &[*l][..],
-                &[0, *l][..],
-                &[Limb::max_value(), *l][..],
-            ].iter() {
+            for x in [&[*l][..], &[0, *l][..], &[Limb::max_value(), *l][..]]
+                .iter() {
                 let p = select_sampling_params(x);
                 assert!(p.extend_limbs_by_one);
                 assert!(p.reduce_when_over_bound);
@@ -275,19 +273,15 @@ mod tests {
             }
         }
 
-        let starting_with_0b0100 = &[
-            1 << (LIMB_BITS - 2),
-            1 << (LIMB_BITS - 2) | 1,
-            (1 << (LIMB_BITS - 2)) | (1 << LIMB_BITS - 5),
-            (1 << (LIMB_BITS - 2)) | (Limb::max_value() >> 4),
-        ];
+        let starting_with_0b0100 =
+            &[1 << (LIMB_BITS - 2),
+              1 << (LIMB_BITS - 2) | 1,
+              (1 << (LIMB_BITS - 2)) | (1 << LIMB_BITS - 5),
+              (1 << (LIMB_BITS - 2)) | (Limb::max_value() >> 4)];
 
         for l in starting_with_0b0100 {
-            for x in [
-                &[*l][..],
-                &[0, *l][..],
-                &[Limb::max_value(), *l][..],
-            ].iter() {
+            for x in [&[*l][..], &[0, *l][..], &[Limb::max_value(), *l][..]]
+                .iter() {
                 let p = select_sampling_params(x);
                 assert!(!p.extend_limbs_by_one);
                 assert!(p.reduce_when_over_bound);
@@ -328,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_limbs_in_range() {
-        use super::{SamplingParams,Range};
+        use super::{SamplingParams, Range};
 
         let params = SamplingParams {
             most_sig_limb_mask: Limb::max_value(),
@@ -337,7 +331,10 @@ mod tests {
         };
 
         let limbs = &[Limb::max_value(), Limb::max_value()];
-        let range = Range { max_exclusive: limbs, sampling_params: &params };
+        let range = Range {
+            max_exclusive: limbs,
+            sampling_params: &params,
+        };
         assert!(!range.are_limbs_within(&[Limb::max_value(),
                                           Limb::max_value()]));
         assert!(range.are_limbs_within(&[Limb::max_value(),
@@ -349,7 +346,10 @@ mod tests {
         assert!(range.are_limbs_within(&[0, 1]));
 
         let limbs = &[0x12345678, 0xdeadbeef];
-        let range = Range { max_exclusive: limbs, sampling_params: &params };
+        let range = Range {
+            max_exclusive: limbs,
+            sampling_params: &params,
+        };
         assert!(!range.are_limbs_within(&[0x12345678, 0xdeadbeef]));
         assert!(range.are_limbs_within(&[0x12345678 - 1, 0xdeadbeef]));
         assert!(range.are_limbs_within(&[0x12345678, 0xdeadbeef - 1]));
@@ -357,14 +357,20 @@ mod tests {
         assert!(!range.are_limbs_within(&[0x12345678, 0xdeadbeef + 0x10]));
 
         let limbs = &[0, 1];
-        let range = Range { max_exclusive: limbs, sampling_params: &params };
+        let range = Range {
+            max_exclusive: limbs,
+            sampling_params: &params,
+        };
         assert!(!range.are_limbs_within(&[0, 0]));
         assert!(range.are_limbs_within(&[1, 0]));
         assert!(!range.are_limbs_within(&[0, 1]));
         assert!(range.are_limbs_within(&[Limb::max_value(), 0]));
 
         let limbs = &[2];
-        let range = Range { max_exclusive: limbs, sampling_params: &params };
+        let range = Range {
+            max_exclusive: limbs,
+            sampling_params: &params,
+        };
         assert!(!range.are_limbs_within(&[0]));
         assert!(range.are_limbs_within(&[1]));
         assert!(!range.are_limbs_within(&[2]));
@@ -402,16 +408,20 @@ mod tests {
         let _ = generate_and_assert_success!([Limb::max_value(), 1], 2);
         let _ = generate_and_assert_success!([0, 1 << (LIMB_BITS - 1)], 2);
         let _ = generate_and_assert_success!([1, 1 << (LIMB_BITS - 1)], 2);
-        let _ = generate_and_assert_success!(
-                    [1 << (LIMB_BITS - 1), 1 << (LIMB_BITS - 1)], 2);
-        let _ = generate_and_assert_success!(
-                    [Limb::max_value(), 1 << (LIMB_BITS - 1)], 2);
+        let _ = generate_and_assert_success!([1 << (LIMB_BITS - 1),
+                                              1 << (LIMB_BITS - 1)],
+                                             2);
+        let _ = generate_and_assert_success!([Limb::max_value(),
+                                              1 << (LIMB_BITS - 1)],
+                                             2);
         let _ = generate_and_assert_success!([0, Limb::max_value()], 2);
         let _ = generate_and_assert_success!([1, Limb::max_value()], 2);
-        let _ = generate_and_assert_success!(
-                    [1 << (LIMB_BITS - 1), Limb::max_value()], 2);
-        let _ = generate_and_assert_success!(
-                    [Limb::max_value(), Limb::max_value()], 2);
+        let _ = generate_and_assert_success!([1 << (LIMB_BITS - 1),
+                                              Limb::max_value()],
+                                             2);
+        let _ = generate_and_assert_success!([Limb::max_value(),
+                                              Limb::max_value()],
+                                             2);
     }
 
     #[test]
@@ -459,9 +469,8 @@ mod tests {
         // that value from the PRNG.
         let max_exclusive_bytes = limbs_as_bytes(&max_exclusive);
         {
-            let rng = test::rand::FixedSliceRandom {
-                bytes: &max_exclusive_bytes
-            };
+            let rng =
+                test::rand::FixedSliceRandom { bytes: &max_exclusive_bytes };
             let mut result = [0, 0];
             assert!(range.sample_into_limbs(&mut result, &rng).is_err());
         }
@@ -474,7 +483,7 @@ mod tests {
             limbs_as_bytes(&max_exclusive_minus_1);
         {
             let rng = test::rand::FixedSliceRandom {
-                bytes: max_exclusive_minus_1_bytes
+                bytes: max_exclusive_minus_1_bytes,
             };
             let mut result = [0, 0];
             range.sample_into_limbs(&mut result, &rng).unwrap();
@@ -483,11 +492,9 @@ mod tests {
 
         // Test recovery from initial RNG failure.
         {
-            let bytes = [
-                &max_exclusive_bytes[..],
-                &[0u8; 2 * LIMB_BYTES],
-                &max_exclusive_minus_1_bytes[..],
-            ];
+            let bytes = [&max_exclusive_bytes[..],
+                         &[0u8; 2 * LIMB_BYTES],
+                         &max_exclusive_minus_1_bytes[..]];
             let rng = test::rand::FixedSliceSequenceRandom {
                 bytes: &bytes,
                 current: core::cell::UnsafeCell::new(0),
@@ -523,9 +530,7 @@ mod bench {
             sampling_params: &params,
         };
 
-        b.iter(|| {
-            range.sample_into_limbs(&mut out, &rng)
-        });
+        b.iter(|| range.sample_into_limbs(&mut out, &rng));
     }
 
     // Demonstrate that the `0b100` optimization is worth the added complexity
@@ -544,9 +549,7 @@ mod bench {
             sampling_params: &params,
         };
 
-        b.iter(|| {
-            range.sample_into_limbs(&mut out, &rng)
-        });
+        b.iter(|| range.sample_into_limbs(&mut out, &rng));
     }
 
     fn max_sized_0b100_bound() -> [Limb; MAX_LIMBS] {
