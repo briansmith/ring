@@ -414,6 +414,13 @@ type Config struct {
 	// with the PSK cipher suites.
 	PreSharedKeyIdentity string
 
+	// MaxEarlyDataSize controls the maximum number of bytes that the
+	// server will accept in early data and advertise in a
+	// NewSessionTicketMsg. If 0, no early data will be accepted and
+	// the TicketEarlyDataInfo extension in the NewSessionTicketMsg
+	// will be omitted.
+	MaxEarlyDataSize uint32
+
 	// SRTPProtectionProfiles, if not nil, is the list of SRTP
 	// protection profiles to offer in DTLS-SRTP.
 	SRTPProtectionProfiles []uint16
@@ -956,11 +963,6 @@ type ProtocolBugs struct {
 	// receipt of a NewSessionTicket message.
 	ExpectNoNewSessionTicket bool
 
-	// SendTicketEarlyDataInfo, if non-zero, is the maximum amount of data that we
-	// will accept as early data, and gets sent in the ticket_early_data_info
-	// extension of the NewSessionTicket message.
-	SendTicketEarlyDataInfo uint32
-
 	// DuplicateTicketEarlyDataInfo causes an extra empty extension of
 	// ticket_early_data_info to be sent in NewSessionTicket.
 	DuplicateTicketEarlyDataInfo bool
@@ -1138,6 +1140,14 @@ type ProtocolBugs struct {
 	// provided that the client has a PSK that is appropriate for sending
 	// early data and includes that PSK in its ClientHello.
 	SendEarlyData [][]byte
+
+	// ExpectEarlyData causes a TLS 1.3 server to read application
+	// data after the ClientHello (assuming the server is able to
+	// derive the key under which the data is encrypted) before it
+	// sends a ServerHello. It checks that the application data it
+	// reads matches what is provided in ExpectEarlyData and errors if
+	// the number of records or their content do not match.
+	ExpectEarlyData [][]byte
 
 	// SendHalfRTTData causes a TLS 1.3 server to send the provided
 	// data in application data records before reading the client's
