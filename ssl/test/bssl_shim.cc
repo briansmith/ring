@@ -108,6 +108,7 @@ struct TestState {
   bssl::UniquePtr<SSL_SESSION> new_session;
   bool ticket_decrypt_done = false;
   bool alpn_select_done = false;
+  bool early_callback_ready = false;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
@@ -479,7 +480,9 @@ static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
 
   // Install the certificate in the early callback.
   if (config->use_early_callback) {
-    if (config->async) {
+    bool early_callback_ready =
+        GetTestState(client_hello->ssl)->early_callback_ready;
+    if (config->async && !early_callback_ready) {
       // Install the certificate asynchronously.
       return 0;
     }
@@ -1104,8 +1107,8 @@ static bool RetryAsync(SSL *ssl, int ret) {
       test_state->session = std::move(test_state->pending_session);
       return true;
     case SSL_ERROR_PENDING_CERTIFICATE:
-      // The handshake will resume without a second call to the early callback.
-      return InstallCertificate(ssl);
+      test_state->early_callback_ready = true;
+      return true;
     case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
       test_state->private_key_retries++;
       return true;

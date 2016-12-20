@@ -839,10 +839,6 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->state == SSL3_ST_SR_CLNT_HELLO_B) {
-    /* Unlike other callbacks, the early callback is not run a second time if
-     * paused. */
-    hs->state = SSL3_ST_SR_CLNT_HELLO_C;
-
     /* Run the early callback. */
     if (ssl->ctx->select_certificate_cb != NULL) {
       switch (ssl->ctx->select_certificate_cb(&client_hello)) {
@@ -860,6 +856,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
           /* fallthrough */;
       }
     }
+    hs->state = SSL3_ST_SR_CLNT_HELLO_C;
   }
 
   /* Negotiate the protocol version if we have not done so yet. */

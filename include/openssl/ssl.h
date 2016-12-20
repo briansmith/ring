@@ -3006,10 +3006,7 @@ OPENSSL_EXPORT int SSL_early_callback_ctx_extension_get(
  * |SSL_get_error| will return |SSL_ERROR_PENDING_CERTIFICATE|.
  *
  * Note: The |SSL_CLIENT_HELLO| is only valid for the duration of the callback
- * and is not valid while the handshake is paused. Further, unlike with most
- * callbacks, when the handshake loop is resumed, it will not call the callback
- * a second time. The caller must finish reconfiguring the connection before
- * resuming the handshake. */
+ * and is not valid while the handshake is paused. */
 OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(
     SSL_CTX *ctx, int (*cb)(const SSL_CLIENT_HELLO *));
 
