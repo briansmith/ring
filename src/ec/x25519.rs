@@ -30,15 +30,16 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
     i: ec::AgreementAlgorithmImpl {
         public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
         elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
-        nid: 948 /* NID_X25519 */,
+        nid: 948, /* NID_X25519 */
         generate_private_key: x25519_generate_private_key,
         public_from_private: x25519_public_from_private,
         ecdh: x25519_ecdh,
     },
 };
 
-fn x25519_generate_private_key(rng: &rand::SecureRandom)
-                               -> Result<ec::PrivateKey, error::Unspecified> {
+fn x25519_generate_private_key
+    (rng: &rand::SecureRandom)
+     -> Result<ec::PrivateKey, error::Unspecified> {
     let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
     try!(rng.fill(&mut result.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]));
     Ok(result)
@@ -47,13 +48,11 @@ fn x25519_generate_private_key(rng: &rand::SecureRandom)
 fn x25519_public_from_private(public_out: &mut [u8],
                               private_key: &ec::PrivateKey)
                               -> Result<(), error::Unspecified> {
-    let public_out =
-        try!(slice_as_array_ref_mut!(public_out,
+    let public_out = try!(slice_as_array_ref_mut!(public_out,
                                      X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
-    let private_key =
-        try!(slice_as_array_ref!(
+    let private_key = try!(slice_as_array_ref!(
                 &private_key.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
                 X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
     unsafe {
@@ -65,12 +64,11 @@ fn x25519_public_from_private(public_out: &mut [u8],
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input)
                -> Result<(), error::Unspecified> {
-    let out =
-        try!(slice_as_array_ref_mut!(out, X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+    let out = try!(slice_as_array_ref_mut!(out,
+                                           X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
-    let my_private_key =
-        try!(slice_as_array_ref!(
+    let my_private_key = try!(slice_as_array_ref!(
                 &my_private_key.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
                 X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
     let peer_public_key =
@@ -101,9 +99,10 @@ mod tests {
     use untrusted;
 
     #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn test_agreement_ecdh_x25519_rfc_iterated() {
-        let mut k =
-            h("0900000000000000000000000000000000000000000000000000000000000000");
+        let mut k = h("09000000000000000000000000000000000000000000000000000000\
+                       00000000");
         let mut u = k.clone();
 
         fn expect_iterated_x25519(expected_result: &str,
@@ -118,24 +117,32 @@ mod tests {
             assert_eq!(&h(expected_result), k);
         }
 
-        expect_iterated_x25519(
-            "422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079",
-            0..1, &mut k, &mut u);
-        expect_iterated_x25519(
-            "684cf59ba83309552800ef566f2f4d3c1c3887c49360e3875f2eb94d99532c51",
-            1..1_000, &mut k, &mut u);
+        expect_iterated_x25519("422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b7\
+                                83c60e80311ae3079",
+                               0..1,
+                               &mut k,
+                               &mut u);
+        expect_iterated_x25519("684cf59ba83309552800ef566f2f4d3c1c3887c49360e38\
+                                75f2eb94d99532c51",
+                               1..1_000,
+                               &mut k,
+                               &mut u);
 
         // The spec gives a test vector for 1,000,000 iterations but it takes
         // too long to do 1,000,000 iterations by default right now. This
         // 10,000 iteration vector is self-computed.
-        expect_iterated_x25519(
-            "2c125a20f639d504a7703d2e223c79a79de48c4ee8c23379aa19a62ecd211815",
-            1_000..10_000, &mut k, &mut u);
+        expect_iterated_x25519("2c125a20f639d504a7703d2e223c79a79de48c4ee8c2337\
+                                9aa19a62ecd211815",
+                               1_000..10_000,
+                               &mut k,
+                               &mut u);
 
         if cfg!(feature = "slow_tests") {
-          expect_iterated_x25519(
-            "7c3911e0ab2586fd864497297e575e6f3bc601c0883c30df5f4dd2d24f665424",
-            10_000..1_000_000, &mut k, &mut u);
+            expect_iterated_x25519("7c3911e0ab2586fd864497297e575e6f3bc601c0883\
+                                    c30df5f4dd2d24f665424",
+                                   10_000..1_000_000,
+                                   &mut k,
+                                   &mut u);
         }
     }
 
@@ -149,10 +156,13 @@ mod tests {
             agreement::EphemeralPrivateKey::from_test_vector(&agreement::X25519,
                                                              private_key);
         let public_key = untrusted::Input::from(public_key);
-        agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
-                                   error::Unspecified, |agreed_value| {
-            Ok(std::vec::Vec::from(agreed_value))
-        })
+        agreement::agree_ephemeral(private_key,
+                                   &agreement::X25519,
+                                   public_key,
+                                   error::Unspecified,
+                                   |agreed_value| {
+                                       Ok(std::vec::Vec::from(agreed_value))
+                                   })
     }
 
     fn h(s: &str) -> std::vec::Vec<u8> {

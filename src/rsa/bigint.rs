@@ -1,4 +1,4 @@
-﻿// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -25,8 +25,9 @@ use core::marker::PhantomData;
 /// there `PartialOrd` requires `PartialEq`, which we do not otherwise require.
 /// Also, this `Result<>`-based interface is more convenient for callers' uses.
 pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
-                        B: core::convert::AsRef<BIGNUM>>(a: &A, b: &B)
-        -> Result<(), error::Unspecified> {
+                        B: core::convert::AsRef<BIGNUM>>
+    (a: &A, b: &B)
+     -> Result<(), error::Unspecified> {
     let r = unsafe { GFp_BN_cmp(a.as_ref(), b.as_ref()) };
     if !(r < 0) {
         return Err(error::Unspecified);
@@ -90,7 +91,8 @@ impl Positive {
             return Err(error::Unspecified);
         }
         let value = unsafe {
-            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
+            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(),
+                          input.len(),
                           core::ptr::null_mut())
         };
         if value.is_null() {
@@ -115,8 +117,9 @@ impl Positive {
         })
     }
 
-    pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
-            -> Result<ElemDecoded<F>, error::Unspecified> {
+    pub fn into_elem_decoded<F: Field>
+        (self, m: &Modulus<F>)
+         -> Result<ElemDecoded<F>, error::Unspecified> {
         try!(verify_less_than(&self, &m));
         Ok(ElemDecoded {
             value: self.0,
@@ -147,12 +150,13 @@ impl OddPositive {
     }
 
     pub fn into_elem<F: Field>(self, m: &Modulus<F>)
-            -> Result<Elem<F>, error::Unspecified> {
+                               -> Result<Elem<F>, error::Unspecified> {
         self.0.into_elem(m)
     }
 
-    pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
-            -> Result<ElemDecoded<F>, error::Unspecified> {
+    pub fn into_elem_decoded<F: Field>
+        (self, m: &Modulus<F>)
+         -> Result<ElemDecoded<F>, error::Unspecified> {
         self.0.into_elem_decoded(m)
     }
 
@@ -191,7 +195,11 @@ pub struct Modulus<F: Field> {
 }
 
 impl<F: Field> Drop for Modulus<F> {
-    fn drop(&mut self) { unsafe { GFp_BN_MONT_CTX_free(self.ctx); } }
+    fn drop(&mut self) {
+        unsafe {
+            GFp_BN_MONT_CTX_free(self.ctx);
+        }
+    }
 }
 
 // `Modulus` uniquely owns and references its contents.
@@ -214,14 +222,15 @@ impl<F: Field> Elem<F> {
 
 pub struct ElemDecoded<F: Field> {
     value: Nonnegative,
-    field: PhantomData<F>
+    field: PhantomData<F>,
 }
 
 impl<F: Field> ElemDecoded<F> {
     pub fn fill_be_bytes(&self, out: &mut [u8])
                          -> Result<(), error::Unspecified> {
         bssl::map_result(unsafe {
-            GFp_BN_bn2bin_padded(out.as_mut_ptr(), out.len(),
+            GFp_BN_bn2bin_padded(out.as_mut_ptr(),
+                                 out.len(),
                                  self.value.as_ref())
         })
     }
@@ -242,15 +251,16 @@ impl<F: Field> ElemDecoded<F> {
 }
 
 // `a` * `b` (mod `m`).
-pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
-                                -> Result<ElemDecoded<F>, error::Unspecified> {
+pub fn elem_mul_mixed<F: Field>
+    (a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
+     -> Result<ElemDecoded<F>, error::Unspecified> {
     let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(ElemDecoded {
         value: r,
-        field: PhantomData
+        field: PhantomData,
     })
 }
 
@@ -259,7 +269,11 @@ pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
 struct Nonnegative(*mut BIGNUM);
 
 impl Drop for Nonnegative {
-    fn drop(&mut self) { unsafe { GFp_BN_free(self.0); } }
+    fn drop(&mut self) {
+        unsafe {
+            GFp_BN_free(self.0);
+        }
+    }
 }
 
 // `Nonnegative` uniquely owns and references its contents.
@@ -320,8 +334,9 @@ extern {
     fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                       -> c::int;
     // `r` and/or 'a' and/or 'b' may alias.
-    fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
-                           m: &BN_MONT_CTX) -> c::int;
+    fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM,
+                           b: *const BIGNUM, m: &BN_MONT_CTX)
+                           -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
@@ -340,26 +355,23 @@ mod tests {
     #[test]
     fn test_positive_integer_from_be_bytes_empty() {
         // Empty values are rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[])).is_err());
+        assert!(Positive::from_be_bytes(untrusted::Input::from(&[])).is_err());
     }
 
     #[test]
     fn test_positive_integer_from_be_bytes_zero() {
         // The zero value is rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[0])).is_err());
+        assert!(Positive::from_be_bytes(untrusted::Input::from(&[0])).is_err());
         // A zero with a leading zero is rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[0, 0])).is_err());
+        assert!(Positive::from_be_bytes(untrusted::Input::from(&[0, 0]))
+            .is_err());
         // A non-zero value with a leading zero is rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[0, 1])).is_err());
+        assert!(Positive::from_be_bytes(untrusted::Input::from(&[0, 1]))
+            .is_err());
         // A non-zero value with no leading zeros is accepted.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[1])).is_ok());
+        assert!(Positive::from_be_bytes(untrusted::Input::from(&[1])).is_ok());
         // A non-zero value with that ends in a zero byte is accepted.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[1, 0])).is_ok());
+        assert!(Positive::from_be_bytes(untrusted::Input::from(&[1, 0]))
+            .is_ok());
     }
 }

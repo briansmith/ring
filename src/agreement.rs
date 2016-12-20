@@ -31,7 +31,8 @@
 //! let rng = rand::SystemRandom::new();
 //!
 //! let my_private_key =
-//!     try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng));
+//!     try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519,
+//!                                                   &rng));
 //!
 //! // Make `my_public_key` a byte slice containing my public key. In a real
 //! // application, this would be sent to the peer in an encoded protocol
@@ -186,8 +187,10 @@ impl<'a> EphemeralPrivateKey {
 pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
                                 peer_public_key_alg: &Algorithm,
                                 peer_public_key: untrusted::Input,
-                                error_value: E, kdf: F) -> Result<R, E>
-                                where F: FnOnce(&[u8]) -> Result<R, E> {
+                                error_value: E, kdf: F)
+                                -> Result<R, E>
+    where F: FnOnce(&[u8]) -> Result<R, E>
+{
     // NSA Guide Prerequisite 1.
     //
     // The domain parameters are hard-coded. This check verifies that the
@@ -215,8 +218,10 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     //
     // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
     // that doesn't meet the NSA requirement to "zeroize."
-    try!((my_private_key.alg.i.ecdh)(shared_key, &my_private_key.private_key,
-                                     peer_public_key).map_err(|_| error_value));
+    try!((my_private_key.alg.i.ecdh)(shared_key,
+                                     &my_private_key.private_key,
+                                     peer_public_key)
+        .map_err(|_| error_value));
 
     // NSA Guide Steps 5 and 6.
     //
@@ -256,15 +261,20 @@ mod tests {
                     let mut computed_public = [0u8; PUBLIC_KEY_MAX_LEN];
                     let computed_public =
                         &mut computed_public[..private_key.public_key_len()];
-                    assert!(
-                        private_key.compute_public_key(computed_public).is_ok());
+                    assert!(private_key.compute_public_key(computed_public)
+                        .is_ok());
                     assert_eq!(computed_public, &my_public[..]);
 
-                    assert!(agree_ephemeral(private_key, alg, peer_public, (),
+                    assert!(agree_ephemeral(private_key,
+                                            alg,
+                                            peer_public,
+                                            (),
                                             |key_material| {
-                        assert_eq!(key_material, &output[..]);
-                        Ok(())
-                    }).is_ok());
+                                                assert_eq!(key_material,
+                                                           &output[..]);
+                                                Ok(())
+                                            })
+                        .is_ok());
                 },
 
                 Some(_) => {
@@ -273,13 +283,16 @@ mod tests {
                     let dummy_private_key =
                         try!(EphemeralPrivateKey::generate(alg, &rng));
                     fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
-                        panic!("The KDF was called during ECDH when the peer's \
-                                public key is invalid.");
+                        panic!("The KDF was called during ECDH when the \
+                                peer's public key is invalid.");
                     }
-                    assert!(
-                        agree_ephemeral(dummy_private_key, alg, peer_public,
-                                        (), kdf_not_called).is_err());
-                }
+                    assert!(agree_ephemeral(dummy_private_key,
+                                            alg,
+                                            peer_public,
+                                            (),
+                                            kdf_not_called)
+                        .is_err());
+                },
             }
 
             return Ok(());

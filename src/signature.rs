@@ -91,7 +91,8 @@
 //! [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
 //!     http://www.secg.org/sec1-v2.pdf
 //! [NIST Special Publication 800-56A, revision 2]:
-//!     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+//!     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/\
+//!      NIST.SP.800-56Ar2.pdf
 //! [Suite B implementer's guide to FIPS 186-3]:
 //!     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
@@ -213,61 +214,42 @@
 use {error, init, private};
 use untrusted;
 
-pub use ec::suite_b::ecdsa::{
-    ECDSAParameters,
+pub use ec::suite_b::ecdsa::{ECDSAParameters, ECDSA_P256_SHA256_ASN1,
+                             ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1,
+                             ECDSA_P384_SHA384_ASN1};
 
-    ECDSA_P256_SHA256_ASN1,
-    ECDSA_P256_SHA384_ASN1,
-
-    ECDSA_P384_SHA256_ASN1,
-    ECDSA_P384_SHA384_ASN1,
-};
-
-pub use ec::eddsa::{
-    EdDSAParameters,
-
-    ED25519,
-
-    Ed25519KeyPair,
-    Ed25519KeyPairBytes
-};
+pub use ec::eddsa::{EdDSAParameters, ED25519, Ed25519KeyPair,
+                    Ed25519KeyPairBytes};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::signing::{RSAKeyPair, RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::{
-    RSAEncoding,
+pub use rsa::{RSAEncoding,
 
-    // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
-    // to create test vectors for signing with it, which we don't currently
-    // have. But, it's a bad idea to use SHA-1 anyway, so perhaps we just won't
-    // ever expose it.
-    RSA_PKCS1_SHA256,
-    RSA_PKCS1_SHA384,
-    RSA_PKCS1_SHA512,
+              // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum,
+              // we'd need to create test vectors for signing with it, which
+              // we don't currently have. But, it's a bad idea to use SHA-1
+              // anyway, so perhaps we just won't ever expose it.
+              RSA_PKCS1_SHA256,
+              RSA_PKCS1_SHA384,
+              RSA_PKCS1_SHA512,
 
-    RSA_PSS_SHA256,
-    RSA_PSS_SHA384,
-    RSA_PSS_SHA512,
-};
+              RSA_PSS_SHA256,
+              RSA_PSS_SHA384,
+              RSA_PSS_SHA512};
 
 #[cfg(feature = "use_heap")]
 pub use rsa::RSAParameters;
 
 #[cfg(feature = "use_heap")]
-pub use rsa::verification::{
-    RSA_PKCS1_2048_8192_SHA1,
-    RSA_PKCS1_2048_8192_SHA256,
-    RSA_PKCS1_2048_8192_SHA384,
-    RSA_PKCS1_2048_8192_SHA512,
-
-    RSA_PKCS1_3072_8192_SHA384,
-
-    RSA_PSS_2048_8192_SHA256,
-    RSA_PSS_2048_8192_SHA384,
-    RSA_PSS_2048_8192_SHA512,
-};
+pub use rsa::verification::{RSA_PKCS1_2048_8192_SHA1,
+                            RSA_PKCS1_2048_8192_SHA256,
+                            RSA_PKCS1_2048_8192_SHA384,
+                            RSA_PKCS1_2048_8192_SHA512,
+                            RSA_PKCS1_3072_8192_SHA384,
+                            RSA_PSS_2048_8192_SHA256,
+                            RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512};
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
@@ -300,7 +282,8 @@ pub trait VerificationAlgorithm: Sync + private::Private {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), error::Unspecified>;
+              signature: untrusted::Input)
+              -> Result<(), error::Unspecified>;
 }
 
 /// Verify the signature `signature` of message `msg` with the public key

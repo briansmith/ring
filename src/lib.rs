@@ -42,8 +42,8 @@
     missing_debug_implementations,
     unknown_lints,
     unsafe_code,
-    // TODO: Deny `unused_qualifications` after
-    // https://github.com/rust-lang/rust/issues/37345 is fixed.
+// TODO: Deny `unused_qualifications` after
+// https://github.com/rust-lang/rust/issues/37345 is fixed.
     unused_qualifications,
 )]
 #![deny(
@@ -163,7 +163,6 @@ pub mod test;
 
 mod private {
     /// Traits that are designed to only be implemented internally in *ring*.
-    //
     // Usage:
     // ```
     // use private;

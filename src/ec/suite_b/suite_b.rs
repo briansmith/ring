@@ -30,9 +30,10 @@ use self::ops::*;
 //
 //     y**2 == (x**2 + a)*x + b  (mod q)
 //
-fn verify_affine_point_is_on_the_curve(
-        ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced))
-        -> Result<(), error::Unspecified> {
+fn verify_affine_point_is_on_the_curve(ops: &CommonOps,
+                                       (x, y): (&ElemUnreduced,
+                                                &ElemUnreduced))
+                                       -> Result<(), error::Unspecified> {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
 
@@ -46,9 +47,9 @@ fn verify_affine_point_is_on_the_curve(
 // verification.
 //
 // This function also verifies that the point is not at infinity.
-fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> Result<ElemUnreduced,
-                                                   error::Unspecified> {
+fn verify_jacobian_point_is_on_the_curve
+    (ops: &CommonOps, p: &Point)
+     -> Result<ElemUnreduced, error::Unspecified> {
     let z = ops.point_z(p);
 
     // Verify that the point is not at infinity.
@@ -104,7 +105,9 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
     let z4_a = ops.elem_product(&z4, &ops.a);
     let z6 = ops.elem_product(&z4, &z2);
     let z6_b = ops.elem_product(&z6, &ops.b);
-    try!(verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a,
+    try!(verify_affine_point_is_on_the_curve_scaled(ops,
+                                                    (&x, &y),
+                                                    &z4_a,
                                                     &z6_b));
     Ok(z2)
 }
@@ -135,10 +138,10 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 // check after multiplication is given in "Sign Change Fault Attacks On
 // Elliptic Curve Cryptosystems" by Johannes Blömer, Martin Otto, and
 // Jean-Pierre Seifert.
-fn verify_affine_point_is_on_the_curve_scaled(
-        ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced),
-        a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced)
-        -> Result<(), error::Unspecified> {
+fn verify_affine_point_is_on_the_curve_scaled
+    (ops: &CommonOps, (x, y): (&ElemUnreduced, &ElemUnreduced),
+     a_scaled: &ElemUnreduced, b_scaled: &ElemUnreduced)
+     -> Result<(), error::Unspecified> {
     let lhs = ops.elem_squared(y);
     let lhs = ops.elem_reduced(&lhs);
 

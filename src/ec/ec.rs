@@ -29,7 +29,8 @@ pub struct AgreementAlgorithmImpl {
     public_from_private: fn(public_out: &mut [u8], private_key: &PrivateKey)
                             -> Result<(), error::Unspecified>,
 
-    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey,
+    pub ecdh: fn(out: &mut [u8],
+                 private_key: &PrivateKey,
                  peer_public_key: untrusted::Input)
                  -> Result<(), error::Unspecified>,
 }
@@ -51,7 +52,8 @@ impl<'a> PrivateKey {
         init::init_once();
         let mut result = PrivateKey { bytes: [0; SCALAR_MAX_BYTES] };
         {
-            let private_key_bytes = &mut result.bytes[..alg.elem_and_scalar_len];
+            let private_key_bytes =
+                &mut result.bytes[..alg.elem_and_scalar_len];
             assert_eq!(test_vector.len(), private_key_bytes.len());
             for i in 0..private_key_bytes.len() {
                 private_key_bytes[i] = test_vector[i];

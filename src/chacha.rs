@@ -29,7 +29,10 @@ pub fn key_from_bytes(key_bytes: &[u8; KEY_LEN_IN_BYTES]) -> Key {
 
 #[inline]
 pub fn chacha20_xor_in_place(key: &Key, counter: &Counter, in_out: &mut [u8]) {
-    chacha20_xor_inner(key, counter, in_out.as_ptr(), in_out.len(),
+    chacha20_xor_inner(key,
+                       counter,
+                       in_out.as_ptr(),
+                       in_out.len(),
                        in_out.as_mut_ptr());
 }
 
@@ -43,15 +46,19 @@ pub fn chacha20_xor_overlapping(key: &Key, counter: &Counter,
     // https://rt.openssl.org/Ticket/Display.html?id=4362
     let len = in_out.len() - in_prefix_len;
     if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
-            in_prefix_len != 0 {
+       in_prefix_len != 0 {
         unsafe {
             core::ptr::copy(in_out[in_prefix_len..].as_ptr(),
-                            in_out.as_mut_ptr(), len);
+                            in_out.as_mut_ptr(),
+                            len);
         }
         chacha20_xor_in_place(key, &counter, &mut in_out[..len]);
     } else {
-        chacha20_xor_inner(key, counter, in_out[in_prefix_len..].as_ptr(),
-                           len, in_out.as_mut_ptr());
+        chacha20_xor_inner(key,
+                           counter,
+                           in_out[in_prefix_len..].as_ptr(),
+                           len,
+                           in_out.as_mut_ptr());
     }
 }
 
@@ -123,8 +130,12 @@ mod tests {
             // behavior of ChaCha20 implementation changes dependent on the
             // length of the input.
             for len in 0..(input.len() + 1) {
-                chacha20_test_case_inner(&key, &ctr, &input[..len],
-                                         &output[..len], len, &mut in_out_buf);
+                chacha20_test_case_inner(&key,
+                                         &ctr,
+                                         &input[..len],
+                                         &output[..len],
+                                         len,
+                                         &mut in_out_buf);
             }
 
             Ok(())
@@ -137,31 +148,37 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-          GFp_ChaCha20_ctr32(in_out_buf.as_mut_ptr(), input[..len].as_ptr(),
-                             len, key, &ctr);
+            GFp_ChaCha20_ctr32(in_out_buf.as_mut_ptr(),
+                               input[..len].as_ptr(),
+                               len,
+                               key,
+                               &ctr);
         }
         assert_eq!(&in_out_buf[..len], expected);
 
         // Do not test offset buffers for x86 and ARM architectures (see above
         // for rationale).
-        let max_offset =
-            if cfg!(any(target_arch = "x86", target_arch = "arm")) {
-                0
-            } else {
-                259
-            };
+        let max_offset = if cfg!(any(target_arch = "x86",
+                                     target_arch = "arm")) {
+            0
+        } else {
+            259
+        };
 
         // Check that in-place encryption works successfully when the pointers
         // to the input/output buffers are (partially) overlapping.
         for alignment in 0..16 {
             for offset in 0..(max_offset + 1) {
-              in_out_buf[alignment+offset..][..len].copy_from_slice(input);
-              unsafe {
-                  GFp_ChaCha20_ctr32(in_out_buf[alignment..].as_mut_ptr(),
-                                     in_out_buf[alignment + offset..].as_ptr(),
-                                     len, key, ctr);
-                  assert_eq!(&in_out_buf[alignment..][..len], expected);
-              }
+                in_out_buf[alignment + offset..][..len].copy_from_slice(input);
+                unsafe {
+                    GFp_ChaCha20_ctr32(in_out_buf[alignment..].as_mut_ptr(),
+                                       in_out_buf[alignment + offset..]
+                                           .as_ptr(),
+                                       len,
+                                       key,
+                                       ctr);
+                    assert_eq!(&in_out_buf[alignment..][..len], expected);
+                }
             }
         }
     }

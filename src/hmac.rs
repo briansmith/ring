@@ -169,7 +169,8 @@ impl SigningKey {
     /// described in [RFC 5246, Appendix C].
     ///
     /// [NIST SP 800-107]:
-    ///     http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf
+    ///     http://csrc.nist.gov/publications/nistpubs/800-107-rev1/\
+    ///      sp800-107-rev1.pdf
     /// [RFC 5246, Appendix C]:
     ///     https://tools.ietf.org/html/rfc5246#appendix-C
     pub fn generate(digest_alg: &'static digest::Algorithm,
@@ -359,10 +360,14 @@ mod tests {
         for d in &digest::test_util::ALL_ALGORITHMS {
             let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
             let signature = hmac::sign(&key, HELLO_WORLD_GOOD);
-            assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD,
-                                              signature.as_ref()).is_ok());
-            assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD,
-                                              signature.as_ref()).is_err())
+            assert!(hmac::verify_with_own_key(&key,
+                                              HELLO_WORLD_GOOD,
+                                              signature.as_ref())
+                .is_ok());
+            assert!(hmac::verify_with_own_key(&key,
+                                              HELLO_WORLD_BAD,
+                                              signature.as_ref())
+                .is_err())
         }
     }
 
@@ -377,11 +382,16 @@ mod tests {
 
             let digest_alg = match digest_alg {
                 Some(digest_alg) => digest_alg,
-                None => { return Ok(()); }, // Unsupported digest algorithm
+                None => {
+                    return Ok(());
+                }, // Unsupported digest algorithm
             };
 
-            try!(hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                                      &output[..], true));
+            try!(hmac_test_case_inner(digest_alg,
+                                      &key_value[..],
+                                      &input[..],
+                                      &output[..],
+                                      true));
 
             // Tamper with the input and check that verification fails.
             if input.is_empty() {
@@ -390,14 +400,18 @@ mod tests {
                 input[0] ^= 1;
             }
 
-            hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                                 &output[..], false)
+            hmac_test_case_inner(digest_alg,
+                                 &key_value[..],
+                                 &input[..],
+                                 &output[..],
+                                 false)
         });
     }
 
     fn hmac_test_case_inner(digest_alg: &'static digest::Algorithm,
                             key_value: &[u8], input: &[u8], output: &[u8],
-                            is_ok: bool) -> Result<(), error::Unspecified> {
+                            is_ok: bool)
+                            -> Result<(), error::Unspecified> {
 
         let s_key = hmac::SigningKey::new(digest_alg, key_value);
         let v_key = hmac::VerificationKey::new(digest_alg, key_value);

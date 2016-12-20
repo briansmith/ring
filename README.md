@@ -121,6 +121,10 @@ running `cargo test` and `cargo test --features=rsa_signing`. See
 [BUILDING.md](BUILDING.md) for more info about the features flags that are
 useful for people hacking on *ring*.
 
+You can also make sure your code will pass `rustfmt`'s checks before committing
+by configuring a pre-commit hook. Install `rustfmt` with `cargo install rustfmt`.
+You can now `cargo fmt` manually. To set the pre-commit hook, run 
+`ln -s ../../mk/git-pre-commit-rustfmt-hook.sh .git/hooks/pre-commit`. 
 
 
 Online Automated Testing

@@ -23,15 +23,8 @@ mod padding;
 #[cfg(feature = "rsa_signing")]
 pub use self::padding::RSAEncoding;
 
-pub use self::padding::{
-    RSA_PKCS1_SHA256,
-    RSA_PKCS1_SHA384,
-    RSA_PKCS1_SHA512,
-
-    RSA_PSS_SHA256,
-    RSA_PSS_SHA384,
-    RSA_PSS_SHA512
-};
+pub use self::padding::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512,
+                        RSA_PSS_SHA256, RSA_PSS_SHA384, RSA_PSS_SHA512};
 
 
 // Maximum RSA modulus size supported for signature verification (in bytes).
@@ -52,9 +45,9 @@ pub struct RSAParameters {
     min_bits: bits::BitLength,
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn parse_public_key(input: untrusted::Input)
-                    -> Result<(untrusted::Input, untrusted::Input),
-                              error::Unspecified> {
+    -> Result<(untrusted::Input, untrusted::Input), error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = try!(der::positive_integer(input));
@@ -64,11 +57,10 @@ fn parse_public_key(input: untrusted::Input)
     })
 }
 
-fn check_public_modulus_and_exponent(
-        n: bigint::Positive, e: bigint::Positive, n_min_bits: bits::BitLength,
-        n_max_bits: bits::BitLength)
-        -> Result<(bigint::OddPositive, bigint::OddPositive),
-                  error::Unspecified> {
+fn check_public_modulus_and_exponent
+    (n: bigint::Positive, e: bigint::Positive, n_min_bits: bits::BitLength,
+     n_max_bits: bits::BitLength)
+     -> Result<(bigint::OddPositive, bigint::OddPositive), error::Unspecified> {
     let n = try!(n.into_odd_positive());
     let e = try!(e.into_odd_positive());
 
@@ -91,8 +83,7 @@ fn check_public_modulus_and_exponent(
     debug_assert!(MAX_EXPONENT_BITS < N_MIN_BITS);
 
     let n_bits = n.bit_length();
-    let n_bits_rounded_up =
-        try!(bits::BitLength::from_usize_bytes(
+    let n_bits_rounded_up = try!(bits::BitLength::from_usize_bytes(
             n_bits.as_usize_bytes_rounded_up()));
     if n_bits_rounded_up < n_min_bits {
         return Err(error::Unspecified);

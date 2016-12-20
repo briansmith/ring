@@ -43,7 +43,8 @@ pub trait RSAEncoding: RSAPadding {
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 pub trait RSAVerification: RSAPadding {
     fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
-              mod_bits: bits::BitLength) -> Result<(), error::Unspecified>;
+              mod_bits: bits::BitLength)
+              -> Result<(), error::Unspecified>;
 }
 
 /// PKCS#1 1.5 padding as described in [RFC 3447 Section 8.2].
@@ -57,7 +58,7 @@ pub struct PKCS1 {
     digestinfo_prefix: &'static [u8],
 }
 
-impl ::private::Private for PKCS1 { }
+impl ::private::Private for PKCS1 {}
 
 impl RSAPadding for PKCS1 {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
@@ -75,7 +76,8 @@ impl RSAEncoding for PKCS1 {
 
 impl RSAVerification for PKCS1 {
     fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
-              mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
+              mod_bits: bits::BitLength)
+              -> Result<(), error::Unspecified> {
         // `mod_bits.as_usize_bytes_rounded_up() <=
         //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa()`.
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
@@ -96,8 +98,8 @@ impl RSAVerification for PKCS1 {
 fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
     let em = m_out;
 
-    let digest_len =
-        pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len;
+    let digest_len = pkcs1.digestinfo_prefix.len() +
+                     pkcs1.digest_alg.output_len;
 
     // The specification requires at least 8 bytes of padding. Since we
     // disallow keys smaller than 2048 bits, this should always be true.
@@ -128,16 +130,20 @@ macro_rules! rsa_pkcs1_padding {
     }
 }
 
-rsa_pkcs1_padding!(RSA_PKCS1_SHA1, &digest::SHA1,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA1,
+                   &digest::SHA1,
                    &SHA1_PKCS1_DIGESTINFO_PREFIX,
                    "PKCS#1 1.5 padding using SHA-1 for RSA signatures.");
-rsa_pkcs1_padding!(RSA_PKCS1_SHA256, &digest::SHA256,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA256,
+                   &digest::SHA256,
                    &SHA256_PKCS1_DIGESTINFO_PREFIX,
                    "PKCS#1 1.5 padding using SHA-256 for RSA signatures.");
-rsa_pkcs1_padding!(RSA_PKCS1_SHA384, &digest::SHA384,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA384,
+                   &digest::SHA384,
                    &SHA384_PKCS1_DIGESTINFO_PREFIX,
                    "PKCS#1 1.5 padding using SHA-384 for RSA signatures.");
-rsa_pkcs1_padding!(RSA_PKCS1_SHA512, &digest::SHA512,
+rsa_pkcs1_padding!(RSA_PKCS1_SHA512,
+                   &digest::SHA512,
                    &SHA512_PKCS1_DIGESTINFO_PREFIX,
                    "PKCS#1 1.5 padding using SHA-512 for RSA signatures.");
 
@@ -154,20 +160,28 @@ macro_rules! pkcs1_digestinfo_prefix {
     }
 }
 
-pkcs1_digestinfo_prefix!(
-    SHA1_PKCS1_DIGESTINFO_PREFIX, 20, 5, [ 0x2b, 0x0e, 0x03, 0x02, 0x1a ]);
+pkcs1_digestinfo_prefix!(SHA1_PKCS1_DIGESTINFO_PREFIX,
+                         20,
+                         5,
+                         [0x2b, 0x0e, 0x03, 0x02, 0x1a]);
 
-pkcs1_digestinfo_prefix!(
-    SHA256_PKCS1_DIGESTINFO_PREFIX, 32, 9,
-    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01 ]);
+pkcs1_digestinfo_prefix!(SHA256_PKCS1_DIGESTINFO_PREFIX,
+                         32,
+                         9,
+                         [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02,
+                          0x01]);
 
-pkcs1_digestinfo_prefix!(
-    SHA384_PKCS1_DIGESTINFO_PREFIX, 48, 9,
-    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02 ]);
+pkcs1_digestinfo_prefix!(SHA384_PKCS1_DIGESTINFO_PREFIX,
+                         48,
+                         9,
+                         [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02,
+                          0x02]);
 
-pkcs1_digestinfo_prefix!(
-    SHA512_PKCS1_DIGESTINFO_PREFIX, 64, 9,
-    [ 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 ]);
+pkcs1_digestinfo_prefix!(SHA512_PKCS1_DIGESTINFO_PREFIX,
+                         64,
+                         9,
+                         [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02,
+                          0x03]);
 
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
@@ -180,7 +194,7 @@ pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
 
-impl ::private::Private for PSS { }
+impl ::private::Private for PSS {}
 
 #[cfg(feature = "rsa_signing")]
 // Maximum supported length of the salt in bytes.
@@ -200,12 +214,12 @@ impl RSAEncoding for PSS {
               -> Result<(), error::Unspecified> {
         let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
 
-        // The `m_out` this function fills is the big-endian-encoded value of `m`
-        // from the specification, padded to `k` bytes, where `k` is the length
-        // in bytes of the public modulus. The spec says "Note that emLen will
-        // be one less than k if modBits - 1 is divisible by 8 and equal to k
-        // otherwise." In other words we might need to prefix `em` with a
-        // leading zero byte to form a correct value of `m`.
+        // The `m_out` this function fills is the big-endian-encoded value of
+        // `m` from the specification, padded to `k` bytes, where `k` is the
+        // length in bytes of the public modulus. The spec says "Note that
+        // emLen will be one less than k if modBits - 1 is divisible by 8 and
+        // equal to k otherwise." In other words we might need to prefix `em`
+        // with a leading zero byte to form a correct value of `m`.
         let em = if metrics.top_byte_mask == 0xff {
             m_out[0] = 0;
             &mut m_out[1..]
@@ -265,7 +279,8 @@ impl RSAVerification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
-              mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
+              mod_bits: bits::BitLength)
+              -> Result<(), error::Unspecified> {
         let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
 
         // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is the
@@ -351,7 +366,8 @@ impl RSAVerification for PSS {
 }
 
 struct PSSMetrics {
-    #[cfg_attr(not(feature = "rsa_signing"), allow(dead_code))] em_len: usize,
+    #[cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
+    em_len: usize,
     db_len: usize,
     ps_len: usize,
     s_len: usize,
@@ -381,9 +397,9 @@ impl PSSMetrics {
         // before the salt requires 1 bit and the 0xbc after the digest
         // requires 8 bits.
         let db_len = try!(em_len.checked_sub(1 + s_len)
-                                .ok_or(error::Unspecified));
+            .ok_or(error::Unspecified));
         let ps_len = try!(db_len.checked_sub(h_len + 1)
-                                .ok_or(error::Unspecified));
+            .ok_or(error::Unspecified));
 
         debug_assert!(em_bits.as_usize_bits() >= (8 * h_len) + (8 * s_len) + 9);
 
@@ -419,8 +435,9 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8])
     Ok(())
 }
 
-fn pss_digest(digest_alg: &'static digest::Algorithm, m_hash: &digest::Digest,
-              salt: &[u8]) -> digest::Digest {
+fn pss_digest(digest_alg: &'static digest::Algorithm,
+              m_hash: &digest::Digest, salt: &[u8])
+              -> digest::Digest {
     // Fixed prefix.
     const PREFIX_ZEROS: [u8; 8] = [0u8; 8];
 
@@ -442,15 +459,18 @@ macro_rules! rsa_pss_padding {
     }
 }
 
-rsa_pss_padding!(RSA_PSS_SHA256, &digest::SHA256,
+rsa_pss_padding!(RSA_PSS_SHA256,
+                 &digest::SHA256,
                  "RSA PSS padding using SHA-256 for RSA signatures.\n\nSee
                  \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
                  documentation for more details.");
-rsa_pss_padding!(RSA_PSS_SHA384, &digest::SHA384,
+rsa_pss_padding!(RSA_PSS_SHA384,
+                 &digest::SHA384,
                  "RSA PSS padding using SHA-384 for RSA signatures.\n\nSee
                  \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
                  documentation for more details.");
-rsa_pss_padding!(RSA_PSS_SHA512, &digest::SHA512,
+rsa_pss_padding!(RSA_PSS_SHA512,
+                 &digest::SHA512,
                  "RSA PSS padding using SHA-512 for RSA signatures.\n\nSee
                  \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
                  documentation for more details.");
@@ -472,7 +492,7 @@ mod test {
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
                 "SHA256" => &RSA_PSS_SHA256,
-                _ =>  { panic!("Unsupported digest: {}", digest_name) }
+                _ => panic!("Unsupported digest: {}", digest_name),
             };
 
             let msg = test_case.consume_bytes("Msg");
@@ -486,9 +506,9 @@ mod test {
             let bit_len = test_case.consume_usize_bits("Len");
             let expected_result = test_case.consume_string("Result");
 
-            let actual_result =
-                encoded.read_all(error::Unspecified,
-                                 |m| alg.verify(&m_hash, m, bit_len));
+            let actual_result = encoded.read_all(error::Unspecified, |m| {
+                alg.verify(&m_hash, m, bit_len)
+            });
             assert_eq!(actual_result.is_ok(), expected_result == "P");
 
             Ok(())

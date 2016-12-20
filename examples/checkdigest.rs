@@ -18,16 +18,20 @@ use ring::*;
 use std::error::Error;
 use std::io::{Read, Write};
 
-
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn print_usage(program_name: &str) {
     let program_file_name = std::path::Path::new(program_name)
-                                .file_name().unwrap().to_str().unwrap();
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap();
 
     println!(
         "Usage: {} sha256|sha384|sha512 <digest value in hex> <filename>\n\
          \n\
          On success nothing is output, and 0 is returned.\n\
-         On failure, an error message is printed, and a non-zero value is returned\n\
+         On failure, an error message is printed, and a non-zero value is \
+         returned\n\
          \n\
          Example:\n\
          {} sha256 \
@@ -37,12 +41,15 @@ fn print_usage(program_name: &str) {
 }
 
 fn run(digest_name: &str, expected_digest_hex: &str,
-       file_path: &std::path::Path) -> Result<(), &'static str> {
+       file_path: &std::path::Path)
+       -> Result<(), &'static str> {
     let digest_alg = match digest_name {
         "sha256" => &digest::SHA256,
         "sha384" => &digest::SHA384,
         "sha512" => &digest::SHA512,
-        _ => { return Err("unsupported digest algorithm"); }
+        _ => {
+            return Err("unsupported digest algorithm");
+        },
     };
 
     let mut ctx = digest::Context::new(digest_alg);
@@ -51,8 +58,11 @@ fn run(digest_name: &str, expected_digest_hex: &str,
         let mut file = match std::fs::File::open(file_path) {
             Ok(file) => file,
             // TODO: don't use panic here.
-            Err(why) => panic!("couldn't open {}: {}", file_path.display(),
-                               why.description())
+            Err(why) => {
+                panic!("couldn't open {}: {}",
+                       file_path.display(),
+                       why.description())
+            },
         };
 
         let mut chunk = vec![0u8; 128 * 1024];
@@ -61,8 +71,11 @@ fn run(digest_name: &str, expected_digest_hex: &str,
                 Ok(0) => break,
                 Ok(bytes_read) => ctx.update(&chunk[0..bytes_read]),
                 // TODO: don't use panic here
-                Err(why) => panic!("couldn't open {}: {}", file_path.display(),
-                               why.description())
+                Err(why) => {
+                    panic!("couldn't open {}: {}",
+                           file_path.display(),
+                           why.description())
+                },
             }
         }
     }
@@ -71,20 +84,23 @@ fn run(digest_name: &str, expected_digest_hex: &str,
 
     let matched = match from_hex(&expected_digest_hex) {
         Ok(expected) => actual_digest.as_ref() == &expected[..],
-        Err(msg) => panic!("syntactically invalid digest: {} in {}", msg,
-                           &expected_digest_hex),
+        Err(msg) => {
+            panic!("syntactically invalid digest: {} in {}",
+                   msg,
+                   &expected_digest_hex)
+        },
     };
 
     match matched {
         true => Ok(()),
-        false => Err("digest mismatch") // TODO: calculated digest.
+        false => Err("digest mismatch"), // TODO: calculated digest.
     }
 }
 
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
-        return Err(
-            String::from("Hex string does not have an even number of digits"));
+        return Err(String::from("Hex string does not have an even number of \
+                                 digits"));
     }
 
     fn from_hex_digit(d: u8) -> Result<u8, String> {
@@ -113,7 +129,7 @@ fn main() {
 
     if args.iter().any(|arg| arg == "-h") {
         print_usage(&args[0]);
-        return
+        return;
     } else if args.len() < 4 {
         print_usage(&args[0]);
         std::process::exit(1);
@@ -124,6 +140,6 @@ fn main() {
         Err(s) => {
             let _ = writeln!(&mut std::io::stderr(), "{}", s);
             std::process::exit(1)
-        }
+        },
     }
 }

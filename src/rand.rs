@@ -205,7 +205,8 @@ impl<'a> RAND<'a> {
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
-                                dest_len: c::size_t) -> c::int {
+                                dest_len: c::size_t)
+                                -> c::int {
     let dest: &mut [u8] = core::slice::from_raw_parts_mut(dest, dest_len);
 
     match (*(*rng).rng).fill(dest) {

@@ -26,7 +26,8 @@
 //! `padding_length||payload||random padding`.
 //!
 //! [chacha20-poly1305@openssh.com]:
-//!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
+//!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/\
+//!     PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
 use {chacha, error, poly1305};
@@ -61,7 +62,8 @@ impl SealingKey {
             chacha::chacha20_xor_in_place(&self.key.k_1, &counter, len_in_out);
 
             counter[0] = 1;
-            chacha::chacha20_xor_in_place(&self.key.k_2, &counter,
+            chacha::chacha20_xor_in_place(&self.key.k_2,
+                                          &counter,
                                           data_and_padding_in_out);
         }
 
@@ -93,7 +95,8 @@ impl OpeningKey {
             -> [u8; PACKET_LENGTH_LEN] {
         let mut packet_length = encrypted_packet_length;
         let counter = make_counter(sequence_number);
-        chacha::chacha20_xor_in_place(&self.key.k_1, &counter,
+        chacha::chacha20_xor_in_place(&self.key.k_1,
+                                      &counter,
                                       &mut packet_length);
         packet_length
     }
@@ -123,7 +126,8 @@ impl OpeningKey {
         let plaintext_in_ciphertext_out =
             &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
         counter[0] = 1;
-        chacha::chacha20_xor_in_place(&self.key.k_2, &counter,
+        chacha::chacha20_xor_in_place(&self.key.k_2,
+                                      &counter,
                                       plaintext_in_ciphertext_out);
 
         Ok(plaintext_in_ciphertext_out)
@@ -139,14 +143,14 @@ impl Key {
     pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
         // The first half becomes K_2 and the second half becomes K_1.
         Key {
-            k_1: chacha::key_from_bytes(
-                    slice_as_array_ref!(
+            k_1: chacha::key_from_bytes(slice_as_array_ref!(
                         &key_material[chacha::KEY_LEN_IN_BYTES..],
-                        chacha::KEY_LEN_IN_BYTES).unwrap()),
-            k_2: chacha::key_from_bytes(
-                    slice_as_array_ref!(
+                        chacha::KEY_LEN_IN_BYTES)
+                .unwrap()),
+            k_2: chacha::key_from_bytes(slice_as_array_ref!(
                         &key_material[..chacha::KEY_LEN_IN_BYTES],
-                        chacha::KEY_LEN_IN_BYTES).unwrap()),
+                        chacha::KEY_LEN_IN_BYTES)
+                .unwrap()),
         }
     }
 }

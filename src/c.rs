@@ -79,24 +79,38 @@ macro_rules! define_metrics_tests {
     }
 }
 
-define_type!(int, i32, test_int_metrics, GFp_int_align, GFp_int_size,
+define_type!(int,
+             i32,
+             test_int_metrics,
+             GFp_int_align,
+             GFp_int_size,
              "The C `int` type. Equivalent to `libc::c_int`.");
 
 #[cfg(any(target_os = "windows", target_pointer_width = "32"))]
-define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
+define_type!(long,
+             i32,
+             test_long_metrics,
+             GFp_long_align,
+             GFp_long_size,
              "The C `long` type. Equivalent to `libc::c_long`.");
 
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
 type long = i64;
 
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
-define_metrics_tests!(long, test_long_metrics, GFp_long_align,
-                      GFp_long_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+define_metrics_tests!(long,
+                      test_long_metrics,
+                      GFp_long_align,
+                      GFp_long_size,
+                      SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
 
 
-define_type!(
-  size_t, usize, test_size_t_metrics, GFp_size_t_align, GFp_size_t_size,
-  "The C `size_t` type from `<stdint.h>`.
+define_type!(size_t,
+             usize,
+             test_size_t_metrics,
+             GFp_size_t_align,
+             GFp_size_t_size,
+             "The C `size_t` type from `<stdint.h>`.
 
   ISO C's `size_t` is defined to be the type of the result of the
   `sizeof` operator and the type of the size parameter to `malloc`. That
@@ -135,17 +149,24 @@ define_type!(
     unintended truncation. Such code will then work on all platforms.");
 
 define_metrics_tests!(i8, test_i8_metrics, GFp_int8_t_align, GFp_int8_t_size);
-define_metrics_tests!(u8, test_u8_metrics, GFp_uint8_t_align,
-                      GFp_uint8_t_size);
+define_metrics_tests!(u8, test_u8_metrics, GFp_uint8_t_align, GFp_uint8_t_size);
 
-define_metrics_tests!(i16, test_i16_metrics, GFp_int16_t_align,
+define_metrics_tests!(i16,
+                      test_i16_metrics,
+                      GFp_int16_t_align,
                       GFp_int16_t_size);
-define_metrics_tests!(u16, test_u16_metrics, GFp_uint16_t_align,
+define_metrics_tests!(u16,
+                      test_u16_metrics,
+                      GFp_uint16_t_align,
                       GFp_uint16_t_size);
 
-define_metrics_tests!(i32, test_i32_metrics, GFp_int32_t_align,
+define_metrics_tests!(i32,
+                      test_i32_metrics,
+                      GFp_int32_t_align,
                       GFp_int32_t_size);
-define_metrics_tests!(u32, test_u32_metrics, GFp_uint32_t_align,
+define_metrics_tests!(u32,
+                      test_u32_metrics,
+                      GFp_uint32_t_align,
                       GFp_uint32_t_size);
 
 #[cfg(all(test,
@@ -161,7 +182,13 @@ const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
                       target_os = "ios")))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 
-define_metrics_tests!(i64, test_i64_metrics, GFp_int64_t_align,
-                      GFp_int64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
-define_metrics_tests!(u64, test_u64_metrics, GFp_uint64_t_align,
-                      GFp_uint64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+define_metrics_tests!(i64,
+                      test_i64_metrics,
+                      GFp_int64_t_align,
+                      GFp_int64_t_size,
+                      SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+define_metrics_tests!(u64,
+                      test_u64_metrics,
+                      GFp_uint64_t_align,
+                      GFp_uint64_t_size,
+                      SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);

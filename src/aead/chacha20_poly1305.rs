@@ -57,7 +57,9 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
         aead_poly1305(tag_out, chacha20_key, &counter, ad, ciphertext);
     }
     counter[0] = 1;
-    chacha::chacha20_xor_overlapping(&chacha20_key, &counter, in_out,
+    chacha::chacha20_xor_overlapping(&chacha20_key,
+                                     &counter,
+                                     in_out,
                                      in_prefix_len);
     Ok(())
 }
@@ -69,16 +71,16 @@ fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
         chacha::KEY_LEN_IN_BYTES / 4)
 }
 
-fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,
-                 counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8]) {
+fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN],
+                 chacha20_key: &chacha::Key, counter: &chacha::Counter,
+                 ad: &[u8], ciphertext: &[u8]) {
     debug_assert_eq!(counter[0], 0);
     let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
     let mut ctx = poly1305::SigningContext::from_key(key);
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
-    let lengths =
-        [polyfill::u64_from_usize(ad.len()).to_le(),
-         polyfill::u64_from_usize(ciphertext.len()).to_le()];
+    let lengths = [polyfill::u64_from_usize(ad.len()).to_le(),
+                   polyfill::u64_from_usize(ciphertext.len()).to_le()];
     ctx.update(polyfill::slice::u64_as_u8(&lengths));
     ctx.sign(tag_out);
 }
@@ -100,6 +102,6 @@ mod tests {
     #[test]
     pub fn test_chacha20_poly1305() {
         aead::tests::test_aead(&aead::CHACHA20_POLY1305,
-            "src/aead/chacha20_poly1305_tests.txt");
+                               "src/aead/chacha20_poly1305_tests.txt");
     }
 }

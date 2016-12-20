@@ -95,20 +95,23 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
                      in_out: &mut [u8], ad: &[u8])
                      -> Result<usize, error::Unspecified> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
-    let ciphertext_and_tag_len =
-        try!(in_out.len().checked_sub(in_prefix_len)
-                         .ok_or(error::Unspecified));
-    let ciphertext_len =
-        try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
-                                   .ok_or(error::Unspecified));
+    let ciphertext_and_tag_len = try!(in_out.len()
+        .checked_sub(in_prefix_len)
+        .ok_or(error::Unspecified));
+    let ciphertext_len = try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
+        .ok_or(error::Unspecified));
     try!(check_per_nonce_max_bytes(ciphertext_len));
     let (in_out, received_tag) =
         in_out.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
-                                  in_prefix_len, &mut calculated_tag, ad));
+    try!((key.key.algorithm.open)(&key.key.ctx_buf,
+                                  nonce,
+                                  in_out,
+                                  in_prefix_len,
+                                  &mut calculated_tag,
+                                  ad));
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
-            .is_err() {
+        .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
         // tag before decrypting, but some `open` implementations interleave
@@ -185,13 +188,17 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
         return Err(error::Unspecified);
     }
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
-    let in_out_len =
-        try!(in_out.len().checked_sub(out_suffix_capacity)
-                         .ok_or(error::Unspecified));
+    let in_out_len = try!(in_out.len()
+        .checked_sub(out_suffix_capacity)
+        .ok_or(error::Unspecified));
     try!(check_per_nonce_max_bytes(in_out_len));
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    try!((key.key.algorithm.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad));
+    try!((key.key.algorithm.seal)(&key.key.ctx_buf,
+                                  nonce,
+                                  in_out,
+                                  tag_out,
+                                  ad));
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -240,12 +247,18 @@ impl Key {
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
-    seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-              in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-              -> Result<(), error::Unspecified>,
-    open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-             in_out: &mut [u8], in_prefix_len: usize,
-             tag_out: &mut [u8; TAG_LEN], ad: &[u8])
+    seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS],
+             nonce: &[u8; NONCE_LEN],
+             in_out: &mut [u8],
+             tag_out: &mut [u8; TAG_LEN],
+             ad: &[u8])
+             -> Result<(), error::Unspecified>,
+    open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS],
+             nonce: &[u8; NONCE_LEN],
+             in_out: &mut [u8],
+             in_prefix_len: usize,
+             tag_out: &mut [u8; TAG_LEN],
+             ad: &[u8])
              -> Result<(), error::Unspecified>,
 
     key_len: usize,
@@ -258,13 +271,14 @@ impl Algorithm {
     #[inline(always)]
     pub fn key_len(&self) -> usize { self.key_len }
 
-    /// The maximum number of bytes that sealing operations may add to plaintexts.
-    /// See also `MAX_OVERHEAD_LEN`.
+    /// The maximum number of bytes that sealing operations may add to
+    /// plaintexts. See also `MAX_OVERHEAD_LEN`.
     ///
     /// C analog: `EVP_AEAD_max_overhead`
     ///
     /// Go analog:
-    ///   [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
+    ///   [`crypto.cipher.AEAD.Overhead`]
+    ///     (https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn max_overhead_len(&self) -> usize { TAG_LEN }
 
@@ -273,7 +287,8 @@ impl Algorithm {
     /// C analog: `EVP_AEAD_nonce_length`
     ///
     /// Go analog:
-    ///   [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
+    ///   [`crypto.cipher.AEAD.NonceSize`]
+    ///     (https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
@@ -325,9 +340,11 @@ mod tests {
                 s_in_out.push(0);
             }
             let s_key = try!(aead::SealingKey::new(aead_alg, &key_bytes[..]));
-            let s_result = aead::seal_in_place(&s_key, &nonce[..],
+            let s_result = aead::seal_in_place(&s_key,
+                                               &nonce[..],
                                                &mut s_in_out[..],
-                                               max_overhead_len, &ad);
+                                               max_overhead_len,
+                                               &ad);
             let o_key = try!(aead::OpeningKey::new(aead_alg, &key_bytes[..]));
 
             ct.extend(tag);
@@ -338,67 +355,65 @@ mod tests {
 
             // TLS record headers are 5 bytes long.
             // TLS explicit nonces for AES-GCM are 8 bytes long.
-            static MINIMAL_IN_PREFIX_LENS: [usize; 36] = [
-                // No input prefix to overwrite; i.e. the opening is exactly
-                // "in place."
-                0,
+            static MINIMAL_IN_PREFIX_LENS: [usize; 36] =
+                [// No input prefix to overwrite; i.e. the opening is exactly
+                 // "in place."
+                 0,
 
-                1,
-                2,
+                 1,
+                 2,
 
-                // Proposed TLS 1.3 header (no explicit nonce).
-                5,
+                 // Proposed TLS 1.3 header (no explicit nonce).
+                 5,
 
-                8,
+                 8,
 
-                // Probably the most common use of a non-zero `in_prefix_len`
-                // would be to write a decrypted TLS record over the top of the
-                // TLS header and nonce.
-                5 /* record header */ + 8 /* explicit nonce */,
+                 // Probably the most common use of a non-zero `in_prefix_len`
+                 // would be to write a decrypted TLS record over the top of the
+                 // TLS header and nonce.
+                 5 /* record header */ + 8, /* explicit nonce */
 
-                // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
-                // units. Some of the ChaCha20 code is even weirder.
+                 // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
+                 // units. Some of the ChaCha20 code is even weirder.
+                 15, // The maximum partial AES block.
+                 16, // One AES block.
+                 17, // One byte more than a full AES block.
 
-                15, // The maximum partial AES block.
-                16, // One AES block.
-                17, // One byte more than a full AES block.
+                 31, // 2 AES blocks or 1 ChaCha20 block, minus 1.
+                 32, // Two AES blocks, one ChaCha20 block.
+                 33, // 2 AES blocks or 1 ChaCha20 block, plus 1.
 
-                31, // 2 AES blocks or 1 ChaCha20 block, minus 1.
-                32, // Two AES blocks, one ChaCha20 block.
-                33, // 2 AES blocks or 1 ChaCha20 block, plus 1.
+                 47, // Three AES blocks - 1.
+                 48, // Three AES blocks.
+                 49, // Three AES blocks + 1.
 
-                47, // Three AES blocks - 1.
-                48, // Three AES blocks.
-                49, // Three AES blocks + 1.
+                 63, // Four AES blocks or two ChaCha20 blocks, minus 1.
+                 64, // Four AES blocks or two ChaCha20 blocks.
+                 65, // Four AES blocks or two ChaCha20 blocks, plus 1.
 
-                63, // Four AES blocks or two ChaCha20 blocks, minus 1.
-                64, // Four AES blocks or two ChaCha20 blocks.
-                65, // Four AES blocks or two ChaCha20 blocks, plus 1.
+                 79, // Five AES blocks, minus 1.
+                 80, // Five AES blocks.
+                 81, // Five AES blocks, plus 1.
 
-                79, // Five AES blocks, minus 1.
-                80, // Five AES blocks.
-                81, // Five AES blocks, plus 1.
+                 95, // Six AES blocks or three ChaCha20 blocks, minus 1.
+                 96, // Six AES blocks or three ChaCha20 blocks.
+                 97, // Six AES blocks or three ChaCha20 blocks, plus 1.
 
-                95, // Six AES blocks or three ChaCha20 blocks, minus 1.
-                96, // Six AES blocks or three ChaCha20 blocks.
-                97, // Six AES blocks or three ChaCha20 blocks, plus 1.
+                 111, // Seven AES blocks, minus 1.
+                 112, // Seven AES blocks.
+                 113, // Seven AES blocks, plus 1.
 
-                111, // Seven AES blocks, minus 1.
-                112, // Seven AES blocks.
-                113, // Seven AES blocks, plus 1.
+                 127, // Eight AES blocks or four ChaCha20 blocks, minus 1.
+                 128, // Eight AES blocks or four ChaCha20 blocks.
+                 129, // Eight AES blocks or four ChaCha20 blocks, plus 1.
 
-                127, // Eight AES blocks or four ChaCha20 blocks, minus 1.
-                128, // Eight AES blocks or four ChaCha20 blocks.
-                129, // Eight AES blocks or four ChaCha20 blocks, plus 1.
+                 143, // Nine AES blocks, minus 1.
+                 144, // Nine AES blocks.
+                 145, // Nine AES blocks, plus 1.
 
-                143, // Nine AES blocks, minus 1.
-                144, // Nine AES blocks.
-                145, // Nine AES blocks, plus 1.
-
-                255, // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
-                256, // 16 AES blocks or 8 ChaCha20 blocks.
-                257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
-            ];
+                 255, // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
+                 256, // 16 AES blocks or 8 ChaCha20 blocks.
+                 257 /* 16 AES blocks or 8 ChaCha20 blocks, plus 1. */];
 
             let mut more_comprehensive_in_prefix_lenghts = [0; 4096];
             let in_prefix_lengths;
@@ -418,9 +433,11 @@ mod tests {
                     o_in_out.push(123);
                 }
                 o_in_out.extend_from_slice(&ct[..]);
-                let o_result = aead::open_in_place(&o_key, &nonce[..],
+                let o_result = aead::open_in_place(&o_key,
+                                                   &nonce[..],
                                                    *in_prefix_len,
-                                                   &mut o_in_out[..], &ad);
+                                                   &mut o_in_out[..],
+                                                   &ad);
                 match error {
                     None => {
                         assert_eq!(Ok(ct.len()), s_result);
@@ -453,27 +470,27 @@ mod tests {
 
         // Key is one byte too small.
         assert!(aead::OpeningKey::new(aead_alg, &key_data[..(key_len - 1)])
-                    .is_err());
+            .is_err());
         assert!(aead::SealingKey::new(aead_alg, &key_data[..(key_len - 1)])
-                    .is_err());
+            .is_err());
 
         // Key is one byte too large.
         assert!(aead::OpeningKey::new(aead_alg, &key_data[..(key_len + 1)])
-                    .is_err());
+            .is_err());
         assert!(aead::SealingKey::new(aead_alg, &key_data[..(key_len + 1)])
-                    .is_err());
+            .is_err());
 
         // Key is half the required size.
         assert!(aead::OpeningKey::new(aead_alg, &key_data[..(key_len / 2)])
-                    .is_err());
+            .is_err());
         assert!(aead::SealingKey::new(aead_alg, &key_data[..(key_len / 2)])
-                    .is_err());
+            .is_err());
 
         // Key is twice the required size.
         assert!(aead::OpeningKey::new(aead_alg, &key_data[..(key_len * 2)])
-                    .is_err());
+            .is_err());
         assert!(aead::SealingKey::new(aead_alg, &key_data[..(key_len * 2)])
-                    .is_err());
+            .is_err());
 
         // Key is empty.
         assert!(aead::OpeningKey::new(aead_alg, &[]).is_err());
@@ -521,105 +538,171 @@ mod tests {
 
         // Construct a template input for `open_in_place`.
         let mut to_open = Vec::from(to_seal);
-        let ciphertext_len =
-            try!(aead::seal_in_place(&s_key, &nonce[..nonce_len], &mut to_open,
-                                     suffix_space, &ad));
+        let ciphertext_len = try!(aead::seal_in_place(&s_key,
+                                                      &nonce[..nonce_len],
+                                                      &mut to_open,
+                                                      suffix_space,
+                                                      &ad));
         let to_open = &to_open[..ciphertext_len];
 
         // Nonce is the correct length.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..nonce_len],
-                                        &mut in_out, suffix_space, &ad).is_ok());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..nonce_len],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_ok());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..nonce_len],
-                                        prefix_len, &mut in_out, &ad).is_ok());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..nonce_len],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_ok());
         }
 
         // Nonce is one byte too small.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..(nonce_len - 1)],
-                                        &mut in_out, suffix_space, &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..(nonce_len - 1)],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len - 1)],
-                                        prefix_len, &mut in_out, &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..(nonce_len - 1)],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         // Nonce is one byte too large.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..(nonce_len + 1)],
-                                        &mut in_out, suffix_space, &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..(nonce_len + 1)],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len + 1)],
-                                        prefix_len, &mut in_out, &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..(nonce_len + 1)],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         // Nonce is half the required size.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..(nonce_len / 2)],
-                                        &mut in_out, suffix_space, &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..(nonce_len / 2)],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len / 2)],
-                                        prefix_len, &mut in_out, &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..(nonce_len / 2)],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         // Nonce is twice the required size.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..(nonce_len * 2)],
-                                        &mut in_out, suffix_space, &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..(nonce_len * 2)],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len * 2)],
-                                        prefix_len, &mut in_out, &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..(nonce_len * 2)],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         // Nonce is empty.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &[], &mut in_out, suffix_space,
-                                        &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &[],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &[], prefix_len, &mut in_out,
-                                        &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &[],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         // Nonce is one byte.
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..1], &mut in_out,
-                                        suffix_space, &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..1],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..1], prefix_len,
-                                        &mut in_out, &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..1],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         // Nonce is 128 bits (16 bytes).
         {
             let mut in_out = Vec::from(to_seal);
-            assert!(aead::seal_in_place(&s_key, &nonce[..16], &mut in_out,
-                                        suffix_space, &ad).is_err());
+            assert!(aead::seal_in_place(&s_key,
+                                        &nonce[..16],
+                                        &mut in_out,
+                                        suffix_space,
+                                        &ad)
+                .is_err());
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..16], prefix_len,
-                                        &mut in_out, &ad).is_err());
+            assert!(aead::open_in_place(&o_key,
+                                        &nonce[..16],
+                                        prefix_len,
+                                        &mut in_out,
+                                        &ad)
+                .is_err());
         }
 
         Ok(())
