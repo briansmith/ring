@@ -97,7 +97,7 @@ arm-linux-androideabi)
 esac
 
 ./mk/travis-install-rustfmt.sh
-"${HOME}/rustfmt-${TARGET_X}/bin/rustfmt -- --write-mode=Diff"
+"${HOME}/rustfmt-${TARGET_X}/bin/rustfmt" -- --write-mode=Diff
 
 if [[ "$KCOV" == "1" ]]; then
   # kcov reports coverage as a percentage of code *linked into the executable*
