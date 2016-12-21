@@ -530,9 +530,8 @@ OPENSSL_EXPORT void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
  * miscompile code due to this rule. See also
  * https://www.imperialviolet.org/2016/06/26/nonnull.html
  *
- * If building BoringSSL itself, replace C standard library functions with more
- * well-behaved versions. Due to some C++ toolchains defining versions of these
- * functions under namespaces, this is limited to our C files.
+ * These wrapper functions behave the same as the corresponding C standard
+ * functions, but behave as expected when passed NULL if the length is zero.
  *
  * Note |OPENSSL_memcmp| is a different function from |CRYPTO_memcmp|. */
 
