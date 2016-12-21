@@ -21,6 +21,7 @@
 #include <openssl/chacha.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 /* g_num_calls is the number of calls to |CRYPTO_sysrand| that have occured.
