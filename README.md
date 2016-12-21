@@ -150,7 +150,7 @@ the table below. The C compilers listed are used for compiling the C portions.
 </tr>
 <tr><td>Mac&nbsp;OS&nbsp;X</td>
     <td>x64</td>
-    <td>Apple LLVM version 7.3.0 (clang-703.0.31) from Xcode 7.3</td>
+    <td>Apple LLVM version 8.0.0 (clang-800.0.42.1) from Xcode 8.2</td>
 </tr>
 <tr><td>Windows</td>
     <td>x86, x86_64</td>
