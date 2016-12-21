@@ -12,18 +12,25 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {aead, bssl, c, error, polyfill};
+use {aead, c, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
+///
+/// [RFC 5116 Section 5.1] and [NIST SP 800-38D] section 5.2.1 specify the data
+/// volume limits.
 ///
 /// C analog: `EVP_aead_aes_128_gcm`
 ///
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
+///
+/// [RFC 5116 Section 5.1]: https://tools.ietf.org/html/rfc5116#section-5.1
+/// [NIST SP 800-38D]: http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     key_len: AES_128_KEY_LEN,
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
+    p_max: P_MAX,
 };
 
 /// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -36,43 +43,54 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
+    p_max: P_MAX,
 };
 
-fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8])
-                -> Result<(), error::Unspecified> {
-    bssl::map_result(unsafe {
+fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) {
+    unsafe {
         GFp_aes_gcm_init(ctx_buf.as_mut_ptr(), ctx_buf.len(), key.as_ptr(),
-                         key.len())
-    })
+                         key.len());
+    }
 }
 
 fn aes_gcm_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                 nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                tag: &mut [u8; aead::TAG_LEN], ad: &[u8])
-                -> Result<(), error::Unspecified> {
+                tag: &mut [u8; aead::TAG_LEN], ad: &[u8]) {
     let ctx = polyfill::slice::u64_as_u8(ctx);
-    bssl::map_result(unsafe {
+    unsafe {
         GFp_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(), in_out.len(), tag,
-                         nonce, ad.as_ptr(), ad.len())
-    })
+                         nonce, ad.as_ptr(), ad.len());
+    }
 }
 
 fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                 nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                 in_prefix_len: usize, tag_out: &mut [u8; aead::TAG_LEN],
-                ad: &[u8]) -> Result<(), error::Unspecified> {
+                ad: &[u8])  {
     let ctx = polyfill::slice::u64_as_u8(ctx);
-    bssl::map_result(unsafe {
+    unsafe {
         GFp_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(),
                          in_out.len() - in_prefix_len, tag_out, nonce,
                          in_out[in_prefix_len..].as_ptr(), ad.as_ptr(),
-                         ad.len())
-    })
+                         ad.len());
+    }
 }
 
 
 const AES_128_KEY_LEN: usize = 128 / 8;
 const AES_256_KEY_LEN: usize = 32; // 256 / 8
+
+// The counter is 32 bits. The first two counters are used internally. Note
+// that this is one less than the value in
+// https://tools.ietf.org/html/rfc5116#section-5.1 but matches other
+// specifications such as
+// https://tools.ietf.org/html/rfc7714#section-10
+// The counter is 32 bits. The first counter is used internally.
+const P_MAX: polyfill::SixtyFourBitOnly<usize> =
+    sixty_four_bit_only!(((1usize << 32) - 2) * AES_BLOCK_LEN);
+
+#[cfg_attr(not(target_pointer_width = "64"), allow(dead_code))]
+const AES_BLOCK_LEN: usize = 16;
 
 pub const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
 
@@ -91,19 +109,19 @@ const GCM128_SERIALIZED_LEN: usize = 16 * 16;
 
 extern {
     fn GFp_aes_gcm_init(ctx_buf: *mut u8, ctx_buf_len: c::size_t,
-                        key: *const u8, key_len: c::size_t) -> c::int;
+                        key: *const u8, key_len: c::size_t);
 
     fn GFp_aes_gcm_seal(ctx_buf: *const u8, in_out: *mut u8,
                         in_out_len: c::size_t,
                         tag_out: &mut [u8; aead::TAG_LEN],
                         nonce: &[u8; aead::NONCE_LEN], ad: *const u8,
-                        ad_len: c::size_t) -> c::int;
+                        ad_len: c::size_t);
 
     fn GFp_aes_gcm_open(ctx_buf: *const u8, out: *mut u8,
                         in_out_len: c::size_t,
                         tag_out: &mut [u8; aead::TAG_LEN],
                         nonce: &[u8; aead::NONCE_LEN], in_: *const u8,
-                        ad: *const u8, ad_len: c::size_t) -> c::int;
+                        ad: *const u8, ad_len: c::size_t);
 }
 
 
@@ -112,7 +130,29 @@ mod tests {
     use {c, test};
     use super::super::super::aead;
     use super::super::tests::test_aead;
-    use super::AES_MAX_ROUNDS;
+    use super::{AES_BLOCK_LEN, AES_MAX_ROUNDS};
+
+    #[test]
+    pub fn test_per_nonce_max_bytes() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(aead::AES_128_GCM.per_invocation_max_bytes(),
+                       68_719_476_704);
+            assert_eq!(aead::AES_256_GCM.per_invocation_max_bytes(),
+                       68_719_476_704);
+        }
+
+        #[cfg(not(target_pointer_width = "64"))]
+        {
+            use polyfill;
+            assert!(polyfill::u64_from_usize(
+                        aead::AES_128_GCM.per_invocation_max_bytes()) <
+                    68_719_476_704);
+            assert!(polyfill::u64_from_usize(
+                        aead::AES_256_GCM.per_invocation_max_bytes()) <
+                    68_719_476_704);
+        }
+    }
 
     #[test]
     pub fn test_aes_gcm_128() {
@@ -130,10 +170,10 @@ mod tests {
             assert_eq!(section, "");
             let key = test_case.consume_bytes("Key");
             let input = test_case.consume_bytes("Input");
-            let input = slice_as_array_ref!(&input, AES_BLOCK_SIZE).unwrap();
+            let input = slice_as_array_ref!(&input, AES_BLOCK_LEN).unwrap();
             let expected_output = test_case.consume_bytes("Output");
             let expected_output =
-                slice_as_array_ref!(&expected_output, AES_BLOCK_SIZE).unwrap();
+                slice_as_array_ref!(&expected_output, AES_BLOCK_LEN).unwrap();
 
             // Key setup.
             let mut aes_key = AES_KEY {
@@ -147,7 +187,7 @@ mod tests {
             assert_eq!(res, 0, "GFp_AES_set_encrypt_key failed.");
 
             // Test encryption into a separate buffer.
-            let mut output_buf = [0u8; AES_BLOCK_SIZE];
+            let mut output_buf = [0u8; AES_BLOCK_LEN];
             unsafe {
                 GFp_AES_encrypt(input.as_ptr(), output_buf.as_mut_ptr(),
                                 &aes_key);
@@ -165,8 +205,6 @@ mod tests {
             Ok(())
         })
     }
-
-    const AES_BLOCK_SIZE: usize = 16;
 
     // Keep this in sync with AES_KEY in aes.h.
     #[repr(C)]

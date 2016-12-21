@@ -178,3 +178,43 @@ macro_rules! slice_as_array_ref_mut {
         }
     }
 }
+
+
+/// A value of type `T` on 64-bit platforms, which defaults to another value on
+/// other platforms. On non-64-bit platforms this is a zero-sized type. Values
+/// can be constructed using `sixty_four_bit_only!`, which is guaranteed to
+/// evaluate to a constant expression.
+pub struct SixtyFourBitOnly<T: Sized + Copy> {
+    // Public for use by `sixty_four_bit_only!` only.
+    #[cfg(target_pointer_width = "64")]
+    pub value: T,
+
+    // Public for use by `sixty_four_bit_only!` only.
+    #[cfg(not(target_pointer_width = "64"))]
+    pub value: core::marker::PhantomData<T>,
+}
+
+impl<T: Sized + Copy> SixtyFourBitOnly<T> {
+    #[cfg(target_pointer_width = "64")]
+    #[inline(always)]
+    pub fn value_or_default(&self, _default: T) -> T { self.value }
+
+    #[cfg(not(target_pointer_width = "64"))]
+    #[inline(always)]
+    pub fn value_or_default(&self, default: T) -> T { default }
+}
+
+#[cfg(target_pointer_width = "64")]
+macro_rules! sixty_four_bit_only {
+    ($value:expr) => { polyfill::SixtyFourBitOnly { value: $value } }
+}
+
+#[cfg(not(target_pointer_width = "64"))]
+pub use core::marker::PhantomData;
+
+#[cfg(not(target_pointer_width = "64"))]
+macro_rules! sixty_four_bit_only {
+    ($value:expr) => {
+        polyfill::SixtyFourBitOnly { value: polyfill::PhantomData }
+    }
+}

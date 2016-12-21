@@ -67,16 +67,16 @@
 
  /* Declarations for extern functions only called by Rust code, to avoid
  * -Wmissing-prototypes warnings. */
-int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
-                     size_t key_len);
-int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
-                     uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
-                     const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
-                     const uint8_t *in, const uint8_t *ad, size_t ad_len);
-int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
-                     uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
-                     const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
-                     const uint8_t *ad, size_t ad_len);
+void GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
+                      size_t key_len);
+void GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
+                      uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                      const uint8_t *in, const uint8_t *ad, size_t ad_len);
+void GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
+                      uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                      const uint8_t *ad, size_t ad_len);
 int GFp_has_aes_hardware(void);
 
 
@@ -125,6 +125,10 @@ void GFp_bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                     const AES_KEY *key, const uint8_t ivec[16]);
 #endif
 
+static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                     size_t len, const AES_KEY *key,
+                                     const uint8_t ivec[16]);
+
 #if defined(VPAES)
 /* On platforms where VPAES gets defined (just above), then these functions are
  * provided by asm. */
@@ -145,6 +149,7 @@ typedef int (*aes_set_key_f)(const uint8_t *userKey, unsigned bits,
                              AES_KEY *key);
 
 static aes_set_key_f aes_set_key(void) {
+  /* Keep this in sync with |GFp_aes_block| and |GFp_aes_ctr|. */
 #if defined(AESNI)
   if (aesni_capable()) {
     return GFp_aesni_set_encrypt_key;
@@ -172,8 +177,8 @@ static aes_set_key_f aes_set_key(void) {
   return GFp_AES_set_encrypt_key;
 }
 
-static aes_block_f aes_block(void) {
-  /* Keep this in sync with |set_set_key| and |aes_ctr|. */
+aes_block_f GFp_aes_block(void) {
+  /* Keep this in sync with |set_set_key| and |GFp_aes_ctr|. */
 
 #if defined(AESNI)
   if (aesni_capable()) {
@@ -202,8 +207,8 @@ static aes_block_f aes_block(void) {
   return GFp_AES_encrypt;
 }
 
-static aes_ctr_f aes_ctr(void) {
-  /* Keep this in sync with |set_set_key| and |aes_block|. */
+aes_ctr_f GFp_aes_ctr(void) {
+  /* Keep this in sync with |set_set_key| and |GFp_aes_block|. */
 
 #if defined(AESNI)
   if (aesni_capable()) {
@@ -223,7 +228,7 @@ static aes_ctr_f aes_ctr(void) {
   }
 #endif
 
-  return NULL;
+  return aes_ctr32_encrypt_blocks;
 }
 
 #if defined(AESNI)
@@ -232,72 +237,72 @@ static char aesni_capable(void) {
 }
 #endif
 
-int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
-                     size_t key_len) {
+static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                     size_t blocks, const AES_KEY *key,
+                                     const uint8_t ivec[16]) {
+  alignas(16) uint8_t counter_plaintext[16];
+  memcpy(counter_plaintext, ivec, 16);
+  uint32_t counter = from_be_u32_ptr(&counter_plaintext[12]);
+
+  aes_block_f block = GFp_aes_block();
+
+  for (size_t current_block = 0; current_block < blocks; ++current_block) {
+    alignas(16) uint8_t counter_ciphertext[16];
+    block(counter_plaintext, counter_ciphertext, key);
+    for (size_t i = 0; i < 16; ++i) {
+      out[i] = in[i] ^ counter_ciphertext[i];
+    }
+    ++counter; // TODO: what about wrap around?
+    to_be_u32_ptr(&counter_plaintext[12], counter);
+    out += 16;
+    in += 16;
+  }
+}
+
+void GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
+                      size_t key_len) {
+#if defined(NDEBUG)
+  (void)ctx_buf_len;
+#endif
   alignas(16) AES_KEY ks;
   assert(ctx_buf_len >= sizeof(ks) + GCM128_SERIALIZED_LEN);
-  if (ctx_buf_len < sizeof(ks) + GCM128_SERIALIZED_LEN) {
-    return 0;
-  }
 
   /* XXX: Ignores return value. TODO: These functions should return |void|
    * anyway. */
   (void)(aes_set_key())(key, key_len * 8, &ks);
 
-  GFp_gcm128_init_serialized((uint8_t *)ctx_buf + sizeof(ks), &ks, aes_block());
+  GFp_gcm128_init_serialized((uint8_t *)ctx_buf + sizeof(ks), &ks);
   memcpy(ctx_buf, &ks, sizeof(ks));
-  return 1;
 }
 
-static int gfp_aes_gcm_init_and_aad(GCM128_CONTEXT *gcm, AES_KEY *ks,
-                                    const void *ctx_buf, const uint8_t nonce[],
-                                    const uint8_t ad[], size_t ad_len) {
+static void gfp_aes_gcm_init_and_aad(GCM128_CONTEXT *gcm, AES_KEY *ks,
+                                     const void *ctx_buf, const uint8_t nonce[],
+                                     const uint8_t ad[], size_t ad_len) {
   assert(ad != NULL || ad_len == 0);
   memcpy(ks, ctx_buf, sizeof(*ks));
-  GFp_gcm128_init(gcm, ks, aes_block(), (const uint8_t *)ctx_buf + sizeof(*ks),
-                  nonce);
-  if (ad_len > 0) {
-    if (!GFp_gcm128_aad(gcm, ad, ad_len)) {
-      return 0;
-    }
-  }
-  return 1;
+  GFp_gcm128_init(gcm, ks, (const uint8_t *)ctx_buf + sizeof(*ks), nonce);
+  GFp_gcm128_aad(gcm, ad, ad_len);
 }
 
-int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
-                     uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
-                     const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
-                     const uint8_t *ad, size_t ad_len) {
+void GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
+                      uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                      const uint8_t *ad, size_t ad_len) {
   assert(in_out != NULL || in_out_len == 0);
   assert(aead_check_in_len(in_out_len));
   assert(ad != NULL || ad_len == 0);
 
   GCM128_CONTEXT gcm;
   alignas(16) AES_KEY ks;
-  if (!gfp_aes_gcm_init_and_aad(&gcm, &ks, ctx_buf, nonce, ad, ad_len)) {
-    return 0;
-  }
-  if (in_out_len > 0) {
-    aes_ctr_f ctr = aes_ctr();
-    if (ctr != NULL) {
-      if (!GFp_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len,
-                                    ctr)) {
-        return 0;
-      }
-    } else {
-      if (!GFp_gcm128_encrypt(&gcm, &ks, in_out, in_out, in_out_len)) {
-        return 0;
-      }
-    }
-  }
-  GFp_gcm128_tag(&gcm, tag_out);
-  return 1;
+  gfp_aes_gcm_init_and_aad(&gcm, &ks, ctx_buf, nonce, ad, ad_len);
+  GFp_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len, nonce);
+  GFp_gcm128_tag(&gcm, tag_out, ad_len, in_out_len);
 }
 
-int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
-                     uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
-                     const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
-                     const uint8_t *in, const uint8_t *ad, size_t ad_len) {
+void GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
+                      uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                      const uint8_t *in, const uint8_t *ad, size_t ad_len) {
   assert(out != NULL || in_out_len == 0);
   assert(aead_check_in_len(in_out_len));
   assert(aead_check_alias(in, in_out_len, out));
@@ -306,23 +311,9 @@ int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
 
   GCM128_CONTEXT gcm;
   alignas(16) AES_KEY ks;
-  if (!gfp_aes_gcm_init_and_aad(&gcm, &ks, ctx_buf, nonce, ad, ad_len)) {
-    return 0;
-  }
-  if (in_out_len > 0) {
-    aes_ctr_f ctr = aes_ctr();
-    if (ctr != NULL) {
-      if (!GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr)) {
-        return 0;
-      }
-    } else {
-      if (!GFp_gcm128_decrypt(&gcm, &ks, in, out, in_out_len)) {
-        return 0;
-      }
-    }
-  }
-  GFp_gcm128_tag(&gcm, tag_out);
-  return 1;
+  gfp_aes_gcm_init_and_aad(&gcm, &ks, ctx_buf, nonce, ad, ad_len);
+  GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, nonce);
+  GFp_gcm128_tag(&gcm, tag_out, ad_len, in_out_len);
 }
 
 
