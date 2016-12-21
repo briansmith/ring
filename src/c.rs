@@ -20,6 +20,7 @@ macro_rules! define_type {
     ( $name:ident, $builtin:ty, $test_c_metrics:ident, $get_c_align_fn:ident,
       $get_c_size_fn:ident, $doc:expr ) =>
     {
+        #[allow(dead_code)] // Not all types are used in all configurations.
         #[doc = $doc]
         pub type $name = $builtin;
 
@@ -82,14 +83,10 @@ macro_rules! define_metrics_tests {
 define_type!(int, i32, test_int_metrics, GFp_int_align, GFp_int_size,
              "The C `int` type. Equivalent to `libc::c_int`.");
 
-// `long` is only used by platform-specific code.
-
-#[allow(dead_code)]
 #[cfg(any(target_os = "windows", target_pointer_width = "32"))]
 define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
              "The C `long` type. Equivalent to `libc::c_long`.");
 
-#[allow(dead_code)]
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
 define_type!(long, i64, test_long_metrics, GFp_long_align, GFp_long_size,
              "The C `long` type. Equivalent to `libc::c_long`.");
