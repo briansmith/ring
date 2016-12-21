@@ -82,16 +82,17 @@ macro_rules! define_metrics_tests {
 define_type!(int, i32, test_int_metrics, GFp_int_align, GFp_int_size,
              "The C `int` type. Equivalent to `libc::c_int`.");
 
+// `long` is only used by platform-specific code.
+
+#[allow(dead_code)]
 #[cfg(any(target_os = "windows", target_pointer_width = "32"))]
 define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
              "The C `long` type. Equivalent to `libc::c_long`.");
 
+#[allow(dead_code)]
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
-type long = i64;
-
-#[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
-define_metrics_tests!(long, test_long_metrics, GFp_long_align,
-                      GFp_long_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+define_type!(long, i64, test_long_metrics, GFp_long_align, GFp_long_size,
+             "The C `long` type. Equivalent to `libc::c_long`.");
 
 
 define_type!(
