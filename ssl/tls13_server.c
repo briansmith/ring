@@ -127,6 +127,12 @@ static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  /* The short record header extension is incompatible with early data. */
+  if (ssl->s3->skip_early_data && ssl->s3->short_header) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    return ssl_hs_error;
+  }
+
   hs->tls13_state = state_select_parameters;
   return ssl_hs_ok;
 }
@@ -391,8 +397,18 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_ext_key_share_add_serverhello(hs, &extensions)) {
+    goto err;
+  }
+
+  if (ssl->s3->short_header) {
+    if (!CBB_add_u16(&extensions, TLSEXT_TYPE_short_header) ||
+        !CBB_add_u16(&extensions, 0 /* empty extension */)) {
+      goto err;
+    }
+  }
+
+  if (!ssl_complete_message(ssl, &cbb)) {
     goto err;
   }
 

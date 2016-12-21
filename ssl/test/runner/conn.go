@@ -163,6 +163,8 @@ type halfConn struct {
 
 	trafficSecret []byte
 
+	shortHeader bool
+
 	config *Config
 }
 
@@ -301,9 +303,16 @@ func (hc *halfConn) updateOutSeq() {
 	copy(hc.outSeq[:], hc.seq[:])
 }
 
+func (hc *halfConn) isShortHeader() bool {
+	return hc.shortHeader && hc.cipher != nil
+}
+
 func (hc *halfConn) recordHeaderLen() int {
 	if hc.isDTLS {
 		return dtlsRecordHeaderLen
+	}
+	if hc.isShortHeader() {
+		return 2
 	}
 	return tlsRecordHeaderLen
 }
@@ -608,6 +617,9 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 	n := len(b.data) - recordHeaderLen
 	b.data[recordHeaderLen-2] = byte(n >> 8)
 	b.data[recordHeaderLen-1] = byte(n)
+	if hc.isShortHeader() && !hc.config.Bugs.ClearShortHeaderBit {
+		b.data[0] |= 0x80
+	}
 	hc.incSeq(true)
 
 	return true, 0
@@ -716,7 +728,7 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 		return c.dtlsDoReadRecord(want)
 	}
 
-	recordHeaderLen := tlsRecordHeaderLen
+	recordHeaderLen := c.in.recordHeaderLen()
 
 	if c.rawInput == nil {
 		c.rawInput = c.in.newBlock()
@@ -736,19 +748,36 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 		}
 		return 0, nil, err
 	}
-	typ := recordType(b.data[0])
 
-	// No valid TLS record has a type of 0x80, however SSLv2 handshakes
-	// start with a uint16 length where the MSB is set and the first record
-	// is always < 256 bytes long. Therefore typ == 0x80 strongly suggests
-	// an SSLv2 client.
-	if want == recordTypeHandshake && typ == 0x80 {
-		c.sendAlert(alertProtocolVersion)
-		return 0, nil, c.in.setErrorLocked(errors.New("tls: unsupported SSLv2 handshake received"))
+	var typ recordType
+	var vers uint16
+	var n int
+	if c.in.isShortHeader() {
+		typ = recordTypeApplicationData
+		vers = VersionTLS10
+		n = int(b.data[0])<<8 | int(b.data[1])
+		if n&0x8000 == 0 {
+			c.sendAlert(alertDecodeError)
+			return 0, nil, c.in.setErrorLocked(errors.New("tls: length did not have high bit set"))
+		}
+
+		n = n & 0x7fff
+	} else {
+		typ = recordType(b.data[0])
+
+		// No valid TLS record has a type of 0x80, however SSLv2 handshakes
+		// start with a uint16 length where the MSB is set and the first record
+		// is always < 256 bytes long. Therefore typ == 0x80 strongly suggests
+		// an SSLv2 client.
+		if want == recordTypeHandshake && typ == 0x80 {
+			c.sendAlert(alertProtocolVersion)
+			return 0, nil, c.in.setErrorLocked(errors.New("tls: unsupported SSLv2 handshake received"))
+		}
+
+		vers = uint16(b.data[1])<<8 | uint16(b.data[2])
+		n = int(b.data[3])<<8 | int(b.data[4])
 	}
 
-	vers := uint16(b.data[1])<<8 | uint16(b.data[2])
-	n := int(b.data[3])<<8 | int(b.data[4])
 	// Alerts sent near version negotiation do not have a well-defined
 	// record-layer version prior to TLS 1.3. (In TLS 1.3, the record-layer
 	// version is irrelevant.)
@@ -1007,7 +1036,7 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 }
 
 func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
-	recordHeaderLen := tlsRecordHeaderLen
+	recordHeaderLen := c.out.recordHeaderLen()
 	b := c.out.newBlock()
 	first := true
 	isClientHello := typ == recordTypeHandshake && len(data) > 0 && data[0] == typeClientHello
@@ -1049,32 +1078,36 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 			}
 		}
 		b.resize(recordHeaderLen + explicitIVLen + m)
-		b.data[0] = byte(typ)
-		if c.vers >= VersionTLS13 && c.out.cipher != nil {
-			b.data[0] = byte(recordTypeApplicationData)
-			if outerType := c.config.Bugs.OuterRecordType; outerType != 0 {
-				b.data[0] = byte(outerType)
+		// If using a short record header, the length will be filled in
+		// by encrypt.
+		if !c.out.isShortHeader() {
+			b.data[0] = byte(typ)
+			if c.vers >= VersionTLS13 && c.out.cipher != nil {
+				b.data[0] = byte(recordTypeApplicationData)
+				if outerType := c.config.Bugs.OuterRecordType; outerType != 0 {
+					b.data[0] = byte(outerType)
+				}
 			}
+			vers := c.vers
+			if vers == 0 || vers >= VersionTLS13 {
+				// Some TLS servers fail if the record version is
+				// greater than TLS 1.0 for the initial ClientHello.
+				//
+				// TLS 1.3 fixes the version number in the record
+				// layer to {3, 1}.
+				vers = VersionTLS10
+			}
+			if c.config.Bugs.SendRecordVersion != 0 {
+				vers = c.config.Bugs.SendRecordVersion
+			}
+			if c.vers == 0 && c.config.Bugs.SendInitialRecordVersion != 0 {
+				vers = c.config.Bugs.SendInitialRecordVersion
+			}
+			b.data[1] = byte(vers >> 8)
+			b.data[2] = byte(vers)
+			b.data[3] = byte(m >> 8)
+			b.data[4] = byte(m)
 		}
-		vers := c.vers
-		if vers == 0 || vers >= VersionTLS13 {
-			// Some TLS servers fail if the record version is
-			// greater than TLS 1.0 for the initial ClientHello.
-			//
-			// TLS 1.3 fixes the version number in the record
-			// layer to {3, 1}.
-			vers = VersionTLS10
-		}
-		if c.config.Bugs.SendRecordVersion != 0 {
-			vers = c.config.Bugs.SendRecordVersion
-		}
-		if c.vers == 0 && c.config.Bugs.SendInitialRecordVersion != 0 {
-			vers = c.config.Bugs.SendInitialRecordVersion
-		}
-		b.data[1] = byte(vers >> 8)
-		b.data[2] = byte(vers)
-		b.data[3] = byte(m >> 8)
-		b.data[4] = byte(m)
 		if explicitIVLen > 0 {
 			explicitIV := b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]
 			if explicitIVIsSeq {
@@ -1620,6 +1653,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.SCTList = c.sctList
 		state.PeerSignatureAlgorithm = c.peerSignatureAlgorithm
 		state.CurveID = c.curveID
+		state.ShortHeader = c.in.shortHeader
 	}
 
 	return state
@@ -1780,4 +1814,9 @@ func (c *Conn) sendFakeEarlyData(len int) error {
 	payload[4] = byte(len)
 	_, err := c.conn.Write(payload)
 	return err
+}
+
+func (c *Conn) setShortHeader() {
+	c.in.shortHeader = true
+	c.out.shortHeader = true
 }

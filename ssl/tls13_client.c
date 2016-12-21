@@ -201,11 +201,12 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* Parse out the extensions. */
-  int have_key_share = 0, have_pre_shared_key = 0;
-  CBS key_share, pre_shared_key;
+  int have_key_share = 0, have_pre_shared_key = 0, have_short_header = 0;
+  CBS key_share, pre_shared_key, short_header;
   const SSL_EXTENSION_TYPE ext_types[] = {
       {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
       {TLSEXT_TYPE_pre_shared_key, &have_pre_shared_key, &pre_shared_key},
+      {TLSEXT_TYPE_short_header, &have_short_header, &short_header},
   };
 
   uint8_t alert;
@@ -304,6 +305,23 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
   OPENSSL_free(dhe_secret);
+
+  /* Negotiate short record headers. */
+  if (have_short_header) {
+    if (CBS_len(&short_header) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+
+    if (!ssl->ctx->short_header_enabled) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+      return ssl_hs_error;
+    }
+
+    ssl->s3->short_header = 1;
+  }
 
   /* If there was no HelloRetryRequest, the version negotiation logic has
    * already hashed the message. */

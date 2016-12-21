@@ -123,6 +123,7 @@ struct TestConfig {
   bool retain_only_sha256_client_cert_resume = false;
   bool expect_sha256_client_cert_initial = false;
   bool expect_sha256_client_cert_resume = false;
+  bool enable_short_header = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

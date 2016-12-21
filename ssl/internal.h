@@ -1483,6 +1483,10 @@ typedef struct ssl3_state_st {
    * handshake. */
   unsigned tlsext_channel_id_valid:1;
 
+  /* short_header is one if https://github.com/tlswg/tls13-spec/pull/762 has
+   * been negotiated. */
+  unsigned short_header:1;
+
   uint8_t send_alert[2];
 
   /* pending_message is the current outgoing handshake message. */

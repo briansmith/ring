@@ -3149,6 +3149,11 @@ OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
  * record with |ssl|. */
 OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
 
+/* SSL_CTX_set_short_header_enabled configures whether a short record header in
+ * TLS 1.3 may be negotiated. This allows client and server to negotiate
+ * https://github.com/tlswg/tls13-spec/pull/762 for testing. */
+OPENSSL_EXPORT void SSL_CTX_set_short_header_enabled(SSL_CTX *ctx, int enabled);
+
 
 /* Deprecated functions. */
 
@@ -4043,6 +4048,10 @@ struct ssl_ctx_st {
   /* grease_enabled is one if draft-davidben-tls-grease-01 is enabled and zero
    * otherwise. */
   unsigned grease_enabled:1;
+
+  /* short_header_enabled is one if a short record header in TLS 1.3 may
+   * be negotiated and zero otherwise. */
+  unsigned short_header_enabled:1;
 
   /* extra_certs is a dummy value included for compatibility.
    * TODO(agl): remove once node.js no longer references this. */
