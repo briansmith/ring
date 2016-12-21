@@ -25,12 +25,15 @@
     "ECDSACurveMismatch-Verify-TLS13": "Fuzzer mode always accepts a signature.",
     "InvalidChannelIDSignature-*": "Fuzzer mode always accepts a signature.",
 
+    "Resume-Server-CipherNotPreferred*": "Fuzzer mode does not encrypt tickets.",
     "Resume-Server-DeclineBadCipher*": "Fuzzer mode does not encrypt tickets.",
     "Resume-Server-DeclineCrossVersion*": "Fuzzer mode does not encrypt tickets.",
     "TicketCallback-SingleCall-*": "Fuzzer mode does not encrypt tickets.",
     "CorruptTicket-*": "Fuzzer mode does not encrypt tickets.",
     "ShimTicketRewritable": "Fuzzer mode does not encrypt tickets.",
 
-    "Resume-Server-*Binder*": "Fuzzer mode does not check binders."
+    "Resume-Server-*Binder*": "Fuzzer mode does not check binders.",
+
+    "SkipEarlyData*": "Trial decryption does not work with the NULL cipher."
   }
 }
