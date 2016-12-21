@@ -67,7 +67,7 @@ fn parse_public_key(input: untrusted::Input)
 fn check_public_modulus_and_exponent(
         n: bigint::Positive, e: bigint::Positive, n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength)
-        -> Result<(bigint::OddPositive, bigint::OddPositive),
+        -> Result<(bigint::OddPositive, bigint::PublicExponent),
                   error::Unspecified> {
     // This is an incomplete implementation of NIST SP800-56Br1 Section
     // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers to
@@ -107,29 +107,18 @@ fn check_public_modulus_and_exponent(
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
     //
-    // Additionally, mitigate DoS attacks by limiting the exponent size. 33
-    // bits was chosen as the limit based on the recommendations in [1] and
-    // [2]. Windows CryptoAPI (at least older versions) doesn't support values
-    // larger than 32 bits [3], so it is unlikely that exponents larger than 32
-    // bits are being used for anything Windows commonly does.
-    //
-    // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-    // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-    // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-    const MAX_EXPONENT_BITS: bits::BitLength = bits::BitLength(33);
-
     let e_bits = e.bit_length();
     if e_bits < bits::BitLength::from_usize_bits(2) {
         return Err(error::Unspecified);
     }
-    if e_bits > MAX_EXPONENT_BITS {
-        return Err(error::Unspecified);
-    }
+
+    // Only small public exponents are supported.
+    let e = try!(e.into_public_exponent());
 
     // If `n` is less than `e` then somebody has probably accidentally swapped
     // them. The largest acceptable `e` is smaller than the smallest acceptable
     // `n`, so no additional checks need to be done.
-    debug_assert!(MAX_EXPONENT_BITS < N_MIN_BITS);
+    debug_assert!(bigint::PUBLIC_EXPONENT_MAX_BITS < N_MIN_BITS);
 
     // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
     // case in most other commonly-used crypto libraries.
