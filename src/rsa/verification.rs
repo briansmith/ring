@@ -133,7 +133,7 @@ pub fn verify_rsa(params: &RSAParameters,
     let s = try!(s.into_elem_decoded::<N>(&n));
 
     // Step 2.
-    let m = try!(bigint::elem_exp_vartime(s, &e, &n));
+    let m = try!(bigint::elem_exp_vartime(s, e, &n));
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];

@@ -28,7 +28,7 @@ use untrusted;
 /// module-level documentation for an example.
 pub struct RSAKeyPair {
     n: bigint::Modulus<N>,
-    e: bigint::OddPositive,
+    e: bigint::PublicExponent,
     p: bigint::Modulus<P>,
     q: bigint::Modulus<Q>,
     dmp1: bigint::OddPositive,
@@ -109,7 +109,6 @@ impl RSAKeyPair {
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS));
 
                 let d = try!(d.into_odd_positive());
-                try!(bigint::verify_less_than(&e, &d));
                 try!(bigint::verify_less_than(&d, &n));
 
                 let half_n_bits = n_bits.half_rounded_up();
@@ -234,7 +233,6 @@ unsafe impl bigint::Field for QQ {}
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
 #[repr(C)]
 struct RSA<'a> {
-    e: &'a bigint::BIGNUM,
     dmp1: &'a bigint::BIGNUM,
     dmq1: &'a bigint::BIGNUM,
     mont_n: &'a bigint::BN_MONT_CTX,
@@ -324,7 +322,6 @@ impl RSASigningState {
         } = self;
 
         let rsa =  RSA {
-            e: key.e.as_ref(),
             dmp1: key.dmp1.as_ref(),
             dmq1: key.dmq1.as_ref(),
             mont_n: key.n.as_ref(),
@@ -343,14 +340,29 @@ impl RSASigningState {
             untrusted::Input::from(signature)));
         let base = try!(base.into_elem_decoded(&key.n));
 
-        let base = try!(blinding.blind(base, &key.e, &key.n, rng, |mut base| {
+        let result = try!(blinding.blind(base, key.e, &key.n, rng, |base| {
+            let mut result = try!(base.try_clone());
             try!(bssl::map_result(unsafe {
-                GFp_rsa_private_transform(&rsa, base.as_mut_ref())
+                GFp_rsa_private_transform(&rsa, result.as_mut_ref())
             }));
-            Ok(base)
+
+            // Verify the result to protect against fault attacks as described
+            // in "On the Importance of Checking Cryptographic Protocols for
+            // Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton.
+            // This check is very assuming `e` is small. Note that this is the
+            // only validation of `e` that is done other than basic checks on
+            // its size, oddness, and minimum value, since we don't verify the
+            // relationship between `e` to `d`, `p`, and `q` when constructing
+            // an `RSAKeyPair`.
+            let computed = try!(result.try_clone());
+            let verify =
+                try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
+            try!(bigint::elem_verify_equal_consttime(&verify, &base));
+
+            Ok(result)
         }));
 
-        base.fill_be_bytes(signature)
+        result.fill_be_bytes(signature)
     }
 }
 
