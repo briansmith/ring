@@ -136,21 +136,21 @@ extern "C" {
 
 /* Basic functions. */
 
-void BN_set_negative(BIGNUM *bn, int sign);
+void GFp_BN_set_negative(BIGNUM *bn, int sign);
 
 /* Conversion functions. */
 
 /* BN_bn2bin serialises the absolute value of |in| to |out| as a big-endian
  * integer, which must have |BN_num_bytes| of space available. It returns the
  * number of bytes written. */
-OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
+OPENSSL_EXPORT size_t GFp_BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
 
 /* Random generation. */
 
 /* BN_rand sets |rnd| to a random number of length |bits|. The
  * most-significant bit, if any, will always be set. */
-OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, RAND *rng);
+OPENSSL_EXPORT int GFp_BN_rand(BIGNUM *rnd, int bits, RAND *rng);
 
 
 #if defined(__cplusplus)

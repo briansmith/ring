@@ -116,7 +116,7 @@
 #include "../bn/internal.h"
 
 
-int BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
+int GFp_BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
 

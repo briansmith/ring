@@ -138,7 +138,7 @@ extern "C" {
  * stores it in |*outp|. If |*outp| is NULL then it allocates a new BIGNUM and
  * updates |*outp|. It returns the number of bytes of |in| processed or zero on
  * error. */
-OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
+OPENSSL_EXPORT int GFp_BN_hex2bn(BIGNUM **outp, const char *in);
 
 
 #if defined(__cplusplus)

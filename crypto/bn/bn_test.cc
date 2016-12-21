@@ -102,7 +102,7 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   BIGNUM *raw = NULL;
-  int ret = BN_hex2bn(&raw, in);
+  int ret = GFp_BN_hex2bn(&raw, in);
   out->reset(raw);
   return ret;
 }
@@ -555,11 +555,11 @@ static bool TestBN2BinPadded(RAND *rng) {
 
   // Test a random numbers at various byte lengths.
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
-    if (!BN_rand(n.get(), bytes * 8, rng)) {
+    if (!GFp_BN_rand(n.get(), bytes * 8, rng)) {
       return false;
     }
     if (GFp_BN_num_bytes(n.get()) != bytes ||
-        BN_bn2bin(n.get(), reference) != bytes) {
+        GFp_BN_bn2bin(n.get(), reference) != bytes) {
       fprintf(stderr, "Bad result from GFp_BN_rand; bytes.\n");
       return false;
     }
@@ -613,27 +613,27 @@ static bool TestHex2BN() {
   ret = HexToBIGNUM(&bn, "256");
   if (ret != 3 || !BN_is_word(bn.get(), 0x256) ||
       GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
   ret = HexToBIGNUM(&bn, "-42");
   if (ret != 3 || !GFp_BN_abs_is_word(bn.get(), 0x42) ||
       !GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
   ret = HexToBIGNUM(&bn, "-0");
   if (ret != 2 || !GFp_BN_is_zero(bn.get()) || GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
   ret = HexToBIGNUM(&bn, "abctrailing garbage is ignored");
   if (ret != 3 || !BN_is_word(bn.get(), 0xabc) ||
       GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
@@ -647,15 +647,15 @@ static bool TestRand(RAND *rng) {
   }
 
   // Test GFp_BN_rand accounts for degenerate cases
-  if (!BN_rand(bn.get(), 0, rng) ||
+  if (!GFp_BN_rand(bn.get(), 0, rng) ||
       !GFp_BN_is_zero(bn.get())) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_rand gave a bad result.\n");
     return false;
   }
 
-  if (!BN_rand(bn.get(), 1, rng) ||
+  if (!GFp_BN_rand(bn.get(), 1, rng) ||
       !BN_is_word(bn.get(), 1)) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_rand gave a bad result.\n");
     return false;
   }
 
@@ -674,7 +674,7 @@ static bool TestNegativeZero() {
   if (!GFp_BN_set_word(a.get(), 1)) {
     return false;
   }
-  BN_set_negative(a.get(), 1);
+  GFp_BN_set_negative(a.get(), 1);
   GFp_BN_zero(b.get());
   if (!GFp_BN_mul_no_alias(c.get(), a.get(), b.get())) {
     return false;
@@ -694,7 +694,7 @@ static bool TestNegativeZero() {
       !GFp_BN_set_word(denominator.get(), 2)) {
     return false;
   }
-  BN_set_negative(numerator.get(), 1);
+  GFp_BN_set_negative(numerator.get(), 1);
   if (!GFp_BN_div(a.get(), b.get(), numerator.get(), denominator.get())) {
     return false;
   }
@@ -715,11 +715,11 @@ static bool TestNegativeZero() {
     return false;
   }
 
-  // Test that BN_set_negative will not produce a negative zero.
+  // Test that GFp_BN_set_negative will not produce a negative zero.
   GFp_BN_zero(a.get());
-  BN_set_negative(a.get(), 1);
+  GFp_BN_set_negative(a.get(), 1);
   if (GFp_BN_is_negative(a.get())) {
-    fprintf(stderr, "BN_set_negative produced a negative zero.\n");
+    fprintf(stderr, "GFp_BN_set_negative produced a negative zero.\n");
     return false;
   }
 
@@ -821,7 +821,7 @@ static bool TestExpModRejectUnreduced() {
           return false;
         }
 
-        BN_set_negative(base.get(), 1);
+        GFp_BN_set_negative(base.get(), 1);
 
         if (GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
                                         mont.get())) {
@@ -883,7 +883,7 @@ static bool TestModInvRejectUnreduced(RAND *rng) {
         return false;
       }
 
-      BN_set_negative(base.get(), 1);
+      GFp_BN_set_negative(base.get(), 1);
 
       if (GFp_BN_mod_inverse_odd(r.get(), &no_inverse, base.get(), mod.get())) {
         fprintf(stderr, "GFp_BN_mod_inverse_odd(%d, %d) succeeded!\n",
@@ -938,7 +938,7 @@ static bool TestCmpWord() {
     return false;
   }
 
-  BN_set_negative(r.get(), 1);
+  GFp_BN_set_negative(r.get(), 1);
 
   if (GFp_BN_cmp_word(r.get(), 0) >= 0 ||
       GFp_BN_cmp_word(r.get(), 100) >= 0 ||
@@ -968,7 +968,7 @@ static bool TestCmpWord() {
     return false;
   }
 
-  BN_set_negative(r.get(), 1);
+  GFp_BN_set_negative(r.get(), 1);
 
   if (GFp_BN_cmp_word(r.get(), 0) >= 0 ||
       GFp_BN_cmp_word(r.get(), kMaxWord) >= 0) {
