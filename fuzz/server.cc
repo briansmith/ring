@@ -240,6 +240,8 @@ struct GlobalState {
 
     SSL_CTX_set_alpn_select_cb(ctx, ALPNSelectCallback, nullptr);
     SSL_CTX_set_next_protos_advertised_cb(ctx, NPNAdvertiseCallback, nullptr);
+
+    SSL_CTX_set_short_header_enabled(ctx, 1);
   }
 
   ~GlobalState() {
