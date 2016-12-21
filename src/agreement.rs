@@ -169,7 +169,7 @@ impl<'a> EphemeralPrivateKey {
 /// point; `agree_ephemeral` will return `Err(error_value)` if it does not
 /// match `my_private_key's` algorithm/curve.
 ///
-/// `peer_pubic_key` is the peer's public key. `agree_ephemeral` verifies that
+/// `peer_public_key` is the peer's public key. `agree_ephemeral` verifies that
 /// it is encoded in the standard form for the algorithm and that the key is
 /// *valid*; see the algorithm's documentation for details on how keys are to
 /// be encoded and what constitutes a valid key for that algorithm.
