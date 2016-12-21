@@ -907,7 +907,7 @@ static bool TestBitString() {
 
   static const std::vector<uint8_t> kInvalidBitStrings[] = {
       // BIT STRINGs always have a leading byte.
-      {},
+      std::vector<uint8_t>{},
       // It's not possible to take an unused bit off the empty string.
       {0x01},
       // There can be at most 7 unused bits.
