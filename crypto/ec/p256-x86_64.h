@@ -51,8 +51,11 @@ void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
 
 /* ecp_nistz256_from_mont sets |res| to |in|, converted from Montgomery domain
  * by multiplying with 1. */
-void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
-                            const BN_ULONG in[P256_LIMBS]);
+static inline void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
+                                          const BN_ULONG in[P256_LIMBS]) {
+  static const BN_ULONG ONE[P256_LIMBS] = { 1 };
+  ecp_nistz256_mul_mont(res, in, ONE);
+}
 
 
 /* P-256 point operations.
