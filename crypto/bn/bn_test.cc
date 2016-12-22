@@ -333,7 +333,7 @@ static bool TestSquare(FileTest *t) {
   GFp_BN_zero(zero.get());
 
   ScopedBIGNUM ret(GFp_BN_new()), remainder(GFp_BN_new());
-  if (!ret ||
+  if (!ret || !remainder ||
       !GFp_BN_mul_no_alias(ret.get(), a.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "A * A", square.get(), ret.get()) ||
       !GFp_BN_div(ret.get(), remainder.get(), square.get(), a.get()) ||
