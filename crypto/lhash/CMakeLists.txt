@@ -11,7 +11,7 @@ add_library(
 add_executable(
   lhash_test
 
-  lhash_test.c
+  lhash_test.cc
 
   $<TARGET_OBJECTS:test_support>
 )
