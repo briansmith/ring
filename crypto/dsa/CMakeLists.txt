@@ -12,7 +12,7 @@ add_library(
 add_executable(
   dsa_test
 
-  dsa_test.c
+  dsa_test.cc
 
   $<TARGET_OBJECTS:test_support>
 )

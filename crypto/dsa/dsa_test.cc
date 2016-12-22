@@ -59,6 +59,7 @@
 
 #include <openssl/dsa.h>
 
+#include <stdio.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -67,8 +68,6 @@
 
 #include "../internal.h"
 
-
-static int dsa_cb(int p, int n, BN_GENCB *arg);
 
 /* The following values are taken from the updated Appendix 5 to FIPS PUB 186
  * and also appear in Appendix 5 to FIPS PUB 186-1. */
@@ -165,28 +164,59 @@ static const uint8_t fips_sig_bad_r[] = {
     0xdc, 0xd8, 0xc8,
 };
 
-static DSA *get_fips_dsa(void) {
-  DSA *dsa = DSA_new();
+static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
+  bssl::UniquePtr<DSA>  dsa(DSA_new());
   if (!dsa) {
-    return NULL;
+    return nullptr;
   }
-  dsa->p = BN_bin2bn(fips_p, sizeof(fips_p), NULL);
-  dsa->q = BN_bin2bn(fips_q, sizeof(fips_q), NULL);
-  dsa->g = BN_bin2bn(fips_g, sizeof(fips_g), NULL);
-  dsa->pub_key = BN_bin2bn(fips_y, sizeof(fips_y), NULL);
-  dsa->priv_key = BN_bin2bn(fips_x, sizeof(fips_x), NULL);
-  if (dsa->p == NULL || dsa->q == NULL || dsa->g == NULL ||
-      dsa->pub_key == NULL || dsa->priv_key == NULL) {
-    DSA_free(dsa);
-    return NULL;
+  dsa->p = BN_bin2bn(fips_p, sizeof(fips_p), nullptr);
+  dsa->q = BN_bin2bn(fips_q, sizeof(fips_q), nullptr);
+  dsa->g = BN_bin2bn(fips_g, sizeof(fips_g), nullptr);
+  dsa->pub_key = BN_bin2bn(fips_y, sizeof(fips_y), nullptr);
+  dsa->priv_key = BN_bin2bn(fips_x, sizeof(fips_x), nullptr);
+  if (dsa->p == nullptr || dsa->q == nullptr || dsa->g == nullptr ||
+      dsa->pub_key == nullptr || dsa->priv_key == nullptr) {
+    return nullptr;
   }
   return dsa;
 }
 
-static int test_generate(FILE *out) {
+struct GenerateContext {
+  FILE *out = nullptr;
+  int ok = 0;
+  int num = 0;
+};
+
+static int GenerateCallback(int p, int n, BN_GENCB *arg) {
+  GenerateContext *ctx = reinterpret_cast<GenerateContext *>(arg->arg);
+  char c = '*';
+  switch (p) {
+    case 0:
+      c = '.';
+      ctx->num++;
+      break;
+    case 1:
+      c = '+';
+      break;
+    case 2:
+      c = '*';
+      ctx->ok++;
+      break;
+    case 3:
+      c = '\n';
+  }
+  fputc(c, ctx->out);
+  fflush(ctx->out);
+  if (!ctx->ok && p == 0 && ctx->num > 1) {
+    fprintf(stderr, "error in dsatest\n");
+    return 0;
+  }
+  return 1;
+}
+
+static int TestGenerate(FILE *out) {
   BN_GENCB cb;
-  DSA *dsa = NULL;
-  int counter, ok = 0, i, j;
+  int counter, i, j;
   uint8_t buf[256];
   unsigned long h;
   uint8_t sig[256];
@@ -194,11 +224,14 @@ static int test_generate(FILE *out) {
 
   fprintf(out, "test generation of DSA parameters\n");
 
-  BN_GENCB_set(&cb, dsa_cb, out);
-  dsa = DSA_new();
-  if (dsa == NULL ||
-      !DSA_generate_parameters_ex(dsa, 512, seed, 20, &counter, &h, &cb)) {
-    goto end;
+  GenerateContext ctx;
+  ctx.out = out;
+  BN_GENCB_set(&cb, GenerateCallback, &ctx);
+  bssl::UniquePtr<DSA> dsa(DSA_new());
+  if (!dsa ||
+      !DSA_generate_parameters_ex(dsa.get(), 512, seed, 20, &counter, &h,
+                                  &cb)) {
+    return false;
   }
 
   fprintf(out, "seed\n");
@@ -210,116 +243,78 @@ static int test_generate(FILE *out) {
 
   if (counter != 105) {
     fprintf(stderr, "counter should be 105\n");
-    goto end;
+    return false;
   }
   if (h != 2) {
     fprintf(stderr, "h should be 2\n");
-    goto end;
+    return false;
   }
 
   i = BN_bn2bin(dsa->q, buf);
   j = sizeof(fips_q);
   if (i != j || OPENSSL_memcmp(buf, fips_q, i) != 0) {
     fprintf(stderr, "q value is wrong\n");
-    goto end;
+    return false;
   }
 
   i = BN_bn2bin(dsa->p, buf);
   j = sizeof(fips_p);
   if (i != j || OPENSSL_memcmp(buf, fips_p, i) != 0) {
     fprintf(stderr, "p value is wrong\n");
-    goto end;
+    return false;
   }
 
   i = BN_bn2bin(dsa->g, buf);
   j = sizeof(fips_g);
   if (i != j || OPENSSL_memcmp(buf, fips_g, i) != 0) {
     fprintf(stderr, "g value is wrong\n");
-    goto end;
+    return false;
   }
 
-  if (!DSA_generate_key(dsa) ||
-      !DSA_sign(0, fips_digest, sizeof(fips_digest), sig, &siglen, dsa)) {
-    goto end;
+  if (!DSA_generate_key(dsa.get()) ||
+      !DSA_sign(0, fips_digest, sizeof(fips_digest), sig, &siglen, dsa.get())) {
+    return false;
   }
-  if (DSA_verify(0, fips_digest, sizeof(fips_digest), sig, siglen, dsa) == 1) {
-    ok = 1;
-  } else {
+  if (DSA_verify(0, fips_digest, sizeof(fips_digest), sig, siglen, dsa.get()) !=
+      1) {
     fprintf(stderr, "verification failure\n");
+    return false;
   }
 
-end:
-  DSA_free(dsa);
-
-  return ok;
+  return true;
 }
 
-static int test_verify(const uint8_t *sig, size_t sig_len, int expect) {
-  int ok = 0;
-  DSA *dsa = get_fips_dsa();
-  if (dsa == NULL) {
-    goto end;
+static bool TestVerify(const uint8_t *sig, size_t sig_len, int expect) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
+  if (!dsa) {
+    return false;
   }
 
-  int ret = DSA_verify(0, fips_digest, sizeof(fips_digest), sig, sig_len, dsa);
+  int ret =
+      DSA_verify(0, fips_digest, sizeof(fips_digest), sig, sig_len, dsa.get());
   if (ret != expect) {
     fprintf(stderr, "DSA_verify returned %d, want %d\n", ret, expect);
-    goto end;
+    return false;
   }
-  ok = 1;
-  /* Clear any errorrs from a test with expected failure. */
+
+  /* Clear any errors from a test with expected failure. */
   ERR_clear_error();
-
-end:
-  DSA_free(dsa);
-
-  return ok;
+  return true;
 }
 
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
-  if (!test_generate(stdout) ||
-      !test_verify(fips_sig, sizeof(fips_sig), 1) ||
-      !test_verify(fips_sig_negative, sizeof(fips_sig_negative), -1) ||
-      !test_verify(fips_sig_extra, sizeof(fips_sig_extra), -1) ||
-      !test_verify(fips_sig_bad_length, sizeof(fips_sig_bad_length), -1) ||
-      !test_verify(fips_sig_bad_r, sizeof(fips_sig_bad_r), 0)) {
+  if (!TestGenerate(stdout) ||
+      !TestVerify(fips_sig, sizeof(fips_sig), 1) ||
+      !TestVerify(fips_sig_negative, sizeof(fips_sig_negative), -1) ||
+      !TestVerify(fips_sig_extra, sizeof(fips_sig_extra), -1) ||
+      !TestVerify(fips_sig_bad_length, sizeof(fips_sig_bad_length), -1) ||
+      !TestVerify(fips_sig_bad_r, sizeof(fips_sig_bad_r), 0)) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
 
   printf("PASS\n");
   return 0;
-}
-
-static int dsa_cb(int p, int n, BN_GENCB *arg) {
-  char c = '*';
-  static int ok = 0, num = 0;
-
-  switch (p) {
-  case 0:
-    c = '.';
-    num++;
-    break;
-  case 1:
-    c = '+';
-    break;
-  case 2:
-    c = '*';
-    ok++;
-    break;
-  case 3:
-    c = '\n';
-  }
-
-  fputc(c, arg->arg);
-  fflush(arg->arg);
-
-  if (!ok && p == 0 && num > 1) {
-    fprintf(stderr, "error in dsatest\n");
-    return 0;
-  }
-
-  return 1;
 }
