@@ -74,9 +74,7 @@ static const size_t kMaxAverageChainLength = 2;
 static const size_t kMinAverageChainLength = 1;
 
 _LHASH *lh_new(lhash_hash_func hash, lhash_cmp_func comp) {
-  _LHASH *ret;
-
-  ret = OPENSSL_malloc(sizeof(_LHASH));
+  _LHASH *ret = OPENSSL_malloc(sizeof(_LHASH));
   if (ret == NULL) {
     return NULL;
   }
@@ -91,14 +89,7 @@ _LHASH *lh_new(lhash_hash_func hash, lhash_cmp_func comp) {
   OPENSSL_memset(ret->buckets, 0, sizeof(LHASH_ITEM *) * ret->num_buckets);
 
   ret->comp = comp;
-  if (ret->comp == NULL) {
-    ret->comp = (lhash_cmp_func) strcmp;
-  }
   ret->hash = hash;
-  if (ret->hash == NULL) {
-    ret->hash = (lhash_hash_func) lh_strhash;
-  }
-
   return ret;
 }
 
