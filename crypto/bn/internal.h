@@ -155,7 +155,7 @@ extern "C" {
 #define BN_MONT_CTX_N0_LIMBS 1
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
 #define BN_TBIT		(0x8000000000000000UL)
-#define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
+#define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
 
 #elif defined(OPENSSL_32_BIT)
 
@@ -175,7 +175,7 @@ extern "C" {
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
 #define BN_TBIT		(0x80000000UL)
-#define TOBN(hi, lo) lo, hi
+#define TOBN(hi, lo) (lo), (hi)
 
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
