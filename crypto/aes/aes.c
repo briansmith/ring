@@ -558,11 +558,9 @@ static int hwaes_capable(void) {
   return GFp_is_ARMv8_AES_capable();
 }
 
-int GFp_aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
+int GFp_aes_hw_set_encrypt_key(const uint8_t *user_key, unsigned bits,
                                AES_KEY *key);
-int GFp_aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
-                               AES_KEY *key);
-void GFp_aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void GFp_aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 #endif
 
@@ -575,7 +573,7 @@ void GFp_asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 #if defined(HWAES)
   if (hwaes_capable()) {
-    GFp_aes_v8_encrypt(in, out, key);
+    GFp_aes_hw_encrypt(in, out, key);
     return;
   }
 #endif
@@ -588,7 +586,7 @@ int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
                             AES_KEY *aeskey) {
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_v8_set_encrypt_key(key, bits, aeskey);
+    return GFp_aes_hw_set_encrypt_key(key, bits, aeskey);
   }
 #endif
   return GFp_asm_AES_set_encrypt_key(key, bits, aeskey);
