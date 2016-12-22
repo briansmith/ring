@@ -11,7 +11,7 @@ add_library(
 add_executable(
   hkdf_test
 
-  hkdf_test.c
+  hkdf_test.cc
 
   $<TARGET_OBJECTS:test_support>
 )

@@ -24,7 +24,7 @@
 #include "../test/test_util.h"
 
 
-typedef struct {
+struct HKDFTestVector {
   const EVP_MD *(*md_func)(void);
   const uint8_t ikm[80];
   const size_t ikm_len;
@@ -36,10 +36,10 @@ typedef struct {
   const size_t prk_len;
   const size_t out_len;
   const uint8_t out[82];
-} hkdf_test_vector_t;
+};
 
 /* These test vectors are from RFC 5869. */
-static const hkdf_test_vector_t kTests[] = {
+static const HKDFTestVector kTests[] = {
   {
     EVP_sha256,
     {
@@ -248,13 +248,12 @@ static const hkdf_test_vector_t kTests[] = {
 };
 
 int main(void) {
-  uint8_t buf[82], prk[EVP_MAX_MD_SIZE];
-  size_t i, prk_len;
-
   CRYPTO_library_init();
 
-  for (i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
-    const hkdf_test_vector_t *test = &kTests[i];
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
+    const HKDFTestVector *test = &kTests[i];
+    uint8_t prk[EVP_MAX_MD_SIZE];
+    size_t prk_len;
     if (!HKDF_extract(prk, &prk_len, test->md_func(), test->ikm, test->ikm_len,
                       test->salt, test->salt_len)) {
       fprintf(stderr, "Call to HKDF_extract failed\n");
@@ -266,6 +265,7 @@ int main(void) {
       fprintf(stderr, "%zu: Resulting PRK does not match test vector\n", i);
       return 1;
     }
+    uint8_t buf[82];
     if (!HKDF_expand(buf, test->out_len, test->md_func(), prk, prk_len,
                      test->info, test->info_len)) {
       fprintf(stderr, "Call to HKDF_expand failed\n");
@@ -292,6 +292,5 @@ int main(void) {
   }
 
   printf("PASS\n");
-  ERR_free_strings();
   return 0;
 }
