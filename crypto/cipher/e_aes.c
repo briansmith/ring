@@ -109,20 +109,31 @@ static char bsaes_capable(void) {
 static int hwaes_capable(void) {
   return GFp_is_ARMv8_AES_capable();
 }
-
-int GFp_aes_v8_set_encrypt_key(const uint8_t *user_key, const unsigned bits,
-                               AES_KEY *key);
-void GFp_aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void GFp_aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                 const AES_KEY *key, const uint8_t ivec[16]);
-
-#endif  /* OPENSSL_ARM */
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_PPC64LE)
+#define HWAES
+static int hwaes_capable(void) {
+  return CRYPTO_is_PPC64LE_vcrypto_capable();
+}
+#endif  /* OPENSSL_PPC64LE */
 
 #if defined(BSAES)
 /* On platforms where BSAES gets defined (just above), then these functions are
  * provided by asm. */
 void GFp_bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                     const AES_KEY *key, const uint8_t ivec[16]);
+#endif
+
+#if defined(HWAES)
+int GFp_aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
+                               AES_KEY *key);
+int GFp_aes_hw_set_decrypt_key(const uint8_t *user_key, const int bits,
+                               AES_KEY *key);
+void GFp_aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void GFp_aes_hw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                            const AES_KEY *key, uint8_t *ivec, const int enc);
+void GFp_aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                     size_t len, const AES_KEY *key,
+                                     const uint8_t ivec[16]);
 #endif
 
 #if defined(VPAES)
@@ -153,7 +164,7 @@ static aes_set_key_f aes_set_key(void) {
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_v8_set_encrypt_key;
+    return GFp_aes_hw_set_encrypt_key;
   }
 #endif
 
@@ -183,7 +194,7 @@ static aes_block_f aes_block(void) {
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_v8_encrypt;
+    return GFp_aes_hw_encrypt;
   }
 #endif
 
@@ -213,7 +224,7 @@ static aes_ctr_f aes_ctr(void) {
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_v8_ctr32_encrypt_blocks;
+    return GFp_aes_hw_ctr32_encrypt_blocks;
   }
 #endif
 
