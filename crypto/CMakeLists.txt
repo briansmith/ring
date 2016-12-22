@@ -180,7 +180,7 @@ endif()
 add_executable(
   constant_time_test
 
-  constant_time_test.c
+  constant_time_test.cc
 
   $<TARGET_OBJECTS:test_support>
 )
@@ -202,7 +202,7 @@ add_dependencies(all_tests thread_test)
 add_executable(
   refcount_test
 
-  refcount_test.c
+  refcount_test.cc
 )
 
 target_link_libraries(refcount_test crypto)
