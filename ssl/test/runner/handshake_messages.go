@@ -316,9 +316,7 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions.addU16(extensionSupportedPoints)
 		supportedPointsList := extensions.addU16LengthPrefixed()
 		supportedPoints := supportedPointsList.addU8LengthPrefixed()
-		for _, pointFormat := range m.supportedPoints {
-			supportedPoints.addU8(pointFormat)
-		}
+		supportedPoints.addBytes(m.supportedPoints)
 	}
 	if m.hasKeyShares {
 		extensions.addU16(extensionKeyShare)
@@ -607,8 +605,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			if length != l+1 {
 				return false
 			}
-			m.supportedPoints = make([]uint8, l)
-			copy(m.supportedPoints, data[1:])
+			m.supportedPoints = data[1 : 1+l]
 		case extensionSessionTicket:
 			// http://tools.ietf.org/html/rfc5077#section-3.2
 			m.ticketSupported = true
@@ -1093,6 +1090,7 @@ type serverExtensions struct {
 	npnAfterAlpn            bool
 	hasKeyShare             bool
 	keyShare                keyShareEntry
+	supportedPoints         []uint8
 }
 
 func (m *serverExtensions) marshal(extensions *byteBuilder) {
@@ -1186,6 +1184,13 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		keyShare.addU16(uint16(m.keyShare.group))
 		keyExchange := keyShare.addU16LengthPrefixed()
 		keyExchange.addBytes(m.keyShare.keyExchange)
+	}
+	if len(m.supportedPoints) > 0 {
+		// http://tools.ietf.org/html/rfc4492#section-5.1.2
+		extensions.addU16(extensionSupportedPoints)
+		supportedPointsList := extensions.addU16LengthPrefixed()
+		supportedPoints := supportedPointsList.addU8LengthPrefixed()
+		supportedPoints.addBytes(m.supportedPoints)
 	}
 }
 
@@ -1287,7 +1292,15 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 			if version >= VersionTLS13 {
 				return false
 			}
-			// Ignore this extension from the server.
+			// http://tools.ietf.org/html/rfc4492#section-5.5.2
+			if length < 1 {
+				return false
+			}
+			l := int(data[0])
+			if length != l+1 {
+				return false
+			}
+			m.supportedPoints = data[1 : 1+l]
 		case extensionSupportedCurves:
 			// The server can only send supported_curves in TLS 1.3.
 			if version < VersionTLS13 {

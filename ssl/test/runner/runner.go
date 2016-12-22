@@ -8121,6 +8121,102 @@ func addCurveTests() {
 		},
 		resumeSession: true,
 	})
+
+	// Server-sent point formats are legal in TLS 1.2, but not in TLS 1.3.
+	testCases = append(testCases, testCase{
+		name: "PointFormat-ServerHello-TLS12",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{pointFormatUncompressed},
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		name: "PointFormat-EncryptedExtensions-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{pointFormatUncompressed},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":ERROR_PARSING_EXTENSION:",
+	})
+
+	// Test that we tolerate unknown point formats, as long as
+	// pointFormatUncompressed is present. Limit ciphers to ECDHE ciphers to
+	// check they are still functional.
+	testCases = append(testCases, testCase{
+		name: "PointFormat-Client-Tolerance",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{42, pointFormatUncompressed, 99, pointFormatCompressedPrime},
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PointFormat-Server-Tolerance",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{42, pointFormatUncompressed, 99, pointFormatCompressedPrime},
+			},
+		},
+	})
+
+	// Test TLS 1.2 does not require the point format extension to be
+	// present.
+	testCases = append(testCases, testCase{
+		name: "PointFormat-Client-Missing",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{},
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PointFormat-Server-Missing",
+		config: Config{
+			MaxVersion:   VersionTLS12,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{},
+			},
+		},
+	})
+
+	// If the point format extension is present, uncompressed points must be
+	// offered. BoringSSL requires this whether or not ECDHE is used.
+	testCases = append(testCases, testCase{
+		name: "PointFormat-Client-MissingUncompressed",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{pointFormatCompressedPrime},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":ERROR_PARSING_EXTENSION:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PointFormat-Server-MissingUncompressed",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendSupportedPointFormats: []byte{pointFormatCompressedPrime},
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":ERROR_PARSING_EXTENSION:",
+	})
 }
 
 func addTLS13RecordTests() {

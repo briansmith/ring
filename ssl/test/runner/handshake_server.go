@@ -1192,6 +1192,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.ticketSupported = true
 	}
 
+	if c.config.Bugs.SendSupportedPointFormats != nil {
+		serverExtensions.supportedPoints = c.config.Bugs.SendSupportedPointFormats
+	}
+
 	if !hs.clientHello.hasGREASEExtension && config.Bugs.ExpectGREASE {
 		return errors.New("tls: no GREASE extension found")
 	}

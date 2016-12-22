@@ -127,7 +127,8 @@ const (
 // TLS Elliptic Curve Point Formats
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml#tls-parameters-9
 const (
-	pointFormatUncompressed uint8 = 0
+	pointFormatUncompressed    uint8 = 0
+	pointFormatCompressedPrime uint8 = 1
 )
 
 // TLS CertificateStatusType (RFC 3546)
@@ -1238,6 +1239,11 @@ type ProtocolBugs struct {
 	// ClearShortHeaderBit, if true, causes the server to send short headers
 	// without the high bit set.
 	ClearShortHeaderBit bool
+
+	// SendSupportedPointFormats, if not nil, is the list of supported point
+	// formats to send in ClientHello or ServerHello. If set to a non-nil
+	// empty slice, no extension will be sent.
+	SendSupportedPointFormats []byte
 }
 
 func (c *Config) serverInit() {
