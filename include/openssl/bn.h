@@ -236,7 +236,7 @@ OPENSSL_EXPORT int GFp_BN_bn2bin_padded(uint8_t *out, size_t len,
 OPENSSL_EXPORT void GFp_bn_correct_top(BIGNUM *bn);
 
 /* bn_wexpand ensures that |bn| has at least |words| works of space without
- * altering its value. It returns one on success or zero on allocation
+ * altering its value. It returns |bn| on success or NULL on allocation
  * failure. */
 OPENSSL_EXPORT BIGNUM *GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
