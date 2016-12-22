@@ -159,6 +159,9 @@ CPPFLAGS += -fpic -fdata-sections -ffunction-sections
 ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
 # |-gfull| is required for Darwin's |-dead_strip|.
 CPPFLAGS += -gfull
+# libc++ is the default in newer toolchains, but libstdc++ was the default in
+# older toolchains.
+CXXFLAGS += -stdlib=libc++
 LDFLAGS += -fPIC -Wl,-dead_strip
 else
 CPPFLAGS += -g3
