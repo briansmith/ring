@@ -728,6 +728,27 @@ static bool TestNegativeZero() {
     return false;
   }
 
+  // Test that |BN_rshift| and |BN_rshift1| will not produce a negative zero.
+  if (!GFp_BN_set_word(a.get(), 1)) {
+    return false;
+  }
+
+  GFp_BN_set_negative(a.get(), 1);
+  if (!GFp_BN_rshift(b.get(), a.get(), 1) ||
+      !GFp_BN_rshift1(c.get(), a.get())) {
+    return false;
+  }
+
+  if (!GFp_BN_is_zero(b.get()) || GFp_BN_is_negative(b.get())) {
+    fprintf(stderr, "BN_rshift(-1, 1) produced the wrong result.\n");
+    return false;
+  }
+
+  if (!GFp_BN_is_zero(c.get()) || GFp_BN_is_negative(c.get())) {
+    fprintf(stderr, "BN_rshift1(-1) produced the wrong result.\n");
+    return false;
+  }
+
   return true;
 }
 
