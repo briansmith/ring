@@ -23,10 +23,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
 #include <memory>
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 
 static std::unique_ptr<char[]> RandString(void) {
@@ -72,6 +74,33 @@ int main(int argc, char **argv) {
     if (dummy_lh.size() != lh_num_items(lh.get())) {
       fprintf(stderr, "Length mismatch\n");
       return 1;
+    }
+
+    // Check the entire contents and test |lh_doall_arg|. This takes O(N) time,
+    // so only do it every few iterations.
+    //
+    // TODO(davidben): |lh_doall_arg| also supports modifying the hash in the
+    // callback. Test this.
+    if (i % 1000 == 0) {
+      using ValueList = std::vector<const char *>;
+      ValueList expected, actual;
+      for (const auto &pair : dummy_lh) {
+        expected.push_back(pair.second.get());
+      }
+      std::sort(expected.begin(), expected.end());
+
+      lh_doall_arg(lh.get(),
+                   [](void *ptr, void *arg) {
+                     ValueList *out = reinterpret_cast<ValueList *>(arg);
+                     out->push_back(reinterpret_cast<char *>(ptr));
+                   },
+                   &actual);
+      std::sort(actual.begin(), actual.end());
+
+      if (expected != actual) {
+        fprintf(stderr, "Contents mismatch\n");
+        return 1;
+      }
     }
 
     enum Action {
