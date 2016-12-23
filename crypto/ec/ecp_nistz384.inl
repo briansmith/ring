@@ -23,6 +23,12 @@
 
 #include "ecp_nistz.h"
 
+/* Avoid -Wmissing-prototypes warnings. */
+void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
+                            const BN_ULONG p_x[P384_LIMBS],
+                            const BN_ULONG p_y[P384_LIMBS]);
+
+
 static BN_ULONG is_infinity(const BN_ULONG x[P384_LIMBS],
                             const BN_ULONG y[P384_LIMBS]) {
   BN_ULONG acc = 0;
