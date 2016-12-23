@@ -156,6 +156,13 @@ static bool TestKeyWrap(FileTest *t) {
     return false;
   }
 
+  ciphertext[0] ^= 1;
+  if (AES_unwrap_key(&aes_key, nullptr /* iv */, buf.get(), ciphertext.data(),
+                     ciphertext.size()) != -1) {
+    t->PrintLine("AES_unwrap_key with bad input unexpectedly succeeded.");
+    return false;
+  }
+
   return true;
 }
 
