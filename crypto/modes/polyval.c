@@ -72,6 +72,7 @@ void CRYPTO_POLYVAL_update_blocks(struct polyval_ctx *ctx, const uint8_t *in,
       todo = sizeof(reversed);
     }
     OPENSSL_memcpy(reversed, in, todo);
+    in += todo;
     in_len -= todo;
 
     size_t blocks = todo / sizeof(polyval_block);
