@@ -158,3 +158,50 @@ static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
 
   return v;
 }
+
+/* bn_mod_exp_base_2_vartime calculates r = 2**p (mod n). |p| must be larger
+ * than log_2(n); i.e. 2**p must be larger than |n|. |n| must be positive and
+ * odd. */
+int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
+  assert(!GFp_BN_is_zero(n));
+  assert(!GFp_BN_is_negative(n));
+  assert(GFp_BN_is_odd(n));
+
+  GFp_BN_zero(r);
+
+  unsigned n_bits = GFp_BN_num_bits(n);
+  assert(n_bits != 0);
+  if (n_bits == 1) {
+    return 1;
+  }
+
+  /* Set |r| to the smallest power of two larger than |n|. */
+  assert(p > n_bits);
+  if (!GFp_BN_set_bit(r, n_bits)) {
+    return 0;
+  }
+
+  /* Unconditionally reduce |r|. */
+  assert(GFp_BN_cmp(r, n) > 0);
+  if (!GFp_BN_usub(r, r, n)) {
+    return 0;
+  }
+  assert(GFp_BN_cmp(r, n) < 0);
+
+  for (unsigned i = n_bits; i < p; ++i) {
+    /* This is like |BN_mod_lshift1_quick| except using |BN_usub|.
+     *
+     * TODO: Replace this with the use of a constant-time variant of
+     * |BN_mod_lshift1_quick|. */
+    if (!GFp_BN_lshift1(r, r)) {
+      return 0;
+    }
+    if (GFp_BN_cmp(r, n) >= 0) {
+      if (!GFp_BN_usub(r, r, n)) {
+        return 0;
+      }
+    }
+  }
+
+  return 1;
+}
