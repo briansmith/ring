@@ -386,9 +386,10 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
   if (GFp_gcm_clmul_enabled()) {
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       GFp_gcm_init_avx(Htable, H);
-    } else {
-      GFp_gcm_init_clmul(Htable, H);
+      return;
     }
+
+    GFp_gcm_init_clmul(Htable, H);
     return;
   }
 #endif
@@ -434,10 +435,6 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
     ctx->gmult = GFp_gcm_gmult_4bit_mmx;
     ctx->ghash = GFp_gcm_ghash_4bit_mmx;
     return;
-  } else {
-    ctx->gmult = GFp_gcm_gmult_4bit_x86;
-    ctx->ghash = GFp_gcm_ghash_4bit_x86;
-    return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
@@ -462,7 +459,10 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
   }
 #endif
 
-#if !defined(GHASH_ASM_X86)
+#if defined(GHASH_ASM_X86)
+  ctx->gmult = GFp_gcm_gmult_4bit_x86;
+  ctx->ghash = GFp_gcm_ghash_4bit_x86;
+#else
   ctx->gmult = GFp_gcm_gmult_4bit;
   ctx->ghash = GFp_gcm_ghash_4bit;
 #endif
