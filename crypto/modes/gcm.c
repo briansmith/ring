@@ -289,10 +289,6 @@ size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 void gcm_gmult_4bit_mmx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                         size_t len);
-
-void gcm_gmult_4bit_x86(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit_x86(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                        size_t len);
 #endif
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #include <openssl/arm_arch.h>
@@ -383,14 +379,6 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_hash = gcm_ghash_clmul;
     return;
   }
-#if defined(GHASH_ASM_X86) /* x86 only */
-  if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
-    gcm_init_4bit(out_table, H.u);
-    *out_mult = gcm_gmult_4bit_mmx;
-    *out_hash = gcm_ghash_4bit_mmx;
-    return;
-  }
-#endif
 #elif defined(GHASH_ASM_ARM)
   if (pmull_capable()) {
     gcm_init_v8(out_table, H.u);
@@ -416,8 +404,8 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 
   gcm_init_4bit(out_table, H.u);
 #if defined(GHASH_ASM_X86)
-  *out_mult = gcm_gmult_4bit_x86;
-  *out_hash = gcm_ghash_4bit_x86;
+  *out_mult = gcm_gmult_4bit_mmx;
+  *out_hash = gcm_ghash_4bit_mmx;
 #else
   *out_mult = gcm_gmult_4bit;
   *out_hash = gcm_ghash_4bit;

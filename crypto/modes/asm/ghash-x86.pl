@@ -258,90 +258,7 @@ sub deposit_rem_4bit {
 	&mov	(&DWP($bias+56,"esp"),0xA9C0<<16);
 	&mov	(&DWP($bias+60,"esp"),0xB5E0<<16);
 }
-
-$suffix = $x86only ? "" : "_x86";
 
-&function_begin("gcm_gmult_4bit".$suffix);
-	&stack_push(16+4+1);			# +1 for stack alignment
-	&mov	($inp,&wparam(0));		# load Xi
-	&mov	($Htbl,&wparam(1));		# load Htable
-
-	&mov	($Zhh,&DWP(0,$inp));		# load Xi[16]
-	&mov	($Zhl,&DWP(4,$inp));
-	&mov	($Zlh,&DWP(8,$inp));
-	&mov	($Zll,&DWP(12,$inp));
-
-	&deposit_rem_4bit(16);
-
-	&mov	(&DWP(0,"esp"),$Zhh);		# copy Xi[16] on stack
-	&mov	(&DWP(4,"esp"),$Zhl);
-	&mov	(&DWP(8,"esp"),$Zlh);
-	&mov	(&DWP(12,"esp"),$Zll);
-	&shr	($Zll,20);
-	&and	($Zll,0xf0);
-
-	if ($unroll) {
-		&call	("_x86_gmult_4bit_inner");
-	} else {
-		&x86_loop(0);
-		&mov	($inp,&wparam(0));
-	}
-
-	&mov	(&DWP(12,$inp),$Zll);
-	&mov	(&DWP(8,$inp),$Zlh);
-	&mov	(&DWP(4,$inp),$Zhl);
-	&mov	(&DWP(0,$inp),$Zhh);
-	&stack_pop(16+4+1);
-&function_end("gcm_gmult_4bit".$suffix);
-
-&function_begin("gcm_ghash_4bit".$suffix);
-	&stack_push(16+4+1);			# +1 for 64-bit alignment
-	&mov	($Zll,&wparam(0));		# load Xi
-	&mov	($Htbl,&wparam(1));		# load Htable
-	&mov	($inp,&wparam(2));		# load in
-	&mov	("ecx",&wparam(3));		# load len
-	&add	("ecx",$inp);
-	&mov	(&wparam(3),"ecx");
-
-	&mov	($Zhh,&DWP(0,$Zll));		# load Xi[16]
-	&mov	($Zhl,&DWP(4,$Zll));
-	&mov	($Zlh,&DWP(8,$Zll));
-	&mov	($Zll,&DWP(12,$Zll));
-
-	&deposit_rem_4bit(16);
-
-    &set_label("x86_outer_loop",16);
-	&xor	($Zll,&DWP(12,$inp));		# xor with input
-	&xor	($Zlh,&DWP(8,$inp));
-	&xor	($Zhl,&DWP(4,$inp));
-	&xor	($Zhh,&DWP(0,$inp));
-	&mov	(&DWP(12,"esp"),$Zll);		# dump it on stack
-	&mov	(&DWP(8,"esp"),$Zlh);
-	&mov	(&DWP(4,"esp"),$Zhl);
-	&mov	(&DWP(0,"esp"),$Zhh);
-
-	&shr	($Zll,20);
-	&and	($Zll,0xf0);
-
-	if ($unroll) {
-		&call	("_x86_gmult_4bit_inner");
-	} else {
-		&x86_loop(0);
-		&mov	($inp,&wparam(2));
-	}
-	&lea	($inp,&DWP(16,$inp));
-	&cmp	($inp,&wparam(3));
-	&mov	(&wparam(2),$inp)	if (!$unroll);
-	&jb	(&label("x86_outer_loop"));
-
-	&mov	($inp,&wparam(0));	# load Xi
-	&mov	(&DWP(12,$inp),$Zll);
-	&mov	(&DWP(8,$inp),$Zlh);
-	&mov	(&DWP(4,$inp),$Zhl);
-	&mov	(&DWP(0,$inp),$Zhh);
-	&stack_pop(16+4+1);
-&function_end("gcm_ghash_4bit".$suffix);
-
 if (!$x86only) {{{
 
 &static_label("rem_4bit");
