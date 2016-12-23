@@ -255,19 +255,16 @@ void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 
 #if defined(GHASH_ASM)
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-#define GHASH_ASM_X86_OR_64
 #define GCM_FUNCREF_4BIT
 void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_clmul(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                      size_t len);
 
-#if defined(OPENSSL_X86)
-#define gcm_init_avx gcm_init_clmul
-#define gcm_gmult_avx gcm_gmult_clmul
-#define gcm_ghash_avx gcm_ghash_clmul
-#else
+#if defined(OPENSSL_X86_64)
+#define GHASH_ASM_X86_64
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
@@ -290,6 +287,7 @@ void gcm_gmult_4bit_mmx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                         size_t len);
 #endif
+
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #include <openssl/arm_arch.h>
 #if __ARM_ARCH__ >= 7
@@ -365,7 +363,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   H.u[0] = CRYPTO_bswap8(H.u[0]);
   H.u[1] = CRYPTO_bswap8(H.u[1]);
 
-#if defined(GHASH_ASM_X86_OR_64)
+#if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       gcm_init_avx(out_table, H.u);
@@ -373,7 +371,13 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
       *out_hash = gcm_ghash_avx;
       return;
     }
-
+    gcm_init_clmul(out_table, H.u);
+    *out_mult = gcm_gmult_clmul;
+    *out_hash = gcm_ghash_clmul;
+    return;
+  }
+#elif defined(GHASH_ASM_X86)
+  if (crypto_gcm_clmul_enabled()) {
     gcm_init_clmul(out_table, H.u);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
