@@ -108,7 +108,9 @@ int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
     return 0;
   }
 
-  memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
+  if (src->top > 0) {
+    memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
+  }
 
   dest->top = src->top;
   dest->neg = src->neg;
