@@ -81,8 +81,29 @@ impl RSAKeyPair {
     /// version of *ring* will likely replace the support for the
     /// `RSAPrivateKey` format with support for the PKCS#8 format.
     ///
+    /// The private key is validated according to [NIST SP-800-56B rev. 1]
+    /// section 6.4.1.4.3, crt_pkv (Intended Exponent-Creation Method Unknown),
+    /// with the following exceptions:
+    /// - Section 6.4.1.2.1, Step 1: Neither a target security level nor an
+    ///   expected modulus length is provided as a parameter, so checks
+    ///   regarding these expectations are not done.
+    /// - Section 6.4.1.2.1, Step 3: Since neither the public key nor the
+    ///   expected modulus length is provided as a parameter, the consistency
+    ///   check between these values and the private key's value of n isn't done.
+    /// - Section 6.4.1.2.1, Step 5: No primality tests are done, both for
+    ///   performance reasons and to avoid any side channels that such tests
+    ///   would provide.
+    ///
+    /// Steps 2 and 4 as described in 6.4.1.2.1 are omitted per 6.4.1.4.3.
+    ///
+    /// In addition to the NIST requirements, we require that p > q and that
+    /// e must be no more than 33 bits.
+    ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
+    ///
+    /// [NIST SP-800-56B rev. 1]:
+    ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
     #[allow(non_snake_case)] // Names are from the specifications.
     pub fn from_der(input: untrusted::Input)
                     -> Result<RSAKeyPair, error::Unspecified> {
@@ -103,6 +124,10 @@ impl RSAKeyPair {
 
                 let n_bits = n.bit_length();
 
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 1
+                //
+                // 1.[ab] are omitted per above.
+                //
                 // XXX: The maximum limit of 4096 bits is primarily due to lack
                 // of testing of larger key sizes; see, in particular,
                 // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
@@ -111,8 +136,8 @@ impl RSAKeyPair {
                 // Also, this limit might help with memory management decisions
                 // later.
                 //
-                // Validate e >= 2**16 = 65536, which, since e is odd, implies
-                // e >= 65537.
+                // We validate e >= 2**16 = 65536, which, since e is odd,
+                // implies e >= 65537.
                 let (n, e) = try!(super::check_public_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
@@ -121,6 +146,14 @@ impl RSAKeyPair {
                 let d = try!(d.into_odd_positive());
                 try!(bigint::verify_less_than(&d, &n));
 
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5
+                //
+                // Note we've switched the order with Step 3; Steps 2 & 4 as
+                // well as 5.[abef] are omitted per above.
+                //
+                // TODO 5.[dh] GCD ([pq] – 1, e) == 1
+                //
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5.[cg]
                 let half_n_bits = n_bits.half_rounded_up();
                 if p.bit_length() != half_n_bits {
                     return Err(error::Unspecified);
@@ -137,7 +170,9 @@ impl RSAKeyPair {
                     try!(q.into_elem(&n))
                 };
 
-                // XXX: |p < q| is actual OK, it seems, but our implementation
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5.i
+                //
+                // XXX: |p < q| is actually OK, it seems, but our implementation
                 // of CRT-based moduluar exponentiation used requires that
                 // |q > p|. (|p == q| is just wrong.)
                 //
@@ -146,6 +181,8 @@ impl RSAKeyPair {
                 // though the spec says that is the largest value that should be
                 // rejected. We assume there are no security implications to
                 // this simplification.
+                //
+                // 3.b is unneeded since `n_bits` is derived here from `n`.
                 try!(bigint::verify_less_than(&q, &p));
                 {
                     let p_mod_n = {
@@ -169,18 +206,16 @@ impl RSAKeyPair {
                     }
                 }
 
-                let n = try!(n.into_modulus::<N>());
-
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 3
+                //
                 // Verify that p * q == n. We restrict ourselves to modular
                 // multiplication. We rely on the fact that we've verified
                 // 0 < q < p < n. We check that q and p are close to sqrt(n)
                 // and then assume that these preconditions are enough to
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
-                 let q_mod_n_decoded = {
-                    let q = try!(q.try_clone());
-                    try!(q.into_elem(&n))
-                };
+                //
+                // 3.b is unneeded since `n_bits` is derived here from `n`.
                 let q_mod_n = {
                     let clone = try!(q_mod_n_decoded.try_clone());
                     try!(clone.into_encoded(&n))
@@ -196,10 +231,23 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6
+                //
+                // TODO 6.a: d < LCM(p – 1, q – 1)
+                // TODO 6.b: 1 == (d · e) mod LCM(p – 1, q – 1)
+                //
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6.a, partial
+                //
+                // We need to validate d > 2**half_n_bits. Since 2**half_n_bits
+                // has a bit length of half_n_bits+1, this check gives us
+                // d >= 2**half_n_bits, and knowing d is odd makes the
+                // inequality strict.
                 if !(d.bit_length() > half_n_bits) {
                     return Err(error::Unspecified);
                 }
 
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7
+                //
                 // XXX: We don't check that `dP == d % (p - 1)` or that
                 // `dQ == d % (q - 1)` because we don't (in the long term)
                 // have a good way to do modulo with an even modulus. Instead
@@ -210,6 +258,8 @@ impl RSAKeyPair {
                 // consistent with `n` and `e`. TODO: Either prove that what we
                 // do is sufficient, or make it so.
                 //
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.a
+                //
                 // We need to prove that `dP < p - 1`. If we verify
                 // `dP < p` then we'll know that either `dP == p - 1` or
                 // `dP < p - 1`. Since `p` is odd, `p - 1` is even. `d` is odd,
@@ -218,12 +268,16 @@ impl RSAKeyPair {
                 // and so we know `dP < p - 1`.
                 let dP = try!(dP.into_odd_positive());
                 try!(bigint::verify_less_than(&dP, &p));
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.b
+                //
                 // The same argument can be used to prove `dQ < q - 1`.
                 let dQ = try!(dQ.into_odd_positive());
                 try!(bigint::verify_less_than(&dQ, &q));
 
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.[cf]
+                //
+                // (7.d & 7.e are unimplemented per "XXX" above)
                 let p = try!(p.into_modulus::<P>());
-
                 let qInv = try!(qInv.into_elem(&p));
                 let qInv = try!(qInv.into_encoded(&p));
                 let q_mod_p = {
