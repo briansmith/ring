@@ -80,25 +80,6 @@ extern "C" {
  * dependencies on this header where possible. */
 
 
-#if 0
-/* Outer object */
-typedef struct x509_hash_dir_st
-	{
-	int num_dirs;
-	char **dirs;
-	int *dirs_type;
-	int num_dirs_alloced;
-	} X509_HASH_DIR_CTX;
-#endif
-
-typedef struct x509_file_st
-	{
-	int num_paths;	/* number of paths to files or directories */
-	int num_alloced;
-	char **paths;	/* the list of paths or directories */
-	int *path_type;
-	} X509_CERT_FILE_CTX;
-
 /*******************************/
 /*
 SSL_CTX -> X509_STORE    
@@ -116,10 +97,6 @@ The X509_STORE has X509_LOOKUPs for looking up certs.
 The X509_STORE then calls a function to actually verify the
 certificate chain.
 */
-
-/* The following are legacy constants that should not be used. */
-#define X509_LU_RETRY		(-1)
-#define X509_LU_FAIL		0
 
 #define X509_LU_X509		1
 #define X509_LU_CRL		2

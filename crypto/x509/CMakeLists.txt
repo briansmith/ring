@@ -39,7 +39,6 @@ add_library(
   x509name.c
   x509rset.c
   x509spki.c
-  x509type.c
   x_algor.c
   x_all.c
   x_attrib.c
