@@ -983,7 +983,6 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
-  SSL_CTX_set_tls_channel_id_enabled(ssl_ctx.get(), 1);
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
   SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
