@@ -161,6 +161,8 @@ pub mod signature;
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
 
+mod cpu_feature;
+
 mod private {
     /// Traits that are designed to only be implemented internally in *ring*.
     //
