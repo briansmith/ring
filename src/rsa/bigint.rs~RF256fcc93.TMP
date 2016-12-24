@@ -1,4 +1,4 @@
-// Copyrightf 2015-2016 Brian Smith.
+﻿// Copyrightf 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -16,12 +16,9 @@
 //!
 //! # Modular Arithmetic.
 //!
-//! Modular arithmetic is done in finite commutative rings ℤ/mℤ for some
-//! modulus *m*. We work in finite commutative rings instead of finite fields
-//! because we need to do math modulo *n*, which is not prime. In particular,
-//! ℤ/nℤ contains elements that have no multiplicative inverse as
-//! explained in Section 5.3.2 "Asymmetries Between Modulo Addition and Modulo
-//! Multiplication" of [Lecture 5: Finite Fields (PART 2)].
+//! The ring ℤn (less ambiguously denoted ℤ/nℤ) is a finite ring over
+//! integers modulo some *n*, i.e. it is a set of values in the range [0, n)
+//! where all arithmetic is performed modulo *n*.
 //!
 //! In some calculations we need to deal with multiple rings at once. For
 //! example, RSA private key operations operate in the rings ℤn, ℤp, and ℤq.
@@ -35,8 +32,6 @@
 //!
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
-//! [Lecture 5: Finite Fields (PART 2)]:
-//!     https://engineering.purdue.edu/kak/compsec/NewLectures/Lecture5.pdf
 
 
 // XXX TODO: Remove this once RSA verification has been done in Rust.
@@ -139,7 +134,7 @@ impl Positive {
         try!(verify_less_than(&self, &m));
         Ok(ElemDecoded {
             value: self.0,
-            ring: PhantomData,
+            ring:  PhantomData,
         })
     }
 
@@ -168,14 +163,14 @@ impl OddPositive {
     }
 
     pub fn into_elem_decoded<M>(self, m: &Modulus<M>)
-                                -> Result<ElemDecoded<M>, error::Unspecified> {
+            -> Result<ElemDecoded<M>, error::Unspecified> {
         self.0.into_elem_decoded(m)
     }
 
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
         let r = Modulus {
             ctx: unsafe { GFp_BN_MONT_CTX_new() },
-            ring: PhantomData,
+            ring:  PhantomData,
         };
         if r.ctx.is_null() {
             return Err(error::Unspecified);
@@ -215,9 +210,7 @@ impl core::ops::Deref for OddPositive {
 /// for efficient Montgomery multiplication modulo *n*.
 pub struct Modulus<M> {
     ctx: *mut BN_MONT_CTX,
-
-    /// The ring ℤ/mℤ for which this is the modulus.
-    ring: PhantomData<M>,
+    ring:  PhantomData<M>,
 }
 
 impl<M> Drop for Modulus<M> {
@@ -233,9 +226,7 @@ unsafe impl<M> Sync for Modulus<M> {}
 /// Montgomery-encoded elements of a field.
 pub struct Elem<M> {
     value: Nonnegative,
-
-    /// The ring ℤ/mℤ for which this element is a value.
-    ring: PhantomData<M>,
+    ring:  PhantomData<M>,
 }
 
 impl<M> Elem<M> {
@@ -246,7 +237,7 @@ impl<M> Elem<M> {
         let value = try!(Nonnegative::zero());
         Ok(Elem {
             value: value,
-            ring: PhantomData,
+            ring:  PhantomData,
         })
     }
 
@@ -258,7 +249,7 @@ impl<M> Elem<M> {
         let value = try!(self.value.try_clone());
         Ok(Elem {
             value: value,
-            ring: PhantomData,
+            ring:  PhantomData,
         })
     }
 
@@ -270,23 +261,21 @@ impl<M> Elem<M> {
         }));
         Ok(ElemDecoded {
             value: r,
-            ring: PhantomData,
+            ring:  PhantomData,
         })
     }
 }
 
 pub struct ElemDecoded<M> {
     value: Nonnegative,
-
-    /// The ring ℤ/mℤ for which this element is a value.
-    ring: PhantomData<M>
+    ring:  PhantomData<M>
 }
 
 impl<M> ElemDecoded<M> {
     pub fn take_storage(e: Elem<M>) -> ElemDecoded<M> {
         ElemDecoded {
             value: e.value,
-            ring: PhantomData,
+            ring:  PhantomData,
         }
     }
 
@@ -294,7 +283,7 @@ impl<M> ElemDecoded<M> {
         let value = try!(self.value.try_clone());
         Ok(ElemDecoded {
             value: value,
-            ring: PhantomData,
+            ring:  PhantomData,
         })
     }
 
@@ -324,7 +313,7 @@ impl<M> ElemDecoded<M> {
         }));
         Ok(Elem {
             value: value,
-            ring: PhantomData,
+            ring:  PhantomData,
         })
     }
 
@@ -334,32 +323,32 @@ impl<M> ElemDecoded<M> {
 }
 
 pub fn elem_mul<M>(a: &Elem<M>, b: Elem<M>, m: &Modulus<M>)
-                   -> Result<Elem<M>, error::Unspecified> {
+                          -> Result<Elem<M>, error::Unspecified> {
     let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(Elem {
         value: r,
-        ring: PhantomData
+        ring:  PhantomData
     })
 }
 
 // `a` * `b` (mod `m`).
 pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
-                         -> Result<ElemDecoded<M>, error::Unspecified> {
+                                -> Result<ElemDecoded<M>, error::Unspecified> {
     let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(ElemDecoded {
         value: r,
-        ring: PhantomData
+        ring:  PhantomData
     })
 }
 
 pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
-                       -> Result<Elem<M>, error::Unspecified> {
+                              -> Result<Elem<M>, error::Unspecified> {
     let mut value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
@@ -367,7 +356,7 @@ pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
     }));
     Ok(Elem {
         value: value,
-        ring: PhantomData,
+        ring:  PhantomData,
     })
 }
 
@@ -423,8 +412,8 @@ pub fn elem_exp_vartime<M>(
 }
 
 pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
-                         rng: &rand::SecureRandom)
-                         -> Result<(), error::Unspecified> {
+                                rng: &rand::SecureRandom)
+                                -> Result<(), error::Unspecified> {
     let mut rand = rand::RAND::new(rng);
     bssl::map_result(unsafe {
         GFp_BN_rand_range_ex(a.value.as_mut_ref(), m.as_ref(), &mut rand)
@@ -454,8 +443,9 @@ pub enum InversionError {
     Unspecified
 }
 
-pub fn elem_verify_equal_consttime<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>)
-                                      -> Result<(), error::Unspecified> {
+pub fn elem_verify_equal_consttime<M>(
+        a: &ElemDecoded<M>, b: &ElemDecoded<M>)
+        -> Result<(), error::Unspecified> {
     bssl::map_result(unsafe {
         GFp_BN_equal_consttime(a.value.as_ref(), b.value.as_ref())
     })
