@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bits, bssl, c, der, digest, error};
+use {bits, der, digest, error};
 use rand;
 use std;
 use super::{blinding, bigint, N};
@@ -223,23 +223,20 @@ impl RSAKeyPair {
 
 // Type-level representations of the different moduli used in RSA signing, in
 // addition to `super::N`. See `super::bigint`'s modulue-level documentation.
+
 enum P {}
-enum Q {}
+unsafe impl bigint::SmallerModulus<N> for P {}
+unsafe impl bigint::NotMuchSmallerModulus<N> for P {}
+
 enum QQ {}
+unsafe impl bigint::SmallerModulus<N> for QQ {}
+unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
 
-
-/// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
-#[repr(C)]
-struct RSA<'a> {
-    dmp1: &'a bigint::BIGNUM,
-    dmq1: &'a bigint::BIGNUM,
-    mont_n: &'a bigint::BN_MONT_CTX,
-    mont_p: &'a bigint::BN_MONT_CTX,
-    mont_q: &'a bigint::BN_MONT_CTX,
-    mont_qq: &'a bigint::BN_MONT_CTX,
-    qmn_mont: &'a bigint::BIGNUM,
-    iqmp_mont: &'a bigint::BIGNUM,
-}
+enum Q {}
+unsafe impl bigint::SmallerModulus<N> for Q {}
+unsafe impl bigint::SmallerModulus<P> for Q {}
+unsafe impl bigint::SmallerModulus<QQ> for Q {}
+unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
 
 /// State used for RSA Signing. Feature: `rsa_signing`.
@@ -319,56 +316,74 @@ impl RSASigningState {
             blinding: ref mut blinding,
         } = self;
 
-        let rsa =  RSA {
-            dmp1: key.dP.as_ref(),
-            dmq1: key.dQ.as_ref(),
-            mont_n: key.n.as_ref(),
-            mont_p: key.p.as_ref(),
-            mont_q: key.q.as_ref(),
-            mont_qq: key.qq.as_ref(),
-            qmn_mont: key.q_mod_n.as_ref_montgomery_encoded(),
-            iqmp_mont: key.qInv.as_ref_montgomery_encoded(),
-        };
-
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         try!(padding_alg.encode(&m_hash, signature, mod_bits, rng));
+
+        // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
+        // with Garner's algorithm.
+
+        // Step 1. The value zero is also rejected.
+        //
         // TODO: Avoid having `encode()` pad its output, and then remove
         // `Positive::from_be_bytes_padded()`.
         let base = try!(bigint::Positive::from_be_bytes_padded(
             untrusted::Input::from(signature)));
         let base = try!(base.into_elem_decoded(&key.n));
 
-        let result = try!(blinding.blind(base, key.e, &key.n, rng, |base| {
-            let mut result = try!(base.try_clone());
-            try!(bssl::map_result(unsafe {
-                GFp_rsa_private_transform(&rsa, result.as_mut_ref())
-            }));
+        // Step 2.
+        let result = try!(blinding.blind(base, key.e, &key.n, rng, |c| {
+            // Step 2.b.
+
+            // Step 2.b.i.
+
+            let c_mod_p = try!(bigint::elem_reduced(&c, &key.p));
+            let m_1 =
+                try!(bigint::elem_exp_consttime(c_mod_p, &key.dP, &key.p));
+
+            let c_mod_qq = try!(bigint::elem_reduced(&c, &key.qq));
+            let c_mod_q = try!(bigint::elem_reduced(&c_mod_qq, &key.q));
+            let m_2 =
+                try!(bigint::elem_exp_consttime(c_mod_q, &key.dQ, &key.q));
+
+            // Step 2.b.ii isn't needed since there are only two primes.
+
+            // Step 2.b.iii.
+            let m_2 = bigint::elem_widen(m_2);
+            let m_1_minus_m_2 = try!(bigint::elem_sub(m_1, &m_2, &key.p));
+            let h = try!(bigint::elem_mul_mixed(&key.qInv, m_1_minus_m_2,
+                                                &key.p));
+
+            // Step 2.b.iv. The reduction in the modular multiplication isn't
+            // necessary because `h < p` and `p * q == n` implies `h * q < n`.
+            // Modular arithmetic is used simply to avoid implementing
+            // non-modular arithmetic.
+            let h = bigint::elem_widen(h);
+            let q_times_h =
+                try!(bigint::elem_mul_mixed(&key.q_mod_n, h, &key.n));
+            let m_2 = bigint::elem_widen(m_2);
+            let m = try!(bigint::elem_add(&m_2, q_times_h, &key.n));
+
+            // Step 2.b.v isn't needed since there are only two primes.
 
             // Verify the result to protect against fault attacks as described
             // in "On the Importance of Checking Cryptographic Protocols for
             // Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton.
-            // This check is very assuming `e` is small. Note that this is the
+            // This check is cheap because `e` is small. Note that this is the
             // only validation of `e` that is done other than basic checks on
             // its size, oddness, and minimum value, since we don't verify the
             // relationship between `e` to `d`, `p`, and `q` when constructing
             // an `RSAKeyPair`.
-            let computed = try!(result.try_clone());
+            let computed = try!(m.try_clone());
             let verify =
                 try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
-            try!(bigint::elem_verify_equal_consttime(&verify, &base));
+            try!(bigint::elem_verify_equal_consttime(&verify, &c));
 
-            Ok(result)
+            // Step 3.
+            Ok(m)
         }));
 
         result.fill_be_bytes(signature)
     }
-}
-
-
-#[allow(improper_ctypes)]
-extern {
-    fn GFp_rsa_private_transform(rsa: &RSA, base: &mut bigint::BIGNUM)
-                                 -> c::int;
 }
 
 

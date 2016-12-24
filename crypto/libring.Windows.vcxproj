@@ -42,7 +42,6 @@
     <ClCompile Include="mem.c" />
     <ClCompile Include="modes\gcm.c" />
     <ClCompile Include="rand\sysrand.c" />
-    <ClCompile Include="rsa\rsa_impl.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aes\internal.h" />

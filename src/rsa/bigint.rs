@@ -1,4 +1,4 @@
-// Copyrightf 2015-2016 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -211,8 +211,18 @@ impl core::ops::Deref for OddPositive {
 }
 
 
-/// The value *n* for a ring ℤ/nℤ, along with the precomputed values needed
-/// for efficient Montgomery multiplication modulo *n*.
+/// A modulus *s* that is smaller than another modulus *l*,
+/// so every element of ℤs is also an element of ℤl.
+pub unsafe trait SmallerModulus<L> {}
+
+/// A  modulus *s* is smaller than another modulus *g*
+/// but as large or larger than √g; i.e. √g <= s < g. This is the precondition
+/// for our Montgomery reduction function to reduce an element of ℤl to an
+/// element of ℤs.
+pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
+
+
+/// A modulus that can be used for Montgomery math.
 pub struct Modulus<M> {
     ctx: *mut BN_MONT_CTX,
 
@@ -250,10 +260,6 @@ impl<M> Elem<M> {
         })
     }
 
-    pub fn as_ref_montgomery_encoded<'a>(&'a self) -> &'a BIGNUM {
-        self.value.as_ref()
-    }
-
     pub fn try_clone(&self) -> Result<Elem<M>, error::Unspecified> {
         let value = try!(self.value.try_clone());
         Ok(Elem {
@@ -279,10 +285,18 @@ pub struct ElemDecoded<M> {
     value: Nonnegative,
 
     /// The ring ℤ/mℤ for which this element is a value.
-    ring: PhantomData<M>
+    ring: PhantomData<M>,
 }
 
 impl<M> ElemDecoded<M> {
+    pub fn zero() -> Result<ElemDecoded<M>, error::Unspecified> {
+        let value = try!(Nonnegative::zero());
+        Ok(ElemDecoded {
+            value: value,
+            ring: PhantomData,
+        })
+    }
+
     pub fn take_storage(e: Elem<M>) -> ElemDecoded<M> {
         ElemDecoded {
             value: e.value,
@@ -309,12 +323,6 @@ impl<M> ElemDecoded<M> {
     pub fn is_zero(&self) -> bool { self.value.is_zero() }
 
     pub fn is_one(&self) -> bool { self.value.is_one() }
-
-    // XXX: This makes it too easy to break the invariants. TODO: Remove this
-    // ASAP.
-    pub unsafe fn as_mut_ref<'a>(&'a mut self) -> &'a mut BIGNUM {
-        self.value.as_mut_ref()
-    }
 
     pub fn into_elem(self, m: &Modulus<M>)
                      -> Result<Elem<M>, error::Unspecified> {
@@ -358,6 +366,17 @@ pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
     })
 }
 
+pub fn elem_reduced<Larger,
+                    Smaller: NotMuchSmallerModulus<Larger>>(
+        a: &ElemDecoded<Larger>, m: &Modulus<Smaller>)
+        -> Result<ElemDecoded<Smaller>, error::Unspecified> {
+    let /*mut*/ r = try!(ElemDecoded::zero());
+    try!(bssl::map_result(unsafe {
+        GFp_BN_reduce_mont(r.value.0, a.value.0, m.as_ref())
+    }));
+    Ok(r)
+}
+
 pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
                        -> Result<Elem<M>, error::Unspecified> {
     let mut value = a.value;
@@ -370,6 +389,40 @@ pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
         ring: PhantomData,
     })
 }
+
+pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
+        a: ElemDecoded<Smaller>) -> ElemDecoded<Larger> {
+    ElemDecoded {
+        value: a.value,
+        ring: PhantomData,
+    }
+}
+
+
+pub fn elem_add<M>(a: &ElemDecoded<M>, b: ElemDecoded<M>, m: &Modulus<M>)
+                   -> Result<ElemDecoded<M>, error::Unspecified> {
+    let value = b.value;
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_add_quick(value.0, a.value.as_ref(), value.0, m.as_ref())
+    }));
+    Ok(ElemDecoded {
+        value: value,
+        ring: PhantomData,
+    })
+}
+
+pub fn elem_sub<M>(a: ElemDecoded<M>, b: &ElemDecoded<M>, m: &Modulus<M>)
+                   -> Result<ElemDecoded<M>, error::Unspecified> {
+    let value = a.value;
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_sub_quick(value.0, value.0, b.value.as_ref(), m.as_ref())
+    }));
+    Ok(ElemDecoded {
+        value: value,
+        ring: PhantomData,
+    })
+}
+
 
 /// An non-secret odd positive value in the range
 /// [3, 2**PUBLIC_EXPONENT_MAX_BITS).
@@ -420,6 +473,19 @@ pub fn elem_exp_vartime<M>(
         }
     }
     acc.into_elem_decoded(m)
+}
+
+pub fn elem_exp_consttime<M>(
+        base: ElemDecoded<M>, exponent: &OddPositive, m: &Modulus<M>)
+        -> Result<ElemDecoded<M>, error::Unspecified> {
+    let r = base.value;
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_exp_mont_consttime(r.0, r.0, exponent.as_ref(), m.as_ref())
+    }));
+    Ok(ElemDecoded {
+        value: r,
+        ring: PhantomData,
+    })
 }
 
 pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
@@ -537,9 +603,20 @@ extern {
                         -> c::int;
     fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                       -> c::int;
+    fn GFp_BN_reduce_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
+                          -> c::int;
+
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                            m: &BN_MONT_CTX) -> c::int;
+    fn GFp_BN_mod_add_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
+                            m: &BIGNUM) -> c::int;
+    fn GFp_BN_mod_sub_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
+                            m: &BIGNUM) -> c::int;
+
+    // `r` and `a` may alias.
+    fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a: *const BIGNUM,
+                                     p: &BIGNUM, m: &BN_MONT_CTX) -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
