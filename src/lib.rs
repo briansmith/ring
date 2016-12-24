@@ -161,6 +161,7 @@ pub mod signature;
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
 
+#[path = "cpu_feature/cpu_feature.rs"]
 mod cpu_feature;
 
 mod private {
