@@ -31,7 +31,7 @@
 #include <openssl/err.h>
 
 #include "ecp_nistz.h"
-#include "gfp_internal.h"
+#include "../limbs/limbs.h"
 #include "../bn/internal.h"
 #include "../internal.h"
 
@@ -245,9 +245,9 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
     GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
-  GFp_constant_time_limbs_reduce_once(p.p.X, Q, P256_LIMBS);
-  GFp_constant_time_limbs_reduce_once(p.p.Y, Q, P256_LIMBS);
-  GFp_constant_time_limbs_reduce_once(p.p.Z, Q, P256_LIMBS);
+  RING_limbs_reduce_once(p.p.X, Q, P256_LIMBS);
+  RING_limbs_reduce_once(p.p.Y, Q, P256_LIMBS);
+  RING_limbs_reduce_once(p.p.Z, Q, P256_LIMBS);
 
   /* If it is at the point at infinity then p.p.X will be zero. */
   copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));

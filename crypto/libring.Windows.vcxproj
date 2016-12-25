@@ -36,9 +36,9 @@
     <ClCompile Include="curve25519\curve25519.c" />
     <ClCompile Include="ec\ecp_nistz.c" />
     <ClCompile Include="ec\ecp_nistz256.c" />
-    <ClCompile Include="ec\gfp_constant_time.c" />
     <ClCompile Include="ec\gfp_p256.c" />
     <ClCompile Include="ec\gfp_p384.c" />
+    <ClCompile Include="limbs\limbs.c" />
     <ClCompile Include="mem.c" />
     <ClCompile Include="modes\gcm.c" />
     <ClCompile Include="rand\sysrand.c" />

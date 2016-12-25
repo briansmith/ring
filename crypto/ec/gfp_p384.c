@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include "gfp_internal.h"
+#include "../limbs/limbs.h"
 
 #include <string.h>
 
@@ -20,16 +20,16 @@
 #include "../bn/internal.h"
 #include "../internal.h"
 
-#include "gfp_limbs.inl"
+#include "../limbs/limbs.inl"
 
- /* XXX: Here we assume that the conversion from |GFp_Carry| to |GFp_Limb|
-  * is constant-time, but we haven't verified that assumption. TODO: Fix it so
+ /* XXX: Here we assume that the conversion from |Carry| to |Limb| is
+  * constant-time, but we haven't verified that assumption. TODO: Fix it so
   * we don't need to make that assumption. */
 
 
-typedef GFp_Limb Elem[P384_LIMBS];
-typedef GFp_Limb ScalarMont[P384_LIMBS];
-typedef GFp_Limb Scalar[P384_LIMBS];
+typedef Limb Elem[P384_LIMBS];
+typedef Limb ScalarMont[P384_LIMBS];
+typedef Limb Scalar[P384_LIMBS];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
@@ -61,7 +61,7 @@ static const BN_ULONG N[P384_LIMBS] = {
   TOBN(0xffffffff, 0xffffffff),
 };
 
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
                        size_t_and_gfp_limb_are_different_sizes);
 
 OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(BN_ULONG),
@@ -83,12 +83,12 @@ static const BN_ULONG ONE[P384_LIMBS] = {
 #endif
 
 
-static INLINE_IF_POSSIBLE GFp_Limb is_equal(const Elem a, const Elem b) {
-  return GFp_constant_time_limbs_eq_limbs(a, b, P384_LIMBS);
+static INLINE_IF_POSSIBLE Limb is_equal(const Elem a, const Elem b) {
+  return RING_limbs_eq_limbs(a, b, P384_LIMBS);
 }
 
 static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
-                                                const GFp_Limb condition) {
+                                                const Limb condition) {
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     r[i] = constant_time_select_size_t(condition, a[i], r[i]);
   }
@@ -96,17 +96,17 @@ static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
 
 
 static void elem_add(Elem r, const Elem a, const Elem b) {
-  GFp_Limb carry =
+  Limb carry =
       constant_time_is_nonzero_size_t(gfp_limbs_add(r, a, b, P384_LIMBS));
   Elem adjusted;
-  GFp_Limb no_borrow =
+  Limb no_borrow =
       constant_time_is_zero_size_t(gfp_limbs_sub(adjusted, r, Q, P384_LIMBS));
   copy_conditional(r, adjusted,
                    constant_time_select_size_t(carry, carry, no_borrow));
 }
 
 static void elem_sub(Elem r, const Elem a, const Elem b) {
-  GFp_Limb borrow =
+  Limb borrow =
     constant_time_is_nonzero_size_t(gfp_limbs_sub(r, a, b, P384_LIMBS));
   Elem adjusted;
   (void)gfp_limbs_add(adjusted, r, Q, P384_LIMBS);
@@ -155,15 +155,15 @@ static void elem_div_by_2(Elem r, const Elem a) {
    *
    * Thus, no reduction of the sum mod `q` is necessary. */
 
-  GFp_Limb is_odd = constant_time_is_nonzero_size_t(a[0] & 1);
+  Limb is_odd = constant_time_is_nonzero_size_t(a[0] & 1);
 
   /* r = a >> 1. */
-  GFp_Limb carry = a[P384_LIMBS - 1] & 1;
+  Limb carry = a[P384_LIMBS - 1] & 1;
   r[P384_LIMBS - 1] = a[P384_LIMBS - 1] >> 1;
   for (size_t i = 1; i < P384_LIMBS; ++i) {
-    GFp_Limb new_carry = a[P384_LIMBS - i - 1];
+    Limb new_carry = a[P384_LIMBS - i - 1];
     r[P384_LIMBS - i - 1] =
-        (a[P384_LIMBS - i - 1] >> 1) | (carry << (GFp_LIMB_BITS - 1));
+        (a[P384_LIMBS - i - 1] >> 1) | (carry << (LIMB_BITS - 1));
     carry = new_carry;
   }
 
@@ -224,8 +224,8 @@ void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
 }
 
 void GFp_p384_elem_neg(Elem r, const Elem a) {
-  GFp_Limb is_zero = GFp_constant_time_limbs_are_zero(a, P384_LIMBS);
-  GFp_Carry borrow = gfp_limbs_sub(r, Q, a, P384_LIMBS);
+  Limb is_zero = RING_limbs_are_zero(a, P384_LIMBS);
+  Carry borrow = gfp_limbs_sub(r, Q, a, P384_LIMBS);
 #if defined(NDEBUG)
   (void)borrow;
 #endif
@@ -255,7 +255,7 @@ static void gfp_p384_point_select_w5(P384_POINT *out,
   Elem z; memset(z, 0, sizeof(z));
 
   for (size_t i = 0; i < 16; ++i) {
-    GFp_Limb mask = constant_time_eq_size_t(index, i + 1);
+    Limb mask = constant_time_eq_size_t(index, i + 1);
     for (size_t j = 0; j < P384_LIMBS; ++j) {
       x[j] |= table[i].X[j] & mask;
       y[j] |= table[i].Y[j] & mask;
