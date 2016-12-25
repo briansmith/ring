@@ -51,7 +51,7 @@ typedef uint64_t GFp_DoubleLimb;
 
 /* |*r = a + b + carry_in|, returning carry out bit. |carry_in| must be 0 or 1.
  */
-static inline Carry gfp_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
+static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
   assert(carry_in == 0 || carry_in == 1);
   Carry ret;
 #if defined(GFp_ADDCARRY_INTRINSIC)
@@ -66,7 +66,7 @@ static inline Carry gfp_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
 }
 
 /* |*r = a + b|, returning carry bit. */
-static inline Carry gfp_add(Limb *r, Limb a, Limb b) {
+static inline Carry limb_add(Limb *r, Limb a, Limb b) {
   Carry ret;
 #if defined(GFp_ADDCARRY_INTRINSIC)
   ret = GFp_ADDCARRY_INTRINSIC(0, a, b, r);
@@ -81,7 +81,7 @@ static inline Carry gfp_add(Limb *r, Limb a, Limb b) {
 
 /* |*r = a - b - borrow_in|, returning the borrow out bit. |borrow_in| must be
  * 0 or 1. */
-static inline Carry gfp_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
+static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
   assert(borrow_in == 0 || borrow_in == 1);
   Carry ret;
 #if defined(GFp_SUBBORROW_INTRINSIC)
@@ -96,7 +96,7 @@ static inline Carry gfp_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
 }
 
 /* |*r = a - b|, returning borrow bit. */
-static inline Carry gfp_sub(Limb *r, Limb a, Limb b) {
+static inline Carry limb_sub(Limb *r, Limb a, Limb b) {
   Carry ret;
 #if defined(GFp_SUBBORROW_INTRINSIC)
   ret = GFp_SUBBORROW_INTRINSIC(0, a, b, r);
@@ -109,23 +109,23 @@ static inline Carry gfp_sub(Limb *r, Limb a, Limb b) {
   return ret;
 }
 
-static inline Carry gfp_limbs_add(Limb r[], const Limb a[],
-                                      const Limb b[], size_t num_limbs) {
+static inline Carry limbs_add(Limb r[], const Limb a[], const Limb b[],
+                              size_t num_limbs) {
   assert(num_limbs >= 1);
-  Carry carry = gfp_add(&r[0], a[0], b[0]);
+  Carry carry = limb_add(&r[0], a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
-    carry = gfp_adc(&r[i], a[i], b[i], carry);
+    carry = limb_adc(&r[i], a[i], b[i], carry);
   }
   return carry;
 }
 
 /* |r -= s|, returning the borrow. */
-static inline Carry gfp_limbs_sub(Limb r[], const Limb a[], const Limb b[],
-                                  size_t num_limbs) {
+static inline Carry limbs_sub(Limb r[], const Limb a[], const Limb b[],
+                              size_t num_limbs) {
   assert(num_limbs >= 1);
-  Carry borrow = gfp_sub(&r[0], a[0], b[0]);
+  Carry borrow = limb_sub(&r[0], a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
-    borrow = gfp_sbb(&r[i], a[i], b[i], borrow);
+    borrow = limb_sbb(&r[i], a[i], b[i], borrow);
   }
   return borrow;
 }

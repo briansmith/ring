@@ -96,20 +96,18 @@ static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
 
 
 static void elem_add(Elem r, const Elem a, const Elem b) {
-  Limb carry =
-      constant_time_is_nonzero_size_t(gfp_limbs_add(r, a, b, P384_LIMBS));
+  Limb carry = constant_time_is_nonzero_size_t(limbs_add(r, a, b, P384_LIMBS));
   Elem adjusted;
   Limb no_borrow =
-      constant_time_is_zero_size_t(gfp_limbs_sub(adjusted, r, Q, P384_LIMBS));
+      constant_time_is_zero_size_t(limbs_sub(adjusted, r, Q, P384_LIMBS));
   copy_conditional(r, adjusted,
                    constant_time_select_size_t(carry, carry, no_borrow));
 }
 
 static void elem_sub(Elem r, const Elem a, const Elem b) {
-  Limb borrow =
-    constant_time_is_nonzero_size_t(gfp_limbs_sub(r, a, b, P384_LIMBS));
+  Limb borrow = constant_time_is_nonzero_size_t(limbs_sub(r, a, b, P384_LIMBS));
   Elem adjusted;
-  (void)gfp_limbs_add(adjusted, r, Q, P384_LIMBS);
+  (void)limbs_add(adjusted, r, Q, P384_LIMBS);
   copy_conditional(r, adjusted, borrow);
 }
 
@@ -174,7 +172,7 @@ static void elem_div_by_2(Elem r, const Elem a) {
   };
 
   Elem adjusted;
-  BN_ULONG carry2 = gfp_limbs_add(adjusted, r, Q_PLUS_1_SHR_1, P384_LIMBS);
+  BN_ULONG carry2 = limbs_add(adjusted, r, Q_PLUS_1_SHR_1, P384_LIMBS);
 #if defined(NDEBUG)
   (void)carry2;
 #endif
@@ -225,7 +223,7 @@ void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
 
 void GFp_p384_elem_neg(Elem r, const Elem a) {
   Limb is_zero = RING_limbs_are_zero(a, P384_LIMBS);
-  Carry borrow = gfp_limbs_sub(r, Q, a, P384_LIMBS);
+  Carry borrow = limbs_sub(r, Q, a, P384_LIMBS);
 #if defined(NDEBUG)
   (void)borrow;
 #endif
