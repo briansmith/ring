@@ -126,12 +126,16 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base) {
    *
    * In the last multiplication, the reduction mod |n| isn't necessary because
    * |tmp < p| and |p * q == n| implies |tmp * q < n|. Montgomery
-   * multiplication is used purely because it is implemented more efficiently.
-   */
+   * multiplication is used purely because it is implemented more efficiently,
+   * and to avoid the need to implement non-Montgomery, non-modular
+   * multiplication.
+   *
+   * Similarly, the reduction in the last addition isn't necessary but modular
+   * addition is used to avoid the need to implement non-modular addition. */
   if (!GFp_BN_mod_sub_quick(&tmp, &mp, &mq, p) ||
       !GFp_BN_mod_mul_mont(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p) ||
       !GFp_BN_mod_mul_mont(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n) ||
-      !GFp_BN_add(base, &tmp, &mq)) {
+      !GFp_BN_mod_add_quick(base, &tmp, &mq, &rsa->mont_n->N)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
