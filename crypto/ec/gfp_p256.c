@@ -13,7 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "ecp_nistz256.h"
-#include "gfp_internal.h"
+#include "../limbs/limbs.h"
 
 #include <string.h>
 
@@ -21,9 +21,9 @@
 #include "../bn/internal.h"
 
 
-typedef GFp_Limb Elem[P256_LIMBS];
-typedef GFp_Limb ScalarMont[P256_LIMBS];
-typedef GFp_Limb Scalar[P256_LIMBS];
+typedef Limb Elem[P256_LIMBS];
+typedef Limb ScalarMont[P256_LIMBS];
+typedef Limb Scalar[P256_LIMBS];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
@@ -80,7 +80,7 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
 
 /* TODO(perf): Optimize these. */
 
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
                        size_t_and_gfp_limb_are_different_sizes);
 
 
@@ -94,7 +94,7 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   alignas(32) Elem z; memset(z, 0, sizeof(z));
 
   for (size_t i = 0; i < 16; ++i) {
-    GFp_Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
+    Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
     for (size_t j = 0; j < P256_LIMBS; ++j) {
       x[j] |= table[i].X[j] & mask;
       y[j] |= table[i].Y[j] & mask;
@@ -116,7 +116,7 @@ void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
   alignas(32) Elem y; memset(y, 0, sizeof(y));
 
   for (size_t i = 0; i < 64; ++i) {
-    GFp_Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
+    Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
     for (size_t j = 0; j < P256_LIMBS; ++j) {
       x[j] |= table[i].X[j] & mask;
       y[j] |= table[i].Y[j] & mask;

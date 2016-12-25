@@ -75,30 +75,24 @@ pub fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
 #[inline]
 pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb]) -> LimbMask {
     assert_eq!(a.len(), b.len());
-    unsafe { GFp_constant_time_limbs_lt_limbs(a.as_ptr(), b.as_ptr(), b.len()) }
+    unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
 }
 
 #[inline]
 pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
-    unsafe { GFp_constant_time_limbs_are_zero(limbs.as_ptr(), limbs.len()) }
+    unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
 /// Equivalent to `if (r >= m) { r -= m; }`
 #[inline]
 pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     assert_eq!(r.len(), m.len());
-    unsafe {
-        GFp_constant_time_limbs_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len());
-    }
+    unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
 
 extern {
-    fn GFp_constant_time_limbs_are_zero(a: *const Limb, num_limbs: c::size_t)
-                                        -> LimbMask;
-
-    fn GFp_constant_time_limbs_lt_limbs(a: *const Limb, b: *const Limb,
-                                        num_limbs: c::size_t) -> LimbMask;
-
-    fn GFp_constant_time_limbs_reduce_once(r: *mut Limb, m: *const Limb,
-                                           num_limbs: c::size_t);
+    fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
+                       -> LimbMask;
+    fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
