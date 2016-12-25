@@ -187,8 +187,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   static const BN_ULONG Q_N0[] = {
     BN_MONT_CTX_N0(0x1, 0x1)
   };
-  /* XXX: Not (clearly) constant-time; inefficient. TODO: Add a dedicated
-   * squaring routine. */
+  /* XXX: Not (clearly) constant-time; inefficient.*/
   GFp_bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
@@ -204,6 +203,7 @@ static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
 }
 
 static inline void elem_sqr_mont(Elem r, const Elem a) {
+  /* XXX: Inefficient. TODO: Add a dedicated squaring routine. */
   elem_mul_mont(r, a, a);
 }
 
