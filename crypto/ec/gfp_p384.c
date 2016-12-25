@@ -33,11 +33,9 @@ typedef Limb Scalar[P384_LIMBS];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
 void GFp_p384_elem_div_by_2(Elem r, const Elem a);
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
 void GFp_p384_elem_neg(Elem r, const Elem a);
-void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b);
 void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
 void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
@@ -96,19 +94,11 @@ static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
 
 
 static void elem_add(Elem r, const Elem a, const Elem b) {
-  Limb carry = constant_time_is_nonzero_size_t(limbs_add(r, a, b, P384_LIMBS));
-  Elem adjusted;
-  Limb no_borrow =
-      constant_time_is_zero_size_t(limbs_sub(adjusted, r, Q, P384_LIMBS));
-  copy_conditional(r, adjusted,
-                   constant_time_select_size_t(carry, carry, no_borrow));
+  RING_limbs_add_mod(r, a, b, Q, P384_LIMBS);
 }
 
 static void elem_sub(Elem r, const Elem a, const Elem b) {
-  Limb borrow = constant_time_is_nonzero_size_t(limbs_sub(r, a, b, P384_LIMBS));
-  Elem adjusted;
-  (void)limbs_add(adjusted, r, Q, P384_LIMBS);
-  copy_conditional(r, adjusted, borrow);
+  RING_limbs_sub_mod(r, a, b, Q, P384_LIMBS);
 }
 
 static void elem_div_by_2(Elem r, const Elem a) {

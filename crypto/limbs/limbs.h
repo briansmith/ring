@@ -28,6 +28,10 @@ typedef BN_ULONG Limb;
 Limb RING_limbs_are_zero(const Limb a[], size_t num_limbs);
 Limb RING_limbs_eq_limbs(const Limb a[], const Limb b[], size_t num_limbs);
 void RING_limbs_reduce_once(Limb r[], const Limb m[], size_t num_limbs);
+void RING_limbs_add_mod(Limb r[], const Limb a[], const Limb b[],
+                        const Limb m[], size_t num_limbs);
+void RING_limbs_sub_mod(Limb r[], const Limb a[], const Limb b[],
+                        const Limb m[], size_t num_limbs);
 
 
 #endif /* RING_LIMBS_H */
