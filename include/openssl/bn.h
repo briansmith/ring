@@ -350,6 +350,11 @@ OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 OPENSSL_EXPORT int GFp_BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
                                 const BIGNUM *divisor);
 
+/* GFp_BN_mod_add_quick acts like |BN_mod_add| but requires that |a| and |b| be
+ * non-negative and less than |m|. */
+OPENSSL_EXPORT int GFp_BN_mod_add_quick(BIGNUM *r, const BIGNUM *a,
+                                        const BIGNUM *b, const BIGNUM *m);
+
 /* GFp_BN_mod_sub_quick acts like |GFp_BN_mod_sub| but requires that |a| and
  * |b| be non-negative and less than |m|. */
 OPENSSL_EXPORT int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a,
