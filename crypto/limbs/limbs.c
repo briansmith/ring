@@ -61,9 +61,9 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
    * be consistent with |LIMBS_limbs_reduce_once| and other code that makes such
    * comparisons as part of doing conditional reductions. */
   Limb dummy;
-  Carry borrow = gfp_sub(&dummy, a[0], b[0]);
+  Carry borrow = limb_sub(&dummy, a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
-    borrow = gfp_sbb(&dummy, a[i], b[i], borrow);
+    borrow = limb_sbb(&dummy, a[i], b[i], borrow);
   }
   return constant_time_is_nonzero_size_t(borrow);
 }
@@ -77,13 +77,14 @@ void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
    * towards this function being used in RSA in the future, we do things a
    * slightly less efficient way. */
   Limb lt = LIMBS_less_than(r, m, num_limbs);
-  Carry borrow = gfp_sub(&r[0], r[0], constant_time_select_size_t(lt, 0, m[0]));
+  Carry borrow =
+      limb_sub(&r[0], r[0], constant_time_select_size_t(lt, 0, m[0]));
   for (size_t i = 1; i < num_limbs; ++i) {
     /* XXX: This is probably particularly inefficient because the operations in
      * constant_time_select affect the carry flag, so there will likely be
      * loads and stores of |borrow|. */
-    borrow = gfp_sbb(&r[i], r[i],
-                     constant_time_select_size_t(lt, 0, m[i]), borrow);
+    borrow =
+        limb_sbb(&r[i], r[i], constant_time_select_size_t(lt, 0, m[i]), borrow);
   }
   assert(borrow == 0);
 }
