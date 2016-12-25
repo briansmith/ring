@@ -21,6 +21,10 @@
 #include "limbs.inl"
 
 
+/* XXX: We assume that the conversion from |Carry| to |Limb| is constant-time,
+ * but we haven't verified that assumption. TODO: Fix it so we don't need to
+ * make that assumption. */
+
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 
@@ -87,4 +91,26 @@ void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
         limb_sbb(&r[i], r[i], constant_time_select_size_t(lt, 0, m[i]), borrow);
   }
   assert(borrow == 0);
+}
+
+void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
+                   size_t num_limbs) {
+  Limb overflow1 =
+      constant_time_is_nonzero_size_t(limbs_add(r, a, b, num_limbs));
+  Limb overflow2 = ~LIMBS_less_than(r, m, num_limbs);
+  Limb overflow = overflow1 | overflow2;
+  Carry borrow = limb_sub(&r[0], r[0], m[0] & overflow);
+  for (size_t i = 1; i < num_limbs; ++i) {
+    borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
+  }
+}
+
+void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
+                   size_t num_limbs) {
+  Limb underflow =
+      constant_time_is_nonzero_size_t(limbs_sub(r, a, b, num_limbs));
+  Carry carry = limb_add(&r[0], r[0], m[0] & underflow);
+  for (size_t i = 1; i < num_limbs; ++i) {
+    carry = limb_adc(&r[i], r[i], m[i] & underflow, carry);
+  }
 }
