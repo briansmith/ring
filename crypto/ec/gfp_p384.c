@@ -135,13 +135,13 @@ static void elem_div_by_2(Elem r, const Elem a) {
    * we obviously can't get with just a right shift.
    *
    * `q` is odd, and `a` is odd, so `a + q` is even. We could calculate
-   * `(a + q) >> 1` and then reduce it mod `q`. However, we then we would have
-   * to keep track of an extra most significant bit. We can avoid that by
-   * instead calculating `(a >> 1) + ((q + 1) >> 1)`. The `1` in `q + 1` is the
-   * least significant bit of `a`. `q + 1` is even, which means it can be
-   * shifted without losing any bits. Since `q` is odd, `q - 1` is even, so the
-   * largest odd field element is `q - 2`. Thus we know that `a <= q - 2`. We
-   * know `(q + 1) >> 1` is `(q + 1) / 2` since (`q + 1`) is even. The value of
+   * `(a + q) >> 1` and then reduce it mod `q`. However, then we would have to
+   * keep track of an extra most significant bit. We can avoid that by instead
+   * calculating `(a >> 1) + ((q + 1) >> 1)`. The `1` in `q + 1` is the least
+   * significant bit of `a`. `q + 1` is even, which means it can be shifted
+   * without losing any bits. Since `q` is odd, `q - 1` is even, so the largest
+   * odd field element is `q - 2`. Thus we know that `a <= q - 2`. We know
+   * `(q + 1) >> 1` is `(q + 1) / 2` since (`q + 1`) is even. The value of
    * `a >> 1` is `(a - 1)/2` since the shift will drop the least significant
    * bit of `a`, which is 1. Thus:
    *
