@@ -173,6 +173,11 @@ impl OddPositive {
     }
 
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
+        // `elem_inverse()`, at least, requires the modulus to be larger one.
+        if self.bit_length() < bits::BitLength::from_usize_bits(2) {
+            return Err(error::Unspecified);
+        }
+
         let r = Modulus {
             ctx: unsafe { GFp_BN_MONT_CTX_new() },
             ring: PhantomData,
@@ -222,7 +227,8 @@ pub unsafe trait SmallerModulus<L> {}
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 
-/// A modulus that can be used for Montgomery math.
+/// A modulus that can be used for Montgomery math. The value must be odd and
+/// larger than one.
 pub struct Modulus<M> {
     ctx: *mut BN_MONT_CTX,
 
@@ -504,6 +510,9 @@ pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
 }
 
 // r = 1/a (mod m), blinded with a random element.
+//
+// This relies on the invariants of `Modulus` that its value is odd and larger
+// than one.
 pub fn elem_set_to_inverse_blinded<M>(
             r: &mut ElemDecoded<M>, a: &ElemDecoded<M>, m: &Modulus<M>,
             rng: &rand::SecureRandom) -> Result<(), InversionError> {
@@ -516,7 +525,10 @@ pub fn elem_set_to_inverse_blinded<M>(
     Ok(())
 }
 
-// r = 1/a (mod m)
+// r = 1/a (mod m).
+//
+// This relies on the invariants of `Modulus` that its value is odd and larger
+// than one.
 fn elem_inverse<M>(a: ElemDecoded<M>, m: &Modulus<M>)
                    -> Result<ElemDecoded<M>, InversionError> {
     let value = a.value;
