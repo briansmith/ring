@@ -1,6 +1,10 @@
 use std::collections::HashMap;
-use std::string::{String, ToString};
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+use std::fs::File;
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+use std::io::BufReader;
 use std::io::BufRead;
+use std::string::{String, ToString};
 
 #[derive(Debug, PartialEq)]
 pub enum CpuInfoError {
@@ -10,10 +14,18 @@ pub enum CpuInfoError {
 
 pub type CpuInfo = HashMap<String, String>;
 
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+pub fn parse_cpuinfo() -> Result<CpuInfo, CpuInfoError> {
+    match File::open("/proc/cpuinfo").map(|f| BufReader::new(f)) {
+        Ok(mut r) => parse_cpuinfo_reader(&mut r),
+        Err(_) => Err(CpuInfoError::IoError)
+    }
+}
+
 /// parse the contents of /proc/cpuinfo into a map of field names to values.
-/// Only uses the first core, assuming all are the same.
-#[allow(dead_code)] // TODO
-pub fn parse_cpuinfo(input: &mut BufRead) -> Result<CpuInfo, CpuInfoError> {
+/// Keeps the first encountered value for each name.
+#[cfg(any(test, target_os="linux"))]
+pub fn parse_cpuinfo_reader(input: &mut BufRead) -> Result<CpuInfo, CpuInfoError> {
     // cpu flags can be quite long
     let mut line_buf = String::with_capacity(300);
     let mut fields = HashMap::new();
@@ -83,7 +95,7 @@ mod tests {
     #[test]
     fn test_parse_cpuinfo_no_colon_delimiter_error() {
         let mut input = "foobar\n".as_bytes();
-        let cpuinfo = super::parse_cpuinfo(&mut input);
+        let cpuinfo = super::parse_cpuinfo_reader(&mut input);
         assert_eq!(CpuInfoError::InvalidFormat, cpuinfo.unwrap_err());
     }
 
@@ -91,28 +103,28 @@ mod tests {
     fn test_parse_cpuinfo_no_trailing_blank_line_ok() {
         // this is how it would be if there was only 1 core
         let mut input = "wp		: yes\n".as_bytes();
-        let cpuinfo = super::parse_cpuinfo(&mut input).unwrap();
+        let cpuinfo = super::parse_cpuinfo_reader(&mut input).unwrap();
         assert_eq!(1, cpuinfo.len());
     }
 
     #[test]
     fn test_parse_cpuinfo_empty_line_ok() {
         let mut input = "\n".as_bytes();
-        let cpuinfo = super::parse_cpuinfo(&mut input).unwrap();
+        let cpuinfo = super::parse_cpuinfo_reader(&mut input).unwrap();
         assert_eq!(0, cpuinfo.len());
     }
 
     #[test]
     fn test_parse_cpuinfo_empty_input_ok() {
         let mut input = "".as_bytes();
-        let cpuinfo = super::parse_cpuinfo(&mut input).unwrap();
+        let cpuinfo = super::parse_cpuinfo_reader(&mut input).unwrap();
         assert_eq!(0, cpuinfo.len());
     }
 
     #[test]
     fn test_parse_cpuinfo_skips_blank_line() {
         let mut input = "foo\t: bar\n\nbaz\t: quux\n".as_bytes();
-        let cpuinfo = super::parse_cpuinfo(&mut input).unwrap();
+        let cpuinfo = super::parse_cpuinfo_reader(&mut input).unwrap();
         assert_eq!(2, cpuinfo.len());
         assert_eq!("bar", cpuinfo.get("foo").unwrap());
         assert_eq!("quux", cpuinfo.get("baz").unwrap());
@@ -135,6 +147,6 @@ mod tests {
         let _ = f.read_to_end(&mut buf).unwrap();
 
         let mut buffer = &buf[..];
-        super::parse_cpuinfo(&mut buffer)
+        super::parse_cpuinfo_reader(&mut buffer)
     }
 }

@@ -1,10 +1,5 @@
 use std::collections::HashSet;
-#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-use std::fs::File;
-#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-use std::io::BufReader;
 use std::string::{String, ToString};
-// TODO represent unsigned long without libc
 use c::ulong;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 use self::auxv::AuxValError;
@@ -42,15 +37,13 @@ extern "C" {
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 #[allow(non_snake_case)]
 extern "C" fn GFp_cpuid_setup() {
-    if let Ok(mut r) = File::open("/proc/cpuinfo").map(|f| BufReader::new(f)) {
-        if let Ok(c) = parse_cpuinfo(&mut r) {
-            // TODO handle failures to read from procfs auxv
-            if let Ok(auxvals) = auxv::search_auxv(&Path::from("/proc/self/auxv"),
-                       &[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
-                let armcap = arm_cpuid_setup(&c, &auxvals);
-                unsafe {
-                    GFp_armcap_P |= armcap;
-                }
+    if let Ok(c) = parse_cpuinfo() {
+        // TODO handle failures to read from procfs auxv
+        if let Ok(auxvals) = auxv::search_auxv(&Path::from("/proc/self/auxv"),
+                   &[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
+            let armcap = arm_cpuid_setup(&c, &auxvals);
+            unsafe {
+                GFp_armcap_P |= armcap;
             }
         }
     }
@@ -211,7 +204,7 @@ mod tests {
 
     use super::{ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
         ARM_HWCAP2_AES, ARM_HWCAP2_PMULL, ARM_HWCAP2_SHA1, ARM_HWCAP2_SHA2};
-    use super::cpuinfo::{parse_cpuinfo, CpuInfo, CpuInfoError};
+    use super::cpuinfo::{parse_cpuinfo_reader, CpuInfo, CpuInfoError};
 
     #[test]
     fn armcap_for_hwcap2_zero_returns_zero() {
@@ -309,6 +302,6 @@ mod tests {
         let _ = f.read_to_end(&mut buf).unwrap();
 
         let mut buffer = &buf[..];
-        parse_cpuinfo(&mut buffer)
+        parse_cpuinfo_reader(&mut buffer)
     }
 }
