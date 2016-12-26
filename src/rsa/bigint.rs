@@ -461,7 +461,7 @@ pub const PUBLIC_EXPONENT_MAX_BITS: bits::BitLength = bits::BitLength(33);
 // TODO: need tests iwth 65537 and 3.
 pub fn elem_exp_vartime<M>(
         base: ElemDecoded<M>, PublicExponent(exponent): PublicExponent,
-        m: &Modulus<M>) -> Result<ElemDecoded<M>, error::Unspecified> {
+        m: &Modulus<M>) -> Result<Elem<M>, error::Unspecified> {
     // The vast majority of the time the exponent is either 65537
     // (0b10000000000000001) or 3 (0b11), both of which have the minimal
     // Hamming (TODO: capitaliation) weight of 2. As explained in Knuth
@@ -487,7 +487,7 @@ pub fn elem_exp_vartime<M>(
             acc = try!(elem_mul(&base, acc, m));
         }
     }
-    acc.into_elem_decoded(m)
+    Ok(acc)
 }
 
 pub fn elem_exp_consttime<M>(
@@ -728,6 +728,7 @@ mod tests {
             let e = consume_public_exponent(test_case, "E");
 
             let actual_result = elem_exp_vartime(base, e, &m).unwrap();
+            let actual_result = actual_result.into_elem_decoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
