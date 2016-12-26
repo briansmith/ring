@@ -12,7 +12,7 @@ use self::auxv::{AuxValError, AuxVals};
 #[cfg(all(target_os = "linux", target_arch = "arm"))]
 use self::cpuinfo::CpuInfo;
 #[cfg(all(target_os = "linux", target_arch = "arm"))]
-use self::arm::arm_cpuid_setup;
+use self::arm_linux::arm_cpuid_setup;
 
 #[cfg(all(target_os = "linux", target_arch = "arm"))]
 static HAS_BROKEN_NEON: bool = false;
@@ -56,6 +56,5 @@ fn search_procfs_auxv(auxv_types: &[c_ulong]) -> Result<AuxVals, AuxValError> {
     auxv::search_auxv(&mut auxv, auxv_types)
 }
 
-mod auxv;
-mod cpuinfo;
-mod arm;
+#[path = "arm_linux/arm_linux.rs"]
+mod arm_linux;

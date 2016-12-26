@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_parse_cpuinfo_virtualbox_linux() {
-        let path = Path::new("src/cpu_feature/test-data/macos-virtualbox-linux-x64-4850HQ.cpuinfo");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x64-4850HQ.cpuinfo");
         let cpuinfo = parse_cpuinfo_file(path).unwrap();
 
         // 1 tab
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_parse_cpuinfo_real_linux() {
-        let path = Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k.cpuinfo");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.cpuinfo");
         let cpuinfo = parse_cpuinfo_file(path).unwrap();
 
         // 1 tab
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_parse_cpuinfo_broken_arm() {
-        let path = Path::new("src/cpu_feature/test-data/linux-arm-broken.cpuinfo");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo");
         let cpuinfo = parse_cpuinfo_file(path).unwrap();
 
         // kept the first 'processor'

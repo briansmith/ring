@@ -2,9 +2,8 @@ use std::collections::HashSet;
 use std::string::{String, ToString};
 
 use super::libc::c_ulong;
-use super::cpuinfo::CpuInfo;
-use super::auxv;
-use super::auxv::AuxVals;
+use self::cpuinfo::CpuInfo;
+use self::auxv::AuxVals;
 
 // Bits exposed in HWCAP and HWCAP2
 // See /usr/include/asm/hwcap.h on an ARM installation for the source of
@@ -167,6 +166,9 @@ fn parse_arm_cpuinfo_features(features_val: &str) -> HashSet<String> {
         .collect();
 }
 
+mod auxv;
+mod cpuinfo;
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -178,7 +180,7 @@ mod tests {
 
     use super::{ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
         ARM_HWCAP2_AES, ARM_HWCAP2_PMULL, ARM_HWCAP2_SHA1, ARM_HWCAP2_SHA2};
-    use super::super::cpuinfo::{parse_cpuinfo, CpuInfo, CpuInfoError};
+    use super::cpuinfo::{parse_cpuinfo, CpuInfo, CpuInfoError};
 
     #[test]
     fn armcap_for_hwcap2_zero_returns_zero() {
@@ -221,7 +223,7 @@ mod tests {
     fn arm_hwcap2_cpuinfo_missing_features_returns_none() {
         // x86 doesn't have "Features", it has "flags"
         let cpuinfo = parse_cpuinfo_file(
-            Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k.cpuinfo")).unwrap();
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.cpuinfo")).unwrap();
 
         assert_eq!(None, super::hwcap2_from_cpuinfo(&cpuinfo));
     }
@@ -230,7 +232,7 @@ mod tests {
     fn arm_hwcap2_cpuinfo_sad_features_returns_zero() {
         // the broken cpu has weaksauce features
         let cpuinfo = parse_cpuinfo_file(
-            Path::new("src/cpu_feature/test-data/linux-arm-broken.cpuinfo")).unwrap();
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
 
         assert_eq!(Some(0), super::hwcap2_from_cpuinfo(&cpuinfo));
     }
@@ -250,7 +252,7 @@ mod tests {
     #[test]
     fn arm_broken_neon_cpuinfo_detects_broken_arm() {
         let cpuinfo = parse_cpuinfo_file(
-            Path::new("src/cpu_feature/test-data/linux-arm-broken.cpuinfo")).unwrap();
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
 
         assert!(super::cpu_has_broken_neon(&cpuinfo));
     }
@@ -258,7 +260,7 @@ mod tests {
     #[test]
     fn arm_broken_neon_cpuinfo_ignores_x86() {
         let cpuinfo = parse_cpuinfo_file(
-            Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k.cpuinfo")).unwrap();
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.cpuinfo")).unwrap();
 
         assert!(!super::cpu_has_broken_neon(&cpuinfo));
     }

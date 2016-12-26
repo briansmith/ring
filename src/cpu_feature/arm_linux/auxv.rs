@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_parse_auxval_virtualbox_linux() {
-        let path = Path::new("src/cpu_feature/test-data/macos-virtualbox-linux-x64-4850HQ.auxv");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x64-4850HQ.auxv");
         let vals = search_auxval_file(path, &[AT_HWCAP, AT_HWCAP2, AT_UID]).unwrap();
         let hwcap = vals.get(&AT_HWCAP).unwrap();
         assert_eq!(&395049983_u64, hwcap);
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_parse_auxval_real_linux() {
-        let path = Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k.auxv");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv");
         let vals = search_auxval_file(path, &[AT_HWCAP, AT_HWCAP2, AT_UID]).unwrap();
         let hwcap = vals.get(&AT_HWCAP).unwrap();
 
@@ -128,21 +128,21 @@ mod tests {
 
     #[test]
     fn test_parse_auxval_real_linux_half_of_trailing_null_missing_error() {
-        let path = Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k-mangled-no-value-in-trailing-null.auxv");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-value-in-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
             search_auxval_file(path, &[555555555]).unwrap_err());
     }
 
     #[test]
     fn test_parse_auxval_real_linux_trailing_null_missing_error() {
-        let path = Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k-mangled-no-trailing-null.auxv");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
             search_auxval_file(path, &[555555555]).unwrap_err());
     }
 
     #[test]
     fn test_parse_auxval_real_linux_truncated_entry_error() {
-        let path = Path::new("src/cpu_feature/test-data/linux-x64-i7-6850k-mangled-truncated-entry.auxv");
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-truncated-entry.auxv");
         assert_eq!(AuxValError::InvalidFormat,
             search_auxval_file(path, &[555555555]).unwrap_err());
     }
