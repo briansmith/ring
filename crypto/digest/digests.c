@@ -59,9 +59,10 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/asn1.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/sha.h>
 
 #include "internal.h"
@@ -306,8 +307,36 @@ const EVP_MD* EVP_get_digestbynid(int nid) {
   return NULL;
 }
 
-const EVP_MD* EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
-  return EVP_get_digestbynid(OBJ_obj2nid(obj));
+static const struct {
+  uint8_t oid[9];
+  uint8_t oid_len;
+  const EVP_MD *(*md_func) (void);
+} kMDOIDs[] = {
+  /* 1.2.840.113549.2.4 */
+  { {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x04}, 8, EVP_md4 },
+  /* 1.2.840.113549.2.5 */
+  { {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05}, 8, EVP_md5 },
+  /* 1.3.14.3.2.26 */
+  { {0x2b, 0x0e, 0x03, 0x02, 0x1a}, 5, EVP_sha1 },
+  /* 2.16.840.1.101.3.4.2.1 */
+  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01}, 9, EVP_sha256 },
+  /* 2.16.840.1.101.3.4.2.2 */
+  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02}, 9, EVP_sha384 },
+  /* 2.16.840.1.101.3.4.2.3 */
+  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03}, 9, EVP_sha512 },
+  /* 2.16.840.1.101.3.4.2.4 */
+  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04}, 9, EVP_sha224 },
+};
+
+const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMDOIDs); i++) {
+    if (obj->length == kMDOIDs[i].oid_len &&
+        memcmp(obj->data, kMDOIDs[i].oid, obj->length) == 0) {
+      return kMDOIDs[i].md_func();
+    }
+  }
+
+  return NULL;
 }
 
 const EVP_MD *EVP_get_digestbyname(const char *name) {
