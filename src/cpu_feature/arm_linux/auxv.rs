@@ -31,7 +31,6 @@ pub enum AuxValError {
 /// aux_types: the types to look for
 /// returns a map of types to values, only including entries for types that were
 /// requested that also had values in the aux vector
-#[allow(dead_code)] // TODO
 pub fn search_auxv(path: &Path, aux_types: &[ulong]) ->
 Result<AuxVals, AuxValError> {
     let mut input = File::open(path)

@@ -41,7 +41,7 @@ extern "C" fn GFp_cpuid_setup() {
         // TODO handle failures to read from procfs auxv
         if let Ok(auxvals) = auxv::search_auxv(&Path::from("/proc/self/auxv"),
                    &[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
-            let armcap = arm_cpuid_setup(&c, &auxvals);
+            let armcap = armcap_bits(&c, &auxvals);
             unsafe {
                 GFp_armcap_P |= armcap;
             }
@@ -51,8 +51,7 @@ extern "C" fn GFp_cpuid_setup() {
 
 /// returns the GFp_armcap_P bitstring
 #[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
-#[allow(dead_code)] // TODO
-fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
+fn armcap_bits(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
     let mut hwcap: ulong = 0;
 
     // |getauxval| is not available on Android until API level 20. If it is
@@ -106,8 +105,6 @@ fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
     return armcap;
 }
 
-
-#[allow(dead_code)] // TODO
 fn armcap_for_hwcap2(hwcap2: ulong) -> u32 {
     let mut ret: u32 = 0;
     if hwcap2 & ARM_HWCAP2_AES > 0 {
@@ -126,7 +123,6 @@ fn armcap_for_hwcap2(hwcap2: ulong) -> u32 {
     return ret;
 }
 
-#[allow(dead_code)] // TODO
 fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
     if let Some(v) = cpuinfo.get("CPU architecture") {
         if v == "8" {
@@ -148,7 +144,6 @@ fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
     return None;
 }
 
-#[allow(dead_code)] // TODO
 fn hwcap2_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
     if let Some(v) = cpuinfo.get("Features") {
         let mut ret: ulong = 0;
@@ -173,7 +168,6 @@ fn hwcap2_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
     }
 }
 
-#[allow(dead_code)] // TODO
 fn cpu_has_broken_neon(cpuinfo: &CpuInfo) -> bool {
     return cpuinfo.get("CPU implementer").map_or(false, |s| s == "0x51") &&
         cpuinfo.get("CPU architecture").map_or( false, |s| s == "7") &&
@@ -182,7 +176,6 @@ fn cpu_has_broken_neon(cpuinfo: &CpuInfo) -> bool {
         cpuinfo.get("CPU revision").map_or(false, |s| s == "0")
 }
 
-#[allow(dead_code)] // TODO
 fn parse_arm_cpuinfo_features(features_val: &str) -> HashSet<String> {
     return features_val.trim_right_matches(' ')
         .split(' ')
@@ -202,9 +195,48 @@ mod tests {
     use std::string::{String, ToString};
     use std::vec::Vec;
 
-    use super::{ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
-        ARM_HWCAP2_AES, ARM_HWCAP2_PMULL, ARM_HWCAP2_SHA1, ARM_HWCAP2_SHA2};
+    use super::{armcap_bits, ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
+        ARM_HWCAP2_AES, ARM_HWCAP2_PMULL, ARM_HWCAP2_SHA1, ARM_HWCAP2_SHA2, ARMV7_NEON};
     use super::cpuinfo::{parse_cpuinfo_reader, CpuInfo, CpuInfoError};
+    use super::auxv::search_auxv;
+
+    #[test]
+    fn armcap_bits_broken_neon_without_auxv_yields_zero_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
+
+        // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
+        let auxv = search_auxv(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
+
+        assert_eq!(0, armcap_bits(&cpuinfo, &auxv));
+    }
+
+    #[test]
+    fn armcap_bits_ok_arm_neon_without_auxv_yields_neon_only_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-C1904.cpuinfo")).unwrap();
+
+        // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
+        let auxv = search_auxv(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
+
+        assert_eq!(ARMV7_NEON, armcap_bits(&cpuinfo, &auxv));
+    }
+
+    #[test]
+    fn armcap_bits_arm_8_with_features_without_auxv_yields_fully_populated_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-cavium-thunderx.cpuinfo"))
+                .unwrap();
+
+        // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
+        let auxv = search_auxv(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
+
+        assert_eq!(ARMV7_NEON | ARMV8_PMULL | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256,
+            armcap_bits(&cpuinfo, &auxv));
+    }
 
     #[test]
     fn armcap_for_hwcap2_zero_returns_zero() {
