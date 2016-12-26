@@ -1,9 +1,19 @@
-use std::collections::HashSet;
-use std::string::{String, ToString};
+extern crate libc;
 
-use super::libc::c_ulong;
-use self::cpuinfo::CpuInfo;
+use std::collections::HashSet;
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+use std::fs::File;
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+use std::io::BufReader;
+use std::string::{String, ToString};
+// TODO represent unsigned long without libc
+use self::libc::c_ulong;
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+use self::auxv::AuxValError;
 use self::auxv::AuxVals;
+use self::cpuinfo::CpuInfo;
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+use self::cpuinfo::parse_cpuinfo;
 
 // Bits exposed in HWCAP and HWCAP2
 // See /usr/include/asm/hwcap.h on an ARM installation for the source of
@@ -17,6 +27,7 @@ const ARM_HWCAP_NEON: c_ulong = 1 << 12;
 
 // Constants used in GFp_armcap_P
 // from include/openssl/arm_arch.h
+#[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
 const ARMV7_NEON: u32 = 1 << 0;
 // not a typo; there is no constant for 1 << 1
 const ARMV8_AES: u32 = 1 << 2;
@@ -24,10 +35,41 @@ const ARMV8_SHA1: u32 = 1 << 3;
 const ARMV8_SHA256: u32 = 1 << 4;
 const ARMV8_PMULL: u32 = 1 << 5;
 
-/// returns the GFp_armcap_P bitstring and whether or not NEON is detected
-/// as broken
+extern "C" {
+    #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+    #[allow(non_upper_case_globals)]
+    pub static mut GFp_armcap_P: u32;
+}
+
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+#[allow(non_snake_case)]
+extern "C" fn GFp_cpuid_setup() {
+    if let Ok(mut r) = File::open("/proc/cpuinfo").map(|f| BufReader::new(f)) {
+        if let Ok(c) = parse_cpuinfo(&mut r) {
+            // TODO handle failures to read from procfs auxv
+            if let Ok(auxvals) = search_procfs_auxv(&[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
+                let armcap = arm_cpuid_setup(&c, &auxvals);
+                unsafe {
+                    GFp_armcap_P |= armcap;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
+fn search_procfs_auxv(auxv_types: &[c_ulong]) -> Result<AuxVals, AuxValError> {
+    let mut auxv = File::open("/proc/self/auxv")
+        .map_err(|_| AuxValError::IoError)
+        .map(|f| BufReader::new(f))?;
+
+    auxv::search_auxv(&mut auxv, auxv_types)
+}
+
+/// returns the GFp_armcap_P bitstring
+#[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
 #[allow(dead_code)] // TODO
-pub fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> (u32, bool) {
+fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
     let mut hwcap: c_ulong = 0;
 
     // |getauxval| is not available on Android until API level 20. If it is
@@ -51,8 +93,7 @@ pub fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> (u32, bool) 
     }
 
     // Clear NEON support if known broken
-    let has_broken_neon = cpu_has_broken_neon(&cpuinfo);
-    if has_broken_neon {
+    if cpu_has_broken_neon(&cpuinfo) {
         hwcap &= !ARM_HWCAP_NEON;
     }
 
@@ -79,7 +120,7 @@ pub fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> (u32, bool) 
         armcap |= armcap_for_hwcap2(hwcap2);
     }
 
-    return (armcap, has_broken_neon);
+    return armcap;
 }
 
 
