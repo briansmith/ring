@@ -179,6 +179,7 @@ impl OddPositive {
         }
 
         let r = Modulus {
+            value: self,
             ctx: unsafe { GFp_BN_MONT_CTX_new() },
             ring: PhantomData,
         };
@@ -188,7 +189,7 @@ impl OddPositive {
         // XXX: This makes a copy of `self`'s `BIGNUM`. TODO: change this to a
         // move.
         try!(bssl::map_result(unsafe {
-            GFp_BN_MONT_CTX_set(&mut *r.ctx, self.as_ref())
+            GFp_BN_MONT_CTX_set(&mut *r.ctx, r.value.as_ref())
         }));
         Ok(r)
     }
@@ -230,6 +231,7 @@ pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 /// A modulus that can be used for Montgomery math. The value must be odd and
 /// larger than one.
 pub struct Modulus<M> {
+    value: OddPositive,
     ctx: *mut BN_MONT_CTX,
 
     /// The ring ℤ/mℤ for which this is the modulus.
