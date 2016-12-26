@@ -91,14 +91,6 @@ define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
 define_type!(long, i64, test_long_metrics, GFp_long_align, GFp_long_size,
              "The C `long` type. Equivalent to `libc::c_long`.");
 
-#[cfg(any(target_os = "windows", target_pointer_width = "32"))]
-define_type!(ulong, u32, test_unsigned_long_metrics, GFp_unsigned_long_align, GFp_unsigned_long_size,
-             "The C `unsigned long` type. Equivalent to `libc::c_ulong`.");
-
-#[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
-define_type!(ulong, u64, test_unsigned_long_metrics, GFp_unsigned_long_align, GFp_unsigned_long_size,
-             "The C `unsigned long` type. Equivalent to `libc::c_ulong`.");
-
 define_type!(
   size_t, usize, test_size_t_metrics, GFp_size_t_align, GFp_size_t_size,
   "The C `size_t` type from `<stdint.h>`.

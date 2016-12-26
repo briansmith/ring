@@ -1,22 +1,37 @@
 use std::collections::HashSet;
 use std::string::{String, ToString};
-use c::ulong;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-use self::auxv::AuxValError;
-use self::auxv::AuxVals;
+use self::auxv::AuxvUnsignedLongNative;
+use self::auxv::{AuxVals, AuxvTypes, AuxvUnsignedLong};
 use self::cpuinfo::CpuInfo;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 use self::cpuinfo::parse_cpuinfo;
 
-// Bits exposed in HWCAP and HWCAP2
-// See /usr/include/asm/hwcap.h on an ARM installation for the source of
-// these values.
-const ARM_HWCAP2_AES: ulong = 1 << 0;
-const ARM_HWCAP2_PMULL: ulong = 1 << 1;
-const ARM_HWCAP2_SHA1: ulong = 1 << 2;
-const ARM_HWCAP2_SHA2: ulong = 1 << 3;
+// Bits exposed in HWCAP and HWCAP2 auxv values
+#[derive(Clone, Copy)]
+#[allow(non_snake_case)]
+struct ArmHwcapFeatures<T: AuxvUnsignedLong> {
+    ARM_HWCAP2_AES: T,
+    ARM_HWCAP2_PMULL: T,
+    ARM_HWCAP2_SHA1: T,
+    ARM_HWCAP2_SHA2: T,
+    ARM_HWCAP_NEON: T,
+}
 
-const ARM_HWCAP_NEON: ulong = 1 << 12;
+impl <T: AuxvUnsignedLong> ArmHwcapFeatures<T> {
+    fn new() -> ArmHwcapFeatures<T> {
+        ArmHwcapFeatures {
+            // See /usr/include/asm/hwcap.h on an ARM installation for the source of
+            // these values.
+            ARM_HWCAP2_AES: T::from(1 << 0),
+            ARM_HWCAP2_PMULL: T::from(1 << 1),
+            ARM_HWCAP2_SHA1: T::from(1 << 2),
+            ARM_HWCAP2_SHA2: T::from(1 << 3),
+
+            ARM_HWCAP_NEON: T::from(1 << 12),
+        }
+    }
+}
 
 // Constants used in GFp_armcap_P
 // from include/openssl/arm_arch.h
@@ -37,11 +52,15 @@ extern "C" {
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 #[allow(non_snake_case)]
 extern "C" fn GFp_cpuid_setup() {
+    let auxv_types: AuxvTypes<AuxvUnsignedLongNative> = AuxvTypes::new();
+    let hwcap_features: ArmHwcapFeatures<AuxvUnsignedLongNative> = ArmHwcapFeatures::new();
     if let Ok(c) = parse_cpuinfo() {
         // TODO handle failures to read from procfs auxv
-        if let Ok(auxvals) = auxv::search_auxv(&Path::from("/proc/self/auxv"),
-                   &[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
-            let armcap = armcap_bits(&c, &auxvals);
+        if let Ok(auxvals) = auxv::search_auxv::<AuxvUnsignedLongNative, NativeEndian>(
+                    &Path::from("/proc/self/auxv"),
+                    &[auxv_types.AT_HWCAP, auxv_types.AT_HWCAP2]) {
+            let armcap = armcap_bits::<AuxvUnsignedLongNative>(&c, &auxvals, auxv_types,
+                                                         hwcap_features);
             unsafe {
                 GFp_armcap_P |= armcap;
             }
@@ -51,8 +70,11 @@ extern "C" fn GFp_cpuid_setup() {
 
 /// returns the GFp_armcap_P bitstring
 #[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
-fn armcap_bits(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
-    let mut hwcap: ulong = 0;
+fn armcap_bits<T: AuxvUnsignedLong>(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals<T>,
+                                    auxval_types: AuxvTypes<T>,
+                                    hwcap_features: ArmHwcapFeatures<T>)
+                                    -> u32 {
+    let mut hwcap: T = T::from(0);
 
     // |getauxval| is not available on Android until API level 20. If it is
     // unavailable, read from /proc/self/auxv as a fallback. This is unreadable
@@ -65,23 +87,23 @@ fn armcap_bits(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
     // this is needed by the assumption in hwcap_from_cpuinfo that future architectures
     // will have a working getauxval.
 
-    if let Some(v) = procfs_auxv.get(&auxv::AT_HWCAP) {
+    if let Some(v) = procfs_auxv.get(&auxval_types.AT_HWCAP) {
         hwcap = *v;
     } else {
         // fall back to cpuinfo
-        if let Some(v) = hwcap_from_cpuinfo(&cpuinfo) {
+        if let Some(v) = hwcap_from_cpuinfo(&cpuinfo, hwcap_features) {
             hwcap = v;
         }
     }
 
     // Clear NEON support if known broken
     if cpu_has_broken_neon(&cpuinfo) {
-        hwcap &= !ARM_HWCAP_NEON;
+        hwcap &= !hwcap_features.ARM_HWCAP_NEON;
     }
 
     // Matching OpenSSL, only report other features if NEON is present
     let mut armcap: u32 = 0;
-    if hwcap & ARM_HWCAP_NEON > 0 {
+    if hwcap & hwcap_features.ARM_HWCAP_NEON > T::from(0) {
         armcap |= ARMV7_NEON;
 
         // Some ARMv8 Android devices don't expose AT_HWCAP2. Fall back to
@@ -89,41 +111,45 @@ fn armcap_bits(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
 
         // TODO use getauxval if available for AT_HWCAP2
 
-        let mut hwcap2: ulong = 0;
-        if let Some(v) = procfs_auxv.get(&auxv::AT_HWCAP2) {
+        let mut hwcap2: T = T::from(0);
+        if let Some(v) = procfs_auxv.get(&auxval_types.AT_HWCAP2) {
             hwcap2 = *v;
         } else {
-            if let Some(v) = hwcap2_from_cpuinfo(&cpuinfo) {
+            if let Some(v) = hwcap2_from_cpuinfo(&cpuinfo, hwcap_features) {
                 hwcap2 = v;
             }
             // otherwise, leave at 0
         }
 
-        armcap |= armcap_for_hwcap2(hwcap2);
+        armcap |= armcap_for_hwcap2(hwcap2, hwcap_features);
     }
 
     return armcap;
 }
 
-fn armcap_for_hwcap2(hwcap2: ulong) -> u32 {
+fn armcap_for_hwcap2<T: AuxvUnsignedLong>(hwcap2: T,
+                                          hwcap_features: ArmHwcapFeatures<T>)
+                                          -> u32 {
     let mut ret: u32 = 0;
-    if hwcap2 & ARM_HWCAP2_AES > 0 {
+    if hwcap2 & hwcap_features.ARM_HWCAP2_AES > T::from(0) {
         ret |= ARMV8_AES;
     }
-    if hwcap2 & ARM_HWCAP2_PMULL > 0 {
+    if hwcap2 & hwcap_features.ARM_HWCAP2_PMULL > T::from(0) {
         ret |= ARMV8_PMULL;
     }
-    if hwcap2 & ARM_HWCAP2_SHA1 > 0 {
+    if hwcap2 & hwcap_features.ARM_HWCAP2_SHA1 > T::from(0) {
         ret |= ARMV8_SHA1;
     }
-    if hwcap2 & ARM_HWCAP2_SHA2 > 0 {
+    if hwcap2 & hwcap_features.ARM_HWCAP2_SHA2 > T::from(0) {
         ret |= ARMV8_SHA256;
     }
 
     return ret;
 }
 
-fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
+fn hwcap_from_cpuinfo<T: AuxvUnsignedLong>(cpuinfo: &CpuInfo,
+                                           hwcap_features: ArmHwcapFeatures<T>)
+                                           -> Option<T> {
     if let Some(v) = cpuinfo.get("CPU architecture") {
         if v == "8" {
             // This is a 32-bit ARM binary running on a 64-bit kernel. NEON is
@@ -131,35 +157,37 @@ fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
             // reading the "Features" line does not work. (For simplicity,
             // use strict equality. We assume everything running on future
             // ARM architectures will have a working |getauxval|.)
-            return Some(ARM_HWCAP_NEON);
+            return Some(hwcap_features.ARM_HWCAP_NEON);
         }
     }
 
     if let Some(v) = cpuinfo.get("Features") {
         if parse_arm_cpuinfo_features(v).contains("neon") {
-            return Some(ARM_HWCAP_NEON);
+            return Some(hwcap_features.ARM_HWCAP_NEON);
         }
     }
 
     return None;
 }
 
-fn hwcap2_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
+fn hwcap2_from_cpuinfo<T: AuxvUnsignedLong>(cpuinfo: &CpuInfo,
+                                            hwcap_features: ArmHwcapFeatures<T>)
+                                            -> Option<T> {
     if let Some(v) = cpuinfo.get("Features") {
-        let mut ret: ulong = 0;
+        let mut ret: T = T::from(0);
         let features = parse_arm_cpuinfo_features(v);
 
         if features.contains("aes") {
-            ret |= ARM_HWCAP2_AES;
+            ret |= hwcap_features.ARM_HWCAP2_AES;
         }
         if features.contains("pmull") {
-            ret |= ARM_HWCAP2_PMULL;
+            ret |= hwcap_features.ARM_HWCAP2_PMULL;
         }
         if features.contains("sha1") {
-            ret |= ARM_HWCAP2_SHA1;
+            ret |= hwcap_features.ARM_HWCAP2_SHA1;
         }
         if features.contains("sha2") {
-            ret |= ARM_HWCAP2_SHA2;
+            ret |= hwcap_features.ARM_HWCAP2_SHA2;
         }
 
         return Some(ret);
@@ -188,6 +216,8 @@ mod cpuinfo;
 
 #[cfg(test)]
 mod tests {
+    extern crate byteorder;
+
     use std::collections::HashMap;
     use std::fs::File;
     use std::io::Read;
@@ -195,10 +225,12 @@ mod tests {
     use std::string::{String, ToString};
     use std::vec::Vec;
 
+    use self::byteorder::LittleEndian;
+
     use super::{armcap_bits, ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
-        ARM_HWCAP2_AES, ARM_HWCAP2_PMULL, ARM_HWCAP2_SHA1, ARM_HWCAP2_SHA2, ARMV7_NEON};
+        ARMV7_NEON, ArmHwcapFeatures};
     use super::cpuinfo::{parse_cpuinfo_reader, CpuInfo, CpuInfoError};
-    use super::auxv::search_auxv;
+    use super::auxv::{search_auxv, AuxvTypes};
 
     #[test]
     fn armcap_bits_broken_neon_without_auxv_yields_zero_armcap() {
@@ -206,10 +238,10 @@ mod tests {
             Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
 
         // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
-        let auxv = search_auxv(
+        let auxv = search_auxv::<u64, LittleEndian>(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
 
-        assert_eq!(0, armcap_bits(&cpuinfo, &auxv));
+        assert_eq!(0, armcap_bits(&cpuinfo, &auxv, test_auxv_types(), test_hwcap_features()));
     }
 
     #[test]
@@ -218,10 +250,11 @@ mod tests {
             Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-C1904.cpuinfo")).unwrap();
 
         // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
-        let auxv = search_auxv(
+        let auxv = search_auxv::<u64, LittleEndian>(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
 
-        assert_eq!(ARMV7_NEON, armcap_bits(&cpuinfo, &auxv));
+        assert_eq!(ARMV7_NEON,
+            armcap_bits(&cpuinfo, &auxv, test_auxv_types(), test_hwcap_features()));
     }
 
     #[test]
@@ -231,23 +264,26 @@ mod tests {
                 .unwrap();
 
         // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
-        let auxv = search_auxv(
+        let auxv = search_auxv::<u64, LittleEndian>(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
 
         assert_eq!(ARMV7_NEON | ARMV8_PMULL | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256,
-            armcap_bits(&cpuinfo, &auxv));
+            armcap_bits(&cpuinfo, &auxv, test_auxv_types(), test_hwcap_features()));
     }
 
     #[test]
     fn armcap_for_hwcap2_zero_returns_zero() {
-        assert_eq!(0, super::armcap_for_hwcap2(0));
+        assert_eq!(0, super::armcap_for_hwcap2(0, test_hwcap_features()));
     }
 
     #[test]
     fn armcap_for_hwcap2_all_hwcap2_returns_all_armcap() {
         assert_eq!(ARMV8_AES | ARMV8_PMULL | ARMV8_SHA1 | ARMV8_SHA256,
-        super::armcap_for_hwcap2(
-            ARM_HWCAP2_AES| ARM_HWCAP2_PMULL| ARM_HWCAP2_SHA1| ARM_HWCAP2_SHA2));
+        super::armcap_for_hwcap2(test_hwcap_features().ARM_HWCAP2_AES
+                                    | test_hwcap_features().ARM_HWCAP2_PMULL
+                                    | test_hwcap_features().ARM_HWCAP2_SHA1
+                                    | test_hwcap_features().ARM_HWCAP2_SHA2,
+                                 test_hwcap_features()));
     }
 
     #[test]
@@ -255,7 +291,8 @@ mod tests {
         let mut cpuinfo = HashMap::<String, String>::new();
         let _ = cpuinfo.insert("CPU architecture".to_string(), "8".to_string());
 
-        assert_eq!(Some(super::ARM_HWCAP_NEON), super::hwcap_from_cpuinfo(&cpuinfo));
+        assert_eq!(Some(test_hwcap_features().ARM_HWCAP_NEON),
+            super::hwcap_from_cpuinfo(&cpuinfo, test_hwcap_features()));
     }
 
     #[test]
@@ -264,7 +301,8 @@ mod tests {
         let _ = cpuinfo.insert("CPU architecture".to_string(), "7".to_string());
         let _ = cpuinfo.insert("Features".to_string(), "foo neon bar ".to_string());
 
-        assert_eq!(Some(super::ARM_HWCAP_NEON), super::hwcap_from_cpuinfo(&cpuinfo));
+        assert_eq!(Some(test_hwcap_features().ARM_HWCAP_NEON),
+            super::hwcap_from_cpuinfo(&cpuinfo, test_hwcap_features()));
     }
 
     #[test]
@@ -272,7 +310,7 @@ mod tests {
         let mut cpuinfo = HashMap::<String, String>::new();
         let _ = cpuinfo.insert("CPU architecture".to_string(), "7".to_string());
 
-        assert_eq!(None, super::hwcap_from_cpuinfo(&cpuinfo));
+        assert_eq!(None, super::hwcap_from_cpuinfo(&cpuinfo, test_hwcap_features()));
     }
 
     #[test]
@@ -281,7 +319,7 @@ mod tests {
         let cpuinfo = parse_cpuinfo_file(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.cpuinfo")).unwrap();
 
-        assert_eq!(None, super::hwcap2_from_cpuinfo(&cpuinfo));
+        assert_eq!(None, super::hwcap2_from_cpuinfo(&cpuinfo, test_hwcap_features()));
     }
 
     #[test]
@@ -290,7 +328,7 @@ mod tests {
         let cpuinfo = parse_cpuinfo_file(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
 
-        assert_eq!(Some(0), super::hwcap2_from_cpuinfo(&cpuinfo));
+        assert_eq!(Some(0), super::hwcap2_from_cpuinfo(&cpuinfo, test_hwcap_features()));
     }
 
     #[test]
@@ -298,11 +336,11 @@ mod tests {
         let mut cpuinfo = HashMap::<String, String>::new();
         let _ = cpuinfo.insert("Features".to_string(), "quux aes pmull sha1 sha2 foo ".to_string());
 
-        assert_eq!(Some(super::ARM_HWCAP2_AES
-                | super::ARM_HWCAP2_PMULL
-                | super::ARM_HWCAP2_SHA1
-                | super::ARM_HWCAP2_SHA2),
-            super::hwcap2_from_cpuinfo(&cpuinfo));
+        assert_eq!(Some(test_hwcap_features().ARM_HWCAP2_AES
+                | test_hwcap_features().ARM_HWCAP2_PMULL
+                | test_hwcap_features().ARM_HWCAP2_SHA1
+                | test_hwcap_features().ARM_HWCAP2_SHA2),
+            super::hwcap2_from_cpuinfo(&cpuinfo, test_hwcap_features()));
     }
 
     #[test]
@@ -335,5 +373,13 @@ mod tests {
 
         let mut buffer = &buf[..];
         parse_cpuinfo_reader(&mut buffer)
+    }
+
+    fn test_auxv_types() -> AuxvTypes<u64> {
+        AuxvTypes::new()
+    }
+
+    fn test_hwcap_features() -> ArmHwcapFeatures<u64> {
+        ArmHwcapFeatures::new()
     }
 }
