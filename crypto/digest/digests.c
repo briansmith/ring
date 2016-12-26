@@ -65,6 +65,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 #if defined(NDEBUG)
 #define CHECK(x) (void) (x)
@@ -262,36 +263,41 @@ struct nid_to_digest {
 };
 
 static const struct nid_to_digest nid_to_digest_mapping[] = {
-  { NID_md4, EVP_md4, SN_md4, LN_md4 },
-  { NID_md5, EVP_md5, SN_md5, LN_md5 },
-  { NID_sha1, EVP_sha1, SN_sha1, LN_sha1 },
-  { NID_sha224, EVP_sha224, SN_sha224, LN_sha224 },
-  { NID_sha256, EVP_sha256, SN_sha256, LN_sha256 },
-  { NID_sha384, EVP_sha384, SN_sha384, LN_sha384 },
-  { NID_sha512, EVP_sha512, SN_sha512, LN_sha512 },
-  { NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1 },
-  { NID_dsaWithSHA, EVP_sha1, SN_dsaWithSHA, LN_dsaWithSHA },
-  { NID_dsaWithSHA1, EVP_sha1, SN_dsaWithSHA1, LN_dsaWithSHA1 },
-  { NID_ecdsa_with_SHA1, EVP_sha1, SN_ecdsa_with_SHA1, NULL },
-  { NID_md5WithRSAEncryption, EVP_md5, SN_md5WithRSAEncryption,
-    LN_md5WithRSAEncryption },
-  { NID_sha1WithRSAEncryption, EVP_sha1, SN_sha1WithRSAEncryption,
-    LN_sha1WithRSAEncryption },
-  { NID_sha224WithRSAEncryption, EVP_sha224, SN_sha224WithRSAEncryption,
-    LN_sha224WithRSAEncryption },
-  { NID_sha256WithRSAEncryption, EVP_sha256, SN_sha256WithRSAEncryption,
-    LN_sha256WithRSAEncryption },
-  { NID_sha384WithRSAEncryption, EVP_sha384, SN_sha384WithRSAEncryption,
-    LN_sha384WithRSAEncryption },
-  { NID_sha512WithRSAEncryption, EVP_sha512, SN_sha512WithRSAEncryption,
-    LN_sha512WithRSAEncryption },
+    {NID_md4, EVP_md4, SN_md4, LN_md4},
+    {NID_md5, EVP_md5, SN_md5, LN_md5},
+    {NID_sha1, EVP_sha1, SN_sha1, LN_sha1},
+    {NID_sha224, EVP_sha224, SN_sha224, LN_sha224},
+    {NID_sha256, EVP_sha256, SN_sha256, LN_sha256},
+    {NID_sha384, EVP_sha384, SN_sha384, LN_sha384},
+    {NID_sha512, EVP_sha512, SN_sha512, LN_sha512},
+    {NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1},
+    /* As a remnant of signing |EVP_MD|s, OpenSSL returned the corresponding
+     * hash function when given a signature OID. To avoid unintended lax parsing
+     * of hash OIDs, this is no longer supported for lookup by OID or NID.
+     * Node.js, however, exposes |EVP_get_digestbyname|'s full behavior to
+     * consumers so we retain it there. */
+    {NID_undef, EVP_sha1, SN_dsaWithSHA, LN_dsaWithSHA},
+    {NID_undef, EVP_sha1, SN_dsaWithSHA1, LN_dsaWithSHA1},
+    {NID_undef, EVP_sha1, SN_ecdsa_with_SHA1, NULL},
+    {NID_undef, EVP_md5, SN_md5WithRSAEncryption, LN_md5WithRSAEncryption},
+    {NID_undef, EVP_sha1, SN_sha1WithRSAEncryption, LN_sha1WithRSAEncryption},
+    {NID_undef, EVP_sha224, SN_sha224WithRSAEncryption,
+     LN_sha224WithRSAEncryption},
+    {NID_undef, EVP_sha256, SN_sha256WithRSAEncryption,
+     LN_sha256WithRSAEncryption},
+    {NID_undef, EVP_sha384, SN_sha384WithRSAEncryption,
+     LN_sha384WithRSAEncryption},
+    {NID_undef, EVP_sha512, SN_sha512WithRSAEncryption,
+     LN_sha512WithRSAEncryption},
 };
 
 const EVP_MD* EVP_get_digestbynid(int nid) {
-  unsigned i;
+  if (nid == NID_undef) {
+    /* Skip the |NID_undef| entries in |nid_to_digest_mapping|. */
+    return NULL;
+  }
 
-  for (i = 0; i < sizeof(nid_to_digest_mapping) / sizeof(struct nid_to_digest);
-       i++) {
+  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(nid_to_digest_mapping); i++) {
     if (nid_to_digest_mapping[i].nid == nid) {
       return nid_to_digest_mapping[i].md_func();
     }
@@ -305,10 +311,7 @@ const EVP_MD* EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
 }
 
 const EVP_MD *EVP_get_digestbyname(const char *name) {
-  unsigned i;
-
-  for (i = 0; i < sizeof(nid_to_digest_mapping) / sizeof(struct nid_to_digest);
-       i++) {
+  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(nid_to_digest_mapping); i++) {
     const char *short_name = nid_to_digest_mapping[i].short_name;
     const char *long_name = nid_to_digest_mapping[i].long_name;
     if ((short_name && strcmp(short_name, name) == 0) ||

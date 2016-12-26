@@ -23,6 +23,7 @@
 #include <openssl/err.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
+#include <openssl/nid.h>
 #include <openssl/sha.h>
 
 #include "../internal.h"
@@ -235,9 +236,17 @@ static int TestDigest(const TestVector *test) {
 }
 
 static int TestGetters() {
-  if (EVP_get_digestbyname("RSA-SHA512") == NULL ||
-      EVP_get_digestbyname("sha512WithRSAEncryption") == NULL ||
-      EVP_get_digestbyname("nonsense") != NULL) {
+  if (EVP_get_digestbyname("RSA-SHA512") != EVP_sha512() ||
+      EVP_get_digestbyname("sha512WithRSAEncryption") != EVP_sha512() ||
+      EVP_get_digestbyname("nonsense") != NULL ||
+      EVP_get_digestbyname("SHA512") != EVP_sha512() ||
+      EVP_get_digestbyname("sha512") != EVP_sha512()) {
+    return false;
+  }
+
+  if (EVP_get_digestbynid(NID_sha512) != EVP_sha512() ||
+      EVP_get_digestbynid(NID_sha512WithRSAEncryption) != NULL ||
+      EVP_get_digestbynid(NID_undef) != NULL) {
     return false;
   }
 
