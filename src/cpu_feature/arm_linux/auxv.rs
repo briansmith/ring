@@ -1,4 +1,3 @@
-extern crate libc;
 extern crate byteorder;
 
 use std;
@@ -6,14 +5,14 @@ use std::collections::HashMap;
 use std::vec::Vec;
 use std::io::BufRead;
 use self::byteorder::{NativeEndian, ReadBytesExt};
-use self::libc::c_ulong;
+use c::ulong;
 
 // from [linux]/include/uapi/linux/auxvec.h. First 32 bits of HWCAP bits.
-pub const AT_HWCAP: c_ulong = 16;
+pub const AT_HWCAP: ulong = 16;
 // currently only used by powerpc and arm64 AFAICT
-pub const AT_HWCAP2: c_ulong = 26;
+pub const AT_HWCAP2: ulong = 26;
 
-pub type AuxVals = HashMap<c_ulong, c_ulong>;
+pub type AuxVals = HashMap<ulong, ulong>;
 
 #[derive(Debug, PartialEq)]
 pub enum AuxValError {
@@ -30,11 +29,11 @@ pub enum AuxValError {
 /// returns a map of types to values, only including entries for types that were
 /// requested that also had values in the aux vector
 #[allow(dead_code)] // TODO
-pub fn search_auxv(input: &mut BufRead, aux_types: &[c_ulong]) ->
+pub fn search_auxv(input: &mut BufRead, aux_types: &[ulong]) ->
 Result<AuxVals, AuxValError> {
-    let ulong_size = std::mem::size_of::<c_ulong>();
+    let ulong_size = std::mem::size_of::<ulong>();
     let mut buf: Vec<u8> = Vec::with_capacity(2 * ulong_size);
-    let mut result = HashMap::<c_ulong, c_ulong>::new();
+    let mut result = HashMap::<ulong, ulong>::new();
 
     loop {
         buf.clear();
@@ -85,10 +84,10 @@ mod tests {
     use std::path::Path;
     use std::vec::Vec;
     use super::{AuxValError, AuxVals, AT_HWCAP, AT_HWCAP2};
-    use super::libc::c_ulong;
+    use c::ulong;
 
     // uid of program that read /proc/self/auxv
-    const AT_UID: c_ulong = 11;
+    const AT_UID: ulong = 11;
 
     // x86 hwcap bits from [linux]/arch/x86/include/asm/cpufeature.h
     const X86_FPU: u32 = 0 * 32 + 0;
@@ -147,7 +146,7 @@ mod tests {
             search_auxval_file(path, &[555555555]).unwrap_err());
     }
 
-    fn search_auxval_file(path: &Path, aux_types: &[c_ulong]) -> Result<AuxVals, AuxValError> {
+    fn search_auxval_file(path: &Path, aux_types: &[ulong]) -> Result<AuxVals, AuxValError> {
         let mut buf = Vec::new();
         let mut f = File::open(path).unwrap();
         let _ = f.read_to_end(&mut buf).unwrap();

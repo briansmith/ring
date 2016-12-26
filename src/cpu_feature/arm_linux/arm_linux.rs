@@ -1,5 +1,3 @@
-extern crate libc;
-
 use std::collections::HashSet;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 use std::fs::File;
@@ -7,7 +5,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::string::{String, ToString};
 // TODO represent unsigned long without libc
-use self::libc::c_ulong;
+use c::ulong;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 use self::auxv::AuxValError;
 use self::auxv::AuxVals;
@@ -18,12 +16,12 @@ use self::cpuinfo::parse_cpuinfo;
 // Bits exposed in HWCAP and HWCAP2
 // See /usr/include/asm/hwcap.h on an ARM installation for the source of
 // these values.
-const ARM_HWCAP2_AES: c_ulong = 1 << 0;
-const ARM_HWCAP2_PMULL: c_ulong = 1 << 1;
-const ARM_HWCAP2_SHA1: c_ulong = 1 << 2;
-const ARM_HWCAP2_SHA2: c_ulong = 1 << 3;
+const ARM_HWCAP2_AES: ulong = 1 << 0;
+const ARM_HWCAP2_PMULL: ulong = 1 << 1;
+const ARM_HWCAP2_SHA1: ulong = 1 << 2;
+const ARM_HWCAP2_SHA2: ulong = 1 << 3;
 
-const ARM_HWCAP_NEON: c_ulong = 1 << 12;
+const ARM_HWCAP_NEON: ulong = 1 << 12;
 
 // Constants used in GFp_armcap_P
 // from include/openssl/arm_arch.h
@@ -58,7 +56,7 @@ extern "C" fn GFp_cpuid_setup() {
 }
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-fn search_procfs_auxv(auxv_types: &[c_ulong]) -> Result<AuxVals, AuxValError> {
+fn search_procfs_auxv(auxv_types: &[ulong]) -> Result<AuxVals, AuxValError> {
     let mut auxv = File::open("/proc/self/auxv")
         .map_err(|_| AuxValError::IoError)
         .map(|f| BufReader::new(f))?;
@@ -70,7 +68,7 @@ fn search_procfs_auxv(auxv_types: &[c_ulong]) -> Result<AuxVals, AuxValError> {
 #[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
 #[allow(dead_code)] // TODO
 fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
-    let mut hwcap: c_ulong = 0;
+    let mut hwcap: ulong = 0;
 
     // |getauxval| is not available on Android until API level 20. If it is
     // unavailable, read from /proc/self/auxv as a fallback. This is unreadable
@@ -107,7 +105,7 @@ fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
 
         // TODO use getauxval if available for AT_HWCAP2
 
-        let mut hwcap2: c_ulong = 0;
+        let mut hwcap2: ulong = 0;
         if let Some(v) = procfs_auxv.get(&auxv::AT_HWCAP2) {
             hwcap2 = *v;
         } else {
@@ -125,7 +123,7 @@ fn arm_cpuid_setup(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals) -> u32 {
 
 
 #[allow(dead_code)] // TODO
-fn armcap_for_hwcap2(hwcap2: c_ulong) -> u32 {
+fn armcap_for_hwcap2(hwcap2: ulong) -> u32 {
     let mut ret: u32 = 0;
     if hwcap2 & ARM_HWCAP2_AES > 0 {
         ret |= ARMV8_AES;
@@ -144,7 +142,7 @@ fn armcap_for_hwcap2(hwcap2: c_ulong) -> u32 {
 }
 
 #[allow(dead_code)] // TODO
-fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<c_ulong> {
+fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
     if let Some(v) = cpuinfo.get("CPU architecture") {
         if v == "8" {
             // This is a 32-bit ARM binary running on a 64-bit kernel. NEON is
@@ -166,9 +164,9 @@ fn hwcap_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<c_ulong> {
 }
 
 #[allow(dead_code)] // TODO
-fn hwcap2_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<c_ulong> {
+fn hwcap2_from_cpuinfo(cpuinfo: &CpuInfo) -> Option<ulong> {
     if let Some(v) = cpuinfo.get("Features") {
-        let mut ret: c_ulong = 0;
+        let mut ret: ulong = 0;
         let features = parse_arm_cpuinfo_features(v);
 
         if features.contains("aes") {
