@@ -377,6 +377,7 @@ impl RSASigningState {
             let computed = try!(m.try_clone());
             let verify =
                 try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
+            let verify = try!(verify.into_elem_decoded(&key.n));
             try!(bigint::elem_verify_equal_consttime(&verify, &c));
 
             // Step 3.

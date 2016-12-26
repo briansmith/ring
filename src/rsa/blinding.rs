@@ -97,7 +97,6 @@ fn reset(elem1: bigint::Elem<N>, elem2: bigint::Elem<N>,
                                                   rng) {
             Ok(()) => {
                 let random = try!(bigint::elem_exp_vartime(random, e, n));
-                let random = try!(random.into_elem(n));
                 let random_inv = try!(random_inv.into_elem(n));
                 return Ok(Contents {
                     blinding_factor: random,
