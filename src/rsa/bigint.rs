@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+﻿// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -366,8 +366,17 @@ pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
     })
 }
 
-pub fn elem_reduced<Larger,
-                    Smaller: NotMuchSmallerModulus<Larger>>(
+// `a` * `b` (mod `m`).
+pub fn elem_set_to_product<M>(r: &mut ElemDecoded<M>, a: &Elem<M>,
+                              b: &ElemDecoded<M>, m: &Modulus<M>)
+                              -> Result<(), error::Unspecified> {
+    bssl::map_result(unsafe {
+        GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
+                            b.value.as_ref(), m.as_ref())
+    })
+}
+
+pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &ElemDecoded<Larger>, m: &Modulus<Smaller>)
         -> Result<ElemDecoded<Smaller>, error::Unspecified> {
     let /*mut*/ r = try!(ElemDecoded::zero());
@@ -491,33 +500,49 @@ pub fn elem_exp_consttime<M>(
 pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
                          rng: &rand::SecureRandom)
                          -> Result<(), error::Unspecified> {
-    let mut rand = rand::RAND::new(rng);
-    bssl::map_result(unsafe {
-        GFp_BN_rand_range_ex(a.value.as_mut_ref(), m.as_ref(), &mut rand)
-    })
+    a.value.randomize(m.as_ref(), rng)
 }
 
-// r = 1/a (mod m).
+// r = 1/a (mod m), blinded with a random element.
 pub fn elem_set_to_inverse_blinded<M>(
             r: &mut ElemDecoded<M>, a: &ElemDecoded<M>, m: &Modulus<M>,
             rng: &rand::SecureRandom) -> Result<(), InversionError> {
+    let mut blinding_factor = try!(Elem::zero());
+    try!(blinding_factor.value.randomize(m.as_ref(), rng));
+    let to_blind = try!(a.try_clone());
+    let blinded = try!(elem_mul_mixed(&blinding_factor, to_blind, m));
+    let blinded_inverse = try!(elem_inverse(blinded, m));
+    try!(elem_set_to_product(r, &blinding_factor, &blinded_inverse, m));
+    Ok(())
+}
+
+// r = 1/a (mod m)
+fn elem_inverse<M>(a: ElemDecoded<M>, m: &Modulus<M>)
+                   -> Result<ElemDecoded<M>, InversionError> {
+    let value = a.value;
     let mut no_inverse = 0;
-    let mut rand = rand::RAND::new(rng);
-    bssl::map_result(unsafe {
-        GFp_BN_mod_inverse_blinded(r.value.as_mut_ref(), &mut no_inverse,
-                                    a.value.as_ref(), m.as_ref(), &mut rand)
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_inverse_odd(value.0, &mut no_inverse, value.0, m.as_ref())
     }).map_err(|_| {
         if no_inverse != 0 {
             InversionError::NoInverse
         } else {
             InversionError::Unspecified
         }
+    }));
+    Ok(ElemDecoded {
+        value: value,
+        ring: PhantomData,
     })
 }
 
 pub enum InversionError {
     NoInverse,
     Unspecified
+}
+
+impl From<error::Unspecified> for InversionError {
+    fn from(_: error::Unspecified) -> Self { InversionError::Unspecified }
 }
 
 pub fn elem_verify_equal_consttime<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>)
@@ -555,6 +580,14 @@ impl Nonnegative {
     fn is_one(&self) -> bool {
         let is_one = unsafe { GFp_BN_is_one(self.as_ref()) };
         is_one != 0
+    }
+
+    fn randomize(&mut self, m: &BIGNUM, rng: &rand::SecureRandom)
+                 -> Result<(), error::Unspecified> {
+        let mut rand = rand::RAND::new(rng);
+        bssl::map_result(unsafe {
+            GFp_BN_rand_range_ex(self.as_mut_ref(), m, &mut rand)
+        })
     }
 
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
@@ -605,6 +638,8 @@ extern {
                       -> c::int;
     fn GFp_BN_reduce_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                           -> c::int;
+    fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
+                              a: *const BIGNUM, m: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
@@ -631,10 +666,6 @@ extern {
 extern {
     fn GFp_BN_rand_range_ex(r: &mut BIGNUM, max_exclusive: &BIGNUM,
                             rng: &mut rand::RAND) -> c::int;
-
-    fn GFp_BN_mod_inverse_blinded(out: &mut BIGNUM, out_no_inverse: &mut c::int,
-                                  a: &BIGNUM, mont: &BN_MONT_CTX,
-                                  rng: &mut rand::RAND) -> c::int;
 }
 
 
