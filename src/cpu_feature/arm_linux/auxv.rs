@@ -2,8 +2,11 @@ extern crate byteorder;
 
 use std;
 use std::collections::HashMap;
+use std::io::{BufReader, Read};
+use std::fs::File;
+use std::path::Path;
 use std::vec::Vec;
-use std::io::BufRead;
+
 use self::byteorder::{NativeEndian, ReadBytesExt};
 use c::ulong;
 
@@ -29,8 +32,12 @@ pub enum AuxValError {
 /// returns a map of types to values, only including entries for types that were
 /// requested that also had values in the aux vector
 #[allow(dead_code)] // TODO
-pub fn search_auxv(input: &mut BufRead, aux_types: &[ulong]) ->
+pub fn search_auxv(path: &Path, aux_types: &[ulong]) ->
 Result<AuxVals, AuxValError> {
+    let mut input = File::open(path)
+        .map_err(|_| AuxValError::IoError)
+        .map(|f| BufReader::new(f))?;
+
     let ulong_size = std::mem::size_of::<ulong>();
     let mut buf: Vec<u8> = Vec::with_capacity(2 * ulong_size);
     let mut result = HashMap::<ulong, ulong>::new();
@@ -79,11 +86,8 @@ Result<AuxVals, AuxValError> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Read;
-    use std::fs::File;
     use std::path::Path;
-    use std::vec::Vec;
-    use super::{AuxValError, AuxVals, AT_HWCAP, AT_HWCAP2};
+    use super::{AuxValError, AT_HWCAP, AT_HWCAP2, search_auxv};
     use c::ulong;
 
     // uid of program that read /proc/self/auxv
@@ -94,9 +98,9 @@ mod tests {
     const X86_ACPI: u32 = 0 * 32 + 22;
 
     #[test]
-    fn test_parse_auxval_virtualbox_linux() {
+    fn test_parse_auxv_virtualbox_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x64-4850HQ.auxv");
-        let vals = search_auxval_file(path, &[AT_HWCAP, AT_HWCAP2, AT_UID]).unwrap();
+        let vals = search_auxv(path, &[AT_HWCAP, AT_HWCAP2, AT_UID]).unwrap();
         let hwcap = vals.get(&AT_HWCAP).unwrap();
         assert_eq!(&395049983_u64, hwcap);
 
@@ -110,9 +114,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_auxval_real_linux() {
+    fn test_parse_auxv_real_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv");
-        let vals = search_auxval_file(path, &[AT_HWCAP, AT_HWCAP2, AT_UID]).unwrap();
+        let vals = search_auxv(path, &[AT_HWCAP, AT_HWCAP2, AT_UID]).unwrap();
         let hwcap = vals.get(&AT_HWCAP).unwrap();
 
         assert_eq!(&3219913727_u64, hwcap);
@@ -126,33 +130,23 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_auxval_real_linux_half_of_trailing_null_missing_error() {
+    fn test_parse_auxv_real_linux_half_of_trailing_null_missing_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-value-in-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxval_file(path, &[555555555]).unwrap_err());
+            search_auxv(path, &[555555555]).unwrap_err());
     }
 
     #[test]
-    fn test_parse_auxval_real_linux_trailing_null_missing_error() {
+    fn test_parse_auxv_real_linux_trailing_null_missing_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxval_file(path, &[555555555]).unwrap_err());
+            search_auxv(path, &[555555555]).unwrap_err());
     }
 
     #[test]
-    fn test_parse_auxval_real_linux_truncated_entry_error() {
+    fn test_parse_auxv_real_linux_truncated_entry_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-truncated-entry.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxval_file(path, &[555555555]).unwrap_err());
-    }
-
-    fn search_auxval_file(path: &Path, aux_types: &[ulong]) -> Result<AuxVals, AuxValError> {
-        let mut buf = Vec::new();
-        let mut f = File::open(path).unwrap();
-        let _ = f.read_to_end(&mut buf).unwrap();
-
-        let mut buffer = &buf[..];
-
-        super::search_auxv(&mut buffer, aux_types)
+            search_auxv(path, &[555555555]).unwrap_err());
     }
 }

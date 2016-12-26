@@ -45,7 +45,8 @@ extern "C" fn GFp_cpuid_setup() {
     if let Ok(mut r) = File::open("/proc/cpuinfo").map(|f| BufReader::new(f)) {
         if let Ok(c) = parse_cpuinfo(&mut r) {
             // TODO handle failures to read from procfs auxv
-            if let Ok(auxvals) = search_procfs_auxv(&[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
+            if let Ok(auxvals) = auxv::search_auxv(&Path::from("/proc/self/auxv"),
+                       &[auxv::AT_HWCAP, auxv::AT_HWCAP2]) {
                 let armcap = arm_cpuid_setup(&c, &auxvals);
                 unsafe {
                     GFp_armcap_P |= armcap;
@@ -53,15 +54,6 @@ extern "C" fn GFp_cpuid_setup() {
             }
         }
     }
-}
-
-#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-fn search_procfs_auxv(auxv_types: &[ulong]) -> Result<AuxVals, AuxValError> {
-    let mut auxv = File::open("/proc/self/auxv")
-        .map_err(|_| AuxValError::IoError)
-        .map(|f| BufReader::new(f))?;
-
-    auxv::search_auxv(&mut auxv, auxv_types)
 }
 
 /// returns the GFp_armcap_P bitstring
