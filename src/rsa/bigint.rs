@@ -164,6 +164,11 @@ impl OddPositive {
     }
 
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
+        // A `Modulus` must be larger than 1.
+        if self.bit_length() < bits::BitLength::from_usize_bits(2) {
+            return Err(error::Unspecified);
+        }
+
         let mut r = Modulus {
             ctx: BN_MONT_CTX::new(),
             ring: PhantomData,
@@ -210,7 +215,9 @@ pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
-/// for efficient Montgomery multiplication modulo *m*.
+/// for efficient Montgomery multiplication modulo *m*. The value must be odd
+/// and larger than 2. The larger-than-1 requirement is imposed, at least, by
+/// the modular inversion code.
 pub struct Modulus<M> {
     ctx: BN_MONT_CTX,
 
@@ -499,6 +506,9 @@ pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
 }
 
 // r = 1/a (mod m), blinded with a random element.
+//
+// This relies on the invariants of `Modulus` that its value is odd and larger
+// than one.
 pub fn elem_set_to_inverse_blinded<M>(
             r: &mut ElemDecoded<M>, a: &ElemDecoded<M>, m: &Modulus<M>,
             rng: &rand::SecureRandom) -> Result<(), InversionError> {
@@ -511,7 +521,10 @@ pub fn elem_set_to_inverse_blinded<M>(
     Ok(())
 }
 
-// r = 1/a (mod m)
+// r = 1/a (mod m).
+//
+// This relies on the invariants of `Modulus` that its value is odd and larger
+// than one.
 fn elem_inverse<M>(a: ElemDecoded<M>, m: &Modulus<M>)
                    -> Result<ElemDecoded<M>, InversionError> {
     let mut value = a.value;
