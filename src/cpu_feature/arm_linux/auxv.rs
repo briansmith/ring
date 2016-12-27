@@ -181,7 +181,8 @@ mod tests {
     use self::byteorder::LittleEndian;
 
     // uid of program that read /proc/self/auxv
-    const AT_UID: u64 = 11;
+    const AT_UID_64: u64 = 11;
+    const AT_UID_32: u32 = 11;
 
     // x86 hwcap bits from [linux]/arch/x86/include/asm/cpufeature.h
     const X86_FPU: u32 = 0 * 32 + 0;
@@ -210,40 +211,72 @@ mod tests {
     fn test_parse_auxv_virtualbox_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x64-4850HQ.auxv");
         let vals = search_procfs_auxv::<u64, LittleEndian>(path,
-                                                           &[test_auxv_types().AT_HWCAP,
-                                                               test_auxv_types().AT_HWCAP2,
-                                                               AT_UID])
+                                                           &[u64_auxv_types().AT_HWCAP,
+                                                               u64_auxv_types().AT_HWCAP2,
+                                                               AT_UID_64])
             .unwrap();
-        let hwcap = vals.get(&test_auxv_types().AT_HWCAP).unwrap();
+        let hwcap = vals.get(&u64_auxv_types().AT_HWCAP).unwrap();
         assert_eq!(&395049983_u64, hwcap);
 
         assert_eq!(1, 1 << X86_FPU & hwcap);
         // virtualized, no acpi via msr I guess
         assert_eq!(0, 1 << X86_ACPI & hwcap);
 
-        assert!(!vals.contains_key(&test_auxv_types().AT_HWCAP2));
+        assert!(!vals.contains_key(&u64_auxv_types().AT_HWCAP2));
 
-        assert_eq!(&1000_u64, vals.get(&AT_UID).unwrap());
+        assert_eq!(&1000_u64, vals.get(&AT_UID_64).unwrap());
+    }
+
+    #[test]
+    fn test_parse_auxv_virtualbox_linux_32bit() {
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x86-4850HQ.auxv");
+        let vals = search_procfs_auxv::<u32, LittleEndian>(path,
+                                                           &[u32_auxv_types().AT_HWCAP,
+                                                               u32_auxv_types().AT_HWCAP2,
+                                                               AT_UID_32])
+            .unwrap();
+        let hwcap = vals.get(&u32_auxv_types().AT_HWCAP).unwrap();
+        assert_eq!(&126614527_u32, hwcap);
+
+        assert_eq!(1, 1 << X86_FPU & hwcap);
+        // virtualized, no acpi via msr I guess
+        assert_eq!(0, 1 << X86_ACPI & hwcap);
+
+        assert!(!vals.contains_key(&u32_auxv_types().AT_HWCAP2));
+
+        // this auxv was while running as root (unlike other auxv files)
+        assert_eq!(&0_u32, vals.get(&AT_UID_32).unwrap());
+    }
+
+    #[test]
+    fn test_parse_auxv_virtualbox_linux_32bit_in_64bit_mode_invalidformat() {
+        let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x86-4850HQ.auxv");
+        let vals = search_procfs_auxv::<u64, LittleEndian>(path,
+                                                           &[u64_auxv_types().AT_HWCAP,
+                                                               u64_auxv_types().AT_HWCAP2,
+                                                               AT_UID_64]);
+
+        assert_eq!(Err(AuxValError::InvalidFormat), vals);
     }
 
     #[test]
     fn test_parse_auxv_real_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv");
         let vals = search_procfs_auxv::<u64, LittleEndian>(path,
-                                                           &[test_auxv_types().AT_HWCAP,
-                                                               test_auxv_types().AT_HWCAP2,
-                                                               AT_UID])
+                                                           &[u64_auxv_types().AT_HWCAP,
+                                                               u64_auxv_types().AT_HWCAP2,
+                                                               AT_UID_64])
             .unwrap();
-        let hwcap = vals.get(&test_auxv_types().AT_HWCAP).unwrap();
+        let hwcap = vals.get(&u64_auxv_types().AT_HWCAP).unwrap();
 
         assert_eq!(&3219913727_u64, hwcap);
 
         assert_eq!(1, 1 << X86_FPU & hwcap);
         assert_eq!(1 << X86_ACPI, 1 << X86_ACPI & hwcap);
 
-        assert!(!vals.contains_key(&test_auxv_types().AT_HWCAP2));
+        assert!(!vals.contains_key(&u64_auxv_types().AT_HWCAP2));
 
-        assert_eq!(&1000_u64, vals.get(&AT_UID).unwrap());
+        assert_eq!(&1000_u64, vals.get(&AT_UID_64).unwrap());
     }
 
     #[test]
@@ -270,7 +303,11 @@ mod tests {
                                                     &[555555555]).unwrap_err());
     }
 
-    fn test_auxv_types() -> AuxvTypes<u64> {
+    fn u64_auxv_types() -> AuxvTypes<u64> {
+        AuxvTypes::new()
+    }
+
+    fn u32_auxv_types() -> AuxvTypes<u32> {
         AuxvTypes::new()
     }
 }

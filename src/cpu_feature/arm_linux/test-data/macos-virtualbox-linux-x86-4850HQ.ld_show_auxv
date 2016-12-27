@@ -1,0 +1,19 @@
+AT_SYSINFO:      0xb772bcfc
+AT_SYSINFO_EHDR: 0xb772b000
+AT_HWCAP:    fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2
+AT_PAGESZ:       4096
+AT_CLKTCK:       100
+AT_PHDR:         0x8048034
+AT_PHENT:        32
+AT_PHNUM:        9
+AT_BASE:         0xb772d000
+AT_FLAGS:        0x0
+AT_ENTRY:        0x8048e75
+AT_UID:          0
+AT_EUID:         0
+AT_GID:          0
+AT_EGID:         0
+AT_SECURE:       0
+AT_RANDOM:       0xbfd2c5eb
+AT_EXECFN:       /bin/true
+AT_PLATFORM:     i686
