@@ -27,8 +27,7 @@ if [ -n "$1" ]; then
 fi
 
 cd "$BUILD"
-cmake "$SRC" -GNinja -DCMAKE_C_FLAGS='-fprofile-arcs -ftest-coverage' \
-  -DCMAKE_CXX_FLAGS='-fprofile-arcs -ftest-coverage'
+cmake "$SRC" -GNinja -DGCOV=1
 ninja
 
 cp -r "$SRC/crypto" "$SRC/decrepit" "$SRC/include" "$SRC/ssl" "$SRC/tool" \
