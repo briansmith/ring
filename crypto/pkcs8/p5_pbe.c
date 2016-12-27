@@ -78,7 +78,7 @@ IMPLEMENT_ASN1_FUNCTIONS(PBEPARAM)
 
 /* Set an algorithm identifier for a PKCS#5 PBE algorithm */
 
-int PKCS5_pbe_set0_algor(X509_ALGOR *algor, int alg, int iter,
+static int PKCS5_pbe_set0_algor(X509_ALGOR *algor, int alg, int iter,
 				const unsigned char *salt, int saltlen)
 	{
 	PBEPARAM *pbe=NULL;

@@ -110,14 +110,95 @@ static int param_to_asn1(EVP_CIPHER_CTX *c, ASN1_TYPE *type)
 	return ASN1_TYPE_set_octetstring(type, c->oiv, iv_len);
 	}
 
+static X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
+	                            int prf_nid, int keylen)
+	{
+	X509_ALGOR *keyfunc = NULL;
+	PBKDF2PARAM *kdf = NULL;
+	ASN1_OCTET_STRING *osalt = NULL;
+
+	if(!(kdf = PBKDF2PARAM_new()))
+		goto merr;
+	if(!(osalt = M_ASN1_OCTET_STRING_new()))
+		goto merr;
+
+	kdf->salt->value.octet_string = osalt;
+	kdf->salt->type = V_ASN1_OCTET_STRING;
+
+	if (!saltlen)
+		saltlen = PKCS5_SALT_LEN;
+	if (!(osalt->data = OPENSSL_malloc (saltlen)))
+		goto merr;
+
+	osalt->length = saltlen;
+
+	if (salt)
+		OPENSSL_memcpy (osalt->data, salt, saltlen);
+	else if (!RAND_bytes(osalt->data, saltlen))
+		goto merr;
+
+	if(iter <= 0)
+		iter = PKCS5_DEFAULT_ITERATIONS;
+
+	if(!ASN1_INTEGER_set(kdf->iter, iter))
+		goto merr;
+
+	/* If have a key len set it up */
+
+	if(keylen > 0) 
+		{
+		if(!(kdf->keylength = M_ASN1_INTEGER_new()))
+			goto merr;
+		if(!ASN1_INTEGER_set (kdf->keylength, keylen))
+			goto merr;
+		}
+
+	/* prf can stay NULL if we are using hmacWithSHA1 */
+	if (prf_nid > 0 && prf_nid != NID_hmacWithSHA1)
+		{
+		kdf->prf = X509_ALGOR_new();
+		if (!kdf->prf)
+			goto merr;
+		X509_ALGOR_set0(kdf->prf, OBJ_nid2obj(prf_nid),
+					V_ASN1_NULL, NULL);
+		}
+
+	/* Finally setup the keyfunc structure */
+
+	keyfunc = X509_ALGOR_new();
+	if (!keyfunc)
+		goto merr;
+
+	keyfunc->algorithm = (ASN1_OBJECT*) OBJ_nid2obj(NID_id_pbkdf2);
+
+	/* Encode PBKDF2PARAM into parameter of pbe2 */
+
+	if(!(keyfunc->parameter = ASN1_TYPE_new()))
+		goto merr;
+
+	if(!ASN1_item_pack(kdf, ASN1_ITEM_rptr(PBKDF2PARAM),
+			 &keyfunc->parameter->value.sequence))
+		goto merr;
+	keyfunc->parameter->type = V_ASN1_SEQUENCE;
+
+	PBKDF2PARAM_free(kdf);
+	return keyfunc;
+
+	merr:
+	OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
+	PBKDF2PARAM_free(kdf);
+	X509_ALGOR_free(keyfunc);
+	return NULL;
+	}
+
 /* Return an algorithm identifier for a PKCS#5 v2.0 PBE algorithm:
  * yes I know this is horrible!
  *
  * Extended version to allow application supplied PRF NID and IV. */
 
-X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
-				 unsigned char *salt, int saltlen,
-				 unsigned char *aiv, int prf_nid)
+static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
+				     unsigned char *salt, int saltlen,
+				     unsigned char *aiv, int prf_nid)
 {
 	X509_ALGOR *scheme = NULL, *kalg = NULL, *ret = NULL;
 	int alg_nid, keylen;
@@ -222,87 +303,6 @@ X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
 				 unsigned char *salt, int saltlen)
 	{
 	return PKCS5_pbe2_set_iv(cipher, iter, salt, saltlen, NULL, -1);
-	}
-
-X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
-				int prf_nid, int keylen)
-	{
-	X509_ALGOR *keyfunc = NULL;
-	PBKDF2PARAM *kdf = NULL;
-	ASN1_OCTET_STRING *osalt = NULL;
-
-	if(!(kdf = PBKDF2PARAM_new()))
-		goto merr;
-	if(!(osalt = M_ASN1_OCTET_STRING_new()))
-		goto merr;
-
-	kdf->salt->value.octet_string = osalt;
-	kdf->salt->type = V_ASN1_OCTET_STRING;
-
-	if (!saltlen)
-		saltlen = PKCS5_SALT_LEN;
-	if (!(osalt->data = OPENSSL_malloc (saltlen)))
-		goto merr;
-
-	osalt->length = saltlen;
-
-	if (salt)
-		OPENSSL_memcpy (osalt->data, salt, saltlen);
-	else if (!RAND_bytes(osalt->data, saltlen))
-		goto merr;
-
-	if(iter <= 0)
-		iter = PKCS5_DEFAULT_ITERATIONS;
-
-	if(!ASN1_INTEGER_set(kdf->iter, iter))
-		goto merr;
-
-	/* If have a key len set it up */
-
-	if(keylen > 0) 
-		{
-		if(!(kdf->keylength = M_ASN1_INTEGER_new()))
-			goto merr;
-		if(!ASN1_INTEGER_set (kdf->keylength, keylen))
-			goto merr;
-		}
-
-	/* prf can stay NULL if we are using hmacWithSHA1 */
-	if (prf_nid > 0 && prf_nid != NID_hmacWithSHA1)
-		{
-		kdf->prf = X509_ALGOR_new();
-		if (!kdf->prf)
-			goto merr;
-		X509_ALGOR_set0(kdf->prf, OBJ_nid2obj(prf_nid),
-					V_ASN1_NULL, NULL);
-		}
-
-	/* Finally setup the keyfunc structure */
-
-	keyfunc = X509_ALGOR_new();
-	if (!keyfunc)
-		goto merr;
-
-	keyfunc->algorithm = (ASN1_OBJECT*) OBJ_nid2obj(NID_id_pbkdf2);
-
-	/* Encode PBKDF2PARAM into parameter of pbe2 */
-
-	if(!(keyfunc->parameter = ASN1_TYPE_new()))
-		goto merr;
-
-	if(!ASN1_item_pack(kdf, ASN1_ITEM_rptr(PBKDF2PARAM),
-			 &keyfunc->parameter->value.sequence))
-		goto merr;
-	keyfunc->parameter->type = V_ASN1_SEQUENCE;
-
-	PBKDF2PARAM_free(kdf);
-	return keyfunc;
-
-	merr:
-	OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-	PBKDF2PARAM_free(kdf);
-	X509_ALGOR_free(keyfunc);
-	return NULL;
 	}
 
 static int PKCS5_v2_PBKDF2_keyivgen(EVP_CIPHER_CTX *ctx,

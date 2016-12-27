@@ -509,28 +509,6 @@ typedef struct CBCParameter_st
 	} CBC_PARAM;
 */
 
-/* Password based encryption structure */
-
-struct PBEPARAM_st {
-ASN1_OCTET_STRING *salt;
-ASN1_INTEGER *iter;
-} /* PBEPARAM */;
-
-/* Password based encryption V2 structures */
-
-struct PBE2PARAM_st {
-X509_ALGOR *keyfunc;
-X509_ALGOR *encryption;
-} /* PBE2PARAM */;
-
-struct PBKDF2PARAM_st {
-ASN1_TYPE *salt;	/* Usually OCTET STRING but could be anything */
-ASN1_INTEGER *iter;
-ASN1_INTEGER *keylength;
-X509_ALGOR *prf;
-} /* PBKDF2PARAM */;
-
-
 /* PKCS#8 private key info structure */
 
 struct pkcs8_priv_key_info_st
@@ -1089,24 +1067,6 @@ OPENSSL_EXPORT int		X509_verify_cert(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509 *X509_find_by_issuer_and_serial(STACK_OF(X509) *sk,X509_NAME *name,
 				     ASN1_INTEGER *serial);
 OPENSSL_EXPORT X509 *X509_find_by_subject(STACK_OF(X509) *sk,X509_NAME *name);
-
-DECLARE_ASN1_FUNCTIONS(PBEPARAM)
-DECLARE_ASN1_FUNCTIONS(PBE2PARAM)
-DECLARE_ASN1_FUNCTIONS(PBKDF2PARAM)
-
-OPENSSL_EXPORT int PKCS5_pbe_set0_algor(X509_ALGOR *algor, int alg, int iter,
-				const unsigned char *salt, int saltlen);
-
-OPENSSL_EXPORT X509_ALGOR *PKCS5_pbe_set(int alg, int iter,
-				const unsigned char *salt, int saltlen);
-OPENSSL_EXPORT X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-					 unsigned char *salt, int saltlen);
-OPENSSL_EXPORT X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
-				 unsigned char *salt, int saltlen,
-				 unsigned char *aiv, int prf_nid);
-
-OPENSSL_EXPORT X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
-				int prf_nid, int keylen);
 
 /* PKCS#8 utilities */
 
