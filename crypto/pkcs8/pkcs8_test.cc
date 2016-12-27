@@ -216,6 +216,8 @@ static bool TestRoundTrip(int pbe_nid, const EVP_CIPHER *cipher,
 }
 
 int main(int argc, char **argv) {
+  CRYPTO_library_init();
+
   if (!TestDecrypt(kDER, sizeof(kDER), "testing") ||
       !TestDecrypt(kNullPassword, sizeof(kNullPassword), NULL) ||
       !TestDecrypt(kNullPasswordNSS, sizeof(kNullPasswordNSS), NULL) ||

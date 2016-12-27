@@ -111,7 +111,7 @@ static int param_to_asn1(EVP_CIPHER_CTX *c, ASN1_TYPE *type)
 	}
 
 static X509_ALGOR *PKCS5_pbkdf2_set(int iter, const unsigned char *salt,
-                                    int saltlen, int prf_nid, int keylen)
+                                    int saltlen, int keylen)
 	{
 	X509_ALGOR *keyfunc = NULL;
 	PBKDF2PARAM *kdf = NULL;
@@ -145,7 +145,7 @@ static X509_ALGOR *PKCS5_pbkdf2_set(int iter, const unsigned char *salt,
 
 	/* If have a key len set it up */
 
-	if(keylen > 0) 
+	if(keylen > 0)
 		{
 		if(!(kdf->keylength = M_ASN1_INTEGER_new()))
 			goto merr;
@@ -153,15 +153,7 @@ static X509_ALGOR *PKCS5_pbkdf2_set(int iter, const unsigned char *salt,
 			goto merr;
 		}
 
-	/* prf can stay NULL if we are using hmacWithSHA1 */
-	if (prf_nid > 0 && prf_nid != NID_hmacWithSHA1)
-		{
-		kdf->prf = X509_ALGOR_new();
-		if (!kdf->prf)
-			goto merr;
-		X509_ALGOR_set0(kdf->prf, OBJ_nid2obj(prf_nid),
-					V_ASN1_NULL, NULL);
-		}
+	/* Leave prf NULL. We always use hmacWithSHA1, the default. */
 
 	/* Finally setup the keyfunc structure */
 
@@ -192,13 +184,10 @@ static X509_ALGOR *PKCS5_pbkdf2_set(int iter, const unsigned char *salt,
 	}
 
 /* Return an algorithm identifier for a PKCS#5 v2.0 PBE algorithm:
- * yes I know this is horrible!
- *
- * Extended version to allow application supplied PRF NID and IV. */
+ * yes I know this is horrible! */
 
-static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
-				     const unsigned char *salt, int saltlen,
-				     unsigned char *aiv, int prf_nid)
+X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
+			   const unsigned char *salt, int saltlen)
 {
 	X509_ALGOR *scheme = NULL, *kalg = NULL, *ret = NULL;
 	int alg_nid, keylen;
@@ -223,13 +212,10 @@ static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 	if(!(scheme->parameter = ASN1_TYPE_new())) goto merr;
 
 	/* Create random IV */
-	if (EVP_CIPHER_iv_length(cipher))
-		{
-		if (aiv)
-			OPENSSL_memcpy(iv, aiv, EVP_CIPHER_iv_length(cipher));
-		else if (!RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)))
-  			goto err;
-		}
+	if (EVP_CIPHER_iv_length(cipher) &&
+	    !RAND_bytes(iv, EVP_CIPHER_iv_length(cipher))) {
+		goto err;
+	}
 
 	EVP_CIPHER_CTX_init(&ctx);
 
@@ -241,15 +227,6 @@ static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 		EVP_CIPHER_CTX_cleanup(&ctx);
 		goto err;
 	}
-	/* If prf NID unspecified see if cipher has a preference.
-	 * An error is OK here: just means use default PRF.
-	 */
-	if ((prf_nid == -1) && 
-	EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_PBE_PRF_NID, 0, &prf_nid) <= 0)
-		{
-		ERR_clear_error();
-		prf_nid = NID_hmacWithSHA1;
-		}
 	EVP_CIPHER_CTX_cleanup(&ctx);
 
 	/* If its RC2 then we'd better setup the key length */
@@ -263,7 +240,7 @@ static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 
 	X509_ALGOR_free(pbe2->keyfunc);
 
-	pbe2->keyfunc = PKCS5_pbkdf2_set(iter, salt, saltlen, prf_nid, keylen);
+	pbe2->keyfunc = PKCS5_pbkdf2_set(iter, salt, saltlen, keylen);
 
 	if (!pbe2->keyfunc)
 		goto merr;
@@ -298,12 +275,6 @@ static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 	return NULL;
 
 }
-
-X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-			   const unsigned char *salt, int saltlen)
-	{
-	return PKCS5_pbe2_set_iv(cipher, iter, salt, saltlen, NULL, -1);
-	}
 
 static int PKCS5_v2_PBKDF2_keyivgen(EVP_CIPHER_CTX *ctx,
                                     const uint8_t *pass_raw,
