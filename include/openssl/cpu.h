@@ -70,6 +70,16 @@ extern "C" {
 
 /* Runtime CPU feature support */
 
+#ifdef __linux__
+
+/* |getauxval| is not available on Android until API level 20. Link it as a weak
+ * symbol and use other methods as fallback. */
+unsigned long getauxval(unsigned long type) __attribute__((weak));
+
+#include <errno.h>
+unsigned long getauxval_wrapper(unsigned long type, char *success);
+
+#endif
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* GFp_ia32cap_P contains the Intel CPUID bits when running on an x86 or

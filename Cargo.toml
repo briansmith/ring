@@ -155,6 +155,7 @@ include = [
     "crypto/cipher/e_aes.c",
     "crypto/cipher/internal.h",
     "crypto/constant_time_test.c",
+    "crypto/cpu.c",
     "crypto/cpu-aarch64-linux.c",
     "crypto/cpu-arm-linux.c",
     "crypto/cpu-arm.c",

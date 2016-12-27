@@ -40,10 +40,6 @@
 #define HWCAP2_SHA1 (1 << 2)
 #define HWCAP2_SHA2 (1 << 3)
 
-/* |getauxval| is not available on Android until API level 20. Link it as a weak
- * symbol and use other methods as fallback. */
-unsigned long getauxval(unsigned long type) __attribute__((weak));
-
 static int open_eintr(const char *path, int flags) {
   int ret;
   do {
