@@ -25,7 +25,8 @@ pub fn parse_cpuinfo() -> Result<CpuInfo, CpuInfoError> {
 /// parse the contents of /proc/cpuinfo into a map of field names to values.
 /// Keeps the first encountered value for each name.
 #[cfg(any(test, target_os="linux"))]
-pub fn parse_cpuinfo_reader(input: &mut BufRead) -> Result<CpuInfo, CpuInfoError> {
+pub fn parse_cpuinfo_reader(input: &mut BufRead)
+        -> Result<CpuInfo, CpuInfoError> {
     // cpu flags can be quite long
     let mut line_buf = String::with_capacity(300);
     let mut fields = HashMap::new();

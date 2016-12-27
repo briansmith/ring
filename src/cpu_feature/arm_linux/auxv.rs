@@ -16,8 +16,9 @@ use self::byteorder::{ByteOrder, ReadBytesExt};
 // Adding further complexity, we want to always run tests against auxv files that are
 // from systems with 64-bit unsigned longs, so we can't just always use the native
 // size.
-pub trait AuxvUnsignedLong : BitAndAssign<Self> + BitAnd<Self, Output=Self> + BitOrAssign<Self>
-        + Not<Output=Self> + Eq + Ord + Hash + Sized + Copy + From<u32> {
+pub trait AuxvUnsignedLong : BitAndAssign<Self> + BitAnd<Self, Output=Self>
+        + BitOrAssign<Self> + Not<Output=Self> + Eq + Ord + Hash + Sized + Copy
+        + From<u32> {
     fn read<B: ByteOrder>(&mut Read) -> std::io::Result<Self>;
 }
 
@@ -33,22 +34,25 @@ impl AuxvUnsignedLong for u64 {
     }
 }
 
-#[cfg(all(target_pointer_width = "32", target_os = "linux"))]
+#[cfg(any(all(target_pointer_width = "32", test),
+    all(target_pointer_width = "32", target_os = "linux")))]
 pub type AuxvUnsignedLongNative = u32;
-#[cfg(all(target_pointer_width = "64", target_os = "linux"))]
+#[cfg(any(all(target_pointer_width = "64", test),
+    all(target_pointer_width = "64", target_os = "linux")))]
 pub type AuxvUnsignedLongNative = u64;
 
 extern "C" {
     /// Invoke getauxval(3) if available. If it's not linked, or if invocation
     /// fails or the type is not found, sets success to false and returns 0.
     #[cfg(target_os="linux")]
-    pub fn getauxval_wrapper(auxv_type: AuxvUnsignedLongNative, success: *mut u8)
-                             -> AuxvUnsignedLongNative;
+    pub fn getauxval_wrapper(auxv_type: AuxvUnsignedLongNative,
+                             success: *mut u8)
+         -> AuxvUnsignedLongNative;
 }
 
-#[cfg(target_os="linux")]
 pub trait GetauxvalProvider {
-    fn getauxval(&self, auxv_type: AuxvUnsignedLongNative) -> Option<AuxvUnsignedLongNative>;
+    fn getauxval(&self, auxv_type: AuxvUnsignedLongNative)
+        -> Option<AuxvUnsignedLongNative>;
 }
 
 #[cfg(target_os="linux")]
@@ -58,7 +62,8 @@ pub struct NativeGetauxvalProvider {}
 impl GetauxvalProvider for NativeGetauxvalProvider {
     /// Returns Some if the native invocation succeeds and the requested type was
     /// found, otherwise None.
-    fn getauxval(&self, auxv_type: AuxvUnsignedLongNative) -> Option<AuxvUnsignedLongNative> {
+    fn getauxval(&self, auxv_type: AuxvUnsignedLongNative)
+            -> Option<AuxvUnsignedLongNative> {
         let mut success = 0;
         unsafe {
             let result = getauxval_wrapper(auxv_type, &mut success);
@@ -86,7 +91,8 @@ pub struct AuxvTypes<T: AuxvUnsignedLong> {
 impl <T: AuxvUnsignedLong> AuxvTypes<T> {
     pub fn new() -> AuxvTypes<T> {
         AuxvTypes {
-            // from [linux]/include/uapi/linux/auxvec.h. First 32 bits of HWCAP bits.
+            // from [linux]/include/uapi/linux/auxvec.h. First 32 bits of HWCAP
+            // even on platforms where unsigned long is 64 bits.
             AT_HWCAP: T::from(16),
             // currently only used by powerpc and arm64 AFAICT
             AT_HWCAP2: T::from(26)
@@ -110,7 +116,8 @@ pub enum AuxValError {
 /// aux_types: the types to look for
 /// returns a map of types to values, only including entries for types that were
 /// requested that also had values in the aux vector
-pub fn search_auxv<T: AuxvUnsignedLong, B: ByteOrder>(path: &Path, aux_types: &[T])
+pub fn search_auxv<T: AuxvUnsignedLong, B: ByteOrder>(path: &Path,
+                                                      aux_types: &[T])
         -> Result<AuxVals<T>, AuxValError> {
     let mut input = File::open(path)
         .map_err(|_| AuxValError::IoError)
@@ -144,8 +151,10 @@ pub fn search_auxv<T: AuxvUnsignedLong, B: ByteOrder>(path: &Path, aux_types: &[
         }
 
         let mut reader = &buf[..];
-        let found_aux_type = T::read::<B>(&mut reader).map_err(|_| AuxValError::InvalidFormat)?;
-        let aux_val = T::read::<B>(&mut reader).map_err(|_| AuxValError::InvalidFormat)?;
+        let found_aux_type = T::read::<B>(&mut reader)
+            .map_err(|_| AuxValError::InvalidFormat)?;
+        let aux_val = T::read::<B>(&mut reader)
+            .map_err(|_| AuxValError::InvalidFormat)?;
 
         if aux_types.contains(&found_aux_type) {
             let _ = result.insert(found_aux_type, aux_val);
@@ -166,7 +175,8 @@ mod tests {
     use std::path::Path;
     use super::{AuxValError, AuxvTypes, search_auxv};
     #[cfg(target_os="linux")]
-    use super::{AuxvUnsignedLongNative, GetauxvalProvider, NativeGetauxvalProvider};
+    use super::{AuxvUnsignedLongNative, GetauxvalProvider,
+        NativeGetauxvalProvider};
 
     use self::byteorder::LittleEndian;
 
@@ -192,16 +202,17 @@ mod tests {
     fn test_getauxv_hwcap_linux_doesnt_find_bogus_type() {
         let native_getauxval = NativeGetauxvalProvider{};
 
-        assert!(native_getauxval.getauxval(AuxvUnsignedLongNative::from(555555555_u32)).is_none());
+        assert!(native_getauxval.getauxval(
+            AuxvUnsignedLongNative::from(555555555_u32)).is_none());
     }
 
     #[test]
     fn test_parse_auxv_virtualbox_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x64-4850HQ.auxv");
         let vals = search_auxv::<u64, LittleEndian>(path,
-                                                                 &[test_auxv_types().AT_HWCAP,
-                                                                     test_auxv_types().AT_HWCAP2,
-                                                                     AT_UID])
+                                                    &[test_auxv_types().AT_HWCAP,
+                                                        test_auxv_types().AT_HWCAP2,
+                                                        AT_UID])
             .unwrap();
         let hwcap = vals.get(&test_auxv_types().AT_HWCAP).unwrap();
         assert_eq!(&395049983_u64, hwcap);
@@ -219,9 +230,9 @@ mod tests {
     fn test_parse_auxv_real_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv");
         let vals = search_auxv::<u64, LittleEndian>(path,
-                                                                 &[test_auxv_types().AT_HWCAP,
-                                                                     test_auxv_types().AT_HWCAP2,
-                                                                     AT_UID])
+                                                    &[test_auxv_types().AT_HWCAP,
+                                                        test_auxv_types().AT_HWCAP2,
+                                                        AT_UID])
             .unwrap();
         let hwcap = vals.get(&test_auxv_types().AT_HWCAP).unwrap();
 
@@ -239,24 +250,21 @@ mod tests {
     fn test_parse_auxv_real_linux_half_of_trailing_null_missing_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-value-in-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxv::<u64, LittleEndian>(path, &[555555555])
-                .unwrap_err());
+            search_auxv::<u64, LittleEndian>(path, &[555555555]).unwrap_err());
     }
 
     #[test]
     fn test_parse_auxv_real_linux_trailing_null_missing_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxv::<u64, LittleEndian>(path, &[555555555])
-                .unwrap_err());
+            search_auxv::<u64, LittleEndian>(path, &[555555555]).unwrap_err());
     }
 
     #[test]
     fn test_parse_auxv_real_linux_truncated_entry_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-truncated-entry.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxv::<u64, LittleEndian>(path, &[555555555])
-                .unwrap_err());
+            search_auxv::<u64, LittleEndian>(path, &[555555555]).unwrap_err());
     }
 
     fn test_auxv_types() -> AuxvTypes<u64> {
