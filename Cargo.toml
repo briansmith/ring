@@ -157,7 +157,6 @@ include = [
     "crypto/constant_time_test.c",
     "crypto/cpu.c",
     "crypto/cpu-aarch64-linux.c",
-    "crypto/cpu-arm-linux.c",
     "crypto/cpu-arm.c",
     "crypto/cpu-intel.c",
     "crypto/crypto.c",
