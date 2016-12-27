@@ -1,8 +1,10 @@
 use std::collections::HashSet;
 use std::string::{String, ToString};
+use self::auxv::AuxvUnsignedLong;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-use self::auxv::AuxvUnsignedLongNative;
-use self::auxv::{AuxVals, AuxvTypes, AuxvUnsignedLong};
+use self::auxv::NativeGetauxvalProvider;
+#[cfg(any(all(test, target_os="linux"), all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
+use self::auxv::{AuxVals, AuxvTypes, AuxvUnsignedLongNative, GetauxvalProvider};
 use self::cpuinfo::CpuInfo;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
 use self::cpuinfo::parse_cpuinfo;
@@ -35,7 +37,7 @@ impl <T: AuxvUnsignedLong> ArmHwcapFeatures<T> {
 
 // Constants used in GFp_armcap_P
 // from include/openssl/arm_arch.h
-#[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
+#[cfg(any(all(test, target_os="linux"), all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
 const ARMV7_NEON: u32 = 1 << 0;
 // not a typo; there is no constant for 1 << 1
 const ARMV8_AES: u32 = 1 << 2;
@@ -59,7 +61,7 @@ extern "C" fn GFp_cpuid_setup() {
         if let Ok(auxvals) = auxv::search_auxv::<AuxvUnsignedLongNative, NativeEndian>(
                     &Path::from("/proc/self/auxv"),
                     &[auxv_types.AT_HWCAP, auxv_types.AT_HWCAP2]) {
-            let armcap = armcap_bits::<AuxvUnsignedLongNative>(&c, &auxvals, auxv_types,
+            let armcap = armcap_bits::<NativeGetauxvalProvider>(&c, &auxvals, auxv_types,
                                                          hwcap_features);
             unsafe {
                 GFp_armcap_P |= armcap;
@@ -69,12 +71,14 @@ extern "C" fn GFp_cpuid_setup() {
 }
 
 /// returns the GFp_armcap_P bitstring
-#[cfg(any(test, all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
-fn armcap_bits<T: AuxvUnsignedLong>(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals<T>,
-                                    auxval_types: AuxvTypes<T>,
-                                    hwcap_features: ArmHwcapFeatures<T>)
-                                    -> u32 {
-    let mut hwcap: T = T::from(0);
+#[cfg(any(all(test, target_os="linux"), all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux")))]
+fn armcap_bits<G: GetauxvalProvider> (cpuinfo: &CpuInfo,
+                                      procfs_auxv: &AuxVals<AuxvUnsignedLongNative>,
+                                      auxval_types: AuxvTypes<AuxvUnsignedLongNative>,
+                                      hwcap_features: ArmHwcapFeatures<AuxvUnsignedLongNative>,
+                                      getauxval_provider: G)
+        -> u32 {
+    let mut hwcap = AuxvUnsignedLongNative::from(0_u32);
 
     // |getauxval| is not available on Android until API level 20. If it is
     // unavailable, read from /proc/self/auxv as a fallback. This is unreadable
@@ -83,17 +87,12 @@ fn armcap_bits<T: AuxvUnsignedLong>(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals<T>,
     // https://android.googlesource.com/platform/ndk/+/882ac8f3392858991a0e1af33b4b7387ec856bd2
     // and b/13679666 (Google-internal) for details. */
 
-    // TODO link to getauxval weakly and use that if available. In particular,
-    // this is needed by the assumption in hwcap_from_cpuinfo that future architectures
-    // will have a working getauxval.
-
-    if let Some(v) = procfs_auxv.get(&auxval_types.AT_HWCAP) {
+    if let Some(v) = getauxval_provider.getauxval(auxval_types.AT_HWCAP) {
+        hwcap = v;
+    } else if let Some(v) = procfs_auxv.get(&auxval_types.AT_HWCAP) {
         hwcap = *v;
-    } else {
-        // fall back to cpuinfo
-        if let Some(v) = hwcap_from_cpuinfo(&cpuinfo, hwcap_features) {
-            hwcap = v;
-        }
+    } else if let Some(v) = hwcap_from_cpuinfo(&cpuinfo, hwcap_features) {
+        hwcap = v;
     }
 
     // Clear NEON support if known broken
@@ -103,22 +102,19 @@ fn armcap_bits<T: AuxvUnsignedLong>(cpuinfo: &CpuInfo, procfs_auxv: &AuxVals<T>,
 
     // Matching OpenSSL, only report other features if NEON is present
     let mut armcap: u32 = 0;
-    if hwcap & hwcap_features.ARM_HWCAP_NEON > T::from(0) {
+    if hwcap & hwcap_features.ARM_HWCAP_NEON > AuxvUnsignedLongNative::from(0_u32) {
         armcap |= ARMV7_NEON;
 
         // Some ARMv8 Android devices don't expose AT_HWCAP2. Fall back to
         // /proc/cpuinfo. See https://crbug.com/596156
 
-        // TODO use getauxval if available for AT_HWCAP2
-
-        let mut hwcap2: T = T::from(0);
-        if let Some(v) = procfs_auxv.get(&auxval_types.AT_HWCAP2) {
+        let mut hwcap2 = AuxvUnsignedLongNative::from(0_u32);
+        if let Some(v) = getauxval_provider.getauxval(auxval_types.AT_HWCAP2) {
+            hwcap2 = v;
+        } else if let Some(v) = procfs_auxv.get(&auxval_types.AT_HWCAP2) {
             hwcap2 = *v;
-        } else {
-            if let Some(v) = hwcap2_from_cpuinfo(&cpuinfo, hwcap_features) {
-                hwcap2 = v;
-            }
-            // otherwise, leave at 0
+        } else if let Some(v) = hwcap2_from_cpuinfo(&cpuinfo, hwcap_features) {
+            hwcap2 = v;
         }
 
         armcap |= armcap_for_hwcap2(hwcap2, hwcap_features);
@@ -225,50 +221,195 @@ mod tests {
     use std::string::{String, ToString};
     use std::vec::Vec;
 
-    use self::byteorder::LittleEndian;
-
-    use super::{armcap_bits, ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
-        ARMV7_NEON, ArmHwcapFeatures};
+    use super::{ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256,
+        ArmHwcapFeatures};
     use super::cpuinfo::{parse_cpuinfo_reader, CpuInfo, CpuInfoError};
-    use super::auxv::{search_auxv, AuxvTypes};
+
+    #[cfg(target_os="linux")]
+    use super::auxv::{AuxvTypes, AuxVals, AuxvUnsignedLongNative, GetauxvalProvider};
+    #[cfg(target_os="linux")]
+    use super::{armcap_bits, ARMV7_NEON};
+
+    #[cfg(target_os="linux")]
+    struct StubGetauxvalProvider {
+        auxv: AuxVals<AuxvUnsignedLongNative>
+    }
+
+    #[cfg(target_os="linux")]
+    impl GetauxvalProvider for StubGetauxvalProvider {
+        fn getauxval(&self, auxv_type: AuxvUnsignedLongNative) -> Option<AuxvUnsignedLongNative> {
+            self.auxv.get(&auxv_type).map(|v| *v)
+        }
+    }
 
     #[test]
+    #[cfg(target_os="linux")]
     fn armcap_bits_broken_neon_without_auxv_yields_zero_armcap() {
         let cpuinfo = parse_cpuinfo_file(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
 
-        // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
-        let auxv = search_auxv::<u64, LittleEndian>(
-            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
+        let getauxv = not_found_getauxv();
+        let proc_auxv = empty_procfs_auxv();
 
-        assert_eq!(0, armcap_bits(&cpuinfo, &auxv, test_auxv_types(), test_hwcap_features()));
+        assert_eq!(0,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
     }
 
     #[test]
-    fn armcap_bits_ok_arm_neon_without_auxv_yields_neon_only_armcap() {
+    #[cfg(target_os="linux")]
+    fn armcap_bits_broken_neon_with_neon_getauxv_yields_zero_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
+
+        let getauxv = hwcap_neon_getauxv();
+        let proc_auxv = empty_procfs_auxv();
+
+        assert_eq!(0,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_broken_neon_with_neon_procfs_yields_zero_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-broken.cpuinfo")).unwrap();
+
+        let getauxv = not_found_getauxv();
+        let proc_auxv = hwcap_neon_procfs_auxv();
+
+        assert_eq!(0,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn armcap_bits_ok_neon_with_neon_getauxv_yields_neon_armcap() {
         let cpuinfo = parse_cpuinfo_file(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-C1904.cpuinfo")).unwrap();
 
         // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
-        let auxv = search_auxv::<u64, LittleEndian>(
-            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
+        let getauxv = hwcap_neon_getauxv();
+        let proc_auxv = empty_procfs_auxv();
 
         assert_eq!(ARMV7_NEON,
-            armcap_bits(&cpuinfo, &auxv, test_auxv_types(), test_hwcap_features()));
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
     }
 
     #[test]
-    fn armcap_bits_arm_8_with_features_without_auxv_yields_fully_populated_armcap() {
+    #[cfg(target_os = "linux")]
+    fn armcap_bits_ok_neon_with_neon_procfs_auxv_yields_neon_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-C1904.cpuinfo")).unwrap();
+
+        let getauxv = not_found_getauxv();
+        let proc_auxv = hwcap_neon_procfs_auxv();
+
+        assert_eq!(ARMV7_NEON,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_ok_neon_without_auxv_yields_neon_only_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-C1904.cpuinfo")).unwrap();
+
+        let getauxv = not_found_getauxv();
+        let proc_auxv = empty_procfs_auxv();
+
+        assert_eq!(ARMV7_NEON,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_arm_8_with_cpuinfo_features_without_auxv_yields_fully_populated_armcap() {
         let cpuinfo = parse_cpuinfo_file(
             Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-cavium-thunderx.cpuinfo"))
                 .unwrap();
 
-        // we don't have an arm cpuinfo test file but we're testing an empty-auxv case anyway
-        let auxv = search_auxv::<u64, LittleEndian>(
-            Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv"), &[]).unwrap();
+        let getauxv = not_found_getauxv();
+        let proc_auxv = empty_procfs_auxv();
 
         assert_eq!(ARMV7_NEON | ARMV8_PMULL | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256,
-            armcap_bits(&cpuinfo, &auxv, test_auxv_types(), test_hwcap_features()));
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_arm_8_with_cpuinfo_features_with_neon_only_getauxv_hwcap_yields_fully_populated_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-cavium-thunderx.cpuinfo"))
+            .unwrap();
+
+        let getauxv = hwcap_neon_getauxv();
+        let proc_auxv = empty_procfs_auxv();
+
+        assert_eq!(ARMV7_NEON | ARMV8_PMULL | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                             native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_arm_8_with_cpuinfo_features_with_neon_only_procfs_auxv_hwcap_yields_fully_populated_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-cavium-thunderx.cpuinfo"))
+            .unwrap();
+
+        let getauxv = not_found_getauxv();
+        let proc_auxv = hwcap_neon_procfs_auxv();
+
+        assert_eq!(ARMV7_NEON | ARMV8_PMULL | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                             native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_arm_8_with_cpuinfo_features_with_neon_only_getauxv_hwcap_and_aes_getauxv_hwcap2_yields_only_neon_aes_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-cavium-thunderx.cpuinfo"))
+            .unwrap();
+
+        let proc_auxv = empty_procfs_auxv();
+
+        let mut auxv = AuxVals::new();
+        let _ = auxv.insert(native_auxv_types().AT_HWCAP, native_hwcap_features().ARM_HWCAP_NEON);
+        let _ = auxv.insert(native_auxv_types().AT_HWCAP2, native_hwcap_features().ARM_HWCAP2_AES);
+        let getauxv = StubGetauxvalProvider {
+            auxv: auxv
+        };
+
+        assert_eq!(ARMV7_NEON | ARMV8_AES,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
+    }
+
+    #[test]
+    #[cfg(target_os="linux")]
+    fn armcap_bits_arm_8_with_cpuinfo_features_with_neon_only_procfs_hwcap_and_pmull_procfs_hwcap2_yields_only_neon_aes_armcap() {
+        let cpuinfo = parse_cpuinfo_file(
+            Path::new("src/cpu_feature/arm_linux/test-data/linux-arm-cavium-thunderx.cpuinfo"))
+            .unwrap();
+
+        let mut proc_auxv = AuxVals::new();
+        let _ = proc_auxv.insert(native_auxv_types().AT_HWCAP,
+                                 native_hwcap_features().ARM_HWCAP_NEON);
+        let _ = proc_auxv.insert(native_auxv_types().AT_HWCAP2,
+                                 native_hwcap_features().ARM_HWCAP2_PMULL);
+        let getauxv = not_found_getauxv();
+
+        assert_eq!(ARMV7_NEON | ARMV8_PMULL,
+            armcap_bits::<StubGetauxvalProvider>(&cpuinfo, &proc_auxv, native_auxv_types(),
+                                                 native_hwcap_features(), getauxv));
     }
 
     #[test]
@@ -375,11 +516,46 @@ mod tests {
         parse_cpuinfo_reader(&mut buffer)
     }
 
-    fn test_auxv_types() -> AuxvTypes<u64> {
+    fn test_hwcap_features() -> ArmHwcapFeatures<u64> {
+        ArmHwcapFeatures::new()
+    }
+
+    #[cfg(target_os="linux")]
+    fn native_auxv_types() -> AuxvTypes<AuxvUnsignedLongNative> {
         AuxvTypes::new()
     }
 
-    fn test_hwcap_features() -> ArmHwcapFeatures<u64> {
+    #[cfg(target_os="linux")]
+    fn native_hwcap_features() -> ArmHwcapFeatures<AuxvUnsignedLongNative> {
         ArmHwcapFeatures::new()
+    }
+
+    #[cfg(target_os="linux")]
+    fn empty_procfs_auxv() -> AuxVals<AuxvUnsignedLongNative> {
+        AuxVals::new()
+    }
+
+    #[cfg(target_os="linux")]
+    fn hwcap_neon_procfs_auxv() ->  AuxVals<AuxvUnsignedLongNative> {
+        let mut proc_auxv = AuxVals::<AuxvUnsignedLongNative>::new();
+        let _ = proc_auxv.insert(native_auxv_types().AT_HWCAP,
+                                 native_hwcap_features().ARM_HWCAP_NEON);
+
+        proc_auxv
+    }
+
+    #[cfg(target_os="linux")]
+    fn not_found_getauxv() -> StubGetauxvalProvider {
+        StubGetauxvalProvider { auxv: AuxVals::<AuxvUnsignedLongNative>::new() }
+    }
+
+    #[cfg(target_os="linux")]
+    fn hwcap_neon_getauxv() -> StubGetauxvalProvider {
+        let mut auxv = AuxVals::new();
+        let _ = auxv.insert(native_auxv_types().AT_HWCAP, native_hwcap_features().ARM_HWCAP_NEON);
+
+        StubGetauxvalProvider {
+            auxv: auxv
+        }
     }
 }
