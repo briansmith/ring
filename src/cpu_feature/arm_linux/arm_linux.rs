@@ -61,17 +61,20 @@ extern "C" fn GFp_cpuid_setup() {
     let hwcap_features: ArmHwcapFeatures<AuxvUnsignedLongNative>
         = ArmHwcapFeatures::new();
     if let Ok(c) = parse_cpuinfo() {
-        // TODO handle failures to read from procfs auxv
-        if let Ok(auxvals) =
-                auxv::search_auxv::<AuxvUnsignedLongNative, NativeEndian>(
-                    &Path::from("/proc/self/auxv"),
-                    &[auxv_types.AT_HWCAP, auxv_types.AT_HWCAP2]) {
-            let armcap =
-                armcap_bits::<NativeGetauxvalProvider>(&c, &auxvals, auxv_types,
-                                                       hwcap_features);
-            unsafe {
-                GFp_armcap_P |= armcap;
-            }
+        // if we can't load procfs auxv, just let it be empty
+        let procfs_auxv = match
+                auxv::search_procfs_auxv::<AuxvUnsignedLongNative, NativeEndian>
+                    (&Path::from("/proc/self/auxv"),
+                     &[auxv_types.AT_HWCAP, auxv_types.AT_HWCAP2]) {
+            Ok(auxv) => auxv,
+            Err(_) => AuxVals::<AuxvUnsignedLongNative>::new()
+        };
+
+        let armcap =
+            armcap_bits::<NativeGetauxvalProvider>(&c, &procfs_auxv, auxv_types,
+                                                   hwcap_features);
+        unsafe {
+            GFp_armcap_P |= armcap;
         }
     }
 }

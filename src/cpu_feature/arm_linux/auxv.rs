@@ -108,7 +108,7 @@ pub enum AuxValError {
     InvalidFormat
 }
 
-/// Read an entry from the aux vector.
+/// Read an entry from the procfs auxv file.
 ///
 /// input: pairs of unsigned longs, as in /proc/self/auxv. The first of each
 /// pair is the 'type' and the second is the 'value'.
@@ -116,8 +116,8 @@ pub enum AuxValError {
 /// aux_types: the types to look for
 /// returns a map of types to values, only including entries for types that were
 /// requested that also had values in the aux vector
-pub fn search_auxv<T: AuxvUnsignedLong, B: ByteOrder>(path: &Path,
-                                                      aux_types: &[T])
+pub fn search_procfs_auxv<T: AuxvUnsignedLong, B: ByteOrder>(path: &Path,
+                                                             aux_types: &[T])
         -> Result<AuxVals<T>, AuxValError> {
     let mut input = File::open(path)
         .map_err(|_| AuxValError::IoError)
@@ -173,7 +173,7 @@ mod tests {
     extern crate byteorder;
 
     use std::path::Path;
-    use super::{AuxValError, AuxvTypes, search_auxv};
+    use super::{AuxValError, AuxvTypes, search_procfs_auxv};
     #[cfg(target_os="linux")]
     use super::{AuxvUnsignedLongNative, GetauxvalProvider,
         NativeGetauxvalProvider};
@@ -209,10 +209,10 @@ mod tests {
     #[test]
     fn test_parse_auxv_virtualbox_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/macos-virtualbox-linux-x64-4850HQ.auxv");
-        let vals = search_auxv::<u64, LittleEndian>(path,
-                                                    &[test_auxv_types().AT_HWCAP,
-                                                        test_auxv_types().AT_HWCAP2,
-                                                        AT_UID])
+        let vals = search_procfs_auxv::<u64, LittleEndian>(path,
+                                                           &[test_auxv_types().AT_HWCAP,
+                                                               test_auxv_types().AT_HWCAP2,
+                                                               AT_UID])
             .unwrap();
         let hwcap = vals.get(&test_auxv_types().AT_HWCAP).unwrap();
         assert_eq!(&395049983_u64, hwcap);
@@ -229,10 +229,10 @@ mod tests {
     #[test]
     fn test_parse_auxv_real_linux() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k.auxv");
-        let vals = search_auxv::<u64, LittleEndian>(path,
-                                                    &[test_auxv_types().AT_HWCAP,
-                                                        test_auxv_types().AT_HWCAP2,
-                                                        AT_UID])
+        let vals = search_procfs_auxv::<u64, LittleEndian>(path,
+                                                           &[test_auxv_types().AT_HWCAP,
+                                                               test_auxv_types().AT_HWCAP2,
+                                                               AT_UID])
             .unwrap();
         let hwcap = vals.get(&test_auxv_types().AT_HWCAP).unwrap();
 
@@ -250,21 +250,24 @@ mod tests {
     fn test_parse_auxv_real_linux_half_of_trailing_null_missing_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-value-in-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxv::<u64, LittleEndian>(path, &[555555555]).unwrap_err());
+            search_procfs_auxv::<u64, LittleEndian>(path,
+                                                    &[555555555]).unwrap_err());
     }
 
     #[test]
     fn test_parse_auxv_real_linux_trailing_null_missing_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-no-trailing-null.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxv::<u64, LittleEndian>(path, &[555555555]).unwrap_err());
+            search_procfs_auxv::<u64, LittleEndian>(path,
+                                                    &[555555555]).unwrap_err());
     }
 
     #[test]
     fn test_parse_auxv_real_linux_truncated_entry_error() {
         let path = Path::new("src/cpu_feature/arm_linux/test-data/linux-x64-i7-6850k-mangled-truncated-entry.auxv");
         assert_eq!(AuxValError::InvalidFormat,
-            search_auxv::<u64, LittleEndian>(path, &[555555555]).unwrap_err());
+            search_procfs_auxv::<u64, LittleEndian>(path,
+                                                    &[555555555]).unwrap_err());
     }
 
     fn test_auxv_types() -> AuxvTypes<u64> {
