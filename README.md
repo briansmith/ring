@@ -26,12 +26,18 @@ validation is done in the [webpki](https://github.com/briansmith/webpki)
 project, which is built on top of *ring*. Also, multiple groups are working on
 TLS implementations on top of *ring* and webpki.
 
-The name *ring* comes from the fact that *ring* started as a subset of
-BoringSSL, and *"ring"* is a substring of "Bo*ring*SSL". Most of the (C and
-assembly language) code in *ring* comes from BoringSSL, and BoringSSL is
-derived from OpenSSL. *ring* merges changes from BoringSSL regularly. Also,
-several changes that were developed for *ring* have already been merged into
-BoringSSL.
+*ring* is the successor of an earlier project called GFp. GFp implemented some
+elliptic curve cryptography over prime finite fields, also known as prime
+Galois fields and often denoted GF(p). When we implemented RSA, the name GFp
+did not make as much sense, since modular arithmetic over RSA public moduli is
+not GF(p) arithmetic but rather finite commutative *ring* arithmetic. Also note
+that *ring* and GFp both started as subsets of BoringSSL, and "*ring*" is a
+substring of "Bo*ring*SSL".
+
+Most of the C and assembly language code in *ring* comes from BoringSSL, and
+BoringSSL is derived from OpenSSL. *ring* merges changes from BoringSSL
+regularly. Also, several changes that were developed for *ring* have already
+been merged into BoringSSL.
 
 
 
