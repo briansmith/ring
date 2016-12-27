@@ -11,13 +11,20 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *ring*
 ======
 
-*ring* is a crypto library for Rust based on BoringSSL's crypto primitive
-implementations.
+*ring* is focused on the implementation, testing, and optimization of a core
+set of cryptographic operations exposed via an easy-to-use (and hard-to-misuse)
+API. *ring* exposes a [Rust](https://www.rust-lang.org/) API and is written in
+a hybrid of Rust, C, and assembly language.
 
 Particular attention is being paid to making it easy to build and integrate
 *ring* into applications and higher-level frameworks, and to ensuring that
 *ring* works optimally on small devices, and eventually microcontrollers, to
 support Internet of Things (IoT) applications.
+
+*ring* is focused on general-purpose cryptography. WebPKI X.509 certificate
+validation is done in the [webpki](https://github.com/briansmith/webpki)
+project, which is built on top of *ring*. Also, multiple groups are working on
+TLS implementations on top of *ring* and webpki.
 
 The name *ring* comes from the fact that *ring* started as a subset of
 BoringSSL, and *"ring"* is a substring of "Bo*ring*SSL". Most of the (C and
@@ -25,12 +32,6 @@ assembly language) code in *ring* comes from BoringSSL, and BoringSSL is
 derived from OpenSSL. *ring* merges changes from BoringSSL regularly. Also,
 several changes that were developed for *ring* have already been merged into
 BoringSSL.
-
-*ring* is focused on the implementation, testing, and optimization of core
-crypto primitives. WebPKI X.509 certificate validation is done in the
-[webpki](https://github.com/briansmith/webpki) project, which is built on top
-of *ring*. Also, multiple groups are working on TLS implementations on top of
-*ring* and webpki.
 
 
 
