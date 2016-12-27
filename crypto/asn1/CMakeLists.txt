@@ -28,7 +28,6 @@ add_library(
   f_enum.c
   f_int.c
   f_string.c
-  t_bitst.c
   tasn_dec.c
   tasn_enc.c
   tasn_fre.c

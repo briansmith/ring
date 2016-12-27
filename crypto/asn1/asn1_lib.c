@@ -107,30 +107,6 @@ static int asn1_get_length(const unsigned char **pp, int *inf, long *rl,
                            long max);
 static void asn1_put_length(unsigned char **pp, int length);
 
-static int _asn1_check_infinite_end(const unsigned char **p, long len)
-{
-    /*
-     * If there is 0 or 1 byte left, the length check should pick things up
-     */
-    if (len <= 0)
-        return (1);
-    else if ((len >= 2) && ((*p)[0] == 0) && ((*p)[1] == 0)) {
-        (*p) += 2;
-        return (1);
-    }
-    return (0);
-}
-
-int ASN1_check_infinite_end(unsigned char **p, long len)
-{
-    return _asn1_check_infinite_end((const unsigned char **)p, len);
-}
-
-int ASN1_const_check_infinite_end(const unsigned char **p, long len)
-{
-    return _asn1_check_infinite_end(p, len);
-}
-
 int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
                     int *pclass, long omax)
 {
@@ -325,31 +301,6 @@ int ASN1_object_size(int constructed, int length, int tag)
     if (ret >= INT_MAX - length)
         return -1;
     return ret + length;
-}
-
-static int _asn1_Finish(ASN1_const_CTX *c)
-{
-    if ((c->inf == (1 | V_ASN1_CONSTRUCTED)) && (!c->eos)) {
-        if (!ASN1_const_check_infinite_end(&c->p, c->slen)) {
-            c->error = ASN1_R_MISSING_ASN1_EOS;
-            return (0);
-        }
-    }
-    if (((c->slen != 0) && !(c->inf & 1)) || ((c->slen < 0) && (c->inf & 1))) {
-        c->error = ASN1_R_ASN1_LENGTH_MISMATCH;
-        return (0);
-    }
-    return (1);
-}
-
-int asn1_Finish(ASN1_CTX *c)
-{
-    return _asn1_Finish((ASN1_const_CTX *)c);
-}
-
-int asn1_const_Finish(ASN1_const_CTX *c)
-{
-    return _asn1_Finish(c);
 }
 
 int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str)
