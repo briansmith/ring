@@ -130,11 +130,11 @@ pub fn verify_rsa(params: &RSAParameters,
 
     // Step 1.
     let s = try!(bigint::Positive::from_be_bytes_padded(signature));
-    let s = try!(s.into_elem_decoded::<N>(&n));
+    let s = try!(s.into_elem::<N>(&n));
 
     // Step 2.
     let m = try!(bigint::elem_exp_vartime(s, e, &n));
-    let m = try!(m.into_elem_decoded(&n));
+    let m = try!(m.into_unencoded(&n));
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
