@@ -177,29 +177,13 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
 
   /* Set |r| to the smallest power of two larger than |n|. */
   assert(p > n_bits);
-  if (!GFp_BN_set_bit(r, n_bits)) {
+  if (!GFp_BN_set_bit(r, n_bits - 1)) {
     return 0;
   }
 
-  /* Unconditionally reduce |r|. */
-  assert(GFp_BN_cmp(r, n) > 0);
-  if (!GFp_BN_usub(r, r, n)) {
-    return 0;
-  }
-  assert(GFp_BN_cmp(r, n) < 0);
-
-  for (unsigned i = n_bits; i < p; ++i) {
-    /* This is like |BN_mod_lshift1_quick| except using |BN_usub|.
-     *
-     * TODO: Replace this with the use of a constant-time variant of
-     * |BN_mod_lshift1_quick|. */
-    if (!GFp_BN_lshift1(r, r)) {
+  for (unsigned i = n_bits - 1; i < p; ++i) {
+    if (!GFp_BN_mod_add_quick(r, r, r, n)) {
       return 0;
-    }
-    if (GFp_BN_cmp(r, n) >= 0) {
-      if (!GFp_BN_usub(r, r, n)) {
-        return 0;
-      }
     }
   }
 

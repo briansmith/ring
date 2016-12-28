@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+﻿// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,7 @@
 
 //! Mutli-precision integers.
 //!
-//! # Modular Arithmetic.
+//! # Modular Montgomery Arithmetic.
 //!
 //! Modular arithmetic is done in finite commutative rings ℤ/mℤ for some
 //! modulus *m*. We work in finite commutative rings instead of finite fields
@@ -29,9 +29,13 @@
 //! type `M` to ensure that we don't wrongly mix up the math, e.g. by
 //! multiplying an element of ℤp by an element of ℤq modulo q. This follows
 //! the "unit" pattern described in "[Static checking of units in Servo]."
-//! `Elem`, `ElemDecoded`, and `Modulus` are analogous to `geom::Length`, and
-//! `super::N` and `super::signing::{P, QQ, Q}` are analogous to `Mm` and
-//! `Inch`.
+//! `Elem`, and `Modulus` are analogous to `geom::Length`, and `super::N` and
+//! `super::signing::{P, QQ, Q}` are analogous to `Mm` and `Inch`.
+//!
+//! This ring's multiplication operation is Montgomery multiplication, not
+//! plain modular multiplication. `Elem` is also parameterized over a type `F`
+//! which indicates whether the value has been scaled by the Montgomery factor
+//! *R* or whether it is unscaled.
 //!
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
@@ -52,7 +56,7 @@ use core::marker::PhantomData;
 pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
                         B: core::convert::AsRef<BIGNUM>>(a: &A, b: &B)
         -> Result<(), error::Unspecified> {
-    let r = unsafe { GFp_BN_cmp(a.as_ref(), b.as_ref()) };
+    let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
     if !(r < 0) {
         return Err(error::Unspecified);
     }
@@ -129,17 +133,12 @@ impl Positive {
     }
 
     pub fn into_elem<M>(self, m: &Modulus<M>)
-                        -> Result<Elem<M>, error::Unspecified> {
-        let decoded = try!(self.into_elem_decoded(m));
-        decoded.into_elem(m)
-    }
-
-    pub fn into_elem_decoded<M>(self, m: &Modulus<M>)
-                                -> Result<ElemDecoded<M>, error::Unspecified> {
+                        -> Result<Elem<M, Unencoded>, error::Unspecified> {
         try!(verify_less_than(&self, &m));
-        Ok(ElemDecoded {
+        Ok(Elem {
             value: self.0,
             ring: PhantomData,
+            montgomery_factor: PhantomData,
         })
     }
 
@@ -163,17 +162,18 @@ impl OddPositive {
     }
 
     pub fn into_elem<M>(self, m: &Modulus<M>)
-                        -> Result<Elem<M>, error::Unspecified> {
+                        -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.0.into_elem(m)
     }
 
-    pub fn into_elem_decoded<M>(self, m: &Modulus<M>)
-                                -> Result<ElemDecoded<M>, error::Unspecified> {
-        self.0.into_elem_decoded(m)
-    }
-
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
+        // `elem_inverse()`, at least, requires the modulus to be larger one.
+        if self.bit_length() < bits::BitLength::from_usize_bits(2) {
+            return Err(error::Unspecified);
+        }
+
         let r = Modulus {
+            value: self,
             ctx: unsafe { GFp_BN_MONT_CTX_new() },
             ring: PhantomData,
         };
@@ -183,7 +183,7 @@ impl OddPositive {
         // XXX: This makes a copy of `self`'s `BIGNUM`. TODO: change this to a
         // move.
         try!(bssl::map_result(unsafe {
-            GFp_BN_MONT_CTX_set(&mut *r.ctx, self.as_ref())
+            GFp_BN_MONT_CTX_set(&mut *r.ctx, r.value.as_ref())
         }));
         Ok(r)
     }
@@ -222,8 +222,10 @@ pub unsafe trait SmallerModulus<L> {}
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 
-/// A modulus that can be used for Montgomery math.
+/// A modulus that can be used for Montgomery math. The value must be odd and
+/// larger than one.
 pub struct Modulus<M> {
+    value: OddPositive,
     ctx: *mut BN_MONT_CTX,
 
     /// The ring ℤ/mℤ for which this is the modulus.
@@ -240,15 +242,40 @@ unsafe impl<M> Send for Modulus<M> {}
 // `Modulus` is immutable.
 unsafe impl<M> Sync for Modulus<M> {}
 
+// Montgomery factors.
+pub enum Unencoded {} // Not Montgomery encoded.
+pub enum Encoded {} // Montgomery encoded.
+
+pub trait MontgomeryEncodingProduct {
+    type Output;
+}
+
+// The result of Montgomery multiplication of a Montgomery-encoded element by
+// an unencoded element is unencoded.
+impl MontgomeryEncodingProduct for (Unencoded, Encoded) {
+    type Output = Unencoded;
+}
+impl MontgomeryEncodingProduct for (Encoded, Unencoded) {
+    type Output = Unencoded;
+}
+
+// The result of Montgomery multiplication of two Montgomery-encoded elements
+// is Montgomery-encoded.
+impl MontgomeryEncodingProduct for (Encoded, Encoded) {
+    type Output = Encoded;
+}
+
 /// Montgomery-encoded elements of a field.
-pub struct Elem<M> {
+pub struct Elem<M, F = Unencoded> {
     value: Nonnegative,
 
     /// The ring ℤ/mℤ for which this element is a value.
     ring: PhantomData<M>,
+
+    montgomery_factor: PhantomData<F>,
 }
 
-impl<M> Elem<M> {
+impl<M, F> Elem<M, F> {
     // There's no need to convert `value` to the Montgomery domain since
     // 0 * R**2 (mod n) == 0, so the modulus isn't even needed to construct a
     // zero-valued element.
@@ -257,61 +284,46 @@ impl<M> Elem<M> {
         Ok(Elem {
             value: value,
             ring: PhantomData,
+            montgomery_factor: PhantomData,
         })
     }
 
-    pub fn try_clone(&self) -> Result<Elem<M>, error::Unspecified> {
+    pub fn is_zero(&self) -> bool { self.value.is_zero() }
+
+    pub fn take_storage<OtherF>(e: Elem<M, OtherF>) -> Elem<M, F> {
+        Elem {
+            value: e.value,
+            ring: PhantomData,
+            montgomery_factor: PhantomData,
+        }
+    }
+
+    pub fn try_clone(&self) -> Result<Self, error::Unspecified> {
         let value = try!(self.value.try_clone());
         Ok(Elem {
             value: value,
             ring: PhantomData,
+            montgomery_factor: PhantomData,
         })
     }
+}
 
-    pub fn into_elem_decoded(self, m: &Modulus<M>)
-                             -> Result<ElemDecoded<M>, error::Unspecified> {
+impl<M> Elem<M, Encoded> {
+    pub fn into_unencoded(self, m: &Modulus<M>)
+                          -> Result<Elem<M>, error::Unspecified> {
         let /*mut*/ r = self.value;
         try!(bssl::map_result(unsafe {
             GFp_BN_from_mont(r.0, r.0, m.as_ref())
         }));
-        Ok(ElemDecoded {
+        Ok(Elem {
             value: r,
             ring: PhantomData,
+            montgomery_factor: PhantomData,
         })
     }
 }
 
-pub struct ElemDecoded<M> {
-    value: Nonnegative,
-
-    /// The ring ℤ/mℤ for which this element is a value.
-    ring: PhantomData<M>,
-}
-
-impl<M> ElemDecoded<M> {
-    pub fn zero() -> Result<ElemDecoded<M>, error::Unspecified> {
-        let value = try!(Nonnegative::zero());
-        Ok(ElemDecoded {
-            value: value,
-            ring: PhantomData,
-        })
-    }
-
-    pub fn take_storage(e: Elem<M>) -> ElemDecoded<M> {
-        ElemDecoded {
-            value: e.value,
-            ring: PhantomData,
-        }
-    }
-
-    pub fn try_clone(&self) -> Result<ElemDecoded<M>, error::Unspecified> {
-        let value = try!(self.value.try_clone());
-        Ok(ElemDecoded {
-            value: value,
-            ring: PhantomData,
-        })
-    }
-
+impl<M> Elem<M, Unencoded> {
     pub fn fill_be_bytes(&self, out: &mut [u8])
                          -> Result<(), error::Unspecified> {
         bssl::map_result(unsafe {
@@ -320,12 +332,10 @@ impl<M> ElemDecoded<M> {
         })
     }
 
-    pub fn is_zero(&self) -> bool { self.value.is_zero() }
-
     pub fn is_one(&self) -> bool { self.value.is_one() }
 
-    pub fn into_elem(self, m: &Modulus<M>)
-                     -> Result<Elem<M>, error::Unspecified> {
+    pub fn into_encoded(self, m: &Modulus<M>)
+                        -> Result<Elem<M, Encoded>, error::Unspecified> {
         let mut value = self.value;
         try!(bssl::map_result(unsafe {
             GFp_BN_to_mont(value.as_mut_ref(), value.as_ref(), m.as_ref())
@@ -333,6 +343,7 @@ impl<M> ElemDecoded<M> {
         Ok(Elem {
             value: value,
             ring: PhantomData,
+            montgomery_factor: PhantomData,
         })
     }
 
@@ -341,44 +352,48 @@ impl<M> ElemDecoded<M> {
     }
 }
 
-pub fn elem_mul<M>(a: &Elem<M>, b: Elem<M>, m: &Modulus<M>)
-                   -> Result<Elem<M>, error::Unspecified> {
+
+pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
+        -> Result<Elem<M, <(AF, BF) as MontgomeryEncodingProduct>::Output>,
+                  error::Unspecified>
+        where (AF, BF): MontgomeryEncodingProduct {
     let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(Elem {
         value: r,
-        ring: PhantomData
+        ring: PhantomData,
+        montgomery_factor: PhantomData,
     })
 }
 
 // `a` * `b` (mod `m`).
-pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
-                         -> Result<ElemDecoded<M>, error::Unspecified> {
-    let /*mut*/ r = b.value;
-    try!(bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
-    }));
-    Ok(ElemDecoded {
-        value: r,
-        ring: PhantomData
+pub fn elem_set_to_product<M, AF, BF>(
+        r: &mut Elem<M, <(AF, BF) as MontgomeryEncodingProduct>::Output>,
+        a: &Elem<M, AF>, b: &Elem<M, BF>, m: &Modulus<M>)
+        -> Result<(), error::Unspecified>
+        where (AF, BF): MontgomeryEncodingProduct {
+    bssl::map_result(unsafe {
+        GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
+                            b.value.as_ref(), m.as_ref())
     })
 }
 
-pub fn elem_reduced<Larger,
-                    Smaller: NotMuchSmallerModulus<Larger>>(
-        a: &ElemDecoded<Larger>, m: &Modulus<Smaller>)
-        -> Result<ElemDecoded<Smaller>, error::Unspecified> {
-    let /*mut*/ r = try!(ElemDecoded::zero());
+pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
+        a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
+        -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
+    let /*mut*/ r = try!(Elem::zero());
     try!(bssl::map_result(unsafe {
         GFp_BN_reduce_mont(r.value.0, a.value.0, m.as_ref())
     }));
     Ok(r)
 }
 
-pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
-                       -> Result<Elem<M>, error::Unspecified> {
+pub fn elem_squared<M, F>(a: Elem<M, F>, m: &Modulus<M>)
+        -> Result<Elem<M, <(F, F) as MontgomeryEncodingProduct>::Output>,
+                  error::Unspecified>
+        where (F, F): MontgomeryEncodingProduct {
     let mut value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
@@ -387,39 +402,45 @@ pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
     Ok(Elem {
         value: value,
         ring: PhantomData,
+        montgomery_factor: PhantomData,
     })
 }
 
 pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
-        a: ElemDecoded<Smaller>) -> ElemDecoded<Larger> {
-    ElemDecoded {
+        a: Elem<Smaller, Unencoded>) -> Elem<Larger, Unencoded> {
+    Elem {
         value: a.value,
         ring: PhantomData,
+        montgomery_factor: PhantomData,
     }
 }
 
 
-pub fn elem_add<M>(a: &ElemDecoded<M>, b: ElemDecoded<M>, m: &Modulus<M>)
-                   -> Result<ElemDecoded<M>, error::Unspecified> {
+// TODO: Document why this works for all Montgomery factors.
+pub fn elem_add<M, F>(a: &Elem<M, F>, b: Elem<M, F>, m: &Modulus<M>)
+                      -> Result<Elem<M, F>, error::Unspecified> {
     let value = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_add_quick(value.0, a.value.as_ref(), value.0, m.as_ref())
     }));
-    Ok(ElemDecoded {
+    Ok(Elem {
         value: value,
         ring: PhantomData,
+        montgomery_factor: PhantomData,
     })
 }
 
-pub fn elem_sub<M>(a: ElemDecoded<M>, b: &ElemDecoded<M>, m: &Modulus<M>)
-                   -> Result<ElemDecoded<M>, error::Unspecified> {
+// TODO: Document why this works for all Montgomery factors.
+pub fn elem_sub<M, F>(a: Elem<M, F>, b: &Elem<M, F>, m: &Modulus<M>)
+                   -> Result<Elem<M, F>, error::Unspecified> {
     let value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_sub_quick(value.0, value.0, b.value.as_ref(), m.as_ref())
     }));
-    Ok(ElemDecoded {
+    Ok(Elem {
         value: value,
         ring: PhantomData,
+        montgomery_factor: PhantomData,
     })
 }
 
@@ -445,8 +466,8 @@ pub const PUBLIC_EXPONENT_MAX_BITS: bits::BitLength = bits::BitLength(33);
 // TODO: need tests with expnent > 32 bits.
 // TODO: need tests iwth 65537 and 3.
 pub fn elem_exp_vartime<M>(
-        base: ElemDecoded<M>, PublicExponent(exponent): PublicExponent,
-        m: &Modulus<M>) -> Result<ElemDecoded<M>, error::Unspecified> {
+        base: Elem<M, Unencoded>, PublicExponent(exponent): PublicExponent,
+        m: &Modulus<M>) -> Result<Elem<M, Encoded>, error::Unspecified> {
     // The vast majority of the time the exponent is either 65537
     // (0b10000000000000001) or 3 (0b11), both of which have the minimal
     // Hamming (TODO: capitaliation) weight of 2. As explained in Knuth
@@ -460,7 +481,7 @@ pub fn elem_exp_vartime<M>(
     debug_assert_eq!(exponent & 1, 1);
     assert!(exponent < (1 << PUBLIC_EXPONENT_MAX_BITS.as_usize_bits()));
 
-    let base = try!(base.into_elem(m));
+    let base = try!(base.into_encoded(m));
     let mut acc = try!(base.try_clone());
 
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
@@ -472,46 +493,67 @@ pub fn elem_exp_vartime<M>(
             acc = try!(elem_mul(&base, acc, m));
         }
     }
-    acc.into_elem_decoded(m)
+    Ok(acc)
 }
 
 pub fn elem_exp_consttime<M>(
-        base: ElemDecoded<M>, exponent: &OddPositive, m: &Modulus<M>)
-        -> Result<ElemDecoded<M>, error::Unspecified> {
+        base: Elem<M, Unencoded>, exponent: &OddPositive, m: &Modulus<M>)
+        -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let r = base.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(r.0, r.0, exponent.as_ref(), m.as_ref())
     }));
-    Ok(ElemDecoded {
+    Ok(Elem {
         value: r,
         ring: PhantomData,
+        montgomery_factor: PhantomData,
     })
 }
 
-pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
-                         rng: &rand::SecureRandom)
-                         -> Result<(), error::Unspecified> {
-    let mut rand = rand::RAND::new(rng);
-    bssl::map_result(unsafe {
-        GFp_BN_rand_range_ex(a.value.as_mut_ref(), m.as_ref(), &mut rand)
-    })
+// TODO: Document why this works for any F.
+pub fn elem_randomize<M, F>(a: &mut Elem<M, F>, m: &Modulus<M>,
+                            rng: &rand::SecureRandom)
+                            -> Result<(), error::Unspecified> {
+    a.value.randomize(m.as_ref(), rng)
+}
+
+// r = 1/a (mod m), blinded with a random element.
+//
+// This relies on the invariants of `Modulus` that its value is odd and larger
+// than one.
+pub fn elem_set_to_inverse_blinded<M>(
+            r: &mut Elem<M, Unencoded>, a: &Elem<M, Unencoded>, m: &Modulus<M>,
+            rng: &rand::SecureRandom) -> Result<(), InversionError> {
+    let mut blinding_factor = try!(Elem::zero());
+    try!(blinding_factor.value.randomize(m.as_ref(), rng));
+    let to_blind = try!(a.try_clone());
+    let blinded = try!(elem_mul(&blinding_factor, to_blind, m));
+    let blinded_inverse = try!(elem_inverse(blinded, m));
+    try!(elem_set_to_product(r, &blinding_factor, &blinded_inverse, m));
+    Ok(())
 }
 
 // r = 1/a (mod m).
-pub fn elem_set_to_inverse_blinded<M>(
-            r: &mut ElemDecoded<M>, a: &ElemDecoded<M>, m: &Modulus<M>,
-            rng: &rand::SecureRandom) -> Result<(), InversionError> {
+//
+// This relies on the invariants of `Modulus` that its value is odd and larger
+// than one.
+fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
+                   -> Result<Elem<M, Unencoded>, InversionError> {
+    let value = a.value;
     let mut no_inverse = 0;
-    let mut rand = rand::RAND::new(rng);
-    bssl::map_result(unsafe {
-        GFp_BN_mod_inverse_blinded(r.value.as_mut_ref(), &mut no_inverse,
-                                    a.value.as_ref(), m.as_ref(), &mut rand)
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_inverse_odd(value.0, &mut no_inverse, value.0, m.as_ref())
     }).map_err(|_| {
         if no_inverse != 0 {
             InversionError::NoInverse
         } else {
             InversionError::Unspecified
         }
+    }));
+    Ok(Elem {
+        value: value,
+        ring: PhantomData,
+        montgomery_factor: PhantomData,
     })
 }
 
@@ -520,7 +562,11 @@ pub enum InversionError {
     Unspecified
 }
 
-pub fn elem_verify_equal_consttime<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>)
+impl From<error::Unspecified> for InversionError {
+    fn from(_: error::Unspecified) -> Self { InversionError::Unspecified }
+}
+
+pub fn elem_verify_equal_consttime<M>(a: &Elem<M>, b: &Elem<M>)
                                       -> Result<(), error::Unspecified> {
     bssl::map_result(unsafe {
         GFp_BN_equal_consttime(a.value.as_ref(), b.value.as_ref())
@@ -557,6 +603,14 @@ impl Nonnegative {
         is_one != 0
     }
 
+    fn randomize(&mut self, m: &BIGNUM, rng: &rand::SecureRandom)
+                 -> Result<(), error::Unspecified> {
+        let mut rand = rand::RAND::new(rng);
+        bssl::map_result(unsafe {
+            GFp_BN_rand_range_ex(self.as_mut_ref(), m, &mut rand)
+        })
+    }
+
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
     // this ASAP.
     unsafe fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut *self.0 }
@@ -589,7 +643,7 @@ extern {
                      -> *mut BIGNUM;
     fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
                             -> c::int;
-    fn GFp_BN_cmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
+    fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
     fn GFp_BN_equal_consttime(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
@@ -605,6 +659,8 @@ extern {
                       -> c::int;
     fn GFp_BN_reduce_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                           -> c::int;
+    fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
+                              a: *const BIGNUM, m: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
@@ -631,10 +687,6 @@ extern {
 extern {
     fn GFp_BN_rand_range_ex(r: &mut BIGNUM, max_exclusive: &BIGNUM,
                             rng: &mut rand::RAND) -> c::int;
-
-    fn GFp_BN_mod_inverse_blinded(out: &mut BIGNUM, out_no_inverse: &mut c::int,
-                                  a: &BIGNUM, mont: &BN_MONT_CTX,
-                                  rng: &mut rand::RAND) -> c::int;
 }
 
 
@@ -685,6 +737,7 @@ mod tests {
             let e = consume_public_exponent(test_case, "E");
 
             let actual_result = elem_exp_vartime(base, e, &m).unwrap();
+            let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
@@ -692,11 +745,11 @@ mod tests {
     }
 
     fn consume_elem(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
-                    -> ElemDecoded<M> {
+                    -> Elem<M, Unencoded> {
         let bytes = test_case.consume_bytes(name);
         let value =
             Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
-        value.into_elem_decoded::<M>(m).unwrap()
+        value.into_elem::<M>(m).unwrap()
     }
 
     fn consume_modulus(test_case: &mut test::TestCase, name: &str)
@@ -719,8 +772,8 @@ mod tests {
         value.into_odd_positive().unwrap()
     }
 
-    fn assert_elem_eq<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>) {
-        let r = unsafe { GFp_BN_cmp(a.value.as_ref(), b.value.as_ref()) };
+    fn assert_elem_eq<M, F>(a: &Elem<M, F>, b: &Elem<M, F>) {
+        let r = unsafe { GFp_BN_ucmp(a.value.as_ref(), b.value.as_ref()) };
         assert_eq!(r, 0)
     }
 }

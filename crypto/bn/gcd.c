@@ -288,32 +288,3 @@ err:
 
   return ret;
 }
-
-int GFp_BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse,
-                               const BIGNUM *a, const BN_MONT_CTX *mont,
-                               RAND *rng) {
-  *out_no_inverse = 0;
-
-  if (GFp_BN_is_negative(a) || GFp_BN_cmp(a, &mont->N) >= 0) {
-    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
-    return 0;
-  }
-
-  int ret = 0;
-  BIGNUM blinding_factor;
-  GFp_BN_init(&blinding_factor);
-
-  if (!GFp_BN_rand_range_ex(&blinding_factor, &mont->N, rng) ||
-      !GFp_BN_mod_mul_mont(out, &blinding_factor, a, mont) ||
-      !GFp_BN_mod_inverse_odd(out, out_no_inverse, out, &mont->N) ||
-      !GFp_BN_mod_mul_mont(out, &blinding_factor, out, mont)) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_BN_LIB);
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  GFp_BN_free(&blinding_factor);
-  return ret;
-}

@@ -375,16 +375,6 @@ OPENSSL_EXPORT int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive,
 
 /* Number theory functions */
 
-/* GFp_BN_mod_inverse_blinded sets |out| equal to |a|^-1, mod |n|, where |n| is
- * the Montgomery modulus for |mont|. |a| must be non-negative and must be less
- * than |n|. |n| must be greater than 1. |a| is blinded (masked by a random
- * value) to protect it against side-channel attacks. On failure, if the
- * failure was caused by |a| having no inverse mod |n| then |*out_no_inverse|
- * will be set to one; otherwise it will be set to zero. */
-int GFp_BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse,
-                               const BIGNUM *a, const BN_MONT_CTX *mont,
-                               RAND *rng);
-
 /* GFp_BN_mod_inverse_odd sets |out| equal to |a|^-1, mod |n|. |a| must be
  * non-negative and must be less than |n|. |n| must be odd. This function
  * shouldn't be used for secret values; use |GFp_BN_mod_inverse_blinded|

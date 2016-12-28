@@ -844,7 +844,7 @@ static bool TestExpModRejectUnreduced() {
   return true;
 }
 
-static bool TestModInvRejectUnreduced(RAND *rng) {
+static bool TestModInvRejectUnreduced(void) {
   ScopedBIGNUM r(GFp_BN_new());
   if (!r) {
     return false;
@@ -877,13 +877,6 @@ static bool TestModInvRejectUnreduced(RAND *rng) {
                 (int)base_value, (int)mod_value);
         return false;
       }
-      if (base_value >= mod_value &&
-          GFp_BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(),
-                                     mont.get(), rng)) {
-        fprintf(stderr, "GFp_BN_mod_inverse_blinded(%d, %d) succeeded!\n",
-          (int)base_value, (int)mod_value);
-        return false;
-      }
 
       GFp_BN_set_negative(base.get(), 1);
 
@@ -892,13 +885,6 @@ static bool TestModInvRejectUnreduced(RAND *rng) {
                 -(int)base_value, (int)mod_value);
         return false;
       }
-      if (GFp_BN_mod_inverse_blinded(r.get(), &no_inverse, base.get(),
-                                     mont.get(), rng)) {
-        fprintf(stderr, "GFp_BN_mod_inverse_blinded(%d, %d) succeeded!\n",
-                -(int)base_value, (int)mod_value);
-        return false;
-      }
-
     }
   }
 
@@ -989,7 +975,7 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestNegativeZero() ||
       !TestBadModulus() ||
       !TestExpModRejectUnreduced() ||
-      !TestModInvRejectUnreduced(rng) ||
+      !TestModInvRejectUnreduced() ||
       !TestCmpWord()) {
     return 1;
   }
