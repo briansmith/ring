@@ -58,6 +58,7 @@
 #include <string.h>
 
 #include <openssl/asn1t.h>
+#include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -88,192 +89,82 @@ ASN1_SEQUENCE(PBKDF2PARAM) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(PBKDF2PARAM)
 
-static int ASN1_TYPE_set_octetstring(ASN1_TYPE *a, unsigned char *data, int len)
-	{
-	ASN1_STRING *os;
-
-	if ((os=M_ASN1_OCTET_STRING_new()) == NULL) return(0);
-	if (!M_ASN1_OCTET_STRING_set(os,data,len))
-		{
-		M_ASN1_OCTET_STRING_free(os);
-		return 0;
-		}
-	ASN1_TYPE_set(a,V_ASN1_OCTET_STRING,os);
-	return(1);
-	}
-
-static int param_to_asn1(EVP_CIPHER_CTX *c, ASN1_TYPE *type)
-	{
-	unsigned iv_len;
-
-	iv_len = EVP_CIPHER_CTX_iv_length(c);
-	return ASN1_TYPE_set_octetstring(type, c->oiv, iv_len);
-	}
-
-static X509_ALGOR *PKCS5_pbkdf2_set(int iter, const unsigned char *salt,
-                                    int saltlen, int keylen)
-	{
-	X509_ALGOR *keyfunc = NULL;
-	PBKDF2PARAM *kdf = NULL;
-	ASN1_OCTET_STRING *osalt = NULL;
-
-	if(!(kdf = PBKDF2PARAM_new()))
-		goto merr;
-	if(!(osalt = M_ASN1_OCTET_STRING_new()))
-		goto merr;
-
-	kdf->salt->value.octet_string = osalt;
-	kdf->salt->type = V_ASN1_OCTET_STRING;
-
-	if (!saltlen)
-		saltlen = PKCS5_SALT_LEN;
-	if (!(osalt->data = OPENSSL_malloc (saltlen)))
-		goto merr;
-
-	osalt->length = saltlen;
-
-	if (salt)
-		OPENSSL_memcpy (osalt->data, salt, saltlen);
-	else if (!RAND_bytes(osalt->data, saltlen))
-		goto merr;
-
-	if(iter <= 0)
-		iter = PKCS5_DEFAULT_ITERATIONS;
-
-	if(!ASN1_INTEGER_set(kdf->iter, iter))
-		goto merr;
-
-	/* If have a key len set it up */
-
-	if(keylen > 0)
-		{
-		if(!(kdf->keylength = M_ASN1_INTEGER_new()))
-			goto merr;
-		if(!ASN1_INTEGER_set (kdf->keylength, keylen))
-			goto merr;
-		}
-
-	/* Leave prf NULL. We always use hmacWithSHA1, the default. */
-
-	/* Finally setup the keyfunc structure */
-
-	keyfunc = X509_ALGOR_new();
-	if (!keyfunc)
-		goto merr;
-
-	keyfunc->algorithm = (ASN1_OBJECT*) OBJ_nid2obj(NID_id_pbkdf2);
-
-	/* Encode PBKDF2PARAM into parameter of pbe2 */
-
-	if(!(keyfunc->parameter = ASN1_TYPE_new()))
-		goto merr;
-
-	if(!ASN1_item_pack(kdf, ASN1_ITEM_rptr(PBKDF2PARAM),
-			 &keyfunc->parameter->value.sequence))
-		goto merr;
-	keyfunc->parameter->type = V_ASN1_SEQUENCE;
-
-	PBKDF2PARAM_free(kdf);
-	return keyfunc;
-
-	merr:
-	OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-	PBKDF2PARAM_free(kdf);
-	X509_ALGOR_free(keyfunc);
-	return NULL;
-	}
-
-/* Return an algorithm identifier for a PKCS#5 v2.0 PBE algorithm:
- * yes I know this is horrible! */
-
 X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-			   const unsigned char *salt, int saltlen)
-{
-	X509_ALGOR *scheme = NULL, *kalg = NULL, *ret = NULL;
-	int alg_nid, keylen;
-	EVP_CIPHER_CTX ctx;
-	unsigned char iv[EVP_MAX_IV_LENGTH];
-	PBE2PARAM *pbe2 = NULL;
-	const ASN1_OBJECT *obj;
+                           const uint8_t *salt, size_t salt_len) {
+  int cipher_nid = EVP_CIPHER_nid(cipher);
+  if (cipher_nid == NID_undef) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
+    return NULL;
+  }
 
-	alg_nid = EVP_CIPHER_nid(cipher);
-	if(alg_nid == NID_undef) {
-		OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
-		goto err;
-	}
-	obj = OBJ_nid2obj(alg_nid);
+  if (iter <= 0) {
+    iter = PKCS5_DEFAULT_ITERATIONS;
+  }
 
-	if(!(pbe2 = PBE2PARAM_new())) goto merr;
+  /* Generate a random IV. */
+  uint8_t iv[EVP_MAX_IV_LENGTH];
+  if (!RAND_bytes(iv, EVP_CIPHER_iv_length(cipher))) {
+    return NULL;
+  }
 
-	/* Setup the AlgorithmIdentifier for the encryption scheme */
-	scheme = pbe2->encryption;
+  /* Generate a random PBKDF2 salt if necessary. This will be parsed back out of
+   * the serialized |X509_ALGOR|. */
+  X509_ALGOR *ret = NULL;
+  uint8_t *salt_buf = NULL, *der = NULL;
+  size_t der_len;
+  if (salt == NULL) {
+    if (salt_len == 0) {
+      salt_len = PKCS5_SALT_LEN;
+    }
 
-	scheme->algorithm = (ASN1_OBJECT*) obj;
-	if(!(scheme->parameter = ASN1_TYPE_new())) goto merr;
+    salt_buf = OPENSSL_malloc(salt_len);
+    if (salt_buf == NULL ||
+        !RAND_bytes(salt_buf, salt_len)) {
+      goto err;
+    }
 
-	/* Create random IV */
-	if (EVP_CIPHER_iv_length(cipher) &&
-	    !RAND_bytes(iv, EVP_CIPHER_iv_length(cipher))) {
-		goto err;
-	}
+    salt = salt_buf;
+  }
 
-	EVP_CIPHER_CTX_init(&ctx);
+  /* See RFC 2898, appendix A. */
+  CBB cbb, algorithm, param, kdf, kdf_param, salt_cbb, cipher_cbb, iv_cbb;
+  if (!CBB_init(&cbb, 16) ||
+      !CBB_add_asn1(&cbb, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, NID_pbes2) ||
+      !CBB_add_asn1(&algorithm, &param, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&param, &kdf, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&kdf, NID_id_pbkdf2) ||
+      !CBB_add_asn1(&kdf, &kdf_param, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&kdf_param, &salt_cbb, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&salt_cbb, salt, salt_len) ||
+      !CBB_add_asn1_uint64(&kdf_param, iter) ||
+      /* Specify a key length for RC2. */
+      (cipher_nid == NID_rc2_cbc &&
+       !CBB_add_asn1_uint64(&kdf_param, EVP_CIPHER_key_length(cipher))) ||
+      /* Omit the PRF. We use the default hmacWithSHA1. */
+      !CBB_add_asn1(&param, &cipher_cbb, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&cipher_cbb, cipher_nid) ||
+      /* RFC 2898 says RC2-CBC and RC5-CBC-Pad use a SEQUENCE with version and
+       * IV, but OpenSSL always uses an OCTET STRING IV, so we do the same. */
+      !CBB_add_asn1(&cipher_cbb, &iv_cbb, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&iv_cbb, iv, EVP_CIPHER_iv_length(cipher)) ||
+      !CBB_finish(&cbb, &der, &der_len)) {
+    goto err;
+  }
 
-	/* Dummy cipherinit to just setup the IV, and PRF */
-	if (!EVP_CipherInit_ex(&ctx, cipher, NULL, NULL, iv, 0))
-		goto err;
-	if(param_to_asn1(&ctx, scheme->parameter) < 0) {
-		OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_ERROR_SETTING_CIPHER_PARAMS);
-		EVP_CIPHER_CTX_cleanup(&ctx);
-		goto err;
-	}
-	EVP_CIPHER_CTX_cleanup(&ctx);
+  const uint8_t *ptr = der;
+  ret = d2i_X509_ALGOR(NULL, &ptr, der_len);
+  if (ret == NULL || ptr != der + der_len) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_INTERNAL_ERROR);
+    X509_ALGOR_free(ret);
+    ret = NULL;
+  }
 
-	/* If its RC2 then we'd better setup the key length */
-
-	if(alg_nid == NID_rc2_cbc)
-		keylen = EVP_CIPHER_key_length(cipher);
-	else
-		keylen = -1;
-
-	/* Setup keyfunc */
-
-	X509_ALGOR_free(pbe2->keyfunc);
-
-	pbe2->keyfunc = PKCS5_pbkdf2_set(iter, salt, saltlen, keylen);
-
-	if (!pbe2->keyfunc)
-		goto merr;
-
-	/* Now set up top level AlgorithmIdentifier */
-
-	if(!(ret = X509_ALGOR_new())) goto merr;
-	if(!(ret->parameter = ASN1_TYPE_new())) goto merr;
-
-	ret->algorithm = (ASN1_OBJECT*) OBJ_nid2obj(NID_pbes2);
-
-	/* Encode PBE2PARAM into parameter */
-
-	if(!ASN1_item_pack(pbe2, ASN1_ITEM_rptr(PBE2PARAM),
-				 &ret->parameter->value.sequence)) goto merr;
-	ret->parameter->type = V_ASN1_SEQUENCE;
-
-	PBE2PARAM_free(pbe2);
-	pbe2 = NULL;
-
-	return ret;
-
-	merr:
-	OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-
-	err:
-	PBE2PARAM_free(pbe2);
-	/* Note 'scheme' is freed as part of pbe2 */
-	X509_ALGOR_free(kalg);
-	X509_ALGOR_free(ret);
-
-	return NULL;
-
+err:
+  OPENSSL_free(der);
+  OPENSSL_free(salt_buf);
+  CBB_cleanup(&cbb);
+  return ret;
 }
 
 static int PKCS5_v2_PBKDF2_keyivgen(EVP_CIPHER_CTX *ctx,

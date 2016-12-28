@@ -99,7 +99,7 @@ int PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
 X509_ALGOR *PKCS5_pbe_set(int alg, int iter, const unsigned char *salt,
                           int saltlen);
 X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-                           const unsigned char *salt, int saltlen);
+                           const uint8_t *salt, size_t salt_len);
 
 
 #if defined(__cplusplus)
