@@ -15,24 +15,25 @@
 use {error, rand};
 use core;
 use super::{bigint, N};
+use super::bigint::R;
 
 pub struct Blinding(Option<Contents>);
 
 struct Contents {
-    blinding_factor: bigint::Elem<N>,
-    blinding_factor_inv: bigint::Elem<N>,
+    blinding_factor: bigint::Elem<N, R>,
+    blinding_factor_inv: bigint::Elem<N, R>,
     remaining: usize,
 }
 
 impl Blinding {
     pub fn new() -> Self { Blinding(None) }
 
-    pub fn blind<F>(&mut self, x: bigint::ElemDecoded<N>,
+    pub fn blind<F>(&mut self, x: bigint::Elem<N>,
                     e: bigint::PublicExponent, n: &bigint::Modulus<N>,
                     rng: &rand::SecureRandom, f: F)
-                    -> Result<bigint::ElemDecoded<N>, error::Unspecified>
-                    where F: FnOnce(bigint::ElemDecoded<N>)
-                                    -> Result<bigint::ElemDecoded<N>,
+                    -> Result<bigint::Elem<N>, error::Unspecified>
+                    where F: FnOnce(bigint::Elem<N>)
+                                    -> Result<bigint::Elem<N>,
                                               error::Unspecified> {
         let old_contents = core::mem::replace(&mut self.0, None);
 
@@ -65,11 +66,11 @@ impl Blinding {
         });
 
         let blinded_input =
-            try!(bigint::elem_mul_mixed(&new_contents.blinding_factor, x, n));
+            try!(bigint::elem_mul(&new_contents.blinding_factor, x, n));
         let blinded_result = try!(f(blinded_input));
         let result =
-            try!(bigint::elem_mul_mixed(&new_contents.blinding_factor_inv,
-                                        blinded_result, n));
+            try!(bigint::elem_mul(&new_contents.blinding_factor_inv,
+                                  blinded_result, n));
 
         let _ = core::mem::replace(&mut self.0, Some(new_contents));
 
@@ -85,20 +86,20 @@ impl Blinding {
     }
 }
 
-fn reset(elem1: bigint::Elem<N>, elem2: bigint::Elem<N>,
+fn reset(elem1: bigint::Elem<N, R>, elem2: bigint::Elem<N, R>,
          e: bigint::PublicExponent, n: &bigint::Modulus<N>,
          rng: &rand::SecureRandom) -> Result<Contents, error::Unspecified> {
-    let mut random = bigint::ElemDecoded::take_storage(elem1);
-    let mut random_inv = bigint::ElemDecoded::take_storage(elem2);
+    let mut random = bigint::Elem::take_storage(elem1);
+    let mut random_inv = bigint::Elem::take_storage(elem2);
 
     for _ in 0..32 {
         try!(bigint::elem_randomize(&mut random, n, rng));
         match bigint::elem_set_to_inverse_blinded(&mut random_inv, &random, n,
                                                   rng) {
             Ok(()) => {
-                let random = try!(random.into_elem(n));
+                let random = try!(random.into_encoded(n));
                 let random = try!(bigint::elem_exp_vartime(random, e, n));
-                let random_inv = try!(random_inv.into_elem(n));
+                let random_inv = try!(random_inv.into_encoded(n));
                 return Ok(Contents {
                     blinding_factor: random,
                     blinding_factor_inv: random_inv,

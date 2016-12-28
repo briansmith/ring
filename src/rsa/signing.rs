@@ -18,6 +18,7 @@ use {bits, der, digest, error};
 use rand;
 use std;
 use super::{blinding, bigint, N};
+use super::bigint::R;
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -34,10 +35,10 @@ pub struct RSAKeyPair {
     q: bigint::Modulus<Q>,
     dP: bigint::OddPositive,
     dQ: bigint::OddPositive,
-    qInv: bigint::Elem<P>,
+    qInv: bigint::Elem<P, R>,
 
     qq: bigint::Modulus<QQ>,
-    q_mod_n: bigint::Elem<N>,
+    q_mod_n: bigint::Elem<N, R>,
 
     n_bits: bits::BitLength,
 }
@@ -138,14 +139,14 @@ impl RSAKeyPair {
                 // to checking p * q == n.
                  let q_mod_n = {
                     let q = try!(q.try_clone());
-                    try!(q.into_elem(&n))
+                    let q = try!(q.into_elem(&n));
+                    try!(q.into_encoded(&n))
                 };
                 let p_mod_n = {
                     let p = try!(p.try_clone());
-                    try!(p.into_elem_decoded(&n))
+                    try!(p.into_elem(&n))
                 };
-                let pq_mod_n =
-                    try!(bigint::elem_mul_mixed(&q_mod_n, p_mod_n, &n));
+                let pq_mod_n = try!(bigint::elem_mul(&q_mod_n, p_mod_n, &n));
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -175,23 +176,23 @@ impl RSAKeyPair {
                 let p = try!(p.into_modulus::<P>());
 
                 let qInv = try!(qInv.into_elem(&p));
+                let qInv = try!(qInv.into_encoded(&p));
                 let q_mod_p = {
                     let q = try!(q.try_clone());
-                    try!(q.into_elem_decoded(&p))
+                    try!(q.into_elem(&p))
                 };
                 let qInv_times_q_mod_p =
-                    try!(bigint::elem_mul_mixed(&qInv, q_mod_p, &p));
+                    try!(bigint::elem_mul(&qInv, q_mod_p, &p));
                 if !qInv_times_q_mod_p.is_one() {
                     return Err(error::Unspecified);
                 }
 
                 let q_mod_n_decoded = {
                     let q = try!(q.try_clone());
-                    try!(q.into_elem_decoded(&n))
+                    try!(q.into_elem(&n))
                 };
                 let qq =
-                    try!(bigint::elem_mul_mixed(&q_mod_n, q_mod_n_decoded,
-                                                &n));
+                    try!(bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n));
                 let qq = try!(qq.into_odd_positive());
                 let qq = try!(qq.into_modulus::<QQ>());
 
@@ -328,7 +329,7 @@ impl RSASigningState {
         // `Positive::from_be_bytes_padded()`.
         let base = try!(bigint::Positive::from_be_bytes_padded(
             untrusted::Input::from(signature)));
-        let base = try!(base.into_elem_decoded(&key.n));
+        let base = try!(base.into_elem(&key.n));
 
         // Step 2.
         let result = try!(blinding.blind(base, key.e, &key.n, rng, |c| {
@@ -350,8 +351,7 @@ impl RSASigningState {
             // Step 2.b.iii.
             let m_2 = bigint::elem_widen(m_2);
             let m_1_minus_m_2 = try!(bigint::elem_sub(m_1, &m_2, &key.p));
-            let h = try!(bigint::elem_mul_mixed(&key.qInv, m_1_minus_m_2,
-                                                &key.p));
+            let h = try!(bigint::elem_mul(&key.qInv, m_1_minus_m_2, &key.p));
 
             // Step 2.b.iv. The reduction in the modular multiplication isn't
             // necessary because `h < p` and `p * q == n` implies `h * q < n`.
@@ -359,7 +359,7 @@ impl RSASigningState {
             // non-modular arithmetic.
             let h = bigint::elem_widen(h);
             let q_times_h =
-                try!(bigint::elem_mul_mixed(&key.q_mod_n, h, &key.n));
+                try!(bigint::elem_mul(&key.q_mod_n, h, &key.n));
             let m_2 = bigint::elem_widen(m_2);
             let m = try!(bigint::elem_add(&m_2, q_times_h, &key.n));
 
@@ -375,10 +375,10 @@ impl RSASigningState {
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
             let computed = try!(m.try_clone());
-            let computed = try!(computed.into_elem(&key.n));
+            let computed = try!(computed.into_encoded(&key.n));
             let verify =
                 try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
-            let verify = try!(verify.into_elem_decoded(&key.n));
+            let verify = try!(verify.into_unencoded(&key.n));
             try!(bigint::elem_verify_equal_consttime(&verify, &c));
 
             // Step 3.
