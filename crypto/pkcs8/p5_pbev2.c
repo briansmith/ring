@@ -110,8 +110,8 @@ static int param_to_asn1(EVP_CIPHER_CTX *c, ASN1_TYPE *type)
 	return ASN1_TYPE_set_octetstring(type, c->oiv, iv_len);
 	}
 
-static X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
-	                            int prf_nid, int keylen)
+static X509_ALGOR *PKCS5_pbkdf2_set(int iter, const unsigned char *salt,
+                                    int saltlen, int prf_nid, int keylen)
 	{
 	X509_ALGOR *keyfunc = NULL;
 	PBKDF2PARAM *kdf = NULL;
@@ -197,7 +197,7 @@ static X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
  * Extended version to allow application supplied PRF NID and IV. */
 
 static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
-				     unsigned char *salt, int saltlen,
+				     const unsigned char *salt, int saltlen,
 				     unsigned char *aiv, int prf_nid)
 {
 	X509_ALGOR *scheme = NULL, *kalg = NULL, *ret = NULL;
@@ -300,7 +300,7 @@ static X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 }
 
 X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-				 unsigned char *salt, int saltlen)
+			   const unsigned char *salt, int saltlen)
 	{
 	return PKCS5_pbe2_set_iv(cipher, iter, salt, saltlen, NULL, -1);
 	}

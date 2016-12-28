@@ -540,7 +540,7 @@ static ASN1_OCTET_STRING *pkcs12_item_i2d_encrypt(X509_ALGOR *algor,
 }
 
 X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
-                        int pass_len, uint8_t *salt, size_t salt_len,
+                        int pass_len, const uint8_t *salt, size_t salt_len,
                         int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   uint8_t *pass_raw = NULL;
   size_t pass_raw_len = 0;
@@ -560,7 +560,7 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
 
 X509_SIG *PKCS8_encrypt_pbe(int pbe_nid, const EVP_CIPHER *cipher,
                             const uint8_t *pass_raw, size_t pass_raw_len,
-                            uint8_t *salt, size_t salt_len,
+                            const uint8_t *salt, size_t salt_len,
                             int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   X509_SIG *pkcs8 = NULL;
   X509_ALGOR *pbe;

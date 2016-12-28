@@ -88,7 +88,7 @@ OPENSSL_EXPORT X509_SIG *PKCS8_encrypt_pbe(int pbe_nid,
                                            const EVP_CIPHER *cipher,
                                            const uint8_t *pass_raw,
                                            size_t pass_raw_len,
-                                           uint8_t *salt, size_t salt_len,
+                                           const uint8_t *salt, size_t salt_len,
                                            int iterations,
                                            PKCS8_PRIV_KEY_INFO *p8inf);
 
@@ -123,7 +123,7 @@ OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
  * unchanged.  */
 OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
                                        const char *pass, int pass_len,
-                                       uint8_t *salt, size_t salt_len,
+                                       const uint8_t *salt, size_t salt_len,
                                        int iterations,
                                        PKCS8_PRIV_KEY_INFO *p8inf);
 
