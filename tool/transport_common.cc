@@ -159,12 +159,19 @@ bool Accept(int *out_sock, const std::string &port) {
   addr.sin6_port = htons(atoi(port.c_str()));
 
   bool ok = false;
+  const char enable = 1;
   int server_sock = -1;
 
   server_sock =
       socket(addr.sin6_family, SOCK_STREAM, 0);
   if (server_sock < 0) {
     perror("socket");
+    goto out;
+  }
+
+  if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &enable,
+                 sizeof(enable)) < 0) {
+    perror("setsockopt");
     goto out;
   }
 
