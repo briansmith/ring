@@ -234,9 +234,20 @@ enum QQ {}
 unsafe impl bigint::SmallerModulus<N> for QQ {}
 unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
 
+// `q < p < 2*q` since `q` is slightly smaller than `p` (see below). Thus:
+//
+//                         q <  p  < 2*q
+//                       q*q < p*q < 2*q*q.
+//                      q**2 <  n  < 2*(q**2).
+unsafe impl bigint::SlightlySmallerModulus<N> for QQ {}
+
 enum Q {}
 unsafe impl bigint::SmallerModulus<N> for Q {}
 unsafe impl bigint::SmallerModulus<P> for Q {}
+
+// q < p && `p.bit_length() == q.bit_length()` implies `q < p < 2*q`.
+unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
+
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
@@ -342,7 +353,7 @@ impl RSASigningState {
             let m_1 =
                 try!(bigint::elem_exp_consttime(c_mod_p, &key.dP, &key.p));
 
-            let c_mod_qq = try!(bigint::elem_reduced(&c, &key.qq));
+            let c_mod_qq = try!(bigint::elem_reduced_once(&c, &key.qq));
             let c_mod_q = try!(bigint::elem_reduced(&c_mod_qq, &key.q));
             let m_2 =
                 try!(bigint::elem_exp_consttime(c_mod_q, &key.dQ, &key.q));

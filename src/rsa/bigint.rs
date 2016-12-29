@@ -1,4 +1,4 @@
-﻿// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -32,7 +32,8 @@
 //! `super::signing::{P, QQ, Q}` are analogous to `Mm` and `Inch`.
 //!
 //! `Elem` also uses the static unit checking pattern to statically track the
-//! Montgomery factors that need to be canceled out in each value.
+//! Montgomery factors that need to be canceled out in each value using it's
+//! `E` parameter.
 //!
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
@@ -196,9 +197,14 @@ impl core::ops::Deref for OddPositive {
 /// ℤ/sℤ is also an element of ℤ/lℤ.
 pub unsafe trait SmallerModulus<L> {}
 
-/// A  modulus *s* is smaller than another modulus *g* but as large or larger
-/// than √g; i.e. √g <= s < g. This is the precondition for our Montgomery
-/// reduction function to reduce an element of ℤ/lℤ to an element of ℤ/sℤ.
+/// A modulus *s* where s < l < 2*s for the given larger modulus *l*. This is
+/// the precondition for reduction by conditional subtraction,
+/// `elem_reduce_once()`.
+pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
+
+/// A modulus *s* where √l <= s < l for the given larger modulus *l*. This is
+/// the precondition for the more general Montgomery reduction from ℤ/lℤ to
+/// ℤ/sℤ.
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 
@@ -362,6 +368,17 @@ pub fn elem_set_to_product<M, AF, BF>(
         GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
                             b.value.as_ref(), m.as_ref())
     })
+}
+
+pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
+        a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
+        -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
+    let mut r = try!(Elem::zero());
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_sub_quick(r.value.as_mut_ref(), a.value.as_ref(), m.as_ref(),
+                             m.as_ref())
+    }));
+    Ok(r)
 }
 
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
