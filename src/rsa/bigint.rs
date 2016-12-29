@@ -771,6 +771,24 @@ mod tests {
     struct M {}
 
     #[test]
+    fn test_elem_exp_consttime() {
+        test::from_file("src/rsa/bigint_elem_exp_consttime_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let m = consume_modulus(test_case, "M");
+            let expected_result = consume_elem(test_case, "ModExp", &m);
+            let base = consume_elem(test_case, "A", &m);
+            let e = consume_odd_positive(test_case, "E");
+
+            let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
+            assert_elem_eq(&actual_result, &expected_result);
+
+            Ok(())
+        })
+    }
+
+    #[test]
     fn test_elem_exp_vartime() {
         test::from_file("src/rsa/bigint_elem_exp_vartime_tests.txt",
                         |section, test_case| {
