@@ -119,6 +119,10 @@
 #include "../internal.h"
 
 
+/* Avoid -Wmissing-prototypes warnings. */
+int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
+                                const BN_MONT_CTX *mont);
+
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
@@ -179,8 +183,8 @@ int GFp_BN_to_mont(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont) {
   return GFp_BN_mod_mul_mont(ret, a, &mont->RR, mont);
 }
 
-static int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
-                                   const BN_MONT_CTX *mont) {
+int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
+                                const BN_MONT_CTX *mont) {
   assert(ret != r);
 
   BN_ULONG *ap, *np, *rp, n0, v, carry;
@@ -327,27 +331,5 @@ int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 err:
   GFp_BN_free(&tmp);
 
-  return ret;
-}
-
-int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont) {
-  BIGNUM tmp;
-  GFp_BN_init(&tmp);
-  if (!GFp_BN_copy(&tmp, a)) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  int ret = 0;
-
-  if (!GFp_BN_from_montgomery_word(r, &tmp, mont) ||
-      !GFp_BN_to_mont(r, r, mont)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  GFp_BN_free(&tmp);
   return ret;
 }

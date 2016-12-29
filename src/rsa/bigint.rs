@@ -384,9 +384,14 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
+    let mut tmp = try!(a.try_clone());
     let mut r = try!(Elem::zero());
     try!(bssl::map_result(unsafe {
-        GFp_BN_reduce_mont(r.value.as_mut_ref(), a.value.as_ref(), m.as_ref())
+        GFp_BN_from_montgomery_word(r.value.as_mut_ref(),
+                                    tmp.value.as_mut_ref(), m.as_ref())
+    }));
+    try!(bssl::map_result(unsafe {
+        GFp_BN_to_mont(r.value.as_mut_ref(), r.value.as_ref(), m.as_ref())
     }));
     Ok(r)
 }
@@ -732,8 +737,6 @@ extern {
                         -> c::int;
     fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                       -> c::int;
-    fn GFp_BN_reduce_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
-                          -> c::int;
     fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
                               a: *const BIGNUM, m: &BIGNUM) -> c::int;
 
@@ -751,7 +754,8 @@ extern {
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
-
+    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM,
+                                   m: &BN_MONT_CTX) -> c::int;
     fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;
 }
 
