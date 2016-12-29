@@ -383,7 +383,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
-        -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
+        -> Result<Elem<Smaller, R>, error::Unspecified> {
     let mut tmp = try!(a.try_clone());
     let mut r = try!(Elem::zero());
     try!(bssl::map_result(unsafe {
@@ -393,6 +393,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     try!(bssl::map_result(unsafe {
         GFp_BN_to_mont(r.value.as_mut_ref(), r.value.as_ref(), m.as_ref())
     }));
+    let r = try!(r.into_encoded(m));
     Ok(r)
 }
 
@@ -512,7 +513,7 @@ pub fn elem_exp_vartime<M>(
 }
 
 pub fn elem_exp_consttime<M>(
-        base: Elem<M, Unencoded>, exponent: &OddPositive, m: &Modulus<M>)
+        base: Elem<M, R>, exponent: &OddPositive, m: &Modulus<M>)
         -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = base.value;
     try!(bssl::map_result(unsafe {
@@ -749,7 +750,7 @@ extern {
                             m: &BIGNUM) -> c::int;
 
     // `r` and `a` may alias.
-    fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a: *const BIGNUM,
+    fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
                                      p: &BIGNUM, m: &BN_MONT_CTX) -> c::int;
 
     // The use of references here implies lack of aliasing.
@@ -819,6 +820,7 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_odd_positive(test_case, "E");
 
+            let base = base.into_encoded(&m).unwrap();
             let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -902,7 +904,7 @@ mod tests {
 
             //let a = a.into_encoded(&m).unwrap();
             let actual_result = elem_reduced(&a, &m).unwrap();
-            //let actual_result = actual_result.into_unencoded(&m).unwrap();
+            let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())

@@ -250,12 +250,12 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * http://www.daemonology.net/hyperthreading-considered-harmful/).
  *
  * |p| must be positive. |a| must in [0, m). */
-int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                                  const BN_MONT_CTX *mont) {
+int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
+                                  const BIGNUM *p, const BN_MONT_CTX *mont) {
   const BIGNUM *m = &mont->N;
 
-  assert(!GFp_BN_is_negative(a));
-  assert(GFp_BN_cmp(a, m) < 0);
+  assert(!GFp_BN_is_negative(a_mont));
+  assert(GFp_BN_cmp(a_mont, m) < 0);
 
   assert(!GFp_BN_is_negative(m));
   assert(!GFp_BN_is_zero(m));
@@ -337,8 +337,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     goto err;
   }
 
-  /* prepare a^1 in Montgomery domain */
-  if (!GFp_BN_to_mont(&am, a, mont)) {
+  /* Copy a^1. */
+  if (!GFp_BN_copy(&am, a_mont)) {
     goto err;
   }
 
