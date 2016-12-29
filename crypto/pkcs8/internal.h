@@ -66,13 +66,6 @@ extern "C" {
 #define PKCS5_DEFAULT_ITERATIONS 2048
 #define PKCS5_SALT_LEN 8
 
-typedef struct {
-  ASN1_OCTET_STRING *salt;
-  ASN1_INTEGER *iter;
-} PBEPARAM;
-
-DECLARE_ASN1_FUNCTIONS(PBEPARAM)
-
 /* PKCS5_v2_PBE_keyivgen intializes the supplied |ctx| for PBKDF v2, which must
  * be specified by |param|. The password is specified by |pass_raw| and
  * |pass_raw_len|. |cipher| and |md| are ignored.

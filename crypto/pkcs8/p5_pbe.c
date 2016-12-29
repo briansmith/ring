@@ -53,7 +53,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <openssl/asn1t.h>
+#include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
@@ -63,16 +63,6 @@
 
 #include "../internal.h"
 #include "internal.h"
-
-
-/* PKCS#5 password based encryption structure */
-
-ASN1_SEQUENCE(PBEPARAM) = {
-	ASN1_SIMPLE(PBEPARAM, salt, ASN1_OCTET_STRING),
-	ASN1_SIMPLE(PBEPARAM, iter, ASN1_INTEGER)
-} ASN1_SEQUENCE_END(PBEPARAM)
-
-IMPLEMENT_ASN1_FUNCTIONS(PBEPARAM)
 
 
 X509_ALGOR *PKCS5_pbe_set(int alg, int iter, const uint8_t *salt,

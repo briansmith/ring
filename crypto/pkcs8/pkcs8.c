@@ -227,12 +227,6 @@ static int pkcs12_pbe_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
                                size_t pass_raw_len, ASN1_TYPE *param,
                                const EVP_CIPHER *cipher, const EVP_MD *md,
                                int is_encrypt) {
-  PBEPARAM *pbe;
-  int salt_len, iterations, ret;
-  uint8_t *salt;
-  const uint8_t *pbuf;
-  uint8_t key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
-
   /* Extract useful info from parameter */
   if (param == NULL || param->type != V_ASN1_SEQUENCE ||
       param->value.sequence == NULL) {
@@ -240,34 +234,40 @@ static int pkcs12_pbe_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
     return 0;
   }
 
-  pbuf = param->value.sequence->data;
-  pbe = d2i_PBEPARAM(NULL, &pbuf, param->value.sequence->length);
-  if (pbe == NULL) {
+  CBS cbs, pbe_param, salt;
+  uint64_t iterations;
+  CBS_init(&cbs, param->value.sequence->data, param->value.sequence->length);
+  if (!CBS_get_asn1(&cbs, &pbe_param, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&pbe_param, &salt, CBS_ASN1_OCTETSTRING) ||
+      !CBS_get_asn1_uint64(&pbe_param, &iterations) ||
+      CBS_len(&pbe_param) != 0 ||
+      CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
     return 0;
   }
 
-  if (!pbe->iter) {
-    iterations = 1;
-  } else {
-    iterations = ASN1_INTEGER_get(pbe->iter);
-  }
-  salt = pbe->salt->data;
-  salt_len = pbe->salt->length;
-  if (!pkcs12_key_gen_raw(pass_raw, pass_raw_len, salt, salt_len, PKCS12_KEY_ID,
-                          iterations, EVP_CIPHER_key_length(cipher), key, md)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
-    PBEPARAM_free(pbe);
+  if (iterations == 0 || iterations > INT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_ITERATION_COUNT);
     return 0;
   }
-  if (!pkcs12_key_gen_raw(pass_raw, pass_raw_len, salt, salt_len, PKCS12_IV_ID,
-                          iterations, EVP_CIPHER_iv_length(cipher), iv, md)) {
+
+  uint8_t key[EVP_MAX_KEY_LENGTH];
+  if (!pkcs12_key_gen_raw(pass_raw, pass_raw_len, CBS_data(&salt),
+                          CBS_len(&salt), PKCS12_KEY_ID, iterations,
+                          EVP_CIPHER_key_length(cipher), key, md)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
-    PBEPARAM_free(pbe);
     return 0;
   }
-  PBEPARAM_free(pbe);
-  ret = EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, is_encrypt);
+
+  uint8_t iv[EVP_MAX_IV_LENGTH];
+  if (!pkcs12_key_gen_raw(pass_raw, pass_raw_len, CBS_data(&salt),
+                          CBS_len(&salt), PKCS12_IV_ID, iterations,
+                          EVP_CIPHER_iv_length(cipher), iv, md)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
+    return 0;
+  }
+
+  int ret = EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, is_encrypt);
   OPENSSL_cleanse(key, EVP_MAX_KEY_LENGTH);
   OPENSSL_cleanse(iv, EVP_MAX_IV_LENGTH);
   return ret;
