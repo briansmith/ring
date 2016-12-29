@@ -53,10 +53,9 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <string.h>
-
 #include <openssl/asn1t.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/pkcs8.h>
 #include <openssl/rand.h>
@@ -76,77 +75,58 @@ ASN1_SEQUENCE(PBEPARAM) = {
 IMPLEMENT_ASN1_FUNCTIONS(PBEPARAM)
 
 
-/* Set an algorithm identifier for a PKCS#5 PBE algorithm */
+X509_ALGOR *PKCS5_pbe_set(int alg, int iter, const uint8_t *salt,
+                          size_t salt_len) {
+  if (iter <= 0) {
+    iter = PKCS5_DEFAULT_ITERATIONS;
+  }
 
-static int PKCS5_pbe_set0_algor(X509_ALGOR *algor, int alg, int iter,
-				const unsigned char *salt, int saltlen)
-	{
-	PBEPARAM *pbe=NULL;
-	ASN1_STRING *pbe_str=NULL;
-	unsigned char *sstr;
+  CBB cbb;
+  CBB_zero(&cbb);
 
-	pbe = PBEPARAM_new();
-	if (!pbe)
-		{
-		OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-		goto err;
-		}
-	if(iter <= 0)
-		iter = PKCS5_DEFAULT_ITERATIONS;
-	if (!ASN1_INTEGER_set(pbe->iter, iter))
-		{
-		OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-		goto err;
-		}
-	if (!saltlen)
-		saltlen = PKCS5_SALT_LEN;
-	if (!ASN1_STRING_set(pbe->salt, NULL, saltlen))
-		{
-		OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-		goto err;
-		}
-	sstr = ASN1_STRING_data(pbe->salt);
-	if (salt)
-		OPENSSL_memcpy(sstr, salt, saltlen);
-	else if (!RAND_bytes(sstr, saltlen))
-		goto err;
+  /* Generate a random salt if necessary. This will be parsed back out of the
+   * serialized |X509_ALGOR|. */
+  X509_ALGOR *ret = NULL;
+  uint8_t *salt_buf = NULL, *der = NULL;
+  size_t der_len;
+  if (salt == NULL) {
+    if (salt_len == 0) {
+      salt_len = PKCS5_SALT_LEN;
+    }
 
-	if(!ASN1_item_pack(pbe, ASN1_ITEM_rptr(PBEPARAM), &pbe_str))
-		{
-		OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-		goto err;
-		}
+    salt_buf = OPENSSL_malloc(salt_len);
+    if (salt_buf == NULL ||
+        !RAND_bytes(salt_buf, salt_len)) {
+      goto err;
+    }
 
-	PBEPARAM_free(pbe);
-	pbe = NULL;
+    salt = salt_buf;
+  }
 
-	if (X509_ALGOR_set0(algor, OBJ_nid2obj(alg), V_ASN1_SEQUENCE, pbe_str))
-		return 1;
+  /* See RFC 2898, appendix A.3. */
+  CBB algorithm, param, salt_cbb;
+  if (!CBB_init(&cbb, 16) ||
+      !CBB_add_asn1(&cbb, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, alg) ||
+      !CBB_add_asn1(&algorithm, &param, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&param, &salt_cbb, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&salt_cbb, salt, salt_len) ||
+      !CBB_add_asn1_uint64(&param, iter) ||
+      !CBB_finish(&cbb, &der, &der_len)) {
+    goto err;
+  }
+
+  const uint8_t *ptr = der;
+  ret = d2i_X509_ALGOR(NULL, &ptr, der_len);
+  if (ret == NULL || ptr != der + der_len) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_INTERNAL_ERROR);
+    X509_ALGOR_free(ret);
+    ret = NULL;
+  }
 
 err:
-	if (pbe != NULL)
-		PBEPARAM_free(pbe);
-	if (pbe_str != NULL)
-		ASN1_STRING_free(pbe_str);
-	return 0;
-	}
-
-/* Return an algorithm identifier for a PKCS#5 PBE algorithm */
-
-X509_ALGOR *PKCS5_pbe_set(int alg, int iter,
-				const unsigned char *salt, int saltlen)
-	{
-	X509_ALGOR *ret;
-	ret = X509_ALGOR_new();
-	if (!ret)
-		{
-		OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-		return NULL;
-		}
-
-	if (PKCS5_pbe_set0_algor(ret, alg, iter, salt, saltlen)) 
-		return ret;
-
-	X509_ALGOR_free(ret);
-	return NULL;
-	}
+  OPENSSL_free(der);
+  OPENSSL_free(salt_buf);
+  CBB_cleanup(&cbb);
+  return ret;
+}

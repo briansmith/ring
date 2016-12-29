@@ -82,8 +82,8 @@ int PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
                           size_t pass_raw_len, ASN1_TYPE *param,
                           const EVP_CIPHER *cipher, const EVP_MD *md, int enc);
 
-X509_ALGOR *PKCS5_pbe_set(int alg, int iter, const unsigned char *salt,
-                          int saltlen);
+X509_ALGOR *PKCS5_pbe_set(int alg, int iter, const uint8_t *salt,
+                          size_t salt_len);
 X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
                            const uint8_t *salt, size_t salt_len);
 
