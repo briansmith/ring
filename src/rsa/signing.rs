@@ -137,16 +137,21 @@ impl RSAKeyPair {
                 // and then assume that these preconditions are enough to
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
-                 let q_mod_n = {
+                 let q_mod_n_decoded = {
                     let q = try!(q.try_clone());
-                    let q = try!(q.into_elem(&n));
-                    try!(q.into_encoded(&n))
+                    try!(q.into_elem(&n))
                 };
+                let q_mod_n = {
+                    let clone = try!(q_mod_n_decoded.try_clone());
+                    try!(clone.into_encoded(&n))
+                };
+
                 let p_mod_n = {
                     let p = try!(p.try_clone());
                     try!(p.into_elem(&n))
                 };
-                let pq_mod_n = try!(bigint::elem_mul(&q_mod_n, p_mod_n, &n));
+                let pq_mod_n =
+                    try!(bigint::elem_mul(&q_mod_n, p_mod_n, &n));
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -187,10 +192,6 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                let q_mod_n_decoded = {
-                    let q = try!(q.try_clone());
-                    try!(q.into_elem(&n))
-                };
                 let qq =
                     try!(bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n));
                 let qq = try!(qq.into_odd_positive());
