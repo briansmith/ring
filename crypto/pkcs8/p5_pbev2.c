@@ -58,63 +58,55 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/asn1.h>
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/rand.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 #include "../internal.h"
 
 
-X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-                           const uint8_t *salt, size_t salt_len) {
+static int pkcs5_pbe2_cipher_init(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+                                  unsigned iterations, const uint8_t *pass_raw,
+                                  size_t pass_raw_len, const uint8_t *salt,
+                                  size_t salt_len, const uint8_t *iv,
+                                  size_t iv_len, int enc) {
+  if (iv_len != EVP_CIPHER_iv_length(cipher)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_ERROR_SETTING_CIPHER_PARAMS);
+    return 0;
+  }
+
+  uint8_t key[EVP_MAX_KEY_LENGTH];
+  int ret = PKCS5_PBKDF2_HMAC_SHA1((const char *)pass_raw, pass_raw_len, salt,
+                                   salt_len, iterations,
+                                   EVP_CIPHER_key_length(cipher), key) &&
+            EVP_CipherInit_ex(ctx, cipher, NULL /* engine */, key, iv, enc);
+  OPENSSL_cleanse(key, EVP_MAX_KEY_LENGTH);
+  return ret;
+}
+
+int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
+                            const EVP_CIPHER *cipher, unsigned iterations,
+                            const uint8_t *pass_raw, size_t pass_raw_len,
+                            const uint8_t *salt, size_t salt_len) {
   int cipher_nid = EVP_CIPHER_nid(cipher);
   if (cipher_nid == NID_undef) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
-    return NULL;
-  }
-
-  if (iter <= 0) {
-    iter = PKCS5_DEFAULT_ITERATIONS;
+    return 0;
   }
 
   /* Generate a random IV. */
   uint8_t iv[EVP_MAX_IV_LENGTH];
   if (!RAND_bytes(iv, EVP_CIPHER_iv_length(cipher))) {
-    return NULL;
-  }
-
-  CBB cbb;
-  CBB_zero(&cbb);
-
-  /* Generate a random PBKDF2 salt if necessary. This will be parsed back out of
-   * the serialized |X509_ALGOR|. */
-  X509_ALGOR *ret = NULL;
-  uint8_t *salt_buf = NULL, *der = NULL;
-  size_t der_len;
-  if (salt == NULL) {
-    if (salt_len == 0) {
-      salt_len = PKCS5_SALT_LEN;
-    }
-
-    salt_buf = OPENSSL_malloc(salt_len);
-    if (salt_buf == NULL ||
-        !RAND_bytes(salt_buf, salt_len)) {
-      goto err;
-    }
-
-    salt = salt_buf;
+    return 0;
   }
 
   /* See RFC 2898, appendix A. */
   CBB algorithm, param, kdf, kdf_param, salt_cbb, cipher_cbb, iv_cbb;
-  if (!CBB_init(&cbb, 16) ||
-      !CBB_add_asn1(&cbb, &algorithm, CBS_ASN1_SEQUENCE) ||
+  if (!CBB_add_asn1(out, &algorithm, CBS_ASN1_SEQUENCE) ||
       !OBJ_nid2cbb(&algorithm, NID_pbes2) ||
       !CBB_add_asn1(&algorithm, &param, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&param, &kdf, CBS_ASN1_SEQUENCE) ||
@@ -122,7 +114,7 @@ X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
       !CBB_add_asn1(&kdf, &kdf_param, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&kdf_param, &salt_cbb, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&salt_cbb, salt, salt_len) ||
-      !CBB_add_asn1_uint64(&kdf_param, iter) ||
+      !CBB_add_asn1_uint64(&kdf_param, iterations) ||
       /* Specify a key length for RC2. */
       (cipher_nid == NID_rc2_cbc &&
        !CBB_add_asn1_uint64(&kdf_param, EVP_CIPHER_key_length(cipher))) ||
@@ -133,40 +125,21 @@ X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
        * IV, but OpenSSL always uses an OCTET STRING IV, so we do the same. */
       !CBB_add_asn1(&cipher_cbb, &iv_cbb, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&iv_cbb, iv, EVP_CIPHER_iv_length(cipher)) ||
-      !CBB_finish(&cbb, &der, &der_len)) {
-    goto err;
-  }
-
-  const uint8_t *ptr = der;
-  ret = d2i_X509_ALGOR(NULL, &ptr, der_len);
-  if (ret == NULL || ptr != der + der_len) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_INTERNAL_ERROR);
-    X509_ALGOR_free(ret);
-    ret = NULL;
-  }
-
-err:
-  OPENSSL_free(der);
-  OPENSSL_free(salt_buf);
-  CBB_cleanup(&cbb);
-  return ret;
-}
-
-int PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
-                          size_t pass_raw_len, ASN1_TYPE *param,
-                          const EVP_CIPHER *unused, const EVP_MD *unused2,
-                          int enc) {
-  if (param == NULL ||
-      param->type != V_ASN1_SEQUENCE ||
-      param->value.sequence == NULL) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
+      !CBB_flush(out)) {
     return 0;
   }
 
-  CBS cbs, pbe_param, kdf, kdf_obj, enc_scheme, enc_obj;
-  CBS_init(&cbs, param->value.sequence->data, param->value.sequence->length);
-  if (!CBS_get_asn1(&cbs, &pbe_param, CBS_ASN1_SEQUENCE) ||
-      CBS_len(&cbs) != 0 ||
+  return pkcs5_pbe2_cipher_init(ctx, cipher, iterations, pass_raw, pass_raw_len,
+                                salt, salt_len, iv,
+                                EVP_CIPHER_iv_length(cipher), 1 /* encrypt */);
+}
+
+int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
+                            const uint8_t *pass_raw, size_t pass_raw_len,
+                            CBS *param) {
+  CBS pbe_param, kdf, kdf_obj, enc_scheme, enc_obj;
+  if (!CBS_get_asn1(param, &pbe_param, CBS_ASN1_SEQUENCE) ||
+      CBS_len(param) != 0 ||
       !CBS_get_asn1(&pbe_param, &kdf, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&pbe_param, &enc_scheme, CBS_ASN1_SEQUENCE) ||
       CBS_len(&pbe_param) != 0 ||
@@ -247,19 +220,7 @@ int PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
     return 0;
   }
 
-  if (CBS_len(&iv) != EVP_CIPHER_iv_length(cipher)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_ERROR_SETTING_CIPHER_PARAMS);
-    return 0;
-  }
-
-  uint8_t key[EVP_MAX_KEY_LENGTH];
-  if (!PKCS5_PBKDF2_HMAC_SHA1(
-          (const char *)pass_raw, pass_raw_len, CBS_data(&salt), CBS_len(&salt),
-          (unsigned)iterations, EVP_CIPHER_key_length(cipher), key) ||
-      !EVP_CipherInit_ex(ctx, cipher, NULL /* engine */, key, CBS_data(&iv),
-                         enc)) {
-    return 0;
-  }
-
-  return 1;
+  return pkcs5_pbe2_cipher_init(ctx, cipher, (unsigned)iterations, pass_raw,
+                                pass_raw_len, CBS_data(&salt), CBS_len(&salt),
+                                CBS_data(&iv), CBS_len(&iv), 0 /* decrypt */);
 }

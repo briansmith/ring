@@ -63,22 +63,36 @@ extern "C" {
 #endif
 
 
+#define PBE_UCS2_CONVERT_PASSWORD 0x1
+
+struct pbe_suite {
+  int pbe_nid;
+  const EVP_CIPHER *(*cipher_func)(void);
+  const EVP_MD *(*md_func)(void);
+  /* decrypt_init initialize |ctx| for decrypting. The password is specified by
+   * |pass_raw| and |pass_raw_len|. |param| contains the serialized parameters
+   * field of the AlgorithmIdentifier.
+   *
+   * It returns one on success and zero on error. */
+  int (*decrypt_init)(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
+                      const uint8_t *pass_raw, size_t pass_raw_len, CBS *param);
+  int flags;
+};
+
 #define PKCS5_DEFAULT_ITERATIONS 2048
 #define PKCS5_SALT_LEN 8
 
-/* PKCS5_v2_PBE_keyivgen intializes the supplied |ctx| for PBKDF v2, which must
- * be specified by |param|. The password is specified by |pass_raw| and
- * |pass_raw_len|. |cipher| and |md| are ignored.
- *
- * It returns one on success and zero on error. */
-int PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
-                          size_t pass_raw_len, ASN1_TYPE *param,
-                          const EVP_CIPHER *cipher, const EVP_MD *md, int enc);
+int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
+                            const uint8_t *pass_raw, size_t pass_raw_len,
+                            CBS *param);
 
-X509_ALGOR *PKCS5_pbe_set(int alg, int iter, const uint8_t *salt,
-                          size_t salt_len);
-X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
-                           const uint8_t *salt, size_t salt_len);
+/* PKCS5_pbe2_encrypt_init configures |ctx| for encrypting with PKCS #5 PBES2,
+ * as defined in RFC 2998, with the specified parameters. It writes the
+ * corresponding AlgorithmIdentifier to |out|. */
+int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
+                            const EVP_CIPHER *cipher, unsigned iterations,
+                            const uint8_t *pass_raw, size_t pass_raw_len,
+                            const uint8_t *salt, size_t salt_len);
 
 
 #if defined(__cplusplus)
