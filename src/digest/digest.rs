@@ -520,6 +520,7 @@ mod tests {
 
     mod shavs {
         use std::vec::Vec;
+        use super::{MAX_ALIGNMENT, PADDING};
         use super::super::super::{digest, test};
 
         macro_rules! shavs_tests {
