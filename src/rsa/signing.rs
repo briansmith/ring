@@ -281,10 +281,9 @@ impl RSASigningState {
     /// Construct an `RSASigningState` for the given `RSAKeyPair`.
     pub fn new(key_pair: std::sync::Arc<RSAKeyPair>)
                -> Result<Self, error::Unspecified> {
-        let blinding = try!(blinding::Blinding::new());
         Ok(RSASigningState {
             key_pair: key_pair,
-            blinding: blinding,
+            blinding: blinding::Blinding::new(),
         })
     }
 
@@ -342,13 +341,13 @@ impl RSASigningState {
         // `Positive::from_be_bytes_padded()`.
         let base = try!(bigint::Positive::from_be_bytes_padded(
             untrusted::Input::from(signature)));
-        let mut base = try!(base.into_elem_decoded(&key.n));
+        let base = try!(base.into_elem_decoded(&key.n));
 
-        let mut rand = rand::RAND::new(rng);
-
-        try!(bssl::map_result(unsafe {
-            GFp_rsa_private_transform(&rsa, base.as_mut_ref(),
-                                      blinding.as_mut_ref(), &mut rand)
+        let base = try!(blinding.blind(base, &key.e, &key.n, rng, |mut base| {
+            try!(bssl::map_result(unsafe {
+                GFp_rsa_private_transform(&rsa, base.as_mut_ref())
+            }));
+            Ok(base)
         }));
 
         base.fill_be_bytes(signature)
@@ -358,9 +357,8 @@ impl RSASigningState {
 
 #[allow(improper_ctypes)]
 extern {
-    fn GFp_rsa_private_transform(rsa: &RSA, base: &mut bigint::BIGNUM,
-                                 blinding: &mut blinding::BN_BLINDING,
-                                 rng: &mut rand::RAND) -> c::int;
+    fn GFp_rsa_private_transform(rsa: &RSA, base: &mut bigint::BIGNUM)
+                                 -> c::int;
 }
 
 
@@ -368,6 +366,7 @@ extern {
 mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
+    use core;
     use {error, rand, signature, test};
     use std;
     use super::super::blinding;
@@ -451,8 +450,8 @@ mod tests {
                                    &mut signature).is_err());
     }
 
-    // Once the `BN_BLINDING` in an `RSAKeyPair` has been used
-    // `GFp_BN_BLINDING_COUNTER` times, a new blinding should be created. we
+    // Once the `Blinding` in an `RSAKeyPair` has been used
+    // `blinding::REMAINING_MAX` times, a new blinding should be created. we
     // don't check that a new blinding was created; we just make sure to
     // exercise the code path, so this is basically a coverage test.
     #[test]
@@ -470,33 +469,47 @@ mod tests {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
 
-        let blinding_counter = unsafe { blinding::GFp_BN_BLINDING_COUNTER };
-
-        for _ in 0..(blinding_counter + 1) {
-            let prev_counter = signing_state.blinding.counter();
+        for _ in 0..(blinding::REMAINING_MAX + 1) {
+            let prev_remaining = signing_state.blinding.remaining();
             let _ = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
                                        MESSAGE, &mut signature);
-            let counter = signing_state.blinding.counter();
-            assert_eq!(counter, (prev_counter + 1) % blinding_counter);
+            let remaining = signing_state.blinding.remaining();
+            assert_eq!((remaining + 1) % blinding::REMAINING_MAX,
+                       prev_remaining);
         }
     }
 
-    // In `crypto/rsa/blinding.c`, when `bn_blinding_create_param` fails to
-    // randomly generate an invertible blinding factor too many times in a
-    // loop, it returns an error. Check that we observe this.
+    // When we fail to randomly generate an invertible blinding factor too many
+    // times in a loop, we fail. This checks that we fail in a reasonable way
+    // when that happens.
     #[test]
     fn test_signature_rsa_pkcs1_sign_blinding_creation_failure() {
         const MESSAGE: &'static [u8] = b"hello, world";
-
-        // Stub RNG that is constantly 0. In `bn_blinding_create_param`, this
-        // causes the candidate blinding factors to always be 0, which has no
-        // inverse, so `BN_mod_inverse_no_branch` fails.
-        let rng = test::rand::FixedByteRandom { byte: 0x00 };
 
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
+
+        // The inversion itself is blinded. This blinding factor must be
+        // non-zero.
+        let mut inverse_blinding_factor =
+            vec![0u8; key_pair.public_modulus_len()];
+        inverse_blinding_factor[0] = 1;
+
+        let zero = vec![0u8; key_pair.public_modulus_len()];
+
+        let mut bytes = std::vec::Vec::new();
+        bytes.push(&inverse_blinding_factor[..]);
+        for _ in 0..100 {
+            bytes.push(&zero[..]);
+        }
+
+        let rng = test::rand::FixedSliceSequenceRandom {
+            bytes: &bytes[..],
+            current: core::cell::UnsafeCell::new(0),
+        };
+
         let key_pair = std::sync::Arc::new(key_pair);
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();

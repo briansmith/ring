@@ -12,51 +12,112 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use error;
-use super::bigint;
+use {error, rand};
+use core;
+use super::{bigint, N};
 
-pub struct Blinding(*mut BN_BLINDING);
+pub struct Blinding(Option<Contents>);
 
-impl Drop for Blinding {
-    fn drop(&mut self) { unsafe { GFp_BN_BLINDING_free(self.as_mut_ref()) } }
+struct Contents {
+    blinding_factor: bigint::Elem<N>,
+    blinding_factor_inv: bigint::Elem<N>,
+    remaining: usize,
 }
 
-// `Blinding` uniquely owns and references its contents.
-unsafe impl Send for Blinding {}
-
 impl Blinding {
-    pub fn new() -> Result<Blinding, error::Unspecified> {
-        let r = unsafe { GFp_BN_BLINDING_new() };
-        if r.is_null() {
-            return Err(error::Unspecified);
-        }
-        Ok(Blinding(r))
+    pub fn new() -> Self { Blinding(None) }
+
+    pub fn blind<F>(&mut self, x: bigint::ElemDecoded<N>,
+                    e: &bigint::OddPositive, n: &bigint::Modulus<N>,
+                    rng: &rand::SecureRandom, f: F)
+                    -> Result<bigint::ElemDecoded<N>, error::Unspecified>
+                    where F: FnOnce(bigint::ElemDecoded<N>)
+                                    -> Result<bigint::ElemDecoded<N>,
+                                              error::Unspecified> {
+        let old_contents = core::mem::replace(&mut self.0, None);
+
+        let new_contents = try!(match old_contents {
+            Some(Contents {
+                blinding_factor,
+                blinding_factor_inv,
+                remaining,
+            }) => {
+                if remaining > 0 {
+                    let blinding_factor =
+                        try!(bigint::elem_squared(blinding_factor, n));
+                    let blinding_factor_inv =
+                        try!(bigint::elem_squared(blinding_factor_inv, n));
+                    Ok(Contents {
+                        blinding_factor: blinding_factor,
+                        blinding_factor_inv: blinding_factor_inv,
+                        remaining: remaining - 1,
+                    })
+                } else {
+                    reset(blinding_factor, blinding_factor_inv, e, n, rng)
+                }
+            },
+
+            None => {
+                let elem1 = try!(bigint::Elem::zero());
+                let elem2 = try!(bigint::Elem::zero());
+                reset(elem1, elem2, e, n, rng)
+            },
+        });
+
+        let blinded_input =
+            try!(bigint::elem_mul_mixed(&new_contents.blinding_factor, x, n));
+        let blinded_result = try!(f(blinded_input));
+        let result =
+            try!(bigint::elem_mul_mixed(&new_contents.blinding_factor_inv,
+                                        blinded_result, n));
+
+        let _ = core::mem::replace(&mut self.0, Some(new_contents));
+
+        Ok(result)
     }
 
     #[cfg(test)]
-    pub fn counter(&self) -> u32 { unsafe { (*self.0).counter } }
-
-    pub fn as_mut_ref(&mut self) -> &mut BN_BLINDING { unsafe { &mut *self.0 } }
+    pub fn remaining(&self) -> usize {
+        match &self.0 {
+            &Some(Contents { remaining, .. }) => remaining,
+            &None => { 0 },
+        }
+    }
 }
 
-/// Needs to be kept in sync with `bn_blinding_st` in `crypto/rsa/blinding.c`.
-#[allow(non_camel_case_types)]
-#[repr(C)]
-pub struct BN_BLINDING {
-    a: *mut bigint::BIGNUM,
-    ai: *mut bigint::BIGNUM,
-    counter: u32,
+fn reset(elem1: bigint::Elem<N>, elem2: bigint::Elem<N>,
+         e: &bigint::OddPositive, n: &bigint::Modulus<N>,
+         rng: &rand::SecureRandom) -> Result<Contents, error::Unspecified> {
+    let mut random = bigint::ElemDecoded::take_storage(elem1);
+    let mut random_inv = bigint::ElemDecoded::take_storage(elem2);
+
+    for _ in 0..32 {
+        try!(bigint::elem_randomize(&mut random, n, rng));
+        match bigint::elem_set_to_inverse_blinded(&mut random_inv, &random, n,
+                                                  rng) {
+            Ok(()) => {
+                let random = try!(bigint::elem_exp_vartime(random, e, n));
+                let random = try!(random.into_elem(n));
+                let random_inv = try!(random_inv.into_elem(n));
+                return Ok(Contents {
+                    blinding_factor: random,
+                    blinding_factor_inv: random_inv,
+                    remaining: REMAINING_MAX - 1,
+                });
+            },
+            Err(bigint::InversionError::NoInverse) => {}, // continue
+            Err(_) => { return Err(error::Unspecified); }
+        }
+    }
+
+    Err(error::Unspecified)
 }
 
-extern {
-    fn GFp_BN_BLINDING_new() -> *mut BN_BLINDING;
-    fn GFp_BN_BLINDING_free(b: &mut BN_BLINDING);
-}
 
-#[cfg(test)]
-extern {
-    pub static GFp_BN_BLINDING_COUNTER: u32;
-}
+// The paper suggests reusing blinding factors 32 times. Note that this must
+// never be zero.
+// TODO: citation. TODO: Skepticism.
+pub const REMAINING_MAX: usize = 32;
 
 #[cfg(test)]
 mod tests {

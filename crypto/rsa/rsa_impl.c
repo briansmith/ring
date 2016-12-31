@@ -63,13 +63,11 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../internal.h"
 
 
 /* Declarations to avoid -Wmissing-prototypes warnings. */
-int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
-                              BN_BLINDING *blinding, RAND *rng);
+int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base);
 
 
 
@@ -79,8 +77,7 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
  *
  * It returns one on success and zero otherwise.
  */
-int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
-                              BN_BLINDING *blinding, RAND *rng) {
+int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base) {
   assert(GFp_BN_cmp(base, &rsa->mont_n->N) < 0);
   assert(!GFp_BN_is_zero(rsa->e));
   assert(!GFp_BN_is_zero(rsa->dmp1));
@@ -94,11 +91,6 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
   GFp_BN_init(&mp);
   GFp_BN_init(&mq);
   GFp_BN_init(&vrfy);
-
-  if (!GFp_BN_BLINDING_convert(base, blinding, rsa, rng)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
 
   const BIGNUM *p = &rsa->mont_p->N;
 
@@ -169,7 +161,7 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base,
     goto err;
   }
 
-  if (!GFp_BN_BLINDING_invert(base, &r, blinding, rsa->mont_n)) {
+  if (!GFp_BN_copy(base, &r)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
