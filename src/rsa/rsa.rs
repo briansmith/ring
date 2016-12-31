@@ -126,8 +126,9 @@ fn check_public_modulus_and_exponent(
     Ok((n, e))
 }
 
+// Type-level representation of an RSA public modulus *n*. See
+// `super::bigint`'s modulue-level documentation.
 pub enum N {}
-unsafe impl bigint::Field for N {}
 
 pub mod verification;
 

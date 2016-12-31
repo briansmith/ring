@@ -221,15 +221,11 @@ impl RSAKeyPair {
     }
 }
 
-
+// Type-level representations of the different moduli used in RSA signing, in
+// addition to `super::N`. See `super::bigint`'s modulue-level documentation.
 enum P {}
-unsafe impl bigint::Field for P {}
-
 enum Q {}
-unsafe impl bigint::Field for Q {}
-
 enum QQ {}
-unsafe impl bigint::Field for QQ {}
 
 
 /// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).

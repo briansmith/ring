@@ -12,7 +12,28 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Mutli-precision integers.
+//! Multi-precision integers.
+//!
+//! # Modular Arithmetic.
+//!
+//! Modular arithmetic is done in finite commutative rings ℤ/mℤ for some
+//! modulus *m*. We work in finite commutative rings instead of finite fields
+//! because the RSA public modulus *n* is not prime, which means ℤ/nℤ contains
+//! nonzero elements that have no multiplicative inverse, so ℤ/nℤ is not a
+//! finite field.
+//!
+//! In some calculations we need to deal with multiple rings at once. For
+//! example, RSA private key operations operate in the rings ℤ/nℤ, ℤ/pℤ, and
+//! ℤ/qℤ. Types and functions dealing with such rings are all parameterized
+//! over a type `M` to ensure that we don't wrongly mix up the math, e.g. by
+//! multiplying an element of ℤ/pℤ by an element of ℤ/qℤ modulo q. This follows
+//! the "unit" pattern described in [Static checking of units in Servo]; `Elem`,
+//! `ElemDecoded`, and `Modulus` are analogous to `geom::Length`, and
+//! `super::N` and `super::signing::{P, QQ, Q}` are analogous to `Mm` and `Inch`.
+//!
+//! [Static checking of units in Servo]:
+//!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
+
 
 // XXX TODO: Remove this once RSA verification has been done in Rust.
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
@@ -35,11 +56,11 @@ pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
 }
 
 
-impl<F: Field> AsRef<BN_MONT_CTX> for Modulus<F> {
+impl<M> AsRef<BN_MONT_CTX> for Modulus<M> {
     fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
 }
 
-impl<F: Field> AsRef<BIGNUM> for Modulus<F> {
+impl<M> AsRef<BIGNUM> for Modulus<M> {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM {
         unsafe { GFp_BN_MONT_CTX_get0_n(self.as_ref()) }
     }
@@ -103,18 +124,18 @@ impl Positive {
         Ok(Positive(r))
     }
 
-    pub fn into_elem<F: Field>(self, m: &Modulus<F>)
-                               -> Result<Elem<F>, error::Unspecified> {
+    pub fn into_elem<M>(self, m: &Modulus<M>)
+                        -> Result<Elem<M>, error::Unspecified> {
         let decoded = try!(self.into_elem_decoded(m));
         decoded.into_elem(m)
     }
 
-    pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
-            -> Result<ElemDecoded<F>, error::Unspecified> {
+    pub fn into_elem_decoded<M>(self, m: &Modulus<M>)
+                                -> Result<ElemDecoded<M>, error::Unspecified> {
         try!(verify_less_than(&self, &m));
         Ok(ElemDecoded {
             value: self.0,
-            field: PhantomData,
+            ring: PhantomData,
         })
     }
 
@@ -137,21 +158,20 @@ impl OddPositive {
         Ok(OddPositive(Positive(value)))
     }
 
-    pub fn into_elem<F: Field>(self, m: &Modulus<F>)
-            -> Result<Elem<F>, error::Unspecified> {
+    pub fn into_elem<M>(self, m: &Modulus<M>)
+                        -> Result<Elem<M>, error::Unspecified> {
         self.0.into_elem(m)
     }
 
-    pub fn into_elem_decoded<F: Field>(self, m: &Modulus<F>)
-            -> Result<ElemDecoded<F>, error::Unspecified> {
+    pub fn into_elem_decoded<M>(self, m: &Modulus<M>)
+                                -> Result<ElemDecoded<M>, error::Unspecified> {
         self.0.into_elem_decoded(m)
     }
 
-    pub fn into_modulus<F: Field>(self)
-                                  -> Result<Modulus<F>, error::Unspecified> {
+    pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
         let r = Modulus {
             ctx: unsafe { GFp_BN_MONT_CTX_new() },
-            field: PhantomData,
+            ring: PhantomData,
         };
         if r.ctx.is_null() {
             return Err(error::Unspecified);
@@ -187,33 +207,34 @@ impl core::ops::Deref for OddPositive {
 }
 
 
-/// Every modulus (`n`, `p`, `q`, etc.) should be represented as a separate
-/// type implementing `Field`.
-pub unsafe trait Field {}
-
-/// A modulus that can be used for Montgomery math.
-pub struct Modulus<F: Field> {
+/// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
+/// for efficient Montgomery multiplication modulo *m*.
+pub struct Modulus<M> {
     ctx: *mut BN_MONT_CTX,
-    field: PhantomData<F>,
+
+    /// The ring ℤ/mℤ for which this is the modulus.
+    ring: PhantomData<M>,
 }
 
-impl<F: Field> Drop for Modulus<F> {
+impl<M> Drop for Modulus<M> {
     fn drop(&mut self) { unsafe { GFp_BN_MONT_CTX_free(self.ctx); } }
 }
 
 // `Modulus` uniquely owns and references its contents.
-unsafe impl<F: Field> Send for Modulus<F> {}
+unsafe impl<M> Send for Modulus<M> {}
 
 // `Modulus` is immutable.
-unsafe impl<F: Field> Sync for Modulus<F> {}
+unsafe impl<M> Sync for Modulus<M> {}
 
 /// Montgomery-encoded elements of a field.
-pub struct Elem<F: Field> {
+pub struct Elem<M> {
     value: Nonnegative,
-    field: PhantomData<F>,
+
+    /// The ring ℤ/mℤ for which this element is a value.
+    ring: PhantomData<M>,
 }
 
-impl<F: Field> Elem<F> {
+impl<M> Elem<M> {
     // There's no need to convert `value` to the Montgomery domain since
     // 0 * R**2 (mod n) == 0, so the modulus isn't even needed to construct a
     // zero-valued element.
@@ -221,7 +242,7 @@ impl<F: Field> Elem<F> {
         let value = try!(Nonnegative::zero());
         Ok(Elem {
             value: value,
-            field: PhantomData,
+            ring: PhantomData,
         })
     }
 
@@ -229,45 +250,47 @@ impl<F: Field> Elem<F> {
         self.value.as_ref()
     }
 
-    pub fn try_clone(&self) -> Result<Elem<F>, error::Unspecified> {
+    pub fn try_clone(&self) -> Result<Elem<M>, error::Unspecified> {
         let value = try!(self.value.try_clone());
         Ok(Elem {
             value: value,
-            field: PhantomData,
+            ring: PhantomData,
         })
     }
 
-    pub fn into_elem_decoded(self, m: &Modulus<F>)
-                             -> Result<ElemDecoded<F>, error::Unspecified> {
+    pub fn into_elem_decoded(self, m: &Modulus<M>)
+                             -> Result<ElemDecoded<M>, error::Unspecified> {
         let /*mut*/ r = self.value;
         try!(bssl::map_result(unsafe {
             GFp_BN_from_mont(r.0, r.0, m.as_ref())
         }));
         Ok(ElemDecoded {
             value: r,
-            field: PhantomData,
+            ring: PhantomData,
         })
     }
 }
 
-pub struct ElemDecoded<F: Field> {
+pub struct ElemDecoded<M> {
     value: Nonnegative,
-    field: PhantomData<F>
+
+    /// The ring ℤ/mℤ for which this element is a value.
+    ring: PhantomData<M>,
 }
 
-impl<F: Field> ElemDecoded<F> {
-    pub fn take_storage(e: Elem<F>) -> ElemDecoded<F> {
+impl<M> ElemDecoded<M> {
+    pub fn take_storage(e: Elem<M>) -> ElemDecoded<M> {
         ElemDecoded {
             value: e.value,
-            field: PhantomData,
+            ring: PhantomData,
         }
     }
 
-    pub fn try_clone(&self) -> Result<ElemDecoded<F>, error::Unspecified> {
+    pub fn try_clone(&self) -> Result<ElemDecoded<M>, error::Unspecified> {
         let value = try!(self.value.try_clone());
         Ok(ElemDecoded {
             value: value,
-            field: PhantomData,
+            ring: PhantomData,
         })
     }
 
@@ -289,15 +312,15 @@ impl<F: Field> ElemDecoded<F> {
         self.value.as_mut_ref()
     }
 
-    pub fn into_elem(self, m: &Modulus<F>)
-                     -> Result<Elem<F>, error::Unspecified> {
+    pub fn into_elem(self, m: &Modulus<M>)
+                     -> Result<Elem<M>, error::Unspecified> {
         let mut value = self.value;
         try!(bssl::map_result(unsafe {
             GFp_BN_to_mont(value.as_mut_ref(), value.as_ref(), m.as_ref())
         }));
         Ok(Elem {
             value: value,
-            field: PhantomData,
+            ring: PhantomData,
         })
     }
 
@@ -306,33 +329,33 @@ impl<F: Field> ElemDecoded<F> {
     }
 }
 
-pub fn elem_mul<F: Field>(a: &Elem<F>, b: Elem<F>, m: &Modulus<F>)
-                          -> Result<Elem<F>, error::Unspecified> {
+pub fn elem_mul<M>(a: &Elem<M>, b: Elem<M>, m: &Modulus<M>)
+                   -> Result<Elem<M>, error::Unspecified> {
     let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(Elem {
         value: r,
-        field: PhantomData
+        ring: PhantomData,
     })
 }
 
 // `a` * `b` (mod `m`).
-pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
-                                -> Result<ElemDecoded<F>, error::Unspecified> {
+pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
+                         -> Result<ElemDecoded<M>, error::Unspecified> {
     let /*mut*/ r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
     }));
     Ok(ElemDecoded {
         value: r,
-        field: PhantomData
+        ring: PhantomData,
     })
 }
 
-pub fn elem_squared<F: Field>(a: Elem<F>, m: &Modulus<F>)
-                              -> Result<Elem<F>, error::Unspecified> {
+pub fn elem_squared<M>(a: Elem<M>, m: &Modulus<M>)
+                       -> Result<Elem<M>, error::Unspecified> {
     let mut value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
@@ -340,7 +363,7 @@ pub fn elem_squared<F: Field>(a: Elem<F>, m: &Modulus<F>)
     }));
     Ok(Elem {
         value: value,
-        field: PhantomData,
+        ring: PhantomData,
     })
 }
 
@@ -365,9 +388,9 @@ pub const PUBLIC_EXPONENT_MAX_BITS: bits::BitLength = bits::BitLength(33);
 /// Calculates base**exponent (mod m).
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
 // accepted exponent and with the most common values of 65537 and 3.
-pub fn elem_exp_vartime<F: Field>(
-        base: ElemDecoded<F>, PublicExponent(exponent): PublicExponent,
-        m: &Modulus<F>) -> Result<ElemDecoded<F>, error::Unspecified> {
+pub fn elem_exp_vartime<M>(
+        base: ElemDecoded<M>, PublicExponent(exponent): PublicExponent,
+        m: &Modulus<M>) -> Result<ElemDecoded<M>, error::Unspecified> {
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant
     // bit to the least significant bit (left-to-right). Left-to-right requires
@@ -403,9 +426,9 @@ pub fn elem_exp_vartime<F: Field>(
     acc.into_elem_decoded(m)
 }
 
-pub fn elem_randomize<F: Field>(a: &mut ElemDecoded<F>, m: &Modulus<F>,
-                                rng: &rand::SecureRandom)
-                                -> Result<(), error::Unspecified> {
+pub fn elem_randomize<M>(a: &mut ElemDecoded<M>, m: &Modulus<M>,
+                         rng: &rand::SecureRandom)
+                         -> Result<(), error::Unspecified> {
     let mut rand = rand::RAND::new(rng);
     bssl::map_result(unsafe {
         GFp_BN_rand_range_ex(a.value.as_mut_ref(), m.as_ref(), &mut rand)
@@ -413,8 +436,8 @@ pub fn elem_randomize<F: Field>(a: &mut ElemDecoded<F>, m: &Modulus<F>,
 }
 
 // r = 1/a (mod m).
-pub fn elem_set_to_inverse_blinded<F: Field>(
-            r: &mut ElemDecoded<F>, a: &ElemDecoded<F>, m: &Modulus<F>,
+pub fn elem_set_to_inverse_blinded<M>(
+            r: &mut ElemDecoded<M>, a: &ElemDecoded<M>, m: &Modulus<M>,
             rng: &rand::SecureRandom) -> Result<(), InversionError> {
     let mut no_inverse = 0;
     let mut rand = rand::RAND::new(rng);
@@ -435,9 +458,8 @@ pub enum InversionError {
     Unspecified
 }
 
-pub fn elem_verify_equal_consttime<F: Field>(
-        a: &ElemDecoded<F>, b: &ElemDecoded<F>)
-        -> Result<(), error::Unspecified> {
+pub fn elem_verify_equal_consttime<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>)
+                                      -> Result<(), error::Unspecified> {
     bssl::map_result(unsafe {
         GFp_BN_equal_consttime(a.value.as_ref(), b.value.as_ref())
     })
@@ -575,8 +597,8 @@ mod tests {
                     untrusted::Input::from(&[1, 0])).is_ok());
     }
 
+    // Type-level representation of an arbitrary modulus.
     struct M {}
-    unsafe impl Field for M {}
 
     #[test]
     fn test_elem_exp_vartime() {
@@ -624,7 +646,7 @@ mod tests {
         value.into_odd_positive().unwrap()
     }
 
-    fn assert_elem_eq<F: Field>(a: &ElemDecoded<F>, b: &ElemDecoded<F>) {
+    fn assert_elem_eq<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>) {
         let r = unsafe { GFp_BN_ucmp(a.value.as_ref(), b.value.as_ref()) };
         assert_eq!(r, 0)
     }
