@@ -82,23 +82,21 @@
 
 static int ascii_to_ucs2(const char *ascii, size_t ascii_len,
                          uint8_t **out, size_t *out_len) {
-  uint8_t *unitmp;
-  size_t ulen, i;
-
-  ulen = ascii_len * 2 + 2;
-  if (ulen < ascii_len) {
+  size_t ulen = ascii_len * 2 + 2;
+  if (ascii_len * 2 < ascii_len || ulen < ascii_len * 2) {
     return 0;
   }
-  unitmp = OPENSSL_malloc(ulen);
+
+  uint8_t *unitmp = OPENSSL_malloc(ulen);
   if (unitmp == NULL) {
     return 0;
   }
-  for (i = 0; i < ulen - 2; i += 2) {
+  for (size_t i = 0; i < ulen - 2; i += 2) {
     unitmp[i] = 0;
     unitmp[i + 1] = ascii[i >> 1];
   }
 
-  /* Make result double null terminated */
+  /* Terminate the result with a UCS-2 NUL. */
   unitmp[ulen - 2] = 0;
   unitmp[ulen - 1] = 0;
   *out_len = ulen;
