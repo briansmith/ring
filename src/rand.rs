@@ -25,8 +25,10 @@
 //! (seccomp filters on Linux in particular). See `SystemRandom`'s
 //! documentation for more details.
 
-
-#[cfg(any(target_os = "linux", windows, test))]
+#[cfg(any(target_os = "linux",
+          target_os = "ios",
+          windows,
+          test))]
 use c;
 
 #[cfg(test)]
@@ -109,7 +111,10 @@ impl SecureRandom for SystemRandom {
     }
 }
 
-#[cfg(not(any(target_os = "linux", windows)))]
+#[cfg(not(any(target_os = "linux",
+              target_os = "macos",
+              target_os = "ios",
+              windows)))]
 use self::urandom::fill as fill_impl;
 
 #[cfg(any(all(target_os = "linux", not(feature = "dev_urandom_fallback")),
@@ -118,6 +123,9 @@ use self::sysrand::fill as fill_impl;
 
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 use self::sysrand_or_urandom::fill as fill_impl;
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use self::darwin::fill as fill_impl;
 
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
@@ -143,6 +151,7 @@ mod sysrand {
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(any(target_os = "redox", unix),
+          not(any(target_os = "macos", target_os = "ios")),
           not(all(target_os = "linux",
                   not(feature = "dev_urandom_fallback")))))]
 mod urandom {
@@ -199,6 +208,34 @@ mod sysrand_or_urandom {
             Mechanism::Sysrand => super::sysrand::fill(dest),
             Mechanism::DevURandom => super::urandom::fill(dest),
         }
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+mod darwin {
+    use c;
+    use error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        let r = unsafe {
+            SecRandomCopyBytes(kSecRandomDefault, dest.len(),
+                               dest.as_mut_ptr())
+        };
+        match r {
+            0 => Ok(()),
+            _ => Err(error::Unspecified),
+        }
+    }
+
+    enum SecRandomRef {}
+
+    #[link(name = "Security", kind = "framework")]
+    extern {
+        static kSecRandomDefault: &'static SecRandomRef;
+
+        // For now `rnd` must be `kSecRandomDefault`.
+        fn SecRandomCopyBytes(rnd: &'static SecRandomRef, count: c::size_t,
+                              bytes: *mut u8) -> c::int;
     }
 }
 
