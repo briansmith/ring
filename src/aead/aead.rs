@@ -400,27 +400,23 @@ mod tests {
                 257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
             ];
 
-            let mut more_comprehensive_in_prefix_lenghts = [0; 4096];
+            let mut more_comprehensive_in_prefix_lengths = [0; 4096];
             let in_prefix_lengths;
             if cfg!(debug_assertions) {
                 in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];
             } else {
-                for b in 0..more_comprehensive_in_prefix_lenghts.len() {
-                    more_comprehensive_in_prefix_lenghts[b] = b;
+                for b in 0..more_comprehensive_in_prefix_lengths.len() {
+                    more_comprehensive_in_prefix_lengths[b] = b;
                 }
-                in_prefix_lengths = &more_comprehensive_in_prefix_lenghts[..];
+                in_prefix_lengths = &more_comprehensive_in_prefix_lengths[..];
             }
-            let mut o_in_out = vec![123u8; 4096];
+            let mut o_in_out = test::PrefixedByteVec::with_capacity(4096);
 
             for in_prefix_len in in_prefix_lengths.iter() {
-                o_in_out.truncate(0);
-                for _ in 0..*in_prefix_len {
-                    o_in_out.push(123);
-                }
-                o_in_out.extend_from_slice(&ct[..]);
+                o_in_out.replace_from(*in_prefix_len, &ct[..]);
                 let o_result = aead::open_in_place(&o_key, &nonce[..],
                                                    *in_prefix_len,
-                                                   &mut o_in_out[..], &ad);
+                                                   &mut o_in_out, &ad);
                 match error {
                     None => {
                         assert_eq!(Ok(ct.len()), s_result);
