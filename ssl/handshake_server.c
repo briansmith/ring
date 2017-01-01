@@ -451,9 +451,8 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         break;
 
       case SSL3_ST_SW_FLUSH:
-        if (BIO_flush(ssl->wbio) <= 0) {
-          ssl->rwstate = SSL_WRITING;
-          ret = -1;
+        ret = ssl->method->flush_flight(ssl);
+        if (ret <= 0) {
           goto end;
         }
 

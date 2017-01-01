@@ -45,9 +45,8 @@ int tls13_handshake(SSL_HANDSHAKE *hs) {
 
       case ssl_hs_flush:
       case ssl_hs_flush_and_read_message: {
-        int ret = BIO_flush(ssl->wbio);
+        int ret = ssl->method->flush_flight(ssl);
         if (ret <= 0) {
-          ssl->rwstate = SSL_WRITING;
           return ret;
         }
         if (hs->wait != ssl_hs_flush_and_read_message) {

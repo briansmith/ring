@@ -1346,6 +1346,9 @@ struct ssl_protocol_method_st {
   int (*write_message)(SSL *ssl);
   /* send_change_cipher_spec sends a ChangeCipherSpec message. */
   int (*send_change_cipher_spec)(SSL *ssl);
+  /* flush_flight flushes the current flight to the transport. It returns one on
+   * success and <= 0 on error. */
+  int (*flush_flight)(SSL *ssl);
   /* expect_flight is called when the handshake expects a flight of messages from
    * the peer. */
   void (*expect_flight)(SSL *ssl);
