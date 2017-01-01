@@ -487,7 +487,6 @@ mod tests {
 
     // For testing with aligned and non-aligned inputs
     const MAX_ALIGNMENT: usize = 32;
-    const PADDING: [u8; MAX_ALIGNMENT] = [b'?'; MAX_ALIGNMENT];
 
     /// Test vectors from BoringSSL.
     #[test]
@@ -499,15 +498,14 @@ mod tests {
             let repeat = test_case.consume_usize("Repeat");
             let expected = test_case.consume_bytes("Output");
 
+            let mut offset_input = test::PrefixedByteVec::with_capacity(
+                MAX_ALIGNMENT - 1 + input.len());
             for offset in 0..MAX_ALIGNMENT {
-                let mut offset_input = Vec::new();
-                offset_input.extend(PADDING[0..offset].iter());
-                offset_input.extend(input.iter());
-
+                offset_input.replace_from(offset, &input);
                 let mut ctx = digest::Context::new(digest_alg);
                 let mut data = Vec::new();
                 for _ in 0..repeat {
-                    ctx.update(&offset_input.as_slice()[offset..]);
+                    ctx.update(&offset_input.data());
                     data.extend(&input);
                 }
                 let actual_from_chunks = ctx.finish();
@@ -522,7 +520,6 @@ mod tests {
 
     mod shavs {
         use std::vec::Vec;
-        use super::{MAX_ALIGNMENT, PADDING};
         use super::super::super::{digest, test};
 
         macro_rules! shavs_tests {
@@ -576,12 +573,9 @@ mod tests {
 
                 assert_eq!(msg.len() * 8, len_bits);
                 let expected = test_case.consume_bytes("MD");
-                for offset in 0..MAX_ALIGNMENT {
-                    let mut offset_input = Vec::new();
-                    offset_input.extend(PADDING[0..offset].iter());
-                    offset_input.extend(msg.iter());
-
-                    let actual = digest::digest(digest_alg, &offset_input[offset..]);
+                for offset in 0..super::MAX_ALIGNMENT {
+                    let actual = digest::digest(digest_alg,
+                        &test::PrefixedByteVec::from(offset, &msg).data());
                     assert_eq!(&expected, &actual.as_ref());
                 }
 
