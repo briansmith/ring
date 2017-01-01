@@ -123,6 +123,10 @@ static int GetRSAPadding(FileTest *t, int *out, const std::string &name) {
     *out = RSA_PKCS1_PSS_PADDING;
     return true;
   }
+  if (name == "OAEP") {
+    *out = RSA_PKCS1_OAEP_PADDING;
+    return true;
+  }
   t->PrintLine("Unknown RSA padding mode: '%s'", name.c_str());
   return false;
 }
