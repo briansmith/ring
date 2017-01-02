@@ -2359,8 +2359,9 @@ OPENSSL_EXPORT int SSL_get_servername_type(const SSL *ssl);
  *
  * If the callback returns |SSL_TLSEXT_ERR_NOACK|, the server_name extension is
  * not acknowledged in the ServerHello. If the return value is
- * |SSL_TLSEXT_ERR_ALERT_FATAL| or |SSL_TLSEXT_ERR_ALERT_WARNING| then
- * |*out_alert| must be set to the alert value to send. */
+ * |SSL_TLSEXT_ERR_ALERT_FATAL|, then |*out_alert| is the alert to send,
+ * defaulting to |SSL_AD_UNRECOGNIZED_NAME|. |SSL_TLSEXT_ERR_ALERT_WARNING| is
+ * ignored and treated as |SSL_TLSEXT_ERR_OK|. */
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
     SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg));
 
