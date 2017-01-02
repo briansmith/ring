@@ -128,7 +128,6 @@
 
 
 static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs);
-static int ssl_check_serverhello_tlsext(SSL_HANDSHAKE *hs);
 
 static int compare_uint16_t(const void *p1, const void *p2) {
   uint16_t u1 = *((const uint16_t *)p1);
@@ -3136,43 +3135,11 @@ static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   }
 }
 
-static int ssl_check_serverhello_tlsext(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  int ret = SSL_TLSEXT_ERR_OK;
-  int al = SSL_AD_UNRECOGNIZED_NAME;
-
-  if (ssl->ctx->tlsext_servername_callback != 0) {
-    ret = ssl->ctx->tlsext_servername_callback(ssl, &al,
-                                               ssl->ctx->tlsext_servername_arg);
-  } else if (ssl->initial_ctx->tlsext_servername_callback != 0) {
-    ret = ssl->initial_ctx->tlsext_servername_callback(
-        ssl, &al, ssl->initial_ctx->tlsext_servername_arg);
-  }
-
-  switch (ret) {
-    case SSL_TLSEXT_ERR_ALERT_FATAL:
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
-      return -1;
-
-    case SSL_TLSEXT_ERR_ALERT_WARNING:
-      ssl3_send_alert(ssl, SSL3_AL_WARNING, al);
-      return 1;
-
-    default:
-      return 1;
-  }
-}
-
 int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
   SSL *const ssl = hs->ssl;
   int alert = -1;
   if (ssl_scan_serverhello_tlsext(hs, cbs, &alert) <= 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    return 0;
-  }
-
-  if (ssl_check_serverhello_tlsext(hs) <= 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SERVERHELLO_TLSEXT);
     return 0;
   }
 
