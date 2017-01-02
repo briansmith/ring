@@ -79,18 +79,15 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base);
  */
 int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base) {
   assert(GFp_BN_cmp(base, &rsa->mont_n->N) < 0);
-  assert(!GFp_BN_is_zero(rsa->e));
   assert(!GFp_BN_is_zero(rsa->dmp1));
   assert(!GFp_BN_is_zero(rsa->dmq1));
 
   int ret = 0;
 
-  BIGNUM r, tmp, mp, mq, vrfy;
-  GFp_BN_init(&r);
+  BIGNUM tmp, mp, mq;
   GFp_BN_init(&tmp);
   GFp_BN_init(&mp);
   GFp_BN_init(&mq);
-  GFp_BN_init(&vrfy);
 
   const BIGNUM *p = &rsa->mont_p->N;
 
@@ -134,34 +131,7 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base) {
   if (!GFp_BN_mod_sub_quick(&tmp, &mp, &mq, p) ||
       !GFp_BN_mod_mul_mont(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p) ||
       !GFp_BN_mod_mul_mont(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n) ||
-      !GFp_BN_add(&r, &tmp, &mq)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  /* Verify the result to protect against fault attacks as described in the
-   * 1997 paper "On the Importance of Checking Cryptographic Protocols for
-   * Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton. Some
-   * implementations do this only when the CRT is used, but we do it in all
-   * cases. Section 6 of the aforementioned paper describes an attack that
-   * works when the CRT isn't used. That attack is much less likely to succeed
-   * than the CRT attack, but there have likely been improvements since 1997.
-   *
-   * This check is very cheap assuming |e| is small, which it almost always is.
-   * Note that this is the only validation of |e| that is done other than
-   * basic checks on its size, oddness, and minimum value, as |RSA_check_key|
-   * doesn't validate its mathematical relations to |d| or |p| or |q|. */
-  if (!GFp_BN_mod_exp_mont_vartime(&vrfy, &r, rsa->e, rsa->mont_n)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-  if (vrfy.top != base->top ||
-      GFp_memcmp(vrfy.d, base->d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  if (!GFp_BN_copy(base, &r)) {
+      !GFp_BN_add(base, &tmp, &mq)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -169,11 +139,9 @@ int GFp_rsa_private_transform(const RSA *rsa, /*inout*/ BIGNUM *base) {
   ret = 1;
 
 err:
-  GFp_BN_free(&r);
   GFp_BN_free(&tmp);
   GFp_BN_free(&mp);
   GFp_BN_free(&mq);
-  GFp_BN_free(&vrfy);
 
   return ret;
 }

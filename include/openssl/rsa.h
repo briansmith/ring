@@ -80,7 +80,6 @@ typedef struct bn_blinding_st BN_BLINDING;
 
 /* Needs to be kept in sync with `struct RSA` (in `src/rsa/rsa.rs`). */
 struct rsa_st {
-  BIGNUM *e;
   BIGNUM *dmp1;
   BIGNUM *dmq1;
 

@@ -28,7 +28,7 @@ impl Blinding {
     pub fn new() -> Self { Blinding(None) }
 
     pub fn blind<F>(&mut self, x: bigint::ElemDecoded<N>,
-                    e: &bigint::OddPositive, n: &bigint::Modulus<N>,
+                    e: bigint::PublicExponent, n: &bigint::Modulus<N>,
                     rng: &rand::SecureRandom, f: F)
                     -> Result<bigint::ElemDecoded<N>, error::Unspecified>
                     where F: FnOnce(bigint::ElemDecoded<N>)
@@ -86,7 +86,7 @@ impl Blinding {
 }
 
 fn reset(elem1: bigint::Elem<N>, elem2: bigint::Elem<N>,
-         e: &bigint::OddPositive, n: &bigint::Modulus<N>,
+         e: bigint::PublicExponent, n: &bigint::Modulus<N>,
          rng: &rand::SecureRandom) -> Result<Contents, error::Unspecified> {
     let mut random = bigint::ElemDecoded::take_storage(elem1);
     let mut random_inv = bigint::ElemDecoded::take_storage(elem2);

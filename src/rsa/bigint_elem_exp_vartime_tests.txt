@@ -1,0 +1,178 @@
+# ModExp tests.
+#
+# These test vectors satisfy A ^ E = ModExp (mod M) and 0 <= ModExp < M.
+
+# TODO: Replace this test.
+# regression test for carry propagation bug in sqr8x_reduction.
+# ModExp = 19324b647d967d644b3219
+# A = 050505050505
+# E = 02
+# M = 414141414141414141414127414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+
+# Tests with even exponent removed. (*ring* requires the exponent to be odd.)
+
+ModExp = 2bdf498f
+A = 21292626
+E = 0d
+M = 30d26ecb
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Tests with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 14c64646
+A = 0822df
+E = 03
+M = 30915765
+
+ModExp = 160e35a2
+A = 015ea542
+E = 05
+M = 30915765
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 30959e22
+A = 081dad
+E = 03
+M = 326dd68d
+
+ModExp = 1a1da4fa
+A = 0116adb9
+E = 05
+M = 326dd68d
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+ModExp = 168a3c5d
+A = 01f82caf
+E = 05
+M = 3ce082eb
+
+ModExp = 125c4bb8
+A = 2e9c4c07
+E = 09
+M = 3ce082eb
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 01228d1e
+A = 0a5555
+E = 03
+M = 24665b27
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+ModExp = 233da406
+A = 0b125f
+E = 03
+M = 33509981
+
+# Tests with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Tests with even modulus removed. (*ring* requires the modulus to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test vectors for large value of E removed because E is out of range for *ring*.
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test vectors for large value of E removed because E is out of range for *ring*.
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Tests with unreduced input removed. (*ring* requires the input to be reduced.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Test with zero base removed. (*ring* requires the base to be positive.)
+
+# Test with even exponent removed. (*ring* requires the exponent to be odd.)
+
+# Test with zero exponent removed. (*ring* requires the exponent to be positive.)
+
+# Tests with even exponent removed (*ring* requires the exponent be odd.)
+
+# Craft inputs whose Montgomery representation is 1, i.e., shorter than M, in
+# order to test the const time precomputation scattering/gathering.
+
+# Test vectors for large value of E removed because E is out of range for *ring*.
+
+# Test vectors for large value of E removed because E is out of range for *ring*.
+
+# Tests with even exponent removed (*ring* requires the exponent be odd.)
+
+# Test vectors for large value of E removed because E is out of range for *ring*.
+
+# Tests with even exponent removed (*ring* requires the exponent be odd.)
+
+# RSAZ 512-bit.
+# Note that the lengths of the inputs, especially the *bit* length of |M|, matter a lot.
+
+# Test vector for large value of E removed because E is out of range for *ring*.
+
+# Test with negative input removed (*ring* requires reduced inputs.)
+
+# Test vector for large value of E removed because E is out of range for *ring*.
+
+# Test with negative input removed (*ring* requires reduced inputs.)
+
+# Test with unreduced input removed (*ring* requires reduced inputs.)
+
+# Test with negative input removed (*ring* requires reduced inputs.)
+
+# RSAZ 1024-bit.
+# Note that the lengths of the inputs, especially the *bit* length of |M|, matter a lot.
+
+# Test vector for large value of E removed because E is out of range for *ring*.
+
+# Test vectors for negative input removed (*ring* requires non-negative inputs).
+
+# Test vectors for unreduced inputs removed (*ring* requires reduced inputs.)

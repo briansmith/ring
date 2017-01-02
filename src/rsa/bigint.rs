@@ -133,10 +133,7 @@ pub struct OddPositive(Positive);
 
 impl OddPositive {
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
-        let mut value = try!(Nonnegative::zero());
-        try!(bssl::map_result(unsafe {
-            GFp_BN_copy(value.as_mut_ref(), self.as_ref())
-        }));
+        let value = try!((self.0).0.try_clone());
         Ok(OddPositive(Positive(value)))
     }
 
@@ -165,6 +162,22 @@ impl OddPositive {
             GFp_BN_MONT_CTX_set(&mut *r.ctx, self.as_ref())
         }));
         Ok(r)
+    }
+
+    pub fn into_public_exponent(self)
+                                -> Result<PublicExponent, error::Unspecified> {
+        let bits = self.bit_length();
+        if bits < bits::BitLength::from_usize_bits(2) {
+            return Err(error::Unspecified);
+        }
+        if bits > PUBLIC_EXPONENT_MAX_BITS {
+            return Err(error::Unspecified);
+        }
+        let value = unsafe { GFp_BN_get_positive_u64(self.as_ref()) };
+        if value == 0 {
+            return Err(error::Unspecified);
+        }
+        Ok(PublicExponent(value))
     }
 }
 
@@ -215,6 +228,26 @@ impl<F: Field> Elem<F> {
     pub fn as_ref_montgomery_encoded<'a>(&'a self) -> &'a BIGNUM {
         self.value.as_ref()
     }
+
+    pub fn try_clone(&self) -> Result<Elem<F>, error::Unspecified> {
+        let value = try!(self.value.try_clone());
+        Ok(Elem {
+            value: value,
+            field: PhantomData,
+        })
+    }
+
+    pub fn into_elem_decoded(self, m: &Modulus<F>)
+                             -> Result<ElemDecoded<F>, error::Unspecified> {
+        let /*mut*/ r = self.value;
+        try!(bssl::map_result(unsafe {
+            GFp_BN_from_mont(r.0, r.0, m.as_ref())
+        }));
+        Ok(ElemDecoded {
+            value: r,
+            field: PhantomData,
+        })
+    }
 }
 
 pub struct ElemDecoded<F: Field> {
@@ -228,6 +261,14 @@ impl<F: Field> ElemDecoded<F> {
             value: e.value,
             field: PhantomData,
         }
+    }
+
+    pub fn try_clone(&self) -> Result<ElemDecoded<F>, error::Unspecified> {
+        let value = try!(self.value.try_clone());
+        Ok(ElemDecoded {
+            value: value,
+            field: PhantomData,
+        })
     }
 
     pub fn fill_be_bytes(&self, out: &mut [u8])
@@ -265,6 +306,18 @@ impl<F: Field> ElemDecoded<F> {
     }
 }
 
+pub fn elem_mul<F: Field>(a: &Elem<F>, b: Elem<F>, m: &Modulus<F>)
+                          -> Result<Elem<F>, error::Unspecified> {
+    let /*mut*/ r = b.value;
+    try!(bssl::map_result(unsafe {
+        GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
+    }));
+    Ok(Elem {
+        value: r,
+        field: PhantomData
+    })
+}
+
 // `a` * `b` (mod `m`).
 pub fn elem_mul_mixed<F: Field>(a: &Elem<F>, b: ElemDecoded<F>, m: &Modulus<F>)
                                 -> Result<ElemDecoded<F>, error::Unspecified> {
@@ -291,15 +344,63 @@ pub fn elem_squared<F: Field>(a: Elem<F>, m: &Modulus<F>)
     })
 }
 
+/// An non-secret odd positive value in the range
+/// [3, 2**PUBLIC_EXPONENT_MAX_BITS).
+#[derive(Clone, Copy)]
+pub struct PublicExponent(u64);
+
+// This limit was chosen to bound the performance of the simple
+// exponentiation-by-squaring implementation in `elem_exp_vartime`. In
+// particular, it helps mitigate theoretical resource exhaustion attacks. 33
+// bits was chosen as the limit based on the recommendations in [1] and
+// [2]. Windows CryptoAPI (at least older versions) doesn't support values
+// larger than 32 bits [3], so it is unlikely that exponents larger than 32
+// bits are being used for anything Windows commonly does.
+//
+// [1] https://www.imperialviolet.org/2012/03/16/rsae.html
+// [2] https://www.imperialviolet.org/2012/03/17/rsados.html
+// [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
+pub const PUBLIC_EXPONENT_MAX_BITS: bits::BitLength = bits::BitLength(33);
+
+/// Calculates base**exponent (mod m).
+// TODO: The test coverage needs to be expanded, e.g. test with the largest
+// accepted exponent and with the most common values of 65537 and 3.
 pub fn elem_exp_vartime<F: Field>(
-        mut base: ElemDecoded<F>, exponent: &OddPositive, m: &Modulus<F>)
-        -> Result<ElemDecoded<F>, error::Unspecified> {
-    try!(bssl::map_result(unsafe {
-        GFp_BN_mod_exp_mont_vartime(base.value.as_mut_ref(),
-                                    base.value.as_ref(), exponent.as_ref(),
-                                    m.as_ref())
-    }));
-    Ok(base)
+        base: ElemDecoded<F>, PublicExponent(exponent): PublicExponent,
+        m: &Modulus<F>) -> Result<ElemDecoded<F>, error::Unspecified> {
+    // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
+    // square-and-multiply that scans the exponent from the most significant
+    // bit to the least significant bit (left-to-right). Left-to-right requires
+    // less storage compared to right-to-left scanning, at the cost of needing
+    // to compute `exponent.leading_zeros()`, which we assume to be cheap.
+    //
+    // The vast majority of the time the exponent is either 65537
+    // (0b10000000000000001) or 3 (0b11), both of which have a Hamming weight
+    // of 2. As explained in [Knuth], exponentiation by squaring is the most
+    // efficient algorithm the hamming weight is 2 or less. It isn't the most
+    // efficient for all other, uncommon, RSA public exponent values weight,
+    // but any suboptimality is tightly bounded by the
+    // `PUBLIC_EXPONENT_MAX_BITS` cap.
+    //
+    // This implementation is slightly simplified by taking advantage of the
+    // fact that we require the exponent to be an (odd) positive integer.
+    //
+    // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
+    //          Algorithms (3rd Edition), Section 4.6.3.
+    debug_assert_eq!(exponent & 1, 1);
+    assert!(exponent < (1 << PUBLIC_EXPONENT_MAX_BITS.as_usize_bits()));
+    let base = try!(base.into_elem(m));
+    let mut acc = try!(base.try_clone());
+    let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
+    debug_assert!((exponent & bit) != 0);
+    while bit > 1 {
+        bit >>= 1;
+        acc = try!(elem_squared(acc, m));
+        if (exponent & bit) != 0 {
+            acc = try!(elem_mul(&base, acc, m));
+        }
+    }
+    acc.into_elem_decoded(m)
 }
 
 pub fn elem_randomize<F: Field>(a: &mut ElemDecoded<F>, m: &Modulus<F>,
@@ -334,6 +435,13 @@ pub enum InversionError {
     Unspecified
 }
 
+pub fn elem_verify_equal_consttime<F: Field>(
+        a: &ElemDecoded<F>, b: &ElemDecoded<F>)
+        -> Result<(), error::Unspecified> {
+    bssl::map_result(unsafe {
+        GFp_BN_equal_consttime(a.value.as_ref(), b.value.as_ref())
+    })
+}
 
 /// Nonnegative integers: `Positive` ∪ {0}.
 struct Nonnegative(*mut BIGNUM);
@@ -376,6 +484,14 @@ impl Nonnegative {
         }
         Ok(OddPositive(Positive(self)))
     }
+
+    pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
+        let mut r = try!(Nonnegative::zero());
+        try!(bssl::map_result(unsafe {
+            GFp_BN_copy(r.as_mut_ref(), self.as_ref())
+        }));
+        Ok(r)
+    }
 }
 
 #[allow(non_camel_case_types)]
@@ -390,6 +506,8 @@ extern {
     fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
                             -> c::int;
     fn GFp_BN_cmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
+    fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
+    fn GFp_BN_equal_consttime(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
@@ -397,14 +515,13 @@ extern {
     fn GFp_BN_free(bn: *mut BIGNUM);
 
     // `r` and `a` may alias.
+    fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
+                        -> c::int;
     fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                       -> c::int;
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                            m: &BN_MONT_CTX) -> c::int;
-    // `r` and `a` may alias.
-    fn GFp_BN_mod_exp_mont_vartime(r: *mut BIGNUM, a: *const BIGNUM, p: &BIGNUM,
-                                   mont: &BN_MONT_CTX) -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
@@ -463,16 +580,16 @@ mod tests {
 
     #[test]
     fn test_elem_exp_vartime() {
-        test::from_file("src/rsa/bigint_elem_exp_tests.txt",
+        test::from_file("src/rsa/bigint_elem_exp_vartime_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
             let m = consume_modulus(test_case, "M");
             let expected_result = consume_elem(test_case, "ModExp", &m);
             let base = consume_elem(test_case, "A", &m);
-            let e = consume_odd_positive(test_case, "E");
+            let e = consume_public_exponent(test_case, "E");
 
-            let actual_result = elem_exp_vartime(base, &e, &m).unwrap();
+            let actual_result = elem_exp_vartime(base, e, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
@@ -491,6 +608,12 @@ mod tests {
                        -> Modulus<M> {
         let value = consume_odd_positive(test_case, name);
         value.into_modulus().unwrap()
+    }
+
+    fn consume_public_exponent(test_case: &mut test::TestCase, name: &str)
+                               -> PublicExponent {
+        let value = consume_odd_positive(test_case, name);
+        value.into_public_exponent().unwrap()
     }
 
     fn consume_odd_positive(test_case: &mut test::TestCase, name: &str)

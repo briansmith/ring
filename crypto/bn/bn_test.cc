@@ -454,9 +454,6 @@ static bool TestModExp(FileTest *t) {
     return false;
   }
 
-  // |GFp_BN_mod_exp_mont_vartime| requires the input to already be reduced
-  // mod |m|. |GFp_BN_mod_exp_mont_consttime| doesn't have the same
-  // requirement simply because we haven't gotten around to it yet.
   int expected_ok = GFp_BN_cmp(a.get(), m.get()) < 0;
 
   ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
@@ -465,19 +462,12 @@ static bool TestModExp(FileTest *t) {
     return false;
   }
 
-  int ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(),
-                                        mont.get());
+  int ok =
+      GFp_BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), mont.get());
   if (ok != expected_ok) {
     return false;
   }
-  if ((ok &&
-        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
-                            ret.get()))) {
-    return false;
-  }
-
-  if (!GFp_BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(),
-                                      mont.get()) ||
+  if (ok &&
       !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
                           ret.get())) {
     return false;
@@ -832,14 +822,6 @@ static bool TestExpModRejectUnreduced() {
         }
 
         if (base_value >= mod_value &&
-            GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
-                                        mont.get())) {
-          fprintf(stderr, "GFp_BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
-                  (int)base_value, (int)exp_value, (int)mod_value);
-          return false;
-        }
-
-        if (base_value >= mod_value &&
             GFp_BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
                                           mont.get())) {
           fprintf(stderr, "GFp_BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
@@ -849,12 +831,6 @@ static bool TestExpModRejectUnreduced() {
 
         GFp_BN_set_negative(base.get(), 1);
 
-        if (GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
-                                        mont.get())) {
-          fprintf(stderr, "GFp_BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
-                  -(int)base_value, (int)exp_value, (int)mod_value);
-          return false;
-        }
         if (GFp_BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
                                           mont.get())) {
           fprintf(stderr, "GFp_BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
