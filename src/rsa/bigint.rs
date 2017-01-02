@@ -542,6 +542,11 @@ extern {
                                   rng: &mut rand::RAND) -> c::int;
 }
 
+#[cfg(test)]
+fn assert_elem_eq<F: Field>(a: &ElemDecoded<F>, b: &ElemDecoded<F>) {
+    let r = unsafe { GFp_BN_cmp(a.value.as_ref(), b.value.as_ref()) };
+    assert_eq!(r, 0)
+}
 
 #[cfg(test)]
 mod tests {
@@ -622,10 +627,5 @@ mod tests {
         let value =
             Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
         value.into_odd_positive().unwrap()
-    }
-
-    fn assert_elem_eq<F: Field>(a: &ElemDecoded<F>, b: &ElemDecoded<F>) {
-        let r = unsafe { GFp_BN_cmp(a.value.as_ref(), b.value.as_ref()) };
-        assert_eq!(r, 0)
     }
 }
