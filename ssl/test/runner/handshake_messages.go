@@ -2275,6 +2275,10 @@ func (m *keyUpdateMsg) unmarshal(data []byte) bool {
 	return m.keyUpdateRequest == keyUpdateNotRequested || m.keyUpdateRequest == keyUpdateRequested
 }
 
+// ssl3NoCertificateMsg is a dummy message to handle SSL 3.0 using a warning
+// alert in the handshake.
+type ssl3NoCertificateMsg struct{}
+
 func eqUint16s(x, y []uint16) bool {
 	if len(x) != len(y) {
 		return false

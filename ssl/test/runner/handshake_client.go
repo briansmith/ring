@@ -1028,7 +1028,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	// no_certificate warning alert.
 	if certRequested {
 		if c.vers == VersionSSL30 && chainToSend == nil {
-			c.sendAlert(alertNoCertficate)
+			c.sendAlert(alertNoCertificate)
 		} else if !c.config.Bugs.SkipClientCertificate {
 			certMsg := new(certificateMsg)
 			if chainToSend != nil {

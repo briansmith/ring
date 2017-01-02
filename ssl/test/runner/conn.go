@@ -21,6 +21,8 @@ import (
 	"time"
 )
 
+var errNoCertificateAlert = errors.New("tls: no certificate alert")
+
 // A Conn represents a secured connection.
 // It implements the net.Conn interface.
 type Conn struct {
@@ -895,6 +897,11 @@ Again:
 		}
 		switch data[0] {
 		case alertLevelWarning:
+			if alert(data[1]) == alertNoCertificate {
+				c.in.freeBlock(b)
+				return errNoCertificateAlert
+			}
+
 			// drop on the floor
 			c.in.freeBlock(b)
 			goto Again
@@ -963,7 +970,7 @@ func (c *Conn) sendAlertLocked(level byte, err alert) error {
 // L < c.out.Mutex.
 func (c *Conn) sendAlert(err alert) error {
 	level := byte(alertLevelError)
-	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertficate {
+	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertificate {
 		level = alertLevelWarning
 	}
 	return c.SendAlert(level, err)
@@ -1195,6 +1202,13 @@ func (c *Conn) doReadHandshake() ([]byte, error) {
 // c.in.Mutex < L; c.out.Mutex < L.
 func (c *Conn) readHandshake() (interface{}, error) {
 	data, err := c.doReadHandshake()
+	if err == errNoCertificateAlert {
+		if c.hand.Len() != 0 {
+			// The warning alert may not interleave with a handshake message.
+			return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
+		}
+		return new(ssl3NoCertificateMsg), nil
+	}
 	if err != nil {
 		return nil, err
 	}

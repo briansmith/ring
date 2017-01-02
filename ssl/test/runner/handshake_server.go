@@ -1452,7 +1452,13 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			for _, cert := range certMsg.certificates {
 				certificates = append(certificates, cert.data)
 			}
-		} else if c.vers != VersionSSL30 {
+		} else if c.vers == VersionSSL30 {
+			// In SSL 3.0, no certificate is signaled by a warning
+			// alert which we translate to ssl3NoCertificateMsg.
+			if _, ok := msg.(*ssl3NoCertificateMsg); !ok {
+				return errors.New("tls: client provided neither a certificate nor no_certificate warning alert")
+			}
+		} else {
 			// In TLS, the Certificate message is required. In SSL
 			// 3.0, the peer skips it when sending no certificates.
 			c.sendAlert(alertUnexpectedMessage)
@@ -1473,11 +1479,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			return err
 		}
 
-		if ok {
-			msg, err = c.readHandshake()
-			if err != nil {
-				return err
-			}
+		msg, err = c.readHandshake()
+		if err != nil {
+			return err
 		}
 	}
 
