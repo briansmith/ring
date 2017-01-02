@@ -1760,6 +1760,19 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       }
     }
   } else {
+    if (config->read_with_unfinished_write) {
+      if (!config->async) {
+        fprintf(stderr, "-read-with-unfinished-write requires -async.\n");
+        return false;
+      }
+
+      int write_ret = SSL_write(ssl.get(),
+                          reinterpret_cast<const uint8_t *>("unfinished"), 10);
+      if (SSL_get_error(ssl.get(), write_ret) != SSL_ERROR_WANT_WRITE) {
+        fprintf(stderr, "Failed to leave unfinished write.\n");
+        return false;
+      }
+    }
     if (config->shim_writes_first) {
       if (WriteAll(ssl.get(), reinterpret_cast<const uint8_t *>("hello"),
                    5) < 0) {

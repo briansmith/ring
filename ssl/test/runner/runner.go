@@ -6262,6 +6262,24 @@ func addRenegotiationTests() {
 		expectedLocalError: "remote error: no renegotiation",
 	})
 
+	// Renegotiation is not allowed when there is an unfinished write.
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-UnfinishedWrite",
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-async",
+			"-renegotiate-freely",
+			"-read-with-unfinished-write",
+		},
+		shouldFail:    true,
+		expectedError: ":NO_RENEGOTIATION:",
+		// We do not successfully send the no_renegotiation alert in
+		// this case. https://crbug.com/boringssl/130
+	})
+
 	// Stray HelloRequests during the handshake are ignored in TLS 1.2.
 	testCases = append(testCases, testCase{
 		name: "StrayHelloRequest",
