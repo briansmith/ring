@@ -485,6 +485,9 @@ mod tests {
     use std::vec::Vec;
     use super::super::{digest, test};
 
+    // For testing with aligned and non-aligned inputs
+    const MAX_ALIGNMENT: usize = 32;
+
     /// Test vectors from BoringSSL.
     #[test]
     fn test_bssl() {
@@ -495,18 +498,22 @@ mod tests {
             let repeat = test_case.consume_usize("Repeat");
             let expected = test_case.consume_bytes("Output");
 
-            let mut ctx = digest::Context::new(digest_alg);
-            let mut data = Vec::new();
-            for _ in 0..repeat {
-                ctx.update(&input);
-                data.extend(&input);
+            let mut offset_input = test::PrefixedByteVec::with_capacity(
+                MAX_ALIGNMENT - 1 + input.len());
+            for offset in 0..MAX_ALIGNMENT {
+                offset_input.replace_from(offset, &input);
+                let mut ctx = digest::Context::new(digest_alg);
+                let mut data = Vec::new();
+                for _ in 0..repeat {
+                    ctx.update(&offset_input.data());
+                    data.extend(&input);
+                }
+                let actual_from_chunks = ctx.finish();
+                assert_eq!(&expected, &actual_from_chunks.as_ref());
+
+                let actual_from_one_shot = digest::digest(digest_alg, &data);
+                assert_eq!(&expected, &actual_from_one_shot.as_ref());
             }
-            let actual_from_chunks = ctx.finish();
-            assert_eq!(&expected, &actual_from_chunks.as_ref());
-
-            let actual_from_one_shot = digest::digest(digest_alg, &data);
-            assert_eq!(&expected, &actual_from_one_shot.as_ref());
-
             Ok(())
         });
     }
