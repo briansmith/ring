@@ -411,6 +411,17 @@ int GFp_BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d) {
   return (d->neg ? GFp_BN_sub : GFp_BN_add)(r, r, d);
 }
 
+int GFp_BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m) {
+  if (!GFp_BN_uadd(r, a, b)) {
+    return 0;
+  }
+  if (GFp_BN_ucmp(r, m) >= 0) {
+    return GFp_BN_usub(r, r, m);
+  }
+  return 1;
+}
+
 int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m) {
   if (!GFp_BN_sub(r, a, b)) {

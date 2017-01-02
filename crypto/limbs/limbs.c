@@ -12,33 +12,30 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include "gfp_internal.h"
+#include "limbs.h"
 
 #include <openssl/type_check.h>
 
 #include "../internal.h"
 
-#include "gfp_limbs.inl"
+#include "limbs.inl"
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
-                                          const GFp_Limb b[],
-                                          size_t num_limbs);
+Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 
 
 /* We have constant time primitives on |size_t|. Rather than duplicate them,
- * take advantage of the fact that |size_t| and |GFp_Limb| are currently
+ * take advantage of the fact that |size_t| and |Limb| are currently
  * compatible on all platforms we support. */
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(GFp_Limb),
-                       size_t_and_gfp_limb_are_different_sizes);
+OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
+                       size_t_and_limb_are_different_sizes);
 
 
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. */
-GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
-                                          size_t num_limbs) {
+Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {
   assert(num_limbs >= 1);
-  GFp_Limb is_zero = constant_time_is_zero_size_t(a[0]);
+  Limb is_zero = constant_time_is_zero_size_t(a[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
     is_zero = constant_time_select_size_t(
         is_zero, constant_time_is_zero_size_t(a[i]), is_zero);
@@ -47,11 +44,9 @@ GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
 }
 
 /* Returns 0xffff..f if |a| is less than |b|, and zero otherwise. */
-GFp_Limb GFp_constant_time_limbs_eq_limbs(const GFp_Limb a[],
-                                          const GFp_Limb b[],
-                                          size_t num_limbs) {
+Limb LIMBS_equal(const Limb a[], const Limb b[], size_t num_limbs) {
   assert(num_limbs >= 1);
-  GFp_Limb eq = constant_time_eq_size_t(a[0], b[0]);
+  Limb eq = constant_time_eq_size_t(a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
     eq = constant_time_select_size_t(eq, constant_time_eq_size_t(a[i], b[i]),
                                      eq);
@@ -60,39 +55,36 @@ GFp_Limb GFp_constant_time_limbs_eq_limbs(const GFp_Limb a[],
 }
 
 /* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
-GFp_Limb GFp_constant_time_limbs_lt_limbs(const GFp_Limb a[],
-                                          const GFp_Limb b[],
-                                          size_t num_limbs) {
+Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
   assert(num_limbs >= 1);
   /* There are lots of ways to implement this. It is implemented this way to
-   * be consistent with |GFp_constant_time_limbs_reduce_once| and other code
-   * that makes such comparisons as part of doing conditional reductions. */
-  GFp_Limb dummy;
-  GFp_Carry borrow = gfp_sub(&dummy, a[0], b[0]);
+   * be consistent with |LIMBS_limbs_reduce_once| and other code that makes such
+   * comparisons as part of doing conditional reductions. */
+  Limb dummy;
+  Carry borrow = limb_sub(&dummy, a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
-    borrow = gfp_sbb(&dummy, a[i], b[i], borrow);
+    borrow = limb_sbb(&dummy, a[i], b[i], borrow);
   }
   return constant_time_is_nonzero_size_t(borrow);
 }
 
 /* if (r >= m) { r -= m; } */
-void GFp_constant_time_limbs_reduce_once(GFp_Limb r[], const GFp_Limb m[],
-                                         size_t num_limbs) {
+void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
   assert(num_limbs >= 1);
   /* This could be done more efficiently if we had |num_limbs| of extra space
    * available, by storing |r - m| and then doing a conditional copy of either
    * |r| or |r - m|. But, in order to operate in constant space, with an eye
    * towards this function being used in RSA in the future, we do things a
    * slightly less efficient way. */
-  GFp_Limb lt = GFp_constant_time_limbs_lt_limbs(r, m, num_limbs);
-  GFp_Carry borrow = gfp_sub(&r[0], r[0],
-                             constant_time_select_size_t(lt, 0, m[0]));
+  Limb lt = LIMBS_less_than(r, m, num_limbs);
+  Carry borrow =
+      limb_sub(&r[0], r[0], constant_time_select_size_t(lt, 0, m[0]));
   for (size_t i = 1; i < num_limbs; ++i) {
     /* XXX: This is probably particularly inefficient because the operations in
      * constant_time_select affect the carry flag, so there will likely be
      * loads and stores of |borrow|. */
-    borrow = gfp_sbb(&r[i], r[i],
-                     constant_time_select_size_t(lt, 0, m[i]), borrow);
+    borrow =
+        limb_sbb(&r[i], r[i], constant_time_select_size_t(lt, 0, m[i]), borrow);
   }
   assert(borrow == 0);
 }

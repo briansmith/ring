@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bits, bssl, c, der, digest, error};
+use {bits, der, digest, error};
 use rand;
 use std;
 use super::{blinding, bigint, N};
@@ -26,14 +26,15 @@ use untrusted;
 /// `RSASigningState`s that reference the `RSAKeyPair` and use
 /// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
 /// module-level documentation for an example.
+#[allow(non_snake_case)] // Use the standard names.
 pub struct RSAKeyPair {
     n: bigint::Modulus<N>,
     e: bigint::PublicExponent,
     p: bigint::Modulus<P>,
     q: bigint::Modulus<Q>,
-    dmp1: bigint::OddPositive,
-    dmq1: bigint::OddPositive,
-    iqmp: bigint::Elem<P>,
+    dP: bigint::OddPositive,
+    dQ: bigint::OddPositive,
+    qInv: bigint::Elem<P>,
 
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N>,
@@ -78,6 +79,7 @@ impl RSAKeyPair {
     ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
+    #[allow(non_snake_case)] // Names are from the specifications.
     pub fn from_der(input: untrusted::Input)
                     -> Result<RSAKeyPair, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
@@ -91,9 +93,9 @@ impl RSAKeyPair {
                 let d = try!(bigint::Positive::from_der(input));
                 let p = try!(bigint::Positive::from_der(input));
                 let q = try!(bigint::Positive::from_der(input));
-                let dmp1 = try!(bigint::Positive::from_der(input));
-                let dmq1 = try!(bigint::Positive::from_der(input));
-                let iqmp = try!(bigint::Positive::from_der(input));
+                let dP = try!(bigint::Positive::from_der(input));
+                let dQ = try!(bigint::Positive::from_der(input));
+                let qInv = try!(bigint::Positive::from_der(input));
 
                 let n_bits = n.bit_length();
 
@@ -148,38 +150,38 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // XXX: We don't check that `dmp1 == d % (p - 1)` or that
-                // `dmq1 == d % (q - 1)` because we don't (in the long term)
+                // XXX: We don't check that `dP == d % (p - 1)` or that
+                // `dQ == d % (q - 1)` because we don't (in the long term)
                 // have a good way to do modulo with an even modulus. Instead
-                // we just check that `1 <= dmp1 < p - 1` and
-                // `1 <= dmq1 < q - 1`. We'll check them, to some unknown
-                // extent, when we do the private key operation, since we
-                // verify that the result of the private key operation using
-                // the CRT parameters is consistent with `n` and `e`. TODO:
-                // Either prove that what we do is sufficient, or make it so.
+                // we just check that `1 <= dP < p - 1` and `1 <= dQ < q - 1`.
+                // We'll check them, to some unknown extent, when we do the
+                // private key operation, since we verify that the result of
+                // the private key operation using the CRT parameters is
+                // consistent with `n` and `e`. TODO: Either prove that what we
+                // do is sufficient, or make it so.
                 //
-                // We need to prove that `dmp1` < p - 1`. If we verify
-                // `dmp1 < p` then we'll know that either `dmp1 == p - 1` or
-                // `dmp1 < p - 1`. Since `p` is odd, `p - 1` is even. `d` is
-                // odd, and an odd number modulo an even number is odd.
-                // Therefore `dmp1` must be odd. But then it cannot be `p - 1`
-                // and so we know `dmp1 < p - 1`.
-                let dmp1 = try!(dmp1.into_odd_positive());
-                try!(bigint::verify_less_than(&dmp1, &p));
-                // The same argument can be used to prove `dmq1 < q - 1`.
-                let dmq1 = try!(dmq1.into_odd_positive());
-                try!(bigint::verify_less_than(&dmq1, &q));
+                // We need to prove that `dP < p - 1`. If we verify
+                // `dP < p` then we'll know that either `dP == p - 1` or
+                // `dP < p - 1`. Since `p` is odd, `p - 1` is even. `d` is odd,
+                // and an odd number modulo an even number is odd.
+                // Therefore `dP` must be odd. But then it cannot be `p - 1`
+                // and so we know `dP < p - 1`.
+                let dP = try!(dP.into_odd_positive());
+                try!(bigint::verify_less_than(&dP, &p));
+                // The same argument can be used to prove `dQ < q - 1`.
+                let dQ = try!(dQ.into_odd_positive());
+                try!(bigint::verify_less_than(&dQ, &q));
 
                 let p = try!(p.into_modulus::<P>());
 
-                let iqmp = try!(iqmp.into_elem(&p));
+                let qInv = try!(qInv.into_elem(&p));
                 let q_mod_p = {
                     let q = try!(q.try_clone());
                     try!(q.into_elem_decoded(&p))
                 };
-                let iqmp_times_q_mod_p =
-                    try!(bigint::elem_mul_mixed(&iqmp, q_mod_p, &p));
-                if !iqmp_times_q_mod_p.is_one() {
+                let qInv_times_q_mod_p =
+                    try!(bigint::elem_mul_mixed(&qInv, q_mod_p, &p));
+                if !qInv_times_q_mod_p.is_one() {
                     return Err(error::Unspecified);
                 }
 
@@ -200,9 +202,9 @@ impl RSAKeyPair {
                     e: e,
                     p: p,
                     q: q,
-                    dmp1: dmp1,
-                    dmq1: dmq1,
-                    iqmp: iqmp,
+                    dP: dP,
+                    dQ: dQ,
+                    qInv: qInv,
                     q_mod_n: q_mod_n,
                     qq: qq,
                     n_bits: n_bits,
@@ -219,29 +221,22 @@ impl RSAKeyPair {
     }
 }
 
+// Type-level representations of the different moduli used in RSA signing, in
+// addition to `super::N`. See `super::bigint`'s modulue-level documentation.
 
 enum P {}
-unsafe impl bigint::Field for P {}
-
-enum Q {}
-unsafe impl bigint::Field for Q {}
+unsafe impl bigint::SmallerModulus<N> for P {}
+unsafe impl bigint::NotMuchSmallerModulus<N> for P {}
 
 enum QQ {}
-unsafe impl bigint::Field for QQ {}
+unsafe impl bigint::SmallerModulus<N> for QQ {}
+unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
 
-
-/// Needs to be kept in sync with `struct rsa_st` (in `include/openssl/rsa.h`).
-#[repr(C)]
-struct RSA<'a> {
-    dmp1: &'a bigint::BIGNUM,
-    dmq1: &'a bigint::BIGNUM,
-    mont_n: &'a bigint::BN_MONT_CTX,
-    mont_p: &'a bigint::BN_MONT_CTX,
-    mont_q: &'a bigint::BN_MONT_CTX,
-    mont_qq: &'a bigint::BN_MONT_CTX,
-    qmn_mont: &'a bigint::BIGNUM,
-    iqmp_mont: &'a bigint::BIGNUM,
-}
+enum Q {}
+unsafe impl bigint::SmallerModulus<N> for Q {}
+unsafe impl bigint::SmallerModulus<P> for Q {}
+unsafe impl bigint::SmallerModulus<QQ> for Q {}
+unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
 
 /// State used for RSA Signing. Feature: `rsa_signing`.
@@ -321,30 +316,54 @@ impl RSASigningState {
             blinding: ref mut blinding,
         } = self;
 
-        let rsa =  RSA {
-            dmp1: key.dmp1.as_ref(),
-            dmq1: key.dmq1.as_ref(),
-            mont_n: key.n.as_ref(),
-            mont_p: key.p.as_ref(),
-            mont_q: key.q.as_ref(),
-            mont_qq: key.qq.as_ref(),
-            qmn_mont: key.q_mod_n.as_ref_montgomery_encoded(),
-            iqmp_mont: key.iqmp.as_ref_montgomery_encoded(),
-        };
-
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         try!(padding_alg.encode(&m_hash, signature, mod_bits, rng));
+
+        // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
+        // with Garner's algorithm.
+
+        // Step 1. The value zero is also rejected.
+        //
         // TODO: Avoid having `encode()` pad its output, and then remove
         // `Positive::from_be_bytes_padded()`.
         let base = try!(bigint::Positive::from_be_bytes_padded(
             untrusted::Input::from(signature)));
         let base = try!(base.into_elem_decoded(&key.n));
 
-        let result = try!(blinding.blind(base, key.e, &key.n, rng, |base| {
-            let mut result = try!(base.try_clone());
-            try!(bssl::map_result(unsafe {
-                GFp_rsa_private_transform(&rsa, result.as_mut_ref())
-            }));
+        // Step 2.
+        let result = try!(blinding.blind(base, key.e, &key.n, rng, |c| {
+            // Step 2.b.
+
+            // Step 2.b.i.
+
+            let c_mod_p = try!(bigint::elem_reduced(&c, &key.p));
+            let m_1 =
+                try!(bigint::elem_exp_consttime(c_mod_p, &key.dP, &key.p));
+
+            let c_mod_qq = try!(bigint::elem_reduced(&c, &key.qq));
+            let c_mod_q = try!(bigint::elem_reduced(&c_mod_qq, &key.q));
+            let m_2 =
+                try!(bigint::elem_exp_consttime(c_mod_q, &key.dQ, &key.q));
+
+            // Step 2.b.ii isn't needed since there are only two primes.
+
+            // Step 2.b.iii.
+            let m_2 = bigint::elem_widen(m_2);
+            let m_1_minus_m_2 = try!(bigint::elem_sub(m_1, &m_2, &key.p));
+            let h = try!(bigint::elem_mul_mixed(&key.qInv, m_1_minus_m_2,
+                                                &key.p));
+
+            // Step 2.b.iv. The reduction in the modular multiplication isn't
+            // necessary because `h < p` and `p * q == n` implies `h * q < n`.
+            // Modular arithmetic is used simply to avoid implementing
+            // non-modular arithmetic.
+            let h = bigint::elem_widen(h);
+            let q_times_h =
+                try!(bigint::elem_mul_mixed(&key.q_mod_n, h, &key.n));
+            let m_2 = bigint::elem_widen(m_2);
+            let m = try!(bigint::elem_add(&m_2, q_times_h, &key.n));
+
+            // Step 2.b.v isn't needed since there are only two primes.
 
             // Verify the result to protect against fault attacks as described
             // in "On the Importance of Checking Cryptographic Protocols for
@@ -355,23 +374,17 @@ impl RSASigningState {
             // size, oddness, and minimum value, since the relationship of `e`
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
-            let computed = try!(result.try_clone());
+            let computed = try!(m.try_clone());
             let verify =
                 try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
-            try!(bigint::elem_verify_equal_consttime(&verify, &base));
+            try!(bigint::elem_verify_equal_consttime(&verify, &c));
 
-            Ok(result)
+            // Step 3.
+            Ok(m)
         }));
 
         result.fill_be_bytes(signature)
     }
-}
-
-
-#[allow(improper_ctypes)]
-extern {
-    fn GFp_rsa_private_transform(rsa: &RSA, base: &mut bigint::BIGNUM)
-                                 -> c::int;
 }
 
 
