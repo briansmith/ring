@@ -350,7 +350,7 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
       case SSL3_ST_CW_CERT_VRFY_C:
-        if (hs->cert_request) {
+        if (hs->cert_request && ssl_has_certificate(ssl)) {
           ret = ssl3_send_cert_verify(hs);
           if (ret <= 0) {
             goto end;
@@ -1467,7 +1467,6 @@ static int ssl3_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_has_certificate(ssl)) {
-    hs->cert_request = 0;
     /* Without a client certificate, the handshake buffer may be released. */
     ssl3_free_handshake_buffer(ssl);
 
