@@ -542,10 +542,10 @@ extern {
                                   rng: &mut rand::RAND) -> c::int;
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::GFp_BN_cmp;
     use untrusted;
     use test;
 
