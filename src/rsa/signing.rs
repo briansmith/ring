@@ -375,6 +375,7 @@ impl RSASigningState {
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
             let computed = try!(m.try_clone());
+            let computed = try!(computed.into_elem(&key.n));
             let verify =
                 try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
             let verify = try!(verify.into_elem_decoded(&key.n));

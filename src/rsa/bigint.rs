@@ -448,8 +448,8 @@ pub const PUBLIC_EXPONENT_MAX_BITS: bits::BitLength = bits::BitLength(33);
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
 // accepted exponent and with the most common values of 65537 and 3.
 pub fn elem_exp_vartime<M>(
-        base: ElemDecoded<M>, PublicExponent(exponent): PublicExponent,
-        m: &Modulus<M>) -> Result<Elem<M>, error::Unspecified> {
+        base: Elem<M>, PublicExponent(exponent): PublicExponent, m: &Modulus<M>)
+        -> Result<Elem<M>, error::Unspecified> {
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant
     // bit to the least significant bit (left-to-right). Left-to-right requires
@@ -471,7 +471,6 @@ pub fn elem_exp_vartime<M>(
     //          Algorithms (3rd Edition), Section 4.6.3.
     debug_assert_eq!(exponent & 1, 1);
     assert!(exponent < (1 << PUBLIC_EXPONENT_MAX_BITS.as_usize_bits()));
-    let base = try!(base.into_elem(m));
     let mut acc = try!(base.try_clone());
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
     debug_assert!((exponent & bit) != 0);
@@ -799,6 +798,7 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_public_exponent(test_case, "E");
 
+            let base = base.into_elem(&m).unwrap();
             let actual_result = elem_exp_vartime(base, e, &m).unwrap();
             let actual_result = actual_result.into_elem_decoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);

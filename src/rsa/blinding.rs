@@ -96,6 +96,7 @@ fn reset(elem1: bigint::Elem<N>, elem2: bigint::Elem<N>,
         match bigint::elem_set_to_inverse_blinded(&mut random_inv, &random, n,
                                                   rng) {
             Ok(()) => {
+                let random = try!(random.into_elem(n));
                 let random = try!(bigint::elem_exp_vartime(random, e, n));
                 let random_inv = try!(random_inv.into_elem(n));
                 return Ok(Contents {
