@@ -236,9 +236,7 @@ int dtls1_check_timeout_num(SSL *ssl) {
 }
 
 int DTLSv1_handle_timeout(SSL *ssl) {
-  ssl->rwstate = SSL_NOTHING;
-  /* Functions which use SSL_get_error must clear the error queue on entry. */
-  ERR_clear_error();
+  ssl_reset_error_state(ssl);
 
   if (!SSL_is_dtls(ssl)) {
     return -1;

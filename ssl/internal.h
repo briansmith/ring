@@ -1946,6 +1946,9 @@ void ssl_set_client_disabled(SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock);
 
+/* ssl_reset_error_state resets state for |SSL_get_error|. */
+void ssl_reset_error_state(SSL *ssl);
+
 
 #if defined(__cplusplus)
 } /* extern C */
