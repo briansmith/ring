@@ -12,8 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef GFp_INTERNAL_H
-#define GFp_INTERNAL_H
+#ifndef RING_LIMBS_H
+#define RING_LIMBS_H
 
 #include <openssl/base.h>
 #include <openssl/bn.h>
@@ -21,19 +21,13 @@
 #include <stddef.h>
 
 
-typedef BN_ULONG GFp_Limb;
+typedef BN_ULONG Limb;
 
-#define GFp_LIMB_BITS BN_BITS2
+#define LIMB_BITS BN_BITS2
 
-#define P256_LIMBS (256u / BN_BITS2)
-#define P384_LIMBS (384u / BN_BITS2)
-
-GFp_Limb GFp_constant_time_limbs_are_zero(const GFp_Limb a[],
-                                          size_t num_limbs);
-GFp_Limb GFp_constant_time_limbs_eq_limbs(const GFp_Limb a[],
-                                          const GFp_Limb b[], size_t num_limbs);
-void GFp_constant_time_limbs_reduce_once(GFp_Limb r[], const GFp_Limb m[],
-                                         size_t num_limbs);
+Limb LIMBS_are_zero(const Limb a[], size_t num_limbs);
+Limb LIMBS_equal(const Limb a[], const Limb b[], size_t num_limbs);
+void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs);
 
 
-#endif /* GFp_INTERNAL_H */
+#endif /* RING_LIMBS_H */

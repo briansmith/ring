@@ -17,12 +17,13 @@
 
 #include <openssl/bn.h>
 
-#include "gfp_internal.h"
+#include "../limbs/limbs.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+#define P256_LIMBS (256u / LIMB_BITS)
 
 typedef struct {
   BN_ULONG X[P256_LIMBS];
