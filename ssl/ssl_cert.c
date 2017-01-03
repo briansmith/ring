@@ -652,14 +652,13 @@ static int ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
 }
 
 EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
-  CBS buf = *in, tbs_cert, spki;
-  if (!ssl_cert_skip_to_spki(&buf, &tbs_cert) ||
-      !CBS_get_asn1_element(&tbs_cert, &spki, CBS_ASN1_SEQUENCE)) {
+  CBS buf = *in, tbs_cert;
+  if (!ssl_cert_skip_to_spki(&buf, &tbs_cert)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
     return NULL;
   }
 
-  return EVP_parse_public_key(&spki);
+  return EVP_parse_public_key(&tbs_cert);
 }
 
 int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
