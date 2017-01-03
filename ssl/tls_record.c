@@ -205,20 +205,19 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl) {
 }
 
 size_t SSL_max_seal_overhead(const SSL *ssl) {
-  size_t ret = SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
   if (SSL_is_dtls(ssl)) {
-    ret += DTLS1_RT_HEADER_LENGTH;
-  } else if (ssl_uses_short_header(ssl, evp_aead_seal)) {
-    ret += 2;
-  } else {
-    ret += SSL3_RT_HEADER_LENGTH;
+    return dtls_max_seal_overhead(ssl, dtls1_use_current_epoch);
   }
+
+  size_t ret =
+      ssl_uses_short_header(ssl, evp_aead_seal) ? 2 : SSL3_RT_HEADER_LENGTH;
+  ret += SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
   /* TLS 1.3 needs an extra byte for the encrypted record type. */
   if (ssl->s3->have_version &&
       ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
     ret += 1;
   }
-  if (!SSL_is_dtls(ssl) && ssl_needs_record_splitting(ssl)) {
+  if (ssl_needs_record_splitting(ssl)) {
     ret *= 2;
   }
   return ret;

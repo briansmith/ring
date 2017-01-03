@@ -4126,10 +4126,6 @@ struct ssl_st {
   /* init_num is the length of the current handshake message body. */
   uint32_t init_num;
 
-  /* init_off, in DTLS, is the number of bytes of the current message that have
-   * been written. */
-  uint32_t init_off;
-
   struct ssl3_state_st *s3;  /* SSLv3 variables */
   struct dtls1_state_st *d1; /* DTLSv1 variables */
 

@@ -2028,6 +2028,13 @@ int ssl_is_wbio_buffered(const SSL *ssl) {
 }
 
 int ssl_init_wbio_buffer(SSL *ssl) {
+  if (SSL_is_dtls(ssl)) {
+    /* DTLS does not use the BIO buffer.
+     * TODO(davidben): Remove this altogether when TLS no longer uses it.
+     * https://crbug.com/boringssl/72. */
+    return 1;
+  }
+
   if (ssl->bbio != NULL) {
     /* Already buffered. */
     assert(ssl->bbio == ssl->wbio);

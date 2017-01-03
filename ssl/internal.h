@@ -433,6 +433,10 @@ enum dtls1_use_epoch_t {
   dtls1_use_current_epoch,
 };
 
+/* dtls_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
+ * record. */
+size_t dtls_max_seal_overhead(const SSL *ssl, enum dtls1_use_epoch_t use_epoch);
+
 /* dtls_seal_prefix_len returns the number of bytes of prefix to reserve in
  * front of the plaintext when sealing a record in-place. */
 size_t dtls_seal_prefix_len(const SSL *ssl, enum dtls1_use_epoch_t use_epoch);
@@ -1645,6 +1649,13 @@ typedef struct dtls1_state_st {
   DTLS_OUTGOING_MESSAGE outgoing_messages[SSL_MAX_HANDSHAKE_FLIGHT];
   uint8_t outgoing_messages_len;
 
+  /* outgoing_written is the number of outgoing messages that have been
+   * written. */
+  uint8_t outgoing_written;
+  /* outgoing_offset is the number of bytes of the next outgoing message have
+   * been written. */
+  uint32_t outgoing_offset;
+
   unsigned int mtu; /* max DTLS packet size */
 
   /* num_timeouts is the number of times the retransmit timer has fired since
@@ -1779,6 +1790,8 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
                          size_t *out_len);
 int dtls1_queue_message(SSL *ssl, uint8_t *msg, size_t len);
 int dtls1_write_message(SSL *ssl);
+int dtls1_send_change_cipher_spec(SSL *ssl);
+int dtls1_flush_flight(SSL *ssl);
 
 /* ssl_complete_message calls |finish_message| and |queue_message| on |cbb| to
  * queue the message for writing. */
@@ -1805,7 +1818,6 @@ int dtls1_write_app_data(SSL *ssl, const void *buf, int len);
 int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
                        enum dtls1_use_epoch_t use_epoch);
 
-int dtls1_send_change_cipher_spec(SSL *ssl);
 int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
 int dtls1_retransmit_outgoing_messages(SSL *ssl);
 void dtls1_clear_record_buffer(SSL *ssl);
