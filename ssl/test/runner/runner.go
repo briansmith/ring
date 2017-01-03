@@ -5246,6 +5246,7 @@ func addExtensionTests() {
 				RequireRenegotiationInfo: true,
 			},
 		},
+		flags: []string{"-expect-secure-renegotiation"},
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -5258,6 +5259,7 @@ func addExtensionTests() {
 				RequireRenegotiationInfo: true,
 			},
 		},
+		flags: []string{"-expect-secure-renegotiation"},
 	})
 
 	// Test that illegal extensions in TLS 1.3 are rejected by the client if
@@ -6015,6 +6017,7 @@ func addRenegotiationTests() {
 		flags: []string{
 			"-renegotiate-freely",
 			"-expect-total-renegotiations", "1",
+			"-expect-secure-renegotiation",
 		},
 	})
 	testCases = append(testCases, testCase{
@@ -6081,6 +6084,7 @@ func addRenegotiationTests() {
 		flags: []string{
 			"-renegotiate-freely",
 			"-expect-total-renegotiations", "1",
+			"-expect-no-secure-renegotiation",
 		},
 	})
 
@@ -6346,6 +6350,22 @@ func addRenegotiationTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_MESSAGE:",
+	})
+
+	// The renegotiation_info extension is not sent in TLS 1.3, but TLS 1.3
+	// always reads as supporting it, regardless of whether it was
+	// negotiated.
+	testCases = append(testCases, testCase{
+		name: "AlwaysReportRenegotiationInfo-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo: true,
+			},
+		},
+		flags: []string{
+			"-expect-secure-renegotiation",
+		},
 	})
 }
 

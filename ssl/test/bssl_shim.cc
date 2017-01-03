@@ -1305,11 +1305,22 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
-  if (config->expect_extended_master_secret) {
-    if (!SSL_get_extms_support(ssl)) {
-      fprintf(stderr, "No EMS for connection when expected");
-      return false;
-    }
+  if (config->expect_extended_master_secret && !SSL_get_extms_support(ssl)) {
+    fprintf(stderr, "No EMS for connection when expected\n");
+    return false;
+  }
+
+  if (config->expect_secure_renegotiation &&
+      !SSL_get_secure_renegotiation_support(ssl)) {
+    fprintf(stderr, "No secure renegotiation for connection when expected\n");
+    return false;
+  }
+
+  if (config->expect_no_secure_renegotiation &&
+      SSL_get_secure_renegotiation_support(ssl)) {
+    fprintf(stderr,
+            "Secure renegotiation unexpectedly negotiated for connection\n");
+    return false;
   }
 
   if (!config->expected_ocsp_response.empty()) {

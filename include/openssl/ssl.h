@@ -1428,8 +1428,8 @@ OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
 OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
                                       size_t *out_len, size_t max_out);
 
-/* SSL_get_extms_support returns one if the Extended Master Secret
- * extension was negotiated. Otherwise, it returns zero. */
+/* SSL_get_extms_support returns one if the Extended Master Secret extension or
+ * TLS 1.3 was negotiated. Otherwise, it returns zero. */
 OPENSSL_EXPORT int SSL_get_extms_support(const SSL *ssl);
 
 /* SSL_get_current_cipher returns the cipher used in the current outgoing
@@ -1444,7 +1444,7 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
 OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
 
 /* SSL_get_secure_renegotiation_support returns one if the peer supports secure
- * renegotiation (RFC 5746) and zero otherwise. */
+ * renegotiation (RFC 5746) or TLS 1.3. Otherwise, it returns zero. */
 OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
 
 /* SSL_export_keying_material exports a value derived from the master secret, as

@@ -1506,7 +1506,11 @@ int SSL_set_mtu(SSL *ssl, unsigned mtu) {
 }
 
 int SSL_get_secure_renegotiation_support(const SSL *ssl) {
-  return ssl->s3->send_connection_binding;
+  if (!ssl->s3->have_version) {
+    return 0;
+  }
+  return ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
+         ssl->s3->send_connection_binding;
 }
 
 LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx) { return ctx->sessions; }
