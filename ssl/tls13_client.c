@@ -542,7 +542,7 @@ static enum ssl_hs_wait_t do_send_channel_id(SSL_HANDSHAKE *hs) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
       !tls1_write_channel_id(ssl, &body) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return ssl_hs_error;
   }

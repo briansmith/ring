@@ -579,7 +579,7 @@ static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
   return 1;
 }
 
-int dtls1_queue_message(SSL *ssl, uint8_t *data, size_t len) {
+int dtls1_add_message(SSL *ssl, uint8_t *data, size_t len) {
   return add_outgoing(ssl, 0 /* handshake */, data, len);
 }
 
@@ -588,8 +588,17 @@ int dtls1_write_message(SSL *ssl) {
   return 1;
 }
 
-int dtls1_send_change_cipher_spec(SSL *ssl) {
+int dtls1_add_change_cipher_spec(SSL *ssl) {
   return add_outgoing(ssl, 1 /* ChangeCipherSpec */, NULL, 0);
+}
+
+int dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
+  /* The |add_alert| path is only used for warning alerts for now, which DTLS
+   * never sends. This will be implemented later once closure alerts are
+   * converted. */
+  assert(0);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  return 0;
 }
 
 /* dtls1_update_mtu updates the current MTU from the BIO, ensuring it is above

@@ -206,13 +206,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
       case SSL_ST_ACCEPT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
-        /* Enable a write buffer. This groups handshake messages within a flight
-         * into a single write. */
-        if (!ssl_init_wbio_buffer(ssl)) {
-          ret = -1;
-          goto end;
-        }
-
         if (!ssl3_init_handshake_buffer(ssl)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
@@ -423,16 +416,13 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         break;
 
       case SSL3_ST_SW_CHANGE:
-        ret = ssl->method->send_change_cipher_spec(ssl);
-        if (ret <= 0) {
-          goto end;
-        }
-        hs->state = SSL3_ST_SW_FINISHED_A;
-
-        if (!tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+        if (!ssl->method->add_change_cipher_spec(ssl) ||
+            !tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
           ret = -1;
           goto end;
         }
+
+        hs->state = SSL3_ST_SW_FINISHED_A;
         break;
 
       case SSL3_ST_SW_FINISHED_A:
@@ -492,9 +482,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
           ssl->s3->established_session->not_resumable = 0;
           ssl->s3->new_session = NULL;
         }
-
-        /* remove buffering on output */
-        ssl_free_wbio_buffer(ssl);
 
         ssl->s3->initial_handshake_complete = 1;
         ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
@@ -1101,7 +1088,7 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1142,7 +1129,7 @@ static int ssl3_send_certificate_status(SSL_HANDSHAKE *hs) {
       !CBB_add_u24_length_prefixed(&body, &ocsp_response) ||
       !CBB_add_bytes(&ocsp_response, CRYPTO_BUFFER_data(ssl->ocsp_response),
                      CRYPTO_BUFFER_len(ssl->ocsp_response)) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1317,7 +1304,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_complete_message(ssl, &cbb)) {
+  if (!ssl_add_message_cbb(ssl, &cbb)) {
     goto err;
   }
 
@@ -1400,7 +1387,7 @@ static int ssl3_send_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_add_client_CA_list(ssl, &body) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     goto err;
   }
 
@@ -1421,7 +1408,7 @@ static int ssl3_send_server_hello_done(SSL_HANDSHAKE *hs) {
 
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO_DONE) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -1970,7 +1957,7 @@ static int ssl3_send_new_session_ticket(SSL_HANDSHAKE *hs) {
       CBB_add_u32(&body, session->timeout) &&
       CBB_add_u16_length_prefixed(&body, &ticket) &&
       ssl_encrypt_ticket(ssl, &ticket, session) &&
-      ssl_complete_message(ssl, &cbb);
+      ssl_add_message_cbb(ssl, &cbb);
 
   SSL_SESSION_free(session_copy);
   CBB_cleanup(&cbb);

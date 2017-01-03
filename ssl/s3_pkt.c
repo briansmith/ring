@@ -267,6 +267,14 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
     return ssl3_write_pending(ssl, type, buf, len);
   }
 
+  /* The handshake flight buffer is mutually exclusive with application data.
+   *
+   * TODO(davidben): This will not be true when closure alerts use this. */
+  if (ssl->s3->pending_flight != NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
   /* If we have an alert to send, lets send it */
   if (ssl->s3->alert_dispatch) {
     int ret = ssl->method->dispatch_alert(ssl);

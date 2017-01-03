@@ -151,14 +151,15 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_supports_cipher,
     dtls1_init_message,
     dtls1_finish_message,
-    dtls1_queue_message,
-    dtls1_write_message,
-    dtls1_send_change_cipher_spec,
+    dtls1_add_message,
+    dtls1_add_change_cipher_spec,
+    dtls1_add_alert,
     dtls1_flush_flight,
     dtls1_expect_flight,
     dtls1_received_flight,
     dtls1_set_read_state,
     dtls1_set_write_state,
+    dtls1_write_message,
 };
 
 const SSL_METHOD *DTLS_method(void) {

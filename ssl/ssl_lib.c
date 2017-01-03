@@ -504,9 +504,6 @@ void SSL_free(SSL *ssl) {
 
   CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
 
-  ssl_free_wbio_buffer(ssl);
-  assert(ssl->bbio == NULL);
-
   BIO_free_all(ssl->rbio);
   BIO_free_all(ssl->wbio);
 
@@ -553,18 +550,8 @@ void SSL_set0_rbio(SSL *ssl, BIO *rbio) {
 }
 
 void SSL_set0_wbio(SSL *ssl, BIO *wbio) {
-  /* If the output buffering BIO is still in place, remove it. */
-  if (ssl->bbio != NULL) {
-    ssl->wbio = BIO_pop(ssl->wbio);
-  }
-
   BIO_free_all(ssl->wbio);
   ssl->wbio = wbio;
-
-  /* Re-attach |bbio| to the new |wbio|. */
-  if (ssl->bbio != NULL) {
-    ssl->wbio = BIO_push(ssl->bbio, ssl->wbio);
-  }
 }
 
 void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
@@ -603,14 +590,7 @@ void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
 
 BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
 
-BIO *SSL_get_wbio(const SSL *ssl) {
-  if (ssl->bbio != NULL) {
-    /* If |bbio| is active, the true caller-configured BIO is its |next_bio|. */
-    assert(ssl->bbio == ssl->wbio);
-    return ssl->bbio->next_bio;
-  }
-  return ssl->wbio;
-}
+BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
 
 void ssl_reset_error_state(SSL *ssl) {
   /* Functions which use |SSL_get_error| must reset I/O and error state on
@@ -2022,48 +2002,6 @@ const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
 const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
 int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
-
-int ssl_is_wbio_buffered(const SSL *ssl) {
-  return ssl->bbio != NULL;
-}
-
-int ssl_init_wbio_buffer(SSL *ssl) {
-  if (SSL_is_dtls(ssl)) {
-    /* DTLS does not use the BIO buffer.
-     * TODO(davidben): Remove this altogether when TLS no longer uses it.
-     * https://crbug.com/boringssl/72. */
-    return 1;
-  }
-
-  if (ssl->bbio != NULL) {
-    /* Already buffered. */
-    assert(ssl->bbio == ssl->wbio);
-    return 1;
-  }
-
-  BIO *bbio = BIO_new(BIO_f_buffer());
-  if (bbio == NULL ||
-      !BIO_set_read_buffer_size(bbio, 1)) {
-    BIO_free(bbio);
-    return 0;
-  }
-
-  ssl->bbio = bbio;
-  ssl->wbio = BIO_push(bbio, ssl->wbio);
-  return 1;
-}
-
-void ssl_free_wbio_buffer(SSL *ssl) {
-  if (ssl->bbio == NULL) {
-    return;
-  }
-
-  assert(ssl->bbio == ssl->wbio);
-
-  ssl->wbio = BIO_pop(ssl->wbio);
-  BIO_free(ssl->bbio);
-  ssl->bbio = NULL;
-}
 
 void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode) {
   ctx->quiet_shutdown = (mode != 0);

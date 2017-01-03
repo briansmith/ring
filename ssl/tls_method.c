@@ -100,14 +100,6 @@ static uint16_t ssl3_version_to_wire(uint16_t version) {
 
 static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
-static int ssl3_flush_flight(SSL *ssl) {
-  int ret = BIO_flush(ssl->wbio);
-  if (ret <= 0) {
-    ssl->rwstate = SSL_WRITING;
-  }
-  return ret;
-}
-
 static void ssl3_expect_flight(SSL *ssl) {}
 
 static void ssl3_received_flight(SSL *ssl) {}
@@ -155,14 +147,15 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_supports_cipher,
     ssl3_init_message,
     ssl3_finish_message,
-    ssl3_queue_message,
-    ssl3_write_message,
-    ssl3_send_change_cipher_spec,
+    ssl3_add_message,
+    ssl3_add_change_cipher_spec,
+    ssl3_add_alert,
     ssl3_flush_flight,
     ssl3_expect_flight,
     ssl3_received_flight,
     ssl3_set_read_state,
     ssl3_set_write_state,
+    ssl3_write_message,
 };
 
 const SSL_METHOD *TLS_method(void) {

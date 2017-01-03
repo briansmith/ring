@@ -209,7 +209,7 @@ void ssl3_free(SSL *ssl) {
   OPENSSL_free(ssl->s3->alpn_selected);
   SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
   SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
-  OPENSSL_free(ssl->s3->pending_message);
+  BUF_MEM_free(ssl->s3->pending_flight);
 
   OPENSSL_cleanse(ssl->s3, sizeof *ssl->s3);
   OPENSSL_free(ssl->s3);

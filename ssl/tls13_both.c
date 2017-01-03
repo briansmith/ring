@@ -453,7 +453,7 @@ int tls13_prepare_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_has_certificate(ssl)) {
-    if (!ssl_complete_message(ssl, &cbb)) {
+    if (!ssl_add_message_cbb(ssl, &cbb)) {
       goto err;
     }
 
@@ -507,7 +507,7 @@ int tls13_prepare_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_complete_message(ssl, &cbb)) {
+  if (!ssl_add_message_cbb(ssl, &cbb)) {
     goto err;
   }
 
@@ -569,7 +569,7 @@ enum ssl_private_key_result_t tls13_prepare_certificate_verify(
   }
 
   if (!CBB_did_write(&child, sig_len) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     goto err;
   }
 
@@ -595,7 +595,7 @@ int tls13_prepare_finished(SSL_HANDSHAKE *hs) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
       !CBB_add_bytes(&body, verify_data, verify_data_len) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     CBB_cleanup(&cbb);
     return 0;
   }

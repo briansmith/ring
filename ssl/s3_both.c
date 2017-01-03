@@ -180,33 +180,44 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   OPENSSL_free(hs);
 }
 
-/* ssl3_do_write sends |ssl->init_buf| in records of type 'type'
- * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns 1 on success
- * and <= 0 on error. */
-static int ssl3_do_write(SSL *ssl, int type, const uint8_t *data, size_t len) {
-  int ret = ssl3_write_bytes(ssl, type, data, len);
-  if (ret <= 0) {
-    return ret;
+static int add_record_to_flight(SSL *ssl, uint8_t type, const uint8_t *in,
+                                size_t in_len) {
+  /* We'll never add a flight while in the process of writing it out. */
+  assert(ssl->s3->pending_flight_offset == 0);
+
+  if (ssl->s3->pending_flight == NULL) {
+    ssl->s3->pending_flight = BUF_MEM_new();
+    if (ssl->s3->pending_flight == NULL) {
+      return 0;
+    }
   }
 
-  /* ssl3_write_bytes writes the data in its entirety. */
-  assert((size_t)ret == len);
-  ssl_do_msg_callback(ssl, 1 /* write */, type, data, len);
+  size_t max_out = in_len + SSL_max_seal_overhead(ssl);
+  size_t new_cap = ssl->s3->pending_flight->length + max_out;
+  if (max_out < in_len || new_cap < max_out) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  size_t len;
+  if (!BUF_MEM_reserve(ssl->s3->pending_flight, new_cap) ||
+      !tls_seal_record(ssl, (uint8_t *)ssl->s3->pending_flight->data +
+                                ssl->s3->pending_flight->length,
+                       &len, max_out, type, in, in_len)) {
+    return 0;
+  }
+
+  ssl->s3->pending_flight->length += len;
   return 1;
 }
 
 int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
-  CBB_zero(cbb);
-  if (ssl->s3->pending_message != NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
   /* Pick a modest size hint to save most of the |realloc| calls. */
   if (!CBB_init(cbb, 64) ||
       !CBB_add_u8(cbb, type) ||
       !CBB_add_u24_length_prefixed(cbb, body)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    CBB_cleanup(cbb);
     return 0;
   }
 
@@ -223,47 +234,111 @@ int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
   return 1;
 }
 
-int ssl3_queue_message(SSL *ssl, uint8_t *msg, size_t len) {
-  if (ssl->s3->pending_message != NULL ||
-      len > 0xffffffffu) {
-    OPENSSL_free(msg);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
+  /* Add the message to the current flight, splitting into several records if
+   * needed. */
+  int ret = 0;
+  size_t added = 0;
+  do {
+    size_t todo = len - added;
+    if (todo > ssl->max_send_fragment) {
+      todo = ssl->max_send_fragment;
+    }
+
+    if (!add_record_to_flight(ssl, SSL3_RT_HANDSHAKE, msg + added, todo)) {
+      goto err;
+    }
+    added += todo;
+  } while (added < len);
+
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg, len);
+  ssl3_update_handshake_hash(ssl, msg, len);
+  ret = 1;
+
+err:
+  OPENSSL_free(msg);
+  return ret;
+}
+
+int ssl3_add_change_cipher_spec(SSL *ssl) {
+  static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
+
+  if (!add_record_to_flight(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
+                            sizeof(kChangeCipherSpec))) {
     return 0;
   }
 
-  ssl3_update_handshake_hash(ssl, msg, len);
-
-  ssl->s3->pending_message = msg;
-  ssl->s3->pending_message_len = (uint32_t)len;
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_CHANGE_CIPHER_SPEC,
+                      kChangeCipherSpec, sizeof(kChangeCipherSpec));
   return 1;
 }
 
-int ssl_complete_message(SSL *ssl, CBB *cbb) {
+int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
+  uint8_t alert[2] = {level, desc};
+  if (!add_record_to_flight(ssl, SSL3_RT_ALERT, alert, sizeof(alert))) {
+    return 0;
+  }
+
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, alert, sizeof(alert));
+  ssl_do_info_callback(ssl, SSL_CB_WRITE_ALERT, ((int)level << 8) | desc);
+  return 1;
+}
+
+int ssl_add_message_cbb(SSL *ssl, CBB *cbb) {
   uint8_t *msg;
   size_t len;
   if (!ssl->method->finish_message(ssl, cbb, &msg, &len) ||
-      !ssl->method->queue_message(ssl, msg, len)) {
+      !ssl->method->add_message(ssl, msg, len)) {
     return 0;
   }
 
   return 1;
 }
 
-int ssl3_write_message(SSL *ssl) {
-  if (ssl->s3->pending_message == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+int ssl3_write_message(SSL *ssl) { return 1; }
+
+int ssl3_flush_flight(SSL *ssl) {
+  if (ssl->s3->pending_flight == NULL) {
+    return 1;
   }
 
-  int ret = ssl3_do_write(ssl, SSL3_RT_HANDSHAKE, ssl->s3->pending_message,
-                          ssl->s3->pending_message_len);
+  if (ssl->s3->pending_flight->length > 0xffffffff ||
+      ssl->s3->pending_flight->length > INT_MAX) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  /* The handshake flight buffer is mutually exclusive with application data.
+   *
+   * TODO(davidben): This will not be true when closure alerts use this. */
+  if (ssl_write_buffer_is_pending(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  /* Write the pending flight. */
+  while (ssl->s3->pending_flight_offset < ssl->s3->pending_flight->length) {
+    int ret = BIO_write(
+        ssl->wbio,
+        ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
+        ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset);
+    if (ret <= 0) {
+      ssl->rwstate = SSL_WRITING;
+      return ret;
+    }
+
+    ssl->s3->pending_flight_offset += ret;
+  }
+
+  int ret = BIO_flush(ssl->wbio);
   if (ret <= 0) {
+    ssl->rwstate = SSL_WRITING;
     return ret;
   }
 
-  OPENSSL_free(ssl->s3->pending_message);
-  ssl->s3->pending_message = NULL;
-  ssl->s3->pending_message_len = 0;
+  BUF_MEM_free(ssl->s3->pending_flight);
+  ssl->s3->pending_flight = NULL;
+  ssl->s3->pending_flight_offset = 0;
   return 1;
 }
 
@@ -307,7 +382,7 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
       !CBB_add_bytes(&body, finished, finished_len) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return -1;
@@ -365,18 +440,11 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-int ssl3_send_change_cipher_spec(SSL *ssl) {
-  static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
-
-  return ssl3_do_write(ssl, SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
-                       sizeof(kChangeCipherSpec));
-}
-
 int ssl3_output_cert_chain(SSL *ssl) {
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
       !ssl_add_cert_chain(ssl, &body) ||
-      !ssl_complete_message(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, &cbb)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(&cbb);
     return 0;
