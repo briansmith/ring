@@ -67,7 +67,12 @@
  * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
  * Laboratories. */
 
-/* For BIGNUM format macros. */
+/* Per C99, various stdint.h and inttypes.h macros (the latter used by bn.h) are
+ * unavailable in C++ unless some macros are defined. C++11 overruled this
+ * decision, but older Android NDKs still require it. */
+#if !defined(__STDC_CONSTANT_MACROS)
+#define __STDC_CONSTANT_MACROS
+#endif
 #if !defined(__STDC_FORMAT_MACROS)
 #define __STDC_FORMAT_MACROS
 #endif
@@ -102,7 +107,7 @@ extern "C" int bssl_bn_test_main(RAND *rng);
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
   BIGNUM *raw = NULL;
-  int ret = BN_hex2bn(&raw, in);
+  int ret = GFp_BN_hex2bn(&raw, in);
   out->reset(raw);
   return ret;
 }
@@ -328,7 +333,7 @@ static bool TestSquare(FileTest *t) {
   GFp_BN_zero(zero.get());
 
   ScopedBIGNUM ret(GFp_BN_new()), remainder(GFp_BN_new());
-  if (!ret ||
+  if (!ret || !remainder ||
       !GFp_BN_mul_no_alias(ret.get(), a.get(), a.get()) ||
       !ExpectBIGNUMsEqual(t, "A * A", square.get(), ret.get()) ||
       !GFp_BN_div(ret.get(), remainder.get(), square.get(), a.get()) ||
@@ -449,49 +454,23 @@ static bool TestModExp(FileTest *t) {
     return false;
   }
 
-  if (GFp_BN_is_odd(m.get())) {
-    // |GFp_BN_mod_exp_mont_vartime| requires the input to already be reduced
-    // mod |m| unless |e| is zero (purely due to the ordering of how these
-    // special cases are handled). |GFp_BN_mod_exp_mont_consttime| doesn't have
-    // the same requirement simply because we haven't gotten around to it yet.
-    int expected_ok =
-        GFp_BN_cmp(a.get(), m.get()) < 0 || GFp_BN_is_zero(e.get());
+  int expected_ok = GFp_BN_cmp(a.get(), m.get()) < 0;
 
-    int ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(),
-                                         nullptr);
-    if (ok != expected_ok) {
-      return false;
-    }
-    if ((ok &&
-         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
-                             ret.get()))) {
-      return false;
-    }
+  ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
+  if (!mont ||
+      !GFp_BN_MONT_CTX_set(mont.get(), m.get())) {
+    return false;
+  }
 
-    // Test with a non-NULL |BN_MONT_CTX|.
-    ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-    if (!mont ||
-        !GFp_BN_MONT_CTX_set(mont.get(), m.get())) {
-      return false;
-    }
-
-    ok = GFp_BN_mod_exp_mont_vartime(ret.get(), a.get(), e.get(), m.get(),
-                                     mont.get());
-    if (ok != expected_ok) {
-      return false;
-    }
-    if ((ok &&
-         !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (Montgomery)", mod_exp.get(),
-                             ret.get()))) {
-      return false;
-    }
-
-    if (!GFp_BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(),
-                                       mont.get()) ||
-        !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
-                            ret.get())) {
-      return false;
-    }
+  int ok =
+      GFp_BN_mod_exp_mont_consttime(ret.get(), a.get(), e.get(), mont.get());
+  if (ok != expected_ok) {
+    return false;
+  }
+  if (ok &&
+      !ExpectBIGNUMsEqual(t, "A ^ E (mod M) (constant-time)", mod_exp.get(),
+                          ret.get())) {
+    return false;
   }
 
   return true;
@@ -571,11 +550,11 @@ static bool TestBN2BinPadded(RAND *rng) {
 
   // Test a random numbers at various byte lengths.
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
-    if (!BN_rand(n.get(), bytes * 8, rng)) {
+    if (!GFp_BN_rand(n.get(), bytes * 8, rng)) {
       return false;
     }
     if (GFp_BN_num_bytes(n.get()) != bytes ||
-        BN_bn2bin(n.get(), reference) != bytes) {
+        GFp_BN_bn2bin(n.get(), reference) != bytes) {
       fprintf(stderr, "Bad result from GFp_BN_rand; bytes.\n");
       return false;
     }
@@ -629,27 +608,27 @@ static bool TestHex2BN() {
   ret = HexToBIGNUM(&bn, "256");
   if (ret != 3 || !BN_is_word(bn.get(), 0x256) ||
       GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
   ret = HexToBIGNUM(&bn, "-42");
   if (ret != 3 || !GFp_BN_abs_is_word(bn.get(), 0x42) ||
       !GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
   ret = HexToBIGNUM(&bn, "-0");
   if (ret != 2 || !GFp_BN_is_zero(bn.get()) || GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
   ret = HexToBIGNUM(&bn, "abctrailing garbage is ignored");
   if (ret != 3 || !BN_is_word(bn.get(), 0xabc) ||
       GFp_BN_is_negative(bn.get())) {
-    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
     return false;
   }
 
@@ -663,15 +642,15 @@ static bool TestRand(RAND *rng) {
   }
 
   // Test GFp_BN_rand accounts for degenerate cases
-  if (!BN_rand(bn.get(), 0, rng) ||
+  if (!GFp_BN_rand(bn.get(), 0, rng) ||
       !GFp_BN_is_zero(bn.get())) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_rand gave a bad result.\n");
     return false;
   }
 
-  if (!BN_rand(bn.get(), 1, rng) ||
+  if (!GFp_BN_rand(bn.get(), 1, rng) ||
       !BN_is_word(bn.get(), 1)) {
-    fprintf(stderr, "BN_rand gave a bad result.\n");
+    fprintf(stderr, "GFp_BN_rand gave a bad result.\n");
     return false;
   }
 
@@ -690,7 +669,7 @@ static bool TestNegativeZero() {
   if (!GFp_BN_set_word(a.get(), 1)) {
     return false;
   }
-  BN_set_negative(a.get(), 1);
+  GFp_BN_set_negative(a.get(), 1);
   GFp_BN_zero(b.get());
   if (!GFp_BN_mul_no_alias(c.get(), a.get(), b.get())) {
     return false;
@@ -710,7 +689,7 @@ static bool TestNegativeZero() {
       !GFp_BN_set_word(denominator.get(), 2)) {
     return false;
   }
-  BN_set_negative(numerator.get(), 1);
+  GFp_BN_set_negative(numerator.get(), 1);
   if (!GFp_BN_div(a.get(), b.get(), numerator.get(), denominator.get())) {
     return false;
   }
@@ -731,11 +710,32 @@ static bool TestNegativeZero() {
     return false;
   }
 
-  // Test that BN_set_negative will not produce a negative zero.
+  // Test that GFp_BN_set_negative will not produce a negative zero.
   GFp_BN_zero(a.get());
-  BN_set_negative(a.get(), 1);
+  GFp_BN_set_negative(a.get(), 1);
   if (GFp_BN_is_negative(a.get())) {
-    fprintf(stderr, "BN_set_negative produced a negative zero.\n");
+    fprintf(stderr, "GFp_BN_set_negative produced a negative zero.\n");
+    return false;
+  }
+
+  // Test that |BN_rshift| and |BN_rshift1| will not produce a negative zero.
+  if (!GFp_BN_set_word(a.get(), 1)) {
+    return false;
+  }
+
+  GFp_BN_set_negative(a.get(), 1);
+  if (!GFp_BN_rshift(b.get(), a.get(), 1) ||
+      !GFp_BN_rshift1(c.get(), a.get())) {
+    return false;
+  }
+
+  if (!GFp_BN_is_zero(b.get()) || GFp_BN_is_negative(b.get())) {
+    fprintf(stderr, "BN_rshift(-1, 1) produced the wrong result.\n");
+    return false;
+  }
+
+  if (!GFp_BN_is_zero(c.get()) || GFp_BN_is_negative(c.get())) {
+    fprintf(stderr, "BN_rshift1(-1) produced the wrong result.\n");
     return false;
   }
 
@@ -746,27 +746,23 @@ static bool TestBadModulus() {
   ScopedBIGNUM a(GFp_BN_new());
   ScopedBIGNUM b(GFp_BN_new());
   ScopedBIGNUM zero(GFp_BN_new());
+  ScopedBIGNUM one(GFp_BN_new());
   ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-  if (!a || !b || !zero || !mont) {
+  if (!a || !b || !zero || !one || !mont ||
+      !GFp_BN_set_word(one.get(), 1)) {
     return false;
   }
 
   GFp_BN_zero(zero.get());
 
-  if (GFp_BN_div(a.get(), b.get(), GFp_BN_value_one(), zero.get())) {
+  if (GFp_BN_div(a.get(), b.get(), one.get(), zero.get())) {
     fprintf(stderr, "Division by zero unexpectedly succeeded.\n");
     return false;
   }
   ERR_clear_error();
 
-  if (GFp_BN_mod_exp_mont_vartime(a.get(), GFp_BN_value_one(),
-                                  GFp_BN_value_one(), zero.get(), nullptr)) {
-    fprintf(stderr, "GFp_BN_mod_exp_mont_vartime with zero modulus unexpectedly "
-            "succeeded.\n");
-    return 0;
-  }
-  ERR_clear_error();
-
+  // |GFp_BN_mod_exp_mont_vartime| and |GFp_BN_mod_exp_mont_consttime| require
+  // this.
   if (GFp_BN_MONT_CTX_set(mont.get(), zero.get())) {
     fprintf(stderr,
             "GFp_BN_MONT_CTX_set unexpectedly succeeded for zero modulus.\n");
@@ -774,49 +770,21 @@ static bool TestBadModulus() {
   }
   ERR_clear_error();
 
+
   // Some operations also may not be used with an even modulus.
 
   if (!GFp_BN_set_word(b.get(), 16)) {
     return false;
   }
 
+  // |GFp_BN_mod_exp_mont_vartime| and |GFp_BN_mod_exp_mont_consttime| require
+  // this.
   if (GFp_BN_MONT_CTX_set(mont.get(), b.get())) {
     fprintf(stderr,
             "GFp_BN_MONT_CTX_set unexpectedly succeeded for even modulus.\n");
     return false;
   }
   ERR_clear_error();
-
-  if (GFp_BN_mod_exp_mont_vartime(a.get(), GFp_BN_value_one(),
-                                  GFp_BN_value_one(), b.get(), nullptr)) {
-    fprintf(stderr, "GFp_BN_mod_exp_mont_vartime with even modulus unexpectedly "
-            "succeeded!\n");
-    return 0;
-  }
-  ERR_clear_error();
-
-  return true;
-}
-
-// TestExpModZero tests that 1**0 mod 1 == 0.
-static bool TestExpModZero(RAND *rng) {
-  ScopedBIGNUM zero(GFp_BN_new()), a(GFp_BN_new()), r(GFp_BN_new());
-  if (!zero || !a || !r || !BN_rand(a.get(), 1024, rng)) {
-    return false;
-  }
-  GFp_BN_zero(zero.get());
-
-  ScopedBN_MONT_CTX one_mont(GFp_BN_MONT_CTX_new());
-  if (!GFp_BN_mod_exp_mont_vartime(r.get(), a.get(), zero.get(),
-                                   GFp_BN_value_one(), nullptr) ||
-      !GFp_BN_is_zero(r.get()) ||
-      !one_mont ||
-      !GFp_BN_MONT_CTX_set(one_mont.get(), GFp_BN_value_one()) ||
-      !GFp_BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(),
-                                     one_mont.get()) ||
-      !GFp_BN_is_zero(r.get())) {
-    return false;
-  }
 
   return true;
 }
@@ -854,14 +822,6 @@ static bool TestExpModRejectUnreduced() {
         }
 
         if (base_value >= mod_value &&
-            GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
-                                        mod.get(), nullptr)) {
-          fprintf(stderr, "GFp_BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
-                  (int)base_value, (int)exp_value, (int)mod_value);
-          return false;
-        }
-
-        if (base_value >= mod_value &&
             GFp_BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
                                           mont.get())) {
           fprintf(stderr, "GFp_BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
@@ -869,14 +829,8 @@ static bool TestExpModRejectUnreduced() {
           return false;
         }
 
-        BN_set_negative(base.get(), 1);
+        GFp_BN_set_negative(base.get(), 1);
 
-        if (GFp_BN_mod_exp_mont_vartime(r.get(), base.get(), exp.get(),
-                                        mod.get(), nullptr)) {
-          fprintf(stderr, "GFp_BN_mod_exp_mont_vartime(%d, %d, %d) succeeded!\n",
-                  -(int)base_value, (int)exp_value, (int)mod_value);
-          return false;
-        }
         if (GFp_BN_mod_exp_mont_consttime(r.get(), base.get(), exp.get(),
                                           mont.get())) {
           fprintf(stderr, "GFp_BN_mod_exp_mont_consttime(%d, %d, %d) succeeded!\n",
@@ -931,7 +885,7 @@ static bool TestModInvRejectUnreduced(RAND *rng) {
         return false;
       }
 
-      BN_set_negative(base.get(), 1);
+      GFp_BN_set_negative(base.get(), 1);
 
       if (GFp_BN_mod_inverse_odd(r.get(), &no_inverse, base.get(), mod.get())) {
         fprintf(stderr, "GFp_BN_mod_inverse_odd(%d, %d) succeeded!\n",
@@ -954,9 +908,15 @@ static bool TestModInvRejectUnreduced(RAND *rng) {
 static bool TestCmpWord() {
   static const BN_ULONG kMaxWord = (BN_ULONG)-1;
 
+  ScopedBIGNUM one(GFp_BN_new());
   ScopedBIGNUM r(GFp_BN_new());
-  if (!r ||
-      !GFp_BN_set_word(r.get(), 0)) {
+  if (!one ||
+      !GFp_BN_set_word(one.get(), 1) ||
+      !r) {
+    return false;
+  }
+
+  if (!GFp_BN_set_word(r.get(), 0)) {
     return false;
   }
 
@@ -980,7 +940,7 @@ static bool TestCmpWord() {
     return false;
   }
 
-  BN_set_negative(r.get(), 1);
+  GFp_BN_set_negative(r.get(), 1);
 
   if (GFp_BN_cmp_word(r.get(), 0) >= 0 ||
       GFp_BN_cmp_word(r.get(), 100) >= 0 ||
@@ -1000,7 +960,7 @@ static bool TestCmpWord() {
     return false;
   }
 
-  if (!GFp_BN_add(r.get(), r.get(), GFp_BN_value_one())) {
+  if (!GFp_BN_add(r.get(), r.get(), one.get())) {
     return false;
   }
 
@@ -1010,7 +970,7 @@ static bool TestCmpWord() {
     return false;
   }
 
-  BN_set_negative(r.get(), 1);
+  GFp_BN_set_negative(r.get(), 1);
 
   if (GFp_BN_cmp_word(r.get(), 0) >= 0 ||
       GFp_BN_cmp_word(r.get(), kMaxWord) >= 0) {
@@ -1028,7 +988,6 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestRand(rng) ||
       !TestNegativeZero() ||
       !TestBadModulus() ||
-      !TestExpModZero(rng) ||
       !TestExpModRejectUnreduced() ||
       !TestModInvRejectUnreduced(rng) ||
       !TestCmpWord()) {

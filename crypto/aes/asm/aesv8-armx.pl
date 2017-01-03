@@ -42,7 +42,7 @@ die "can't locate arm-xlate.pl";
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
-$prefix="aes_v8";
+$prefix="aes_hw";
 
 $code=<<___;
 #include <openssl/arm_arch.h>
@@ -51,7 +51,7 @@ $code=<<___;
 .text
 ___
 $code.=<<___ if ($flavour =~ /64/);
-#if !defined(__clang__)
+#if !defined(__clang__) || defined(BORINGSSL_CLANG_SUPPORTS_DOT_ARCH)
 .arch  armv8-a+crypto
 #endif
 ___

@@ -384,7 +384,7 @@ mod tests {
                                       &output[..], true));
 
             // Tamper with the input and check that verification fails.
-            if input.len() == 0 {
+            if input.is_empty() {
                 input.push(0);
             } else {
                 input[0] ^= 1;

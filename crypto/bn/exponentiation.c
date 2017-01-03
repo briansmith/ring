@@ -120,9 +120,6 @@
 
 #if defined(OPENSSL_X86_64)
 #define OPENSSL_BN_ASM_MONT5
-#define RSAZ_ENABLED
-
-#include "rsaz_exp.h"
 
 void GFp_bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
                              const void *table, const BN_ULONG *np,
@@ -136,211 +133,6 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
                            const BN_ULONG *not_used, const BN_ULONG *np,
                            const BN_ULONG *n0, int num);
 #endif
-
-/* maximum precomputation table size for *variable* sliding windows */
-#define TABLE_SIZE 32
-
-/* GFp_BN_window_bits_for_exponent_size -- macro for sliding window mod_exp
- * functions
- *
- * For window size 'w' (w >= 2) and a random 'b' bits exponent, the number of
- * multiplications is a constant plus on average
- *
- *    2^(w-1) + (b-w)/(w+1);
- *
- * here 2^(w-1)  is for precomputing the table (we actually need entries only
- * for windows that have the lowest bit set), and (b-w)/(w+1)  is an
- * approximation for the expected number of w-bit windows, not counting the
- * first one.
- *
- * Thus we should use
- *
- *    w >= 6  if        b > 671
- *     w = 5  if  671 > b > 239
- *     w = 4  if  239 > b >  79
- *     w = 3  if   79 > b >  23
- *    w <= 2  if   23 > b
- *
- * (with draws in between).  Very small exponents are often selected
- * with low Hamming weight, so we use  w = 1  for b <= 23. */
-#define GFp_BN_window_bits_for_exponent_size(b) \
-		((b) > 671 ? 6 : \
-		 (b) > 239 ? 5 : \
-		 (b) >  79 ? 4 : \
-		 (b) >  23 ? 3 : 1)
-
-int GFp_BN_mod_exp_mont_vartime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                                const BIGNUM *m, const BN_MONT_CTX *mont) {
-  int j, bits, ret = 0, wstart, window;
-  int start = 1;
-  BIGNUM *val[TABLE_SIZE];
-  size_t val_len = 0;
-  BN_MONT_CTX *new_mont = NULL;
-
-  if (!GFp_BN_is_odd(m)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
-    return 0;
-  }
-
-  /* XXX: This should be after the |BN_R_INPUT_NOT_REDUCED| check, but it isn't
-   * in order to allow the |test_exp_mod_zero| test to keep working. Hopefully
-   * we can simplify the users of this code so that it is clear that what
-   * |test_exp_mod_zero| tests doesn't need to be supported. */
-  bits = GFp_BN_num_bits(p);
-  if (bits == 0) {
-    /* x**0 mod 1 is still zero. */
-    if (GFp_BN_is_one(m)) {
-      GFp_BN_zero(rr);
-      return 1;
-    }
-    return GFp_BN_one(rr);
-  }
-
-  if (a->neg || GFp_BN_ucmp(a, m) >= 0) {
-    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
-    return 0;
-  }
-
-  BIGNUM d;
-  GFp_BN_init(&d);
-
-  BIGNUM r;
-  GFp_BN_init(&r);
-
-  val[0] = GFp_BN_new();
-  if (val[0] == NULL) {
-    goto err;
-  }
-  ++val_len;
-
-  /* Allocate a montgomery context if it was not supplied by the caller. */
-  if (mont == NULL) {
-    new_mont = GFp_BN_MONT_CTX_new();
-    if (new_mont == NULL || !GFp_BN_MONT_CTX_set(new_mont, m)) {
-      goto err;
-    }
-    mont = new_mont;
-  }
-
-  if (GFp_BN_is_zero(a)) {
-    GFp_BN_zero(rr);
-    ret = 1;
-    goto err;
-  }
-  if (!GFp_BN_to_mont(val[0], a, mont)) {
-    goto err; /* 1 */
-  }
-
-  window = GFp_BN_window_bits_for_exponent_size(bits);
-  if (window > 1) {
-    if (!GFp_BN_mod_mul_mont(&d, val[0], val[0], mont)) {
-      goto err; /* 2 */
-    }
-    j = 1 << (window - 1);
-    for (int i = 1; i < j; i++) {
-      val[i] = GFp_BN_new();
-      if (val[i] == NULL) {
-        goto err;
-      }
-      ++val_len;
-      if (!GFp_BN_mod_mul_mont(val[i], val[i - 1], &d, mont)) {
-        goto err;
-      }
-    }
-  }
-
-  start = 1; /* This is used to avoid multiplication etc
-              * when there is only the value '1' in the
-              * buffer. */
-  wstart = bits - 1; /* The top bit of the window */
-
-  j = m->top; /* borrow j */
-  if (m->d[j - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    if (GFp_bn_wexpand(&r, j) == NULL) {
-      goto err;
-    }
-    /* 2^(top*BN_BITS2) - m */
-    r.d[0] = (0 - m->d[0]) & BN_MASK2;
-    for (int i = 1; i < j; i++) {
-      r.d[i] = (~m->d[i]) & BN_MASK2;
-    }
-    r.top = j;
-    /* Upper words will be zero if the corresponding words of 'm'
-     * were 0xfff[...], so decrement r.top accordingly. */
-    GFp_bn_correct_top(&r);
-  } else if (!GFp_BN_to_mont(&r, GFp_BN_value_one(), mont)) {
-    goto err;
-  }
-
-  for (;;) {
-    int wvalue; /* The 'value' of the window */
-    int wend; /* The bottom bit of the window */
-
-    if (GFp_BN_is_bit_set(p, wstart) == 0) {
-      if (!start && !GFp_BN_mod_mul_mont(&r, &r, &r, mont)) {
-        goto err;
-      }
-      if (wstart == 0) {
-        break;
-      }
-      wstart--;
-      continue;
-    }
-
-    /* We now have wstart on a 'set' bit, we now need to work out how bit a
-     * window to do.  To do this we need to scan forward until the last set bit
-     * before the end of the window */
-    wvalue = 1;
-    wend = 0;
-    for (int i = 1; i < window; i++) {
-      if (wstart - i < 0) {
-        break;
-      }
-      if (GFp_BN_is_bit_set(p, wstart - i)) {
-        wvalue <<= (i - wend);
-        wvalue |= 1;
-        wend = i;
-      }
-    }
-
-    /* wend is the size of the current window */
-    j = wend + 1;
-    /* add the 'bytes above' */
-    if (!start) {
-      for (int i = 0; i < j; i++) {
-        if (!GFp_BN_mod_mul_mont(&r, &r, &r, mont)) {
-          goto err;
-        }
-      }
-    }
-
-    /* wvalue will be an odd number < 2^window */
-    if (!GFp_BN_mod_mul_mont(&r, &r, val[wvalue >> 1], mont)) {
-      goto err;
-    }
-
-    /* move the 'window' down further */
-    wstart -= wend + 1;
-    start = 0;
-    if (wstart < 0) {
-      break;
-    }
-  }
-
-  if (!GFp_BN_from_mont(rr, &r, mont)) {
-    goto err;
-  }
-  ret = 1;
-
-err:
-  GFp_BN_MONT_CTX_free(new_mont);
-  for (size_t i = 0; i < val_len; ++i) {
-    GFp_BN_free(val[i]);
-  }
-  GFp_BN_free(&r);
-  GFp_BN_free(&d);
-  return ret;
-}
 
 /* GFp_BN_mod_exp_mont_consttime() stores the precomputed powers in a specific
  * layout so that accessing any of these table values shows the same access
@@ -455,13 +247,16 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * precomputation memory layout to limit data-dependency to a minimum
  * to protect secret exponents (cf. the hyper-threading timing attacks
  * pointed out by Colin Percival,
- * http://www.daemonology.net/hyperthreading-considered-harmful/)
+ * http://www.daemonology.net/hyperthreading-considered-harmful/).
+ *
+ * |p| must be positive.
  */
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                              const BN_MONT_CTX *mont) {
+                                  const BN_MONT_CTX *mont) {
+  const BIGNUM *m = &mont->N;
+
   int i, bits, ret = 0, window, wvalue;
   int top;
-  BN_MONT_CTX *new_mont = NULL;
 
   int numPowers;
   unsigned char *powerbufFree = NULL;
@@ -469,43 +264,10 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
 
-  const BIGNUM *m = &mont->N;
-
-  if (!GFp_BN_is_odd(m)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
-    return 0;
-  }
-
   top = m->top;
 
   bits = GFp_BN_num_bits(p);
-  if (bits == 0) {
-    /* x**0 mod 1 is still zero. */
-    if (GFp_BN_is_one(m)) {
-      GFp_BN_zero(rr);
-      return 1;
-    }
-    return GFp_BN_one(rr);
-  }
-
-#ifdef RSAZ_ENABLED
-  /* If the size of the operands allow it, perform the optimized
-   * RSAZ exponentiation. For further information see
-   * crypto/bn/rsaz_exp.c and accompanying assembly modules. */
-  if ((16 == a->top) && (16 == p->top) && (GFp_BN_num_bits(m) == 1024) &&
-      GFp_rsaz_avx2_eligible()) {
-    if (NULL == GFp_bn_wexpand(rr, 16)) {
-      goto err;
-    }
-    GFp_RSAZ_1024_mod_exp_avx2(rr->d, a->d, p->d, m->d, mont->RR.d,
-                               mont->n0[0]);
-    rr->top = 16;
-    rr->neg = 0;
-    GFp_bn_correct_top(rr);
-    ret = 1;
-    goto err;
-  }
-#endif
+  assert(bits > 0);
 
   /* Get the window size to use with size of p. */
   window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
@@ -562,7 +324,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       tmp.d[i] = (~m->d[i]) & BN_MASK2;
     }
     tmp.top = top;
-  } else if (!GFp_BN_to_mont(&tmp, GFp_BN_value_one(), mont)) {
+  } else if (!GFp_BN_set_word(&tmp, 1) ||
+             !GFp_BN_to_mont(&tmp, &tmp, mont)) {
     goto err;
   }
 
@@ -763,7 +526,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   ret = 1;
 
 err:
-  GFp_BN_MONT_CTX_free(new_mont);
   OPENSSL_free(powerbufFree);
   return (ret);
 }

@@ -108,6 +108,7 @@
 
 #include <openssl/bn.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/err.h>
@@ -116,6 +117,10 @@
 
 #include "internal.h"
 #include "../internal.h"
+
+
+/* Avoid -Wmissing-prototypes warnings. */
+const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont);
 
 
 BN_MONT_CTX *GFp_BN_MONT_CTX_new(void) {
@@ -184,16 +189,22 @@ int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   /* Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS such that R
    * > mod. Even though the assembly on some 32-bit platforms works with 64-bit
    * values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
-   * BN_BITS2|, is correct because because R^2 will still be a multiple of the
-   * latter as |BN_MONT_CTX_N0_LIMBS| is either one or two. */
-  unsigned lgBigR = (GFp_BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
-  GFp_BN_zero(&mont->RR);
-  if (!GFp_BN_set_bit(&mont->RR, lgBigR * 2) ||
-      !GFp_BN_mod(&mont->RR, &mont->RR, &mont->N)) {
+   * BN_BITS2|, is correct because R**2 will still be a multiple of the latter
+   * as |BN_MONT_CTX_N0_LIMBS| is either one or two.
+   *
+   * XXX: This is not constant time with respect to |mont->N|, but it should
+   * be. */
+  unsigned lgBigR =
+      (GFp_BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
+  if (!GFp_bn_mod_exp_base_2_vartime(&mont->RR, lgBigR * 2, &mont->N)) {
     return 0;
   }
 
   return 1;
+}
+
+const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont) {
+  return &mont->N;
 }
 
 int GFp_BN_to_mont(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont) {

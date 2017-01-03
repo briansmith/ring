@@ -145,8 +145,9 @@ int GFp_BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   BIGNUM *R = out;
 
   GFp_BN_zero(&Y);
-  if (!GFp_BN_one(&X) || GFp_BN_copy(&B, a) == NULL ||
-      GFp_BN_copy(&A, n) == NULL) {
+  if (!GFp_BN_one(&X) ||
+      !GFp_BN_copy(&B, a) ||
+      !GFp_BN_copy(&A, n)) {
     goto err;
   }
   A.neg = 0;

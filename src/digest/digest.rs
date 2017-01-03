@@ -57,7 +57,6 @@ mod sha1;
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
 /// ```
 pub struct Context {
-    // We use u64 to try to ensure 64-bit alignment/padding.
     state: State,
 
     // Note that SHA-512 has a 128-bit input bit counter, but this
@@ -128,8 +127,9 @@ impl Context {
                                                   num_blocks);
             }
             self.completed_data_blocks =
-                self.completed_data_blocks.checked_add(widen_u64(num_blocks))
-                                          .unwrap();
+                self.completed_data_blocks
+                    .checked_add(polyfill::u64_from_usize(num_blocks))
+                    .unwrap();
         }
         if num_to_save_for_later > 0 {
             self.pending[..num_to_save_for_later]
@@ -168,11 +168,11 @@ impl Context {
             &mut self.pending[padding_pos..(self.algorithm.block_len - 8)], 0);
 
         // Output the length, in bits, in big endian order.
-        let mut completed_data_bits: u64 =
-            self.completed_data_blocks
-                .checked_mul(widen_u64(self.algorithm.block_len)).unwrap()
-                .checked_add(widen_u64(self.num_pending)).unwrap()
-                .checked_mul(8).unwrap();
+        let mut completed_data_bits: u64 = self.completed_data_blocks
+            .checked_mul(polyfill::u64_from_usize(self.algorithm.block_len))
+            .unwrap()
+            .checked_add(polyfill::u64_from_usize(self.num_pending)).unwrap()
+            .checked_mul(8).unwrap();
 
         for b in (&mut self.pending[(self.algorithm.block_len - 8)..
                                     self.algorithm.block_len]).into_iter().rev() {
@@ -391,10 +391,9 @@ pub static SHA512: Algorithm = Algorithm {
     ],
 };
 
-#[inline(always)]
-fn widen_u64(x: usize) -> u64 { x as u64 }
-
+// We use u64 to try to ensure 64-bit alignment/padding.
 type State = [u64; MAX_CHAINING_LEN / 8];
+
 type Output = [u64; MAX_OUTPUT_LEN / 8];
 
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in

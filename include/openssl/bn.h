@@ -172,12 +172,9 @@ OPENSSL_EXPORT void GFp_BN_init(BIGNUM *bn);
  * allocated on the heap, frees |bn| also. */
 OPENSSL_EXPORT void GFp_BN_free(BIGNUM *bn);
 
-/* GFp_BN_copy sets |dest| equal to |src| and returns |dest| or NULL on allocation
+/* GFp_BN_copy sets |dest| equal to |src| and returns one on success or zero on
  * failure. */
-OPENSSL_EXPORT BIGNUM *GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
-
-/* GFp_BN_value_one returns a static BIGNUM with value 1. */
-OPENSSL_EXPORT const BIGNUM *GFp_BN_value_one(void);
+OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 
 
 /* Basic functions. */
@@ -239,7 +236,7 @@ OPENSSL_EXPORT int GFp_BN_bn2bin_padded(uint8_t *out, size_t len,
 OPENSSL_EXPORT void GFp_bn_correct_top(BIGNUM *bn);
 
 /* bn_wexpand ensures that |bn| has at least |words| works of space without
- * altering its value. It returns one on success or zero on allocation
+ * altering its value. It returns |bn| on success or NULL on allocation
  * failure. */
 OPENSSL_EXPORT BIGNUM *GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
@@ -353,6 +350,11 @@ OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 OPENSSL_EXPORT int GFp_BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
                                 const BIGNUM *divisor);
 
+/* GFp_BN_mod_add_quick acts like |BN_mod_add| but requires that |a| and |b| be
+ * non-negative and less than |m|. */
+OPENSSL_EXPORT int GFp_BN_mod_add_quick(BIGNUM *r, const BIGNUM *a,
+                                        const BIGNUM *b, const BIGNUM *m);
+
 /* GFp_BN_mod_sub_quick acts like |GFp_BN_mod_sub| but requires that |a| and
  * |b| be non-negative and less than |m|. */
 OPENSSL_EXPORT int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a,
@@ -440,10 +442,6 @@ int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont);
 
 
 /* Exponentiation. */
-
-OPENSSL_EXPORT int GFp_BN_mod_exp_mont_vartime(BIGNUM *r, const BIGNUM *a,
-                                               const BIGNUM *p, const BIGNUM *m,
-                                               const BN_MONT_CTX *mont);
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                                  const BIGNUM *p,

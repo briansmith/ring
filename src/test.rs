@@ -116,7 +116,11 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
+#[cfg(feature = "use_heap")]
+use bits;
+
 use {digest, error};
+
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -178,6 +182,15 @@ impl TestCase {
     pub fn consume_usize(&mut self, key: &str) -> usize {
         let s = self.consume_string(key);
         s.parse::<usize>().unwrap()
+    }
+
+    /// Returns the value of an attribute that is an integer, in decimal
+    /// notation, as a bit length.
+    #[cfg(feature = "use_heap")]
+    pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
+        let s = self.consume_string(key);
+        let bits = s.parse::<usize>().unwrap();
+        bits::BitLength::from_usize_bits(bits)
     }
 
     /// Returns the raw value of an attribute, without any unquoting or
@@ -348,11 +361,85 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
 
                 // Don't allow the value to be ommitted. An empty value can be
                 // represented as an empty quoted string.
-                assert!(value.len() != 0);
+                assert_ne!(value.len(), 0);
 
                 // Checking is_none() ensures we don't accept duplicate keys.
                 attributes.push((String::from(key), String::from(value), false));
             },
+        }
+    }
+}
+
+/// Deterministic implementations of `ring::rand::SecureRandom`.
+///
+/// These implementations are particularly useful for testing implementations
+/// of randomized algorithms & protocols using known-answer-tests where the
+/// test vectors contain the random seed to use. They are also especially
+/// useful for some types of fuzzing.
+#[allow(missing_docs)]
+pub mod rand {
+    use core;
+    use {error, polyfill, rand};
+
+    /// An implementation of `SecureRandom` that always fills the output slice
+    /// with the given byte.
+    pub struct FixedByteRandom {
+        pub byte: u8,
+    }
+
+    impl rand::SecureRandom for FixedByteRandom {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            polyfill::slice::fill(dest, self.byte);
+            Ok(())
+        }
+    }
+
+    /// An implementation of `SecureRandom` that always fills the output slice
+    /// with the slice in `bytes`. The length of the slice given to `slice`
+    /// must match exactly.
+    pub struct FixedSliceRandom<'a> {
+        pub bytes: &'a [u8],
+    }
+
+    impl<'a> rand::SecureRandom for FixedSliceRandom<'a> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            dest.copy_from_slice(self.bytes);
+            Ok(())
+        }
+    }
+
+    /// An implementation of `SecureRandom` where each slice in `bytes` is a
+    /// test vector for one call to `fill()`. *Not thread-safe.*
+    ///
+    /// The first slice in `bytes` is the output for the first call to
+    /// `fill()`, the second slice is the output for the second call to
+    /// `fill()`, etc. The output slice passed to `fill()` must have exactly
+    /// the length of the corresponding entry in `bytes`. `current` must be
+    /// initialized to zero. `fill()` must be called exactly once for each
+    /// entry in `bytes`.
+    pub struct FixedSliceSequenceRandom<'a> {
+        /// The value.
+        pub bytes: &'a [&'a [u8]],
+        pub current: core::cell::UnsafeCell<usize>,
+    }
+
+    impl<'a> rand::SecureRandom for FixedSliceSequenceRandom<'a> {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            let current = unsafe { *self.current.get() };
+            let bytes = self.bytes[current];
+            dest.copy_from_slice(bytes);
+            // Remember that we returned this slice and prepare to return
+            // the next one, if any.
+            unsafe { *self.current.get() += 1 };
+            Ok(())
+        }
+    }
+
+    impl<'a> Drop for FixedSliceSequenceRandom<'a> {
+        fn drop(&mut self) {
+            // Ensure that `fill()` was called exactly the right number of
+            // times.
+            assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
         }
     }
 }

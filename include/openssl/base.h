@@ -79,8 +79,9 @@ extern "C" {
 #elif defined(__arm) || defined(__arm__) || defined(_M_ARM)
 #define OPENSSL_32_BIT
 #define OPENSSL_ARM
-#elif defined(__PPC64__) || defined(__powerpc64__)
+#elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_LITTLE_ENDIAN)
 #define OPENSSL_64_BIT
+#define OPENSSL_PPC64LE
 #elif defined(__mips__) && !defined(__LP64__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
@@ -114,9 +115,7 @@ extern "C" {
 #define OPENSSL_EXPORT
 
 typedef struct bignum_st BIGNUM;
-typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;
-typedef struct rsa_st RSA;
 
 typedef struct RAND RAND;
 

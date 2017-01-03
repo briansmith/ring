@@ -155,7 +155,7 @@ extern "C" {
 #define BN_MONT_CTX_N0_LIMBS 1
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
 #define BN_TBIT		(0x8000000000000000UL)
-#define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
+#define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
 
 #elif defined(OPENSSL_32_BIT)
 
@@ -175,28 +175,11 @@ extern "C" {
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
 #define BN_TBIT		(0x80000000UL)
-#define TOBN(hi, lo) lo, hi
+#define TOBN(hi, lo) (lo), (hi)
 
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
-
-
-#if defined(__GNUC__)
-#define STATIC_BIGNUM_DIAGNOSTIC_PUSH \
-  _Pragma("GCC diagnostic push") \
-  _Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
-#define STATIC_BIGNUM_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
-#else
-#define STATIC_BIGNUM_DIAGNOSTIC_PUSH
-#define STATIC_BIGNUM_DIAGNOSTIC_POP
-#endif
-
-#define STATIC_BIGNUM(x)                                \
-  {                                                     \
-    (BN_ULONG *)x, sizeof(x) / sizeof(BN_ULONG),        \
-    sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
-  }
 
 
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
@@ -218,6 +201,7 @@ void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, int num);
 
 uint64_t GFp_bn_mont_n0(const BIGNUM *n);
+int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {

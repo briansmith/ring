@@ -30,24 +30,18 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/montgomery_inv.c \
   crypto/bn/mul.c \
   crypto/bn/random.c \
-  crypto/bn/rsaz_exp.c \
   crypto/bn/shift.c \
   crypto/cipher/e_aes.c \
   crypto/crypto.c \
   crypto/curve25519/curve25519.c \
   crypto/ec/ecp_nistz.c \
   crypto/ec/ecp_nistz256.c \
-  crypto/ec/gfp_constant_time.c \
   crypto/ec/gfp_p256.c \
   crypto/ec/gfp_p384.c \
-  crypto/ec/wnaf.c \
+  crypto/limbs/limbs.c \
   crypto/mem.c \
   crypto/modes/gcm.c \
-  crypto/poly1305/poly1305.c \
   crypto/rand/sysrand.c \
-  crypto/rsa/blinding.c \
-  crypto/rsa/rsa.c \
-  crypto/rsa/rsa_impl.c \
   $(NULL)) \
   $(RING_$(TARGET_ARCH_NORMAL)_SRCS) \
   $(NULL)
@@ -77,7 +71,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/aesni-x86_64.pl \
   crypto/aes/asm/bsaes-x86_64.pl \
   crypto/aes/asm/vpaes-x86_64.pl \
-  crypto/bn/asm/rsaz-avx2.pl \
   crypto/bn/asm/x86_64-mont.pl \
   crypto/bn/asm/x86_64-mont5.pl \
   crypto/chacha/asm/chacha-x86_64.pl \

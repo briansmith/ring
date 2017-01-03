@@ -176,11 +176,11 @@ err:
   return 0;
 }
 
-int BN_hex2bn(BIGNUM **outp, const char *in) {
+int GFp_BN_hex2bn(BIGNUM **outp, const char *in) {
   return bn_x2bn(outp, in, decode_hex, isxdigit);
 }
 
-size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
+size_t GFp_BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   size_t n, i;
   BN_ULONG l;
 
@@ -192,7 +192,7 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   return n;
 }
 
-void BN_set_negative(BIGNUM *bn, int sign) {
+void GFp_BN_set_negative(BIGNUM *bn, int sign) {
   if (sign && !GFp_BN_is_zero(bn)) {
     bn->neg = 1;
   } else {

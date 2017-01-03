@@ -65,6 +65,11 @@
 #include "internal.h"
 
 
+/* Avoid -Wmissing-prototypes warnings. */
+
+uint64_t GFp_BN_get_positive_u64(const BIGNUM *bn);
+
+
 BIGNUM *GFp_BN_new(void) {
   BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
 
@@ -99,29 +104,22 @@ void GFp_BN_free(BIGNUM *bn) {
   }
 }
 
-BIGNUM *GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
+int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
   if (src == dest) {
-    return dest;
+    return 1;
   }
 
   if (GFp_bn_wexpand(dest, src->top) == NULL) {
-    return NULL;
+    return 0;
   }
 
-  memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
+  if (src->top > 0) {
+    memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
+  }
 
   dest->top = src->top;
   dest->neg = src->neg;
-  return dest;
-}
-
-const BIGNUM *GFp_BN_value_one(void) {
-  static const BN_ULONG kOneLimbs[1] = { 1 };
-  STATIC_BIGNUM_DIAGNOSTIC_PUSH
-  static const BIGNUM kOne = STATIC_BIGNUM(kOneLimbs);
-  STATIC_BIGNUM_DIAGNOSTIC_POP
-
-  return &kOne;
+  return 1;
 }
 
 /* GFp_BN_num_bits_word returns the minimum number of bits needed to represent
@@ -194,6 +192,26 @@ void GFp_BN_zero(BIGNUM *bn) {
 
 int GFp_BN_one(BIGNUM *bn) {
   return GFp_BN_set_word(bn, 1);
+}
+
+/* GFp_BN_get_positive_u64 returns the value of |bn| if the value is in
+ * [1, 2**64). Otherwise it returns 0 to indicate an error occurred. */
+uint64_t GFp_BN_get_positive_u64(const BIGNUM *bn) {
+  if (bn->top > 64 / BN_BITS2) {
+    return 0;
+  }
+  uint64_t r = 0;
+  if (bn->top > 0) {
+    r = bn->d[0];
+  }
+#if BN_BITS2 == 32
+  if (bn->top > 1) {
+    r |= ((uint64_t)bn->d[1]) << BN_BITS2;
+  }
+#elif BN_BITS2 != 64
+#error BN_BITS2 is not 32 or 64.
+#endif
+  return r;
 }
 
 int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value) {

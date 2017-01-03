@@ -106,50 +106,6 @@ static inline int aead_check_in_len(size_t in_len) {
   return in_len_64 < (UINT64_C(1) << 32) * 64 - 64;
 }
 
-static inline void aead_assert_init_preconditions(size_t ctx_struct_alignment,
-                                                  size_t ctx_struct_size,
-                                                  const void *ctx_buf,
-                                                  size_t ctx_buf_len,
-                                                  const uint8_t *key) {
-#if defined(NDEBUG)
-  (void)ctx_struct_alignment;
-  (void)ctx_struct_size;
-  (void)ctx_buf;
-  (void)ctx_buf_len;
-  (void)key;
-#endif
-  assert(ctx_buf != NULL);
-  assert(((uintptr_t)ctx_buf) % ctx_struct_alignment == 0);
-  assert(ctx_buf_len >= ctx_struct_size);
-  assert(key != NULL);
-}
-
-static inline void aead_assert_open_seal_preconditions(
-    size_t ctx_struct_alignment, const void *ctx_buf, uint8_t *out,
-    size_t *out_len, const uint8_t *nonce, const uint8_t *in, size_t in_len,
-    const uint8_t *ad, size_t ad_len) {
-#if defined(NDEBUG)
-  (void)ctx_struct_alignment;
-  (void)ctx_buf;
-  (void)out;
-  (void)out_len;
-  (void)nonce;
-  (void)in;
-  (void)in_len;
-  (void)ad;
-  (void)ad_len;
-#endif
-  assert(ctx_buf != NULL);
-  assert(((uintptr_t)ctx_buf) % ctx_struct_alignment == 0);
-  assert(out != NULL);
-  assert(out_len != NULL);
-  assert(nonce != NULL);
-  assert(in != NULL || in_len == 0);
-  assert(aead_check_in_len(in_len));
-  assert(aead_check_alias(in, in_len, out));
-  assert(ad != NULL || ad_len == 0);
-}
-
 #if defined(__cplusplus)
 } /* extern C */
 #endif

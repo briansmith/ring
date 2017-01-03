@@ -137,7 +137,12 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
     // how to do that yet.
     println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
     if !use_msbuild {
-        println!("cargo:rustc-flags=-l dylib=stdc++");
+        let libcxx = if target_str.contains("-apple-") {
+            "c++"
+        } else {
+            "stdc++"
+        };
+        println!("cargo:rustc-flags=-l dylib={}", libcxx);
     }
 
     Ok(())

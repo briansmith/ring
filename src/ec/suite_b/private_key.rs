@@ -37,7 +37,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
     // and switch to the other mechanism.
 
     let num_limbs = ops.common.num_limbs;
-    let max_exclusive =  &ops.common.n.limbs[..num_limbs];
+    let max_exclusive = &ops.common.n.limbs[..num_limbs];
 
     // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
     // what specific value would be better, but it seems bad to try 100 times.

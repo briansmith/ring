@@ -32,21 +32,61 @@
 //! requiring signing large messages. An interface for efficiently supporting
 //! larger messages may be added later.
 //!
-//! # `ECDSA_*_ASN1` Details: ASN.1-encoded ECDSA signatures
+//!
+//! # Algorithm Details
+//!
+//! ## `ECDSA_*_ASN1` Details: ASN.1-encoded ECDSA Signatures
 //!
 //! The signature is a ASN.1 DER-encoded `Ecdsa-Sig-Value` as described in
 //! [RFC 3279 Section 2.2.3]. This is the form of ECDSA signature used in
 //! X.509-related structures and in TLS's `ServerKeyExchange` messages.
 //!
-//! Public keys are encoding in uncompressed form using the
+//! The public key is encoding in uncompressed form using the
 //! Octet-String-to-Elliptic-Curve-Point algorithm in
-//! [SEC 1: Elliptic Curve Cryptography, Version 2.0]. Public keys are
-//! validated during key agreement as described in using the ECC Partial
+//! [SEC 1: Elliptic Curve Cryptography, Version 2.0].
+//!
+//! During verification, the public key is validated using the ECC Partial
 //! Public-Key Validation Routine from Section 5.6.2.3.3 of
 //! [NIST Special Publication 800-56A, revision 2] and Appendix A.3 of the
 //! NSA's [Suite B implementer's guide to FIPS 186-3]. Note that, as explained
 //! in the NSA guide, ECC Partial Public-Key Validation is equivalent to ECC
 //! Full Public-Key Validation for prime-order curves like this one.
+//!
+//!
+//! ## `RSA_PKCS1_*` Details: RSA PKCS#1 1.5 Signatures
+//!
+//! The signature is an RSASSA-PKCS1-v1_5 signature as described in
+//! [RFC 3447 Section 8.2].
+//!
+//! The public key is encoded as an ASN.1 `RSAPublicKey` as described in
+//! [RFC 3447 Appendix-A.1.1]. The public key modulus length, rounded *up* to
+//! the nearest (larger) multiple of 8 bits, must be in the range given in the
+//! name of the algorithm. The public exponent must be an odd integer of 2-33
+//! bits, inclusive.
+//!
+//!
+//! ## `RSA_PSS_*` Details: RSA PSS Signatures
+//!
+//! The signature is an RSASSA-PSS signature as described in
+//! [RFC 3447 Section 8.1].
+//!
+//! The public key is encoded as an ASN.1 `RSAPublicKey` as described in
+//! [RFC 3447 Appendix-A.1.1]. The public key modulus length, rounded *up* to
+//! the nearest (larger) multiple of 8 bits, must be in the range given in the
+//! name of the algorithm. The public exponent must be an odd integer of 2-33
+//! bits, inclusive.
+//!
+//! During verification, signatures will only be accepted if the MGF1 digest
+//! algorithm is the same as the message digest algorithm and if the salt
+//! length is the same length as the message digest. This matches the
+//! requirements in TLS 1.3 and other recent specifications.
+//!
+//! During signing, the message digest algorithm will be used as the MGF1
+//! digest algorithm. The salt will be the same length as the message digest.
+//! This matches the requirements in TLS 1.3 and other recent specifications.
+//! Additionally, the entire salt is randomly generated separately for each
+//! signature using the secure random number generator passed to `sign()`.
+//!
 //!
 //! [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
 //!     http://www.secg.org/sec1-v2.pdf
@@ -56,6 +96,13 @@
 //!     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
 //!     https://tools.ietf.org/html/rfc3279#section-2.2.3
+//! [RFC 3447 Section 8.2]:
+//!     https://tools.ietf.org/html/rfc3447#section-7.2
+//! [RFC 3447 Section 8.1]:
+//!     https://tools.ietf.org/html/rfc3447#section-8.1
+//! [RFC 3447 Appendix-A.1.1]:
+//!     https://tools.ietf.org/html/rfc3447#appendix-A.1.1
+//!
 //!
 //! # Examples
 //!
@@ -190,6 +237,8 @@ pub use rsa::signing::{RSAKeyPair, RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
+    RSAEncoding,
+
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently
     // have. But, it's a bad idea to use SHA-1 anyway, so perhaps we just won't
@@ -197,6 +246,10 @@ pub use rsa::{
     RSA_PKCS1_SHA256,
     RSA_PKCS1_SHA384,
     RSA_PKCS1_SHA512,
+
+    RSA_PSS_SHA256,
+    RSA_PSS_SHA384,
+    RSA_PSS_SHA512,
 };
 
 #[cfg(feature = "use_heap")]
@@ -210,11 +263,16 @@ pub use rsa::verification::{
     RSA_PKCS1_2048_8192_SHA512,
 
     RSA_PKCS1_3072_8192_SHA384,
+
+    RSA_PSS_2048_8192_SHA256,
+    RSA_PSS_2048_8192_SHA384,
+    RSA_PSS_2048_8192_SHA512,
 };
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
 /// formats, as it also handles the parsing.
+#[cfg(feature = "use_heap")]
 pub mod primitive {
     pub use rsa::verification::verify_rsa;
 }

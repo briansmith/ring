@@ -144,8 +144,7 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
 #[cfg(test)]
 mod tests {
     use core;
-    use {agreement, ec};
-    use rand::test_util::*;
+    use {agreement, ec, test};
     use super::super::{ops, private_key};
 
     static SUPPORTED_SUITE_B_ALGS:
@@ -159,11 +158,11 @@ mod tests {
     fn test_agreement_suite_b_ecdh_generate() {
         // Generates a string of bytes 0x00...00, which will always result in
         // a scalar value of zero.
-        let random_00 = FixedByteRandom { byte: 0 };
+        let random_00 = test::rand::FixedByteRandom { byte: 0x00 };
 
         // Generates a string of bytes 0xFF...FF, which will be larger than the
         // group order of any curve that is supported.
-        let random_ff = FixedByteRandom { byte: 0xff };
+        let random_ff = test::rand::FixedByteRandom { byte: 0xff };
 
         for &(_, alg, ops) in SUPPORTED_SUITE_B_ALGS.iter() {
             // Test that the private key value zero is rejected and that
@@ -186,7 +185,7 @@ mod tests {
                 &mut n_bytes[..num_bytes], &ops.n.limbs[..ops.num_limbs]);
             {
                 let n_bytes = &mut n_bytes[..num_bytes];
-                let rng = FixedSliceRandom { bytes: n_bytes };
+                let rng = test::rand::FixedSliceRandom { bytes: n_bytes };
                 assert!(agreement::EphemeralPrivateKey::generate(alg, &rng)
                             .is_err());
             }
@@ -197,7 +196,9 @@ mod tests {
             {
                 let n_minus_1_bytes = &mut n_minus_1_bytes[..num_bytes];
                 n_minus_1_bytes[num_bytes - 1] -= 1;
-                let rng = FixedSliceRandom { bytes: n_minus_1_bytes };
+                let rng = test::rand::FixedSliceRandom {
+                    bytes: n_minus_1_bytes
+                };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng)
                                 .unwrap();
                 assert_eq!(&n_minus_1_bytes[..], &key.bytes()[..num_bytes]);
@@ -208,7 +209,9 @@ mod tests {
             {
                 let n_plus_1_bytes = &mut n_plus_1_bytes[..num_bytes];
                 n_plus_1_bytes[num_bytes - 1] += 1;
-                let rng = FixedSliceRandom { bytes: n_plus_1_bytes };
+                let rng = test::rand::FixedSliceRandom {
+                    bytes: n_plus_1_bytes
+                };
                 assert!(agreement::EphemeralPrivateKey::generate(alg, &rng)
                             .is_err());
             }
@@ -223,7 +226,7 @@ mod tests {
                     &[0u8; ec::SCALAR_MAX_BYTES][..num_bytes],
                     &n_minus_1_bytes[..num_bytes],
                 ];
-                let rng = FixedSliceSequenceRandom {
+                let rng = test::rand::FixedSliceSequenceRandom {
                     bytes: &bytes,
                     current: core::cell::UnsafeCell::new(0),
                 };

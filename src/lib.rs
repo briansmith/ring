@@ -37,14 +37,14 @@
 #![doc(html_root_url="https://briansmith.org/rustdoc/")]
 
 #![allow(
+    legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
+    unknown_lints,
     unsafe_code,
     // TODO: Deny `unused_qualifications` after
     // https://github.com/rust-lang/rust/issues/37345 is fixed.
     unused_qualifications,
-    // TODO: Deny `unused_unsafe` when Rust 1.13 goes stable.
-    unused_unsafe,
 )]
 #![deny(
     const_err,
@@ -70,7 +70,6 @@
     trivial_numeric_casts,
     unconditional_recursion,
     unknown_crate_types,
-    unknown_lints,
     unreachable_code,
     unstable_features,
     unused_allocation,
@@ -85,6 +84,7 @@
     unused_mut,
     unused_parens,
     unused_results,
+    unused_unsafe,
     unused_variables,
     variant_size_differences,
     warnings,
@@ -120,6 +120,10 @@ mod polyfill;
 pub mod aead;
 
 pub mod agreement;
+
+#[cfg(feature = "use_heap")]
+mod bits;
+
 mod c;
 mod chacha;
 pub mod constant_time;
@@ -127,31 +131,30 @@ pub mod constant_time;
 #[doc(hidden)]
 pub mod der;
 
-pub mod error;
-
 #[path = "digest/digest.rs"]
 pub mod digest;
 
 #[path = "ec/ec.rs"]
 mod ec;
 
+pub mod error;
 pub mod hkdf;
 pub mod hmac;
 mod init;
+mod limb;
 pub mod pbkdf2;
 mod poly1305;
 pub mod rand;
 
-mod limb;
-
-// Really a private method; only has public visibility so that C compilation
-// can see it.
-#[doc(hidden)]
-pub use limb::GFp_rand_mod;
-
 #[cfg(feature = "use_heap")]
 #[path = "rsa/rsa.rs"]
 mod rsa;
+
+// Really a private method; only has public visibility so that C compilation
+// can see it.
+#[cfg(feature = "use_heap")]
+#[doc(hidden)]
+pub use rsa::GFp_rand_mod;
 
 pub mod signature;
 
@@ -176,6 +179,8 @@ mod private {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "use_heap")]
     bssl_test_rng!(test_bn, bssl_bn_test_main);
+
     bssl_test!(test_constant_time, bssl_constant_time_test_main);
 }

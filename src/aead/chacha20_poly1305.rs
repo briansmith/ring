@@ -76,8 +76,10 @@ fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,
     let mut ctx = poly1305::SigningContext::from_key(key);
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
-    poly1305_update_length(&mut ctx, ad.len());
-    poly1305_update_length(&mut ctx, ciphertext.len());
+    let lengths =
+        [polyfill::u64_from_usize(ad.len()).to_le(),
+         polyfill::u64_from_usize(ciphertext.len()).to_le()];
+    ctx.update(polyfill::slice::u64_as_u8(&lengths));
     ctx.sign(tag_out);
 }
 
@@ -88,19 +90,6 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
         static PADDING: [u8; 16] = [0u8; 16];
         ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
     }
-}
-
-/// Updates the Poly1305 context |ctx| with the 64-bit little-endian encoded
-/// length value |len|.
-#[inline]
-fn poly1305_update_length(ctx: &mut poly1305::SigningContext, len: usize) {
-    let mut j = len;
-    let mut length_bytes = [0u8; 8];
-    for b in &mut length_bytes {
-        *b = j as u8;
-        j >>= 8;
-    }
-    ctx.update(&length_bytes);
 }
 
 

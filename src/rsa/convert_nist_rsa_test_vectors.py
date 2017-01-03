@@ -216,9 +216,7 @@ def main(fn, test_type, padding_alg):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print "Usage:\n" + \
-        "\tpython generate-rsa-signing-tests.py" + \
-        "<filename>"
+        print "Usage:\n python %s <filename>" % sys.argv[0]
     else:
         fn = sys.argv[1]
         if 'PSS' in fn:

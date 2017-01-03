@@ -61,7 +61,8 @@
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
+     defined(OPENSSL_PPC64LE))
 #define GHASH_ASM
 #endif
 
@@ -134,7 +135,7 @@ static void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
 #endif
 }
 
-#if !defined(GHASH_ASM) || defined(OPENSSL_AARCH64)
+#if !defined(GHASH_ASM) || defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
 static const size_t rem_4bit[16] = {
     PACK(0x0000), PACK(0x1C20), PACK(0x3840), PACK(0x2460),
     PACK(0x7080), PACK(0x6CA0), PACK(0x48C0), PACK(0x54E0),
@@ -333,6 +334,13 @@ void GFp_gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16],
                         const uint8_t *inp, size_t len);
 #endif
 
+#elif defined(OPENSSL_PPC64LE)
+#define GHASH_ASM_PPC64LE
+#define GCM_FUNCREF_4BIT
+void GFp_gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
+void GFp_gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
+void GFp_gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                      size_t len);
 #endif /* Platform */
 
 #endif /* GHASH_ASM */
@@ -378,9 +386,10 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
   if (GFp_gcm_clmul_enabled()) {
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       GFp_gcm_init_avx(Htable, H);
-    } else {
-      GFp_gcm_init_clmul(Htable, H);
+      return;
     }
+
+    GFp_gcm_init_clmul(Htable, H);
     return;
   }
 #endif
@@ -393,6 +402,12 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
 #if defined(OPENSSL_ARM)
   if (GFp_is_NEON_capable()) {
     GFp_gcm_init_neon(Htable, H);
+    return;
+  }
+#endif
+#if defined(GHASH_ASM_PPC64LE)
+  if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
+    GFp_gcm_init_p8(ctx->Htable, ctx->H.u);
     return;
   }
 #endif
@@ -420,10 +435,6 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
     ctx->gmult = GFp_gcm_gmult_4bit_mmx;
     ctx->ghash = GFp_gcm_ghash_4bit_mmx;
     return;
-  } else {
-    ctx->gmult = GFp_gcm_gmult_4bit_x86;
-    ctx->ghash = GFp_gcm_ghash_4bit_x86;
-    return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
@@ -440,8 +451,18 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
     return;
   }
 #endif
+#if defined(GHASH_ASM_PPC64LE)
+  if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
+    ctx->gmult = GFp_gcm_gmult_p8;
+    ctx->ghash = GFp_gcm_ghash_p8;
+    return;
+  }
+#endif
 
-#if !defined(GHASH_ASM_X86)
+#if defined(GHASH_ASM_X86)
+  ctx->gmult = GFp_gcm_gmult_4bit_x86;
+  ctx->ghash = GFp_gcm_ghash_4bit_x86;
+#else
   ctx->gmult = GFp_gcm_gmult_4bit;
   ctx->ghash = GFp_gcm_ghash_4bit;
 #endif

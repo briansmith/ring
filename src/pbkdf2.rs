@@ -213,7 +213,7 @@ fn derive_block(secret: &hmac::SigningKey, iterations: usize, salt: &[u8],
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8],
               secret: &[u8], previously_derived: &[u8])
               -> Result<(), error::Unspecified> {
-    if previously_derived.len() == 0 {
+    if previously_derived.is_empty() {
         return Err(error::Unspecified);
     }
 
@@ -293,7 +293,7 @@ mod tests {
                 let mut out = vec![0u8; dk.len()];
                 pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
                 assert_eq!(dk == out,
-                           verify_expected_result.is_ok() || dk.len() == 0);
+                           verify_expected_result.is_ok() || dk.is_empty());
             }
 
             assert_eq!(pbkdf2::verify(prf, iterations, &salt, &secret, &dk),
