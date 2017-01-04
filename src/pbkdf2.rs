@@ -42,7 +42,7 @@
 //! }
 //!
 //! struct PasswordDatabase {
-//!     pbkdf2_iterations: usize,
+//!     pbkdf2_iterations: u32,
 //!     db_salt_component: [u8; 16],
 //!
 //!     // Normally this would be a persistent database.
@@ -139,7 +139,7 @@ use {constant_time, digest, error, hmac, polyfill};
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
-pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8],
+pub fn derive(prf: &'static PRF, iterations: u32, salt: &[u8],
               secret: &[u8], out: &mut [u8]) {
     assert!(iterations >= 1);
 
@@ -163,7 +163,7 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8],
     }
 }
 
-fn derive_block(secret: &hmac::SigningKey, iterations: usize, salt: &[u8],
+fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8],
                 idx: u32, out: &mut [u8]) {
     let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
@@ -210,7 +210,7 @@ fn derive_block(secret: &hmac::SigningKey, iterations: usize, salt: &[u8],
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
 /// length, per the PBKDF2 specification.
-pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8],
+pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
               secret: &[u8], previously_derived: &[u8])
               -> Result<(), error::Unspecified> {
     if previously_derived.is_empty() {
@@ -291,12 +291,14 @@ mod tests {
 
             {
                 let mut out = vec![0u8; dk.len()];
-                pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
+                pbkdf2::derive(prf, iterations as u32, &salt, &secret,
+                               &mut out);
                 assert_eq!(dk == out,
                            verify_expected_result.is_ok() || dk.is_empty());
             }
 
-            assert_eq!(pbkdf2::verify(prf, iterations, &salt, &secret, &dk),
+            assert_eq!(pbkdf2::verify(prf, iterations as u32, &salt, &secret,
+                                      &dk),
                        verify_expected_result);
 
             Ok(())
