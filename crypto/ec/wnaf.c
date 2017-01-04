@@ -242,7 +242,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   BN_CTX *new_ctx = NULL;
   const EC_POINT *generator = NULL;
   EC_POINT *tmp = NULL;
-  size_t total_num;
+  size_t total_num = 0;
   size_t i, j;
   int k;
   int r_is_inverted = 0;
@@ -251,7 +251,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   int8_t **wNAF = NULL; /* individual wNAFs */
   size_t *wNAF_len = NULL;
   size_t max_len = 0;
-  size_t num_val;
+  size_t num_val = 0;
   EC_POINT **val = NULL; /* precomputation */
   EC_POINT **v;
   EC_POINT ***val_sub = NULL; /* pointers to sub-arrays of 'val' */
@@ -284,15 +284,14 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   }
 
 
-  wsize = OPENSSL_malloc(total_num * sizeof wsize[0]);
-  wNAF_len = OPENSSL_malloc(total_num * sizeof wNAF_len[0]);
-  wNAF = OPENSSL_malloc((total_num + 1) *
-                        sizeof wNAF[0]); /* includes space for pivot */
-  val_sub = OPENSSL_malloc(total_num * sizeof val_sub[0]);
+  wsize = OPENSSL_malloc(total_num * sizeof(wsize[0]));
+  wNAF_len = OPENSSL_malloc(total_num * sizeof(wNAF_len[0]));
+  wNAF = OPENSSL_malloc(total_num * sizeof(wNAF[0]));
+  val_sub = OPENSSL_malloc(total_num * sizeof(val_sub[0]));
 
   /* Ensure wNAF is initialised in case we end up going to err. */
-  if (wNAF) {
-    wNAF[0] = NULL; /* preliminary pivot */
+  if (wNAF != NULL) {
+    OPENSSL_memset(wNAF, 0, total_num * sizeof(wNAF[0]));
   }
 
   if (!wsize || !wNAF_len || !wNAF || !val_sub) {
@@ -309,7 +308,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     bits = i < num ? BN_num_bits(scalars[i]) : BN_num_bits(g_scalar);
     wsize[i] = window_bits_for_scalar_size(bits);
     num_val += (size_t)1 << (wsize[i] - 1);
-    wNAF[i + 1] = NULL; /* make sure we always have a pivot */
     wNAF[i] =
         compute_wNAF((i < num ? scalars[i] : g_scalar), wsize[i], &wNAF_len[i]);
     if (wNAF[i] == NULL) {
@@ -322,12 +320,12 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
 
   /* All points we precompute now go into a single array 'val'. 'val_sub[i]' is
    * a pointer to the subarray for the i-th point. */
-  val = OPENSSL_malloc((num_val + 1) * sizeof val[0]);
+  val = OPENSSL_malloc(num_val * sizeof(val[0]));
   if (val == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  val[num_val] = NULL; /* pivot element */
+  OPENSSL_memset(val, 0, num_val * sizeof(val[0]));
 
   /* allocate points for precomputation */
   v = val;
@@ -442,17 +440,15 @@ err:
   OPENSSL_free(wsize);
   OPENSSL_free(wNAF_len);
   if (wNAF != NULL) {
-    int8_t **w;
-
-    for (w = wNAF; *w != NULL; w++) {
-      OPENSSL_free(*w);
+    for (i = 0; i < total_num; i++) {
+      OPENSSL_free(wNAF[i]);
     }
 
     OPENSSL_free(wNAF);
   }
   if (val != NULL) {
-    for (v = val; *v != NULL; v++) {
-      EC_POINT_clear_free(*v);
+    for (i = 0; i < num_val; i++) {
+      EC_POINT_clear_free(val[i]);
     }
 
     OPENSSL_free(val);
