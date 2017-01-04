@@ -885,14 +885,12 @@ static char get_bit(const felem_bytearray in, size_t i) {
 }
 
 /* Interleaved point multiplication using precomputed point multiples:
- * The small point multiples 0*P, 1*P, ..., 16*P are in pre_comp[],
- * the scalars in scalars[]. If g_scalar is non-NULL, we also add this multiple
+ * The small point multiples 0*P, 1*P, ..., 16*P are in p_pre_comp, the scalars
+ * in p_scalar, if non-NULL. If g_scalar is non-NULL, we also add this multiple
  * of the generator, using certain (large) precomputed multiples in g_pre_comp.
  * Output point (X, Y, Z) is stored in x_out, y_out, z_out */
-static void batch_mul(felem x_out, felem y_out, felem z_out,
-                      const felem_bytearray scalars[],
-                      const size_t num_points, const u8 *g_scalar,
-                      const felem pre_comp[][17][3]) {
+static void batch_mul(felem x_out, felem y_out, felem z_out, const u8 *p_scalar,
+                      const u8 *g_scalar, const felem p_pre_comp[17][3]) {
   felem nq[3], tmp[4];
   u64 bits;
   u8 sign, digit;
@@ -900,11 +898,11 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
   /* set nq to the point at infinity */
   OPENSSL_memset(nq, 0, 3 * sizeof(felem));
 
-  /* Loop over all scalars msb-to-lsb, interleaving additions
-   * of multiples of the generator (two in each of the last 28 rounds)
-   * and additions of other points multiples (every 5th round). */
+  /* Loop over both scalars msb-to-lsb, interleaving additions of multiples of
+   * the generator (two in each of the last 28 rounds) and additions of p (every
+   * 5th round). */
   int skip = 1; /* save two point operations in the first round */
-  size_t i = num_points != 0 ? 220 : 27;
+  size_t i = p_scalar != NULL ? 220 : 27;
   for (;;) {
     /* double */
     if (!skip) {
@@ -941,30 +939,26 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
     }
 
     /* do other additions every 5 doublings */
-    if (num_points != 0 && i % 5 == 0) {
-      /* loop over all scalars */
-      size_t num;
-      for (num = 0; num < num_points; ++num) {
-        bits = get_bit(scalars[num], i + 4) << 5;
-        bits |= get_bit(scalars[num], i + 3) << 4;
-        bits |= get_bit(scalars[num], i + 2) << 3;
-        bits |= get_bit(scalars[num], i + 1) << 2;
-        bits |= get_bit(scalars[num], i) << 1;
-        bits |= get_bit(scalars[num], i - 1);
-        ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
+    if (p_scalar != NULL && i % 5 == 0) {
+      bits = get_bit(p_scalar, i + 4) << 5;
+      bits |= get_bit(p_scalar, i + 3) << 4;
+      bits |= get_bit(p_scalar, i + 2) << 3;
+      bits |= get_bit(p_scalar, i + 1) << 2;
+      bits |= get_bit(p_scalar, i) << 1;
+      bits |= get_bit(p_scalar, i - 1);
+      ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
 
-        /* select the point to add or subtract */
-        select_point(digit, 17, pre_comp[num], tmp);
-        felem_neg(tmp[3], tmp[1]); /* (X, -Y, Z) is the negative point */
-        copy_conditional(tmp[1], tmp[3], sign);
+      /* select the point to add or subtract */
+      select_point(digit, 17, p_pre_comp, tmp);
+      felem_neg(tmp[3], tmp[1]); /* (X, -Y, Z) is the negative point */
+      copy_conditional(tmp[1], tmp[3], sign);
 
-        if (!skip) {
-          point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
-                    tmp[0], tmp[1], tmp[2]);
-        } else {
-          OPENSSL_memcpy(nq, tmp, 3 * sizeof(felem));
-          skip = 0;
-        }
+      if (!skip) {
+        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
+                  tmp[0], tmp[1], tmp[2]);
+      } else {
+        OPENSSL_memcpy(nq, tmp, 3 * sizeof(felem));
+        skip = 0;
       }
     }
 
@@ -1022,30 +1016,16 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
-static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
-                                      EC_POINT *r,
-                                      const BIGNUM *g_scalar,
-                                      const EC_POINT *p_,
-                                      const BIGNUM *p_scalar_,
-                                      BN_CTX *ctx) {
-  /* TODO: This function used to take |points| and |scalars| as arrays of
-   * |num| elements. The code below should be simplified to work in terms of
-   * |p_| and |p_scalar_|. */
-  size_t num = p_ != NULL ? 1 : 0;
-  const EC_POINT **points = p_ != NULL ? &p_ : NULL;
-  BIGNUM const *const *scalars = p_ != NULL ? &p_scalar_ : NULL;
-
+static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
+                                      const BIGNUM *g_scalar, const EC_POINT *p,
+                                      const BIGNUM *p_scalar, BN_CTX *ctx) {
   int ret = 0;
   BN_CTX *new_ctx = NULL;
   BIGNUM *x, *y, *z, *tmp_scalar;
-  felem_bytearray g_secret;
-  felem_bytearray *secrets = NULL;
-  felem(*pre_comp)[17][3] = NULL;
+  felem_bytearray g_secret, p_secret;
+  felem p_pre_comp[17][3];
   felem_bytearray tmp;
-  size_t num_points = num;
   felem x_in, y_in, z_in, x_out, y_out, z_out;
-  const EC_POINT *p = NULL;
-  const BIGNUM *p_scalar = NULL;
 
   if (ctx == NULL) {
     ctx = BN_CTX_new();
@@ -1063,69 +1043,47 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
     goto err;
   }
 
-  if (num_points > 0) {
-    secrets = OPENSSL_malloc(num_points * sizeof(felem_bytearray));
-    pre_comp = OPENSSL_malloc(num_points * sizeof(felem[17][3]));
-    if (secrets == NULL ||
-        pre_comp == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+  if (p != NULL && p_scalar != NULL) {
+    /* We treat NULL scalars as 0, and NULL points as points at infinity, i.e.,
+     * they contribute nothing to the linear combination. */
+    OPENSSL_memset(&p_secret, 0, sizeof(p_secret));
+    OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
+    size_t num_bytes;
+    /* reduce g_scalar to 0 <= g_scalar < 2^224 */
+    if (BN_num_bits(p_scalar) > 224 || BN_is_negative(p_scalar)) {
+      /* this is an unusual input, and we don't guarantee
+       * constant-timeness */
+      if (!BN_nnmod(tmp_scalar, p_scalar, &group->order, ctx)) {
+        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+        goto err;
+      }
+      num_bytes = BN_bn2bin(tmp_scalar, tmp);
+    } else {
+      num_bytes = BN_bn2bin(p_scalar, tmp);
+    }
+
+    flip_endian(p_secret, tmp, num_bytes);
+    /* precompute multiples */
+    if (!BN_to_felem(x_out, &p->X) ||
+        !BN_to_felem(y_out, &p->Y) ||
+        !BN_to_felem(z_out, &p->Z)) {
       goto err;
     }
 
-    /* we treat NULL scalars as 0, and NULL points as points at infinity,
-     * i.e., they contribute nothing to the linear combination */
-    OPENSSL_memset(secrets, 0, num_points * sizeof(felem_bytearray));
-    OPENSSL_memset(pre_comp, 0, num_points * 17 * 3 * sizeof(felem));
-    for (size_t i = 0; i < num_points; ++i) {
-      if (i == num) {
-        /* the generator */
-        p = EC_GROUP_get0_generator(group);
-        p_scalar = g_scalar;
+    felem_assign(p_pre_comp[1][0], x_out);
+    felem_assign(p_pre_comp[1][1], y_out);
+    felem_assign(p_pre_comp[1][2], z_out);
+
+    for (size_t j = 2; j <= 16; ++j) {
+      if (j & 1) {
+        point_add(p_pre_comp[j][0], p_pre_comp[j][1], p_pre_comp[j][2],
+                  p_pre_comp[1][0], p_pre_comp[1][1], p_pre_comp[1][2],
+                  0, p_pre_comp[j - 1][0], p_pre_comp[j - 1][1],
+                  p_pre_comp[j - 1][2]);
       } else {
-        /* the i^th point */
-        p = points[i];
-        p_scalar = scalars[i];
-      }
-
-      if (p_scalar != NULL && p != NULL) {
-        size_t num_bytes;
-        /* reduce g_scalar to 0 <= g_scalar < 2^224 */
-        if (BN_num_bits(p_scalar) > 224 || BN_is_negative(p_scalar)) {
-          /* this is an unusual input, and we don't guarantee
-           * constant-timeness */
-          if (!BN_nnmod(tmp_scalar, p_scalar, &group->order, ctx)) {
-            OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-            goto err;
-          }
-          num_bytes = BN_bn2bin(tmp_scalar, tmp);
-        } else {
-          num_bytes = BN_bn2bin(p_scalar, tmp);
-        }
-
-        flip_endian(secrets[i], tmp, num_bytes);
-        /* precompute multiples */
-        if (!BN_to_felem(x_out, &p->X) ||
-            !BN_to_felem(y_out, &p->Y) ||
-            !BN_to_felem(z_out, &p->Z)) {
-          goto err;
-        }
-
-        felem_assign(pre_comp[i][1][0], x_out);
-        felem_assign(pre_comp[i][1][1], y_out);
-        felem_assign(pre_comp[i][1][2], z_out);
-
-        for (size_t j = 2; j <= 16; ++j) {
-          if (j & 1) {
-            point_add(pre_comp[i][j][0], pre_comp[i][j][1], pre_comp[i][j][2],
-                      pre_comp[i][1][0], pre_comp[i][1][1], pre_comp[i][1][2],
-                      0, pre_comp[i][j - 1][0], pre_comp[i][j - 1][1],
-                      pre_comp[i][j - 1][2]);
-          } else {
-            point_double(pre_comp[i][j][0], pre_comp[i][j][1],
-                         pre_comp[i][j][2], pre_comp[i][j / 2][0],
-                         pre_comp[i][j / 2][1], pre_comp[i][j / 2][2]);
-          }
-        }
+        point_double(p_pre_comp[j][0], p_pre_comp[j][1],
+                     p_pre_comp[j][2], p_pre_comp[j / 2][0],
+                     p_pre_comp[j / 2][1], p_pre_comp[j / 2][2]);
       }
     }
   }
@@ -1147,9 +1105,9 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
 
     flip_endian(g_secret, tmp, num_bytes);
   }
-  batch_mul(x_out, y_out, z_out, (const felem_bytearray(*))secrets,
-            num_points, g_scalar != NULL ? g_secret : NULL,
-            (const felem(*)[17][3])pre_comp);
+  batch_mul(x_out, y_out, z_out,
+            (p != NULL && p_scalar != NULL) ? p_secret : NULL,
+            g_scalar != NULL ? g_secret : NULL, (const felem(*)[3])p_pre_comp);
 
   /* reduce the output to its unique minimal representation */
   felem_contract(x_in, x_out);
@@ -1166,8 +1124,6 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
 err:
   BN_CTX_end(ctx);
   BN_CTX_free(new_ctx);
-  OPENSSL_free(secrets);
-  OPENSSL_free(pre_comp);
   return ret;
 }
 
