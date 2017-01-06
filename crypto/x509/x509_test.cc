@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
@@ -1011,6 +1012,73 @@ static bool TestFailedParseFromBuffer() {
   return true;
 }
 
+static bool TestPrintUTCTIME() {
+  static const struct {
+    const char *val, *want;
+  } asn1_utctime_tests[] = {
+    {"", "Bad time value"},
+
+    // Correct RFC 5280 form. Test years < 2000 and > 2000.
+    {"090303125425Z", "Mar  3 12:54:25 2009 GMT"},
+    {"900303125425Z", "Mar  3 12:54:25 1990 GMT"},
+    {"000303125425Z", "Mar  3 12:54:25 2000 GMT"},
+
+    // Correct form, bad values.
+    {"000000000000Z", "Bad time value"},
+    {"999999999999Z", "Bad time value"},
+
+    // Missing components. Not legal RFC 5280, but permitted.
+    {"090303125425", "Mar  3 12:54:25 2009"},
+    {"9003031254", "Mar  3 12:54:00 1990"},
+    {"9003031254Z", "Mar  3 12:54:00 1990 GMT"},
+
+    // GENERALIZEDTIME confused for UTCTIME.
+    {"20090303125425Z", "Bad time value"},
+
+    // Legal ASN.1, but not legal RFC 5280.
+    {"9003031254+0800", "Bad time value"},
+    {"9003031254-0800", "Bad time value"},
+
+    // Trailing garbage.
+    {"9003031254Z ", "Bad time value"},
+  };
+
+  for (auto t : asn1_utctime_tests) {
+    bssl::UniquePtr<ASN1_UTCTIME> tm(ASN1_UTCTIME_new());
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+    // Use this instead of ASN1_UTCTIME_set() because some callers get
+    // type-confused and pass ASN1_GENERALIZEDTIME to ASN1_UTCTIME_print().
+    // ASN1_UTCTIME_set_string() is stricter, and would reject the inputs in
+    // question.
+    if (!ASN1_STRING_set(tm.get(), t.val, strlen(t.val))) {
+      fprintf(stderr, "ASN1_STRING_set\n");
+      return false;
+    }
+    const int ok = ASN1_UTCTIME_print(bio.get(), tm.get());
+
+    const uint8_t *contents;
+    size_t len;
+    if (!BIO_mem_contents(bio.get(), &contents, &len)) {
+      fprintf(stderr, "BIO_mem_contents\n");
+      return false;
+    }
+
+    if (ok != (strcmp(t.want, "Bad time value") != 0)) {
+      fprintf(stderr, "ASN1_UTCTIME_print(%s): bad return value\n", t.val);
+      return false;
+    }
+    if (len != strlen(t.want) || memcmp(contents, t.want, len)) {
+      fprintf(stderr, "ASN1_UTCTIME_print(%s): got %.*s, want %s\n", t.val,
+              static_cast<int>(len),
+              reinterpret_cast<const char *>(contents), t.want);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main() {
   CRYPTO_library_init();
 
@@ -1023,7 +1091,8 @@ int main() {
       !TestFromBufferTrailingData() ||
       !TestFromBufferModified() ||
       !TestFromBufferReused() ||
-      !TestFailedParseFromBuffer()) {
+      !TestFailedParseFromBuffer() ||
+      !TestPrintUTCTIME()) {
     return 1;
   }
 
