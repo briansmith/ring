@@ -176,6 +176,8 @@ const Flag<int> kIntFlags[] = {
   { "-expect-cipher-aes", &TestConfig::expect_cipher_aes },
   { "-expect-cipher-no-aes", &TestConfig::expect_cipher_no_aes },
   { "-resumption-delay", &TestConfig::resumption_delay },
+  { "-max-send-fragment", &TestConfig::max_send_fragment },
+  { "-read-size", &TestConfig::read_size },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

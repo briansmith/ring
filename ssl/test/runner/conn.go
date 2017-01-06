@@ -876,7 +876,11 @@ Again:
 		return err
 	}
 	data := b.data[b.off:]
-	if len(data) > maxPlaintext {
+	max := maxPlaintext
+	if c.config.Bugs.MaxReceivePlaintext != 0 {
+		max = c.config.Bugs.MaxReceivePlaintext
+	}
+	if len(data) > max {
 		err := c.sendAlert(alertRecordOverflow)
 		c.in.freeBlock(b)
 		return c.in.setErrorLocked(err)

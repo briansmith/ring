@@ -1253,6 +1253,10 @@ type ProtocolBugs struct {
 	// formats to send in ClientHello or ServerHello. If set to a non-nil
 	// empty slice, no extension will be sent.
 	SendSupportedPointFormats []byte
+
+	// MaxReceivePlaintext, if non-zero, is the maximum plaintext record
+	// length accepted from the peer.
+	MaxReceivePlaintext int
 }
 
 func (c *Config) serverInit() {

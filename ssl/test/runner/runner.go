@@ -2401,6 +2401,42 @@ func addBasicTests() {
 				},
 			},
 		},
+		{
+			// Test the server so there is a large certificate as
+			// well as application data.
+			testType: serverTest,
+			name:     "MaxSendFragment",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxReceivePlaintext: 512,
+				},
+			},
+			messageLen: 1024,
+			flags: []string{
+				"-max-send-fragment", "512",
+				"-read-size", "1024",
+			},
+		},
+		{
+			// Test the server so there is a large certificate as
+			// well as application data.
+			testType: serverTest,
+			name:     "MaxSendFragment-TooLarge",
+			config: Config{
+				Bugs: ProtocolBugs{
+					// Ensure that some of the records are
+					// 512.
+					MaxReceivePlaintext: 511,
+				},
+			},
+			messageLen: 1024,
+			flags: []string{
+				"-max-send-fragment", "512",
+				"-read-size", "1024",
+			},
+			shouldFail:         true,
+			expectedLocalError: "local error: record overflow",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 

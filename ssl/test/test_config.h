@@ -129,6 +129,8 @@ struct TestConfig {
   bool read_with_unfinished_write = false;
   bool expect_secure_renegotiation = false;
   bool expect_no_secure_renegotiation = false;
+  int max_send_fragment = 0;
+  int read_size = 0;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);
