@@ -225,7 +225,7 @@ impl TestCase {
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
                     where F: FnMut(&str, &mut TestCase)
                                    -> Result<(), error::Unspecified> {
-    let path = std::path::PathBuf::from(test_data_relative_file_path);
+    let path = std::path::Path::new(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
 
