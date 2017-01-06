@@ -63,6 +63,15 @@
 extern "C" {
 #endif
 
+
+/* Legacy X.509 library.
+ *
+ * This header is part of OpenSSL's X.509 implementation. It is retained for
+ * compatibility but otherwise underdocumented and not actively maintained. In
+ * the future, a replacement library will be available. Meanwhile, minimize
+ * dependencies on this header where possible. */
+
+
 /* Forward reference */
 struct v3_ext_method;
 struct v3_ext_ctx;

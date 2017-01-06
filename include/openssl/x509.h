@@ -89,6 +89,14 @@ extern "C" {
 #endif
 
 
+/* Legacy X.509 library.
+ *
+ * This header is part of OpenSSL's X.509 implementation. It is retained for
+ * compatibility but otherwise underdocumented and not actively maintained. In
+ * the future, a replacement library will be available. Meanwhile, minimize
+ * dependencies on this header where possible. */
+
+
 #define X509_FILETYPE_PEM	1
 #define X509_FILETYPE_ASN1	2
 #define X509_FILETYPE_DEFAULT	3

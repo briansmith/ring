@@ -60,16 +60,16 @@
 #include <openssl/base.h>
 #include <openssl/asn1.h>
 
-#ifdef OPENSSL_BUILD_SHLIBCRYPTO
-# undef OPENSSL_EXTERN
-# define OPENSSL_EXTERN OPENSSL_EXPORT
-#endif
-
-/* ASN1 template defines, structures and functions */
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+
+/* Legacy ASN.1 library template definitions.
+ *
+ * This header is used to define new types in OpenSSL's ASN.1 implementation. It
+ * is deprecated and will be unexported from the library. Use the new |CBS| and
+ * |CBB| library in <openssl/bytestring.h> instead. */
 
 
 /* Macro to obtain ASN1_ADB pointer from a type (only used internally) */

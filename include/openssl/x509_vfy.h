@@ -72,6 +72,14 @@
 extern "C" {
 #endif
 
+/* Legacy X.509 library.
+ *
+ * This header is part of OpenSSL's X.509 implementation. It is retained for
+ * compatibility but otherwise underdocumented and not actively maintained. In
+ * the future, a replacement library will be available. Meanwhile, minimize
+ * dependencies on this header where possible. */
+
+
 #if 0
 /* Outer object */
 typedef struct x509_hash_dir_st

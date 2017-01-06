@@ -71,6 +71,14 @@
 extern "C" {
 #endif
 
+
+/* Legacy ASN.1 library.
+ *
+ * This header is part of OpenSSL's ASN.1 implementation. It is retained for
+ * compatibility but otherwise underdocumented and not actively maintained. Use
+ * the new |CBS| and |CBB| library in <openssl/bytestring.h> instead. */
+
+
 #define V_ASN1_UNIVERSAL		0x00
 #define	V_ASN1_APPLICATION		0x40
 #define V_ASN1_CONTEXT_SPECIFIC		0x80
