@@ -159,7 +159,11 @@ bool Accept(int *out_sock, const std::string &port) {
   addr.sin6_port = htons(atoi(port.c_str()));
 
   bool ok = false;
-  const char enable = 1;
+#if defined(OPENSSL_WINDOWS)
+  const BOOL enable = TRUE;
+#else
+  const int enable = 1;
+#endif
   int server_sock = -1;
 
   server_sock =
@@ -169,7 +173,7 @@ bool Accept(int *out_sock, const std::string &port) {
     goto out;
   }
 
-  if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &enable,
+  if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable,
                  sizeof(enable)) < 0) {
     perror("setsockopt");
     goto out;
