@@ -25,3 +25,7 @@ doc/doc.css
 # Cargo Junk
 Cargo.lock
 target/
+
+# JetBrains Junk
+.idea
+*.iml
