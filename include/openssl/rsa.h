@@ -517,7 +517,7 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS(RSA *rsa, const uint8_t *mHash,
                                         int sLen);
 
 /* RSA_padding_add_PKCS1_OAEP acts like |RSA_padding_add_PKCS1_OAEP_mgf1| but
- * the |md| and |mgf1md| paramaters of the latter are implicitly set to NULL,
+ * the |md| and |mgf1md| parameters of the latter are implicitly set to NULL,
  * which means SHA-1. */
 OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, unsigned to_len,
                                               const uint8_t *from,

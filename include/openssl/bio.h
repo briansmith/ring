@@ -226,7 +226,7 @@ typedef long (*bio_info_cb)(BIO *bio, int event, const char *parg, int cmd,
                             long larg, long return_value);
 
 /* BIO_callback_ctrl allows the callback function to be manipulated. The |cmd|
- * arg will generally be |BIO_CTRL_SET_CALLBACK| but arbitary command values
+ * arg will generally be |BIO_CTRL_SET_CALLBACK| but arbitrary command values
  * can be interpreted by the |BIO|. */
 OPENSSL_EXPORT long BIO_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp);
 
@@ -469,7 +469,7 @@ OPENSSL_EXPORT int BIO_get_fp(BIO *bio, FILE **out_file);
 
 /* BIO_set_fp sets the |FILE| for |bio|. If |close_flag| is |BIO_CLOSE| then
  * |fclose| will be called on |file| when |bio| is closed. It returns one on
- * sucess and zero otherwise. */
+ * success and zero otherwise. */
 OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
 
 /* BIO_read_filename opens |filename| for reading and sets the result as the
@@ -656,7 +656,8 @@ OPENSSL_EXPORT int BIO_shutdown_wr(BIO *bio);
 #define BIO_CTRL_GET_CALLBACK	15  /* opt - set callback function */
 #define BIO_CTRL_SET_FILENAME	30	/* BIO_s_file special */
 
-/* BIO_CTRL_DUP is never used, but exists to allow code to compile more easily. */
+/* BIO_CTRL_DUP is never used, but exists to allow code to compile more
+ * easily. */
 #define BIO_CTRL_DUP	12
 
 

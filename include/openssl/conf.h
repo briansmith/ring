@@ -77,7 +77,7 @@ extern "C" {
  *   [section_name]
  *   key2=value2
  *
- * Config files are representated by a |CONF|. */
+ * Config files are represented by a |CONF|. */
 
 struct conf_value_st {
   char *section;

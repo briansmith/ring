@@ -134,7 +134,7 @@ extern "C" {
 #endif
 
 
-/* BN provides support for working with arbitary sized integers. For example,
+/* BN provides support for working with arbitrary sized integers. For example,
  * although the largest integer supported by the compiler might be 64 bits, BN
  * will allow you to work with numbers until you run out of memory. */
 
@@ -345,7 +345,7 @@ OPENSSL_EXPORT BIGNUM *bn_wexpand(BIGNUM *bn, size_t words);
 /* BIGNUM pools.
  *
  * Certain BIGNUM operations need to use many temporary variables and
- * allocating and freeing them can be quite slow. Thus such opertions typically
+ * allocating and freeing them can be quite slow. Thus such operations typically
  * take a |BN_CTX| parameter, which contains a pool of |BIGNUMs|. The |ctx|
  * argument to a public function may be NULL, in which case a local |BN_CTX|
  * will be created just for the lifetime of that call.
@@ -644,7 +644,7 @@ OPENSSL_EXPORT int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range,
  * |BN_GENCB| structure.
  *
  * The callback receives the address of that |BN_GENCB| structure as its last
- * argument and the user is free to put an arbitary pointer in |arg|. The other
+ * argument and the user is free to put an arbitrary pointer in |arg|. The other
  * arguments are set as follows:
  *   event=BN_GENCB_GENERATED, n=i:   after generating the i'th possible prime
  *                                    number.

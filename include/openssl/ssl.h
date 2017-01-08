@@ -904,14 +904,14 @@ OPENSSL_EXPORT int SSL_CTX_set_signed_cert_timestamp_list(SSL_CTX *ctx,
                                                           const uint8_t *list,
                                                           size_t list_len);
 
-/* SSL_CTX_set_ocsp_response sets the OCSP reponse that is sent to clients
+/* SSL_CTX_set_ocsp_response sets the OCSP response that is sent to clients
  * which request it. It returns one on success and zero on error. The caller
  * retains ownership of |response|. */
 OPENSSL_EXPORT int SSL_CTX_set_ocsp_response(SSL_CTX *ctx,
                                              const uint8_t *response,
                                              size_t response_len);
 
-/* SSL_set_ocsp_response sets the OCSP reponse that is sent to clients which
+/* SSL_set_ocsp_response sets the OCSP response that is sent to clients which
  * request it. It returns one on success and zero on error. The caller retains
  * ownership of |response|. */
 OPENSSL_EXPORT int SSL_set_ocsp_response(SSL *ssl,
@@ -1589,8 +1589,8 @@ OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
  * was established at. For example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *session);
 
-/* SSL_SESSION_get_id returns a pointer to a buffer containg |session|'s session
- * ID and sets |*out_len| to its length. */
+/* SSL_SESSION_get_id returns a pointer to a buffer containing |session|'s
+ * session ID and sets |*out_len| to its length. */
 OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
                                                  unsigned *out_len);
 
@@ -1601,7 +1601,7 @@ OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *session);
 /* SSL_SESSION_get_timeout returns the lifetime of |session| in seconds. */
 OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *session);
 
-/* SSL_SESSION_get0_peer return's the peer leaf certificate stored in
+/* SSL_SESSION_get0_peer returns the peer leaf certificate stored in
  * |session|.
  *
  * TODO(davidben): This should return a const X509 *. */
@@ -1651,7 +1651,7 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
  *
  * Note that offering or accepting a session short-circuits most parameter
  * negotiation. Resuming sessions across different configurations may result in
- * surprising behavor. So, for instance, a client implementing a version
+ * surprising behavior. So, for instance, a client implementing a version
  * fallback should shard its session cache by maximum protocol version. */
 
 /* SSL_SESS_CACHE_OFF disables all session caching. */
@@ -2368,7 +2368,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 #define SSL_TLSEXT_ERR_NOACK 3
 
 
-/* Application-layer protocol negotation.
+/* Application-layer protocol negotiation.
  *
  * The ALPN extension (RFC 7301) allows negotiating different application-layer
  * protocols over a single port. This is used, for example, to negotiate
@@ -2483,7 +2483,7 @@ OPENSSL_EXPORT void SSL_get0_next_proto_negotiated(const SSL *ssl,
  * or have a default application level protocol.
  *
  * 2) If the server supports NPN, but advertises an empty list then the
- * client selects the first protcol in its list, but indicates via the
+ * client selects the first protocol in its list, but indicates via the
  * API that this fallback case was enacted.
  *
  * 3) Otherwise, the client finds the first protocol in the server's list
@@ -2910,12 +2910,12 @@ OPENSSL_EXPORT void SSL_set_renegotiate_mode(SSL *ssl,
 OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
 
 /* SSL_total_renegotiations returns the total number of renegotiation handshakes
- * peformed by |ssl|. This includes the pending renegotiation, if any. */
+ * performed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
 /* SSL_CTX_set_early_data_enabled sets whether early data is allowed to be used
  * with resumptions using |ctx|. WARNING: This is experimental and may cause
- * interop failures until fully implemented. */
+ * interoperability failures until fully implemented. */
 OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
 
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
@@ -3034,14 +3034,14 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 #define SSL_CB_HANDSHAKE_DONE 0x20
 
 /* SSL_CTX_set_info_callback configures a callback to be run when various
- * events occur during a connection's lifetime. The |type| argumentj determines
+ * events occur during a connection's lifetime. The |type| argument determines
  * the type of event and the meaning of the |value| argument. Callbacks must
  * ignore unexpected |type| values.
  *
  * |SSL_CB_READ_ALERT| is signaled for each alert received, warning or fatal.
  * The |value| argument is a 16-bit value where the alert level (either
- * |SSL3_AL_WARNING| or |SSL3_AL_FATAL|) is in the most-significant eight bits and
- * the alert type (one of |SSL_AD_*|) is in the least-significant eight.
+ * |SSL3_AL_WARNING| or |SSL3_AL_FATAL|) is in the most-significant eight bits
+ * and the alert type (one of |SSL_AD_*|) is in the least-significant eight.
  *
  * |SSL_CB_WRITE_ALERT| is signaled for each alert sent. The |value| argument
  * is constructed as with |SSL_CB_READ_ALERT|.
@@ -3456,7 +3456,7 @@ OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *ssl);
 
 /* SSL_get_cipher_list returns the name of the |n|th cipher in the output of
- * |SSL_get_ciphers| or NULL if out of range. Use |SSL_get_ciphers| insteads. */
+ * |SSL_get_ciphers| or NULL if out of range. Use |SSL_get_ciphers| instead. */
 OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *ssl, int n);
 
 /* SSL_CTX_set_client_cert_cb sets a callback which is called on the client if

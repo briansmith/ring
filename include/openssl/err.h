@@ -120,7 +120,7 @@ extern "C" {
 
 /* Error queue handling functions.
  *
- * Errors in OpenSSL are generally signalled by the return value of a function.
+ * Errors in OpenSSL are generally signaled by the return value of a function.
  * When a function fails it may add an entry to a per-thread error queue,
  * which is managed by the functions in this header.
  *
@@ -306,7 +306,7 @@ OPENSSL_EXPORT void ERR_clear_system_error(void);
   ERR_put_error(ERR_LIB_SYS, 0, 0, __FILE__, __LINE__);
 
 /* ERR_put_error adds an error to the error queue, dropping the least recent
- * error if neccessary for space reasons. */
+ * error if necessary for space reasons. */
 OPENSSL_EXPORT void ERR_put_error(int library, int unused, int reason,
                                   const char *file, unsigned line);
 
@@ -331,14 +331,14 @@ OPENSSL_EXPORT int ERR_set_mark(void);
 OPENSSL_EXPORT int ERR_pop_to_mark(void);
 
 struct err_error_st {
-  /* file contains the filename where the error occured. */
+  /* file contains the filename where the error occurred. */
   const char *file;
   /* data contains optional data. It must be freed with |OPENSSL_free| if
    * |flags&ERR_FLAG_MALLOCED|. */
   char *data;
   /* packed contains the error library and reason, as packed by ERR_PACK. */
   uint32_t packed;
-  /* line contains the line number where the error occured. */
+  /* line contains the line number where the error occurred. */
   uint16_t line;
   /* flags contains a bitwise-OR of ERR_FLAG_* values. */
   uint8_t flags;

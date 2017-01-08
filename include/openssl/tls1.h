@@ -604,8 +604,8 @@ extern "C" {
 #define TLS1_TXT_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256 \
   "ECDHE-PSK-CHACHA20-POLY1305"
 
-/* TODO(davidben): Remove this. Historically, the TXT names for CHACHA20_POLY1305
- * were missing 'SHA256'. */
+/* TODO(davidben): Remove this. Historically, the TXT names for
+ * CHACHA20_POLY1305 were missing 'SHA256'. */
 #define TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305 \
   TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 
