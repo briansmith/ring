@@ -8394,6 +8394,21 @@ func addSessionTicketTests() {
 	})
 
 	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DuplicateTicketEarlyDataInfo",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendTicketEarlyDataInfo:      16384,
+				DuplicateTicketEarlyDataInfo: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":DUPLICATE_EXTENSION:",
+		expectedLocalError: "remote error: illegal parameter",
+	})
+
+	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "TLS13-ExpectTicketEarlyDataInfo",
 		config: Config{

@@ -1767,11 +1767,12 @@ func (c *Conn) SendNewSessionTicket() error {
 
 	// TODO(davidben): Allow configuring these values.
 	m := &newSessionTicketMsg{
-		version:         c.vers,
-		ticketLifetime:  uint32(24 * time.Hour / time.Second),
-		earlyDataInfo:   c.config.Bugs.SendTicketEarlyDataInfo,
-		customExtension: c.config.Bugs.CustomTicketExtension,
-		ticketAgeAdd:    ticketAgeAdd,
+		version:                c.vers,
+		ticketLifetime:         uint32(24 * time.Hour / time.Second),
+		earlyDataInfo:          c.config.Bugs.SendTicketEarlyDataInfo,
+		duplicateEarlyDataInfo: c.config.Bugs.DuplicateTicketEarlyDataInfo,
+		customExtension:        c.config.Bugs.CustomTicketExtension,
+		ticketAgeAdd:           ticketAgeAdd,
 	}
 
 	state := sessionState{

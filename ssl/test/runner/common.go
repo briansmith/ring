@@ -960,6 +960,10 @@ type ProtocolBugs struct {
 	// extension of the NewSessionTicket message.
 	SendTicketEarlyDataInfo uint32
 
+	// DuplicateTicketEarlyDataInfo causes an extra empty extension of
+	// ticket_early_data_info to be sent in NewSessionTicket.
+	DuplicateTicketEarlyDataInfo bool
+
 	// ExpectTicketEarlyDataInfo, if true, means that the client will fail upon
 	// absence of the ticket_early_data_info extension.
 	ExpectTicketEarlyDataInfo bool
