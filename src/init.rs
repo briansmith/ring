@@ -17,8 +17,29 @@ pub fn init_once() {
     #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
     {
         extern crate std;
-        extern { fn GFp_cpuid_setup(); }
         static INIT: std::sync::Once = std::sync::ONCE_INIT;
-        INIT.call_once(|| unsafe { GFp_cpuid_setup() });
+        INIT.call_once(|| set_cpu_features() );
     }
+}
+
+// On arm linux, use pure rust
+
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
+    target_os = "linux"))]
+fn set_cpu_features() {
+    cpu_feature::arm_linux::arm_linux_set_cpu_features();
+}
+
+// On other platforms (excluding iOS aarch64), use C feature detection
+
+#[cfg(all(not(all(target_arch = "aarch64", target_os = "ios")),
+    not(all(any(target_arch = "arm", target_arch = "aarch64"), target_os = "linux"))))]
+extern {
+    fn GFp_cpuid_setup();
+}
+
+#[cfg(all(not(all(target_arch = "aarch64", target_os = "ios")),
+    not(all(any(target_arch = "arm", target_arch = "aarch64"), target_os = "linux"))))]
+fn set_cpu_features() {
+    unsafe { GFp_cpuid_setup() }
 }

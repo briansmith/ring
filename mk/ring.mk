@@ -32,6 +32,7 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/random.c \
   crypto/bn/shift.c \
   crypto/cipher/e_aes.c \
+  crypto/cpu-arm-linux.c \
   crypto/crypto.c \
   crypto/curve25519/curve25519.c \
   crypto/ec/ecp_nistz.c \
@@ -89,7 +90,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
 
 RING_ARM_SHARED_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-arm.c \
-  crypto/cpu-arm-linux.c \
   \
   crypto/aes/asm/aesv8-armx.pl \
   crypto/modes/asm/ghashv8-armx.pl \
