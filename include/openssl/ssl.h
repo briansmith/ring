@@ -1152,7 +1152,7 @@ OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher);
  * mode). */
 OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
 
-/* SSL_CIPHER_has_MD5_HMAC returns one if |cipher| uses HMAC-MD5. */
+/* SSL_CIPHER_has_MD5_HMAC returns zero. */
 OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_has_SHA1_HMAC returns one if |cipher| uses HMAC-SHA1. */
@@ -1276,7 +1276,7 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   whose bulk cipher use the corresponding encryption scheme. Note that
  *   |AES|, |AES128|, and |AES256| match both CBC and GCM ciphers.
  *
- *   |MD5|, |SHA1|, |SHA256|, and |SHA384| match legacy cipher suites using the
+ *   |SHA1|, |SHA256|, and |SHA384| match legacy cipher suites using the
  *   corresponding hash function in their MAC. AEADs are matched by none of
  *   these.
  *

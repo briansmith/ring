@@ -195,12 +195,11 @@ extern "C" {
 #define SSL_AES (SSL_AES128 | SSL_AES256 | SSL_AES128GCM | SSL_AES256GCM)
 
 /* Bits for |algorithm_mac| (symmetric authentication). */
-#define SSL_MD5 0x00000001L
-#define SSL_SHA1 0x00000002L
-#define SSL_SHA256 0x00000004L
-#define SSL_SHA384 0x00000008L
+#define SSL_SHA1 0x00000001L
+#define SSL_SHA256 0x00000002L
+#define SSL_SHA384 0x00000004L
 /* SSL_AEAD is set for all AEADs. */
-#define SSL_AEAD 0x00000010L
+#define SSL_AEAD 0x00000008L
 
 /* Bits for |algorithm_prf| (handshake digest). */
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
