@@ -1195,6 +1195,10 @@ OPENSSL_EXPORT int SSL_CIPHER_is_DHE(const SSL_CIPHER *cipher);
 /* SSL_CIPHER_is_ECDHE returns one if |cipher| uses ECDHE. */
 OPENSSL_EXPORT int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher);
 
+/* SSL_CIPHER_is_static_RSA returns one if |cipher| uses the static RSA key
+ * exchange. */
+OPENSSL_EXPORT int SSL_CIPHER_is_static_RSA(const SSL_CIPHER *cipher);
+
 /* SSL_CIPHER_get_min_version returns the minimum protocol version required
  * for |cipher|. */
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher);

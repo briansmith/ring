@@ -1525,6 +1525,10 @@ int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mkey & SSL_kECDHE) != 0;
 }
 
+int SSL_CIPHER_is_static_RSA(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mkey & SSL_kRSA) != 0;
+}
+
 uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
   if (cipher->algorithm_mkey == SSL_kGENERIC ||
       cipher->algorithm_auth == SSL_aGENERIC) {
