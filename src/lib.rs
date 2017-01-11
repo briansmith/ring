@@ -99,7 +99,8 @@
 #[cfg(feature = "internal_benches")]
 extern crate test as bench;
 
-#[cfg(any(all(unix,
+#[cfg(any(target_os = "redox",
+          all(unix,
               any(not(target_os = "linux"),
                   feature = "dev_urandom_fallback"))))]
 #[macro_use]
