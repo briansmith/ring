@@ -451,7 +451,7 @@ Curves:
 
 	var pskIndex int
 	foundKEMode := bytes.IndexByte(pskKEModes, pskDHEKEMode) >= 0
-	if foundKEMode {
+	if foundKEMode && !config.SessionTicketsDisabled {
 		for i, pskIdentity := range pskIdentities {
 			// TODO(svaldez): Check the obfuscatedTicketAge before accepting 0-RTT.
 			sessionState, ok := c.decryptTicket(pskIdentity.ticket)
@@ -579,6 +579,10 @@ ResendHelloRetryRequest:
 		c.writeRecord(recordTypeHandshake, helloRetryRequest.marshal())
 		c.flushHandshake()
 
+		if hs.clientHello.hasEarlyData {
+			c.skipEarlyData = true
+		}
+
 		// Read new ClientHello.
 		newMsg, err := c.readHandshake()
 		if err != nil {
@@ -590,6 +594,10 @@ ResendHelloRetryRequest:
 			return unexpectedMessageError(newClientHello, newMsg)
 		}
 		hs.writeClientHash(newClientHello.marshal())
+
+		if newClientHello.hasEarlyData {
+			return errors.New("tls: EarlyData sent in new ClientHello")
+		}
 
 		applyBugsToClientHello(newClientHello, config)
 
@@ -628,6 +636,7 @@ ResendHelloRetryRequest:
 			newClientHelloCopy.pskIdentities[i].obfuscatedTicketAge = identity.obfuscatedTicketAge
 		}
 		newClientHelloCopy.pskBinders = oldClientHelloCopy.pskBinders
+		newClientHelloCopy.hasEarlyData = oldClientHelloCopy.hasEarlyData
 
 		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
 			return errors.New("tls: new ClientHello does not match")
@@ -650,10 +659,13 @@ ResendHelloRetryRequest:
 	}
 
 	// Decide whether or not to accept early data.
-	// TODO(nharper): This does not check that ALPN or SNI matches.
-	if hs.clientHello.hasEarlyData {
-		if !sendHelloRetryRequest && hs.sessionState != nil {
-			encryptedExtensions.extensions.hasEarlyData = true
+	if !sendHelloRetryRequest && hs.clientHello.hasEarlyData {
+		if !config.Bugs.AlwaysRejectEarlyData && hs.sessionState != nil {
+			if c.clientProtocol == string(hs.sessionState.earlyALPN) || config.Bugs.AlwaysAcceptEarlyData {
+				encryptedExtensions.extensions.hasEarlyData = true
+			}
+		}
+		if encryptedExtensions.extensions.hasEarlyData {
 			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyTrafficLabel)
 			c.in.useTrafficSecret(c.vers, hs.suite, earlyTrafficSecret, clientWrite)
 
@@ -671,6 +683,10 @@ ResendHelloRetryRequest:
 		} else {
 			c.skipEarlyData = true
 		}
+	}
+
+	if config.Bugs.SendEarlyDataExtension {
+		encryptedExtensions.extensions.hasEarlyData = true
 	}
 
 	// Resolve ECDHE and compute the handshake secret.

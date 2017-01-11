@@ -37,6 +37,7 @@ enum client_hs_state_t {
   state_process_server_certificate,
   state_process_server_certificate_verify,
   state_process_server_finished,
+  state_send_end_of_early_data,
   state_send_client_certificate,
   state_send_client_certificate_verify,
   state_complete_client_certificate_verify,
@@ -144,7 +145,11 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
-  if (!ssl_write_client_hello(hs)) {
+  SSL *const ssl = hs->ssl;
+  /* TODO(svaldez): Ensure that we set can_early_write to false since 0-RTT is
+   * rejected if we receive a HelloRetryRequest. */
+  if (!ssl->method->set_write_state(ssl, NULL) ||
+      !ssl_write_client_hello(hs)) {
     return ssl_hs_error;
   }
 
@@ -254,7 +259,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    ssl_set_session(ssl, NULL);
 
     /* Resumption incorporates fresh key material, so refresh the timeout. */
     ssl_session_renew_timeout(ssl, hs->new_session,
@@ -266,17 +270,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
 
   hs->new_session->cipher = cipher;
   hs->new_cipher = cipher;
-
-  /* Store the initial negotiated ALPN in the session. */
-  if (ssl->s3->alpn_selected != NULL) {
-    hs->new_session->early_alpn =
-        BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
-    if (hs->new_session->early_alpn == NULL) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-    hs->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
-  }
 
   /* The PRF hash is now known. Set up the key schedule. */
   if (!tls13_init_key_schedule(hs)) {
@@ -319,7 +312,13 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   if (!ssl_hash_current_message(hs) ||
       !tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
-                             hs->hash_len) ||
+                             hs->hash_len)) {
+    return ssl_hs_error;
+  }
+
+  /* If not sending early data, set client traffic keys now so that alerts are
+   * encrypted. */
+  if (!hs->early_data_offered &&
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                              hs->hash_len)) {
     return ssl_hs_error;
@@ -345,6 +344,32 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
+  }
+
+  /* Store the negotiated ALPN in the session. */
+  if (ssl->s3->alpn_selected != NULL) {
+    hs->new_session->early_alpn =
+        BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
+    if (hs->new_session->early_alpn == NULL) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+    hs->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
+  }
+
+  if (ssl->early_data_accepted) {
+    if (ssl->session->cipher != hs->new_session->cipher ||
+        ssl->session->early_alpn_len != ssl->s3->alpn_selected_len ||
+        OPENSSL_memcmp(ssl->session->early_alpn, ssl->s3->alpn_selected,
+                       ssl->s3->alpn_selected_len) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ALPN_MISMATCH_ON_EARLY_DATA);
+      return ssl_hs_error;
+    }
+  }
+
+  /* Release offered session now that it is no longer needed. */
+  if (ssl->s3->session_reused) {
+    ssl_set_session(ssl, NULL);
   }
 
   if (!ssl_hash_current_message(hs)) {
@@ -450,12 +475,32 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->received_flight(ssl);
+  hs->tls13_state = state_send_end_of_early_data;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  /* TODO(svaldez): Stop sending early data. */
+  if (ssl->early_data_accepted &&
+      !ssl->method->add_alert(ssl, SSL3_AL_WARNING,
+                              TLS1_AD_END_OF_EARLY_DATA)) {
+    return ssl_hs_error;
+  }
+
+  if (hs->early_data_offered &&
+      !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
+                             hs->hash_len)) {
+    return ssl_hs_error;
+  }
+
   hs->tls13_state = state_send_client_certificate;
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+
   /* The peer didn't request a certificate. */
   if (!hs->cert_request) {
     hs->tls13_state = state_complete_second_flight;
@@ -580,6 +625,9 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
         break;
       case state_process_server_finished:
         ret = do_process_server_finished(hs);
+        break;
+      case state_send_end_of_early_data:
+        ret = do_send_end_of_early_data(hs);
         break;
       case state_send_client_certificate:
         ret = do_send_client_certificate(hs);

@@ -85,6 +85,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-ticket-callback", &TestConfig::use_ticket_callback },
   { "-renew-ticket", &TestConfig::renew_ticket },
   { "-enable-early-data", &TestConfig::enable_early_data },
+  { "-enable-resume-early-data", &TestConfig::enable_resume_early_data },
   { "-enable-client-custom-extension",
     &TestConfig::enable_client_custom_extension },
   { "-enable-server-custom-extension",
@@ -123,6 +124,10 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::expect_no_secure_renegotiation },
   { "-expect-session-id", &TestConfig::expect_session_id },
   { "-expect-no-session-id", &TestConfig::expect_no_session_id },
+  { "-expect-accept-early-data", &TestConfig::expect_accept_early_data },
+  { "-expect-reject-early-data", &TestConfig::expect_reject_early_data },
+  { "-expect-no-alpn", &TestConfig::expect_no_alpn },
+  { "-expect-no-resume-alpn", &TestConfig::expect_no_resume_alpn },
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -137,8 +142,10 @@ const Flag<std::string> kStringFlags[] = {
   { "-host-name", &TestConfig::host_name },
   { "-advertise-alpn", &TestConfig::advertise_alpn },
   { "-expect-alpn", &TestConfig::expected_alpn },
+  { "-expect-resume-alpn", &TestConfig::expected_resume_alpn },
   { "-expect-advertised-alpn", &TestConfig::expected_advertised_alpn },
   { "-select-alpn", &TestConfig::select_alpn },
+  { "-select-resume-alpn", &TestConfig::select_resume_alpn },
   { "-psk", &TestConfig::psk },
   { "-psk-identity", &TestConfig::psk_identity },
   { "-srtp-profiles", &TestConfig::srtp_profiles },

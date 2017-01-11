@@ -330,7 +330,7 @@ NextCipherSuite:
 	}
 
 	var sendEarlyData bool
-	if len(hello.pskIdentities) > 0 && session.maxEarlyDataSize > 0 && c.config.Bugs.SendEarlyData != nil {
+	if len(hello.pskIdentities) > 0 && c.config.Bugs.SendEarlyData != nil {
 		hello.hasEarlyData = true
 		sendEarlyData = true
 	}
@@ -1334,6 +1334,18 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		}
 
 		c.srtpProtectionProfile = serverExtensions.srtpProtectionProfile
+	}
+
+	if c.vers >= VersionTLS13 && c.didResume {
+		if c.config.Bugs.ExpectEarlyDataAccepted && !serverExtensions.hasEarlyData {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: server did not accept early data when expected")
+		}
+
+		if !c.config.Bugs.ExpectEarlyDataAccepted && serverExtensions.hasEarlyData {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: server accepted early data when not expected")
+		}
 	}
 
 	return nil

@@ -111,6 +111,9 @@ static const struct argument kArguments[] = {
       "verification is required.",
     },
     {
+        "-early-data", kBooleanArgument, "Allow early data",
+    },
+    {
      "", kOptionalArgument, "",
     },
 };
@@ -403,6 +406,10 @@ bool Client(const std::vector<std::string> &args) {
       return false;
     }
     SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
+  }
+
+  if (args_map.count("-early-data") != 0) {
+    SSL_CTX_set_early_data_enabled(ctx.get(), 1);
   }
 
   if (args_map.count("-resume") != 0 &&

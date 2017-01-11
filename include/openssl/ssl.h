@@ -3082,6 +3082,10 @@ OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
  * interoperability failures until fully implemented. */
 OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
 
+/* SSL_early_data_accepted returns whether early data was accepted on the
+ * handshake performed by |ssl|. */
+OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
+
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
 #define SSL_MAX_CERT_LIST_DEFAULT (1024 * 100)
@@ -4600,6 +4604,8 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 #define SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH 274
 #define SSL_R_CANNOT_HAVE_BOTH_PRIVKEY_AND_METHOD 275
 #define SSL_R_TICKET_ENCRYPTION_FAILED 276
+#define SSL_R_ALPN_MISMATCH_ON_EARLY_DATA 277
+#define SSL_R_WRONG_VERSION_ON_EARLY_DATA 278
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

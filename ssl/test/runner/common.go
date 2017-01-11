@@ -249,6 +249,7 @@ type ClientSessionState struct {
 	extendedMasterSecret bool                // Whether an extended master secret was used to generate the session
 	sctList              []byte
 	ocspResponse         []byte
+	earlyALPN            string
 	ticketCreationTime   time.Time
 	ticketExpiration     time.Time
 	ticketAgeAdd         uint32
@@ -1146,9 +1147,25 @@ type ProtocolBugs struct {
 
 	// SendEarlyData causes a TLS 1.3 client to send the provided data
 	// in application data records immediately after the ClientHello,
-	// provided that the client has a PSK that is appropriate for sending
-	// early data and includes that PSK in its ClientHello.
+	// provided that the client offers a TLS 1.3 session. It will do this
+	// whether or not the server advertised early data for the ticket.
 	SendEarlyData [][]byte
+
+	// ExpectEarlyDataAccepted causes a TLS 1.3 client to check that early data
+	// was accepted by the server.
+	ExpectEarlyDataAccepted bool
+
+	// AlwaysAcceptEarlyData causes a TLS 1.3 server to always accept early data
+	// regardless of ALPN mismatch.
+	AlwaysAcceptEarlyData bool
+
+	// AlwaysRejectEarlyData causes a TLS 1.3 server to always reject early data.
+	AlwaysRejectEarlyData bool
+
+	// SendEarlyDataExtension, if true, causes a TLS 1.3 server to send the
+	// early_data extension in EncryptedExtensions, independent of whether
+	// it was accepted.
+	SendEarlyDataExtension bool
 
 	// ExpectEarlyData causes a TLS 1.3 server to read application
 	// data after the ClientHello (assuming the server is able to

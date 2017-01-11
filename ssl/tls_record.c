@@ -327,6 +327,14 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   }
 
   if (type == SSL3_RT_ALERT) {
+    /* Return end_of_early_data alerts as-is for the caller to process. */
+    if (CBS_len(out) == 2 &&
+        CBS_data(out)[0] == SSL3_AL_WARNING &&
+        CBS_data(out)[1] == TLS1_AD_END_OF_EARLY_DATA) {
+      *out_type = type;
+      return ssl_open_record_success;
+    }
+
     return ssl_process_alert(ssl, out_alert, CBS_data(out), CBS_len(out));
   }
 

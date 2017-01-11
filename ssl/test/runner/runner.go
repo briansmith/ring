@@ -3562,6 +3562,40 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			// Cover HelloRetryRequest during an ECDHE-PSK resumption.
 			resumeSession: true,
 		})
+
+		// TODO(svaldez): Send data on early data once implemented.
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "TLS13-EarlyData-Client",
+			config: Config{
+				MaxVersion:       VersionTLS13,
+				MinVersion:       VersionTLS13,
+				MaxEarlyDataSize: 16384,
+			},
+			resumeSession: true,
+			flags: []string{
+				"-enable-early-data",
+				"-expect-early-data-info",
+				"-expect-accept-early-data",
+			},
+		})
+
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "TLS13-EarlyData-Server",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendEarlyData:           [][]byte{},
+					ExpectEarlyDataAccepted: true,
+				},
+			},
+			resumeSession: true,
+			flags: []string{
+				"-enable-early-data",
+			},
+		})
 	}
 
 	// TLS client auth.
@@ -5957,8 +5991,8 @@ func addResumptionVersionTests() {
 
 	// In TLS 1.3, clients may advertise a cipher list which does not
 	// include the selected cipher. Test that we tolerate this. Servers may
-	// resume at another cipher if the PRF matches, but BoringSSL will
-	// always decline.
+	// resume at another cipher if the PRF matches and are not doing 0-RTT, but
+	// BoringSSL will always decline.
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
 		name:          "Resume-Server-UnofferedCipher-TLS13",
@@ -9916,6 +9950,364 @@ func addTLS13HandshakeTests() {
 			},
 		},
 	})
+
+	// Test that we accept data-less early data.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-DataLessEarlyData-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{},
+				ExpectEarlyDataAccepted: true,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-accept-early-data",
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-accept-early-data",
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-Reject-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				AlwaysRejectEarlyData: true,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-HRR-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				SendHelloRetryRequestCookie: []byte{1, 2, 3, 4},
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+		},
+	})
+
+	// The client must check the server does not send the early_data
+	// extension while rejecting the session.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyDataWithoutResume-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:             VersionTLS13,
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				SendEarlyDataExtension: true,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
+
+	// The client must fail with a dedicated error code if the server
+	// responds with TLS 1.2 when offering 0-RTT.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyDataVersionDowngrade-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS12,
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_VERSION_ON_EARLY_DATA:",
+	})
+
+	// Test that the client rejects an (unsolicited) early_data extension if
+	// the server sent an HRR.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-ServerAcceptsEarlyDataOnHRR-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				SendHelloRetryRequestCookie: []byte{1, 2, 3, 4},
+				SendEarlyDataExtension:      true,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
+
+	fooString := "foo"
+	barString := "bar"
+
+	// Test that the client reports the correct ALPN after a 0-RTT reject
+	// that changed it.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-ALPNMismatch-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				ALPNProtocol: &fooString,
+			},
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				ALPNProtocol: &barString,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar",
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+			"-expect-alpn", "foo",
+			"-expect-resume-alpn", "bar",
+		},
+	})
+
+	// Test that the client reports the correct ALPN after a 0-RTT reject if
+	// ALPN was omitted from the first connection.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-ALPNOmitted1-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			NextProtos:       []string{"foo"},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar",
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+			"-expect-no-alpn",
+			"-expect-resume-alpn", "foo",
+		},
+	})
+
+	// Test that the client reports the correct ALPN after a 0-RTT reject if
+	// ALPN was omitted from the second connection.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-ALPNOmitted2-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			NextProtos:       []string{"foo"},
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeSession: true,
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar",
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+			"-expect-alpn", "foo",
+			"-expect-no-resume-alpn",
+		},
+	})
+
+	// Test that the client enforces ALPN match on 0-RTT accept.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-DataLessEarlyData-BadALPNMismatch-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				ALPNProtocol: &fooString,
+			},
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				AlwaysAcceptEarlyData: true,
+				ALPNProtocol:          &barString,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar",
+			"-enable-early-data",
+			"-expect-early-data-info",
+		},
+		shouldFail:    true,
+		expectedError: ":ALPN_MISMATCH_ON_EARLY_DATA:",
+	})
+
+	// Test that the server correctly rejects 0-RTT when the previous
+	// session did not allow early data on resumption.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyData-NonZeroRTTSession-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-resume-early-data",
+			"-expect-reject-early-data",
+		},
+	})
+
+	// Test that we reject early data where ALPN is omitted from the first
+	// connection.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyData-ALPNOmitted1-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			NextProtos: []string{},
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS13,
+			NextProtos: []string{"foo"},
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-select-alpn", "",
+			"-select-resume-alpn", "foo",
+		},
+	})
+
+	// Test that we reject early data where ALPN is omitted from the second
+	// connection.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyData-ALPNOmitted2-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			NextProtos: []string{"foo"},
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS13,
+			NextProtos: []string{},
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-select-alpn", "foo",
+			"-select-resume-alpn", "",
+		},
+	})
+
+	// Test that we reject early data with mismatched ALPN.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyData-ALPNMismatch-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			NextProtos: []string{"foo"},
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS13,
+			NextProtos: []string{"bar"},
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-select-alpn", "foo",
+			"-select-resume-alpn", "bar",
+		},
+	})
+
 }
 
 func addTLS13CipherPreferenceTests() {

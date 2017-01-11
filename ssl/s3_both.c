@@ -153,6 +153,7 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   }
 
   OPENSSL_cleanse(hs->secret, sizeof(hs->secret));
+  OPENSSL_cleanse(hs->early_traffic_secret, sizeof(hs->early_traffic_secret));
   OPENSSL_cleanse(hs->client_handshake_secret,
                   sizeof(hs->client_handshake_secret));
   OPENSSL_cleanse(hs->server_handshake_secret,

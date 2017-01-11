@@ -407,6 +407,30 @@ int ssl3_read_change_cipher_spec(SSL *ssl) {
   return 1;
 }
 
+int ssl3_read_end_of_early_data(SSL *ssl) {
+  SSL3_RECORD *rr = &ssl->s3->rrec;
+
+  if (rr->length == 0) {
+    int ret = ssl3_get_record(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  if (rr->type != SSL3_RT_ALERT ||
+      rr->length != 2 ||
+      rr->data[0] != SSL3_AL_WARNING ||
+      rr->data[1] != TLS1_AD_END_OF_EARLY_DATA) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    return -1;
+  }
+
+  rr->length = 0;
+  ssl_read_buffer_discard(ssl);
+  return 1;
+}
+
 void ssl3_read_close_notify(SSL *ssl) {
   /* Read records until an error or close_notify. */
   while (ssl3_get_record(ssl) > 0) {

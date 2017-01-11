@@ -1477,6 +1477,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 				ticketExpiration:   c.config.time().Add(time.Duration(newSessionTicket.ticketLifetime) * time.Second),
 				ticketAgeAdd:       newSessionTicket.ticketAgeAdd,
 				maxEarlyDataSize:   newSessionTicket.maxEarlyDataSize,
+				earlyALPN:          c.clientProtocol,
 			}
 
 			cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
@@ -1789,6 +1790,7 @@ func (c *Conn) SendNewSessionTicket() error {
 		ticketCreationTime: c.config.time(),
 		ticketExpiration:   c.config.time().Add(time.Duration(m.ticketLifetime) * time.Second),
 		ticketAgeAdd:       uint32(addBuffer[3])<<24 | uint32(addBuffer[2])<<16 | uint32(addBuffer[1])<<8 | uint32(addBuffer[0]),
+		earlyALPN:          []byte(c.clientProtocol),
 	}
 
 	if !c.config.Bugs.SendEmptySessionTicket {
@@ -1798,7 +1800,6 @@ func (c *Conn) SendNewSessionTicket() error {
 			return err
 		}
 	}
-
 	c.out.Lock()
 	defer c.out.Unlock()
 	_, err = c.writeRecord(recordTypeHandshake, m.marshal())

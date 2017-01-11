@@ -54,6 +54,9 @@ static const struct argument kArguments[] = {
         "The server will continue accepting new sequential connections.",
     },
     {
+        "-early-data", kBooleanArgument, "Allow early data",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -221,6 +224,10 @@ bool Server(const std::vector<std::string> &args) {
       !LoadOCSPResponse(ctx.get(), args_map["-ocsp-response"].c_str())) {
     fprintf(stderr, "Failed to load OCSP response: %s\n", args_map["-ocsp-response"].c_str());
     return false;
+  }
+
+  if (args_map.count("-early-data") != 0) {
+    SSL_CTX_set_early_data_enabled(ctx.get(), 1);
   }
 
   bool result = true;

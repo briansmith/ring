@@ -821,6 +821,10 @@ void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
   ctx->enable_early_data = !!enabled;
 }
 
+int SSL_early_data_accepted(const SSL *ssl) {
+  return ssl->early_data_accepted;
+}
+
 static int bio_retry_reason_to_error(int reason) {
   switch (reason) {
     case BIO_RR_CONNECT:
