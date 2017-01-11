@@ -230,8 +230,8 @@ CPPFLAGS += \
 # XXX: Stack protector causes linking failures for armv7-*-none-eabi and
 # it's use seems questionable for that kind of target anyway.
 # The launchpad.net arm-none-eabi-gcc toolchain (at least) uses -fshort-enums.
-ifneq ($(TARGET_SYS),none)
-CPPFLAGS += -fstack-protector
+ifneq ($(filter-out none redox,$(TARGET_SYS)),)
+	CPPFLAGS += -fstack-protector
 endif
 
 

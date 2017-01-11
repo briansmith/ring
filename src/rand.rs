@@ -57,6 +57,8 @@ pub trait SecureRandom {
 /// implemented by reading from `/dev/urandom`. (This is something that should
 /// be improved, at least for platforms that offer something better.)
 ///
+/// On Redox, `fill()` is implemented by reading from `rand:`.
+///
 /// On Linux, `fill()` will use the [`getrandom`] syscall. If the kernel is too
 /// old to support `getrandom` then by default `fill()` falls back to reading
 /// from `/dev/urandom`. This decision is made the first time `fill`
@@ -140,7 +142,7 @@ mod sysrand {
 }
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(unix,
+#[cfg(all(any(target_os = "redox", unix),
           not(all(target_os = "linux",
                   not(feature = "dev_urandom_fallback")))))]
 mod urandom {
@@ -148,9 +150,14 @@ mod urandom {
     use error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        #[cfg(target_os = "redox")]
+        static RANDOM_PATH: &'static str = "rand:";
+        #[cfg(unix)]
+        static RANDOM_PATH: &'static str = "/dev/urandom";
+
         lazy_static! {
             static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open("/dev/urandom");
+                std::fs::File::open(RANDOM_PATH);
         }
 
         match *FILE {

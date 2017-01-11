@@ -260,7 +260,7 @@ name = "ring"
 [dependencies]
 untrusted = "0.3.2"
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(any(target_os = "redox", unix))'.dependencies]
 lazy_static = "0.2.1"
 
 [features]
