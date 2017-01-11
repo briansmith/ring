@@ -89,6 +89,9 @@ X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
     return NULL;
   }
 
+  CBB cbb;
+  CBB_zero(&cbb);
+
   /* Generate a random PBKDF2 salt if necessary. This will be parsed back out of
    * the serialized |X509_ALGOR|. */
   X509_ALGOR *ret = NULL;
@@ -109,7 +112,7 @@ X509_ALGOR *PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter,
   }
 
   /* See RFC 2898, appendix A. */
-  CBB cbb, algorithm, param, kdf, kdf_param, salt_cbb, cipher_cbb, iv_cbb;
+  CBB algorithm, param, kdf, kdf_param, salt_cbb, cipher_cbb, iv_cbb;
   if (!CBB_init(&cbb, 16) ||
       !CBB_add_asn1(&cbb, &algorithm, CBS_ASN1_SEQUENCE) ||
       !OBJ_nid2cbb(&algorithm, NID_pbes2) ||
