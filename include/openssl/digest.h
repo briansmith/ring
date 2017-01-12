@@ -102,7 +102,8 @@ OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);
  * An EVP_MD_CTX represents the state of a specific digest operation in
  * progress. */
 
-/* EVP_MD_CTX_init initialises an, already allocated, |EVP_MD_CTX|. */
+/* EVP_MD_CTX_init initialises an, already allocated, |EVP_MD_CTX|. This is the
+ * same as setting the structure to zero. */
 OPENSSL_EXPORT void EVP_MD_CTX_init(EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_create allocates and initialises a fresh |EVP_MD_CTX| and returns

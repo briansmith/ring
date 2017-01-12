@@ -220,10 +220,9 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             const SSL_CIPHER *cipher, uint16_t version);
 
 /* ssl_get_handshake_digest returns the |EVP_MD| corresponding to
- * |algorithm_prf|. It returns SHA-1 for |SSL_HANDSHAKE_DEFAULT|. The caller is
- * responsible for maintaining the additional MD5 digest and switching to
- * SHA-256 in TLS 1.2. */
-const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf);
+ * |algorithm_prf| and the |version|. */
+const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf,
+                                       uint16_t version);
 
 /* ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
  * |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
@@ -258,6 +257,87 @@ int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
  * length of an encrypted 1-byte record, for use in record-splitting. Otherwise
  * it returns zero. */
 size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
+
+
+/* Transcript layer. */
+
+/* SSL_TRANSCRIPT maintains the handshake transcript as a combination of a
+ * buffer and running hash. */
+typedef struct ssl_transcript_st {
+  /* buffer, if non-NULL, contains the handshake transcript. */
+  BUF_MEM *buffer;
+  /* hash, if initialized with an |EVP_MD|, maintains the handshake hash. For
+   * TLS 1.1 and below, it is the SHA-1 half. */
+  EVP_MD_CTX hash;
+  /* md5, if initialized with an |EVP_MD|, maintains the MD5 half of the
+   * handshake hash for TLS 1.1 and below. */
+  EVP_MD_CTX md5;
+} SSL_TRANSCRIPT;
+
+/* SSL_TRANSCRIPT_init initializes the handshake transcript. If called on an
+ * existing transcript, it resets the transcript and hash. It returns one on
+ * success and zero on failure. */
+int SSL_TRANSCRIPT_init(SSL_TRANSCRIPT *transcript);
+
+/* SSL_TRANSCRIPT_init_hash initializes the handshake hash based on the PRF and
+ * contents of the handshake transcript. Subsequent calls to
+ * |SSL_TRANSCRIPT_update| will update the rolling hash. It returns one on
+ * success and zero on failure. It is an error to call this function after the
+ * handshake buffer is released. */
+int SSL_TRANSCRIPT_init_hash(SSL_TRANSCRIPT *transcript, uint16_t version,
+                             int algorithm_prf);
+
+/* SSL_TRANSCRIPT_cleanup cleans up the hash and transcript. */
+void SSL_TRANSCRIPT_cleanup(SSL_TRANSCRIPT *transcript);
+
+/* SSL_TRANSCRIPT_free_buffer releases the handshake buffer. Subsequent calls to
+ * |SSL_TRANSCRIPT_update| will not update the handshake buffer. */
+void SSL_TRANSCRIPT_free_buffer(SSL_TRANSCRIPT *transcript);
+
+/* SSL_TRANSCRIPT_digest_len returns the length of the PRF hash. */
+size_t SSL_TRANSCRIPT_digest_len(const SSL_TRANSCRIPT *transcript);
+
+/* SSL_TRANSCRIPT_md returns the PRF hash. For TLS 1.1 and below, this is
+ * |EVP_md5_sha1|. */
+const EVP_MD *SSL_TRANSCRIPT_md(const SSL_TRANSCRIPT *transcript);
+
+/* SSL_TRANSCRIPT_update adds |in| to the handshake buffer and handshake hash,
+ * whichever is enabled. It returns one on success and zero on failure. */
+int SSL_TRANSCRIPT_update(SSL_TRANSCRIPT *transcript, const uint8_t *in,
+                          size_t in_len);
+
+/* SSL_TRANSCRIPT_get_hash writes the handshake hash to |out| which must have
+ * room for at least |SSL_TRANSCRIPT_digest_len| bytes. On success, it returns
+ * one and sets |*out_len| to the number of bytes written. Otherwise, it returns
+ * zero. */
+int SSL_TRANSCRIPT_get_hash(const SSL_TRANSCRIPT *transcript, uint8_t *out,
+                            size_t *out_len);
+
+/* SSL_TRANSCRIPT_ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify
+ * hash into the bytes pointed to by |out| and writes the number of bytes to
+ * |*out_len|. |out| must have room for |EVP_MAX_MD_SIZE| bytes. It returns one
+ * on success and zero on failure. */
+int SSL_TRANSCRIPT_ssl3_cert_verify_hash(SSL_TRANSCRIPT *transcript,
+                                         uint8_t *out, size_t *out_len,
+                                         const SSL_SESSION *session,
+                                         int signature_algorithm);
+
+/* SSL_TRANSCRIPT_finish_mac computes the MAC for the Finished message into the
+ * bytes pointed by |out| and writes the number of bytes to |*out_len|. |out|
+ * must have room for |EVP_MAX_MD_SIZE| bytes. It returns one on success and
+ * zero on failure. */
+int SSL_TRANSCRIPT_finish_mac(SSL_TRANSCRIPT *transcript, uint8_t *out,
+                              size_t *out_len, const SSL_SESSION *session,
+                              int from_server, uint16_t version);
+
+/* tls1_prf computes the PRF function for |ssl|. It writes |out_len| bytes to
+ * |out|, using |secret| as the secret and |label| as the label. |seed1| and
+ * |seed2| are concatenated to form the seed parameter. It returns one on
+ * success and zero on failure. */
+int tls1_prf(const EVP_MD *digest, uint8_t *out, size_t out_len,
+             const uint8_t *secret, size_t secret_len, const char *label,
+             size_t label_len, const uint8_t *seed1, size_t seed1_len,
+             const uint8_t *seed2, size_t seed2_len);
 
 
 /* Encryption layer. */
@@ -523,35 +603,6 @@ int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
 int custom_ext_parse_clienthello(SSL_HANDSHAKE *hs, int *out_alert,
                                  uint16_t value, const CBS *extension);
 int custom_ext_add_serverhello(SSL_HANDSHAKE *hs, CBB *extensions);
-
-
-/* Handshake hash.
- *
- * The TLS handshake maintains a transcript of all handshake messages. At
- * various points in the protocol, this is either a handshake buffer, a rolling
- * hash (selected by cipher suite) or both. */
-
-/* ssl3_init_handshake_buffer initializes the handshake buffer and resets the
- * handshake hash. It returns one success and zero on failure. */
-int ssl3_init_handshake_buffer(SSL *ssl);
-
-/* ssl3_init_handshake_hash initializes the handshake hash based on the pending
- * cipher and the contents of the handshake buffer. Subsequent calls to
- * |ssl3_update_handshake_hash| will update the rolling hash. It returns one on
- * success and zero on failure. It is an error to call this function after the
- * handshake buffer is released. */
-int ssl3_init_handshake_hash(SSL *ssl);
-
-/* ssl3_free_handshake_buffer releases the handshake buffer. Subsequent calls
- * to |ssl3_update_handshake_hash| will not update the handshake buffer. */
-void ssl3_free_handshake_buffer(SSL *ssl);
-
-/* ssl3_free_handshake_hash releases the handshake hash. */
-void ssl3_free_handshake_hash(SSL *ssl);
-
-/* ssl3_update_handshake_hash adds |in| to the handshake buffer and handshake
- * hash, whichever is enabled. It returns one on success and zero on failure. */
-int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 
 
 /* ECDH groups. */
@@ -827,12 +878,6 @@ int tls13_init_key_schedule(SSL_HANDSHAKE *hs);
 int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
                                size_t len);
 
-/* tls13_get_context_hash writes Hash(Handshake Context) to |out| which must
- * have room for at least |EVP_MAX_MD_SIZE| bytes. On success, it returns one
- * and sets |*out_len| to the number of bytes written. Otherwise, it returns
- * zero. */
-int tls13_get_context_hash(SSL *ssl, uint8_t *out, size_t *out_len);
-
 /* tls13_set_traffic_key sets the read or write traffic keys to
  * |traffic_secret|. It returns one on success and zero on error. */
 int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
@@ -872,12 +917,13 @@ int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out,
 /* tls13_write_psk_binder calculates the PSK binder value and replaces the last
  * bytes of |msg| with the resulting value. It returns 1 on success, and 0 on
  * failure. */
-int tls13_write_psk_binder(SSL *ssl, uint8_t *msg, size_t len);
+int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len);
 
 /* tls13_verify_psk_binder verifies that the handshake transcript, truncated
  * up to the binders has a valid signature using the value of |session|'s
  * resumption secret. It returns 1 on success, and 0 on failure. */
-int tls13_verify_psk_binder(SSL *ssl, SSL_SESSION *session, CBS *binders);
+int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
+                            CBS *binders);
 
 
 /* Handshake functions. */
@@ -950,6 +996,9 @@ struct ssl_handshake_st {
 
   /* ecdh_ctx is the current ECDH instance. */
   SSL_ECDH_CTX ecdh_ctx;
+
+  /* transcript is the current handshake transcript. */
+  SSL_TRANSCRIPT transcript;
 
   /* cookie is the value of the cookie received from the server, if any. */
   uint8_t *cookie;
@@ -1132,7 +1181,7 @@ enum ssl_cert_verify_context_t {
  * containing the result. The caller must free it with |OPENSSL_free| to release
  * it. This function returns one on success and zero on failure. */
 int tls13_get_cert_verify_signature_input(
-    SSL *ssl, uint8_t **out, size_t *out_len,
+    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len,
     enum ssl_cert_verify_context_t cert_verify_context);
 
 /* ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
@@ -1390,20 +1439,6 @@ struct ssl_x509_method_st {
  * crypto/x509. */
 extern const struct ssl_x509_method_st ssl_crypto_x509_method;
 
-/* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
- * of a mess of functions, but hell, think of it as an opaque structure. */
-typedef struct ssl3_enc_method {
-  /* prf computes the PRF function for |ssl|. It writes |out_len| bytes to
-   * |out|, using |secret| as the secret and |label| as the label. |seed1| and
-   * |seed2| are concatenated to form the seed parameter. It returns one on
-   * success and zero on failure. */
-  int (*prf)(const SSL *ssl, uint8_t *out, size_t out_len,
-             const uint8_t *secret, size_t secret_len, const char *label,
-             size_t label_len, const uint8_t *seed1, size_t seed1_len,
-             const uint8_t *seed2, size_t seed2_len);
-  int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
-} SSL3_ENC_METHOD;
-
 typedef struct ssl3_record_st {
   /* type is the record type. */
   uint8_t type;
@@ -1452,15 +1487,6 @@ typedef struct ssl3_state_st {
   int wpend_type;
   int wpend_ret; /* number of bytes submitted */
   const uint8_t *wpend_buf;
-
-  /* handshake_buffer, if non-NULL, contains the handshake transcript. */
-  BUF_MEM *handshake_buffer;
-  /* handshake_hash, if initialized with an |EVP_MD|, maintains the handshake
-   * hash. For TLS 1.1 and below, it is the SHA-1 half. */
-  EVP_MD_CTX handshake_hash;
-  /* handshake_md5, if initialized with an |EVP_MD|, maintains the MD5 half of
-   * the handshake hash for TLS 1.1 and below. */
-  EVP_MD_CTX handshake_md5;
 
   /* recv_shutdown is the shutdown state for the receive half of the
    * connection. */
@@ -1537,10 +1563,6 @@ typedef struct ssl3_state_st {
 
   /* aead_write_ctx is the current write cipher state. */
   SSL_AEAD_CTX *aead_write_ctx;
-
-  /* enc_method is the method table corresponding to the current protocol
-   * version. */
-  const SSL3_ENC_METHOD *enc_method;
 
   /* hs is the handshake state for the current handshake or NULL if there isn't
    * one. */
@@ -1865,9 +1887,6 @@ struct ssl_st {
   CRYPTO_BUFFER *ocsp_response;
 };
 
-extern const SSL3_ENC_METHOD TLSv1_enc_data;
-extern const SSL3_ENC_METHOD SSLv3_enc_data;
-
 /* From draft-ietf-tls-tls13-18, used in determining PSK modes. */
 #define SSL_PSK_KE     0x0
 #define SSL_PSK_DHE_KE 0x1
@@ -1903,6 +1922,11 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
 /* ssl_session_is_resumable returns one if |session| is resumable for |ssl| and
  * zero otherwise. */
 int ssl_session_is_resumable(const SSL *ssl, const SSL_SESSION *session);
+
+/* SSL_SESSION_get_digest returns the digest used in |session|. If the digest is
+ * invalid, it returns NULL. */
+const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session,
+                                     const SSL *ssl);
 
 void ssl_set_session(SSL *ssl, SSL_SESSION *session);
 
@@ -1963,13 +1987,6 @@ int ssl3_get_message(SSL *ssl);
 void ssl3_get_current_message(const SSL *ssl, CBS *out);
 void ssl3_release_current_message(SSL *ssl, int free_buffer);
 
-/* ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify hash into the
- * bytes pointed to by |out| and writes the number of bytes to |*out_len|. |out|
- * must have room for |EVP_MAX_MD_SIZE| bytes. It sets |*out_md| to the hash
- * function used. It returns one on success and zero on failure. */
-int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
-                          size_t *out_len, uint16_t signature_algorithm);
-
 int ssl3_send_finished(SSL_HANDSHAKE *hs);
 int ssl3_dispatch_alert(SSL *ssl);
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
@@ -2006,7 +2023,7 @@ int ssl_add_message_cbb(SSL *ssl, CBB *cbb);
 
 /* ssl_hash_current_message incorporates the current handshake message into the
  * handshake hash. It returns one on success and zero on allocation failure. */
-int ssl_hash_current_message(SSL *ssl);
+int ssl_hash_current_message(SSL_HANDSHAKE *hs);
 
 /* dtls1_get_record reads a new input record. On success, it places it in
  * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
@@ -2050,9 +2067,8 @@ void dtls1_release_current_message(SSL *ssl, int free_buffer);
 int dtls1_dispatch_alert(SSL *ssl);
 
 int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which);
-int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len);
-int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster,
-                                size_t premaster_len);
+int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
+                                const uint8_t *premaster, size_t premaster_len);
 
 /* tls1_get_grouplist sets |*out_group_ids| and |*out_group_ids_len| to the
  * locally-configured group preference list. */
@@ -2108,19 +2124,19 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
 /* tls1_verify_channel_id processes the current message as a Channel ID message,
  * and verifies the signature. If the key is valid, it saves the Channel ID and
  * returns one. Otherwise, it returns zero. */
-int tls1_verify_channel_id(SSL *ssl);
+int tls1_verify_channel_id(SSL_HANDSHAKE *hs);
 
 /* tls1_write_channel_id generates a Channel ID message and puts the output in
  * |cbb|. |ssl->tlsext_channel_id_private| must already be set before calling.
  * This function returns one on success and zero on error. */
-int tls1_write_channel_id(SSL *ssl, CBB *cbb);
+int tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb);
 
 /* tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
  * it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
  * one on success and zero on failure. */
-int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len);
+int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len);
 
-int tls1_record_handshake_hashes_for_channel_id(SSL *ssl);
+int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs);
 
 /* ssl_do_channel_id_callback checks runs |ssl->ctx->channel_id_cb| if
  * necessary. It returns one on success and zero on fatal error. Note that, on
@@ -2132,10 +2148,6 @@ int ssl_do_channel_id_callback(SSL *ssl);
  * otherwise. */
 int ssl3_can_false_start(const SSL *ssl);
 
-/* ssl3_get_enc_method returns the SSL3_ENC_METHOD corresponding to
- * |version|. */
-const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version);
-
 /* ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
  * minimum and maximum enabled protocol versions, respectively. */
 int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
@@ -2144,8 +2156,6 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
 /* ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
  * call this function before the version is determined. */
 uint16_t ssl3_protocol_version(const SSL *ssl);
-
-uint32_t ssl_get_algorithm_prf(const SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock);
 

@@ -2383,22 +2383,6 @@ int ssl3_can_false_start(const SSL *ssl) {
       cipher->algorithm_mac == SSL_AEAD;
 }
 
-const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version) {
-  switch (version) {
-    case SSL3_VERSION:
-      return &SSLv3_enc_data;
-
-    case TLS1_VERSION:
-    case TLS1_1_VERSION:
-    case TLS1_2_VERSION:
-    case TLS1_3_VERSION:
-      return &TLSv1_enc_data;
-
-    default:
-      return NULL;
-  }
-}
-
 const struct {
   uint16_t version;
   uint32_t flag;

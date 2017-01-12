@@ -178,9 +178,6 @@ int ssl3_new(SSL *ssl) {
     return 0;
   }
 
-  EVP_MD_CTX_init(&s3->handshake_hash);
-  EVP_MD_CTX_init(&s3->handshake_md5);
-
   ssl->s3 = s3;
 
   /* Set the version to the highest supported version.
@@ -202,8 +199,6 @@ void ssl3_free(SSL *ssl) {
 
   SSL_SESSION_free(ssl->s3->new_session);
   SSL_SESSION_free(ssl->s3->established_session);
-  ssl3_free_handshake_buffer(ssl);
-  ssl3_free_handshake_hash(ssl);
   ssl_handshake_free(ssl->s3->hs);
   OPENSSL_free(ssl->s3->next_proto_negotiated);
   OPENSSL_free(ssl->s3->alpn_selected);
@@ -223,15 +218,4 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
   }
 
   return ssl->ctx->cipher_list;
-}
-
-/* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and
- * handshake macs if required. */
-uint32_t ssl_get_algorithm_prf(const SSL *ssl) {
-  uint32_t algorithm_prf = ssl->s3->tmp.new_cipher->algorithm_prf;
-  if (algorithm_prf == SSL_HANDSHAKE_MAC_DEFAULT &&
-      ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-    return SSL_HANDSHAKE_MAC_SHA256;
-  }
-  return algorithm_prf;
 }

@@ -102,7 +102,7 @@ int tls13_handshake(SSL_HANDSHAKE *hs) {
 }
 
 int tls13_get_cert_verify_signature_input(
-    SSL *ssl, uint8_t **out, size_t *out_len,
+    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len,
     enum ssl_cert_verify_context_t cert_verify_context) {
   CBB cbb;
   if (!CBB_init(&cbb, 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
@@ -140,7 +140,8 @@ int tls13_get_cert_verify_signature_input(
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
-  if (!tls13_get_context_hash(ssl, context_hash, &context_hash_len) ||
+  if (!SSL_TRANSCRIPT_get_hash(&hs->transcript, context_hash,
+                               &context_hash_len) ||
       !CBB_add_bytes(&cbb, context_hash, context_hash_len) ||
       !CBB_finish(&cbb, out, out_len)) {
     goto err;
@@ -372,7 +373,7 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
   ssl->s3->new_session->peer_signature_algorithm = signature_algorithm;
 
   if (!tls13_get_cert_verify_signature_input(
-          ssl, &msg, &msg_len,
+          hs, &msg, &msg_len,
           ssl->server ? ssl_cert_verify_client : ssl_cert_verify_server)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     goto err;
@@ -536,7 +537,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
   enum ssl_private_key_result_t sign_result;
   if (is_first_run) {
     if (!tls13_get_cert_verify_signature_input(
-            ssl, &msg, &msg_len,
+            hs, &msg, &msg_len,
             ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       goto err;

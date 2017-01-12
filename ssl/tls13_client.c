@@ -135,7 +135,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
     hs->retry_group = group_id;
   }
 
-  if (!ssl_hash_current_message(ssl)) {
+  if (!ssl_hash_current_message(hs)) {
     return ssl_hs_error;
   }
 
@@ -271,8 +271,6 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   ssl->s3->tmp.new_cipher = cipher;
 
   /* The PRF hash is now known. Set up the key schedule. */
-  size_t hash_len =
-      EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
   if (!tls13_init_key_schedule(hs)) {
     return ssl_hs_error;
   }
@@ -283,7 +281,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
                                     ssl->s3->new_session->master_key_length)) {
       return ssl_hs_error;
     }
-  } else if (!tls13_advance_key_schedule(hs, kZeroes, hash_len)) {
+  } else if (!tls13_advance_key_schedule(hs, kZeroes, hs->hash_len)) {
     return ssl_hs_error;
   }
 
@@ -327,7 +325,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     ssl->s3->short_header = 1;
   }
 
-  if (!ssl_hash_current_message(ssl) ||
+  if (!ssl_hash_current_message(hs) ||
       !tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
                              hs->hash_len) ||
@@ -358,7 +356,7 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_hash_current_message(ssl)) {
+  if (!ssl_hash_current_message(hs)) {
     return ssl_hs_error;
   }
 
@@ -414,7 +412,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
   sk_X509_NAME_pop_free(hs->ca_names, X509_NAME_free);
   hs->ca_names = ca_sk;
 
-  if (!ssl_hash_current_message(ssl)) {
+  if (!ssl_hash_current_message(hs)) {
     return ssl_hs_error;
   }
 
@@ -426,7 +424,7 @@ static enum ssl_hs_wait_t do_process_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
       !tls13_process_certificate(hs, 0 /* certificate required */) ||
-      !ssl_hash_current_message(ssl)) {
+      !ssl_hash_current_message(hs)) {
     return ssl_hs_error;
   }
 
@@ -439,7 +437,7 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
   SSL *const ssl = hs->ssl;
   if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
       !tls13_process_certificate_verify(hs) ||
-      !ssl_hash_current_message(ssl)) {
+      !ssl_hash_current_message(hs)) {
     return ssl_hs_error;
   }
 
@@ -451,7 +449,7 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED) ||
       !tls13_process_finished(hs) ||
-      !ssl_hash_current_message(ssl) ||
+      !ssl_hash_current_message(hs) ||
       /* Update the secret to the master secret and derive traffic keys. */
       !tls13_advance_key_schedule(hs, kZeroes, hs->hash_len) ||
       !tls13_derive_application_secrets(hs)) {
@@ -536,7 +534,7 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
 
     CBB cbb, body;
     if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
-        !tls1_write_channel_id(ssl, &body) ||
+        !tls1_write_channel_id(hs, &body) ||
         !ssl_add_message_cbb(ssl, &cbb)) {
       CBB_cleanup(&cbb);
       return ssl_hs_error;

@@ -494,6 +494,16 @@ void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
   return CRYPTO_get_ex_data(&session->ex_data, idx);
 }
 
+const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session,
+                                     const SSL *ssl) {
+  uint16_t version;
+  if (!ssl->method->version_from_wire(&version, session->ssl_version)) {
+    return NULL;
+  }
+
+  return ssl_get_handshake_digest(session->cipher->algorithm_prf, version);
+}
+
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   SSL *const ssl = hs->ssl;
   if (ssl->mode & SSL_MODE_NO_SESSION_CREATION) {

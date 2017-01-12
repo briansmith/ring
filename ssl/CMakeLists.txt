@@ -14,7 +14,6 @@ add_library(
   handshake_client.c
   handshake_server.c
   s3_both.c
-  s3_enc.c
   s3_lib.c
   s3_pkt.c
   ssl_aead_ctx.c
@@ -29,6 +28,7 @@ add_library(
   ssl_privkey_cc.cc
   ssl_session.c
   ssl_stat.c
+  ssl_transcript.c
   ssl_x509.c
   t1_enc.c
   t1_lib.c
