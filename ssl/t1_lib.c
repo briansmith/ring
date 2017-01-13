@@ -1136,10 +1136,6 @@ static int ext_sigalgs_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
  *
  * https://tools.ietf.org/html/rfc6066#section-8 */
 
-static void ext_ocsp_init(SSL_HANDSHAKE *hs) {
-  hs->ssl->tlsext_status_type = -1;
-}
-
 static int ext_ocsp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (!ssl->ocsp_stapling_enabled) {
@@ -1156,7 +1152,6 @@ static int ext_ocsp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  ssl->tlsext_status_type = TLSEXT_STATUSTYPE_ocsp;
   return 1;
 }
 
@@ -2633,7 +2628,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_status_request,
-    ext_ocsp_init,
+    NULL,
     ext_ocsp_add_clienthello,
     ext_ocsp_parse_serverhello,
     ext_ocsp_parse_clienthello,

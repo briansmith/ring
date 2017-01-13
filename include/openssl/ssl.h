@@ -4070,9 +4070,7 @@ struct ssl_ctx_st {
    * be negotiated and zero otherwise. */
   unsigned short_header_enabled:1;
 
-  /* extra_certs is a dummy value included for compatibility.
-   * TODO(agl): remove once node.js no longer references this. */
-  STACK_OF(X509)* extra_certs;
+  /* TODO(agl): remove once node.js no longer references this. */
   int freelist_max_len;
 };
 
@@ -4243,9 +4241,6 @@ struct ssl_st {
    * hash of the peer's certificate and then discard it to save memory and
    * session space. Only effective on the server side. */
   unsigned retain_only_sha256_of_client_certs:1;
-
-  /* TODO(agl): remove once node.js not longer references this. */
-  int tlsext_status_type;
 
   /* session_timeout is the default lifetime in seconds of the session
    * created in this connection. */
