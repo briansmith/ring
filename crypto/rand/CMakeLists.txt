@@ -14,6 +14,7 @@ add_library(
   OBJECT
 
   deterministic.c
+  fuchsia.c
   rand.c
   urandom.c
   windows.c

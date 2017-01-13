@@ -118,6 +118,10 @@ extern "C" {
 #define OPENSSL_LINUX
 #endif
 
+#if defined(__Fuchsia__)
+#define OPENSSL_FUCHSIA
+#endif
+
 #if defined(TRUSTY)
 #define OPENSSL_TRUSTY
 #define OPENSSL_NO_THREADS
