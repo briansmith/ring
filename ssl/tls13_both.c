@@ -433,7 +433,7 @@ int tls13_process_finished(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-int tls13_prepare_certificate(SSL_HANDSHAKE *hs) {
+int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   CBB cbb, body, certificate_list;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
@@ -510,8 +510,8 @@ err:
   return 0;
 }
 
-enum ssl_private_key_result_t tls13_prepare_certificate_verify(
-    SSL_HANDSHAKE *hs, int is_first_run) {
+enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
+                                                           int is_first_run) {
   SSL *const ssl = hs->ssl;
   enum ssl_private_key_result_t ret = ssl_private_key_failure;
   uint8_t *msg = NULL;
@@ -573,7 +573,7 @@ err:
   return ret;
 }
 
-int tls13_prepare_finished(SSL_HANDSHAKE *hs) {
+int tls13_add_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   size_t verify_data_len;
   uint8_t verify_data[EVP_MAX_MD_SIZE];

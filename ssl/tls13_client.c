@@ -482,7 +482,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_auto_chain_if_needed(ssl) ||
-      !tls13_prepare_certificate(hs)) {
+      !tls13_add_certificate(hs)) {
     return ssl_hs_error;
   }
 
@@ -499,7 +499,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs,
     return ssl_hs_ok;
   }
 
-  switch (tls13_prepare_certificate_verify(hs, is_first_run)) {
+  switch (tls13_add_certificate_verify(hs, is_first_run)) {
     case ssl_private_key_success:
       hs->tls13_state = state_complete_second_flight;
       return ssl_hs_ok;
@@ -540,7 +540,7 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   }
 
   /* Send a Finished message. */
-  if (!tls13_prepare_finished(hs)) {
+  if (!tls13_add_finished(hs)) {
     return ssl_hs_error;
   }
 

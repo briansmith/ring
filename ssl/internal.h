@@ -1086,10 +1086,10 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous);
 int tls13_process_certificate_verify(SSL_HANDSHAKE *hs);
 int tls13_process_finished(SSL_HANDSHAKE *hs);
 
-int tls13_prepare_certificate(SSL_HANDSHAKE *hs);
-enum ssl_private_key_result_t tls13_prepare_certificate_verify(
-    SSL_HANDSHAKE *hs, int is_first_run);
-int tls13_prepare_finished(SSL_HANDSHAKE *hs);
+int tls13_add_certificate(SSL_HANDSHAKE *hs);
+enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
+                                                           int is_first_run);
+int tls13_add_finished(SSL_HANDSHAKE *hs);
 int tls13_process_new_session_ticket(SSL *ssl);
 
 int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,

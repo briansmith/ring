@@ -471,7 +471,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    if (!tls13_prepare_certificate(hs)) {
+    if (!tls13_add_certificate(hs)) {
       goto err;
     }
 
@@ -489,7 +489,7 @@ err:
 
 static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs,
                                                             int is_first_run) {
-  switch (tls13_prepare_certificate_verify(hs, is_first_run)) {
+  switch (tls13_add_certificate_verify(hs, is_first_run)) {
     case ssl_private_key_success:
       hs->tls13_state = state_send_server_finished;
       return ssl_hs_ok;
@@ -508,7 +508,7 @@ static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs,
 
 static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_prepare_finished(hs) ||
+  if (!tls13_add_finished(hs) ||
       /* Update the secret to the master secret and derive traffic keys. */
       !tls13_advance_key_schedule(hs, kZeroes, hs->hash_len) ||
       !tls13_derive_application_secrets(hs) ||
