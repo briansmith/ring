@@ -583,11 +583,6 @@ int dtls1_add_message(SSL *ssl, uint8_t *data, size_t len) {
   return add_outgoing(ssl, 0 /* handshake */, data, len);
 }
 
-int dtls1_write_message(SSL *ssl) {
-  /* The message is written in |dtls1_flush_flight|. */
-  return 1;
-}
-
 int dtls1_add_change_cipher_spec(SSL *ssl) {
   return add_outgoing(ssl, 1 /* ChangeCipherSpec */, NULL, 0);
 }

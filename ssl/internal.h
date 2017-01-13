@@ -1359,8 +1359,6 @@ struct ssl_protocol_method_st {
    * ownership of |aead_ctx|. It returns one on success and zero if changing the
    * write state is forbidden at this point. */
   int (*set_write_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
-  /* write_message returns one. */
-  int (*write_message)(SSL *ssl);
 };
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
@@ -1769,7 +1767,7 @@ void ssl3_release_current_message(SSL *ssl, int free_buffer);
 int ssl3_cert_verify_hash(SSL *ssl, const EVP_MD **out_md, uint8_t *out,
                           size_t *out_len, uint16_t signature_algorithm);
 
-int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b);
+int ssl3_send_finished(SSL_HANDSHAKE *hs);
 int ssl3_dispatch_alert(SSL *ssl);
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek);
@@ -1790,7 +1788,6 @@ int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
 int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len);
 int ssl3_add_change_cipher_spec(SSL *ssl);
 int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
-int ssl3_write_message(SSL *ssl);
 int ssl3_flush_flight(SSL *ssl);
 
 int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
@@ -1799,7 +1796,6 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
 int dtls1_add_message(SSL *ssl, uint8_t *msg, size_t len);
 int dtls1_add_change_cipher_spec(SSL *ssl);
 int dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
-int dtls1_write_message(SSL *ssl);
 int dtls1_flush_flight(SSL *ssl);
 
 /* ssl_add_message_cbb finishes the handshake message in |cbb| and adds it to

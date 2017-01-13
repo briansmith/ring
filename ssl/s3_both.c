@@ -295,8 +295,6 @@ int ssl_add_message_cbb(SSL *ssl, CBB *cbb) {
   return 1;
 }
 
-int ssl3_write_message(SSL *ssl) { return 1; }
-
 int ssl3_flush_flight(SSL *ssl) {
   if (ssl->s3->pending_flight == NULL) {
     return 1;
@@ -342,12 +340,8 @@ int ssl3_flush_flight(SSL *ssl) {
   return 1;
 }
 
-int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b) {
+int ssl3_send_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (hs->state == b) {
-    return ssl->method->write_message(ssl);
-  }
-
   uint8_t finished[EVP_MAX_MD_SIZE];
   size_t finished_len =
       ssl->s3->enc_method->final_finish_mac(ssl, ssl->server, finished);
@@ -388,8 +382,7 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs, int a, int b) {
     return -1;
   }
 
-  hs->state = b;
-  return ssl->method->write_message(ssl);
+  return 1;
 }
 
 int ssl3_get_finished(SSL_HANDSHAKE *hs) {

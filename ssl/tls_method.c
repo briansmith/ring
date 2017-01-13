@@ -155,7 +155,6 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_received_flight,
     ssl3_set_read_state,
     ssl3_set_write_state,
-    ssl3_write_message,
 };
 
 const SSL_METHOD *TLS_method(void) {

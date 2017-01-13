@@ -159,7 +159,6 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_received_flight,
     dtls1_set_read_state,
     dtls1_set_write_state,
-    dtls1_write_message,
 };
 
 const SSL_METHOD *DTLS_method(void) {
