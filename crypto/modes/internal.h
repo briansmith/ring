@@ -150,6 +150,9 @@ struct gcm128_context {
     size_t t[16 / sizeof(size_t)];
   } Yi, EKi, EK0, len, Xi;
 
+  /* Note that the order of |Xi|, |H| and |Htable| is fixed by the MOVBE-based,
+   * x86-64, GHASH assembly. */
+  u128 H;
   u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
@@ -211,7 +214,8 @@ typedef struct gcm128_context GCM128_CONTEXT;
  * |out_table| and sets |*out_mult| and |*out_hash| to (potentially hardware
  * accelerated) functions for performing operations in the GHASH field. */
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 out_table[16], const uint8_t *gcm_key);
+                       u128 *out_key, u128 out_table[16],
+                       const uint8_t *gcm_key);
 
 /* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
  * the given key. */
@@ -348,7 +352,10 @@ typedef union {
 } polyval_block;
 
 struct polyval_ctx {
+  /* Note that the order of |S|, |H| and |Htable| is fixed by the MOVBE-based,
+   * x86-64, GHASH assembly. */
   polyval_block S;
+  u128 H;
   u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;

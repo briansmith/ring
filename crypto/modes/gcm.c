@@ -351,7 +351,8 @@ void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #endif
 
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 out_table[16], const uint8_t *gcm_key) {
+                       u128 *out_key, u128 out_table[16],
+                       const uint8_t *gcm_key) {
   union {
     uint64_t u[2];
     uint8_t c[16];
@@ -362,6 +363,8 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   /* H is stored in host byte order */
   H.u[0] = CRYPTO_bswap8(H.u[0]);
   H.u[1] = CRYPTO_bswap8(H.u[1]);
+
+  OPENSSL_memcpy(out_key, H.c, 16);
 
 #if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
@@ -425,7 +428,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
   OPENSSL_memset(gcm_key, 0, sizeof(gcm_key));
   (*block)(gcm_key, gcm_key, aes_key);
 
-  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, ctx->Htable, gcm_key);
+  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable, gcm_key);
 }
 
 void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
