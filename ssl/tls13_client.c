@@ -31,7 +31,6 @@
 enum client_hs_state_t {
   state_process_hello_retry_request = 0,
   state_send_second_client_hello,
-  state_flush_second_client_hello,
   state_process_server_hello,
   state_process_encrypted_extensions,
   state_process_certificate_request,
@@ -43,7 +42,6 @@ enum client_hs_state_t {
   state_complete_client_certificate_verify,
   state_send_channel_id,
   state_send_client_finished,
-  state_flush,
   state_done,
 };
 
@@ -147,11 +145,6 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->tls13_state = state_flush_second_client_hello;
-  return ssl_hs_write_message;
-}
-
-static enum ssl_hs_wait_t do_flush_second_client_hello(SSL_HANDSHAKE *hs) {
   hs->tls13_state = state_process_server_hello;
   return ssl_hs_flush_and_read_message;
 }
@@ -495,7 +488,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   hs->tls13_state = state_send_client_certificate_verify;
-  return ssl_hs_write_message;
+  return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs,
@@ -510,7 +503,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs,
   switch (tls13_prepare_certificate_verify(hs, is_first_run)) {
     case ssl_private_key_success:
       hs->tls13_state = state_send_channel_id;
-      return ssl_hs_write_message;
+      return ssl_hs_ok;
 
     case ssl_private_key_retry:
       hs->tls13_state = state_complete_client_certificate_verify;
@@ -548,20 +541,15 @@ static enum ssl_hs_wait_t do_send_channel_id(SSL_HANDSHAKE *hs) {
   }
 
   hs->tls13_state = state_send_client_finished;
-  return ssl_hs_write_message;
+  return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   if (!tls13_prepare_finished(hs)) {
     return ssl_hs_error;
   }
 
-  hs->tls13_state = state_flush;
-  return ssl_hs_write_message;
-}
-
-static enum ssl_hs_wait_t do_flush(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
   if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->server_traffic_secret_0,
                              hs->hash_len) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_traffic_secret_0,
@@ -584,9 +572,6 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
         break;
       case state_send_second_client_hello:
         ret = do_send_second_client_hello(hs);
-        break;
-      case state_flush_second_client_hello:
-        ret = do_flush_second_client_hello(hs);
         break;
       case state_process_server_hello:
         ret = do_process_server_hello(hs);
@@ -620,9 +605,6 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
         break;
       case state_send_client_finished:
         ret = do_send_client_finished(hs);
-        break;
-      case state_flush:
-        ret = do_flush(hs);
         break;
       case state_done:
         ret = ssl_hs_ok;

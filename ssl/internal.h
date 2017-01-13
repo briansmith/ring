@@ -888,7 +888,6 @@ enum ssl_hs_wait_t {
   ssl_hs_error,
   ssl_hs_ok,
   ssl_hs_read_message,
-  ssl_hs_write_message,
   ssl_hs_flush,
   ssl_hs_flush_and_read_message,
   ssl_hs_x509_lookup,
