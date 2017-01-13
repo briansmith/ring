@@ -40,8 +40,7 @@ enum client_hs_state_t {
   state_send_client_certificate,
   state_send_client_certificate_verify,
   state_complete_client_certificate_verify,
-  state_send_channel_id,
-  state_send_client_finished,
+  state_complete_second_flight,
   state_done,
 };
 
@@ -464,7 +463,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   /* The peer didn't request a certificate. */
   if (!hs->cert_request) {
-    hs->tls13_state = state_send_channel_id;
+    hs->tls13_state = state_complete_second_flight;
     return ssl_hs_ok;
   }
 
@@ -496,13 +495,13 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs,
   SSL *const ssl = hs->ssl;
   /* Don't send CertificateVerify if there is no certificate. */
   if (!ssl_has_certificate(ssl)) {
-    hs->tls13_state = state_send_channel_id;
+    hs->tls13_state = state_complete_second_flight;
     return ssl_hs_ok;
   }
 
   switch (tls13_prepare_certificate_verify(hs, is_first_run)) {
     case ssl_private_key_success:
-      hs->tls13_state = state_send_channel_id;
+      hs->tls13_state = state_complete_second_flight;
       return ssl_hs_ok;
 
     case ssl_private_key_retry:
@@ -517,39 +516,35 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs,
   return ssl_hs_error;
 }
 
-static enum ssl_hs_wait_t do_send_channel_id(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl->s3->tlsext_channel_id_valid) {
-    hs->tls13_state = state_send_client_finished;
-    return ssl_hs_ok;
+
+  /* Send a Channel ID assertion if necessary. */
+  if (ssl->s3->tlsext_channel_id_valid) {
+    if (!ssl_do_channel_id_callback(ssl)) {
+      hs->tls13_state = state_complete_second_flight;
+      return ssl_hs_error;
+    }
+
+    if (ssl->tlsext_channel_id_private == NULL) {
+      return ssl_hs_channel_id_lookup;
+    }
+
+    CBB cbb, body;
+    if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
+        !tls1_write_channel_id(ssl, &body) ||
+        !ssl_add_message_cbb(ssl, &cbb)) {
+      CBB_cleanup(&cbb);
+      return ssl_hs_error;
+    }
   }
 
-  if (!ssl_do_channel_id_callback(ssl)) {
-    return ssl_hs_error;
-  }
-
-  if (ssl->tlsext_channel_id_private == NULL) {
-    return ssl_hs_channel_id_lookup;
-  }
-
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
-      !tls1_write_channel_id(ssl, &body) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
-    return ssl_hs_error;
-  }
-
-  hs->tls13_state = state_send_client_finished;
-  return ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
+  /* Send a Finished message. */
   if (!tls13_prepare_finished(hs)) {
     return ssl_hs_error;
   }
 
+  /* Derive the final keys and enable them. */
   if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->server_traffic_secret_0,
                              hs->hash_len) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_traffic_secret_0,
@@ -600,11 +595,8 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
       case state_complete_client_certificate_verify:
         ret = do_send_client_certificate_verify(hs, 0 /* complete */);
         break;
-      case state_send_channel_id:
-        ret = do_send_channel_id(hs);
-        break;
-      case state_send_client_finished:
-        ret = do_send_client_finished(hs);
+      case state_complete_second_flight:
+        ret = do_complete_second_flight(hs);
         break;
       case state_done:
         ret = ssl_hs_ok;

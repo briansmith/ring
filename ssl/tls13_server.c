@@ -40,9 +40,6 @@ enum server_hs_state_t {
   state_send_hello_retry_request,
   state_process_second_client_hello,
   state_send_server_hello,
-  state_send_encrypted_extensions,
-  state_send_certificate_request,
-  state_send_server_certificate,
   state_send_server_certificate_verify,
   state_complete_server_certificate_verify,
   state_send_server_finished,
@@ -390,6 +387,8 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+
+  /* Send a ServerHello. */
   CBB cbb, body, extensions;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, ssl->version) ||
@@ -413,39 +412,23 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  hs->tls13_state = state_send_encrypted_extensions;
-  return ssl_hs_ok;
-
-err:
-  CBB_cleanup(&cbb);
-  return ssl_hs_error;
-}
-
-static enum ssl_hs_wait_t do_send_encrypted_extensions(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
+  /* Derive and enable the handshake traffic secrets. */
   if (!tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->client_handshake_secret,
                              hs->hash_len) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->server_handshake_secret,
                              hs->hash_len)) {
-    return ssl_hs_error;
+    goto err;
   }
 
-  CBB cbb, body;
+  /* Send EncryptedExtensions. */
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_ENCRYPTED_EXTENSIONS) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
       !ssl_add_message_cbb(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
-    return ssl_hs_error;
+    goto err;
   }
 
-  hs->tls13_state = state_send_certificate_request;
-  return ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_send_certificate_request(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
   /* Determine whether to request a client certificate. */
   hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
   /* CertificateRequest may only be sent in non-resumption handshakes. */
@@ -453,63 +436,55 @@ static enum ssl_hs_wait_t do_send_certificate_request(SSL_HANDSHAKE *hs) {
     hs->cert_request = 0;
   }
 
-  if (!hs->cert_request) {
-    /* Skip this state. */
-    hs->tls13_state = state_send_server_certificate;
-    return ssl_hs_ok;
-  }
+  /* Send a CertificateRequest, if necessary. */
+  if (hs->cert_request) {
+    CBB sigalgs_cbb;
+    if (!ssl->method->init_message(ssl, &cbb, &body,
+                                   SSL3_MT_CERTIFICATE_REQUEST) ||
+        !CBB_add_u8(&body, 0 /* no certificate_request_context. */)) {
+      goto err;
+    }
 
-  CBB cbb, body, sigalgs_cbb;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
-                                 SSL3_MT_CERTIFICATE_REQUEST) ||
-      !CBB_add_u8(&body, 0 /* no certificate_request_context. */)) {
-    goto err;
-  }
+    const uint16_t *sigalgs;
+    size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
+    if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
+      goto err;
+    }
 
-  const uint16_t *sigalgs;
-  size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
-  if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
-    goto err;
-  }
+    for (size_t i = 0; i < num_sigalgs; i++) {
+      if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
+        goto err;
+      }
+    }
 
-  for (size_t i = 0; i < num_sigalgs; i++) {
-    if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
+    if (!ssl_add_client_CA_list(ssl, &body) ||
+        !CBB_add_u16(&body, 0 /* empty certificate_extensions. */) ||
+        !ssl_add_message_cbb(ssl, &cbb)) {
       goto err;
     }
   }
 
-  if (!ssl_add_client_CA_list(ssl, &body) ||
-      !CBB_add_u16(&body, 0 /* empty certificate_extensions. */) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+  /* Send the server Certificate message, if necessary. */
+  if (!ssl->s3->session_reused) {
+    if (!ssl_has_certificate(ssl)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
+      goto err;
+    }
+
+    if (!tls13_prepare_certificate(hs)) {
+      goto err;
+    }
+
+    hs->tls13_state = state_send_server_certificate_verify;
+    return ssl_hs_ok;
   }
 
-  hs->tls13_state = state_send_server_certificate;
+  hs->tls13_state = state_send_server_finished;
   return ssl_hs_ok;
 
 err:
   CBB_cleanup(&cbb);
   return ssl_hs_error;
-}
-
-static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (ssl->s3->session_reused) {
-    hs->tls13_state = state_send_server_finished;
-    return ssl_hs_ok;
-  }
-
-  if (!ssl_has_certificate(ssl)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-    return ssl_hs_error;
-  }
-
-  if (!tls13_prepare_certificate(hs)) {
-    return ssl_hs_error;
-  }
-
-  hs->tls13_state = state_send_server_certificate_verify;
-  return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs,
@@ -713,15 +688,6 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
         break;
       case state_send_server_hello:
         ret = do_send_server_hello(hs);
-        break;
-      case state_send_encrypted_extensions:
-        ret = do_send_encrypted_extensions(hs);
-        break;
-      case state_send_certificate_request:
-        ret = do_send_certificate_request(hs);
-        break;
-      case state_send_server_certificate:
-        ret = do_send_server_certificate(hs);
         break;
       case state_send_server_certificate_verify:
         ret = do_send_server_certificate_verify(hs, 1 /* first run */);
