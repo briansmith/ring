@@ -1,18 +1,18 @@
-use self::auxv::AuxvUnsignedLong;
+use self::auxv::Type;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os="linux"))]
-use self::auxv::NativeGetauxvalProvider;
-use self::auxv::{AT_HWCAP, AT_HWCAP2, GetauxvalProvider};
+use self::auxv::NativeProvider;
+use self::auxv::{AT_HWCAP, AT_HWCAP2, Provider};
 
-// Bits exposed in HWCAP and HWCAP2 auxv values
-const ARM_HWCAP2_AES: AuxvUnsignedLong = 1 << 0;
-const ARM_HWCAP2_PMULL: AuxvUnsignedLong = 1 << 1;
-const ARM_HWCAP2_SHA1: AuxvUnsignedLong = 1 << 2;
-const ARM_HWCAP2_SHA2: AuxvUnsignedLong = 1 << 3;
+// See /usr/include/asm/hwcap.h on an ARM installation for the source of these values
+const ARM_HWCAP2_AES: Type = 1 << 0;
+const ARM_HWCAP2_PMULL: Type = 1 << 1;
+const ARM_HWCAP2_SHA1: Type = 1 << 2;
+const ARM_HWCAP2_SHA2: Type = 1 << 3;
 
-const ARM_HWCAP_NEON: AuxvUnsignedLong = 1 << 12;
+const ARM_HWCAP_NEON: Type = 1 << 12;
 
 // Constants used in GFp_armcap_P
-// from include/openssl/arm_arch.h
+// Keep in sync with include/openssl/arm_arch.h
 const ARMV7_NEON: u32 = 1 << 0;
 // not a typo; there is no constant for 1 << 1
 const ARMV8_AES: u32 = 1 << 2;
@@ -30,7 +30,7 @@ extern "C" {
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
     target_os="linux"))]
 pub fn arm_linux_set_cpu_features() {
-    let getauxval = NativeGetauxvalProvider{};
+    let getauxval = NativeProvider {};
 
     unsafe {
         GFp_armcap_P |= armcap_from_features(getauxval);
@@ -38,22 +38,15 @@ pub fn arm_linux_set_cpu_features() {
 }
 
 /// returns a u32 with bits set for use in GFp_armcap_P
-fn armcap_from_features<G: GetauxvalProvider> (getauxval_provider: G) -> u32 {
-    let mut hwcap: AuxvUnsignedLong = 0;
+fn armcap_from_features<G: Provider> (getauxval: G) -> u32 {
+    let hwcap = getauxval.getauxval(AT_HWCAP).unwrap_or(0);
     
-    if let Ok(v) = getauxval_provider.getauxval(AT_HWCAP) {
-        hwcap = v;
-    }
-
-    // Matching OpenSSL, only report other features if NEON is present
+    // Matching OpenSSL, only report other features if NEON is present.
     let mut armcap: u32 = 0;
-    if hwcap & ARM_HWCAP_NEON > 0 {
+    if hwcap & ARM_HWCAP_NEON != 0 {
         armcap |= ARMV7_NEON;
 
-        let mut hwcap2 = 0;
-        if let Ok(v) = getauxval_provider.getauxval(AT_HWCAP2) {
-            hwcap2 = v;
-        }
+        let hwcap2 = getauxval.getauxval(AT_HWCAP2).unwrap_or(0);
 
         armcap |= armcap_for_hwcap2(hwcap2);
     }
@@ -61,18 +54,18 @@ fn armcap_from_features<G: GetauxvalProvider> (getauxval_provider: G) -> u32 {
     return armcap;
 }
 
-fn armcap_for_hwcap2(hwcap2: AuxvUnsignedLong) -> u32 {
+fn armcap_for_hwcap2(hwcap2: Type) -> u32 {
     let mut ret: u32 = 0;
-    if hwcap2 & ARM_HWCAP2_AES > 0 {
+    if hwcap2 & ARM_HWCAP2_AES != 0 {
         ret |= ARMV8_AES;
     }
-    if hwcap2 & ARM_HWCAP2_PMULL > 0 {
+    if hwcap2 & ARM_HWCAP2_PMULL != 0 {
         ret |= ARMV8_PMULL;
     }
-    if hwcap2 & ARM_HWCAP2_SHA1 > 0 {
+    if hwcap2 & ARM_HWCAP2_SHA1 != 0 {
         ret |= ARMV8_SHA1;
     }
-    if hwcap2 & ARM_HWCAP2_SHA2 > 0 {
+    if hwcap2 & ARM_HWCAP2_SHA2 != 0 {
         ret |= ARMV8_SHA256;
     }
 
@@ -89,29 +82,18 @@ mod tests {
         ARMV8_AES, ARMV8_PMULL, ARMV8_SHA1, ARMV8_SHA256, ARM_HWCAP2_AES,
         ARM_HWCAP2_PMULL, ARM_HWCAP2_SHA1, ARM_HWCAP2_SHA2,
         ARM_HWCAP_NEON};
-    #[cfg(target_os="linux")]
-    use super::auxv::NativeGetauxvalProvider;
-    use super::auxv::{AuxvUnsignedLong, GetauxvalError,
-        GetauxvalProvider, AT_HWCAP, AT_HWCAP2};
+    use super::auxv::{Type, GetauxvalError,
+        Provider, AT_HWCAP, AT_HWCAP2};
 
-    struct StubGetauxvalProvider {
-        auxv: HashMap<AuxvUnsignedLong, AuxvUnsignedLong>
+    struct StubGetauxval {
+        auxv: HashMap<Type, Type>
     }
 
-    impl GetauxvalProvider for StubGetauxvalProvider {
-        fn getauxval(&self, auxv_type: AuxvUnsignedLong)
-                -> Result<AuxvUnsignedLong, GetauxvalError> {
+    impl Provider for StubGetauxval {
+        fn getauxval(&self, auxv_type: Type)
+                -> Result<Type, GetauxvalError> {
             self.auxv.get(&auxv_type).map(|v| *v).ok_or(GetauxvalError::NotFound)
         }
-    }
-
-    #[test]
-    #[cfg(target_os="linux")]
-    fn armcap_from_env_doesnt_crash() {
-        let getauxval = NativeGetauxvalProvider{};
-
-        // can't really say anything useful about its result
-        let _ = armcap_from_features(getauxval);
     }
 
     #[test]
@@ -124,7 +106,7 @@ mod tests {
         let mut auxv = HashMap::new();
         let _ = auxv.insert(AT_HWCAP, ARM_HWCAP_NEON);
         let _ = auxv.insert(AT_HWCAP2, ARM_HWCAP2_AES | ARM_HWCAP2_PMULL | ARM_HWCAP2_SHA1 | ARM_HWCAP2_SHA2);
-        let getauxv = StubGetauxvalProvider {
+        let getauxv = StubGetauxval {
             auxv: auxv
         };
 
@@ -137,16 +119,11 @@ mod tests {
         let mut auxv = HashMap::new();
         let _ = auxv.insert(AT_HWCAP, ARM_HWCAP_NEON);
         let _ = auxv.insert(AT_HWCAP2, ARM_HWCAP2_AES);
-        let getauxv = StubGetauxvalProvider {
+        let getauxv = StubGetauxval {
             auxv: auxv
         };
 
         do_armcap_bits_test(getauxv, ARMV7_NEON | ARMV8_AES);
-    }
-
-    #[test]
-    fn armcap_for_hwcap2_zero_returns_zero() {
-        assert_eq!(0, super::armcap_for_hwcap2(0));
     }
 
     #[test]
@@ -158,18 +135,18 @@ mod tests {
                                         | ARM_HWCAP2_SHA2));
     }
 
-    fn do_armcap_bits_test(getauxval: StubGetauxvalProvider,
+    fn do_armcap_bits_test(getauxval: StubGetauxval,
                            expected_armcap: u32) {
         assert_eq!(expected_armcap,
-            armcap_from_features::<StubGetauxvalProvider>(getauxval));
+            armcap_from_features::<StubGetauxval>(getauxval));
     }
 
-    fn hwcap_neon_getauxv() -> StubGetauxvalProvider {
+    fn hwcap_neon_getauxv() -> StubGetauxval {
         let mut auxv = HashMap::new();
         let _ = auxv.insert(AT_HWCAP,
                             ARM_HWCAP_NEON);
 
-        StubGetauxvalProvider {
+        StubGetauxval {
             auxv: auxv
         }
     }
