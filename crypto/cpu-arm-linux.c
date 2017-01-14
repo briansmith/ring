@@ -9,37 +9,25 @@
 unsigned long getauxval(unsigned long type) __attribute__((weak));
 
 /*
- * getauxval() may or may not be available. In addition, it may not find
- * the type requested.
- * - If getauxval() is not available, this returns -1.
- * - If getauxval() is available but the requested type is not found or another
- *   error occurs, this returns 0.
- * - If getauxval() is available but a different error occurs, this returns -2.
- * - If getauxval() is available and the requested type is found, this returns
- *   1 and also writes to the result pointer param.
+ * If getauxval is not available, or an error occurs, return 0.
+ * Otherwise, return the value found.
  */
-int32_t getauxval_wrapper(unsigned long type, unsigned long *result);
+unsigned long getauxval_wrapper(unsigned long type);
 
 #include <errno.h>
 
-int32_t getauxval_wrapper(unsigned long type, unsigned long *result) {
+unsigned long getauxval_wrapper(unsigned long type) {
     if (getauxval == NULL) {
-        return -1;
+        return 0;
     }
 
     unsigned long auxval = getauxval(type);
-    if (errno == ENOENT) {
-        // as of glibc 2.19, errno is ENOENT if the type is not found.
+    // map errors to a zero value
+    if (errno != 0) {
         errno = 0;
         return 0;
-    } else if (errno != 0) {
-        // as of glibc 2.23 the only error is enoent, but more errors
-        // may be added
-        errno = 0;
-        return -2;
     }
 
-    *result = auxval;
-    return 1;
+    return auxval;
 }
 #endif

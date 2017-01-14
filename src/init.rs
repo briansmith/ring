@@ -12,6 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
+    target_os = "linux"))]
+use cpu_feature::arm_linux::auxv;
+
 #[inline(always)]
 pub fn init_once() {
     #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
@@ -27,7 +31,18 @@ pub fn init_once() {
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
     target_os = "linux"))]
 fn set_cpu_features() {
-    cpu_feature::arm_linux::arm_linux_set_cpu_features();
+    let getauxval = auxv::NativeProvider {};
+
+    unsafe {
+        GFp_armcap_P |= armcap_from_features(getauxval);
+    }
+}
+
+extern "C" {
+    #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
+        target_os="linux"))]
+    #[allow(non_upper_case_globals)]
+    pub static mut GFp_armcap_P: u32;
 }
 
 // On other platforms (excluding iOS aarch64), use C feature detection
