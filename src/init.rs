@@ -15,6 +15,9 @@
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
     target_os = "linux"))]
 use cpu_feature::arm_linux::auxv;
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
+    target_os = "linux"))]
+use cpu_feature::arm_linux;
 
 #[inline(always)]
 pub fn init_once() {
@@ -34,7 +37,7 @@ fn set_cpu_features() {
     let getauxval = auxv::NativeProvider {};
 
     unsafe {
-        GFp_armcap_P |= armcap_from_features(getauxval);
+        GFp_armcap_P |= arm_linux::armcap_from_features(getauxval);
     }
 }
 
