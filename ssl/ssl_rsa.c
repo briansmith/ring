@@ -153,18 +153,6 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
   return 1;
 }
 
-int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
-  RSA *rsa = RSA_private_key_from_bytes(der, der_len);
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    return 0;
-  }
-
-  int ret = SSL_use_RSAPrivateKey(ssl, rsa);
-  RSA_free(rsa);
-  return ret;
-}
-
 int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
   int ret;
 
