@@ -22,9 +22,9 @@ const ARM_HWCAP2_SHA2: auxv::Type = 1 << 3;
 const ARM_HWCAP_NEON: auxv::Type = 1 << 12;
 
 // Constants used in GFp_armcap_P
-// Keep in sync with include/openssl/arm_arch.h
+// Keep in sync with include/openssl/arm_arch.h.
 const ARMV7_NEON: u32 = 1 << 0;
-// not a typo; there is no constant for 1 << 1
+// Not a typo; there is no constant for 1 << 1.
 const ARMV8_AES: u32 = 1 << 2;
 const ARMV8_SHA1: u32 = 1 << 3;
 const ARMV8_SHA256: u32 = 1 << 4;
@@ -44,7 +44,7 @@ pub fn armcap_from_features<G: auxv::Provider> (getauxval: G) -> u32 {
         armcap |= armcap_for_hwcap2(hwcap2);
     }
 
-    return armcap;
+    armcap
 }
 
 fn armcap_for_hwcap2(hwcap2: auxv::Type) -> u32 {
@@ -62,7 +62,7 @@ fn armcap_for_hwcap2(hwcap2: auxv::Type) -> u32 {
         ret |= ARMV8_SHA256;
     }
 
-    return ret;
+    ret
 }
 
 mod auxv;
@@ -93,20 +93,22 @@ mod tests {
     }
 
     #[test]
-    fn armcap_bits_arm_8_with_neon_only_getauxv_hwcap_and_all_getauxv_hwcap2_yields_all_features_armcap() {
+    fn armcap_bits_arm_8_with_neon_only_hwcap_all_hwcap2_yields_all_features() {
         let mut auxv = HashMap::new();
         let _ = auxv.insert(auxv::AT_HWCAP, ARM_HWCAP_NEON);
-        let _ = auxv.insert(auxv::AT_HWCAP2, ARM_HWCAP2_AES | ARM_HWCAP2_PMULL | ARM_HWCAP2_SHA1 | ARM_HWCAP2_SHA2);
+        let _ = auxv.insert(auxv::AT_HWCAP2, ARM_HWCAP2_AES | ARM_HWCAP2_PMULL |
+            ARM_HWCAP2_SHA1 | ARM_HWCAP2_SHA2);
         let getauxv = StubGetauxval {
             auxv: auxv
         };
 
-        do_armcap_bits_test(getauxv, ARMV7_NEON | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256 | ARMV8_PMULL);
+        do_armcap_bits_test(getauxv, ARMV7_NEON | ARMV8_AES | ARMV8_SHA1 |
+            ARMV8_SHA256 | ARMV8_PMULL);
     }
 
 
     #[test]
-    fn armcap_bits_arm_8_with_neon_only_getauxv_hwcap_and_aes_getauxv_hwcap2_yields_only_neon_aes_armcap() {
+    fn armcap_bits_arm_8_with_neon_only_hwcap_aes_hwcap2_yields_neon_aes() {
         let mut auxv = HashMap::new();
         let _ = auxv.insert(auxv::AT_HWCAP, ARM_HWCAP_NEON);
         let _ = auxv.insert(auxv::AT_HWCAP2, ARM_HWCAP2_AES);
@@ -120,10 +122,8 @@ mod tests {
     #[test]
     fn armcap_for_hwcap2_all_hwcap2_returns_all_armcap() {
         assert_eq!(ARMV8_AES | ARMV8_PMULL | ARMV8_SHA1 | ARMV8_SHA256,
-            super::armcap_for_hwcap2(ARM_HWCAP2_AES
-                                        | ARM_HWCAP2_PMULL
-                                        | ARM_HWCAP2_SHA1
-                                        | ARM_HWCAP2_SHA2));
+            super::armcap_for_hwcap2(ARM_HWCAP2_AES | ARM_HWCAP2_PMULL |
+                ARM_HWCAP2_SHA1 | ARM_HWCAP2_SHA2));
     }
 
     fn do_armcap_bits_test(getauxval: StubGetauxval,

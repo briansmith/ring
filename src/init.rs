@@ -29,26 +29,24 @@ pub fn init_once() {
     }
 }
 
-// On arm linux, use pure rust
+// On ARM Linux, use pure Rust.
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
     target_os = "linux"))]
 fn set_cpu_features() {
-    let getauxval = auxv::NativeProvider {};
-
     unsafe {
-        GFp_armcap_P |= arm_linux::armcap_from_features(getauxval);
+        GFp_armcap_P |= arm_linux::armcap_from_features(auxv::NativeProvider);
     }
 }
 
-extern "C" {
+extern {
     #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
         target_os="linux"))]
     #[allow(non_upper_case_globals)]
     pub static mut GFp_armcap_P: u32;
 }
 
-// On other platforms (excluding iOS aarch64), use C feature detection
+// On other platforms (excluding iOS aarch64), use C feature detection.
 
 #[cfg(all(not(all(target_arch = "aarch64", target_os = "ios")),
     not(all(any(target_arch = "arm", target_arch = "aarch64"), target_os = "linux"))))]

@@ -104,7 +104,7 @@
 #define __ARM_MAX_ARCH__ 8
 #endif
 
-/* Keep in sync with src/cpu_feature/arm_linux/arm_linux.rs */
+/* Keep in sync with src/cpu_feature/arm_linux/arm_linux.rs. */
 
 /* ARMV7_NEON is true when a NEON unit is present in the current CPU. */
 #define ARMV7_NEON (1 << 0)

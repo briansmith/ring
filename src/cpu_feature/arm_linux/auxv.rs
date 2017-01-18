@@ -1,40 +1,37 @@
-#[cfg(any(all(target_pointer_width = "32", test),
-    all(target_pointer_width = "32", target_os = "linux")))]
-pub type Type = u32;
-#[cfg(any(all(target_pointer_width = "64", test),
-    all(target_pointer_width = "64", target_os = "linux")))]
-pub type Type = u64;
+use c;
+
+pub type Type = c::unsigned_long;
+pub type Value = c::unsigned_long;
 
 extern "C" {
     /// Invoke getauxval(3) if available. If it's not linked, or if invocation
     /// fails or the type is not found, returns 0.
     #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
         target_os = "linux"))]
-    pub fn getauxval_wrapper(auxv_type: Type) -> Type;
+    pub fn getauxval_wrapper(auxv_type: Type) -> Value;
 }
 
 pub trait Provider {
     /// Look up an entry in the auxiliary vector. See getauxval(3) in glibc.
     /// If the requested type is not found, 0 will be returned.
-    fn getauxval(&self, auxv_type: Type) -> Type;
+    fn getauxval(&self, auxv_type: Type) -> Value;
 }
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
     target_os = "linux"))]
-pub struct NativeProvider {}
+pub struct NativeProvider;
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
     target_os = "linux"))]
 impl Provider for NativeProvider {
-    fn getauxval(&self, auxv_type: Type) -> Type {
-        unsafe {
-            return getauxval_wrapper(auxv_type);
-        }
+    fn getauxval(&self, auxv_type: Type) -> Value {
+        unsafe { getauxval_wrapper(auxv_type) }
     }
 }
 
-// from [linux]/include/uapi/linux/auxvec.h. First 32 bits of HWCAP
-// even on platforms where unsigned long is 64 bits.
+// From [linux]/include/uapi/linux/auxvec.h.
+// Only the first 32 bits of HWCAP are set even on platforms
+// where unsigned long is 64 bits so that the expressible features
+// remain consistent between the two platforms.
 pub const AT_HWCAP: Type = 16;
-// currently only used by powerpc and arm64 AFAICT
 pub const AT_HWCAP2: Type = 26;
