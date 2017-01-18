@@ -109,7 +109,7 @@ define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
 
 #[cfg(any(target_os = "windows", target_pointer_width = "32"))]
 define_type!(unsigned_long, u32, test_unsigned_long_metrics,
-    GFp_long_align, GFp_unsigned_long_size,
+    GFp_long_align, GFp_long_size,
     "The C `unsigned long` type. Equivalent to `libc::c_ulong`.");
 
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
