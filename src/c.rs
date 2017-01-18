@@ -41,6 +41,17 @@ macro_rules! define_metrics_tests {
       $expected_align_factor:expr ) =>
     {
         #[cfg(test)]
+        extern {
+            // We can't use `size_t` because we need to test that our
+            // definition of `size_t` is correct using this code! We use `u16`
+            // because even 8-bit and 16-bit microcontrollers have no trouble
+            // with it, and because `u16` is always as smaller or smaller than
+            // `usize`.
+            static $c_align: u16;
+            static $c_size: u16;
+        }
+
+        #[cfg(test)]
         #[test]
         fn $test_c_metrics() {
             use std::mem;
@@ -69,37 +80,6 @@ macro_rules! define_metrics_tests {
     }
 }
 
-#[cfg(test)]
-extern {
-    // We can't use `size_t` because we need to test that our
-    // definition of `size_t` is correct using this code! We use `u16`
-    // because even 8-bit and 16-bit microcontrollers have no trouble
-    // with it, and because `u16` is always as smaller or smaller than
-    // `usize`.
-    static GFp_int_align: u16;
-    static GFp_int_size: u16;
-    static GFp_long_align: u16;
-    static GFp_long_size: u16;
-    static GFp_size_t_align: u16;
-    static GFp_size_t_size: u16;
-    static GFp_int64_t_size: u16;
-    static GFp_int64_t_align: u16;
-    static GFp_uint64_t_size: u16;
-    static GFp_uint64_t_align: u16;
-    static GFp_int32_t_size: u16;
-    static GFp_int32_t_align: u16;
-    static GFp_uint32_t_size: u16;
-    static GFp_uint32_t_align: u16;
-    static GFp_int16_t_size: u16;
-    static GFp_int16_t_align: u16;
-    static GFp_uint16_t_size: u16;
-    static GFp_uint16_t_align: u16;
-    static GFp_int8_t_size: u16;
-    static GFp_int8_t_align: u16;
-    static GFp_uint8_t_size: u16;
-    static GFp_uint8_t_align: u16;
-}
-
 define_type!(int, i32, test_int_metrics, GFp_int_align, GFp_int_size,
              "The C `int` type. Equivalent to `libc::c_int`.");
 
@@ -109,7 +89,7 @@ define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
 
 #[cfg(any(target_os = "windows", target_pointer_width = "32"))]
 define_type!(unsigned_long, u32, test_unsigned_long_metrics,
-    GFp_long_align, GFp_long_size,
+    GFp_unsigned_long_align, GFp_unsigned_long_size,
     "The C `unsigned long` type. Equivalent to `libc::c_ulong`.");
 
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
@@ -118,7 +98,7 @@ define_type!(long, i64, test_long_metrics, GFp_long_align, GFp_long_size,
 
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
 define_type!(unsigned_long, u64, test_unsigned_long_metrics,
-    GFp_long_align, GFp_long_size,
+    GFp_unsigned_long_align, GFp_unsigned_long_size,
     "The C `unsigned long` type. Equivalent to `libc::c_ulong`.");
 
 define_type!(
