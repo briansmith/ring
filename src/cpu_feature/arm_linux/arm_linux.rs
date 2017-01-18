@@ -65,7 +65,7 @@ fn armcap_for_hwcap2(hwcap2: auxv::Type) -> u32 {
     ret
 }
 
-mod auxv;
+pub mod auxv;
 
 #[cfg(test)]
 mod tests {
