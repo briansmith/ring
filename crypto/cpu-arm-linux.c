@@ -13,10 +13,9 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/cpu.h>
+#include <errno.h>
 
 #ifdef __linux__
-
-#include <errno.h>
 
 /* |getauxval| is not available on Android until API level 20. Link it as a weak
  * symbol and use other methods as fallback. As of Rust 1.14 this weak linkage
