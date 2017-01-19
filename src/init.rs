@@ -32,7 +32,7 @@ pub fn init_once() {
 // On ARM Linux, use pure Rust.
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-    target_os = "linux"))]
+    any(target_os = "linux", target_os = "android")))]
 fn set_cpu_features() {
     unsafe {
         GFp_armcap_P |= arm_linux::armcap_from_features(auxv::NativeProvider);
@@ -41,7 +41,7 @@ fn set_cpu_features() {
 
 extern {
     #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-        target_os="linux"))]
+        any(target_os = "linux", target_os = "android")))]
     #[allow(non_upper_case_globals)]
     pub static mut GFp_armcap_P: u32;
 }
