@@ -399,43 +399,6 @@ class GYP(object):
 
       gypi.write('  }\n}\n')
 
-    with open('boringssl_tests.gypi', 'w+') as test_gypi:
-      test_gypi.write(self.header + '{\n  \'targets\': [\n')
-
-      test_names = []
-      for test in sorted(files['test']):
-        test_name = 'boringssl_%s' % os.path.splitext(os.path.basename(test))[0]
-        test_gypi.write("""    {
-      'target_name': '%s',
-      'type': 'executable',
-      'dependencies': [
-        'boringssl.gyp:boringssl',
-      ],
-      'sources': [
-        '%s',
-        '<@(boringssl_test_support_sources)',
-      ],
-      # TODO(davidben): Fix size_t truncations in BoringSSL.
-      # https://crbug.com/429039
-      'msvs_disabled_warnings': [ 4267, ],
-    },\n""" % (test_name, test))
-        test_names.append(test_name)
-
-      test_names.sort()
-
-      test_gypi.write('  ],\n  \'variables\': {\n')
-
-      self.PrintVariableSection(test_gypi, 'boringssl_test_support_sources',
-                                files['test_support'] +
-                                files['test_support_headers'])
-
-      test_gypi.write('    \'boringssl_test_targets\': [\n')
-
-      for test in sorted(test_names):
-        test_gypi.write("""      '%s',\n""" % test)
-
-      test_gypi.write('    ],\n  }\n}\n')
-
 
 def FindCMakeFiles(directory):
   """Returns list of all CMakeLists.txt files recursively in directory."""
