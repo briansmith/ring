@@ -7,7 +7,7 @@ extern "C" {
     /// Invoke getauxval(3) if available. If it's not linked, or if invocation
     /// fails or the type is not found, returns 0.
     #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-        target_os = "linux"))]
+        any(target_os = "linux", target_os = "android")))]
     pub fn getauxval_wrapper(auxv_type: Type) -> Value;
 }
 
@@ -18,11 +18,11 @@ pub trait Provider {
 }
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-    target_os = "linux"))]
+    any(target_os = "linux", target_os = "android")))]
 pub struct NativeProvider;
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-    target_os = "linux"))]
+    any(target_os = "linux", target_os = "android")))]
 impl Provider for NativeProvider {
     fn getauxval(&self, auxv_type: Type) -> Value {
         unsafe { getauxval_wrapper(auxv_type) }
