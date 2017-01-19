@@ -49,13 +49,15 @@ extern {
 // On other platforms (excluding iOS aarch64), use C feature detection.
 
 #[cfg(all(not(all(target_arch = "aarch64", target_os = "ios")),
-    not(all(any(target_arch = "arm", target_arch = "aarch64"), target_os = "linux"))))]
+    not(all(any(target_arch = "arm", target_arch = "aarch64"),
+        any(target_os = "linux", target_os = "android")))))]
 extern {
     fn GFp_cpuid_setup();
 }
 
 #[cfg(all(not(all(target_arch = "aarch64", target_os = "ios")),
-    not(all(any(target_arch = "arm", target_arch = "aarch64"), target_os = "linux"))))]
+    not(all(any(target_arch = "arm", target_arch = "aarch64"),
+        any(target_os = "linux", target_os = "android")))))]
 fn set_cpu_features() {
     unsafe { GFp_cpuid_setup() }
 }
