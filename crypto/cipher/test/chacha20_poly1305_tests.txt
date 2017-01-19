@@ -47,9 +47,6 @@ AD: "123456789abcdef0"
 CT: e275aeb341e1fc9a70c4fd4496fc7cdb
 TAG: 41acd0560ea6843d3e5d4e5babf6e946
 
-# Test vectors from chacha20_poly1305_old_tests.txt, modified for the RFC 7539
-# AEAD construction.
-
 KEY: 9a97f65b9b4c721b960a672145fca8d4e32e67f9111ea979ce9c4826806aeee6
 NONCE: 000000003de9c0da2bd7f91e
 IN: ""

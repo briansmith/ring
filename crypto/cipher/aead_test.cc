@@ -314,7 +314,6 @@ static const struct KnownAEAD kAEADs[] = {
   { "aes-128-gcm-siv", EVP_aead_aes_128_gcm_siv, false },
   { "aes-256-gcm-siv", EVP_aead_aes_256_gcm_siv, false },
   { "chacha20-poly1305", EVP_aead_chacha20_poly1305, false },
-  { "chacha20-poly1305-old", EVP_aead_chacha20_poly1305_old, false },
   { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls, true },
   { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv, true },
   { "aes-128-cbc-sha256-tls", EVP_aead_aes_128_cbc_sha256_tls, true },

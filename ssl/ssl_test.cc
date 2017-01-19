@@ -75,9 +75,7 @@ static const CipherTest kCipherTests[] = {
         "ECDHE-RSA-AES128-GCM-SHA256",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
@@ -91,10 +89,8 @@ static const CipherTest kCipherTests[] = {
         "+aRSA",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
     },
@@ -107,7 +103,6 @@ static const CipherTest kCipherTests[] = {
         "ECDHE-RSA-AES128-GCM-SHA256",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
         },
     },
@@ -139,9 +134,7 @@ static const CipherTest kCipherTests[] = {
         "BOGUS1:-BOGUS2:+BOGUS3:!BOGUS4",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
@@ -153,10 +146,8 @@ static const CipherTest kCipherTests[] = {
         "ECDHE-RSA-AES128-GCM-SHA256",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 1},
-            {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 1},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
-            {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 1},
-            {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
     },
@@ -177,7 +168,6 @@ static const CipherTest kCipherTests[] = {
         {
             {TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_256_SHA, 0},
@@ -227,9 +217,7 @@ static const CipherTest kCipherTests[] = {
         "!ECDSA+ECDHE-ECDSA-CHACHA20-POLY1305",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
-            {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0},
         },
     },
 };
@@ -790,12 +778,6 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
     {TLS1_CK_AES_256_GCM_SHA384, "TLS_AES_256_GCM_SHA384"},
     {TLS1_CK_AES_128_GCM_SHA256, "TLS_AES_128_GCM_SHA256"},
     {TLS1_CK_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256"},
-
-    // These names are non-standard:
-    {TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD,
-     "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"},
-    {TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD,
-     "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"},
 };
 
 static bool TestCipherGetRFCName(void) {
@@ -1947,20 +1929,20 @@ static bool TestClientHello() {
   }
 
   static const uint8_t kTLS12ClientHello[] = {
-      0x16, 0x03, 0x01, 0x00, 0x9e, 0x01, 0x00, 0x00, 0x9a, 0x03, 0x03, 0x00,
+      0x16, 0x03, 0x01, 0x00, 0x9a, 0x01, 0x00, 0x00, 0x96, 0x03, 0x03, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xcc, 0xa9,
-      0xcc, 0xa8, 0xcc, 0x14, 0xcc, 0x13, 0xc0, 0x2b, 0xc0, 0x2f, 0x00, 0x9e,
-      0xc0, 0x2c, 0xc0, 0x30, 0x00, 0x9f, 0xc0, 0x09, 0xc0, 0x23, 0xc0, 0x13,
-      0xc0, 0x27, 0x00, 0x33, 0x00, 0x67, 0xc0, 0x0a, 0xc0, 0x24, 0xc0, 0x14,
-      0xc0, 0x28, 0x00, 0x39, 0x00, 0x6b, 0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f,
-      0x00, 0x3c, 0x00, 0x35, 0x00, 0x3d, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x37,
-      0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x23, 0x00,
-      0x00, 0x00, 0x0d, 0x00, 0x14, 0x00, 0x12, 0x04, 0x03, 0x08, 0x04, 0x04,
-      0x01, 0x05, 0x03, 0x08, 0x05, 0x05, 0x01, 0x08, 0x06, 0x06, 0x01, 0x02,
-      0x01, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x0a, 0x00, 0x08, 0x00,
-      0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0xcc, 0xa9,
+      0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0x00, 0x9e, 0xc0, 0x2c, 0xc0, 0x30,
+      0x00, 0x9f, 0xc0, 0x09, 0xc0, 0x23, 0xc0, 0x13, 0xc0, 0x27, 0x00, 0x33,
+      0x00, 0x67, 0xc0, 0x0a, 0xc0, 0x24, 0xc0, 0x14, 0xc0, 0x28, 0x00, 0x39,
+      0x00, 0x6b, 0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35,
+      0x00, 0x3d, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x37, 0xff, 0x01, 0x00, 0x01,
+      0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00,
+      0x14, 0x00, 0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08,
+      0x05, 0x05, 0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01, 0x00, 0x0b, 0x00,
+      0x02, 0x01, 0x00, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00,
+      0x17, 0x00, 0x18,
   };
   if (!ClientHelloMatches(TLS1_2_VERSION, kTLS12ClientHello,
                           sizeof(kTLS12ClientHello))) {
