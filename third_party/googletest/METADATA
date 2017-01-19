@@ -9,5 +9,8 @@ third_party {
   version: "5e7fd50e17b6edf1cadff973d0ec68966cf3265e"
   last_upgrade_date { year: 2017 month: 1 day: 19 }
 
-  local_modifications: "Only googletest, not googlemock, is included"
+  local_modifications:
+      "Only googletest, not googlemock, is included."
+      " "
+      "https://github.com/google/googletest/pull/965 was applied."
 }
