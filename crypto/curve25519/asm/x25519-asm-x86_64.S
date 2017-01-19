@@ -60,17 +60,10 @@ x25519_x86_64__38:         .quad 38
 .globl C_ABI(x25519_x86_64_freeze)
 HIDDEN C_ABI(x25519_x86_64_freeze)
 C_ABI(x25519_x86_64_freeze):
-mov %rsp,%r11
-and $31,%r11
-add $64,%r11
-sub %r11,%rsp
-movq %r11,0(%rsp)
-movq %r12,8(%rsp)
-movq %r13,16(%rsp)
-movq %r14,24(%rsp)
-movq %r15,32(%rsp)
-movq %rbx,40(%rsp)
-movq %rbp,48(%rsp)
+.cfi_startproc
+/* This is a leaf function and uses the redzone for saving registers. */
+movq %r12,-8(%rsp)
+.cfi_rel_offset r12, -8
 movq   0(%rdi),%rsi
 movq   8(%rdi),%rdx
 movq   16(%rdi),%rcx
@@ -128,44 +121,40 @@ movq   %rdx,8(%rdi)
 movq   %rcx,16(%rdi)
 movq   %r8,24(%rdi)
 movq   %r9,32(%rdi)
-movq 0(%rsp),%r11
-movq 8(%rsp),%r12
-movq 16(%rsp),%r13
-movq 24(%rsp),%r14
-movq 32(%rsp),%r15
-movq 40(%rsp),%rbx
-movq 48(%rsp),%rbp
-add %r11,%rsp
-mov %rdi,%rax
-mov %rsi,%rdx
+movq -8(%rsp),%r12
 ret
+.cfi_endproc
 
 .p2align 5
 .globl C_ABI(x25519_x86_64_mul)
 HIDDEN C_ABI(x25519_x86_64_mul)
 C_ABI(x25519_x86_64_mul):
-mov %rsp,%r11
-and $31,%r11
-add $96,%r11
-sub %r11,%rsp
-movq %r11,0(%rsp)
-movq %r12,8(%rsp)
-movq %r13,16(%rsp)
-movq %r14,24(%rsp)
-movq %r15,32(%rsp)
-movq %rbx,40(%rsp)
-movq %rbp,48(%rsp)
-movq %rdi,56(%rsp)
+.cfi_startproc
+/* This is a leaf function and uses the redzone for saving registers. */
+movq %r12,-8(%rsp)
+.cfi_rel_offset r12, -8
+movq %r13,-16(%rsp)
+.cfi_rel_offset r13, -16
+movq %r14,-24(%rsp)
+.cfi_rel_offset r14, -24
+movq %r15,-32(%rsp)
+.cfi_rel_offset r15, -32
+movq %rbx,-40(%rsp)
+.cfi_rel_offset rbx, -40
+movq %rbp,-48(%rsp)
+.cfi_rel_offset rbp, -48
+movq %rdi,-56(%rsp)
+.cfi_rel_offset rdi, -56
 mov  %rdx,%rcx
 movq   24(%rsi),%rdx
 imulq  $19,%rdx,%rax
-movq %rax,64(%rsp)
+movq %rax,-64(%rsp)
 mulq  16(%rcx)
 mov  %rax,%r8
 mov  %rdx,%r9
 movq   32(%rsi),%rdx
 imulq  $19,%rdx,%rax
-movq %rax,72(%rsp)
+movq %rax,-72(%rsp)
 mulq  8(%rcx)
 add  %rax,%r8
 adc %rdx,%r9
@@ -240,11 +229,11 @@ movq   24(%rsi),%rax
 mulq  8(%rcx)
 add  %rax,%rbx
 adc %rdx,%rbp
-movq 64(%rsp),%rax
+movq -64(%rsp),%rax
 mulq  24(%rcx)
 add  %rax,%r10
 adc %rdx,%r11
-movq 64(%rsp),%rax
+movq -64(%rsp),%rax
 mulq  32(%rcx)
 add  %rax,%r12
 adc %rdx,%r13
@@ -252,15 +241,15 @@ movq   32(%rsi),%rax
 mulq  0(%rcx)
 add  %rax,%rbx
 adc %rdx,%rbp
-movq 72(%rsp),%rax
+movq -72(%rsp),%rax
 mulq  16(%rcx)
 add  %rax,%r10
 adc %rdx,%r11
-movq 72(%rsp),%rax
+movq -72(%rsp),%rax
 mulq  24(%rcx)
 add  %rax,%r12
 adc %rdx,%r13
-movq 72(%rsp),%rax
+movq -72(%rsp),%rax
 mulq  32(%rcx)
 add  %rax,%r14
 adc %rdx,%r15
@@ -307,33 +296,31 @@ movq   %rcx,8(%rdi)
 movq   %r9,16(%rdi)
 movq   %rax,24(%rdi)
 movq   %r10,32(%rdi)
-movq 0(%rsp),%r11
-movq 8(%rsp),%r12
-movq 16(%rsp),%r13
-movq 24(%rsp),%r14
-movq 32(%rsp),%r15
-movq 40(%rsp),%rbx
-movq 48(%rsp),%rbp
-add %r11,%rsp
-mov %rdi,%rax
-mov %rsi,%rdx
+movq -8(%rsp),%r12
+movq -16(%rsp),%r13
+movq -24(%rsp),%r14
+movq -32(%rsp),%r15
+movq -40(%rsp),%rbx
+movq -48(%rsp),%rbp
 ret
+.cfi_endproc
 
 .p2align 5
 .globl C_ABI(x25519_x86_64_square)
 HIDDEN C_ABI(x25519_x86_64_square)
 C_ABI(x25519_x86_64_square):
-mov %rsp,%r11
-and $31,%r11
-add $64,%r11
-sub %r11,%rsp
-movq %r11,0(%rsp)
-movq %r12,8(%rsp)
-movq %r13,16(%rsp)
-movq %r14,24(%rsp)
-movq %r15,32(%rsp)
-movq %rbx,40(%rsp)
-movq %rbp,48(%rsp)
+.cfi_startproc
+/* This is a leaf function and uses the redzone for saving registers. */
+movq %r12,-8(%rsp)
+.cfi_rel_offset r12, -8
+movq %r13,-16(%rsp)
+.cfi_rel_offset r13, -16
+movq %r14,-24(%rsp)
+.cfi_rel_offset r14, -24
+movq %r15,-32(%rsp)
+.cfi_rel_offset r15, -32
+movq %rbx,-40(%rsp)
+.cfi_rel_offset rbx, -40
 movq   0(%rsi),%rax
 mulq  0(%rsi)
 mov  %rax,%rcx
@@ -449,33 +436,33 @@ movq   %r8,8(%rdi)
 movq   %r9,16(%rdi)
 movq   %rax,24(%rdi)
 movq   %r10,32(%rdi)
-movq 0(%rsp),%r11
-movq 8(%rsp),%r12
-movq 16(%rsp),%r13
-movq 24(%rsp),%r14
-movq 32(%rsp),%r15
-movq 40(%rsp),%rbx
-movq 48(%rsp),%rbp
-add %r11,%rsp
-mov %rdi,%rax
-mov %rsi,%rdx
+movq -8(%rsp),%r12
+movq -16(%rsp),%r13
+movq -24(%rsp),%r14
+movq -32(%rsp),%r15
+movq -40(%rsp),%rbx
 ret
+.cfi_endproc
 
 .p2align 5
 .globl C_ABI(x25519_x86_64_ladderstep)
 HIDDEN C_ABI(x25519_x86_64_ladderstep)
 C_ABI(x25519_x86_64_ladderstep):
-mov %rsp,%r11
-and $31,%r11
-add $352,%r11
-sub %r11,%rsp
-movq %r11,0(%rsp)
+.cfi_startproc
+sub $352,%rsp
+.cfi_adjust_cfa_offset 352
 movq %r12,8(%rsp)
+.cfi_rel_offset r12, 8
 movq %r13,16(%rsp)
+.cfi_rel_offset r13, 16
 movq %r14,24(%rsp)
+.cfi_rel_offset r14, 24
 movq %r15,32(%rsp)
+.cfi_rel_offset r15, 32
 movq %rbx,40(%rsp)
+.cfi_rel_offset rbx, 40
 movq %rbp,48(%rsp)
+.cfi_rel_offset rbp, 48
 movq   40(%rdi),%rsi
 movq   48(%rdi),%rdx
 movq   56(%rdi),%rcx
@@ -1837,26 +1824,22 @@ movq   %r8,88(%rdi)
 movq   %r9,96(%rdi)
 movq   %rax,104(%rdi)
 movq   %r10,112(%rdi)
-movq 0(%rsp),%r11
 movq 8(%rsp),%r12
 movq 16(%rsp),%r13
 movq 24(%rsp),%r14
 movq 32(%rsp),%r15
 movq 40(%rsp),%rbx
 movq 48(%rsp),%rbp
-add %r11,%rsp
-mov %rdi,%rax
-mov %rsi,%rdx
+add $352,%rsp
+.cfi_adjust_cfa_offset -352
 ret
+.cfi_endproc
 
 .p2align 5
 .globl C_ABI(x25519_x86_64_work_cswap)
 HIDDEN C_ABI(x25519_x86_64_work_cswap)
 C_ABI(x25519_x86_64_work_cswap):
-mov %rsp,%r11
-and $31,%r11
-add $0,%r11
-sub %r11,%rsp
+.cfi_startproc
 cmp  $1,%rsi
 movq   0(%rdi),%rsi
 movq   80(%rdi),%rdx
@@ -1928,10 +1911,10 @@ movq   %rsi,64(%rdi)
 movq   %rdx,144(%rdi)
 movq   %rcx,72(%rdi)
 movq   %r8,152(%rdi)
-add %r11,%rsp
 mov %rdi,%rax
 mov %rsi,%rdx
 ret
+.cfi_endproc
 
 #endif  /* __x86_64__ */
 #endif  /* !OPENSSL_NO_ASM */
