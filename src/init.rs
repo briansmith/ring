@@ -13,10 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-    target_os = "linux"))]
+    any(target_os = "linux", target_os = "android")))]
 use cpu_feature::arm_linux::auxv;
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-    target_os = "linux"))]
+    any(target_os = "linux", target_os = "android")))]
 use cpu_feature::arm_linux;
 
 #[inline(always)]
