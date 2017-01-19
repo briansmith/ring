@@ -242,3 +242,59 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {
   return &aead_chacha20_poly1305;
 }
+
+static void poly1305_update_old(poly1305_state *ctx, const uint8_t *ad,
+                                size_t ad_len, const uint8_t *ciphertext,
+                                size_t ciphertext_len) {
+  CRYPTO_poly1305_update(ctx, ad, ad_len);
+  poly1305_update_length(ctx, ad_len);
+  CRYPTO_poly1305_update(ctx, ciphertext, ciphertext_len);
+  poly1305_update_length(ctx, ciphertext_len);
+}
+
+static int aead_chacha20_poly1305_old_seal(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len, size_t max_out_len,
+    const uint8_t *nonce, size_t nonce_len, const uint8_t *in, size_t in_len,
+    const uint8_t *ad, size_t ad_len) {
+  if (nonce_len != 8) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    return 0;
+  }
+  uint8_t nonce_96[12];
+  OPENSSL_memset(nonce_96, 0, 4);
+  OPENSSL_memcpy(nonce_96 + 4, nonce, 8);
+  return seal_impl(poly1305_update_old, ctx, out, out_len, max_out_len,
+                   nonce_96, in, in_len, ad, ad_len);
+}
+
+static int aead_chacha20_poly1305_old_open(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len, size_t max_out_len,
+    const uint8_t *nonce, size_t nonce_len, const uint8_t *in, size_t in_len,
+    const uint8_t *ad, size_t ad_len) {
+  if (nonce_len != 8) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    return 0;
+  }
+  uint8_t nonce_96[12];
+  OPENSSL_memset(nonce_96, 0, 4);
+  OPENSSL_memcpy(nonce_96 + 4, nonce, 8);
+  return open_impl(poly1305_update_old, ctx, out, out_len, max_out_len,
+                   nonce_96, in, in_len, ad, ad_len);
+}
+
+static const EVP_AEAD aead_chacha20_poly1305_old = {
+    32,                 /* key len */
+    8,                  /* nonce len */
+    POLY1305_TAG_LEN,   /* overhead */
+    POLY1305_TAG_LEN,   /* max tag length */
+    aead_chacha20_poly1305_init,
+    NULL, /* init_with_direction */
+    aead_chacha20_poly1305_cleanup,
+    aead_chacha20_poly1305_old_seal,
+    aead_chacha20_poly1305_old_open,
+    NULL,               /* get_iv */
+};
+
+const EVP_AEAD *EVP_aead_chacha20_poly1305_old(void) {
+  return &aead_chacha20_poly1305_old;
+}
