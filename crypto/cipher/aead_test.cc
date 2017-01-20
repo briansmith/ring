@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -168,16 +169,12 @@ static bool TestAEAD(FileTest *t, void *arg) {
 }
 
 static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
-  EVP_AEAD_CTX ctx;
-  uint8_t key[128];
-
+  uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
   OPENSSL_memset(key, 0, sizeof(key));
   const size_t key_len = EVP_AEAD_key_length(aead);
-  if (key_len > sizeof(key)) {
-    fprintf(stderr, "Key length of AEAD too long.\n");
-    return 0;
-  }
+  assert(sizeof(key) >= key_len);
 
+  EVP_AEAD_CTX ctx;
   if (EVP_AEAD_CTX_init(&ctx, aead, key, key_len,
                         9999 /* a silly tag length to trigger an error */,
                         NULL /* ENGINE */) != 0) {
@@ -198,6 +195,80 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
   /* Calling _cleanup on an |EVP_AEAD_CTX| after a failed _init should be a
    * no-op. */
   EVP_AEAD_CTX_cleanup(&ctx);
+  return 1;
+}
+
+static int TestTruncatedTags(const EVP_AEAD *aead) {
+  uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
+  OPENSSL_memset(key, 0, sizeof(key));
+  const size_t key_len = EVP_AEAD_key_length(aead);
+  assert(sizeof(key) >= key_len);
+
+  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  OPENSSL_memset(nonce, 0, sizeof(nonce));
+  const size_t nonce_len = EVP_AEAD_nonce_length(aead);
+  assert(sizeof(nonce) >= nonce_len);
+
+  bssl::ScopedEVP_AEAD_CTX ctx;
+  if (!EVP_AEAD_CTX_init(ctx.get(), aead, key, key_len, 1 /* one byte tag */,
+                         NULL /* ENGINE */)) {
+    fprintf(stderr, "Couldn't initialise AEAD with truncated tag.\n");
+    return 1;
+  }
+
+  const uint8_t plaintext[1] = {'A'};
+
+  uint8_t ciphertext[128];
+  size_t ciphertext_len;
+  constexpr uint8_t kSentinel = 42;
+  OPENSSL_memset(ciphertext, kSentinel, sizeof(ciphertext));
+
+  if (!EVP_AEAD_CTX_seal(ctx.get(), ciphertext, &ciphertext_len,
+                         sizeof(ciphertext), nonce, nonce_len, plaintext,
+                         sizeof(plaintext), nullptr /* ad */, 0)) {
+    fprintf(stderr, "Sealing with truncated tag didn't work.\n");
+    return 0;
+  }
+
+  for (size_t i = ciphertext_len; i < sizeof(ciphertext); i++) {
+    // Sealing must not write past where it said it did.
+    if (ciphertext[i] != kSentinel) {
+      fprintf(stderr, "Sealing wrote off the end of the buffer.\n");
+      return 0;
+    }
+  }
+
+  const size_t overhead_used = ciphertext_len - sizeof(plaintext);
+  if (overhead_used != 1) {
+    fprintf(stderr, "AEAD is probably ignoring request to truncate tags.\n");
+    return 0;
+  }
+
+  uint8_t plaintext2[sizeof(plaintext) + 16];
+  OPENSSL_memset(plaintext2, kSentinel, sizeof(plaintext2));
+
+  size_t plaintext2_len;
+  if (!EVP_AEAD_CTX_open(ctx.get(), plaintext2, &plaintext2_len,
+                         sizeof(plaintext2), nonce, nonce_len, ciphertext,
+                         ciphertext_len, nullptr /* ad */, 0)) {
+    fprintf(stderr, "Opening with truncated tag didn't work.\n");
+    return 0;
+  }
+
+  for (size_t i = plaintext2_len; i < sizeof(plaintext2); i++) {
+    // Likewise, opening should also stay within bounds.
+    if (plaintext2[i] != kSentinel) {
+      fprintf(stderr, "Opening wrote off the end of the buffer.\n");
+      return 0;
+    }
+  }
+
+  if (plaintext2_len != sizeof(plaintext) ||
+      OPENSSL_memcmp(plaintext2, plaintext, sizeof(plaintext)) != 0) {
+    fprintf(stderr, "Opening with truncated tag gave wrong result.\n");
+    return 0;
+  }
+
   return 1;
 }
 
@@ -306,29 +377,32 @@ struct KnownAEAD {
   // handle inputs that are a multiple of eight bytes in length and the
   // SSLv3/TLS AEADs have the concept of “direction”.
   bool limited_implementation;
+  // truncated_tags is true if the AEAD supports truncating tags to arbitrary
+  // lengths.
+  bool truncated_tags;
 };
 
 static const struct KnownAEAD kAEADs[] = {
-  { "aes-128-gcm", EVP_aead_aes_128_gcm, false },
-  { "aes-256-gcm", EVP_aead_aes_256_gcm, false },
-  { "aes-128-gcm-siv", EVP_aead_aes_128_gcm_siv, false },
-  { "aes-256-gcm-siv", EVP_aead_aes_256_gcm_siv, false },
-  { "chacha20-poly1305", EVP_aead_chacha20_poly1305, false },
-  { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls, true },
-  { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv, true },
-  { "aes-128-cbc-sha256-tls", EVP_aead_aes_128_cbc_sha256_tls, true },
-  { "aes-256-cbc-sha1-tls", EVP_aead_aes_256_cbc_sha1_tls, true },
-  { "aes-256-cbc-sha1-tls-implicit-iv", EVP_aead_aes_256_cbc_sha1_tls_implicit_iv, true },
-  { "aes-256-cbc-sha256-tls", EVP_aead_aes_256_cbc_sha256_tls, true },
-  { "aes-256-cbc-sha384-tls", EVP_aead_aes_256_cbc_sha384_tls, true },
-  { "des-ede3-cbc-sha1-tls", EVP_aead_des_ede3_cbc_sha1_tls, true },
-  { "des-ede3-cbc-sha1-tls-implicit-iv", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv, true },
-  { "aes-128-cbc-sha1-ssl3", EVP_aead_aes_128_cbc_sha1_ssl3, true },
-  { "aes-256-cbc-sha1-ssl3", EVP_aead_aes_256_cbc_sha1_ssl3, true },
-  { "des-ede3-cbc-sha1-ssl3", EVP_aead_des_ede3_cbc_sha1_ssl3, true },
-  { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256, false },
-  { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256, false },
-  { "", NULL, false },
+  { "aes-128-gcm", EVP_aead_aes_128_gcm, false, true },
+  { "aes-256-gcm", EVP_aead_aes_256_gcm, false, true },
+  { "aes-128-gcm-siv", EVP_aead_aes_128_gcm_siv, false, false },
+  { "aes-256-gcm-siv", EVP_aead_aes_256_gcm_siv, false, false },
+  { "chacha20-poly1305", EVP_aead_chacha20_poly1305, false, true },
+  { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls, true, false },
+  { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv, true, false },
+  { "aes-128-cbc-sha256-tls", EVP_aead_aes_128_cbc_sha256_tls, true, false },
+  { "aes-256-cbc-sha1-tls", EVP_aead_aes_256_cbc_sha1_tls, true, false },
+  { "aes-256-cbc-sha1-tls-implicit-iv", EVP_aead_aes_256_cbc_sha1_tls_implicit_iv, true, false },
+  { "aes-256-cbc-sha256-tls", EVP_aead_aes_256_cbc_sha256_tls, true, false },
+  { "aes-256-cbc-sha384-tls", EVP_aead_aes_256_cbc_sha384_tls, true, false },
+  { "des-ede3-cbc-sha1-tls", EVP_aead_des_ede3_cbc_sha1_tls, true, false },
+  { "des-ede3-cbc-sha1-tls-implicit-iv", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv, true, false },
+  { "aes-128-cbc-sha1-ssl3", EVP_aead_aes_128_cbc_sha1_ssl3, true, false },
+  { "aes-256-cbc-sha1-ssl3", EVP_aead_aes_256_cbc_sha1_ssl3, true, false },
+  { "des-ede3-cbc-sha1-ssl3", EVP_aead_des_ede3_cbc_sha1_ssl3, true, false },
+  { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256, false, true },
+  { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256, false, true },
+  { "", NULL, false, false },
 };
 
 int main(int argc, char **argv) {
@@ -359,6 +433,11 @@ int main(int argc, char **argv) {
   }
 
   if (!TestCleanupAfterInitFailure(aead)) {
+    return 1;
+  }
+
+  if (known_aead->truncated_tags && !TestTruncatedTags(aead)) {
+    fprintf(stderr, "Truncated tags test failed for %s.\n", known_aead->name);
     return 1;
   }
 
