@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <gtest/gtest.h>
+
 #include "../../crypto/internal.h"
 #include "../../crypto/test/test_util.h"
 
@@ -53,7 +55,8 @@ static const RIPEMDTestCase kRIPEMDTestCases[] = {
       0xd3, 0x32, 0x3c, 0xab, 0x82, 0xbf, 0x63, 0x32, 0x6b, 0xfb}},
 };
 
-int main(void) {
+// TODO(davidben): Convert this file to GTest properly.
+TEST(RIPEMDTest, RunTest) {
   unsigned test_num = 0;
   int ok = 1;
 
@@ -111,10 +114,5 @@ int main(void) {
     ok = 0;
   }
 
-  if (!ok) {
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
+  EXPECT_EQ(1, ok);
 }

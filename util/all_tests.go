@@ -185,6 +185,14 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		(len(stdout) == 5 || stdout[len(stdout)-6] == '\n') {
 		return true, nil
 	}
+
+	// Also accept a googletest-style pass line. This is left here in
+	// transition until the tests are all converted and this script made
+	// unnecessary.
+	if bytes.Contains(stdout, []byte("\n[  PASSED  ]")) {
+		return true, nil
+	}
+
 	return false, nil
 }
 

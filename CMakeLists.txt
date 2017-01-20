@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8.10)
+cmake_minimum_required (VERSION 2.8.11)
 
 # Defer enabling C and CXX languages.
 project (BoringSSL NONE)
@@ -43,6 +43,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   endif()
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
+      "C4061" # enumerator 'identifier' in switch of enum 'enumeration' is not
+              # explicitly handled by a case label
+              # Disable this because it flags even when there is a default.
       "C4100" # 'exarg' : unreferenced formal parameter
       "C4127" # conditional expression is constant
       "C4200" # nonstandard extension used : zero-sized array in
@@ -78,12 +81,16 @@ elseif(MSVC)
               # copy constructor is inaccessible or deleted
       "C4626" # assignment operator could not be generated because a base class
               # assignment operator is inaccessible or deleted
+      "C4668" # 'symbol' is not defined as a preprocessor macro, replacing with
+              # '0' for 'directives'
+              # Disable this because GTest uses it everywhere.
       "C4706" # assignment within conditional expression
       "C4710" # 'function': function not inlined
       "C4711" # function 'function' selected for inline expansion
       "C4800" # 'int' : forcing value to bool 'true' or 'false'
               # (performance warning)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
+      "C5026" # move constructor was implicitly defined as deleted
       "C5027" # move assignment operator was implicitly defined as deleted
       )
   set(MSVC_LEVEL4_WARNINGS_LIST
@@ -227,6 +234,17 @@ if (OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
 endif()
+
+# Add minimal googletest targets. The provided one has many side-effects, and
+# googletest has a very straightforward build.
+add_library(gtest third_party/googletest/src/gtest-all.cc)
+target_include_directories(gtest PRIVATE third_party/googletest)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # TODO(davidben): Make googletest pass -Wmissing-declarations.
+  set_target_properties(gtest PROPERTIES COMPILE_FLAGS "-Wno-missing-declarations")
+endif()
+
+include_directories(third_party/googletest/include)
 
 # Declare a dummy target to build all unit tests. Test targets should inject
 # themselves as dependencies next to the target definition.

@@ -62,6 +62,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <gtest/gtest.h>
+
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -302,9 +304,8 @@ static bool TestVerify(const uint8_t *sig, size_t sig_len, int expect) {
   return true;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+// TODO(davidben): Convert this file to GTest properly.
+TEST(DSATest, AllTests) {
   if (!TestGenerate(stdout) ||
       !TestVerify(fips_sig, sizeof(fips_sig), 1) ||
       !TestVerify(fips_sig_negative, sizeof(fips_sig_negative), -1) ||
@@ -312,9 +313,6 @@ int main(int argc, char **argv) {
       !TestVerify(fips_sig_bad_length, sizeof(fips_sig_bad_length), -1) ||
       !TestVerify(fips_sig_bad_r, sizeof(fips_sig_bad_r), 0)) {
     ERR_print_errors_fp(stderr);
-    return 1;
+    ADD_FAILURE() << "Tests failed";
   }
-
-  printf("PASS\n");
-  return 0;
 }

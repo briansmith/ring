@@ -45,8 +45,9 @@ add_executable(
 
   ssl_test.cc
 
+  $<TARGET_OBJECTS:gtest_main>
   $<TARGET_OBJECTS:test_support>
 )
 
-target_link_libraries(ssl_test ssl crypto)
+target_link_libraries(ssl_test ssl crypto gtest)
 add_dependencies(all_tests ssl_test)

@@ -207,3 +207,17 @@ add_executable(
 
 target_link_libraries(refcount_test crypto)
 add_dependencies(all_tests refcount_test)
+
+# TODO(davidben): Convert the remaining tests to GTest.
+add_executable(
+  crypto_test
+
+  dh/dh_test.cc
+  dsa/dsa_test.cc
+
+  $<TARGET_OBJECTS:gtest_main>
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(crypto_test crypto gtest)
+add_dependencies(all_tests crypto_test)

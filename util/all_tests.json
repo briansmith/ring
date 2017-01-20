@@ -28,12 +28,11 @@
 	["crypto/cipher/cipher_test", "crypto/cipher/test/cipher_tests.txt"],
 	["crypto/cmac/cmac_test"],
 	["crypto/constant_time_test"],
+	["crypto/crypto_test"],
 	["crypto/curve25519/ed25519_test", "crypto/curve25519/ed25519_tests.txt"],
 	["crypto/curve25519/x25519_test"],
 	["crypto/curve25519/spake25519_test"],
-	["crypto/dh/dh_test"],
 	["crypto/digest/digest_test"],
-	["crypto/dsa/dsa_test"],
 	["crypto/ec/ec_test"],
 	["crypto/ec/example_mul"],
 	["crypto/ec/p256-x86_64_test", "crypto/ec/p256-x86_64_tests.txt"],
@@ -61,6 +60,6 @@
 	["crypto/x509/x509_test"],
 	["crypto/x509v3/tab_test"],
 	["crypto/x509v3/v3name_test"],
-	["decrepit/ripemd/ripemd_test"],
+	["decrepit/decrepit_test"],
 	["ssl/ssl_test"]
 ]

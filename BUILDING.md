@@ -2,7 +2,7 @@
 
 ## Build Prerequisites
 
-  * [CMake](https://cmake.org/download/) 2.8.10 or later is required.
+  * [CMake](https://cmake.org/download/) 2.8.11 or later is required.
 
   * Perl 5.6.1 or later is required. On Windows,
     [Active State Perl](http://www.activestate.com/activeperl/) has been

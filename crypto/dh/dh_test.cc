@@ -61,6 +61,8 @@
 
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
@@ -77,20 +79,16 @@ static bool TestBadY();
 static bool TestASN1();
 static bool TestRFC3526();
 
-int main() {
-  CRYPTO_library_init();
-
+// TODO(davidben): Convert this file to GTest properly.
+TEST(DHTest, AllTests) {
   if (!RunBasicTests() ||
       !RunRFC5114Tests() ||
       !TestBadY() ||
       !TestASN1() ||
       !TestRFC3526()) {
     ERR_print_errors_fp(stderr);
-    return 1;
+    ADD_FAILURE() << "Tests failed.";
   }
-
-  printf("PASS\n");
-  return 0;
 }
 
 static int GenerateCallback(int p, int n, BN_GENCB *arg) {
