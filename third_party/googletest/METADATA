@@ -13,4 +13,5 @@ third_party {
       "Only googletest, not googlemock, is included."
       " "
       "https://github.com/google/googletest/pull/965 was applied."
+      "https://github.com/google/googletest/pull/991 was applied."
 }

@@ -243,6 +243,7 @@
 //   TypeWithSize   - maps an integer to a int type.
 //   Int32, UInt32, Int64, UInt64, TimeInMillis
 //                  - integers of known sizes.
+//   UIntPtr        - unsigned integer with the size of a pointer.
 //   BiggestInt     - the biggest signed integer type.
 //
 // Command-line utilities:
@@ -2522,6 +2523,7 @@ typedef TypeWithSize<4>::Int Int32;
 typedef TypeWithSize<4>::UInt UInt32;
 typedef TypeWithSize<8>::Int Int64;
 typedef TypeWithSize<8>::UInt UInt64;
+typedef TypeWithSize<sizeof(void*)>::UInt UIntPtr;
 typedef TypeWithSize<8>::Int TimeInMillis;  // Represents time in milliseconds.
 
 // Utilities for command line flags and environment variables.
