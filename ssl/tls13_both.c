@@ -58,7 +58,7 @@ int tls13_handshake(SSL_HANDSHAKE *hs) {
       }
 
       case ssl_hs_read_message: {
-        int ret = ssl->method->ssl_get_message(ssl, ssl_dont_hash_message);
+        int ret = ssl->method->ssl_get_message(ssl);
         if (ret <= 0) {
           return ret;
         }

@@ -134,6 +134,10 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
     hs->retry_group = group_id;
   }
 
+  if (!ssl_hash_current_message(ssl)) {
+    return ssl_hs_error;
+  }
+
   hs->received_hello_retry_request = 1;
   hs->tls13_state = state_send_second_client_hello;
   return ssl_hs_ok;
@@ -317,14 +321,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     ssl->s3->short_header = 1;
   }
 
-  /* If there was no HelloRetryRequest, the version negotiation logic has
-   * already hashed the message. */
-  if (hs->received_hello_retry_request &&
-      !ssl_hash_current_message(ssl)) {
-    return ssl_hs_error;
-  }
-
-  if (!tls13_derive_handshake_secrets(hs) ||
+  if (!ssl_hash_current_message(ssl) ||
+      !tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
                              hs->hash_len) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,

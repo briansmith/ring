@@ -298,10 +298,12 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* The PRF hash is now known. Set up the key schedule. */
+  /* The PRF hash is now known. Set up the key schedule and hash the
+   * ClientHello. */
   size_t hash_len =
       EVP_MD_size(ssl_get_handshake_digest(ssl_get_algorithm_prf(ssl)));
-  if (!tls13_init_key_schedule(hs)) {
+  if (!tls13_init_key_schedule(hs) ||
+      !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
   }
 

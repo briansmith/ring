@@ -1224,11 +1224,6 @@ int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg);
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define NAMED_CURVE_TYPE 3
 
-enum ssl_hash_message_t {
-  ssl_dont_hash_message,
-  ssl_hash_message,
-};
-
 typedef struct cert_st {
   EVP_PKEY *privatekey;
 
@@ -1307,7 +1302,7 @@ struct ssl_protocol_method_st {
   /* ssl_get_message reads the next handshake message. On success, it returns
    * one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
    * |ssl->init_num|. Otherwise, it returns <= 0. */
-  int (*ssl_get_message)(SSL *ssl, enum ssl_hash_message_t hash_message);
+  int (*ssl_get_message)(SSL *ssl);
   /* get_current_message sets |*out| to the current handshake message. This
    * includes the protocol-specific message header. */
   void (*get_current_message)(const SSL *ssl, CBS *out);
@@ -1768,7 +1763,7 @@ int ssl_verify_alarm_type(long type);
 
 int ssl3_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
-int ssl3_get_message(SSL *ssl, enum ssl_hash_message_t hash_message);
+int ssl3_get_message(SSL *ssl);
 void ssl3_get_current_message(const SSL *ssl, CBS *out);
 void ssl3_release_current_message(SSL *ssl, int free_buffer);
 
@@ -1854,7 +1849,7 @@ int dtls1_accept(SSL *ssl);
 int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-int dtls1_get_message(SSL *ssl, enum ssl_hash_message_t hash_message);
+int dtls1_get_message(SSL *ssl);
 void dtls1_get_current_message(const SSL *ssl, CBS *out);
 void dtls1_release_current_message(SSL *ssl, int free_buffer);
 int dtls1_dispatch_alert(SSL *ssl);

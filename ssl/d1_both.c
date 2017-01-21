@@ -395,16 +395,11 @@ start:
   return 1;
 }
 
-int dtls1_get_message(SSL *ssl, enum ssl_hash_message_t hash_message) {
+int dtls1_get_message(SSL *ssl) {
   if (ssl->s3->tmp.reuse_message) {
-    /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
-     * ssl_dont_hash_message would have to have been applied to the previous
-     * call. */
-    assert(hash_message == ssl_hash_message);
+    /* There must be a current message. */
     assert(ssl->init_msg != NULL);
-
     ssl->s3->tmp.reuse_message = 0;
-    hash_message = ssl_dont_hash_message;
   } else {
     dtls1_release_current_message(ssl, 0 /* don't free buffer */);
   }
@@ -428,10 +423,6 @@ int dtls1_get_message(SSL *ssl, enum ssl_hash_message_t hash_message) {
   ssl->s3->tmp.message_type = frag->type;
   ssl->init_msg = frag->data + DTLS1_HM_HEADER_LENGTH;
   ssl->init_num = frag->msg_len;
-
-  if (hash_message == ssl_hash_message && !ssl_hash_current_message(ssl)) {
-    return -1;
-  }
 
   ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, frag->data,
                       ssl->init_num + DTLS1_HM_HEADER_LENGTH);
