@@ -180,6 +180,18 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   OPENSSL_free(hs);
 }
 
+int ssl_check_message_type(SSL *ssl, int type) {
+  if (ssl->s3->tmp.message_type != type) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    ERR_add_error_dataf("got type %d, wanted type %d",
+                        ssl->s3->tmp.message_type, type);
+    return 0;
+  }
+
+  return 1;
+}
+
 static int add_record_to_flight(SSL *ssl, uint8_t type, const uint8_t *in,
                                 size_t in_len) {
   /* We'll never add a flight while in the process of writing it out. */
@@ -386,10 +398,13 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
 
 int ssl3_get_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_FINISHED,
-                                         ssl_dont_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_dont_hash_message);
   if (ret <= 0) {
     return ret;
+  }
+
+  if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED)) {
+    return -1;
   }
 
   /* Snapshot the finished hash before incorporating the new message. */
@@ -645,8 +660,7 @@ static int read_v2_client_hello(SSL *ssl, int *out_is_v2_client_hello) {
   return 1;
 }
 
-int ssl3_get_message(SSL *ssl, int msg_type,
-                     enum ssl_hash_message_t hash_message) {
+int ssl3_get_message(SSL *ssl, enum ssl_hash_message_t hash_message) {
 again:
   /* Re-create the handshake buffer if needed. */
   if (ssl->init_buf == NULL) {
@@ -723,12 +737,6 @@ again:
       ssl->s3->tmp.message_type == SSL3_MT_HELLO_REQUEST &&
       ssl->init_num == 0) {
     goto again;
-  }
-
-  if (msg_type >= 0 && ssl->s3->tmp.message_type != msg_type) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    return -1;
   }
 
   /* Feed this message into MAC computation. */

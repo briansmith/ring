@@ -58,7 +58,7 @@ int tls13_handshake(SSL_HANDSHAKE *hs) {
       }
 
       case ssl_hs_read_message: {
-        int ret = ssl->method->ssl_get_message(ssl, -1, ssl_dont_hash_message);
+        int ret = ssl->method->ssl_get_message(ssl, ssl_dont_hash_message);
         if (ret <= 0) {
           return ret;
         }
@@ -396,18 +396,6 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
 err:
   OPENSSL_free(msg);
   return ret;
-}
-
-int tls13_check_message_type(SSL *ssl, int type) {
-  if (ssl->s3->tmp.message_type != type) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    ERR_add_error_dataf("got type %d, wanted type %d",
-                        ssl->s3->tmp.message_type, type);
-    return 0;
-  }
-
-  return 1;
 }
 
 int tls13_process_finished(SSL_HANDSHAKE *hs) {

@@ -150,7 +150,7 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_SERVER_HELLO)) {
+  if (!ssl_check_message_type(ssl, SSL3_MT_SERVER_HELLO)) {
     return ssl_hs_error;
   }
 
@@ -338,7 +338,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_ENCRYPTED_EXTENSIONS)) {
+  if (!ssl_check_message_type(ssl, SSL3_MT_ENCRYPTED_EXTENSIONS)) {
     return ssl_hs_error;
   }
 
@@ -420,7 +420,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
       !tls13_process_certificate(hs, 0 /* certificate required */) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
@@ -433,7 +433,7 @@ static enum ssl_hs_wait_t do_process_server_certificate(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_process_server_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
       !tls13_process_certificate_verify(hs) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
@@ -445,7 +445,7 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
 
 static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_FINISHED) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED) ||
       !tls13_process_finished(hs) ||
       !ssl_hash_current_message(ssl) ||
       /* Update the secret to the master secret and derive traffic keys. */

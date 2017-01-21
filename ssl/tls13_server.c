@@ -90,7 +90,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
 
 static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
+  if (!ssl_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
     return ssl_hs_error;
   }
 
@@ -354,7 +354,7 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_second_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
+  if (!ssl_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
     return ssl_hs_error;
   }
 
@@ -536,7 +536,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
   const int allow_anonymous =
       (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0;
 
-  if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
       !tls13_process_certificate(hs, allow_anonymous) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
@@ -555,7 +555,7 @@ static enum ssl_hs_wait_t do_process_client_certificate_verify(
     return ssl_hs_ok;
   }
 
-  if (!tls13_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
       !tls13_process_certificate_verify(hs) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
@@ -572,7 +572,7 @@ static enum ssl_hs_wait_t do_process_channel_id(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  if (!tls13_check_message_type(ssl, SSL3_MT_CHANNEL_ID) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_CHANNEL_ID) ||
       !tls1_verify_channel_id(ssl) ||
       !ssl_hash_current_message(ssl)) {
     return ssl_hs_error;
@@ -584,7 +584,7 @@ static enum ssl_hs_wait_t do_process_channel_id(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!tls13_check_message_type(ssl, SSL3_MT_FINISHED) ||
+  if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED) ||
       !tls13_process_finished(hs) ||
       !ssl_hash_current_message(ssl) ||
       /* evp_aead_seal keys have already been switched. */

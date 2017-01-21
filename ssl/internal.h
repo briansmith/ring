@@ -1064,6 +1064,10 @@ SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);
 /* ssl_handshake_free releases all memory associated with |hs|. */
 void ssl_handshake_free(SSL_HANDSHAKE *hs);
 
+/* ssl_check_message_type checks if the current message has type |type|. If so
+ * it returns one. Otherwise, it sends an alert and returns zero. */
+int ssl_check_message_type(SSL *ssl, int type);
+
 /* tls13_handshake runs the TLS 1.3 handshake. It returns one on success and <=
  * 0 on error. */
 int tls13_handshake(SSL_HANDSHAKE *hs);
@@ -1076,10 +1080,6 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs);
 /* tls13_post_handshake processes a post-handshake message. It returns one on
  * success and zero on failure. */
 int tls13_post_handshake(SSL *ssl);
-
-/* tls13_check_message_type checks if the current message has type |type|. If so
- * it returns one. Otherwise, it sends an alert and returns zero. */
-int tls13_check_message_type(SSL *ssl, int type);
 
 int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous);
 int tls13_process_certificate_verify(SSL_HANDSHAKE *hs);
@@ -1304,12 +1304,10 @@ struct ssl_protocol_method_st {
   uint16_t (*version_to_wire)(uint16_t version);
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
-  /* ssl_get_message reads the next handshake message. If |msg_type| is not -1,
-   * the message must have the specified type. On success, it returns one and
-   * sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and |ssl->init_num|.
-   * Otherwise, it returns <= 0. */
-  int (*ssl_get_message)(SSL *ssl, int msg_type,
-                         enum ssl_hash_message_t hash_message);
+  /* ssl_get_message reads the next handshake message. On success, it returns
+   * one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
+   * |ssl->init_num|. Otherwise, it returns <= 0. */
+  int (*ssl_get_message)(SSL *ssl, enum ssl_hash_message_t hash_message);
   /* get_current_message sets |*out| to the current handshake message. This
    * includes the protocol-specific message header. */
   void (*get_current_message)(const SSL *ssl, CBS *out);
@@ -1766,8 +1764,7 @@ int ssl_verify_alarm_type(long type);
 
 int ssl3_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
-int ssl3_get_message(SSL *ssl, int msg_type,
-                     enum ssl_hash_message_t hash_message);
+int ssl3_get_message(SSL *ssl, enum ssl_hash_message_t hash_message);
 void ssl3_get_current_message(const SSL *ssl, CBS *out);
 void ssl3_release_current_message(SSL *ssl, int free_buffer);
 
@@ -1853,7 +1850,7 @@ int dtls1_accept(SSL *ssl);
 int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-int dtls1_get_message(SSL *ssl, int mt, enum ssl_hash_message_t hash_message);
+int dtls1_get_message(SSL *ssl, enum ssl_hash_message_t hash_message);
 void dtls1_get_current_message(const SSL *ssl, CBS *out);
 void dtls1_release_current_message(SSL *ssl, int free_buffer);
 int dtls1_dispatch_alert(SSL *ssl);

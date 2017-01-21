@@ -808,7 +808,7 @@ static int dtls1_get_hello_verify(SSL_HANDSHAKE *hs) {
   CBS hello_verify_request, cookie;
   uint16_t server_version;
 
-  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     return ret;
   }
@@ -852,7 +852,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   uint16_t server_wire_version, cipher_suite;
   uint8_t compression_method;
 
-  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     uint32_t err = ERR_peek_error();
     if (ERR_GET_LIB(err) == ERR_LIB_SSL &&
@@ -914,9 +914,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
 
   ssl_clear_tls13_state(hs);
 
-  if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+  if (!ssl_check_message_type(ssl, SSL3_MT_SERVER_HELLO)) {
     return -1;
   }
 
@@ -1053,10 +1051,13 @@ err:
 
 static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret =
-      ssl->method->ssl_get_message(ssl, SSL3_MT_CERTIFICATE, ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     return ret;
+  }
+
+  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE)) {
+    return -1;
   }
 
   CBS cbs;
@@ -1097,7 +1098,7 @@ static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {
   CBS certificate_status, ocsp_response;
   uint8_t status_type;
 
-  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     return ret;
   }
@@ -1150,7 +1151,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
   EC_KEY *ecdh = NULL;
   EC_POINT *srvr_ecpoint = NULL;
 
-  int ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     return ret;
   }
@@ -1380,7 +1381,7 @@ err:
 
 static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int msg_ret = ssl->method->ssl_get_message(ssl, -1, ssl_hash_message);
+  int msg_ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (msg_ret <= 0) {
     return msg_ret;
   }
@@ -1393,9 +1394,7 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
     return 1;
   }
 
-  if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE_REQUEST) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE_REQUEST)) {
     return -1;
   }
 
@@ -1448,10 +1447,13 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
 
 static int ssl3_get_server_hello_done(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_SERVER_HELLO_DONE,
-                                         ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     return ret;
+  }
+
+  if (!ssl_check_message_type(ssl, SSL3_MT_SERVER_HELLO_DONE)) {
+    return -1;
   }
 
   /* ServerHelloDone is empty. */
@@ -1829,10 +1831,13 @@ static int ssl3_send_channel_id(SSL_HANDSHAKE *hs) {
 
 static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = ssl->method->ssl_get_message(ssl, SSL3_MT_NEW_SESSION_TICKET,
-                                         ssl_hash_message);
+  int ret = ssl->method->ssl_get_message(ssl, ssl_hash_message);
   if (ret <= 0) {
     return ret;
+  }
+
+  if (!ssl_check_message_type(ssl, SSL3_MT_NEW_SESSION_TICKET)) {
+    return -1;
   }
 
   CBS new_session_ticket, ticket;

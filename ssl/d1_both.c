@@ -395,8 +395,7 @@ start:
   return 1;
 }
 
-int dtls1_get_message(SSL *ssl, int msg_type,
-                      enum ssl_hash_message_t hash_message) {
+int dtls1_get_message(SSL *ssl, enum ssl_hash_message_t hash_message) {
   if (ssl->s3->tmp.reuse_message) {
     /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
      * ssl_dont_hash_message would have to have been applied to the previous
@@ -430,11 +429,6 @@ int dtls1_get_message(SSL *ssl, int msg_type,
   ssl->init_msg = frag->data + DTLS1_HM_HEADER_LENGTH;
   ssl->init_num = frag->msg_len;
 
-  if (msg_type >= 0 && ssl->s3->tmp.message_type != msg_type) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    return -1;
-  }
   if (hash_message == ssl_hash_message && !ssl_hash_current_message(ssl)) {
     return -1;
   }
