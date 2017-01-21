@@ -1475,6 +1475,10 @@ typedef struct ssl3_state_st {
    * and future messages should use the record layer. */
   unsigned v2_hello_done:1;
 
+  /* is_v2_hello is true if the current handshake message was derived from a
+   * V2ClientHello rather than received from the peer directly. */
+  unsigned is_v2_hello:1;
+
   /* initial_handshake_complete is true if the initial handshake has
    * completed. */
   unsigned initial_handshake_complete:1;
