@@ -1155,15 +1155,6 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
 
 /* SSLKEYLOGFILE functions. */
 
-/* ssl_log_rsa_client_key_exchange logs |premaster|, if logging is enabled for
- * |ssl|. It returns one on success and zero on failure. The entry is identified
- * by the first 8 bytes of |encrypted_premaster|. */
-int ssl_log_rsa_client_key_exchange(const SSL *ssl,
-                                    const uint8_t *encrypted_premaster,
-                                    size_t encrypted_premaster_len,
-                                    const uint8_t *premaster,
-                                    size_t premaster_len);
-
 /* ssl_log_secret logs |secret| with label |label|, if logging is enabled for
  * |ssl|. It returns one on success and zero on failure. */
 int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,

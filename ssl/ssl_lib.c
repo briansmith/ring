@@ -2370,41 +2370,6 @@ static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
   return 1;
 }
 
-int ssl_log_rsa_client_key_exchange(const SSL *ssl,
-                                    const uint8_t *encrypted_premaster,
-                                    size_t encrypted_premaster_len,
-                                    const uint8_t *premaster,
-                                    size_t premaster_len) {
-  if (ssl->ctx->keylog_callback == NULL) {
-    return 1;
-  }
-
-  if (encrypted_premaster_len < 8) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  CBB cbb;
-  uint8_t *out;
-  size_t out_len;
-  if (!CBB_init(&cbb, 4 + 16 + 1 + premaster_len * 2 + 1) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)"RSA ", 4) ||
-      /* Only the first 8 bytes of the encrypted premaster secret are
-       * logged. */
-      !cbb_add_hex(&cbb, encrypted_premaster, 8) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
-      !cbb_add_hex(&cbb, premaster, premaster_len) ||
-      !CBB_add_u8(&cbb, 0 /* NUL */) ||
-      !CBB_finish(&cbb, &out, &out_len)) {
-    CBB_cleanup(&cbb);
-    return 0;
-  }
-
-  ssl->ctx->keylog_callback(ssl, (const char *)out);
-  OPENSSL_free(out);
-  return 1;
-}
-
 int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
                    size_t secret_len) {
   if (ssl->ctx->keylog_callback == NULL) {

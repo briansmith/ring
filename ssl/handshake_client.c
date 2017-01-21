@@ -1578,8 +1578,6 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     if (!CBB_reserve(enc_pms, &ptr, RSA_size(rsa)) ||
         !RSA_encrypt(rsa, &enc_pms_len, ptr, RSA_size(rsa), pms, pms_len,
                      RSA_PKCS1_PADDING) ||
-        /* Log the premaster secret, if logging is enabled. */
-        !ssl_log_rsa_client_key_exchange(ssl, ptr, enc_pms_len, pms, pms_len) ||
         !CBB_did_write(enc_pms, enc_pms_len) ||
         !CBB_flush(&body)) {
       goto err;
