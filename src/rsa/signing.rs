@@ -122,7 +122,6 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
                 let p = try!(p.into_odd_positive());
-                try!(bigint::verify_less_than(&p, &d));
                 if p.bit_length() != q.bit_length() {
                     return Err(error::Unspecified);
                 }
@@ -156,6 +155,10 @@ impl RSAKeyPair {
                 let pq_mod_n =
                     try!(bigint::elem_mul(&q_mod_n, p_mod_n, &n));
                 if !pq_mod_n.is_zero() {
+                    return Err(error::Unspecified);
+                }
+
+                if !(d.bit_length() > half_n_bits) {
                     return Err(error::Unspecified);
                 }
 
