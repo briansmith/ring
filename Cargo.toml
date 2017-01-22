@@ -1,14 +1,15 @@
 [package]
 authors = ["Brian Smith <brian@briansmith.org>"]
 build = "build.rs"
+categories = ["cryptography"]
 description = "Safe, fast, small crypto using Rust."
 documentation = "https://briansmith.org/rustdoc/ring/"
+keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
 version = "0.6.2"
-keywords = [ "crypto", "rand", "signature", "AEAD", "RSA" ]
 
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
