@@ -400,15 +400,15 @@ mod tests {
                 257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
             ];
 
-            let mut more_comprehensive_in_prefix_lenghts = [0; 4096];
+            let mut more_comprehensive_in_prefix_lengths = [0; 4096];
             let in_prefix_lengths;
             if cfg!(debug_assertions) {
                 in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];
             } else {
-                for b in 0..more_comprehensive_in_prefix_lenghts.len() {
-                    more_comprehensive_in_prefix_lenghts[b] = b;
+                for b in 0..more_comprehensive_in_prefix_lengths.len() {
+                    more_comprehensive_in_prefix_lengths[b] = b;
                 }
-                in_prefix_lengths = &more_comprehensive_in_prefix_lenghts[..];
+                in_prefix_lengths = &more_comprehensive_in_prefix_lengths[..];
             }
             let mut o_in_out = vec![123u8; 4096];
 
