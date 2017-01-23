@@ -223,6 +223,7 @@ include = [
     "crypto/test/bn_test_convert.c",
     "crypto/test/bn_test_lib.c",
     "crypto/test/bn_test_lib.h",
+    "crypto/test/bn_test_new.c",
     "crypto/test/bn_test_util.h",
     "crypto/test/file_test.cc",
     "crypto/test/file_test.h",

@@ -24,6 +24,7 @@
 
     <ClCompile Include="test/bn_test_convert.c" />
     <ClCompile Include="test/bn_test_lib.c" />
+    <ClCompile Include="test/bn_test_new.c" />
     <ClCompile Include="test/file_test.cc" />
   </ItemGroup>
   <ItemGroup>

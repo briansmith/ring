@@ -162,9 +162,6 @@ extern "C" {
 
 /* Allocation and freeing. */
 
-/* GFp_BN_new creates a new, allocated BIGNUM and initialises it. */
-OPENSSL_EXPORT BIGNUM *GFp_BN_new(void);
-
 /* GFp_BN_init initialises a stack allocated |BIGNUM|. */
 OPENSSL_EXPORT void GFp_BN_init(BIGNUM *bn);
 

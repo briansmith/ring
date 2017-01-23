@@ -70,20 +70,6 @@
 uint64_t GFp_BN_get_positive_u64(const BIGNUM *bn);
 
 
-BIGNUM *GFp_BN_new(void) {
-  BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
-
-  if (bn == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-
-  memset(bn, 0, sizeof(BIGNUM));
-  bn->flags = BN_FLG_MALLOCED;
-
-  return bn;
-}
-
 void GFp_BN_init(BIGNUM *bn) {
   memset(bn, 0, sizeof(BIGNUM));
 }

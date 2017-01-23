@@ -136,6 +136,9 @@ extern "C" {
 
 /* Basic functions. */
 
+/* GFp_BN_new creates a new, allocated BIGNUM and initialises it. */
+BIGNUM *GFp_BN_new(void);
+
 void GFp_BN_set_negative(BIGNUM *bn, int sign);
 
 /* Conversion functions. */
