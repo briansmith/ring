@@ -54,14 +54,14 @@ NON_PERL_FILES = {
 # to support GTest, these will be determined automatically by looking for files
 # ending with _test.cc.
 CRYPTO_TEST_SOURCES = [
-    'crypto/dh/dh_test.cc',
-    'crypto/dsa/dsa_test.cc',
+    'src/crypto/dh/dh_test.cc',
+    'src/crypto/dsa/dsa_test.cc',
 ]
 DECREPIT_TEST_SOURCES = [
-    'decrepit/decrepit_test.cc',
+    'src/decrepit/decrepit_test.cc',
 ]
 SSL_TEST_SOURCES = [
-    'ssl/ssl_test.cc',
+    'src/ssl/ssl_test.cc',
 ]
 
 PREFIX = None
@@ -688,12 +688,12 @@ def main(platforms):
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': sorted(CRYPTO_TEST_SOURCES +
-                            ['crypto/test/gtest_main.cc']),
+                            ['src/crypto/test/gtest_main.cc']),
       'fuzz': fuzz_c_files,
       'ssl': ssl_c_files,
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
-      'ssl_test': sorted(SSL_TEST_SOURCES + ['crypto/test/gtest_main.cc']),
+      'ssl_test': sorted(SSL_TEST_SOURCES + ['src/crypto/test/gtest_main.cc']),
       'tool': tool_c_files,
       'tool_headers': tool_h_files,
       'test': test_c_files,
