@@ -123,30 +123,6 @@
 const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont);
 
 
-BN_MONT_CTX *GFp_BN_MONT_CTX_new(void) {
-  BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
-
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  memset(ret, 0, sizeof(BN_MONT_CTX));
-  GFp_BN_init(&ret->RR);
-  GFp_BN_init(&ret->N);
-
-  return ret;
-}
-
-void GFp_BN_MONT_CTX_free(BN_MONT_CTX *mont) {
-  if (mont == NULL) {
-    return;
-  }
-
-  GFp_BN_free(&mont->RR);
-  GFp_BN_free(&mont->N);
-  OPENSSL_free(mont);
-}
-
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
