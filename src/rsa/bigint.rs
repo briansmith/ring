@@ -61,9 +61,7 @@ impl<M> AsRef<BN_MONT_CTX> for Modulus<M> {
 }
 
 impl<M> AsRef<BIGNUM> for Modulus<M> {
-    fn as_ref<'a>(&'a self) -> &'a BIGNUM {
-        unsafe { GFp_BN_MONT_CTX_get0_n(self.as_ref()) }
-    }
+    fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.ctx.n() }
 }
 
 impl AsRef<BIGNUM> for OddPositive {
@@ -627,6 +625,8 @@ mod repr_c {
                 n0: [0, 0],
             }
         }
+
+        pub fn n(&self) -> &BIGNUM { &self.N }
     }
 }
 
@@ -669,7 +669,6 @@ extern {
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
 
     fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;
-    fn GFp_BN_MONT_CTX_get0_n<'a>(ctx: &'a BN_MONT_CTX) -> &'a BIGNUM;
 }
 
 #[allow(improper_ctypes)]
