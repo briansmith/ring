@@ -106,7 +106,9 @@ extern crate test as bench;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use(format, print, println, vec)]
+// `ring::test` uses the formatting & printing stuff in non-test mode.
+#[cfg_attr(not(test), macro_use(format, print, println))]
+#[cfg_attr(test, macro_use(format, print, println, vec))]
 extern crate std;
 
 extern crate untrusted;

@@ -157,7 +157,7 @@ mod sysrand {
           not(all(target_os = "linux",
                   not(feature = "dev_urandom_fallback")))))]
 mod urandom {
-    extern crate std;
+    use std;
     use error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
@@ -173,7 +173,7 @@ mod urandom {
 
         match *FILE {
             Ok(ref file) => {
-                use self::std::io::Read;
+                use std::io::Read;
                 (&*file).read_exact(dest).map_err(|_| error::Unspecified)
             },
             Err(_) => Err(error::Unspecified),
@@ -282,7 +282,6 @@ extern {
 #[cfg(test)]
 mod tests {
     use rand;
-    extern crate std;
 
     #[test]
     fn test_system_random_lengths() {
