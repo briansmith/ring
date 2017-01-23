@@ -119,10 +119,6 @@
 #include "../internal.h"
 
 
-/* Avoid -Wmissing-prototypes warnings. */
-const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont);
-
-
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
@@ -177,10 +173,6 @@ int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   }
 
   return 1;
-}
-
-const BIGNUM *GFp_BN_MONT_CTX_get0_n(const BN_MONT_CTX *mont) {
-  return &mont->N;
 }
 
 int GFp_BN_to_mont(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont) {
