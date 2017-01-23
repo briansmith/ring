@@ -229,7 +229,12 @@ mod darwin {
         }
     }
 
-    enum SecRandomRef {}
+    // XXX: This is emulating an opaque type with a non-opaque type. TODO: Fix
+    // this when
+    // https://github.com/rust-lang/rfcs/pull/1861#issuecomment-274613536 is
+    // resolved.
+    #[repr(C)]
+    struct SecRandomRef([u8; 0]);
 
     #[link(name = "Security", kind = "framework")]
     extern {
