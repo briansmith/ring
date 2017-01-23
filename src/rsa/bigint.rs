@@ -57,7 +57,7 @@ pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
 
 
 impl<M> AsRef<BN_MONT_CTX> for Modulus<M> {
-    fn as_ref(&self) -> &BN_MONT_CTX { unsafe { &*self.ctx } }
+    fn as_ref(&self) -> &BN_MONT_CTX { &self.ctx }
 }
 
 impl<M> AsRef<BIGNUM> for Modulus<M> {
@@ -166,17 +166,14 @@ impl OddPositive {
     }
 
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
-        let r = Modulus {
-            ctx: unsafe { GFp_BN_MONT_CTX_new() },
+        let mut r = Modulus {
+            ctx: BN_MONT_CTX::new(),
             ring: PhantomData,
         };
-        if r.ctx.is_null() {
-            return Err(error::Unspecified);
-        }
         // XXX: This makes a copy of `self`'s `BIGNUM`. TODO: change this to a
         // move.
         try!(bssl::map_result(unsafe {
-            GFp_BN_MONT_CTX_set(&mut *r.ctx, self.as_ref())
+            GFp_BN_MONT_CTX_set(&mut r.ctx, self.as_ref())
         }));
         Ok(r)
     }
@@ -217,14 +214,10 @@ pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*.
 pub struct Modulus<M> {
-    ctx: *mut BN_MONT_CTX,
+    ctx: BN_MONT_CTX,
 
     /// The ring ℤ/mℤ for which this is the modulus.
     ring: PhantomData<M>,
-}
-
-impl<M> Drop for Modulus<M> {
-    fn drop(&mut self) { unsafe { GFp_BN_MONT_CTX_free(self.ctx); } }
 }
 
 // `Modulus` uniquely owns and references its contents.
@@ -533,10 +526,6 @@ pub fn elem_verify_equal_consttime<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>)
 /// Nonnegative integers: `Positive` ∪ {0}.
 struct Nonnegative(BIGNUM);
 
-impl Drop for Nonnegative {
-    fn drop(&mut self) { unsafe { GFp_BN_free(&mut self.0); } }
-}
-
 // `Nonnegative` uniquely owns and references its contents.
 unsafe impl Send for Nonnegative {}
 
@@ -585,6 +574,7 @@ impl Nonnegative {
 mod repr_c {
     use core;
     use {c, limb};
+    use libc;
 
     /* Keep in sync with `bignum_st` in openss/bn.h. */
     #[repr(C)]
@@ -594,6 +584,19 @@ mod repr_c {
         dmax: c::int,
         neg: c::int,
         flags: c::int,
+    }
+
+    impl Drop for BIGNUM {
+        fn drop(&mut self) {
+            // Keep this in sync with `GFp_BN_free()`.
+
+            // In particular, this doesn't work for `BN_FLG_STATIC_DATA`.
+            assert_eq!(self.flags, 0);
+            unsafe {
+                let d: *mut limb::Limb = self.d;
+                libc::free(d as *mut libc::c_void)
+            }
+        }
     }
 
     impl BIGNUM {
@@ -615,6 +618,16 @@ mod repr_c {
         N: BIGNUM,
         n0: [limb::Limb; 2],
     }
+
+    impl BN_MONT_CTX {
+        pub fn new() -> Self {
+            BN_MONT_CTX {
+                RR: BIGNUM::zero(),
+                N: BIGNUM::zero(),
+                n0: [0, 0],
+            }
+        }
+    }
 }
 
 pub use self::repr_c::{BIGNUM, BN_MONT_CTX};
@@ -631,7 +644,6 @@ extern {
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
-    fn GFp_BN_free(bn: &mut BIGNUM);
 
     // `r` and `a` may alias.
     fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
@@ -656,10 +668,8 @@ extern {
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
 
-    fn GFp_BN_MONT_CTX_new() -> *mut BN_MONT_CTX;
     fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;
     fn GFp_BN_MONT_CTX_get0_n<'a>(ctx: &'a BN_MONT_CTX) -> &'a BIGNUM;
-    fn GFp_BN_MONT_CTX_free(mont: *mut BN_MONT_CTX);
 }
 
 #[allow(improper_ctypes)]

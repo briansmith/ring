@@ -75,6 +75,9 @@ void GFp_BN_init(BIGNUM *bn) {
 }
 
 void GFp_BN_free(BIGNUM *bn) {
+  /* Keep this in sync with the |Drop| impl for |BIGNUM| in
+   * |ring::rsa::bigint|. */
+
   if (bn == NULL) {
     return;
   }

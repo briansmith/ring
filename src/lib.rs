@@ -96,6 +96,8 @@
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
+extern crate libc;
+
 #[cfg(feature = "internal_benches")]
 extern crate test as bench;
 

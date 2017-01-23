@@ -55,7 +55,7 @@
  * [including the GNU Public Licence.]
  */
 /* ====================================================================
- * Copyright (c) 1998-2001 The OpenSSL Project.  All rights reserved.
+ * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -157,4 +157,28 @@ int GFp_BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
 err:
   OPENSSL_free(buf);
   return (ret);
+}
+
+BN_MONT_CTX *GFp_BN_MONT_CTX_new(void) {
+  BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
+
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  memset(ret, 0, sizeof(BN_MONT_CTX));
+  GFp_BN_init(&ret->RR);
+  GFp_BN_init(&ret->N);
+
+  return ret;
+}
+
+void GFp_BN_MONT_CTX_free(BN_MONT_CTX *mont) {
+  if (mont == NULL) {
+    return;
+  }
+
+  GFp_BN_free(&mont->RR);
+  GFp_BN_free(&mont->N);
+  OPENSSL_free(mont);
 }
