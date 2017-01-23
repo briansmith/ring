@@ -62,32 +62,22 @@
 #include "internal.h"
 
 
-BIGNUM *GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
+int GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
+  assert(ret != NULL); /* Stronger requirement than BoringSSL. */
+
   size_t num_words;
   unsigned m;
   BN_ULONG word = 0;
-  BIGNUM *bn = NULL;
-
-  if (ret == NULL) {
-    ret = bn = GFp_BN_new();
-  }
-
-  if (ret == NULL) {
-    return NULL;
-  }
 
   if (len == 0) {
     ret->top = 0;
-    return ret;
+    return 1;
   }
 
   num_words = ((len - 1) / BN_BYTES) + 1;
   m = (len - 1) % BN_BYTES;
   if (GFp_bn_wexpand(ret, num_words) == NULL) {
-    if (bn) {
-      GFp_BN_free(bn);
-    }
-    return NULL;
+    return 0;
   }
 
   /* |GFp_bn_wexpand| must check bounds on |num_words| to write it into
@@ -108,7 +98,7 @@ BIGNUM *GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   /* need to call this due to clear byte at top if avoiding having the top bit
    * set (-ve number) */
   GFp_bn_correct_top(ret);
-  return ret;
+  return 1;
 }
 
 /* constant_time_select_ulong returns |x| if |v| is 1 and |y| if |v| is 0. Its

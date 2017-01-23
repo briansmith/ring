@@ -211,11 +211,8 @@ OPENSSL_EXPORT void GFp_BN_set_flags(BIGNUM *bn, int flags);
 /* Conversion functions. */
 
 /* GFp_BN_bin2bn sets |*ret| to the value of |len| bytes from |in|, interpreted
- * as a big-endian number, and returns |ret|. If |ret| is NULL then a fresh
- * |BIGNUM| is allocated and returned. It returns NULL on allocation
- * failure. */
-OPENSSL_EXPORT BIGNUM *GFp_BN_bin2bn(const uint8_t *in, size_t len,
-                                     BIGNUM *ret);
+ * as a big-endian number. It returns one on success and zero otherwise. */
+OPENSSL_EXPORT int GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
 
 /* GFp_BN_bn2bin_padded serialises the absolute value of |in| to |out| as a
  * big-endian integer. The integer is padded with leading zeros up to size
