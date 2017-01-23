@@ -110,14 +110,11 @@ impl Positive {
         if input.is_empty() {
             return Err(error::Unspecified);
         }
-        let value = unsafe {
+        let mut r = try!(Nonnegative::zero());
+        try!(bssl::map_result(unsafe {
             GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
-                          core::ptr::null_mut())
-        };
-        if value.is_null() {
-            return Err(error::Unspecified);
-        }
-        let r = Nonnegative(value);
+                          r.as_mut_ref())
+        }));
         if r.is_zero() {
             return Err(error::Unspecified);
         }
@@ -611,8 +608,8 @@ pub use self::repr_c::{BIGNUM, BN_MONT_CTX};
 
 extern {
     fn GFp_BN_new() -> *mut BIGNUM;
-    fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: *mut BIGNUM)
-                     -> *mut BIGNUM;
+    fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
+                     -> c::int;
     fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
                             -> c::int;
     fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
