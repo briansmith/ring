@@ -581,10 +581,33 @@ impl Nonnegative {
     }
 }
 
-#[allow(non_camel_case_types)]
-pub enum BN_MONT_CTX {}
+// These types are defined in their own submodule so that their private
+// components are not accessible.
 
-pub enum BIGNUM {}
+#[allow(non_snake_case)]
+mod repr_c {
+    use {c, limb};
+
+    /* Keep in sync with `bignum_st` in openss/bn.h. */
+    #[repr(C)]
+    pub struct BIGNUM {
+        d: *mut limb::Limb,
+        top: c::int,
+        dmax: c::int,
+        neg: c::int,
+        flags: c::int,
+    }
+
+    /* Keep in sync with `bn_mont_ctx_st` in openss/bn.h. */
+    #[repr(C)]
+    pub struct BN_MONT_CTX {
+        RR: BIGNUM,
+        N: BIGNUM,
+        n0: [limb::Limb; 2],
+    }
+}
+
+pub use self::repr_c::{BIGNUM, BN_MONT_CTX};
 
 extern {
     fn GFp_BN_new() -> *mut BIGNUM;

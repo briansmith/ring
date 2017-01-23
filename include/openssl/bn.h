@@ -450,6 +450,7 @@ OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
 
 /* Private functions */
 
+/* Keep in sync with `BIGNUM` in `ring::rsa::bigint`. */
 struct bignum_st {
   BN_ULONG *d; /* Pointer to an array of 'BN_BITS2' bit chunks in little-endian
                   order. */
@@ -459,6 +460,7 @@ struct bignum_st {
   int flags; /* bitmask of BN_FLG_* values */
 };
 
+/* Keep in sync with `BN_MONT_CTX` in `ring::rsa::bigint` */
 struct bn_mont_ctx_st {
   BIGNUM RR; /* used to convert to montgomery form */
   BIGNUM N;  /* The modulus */
