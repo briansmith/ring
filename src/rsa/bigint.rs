@@ -75,7 +75,7 @@ impl AsRef<BIGNUM> for Positive {
 }
 
 impl AsRef<BIGNUM> for Nonnegative {
-    fn as_ref<'a>(&'a self) -> &'a BIGNUM { unsafe { &*self.0 } }
+    fn as_ref<'a>(&'a self) -> &'a BIGNUM { &self.0 }
 }
 
 
@@ -263,9 +263,9 @@ impl<M> Elem<M> {
 
     pub fn into_elem_decoded(self, m: &Modulus<M>)
                              -> Result<ElemDecoded<M>, error::Unspecified> {
-        let /*mut*/ r = self.value;
+        let mut r = self.value;
         try!(bssl::map_result(unsafe {
-            GFp_BN_from_mont(r.0, r.0, m.as_ref())
+            GFp_BN_from_mont(&mut r.0, &r.0, m.as_ref())
         }));
         Ok(ElemDecoded {
             value: r,
@@ -336,9 +336,9 @@ impl<M> ElemDecoded<M> {
 
 pub fn elem_mul<M>(a: &Elem<M>, b: Elem<M>, m: &Modulus<M>)
                    -> Result<Elem<M>, error::Unspecified> {
-    let /*mut*/ r = b.value;
+    let mut r = b.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
+        GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, m.as_ref())
     }));
     Ok(Elem {
         value: r,
@@ -349,9 +349,9 @@ pub fn elem_mul<M>(a: &Elem<M>, b: Elem<M>, m: &Modulus<M>)
 // `a` * `b` (mod `m`).
 pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
                          -> Result<ElemDecoded<M>, error::Unspecified> {
-    let /*mut*/ r = b.value;
+    let mut r = b.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(r.0, a.value.as_ref(), r.0, m.as_ref())
+        GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, m.as_ref())
     }));
     Ok(ElemDecoded {
         value: r,
@@ -362,9 +362,9 @@ pub fn elem_mul_mixed<M>(a: &Elem<M>, b: ElemDecoded<M>, m: &Modulus<M>)
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &ElemDecoded<Larger>, m: &Modulus<Smaller>)
         -> Result<ElemDecoded<Smaller>, error::Unspecified> {
-    let /*mut*/ r = try!(ElemDecoded::zero());
+    let mut r = try!(ElemDecoded::zero());
     try!(bssl::map_result(unsafe {
-        GFp_BN_reduce_mont(r.value.0, a.value.0, m.as_ref())
+        GFp_BN_reduce_mont(&mut r.value.0, &a.value.0, m.as_ref())
     }));
     Ok(r)
 }
@@ -393,9 +393,10 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 
 pub fn elem_add<M>(a: &ElemDecoded<M>, b: ElemDecoded<M>, m: &Modulus<M>)
                    -> Result<ElemDecoded<M>, error::Unspecified> {
-    let value = b.value;
+    let mut value = b.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_add_quick(value.0, a.value.as_ref(), value.0, m.as_ref())
+        GFp_BN_mod_add_quick(&mut value.0, a.value.as_ref(), &value.0,
+                             m.as_ref())
     }));
     Ok(ElemDecoded {
         value: value,
@@ -405,9 +406,10 @@ pub fn elem_add<M>(a: &ElemDecoded<M>, b: ElemDecoded<M>, m: &Modulus<M>)
 
 pub fn elem_sub<M>(a: ElemDecoded<M>, b: &ElemDecoded<M>, m: &Modulus<M>)
                    -> Result<ElemDecoded<M>, error::Unspecified> {
-    let value = a.value;
+    let mut value = a.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_sub_quick(value.0, value.0, b.value.as_ref(), m.as_ref())
+        GFp_BN_mod_sub_quick(&mut value.0, &value.0, b.value.as_ref(),
+                             m.as_ref())
     }));
     Ok(ElemDecoded {
         value: value,
@@ -478,9 +480,10 @@ pub fn elem_exp_vartime<M>(
 pub fn elem_exp_consttime<M>(
         base: ElemDecoded<M>, exponent: &OddPositive, m: &Modulus<M>)
         -> Result<ElemDecoded<M>, error::Unspecified> {
-    let r = base.value;
+    let mut r = base.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_exp_mont_consttime(r.0, r.0, exponent.as_ref(), m.as_ref())
+        GFp_BN_mod_exp_mont_consttime(&mut r.0, &r.0, exponent.as_ref(),
+                                      m.as_ref())
     }));
     Ok(ElemDecoded {
         value: r,
@@ -528,10 +531,10 @@ pub fn elem_verify_equal_consttime<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>)
 }
 
 /// Nonnegative integers: `Positive` ∪ {0}.
-struct Nonnegative(*mut BIGNUM);
+struct Nonnegative(BIGNUM);
 
 impl Drop for Nonnegative {
-    fn drop(&mut self) { unsafe { GFp_BN_free(self.0); } }
+    fn drop(&mut self) { unsafe { GFp_BN_free(&mut self.0); } }
 }
 
 // `Nonnegative` uniquely owns and references its contents.
@@ -539,10 +542,7 @@ unsafe impl Send for Nonnegative {}
 
 impl Nonnegative {
     fn zero() -> Result<Self, error::Unspecified> {
-        let r = Nonnegative(unsafe { GFp_BN_new() });
-        if r.0.is_null() {
-            return Err(error::Unspecified);
-        }
+        let r = Nonnegative(BIGNUM::zero());
         debug_assert!(r.is_zero());
         Ok(r)
     }
@@ -559,7 +559,7 @@ impl Nonnegative {
 
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
     // this ASAP.
-    unsafe fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut *self.0 }
+    unsafe fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
@@ -583,6 +583,7 @@ impl Nonnegative {
 
 #[allow(non_snake_case)]
 mod repr_c {
+    use core;
     use {c, limb};
 
     /* Keep in sync with `bignum_st` in openss/bn.h. */
@@ -593,6 +594,18 @@ mod repr_c {
         dmax: c::int,
         neg: c::int,
         flags: c::int,
+    }
+
+    impl BIGNUM {
+        pub fn zero() -> Self {
+            BIGNUM {
+                d: core::ptr::null_mut(),
+                top: 0,
+                dmax: 0,
+                neg: 0,
+                flags: 0,
+            }
+        }
     }
 
     /* Keep in sync with `bn_mont_ctx_st` in openss/bn.h. */
@@ -607,7 +620,6 @@ mod repr_c {
 pub use self::repr_c::{BIGNUM, BN_MONT_CTX};
 
 extern {
-    fn GFp_BN_new() -> *mut BIGNUM;
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
     fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
@@ -619,7 +631,7 @@ extern {
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
-    fn GFp_BN_free(bn: *mut BIGNUM);
+    fn GFp_BN_free(bn: &mut BIGNUM);
 
     // `r` and `a` may alias.
     fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
