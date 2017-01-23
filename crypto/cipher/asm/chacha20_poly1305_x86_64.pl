@@ -2364,8 +2364,16 @@ seal_avx2_short_tail:
 ";
 }
 
-$code =~ s/\`([^\`]*)\`/eval $1/gem;
-print "#if !defined(_WIN32)\n";
-print $code;
-print "#endif\n";
+if (!$win64) {
+  $code =~ s/\`([^\`]*)\`/eval $1/gem;
+  print $code;
+} else {
+  print <<___;
+.globl dummy_chacha20_poly1305_asm
+.type dummy_chacha20_poly1305_asm,\@abi-omnipotent
+dummy_chacha20_poly1305_asm:
+    ret
+___
+}
+
 close STDOUT;
