@@ -225,6 +225,8 @@ class Bazel(object):
       self.PrintVariableSection(
           out, 'ssl_internal_headers', files['ssl_internal_headers'])
       self.PrintVariableSection(out, 'ssl_sources', files['ssl'])
+      self.PrintVariableSection(out, 'ssl_c_sources', files['ssl_c'])
+      self.PrintVariableSection(out, 'ssl_cc_sources', files['ssl_cc'])
       self.PrintVariableSection(out, 'crypto_headers', files['crypto_headers'])
       self.PrintVariableSection(
           out, 'crypto_internal_headers', files['crypto_internal_headers'])
@@ -624,7 +626,7 @@ def WriteAsmFiles(perlasms):
 
 def main(platforms):
   crypto_c_files = FindCFiles(os.path.join('src', 'crypto'), NoTests)
-  ssl_c_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
+  ssl_source_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
   tool_c_files = FindCFiles(os.path.join('src', 'tool'), NoTests)
   tool_h_files = FindHeaderFiles(os.path.join('src', 'tool'), AllFiles)
 
@@ -690,7 +692,9 @@ def main(platforms):
       'crypto_test': sorted(CRYPTO_TEST_SOURCES +
                             ['src/crypto/test/gtest_main.cc']),
       'fuzz': fuzz_c_files,
-      'ssl': ssl_c_files,
+      'ssl': ssl_source_files,
+      'ssl_c': [s for s in ssl_source_files if s.endswith('.c')],
+      'ssl_cc': [s for s in ssl_source_files if s.endswith('.cc')],
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
       'ssl_test': sorted(SSL_TEST_SOURCES + ['src/crypto/test/gtest_main.cc']),

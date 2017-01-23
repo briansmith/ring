@@ -25,7 +25,8 @@ load(
     "crypto_sources_mac_x86_64",
     "ssl_headers",
     "ssl_internal_headers",
-    "ssl_sources",
+    "ssl_c_sources",
+    "ssl_cc_sources",
     "tool_sources",
     "tool_headers",
 )
@@ -103,11 +104,20 @@ cc_library(
 
 cc_library(
     name = "ssl",
-    srcs = ssl_sources + ssl_internal_headers,
+    srcs = ssl_c_sources + ssl_internal_headers,
     hdrs = ssl_headers,
     copts = boringssl_copts_c11,
     includes = ["src/include"],
     visibility = ["//visibility:public"],
+    deps = [":crypto", ":ssl_cc"],
+)
+
+cc_library(
+    name = "ssl_cc",
+    srcs = ssl_cc_sources + ssl_internal_headers,
+    hdrs = ssl_headers,
+    copts = boringssl_copts,
+    includes = ["src/include"],
     deps = [":crypto"],
 )
 
