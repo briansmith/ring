@@ -1,0 +1,37 @@
+From 321b79f10adec70f0e3922869668998f34be4326 Mon Sep 17 00:00:00 2001
+From: Brian Smith <brian@briansmith.org>
+Date: Tue, 24 Jan 2017 11:54:54 -1000
+Subject: [PATCH] Allow static detection of NEON on non-Android ARMv7 targets.
+
+This should allow armv7-apple-ios targets to use NEON without any
+runtime checks.
+---
+ include/openssl/cpu.h | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/include/openssl/cpu.h b/include/openssl/cpu.h
+index 04926e31c237faa0b4de246abdb7284e39ba5cb9..9583b867eba3cec544762cded826aaf2f77d4cd1 100644
+--- a/include/openssl/cpu.h
++++ b/include/openssl/cpu.h
+@@ -118,12 +118,12 @@ OPENSSL_EXPORT char GFp_is_NEON_capable_at_runtime(void);
+ /* GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
+  * this is known statically then it returns one immediately. */
+ static inline int GFp_is_NEON_capable(void) {
+-  /* Only statically skip the runtime lookup on aarch64. On arm, one CPU is
+-   * known to have a broken NEON unit which is known to fail with on some
+-   * hand-written NEON assembly. For now, continue to apply the workaround even
+-   * when the compiler is instructed to freely emit NEON code. See
+-   * https://crbug.com/341598 and https://crbug.com/606629. */
+-#if defined(__ARM_NEON__) && !defined(OPENSSL_ARM)
++  /* On 32-bit ARM, one CPU is known to have a broken NEON unit which is known
++   * to fail with on some hand-written NEON assembly. Assume that non-Android
++   * applications will not use that buggy CPU but still support Android users
++   * that do, even when the compiler is instructed to freely emit NEON code.
++   * See https://crbug.com/341598 and https://crbug.com/606629. */
++#if defined(__ARM_NEON__) && (!defined(OPENSSL_ARM) || !defined(__ANROID__))
+   return 1;
+ #else
+   return GFp_is_NEON_capable_at_runtime();
+-- 
+2.9.3.windows.1
+
