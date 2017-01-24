@@ -28,6 +28,7 @@ add_library(
   ssl_rsa_cc.cc
   ssl_session.c
   ssl_stat.c
+  ssl_x509.c
   t1_enc.c
   t1_lib.c
   tls_method.c
