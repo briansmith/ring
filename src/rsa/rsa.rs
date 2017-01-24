@@ -66,7 +66,7 @@ fn parse_public_key(input: untrusted::Input)
 
 fn check_public_modulus_and_exponent(
         n: bigint::Positive, e: bigint::Positive, n_min_bits: bits::BitLength,
-        n_max_bits: bits::BitLength)
+        n_max_bits: bits::BitLength, e_min_bits: bits::BitLength)
         -> Result<(bigint::OddPositive, bigint::PublicExponent),
                   error::Unspecified> {
     // This is an incomplete implementation of NIST SP800-56Br1 Section
@@ -102,13 +102,13 @@ fn check_public_modulus_and_exponent(
         return Err(error::Unspecified);
     }
 
-    // Step 2 / Step b. XXX: FIPS 186-4 seems to indicate that the minimum
-    // exponent value is 2**16 + 1, but it isn't clear if this is just for
-    // signing or also for verification. We support exponents of 3 and larger
-    // for compatibility with other commonly-used crypto libraries.
-    //
+    // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
+    // `e > 2**16`, so the requirement is met if and only if `e_min_bits >= 17`.
+    // We enforce this when signing, but are more flexible in verification, for
+    // compatibility.
+    debug_assert!(e_min_bits >= bits::BitLength::from_usize_bits(2));
     let e_bits = e.bit_length();
-    if e_bits < bits::BitLength::from_usize_bits(2) {
+    if e_bits < e_min_bits {
         return Err(error::Unspecified);
     }
 
@@ -118,6 +118,7 @@ fn check_public_modulus_and_exponent(
     // If `n` is less than `e` then somebody has probably accidentally swapped
     // them. The largest acceptable `e` is smaller than the smallest acceptable
     // `n`, so no additional checks need to be done.
+    debug_assert!(e_min_bits < bigint::PUBLIC_EXPONENT_MAX_BITS);
     debug_assert!(bigint::PUBLIC_EXPONENT_MAX_BITS < N_MIN_BITS);
 
     // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
