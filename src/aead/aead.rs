@@ -78,10 +78,10 @@ impl OpeningKey {
 /// Authenticates and decrypts (“opens”) data in place. When
 ///
 /// The input is `in_out[in_prefix_len..]`; i.e. the input is the part of
-/// `in_out` after the prefix. When `open_in_place` returns `Ok(out_len)`, the
-/// decrypted output is `in_out[..out_len]`; i.e. the output has been written
-/// over the top of the prefix and the input. To put it a different way, the
-/// output overwrites the input, shifted by `in_prefix_len` bytes. To have the
+/// `in_out` after the prefix. When `open_in_place` returns `Ok(plaintext)`,
+/// the decrypted output is `plaintext`, which is
+/// `&mut in_out[..plaintext.len()]`. To put it a different way, the output
+/// overwrites the input, shifted by `in_prefix_len` bytes. To have the
 /// output overwrite the input without shifting, pass 0 as `in_prefix_len`.
 /// (The input/output buffer is expressed this way because Rust's type system
 /// does not allow us to have two slices, one mutable and one immutable, that
@@ -90,9 +90,9 @@ impl OpeningKey {
 /// C analog: `EVP_AEAD_CTX_open`
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
-pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
-                     in_out: &mut [u8], ad: &[u8])
-                     -> Result<usize, error::Unspecified> {
+pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
+                         in_out: &'a mut [u8], ad: &[u8])
+                         -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let ciphertext_and_tag_len =
         try!(in_out.len().checked_sub(in_prefix_len)
@@ -117,7 +117,8 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
         }
         return Err(error::Unspecified);
     }
-    Ok(ciphertext_len) // `ciphertext_len` is also the plaintext length.
+    // `ciphertext_len` is also the plaintext length.
+    Ok(&mut in_out[..ciphertext_len])
 }
 
 /// A key for encrypting and signing (“sealing”) data.
@@ -424,9 +425,7 @@ mod tests {
                     None => {
                         assert_eq!(Ok(ct.len()), s_result);
                         assert_eq!(&ct[..], &s_in_out[..ct.len()]);
-                        assert_eq!(Ok(plaintext.len()), o_result);
-                        assert_eq!(&plaintext[..],
-                                   &o_in_out[..plaintext.len()]);
+                        assert_eq!(&plaintext[..], o_result.unwrap());
                     },
                     Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
                         assert_eq!(Err(error::Unspecified), s_result);
