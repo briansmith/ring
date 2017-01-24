@@ -126,7 +126,7 @@ void SSL_AEAD_CTX_free(SSL_AEAD_CTX *aead) {
   OPENSSL_free(aead);
 }
 
-size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *aead) {
+size_t SSL_AEAD_CTX_explicit_nonce_len(const SSL_AEAD_CTX *aead) {
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   aead = NULL;
 #endif
@@ -137,7 +137,7 @@ size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *aead) {
   return 0;
 }
 
-size_t SSL_AEAD_CTX_max_overhead(SSL_AEAD_CTX *aead) {
+size_t SSL_AEAD_CTX_max_overhead(const SSL_AEAD_CTX *aead) {
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   aead = NULL;
 #endif

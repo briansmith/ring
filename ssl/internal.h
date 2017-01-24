@@ -307,11 +307,11 @@ void SSL_AEAD_CTX_free(SSL_AEAD_CTX *ctx);
 
 /* SSL_AEAD_CTX_explicit_nonce_len returns the length of the explicit nonce for
  * |ctx|, if any. |ctx| may be NULL to denote the null cipher. */
-size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *ctx);
+size_t SSL_AEAD_CTX_explicit_nonce_len(const SSL_AEAD_CTX *ctx);
 
 /* SSL_AEAD_CTX_max_overhead returns the maximum overhead of calling
  * |SSL_AEAD_CTX_seal|. |ctx| may be NULL to denote the null cipher. */
-size_t SSL_AEAD_CTX_max_overhead(SSL_AEAD_CTX *ctx);
+size_t SSL_AEAD_CTX_max_overhead(const SSL_AEAD_CTX *ctx);
 
 /* SSL_AEAD_CTX_open authenticates and decrypts |in_len| bytes from |in|
  * in-place. On success, it sets |*out| to the plaintext in |in| and returns
@@ -407,12 +407,11 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
  * use this to align buffers.
  *
  * Note when TLS 1.0 CBC record-splitting is enabled, this includes the one byte
- * record and is the offset into second record's ciphertext. Thus this value may
- * differ from |ssl_record_prefix_len| and sealing a small record may result in
- * a smaller output than this value.
+ * record and is the offset into second record's ciphertext. Thus sealing a
+ * small record may result in a smaller output than this value.
  *
- * TODO(davidben): Expose this as part of public API once the high-level
- * buffer-free APIs are available. */
+ * TODO(davidben): Is this alignment valuable? Record-splitting makes this a
+ * mess. */
 size_t ssl_seal_align_prefix_len(const SSL *ssl);
 
 /* tls_seal_record seals a new record of type |type| and body |in| and writes it
@@ -434,8 +433,14 @@ enum dtls1_use_epoch_t {
   dtls1_use_current_epoch,
 };
 
+/* dtls_seal_prefix_len returns the number of bytes of prefix to reserve in
+ * front of the plaintext when sealing a record in-place. */
+size_t dtls_seal_prefix_len(const SSL *ssl, enum dtls1_use_epoch_t use_epoch);
+
 /* dtls_seal_record implements |tls_seal_record| for DTLS. |use_epoch| selects
- * which epoch's cipher state to use. */
+ * which epoch's cipher state to use. Unlike |tls_seal_record|, |in| and |out|
+ * may alias but, if they do, |in| must be exactly |dtls_seal_prefix_len| bytes
+ * ahead of |out|. */
 int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      uint8_t type, const uint8_t *in, size_t in_len,
                      enum dtls1_use_epoch_t use_epoch);
