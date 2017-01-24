@@ -449,20 +449,6 @@ int ssl_has_certificate(const SSL *ssl) {
   return ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl);
 }
 
-X509 *ssl_parse_x509(CBS *cbs) {
-  if (CBS_len(cbs) > LONG_MAX) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return NULL;
-  }
-  const uint8_t *ptr = CBS_data(cbs);
-  X509 *ret = d2i_X509(NULL, &ptr, (long)CBS_len(cbs));
-  if (ret == NULL) {
-    return NULL;
-  }
-  CBS_skip(cbs, ptr - CBS_data(cbs));
-  return ret;
-}
-
 STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
                                               EVP_PKEY **out_pubkey,
                                               uint8_t *out_leaf_sha256,

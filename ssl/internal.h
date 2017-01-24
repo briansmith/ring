@@ -742,10 +742,6 @@ void ssl_write_buffer_clear(SSL *ssl);
  * configured and zero otherwise. */
 int ssl_has_certificate(const SSL *ssl);
 
-/* ssl_parse_x509 parses a X509 certificate from |cbs|. It returns NULL
- * on error. */
-X509 *ssl_parse_x509(CBS *cbs);
-
 /* ssl_session_x509_cache_objects fills out |sess->x509_peer| and
  * |sess->x509_chain| from |sess->certs| and erases
  * |sess->x509_chain_without_leaf|. It returns one on success or zero on
