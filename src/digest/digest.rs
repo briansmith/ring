@@ -789,8 +789,16 @@ mod tests {
 
                     #[test]
                     #[should_panic]
-                    fn too_long_input_test() {
-                        super::too_long_input_test(&digest::$algorithm_name);
+                    fn too_long_input_test_block() {
+                        super::too_long_input_test_block(
+                            &digest::$algorithm_name);
+                    }
+
+                    #[test]
+                    #[should_panic]
+                    fn too_long_input_test_byte() {
+                        super::too_long_input_test_byte(
+                            &digest::$algorithm_name);
                     }
                 }
             }
@@ -803,10 +811,18 @@ mod tests {
             let _ = context.finish(); // no panic
         }
 
-        fn too_long_input_test(alg: &'static digest::Algorithm) {
+        fn too_long_input_test_block(alg: &'static digest::Algorithm) {
             let mut context = nearly_full_context(alg);
             let next_input = vec![0u8; alg.block_len];
             context.update(&next_input);
+            let _ = context.finish(); // should panic
+        }
+
+        fn too_long_input_test_byte(alg: &'static digest::Algorithm) {
+            let mut context = nearly_full_context(alg);
+            let next_input = vec![0u8; alg.block_len - 1];
+            context.update(&next_input); // no panic
+            context.update(&[0]);
             let _ = context.finish(); // should panic
         }
 
