@@ -110,9 +110,13 @@ impl RSAKeyPair {
                 // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
                 // Also, this limit might help with memory management decisions
                 // later.
+                //
+                // Validate e >= 2**16 = 65536, which, since e is odd, implies
+                // e >= 65537.
                 let (n, e) = try!(super::check_public_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
-                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS));
+                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
+                    bits::BitLength::from_usize_bits(17)));
 
                 let d = try!(d.into_odd_positive());
                 try!(bigint::verify_less_than(&d, &n));
@@ -449,7 +453,8 @@ mod tests {
 
             let private_key = untrusted::Input::from(&private_key);
             let key_pair = signature::RSAKeyPair::from_der(private_key);
-            if key_pair.is_err() && result == "Fail-Invalid-Key" {
+            if result == "Fail-Invalid-Key" {
+                assert!(key_pair.is_err());
                 return Ok(());
             }
             let key_pair = key_pair.unwrap();
