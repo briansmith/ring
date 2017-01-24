@@ -26,9 +26,6 @@
 #include "internal.h"
 
 
-OPENSSL_COMPILE_ASSERT(EVP_AEAD_MAX_NONCE_LENGTH < 256,
-                       variable_nonce_len_doesnt_fit_in_uint8_t);
-
 SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
                                uint16_t version, const SSL_CIPHER *cipher,
                                const uint8_t *enc_key, size_t enc_key_len,
@@ -78,6 +75,8 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
   }
 
   assert(EVP_AEAD_nonce_length(aead) <= EVP_AEAD_MAX_NONCE_LENGTH);
+  OPENSSL_COMPILE_ASSERT(EVP_AEAD_MAX_NONCE_LENGTH < 256,
+                         variable_nonce_len_doesnt_fit_in_uint8_t);
   aead_ctx->variable_nonce_len = (uint8_t)EVP_AEAD_nonce_length(aead);
   if (mac_key_len == 0) {
     assert(fixed_iv_len <= sizeof(aead_ctx->fixed_nonce));

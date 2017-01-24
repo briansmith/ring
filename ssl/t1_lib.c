@@ -3025,8 +3025,6 @@ int ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
   return 1;
 }
 
-OPENSSL_COMPILE_ASSERT(kNumExtensions <= sizeof(uint32_t) * 8, too_many_bits);
-
 static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
                                        int *out_alert) {
   SSL *const ssl = hs->ssl;
@@ -3065,6 +3063,9 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
       }
       continue;
     }
+
+    OPENSSL_COMPILE_ASSERT(kNumExtensions <= sizeof(hs->extensions.sent) * 8,
+                           too_many_bits);
 
     if (!(hs->extensions.sent & (1u << ext_index)) &&
         type != TLSEXT_TYPE_renegotiate) {
