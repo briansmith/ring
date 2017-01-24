@@ -66,6 +66,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WarningLevel>EnableAllWarnings</WarningLevel>
+      <AdditionalOptions>/utf-8</AdditionalOptions>
     </ClCompile>
     <Lib>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
