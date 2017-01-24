@@ -774,47 +774,55 @@ mod tests {
     }
 
     mod max_input {
+        use super::super::super::digest;
+
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {
                 #[allow(non_snake_case)]
                 mod $algorithm_name {
                     use super::super::super::super::digest;
 
-                    fn nearly_full_context() -> digest::Context {
-                        // All implementations currently support up to 2^64-1 bits
-                        // of input; according to the spec, SHA-384 and SHA-512
-                        // support up to 2^128-1, but that's not implemented yet.
-                        let max_bytes = 1u64 << (64 - 3);
-                        let max_blocks =
-                            max_bytes / (digest::$algorithm_name.block_len as u64);
-                        digest::Context {
-                            algorithm: &digest::$algorithm_name,
-                            state: digest::$algorithm_name.initial_state,
-                            completed_data_blocks: max_blocks - 1,
-                            pending: [0u8; digest::MAX_BLOCK_LEN],
-                            num_pending: 0,
-                        }
-                    }
-
                     #[test]
                     fn max_input_test() {
-                        let mut context = nearly_full_context();
-                        let next_input =
-                            vec![0u8; digest::$algorithm_name.block_len - 1];
-                        context.update(&next_input);
-                        let _ = context.finish(); // no panic
+                        super::max_input_test(&digest::$algorithm_name);
                     }
 
                     #[test]
                     #[should_panic]
                     fn too_long_input_test() {
-                        let mut context = nearly_full_context();
-                        let next_input =
-                            vec![0u8; digest::$algorithm_name.block_len];
-                        context.update(&next_input);
-                        let _ = context.finish(); // should panic
+                        super::too_long_input_test(&digest::$algorithm_name);
                     }
                 }
+            }
+        }
+
+        fn max_input_test(alg: &'static digest::Algorithm) {
+            let mut context = nearly_full_context(alg);
+            let next_input = vec![0u8; alg.block_len - 1];
+            context.update(&next_input);
+            let _ = context.finish(); // no panic
+        }
+
+        fn too_long_input_test(alg: &'static digest::Algorithm) {
+            let mut context = nearly_full_context(alg);
+            let next_input = vec![0u8; alg.block_len];
+            context.update(&next_input);
+            let _ = context.finish(); // should panic
+        }
+
+        fn nearly_full_context(alg: &'static digest::Algorithm)
+                               -> digest::Context {
+            // All implementations currently support up to 2^64-1 bits
+            // of input; according to the spec, SHA-384 and SHA-512
+            // support up to 2^128-1, but that's not implemented yet.
+            let max_bytes = 1u64 << (64 - 3);
+            let max_blocks = max_bytes / (alg.block_len as u64);
+            digest::Context {
+                algorithm: alg,
+                state: alg.initial_state,
+                completed_data_blocks: max_blocks - 1,
+                pending: [0u8; digest::MAX_BLOCK_LEN],
+                num_pending: 0,
             }
         }
 
