@@ -118,12 +118,12 @@ OPENSSL_EXPORT char GFp_is_NEON_capable_at_runtime(void);
 /* GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
  * this is known statically then it returns one immediately. */
 static inline int GFp_is_NEON_capable(void) {
-  /* Only statically skip the runtime lookup on aarch64. On arm, one CPU is
-   * known to have a broken NEON unit which is known to fail with on some
-   * hand-written NEON assembly. For now, continue to apply the workaround even
-   * when the compiler is instructed to freely emit NEON code. See
-   * https://crbug.com/341598 and https://crbug.com/606629. */
-#if defined(__ARM_NEON__) && !defined(OPENSSL_ARM)
+  /* On 32-bit ARM, one CPU is known to have a broken NEON unit which is known
+   * to fail with on some hand-written NEON assembly. Assume that non-Android
+   * applications will not use that buggy CPU but still support Android users
+   * that do, even when the compiler is instructed to freely emit NEON code.
+   * See https://crbug.com/341598 and https://crbug.com/606629. */
+#if defined(__ARM_NEON__) && (!defined(OPENSSL_ARM) || !defined(__ANDROID__))
   return 1;
 #else
   return GFp_is_NEON_capable_at_runtime();
