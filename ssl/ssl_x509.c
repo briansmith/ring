@@ -281,20 +281,21 @@ void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth) {
   X509_VERIFY_PARAM_set_depth(ctx->param, depth);
 }
 
-X509 *SSL_get_certificate(const SSL *ssl) {
-  if (ssl->cert != NULL) {
-    return ssl->cert->x509_leaf;
+static X509 *ssl_cert_get0_leaf(CERT *cert) {
+  if (cert->x509_leaf == NULL &&
+      !ssl_cert_cache_leaf_cert(cert)) {
+    return NULL;
   }
 
-  return NULL;
+  return cert->x509_leaf;
+}
+
+X509 *SSL_get_certificate(const SSL *ssl) {
+  return ssl_cert_get0_leaf(ssl->cert);
 }
 
 X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
-  if (ctx->cert != NULL) {
-    return ctx->cert->x509_leaf;
-  }
-
-  return NULL;
+  return ssl_cert_get0_leaf(ctx->cert);
 }
 
 int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx) {

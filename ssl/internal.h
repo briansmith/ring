@@ -773,10 +773,6 @@ STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
                                               CBS *cbs,
                                               CRYPTO_BUFFER_POOL *pool);
 
-/* ssl_add_cert_to_cbb adds |x509| to |cbb|. It returns one on success and zero
- * on error. */
-int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509);
-
 /* ssl_add_cert_chain adds |ssl|'s certificate chain to |cbb| in the format used
  * by a TLS Certificate message. If there is no certificate chain, it emits an
  * empty certificate list. It returns one on success and zero on error. */
@@ -1235,8 +1231,24 @@ enum ssl_hash_message_t {
 
 typedef struct cert_st {
   EVP_PKEY *privatekey;
-  X509 *x509_leaf;
+
+  /* chain contains the certificate chain, with the leaf at the beginning. The
+   * first element of |chain| may be NULL to indicate that the leaf certificate
+   * has not yet been set.
+   *   If |chain| != NULL -> len(chain) >= 1
+   *   If |chain[0]| == NULL -> len(chain) >= 2.
+   *   |chain[1..]| != NULL */
+  STACK_OF(CRYPTO_BUFFER) *chain;
+
+  /* x509_chain may contain a parsed copy of |chain[1..]|. This is only used as
+   * a cache in order to implement “get0” functions that return a non-owning
+   * pointer to the certificate chain. */
   STACK_OF(X509) *x509_chain;
+
+  /* x509_leaf may contain a parsed copy of the first element of |chain|. This
+   * is only used as a cache in order to implement “get0” functions that return
+   * a non-owning pointer to the certificate chain. */
+  X509 *x509_leaf;
 
   /* key_method, if non-NULL, is a set of callbacks to call for private key
    * operations. */
@@ -1685,6 +1697,10 @@ CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
+CRYPTO_BUFFER *x509_to_buffer(X509 *x509);
+void ssl_cert_flush_cached_x509_leaf(CERT *cert);
+int ssl_cert_cache_leaf_cert(CERT *cert);
+int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
 

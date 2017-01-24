@@ -453,9 +453,11 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   }
 
   CERT *cert = ssl->cert;
+  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(cert->chain, 0);
   CBB leaf, extensions;
   if (!CBB_add_u24_length_prefixed(&certificate_list, &leaf) ||
-      !ssl_add_cert_to_cbb(&leaf, cert->x509_leaf) ||
+      !CBB_add_bytes(&leaf, CRYPTO_BUFFER_data(leaf_buf),
+                     CRYPTO_BUFFER_len(leaf_buf)) ||
       !CBB_add_u16_length_prefixed(&certificate_list, &extensions)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -489,10 +491,12 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  for (size_t i = 0; i < sk_X509_num(cert->x509_chain); i++) {
+  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain); i++) {
+    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(cert->chain, i);
     CBB child;
     if (!CBB_add_u24_length_prefixed(&certificate_list, &child) ||
-        !ssl_add_cert_to_cbb(&child, sk_X509_value(cert->x509_chain, i)) ||
+        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(cert_buf),
+                       CRYPTO_BUFFER_len(cert_buf)) ||
         !CBB_add_u16(&certificate_list, 0 /* no extensions */)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;

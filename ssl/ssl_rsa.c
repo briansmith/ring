@@ -134,16 +134,13 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
     return 0;
   }
 
-  X509 *x509_leaf = c->x509_leaf;
-  if (x509_leaf != NULL) {
-    /* Sanity-check that the private key and the certificate match, unless the
-     * key is opaque (in case of, say, a smartcard). */
-    if (!EVP_PKEY_is_opaque(pkey) &&
-        !X509_check_private_key(x509_leaf, pkey)) {
-      X509_free(c->x509_leaf);
-      c->x509_leaf = NULL;
-      return 0;
-    }
+  if (c->chain != NULL &&
+      sk_CRYPTO_BUFFER_value(c->chain, 0) != NULL &&
+      /* Sanity-check that the private key and the certificate match, unless
+       * the key is opaque (in case of, say, a smartcard). */
+      !EVP_PKEY_is_opaque(pkey) &&
+      !ssl_cert_check_private_key(c, pkey)) {
+    return 0;
   }
 
   EVP_PKEY_free(c->privatekey);
@@ -154,15 +151,12 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
 }
 
 int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
-  int ret;
-
   if (pkey == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  ret = ssl_set_pkey(ssl->cert, pkey);
-  return ret;
+  return ssl_set_pkey(ssl->cert, pkey);
 }
 
 int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
@@ -237,9 +231,31 @@ static int ssl_set_cert(CERT *c, X509 *x) {
 
   EVP_PKEY_free(pkey);
 
-  X509_free(c->x509_leaf);
-  X509_up_ref(x);
-  c->x509_leaf = x;
+  CRYPTO_BUFFER *buffer = x509_to_buffer(x);
+  if (!buffer) {
+    return 0;
+  }
+
+  ssl_cert_flush_cached_x509_leaf(c);
+
+  if (c->chain != NULL) {
+    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(c->chain, 0));
+    sk_CRYPTO_BUFFER_set(c->chain, 0, buffer);
+    return 1;
+  }
+
+  c->chain = sk_CRYPTO_BUFFER_new_null();
+  if (c->chain == NULL) {
+    CRYPTO_BUFFER_free(buffer);
+    return 0;
+  }
+
+  if (!sk_CRYPTO_BUFFER_push(c->chain, buffer)) {
+    CRYPTO_BUFFER_free(buffer);
+    sk_CRYPTO_BUFFER_free(c->chain);
+    c->chain = NULL;
+    return 0;
+  }
 
   return 1;
 }

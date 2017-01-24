@@ -152,6 +152,11 @@ CERT *ssl_cert_new(void) {
   return ret;
 }
 
+static CRYPTO_BUFFER *buffer_up_ref(CRYPTO_BUFFER *buffer) {
+  CRYPTO_BUFFER_up_ref(buffer);
+  return buffer;
+}
+
 CERT *ssl_cert_dup(CERT *cert) {
   CERT *ret = OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
@@ -160,22 +165,12 @@ CERT *ssl_cert_dup(CERT *cert) {
   }
   OPENSSL_memset(ret, 0, sizeof(CERT));
 
-  if (cert->x509_leaf != NULL) {
-    X509_up_ref(cert->x509_leaf);
-    ret->x509_leaf = cert->x509_leaf;
-  }
+  ret->chain = sk_CRYPTO_BUFFER_deep_copy(cert->chain, buffer_up_ref,
+                                          CRYPTO_BUFFER_free);
 
   if (cert->privatekey != NULL) {
     EVP_PKEY_up_ref(cert->privatekey);
     ret->privatekey = cert->privatekey;
-  }
-
-  if (cert->x509_chain) {
-    ret->x509_chain = X509_chain_up_ref(cert->x509_chain);
-    if (!ret->x509_chain) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
   }
 
   ret->key_method = cert->key_method;
@@ -213,18 +208,29 @@ err:
   return NULL;
 }
 
+void ssl_cert_flush_cached_x509_leaf(CERT *cert) {
+  X509_free(cert->x509_leaf);
+  cert->x509_leaf = NULL;
+}
+
+static void ssl_cert_flush_cached_x509_chain(CERT *cert) {
+  sk_X509_pop_free(cert->x509_chain, X509_free);
+  cert->x509_chain = NULL;
+}
+
 /* Free up and clear all certificates and chains */
 void ssl_cert_clear_certs(CERT *cert) {
   if (cert == NULL) {
     return;
   }
 
-  X509_free(cert->x509_leaf);
-  cert->x509_leaf = NULL;
+  ssl_cert_flush_cached_x509_leaf(cert);
+  ssl_cert_flush_cached_x509_chain(cert);
+
+  sk_CRYPTO_BUFFER_pop_free(cert->chain, CRYPTO_BUFFER_free);
+  cert->chain = NULL;
   EVP_PKEY_free(cert->privatekey);
   cert->privatekey = NULL;
-  sk_X509_pop_free(cert->x509_chain, X509_free);
-  cert->x509_chain = NULL;
   cert->key_method = NULL;
 }
 
@@ -242,25 +248,122 @@ void ssl_cert_free(CERT *c) {
   OPENSSL_free(c);
 }
 
+/* new_leafless_chain returns a fresh stack of buffers set to {NULL}. */
+static STACK_OF(CRYPTO_BUFFER) *new_leafless_chain(void) {
+  STACK_OF(CRYPTO_BUFFER) *chain = sk_CRYPTO_BUFFER_new_null();
+  if (chain == NULL) {
+    return NULL;
+  }
+
+  if (!sk_CRYPTO_BUFFER_push(chain, NULL)) {
+    sk_CRYPTO_BUFFER_free(chain);
+    return NULL;
+  }
+
+  return chain;
+}
+
+/* x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
+ * contents of |x509|. */
+CRYPTO_BUFFER *x509_to_buffer(X509 *x509) {
+  uint8_t *buf = NULL;
+  int cert_len = i2d_X509(x509, &buf);
+  if (cert_len <= 0) {
+    return 0;
+  }
+
+  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(buf, cert_len, NULL);
+  OPENSSL_free(buf);
+
+  return buffer;
+}
+
+/* ssl_cert_set_chain sets elements 1.. of |cert->chain| to the serialised
+ * forms of elements of |chain|. It returns one on success or zero on error, in
+ * which case no change to |cert->chain| is made. It preverses the existing
+ * leaf from |cert->chain|, if any. */
+static int ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
+  STACK_OF(CRYPTO_BUFFER) *new_chain = NULL;
+
+  if (cert->chain != NULL) {
+    new_chain = sk_CRYPTO_BUFFER_new_null();
+    if (new_chain == NULL) {
+      return 0;
+    }
+
+    CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain, 0);
+    if (!sk_CRYPTO_BUFFER_push(new_chain, leaf)) {
+      goto err;
+    }
+    CRYPTO_BUFFER_up_ref(leaf);
+  }
+
+  for (size_t i = 0; i < sk_X509_num(chain); i++) {
+    if (new_chain == NULL) {
+      new_chain = new_leafless_chain();
+      if (new_chain == NULL) {
+        goto err;
+      }
+    }
+
+    CRYPTO_BUFFER *buffer = x509_to_buffer(sk_X509_value(chain, i));
+    if (buffer == NULL ||
+        !sk_CRYPTO_BUFFER_push(new_chain, buffer)) {
+      CRYPTO_BUFFER_free(buffer);
+      goto err;
+    }
+  }
+
+  sk_CRYPTO_BUFFER_pop_free(cert->chain, CRYPTO_BUFFER_free);
+  cert->chain = new_chain;
+
+  return 1;
+
+err:
+  sk_CRYPTO_BUFFER_pop_free(new_chain, CRYPTO_BUFFER_free);
+  return 0;
+}
+
 static int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
-  sk_X509_pop_free(cert->x509_chain, X509_free);
-  cert->x509_chain = chain;
+  if (!ssl_cert_set_chain(cert, chain)) {
+    return 0;
+  }
+
+  sk_X509_pop_free(chain, X509_free);
+  ssl_cert_flush_cached_x509_chain(cert);
   return 1;
 }
 
 static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
-  STACK_OF(X509) *dchain;
-  if (chain == NULL) {
-    return ssl_cert_set0_chain(cert, NULL);
-  }
-
-  dchain = X509_chain_up_ref(chain);
-  if (dchain == NULL) {
+  if (!ssl_cert_set_chain(cert, chain)) {
     return 0;
   }
 
-  if (!ssl_cert_set0_chain(cert, dchain)) {
-    sk_X509_pop_free(dchain, X509_free);
+  ssl_cert_flush_cached_x509_chain(cert);
+  return 1;
+}
+
+static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
+  CRYPTO_BUFFER *buffer = x509_to_buffer(x509);
+  if (buffer == NULL) {
+    return 0;
+  }
+
+  if (cert->chain != NULL) {
+    if (!sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
+      CRYPTO_BUFFER_free(buffer);
+      return 0;
+    }
+
+    return 1;
+  }
+
+  cert->chain = new_leafless_chain();
+  if (cert->chain == NULL ||
+      !sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
+    CRYPTO_BUFFER_free(buffer);
+    sk_CRYPTO_BUFFER_free(cert->chain);
+    cert->chain = NULL;
     return 0;
   }
 
@@ -268,22 +371,21 @@ static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
 }
 
 static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
-  if (cert->x509_chain == NULL) {
-    cert->x509_chain = sk_X509_new_null();
-  }
-  if (cert->x509_chain == NULL || !sk_X509_push(cert->x509_chain, x509)) {
+  if (!ssl_cert_append_cert(cert, x509)) {
     return 0;
   }
 
+  X509_free(x509);
+  ssl_cert_flush_cached_x509_chain(cert);
   return 1;
 }
 
 static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
-  if (!ssl_cert_add0_chain_cert(cert, x509)) {
+  if (!ssl_cert_append_cert(cert, x509)) {
     return 0;
   }
 
-  X509_up_ref(x509);
+  ssl_cert_flush_cached_x509_chain(cert);
   return 1;
 }
 
@@ -443,7 +545,9 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
 }
 
 int ssl_has_certificate(const SSL *ssl) {
-  return ssl->cert->x509_leaf != NULL && ssl_has_private_key(ssl);
+  return ssl->cert->chain != NULL &&
+         sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0) != NULL &&
+         ssl_has_private_key(ssl);
 }
 
 STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
@@ -512,49 +616,33 @@ err:
   return NULL;
 }
 
-int ssl_add_cert_to_cbb(CBB *cbb, X509 *x509) {
-  int len = i2d_X509(x509, NULL);
-  if (len < 0) {
-    return 0;
-  }
-  uint8_t *buf;
-  if (!CBB_add_space(cbb, &buf, len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  if (buf != NULL && i2d_X509(x509, &buf) < 0) {
-    return 0;
-  }
-  return 1;
-}
-
-static int ssl_add_cert_with_length(CBB *cbb, X509 *x509) {
-  CBB child;
-  return CBB_add_u24_length_prefixed(cbb, &child) &&
-         ssl_add_cert_to_cbb(&child, x509) &&
-         CBB_flush(cbb);
-}
-
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   if (!ssl_has_certificate(ssl)) {
     return CBB_add_u24(cbb, 0);
   }
 
-  CBB child;
-  if (!CBB_add_u24_length_prefixed(cbb, &child) ||
-      !ssl_add_cert_with_length(&child, ssl->cert->x509_leaf)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+  CBB certs;
+  if (!CBB_add_u24_length_prefixed(cbb, &certs)) {
+    goto err;
   }
 
-  STACK_OF(X509) *chain = ssl->cert->x509_chain;
-  for (size_t i = 0; i < sk_X509_num(chain); i++) {
-    if (!ssl_add_cert_with_length(&child, sk_X509_value(chain, i))) {
-      return 0;
+  STACK_OF(CRYPTO_BUFFER) *chain = ssl->cert->chain;
+  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain); i++) {
+    CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(chain, i);
+    CBB child;
+    if (!CBB_add_u24_length_prefixed(&certs, &child) ||
+        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
+                       CRYPTO_BUFFER_len(buffer)) ||
+        !CBB_flush(&certs)) {
+      goto err;
     }
   }
 
   return CBB_flush(cbb);
+
+err:
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  return 0;
 }
 
 int ssl_auto_chain_if_needed(SSL *ssl) {
@@ -562,30 +650,41 @@ int ssl_auto_chain_if_needed(SSL *ssl) {
    * isn't disabled. */
   if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
       !ssl_has_certificate(ssl) ||
-      ssl->cert->x509_chain != NULL) {
+      ssl->cert->chain == NULL ||
+      sk_CRYPTO_BUFFER_num(ssl->cert->chain) > 1) {
     return 1;
   }
 
+  X509 *leaf =
+      X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0));
+  if (!leaf) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
+    return 0;
+  }
+
   X509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, ssl->cert->x509_leaf,
-                           NULL)) {
+  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, leaf, NULL)) {
+    X509_free(leaf);
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
 
   /* Attempt to build a chain, ignoring the result. */
   X509_verify_cert(&ctx);
+  X509_free(leaf);
   ERR_clear_error();
 
-  /* Configure the intermediates from any partial chain we managed to build. */
-  for (size_t i = 1; i < sk_X509_num(ctx.chain); i++) {
-    if (!SSL_add1_chain_cert(ssl, sk_X509_value(ctx.chain, i))) {
-      X509_STORE_CTX_cleanup(&ctx);
-      return 0;
-    }
+  /* Remove the leaf from the generated chain. */
+  X509_free(sk_X509_shift(ctx.chain));
+
+  const int ok = ssl_cert_set_chain(ssl->cert, ctx.chain);
+  X509_STORE_CTX_cleanup(&ctx);
+  if (!ok) {
+    return 0;
   }
 
-  X509_STORE_CTX_cleanup(&ctx);
+  ssl_cert_flush_cached_x509_chain(ssl->cert);
+
   return 1;
 }
 
@@ -642,6 +741,55 @@ EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
   }
 
   return EVP_parse_public_key(&tbs_cert);
+}
+
+static int ssl_check_cert_and_private_key_match(const CRYPTO_BUFFER *cert,
+                                                const EVP_PKEY *privkey) {
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(cert, &cert_cbs);
+  EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (!pubkey) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+    return 0;
+  }
+
+  int ret = 0;
+
+  switch (EVP_PKEY_cmp(pubkey, privkey)) {
+    case 1:
+      ret = 1;
+      break;
+    case 0:
+      OPENSSL_PUT_ERROR(X509, X509_R_KEY_VALUES_MISMATCH);
+      break;
+    case -1:
+      OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
+      break;
+    case -2:
+      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+    default:
+      assert(0);
+      break;
+  }
+
+  EVP_PKEY_free(pubkey);
+  return ret;
+}
+
+int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey) {
+  if (privkey == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_PRIVATE_KEY_ASSIGNED);
+    return 0;
+  }
+
+  if (cert->chain == NULL ||
+      sk_CRYPTO_BUFFER_value(cert->chain, 0) == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
+    return 0;
+  }
+
+  return ssl_check_cert_and_private_key_match(
+      sk_CRYPTO_BUFFER_value(cert->chain, 0), privkey);
 }
 
 int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
@@ -888,7 +1036,61 @@ void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
   ssl_cert_set_cert_cb(ssl->cert, cb, arg);
 }
 
+/* ssl_cert_cache_leaf_cert sets |cert->x509_leaf|, if currently NULL, from the
+ * first element of |cert->chain|. */
+int ssl_cert_cache_leaf_cert(CERT *cert) {
+  if (cert->x509_leaf != NULL ||
+      cert->chain == NULL) {
+    return 1;
+  }
+
+  CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain, 0);
+  if (!leaf) {
+    return 1;
+  }
+
+  cert->x509_leaf = X509_parse_from_buffer(leaf);
+  return cert->x509_leaf != NULL;
+}
+
+/* ssl_cert_cache_chain_certs fills in |cert->x509_chain| from elements 1.. of
+ * |cert->chain|. */
+static int ssl_cert_cache_chain_certs(CERT *cert) {
+  if (cert->x509_chain != NULL ||
+      cert->chain == NULL ||
+      sk_CRYPTO_BUFFER_num(cert->chain) < 2) {
+    return 1;
+  }
+
+  STACK_OF(X509) *chain = sk_X509_new_null();
+  if (chain == NULL) {
+    return 0;
+  }
+
+  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain); i++) {
+    CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(cert->chain, i);
+    X509 *x509 = X509_parse_from_buffer(buffer);
+    if (x509 == NULL ||
+        !sk_X509_push(chain, x509)) {
+      X509_free(x509);
+      goto err;
+    }
+  }
+
+  cert->x509_chain = chain;
+  return 1;
+
+err:
+  sk_X509_pop_free(chain, X509_free);
+  return 0;
+}
+
 int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
+  if (!ssl_cert_cache_chain_certs(ctx->cert)) {
+    *out_chain = NULL;
+    return 0;
+  }
+
   *out_chain = ctx->cert->x509_chain;
   return 1;
 }
@@ -899,6 +1101,11 @@ int SSL_CTX_get_extra_chain_certs(const SSL_CTX *ctx,
 }
 
 int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
+  if (!ssl_cert_cache_chain_certs(ssl->cert)) {
+    *out_chain = NULL;
+    return 0;
+  }
+
   *out_chain = ssl->cert->x509_chain;
   return 1;
 }
