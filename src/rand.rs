@@ -26,7 +26,6 @@
 //! documentation for more details.
 
 #[cfg(any(target_os = "linux",
-          target_os = "ios",
           windows,
           test))]
 use c;
