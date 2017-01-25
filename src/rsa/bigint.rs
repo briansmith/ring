@@ -341,6 +341,10 @@ impl<M> Elem<M, Unencoded> {
         })
     }
 
+    pub fn into_positive(self) -> Result<Positive, error::Unspecified> {
+        self.value.into_positive()
+    }
+
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         self.value.into_odd_positive()
     }
@@ -642,6 +646,13 @@ impl Nonnegative {
             m: PhantomData,
             encoding: PhantomData,
         })
+    }
+
+    fn into_positive(self) -> Result<Positive, error::Unspecified> {
+        if self.is_zero() {
+            return Err(error::Unspecified);
+        }
+        Ok(Positive(self))
     }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {

@@ -129,11 +129,45 @@ impl RSAKeyPair {
                 if p.bit_length() != q.bit_length() {
                     return Err(error::Unspecified);
                 }
+                let q = try!(q.into_odd_positive());
+                let n = try!(n.into_modulus::<N>());
+
+                let q_mod_n_decoded = {
+                    let q = try!(q.try_clone());
+                    try!(q.into_elem(&n))
+                };
+
                 // XXX: |p < q| is actual OK, it seems, but our implementation
                 // of CRT-based moduluar exponentiation used requires that
                 // |q > p|. (|p == q| is just wrong.)
-                let q = try!(q.into_odd_positive());
+                //
+                // Also, because we just check the bit length of p - q, we
+                // accept if the difference is exactly 2**(n_bits/2 - 100), even
+                // though the spec says that is the largest value that should be
+                // rejected. We assume there are no security implications to
+                // this simplification.
                 try!(bigint::verify_less_than(&q, &p));
+                {
+                    let p_mod_n = {
+                        let p = try!(p.try_clone());
+                        try!(p.into_elem(&n))
+                    };
+                    let p_minus_q = {
+                        // Modular subtraction isn't necessary since we already
+                        // verified q < p, but we're doing modular subtraction
+                        // to avoid having to implement non-modular subtraction.
+                        // Modular subtraction without having already verified
+                        // q < p would be wrong.
+                        let p_minus_q = try!(bigint::elem_sub(
+                                p_mod_n, &q_mod_n_decoded, &n));
+                        try!(p_minus_q.into_positive())
+                    };
+                    let min_pq_bitlen_diff = try!(half_n_bits.try_sub(
+                            bits::BitLength::from_usize_bits(100)));
+                    if p_minus_q.bit_length() <= min_pq_bitlen_diff {
+                        return Err(error::Unspecified);
+                    }
+                }
 
                 let n = try!(n.into_modulus::<N>());
 
