@@ -32,13 +32,14 @@
 .private_extern _GFp_x25519_NEON
 #ifdef __thumb2__
 .thumb_func _GFp_x25519_NEON
+_GFp_x25519_NEON:
 #endif
 #else
 .hidden GFp_x25519_NEON
 .type GFp_x25519_NEON, %function
+GFp_x25519_NEON:
 #endif
 
-_GFp_x25519_NEON:
 vpush {q4,q5,q6,q7}
 mov r12,sp
 sub sp,sp,#736
