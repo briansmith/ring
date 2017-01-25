@@ -527,56 +527,6 @@ int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg) {
   return 0;
 }
 
-/* Get a mask of disabled algorithms: an algorithm is disabled if it isn't
- * supported or doesn't appear in supported signature algorithms. Unlike
- * ssl_cipher_get_disabled this applies to a specific session and not global
- * settings. */
-void ssl_set_client_disabled(SSL *ssl) {
-  CERT *c = ssl->cert;
-  int have_rsa = 0, have_ecdsa = 0;
-  c->mask_a = 0;
-  c->mask_k = 0;
-
-  /* Now go through all signature algorithms seeing if we support any for RSA or
-   * ECDSA. Do this for all versions not just TLS 1.2. */
-  const uint16_t *sigalgs;
-  size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
-  for (size_t i = 0; i < num_sigalgs; i++) {
-    switch (sigalgs[i]) {
-      case SSL_SIGN_RSA_PSS_SHA512:
-      case SSL_SIGN_RSA_PSS_SHA384:
-      case SSL_SIGN_RSA_PSS_SHA256:
-      case SSL_SIGN_RSA_PKCS1_SHA512:
-      case SSL_SIGN_RSA_PKCS1_SHA384:
-      case SSL_SIGN_RSA_PKCS1_SHA256:
-      case SSL_SIGN_RSA_PKCS1_SHA1:
-        have_rsa = 1;
-        break;
-
-      case SSL_SIGN_ECDSA_SECP521R1_SHA512:
-      case SSL_SIGN_ECDSA_SECP384R1_SHA384:
-      case SSL_SIGN_ECDSA_SECP256R1_SHA256:
-      case SSL_SIGN_ECDSA_SHA1:
-        have_ecdsa = 1;
-        break;
-    }
-  }
-
-  /* Disable auth if we don't include any appropriate signature algorithms. */
-  if (!have_rsa) {
-    c->mask_a |= SSL_aRSA;
-  }
-  if (!have_ecdsa) {
-    c->mask_a |= SSL_aECDSA;
-  }
-
-  /* with PSK there must be client callback set */
-  if (!ssl->psk_client_callback) {
-    c->mask_a |= SSL_aPSK;
-    c->mask_k |= SSL_kPSK;
-  }
-}
-
 /* tls_extension represents a TLS extension that is handled internally. The
  * |init| function is called for each handshake, before any other functions of
  * the extension. Then the add and parse callbacks are called as needed.

@@ -180,9 +180,6 @@ CERT *ssl_cert_dup(CERT *cert) {
 
   ret->key_method = cert->key_method;
 
-  ret->mask_k = cert->mask_k;
-  ret->mask_a = cert->mask_a;
-
   if (cert->dh_tmp != NULL) {
     ret->dh_tmp = DHparams_dup(cert->dh_tmp);
     if (ret->dh_tmp == NULL) {

@@ -554,11 +554,59 @@ uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
   return ret;
 }
 
+/* ssl_get_client_disabled sets |*out_mask_a| and |*out_mask_k| to masks of
+ * disabled algorithms. */
+static void ssl_get_client_disabled(SSL *ssl, uint32_t *out_mask_a,
+                                    uint32_t *out_mask_k) {
+  int have_rsa = 0, have_ecdsa = 0;
+  *out_mask_a = 0;
+  *out_mask_k = 0;
+
+  /* Now go through all signature algorithms seeing if we support any for RSA or
+   * ECDSA. Do this for all versions not just TLS 1.2. */
+  const uint16_t *sigalgs;
+  size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
+  for (size_t i = 0; i < num_sigalgs; i++) {
+    switch (sigalgs[i]) {
+      case SSL_SIGN_RSA_PSS_SHA512:
+      case SSL_SIGN_RSA_PSS_SHA384:
+      case SSL_SIGN_RSA_PSS_SHA256:
+      case SSL_SIGN_RSA_PKCS1_SHA512:
+      case SSL_SIGN_RSA_PKCS1_SHA384:
+      case SSL_SIGN_RSA_PKCS1_SHA256:
+      case SSL_SIGN_RSA_PKCS1_SHA1:
+        have_rsa = 1;
+        break;
+
+      case SSL_SIGN_ECDSA_SECP521R1_SHA512:
+      case SSL_SIGN_ECDSA_SECP384R1_SHA384:
+      case SSL_SIGN_ECDSA_SECP256R1_SHA256:
+      case SSL_SIGN_ECDSA_SHA1:
+        have_ecdsa = 1;
+        break;
+    }
+  }
+
+  /* Disable auth if we don't include any appropriate signature algorithms. */
+  if (!have_rsa) {
+    *out_mask_a |= SSL_aRSA;
+  }
+  if (!have_ecdsa) {
+    *out_mask_a |= SSL_aECDSA;
+  }
+
+  /* PSK requires a client callback. */
+  if (ssl->psk_client_callback == NULL) {
+    *out_mask_a |= SSL_aPSK;
+    *out_mask_k |= SSL_kPSK;
+  }
+}
+
 static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
                                         uint16_t min_version,
                                         uint16_t max_version) {
-  /* Prepare disabled cipher masks. */
-  ssl_set_client_disabled(ssl);
+  uint32_t mask_a, mask_k;
+  ssl_get_client_disabled(ssl, &mask_a, &mask_k);
 
   CBB child;
   if (!CBB_add_u16_length_prefixed(out, &child)) {
@@ -594,8 +642,8 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
       const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
       /* Skip disabled ciphers */
-      if ((cipher->algorithm_mkey & ssl->cert->mask_k) ||
-          (cipher->algorithm_auth & ssl->cert->mask_a)) {
+      if ((cipher->algorithm_mkey & mask_k) ||
+          (cipher->algorithm_auth & mask_a)) {
         continue;
       }
       if (SSL_CIPHER_get_min_version(cipher) > max_version ||
@@ -799,7 +847,6 @@ f_err:
 
 static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CERT *ct = ssl->cert;
   int al = SSL_AD_INTERNAL_ERROR;
   CBS server_hello, server_random, session_id;
   uint16_t server_wire_version, cipher_suite;
@@ -916,7 +963,9 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* The cipher must be allowed in the selected version and enabled. */
-  if ((c->algorithm_mkey & ct->mask_k) || (c->algorithm_auth & ct->mask_a) ||
+  uint32_t mask_a, mask_k;
+  ssl_get_client_disabled(ssl, &mask_a, &mask_k);
+  if ((c->algorithm_mkey & mask_k) || (c->algorithm_auth & mask_a) ||
       SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl) ||
       !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), NULL, c)) {

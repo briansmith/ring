@@ -1242,14 +1242,6 @@ typedef struct cert_st {
    * operations. */
   const SSL_PRIVATE_KEY_METHOD *key_method;
 
-  /* For clients the following masks are of *disabled* key and auth algorithms
-   * based on the current configuration.
-   *
-   * TODO(davidben): Remove these. They get checked twice: when sending the
-   * ClientHello and when processing the ServerHello. */
-  uint32_t mask_k;
-  uint32_t mask_a;
-
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
 
@@ -1947,8 +1939,6 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
 uint16_t ssl3_protocol_version(const SSL *ssl);
 
 uint32_t ssl_get_algorithm_prf(const SSL *ssl);
-
-void ssl_set_client_disabled(SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock);
 
