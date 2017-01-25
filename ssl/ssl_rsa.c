@@ -70,8 +70,8 @@
 #include "internal.h"
 
 
-static int ssl_set_cert(CERT *c, X509 *x509);
-static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey);
+static int ssl_set_cert(CERT *cert, X509 *x509);
+static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey);
 
 static int is_key_type_supported(int key_type) {
   return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC;
@@ -128,24 +128,24 @@ int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
   return ret;
 }
 
-static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
+static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
   if (!is_key_type_supported(pkey->type)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return 0;
   }
 
-  if (c->chain != NULL &&
-      sk_CRYPTO_BUFFER_value(c->chain, 0) != NULL &&
+  if (cert->chain != NULL &&
+      sk_CRYPTO_BUFFER_value(cert->chain, 0) != NULL &&
       /* Sanity-check that the private key and the certificate match, unless
        * the key is opaque (in case of, say, a smartcard). */
       !EVP_PKEY_is_opaque(pkey) &&
-      !ssl_cert_check_private_key(c, pkey)) {
+      !ssl_cert_check_private_key(cert, pkey)) {
     return 0;
   }
 
-  EVP_PKEY_free(c->privatekey);
+  EVP_PKEY_free(cert->privatekey);
   EVP_PKEY_up_ref(pkey);
-  c->privatekey = pkey;
+  cert->privatekey = pkey;
 
   return 1;
 }
@@ -188,7 +188,7 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
   return ssl_set_cert(ctx->cert, x);
 }
 
-static int ssl_set_cert(CERT *c, X509 *x) {
+static int ssl_set_cert(CERT *cert, X509 *x) {
   EVP_PKEY *pkey = X509_get_pubkey(x);
   if (pkey == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_X509_LIB);
@@ -214,16 +214,16 @@ static int ssl_set_cert(CERT *c, X509 *x) {
     }
   }
 
-  if (c->privatekey != NULL) {
+  if (cert->privatekey != NULL) {
     /* Sanity-check that the private key and the certificate match, unless the
      * key is opaque (in case of, say, a smartcard). */
-    if (!EVP_PKEY_is_opaque(c->privatekey) &&
-        !X509_check_private_key(x, c->privatekey)) {
+    if (!EVP_PKEY_is_opaque(cert->privatekey) &&
+        !X509_check_private_key(x, cert->privatekey)) {
       /* don't fail for a cert/key mismatch, just free current private key
        * (when switching to a different cert & key, first this function should
        * be used, then ssl_set_pkey */
-      EVP_PKEY_free(c->privatekey);
-      c->privatekey = NULL;
+      EVP_PKEY_free(cert->privatekey);
+      cert->privatekey = NULL;
       /* clear error queue */
       ERR_clear_error();
     }
@@ -236,24 +236,24 @@ static int ssl_set_cert(CERT *c, X509 *x) {
     return 0;
   }
 
-  ssl_cert_flush_cached_x509_leaf(c);
+  ssl_cert_flush_cached_x509_leaf(cert);
 
-  if (c->chain != NULL) {
-    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(c->chain, 0));
-    sk_CRYPTO_BUFFER_set(c->chain, 0, buffer);
+  if (cert->chain != NULL) {
+    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain, 0));
+    sk_CRYPTO_BUFFER_set(cert->chain, 0, buffer);
     return 1;
   }
 
-  c->chain = sk_CRYPTO_BUFFER_new_null();
-  if (c->chain == NULL) {
+  cert->chain = sk_CRYPTO_BUFFER_new_null();
+  if (cert->chain == NULL) {
     CRYPTO_BUFFER_free(buffer);
     return 0;
   }
 
-  if (!sk_CRYPTO_BUFFER_push(c->chain, buffer)) {
+  if (!sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
     CRYPTO_BUFFER_free(buffer);
-    sk_CRYPTO_BUFFER_free(c->chain);
-    c->chain = NULL;
+    sk_CRYPTO_BUFFER_free(cert->chain);
+    cert->chain = NULL;
     return 0;
   }
 
