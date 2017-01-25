@@ -1702,6 +1702,11 @@ void ssl_cert_free(CERT *c);
 CRYPTO_BUFFER *x509_to_buffer(X509 *x509);
 void ssl_cert_flush_cached_x509_leaf(CERT *cert);
 int ssl_cert_cache_leaf_cert(CERT *cert);
+/* ssl_compare_public_and_private_key returns one if |pubkey| is the public
+ * counterpart to |privkey|. Otherwise it returns zero and pushes a helpful
+ * message on the error queue. */
+int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
+                                       const EVP_PKEY *privkey);
 int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);

@@ -750,16 +750,8 @@ EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
   return EVP_parse_public_key(&tbs_cert);
 }
 
-static int ssl_check_cert_and_private_key_match(const CRYPTO_BUFFER *cert,
-                                                const EVP_PKEY *privkey) {
-  CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(cert, &cert_cbs);
-  EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
-    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
-    return 0;
-  }
-
+int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
+                                       const EVP_PKEY *privkey) {
   int ret = 0;
 
   switch (EVP_PKEY_cmp(pubkey, privkey)) {
@@ -779,7 +771,6 @@ static int ssl_check_cert_and_private_key_match(const CRYPTO_BUFFER *cert,
       break;
   }
 
-  EVP_PKEY_free(pubkey);
   return ret;
 }
 
@@ -795,8 +786,17 @@ int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey) {
     return 0;
   }
 
-  return ssl_check_cert_and_private_key_match(
-      sk_CRYPTO_BUFFER_value(cert->chain, 0), privkey);
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(cert->chain, 0), &cert_cbs);
+  EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (!pubkey) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+    return 0;
+  }
+
+  const int ok = ssl_compare_public_and_private_key(pubkey, privkey);
+  EVP_PKEY_free(pubkey);
+  return ok;
 }
 
 int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
