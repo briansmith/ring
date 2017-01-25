@@ -1917,6 +1917,12 @@ static bool TestClientHello() {
     return false;
   }
 
+  // kTLS12ClientHello assumes RSA-PSS, which is disabled for Android system
+  // builds.
+#if defined(BORINGSSL_ANDROID_SYSTEM)
+  return true;
+#endif
+
   static const uint8_t kTLS12ClientHello[] = {
       0x16, 0x03, 0x01, 0x00, 0x9a, 0x01, 0x00, 0x00, 0x96, 0x03, 0x03, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -3105,8 +3111,14 @@ static bool ForEachVersion(bool (*test_func)(bool is_dtls,
                                              const SSL_METHOD *method,
                                              uint16_t version)) {
   static uint16_t kTLSVersions[] = {
-      SSL3_VERSION,   TLS1_VERSION,   TLS1_1_VERSION,
-      TLS1_2_VERSION, TLS1_3_VERSION,
+      SSL3_VERSION,
+      TLS1_VERSION,
+      TLS1_1_VERSION,
+      TLS1_2_VERSION,
+// TLS 1.3 requires RSA-PSS, which is disabled for Android system builds.
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+      TLS1_3_VERSION,
+#endif
   };
 
   static uint16_t kDTLSVersions[] = {
