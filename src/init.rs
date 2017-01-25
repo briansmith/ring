@@ -14,7 +14,7 @@
 
 #[inline(always)]
 pub fn init_once() {
-    #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
+    #[cfg(not(target_os = "ios"))]
     {
         use std;
         extern { fn GFp_cpuid_setup(); }
