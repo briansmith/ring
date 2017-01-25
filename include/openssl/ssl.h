@@ -2968,6 +2968,10 @@ OPENSSL_EXPORT int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
                                              size_t max_send_fragment);
 
+/* SSL_get_v2clienthello_count returns the total number of V2ClientHellos that
+ * are accepted. */
+OPENSSL_EXPORT uint64_t SSL_get_v2clienthello_count(void);
+
 /* ssl_early_callback_ctx (aka |SSL_CLIENT_HELLO|) is passed to certain
  * callbacks that are called very early on during the server handshake. At this
  * point, much of the SSL* hasn't been filled out and only the ClientHello can

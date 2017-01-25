@@ -1056,6 +1056,9 @@ struct ssl_handshake_st {
    * or received. */
   unsigned ticket_expected:1;
 
+  /* v2_clienthello is one if we received a V2ClientHello. */
+  unsigned v2_clienthello:1;
+
   /* client_version is the value sent or received in the ClientHello version. */
   uint16_t client_version;
 } /* SSL_HANDSHAKE */;
