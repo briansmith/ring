@@ -103,6 +103,7 @@ extern crate test as bench;
 
 #[cfg(any(target_os = "redox",
           all(unix,
+              not(any(target_os = "macos", target_os = "ios")),
               any(not(target_os = "linux"),
                   feature = "dev_urandom_fallback"))))]
 #[macro_use]
