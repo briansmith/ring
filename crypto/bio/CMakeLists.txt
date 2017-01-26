@@ -7,7 +7,6 @@ add_library(
 
   bio.c
   bio_mem.c
-  buffer.c
   connect.c
   fd.c
   file.c

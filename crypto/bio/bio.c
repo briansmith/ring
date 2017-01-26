@@ -608,3 +608,5 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
 void BIO_set_retry_special(BIO *bio) {
   bio->flags |= BIO_FLAGS_READ | BIO_FLAGS_IO_SPECIAL;
 }
+
+int BIO_set_write_buffer_size(BIO *bio, int buffer_size) { return 0; }

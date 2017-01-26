@@ -493,23 +493,6 @@ OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
 
 
-/* Buffer BIOs.
- *
- * Buffer BIOs are a filter-type BIO, i.e. they are designed to be used in a
- * chain of BIOs. They provide buffering to reduce the number of operations on
- * the underlying BIOs. */
-
-OPENSSL_EXPORT const BIO_METHOD *BIO_f_buffer(void);
-
-/* BIO_set_read_buffer_size sets the size, in bytes, of the read buffer and
- * clears it. It returns one on success and zero on failure. */
-OPENSSL_EXPORT int BIO_set_read_buffer_size(BIO *bio, int buffer_size);
-
-/* BIO_set_write_buffer_size sets the size, in bytes, of the write buffer and
- * clears it. It returns one on success and zero on failure. */
-OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
-
-
 /* Socket BIOs.
  *
  * Socket BIOs behave like file descriptor BIOs but, on Windows systems, wrap
@@ -671,6 +654,9 @@ OPENSSL_EXPORT int BIO_shutdown_wr(BIO *bio);
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
 
 OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);
+
+/* BIO_set_write_buffer_size returns zero. */
+OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 
 
 /* Private functions */
