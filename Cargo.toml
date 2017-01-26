@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.6.2"
+version = "0.6.3"
 
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
