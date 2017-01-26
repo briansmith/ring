@@ -217,6 +217,23 @@ impl TestCase {
     }
 }
 
+/// Returns the path for *ring* source code root.
+///
+/// On iOS, source are assumed to be copied in the application bundle, as
+/// a "src" directory along the test runner.
+#[cfg(target_os = "ios")]
+pub fn ring_src_path() -> std::path::PathBuf {
+    std::env::current_exe().unwrap().parent().unwrap().join("src")
+}
+
+/// Returns the path for *ring* source code root.
+///
+/// On most platforms, the tests are run by cargo, so it's just the current
+/// working directory.
+#[cfg(not(target_os = "ios"))]
+pub fn ring_src_path() -> std::path::PathBuf {
+    std::path::PathBuf::from(".")
+}
 
 /// Reads test cases out of the file with the path given by
 /// `test_data_relative_file_path`, calling `f` on each vector until `f` fails
@@ -225,7 +242,7 @@ impl TestCase {
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
                     where F: FnMut(&str, &mut TestCase)
                                    -> Result<(), error::Unspecified> {
-    let path = std::path::Path::new(test_data_relative_file_path);
+    let path = ring_src_path().join(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
 
