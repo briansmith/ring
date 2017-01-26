@@ -224,7 +224,7 @@ fn run_command_with_args<S>(command_name: S, args: &Vec<String>)
     where S: AsRef<std::ffi::OsStr> + Copy
 {
     let status = std::process::Command::new(command_name)
-        .args(&args)
+        .args(args.iter())
         .status()
         .unwrap_or_else(|e| {
             panic!("failed to execute {}: {}",
