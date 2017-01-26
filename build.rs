@@ -220,11 +220,11 @@ fn build_msvc(target_triple: &[&str], disable_opt: bool, num_jobs: &str,
     run_command_with_args(&msbuild, &test_args);
 }
 
-fn run_command_with_args<S>(command_name: S, args: &Vec<String>)
+fn run_command_with_args<S>(command_name: S, args: &[String])
     where S: AsRef<std::ffi::OsStr> + Copy
 {
     let status = std::process::Command::new(command_name)
-        .args(args.iter())
+        .args(args)
         .status()
         .unwrap_or_else(|e| {
             panic!("failed to execute {}: {}",
