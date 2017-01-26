@@ -38,6 +38,7 @@ macro_rules! bssl_test {
             }
 
             init::init_once();
+            ::std::env::set_current_dir(::test::ring_src_path()).unwrap();
 
             let result = unsafe {
                 $bssl_test_main_fn_name()
@@ -61,6 +62,7 @@ macro_rules! bssl_test_rng {
             }
 
             init::init_once();
+            ::std::env::set_current_dir(::test::ring_src_path()).unwrap();
 
             let rng = rand::SystemRandom::new();
             let mut rng = rand::RAND { rng: &rng };
