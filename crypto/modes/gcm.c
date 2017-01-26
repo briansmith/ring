@@ -306,10 +306,6 @@ size_t GFp_aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 void GFp_gcm_gmult_4bit_mmx(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16],
                             const uint8_t *inp, size_t len);
-
-void GFp_gcm_gmult_4bit_x86(uint8_t Xi[16], const u128 Htable[16]);
-void GFp_gcm_ghash_4bit_x86(uint8_t Xi[16], const u128 Htable[16],
-                            const uint8_t *inp, size_t len);
 #endif
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
@@ -430,13 +426,6 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
     return;
   }
 #endif
-#if defined(GHASH_ASM_X86)
-  if (GFp_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
-    ctx->gmult = GFp_gcm_gmult_4bit_mmx;
-    ctx->ghash = GFp_gcm_ghash_4bit_mmx;
-    return;
-  }
-#endif
 #if defined(ARM_PMULL_ASM)
   if (GFp_is_ARMv8_PMULL_capable()) {
     ctx->gmult = GFp_gcm_gmult_v8;
@@ -460,8 +449,8 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
 #endif
 
 #if defined(GHASH_ASM_X86)
-  ctx->gmult = GFp_gcm_gmult_4bit_x86;
-  ctx->ghash = GFp_gcm_ghash_4bit_x86;
+  ctx->gmult = GFp_gcm_gmult_4bit_mmx;
+  ctx->ghash = GFp_gcm_ghash_4bit_mmx;
 #else
   ctx->gmult = GFp_gcm_gmult_4bit;
   ctx->ghash = GFp_gcm_ghash_4bit;
