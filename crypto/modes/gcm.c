@@ -272,19 +272,14 @@ void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
 #if defined(GHASH_ASM)
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-
-#define GHASH_ASM_X86_OR_64
 #define GCM_FUNCREF_4BIT
 void GFp_gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
 void GFp_gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16],
                          const uint8_t *inp, size_t len);
 
-#if defined(OPENSSL_X86)
-#define GFp_gcm_init_avx GFp_gcm_init_clmul
-#define GFp_gcm_gmult_avx GFp_gcm_gmult_clmul
-#define GFp_gcm_ghash_avx GFp_gcm_ghash_clmul
-#else
+#if defined(OPENSSL_X86_64)
+#define GHASH_ASM_X86_64
 void GFp_gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void GFp_gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
@@ -378,13 +373,14 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
                                const uint64_t H[2]) {
   /* Keep in sync with |gcm128_init_gmult_ghash|. */
 
-#if defined(GHASH_ASM_X86_OR_64)
+#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
   if (GFp_gcm_clmul_enabled()) {
+#if defined(GHASH_ASM_X86_64)
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       GFp_gcm_init_avx(Htable, H);
       return;
     }
-
+#endif
     GFp_gcm_init_clmul(Htable, H);
     return;
   }
@@ -414,15 +410,17 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
 static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
   /* Keep in sync with |gcm128_init_htable|. */
 
-#if defined(GHASH_ASM_X86_OR_64)
+#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
   if (GFp_gcm_clmul_enabled()) {
+#if defined(GHASH_ASM_X86_64)
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       ctx->gmult = GFp_gcm_gmult_avx;
       ctx->ghash = GFp_gcm_ghash_avx;
-    } else {
-      ctx->gmult = GFp_gcm_gmult_clmul;
-      ctx->ghash = GFp_gcm_ghash_clmul;
+      return;
     }
+#endif
+    ctx->gmult = GFp_gcm_gmult_clmul;
+    ctx->ghash = GFp_gcm_ghash_clmul;
     return;
   }
 #endif
