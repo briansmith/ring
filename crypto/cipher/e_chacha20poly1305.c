@@ -42,9 +42,10 @@ static const int kHaveAsm = 1;
 // the initial ChaCha20 block, i.e. the key, followed by four zeros, followed
 // by the nonce. On exit, it will contain the calculated tag value, which the
 // caller must check.
-void chacha20_poly1305_open(uint8_t *out_plaintext, const uint8_t *ciphertext,
-                            size_t plaintext_len, const uint8_t *ad,
-                            size_t ad_len, uint8_t *aead_data);
+extern void chacha20_poly1305_open(uint8_t *out_plaintext,
+                                   const uint8_t *ciphertext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len, uint8_t *aead_data);
 
 // chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It
 // encrypts |plaintext_len| bytes from |plaintext| and writes them to
@@ -52,9 +53,10 @@ void chacha20_poly1305_open(uint8_t *out_plaintext, const uint8_t *ciphertext,
 // the initial ChaCha20 block, i.e. the key, followed by four zeros, followed
 // by the nonce. On exit, it will contain the calculated tag value, which the
 // caller must append to the ciphertext.
-void chacha20_poly1305_seal(uint8_t *out_ciphertext, const uint8_t *plaintext,
-                            size_t plaintext_len, const uint8_t *ad,
-                            size_t ad_len, uint8_t *aead_data);
+extern void chacha20_poly1305_seal(uint8_t *out_ciphertext,
+                                   const uint8_t *plaintext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len, uint8_t *aead_data);
 #else
 static const int kHaveAsm = 0;
 
