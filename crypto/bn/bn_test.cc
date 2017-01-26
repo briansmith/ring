@@ -515,6 +515,54 @@ static bool TestModMul(FileTest *t, BN_CTX *ctx) {
   return true;
 }
 
+static bool TestModSquare(FileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
+  bssl::UniquePtr<BIGNUM> m = GetBIGNUM(t, "M");
+  bssl::UniquePtr<BIGNUM> mod_square = GetBIGNUM(t, "ModSquare");
+  if (!a || !m || !mod_square) {
+    return false;
+  }
+
+  bssl::UniquePtr<BIGNUM> a_copy(BN_new());
+  bssl::UniquePtr<BIGNUM> ret(BN_new());
+  if (!ret || !a_copy ||
+      !BN_mod_mul(ret.get(), a.get(), a.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A * A (mod M)", mod_square.get(), ret.get()) ||
+      // Repeat the operation with |a_copy|.
+      !BN_copy(a_copy.get(), a.get()) ||
+      !BN_mod_mul(ret.get(), a.get(), a_copy.get(), m.get(), ctx) ||
+      !ExpectBIGNUMsEqual(t, "A * A_copy (mod M)", mod_square.get(),
+                          ret.get())) {
+    return false;
+  }
+
+  if (BN_is_odd(m.get())) {
+    // Reduce |a| and test the Montgomery version.
+    bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+    bssl::UniquePtr<BIGNUM> a_tmp(BN_new());
+    if (!mont || !a_tmp ||
+        !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
+        !BN_nnmod(a_tmp.get(), a.get(), m.get(), ctx) ||
+        !BN_to_montgomery(a_tmp.get(), a_tmp.get(), mont.get(), ctx) ||
+        !BN_mod_mul_montgomery(ret.get(), a_tmp.get(), a_tmp.get(), mont.get(),
+                               ctx) ||
+        !BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx) ||
+        !ExpectBIGNUMsEqual(t, "A * A (mod M) (Montgomery)",
+                            mod_square.get(), ret.get()) ||
+        // Repeat the operation with |a_copy|.
+        !BN_copy(a_copy.get(), a_tmp.get()) ||
+        !BN_mod_mul_montgomery(ret.get(), a_tmp.get(), a_copy.get(), mont.get(),
+                               ctx) ||
+        !BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx) ||
+        !ExpectBIGNUMsEqual(t, "A * A_copy (mod M) (Montgomery)",
+                            mod_square.get(), ret.get())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 static bool TestModExp(FileTest *t, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
   bssl::UniquePtr<BIGNUM> e = GetBIGNUM(t, "E");
@@ -649,6 +697,7 @@ static const Test kTests[] = {
     {"Product", TestProduct},
     {"Quotient", TestQuotient},
     {"ModMul", TestModMul},
+    {"ModSquare", TestModSquare},
     {"ModExp", TestModExp},
     {"Exp", TestExp},
     {"ModSqrt", TestModSqrt},
