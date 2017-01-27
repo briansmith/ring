@@ -795,10 +795,12 @@ int dtls1_flush_flight(SSL *ssl) {
     }
   }
 
-  ret = BIO_flush(ssl->wbio);
-  if (ret <= 0) {
+  if (BIO_flush(ssl->wbio) <= 0) {
     ssl->rwstate = SSL_WRITING;
+    goto err;
   }
+
+  ret = 1;
 
 err:
   OPENSSL_free(packet);

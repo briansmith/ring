@@ -328,10 +328,9 @@ int ssl3_flush_flight(SSL *ssl) {
     ssl->s3->pending_flight_offset += ret;
   }
 
-  int ret = BIO_flush(ssl->wbio);
-  if (ret <= 0) {
+  if (BIO_flush(ssl->wbio) <= 0) {
     ssl->rwstate = SSL_WRITING;
-    return ret;
+    return -1;
   }
 
   BUF_MEM_free(ssl->s3->pending_flight);
