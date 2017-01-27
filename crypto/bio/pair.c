@@ -450,14 +450,10 @@ static long bio_ctrl(BIO *bio, int cmd, long num, void *ptr) {
   return ret;
 }
 
-static int bio_puts(BIO *bio, const char *str) {
-  return bio_write(bio, str, strlen(str));
-}
 
 static const BIO_METHOD methods_biop = {
-    BIO_TYPE_BIO, "BIO pair",             bio_write, bio_read,
-    bio_puts,     NULL /* no bio_gets */, bio_ctrl,  bio_new,
-    bio_free,     NULL /* no bio_callback_ctrl */
+    BIO_TYPE_BIO,    "BIO pair", bio_write, bio_read, NULL /* puts */,
+    NULL /* gets */, bio_ctrl,   bio_new,   bio_free, NULL /* callback_ctrl */
 };
 
 static const BIO_METHOD *bio_s_bio(void) { return &methods_biop; }

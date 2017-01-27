@@ -189,10 +189,6 @@ err:
   return ret;
 }
 
-static int mem_puts(BIO *bp, const char *str) {
-  return mem_write(bp, str, strlen(str));
-}
-
 static int mem_gets(BIO *bio, char *buf, int size) {
   int i, j;
   char *p;
@@ -295,8 +291,12 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
 }
 
 static const BIO_METHOD mem_method = {
-    BIO_TYPE_MEM, "memory buffer", mem_write, mem_read, mem_puts,
-    mem_gets,     mem_ctrl,        mem_new,   mem_free, NULL, };
+    BIO_TYPE_MEM,    "memory buffer",
+    mem_write,       mem_read,
+    NULL /* puts */, mem_gets,
+    mem_ctrl,        mem_new,
+    mem_free,        NULL /* callback_ctrl */,
+};
 
 const BIO_METHOD *BIO_s_mem(void) { return &mem_method; }
 

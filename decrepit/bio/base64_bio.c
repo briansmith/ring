@@ -526,12 +526,8 @@ static long b64_callback_ctrl(BIO *b, int cmd, bio_info_cb fp) {
   return ret;
 }
 
-static int b64_puts(BIO *b, const char *str) {
-  return b64_write(b, str, strlen(str));
-}
-
 static const BIO_METHOD b64_method = {
-    BIO_TYPE_BASE64, "base64 encoding", b64_write, b64_read, b64_puts,
+    BIO_TYPE_BASE64, "base64 encoding", b64_write, b64_read, NULL /* puts */,
     NULL /* gets */, b64_ctrl,          b64_new,   b64_free, b64_callback_ctrl,
 };
 
