@@ -295,7 +295,10 @@ static int ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
     if (!sk_CRYPTO_BUFFER_push(new_chain, leaf)) {
       goto err;
     }
-    CRYPTO_BUFFER_up_ref(leaf);
+    /* |leaf| might be NULL if it's a “leafless” chain. */
+    if (leaf != NULL) {
+      CRYPTO_BUFFER_up_ref(leaf);
+    }
   }
 
   for (size_t i = 0; i < sk_X509_num(chain); i++) {
