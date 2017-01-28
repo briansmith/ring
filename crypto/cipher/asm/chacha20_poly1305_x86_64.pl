@@ -389,7 +389,7 @@ hash_ad_loop:
         jb hash_ad_tail\n";
         &poly_add("0($adp)");
         &poly_mul(); $code.="
-        lea (1*16)($adp), $adp
+        lea 1*16($adp), $adp
         sub \$16, $itr2
     jmp hash_ad_loop
 hash_ad_tail:
