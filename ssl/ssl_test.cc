@@ -2154,6 +2154,11 @@ static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
   *out_clock = g_current_time;
 }
 
+static void FrozenTimeCallback(const SSL *ssl, timeval *out_clock) {
+  out_clock->tv_sec = 1000;
+  out_clock->tv_usec = 0;
+}
+
 static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
                                EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
                                int encrypt) {
@@ -2221,8 +2226,14 @@ static bool TestSessionTimeout(bool is_dtls, const SSL_METHOD *method,
   }
 
   for (bool server_test : std::vector<bool>{false, true}) {
-    static const int kStartTime = 1000;
+    static const time_t kStartTime = 1000;
     g_current_time.tv_sec = kStartTime;
+
+    // We are willing to use a longer lifetime for TLS 1.3 sessions as
+    // resumptions still perform ECDHE.
+    const time_t timeout = version == TLS1_3_VERSION
+                               ? SSL_DEFAULT_SESSION_PSK_DHE_TIMEOUT
+                               : SSL_DEFAULT_SESSION_TIMEOUT;
 
     bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(method));
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(method));
@@ -2239,11 +2250,14 @@ static bool TestSessionTimeout(bool is_dtls, const SSL_METHOD *method,
     SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
     SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
 
-    // Both client and server must enforce session timeouts.
+    // Both client and server must enforce session timeouts. We configure the
+    // other side with a frozen clock so it never expires tickets.
     if (server_test) {
+      SSL_CTX_set_current_time_cb(client_ctx.get(), FrozenTimeCallback);
       SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
     } else {
       SSL_CTX_set_current_time_cb(client_ctx.get(), CurrentTimeCallback);
+      SSL_CTX_set_current_time_cb(server_ctx.get(), FrozenTimeCallback);
     }
 
     // Configure a ticket callback which renews tickets.
@@ -2257,7 +2271,7 @@ static bool TestSessionTimeout(bool is_dtls, const SSL_METHOD *method,
     }
 
     // Advance the clock just behind the timeout.
-    g_current_time.tv_sec += SSL_DEFAULT_SESSION_TIMEOUT - 1;
+    g_current_time.tv_sec += timeout - 1;
 
     if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
                              true /* expect session reused */)) {
@@ -2289,7 +2303,8 @@ static bool TestSessionTimeout(bool is_dtls, const SSL_METHOD *method,
     }
 
     // Renew the session 10 seconds before expiration.
-    g_current_time.tv_sec = kStartTime + SSL_DEFAULT_SESSION_TIMEOUT - 10;
+    time_t new_start_time = kStartTime + timeout - 10;
+    g_current_time.tv_sec = new_start_time;
     bssl::UniquePtr<SSL_SESSION> new_session =
         ExpectSessionRenewed(client_ctx.get(), server_ctx.get(), session.get());
     if (!new_session) {
@@ -2319,23 +2334,76 @@ static bool TestSessionTimeout(bool is_dtls, const SSL_METHOD *method,
       return false;
     }
 
-    // The new session is usable just before the old expiration.
-    g_current_time.tv_sec = kStartTime + SSL_DEFAULT_SESSION_TIMEOUT - 1;
-    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
-                             new_session.get(),
-                             true /* expect session reused */)) {
-      fprintf(stderr, "Error resuming renewed session.\n");
-      return false;
-    }
+    if (version == TLS1_3_VERSION) {
+      // Renewal incorporates fresh key material in TLS 1.3, so we extend the
+      // lifetime TLS 1.3.
+      g_current_time.tv_sec = new_start_time + timeout - 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               true /* expect session reused */)) {
+        fprintf(stderr, "Error resuming renewed session.\n");
+        return false;
+      }
 
-    // Renewal does not extend the lifetime, so it is not usable beyond the
-    // old expiration.
-    g_current_time.tv_sec = kStartTime + SSL_DEFAULT_SESSION_TIMEOUT + 1;
-    if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
-                             new_session.get(),
-                             false /* expect session not reused */)) {
-      fprintf(stderr, "Renewed session's lifetime is too long.\n");
-      return false;
+      // The new session expires after the new timeout.
+      g_current_time.tv_sec = new_start_time + timeout + 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               false /* expect session ot reused */)) {
+        fprintf(stderr, "Renewed session's lifetime is too long.\n");
+        return false;
+      }
+
+      // Renew the session until it begins just past the auth timeout.
+      time_t auth_end_time = kStartTime + SSL_DEFAULT_SESSION_AUTH_TIMEOUT;
+      while (new_start_time < auth_end_time - 1000) {
+        // Get as close as possible to target start time.
+        new_start_time =
+            std::min(auth_end_time - 1000, new_start_time + timeout - 1);
+        g_current_time.tv_sec = new_start_time;
+        new_session = ExpectSessionRenewed(client_ctx.get(), server_ctx.get(),
+                                           new_session.get());
+        if (!new_session) {
+          fprintf(stderr, "Error renewing session.\n");
+          return false;
+        }
+      }
+
+      // Now the session's lifetime is bound by the auth timeout.
+      g_current_time.tv_sec = auth_end_time - 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               true /* expect session reused */)) {
+        fprintf(stderr, "Error resuming renewed session.\n");
+        return false;
+      }
+
+      g_current_time.tv_sec = auth_end_time + 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               false /* expect session ot reused */)) {
+        fprintf(stderr, "Renewed session's lifetime is too long.\n");
+        return false;
+      }
+    } else {
+      // The new session is usable just before the old expiration.
+      g_current_time.tv_sec = kStartTime + timeout - 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               true /* expect session reused */)) {
+        fprintf(stderr, "Error resuming renewed session.\n");
+        return false;
+      }
+
+      // Renewal does not extend the lifetime, so it is not usable beyond the
+      // old expiration.
+      g_current_time.tv_sec = kStartTime + timeout + 1;
+      if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                               new_session.get(),
+                               false /* expect session not reused */)) {
+        fprintf(stderr, "Renewed session's lifetime is too long.\n");
+        return false;
+      }
     }
   }
 
@@ -2348,9 +2416,20 @@ static int SetSessionTimeoutCallback(SSL *ssl, void *arg) {
   return 1;
 }
 
+static int SetSessionTimeoutCallbackTLS13(SSL *ssl, void *arg) {
+  long timeout = *(long *) arg;
+  SSL_set_session_psk_dhe_timeout(ssl, timeout);
+  return 1;
+}
+
 static bool TestSessionTimeoutCertCallback(bool is_dtls,
                                            const SSL_METHOD *method,
                                            uint16_t version) {
+  if (version == TLS1_3_VERSION) {
+    // |SSL_set_session_timeout| only applies to TLS 1.2 style resumption.
+    return true;
+  }
+
   static const int kStartTime = 1000;
   g_current_time.tv_sec = kStartTime;
 
@@ -2378,7 +2457,12 @@ static bool TestSessionTimeoutCertCallback(bool is_dtls,
   SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
 
   long timeout = 25;
-  SSL_CTX_set_cert_cb(server_ctx.get(), SetSessionTimeoutCallback, &timeout);
+  if (version == TLS1_3_VERSION) {
+    SSL_CTX_set_cert_cb(server_ctx.get(), SetSessionTimeoutCallbackTLS13,
+                        &timeout);
+  } else {
+    SSL_CTX_set_cert_cb(server_ctx.get(), SetSessionTimeoutCallback, &timeout);
+  }
 
   bssl::UniquePtr<SSL_SESSION> session =
       CreateClientSession(client_ctx.get(), server_ctx.get());
@@ -2428,7 +2512,11 @@ static bool TestSessionTimeoutCertCallback(bool is_dtls,
   timeout = 25;
   g_current_time.tv_sec = kStartTime;
 
-  SSL_CTX_set_timeout(server_ctx.get(), timeout - 10);
+  if (version == TLS1_3_VERSION) {
+    SSL_CTX_set_session_psk_dhe_timeout(server_ctx.get(), timeout - 10);
+  } else {
+    SSL_CTX_set_timeout(server_ctx.get(), timeout - 10);
+  }
 
   bssl::UniquePtr<SSL_SESSION> ctx_and_cb_session =
       CreateClientSession(client_ctx.get(), server_ctx.get());

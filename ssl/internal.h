@@ -1753,9 +1753,14 @@ enum ssl_session_result_t ssl_get_prev_session(
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
                                             int dup_flags);
 
-/* ssl_session_refresh_time updates |session|'s start time to the current time,
+/* ssl_session_rebase_time updates |session|'s start time to the current time,
  * adjusting the timeout so the expiration time is unchanged. */
-void ssl_session_refresh_time(SSL *ssl, SSL_SESSION *session);
+void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session);
+
+/* ssl_session_renew_timeout calls |ssl_session_rebase_time| and renews
+ * |session|'s timeout to |timeout| (measured from the current time). The
+ * renewal is clamped to the session's auth_timeout. */
+void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session, long timeout);
 
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);

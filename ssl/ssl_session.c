@@ -171,6 +171,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
   session->verify_result = X509_V_ERR_INVALID_CALL;
   session->references = 1;
   session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
+  session->auth_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
   session->time = (long)time(NULL);
   CRYPTO_new_ex_data(&session->ex_data);
   return session;
@@ -259,6 +260,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   new_session->peer_signature_algorithm = session->peer_signature_algorithm;
 
   new_session->timeout = session->timeout;
+  new_session->auth_timeout = session->auth_timeout;
   new_session->time = session->time;
 
   /* Copy non-authentication connection properties. */
@@ -303,7 +305,7 @@ err:
   return 0;
 }
 
-void ssl_session_refresh_time(SSL *ssl, SSL_SESSION *session) {
+void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session) {
   struct timeval now;
   ssl_get_current_time(ssl, &now);
 
@@ -314,17 +316,38 @@ void ssl_session_refresh_time(SSL *ssl, SSL_SESSION *session) {
       now.tv_sec < 0) {
     session->time = now.tv_sec;
     session->timeout = 0;
+    session->auth_timeout = 0;
     return;
   }
 
-  /* Adjust the session time and timeout. If the session has already expired,
-   * clamp the timeout at zero. */
+  /* Adjust the session time and timeouts. If the session has already expired,
+   * clamp the timeouts at zero. */
   long delta = now.tv_sec - session->time;
   session->time = now.tv_sec;
   if (session->timeout < delta) {
     session->timeout = 0;
   } else {
     session->timeout -= delta;
+  }
+  if (session->auth_timeout < delta) {
+    session->auth_timeout = 0;
+  } else {
+    session->auth_timeout -= delta;
+  }
+}
+
+void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session, long timeout) {
+  /* Rebase the timestamp relative to the current time so |timeout| is measured
+   * correctly. */
+  ssl_session_rebase_time(ssl, session);
+
+  if (session->timeout > timeout) {
+    return;
+  }
+
+  session->timeout = timeout;
+  if (session->timeout > session->auth_timeout) {
+    session->timeout = session->auth_timeout;
   }
 }
 
@@ -408,6 +431,7 @@ long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout) {
   }
 
   session->timeout = timeout;
+  session->auth_timeout = timeout;
   return 1;
 }
 
@@ -490,10 +514,21 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   ssl_get_current_time(ssl, &now);
   session->time = now.tv_sec;
 
-  session->timeout = ssl->session_timeout;
+  uint16_t version = ssl3_protocol_version(ssl);
+  if (version >= TLS1_3_VERSION) {
+    /* TLS 1.3 uses tickets as authenticators, so we are willing to use them for
+     * longer. */
+    session->timeout = ssl->session_psk_dhe_timeout;
+    session->auth_timeout = SSL_DEFAULT_SESSION_AUTH_TIMEOUT;
+  } else {
+    /* TLS 1.2 resumption does not incorporate new key material, so we use a
+     * much shorter timeout. */
+    session->timeout = ssl->session_timeout;
+    session->auth_timeout = ssl->session_timeout;
+  }
 
   if (is_server) {
-    if (hs->ticket_expected || ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    if (hs->ticket_expected || version >= TLS1_3_VERSION) {
       /* Don't set session IDs for sessions resumed with tickets. This will keep
        * them out of the session cache. */
       session->session_id_length = 0;
@@ -952,10 +987,18 @@ long SSL_CTX_get_timeout(const SSL_CTX *ctx) {
   return ctx->session_timeout;
 }
 
+void SSL_CTX_set_session_psk_dhe_timeout(SSL_CTX *ctx, long timeout) {
+  ctx->session_psk_dhe_timeout = timeout;
+}
+
 long SSL_set_session_timeout(SSL *ssl, long timeout) {
   long old_timeout = ssl->session_timeout;
   ssl->session_timeout = timeout;
   return old_timeout;
+}
+
+void SSL_set_session_psk_dhe_timeout(SSL *ssl, long timeout) {
+  ssl->session_psk_dhe_timeout = timeout;
 }
 
 typedef struct timeout_param_st {

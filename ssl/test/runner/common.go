@@ -1270,6 +1270,10 @@ type ProtocolBugs struct {
 	// MaxReceivePlaintext, if non-zero, is the maximum plaintext record
 	// length accepted from the peer.
 	MaxReceivePlaintext int
+
+	// SendTicketLifetime, if non-zero, is the ticket lifetime to send in
+	// NewSessionTicket messages.
+	SendTicketLifetime time.Duration
 }
 
 func (c *Config) serverInit() {

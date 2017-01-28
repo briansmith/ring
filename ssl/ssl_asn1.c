@@ -129,10 +129,11 @@
  *     isServer                [22] BOOLEAN DEFAULT TRUE,
  *     peerSignatureAlgorithm  [23] INTEGER OPTIONAL,
  *     ticketMaxEarlyData      [24] INTEGER OPTIONAL,
+ *     authTimeout             [25] INTEGER OPTIONAL, -- defaults to timeout
  * }
  *
  * Note: historically this serialization has included other optional
- * fields. Their presense is currently treated as a parse error:
+ * fields. Their presence is currently treated as a parse error:
  *
  *     keyArg                  [0] IMPLICIT OCTET STRING OPTIONAL,
  *     pskIdentityHint         [7] OCTET STRING OPTIONAL,
@@ -183,6 +184,8 @@ static const int kPeerSignatureAlgorithmTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 23;
 static const int kTicketMaxEarlyDataTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 24;
+static const int kAuthTimeoutTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 25;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -398,6 +401,13 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
   if (in->ticket_max_early_data != 0 &&
       (!CBB_add_asn1(&session, &child, kTicketMaxEarlyDataTag) ||
        !CBB_add_asn1_uint64(&child, in->ticket_max_early_data))) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (in->timeout != in->auth_timeout &&
+      (!CBB_add_asn1(&session, &child, kAuthTimeoutTag) ||
+       !CBB_add_asn1_uint64(&child, in->auth_timeout))) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -787,6 +797,8 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
                              kPeerSignatureAlgorithmTag, 0) ||
       !SSL_SESSION_parse_u32(&session, &ret->ticket_max_early_data,
                              kTicketMaxEarlyDataTag, 0) ||
+      !SSL_SESSION_parse_long(&session, &ret->auth_timeout, kAuthTimeoutTag,
+                              ret->timeout) ||
       CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;

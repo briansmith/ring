@@ -1681,6 +1681,9 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	}
 
 	m := new(newSessionTicketMsg)
+	if c.config.Bugs.SendTicketLifetime != 0 {
+		m.ticketLifetime = uint32(c.config.Bugs.SendTicketLifetime / time.Second)
+	}
 
 	if !c.config.Bugs.SendEmptySessionTicket {
 		var err error

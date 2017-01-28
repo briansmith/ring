@@ -254,8 +254,8 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
   ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
 
-  /* We take the system default */
   ret->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
+  ret->session_psk_dhe_timeout = SSL_DEFAULT_SESSION_PSK_DHE_TIMEOUT;
 
   ret->references = 1;
 
@@ -425,22 +425,21 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->initial_ctx = ctx;
 
   if (ctx->supported_group_list) {
-    ssl->supported_group_list =
-        BUF_memdup(ctx->supported_group_list,
-                   ctx->supported_group_list_len * 2);
+    ssl->supported_group_list = BUF_memdup(ctx->supported_group_list,
+                                           ctx->supported_group_list_len * 2);
     if (!ssl->supported_group_list) {
       goto err;
     }
     ssl->supported_group_list_len = ctx->supported_group_list_len;
   }
 
-  if (ssl->ctx->alpn_client_proto_list) {
-    ssl->alpn_client_proto_list = BUF_memdup(
-        ssl->ctx->alpn_client_proto_list, ssl->ctx->alpn_client_proto_list_len);
+  if (ctx->alpn_client_proto_list) {
+    ssl->alpn_client_proto_list = BUF_memdup(ctx->alpn_client_proto_list,
+                                             ctx->alpn_client_proto_list_len);
     if (ssl->alpn_client_proto_list == NULL) {
       goto err;
     }
-    ssl->alpn_client_proto_list_len = ssl->ctx->alpn_client_proto_list_len;
+    ssl->alpn_client_proto_list_len = ctx->alpn_client_proto_list_len;
   }
 
   ssl->method = ctx->method;
@@ -469,11 +468,11 @@ SSL *SSL_new(SSL_CTX *ctx) {
     ssl->tlsext_channel_id_private = ctx->tlsext_channel_id_private;
   }
 
-  ssl->signed_cert_timestamps_enabled =
-      ssl->ctx->signed_cert_timestamps_enabled;
-  ssl->ocsp_stapling_enabled = ssl->ctx->ocsp_stapling_enabled;
+  ssl->signed_cert_timestamps_enabled = ctx->signed_cert_timestamps_enabled;
+  ssl->ocsp_stapling_enabled = ctx->ocsp_stapling_enabled;
 
   ssl->session_timeout = ctx->session_timeout;
+  ssl->session_psk_dhe_timeout = ctx->session_psk_dhe_timeout;
 
   /* If the context has an OCSP response, use it. */
   if (ctx->ocsp_response != NULL) {

@@ -281,6 +281,10 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     }
     ssl->s3->session_reused = 1;
     SSL_SESSION_free(session);
+
+    /* Resumption incorporates fresh key material, so refresh the timeout. */
+    ssl_session_renew_timeout(ssl, ssl->s3->new_session,
+                              ssl->session_psk_dhe_timeout);
   }
 
   if (ssl->ctx->dos_protection_cb != NULL &&
@@ -598,9 +602,9 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL_HANDSHAKE *hs) {
 
   ssl->method->received_flight(ssl);
 
-  /* Refresh the session timestamp so that it is measured from ticket
+  /* Rebase the session timestamp so that it is measured from ticket
    * issuance. */
-  ssl_session_refresh_time(ssl, ssl->s3->new_session);
+  ssl_session_rebase_time(ssl, ssl->s3->new_session);
   hs->tls13_state = state_send_new_session_ticket;
   return ssl_hs_ok;
 }

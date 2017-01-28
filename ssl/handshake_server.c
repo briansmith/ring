@@ -1930,7 +1930,7 @@ static int ssl3_send_new_session_ticket(SSL_HANDSHAKE *hs) {
   SSL_SESSION *session_copy = NULL;
   if (ssl->session == NULL) {
     /* Fix the timeout to measure from the ticket issuance time. */
-    ssl_session_refresh_time(ssl, ssl->s3->new_session);
+    ssl_session_rebase_time(ssl, ssl->s3->new_session);
     session = ssl->s3->new_session;
   } else {
     /* We are renewing an existing session. Duplicate the session to adjust the
@@ -1940,7 +1940,7 @@ static int ssl3_send_new_session_ticket(SSL_HANDSHAKE *hs) {
       return -1;
     }
 
-    ssl_session_refresh_time(ssl, session_copy);
+    ssl_session_rebase_time(ssl, session_copy);
     session = session_copy;
   }
 

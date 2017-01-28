@@ -15,6 +15,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/bytestring.h>
@@ -257,6 +258,10 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     ssl_set_session(ssl, NULL);
+
+    /* Resumption incorporates fresh key material, so refresh the timeout. */
+    ssl_session_renew_timeout(ssl, ssl->s3->new_session,
+                              ssl->session_psk_dhe_timeout);
   } else if (!ssl_get_new_session(hs, 0)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -618,11 +623,12 @@ int tls13_process_new_session_ticket(SSL *ssl) {
     return 0;
   }
 
-  ssl_session_refresh_time(ssl, session);
+  ssl_session_rebase_time(ssl, session);
 
+  uint32_t server_timeout;
   CBS cbs, ticket, extensions;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u32(&cbs, &session->tlsext_tick_lifetime_hint) ||
+  if (!CBS_get_u32(&cbs, &server_timeout) ||
       !CBS_get_u32(&cbs, &session->ticket_age_add) ||
       !CBS_get_u16_length_prefixed(&cbs, &ticket) ||
       !CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen) ||
@@ -631,6 +637,21 @@ int tls13_process_new_session_ticket(SSL *ssl) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     goto err;
+  }
+
+  /* Cap the renewable lifetime by the server advertised value. This avoids
+   * wasting bandwidth on 0-RTT when we know the server will reject it.
+   *
+   * TODO(davidben): This dance where we're not sure if long or uint32_t is
+   * bigger is silly. session->timeout should not be a long to begin with.
+   * https://crbug.com/boringssl/155. */
+#if LONG_MAX < 0xffffffff
+  if (server_timeout > LONG_MAX) {
+    server_timeout = LONG_MAX;
+  }
+#endif
+  if (session->timeout > (long)server_timeout) {
+    session->timeout = (long)server_timeout;
   }
 
   /* Parse out the extensions. */

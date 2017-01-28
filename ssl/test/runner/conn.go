@@ -1795,6 +1795,10 @@ func (c *Conn) SendNewSessionTicket() error {
 		ticketAgeAdd:           ticketAgeAdd,
 	}
 
+	if c.config.Bugs.SendTicketLifetime != 0 {
+		m.ticketLifetime = uint32(c.config.Bugs.SendTicketLifetime / time.Second)
+	}
+
 	state := sessionState{
 		vers:               c.vers,
 		cipherSuite:        c.cipherSuite.id,
