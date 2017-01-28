@@ -131,6 +131,8 @@ struct TestConfig {
   bool expect_no_secure_renegotiation = false;
   int max_send_fragment = 0;
   int read_size = 0;
+  bool expect_session_id = false;
+  bool expect_no_session_id = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

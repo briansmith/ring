@@ -493,7 +493,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   session->timeout = ssl->session_timeout;
 
   if (is_server) {
-    if (hs->ticket_expected) {
+    if (hs->ticket_expected || ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
       /* Don't set session IDs for sessions resumed with tickets. This will keep
        * them out of the session cache. */
       session->session_id_length = 0;

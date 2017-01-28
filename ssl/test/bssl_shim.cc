@@ -1254,6 +1254,17 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
+  if (!is_resume) {
+    if (config->expect_session_id && !GetTestState(ssl)->got_new_session) {
+      fprintf(stderr, "session was not cached on the server.\n");
+      return false;
+    }
+    if (config->expect_no_session_id && GetTestState(ssl)->got_new_session) {
+      fprintf(stderr, "session was unexpectedly cached on the server.\n");
+      return false;
+    }
+  }
+
   if (config->is_server && !GetTestState(ssl)->early_callback_called) {
     fprintf(stderr, "early callback not called\n");
     return false;

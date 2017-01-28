@@ -3417,6 +3417,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 		},
 		resumeSession: true,
+		flags:         []string{"-expect-no-session-id"},
 	})
 	tests = append(tests, testCase{
 		testType: serverTest,
@@ -3426,6 +3427,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			SessionTicketsDisabled: true,
 		},
 		resumeSession: true,
+		flags:         []string{"-expect-session-id"},
 	})
 	tests = append(tests, testCase{
 		testType: serverTest,
@@ -3467,6 +3469,9 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 			resumeSession:        true,
 			resumeRenewedSession: true,
+			// TLS 1.3 uses tickets, so the session should not be
+			// cached statefully.
+			flags: []string{"-expect-no-session-id"},
 		})
 
 		tests = append(tests, testCase{

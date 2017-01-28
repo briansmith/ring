@@ -123,6 +123,8 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::expect_secure_renegotiation },
   { "-expect-no-secure-renegotiation",
     &TestConfig::expect_no_secure_renegotiation },
+  { "-expect-session-id", &TestConfig::expect_session_id },
+  { "-expect-no-session-id", &TestConfig::expect_no_session_id },
 };
 
 const Flag<std::string> kStringFlags[] = {
