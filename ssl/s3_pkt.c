@@ -275,15 +275,6 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
     return -1;
   }
 
-  /* If we have an alert to send, lets send it */
-  if (ssl->s3->alert_dispatch) {
-    int ret = ssl->method->dispatch_alert(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
-    /* if it went, fall through and send more stuff */
-  }
-
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
@@ -464,10 +455,11 @@ int ssl3_send_alert(SSL *ssl, int level, int desc) {
     return -1;
   }
 
-  if (level == SSL3_AL_FATAL) {
-    ssl->s3->send_shutdown = ssl_shutdown_fatal_alert;
-  } else if (level == SSL3_AL_WARNING && desc == SSL_AD_CLOSE_NOTIFY) {
+  if (level == SSL3_AL_WARNING && desc == SSL_AD_CLOSE_NOTIFY) {
     ssl->s3->send_shutdown = ssl_shutdown_close_notify;
+  } else {
+    assert(level == SSL3_AL_FATAL);
+    ssl->s3->send_shutdown = ssl_shutdown_fatal_alert;
   }
 
   ssl->s3->alert_dispatch = 1;
@@ -484,12 +476,11 @@ int ssl3_send_alert(SSL *ssl, int level, int desc) {
 }
 
 int ssl3_dispatch_alert(SSL *ssl) {
-  ssl->s3->alert_dispatch = 0;
   int ret = do_ssl3_write(ssl, SSL3_RT_ALERT, &ssl->s3->send_alert[0], 2);
   if (ret <= 0) {
-    ssl->s3->alert_dispatch = 1;
     return ret;
   }
+  ssl->s3->alert_dispatch = 0;
 
   /* If the alert is fatal, flush the BIO now. */
   if (ssl->s3->send_alert[0] == SSL3_AL_FATAL) {
