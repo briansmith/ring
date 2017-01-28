@@ -934,6 +934,11 @@ long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout) {
     return 0;
   }
 
+  /* Historically, zero was treated as |SSL_DEFAULT_SESSION_TIMEOUT|. */
+  if (timeout == 0) {
+    timeout = SSL_DEFAULT_SESSION_TIMEOUT;
+  }
+
   long old_timeout = ctx->session_timeout;
   ctx->session_timeout = timeout;
   return old_timeout;

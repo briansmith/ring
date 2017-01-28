@@ -3872,8 +3872,7 @@ struct ssl_ctx_st {
    * SSL_accept which cache SSL_SESSIONS. */
   int session_cache_mode;
 
-  /* If timeout is not 0, it is the default timeout value set when SSL_new() is
-   * called.  This has been put in to make life easier to set things up */
+  /* session_timeout is the default lifetime for new sessions, in seconds. */
   long session_timeout;
 
   /* If this callback is not null, it will be called each time a session id is
