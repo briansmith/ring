@@ -77,15 +77,44 @@ impl OpeningKey {
 
 /// Authenticates and decrypts (“opens”) data in place. When
 ///
-/// The input is `in_out[in_prefix_len..]`; i.e. the input is the part of
-/// `in_out` after the prefix. When `open_in_place` returns `Ok(plaintext)`,
-/// the decrypted output is `plaintext`, which is
-/// `&mut in_out[..plaintext.len()]`. To put it a different way, the output
-/// overwrites the input, shifted by `in_prefix_len` bytes. To have the
-/// output overwrite the input without shifting, pass 0 as `in_prefix_len`.
-/// (The input/output buffer is expressed this way because Rust's type system
-/// does not allow us to have two slices, one mutable and one immutable, that
-/// reference overlapping memory at the same time.)
+/// The input may have a prefix that is `in_prefix_len` bytes long; any such
+/// prefix is ignored on input and overwritten on output. The last
+/// `key.algorithm().tag_len()` bytes of `in_out` must be the tag. The part of
+/// `in_out` between the prefix and the tag is the input ciphertext.
+///
+/// When `open_in_place()` returns `Ok(plaintext)`, the decrypted output is
+/// `plaintext`, which is `&mut in_out[..plaintext.len()]`. That is, the output
+/// plaintext overwrites some or all of the prefix and ciphertext. To put it
+/// another way, the ciphertext is shifted forward `in_prefix_len` bytes and
+/// then decrypted in place. To have the output overwrite the input without
+/// shifting, pass 0 as `in_prefix_len`.
+///
+/// When `open_in_place()` returns `Err(..)`, `in_out` may have been
+/// overwritten in an unspecified way.
+///
+/// The shifting feature is useful in the case where multiple packets are
+/// being reassembled in place. Consider this example where the peer has sent
+/// the message “Split stream reassembled in place” split into three sealed
+/// packets:
+///
+/// ```ascii-art
+///                 Packet 1                  Packet 2                 Packet 3
+/// Input:  [Header][Ciphertext][Tag][Header][Ciphertext][Tag][Header][Ciphertext][Tag]
+///                      |         +--------------+                        |
+///               +------+   +-----+    +----------------------------------+
+///               v          v          v
+/// Output: [Plaintext][Plaintext][Plaintext]
+///        “Split stream reassembled in place”
+/// ```
+///
+/// Let's say the header is always 5 bytes (like TLS 1.2) and the tag is always
+/// 16 bytes (as for AES-GCM and ChaCha20-Poly1305). Then for this example,
+/// `in_prefix_len` would be `5` for the first packet, `(5 + 16) + 5` for the
+/// second packet, and `(2 * (5 + 16)) + 5` for the third packet.
+///
+/// (The input/output buffer is expressed as combination of `in_prefix_len`
+/// and `in_out` because Rust's type system does not allow us to have two
+/// slices, one mutable and one immutable, that reference overlapping memory.)
 ///
 /// C analog: `EVP_AEAD_CTX_open`
 ///
