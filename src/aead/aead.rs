@@ -230,11 +230,11 @@ pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
     seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN], ad: &[u8],
-             in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN])
-             -> Result<(), error::Unspecified>,
-    open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-             ad: &[u8], in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN])
-             -> Result<(), error::Unspecified>,
+             plaintext_in_ciphertext_out: &mut [u8],
+             tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
+    open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN], ad: &[u8],
+             ciphertext_in_plaintext_out: &mut [u8],
+             tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
 
     key_len: usize,
 }
