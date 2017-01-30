@@ -79,84 +79,50 @@ impl OpeningKey {
 ///
 /// `nonce` must be unique for every use of the key to seal data; it must be
 /// exactly `key.algorithm().nonce_len()` bytes long. `ad` is the additional
-/// authenticated data, which won't be encrypted; it may be empty. The input
-/// may have an optional prefix that is `in_prefix_len` bytes long; any such
-/// prefix is ignored on input and overwritten on output. The last
+/// authenticated data, which won't be encrypted; it may be empty. The last
 /// `key.algorithm().tag_len()` bytes of `ciphertext_and_tag_modified_in_place`
-/// must be the tag. The part of `ciphertext_and_tag_modified_in_place` between
-/// the prefix and the tag is the input ciphertext; it may be empty.
+/// must be the tag. The part of `ciphertext_and_tag_modified_in_place` before
+/// the tag is the input ciphertext; it may be empty.
 ///
 /// When `open_in_place()` returns `Ok(plaintext)`, the decrypted output is
 /// `plaintext`, which is
 /// `&mut ciphertext_and_tag_modified_in_place[..plaintext.len()]`. That is,
-/// the output plaintext overwrites some or all of the prefix and ciphertext.
-/// To put it another way, the ciphertext is shifted forward `in_prefix_len`
-/// bytes and then decrypted in place. To have the output overwrite the input
-/// without shifting, pass 0 as `in_prefix_len`.
+/// the output plaintext overwrites the ciphertext.
 ///
 /// When `open_in_place()` returns `Err(..)`,
 /// `ciphertext_and_tag_modified_in_place` may have been overwritten in an
 /// unspecified way.
 ///
-/// The shifting feature is useful in the case where multiple packets are
-/// being reassembled in place. Consider this example where the peer has sent
-/// the message “Split stream reassembled in place” split into three sealed
-/// packets:
-///
-/// ```ascii-art
-///                 Packet 1                  Packet 2                 Packet 3
-/// Input:  [Header][Ciphertext][Tag][Header][Ciphertext][Tag][Header][Ciphertext][Tag]
-///                      |         +--------------+                        |
-///               +------+   +-----+    +----------------------------------+
-///               v          v          v
-/// Output: [Plaintext][Plaintext][Plaintext]
-///        “Split stream reassembled in place”
-/// ```
-///
-/// Let's say the header is always 5 bytes (like TLS 1.2) and the tag is always
-/// 16 bytes (as for AES-GCM and ChaCha20-Poly1305). Then for this example,
-/// `in_prefix_len` would be `5` for the first packet, `(5 + 16) + 5` for the
-/// second packet, and `(2 * (5 + 16)) + 5` for the third packet.
-///
-/// (The input/output buffer is expressed as combination of `in_prefix_len`
-/// and `ciphertext_and_tag_modified_in_place` because Rust's type system
-/// does not allow us to have two slices, one mutable and one immutable, that
-/// reference overlapping memory.)
-///
 /// C analog: `EVP_AEAD_CTX_open`
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
-                         in_prefix_len: usize,
                          ciphertext_and_tag_modified_in_place: &'a mut [u8])
                          -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
-    let ciphertext_and_tag_len =
-        try!(ciphertext_and_tag_modified_in_place.len()
-                .checked_sub(in_prefix_len).ok_or(error::Unspecified));
     let ciphertext_len =
-        try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
-                .ok_or(error::Unspecified));
+        try!(ciphertext_and_tag_modified_in_place.len()
+                .checked_sub(TAG_LEN).ok_or(error::Unspecified));
     try!(check_per_nonce_max_bytes(ciphertext_len));
-    let (in_out, received_tag) =
-        ciphertext_and_tag_modified_in_place
-            .split_at_mut(in_prefix_len + ciphertext_len);
+    let (ciphertext_in_plaintext_out, received_tag) =
+        ciphertext_and_tag_modified_in_place.split_at_mut(ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
-                                  in_out, &mut calculated_tag));
+    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad,
+                                  ciphertext_in_plaintext_out,
+                                  &mut calculated_tag));
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
             .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
         // tag before decrypting, but some `open` implementations interleave
         // authentication with decryption for performance.
-        for b in &mut in_out[..ciphertext_len] {
+        for b in ciphertext_in_plaintext_out {
             *b = 0;
         }
         return Err(error::Unspecified);
     }
     // `ciphertext_len` is also the plaintext length.
-    Ok(&mut in_out[..ciphertext_len])
+    Ok(ciphertext_in_plaintext_out)
 }
 
 /// A key for encrypting and signing (“sealing”) data.
@@ -267,8 +233,8 @@ pub struct Algorithm {
              in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN])
              -> Result<(), error::Unspecified>,
     open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-             ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
-             tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
+             ad: &[u8], in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN])
+             -> Result<(), error::Unspecified>,
 
     key_len: usize,
 }
@@ -371,107 +337,20 @@ mod tests {
 
             ct.extend(tag);
 
-            // In release builds, test all prefix lengths from 0 to 4096 bytes.
-            // Debug builds are too slow for this, so for those builds, only
-            // test a smaller subset.
-
-            // TLS record headers are 5 bytes long.
-            // TLS explicit nonces for AES-GCM are 8 bytes long.
-            static MINIMAL_IN_PREFIX_LENS: [usize; 36] = [
-                // No input prefix to overwrite; i.e. the opening is exactly
-                // "in place."
-                0,
-
-                1,
-                2,
-
-                // Proposed TLS 1.3 header (no explicit nonce).
-                5,
-
-                8,
-
-                // Probably the most common use of a non-zero `in_prefix_len`
-                // would be to write a decrypted TLS record over the top of the
-                // TLS header and nonce.
-                5 /* record header */ + 8 /* explicit nonce */,
-
-                // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
-                // units. Some of the ChaCha20 code is even weirder.
-
-                15, // The maximum partial AES block.
-                16, // One AES block.
-                17, // One byte more than a full AES block.
-
-                31, // 2 AES blocks or 1 ChaCha20 block, minus 1.
-                32, // Two AES blocks, one ChaCha20 block.
-                33, // 2 AES blocks or 1 ChaCha20 block, plus 1.
-
-                47, // Three AES blocks - 1.
-                48, // Three AES blocks.
-                49, // Three AES blocks + 1.
-
-                63, // Four AES blocks or two ChaCha20 blocks, minus 1.
-                64, // Four AES blocks or two ChaCha20 blocks.
-                65, // Four AES blocks or two ChaCha20 blocks, plus 1.
-
-                79, // Five AES blocks, minus 1.
-                80, // Five AES blocks.
-                81, // Five AES blocks, plus 1.
-
-                95, // Six AES blocks or three ChaCha20 blocks, minus 1.
-                96, // Six AES blocks or three ChaCha20 blocks.
-                97, // Six AES blocks or three ChaCha20 blocks, plus 1.
-
-                111, // Seven AES blocks, minus 1.
-                112, // Seven AES blocks.
-                113, // Seven AES blocks, plus 1.
-
-                127, // Eight AES blocks or four ChaCha20 blocks, minus 1.
-                128, // Eight AES blocks or four ChaCha20 blocks.
-                129, // Eight AES blocks or four ChaCha20 blocks, plus 1.
-
-                143, // Nine AES blocks, minus 1.
-                144, // Nine AES blocks.
-                145, // Nine AES blocks, plus 1.
-
-                255, // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
-                256, // 16 AES blocks or 8 ChaCha20 blocks.
-                257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
-            ];
-
-            let mut more_comprehensive_in_prefix_lengths = [0; 4096];
-            let in_prefix_lengths;
-            if cfg!(debug_assertions) {
-                in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];
-            } else {
-                for b in 0..more_comprehensive_in_prefix_lengths.len() {
-                    more_comprehensive_in_prefix_lengths[b] = b;
-                }
-                in_prefix_lengths = &more_comprehensive_in_prefix_lengths[..];
-            }
-            let mut o_in_out = vec![123u8; 4096];
-
-            for in_prefix_len in in_prefix_lengths.iter() {
-                o_in_out.truncate(0);
-                for _ in 0..*in_prefix_len {
-                    o_in_out.push(123);
-                }
-                o_in_out.extend_from_slice(&ct[..]);
-                let o_result = aead::open_in_place(&o_key, &nonce[..], &ad,
-                                                   *in_prefix_len,
-                                                   &mut o_in_out[..]);
-                match error {
-                    None => {
-                        assert_eq!(&plaintext[..], o_result.unwrap());
-                    },
-                    Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
-                        assert_eq!(Err(error::Unspecified), o_result);
-                    },
-                    Some(error) => {
-                        unreachable!("Unexpected error test case: {}", error);
-                    },
-                };
-            }
+            let mut o_in_out = ct.clone();
+            let o_result = aead::open_in_place(&o_key, &nonce[..], &ad,
+                                               &mut o_in_out[..]);
+            match error {
+                None => {
+                    assert_eq!(&plaintext[..], o_result.unwrap());
+                },
+                Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
+                    assert_eq!(Err(error::Unspecified), o_result);
+                },
+                Some(error) => {
+                    unreachable!("Unexpected error test case: {}", error);
+                },
+            };
 
             Ok(())
         });
@@ -541,7 +420,6 @@ mod tests {
 
         let nonce = vec![0u8; nonce_len * 2];
 
-        let prefix_len = 0;
         let tag_len = aead_alg.tag_len();
         let ad: [u8; 0] = [];
 
@@ -578,7 +456,7 @@ mod tests {
         {
             let mut in_out = to_open.clone();
             assert!(aead::open_in_place(&o_key, &nonce[..nonce_len], &ad,
-                                        prefix_len, &mut in_out).is_ok());
+                                        &mut in_out).is_ok());
         }
 
         // Nonce is one byte too small.
@@ -591,7 +469,7 @@ mod tests {
         {
             let mut in_out = to_open.clone();
             assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len - 1)], &ad,
-                                        prefix_len, &mut in_out).is_err());
+                                        &mut in_out).is_err());
         }
 
         // Nonce is one byte too large.
@@ -604,7 +482,7 @@ mod tests {
         {
             let mut in_out = to_open.clone();
             assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len + 1)], &ad,
-                                        prefix_len, &mut in_out).is_err());
+                                        &mut in_out).is_err());
         }
 
         // Nonce is half the required size.
@@ -617,7 +495,7 @@ mod tests {
         {
             let mut in_out = to_open.clone();
             assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len / 2)], &ad,
-                                        prefix_len, &mut in_out).is_err());
+                                        &mut in_out).is_err());
         }
 
         // Nonce is twice the required size.
@@ -630,7 +508,7 @@ mod tests {
         {
             let mut in_out = to_open.clone();
             assert!(aead::open_in_place(&o_key, &nonce[..(nonce_len * 2)], &ad,
-                                        prefix_len, &mut in_out).is_err());
+                                        &mut in_out).is_err());
         }
 
         // Nonce is empty.
@@ -642,8 +520,8 @@ mod tests {
         }
         {
             let mut in_out = to_open.clone();
-            assert!(aead::open_in_place(&o_key, &[], &ad, prefix_len,
-                                        &mut in_out) .is_err());
+            assert!(aead::open_in_place(&o_key, &[], &ad, &mut in_out)
+                        .is_err());
         }
 
         // Nonce is one byte.
@@ -655,8 +533,8 @@ mod tests {
         }
         {
             let mut in_out = to_open.clone();
-            assert!(aead::open_in_place(&o_key, &nonce[..1], &ad, prefix_len,
-                                        &mut in_out).is_err());
+            assert!(aead::open_in_place(&o_key, &nonce[..1], &ad, &mut in_out)
+                        .is_err());
         }
 
         // Nonce is 128 bits (16 bytes).
@@ -668,8 +546,8 @@ mod tests {
         }
         {
             let mut in_out = to_open.clone();
-            assert!(aead::open_in_place(&o_key, &nonce[..16], &ad, prefix_len,
-                                        &mut in_out).is_err());
+            assert!(aead::open_in_place(&o_key, &nonce[..16], &ad, &mut in_out)
+                        .is_err());
         }
 
         Ok(())

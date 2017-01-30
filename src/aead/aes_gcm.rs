@@ -58,15 +58,13 @@ fn aes_gcm_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
 }
 
 fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-                nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
-                in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN])
+                nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
+                tag_out: &mut [u8; aead::TAG_LEN])
                 -> Result<(), error::Unspecified> {
     let ctx = polyfill::slice::u64_as_u8(ctx);
     bssl::map_result(unsafe {
-        GFp_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(),
-                         in_out.len() - in_prefix_len, tag_out, nonce,
-                         in_out[in_prefix_len..].as_ptr(), ad.as_ptr(),
-                         ad.len())
+        GFp_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(), in_out.len(),
+                         tag_out, nonce, in_out.as_ptr(), ad.as_ptr(), ad.len())
     })
 }
 
