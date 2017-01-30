@@ -122,6 +122,7 @@ use bits;
 use {digest, error};
 
 use std;
+use std::ops::{Deref, DerefMut};
 use std::string::String;
 use std::vec::Vec;
 use std::io::BufRead;
@@ -384,6 +385,73 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
                 attributes.push((String::from(key), String::from(value), false));
             },
         }
+    }
+}
+
+/// A container that stores a byte sequence preceded by a prefix of zero
+/// or more dummy bytes.  This is useful for test cases that need to exercise
+/// vectorized implementations with non-aligned inputs.
+pub struct PrefixedByteVec {
+    prefix_len: usize,
+    vec: Vec<u8>,
+}
+
+impl PrefixedByteVec {
+    /// Create an empty PrefixedByteVec that can hold `size` bytes of
+    /// prefix+data.
+    pub fn with_capacity(size: usize) -> PrefixedByteVec {
+        PrefixedByteVec {
+            prefix_len: 0,
+            vec: Vec::with_capacity(size),
+        }
+    }
+
+    /// Create an PrefixedByteVec containing a copy of the provided slice,
+    /// preceded by `prefix_len` dummy bytes.
+    pub fn from(prefix_len: usize, data: &[u8]) -> PrefixedByteVec {
+        let mut v = PrefixedByteVec {
+            prefix_len: prefix_len,
+            vec: Vec::with_capacity(prefix_len + data.len()),
+        };
+        v.replace_from(prefix_len, data);
+        v
+    }
+
+    /// Replace a PrefixedByteVec's contents with a copy of the provided
+    /// slice, preceded by `prefix_len` dummy bytes.
+    pub fn replace_from(&mut self, prefix_len: usize, data: &[u8]) {
+        self.vec.clear();
+        for _ in 0..prefix_len {
+            self.vec.push(123);
+        }
+        self.vec.extend(data.iter());
+        self.prefix_len = prefix_len;
+        assert_eq!(self.vec.len(), self.prefix_len + data.len());
+    }
+
+    /// Return a slice containing the full contents, including the prefix.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.vec.as_slice()
+    }
+
+    /// Return a slice containing just the data, excluding the prefix.
+    pub fn data(&self) -> &[u8] {
+        &self.vec.as_slice()[self.prefix_len..]
+    }
+
+}
+
+impl Deref for PrefixedByteVec {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        self.vec.deref()
+    }
+}
+
+impl DerefMut for PrefixedByteVec {
+    fn deref_mut(&mut self) -> &mut [u8] {
+        self.vec.deref_mut()
     }
 }
 

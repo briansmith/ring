@@ -410,17 +410,13 @@ mod tests {
                 }
                 in_prefix_lengths = &more_comprehensive_in_prefix_lengths[..];
             }
-            let mut o_in_out = vec![123u8; 4096];
+            let mut o_in_out = test::PrefixedByteVec::with_capacity(4096);
 
             for in_prefix_len in in_prefix_lengths.iter() {
-                o_in_out.truncate(0);
-                for _ in 0..*in_prefix_len {
-                    o_in_out.push(123);
-                }
-                o_in_out.extend_from_slice(&ct[..]);
+                o_in_out.replace_from(*in_prefix_len, &ct[..]);
                 let o_result = aead::open_in_place(&o_key, &nonce[..],
                                                    *in_prefix_len,
-                                                   &mut o_in_out[..], &ad);
+                                                   &mut o_in_out, &ad);
                 match error {
                     None => {
                         assert_eq!(Ok(ct.len()), s_result);
