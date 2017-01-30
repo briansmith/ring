@@ -192,7 +192,7 @@ impl SealingKey {
 ///
 /// The input is `in_out[..(in_out.len() - out_suffix_capacity)]`; i.e. the
 /// input is the part of `in_out` that precedes the suffix. When
-/// `seal_in_place` returns `Ok(out_len)`, the encrypted and signed output is
+/// `seal_in_place()` returns `Ok(out_len)`, the encrypted and signed output is
 /// `in_out[..out_len]`; i.e.  the output has been written over input and at
 /// least part of the data reserved for the suffix. (The input/output buffer
 /// is expressed this way because Rust's type system does not allow us to have
