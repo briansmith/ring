@@ -212,6 +212,20 @@ int BN_is_odd(const BIGNUM *bn) {
   return bn->top > 0 && (bn->d[0] & 1) == 1;
 }
 
+int BN_is_pow2(const BIGNUM *bn) {
+  if (bn->top == 0 || bn->neg) {
+    return 0;
+  }
+
+  for (int i = 0; i < bn->top - 1; i++) {
+    if (bn->d[i] != 0) {
+      return 0;
+    }
+  }
+
+  return 0 == (bn->d[bn->top-1] & (bn->d[bn->top-1] - 1));
+}
+
 int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
   if (a->top != b->top) {
     return 0;

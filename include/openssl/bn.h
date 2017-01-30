@@ -476,6 +476,8 @@ OPENSSL_EXPORT int BN_is_word(const BIGNUM *bn, BN_ULONG w);
 /* BN_is_odd returns one if |bn| is odd and zero otherwise. */
 OPENSSL_EXPORT int BN_is_odd(const BIGNUM *bn);
 
+/* BN_is_pow2 returns 1 if |a| is a power of two, and 0 otherwise. */
+OPENSSL_EXPORT int BN_is_pow2(const BIGNUM *a);
 
 /* Bitwise operations. */
 
@@ -518,6 +520,14 @@ OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);
 
 /* BN_mod_word returns |a| mod |w| or (BN_ULONG)-1 on error. */
 OPENSSL_EXPORT BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);
+
+/* BN_mod_pow2 sets |r| = |a| mod 2^|e|. It returns 1 on success and
+ * 0 on error. */
+OPENSSL_EXPORT int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e);
+
+/* BN_nnmod_pow2 sets |r| = |a| mod 2^|e| where |r| is always positive.
+ * It returns 1 on success and 0 on error. */
+OPENSSL_EXPORT int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e);
 
 /* BN_mod is a helper macro that calls |BN_div| and discards the quotient. */
 #define BN_mod(rem, numerator, divisor, ctx) \

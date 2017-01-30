@@ -58,6 +58,7 @@
 
 #include <assert.h>
 #include <limits.h>
+
 #include <openssl/err.h>
 
 #include "internal.h"
@@ -645,4 +646,83 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
 #endif
   }
   return (BN_ULONG)ret;
+}
+
+int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
+  if (e == 0 || a->top == 0) {
+    BN_zero(r);
+    return 1;
+  }
+
+  size_t num_words = 1 + ((e - 1) / BN_BITS2);
+
+  /* If |a| definitely has less than |e| bits, just BN_copy. */
+  if ((size_t) a->top < num_words) {
+    return BN_copy(r, a) != NULL;
+  }
+
+  /* Otherwise, first make sure we have enough space in |r|.
+   * Note that this will fail if num_words > INT_MAX. */
+  if (bn_wexpand(r, num_words) == NULL) {
+    return 0;
+  }
+
+  /* Copy the content of |a| into |r|. */
+  OPENSSL_memcpy(r->d, a->d, num_words * sizeof(BN_ULONG));
+
+  /* If |e| isn't word-aligned, we have to mask off some of our bits. */
+  size_t top_word_exponent = e % (sizeof(BN_ULONG) * 8);
+  if (top_word_exponent != 0) {
+    r->d[num_words - 1] &= (((BN_ULONG) 1) << top_word_exponent) - 1;
+  }
+
+  /* Fill in the remaining fields of |r|. */
+  r->neg = a->neg;
+  r->top = (int) num_words;
+  bn_correct_top(r);
+  return 1;
+}
+
+int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
+  if (!BN_mod_pow2(r, a, e)) {
+    return 0;
+  }
+
+  /* If the returned value was non-negative, we're done. */
+  if (BN_is_zero(r) || !r->neg) {
+    return 1;
+  }
+
+  size_t num_words = 1 + (e - 1) / BN_BITS2;
+
+  /* Expand |r| to the size of our modulus. */
+  if (bn_wexpand(r, num_words) == NULL) {
+    return 0;
+  }
+
+  /* Clear the upper words of |r|. */
+  OPENSSL_memset(&r->d[r->top], 0, (num_words - r->top) * BN_BYTES);
+
+  /* Set parameters of |r|. */
+  r->neg = 0;
+  r->top = (int) num_words;
+
+  /* Now, invert every word. The idea here is that we want to compute 2^e-|x|,
+   * which is actually equivalent to the twos-complement representation of |x|
+   * in |e| bits, which is -x = ~x + 1. */
+  for (int i = 0; i < r->top; i++) {
+    r->d[i] = ~r->d[i];
+  }
+
+  /* If our exponent doesn't span the top word, we have to mask the rest. */
+  size_t top_word_exponent = e % BN_BITS2;
+  if (top_word_exponent != 0) {
+    r->d[r->top - 1] &= (((BN_ULONG) 1) << top_word_exponent) - 1;
+  }
+
+  /* Keep the correct_top invariant for BN_add. */
+  bn_correct_top(r);
+
+  /* Finally, add one, for the reason described above. */
+  return BN_add(r, r, BN_value_one());
 }
