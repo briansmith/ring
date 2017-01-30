@@ -79,18 +79,21 @@ impl OpeningKey {
 ///
 /// The input may have a prefix that is `in_prefix_len` bytes long; any such
 /// prefix is ignored on input and overwritten on output. The last
-/// `key.algorithm().tag_len()` bytes of `in_out` must be the tag. The part of
-/// `in_out` between the prefix and the tag is the input ciphertext.
+/// `key.algorithm().tag_len()` bytes of `ciphertext_and_tag_modified_in_place`
+/// must be the tag. The part of `ciphertext_and_tag_modified_in_place` between
+/// the prefix and the tag is the input ciphertext.
 ///
 /// When `open_in_place()` returns `Ok(plaintext)`, the decrypted output is
-/// `plaintext`, which is `&mut in_out[..plaintext.len()]`. That is, the output
-/// plaintext overwrites some or all of the prefix and ciphertext. To put it
-/// another way, the ciphertext is shifted forward `in_prefix_len` bytes and
-/// then decrypted in place. To have the output overwrite the input without
-/// shifting, pass 0 as `in_prefix_len`.
+/// `plaintext`, which is
+/// `&mut ciphertext_and_tag_modified_in_place[..plaintext.len()]`. That is,
+/// the output plaintext overwrites some or all of the prefix and ciphertext.
+/// To put it another way, the ciphertext is shifted forward `in_prefix_len`
+/// bytes and then decrypted in place. To have the output overwrite the input
+/// without shifting, pass 0 as `in_prefix_len`.
 ///
-/// When `open_in_place()` returns `Err(..)`, `in_out` may have been
-/// overwritten in an unspecified way.
+/// When `open_in_place()` returns `Err(..)`,
+/// `ciphertext_and_tag_modified_in_place` may have been overwritten in an
+/// unspecified way.
 ///
 /// The shifting feature is useful in the case where multiple packets are
 /// being reassembled in place. Consider this example where the peer has sent
@@ -113,25 +116,28 @@ impl OpeningKey {
 /// second packet, and `(2 * (5 + 16)) + 5` for the third packet.
 ///
 /// (The input/output buffer is expressed as combination of `in_prefix_len`
-/// and `in_out` because Rust's type system does not allow us to have two
-/// slices, one mutable and one immutable, that reference overlapping memory.)
+/// and `ciphertext_and_tag_modified_in_place` because Rust's type system
+/// does not allow us to have two slices, one mutable and one immutable, that
+/// reference overlapping memory.)
 ///
 /// C analog: `EVP_AEAD_CTX_open`
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
-                         in_prefix_len: usize, in_out: &'a mut [u8])
+                         in_prefix_len: usize,
+                         ciphertext_and_tag_modified_in_place: &'a mut [u8])
                          -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let ciphertext_and_tag_len =
-        try!(in_out.len().checked_sub(in_prefix_len)
-                         .ok_or(error::Unspecified));
+        try!(ciphertext_and_tag_modified_in_place.len()
+                .checked_sub(in_prefix_len).ok_or(error::Unspecified));
     let ciphertext_len =
         try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
-                                   .ok_or(error::Unspecified));
+                .ok_or(error::Unspecified));
     try!(check_per_nonce_max_bytes(ciphertext_len));
     let (in_out, received_tag) =
-        in_out.split_at_mut(in_prefix_len + ciphertext_len);
+        ciphertext_and_tag_modified_in_place
+            .split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
     try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
                                   in_out, &mut calculated_tag));
