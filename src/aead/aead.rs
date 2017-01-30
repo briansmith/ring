@@ -35,8 +35,7 @@ use {constant_time, error, init, poly1305, polyfill};
 pub use self::chacha20_poly1305::CHACHA20_POLY1305;
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
 
-/// A key for authenticating and decrypting (&ldquo;opening&rdquo;)
-/// AEAD-protected data.
+/// A key for authenticating and decrypting (“opening”) AEAD-protected data.
 ///
 /// C analog: `EVP_AEAD_CTX` with direction `evp_aead_open`
 ///
@@ -76,7 +75,7 @@ impl OpeningKey {
     pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
 }
 
-/// Authenticates and decrypts (&ldquo;opens&rdquo;) data in place.
+/// Authenticates and decrypts (“opens”) data in place. When
 ///
 /// The input is `in_out[in_prefix_len..]`; i.e. the input is the part of
 /// `in_out` after the prefix. When `open_in_place` returns `Ok(out_len)`, the
@@ -121,7 +120,7 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     Ok(ciphertext_len) // `ciphertext_len` is also the plaintext length.
 }
 
-/// A key for encrypting and signing (&ldquo;sealing&rdquo;) data.
+/// A key for encrypting and signing (“sealing”) data.
 ///
 /// C analog: `EVP_AEAD_CTX` with direction `evp_aead_seal`.
 ///
@@ -157,7 +156,7 @@ impl SealingKey {
     pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
 }
 
-/// Encrypts and signs (&ldquo;seals&rdquo;) data in place.
+/// Encrypts and signs (“seals”) data in place.
 ///
 /// `nonce` must be unique for every use of the key to seal data.
 ///
