@@ -196,21 +196,22 @@ impl SealingKey {
 ///
 /// `nonce` must be unique for every use of the key to seal data; it must be
 /// exactly `key.algorithm().nonce_len()` bytes long. `ad` is the additional
-/// authenticated data, which won't be encrypted. `in_out` must contain the
-/// plaintext to encrypt on input and will contain the ciphertext on successful
-/// output; it may be empty. `tag_out` must be exactly
+/// authenticated data, which won't be encrypted. `plaintext_in_ciphertext_out`
+/// must contain the plaintext to encrypt on input and will contain the
+/// ciphertext on successful output; it may be empty. `tag_out` must be exactly
 /// `key.algorithm().tag_len()` bytes long and will contain the tag on output.
 ///
 /// C analog: `EVP_AEAD_CTX_seal`.
 ///
 /// Go analog: [`AEAD.Seal`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
-                     in_out: &mut [u8], tag_out: &mut [u8])
+                     plaintext_in_ciphertext_out: &mut [u8], tag_out: &mut [u8])
                      -> Result<(), error::Unspecified> {
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    try!(check_per_nonce_max_bytes(in_out.len()));
-    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out)
+    try!(check_per_nonce_max_bytes(plaintext_in_ciphertext_out.len()));
+    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad,
+                             plaintext_in_ciphertext_out, tag_out)
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
