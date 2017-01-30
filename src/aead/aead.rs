@@ -133,8 +133,8 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
     let (in_out, received_tag) =
         in_out.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
-                                  in_prefix_len, &mut calculated_tag, ad));
+    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
+                                  in_out, &mut calculated_tag));
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
             .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
@@ -220,7 +220,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
     try!(check_per_nonce_max_bytes(in_out_len));
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    try!((key.key.algorithm.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad));
+    try!((key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out));
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -269,13 +269,12 @@ impl Key {
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
-    seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-             in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8])
+    seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN], ad: &[u8],
+             in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN])
              -> Result<(), error::Unspecified>,
     open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-             in_out: &mut [u8], in_prefix_len: usize,
-             tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-             -> Result<(), error::Unspecified>,
+             ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
+             tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
 
     key_len: usize,
 }

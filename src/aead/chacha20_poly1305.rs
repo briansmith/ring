@@ -34,8 +34,8 @@ pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8])
 }
 
 fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-                          nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
+                          nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
+                          in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = chacha::make_counter(nonce, 1);
@@ -46,9 +46,9 @@ fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
 }
 
 fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
-                          nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                          in_prefix_len: usize,
-                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
+                          nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
+                          in_prefix_len: usize, in_out: &mut [u8],
+                          tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = chacha::make_counter(nonce, 0);
