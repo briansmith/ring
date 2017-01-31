@@ -194,7 +194,7 @@ impl SealingKey {
 
 /// Encrypts and signs (“seals”) data in place.
 ///
-/// `nonce` must be unique for every use of the key to seal data. It must be
+/// `nonce` must be unique for every use of the key to seal data; it must be
 /// exactly `key.algorithm().nonce_len()` bytes long. `ad` is the additional
 /// authenticated data, which won't be encrypted. `in_out` must contain the
 /// plaintext to encrypt on input and will contain the ciphertext on successful
