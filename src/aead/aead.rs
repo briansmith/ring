@@ -196,10 +196,11 @@ impl SealingKey {
 ///
 /// `nonce` must be unique for every use of the key to seal data; it must be
 /// exactly `key.algorithm().nonce_len()` bytes long. `ad` is the additional
-/// authenticated data, which won't be encrypted. `plaintext_in_ciphertext_out`
-/// must contain the plaintext to encrypt on input and will contain the
-/// ciphertext on successful output; it may be empty. `tag_out` must be exactly
-/// `key.algorithm().tag_len()` bytes long and will contain the tag on output.
+/// authenticated data, which won't be encrypted; it may be empty.
+/// `plaintext_in_ciphertext_out` must contain the plaintext to encrypt on
+/// input and will contain the ciphertext on successful output; it may be
+/// empty. `tag_out` must be exactly `key.algorithm().tag_len()` bytes long and
+/// will contain the tag on output.
 ///
 /// C analog: `EVP_AEAD_CTX_seal`.
 ///
