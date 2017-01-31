@@ -227,6 +227,9 @@ void ssl_cert_clear_certs(CERT *cert) {
   ssl_cert_flush_cached_x509_leaf(cert);
   ssl_cert_flush_cached_x509_chain(cert);
 
+  X509_free(cert->x509_stash);
+  cert->x509_stash = NULL;
+
   sk_CRYPTO_BUFFER_pop_free(cert->chain, CRYPTO_BUFFER_free);
   cert->chain = NULL;
   EVP_PKEY_free(cert->privatekey);
@@ -378,7 +381,8 @@ static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
     return 0;
   }
 
-  X509_free(x509);
+  X509_free(cert->x509_stash);
+  cert->x509_stash = x509;
   ssl_cert_flush_cached_x509_chain(cert);
   return 1;
 }

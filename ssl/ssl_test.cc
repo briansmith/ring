@@ -3142,6 +3142,21 @@ static bool ForEachVersion(bool (*test_func)(bool is_dtls,
   return true;
 }
 
+TEST(SSLTest, AddChainCertHack) {
+  // Ensure that we don't accidently break the hack that we have in place to
+  // keep curl and serf happy when they use an |X509| even after transfering
+  // ownership.
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  X509 *cert = GetTestCertificate().release();
+  ASSERT_TRUE(cert);
+  SSL_CTX_add0_chain_cert(ctx.get(), cert);
+
+  // This should not trigger a use-after-free.
+  X509_cmp(cert, cert);
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestCipherRules() ||

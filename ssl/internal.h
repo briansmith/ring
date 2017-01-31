@@ -1245,6 +1245,11 @@ typedef struct cert_st {
    * a non-owning pointer to the certificate chain. */
   X509 *x509_leaf;
 
+  /* x509_stash contains the last |X509| object append to the chain. This is a
+   * workaround for some third-party code that continue to use an |X509| object
+   * even after passing ownership with an “add0” function. */
+  X509 *x509_stash;
+
   /* key_method, if non-NULL, is a set of callbacks to call for private key
    * operations. */
   const SSL_PRIVATE_KEY_METHOD *key_method;
