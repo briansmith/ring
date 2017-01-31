@@ -30,10 +30,7 @@
 
 #if defined(__APPLE__)
 .private_extern _GFp_x25519_NEON
-#ifdef __thumb2__
-.thumb_func _GFp_x25519_NEON
 _GFp_x25519_NEON:
-#endif
 #else
 .hidden GFp_x25519_NEON
 .type GFp_x25519_NEON, %function
