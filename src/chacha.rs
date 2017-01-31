@@ -33,28 +33,6 @@ pub fn chacha20_xor_in_place(key: &Key, counter: &Counter, in_out: &mut [u8]) {
                        in_out.as_mut_ptr());
 }
 
-pub fn chacha20_xor_overlapping(key: &Key, counter: &Counter,
-                                in_out: &mut [u8], in_prefix_len: usize) {
-    // XXX: The x86 and at least one branch of the ARM assembly language
-    // code doesn't allow overlapping input and output unless they are
-    // exactly overlapping. TODO: Figure out which branch of the ARM code
-    // has this limitation and come up with a better solution.
-    //
-    // https://rt.openssl.org/Ticket/Display.html?id=4362
-    let len = in_out.len() - in_prefix_len;
-    if cfg!(any(target_arch = "arm", target_arch = "x86")) &&
-            in_prefix_len != 0 {
-        unsafe {
-            core::ptr::copy(in_out[in_prefix_len..].as_ptr(),
-                            in_out.as_mut_ptr(), len);
-        }
-        chacha20_xor_in_place(key, &counter, &mut in_out[..len]);
-    } else {
-        chacha20_xor_inner(key, counter, in_out[in_prefix_len..].as_ptr(),
-                           len, in_out.as_mut_ptr());
-    }
-}
-
 #[inline]
 pub fn chacha20_xor_inner(key: &Key, counter: &Counter, input: *const u8,
                           in_out_len: usize, output: *mut u8) {

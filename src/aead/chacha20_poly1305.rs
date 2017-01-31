@@ -35,30 +35,31 @@ pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8])
 
 fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
-                          in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN])
+                          plaintext_in_ciphertext_out: &mut [u8],
+                          tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = chacha::make_counter(nonce, 1);
-    chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
+    chacha::chacha20_xor_in_place(&chacha20_key, &counter,
+                                  plaintext_in_ciphertext_out);
     counter[0] = 0;
-    aead_poly1305(tag_out, chacha20_key, &counter, ad, in_out);
+    aead_poly1305(tag_out, chacha20_key, &counter, ad,
+                  plaintext_in_ciphertext_out);
     Ok(())
 }
 
 fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
-                          in_prefix_len: usize, in_out: &mut [u8],
+                          ciphertext_in_plaintext_out: &mut [u8],
                           tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
     let chacha20_key = try!(ctx_as_key(ctx));
     let mut counter = chacha::make_counter(nonce, 0);
-    {
-        let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(tag_out, chacha20_key, &counter, ad, ciphertext);
-    }
+    aead_poly1305(tag_out, chacha20_key, &counter, ad,
+                  ciphertext_in_plaintext_out);
     counter[0] = 1;
-    chacha::chacha20_xor_overlapping(&chacha20_key, &counter, in_out,
-                                     in_prefix_len);
+    chacha::chacha20_xor_in_place(&chacha20_key, &counter,
+                                  ciphertext_in_plaintext_out);
     Ok(())
 }
 
