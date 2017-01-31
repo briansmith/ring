@@ -77,11 +77,14 @@ impl OpeningKey {
 
 /// Authenticates and decrypts (“opens”) data in place. When
 ///
-/// The input may have a prefix that is `in_prefix_len` bytes long; any such
+/// `nonce` must be unique for every use of the key to seal data; it must be
+/// exactly `key.algorithm().nonce_len()` bytes long. `ad` is the additional
+/// authenticated data, which won't be encrypted; it may be empty. The input
+/// may have an optional prefix that is `in_prefix_len` bytes long; any such
 /// prefix is ignored on input and overwritten on output. The last
 /// `key.algorithm().tag_len()` bytes of `ciphertext_and_tag_modified_in_place`
 /// must be the tag. The part of `ciphertext_and_tag_modified_in_place` between
-/// the prefix and the tag is the input ciphertext.
+/// the prefix and the tag is the input ciphertext; it may be empty.
 ///
 /// When `open_in_place()` returns `Ok(plaintext)`, the decrypted output is
 /// `plaintext`, which is
