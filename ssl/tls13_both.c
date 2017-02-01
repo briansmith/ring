@@ -307,7 +307,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
   ssl->s3->new_session->certs = certs;
   certs = NULL;
 
-  if (!ssl_session_x509_cache_objects(ssl->s3->new_session)) {
+  if (!ssl->ctx->x509_method->session_cache_objects(ssl->s3->new_session)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     goto err;

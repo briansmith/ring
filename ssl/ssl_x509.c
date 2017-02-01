@@ -142,6 +142,10 @@
 
 #include <assert.h>
 
+#include <openssl/asn1.h>
+#include <openssl/bytestring.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -334,10 +338,85 @@ static void ssl_crypto_x509_clear(CERT *cert) {
   cert->x509_stash = NULL;
 }
 
+static int ssl_crypto_x509_session_cache_objects(SSL_SESSION *sess) {
+  STACK_OF(X509) *chain = NULL;
+  const size_t num_certs = sk_CRYPTO_BUFFER_num(sess->certs);
+
+  if (num_certs > 0) {
+    chain = sk_X509_new_null();
+    if (chain == NULL) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  X509 *leaf = NULL;
+  for (size_t i = 0; i < num_certs; i++) {
+    X509 *x509 = X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(sess->certs, i));
+    if (x509 == NULL) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      goto err;
+    }
+    if (!sk_X509_push(chain, x509)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      X509_free(x509);
+      goto err;
+    }
+    if (i == 0) {
+      leaf = x509;
+    }
+  }
+
+  sk_X509_pop_free(sess->x509_chain, X509_free);
+  sess->x509_chain = chain;
+  sk_X509_pop_free(sess->x509_chain_without_leaf, X509_free);
+  sess->x509_chain_without_leaf = NULL;
+
+  X509_free(sess->x509_peer);
+  if (leaf != NULL) {
+    X509_up_ref(leaf);
+  }
+  sess->x509_peer = leaf;
+
+  return 1;
+
+err:
+  sk_X509_pop_free(chain, X509_free);
+  return 0;
+}
+
+static int ssl_crypto_x509_session_dup(SSL_SESSION *new_session,
+                                       const SSL_SESSION *session) {
+  if (session->x509_peer != NULL) {
+    X509_up_ref(session->x509_peer);
+    new_session->x509_peer = session->x509_peer;
+  }
+  if (session->x509_chain != NULL) {
+    new_session->x509_chain = X509_chain_up_ref(session->x509_chain);
+    if (new_session->x509_chain == NULL) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static void ssl_crypto_x509_session_clear(SSL_SESSION *session) {
+  X509_free(session->x509_peer);
+  session->x509_peer = NULL;
+  sk_X509_pop_free(session->x509_chain, X509_free);
+  session->x509_chain = NULL;
+  sk_X509_pop_free(session->x509_chain_without_leaf, X509_free);
+  session->x509_chain_without_leaf = NULL;
+}
+
 const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_clear,
   ssl_crypto_x509_flush_cached_chain,
   ssl_crypto_x509_flush_cached_leaf,
+  ssl_crypto_x509_session_cache_objects,
+  ssl_crypto_x509_session_dup,
+  ssl_crypto_x509_session_clear,
 };
 
 /* x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
@@ -695,4 +774,42 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
 
   *out_chain = ssl->cert->x509_chain;
   return 1;
+}
+
+static SSL_SESSION *ssl_session_new_with_crypto_x509(void) {
+  return ssl_session_new(&ssl_crypto_x509_method);
+}
+
+SSL_SESSION *d2i_SSL_SESSION_bio(BIO *bio, SSL_SESSION **out) {
+  return ASN1_d2i_bio_of(SSL_SESSION, ssl_session_new_with_crypto_x509,
+                         d2i_SSL_SESSION, bio, out);
+}
+
+int i2d_SSL_SESSION_bio(BIO *bio, const SSL_SESSION *session) {
+  return ASN1_i2d_bio_of(SSL_SESSION, i2d_SSL_SESSION, bio, session);
+}
+
+IMPLEMENT_PEM_rw(SSL_SESSION, SSL_SESSION, PEM_STRING_SSL_SESSION, SSL_SESSION)
+
+SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
+  if (length < 0) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return NULL;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, *pp, length);
+
+  SSL_SESSION *ret = SSL_SESSION_parse(&cbs, &ssl_crypto_x509_method,
+                                       NULL /* no buffer pool */);
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  if (a) {
+    SSL_SESSION_free(*a);
+    *a = ret;
+  }
+  *pp = CBS_data(&cbs);
+  return ret;
 }

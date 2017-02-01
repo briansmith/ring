@@ -483,10 +483,10 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
          * now. */
         if (ssl->s3->new_session != NULL &&
             ssl->retain_only_sha256_of_client_certs) {
-          X509_free(ssl->s3->new_session->x509_peer);
-          ssl->s3->new_session->x509_peer = NULL;
-          sk_X509_pop_free(ssl->s3->new_session->x509_chain, X509_free);
-          ssl->s3->new_session->x509_chain = NULL;
+          sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs,
+                                    CRYPTO_BUFFER_free);
+          ssl->s3->new_session->certs = NULL;
+          ssl->ctx->x509_method->session_clear(ssl->s3->new_session);
         }
 
         SSL_SESSION_free(ssl->s3->established_session);
@@ -1472,7 +1472,7 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (CBS_len(&certificate_msg) != 0 ||
-      !ssl_session_x509_cache_objects(ssl->s3->new_session)) {
+      !ssl->ctx->x509_method->session_cache_objects(ssl->s3->new_session)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return -1;

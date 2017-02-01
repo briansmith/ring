@@ -575,8 +575,9 @@ static int SSL_SESSION_parse_u16(CBS *cbs, uint16_t *out, unsigned tag,
   return 1;
 }
 
-static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
-  SSL_SESSION *ret = SSL_SESSION_new();
+SSL_SESSION *SSL_SESSION_parse(CBS *cbs, const SSL_X509_METHOD *x509_method,
+                               CRYPTO_BUFFER_POOL *pool) {
+  SSL_SESSION *ret = ssl_session_new(x509_method);
   if (ret == NULL) {
     goto err;
   }
@@ -738,7 +739,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
 
     if (has_peer) {
       /* TODO(agl): this should use the |SSL_CTX|'s pool. */
-      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&peer, NULL);
+      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&peer, pool);
       if (buffer == NULL ||
           !sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
         CRYPTO_BUFFER_free(buffer);
@@ -756,7 +757,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
       }
 
       /* TODO(agl): this should use the |SSL_CTX|'s pool. */
-      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&cert, NULL);
+      CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new_from_CBS(&cert, pool);
       if (buffer == NULL ||
           !sk_CRYPTO_BUFFER_push(ret->certs, buffer)) {
         CRYPTO_BUFFER_free(buffer);
@@ -766,7 +767,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
     }
   }
 
-  if (!ssl_session_x509_cache_objects(ret)) {
+  if (!x509_method->session_cache_objects(ret)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
@@ -811,10 +812,11 @@ err:
   return NULL;
 }
 
-SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len) {
+SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,
+                                    const SSL_CTX *ctx) {
   CBS cbs;
   CBS_init(&cbs, in, in_len);
-  SSL_SESSION *ret = SSL_SESSION_parse(&cbs);
+  SSL_SESSION *ret = SSL_SESSION_parse(&cbs, ctx->x509_method, ctx->pool);
   if (ret == NULL) {
     return NULL;
   }
@@ -823,27 +825,5 @@ SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len) {
     SSL_SESSION_free(ret);
     return NULL;
   }
-  return ret;
-}
-
-SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
-  if (length < 0) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return NULL;
-  }
-
-  CBS cbs;
-  CBS_init(&cbs, *pp, length);
-
-  SSL_SESSION *ret = SSL_SESSION_parse(&cbs);
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  if (a) {
-    SSL_SESSION_free(*a);
-    *a = ret;
-  }
-  *pp = CBS_data(&cbs);
   return ret;
 }

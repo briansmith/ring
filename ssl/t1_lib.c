@@ -3213,7 +3213,8 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
 #endif
 
   /* Decode the session. */
-  SSL_SESSION *session = SSL_SESSION_from_bytes(plaintext, plaintext_len);
+  SSL_SESSION *session =
+      SSL_SESSION_from_bytes(plaintext, plaintext_len, ssl->ctx);
   if (session == NULL) {
     ERR_clear_error(); /* Don't leave an error on the queue. */
     goto done;

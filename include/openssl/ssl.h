@@ -1570,9 +1570,9 @@ DECLARE_LHASH_OF(SSL_SESSION)
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 /* SSL_SESSION_new returns a newly-allocated blank |SSL_SESSION| or NULL on
- * error. This may be useful in writing tests but otherwise should not be
- * used outside the library. */
-OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_new(void);
+ * error. This may be useful when writing tests but should otherwise not be
+ * used. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_new(const SSL_CTX *ctx);
 
 /* SSL_SESSION_up_ref increments the reference count of |session| and returns
  * one. */
@@ -1597,8 +1597,8 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in,
 
 /* SSL_SESSION_from_bytes parses |in_len| bytes from |in| as an SSL_SESSION. It
  * returns a newly-allocated |SSL_SESSION| on success or NULL on error. */
-OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
-                                                   size_t in_len);
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(
+    const uint8_t *in, size_t in_len, const SSL_CTX *ctx);
 
 /* SSL_SESSION_get_version returns a string describing the TLS version |session|
  * was established at. For example, "TLSv1.2" or "SSLv3". */
@@ -3733,6 +3733,8 @@ struct ssl_session_st {
   /* certs contains the certificate chain from the peer, starting with the leaf
    * certificate. */
   STACK_OF(CRYPTO_BUFFER) *certs;
+
+  const SSL_X509_METHOD *x509_method;
 
   /* x509_peer is the peer's certificate. */
   X509 *x509_peer;

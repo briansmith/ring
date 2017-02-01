@@ -615,9 +615,8 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
 
 int tls13_process_new_session_ticket(SSL *ssl) {
   int ret = 0;
-  SSL_SESSION *session =
-      SSL_SESSION_dup(ssl->s3->established_session,
-                      SSL_SESSION_INCLUDE_NONAUTH);
+  SSL_SESSION *session = SSL_SESSION_dup(ssl->s3->established_session,
+                                         SSL_SESSION_INCLUDE_NONAUTH);
   if (session == NULL) {
     return 0;
   }

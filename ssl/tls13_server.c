@@ -495,7 +495,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_process_client_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (ssl->s3->new_session->x509_peer == NULL) {
+  if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0) {
     /* Skip this state. */
     hs->tls13_state = state_process_channel_id;
     return ssl_hs_ok;

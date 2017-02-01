@@ -1477,7 +1477,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
   }
 
   if (expected_sha256_client_cert &&
-      SSL_get_session(ssl)->x509_peer != nullptr) {
+      SSL_get_session(ssl)->certs != nullptr) {
     fprintf(stderr, "Have both client cert and SHA-256 hash: is_resume:%d.\n",
             is_resume);
     return false;

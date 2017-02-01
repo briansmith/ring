@@ -160,7 +160,7 @@ static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *session);
 static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock);
 
-SSL_SESSION *SSL_SESSION_new(void) {
+SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method) {
   SSL_SESSION *session = OPENSSL_malloc(sizeof(SSL_SESSION));
   if (session == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -168,6 +168,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
   }
   OPENSSL_memset(session, 0, sizeof(SSL_SESSION));
 
+  session->x509_method = x509_method;
   session->verify_result = X509_V_ERR_INVALID_CALL;
   session->references = 1;
   session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
@@ -177,8 +178,12 @@ SSL_SESSION *SSL_SESSION_new(void) {
   return session;
 }
 
+SSL_SESSION *SSL_SESSION_new(const SSL_CTX *ctx) {
+  return ssl_session_new(ctx->x509_method);
+}
+
 SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
-  SSL_SESSION *new_session = SSL_SESSION_new();
+  SSL_SESSION *new_session = ssl_session_new(session->x509_method);
   if (new_session == NULL) {
     goto err;
   }
@@ -214,16 +219,11 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
       CRYPTO_BUFFER_up_ref(buffer);
     }
   }
-  if (session->x509_peer != NULL) {
-    X509_up_ref(session->x509_peer);
-    new_session->x509_peer = session->x509_peer;
+
+  if (!session->x509_method->session_dup(new_session, session)) {
+    goto err;
   }
-  if (session->x509_chain != NULL) {
-    new_session->x509_chain = X509_chain_up_ref(session->x509_chain);
-    if (new_session->x509_chain == NULL) {
-      goto err;
-    }
-  }
+
   new_session->verify_result = session->verify_result;
 
   new_session->ocsp_response_length = session->ocsp_response_length;
@@ -367,9 +367,7 @@ void SSL_SESSION_free(SSL_SESSION *session) {
   OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
   sk_CRYPTO_BUFFER_pop_free(session->certs, CRYPTO_BUFFER_free);
-  X509_free(session->x509_peer);
-  sk_X509_pop_free(session->x509_chain, X509_free);
-  sk_X509_pop_free(session->x509_chain_without_leaf, X509_free);
+  session->x509_method->session_clear(session);
   OPENSSL_free(session->tlsext_hostname);
   OPENSSL_free(session->tlsext_tick);
   OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
@@ -511,7 +509,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
     return 0;
   }
 
-  SSL_SESSION *session = SSL_SESSION_new();
+  SSL_SESSION *session = ssl_session_new(ssl->ctx->x509_method);
   if (session == NULL) {
     return 0;
   }
@@ -570,53 +568,6 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
 
 err:
   SSL_SESSION_free(session);
-  return 0;
-}
-
-int ssl_session_x509_cache_objects(SSL_SESSION *sess) {
-  STACK_OF(X509) *chain = NULL;
-  const size_t num_certs = sk_CRYPTO_BUFFER_num(sess->certs);
-
-  if (num_certs > 0) {
-    chain = sk_X509_new_null();
-    if (chain == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
-  X509 *leaf = NULL;
-  for (size_t i = 0; i < num_certs; i++) {
-    X509 *x509 = X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(sess->certs, i));
-    if (x509 == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto err;
-    }
-    if (!sk_X509_push(chain, x509)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      X509_free(x509);
-      goto err;
-    }
-    if (i == 0) {
-      leaf = x509;
-    }
-  }
-
-  sk_X509_pop_free(sess->x509_chain, X509_free);
-  sess->x509_chain = chain;
-  sk_X509_pop_free(sess->x509_chain_without_leaf, X509_free);
-  sess->x509_chain_without_leaf = NULL;
-
-  X509_free(sess->x509_peer);
-  if (leaf != NULL) {
-    X509_up_ref(leaf);
-  }
-  sess->x509_peer = leaf;
-
-  return 1;
-
-err:
-  sk_X509_pop_free(chain, X509_free);
   return 0;
 }
 
@@ -753,7 +704,8 @@ int ssl_session_is_resumable(const SSL *ssl, const SSL_SESSION *session) {
          /* If the session contains a client certificate (either the full
           * certificate or just the hash) then require that the form of the
           * certificate matches the current configuration. */
-         ((session->x509_peer == NULL && !session->peer_sha256_valid) ||
+         ((sk_CRYPTO_BUFFER_num(session->certs) == 0 &&
+           !session->peer_sha256_valid) ||
           session->peer_sha256_valid ==
               ssl->retain_only_sha256_of_client_certs);
 }

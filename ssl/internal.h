@@ -804,12 +804,6 @@ void ssl_write_buffer_clear(SSL *ssl);
  * configured and zero otherwise. */
 int ssl_has_certificate(const SSL *ssl);
 
-/* ssl_session_x509_cache_objects fills out |sess->x509_peer| and
- * |sess->x509_chain| from |sess->certs| and erases
- * |sess->x509_chain_without_leaf|. It returns one on success or zero on
- * error. */
-int ssl_session_x509_cache_objects(SSL_SESSION *sess);
-
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
  * by a TLS Certificate message. On success, it returns a newly-allocated
  * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns NULL and sets
@@ -1433,7 +1427,21 @@ struct ssl_x509_method_st {
   /* cert_flush_cached_chain drops any cached |X509|-based leaf certificate
    * from |cert|. */
   void (*cert_flush_cached_leaf)(CERT *cert);
+
+  /* session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
+   * from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
+   * one on success or zero on error. */
+  int (*session_cache_objects)(SSL_SESSION *session);
+  /* session_dup duplicates any needed fields from |session| to |new_session|.
+   * It returns one on success or zero on error. */
+  int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
+  /* session_clear frees any X509-related state from |session|. */
+  void (*session_clear)(SSL_SESSION *session);
 };
+
+/* ssl_noop_x509_method is implements the |ssl_x509_method_st| functions by
+ * doing nothing. */
+extern const struct ssl_x509_method_st ssl_noop_x509_method;
 
 /* ssl_crypto_x509_method provides the |ssl_x509_method_st| functions using
  * crypto/x509. */
@@ -1910,6 +1918,15 @@ int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
 int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
+
+/* ssl_session_new returns a newly-allocated blank |SSL_SESSION| or NULL on
+ * error. */
+SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method);
+
+/* SSL_SESSION_parse parses an |SSL_SESSION| from |cbs| and advances |cbs| over
+ * the parsed data. */
+SSL_SESSION *SSL_SESSION_parse(CBS *cbs, const SSL_X509_METHOD *x509_method,
+                               CRYPTO_BUFFER_POOL *pool);
 
 /* ssl_session_is_context_valid returns one if |session|'s session ID context
  * matches the one set on |ssl| and zero otherwise. */

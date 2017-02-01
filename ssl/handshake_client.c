@@ -1077,7 +1077,7 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0 ||
       CBS_len(&cbs) != 0 ||
-      !ssl_session_x509_cache_objects(ssl->s3->new_session)) {
+      !ssl->ctx->x509_method->session_cache_objects(ssl->s3->new_session)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return -1;

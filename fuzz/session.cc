@@ -17,9 +17,18 @@
 #include <openssl/mem.h>
 #include <openssl/ssl.h>
 
+struct GlobalState {
+  GlobalState() : ctx(SSL_CTX_new(TLS_method())) {}
+
+  bssl::UniquePtr<SSL_CTX> ctx;
+};
+
+static GlobalState g_state;
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   // Parse in our session.
-  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(buf, len));
+  bssl::UniquePtr<SSL_SESSION> session(
+      SSL_SESSION_from_bytes(buf, len, g_state.ctx.get()));
 
   // If the format was invalid, just return.
   if (!session) {
