@@ -128,8 +128,6 @@ impl RSAKeyPair {
                 let q = try!(q.into_odd_positive());
                 try!(bigint::verify_less_than(&q, &p));
 
-                let n = try!(n.into_modulus::<N>());
-
                 // Verify that p * q == n. We restrict ourselves to modular
                 // multiplication. We rely on the fact that we've verified
                 // 0 < q < p < n. We check that q and p are close to sqrt(n)

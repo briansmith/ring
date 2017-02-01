@@ -139,8 +139,7 @@ impl Positive {
     }
 
     pub fn bit_length(&self) -> bits::BitLength {
-        let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
-        bits::BitLength::from_usize_bits(bits)
+        self.0.bit_length()
     }
 }
 
@@ -216,6 +215,12 @@ pub struct Modulus<M> {
 
     /// The ring ℤ/mℤ for which this is the modulus.
     ring: PhantomData<M>,
+}
+
+impl<M> Modulus<M> {
+    pub fn bit_length(&self) -> bits::BitLength {
+        self.ctx.n().bit_length()
+    }
 }
 
 // `Modulus` uniquely owns and references its contents.
@@ -556,6 +561,10 @@ impl Nonnegative {
         Ok(OddPositive(Positive(self)))
     }
 
+    pub fn bit_length(&self) -> bits::BitLength {
+        self.0.bit_length()
+    }
+
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
         let mut r = try!(Nonnegative::zero());
         try!(bssl::map_result(unsafe {
@@ -571,7 +580,7 @@ impl Nonnegative {
 #[allow(non_snake_case)]
 mod repr_c {
     use core;
-    use {c, limb};
+    use {bits, c, limb};
     use libc;
 
     /* Keep in sync with `bignum_st` in openss/bn.h. */
@@ -606,6 +615,11 @@ mod repr_c {
                 neg: 0,
                 flags: 0,
             }
+        }
+
+        pub fn bit_length(&self) -> bits::BitLength {
+            let bits = unsafe { super::GFp_BN_num_bits(self) };
+            bits::BitLength::from_usize_bits(bits)
         }
     }
 

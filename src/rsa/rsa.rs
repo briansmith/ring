@@ -67,7 +67,7 @@ fn parse_public_key(input: untrusted::Input)
 fn check_public_modulus_and_exponent(
         n: bigint::Positive, e: bigint::Positive, n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength)
-        -> Result<(bigint::OddPositive, bigint::PublicExponent),
+        -> Result<(bigint::Modulus<N>, bigint::PublicExponent),
                   error::Unspecified> {
     // This is an incomplete implementation of NIST SP800-56Br1 Section
     // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers to
@@ -111,6 +111,8 @@ fn check_public_modulus_and_exponent(
     if e_bits < bits::BitLength::from_usize_bits(2) {
         return Err(error::Unspecified);
     }
+
+    let n = try!(n.into_modulus::<N>());
 
     // Only small public exponents are supported.
     let e = try!(e.into_public_exponent());

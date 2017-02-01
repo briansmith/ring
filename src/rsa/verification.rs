@@ -119,7 +119,6 @@ pub fn verify_rsa(params: &RSAParameters,
         try!(super::check_public_modulus_and_exponent(n, e, params.min_bits,
                                                       max_bits));
     let n_bits = n.bit_length();
-    let n = try!(n.into_modulus::<N>());
 
     // The signature must be the same length as the modulus, in bytes.
     if signature.len() != n_bits.as_usize_bytes_rounded_up() {
