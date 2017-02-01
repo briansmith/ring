@@ -146,17 +146,20 @@ define_metrics_tests!(i32, test_i32_metrics, GFp_int32_t_align,
 define_metrics_tests!(u32, test_u32_metrics, GFp_uint32_t_align,
                       GFp_uint32_t_size);
 
-#[cfg(all(test,
-          not(all(target_arch = "x86",
-                  any(target_os = "linux",
-                      target_os = "macos",
-                      target_os = "ios")))))]
+#[cfg(all(test, not(any(
+            all(target_arch = "x86", target_os = "linux"),
+            all(target_arch = "x86", target_os = "macos"),
+            all(target_arch = "x86", target_os = "ios"),
+            all(target_arch = "arm", target_os = "ios")
+))))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
 
-#[cfg(all(test, target_arch = "x86",
-                  any(target_os = "linux",
-                      target_os = "macos",
-                      target_os = "ios")))]
+#[cfg(all(test, any(
+            all(target_arch = "x86", target_os = "linux"),
+            all(target_arch = "x86", target_os = "macos"),
+            all(target_arch = "x86", target_os = "ios"),
+            all(target_arch = "arm", target_os = "ios")
+)))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 
 define_metrics_tests!(i64, test_i64_metrics, GFp_int64_t_align,
