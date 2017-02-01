@@ -273,22 +273,22 @@ typedef struct ssl_aead_ctx_st {
   uint8_t fixed_nonce_len, variable_nonce_len;
   /* variable_nonce_included_in_record is non-zero if the variable nonce
    * for a record is included as a prefix before the ciphertext. */
-  char variable_nonce_included_in_record;
+  unsigned variable_nonce_included_in_record : 1;
   /* random_variable_nonce is non-zero if the variable nonce is
    * randomly generated, rather than derived from the sequence
    * number. */
-  char random_variable_nonce;
+  unsigned random_variable_nonce : 1;
   /* omit_length_in_ad is non-zero if the length should be omitted in the
    * AEAD's ad parameter. */
-  char omit_length_in_ad;
+  unsigned omit_length_in_ad : 1;
   /* omit_version_in_ad is non-zero if the version should be omitted
    * in the AEAD's ad parameter. */
-  char omit_version_in_ad;
+  unsigned omit_version_in_ad : 1;
   /* omit_ad is non-zero if the AEAD's ad parameter should be omitted. */
-  char omit_ad;
+  unsigned omit_ad : 1;
   /* xor_fixed_nonce is non-zero if the fixed nonce should be XOR'd into the
    * variable nonce rather than prepended. */
-  char xor_fixed_nonce;
+  unsigned xor_fixed_nonce : 1;
 } SSL_AEAD_CTX;
 
 /* SSL_AEAD_CTX_new creates a newly-allocated |SSL_AEAD_CTX| using the supplied
