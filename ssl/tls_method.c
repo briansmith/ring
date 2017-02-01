@@ -161,6 +161,7 @@ const SSL_METHOD *TLS_method(void) {
   static const SSL_METHOD kMethod = {
       0,
       &kTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }
@@ -175,6 +176,7 @@ const SSL_METHOD *TLSv1_2_method(void) {
   static const SSL_METHOD kMethod = {
       TLS1_2_VERSION,
       &kTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }
@@ -183,6 +185,7 @@ const SSL_METHOD *TLSv1_1_method(void) {
   static const SSL_METHOD kMethod = {
       TLS1_1_VERSION,
       &kTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }
@@ -191,6 +194,7 @@ const SSL_METHOD *TLSv1_method(void) {
   static const SSL_METHOD kMethod = {
       TLS1_VERSION,
       &kTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }
@@ -199,6 +203,7 @@ const SSL_METHOD *SSLv3_method(void) {
   static const SSL_METHOD kMethod = {
       SSL3_VERSION,
       &kTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }

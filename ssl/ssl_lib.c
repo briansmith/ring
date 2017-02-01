@@ -248,6 +248,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   OPENSSL_memset(ret, 0, sizeof(SSL_CTX));
 
   ret->method = method->method;
+  ret->x509_method = method->x509_method;
 
   CRYPTO_MUTEX_init(&ret->lock);
 
@@ -261,7 +262,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 
   ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
   ret->verify_mode = SSL_VERIFY_NONE;
-  ret->cert = ssl_cert_new();
+  ret->cert = ssl_cert_new(method->x509_method);
   if (ret->cert == NULL) {
     goto err;
   }
@@ -2056,6 +2057,12 @@ SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl) { return ssl->ctx; }
 SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   if (ssl->ctx == ctx) {
     return ssl->ctx;
+  }
+
+  /* One cannot change the X.509 callbacks during a connection. */
+  if (ssl->ctx->x509_method != ctx->x509_method) {
+    assert(0);
+    return NULL;
   }
 
   if (ctx == NULL) {

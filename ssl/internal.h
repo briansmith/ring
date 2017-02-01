@@ -1256,6 +1256,10 @@ typedef struct cert_st {
    * operations. */
   const SSL_PRIVATE_KEY_METHOD *key_method;
 
+  /* x509_method contains pointers to functions that might deal with |X509|
+   * compatibility, or might be a no-op, depending on the application. */
+  const SSL_X509_METHOD *x509_method;
+
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
 
@@ -1287,6 +1291,9 @@ struct ssl_method_st {
   /* method is the underlying SSL_PROTOCOL_METHOD that initializes the
    * SSL_CTX. */
   const SSL_PROTOCOL_METHOD *method;
+  /* x509_method contains pointers to functions that might deal with |X509|
+   * compatibility, or might be a no-op, depending on the application. */
+  const SSL_X509_METHOD *x509_method;
 };
 
 /* Used to hold functions for SSLv2 or SSLv3/TLSv1 functions */
@@ -1367,6 +1374,21 @@ struct ssl_protocol_method_st {
    * write state is forbidden at this point. */
   int (*set_write_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
 };
+
+struct ssl_x509_method_st {
+  /* cert_clear frees and NULLs all X509-related state. */
+  void (*cert_clear)(CERT *cert);
+  /* cert_flush_cached_chain drops any cached |X509|-based certificate chain
+   * from |cert|. */
+  void (*cert_flush_cached_chain)(CERT *cert);
+  /* cert_flush_cached_chain drops any cached |X509|-based leaf certificate
+   * from |cert|. */
+  void (*cert_flush_cached_leaf)(CERT *cert);
+};
+
+/* ssl_crypto_x509_method provides the |ssl_x509_method_st| functions using
+ * crypto/x509. */
+extern const struct ssl_x509_method_st ssl_crypto_x509_method;
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
  * of a mess of functions, but hell, think of it as an opaque structure. */
@@ -1855,13 +1877,11 @@ extern const SSL3_ENC_METHOD SSLv3_enc_data;
 #define SSL_KEY_UPDATE_NOT_REQUESTED 0
 #define SSL_KEY_UPDATE_REQUESTED 1
 
-CERT *ssl_cert_new(void);
+CERT *ssl_cert_new(const SSL_X509_METHOD *x509_method);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
-CRYPTO_BUFFER *x509_to_buffer(X509 *x509);
-void ssl_cert_flush_cached_x509_leaf(CERT *cert);
-int ssl_cert_cache_leaf_cert(CERT *cert);
+int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer);
 /* ssl_compare_public_and_private_key returns one if |pubkey| is the public
  * counterpart to |privkey|. Otherwise it returns zero and pushes a helpful
  * message on the error queue. */
@@ -1931,7 +1951,7 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
     const SSL *ssl);
 
 int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
-                          STACK_OF(X509) * cert_chain);
+                          STACK_OF(X509) *cert_chain);
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 int ssl_verify_alarm_type(long type);

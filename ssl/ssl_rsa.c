@@ -70,27 +70,10 @@
 #include "internal.h"
 
 
-static int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer);
 static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey);
 
 static int is_key_type_supported(int key_type) {
   return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC;
-}
-
-int SSL_use_certificate(SSL *ssl, X509 *x) {
-  if (x == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  CRYPTO_BUFFER *buffer = x509_to_buffer(x);
-  if (buffer == NULL) {
-    return 0;
-  }
-
-  const int ok = ssl_set_cert(ssl->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
 }
 
 int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
@@ -179,23 +162,7 @@ int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
   return ret;
 }
 
-int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
-  if (x == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  CRYPTO_BUFFER *buffer = x509_to_buffer(x);
-  if (buffer == NULL) {
-    return 0;
-  }
-
-  const int ok = ssl_set_cert(ctx->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
-}
-
-static int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
+int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(buffer, &cert_cbs);
   EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
@@ -235,7 +202,7 @@ static int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
 
   EVP_PKEY_free(pubkey);
 
-  ssl_cert_flush_cached_x509_leaf(cert);
+  cert->x509_method->cert_flush_cached_leaf(cert);
 
   if (cert->chain != NULL) {
     CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain, 0));

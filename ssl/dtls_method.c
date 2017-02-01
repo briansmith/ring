@@ -165,6 +165,7 @@ const SSL_METHOD *DTLS_method(void) {
   static const SSL_METHOD kMethod = {
       0,
       &kDTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }
@@ -175,6 +176,7 @@ const SSL_METHOD *DTLSv1_2_method(void) {
   static const SSL_METHOD kMethod = {
       DTLS1_2_VERSION,
       &kDTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }
@@ -183,6 +185,7 @@ const SSL_METHOD *DTLSv1_method(void) {
   static const SSL_METHOD kMethod = {
       DTLS1_VERSION,
       &kDTLSProtocolMethod,
+      &ssl_crypto_x509_method,
   };
   return &kMethod;
 }

@@ -141,13 +141,14 @@ int SSL_get_ex_data_X509_STORE_CTX_idx(void) {
   return 0;
 }
 
-CERT *ssl_cert_new(void) {
+CERT *ssl_cert_new(const SSL_X509_METHOD *x509_method) {
   CERT *ret = OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(CERT));
+  ret->x509_method = x509_method;
 
   return ret;
 }
@@ -174,6 +175,7 @@ CERT *ssl_cert_dup(CERT *cert) {
   }
 
   ret->key_method = cert->key_method;
+  ret->x509_method = cert->x509_method;
 
   if (cert->dh_tmp != NULL) {
     ret->dh_tmp = DHparams_dup(cert->dh_tmp);
@@ -208,27 +210,13 @@ err:
   return NULL;
 }
 
-void ssl_cert_flush_cached_x509_leaf(CERT *cert) {
-  X509_free(cert->x509_leaf);
-  cert->x509_leaf = NULL;
-}
-
-static void ssl_cert_flush_cached_x509_chain(CERT *cert) {
-  sk_X509_pop_free(cert->x509_chain, X509_free);
-  cert->x509_chain = NULL;
-}
-
 /* Free up and clear all certificates and chains */
 void ssl_cert_clear_certs(CERT *cert) {
   if (cert == NULL) {
     return;
   }
 
-  ssl_cert_flush_cached_x509_leaf(cert);
-  ssl_cert_flush_cached_x509_chain(cert);
-
-  X509_free(cert->x509_stash);
-  cert->x509_stash = NULL;
+  cert->x509_method->cert_clear(cert);
 
   sk_CRYPTO_BUFFER_pop_free(cert->chain, CRYPTO_BUFFER_free);
   cert->chain = NULL;
@@ -249,151 +237,6 @@ void ssl_cert_free(CERT *c) {
   X509_STORE_free(c->verify_store);
 
   OPENSSL_free(c);
-}
-
-/* new_leafless_chain returns a fresh stack of buffers set to {NULL}. */
-static STACK_OF(CRYPTO_BUFFER) *new_leafless_chain(void) {
-  STACK_OF(CRYPTO_BUFFER) *chain = sk_CRYPTO_BUFFER_new_null();
-  if (chain == NULL) {
-    return NULL;
-  }
-
-  if (!sk_CRYPTO_BUFFER_push(chain, NULL)) {
-    sk_CRYPTO_BUFFER_free(chain);
-    return NULL;
-  }
-
-  return chain;
-}
-
-/* x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
- * contents of |x509|. */
-CRYPTO_BUFFER *x509_to_buffer(X509 *x509) {
-  uint8_t *buf = NULL;
-  int cert_len = i2d_X509(x509, &buf);
-  if (cert_len <= 0) {
-    return 0;
-  }
-
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(buf, cert_len, NULL);
-  OPENSSL_free(buf);
-
-  return buffer;
-}
-
-/* ssl_cert_set_chain sets elements 1.. of |cert->chain| to the serialised
- * forms of elements of |chain|. It returns one on success or zero on error, in
- * which case no change to |cert->chain| is made. It preverses the existing
- * leaf from |cert->chain|, if any. */
-static int ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
-  STACK_OF(CRYPTO_BUFFER) *new_chain = NULL;
-
-  if (cert->chain != NULL) {
-    new_chain = sk_CRYPTO_BUFFER_new_null();
-    if (new_chain == NULL) {
-      return 0;
-    }
-
-    CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain, 0);
-    if (!sk_CRYPTO_BUFFER_push(new_chain, leaf)) {
-      goto err;
-    }
-    /* |leaf| might be NULL if it's a “leafless” chain. */
-    if (leaf != NULL) {
-      CRYPTO_BUFFER_up_ref(leaf);
-    }
-  }
-
-  for (size_t i = 0; i < sk_X509_num(chain); i++) {
-    if (new_chain == NULL) {
-      new_chain = new_leafless_chain();
-      if (new_chain == NULL) {
-        goto err;
-      }
-    }
-
-    CRYPTO_BUFFER *buffer = x509_to_buffer(sk_X509_value(chain, i));
-    if (buffer == NULL ||
-        !sk_CRYPTO_BUFFER_push(new_chain, buffer)) {
-      CRYPTO_BUFFER_free(buffer);
-      goto err;
-    }
-  }
-
-  sk_CRYPTO_BUFFER_pop_free(cert->chain, CRYPTO_BUFFER_free);
-  cert->chain = new_chain;
-
-  return 1;
-
-err:
-  sk_CRYPTO_BUFFER_pop_free(new_chain, CRYPTO_BUFFER_free);
-  return 0;
-}
-
-static int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
-  if (!ssl_cert_set_chain(cert, chain)) {
-    return 0;
-  }
-
-  sk_X509_pop_free(chain, X509_free);
-  ssl_cert_flush_cached_x509_chain(cert);
-  return 1;
-}
-
-static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
-  if (!ssl_cert_set_chain(cert, chain)) {
-    return 0;
-  }
-
-  ssl_cert_flush_cached_x509_chain(cert);
-  return 1;
-}
-
-static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
-  CRYPTO_BUFFER *buffer = x509_to_buffer(x509);
-  if (buffer == NULL) {
-    return 0;
-  }
-
-  if (cert->chain != NULL) {
-    if (!sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
-      CRYPTO_BUFFER_free(buffer);
-      return 0;
-    }
-
-    return 1;
-  }
-
-  cert->chain = new_leafless_chain();
-  if (cert->chain == NULL ||
-      !sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
-    CRYPTO_BUFFER_free(buffer);
-    sk_CRYPTO_BUFFER_free(cert->chain);
-    cert->chain = NULL;
-    return 0;
-  }
-
-  return 1;
-}
-
-static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
-  if (!ssl_cert_append_cert(cert, x509)) {
-    return 0;
-  }
-
-  X509_free(cert->x509_stash);
-  cert->x509_stash = x509;
-  ssl_cert_flush_cached_x509_chain(cert);
-  return 1;
-}
-
-static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
-  if (!ssl_cert_append_cert(cert, x509)) {
-    return 0;
-  }
-
-  ssl_cert_flush_cached_x509_chain(cert);
-  return 1;
 }
 
 static void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg),
@@ -651,49 +494,6 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
 err:
   OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
   return 0;
-}
-
-int ssl_auto_chain_if_needed(SSL *ssl) {
-  /* Only build a chain if there are no intermediates configured and the feature
-   * isn't disabled. */
-  if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
-      !ssl_has_certificate(ssl) ||
-      ssl->cert->chain == NULL ||
-      sk_CRYPTO_BUFFER_num(ssl->cert->chain) > 1) {
-    return 1;
-  }
-
-  X509 *leaf =
-      X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0));
-  if (!leaf) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
-    return 0;
-  }
-
-  X509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, leaf, NULL)) {
-    X509_free(leaf);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
-    return 0;
-  }
-
-  /* Attempt to build a chain, ignoring the result. */
-  X509_verify_cert(&ctx);
-  X509_free(leaf);
-  ERR_clear_error();
-
-  /* Remove the leaf from the generated chain. */
-  X509_free(sk_X509_shift(ctx.chain));
-
-  const int ok = ssl_cert_set_chain(ssl->cert, ctx.chain);
-  X509_STORE_CTX_cleanup(&ctx);
-  if (!ok) {
-    return 0;
-  }
-
-  ssl_cert_flush_cached_x509_chain(ssl->cert);
-
-  return 1;
 }
 
 /* ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and
@@ -987,54 +787,6 @@ int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store) {
   return set_cert_store(&ssl->cert->verify_store, store, 1);
 }
 
-int SSL_CTX_set0_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
-  return ssl_cert_set0_chain(ctx->cert, chain);
-}
-
-int SSL_CTX_set1_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
-  return ssl_cert_set1_chain(ctx->cert, chain);
-}
-
-int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain) {
-  return ssl_cert_set0_chain(ssl->cert, chain);
-}
-
-int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain) {
-  return ssl_cert_set1_chain(ssl->cert, chain);
-}
-
-int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509) {
-  return ssl_cert_add0_chain_cert(ctx->cert, x509);
-}
-
-int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509) {
-  return ssl_cert_add1_chain_cert(ctx->cert, x509);
-}
-
-int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509) {
-  return SSL_CTX_add0_chain_cert(ctx, x509);
-}
-
-int SSL_add0_chain_cert(SSL *ssl, X509 *x509) {
-  return ssl_cert_add0_chain_cert(ssl->cert, x509);
-}
-
-int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
-  return ssl_cert_add1_chain_cert(ssl->cert, x509);
-}
-
-int SSL_CTX_clear_chain_certs(SSL_CTX *ctx) {
-  return SSL_CTX_set0_chain(ctx, NULL);
-}
-
-int SSL_CTX_clear_extra_chain_certs(SSL_CTX *ctx) {
-  return SSL_CTX_clear_chain_certs(ctx);
-}
-
-int SSL_clear_chain_certs(SSL *ssl) {
-  return SSL_set0_chain(ssl, NULL);
-}
-
 void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
                          void *arg) {
   ssl_cert_set_cert_cb(ctx->cert, cb, arg);
@@ -1042,80 +794,6 @@ void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
 
 void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
   ssl_cert_set_cert_cb(ssl->cert, cb, arg);
-}
-
-/* ssl_cert_cache_leaf_cert sets |cert->x509_leaf|, if currently NULL, from the
- * first element of |cert->chain|. */
-int ssl_cert_cache_leaf_cert(CERT *cert) {
-  if (cert->x509_leaf != NULL ||
-      cert->chain == NULL) {
-    return 1;
-  }
-
-  CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain, 0);
-  if (!leaf) {
-    return 1;
-  }
-
-  cert->x509_leaf = X509_parse_from_buffer(leaf);
-  return cert->x509_leaf != NULL;
-}
-
-/* ssl_cert_cache_chain_certs fills in |cert->x509_chain| from elements 1.. of
- * |cert->chain|. */
-static int ssl_cert_cache_chain_certs(CERT *cert) {
-  if (cert->x509_chain != NULL ||
-      cert->chain == NULL ||
-      sk_CRYPTO_BUFFER_num(cert->chain) < 2) {
-    return 1;
-  }
-
-  STACK_OF(X509) *chain = sk_X509_new_null();
-  if (chain == NULL) {
-    return 0;
-  }
-
-  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain); i++) {
-    CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(cert->chain, i);
-    X509 *x509 = X509_parse_from_buffer(buffer);
-    if (x509 == NULL ||
-        !sk_X509_push(chain, x509)) {
-      X509_free(x509);
-      goto err;
-    }
-  }
-
-  cert->x509_chain = chain;
-  return 1;
-
-err:
-  sk_X509_pop_free(chain, X509_free);
-  return 0;
-}
-
-int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
-  if (!ssl_cert_cache_chain_certs(ctx->cert)) {
-    *out_chain = NULL;
-    return 0;
-  }
-
-  *out_chain = ctx->cert->x509_chain;
-  return 1;
-}
-
-int SSL_CTX_get_extra_chain_certs(const SSL_CTX *ctx,
-                                  STACK_OF(X509) **out_chain) {
-  return SSL_CTX_get0_chain_certs(ctx, out_chain);
-}
-
-int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
-  if (!ssl_cert_cache_chain_certs(ssl->cert)) {
-    *out_chain = NULL;
-    return 0;
-  }
-
-  *out_chain = ssl->cert->x509_chain;
-  return 1;
 }
 
 int ssl_check_leaf_certificate(SSL *ssl, EVP_PKEY *pkey,
