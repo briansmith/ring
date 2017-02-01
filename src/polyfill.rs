@@ -63,6 +63,19 @@ pub mod slice {
          (value & 0xff) as u8]
     }
 
+    #[inline(always)]
+    #[allow(dead_code)] // Only used for RSA currently
+    pub fn be_u8_from_u64(value: u64) -> [u8; 8] {
+        [((value >> 56) & 0xff) as u8,
+         ((value >> 48) & 0xff) as u8,
+         ((value >> 40) & 0xff) as u8,
+         ((value >> 32) & 0xff) as u8,
+         ((value >> 24) & 0xff) as u8,
+         ((value >> 16) & 0xff) as u8,
+         ((value >> 8) & 0xff) as u8,
+         (value & 0xff) as u8]
+    }
+
     // https://github.com/rust-lang/rust/issues/27750
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]

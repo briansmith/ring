@@ -217,6 +217,37 @@ impl RSAKeyPair {
     pub fn public_modulus_len(&self) -> usize {
         self.n_bits.as_usize_bytes_rounded_up()
     }
+
+    /// Extracts the public modulus.
+    ///
+    /// `out` must be exactly `modulus_len()` bytes long. It will be filled
+    /// with the big-endian-encoded bytes, without any padding.
+    pub fn export_public_modulus(&self, out: &mut [u8])
+                    -> Result<(), error::Unspecified> {
+        if out.len() == self.public_modulus_len() {
+            self.n.fill_be_bytes(out)
+        } else {
+            Err(error::Unspecified)
+        }
+    }
+
+    /// Returns the length in bytes of the key pair's public exponent.
+    pub fn public_exponent_len(&self) -> usize {
+        self.e.bit_length().as_usize_bytes_rounded_up()
+    }
+
+    /// Extracts the public exponent.
+    ///
+    /// `out` must be exactly `exponent_len()` bytes long. It will be filled
+    /// with the big-endian-encoded bytes, without any padding.
+    pub fn export_public_exponent(&self, out: &mut [u8])
+                    -> Result<(), error::Unspecified> {
+        if out.len() == self.public_exponent_len() {
+            self.e.fill_be_bytes(out)
+        } else {
+            Err(error::Unspecified)
+        }
+    }
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
@@ -619,5 +650,26 @@ mod tests {
         let _: &Send = &signing_state;
         // TODO: Test that signing_state is NOT Sync; i.e.
         // `let _: &Sync = &signing_state;` must fail
+    }
+
+
+    #[test]
+    fn test_export() {
+        const PRIVATE_KEY_DER: &'static [u8] =
+            include_bytes!("signature_rsa_example_private_key.der");
+        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
+        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
+
+        let len = key_pair.public_modulus_len();
+        let mut buf: std::vec::Vec<u8> = vec![0; len+1];
+        assert!(key_pair.export_public_modulus(&mut buf).is_err());
+        assert!(key_pair.export_public_modulus(&mut buf[..len]).is_ok());
+        assert!(key_pair.export_public_modulus(&mut buf[..len-1]).is_err());
+
+        let len = key_pair.public_exponent_len();
+        let mut buf: std::vec::Vec<u8> = vec![0; len+1];
+        assert!(key_pair.export_public_exponent(&mut buf).is_err());
+        assert!(key_pair.export_public_exponent(&mut buf[..len]).is_ok());
+        assert!(key_pair.export_public_exponent(&mut buf[..len-1]).is_err());
     }
 }

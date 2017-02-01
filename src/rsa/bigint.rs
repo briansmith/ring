@@ -38,7 +38,7 @@
 // XXX TODO: Remove this once RSA verification has been done in Rust.
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
 
-use {bits, bssl, c, der, error, rand, untrusted};
+use {bits, bssl, c, der, error, polyfill, rand, untrusted};
 use core;
 use core::marker::PhantomData;
 
@@ -221,6 +221,11 @@ impl<M> Modulus<M> {
     pub fn bit_length(&self) -> bits::BitLength {
         self.ctx.n().bit_length()
     }
+
+    pub fn fill_be_bytes(&self, out: &mut [u8])
+                         -> Result<(), error::Unspecified> {
+        self.ctx.n().fill_be_bytes(out)
+    }
 }
 
 // `Modulus` uniquely owns and references its contents.
@@ -303,10 +308,7 @@ impl<M> ElemDecoded<M> {
 
     pub fn fill_be_bytes(&self, out: &mut [u8])
                          -> Result<(), error::Unspecified> {
-        bssl::map_result(unsafe {
-            GFp_BN_bn2bin_padded(out.as_mut_ptr(), out.len(),
-                                 self.value.as_ref())
-        })
+        self.value.fill_be_bytes(out)
     }
 
     pub fn is_zero(&self) -> bool { self.value.is_zero() }
@@ -418,6 +420,33 @@ pub fn elem_sub<M>(a: ElemDecoded<M>, b: &ElemDecoded<M>, m: &Modulus<M>)
 /// [3, 2**PUBLIC_EXPONENT_MAX_BITS).
 #[derive(Clone, Copy)]
 pub struct PublicExponent(u64);
+
+impl PublicExponent {
+    pub fn bit_length(&self) -> bits::BitLength {
+        bits::BitLength::from_usize_bits(64 - self.0.leading_zeros() as usize)
+    }
+
+    pub fn fill_be_bytes(&self, out: &mut [u8])
+                         -> Result<(), error::Unspecified> {
+        let e_bytes = self.bit_length().as_usize_bytes_rounded_up();
+        if out.len() < e_bytes {
+            return Err(error::Unspecified);
+        }
+
+        let out_pad_bytes = out.len() - e_bytes;
+        for i in 0..out_pad_bytes {
+            out[i] = 0;
+        }
+
+        let src = polyfill::slice::be_u8_from_u64(self.0);
+        let src_pad_bytes = 8 - e_bytes;
+        for i in 0..e_bytes {
+            out[out_pad_bytes + i] = src[src_pad_bytes + i];
+        }
+
+        Ok(())
+    }
+}
 
 // This limit was chosen to bound the performance of the simple
 // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
@@ -565,6 +594,11 @@ impl Nonnegative {
         self.0.bit_length()
     }
 
+    pub fn fill_be_bytes(&self, out: &mut [u8])
+                         -> Result<(), error::Unspecified> {
+        self.0.fill_be_bytes(out)
+    }
+
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
         let mut r = try!(Nonnegative::zero());
         try!(bssl::map_result(unsafe {
@@ -580,7 +614,7 @@ impl Nonnegative {
 #[allow(non_snake_case)]
 mod repr_c {
     use core;
-    use {bits, c, limb};
+    use {bits, bssl, c, error, limb};
     use libc;
 
     /* Keep in sync with `bignum_st` in openss/bn.h. */
@@ -620,6 +654,13 @@ mod repr_c {
         pub fn bit_length(&self) -> bits::BitLength {
             let bits = unsafe { super::GFp_BN_num_bits(self) };
             bits::BitLength::from_usize_bits(bits)
+        }
+
+        pub fn fill_be_bytes(&self, out: &mut [u8])
+                             -> Result<(), error::Unspecified> {
+            bssl::map_result(unsafe {
+                super::GFp_BN_bn2bin_padded(out.as_mut_ptr(), out.len(), self)
+            })
         }
     }
 
