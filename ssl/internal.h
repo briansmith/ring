@@ -1882,6 +1882,7 @@ CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
 int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer);
+int ssl_is_key_type_supported(int key_type);
 /* ssl_compare_public_and_private_key returns one if |pubkey| is the public
  * counterpart to |privkey|. Otherwise it returns zero and pushes a helpful
  * message on the error queue. */

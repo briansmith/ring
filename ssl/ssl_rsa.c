@@ -70,21 +70,30 @@
 #include "internal.h"
 
 
-static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey);
-
-static int is_key_type_supported(int key_type) {
+int ssl_is_key_type_supported(int key_type) {
   return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC;
 }
 
-int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
-  if (buffer == NULL) {
+static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
+  if (!ssl_is_key_type_supported(pkey->type)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return 0;
   }
 
-  const int ok = ssl_set_cert(ssl->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
+  if (cert->chain != NULL &&
+      sk_CRYPTO_BUFFER_value(cert->chain, 0) != NULL &&
+      /* Sanity-check that the private key and the certificate match, unless
+       * the key is opaque (in case of, say, a smartcard). */
+      !EVP_PKEY_is_opaque(pkey) &&
+      !ssl_cert_check_private_key(cert, pkey)) {
+    return 0;
+  }
+
+  EVP_PKEY_free(cert->privatekey);
+  EVP_PKEY_up_ref(pkey);
+  cert->privatekey = pkey;
+
+  return 1;
 }
 
 int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
@@ -109,28 +118,6 @@ int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
   EVP_PKEY_free(pkey);
 
   return ret;
-}
-
-static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
-  if (!is_key_type_supported(pkey->type)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return 0;
-  }
-
-  if (cert->chain != NULL &&
-      sk_CRYPTO_BUFFER_value(cert->chain, 0) != NULL &&
-      /* Sanity-check that the private key and the certificate match, unless
-       * the key is opaque (in case of, say, a smartcard). */
-      !EVP_PKEY_is_opaque(pkey) &&
-      !ssl_cert_check_private_key(cert, pkey)) {
-    return 0;
-  }
-
-  EVP_PKEY_free(cert->privatekey);
-  EVP_PKEY_up_ref(pkey);
-  cert->privatekey = pkey;
-
-  return 1;
 }
 
 int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
@@ -160,82 +147,6 @@ int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
   int ret = SSL_use_PrivateKey(ssl, pkey);
   EVP_PKEY_free(pkey);
   return ret;
-}
-
-int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
-  CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(buffer, &cert_cbs);
-  EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (pubkey == NULL) {
-    return 0;
-  }
-
-  if (!is_key_type_supported(pubkey->type)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    EVP_PKEY_free(pubkey);
-    return 0;
-  }
-
-  /* An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
-   * certificates, so sanity-check the key usage extension. */
-  if (pubkey->type == EVP_PKEY_EC &&
-      !ssl_cert_check_digital_signature_key_usage(&cert_cbs)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    EVP_PKEY_free(pubkey);
-    return 0;
-  }
-
-  if (cert->privatekey != NULL) {
-    /* Sanity-check that the private key and the certificate match, unless the
-     * key is opaque (in case of, say, a smartcard). */
-    if (!EVP_PKEY_is_opaque(cert->privatekey) &&
-        !ssl_compare_public_and_private_key(pubkey, cert->privatekey)) {
-      /* don't fail for a cert/key mismatch, just free current private key
-       * (when switching to a different cert & key, first this function should
-       * be used, then ssl_set_pkey */
-      EVP_PKEY_free(cert->privatekey);
-      cert->privatekey = NULL;
-      /* clear error queue */
-      ERR_clear_error();
-    }
-  }
-
-  EVP_PKEY_free(pubkey);
-
-  cert->x509_method->cert_flush_cached_leaf(cert);
-
-  if (cert->chain != NULL) {
-    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain, 0));
-    sk_CRYPTO_BUFFER_set(cert->chain, 0, buffer);
-    CRYPTO_BUFFER_up_ref(buffer);
-    return 1;
-  }
-
-  cert->chain = sk_CRYPTO_BUFFER_new_null();
-  if (cert->chain == NULL) {
-    return 0;
-  }
-
-  if (!sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
-    sk_CRYPTO_BUFFER_free(cert->chain);
-    cert->chain = NULL;
-    return 0;
-  }
-  CRYPTO_BUFFER_up_ref(buffer);
-
-  return 1;
-}
-
-int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
-                                 const uint8_t *der) {
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
-  if (buffer == NULL) {
-    return 0;
-  }
-
-  const int ok = ssl_set_cert(ctx->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
 }
 
 int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa) {

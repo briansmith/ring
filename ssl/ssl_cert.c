@@ -245,6 +245,93 @@ static void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg),
   c->cert_cb_arg = arg;
 }
 
+int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(buffer, &cert_cbs);
+  EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (pubkey == NULL) {
+    return 0;
+  }
+
+  if (!ssl_is_key_type_supported(pubkey->type)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    EVP_PKEY_free(pubkey);
+    return 0;
+  }
+
+  /* An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
+   * certificates, so sanity-check the key usage extension. */
+  if (pubkey->type == EVP_PKEY_EC &&
+      !ssl_cert_check_digital_signature_key_usage(&cert_cbs)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    EVP_PKEY_free(pubkey);
+    return 0;
+  }
+
+  if (cert->privatekey != NULL) {
+    /* Sanity-check that the private key and the certificate match, unless the
+     * key is opaque (in case of, say, a smartcard). */
+    if (!EVP_PKEY_is_opaque(cert->privatekey) &&
+        !ssl_compare_public_and_private_key(pubkey, cert->privatekey)) {
+      /* don't fail for a cert/key mismatch, just free current private key
+       * (when switching to a different cert & key, first this function should
+       * be used, then ssl_set_pkey */
+      EVP_PKEY_free(cert->privatekey);
+      cert->privatekey = NULL;
+      /* clear error queue */
+      ERR_clear_error();
+    }
+  }
+
+  EVP_PKEY_free(pubkey);
+
+  cert->x509_method->cert_flush_cached_leaf(cert);
+
+  if (cert->chain != NULL) {
+    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain, 0));
+    sk_CRYPTO_BUFFER_set(cert->chain, 0, buffer);
+    CRYPTO_BUFFER_up_ref(buffer);
+    return 1;
+  }
+
+  cert->chain = sk_CRYPTO_BUFFER_new_null();
+  if (cert->chain == NULL) {
+    return 0;
+  }
+
+  if (!sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
+    sk_CRYPTO_BUFFER_free(cert->chain);
+    cert->chain = NULL;
+    return 0;
+  }
+  CRYPTO_BUFFER_up_ref(buffer);
+
+  return 1;
+}
+
+int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
+                                 const uint8_t *der) {
+  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
+  if (buffer == NULL) {
+    return 0;
+  }
+
+  const int ok = ssl_set_cert(ctx->cert, buffer);
+  CRYPTO_BUFFER_free(buffer);
+  return ok;
+}
+
+int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
+  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
+  if (buffer == NULL) {
+    return 0;
+  }
+
+  const int ok = ssl_set_cert(ssl->cert, buffer);
+  CRYPTO_BUFFER_free(buffer);
+  return ok;
+}
+
 int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
                           STACK_OF(X509) *cert_chain) {
   if (cert_chain == NULL || sk_X509_num(cert_chain) == 0) {
