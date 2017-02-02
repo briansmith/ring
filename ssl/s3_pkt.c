@@ -188,16 +188,9 @@ again:
   return -1;
 }
 
-int ssl3_write_app_data(SSL *ssl, const void *buf, int len) {
+int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
   assert(!SSL_in_init(ssl) || SSL_in_false_start(ssl));
 
-  return ssl3_write_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len);
-}
-
-/* Call this to write data in records of type |type|. It will return <= 0 if
- * not all data has been sent or non-blocking IO. */
-int ssl3_write_bytes(SSL *ssl, int type, const void *buf_, int len) {
-  const uint8_t *buf = buf_;
   unsigned tot, n, nw;
 
   assert(ssl->s3->wnum <= INT_MAX);
@@ -216,7 +209,7 @@ int ssl3_write_bytes(SSL *ssl, int type, const void *buf_, int len) {
     return -1;
   }
 
-  n = (len - tot);
+  n = len - tot;
   for (;;) {
     /* max contains the maximum number of bytes that we can put into a
      * record. */
@@ -227,14 +220,13 @@ int ssl3_write_bytes(SSL *ssl, int type, const void *buf_, int len) {
       nw = n;
     }
 
-    int ret = do_ssl3_write(ssl, type, &buf[tot], nw);
+    int ret = do_ssl3_write(ssl, SSL3_RT_APPLICATION_DATA, &buf[tot], nw);
     if (ret <= 0) {
       ssl->s3->wnum = tot;
       return ret;
     }
 
-    if (ret == (int)n || (type == SSL3_RT_APPLICATION_DATA &&
-                          (ssl->mode & SSL_MODE_ENABLE_PARTIAL_WRITE))) {
+    if (ret == (int)n || (ssl->mode & SSL_MODE_ENABLE_PARTIAL_WRITE)) {
       return tot + ret;
     }
 

@@ -1319,11 +1319,11 @@ struct ssl_protocol_method_st {
    * and sets |*out_got_handshake| to whether the failure was due to a
    * post-handshake handshake message. If so, it fills in the current message as
    * in |ssl_get_message|. */
-  int (*read_app_data)(SSL *ssl, int *out_got_handshake,  uint8_t *buf, int len,
+  int (*read_app_data)(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek);
   int (*read_change_cipher_spec)(SSL *ssl);
   void (*read_close_notify)(SSL *ssl);
-  int (*write_app_data)(SSL *ssl, const void *buf_, int len);
+  int (*write_app_data)(SSL *ssl, const uint8_t *buf, int len);
   int (*dispatch_alert)(SSL *ssl);
   /* supports_cipher returns one if |cipher| is supported by this protocol and
    * zero otherwise. */
@@ -1796,8 +1796,7 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
 int ssl3_read_change_cipher_spec(SSL *ssl);
 void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len);
-int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
-int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
+int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len);
 int ssl3_output_cert_chain(SSL *ssl);
 
 int ssl3_new(SSL *ssl);
@@ -1838,7 +1837,7 @@ int dtls1_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
 int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
 
-int dtls1_write_app_data(SSL *ssl, const void *buf, int len);
+int dtls1_write_app_data(SSL *ssl, const uint8_t *buf, int len);
 
 /* dtls1_write_record sends a record. It returns one on success and <= 0 on
  * error. */

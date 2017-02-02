@@ -331,7 +331,7 @@ void dtls1_read_close_notify(SSL *ssl) {
   }
 }
 
-int dtls1_write_app_data(SSL *ssl, const void *buf_, int len) {
+int dtls1_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
   assert(!SSL_in_init(ssl));
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
@@ -348,7 +348,7 @@ int dtls1_write_app_data(SSL *ssl, const void *buf_, int len) {
     return 0;
   }
 
-  int ret = dtls1_write_record(ssl, SSL3_RT_APPLICATION_DATA, buf_, (size_t)len,
+  int ret = dtls1_write_record(ssl, SSL3_RT_APPLICATION_DATA, buf, (size_t)len,
                                dtls1_use_current_epoch);
   if (ret <= 0) {
     return ret;
