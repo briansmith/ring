@@ -453,7 +453,6 @@ chacha20_poly1305_open:
 .cfi_offset r13, -40
 .cfi_offset r14, -48
 .cfi_offset r15, -56
-.cfi_offset $keyp, -64
     lea 32(%rsp), %rbp
     and \$-32, %rbp
     mov %rdx, 8+$len_store
@@ -852,7 +851,6 @@ chacha20_poly1305_seal:
 .cfi_offset r13, -40
 .cfi_offset r14, -48
 .cfi_offset r15, -56
-.cfi_offset $keyp, -64
     lea 32(%rsp), %rbp
     and \$-32, %rbp
     mov %rdx, 8+$len_store

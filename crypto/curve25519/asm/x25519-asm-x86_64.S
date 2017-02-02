@@ -143,8 +143,6 @@ movq %rbx,-40(%rsp)
 .cfi_rel_offset rbx, -40
 movq %rbp,-48(%rsp)
 .cfi_rel_offset rbp, -48
-movq %rdi,-56(%rsp)
-.cfi_rel_offset rdi, -56
 mov  %rdx,%rcx
 movq   24(%rsi),%rdx
 imulq  $19,%rdx,%rax
