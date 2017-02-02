@@ -186,7 +186,8 @@
 //! // SHA256 digest algorithm.
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let rng = rand::SystemRandom::new();
-//! let mut signature = vec![0; signing_state.key_pair().public_modulus_len()];
+//! let signature_len = signing_state.key_pair().public_key().modulus_len();
+//! let mut signature = vec![0; signature_len];
 //! try!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
 //!                         &mut signature));
 //!
@@ -253,7 +254,7 @@ pub use rsa::{
 };
 
 #[cfg(feature = "use_heap")]
-pub use rsa::RSAParameters;
+pub use rsa::{RSAPublicKey, RSAParameters};
 
 #[cfg(feature = "use_heap")]
 pub use rsa::verification::{

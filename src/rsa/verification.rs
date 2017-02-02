@@ -15,8 +15,8 @@
 /// RSA PKCS#1 1.5 signatures.
 
 use {bits, digest, error, private, signature};
-use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
-            parse_public_key};
+use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+            RSAParameters, RSAPublicKey};
 use untrusted;
 
 
@@ -24,8 +24,8 @@ impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input)
               -> Result<(), error::Unspecified> {
-        let public_key = try!(parse_public_key(public_key));
-        verify_rsa(self, public_key, msg, signature)
+        let public_key = try!(RSAPublicKey::from_der(public_key));
+        verify_rsa(self, &public_key, msg, signature)
     }
 }
 
@@ -106,22 +106,19 @@ rsa_params!(RSA_PSS_2048_8192_SHA512, 2048, &super::RSA_PSS_SHA512,
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
 pub fn verify_rsa(params: &RSAParameters,
-                  (n, e): (untrusted::Input, untrusted::Input),
+                  public_key: &RSAPublicKey,
                   msg: untrusted::Input, signature: untrusted::Input)
                   -> Result<(), error::Unspecified> {
     // Partially validate the public key. See
-    // `check_public_modulus_and_exponent()` for more details.
-    let n = try!(bigint::Positive::from_be_bytes(n));
-    let e = try!(bigint::Positive::from_be_bytes(e));
+    // `RSAPublicKey::check_modulus()` for more details.
     let max_bits = try!(bits::BitLength::from_usize_bytes(
         PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN));
-    let (n, e) =
-        try!(super::check_public_modulus_and_exponent(n, e, params.min_bits,
-                                                      max_bits));
-    let n_bits = n.bit_length();
+    try!(public_key.check_modulus(params.min_bits, max_bits));
 
     // The signature must be the same length as the modulus, in bytes.
-    if signature.len() != n_bits.as_usize_bytes_rounded_up() {
+    let n_bits = public_key.n.bit_length();
+    let n_bytes = n_bits.as_usize_bytes_rounded_up();
+    if signature.len() != n_bytes {
         return Err(error::Unspecified);
     }
 
@@ -129,14 +126,14 @@ pub fn verify_rsa(params: &RSAParameters,
 
     // Step 1.
     let s = try!(bigint::Positive::from_be_bytes_padded(signature));
-    let s = try!(s.into_elem_decoded::<N>(&n));
+    let s = try!(s.into_elem_decoded::<N>(&public_key.n));
 
     // Step 2.
-    let m = try!(bigint::elem_exp_vartime(s, e, &n));
+    let m = try!(bigint::elem_exp_vartime(s, public_key.e, &public_key.n));
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
-    let decoded = &mut decoded[..n_bits.as_usize_bytes_rounded_up()];
+    let decoded = &mut decoded[..n_bytes];
     try!(m.fill_be_bytes(decoded));
 
     // Verify the padded message is correct.
@@ -255,10 +252,14 @@ mod tests {
             let msg = test_case.consume_bytes("Msg");
             let sig = test_case.consume_bytes("Sig");
             let expected = test_case.consume_string("Result");
-            let result = signature::primitive::verify_rsa(
-                &signature::RSA_PKCS1_2048_8192_SHA256,
-                (untrusted::Input::from(&n), untrusted::Input::from(&e)),
-                untrusted::Input::from(&msg), untrusted::Input::from(&sig));
+            let result = signature::RSAPublicKey::from_be_bytes(
+                untrusted::Input::from(&n), untrusted::Input::from(&e))
+                .and_then(|public_key| {
+                    signature::primitive::verify_rsa(
+                        &signature::RSA_PKCS1_2048_8192_SHA256,
+                        &public_key, untrusted::Input::from(&msg),
+                        untrusted::Input::from(&sig))
+                });
             assert_eq!(result.is_ok(), expected == "Pass");
             Ok(())
         })

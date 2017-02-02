@@ -17,7 +17,7 @@
 use {bits, der, digest, error};
 use rand;
 use std;
-use super::{blinding, bigint, N};
+use super::{blinding, bigint, N, RSAPublicKey};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -28,8 +28,7 @@ use untrusted;
 /// module-level documentation for an example.
 #[allow(non_snake_case)] // Use the standard names.
 pub struct RSAKeyPair {
-    n: bigint::Modulus<N>,
-    e: bigint::PublicExponent,
+    public_key: RSAPublicKey,
     p: bigint::Modulus<P>,
     q: bigint::Modulus<Q>,
     dP: bigint::OddPositive,
@@ -106,12 +105,13 @@ impl RSAKeyPair {
                 // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
                 // Also, this limit might help with memory management decisions
                 // later.
-                let (n, e) = try!(super::check_public_modulus_and_exponent(
-                    n, e, bits::BitLength::from_usize_bits(2048),
+                let public_key = try!(RSAPublicKey::from_bn(n, e));
+                try!(public_key.check_modulus(
+                    bits::BitLength::from_usize_bits(2048),
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS));
 
                 let d = try!(d.into_odd_positive());
-                try!(bigint::verify_less_than(&d, &n));
+                try!(bigint::verify_less_than(&d, &public_key.n));
 
                 let half_n_bits = n_bits.half_rounded_up();
                 if p.bit_length() != half_n_bits {
@@ -136,14 +136,14 @@ impl RSAKeyPair {
                 // to checking p * q == n.
                  let q_mod_n = {
                     let q = try!(q.try_clone());
-                    try!(q.into_elem(&n))
+                    try!(q.into_elem(&public_key.n))
                 };
                 let p_mod_n = {
                     let p = try!(p.try_clone());
-                    try!(p.into_elem_decoded(&n))
+                    try!(p.into_elem_decoded(&public_key.n))
                 };
-                let pq_mod_n =
-                    try!(bigint::elem_mul_mixed(&q_mod_n, p_mod_n, &n));
+                let pq_mod_n = try!(bigint::elem_mul_mixed(
+                    &q_mod_n, p_mod_n, &public_key.n));
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -185,19 +185,18 @@ impl RSAKeyPair {
 
                 let q_mod_n_decoded = {
                     let q = try!(q.try_clone());
-                    try!(q.into_elem_decoded(&n))
+                    try!(q.into_elem_decoded(&public_key.n))
                 };
                 let qq =
                     try!(bigint::elem_mul_mixed(&q_mod_n, q_mod_n_decoded,
-                                                &n));
+                                                &public_key.n));
                 let qq = try!(qq.into_odd_positive());
                 let qq = try!(qq.into_modulus::<QQ>());
 
                 let q = try!(q.into_modulus::<Q>());
 
                 Ok(RSAKeyPair {
-                    n: n,
-                    e: e,
+                    public_key: public_key,
                     p: p,
                     q: q,
                     dP: dP,
@@ -211,42 +210,9 @@ impl RSAKeyPair {
         })
     }
 
-    /// Returns the length in bytes of the key pair's public modulus.
-    ///
-    /// A signature has the same length as the public modulus.
-    pub fn public_modulus_len(&self) -> usize {
-        self.n_bits.as_usize_bytes_rounded_up()
-    }
-
-    /// Extracts the public modulus.
-    ///
-    /// `out` must be exactly `modulus_len()` bytes long. It will be filled
-    /// with the big-endian-encoded bytes, without any padding.
-    pub fn export_public_modulus(&self, out: &mut [u8])
-                    -> Result<(), error::Unspecified> {
-        if out.len() == self.public_modulus_len() {
-            self.n.fill_be_bytes(out)
-        } else {
-            Err(error::Unspecified)
-        }
-    }
-
-    /// Returns the length in bytes of the key pair's public exponent.
-    pub fn public_exponent_len(&self) -> usize {
-        self.e.bit_length().as_usize_bytes_rounded_up()
-    }
-
-    /// Extracts the public exponent.
-    ///
-    /// `out` must be exactly `exponent_len()` bytes long. It will be filled
-    /// with the big-endian-encoded bytes, without any padding.
-    pub fn export_public_exponent(&self, out: &mut [u8])
-                    -> Result<(), error::Unspecified> {
-        if out.len() == self.public_exponent_len() {
-            self.e.fill_be_bytes(out)
-        } else {
-            Err(error::Unspecified)
-        }
+    /// Return a reference to the `RSAPublicKey` part of this key pair.
+    pub fn public_key(&self) -> &RSAPublicKey {
+        &self.public_key
     }
 }
 
@@ -317,8 +283,8 @@ impl RSASigningState {
     /// `padding_alg` and the digest is then padded using the padding algorithm
     /// from `padding_alg`. The signature it written into `signature`;
     /// `signature`'s length must be exactly the length returned by
-    /// `public_modulus_len()`. `rng` is used for blinding the message during
-    /// signing, to mitigate some side-channel (e.g. timing) attacks.
+    /// `public_key.modulus_len()`. `rng` is used for blinding the message
+    /// during signing, to mitigate some side-channel (e.g. timing) attacks.
     ///
     /// Many other crypto libraries have signing functions that takes a
     /// precomputed digest as input, instead of the message to digest. This
@@ -357,10 +323,11 @@ impl RSASigningState {
         // `Positive::from_be_bytes_padded()`.
         let base = try!(bigint::Positive::from_be_bytes_padded(
             untrusted::Input::from(signature)));
-        let base = try!(base.into_elem_decoded(&key.n));
+        let base = try!(base.into_elem_decoded(&key.public_key.n));
 
         // Step 2.
-        let result = try!(blinding.blind(base, key.e, &key.n, rng, |c| {
+        let result = try!(blinding.blind(base, key.public_key.e,
+                                         &key.public_key.n, rng, |c| {
             // Step 2.b.
 
             // Step 2.b.i.
@@ -387,10 +354,10 @@ impl RSASigningState {
             // Modular arithmetic is used simply to avoid implementing
             // non-modular arithmetic.
             let h = bigint::elem_widen(h);
-            let q_times_h =
-                try!(bigint::elem_mul_mixed(&key.q_mod_n, h, &key.n));
+            let q_times_h = try!(bigint::elem_mul_mixed(&key.q_mod_n, h,
+                                                        &key.public_key.n));
             let m_2 = bigint::elem_widen(m_2);
-            let m = try!(bigint::elem_add(&m_2, q_times_h, &key.n));
+            let m = try!(bigint::elem_add(&m_2, q_times_h, &key.public_key.n));
 
             // Step 2.b.v isn't needed since there are only two primes.
 
@@ -404,8 +371,8 @@ impl RSASigningState {
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
             let computed = try!(m.try_clone());
-            let verify =
-                try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
+            let verify = try!(bigint::elem_exp_vartime(computed,
+                                        key.public_key.e, &key.public_key.n));
             try!(bigint::elem_verify_equal_consttime(&verify, &c));
 
             // Step 3.
@@ -460,7 +427,7 @@ mod tests {
             let mut signing_state =
                 signature::RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
-                vec![0; signing_state.key_pair().public_modulus_len()];
+                vec![0; signing_state.key_pair().public_key().modulus_len()];
             signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
@@ -488,7 +455,7 @@ mod tests {
 
         // The output buffer is one byte too short.
         let mut signature =
-            vec![0; signing_state.key_pair().public_modulus_len() - 1];
+            vec![0; signing_state.key_pair().public_key().modulus_len() - 1];
 
         assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
                                    &mut signature).is_err());
@@ -519,7 +486,7 @@ mod tests {
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
         let key_pair = std::sync::Arc::new(key_pair);
-        let mut signature = vec![0; key_pair.public_modulus_len()];
+        let mut signature = vec![0; key_pair.public_key().modulus_len()];
 
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
@@ -549,10 +516,10 @@ mod tests {
         // The inversion itself is blinded. This blinding factor must be
         // non-zero.
         let mut inverse_blinding_factor =
-            vec![0u8; key_pair.public_modulus_len()];
+            vec![0u8; key_pair.public_key().modulus_len()];
         inverse_blinding_factor[0] = 1;
 
-        let zero = vec![0u8; key_pair.public_modulus_len()];
+        let zero = vec![0u8; key_pair.public_key().modulus_len()];
 
         let mut bytes = std::vec::Vec::new();
         bytes.push(&inverse_blinding_factor[..]);
@@ -569,7 +536,7 @@ mod tests {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
         let mut signature =
-            vec![0; signing_state.key_pair().public_modulus_len()];
+            vec![0; signing_state.key_pair().public_key().modulus_len()];
         let result = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
                                         MESSAGE, &mut signature);
 
@@ -627,7 +594,7 @@ mod tests {
             let mut signing_state =
                 signature::RSASigningState::new(key_pair).unwrap();
             let mut actual: std::vec::Vec<u8> =
-                vec![0; signing_state.key_pair().public_modulus_len()];
+                vec![0; signing_state.key_pair().public_key().modulus_len()];
             try!(signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice()));
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
@@ -650,26 +617,5 @@ mod tests {
         let _: &Send = &signing_state;
         // TODO: Test that signing_state is NOT Sync; i.e.
         // `let _: &Sync = &signing_state;` must fail
-    }
-
-
-    #[test]
-    fn test_export() {
-        const PRIVATE_KEY_DER: &'static [u8] =
-            include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
-
-        let len = key_pair.public_modulus_len();
-        let mut buf: std::vec::Vec<u8> = vec![0; len+1];
-        assert!(key_pair.export_public_modulus(&mut buf).is_err());
-        assert!(key_pair.export_public_modulus(&mut buf[..len]).is_ok());
-        assert!(key_pair.export_public_modulus(&mut buf[..len-1]).is_err());
-
-        let len = key_pair.public_exponent_len();
-        let mut buf: std::vec::Vec<u8> = vec![0; len+1];
-        assert!(key_pair.export_public_exponent(&mut buf).is_err());
-        assert!(key_pair.export_public_exponent(&mut buf[..len]).is_ok());
-        assert!(key_pair.export_public_exponent(&mut buf[..len-1]).is_err());
     }
 }
