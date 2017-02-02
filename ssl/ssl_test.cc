@@ -990,12 +990,25 @@ TEST(SSLTest, ClientCAList) {
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   ASSERT_TRUE(ssl);
 
-  STACK_OF(X509_NAME) *stack = sk_X509_NAME_new_null();
-  ASSERT_TRUE(stack);
-  // |SSL_set_client_CA_list| takes ownership.
-  SSL_set_client_CA_list(ssl.get(), stack);
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
 
-  EXPECT_EQ(stack, SSL_get_client_CA_list(ssl.get()));
+  bssl::UniquePtr<X509_NAME> name_dup(X509_NAME_dup(name.get()));
+  ASSERT_TRUE(name_dup);
+
+  bssl::UniquePtr<STACK_OF(X509_NAME)> stack(sk_X509_NAME_new_null());
+  ASSERT_TRUE(stack);
+
+  ASSERT_TRUE(sk_X509_NAME_push(stack.get(), name_dup.get()));
+  name_dup.release();
+
+  // |SSL_set_client_CA_list| takes ownership.
+  SSL_set_client_CA_list(ssl.get(), stack.release());
+
+  STACK_OF(X509_NAME) *result = SSL_get_client_CA_list(ssl.get());
+  ASSERT_TRUE(result);
+  ASSERT_EQ(1u, sk_X509_NAME_num(result));
+  EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(result, 0), name.get()));
 }
 
 static void AppendSession(SSL_SESSION *session, void *arg) {

@@ -402,8 +402,9 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  STACK_OF(X509_NAME) *ca_sk = ssl_parse_client_CA_list(ssl, &alert, &cbs);
-  if (ca_sk == NULL) {
+  STACK_OF(CRYPTO_BUFFER) *ca_names =
+      ssl_parse_client_CA_list(ssl, &alert, &cbs);
+  if (ca_names == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
@@ -413,14 +414,15 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
   if (!CBS_get_u16_length_prefixed(&cbs, &extensions) ||
       CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    sk_X509_NAME_pop_free(ca_sk, X509_NAME_free);
+    sk_CRYPTO_BUFFER_pop_free(ca_names, CRYPTO_BUFFER_free);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }
 
   hs->cert_request = 1;
-  sk_X509_NAME_pop_free(hs->ca_names, X509_NAME_free);
-  hs->ca_names = ca_sk;
+  sk_CRYPTO_BUFFER_pop_free(hs->ca_names, CRYPTO_BUFFER_free);
+  hs->ca_names = ca_names;
+  ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
 
   if (!ssl_hash_current_message(hs)) {
     return ssl_hs_error;

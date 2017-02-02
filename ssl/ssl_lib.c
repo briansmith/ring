@@ -289,7 +289,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     goto err;
   }
 
-  ret->client_CA = sk_X509_NAME_new_null();
+  ret->client_CA = sk_CRYPTO_BUFFER_new_null();
   if (ret->client_CA == NULL) {
     goto err;
   }
@@ -358,7 +358,8 @@ void SSL_CTX_free(SSL_CTX *ctx) {
                                    SSL_CUSTOM_EXTENSION_free);
   sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
                                    SSL_CUSTOM_EXTENSION_free);
-  sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
+  sk_CRYPTO_BUFFER_pop_free(ctx->client_CA, CRYPTO_BUFFER_free);
+  ctx->x509_method->ssl_ctx_flush_cached_client_CA(ctx);
   sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   OPENSSL_free(ctx->psk_identity_hint);
   OPENSSL_free(ctx->supported_group_list);
@@ -503,7 +504,8 @@ void SSL_free(SSL *ssl) {
   OPENSSL_free(ssl->alpn_client_proto_list);
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
   OPENSSL_free(ssl->psk_identity_hint);
-  sk_X509_NAME_pop_free(ssl->client_CA, X509_NAME_free);
+  sk_CRYPTO_BUFFER_pop_free(ssl->client_CA, CRYPTO_BUFFER_free);
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl);
   sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
 
   if (ssl->method != NULL) {

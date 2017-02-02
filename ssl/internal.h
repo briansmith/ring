@@ -844,9 +844,9 @@ EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in);
 
 /* ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
  * TLS CertificateRequest message. On success, it returns a newly-allocated
- * |X509_NAME| list and advances |cbs|. Otherwise, it returns NULL and sets
+ * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns NULL and sets
  * |*out_alert| to an alert to send to the peer. */
-STACK_OF(X509_NAME) *
+STACK_OF(CRYPTO_BUFFER) *
     ssl_parse_client_CA_list(SSL *ssl, uint8_t *out_alert, CBS *cbs);
 
 /* ssl_add_client_CA_list adds the configured CA list to |cbb| in the format
@@ -1037,7 +1037,11 @@ struct ssl_handshake_st {
 
   /* ca_names, on the client, contains the list of CAs received in a
    * CertificateRequest message. */
-  STACK_OF(X509_NAME) *ca_names;
+  STACK_OF(CRYPTO_BUFFER) *ca_names;
+
+  /* cached_x509_ca_names contains a cache of parsed versions of the elements
+   * of |ca_names|. */
+  STACK_OF(X509_NAME) *cached_x509_ca_names;
 
   /* certificate_types, on the client, contains the set of certificate types
    * received in a CertificateRequest message. */
@@ -1460,6 +1464,13 @@ struct ssl_x509_method_st {
   int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
   /* session_clear frees any X509-related state from |session|. */
   void (*session_clear)(SSL_SESSION *session);
+
+  /* hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|. */
+  void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
+  /* ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|. */
+  void (*ssl_flush_cached_client_CA)(SSL *ssl);
+  /* ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|. */
+  void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
 };
 
 /* ssl_noop_x509_method is implements the |ssl_x509_method_st| functions by
@@ -1832,7 +1843,11 @@ struct ssl_st {
   CRYPTO_EX_DATA ex_data;
 
   /* for server side, keep the list of CA_dn we can use */
-  STACK_OF(X509_NAME) *client_CA;
+  STACK_OF(CRYPTO_BUFFER) *client_CA;
+
+  /* cached_x509_client_CA is a cache of parsed versions of the elements of
+   * |client_CA|. */
+  STACK_OF(X509_NAME) *cached_x509_client_CA;
 
   uint32_t options; /* protocol behaviour */
   uint32_t mode;    /* API behaviour */

@@ -173,7 +173,8 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   OPENSSL_free(hs->peer_key);
   OPENSSL_free(hs->server_params);
   OPENSSL_free(hs->peer_psk_identity_hint);
-  sk_X509_NAME_pop_free(hs->ca_names, X509_NAME_free);
+  sk_CRYPTO_BUFFER_pop_free(hs->ca_names, CRYPTO_BUFFER_free);
+  hs->ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
   OPENSSL_free(hs->certificate_types);
 
   if (hs->key_block != NULL) {

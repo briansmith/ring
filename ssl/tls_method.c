@@ -270,6 +270,10 @@ static int ssl_noop_x509_session_dup(SSL_SESSION *new_session,
 }
 static void ssl_noop_x509_session_clear(SSL_SESSION *session) {}
 
+static void ssl_noop_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {}
+static void ssl_noop_x509_ssl_flush_cached_client_CA(SSL *ssl) {}
+static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
+
 const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_clear,
   ssl_noop_x509_flush_cached_chain,
@@ -277,4 +281,7 @@ const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_session_cache_objects,
   ssl_noop_x509_session_dup,
   ssl_noop_x509_session_clear,
+  ssl_noop_x509_hs_flush_cached_ca_names,
+  ssl_noop_x509_ssl_flush_cached_client_CA,
+  ssl_noop_x509_ssl_ctx_flush_cached_client_CA,
 };

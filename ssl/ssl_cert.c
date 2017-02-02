@@ -406,96 +406,6 @@ err:
   return ret;
 }
 
-static void set_client_CA_list(STACK_OF(X509_NAME) **ca_list,
-                               STACK_OF(X509_NAME) *name_list) {
-  sk_X509_NAME_pop_free(*ca_list, X509_NAME_free);
-  *ca_list = name_list;
-}
-
-STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
-  STACK_OF(X509_NAME) *ret = sk_X509_NAME_new_null();
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  for (size_t i = 0; i < sk_X509_NAME_num(list); i++) {
-      X509_NAME *name = X509_NAME_dup(sk_X509_NAME_value(list, i));
-    if (name == NULL || !sk_X509_NAME_push(ret, name)) {
-      X509_NAME_free(name);
-      sk_X509_NAME_pop_free(ret, X509_NAME_free);
-      return NULL;
-    }
-  }
-
-  return ret;
-}
-
-void SSL_set_client_CA_list(SSL *ssl, STACK_OF(X509_NAME) *name_list) {
-  set_client_CA_list(&ssl->client_CA, name_list);
-}
-
-void SSL_CTX_set_client_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list) {
-  set_client_CA_list(&ctx->client_CA, name_list);
-}
-
-STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *ctx) {
-  return ctx->client_CA;
-}
-
-STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
-  /* For historical reasons, this function is used both to query configuration
-   * state on a server as well as handshake state on a client. However, whether
-   * |ssl| is a client or server is not known until explicitly configured with
-   * |SSL_set_connect_state|. If |handshake_func| is NULL, |ssl| is in an
-   * indeterminate mode and |ssl->server| is unset. */
-  if (ssl->handshake_func != NULL && !ssl->server) {
-    if (ssl->s3->hs != NULL) {
-      return ssl->s3->hs->ca_names;
-    }
-
-    return NULL;
-  }
-
-  if (ssl->client_CA != NULL) {
-    return ssl->client_CA;
-  }
-  return ssl->ctx->client_CA;
-}
-
-static int add_client_CA(STACK_OF(X509_NAME) **sk, X509 *x509) {
-  X509_NAME *name;
-
-  if (x509 == NULL) {
-    return 0;
-  }
-  if (*sk == NULL) {
-    *sk = sk_X509_NAME_new_null();
-    if (*sk == NULL) {
-      return 0;
-    }
-  }
-
-  name = X509_NAME_dup(X509_get_subject_name(x509));
-  if (name == NULL) {
-    return 0;
-  }
-
-  if (!sk_X509_NAME_push(*sk, name)) {
-    X509_NAME_free(name);
-    return 0;
-  }
-
-  return 1;
-}
-
-int SSL_add_client_CA(SSL *ssl, X509 *x509) {
-  return add_client_CA(&ssl->client_CA, x509);
-}
-
-int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
-  return add_client_CA(&ctx->client_CA, x509);
-}
-
 int ssl_has_certificate(const SSL *ssl) {
   return ssl->cert->chain != NULL &&
          sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0) != NULL &&
@@ -779,14 +689,11 @@ parse_err:
   return 0;
 }
 
-static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
-  return X509_NAME_cmp(*a, *b);
-}
-
-STACK_OF(X509_NAME) *
+STACK_OF(CRYPTO_BUFFER) *
     ssl_parse_client_CA_list(SSL *ssl, uint8_t *out_alert, CBS *cbs) {
-  STACK_OF(X509_NAME) *ret = sk_X509_NAME_new(ca_dn_cmp);
-  X509_NAME *name = NULL;
+  CRYPTO_BUFFER_POOL *const pool = ssl->ctx->pool;
+
+  STACK_OF(CRYPTO_BUFFER) *ret = sk_CRYPTO_BUFFER_new_null();
   if (ret == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -808,29 +715,21 @@ STACK_OF(X509_NAME) *
       goto err;
     }
 
-    const uint8_t *ptr = CBS_data(&distinguished_name);
-    /* A u16 length cannot overflow a long. */
-    name = d2i_X509_NAME(NULL, &ptr, (long)CBS_len(&distinguished_name));
-    if (name == NULL ||
-        ptr != CBS_data(&distinguished_name) + CBS_len(&distinguished_name)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto err;
-    }
-
-    if (!sk_X509_NAME_push(ret, name)) {
+    CRYPTO_BUFFER *buffer =
+        CRYPTO_BUFFER_new_from_CBS(&distinguished_name, pool);
+    if (buffer == NULL ||
+        !sk_CRYPTO_BUFFER_push(ret, buffer)) {
+      CRYPTO_BUFFER_free(buffer);
       *out_alert = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    name = NULL;
   }
 
   return ret;
 
 err:
-  X509_NAME_free(name);
-  sk_X509_NAME_pop_free(ret, X509_NAME_free);
+  sk_CRYPTO_BUFFER_pop_free(ret, CRYPTO_BUFFER_free);
   return NULL;
 }
 
@@ -840,21 +739,20 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
     return 0;
   }
 
-  STACK_OF(X509_NAME) *sk = SSL_get_client_CA_list(ssl);
-  if (sk == NULL) {
+  STACK_OF(CRYPTO_BUFFER) *names = ssl->client_CA;
+  if (names == NULL) {
+    names = ssl->ctx->client_CA;
+  }
+  if (names == NULL) {
     return CBB_flush(cbb);
   }
 
-  for (size_t i = 0; i < sk_X509_NAME_num(sk); i++) {
-    X509_NAME *name = sk_X509_NAME_value(sk, i);
-    int len = i2d_X509_NAME(name, NULL);
-    if (len < 0) {
-      return 0;
-    }
-    uint8_t *ptr;
+  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(names); i++) {
+    const CRYPTO_BUFFER *name = sk_CRYPTO_BUFFER_value(names, i);
+
     if (!CBB_add_u16_length_prefixed(&child, &name_cbb) ||
-        !CBB_add_space(&name_cbb, &ptr, (size_t)len) ||
-        (len > 0 && i2d_X509_NAME(name, &ptr) < 0)) {
+        !CBB_add_bytes(&name_cbb, CRYPTO_BUFFER_data(name),
+                       CRYPTO_BUFFER_len(name))) {
       return 0;
     }
   }

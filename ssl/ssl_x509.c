@@ -152,6 +152,7 @@
 #include <openssl/x509_vfy.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
 
 
 X509 *SSL_get_peer_certificate(const SSL *ssl) {
@@ -410,6 +411,21 @@ static void ssl_crypto_x509_session_clear(SSL_SESSION *session) {
   session->x509_chain_without_leaf = NULL;
 }
 
+static void ssl_crypto_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {
+  sk_X509_NAME_pop_free(hs->cached_x509_ca_names, X509_NAME_free);
+  hs->cached_x509_ca_names = NULL;
+}
+
+static void ssl_crypto_x509_ssl_flush_cached_client_CA(SSL *ssl) {
+  sk_X509_NAME_pop_free(ssl->cached_x509_client_CA, X509_NAME_free);
+  ssl->cached_x509_client_CA = NULL;
+}
+
+static void ssl_crypto_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {
+  sk_X509_NAME_pop_free(ctx->cached_x509_client_CA, X509_NAME_free);
+  ctx->cached_x509_client_CA = NULL;
+}
+
 const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_clear,
   ssl_crypto_x509_flush_cached_chain,
@@ -417,6 +433,9 @@ const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_session_cache_objects,
   ssl_crypto_x509_session_dup,
   ssl_crypto_x509_session_clear,
+  ssl_crypto_x509_hs_flush_cached_ca_names,
+  ssl_crypto_x509_ssl_flush_cached_client_CA,
+  ssl_crypto_x509_ssl_ctx_flush_cached_client_CA,
 };
 
 /* x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
@@ -491,7 +510,10 @@ X509 *SSL_get_certificate(const SSL *ssl) {
 }
 
 X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
-  return ssl_cert_get0_leaf(ctx->cert);
+  CRYPTO_MUTEX_lock_write((CRYPTO_MUTEX *) &ctx->lock);
+  X509 *ret = ssl_cert_get0_leaf(ctx->cert);
+  CRYPTO_MUTEX_unlock_write((CRYPTO_MUTEX *) &ctx->lock);
+  return ret;
 }
 
 /* new_leafless_chain returns a fresh stack of buffers set to {NULL}. */
@@ -752,7 +774,11 @@ err:
 }
 
 int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
-  if (!ssl_cert_cache_chain_certs(ctx->cert)) {
+  CRYPTO_MUTEX_lock_write((CRYPTO_MUTEX *) &ctx->lock);
+  const int ret = ssl_cert_cache_chain_certs(ctx->cert);
+  CRYPTO_MUTEX_unlock_write((CRYPTO_MUTEX *) &ctx->lock);
+
+  if (!ret) {
     *out_chain = NULL;
     return 0;
   }
@@ -812,4 +838,180 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   }
   *pp = CBS_data(&cbs);
   return ret;
+}
+
+STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
+  return sk_X509_NAME_deep_copy(list, X509_NAME_dup, X509_NAME_free);
+}
+
+static void set_client_CA_list(STACK_OF(CRYPTO_BUFFER) **ca_list,
+                               const STACK_OF(X509_NAME) *name_list,
+                               CRYPTO_BUFFER_POOL *pool) {
+  STACK_OF(CRYPTO_BUFFER) *buffers = sk_CRYPTO_BUFFER_new_null();
+  if (buffers == NULL) {
+    return;
+  }
+
+  for (size_t i = 0; i < sk_X509_NAME_num(name_list); i++) {
+    X509_NAME *name = sk_X509_NAME_value(name_list, i);
+    uint8_t *outp = NULL;
+    int len = i2d_X509_NAME(name, &outp);
+    if (len < 0) {
+      goto err;
+    }
+
+    CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(outp, len, pool);
+    OPENSSL_free(outp);
+    if (buffer == NULL ||
+        !sk_CRYPTO_BUFFER_push(buffers, buffer)) {
+      CRYPTO_BUFFER_free(buffer);
+      goto err;
+    }
+  }
+
+  sk_CRYPTO_BUFFER_pop_free(*ca_list, CRYPTO_BUFFER_free);
+  *ca_list = buffers;
+  return;
+
+err:
+  sk_CRYPTO_BUFFER_pop_free(buffers, CRYPTO_BUFFER_free);
+}
+
+void SSL_set_client_CA_list(SSL *ssl, STACK_OF(X509_NAME) *name_list) {
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl);
+  set_client_CA_list(&ssl->client_CA, name_list, ssl->ctx->pool);
+  sk_X509_NAME_pop_free(name_list, X509_NAME_free);
+}
+
+void SSL_CTX_set_client_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list) {
+  ctx->x509_method->ssl_ctx_flush_cached_client_CA(ctx);
+  set_client_CA_list(&ctx->client_CA, name_list, ctx->pool);
+  sk_X509_NAME_pop_free(name_list, X509_NAME_free);
+}
+
+static STACK_OF(X509_NAME) *
+    buffer_names_to_x509(const STACK_OF(CRYPTO_BUFFER) *names,
+                         STACK_OF(X509_NAME) **cached) {
+  if (names == NULL) {
+    return NULL;
+  }
+
+  if (*cached != NULL) {
+    return *cached;
+  }
+
+  STACK_OF(X509_NAME) *new_cache = sk_X509_NAME_new_null();
+  if (new_cache == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(names); i++) {
+    const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(names, i);
+    const uint8_t *inp = CRYPTO_BUFFER_data(buffer);
+    X509_NAME *name = d2i_X509_NAME(NULL, &inp, CRYPTO_BUFFER_len(buffer));
+    if (name == NULL ||
+        inp != CRYPTO_BUFFER_data(buffer) + CRYPTO_BUFFER_len(buffer) ||
+        !sk_X509_NAME_push(new_cache, name)) {
+      X509_NAME_free(name);
+      goto err;
+    }
+  }
+
+  *cached = new_cache;
+  return new_cache;
+
+err:
+  sk_X509_NAME_pop_free(new_cache, X509_NAME_free);
+  return NULL;
+}
+
+STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
+  /* For historical reasons, this function is used both to query configuration
+   * state on a server as well as handshake state on a client. However, whether
+   * |ssl| is a client or server is not known until explicitly configured with
+   * |SSL_set_connect_state|. If |handshake_func| is NULL, |ssl| is in an
+   * indeterminate mode and |ssl->server| is unset. */
+  if (ssl->handshake_func != NULL && !ssl->server) {
+    if (ssl->s3->hs != NULL) {
+      return buffer_names_to_x509(ssl->s3->hs->ca_names,
+                                  &ssl->s3->hs->cached_x509_ca_names);
+    }
+
+    return NULL;
+  }
+
+  if (ssl->client_CA != NULL) {
+    return buffer_names_to_x509(
+        ssl->client_CA, (STACK_OF(X509_NAME) **)&ssl->cached_x509_client_CA);
+  }
+  return buffer_names_to_x509(ssl->ctx->client_CA,
+                              &ssl->ctx->cached_x509_client_CA);
+}
+
+STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *ctx) {
+  CRYPTO_MUTEX_lock_write((CRYPTO_MUTEX *) &ctx->lock);
+  STACK_OF(X509_NAME) *ret = buffer_names_to_x509(
+      ctx->client_CA, (STACK_OF(X509_NAME) **)&ctx->cached_x509_client_CA);
+  CRYPTO_MUTEX_unlock_write((CRYPTO_MUTEX *) &ctx->lock);
+  return ret;
+}
+
+static int add_client_CA(STACK_OF(CRYPTO_BUFFER) **names, X509 *x509,
+                         CRYPTO_BUFFER_POOL *pool) {
+  if (x509 == NULL) {
+    return 0;
+  }
+
+  uint8_t *outp = NULL;
+  int len = i2d_X509_NAME(X509_get_subject_name(x509), &outp);
+  if (len < 0) {
+    return 0;
+  }
+
+  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(outp, len, pool);
+  OPENSSL_free(outp);
+  if (buffer == NULL) {
+    return 0;
+  }
+
+  int alloced = 0;
+  if (*names == NULL) {
+    *names = sk_CRYPTO_BUFFER_new_null();
+    alloced = 1;
+
+    if (*names == NULL) {
+      CRYPTO_BUFFER_free(buffer);
+      return 0;
+    }
+  }
+
+  if (!sk_CRYPTO_BUFFER_push(*names, buffer)) {
+    CRYPTO_BUFFER_free(buffer);
+    if (alloced) {
+      sk_CRYPTO_BUFFER_pop_free(*names, CRYPTO_BUFFER_free);
+      *names = NULL;
+    }
+    return 0;
+  }
+
+  return 1;
+}
+
+int SSL_add_client_CA(SSL *ssl, X509 *x509) {
+  if (!add_client_CA(&ssl->client_CA, x509, ssl->ctx->pool)) {
+    return 0;
+  }
+
+  ssl_crypto_x509_ssl_flush_cached_client_CA(ssl);
+  return 1;
+}
+
+int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
+  if (!add_client_CA(&ctx->client_CA, x509, ctx->pool)) {
+    return 0;
+  }
+
+  ssl_crypto_x509_ssl_ctx_flush_cached_client_CA(ctx);
+  return 1;
 }
