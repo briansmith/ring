@@ -18,6 +18,7 @@
 
 #include <openssl/chacha.h>
 #include <openssl/cipher.h>
+#include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/poly1305.h>
@@ -35,7 +36,11 @@ struct aead_chacha20_poly1305_ctx {
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
     !defined(OPENSSL_WINDOWS)
-static const int kHaveAsm = 1;
+static int asm_capable(void) {
+  const int sse41_capable = (OPENSSL_ia32cap_P[1] & (1 << 19)) != 0;
+  return sse41_capable;
+}
+
 // chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It
 // decrypts |plaintext_len| bytes from |ciphertext| and writes them to
 // |out_plaintext|. On entry, |aead_data| must contain the final 48 bytes of
@@ -58,7 +63,10 @@ extern void chacha20_poly1305_seal(uint8_t *out_ciphertext,
                                    size_t plaintext_len, const uint8_t *ad,
                                    size_t ad_len, uint8_t *aead_data);
 #else
-static const int kHaveAsm = 0;
+static int asm_capable(void) {
+  return 0;
+}
+
 
 static void chacha20_poly1305_open(uint8_t *out_plaintext,
                                    const uint8_t *ciphertext,
@@ -183,7 +191,7 @@ static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   alignas(16) uint8_t tag[48];
 
-  if (kHaveAsm) {
+  if (asm_capable()) {
     OPENSSL_memcpy(tag, c20_ctx->key, 32);
     OPENSSL_memset(tag + 32, 0, 4);
     OPENSSL_memcpy(tag + 32 + 4, nonce, 12);
@@ -231,7 +239,7 @@ static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   plaintext_len = in_len - c20_ctx->tag_len;
   alignas(16) uint8_t tag[48];
 
-  if (kHaveAsm) {
+  if (asm_capable()) {
     OPENSSL_memcpy(tag, c20_ctx->key, 32);
     OPENSSL_memset(tag + 32, 0, 4);
     OPENSSL_memcpy(tag + 32 + 4, nonce, 12);
