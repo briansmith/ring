@@ -2349,7 +2349,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:         true,
-			expectedError:      ":NO_COMPRESSION_SPECIFIED:",
+			expectedError:      ":INVALID_COMPRESSION_LIST:",
 			expectedLocalError: "remote error: illegal parameter",
 		},
 		{

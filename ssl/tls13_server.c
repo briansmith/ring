@@ -35,8 +35,7 @@
 static const size_t kMaxEarlyDataAccepted = 14336;
 
 enum server_hs_state_t {
-  state_process_client_hello = 0,
-  state_select_parameters,
+  state_select_parameters = 0,
   state_send_hello_retry_request,
   state_process_second_client_hello,
   state_send_server_hello,
@@ -88,54 +87,6 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
   return ok;
 }
 
-static enum ssl_hs_wait_t do_process_client_hello(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (!ssl_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
-    return ssl_hs_error;
-  }
-
-  SSL_CLIENT_HELLO client_hello;
-  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
-                             ssl->init_num)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
-  }
-
-  assert(ssl->s3->have_version);
-
-  /* Load the client random. */
-  if (client_hello.random_len != SSL3_RANDOM_SIZE) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
-  OPENSSL_memcpy(ssl->s3->client_random, client_hello.random,
-                 client_hello.random_len);
-
-  /* TLS 1.3 requires the peer only advertise the null compression. */
-  if (client_hello.compression_methods_len != 1 ||
-      client_hello.compression_methods[0] != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return ssl_hs_error;
-  }
-
-  /* TLS extensions. */
-  if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-    return ssl_hs_error;
-  }
-
-  /* The short record header extension is incompatible with early data. */
-  if (ssl->s3->skip_early_data && ssl->s3->short_header) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-    return ssl_hs_error;
-  }
-
-  hs->tls13_state = state_select_parameters;
-  return ssl_hs_ok;
-}
-
 static const SSL_CIPHER *choose_tls13_cipher(
     const SSL *ssl, const SSL_CLIENT_HELLO *client_hello) {
   if (client_hello->cipher_suites_len % 2 != 0) {
@@ -184,21 +135,9 @@ static const SSL_CIPHER *choose_tls13_cipher(
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  /* Call |cert_cb| to update server certificates if required. */
-  if (ssl->cert->cert_cb != NULL) {
-    int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
-    if (rv == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-    if (rv < 0) {
-      hs->tls13_state = state_select_parameters;
-      return ssl_hs_x509_lookup;
-    }
-  }
-
-  if (!ssl_auto_chain_if_needed(ssl)) {
+  /* The short record header extension is incompatible with early data. */
+  if (ssl->s3->skip_early_data && ssl->s3->short_header) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
     return ssl_hs_error;
   }
 
@@ -680,9 +619,6 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
     enum server_hs_state_t state = hs->tls13_state;
     switch (state) {
-      case state_process_client_hello:
-        ret = do_process_client_hello(hs);
-        break;
       case state_select_parameters:
         ret = do_select_parameters(hs);
         break;
