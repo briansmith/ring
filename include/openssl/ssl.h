@@ -3671,7 +3671,9 @@ OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
 
 /* BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
  * that this has quite different behaviour from the version in OpenSSL (notably
- * that it doesn't try to auto renegotiate). */
+ * that it doesn't try to auto renegotiate).
+ *
+ * IMPORTANT: if you are not curl, don't use this. */
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
 
 /* BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must

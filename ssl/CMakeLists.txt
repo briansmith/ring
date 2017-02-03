@@ -3,6 +3,7 @@ include_directories(../include)
 add_library(
   ssl
 
+  bio_ssl.c
   custom_extensions.c
   handshake_server.c
   handshake_client.c
