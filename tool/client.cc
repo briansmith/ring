@@ -106,6 +106,11 @@ static const struct argument kArguments[] = {
       "Establish a second connection resuming the original connection.",
     },
     {
+      "-root-certs", kOptionalArgument,
+      "A filename containing one of more PEM root certificates. Implies that"
+      "verification is required.",
+    },
+    {
      "", kOptionalArgument, "",
     },
 };
@@ -388,6 +393,16 @@ bool Client(const std::vector<std::string> &args) {
 
   if (args_map.count("-grease") != 0) {
     SSL_CTX_set_grease_enabled(ctx.get(), 1);
+  }
+
+  if (args_map.count("-root-certs") != 0) {
+    if (!SSL_CTX_load_verify_locations(
+            ctx.get(), args_map["-root-certs"].c_str(), nullptr)) {
+      fprintf(stderr, "Failed to load root certificates.\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
   }
 
   if (args_map.count("-resume") != 0 &&
