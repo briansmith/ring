@@ -163,15 +163,6 @@ const char *SSL_state_string_long(const SSL *ssl) {
     case SSL3_ST_SR_CLNT_HELLO_C:
       return "SSLv3 read client hello C";
 
-    case SSL3_ST_SW_HELLO_REQ_A:
-      return "SSLv3 write hello request A";
-
-    case SSL3_ST_SW_HELLO_REQ_B:
-      return "SSLv3 write hello request B";
-
-    case SSL3_ST_SW_HELLO_REQ_C:
-      return "SSLv3 write hello request C";
-
     case SSL3_ST_SW_SRVR_HELLO_A:
       return "SSLv3 write server hello A";
 
@@ -272,15 +263,6 @@ const char *SSL_state_string(const SSL *ssl) {
     case SSL3_ST_SR_FINISHED_A:
     case SSL3_ST_CR_FINISHED_A:
       return "3RFINA";
-
-    case SSL3_ST_SW_HELLO_REQ_A:
-      return "3WHR_A";
-
-    case SSL3_ST_SW_HELLO_REQ_B:
-      return "3WHR_B";
-
-    case SSL3_ST_SW_HELLO_REQ_C:
-      return "3WHR_C";
 
     case SSL3_ST_SR_CLNT_HELLO_A:
       return "3RCH_A";
