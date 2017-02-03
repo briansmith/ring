@@ -230,7 +230,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
       case SSL3_ST_SR_CLNT_HELLO_B:
       case SSL3_ST_SR_CLNT_HELLO_C:
       case SSL3_ST_SR_CLNT_HELLO_D:
-      case SSL3_ST_SR_CLNT_HELLO_E:
         ret = ssl3_get_client_hello(hs);
         if (hs->state == SSL_ST_TLS13) {
           break;
@@ -541,6 +540,7 @@ int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
 static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                              const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
+  assert(!ssl->s3->have_version);
   uint16_t min_version, max_version;
   if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
     *out_alert = SSL_AD_PROTOCOL_VERSION;
@@ -853,23 +853,18 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
           /* fallthrough */;
       }
     }
-    hs->state = SSL3_ST_SR_CLNT_HELLO_C;
-  }
 
-  /* Negotiate the protocol version if we have not done so yet. */
-  if (!ssl->s3->have_version) {
     if (!negotiate_version(hs, &al, &client_hello)) {
       goto f_err;
     }
 
     if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+      /* Jump to the TLS 1.3 state machine. */
       hs->state = SSL_ST_TLS13;
       hs->do_tls13_handshake = tls13_server_handshake;
       return 1;
     }
-  }
 
-  if (hs->state == SSL3_ST_SR_CLNT_HELLO_C) {
     /* Load the client random. */
     if (client_hello.random_len != SSL3_RANDOM_SIZE) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -892,10 +887,10 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    hs->state = SSL3_ST_SR_CLNT_HELLO_D;
+    hs->state = SSL3_ST_SR_CLNT_HELLO_C;
   }
 
-  if (hs->state == SSL3_ST_SR_CLNT_HELLO_D) {
+  if (hs->state == SSL3_ST_SR_CLNT_HELLO_C) {
     /* Call |cert_cb| to update server certificates if required. */
     if (ssl->cert->cert_cb != NULL) {
       int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
@@ -924,10 +919,10 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
       goto f_err;
     }
 
-    hs->state = SSL3_ST_SR_CLNT_HELLO_E;
+    hs->state = SSL3_ST_SR_CLNT_HELLO_D;
   }
 
-  assert(hs->state == SSL3_ST_SR_CLNT_HELLO_E);
+  assert(hs->state == SSL3_ST_SR_CLNT_HELLO_D);
 
   /* Determine whether we are doing session resumption. */
   int tickets_supported = 0, renew_ticket = 0;
