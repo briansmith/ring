@@ -3245,6 +3245,46 @@ TEST(SSLTest, AddChainCertHack) {
   X509_cmp(cert, cert);
 }
 
+TEST(SSLTest, GetCertificate) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(cert2);
+  X509 *cert3 = SSL_get_certificate(ssl.get());
+  ASSERT_TRUE(cert3);
+
+  // The old and new certificates must be identical.
+  EXPECT_EQ(0, X509_cmp(cert.get(), cert2));
+  EXPECT_EQ(0, X509_cmp(cert.get(), cert3));
+
+  uint8_t *der = nullptr;
+  long der_len = i2d_X509(cert.get(), &der);
+  ASSERT_LT(0, der_len);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  uint8_t *der2 = nullptr;
+  long der2_len = i2d_X509(cert2, &der2);
+  ASSERT_LT(0, der2_len);
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+
+  uint8_t *der3 = nullptr;
+  long der3_len = i2d_X509(cert3, &der3);
+  ASSERT_LT(0, der3_len);
+  bssl::UniquePtr<uint8_t> free_der3(der3);
+
+  // They must also encode identically.
+  ASSERT_EQ(der2_len, der_len);
+  EXPECT_EQ(0, OPENSSL_memcmp(der, der2, static_cast<size_t>(der_len)));
+  ASSERT_EQ(der3_len, der_len);
+  EXPECT_EQ(0, OPENSSL_memcmp(der, der3, static_cast<size_t>(der_len)));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestCipherRules() ||
