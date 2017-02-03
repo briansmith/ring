@@ -171,7 +171,9 @@
 #include "../crypto/internal.h"
 
 
-static int ssl3_get_client_hello(SSL_HANDSHAKE *hs);
+static int ssl3_process_client_hello(SSL_HANDSHAKE *hs);
+static int ssl3_select_certificate(SSL_HANDSHAKE *hs);
+static int ssl3_select_parameters(SSL_HANDSHAKE *hs);
 static int ssl3_send_server_hello(SSL_HANDSHAKE *hs);
 static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs);
 static int ssl3_send_certificate_status(SSL_HANDSHAKE *hs);
@@ -227,13 +229,33 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         break;
 
       case SSL3_ST_SR_CLNT_HELLO_A:
-      case SSL3_ST_SR_CLNT_HELLO_B:
-      case SSL3_ST_SR_CLNT_HELLO_C:
-      case SSL3_ST_SR_CLNT_HELLO_D:
-        ret = ssl3_get_client_hello(hs);
-        if (hs->state == SSL_ST_TLS13) {
-          break;
+        ret = ssl->method->ssl_get_message(ssl);
+        if (ret <= 0) {
+          goto end;
         }
+        hs->state = SSL3_ST_SR_CLNT_HELLO_B;
+        break;
+
+      case SSL3_ST_SR_CLNT_HELLO_B:
+        ret = ssl3_process_client_hello(hs);
+        if (ret <= 0) {
+          goto end;
+        }
+        hs->state = SSL3_ST_SR_CLNT_HELLO_C;
+        break;
+
+      case SSL3_ST_SR_CLNT_HELLO_C:
+        ret = ssl3_select_certificate(hs);
+        if (ret <= 0) {
+          goto end;
+        }
+        if (hs->state != SSL_ST_TLS13) {
+          hs->state = SSL3_ST_SR_CLNT_HELLO_D;
+        }
+        break;
+
+      case SSL3_ST_SR_CLNT_HELLO_D:
+        ret = ssl3_select_parameters(hs);
         if (ret <= 0) {
           goto end;
         }
@@ -807,125 +829,129 @@ static const SSL_CIPHER *ssl3_choose_cipher(
   return ret;
 }
 
-static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
+static int ssl3_process_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint8_t al = SSL_AD_INTERNAL_ERROR;
-  int ret = -1;
-  SSL_SESSION *session = NULL;
-
-  if (hs->state == SSL3_ST_SR_CLNT_HELLO_A) {
-    /* The first time around, read the ClientHello. */
-    int msg_ret = ssl->method->ssl_get_message(ssl);
-    if (msg_ret <= 0) {
-      return msg_ret;
-    }
-
-    if (!ssl_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
-      return -1;
-    }
-
-    hs->state = SSL3_ST_SR_CLNT_HELLO_B;
+  if (!ssl_check_message_type(ssl, SSL3_MT_CLIENT_HELLO)) {
+    return -1;
   }
 
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
                              ssl->init_num)) {
-    al = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return -1;
   }
 
-  if (hs->state == SSL3_ST_SR_CLNT_HELLO_B) {
-    /* Run the early callback. */
-    if (ssl->ctx->select_certificate_cb != NULL) {
-      switch (ssl->ctx->select_certificate_cb(&client_hello)) {
-        case 0:
-          ssl->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
-          goto err;
+  /* Run the early callback. */
+  if (ssl->ctx->select_certificate_cb != NULL) {
+    switch (ssl->ctx->select_certificate_cb(&client_hello)) {
+      case 0:
+        ssl->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
+        return -1;
 
-        case -1:
-          /* Connection rejected. */
-          al = SSL_AD_HANDSHAKE_FAILURE;
-          OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
-          goto f_err;
+      case -1:
+        /* Connection rejected. */
+        OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+        return -1;
 
-        default:
-          /* fallthrough */;
-      }
+      default:
+        /* fallthrough */;
     }
+  }
 
-    if (!negotiate_version(hs, &al, &client_hello)) {
-      goto f_err;
-    }
+  uint8_t alert;
+  if (!negotiate_version(hs, &alert, &client_hello)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return -1;
+  }
 
-    /* Load the client random. */
-    if (client_hello.random_len != SSL3_RANDOM_SIZE) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  /* Load the client random. */
+  if (client_hello.random_len != SSL3_RANDOM_SIZE) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+  OPENSSL_memcpy(ssl->s3->client_random, client_hello.random,
+                 client_hello.random_len);
+
+  /* Only null compression is supported. TLS 1.3 further requires the peer
+   * advertise no other compression. */
+  if (OPENSSL_memchr(client_hello.compression_methods, 0,
+                     client_hello.compression_methods_len) == NULL ||
+      (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
+       client_hello.compression_methods_len != 1)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    return -1;
+  }
+
+  /* TLS extensions. */
+  if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
+    return -1;
+  }
+
+  return 1;
+}
+
+static int ssl3_select_certificate(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  /* Call |cert_cb| to update server certificates if required. */
+  if (ssl->cert->cert_cb != NULL) {
+    int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
+    if (rv == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return -1;
     }
-    OPENSSL_memcpy(ssl->s3->client_random, client_hello.random,
-                   client_hello.random_len);
-
-    /* Only null compression is supported. TLS 1.3 further requires the peer
-     * advertise no other compression. */
-    if (OPENSSL_memchr(client_hello.compression_methods, 0,
-                       client_hello.compression_methods_len) == NULL ||
-        (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
-         client_hello.compression_methods_len != 1)) {
-      al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
-      goto f_err;
+    if (rv < 0) {
+      ssl->rwstate = SSL_X509_LOOKUP;
+      return -1;
     }
-
-    /* TLS extensions. */
-    if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-      goto err;
-    }
-
-    hs->state = SSL3_ST_SR_CLNT_HELLO_C;
   }
 
-  if (hs->state == SSL3_ST_SR_CLNT_HELLO_C) {
-    /* Call |cert_cb| to update server certificates if required. */
-    if (ssl->cert->cert_cb != NULL) {
-      int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
-      if (rv == 0) {
-        al = SSL_AD_INTERNAL_ERROR;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
-        goto f_err;
-      }
-      if (rv < 0) {
-        ssl->rwstate = SSL_X509_LOOKUP;
-        goto err;
-      }
-    }
-
-    if (!ssl_auto_chain_if_needed(ssl)) {
-      goto err;
-    }
-
-    if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-      /* Jump to the TLS 1.3 state machine. */
-      hs->state = SSL_ST_TLS13;
-      hs->do_tls13_handshake = tls13_server_handshake;
-      return 1;
-    }
-
-    /* Negotiate the cipher suite. This must be done after |cert_cb| so the
-     * certificate is finalized. */
-    ssl->s3->tmp.new_cipher =
-        ssl3_choose_cipher(hs, &client_hello, ssl_get_cipher_preferences(ssl));
-    if (ssl->s3->tmp.new_cipher == NULL) {
-      al = SSL_AD_HANDSHAKE_FAILURE;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
-      goto f_err;
-    }
-
-    hs->state = SSL3_ST_SR_CLNT_HELLO_D;
+  if (!ssl_auto_chain_if_needed(ssl)) {
+    return -1;
   }
 
-  assert(hs->state == SSL3_ST_SR_CLNT_HELLO_D);
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    /* Jump to the TLS 1.3 state machine. */
+    hs->state = SSL_ST_TLS13;
+    hs->do_tls13_handshake = tls13_server_handshake;
+    return 1;
+  }
+
+  SSL_CLIENT_HELLO client_hello;
+  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
+                             ssl->init_num)) {
+    return -1;
+  }
+
+  /* Negotiate the cipher suite. This must be done after |cert_cb| so the
+   * certificate is finalized. */
+  ssl->s3->tmp.new_cipher =
+      ssl3_choose_cipher(hs, &client_hello, ssl_get_cipher_preferences(ssl));
+  if (ssl->s3->tmp.new_cipher == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return -1;
+  }
+
+  return 1;
+}
+
+static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  uint8_t al = SSL_AD_INTERNAL_ERROR;
+  int ret = -1;
+  SSL_SESSION *session = NULL;
+
+  SSL_CLIENT_HELLO client_hello;
+  if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
+                             ssl->init_num)) {
+    return -1;
+  }
 
   /* Determine whether we are doing session resumption. */
   int tickets_supported = 0, renew_ticket = 0;
