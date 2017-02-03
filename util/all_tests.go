@@ -35,6 +35,7 @@ var (
 	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", 1, "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
@@ -42,7 +43,12 @@ var (
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 )
 
-type test []string
+type test struct {
+	args []string
+	// cpu, if not empty, contains an Intel CPU code to simulate. Run
+	// `sde64 -help` to get a list of these codes.
+	cpu string
+}
 
 type result struct {
 	Test   test
@@ -65,6 +71,27 @@ type testResult struct {
 	Actual       string `json:"actual"`
 	Expected     string `json:"expected"`
 	IsUnexpected bool   `json:"is_unexpected"`
+}
+
+// sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
+// is true.
+var sdeCPUs = []string{
+	"p4p", // Pentium4 Prescott
+	"mrm", // Merom
+	"pnr", // Penryn
+	"nhm", // Nehalem
+	"wsm", // Westmere
+	"snb", // Sandy Bridge
+	"ivb", // Ivy Bridge
+	"hsw", // Haswell
+	"bdw", // Broadwell
+	"skx", // Skylake Server
+	"skl", // Skylake Client
+	"cnl", // Cannonlake
+	"knl", // Knights Landing
+	"slt", // Saltwell
+	"slm", // Silvermont
+	"glm", // Goldmont
 }
 
 func newTestOutput() *testOutput {
@@ -130,6 +157,12 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
+func sdeOf(cpu, path string, args ...string) *exec.Cmd {
+	sdeArgs := []string{"-" + cpu, "--", path}
+	sdeArgs = append(sdeArgs, args...)
+	return exec.Command("sde", sdeArgs...)
+}
+
 type moreMallocsError struct{}
 
 func (moreMallocsError) Error() string {
@@ -139,8 +172,8 @@ func (moreMallocsError) Error() string {
 var errMoreMallocs = moreMallocsError{}
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
-	prog := path.Join(*buildDir, test[0])
-	args := test[1:]
+	prog := path.Join(*buildDir, test.args[0])
+	args := test.args[1:]
 	var cmd *exec.Cmd
 	if *useValgrind {
 		cmd = valgrindOf(false, prog, args...)
@@ -148,6 +181,8 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd = callgrindOf(prog, args...)
 	} else if *useGDB {
 		cmd = gdbOf(prog, args...)
+	} else if *useSDE {
+		cmd = sdeOf(test.cpu, prog, args...)
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
@@ -216,12 +251,12 @@ func runTest(test test) (bool, error) {
 // relevant to the test's uniqueness.
 func shortTestName(test test) string {
 	var args []string
-	for _, arg := range test {
-		if test[0] == "crypto/evp/evp_test" || !strings.HasSuffix(arg, ".txt") {
+	for _, arg := range test.args {
+		if test.args[0] == "crypto/evp/evp_test" || !strings.HasSuffix(arg, ".txt") {
 			args = append(args, arg)
 		}
 	}
-	return strings.Join(args, " ")
+	return strings.Join(args, " ") + test.cpuMsg()
 }
 
 // setWorkingDirectory walks up directories as needed until the current working
@@ -245,9 +280,14 @@ func parseTestConfig(filename string) ([]test, error) {
 	defer in.Close()
 
 	decoder := json.NewDecoder(in)
-	var result []test
-	if err := decoder.Decode(&result); err != nil {
+	var testArgs [][]string
+	if err := decoder.Decode(&testArgs); err != nil {
 		return nil, err
+	}
+
+	var result []test
+	for _, args := range testArgs {
+		result = append(result, test{args: args})
 	}
 	return result, nil
 }
@@ -258,6 +298,14 @@ func worker(tests <-chan test, results chan<- result, done *sync.WaitGroup) {
 		passed, err := runTest(test)
 		results <- result{test, passed, err}
 	}
+}
+
+func (t test) cpuMsg() string {
+	if len(t.cpu) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(" (for CPU %q)", t.cpu)
 }
 
 func main() {
@@ -281,7 +329,15 @@ func main() {
 
 	go func() {
 		for _, test := range testCases {
-			tests <- test
+			if *useSDE {
+				for _, cpu := range sdeCPUs {
+					testForCPU := test
+					testForCPU.cpu = cpu
+					tests <- testForCPU
+				}
+			} else {
+				tests <- test
+			}
 		}
 		close(tests)
 
@@ -293,15 +349,16 @@ func main() {
 	var failed []test
 	for testResult := range results {
 		test := testResult.Test
+		args := test.args
 
-		fmt.Printf("%s\n", strings.Join([]string(test), " "))
+		fmt.Printf("%s%s\n", strings.Join(args, " "), test.cpuMsg())
 		name := shortTestName(test)
 		if testResult.Error != nil {
-			fmt.Printf("%s failed to complete: %s\n", test[0], testResult.Error)
+			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
 			failed = append(failed, test)
 			testOutput.addResult(name, "CRASHED")
 		} else if !testResult.Passed {
-			fmt.Printf("%s failed to print PASS on the last line.\n", test[0])
+			fmt.Printf("%s failed to print PASS on the last line.\n", args[0])
 			failed = append(failed, test)
 			testOutput.addResult(name, "FAIL")
 		} else {
@@ -318,7 +375,7 @@ func main() {
 	if len(failed) > 0 {
 		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(testCases))
 		for _, test := range failed {
-			fmt.Printf("\t%s\n", strings.Join([]string(test), " "))
+			fmt.Printf("\t%s%s\n", strings.Join(test.args, ""), test.cpuMsg())
 		}
 		os.Exit(1)
 	}
