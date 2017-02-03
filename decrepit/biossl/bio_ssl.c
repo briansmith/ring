@@ -107,14 +107,14 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       return 1;
 
     case BIO_CTRL_WPENDING:
-      return BIO_ctrl(ssl->wbio, cmd, num, ptr);
+      return BIO_ctrl(SSL_get_wbio(ssl), cmd, num, ptr);
 
     case BIO_CTRL_PENDING:
       return SSL_pending(ssl);
 
     case BIO_CTRL_FLUSH: {
       BIO_clear_retry_flags(bio);
-      long ret = BIO_ctrl(ssl->wbio, cmd, num, ptr);
+      long ret = BIO_ctrl(SSL_get_wbio(ssl), cmd, num, ptr);
       BIO_copy_next_retry(bio);
       return ret;
     }
@@ -125,7 +125,7 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       return -1;
 
     default:
-      return BIO_ctrl(ssl->rbio, cmd, num, ptr);
+      return BIO_ctrl(SSL_get_rbio(ssl), cmd, num, ptr);
   }
 }
 
@@ -159,7 +159,7 @@ static long ssl_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
       return -1;
 
     default:
-      return BIO_callback_ctrl(ssl->rbio, cmd, fp);
+      return BIO_callback_ctrl(SSL_get_rbio(ssl), cmd, fp);
   }
 }
 
