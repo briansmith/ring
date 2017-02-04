@@ -186,10 +186,9 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
-	var stdoutBuf bytes.Buffer
-	var stderrBuf bytes.Buffer
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &outBuf
 	if mallocNumToFail >= 0 {
 		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, "MALLOC_NUMBER_TO_FAIL="+strconv.FormatInt(mallocNumToFail, 10))
@@ -208,13 +207,12 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 				return false, errMoreMallocs
 			}
 		}
-		fmt.Print(string(stderrBuf.Bytes()))
+		fmt.Print(string(outBuf.Bytes()))
 		return false, err
 	}
-	fmt.Print(string(stderrBuf.Bytes()))
 
 	// Account for Windows line-endings.
-	stdout := bytes.Replace(stdoutBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
+	stdout := bytes.Replace(outBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
 
 	if bytes.HasSuffix(stdout, []byte("PASS\n")) &&
 		(len(stdout) == 5 || stdout[len(stdout)-6] == '\n') {
@@ -228,6 +226,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		return true, nil
 	}
 
+	fmt.Print(string(outBuf.Bytes()))
 	return false, nil
 }
 
