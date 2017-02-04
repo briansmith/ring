@@ -1503,8 +1503,7 @@ TEST(SSLTest, SessionDuplication) {
   ASSERT_TRUE(SSL_SESSION_to_bytes(session1.get(), &s1_bytes, &s1_len));
   bssl::UniquePtr<uint8_t> free_s1(s1_bytes);
 
-  ASSERT_EQ(s0_len, s1_len);
-  EXPECT_EQ(0, OPENSSL_memcmp(s0_bytes, s1_bytes, s0_len));
+  EXPECT_EQ(Bytes(s0_bytes, s0_len), Bytes(s1_bytes, s1_len));
 }
 
 static void ExpectFDs(const SSL *ssl, int rfd, int wfd) {
@@ -3076,10 +3075,8 @@ TEST(SSLTest, GetCertificate) {
   bssl::UniquePtr<uint8_t> free_der3(der3);
 
   // They must also encode identically.
-  ASSERT_EQ(der2_len, der_len);
-  EXPECT_EQ(0, OPENSSL_memcmp(der, der2, static_cast<size_t>(der_len)));
-  ASSERT_EQ(der3_len, der_len);
-  EXPECT_EQ(0, OPENSSL_memcmp(der, der3, static_cast<size_t>(der_len)));
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der3, der3_len));
 }
 
 // TODO(davidben): Convert this file to GTest properly.

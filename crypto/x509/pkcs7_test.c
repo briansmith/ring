@@ -23,7 +23,6 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
-#include "../test/test_util.h"
 
 
 /* kPKCS7NSS contains the certificate chain of mail.google.com, as saved by NSS

@@ -16,20 +16,38 @@
 #define OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+#include <iosfwd>
+
+#include "../internal.h"
 
 
-/* hexdump writes |msg| to |fp| followed by the hex encoding of |len| bytes
- * from |in|. */
+// hexdump writes |msg| to |fp| followed by the hex encoding of |len| bytes
+// from |in|.
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len);
 
+// Bytes is a wrapper over a byte slice which may be compared for equality. This
+// allows it to be used in EXPECT_EQ macros.
+struct Bytes {
+  Bytes(const uint8_t *data_arg, size_t len_arg)
+      : data(data_arg), len(len_arg) {}
 
-#if defined(__cplusplus)
+  template <size_t N>
+  Bytes(const uint8_t (&array)[N]) : data(array), len(N) {}
+
+  const uint8_t *data;
+  size_t len;
+};
+
+inline bool operator==(const Bytes &a, const Bytes &b) {
+  return a.len == b.len && OPENSSL_memcmp(a.data, b.data, a.len) == 0;
 }
-#endif
+
+inline bool operator!=(const Bytes &a, const Bytes &b) { return !(a == b); }
+
+std::ostream &operator<<(std::ostream &os, const Bytes &in);
+
 
 #endif /* OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H */
