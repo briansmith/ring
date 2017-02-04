@@ -935,24 +935,18 @@ static bool TestPaddingExtension(uint16_t max_version,
 
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
 // before configuring as a server.
-static bool TestClientCAList() {
+TEST(SSLTest, ClientCAList) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
-    return false;
-  }
+  ASSERT_TRUE(ctx);
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
-  if (!ssl) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
 
   STACK_OF(X509_NAME) *stack = sk_X509_NAME_new_null();
-  if (stack == nullptr) {
-    return false;
-  }
+  ASSERT_TRUE(stack);
   // |SSL_set_client_CA_list| takes ownership.
   SSL_set_client_CA_list(ssl.get(), stack);
 
-  return SSL_get_client_CA_list(ssl.get()) == stack;
+  EXPECT_EQ(stack, SSL_get_client_CA_list(ssl.get()));
 }
 
 static void AppendSession(SSL_SESSION *session, void *arg) {
@@ -1456,163 +1450,129 @@ static bool TestOneSidedShutdown(bool is_dtls, const SSL_METHOD *method,
   return true;
 }
 
-static bool TestSessionDuplication() {
+TEST(SSLTest, SessionDuplication) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  if (!client_ctx || !server_ctx) {
-    return false;
-  }
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
 
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  if (!cert || !key ||
-      !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
-      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get())) {
-    return false;
-  }
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
-  if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
-                              server_ctx.get(), nullptr /* no session */)) {
-    return false;
-  }
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
 
   SSL_SESSION *session0 = SSL_get_session(client.get());
-  bssl::UniquePtr<SSL_SESSION> session1(SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
-  if (!session1) {
-    return false;
-  }
+  bssl::UniquePtr<SSL_SESSION> session1(
+      SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
+  ASSERT_TRUE(session1);
 
   session1->not_resumable = 0;
 
   uint8_t *s0_bytes, *s1_bytes;
   size_t s0_len, s1_len;
 
-  if (!SSL_SESSION_to_bytes(session0, &s0_bytes, &s0_len)) {
-    return false;
-  }
+  ASSERT_TRUE(SSL_SESSION_to_bytes(session0, &s0_bytes, &s0_len));
   bssl::UniquePtr<uint8_t> free_s0(s0_bytes);
 
-  if (!SSL_SESSION_to_bytes(session1.get(), &s1_bytes, &s1_len)) {
-    return false;
-  }
+  ASSERT_TRUE(SSL_SESSION_to_bytes(session1.get(), &s1_bytes, &s1_len));
   bssl::UniquePtr<uint8_t> free_s1(s1_bytes);
 
-  return s0_len == s1_len && OPENSSL_memcmp(s0_bytes, s1_bytes, s0_len) == 0;
+  ASSERT_EQ(s0_len, s1_len);
+  EXPECT_EQ(0, OPENSSL_memcmp(s0_bytes, s1_bytes, s0_len));
 }
 
-static bool ExpectFDs(const SSL *ssl, int rfd, int wfd) {
-  if (SSL_get_rfd(ssl) != rfd || SSL_get_wfd(ssl) != wfd) {
-    fprintf(stderr, "Got fds %d and %d, wanted %d and %d.\n", SSL_get_rfd(ssl),
-            SSL_get_wfd(ssl), rfd, wfd);
-    return false;
-  }
+static void ExpectFDs(const SSL *ssl, int rfd, int wfd) {
+  EXPECT_EQ(rfd, SSL_get_rfd(ssl));
+  EXPECT_EQ(wfd, SSL_get_wfd(ssl));
 
   // The wrapper BIOs are always equal when fds are equal, even if set
   // individually.
-  if (rfd == wfd && SSL_get_rbio(ssl) != SSL_get_wbio(ssl)) {
-    fprintf(stderr, "rbio and wbio did not match.\n");
-    return false;
+  if (rfd == wfd) {
+    EXPECT_EQ(SSL_get_rbio(ssl), SSL_get_wbio(ssl));
   }
-
-  return true;
 }
 
-static bool TestSetFD() {
+TEST(SSLTest, SetFD) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
-    return false;
-  }
+  ASSERT_TRUE(ctx);
 
   // Test setting different read and write FDs.
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_rfd(ssl.get(), 1) ||
-      !SSL_set_wfd(ssl.get(), 2) ||
-      !ExpectFDs(ssl.get(), 1, 2)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_rfd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_wfd(ssl.get(), 2));
+  ExpectFDs(ssl.get(), 1, 2);
 
   // Test setting the same FD.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_fd(ssl.get(), 1) ||
-      !ExpectFDs(ssl.get(), 1, 1)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_fd(ssl.get(), 1));
+  ExpectFDs(ssl.get(), 1, 1);
 
   // Test setting the same FD one side at a time.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_rfd(ssl.get(), 1) ||
-      !SSL_set_wfd(ssl.get(), 1) ||
-      !ExpectFDs(ssl.get(), 1, 1)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_rfd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_wfd(ssl.get(), 1));
+  ExpectFDs(ssl.get(), 1, 1);
 
   // Test setting the same FD in the other order.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_wfd(ssl.get(), 1) ||
-      !SSL_set_rfd(ssl.get(), 1) ||
-      !ExpectFDs(ssl.get(), 1, 1)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_wfd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_rfd(ssl.get(), 1));
+  ExpectFDs(ssl.get(), 1, 1);
 
   // Test changing the read FD partway through.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_fd(ssl.get(), 1) ||
-      !SSL_set_rfd(ssl.get(), 2) ||
-      !ExpectFDs(ssl.get(), 2, 1)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_fd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_rfd(ssl.get(), 2));
+  ExpectFDs(ssl.get(), 2, 1);
 
   // Test changing the write FD partway through.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_fd(ssl.get(), 1) ||
-      !SSL_set_wfd(ssl.get(), 2) ||
-      !ExpectFDs(ssl.get(), 1, 2)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_fd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_wfd(ssl.get(), 2));
+  ExpectFDs(ssl.get(), 1, 2);
 
   // Test a no-op change to the read FD partway through.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_fd(ssl.get(), 1) ||
-      !SSL_set_rfd(ssl.get(), 1) ||
-      !ExpectFDs(ssl.get(), 1, 1)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_fd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_rfd(ssl.get(), 1));
+  ExpectFDs(ssl.get(), 1, 1);
 
   // Test a no-op change to the write FD partway through.
   ssl.reset(SSL_new(ctx.get()));
-  if (!ssl ||
-      !SSL_set_fd(ssl.get(), 1) ||
-      !SSL_set_wfd(ssl.get(), 1) ||
-      !ExpectFDs(ssl.get(), 1, 1)) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  EXPECT_TRUE(SSL_set_fd(ssl.get(), 1));
+  EXPECT_TRUE(SSL_set_wfd(ssl.get(), 1));
+  ExpectFDs(ssl.get(), 1, 1);
 
   // ASan builds will implicitly test that the internal |BIO| reference-counting
   // is correct.
-
-  return true;
 }
 
-static bool TestSetBIO() {
+TEST(SSLTest, SetBIO) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
-    return false;
-  }
+  ASSERT_TRUE(ctx);
 
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   bssl::UniquePtr<BIO> bio1(BIO_new(BIO_s_mem())), bio2(BIO_new(BIO_s_mem())),
       bio3(BIO_new(BIO_s_mem()));
-  if (!ssl || !bio1 || !bio2 || !bio3) {
-    return false;
-  }
+  ASSERT_TRUE(ssl);
+  ASSERT_TRUE(bio1);
+  ASSERT_TRUE(bio2);
+  ASSERT_TRUE(bio3);
 
   // SSL_set_bio takes one reference when the parameters are the same.
   BIO_up_ref(bio1.get());
@@ -1655,7 +1615,6 @@ static bool TestSetBIO() {
 
   // ASAN builds will implicitly test that the internal |BIO| reference-counting
   // is correct.
-  return true;
 }
 
 static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) { return 1; }
@@ -2477,121 +2436,81 @@ static bool TestSNICallback(bool is_dtls, const SSL_METHOD *method,
   return true;
 }
 
-static int SetMaxVersion(const SSL_CLIENT_HELLO *client_hello) {
-  if (!SSL_set_max_proto_version(client_hello->ssl, TLS1_2_VERSION)) {
-    return -1;
-  }
-
-  return 1;
-}
-
-// TestEarlyCallbackVersionSwitch tests that the early callback can swap the
-// maximum version.
-static bool TestEarlyCallbackVersionSwitch() {
+// Test that the early callback can swap the maximum version.
+TEST(SSLTest, EarlyCallbackVersionSwitch) {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  if (!cert || !key || !server_ctx || !client_ctx ||
-      !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
-      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
-      !SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION) ||
-      !SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION)) {
-    return false;
-  }
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
-  SSL_CTX_set_select_certificate_cb(server_ctx.get(), SetMaxVersion);
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx.get(), [](const SSL_CLIENT_HELLO *client_hello) -> int {
+        if (!SSL_set_max_proto_version(client_hello->ssl, TLS1_2_VERSION)) {
+          return -1;
+        }
+
+        return 1;
+      });
 
   bssl::UniquePtr<SSL> client, server;
-  if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
-                              server_ctx.get(), nullptr)) {
-    return false;
-  }
-
-  if (SSL_version(client.get()) != TLS1_2_VERSION) {
-    fprintf(stderr, "Early callback failed to switch the maximum version.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), nullptr));
+  EXPECT_EQ(TLS1_2_VERSION, SSL_version(client.get()));
 }
 
-static bool TestSetVersion() {
+TEST(SSLTest, SetVersion) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
-    return false;
-  }
+  ASSERT_TRUE(ctx);
 
-  if (!SSL_CTX_set_max_proto_version(ctx.get(), TLS1_VERSION) ||
-      !SSL_CTX_set_max_proto_version(ctx.get(), TLS1_1_VERSION) ||
-      !SSL_CTX_set_min_proto_version(ctx.get(), TLS1_VERSION) ||
-      !SSL_CTX_set_min_proto_version(ctx.get(), TLS1_1_VERSION)) {
-    fprintf(stderr, "Could not set valid TLS version.\n");
-    return false;
-  }
+  // Set valid TLS versions.
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_1_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_1_VERSION));
 
-  if (SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_VERSION) ||
-      SSL_CTX_set_max_proto_version(ctx.get(), 0x0200) ||
-      SSL_CTX_set_max_proto_version(ctx.get(), 0x1234) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), 0x0200) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), 0x1234)) {
-    fprintf(stderr, "Unexpectedly set invalid TLS version.\n");
-    return false;
-  }
+  // Invalid TLS versions are rejected.
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_VERSION));
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0x0200));
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0x1234));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x0200));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
 
-  if (!SSL_CTX_set_max_proto_version(ctx.get(), 0) ||
-      !SSL_CTX_set_min_proto_version(ctx.get(), 0)) {
-    fprintf(stderr, "Could not set default TLS version.\n");
-    return false;
-  }
-
-  if (ctx->min_version != SSL3_VERSION ||
-      ctx->max_version != TLS1_2_VERSION) {
-    fprintf(stderr, "Default TLS versions were incorrect (%04x and %04x).\n",
-            ctx->min_version, ctx->max_version);
-    return false;
-  }
+  // Zero is the default version.
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
+  EXPECT_EQ(TLS1_2_VERSION, ctx->max_version);
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
+  EXPECT_EQ(SSL3_VERSION, ctx->min_version);
 
   ctx.reset(SSL_CTX_new(DTLS_method()));
-  if (!ctx) {
-    return false;
-  }
+  ASSERT_TRUE(ctx);
 
-  if (!SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_VERSION) ||
-      !SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_2_VERSION) ||
-      !SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION) ||
-      !SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_2_VERSION)) {
-    fprintf(stderr, "Could not set valid DTLS version.\n");
-    return false;
-  }
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_2_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_2_VERSION));
 
-  if (SSL_CTX_set_max_proto_version(ctx.get(), TLS1_VERSION) ||
-      SSL_CTX_set_max_proto_version(ctx.get(), 0xfefe /* DTLS 1.1 */) ||
-      SSL_CTX_set_max_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */) ||
-      SSL_CTX_set_max_proto_version(ctx.get(), 0x1234) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), TLS1_VERSION) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), 0xfefe /* DTLS 1.1 */) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */) ||
-      SSL_CTX_set_min_proto_version(ctx.get(), 0x1234)) {
-    fprintf(stderr, "Unexpectedly set invalid DTLS version.\n");
-    return false;
-  }
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_VERSION));
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0xfefe /* DTLS 1.1 */));
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */));
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0x1234));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_VERSION));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0xfefe /* DTLS 1.1 */));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */));
+  EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
 
-  if (!SSL_CTX_set_max_proto_version(ctx.get(), 0) ||
-      !SSL_CTX_set_min_proto_version(ctx.get(), 0)) {
-    fprintf(stderr, "Could not set default DTLS version.\n");
-    return false;
-  }
-
-  if (ctx->min_version != TLS1_1_VERSION ||
-      ctx->max_version != TLS1_2_VERSION) {
-    fprintf(stderr, "Default DTLS versions were incorrect (%04x and %04x).\n",
-            ctx->min_version, ctx->max_version);
-    return false;
-  }
-
-  return true;
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
+  EXPECT_EQ(TLS1_2_VERSION, ctx->max_version);
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
+  EXPECT_EQ(TLS1_1_VERSION, ctx->min_version);
 }
 
 static const char *GetVersionName(uint16_t version) {
@@ -3168,21 +3087,15 @@ TEST(SSLTest, AllTests) {
       // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
       // will be a PSK binder after the padding extension.
       !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT_VERSION) ||
-      !TestClientCAList() ||
       !TestInternalSessionCache() ||
       !ForEachVersion(TestSequenceNumber) ||
       !ForEachVersion(TestOneSidedShutdown) ||
-      !TestSessionDuplication() ||
-      !TestSetFD() ||
-      !TestSetBIO() ||
       !ForEachVersion(TestGetPeerCertificate) ||
       !ForEachVersion(TestRetainOnlySHA256OfCerts) ||
       !TestClientHello() ||
       !ForEachVersion(TestSessionIDContext) ||
       !ForEachVersion(TestSessionTimeout) ||
       !ForEachVersion(TestSNICallback) ||
-      !TestEarlyCallbackVersionSwitch() ||
-      !TestSetVersion() ||
       !ForEachVersion(TestVersion) ||
       !ForEachVersion(TestALPNCipherAvailable) ||
       !ForEachVersion(TestSSLClearSessionResumption) ||
