@@ -312,7 +312,6 @@ TEST(DSATest, AllTests) {
       !TestVerify(fips_sig_extra, sizeof(fips_sig_extra), -1) ||
       !TestVerify(fips_sig_bad_length, sizeof(fips_sig_bad_length), -1) ||
       !TestVerify(fips_sig_bad_r, sizeof(fips_sig_bad_r), 0)) {
-    ERR_print_errors_fp(stderr);
     ADD_FAILURE() << "Tests failed";
   }
 }

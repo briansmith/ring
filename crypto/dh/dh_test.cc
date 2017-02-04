@@ -86,7 +86,6 @@ TEST(DHTest, AllTests) {
       !TestBadY() ||
       !TestASN1() ||
       !TestRFC3526()) {
-    ERR_print_errors_fp(stderr);
     ADD_FAILURE() << "Tests failed.";
   }
 }

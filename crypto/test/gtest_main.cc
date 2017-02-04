@@ -14,10 +14,35 @@
 
 #include <gtest/gtest.h>
 
+#include <stdio.h>
+
+#include <openssl/err.h>
 #include <openssl/crypto.h>
+
+namespace {
+
+class ErrorTestEventListener : public testing::EmptyTestEventListener {
+ public:
+  ErrorTestEventListener() {}
+  ~ErrorTestEventListener() override {}
+
+  void OnTestEnd(const testing::TestInfo &test_info) override {
+    // If the test failed, print any errors left in the error queue.
+    if (test_info.result()->Failed()) {
+      ERR_print_errors_fp(stdout);
+    }
+
+    // Clean up the error queue for the next run.
+    ERR_clear_error();
+  }
+};
+
+}  // namespace
 
 int main(int argc, char **argv) {
   CRYPTO_library_init();
   testing::InitGoogleTest(&argc, argv);
+  testing::UnitTest::GetInstance()->listeners().Append(
+      new ErrorTestEventListener);
   return RUN_ALL_TESTS();
 }

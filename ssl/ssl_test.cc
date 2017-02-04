@@ -3101,7 +3101,6 @@ TEST(SSLTest, AllTests) {
       !ForEachVersion(TestSSLClearSessionResumption) ||
       !ForEachVersion(TestAutoChain) ||
       !ForEachVersion(TestSSLWriteRetry)) {
-    ERR_print_errors_fp(stderr);
     ADD_FAILURE() << "Tests failed";
   }
 }
