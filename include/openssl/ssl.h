@@ -2239,9 +2239,8 @@ OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
  * zero on fatal error. It may use |X509_STORE_CTX_set_error| to set a
  * verification result.
  *
- * The callback may use either the |arg| parameter or
- * |SSL_get_ex_data_X509_STORE_CTX_idx| to recover the associated |SSL|
- * object. */
+ * The callback may use |SSL_get_ex_data_X509_STORE_CTX_idx| to recover the
+ * |SSL| object from |store_ctx|. */
 OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
     SSL_CTX *ctx, int (*callback)(X509_STORE_CTX *store_ctx, void *arg),
     void *arg);
