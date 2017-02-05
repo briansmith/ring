@@ -32,7 +32,6 @@
 	["crypto/curve25519/x25519_test"],
 	["crypto/curve25519/spake25519_test"],
 	["crypto/digest/digest_test"],
-	["crypto/ec/ec_test"],
 	["crypto/ec/example_mul"],
 	["crypto/ec/p256-x86_64_test", "crypto/ec/p256-x86_64_tests.txt"],
 	["crypto/ecdh/ecdh_test", "crypto/ecdh/ecdh_tests.txt"],
