@@ -52,7 +52,6 @@
 	["crypto/poly1305/poly1305_test", "crypto/poly1305/poly1305_tests.txt"],
 	["crypto/pool/pool_test"],
 	["crypto/refcount_test"],
-	["crypto/rsa/rsa_test"],
 	["crypto/thread_test"],
 	["crypto/x509/pkcs7_test"],
 	["crypto/x509/x509_test"],

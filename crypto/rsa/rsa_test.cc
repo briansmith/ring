@@ -59,6 +59,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gtest/gtest.h>
+
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
@@ -66,6 +68,7 @@
 #include <openssl/nid.h>
 
 #include "../internal.h"
+#include "../test/test_util.h"
 
 
 // kPlaintext is a sample plaintext.
@@ -523,191 +526,172 @@ static const uint8_t kExponent1RSAKey[] = {
     0xdd, 0x02, 0x01, 0x01,
 };
 
-static bool TestRSA(const uint8_t *der, size_t der_len,
-                    const uint8_t *oaep_ciphertext,
-                    size_t oaep_ciphertext_len) {
-  bssl::UniquePtr<RSA> key(RSA_private_key_from_bytes(der, der_len));
-  if (!key) {
-    return false;
-  }
+struct RSAEncryptParam {
+  const uint8_t *der;
+  size_t der_len;
+  const uint8_t *oaep_ciphertext;
+  size_t oaep_ciphertext_len;
+} kRSAEncryptParams[] = {
+    {kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1, sizeof(kOAEPCiphertext1) - 1},
+    {kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2, sizeof(kOAEPCiphertext2) - 1},
+    {kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3, sizeof(kOAEPCiphertext3) - 1},
+};
 
-  if (!RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key failed\n");
-    return false;
-  }
+class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
+
+TEST_P(RSAEncryptTest, TestKey) {
+  const auto &param = GetParam();
+  bssl::UniquePtr<RSA> key(
+      RSA_private_key_from_bytes(param.der, param.der_len));
+  ASSERT_TRUE(key);
+
+  EXPECT_TRUE(RSA_check_key(key.get()));
 
   uint8_t ciphertext[256];
 
+  // Test that PKCS#1 v1.5 encryption round-trips.
   size_t ciphertext_len = 0;
-  if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
-                   kPlaintext, kPlaintextLen, RSA_PKCS1_PADDING) ||
-      ciphertext_len != RSA_size(key.get())) {
-    fprintf(stderr, "PKCS#1 v1.5 encryption failed!\n");
-    return false;
-  }
+  ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
+                          sizeof(ciphertext), kPlaintext, kPlaintextLen,
+                          RSA_PKCS1_PADDING));
+  EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
 
   uint8_t plaintext[256];
   size_t plaintext_len = 0;
-  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                   ciphertext, ciphertext_len, RSA_PKCS1_PADDING) ||
-      plaintext_len != kPlaintextLen ||
-      OPENSSL_memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
-    fprintf(stderr, "PKCS#1 v1.5 decryption failed!\n");
-    return false;
-  }
+  ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                          sizeof(plaintext), ciphertext, ciphertext_len,
+                          RSA_PKCS1_PADDING));
+  EXPECT_EQ(Bytes(kPlaintext, kPlaintextLen), Bytes(plaintext, plaintext_len));
 
+  // Test that OAEP encryption round-trips.
   ciphertext_len = 0;
-  if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
-                   kPlaintext, kPlaintextLen, RSA_PKCS1_OAEP_PADDING) ||
-      ciphertext_len != RSA_size(key.get())) {
-    fprintf(stderr, "OAEP encryption failed!\n");
-    return false;
-  }
+  ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
+                          sizeof(ciphertext), kPlaintext, kPlaintextLen,
+                          RSA_PKCS1_OAEP_PADDING));
+  EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
 
   plaintext_len = 0;
-  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                   ciphertext, ciphertext_len, RSA_PKCS1_OAEP_PADDING) ||
-      plaintext_len != kPlaintextLen ||
-      OPENSSL_memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
-    fprintf(stderr, "OAEP decryption (encrypted data) failed!\n");
-    return false;
-  }
+  ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                          sizeof(plaintext), ciphertext, ciphertext_len,
+                          RSA_PKCS1_OAEP_PADDING));
+  EXPECT_EQ(Bytes(kPlaintext, kPlaintextLen), Bytes(plaintext, plaintext_len));
 
   // |oaep_ciphertext| should decrypt to |kPlaintext|.
   plaintext_len = 0;
-  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                   oaep_ciphertext, oaep_ciphertext_len,
-                   RSA_PKCS1_OAEP_PADDING) ||
-      plaintext_len != kPlaintextLen ||
-      OPENSSL_memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
-    fprintf(stderr, "OAEP decryption (test vector data) failed!\n");
-    return false;
-  }
+  ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                          sizeof(plaintext), param.oaep_ciphertext,
+                          param.oaep_ciphertext_len, RSA_PKCS1_OAEP_PADDING));
+  EXPECT_EQ(Bytes(kPlaintext, kPlaintextLen), Bytes(plaintext, plaintext_len));
 
   // Try decrypting corrupted ciphertexts.
-  OPENSSL_memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
-  for (size_t i = 0; i < oaep_ciphertext_len; i++) {
+  OPENSSL_memcpy(ciphertext, param.oaep_ciphertext, param.oaep_ciphertext_len);
+  for (size_t i = 0; i < param.oaep_ciphertext_len; i++) {
+    SCOPED_TRACE(i);
     ciphertext[i] ^= 1;
-    if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                    ciphertext, oaep_ciphertext_len, RSA_PKCS1_OAEP_PADDING)) {
-      fprintf(stderr, "Corrupt data decrypted!\n");
-      return false;
-    }
+    EXPECT_FALSE(RSA_decrypt(
+        key.get(), &plaintext_len, plaintext, sizeof(plaintext), ciphertext,
+        param.oaep_ciphertext_len, RSA_PKCS1_OAEP_PADDING));
     ERR_clear_error();
     ciphertext[i] ^= 1;
   }
 
   // Test truncated ciphertexts.
-  for (size_t len = 0; len < oaep_ciphertext_len; len++) {
-    if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                    ciphertext, len, RSA_PKCS1_OAEP_PADDING)) {
-      fprintf(stderr, "Corrupt data decrypted!\n");
-      return false;
-    }
+  for (size_t len = 0; len < param.oaep_ciphertext_len; len++) {
+    SCOPED_TRACE(len);
+    EXPECT_FALSE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                             sizeof(plaintext), ciphertext, len,
+                             RSA_PKCS1_OAEP_PADDING));
     ERR_clear_error();
   }
-
-  return true;
 }
 
-static bool TestMultiPrimeKey(int nprimes, const uint8_t *der, size_t der_size,
-                              const uint8_t *enc, size_t enc_size) {
-  bssl::UniquePtr<RSA> rsa(d2i_RSAPrivateKey(nullptr, &der, der_size));
-  if (!rsa) {
-    fprintf(stderr, "%d-prime key failed to parse.\n", nprimes);
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+INSTANTIATE_TEST_CASE_P(, RSAEncryptTest, testing::ValuesIn(kRSAEncryptParams));
 
-  if (!RSA_check_key(rsa.get())) {
-    fprintf(stderr, "RSA_check_key failed for %d-prime key.\n", nprimes);
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+struct RSAMultiPrimeParam {
+  const uint8_t *der;
+  size_t der_size;
+  const uint8_t *enc;
+  size_t enc_size;
+} kRSAMultiPrimeParams[] = {
+    {kTwoPrimeKey, sizeof(kTwoPrimeKey) - 1, kTwoPrimeEncryptedMessage,
+     sizeof(kTwoPrimeEncryptedMessage)},
+    {kThreePrimeKey, sizeof(kThreePrimeKey) - 1, kThreePrimeEncryptedMessage,
+     sizeof(kThreePrimeEncryptedMessage)},
+    {kSixPrimeKey, sizeof(kSixPrimeKey) - 1, kSixPrimeEncryptedMessage,
+     sizeof(kSixPrimeEncryptedMessage)},
+};
+
+class RSAMultiPrimeTest : public testing::TestWithParam<RSAMultiPrimeParam> {};
+
+TEST_P(RSAMultiPrimeTest, TestDecrypt) {
+  const auto &param = GetParam();
+  bssl::UniquePtr<RSA> rsa(
+      RSA_private_key_from_bytes(param.der, param.der_size));
+  ASSERT_TRUE(rsa);
+
+  EXPECT_TRUE(RSA_check_key(rsa.get()));
 
   uint8_t out[256];
   size_t out_len;
-  if (!RSA_decrypt(rsa.get(), &out_len, out, sizeof(out), enc, enc_size,
-                   RSA_PKCS1_PADDING) ||
-      out_len != 11 ||
-      OPENSSL_memcmp(out, "hello world", 11) != 0) {
-    fprintf(stderr, "%d-prime key failed to decrypt.\n", nprimes);
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(RSA_decrypt(rsa.get(), &out_len, out, sizeof(out), param.enc,
+                          param.enc_size, RSA_PKCS1_PADDING));
+  EXPECT_EQ(Bytes("hello world"), Bytes(out, out_len));
 }
 
-static bool TestMultiPrimeKeygen() {
-  static const char kMessage[] = "Hello world.";
-  static const size_t kBits = 1024;
-  uint8_t encrypted[kBits / 8], decrypted[kBits / 8];
-  size_t encrypted_len, decrypted_len;
+INSTANTIATE_TEST_CASE_P(, RSAMultiPrimeTest,
+                        testing::ValuesIn(kRSAMultiPrimeParams));
 
+TEST(RSATest, MultiPrimeKeygen) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
-  if (!rsa || !e ||
-      !BN_set_word(e.get(), RSA_F4) ||
-      !RSA_generate_multi_prime_key(rsa.get(), kBits, 3, e.get(), nullptr) ||
-      !RSA_check_key(rsa.get()) ||
-      !RSA_encrypt(rsa.get(), &encrypted_len, encrypted, sizeof(encrypted),
-                   (const uint8_t *)kMessage, sizeof(kMessage),
-                   RSA_PKCS1_PADDING) ||
-      !RSA_decrypt(rsa.get(), &decrypted_len, decrypted, sizeof(decrypted),
-                   encrypted, encrypted_len, RSA_PKCS1_PADDING) ||
-      decrypted_len != sizeof(kMessage) ||
-      OPENSSL_memcmp(decrypted, kMessage, sizeof(kMessage)) != 0) {
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
-  return true;
+  // Test key generation.
+  static const size_t kBits = 1024;
+  ASSERT_TRUE(
+      RSA_generate_multi_prime_key(rsa.get(), kBits, 3, e.get(), nullptr));
+  ASSERT_TRUE(RSA_check_key(rsa.get()));
+
+  // Test the key round-trips.
+  static const char kMessage[] = "Hello world.";
+  uint8_t encrypted[kBits / 8], decrypted[kBits / 8];
+  size_t encrypted_len, decrypted_len;
+  ASSERT_TRUE(RSA_encrypt(rsa.get(), &encrypted_len, encrypted,
+                          sizeof(encrypted), (const uint8_t *)kMessage,
+                          sizeof(kMessage), RSA_PKCS1_PADDING));
+  ASSERT_TRUE(RSA_decrypt(rsa.get(), &decrypted_len, decrypted,
+                          sizeof(decrypted), encrypted, encrypted_len,
+                          RSA_PKCS1_PADDING));
+  EXPECT_EQ(Bytes((const uint8_t *)kMessage, sizeof(kMessage)),
+            Bytes(decrypted, decrypted_len));
 }
 
-static bool TestBadKey() {
+TEST(RSATest, BadKey) {
   bssl::UniquePtr<RSA> key(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
-  if (!key || !e || !BN_set_word(e.get(), RSA_F4)) {
-    return false;
-  }
+  // Generate a bad key.
+  ASSERT_TRUE(RSA_generate_key_ex(key.get(), 512, e.get(), nullptr));
+  ASSERT_TRUE(BN_add(key->p, key->p, BN_value_one()));
 
-  if (!RSA_generate_key_ex(key.get(), 512, e.get(), nullptr)) {
-    fprintf(stderr, "RSA_generate_key_ex failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  // Bad keys are detected.
+  EXPECT_FALSE(RSA_check_key(key.get()));
 
-  if (!BN_add(key->p, key->p, BN_value_one())) {
-    fprintf(stderr, "BN error.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  if (RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key passed with invalid key!\n");
-    return false;
-  }
-
+  // Bad keys may not be parsed.
   uint8_t *der;
   size_t der_len;
-  if (!RSA_private_key_to_bytes(&der, &der_len, key.get())) {
-    fprintf(stderr, "RSA_private_key_to_bytes failed to serialize bad key\n.");
-    return false;
-  }
+  ASSERT_TRUE(RSA_private_key_to_bytes(&der, &der_len, key.get()));
   bssl::UniquePtr<uint8_t> delete_der(der);
-
   key.reset(RSA_private_key_from_bytes(der, der_len));
-  if (key) {
-    fprintf(stderr, "RSA_private_key_from_bytes accepted bad key\n.");
-  }
-
-  ERR_clear_error();
-  return true;
+  EXPECT_FALSE(key);
 }
 
-static bool TestOnlyDGiven() {
+TEST(RSATest, OnlyDGiven) {
   static const char kN[] =
       "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd09ac42b2662"
       "1cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e5808c659";
@@ -716,253 +700,134 @@ static bool TestOnlyDGiven() {
       "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea316eaeca21a"
       "73ac365e58713195f2ae9849348525ca855386b6d028e437a9495a01";
 
-  uint8_t buf[64];
-  unsigned buf_len = sizeof(buf);
   bssl::UniquePtr<RSA> key(RSA_new());
-  if (!key ||
-      !BN_hex2bn(&key->n, kN) ||
-      !BN_hex2bn(&key->e, kE) ||
-      !BN_hex2bn(&key->d, kD) ||
-      RSA_size(key.get()) > sizeof(buf)) {
-    return false;
-  }
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(BN_hex2bn(&key->n, kN));
+  ASSERT_TRUE(BN_hex2bn(&key->e, kE));
+  ASSERT_TRUE(BN_hex2bn(&key->d, kD));
 
-  if (!RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key failed with only n, d, and e given.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  // Keys with only n, e, and d are functional.
+  EXPECT_TRUE(RSA_check_key(key.get()));
 
   const uint8_t kDummyHash[16] = {0};
-
-  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                key.get())) {
-    fprintf(stderr, "RSA_sign failed with only n, d, and e given.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                  key.get())) {
-    fprintf(stderr, "RSA_verify failed with only n, d, and e given.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  uint8_t buf[64];
+  unsigned buf_len = sizeof(buf);
+  ASSERT_LE(RSA_size(key.get()), sizeof(buf));
+  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                       &buf_len, key.get()));
+  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                         buf_len, key.get()));
 
   // Keys without the public exponent must continue to work when blinding is
   // disabled to support Java's RSAPrivateKeySpec API. See
   // https://bugs.chromium.org/p/boringssl/issues/detail?id=12.
   bssl::UniquePtr<RSA> key2(RSA_new());
-  if (!key2 ||
-      !BN_hex2bn(&key2->n, kN) ||
-      !BN_hex2bn(&key2->d, kD)) {
-    return false;
-  }
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(BN_hex2bn(&key2->n, kN));
+  ASSERT_TRUE(BN_hex2bn(&key2->d, kD));
   key2->flags |= RSA_FLAG_NO_BLINDING;
 
-  if (RSA_size(key2.get()) > sizeof(buf)) {
-    return false;
-  }
-
-  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                key2.get())) {
-    fprintf(stderr, "RSA_sign failed with only n and d given.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_LE(RSA_size(key2.get()), sizeof(buf));
+  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                       &buf_len, key2.get()));
 
   // Verify the signature with |key|. |key2| has no public exponent.
-  if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                  key.get())) {
-    fprintf(stderr,
-            "Could not verify signature produced from key with only n and d "
-            "given.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  return true;
+  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                         buf_len, key.get()));
 }
 
-static bool TestRecoverCRTParams() {
+TEST(RSATest, RecoverCRTParams) {
   bssl::UniquePtr<BIGNUM> e(BN_new());
-  if (!e || !BN_set_word(e.get(), RSA_F4)) {
-    return false;
-  }
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
-  ERR_clear_error();
+  bssl::UniquePtr<RSA> key1(RSA_new());
+  ASSERT_TRUE(key1);
+  ASSERT_TRUE(RSA_generate_key_ex(key1.get(), 512, e.get(), nullptr));
 
-  for (unsigned i = 0; i < 1; i++) {
-    bssl::UniquePtr<RSA> key1(RSA_new());
-    if (!key1 ||
-        !RSA_generate_key_ex(key1.get(), 512, e.get(), nullptr)) {
-      fprintf(stderr, "RSA_generate_key_ex failed.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
+  EXPECT_TRUE(RSA_check_key(key1.get()));
 
-    if (!RSA_check_key(key1.get())) {
-      fprintf(stderr, "RSA_check_key failed with original key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
+  // Create a copy of the key without CRT parameters.
+  bssl::UniquePtr<RSA> key2(RSA_new());
+  ASSERT_TRUE(key2);
+  key2->n = BN_dup(key1->n);
+  key2->e = BN_dup(key1->e);
+  key2->d = BN_dup(key1->d);
+  ASSERT_TRUE(key2->n);
+  ASSERT_TRUE(key2->e);
+  ASSERT_TRUE(key2->d);
 
-    bssl::UniquePtr<RSA> key2(RSA_new());
-    if (!key2) {
-      return false;
-    }
-    key2->n = BN_dup(key1->n);
-    key2->e = BN_dup(key1->e);
-    key2->d = BN_dup(key1->d);
-    if (key2->n == nullptr || key2->e == nullptr || key2->d == nullptr) {
-      return false;
-    }
+  ASSERT_TRUE(RSA_recover_crt_params(key2.get()));
 
-    if (!RSA_recover_crt_params(key2.get())) {
-      fprintf(stderr, "RSA_recover_crt_params failed.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
+  // The recovered RSA parameters should work.
+  EXPECT_TRUE(RSA_check_key(key2.get()));
 
-    uint8_t buf[128];
-    unsigned buf_len = sizeof(buf);
-    if (RSA_size(key2.get()) > buf_len) {
-      return false;
-    }
+  uint8_t buf[128];
+  unsigned buf_len = sizeof(buf);
+  ASSERT_LE(RSA_size(key2.get()), buf_len);
 
-    if (!RSA_check_key(key2.get())) {
-      fprintf(stderr, "RSA_check_key failed with recovered key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-
-    const uint8_t kDummyHash[16] = {0};
-    if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                  key2.get())) {
-      fprintf(stderr, "RSA_sign failed with recovered key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-
-    if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                    key2.get())) {
-      fprintf(stderr, "RSA_verify failed with recovered key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-  }
-
-  return true;
+  const uint8_t kDummyHash[16] = {0};
+  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                       &buf_len, key2.get()));
+  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                         buf_len, key2.get()));
 }
 
-static bool TestASN1() {
+TEST(RSATest, ASN1) {
   // Test that private keys may be decoded.
-  bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
-  if (!rsa) {
-    return false;
-  }
+  bssl::UniquePtr<RSA> rsa(
+      RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
 
   // Test that the serialization round-trips.
   uint8_t *der;
   size_t der_len;
-  if (!RSA_private_key_to_bytes(&der, &der_len, rsa.get())) {
-    return false;
-  }
+  ASSERT_TRUE(RSA_private_key_to_bytes(&der, &der_len, rsa.get()));
   bssl::UniquePtr<uint8_t> delete_der(der);
-  if (der_len != sizeof(kKey1) - 1 ||
-      OPENSSL_memcmp(der, kKey1, der_len) != 0) {
-    return false;
-  }
+  EXPECT_EQ(Bytes(kKey1, sizeof(kKey1) - 1), Bytes(der, der_len));
 
   // Test that serializing public keys works.
-  if (!RSA_public_key_to_bytes(&der, &der_len, rsa.get())) {
-    return false;
-  }
+  ASSERT_TRUE(RSA_public_key_to_bytes(&der, &der_len, rsa.get()));
   delete_der.reset(der);
 
   // Public keys may be parsed back out.
   rsa.reset(RSA_public_key_from_bytes(der, der_len));
-  if (!rsa || rsa->p != NULL || rsa->q != NULL) {
-    return false;
-  }
+  ASSERT_TRUE(rsa);
+  EXPECT_FALSE(rsa->p);
+  EXPECT_FALSE(rsa->q);
 
   // Serializing the result round-trips.
   uint8_t *der2;
   size_t der2_len;
-  if (!RSA_public_key_to_bytes(&der2, &der2_len, rsa.get())) {
-    return false;
-  }
+  ASSERT_TRUE(RSA_public_key_to_bytes(&der2, &der2_len, rsa.get()));
   bssl::UniquePtr<uint8_t> delete_der2(der2);
-  if (der_len != der2_len || OPENSSL_memcmp(der, der2, der_len) != 0) {
-    return false;
-  }
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
 
   // Public keys cannot be serialized as private keys.
-  if (RSA_private_key_to_bytes(&der, &der_len, rsa.get())) {
+  int ok = RSA_private_key_to_bytes(&der, &der_len, rsa.get());
+  if (ok) {
     OPENSSL_free(der);
-    return false;
   }
+  EXPECT_FALSE(ok);
   ERR_clear_error();
 
   // Public keys with negative moduli are invalid.
   rsa.reset(RSA_public_key_from_bytes(kEstonianRSAKey,
                                       sizeof(kEstonianRSAKey)));
-  if (rsa) {
-    return false;
-  }
+  EXPECT_FALSE(rsa);
   ERR_clear_error();
 
   // But |RSA_parse_public_key_buggy| will accept it.
   CBS cbs;
   CBS_init(&cbs, kEstonianRSAKey, sizeof(kEstonianRSAKey));
   rsa.reset(RSA_parse_public_key_buggy(&cbs));
-  if (!rsa || CBS_len(&cbs) != 0) {
-    return false;
-  }
-
-  return true;
+  EXPECT_TRUE(rsa);
+  EXPECT_EQ(0u, CBS_len(&cbs));
 }
 
-static bool TestBadExponent() {
-  bssl::UniquePtr<RSA> rsa(RSA_public_key_from_bytes(kExponent1RSAKey,
-                                          sizeof(kExponent1RSAKey)));
-
-  if (rsa) {
-    fprintf(stderr, "kExponent1RSAKey parsed but should have failed.\n");
-    return false;
-  }
-
+TEST(RSATest, BadExponent) {
+  bssl::UniquePtr<RSA> rsa(
+      RSA_public_key_from_bytes(kExponent1RSAKey, sizeof(kExponent1RSAKey)));
+  EXPECT_FALSE(rsa);
   ERR_clear_error();
-  return true;
-}
-
-int main(int argc, char *argv[]) {
-  CRYPTO_library_init();
-
-  if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,
-               sizeof(kOAEPCiphertext1) - 1) ||
-      !TestRSA(kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2,
-               sizeof(kOAEPCiphertext2) - 1) ||
-      !TestRSA(kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3,
-               sizeof(kOAEPCiphertext3) - 1) ||
-      !TestOnlyDGiven() ||
-      !TestRecoverCRTParams() ||
-      !TestBadKey() ||
-      !TestMultiPrimeKey(2, kTwoPrimeKey, sizeof(kTwoPrimeKey) - 1,
-                            kTwoPrimeEncryptedMessage,
-                            sizeof(kTwoPrimeEncryptedMessage)) ||
-      !TestMultiPrimeKey(3, kThreePrimeKey, sizeof(kThreePrimeKey) - 1,
-                            kThreePrimeEncryptedMessage,
-                            sizeof(kThreePrimeEncryptedMessage)) ||
-      !TestMultiPrimeKey(6, kSixPrimeKey, sizeof(kSixPrimeKey) - 1,
-                            kSixPrimeEncryptedMessage,
-                            sizeof(kSixPrimeEncryptedMessage)) ||
-      !TestMultiPrimeKeygen() ||
-      !TestASN1() ||
-      !TestBadExponent()) {
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
 }
