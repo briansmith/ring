@@ -37,14 +37,3 @@ add_library(
   err.c
   err_data.c
 )
-
-add_executable(
-  err_test
-
-  err_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(err_test crypto)
-add_dependencies(all_tests err_test)
