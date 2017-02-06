@@ -329,6 +329,11 @@ static const struct {
 };
 
 const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
+  /* Handle objects with no corresponding OID. */
+  if (obj->nid != NID_undef) {
+    return EVP_get_digestbynid(obj->nid);
+  }
+
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMDOIDs); i++) {
     if (obj->length == kMDOIDs[i].oid_len &&
         memcmp(obj->data, kMDOIDs[i].oid, obj->length) == 0) {

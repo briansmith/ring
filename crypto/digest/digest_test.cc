@@ -18,12 +18,14 @@
 
 #include <memory>
 
+#include <openssl/asn1.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
+#include <openssl/obj.h>
 #include <openssl/sha.h>
 
 #include "../internal.h"
@@ -247,6 +249,14 @@ static int TestGetters() {
   if (EVP_get_digestbynid(NID_sha512) != EVP_sha512() ||
       EVP_get_digestbynid(NID_sha512WithRSAEncryption) != NULL ||
       EVP_get_digestbynid(NID_undef) != NULL) {
+    return false;
+  }
+
+  bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj("1.3.14.3.2.26", 0));
+  if (!obj ||
+      EVP_get_digestbyobj(obj.get()) != EVP_sha1() ||
+      EVP_get_digestbyobj(OBJ_nid2obj(NID_md5_sha1)) != EVP_md5_sha1() ||
+      EVP_get_digestbyobj(OBJ_nid2obj(NID_sha1)) != EVP_sha1()) {
     return false;
   }
 
