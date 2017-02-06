@@ -616,7 +616,7 @@ static int ext_sni_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   assert(ssl->tlsext_hostname != NULL);
 
   if (ssl->session == NULL) {
-    assert(ssl->s3->new_session->tlsext_hostname == NULL);
+    OPENSSL_free(ssl->s3->new_session->tlsext_hostname);
     ssl->s3->new_session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
     if (!ssl->s3->new_session->tlsext_hostname) {
       *out_alert = SSL_AD_INTERNAL_ERROR;

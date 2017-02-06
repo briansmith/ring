@@ -538,14 +538,6 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
         goto err;
       }
     }
-
-    if (ssl->tlsext_hostname != NULL) {
-      session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
-      if (session->tlsext_hostname == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        goto err;
-      }
-    }
   } else {
     session->session_id_length = 0;
   }

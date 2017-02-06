@@ -992,6 +992,7 @@ static int ssl3_get_client_hello(SSL_HANDSHAKE *hs) {
 
     /* On new sessions, stash the SNI value in the session. */
     if (hs->hostname != NULL) {
+      OPENSSL_free(ssl->s3->new_session->tlsext_hostname);
       ssl->s3->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
       if (ssl->s3->new_session->tlsext_hostname == NULL) {
         al = SSL_AD_INTERNAL_ERROR;

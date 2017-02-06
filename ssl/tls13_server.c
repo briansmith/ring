@@ -198,6 +198,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
     /* On new sessions, stash the SNI value in the session. */
     if (hs->hostname != NULL) {
+      OPENSSL_free(ssl->s3->new_session->tlsext_hostname);
       ssl->s3->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
       if (ssl->s3->new_session->tlsext_hostname == NULL) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
