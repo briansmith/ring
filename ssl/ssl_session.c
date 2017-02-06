@@ -518,13 +518,13 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   if (version >= TLS1_3_VERSION) {
     /* TLS 1.3 uses tickets as authenticators, so we are willing to use them for
      * longer. */
-    session->timeout = ssl->session_psk_dhe_timeout;
+    session->timeout = ssl->initial_ctx->session_psk_dhe_timeout;
     session->auth_timeout = SSL_DEFAULT_SESSION_AUTH_TIMEOUT;
   } else {
     /* TLS 1.2 resumption does not incorporate new key material, so we use a
      * much shorter timeout. */
-    session->timeout = ssl->session_timeout;
-    session->auth_timeout = ssl->session_timeout;
+    session->timeout = ssl->initial_ctx->session_timeout;
+    session->auth_timeout = ssl->initial_ctx->session_timeout;
   }
 
   if (is_server) {
@@ -981,16 +981,6 @@ long SSL_CTX_get_timeout(const SSL_CTX *ctx) {
 
 void SSL_CTX_set_session_psk_dhe_timeout(SSL_CTX *ctx, long timeout) {
   ctx->session_psk_dhe_timeout = timeout;
-}
-
-long SSL_set_session_timeout(SSL *ssl, long timeout) {
-  long old_timeout = ssl->session_timeout;
-  ssl->session_timeout = timeout;
-  return old_timeout;
-}
-
-void SSL_set_session_psk_dhe_timeout(SSL *ssl, long timeout) {
-  ssl->session_psk_dhe_timeout = timeout;
 }
 
 typedef struct timeout_param_st {

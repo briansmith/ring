@@ -471,9 +471,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->signed_cert_timestamps_enabled = ctx->signed_cert_timestamps_enabled;
   ssl->ocsp_stapling_enabled = ctx->ocsp_stapling_enabled;
 
-  ssl->session_timeout = ctx->session_timeout;
-  ssl->session_psk_dhe_timeout = ctx->session_psk_dhe_timeout;
-
   /* If the context has an OCSP response, use it. */
   if (ctx->ocsp_response != NULL) {
     CRYPTO_BUFFER_up_ref(ctx->ocsp_response);

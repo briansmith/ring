@@ -261,7 +261,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
 
     /* Resumption incorporates fresh key material, so refresh the timeout. */
     ssl_session_renew_timeout(ssl, ssl->s3->new_session,
-                              ssl->session_psk_dhe_timeout);
+                              ssl->initial_ctx->session_psk_dhe_timeout);
   } else if (!ssl_get_new_session(hs, 0)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;

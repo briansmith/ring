@@ -1836,14 +1836,6 @@ struct ssl_st {
    * session space. Only effective on the server side. */
   unsigned retain_only_sha256_of_client_certs:1;
 
-  /* session_timeout is the default lifetime in seconds of the session
-   * created in this connection at TLS 1.2 and earlier. */
-  long session_timeout;
-
-  /* session_psk_dhe_timeout is the default lifetime in seconds of sessions
-   * created in this connection at TLS 1.3. */
-  long session_psk_dhe_timeout;
-
   /* OCSP response to be sent to the client, if requested. */
   CRYPTO_BUFFER *ocsp_response;
 };

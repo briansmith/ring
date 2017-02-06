@@ -224,7 +224,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
     /* Resumption incorporates fresh key material, so refresh the timeout. */
     ssl_session_renew_timeout(ssl, ssl->s3->new_session,
-                              ssl->session_psk_dhe_timeout);
+                              ssl->initial_ctx->session_psk_dhe_timeout);
   }
 
   if (ssl->ctx->dos_protection_cb != NULL &&

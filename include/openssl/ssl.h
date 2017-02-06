@@ -1753,20 +1753,6 @@ OPENSSL_EXPORT void SSL_CTX_set_session_psk_dhe_timeout(SSL_CTX *ctx,
  * sessions created in |ctx|. */
 OPENSSL_EXPORT long SSL_CTX_get_timeout(const SSL_CTX *ctx);
 
-/* SSL_set_session_timeout sets the default lifetime, in seconds, of a TLS 1.2
- * (or earlier) session created in |ssl| to |timeout|, and returns the old
- * value.
- *
- * By default the value |SSL_DEFAULT_SESSION_TIMEOUT| is used, which can be
- * overridden at the context level by calling |SSL_CTX_set_timeout|.
- *
- * If |timeout| is zero the newly created session will not be resumable. */
-OPENSSL_EXPORT long SSL_set_session_timeout(SSL *ssl, long timeout);
-
-/* SSL_set_session_psk_dhe_timeout sets the lifetime, in seconds, of TLS 1.3
- * sessions created in |ssl| to |timeout|. */
-OPENSSL_EXPORT void SSL_set_session_psk_dhe_timeout(SSL *ssl, long timeout);
-
 /* SSL_CTX_set_session_id_context sets |ctx|'s session ID context to |sid_ctx|.
  * It returns one on success and zero on error. The session ID context is an
  * application-defined opaque byte string. A session will not be used in a
