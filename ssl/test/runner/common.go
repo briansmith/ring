@@ -1291,6 +1291,10 @@ type ProtocolBugs struct {
 	// SendTicketLifetime, if non-zero, is the ticket lifetime to send in
 	// NewSessionTicket messages.
 	SendTicketLifetime time.Duration
+
+	// SendServerNameAck, if true, causes the server to acknowledge the SNI
+	// extension.
+	SendServerNameAck bool
 }
 
 func (c *Config) serverInit() {

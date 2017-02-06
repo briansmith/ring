@@ -4751,6 +4751,31 @@ func addExtensionTests() {
 			expectedLocalError: "tls: unexpected server name",
 		})
 		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "TolerateServerNameAck-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendServerNameAck: true,
+				},
+			},
+			flags:         []string{"-host-name", "example.com"},
+			resumeSession: true,
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "UnsolicitedServerNameAck-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendServerNameAck: true,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_EXTENSION:",
+			expectedLocalError: "remote error: unsupported extension",
+		})
+		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     "ServerNameExtensionServer-" + ver.name,
 			config: Config{
@@ -8520,7 +8545,7 @@ func addSessionTicketTests() {
 		flags: []string{
 			"-resumption-delay", "21",
 		},
-		resumeSession: true,
+		resumeSession:        true,
 		expectResumeRejected: true,
 	})
 }
