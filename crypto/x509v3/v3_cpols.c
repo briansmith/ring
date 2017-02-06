@@ -400,10 +400,10 @@ static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos)
     return 1;
 
  merr:
+    ASN1_INTEGER_free(aint);
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 
  err:
-    sk_ASN1_INTEGER_pop_free(nnums, ASN1_STRING_free);
     return 0;
 }
 
