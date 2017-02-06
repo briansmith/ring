@@ -1371,15 +1371,16 @@ static int ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   /* The extension shouldn't be sent when resuming sessions. */
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
       ssl->s3->session_reused ||
-      ssl->ctx->signed_cert_timestamp_list_length == 0) {
+      ssl->signed_cert_timestamp_list == NULL) {
     return 1;
   }
 
   CBB contents;
   return CBB_add_u16(out, TLSEXT_TYPE_certificate_timestamp) &&
          CBB_add_u16_length_prefixed(out, &contents) &&
-         CBB_add_bytes(&contents, ssl->ctx->signed_cert_timestamp_list,
-                       ssl->ctx->signed_cert_timestamp_list_length) &&
+         CBB_add_bytes(&contents,
+                       CRYPTO_BUFFER_data(ssl->signed_cert_timestamp_list),
+                       CRYPTO_BUFFER_len(ssl->signed_cert_timestamp_list)) &&
          CBB_flush(out);
 }
 

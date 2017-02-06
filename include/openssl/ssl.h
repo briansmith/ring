@@ -904,6 +904,14 @@ OPENSSL_EXPORT int SSL_CTX_set_signed_cert_timestamp_list(SSL_CTX *ctx,
                                                           const uint8_t *list,
                                                           size_t list_len);
 
+/* SSL_set_signed_cert_timestamp_list sets the list of signed certificate
+ * timestamps that is sent to clients that request is. The same format as the
+ * one used for |SSL_CTX_set_signed_cert_timestamp_list| applies. The caller
+ * retains ownership of |list|. */
+OPENSSL_EXPORT int SSL_set_signed_cert_timestamp_list(SSL *ctx,
+                                                      const uint8_t *list,
+                                                      size_t list_len);
+
 /* SSL_CTX_set_ocsp_response sets the OCSP response that is sent to clients
  * which request it. It returns one on success and zero on error. The caller
  * retains ownership of |response|. */
@@ -4050,8 +4058,7 @@ struct ssl_ctx_st {
   EVP_PKEY *tlsext_channel_id_private;
 
   /* Signed certificate timestamp list to be sent to the client, if requested */
-  uint8_t *signed_cert_timestamp_list;
-  size_t signed_cert_timestamp_list_length;
+  CRYPTO_BUFFER *signed_cert_timestamp_list;
 
   /* OCSP response to be sent to the client, if requested. */
   CRYPTO_BUFFER *ocsp_response;

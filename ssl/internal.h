@@ -1836,6 +1836,9 @@ struct ssl_st {
    * session space. Only effective on the server side. */
   unsigned retain_only_sha256_of_client_certs:1;
 
+  /* Signed certificate timestamp list to be sent to the client, if requested */
+  CRYPTO_BUFFER *signed_cert_timestamp_list;
+
   /* OCSP response to be sent to the client, if requested. */
   CRYPTO_BUFFER *ocsp_response;
 };

@@ -451,13 +451,13 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  if (hs->scts_requested &&
-      ssl->ctx->signed_cert_timestamp_list_length != 0) {
+  if (hs->scts_requested && ssl->signed_cert_timestamp_list != NULL) {
     CBB contents;
     if (!CBB_add_u16(&extensions, TLSEXT_TYPE_certificate_timestamp) ||
         !CBB_add_u16_length_prefixed(&extensions, &contents) ||
-        !CBB_add_bytes(&contents, ssl->ctx->signed_cert_timestamp_list,
-                       ssl->ctx->signed_cert_timestamp_list_length) ||
+        !CBB_add_bytes(&contents,
+                       CRYPTO_BUFFER_data(ssl->signed_cert_timestamp_list),
+                       CRYPTO_BUFFER_len(ssl->signed_cert_timestamp_list)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
