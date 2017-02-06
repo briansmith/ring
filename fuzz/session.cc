@@ -17,7 +17,7 @@
 #include <openssl/mem.h>
 #include <openssl/ssl.h>
 
-extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   // Parse in our session.
   bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(buf, len));
 
