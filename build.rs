@@ -229,11 +229,7 @@ const RING_PERL_INCLUDES: &'static [&'static str] =
       "crypto/perlasm/arm-xlate.pl",
       "crypto/perlasm/ppc-xlate.pl"];
 
-const RING_BUILD_FILE: &'static [&'static str] = &["build.rs",
-                                                   "Makefile",
-                                                   "mk/top_of_makefile.mk",
-                                                   "mk/bottom_of_makefile.mk",
-                                                   "mk/ring.mk"];
+const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const C_FLAGS: &'static [&'static str] =
@@ -624,11 +620,8 @@ fn get_command(var: &str, default: &str) -> String {
 }
 
 fn check_all_files_tracked() {
-    let _ = rayon::join(|| {
-        rayon::join(|| walk_dir(&PathBuf::from("crypto"), &is_tracked),
-                    || walk_dir(&PathBuf::from("include"), &is_tracked))
-    },
-                        || walk_dir(&PathBuf::from("mk"), &is_tracked));
+    let _ = rayon::join(|| walk_dir(&PathBuf::from("crypto"), &is_tracked),
+                        || walk_dir(&PathBuf::from("include"), &is_tracked));
 }
 
 fn is_tracked(file: &DirEntry) {
@@ -639,7 +632,6 @@ fn is_tracked(file: &DirEntry) {
             RING_HEADERS.iter().chain(RING_TEST_HEADERS.iter()).any(cmp)
         },
         Some("inl") => RING_INLINE_FILES.iter().any(cmp),
-        Some("mk") => RING_BUILD_FILE.iter().any(cmp),
         Some("c") | Some("cc") => {
             RING_SRC.iter()
                 .chain(RING_AARCH64_SRCS.iter())
