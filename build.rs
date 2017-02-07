@@ -62,10 +62,220 @@
     while_true,
 )]
 
+extern crate gcc;
+extern crate target_build_utils;
+
 use std::env;
 use std::path::{Path, PathBuf};
+use std::fs::{self, DirEntry};
+use target_build_utils::TargetInfo;
 
 const LIB_NAME: &'static str = "ring";
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const RING_SRC: &'static [&'static str] =
+    &["crypto/aes/aes.c",
+      "crypto/bn/add.c",
+      "crypto/bn/bn.c",
+      "crypto/bn/cmp.c",
+      "crypto/bn/convert.c",
+      "crypto/bn/div.c",
+      "crypto/bn/exponentiation.c",
+      "crypto/bn/gcd.c",
+      "crypto/bn/generic.c",
+      "crypto/bn/montgomery.c",
+      "crypto/bn/montgomery_inv.c",
+      "crypto/bn/mul.c",
+      "crypto/bn/random.c",
+      "crypto/bn/shift.c",
+      "crypto/cipher/e_aes.c",
+      "crypto/crypto.c",
+      "crypto/curve25519/curve25519.c",
+      "crypto/ec/ecp_nistz.c",
+      "crypto/ec/ecp_nistz256.c",
+      "crypto/ec/gfp_p256.c",
+      "crypto/ec/gfp_p384.c",
+      "crypto/mem.c",
+      "crypto/modes/gcm.c",
+      "crypto/rand/sysrand.c",
+      "crypto/limbs/limbs.c"];
+
+const RING_INTEL_SHARED_SRCS: &'static [&'static str] = &["crypto/cpu-intel.c"];
+
+const RING_X86_SRCS: &'static [&'static str] =
+    &["crypto/aes/asm/aes-586.pl",
+      "crypto/aes/asm/aesni-x86.pl",
+      "crypto/aes/asm/vpaes-x86.pl",
+      "crypto/bn/asm/x86-mont.pl",
+      "crypto/chacha/asm/chacha-x86.pl",
+      "crypto/ec/asm/ecp_nistz256-x86.pl",
+      "crypto/modes/asm/ghash-x86.pl",
+      "crypto/poly1305/asm/poly1305-x86.pl",
+      "crypto/sha/asm/sha256-586.pl",
+      "crypto/sha/asm/sha512-586.pl"];
+
+const RING_X86_64_SRC: &'static [&'static str] =
+    &["crypto/aes/asm/aes-x86_64.pl",
+      "crypto/aes/asm/aesni-x86_64.pl",
+      "crypto/aes/asm/bsaes-x86_64.pl",
+      "crypto/aes/asm/vpaes-x86_64.pl",
+      "crypto/bn/asm/x86_64-mont.pl",
+      "crypto/bn/asm/x86_64-mont5.pl",
+      "crypto/chacha/asm/chacha-x86_64.pl",
+      "crypto/curve25519/asm/x25519-asm-x86_64.S",
+      "crypto/curve25519/x25519-x86_64.c",
+      "crypto/ec/asm/ecp_nistz256-x86_64.pl",
+      "crypto/ec/asm/p256-x86_64-asm.pl",
+      "crypto/modes/asm/aesni-gcm-x86_64.pl",
+      "crypto/modes/asm/ghash-x86_64.pl",
+      "crypto/poly1305/asm/poly1305-x86_64.pl",
+      "crypto/sha/asm/sha256-x86_64.pl",
+      "crypto/sha/asm/sha512-x86_64.pl"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const RING_ARM_SHARED_SRCS: &'static [&'static str] =
+    &["crypto/cpu-arm.c",
+      "crypto/cpu-arm-linux.c",
+      "crypto/aes/asm/aesv8-armx.pl",
+      "crypto/modes/asm/ghashv8-armx.pl"];
+
+const RING_ARM_SRCS: &'static [&'static str] =
+    &["crypto/aes/asm/aes-armv4.pl",
+      "crypto/aes/asm/bsaes-armv7.pl",
+      "crypto/bn/asm/armv4-mont.pl",
+      "crypto/chacha/asm/chacha-armv4.pl",
+      "crypto/curve25519/asm/x25519-asm-arm.S",
+      "crypto/ec/asm/ecp_nistz256-armv4.pl",
+      "crypto/modes/asm/ghash-armv4.pl",
+      "crypto/poly1305/asm/poly1305-armv4.pl",
+      "crypto/sha/asm/sha256-armv4.pl",
+      "crypto/sha/asm/sha512-armv4.pl"];
+
+const RING_AARCH64_SRCS: &'static [&'static str] =
+    &["crypto/cpu-aarch64-linux.c",
+      "crypto/bn/asm/armv8-mont.pl",
+      "crypto/chacha/asm/chacha-armv8.pl",
+      "crypto/ec/asm/ecp_nistz256-armv8.pl",
+      "crypto/poly1305/asm/poly1305-armv8.pl",
+      "crypto/sha/asm/sha256-armv8.pl",
+      "crypto/sha/asm/sha512-armv8.pl"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const RING_PPC_SRCS: &'static [&'static str] =
+    &["crypto/aes/asm/aesp8-ppc.pl",
+      "crypto/cpu-ppc64le.c"];
+
+const RING_TEST_SRCS: &'static [&'static str] =
+    &["crypto/bn/bn_test.cc",
+      "crypto/constant_time_test.c",
+      "crypto/test/bn_test_convert.c",
+      "crypto/test/bn_test_lib.c",
+      "crypto/test/bn_test_new.c",
+      "crypto/test/file_test.cc"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const RING_HEADERS: &'static [&'static str] =
+    &["crypto/poly1305/internal.h",
+      "crypto/test/scoped_types.h",
+      "crypto/test/rand.h",
+      "crypto/curve25519/internal.h",
+      "crypto/cipher/internal.h",
+      "crypto/bn/rsaz_exp.h",
+      "crypto/bn/internal.h",
+      "crypto/internal.h",
+      "crypto/rsa/internal.h",
+      "crypto/modes/internal.h",
+      "crypto/ec/ecp_nistz.h",
+      "crypto/ec/ecp_nistz384.h",
+      "crypto/ec/ecp_nistz256.h",
+      "crypto/ec/gfp_internal.h",
+      "crypto/limbs/limbs.h",
+      "include/openssl/type_check.h",
+      "include/openssl/mem.h",
+      "include/openssl/bn.h",
+      "include/openssl/opensslconf.h",
+      "include/openssl/arm_arch.h",
+      "include/openssl/cpu.h",
+      "include/openssl/rsa.h",
+      "include/openssl/aes.h",
+      "include/openssl/base.h",
+      "include/openssl/err.h"];
+
+const RING_TEST_HEADERS: &'static [&'static str] =
+    &["crypto/test/bn_test_lib.h",
+      "crypto/test/file_test.h",
+      "crypto/test/bn_test_util.h"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const RING_INLINE_FILES: &'static [&'static str] =
+    &["crypto/ec/ecp_nistz256_table.inl",
+      "crypto/ec/ecp_nistz384.inl",
+      "crypto/ec/gfp_limbs.inl",
+      "crypto/ec/ecp_nistz384_mul.inl",
+      "crypto/limbs/limbs.inl"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const RING_PERL_INCLUDES: &'static [&'static str] =
+    &["crypto/sha/asm/sha-x86_64.pl",
+      "crypto/sha/asm/sha-armv8.pl",
+      "crypto/perlasm/x86masm.pl",
+      "crypto/perlasm/x86gas.pl",
+      "crypto/perlasm/x86nasm.pl",
+      "crypto/perlasm/x86asm.pl",
+      "crypto/perlasm/x86_64-xlate.pl",
+      "crypto/perlasm/arm-xlate.pl",
+      "crypto/perlasm/ppc-xlate.pl"];
+
+const RING_BUILD_FILE: &'static [&'static str] = &["build.rs",
+                                                   "Makefile",
+                                                   "mk/top_of_makefile.mk",
+                                                   "mk/bottom_of_makefile.mk",
+                                                   "mk/ring.mk"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const C_FLAGS: &'static [&'static str] =
+    &["-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
+      "-Wbad-function-cast",
+      "-Wmissing-prototypes",
+      "-Wnested-externs",
+      "-Wstrict-prototypes"];
+
+// GCC 4.6 requires "c++0x" instead of "c++11"
+const CXX_FLAGS: &'static [&'static str] = &["-std=c++0x"];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const CPP_FLAGS: &'static [&'static str] =
+    &["-D_XOPEN_SOURCE=700",
+      "-fpic",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-pedantic",
+      "-pedantic-errors",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Wcast-align",
+      "-Wcast-qual",
+      "-Wenum-compare",
+      "-Wfloat-equal",
+      "-Wformat=2",
+      "-Winline",
+      "-Winvalid-pch",
+      "-Wmissing-declarations",
+      "-Wmissing-field-initializers",
+      "-Wmissing-include-dirs",
+      "-Wredundant-decls",
+      "-Wshadow",
+      "-Wsign-compare",
+      "-Wundef",
+      "-Wuninitialized",
+      "-Wwrite-strings",
+      "-DBORINGSSL_IMPLEMENTATION",
+      "-fno-strict-aliasing",
+      "-fvisibility=hidden",
+      "-Wno-cast-align"];
+
+const LD_FLAGS: &'static [&'static str] = &[];
 
 fn main() {
     for (key, value) in env::vars() {
@@ -73,90 +283,38 @@ fn main() {
     }
 
     let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = PathBuf::from(out_dir);
 
-    build_c_code(&out_dir).unwrap();
+    build_c_code(&out_dir);
+    check_all_files_tracked();
 }
 
-fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
-    let host_str = try!(env::var("HOST"));
-    let host_triple = host_str.split('-').collect::<Vec<&str>>();
-
-    let target_str = try!(env::var("TARGET"));
-    let target_triple = target_str.split('-').collect::<Vec<&str>>();
-
-    let use_msbuild = host_triple.contains(&"msvc") &&
-                      target_triple.contains(&"msvc");
-
-    let opt_level = try!(env::var("OPT_LEVEL"));
-    let disable_opt = opt_level == "0";
-
-    let num_jobs = try!(env::var("NUM_JOBS"));
-
-    // TODO: deal with link-time-optimization flag.
-
-    let lib_path = Path::new(out_dir).join("lib");
-
-    if !use_msbuild {
-        // Environment variables |CC|, |CXX|, etc. will be inherited from this
-        // process.
-        let cmake_build_type = if disable_opt {
-            "DEBUG"
-        } else {
-            "RELWITHDEBINFO"
-        };
-        let args = vec![
-            format!("-j{}", num_jobs),
-            format!("TARGET={}", target_str),
-            format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
-            format!("BUILD_PREFIX={}/", out_dir),
-        ];
-        // If $MAKE is given, use it as the make command. If not, use `gmake`
-        // for BSD systems and `make` for other systems.
-        let make = env::var_os("MAKE").unwrap_or_else(|| {
-            let m = if target_triple[2].contains("bsd") {
-                "gmake"
-            } else {
-                "make"
-            };
-            std::ffi::OsString::from(m)
-        });
-        run_command_with_args(&make, &args);
+fn build_c_code(out_dir: &PathBuf) {
+    let target_info = TargetInfo::new().expect("Could not get target");
+    let use_msvcbuild = target_info.target_env() == "msvc";
+    if use_msvcbuild {
+        let opt = env::var("OPT_LEVEL").expect("Cargo sets this");
+        build_msvc(&target_info,
+                   opt == "0",
+                   &env::var("NUM_JOBS").expect("Cargo sets this"),
+                   out_dir.clone());
     } else {
-        build_msvc(&target_triple, disable_opt, &num_jobs, lib_path.clone(),
-                   out_dir);
+        build_unix(&target_info, out_dir.clone());
     }
-
-    println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
-    println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
-
-    // XXX: Ideally, this would only happen for `cargo test`, but we don't know
-    // how to do that yet.
-    println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
-    if !use_msbuild {
-        let libcxx = if target_str.contains("-apple-") ||
-                        target_triple[2] == "freebsd" {
-            "c++"
-        } else {
-            "stdc++"
-        };
-        println!("cargo:rustc-flags=-l dylib={}", libcxx);
-    }
-
-    Ok(())
 }
 
-fn build_msvc(target_triple: &[&str], disable_opt: bool, num_jobs: &str,
-              lib_path: PathBuf, out_dir: &str) {
-    let arch = target_triple[0];
-    let (platform, optional_amd64) = match arch {
-        "i686" => ("Win32", None),
+fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
+              lib_path: PathBuf) {
+
+    let (platform, optional_amd64) = match target_info.target_arch() {
+        "x86" => ("Win32", None),
         "x86_64" => ("x64", Some("amd64")),
-        _ => panic!("unexpected ARCH: {}", arch),
+        arch => panic!("unexpected ARCH: {}", arch),
     };
 
     fn find_msbuild_exe(program_files_env_var: &str,
                         optional_amd64: Option<&str>)
-                        -> Result<std::ffi::OsString, ()> {
+                        -> Option<std::ffi::OsString> {
         let program_files = env::var(program_files_env_var).unwrap();
         let mut msbuild = PathBuf::from(&program_files);
         msbuild.push("MSBuild");
@@ -166,12 +324,15 @@ fn build_msvc(target_triple: &[&str], disable_opt: bool, num_jobs: &str,
             msbuild.push(amd64);
         }
         msbuild.push("msbuild.exe");
-        let _ = try!(std::fs::metadata(&msbuild).map_err(|_| ()));
-        Ok(msbuild.into_os_string())
+        if msbuild.exists() && msbuild.is_file() {
+            Some(msbuild.into_os_string())
+        } else {
+            None
+        }
     }
 
     let msbuild = find_msbuild_exe("ProgramFiles", optional_amd64)
-        .or_else(|_| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
+        .or_else(|| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
         .unwrap();
 
     // .gitignore isn't packaged, so if it exists then this is not a
@@ -185,15 +346,16 @@ fn build_msvc(target_triple: &[&str], disable_opt: bool, num_jobs: &str,
         format!("/m:{}", num_jobs),
         format!("/p:Platform={}", platform),
         format!("/p:Configuration={}", configuration),
-        format!("/p:OutRootDir={}/", out_dir),
+        format!("/p:OutRootDir={}/", lib_path.to_str().expect("Invalid path")),
     ];
     if !use_prepackaged_asm {
         let mut asm_args = args.clone();
         asm_args.push(String::from("crypto/libring-asm.Windows.vcxproj"));
         run_command_with_args(&msbuild, &asm_args);
     } else {
+        // TODO: rename msvc-ring-asm-i586.lib to msvc-ring-asm-x86.lib
         let pregenerated_lib_name =
-            format!("msvc-{}-asm-{}.lib", LIB_NAME, arch);
+            format!("msvc-{}-asm-{}.lib", LIB_NAME, target_info.target_arch());
         let mut pregenerated_lib = PathBuf::from("pregenerated");
         pregenerated_lib.push(pregenerated_lib_name);
 
@@ -214,6 +376,158 @@ fn build_msvc(target_triple: &[&str], disable_opt: bool, num_jobs: &str,
     let mut test_args = args.clone();
     test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
     run_command_with_args(&msbuild, &test_args);
+    println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
+    println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
+
+    // XXX: Ideally, this would only happen for `cargo test`, but we don't know
+    // how to do that yet.
+    println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
+}
+
+fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
+    let mut lib_target = out_dir.clone();
+    lib_target.push("libring-core.a");
+    let lib_target = lib_target.as_path();
+
+    let mut test_target = out_dir.clone();
+    test_target.push("libring-test.a");
+    let test_target = test_target.as_path();
+
+    let lib_header_change = RING_HEADERS.iter()
+        .chain(RING_INLINE_FILES.iter())
+        .chain(RING_BUILD_FILE.iter())
+        .map(Path::new)
+        .any(|p| need_run(&p, lib_target));
+    let test_header_change = RING_TEST_HEADERS.iter()
+        .map(Path::new)
+        .any(|p| need_run(&p, test_target)) ||
+                             lib_header_change;
+
+    let mut additional = Vec::new();
+    let srcs = match target_info.target_arch() {
+        "x86_64" => vec![RING_X86_64_SRC, RING_INTEL_SHARED_SRCS],
+        "x86" => vec![RING_X86_SRCS, RING_INTEL_SHARED_SRCS],
+        "arm" => vec![RING_ARM_SHARED_SRCS, RING_ARM_SRCS],
+        "aarch64" => vec![RING_ARM_SHARED_SRCS, RING_AARCH64_SRCS],
+        _ => Vec::new(),
+    };
+    for additional_src in srcs {
+        for src in additional_src.iter() {
+            additional.push(make_asm(src, out_dir.clone(), &target_info));
+        }
+    }
+
+    let objs = RING_SRC.iter()
+        .map(|a| String::from(*a))
+        .chain(additional.into_iter())
+        .map(|f| compile(&f, &target_info, out_dir.clone(), lib_header_change))
+        .collect();
+
+    build_library(lib_target, objs, target_info);
+
+    // XXX: Ideally, this would only happen for `cargo test`,
+    // but we don't know how to do that yet.
+    let test_objs = RING_TEST_SRCS.iter()
+        .map(|a| String::from(*a))
+        .map(|f| {
+            compile(&f, &target_info, out_dir.clone(), test_header_change)
+        })
+        .collect();
+
+    build_library(test_target, test_objs, target_info);
+
+    // target_vendor is only set if a nightly version of rustc is used
+    let libcxx = if target_info.target_vendor()
+        .map(|v| v == "apple")
+        .unwrap_or(target_info.target_os() == "macos" ||
+                   target_info.target_os() == "ios") ||
+                    target_info.target_os() == "freebsd" {
+        "c++"
+    } else {
+        "stdc++"
+    };
+    println!("cargo:rustc-flags=-l dylib={}", libcxx);
+}
+
+fn build_library(target: &Path, objs: Vec<String>, target_info: &TargetInfo) {
+    if objs.iter()
+        .map(|f| Path::new(f))
+        .any(|p| need_run(&p, target)) {
+        let mut c = gcc::Config::new();
+
+        for f in LD_FLAGS {
+            let _ = c.flag(&f);
+        }
+        match target_info.target_os() {
+            "macos" => {
+                let _ = c.flag("-fPIC");
+                let _ = c.flag("-Wl,-dead_strip");
+            },
+            _ => {
+                let _ = c.flag("-Wl,--gc-sections".into());
+            },
+        }
+        for o in objs {
+            let _ = c.object(o);
+        }
+        c.compile(target.file_name()
+            .and_then(|f| f.to_str())
+            .expect("No filename"));
+    }
+}
+
+fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
+           header_change: bool)
+           -> String {
+    let p = Path::new(file);
+    out_dir.push(p.file_name().expect("There is a filename"));
+    out_dir.set_extension("o");
+    if header_change || need_run(&p, out_dir.as_path()) {
+        let mut c = gcc::Config::new();
+        let _ = c.include("include");
+        match p.extension().map(|p| p.to_str()) {
+            Some(Some("c")) => {
+                for f in C_FLAGS {
+                    let _ = c.flag(f);
+                }
+            },
+            Some(Some("cc")) => {
+                for f in CXX_FLAGS {
+                    let _ = c.flag(f);
+                }
+                let _ = c.cpp(true);
+            },
+            Some(Some("S")) => {},
+            e => panic!("Unsupported filextension: {:?}", e),
+        };
+        for f in CPP_FLAGS {
+            let _ = c.flag(&f);
+        }
+        if target_info.target_os() != "none" &&
+           target_info.target_os() != "redox" {
+            let _ = c.flag("-fstack-protector");
+        }
+        let _ = match (target_info.target_os(), target_info.target_arch()) {
+            // ``-gfull`` is required for Darwin's |-dead_strip|.
+            ("macos", _) => c.flag("-gfull"),
+            _ => c.flag("-g3"),
+        };
+        if env::var("OPT_LEVEL").unwrap() != "0" {
+            let _ = c.define("NDEBUG", None);
+        }
+        let mut c = c.get_compiler().to_command();
+        let _ = c.arg("-c")
+            .arg("-o")
+            .arg(format!("{}", out_dir.to_str().expect("Invalid path")))
+            .arg(file);
+        println!("{:?}", c);
+        if !c.status()
+            .expect(&format!("Failed to compile {}", file))
+            .success() {
+            panic!("Failed to compile {}", file)
+        }
+    }
+    out_dir.to_str().expect("Invalid path").into()
 }
 
 fn run_command_with_args<S>(command_name: S, args: &[String])
@@ -230,5 +544,132 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
 
     if !status.success() {
         panic!("{} execution failed", command_name.as_ref().to_str().unwrap());
+    }
+}
+
+fn make_asm(source: &str, mut dst: PathBuf, target_info: &TargetInfo)
+            -> String {
+    let p = Path::new(source);
+    if p.extension().expect("File without extension").to_str() == Some("pl") {
+        dst.push(p.file_name().expect("File without filename??"));
+        dst.set_extension("S");
+        let r: String = dst.to_str().expect("Could not convert path").into();
+        let perl_include_changed = RING_PERL_INCLUDES.iter()
+            .any(|i| need_run(&Path::new(i), dst.as_path()));
+        if need_run(&p, dst.as_path()) || perl_include_changed {
+            let mut args = vec![source.to_owned()];
+            match (target_info.target_os(), target_info.target_arch()) {
+                ("macos", _) => args.push("macosx".into()),
+                ("ios", "arm") => args.push("ios32".into()),
+                ("ios", "aarch64") => args.push("ios64".into()),
+                ("linux", "x86_64") => args.push("elf".into()),
+                ("linux", "x86") => {
+                    args.push("elf".into());
+                    args.push("-fPIC".into());
+                    args.push("-DOPENSSL_IA32_SSE2".into());
+                },
+                ("linux", "aarch64") |
+                ("android", "aarch64") => args.push("linux64".into()),
+                ("linux", "arm") |
+                ("android", "arm") => args.push("linux32".into()),
+                ("windows", _) => panic!("Don't run this on windows"),
+                (e, _) => panic!("{} is unsupported", e),
+            }
+            args.push(r.clone());
+            run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"),
+                                  &args);
+        }
+        r
+    } else {
+        p.to_str().expect("Could not convert path").into()
+    }
+}
+
+fn need_run(source: &Path, target: &Path) -> bool {
+    let s = std::fs::metadata(source);
+    let t = std::fs::metadata(target);
+    if s.is_err() || t.is_err() {
+        true
+    } else {
+        match (s.unwrap().modified(), t.unwrap().modified()) {
+            (Ok(s), Ok(t)) => s >= t,
+            _ => true,
+        }
+    }
+}
+
+fn get_command(var: &str, default: &str) -> String {
+    env::var(var).unwrap_or(default.into())
+}
+
+
+fn check_all_files_tracked() {
+    walk_dir(&PathBuf::from("crypto"), &is_tracked);
+    walk_dir(&PathBuf::from("include"), &is_tracked);
+    walk_dir(&PathBuf::from("mk"), &is_tracked);
+}
+
+
+fn is_tracked(file: &DirEntry) {
+    let p = file.path();
+    let cmp = |f| p == PathBuf::from(f);
+    let tracked = match p.extension().and_then(|p| p.to_str()) {
+        Some("h") => {
+            RING_HEADERS.iter().chain(RING_TEST_HEADERS.iter()).any(cmp)
+        },
+        Some("inl") => RING_INLINE_FILES.iter().any(cmp),
+        Some("mk") => RING_BUILD_FILE.iter().any(cmp),
+        Some("c") | Some("cc") => {
+            RING_SRC.iter()
+                .chain(RING_AARCH64_SRCS.iter())
+                .chain(RING_ARM_SHARED_SRCS.iter())
+                .chain(RING_ARM_SRCS.iter())
+                .chain(RING_INTEL_SHARED_SRCS.iter())
+                .chain(RING_TEST_SRCS.iter())
+                .chain(RING_X86_64_SRC.iter())
+                .chain(RING_X86_SRCS.iter())
+                .chain(RING_PPC_SRCS.iter())
+                .any(cmp)
+        },
+        Some("S") => {
+            RING_AARCH64_SRCS.iter()
+                .chain(RING_ARM_SHARED_SRCS.iter())
+                .chain(RING_ARM_SRCS.iter())
+                .chain(RING_INTEL_SHARED_SRCS.iter())
+                .chain(RING_X86_64_SRC.iter())
+                .chain(RING_X86_SRCS.iter())
+                .any(cmp)
+        },
+        Some("pl") => {
+            RING_AARCH64_SRCS.iter()
+                .chain(RING_ARM_SHARED_SRCS.iter())
+                .chain(RING_ARM_SRCS.iter())
+                .chain(RING_INTEL_SHARED_SRCS.iter())
+                .chain(RING_X86_64_SRC.iter())
+                .chain(RING_X86_SRCS.iter())
+                .chain(RING_PPC_SRCS.iter())
+                .chain(RING_PERL_INCLUDES.iter())
+                .any(cmp)
+        },
+        _ => true,
+    };
+    if !tracked {
+        panic!("{:?} is not tracked in build.rs", p);
+    }
+}
+
+fn walk_dir<F>(dir: &Path, cb: &F)
+    where F: Fn(&DirEntry)
+{
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_dir() {
+                walk_dir(&path, cb);
+            } else {
+                cb(&entry);
+            }
+        }
     }
 }

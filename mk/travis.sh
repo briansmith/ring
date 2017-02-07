@@ -75,8 +75,6 @@ else
   c++ --version
 fi
 
-make --version
-
 cargo version
 rustc --version
 
