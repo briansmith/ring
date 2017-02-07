@@ -2514,11 +2514,6 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 		// NULL ciphers must be explicitly enabled.
 		flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
 	}
-	if hasComponent(suite.name, "ECDHE-PSK") && hasComponent(suite.name, "GCM") {
-		// ECDHE_PSK AES_GCM ciphers must be explicitly enabled
-		// for now.
-		flags = append(flags, "-cipher", suite.name)
-	}
 
 	var shouldServerFail, shouldClientFail bool
 	if hasComponent(suite.name, "ECDHE") && ver.version == VersionSSL30 {
