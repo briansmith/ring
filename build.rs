@@ -64,11 +64,14 @@
 
 extern crate gcc;
 extern crate target_build_utils;
+extern crate rayon;
 
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs::{self, DirEntry};
 use target_build_utils::TargetInfo;
+use rayon::par_iter::{ParallelIterator, IntoParallelIterator,
+                      IntoParallelRefIterator};
 
 const LIB_NAME: &'static str = "ring";
 
@@ -285,8 +288,16 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
-    build_c_code(out_dir);
-    check_all_files_tracked();
+    // copied from gcc
+    let mut cfg = rayon::Configuration::new();
+    if let Ok(amt) = env::var("NUM_JOBS") {
+        if let Ok(amt) = amt.parse() {
+            cfg = cfg.set_num_threads(amt);
+        }
+    }
+    rayon::initialize(cfg).unwrap();
+
+    let _ = rayon::join(check_all_files_tracked, || build_c_code(out_dir));
 }
 
 fn build_c_code(out_dir: PathBuf) {
@@ -388,17 +399,16 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
     test_target.push("libring-test.a");
     let test_target = test_target.as_path();
 
-    let lib_header_change = RING_HEADERS.iter()
-        .chain(RING_INLINE_FILES.iter())
-        .chain(RING_BUILD_FILE.iter())
+    let lib_header_change = RING_HEADERS.par_iter()
+        .chain(RING_INLINE_FILES.par_iter())
+        .chain(RING_BUILD_FILE.par_iter())
         .map(Path::new)
         .any(|p| need_run(&p, lib_target));
-    let test_header_change = RING_TEST_HEADERS.iter()
+    let test_header_change = RING_TEST_HEADERS.par_iter()
         .map(Path::new)
         .any(|p| need_run(&p, test_target)) ||
                              lib_header_change;
 
-    let mut additional = Vec::new();
     let srcs = match target_info.target_arch() {
         "x86_64" => vec![RING_X86_64_SRC, RING_INTEL_SHARED_SRCS],
         "x86" => vec![RING_X86_SRCS, RING_INTEL_SHARED_SRCS],
@@ -406,30 +416,28 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
         "aarch64" => vec![RING_ARM_SHARED_SRCS, RING_AARCH64_SRCS],
         _ => Vec::new(),
     };
-    for additional_src in srcs {
-        for src in additional_src.iter() {
-            additional.push(make_asm(src, out_dir.clone(), &target_info));
-        }
-    }
 
-    let objs = RING_SRC.iter()
-        .map(|a| String::from(*a))
-        .chain(additional.into_iter())
-        .map(|f| compile(&f, &target_info, out_dir.clone(), lib_header_change))
-        .collect();
-
-    build_library(lib_target, objs, target_info);
+    let additional = srcs.into_par_iter()
+        .weight_max()
+        .flat_map(|additional_src| {
+            additional_src.par_iter()
+                .map(|src| make_asm(src, out_dir.clone(), &target_info))
+        });
+    build_library(lib_target,
+                  additional,
+                  RING_SRC,
+                  target_info,
+                  out_dir.clone(),
+                  lib_header_change);
 
     // XXX: Ideally, this would only happen for `cargo test`,
     // but we don't know how to do that yet.
-    let test_objs = RING_TEST_SRCS.iter()
-        .map(|a| String::from(*a))
-        .map(|f| {
-            compile(&f, &target_info, out_dir.clone(), test_header_change)
-        })
-        .collect();
-
-    build_library(test_target, test_objs, target_info);
+    build_library(test_target,
+                  Vec::new().into_par_iter(),
+                  RING_TEST_SRCS,
+                  target_info,
+                  out_dir.clone(),
+                  test_header_change);
 
     // target_vendor is only set if a nightly version of rustc is used
     let libcxx = if target_info.target_vendor()
@@ -444,8 +452,26 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
     println!("cargo:rustc-flags=-l dylib={}", libcxx);
 }
 
-fn build_library(target: &Path, objs: Vec<String>, target_info: &TargetInfo) {
-    if objs.iter()
+
+fn build_library<P>(target: &Path, additional: P,
+                    lib_src: &'static [&'static str],
+                    target_info: &TargetInfo, out_dir: PathBuf,
+                    header_changed: bool)
+    where P: ParallelIterator<Item = String>
+{
+    // Compile all the (dirty) source files into object files.
+    let objs = additional.chain(lib_src.par_iter().map(|a| String::from(*a)))
+        .weight_max()
+        .map(|f| compile(&f, &target_info, out_dir.clone(), header_changed))
+        .map(|v| vec![v])
+        .reduce(Vec::new,
+                &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
+                    a.extend(b.into_iter());
+                    a
+                });
+
+    //Rebuild the library if necessary.
+    if objs.par_iter()
         .map(|f| Path::new(f))
         .any(|p| need_run(&p, target)) {
         let mut c = gcc::Config::new();
@@ -597,13 +623,13 @@ fn get_command(var: &str, default: &str) -> String {
     env::var(var).unwrap_or(default.into())
 }
 
-
 fn check_all_files_tracked() {
-    walk_dir(&PathBuf::from("crypto"), &is_tracked);
-    walk_dir(&PathBuf::from("include"), &is_tracked);
-    walk_dir(&PathBuf::from("mk"), &is_tracked);
+    let _ = rayon::join(|| {
+        rayon::join(|| walk_dir(&PathBuf::from("crypto"), &is_tracked),
+                    || walk_dir(&PathBuf::from("include"), &is_tracked))
+    },
+                        || walk_dir(&PathBuf::from("mk"), &is_tracked));
 }
-
 
 fn is_tracked(file: &DirEntry) {
     let p = file.path();

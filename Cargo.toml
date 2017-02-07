@@ -273,8 +273,12 @@ libc = "0.2.20"
 untrusted = "0.3.2"
 
 [build-dependencies]
+# we do not use the gcc parallel feature because we do the
+# parallelism ourself. This gives us a much higher level of
+# control about what should be parallised in which way
 gcc = "0.3"
 target_build_utils = { version = "0.2", default-features = false }
+rayon = "0.6"
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "0.2.1"
