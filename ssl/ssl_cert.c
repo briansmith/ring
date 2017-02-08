@@ -590,6 +590,7 @@ STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
     if (sk_CRYPTO_BUFFER_num(ret) == 0) {
       *out_pubkey = ssl_cert_parse_pubkey(&certificate);
       if (*out_pubkey == NULL) {
+        *out_alert = SSL_AD_DECODE_ERROR;
         goto err;
       }
 
