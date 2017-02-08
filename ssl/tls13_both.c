@@ -232,7 +232,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
         {TLSEXT_TYPE_certificate_timestamp, &have_sct, &sct},
     };
 
-    uint8_t alert;
+    uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!ssl_parse_extensions(&extensions, &alert, ext_types,
                               OPENSSL_ARRAY_SIZE(ext_types),
                               0 /* reject unknown */)) {

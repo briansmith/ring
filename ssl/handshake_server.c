@@ -1467,7 +1467,7 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
   EVP_PKEY_free(hs->peer_pubkey);
   hs->peer_pubkey = NULL;
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   ssl->s3->new_session->certs =
       ssl_parse_cert_chain(&alert, &hs->peer_pubkey,
                            ssl->retain_only_sha256_of_client_certs
@@ -1719,7 +1719,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     /* Compute the premaster. */
-    uint8_t alert;
+    uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!SSL_ECDH_CTX_finish(&hs->ecdh_ctx, &premaster_secret,
                              &premaster_secret_len, &alert, CBS_data(&peer_key),
                              CBS_len(&peer_key))) {

@@ -140,7 +140,7 @@ again:
   }
 
   CBS body;
-  uint8_t type, alert;
+  uint8_t type, alert = SSL_AD_DECODE_ERROR;
   size_t consumed;
   enum ssl_open_record_t open_ret =
       tls_open_record(ssl, &type, &body, &consumed, &alert,

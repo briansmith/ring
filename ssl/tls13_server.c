@@ -237,6 +237,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
    * deferred. Complete it now. */
+  alert = SSL_AD_DECODE_ERROR;
   if (!ssl_negotiate_alpn(hs, &alert, &client_hello)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;

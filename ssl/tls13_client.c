@@ -74,7 +74,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
       {TLSEXT_TYPE_cookie, &have_cookie, &cookie},
   };
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_parse_extensions(&extensions, &alert, ext_types,
                             OPENSSL_ARRAY_SIZE(ext_types),
                             0 /* reject unknown */)) {
@@ -207,7 +207,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
       {TLSEXT_TYPE_short_header, &have_short_header, &short_header},
   };
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_parse_extensions(&extensions, &alert, ext_types,
                             OPENSSL_ARRAY_SIZE(ext_types),
                             0 /* reject unknown */)) {
@@ -297,6 +297,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   /* Resolve ECDHE and incorporate it into the secret. */
   uint8_t *dhe_secret;
   size_t dhe_secret_len;
+  alert = SSL_AD_DECODE_ERROR;
   if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &dhe_secret_len,
                                            &alert, &key_share)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -392,7 +393,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   STACK_OF(X509_NAME) *ca_sk = ssl_parse_client_CA_list(ssl, &alert, &cbs);
   if (ca_sk == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -662,7 +663,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
        &early_data_info},
   };
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_parse_extensions(&extensions, &alert, ext_types,
                             OPENSSL_ARRAY_SIZE(ext_types),
                             1 /* ignore unknown */)) {

@@ -2962,7 +2962,7 @@ static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
 int ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                  const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
-  int alert = -1;
+  int alert = SSL_AD_DECODE_ERROR;
   if (ssl_scan_clienthello_tlsext(hs, client_hello, &alert) <= 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
@@ -3085,7 +3085,7 @@ static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
 
 int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
   SSL *const ssl = hs->ssl;
-  int alert = -1;
+  int alert = SSL_AD_DECODE_ERROR;
   if (ssl_scan_serverhello_tlsext(hs, cbs, &alert) <= 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;

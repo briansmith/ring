@@ -1068,7 +1068,7 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
   CBS cbs;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
   EVP_PKEY_free(hs->peer_pubkey);
   hs->peer_pubkey = NULL;
@@ -1439,7 +1439,7 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
     }
   }
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   STACK_OF(X509_NAME) *ca_sk = ssl_parse_client_CA_list(ssl, &alert, &cbs);
   if (ca_sk == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -1619,7 +1619,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     /* Compute the premaster. */
-    uint8_t alert;
+    uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!SSL_ECDH_CTX_accept(&hs->ecdh_ctx, &child, &pms, &pms_len, &alert,
                              hs->peer_key, hs->peer_key_len)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
