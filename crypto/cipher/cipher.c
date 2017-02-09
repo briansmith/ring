@@ -132,6 +132,7 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
   if (in->cipher_data && in->cipher->ctx_size) {
     out->cipher_data = OPENSSL_malloc(in->cipher->ctx_size);
     if (!out->cipher_data) {
+      out->cipher = NULL;
       OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -139,7 +140,10 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
   }
 
   if (in->cipher->flags & EVP_CIPH_CUSTOM_COPY) {
-    return in->cipher->ctrl((EVP_CIPHER_CTX *)in, EVP_CTRL_COPY, 0, out);
+    if (!in->cipher->ctrl((EVP_CIPHER_CTX *)in, EVP_CTRL_COPY, 0, out)) {
+      out->cipher = NULL;
+      return 0;
+    }
   }
 
   return 1;
