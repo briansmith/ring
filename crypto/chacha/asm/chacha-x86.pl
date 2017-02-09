@@ -39,10 +39,7 @@ open STDOUT,">$output";
 
 &asm_init($ARGV[0],"chacha-x86.pl",$ARGV[$#ARGV] eq "386");
 
-$xmm=$ymm=0;
-for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
-
-$ymm=$xmm;
+$xmm=$ymm=1;
 
 $a="eax";
 ($b,$b_)=("ebx","ebp");
