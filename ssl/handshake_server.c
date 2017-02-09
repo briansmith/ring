@@ -861,7 +861,7 @@ static int ssl3_process_client_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  uint8_t alert;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!negotiate_version(hs, &alert, &client_hello)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
