@@ -576,7 +576,7 @@ sub mmx_loop() {
     &bswap	($dat);
     &pshufw	($Zhi,$Zhi,0b00011011);		# 76543210
     &bswap	("ebx");
-    
+
     &cmp	("ecx",&DWP(528+16+8,"esp"));	# are we done?
     &jne	(&label("outer"));
   }
@@ -680,7 +680,7 @@ my ($Xhi,$Xi) = @_;
 	&psllq		($Xi,57);		#
 	&movdqa		($T1,$Xi);		#
 	&pslldq		($Xi,8);
-	&psrldq		($T1,8);		#	
+	&psrldq		($T1,8);		#
 	&pxor		($Xi,$T2);
 	&pxor		($Xhi,$T1);		#
 
@@ -850,7 +850,7 @@ my ($Xhi,$Xi) = @_;
 	  &psllq	($Xi,57);		#
 	  &movdqa	($T1,$Xi);		#
 	  &pslldq	($Xi,8);
-	  &psrldq	($T1,8);		#	
+	  &psrldq	($T1,8);		#
 	  &pxor		($Xi,$T2);
 	  &pxor		($Xhi,$T1);		#
 	&pshufd		($T1,$Xhn,0b01001110);
