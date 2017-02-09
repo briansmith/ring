@@ -40,6 +40,7 @@ open STDOUT,">$output";
 &asm_init($ARGV[0],"chacha-x86.pl",$ARGV[$#ARGV] eq "386");
 
 $xmm=$ymm=1;
+$gasver=999;  # enable everything
 
 $a="eax";
 ($b,$b_)=("ebx","ebp");
@@ -436,6 +437,12 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 				    &label("pic_point"),"eax"));
 	&movdqu		("xmm3",&QWP(0,"ebx"));		# counter and nonce
 
+if (defined($gasver) && $gasver>=2.17) {		# even though we encode
+							# pshufb manually, we
+							# handle only register
+							# operands, while this
+							# segment uses memory
+							# operand...
 	&cmp		($len,64*4);
 	&jb		(&label("1x"));
 
@@ -617,6 +624,7 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 	&paddd		("xmm2",&QWP(16*6,"eax"));	# +four
 	&pand		("xmm3",&QWP(16*7,"eax"));
 	&por		("xmm3","xmm2");		# counter value
+}
 {
 my ($a,$b,$c,$d,$t,$t1,$rot16,$rot24)=map("xmm$_",(0..7));
 
