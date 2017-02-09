@@ -5044,19 +5044,53 @@ func addExtensionTests() {
 			},
 		})
 
-		// Resume with an oversized session id.
+		// Resume with various lengths of ticket session id.
 		if ver.version < VersionTLS13 {
 			testCases = append(testCases, testCase{
 				testType: serverTest,
-				name:     "OversizedSessionId-" + ver.name,
+				name:     "TicketSessionIDLength-0-" + ver.name,
 				config: Config{
 					MaxVersion: ver.version,
 					Bugs: ProtocolBugs{
-						OversizedSessionId: true,
+						EmptyTicketSessionID: true,
+					},
+				},
+				resumeSession: true,
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "TicketSessionIDLength-16-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						TicketSessionIDLength: 16,
+					},
+				},
+				resumeSession: true,
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "TicketSessionIDLength-32-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						TicketSessionIDLength: 32,
+					},
+				},
+				resumeSession: true,
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "TicketSessionIDLength-33-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						TicketSessionIDLength: 33,
 					},
 				},
 				resumeSession: true,
 				shouldFail:    true,
+				// The maximum session ID length is 32.
 				expectedError: ":DECODE_ERROR:",
 			})
 		}

@@ -668,9 +668,16 @@ type ProtocolBugs struct {
 	// ticket before sending it in a resume handshake.
 	FilterTicket func([]byte) ([]byte, error)
 
-	// OversizedSessionId causes the session id that is sent with a ticket
-	// resumption attempt to be too large (33 bytes).
-	OversizedSessionId bool
+	// TicketSessionIDLength, if non-zero, is the length of the session ID
+	// to send with a ticket resumption offer.
+	TicketSessionIDLength int
+
+	// EmptyTicketSessionID, if true, causes the client to send an empty
+	// session ID with a ticket resumption offer. For simplicity, this will
+	// also cause the client to interpret a ServerHello with empty session
+	// ID as a resumption. (A client which sends empty session ID is
+	// normally expected to look ahead for ChangeCipherSpec.)
+	EmptyTicketSessionID bool
 
 	// ExpectNoTLS12Session, if true, causes the server to fail the
 	// connection if either a session ID or TLS 1.2 ticket is offered.
