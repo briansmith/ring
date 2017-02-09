@@ -193,16 +193,16 @@ bool Server(const std::vector<std::string> &args) {
     return false;
   }
 
-  if (args_map.count("-max-version") != 0) {
-    uint16_t version;
-    if (!VersionFromString(&version, args_map["-max-version"])) {
-      fprintf(stderr, "Unknown protocol version: '%s'\n",
-              args_map["-max-version"].c_str());
-      return false;
-    }
-    if (!SSL_CTX_set_max_proto_version(ctx.get(), version)) {
-      return false;
-    }
+  uint16_t max_version = TLS1_3_VERSION;
+  if (args_map.count("-max-version") != 0 &&
+      !VersionFromString(&max_version, args_map["-max-version"])) {
+    fprintf(stderr, "Unknown protocol version: '%s'\n",
+            args_map["-max-version"].c_str());
+    return false;
+  }
+
+  if (!SSL_CTX_set_max_proto_version(ctx.get(), max_version)) {
+    return false;
   }
 
   if (args_map.count("-min-version") != 0) {
