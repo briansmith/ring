@@ -309,10 +309,6 @@ OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
  */
 OPENSSL_EXPORT int GFp_BN_lshift(BIGNUM *r, const BIGNUM *a, int n);
 
-/* GFp_BN_lshift1 sets |r| equal to |a| << 1, where |r| and |a| may be the same
- * pointer. It returns one on success and zero on allocation failure. */
-OPENSSL_EXPORT int GFp_BN_lshift1(BIGNUM *r, const BIGNUM *a);
-
 /* GFp_BN_rshift sets |r| equal to |a| >> n, where |r| and |a| may be the same
  * pointer. It returns one on success and zero on allocation failure. */
 OPENSSL_EXPORT int GFp_BN_rshift(BIGNUM *r, const BIGNUM *a, int n);

@@ -18,7 +18,7 @@
 
 #include "internal.h"
 #include "../internal.h"
-
+#include "../limbs/limbs.h"
 
 static uint64_t bn_neg_inv_mod_r_u64(uint64_t n);
 
@@ -176,25 +176,24 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
   }
 
   /* Set |r| to the largest power of two less than |n|. */
+  if (GFp_bn_wexpand(r, n->top) == NULL) {
+    return 0;
+  }
   assert(p > n_bits);
   if (!GFp_BN_set_bit(r, n_bits - 1)) {
     return 0;
   }
+  assert(r->dmax >= n->top);
+  assert(r->top == n->top || r->top == n->top - 1);
+  if (r->top < n->top) {
+    r->d[n->top] = 0;
+  }
 
   for (unsigned i = n_bits - 1; i < p; ++i) {
-    /* This is like |BN_mod_lshift1_quick| except using |BN_usub|.
-     *
-     * TODO: Replace this with the use of a constant-time variant of
-     * |BN_mod_lshift1_quick|. */
-    if (!GFp_BN_lshift1(r, r)) {
-      return 0;
-    }
-    if (GFp_BN_cmp(r, n) >= 0) {
-      if (!GFp_BN_usub(r, r, n)) {
-        return 0;
-      }
-    }
+    LIMBS_shl_mod(r->d, n->d, n->top);
   }
+
+  GFp_bn_correct_top(r);
 
   return 1;
 }
