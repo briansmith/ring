@@ -286,14 +286,26 @@ err:
 
 int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                     const BN_MONT_CTX *mont) {
-  int num = mont->N.top;
+  const BIGNUM *n = &mont->N;
+
+  assert(!GFp_BN_is_negative(a));
+  assert(GFp_BN_cmp(a, n) < 0);
+  assert(!GFp_BN_is_negative(b));
+  assert(GFp_BN_cmp(b, n) < 0);
+  assert(!GFp_BN_is_negative(n));
+
+  int num = n->top;
 
   /* GFp_bn_mul_mont requires at least four limbs, at least for x86. */
-  if (num >= 4 && a->top == num && b->top == num) {
+  if (num < 4) {
+    return 0;
+  }
+
+  if (a->top == num && b->top == num) {
     if (GFp_bn_wexpand(r, num) == NULL) {
       return 0;
     }
-    GFp_bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num);
+    GFp_bn_mul_mont(r->d, a->d, b->d, n->d, mont->n0, num);
     r->neg = a->neg ^ b->neg;
     r->top = num;
     GFp_bn_correct_top(r);
