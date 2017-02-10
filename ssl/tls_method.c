@@ -285,6 +285,7 @@ static void ssl_noop_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {}
 static int ssl_noop_x509_ssl_new(SSL *ctx) { return 1; }
 static void ssl_noop_x509_ssl_free(SSL *ctx) { }
 static void ssl_noop_x509_ssl_flush_cached_client_CA(SSL *ssl) {}
+static int ssl_noop_x509_ssl_auto_chain_if_needed(SSL *ssl) { return 1; }
 static int ssl_noop_x509_ssl_ctx_new(SSL_CTX *ctx) { return 1; }
 static void ssl_noop_x509_ssl_ctx_free(SSL_CTX *ctx) { }
 static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
@@ -304,6 +305,7 @@ const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_ssl_new,
   ssl_noop_x509_ssl_free,
   ssl_noop_x509_ssl_flush_cached_client_CA,
+  ssl_noop_x509_ssl_auto_chain_if_needed,
   ssl_noop_x509_ssl_ctx_new,
   ssl_noop_x509_ssl_ctx_free,
   ssl_noop_x509_ssl_ctx_flush_cached_client_CA,

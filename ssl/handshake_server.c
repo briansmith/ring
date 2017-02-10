@@ -877,7 +877,7 @@ static int ssl3_select_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_auto_chain_if_needed(ssl)) {
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(ssl)) {
     return -1;
   }
 

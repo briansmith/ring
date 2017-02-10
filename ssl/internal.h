@@ -826,11 +826,6 @@ STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
  * empty certificate list. It returns one on success and zero on error. */
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb);
 
-/* ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
- * necessary. On success, it updates |ssl|'s certificate configuration as needed
- * and returns one. Otherwise, it returns zero. */
-int ssl_auto_chain_if_needed(SSL *ssl);
-
 /* ssl_cert_check_digital_signature_key_usage parses the DER-encoded, X.509
  * certificate in |in| and returns one if doesn't specify a key usage or, if it
  * does, if it includes digitalSignature. Otherwise it pushes to the error
@@ -1487,6 +1482,10 @@ struct ssl_x509_method_st {
   void (*ssl_free)(SSL *ssl);
   /* ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|. */
   void (*ssl_flush_cached_client_CA)(SSL *ssl);
+  /* ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
+   * necessary. On success, it updates |ssl|'s certificate configuration as
+   * needed and returns one. Otherwise, it returns zero. */
+  int (*ssl_auto_chain_if_needed)(SSL *ssl);
   /* ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
    * success or zero on error. */
   int (*ssl_ctx_new)(SSL_CTX *ctx);

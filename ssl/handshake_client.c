@@ -1475,7 +1475,7 @@ static int ssl3_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_auto_chain_if_needed(ssl) ||
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(ssl) ||
       !ssl3_output_cert_chain(ssl)) {
     return -1;
   }

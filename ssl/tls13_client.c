@@ -495,7 +495,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_auto_chain_if_needed(ssl) ||
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(ssl) ||
       !tls13_add_certificate(hs)) {
     return ssl_hs_error;
   }
