@@ -1,7 +1,7 @@
 [package]
 authors = ["Brian Smith <brian@briansmith.org>"]
 build = "build.rs"
-categories = ["cryptography"]
+categories = ["cryptography", "no-std"]
 description = "Safe, fast, small crypto using Rust."
 documentation = "https://briansmith.org/rustdoc/ring/"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
