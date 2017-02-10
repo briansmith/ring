@@ -2496,10 +2496,11 @@ size_t SSL_get_server_random(const SSL *ssl, uint8_t *out, size_t max_out) {
 }
 
 const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl) {
-  if (!SSL_in_init(ssl)) {
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  if (hs == NULL) {
     return NULL;
   }
-  return ssl->s3->tmp.new_cipher;
+  return hs->new_cipher;
 }
 
 void SSL_set_retain_only_sha256_of_client_certs(SSL *ssl, int enabled) {

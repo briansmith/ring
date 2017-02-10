@@ -150,8 +150,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   /* Negotiate the cipher suite. */
-  ssl->s3->tmp.new_cipher = choose_tls13_cipher(ssl, &client_hello);
-  if (ssl->s3->tmp.new_cipher == NULL) {
+  hs->new_cipher = choose_tls13_cipher(ssl, &client_hello);
+  if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
@@ -189,7 +189,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   if (session != NULL &&
-      !ssl_session_is_resumable(ssl, session)) {
+      !ssl_session_is_resumable(hs, session)) {
     SSL_SESSION_free(session);
     session = NULL;
   }
@@ -202,13 +202,13 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    ssl->s3->new_session->cipher = ssl->s3->tmp.new_cipher;
+    hs->new_session->cipher = hs->new_cipher;
 
     /* On new sessions, stash the SNI value in the session. */
     if (hs->hostname != NULL) {
-      OPENSSL_free(ssl->s3->new_session->tlsext_hostname);
-      ssl->s3->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
-      if (ssl->s3->new_session->tlsext_hostname == NULL) {
+      OPENSSL_free(hs->new_session->tlsext_hostname);
+      hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
+      if (hs->new_session->tlsext_hostname == NULL) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
       }
@@ -222,8 +222,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     }
 
     /* Only authentication information carries over in TLS 1.3. */
-    ssl->s3->new_session = SSL_SESSION_dup(session, SSL_SESSION_DUP_AUTH_ONLY);
-    if (ssl->s3->new_session == NULL) {
+    hs->new_session = SSL_SESSION_dup(session, SSL_SESSION_DUP_AUTH_ONLY);
+    if (hs->new_session == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -231,7 +231,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     SSL_SESSION_free(session);
 
     /* Resumption incorporates fresh key material, so refresh the timeout. */
-    ssl_session_renew_timeout(ssl, ssl->s3->new_session,
+    ssl_session_renew_timeout(ssl, hs->new_session,
                               ssl->initial_ctx->session_psk_dhe_timeout);
   }
 
@@ -253,19 +253,19 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* Store the initial negotiated ALPN in the session. */
   if (ssl->s3->alpn_selected != NULL) {
-    ssl->s3->new_session->early_alpn =
+    hs->new_session->early_alpn =
         BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
-    if (ssl->s3->new_session->early_alpn == NULL) {
+    if (hs->new_session->early_alpn == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    ssl->s3->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
+    hs->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
   }
 
   /* Incorporate the PSK into the running secret. */
   if (ssl->s3->session_reused) {
-    if (!tls13_advance_key_schedule(hs, ssl->s3->new_session->master_key,
-                                    ssl->s3->new_session->master_key_length)) {
+    if (!tls13_advance_key_schedule(hs, hs->new_session->master_key,
+                                    hs->new_session->master_key_length)) {
       return ssl_hs_error;
     }
   } else if (!tls13_advance_key_schedule(hs, kZeroes, hs->hash_len)) {
@@ -351,7 +351,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, ssl->version) ||
       !RAND_bytes(ssl->s3->server_random, sizeof(ssl->s3->server_random)) ||
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u16(&body, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
+      !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher)) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
       !ssl_ext_key_share_add_serverhello(hs, &extensions)) {
@@ -483,7 +483,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
   if (!hs->cert_request) {
     /* OpenSSL returns X509_V_OK when no certificates are requested. This is
      * classed by them as a bug, but it's assumed by at least NGINX. */
-    ssl->s3->new_session->verify_result = X509_V_OK;
+    hs->new_session->verify_result = X509_V_OK;
 
     /* Skip this state. */
     hs->tls13_state = state_process_channel_id;
@@ -506,7 +506,7 @@ static enum ssl_hs_wait_t do_process_client_certificate(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_process_client_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0) {
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
     /* Skip this state. */
     hs->tls13_state = state_process_channel_id;
     return ssl_hs_ok;
@@ -554,7 +554,7 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL_HANDSHAKE *hs) {
 
   /* Rebase the session timestamp so that it is measured from ticket
    * issuance. */
-  ssl_session_rebase_time(ssl, ssl->s3->new_session);
+  ssl_session_rebase_time(ssl, hs->new_session);
   hs->tls13_state = state_send_new_session_ticket;
   return ssl_hs_ok;
 }
@@ -572,7 +572,7 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  SSL_SESSION *session = ssl->s3->new_session;
+  SSL_SESSION *session = hs->new_session;
   CBB cbb;
   CBB_zero(&cbb);
 

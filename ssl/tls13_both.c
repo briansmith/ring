@@ -211,7 +211,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
       if (retain_sha256) {
         /* Retain the hash of the leaf certificate if requested. */
         SHA256(CBS_data(&certificate), CBS_len(&certificate),
-               ssl->s3->new_session->peer_sha256);
+               hs->new_session->peer_sha256);
       }
     }
 
@@ -262,8 +262,8 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
       }
 
       if (sk_CRYPTO_BUFFER_num(certs) == 1 &&
-          !CBS_stow(&ocsp_response, &ssl->s3->new_session->ocsp_response,
-                    &ssl->s3->new_session->ocsp_response_length)) {
+          !CBS_stow(&ocsp_response, &hs->new_session->ocsp_response,
+                    &hs->new_session->ocsp_response_length)) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         goto err;
       }
@@ -283,10 +283,9 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
       }
 
       if (sk_CRYPTO_BUFFER_num(certs) == 1 &&
-          !CBS_stow(&sct,
-                    &ssl->s3->new_session->tlsext_signed_cert_timestamp_list,
-                    &ssl->s3->new_session
-                         ->tlsext_signed_cert_timestamp_list_length)) {
+          !CBS_stow(
+              &sct, &hs->new_session->tlsext_signed_cert_timestamp_list,
+              &hs->new_session->tlsext_signed_cert_timestamp_list_length)) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         goto err;
       }
@@ -303,17 +302,17 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
   hs->peer_pubkey = pkey;
   pkey = NULL;
 
-  sk_CRYPTO_BUFFER_pop_free(ssl->s3->new_session->certs, CRYPTO_BUFFER_free);
-  ssl->s3->new_session->certs = certs;
+  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
+  hs->new_session->certs = certs;
   certs = NULL;
 
-  if (!ssl->ctx->x509_method->session_cache_objects(ssl->s3->new_session)) {
+  if (!ssl->ctx->x509_method->session_cache_objects(hs->new_session)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     goto err;
   }
 
-  if (sk_CRYPTO_BUFFER_num(ssl->s3->new_session->certs) == 0) {
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
     if (!allow_anonymous) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_CERTIFICATE_REQUIRED);
@@ -322,17 +321,17 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
 
     /* OpenSSL returns X509_V_OK when no certificates are requested. This is
      * classed by them as a bug, but it's assumed by at least NGINX. */
-    ssl->s3->new_session->verify_result = X509_V_OK;
+    hs->new_session->verify_result = X509_V_OK;
 
     /* No certificate, so nothing more to do. */
     ret = 1;
     goto err;
   }
 
-  ssl->s3->new_session->peer_sha256_valid = retain_sha256;
+  hs->new_session->peer_sha256_valid = retain_sha256;
 
-  if (!ssl_verify_cert_chain(ssl, &ssl->s3->new_session->verify_result,
-                             ssl->s3->new_session->x509_chain)) {
+  if (!ssl_verify_cert_chain(ssl, &hs->new_session->verify_result,
+                             hs->new_session->x509_chain)) {
     goto err;
   }
 
@@ -370,7 +369,7 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
     goto err;
   }
-  ssl->s3->new_session->peer_signature_algorithm = signature_algorithm;
+  hs->new_session->peer_signature_algorithm = signature_algorithm;
 
   if (!tls13_get_cert_verify_signature_input(
           hs, &msg, &msg_len,

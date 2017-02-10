@@ -898,20 +898,20 @@ void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
   ssl_cert_set_cert_cb(ssl->cert, cb, arg);
 }
 
-int ssl_check_leaf_certificate(SSL *ssl, EVP_PKEY *pkey,
+int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
                                const CRYPTO_BUFFER *leaf) {
+  SSL *const ssl = hs->ssl;
   assert(ssl3_protocol_version(ssl) < TLS1_3_VERSION);
 
   /* Check the certificate's type matches the cipher. */
-  const SSL_CIPHER *cipher = ssl->s3->tmp.new_cipher;
-  int expected_type = ssl_cipher_get_key_type(cipher);
+  int expected_type = ssl_cipher_get_key_type(hs->new_cipher);
   assert(expected_type != EVP_PKEY_NONE);
   if (pkey->type != expected_type) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
     return 0;
   }
 
-  if (cipher->algorithm_auth & SSL_aECDSA) {
+  if (hs->new_cipher->algorithm_auth & SSL_aECDSA) {
     CBS leaf_cbs;
     CBS_init(&leaf_cbs, CRYPTO_BUFFER_data(leaf), CRYPTO_BUFFER_len(leaf));
     /* ECDSA and ECDH certificates use the same public key format. Instead,

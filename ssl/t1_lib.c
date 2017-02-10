@@ -616,9 +616,9 @@ static int ext_sni_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   assert(ssl->tlsext_hostname != NULL);
 
   if (ssl->session == NULL) {
-    OPENSSL_free(ssl->s3->new_session->tlsext_hostname);
-    ssl->s3->new_session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
-    if (!ssl->s3->new_session->tlsext_hostname) {
+    OPENSSL_free(hs->new_session->tlsext_hostname);
+    hs->new_session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
+    if (!hs->new_session->tlsext_hostname) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return 0;
     }
@@ -1118,7 +1118,7 @@ static int ext_ocsp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   /* OCSP stapling is forbidden on non-certificate ciphers. */
   if (CBS_len(contents) != 0 ||
-      !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+      !ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     return 0;
   }
 
@@ -1154,7 +1154,7 @@ static int ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !hs->ocsp_stapling_requested ||
       ssl->cert->ocsp_response == NULL ||
       ssl->s3->session_reused ||
-      !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
+      !ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     return 1;
   }
 
@@ -1341,10 +1341,8 @@ static int ext_sct_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
    *
    * TODO(davidben): Enforce this anyway. */
   if (!ssl->s3->session_reused &&
-      !CBS_stow(
-          contents,
-          &ssl->s3->new_session->tlsext_signed_cert_timestamp_list,
-          &ssl->s3->new_session->tlsext_signed_cert_timestamp_list_length)) {
+      !CBS_stow(contents, &hs->new_session->tlsext_signed_cert_timestamp_list,
+                &hs->new_session->tlsext_signed_cert_timestamp_list_length)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
@@ -1853,8 +1851,8 @@ static int ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
     return 1;
   }
 
-  const uint32_t alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
-  const uint32_t alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
+  const uint32_t alg_k = hs->new_cipher->algorithm_mkey;
+  const uint32_t alg_a = hs->new_cipher->algorithm_auth;
   const int using_ecc = (alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA);
 
   if (!using_ecc) {
@@ -2219,7 +2217,6 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents) {
-  SSL *const ssl = hs->ssl;
   CBS peer_key;
   uint16_t group_id;
   if (!CBS_get_u16(contents, &group_id) ||
@@ -2241,7 +2238,7 @@ int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
     return 0;
   }
 
-  ssl->s3->new_session->group_id = group_id;
+  hs->new_session->group_id = group_id;
   SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
   return 1;
 }
@@ -2323,7 +2320,6 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
 }
 
 int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
   uint16_t group_id;
   CBB kse_bytes, public_key;
   if (!tls1_get_shared_group(hs, &group_id) ||
@@ -2340,7 +2336,7 @@ int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   hs->public_key = NULL;
   hs->public_key_len = 0;
 
-  ssl->s3->new_session->group_id = group_id;
+  hs->new_session->group_id = group_id;
   return 1;
 }
 
@@ -3519,7 +3515,7 @@ int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len) {
 }
 
 /* tls1_record_handshake_hashes_for_channel_id records the current handshake
- * hashes in |ssl->s3->new_session| so that Channel ID resumptions can sign that
+ * hashes in |hs->new_session| so that Channel ID resumptions can sign that
  * data. */
 int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
@@ -3531,18 +3527,18 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
   }
 
   OPENSSL_COMPILE_ASSERT(
-      sizeof(ssl->s3->new_session->original_handshake_hash) == EVP_MAX_MD_SIZE,
+      sizeof(hs->new_session->original_handshake_hash) == EVP_MAX_MD_SIZE,
       original_handshake_hash_is_too_small);
 
   size_t digest_len;
   if (!SSL_TRANSCRIPT_get_hash(&hs->transcript,
-                               ssl->s3->new_session->original_handshake_hash,
+                               hs->new_session->original_handshake_hash,
                                &digest_len)) {
     return -1;
   }
 
   OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE <= 0xff, max_md_size_is_too_large);
-  ssl->s3->new_session->original_handshake_hash_len = (uint8_t)digest_len;
+  hs->new_session->original_handshake_hash_len = (uint8_t)digest_len;
 
   return 1;
 }

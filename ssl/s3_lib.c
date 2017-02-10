@@ -197,7 +197,6 @@ void ssl3_free(SSL *ssl) {
   ssl_read_buffer_clear(ssl);
   ssl_write_buffer_clear(ssl);
 
-  SSL_SESSION_free(ssl->s3->new_session);
   SSL_SESSION_free(ssl->s3->established_session);
   ssl_handshake_free(ssl->s3->hs);
   OPENSSL_free(ssl->s3->next_proto_negotiated);

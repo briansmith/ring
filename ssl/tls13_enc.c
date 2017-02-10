@@ -30,7 +30,7 @@
 
 int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
   if (!SSL_TRANSCRIPT_init_hash(&hs->transcript, ssl3_protocol_version(hs->ssl),
-                                hs->ssl->s3->tmp.new_cipher->algorithm_prf)) {
+                                hs->new_cipher->algorithm_prf)) {
     return 0;
   }
 
@@ -237,17 +237,15 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 static const char kTLS13LabelResumption[] = "resumption master secret";
 
 int tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (ssl->s3->hs->hash_len > SSL_MAX_MASTER_KEY_LENGTH) {
+  if (hs->hash_len > SSL_MAX_MASTER_KEY_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  ssl->s3->new_session->master_key_length = hs->hash_len;
-  return derive_secret(hs, ssl->s3->new_session->master_key,
-                       ssl->s3->new_session->master_key_length,
-                       (const uint8_t *)kTLS13LabelResumption,
-                       strlen(kTLS13LabelResumption));
+  hs->new_session->master_key_length = hs->hash_len;
+  return derive_secret(
+      hs, hs->new_session->master_key, hs->new_session->master_key_length,
+      (const uint8_t *)kTLS13LabelResumption, strlen(kTLS13LabelResumption));
 }
 
 static const char kTLS13LabelFinished[] = "finished";

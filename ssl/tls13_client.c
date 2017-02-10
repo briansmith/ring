@@ -251,34 +251,33 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
 
     ssl->s3->session_reused = 1;
     /* Only authentication information carries over in TLS 1.3. */
-    ssl->s3->new_session =
-        SSL_SESSION_dup(ssl->session, SSL_SESSION_DUP_AUTH_ONLY);
-    if (ssl->s3->new_session == NULL) {
+    hs->new_session = SSL_SESSION_dup(ssl->session, SSL_SESSION_DUP_AUTH_ONLY);
+    if (hs->new_session == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
     ssl_set_session(ssl, NULL);
 
     /* Resumption incorporates fresh key material, so refresh the timeout. */
-    ssl_session_renew_timeout(ssl, ssl->s3->new_session,
+    ssl_session_renew_timeout(ssl, hs->new_session,
                               ssl->initial_ctx->session_psk_dhe_timeout);
   } else if (!ssl_get_new_session(hs, 0)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
-  ssl->s3->new_session->cipher = cipher;
-  ssl->s3->tmp.new_cipher = cipher;
+  hs->new_session->cipher = cipher;
+  hs->new_cipher = cipher;
 
   /* Store the initial negotiated ALPN in the session. */
   if (ssl->s3->alpn_selected != NULL) {
-    ssl->s3->new_session->early_alpn =
+    hs->new_session->early_alpn =
         BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
-    if (ssl->s3->new_session->early_alpn == NULL) {
+    if (hs->new_session->early_alpn == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    ssl->s3->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
+    hs->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
   }
 
   /* The PRF hash is now known. Set up the key schedule. */
@@ -288,8 +287,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
 
   /* Incorporate the PSK into the running secret. */
   if (ssl->s3->session_reused) {
-    if (!tls13_advance_key_schedule(hs, ssl->s3->new_session->master_key,
-                                    ssl->s3->new_session->master_key_length)) {
+    if (!tls13_advance_key_schedule(hs, hs->new_session->master_key,
+                                    hs->new_session->master_key_length)) {
       return ssl_hs_error;
     }
   } else if (!tls13_advance_key_schedule(hs, kZeroes, hs->hash_len)) {
