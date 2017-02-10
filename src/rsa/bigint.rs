@@ -314,6 +314,14 @@ impl<M> Elem<M, R> {
 }
 
 impl<M> Elem<M, Unencoded> {
+    pub fn one() -> Result<Self, error::Unspecified> {
+        let mut r = try!(Elem::zero());
+        try!(bssl::map_result(unsafe {
+            GFp_BN_one(r.value.as_mut_ref())
+        }));
+        Ok(r)
+    }
+
     pub fn fill_be_bytes(&self, out: &mut [u8])
                          -> Result<(), error::Unspecified> {
         bssl::map_result(unsafe {
@@ -513,12 +521,12 @@ pub fn elem_exp_vartime<M>(
 }
 
 pub fn elem_exp_consttime<M>(
-        base: Elem<M, R>, exponent: &OddPositive, m: &Modulus<M>)
-        -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        base: Elem<M, R>, exponent: &OddPositive, one: &Elem<M, R>,
+        m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = base.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(&mut r.0, &r.0, exponent.as_ref(),
-                                      m.as_ref())
+                                      one.value.as_ref(), m.as_ref())
     }));
     Ok(Elem {
         value: r,
@@ -721,6 +729,7 @@ mod repr_c {
 pub use self::repr_c::{BIGNUM, BN_MONT_CTX};
 
 extern {
+    fn GFp_BN_one(r: &mut BIGNUM) -> c::int;
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
     fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
@@ -751,7 +760,8 @@ extern {
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
-                                     p: &BIGNUM, m: &BN_MONT_CTX) -> c::int;
+                                     p: &BIGNUM, one_mont: &BIGNUM,
+                                     m: &BN_MONT_CTX) -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
@@ -821,7 +831,11 @@ mod tests {
             let e = consume_odd_positive(test_case, "E");
 
             let base = base.into_encoded(&m).unwrap();
-            let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
+            let one = Positive::from_be_bytes(
+                        untrusted::Input::from(&[1])).unwrap();
+            let one = one.into_elem(&m).unwrap();
+            let one = one.into_encoded(&m).unwrap();
+            let actual_result = elem_exp_consttime(base, &e, &one, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())

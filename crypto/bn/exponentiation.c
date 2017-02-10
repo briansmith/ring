@@ -253,9 +253,11 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * pointed out by Colin Percival,
  * http://www.daemonology.net/hyperthreading-considered-harmful/).
  *
- * |p| must be positive. |a| must in [0, m). */
+ * |p| must be positive. |a_mont| must in [0, m). |one_mont| must be
+ * the value 1 Montgomery-encoded and fully reduced (mod m). */
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
-                                  const BIGNUM *p, const BN_MONT_CTX *mont) {
+                                  const BIGNUM *p, const BIGNUM *one_mont,
+                                  const BN_MONT_CTX *mont) {
   const BIGNUM *m = &mont->N;
 
   assert(!GFp_BN_is_negative(a_mont));
@@ -330,22 +332,9 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   tmp.neg = am.neg = 0;
   tmp.flags = am.flags = BN_FLG_STATIC_DATA;
 
-/* prepare a^0 in Montgomery domain */
-/* by Shay Gueron's suggestion */
-  if (m->d[top - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    /* 2^(top*BN_BITS2) - m */
-    tmp.d[0] = (0 - m->d[0]) & BN_MASK2;
-    for (i = 1; i < top; i++) {
-      tmp.d[i] = (~m->d[i]) & BN_MASK2;
-    }
-    tmp.top = top;
-  } else if (!GFp_BN_set_word(&tmp, 1) ||
-             !GFp_BN_to_mont(&tmp, &tmp, mont)) {
-    goto err;
-  }
-
-  /* Copy a^1. */
-  if (!GFp_BN_copy(&am, a_mont)) {
+  /* Copy a^0 and a^1. */
+  if (!GFp_BN_copy(&tmp, one_mont) ||
+      !GFp_BN_copy(&am, a_mont)) {
     goto err;
   }
 

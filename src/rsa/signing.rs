@@ -40,6 +40,9 @@ pub struct RSAKeyPair {
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
 
+    one_mod_p: bigint::Elem<P, R>, // 1 (mod p), Montgomery encoded.
+    one_mod_q: bigint::Elem<Q, R>, // 1 (mod q), Montgomery encoded.
+
     n_bits: bits::BitLength,
 }
 
@@ -199,6 +202,12 @@ impl RSAKeyPair {
 
                 let q = try!(q.into_modulus::<Q>());
 
+                let one_mod_p = try!(bigint::Elem::one());
+                let one_mod_p = try!(one_mod_p.into_encoded(&p));
+
+                let one_mod_q = try!(bigint::Elem::one());
+                let one_mod_q = try!(one_mod_q.into_encoded(&q));
+
                 Ok(RSAKeyPair {
                     n: n,
                     e: e,
@@ -209,6 +218,8 @@ impl RSAKeyPair {
                     qInv: qInv,
                     q_mod_n: q_mod_n,
                     qq: qq,
+                    one_mod_p: one_mod_p,
+                    one_mod_q: one_mod_q,
                     n_bits: n_bits,
                 })
             })
@@ -351,12 +362,14 @@ impl RSASigningState {
 
             let c_mod_p = try!(bigint::elem_reduced(&c, &key.p));
             let m_1 =
-                try!(bigint::elem_exp_consttime(c_mod_p, &key.dP, &key.p));
+                try!(bigint::elem_exp_consttime(c_mod_p, &key.dP,
+                                                &key.one_mod_p, &key.p));
 
             let c_mod_qq = try!(bigint::elem_reduced_once(&c, &key.qq));
             let c_mod_q = try!(bigint::elem_reduced(&c_mod_qq, &key.q));
             let m_2 =
-                try!(bigint::elem_exp_consttime(c_mod_q, &key.dQ, &key.q));
+                try!(bigint::elem_exp_consttime(c_mod_q, &key.dQ,
+                                                &key.one_mod_q, &key.q));
 
             // Step 2.b.ii isn't needed since there are only two primes.
 
