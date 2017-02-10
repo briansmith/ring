@@ -678,7 +678,6 @@ static int read_v2_client_hello(SSL *ssl) {
 }
 
 int ssl3_get_message(SSL *ssl) {
-again:
   /* Re-create the handshake buffer if needed. */
   if (ssl->init_buf == NULL) {
     ssl->init_buf = BUF_MEM_new();
@@ -733,16 +732,6 @@ again:
   ssl->s3->tmp.message_type = ((const uint8_t *)ssl->init_buf->data)[0];
   ssl->init_msg = (uint8_t*)ssl->init_buf->data + SSL3_HM_HEADER_LENGTH;
   ssl->init_num = ssl->init_buf->length - SSL3_HM_HEADER_LENGTH;
-
-  /* Ignore stray HelloRequest messages in the handshake before TLS 1.3. Per RFC
-   * 5246, section 7.4.1.1, the server may send HelloRequest at any time. */
-  if (!ssl->server && SSL_in_init(ssl) &&
-      (!ssl->s3->have_version || ssl3_protocol_version(ssl) < TLS1_3_VERSION) &&
-      ssl->s3->tmp.message_type == SSL3_MT_HELLO_REQUEST &&
-      ssl->init_num == 0) {
-    goto again;
-  }
-
   return 1;
 }
 

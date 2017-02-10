@@ -6395,7 +6395,7 @@ func addRenegotiationTests() {
 		// this case. https://crbug.com/boringssl/130
 	})
 
-	// Stray HelloRequests during the handshake are ignored in TLS 1.2.
+	// We reject stray HelloRequests during the handshake in TLS 1.2.
 	testCases = append(testCases, testCase{
 		name: "StrayHelloRequest",
 		config: Config{
@@ -6404,6 +6404,8 @@ func addRenegotiationTests() {
 				SendHelloRequestBeforeEveryHandshakeMessage: true,
 			},
 		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
 	testCases = append(testCases, testCase{
 		name: "StrayHelloRequest-Packed",
@@ -6414,6 +6416,8 @@ func addRenegotiationTests() {
 				SendHelloRequestBeforeEveryHandshakeMessage: true,
 			},
 		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
 
 	// Test renegotiation works if HelloRequest and server Finished come in
