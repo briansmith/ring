@@ -263,7 +263,7 @@ static bool TestLShift1(FileTest *t) {
       !GFp_BN_div(ret.get(), remainder.get(), lshift1.get(), two.get()) ||
       !ExpectBIGNUMsEqual(t, "LShift1 / 2", a.get(), ret.get()) ||
       !ExpectBIGNUMsEqual(t, "LShift1 % 2", zero.get(), remainder.get()) ||
-      !GFp_BN_lshift1(ret.get(), a.get()) ||
+      !GFp_BN_lshift(ret.get(), a.get(), 1) ||
       !ExpectBIGNUMsEqual(t, "A << 1", lshift1.get(), ret.get()) ||
       !GFp_BN_rshift1(ret.get(), lshift1.get()) ||
       !ExpectBIGNUMsEqual(t, "LShift >> 1", a.get(), ret.get()) ||

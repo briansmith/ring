@@ -101,37 +101,6 @@ int GFp_BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   return 1;
 }
 
-int GFp_BN_lshift1(BIGNUM *r, const BIGNUM *a) {
-  BN_ULONG *ap, *rp, t, c;
-  int i;
-
-  if (r != a) {
-    r->neg = a->neg;
-    if (GFp_bn_wexpand(r, a->top + 1) == NULL) {
-      return 0;
-    }
-    r->top = a->top;
-  } else {
-    if (GFp_bn_wexpand(r, a->top + 1) == NULL) {
-      return 0;
-    }
-  }
-  ap = a->d;
-  rp = r->d;
-  c = 0;
-  for (i = 0; i < a->top; i++) {
-    t = *(ap++);
-    *(rp++) = ((t << 1) | c) & BN_MASK2;
-    c = (t & BN_TBIT) ? 1 : 0;
-  }
-  if (c) {
-    *rp = 1;
-    r->top++;
-  }
-
-  return 1;
-}
-
 int GFp_BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, j, nw, lb, rb;
   BN_ULONG *t, *f;
