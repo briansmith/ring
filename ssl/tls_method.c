@@ -264,6 +264,8 @@ static int ssl_noop_x509_check_client_CA_names(
 }
 
 static void ssl_noop_x509_clear(CERT *cert) {}
+static void ssl_noop_x509_free(CERT *cert) {}
+static void ssl_noop_x509_dup(CERT *new_cert, const CERT *cert) {}
 static void ssl_noop_x509_flush_cached_leaf(CERT *cert) {}
 static void ssl_noop_x509_flush_cached_chain(CERT *cert) {}
 static int ssl_noop_x509_session_cache_objects(SSL_SESSION *sess) {
@@ -274,20 +276,35 @@ static int ssl_noop_x509_session_dup(SSL_SESSION *new_session,
   return 1;
 }
 static void ssl_noop_x509_session_clear(SSL_SESSION *session) {}
+static int ssl_noop_x509_session_verify_cert_chain(SSL_SESSION *session,
+                                                   SSL *ssl) {
+  return 0;
+}
 
 static void ssl_noop_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {}
+static int ssl_noop_x509_ssl_new(SSL *ctx) { return 1; }
+static void ssl_noop_x509_ssl_free(SSL *ctx) { }
 static void ssl_noop_x509_ssl_flush_cached_client_CA(SSL *ssl) {}
+static int ssl_noop_x509_ssl_ctx_new(SSL_CTX *ctx) { return 1; }
+static void ssl_noop_x509_ssl_ctx_free(SSL_CTX *ctx) { }
 static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
 
 const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_check_client_CA_names,
   ssl_noop_x509_clear,
+  ssl_noop_x509_free,
+  ssl_noop_x509_dup,
   ssl_noop_x509_flush_cached_chain,
   ssl_noop_x509_flush_cached_leaf,
   ssl_noop_x509_session_cache_objects,
   ssl_noop_x509_session_dup,
   ssl_noop_x509_session_clear,
+  ssl_noop_x509_session_verify_cert_chain,
   ssl_noop_x509_hs_flush_cached_ca_names,
+  ssl_noop_x509_ssl_new,
+  ssl_noop_x509_ssl_free,
   ssl_noop_x509_ssl_flush_cached_client_CA,
+  ssl_noop_x509_ssl_ctx_new,
+  ssl_noop_x509_ssl_ctx_free,
   ssl_noop_x509_ssl_ctx_flush_cached_client_CA,
 };

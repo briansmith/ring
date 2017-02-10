@@ -1451,10 +1451,14 @@ struct ssl_x509_method_st {
    * reject unparsable values at handshake time when using crypto/x509. */
   int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
 
-  /* cert_clear frees and NULLs all X509-related state. */
+  /* cert_clear frees and NULLs all X509 certificate-related state. */
   void (*cert_clear)(CERT *cert);
+  /* cert_free frees all X509-related state. */
+  void (*cert_free)(CERT *cert);
   /* cert_flush_cached_chain drops any cached |X509|-based certificate chain
    * from |cert|. */
+  /* cert_dup duplicates any needed fields from |cert| to |new_cert|. */
+  void (*cert_dup)(CERT *new_cert, const CERT *cert);
   void (*cert_flush_cached_chain)(CERT *cert);
   /* cert_flush_cached_chain drops any cached |X509|-based leaf certificate
    * from |cert|. */
@@ -1469,11 +1473,25 @@ struct ssl_x509_method_st {
   int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
   /* session_clear frees any X509-related state from |session|. */
   void (*session_clear)(SSL_SESSION *session);
+  /* session_verify_cert_chain verifies the certificate chain in |session|,
+   * sets |session->verify_result| and returns one on success or zero on
+   * error. */
+  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL *ssl);
 
   /* hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|. */
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
+  /* ssl_new does any neccessary initialisation of |ssl|. It returns one on
+   * success or zero on error. */
+  int (*ssl_new)(SSL *ssl);
+  /* ssl_free frees anything created by |ssl_new|. */
+  void (*ssl_free)(SSL *ssl);
   /* ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|. */
   void (*ssl_flush_cached_client_CA)(SSL *ssl);
+  /* ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
+   * success or zero on error. */
+  int (*ssl_ctx_new)(SSL_CTX *ctx);
+  /* ssl_ctx_free frees anything created by |ssl_ctx_new|. */
+  void (*ssl_ctx_free)(SSL_CTX *ctx);
   /* ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|. */
   void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
 };
@@ -2010,8 +2028,6 @@ void ssl_cipher_preference_list_free(
 const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
     const SSL *ssl);
 
-int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
-                          STACK_OF(X509) *cert_chain);
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 int ssl_verify_alarm_type(long type);

@@ -133,14 +133,6 @@
 #include "internal.h"
 
 
-int SSL_get_ex_data_X509_STORE_CTX_idx(void) {
-  /* The ex_data index to go from |X509_STORE_CTX| to |SSL| always uses the
-   * reserved app_data slot. Before ex_data was introduced, app_data was used.
-   * Avoid breaking any software which assumes |X509_STORE_CTX_get_app_data|
-   * works. */
-  return 0;
-}
-
 CERT *ssl_cert_new(const SSL_X509_METHOD *x509_method) {
   CERT *ret = OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
@@ -198,10 +190,7 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->cert_cb = cert->cert_cb;
   ret->cert_cb_arg = cert->cert_cb_arg;
 
-  if (cert->verify_store != NULL) {
-    X509_STORE_up_ref(cert->verify_store);
-    ret->verify_store = cert->verify_store;
-  }
+  ret->x509_method->cert_dup(ret, cert);
 
   if (cert->signed_cert_timestamp_list != NULL) {
     CRYPTO_BUFFER_up_ref(cert->signed_cert_timestamp_list);
@@ -246,8 +235,8 @@ void ssl_cert_free(CERT *c) {
   DH_free(c->dh_tmp);
 
   ssl_cert_clear_certs(c);
+  c->x509_method->cert_free(c);
   OPENSSL_free(c->sigalgs);
-  X509_STORE_free(c->verify_store);
   CRYPTO_BUFFER_free(c->signed_cert_timestamp_list);
   CRYPTO_BUFFER_free(c->ocsp_response);
 
@@ -345,65 +334,6 @@ int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
   const int ok = ssl_set_cert(ssl->cert, buffer);
   CRYPTO_BUFFER_free(buffer);
   return ok;
-}
-
-int ssl_verify_cert_chain(SSL *ssl, long *out_verify_result,
-                          STACK_OF(X509) *cert_chain) {
-  if (cert_chain == NULL || sk_X509_num(cert_chain) == 0) {
-    return 0;
-  }
-
-  X509_STORE *verify_store = ssl->ctx->cert_store;
-  if (ssl->cert->verify_store != NULL) {
-    verify_store = ssl->cert->verify_store;
-  }
-
-  X509 *leaf = sk_X509_value(cert_chain, 0);
-  int ret = 0;
-  X509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(&ctx, verify_store, leaf, cert_chain)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
-    return 0;
-  }
-  if (!X509_STORE_CTX_set_ex_data(&ctx, SSL_get_ex_data_X509_STORE_CTX_idx(),
-                                  ssl)) {
-    goto err;
-  }
-
-  /* We need to inherit the verify parameters. These can be determined by the
-   * context: if its a server it will verify SSL client certificates or vice
-   * versa. */
-  X509_STORE_CTX_set_default(&ctx, ssl->server ? "ssl_client" : "ssl_server");
-
-  /* Anything non-default in "param" should overwrite anything in the ctx. */
-  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(&ctx), ssl->param);
-
-  if (ssl->verify_callback) {
-    X509_STORE_CTX_set_verify_cb(&ctx, ssl->verify_callback);
-  }
-
-  int verify_ret;
-  if (ssl->ctx->app_verify_callback != NULL) {
-    verify_ret = ssl->ctx->app_verify_callback(&ctx, ssl->ctx->app_verify_arg);
-  } else {
-    verify_ret = X509_verify_cert(&ctx);
-  }
-
-  *out_verify_result = ctx.error;
-
-  /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
-  if (verify_ret <= 0 && ssl->verify_mode != SSL_VERIFY_NONE) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, ssl_verify_alarm_type(ctx.error));
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-    goto err;
-  }
-
-  ERR_clear_error();
-  ret = 1;
-
-err:
-  X509_STORE_CTX_cleanup(&ctx);
-  return ret;
 }
 
 int ssl_has_certificate(const SSL *ssl) {
@@ -766,33 +696,6 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
-static int set_cert_store(X509_STORE **store_ptr, X509_STORE *new_store, int take_ref) {
-  X509_STORE_free(*store_ptr);
-  *store_ptr = new_store;
-
-  if (new_store != NULL && take_ref) {
-    X509_STORE_up_ref(new_store);
-  }
-
-  return 1;
-}
-
-int SSL_CTX_set0_verify_cert_store(SSL_CTX *ctx, X509_STORE *store) {
-  return set_cert_store(&ctx->cert->verify_store, store, 0);
-}
-
-int SSL_CTX_set1_verify_cert_store(SSL_CTX *ctx, X509_STORE *store) {
-  return set_cert_store(&ctx->cert->verify_store, store, 1);
-}
-
-int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store) {
-  return set_cert_store(&ssl->cert->verify_store, store, 0);
-}
-
-int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store) {
-  return set_cert_store(&ssl->cert->verify_store, store, 1);
-}
-
 void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
                          void *arg) {
   ssl_cert_set_cert_cb(ctx->cert, cb, arg);
@@ -842,38 +745,6 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
   }
 
   return 1;
-}
-
-static int do_client_cert_cb(SSL *ssl, void *arg) {
-  if (ssl_has_certificate(ssl) || ssl->ctx->client_cert_cb == NULL) {
-    return 1;
-  }
-
-  X509 *x509 = NULL;
-  EVP_PKEY *pkey = NULL;
-  int ret = ssl->ctx->client_cert_cb(ssl, &x509, &pkey);
-  if (ret < 0) {
-    return -1;
-  }
-
-  if (ret != 0) {
-    if (!SSL_use_certificate(ssl, x509) ||
-        !SSL_use_PrivateKey(ssl, pkey)) {
-      return 0;
-    }
-  }
-
-  X509_free(x509);
-  EVP_PKEY_free(pkey);
-  return 1;
-}
-
-void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl,
-                                                        X509 **out_x509,
-                                                        EVP_PKEY **out_pkey)) {
-  /* Emulate the old client certificate callback with the new one. */
-  SSL_CTX_set_cert_cb(ctx, do_client_cert_cb, NULL);
-  ctx->client_cert_cb = cb;
 }
 
 static int set_signed_cert_timestamp_list(CERT *cert, const uint8_t *list,

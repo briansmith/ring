@@ -1481,10 +1481,10 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
     hs->new_session->peer_sha256_valid = 1;
   }
 
-  if (!ssl_verify_cert_chain(ssl, &hs->new_session->verify_result,
-                             hs->new_session->x509_chain)) {
+  if (!ssl->ctx->x509_method->session_verify_cert_chain(hs->new_session, ssl)) {
     return -1;
   }
+
   return 1;
 }
 

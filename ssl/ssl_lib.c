@@ -235,11 +235,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return NULL;
   }
 
-  if (SSL_get_ex_data_X509_STORE_CTX_idx() < 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_X509_VERIFICATION_SETUP_PROBLEMS);
-    goto err;
-  }
-
   ret = OPENSSL_malloc(sizeof(SSL_CTX));
   if (ret == NULL) {
     goto err;
@@ -271,8 +266,8 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   if (ret->sessions == NULL) {
     goto err;
   }
-  ret->cert_store = X509_STORE_new();
-  if (ret->cert_store == NULL) {
+
+  if (!ret->x509_method->ssl_ctx_new(ret)) {
     goto err;
   }
 
@@ -282,11 +277,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
       sk_SSL_CIPHER_num(ret->cipher_list->ciphers) <= 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_LIBRARY_HAS_NO_CIPHERS);
     goto err2;
-  }
-
-  ret->param = X509_VERIFY_PARAM_new();
-  if (!ret->param) {
-    goto err;
   }
 
   ret->client_CA = sk_CRYPTO_BUFFER_new_null();
@@ -337,8 +327,6 @@ void SSL_CTX_free(SSL_CTX *ctx) {
     return;
   }
 
-  X509_VERIFY_PARAM_free(ctx->param);
-
   /* Free internal session cache. However: the remove_cb() may reference the
    * ex_data of SSL_CTX, thus the ex_data store can only be removed after the
    * sessions were flushed. As the ex_data handling routines might also touch
@@ -351,7 +339,6 @@ void SSL_CTX_free(SSL_CTX *ctx) {
 
   CRYPTO_MUTEX_cleanup(&ctx->lock);
   lh_SSL_SESSION_free(ctx->sessions);
-  X509_STORE_free(ctx->cert_store);
   ssl_cipher_preference_list_free(ctx->cipher_list);
   ssl_cert_free(ctx->cert);
   sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
@@ -359,7 +346,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
                                    SSL_CUSTOM_EXTENSION_free);
   sk_CRYPTO_BUFFER_pop_free(ctx->client_CA, CRYPTO_BUFFER_free);
-  ctx->x509_method->ssl_ctx_flush_cached_client_CA(ctx);
+  ctx->x509_method->ssl_ctx_free(ctx);
   sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   OPENSSL_free(ctx->psk_identity_hint);
   OPENSSL_free(ctx->supported_group_list);
@@ -408,11 +395,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
 
-  ssl->param = X509_VERIFY_PARAM_new();
-  if (!ssl->param) {
-    goto err;
-  }
-  X509_VERIFY_PARAM_inherit(ssl->param, ctx->param);
   ssl->quiet_shutdown = ctx->quiet_shutdown;
   ssl->max_send_fragment = ctx->max_send_fragment;
 
@@ -420,6 +402,10 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->ctx = ctx;
   SSL_CTX_up_ref(ctx);
   ssl->initial_ctx = ctx;
+
+  if (!ssl->ctx->x509_method->ssl_new(ssl)) {
+    goto err;
+  }
 
   if (ctx->supported_group_list) {
     ssl->supported_group_list = BUF_memdup(ctx->supported_group_list,
@@ -482,8 +468,7 @@ void SSL_free(SSL *ssl) {
     return;
   }
 
-  X509_VERIFY_PARAM_free(ssl->param);
-
+  ssl->ctx->x509_method->ssl_free(ssl);
   CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
 
   BIO_free_all(ssl->rbio);
@@ -505,7 +490,6 @@ void SSL_free(SSL *ssl) {
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
   OPENSSL_free(ssl->psk_identity_hint);
   sk_CRYPTO_BUFFER_pop_free(ssl->client_CA, CRYPTO_BUFFER_free);
-  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl);
   sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
 
   if (ssl->method != NULL) {
