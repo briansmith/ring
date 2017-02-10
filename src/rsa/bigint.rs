@@ -336,7 +336,8 @@ impl<M> Elem<M, Unencoded> {
                         -> Result<Elem<M, R>, error::Unspecified> {
         let mut value = self.value;
         try!(bssl::map_result(unsafe {
-            GFp_BN_to_mont(value.as_mut_ref(), value.as_ref(), m.as_ref())
+            GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), m.ctx.RR(),
+                                m.as_ref())
         }));
         Ok(Elem {
             value: value,
@@ -399,7 +400,8 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
                                     tmp.value.as_mut_ref(), m.as_ref())
     }));
     try!(bssl::map_result(unsafe {
-        GFp_BN_to_mont(r.value.as_mut_ref(), r.value.as_ref(), m.as_ref())
+        GFp_BN_mod_mul_mont(r.value.as_mut_ref(), r.value.as_ref(), m.ctx.RR(),
+                            m.as_ref())
     }));
     let r = try!(r.into_encoded(m));
     Ok(r)
@@ -723,6 +725,7 @@ mod repr_c {
         }
 
         pub fn n(&self) -> &BIGNUM { &self.N }
+        pub fn RR(&self) -> &BIGNUM { &self.RR }
     }
 }
 
@@ -745,8 +748,6 @@ extern {
     // `r` and `a` may alias.
     fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
                         -> c::int;
-    fn GFp_BN_to_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
-                      -> c::int;
     fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
                               a: *const BIGNUM, m: &BIGNUM) -> c::int;
 

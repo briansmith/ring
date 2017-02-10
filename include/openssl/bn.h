@@ -391,12 +391,6 @@ int GFp_BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
  * It returns one on success and zero on error. */
 OPENSSL_EXPORT int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod);
 
-/* GFp_BN_to_mont sets |ret| equal to |a| in the Montgomery domain. |a| is
- * assumed to be in the range [0, n), where |n| is the Montgomery modulus. It
- * returns one on success or zero on error. */
-OPENSSL_EXPORT int GFp_BN_to_mont(BIGNUM *ret, const BIGNUM *a,
-                                  const BN_MONT_CTX *mont);
-
 /* GFp_BN_from_mont sets |ret| equal to |a| * R^-1, i.e. translates values out
  * of the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
  * is the Montgomery modulus. It returns one on success or zero on error. */

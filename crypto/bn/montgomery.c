@@ -179,10 +179,6 @@ int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   return 1;
 }
 
-int GFp_BN_to_mont(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont) {
-  return GFp_BN_mod_mul_mont(ret, a, &mont->RR, mont);
-}
-
 int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
                                 const BN_MONT_CTX *mont) {
   assert(ret != r);
