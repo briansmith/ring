@@ -229,12 +229,11 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
 
     if (*val)
         x509_name_ex_free(val, NULL);
-    /* We've decoded it: now cache encoding */
-    if (!x509_name_ex_new(&nm.a, NULL) || !BUF_MEM_grow(nm.x->bytes, p - q)) {
-        sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname.s,
-                                             local_sk_X509_NAME_ENTRY_pop_free);
+    if (!x509_name_ex_new(&nm.a, NULL))
         goto err;
-    }
+    /* We've decoded it: now cache encoding */
+    if (!BUF_MEM_grow(nm.x->bytes, p - q))
+        goto err;
     OPENSSL_memcpy(nm.x->bytes->data, q, p - q);
 
     /* Convert internal representation to X509_NAME structure */
@@ -245,13 +244,14 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
             entry->set = i;
             if (!sk_X509_NAME_ENTRY_push(nm.x->entries, entry))
                 goto err;
+            sk_X509_NAME_ENTRY_set(entries, j, NULL);
         }
-        sk_X509_NAME_ENTRY_free(entries);
     }
-    sk_STACK_OF_X509_NAME_ENTRY_free(intname.s);
     ret = x509_name_canon(nm.x);
     if (!ret)
         goto err;
+    sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname.s,
+                                         local_sk_X509_NAME_ENTRY_free);
     nm.x->modified = 0;
     *val = nm.a;
     *in = p;
@@ -259,6 +259,8 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
  err:
     if (nm.x != NULL)
         X509_NAME_free(nm.x);
+    sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname.s,
+                                         local_sk_X509_NAME_ENTRY_pop_free);
     OPENSSL_PUT_ERROR(X509, ERR_R_ASN1_LIB);
     return 0;
 }
@@ -307,8 +309,10 @@ static int x509_name_encode(X509_NAME *a)
             entries = sk_X509_NAME_ENTRY_new_null();
             if (!entries)
                 goto memerr;
-            if (!sk_STACK_OF_X509_NAME_ENTRY_push(intname.s, entries))
+            if (!sk_STACK_OF_X509_NAME_ENTRY_push(intname.s, entries)) {
+                sk_X509_NAME_ENTRY_free(entries);
                 goto memerr;
+            }
             set = entry->set;
         }
         if (!sk_X509_NAME_ENTRY_push(entries, entry))
