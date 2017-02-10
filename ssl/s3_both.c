@@ -496,7 +496,7 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
   if (ssl->server) {
     /* The largest acceptable post-handshake message for a server is a
      * KeyUpdate. We will never initiate post-handshake auth. */
-    return 0;
+    return 1;
   }
 
   /* Clients must accept NewSessionTicket and CertificateRequest, so allow the

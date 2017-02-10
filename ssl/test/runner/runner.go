@@ -2290,7 +2290,16 @@ func addBasicTests() {
 			expectedError: ":WRONG_VERSION_NUMBER:",
 		},
 		{
-			name: "KeyUpdate",
+			name: "KeyUpdate-Client",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendKeyUpdates:   1,
+			keyUpdateRequest: keyUpdateNotRequested,
+		},
+		{
+			testType: serverTest,
+			name:     "KeyUpdate-Server",
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
