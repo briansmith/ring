@@ -33,6 +33,8 @@ typedef Limb Scalar[P384_LIMBS];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
+void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
+void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b);
 void GFp_p384_elem_div_by_2(Elem r, const Elem a);
 void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
 void GFp_p384_elem_neg(Elem r, const Elem a);
