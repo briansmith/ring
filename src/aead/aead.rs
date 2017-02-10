@@ -205,8 +205,8 @@ impl SealingKey {
 /// two slices, one mutable and one immutable, that reference overlapping
 /// memory at the same time.)
 ///
-/// `out_suffix_capacity` must be at least `key.algorithm.tag_len()`. See also
-/// `MAX_TAG_LEN`.
+/// `out_suffix_capacity` must be at least `key.algorithm().tag_len()`. See
+/// also `MAX_TAG_LEN`.
 ///
 /// `ad` is the additional authenticated data, if any.
 ///
