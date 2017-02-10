@@ -26,7 +26,7 @@ extern "C" {
 
 /* RAND_bytes writes |len| bytes of random data to |buf|. It returns one on
  * success, zero on failure. */
-int RAND_bytes(RAND *rng, uint8_t *buf, size_t len);
+int GFp_RAND_bytes(RAND *rng, uint8_t *buf, size_t len);
 
 
 #if defined(__cplusplus)

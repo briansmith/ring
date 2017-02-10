@@ -142,7 +142,7 @@ int GFp_BN_rand(BIGNUM *rnd, int bits, RAND *rng) {
   }
 
   /* Make a random number. */
-  if (!RAND_bytes(rng, buf, bytes)) {
+  if (!GFp_RAND_bytes(rng, buf, bytes)) {
     goto err;
   }
 

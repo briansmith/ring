@@ -260,8 +260,8 @@ impl<'a> RAND<'a> {
 #[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern fn RAND_bytes(rng: *mut RAND, dest: *mut u8,
-                                dest_len: c::size_t) -> c::int {
+pub unsafe extern fn GFp_RAND_bytes(rng: *mut RAND, dest: *mut u8,
+                                    dest_len: c::size_t) -> c::int {
     let dest: &mut [u8] = core::slice::from_raw_parts_mut(dest, dest_len);
 
     match (*(*rng).rng).fill(dest) {
