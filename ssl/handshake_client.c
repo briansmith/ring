@@ -200,11 +200,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
 
     switch (hs->state) {
       case SSL_ST_INIT:
-        hs->state = SSL_ST_CONNECT;
-        skip = 1;
-        break;
-
-      case SSL_ST_CONNECT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
         hs->state = SSL3_ST_CW_CLNT_HELLO_A;
         break;

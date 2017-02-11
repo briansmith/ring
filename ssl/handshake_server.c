@@ -212,11 +212,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
 
     switch (hs->state) {
       case SSL_ST_INIT:
-        hs->state = SSL_ST_ACCEPT;
-        skip = 1;
-        break;
-
-      case SSL_ST_ACCEPT:
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
         hs->state = SSL3_ST_SR_CLNT_HELLO_A;
         break;
