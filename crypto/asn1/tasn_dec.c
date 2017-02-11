@@ -180,6 +180,7 @@ int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
     int ret = 0;
     ASN1_VALUE **pchptr, *ptmpval;
     int combine = aclass & ASN1_TFLG_COMBINE;
+    aclass &= ~ASN1_TFLG_COMBINE;
     if (!pval)
         return 0;
     if (aux && aux->asn1_cb)
