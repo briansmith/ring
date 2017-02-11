@@ -2094,12 +2094,7 @@ void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl, int type,
 }
 
 int SSL_state(const SSL *ssl) {
-  if (ssl->s3->hs == NULL) {
-    assert(ssl->s3->initial_handshake_complete);
-    return SSL_ST_OK;
-  }
-
-  return ssl->s3->hs->state;
+  return SSL_in_init(ssl) ? SSL_ST_INIT : SSL_ST_OK;
 }
 
 void SSL_set_state(SSL *ssl, int state) { }
@@ -2345,11 +2340,12 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 }
 
 int SSL_is_init_finished(const SSL *ssl) {
-  return SSL_state(ssl) == SSL_ST_OK;
+  return !SSL_in_init(ssl);
 }
 
 int SSL_in_init(const SSL *ssl) {
-  return (SSL_state(ssl) & SSL_ST_INIT) != 0;
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  return hs != NULL && hs->state != SSL_ST_OK;
 }
 
 int SSL_in_false_start(const SSL *ssl) {

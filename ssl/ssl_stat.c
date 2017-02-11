@@ -83,11 +83,22 @@
 
 #include <openssl/ssl.h>
 
+#include <assert.h>
+
 #include "internal.h"
 
 
+static int ssl_state(const SSL *ssl) {
+  if (ssl->s3->hs == NULL) {
+    assert(ssl->s3->initial_handshake_complete);
+    return SSL_ST_OK;
+  }
+
+  return ssl->s3->hs->state;
+}
+
 const char *SSL_state_string_long(const SSL *ssl) {
-  switch (SSL_state(ssl)) {
+  switch (ssl_state(ssl)) {
     case SSL_ST_ACCEPT:
       return "before accept initialization";
 
@@ -203,7 +214,7 @@ const char *SSL_state_string_long(const SSL *ssl) {
 }
 
 const char *SSL_state_string(const SSL *ssl) {
-  switch (SSL_state(ssl)) {
+  switch (ssl_state(ssl)) {
     case SSL_ST_ACCEPT:
       return "AINIT ";
 

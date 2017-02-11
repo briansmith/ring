@@ -3589,7 +3589,10 @@ OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 
-/* SSL_state returns the current state of the handshake state machine. */
+/* SSL_state returns |SSL_ST_INIT| if a handshake is in progress and |SSL_ST_OK|
+ * otherwise.
+ *
+ * Use |SSL_is_init| instead. */
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 
 #define SSL_get_state(ssl) SSL_state(ssl)
