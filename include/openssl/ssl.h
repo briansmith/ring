@@ -3043,7 +3043,6 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 #define SSL_ST_OK 0x03
 #define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
 #define SSL_ST_TLS13 (0x05 | SSL_ST_INIT)
-#define SSL_ST_ERROR (0x06| SSL_ST_INIT)
 
 /* SSL_CB_* are possible values for the |type| parameter in the info
  * callback and the bitmasks that make them up. */
