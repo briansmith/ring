@@ -240,10 +240,6 @@ endif()
 # googletest has a very straightforward build.
 add_library(gtest third_party/googletest/src/gtest-all.cc)
 target_include_directories(gtest PRIVATE third_party/googletest)
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  # TODO(davidben): Make googletest pass -Wmissing-declarations.
-  set_target_properties(gtest PROPERTIES COMPILE_FLAGS "-Wno-missing-declarations")
-endif()
 
 include_directories(third_party/googletest/include)
 
