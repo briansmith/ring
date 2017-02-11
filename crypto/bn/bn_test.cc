@@ -409,37 +409,6 @@ static bool TestQuotient(FileTest *t) {
   return true;
 }
 
-static bool TestModMul(FileTest *t) {
-  ScopedBIGNUM a = GetBIGNUM(t, "A");
-  ScopedBIGNUM b = GetBIGNUM(t, "B");
-  ScopedBIGNUM m = GetBIGNUM(t, "M");
-  ScopedBIGNUM mod_mul = GetBIGNUM(t, "ModMul");
-  if (!a || !b || !m || !mod_mul) {
-    return false;
-  }
-
-  ScopedBIGNUM ret(GFp_BN_new());
-  if (GFp_BN_is_odd(m.get())) {
-    // Reduce |a| and |b| and test the Montgomery version.
-    ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-    ScopedBIGNUM a_tmp(GFp_BN_new()), b_tmp(GFp_BN_new());
-    if (!mont || !a_tmp || !b_tmp ||
-        !GFp_BN_MONT_CTX_set(mont.get(), m.get()) ||
-        !GFp_BN_nnmod(a_tmp.get(), a.get(), m.get()) ||
-        !GFp_BN_nnmod(b_tmp.get(), b.get(), m.get()) ||
-        !GFp_BN_to_mont(a_tmp.get(), a_tmp.get(), mont.get()) ||
-        !GFp_BN_to_mont(b_tmp.get(), b_tmp.get(), mont.get()) ||
-        !GFp_BN_mod_mul_mont(ret.get(), a_tmp.get(), b_tmp.get(), mont.get()) ||
-        !GFp_BN_from_mont(ret.get(), ret.get(), mont.get()) ||
-        !ExpectBIGNUMsEqual(t, "A * B (mod M) (Montgomery)",
-                            mod_mul.get(), ret.get())) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 static bool TestModSquare(FileTest *t) {
   ScopedBIGNUM a(GetBIGNUM(t, "A"));
   ScopedBIGNUM m(GetBIGNUM(t, "M"));
@@ -509,7 +478,6 @@ static const Test kTests[] = {
     {"Square", TestSquare},
     {"Product", TestProduct},
     {"Quotient", TestQuotient},
-    {"ModMul", TestModMul},
     {"ModSquare", TestModSquare},
     {"ModInv", TestModInv},
 };
