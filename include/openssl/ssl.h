@@ -3085,8 +3085,7 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
  *
  * |SSL_CB_ACCEPT_LOOP| (respectively, |SSL_CB_CONNECT_LOOP|) is signaled when
  * a server (respectively, client) handshake progresses. The |value| argument
- * is always one. For the duration of the callback, |SSL_state| will return the
- * previous state.
+ * is always one.
  *
  * |SSL_CB_ACCEPT_EXIT| (respectively, |SSL_CB_CONNECT_EXIT|) is signaled when
  * a server (respectively, client) handshake completes, fails, or is paused.
