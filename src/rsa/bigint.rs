@@ -760,6 +760,13 @@ mod tests {
                     untrusted::Input::from(&[1, 0])).is_ok());
     }
 
+    #[test]
+    fn test_odd_positive_from_even() {
+        let x = Positive::from_be_bytes(untrusted::Input::from(&[4])).unwrap();
+        assert!(x.into_odd_positive().is_err());
+    }
+
+
     // Type-level representation of an arbitrary modulus.
     struct M {}
 

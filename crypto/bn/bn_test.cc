@@ -784,8 +784,7 @@ static bool TestBadModulus() {
   ScopedBIGNUM b(GFp_BN_new());
   ScopedBIGNUM zero(GFp_BN_new());
   ScopedBIGNUM one(GFp_BN_new());
-  ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-  if (!a || !b || !zero || !one || !mont ||
+  if (!a || !b || !zero || !one ||
       !GFp_BN_set_word(one.get(), 1)) {
     return false;
   }
@@ -794,31 +793,6 @@ static bool TestBadModulus() {
 
   if (GFp_BN_div(a.get(), b.get(), one.get(), zero.get())) {
     fprintf(stderr, "Division by zero unexpectedly succeeded.\n");
-    return false;
-  }
-  ERR_clear_error();
-
-  // |GFp_BN_mod_exp_mont_vartime| and |GFp_BN_mod_exp_mont_consttime| require
-  // this.
-  if (GFp_BN_MONT_CTX_set(mont.get(), zero.get())) {
-    fprintf(stderr,
-            "GFp_BN_MONT_CTX_set unexpectedly succeeded for zero modulus.\n");
-    return false;
-  }
-  ERR_clear_error();
-
-
-  // Some operations also may not be used with an even modulus.
-
-  if (!GFp_BN_set_word(b.get(), 16)) {
-    return false;
-  }
-
-  // |GFp_BN_mod_exp_mont_vartime| and |GFp_BN_mod_exp_mont_consttime| require
-  // this.
-  if (GFp_BN_MONT_CTX_set(mont.get(), b.get())) {
-    fprintf(stderr,
-            "GFp_BN_MONT_CTX_set unexpectedly succeeded for even modulus.\n");
     return false;
   }
   ERR_clear_error();
