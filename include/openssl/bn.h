@@ -387,13 +387,6 @@ int GFp_BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 /* BN_MONT_CTX contains the precomputed values needed to work in a specific
  * Montgomery domain. */
 
-/* GFp_BN_MONT_CTX_new returns a fresh BN_MONT_CTX or NULL on allocation
- * failure. */
-OPENSSL_EXPORT BN_MONT_CTX *GFp_BN_MONT_CTX_new(void);
-
-/* GFp_BN_MONT_CTX_free frees memory associated with |mont|. */
-OPENSSL_EXPORT void GFp_BN_MONT_CTX_free(BN_MONT_CTX *mont);
-
 /* GFp_BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|.
  * It returns one on success and zero on error. */
 OPENSSL_EXPORT int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod);
