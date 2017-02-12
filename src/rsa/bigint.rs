@@ -828,6 +828,25 @@ mod tests {
         })
     }
 
+    #[test]
+    fn test_elem_squared() {
+        test::from_file("src/rsa/bigint_elem_squared_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let m = consume_modulus(test_case, "M");
+            let expected_result = consume_elem(test_case, "ModSquare", &m);
+            let a = consume_elem(test_case, "A", &m);
+
+            let a = a.into_elem(&m).unwrap();
+            let actual_result = elem_squared(a, &m).unwrap();
+            let actual_result = actual_result.into_elem_decoded(&m).unwrap();
+            assert_elem_eq(&actual_result, &expected_result);
+
+            Ok(())
+        })
+    }
+
     fn consume_elem(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
                     -> ElemDecoded<M> {
         let bytes = test_case.consume_bytes(name);
