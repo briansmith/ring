@@ -42,7 +42,7 @@
 // XXX TODO: Remove this once RSA verification has been done in Rust.
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
 
-use {bits, bssl, c, der, error, rand, untrusted};
+use {bits, bssl, c, der, error, limb, rand, untrusted};
 use core;
 use core::marker::PhantomData;
 
@@ -57,11 +57,6 @@ pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
         return Err(error::Unspecified);
     }
     Ok(())
-}
-
-
-impl<M> AsRef<BN_MONT_CTX> for Modulus<M> {
-    fn as_ref(&self) -> &BN_MONT_CTX { &self.ctx }
 }
 
 impl<M> AsRef<BIGNUM> for Modulus<M> {
@@ -303,7 +298,7 @@ impl<M> Elem<M, R> {
                           -> Result<Elem<M, Unencoded>, error::Unspecified> {
         let mut r = self.value;
         try!(bssl::map_result(unsafe {
-            GFp_BN_from_mont(&mut r.0, &r.0, m.as_ref())
+            GFp_BN_from_mont(&mut r.0, &r.0, m.as_ref(), m.ctx.n0())
         }));
         Ok(Elem {
             value: r,
@@ -337,7 +332,7 @@ impl<M> Elem<M, Unencoded> {
         let mut value = self.value;
         try!(bssl::map_result(unsafe {
             GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), m.ctx.RR(),
-                                m.as_ref())
+                                m.as_ref(), m.ctx.n0())
         }));
         Ok(Elem {
             value: value,
@@ -358,7 +353,8 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
         where (AF, BF): MontgomeryEncodingProduct {
     let mut r = b.value;
     try!(bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, m.as_ref())
+        GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, m.as_ref(),
+                            m.ctx.n0())
     }));
     Ok(Elem {
         value: r,
@@ -375,7 +371,7 @@ pub fn elem_set_to_product<M, AF, BF>(
         where (AF, BF): MontgomeryEncodingProduct {
     bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
-                            b.value.as_ref(), m.as_ref())
+                            b.value.as_ref(), m.as_ref(), m.ctx.n0())
     })
 }
 
@@ -397,11 +393,12 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     let mut r = try!(Elem::zero());
     try!(bssl::map_result(unsafe {
         GFp_BN_from_montgomery_word(r.value.as_mut_ref(),
-                                    tmp.value.as_mut_ref(), m.as_ref())
+                                    tmp.value.as_mut_ref(), m.as_ref(),
+                                    m.ctx.n0())
     }));
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.value.as_mut_ref(), r.value.as_ref(), m.ctx.RR(),
-                            m.as_ref())
+                            m.as_ref(), m.ctx.n0())
     }));
     let r = try!(r.into_encoded(m));
     Ok(r)
@@ -414,7 +411,7 @@ pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
     let mut value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
-                            m.as_ref())
+                            m.as_ref(), m.ctx.n0())
     }));
     Ok(Elem {
         value: value,
@@ -528,7 +525,8 @@ pub fn elem_exp_consttime<M>(
     let mut r = base.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(&mut r.0, &r.0, exponent.as_ref(),
-                                      one.value.as_ref(), m.as_ref())
+                                      one.value.as_ref(), m.as_ref(),
+                                      m.ctx.n0())
     }));
     Ok(Elem {
         value: r,
@@ -666,11 +664,18 @@ impl Nonnegative {
 // These types are defined in their own submodule so that their private
 // components are not accessible.
 
+// Keep in sync with the length of `bn_mont_ctx_st::n0`, which is actually
+// different than value of `BN_MONT_CTX_N0_LIMBS`.
+const N0_LIMBS: usize = 2;
+
+type N0 = [limb::Limb; N0_LIMBS];
+
 #[allow(non_snake_case)]
 mod repr_c {
     use core;
     use {c, limb};
     use libc;
+    use super::N0;
 
     /* Keep in sync with `bignum_st` in openss/bn.h. */
     #[repr(C)]
@@ -712,7 +717,7 @@ mod repr_c {
     pub struct BN_MONT_CTX {
         RR: BIGNUM,
         N: BIGNUM,
-        n0: [limb::Limb; 2],
+        n0: N0,
     }
 
     impl BN_MONT_CTX {
@@ -725,6 +730,7 @@ mod repr_c {
         }
 
         pub fn n(&self) -> &BIGNUM { &self.N }
+        pub fn n0(&self) -> &N0 { &self.n0 }
         pub fn RR(&self) -> &BIGNUM { &self.RR }
     }
 }
@@ -746,14 +752,14 @@ extern {
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
 
     // `r` and `a` may alias.
-    fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, m: &BN_MONT_CTX)
+    fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, n: &BIGNUM, n0: &N0)
                         -> c::int;
     fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
                               a: *const BIGNUM, m: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
-                           m: &BN_MONT_CTX) -> c::int;
+                            n: &BIGNUM, n0: &N0) -> c::int;
     fn GFp_BN_mod_add_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                             m: &BIGNUM) -> c::int;
     fn GFp_BN_mod_sub_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
@@ -761,13 +767,13 @@ extern {
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
-                                     p: &BIGNUM, one_mont: &BIGNUM,
-                                     m: &BN_MONT_CTX) -> c::int;
+                                     p: &BIGNUM, one_mont: &BIGNUM, n: &BIGNUM,
+                                     n0: &N0) -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
-    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM,
-                                   m: &BN_MONT_CTX) -> c::int;
+    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
+                                   n0: &N0) -> c::int;
     fn GFp_BN_MONT_CTX_set(ctx: &mut BN_MONT_CTX, modulus: &BIGNUM) -> c::int;
 }
 

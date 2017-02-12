@@ -257,14 +257,13 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * the value 1 Montgomery-encoded and fully reduced (mod m). */
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
                                   const BIGNUM *p, const BIGNUM *one_mont,
-                                  const BN_MONT_CTX *mont) {
-  const BIGNUM *m = &mont->N;
-
+                                  const BIGNUM *n,
+                                  const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   assert(!GFp_BN_is_negative(a_mont));
-  assert(GFp_BN_cmp(a_mont, m) < 0);
+  assert(GFp_BN_cmp(a_mont, n) < 0);
 
-  assert(!GFp_BN_is_negative(m));
-  assert(!GFp_BN_is_zero(m));
+  assert(!GFp_BN_is_negative(n));
+  assert(!GFp_BN_is_zero(n));
 
   assert(!GFp_BN_is_negative(p));
   assert(!GFp_BN_is_zero(p));
@@ -277,7 +276,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
 
-  const int top = m->top;
+  const int top = n->top;
   /* The |OPENSSL_BN_ASM_MONT5| code requires top > 1. */
   if (top <= 1) {
     goto err;
@@ -290,8 +289,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   /* Get the window size to use with size of p. */
 #if defined(OPENSSL_BN_ASM_MONT5)
   static const int window = 5;
-  /* reserve space for mont->N.d[] copy */
-  powerbufLen += top * sizeof(mont->N.d[0]);
+  /* reserve space for n->d[] copy */
+  powerbufLen += top * sizeof(n->d[0]);
 #else
   const int window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
 #endif
@@ -301,7 +300,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
    */
   numPowers = 1 << window;
   powerbufLen +=
-      sizeof(m->d[0]) *
+      sizeof(n->d[0]) *
       (top * numPowers + ((2 * top) > numPowers ? (2 * top) : numPowers));
 #ifdef alloca
   if (powerbufLen < 3072) {
@@ -325,7 +324,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 #endif
 
   /* lay down tmp and am right after powers table */
-  tmp.d = (BN_ULONG *)(powerbuf + sizeof(m->d[0]) * top * numPowers);
+  tmp.d = (BN_ULONG *)(powerbuf + sizeof(n->d[0]) * top * numPowers);
   am.d = tmp.d + top;
   tmp.top = am.top = 0;
   tmp.dmax = am.dmax = top;
@@ -343,12 +342,11 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
    * specifically optimization of cache-timing attack countermeasures
    * and pre-computation optimization. */
   {
-    const BN_ULONG *n0 = mont->n0;
     BN_ULONG *np;
 
-    /* copy mont->N.d[] to improve cache locality */
+    /* copy n->d[] to improve cache locality */
     for (np = am.d + top, i = 0; i < top; i++) {
-      np[i] = mont->N.d[i];
+      np[i] = n->d[i];
     }
 
     GFp_bn_scatter5(tmp.d, top, powerbuf, 0);
@@ -460,13 +458,13 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
      * to use the slight performance advantage of sqr over mul).
      */
     if (window > 1) {
-      if (!GFp_BN_mod_mul_mont(&tmp, &am, &am, mont) ||
+      if (!GFp_BN_mod_mul_mont(&tmp, &am, &am, n, n0) ||
           !copy_to_prebuf(&tmp, top, powerbuf, 2, window)) {
         goto err;
       }
       for (i = 3; i < numPowers; i++) {
         /* Calculate a^i = a^(i-1) * a */
-        if (!GFp_BN_mod_mul_mont(&tmp, &am, &tmp, mont) ||
+        if (!GFp_BN_mod_mul_mont(&tmp, &am, &tmp, n, n0) ||
             !copy_to_prebuf(&tmp, top, powerbuf, i, window)) {
           goto err;
         }
@@ -489,7 +487,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 
       /* Scan the window, squaring the result as we go */
       for (i = 0; i < window; i++, bits--) {
-        if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &tmp, mont)) {
+        if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &tmp, n, n0)) {
           goto err;
         }
         wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
@@ -501,13 +499,13 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       }
 
       /* Multiply the result into the intermediate result */
-      if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &am, mont)) {
+      if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &am, n, n0)) {
         goto err;
       }
     }
 
     /* Convert the final result from montgomery to standard format */
-    if (!GFp_BN_from_mont(rr, &tmp, mont)) {
+    if (!GFp_BN_from_mont(rr, &tmp, n, n0)) {
       goto err;
     }
   }

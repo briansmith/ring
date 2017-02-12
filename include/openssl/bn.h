@@ -395,30 +395,30 @@ OPENSSL_EXPORT int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod);
  * of the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
  * is the Montgomery modulus. It returns one on success or zero on error. */
 OPENSSL_EXPORT int GFp_BN_from_mont(BIGNUM *ret, const BIGNUM *a,
-                                    const BN_MONT_CTX *mont);
+                                    const BIGNUM *n,
+                                    const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 /* GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
  * Both |a| and |b| must already be in the Montgomery domain (by
  * |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range
  * [0, n), where |n| is the Montgomery modulus. It returns one on success or
  * zero on error. */
-OPENSSL_EXPORT int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a,
-                                       const BIGNUM *b,
-                                       const BN_MONT_CTX *mont);
+OPENSSL_EXPORT int GFp_BN_mod_mul_mont(
+    BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *n,
+    const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 /* GFp_BN_reduce_montgomery returns |a % n| in constant-ish time using
  * Montgomery reduction. |a| is assumed to be in the range [0, n**2), where |n|
  * is the Montgomery modulus. It returns one on success or zero on error. */
-int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont);
+int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *n,
+                       const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 
 /* Exponentiation. */
 
-OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr,
-                                                 const BIGNUM *a_mont,
-                                                 const BIGNUM *p,
-                                                 const BIGNUM *one_mont,
-                                                 const BN_MONT_CTX *mont);
+OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
+    BIGNUM *rr, const BIGNUM *a_mont, const BIGNUM *p, const BIGNUM *one_mont,
+    const BIGNUM *n, const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 
 /* Private functions */
@@ -441,7 +441,8 @@ struct bn_mont_ctx_st {
   /* Least significant word(s) of the "magic" Montgomery constant. When
    * |BN_MONT_CTX_N0_LIMBS == 1|, n0[1] is probably unused, however it is safer
    * to always use two elements just in case any code from another OpenSSL
-   * variant that assumes |n0| has two elements is imported. */
+   * variant that assumes |n0| has two elements is imported. Keep in sync with
+   * |N0_LIMBS| in bigint.rs. */
   BN_ULONG n0[2];
 };
 

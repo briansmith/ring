@@ -120,8 +120,8 @@
 
 
 /* Avoid -Wmissing-prototypes warnings. */
-int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
-                                const BN_MONT_CTX *mont);
+int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
+                                const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]);
 
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
@@ -179,14 +179,13 @@ int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
   return 1;
 }
 
-int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
-                                const BN_MONT_CTX *mont) {
+int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
+                                const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]) {
   assert(ret != r);
 
   BN_ULONG *ap, *np, *rp, n0, v, carry;
   int nl, max, i;
 
-  const BIGNUM *n = &mont->N;
   nl = n->top;
   if (nl == 0) {
     ret->top = 0;
@@ -208,7 +207,7 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   }
 
   r->top = max;
-  n0 = mont->n0[0];
+  n0 = n0_[0];
 
   for (carry = 0, i = 0; i < nl; i++, rp++) {
     v = GFp_bn_mul_add_words(rp, np, nl, (rp[0] * n0) & BN_MASK2);
@@ -265,14 +264,15 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   return 1;
 }
 
-int GFp_BN_from_mont(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont) {
+int GFp_BN_from_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *n,
+                     const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   BIGNUM tmp;
   GFp_BN_init(&tmp);
 
   int ret = 0;
 
   if (!GFp_BN_copy(&tmp, a) ||
-      !GFp_BN_from_montgomery_word(r, &tmp, mont)) {
+      !GFp_BN_from_montgomery_word(r, &tmp, n, n0)) {
     goto err;
   }
 
@@ -285,9 +285,8 @@ err:
 }
 
 int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                    const BN_MONT_CTX *mont) {
-  const BIGNUM *n = &mont->N;
-
+                        const BIGNUM *n,
+                        const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   assert(!GFp_BN_is_negative(a));
   assert(GFp_BN_cmp(a, n) < 0);
   assert(!GFp_BN_is_negative(b));
@@ -305,7 +304,7 @@ int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     if (GFp_bn_wexpand(r, num) == NULL) {
       return 0;
     }
-    GFp_bn_mul_mont(r->d, a->d, b->d, n->d, mont->n0, num);
+    GFp_bn_mul_mont(r->d, a->d, b->d, n->d, n0, num);
     r->neg = a->neg ^ b->neg;
     r->top = num;
     GFp_bn_correct_top(r);
@@ -318,7 +317,7 @@ int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   int ret = 0;
 
   if (!GFp_BN_mul_no_alias(&tmp, a, b) ||
-      !GFp_BN_from_montgomery_word(r, &tmp, mont)) {
+      !GFp_BN_from_montgomery_word(r, &tmp, n, n0)) {
     goto err;
   }
 
