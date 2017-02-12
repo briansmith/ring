@@ -694,53 +694,6 @@ static bool TestBadModulus() {
   return true;
 }
 
-static bool TestModInvRejectUnreduced(void) {
-  ScopedBIGNUM r(GFp_BN_new());
-  if (!r) {
-    return false;
-  }
-
-  static const BN_ULONG kBases[] = { 2, 4, 6 };
-  static const BN_ULONG kModuli[] = { 1, 3 };
-
-  for (BN_ULONG mod_value : kModuli) {
-    ScopedBIGNUM mod(GFp_BN_new());
-    ScopedBN_MONT_CTX mont(GFp_BN_MONT_CTX_new());
-    if (!mod ||
-        !GFp_BN_set_word(mod.get(), mod_value) ||
-        !mont ||
-        !GFp_BN_MONT_CTX_set(mont.get(), mod.get())) {
-      return false;
-    }
-    for (BN_ULONG base_value : kBases) {
-      ScopedBIGNUM base(GFp_BN_new());
-      if (!base ||
-          !GFp_BN_set_word(base.get(), base_value)) {
-        return false;
-      }
-
-      int no_inverse;
-
-      if (base_value >= mod_value &&
-          GFp_BN_mod_inverse_odd(r.get(), &no_inverse, base.get(), mod.get())) {
-        fprintf(stderr, "GFp_BN_mod_inverse_odd(%d, %d) succeeded!\n",
-                (int)base_value, (int)mod_value);
-        return false;
-      }
-
-      GFp_BN_set_negative(base.get(), 1);
-
-      if (GFp_BN_mod_inverse_odd(r.get(), &no_inverse, base.get(), mod.get())) {
-        fprintf(stderr, "GFp_BN_mod_inverse_odd(%d, %d) succeeded!\n",
-                -(int)base_value, (int)mod_value);
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 static bool TestCmpWord() {
   static const BN_ULONG kMaxWord = (BN_ULONG)-1;
 
@@ -824,7 +777,6 @@ extern "C" int bssl_bn_test_main(RAND *rng) {
       !TestRand(rng) ||
       !TestNegativeZero() ||
       !TestBadModulus() ||
-      !TestModInvRejectUnreduced() ||
       !TestCmpWord()) {
     return 1;
   }
