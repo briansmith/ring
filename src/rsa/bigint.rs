@@ -127,11 +127,7 @@ impl Positive {
 
     pub fn into_elem_decoded<M>(self, m: &Modulus<M>)
                                 -> Result<ElemDecoded<M>, error::Unspecified> {
-        try!(verify_less_than(&self, &m));
-        Ok(ElemDecoded {
-            value: self.0,
-            ring: PhantomData,
-        })
+        self.0.into_elem_decoded(m)
     }
 
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
@@ -595,6 +591,15 @@ impl Nonnegative {
     // this ASAP.
     unsafe fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
 
+    fn into_elem_decoded<M>(self, m: &Modulus<M>)
+                            -> Result<ElemDecoded<M>, error::Unspecified> {
+        try!(verify_less_than(&self, &m));
+        Ok(ElemDecoded {
+            value: self,
+            ring: PhantomData,
+        })
+    }
+
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
         if is_odd == 0 {
@@ -847,12 +852,42 @@ mod tests {
         })
     }
 
+    #[test]
+    fn test_elem_reduced() {
+        test::from_file("src/rsa/bigint_elem_reduced_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            struct MM {}
+            unsafe impl SmallerModulus<MM> for M {}
+            unsafe impl NotMuchSmallerModulus<MM> for M {}
+
+            let m = consume_modulus(test_case, "M");
+            let expected_result = consume_elem(test_case, "R", &m);
+            let a = consume_elem_unchecked::<MM>(test_case, "A");
+
+            //let a = a.into_encoded(&m).unwrap();
+            let actual_result = elem_reduced(&a, &m).unwrap();
+            //let actual_result = actual_result.into_unencoded(&m).unwrap();
+            assert_elem_eq(&actual_result, &expected_result);
+
+            Ok(())
+        })
+    }
+
     fn consume_elem(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
                     -> ElemDecoded<M> {
-        let bytes = test_case.consume_bytes(name);
-        let value =
-            Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
+        let value = consume_nonnegative(test_case, name);
         value.into_elem_decoded::<M>(m).unwrap()
+    }
+
+    fn consume_elem_unchecked<M>(test_case: &mut test::TestCase, name: &str)
+            -> ElemDecoded<M> {
+        let value = consume_nonnegative(test_case, name);
+        ElemDecoded {
+            value: value,
+            ring: PhantomData,
+        }
     }
 
     fn consume_modulus(test_case: &mut test::TestCase, name: &str)
@@ -873,6 +908,16 @@ mod tests {
         let value =
             Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
         value.into_odd_positive().unwrap()
+    }
+
+    fn consume_nonnegative(test_case: &mut test::TestCase, name: &str)
+                           -> Nonnegative {
+        let bytes = test_case.consume_bytes(name);
+        let mut r = Nonnegative::zero().unwrap();
+        bssl::map_result(unsafe {
+            GFp_BN_bin2bn(bytes.as_ptr(), bytes.len(), r.as_mut_ref())
+        }).unwrap();
+        r
     }
 
     fn assert_elem_eq<M>(a: &ElemDecoded<M>, b: &ElemDecoded<M>) {
