@@ -21,14 +21,9 @@ use untrusted;
 pub const CONSTRUCTED: u8 = 1 << 5;
 pub const CONTEXT_SPECIFIC: u8 = 2 << 6;
 
-/// An error in ASN1 parsing. Normal hygiene applies: if parsing secret
-/// DER, do not differentiate this from any other error.
-#[derive(Clone, Copy)]
+/// An error in ASN1 parsing.
+#[derive(Clone, Copy, Debug)]
 pub struct ASN1Error;
-
-impl From<untrusted::EndOfInput> for ASN1Error {
-    fn from(_: untrusted::EndOfInput) -> Self { ASN1Error }
-}
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
@@ -62,7 +57,7 @@ pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
 pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
                                   -> Result<(u8, untrusted::Input<'a>),
                                       ASN1Error> {
-    let tag = try!(input.read_byte());
+    let tag = try!(read_expected_byte(input));
     if (tag & 0x1F) == 0x1F {
         return Err(ASN1Error); // High tag number form is not allowed.
     }
@@ -70,18 +65,18 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
     // If the high order bit of the first byte is set to zero then the length
     // is encoded in the seven remaining bits of that byte. Otherwise, those
     // seven bits represent the number of bytes used to encode the length.
-    let length = match try!(input.read_byte()) {
+    let length = match try!(read_expected_byte(input)) {
         n if (n & 0x80) == 0 => n as usize,
         0x81 => {
-            let second_byte = try!(input.read_byte());
+            let second_byte = try!(read_expected_byte(input));
             if second_byte < 128 {
                 return Err(ASN1Error); // Not the canonical encoding.
             }
             second_byte as usize
         },
         0x82 => {
-            let second_byte = try!(input.read_byte()) as usize;
-            let third_byte = try!(input.read_byte()) as usize;
+            let second_byte = try!(read_expected_byte(input)) as usize;
+            let third_byte = try!(read_expected_byte(input)) as usize;
             let combined = (second_byte << 8) | third_byte;
             if combined < 256 {
                 return Err(ASN1Error); // Not the canonical encoding.
@@ -93,7 +88,7 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
         },
     };
 
-    let inner = try!(input.skip_and_get_input(length));
+    let inner = try!(input.skip_and_get_input(length).map_err(|_| ASN1Error));
     Ok((tag, inner))
 }
 
@@ -114,7 +109,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
     fn check_minimum(input: untrusted::Input, min_value: u8)
                      -> Result<(), ASN1Error> {
         input.read_all(ASN1Error, |input| {
-            let first_byte = try!(input.read_byte());
+            let first_byte = try!(read_expected_byte(input));
             if input.at_end() && first_byte < min_value {
                 return Err(ASN1Error);
             }
@@ -127,7 +122,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
 
     value.read_all(ASN1Error, |input| {
         // Empty encodings are not allowed.
-        let first_byte = try!(input.read_byte());
+        let first_byte = try!(read_expected_byte(input));
 
         if first_byte == 0 {
             if input.at_end() {
@@ -140,7 +135,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
 
             let r = input.skip_to_end();
             try!(r.read_all(ASN1Error, |input| {
-                let second_byte = try!(input.read_byte());
+                let second_byte = try!(read_expected_byte(input));
                 if (second_byte & 0x80) == 0 {
                     // A leading zero is only allowed when the value's high bit
                     // is set.
@@ -171,7 +166,7 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader)
                                  -> Result<u8, ASN1Error> {
     let value = try!(nonnegative_integer(input, 0));
     value.read_all(ASN1Error, |input| {
-        let r = try!(input.read_byte());
+        let r = try!(read_expected_byte(input));
         Ok(r)
     })
 }
@@ -184,6 +179,11 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
     nonnegative_integer(input, 1)
 }
 
+/// Maps EOF to ASN1Error as a convenience when EOF is not expected.
+fn read_expected_byte<'a>(input: &mut untrusted::Reader<'a>)
+                          -> Result<u8, ASN1Error>{
+    input.read_byte().map_err(|_| ASN1Error)
+}
 
 #[cfg(test)]
 mod tests {
