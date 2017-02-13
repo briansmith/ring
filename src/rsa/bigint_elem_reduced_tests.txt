@@ -1,5 +1,27 @@
-# These test vectors satisfy R = A % M. These were adapted from BoringSSL's
-# "Quotient" BIGNUM tests in the following ways:
+# R = A % M where 0 <= A < M**2.
+
+# A == 0
+R = 00
+A = 00
+M = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033b
+
+# A == M
+R = 00
+A = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033b
+M = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033b
+
+# A == M - 1
+R = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033a
+A = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033a
+M = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033b
+
+# A == M + 1
+R = 01
+A = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033c
+M = 813bc46ee19ffeab364073a89f96913f340d43ee72129ea9edac1beb4ebe1336450d2eabc7b26e51c400cec60d6ee459033b
+
+# These vectors were adapted from BoringSSL's "Quotient" BIGNUM tests in the
+# following ways:
 #
 #   * The quotient in each vector was removed (*ring* only calculates
 #     remainders, never quotients).
