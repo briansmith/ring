@@ -2415,6 +2415,9 @@ static bool TestSNICallback(bool is_dtls, const SSL_METHOD *method,
   // Test that switching the |SSL_CTX| at the SNI callback behaves correctly.
   static const uint16_t kECDSAWithSHA256 = SSL_SIGN_ECDSA_SECP256R1_SHA256;
 
+  static const uint8_t kSCTList[] = {0, 6, 0, 4, 5, 6, 7, 8};
+  static const uint8_t kOCSPResponse[] = {1, 2, 3, 4};
+
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(method));
   bssl::UniquePtr<SSL_CTX> server_ctx2(SSL_CTX_new(method));
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(method));
@@ -2423,6 +2426,10 @@ static bool TestSNICallback(bool is_dtls, const SSL_METHOD *method,
       !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
       !SSL_CTX_use_certificate(server_ctx2.get(), cert2.get()) ||
       !SSL_CTX_use_PrivateKey(server_ctx2.get(), key2.get()) ||
+      !SSL_CTX_set_signed_cert_timestamp_list(server_ctx2.get(), kSCTList,
+                                              sizeof(kSCTList)) ||
+      !SSL_CTX_set_ocsp_response(server_ctx2.get(), kOCSPResponse,
+                                 sizeof(kOCSPResponse)) ||
       // Historically signing preferences would be lost in some cases with the
       // SNI callback, which triggers the TLS 1.2 SHA-1 default. To ensure
       // this doesn't happen when |version| is TLS 1.2, configure the private
@@ -2441,6 +2448,9 @@ static bool TestSNICallback(bool is_dtls, const SSL_METHOD *method,
   SSL_CTX_set_tlsext_servername_callback(server_ctx.get(), SwitchContext);
   SSL_CTX_set_tlsext_servername_arg(server_ctx.get(), server_ctx2.get());
 
+  SSL_CTX_enable_signed_cert_timestamps(client_ctx.get());
+  SSL_CTX_enable_ocsp_stapling(client_ctx.get());
+
   bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
                               server_ctx.get(), nullptr)) {
@@ -2452,6 +2462,22 @@ static bool TestSNICallback(bool is_dtls, const SSL_METHOD *method,
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
   if (!peer || X509_cmp(peer.get(), cert2.get()) != 0) {
     fprintf(stderr, "Incorrect certificate received.\n");
+    return false;
+  }
+
+  // The client should have received |server_ctx2|'s SCT list.
+  const uint8_t *data;
+  size_t len;
+  SSL_get0_signed_cert_timestamp_list(client.get(), &data, &len);
+  if (Bytes(kSCTList) != Bytes(data, len)) {
+    fprintf(stderr, "Incorrect SCT list received.\n");
+    return false;
+  }
+
+  // The client should have received |server_ctx2|'s OCSP response.
+  SSL_get0_ocsp_response(client.get(), &data, &len);
+  if (Bytes(kOCSPResponse) != Bytes(data, len)) {
+    fprintf(stderr, "Incorrect OCSP response received.\n");
     return false;
   }
 

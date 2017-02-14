@@ -203,6 +203,16 @@ CERT *ssl_cert_dup(CERT *cert) {
     ret->verify_store = cert->verify_store;
   }
 
+  if (cert->signed_cert_timestamp_list != NULL) {
+    CRYPTO_BUFFER_up_ref(cert->signed_cert_timestamp_list);
+    ret->signed_cert_timestamp_list = cert->signed_cert_timestamp_list;
+  }
+
+  if (cert->ocsp_response != NULL) {
+    CRYPTO_BUFFER_up_ref(cert->ocsp_response);
+    ret->ocsp_response = cert->ocsp_response;
+  }
+
   return ret;
 
 err:
@@ -235,6 +245,8 @@ void ssl_cert_free(CERT *c) {
   ssl_cert_clear_certs(c);
   OPENSSL_free(c->sigalgs);
   X509_STORE_free(c->verify_store);
+  CRYPTO_BUFFER_free(c->signed_cert_timestamp_list);
+  CRYPTO_BUFFER_free(c->ocsp_response);
 
   OPENSSL_free(c);
 }
@@ -955,4 +967,43 @@ void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl,
   /* Emulate the old client certificate callback with the new one. */
   SSL_CTX_set_cert_cb(ctx, do_client_cert_cb, NULL);
   ctx->client_cert_cb = cb;
+}
+
+static int set_signed_cert_timestamp_list(CERT *cert, const uint8_t *list,
+                                           size_t list_len) {
+  CBS sct_list;
+  CBS_init(&sct_list, list, list_len);
+  if (!ssl_is_sct_list_valid(&sct_list)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SCT_LIST);
+    return 0;
+  }
+
+  CRYPTO_BUFFER_free(cert->signed_cert_timestamp_list);
+  cert->signed_cert_timestamp_list =
+      CRYPTO_BUFFER_new(CBS_data(&sct_list), CBS_len(&sct_list), NULL);
+  return cert->signed_cert_timestamp_list != NULL;
+}
+
+int SSL_CTX_set_signed_cert_timestamp_list(SSL_CTX *ctx, const uint8_t *list,
+                                           size_t list_len) {
+  return set_signed_cert_timestamp_list(ctx->cert, list, list_len);
+}
+
+int SSL_set_signed_cert_timestamp_list(SSL *ssl, const uint8_t *list,
+                                       size_t list_len) {
+  return set_signed_cert_timestamp_list(ssl->cert, list, list_len);
+}
+
+int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
+                              size_t response_len) {
+  CRYPTO_BUFFER_free(ctx->cert->ocsp_response);
+  ctx->cert->ocsp_response = CRYPTO_BUFFER_new(response, response_len, NULL);
+  return ctx->cert->ocsp_response != NULL;
+}
+
+int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
+                          size_t response_len) {
+  CRYPTO_BUFFER_free(ssl->cert->ocsp_response);
+  ssl->cert->ocsp_response = CRYPTO_BUFFER_new(response, response_len, NULL);
+  return ssl->cert->ocsp_response != NULL;
 }

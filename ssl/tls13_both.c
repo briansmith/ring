@@ -452,13 +452,14 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  if (hs->scts_requested && ssl->signed_cert_timestamp_list != NULL) {
+  if (hs->scts_requested && ssl->cert->signed_cert_timestamp_list != NULL) {
     CBB contents;
     if (!CBB_add_u16(&extensions, TLSEXT_TYPE_certificate_timestamp) ||
         !CBB_add_u16_length_prefixed(&extensions, &contents) ||
-        !CBB_add_bytes(&contents,
-                       CRYPTO_BUFFER_data(ssl->signed_cert_timestamp_list),
-                       CRYPTO_BUFFER_len(ssl->signed_cert_timestamp_list)) ||
+        !CBB_add_bytes(
+            &contents,
+            CRYPTO_BUFFER_data(ssl->cert->signed_cert_timestamp_list),
+            CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
@@ -466,14 +467,15 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->ocsp_stapling_requested &&
-      ssl->ocsp_response != NULL) {
+      ssl->cert->ocsp_response != NULL) {
     CBB contents, ocsp_response;
     if (!CBB_add_u16(&extensions, TLSEXT_TYPE_status_request) ||
         !CBB_add_u16_length_prefixed(&extensions, &contents) ||
         !CBB_add_u8(&contents, TLSEXT_STATUSTYPE_ocsp) ||
         !CBB_add_u24_length_prefixed(&contents, &ocsp_response) ||
-        !CBB_add_bytes(&ocsp_response, CRYPTO_BUFFER_data(ssl->ocsp_response),
-                       CRYPTO_BUFFER_len(ssl->ocsp_response)) ||
+        !CBB_add_bytes(&ocsp_response,
+                       CRYPTO_BUFFER_data(ssl->cert->ocsp_response),
+                       CRYPTO_BUFFER_len(ssl->cert->ocsp_response)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;

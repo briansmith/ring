@@ -1152,7 +1152,7 @@ static int ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
       !hs->ocsp_stapling_requested ||
-      ssl->ocsp_response == NULL ||
+      ssl->cert->ocsp_response == NULL ||
       ssl->s3->session_reused ||
       !ssl_cipher_uses_certificate_auth(ssl->s3->tmp.new_cipher)) {
     return 1;
@@ -1371,16 +1371,17 @@ static int ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   /* The extension shouldn't be sent when resuming sessions. */
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
       ssl->s3->session_reused ||
-      ssl->signed_cert_timestamp_list == NULL) {
+      ssl->cert->signed_cert_timestamp_list == NULL) {
     return 1;
   }
 
   CBB contents;
   return CBB_add_u16(out, TLSEXT_TYPE_certificate_timestamp) &&
          CBB_add_u16_length_prefixed(out, &contents) &&
-         CBB_add_bytes(&contents,
-                       CRYPTO_BUFFER_data(ssl->signed_cert_timestamp_list),
-                       CRYPTO_BUFFER_len(ssl->signed_cert_timestamp_list)) &&
+         CBB_add_bytes(
+             &contents,
+             CRYPTO_BUFFER_data(ssl->cert->signed_cert_timestamp_list),
+             CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list)) &&
          CBB_flush(out);
 }
 

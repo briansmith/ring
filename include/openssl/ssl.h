@@ -4062,12 +4062,6 @@ struct ssl_ctx_st {
   /* The client's Channel ID private key. */
   EVP_PKEY *tlsext_channel_id_private;
 
-  /* Signed certificate timestamp list to be sent to the client, if requested */
-  CRYPTO_BUFFER *signed_cert_timestamp_list;
-
-  /* OCSP response to be sent to the client, if requested. */
-  CRYPTO_BUFFER *ocsp_response;
-
   /* keylog_callback, if not NULL, is the key logging callback. See
    * |SSL_CTX_set_keylog_callback|. */
   void (*keylog_callback)(const SSL *ssl, const char *line);

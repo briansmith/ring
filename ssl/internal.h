@@ -1323,6 +1323,12 @@ typedef struct cert_st {
   /* Optional X509_STORE for certificate validation. If NULL the parent SSL_CTX
    * store is used instead. */
   X509_STORE *verify_store;
+
+  /* Signed certificate timestamp list to be sent to the client, if requested */
+  CRYPTO_BUFFER *signed_cert_timestamp_list;
+
+  /* OCSP response to be sent to the client, if requested. */
+  CRYPTO_BUFFER *ocsp_response;
 } CERT;
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked
@@ -1887,12 +1893,6 @@ struct ssl_st {
    * hash of the peer's certificate and then discard it to save memory and
    * session space. Only effective on the server side. */
   unsigned retain_only_sha256_of_client_certs:1;
-
-  /* Signed certificate timestamp list to be sent to the client, if requested */
-  CRYPTO_BUFFER *signed_cert_timestamp_list;
-
-  /* OCSP response to be sent to the client, if requested. */
-  CRYPTO_BUFFER *ocsp_response;
 };
 
 /* From draft-ietf-tls-tls13-18, used in determining PSK modes. */
