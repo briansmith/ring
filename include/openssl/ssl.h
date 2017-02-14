@@ -3806,6 +3806,12 @@ struct ssl_session_st {
    * early data. If zero, 0-RTT is disallowed. */
   uint32_t ticket_max_early_data;
 
+  /* early_alpn is the ALPN protocol from the initial handshake. This is only
+   * stored for TLS 1.3 and above in order to enforce ALPN matching for 0-RTT
+   * resumptions. */
+  uint8_t *early_alpn;
+  size_t early_alpn_len;
+
   /* extended_master_secret is true if the master secret in this session was
    * generated using EMS and thus isn't vulnerable to the Triple Handshake
    * attack. */

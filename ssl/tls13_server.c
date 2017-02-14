@@ -251,6 +251,17 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  /* Store the initial negotiated ALPN in the session. */
+  if (ssl->s3->alpn_selected != NULL) {
+    ssl->s3->new_session->early_alpn =
+        BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
+    if (ssl->s3->new_session->early_alpn == NULL) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+    ssl->s3->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
+  }
+
   /* Incorporate the PSK into the running secret. */
   if (ssl->s3->session_reused) {
     if (!tls13_advance_key_schedule(hs, ssl->s3->new_session->master_key,
