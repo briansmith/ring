@@ -403,9 +403,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->msg_callback = ctx->msg_callback;
   ssl->msg_callback_arg = ctx->msg_callback_arg;
   ssl->verify_mode = ctx->verify_mode;
-  ssl->sid_ctx_length = ctx->sid_ctx_length;
-  assert(ssl->sid_ctx_length <= sizeof ssl->sid_ctx);
-  OPENSSL_memcpy(&ssl->sid_ctx, &ctx->sid_ctx, sizeof(ssl->sid_ctx));
   ssl->verify_callback = ctx->default_verify_callback;
   ssl->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
@@ -1072,37 +1069,32 @@ err:
   return 0;
 }
 
-int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
+static int set_session_id_context(CERT *cert, const uint8_t *sid_ctx,
                                    size_t sid_ctx_len) {
-  if (sid_ctx_len > sizeof(ctx->sid_ctx)) {
+  if (sid_ctx_len > sizeof(cert->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
 
-  assert(sizeof(ctx->sid_ctx) < 256);
-  ctx->sid_ctx_length = (uint8_t)sid_ctx_len;
-  OPENSSL_memcpy(ctx->sid_ctx, sid_ctx, sid_ctx_len);
-
+  OPENSSL_COMPILE_ASSERT(sizeof(cert->sid_ctx) < 256, sid_ctx_too_large);
+  cert->sid_ctx_length = (uint8_t)sid_ctx_len;
+  OPENSSL_memcpy(cert->sid_ctx, sid_ctx, sid_ctx_len);
   return 1;
+}
+
+int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
+                                   size_t sid_ctx_len) {
+  return set_session_id_context(ctx->cert, sid_ctx, sid_ctx_len);
 }
 
 int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
                                size_t sid_ctx_len) {
-  if (sid_ctx_len > sizeof(ssl->sid_ctx)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
-    return 0;
-  }
-
-  assert(sizeof(ssl->sid_ctx) < 256);
-  ssl->sid_ctx_length = (uint8_t)sid_ctx_len;
-  OPENSSL_memcpy(ssl->sid_ctx, sid_ctx, sid_ctx_len);
-
-  return 1;
+  return set_session_id_context(ssl->cert, sid_ctx, sid_ctx_len);
 }
 
 const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
-  *out_len = ssl->sid_ctx_length;
-  return ssl->sid_ctx;
+  *out_len = ssl->cert->sid_ctx_length;
+  return ssl->cert->sid_ctx;
 }
 
 void ssl_cipher_preference_list_free(
@@ -2011,10 +2003,6 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   SSL_CTX_up_ref(ctx);
   SSL_CTX_free(ssl->ctx);
   ssl->ctx = ctx;
-
-  ssl->sid_ctx_length = ctx->sid_ctx_length;
-  assert(ssl->sid_ctx_length <= sizeof(ssl->sid_ctx));
-  OPENSSL_memcpy(ssl->sid_ctx, ctx->sid_ctx, sizeof(ssl->sid_ctx));
 
   return ssl->ctx;
 }

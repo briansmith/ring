@@ -213,6 +213,9 @@ CERT *ssl_cert_dup(CERT *cert) {
     ret->ocsp_response = cert->ocsp_response;
   }
 
+  ret->sid_ctx_length = cert->sid_ctx_length;
+  OPENSSL_memcpy(ret->sid_ctx, cert->sid_ctx, sizeof(ret->sid_ctx));
+
   return ret;
 
 err:

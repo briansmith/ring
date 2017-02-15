@@ -3971,8 +3971,6 @@ struct ssl_ctx_st {
   void *msg_callback_arg;
 
   int verify_mode;
-  uint8_t sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
   int (*default_verify_callback)(
       int ok, X509_STORE_CTX *ctx); /* called 'verify_callback' in the SSL */
 

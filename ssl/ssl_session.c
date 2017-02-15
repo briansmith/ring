@@ -560,12 +560,13 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
     session->session_id_length = 0;
   }
 
-  if (ssl->sid_ctx_length > sizeof(session->sid_ctx)) {
+  if (ssl->cert->sid_ctx_length > sizeof(session->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     goto err;
   }
-  OPENSSL_memcpy(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length);
-  session->sid_ctx_length = ssl->sid_ctx_length;
+  OPENSSL_memcpy(session->sid_ctx, ssl->cert->sid_ctx,
+                 ssl->cert->sid_ctx_length);
+  session->sid_ctx_length = ssl->cert->sid_ctx_length;
 
   /* The session is marked not resumable until it is completely filled in. */
   session->not_resumable = 1;
@@ -678,9 +679,9 @@ int ssl_session_is_context_valid(const SSL *ssl, const SSL_SESSION *session) {
     return 0;
   }
 
-  return session->sid_ctx_length == ssl->sid_ctx_length &&
-         OPENSSL_memcmp(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length) ==
-             0;
+  return session->sid_ctx_length == ssl->cert->sid_ctx_length &&
+         OPENSSL_memcmp(session->sid_ctx, ssl->cert->sid_ctx,
+                        ssl->cert->sid_ctx_length) == 0;
 }
 
 int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {

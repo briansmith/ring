@@ -1329,6 +1329,11 @@ typedef struct cert_st {
 
   /* OCSP response to be sent to the client, if requested. */
   CRYPTO_BUFFER *ocsp_response;
+
+  /* sid_ctx partitions the session space within a shared session cache or
+   * ticket key. Only sessions with a matching value will be accepted. */
+  uint8_t sid_ctx_length;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 } CERT;
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked
@@ -1803,11 +1808,6 @@ struct ssl_st {
   /* initial_timeout_duration_ms is the default DTLS timeout duration in
    * milliseconds. It's used to initialize the timer any time it's restarted. */
   unsigned initial_timeout_duration_ms;
-
-  /* the session_id_context is used to ensure sessions are only reused
-   * in the appropriate context */
-  uint8_t sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
   /* session is the configured session to be offered by the client. This session
    * is immutable. */
