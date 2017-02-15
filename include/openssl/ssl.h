@@ -2241,11 +2241,11 @@ OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
 
 /* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
  * of a connection) to request SCTs from the server. See
- * https://tools.ietf.org/html/rfc6962. It returns one.
+ * https://tools.ietf.org/html/rfc6962.
  *
  * Call |SSL_get0_signed_cert_timestamp_list| to recover the SCT after the
  * handshake. */
-OPENSSL_EXPORT int SSL_enable_signed_cert_timestamps(SSL *ssl);
+OPENSSL_EXPORT void SSL_enable_signed_cert_timestamps(SSL *ssl);
 
 /* SSL_CTX_enable_signed_cert_timestamps enables SCT requests on all client SSL
  * objects created from |ctx|.
@@ -2255,12 +2255,11 @@ OPENSSL_EXPORT int SSL_enable_signed_cert_timestamps(SSL *ssl);
 OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
 
 /* SSL_enable_ocsp_stapling causes |ssl| (which must be the client end of a
- * connection) to request a stapled OCSP response from the server. It returns
- * one.
+ * connection) to request a stapled OCSP response from the server.
  *
  * Call |SSL_get0_ocsp_response| to recover the OCSP response after the
  * handshake. */
-OPENSSL_EXPORT int SSL_enable_ocsp_stapling(SSL *ssl);
+OPENSSL_EXPORT void SSL_enable_ocsp_stapling(SSL *ssl);
 
 /* SSL_CTX_enable_ocsp_stapling enables OCSP stapling on all client SSL objects
  * created from |ctx|.

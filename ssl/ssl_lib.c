@@ -1567,18 +1567,16 @@ void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx) {
   ctx->signed_cert_timestamps_enabled = 1;
 }
 
-int SSL_enable_signed_cert_timestamps(SSL *ssl) {
+void SSL_enable_signed_cert_timestamps(SSL *ssl) {
   ssl->signed_cert_timestamps_enabled = 1;
-  return 1;
 }
 
 void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx) {
   ctx->ocsp_stapling_enabled = 1;
 }
 
-int SSL_enable_ocsp_stapling(SSL *ssl) {
+void SSL_enable_ocsp_stapling(SSL *ssl) {
   ssl->ocsp_stapling_enabled = 1;
-  return 1;
 }
 
 void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, const uint8_t **out,
