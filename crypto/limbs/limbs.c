@@ -114,3 +114,21 @@ void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
     carry = limb_adc(&r[i], r[i], m[i] & underflow, carry);
   }
 }
+
+void LIMBS_shl_mod(Limb r[], const Limb m[], size_t num_limbs) {
+  Limb overflow1 =
+      constant_time_is_nonzero_size_t(r[num_limbs - 1] & LIMB_HIGH_BIT);
+  Limb carry = 0;
+  for (size_t i = 0; i < num_limbs; ++i) {
+    Limb limb = r[i];
+    Limb new_carry = limb >> (LIMB_BITS - 1);
+    r[i] = (limb << 1) | carry;
+    carry = new_carry;
+  }
+  Limb overflow2 = ~LIMBS_less_than(r, m, num_limbs);
+  Limb overflow = overflow1 | overflow2;
+  Carry borrow = limb_sub(&r[0], r[0], m[0] & overflow);
+  for (size_t i = 1; i < num_limbs; ++i) {
+    borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
+  }
+}
