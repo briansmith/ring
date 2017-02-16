@@ -17,7 +17,7 @@
 import re
 import shutil
 
-latest_clang = "clang-3.9"
+latest_clang = "clang-4.0"
 
 rusts = [
     "stable",
@@ -33,12 +33,12 @@ linux_compilers = [
     "gcc-4.6",
 
     # Pre-release of clang.
-    # XXX: clang 3.9 doesn't work:
-    # https://github.com/travis-ci/apt-package-whitelist/issues/2764
-    # "clang-3.9",
+    # XXX: clang 4.0 doesn't work:
+    # https://github.com/travis-ci/apt-package-whitelist/issues/3296
+    # "clang-4.0",
 
     # Newest clang and GCC.
-    "clang-3.8",
+    "clang-3.9",
 
     "gcc-5",
     "gcc-6",

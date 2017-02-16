@@ -105,48 +105,48 @@ matrix:
       rust: stable
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
@@ -341,60 +341,60 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
@@ -653,48 +653,48 @@ matrix:
       rust: nightly
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
@@ -897,60 +897,60 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
@@ -1221,48 +1221,48 @@ matrix:
       rust: beta
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
@@ -1457,60 +1457,60 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
