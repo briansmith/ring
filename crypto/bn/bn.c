@@ -171,10 +171,6 @@ unsigned GFp_BN_num_bits(const BIGNUM *bn) {
   return max*BN_BITS2 + GFp_BN_num_bits_word(bn->d[max]);
 }
 
-unsigned GFp_BN_num_bytes(const BIGNUM *bn) {
-  return (GFp_BN_num_bits(bn) + 7) / 8;
-}
-
 void GFp_BN_zero(BIGNUM *bn) {
   bn->top = bn->neg = 0;
 }

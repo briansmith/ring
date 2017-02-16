@@ -76,3 +76,7 @@ BIGNUM *GFp_BN_new(void) {
 
   return bn;
 }
+
+unsigned GFp_BN_num_bytes(const BIGNUM *bn) {
+  return (GFp_BN_num_bits(bn) + 7) / 8;
+}

@@ -139,6 +139,10 @@ extern "C" {
 /* GFp_BN_new creates a new, allocated BIGNUM and initialises it. */
 BIGNUM *GFp_BN_new(void);
 
+/* GFp_BN_num_bytes returns the minimum number of bytes needed to represent the
+* absolute value of |bn|. */
+OPENSSL_EXPORT unsigned GFp_BN_num_bytes(const BIGNUM *bn);
+
 void GFp_BN_set_negative(BIGNUM *bn, int sign);
 
 /* Conversion functions. */
