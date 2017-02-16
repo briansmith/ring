@@ -132,7 +132,7 @@ void GFp_bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
 int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
                            const BN_ULONG *not_used, const BN_ULONG *np,
                            const BN_ULONG *n0, int num);
-#endif
+#else
 
 /* GFp_BN_mod_exp_mont_consttime() stores the precomputed powers in a specific
  * layout so that accessing any of these table values shows the same access
@@ -204,6 +204,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
   GFp_bn_correct_top(b);
   return 1;
 }
+#endif
 
 /* GFp_BN_mod_exp_mont_consttime is based on the assumption that the L1 data cache
  * line width of the target processor is at least the following value. */
