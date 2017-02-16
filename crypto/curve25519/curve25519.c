@@ -29,6 +29,11 @@
 #include "internal.h"
 
 
+/* Prevent -Wmissing-prototypes warnings. */
+void GFp_ge_p3_tobytes(uint8_t *s, const ge_p3 *h);
+void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
+
+
 static const int64_t kBottom25Bits = INT64_C(0x1ffffff);
 static const int64_t kBottom26Bits = INT64_C(0x3ffffff);
 static const int64_t kTop39Bits = INT64_C(0xfffffffffe000000);
@@ -961,7 +966,7 @@ static void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
   s[31] ^= fe_isnegative(x) << 7;
 }
 
-static void ge_p3_tobytes(uint8_t *s, const ge_p3 *h) {
+void GFp_ge_p3_tobytes(uint8_t s[32], const ge_p3 *h) {
   fe recip;
   fe x;
   fe y;
@@ -1323,7 +1328,7 @@ static const uint8_t k25519SmallPrecomp[15 * 2 * 32] = {
     0x45, 0xc9, 0x8b, 0x17, 0x79, 0xe7, 0xc7, 0x90, 0x99, 0x3a, 0x18, 0x25,
 };
 
-static void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
+void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
   x25519_ge_scalarmult_small_precomp(h, a, k25519SmallPrecomp);
 }
 
@@ -3477,7 +3482,7 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
  *
  * Preconditions:
  *   a[31] <= 127 */
-static void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
+void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
   signed char e[64];
   signed char carry;
   ge_p1p1 r;
@@ -4535,7 +4540,7 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 
 
 /* Prototype to avoid -Wmissing-prototypes warnings. */
-void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]);
+void GFp_ed25519_scalar_mask(uint8_t a[32]);
 void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
                       size_t message_len, const uint8_t private_key[64]);
 int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
@@ -4543,21 +4548,10 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
                        const uint8_t public_key[32]);
 
 
-static void ed25519_scalar_mask(uint8_t a[32]) {
+void GFp_ed25519_scalar_mask(uint8_t a[32]) {
   a[0] &= 248;
   a[31] &= 63;
   a[31] |= 64;
-}
-
-void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]) {
-  uint8_t az[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(az, sizeof(az), in, 32, NULL, 0, NULL, 0, NULL, 0);
-
-  ed25519_scalar_mask(az);
-
-  ge_p3 A;
-  x25519_ge_scalarmult_base(&A, az);
-  ge_p3_tobytes(out, &A);
 }
 
 void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
@@ -4565,7 +4559,7 @@ void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
   uint8_t az[SHA512_DIGEST_LENGTH];
   GFp_SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
 
-  ed25519_scalar_mask(az);
+  GFp_ed25519_scalar_mask(az);
 
   uint8_t nonce[SHA512_DIGEST_LENGTH];
   GFp_SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
@@ -4573,8 +4567,8 @@ void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
 
   x25519_sc_reduce(nonce);
   ge_p3 R;
-  x25519_ge_scalarmult_base(&R, nonce);
-  ge_p3_tobytes(out_sig, &R);
+  GFp_x25519_ge_scalarmult_base(&R, nonce);
+  GFp_ge_p3_tobytes(out_sig, &R);
 
   uint8_t hram[SHA512_DIGEST_LENGTH];
   GFp_SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
@@ -4822,7 +4816,7 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
   x25519_scalar_mask(e);
 
   ge_p3 A;
-  x25519_ge_scalarmult_base(&A, e);
+  GFp_x25519_ge_scalarmult_base(&A, e);
 
   /* We only need the u-coordinate of the curve25519 point. The map is
    * u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y). */

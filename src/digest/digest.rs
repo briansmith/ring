@@ -314,7 +314,7 @@ impl core::fmt::Debug for Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA1: Algorithm = Algorithm {
-    output_len: 160 / 8,
+    output_len: sha1::OUTPUT_LEN,
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
     len_len: 64 / 8,
@@ -460,6 +460,19 @@ pub extern fn GFp_SHA512_4(out: *mut u8, out_len: c::size_t,
     let out = unsafe { core::slice::from_raw_parts_mut(out, out_len) };
     out.copy_from_slice(digest);
 }
+
+/// The length of the output of SHA-256, in bytes.
+pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN;
+
+/// The length of the output of SHA-256, in bytes.
+pub const SHA256_OUTPUT_LEN: usize = 256 / 8;
+
+/// The length of the output of SHA-512, in bytes.
+pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
+
+/// The length of the output of SHA-512, in bytes.
+pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
+
 
 extern {
     fn GFp_sha256_block_data_order(state: &mut State, data: *const u8,

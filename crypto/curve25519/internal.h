@@ -47,7 +47,9 @@ void GFp_x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
 /* fe means field element. Here the field is \Z/(2^255-19). An element t,
  * entries t[0]...t[9], represents the integer t[0]+2^26 t[1]+2^51 t[2]+2^77
  * t[3]+2^102 t[4]+...+2^230 t[9]. Bounds on each t[i] vary depending on
- * context.  */
+ * context.
+ *
+ * Keep in sync with `Elem` and `ELEM_LIMBS` in eddsa.rs. */
 typedef int32_t fe[10];
 
 /* ge means group element.
@@ -60,7 +62,8 @@ typedef int32_t fe[10];
  *   ge_p2 (projective): (X:Y:Z) satisfying x=X/Z, y=Y/Z
  *   ge_p3 (extended): (X:Y:Z:T) satisfying x=X/Z, y=Y/Z, XY=ZT
  *   ge_p1p1 (completed): ((X:Z),(Y:T)) satisfying x=X/Z, y=Y/T
- *   ge_precomp (Duif): (y+x,y-x,2dxy) */
+ *   ge_precomp (Duif): (y+x,y-x,2dxy)
+ */
 
 typedef struct {
   fe X;
@@ -68,6 +71,8 @@ typedef struct {
   fe Z;
 } ge_p2;
 
+
+/* Keep in sync with `Point` in eddsa.rs. */
 typedef struct {
   fe X;
   fe Y;

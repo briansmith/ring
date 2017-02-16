@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, error, private, rand, signature};
+use {bssl, c, digest, error, private, rand, signature};
 use untrusted;
 
 /// Parameters for EdDSA signing and verification.
@@ -55,10 +55,7 @@ impl<'a> Ed25519KeyPair {
             public_key: [0; 32],
         };
         try!(rng.fill(&mut bytes.private_key));
-        unsafe {
-            GFp_ed25519_public_from_private(bytes.public_key.as_mut_ptr(),
-                                            bytes.private_key.as_ptr());
-        }
+        public_from_private(&bytes.private_key, &mut bytes.public_key);
         let key_pair =
             try!(Ed25519KeyPair::from_bytes_unchecked(&bytes.private_key,
                                                       &bytes.public_key));
@@ -80,13 +77,15 @@ impl<'a> Ed25519KeyPair {
                       -> Result<Ed25519KeyPair, error::Unspecified> {
         let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
                                                              public_key));
-        let mut public_key_check = [0; 32];
-        unsafe {
-            GFp_ed25519_public_from_private(public_key_check.as_mut_ptr(),
-                                            pair.private_public.as_ptr());
-        }
-        if public_key != public_key_check {
-            return Err(error::Unspecified);
+        { // borrow pair;
+            let mut public_key_check = [0; 32];
+            let private_key =
+                slice_as_array_ref!(&pair.private_public[..SCALAR_LEN],
+                                    SCALAR_LEN).unwrap();
+            public_from_private(private_key, &mut public_key_check);
+            if public_key != public_key_check {
+                return Err(error::Unspecified);
+            }
         }
         Ok(pair)
     }
@@ -148,18 +147,62 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 impl private::Private for EdDSAParameters {}
 
 
-extern  {
-    fn GFp_ed25519_public_from_private(out: *mut u8/*[32]*/,
-                                       in_: *const u8/*[32]*/);
+fn public_from_private(seed: &Seed, out: &mut PublicKey) {
+    let seed_sha512 = digest::digest(&digest::SHA512, seed);
+    let a_bytes =
+        slice_as_array_ref!(&seed_sha512.as_ref()[..SCALAR_LEN], SCALAR_LEN)
+            .unwrap();
+    let mut a_bytes = *a_bytes;
+    unsafe {
+        GFp_ed25519_scalar_mask(&mut a_bytes);
+    }
+    let mut a = Point {
+        x: [0; ELEM_LIMBS],
+        y: [0; ELEM_LIMBS],
+        z: [0; ELEM_LIMBS],
+        t: [0; ELEM_LIMBS],
+    };
+    unsafe {
+        GFp_x25519_ge_scalarmult_base(&mut a, &a_bytes);
+        GFp_ge_p3_tobytes(out, &a);
+    }
+}
 
+
+extern  {
+    fn GFp_ed25519_scalar_mask(a: &mut [u8; SCALAR_LEN]);
     fn GFp_ed25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
                         message_len: c::size_t, private_key: *const u8/*[64]*/);
 
     fn GFp_ed25519_verify(message: *const u8, message_len: c::size_t,
                           signature: *const u8/*[64]*/,
                           public_key: *const u8/*[32]*/) -> c::int;
+
+    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &Point);
+    fn GFp_x25519_ge_scalarmult_base(h: &mut Point, a: &Seed);
+
 }
 
+// Keep this in sync with `ge_p3` in curve25519/internal.h.
+#[repr(C)]
+struct Point {
+  x: Elem,
+  y: Elem,
+  z: Elem,
+  t: Elem,
+}
+
+// Keep this in sync with `fe` in curve25519/internal.h.
+type Elem = [i32; ELEM_LIMBS];
+const ELEM_LIMBS: usize = 10;
+
+type PublicKey = [u8; ELEM_LEN];
+
+const SCALAR_LEN: usize = 32;
+const ELEM_LEN: usize = 32;
+
+type Seed = [u8; SEED_LEN];
+const SEED_LEN: usize = 32;
 
 #[cfg(test)]
 mod tests {

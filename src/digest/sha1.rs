@@ -24,6 +24,7 @@ pub type State = [u64; super::MAX_CHAINING_LEN / 8];
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
+pub const OUTPUT_LEN: usize = 160 / 8;
 const CHAINING_WORDS: usize = CHAINING_LEN / 4;
 
 type W32 = Wrapping<u32>;
