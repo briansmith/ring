@@ -35,6 +35,7 @@ add_library(
   tasn_new.c
   tasn_typ.c
   tasn_utl.c
+  time_support.c
   x_bignum.c
   x_long.c
 )

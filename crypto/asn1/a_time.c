@@ -63,7 +63,6 @@
 #include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/time_support.h>
 
 #include "asn1_locl.h"
 

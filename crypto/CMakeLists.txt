@@ -129,7 +129,6 @@ add_library(
   thread_none.c
   thread_pthread.c
   thread_win.c
-  time_support.c
 
   $<TARGET_OBJECTS:stack>
   $<TARGET_OBJECTS:lhash>
