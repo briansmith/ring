@@ -194,12 +194,6 @@ OPENSSL_EXPORT int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value);
 /* GFp_BN_is_negative returns one if |bn| is negative and zero otherwise. */
 OPENSSL_EXPORT int GFp_BN_is_negative(const BIGNUM *bn);
 
-/* GFp_BN_get_flags returns |bn->flags| & |flags|. */
-OPENSSL_EXPORT int GFp_BN_get_flags(const BIGNUM *bn, int flags);
-
-/* GFp_BN_set_flags sets |flags| on |bn|. */
-OPENSSL_EXPORT void GFp_BN_set_flags(BIGNUM *bn, int flags);
-
 
 /* Conversion functions. */
 

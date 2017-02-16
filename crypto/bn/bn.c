@@ -268,11 +268,3 @@ void GFp_bn_correct_top(BIGNUM *bn) {
     bn->neg = 0;
   }
 }
-
-int GFp_BN_get_flags(const BIGNUM *bn, int flags) {
-  return bn->flags & flags;
-}
-
-void GFp_BN_set_flags(BIGNUM *bn, int flags) {
-  bn->flags |= flags;
-}
