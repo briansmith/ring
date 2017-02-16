@@ -15,7 +15,6 @@
 // TODO: Deny `unused_qualifications` after
 // https://github.com/rust-lang/rust/issues/37345 is fixed.
 #![allow(
-// TODO
     missing_docs,
     unused_qualifications)]
 #![deny(
@@ -237,13 +236,14 @@ const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const C_FLAGS: &'static [&'static str] =
-    &["-std=c1x",
+    &["-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
       "-Wbad-function-cast",
       "-Wmissing-field-initializers",
       "-Wmissing-prototypes",
       "-Wnested-externs",
       "-Wstrict-prototypes"];
 
+// GCC 4.6 requires "c++0x" instead of "c++11"
 const CXX_FLAGS: &'static [&'static str] = &["-std=c++0x"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -465,6 +465,7 @@ fn build_library<P>(target: &Path, additional: P,
                     header_changed: bool)
     where P: ParallelIterator<Item = String>
 {
+    // Compile all the (dirty) source files into object files.
     let objs = additional.chain(lib_src.par_iter().map(|a| String::from(*a)))
         .weight_max()
         .map(|f| compile(&f, &target_info, out_dir.clone(), header_changed))
@@ -474,6 +475,8 @@ fn build_library<P>(target: &Path, additional: P,
                     a.extend(b.into_iter());
                     a
                 });
+
+    //Rebuild the library if necessary.
     if objs.par_iter()
         .map(|f| Path::new(f))
         .any(|p| need_run(&p, target)) {
@@ -519,14 +522,6 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
                 for f in CXX_FLAGS {
                     let _ = c.flag(f);
                 }
-                if target_info.target_os() != "none" {
-                    let _ = c.flag("-fstack-protector");
-                }
-                let _ = match (target_info.target_os(),
-                               target_info.target_arch()) {
-                    ("macos", _) => c.flag("-gfull"),
-                    _ => c.flag("-g3"),
-                };
                 let _ = c.cpp(true);
             },
             Some(Some("S")) => {},
@@ -534,6 +529,20 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
         };
         for f in CPP_FLAGS {
             let _ = c.flag(&f);
+        }
+        if target_info.target_os() != "none" &&
+           target_info.target_os() != "redox" {
+            let _ = c.flag("-fstack-protector");
+        }
+        let _ = match (target_info.target_os(), target_info.target_arch()) {
+            // ``-gfull`` is required for Darwin's |-dead_strip|.
+            ("macos", _) => c.flag("-gfull"),
+            _ => c.flag("-g3"),
+        };
+        if env::var("OPT_LEVEL").unwrap() == "0" {
+            let _ = c.define("DEBUG", None);
+        } else {
+            let _ = c.define("NDEBUG", None);
         }
         let mut c = c.get_compiler().to_command();
         let _ = c.arg("-c")

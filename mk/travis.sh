@@ -62,7 +62,6 @@ fi
 
 $CC_X --version
 $CXX_X --version
-make --version
 
 cargo version
 rustc --version
