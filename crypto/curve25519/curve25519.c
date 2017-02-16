@@ -4543,13 +4543,17 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
                        const uint8_t public_key[32]);
 
 
+static void ed25519_scalar_mask(uint8_t a[32]) {
+  a[0] &= 248;
+  a[31] &= 63;
+  a[31] |= 64;
+}
+
 void GFp_ed25519_public_from_private(uint8_t out[32], const uint8_t in[32]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
   GFp_SHA512_4(az, sizeof(az), in, 32, NULL, 0, NULL, 0, NULL, 0);
 
-  az[0] &= 248;
-  az[31] &= 63;
-  az[31] |= 64;
+  ed25519_scalar_mask(az);
 
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);
@@ -4561,9 +4565,7 @@ void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
   uint8_t az[SHA512_DIGEST_LENGTH];
   GFp_SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
 
-  az[0] &= 248;
-  az[31] &= 63;
-  az[31] |= 64;
+  ed25519_scalar_mask(az);
 
   uint8_t nonce[SHA512_DIGEST_LENGTH];
   GFp_SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
@@ -4705,6 +4707,12 @@ static void fe_mul121666(fe h, fe f) {
   h[9] = (int32_t)h9;
 }
 
+static void x25519_scalar_mask(uint8_t e[32]) {
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+}
+
 static void x25519_scalar_mult_generic(uint8_t out[32],
                                        const uint8_t scalar[32],
                                        const uint8_t point[32]) {
@@ -4712,9 +4720,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 
   uint8_t e[32];
   memcpy(e, scalar, 32);
-  e[0] &= 248;
-  e[31] &= 127;
-  e[31] |= 64;
+  x25519_scalar_mask(e);
   fe_frombytes(x1, point);
   fe_1(x2);
   fe_0(z2);
@@ -4813,9 +4819,7 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
 
   uint8_t e[32];
   memcpy(e, private_key, 32);
-  e[0] &= 248;
-  e[31] &= 127;
-  e[31] |= 64;
+  x25519_scalar_mask(e);
 
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, e);
