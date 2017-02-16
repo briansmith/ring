@@ -49,7 +49,7 @@ linux_default_clang = "clang-3.4"
 linux_default_gcc = "gcc-4.6"
 
 osx_compilers = [
-     "clang",
+     "cc"
 ]
 
 compilers = {
@@ -264,6 +264,9 @@ def get_sources_for_package(package):
         return [ubuntu_toolchain]
 
 def get_cc(sys, compiler):
+    if compiler == "cc":
+        return ""
+
     if sys == "linux" and compiler == linux_default_clang:
         return "clang"
 

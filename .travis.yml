@@ -17,22 +17,22 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: osx
       osx_image: xcode8.2
@@ -565,22 +565,22 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: osx
       osx_image: xcode8.2
@@ -1133,22 +1133,22 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin CC_X= CXX_X= FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: osx
       osx_image: xcode8.2
