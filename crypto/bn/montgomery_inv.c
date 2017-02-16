@@ -190,7 +190,7 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
   }
 
   for (unsigned i = n_bits - 1; i < p; ++i) {
-    LIMBS_shl_mod(r->d, n->d, n->top);
+    LIMBS_shl_mod(r->d, r->d, n->d, n->top);
   }
 
   GFp_bn_correct_top(r);

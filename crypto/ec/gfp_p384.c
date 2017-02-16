@@ -182,7 +182,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
 }
 
 static inline void elem_mul_by_2(Elem r, const Elem a) {
-  elem_add(r, a, a);
+  LIMBS_shl_mod(r, a, Q, P384_LIMBS);
 }
 
 static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {

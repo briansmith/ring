@@ -115,12 +115,12 @@ void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
   }
 }
 
-void LIMBS_shl_mod(Limb r[], const Limb m[], size_t num_limbs) {
+void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs) {
   Limb overflow1 =
-      constant_time_is_nonzero_size_t(r[num_limbs - 1] & LIMB_HIGH_BIT);
+      constant_time_is_nonzero_size_t(a[num_limbs - 1] & LIMB_HIGH_BIT);
   Limb carry = 0;
   for (size_t i = 0; i < num_limbs; ++i) {
-    Limb limb = r[i];
+    Limb limb = a[i];
     Limb new_carry = limb >> (LIMB_BITS - 1);
     r[i] = (limb << 1) | carry;
     carry = new_carry;
