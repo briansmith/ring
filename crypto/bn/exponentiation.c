@@ -211,6 +211,8 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 #define MOD_EXP_CTIME_MIN_CACHE_LINE_MASK \
   (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - 1)
 
+#if !defined(OPENSSL_X86_64)
+
 /* Window sizes optimized for fixed window size modular exponentiation
  * algorithm (GFp_BN_mod_exp_mont_consttime).
  *
@@ -235,6 +237,8 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 #define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (5)
 
 #endif
+
+#endif /* defined(OPENSSL_X86_64) */
 
 /* Given a pointer value, compute the next address that is a cache line
  * multiple. */
@@ -263,8 +267,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   assert(!GFp_BN_is_negative(p));
   assert(!GFp_BN_is_zero(p));
 
-  int i, bits, ret = 0, window, wvalue;
-  int top;
+  int i, bits, ret = 0, wvalue;
 
   int numPowers;
   unsigned char *powerbufFree = NULL;
@@ -272,19 +275,23 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
 
-  top = m->top;
+  const int top = m->top;
+  /* The |OPENSSL_BN_ASM_MONT5| code requires top > 1. */
+  if (top <= 1) {
+    goto err;
+  }
+
 
   bits = GFp_BN_num_bits(p);
   assert(bits > 0);
 
   /* Get the window size to use with size of p. */
-  window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
 #if defined(OPENSSL_BN_ASM_MONT5)
-  if (window >= 5) {
-    window = 5; /* ~5% improvement for RSA2048 sign, and even for RSA4096 */
-    /* reserve space for mont->N.d[] copy */
-    powerbufLen += top * sizeof(mont->N.d[0]);
-  }
+  static const int window = 5;
+  /* reserve space for mont->N.d[] copy */
+  powerbufLen += top * sizeof(mont->N.d[0]);
+#else
+  const int window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
 #endif
 
   /* Allocate a buffer large enough to hold all of the pre-computed
@@ -346,21 +353,9 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   /* This optimization uses ideas from http://eprint.iacr.org/2011/239,
    * specifically optimization of cache-timing attack countermeasures
    * and pre-computation optimization. */
-
-  /* Dedicated window==4 case improves 512-bit RSA sign by ~15%, but as
-   * 512-bit RSA is hardly relevant, we omit it to spare size... */
-  if (window == 5 && top > 1) {
+  {
     const BN_ULONG *n0 = mont->n0;
     BN_ULONG *np;
-
-    /* BN_to_mont can contaminate words above .top
-     * [in BN_DEBUG[_DEBUG] build]... */
-    for (i = am.top; i < top; i++) {
-      am.d[i] = 0;
-    }
-    for (i = tmp.top; i < top; i++) {
-      tmp.d[i] = 0;
-    }
 
     /* copy mont->N.d[] to improve cache locality */
     for (np = am.d + top, i = 0; i < top; i++) {
@@ -454,17 +449,16 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       }
     }
 
-    ret = GFp_bn_from_montgomery(tmp.d, tmp.d, NULL, np, n0, top);
+    if (!GFp_bn_from_montgomery(tmp.d, tmp.d, NULL, np, n0, top)) {
+      goto err;
+    }
     tmp.top = top;
     GFp_bn_correct_top(&tmp);
-    if (ret) {
-      if (!GFp_BN_copy(rr, &tmp)) {
-        ret = 0;
-      }
-      goto err; /* non-zero ret means it's not error */
+    if (!GFp_BN_copy(rr, &tmp)) {
+      goto err;
     }
-  } else
-#endif
+  }
+#else
   {
     if (!copy_to_prebuf(&tmp, top, powerbuf, 0, window) ||
         !copy_to_prebuf(&am, top, powerbuf, 1, window)) {
@@ -522,12 +516,14 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
         goto err;
       }
     }
-  }
 
-  /* Convert the final result from montgomery to standard format */
-  if (!GFp_BN_from_mont(rr, &tmp, mont)) {
-    goto err;
+    /* Convert the final result from montgomery to standard format */
+    if (!GFp_BN_from_mont(rr, &tmp, mont)) {
+      goto err;
+    }
   }
+#endif
+
   ret = 1;
 
 err:
