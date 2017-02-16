@@ -426,26 +426,9 @@ err:
   return ret;
 }
 
-PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
-                                   int pass_len) {
-  uint8_t *pass_raw = NULL;
-  size_t pass_raw_len = 0;
-  if (!pass_to_pass_raw(OBJ_obj2nid(pkcs8->algor->algorithm), pass, pass_len,
-                        &pass_raw, &pass_raw_len)) {
-    return NULL;
-  }
-
-  PKCS8_PRIV_KEY_INFO *ret = PKCS8_decrypt_pbe(pkcs8, pass_raw, pass_raw_len);
-
-  if (pass_raw) {
-    OPENSSL_cleanse(pass_raw, pass_raw_len);
-    OPENSSL_free(pass_raw);
-  }
-  return ret;
-}
-
-PKCS8_PRIV_KEY_INFO *PKCS8_decrypt_pbe(X509_SIG *pkcs8, const uint8_t *pass_raw,
-                                       size_t pass_raw_len) {
+static PKCS8_PRIV_KEY_INFO *pkcs8_decrypt_raw(X509_SIG *pkcs8,
+                                              const uint8_t *pass_raw,
+                                              size_t pass_raw_len) {
   PKCS8_PRIV_KEY_INFO *ret = NULL;
   uint8_t *in = NULL, *out = NULL;
   size_t out_len = 0;
@@ -495,17 +478,16 @@ err:
   return ret;
 }
 
-X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
-                        int pass_len, const uint8_t *salt, size_t salt_len,
-                        int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
+PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
+                                   int pass_len) {
   uint8_t *pass_raw = NULL;
   size_t pass_raw_len = 0;
-  if (!pass_to_pass_raw(pbe_nid, pass, pass_len, &pass_raw, &pass_raw_len)) {
+  if (!pass_to_pass_raw(OBJ_obj2nid(pkcs8->algor->algorithm), pass, pass_len,
+                        &pass_raw, &pass_raw_len)) {
     return NULL;
   }
 
-  X509_SIG *ret = PKCS8_encrypt_pbe(pbe_nid, cipher, pass_raw, pass_raw_len,
-                                    salt, salt_len, iterations, p8inf);
+  PKCS8_PRIV_KEY_INFO *ret = pkcs8_decrypt_raw(pkcs8, pass_raw, pass_raw_len);
 
   if (pass_raw) {
     OPENSSL_cleanse(pass_raw, pass_raw_len);
@@ -514,10 +496,10 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
   return ret;
 }
 
-X509_SIG *PKCS8_encrypt_pbe(int pbe_nid, const EVP_CIPHER *cipher,
-                            const uint8_t *pass_raw, size_t pass_raw_len,
-                            const uint8_t *salt, size_t salt_len,
-                            int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
+static X509_SIG *pkcs8_encrypt_raw(int pbe_nid, const EVP_CIPHER *cipher,
+                                   const uint8_t *pass_raw, size_t pass_raw_len,
+                                   const uint8_t *salt, size_t salt_len,
+                                   int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   X509_SIG *ret = NULL;
   uint8_t *plaintext = NULL, *salt_buf = NULL, *der = NULL;
   int plaintext_len = -1;
@@ -606,6 +588,25 @@ err:
   OPENSSL_free(der);
   CBB_cleanup(&cbb);
   EVP_CIPHER_CTX_cleanup(&ctx);
+  return ret;
+}
+
+X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+                        int pass_len, const uint8_t *salt, size_t salt_len,
+                        int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
+  uint8_t *pass_raw = NULL;
+  size_t pass_raw_len = 0;
+  if (!pass_to_pass_raw(pbe_nid, pass, pass_len, &pass_raw, &pass_raw_len)) {
+    return NULL;
+  }
+
+  X509_SIG *ret = pkcs8_encrypt_raw(pbe_nid, cipher, pass_raw, pass_raw_len,
+                                    salt, salt_len, iterations, p8inf);
+
+  if (pass_raw) {
+    OPENSSL_cleanse(pass_raw, pass_raw_len);
+    OPENSSL_free(pass_raw);
+  }
   return ret;
 }
 
@@ -758,7 +759,7 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
     }
 
     PKCS8_PRIV_KEY_INFO *pki =
-        PKCS8_decrypt_pbe(encrypted, ctx->password, ctx->password_len);
+        pkcs8_decrypt_raw(encrypted, ctx->password, ctx->password_len);
     X509_SIG_free(encrypted);
     if (pki == NULL) {
       return 0;
