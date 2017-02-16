@@ -54,7 +54,7 @@ if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   # multilib support that corresponds to $CC_X and $CXX_X but unless cc happens
   # to match #CC_X, that's not the right version. The symptom is a linker error
   # where it fails to find -lgcc_s.
-  if [ ! -z "${CC_X}" ]; then
+  if [ ! -z "$CC_X" ]; then
     mkdir .cargo
     echo "[target.$TARGET_X]" > .cargo/config
     echo "linker= \"$CC_X\"" >> .cargo/config
@@ -62,12 +62,12 @@ if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   fi
 fi
 
-if [ ! -z "${CC_X-}" ]; then
+if [ ! -z "$CC_X" ]; then
   $CC_X --version
 else
   cc --version
 fi
-if [ ! -z "${CXX_X-}" ]; then
+if [ ! -z "$CXX_X" ]; then
   $CXX_X --version
 else
   c++ --version
