@@ -4105,9 +4105,6 @@ struct ssl_ctx_st {
   /* short_header_enabled is one if a short record header in TLS 1.3 may
    * be negotiated and zero otherwise. */
   unsigned short_header_enabled:1;
-
-  /* TODO(agl): remove once node.js no longer references this. */
-  int freelist_max_len;
 };
 
 
