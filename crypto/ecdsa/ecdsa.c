@@ -66,9 +66,10 @@
 
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
-               unsigned int *sig_len, EC_KEY *eckey) {
+               unsigned int *sig_len, const EC_KEY *eckey) {
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    return eckey->ecdsa_meth->sign(digest, digest_len, sig, sig_len, eckey);
+    return eckey->ecdsa_meth->sign(digest, digest_len, sig, sig_len,
+                                   (EC_KEY*) eckey /* cast away const */);
   }
 
   return ECDSA_sign_ex(type, digest, digest_len, sig, sig_len, NULL, NULL,
@@ -76,7 +77,7 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
 }
 
 int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
-                 const uint8_t *sig, size_t sig_len, EC_KEY *eckey) {
+                 const uint8_t *sig, size_t sig_len, const EC_KEY *eckey) {
   ECDSA_SIG *s;
   int ret = 0;
   uint8_t *der = NULL;
@@ -133,12 +134,12 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
 }
 
 ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
-                         EC_KEY *key) {
+                         const EC_KEY *key) {
   return ECDSA_do_sign_ex(digest, digest_len, NULL, NULL, key);
 }
 
 int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
-                    const ECDSA_SIG *sig, EC_KEY *eckey) {
+                    const ECDSA_SIG *sig, const EC_KEY *eckey) {
   int ret = 0;
   BN_CTX *ctx;
   BIGNUM *u1, *u2, *m, *X;
@@ -224,7 +225,7 @@ err:
   return ret;
 }
 
-static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
+static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
                             BIGNUM **rp, const uint8_t *digest,
                             size_t digest_len) {
   BN_CTX *ctx = NULL;
@@ -338,13 +339,14 @@ err:
   return ret;
 }
 
-int ECDSA_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinv, BIGNUM **rp) {
+int ECDSA_sign_setup(const EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinv,
+                     BIGNUM **rp) {
   return ecdsa_sign_setup(eckey, ctx, kinv, rp, NULL, 0);
 }
 
 ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
                             const BIGNUM *in_kinv, const BIGNUM *in_r,
-                            EC_KEY *eckey) {
+                            const EC_KEY *eckey) {
   int ok = 0;
   BIGNUM *kinv = NULL, *s, *m = NULL, *tmp = NULL;
   const BIGNUM *ckinv;
@@ -441,7 +443,7 @@ err:
 
 int ECDSA_sign_ex(int type, const uint8_t *digest, size_t digest_len,
                   uint8_t *sig, unsigned int *sig_len, const BIGNUM *kinv,
-                  const BIGNUM *r, EC_KEY *eckey) {
+                  const BIGNUM *r, const EC_KEY *eckey) {
   int ret = 0;
   ECDSA_SIG *s = NULL;
 
