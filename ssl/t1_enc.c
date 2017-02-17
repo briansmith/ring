@@ -473,7 +473,7 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
                                 const uint8_t *premaster,
                                 size_t premaster_len) {
   const SSL *ssl = hs->ssl;
-  if (ssl->s3->tmp.extended_master_secret) {
+  if (hs->extended_master_secret) {
     uint8_t digests[EVP_MAX_MD_SIZE];
     size_t digests_len;
     if (!SSL_TRANSCRIPT_get_hash(&hs->transcript, digests, &digests_len) ||

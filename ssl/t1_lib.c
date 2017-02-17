@@ -870,38 +870,32 @@ static int ext_ems_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 static int ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                      CBS *contents) {
   SSL *const ssl = hs->ssl;
-  /* Whether EMS is negotiated may not change on renegotation. */
-  if (ssl->s3->initial_handshake_complete) {
-    if ((contents != NULL) != ssl->s3->tmp.extended_master_secret) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_EMS_MISMATCH);
-      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+
+  if (contents != NULL) {
+    if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
+        ssl->version == SSL3_VERSION ||
+        CBS_len(contents) != 0) {
       return 0;
     }
 
-    return 1;
+    hs->extended_master_secret = 1;
   }
 
-  if (contents == NULL) {
-    return 1;
-  }
-
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
-      ssl->version == SSL3_VERSION) {
+  /* Whether EMS is negotiated may not change on renegotiation. */
+  if (ssl->s3->established_session != NULL &&
+      hs->extended_master_secret !=
+          ssl->s3->established_session->extended_master_secret) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_EMS_MISMATCH);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 
-  if (CBS_len(contents) != 0) {
-    return 0;
-  }
-
-  ssl->s3->tmp.extended_master_secret = 1;
   return 1;
 }
 
 static int ext_ems_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                      CBS *contents) {
-  SSL *const ssl = hs->ssl;
-  uint16_t version = ssl3_protocol_version(ssl);
+  uint16_t version = ssl3_protocol_version(hs->ssl);
   if (version >= TLS1_3_VERSION ||
       version == SSL3_VERSION) {
     return 1;
@@ -915,12 +909,12 @@ static int ext_ems_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 0;
   }
 
-  ssl->s3->tmp.extended_master_secret = 1;
+  hs->extended_master_secret = 1;
   return 1;
 }
 
 static int ext_ems_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
-  if (!hs->ssl->s3->tmp.extended_master_secret) {
+  if (!hs->extended_master_secret) {
     return 1;
   }
 

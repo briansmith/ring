@@ -998,8 +998,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->session != NULL &&
-      ssl->s3->tmp.extended_master_secret !=
-          ssl->session->extended_master_secret) {
+      hs->extended_master_secret != ssl->session->extended_master_secret) {
     al = SSL_AD_HANDSHAKE_FAILURE;
     if (ssl->session->extended_master_secret) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION);
@@ -1649,7 +1648,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   if (hs->new_session->master_key_length == 0) {
     goto err;
   }
-  hs->new_session->extended_master_secret = ssl->s3->tmp.extended_master_secret;
+  hs->new_session->extended_master_secret = hs->extended_master_secret;
   OPENSSL_cleanse(pms, pms_len);
   OPENSSL_free(pms);
 

@@ -1224,11 +1224,26 @@ size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
 int SSL_get_verify_mode(const SSL *ssl) { return ssl->verify_mode; }
 
 int SSL_get_extms_support(const SSL *ssl) {
+  /* TLS 1.3 does not require extended master secret and always reports as
+   * supporting it. */
   if (!ssl->s3->have_version) {
     return 0;
   }
-  return ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
-         ssl->s3->tmp.extended_master_secret == 1;
+  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    return 1;
+  }
+
+  /* If the initial handshake completed, query the established session. */
+  if (ssl->s3->established_session != NULL) {
+    return ssl->s3->established_session->extended_master_secret;
+  }
+
+  /* Otherwise, query the in-progress handshake. */
+  if (ssl->s3->hs != NULL) {
+    return ssl->s3->hs->extended_master_secret;
+  }
+  assert(0);
+  return 0;
 }
 
 int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return 0; }

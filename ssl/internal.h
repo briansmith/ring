@@ -1107,6 +1107,10 @@ struct ssl_handshake_st {
   /* v2_clienthello is one if we received a V2ClientHello. */
   unsigned v2_clienthello:1;
 
+  /* extended_master_secret is one if the extended master secret extension is
+   * negotiated in this handshake. */
+  unsigned extended_master_secret:1;
+
   /* client_version is the value sent or received in the ClientHello version. */
   uint16_t client_version;
 } /* SSL_HANDSHAKE */;
@@ -1619,14 +1623,6 @@ typedef struct ssl3_state_st {
     uint8_t new_mac_secret_len;
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
-
-    /* extended_master_secret indicates whether the extended master secret
-     * computation is used in this handshake. Note that this is different from
-     * whether it was used for the current session. If this is a resumption
-     * handshake then EMS might be negotiated in the client and server hello
-     * messages, but it doesn't matter if the session that's being resumed
-     * didn't use it to create the master secret initially. */
-    char extended_master_secret;
   } tmp;
 
   /* established_session is the session established by the connection. This

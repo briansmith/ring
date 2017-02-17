@@ -933,8 +933,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   if (session != NULL) {
-    if (session->extended_master_secret &&
-        !ssl->s3->tmp.extended_master_secret) {
+    if (session->extended_master_secret && !hs->extended_master_secret) {
       /* A ClientHello without EMS that attempts to resume a session with EMS
        * is fatal to the connection. */
       al = SSL_AD_HANDSHAKE_FAILURE;
@@ -945,8 +944,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
     if (!ssl_session_is_resumable(hs, session) ||
         /* If the client offers the EMS extension, but the previous session
          * didn't use it, then negotiate a new session. */
-        ssl->s3->tmp.extended_master_secret !=
-            session->extended_master_secret) {
+        hs->extended_master_secret != session->extended_master_secret) {
       SSL_SESSION_free(session);
       session = NULL;
     }
@@ -1743,7 +1741,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
   if (hs->new_session->master_key_length == 0) {
     goto err;
   }
-  hs->new_session->extended_master_secret = ssl->s3->tmp.extended_master_secret;
+  hs->new_session->extended_master_secret = hs->extended_master_secret;
 
   OPENSSL_cleanse(premaster_secret, premaster_secret_len);
   OPENSSL_free(premaster_secret);
