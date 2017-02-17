@@ -781,10 +781,11 @@ int SSL_shutdown(SSL *ssl) {
     return -1;
   }
 
-  /* We can't shutdown properly if we are in the middle of a handshake. */
+  /* If we are in the middle of a handshake, silently succeed. Consumers often
+   * call this function before |SSL_free|, whether the handshake succeeded or
+   * not. We assume the caller has already handled failed handshakes. */
   if (SSL_in_init(ssl)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SHUTDOWN_WHILE_IN_INIT);
-    return -1;
+    return 1;
   }
 
   if (ssl->quiet_shutdown) {
