@@ -101,13 +101,12 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/modes/gcm.c"),
 
-    (&[X86_64, X86], "crypto/cpu-intel.c"),
-
     (&[X86], "crypto/aes/asm/aes-586.pl"),
     (&[X86], "crypto/aes/asm/aesni-x86.pl"),
     (&[X86], "crypto/aes/asm/vpaes-x86.pl"),
     (&[X86], "crypto/bn/asm/x86-mont.pl"),
     (&[X86], "crypto/chacha/asm/chacha-x86.pl"),
+    (&[X86], "crypto/cpu/cpu-x86.pl"),
     (&[X86], "crypto/ec/asm/ecp_nistz256-x86.pl"),
     (&[X86], "crypto/modes/asm/ghash-x86.pl"),
     (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
@@ -123,6 +122,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/bn/asm/x86_64-mont.pl"),
     (&[X86_64], "crypto/bn/asm/x86_64-mont5.pl"),
     (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
+    (&[X86_64], "crypto/cpu/cpu-x86_64.pl"),
     (&[X86_64], "crypto/curve25519/asm/x25519-asm-x86_64.S"),
     (&[X86_64], "crypto/ec/asm/ecp_nistz256-x86_64.pl"),
     (&[X86_64], "crypto/ec/asm/p256-x86_64-asm.pl"),
