@@ -188,7 +188,7 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-cipher") != 0 &&
-      !SSL_CTX_set_cipher_list(ctx.get(), args_map["-cipher"].c_str())) {
+      !SSL_CTX_set_strict_cipher_list(ctx.get(), args_map["-cipher"].c_str())) {
     fprintf(stderr, "Failed setting cipher list\n");
     return false;
   }

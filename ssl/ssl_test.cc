@@ -59,6 +59,8 @@ struct CipherTest {
   const char *rule;
   // The list of expected ciphers, in order.
   std::vector<ExpectedCipher> expected;
+  // True if this cipher list should fail in strict mode.
+  bool strict_fail;
 };
 
 struct CurveTest {
@@ -81,6 +83,7 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        false,
     },
     // + reorders selected ciphers to the end, keeping their relative order.
     {
@@ -95,6 +98,7 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        false,
     },
     // ! banishes ciphers from future selections.
     {
@@ -107,6 +111,7 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        false,
     },
     // Multiple masks can be ANDed in a single rule.
     {
@@ -114,6 +119,7 @@ static const CipherTest kCipherTests[] = {
         {
             {TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        false,
     },
     // - removes selected ciphers, but preserves their order for future
     // selections. Select AES_128_GCM, but order the key exchanges RSA, DHE_RSA,
@@ -126,20 +132,37 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        false,
     },
-    // Unknown selectors are no-ops.
+    // Unknown selectors are no-ops, except in strict mode.
     {
         "ECDHE-ECDSA-CHACHA20-POLY1305:"
         "ECDHE-RSA-CHACHA20-POLY1305:"
         "ECDHE-ECDSA-AES128-GCM-SHA256:"
         "ECDHE-RSA-AES128-GCM-SHA256:"
-        "BOGUS1:-BOGUS2:+BOGUS3:!BOGUS4",
+        "BOGUS1",
         {
             {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        true,
+    },
+    // Unknown selectors are no-ops, except in strict mode.
+    {
+        "ECDHE-ECDSA-CHACHA20-POLY1305:"
+        "ECDHE-RSA-CHACHA20-POLY1305:"
+        "ECDHE-ECDSA-AES128-GCM-SHA256:"
+        "ECDHE-RSA-AES128-GCM-SHA256:"
+        "-BOGUS2:+BOGUS3:!BOGUS4",
+        {
+            {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
+            {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
+        },
+        true,
     },
     // Square brackets specify equi-preference groups.
     {
@@ -152,13 +175,14 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        false,
     },
     // @STRENGTH performs a stable strength-sort of the selected ciphers and
     // only the selected ciphers.
     {
         // To simplify things, banish all but {ECDHE_RSA,RSA} x
         // {CHACHA20,AES_256_CBC,AES_128_CBC} x SHA1.
-        "!kEDH:!AESGCM:!3DES:!SHA256:!MD5:!SHA384:"
+        "!kEDH:!AESGCM:!3DES:!SHA256:!SHA384:"
         // Order some ciphers backwards by strength.
         "ALL:-CHACHA20:-AES256:-AES128:-ALL:"
         // Select ECDHE ones and sort them by strength. Ties should resolve
@@ -174,6 +198,7 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_256_SHA, 0},
         },
+        false,
     },
     // Exact ciphers may not be used in multi-part rules; they are treated
     // as unknown aliases.
@@ -186,6 +211,7 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
+        true,
     },
     // SSLv3 matches everything that existed before TLS 1.2.
     {
@@ -193,6 +219,7 @@ static const CipherTest kCipherTests[] = {
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
         },
+        false,
     },
     // TLSv1.2 matches everything added in TLS 1.2.
     {
@@ -200,14 +227,17 @@ static const CipherTest kCipherTests[] = {
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
         },
+        false,
     },
-    // The two directives have no intersection.
+    // The two directives have no intersection.  But each component is valid, so
+    // even in strict mode it is accepted.
     {
         "AES128-SHA:AES128-SHA256:!TLSv1.2+SSLv3",
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
         },
+        false,
     },
 };
 
@@ -239,8 +269,6 @@ static const char *kBadRules[] = {
 static const char *kMustNotIncludeNull[] = {
   "ALL",
   "DEFAULT",
-  "ALL:!eNULL",
-  "ALL:!NULL",
   "HIGH",
   "FIPS",
   "SHA",
@@ -309,6 +337,12 @@ static bool TestCipherRule(const CipherTest &t) {
     return false;
   }
 
+  if (!SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule) != t.strict_fail) {
+    fprintf(stderr, "Unexpected strict failure result testing cipher rule '%s':"
+            " expected %d\n", t.rule, t.strict_fail);
+    return false;
+  }
+
   // Compare the two lists.
   if (sk_SSL_CIPHER_num(ctx->cipher_list->ciphers) != t.expected.size()) {
     fprintf(stderr, "Error: cipher rule '%s' evaluated to:\n", t.rule);
@@ -335,7 +369,7 @@ static bool TestRuleDoesNotIncludeNull(const char *rule) {
   if (!ctx) {
     return false;
   }
-  if (!SSL_CTX_set_cipher_list(ctx.get(), rule)) {
+  if (!SSL_CTX_set_strict_cipher_list(ctx.get(), rule)) {
     fprintf(stderr, "Error: cipher rule '%s' failed\n", rule);
     return false;
   }
@@ -875,7 +909,7 @@ static size_t GetClientHelloLen(uint16_t max_version, uint16_t session_version,
   // Set a one-element cipher list so the baseline ClientHello is unpadded.
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl || !SSL_set_session(ssl.get(), session.get()) ||
-      !SSL_set_cipher_list(ssl.get(), "ECDHE-RSA-AES128-GCM-SHA256") ||
+      !SSL_set_strict_cipher_list(ssl.get(), "ECDHE-RSA-AES128-GCM-SHA256") ||
       !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return 0;
   }
@@ -1760,7 +1794,7 @@ static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
       !SSL_CTX_set_max_proto_version(ctx.get(), version) ||
       // Our default cipher list varies by CPU capabilities, so manually place
       // the ChaCha20 ciphers in front.
-      !SSL_CTX_set_cipher_list(ctx.get(), "CHACHA20:ALL")) {
+      !SSL_CTX_set_strict_cipher_list(ctx.get(), "CHACHA20:ALL")) {
     return false;
   }
 

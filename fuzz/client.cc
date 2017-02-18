@@ -279,7 +279,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   SSL_set_alpn_protos(client, kALPNProtocols, sizeof(kALPNProtocols));
 
   // Enable ciphers that are off by default.
-  SSL_set_cipher_list(client, "ALL:NULL-SHA");
+  SSL_set_strict_cipher_list(client, "ALL:NULL-SHA");
 
   BIO_write(in, buf, len);
   if (SSL_do_handshake(client) == 1) {

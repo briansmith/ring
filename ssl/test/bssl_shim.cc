@@ -927,7 +927,7 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     cipher_list = config->cipher;
     SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
-  if (!SSL_CTX_set_cipher_list(ssl_ctx.get(), cipher_list.c_str())) {
+  if (!SSL_CTX_set_strict_cipher_list(ssl_ctx.get(), cipher_list.c_str())) {
     return nullptr;
   }
 
