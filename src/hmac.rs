@@ -161,15 +161,16 @@ pub struct SigningKey {
 }
 
 impl SigningKey {
-    /// Generate an HMAC signing key for the given digest algorithm using
-    /// |ring::rand|. The key will be `digest_alg.chaining_len` bytes long. The
-    /// key size choice is based on the recommendation of
-    /// [NIST SP 800-107], Section 5.3.4: Security Effect of the HMAC
-    /// Key, and is consistent with the key lengths chosen for TLS as
-    /// described in [RFC 5246, Appendix C].
+    /// Generate an HMAC signing key using the given digest algorithm with a
+    /// random value generated from `rng`.
+    ///
+    /// The key will be `digest_alg.chaining_len` bytes long. The key size
+    /// choice is based on the recommendation of [NIST SP 800-107],
+    /// Section 5.3.4: Security Effect of the HMAC Key, and is consistent with
+    /// the key lengths chosen for TLS as described in [RFC 5246, Appendix C].
     ///
     /// [NIST SP 800-107]:
-    ///     http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf
+    ///     http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
     /// [RFC 5246, Appendix C]:
     ///     https://tools.ietf.org/html/rfc5246#appendix-C
     pub fn generate(digest_alg: &'static digest::Algorithm,
