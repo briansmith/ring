@@ -179,7 +179,7 @@ impl SigningKey {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
         // now `digest::MAX_OUTPUT_LEN` is good enough.
         let mut key_data = [0u8; digest::MAX_OUTPUT_LEN];
-        let key_data = &mut key_data[..digest_alg.output_len];
+        let key_data = &mut key_data[..digest_alg.chaining_len];
         try!(rng.fill(key_data));
         Ok(SigningKey::new(digest_alg, key_data))
     }
