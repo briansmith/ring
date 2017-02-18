@@ -92,6 +92,7 @@ include = [
     "src/hkdf_tests.txt",
     "src/hmac.rs",
     "src/hmac_tests.txt",
+    "src/hmac_generate_serializable_tests.txt",
     "src/init.rs",
     "src/lib.rs",
     "src/pbkdf2.rs",
