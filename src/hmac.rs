@@ -164,22 +164,14 @@ impl SigningKey {
     /// Generate an HMAC signing key using the given digest algorithm with a
     /// random value generated from `rng`.
     ///
-    /// The key will be `digest_alg.chaining_len` bytes long. The key size
-    /// choice is based on the recommendation of [NIST SP 800-107],
-    /// Section 5.3.4: Security Effect of the HMAC Key, and is consistent with
-    /// the key lengths chosen for TLS as described in [RFC 5246, Appendix C].
-    ///
-    /// [NIST SP 800-107]:
-    ///     http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
-    /// [RFC 5246, Appendix C]:
-    ///     https://tools.ietf.org/html/rfc5246#appendix-C
+    /// The key will be `recommended_key_len(digest_alg)` bytes long.
     pub fn generate(digest_alg: &'static digest::Algorithm,
                     rng: &rand::SecureRandom)
                     -> Result<SigningKey, error::Unspecified> {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
         // now `digest::MAX_OUTPUT_LEN` is good enough.
         let mut key_bytes = [0u8; digest::MAX_OUTPUT_LEN];
-        let key_bytes = &mut key_bytes[..digest_alg.chaining_len];
+        let key_bytes = &mut key_bytes[..recommended_key_len(digest_alg)];
         Self::generate_serializable(digest_alg, rng, key_bytes)
     }
 
@@ -187,23 +179,15 @@ impl SigningKey {
     /// random value generated from `rng`, and puts the raw key value in
     /// `key_bytes`.
     ///
-    /// The raw value of the random key is put in `key_bytes` so that it can
-    /// be serialized for later use. The serialized value can be deserialized
-    /// with `SigningKey::new()`.
-    ///
-    /// The key will be `digest_alg.chaining_len` bytes long. The key size
-    /// choice is based on the recommendation of [NIST SP 800-107],
-    /// Section 5.3.4: Security Effect of the HMAC Key, and is consistent with
-    /// the key lengths chosen for TLS as described in [RFC 5246, Appendix C].
-    ///
-    /// [NIST SP 800-107]:
-    ///     http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
-    /// [RFC 5246, Appendix C]:
-    ///     https://tools.ietf.org/html/rfc5246#appendix-C
+    /// The key will be `recommended_key_len(digest_alg)` bytes long. The raw
+    /// value of the random key is put in `key_bytes` so that it can be
+    /// serialized for later use, so `key_bytes` must be exactly
+    /// `recommended_key_len(digest_alg)`. This serialized value can be
+    /// deserialized with `SigningKey::new()`.
     pub fn generate_serializable(digest_alg: &'static digest::Algorithm,
                                  rng: &rand::SecureRandom, key_bytes: &mut [u8])
                     -> Result<SigningKey, error::Unspecified> {
-        if key_bytes.len() != digest_alg.chaining_len {
+        if key_bytes.len() != recommended_key_len(digest_alg) {
             return Err(error::Unspecified);
         }
         try!(rng.fill(key_bytes));
@@ -375,6 +359,29 @@ pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
                            -> Result<(), error::Unspecified> {
     constant_time::verify_slices_are_equal(sign(key, data).as_ref(), signature)
 }
+
+/// Returns the recommended key length for HMAC using the given digest
+/// algorithm.
+///
+/// The value returned is the chaining length of the digest function,
+/// `digest_alg.chaining_len`. This is 32 bytes (256 bits) for SHA-256, and
+/// 64 bytes (512 bits) for SHA-384 and SHA-512.
+///
+/// This recommendation is based on [NIST SP 800-107], Section 5.3.4: Security
+/// Effect of the HMAC Key. The chaining length of the digest algorithm,
+/// instead of its block length, is used to be consistent with the key lengths
+/// chosen for TLS for SHA-256 (see [RFC 5246, Appendix C]) and most other
+/// protocols.
+///
+/// [NIST SP 800-107]:
+///     http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
+/// [RFC 5246, Appendix C]:
+///     https://tools.ietf.org/html/rfc5246#appendix-C
+#[inline]
+pub fn recommended_key_len(digest_alg: &digest::Algorithm) -> usize {
+    digest_alg.chaining_len
+}
+
 
 #[cfg(test)]
 mod tests {
