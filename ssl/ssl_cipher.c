@@ -1421,10 +1421,6 @@ int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_AES) != 0;
 }
 
-int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher) {
-  return 0;
-}
-
 int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_SHA1) != 0;
 }
