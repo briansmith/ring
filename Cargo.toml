@@ -28,16 +28,6 @@ include = [
     "pregenerated/msvc-ring-asm-i686.lib",
     "pregenerated/msvc-ring-asm-x86_64.lib",
 
-    "ring.sln",
-    "crypto/libring-asm.Windows.vcxproj",
-    "crypto/libring-test.Windows.vcxproj",
-    "crypto/libring.Windows.vcxproj",
-    "mk/Common.props",
-    "mk/Windows.props",
-    "mk/WindowsTest.props",
-    "mk/perlasm-msbuild.targets",
-    "mk/perlasm-msbuild.xml",
-
     "build.rs",
 
     "src/aead/aead.rs",

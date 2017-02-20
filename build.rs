@@ -67,11 +67,10 @@ extern crate rayon;
 
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::fs::{self, DirEntry};
 use rayon::par_iter::{ParallelIterator, IntoParallelIterator,
                       IntoParallelRefIterator};
-
-const LIB_NAME: &'static str = "ring";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRC: &'static [&'static str] =
@@ -229,46 +228,89 @@ const RING_PERL_INCLUDES: &'static [&'static str] =
 
 const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-const C_FLAGS: &'static [&'static str] =
-    &["-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
-      "-Wbad-function-cast",
-      "-Wmissing-prototypes",
-      "-Wnested-externs",
-      "-Wstrict-prototypes"];
+fn c_flags(target: &Target) -> &'static [&'static str] {
+    if target.env != "msvc" {
+        static NON_MSVC_FLAGS: &'static [&'static str] = &[
+            "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
+            "-Wbad-function-cast",
+            "-Wmissing-prototypes",
+            "-Wnested-externs",
+            "-Wstrict-prototypes"
+        ];
+        NON_MSVC_FLAGS
+    } else {
+        &[]
+    }
+}
 
-// GCC 4.6 requires "c++0x" instead of "c++11"
-const CXX_FLAGS: &'static [&'static str] = &["-std=c++0x"];
+fn cxx_flags(target: &Target) -> &'static [&'static str] {
+    if target.env != "msvc" {
+        static NON_MSVC_FLAGS: &'static [&'static str] = &[
+            "-std=c++0x"  // GCC 4.6 requires "c++0x" instead of "c++11"
+        ];
+        NON_MSVC_FLAGS
+    } else {
+        &[]
+    }
+}
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-const CPP_FLAGS: &'static [&'static str] =
-    &["-D_XOPEN_SOURCE=700",
-      "-fdata-sections",
-      "-ffunction-sections",
-      "-pedantic",
-      "-pedantic-errors",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Wcast-align",
-      "-Wcast-qual",
-      "-Wenum-compare",
-      "-Wfloat-equal",
-      "-Wformat=2",
-      "-Winline",
-      "-Winvalid-pch",
-      "-Wmissing-declarations",
-      "-Wmissing-field-initializers",
-      "-Wmissing-include-dirs",
-      "-Wredundant-decls",
-      "-Wshadow",
-      "-Wsign-compare",
-      "-Wundef",
-      "-Wuninitialized",
-      "-Wwrite-strings",
-      "-fno-strict-aliasing",
-      "-fvisibility=hidden",
-      "-Wno-cast-align"];
+fn cpp_flags(target: &Target) -> &'static [&'static str] {
+    if target.env != "msvc" {
+        static NON_MSVC_FLAGS: &'static [&'static str] = &[
+            "-fdata-sections",
+            "-ffunction-sections",
+            "-pedantic",
+            "-pedantic-errors",
+            "-Wall",
+            "-Werror",
+            "-Wextra",
+            "-Wcast-align",
+            "-Wcast-qual",
+            "-Wenum-compare",
+            "-Wfloat-equal",
+            "-Wformat=2",
+            "-Winline",
+            "-Winvalid-pch",
+            "-Wmissing-declarations",
+            "-Wmissing-field-initializers",
+            "-Wmissing-include-dirs",
+            "-Wredundant-decls",
+            "-Wshadow",
+            "-Wsign-compare",
+            "-Wundef",
+            "-Wuninitialized",
+            "-Wwrite-strings",
+            "-fno-strict-aliasing",
+            "-fvisibility=hidden",
+            "-Wno-cast-align"
+        ];
+        NON_MSVC_FLAGS
+    } else {
+        static MSVC_FLAGS: &'static [&'static str] = &[
+            "-EHsc",
+
+            "/GS", // Buffer security checks.
+
+            "/Zc:wchar_t",
+            "/Zc:forScope",
+            "/Zc:inline",
+            "/Zc:rvalueCast",
+            "/utf-8", // Input files are Unicode.
+
+            // Warnings.
+            "/sdl",
+            "/Wall",
+            "/WX",
+            "/wd4127", // C4127: conditional expression is constant
+            "/wd4464", // C4464: relative include path contains '..'
+            "/wd4514", // C4514: <name>: unreferenced inline function has be
+            "/wd4710", // C4710: function not inlined
+            "/wd4711", // C4711: function 'function' selected for inline expansion
+            "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
+        ];
+        MSVC_FLAGS
+    }
+}
 
 const LD_FLAGS: &'static [&'static str] = &[];
 
@@ -296,6 +338,8 @@ struct Target {
     arch: String,
     os: String,
     env: String,
+    obj_ext: &'static str,
+    obj_opt: &'static str,
 }
 
 impl Target {
@@ -303,10 +347,17 @@ impl Target {
         let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
         let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+        let (obj_ext, obj_opt) = if env == "msvc" {
+            ("obj", "/Fo")
+        } else {
+            ("o", "-o")
+        };
         Target {
             arch: arch,
             os: os,
             env: env,
+            obj_ext: obj_ext,
+            obj_opt: obj_opt,
         }
     }
 
@@ -317,93 +368,6 @@ impl Target {
 
 fn build_c_code(out_dir: PathBuf) {
     let target = Target::new();
-    let use_msvcbuild = target.env() == "msvc";
-    if use_msvcbuild {
-        let opt = env::var("OPT_LEVEL").expect("Cargo sets this");
-        build_msvc(&target, opt == "0",
-                   &env::var("NUM_JOBS").expect("Cargo sets this"), out_dir);
-    } else {
-        build_unix(&target, out_dir);
-    }
-}
-
-fn build_msvc(target: &Target, disable_opt: bool, num_jobs: &str,
-              out_dir: PathBuf) {
-    let lib_path = Path::new(&out_dir).join("lib");
-
-    let (platform, optional_amd64) = match target.arch() {
-        "x86" => ("Win32", None),
-        "x86_64" => ("x64", Some("amd64")),
-        arch => panic!("unexpected ARCH: {}", arch),
-    };
-
-    fn find_msbuild_exe(program_files_env_var: &str,
-                        optional_amd64: Option<&str>)
-                        -> Result<std::ffi::OsString, ()> {
-        let program_files = env::var(program_files_env_var).unwrap();
-        let mut msbuild = PathBuf::from(&program_files);
-        msbuild.push("MSBuild");
-        msbuild.push("14.0");
-        msbuild.push("bin");
-        if let Some(amd64) = optional_amd64 {
-            msbuild.push(amd64);
-        }
-        msbuild.push("msbuild.exe");
-        let _ = try!(std::fs::metadata(&msbuild).map_err(|_| ()));
-        Ok(msbuild.into_os_string())
-    }
-
-    let msbuild = find_msbuild_exe("ProgramFiles", optional_amd64)
-        .or_else(|_| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
-        .unwrap();
-
-    println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
-
-    // .gitignore isn't packaged, so if it exists then this is not a
-    // packaged build. Otherwise, assume it is a packaged build, and use
-    // the prepackaged libs so that we don't require Perl and Yasm being
-    // installed.
-    let use_prepackaged_asm = std::fs::metadata(".gitignore").is_err();
-
-    let configuration = if disable_opt { "Debug" } else { "Release" };
-    let args = vec![
-        format!("/m:{}", num_jobs),
-        format!("/p:Platform={}", platform),
-        format!("/p:Configuration={}", configuration),
-        format!("/p:OutRootDir={}/", out_dir.to_str().unwrap()),
-    ];
-    if !use_prepackaged_asm {
-        let mut asm_args = args.clone();
-        asm_args.push(String::from("crypto/libring-asm.Windows.vcxproj"));
-        run_command_with_args(&msbuild, &asm_args);
-    } else {
-        let pregenerated_lib_name =
-            format!("msvc-{}-asm-{}.lib", LIB_NAME, target.arch());
-        let mut pregenerated_lib = PathBuf::from("pregenerated");
-        pregenerated_lib.push(pregenerated_lib_name);
-
-        let ring_asm_lib_name = format!("{}-asm.lib", LIB_NAME);
-        let mut ring_asm_lib = lib_path.clone();
-        ring_asm_lib.push(&ring_asm_lib_name);
-        println!("{:?} -> {:?}", &pregenerated_lib, &ring_asm_lib);
-
-        std::fs::create_dir_all(&lib_path).unwrap();
-        let _ = std::fs::copy(&pregenerated_lib, &ring_asm_lib).unwrap();
-    }
-    println!("cargo:rustc-link-lib=static={}-asm", LIB_NAME);
-
-    let mut core_args = args.clone();
-    core_args.push(String::from("crypto/libring.Windows.vcxproj"));
-    run_command_with_args(&msbuild, &core_args);
-    println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
-
-    let mut test_args = args.clone();
-    test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
-    run_command_with_args(&msbuild, &test_args);
-    println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
-}
-
-fn build_unix(target: &Target, out_dir: PathBuf) {
     let mut lib_target = out_dir.clone();
     lib_target.push("libring-core.a");
     let lib_target = lib_target.as_path();
@@ -436,29 +400,23 @@ fn build_unix(target: &Target, out_dir: PathBuf) {
             additional_src.par_iter()
                 .map(|src| make_asm(src, out_dir.clone(), &target))
         });
-    build_library(lib_target,
-                  additional,
-                  RING_SRC,
-                  target,
-                  out_dir.clone(),
+    build_library(lib_target, additional, RING_SRC, &target, out_dir.clone(),
                   lib_header_change);
 
     // XXX: Ideally, this would only happen for `cargo test`,
     // but we don't know how to do that yet.
-    build_library(test_target,
-                  Vec::new().into_par_iter(),
-                  RING_TEST_SRCS,
-                  target,
-                  out_dir.clone(),
-                  test_header_change);
+    build_library(test_target, Vec::new().into_par_iter(), RING_TEST_SRCS,
+                  &target, out_dir.clone(), test_header_change);
+    if target.env() != "msvc" {
+        let libcxx = if use_libcxx(&target) {
+            "c++"
+        } else {
+            "stdc++"
+        };
+        println!("cargo:rustc-flags=-l dylib={}", libcxx);
+    }
 
-    let libcxx = if use_libcxx(&target) {
-        "c++"
-    } else {
-        "stdc++"
-    };
-    println!("cargo:rustc-flags=-l dylib={}", libcxx);
-    print_rerun();
+     print_rerun();
 }
 
 
@@ -470,6 +428,7 @@ fn build_library<P>(out_path: &Path, additional: P,
     // Compile all the (dirty) source files into object files.
     let objs = additional.chain(lib_src.par_iter().map(|a| String::from(*a)))
         .weight_max()
+        .filter(|f| target.env() != "msvc" || !f.ends_with(".S"))
         .map(|f| compile(&f, target, out_dir.clone(), header_changed))
         .map(|v| vec![v])
         .reduce(Vec::new,
@@ -510,48 +469,15 @@ fn compile(file: &str, target: &Target, mut out_dir: PathBuf,
            -> String {
     let p = Path::new(file);
     out_dir.push(p.file_name().expect("There is a filename"));
-    out_dir.set_extension("o");
+    out_dir.set_extension(target.obj_ext);
     if header_change || need_run(&p, out_dir.as_path()) {
-        let mut c = gcc::Config::new();
-        let _ = c.include("include");
-        match p.extension().map(|p| p.to_str()) {
-            Some(Some("c")) => {
-                for f in C_FLAGS {
-                    let _ = c.flag(f);
-                }
-            },
-            Some(Some("cc")) => {
-                for f in CXX_FLAGS {
-                    let _ = c.flag(f);
-                }
-                let _ = c.cpp(true);
-                if use_libcxx(target) {
-                     let _ = c.cpp_set_stdlib(Some("c++"));
-                }
-            },
-            Some(Some("S")) => {},
-            e => panic!("Unsupported filextension: {:?}", e),
+        let ext = p.extension().unwrap().to_str().unwrap();
+        let mut c = if target.env() != "msvc" || ext != "asm" {
+            cc(file, ext, target, &out_dir)
+        } else {
+            yasm(file, target, &out_dir)
         };
-        for f in CPP_FLAGS {
-            let _ = c.flag(&f);
-        }
-        if target.os() != "none" &&
-           target.os() != "redox" {
-            let _ = c.flag("-fstack-protector");
-        }
-        let _ = match (target.os(), target.arch()) {
-            // ``-gfull`` is required for Darwin's |-dead_strip|.
-            ("macos", _) => c.flag("-gfull"),
-            _ => c.flag("-g3"),
-        };
-        if env::var("OPT_LEVEL").unwrap() != "0" {
-            let _ = c.define("NDEBUG", None);
-        }
-        let mut c = c.get_compiler().to_command();
-        let _ = c.arg("-c")
-            .arg("-o")
-            .arg(format!("{}", out_dir.to_str().expect("Invalid path")))
-            .arg(file);
+
         println!("{:?}", c);
         if !c.status()
             .expect(&format!("Failed to compile {}", file))
@@ -560,6 +486,82 @@ fn compile(file: &str, target: &Target, mut out_dir: PathBuf,
         }
     }
     out_dir.to_str().expect("Invalid path").into()
+}
+
+fn cc(file: &str, ext: &str, target: &Target, out_dir: &Path) -> Command {
+    let mut c = gcc::Config::new();
+    let _ = c.include("include");
+    match ext {
+        "c" => {
+            for f in c_flags(target) {
+                let _ = c.flag(f);
+            }
+        },
+        "cc" => {
+            for f in cxx_flags(target) {
+                let _ = c.flag(f);
+            }
+            let _ = c.cpp(true);
+            if use_libcxx(target) {
+                let _ = c.cpp_set_stdlib(Some("c++"));
+            }
+        },
+        "S" => {},
+        e => panic!("Unsupported file extension: {:?}", e),
+    };
+    for f in cpp_flags(target) {
+        let _ = c.flag(&f);
+    }
+    if target.os() != "none" &&
+        target.os() != "redox" &&
+        target.env() != "msvc" {
+        let _ = c.flag("-fstack-protector");
+    }
+    match (target.os(), target.env()) {
+        // ``-gfull`` is required for Darwin's |-dead_strip|.
+        ("macos", _) => { let _ = c.flag("-gfull"); },
+        (_, "msvc") => {},
+        _ => { let _ = c.flag("-g3"); },
+    };
+    if env::var("PROFILE").unwrap() != "debug" {
+        let _ = c.define("NDEBUG", None);
+        if target.env() == "msvc" {
+            let _ = c.flag("/Oi"); // Generate intrinsic functions.
+        }
+    } else {
+        if target.env() == "msvc" {
+            let _ = c.flag("/Oy-"); // Don't omit frame pointers.
+            // run-time checking: (s)tack frame, (u)ninitialized variables
+            let _ = c.flag("/RTCsu");
+            let _ = c.flag("/Od"); // Disable optimization for debug builds.
+        }
+    }
+    if target.env != "msvc" {
+        let _ = c.define("_XOPEN_SOURCE", Some("700"));
+    }
+
+    let mut c = c.get_compiler().to_command();
+    let _ = c.arg("-c")
+             .arg(format!("{}{}", target.obj_opt,
+                          out_dir.to_str().expect("Invalid path")))
+             .arg(file);
+    c
+}
+
+fn yasm(file: &str, target: &Target, out_file: &Path) -> Command {
+    let (oformat, machine) = if target.arch() == "x86_64" {
+        ("--oformat=win64", "--machine=amd64")
+    } else {
+        ("--oformat=win32", "--machine=x86")
+    };
+    let mut c = Command::new("yasm.exe");
+    let _ = c.arg("-X").arg("vc")
+             .arg("--dformat=cv8")
+             .arg(oformat)
+             .arg(machine)
+             .arg("-o").arg(out_file.to_str().expect("Invalid path"))
+             .arg(file);
+    c
 }
 
 fn use_libcxx(target: &Target) -> bool {
@@ -571,7 +573,7 @@ fn use_libcxx(target: &Target) -> bool {
 fn run_command_with_args<S>(command_name: S, args: &[String])
     where S: AsRef<std::ffi::OsStr> + Copy
 {
-    let mut cmd = std::process::Command::new(command_name);
+    let mut cmd = Command::new(command_name);
     let _ = cmd.args(args);
 
     println!("running: {:?}", cmd);
@@ -591,7 +593,7 @@ fn make_asm(source: &str, mut dst: PathBuf, target: &Target)
     let p = Path::new(source);
     if p.extension().expect("File without extension").to_str() == Some("pl") {
         dst.push(p.file_name().expect("File without filename??"));
-        dst.set_extension("S");
+        dst.set_extension(if target.env() == "msvc" { "asm" } else { "S" });
         let r: String = dst.to_str().expect("Could not convert path").into();
         let perl_include_changed = RING_PERL_INCLUDES.iter()
             .any(|i| need_run(&Path::new(i), dst.as_path()));
@@ -664,7 +666,8 @@ fn is_tracked(file: &DirEntry) {
                 .chain(RING_PPC_SRCS.iter())
                 .any(cmp)
         },
-        Some("S") => {
+        Some("S") |
+        Some("asm") => {
             RING_AARCH64_SRCS.iter()
                 .chain(RING_ARM_SHARED_SRCS.iter())
                 .chain(RING_ARM_SRCS.iter())
