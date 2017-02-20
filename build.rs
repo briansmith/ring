@@ -557,17 +557,18 @@ fn use_libcxx(target_info: &TargetInfo) -> bool {
 fn run_command_with_args<S>(command_name: S, args: &[String])
     where S: AsRef<std::ffi::OsStr> + Copy
 {
-    let status = std::process::Command::new(command_name)
-        .args(args)
-        .status()
-        .unwrap_or_else(|e| {
-            panic!("failed to execute {}: {}",
-                   command_name.as_ref().to_str().unwrap(),
-                   e);
-        });
+    let mut cmd = std::process::Command::new(command_name);
+    let _ = cmd.args(args);
+
+    println!("running: {:?}", cmd);
+
+    let status = cmd.status().unwrap_or_else(|e| {
+        panic!("failed to execute {}: {}",
+               command_name.as_ref().to_str().unwrap(), e);
+    });
 
     if !status.success() {
-        panic!("{} execution failed", command_name.as_ref().to_str().unwrap());
+        panic!("execution failed");
     }
 }
 
