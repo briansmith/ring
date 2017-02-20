@@ -245,7 +245,6 @@ const CXX_FLAGS: &'static [&'static str] = &["-std=c++0x"];
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const CPP_FLAGS: &'static [&'static str] =
     &["-D_XOPEN_SOURCE=700",
-      "-fpic",
       "-fdata-sections",
       "-ffunction-sections",
       "-pedantic",
