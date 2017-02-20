@@ -304,7 +304,9 @@ fn build_c_code(out_dir: PathBuf) {
 }
 
 fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
-              lib_path: PathBuf) {
+              out_dir: PathBuf) {
+    let lib_path = Path::new(&out_dir).join("lib");
+
     let (platform, optional_amd64) = match target_info.target_arch() {
         "x86" => ("Win32", None),
         "x86_64" => ("x64", Some("amd64")),
@@ -313,7 +315,7 @@ fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
 
     fn find_msbuild_exe(program_files_env_var: &str,
                         optional_amd64: Option<&str>)
-                        -> Option<std::ffi::OsString> {
+                        -> Result<std::ffi::OsString, ()> {
         let program_files = env::var(program_files_env_var).unwrap();
         let mut msbuild = PathBuf::from(&program_files);
         msbuild.push("MSBuild");
@@ -323,16 +325,15 @@ fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
             msbuild.push(amd64);
         }
         msbuild.push("msbuild.exe");
-        if msbuild.exists() && msbuild.is_file() {
-            Some(msbuild.into_os_string())
-        } else {
-            None
-        }
+        let _ = try!(std::fs::metadata(&msbuild).map_err(|_| ()));
+        Ok(msbuild.into_os_string())
     }
 
     let msbuild = find_msbuild_exe("ProgramFiles", optional_amd64)
-        .or_else(|| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
+        .or_else(|_| find_msbuild_exe("ProgramFiles(x86)", optional_amd64))
         .unwrap();
+
+    println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
 
     // .gitignore isn't packaged, so if it exists then this is not a
     // packaged build. Otherwise, assume it is a packaged build, and use
@@ -345,14 +346,13 @@ fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
         format!("/m:{}", num_jobs),
         format!("/p:Platform={}", platform),
         format!("/p:Configuration={}", configuration),
-        format!("/p:OutRootDir={}/", lib_path.to_str().expect("Invalid path")),
+        format!("/p:OutRootDir={}/", out_dir.to_str().unwrap()),
     ];
     if !use_prepackaged_asm {
         let mut asm_args = args.clone();
         asm_args.push(String::from("crypto/libring-asm.Windows.vcxproj"));
         run_command_with_args(&msbuild, &asm_args);
     } else {
-        // TODO: rename msvc-ring-asm-i586.lib to msvc-ring-asm-x86.lib
         let pregenerated_lib_name =
             format!("msvc-{}-asm-{}.lib", LIB_NAME, target_info.target_arch());
         let mut pregenerated_lib = PathBuf::from("pregenerated");
@@ -371,15 +371,11 @@ fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
     let mut core_args = args.clone();
     core_args.push(String::from("crypto/libring.Windows.vcxproj"));
     run_command_with_args(&msbuild, &core_args);
+    println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
 
     let mut test_args = args.clone();
     test_args.push(String::from("crypto/libring-test.Windows.vcxproj"));
     run_command_with_args(&msbuild, &test_args);
-    println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
-    println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
-
-    // XXX: Ideally, this would only happen for `cargo test`, but we don't know
-    // how to do that yet.
     println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
 }
 
