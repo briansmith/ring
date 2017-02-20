@@ -12,6 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+// *R* and *r* in Montgomery math refer to different things, so we always use
+// `R` to refer to *R* to avoid confusion, even when that's against the normal
+// naming conventions. Also the standard camelCase names are used for
+// `RSAKeyPair` components.
+#![allow(non_snake_case)]
+
 /// RSA signatures.
 
 use {bits, der, error, limb};

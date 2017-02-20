@@ -677,7 +677,6 @@ const N0_LIMBS: usize = 2;
 
 type N0 = [limb::Limb; N0_LIMBS];
 
-#[allow(non_snake_case)]
 mod repr_c {
     use core;
     use {c, limb};

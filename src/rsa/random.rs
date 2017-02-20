@@ -23,7 +23,6 @@ use limb::*;
 
 /// Sets `out`, which has `num_limbs` limbs, to a random value in the range
 /// [1, `max_exclusive`), where `max_exclusive` also has `num_limbs` limbs.
-#[allow(non_snake_case)]
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern fn GFp_rand_mod(out: *mut Limb, max_exclusive: *const Limb,
