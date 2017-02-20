@@ -93,11 +93,28 @@ impl RSAKeyPair {
     /// - Section 6.4.1.2.1, Step 5: No primality tests are done, both for
     ///   performance reasons and to avoid any side channels that such tests
     ///   would provide.
+    /// - Section 6.4.1.2.1, Step 6, and 6.4.1.4.3, Step 7:
+    ///     - The validity of the mathematical relationship of `dP`, `dQ`, `e`
+    ///     and `n` is verified only during signing, when we validate that
+    ///     `(b**d)**e == b mod n` (having calculated `b**d` using `dP` and
+    ///     `dQ`). Some size checks of `d`, `dP` and `dQ` are performed at
+    ///     construction, but NIST checks are skipped which would be expensive
+    ///     and/or would leak information through side channels. If a preemptive
+    ///     check of the consistency of `dP`, `dQ`, `e` and `n` with each other
+    ///     is necessary, that can be done by signing any message with the key
+    ///     pair.
+    ///     - `d` is fully validated neither at construction nor during signing.
+    ///     This is OK as far as *ring*'s usage of the key is concerned because
+    ///     *ring* never uses the value of `d` (*ring* always uses `p`, `q`, `dP`
+    ///     and `dQ` via the Chinese Remainder Theorem, instead). However,
+    ///     *ring*'s checks would not be sufficient for validating a key pair
+    ///     for use by some other system; that other system must check the value
+    ///     of `d` itself if `d` is to be used.
     ///
     /// Steps 2 and 4 as described in 6.4.1.2.1 are omitted per 6.4.1.4.3.
     ///
-    /// In addition to the NIST requirements, we require that p > q and that
-    /// e must be no more than 33 bits.
+    /// In addition to the NIST requirements, we require that `p > q` and that
+    /// `e` must be no more than 33 bits.
     ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
@@ -231,12 +248,13 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6, partial
                 //
-                // TODO 6.a: d < LCM(p – 1, q – 1)
-                // TODO 6.b: 1 == (d · e) mod LCM(p – 1, q – 1)
+                // Checks for `d < LCM(p – 1, q – 1)` and `1 == (d · e) %
+                // LCM(p – 1, q – 1)` are omitted per the documentation above.
+                // Instead we rely on verification during signing.
                 //
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6.a, partial
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6.a
                 //
                 // We need to validate d > 2**half_n_bits. Since 2**half_n_bits
                 // has a bit length of half_n_bits+1, this check gives us
@@ -246,17 +264,12 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7
+                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7, partial
                 //
-                // XXX: We don't check that `dP == d % (p - 1)` or that
-                // `dQ == d % (q - 1)` because we don't (in the long term)
-                // have a good way to do modulo with an even modulus. Instead
-                // we just check that `1 <= dP < p - 1` and `1 <= dQ < q - 1`.
-                // We'll check them, to some unknown extent, when we do the
-                // private key operation, since we verify that the result of
-                // the private key operation using the CRT parameters is
-                // consistent with `n` and `e`. TODO: Either prove that what we
-                // do is sufficient, or make it so.
+                // Checks for `dP == d % (p - 1)` and `dQ == d % (q - 1)` are
+                // omitted per the documentation above, and because we don't
+                // (in the long term) have a good way to do modulo with an even
+                // modulus. Instead we rely on verification during signing.
                 //
                 // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.a
                 //
@@ -275,8 +288,6 @@ impl RSAKeyPair {
                 try!(bigint::verify_less_than(&dQ, &q));
 
                 // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.[cf]
-                //
-                // (7.d & 7.e are unimplemented per "XXX" above)
                 let p = try!(p.into_modulus::<P>());
                 let qInv = try!(qInv.into_elem(&p));
                 let qInv = try!(qInv.into_encoded(&p));
