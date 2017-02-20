@@ -1630,10 +1630,10 @@ OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
 
 /* SSL_SESSION_get_time returns the time at which |session| was established in
  * seconds since the UNIX epoch. */
-OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *session);
+OPENSSL_EXPORT uint64_t SSL_SESSION_get_time(const SSL_SESSION *session);
 
 /* SSL_SESSION_get_timeout returns the lifetime of |session| in seconds. */
-OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *session);
+OPENSSL_EXPORT uint32_t SSL_SESSION_get_timeout(const SSL_SESSION *session);
 
 /* SSL_SESSION_get0_peer returns the peer leaf certificate stored in
  * |session|.
@@ -1650,12 +1650,14 @@ OPENSSL_EXPORT size_t SSL_SESSION_get_master_key(const SSL_SESSION *session,
 /* SSL_SESSION_set_time sets |session|'s creation time to |time| and returns
  * |time|. This function may be useful in writing tests but otherwise should not
  * be used. */
-OPENSSL_EXPORT long SSL_SESSION_set_time(SSL_SESSION *session, long time);
+OPENSSL_EXPORT uint64_t SSL_SESSION_set_time(SSL_SESSION *session,
+                                             uint64_t time);
 
 /* SSL_SESSION_set_timeout sets |session|'s timeout to |timeout| and returns
  * one. This function may be useful in writing tests but otherwise should not
  * be used. */
-OPENSSL_EXPORT long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout);
+OPENSSL_EXPORT uint32_t SSL_SESSION_set_timeout(SSL_SESSION *session,
+                                                uint32_t timeout);
 
 /* SSL_SESSION_set1_id_context sets |session|'s session ID context (see
  * |SSL_CTX_set_session_id_context|) to |sid_ctx|. It returns one on success and
@@ -1769,16 +1771,16 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 
 /* SSL_CTX_set_timeout sets the lifetime, in seconds, of TLS 1.2 (or earlier)
  * sessions created in |ctx| to |timeout|. */
-OPENSSL_EXPORT long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout);
+OPENSSL_EXPORT uint32_t SSL_CTX_set_timeout(SSL_CTX *ctx, uint32_t timeout);
 
 /* SSL_CTX_set_session_psk_dhe_timeout sets the lifetime, in seconds, of TLS 1.3
  * sessions created in |ctx| to |timeout|. */
 OPENSSL_EXPORT void SSL_CTX_set_session_psk_dhe_timeout(SSL_CTX *ctx,
-                                                        long timeout);
+                                                        uint32_t timeout);
 
 /* SSL_CTX_get_timeout returns the lifetime, in seconds, of TLS 1.2 (or earlier)
  * sessions created in |ctx|. */
-OPENSSL_EXPORT long SSL_CTX_get_timeout(const SSL_CTX *ctx);
+OPENSSL_EXPORT uint32_t SSL_CTX_get_timeout(const SSL_CTX *ctx);
 
 /* SSL_CTX_set_session_id_context sets |ctx|'s session ID context to |sid_ctx|.
  * It returns one on success and zero on error. The session ID context is an
@@ -1837,7 +1839,7 @@ OPENSSL_EXPORT int SSL_CTX_remove_session(SSL_CTX *ctx, SSL_SESSION *session);
 
 /* SSL_CTX_flush_sessions removes all sessions from |ctx| which have expired as
  * of time |time|. If |time| is zero, all sessions are removed. */
-OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time);
+OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, uint64_t time);
 
 /* SSL_CTX_sess_set_new_cb sets the callback to be called when a new session is
  * established and ready to be cached. If the session cache is disabled (the
@@ -3776,15 +3778,15 @@ struct ssl_session_st {
 
   /* timeout is the lifetime of the session in seconds, measured from |time|.
    * This is renewable up to |auth_timeout|. */
-  long timeout;
+  uint32_t timeout;
 
   /* auth_timeout is the non-renewable lifetime of the session in seconds,
    * measured from |time|. */
-  long auth_timeout;
+  uint32_t auth_timeout;
 
   /* time is the time the session was issued, measured in seconds from the UNIX
    * epoch. */
-  long time;
+  uint64_t time;
 
   const SSL_CIPHER *cipher;
 
@@ -3924,11 +3926,11 @@ struct ssl_ctx_st {
 
   /* session_timeout is the default lifetime for new sessions in TLS 1.2 and
    * earlier, in seconds. */
-  long session_timeout;
+  uint32_t session_timeout;
 
   /* session_psk_dhe_timeout is the default lifetime for new sessions in TLS
    * 1.3, in seconds. */
-  long session_psk_dhe_timeout;
+  uint32_t session_psk_dhe_timeout;
 
   /* If this callback is not null, it will be called each time a session id is
    * added to the cache.  If this function returns 1, it means that the

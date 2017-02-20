@@ -650,18 +650,9 @@ int tls13_process_new_session_ticket(SSL *ssl) {
   }
 
   /* Cap the renewable lifetime by the server advertised value. This avoids
-   * wasting bandwidth on 0-RTT when we know the server will reject it.
-   *
-   * TODO(davidben): This dance where we're not sure if long or uint32_t is
-   * bigger is silly. session->timeout should not be a long to begin with.
-   * https://crbug.com/boringssl/155. */
-#if LONG_MAX < 0xffffffff
-  if (server_timeout > LONG_MAX) {
-    server_timeout = LONG_MAX;
-  }
-#endif
-  if (session->timeout > (long)server_timeout) {
-    session->timeout = (long)server_timeout;
+   * wasting bandwidth on 0-RTT when we know the server will reject it. */
+  if (session->timeout > server_timeout) {
+    session->timeout = server_timeout;
   }
 
   /* Parse out the extensions. */

@@ -1888,9 +1888,9 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
     CRYPTO_MUTEX_unlock_write(&ctx->lock);
 
     if (flush_cache) {
-      struct timeval now;
+      struct OPENSSL_timeval now;
       ssl_get_current_time(ssl, &now);
-      SSL_CTX_flush_sessions(ctx, (long)now.tv_sec);
+      SSL_CTX_flush_sessions(ctx, now.tv_sec);
     }
   }
 }
@@ -2686,9 +2686,20 @@ int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
   return SSL_set1_curves(ssl, &nid, 1);
 }
 
-void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock) {
+void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock) {
   if (ssl->ctx->current_time_cb != NULL) {
-    ssl->ctx->current_time_cb(ssl, out_clock);
+    /* TODO(davidben): Update current_time_cb to use OPENSSL_timeval. See
+     * https://crbug.com/boringssl/155. */
+    struct timeval clock;
+    ssl->ctx->current_time_cb(ssl, &clock);
+    if (clock.tv_sec < 0) {
+      assert(0);
+      out_clock->tv_sec = 0;
+      out_clock->tv_usec = 0;
+    } else {
+      out_clock->tv_sec = (uint64_t)clock.tv_sec;
+      out_clock->tv_usec = (uint32_t)clock.tv_usec;
+    }
     return;
   }
 
@@ -2698,10 +2709,25 @@ void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock) {
 #elif defined(OPENSSL_WINDOWS)
   struct _timeb time;
   _ftime(&time);
-  out_clock->tv_sec = time.time;
-  out_clock->tv_usec = time.millitm * 1000;
+  if (time.time < 0) {
+    assert(0);
+    out_clock->tv_sec = 0;
+    out_clock->tv_usec = 0;
+  } else {
+    out_clock->tv_sec = time.time;
+    out_clock->tv_usec = time.millitm * 1000;
+  }
 #else
-  gettimeofday(out_clock, NULL);
+  struct timeval clock;
+  gettimeofday(&clock, NULL);
+  if (clock.tv_sec < 0) {
+    assert(0);
+    out_clock->tv_sec = 0;
+    out_clock->tv_usec = 0;
+  } else {
+    out_clock->tv_sec = (uint64_t)clock.tv_sec;
+    out_clock->tv_usec = (uint32_t)clock.tv_usec;
+  }
 #endif
 }
 

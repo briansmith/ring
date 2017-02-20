@@ -1058,7 +1058,7 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
     ssl->s3->tlsext_channel_id_valid = 0;
   }
 
-  struct timeval now;
+  struct OPENSSL_timeval now;
   ssl_get_current_time(ssl, &now);
   ssl->s3->server_random[0] = now.tv_sec >> 24;
   ssl->s3->server_random[1] = now.tv_sec >> 16;

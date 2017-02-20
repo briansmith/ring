@@ -173,7 +173,7 @@ SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method) {
   session->references = 1;
   session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
   session->auth_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-  session->time = (long)time(NULL);
+  session->time = time(NULL);
   CRYPTO_new_ex_data(&session->ex_data);
   return session;
 }
@@ -315,14 +315,12 @@ err:
 }
 
 void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session) {
-  struct timeval now;
+  struct OPENSSL_timeval now;
   ssl_get_current_time(ssl, &now);
 
-  /* To avoid overflows and underflows, if we've gone back in time or any value
-   * is negative, update the time, but mark the session expired. */
-  if (session->time > now.tv_sec ||
-      session->time < 0 ||
-      now.tv_sec < 0) {
+  /* To avoid overflows and underflows, if we've gone back in time, update the
+   * time, but mark the session expired. */
+  if (session->time > now.tv_sec) {
     session->time = now.tv_sec;
     session->timeout = 0;
     session->auth_timeout = 0;
@@ -331,7 +329,7 @@ void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session) {
 
   /* Adjust the session time and timeouts. If the session has already expired,
    * clamp the timeouts at zero. */
-  long delta = now.tv_sec - session->time;
+  uint64_t delta = now.tv_sec - session->time;
   session->time = now.tv_sec;
   if (session->timeout < delta) {
     session->timeout = 0;
@@ -345,7 +343,8 @@ void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session) {
   }
 }
 
-void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session, long timeout) {
+void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
+                               uint32_t timeout) {
   /* Rebase the timestamp relative to the current time so |timeout| is measured
    * correctly. */
   ssl_session_rebase_time(ssl, session);
@@ -395,11 +394,11 @@ const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
   return session->session_id;
 }
 
-long SSL_SESSION_get_timeout(const SSL_SESSION *session) {
+uint32_t SSL_SESSION_get_timeout(const SSL_SESSION *session) {
   return session->timeout;
 }
 
-long SSL_SESSION_get_time(const SSL_SESSION *session) {
+uint64_t SSL_SESSION_get_time(const SSL_SESSION *session) {
   if (session == NULL) {
     /* NULL should crash, but silently accept it here for compatibility. */
     return 0;
@@ -424,7 +423,7 @@ size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,
   return max_out;
 }
 
-long SSL_SESSION_set_time(SSL_SESSION *session, long time) {
+uint64_t SSL_SESSION_set_time(SSL_SESSION *session, uint64_t time) {
   if (session == NULL) {
     return 0;
   }
@@ -433,7 +432,7 @@ long SSL_SESSION_set_time(SSL_SESSION *session, long time) {
   return time;
 }
 
-long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout) {
+uint32_t SSL_SESSION_set_timeout(SSL_SESSION *session, uint32_t timeout) {
   if (session == NULL) {
     return 0;
   }
@@ -528,7 +527,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   session->ssl_version = ssl->version;
 
   /* Fill in the time from the |SSL_CTX|'s clock. */
-  struct timeval now;
+  struct OPENSSL_timeval now;
   ssl_get_current_time(ssl, &now);
   session->time = now.tv_sec;
 
@@ -689,15 +688,15 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
     return 0;
   }
 
-  struct timeval now;
+  struct OPENSSL_timeval now;
   ssl_get_current_time(ssl, &now);
 
   /* Reject tickets from the future to avoid underflow. */
-  if ((long)now.tv_sec < session->time) {
+  if (now.tv_sec < session->time) {
     return 0;
   }
 
-  return session->timeout > (long)now.tv_sec - session->time;
+  return session->timeout > now.tv_sec - session->time;
 }
 
 int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
@@ -933,7 +932,7 @@ void ssl_set_session(SSL *ssl, SSL_SESSION *session) {
   }
 }
 
-long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout) {
+uint32_t SSL_CTX_set_timeout(SSL_CTX *ctx, uint32_t timeout) {
   if (ctx == NULL) {
     return 0;
   }
@@ -943,12 +942,12 @@ long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout) {
     timeout = SSL_DEFAULT_SESSION_TIMEOUT;
   }
 
-  long old_timeout = ctx->session_timeout;
+  uint32_t old_timeout = ctx->session_timeout;
   ctx->session_timeout = timeout;
   return old_timeout;
 }
 
-long SSL_CTX_get_timeout(const SSL_CTX *ctx) {
+uint32_t SSL_CTX_get_timeout(const SSL_CTX *ctx) {
   if (ctx == NULL) {
     return 0;
   }
@@ -956,13 +955,13 @@ long SSL_CTX_get_timeout(const SSL_CTX *ctx) {
   return ctx->session_timeout;
 }
 
-void SSL_CTX_set_session_psk_dhe_timeout(SSL_CTX *ctx, long timeout) {
+void SSL_CTX_set_session_psk_dhe_timeout(SSL_CTX *ctx, uint32_t timeout) {
   ctx->session_psk_dhe_timeout = timeout;
 }
 
 typedef struct timeout_param_st {
   SSL_CTX *ctx;
-  long time;
+  uint64_t time;
   LHASH_OF(SSL_SESSION) *cache;
 } TIMEOUT_PARAM;
 
@@ -970,6 +969,7 @@ static void timeout_doall_arg(SSL_SESSION *session, void *void_param) {
   TIMEOUT_PARAM *param = void_param;
 
   if (param->time == 0 ||
+      session->time + session->timeout < session->time ||
       param->time > (session->time + session->timeout)) {
     /* timeout */
     /* The reason we don't call SSL_CTX_remove_session() is to
@@ -984,7 +984,7 @@ static void timeout_doall_arg(SSL_SESSION *session, void *void_param) {
   }
 }
 
-void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time) {
+void SSL_CTX_flush_sessions(SSL_CTX *ctx, uint64_t time) {
   TIMEOUT_PARAM tp;
 
   tp.ctx = ctx;

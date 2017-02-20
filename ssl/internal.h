@@ -1720,6 +1720,11 @@ typedef struct hm_fragment_st {
   uint8_t *reassembly;
 } hm_fragment;
 
+struct OPENSSL_timeval {
+  uint64_t tv_sec;
+  uint32_t tv_usec;
+};
+
 typedef struct dtls1_state_st {
   /* send_cookie is true if we are resending the ClientHello
    * with a cookie from a HelloVerifyRequest. */
@@ -1768,7 +1773,7 @@ typedef struct dtls1_state_st {
 
   /* Indicates when the last handshake msg or heartbeat sent will
    * timeout. */
-  struct timeval next_timeout;
+  struct OPENSSL_timeval next_timeout;
 
   /* timeout_duration_ms is the timeout duration in milliseconds. */
   unsigned timeout_duration_ms;
@@ -2013,7 +2018,8 @@ void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session);
 /* ssl_session_renew_timeout calls |ssl_session_rebase_time| and renews
  * |session|'s timeout to |timeout| (measured from the current time). The
  * renewal is clamped to the session's auth_timeout. */
-void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session, long timeout);
+void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
+                               uint32_t timeout);
 
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
@@ -2203,7 +2209,7 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
  * call this function before the version is determined. */
 uint16_t ssl3_protocol_version(const SSL *ssl);
 
-void ssl_get_current_time(const SSL *ssl, struct timeval *out_clock);
+void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
 
 /* ssl_reset_error_state resets state for |SSL_get_error|. */
 void ssl_reset_error_state(SSL *ssl);
