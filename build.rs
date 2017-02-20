@@ -285,11 +285,11 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
-    build_c_code(&out_dir);
+    build_c_code(out_dir);
     check_all_files_tracked();
 }
 
-fn build_c_code(out_dir: &PathBuf) {
+fn build_c_code(out_dir: PathBuf) {
     let target_info = TargetInfo::new().expect("Could not get target");
     let use_msvcbuild = target_info.target_env() == "msvc";
     if use_msvcbuild {
@@ -297,15 +297,14 @@ fn build_c_code(out_dir: &PathBuf) {
         build_msvc(&target_info,
                    opt == "0",
                    &env::var("NUM_JOBS").expect("Cargo sets this"),
-                   out_dir.clone());
+                   out_dir);
     } else {
-        build_unix(&target_info, out_dir.clone());
+        build_unix(&target_info, out_dir);
     }
 }
 
 fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
               lib_path: PathBuf) {
-
     let (platform, optional_amd64) = match target_info.target_arch() {
         "x86" => ("Win32", None),
         "x86_64" => ("x64", Some("amd64")),
