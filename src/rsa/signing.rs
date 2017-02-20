@@ -31,18 +31,11 @@ use untrusted;
 pub struct RSAKeyPair {
     n: bigint::Modulus<N>,
     e: bigint::PublicExponent,
-    p: bigint::Modulus<P>,
-    q: bigint::Modulus<Q>,
-    dP: bigint::OddPositive,
-    dQ: bigint::OddPositive,
+    p: PrivatePrime<P>,
+    q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
-
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
-
-    one_mod_p: bigint::Elem<P, R>, // 1 (mod p), Montgomery encoded.
-    one_mod_q: bigint::Elem<Q, R>, // 1 (mod q), Montgomery encoded.
-
     n_bits: bits::BitLength,
 }
 
@@ -148,7 +141,6 @@ impl RSAKeyPair {
                     let clone = try!(q_mod_n_decoded.try_clone());
                     try!(clone.into_encoded(&n))
                 };
-
                 let p_mod_n = {
                     let p = try!(p.try_clone());
                     try!(p.into_elem(&n))
@@ -159,38 +151,16 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // XXX: We don't check that `dP == d % (p - 1)` or that
-                // `dQ == d % (q - 1)` because we don't (in the long term)
-                // have a good way to do modulo with an even modulus. Instead
-                // we just check that `1 <= dP < p - 1` and `1 <= dQ < q - 1`.
-                // We'll check them, to some unknown extent, when we do the
-                // private key operation, since we verify that the result of
-                // the private key operation using the CRT parameters is
-                // consistent with `n` and `e`. TODO: Either prove that what we
-                // do is sufficient, or make it so.
-                //
-                // We need to prove that `dP < p - 1`. If we verify
-                // `dP < p` then we'll know that either `dP == p - 1` or
-                // `dP < p - 1`. Since `p` is odd, `p - 1` is even. `d` is odd,
-                // and an odd number modulo an even number is odd.
-                // Therefore `dP` must be odd. But then it cannot be `p - 1`
-                // and so we know `dP < p - 1`.
-                let dP = try!(dP.into_odd_positive());
-                try!(bigint::verify_less_than(&dP, &p));
-                // The same argument can be used to prove `dQ < q - 1`.
-                let dQ = try!(dQ.into_odd_positive());
-                try!(bigint::verify_less_than(&dQ, &q));
+                let p = try!(PrivatePrime::new(p, dP));
 
-                let p = try!(p.into_modulus::<P>());
-
-                let qInv = try!(qInv.into_elem(&p));
-                let qInv = try!(qInv.into_encoded(&p));
+                let qInv = try!(qInv.into_elem(&p.modulus));
+                let qInv = try!(qInv.into_encoded(&p.modulus));
                 let q_mod_p = {
                     let q = try!(q.try_clone());
-                    try!(q.into_elem(&p))
+                    try!(q.into_elem(&p.modulus))
                 };
                 let qInv_times_q_mod_p =
-                    try!(bigint::elem_mul(&qInv, q_mod_p, &p));
+                    try!(bigint::elem_mul(&qInv, q_mod_p, &p.modulus));
                 if !qInv_times_q_mod_p.is_one() {
                     return Err(error::Unspecified);
                 }
@@ -200,26 +170,15 @@ impl RSAKeyPair {
                 let qq = try!(qq.into_odd_positive());
                 let qq = try!(qq.into_modulus::<QQ>());
 
-                let q = try!(q.into_modulus::<Q>());
-
-                let one_mod_p = try!(bigint::Elem::one());
-                let one_mod_p = try!(one_mod_p.into_encoded(&p));
-
-                let one_mod_q = try!(bigint::Elem::one());
-                let one_mod_q = try!(one_mod_q.into_encoded(&q));
-
+                let q = try!(PrivatePrime::new(q, dQ));
                 Ok(RSAKeyPair {
                     n: n,
                     e: e,
                     p: p,
                     q: q,
-                    dP: dP,
-                    dQ: dQ,
                     qInv: qInv,
                     q_mod_n: q_mod_n,
                     qq: qq,
-                    one_mod_p: one_mod_p,
-                    one_mod_q: one_mod_q,
                     n_bits: n_bits,
                 })
             })
@@ -234,10 +193,65 @@ impl RSAKeyPair {
     }
 }
 
+#[allow(non_snake_case)] // `r` and `R` denote different values.
+struct PrivatePrime<M: Prime> {
+    modulus: bigint::Modulus<M>,
+    exponent: bigint::OddPositive,
+    oneR: bigint::Elem<M, R>, // 1 (mod p), Montgomery encoded.
+}
+
+#[allow(non_snake_case)] // Use Standard names.
+impl<M: Prime> PrivatePrime<M> {
+    /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
+    /// dP == d % (p - 1).
+    fn new(p: bigint::OddPositive, dP: bigint::Positive)
+           -> Result<Self, error::Unspecified> {
+        // XXX: We don't check that `dP == d % (p - 1)` because we don't (in
+        // the long term) have a good way to do modulo with an even modulus.
+        // Instead we just check that `1 <= dP < p - 1`. We'll check it, to
+        // some unknown extent, when we do the private key operation, since we
+        // verify that the result of the private key operation using the CRT
+        // parameters is consistent with `n` and `e`. TODO: Either prove that
+        // what we do is sufficient, or make it so.
+        //
+        // Proof that `dP < p - 1`:
+        //
+        // If `dP < p` then either `dP == p - 1` or `dP < p - 1`. Since `p` is
+        // odd, `p - 1` is even. `d` is odd, and an odd number modulo an even
+        // number is odd. Therefore `dP` must be odd. But then it cannot be
+        // `p - 1` and so we know `dP < p - 1`.
+        let dP = try!(dP.into_odd_positive());
+        try!(bigint::verify_less_than(&dP, &p));
+
+        let p = try!(p.into_modulus());
+
+        let one = try!(bigint::Elem::one());
+        let oneR = try!(one.into_encoded(&p));
+
+        Ok(PrivatePrime {
+            modulus: p,
+            exponent: dP,
+            oneR: oneR,
+        })
+    }
+}
+
+fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
+                             -> Result<bigint::Elem<M>, error::Unspecified>
+                             where M: bigint::NotMuchSmallerModulus<MM>,
+                                   M: Prime {
+    let c_mod_m = try!(bigint::elem_reduced(c, &p.modulus));
+    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
+}
+
+
 // Type-level representations of the different moduli used in RSA signing, in
 // addition to `super::N`. See `super::bigint`'s modulue-level documentation.
 
+unsafe trait Prime {}
+
 enum P {}
+unsafe impl Prime for P {}
 unsafe impl bigint::SmallerModulus<N> for P {}
 unsafe impl bigint::NotMuchSmallerModulus<N> for P {}
 
@@ -253,6 +267,7 @@ unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
 unsafe impl bigint::SlightlySmallerModulus<N> for QQ {}
 
 enum Q {}
+unsafe impl Prime for Q {}
 unsafe impl bigint::SmallerModulus<N> for Q {}
 unsafe impl bigint::SmallerModulus<P> for Q {}
 
@@ -356,27 +371,18 @@ impl RSASigningState {
 
         // Step 2.
         let result = try!(blinding.blind(base, key.e, &key.n, rng, |c| {
-            // Step 2.b.
-
             // Step 2.b.i.
-
-            let c_mod_p = try!(bigint::elem_reduced(&c, &key.p));
-            let m_1 =
-                try!(bigint::elem_exp_consttime(c_mod_p, &key.dP,
-                                                &key.one_mod_p, &key.p));
-
+            let m_1 = try!(elem_exp_consttime(&c, &key.p));
             let c_mod_qq = try!(bigint::elem_reduced_once(&c, &key.qq));
-            let c_mod_q = try!(bigint::elem_reduced(&c_mod_qq, &key.q));
-            let m_2 =
-                try!(bigint::elem_exp_consttime(c_mod_q, &key.dQ,
-                                                &key.one_mod_q, &key.q));
+            let m_2 = try!(elem_exp_consttime(&c_mod_qq, &key.q));
 
             // Step 2.b.ii isn't needed since there are only two primes.
 
             // Step 2.b.iii.
+            let p = &key.p.modulus;
             let m_2 = bigint::elem_widen(m_2);
-            let m_1_minus_m_2 = try!(bigint::elem_sub(m_1, &m_2, &key.p));
-            let h = try!(bigint::elem_mul(&key.qInv, m_1_minus_m_2, &key.p));
+            let m_1_minus_m_2 = try!(bigint::elem_sub(m_1, &m_2, p));
+            let h = try!(bigint::elem_mul(&key.qInv, m_1_minus_m_2, p));
 
             // Step 2.b.iv. The reduction in the modular multiplication isn't
             // necessary because `h < p` and `p * q == n` implies `h * q < n`.
