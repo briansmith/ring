@@ -268,7 +268,6 @@ const CPP_FLAGS: &'static [&'static str] =
       "-Wundef",
       "-Wuninitialized",
       "-Wwrite-strings",
-      "-DBORINGSSL_IMPLEMENTATION",
       "-fno-strict-aliasing",
       "-fvisibility=hidden",
       "-Wno-cast-align"];
