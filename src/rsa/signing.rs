@@ -236,11 +236,15 @@ impl<M: Prime> PrivatePrime<M> {
     }
 }
 
+#[allow(non_snake_case)] // `R` and `r` mean different things.
 fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
                              -> Result<bigint::Elem<M>, error::Unspecified>
                              where M: bigint::NotMuchSmallerModulus<MM>,
                                    M: Prime {
     let c_mod_m = try!(bigint::elem_reduced(c, &p.modulus));
+    let oneRR = try!(p.modulus.compute_oneRR()); // XXX
+    let c_mod_m = try!(bigint::elem_mul(&oneRR, c_mod_m, &p.modulus));
+    let c_mod_m = try!(bigint::elem_mul(&oneRR, c_mod_m, &p.modulus));
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
 
