@@ -832,7 +832,7 @@ mod tests {
                         |section, test_case| {
             assert_eq!(section, "");
 
-            let m = consume_modulus(test_case, "M");
+            let m = consume_modulus::<M>(test_case, "M");
             let expected_result = consume_elem(test_case, "ModExp", &m);
             let base = consume_elem(test_case, "A", &m);
             let e = consume_odd_positive(test_case, "E");
@@ -855,7 +855,7 @@ mod tests {
                         |section, test_case| {
             assert_eq!(section, "");
 
-            let m = consume_modulus(test_case, "M");
+            let m = consume_modulus::<M>(test_case, "M");
             let expected_result = consume_elem(test_case, "ModExp", &m);
             let base = consume_elem(test_case, "A", &m);
             let e = consume_public_exponent(test_case, "E");
@@ -875,7 +875,7 @@ mod tests {
                         |section, test_case| {
             assert_eq!(section, "");
 
-            let m = consume_modulus(test_case, "M");
+            let m = consume_modulus::<M>(test_case, "M");
             let expected_result = consume_elem(test_case, "ModMul", &m);
             let a = consume_elem(test_case, "A", &m);
             let b = consume_elem(test_case, "B", &m);
@@ -896,7 +896,7 @@ mod tests {
                         |section, test_case| {
             assert_eq!(section, "");
 
-            let m = consume_modulus(test_case, "M");
+            let m = consume_modulus::<M>(test_case, "M");
             let expected_result = consume_elem(test_case, "ModSquare", &m);
             let a = consume_elem(test_case, "A", &m);
 
@@ -919,7 +919,7 @@ mod tests {
             unsafe impl SmallerModulus<MM> for M {}
             unsafe impl NotMuchSmallerModulus<MM> for M {}
 
-            let m = consume_modulus(test_case, "M");
+            let m = consume_modulus::<M>(test_case, "M");
             let expected_result = consume_elem(test_case, "R", &m);
             let a = consume_elem_unchecked::<MM>(test_case, "A");
 
@@ -932,8 +932,31 @@ mod tests {
         })
     }
 
-    fn consume_elem(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
-                    -> Elem<M, Unencoded> {
+    #[test]
+    fn test_elem_reduced_once() {
+        test::from_file("src/rsa/bigint_elem_reduced_once_tests.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            struct N {}
+            struct QQ {}
+            unsafe impl SmallerModulus<N> for QQ {}
+            unsafe impl SlightlySmallerModulus<N> for QQ {}
+
+            let qq = consume_modulus::<QQ>(test_case, "QQ");
+            let expected_result = consume_elem::<QQ>(test_case, "R", &qq);
+            let n = consume_modulus::<N>(test_case, "N");
+            let a = consume_elem::<N>(test_case, "A", &n);
+
+            let actual_result = elem_reduced_once(&a, &qq).unwrap();
+            assert_elem_eq(&actual_result, &expected_result);
+
+            Ok(())
+        })
+    }
+
+    fn consume_elem<M>(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
+                       -> Elem<M, Unencoded> {
         let value = consume_nonnegative(test_case, name);
         value.into_elem::<M>(m).unwrap()
     }
@@ -948,8 +971,8 @@ mod tests {
         }
     }
 
-    fn consume_modulus(test_case: &mut test::TestCase, name: &str)
-                       -> Modulus<M> {
+    fn consume_modulus<M>(test_case: &mut test::TestCase, name: &str)
+                          -> Modulus<M> {
         let value = consume_odd_positive(test_case, name);
         value.into_modulus().unwrap()
     }

@@ -105,6 +105,8 @@ include = [
     "src/rsa/bigint_elem_exp_consttime_tests.txt",
     "src/rsa/bigint_elem_exp_vartime_tests.txt",
     "src/rsa/bigint_elem_mul_tests.txt",
+    "src/rsa/bigint_elem_reduced_once_tests.txt",
+    "src/rsa/bigint_elem_reduced_tests.txt",
     "src/rsa/bigint_elem_squared_tests.txt",
     "src/rsa/blinding.rs",
     "src/rsa/padding.rs",
