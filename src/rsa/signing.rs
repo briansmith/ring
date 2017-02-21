@@ -395,6 +395,9 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
                              where M: bigint::NotMuchSmallerModulus<MM>,
                                    M: Prime {
     let c_mod_m = try!(bigint::elem_reduced(c, &p.modulus));
+    let oneRR = try!(p.modulus.compute_oneRR()); // XXX
+    let c_mod_m = try!(bigint::elem_mul(&oneRR, c_mod_m, &p.modulus));
+    let c_mod_m = try!(bigint::elem_mul(&oneRR, c_mod_m, &p.modulus));
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
 

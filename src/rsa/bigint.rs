@@ -435,7 +435,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
-        -> Result<Elem<Smaller, R>, error::Unspecified> {
+        -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
     let mut tmp = try!(a.try_clone());
     let mut r = try!(Elem::<Smaller, RInverse>::zero());
     try!(bssl::map_result(unsafe {
@@ -443,10 +443,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
                                     tmp.value.as_mut_ref(), &m.value.as_ref(),
                                     &m.n0)
     }));
-    // XXX: `oneRR` is expensive to compute, so it should be precomputed.
-    let oneRR = try!(m.compute_oneRR());
-    let r = try!(elem_mul(&oneRR, r, &m));
-    elem_mul(&oneRR, r, &m)
+    Ok(r)
 }
 
 pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
@@ -976,7 +973,8 @@ mod tests {
 
             //let a = a.into_encoded(&m).unwrap();
             let actual_result = elem_reduced(&a, &m).unwrap();
-            let actual_result = actual_result.into_unencoded(&m).unwrap();
+            let oneRR = m.compute_oneRR().unwrap();
+            let actual_result = elem_mul(&oneRR, actual_result, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
