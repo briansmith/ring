@@ -18,7 +18,7 @@ use {bits, der, digest, error};
 use rand;
 use std;
 use super::{blinding, bigint, N};
-use super::bigint::{R, RRR};
+use super::bigint::{R, RR, RRR};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -34,6 +34,8 @@ pub struct RSAKeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
+
+    oneRR_mod_n: bigint::Elem<N, RR>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     n_bits: bits::BitLength,
@@ -126,6 +128,7 @@ impl RSAKeyPair {
                 try!(bigint::verify_less_than(&q, &p));
 
                 let n = try!(n.into_modulus::<N>());
+                let oneRR_mod_n = try!(n.compute_oneRR());
 
                 // Verify that p * q == n. We restrict ourselves to modular
                 // multiplication. We rely on the fact that we've verified
@@ -139,7 +142,7 @@ impl RSAKeyPair {
                 };
                 let q_mod_n = {
                     let clone = try!(q_mod_n_decoded.try_clone());
-                    try!(clone.into_encoded(&n))
+                    try!(bigint::elem_mul(&oneRR_mod_n, clone, &n))
                 };
                 let p_mod_n = {
                     let p = try!(p.try_clone());
@@ -153,8 +156,9 @@ impl RSAKeyPair {
 
                 let p = try!(PrivatePrime::new(p, dP));
 
+                // XXX: computed twice:
                 let qInv = try!(qInv.into_elem(&p.modulus));
-                let qInv = try!(qInv.into_encoded(&p.modulus));
+                let qInv = try!(bigint::elem_mul(&p.oneRR, qInv, &p.modulus));
                 let q_mod_p = {
                     let q = try!(q.try_clone());
                     try!(q.into_elem(&p.modulus))
@@ -177,6 +181,7 @@ impl RSAKeyPair {
                     p: p,
                     q: q,
                     qInv: qInv,
+                    oneRR_mod_n: oneRR_mod_n,
                     q_mod_n: q_mod_n,
                     qq: qq,
                     n_bits: n_bits,
@@ -198,6 +203,7 @@ struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::OddPositive,
     oneR: bigint::Elem<M, R>, // 1 (mod p), Montgomery encoded.
+    oneRR: bigint::Elem<M, RR>, // 1 (mod p), double Montgomery encoded.
     oneRRR: bigint::Elem<M, RRR>, // 1 (mod p), triple Montgomery encoded.
 }
 
@@ -227,14 +233,18 @@ impl<M: Prime> PrivatePrime<M> {
         let p = try!(p.into_modulus());
 
         let one = try!(bigint::Elem::one());
-        let oneR = try!(one.into_encoded(&p));
         let oneRR = try!(p.compute_oneRR()); // XXX
-        let oneRRR = try!(bigint::elem_squared(oneRR, &p));
+        let oneR = try!(bigint::elem_mul(&oneRR, one, &p));
+        let oneRRR = {
+            let clone = try!(oneRR.try_clone());
+            try!(bigint::elem_squared(clone, &p))
+        };
 
         Ok(PrivatePrime {
             modulus: p,
             exponent: dP,
             oneR: oneR,
+            oneRR: oneRR,
             oneRRR: oneRRR,
         })
     }
@@ -376,7 +386,8 @@ impl RSASigningState {
         let base = try!(base.into_elem(&key.n));
 
         // Step 2.
-        let result = try!(blinding.blind(base, key.e, &key.n, rng, |c| {
+        let result = try!(blinding.blind(base, key.e, &key.n, &key.oneRR_mod_n,
+                                         rng, |c| {
             // Step 2.b.i.
             let m_1 = try!(elem_exp_consttime(&c, &key.p));
             let c_mod_qq = try!(bigint::elem_reduced_once(&c, &key.qq));
@@ -411,7 +422,8 @@ impl RSASigningState {
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
             let computed = try!(m.try_clone());
-            let computed = try!(computed.into_encoded(&key.n));
+            let computed =
+                try!(bigint::elem_mul(&key.oneRR_mod_n, computed, &key.n));
             let verify =
                 try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
             let verify = try!(verify.into_unencoded(&key.n));

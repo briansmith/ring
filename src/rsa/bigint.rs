@@ -394,12 +394,6 @@ impl<M> Elem<M, Unencoded> {
 
     pub fn is_one(&self) -> bool { self.value.is_one() }
 
-    pub fn into_encoded(self, m: &Modulus<M>)
-                        -> Result<Elem<M, R>, error::Unspecified> {
-        let RR = try!(m.compute_oneRR());
-        elem_mul(&RR, self, &m)
-    }
-
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         self.value.into_odd_positive()
     }
@@ -884,11 +878,11 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_odd_positive(test_case, "E");
 
-            let base = base.into_encoded(&m).unwrap();
+            let base = into_encoded(base, &m);
             let one = Positive::from_be_bytes(
                         untrusted::Input::from(&[1])).unwrap();
             let one = one.into_elem(&m).unwrap();
-            let one = one.into_encoded(&m).unwrap();
+            let one = into_encoded(one, &m);
             let actual_result = elem_exp_consttime(base, &e, &one, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -907,7 +901,7 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_public_exponent(test_case, "E");
 
-            let base = base.into_encoded(&m).unwrap();
+            let base = into_encoded(base, &m);
             let actual_result = elem_exp_vartime(base, e, &m).unwrap();
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -927,8 +921,8 @@ mod tests {
             let a = consume_elem(test_case, "A", &m);
             let b = consume_elem(test_case, "B", &m);
 
-            let a = a.into_encoded(&m).unwrap();
-            let b = b.into_encoded(&m).unwrap();
+            let b = into_encoded(b, &m);
+            let a = into_encoded(a, &m);
             let actual_result = elem_mul(&a, b, &m).unwrap();
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -947,7 +941,7 @@ mod tests {
             let expected_result = consume_elem(test_case, "ModSquare", &m);
             let a = consume_elem(test_case, "A", &m);
 
-            let a = a.into_encoded(&m).unwrap();
+            let a = into_encoded(a, &m);
             let actual_result = elem_squared(a, &m).unwrap();
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -970,7 +964,6 @@ mod tests {
             let expected_result = consume_elem(test_case, "R", &m);
             let a = consume_elem_unchecked::<MM>(test_case, "A");
 
-            //let a = a.into_encoded(&m).unwrap();
             let actual_result = elem_reduced(&a, &m).unwrap();
             let oneRR = m.compute_oneRR().unwrap();
             let actual_result = elem_mul(&oneRR, actual_result, &m).unwrap();
@@ -1052,5 +1045,10 @@ mod tests {
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
         let r = unsafe { GFp_BN_ucmp(a.value.as_ref(), b.value.as_ref()) };
         assert_eq!(r, 0)
+    }
+
+    fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
+        let oneRR = m.compute_oneRR().unwrap();
+        elem_mul(&oneRR, a, m).unwrap()
     }
 }
