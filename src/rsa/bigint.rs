@@ -226,7 +226,7 @@ impl<M> Modulus<M> {
     // 64-bit values, using `LIMB_BITS` here, rather than
     // `N0_LIMBS_USED * LIMB_BITS`, is correct because R**2 will still be a
     // multiple of the latter as `N0_LIMBS_USED` is either one or two.
-    pub fn compute_oneRR(&self) -> Result<Elem<M, RR>, error::Unspecified> {
+    fn compute_oneRR(&self) -> Result<Elem<M, RR>, error::Unspecified> {
         use limb::LIMB_BITS;
         let lg_R =
             (self.value.bit_length().as_usize_bits() + (LIMB_BITS - 1))
@@ -255,6 +255,11 @@ pub enum R {}
 // Montgomery encoded twice; the value has two *R* factors that need to be
 // canceled out.
 pub enum RR {}
+
+
+// Montgomery encoded three times; the value has three *R* factors that need to
+// be canceled out.
+pub enum RRR {}
 
 // Inversely Montgomery encoded; the value has one 1/*R* factor that needs to
 // be canceled out.
@@ -291,6 +296,17 @@ impl MontgomeryEncodingProduct for (RInverse, RR) {
 }
 impl MontgomeryEncodingProduct for (RR, RInverse) {
     type Output = Unencoded;
+}
+
+impl MontgomeryEncodingProduct for (RR, RR) {
+    type Output = RRR;
+}
+
+impl MontgomeryEncodingProduct for (RRR, RInverse) {
+    type Output = R;
+}
+impl MontgomeryEncodingProduct for (RInverse, RRR) {
+    type Output = R;
 }
 
 
@@ -511,6 +527,14 @@ impl<M> One<M, R> {
         let value: Elem<M> = try!(Elem::one());
         let value: Elem<M, R> = try!(value.into_encoded(&m));
         Ok(One(value))
+    }
+}
+
+impl<M> One<M, RRR> {
+    pub fn newRRR(m: &Modulus<M>) -> Result<One<M, RRR>, error::Unspecified> {
+        let oneRR = try!(m.compute_oneRR()); // XXX
+        let oneRRR = try!(elem_squared(oneRR, &m));
+        Ok(One(oneRRR))
     }
 }
 

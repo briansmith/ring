@@ -18,7 +18,7 @@ use {bits, der, digest, error};
 use rand;
 use std;
 use super::{blinding, bigint, N};
-use super::bigint::R;
+use super::bigint::{R, RRR};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -349,7 +349,8 @@ impl RSAKeyPair {
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::OddPositive,
-    oneR: bigint::One<M, R>, // 1 (mod p), Montgomery encoded.
+    oneR: bigint::One<M, R>,
+    oneRRR: bigint::One<M, RRR>,
 }
 
 impl<M: Prime> PrivatePrime<M> {
@@ -381,11 +382,13 @@ impl<M: Prime> PrivatePrime<M> {
 
         let p = try!(p.into_modulus());
         let oneR = try!(bigint::One::newR(&p));
+        let oneRRR = try!(bigint::One::newRRR(&p));
 
         Ok(PrivatePrime {
             modulus: p,
             exponent: dP,
             oneR: oneR,
+            oneRRR: oneRRR,
         })
     }
 }
@@ -395,9 +398,7 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
                              where M: bigint::NotMuchSmallerModulus<MM>,
                                    M: Prime {
     let c_mod_m = try!(bigint::elem_reduced(c, &p.modulus));
-    let oneRR = try!(p.modulus.compute_oneRR()); // XXX
-    let c_mod_m = try!(bigint::elem_mul(&oneRR, c_mod_m, &p.modulus));
-    let c_mod_m = try!(bigint::elem_mul(&oneRR, c_mod_m, &p.modulus));
+    let c_mod_m = try!(bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus));
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
 
