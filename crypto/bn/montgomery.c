@@ -128,57 +128,6 @@ OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
                        sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
-int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod) {
-  if (GFp_BN_is_zero(mod)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
-    return 0;
-  }
-  if (!GFp_BN_is_odd(mod)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
-    return 0;
-  }
-  if (GFp_BN_is_negative(mod)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
-    return 0;
-  }
-
-  /* Save the modulus. */
-  if (!GFp_BN_copy(&mont->N, mod)) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  /* Find n0 such that n0 * N == -1 (mod r).
-   *
-   * Only certain BN_BITS2<=32 platforms actually make use of n0[1]. For the
-   * others, we could use a shorter R value and use faster |BN_ULONG|-based
-   * math instead of |uint64_t|-based math, which would be double-precision.
-   * However, currently only the assembler files know which is which. */
-  uint64_t n0 = GFp_bn_mont_n0(mod);
-  mont->n0[0] = (BN_ULONG)n0;
-#if BN_MONT_CTX_N0_LIMBS == 2
-  mont->n0[1] = (BN_ULONG)(n0 >> BN_BITS2);
-#else
-  mont->n0[1] = 0;
-#endif
-
-  /* Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS such that R
-   * > mod. Even though the assembly on some 32-bit platforms works with 64-bit
-   * values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
-   * BN_BITS2|, is correct because R**2 will still be a multiple of the latter
-   * as |BN_MONT_CTX_N0_LIMBS| is either one or two.
-   *
-   * XXX: This is not constant time with respect to |mont->N|, but it should
-   * be. */
-  unsigned lgBigR =
-      (GFp_BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
-  if (!GFp_bn_mod_exp_base_2_vartime(&mont->RR, lgBigR * 2, &mont->N)) {
-    return 0;
-  }
-
-  return 1;
-}
-
 int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
                                 const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]) {
   assert(ret != r);

@@ -162,7 +162,7 @@ static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
 /* bn_mod_exp_base_2_vartime calculates r = 2**p (mod n). |p| must be larger
  * than log_2(n); i.e. 2**p must be larger than |n|. |n| must be positive and
  * odd. */
-int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
+int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n) {
   assert(!GFp_BN_is_zero(n));
   assert(!GFp_BN_is_negative(n));
   assert(GFp_BN_is_odd(n));
