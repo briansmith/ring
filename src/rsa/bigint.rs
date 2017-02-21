@@ -257,6 +257,11 @@ pub enum R {}
 // canceled out.
 pub enum RR {}
 
+
+// Montgomery encoded three times; the value has three *R* factors that need to
+// be canceled out.
+pub enum RRR {}
+
 // Inversely Montgomery encoded; the value has one 1/*R* factor that needs to
 // be canceled out.
 pub enum RInverse {}
@@ -292,6 +297,17 @@ impl MontgomeryEncodingProduct for (RInverse, RR) {
 }
 impl MontgomeryEncodingProduct for (RR, RInverse) {
     type Output = Unencoded;
+}
+
+impl MontgomeryEncodingProduct for (RR, RR) {
+    type Output = RRR;
+}
+
+impl MontgomeryEncodingProduct for (RRR, RInverse) {
+    type Output = R;
+}
+impl MontgomeryEncodingProduct for (RInverse, RRR) {
+    type Output = R;
 }
 
 
