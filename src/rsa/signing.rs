@@ -280,7 +280,7 @@ impl RSAKeyPair {
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
                 let d = try!(d.into_odd_positive());
-                try!(bigint::verify_less_than(&d, &n));
+                try!(bigint::verify_less_than(&d, &n.value()));
 
                 // Step 6.b is omitted as explained above.
 

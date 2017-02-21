@@ -368,15 +368,6 @@ int GFp_BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                            const BIGNUM *n);
 
 
-/* Montgomery arithmetic. */
-
-/* BN_MONT_CTX contains the precomputed values needed to work in a specific
- * Montgomery domain. */
-
-/* GFp_BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|.
- * It returns one on success and zero on error. */
-OPENSSL_EXPORT int GFp_BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod);
-
 /* GFp_BN_from_mont sets |ret| equal to |a| * R^-1, i.e. translates values out
  * of the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
  * is the Montgomery modulus. It returns one on success or zero on error. */
@@ -417,19 +408,6 @@ struct bignum_st {
   int dmax;  /* Size of |d|, in words. */
   int neg;   /* one if the number is negative */
   int flags; /* bitmask of BN_FLG_* values */
-};
-
-/* Keep in sync with `BN_MONT_CTX` in `ring::rsa::bigint` */
-struct bn_mont_ctx_st {
-  BIGNUM RR; /* used to convert to montgomery form */
-  BIGNUM N;  /* The modulus */
-
-  /* Least significant word(s) of the "magic" Montgomery constant. When
-   * |BN_MONT_CTX_N0_LIMBS == 1|, n0[1] is probably unused, however it is safer
-   * to always use two elements just in case any code from another OpenSSL
-   * variant that assumes |n0| has two elements is imported. Keep in sync with
-   * |N0_LIMBS| in bigint.rs. */
-  BN_ULONG n0[2];
 };
 
 OPENSSL_EXPORT unsigned GFp_BN_num_bits_word(BN_ULONG l);
