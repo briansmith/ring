@@ -220,25 +220,6 @@ impl<M> Modulus<M> {
             m: PhantomData,
         })
     }
-
-    // RR = R**2 (mod N). R is the smallest power of 2**LIMB_BITS such that
-    // R > mod. Even though the assembly on some 32-bit platforms works with
-    // 64-bit values, using `LIMB_BITS` here, rather than
-    // `N0_LIMBS_USED * LIMB_BITS`, is correct because R**2 will still be a
-    // multiple of the latter as `N0_LIMBS_USED` is either one or two.
-    fn compute_oneRR(&self) -> Result<Elem<M, RR>, error::Unspecified> {
-        use limb::LIMB_BITS;
-        let lg_R =
-            (self.value.bit_length().as_usize_bits() + (LIMB_BITS - 1))
-                / LIMB_BITS * LIMB_BITS;
-
-        let mut RR = try!(Elem::zero());
-        try!(bssl::map_result(unsafe {
-            GFp_bn_mod_exp_base_2_vartime(RR.value.as_mut_ref(), 2 * lg_R,
-                                          self.value.as_ref())
-        }));
-        Ok(RR)
-    }
 }
 
 impl Modulus<super::N> {
@@ -255,7 +236,6 @@ pub enum R {}
 // Montgomery encoded twice; the value has two *R* factors that need to be
 // canceled out.
 pub enum RR {}
-
 
 // Montgomery encoded three times; the value has three *R* factors that need to
 // be canceled out.
@@ -393,13 +373,6 @@ impl<M> Elem<M, Unencoded> {
 
     pub fn is_one(&self) -> bool { self.value.is_one() }
 
-    pub fn into_encoded(self, m: &Modulus<M>)
-                        -> Result<Elem<M, R>, error::Unspecified> {
-        // XXX: `oneRR` is expensive to compute, so it should be precomputed.
-        let oneRR = try!(m.compute_oneRR());
-        elem_mul(&oneRR, self, &m)
-    }
-
     // The result is security-sensitive.
     #[inline]
     pub fn bit_length(&self) -> bits::BitLength { self.value.bit_length() }
@@ -523,23 +496,52 @@ pub fn elem_sub<M, E>(a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
 pub struct One<M, E>(Elem<M, E>);
 
 impl<M> One<M, R> {
-    pub fn newR(m: &Modulus<M>) -> Result<One<M, R>, error::Unspecified> {
+    pub fn newR(oneRR: &One<M, RR>, m: &Modulus<M>)
+                -> Result<One<M, R>, error::Unspecified> {
         let value: Elem<M> = try!(Elem::one());
-        let value: Elem<M, R> = try!(value.into_encoded(&m));
+        let value: Elem<M, R> = try!(elem_mul(oneRR.as_ref(), value, &m));
         Ok(One(value))
     }
 }
 
+impl<M> One<M, RR> {
+    pub fn newRR(m: &Modulus<M>) -> Result<One<M, RR>, error::Unspecified> {
+        // RR = R**2 (mod N). R is the smallest power of 2**LIMB_BITS such that
+        // R > m. Even though the assembly on some 32-bit platforms works
+        // with 64-bit values, using `LIMB_BITS` here, rather than
+        // `N0_LIMBS_USED * LIMB_BITS`, is correct because R**2 will still be
+        // a multiple of the latter as `N0_LIMBS_USED` is either one or two.
+        use limb::LIMB_BITS;
+        let lg_R =
+            (m.value.bit_length().as_usize_bits() + (LIMB_BITS - 1))
+                / LIMB_BITS * LIMB_BITS;
+
+        let mut RR = try!(Elem::zero());
+        try!(bssl::map_result(unsafe {
+            GFp_bn_mod_exp_base_2_vartime(RR.value.as_mut_ref(), 2 * lg_R,
+                                          m.value.as_ref())
+        }));
+        Ok(One(RR))
+    }
+}
+
 impl<M> One<M, RRR> {
-    pub fn newRRR(m: &Modulus<M>) -> Result<One<M, RRR>, error::Unspecified> {
-        let oneRR = try!(m.compute_oneRR()); // XXX
-        let oneRRR = try!(elem_squared(oneRR, &m));
+    pub fn newRRR(oneRR: One<M, RR>, m: &Modulus<M>)
+                  -> Result<One<M, RRR>, error::Unspecified> {
+        let oneRRR = try!(elem_squared(oneRR.0, &m));
         Ok(One(oneRRR))
     }
 }
 
 impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> { &self.0 }
+}
+
+impl<M, E> One<M, E> {
+    pub fn try_clone(&self) -> Result<Self, error::Unspecified> {
+        let value = try!(self.0.try_clone());
+        Ok(One(value))
+    }
 }
 
 
@@ -912,8 +914,9 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_odd_positive(test_case, "E");
 
-            let base = base.into_encoded(&m).unwrap();
-            let one = One::newR(&m).unwrap();
+            let base = into_encoded(base, &m);
+            let oneRR = One::newRR(&m).unwrap();
+            let one = One::newR(&oneRR, &m).unwrap();
             let actual_result = elem_exp_consttime(base, &e, &one, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -932,7 +935,7 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_public_exponent(test_case, "E");
 
-            let base = base.into_encoded(&m).unwrap();
+            let base = into_encoded(base, &m);
             let actual_result = elem_exp_vartime(base, e, &m).unwrap();
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -952,8 +955,8 @@ mod tests {
             let a = consume_elem(test_case, "A", &m);
             let b = consume_elem(test_case, "B", &m);
 
-            let a = a.into_encoded(&m).unwrap();
-            let b = b.into_encoded(&m).unwrap();
+            let b = into_encoded(b, &m);
+            let a = into_encoded(a, &m);
             let actual_result = elem_mul(&a, b, &m).unwrap();
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -972,7 +975,7 @@ mod tests {
             let expected_result = consume_elem(test_case, "ModSquare", &m);
             let a = consume_elem(test_case, "A", &m);
 
-            let a = a.into_encoded(&m).unwrap();
+            let a = into_encoded(a, &m);
             let actual_result = elem_squared(a, &m).unwrap();
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -995,10 +998,10 @@ mod tests {
             let expected_result = consume_elem(test_case, "R", &m);
             let a = consume_elem_unchecked::<MM>(test_case, "A");
 
-            //let a = a.into_encoded(&m).unwrap();
             let actual_result = elem_reduced(&a, &m).unwrap();
-            let oneRR = m.compute_oneRR().unwrap();
-            let actual_result = elem_mul(&oneRR, actual_result, &m).unwrap();
+            let oneRR = One::newRR(&m).unwrap();
+            let actual_result =
+                elem_mul(oneRR.as_ref(), actual_result, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
@@ -1077,5 +1080,10 @@ mod tests {
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
         let r = unsafe { GFp_BN_ucmp(a.value.as_ref(), b.value.as_ref()) };
         assert_eq!(r, 0)
+    }
+
+    fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
+        let oneRR = One::newRR(&m).unwrap();
+        elem_mul(&oneRR.as_ref(), a, m).unwrap()
     }
 }

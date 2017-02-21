@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+// TODO: `R` vs `r` comment.
+#![allow(non_snake_case)]
+
 /// RSA PKCS#1 1.5 signatures.
 
 use {bits, digest, error, private, signature};
@@ -140,7 +143,11 @@ pub fn verify_rsa(params: &RSAParameters,
     let s = try!(s.into_elem::<N>(&n));
 
     // Step 2.
-    let s = try!(s.into_encoded(&n));
+    let s = {
+        // Montgomery encode `s`.
+        let oneRR = try!(bigint::One::newRR(&n));
+        try!(bigint::elem_mul(oneRR.as_ref(), s, &n))
+    };
     let m = try!(bigint::elem_exp_vartime(s, e, &n));
     let m = try!(m.into_unencoded(&n));
 
