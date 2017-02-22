@@ -239,8 +239,8 @@ impl<M> Modulus<M> {
 
         let mut RR = try!(Elem::zero());
         try!(bssl::map_result(unsafe {
-            GFp_bn_mod_exp_base_2_vartime(RR.value.as_mut_ref(), 2 * lg_R,
-                                          self.value.as_ref())
+            GFp_bn_mod_exp_base_2_vartime(RR.value.as_mut_ref(), lg_R,
+                                          self.value.as_ref(), &self.n0)
         }));
         Ok(RR)
     }
@@ -791,7 +791,7 @@ extern {
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
     fn GFp_bn_mont_n0(n: &BIGNUM) -> u64;
     fn GFp_bn_mod_exp_base_2_vartime(r: &mut BIGNUM, p: c::size_t,
-                                     n: &BIGNUM) -> c::int;
+                                     n: &BIGNUM, n0: &N0) -> c::int;
 
     // `r` and `a` may alias.
     fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, n: &BIGNUM, n0: &N0)
