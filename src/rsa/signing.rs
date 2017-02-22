@@ -248,22 +248,21 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6, partial
+                // 6.4.1.4.3/6.4.1.2.1 - Step 6.
+
+                // Step 6.a, partial.
                 //
-                // Checks for `d < LCM(p - 1, q - 1)` and
-                // `1 == (d * e) % LCM(p - 1, q - 1)` are omitted per the
-                // documentation above. Instead we rely on verification during
-                // signing.
-                //
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6.a
-                //
-                // We need to validate d > 2**half_n_bits. Since 2**half_n_bits
-                // has a bit length of half_n_bits+1, this check gives us
-                // d >= 2**half_n_bits, and knowing d is odd makes the
+                // First, validate `2**half_n_bits < d`. Since 2**half_n_bits
+                // has a bit length of half_n_bits + 1, this check gives us
+                // 2**half_n_bits <= d, and knowing d is odd makes the
                 // inequality strict.
-                if !(d.bit_length() > half_n_bits) {
+                if !(half_n_bits < d.bit_length()) {
                     return Err(error::Unspecified);
                 }
+                // XXX: The check that `d < LCM(p - 1, q - 1)` is omitted, as
+                // explained above.
+
+                // Step 6.b is omitted as explained above.
 
                 // 6.4.1.4.3 - Step 7.
 
