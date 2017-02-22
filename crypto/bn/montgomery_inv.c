@@ -203,12 +203,30 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n,
     ++i;
   }
 
+  BIGNUM _2_2_1024;
+  GFp_BN_init(&_2_2_1024);
+
+  int ret = 0;
+
   i = 2;
   while (2 * i <= p) {
     if (!GFp_BN_mod_mul_mont(r, r, r, n, n0)) {
       return 0;
     }
     i *= 2;
+    if (p == 3072 && i == 1024) {
+      if (!GFp_BN_copy(&_2_2_1024, r)) {
+        goto err;
+      }
+    }
+  }
+
+  if (p == 3072) {
+    assert(i == 2048);
+    if (!GFp_BN_mod_mul_mont(r, r, &_2_2_1024, n, n0)) {
+      return 0;
+    }
+    i += 1024;
   }
 
   // TODO: Make sure we're testing {1023, 2047, 3071, 4091, 8191, etc.}-bit
@@ -218,7 +236,7 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n,
    * point. Unfortunately for other cases we will need to do a bunch of
    * shifting. This is especially unfortunate for p == 3072 since that is
    * actually common for RSA verification. */
-  assert(i == p || (p != 1024 && p != 2048 && p != 4096 && p != 8192));
+  assert(i == p || (p != 1024 && p != 2048 && p != 3072 && p != 4096 && p != 8192));
 
   while (i < p) {
     LIMBS_shl_mod(r->d, r->d, n->d, n->top);
@@ -227,5 +245,9 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n,
 
   GFp_bn_correct_top(r);
 
-  return 1;
+  ret = 1;
+
+err:
+  GFp_BN_free(&_2_2_1024);
+  return ret;
 }
