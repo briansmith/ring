@@ -355,7 +355,7 @@ OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
 
 /* SSL_write writes up to |num| bytes from |buf| into |ssl|. It implicitly runs
  * any pending handshakes, including renegotiations when enabled. On success, it
- * returns the number of bytes read. Otherwise, it returns <= 0. The caller
+ * returns the number of bytes written. Otherwise, it returns <= 0. The caller
  * should pass the value into |SSL_get_error| to determine how to proceed.
  *
  * In TLS, a non-blocking |SSL_write| differs from non-blocking |write| in that
