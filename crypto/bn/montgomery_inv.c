@@ -159,10 +159,10 @@ static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
   return v;
 }
 
-/* bn_mod_exp_base_2_vartime calculates r = 2**p (mod n). |p| must be larger
- * than log_2(n); i.e. 2**p must be larger than |n|. |n| must be positive and
- * odd. */
-int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
+/* bn_mod_exp_base_2_vartime calculates r = 2**(2*p) (mod n). 2**p must be
+ * larger than |n|. |n| must be positive and odd. */
+int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n,
+                                  BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   assert(!GFp_BN_is_zero(n));
   assert(!GFp_BN_is_negative(n));
   assert(GFp_BN_is_odd(n));
@@ -179,7 +179,7 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
   if (GFp_bn_wexpand(r, n->top) == NULL) {
     return 0;
   }
-  assert(p > n_bits);
+  assert(p >= n_bits);
   if (!GFp_BN_set_bit(r, n_bits - 1)) {
     return 0;
   }
@@ -188,12 +188,66 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
   if (r->top < n->top) {
     r->d[n->top] = 0;
   }
+  size_t i = n_bits - 1;
 
-  for (unsigned i = n_bits - 1; i < p; ++i) {
+  /* The first iteration results in r == 2**p == R.
+   * The second iteration results in r == 2*R.
+   *
+   * Once we have 2*R, we can use either squaring or shifting depending on
+   * the relative performance between the two. We assume that
+   * Cshift < Csquare < 2*Cshift, where |CShift| is the cost of shifting and
+   * Csquare is the cost of squaring. Therefore, we shift once more to get
+   * r == 4*R, then we switch to squaring. */
+  while (i < p + 2 && i < 2 * p) {
     LIMBS_shl_mod(r->d, r->d, n->d, n->top);
+    ++i;
+  }
+
+  BIGNUM _2_2_1024;
+  GFp_BN_init(&_2_2_1024);
+
+  int ret = 0;
+
+  i = 2;
+  while (2 * i <= p) {
+    if (!GFp_BN_mod_mul_mont(r, r, r, n, n0)) {
+      return 0;
+    }
+    i *= 2;
+    if (p == 3072 && i == 1024) {
+      if (!GFp_BN_copy(&_2_2_1024, r)) {
+        goto err;
+      }
+    }
+  }
+
+  if (p == 3072) {
+    assert(i == 2048);
+    if (!GFp_BN_mod_mul_mont(r, r, &_2_2_1024, n, n0)) {
+      return 0;
+    }
+    i += 1024;
+  }
+
+  // TODO: Make sure we're testing {1023, 2047, 3071, 4091, 8191, etc.}-bit
+  // moduli.
+
+  /* For |p| in {1024, 2048, 4096, 8192}, at least, we will be done at this
+   * point. Unfortunately for other cases we will need to do a bunch of
+   * shifting. This is especially unfortunate for p == 3072 since that is
+   * actually common for RSA verification. */
+  assert(i == p || (p != 1024 && p != 2048 && p != 3072 && p != 4096 && p != 8192));
+
+  while (i < p) {
+    LIMBS_shl_mod(r->d, r->d, n->d, n->top);
+    ++i;
   }
 
   GFp_bn_correct_top(r);
 
-  return 1;
+  ret = 1;
+
+err:
+  GFp_BN_free(&_2_2_1024);
+  return ret;
 }

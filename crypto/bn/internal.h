@@ -201,7 +201,8 @@ void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, int num);
 
 uint64_t GFp_bn_mont_n0(const BIGNUM *n);
-int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n);
+int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n,
+                                  BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {

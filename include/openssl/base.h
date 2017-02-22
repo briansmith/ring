@@ -115,7 +115,6 @@ extern "C" {
 #define OPENSSL_EXPORT
 
 typedef struct bignum_st BIGNUM;
-typedef struct bn_mont_ctx_st BN_MONT_CTX;
 
 typedef struct RAND RAND;
 
