@@ -168,7 +168,7 @@ impl RSAKeyPair {
                 // Note we've switched the order with Step 3; Steps 2 & 4 as
                 // well as 5.[abef] are omitted per above.
                 //
-                // TODO 5.[dh] GCD ([pq] – 1, e) == 1
+                // TODO 5.[dh] GCD ([pq] - 1, e) == 1
                 //
                 // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5.[cg]
                 let half_n_bits = n_bits.half_rounded_up();
@@ -250,9 +250,10 @@ impl RSAKeyPair {
 
                 // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6, partial
                 //
-                // Checks for `d < LCM(p – 1, q – 1)` and `1 == (d · e) %
-                // LCM(p – 1, q – 1)` are omitted per the documentation above.
-                // Instead we rely on verification during signing.
+                // Checks for `d < LCM(p - 1, q - 1)` and
+                // `1 == (d * e) % LCM(p - 1, q - 1)` are omitted per the
+                // documentation above. Instead we rely on verification during
+                // signing.
                 //
                 // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 6.a
                 //
