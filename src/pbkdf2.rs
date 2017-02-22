@@ -304,4 +304,27 @@ mod tests {
             Ok(())
         });
     }
+
+    #[test]
+    #[should_panic]
+    pub fn pkbdf2_zero_iterations() {
+        let prf = &pbkdf2::HMAC_SHA256;
+        let secret = "ZeroIterationsTest".as_bytes();
+        let iterations: u32 = 0;
+        let salt = "salt".as_bytes();
+        let mut out = vec![0u8; 2];
+        pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
+    }
+
+    #[test]
+    // Control for pkbdf2_zero_iterations
+    pub fn pkbdf2_one_iteration() {
+        let prf = &pbkdf2::HMAC_SHA256;
+        let secret = "ZeroIterationsTest".as_bytes();
+        let iterations: u32 = 1;
+        let salt = "salt".as_bytes();
+        let mut out = vec![0u8; 2];
+        pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
+    }
+
 }
