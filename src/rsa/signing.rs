@@ -145,19 +145,22 @@ impl RSAKeyPair {
                 // are worded in such a way that it is clear that NIST intends
                 // for them to be done in order. TODO: Does this matter at all?
 
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 1
-                //
-                // 1.[ab] are omitted per above.
-                //
-                // XXX: The maximum limit of 4096 bits is primarily due to lack
-                // of testing of larger key sizes; see, in particular,
+                // 6.4.1.4.3/6.4.1.2.1 - Step 1.
+
+                // Step 1.a is omitted, as explained above.
+
+                // Step 1.b is omitted per above. Instead, we chek that the
+                // public modulus is 2048 to
+                // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
+                // limit of 4096 bits is primarily due to lack of testing of
+                // larger key sizes; see, in particular,
                 // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
                 // and
                 // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
                 // Also, this limit might help with memory management decisions
                 // later.
-                //
-                // We validate e >= 2**16 = 65536, which, since e is odd,
+
+                // Step 1.c. We validate e >= 2**16 = 65536, which, since e is odd,
                 // implies e >= 65537.
                 let (n, e) = try!(super::check_public_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
