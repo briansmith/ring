@@ -94,25 +94,28 @@ impl RSAKeyPair {
     ///   performance reasons and to avoid any side channels that such tests
     ///   would provide.
     /// - Section 6.4.1.2.1, Step 6, and 6.4.1.4.3, Step 7:
+    ///     - *ring* has a slightly looser lower bound for the values of `p`
+    ///     and `q` than what the NIST document specifies. This looser lower
+    ///     bound matches what most other crypto libraries do. The check might
+    ///     be tightened to meet NIST's requirements in the future.
     ///     - The validity of the mathematical relationship of `dP`, `dQ`, `e`
-    ///     and `n` is verified only during signing, when we validate that
-    ///     `(b**d)**e == b mod n` (having calculated `b**d` using `dP` and
-    ///     `dQ`). Some size checks of `d`, `dP` and `dQ` are performed at
-    ///     construction, but NIST checks are skipped which would be expensive
-    ///     and/or would leak information through side channels. If a preemptive
-    ///     check of the consistency of `dP`, `dQ`, `e` and `n` with each other
-    ///     is necessary, that can be done by signing any message with the key
+    ///     and `n` is verified only during signing. Some size checks of `d`,
+    ///     `dP` and `dQ` are performed at construction, but some NIST checks
+    ///     are skipped because they would be expensive and/or they would leak
+    ///     information through side channels. If a preemptive check of the
+    ///     consistency of `dP`, `dQ`, `e` and `n` with each other is
+    ///     necessary, that can be done by signing any message with the key
     ///     pair.
-    ///     - `d` is fully validated neither at construction nor during signing.
-    ///     This is OK as far as *ring*'s usage of the key is concerned because
-    ///     *ring* never uses the value of `d` (*ring* always uses `p`, `q`, `dP`
-    ///     and `dQ` via the Chinese Remainder Theorem, instead). However,
-    ///     *ring*'s checks would not be sufficient for validating a key pair
-    ///     for use by some other system; that other system must check the value
-    ///     of `d` itself if `d` is to be used.
+    ///     - `d` is not fully validated, neither at construction nor during
+    ///     signing. This is OK as far as *ring*'s usage of the key is
+    ///     concerned because *ring* never uses the value of `d` (*ring* always
+    ///     uses `p`, `q`, `dP` and `dQ` via the Chinese Remainder Theorem,
+    ///     instead). However, *ring*'s checks would not be sufficient for
+    ///     validating a key pair for use by some other system; that other
+    ///     system must check the value of `d` itself if `d` is to be used.
     ///
-    /// In addition to the NIST requirements, we require that `p > q` and that
-    /// `e` must be no more than 33 bits.
+    /// In addition to the NIST requirements, *ring* requires that `p > q` and
+    /// that `e` must be no more than 33 bits.
     ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
