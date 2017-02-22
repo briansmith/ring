@@ -111,8 +111,6 @@ impl RSAKeyPair {
     ///     for use by some other system; that other system must check the value
     ///     of `d` itself if `d` is to be used.
     ///
-    /// Steps 2 and 4 as described in 6.4.1.2.1 are omitted per 6.4.1.4.3.
-    ///
     /// In addition to the NIST requirements, we require that `p > q` and that
     /// `e` must be no more than 33 bits.
     ///
@@ -170,16 +168,15 @@ impl RSAKeyPair {
                 let d = try!(d.into_odd_positive());
                 try!(bigint::verify_less_than(&d, &n));
 
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 2 is omitted, as
-                // explained above.
+                // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
                 // 6.4.1.4.3 Step 3.
 
                 // Step 3.a is done below, out of order.
                 // Step 3.b is unneeded since `n_bits` is derived here from `n`.
 
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 4 is omitted, as
-                // explained above.
+                // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to
+                // recover the prime factors since they are already given.)
 
                 // 6.4.1.4.3 - Step 5.
 
