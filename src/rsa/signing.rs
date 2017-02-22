@@ -141,6 +141,10 @@ impl RSAKeyPair {
 
                 let n_bits = n.bit_length();
 
+                // XXX: Some steps are done out of order, but the NIST steps
+                // are worded in such a way that it is clear that NIST intends
+                // for them to be done in order. TODO: Does this matter at all?
+
                 // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 1
                 //
                 // 1.[ab] are omitted per above.
@@ -166,8 +170,10 @@ impl RSAKeyPair {
                 // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 2 is omitted, as
                 // explained above.
 
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 3 is done below, out
-                // of order.
+                // 6.4.1.4.3 Step 3.
+
+                // Step 3.a is done below, out of order.
+                // Step 3.b is unneeded since `n_bits` is derived here from `n`.
 
                 // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 4 is omitted, as
                 // explained above.
@@ -245,7 +251,7 @@ impl RSAKeyPair {
                     }
                 }
 
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 3
+                // 6.4.1.4.3 - Step 3.a (out of order).
                 //
                 // Verify that p * q == n. We restrict ourselves to modular
                 // multiplication. We rely on the fact that we've verified
@@ -253,13 +259,10 @@ impl RSAKeyPair {
                 // and then assume that these preconditions are enough to
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
-                //
-                // 3.b is unneeded since `n_bits` is derived here from `n`.
                 let q_mod_n = {
                     let clone = try!(q_mod_n_decoded.try_clone());
                     try!(clone.into_encoded(&n))
                 };
-
                 let p_mod_n = {
                     let p = try!(p.try_clone());
                     try!(p.into_elem(&n))
