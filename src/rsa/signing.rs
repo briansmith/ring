@@ -265,14 +265,9 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7, partial
-                //
-                // Checks for `dP == d % (p - 1)` and `dQ == d % (q - 1)` are
-                // omitted per the documentation above, and because we don't
-                // (in the long term) have a good way to do modulo with an even
-                // modulus. Instead we rely on verification during signing.
-                //
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.a
+                // 6.4.1.4.3 - Step 7.
+
+                // Step 7.a.
                 //
                 // We need to prove that `dP < p - 1`. If we verify
                 // `dP < p` then we'll know that either `dP == p - 1` or
@@ -282,15 +277,20 @@ impl RSAKeyPair {
                 // and so we know `dP < p - 1`.
                 let dP = try!(dP.into_odd_positive());
                 try!(bigint::verify_less_than(&dP, &p));
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.b
-                //
-                // The same argument can be used to prove `dQ < q - 1`.
+
+                // Step 7.b. The proof for `dQ < q - 1` is the same.
                 let dQ = try!(dQ.into_odd_positive());
                 try!(bigint::verify_less_than(&dQ, &q));
 
-                // [NIST SP-800-56B rev. 1]] 6.4.1.4.3 - Step 7.[cf]
+                // Step 7.c.
                 let p = try!(p.into_modulus::<P>());
                 let qInv = try!(qInv.into_elem(&p));
+
+                // Steps 7.d and 7.e are omitted per the documentation above,
+                // and because we don't (in the long term) have a good way to
+                // do modulo with an even modulus.
+
+                // Step 7.f.
                 let qInv = try!(qInv.into_encoded(&p));
                 let q_mod_p = {
                     let q = try!(q.try_clone());
