@@ -271,11 +271,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     goto err;
   }
 
-  ssl_create_cipher_list(ret->method, &ret->cipher_list,
-                         SSL_DEFAULT_CIPHER_LIST, 1 /* strict */);
-  if (ret->cipher_list == NULL ||
-      sk_SSL_CIPHER_num(ret->cipher_list->ciphers) <= 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_LIBRARY_HAS_NO_CIPHERS);
+  if (!SSL_CTX_set_strict_cipher_list(ret, SSL_DEFAULT_CIPHER_LIST)) {
     goto err2;
   }
 
@@ -1492,71 +1488,23 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 }
 
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
-  STACK_OF(SSL_CIPHER) *cipher_list =
-      ssl_create_cipher_list(ctx->method, &ctx->cipher_list, str,
-                             0 /* not strict */);
-  if (cipher_list == NULL) {
-    return 0;
-  }
-
-  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
-  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return 1;
+  return ssl_create_cipher_list(ctx->method, &ctx->cipher_list, str,
+                                0 /* not strict */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
-  STACK_OF(SSL_CIPHER) *cipher_list =
-      ssl_create_cipher_list(ctx->method, &ctx->cipher_list, str,
-                             1 /* strict */);
-  if (cipher_list == NULL) {
-    return 0;
-  }
-
-  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
-  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return 1;
+  return ssl_create_cipher_list(ctx->method, &ctx->cipher_list, str,
+                                1 /* strict */);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
-  STACK_OF(SSL_CIPHER) *cipher_list =
-      ssl_create_cipher_list(ssl->ctx->method, &ssl->cipher_list, str,
-                             0 /* not strict */);
-  if (cipher_list == NULL) {
-    return 0;
-  }
-
-  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
-  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return 1;
+  return ssl_create_cipher_list(ssl->ctx->method, &ssl->cipher_list, str,
+                                0 /* not strict */);
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
-  STACK_OF(SSL_CIPHER) *cipher_list =
-      ssl_create_cipher_list(ssl->ctx->method, &ssl->cipher_list, str,
-                             1 /* strict */);
-  if (cipher_list == NULL) {
-    return 0;
-  }
-
-  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
-  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return 1;
+  return ssl_create_cipher_list(ssl->ctx->method, &ssl->cipher_list, str,
+                                1 /* strict */);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {

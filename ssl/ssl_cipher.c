@@ -1254,10 +1254,10 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
   return 1;
 }
 
-STACK_OF(SSL_CIPHER) *
-ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
-                       struct ssl_cipher_preference_list_st **out_cipher_list,
-                       const char *rule_str, int strict) {
+int ssl_create_cipher_list(
+    const SSL_PROTOCOL_METHOD *ssl_method,
+    struct ssl_cipher_preference_list_st **out_cipher_list,
+    const char *rule_str, int strict) {
   STACK_OF(SSL_CIPHER) *cipherstack = NULL;
   CIPHER_ORDER *co_list = NULL, *head = NULL, *tail = NULL, *curr;
   uint8_t *in_group_flags = NULL;
@@ -1266,7 +1266,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 
   /* Return with error if nothing to do. */
   if (rule_str == NULL || out_cipher_list == NULL) {
-    return NULL;
+    return 0;
   }
 
   /* Now we have to collect the available ciphers from the compiled in ciphers.
@@ -1275,7 +1275,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   co_list = OPENSSL_malloc(sizeof(CIPHER_ORDER) * kCiphersLen);
   if (co_list == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return NULL;
+    return 0;
   }
 
   ssl_cipher_collect_ciphers(ssl_method, co_list, &head, &tail);
@@ -1377,6 +1377,11 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   OPENSSL_free(co_list); /* Not needed any longer */
   co_list = NULL;
 
+  if (sk_SSL_CIPHER_num(cipherstack) == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+    goto err;
+  }
+
   pref_list = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
   if (!pref_list) {
     goto err;
@@ -1395,7 +1400,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   *out_cipher_list = pref_list;
   pref_list = NULL;
 
-  return cipherstack;
+  return 1;
 
 err:
   OPENSSL_free(co_list);
@@ -1405,7 +1410,7 @@ err:
     OPENSSL_free(pref_list->in_group_flags);
   }
   OPENSSL_free(pref_list);
-  return NULL;
+  return 0;
 }
 
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }

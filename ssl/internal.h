@@ -226,14 +226,14 @@ const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf,
 
 /* ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
  * |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
- * |ssl_cipher_preference_list_st| containing the result. It returns
- * |(*out_cipher_list)->ciphers| on success and NULL on failure. If |strict| is
- * true, nonsense will be rejected. If false, nonsense will be silently
- * ignored. */
-STACK_OF(SSL_CIPHER) *
-ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
-                       struct ssl_cipher_preference_list_st **out_cipher_list,
-                       const char *rule_str, int strict);
+ * |ssl_cipher_preference_list_st| containing the result. It returns 1 on
+ * success and 0 on failure. If |strict| is true, nonsense will be rejected. If
+ * false, nonsense will be silently ignored. An empty result is considered an
+ * error regardless of |strict|. */
+int ssl_create_cipher_list(
+    const SSL_PROTOCOL_METHOD *ssl_method,
+    struct ssl_cipher_preference_list_st **out_cipher_list,
+    const char *rule_str, int strict);
 
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
