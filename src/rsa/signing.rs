@@ -163,31 +163,53 @@ impl RSAKeyPair {
                 let d = try!(d.into_odd_positive());
                 try!(bigint::verify_less_than(&d, &n));
 
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 2 is omitted, as
+                // explained above.
+
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 3 is done below, out
+                // of order.
+
+                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 Step 4 is omitted, as
+                // explained above.
+
+                // 6.4.1.4.3 - Step 5.
+
+                // Steps 5.a and 5.b are omitted, as explained above.
+
+                // Step 5.c.
                 //
-                // Note we've switched the order with Step 3; Steps 2 & 4 as
-                // well as 5.[abef] are omitted per above.
+                // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
                 //
-                // TODO 5.[dh] GCD ([pq] - 1, e) == 1
-                //
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5.[cg]
+                // Second, stop if `p > 2**(nBits/2) - 1`.
                 let half_n_bits = n_bits.half_rounded_up();
                 if p.bit_length() != half_n_bits {
                     return Err(error::Unspecified);
                 }
                 let p = try!(p.into_odd_positive());
+
+                // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
+
+                // Steps 5.e and 5.f are omitted as explained above.
+
+                // Step 5.g.
+                //
+                // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
+                //
+                // Second, stop if `q > 2**(nBits/2) - 1`.
                 if p.bit_length() != q.bit_length() {
                     return Err(error::Unspecified);
                 }
                 let q = try!(q.into_odd_positive());
-                let n = try!(n.into_modulus::<N>());
 
+                // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
+
+                let n = try!(n.into_modulus::<N>());
                 let q_mod_n_decoded = {
                     let q = try!(q.try_clone());
                     try!(q.into_elem(&n))
                 };
 
-                // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Step 5.i
+                // Step 5.i
                 //
                 // XXX: |p < q| is actually OK, it seems, but our implementation
                 // of CRT-based moduluar exponentiation used requires that
