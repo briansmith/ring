@@ -165,9 +165,6 @@ impl RSAKeyPair {
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
                     bits::BitLength::from_usize_bits(17)));
 
-                let d = try!(d.into_odd_positive());
-                try!(bigint::verify_less_than(&d, &n));
-
                 // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
                 // 6.4.1.4.3 Step 3.
@@ -284,8 +281,12 @@ impl RSAKeyPair {
                 if !(half_n_bits < d.bit_length()) {
                     return Err(error::Unspecified);
                 }
-                // XXX: The check that `d < LCM(p - 1, q - 1)` is omitted, as
-                // explained above.
+                // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
+                // don't have a good way of calculating LCM, so it is omitted,
+                // as explained above.
+                let d = try!(d.into_odd_positive());
+                try!(bigint::verify_less_than(&d, &n));
+
 
                 // Step 6.b is omitted as explained above.
 
