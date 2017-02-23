@@ -331,6 +331,23 @@ static void ssl_crypto_x509_flush_cached_chain(CERT *cert) {
   cert->x509_chain = NULL;
 }
 
+static int ssl_crypto_x509_check_client_CA_list(
+    STACK_OF(CRYPTO_BUFFER) *names) {
+  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(names); i++) {
+    const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(names, i);
+    const uint8_t *inp = CRYPTO_BUFFER_data(buffer);
+    X509_NAME *name = d2i_X509_NAME(NULL, &inp, CRYPTO_BUFFER_len(buffer));
+    const int ok = name != NULL && inp == CRYPTO_BUFFER_data(buffer) +
+                                              CRYPTO_BUFFER_len(buffer);
+    X509_NAME_free(name);
+    if (!ok) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 static void ssl_crypto_x509_clear(CERT *cert) {
   ssl_crypto_x509_flush_cached_leaf(cert);
   ssl_crypto_x509_flush_cached_chain(cert);
@@ -427,6 +444,7 @@ static void ssl_crypto_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {
 }
 
 const SSL_X509_METHOD ssl_crypto_x509_method = {
+  ssl_crypto_x509_check_client_CA_list,
   ssl_crypto_x509_clear,
   ssl_crypto_x509_flush_cached_chain,
   ssl_crypto_x509_flush_cached_leaf,

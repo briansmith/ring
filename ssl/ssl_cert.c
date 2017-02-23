@@ -726,6 +726,12 @@ STACK_OF(CRYPTO_BUFFER) *
     }
   }
 
+  if (!ssl->ctx->x509_method->check_client_CA_list(ret)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    goto err;
+  }
+
   return ret;
 
 err:

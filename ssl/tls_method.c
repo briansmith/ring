@@ -258,6 +258,11 @@ const SSL_METHOD *TLS_client_method(void) {
   return TLS_method();
 }
 
+static int ssl_noop_x509_check_client_CA_names(
+    STACK_OF(CRYPTO_BUFFER) *names) {
+  return 1;
+}
+
 static void ssl_noop_x509_clear(CERT *cert) {}
 static void ssl_noop_x509_flush_cached_leaf(CERT *cert) {}
 static void ssl_noop_x509_flush_cached_chain(CERT *cert) {}
@@ -275,6 +280,7 @@ static void ssl_noop_x509_ssl_flush_cached_client_CA(SSL *ssl) {}
 static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
 
 const SSL_X509_METHOD ssl_noop_x509_method = {
+  ssl_noop_x509_check_client_CA_names,
   ssl_noop_x509_clear,
   ssl_noop_x509_flush_cached_chain,
   ssl_noop_x509_flush_cached_leaf,

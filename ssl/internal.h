@@ -1446,6 +1446,11 @@ struct ssl_protocol_method_st {
 };
 
 struct ssl_x509_method_st {
+  /* check_client_CA_list returns one if |names| is a good list of X.509
+   * distinguished names and zero otherwise. This is used to ensure that we can
+   * reject unparsable values at handshake time when using crypto/x509. */
+  int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
+
   /* cert_clear frees and NULLs all X509-related state. */
   void (*cert_clear)(CERT *cert);
   /* cert_flush_cached_chain drops any cached |X509|-based certificate chain
