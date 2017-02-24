@@ -349,7 +349,7 @@ impl RSAKeyPair {
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::OddPositive,
-    oneR: bigint::Elem<M, R>, // 1 (mod p), Montgomery encoded.
+    oneR: bigint::One<M, R>, // 1 (mod p), Montgomery encoded.
 }
 
 impl<M: Prime> PrivatePrime<M> {
@@ -380,8 +380,7 @@ impl<M: Prime> PrivatePrime<M> {
         // it so.
 
         let p = try!(p.into_modulus());
-        let one = try!(bigint::Elem::one());
-        let oneR = try!(one.into_encoded(&p));
+        let oneR = try!(bigint::One::newR(&p));
 
         Ok(PrivatePrime {
             modulus: p,

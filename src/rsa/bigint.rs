@@ -463,6 +463,22 @@ pub fn elem_sub<M, E>(a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
 }
 
 
+// The value 1, Montgomery-encoded some number of times.
+pub struct One<M, E>(Elem<M, E>);
+
+impl<M> One<M, R> {
+    pub fn newR(m: &Modulus<M>) -> Result<One<M, R>, error::Unspecified> {
+        let value: Elem<M> = try!(Elem::one());
+        let value: Elem<M, R> = try!(value.into_encoded(&m));
+        Ok(One(value))
+    }
+}
+
+impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
+    fn as_ref(&self) -> &Elem<M, E> { &self.0 }
+}
+
+
 /// An non-secret odd positive value in the range
 /// [3, 2**PUBLIC_EXPONENT_MAX_BITS).
 #[derive(Clone, Copy)]
@@ -522,12 +538,12 @@ pub fn elem_exp_vartime<M>(
 }
 
 pub fn elem_exp_consttime<M>(
-        base: Elem<M, R>, exponent: &OddPositive, one: &Elem<M, R>,
+        base: Elem<M, R>, exponent: &OddPositive, one: &One<M, R>,
         m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = base.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(&mut r.0, &r.0, exponent.as_ref(),
-                                      one.value.as_ref(), m.as_ref(),
+                                      one.0.value.as_ref(), m.as_ref(),
                                       m.ctx.n0())
     }));
     Ok(Elem {
@@ -844,10 +860,7 @@ mod tests {
             let e = consume_odd_positive(test_case, "E");
 
             let base = base.into_encoded(&m).unwrap();
-            let one = Positive::from_be_bytes(
-                        untrusted::Input::from(&[1])).unwrap();
-            let one = one.into_elem(&m).unwrap();
-            let one = one.into_encoded(&m).unwrap();
+            let one = One::newR(&m).unwrap();
             let actual_result = elem_exp_consttime(base, &e, &one, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
