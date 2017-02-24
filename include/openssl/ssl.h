@@ -241,8 +241,8 @@ OPENSSL_EXPORT int SSL_is_dtls(const SSL *ssl);
  * takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|
  * only takes ownership of one reference.
  *
- * In DTLS, if |rbio| is blocking, it must handle
- * |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| control requests to set read timeouts.
+ * In DTLS, |rbio| must be non-blocking to properly handle timeouts and
+ * retransmits.
  *
  * If |rbio| is the same as the currently configured |BIO| for reading, that
  * side is left untouched and is not freed.
@@ -322,12 +322,11 @@ OPENSSL_EXPORT int SSL_set_wfd(SSL *ssl, int fd);
  * returns <= 0. The caller should pass the value into |SSL_get_error| to
  * determine how to proceed.
  *
- * In DTLS, if the read |BIO| is non-blocking, the caller must drive
- * retransmissions. Whenever |SSL_get_error| signals |SSL_ERROR_WANT_READ|, use
- * |DTLSv1_get_timeout| to determine the current timeout. If it expires before
- * the next retry, call |DTLSv1_handle_timeout|. Note that DTLS handshake
- * retransmissions use fresh sequence numbers, so it is not sufficient to replay
- * packets at the transport.
+ * In DTLS, the caller must drive retransmissions. Whenever |SSL_get_error|
+ * signals |SSL_ERROR_WANT_READ|, use |DTLSv1_get_timeout| to determine the
+ * current timeout. If it expires before the next retry, call
+ * |DTLSv1_handle_timeout|. Note that DTLS handshake retransmissions use fresh
+ * sequence numbers, so it is not sufficient to replay packets at the transport.
  *
  * TODO(davidben): Ensure 0 is only returned on transport EOF.
  * https://crbug.com/466303. */

@@ -565,12 +565,8 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 #define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
                                           the previous write operation. */
 
-/* BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT sets a read deadline to drive
- * retransmits. The |parg| argument to |BIO_ctrl| will be a pointer to a
- * |timeval| struct. If the structure is all zeros, it clears the read
- * deadline. Otherwise, |BIO_read| must fail with a temporary error
- * (e.g. |EAGAIN|) after the deadline. */
-#define BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT 45
+/* BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
+ * and depends on |timeval|, which is not 2038-clean on all platforms. */
 
 #define BIO_CTRL_DGRAM_GET_PEER           46
 

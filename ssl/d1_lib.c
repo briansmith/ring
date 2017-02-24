@@ -135,8 +135,6 @@ void dtls1_start_timer(SSL *ssl) {
     ssl->d1->next_timeout.tv_sec++;
     ssl->d1->next_timeout.tv_usec -= 1000000;
   }
-  BIO_ctrl(ssl->rbio, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
-           &ssl->d1->next_timeout);
 }
 
 int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
@@ -208,8 +206,7 @@ void dtls1_stop_timer(SSL *ssl) {
   ssl->d1->num_timeouts = 0;
   OPENSSL_memset(&ssl->d1->next_timeout, 0, sizeof(struct timeval));
   ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
-  BIO_ctrl(ssl->rbio, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
-           &ssl->d1->next_timeout);
+
   /* Clear retransmission buffer */
   dtls_clear_outgoing_messages(ssl);
 }

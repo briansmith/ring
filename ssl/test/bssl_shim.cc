@@ -1784,7 +1784,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
   if (config->is_dtls) {
-    bssl::UniquePtr<BIO> packeted = PacketedBioCreate(&g_clock, !config->async);
+    bssl::UniquePtr<BIO> packeted = PacketedBioCreate(&g_clock);
     if (!packeted) {
       return false;
     }
