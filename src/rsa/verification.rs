@@ -12,9 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// TODO: `R` vs `r` comment.
-#![allow(non_snake_case)]
-
 /// RSA PKCS#1 1.5 signatures.
 
 use {bits, digest, error, private, signature};
