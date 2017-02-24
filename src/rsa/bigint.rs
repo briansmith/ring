@@ -343,11 +343,11 @@ impl<M> Elem<M, Unencoded> {
     #[inline]
     pub fn bit_length(&self) -> bits::BitLength { self.value.bit_length() }
 
-    pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
-        self.value.into_odd_positive()
+    pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
+        let value = try!(self.value.into_odd_positive());
+        value.into_modulus()
     }
 }
-
 
 pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
         -> Result<Elem<M, <(AF, BF) as MontgomeryEncodingProduct>::Output>,

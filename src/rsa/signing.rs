@@ -291,7 +291,6 @@ impl RSAKeyPair {
                 let d = try!(d.into_odd_positive());
                 try!(bigint::verify_less_than(&d, &n));
 
-
                 // Step 6.b is omitted as explained above.
 
                 // 6.4.1.4.3 - Step 7.
@@ -333,7 +332,6 @@ impl RSAKeyPair {
 
                 let qq =
                     try!(bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n));
-                let qq = try!(qq.into_odd_positive());
                 let qq = try!(qq.into_modulus::<QQ>());
 
                 let q = try!(q.into_modulus::<Q>());
