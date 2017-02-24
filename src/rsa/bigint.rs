@@ -127,10 +127,8 @@ impl Positive {
         self.0.into_odd_positive()
     }
 
-    pub fn bit_length(&self) -> bits::BitLength {
-        let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
-        bits::BitLength::from_usize_bits(bits)
-    }
+    #[inline]
+    pub fn bit_length(&self) -> bits::BitLength { self.0.bit_length() }
 }
 
 /// Odd positive integers.
@@ -341,9 +339,9 @@ impl<M> Elem<M, Unencoded> {
         })
     }
 
-    pub fn into_positive(self) -> Result<Positive, error::Unspecified> {
-        self.value.into_positive()
-    }
+    // The result is security-sensitive.
+    #[inline]
+    pub fn bit_length(&self) -> bits::BitLength { self.value.bit_length() }
 
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         self.value.into_odd_positive()
@@ -626,6 +624,11 @@ impl Nonnegative {
         is_one != 0
     }
 
+    fn bit_length(&self) -> bits::BitLength {
+        let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
+        bits::BitLength::from_usize_bits(bits)
+    }
+
     fn randomize(&mut self, m: &BIGNUM, rng: &rand::SecureRandom)
                  -> Result<(), error::Unspecified> {
         let mut rand = rand::RAND::new(rng);
@@ -646,13 +649,6 @@ impl Nonnegative {
             m: PhantomData,
             encoding: PhantomData,
         })
-    }
-
-    fn into_positive(self) -> Result<Positive, error::Unspecified> {
-        if self.is_zero() {
-            return Err(error::Unspecified);
-        }
-        Ok(Positive(self))
     }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {

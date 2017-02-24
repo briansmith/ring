@@ -234,19 +234,20 @@ impl RSAKeyPair {
                         let p = try!(p.try_clone());
                         try!(p.into_elem(&n))
                     };
-                    let p_minus_q = {
+                    let p_minus_q_bits = {
                         // Modular subtraction isn't necessary since we already
                         // verified q < p, but we're doing modular subtraction
                         // to avoid having to implement non-modular subtraction.
                         // Modular subtraction without having already verified
                         // q < p would be wrong.
-                        let p_minus_q = try!(bigint::elem_sub(
-                                p_mod_n, &q_mod_n_decoded, &n));
-                        try!(p_minus_q.into_positive())
+                        let p_minus_q =
+                            try!(bigint::elem_sub(p_mod_n, &q_mod_n_decoded,
+                                                  &n));
+                        p_minus_q.bit_length()
                     };
                     let min_pq_bitlen_diff = try!(half_n_bits.try_sub(
                             bits::BitLength::from_usize_bits(100)));
-                    if p_minus_q.bit_length() <= min_pq_bitlen_diff {
+                    if p_minus_q_bits <= min_pq_bitlen_diff {
                         return Err(error::Unspecified);
                     }
                 }
