@@ -91,6 +91,7 @@ const (
 	testCertRSA testCert = iota
 	testCertRSA1024
 	testCertRSAChain
+	testCertECDSAP224
 	testCertECDSAP256
 	testCertECDSAP384
 	testCertECDSAP521
@@ -100,6 +101,7 @@ const (
 	rsaCertificateFile       = "cert.pem"
 	rsa1024CertificateFile   = "rsa_1024_cert.pem"
 	rsaChainCertificateFile  = "rsa_chain_cert.pem"
+	ecdsaP224CertificateFile = "ecdsa_p224_cert.pem"
 	ecdsaP256CertificateFile = "ecdsa_p256_cert.pem"
 	ecdsaP384CertificateFile = "ecdsa_p384_cert.pem"
 	ecdsaP521CertificateFile = "ecdsa_p521_cert.pem"
@@ -109,6 +111,7 @@ const (
 	rsaKeyFile       = "key.pem"
 	rsa1024KeyFile   = "rsa_1024_key.pem"
 	rsaChainKeyFile  = "rsa_chain_key.pem"
+	ecdsaP224KeyFile = "ecdsa_p224_key.pem"
 	ecdsaP256KeyFile = "ecdsa_p256_key.pem"
 	ecdsaP384KeyFile = "ecdsa_p384_key.pem"
 	ecdsaP521KeyFile = "ecdsa_p521_key.pem"
@@ -119,6 +122,7 @@ var (
 	rsaCertificate       Certificate
 	rsa1024Certificate   Certificate
 	rsaChainCertificate  Certificate
+	ecdsaP224Certificate Certificate
 	ecdsaP256Certificate Certificate
 	ecdsaP384Certificate Certificate
 	ecdsaP521Certificate Certificate
@@ -146,6 +150,12 @@ var testCerts = []struct {
 		certFile: rsaChainCertificateFile,
 		keyFile:  rsaChainKeyFile,
 		cert:     &rsaChainCertificate,
+	},
+	{
+		id:       testCertECDSAP224,
+		certFile: ecdsaP224CertificateFile,
+		keyFile:  ecdsaP224KeyFile,
+		cert:     &ecdsaP224Certificate,
 	},
 	{
 		id:       testCertECDSAP256,
@@ -7353,6 +7363,31 @@ func addSignatureAlgorithmTests() {
 			},
 		},
 		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
+	})
+
+	// A server certificate with a P-224 key will only work up to TLS 1.2
+	// and we only test it with BoringSSL acting as a server because that's
+	// all Alphabet requires with it.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "P224-Server",
+		config: Config{
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				// TLS 1.2 does not require that the curve
+				// match the hash, thus P-256 with SHA-256 is
+				// the same signature algorithm value as P-224
+				// with SHA-256.
+				signatureECDSAWithP256AndSHA256,
+			},
+			// P-256 must be offered as well because ECDHE requires
+			// it.
+			CurvePreferences: []CurveID{CurveP224, CurveP256},
+		},
+		flags: []string{
+			"-max-version", strconv.Itoa(VersionTLS12),
+			"-cert-file", path.Join(*resourceDir, ecdsaP224CertificateFile),
+			"-key-file", path.Join(*resourceDir, ecdsaP224KeyFile),
+		},
 	})
 }
 

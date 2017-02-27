@@ -306,6 +306,7 @@ int ssl_is_ecdsa_key_type(int type) {
   switch (type) {
     /* TODO(davidben): Remove support for |EVP_PKEY_EC| key types. */
     case EVP_PKEY_EC:
+    case NID_secp224r1:
     case NID_X9_62_prime256v1:
     case NID_secp384r1:
     case NID_secp521r1:
