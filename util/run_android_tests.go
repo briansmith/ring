@@ -243,6 +243,8 @@ func main() {
 			"BUILDING.md",
 			"ssl/test/runner/cert.pem",
 			"ssl/test/runner/channel_id_key.pem",
+			"ssl/test/runner/ecdsa_p224_cert.pem",
+			"ssl/test/runner/ecdsa_p224_key.pem",
 			"ssl/test/runner/ecdsa_p256_cert.pem",
 			"ssl/test/runner/ecdsa_p256_key.pem",
 			"ssl/test/runner/ecdsa_p384_cert.pem",
