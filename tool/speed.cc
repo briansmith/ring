@@ -200,7 +200,8 @@ static uint8_t *align(uint8_t *in, unsigned alignment) {
 }
 
 static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
-                           size_t chunk_len, size_t ad_len) {
+                           size_t chunk_len, size_t ad_len,
+                           evp_aead_direction_t direction) {
   static const unsigned kAlignment = 16;
 
   bssl::ScopedEVP_AEAD_CTX ctx;
@@ -214,6 +215,7 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   OPENSSL_memset(nonce.get(), 0, nonce_len);
   std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
   std::unique_ptr<uint8_t[]> out_storage(new uint8_t[chunk_len + overhead_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> in2_storage(new uint8_t[chunk_len + kAlignment]);
   std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
   OPENSSL_memset(ad.get(), 0, ad_len);
 
@@ -221,6 +223,7 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   OPENSSL_memset(in, 0, chunk_len);
   uint8_t *const out = align(out_storage.get(), kAlignment);
   OPENSSL_memset(out, 0, chunk_len + overhead_len);
+  uint8_t *const in2 = align(in2_storage.get(), kAlignment);
 
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.get(), key_len,
                                         EVP_AEAD_DEFAULT_TAG_LENGTH,
@@ -231,19 +234,38 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   }
 
   TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, in,
-                               out, &ctx, &nonce, &ad]() -> bool {
-        size_t out_len;
-        return EVP_AEAD_CTX_seal(ctx.get(), out, &out_len,
-                                 chunk_len + overhead_len, nonce.get(),
-                                 nonce_len, in, chunk_len, ad.get(), ad_len);
-      })) {
-    fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
+  if (direction == evp_aead_seal) {
+    if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, in,
+                                 out, &ctx, &nonce, &ad]() -> bool {
+          size_t out_len;
+          return EVP_AEAD_CTX_seal(ctx.get(), out, &out_len,
+                                   chunk_len + overhead_len, nonce.get(),
+                                   nonce_len, in, chunk_len, ad.get(), ad_len);
+        })) {
+      fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+  } else {
+    size_t out_len;
+    EVP_AEAD_CTX_seal(ctx.get(), out, &out_len, chunk_len + overhead_len,
+                      nonce.get(), nonce_len, in, chunk_len, ad.get(), ad_len);
+
+    if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, in2,
+                                 out, &ctx, &nonce, &ad, out_len]() -> bool {
+          size_t in2_len;
+          return EVP_AEAD_CTX_open(ctx.get(), in2, &in2_len, chunk_len,
+                                   nonce.get(), nonce_len, out, out_len,
+                                   ad.get(), ad_len);
+        })) {
+      fprintf(stderr, "EVP_AEAD_CTX_open failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
   }
 
-  results.PrintWithBytes(name + " seal", chunk_len);
+  results.PrintWithBytes(
+      name + (direction == evp_aead_seal ? " seal" : " open"), chunk_len);
   return true;
 }
 
@@ -253,10 +275,29 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
     return true;
   }
 
-  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len) &&
-         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len) &&
-         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len);
+  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len,
+                        evp_aead_seal) &&
+         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len,
+                        evp_aead_seal) &&
+         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len,
+                        evp_aead_seal);
 }
+
+#if !defined(OPENSSL_SMALL)
+static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
+                          size_t ad_len, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len,
+                        evp_aead_open) &&
+         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len,
+                        evp_aead_open) &&
+         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len,
+                        evp_aead_open);
+}
+#endif  /* !SMALL */
 
 static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
                            size_t chunk_len) {
@@ -629,6 +670,10 @@ bool Speed(const std::vector<std::string> &args) {
                  selected) ||
       !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
                  selected) ||
+      !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen,
+                     selected) ||
+      !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
+                     selected) ||
 #endif
       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
