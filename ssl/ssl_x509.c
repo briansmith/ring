@@ -446,12 +446,12 @@ err:
   return 0;
 }
 
-static void ssl_crypto_x509_flush_cached_leaf(CERT *cert) {
+static void ssl_crypto_x509_cert_flush_cached_leaf(CERT *cert) {
   X509_free(cert->x509_leaf);
   cert->x509_leaf = NULL;
 }
 
-static void ssl_crypto_x509_flush_cached_chain(CERT *cert) {
+static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
   sk_X509_pop_free(cert->x509_chain, X509_free);
   cert->x509_chain = NULL;
 }
@@ -473,20 +473,20 @@ static int ssl_crypto_x509_check_client_CA_list(
   return 1;
 }
 
-static void ssl_crypto_x509_clear(CERT *cert) {
-  ssl_crypto_x509_flush_cached_leaf(cert);
-  ssl_crypto_x509_flush_cached_chain(cert);
+static void ssl_crypto_x509_cert_clear(CERT *cert) {
+  ssl_crypto_x509_cert_flush_cached_leaf(cert);
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
 
   X509_free(cert->x509_stash);
   cert->x509_stash = NULL;
 }
 
-static void ssl_crypto_x509_free(CERT *cert) {
-  ssl_crypto_x509_clear(cert);
+static void ssl_crypto_x509_cert_free(CERT *cert) {
+  ssl_crypto_x509_cert_clear(cert);
   X509_STORE_free(cert->verify_store);
 }
 
-static void ssl_crypto_x509_dup(CERT *new_cert, const CERT *cert) {
+static void ssl_crypto_x509_cert_dup(CERT *new_cert, const CERT *cert) {
   if (cert->verify_store != NULL) {
     X509_STORE_up_ref(cert->verify_store);
     new_cert->verify_store = cert->verify_store;
@@ -687,7 +687,7 @@ static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL *ssl) {
     return 0;
   }
 
-  ssl_crypto_x509_flush_cached_chain(ssl->cert);
+  ssl_crypto_x509_cert_flush_cached_chain(ssl->cert);
 
   return 1;
 }
@@ -711,11 +711,11 @@ static void ssl_crypto_x509_ssl_ctx_free(SSL_CTX *ctx) {
 
 const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_check_client_CA_list,
-  ssl_crypto_x509_clear,
-  ssl_crypto_x509_free,
-  ssl_crypto_x509_dup,
-  ssl_crypto_x509_flush_cached_chain,
-  ssl_crypto_x509_flush_cached_leaf,
+  ssl_crypto_x509_cert_clear,
+  ssl_crypto_x509_cert_free,
+  ssl_crypto_x509_cert_dup,
+  ssl_crypto_x509_cert_flush_cached_chain,
+  ssl_crypto_x509_cert_flush_cached_leaf,
   ssl_crypto_x509_session_cache_objects,
   ssl_crypto_x509_session_dup,
   ssl_crypto_x509_session_clear,
@@ -803,7 +803,7 @@ static int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
   }
 
   sk_X509_pop_free(chain, X509_free);
-  ssl_crypto_x509_flush_cached_chain(cert);
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return 1;
 }
 
@@ -812,7 +812,7 @@ static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
     return 0;
   }
 
-  ssl_crypto_x509_flush_cached_chain(cert);
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return 1;
 }
 
@@ -852,7 +852,7 @@ static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
 
   X509_free(cert->x509_stash);
   cert->x509_stash = x509;
-  ssl_crypto_x509_flush_cached_chain(cert);
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return 1;
 }
 
@@ -861,7 +861,7 @@ static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
     return 0;
   }
 
-  ssl_crypto_x509_flush_cached_chain(cert);
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return 1;
 }
 
