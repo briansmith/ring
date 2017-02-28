@@ -248,18 +248,33 @@ static void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg),
   c->cert_cb_arg = arg;
 }
 
-int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
+enum leaf_cert_and_privkey_result_t {
+  leaf_cert_and_privkey_error,
+  leaf_cert_and_privkey_ok,
+  leaf_cert_and_privkey_mismatch,
+};
+
+/* check_leaf_cert_and_privkey checks whether the certificate in |leaf_buffer|
+ * and the private key in |privkey| are suitable and coherent. It returns
+ * |leaf_cert_and_privkey_error| and pushes to the error queue if a problem is
+ * found. If the certificate and private key are valid, but incoherent, it
+ * returns |leaf_cert_and_privkey_mismatch|. Otherwise it returns
+ * |leaf_cert_and_privkey_ok|. */
+static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
+    CRYPTO_BUFFER *leaf_buffer, EVP_PKEY *privkey) {
+  enum leaf_cert_and_privkey_result_t ret = leaf_cert_and_privkey_error;
+
   CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(buffer, &cert_cbs);
+  CRYPTO_BUFFER_init_CBS(leaf_buffer, &cert_cbs);
   EVP_PKEY *pubkey = ssl_cert_parse_pubkey(&cert_cbs);
   if (pubkey == NULL) {
-    return 0;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    goto out;
   }
 
   if (!ssl_is_key_type_supported(pubkey->type)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    EVP_PKEY_free(pubkey);
-    return 0;
+    goto out;
   }
 
   /* An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
@@ -267,26 +282,102 @@ int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
   if (pubkey->type == EVP_PKEY_EC &&
       !ssl_cert_check_digital_signature_key_usage(&cert_cbs)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    EVP_PKEY_free(pubkey);
+    goto out;
+  }
+
+  if (privkey != NULL &&
+      /* Sanity-check that the private key and the certificate match. */
+      !ssl_compare_public_and_private_key(pubkey, privkey)) {
+    ERR_clear_error();
+    ret = leaf_cert_and_privkey_mismatch;
+    goto out;
+  }
+
+  ret = leaf_cert_and_privkey_ok;
+
+out:
+  EVP_PKEY_free(pubkey);
+  return ret;
+}
+
+static int cert_set_chain_and_key(
+    CERT *cert, CRYPTO_BUFFER *const *certs, size_t num_certs,
+    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+  if (num_certs == 0 ||
+      (privkey == NULL && privkey_method == NULL)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  if (cert->privatekey != NULL) {
-    /* Sanity-check that the private key and the certificate match, unless the
-     * key is opaque (in case of, say, a smartcard). */
-    if (!EVP_PKEY_is_opaque(cert->privatekey) &&
-        !ssl_compare_public_and_private_key(pubkey, cert->privatekey)) {
-      /* don't fail for a cert/key mismatch, just free current private key
-       * (when switching to a different cert & key, first this function should
-       * be used, then ssl_set_pkey */
-      EVP_PKEY_free(cert->privatekey);
-      cert->privatekey = NULL;
-      /* clear error queue */
-      ERR_clear_error();
-    }
+  if (privkey != NULL && privkey_method != NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_HAVE_BOTH_PRIVKEY_AND_METHOD);
+    return 0;
   }
 
-  EVP_PKEY_free(pubkey);
+  switch (check_leaf_cert_and_privkey(certs[0], privkey)) {
+    case leaf_cert_and_privkey_error:
+      return 0;
+    case leaf_cert_and_privkey_mismatch:
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
+      return 0;
+    case leaf_cert_and_privkey_ok:
+      break;
+  }
+
+  STACK_OF(CRYPTO_BUFFER) *certs_sk = sk_CRYPTO_BUFFER_new_null();
+  if (certs_sk == NULL) {
+    return 0;
+  }
+
+  for (size_t i = 0; i < num_certs; i++) {
+    if (!sk_CRYPTO_BUFFER_push(certs_sk, certs[i])) {
+      sk_CRYPTO_BUFFER_pop_free(certs_sk, CRYPTO_BUFFER_free);
+      return 0;
+    }
+    CRYPTO_BUFFER_up_ref(certs[i]);
+  }
+
+  EVP_PKEY_free(cert->privatekey);
+  cert->privatekey = privkey;
+  if (privkey != NULL) {
+    EVP_PKEY_up_ref(privkey);
+  }
+  cert->key_method = privkey_method;
+
+  sk_CRYPTO_BUFFER_pop_free(cert->chain, CRYPTO_BUFFER_free);
+  cert->chain = certs_sk;
+
+  return 1;
+}
+
+int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
+                          size_t num_certs, EVP_PKEY *privkey,
+                          const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+  return cert_set_chain_and_key(ssl->cert, certs, num_certs, privkey,
+                                privkey_method);
+}
+
+int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
+                              size_t num_certs, EVP_PKEY *privkey,
+                              const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+  return cert_set_chain_and_key(ctx->cert, certs, num_certs, privkey,
+                                privkey_method);
+}
+
+int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
+  switch (check_leaf_cert_and_privkey(buffer, cert->privatekey)) {
+    case leaf_cert_and_privkey_error:
+      return 0;
+    case leaf_cert_and_privkey_mismatch:
+      /* don't fail for a cert/key mismatch, just free current private key
+       * (when switching to a different cert & key, first this function should
+       * be used, then |ssl_set_pkey|. */
+      EVP_PKEY_free(cert->privatekey);
+      cert->privatekey = NULL;
+      break;
+    case leaf_cert_and_privkey_ok:
+      break;
+  }
 
   cert->x509_method->cert_flush_cached_leaf(cert);
 
@@ -494,6 +585,12 @@ EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in) {
 
 int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                        const EVP_PKEY *privkey) {
+  if (EVP_PKEY_is_opaque(privkey)) {
+    /* We cannot check an opaque private key and have to trust that it
+     * matches. */
+    return 1;
+  }
+
   int ret = 0;
 
   switch (EVP_PKEY_cmp(pubkey, privkey)) {

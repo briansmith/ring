@@ -1229,7 +1229,25 @@ static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static bssl::UniquePtr<X509> GetChainTestCertificate() {
+static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  char *name, *header;
+  uint8_t *data;
+  long data_len;
+  if (!PEM_read_bio(bio.get(), &name, &header, &data,
+                    &data_len)) {
+    return nullptr;
+  }
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+
+  auto ret = bssl::UniquePtr<CRYPTO_BUFFER>(
+      CRYPTO_BUFFER_new(data, data_len, nullptr));
+  OPENSSL_free(data);
+  return ret;
+}
+
+static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestCertificateBuffer() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
       "MIIC0jCCAbqgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwDzENMAsGA1UEAwwEQiBD\n"
@@ -1249,12 +1267,24 @@ static bssl::UniquePtr<X509> GetChainTestCertificate() {
       "MYgF91UDvVzvnYm6TfseM2+ewKirC00GOrZ7rEcFvtxnKSqYf4ckqfNdSU1Y+RRC\n"
       "1ngWZ7Ih\n"
       "-----END CERTIFICATE-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  return BufferFromPEM(kCertPEM);
 }
 
-static bssl::UniquePtr<X509> GetChainTestIntermediate() {
+static bssl::UniquePtr<X509> X509FromBuffer(
+    bssl::UniquePtr<CRYPTO_BUFFER> buffer) {
+  if (!buffer) {
+    return nullptr;
+  }
+  const uint8_t *derp = CRYPTO_BUFFER_data(buffer.get());
+  return bssl::UniquePtr<X509>(
+      d2i_X509(NULL, &derp, CRYPTO_BUFFER_len(buffer.get())));
+}
+
+static bssl::UniquePtr<X509> GetChainTestCertificate() {
+  return X509FromBuffer(GetChainTestCertificateBuffer());
+}
+
+static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestIntermediateBuffer() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
       "MIICwjCCAaqgAwIBAgICEAEwDQYJKoZIhvcNAQELBQAwFDESMBAGA1UEAwwJQyBS\n"
@@ -1273,9 +1303,11 @@ static bssl::UniquePtr<X509> GetChainTestIntermediate() {
       "WhWwgM3P3X95fQ3d7oFPR/bVh0YV+Cf861INwplokXgXQ3/TCQ+HNXeAMWn3JLWv\n"
       "XFwk8owk9dq/kQGdndGgy3KTEW4ctPX5GNhf3LJ9Q7dLji4ReQ4=\n"
       "-----END CERTIFICATE-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  return BufferFromPEM(kCertPEM);
+}
+
+static bssl::UniquePtr<X509> GetChainTestIntermediate() {
+  return X509FromBuffer(GetChainTestIntermediateBuffer());
 }
 
 static bssl::UniquePtr<EVP_PKEY> GetChainTestKey() {
@@ -3150,6 +3182,51 @@ TEST(SSLTest, GetCertificate) {
   // They must also encode identically.
   EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
   EXPECT_EQ(Bytes(der, der_len), Bytes(der3, der3_len));
+}
+
+TEST(SSLTest, SetChainAndKeyMismatch) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
+  ASSERT_TRUE(leaf);
+  std::vector<CRYPTO_BUFFER*> chain = {
+      leaf.get(),
+  };
+
+  // Should fail because |GetTestKey| doesn't match the chain-test certificate.
+  ASSERT_FALSE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
+                                         key.get(), nullptr));
+  ERR_clear_error();
+}
+
+TEST(SSLTest, SetChainAndKey) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<CRYPTO_BUFFER> intermediate =
+      GetChainTestIntermediateBuffer();
+  ASSERT_TRUE(intermediate);
+  std::vector<CRYPTO_BUFFER*> chain = {
+      leaf.get(), intermediate.get(),
+  };
+  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+                                        chain.size(), key.get(), nullptr));
+
+  SSL_CTX_i_promise_to_verify_certs_after_the_handshake(client_ctx.get());
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
 }
 
 // TODO(davidben): Convert this file to GTest properly.

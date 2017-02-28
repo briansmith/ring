@@ -966,6 +966,22 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
 
 /* Certificate and private key convenience functions. */
 
+/* SSL_CTX_set_chain_and_key sets the certificate chain and private key for a
+ * TLS client or server. References to the given |CRYPTO_BUFFER| and |EVP_PKEY|
+ * objects are added as needed. Exactly one of |privkey| or |privkey_method|
+ * may be non-NULL. Returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set_chain_and_key(
+    SSL_CTX *ctx, CRYPTO_BUFFER *const *certs, size_t num_certs,
+    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method);
+
+/* SSL_set_chain_and_key sets the certificate chain and private key for a TLS
+ * client or server. References to the given |CRYPTO_BUFFER| and |EVP_PKEY|
+ * objects are added as needed. Exactly one of |privkey| or |privkey_method|
+ * may be non-NULL. Returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_chain_and_key(
+    SSL *ssl, CRYPTO_BUFFER *const *certs, size_t num_certs, EVP_PKEY *privkey,
+    const SSL_PRIVATE_KEY_METHOD *privkey_method);
+
 /* SSL_CTX_use_RSAPrivateKey sets |ctx|'s private key to |rsa|. It returns one
  * on success and zero on failure. */
 OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa);
@@ -1045,9 +1061,10 @@ enum ssl_private_key_result_t {
   ssl_private_key_failure,
 };
 
-/* SSL_PRIVATE_KEY_METHOD describes private key hooks. This is used to off-load
- * signing operations to a custom, potentially asynchronous, backend. */
-typedef struct ssl_private_key_method_st {
+/* ssl_private_key_method_st (aka |SSL_PRIVATE_KEY_METHOD|) describes private
+ * key hooks. This is used to off-load signing operations to a custom,
+ * potentially asynchronous, backend. */
+struct ssl_private_key_method_st {
   /* type returns the type of the key used by |ssl|. For RSA keys, return
    * |NID_rsaEncryption|. For ECDSA keys, return |NID_X9_62_prime256v1|,
    * |NID_secp384r1|, or |NID_secp521r1|, depending on the curve. */
@@ -1128,7 +1145,7 @@ typedef struct ssl_private_key_method_st {
    * on |ssl|. */
   enum ssl_private_key_result_t (*complete)(SSL *ssl, uint8_t *out,
                                             size_t *out_len, size_t max_out);
-} SSL_PRIVATE_KEY_METHOD;
+};
 
 /* SSL_set_private_key_method configures a custom private key on |ssl|.
  * |key_method| must remain valid for the lifetime of |ssl|. */
@@ -4490,6 +4507,8 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 #define SSL_R_PSK_IDENTITY_BINDER_COUNT_MISMATCH 271
 #define SSL_R_CANNOT_PARSE_LEAF_CERT 272
 #define SSL_R_SERVER_CERT_CHANGED 273
+#define SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH 274
+#define SSL_R_CANNOT_HAVE_BOTH_PRIVKEY_AND_METHOD 275
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
