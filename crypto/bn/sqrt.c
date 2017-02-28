@@ -148,7 +148,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     }
     q->neg = 0;
     if (!BN_add_word(q, 1) ||
-        !BN_mod_exp(ret, A, q, p, ctx)) {
+        !BN_mod_exp_mont(ret, A, q, p, ctx, NULL)) {
       goto end;
     }
     err = 0;
@@ -193,7 +193,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       goto end;
     }
     q->neg = 0;
-    if (!BN_mod_exp(b, t, q, p, ctx)) {
+    if (!BN_mod_exp_mont(b, t, q, p, ctx, NULL)) {
       goto end;
     }
 
@@ -281,7 +281,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
 
   /* Now that we have some non-square, we can find an element
    * of order  2^e  by computing its q'th power. */
-  if (!BN_mod_exp(y, y, q, p, ctx)) {
+  if (!BN_mod_exp_mont(y, y, q, p, ctx, NULL)) {
     goto end;
   }
   if (BN_is_one(y)) {
@@ -327,7 +327,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       goto end;
     }
   } else {
-    if (!BN_mod_exp(x, A, t, p, ctx)) {
+    if (!BN_mod_exp_mont(x, A, t, p, ctx, NULL)) {
       goto end;
     }
     if (BN_is_zero(x)) {
