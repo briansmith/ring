@@ -187,6 +187,10 @@ OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 /* DTLS_method is the |SSL_METHOD| used for DTLS connections. */
 OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
 
+/* TLS_with_buffers_method is like |TLS_method|, but avoids all use of
+ * crypto/x509. */
+OPENSSL_EXPORT const SSL_METHOD *TLS_with_buffers_method(void);
+
 /* SSL_CTX_new returns a newly-allocated |SSL_CTX| with default settings or NULL
  * on error. */
 OPENSSL_EXPORT SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);

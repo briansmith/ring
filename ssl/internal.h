@@ -1495,10 +1495,6 @@ struct ssl_x509_method_st {
   void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
 };
 
-/* ssl_noop_x509_method is implements the |ssl_x509_method_st| functions by
- * doing nothing. */
-extern const struct ssl_x509_method_st ssl_noop_x509_method;
-
 /* ssl_crypto_x509_method provides the |ssl_x509_method_st| functions using
  * crypto/x509. */
 extern const struct ssl_x509_method_st ssl_crypto_x509_method;

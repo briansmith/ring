@@ -290,7 +290,7 @@ static int ssl_noop_x509_ssl_ctx_new(SSL_CTX *ctx) { return 1; }
 static void ssl_noop_x509_ssl_ctx_free(SSL_CTX *ctx) { }
 static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
 
-const SSL_X509_METHOD ssl_noop_x509_method = {
+static const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_check_client_CA_names,
   ssl_noop_x509_clear,
   ssl_noop_x509_free,
@@ -310,3 +310,12 @@ const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_ssl_ctx_free,
   ssl_noop_x509_ssl_ctx_flush_cached_client_CA,
 };
+
+const SSL_METHOD *TLS_with_buffers_method(void) {
+  static const SSL_METHOD kMethod = {
+      0,
+      &kTLSProtocolMethod,
+      &ssl_noop_x509_method,
+  };
+  return &kMethod;
+}
