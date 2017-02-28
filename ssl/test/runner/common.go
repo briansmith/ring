@@ -1302,6 +1302,10 @@ type ProtocolBugs struct {
 	// SendServerNameAck, if true, causes the server to acknowledge the SNI
 	// extension.
 	SendServerNameAck bool
+
+	// ExpectCertificateReqNames, if not nil, contains the list of X.509
+	// names that must be sent in a CertificateRequest from the server.
+	ExpectCertificateReqNames [][]byte
 }
 
 func (c *Config) serverInit() {

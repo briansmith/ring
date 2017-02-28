@@ -110,7 +110,8 @@ struct TestConfig {
   int expect_resume_curve_id = 0;
   bool use_old_client_cert_callback = false;
   int initial_timeout_duration_ms = 0;
-  bool use_null_client_ca_list = false;
+  std::string use_client_ca_list;
+  std::string expected_client_ca_list;
   bool send_alert = false;
   bool peek_then_read = false;
   bool enable_grease = false;

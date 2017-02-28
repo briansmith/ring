@@ -104,7 +104,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-sparse-dh-prime", &TestConfig::use_sparse_dh_prime },
   { "-use-old-client-cert-callback",
     &TestConfig::use_old_client_cert_callback },
-  { "-use-null-client-ca-list", &TestConfig::use_null_client_ca_list },
   { "-send-alert", &TestConfig::send_alert },
   { "-peek-then-read", &TestConfig::peek_then_read },
   { "-enable-grease", &TestConfig::enable_grease },
@@ -148,6 +147,8 @@ const Flag<std::string> kStringFlags[] = {
   { "-export-label", &TestConfig::export_label },
   { "-export-context", &TestConfig::export_context },
   { "-expect-peer-cert-file", &TestConfig::expect_peer_cert_file },
+  { "-use-client-ca-list", &TestConfig::use_client_ca_list },
+  { "-expect-client-ca-list", &TestConfig::expected_client_ca_list },
 };
 
 const Flag<std::string> kBase64Flags[] = {

@@ -1682,18 +1682,13 @@ findCert:
 				}
 			}
 
-			if len(certReq.certificateAuthorities) == 0 {
-				// They gave us an empty list, so just take the
-				// first certificate of valid type from
-				// c.config.Certificates.
-				return &chain, nil
-			}
-
-			for _, ca := range certReq.certificateAuthorities {
-				if bytes.Equal(x509Cert.RawIssuer, ca) {
-					return &chain, nil
+			if expected := c.config.Bugs.ExpectCertificateReqNames; expected != nil {
+				if !eqByteSlices(expected, certReq.certificateAuthorities) {
+					return nil, fmt.Errorf("tls: CertificateRequest names differed, got %#v but expected %#v", certReq.certificateAuthorities, expected)
 				}
 			}
+
+			return &chain, nil
 		}
 	}
 
