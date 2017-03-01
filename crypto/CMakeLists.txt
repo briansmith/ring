@@ -212,6 +212,7 @@ add_executable(
   crypto_test
 
   chacha/chacha_test.cc
+  curve25519/x25519_test.cc
   dh/dh_test.cc
   dsa/dsa_test.cc
   ec/ec_test.cc
