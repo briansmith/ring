@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
@@ -28,6 +30,7 @@
 #include <openssl/rsa.h>
 
 #include "../internal.h"
+#include "../test/test_util.h"
 
 
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
@@ -370,352 +373,170 @@ static bssl::UniquePtr<EVP_PKEY> LoadExampleRSAKey() {
   return pkey;
 }
 
-static bool TestEVP_DigestSignInit(void) {
+TEST(EVPExtraTest, DigestSignInit) {
   bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
+  ASSERT_TRUE(pkey);
   bssl::ScopedEVP_MD_CTX md_ctx;
-  if (!pkey ||
-      !EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
-      !EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg))) {
-    return false;
-  }
+  ASSERT_TRUE(
+      EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+
   // Determine the size of the signature.
   size_t sig_len = 0;
-  if (!EVP_DigestSignFinal(md_ctx.get(), NULL, &sig_len)) {
-    return false;
-  }
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), NULL, &sig_len));
+
   // Sanity check for testing.
-  if (sig_len != (size_t)EVP_PKEY_size(pkey.get())) {
-    fprintf(stderr, "sig_len mismatch\n");
-    return false;
-  }
+  EXPECT_EQ(static_cast<size_t>(EVP_PKEY_size(pkey.get())), sig_len);
 
   std::vector<uint8_t> sig;
   sig.resize(sig_len);
-  if (!EVP_DigestSignFinal(md_ctx.get(), sig.data(), &sig_len)) {
-    return false;
-  }
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), sig.data(), &sig_len));
   sig.resize(sig_len);
 
   // Ensure that the signature round-trips.
   md_ctx.Reset();
-  if (!EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL,
-                            pkey.get()) ||
-      !EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig_len)) {
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(
+      EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+  ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig_len));
 }
 
-static bool TestEVP_DigestVerifyInit(void) {
+TEST(EVPExtraTest, DigestVerifyInit) {
   bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
   bssl::ScopedEVP_MD_CTX md_ctx;
-  if (!pkey ||
-      !EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL,
-                            pkey.get()) ||
-      !EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(md_ctx.get(), kSignature, sizeof(kSignature))) {
-    return false;
-  }
-  return true;
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(
+      EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+  ASSERT_TRUE(
+      EVP_DigestVerifyFinal(md_ctx.get(), kSignature, sizeof(kSignature)));
 }
 
-static bool TestVerifyRecover() {
+TEST(EVPExtraTest, VerifyRecover) {
   bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
-  if (!pkey) {
-    return false;
-  }
-
+  ASSERT_TRUE(pkey);
   bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(pkey.get()));
-  if (!rsa) {
-    return false;
-  }
+  ASSERT_TRUE(rsa);
 
   const uint8_t kDummyHash[32] = {0};
   uint8_t sig[2048/8];
   unsigned sig_len = sizeof(sig);
-
-  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), sig, &sig_len,
-                rsa.get())) {
-    fprintf(stderr, "RSA_sign failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, rsa.get()));
 
   size_t out_len;
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
-  if (!EVP_PKEY_verify_recover_init(ctx.get()) ||
-      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_PADDING) ||
-      !EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()) ||
-      !EVP_PKEY_verify_recover(ctx.get(), nullptr, &out_len, sig, sig_len)) {
-    fprintf(stderr, "verify_recover failed will nullptr buffer.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(EVP_PKEY_verify_recover_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()));
+  ASSERT_TRUE(
+      EVP_PKEY_verify_recover(ctx.get(), nullptr, &out_len, sig, sig_len));
 
   std::vector<uint8_t> recovered;
   recovered.resize(out_len);
 
-  if (!EVP_PKEY_verify_recover(ctx.get(), recovered.data(), &out_len, sig,
-                               sig_len)) {
-    fprintf(stderr, "verify_recover failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  if (out_len != sizeof(kDummyHash)) {
-    fprintf(stderr, "verify_recover length is %u, expected %u.\n",
-            static_cast<unsigned>(out_len),
-            static_cast<unsigned>(sizeof(kDummyHash)));
-    return false;
-  }
-
-  if (OPENSSL_memcmp(recovered.data(), kDummyHash, sizeof(kDummyHash)) != 0) {
-    fprintf(stderr, "verify_recover got wrong value.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(EVP_PKEY_verify_recover(ctx.get(), recovered.data(), &out_len,
+                                      sig, sig_len));
+  EXPECT_EQ(Bytes(kDummyHash), Bytes(recovered.data(), out_len));
 
   out_len = recovered.size();
-  if (!EVP_PKEY_CTX_set_signature_md(ctx.get(), nullptr) ||
-      !EVP_PKEY_verify_recover(ctx.get(), recovered.data(), &out_len, sig,
-                               sig_len)) {
-    fprintf(stderr, "verify_recover failed with NULL MD.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(ctx.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_verify_recover(ctx.get(), recovered.data(), &out_len,
+                                      sig, sig_len));
 
-  /* The size of a SHA-256 hash plus PKCS#1 v1.5 ASN.1 stuff happens to be 51
-   * bytes. */
-  static const size_t kExpectedASN1Size = 51;
-  if (out_len != kExpectedASN1Size) {
-    fprintf(stderr, "verify_recover length without MD is %u, expected %u.\n",
-            static_cast<unsigned>(out_len),
-            static_cast<unsigned>(kExpectedASN1Size));
-    return false;
-  }
-
-  return true;
+  // The size of a SHA-256 hash plus PKCS#1 v1.5 ASN.1 stuff happens to be 51
+  // bytes.
+  EXPECT_EQ(51u, out_len);
 }
 
-static bool TestValidPrivateKey(const uint8_t *input, size_t input_len,
+static void TestValidPrivateKey(const uint8_t *input, size_t input_len,
                                 int expected_id) {
   const uint8_t *p = input;
   bssl::UniquePtr<EVP_PKEY> pkey(d2i_AutoPrivateKey(NULL, &p, input_len));
-  if (!pkey || p != input + input_len) {
-    fprintf(stderr, "d2i_AutoPrivateKey failed\n");
-    return false;
-  }
-
-  if (EVP_PKEY_id(pkey.get()) != expected_id) {
-    fprintf(stderr, "Did not decode expected type\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(pkey);
+  EXPECT_EQ(input + input_len, p);
+  EXPECT_EQ(expected_id, EVP_PKEY_id(pkey.get()));
 }
 
-static bool Testd2i_AutoPrivateKey() {
-  if (!TestValidPrivateKey(kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER),
-                           EVP_PKEY_RSA)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyDER) failed\n");
-    return false;
-  }
-
-  if (!TestValidPrivateKey(kExampleRSAKeyPKCS8, sizeof(kExampleRSAKeyPKCS8),
-                           EVP_PKEY_RSA)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyPKCS8) failed\n");
-    return false;
-  }
-
-  if (!TestValidPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER),
-                           EVP_PKEY_EC)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleECKeyDER) failed\n");
-    return false;
-  }
-
-  if (!TestValidPrivateKey(kExampleECKeyPKCS8, sizeof(kExampleECKeyPKCS8),
-                           EVP_PKEY_EC)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleECKeyPKCS8) failed\n");
-    return false;
-  }
-
-  if (!TestValidPrivateKey(kExampleECKeySpecifiedCurvePKCS8,
-                           sizeof(kExampleECKeySpecifiedCurvePKCS8),
-                           EVP_PKEY_EC)) {
-    fprintf(stderr,
-            "d2i_AutoPrivateKey(kExampleECKeySpecifiedCurvePKCS8) failed\n");
-    return false;
-  }
-
-  if (!TestValidPrivateKey(kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER),
-                           EVP_PKEY_DSA)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleDSAKeyDER) failed\n");
-    return false;
-  }
+TEST(EVPExtraTest, d2i_AutoPrivateKey) {
+  TestValidPrivateKey(kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER),
+                      EVP_PKEY_RSA);
+  TestValidPrivateKey(kExampleRSAKeyPKCS8, sizeof(kExampleRSAKeyPKCS8),
+                      EVP_PKEY_RSA);
+  TestValidPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER), EVP_PKEY_EC);
+  TestValidPrivateKey(kExampleECKeyPKCS8, sizeof(kExampleECKeyPKCS8),
+                      EVP_PKEY_EC);
+  TestValidPrivateKey(kExampleECKeySpecifiedCurvePKCS8,
+                      sizeof(kExampleECKeySpecifiedCurvePKCS8), EVP_PKEY_EC);
+  TestValidPrivateKey(kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER),
+                      EVP_PKEY_DSA);
 
   const uint8_t *p = kInvalidPrivateKey;
-  bssl::UniquePtr<EVP_PKEY> pkey(d2i_AutoPrivateKey(NULL, &p, sizeof(kInvalidPrivateKey)));
-  if (pkey) {
-    fprintf(stderr, "Parsed invalid private key\n");
-    return false;
-  }
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      d2i_AutoPrivateKey(NULL, &p, sizeof(kInvalidPrivateKey)));
+  EXPECT_FALSE(pkey) << "Parsed invalid private key";
   ERR_clear_error();
-
-  return true;
 }
 
-// TestEVP_PKCS82PKEY tests loading a bad key in PKCS8 format.
-static bool TestEVP_PKCS82PKEY(void) {
+// Tests loading a bad key in PKCS8 format.
+TEST(EVPExtraTest, BadECKey) {
   const uint8_t *derp = kExampleBadECKeyDER;
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(
       d2i_PKCS8_PRIV_KEY_INFO(NULL, &derp, sizeof(kExampleBadECKeyDER)));
-  if (!p8inf || derp != kExampleBadECKeyDER + sizeof(kExampleBadECKeyDER)) {
-    fprintf(stderr, "Failed to parse key\n");
-    return false;
-  }
+  ASSERT_TRUE(p8inf);
+  EXPECT_EQ(kExampleBadECKeyDER + sizeof(kExampleBadECKeyDER), derp);
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKCS82PKEY(p8inf.get()));
-  if (pkey) {
-    fprintf(stderr, "Imported invalid EC key\n");
-    return false;
-  }
+  ASSERT_FALSE(pkey) << "Imported invalid EC key";
   ERR_clear_error();
-
-  return true;
 }
 
-// TestEVPMarshalEmptyPublicKey tests |EVP_marshal_public_key| on an empty key.
-static bool TestEVPMarshalEmptyPublicKey(void) {
+// Tests |EVP_marshal_public_key| on an empty key.
+TEST(EVPExtraTest, MarshalEmptyPublicKey) {
   bssl::UniquePtr<EVP_PKEY> empty(EVP_PKEY_new());
-  if (!empty) {
-    return false;
-  }
+  ASSERT_TRUE(empty);
+
   bssl::ScopedCBB cbb;
-  if (EVP_marshal_public_key(cbb.get(), empty.get())) {
-    fprintf(stderr, "Marshalled empty public key.\n");
-    return false;
-  }
-  if (ERR_GET_REASON(ERR_peek_last_error()) != EVP_R_UNSUPPORTED_ALGORITHM) {
-    fprintf(stderr, "Marshalling an empty public key gave wrong error.\n");
-    return false;
-  }
-  ERR_clear_error();
-  return true;
+  EXPECT_FALSE(EVP_marshal_public_key(cbb.get(), empty.get()))
+      << "Marshalled empty public key.";
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(ERR_peek_last_error()));
 }
 
-// Testd2i_PrivateKey tests |d2i_PrivateKey|.
-static bool Testd2i_PrivateKey(void) {
-  const uint8_t *derp = kExampleRSAKeyDER;
-  bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &derp,
-                                     sizeof(kExampleRSAKeyDER)));
-  if (!pkey || derp != kExampleRSAKeyDER + sizeof(kExampleRSAKeyDER)) {
-    fprintf(stderr, "Failed to import raw RSA key.\n");
-    return false;
+static bssl::UniquePtr<EVP_PKEY> ParsePrivateKey(int type, const uint8_t *in,
+                                                 size_t len) {
+  const uint8_t *ptr = in;
+  bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey(type, nullptr, &ptr, len));
+  if (!pkey) {
+    return nullptr;
   }
 
-  derp = kExampleDSAKeyDER;
-  pkey.reset(d2i_PrivateKey(EVP_PKEY_DSA, nullptr, &derp,
-             sizeof(kExampleDSAKeyDER)));
-  if (!pkey || derp != kExampleDSAKeyDER + sizeof(kExampleDSAKeyDER)) {
-    fprintf(stderr, "Failed to import raw DSA key.\n");
-    return false;
-  }
+  EXPECT_EQ(in + len, ptr);
+  return pkey;
+}
 
-  derp = kExampleRSAKeyPKCS8;
-  pkey.reset(d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &derp,
-             sizeof(kExampleRSAKeyPKCS8)));
-  if (!pkey || derp != kExampleRSAKeyPKCS8 + sizeof(kExampleRSAKeyPKCS8)) {
-    fprintf(stderr, "Failed to import PKCS#8 RSA key.\n");
-    return false;
-  }
+TEST(EVPExtraTest, d2i_PrivateKey) {
+  EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_RSA, kExampleRSAKeyDER,
+                              sizeof(kExampleRSAKeyDER)));
+  EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_DSA, kExampleDSAKeyDER,
+                              sizeof(kExampleDSAKeyDER)));
+  EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_RSA, kExampleRSAKeyPKCS8,
+                              sizeof(kExampleRSAKeyPKCS8)));
+  EXPECT_TRUE(
+      ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
 
-  derp = kExampleECKeyDER;
-  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp,
-             sizeof(kExampleECKeyDER)));
-  if (!pkey || derp != kExampleECKeyDER + sizeof(kExampleECKeyDER)) {
-    fprintf(stderr, "Failed to import raw EC key.\n");
-    return false;
-  }
-
-  derp = kExampleBadECKeyDER;
-  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp,
-             sizeof(kExampleBadECKeyDER)));
-  if (pkey) {
-    fprintf(stderr, "Imported invalid EC key.\n");
-    return false;
-  }
+  EXPECT_FALSE(ParsePrivateKey(EVP_PKEY_EC, kExampleBadECKeyDER,
+                               sizeof(kExampleBadECKeyDER)));
   ERR_clear_error();
 
   // Copy the input into a |malloc|'d vector to flag memory errors.
-  std::vector<uint8_t> copy(kExampleBadECKeyDER2, kExampleBadECKeyDER2 +
-                                                  sizeof(kExampleBadECKeyDER2));
-  derp = copy.data();
-  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp, copy.size()));
-  if (pkey) {
-    fprintf(stderr, "Imported invalid EC key #2.\n");
-    return false;
-  }
+  std::vector<uint8_t> copy(
+      kExampleBadECKeyDER2,
+      kExampleBadECKeyDER2 + sizeof(kExampleBadECKeyDER2));
+  EXPECT_FALSE(ParsePrivateKey(EVP_PKEY_EC, copy.data(), copy.size()));
   ERR_clear_error();
 
-  derp = kExampleRSAKeyPKCS8;
-  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp,
-             sizeof(kExampleRSAKeyPKCS8)));
-  if (pkey) {
-    fprintf(stderr, "Imported RSA key as EC key.\n");
-    return false;
-  }
+  // Test that an RSA key may not be imported as an EC key.
+  EXPECT_FALSE(ParsePrivateKey(EVP_PKEY_EC, kExampleRSAKeyPKCS8,
+                               sizeof(kExampleRSAKeyPKCS8)));
   ERR_clear_error();
-
-  return true;
-}
-
-int main() {
-  CRYPTO_library_init();
-
-  if (!TestEVP_DigestSignInit()) {
-    fprintf(stderr, "EVP_DigestSignInit failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!TestEVP_DigestVerifyInit()) {
-    fprintf(stderr, "EVP_DigestVerifyInit failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!TestVerifyRecover()) {
-    fprintf(stderr, "EVP_PKEY_verify_recover failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!Testd2i_AutoPrivateKey()) {
-    fprintf(stderr, "Testd2i_AutoPrivateKey failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!TestEVP_PKCS82PKEY()) {
-    fprintf(stderr, "TestEVP_PKCS82PKEY failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!TestEVPMarshalEmptyPublicKey()) {
-    fprintf(stderr, "TestEVPMarshalEmptyPublicKey failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!Testd2i_PrivateKey()) {
-    fprintf(stderr, "Testd2i_PrivateKey failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
 }

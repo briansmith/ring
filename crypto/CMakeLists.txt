@@ -216,6 +216,7 @@ add_executable(
   dsa/dsa_test.cc
   ec/ec_test.cc
   err/err_test.cc
+  evp/evp_extra_test.cc
   rsa/rsa_test.cc
 
   $<TARGET_OBJECTS:gtest_main>
