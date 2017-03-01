@@ -3402,12 +3402,14 @@ OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
  * |DTLS_method| except they also call |SSL_CTX_set_min_proto_version| and
  * |SSL_CTX_set_max_proto_version| to lock connections to that protocol
  * version. */
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
+
+/* SSLv3_method returns an |SSL_METHOD| with no versions enabled. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
 
 /* These client- and server-specific methods call their corresponding generic
  * methods. */
@@ -4641,6 +4643,7 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 #define SSL_R_ALPN_MISMATCH_ON_EARLY_DATA 277
 #define SSL_R_WRONG_VERSION_ON_EARLY_DATA 278
 #define SSL_R_CHANNEL_ID_ON_EARLY_DATA 279
+#define SSL_R_NO_SUPPORTED_VERSIONS_ENABLED 280
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

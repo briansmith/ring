@@ -296,9 +296,12 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->mode = SSL_MODE_NO_AUTO_CHAIN;
 
   /* Lock the SSL_CTX to the specified version, for compatibility with legacy
-   * uses of SSL_METHOD. */
+   * uses of SSL_METHOD, but we do not set the minimum version for
+   * |SSLv3_method|. */
   if (!SSL_CTX_set_max_proto_version(ret, method->version) ||
-      !SSL_CTX_set_min_proto_version(ret, method->version)) {
+      !SSL_CTX_set_min_proto_version(ret, method->version == SSL3_VERSION
+                                              ? 0 /* default */
+                                              : method->version)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     goto err2;
   }
@@ -945,6 +948,10 @@ static int set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
   /* Zero is interpreted as the default minimum version. */
   if (version == 0) {
     *out = method->min_version;
+    /* SSL 3.0 is disabled unless explicitly enabled. */
+    if (*out < TLS1_VERSION) {
+      *out = TLS1_VERSION;
+    }
     return 1;
   }
 
@@ -2398,7 +2405,7 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
   }
 
   if (!any_enabled) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SUPPORTED_VERSIONS_ENABLED);
     return 0;
   }
 

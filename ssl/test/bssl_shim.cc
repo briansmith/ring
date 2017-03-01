@@ -1038,9 +1038,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
 
   SSL_CTX_set0_buffer_pool(ssl_ctx.get(), g_pool);
 
-  // Enable TLS 1.3 for tests.
+  // Enable SSL 3.0 and TLS 1.3 for tests.
   if (!config->is_dtls &&
-      !SSL_CTX_set_max_proto_version(ssl_ctx.get(), TLS1_3_VERSION)) {
+      (!SSL_CTX_set_min_proto_version(ssl_ctx.get(), SSL3_VERSION) ||
+       !SSL_CTX_set_max_proto_version(ssl_ctx.get(), TLS1_3_VERSION))) {
     return nullptr;
   }
 
