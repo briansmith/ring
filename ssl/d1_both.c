@@ -123,7 +123,6 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/type_check.h>
-#include <openssl/x509.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"

@@ -23,7 +23,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/stack.h>
-#include <openssl/x509.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
