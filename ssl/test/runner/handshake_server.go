@@ -1165,6 +1165,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		return errors.New("tls: unexpected server name")
 	}
 
+	if cert := config.Bugs.RenegotiationCertificate; c.cipherSuite != nil && cert != nil {
+		hs.cert = cert
+	}
+
 	if len(hs.clientHello.alpnProtocols) > 0 {
 		if proto := c.config.Bugs.ALPNProtocol; proto != nil {
 			serverExtensions.alpnProtocol = *proto

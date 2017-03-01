@@ -1306,6 +1306,10 @@ type ProtocolBugs struct {
 	// ExpectCertificateReqNames, if not nil, contains the list of X.509
 	// names that must be sent in a CertificateRequest from the server.
 	ExpectCertificateReqNames [][]byte
+
+	// RenegotiationCertificate, if not nil, is the certificate to use on
+	// renegotiation handshakes.
+	RenegotiationCertificate *Certificate
 }
 
 func (c *Config) serverInit() {
