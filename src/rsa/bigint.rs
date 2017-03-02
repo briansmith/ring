@@ -264,23 +264,35 @@ impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding for
         (Unencoded, E) {
     type Output = E::Output;
 }
-// XXX: Rust doesn't allow overlapping impls,
-// TODO (if/when Rust allows it):
-// impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding for
-//         (E, Unencoded) {
-//     type Output = E::Unencoded;
-// }
-impl MontgomeryProductEncoding for (RR, Unencoded) { type Output = R; }
 
 impl<E> MontgomeryProductEncoding for (R, E) { type Output = E; }
 
-impl MontgomeryProductEncoding for (RInverse, RR) { type Output = Unencoded; }
-impl MontgomeryProductEncoding for (RR, RInverse) { type Output = Unencoded; }
+impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding
+        for (RInverse, E) where E::Output: MontgomeryReductionEncoding {
+    type Output =
+        <<E as MontgomeryReductionEncoding>::Output
+            as MontgomeryReductionEncoding>::Output;
+}
 
-impl MontgomeryProductEncoding for (RR, RR) { type Output = RRR; }
+impl MontgomeryProductEncoding for (RR, RR) {
+    type Output = RRR;
+}
 
-impl MontgomeryProductEncoding for (RRR, RInverse) { type Output = R; }
-impl MontgomeryProductEncoding for (RInverse, RRR) { type Output = R; }
+// XXX: Rust doesn't allow overlapping impls,
+// TODO (if/when Rust allows it):
+// impl<E1, E2: MontgomeryReductionEncoding> MontgomeryProductEncoding for
+//         (E1, E2) {
+//     type Output = <(E2, E1) as MontgomeryReductionEncoding>::Output;
+// }
+impl MontgomeryProductEncoding for (RR, Unencoded) {
+    type Output = <(Unencoded, RR) as MontgomeryProductEncoding>::Output;
+}
+impl MontgomeryProductEncoding for (RR, RInverse) {
+    type Output = <(RInverse, RR) as MontgomeryProductEncoding>::Output;
+}
+impl MontgomeryProductEncoding for (RRR, RInverse) {
+    type Output = <(RInverse, RRR) as MontgomeryProductEncoding>::Output;
+}
 
 
 /// Montgomery-encoded elements of a field.
