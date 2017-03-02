@@ -38,14 +38,14 @@ typedef uint8_t Carry;
 #pragma intrinsic(_addcarry_u32, _subborrow_u32)
 #define GFp_ADDCARRY_INTRINSIC _addcarry_u32
 #define GFp_SUBBORROW_INTRINSIC _subborrow_u32
-typedef uint64_t GFp_DoubleLimb;
+typedef uint64_t DoubleLimb;
 #endif
 #else
 typedef Limb Carry;
 #if LIMB_BITS == 64
-typedef __uint128_t GFp_DoubleLimb;
+typedef __uint128_t DoubleLimb;
 #elif LIMB_BITS == 32
-typedef uint64_t GFp_DoubleLimb;
+typedef uint64_t DoubleLimb;
 #endif
 #endif
 
@@ -57,7 +57,7 @@ static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
 #if defined(GFp_ADDCARRY_INTRINSIC)
   ret = GFp_ADDCARRY_INTRINSIC(carry_in, a, b, r);
 #else
-  GFp_DoubleLimb x = (GFp_DoubleLimb)a + b + carry_in;
+  DoubleLimb x = (DoubleLimb)a + b + carry_in;
   *r = (Limb)x;
   ret = (Carry)(x >> LIMB_BITS);
 #endif
@@ -71,7 +71,7 @@ static inline Carry limb_add(Limb *r, Limb a, Limb b) {
 #if defined(GFp_ADDCARRY_INTRINSIC)
   ret = GFp_ADDCARRY_INTRINSIC(0, a, b, r);
 #else
-  GFp_DoubleLimb x = (GFp_DoubleLimb)a + b;
+  DoubleLimb x = (DoubleLimb)a + b;
   *r = (Limb)x;
   ret = (Carry)(x >> LIMB_BITS);
 #endif
@@ -87,7 +87,7 @@ static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
 #if defined(GFp_SUBBORROW_INTRINSIC)
   ret = GFp_SUBBORROW_INTRINSIC(borrow_in, a, b, r);
 #else
-  GFp_DoubleLimb x = (GFp_DoubleLimb)a - b - borrow_in;
+  DoubleLimb x = (DoubleLimb)a - b - borrow_in;
   *r = (Limb)x;
   ret = (Carry)((x >> LIMB_BITS) & 1);
 #endif
@@ -101,7 +101,7 @@ static inline Carry limb_sub(Limb *r, Limb a, Limb b) {
 #if defined(GFp_SUBBORROW_INTRINSIC)
   ret = GFp_SUBBORROW_INTRINSIC(0, a, b, r);
 #else
-  GFp_DoubleLimb x = (GFp_DoubleLimb)a - b;
+  DoubleLimb x = (DoubleLimb)a - b;
   *r = (Limb)x;
   ret = (Carry)((x >> LIMB_BITS) & 1);
 #endif
