@@ -617,11 +617,25 @@ pub fn elem_exp_consttime<M>(
                                       oneR.0.value.as_ref(), &m.value.as_ref(),
                                       &m.n0)
     }));
-    Ok(Elem {
+    let r = Elem {
         value: r,
         m: PhantomData,
         encoding: PhantomData,
-    })
+    };
+
+    // XXX: On x86-64 only, `GFp_BN_mod_exp_mont_consttime` dues the conversion
+    // from Montgomery form itself using a special assembly-language reduction
+    // function. This means that at this point, whether `r` is Montgomery
+    // encoded, and the exact type of `R` (in particular, its `E` type
+    // parameter) depends on the platform. Type inference masks this.
+    //
+    // TODO: Get rid of that special assembly-language reduction function if
+    // practical.
+
+    #[cfg(not(target_arch = "x86_64"))]
+    let r = try!(r.into_unencoded(m));
+
+    Ok(r)
 }
 
 pub fn elem_randomize<M, E>(a: &mut Elem<M, E>, m: &Modulus<M>,

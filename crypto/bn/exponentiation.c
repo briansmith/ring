@@ -505,8 +505,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       }
     }
 
-    /* Convert the final result from montgomery to standard format */
-    if (!GFp_BN_from_mont(rr, &tmp, n, n0)) {
+    if (!GFp_BN_copy(rr, &tmp)) {
       goto err;
     }
   }
