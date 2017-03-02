@@ -1176,10 +1176,6 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
-  if (config->enable_short_header) {
-    SSL_CTX_set_short_header_enabled(ssl_ctx.get(), 1);
-  }
-
   if (config->enable_early_data) {
     SSL_CTX_set_early_data_enabled(ssl_ctx.get(), 1);
   }

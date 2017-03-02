@@ -81,7 +81,6 @@ func (c *Conn) clientHandshake() error {
 		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
 		customExtension:         c.config.Bugs.CustomExtension,
 		pskBinderFirst:          c.config.Bugs.PSKBinderFirst,
-		shortHeaderSupported:    c.config.Bugs.EnableShortHeader,
 	}
 
 	disableEMS := c.config.Bugs.NoExtendedMasterSecret
@@ -717,18 +716,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.addEntropy(zeroSecret)
 	}
 
-	if hs.serverHello.shortHeader && !hs.hello.shortHeaderSupported {
-		return errors.New("tls: server sent unsolicited short header extension")
-	}
-
-	if hs.serverHello.shortHeader && hs.hello.hasEarlyData {
-		return errors.New("tls: server sent short header extension in response to early data")
-	}
-
-	if hs.serverHello.shortHeader {
-		c.setShortHeader()
-	}
-
 	// Derive handshake traffic keys and switch read key to handshake
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
@@ -1362,10 +1349,6 @@ func (hs *clientHandshakeState) serverResumedSession() bool {
 
 func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	c := hs.c
-
-	if hs.serverHello.shortHeader {
-		return false, errors.New("tls: short header extension sent before TLS 1.3")
-	}
 
 	if hs.serverResumedSession() {
 		// For test purposes, assert that the server never accepts the

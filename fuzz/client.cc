@@ -247,8 +247,6 @@ struct GlobalState {
     assert(pkey != nullptr);
     SSL_CTX_set1_tls_channel_id(ctx, pkey);
     EVP_PKEY_free(pkey);
-
-    SSL_CTX_set_short_header_enabled(ctx, 1);
   }
 
   ~GlobalState() {

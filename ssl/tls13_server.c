@@ -135,11 +135,6 @@ static const SSL_CIPHER *choose_tls13_cipher(
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  /* The short record header extension is incompatible with early data. */
-  if (ssl->s3->skip_early_data && ssl->s3->short_header) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-    return ssl_hs_error;
-  }
 
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
@@ -354,18 +349,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher)) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(hs, &extensions)) {
-    goto err;
-  }
-
-  if (ssl->s3->short_header) {
-    if (!CBB_add_u16(&extensions, TLSEXT_TYPE_short_header) ||
-        !CBB_add_u16(&extensions, 0 /* empty extension */)) {
-      goto err;
-    }
-  }
-
-  if (!ssl_add_message_cbb(ssl, &cbb)) {
+      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
+      !ssl_add_message_cbb(ssl, &cbb)) {
     goto err;
   }
 

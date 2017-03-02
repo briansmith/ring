@@ -116,7 +116,6 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::expect_sha256_client_cert_initial },
   { "-expect-sha256-client-cert-resume",
     &TestConfig::expect_sha256_client_cert_resume },
-  { "-enable-short-header", &TestConfig::enable_short_header },
   { "-read-with-unfinished-write", &TestConfig::read_with_unfinished_write },
   { "-expect-secure-renegotiation",
     &TestConfig::expect_secure_renegotiation },

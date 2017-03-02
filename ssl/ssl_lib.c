@@ -2552,10 +2552,6 @@ void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled) {
   ctx->grease_enabled = !!enabled;
 }
 
-void SSL_CTX_set_short_header_enabled(SSL_CTX *ctx, int enabled) {
-  ctx->short_header_enabled = !!enabled;
-}
-
 int SSL_clear(SSL *ssl) {
   /* In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
    * established session to be offered the next time around. wpa_supplicant

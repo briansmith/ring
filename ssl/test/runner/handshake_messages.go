@@ -167,7 +167,6 @@ type clientHelloMsg struct {
 	customExtension         string
 	hasGREASEExtension      bool
 	pskBinderFirst          bool
-	shortHeaderSupported    bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -213,8 +212,7 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.sctListSupported == m1.sctListSupported &&
 		m.customExtension == m1.customExtension &&
 		m.hasGREASEExtension == m1.hasGREASEExtension &&
-		m.pskBinderFirst == m1.pskBinderFirst &&
-		m.shortHeaderSupported == m1.shortHeaderSupported
+		m.pskBinderFirst == m1.pskBinderFirst
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -429,10 +427,6 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions.addU16(extensionCustom)
 		customExt := extensions.addU16LengthPrefixed()
 		customExt.addBytes([]byte(m.customExtension))
-	}
-	if m.shortHeaderSupported {
-		extensions.addU16(extensionShortHeader)
-		extensions.addU16(0) // Length is always 0
 	}
 	// The PSK extension must be last (draft-ietf-tls-tls13-18 section 4.2.6).
 	if len(m.pskIdentities) > 0 && !m.pskBinderFirst {
@@ -805,11 +799,6 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.sctListSupported = true
-		case extensionShortHeader:
-			if length != 0 {
-				return false
-			}
-			m.shortHeaderSupported = true
 		case extensionCustom:
 			m.customExtension = string(data[:length])
 		}
@@ -838,7 +827,6 @@ type serverHelloMsg struct {
 	compressionMethod uint8
 	customExtension   string
 	unencryptedALPN   string
-	shortHeader       bool
 	extensions        serverExtensions
 }
 
@@ -875,11 +863,6 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 
 	extensions := hello.addU16LengthPrefixed()
-
-	if m.shortHeader {
-		extensions.addU16(extensionShortHeader)
-		extensions.addU16(0) // Length
-	}
 
 	if vers >= VersionTLS13 {
 		if m.hasKeyShare {
@@ -1000,11 +983,6 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				}
 				m.pskIdentity = uint16(d[0])<<8 | uint16(d[1])
 				m.hasPSKIdentity = true
-			case extensionShortHeader:
-				if len(d) != 0 {
-					return false
-				}
-				m.shortHeader = true
 			default:
 				// Only allow the 3 extensions that are sent in
 				// the clear in TLS 1.3.
