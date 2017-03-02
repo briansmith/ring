@@ -24,7 +24,7 @@ deps = {
 deps_os = {
   'android': {
     'boringssl/util/bot/android_tools':
-      Var('chromium_git') + '/android_tools.git' + '@' + 'c02a002b48d6637714ef98f0e4bf6952b9c4cf10',
+      Var('chromium_git') + '/android_tools.git' + '@' + 'b43a6a289a7588b1769814f04dd6c7d7176974cc',
   },
 }
 
