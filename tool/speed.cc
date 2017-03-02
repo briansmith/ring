@@ -251,8 +251,8 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
     EVP_AEAD_CTX_seal(ctx.get(), out, &out_len, chunk_len + overhead_len,
                       nonce.get(), nonce_len, in, chunk_len, ad.get(), ad_len);
 
-    if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, in2,
-                                 out, &ctx, &nonce, &ad, out_len]() -> bool {
+    if (!TimeFunction(&results, [chunk_len, nonce_len, ad_len, in2, out, &ctx,
+                                 &nonce, &ad, out_len]() -> bool {
           size_t in2_len;
           return EVP_AEAD_CTX_open(ctx.get(), in2, &in2_len, chunk_len,
                                    nonce.get(), nonce_len, out, out_len,
