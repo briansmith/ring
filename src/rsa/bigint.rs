@@ -245,47 +245,47 @@ pub enum RRR {}
 // be canceled out.
 pub enum RInverse {}
 
-pub trait MontgomeryEncodingProduct {
+pub trait MontgomeryProductEncoding {
     type Output;
 }
 
 // The result of Montgomery multiplication of a Montgomery-encoded element by
 // an unencoded element is unencoded.
-impl MontgomeryEncodingProduct for (Unencoded, R) {
+impl MontgomeryProductEncoding for (Unencoded, R) {
     type Output = Unencoded;
 }
-impl MontgomeryEncodingProduct for (R, Unencoded) {
+impl MontgomeryProductEncoding for (R, Unencoded) {
     type Output = Unencoded;
 }
 
 // The result of Montgomery multiplication of two Montgomery-encoded elements
 // is Montgomery-encoded.
-impl MontgomeryEncodingProduct for (R, R) {
+impl MontgomeryProductEncoding for (R, R) {
     type Output = R;
 }
 
-impl MontgomeryEncodingProduct for (RR, Unencoded) {
+impl MontgomeryProductEncoding for (RR, Unencoded) {
     type Output = R;
 }
-impl MontgomeryEncodingProduct for (Unencoded, RR) {
+impl MontgomeryProductEncoding for (Unencoded, RR) {
     type Output = R;
 }
 
-impl MontgomeryEncodingProduct for (RInverse, RR) {
+impl MontgomeryProductEncoding for (RInverse, RR) {
     type Output = Unencoded;
 }
-impl MontgomeryEncodingProduct for (RR, RInverse) {
+impl MontgomeryProductEncoding for (RR, RInverse) {
     type Output = Unencoded;
 }
 
-impl MontgomeryEncodingProduct for (RR, RR) {
+impl MontgomeryProductEncoding for (RR, RR) {
     type Output = RRR;
 }
 
-impl MontgomeryEncodingProduct for (RRR, RInverse) {
+impl MontgomeryProductEncoding for (RRR, RInverse) {
     type Output = R;
 }
-impl MontgomeryEncodingProduct for (RInverse, RRR) {
+impl MontgomeryProductEncoding for (RInverse, RRR) {
     type Output = R;
 }
 
@@ -384,9 +384,9 @@ impl<M> Elem<M, Unencoded> {
 }
 
 pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
-        -> Result<Elem<M, <(AF, BF) as MontgomeryEncodingProduct>::Output>,
+        -> Result<Elem<M, <(AF, BF) as MontgomeryProductEncoding>::Output>,
                   error::Unspecified>
-        where (AF, BF): MontgomeryEncodingProduct {
+        where (AF, BF): MontgomeryProductEncoding {
     let mut r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, &m.value.as_ref(),
@@ -401,10 +401,10 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
 
 // `a` * `b` (mod `m`).
 pub fn elem_set_to_product<M, AF, BF>(
-        r: &mut Elem<M, <(AF, BF) as MontgomeryEncodingProduct>::Output>,
+        r: &mut Elem<M, <(AF, BF) as MontgomeryProductEncoding>::Output>,
         a: &Elem<M, AF>, b: &Elem<M, BF>, m: &Modulus<M>)
         -> Result<(), error::Unspecified>
-        where (AF, BF): MontgomeryEncodingProduct {
+        where (AF, BF): MontgomeryProductEncoding {
     bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
                             b.value.as_ref(), &m.value.as_ref(), &m.n0)
@@ -436,9 +436,9 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
 }
 
 pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
-        -> Result<Elem<M, <(E, E) as MontgomeryEncodingProduct>::Output>,
+        -> Result<Elem<M, <(E, E) as MontgomeryProductEncoding>::Output>,
                   error::Unspecified>
-        where (E, E): MontgomeryEncodingProduct {
+        where (E, E): MontgomeryProductEncoding {
     let mut value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
