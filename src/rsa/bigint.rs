@@ -270,10 +270,10 @@ impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding for
 //         (E, Unencoded) {
 //     type Output = E::Unencoded;
 // }
-impl MontgomeryProductEncoding for (R, Unencoded) { type Output = Unencoded; }
 impl MontgomeryProductEncoding for (RR, Unencoded) { type Output = R; }
 
-impl MontgomeryProductEncoding for (R, R) { type Output = R; }
+impl<E> MontgomeryProductEncoding for (R, E) { type Output = E; }
+
 impl MontgomeryProductEncoding for (RInverse, RR) { type Output = Unencoded; }
 impl MontgomeryProductEncoding for (RR, RInverse) { type Output = Unencoded; }
 
