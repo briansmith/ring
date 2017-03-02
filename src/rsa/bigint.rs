@@ -251,43 +251,23 @@ pub trait MontgomeryProductEncoding {
 
 // The result of Montgomery multiplication of a Montgomery-encoded element by
 // an unencoded element is unencoded.
-impl MontgomeryProductEncoding for (Unencoded, R) {
-    type Output = Unencoded;
-}
-impl MontgomeryProductEncoding for (R, Unencoded) {
-    type Output = Unencoded;
-}
+impl MontgomeryProductEncoding for (Unencoded, R) { type Output = Unencoded; }
+impl MontgomeryProductEncoding for (R, Unencoded) { type Output = Unencoded; }
 
 // The result of Montgomery multiplication of two Montgomery-encoded elements
 // is Montgomery-encoded.
-impl MontgomeryProductEncoding for (R, R) {
-    type Output = R;
-}
+impl MontgomeryProductEncoding for (R, R) { type Output = R; }
 
-impl MontgomeryProductEncoding for (RR, Unencoded) {
-    type Output = R;
-}
-impl MontgomeryProductEncoding for (Unencoded, RR) {
-    type Output = R;
-}
+impl MontgomeryProductEncoding for (RR, Unencoded) { type Output = R; }
+impl MontgomeryProductEncoding for (Unencoded, RR) { type Output = R; }
 
-impl MontgomeryProductEncoding for (RInverse, RR) {
-    type Output = Unencoded;
-}
-impl MontgomeryProductEncoding for (RR, RInverse) {
-    type Output = Unencoded;
-}
+impl MontgomeryProductEncoding for (RInverse, RR) { type Output = Unencoded; }
+impl MontgomeryProductEncoding for (RR, RInverse) { type Output = Unencoded; }
 
-impl MontgomeryProductEncoding for (RR, RR) {
-    type Output = RRR;
-}
+impl MontgomeryProductEncoding for (RR, RR) { type Output = RRR; }
 
-impl MontgomeryProductEncoding for (RRR, RInverse) {
-    type Output = R;
-}
-impl MontgomeryProductEncoding for (RInverse, RRR) {
-    type Output = R;
-}
+impl MontgomeryProductEncoding for (RRR, RInverse) { type Output = R; }
+impl MontgomeryProductEncoding for (RInverse, RRR) { type Output = R; }
 
 
 /// Montgomery-encoded elements of a field.
