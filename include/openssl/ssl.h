@@ -1050,10 +1050,7 @@ enum ssl_private_key_result_t {
 typedef struct ssl_private_key_method_st {
   /* type returns the type of the key used by |ssl|. For RSA keys, return
    * |NID_rsaEncryption|. For ECDSA keys, return |NID_X9_62_prime256v1|,
-   * |NID_secp384r1|, or |NID_secp521r1|, depending on the curve.
-   *
-   * Returning |EVP_PKEY_EC| for ECDSA keys is deprecated and may result in
-   * connection failures in TLS 1.3. */
+   * |NID_secp384r1|, or |NID_secp521r1|, depending on the curve. */
   int (*type)(SSL *ssl);
 
   /* max_signature_len returns the maximum length of a signature signed by the
