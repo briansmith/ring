@@ -626,6 +626,14 @@ static bool CheckCertificateRequest(SSL *ssl) {
         return false;
       }
     }
+
+    STACK_OF(CRYPTO_BUFFER) *buffers = SSL_get0_server_requested_CAs(ssl);
+    if (sk_CRYPTO_BUFFER_num(buffers) != num_received) {
+      fprintf(stderr,
+              "Mismatch between SSL_get_server_requested_CAs and "
+              "SSL_get_client_CA_list.\n");
+      return false;
+    }
   }
 
   return true;

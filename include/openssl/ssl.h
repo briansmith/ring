@@ -2338,6 +2338,16 @@ OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
  * when the handshake is paused because of them. */
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl);
 
+/* SSL_get0_server_requested_CAs returns the CAs sent by a server to guide a
+ * client in certificate selection. They are a series of DER-encoded X.509
+ * names. This function may only be called during a callback set by
+ * |SSL_CTX_set_cert_cb| or when the handshake is paused because of it.
+ *
+ * The returned stack is owned by |ssl|, as are its contents. It should not be
+ * used past the point where the handshake is restarted after the callback. */
+OPENSSL_EXPORT STACK_OF(CRYPTO_BUFFER) *SSL_get0_server_requested_CAs(
+    const SSL *ssl);
+
 /* SSL_CTX_get_client_CA_list returns |ctx|'s client certificate CA list. */
 OPENSSL_EXPORT STACK_OF(X509_NAME) *
     SSL_CTX_get_client_CA_list(const SSL_CTX *ctx);
