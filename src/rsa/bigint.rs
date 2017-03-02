@@ -295,7 +295,7 @@ impl MontgomeryProductEncoding for (RRR, RInverse) {
 }
 
 
-/// Montgomery-encoded elements of a field.
+/// Montgomery-encoded elements of ℤ/mℤ for some modulus *m*.
 //
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
 // submodule. However, for maximum clarity, we always explicitly use
