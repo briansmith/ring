@@ -1397,11 +1397,9 @@ OPENSSL_EXPORT int SSL_in_false_start(const SSL *ssl);
 OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
 
 /* SSL_get_peer_cert_chain returns the peer's certificate chain or NULL if
- * unavailable or the peer did not use certificates. This is the unverified
- * list of certificates as sent by the peer, not the final chain built during
- * verification. For historical reasons, this value may not be available if
- * resuming a serialized |SSL_SESSION|. The caller does not take ownership of
- * the result.
+ * unavailable or the peer did not use certificates. This is the unverified list
+ * of certificates as sent by the peer, not the final chain built during
+ * verification. The caller does not take ownership of the result.
  *
  * WARNING: This function behaves differently between client and server. If
  * |ssl| is a server, the returned chain does not include the leaf certificate.
@@ -1409,11 +1407,9 @@ OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
 OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
 
 /* SSL_get_peer_full_cert_chain returns the peer's certificate chain, or NULL if
- * unavailable or the peer did not use certificates. This is the unverified
- * list of certificates as sent by the peer, not the final chain built during
- * verification. For historical reasons, this value may not be available if
- * resuming a serialized |SSL_SESSION|. The caller does not take ownership of
- * the result.
+ * unavailable or the peer did not use certificates. This is the unverified list
+ * of certificates as sent by the peer, not the final chain built during
+ * verification. The caller does not take ownership of the result.
  *
  * This is the same as |SSL_get_peer_cert_chain| except that this function
  * always returns the full chain, i.e. the first element of the return value
@@ -1421,6 +1417,15 @@ OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
  * |SSL_get_peer_cert_chain| returns only the intermediate certificates if the
  * |ssl| is a server. */
 OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_full_cert_chain(const SSL *ssl);
+
+/* SSL_get0_peer_certificates returns the peer's certificate chain, or NULL if
+ * unavailable or the peer did not use certificates. This is the unverified list
+ * of certificates as sent by the peer, not the final chain built during
+ * verification. The caller does not take ownership of the result.
+ *
+ * This is the |CRYPTO_BUFFER| variant of |SSL_get_peer_full_cert_chain|. */
+OPENSSL_EXPORT STACK_OF(CRYPTO_BUFFER) *
+    SSL_get0_peer_certificates(const SSL *ssl);
 
 /* SSL_get0_signed_cert_timestamp_list sets |*out| and |*out_len| to point to
  * |*out_len| bytes of SCT information from the server. This is only valid if
