@@ -213,26 +213,6 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
   return 1;
 }
 
-int GFp_BN_from_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *n,
-                     const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
-  BIGNUM tmp;
-  GFp_BN_init(&tmp);
-
-  int ret = 0;
-
-  if (!GFp_BN_copy(&tmp, a) ||
-      !GFp_BN_from_montgomery_word(r, &tmp, n, n0)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  GFp_BN_free(&tmp);
-
-  return ret;
-}
-
 int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                         const BIGNUM *n,
                         const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {

@@ -368,13 +368,6 @@ int GFp_BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                            const BIGNUM *n);
 
 
-/* GFp_BN_from_mont sets |ret| equal to |a| * R^-1, i.e. translates values out
- * of the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
- * is the Montgomery modulus. It returns one on success or zero on error. */
-OPENSSL_EXPORT int GFp_BN_from_mont(BIGNUM *ret, const BIGNUM *a,
-                                    const BIGNUM *n,
-                                    const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
-
 /* GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
  * Both |a| and |b| must already be in the Montgomery domain (by
  * |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range

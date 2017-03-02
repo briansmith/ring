@@ -245,22 +245,35 @@ pub enum RRR {}
 // be canceled out.
 pub enum RInverse {}
 
+// The encoding of the result of a Montgomery reduction.
+pub trait MontgomeryReductionEncoding {
+    type Output;
+}
+
+impl MontgomeryReductionEncoding for RRR { type Output = RR; }
+impl MontgomeryReductionEncoding for RR { type Output = R; }
+impl MontgomeryReductionEncoding for R { type Output = Unencoded; }
+impl MontgomeryReductionEncoding for Unencoded { type Output = RInverse; }
+
+// The encoding of the result of a Montgomery multiplication.
 pub trait MontgomeryProductEncoding {
     type Output;
 }
 
-// The result of Montgomery multiplication of a Montgomery-encoded element by
-// an unencoded element is unencoded.
-impl MontgomeryProductEncoding for (Unencoded, R) { type Output = Unencoded; }
+impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding for
+        (Unencoded, E) {
+    type Output = E::Output;
+}
+// XXX: Rust doesn't allow overlapping impls,
+// TODO (if/when Rust allows it):
+// impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding for
+//         (E, Unencoded) {
+//     type Output = E::Unencoded;
+// }
 impl MontgomeryProductEncoding for (R, Unencoded) { type Output = Unencoded; }
-
-// The result of Montgomery multiplication of two Montgomery-encoded elements
-// is Montgomery-encoded.
-impl MontgomeryProductEncoding for (R, R) { type Output = R; }
-
 impl MontgomeryProductEncoding for (RR, Unencoded) { type Output = R; }
-impl MontgomeryProductEncoding for (Unencoded, RR) { type Output = R; }
 
+impl MontgomeryProductEncoding for (R, R) { type Output = R; }
 impl MontgomeryProductEncoding for (RInverse, RR) { type Output = Unencoded; }
 impl MontgomeryProductEncoding for (RR, RInverse) { type Output = Unencoded; }
 
@@ -320,17 +333,10 @@ impl<M, E> Elem<M, E> {
 }
 
 impl<M> Elem<M, R> {
+    #[inline]
     pub fn into_unencoded(self, m: &Modulus<M>)
                           -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        let mut r = self.value;
-        try!(bssl::map_result(unsafe {
-            GFp_BN_from_mont(&mut r.0, &r.0, &m.value.as_ref(), &m.n0)
-        }));
-        Ok(Elem {
-            value: r,
-            m: PhantomData,
-            encoding: PhantomData,
-        })
+        elem_reduced_(self, m)
     }
 }
 
@@ -402,15 +408,22 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     Ok(r)
 }
 
+#[inline]
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
-    let mut tmp = try!(a.try_clone());
-    let mut r = try!(Elem::<Smaller, RInverse>::zero());
+    let tmp = try!(a.try_clone());
+    elem_reduced_(tmp, m)
+}
+
+fn elem_reduced_<LargerM, E: MontgomeryReductionEncoding, SmallerM>(
+        mut a: Elem<LargerM, E>, m: &Modulus<SmallerM>)
+        -> Result<Elem<SmallerM, <E as MontgomeryReductionEncoding>::Output>,
+                  error::Unspecified> {
+    let mut r = try!(Elem::zero());
     try!(bssl::map_result(unsafe {
-        GFp_BN_from_montgomery_word(r.value.as_mut_ref(),
-                                    tmp.value.as_mut_ref(), &m.value.as_ref(),
-                                    &m.n0)
+        GFp_BN_from_montgomery_word(r.value.as_mut_ref(), a.value.as_mut_ref(),
+                                    &m.value.as_ref(), &m.n0)
     }));
     Ok(r)
 }
@@ -810,8 +823,6 @@ extern {
                                      n: &BIGNUM) -> c::int;
 
     // `r` and `a` may alias.
-    fn GFp_BN_from_mont(r: *mut BIGNUM, a: *const BIGNUM, n: &BIGNUM, n0: &N0)
-                        -> c::int;
     fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
                               a: *const BIGNUM, m: &BIGNUM) -> c::int;
 
