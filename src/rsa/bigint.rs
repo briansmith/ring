@@ -226,7 +226,7 @@ impl Modulus<super::N> {
     pub fn value(&self) -> &OddPositive { &self.value }
 }
 
-// Not Montgomery encoded; there is no *R* factor that need to be canceled out.
+// Not Montgomery encoded; there is no *R* factor that needs to be canceled out.
 pub enum Unencoded {}
 
 // Montgomery encoded; the value has one *R* factor that needs to be canceled
