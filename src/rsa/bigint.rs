@@ -46,19 +46,6 @@ use {bits, bssl, c, der, error, limb, rand, untrusted};
 use core;
 use core::marker::PhantomData;
 
-/// This is defined for comparing values instead of using `PartialOrd` because
-/// there `PartialOrd` requires `PartialEq`, which we do not otherwise require.
-/// Also, this `Result<>`-based interface is more convenient for callers' uses.
-pub fn verify_less_than<A: core::convert::AsRef<BIGNUM>,
-                        B: core::convert::AsRef<BIGNUM>>(a: &A, b: &B)
-        -> Result<(), error::Unspecified> {
-    let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
-    if !(r < 0) {
-        return Err(error::Unspecified);
-    }
-    Ok(())
-}
-
 impl AsRef<BIGNUM> for OddPositive {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
 }
@@ -131,6 +118,12 @@ impl Positive {
 pub struct OddPositive(Positive);
 
 impl OddPositive {
+    #[inline]
+    pub fn verify_less_than(&self, other: &Self)
+                            -> Result<(), error::Unspecified> {
+        (self.0).0.verify_less_than(&(other.0).0)
+    }
+
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
         let value = try!((self.0).0.try_clone());
         Ok(OddPositive(Positive(value)))
@@ -730,6 +723,15 @@ impl Nonnegative {
         bits::BitLength::from_usize_bits(bits)
     }
 
+    fn verify_less_than(&self, other: &Self)
+                        -> Result<(), error::Unspecified> {
+        let r = unsafe { GFp_BN_ucmp(self.as_ref(), other.as_ref()) };
+        if !(r < 0) {
+            return Err(error::Unspecified);
+        }
+        Ok(())
+    }
+
     fn randomize(&mut self, m: &BIGNUM, rng: &rand::SecureRandom)
                  -> Result<(), error::Unspecified> {
         let mut rand = rand::RAND::new(rng);
@@ -744,7 +746,7 @@ impl Nonnegative {
 
     fn into_elem<M>(self, m: &Modulus<M>)
                     -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        try!(verify_less_than(&self, &m.value));
+        try!(self.verify_less_than(&(m.value.0).0));
         Ok(Elem {
             value: self,
             m: PhantomData,

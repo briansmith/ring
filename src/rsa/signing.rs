@@ -222,7 +222,7 @@ impl RSAKeyPair {
                 // this simplification.
                 //
                 // 3.b is unneeded since `n_bits` is derived here from `n`.
-                try!(bigint::verify_less_than(&q, &p));
+                try!(q.verify_less_than(&p));
                 {
                     let p_mod_n = {
                         let p = try!(p.try_clone());
@@ -283,7 +283,7 @@ impl RSAKeyPair {
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
                 let d = try!(d.into_odd_positive());
-                try!(bigint::verify_less_than(&d, &n.value()));
+                try!(d.verify_less_than(&n.value()));
 
                 // Step 6.b is omitted as explained above.
 
@@ -375,7 +375,7 @@ impl<M: Prime> PrivatePrime<M> {
         //
         // The proof that `dQ < q - 1` is the same.
         let dP = try!(dP.into_odd_positive());
-        try!(bigint::verify_less_than(&dP, &p));
+        try!(dP.verify_less_than(&p));
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
         // `dP == d % (p - 1)` because we don't (in the long term) have a good
