@@ -46,10 +46,6 @@ use {bits, bssl, c, der, error, limb, rand, untrusted};
 use core;
 use core::marker::PhantomData;
 
-impl AsRef<BIGNUM> for OddPositive {
-    fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
-}
-
 impl AsRef<BIGNUM> for Positive {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
 }
