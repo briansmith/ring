@@ -45,7 +45,7 @@ macro_rules! define_metrics_tests {
             // We can't use `size_t` because we need to test that our
             // definition of `size_t` is correct using this code! We use `u16`
             // because even 8-bit and 16-bit microcontrollers have no trouble
-            // with it, and because `u16` is always as smaller or smaller than
+            // with it, and because `u16` is always as small as or smaller than
             // `usize`.
             static $c_align: u16;
             static $c_size: u16;
@@ -90,7 +90,6 @@ define_type!(long, i32, test_long_metrics, GFp_long_align, GFp_long_size,
 #[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
 define_type!(long, i64, test_long_metrics, GFp_long_align, GFp_long_size,
              "The C `long` type. Equivalent to `libc::c_long`.");
-
 
 define_type!(
   size_t, usize, test_size_t_metrics, GFp_size_t_align, GFp_size_t_size,
