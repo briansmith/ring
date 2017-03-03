@@ -180,6 +180,7 @@ const Flag<int> kIntFlags[] = {
   { "-resumption-delay", &TestConfig::resumption_delay },
   { "-max-send-fragment", &TestConfig::max_send_fragment },
   { "-read-size", &TestConfig::read_size },
+  { "-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

@@ -1611,6 +1611,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     return false;
   }
 
+  if (is_resume && config->expect_ticket_age_skew != 0 &&
+      SSL_get_ticket_age_skew(ssl) != config->expect_ticket_age_skew) {
+    fprintf(stderr, "Ticket age skew was %" PRId32 ", wanted %d\n",
+            SSL_get_ticket_age_skew(ssl), config->expect_ticket_age_skew);
+    return false;
+  }
+
   return true;
 }
 

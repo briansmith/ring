@@ -3223,6 +3223,11 @@ OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
  * record with |ssl|. */
 OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
 
+/* SSL_get_ticket_age_skew returns the difference, in seconds, between the
+ * client-sent ticket age and the server-computed value in TLS 1.3 server
+ * connections which resumed a session. */
+OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
+
 
 /* Deprecated functions. */
 

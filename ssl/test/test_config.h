@@ -133,6 +133,7 @@ struct TestConfig {
   int read_size = 0;
   bool expect_session_id = false;
   bool expect_no_session_id = false;
+  int expect_ticket_age_skew = 0;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

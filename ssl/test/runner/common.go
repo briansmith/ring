@@ -980,6 +980,10 @@ type ProtocolBugs struct {
 	// server receives from the client.
 	ExpectTicketAge time.Duration
 
+	// SendTicketAge, if non-zero, is the ticket age to be sent by the
+	// client.
+	SendTicketAge time.Duration
+
 	// FailIfSessionOffered, if true, causes the server to fail any
 	// connections where the client offers a non-empty session ID or session
 	// ticket.

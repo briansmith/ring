@@ -163,6 +163,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   /* Decode the ticket if we agree on a PSK key exchange mode. */
   uint8_t alert = SSL_AD_DECODE_ERROR;
   SSL_SESSION *session = NULL;
+  uint32_t client_ticket_age = 0;
   CBS pre_shared_key, binders;
   if (hs->accept_psk_mode &&
       ssl_client_hello_get_extension(&client_hello, &pre_shared_key,
@@ -177,16 +178,44 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     }
 
     if (!ssl_ext_pre_shared_key_parse_clienthello(hs, &session, &binders,
-                                                  &alert, &pre_shared_key)) {
+                                                  &client_ticket_age, &alert,
+                                                  &pre_shared_key)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
   }
 
   if (session != NULL &&
-      !ssl_session_is_resumable(hs, session)) {
+      (!ssl_session_is_resumable(hs, session) ||
+       /* Historically, some TLS 1.3 tickets were missing ticket_age_add. */
+       !session->ticket_age_add_valid)) {
     SSL_SESSION_free(session);
     session = NULL;
+  }
+
+  if (session != NULL) {
+    /* Recover the client ticket age and convert to seconds. */
+    client_ticket_age -= session->ticket_age_add;
+    client_ticket_age /= 1000;
+
+    struct OPENSSL_timeval now;
+    ssl_get_current_time(ssl, &now);
+
+    /* Compute the server ticket age in seconds. */
+    assert(now.tv_sec >= session->time);
+    uint64_t server_ticket_age = now.tv_sec - session->time;
+
+    /* To avoid overflowing |hs->ticket_age_skew|, we will not resume
+     * 68-year-old sessions. */
+    if (server_ticket_age > INT32_MAX) {
+      SSL_SESSION_free(session);
+      session = NULL;
+    } else {
+      /* TODO(davidben,svaldez): Measure this value to decide on tolerance. For
+       * now, accept all values. https://crbug.com/boringssl/113. */
+      ssl->s3->ticket_age_skew =
+          (int32_t)client_ticket_age - (int32_t)server_ticket_age;
+    }
   }
 
   /* Set up the new session, either using the original one as a template or
@@ -565,6 +594,7 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
     if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
       goto err;
     }
+    session->ticket_age_add_valid = 1;
 
     CBB body, ticket, extensions;
     if (!ssl->method->init_message(ssl, &cbb, &body,

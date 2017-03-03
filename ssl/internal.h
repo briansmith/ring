@@ -1158,10 +1158,9 @@ int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 int ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
                                              uint8_t *out_alert, CBS *contents);
-int ssl_ext_pre_shared_key_parse_clienthello(SSL_HANDSHAKE *hs,
-                                             SSL_SESSION **out_session,
-                                             CBS *out_binders,
-                                             uint8_t *out_alert, CBS *contents);
+int ssl_ext_pre_shared_key_parse_clienthello(
+    SSL_HANDSHAKE *hs, SSL_SESSION **out_session, CBS *out_binders,
+    uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert, CBS *contents);
 int ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 /* ssl_is_sct_list_valid does a shallow parse of the SCT list in |contents| and
@@ -1679,6 +1678,11 @@ typedef struct ssl3_state_st {
    *     verified Channel ID from the client: a P256 point, (x,y), where
    *     each are big-endian values. */
   uint8_t tlsext_channel_id[64];
+
+  /* ticket_age_skew is the difference, in seconds, between the client-sent
+   * ticket age and the server-computed value in TLS 1.3 server connections
+   * which resumed a session. */
+  int32_t ticket_age_skew;
 } SSL3_STATE;
 
 /* lengths of messages */

@@ -1957,18 +1957,15 @@ int ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
   return 1;
 }
 
-int ssl_ext_pre_shared_key_parse_clienthello(SSL_HANDSHAKE *hs,
-                                             SSL_SESSION **out_session,
-                                             CBS *out_binders,
-                                             uint8_t *out_alert,
-                                             CBS *contents) {
+int ssl_ext_pre_shared_key_parse_clienthello(
+    SSL_HANDSHAKE *hs, SSL_SESSION **out_session, CBS *out_binders,
+    uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert, CBS *contents) {
   SSL *const ssl = hs->ssl;
   /* We only process the first PSK identity since we don't support pure PSK. */
-  uint32_t obfuscated_ticket_age;
   CBS identities, ticket, binders;
   if (!CBS_get_u16_length_prefixed(contents, &identities) ||
       !CBS_get_u16_length_prefixed(&identities, &ticket) ||
-      !CBS_get_u32(&identities, &obfuscated_ticket_age) ||
+      !CBS_get_u32(&identities, out_obfuscated_ticket_age) ||
       !CBS_get_u16_length_prefixed(contents, &binders) ||
       CBS_len(&binders) == 0 ||
       CBS_len(contents) != 0) {

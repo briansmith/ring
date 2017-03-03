@@ -270,6 +270,9 @@ NextCipherSuite:
 			// TODO(nharper): Support sending more
 			// than one PSK identity.
 			ticketAge := uint32(c.config.time().Sub(session.ticketCreationTime) / time.Millisecond)
+			if c.config.Bugs.SendTicketAge != 0 {
+				ticketAge = uint32(c.config.Bugs.SendTicketAge / time.Millisecond)
+			}
 			psk := pskIdentity{
 				ticket:              ticket,
 				obfuscatedTicketAge: session.ticketAgeAdd + ticketAge,
