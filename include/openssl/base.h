@@ -141,7 +141,7 @@ extern "C" {
  * A consumer may use this symbol in the preprocessor to temporarily build
  * against multiple revisions of BoringSSL at the same time. It is not
  * recommended to do so for longer than is necessary. */
-#define BORINGSSL_API_VERSION 2
+#define BORINGSSL_API_VERSION 3
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 

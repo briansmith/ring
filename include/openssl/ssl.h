@@ -1366,6 +1366,10 @@ OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
  * inputs, unless an empty cipher list results. */
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
 
+/* SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
+ * preference. */
+OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
+
 /* SSL_get_ciphers returns the cipher list for |ssl|, in order of preference. */
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 

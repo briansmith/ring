@@ -1455,6 +1455,10 @@ int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
   return 1;
 }
 
+OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx) {
+  return ctx->cipher_list->ciphers;
+}
+
 STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
   if (ssl == NULL) {
     return NULL;
@@ -1470,19 +1474,16 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
-  const SSL_CIPHER *c;
-  STACK_OF(SSL_CIPHER) *sk;
-
   if (ssl == NULL) {
     return NULL;
   }
 
-  sk = SSL_get_ciphers(ssl);
+  STACK_OF(SSL_CIPHER) *sk = SSL_get_ciphers(ssl);
   if (sk == NULL || n < 0 || (size_t)n >= sk_SSL_CIPHER_num(sk)) {
     return NULL;
   }
 
-  c = sk_SSL_CIPHER_value(sk, n);
+  const SSL_CIPHER *c = sk_SSL_CIPHER_value(sk, n);
   if (c == NULL) {
     return NULL;
   }
