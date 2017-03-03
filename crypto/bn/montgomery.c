@@ -125,6 +125,11 @@
 #define OPENSSL_BN_ASM_MONT
 #endif
 
+static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
+                                          const BIGNUM *b,
+                                          const BN_MONT_CTX *mont, BN_CTX *ctx);
+
+
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
 
@@ -361,27 +366,43 @@ err:
 
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           const BN_MONT_CTX *mont, BN_CTX *ctx) {
-  BIGNUM *tmp;
-  int ret = 0;
-
-#if defined(OPENSSL_BN_ASM_MONT)
+#if !defined(OPENSSL_BN_ASM_MONT)
+  return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
+#else
   int num = mont->N.top;
 
-  if (num > 1 && a->top == num && b->top == num) {
-    if (bn_wexpand(r, num) == NULL) {
-      return 0;
-    }
-    if (bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-      r->neg = a->neg ^ b->neg;
-      r->top = num;
-      bn_correct_top(r);
-      return 1;
-    }
+  /* |bn_mul_mont| requires at least 128 bits of limbs, at least for x86. */
+  if (num < (128 / BN_BITS2) ||
+      a->top != num ||
+      b->top != num) {
+    return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
   }
+
+  if (bn_wexpand(r, num) == NULL) {
+    return 0;
+  }
+  if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
+    /* The check above ensures this won't happen. */
+    assert(0);
+    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  r->neg = a->neg ^ b->neg;
+  r->top = num;
+  bn_correct_top(r);
+
+  return 1;
 #endif
+}
+
+static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
+                                          const BIGNUM *b,
+                                          const BN_MONT_CTX *mont,
+                                          BN_CTX *ctx) {
+  int ret = 0;
 
   BN_CTX_start(ctx);
-  tmp = BN_CTX_get(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
   if (tmp == NULL) {
     goto err;
   }
