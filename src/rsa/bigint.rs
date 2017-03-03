@@ -282,7 +282,7 @@ impl MontgomeryProductEncoding for (RR, RR) {
 // TODO (if/when Rust allows it):
 // impl<E1, E2: MontgomeryReductionEncoding> MontgomeryProductEncoding for
 //         (E1, E2) {
-//     type Output = <(E2, E1) as MontgomeryReductionEncoding>::Output;
+//     type Output = <(E2, E1) as MontgomeryProductEncoding>::Output;
 // }
 impl MontgomeryProductEncoding for (RR, Unencoded) {
     type Output = <(Unencoded, RR) as MontgomeryProductEncoding>::Output;
