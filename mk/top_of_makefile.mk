@@ -68,6 +68,13 @@ ifeq ($(TARGET_ABI),eabi)
 MABI = aapcs
 endif
 
+# TODO: This is here until Musl finishes adding support for _FORTIFY_SOURCE
+ifeq ($(TARGET_ABI),musl)
+ifeq ($(TARGET_SYS),linux)
+CPPFLAGS += -U_FORTIFY_SOURCE
+endif
+endif
+
 # Cortex-M0, Cortex-M0+, Cortex-M1: armv6_m
 # Cortex-M3: armv7_m
 # Cortex-M4, Cortex-M7: armv7e_m
