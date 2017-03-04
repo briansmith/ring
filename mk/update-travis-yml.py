@@ -26,11 +26,11 @@ rusts = [
 ]
 
 linux_compilers = [
-    # GCC 4.6 is supported almost exclusively because it is the default
-    # compiler for Ubuntu 12.04 LTS, and in particular Travis CI. This is run
-    # first because it is the one most likely to break, especially since it is
-    # not supported by BoringSSL.
-    "gcc-4.6",
+    # Assume the default compiler is GCC. This is run first because it is the
+    # one most likely to break, especially since GCC 4.6 is the default
+    # compiler on Travis CI for Ubuntu 12.04, and GCC 4.6 is not supported by
+    # BoringSSL.
+    "",
 
     # Pre-release of clang.
     # XXX: clang 4.0 doesn't work:
@@ -46,7 +46,6 @@ linux_compilers = [
 
 # Clang 3.4 and GCC 4.6 are already installed by default.
 linux_default_clang = "clang-3.4"
-linux_default_gcc = "gcc-4.6"
 
 osx_compilers = [
      "", # Don't set CC.'
@@ -203,7 +202,7 @@ def format_entry(os, target, compiler, rust, mode, features):
             }
 
 def get_linux_packages_to_install(target, compiler, arch, kcov):
-    if compiler in [linux_default_clang, linux_default_gcc]:
+    if compiler in ["", linux_default_clang]:
         packages = []
     elif compiler.startswith("clang-"):
         packages = [compiler]
@@ -233,7 +232,7 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libkrb5-dev:i386",
                          "libssl-dev:i386"]
 
-        if compiler.startswith("clang-") or compiler == linux_default_gcc:
+        if compiler.startswith("clang-") or compiler == "":
             packages += ["libc6-dev-i386",
                          "gcc-multilib",
                          "g++-multilib"]
