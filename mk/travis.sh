@@ -54,14 +54,27 @@ if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   # multilib support that corresponds to $CC_X and $CXX_X but unless cc happens
   # to match $CC_X, that's not the right version. The symptom is a linker error
   # where it fails to find -lgcc_s.
-  mkdir .cargo
-  echo "[target.$TARGET_X]" > .cargo/config
-  echo "linker= \"$CC_X\"" >> .cargo/config
-  cat .cargo/config
+  if [[ ! -z "${CC_X-}" ]]; then
+    mkdir .cargo
+    echo "[target.$TARGET_X]" > .cargo/config
+    echo "linker= \"$CC_X\"" >> .cargo/config
+    cat .cargo/config
+  fi
 fi
 
-$CC_X --version
-$CXX_X --version
+if [[ ! -z "${CC_X-}" ]]; then
+  export CC=$CC_X
+  $CC --version
+else
+  cc --version
+fi
+if [[ ! -z "${CXX_X-}" ]]; then
+  export CXX=$CXX_X
+  $CXX --version
+else
+  c++ --version
+fi
+
 make --version
 
 cargo version
@@ -76,8 +89,7 @@ fi
 
 case $TARGET_X in
 arm-linux-androideabi)
-  CC=$CC_X CXX=$CXX_X cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} \
-                                 --target=$TARGET_X
+  cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
   emulator @arm-18 -no-skin -no-boot-anim -no-audio -no-window &
   adb wait-for-device
   adb push $target_dir/ring-* /data/ring-test
@@ -91,8 +103,7 @@ arm-linux-androideabi)
   grep "test result: ok" /tmp/ring-test
   ;;
 *)
-  CC=$CC_X CXX=$CXX_X cargo test -vv -j2 ${mode-} ${FEATURES_X-} \
-                      --target=$TARGET_X
+  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
   ;;
 esac
 
@@ -105,8 +116,8 @@ if [[ "$KCOV" == "1" ]]; then
   # Alternatively, we could link pass "-C link-dead-code" in the "cargo test"
   # step above, but then "cargo test" we wouldn't be testing the configuration
   # we expect people to use in production.
-  CC=$CC_X CXX=$CXX_X cargo clean
-  CC=$CC_X CXX=$CXX_X RUSTFLAGS="-C link-dead-code" \
+  cargo clean
+  RUSTFLAGS="-C link-dead-code" \
     cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
   mk/travis-install-kcov.sh
   ${HOME}/kcov-${TARGET_X}/bin/kcov --verify \
@@ -121,7 +132,6 @@ fi
 # that non-test builds aren't trying to use test-only features. For platforms
 # for which we don't run tests, this is the only place we even verify that the
 # code builds.
-CC=$CC_X CXX=$CXX_X cargo build -vv -j2 ${mode-} ${FEATURES_X-} \
-                                --target=$TARGET_X
+cargo build -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
 
 echo end of mk/travis.sh

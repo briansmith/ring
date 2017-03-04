@@ -49,7 +49,7 @@ linux_default_clang = "clang-3.4"
 linux_default_gcc = "gcc-4.6"
 
 osx_compilers = [
-     "clang",
+     "", # Don't set CC.'
 ]
 
 compilers = {
@@ -108,7 +108,7 @@ def format_entries():
 # directive here. Also, we keep these variable names short so that the env
 # line does not get cut off in the Travis CI UI.
 entry_template = """
-    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s FEATURES_X=%(features)s MODE_X=%(mode)s KCOV=%(kcov)s
+    - env: TARGET_X=%(target)s %(compilers)s FEATURES_X=%(features)s MODE_X=%(mode)s KCOV=%(kcov)s
       rust: %(rust)s
       os: %(os)s"""
 
@@ -183,9 +183,15 @@ def format_entry(os, target, compiler, rust, mode, features):
     if os == "osx":
         os += "\n" + entry_indent + "osx_image: xcode8.2"
 
+    compilers = []
+    if cc != "":
+        compilers += ["CC_X=" + cc]
+    compilers += ""
+    if cxx != "":
+        compilers += ["CXX_X=" + cxx]
+
     return template % {
-            "cc" : cc,
-            "cxx" : cxx,
+            "compilers": " ".join(compilers),
             "features" : features,
             "mode" : mode,
             "kcov": "1" if kcov == True else "0",
