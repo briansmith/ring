@@ -14,10 +14,6 @@
 
 // TODO: Deny `unused_qualifications` after
 // https://github.com/rust-lang/rust/issues/37345 is fixed.
-#![allow(
-    box_pointers, // TODO
-    missing_docs,
-    unused_qualifications)]
 #![deny(
     const_err,
     dead_code,
