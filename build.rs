@@ -63,13 +63,11 @@
 )]
 
 extern crate gcc;
-extern crate target_build_utils;
 extern crate rayon;
 
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs::{self, DirEntry};
-use target_build_utils::TargetInfo;
 use rayon::par_iter::{ParallelIterator, IntoParallelIterator,
                       IntoParallelRefIterator};
 
@@ -294,25 +292,46 @@ fn main() {
     let _ = rayon::join(check_all_files_tracked, || build_c_code(out_dir));
 }
 
+struct Target {
+    arch: String,
+    os: String,
+    env: String,
+}
+
+impl Target {
+    pub fn new() -> Target {
+        let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+        let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+        Target {
+            arch: arch,
+            os: os,
+            env: env,
+        }
+    }
+
+    pub fn arch(&self) -> &str { &self.arch }
+    pub fn os(&self) -> &str { &self.os }
+    pub fn env(&self) -> &str { &self.env }
+}
+
 fn build_c_code(out_dir: PathBuf) {
-    let target_info = TargetInfo::new().expect("Could not get target");
-    let use_msvcbuild = target_info.target_env() == "msvc";
+    let target = Target::new();
+    let use_msvcbuild = target.env() == "msvc";
     if use_msvcbuild {
         let opt = env::var("OPT_LEVEL").expect("Cargo sets this");
-        build_msvc(&target_info,
-                   opt == "0",
-                   &env::var("NUM_JOBS").expect("Cargo sets this"),
-                   out_dir);
+        build_msvc(&target, opt == "0",
+                   &env::var("NUM_JOBS").expect("Cargo sets this"), out_dir);
     } else {
-        build_unix(&target_info, out_dir);
+        build_unix(&target, out_dir);
     }
 }
 
-fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
+fn build_msvc(target: &Target, disable_opt: bool, num_jobs: &str,
               out_dir: PathBuf) {
     let lib_path = Path::new(&out_dir).join("lib");
 
-    let (platform, optional_amd64) = match target_info.target_arch() {
+    let (platform, optional_amd64) = match target.arch() {
         "x86" => ("Win32", None),
         "x86_64" => ("x64", Some("amd64")),
         arch => panic!("unexpected ARCH: {}", arch),
@@ -359,7 +378,7 @@ fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
         run_command_with_args(&msbuild, &asm_args);
     } else {
         let pregenerated_lib_name =
-            format!("msvc-{}-asm-{}.lib", LIB_NAME, target_info.target_arch());
+            format!("msvc-{}-asm-{}.lib", LIB_NAME, target.arch());
         let mut pregenerated_lib = PathBuf::from("pregenerated");
         pregenerated_lib.push(pregenerated_lib_name);
 
@@ -384,7 +403,7 @@ fn build_msvc(target_info: &TargetInfo, disable_opt: bool, num_jobs: &str,
     println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
 }
 
-fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
+fn build_unix(target: &Target, out_dir: PathBuf) {
     let mut lib_target = out_dir.clone();
     lib_target.push("libring-core.a");
     let lib_target = lib_target.as_path();
@@ -403,7 +422,7 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
         .any(|p| need_run(&p, test_target)) ||
                              lib_header_change;
 
-    let srcs = match target_info.target_arch() {
+    let srcs = match target.arch() {
         "x86_64" => vec![RING_X86_64_SRC, RING_INTEL_SHARED_SRCS],
         "x86" => vec![RING_X86_SRCS, RING_INTEL_SHARED_SRCS],
         "arm" => vec![RING_ARM_SHARED_SRCS, RING_ARM_SRCS],
@@ -415,12 +434,12 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
         .weight_max()
         .flat_map(|additional_src| {
             additional_src.par_iter()
-                .map(|src| make_asm(src, out_dir.clone(), &target_info))
+                .map(|src| make_asm(src, out_dir.clone(), &target))
         });
     build_library(lib_target,
                   additional,
                   RING_SRC,
-                  target_info,
+                  target,
                   out_dir.clone(),
                   lib_header_change);
 
@@ -429,11 +448,11 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
     build_library(test_target,
                   Vec::new().into_par_iter(),
                   RING_TEST_SRCS,
-                  target_info,
+                  target,
                   out_dir.clone(),
                   test_header_change);
 
-    let libcxx = if use_libcxx(target_info) {
+    let libcxx = if use_libcxx(&target) {
         "c++"
     } else {
         "stdc++"
@@ -443,16 +462,15 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
 }
 
 
-fn build_library<P>(target: &Path, additional: P,
-                    lib_src: &'static [&'static str],
-                    target_info: &TargetInfo, out_dir: PathBuf,
-                    header_changed: bool)
+fn build_library<P>(out_path: &Path, additional: P,
+                    lib_src: &'static [&'static str], target: &Target,
+                    out_dir: PathBuf, header_changed: bool)
     where P: ParallelIterator<Item = String>
 {
     // Compile all the (dirty) source files into object files.
     let objs = additional.chain(lib_src.par_iter().map(|a| String::from(*a)))
         .weight_max()
-        .map(|f| compile(&f, &target_info, out_dir.clone(), header_changed))
+        .map(|f| compile(&f, target, out_dir.clone(), header_changed))
         .map(|v| vec![v])
         .reduce(Vec::new,
                 &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
@@ -463,13 +481,13 @@ fn build_library<P>(target: &Path, additional: P,
     //Rebuild the library if necessary.
     if objs.par_iter()
         .map(|f| Path::new(f))
-        .any(|p| need_run(&p, target)) {
+        .any(|p| need_run(&p, out_path)) {
         let mut c = gcc::Config::new();
 
         for f in LD_FLAGS {
             let _ = c.flag(&f);
         }
-        match target_info.target_os() {
+        match target.os() {
             "macos" => {
                 let _ = c.flag("-fPIC");
                 let _ = c.flag("-Wl,-dead_strip");
@@ -481,13 +499,13 @@ fn build_library<P>(target: &Path, additional: P,
         for o in objs {
             let _ = c.object(o);
         }
-        c.compile(target.file_name()
+        c.compile(out_path.file_name()
             .and_then(|f| f.to_str())
             .expect("No filename"));
     }
 }
 
-fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
+fn compile(file: &str, target: &Target, mut out_dir: PathBuf,
            header_change: bool)
            -> String {
     let p = Path::new(file);
@@ -507,7 +525,7 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
                     let _ = c.flag(f);
                 }
                 let _ = c.cpp(true);
-                if use_libcxx(target_info) {
+                if use_libcxx(target) {
                      let _ = c.cpp_set_stdlib(Some("c++"));
                 }
             },
@@ -517,11 +535,11 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
         for f in CPP_FLAGS {
             let _ = c.flag(&f);
         }
-        if target_info.target_os() != "none" &&
-           target_info.target_os() != "redox" {
+        if target.os() != "none" &&
+           target.os() != "redox" {
             let _ = c.flag("-fstack-protector");
         }
-        let _ = match (target_info.target_os(), target_info.target_arch()) {
+        let _ = match (target.os(), target.arch()) {
             // ``-gfull`` is required for Darwin's |-dead_strip|.
             ("macos", _) => c.flag("-gfull"),
             _ => c.flag("-g3"),
@@ -544,13 +562,10 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
     out_dir.to_str().expect("Invalid path").into()
 }
 
-fn use_libcxx(target_info: &TargetInfo) -> bool {
-    // target_vendor is only set if a nightly version of rustc is used
-    target_info.target_vendor()
-        .map(|v| v == "apple")
-        .unwrap_or(target_info.target_os() == "macos" ||
-                   target_info.target_os() == "ios") ||
-                    target_info.target_os() == "freebsd"
+fn use_libcxx(target: &Target) -> bool {
+    target.os() == "macos" ||
+        target.os() == "ios" ||
+        target.os() == "freebsd"
 }
 
 fn run_command_with_args<S>(command_name: S, args: &[String])
@@ -571,7 +586,7 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
     }
 }
 
-fn make_asm(source: &str, mut dst: PathBuf, target_info: &TargetInfo)
+fn make_asm(source: &str, mut dst: PathBuf, target: &Target)
             -> String {
     let p = Path::new(source);
     if p.extension().expect("File without extension").to_str() == Some("pl") {
@@ -582,7 +597,7 @@ fn make_asm(source: &str, mut dst: PathBuf, target_info: &TargetInfo)
             .any(|i| need_run(&Path::new(i), dst.as_path()));
         if need_run(&p, dst.as_path()) || perl_include_changed {
             let mut args = vec![source.to_owned()];
-            match (target_info.target_os(), target_info.target_arch()) {
+            match (target.os(), target.arch()) {
                 ("macos", _) => args.push("macosx".into()),
                 ("ios", "arm") => args.push("ios32".into()),
                 ("ios", "aarch64") => args.push("ios64".into()),
