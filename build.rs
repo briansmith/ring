@@ -434,12 +434,7 @@ fn build_unix(target_info: &TargetInfo, out_dir: PathBuf) {
                   out_dir.clone(),
                   test_header_change);
 
-    // target_vendor is only set if a nightly version of rustc is used
-    let libcxx = if target_info.target_vendor()
-        .map(|v| v == "apple")
-        .unwrap_or(target_info.target_os() == "macos" ||
-                   target_info.target_os() == "ios") ||
-                    target_info.target_os() == "freebsd" {
+    let libcxx = if use_libcxx(target_info) {
         "c++"
     } else {
         "stdc++"
@@ -513,6 +508,9 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
                     let _ = c.flag(f);
                 }
                 let _ = c.cpp(true);
+                if use_libcxx(target_info) {
+                     let _ = c.cpp_set_stdlib(Some("c++"));
+                }
             },
             Some(Some("S")) => {},
             e => panic!("Unsupported filextension: {:?}", e),
@@ -545,6 +543,15 @@ fn compile(file: &str, target_info: &TargetInfo, mut out_dir: PathBuf,
         }
     }
     out_dir.to_str().expect("Invalid path").into()
+}
+
+fn use_libcxx(target_info: &TargetInfo) -> bool {
+    // target_vendor is only set if a nightly version of rustc is used
+    target_info.target_vendor()
+        .map(|v| v == "apple")
+        .unwrap_or(target_info.target_os() == "macos" ||
+                   target_info.target_os() == "ios") ||
+                    target_info.target_os() == "freebsd"
 }
 
 fn run_command_with_args<S>(command_name: S, args: &[String])
