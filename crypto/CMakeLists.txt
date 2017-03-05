@@ -211,6 +211,7 @@ add_dependencies(all_tests refcount_test)
 add_executable(
   crypto_test
 
+  asn1/asn1_test.cc
   chacha/chacha_test.cc
   curve25519/x25519_test.cc
   dh/dh_test.cc
