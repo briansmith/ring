@@ -18,6 +18,10 @@
 #undef _DEBUG
 #endif
 
+#if defined(_MSC_VER)
+#pragma warning(disable: 4996) // This function or variable may be unsafe.
+#endif
+
 #include "file_test.h"
 
 #include <memory>
@@ -118,9 +122,10 @@ FileTest::ReadResult FileTest::ReadNext() {
         fprintf(stderr, "Line %u: Could not parse attribute.\n", line_);
         return kReadError;
       }
-      std::string key = StripSpace(buf.get(), delimiter - buf.get());
-      std::string value = StripSpace(delimiter + 1,
-                                     buf.get() + len - delimiter - 1);
+      std::string key = StripSpace(buf.get(),
+                                   static_cast<size_t>(delimiter - buf.get()));
+      std::string value = StripSpace(
+          delimiter + 1, static_cast<size_t>(buf.get() + len - delimiter - 1));
 
       unused_attributes_.insert(key);
       attributes_[key] = value;

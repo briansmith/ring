@@ -481,7 +481,7 @@ static bool TestBN2BinPadded(RAND *rng) {
 
   // Test a random numbers at various byte lengths.
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
-    if (!GFp_BN_rand(n.get(), bytes * 8, rng)) {
+    if (!GFp_BN_rand(n.get(), static_cast<int>(bytes * 8), rng)) {
       return false;
     }
     if (GFp_BN_num_bytes(n.get()) != bytes ||

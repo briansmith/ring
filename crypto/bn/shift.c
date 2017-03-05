@@ -146,7 +146,8 @@ int GFp_BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
       l = *(f++);
       *(t++) = (tmp | (l << lb)) & BN_MASK2;
     }
-    if ((l = (l >> rb) & BN_MASK2)) {
+    l = (l >> rb) & BN_MASK2;
+    if (l != 0) {
       *(t) = l;
     }
   }

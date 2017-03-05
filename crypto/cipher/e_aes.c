@@ -249,7 +249,7 @@ int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
 
   /* XXX: Ignores return value. TODO: These functions should return |void|
    * anyway. */
-  (void)(aes_set_key())(key, key_len * 8, &ks);
+  (void)(aes_set_key())(key, (unsigned)key_len * 8, &ks);
 
   GFp_gcm128_init_serialized((uint8_t *)ctx_buf + sizeof(ks), &ks, aes_block());
   memcpy(ctx_buf, &ks, sizeof(ks));
