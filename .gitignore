@@ -21,6 +21,8 @@ doc/doc.css
 *.VC.opendb
 *.vsp
 *.vspx
+*.rsproj
+*.sln
 
 # Cargo Junk
 Cargo.lock
