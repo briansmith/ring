@@ -70,9 +70,6 @@
 /* Per C99, various stdint.h and inttypes.h macros (the latter used by bn.h) are
  * unavailable in C++ unless some macros are defined. C++11 overruled this
  * decision, but older Android NDKs still require it. */
-#if !defined(__STDC_CONSTANT_MACROS)
-#define __STDC_CONSTANT_MACROS
-#endif
 #if !defined(__STDC_FORMAT_MACROS)
 #define __STDC_FORMAT_MACROS
 #endif
