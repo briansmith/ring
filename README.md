@@ -49,9 +49,9 @@ Documentation
 See the documentation at
 https://briansmith.org/rustdoc/ring/.
 
-See [BUILDING.md](BUILDING.md#building-the-rust-library) for instructions on
-how to build it. These instructions are especially important on Windows, as
-there are build prerequisites that need to be installed.
+See [BUILDING.md](BUILDING.md) for instructions on how to build it. These
+instructions are especially important on Windows when not building from
+crates.io, as there are build prerequisites that need to be installed.
 
 
 
