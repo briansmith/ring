@@ -536,7 +536,7 @@ fn cc(file: &str, ext: &str, target: &Target, out_dir: &Path) -> Command {
             let _ = c.flag("/Od"); // Disable optimization for debug builds.
         }
     }
-    if target.env != "msvc" {
+    if target.env() != "msvc" {
         let _ = c.define("_XOPEN_SOURCE", Some("700"));
     }
 
