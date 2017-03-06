@@ -596,23 +596,21 @@ fn make_asm(source: &str, mut dst: PathBuf, target: &Target)
         let perl_include_changed = RING_PERL_INCLUDES.iter()
             .any(|i| need_run(&Path::new(i), dst.as_path()));
         if need_run(&p, dst.as_path()) || perl_include_changed {
+            let format = match (target.os(), target.arch()) {
+                ("macos", _) => "macosx",
+                ("ios", "arm") => "ios32",
+                ("ios", "aarch64") => "ios64",
+                ("windows", "x86_64") => "nasm",
+                ("windows", "x86") => "win32n",
+                (_, "aarch64") => "linux64",
+                (_, "arm") => "linux32",
+                _ => "elf",
+            };
             let mut args = vec![source.to_owned()];
-            match (target.os(), target.arch()) {
-                ("macos", _) => args.push("macosx".into()),
-                ("ios", "arm") => args.push("ios32".into()),
-                ("ios", "aarch64") => args.push("ios64".into()),
-                ("linux", "x86_64") => args.push("elf".into()),
-                ("linux", "x86") => {
-                    args.push("elf".into());
-                    args.push("-fPIC".into());
-                    args.push("-DOPENSSL_IA32_SSE2".into());
-                },
-                ("linux", "aarch64") |
-                ("android", "aarch64") => args.push("linux64".into()),
-                ("linux", "arm") |
-                ("android", "arm") => args.push("linux32".into()),
-                ("windows", _) => panic!("Don't run this on windows"),
-                (e, _) => panic!("{} is unsupported", e),
+            args.push(format.into());
+            if target.arch() == "x86" {
+                args.push("-fPIC".into());
+                args.push("-DOPENSSL_IA32_SSE2".into());
             }
             args.push(r.clone());
             run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"),
