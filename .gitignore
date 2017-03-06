@@ -23,6 +23,9 @@ doc/doc.css
 *.vspx
 *.rsproj
 *.sln
+*.vcxproj
+*.filters
+
 
 # Cargo Junk
 Cargo.lock
