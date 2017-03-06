@@ -161,6 +161,32 @@
 //! RSA signing (but not verification) requires the `rsa_signing` feature to
 //! be enabled.
 //!
+//! By default, OpenSSL writes RSA public keys in SubjectPublicKeyInfo format,
+//! not RSAPublicKey format, and Base64-encodes them (”PEM” format).
+//!
+//! To convert the PEM SubjectPublicKeyInfo format to the binary RSAPublicKey
+//! format needed by `verify()`, use:
+//!
+//! ```sh
+//! openssl rsa -RSAPublicKey_in \
+//!             -in public_key.pem \
+//!             -inform PEM \
+//!             -outform DER \
+//!             -RSAPublicKey_out \
+//!             -out public_key.der
+//! ```
+//!
+//! To extract the RSAPublicKey-formatted public key from an ASN.1 (binary)
+//! DER-encoded RSAPrivateKey format private key file, use:
+//!
+//! ```sh
+//! openssl rsa -in private_key.der \
+//!             -inform DER
+//!             -RSAPublicKey_out \
+//!             -outform DER \
+//!             -out public_key.der
+/// ```
+//!
 //! ```
 //! extern crate ring;
 //! extern crate untrusted;
@@ -305,27 +331,6 @@ pub trait VerificationAlgorithm: Sync + private::Private {
 
 /// Verify the signature `signature` of message `msg` with the public key
 /// `public_key` using the algorithm `alg`.
-///
-/// To generate the public key from your DER-encoded private key, use
-///
-/// ```sh
-/// openssl rsa -in private_key.der \
-///             -inform DER
-///             -RSAPublicKey_out \
-///             -outform DER \
-///             -out public_key.der
-/// ```
-///
-/// To convert a PEM formatted public key, use
-///
-/// ```sh
-/// openssl rsa -RSAPublicKey_in \
-///             -in public_key.pem \
-///             -inform PEM \
-///             -outform DER \
-///             -RSAPublicKey_out \
-///             -out public_key.der
-/// ```
 ///
 /// # Examples
 ///
