@@ -306,6 +306,27 @@ pub trait VerificationAlgorithm: Sync + private::Private {
 /// Verify the signature `signature` of message `msg` with the public key
 /// `public_key` using the algorithm `alg`.
 ///
+/// To generate the public key from your DER-encoded private key, use
+///
+/// ```sh
+/// openssl rsa -in private_key.der \
+///             -inform DER
+///             -RSAPublicKey_out \
+///             -outform DER \
+///             -out public_key.der
+/// ```
+///
+/// To convert a PEM formatted public key, use
+///
+/// ```sh
+/// openssl rsa -RSAPublicKey_in \
+///             -in public_key.pem \
+///             -inform PEM \
+///             -outform DER \
+///             -RSAPublicKey_out \
+///             -out public_key.der
+/// ```
+///
 /// # Examples
 ///
 /// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
