@@ -539,7 +539,14 @@ fn cc(file: &str, ext: &str, target: &Target, out_dir: &Path) -> Command {
     if target.env() != "msvc" {
         let _ = c.define("_XOPEN_SOURCE", Some("700"));
     }
-
+    if target.env() == "musl" {
+        // Some platforms enable _FORTIFY_SOURCE by default, but musl
+        // libc doesn't support it yet. See
+        // http://wiki.musl-libc.org/wiki/Future_Ideas#Fortify
+        // http://www.openwall.com/lists/musl/2015/02/04/3
+        // http://www.openwall.com/lists/musl/2015/06/17/1
+        let _ = c.flag("-U_FORTIFY_SOURCE");
+    }
     let mut c = c.get_compiler().to_command();
     let _ = c.arg("-c")
              .arg(format!("{}{}", target.obj_opt,
