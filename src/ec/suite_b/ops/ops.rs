@@ -12,8 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {der, error};
-use core;
+use {der, error, limb};
 use untrusted;
 
 pub use limb::*;
@@ -520,21 +519,9 @@ pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
     })
 }
 
+#[inline]
 pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
-    assert_eq!(a.len(), b.len());
-    let num_limbs = a.len();
-
-    // Verify `min_inclusive <= value < max_exclusive`.
-    for i in 0..num_limbs {
-        match a[num_limbs - 1 - i].cmp(&b[num_limbs - 1 - i]) {
-            core::cmp::Ordering::Less => {
-                return true;
-            },
-            core::cmp::Ordering::Equal => {}, // keep going
-            core::cmp::Ordering::Greater => { break; },
-        }
-    }
-    false
+    limb::limbs_less_than_limbs_constant_time(a, b) == limb::LimbMask::True
 }
 
 
