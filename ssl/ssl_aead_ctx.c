@@ -66,6 +66,7 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
   }
   OPENSSL_memset(aead_ctx, 0, sizeof(SSL_AEAD_CTX));
   aead_ctx->cipher = cipher;
+  aead_ctx->version = version;
 
   if (!EVP_AEAD_CTX_init_with_direction(
           &aead_ctx->ctx, aead, enc_key, enc_key_len,

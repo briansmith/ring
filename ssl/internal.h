@@ -352,6 +352,8 @@ typedef struct ssl_aead_ctx_st {
    * records. */
   uint8_t fixed_nonce[12];
   uint8_t fixed_nonce_len, variable_nonce_len;
+  /* version is the protocol version that should be used with this AEAD. */
+  uint16_t version;
   /* variable_nonce_included_in_record is non-zero if the variable nonce
    * for a record is included as a prefix before the ciphertext. */
   unsigned variable_nonce_included_in_record : 1;

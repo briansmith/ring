@@ -140,7 +140,7 @@ static const uint8_t kMaxWarningAlerts = 4;
  * state needs record-splitting and zero otherwise. */
 static int ssl_needs_record_splitting(const SSL *ssl) {
   return ssl->s3->aead_write_ctx != NULL &&
-         ssl3_protocol_version(ssl) < TLS1_1_VERSION &&
+         ssl->s3->aead_write_ctx->version < TLS1_1_VERSION &&
          (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
          SSL_CIPHER_is_block_cipher(ssl->s3->aead_write_ctx->cipher);
 }
@@ -190,8 +190,8 @@ size_t SSL_max_seal_overhead(const SSL *ssl) {
   size_t ret = SSL3_RT_HEADER_LENGTH;
   ret += SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
   /* TLS 1.3 needs an extra byte for the encrypted record type. */
-  if (ssl->s3->have_version &&
-      ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl->s3->aead_write_ctx != NULL &&
+      ssl->s3->aead_write_ctx->version >= TLS1_3_VERSION) {
     ret += 1;
   }
   if (ssl_needs_record_splitting(ssl)) {
@@ -287,9 +287,8 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   }
 
   /* TLS 1.3 hides the record type inside the encrypted data. */
-  if (ssl->s3->have_version &&
-      ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
-      ssl->s3->aead_read_ctx != NULL) {
+  if (ssl->s3->aead_read_ctx != NULL &&
+      ssl->s3->aead_read_ctx->version >= TLS1_3_VERSION) {
     /* The outer record type is always application_data. */
     if (type != SSL3_RT_APPLICATION_DATA) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_OUTER_RECORD_TYPE);
@@ -357,9 +356,8 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
   assert(!buffers_alias(in, in_len, out, max_out));
 
   /* TLS 1.3 hides the actual record type inside the encrypted data. */
-  if (ssl->s3->have_version &&
-      ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
-      ssl->s3->aead_write_ctx != NULL) {
+  if (ssl->s3->aead_write_ctx != NULL &&
+      ssl->s3->aead_write_ctx->version >= TLS1_3_VERSION) {
     if (in_len > in_len + SSL3_RT_HEADER_LENGTH + 1 ||
         max_out < in_len + SSL3_RT_HEADER_LENGTH + 1) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
