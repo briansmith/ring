@@ -387,7 +387,8 @@ impl PublicScalarOps {
     pub fn elem_decoded_less_than(&self, a: &ElemDecoded, b: &ElemDecoded)
                                   -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
-        limbs_less_than_limbs(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
+        limb::limbs_less_than_limbs_vartime(&a.limbs[..num_limbs],
+                                            &b.limbs[..num_limbs])
     }
 
     #[inline]
@@ -411,15 +412,10 @@ impl PublicScalarOps {
 fn parse_big_endian_value_in_range(
         input: untrusted::Input, min_inclusive: Limb, max_exclusive: &[Limb])
         -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
-    let num_limbs = max_exclusive.len();
-    let result = try!(parse_big_endian_value(input, num_limbs));
-    if !limbs_less_than_limbs(&result[..num_limbs], max_exclusive) {
-        return Err(error::Unspecified);
-    }
-    if result[0] < min_inclusive &&
-       result[1..num_limbs].iter().all(|limb| *limb == 0) {
-        return Err(error::Unspecified);
-    }
+    let mut result = [0; MAX_LIMBS];
+    try!(limb::parse_big_endian_in_range_and_pad(
+            input, min_inclusive, max_exclusive,
+            &mut result[..max_exclusive.len()]));
     Ok(result)
 }
 
@@ -489,12 +485,6 @@ pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
     try!(limb::parse_big_endian_and_pad(input, &mut result[..num_limbs]));
     Ok(result)
 }
-
-#[inline]
-pub fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> bool {
-    limb::limbs_less_than_limbs_constant_time(a, b) == limb::LimbMask::True
-}
-
 
 #[cfg(test)]
 mod tests {

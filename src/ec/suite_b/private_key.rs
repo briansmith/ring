@@ -15,7 +15,7 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use {ec, error, rand};
+use {ec, error, limb, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 
@@ -124,7 +124,7 @@ fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
 fn is_scalar_within_range(scalar: &Scalar, max_exclusive: &[Limb]) -> bool {
     let limbs = &scalar.limbs[..max_exclusive.len()];
     let eq_zero = limbs_are_zero_constant_time(limbs);
-    let lt_bound = limbs_less_than_limbs_constant_time(limbs, max_exclusive);
+    let lt_bound = limb::limbs_less_than_limbs_consttime(limbs, max_exclusive);
     eq_zero == LimbMask::False && lt_bound == LimbMask::True
 }
 

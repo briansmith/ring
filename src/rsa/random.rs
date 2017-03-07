@@ -95,7 +95,7 @@ impl <'a> Range<'a> {
 
         // The caller calls this in a sequence where it makes more sense to
         // check for too-large values first and return early.
-        if limbs_less_than_limbs_constant_time(limbs, self.max_exclusive) !=
+        if limbs_less_than_limbs_consttime(limbs, self.max_exclusive) !=
                 LimbMask::True {
             return false;
         }

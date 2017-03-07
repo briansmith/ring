@@ -73,9 +73,14 @@ pub fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
 }
 
 #[inline]
-pub fn limbs_less_than_limbs_constant_time(a: &[Limb], b: &[Limb]) -> LimbMask {
+pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     assert_eq!(a.len(), b.len());
     unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
+}
+
+#[inline]
+pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
+    limbs_less_than_limbs_consttime(a, b) == LimbMask::True
 }
 
 #[inline]
@@ -90,6 +95,20 @@ pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
 
+/// Parses `input` into `result`, verifies that the value is in the range
+/// [min_exclusive, max_exclusive), and pads `result` with zeros to its length.
+pub fn parse_big_endian_in_range_and_pad(
+        input: untrusted::Input, min_inclusive: Limb, max_exclusive: &[Limb],
+        result: &mut [Limb]) -> Result<(), error::Unspecified> {
+    try!(parse_big_endian_and_pad(input, result));
+    if !limbs_less_than_limbs_vartime(&result, max_exclusive) {
+        return Err(error::Unspecified);
+    }
+    if result[0] < min_inclusive && result[1..].iter().all(|limb| *limb == 0) {
+        return Err(error::Unspecified);
+    }
+    Ok(())
+}
 
 /// Parses `input` into `result`, padding `result` with zeros to its length.
 pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
