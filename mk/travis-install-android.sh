@@ -24,7 +24,7 @@ set -ex
 ANDROID_SDK_VERSION=${ANDROID_SDK_VERSION:-24.4.1}
 ANDROID_SDK_URL=https://dl.google.com/android/android-sdk_r${ANDROID_SDK_VERSION}-linux.tgz
 
-ANDROID_NDK_VERSION=${ANDROID_NDK_VERSION:-10e}
+ANDROID_NDK_VERSION=${ANDROID_NDK_VERSION:-14}
 ANDROID_NDK_URL=https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_VERSION}-linux-x86_64.zip
 
 ANDROID_INSTALL_PREFIX="${HOME}/android"
