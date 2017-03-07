@@ -547,6 +547,13 @@ fn cc(file: &str, ext: &str, target: &Target, out_dir: &Path) -> Command {
         // http://www.openwall.com/lists/musl/2015/06/17/1
         let _ = c.flag("-U_FORTIFY_SOURCE");
     }
+    if target.os() == "android" {
+        // Define __ANDROID_API__ to the Android API level we want.
+        // Needed for Android NDK Unified Headers, see:
+        // https://android.googlesource.com/platform/ndk/+/master/docs/UnifiedHeaders.md#Supporting-Unified-Headers-in-Your-Build-System
+        let _ = c.flag("-D__ANDROID_API__=18");
+    }
+
     let mut c = c.get_compiler().to_command();
     let _ = c.arg("-c")
              .arg(format!("{}{}", target.obj_opt,
