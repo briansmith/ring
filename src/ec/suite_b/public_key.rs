@@ -29,7 +29,7 @@ use untrusted;
 /// [NIST SP 800-56A, revision 2]:
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
-                                -> Result<(Elem, Elem), error::Unspecified> {
+        -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
     // affine representation." (We do it by inspection since we only accept
@@ -51,8 +51,8 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    let x_ = ElemUnreduced::from(&x);
-    let y_ = ElemUnreduced::from(&y);
+    let x_ = Elem::<RUnreduced>::from(&x);
+    let y_ = Elem::<RUnreduced>::from(&y);
     try!(verify_affine_point_is_on_the_curve(ops.common, (&x_, &y_)));
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no

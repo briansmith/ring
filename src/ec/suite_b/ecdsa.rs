@@ -99,8 +99,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
         // that would be necessary to compute the affine X coordinate.
         let x = self.ops.public_key_ops.common.point_x(&product);
-        fn sig_r_equals_x(ops: &PublicScalarOps, r: &ElemDecoded,
-                          x: &ElemUnreduced, z2: &ElemUnreduced) -> bool {
+        fn sig_r_equals_x(ops: &PublicScalarOps, r: &Elem<Unencoded>,
+                          x: &Elem<RUnreduced>, z2: &Elem<RUnreduced>) -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_mul_mixed(z2, r);
             let x_decoded = cops.elem_decoded(x);
@@ -178,7 +178,7 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
 }
 
 fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
-            p_xy: &(Elem, Elem)) -> Point {
+            p_xy: &(Elem<R>, Elem<R>)) -> Point {
     // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
     let scaled_g = ops.point_mul_base(g_scalar);
     let scaled_p = ops.point_mul(p_scalar, p_xy);

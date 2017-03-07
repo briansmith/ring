@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use core::marker::PhantomData;
 use {der, error, limb};
 use untrusted;
 
@@ -19,29 +20,45 @@ pub use limb::*;
 
 /// Field elements. Field elements are always Montgomery-encoded and always
 /// fully reduced mod q; i.e. their range is [0, q).
-pub struct Elem {
-    limbs: [Limb; MAX_LIMBS],
+#[derive(Clone)]
+pub struct Elem<E> {
+    // XXX: pub
+    pub limbs: [Limb; MAX_LIMBS],
+    pub encoding: PhantomData<E>,
 }
 
 /// Field elements that are not Montgomery-encoded. Their values are in the
 /// range [0, Q).
-pub struct ElemDecoded {
-    pub limbs: [Limb; MAX_LIMBS],
-}
+#[derive(Copy, Clone)]
+pub enum Unencoded {}
+
+/// Field elements that are Montgomery-encoded and reduced. Their values are
+/// in the range [0, m).
+#[derive(Copy, Clone)]
+pub enum R {}
 
 /// Field elements that are Montgomery-encoded and unreduced. Their values are
 /// in the range [0, 2**`LIMB_BITS`).
-#[derive(Clone)]
-pub struct ElemUnreduced {
-    limbs: [Limb; MAX_LIMBS],
+#[derive(Copy, Clone)]
+pub enum RUnreduced {}
+
+impl<E> Elem<E> {
+    // TODO: copy documentation from ring::bigint.
+    fn zero() -> Elem<E> {
+        Elem {
+            limbs: [0; MAX_LIMBS],
+            encoding: PhantomData,
+        }
+    }
 }
 
-impl ElemUnreduced {
-    fn zero() -> ElemUnreduced { ElemUnreduced { limbs: [0; MAX_LIMBS] } }
-}
-
-impl<'a> From<&'a Elem> for ElemUnreduced {
-    fn from(a: &Elem) -> ElemUnreduced { ElemUnreduced { limbs: a.limbs } }
+impl<'a> From<&'a Elem<R>> for Elem<RUnreduced> {
+    fn from(a: &Elem<R>) -> Elem<RUnreduced> {
+        Elem {
+            limbs: a.limbs,
+            encoding: PhantomData,
+        }
+    }
 }
 
 
@@ -115,20 +132,22 @@ macro_rules! limbs {
 
 pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
 
-static ONE: ElemDecoded =
-    ElemDecoded { limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] };
+static ONE: Elem<Unencoded> = Elem {
+    limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    encoding: PhantomData,
+};
 
 
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
     pub num_limbs: usize,
     q: Mont,
-    pub n: ElemDecoded,
+    pub n: Elem<Unencoded>,
 
-    // These could be `Elem`s but we only use them in contexts that take
-    // `ElemUnreduced`s.
-    pub a: ElemUnreduced, // Must be -3 mod q
-    pub b: ElemUnreduced,
+    // These could be `Elem<R>`s but we only use them in contexts that take
+    // `Elem<RUnreduced>`s.
+    pub a: Elem<RUnreduced>, // Must be -3 mod q
+    pub b: Elem<RUnreduced>,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
     elem_add_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
@@ -144,11 +163,11 @@ pub struct CommonOps {
 
 impl CommonOps {
     #[inline]
-    pub fn elem_add(&self, a: &mut ElemUnreduced, b: &ElemUnreduced) {
+    pub fn elem_add(&self, a: &mut Elem<RUnreduced>, b: &Elem<RUnreduced>) {
         ab_assign(self.elem_add_impl, &mut a.limbs, &b.limbs)
     }
 
-    pub fn elems_are_equal(&self, a: &Elem, b: &Elem) -> bool {
+    pub fn elems_are_equal(&self, a: &Elem<R>, b: &Elem<R>) -> bool {
         for i in 0..self.num_limbs {
             if a.limbs[i] != b.limbs[i] {
                 return false;
@@ -158,44 +177,56 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_decoded(&self, a: &ElemUnreduced) -> ElemDecoded {
+    pub fn elem_decoded(&self, a: &Elem<RUnreduced>) -> Elem<Unencoded> {
         self.elem_mul_mixed(a, &ONE)
     }
 
     #[inline]
-    pub fn elem_mul(&self, a: &mut ElemUnreduced, b: &ElemUnreduced) {
+    pub fn elem_mul(&self, a: &mut Elem<RUnreduced>, b: &Elem<RUnreduced>) {
         ab_assign(self.elem_mul_mont, &mut a.limbs, &b.limbs)
     }
 
     #[inline]
-    pub fn elem_mul_mixed(&self, a: &ElemUnreduced, b: &ElemDecoded)
-                          -> ElemDecoded {
+    pub fn elem_mul_mixed(&self, a: &Elem<RUnreduced>, b: &Elem<Unencoded>)
+                          -> Elem<Unencoded> {
         let unreduced = rab(self.elem_mul_mont, &a.limbs, &b.limbs);
-        ElemDecoded { limbs: self.reduced_limbs(&unreduced, &self.q.p) }
+        Elem {
+            limbs: self.reduced_limbs(&unreduced, &self.q.p),
+            encoding: PhantomData,
+        }
     }
 
     #[inline]
-    pub fn elem_product(&self, a: &ElemUnreduced, b: &ElemUnreduced)
-                        -> ElemUnreduced {
-        ElemUnreduced { limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs) }
+    pub fn elem_product(&self, a: &Elem<RUnreduced>, b: &Elem<RUnreduced>)
+                        -> Elem<RUnreduced> {
+        Elem {
+            limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs),
+            encoding: PhantomData,
+        }
     }
 
     #[inline]
-    pub fn elem_reduced(&self, a: &ElemUnreduced) -> Elem {
-        Elem { limbs: self.reduced_limbs(&a.limbs, &self.q.p) }
+    pub fn elem_reduced(&self, a: &Elem<RUnreduced>) -> Elem<R> {
+        Elem {
+            limbs: self.reduced_limbs(&a.limbs, &self.q.p),
+            encoding: PhantomData,
+        }
     }
 
     #[inline]
-    pub fn elem_square(&self, a: &mut ElemUnreduced) {
+    pub fn elem_square(&self, a: &mut Elem<RUnreduced>) {
         a_assign(self.elem_sqr_mont, &mut a.limbs);
     }
 
     #[inline]
-    pub fn elem_squared(&self, a: &ElemUnreduced) -> ElemUnreduced {
-        ElemUnreduced { limbs: ra(self.elem_sqr_mont, &a.limbs) }
+    pub fn elem_squared(&self, a: &Elem<RUnreduced>) -> Elem<RUnreduced> {
+        Elem {
+            limbs: ra(self.elem_sqr_mont, &a.limbs),
+            encoding: PhantomData,
+        }
     }
 
-    pub fn elem_verify_is_not_zero(&self, a: &ElemUnreduced)
+    pub fn elem_verify_is_not_zero(&self, a: &Elem<RUnreduced>)
                                    -> Result<(), error::Unspecified> {
         match limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) {
             LimbMask::False => Ok(()),
@@ -212,21 +243,21 @@ impl CommonOps {
         r
     }
 
-    pub fn point_x(&self, p: &Point) -> ElemUnreduced {
-        let mut r = ElemUnreduced::zero();
+    pub fn point_x(&self, p: &Point) -> Elem<RUnreduced> {
+        let mut r = Elem::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[0..self.num_limbs]);
         r
     }
 
-    pub fn point_y(&self, p: &Point) -> ElemUnreduced {
-        let mut r = ElemUnreduced::zero();
+    pub fn point_y(&self, p: &Point) -> Elem<RUnreduced> {
+        let mut r = Elem::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[self.num_limbs..
                                                          (2 * self.num_limbs)]);
         r
     }
 
-    pub fn point_z(&self, p: &Point) -> ElemUnreduced {
-        let mut r = ElemUnreduced::zero();
+    pub fn point_z(&self, p: &Point) -> Elem<RUnreduced> {
+        let mut r = Elem::zero();
         r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[(2 * self.num_limbs)..
                                                          (3 * self.num_limbs)]);
         r
@@ -256,7 +287,7 @@ struct Mont {
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
-    elem_inv: fn(a: &ElemUnreduced) -> ElemUnreduced,
+    elem_inv: fn(a: &Elem<RUnreduced>) -> Elem<RUnreduced>,
     point_mul_base_impl: fn(a: &Scalar) -> Point,
     point_mul_impl: unsafe extern fn(r: *mut Limb/*[3][num_limbs]*/,
                                      p_scalar: *const Limb/*[num_limbs]*/,
@@ -272,7 +303,7 @@ impl PrivateKeyOps {
 
     #[inline(always)]
     pub fn point_mul(&self, p_scalar: &Scalar,
-                     &(ref p_x, ref p_y): &(Elem, Elem)) -> Point {
+                     &(ref p_x, ref p_y): &(Elem<R>, Elem<R>)) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
             (self.point_mul_impl)(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),
@@ -282,7 +313,7 @@ impl PrivateKeyOps {
     }
 
     #[inline]
-    pub fn elem_inverse(&self, a: &ElemUnreduced) -> ElemUnreduced {
+    pub fn elem_inverse(&self, a: &Elem<RUnreduced>) -> Elem<RUnreduced> {
         (self.elem_inv)(a)
     }
 }
@@ -301,7 +332,7 @@ impl PublicKeyOps {
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
-                      -> Result<Elem, error::Unspecified> {
+                      -> Result<Elem<R>, error::Unspecified> {
         let encoded_value =
             try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
         let mut elem_limbs =
@@ -314,7 +345,10 @@ impl PublicKeyOps {
                                         elem_limbs.as_ptr(),
                                         self.common.q.rr.as_ptr())
         }
-        Ok(Elem { limbs: elem_limbs })
+        Ok(Elem {
+            limbs: elem_limbs,
+            encoding: PhantomData
+        })
     }
 }
 
@@ -327,7 +361,7 @@ pub struct PublicScalarOps {
     // temporarily until `twin_mul` is rewritten.
     pub private_key_ops: &'static PrivateKeyOps,
 
-    pub q_minus_n: ElemDecoded,
+    pub q_minus_n: Elem<Unencoded>,
 
     scalar_inv_to_mont_impl: fn(a: &Scalar) -> ScalarMont,
     scalar_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
@@ -370,11 +404,14 @@ impl PublicScalarOps {
     }
 
     #[inline]
-    pub fn scalar_as_elem_decoded(&self, a: &Scalar) -> ElemDecoded {
-        ElemDecoded { limbs: a.limbs }
+    pub fn scalar_as_elem_decoded(&self, a: &Scalar) -> Elem<Unencoded> {
+        Elem {
+            limbs: a.limbs,
+            encoding: PhantomData,
+        }
     }
 
-    pub fn elem_decoded_equals(&self, a: &ElemDecoded, b: &ElemDecoded)
+    pub fn elem_decoded_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
                                -> bool {
         for i in 0..self.public_key_ops.common.num_limbs {
             if a.limbs[i] != b.limbs[i] {
@@ -384,7 +421,7 @@ impl PublicScalarOps {
         true
     }
 
-    pub fn elem_decoded_less_than(&self, a: &ElemDecoded, b: &ElemDecoded)
+    pub fn elem_decoded_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
                                   -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
         limb::limbs_less_than_limbs_vartime(&a.limbs[..num_limbs],
@@ -392,11 +429,12 @@ impl PublicScalarOps {
     }
 
     #[inline]
-    pub fn elem_decoded_sum(&self, a: &ElemDecoded, b: &ElemDecoded)
-                            -> ElemDecoded {
-        ElemDecoded {
+    pub fn elem_decoded_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
+                            -> Elem<Unencoded> {
+        Elem {
             limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
                        &b.limbs),
+            encoding: PhantomData,
         }
     }
 }
@@ -421,8 +459,8 @@ fn parse_big_endian_value_in_range(
 
 
 // Returns (`a` squared `squarings` times) * `b`.
-fn elem_sqr_mul(ops: &CommonOps, a: &ElemUnreduced, squarings: usize,
-                b: &ElemUnreduced) -> ElemUnreduced {
+fn elem_sqr_mul(ops: &CommonOps, a: &Elem<RUnreduced>, squarings: usize,
+                b: &Elem<RUnreduced>) -> Elem<RUnreduced> {
     debug_assert!(squarings >= 1);
     let mut tmp = ops.elem_squared(a);
     for _ in 1..squarings {
@@ -432,8 +470,8 @@ fn elem_sqr_mul(ops: &CommonOps, a: &ElemUnreduced, squarings: usize,
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut ElemUnreduced,
-                    squarings: usize, b: &ElemUnreduced) {
+fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<RUnreduced>,
+                    squarings: usize, b: &Elem<RUnreduced>) {
     debug_assert!(squarings >= 1);
     for _ in 0..squarings {
         ops.elem_square(acc);
@@ -501,27 +539,36 @@ mod tests {
     fn p384_elem_reduced_test() { test_elem_reduced(&p384::COMMON_OPS); }
 
     fn test_elem_reduced(ops: &CommonOps) {
-        let zero = ElemUnreduced::zero();
+        let zero = Elem::zero();
 
         let reduced = ops.elem_reduced(&zero);
         assert_eq!(reduced.limbs, zero.limbs);
 
-        let mut one = ElemUnreduced::zero();
+        let mut one = Elem::zero();
         one.limbs[0] = 1;
 
         let reduced = ops.elem_reduced(&one);
         assert_eq!(reduced.limbs, one.limbs);
 
-        let q = ElemUnreduced { limbs: ops.q.p };
+        let q = Elem {
+            limbs: ops.q.p,
+            encoding: PhantomData,
+        };
         let reduced = ops.elem_reduced(&q);
         assert_eq!(reduced.limbs, zero.limbs);
 
-        let mut q_minus_1 = ElemUnreduced { limbs: ops.q.p };
+        let mut q_minus_1 = Elem {
+            limbs: ops.q.p,
+            encoding: PhantomData,
+        };
         q_minus_1.limbs[0] -= 1;
         let reduced = ops.elem_reduced(&q_minus_1);
         assert_eq!(reduced.limbs, q_minus_1.limbs);
 
-        let mut q_plus_1 = ElemUnreduced { limbs: ops.q.p };
+        let mut q_plus_1 = Elem{
+            limbs: ops.q.p,
+            encoding: PhantomData,
+        };
         // Add one to it, dealing with the fact that the lower limb(s) are
         // 0xfff...ff. We can't use `elem_add` because at least the P-384
         // implementation would do the reduction itself.
@@ -595,14 +642,14 @@ mod tests {
             let b = consume_elem_unreduced(ops, test_case, "b");
             let r = consume_elem_unreduced(ops, test_case, "r");
 
-            let mut actual_difference = ElemUnreduced::zero();
+            let mut actual_difference = Elem::<RUnreduced>::zero();
             unsafe {
                 elem_sub(actual_difference.limbs.as_mut_ptr(),
                          r.limbs.as_ptr(), b.limbs.as_ptr());
             }
             assert_limbs_are_equal(ops, &actual_difference.limbs, &a.limbs);
 
-            let mut actual_difference = ElemUnreduced::zero();
+            let mut actual_difference = Elem::<RUnreduced>::zero();
             unsafe {
                 elem_sub(actual_difference.limbs.as_mut_ptr(),
                          r.limbs.as_ptr(), a.limbs.as_ptr());
@@ -635,7 +682,7 @@ mod tests {
             let a = consume_elem_unreduced(ops, test_case, "a");
             let r = consume_elem_unreduced(ops, test_case, "r");
 
-            let mut actual_result = ElemUnreduced::zero();
+            let mut actual_result = Elem::<RUnreduced>::zero();
             unsafe {
                 elem_div_by_2(actual_result.limbs.as_mut_ptr(),
                               a.limbs.as_ptr());
@@ -674,7 +721,7 @@ mod tests {
             let a = consume_elem_unreduced(ops, test_case, "a");
             let r = consume_elem_unreduced(ops, test_case, "r");
 
-            let mut actual_result = ElemUnreduced::zero();
+            let mut actual_result = Elem::<RUnreduced>::zero();
             unsafe {
                 elem_neg(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr());
             }
@@ -854,7 +901,7 @@ mod tests {
         let actual_z = &cops.point_z(&actual_point);
         match expected_point {
             &TestPoint::Infinity => {
-                let zero = Elem { limbs: [0; MAX_LIMBS] };
+                let zero = Elem::zero();
                 assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_x),
                                              &zero));
                 assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_y),
@@ -902,19 +949,20 @@ mod tests {
 
     enum TestPoint {
         Infinity,
-        Affine(Elem, Elem),
+        Affine(Elem<R>, Elem<R>),
     }
 
     fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase,
                      name: &str) -> TestPoint {
         fn consume_point_elem(ops: &CommonOps, elems: &std::vec::Vec<&str>,
-                              i: usize) -> Elem {
+                              i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             Elem {
                 limbs:
                     parse_big_endian_value_in_range(
-                        bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap()
+                        bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap(),
+                encoding: PhantomData,
             }
         }
 
@@ -946,11 +994,12 @@ mod tests {
     }
 
     fn consume_elem_unreduced(ops: &CommonOps, test_case: &mut test::TestCase,
-                              name: &str) -> ElemUnreduced {
+                              name: &str) -> Elem<RUnreduced> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        ElemUnreduced {
+        Elem {
             limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap(),
+            encoding: PhantomData,
         }
     }
 
@@ -991,7 +1040,7 @@ mod internal_benches {
 #[cfg(feature = "internal_benches")]
 macro_rules! bench_curve {
     ( $vectors:expr ) => {
-        use super::super::{ElemUnreduced, Scalar};
+        use super::super::{Elem, Scalar};
         use bench;
 
         #[bench]
@@ -999,7 +1048,7 @@ macro_rules! bench_curve {
             // This benchmark assumes that the `elem_inverse()` is
             // constant-time so inverting 1 mod q is as good of a choice as
             // anything.
-            let mut a = ElemUnreduced::zero();
+            let mut a = Elem::zero();
             a.limbs[0] = 1;
             bench.iter(|| {
                 let _ = PRIVATE_KEY_OPS.elem_inverse(&a);
@@ -1010,8 +1059,8 @@ macro_rules! bench_curve {
         fn elem_product_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the multiplication is constant-time
             // so 0 * 0 is as good of a choice as anything.
-            let a = ElemUnreduced::zero();
-            let b = ElemUnreduced::zero();
+            let a = Elem::zero();
+            let b = Elem::zero();
             bench.iter(|| {
                 let _ = COMMON_OPS.elem_product(&a, &b);
             });
@@ -1021,7 +1070,7 @@ macro_rules! bench_curve {
         fn elem_squared_bench(bench: &mut bench::Bencher) {
             // This benchmark assumes that the squaring is constant-time so
             // 0**2 * 0 is as good of a choice as anything.
-            let a = ElemUnreduced::zero();
+            let a = Elem::zero();
             bench.iter(|| {
                 let _ = COMMON_OPS.elem_squared(&a);
             });

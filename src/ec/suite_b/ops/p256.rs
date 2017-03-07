@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use c;
+use core::marker::PhantomData;
 use super::*;
 use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc, ab_assign, ra, rab};
 
@@ -36,18 +37,21 @@ pub static COMMON_OPS: CommonOps = CommonOps {
                         0xfffffffb, 0xffffffff, 0x00000000, 0x00000003],
     },
 
-    n: ElemDecoded {
+    n: Elem {
         limbs: p256_limbs![0xffffffff, 0x00000000, 0xffffffff, 0xffffffff,
                            0xbce6faad, 0xa7179e84, 0xf3b9cac2, 0xfc632551],
+        encoding: PhantomData, // Unencoded
     },
 
-    a: ElemUnreduced {
+    a: Elem {
         limbs: p256_limbs![0xfffffffc, 0x00000004, 0x00000000, 0x00000000,
                            0x00000003, 0xffffffff, 0xffffffff, 0xfffffffc],
+        encoding: PhantomData, // RUnreduced
     },
-    b: ElemUnreduced {
+    b: Elem {
         limbs: p256_limbs![0xdc30061d, 0x04874834, 0xe5a220ab, 0xf7212ed6,
                            0xacf005cd, 0x78843090, 0xd89cdf62, 0x29c4bddf],
+        encoding: PhantomData, // RUnreduced
     },
 
     elem_add_impl: GFp_nistz256_add,
@@ -65,7 +69,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: GFp_nistz256_point_mul,
 };
 
-fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
+fn p256_elem_inv(a: &Elem<RUnreduced>) -> Elem<RUnreduced> {
     // Calculate the modular inverse of field element |a| using Fermat's Little
     // Theorem:
     //
@@ -76,13 +80,14 @@ fn p256_elem_inv(a: &ElemUnreduced) -> ElemUnreduced {
     //    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffd
 
     #[inline]
-    fn sqr_mul(a: &ElemUnreduced, squarings: usize, b: &ElemUnreduced)
-               -> ElemUnreduced {
+    fn sqr_mul(a: &Elem<RUnreduced>, squarings: usize, b: &Elem<RUnreduced>)
+               -> Elem<RUnreduced> {
         elem_sqr_mul(&COMMON_OPS, a, squarings, b)
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut ElemUnreduced, squarings: usize, b: &ElemUnreduced) {
+    fn sqr_mul_acc(a: &mut Elem<RUnreduced>, squarings: usize,
+                   b: &Elem<RUnreduced>) {
         elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
     }
 
@@ -133,9 +138,10 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     public_key_ops: &PUBLIC_KEY_OPS,
     private_key_ops: &PRIVATE_KEY_OPS,
 
-    q_minus_n: ElemDecoded {
+    q_minus_n: Elem {
         limbs: p256_limbs![0, 0, 0, 0, 0x43190553, 0x58e8617b, 0x0c46353d,
                            0x039cdaae],
+        encoding: PhantomData, // Unencoded
     },
 
     scalar_inv_to_mont_impl: p256_scalar_inv_to_mont,
