@@ -20,7 +20,7 @@
 
 #![cfg_attr(not(feature = "use_heap"), allow(dead_code))]
 
-use {polyfill, c};
+use {polyfill, c, error, untrusted};
 
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
@@ -88,6 +88,49 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
 pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     assert_eq!(r.len(), m.len());
     unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
+}
+
+
+/// Parses `input` into `result`, padding `result` with zeros to its length.
+pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
+                                -> Result<(), error::Unspecified> {
+    if input.is_empty() {
+        return Err(error::Unspecified);
+    }
+
+    // `bytes_in_current_limb` is the number of bytes in the current limb.
+    // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
+    // limb.
+    let mut bytes_in_current_limb = input.len() % LIMB_BYTES;
+    if bytes_in_current_limb == 0 {
+        bytes_in_current_limb = LIMB_BYTES;
+    }
+
+    let num_encoded_limbs =
+        (input.len() / LIMB_BYTES) +
+        (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
+    if num_encoded_limbs > result.len() {
+        return Err(error::Unspecified);
+    }
+
+    try!(input.read_all(error::Unspecified, |input| {
+        for i in 0..num_encoded_limbs {
+            let mut limb: Limb = 0;
+            for _ in 0..bytes_in_current_limb {
+                let b = try!(input.read_byte());
+                limb = (limb << 8) | (b as Limb);
+            }
+            result[num_encoded_limbs - i - 1] = limb;
+            bytes_in_current_limb = LIMB_BYTES;
+        }
+        Ok(())
+    }));
+
+    for limb in &mut result[num_encoded_limbs..] {
+        *limb = 0;
+    }
+
+    Ok(())
 }
 
 extern {

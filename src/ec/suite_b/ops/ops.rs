@@ -485,38 +485,9 @@ fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &[Limb; MAX_LIMBS])
 // native-endian limbs, padded with zeros.
 pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
                               -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
-    if input.is_empty() {
-        return Err(error::Unspecified);
-    }
-
-    // `bytes_in_current_limb` is the number of bytes in the current limb.
-    // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
-    // limb.
-    let mut bytes_in_current_limb = input.len() % LIMB_BYTES;
-    if bytes_in_current_limb == 0 {
-        bytes_in_current_limb = LIMB_BYTES;
-    }
-
-    let num_encoded_limbs =
-        (input.len() / LIMB_BYTES) +
-        (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
-    if num_encoded_limbs > num_limbs {
-        return Err(error::Unspecified);
-    }
-
-    input.read_all(error::Unspecified, |input| {
-        let mut result = [0; MAX_LIMBS];
-        for i in 0..num_encoded_limbs {
-            let mut limb: Limb = 0;
-            for _ in 0..bytes_in_current_limb {
-                let b = try!(input.read_byte());
-                limb = (limb << 8) | (b as Limb);
-            }
-            result[num_encoded_limbs - i - 1] = limb;
-            bytes_in_current_limb = LIMB_BYTES;
-        }
-        Ok(result)
-    })
+    let mut result = [0; MAX_LIMBS];
+    try!(limb::parse_big_endian_and_pad(input, &mut result[..num_limbs]));
+    Ok(result)
 }
 
 #[inline]
