@@ -175,34 +175,14 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {
         let x_decoded = ops.common.elem_decoded(&x_aff);
-        big_endian_from_limbs(x_out, &x_decoded.limbs[..num_limbs]);
+        limb::big_endian_from_limbs_padded(&x_decoded.limbs[..num_limbs],
+                                           x_out);
     }
     if let Some(y_out) = y_out {
         let y_decoded = ops.common.elem_decoded(&y_aff);
-        big_endian_from_limbs(y_out, &y_decoded.limbs[..num_limbs]);
+        limb::big_endian_from_limbs_padded(&y_decoded.limbs[..num_limbs],
+                                           y_out);
     }
 
     Ok(())
-}
-
-fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
-    let num_limbs = limbs.len();
-    debug_assert_eq!(out.len(), num_limbs * LIMB_BYTES);
-    for i in 0..num_limbs {
-        let mut limb = limbs[i];
-        for j in 0..LIMB_BYTES {
-            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
-                (limb & 0xff) as u8;
-            limb >>= 8;
-        }
-    }
-}
-
-#[cfg(test)]
-pub mod test_util {
-    use super::super::ops::Limb;
-
-    pub fn big_endian_from_limbs(out: &mut [u8], limbs: &[Limb]) {
-        super::big_endian_from_limbs(out, limbs)
-    }
 }

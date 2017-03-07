@@ -144,8 +144,8 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
 #[cfg(test)]
 mod tests {
     use core;
-    use {agreement, ec, test};
-    use super::super::{ops, private_key};
+    use {agreement, ec, limb, test};
+    use super::super::ops;
 
     static SUPPORTED_SUITE_B_ALGS:
         [(&'static str, &'static agreement::Algorithm,
@@ -181,8 +181,8 @@ mod tests {
             // getting that value from the PRNG.
             let mut n_bytes = [0u8; ec::SCALAR_MAX_BYTES];
             let num_bytes = ops.num_limbs * ops::LIMB_BYTES;
-            private_key::test_util::big_endian_from_limbs(
-                &mut n_bytes[..num_bytes], &ops.n.limbs[..ops.num_limbs]);
+            limb::big_endian_from_limbs_padded(&ops.n.limbs[..ops.num_limbs],
+                                               &mut n_bytes[..num_bytes]);
             {
                 let n_bytes = &mut n_bytes[..num_bytes];
                 let rng = test::rand::FixedSliceRandom { bytes: n_bytes };

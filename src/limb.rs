@@ -152,6 +152,19 @@ pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
     Ok(())
 }
 
+pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
+    let num_limbs = limbs.len();
+    debug_assert_eq!(out.len(), num_limbs * LIMB_BYTES);
+    for i in 0..num_limbs {
+        let mut limb = limbs[i];
+        for j in 0..LIMB_BYTES {
+            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
+                (limb & 0xff) as u8;
+            limb >>= 8;
+        }
+    }
+}
+
 extern {
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
