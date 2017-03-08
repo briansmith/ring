@@ -1,4 +1,55 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2015-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer. 
+#
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+#
+# 3. All advertising materials mentioning features or use of this
+#    software must display the following acknowledgment:
+#    "This product includes software developed by the OpenSSL Project
+#    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+#
+# 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
+#    endorse or promote products derived from this software without
+#    prior written permission. For written permission, please contact
+#    openssl-core@openssl.org.
+#
+# 5. Products derived from this software may not be called "OpenSSL"
+#    nor may "OpenSSL" appear in their names without prior written
+#    permission of the OpenSSL Project.
+#
+# 6. Redistributions of any form whatsoever must retain the following
+#    acknowledgment:
+#    "This product includes software developed by the OpenSSL Project
+#    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+#
+# THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
+# EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
+# ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+# ====================================================================
+#
+# This product includes cryptographic software written by Eric Young
+# (eay@cryptsoft.com).  This product includes software written by Tim
+# Hudson (tjh@cryptsoft.com).
+
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -386,14 +437,14 @@ __ecp_nistz256_add:
 	adds	$t0,$acc0,#1		// subs	$t0,$a0,#-1 // tmp = ret-modulus
 	sbcs	$t1,$acc1,$poly1
 	sbcs	$t2,$acc2,xzr
-	sbc	$t3,$acc3,$poly3
-	cmp	$ap,xzr			// did addition carry?
+	sbcs	$t3,$acc3,$poly3
+	sbcs	xzr,$ap,xzr		// did subtraction borrow?
 
-	csel	$acc0,$acc0,$t0,eq	// ret = carry ? ret-modulus : ret
-	csel	$acc1,$acc1,$t1,eq
-	csel	$acc2,$acc2,$t2,eq
+	csel	$acc0,$acc0,$t0,lo	// ret = borrow ? ret : ret-modulus
+	csel	$acc1,$acc1,$t1,lo
+	csel	$acc2,$acc2,$t2,lo
 	stp	$acc0,$acc1,[$rp]
-	csel	$acc3,$acc3,$t3,eq
+	csel	$acc3,$acc3,$t3,lo
 	stp	$acc2,$acc3,[$rp,#16]
 
 	ret
@@ -463,7 +514,7 @@ __ecp_nistz256_div_by_2:
 	adc	$ap,xzr,xzr		// zap $ap
 	tst	$acc0,#1		// is a even?
 
-	csel	$acc0,$acc0,$t0,eq	// ret = even ? a : a+modulus 
+	csel	$acc0,$acc0,$t0,eq	// ret = even ? a : a+modulus
 	csel	$acc1,$acc1,$t1,eq
 	csel	$acc2,$acc2,$t2,eq
 	csel	$acc3,$acc3,$t3,eq
@@ -665,46 +716,28 @@ GFp_nistz256_point_add:
 	stp	x25,x26,[sp,#64]
 	sub	sp,sp,#32*12
 
-	ldp	$a0,$a1,[$bp]
-	ldp	$a2,$a3,[$bp,#16]
-	ldp	$t0,$t1,[$bp,#32]
-	ldp	$t2,$t3,[$bp,#48]
+	ldp	$a0,$a1,[$bp,#64]	// in2_z
+	ldp	$a2,$a3,[$bp,#64+16]
 	 mov	$rp_real,$rp
 	 mov	$ap_real,$ap
 	 mov	$bp_real,$bp
-	orr	$a0,$a0,$a1
-	orr	$a2,$a2,$a3
-	 ldp	$acc0,$acc1,[$ap]
-	orr	$t0,$t0,$t1
-	orr	$t2,$t2,$t3
-	 ldp	$acc2,$acc3,[$ap,#16]
-	orr	$a0,$a0,$a2
-	orr	$t2,$t0,$t2
-	 ldp	$t0,$t1,[$ap,#32]
-	orr	$in2infty,$a0,$t2
-	cmp	$in2infty,#0
-	 ldp	$t2,$t3,[$ap,#48]
-	csetm	$in2infty,ne		// !in2infty
-
-	 ldp	$a0,$a1,[$bp_real,#64]	// forward load for p256_sqr_mont
-	orr	$acc0,$acc0,$acc1
-	orr	$acc2,$acc2,$acc3
-	 ldp	$a2,$a3,[$bp_real,#64+16]
-	orr	$t0,$t0,$t1
-	orr	$t2,$t2,$t3
-	orr	$acc0,$acc0,$acc2
-	orr	$t0,$t0,$t2
-	orr	$in1infty,$acc0,$t0
-	cmp	$in1infty,#0
 	 ldr	$poly1,.Lpoly+8
 	 ldr	$poly3,.Lpoly+24
-	csetm	$in1infty,ne		// !in1infty
-
+	orr	$t0,$a0,$a1
+	orr	$t2,$a2,$a3
+	orr	$in2infty,$t0,$t2
+	cmp	$in2infty,#0
+	csetm	$in2infty,ne		// !in2infty
 	add	$rp,sp,#$Z2sqr
 	bl	__ecp_nistz256_sqr_mont	// p256_sqr_mont(Z2sqr, in2_z);
 
-	ldp	$a0,$a1,[$ap_real,#64]
+	ldp	$a0,$a1,[$ap_real,#64]	// in1_z
 	ldp	$a2,$a3,[$ap_real,#64+16]
+	orr	$t0,$a0,$a1
+	orr	$t2,$a2,$a3
+	orr	$in1infty,$t0,$t2
+	cmp	$in1infty,#0
+	csetm	$in1infty,ne		// !in1infty
 	add	$rp,sp,#$Z1sqr
 	bl	__ecp_nistz256_sqr_mont	// p256_sqr_mont(Z1sqr, in1_z);
 
@@ -953,36 +986,28 @@ GFp_nistz256_point_add_affine:
 	ldr	$poly1,.Lpoly+8
 	ldr	$poly3,.Lpoly+24
 
-	ldp	$a0,$a1,[$ap]
-	ldp	$a2,$a3,[$ap,#16]
-	ldp	$t0,$t1,[$ap,#32]
-	ldp	$t2,$t3,[$ap,#48]
-	orr	$a0,$a0,$a1
-	orr	$a2,$a2,$a3
-	orr	$t0,$t0,$t1
-	orr	$t2,$t2,$t3
-	orr	$a0,$a0,$a2
-	orr	$t0,$t0,$t2
-	orr	$in1infty,$a0,$t0
+	ldp	$a0,$a1,[$ap,#64]	// in1_z
+	ldp	$a2,$a3,[$ap,#64+16]
+	orr	$t0,$a0,$a1
+	orr	$t2,$a2,$a3
+	orr	$in1infty,$t0,$t2
 	cmp	$in1infty,#0
 	csetm	$in1infty,ne		// !in1infty
 
-	ldp	$a0,$a1,[$bp]
-	ldp	$a2,$a3,[$bp,#16]
-	ldp	$t0,$t1,[$bp,#32]
+	ldp	$acc0,$acc1,[$bp]	// in2_x
+	ldp	$acc2,$acc3,[$bp,#16]
+	ldp	$t0,$t1,[$bp,#32]	// in2_y
 	ldp	$t2,$t3,[$bp,#48]
-	orr	$a0,$a0,$a1
-	orr	$a2,$a2,$a3
+	orr	$acc0,$acc0,$acc1
+	orr	$acc2,$acc2,$acc3
 	orr	$t0,$t0,$t1
 	orr	$t2,$t2,$t3
-	orr	$a0,$a0,$a2
+	orr	$acc0,$acc0,$acc2
 	orr	$t0,$t0,$t2
-	orr	$in2infty,$a0,$t0
+	orr	$in2infty,$acc0,$t0
 	cmp	$in2infty,#0
 	csetm	$in2infty,ne		// !in2infty
 
-	ldp	$a0,$a1,[$ap_real,#64]
-	ldp	$a2,$a3,[$ap_real,#64+16]
 	add	$rp,sp,#$Z1sqr
 	bl	__ecp_nistz256_sqr_mont	// p256_sqr_mont(Z1sqr, in1_z);
 

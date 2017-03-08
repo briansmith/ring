@@ -1,4 +1,55 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2015-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer. 
+#
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+#
+# 3. All advertising materials mentioning features or use of this
+#    software must display the following acknowledgment:
+#    "This product includes software developed by the OpenSSL Project
+#    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+#
+# 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
+#    endorse or promote products derived from this software without
+#    prior written permission. For written permission, please contact
+#    openssl-core@openssl.org.
+#
+# 5. Products derived from this software may not be called "OpenSSL"
+#    nor may "OpenSSL" appear in their names without prior written
+#    permission of the OpenSSL Project.
+#
+# 6. Redistributions of any form whatsoever must retain the following
+#    acknowledgment:
+#    "This product includes software developed by the OpenSSL Project
+#    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+#
+# THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
+# EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
+# ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+# ====================================================================
+#
+# This product includes cryptographic software written by Eric Young
+# (eay@cryptsoft.com).  This product includes software written by Tim
+# Hudson (tjh@cryptsoft.com).
+
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -188,18 +239,41 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&mov	(&DWP(16,"edi"),"eax");
 	&adc	("ecx",&DWP(24,"ebp"));
 	&mov	(&DWP(20,"edi"),"ebx");
+	&mov	("esi",0);
 	&adc	("edx",&DWP(28,"ebp"));
 	&mov	(&DWP(24,"edi"),"ecx");
-	&sbb	("esi","esi");			# broadcast carry bit
+	&adc	("esi",0);
 	&mov	(&DWP(28,"edi"),"edx");
 
-	# if a+b carries, subtract modulus.
+	# if a+b >= modulus, subtract modulus.
 	#
+	# But since comparison implies subtraction, we subtract modulus
+	# to see if it borrows, and then subtract it for real if
+	# subtraction didn't borrow.
+
+	&mov	("eax",&DWP(0,"edi"));
+	&mov	("ebx",&DWP(4,"edi"));
+	&mov	("ecx",&DWP(8,"edi"));
+	&sub	("eax",-1);
+	&mov	("edx",&DWP(12,"edi"));
+	&sbb	("ebx",-1);
+	&mov	("eax",&DWP(16,"edi"));
+	&sbb	("ecx",-1);
+	&mov	("ebx",&DWP(20,"edi"));
+	&sbb	("edx",0);
+	&mov	("ecx",&DWP(24,"edi"));
+	&sbb	("eax",0);
+	&mov	("edx",&DWP(28,"edi"));
+	&sbb	("ebx",0);
+	&sbb	("ecx",1);
+	&sbb	("edx",-1);
+	&sbb	("esi",0);
+
 	# Note that because mod has special form, i.e. consists of
 	# 0xffffffff, 1 and 0s, we can conditionally synthesize it by
-	# assigning carry bit to one register, %ebp, and its negative
-	# to another, %esi. But we started by calculating %esi...
+	# by using borrow.
 
+	&not	("esi");
 	&mov	("eax",&DWP(0,"edi"));
 	&mov	("ebp","esi");
 	&mov	("ebx",&DWP(4,"edi"));
@@ -1128,14 +1202,14 @@ for ($i=0;$i<7;$i++) {
 	&mov	("edx",&DWP($i+12,"esi"));
 	&mov	(&DWP($i+0,"edi"),"eax");
 	&mov	(&DWP(32*18+12,"esp"),"ebp")	if ($i==0);
-	&mov	("ebp","eax")			if ($i==0);
-	&or	("ebp","eax")			if ($i!=0 && $i<64);
+	&mov	("ebp","eax")			if ($i==64);
+	&or	("ebp","eax")			if ($i>64);
 	&mov	(&DWP($i+4,"edi"),"ebx");
-	&or	("ebp","ebx")			if ($i<64);
+	&or	("ebp","ebx")			if ($i>=64);
 	&mov	(&DWP($i+8,"edi"),"ecx");
-	&or	("ebp","ecx")			if ($i<64);
+	&or	("ebp","ecx")			if ($i>=64);
 	&mov	(&DWP($i+12,"edi"),"edx");
-	&or	("ebp","edx")			if ($i<64);
+	&or	("ebp","edx")			if ($i>=64);
     }
 	&xor	("eax","eax");
 	&mov	("esi",&wparam(1));
@@ -1151,14 +1225,14 @@ for ($i=0;$i<7;$i++) {
 	&mov	("ecx",&DWP($i+8,"esi"));
 	&mov	("edx",&DWP($i+12,"esi"));
 	&mov	(&DWP($i+0,"edi"),"eax");
-	&mov	("ebp","eax")			if ($i==0);
-	&or	("ebp","eax")			if ($i!=0 && $i<64);
+	&mov	("ebp","eax")			if ($i==64);
+	&or	("ebp","eax")			if ($i>64);
 	&mov	(&DWP($i+4,"edi"),"ebx");
-	&or	("ebp","ebx")			if ($i<64);
+	&or	("ebp","ebx")			if ($i>=64);
 	&mov	(&DWP($i+8,"edi"),"ecx");
-	&or	("ebp","ecx")			if ($i<64);
+	&or	("ebp","ecx")			if ($i>=64);
 	&mov	(&DWP($i+12,"edi"),"edx");
-	&or	("ebp","edx")			if ($i<64);
+	&or	("ebp","edx")			if ($i>=64);
     }
 	&xor	("eax","eax");
 	&sub	("eax","ebp");
@@ -1407,14 +1481,14 @@ for ($i=0;$i<7;$i++) {
 	&mov	("edx",&DWP($i+12,"esi"));
 	&mov	(&DWP($i+0,"edi"),"eax");
 	&mov	(&DWP(32*15+8,"esp"),"ebp")	if ($i==0);
-	&mov	("ebp","eax")			if ($i==0);
-	&or	("ebp","eax")			if ($i!=0 && $i<64);
+	&mov	("ebp","eax")			if ($i==64);
+	&or	("ebp","eax")			if ($i>64);
 	&mov	(&DWP($i+4,"edi"),"ebx");
-	&or	("ebp","ebx")			if ($i<64);
+	&or	("ebp","ebx")			if ($i>=64);
 	&mov	(&DWP($i+8,"edi"),"ecx");
-	&or	("ebp","ecx")			if ($i<64);
+	&or	("ebp","ecx")			if ($i>=64);
 	&mov	(&DWP($i+12,"edi"),"edx");
-	&or	("ebp","edx")			if ($i<64);
+	&or	("ebp","edx")			if ($i>=64);
     }
 	&xor	("eax","eax");
 	&mov	("esi",&wparam(2));
