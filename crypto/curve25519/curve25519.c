@@ -32,7 +32,9 @@
 /* Prevent -Wmissing-prototypes warnings. */
 void GFp_ge_p3_tobytes(uint8_t *s, const ge_p3 *h);
 void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
-
+void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+                          const uint8_t *c);
+void GFp_x25519_sc_reduce(uint8_t *s);
 
 static const int64_t kBottom25Bits = INT64_C(0x1ffffff);
 static const int64_t kBottom26Bits = INT64_C(0x3ffffff);
@@ -3716,7 +3718,7 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
  *   s[0]+256*s[1]+...+256^31*s[31] = s mod l
  *   where l = 2^252 + 27742317777372353535851937790883648493.
  *   Overwrites s in place. */
-static void x25519_sc_reduce(uint8_t *s) {
+void GFp_x25519_sc_reduce(uint8_t *s) {
   int64_t s0 = 2097151 & load_3(s);
   int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
   int64_t s2 = 2097151 & (load_3(s + 5) >> 2);
@@ -4057,8 +4059,8 @@ static void x25519_sc_reduce(uint8_t *s) {
  * Output:
  *   s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
  *   where l = 2^252 + 27742317777372353535851937790883648493. */
-static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
-                      const uint8_t *c) {
+void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+                          const uint8_t *c) {
   int64_t a0 = 2097151 & load_3(a);
   int64_t a1 = 2097151 & (load_4(a + 2) >> 5);
   int64_t a2 = 2097151 & (load_3(a + 5) >> 2);
@@ -4547,7 +4549,6 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
                        const uint8_t signature[64],
                        const uint8_t public_key[32]);
 
-
 void GFp_ed25519_scalar_mask(uint8_t a[32]) {
   a[0] &= 248;
   a[31] &= 63;
@@ -4565,7 +4566,7 @@ void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
   GFp_SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
                NULL, 0);
 
-  x25519_sc_reduce(nonce);
+  GFp_x25519_sc_reduce(nonce);
   ge_p3 R;
   GFp_x25519_ge_scalarmult_base(&R, nonce);
   GFp_ge_p3_tobytes(out_sig, &R);
@@ -4574,8 +4575,8 @@ void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
   GFp_SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
                message_len, NULL, 0);
 
-  x25519_sc_reduce(hram);
-  sc_muladd(out_sig + 32, hram, az, nonce);
+  GFp_x25519_sc_reduce(hram);
+  GFp_x25519_sc_muladd(out_sig + 32, hram, az, nonce);
 }
 
 int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
@@ -4601,7 +4602,7 @@ int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
   GFp_SHA512_4(h, sizeof(h), signature, 32, public_key, 32, message,
                message_len, NULL, 0);
 
-  x25519_sc_reduce(h);
+  GFp_x25519_sc_reduce(h);
 
   ge_p2 R;
   ge_double_scalarmult_vartime(&R, h, &A, scopy);
