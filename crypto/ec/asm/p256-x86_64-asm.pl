@@ -114,14 +114,14 @@ GFp_nistz256_add:
 	sbb	8*2($a_ptr), $a2
 	 mov	$a3, $t3
 	sbb	8*3($a_ptr), $a3
-	test	$t4, $t4
+	sbb	\$0, $t4
 
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
+	cmovc	$t0, $a0
+	cmovc	$t1, $a1
 	mov	$a0, 8*0($r_ptr)
-	cmovz	$t2, $a2
+	cmovc	$t2, $a2
 	mov	$a1, 8*1($r_ptr)
-	cmovz	$t3, $a3
+	cmovc	$t3, $a3
 	mov	$a2, 8*2($r_ptr)
 	mov	$a3, 8*3($r_ptr)
 
