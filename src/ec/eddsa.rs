@@ -109,6 +109,11 @@ impl<'a> Ed25519KeyPair {
         Ok(pair)
     }
 
+    // Returns a reference to the little-endian-encoded private key bytes.
+    fn private_key_bytes(&'a self) -> &'a [u8] {
+        &self.private_public[..SEED_LEN]
+    }
+
     /// Returns a reference to the little-endian-encoded public key bytes.
     pub fn public_key_bytes(&'a self) -> &'a [u8] {
         &self.private_public[SEED_LEN..]
@@ -117,9 +122,35 @@ impl<'a> Ed25519KeyPair {
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         let mut signature_bytes = [0u8; SIGNATURE_LEN];
-        unsafe {
-            GFp_ed25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
-                             msg.len(), self.private_public.as_ptr());
+        { // borrow signature_bytes;
+            let (signature_r, signature_s) =
+                signature_bytes.split_at_mut(SCALAR_LEN);
+            let signature_r =
+                slice_as_array_ref_mut!(signature_r, SCALAR_LEN).unwrap();
+            let signature_s =
+                slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
+            let az = digest::digest(&digest::SHA512, self.private_key_bytes());
+            let (a_encoded, z_encoded) = az.as_ref().split_at(SCALAR_LEN);
+            let mut a = [0; SCALAR_LEN];
+            a.copy_from_slice(a_encoded);
+            unsafe { GFp_ed25519_scalar_mask(&mut a) };
+            let mut nonce = digest_scalar({
+                let mut ctx = digest::Context::new(&digest::SHA512);
+                ctx.update(z_encoded);
+                ctx.update(msg);
+                ctx.finish()
+            });
+            let mut r = ExtPoint::new_at_infinity();
+            unsafe {
+                GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
+                GFp_ge_p3_tobytes(signature_r, &r);
+            }
+            let hram_digest =
+                eddsa_digest(signature_r, self.public_key_bytes(), msg);
+            let hram = digest_scalar(hram_digest);
+            unsafe {
+                GFp_x25519_sc_muladd(signature_s, &hram, &a, &mut nonce);
+            }
         }
         signature::Signature::new(signature_bytes)
     }
@@ -152,6 +183,23 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
 impl private::Private for EdDSAParameters {}
 
+fn eddsa_digest(signature_r: &[u8], public_key: &[u8],
+                msg: &[u8]) -> digest::Digest {
+    let mut ctx = digest::Context::new(&digest::SHA512);
+    ctx.update(signature_r);
+    ctx.update(public_key);
+    ctx.update(msg);
+    ctx.finish()
+}
+
+fn digest_scalar(digest: digest::Digest) -> Scalar {
+    let mut unreduced = [0u8; digest::SHA512_OUTPUT_LEN];
+    unreduced.copy_from_slice(digest.as_ref());
+    unsafe { GFp_x25519_sc_reduce(&mut unreduced) };
+    let mut scalar = [0u8; SCALAR_LEN];
+    scalar.copy_from_slice(&unreduced[..SCALAR_LEN]);
+    scalar
+}
 
 fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     let seed_sha512 = digest::digest(&digest::SHA512, seed);
@@ -169,19 +217,15 @@ fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     }
 }
 
-
 extern  {
-    fn GFp_ed25519_scalar_mask(a: &mut [u8; SCALAR_LEN]);
-    fn GFp_ed25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
-                        message_len: c::size_t, private_key: *const u8/*[64]*/);
-
+    fn GFp_ed25519_scalar_mask(a: &mut Scalar);
     fn GFp_ed25519_verify(message: *const u8, message_len: c::size_t,
                           signature: *const u8/*[64]*/,
                           public_key: *const u8/*[32]*/) -> c::int;
-
     fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
     fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
-
+    fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
+    fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
@@ -207,14 +251,19 @@ impl ExtPoint {
 // Keep this in sync with `fe` in curve25519/internal.h.
 type Elem = [i32; ELEM_LIMBS];
 const ELEM_LIMBS: usize = 10;
+const ELEM_LEN: usize = 32;
 
 type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_LEN;
 
 const KEY_PAIR_LEN: usize = SEED_LEN + PUBLIC_KEY_LEN;
 const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
+
+type Scalar = [u8; SCALAR_LEN];
 const SCALAR_LEN: usize = 32;
-const ELEM_LEN: usize = 32;
+
+type UnreducedScalar = [u8; UNREDUCED_SCALAR_LEN];
+const UNREDUCED_SCALAR_LEN: usize = SCALAR_LEN * 2;
 
 type Seed = [u8; SEED_LEN];
 const SEED_LEN: usize = 32;

@@ -4543,8 +4543,6 @@ void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 
 /* Prototype to avoid -Wmissing-prototypes warnings. */
 void GFp_ed25519_scalar_mask(uint8_t a[32]);
-void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
-                      size_t message_len, const uint8_t private_key[64]);
 int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
                        const uint8_t signature[64],
                        const uint8_t public_key[32]);
@@ -4553,30 +4551,6 @@ void GFp_ed25519_scalar_mask(uint8_t a[32]) {
   a[0] &= 248;
   a[31] &= 63;
   a[31] |= 64;
-}
-
-void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
-                      size_t message_len, const uint8_t private_key[64]) {
-  uint8_t az[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
-
-  GFp_ed25519_scalar_mask(az);
-
-  uint8_t nonce[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
-               NULL, 0);
-
-  GFp_x25519_sc_reduce(nonce);
-  ge_p3 R;
-  GFp_x25519_ge_scalarmult_base(&R, nonce);
-  GFp_ge_p3_tobytes(out_sig, &R);
-
-  uint8_t hram[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
-               message_len, NULL, 0);
-
-  GFp_x25519_sc_reduce(hram);
-  GFp_x25519_sc_muladd(out_sig + 32, hram, az, nonce);
 }
 
 int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
