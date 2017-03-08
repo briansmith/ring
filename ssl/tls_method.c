@@ -278,8 +278,14 @@ static int ssl_noop_x509_session_dup(SSL_SESSION *new_session,
 static void ssl_noop_x509_session_clear(SSL_SESSION *session) {}
 static int ssl_noop_x509_session_verify_cert_chain(SSL_SESSION *session,
                                                    SSL *ssl) {
-  OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-  return 0;
+  if (!ssl->ctx->i_promise_to_verify_certs_after_the_handshake) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNKNOWN_CA);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+    return 0;
+  }
+
+  session->verify_result = X509_V_OK;
+  return 1;
 }
 
 static void ssl_noop_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {}

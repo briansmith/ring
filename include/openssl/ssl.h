@@ -2266,6 +2266,13 @@ OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
     SSL_CTX *ctx, int (*callback)(X509_STORE_CTX *store_ctx, void *arg),
     void *arg);
 
+/* SSL_CTX_i_promise_to_verify_certs_after_the_handshake indicates that the
+ * caller understands that the |CRYPTO_BUFFER|-based methods currently require
+ * post-handshake verification of certificates and thus it's ok to accept any
+ * certificates during the handshake. */
+OPENSSL_EXPORT void SSL_CTX_i_promise_to_verify_certs_after_the_handshake(
+    SSL_CTX *ctx);
+
 /* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
  * of a connection) to request SCTs from the server. See
  * https://tools.ietf.org/html/rfc6962.
@@ -4137,6 +4144,12 @@ struct ssl_ctx_st {
   /* grease_enabled is one if draft-davidben-tls-grease-01 is enabled and zero
    * otherwise. */
   unsigned grease_enabled:1;
+
+  /* i_promise_to_verify_certs_after_the_handshake indicates that the
+   * application is using the |CRYPTO_BUFFER|-based methods and understands
+   * that this currently requires post-handshake verification of
+   * certificates. */
+  unsigned i_promise_to_verify_certs_after_the_handshake:1;
 };
 
 

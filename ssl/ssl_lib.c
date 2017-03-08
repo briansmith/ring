@@ -1598,6 +1598,10 @@ void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx) {
   ctx->signed_cert_timestamps_enabled = 1;
 }
 
+void SSL_CTX_i_promise_to_verify_certs_after_the_handshake(SSL_CTX *ctx) {
+  ctx->i_promise_to_verify_certs_after_the_handshake = 1;
+}
+
 void SSL_enable_signed_cert_timestamps(SSL *ssl) {
   ssl->signed_cert_timestamps_enabled = 1;
 }
