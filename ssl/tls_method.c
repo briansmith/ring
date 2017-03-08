@@ -278,6 +278,7 @@ static int ssl_noop_x509_session_dup(SSL_SESSION *new_session,
 static void ssl_noop_x509_session_clear(SSL_SESSION *session) {}
 static int ssl_noop_x509_session_verify_cert_chain(SSL_SESSION *session,
                                                    SSL *ssl) {
+  OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
   return 0;
 }
 
