@@ -152,8 +152,8 @@ the table below. The C compilers listed are used for compiling the C portions.
 </tr>
 <tr><td>Android</td>
     <td>32&#8209;bit&nbsp;ARM</td>
-    <td>Built using the Android SDK 24.4.1 and Android NDK 10e, tested using
-        the Android emulator. (Aarch64 builds are blocked on the Rust team
+    <td>Built using the Android SDK 24.4.1 and Android NDK 14 (Android clang version 3.8.275480),
+        tested using the Android emulator.(Aarch64 builds are blocked on the Rust team
         producing AAarch64 builds of Rust's libstd.)</td>
 </tr>
 <tr><td>Mac&nbsp;OS&nbsp;X</td>
