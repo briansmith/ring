@@ -245,18 +245,6 @@ static inline size_t constant_time_select_size_t(size_t mask, size_t a,
   return (mask & a) | (~mask & b);
 }
 
-
-/* Bridge to Rust-based SHA-512 implementation. */
-
-extern void GFp_SHA512_4(uint8_t *out, size_t out_len,
-                         const uint8_t *part1, size_t part1_len,
-                         const uint8_t *part2, size_t part2_len,
-                         const uint8_t *part3, size_t part3_len,
-                         const uint8_t *part4, size_t part4_len);
-
-#define SHA512_DIGEST_LENGTH 64
-
-
 /* from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|. */
 static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #if defined(__clang__) || defined(_MSC_VER)
