@@ -680,7 +680,6 @@ ResendHelloRetryRequest:
 				}
 				c.in.freeBlock(c.input)
 				c.input = nil
-
 			}
 		} else {
 			c.skipEarlyData = true
@@ -879,6 +878,19 @@ ResendHelloRetryRequest:
 		c.writeRecord(recordTypeHandshake, finished.marshal())
 	}
 	c.flushHandshake()
+
+	if encryptedExtensions.extensions.hasEarlyData && !c.skipEarlyData {
+		for _, expectedMsg := range config.Bugs.ExpectLateEarlyData {
+			if err := c.readRecord(recordTypeApplicationData); err != nil {
+				return err
+			}
+			if !bytes.Equal(c.input.data[c.input.off:], expectedMsg) {
+				return errors.New("ExpectLateEarlyData: did not get expected message")
+			}
+			c.in.freeBlock(c.input)
+			c.input = nil
+		}
+	}
 
 	// The various secrets do not incorporate the client's final leg, so
 	// derive them now before updating the handshake context.

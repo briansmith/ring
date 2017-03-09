@@ -431,6 +431,11 @@ type testCase struct {
 	// expectPeerCertificate, if not nil, is the certificate chain the peer
 	// is expected to send.
 	expectPeerCertificate *Certificate
+	// shimPrefix is the prefix that the shim will send to the server.
+	shimPrefix string
+	// resumeShimPrefix is the prefix that the shim will send to the server on a
+	// resumption.
+	resumeShimPrefix string
 }
 
 var testCases []testCase
@@ -688,20 +693,26 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 		tlsConn.SendHalfHelloRequest()
 	}
 
-	shimPrefixPending := test.shimWritesFirst || test.readWithUnfinishedWrite
+	shimPrefix := test.shimPrefix
+	if isResume {
+		shimPrefix = test.resumeShimPrefix
+	}
+	if test.shimWritesFirst || test.readWithUnfinishedWrite {
+		shimPrefix = "hello"
+	}
 	if test.renegotiate > 0 {
 		// If readWithUnfinishedWrite is set, the shim prefix will be
 		// available later.
-		if shimPrefixPending && !test.readWithUnfinishedWrite {
-			var buf [5]byte
-			_, err := io.ReadFull(tlsConn, buf[:])
+		if shimPrefix != "" && !test.readWithUnfinishedWrite {
+			var buf = make([]byte, len(shimPrefix))
+			_, err := io.ReadFull(tlsConn, buf)
 			if err != nil {
 				return err
 			}
-			if string(buf[:]) != "hello" {
-				return fmt.Errorf("bad initial message")
+			if string(buf) != shimPrefix {
+				return fmt.Errorf("bad initial message %v vs %v", string(buf), shimPrefix)
 			}
-			shimPrefixPending = false
+			shimPrefix = ""
 		}
 
 		if test.renegotiateCiphers != nil {
@@ -764,16 +775,16 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 		tlsConn.Write(testMessage)
 
 		// Consume the shim prefix if needed.
-		if shimPrefixPending {
-			var buf [5]byte
-			_, err := io.ReadFull(tlsConn, buf[:])
+		if shimPrefix != "" {
+			var buf = make([]byte, len(shimPrefix))
+			_, err := io.ReadFull(tlsConn, buf)
 			if err != nil {
 				return err
 			}
-			if string(buf[:]) != "hello" {
-				return fmt.Errorf("bad initial message")
+			if string(buf) != shimPrefix {
+				return fmt.Errorf("bad initial message %v vs %v", string(buf), shimPrefix)
 			}
-			shimPrefixPending = false
+			shimPrefix = ""
 		}
 
 		if test.shimShutsDown || test.expectMessageDropped {
@@ -3639,7 +3650,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			resumeSession: true,
 		})
 
-		// TODO(svaldez): Send data on early data once implemented.
 		tests = append(tests, testCase{
 			testType: clientTest,
 			name:     "TLS13-EarlyData-Client",
@@ -3648,13 +3658,108 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				MinVersion:       VersionTLS13,
 				MaxEarlyDataSize: 16384,
 			},
+			resumeConfig: &Config{
+				MaxVersion:       VersionTLS13,
+				MinVersion:       VersionTLS13,
+				MaxEarlyDataSize: 16384,
+				Bugs: ProtocolBugs{
+					ExpectEarlyData: [][]byte{{'h', 'e', 'l', 'l', 'o'}},
+				},
+			},
 			resumeSession: true,
 			flags: []string{
 				"-enable-early-data",
 				"-expect-early-data-info",
 				"-expect-accept-early-data",
+				"-on-resume-shim-writes-first",
 			},
 		})
+
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "TLS13-EarlyData-TooMuchData-Client",
+			config: Config{
+				MaxVersion:       VersionTLS13,
+				MinVersion:       VersionTLS13,
+				MaxEarlyDataSize: 2,
+			},
+			resumeConfig: &Config{
+				MaxVersion:       VersionTLS13,
+				MinVersion:       VersionTLS13,
+				MaxEarlyDataSize: 2,
+				Bugs: ProtocolBugs{
+					ExpectEarlyData: [][]byte{{'h', 'e'}},
+				},
+			},
+			resumeShimPrefix: "llo",
+			resumeSession:    true,
+			flags: []string{
+				"-enable-early-data",
+				"-expect-early-data-info",
+				"-expect-accept-early-data",
+				"-on-resume-shim-writes-first",
+			},
+		})
+
+		// Unfinished writes can only be tested when operations are async. EarlyData
+		// can't be tested as part of an ImplicitHandshake in this case since
+		// otherwise the early data will be sent as normal data.
+		if config.async && !config.implicitHandshake {
+			tests = append(tests, testCase{
+				testType: clientTest,
+				name:     "TLS13-EarlyData-UnfinishedWrite-Client",
+				config: Config{
+					MaxVersion:       VersionTLS13,
+					MinVersion:       VersionTLS13,
+					MaxEarlyDataSize: 16384,
+				},
+				resumeConfig: &Config{
+					MaxVersion:       VersionTLS13,
+					MinVersion:       VersionTLS13,
+					MaxEarlyDataSize: 16384,
+					Bugs: ProtocolBugs{
+						ExpectLateEarlyData: [][]byte{{'h', 'e', 'l', 'l', 'o'}},
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					"-enable-early-data",
+					"-expect-early-data-info",
+					"-expect-accept-early-data",
+					"-on-resume-read-with-unfinished-write",
+					"-on-resume-shim-writes-first",
+				},
+			})
+
+			// Rejected unfinished writes are discarded (from the
+			// perspective of the calling application) on 0-RTT
+			// reject.
+			tests = append(tests, testCase{
+				testType: clientTest,
+				name:     "TLS13-EarlyData-RejectUnfinishedWrite-Client",
+				config: Config{
+					MaxVersion:       VersionTLS13,
+					MinVersion:       VersionTLS13,
+					MaxEarlyDataSize: 16384,
+				},
+				resumeConfig: &Config{
+					MaxVersion:       VersionTLS13,
+					MinVersion:       VersionTLS13,
+					MaxEarlyDataSize: 16384,
+					Bugs: ProtocolBugs{
+						AlwaysRejectEarlyData: true,
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					"-enable-early-data",
+					"-expect-early-data-info",
+					"-expect-reject-early-data",
+					"-on-resume-read-with-unfinished-write",
+					"-on-resume-shim-writes-first",
+				},
+			})
+		}
 
 		tests = append(tests, testCase{
 			testType: serverTest,
@@ -10286,7 +10391,7 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-DataLessEarlyData-Reject-Client",
+		name:     "TLS13-EarlyData-Reject-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10303,12 +10408,42 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
+			"-on-resume-shim-writes-first",
 		},
 	})
 
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-DataLessEarlyData-HRR-Client",
+		name:     "TLS13-EarlyData-RejectTicket-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			Certificates:     []Certificate{rsaCertificate},
+		},
+		resumeConfig: &Config{
+			MaxVersion:             VersionTLS13,
+			MaxEarlyDataSize:       16384,
+			Certificates:           []Certificate{ecdsaP256Certificate},
+			SessionTicketsDisabled: true,
+		},
+		resumeSession:        true,
+		expectResumeRejected: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+			"-on-resume-shim-writes-first",
+			"-on-initial-expect-peer-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-on-resume-expect-peer-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-on-retry-expect-peer-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
+			// Session tickets are disabled, so the runner will not send a ticket.
+			"-on-retry-expect-no-session",
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyData-HRR-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10395,6 +10530,7 @@ func addTLS13HandshakeTests() {
 		flags: []string{
 			"-enable-early-data",
 			"-expect-early-data-info",
+			"-expect-reject-early-data",
 		},
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_EXTENSION:",
@@ -10407,7 +10543,7 @@ func addTLS13HandshakeTests() {
 	// that changed it.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-DataLessEarlyData-ALPNMismatch-Client",
+		name:     "TLS13-EarlyData-ALPNMismatch-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10429,7 +10565,8 @@ func addTLS13HandshakeTests() {
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
 			"-on-initial-expect-alpn", "foo",
-			"-on-resume-expect-alpn", "bar",
+			"-on-resume-expect-alpn", "foo",
+			"-on-retry-expect-alpn", "bar",
 		},
 	})
 
@@ -10437,7 +10574,7 @@ func addTLS13HandshakeTests() {
 	// ALPN was omitted from the first connection.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-DataLessEarlyData-ALPNOmitted1-Client",
+		name:     "TLS13-EarlyData-ALPNOmitted1-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10454,7 +10591,9 @@ func addTLS13HandshakeTests() {
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
 			"-on-initial-expect-alpn", "",
-			"-on-resume-expect-alpn", "foo",
+			"-on-resume-expect-alpn", "",
+			"-on-retry-expect-alpn", "foo",
+			"-on-resume-shim-writes-first",
 		},
 	})
 
@@ -10462,7 +10601,7 @@ func addTLS13HandshakeTests() {
 	// ALPN was omitted from the second connection.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-DataLessEarlyData-ALPNOmitted2-Client",
+		name:     "TLS13-EarlyData-ALPNOmitted2-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10479,14 +10618,16 @@ func addTLS13HandshakeTests() {
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
 			"-on-initial-expect-alpn", "foo",
-			"-on-resume-expect-alpn", "",
+			"-on-resume-expect-alpn", "foo",
+			"-on-retry-expect-alpn", "",
+			"-on-resume-shim-writes-first",
 		},
 	})
 
 	// Test that the client enforces ALPN match on 0-RTT accept.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-DataLessEarlyData-BadALPNMismatch-Client",
+		name:     "TLS13-EarlyData-BadALPNMismatch-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10508,7 +10649,8 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-early-data-info",
 			"-on-initial-expect-alpn", "foo",
-			"-on-resume-expect-alpn", "bar",
+			"-on-resume-expect-alpn", "foo",
+			"-on-retry-expect-alpn", "bar",
 		},
 		shouldFail:    true,
 		expectedError: ":ALPN_MISMATCH_ON_EARLY_DATA:",

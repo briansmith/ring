@@ -857,17 +857,8 @@ func (c *Conn) readRecord(want recordType) error {
 			c.sendAlert(alertInternalError)
 			return c.in.setErrorLocked(errors.New("tls: ChangeCipherSpec requested after handshake complete"))
 		}
-	case recordTypeApplicationData:
-		if !c.handshakeComplete && !c.config.Bugs.ExpectFalseStart && len(c.config.Bugs.ExpectHalfRTTData) == 0 && len(c.config.Bugs.ExpectEarlyData) == 0 {
-			c.sendAlert(alertInternalError)
-			return c.in.setErrorLocked(errors.New("tls: application data record requested before handshake complete"))
-		}
-	case recordTypeAlert, recordTypeHandshake:
-		// Looking for a close_notify or handshake message. Note: unlike
-		// a real implementation, this is not tolerant of additional
-		// records. See the documentation for ExpectCloseNotify.
-		// Post-handshake requests for handshake messages are allowed if
-		// the caller used ReadKeyUpdateACK.
+	case recordTypeApplicationData, recordTypeAlert, recordTypeHandshake:
+		break
 	}
 
 Again:

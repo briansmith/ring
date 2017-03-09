@@ -757,19 +757,23 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
     return -1;
   }
 
-  /* If necessary, complete the handshake implicitly. */
-  if (!ssl_can_write(ssl)) {
-    int ret = SSL_do_handshake(ssl);
-    if (ret < 0) {
-      return ret;
+  int ret = 0, needs_handshake = 0;
+  do {
+    /* If necessary, complete the handshake implicitly. */
+    if (!ssl_can_write(ssl)) {
+      ret = SSL_do_handshake(ssl);
+      if (ret < 0) {
+        return ret;
+      }
+      if (ret == 0) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
+        return -1;
+      }
     }
-    if (ret == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
-      return -1;
-    }
-  }
 
-  return ssl->method->write_app_data(ssl, buf, num);
+    ret = ssl->method->write_app_data(ssl, &needs_handshake, buf, num);
+  } while (needs_handshake);
+  return ret;
 }
 
 int SSL_shutdown(SSL *ssl) {
@@ -842,8 +846,33 @@ void SSL_set_early_data_enabled(SSL *ssl, int enabled) {
   ssl->cert->enable_early_data = !!enabled;
 }
 
+int SSL_in_early_data(const SSL *ssl) {
+  if (ssl->s3->hs == NULL) {
+    return 0;
+  }
+  return ssl->s3->hs->in_early_data;
+}
+
 int SSL_early_data_accepted(const SSL *ssl) {
   return ssl->early_data_accepted;
+}
+
+void SSL_reset_early_data_reject(SSL *ssl) {
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  if (hs == NULL ||
+      hs->wait != ssl_hs_early_data_rejected) {
+    abort();
+  }
+
+  hs->wait = ssl_hs_ok;
+  hs->in_early_data = 0;
+  SSL_SESSION_free(hs->early_session);
+  hs->early_session = NULL;
+
+  /* Discard any unfinished writes from the perspective of |SSL_write|'s
+   * retry. The handshake will transparently flush out the pending record
+   * (discarded by the server) to keep the framing correct. */
+  ssl->s3->wpend_pending = 0;
 }
 
 static int bio_retry_reason_to_error(int reason) {
@@ -938,6 +967,9 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
     case SSL_PENDING_TICKET:
       return SSL_ERROR_PENDING_TICKET;
+
+    case SSL_EARLY_DATA_REJECTED:
+      return SSL_ERROR_EARLY_DATA_REJECTED;
   }
 
   return SSL_ERROR_SYSCALL;
@@ -1737,13 +1769,11 @@ void SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
 
 void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
                             unsigned *out_len) {
-  *out_data = NULL;
-  if (ssl->s3) {
-    *out_data = ssl->s3->alpn_selected;
-  }
-  if (*out_data == NULL) {
-    *out_len = 0;
+  if (SSL_in_early_data(ssl) && !ssl->server) {
+    *out_data = ssl->s3->hs->early_session->early_alpn;
+    *out_len = ssl->s3->hs->early_session->early_alpn_len;
   } else {
+    *out_data = ssl->s3->alpn_selected;
     *out_len = ssl->s3->alpn_selected_len;
   }
 }
@@ -1934,7 +1964,7 @@ const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
 }
 
 int SSL_session_reused(const SSL *ssl) {
-  return ssl->s3->session_reused;
+  return ssl->s3->session_reused || SSL_in_early_data(ssl);
 }
 
 const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }

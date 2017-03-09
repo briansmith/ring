@@ -335,8 +335,10 @@ void dtls1_read_close_notify(SSL *ssl) {
   }
 }
 
-int dtls1_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
+int dtls1_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
+                         int len) {
   assert(!SSL_in_init(ssl));
+  *out_needs_handshake = 0;
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DTLS_MESSAGE_TOO_BIG);

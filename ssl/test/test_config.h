@@ -53,6 +53,7 @@ struct TestConfig {
   std::string host_name;
   std::string advertise_alpn;
   std::string expected_alpn;
+  std::string expected_late_alpn;
   std::string expected_advertised_alpn;
   std::string select_alpn;
   bool decline_alpn = false;
@@ -141,7 +142,8 @@ struct TestConfig {
   bool enable_ed25519 = false;
 };
 
-bool ParseConfig(int argc, char **argv, bool is_resume, TestConfig *out_config);
+bool ParseConfig(int argc, char **argv, TestConfig *out_initial,
+                 TestConfig *out_resume, TestConfig *out_retry);
 
 
 #endif  // HEADER_TEST_CONFIG

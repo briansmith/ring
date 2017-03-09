@@ -467,8 +467,12 @@ SSL_SESSION *SSL_get_session(const SSL *ssl) {
   if (!SSL_in_init(ssl)) {
     return ssl->s3->established_session;
   }
-  if (ssl->s3->hs->new_session != NULL) {
-    return ssl->s3->hs->new_session;
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  if (hs->early_session != NULL) {
+    return hs->early_session;
+  }
+  if (hs->new_session != NULL) {
+    return hs->new_session;
   }
   return ssl->session;
 }

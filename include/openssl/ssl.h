@@ -512,6 +512,12 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * See also |SSL_CTX_set_ticket_aead_method|. */
 #define SSL_ERROR_PENDING_TICKET 14
 
+/* SSL_ERROR_EARLY_DATA_REJECTED indicates that early data was rejected. The
+ * caller should treat this as a connection failure and retry any operations
+ * associated with the rejected early data. |SSL_reset_early_data_reject| may be
+ * used to reuse the underlying connection for the retry. */
+#define SSL_ERROR_EARLY_DATA_REJECTED 15
+
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
@@ -2833,6 +2839,86 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 
 
+/* Early data.
+ *
+ * WARNING: 0-RTT support in BoringSSL is currently experimental and not fully
+ * implemented. It may cause interoperability or security failures when used.
+ *
+ * Early data, or 0-RTT, is a feature in TLS 1.3 which allows clients to send
+ * data on the first flight during a resumption handshake. This can save a
+ * round-trip in some application protocols.
+ *
+ * WARNING: A 0-RTT handshake has different security properties from normal
+ * handshake, so it is off by default unless opted in. In particular, early data
+ * is replayable by a network attacker. Callers must account for this when
+ * sending or processing data before the handshake is confirmed. See
+ * draft-ietf-tls-tls13-18 for more information.
+ *
+ * As a server, if early data is accepted, |SSL_do_handshake| will complete as
+ * soon as the ClientHello is processed and server flight sent. |SSL_write| may
+ * be used to send half-RTT data. |SSL_read| will consume early data and
+ * transition to 1-RTT data as appropriate. Prior to the transition,
+ * |SSL_in_init| will report the handshake is still in progress. Callers may use
+ * it or |SSL_in_early_data| to defer or reject requests as needed.
+ *
+ * Early data as a client is more complex. If the offered session (see
+ * |SSL_set_session|) is 0-RTT-capable, the handshake will return after sending
+ * the ClientHello. The predicted peer certificate and ALPN protocol will be
+ * available via the usual APIs. |SSL_write| will write early data, up to the
+ * session's limit. Writes past this limit and |SSL_read| will complete the
+ * handshake before continuing. Callers may also call |SSL_do_handshake| again
+ * to complete the handshake sooner.
+ *
+ * If the server accepts early data, the handshake will succeed. |SSL_read| and
+ * |SSL_write| will then act as in a 1-RTT handshake. The peer certificate and
+ * ALPN protocol will be as predicted and need not be re-queried.
+ *
+ * If the server rejects early data, |SSL_do_handshake| (and thus |SSL_read| and
+ * |SSL_write|) will then fail with |SSL_get_error| returning
+ * |SSL_ERROR_EARLY_DATA_REJECTED|. The caller should treat this as a connection
+ * error and most likely perform a high-level retry. Note the server may still
+ * have processed the early data due to attacker replays.
+ *
+ * To then continue the handshake on the original connection, use
+ * |SSL_reset_early_data_reject|. This allows a faster retry than making a fresh
+ * connection. |SSL_do_handshake| will the complete the full handshake as in a
+ * fresh connection. Once reset, the peer certificate, ALPN protocol, and other
+ * properties may change so the caller must query them again.
+ *
+ * Finally, to implement the fallback described in draft-ietf-tls-tls13-18
+ * appendix C.3, retry on a fresh connection without 0-RTT if the handshake
+ * fails with |SSL_R_WRONG_VERSION_ON_EARLY_DATA|. */
+
+/* SSL_CTX_set_early_data_enabled sets whether early data is allowed to be used
+ * with resumptions using |ctx|. */
+OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
+
+/* SSL_set_early_data_enabled sets whether early data is allowed to be used
+ * with resumptions using |ssl|. See |SSL_CTX_set_early_data_enabled| for more
+ * information. */
+OPENSSL_EXPORT void SSL_set_early_data_enabled(SSL *ssl, int enabled);
+
+/* SSL_in_early_data returns one if |ssl| has a pending handshake that has
+ * progressed enough to send or receive early data. Clients may call |SSL_write|
+ * to send early data, but |SSL_read| will complete the handshake before
+ * accepting application data. Servers may call |SSL_read| to read early data
+ * and |SSL_write| to send half-RTT data. */
+OPENSSL_EXPORT int SSL_in_early_data(const SSL *ssl);
+
+/* SSL_early_data_accepted returns whether early data was accepted on the
+ * handshake performed by |ssl|. */
+OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
+
+/* SSL_reset_early_data_reject resets |ssl| after an early data reject. All
+ * 0-RTT state is discarded, including any pending |SSL_write| calls. The caller
+ * should treat |ssl| as a logically fresh connection, usually by driving the
+ * handshake to completion using |SSL_do_handshake|.
+ *
+ * It is an error to call this function on an |SSL| object that is not signaling
+ * |SSL_ERROR_EARLY_DATA_REJECTED|. */
+OPENSSL_EXPORT void SSL_reset_early_data_reject(SSL *ssl);
+
+
 /* Alerts.
  *
  * TLS and SSL 3.0 use alerts to signal error conditions. Alerts have a type
@@ -3060,32 +3146,6 @@ OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
 /* SSL_total_renegotiations returns the total number of renegotiation handshakes
  * performed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
-
-/* SSL_CTX_set_early_data_enabled sets whether early data is allowed to be used
- * with resumptions using |ctx|.
- *
- * As a server, if the client's early data is accepted, |SSL_do_handshake| will
- * complete as soon as the ClientHello is processed and server flight sent.
- * |SSL_write| may be used to send half-RTT data. |SSL_read| will consume early
- * data and transition to 1-RTT data as appropriate.
- *
- * Note early data is replayable by a network attacker. |SSL_in_init| and
- * |SSL_is_init_finished| will report the handshake is still in progress until
- * the client's Finished message is received. Callers may use these functions
- * to defer some processing if desired.
- *
- * WARNING: This is experimental and may cause interoperability failures until
- * fully implemented. */
-OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
-
-/* SSL_set_early_data_enabled sets whether early data is allowed to be used
- * with resumptions using |ssl|. See |SSL_CTX_set_early_data_enabled| for more
- * information. */
-OPENSSL_EXPORT void SSL_set_early_data_enabled(SSL *ssl, int enabled);
-
-/* SSL_early_data_accepted returns whether early data was accepted on the
- * handshake performed by |ssl|. */
-OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
 
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
@@ -3676,6 +3736,7 @@ OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
 #define SSL_CERTIFICATE_SELECTION_PENDING 8
 #define SSL_PRIVATE_KEY_OPERATION 9
 #define SSL_PENDING_TICKET 10
+#define SSL_EARLY_DATA_REJECTED 11
 
 /* SSL_want returns one of the above values to determine what the most recent
  * operation on |ssl| was blocked on. Use |SSL_get_error| instead. */

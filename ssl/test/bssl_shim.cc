@@ -1361,24 +1361,23 @@ static uint16_t GetProtocolVersion(const SSL *ssl) {
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
-static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
-  const TestConfig *config = GetTestConfig(ssl);
-
+static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
+                                     const TestConfig *config) {
   if (SSL_get_current_cipher(ssl) == nullptr) {
     fprintf(stderr, "null cipher after handshake\n");
     return false;
   }
 
-  if (is_resume &&
-      (!!SSL_session_reused(ssl) == config->expect_session_miss)) {
-    fprintf(stderr, "session was%s reused\n",
+  bool expect_resume =
+      is_resume && (!config->expect_session_miss || SSL_in_early_data(ssl));
+  if (!!SSL_session_reused(ssl) != expect_resume) {
+    fprintf(stderr, "session unexpectedly was%s reused\n",
             SSL_session_reused(ssl) ? "" : " not");
     return false;
   }
 
   bool expect_handshake_done =
-      (is_resume || !config->false_start) &&
-      !(config->is_server && SSL_early_data_accepted(ssl));
+      (is_resume || !config->false_start) && !SSL_in_early_data(ssl);
   if (expect_handshake_done != GetTestState(ssl)->handshake_done) {
     fprintf(stderr, "handshake was%s completed\n",
             GetTestState(ssl)->handshake_done ? "" : " not");
@@ -1552,7 +1551,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     return false;
   }
 
-  if (is_resume) {
+  if (is_resume && !SSL_in_early_data(ssl)) {
     if ((config->expect_accept_early_data && !SSL_early_data_accepted(ssl)) ||
         (config->expect_reject_early_data && SSL_early_data_accepted(ssl))) {
       fprintf(stderr,
@@ -1643,13 +1642,17 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
   return true;
 }
 
-// DoExchange runs a test SSL exchange against the peer. On success, it returns
+static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
+                       const TestConfig *config, bool is_resume, bool is_retry);
+
+// DoConnection tests an SSL connection against the peer. On success, it returns
 // true and sets |*out_session| to the negotiated SSL session. If the test is a
 // resumption attempt, |is_resume| is true and |session| is the session from the
 // previous exchange.
-static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
-                       SSL_CTX *ssl_ctx, const TestConfig *config,
-                       bool is_resume, SSL_SESSION *session) {
+static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
+                         SSL_CTX *ssl_ctx, const TestConfig *config,
+                         const TestConfig *retry_config, bool is_resume,
+                         SSL_SESSION *session) {
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx));
   if (!ssl) {
     return false;
@@ -1865,20 +1868,62 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     SSL_set_connect_state(ssl.get());
   }
 
+  bool ret = DoExchange(out_session, ssl.get(), config, is_resume, false);
+  if (!config->is_server && is_resume && config->expect_reject_early_data) {
+    // We must have failed due to an early data rejection.
+    if (ret) {
+      fprintf(stderr, "0-RTT exchange unexpected succeeded.\n");
+      return false;
+    }
+    if (SSL_get_error(ssl.get(), -1) != SSL_ERROR_EARLY_DATA_REJECTED) {
+      fprintf(stderr,
+              "SSL_get_error did not signal SSL_ERROR_EARLY_DATA_REJECTED.\n");
+      return false;
+    }
+
+    // Before reseting, early state should still be available.
+    if (!SSL_in_early_data(ssl.get()) ||
+        !CheckHandshakeProperties(ssl.get(), is_resume, config)) {
+      fprintf(stderr, "SSL_in_early_data returned false before reset.\n");
+      return false;
+    }
+
+    // Reset the connection and try again at 1-RTT.
+    SSL_reset_early_data_reject(ssl.get());
+
+    // After reseting, the socket should report it is no longer in an early data
+    // state.
+    if (SSL_in_early_data(ssl.get())) {
+      fprintf(stderr, "SSL_in_early_data returned true after reset.\n");
+      return false;
+    }
+
+    if (!SetTestConfig(ssl.get(), retry_config)) {
+      return false;
+    }
+
+    ret = DoExchange(out_session, ssl.get(), retry_config, is_resume, true);
+  }
+  return ret;
+}
+
+static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
+                       const TestConfig *config, bool is_resume,
+                       bool is_retry) {
   int ret;
   if (!config->implicit_handshake) {
     do {
-      ret = SSL_do_handshake(ssl.get());
-    } while (config->async && RetryAsync(ssl.get(), ret));
+      ret = SSL_do_handshake(ssl);
+    } while (config->async && RetryAsync(ssl, ret));
     if (ret != 1 ||
-        !CheckHandshakeProperties(ssl.get(), is_resume)) {
+        !CheckHandshakeProperties(ssl, is_resume, config)) {
       return false;
     }
 
     if (config->handshake_twice) {
       do {
-        ret = SSL_do_handshake(ssl.get());
-      } while (config->async && RetryAsync(ssl.get(), ret));
+        ret = SSL_do_handshake(ssl);
+      } while (config->async && RetryAsync(ssl, ret));
       if (ret != 1) {
         return false;
       }
@@ -1886,28 +1931,28 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
 
     // Skip the |config->async| logic as this should be a no-op.
     if (config->no_op_extra_handshake &&
-        SSL_do_handshake(ssl.get()) != 1) {
+        SSL_do_handshake(ssl) != 1) {
       fprintf(stderr, "Extra SSL_do_handshake was not a no-op.\n");
       return false;
     }
 
     // Reset the state to assert later that the callback isn't called in
     // renegotations.
-    GetTestState(ssl.get())->got_new_session = false;
+    GetTestState(ssl)->got_new_session = false;
   }
 
   if (config->export_keying_material > 0) {
     std::vector<uint8_t> result(
         static_cast<size_t>(config->export_keying_material));
     if (!SSL_export_keying_material(
-            ssl.get(), result.data(), result.size(),
-            config->export_label.data(), config->export_label.size(),
-            reinterpret_cast<const uint8_t*>(config->export_context.data()),
+            ssl, result.data(), result.size(), config->export_label.data(),
+            config->export_label.size(),
+            reinterpret_cast<const uint8_t *>(config->export_context.data()),
             config->export_context.size(), config->use_export_context)) {
       fprintf(stderr, "failed to export keying material\n");
       return false;
     }
-    if (WriteAll(ssl.get(), result.data(), result.size()) < 0) {
+    if (WriteAll(ssl, result.data(), result.size()) < 0) {
       return false;
     }
   }
@@ -1915,7 +1960,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (config->tls_unique) {
     uint8_t tls_unique[16];
     size_t tls_unique_len;
-    if (!SSL_get_tls_unique(ssl.get(), tls_unique, &tls_unique_len,
+    if (!SSL_get_tls_unique(ssl, tls_unique, &tls_unique_len,
                             sizeof(tls_unique))) {
       fprintf(stderr, "failed to get tls-unique\n");
       return false;
@@ -1927,13 +1972,13 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
-    if (WriteAll(ssl.get(), tls_unique, tls_unique_len) < 0) {
+    if (WriteAll(ssl, tls_unique, tls_unique_len) < 0) {
       return false;
     }
   }
 
   if (config->send_alert) {
-    if (DoSendFatalAlert(ssl.get(), SSL_AD_DECOMPRESSION_FAILURE) < 0) {
+    if (DoSendFatalAlert(ssl, SSL_AD_DECOMPRESSION_FAILURE) < 0) {
       return false;
     }
     return true;
@@ -1957,7 +2002,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         fprintf(stderr, "Bad kRecordSizes value.\n");
         return false;
       }
-      if (WriteAll(ssl.get(), buf.get(), len) < 0) {
+      if (WriteAll(ssl, buf.get(), len) < 0) {
         return false;
       }
     }
@@ -1970,15 +2015,17 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return false;
       }
 
+      // Let only one byte of the record through.
+      AsyncBioAllowWrite(GetTestState(ssl)->async_bio, 1);
       int write_ret =
-          SSL_write(ssl.get(), kInitialWrite, strlen(kInitialWrite));
-      if (SSL_get_error(ssl.get(), write_ret) != SSL_ERROR_WANT_WRITE) {
+          SSL_write(ssl, kInitialWrite, strlen(kInitialWrite));
+      if (SSL_get_error(ssl, write_ret) != SSL_ERROR_WANT_WRITE) {
         fprintf(stderr, "Failed to leave unfinished write.\n");
         return false;
       }
       pending_initial_write = true;
     } else if (config->shim_writes_first) {
-      if (WriteAll(ssl.get(), kInitialWrite, strlen(kInitialWrite)) < 0) {
+      if (WriteAll(ssl, kInitialWrite, strlen(kInitialWrite)) < 0) {
         return false;
       }
     }
@@ -1992,8 +2039,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         }
         std::unique_ptr<uint8_t[]> buf(new uint8_t[read_size]);
 
-        int n = DoRead(ssl.get(), buf.get(), read_size);
-        int err = SSL_get_error(ssl.get(), n);
+        int n = DoRead(ssl, buf.get(), read_size);
+        int err = SSL_get_error(ssl, n);
         if (err == SSL_ERROR_ZERO_RETURN ||
             (n == 0 && err == SSL_ERROR_SYSCALL)) {
           if (n != 0) {
@@ -2015,17 +2062,24 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
           return false;
         }
 
+        if (!config->is_server && is_resume && !is_retry &&
+            config->expect_reject_early_data) {
+          fprintf(stderr,
+                  "Unexpectedly received data instead of 0-RTT reject.\n");
+          return false;
+        }
+
         // After a successful read, with or without False Start, the handshake
         // must be complete unless we are doing early data.
-        if (!GetTestState(ssl.get())->handshake_done &&
-            !SSL_early_data_accepted(ssl.get())) {
+        if (!GetTestState(ssl)->handshake_done &&
+            !SSL_early_data_accepted(ssl)) {
           fprintf(stderr, "handshake was not completed after SSL_read\n");
           return false;
         }
 
         // Clear the initial write, if unfinished.
         if (pending_initial_write) {
-          if (WriteAll(ssl.get(), kInitialWrite, strlen(kInitialWrite)) < 0) {
+          if (WriteAll(ssl, kInitialWrite, strlen(kInitialWrite)) < 0) {
             return false;
           }
           pending_initial_write = false;
@@ -2034,7 +2088,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         for (int i = 0; i < n; i++) {
           buf[i] ^= 0xff;
         }
-        if (WriteAll(ssl.get(), buf.get(), n) < 0) {
+        if (WriteAll(ssl, buf.get(), n) < 0) {
           return false;
         }
       }
@@ -2044,25 +2098,25 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (!config->is_server && !config->false_start &&
       !config->implicit_handshake &&
       // Session tickets are sent post-handshake in TLS 1.3.
-      GetProtocolVersion(ssl.get()) < TLS1_3_VERSION &&
-      GetTestState(ssl.get())->got_new_session) {
+      GetProtocolVersion(ssl) < TLS1_3_VERSION &&
+      GetTestState(ssl)->got_new_session) {
     fprintf(stderr, "new session was established after the handshake\n");
     return false;
   }
 
-  if (GetProtocolVersion(ssl.get()) >= TLS1_3_VERSION && !config->is_server) {
+  if (GetProtocolVersion(ssl) >= TLS1_3_VERSION && !config->is_server) {
     bool expect_new_session =
         !config->expect_no_session && !config->shim_shuts_down;
-    if (expect_new_session != GetTestState(ssl.get())->got_new_session) {
+    if (expect_new_session != GetTestState(ssl)->got_new_session) {
       fprintf(stderr,
               "new session was%s cached, but we expected the opposite\n",
-              GetTestState(ssl.get())->got_new_session ? "" : " not");
+              GetTestState(ssl)->got_new_session ? "" : " not");
       return false;
     }
 
     if (expect_new_session) {
       bool got_early_data_info =
-          GetTestState(ssl.get())->new_session->ticket_max_early_data != 0;
+          GetTestState(ssl)->new_session->ticket_max_early_data != 0;
       if (config->expect_early_data_info != got_early_data_info) {
         fprintf(
             stderr,
@@ -2075,10 +2129,10 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
 
   if (out_session) {
-    *out_session = std::move(GetTestState(ssl.get())->new_session);
+    *out_session = std::move(GetTestState(ssl)->new_session);
   }
 
-  ret = DoShutdown(ssl.get());
+  ret = DoShutdown(ssl);
 
   if (config->shim_shuts_down && config->check_close_notify) {
     // We initiate shutdown, so |SSL_shutdown| will return in two stages. First
@@ -2088,7 +2142,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       fprintf(stderr, "Unexpected SSL_shutdown result: %d != 0\n", ret);
       return false;
     }
-    ret = DoShutdown(ssl.get());
+    ret = DoShutdown(ssl);
   }
 
   if (ret != 1) {
@@ -2096,11 +2150,9 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
 
-  if (SSL_total_renegotiations(ssl.get()) !=
-      config->expect_total_renegotiations) {
+  if (SSL_total_renegotiations(ssl) != config->expect_total_renegotiations) {
     fprintf(stderr, "Expected %d renegotiations, got %d\n",
-            config->expect_total_renegotiations,
-            SSL_total_renegotiations(ssl.get()));
+            config->expect_total_renegotiations, SSL_total_renegotiations(ssl));
     return false;
   }
 
@@ -2141,9 +2193,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  TestConfig initial_config, resume_config;
-  if (!ParseConfig(argc - 1, argv + 1, false, &initial_config) ||
-      !ParseConfig(argc - 1, argv + 1, true, &resume_config)) {
+  TestConfig initial_config, resume_config, retry_config;
+  if (!ParseConfig(argc - 1, argv + 1, &initial_config, &resume_config,
+                   &retry_config)) {
     return Usage(argv[0]);
   }
 
@@ -2172,8 +2224,8 @@ int main(int argc, char **argv) {
     }
 
     bssl::UniquePtr<SSL_SESSION> offer_session = std::move(session);
-    if (!DoExchange(&session, ssl_ctx.get(), config, is_resume,
-                    offer_session.get())) {
+    if (!DoConnection(&session, ssl_ctx.get(), config, &retry_config, is_resume,
+                      offer_session.get())) {
       fprintf(stderr, "Connection %d failed.\n", i + 1);
       ERR_print_errors_fp(stderr);
       return 1;

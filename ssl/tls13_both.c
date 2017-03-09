@@ -94,6 +94,12 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         hs->wait = ssl_hs_ok;
         return -1;
 
+      case ssl_hs_early_data_rejected:
+        ssl->rwstate = SSL_EARLY_DATA_REJECTED;
+        /* Cause |SSL_write| to start failing immediately. */
+        hs->can_early_write = 0;
+        return -1;
+
       case ssl_hs_ok:
         break;
     }

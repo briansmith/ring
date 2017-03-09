@@ -1945,7 +1945,7 @@ static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
 }
 
 static bssl::UniquePtr<SSL_SESSION> CreateClientSession(SSL_CTX *client_ctx,
-                                             SSL_CTX *server_ctx) {
+                                                        SSL_CTX *server_ctx) {
   g_last_session = nullptr;
   SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
 

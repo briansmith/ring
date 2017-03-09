@@ -188,9 +188,12 @@ again:
   return -1;
 }
 
-int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
+int ssl3_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
+                        int len) {
   assert(ssl_can_write(ssl));
   assert(ssl->s3->aead_write_ctx != NULL);
+
+  *out_needs_handshake = 0;
 
   unsigned tot, n, nw;
 
@@ -210,11 +213,25 @@ int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
     return -1;
   }
 
+  const int is_early_data_write =
+      !ssl->server && SSL_in_early_data(ssl) && ssl->s3->hs->can_early_write;
+
   n = len - tot;
   for (;;) {
     /* max contains the maximum number of bytes that we can put into a
      * record. */
     unsigned max = ssl->max_send_fragment;
+    if (is_early_data_write && max > ssl->session->ticket_max_early_data -
+                                         ssl->s3->hs->early_data_written) {
+      max = ssl->session->ticket_max_early_data - ssl->s3->hs->early_data_written;
+      if (max == 0) {
+        ssl->s3->wnum = tot;
+        ssl->s3->hs->can_early_write = 0;
+        *out_needs_handshake = 1;
+        return -1;
+      }
+    }
+
     if (n > max) {
       nw = max;
     } else {
@@ -225,6 +242,10 @@ int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
     if (ret <= 0) {
       ssl->s3->wnum = tot;
       return ret;
+    }
+
+    if (is_early_data_write) {
+      ssl->s3->hs->early_data_written += ret;
     }
 
     if (ret == (int)n || (ssl->mode & SSL_MODE_ENABLE_PARTIAL_WRITE)) {
@@ -250,13 +271,14 @@ static int ssl3_write_pending(SSL *ssl, int type, const uint8_t *buf,
   if (ret <= 0) {
     return ret;
   }
+  ssl->s3->wpend_pending = 0;
   return ssl->s3->wpend_ret;
 }
 
 /* do_ssl3_write writes an SSL record of the given type. */
 static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   /* If there is still data from the previous record, flush it. */
-  if (ssl_write_buffer_is_pending(ssl)) {
+  if (ssl->s3->wpend_pending) {
     return ssl3_write_pending(ssl, type, buf, len);
   }
 
@@ -317,6 +339,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   ssl->s3->wpend_buf = buf;
   ssl->s3->wpend_type = type;
   ssl->s3->wpend_ret = len;
+  ssl->s3->wpend_pending = 1;
 
   /* we now just need to write the buffer */
   return ssl3_write_pending(ssl, type, buf, len);
