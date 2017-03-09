@@ -34,6 +34,8 @@ void hexdump(FILE *fp, const char *msg, const void *in, size_t len);
 struct Bytes {
   Bytes(const uint8_t *data_arg, size_t len_arg)
       : data(data_arg), len(len_arg) {}
+  Bytes(const char *data_arg, size_t len_arg)
+      : data(reinterpret_cast<const uint8_t *>(data_arg)), len(len_arg) {}
 
   Bytes(const char *str)
       : data(reinterpret_cast<const uint8_t *>(str)), len(strlen(str)) {}

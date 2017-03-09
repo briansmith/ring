@@ -212,6 +212,7 @@ add_executable(
   crypto_test
 
   asn1/asn1_test.cc
+  bio/bio_test.cc
   chacha/chacha_test.cc
   curve25519/x25519_test.cc
   dh/dh_test.cc
@@ -226,4 +227,7 @@ add_executable(
 )
 
 target_link_libraries(crypto_test crypto gtest)
+if (WIN32)
+  target_link_libraries(crypto_test ws2_32)
+endif()
 add_dependencies(all_tests crypto_test)
