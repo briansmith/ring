@@ -431,36 +431,6 @@ fn sha512_format_output(input: &State) -> Output {
      input[7].to_be()]
 }
 
-/// Calculates the SHA-512 digest of the concatenation of |part1| through
-/// |part4|. Any part<N> may be null if and only if the corresponding
-/// part<N>_len is zero. This ugliness exists in order to allow some of the C
-/// ECC code to calculate SHA-512 digests.
-#[allow(non_snake_case)]
-#[doc(hidden)]
-#[no_mangle]
-pub extern fn GFp_SHA512_4(out: *mut u8, out_len: c::size_t,
-                           part1: *const u8, part1_len: c::size_t,
-                           part2: *const u8, part2_len: c::size_t,
-                           part3: *const u8, part3_len: c::size_t,
-                           part4: *const u8, part4_len: c::size_t) {
-    fn maybe_update(ctx: &mut Context, part: *const u8, part_len: c::size_t) {
-        if part_len != 0 {
-            assert!(!part.is_null());
-            ctx.update(unsafe { core::slice::from_raw_parts(part, part_len) });
-        }
-    }
-
-    let mut ctx = Context::new(&SHA512);
-    maybe_update(&mut ctx, part1, part1_len);
-    maybe_update(&mut ctx, part2, part2_len);
-    maybe_update(&mut ctx, part3, part3_len);
-    maybe_update(&mut ctx, part4, part4_len);
-    let digest = ctx.finish();
-    let digest = digest.as_ref();
-    let out = unsafe { core::slice::from_raw_parts_mut(out, out_len) };
-    out.copy_from_slice(digest);
-}
-
 /// The length of the output of SHA-1, in bytes.
 pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN;
 
