@@ -1991,13 +1991,15 @@ enum ssl_session_result_t {
   ssl_session_success,
   ssl_session_error,
   ssl_session_retry,
+  ssl_session_ticket_retry,
 };
 
 /* ssl_get_prev_session looks up the previous session based on |client_hello|.
  * On success, it sets |*out_session| to the session or NULL if none was found.
  * If the session could not be looked up synchronously, it returns
- * |ssl_session_retry| and should be called again. Otherwise, it returns
- * |ssl_session_error|.  */
+ * |ssl_session_retry| and should be called again. If a ticket could not be
+ * decrypted immediately it returns |ssl_session_ticket_retry| and should also
+ * be called again. Otherwise, it returns |ssl_session_error|.  */
 enum ssl_session_result_t ssl_get_prev_session(
     SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
     int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello);
@@ -2165,15 +2167,19 @@ int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
 
 #define tlsext_tick_md EVP_sha256
 
-/* tls_process_ticket processes a session ticket from the client. On success,
- * it sets |*out_session| to the decrypted session or NULL if the ticket was
- * rejected. If the ticket was valid, it sets |*out_renew_ticket| to whether
- * the ticket should be renewed. It returns one on success and zero on fatal
- * error. */
-int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
-                       int *out_renew_ticket, const uint8_t *ticket,
-                       size_t ticket_len, const uint8_t *session_id,
-                       size_t session_id_len);
+/* ssl_process_ticket processes a session ticket from the client. It returns
+ * one of:
+ *   |ssl_ticket_aead_success|: |*out_session| is set to the parsed session and
+ *       |*out_renew_ticket| is set to whether the ticket should be renewed.
+ *   |ssl_ticket_aead_ignore_ticket|: |*out_renew_ticket| is set to whether a
+ *       fresh ticket should be sent, but the given ticket cannot be used.
+ *   |ssl_ticket_aead_retry|: the ticket could not be immediately decrypted.
+ *       Retry later.
+ *   |ssl_ticket_aead_error|: an error occured that is fatal to the connection. */
+enum ssl_ticket_aead_result_t ssl_process_ticket(
+    SSL *ssl, SSL_SESSION **out_session, int *out_renew_ticket,
+    const uint8_t *ticket, size_t ticket_len, const uint8_t *session_id,
+    size_t session_id_len);
 
 /* tls1_verify_channel_id processes the current message as a Channel ID message,
  * and verifies the signature. If the key is valid, it saves the Channel ID and

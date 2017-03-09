@@ -506,6 +506,12 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * |SSL_CTX_set_private_key_method|. */
 #define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
 
+/* SSL_ERROR_PENDING_TICKET indicates that a ticket decryption is pending. The
+ * caller may retry the operation when the decryption is ready.
+ *
+ * See also |SSL_CTX_set_ticket_aead_method|. */
+#define SSL_ERROR_PENDING_TICKET 14
+
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
@@ -1955,7 +1961,14 @@ OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
  * On the server, tickets are encrypted and authenticated with a secret key. By
  * default, an |SSL_CTX| generates a key on creation. Tickets are minted and
  * processed transparently. The following functions may be used to configure a
- * persistent key or implement more custom behavior. */
+ * persistent key or implement more custom behavior. There are three levels of
+ * customisation possible:
+ *
+ * 1) One can simply set the keys with |SSL_CTX_set_tlsext_ticket_keys|.
+ * 2) One can configure an |EVP_CIPHER_CTX| and |HMAC_CTX| directly for
+ *    encryption and authentication.
+ * 3) One can configure an |SSL_TICKET_ENCRYPTION_METHOD| to have more control
+ *    and the option of asynchronous decryption. */
 
 /* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
  * |len| bytes of |out|. It returns one on success and zero if |len| is not
@@ -2000,6 +2013,55 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
     SSL_CTX *ctx, int (*callback)(SSL *ssl, uint8_t *key_name, uint8_t *iv,
                                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
                                   int encrypt));
+
+/* ssl_ticket_aead_result_t enumerates the possible results from decrypting a
+ * ticket with an |SSL_TICKET_AEAD_METHOD|. */
+enum ssl_ticket_aead_result_t {
+  /* ssl_ticket_aead_success indicates the the ticket was successfully
+   * decrypted. */
+  ssl_ticket_aead_success,
+  /* ssl_ticket_aead_retry indicates that the operation could not be
+   * immediately completed and must be reattempted, via |open|, at a later
+   * point. */
+  ssl_ticket_aead_retry,
+  /* ssl_ticket_aead_ignore_ticket indicates that the ticket should be ignored
+   * (i.e. is corrupt or otherwise undecryptable). */
+  ssl_ticket_aead_ignore_ticket,
+  /* ssl_ticket_aead_error indicates that a fatal error occured and the
+   * handshake should be terminated. */
+  ssl_ticket_aead_error,
+};
+
+/* ssl_ticket_aead_method_st (aka |SSL_TICKET_ENCRYPTION_METHOD|) contains
+ * methods for encrypting and decrypting session tickets. */
+struct ssl_ticket_aead_method_st {
+  /* max_overhead returns the maximum number of bytes of overhead that |seal|
+   * may add. */
+  size_t (*max_overhead)(SSL *ssl);
+
+  /* seal encrypts and authenticates |in_len| bytes from |in|, writes, at most,
+   * |max_out_len| bytes to |out|, and puts the number of bytes written in
+   * |*out_len|. The |in| and |out| buffers may be equal but will not otherwise
+   * alias. It returns one on success or zero on error. */
+  int (*seal)(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out_len,
+              const uint8_t *in, size_t in_len);
+
+  /* open authenticates and decrypts |in_len| bytes from |in|, writes, at most,
+   * |max_out_len| bytes of plaintext to |out|, and puts the number of bytes
+   * written in |*out_len|. The |in| and |out| buffers may be equal but will
+   * not otherwise alias. See |ssl_ticket_aead_result_t| for details of the
+   * return values. In the case that a retry is indicated, the caller should
+   * arrange for the high-level operation on |ssl| to be retried when the
+   * operation is completed, which will result in another call to |open|. */
+  enum ssl_ticket_aead_result_t (*open)(SSL *ssl, uint8_t *out, size_t *out_len,
+                                        size_t max_out_len, const uint8_t *in,
+                                        size_t in_len);
+};
+
+/* SSL_CTX_set_ticket_aead_method configures a custom ticket AEAD method table
+ * on |ctx|. |aead_method| must remain valid for the lifetime of |ctx|. */
+OPENSSL_EXPORT void SSL_CTX_set_ticket_aead_method(
+    SSL_CTX *ctx, const SSL_TICKET_AEAD_METHOD *aead_method);
 
 
 /* Elliptic curve Diffie-Hellman.
@@ -3572,6 +3634,7 @@ OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
 #define SSL_PENDING_SESSION 7
 #define SSL_CERTIFICATE_SELECTION_PENDING 8
 #define SSL_PRIVATE_KEY_OPERATION 9
+#define SSL_PENDING_TICKET 10
 
 /* SSL_want returns one of the above values to determine what the most recent
  * operation on |ssl| was blocked on. Use |SSL_get_error| instead. */
@@ -4144,6 +4207,10 @@ struct ssl_ctx_st {
    * memory. */
   CRYPTO_BUFFER_POOL *pool;
 
+  /* ticket_aead_method contains function pointers for opening and sealing
+   * session tickets. */
+  const SSL_TICKET_AEAD_METHOD *ticket_aead_method;
+
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */
   unsigned quiet_shutdown:1;
@@ -4509,6 +4576,7 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 #define SSL_R_SERVER_CERT_CHANGED 273
 #define SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH 274
 #define SSL_R_CANNOT_HAVE_BOTH_PRIVKEY_AND_METHOD 275
+#define SSL_R_TICKET_ENCRYPTION_FAILED 276
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

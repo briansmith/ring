@@ -930,6 +930,9 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
     case ssl_session_retry:
       ssl->rwstate = SSL_PENDING_SESSION;
       goto err;
+    case ssl_session_ticket_retry:
+      ssl->rwstate = SSL_PENDING_TICKET;
+      goto err;
   }
 
   if (session != NULL) {
