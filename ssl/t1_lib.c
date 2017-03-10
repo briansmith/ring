@@ -1958,13 +1958,12 @@ int ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
 }
 
 int ssl_ext_pre_shared_key_parse_clienthello(
-    SSL_HANDSHAKE *hs, SSL_SESSION **out_session, CBS *out_binders,
+    SSL_HANDSHAKE *hs, CBS *out_ticket, CBS *out_binders,
     uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert, CBS *contents) {
-  SSL *const ssl = hs->ssl;
   /* We only process the first PSK identity since we don't support pure PSK. */
-  CBS identities, ticket, binders;
+  CBS identities, binders;
   if (!CBS_get_u16_length_prefixed(contents, &identities) ||
-      !CBS_get_u16_length_prefixed(&identities, &ticket) ||
+      !CBS_get_u16_length_prefixed(&identities, out_ticket) ||
       !CBS_get_u32(&identities, out_obfuscated_ticket_age) ||
       !CBS_get_u16_length_prefixed(contents, &binders) ||
       CBS_len(&binders) == 0 ||
@@ -2009,26 +2008,6 @@ int ssl_ext_pre_shared_key_parse_clienthello(
     OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_BINDER_COUNT_MISMATCH);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
-  }
-
-  /* TODO(svaldez): Check that the ticket_age is valid when attempting to use
-   * the PSK for 0-RTT. http://crbug.com/boringssl/113 */
-
-  /* TLS 1.3 session tickets are renewed separately as part of the
-   * NewSessionTicket. */
-  int unused_renew;
-  switch (ssl_process_ticket(ssl, out_session, &unused_renew, CBS_data(&ticket),
-                             CBS_len(&ticket), NULL, 0)) {
-    case ssl_ticket_aead_success:
-      break;
-    case ssl_ticket_aead_ignore_ticket:
-      assert(*out_session == NULL);
-      break;
-    case ssl_ticket_aead_retry:
-    /* TODO: async tickets for TLS 1.3. */
-    case ssl_ticket_aead_error:
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      return 0;
   }
 
   return 1;

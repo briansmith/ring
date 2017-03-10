@@ -79,6 +79,11 @@ int tls13_handshake(SSL_HANDSHAKE *hs) {
         hs->wait = ssl_hs_ok;
         return -1;
 
+      case ssl_hs_pending_ticket:
+        ssl->rwstate = SSL_PENDING_TICKET;
+        hs->wait = ssl_hs_ok;
+        return -1;
+
       case ssl_hs_ok:
         break;
     }

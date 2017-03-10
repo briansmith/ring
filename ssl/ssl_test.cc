@@ -3427,6 +3427,7 @@ TEST_P(TicketAEADMethodTest, Resume) {
   SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_current_time_cb(client_ctx.get(), FrozenTimeCallback);
   SSL_CTX_set_current_time_cb(server_ctx.get(), FrozenTimeCallback);
+  SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
 
   SSL_CTX_set_ticket_aead_method(server_ctx.get(), &kSSLTestTicketMethod);
 
@@ -3447,10 +3448,13 @@ TEST_P(TicketAEADMethodTest, Resume) {
   EXPECT_FALSE(SSL_session_reused(client.get()));
   EXPECT_FALSE(SSL_session_reused(server.get()));
 
-  SSL_SESSION *session = SSL_get_session(client.get());
+  // Run the read loop to account for post-handshake tickets in TLS 1.3.
+  SSL_read(client.get(), nullptr, 0);
+
+  bssl::UniquePtr<SSL_SESSION> session = std::move(g_last_session);
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
-                                         failure_mode, session);
+                                         failure_mode, session.get());
   switch (failure_mode) {
     case ssl_test_ticket_aead_ok:
       ASSERT_TRUE(client);
@@ -3473,7 +3477,7 @@ TEST_P(TicketAEADMethodTest, Resume) {
 INSTANTIATE_TEST_CASE_P(
     TicketAEADMethodTests, TicketAEADMethodTest,
     testing::Combine(
-        testing::Values(TLS1_2_VERSION /*, TLS1_3_VERSION TODO: enable */),
+        testing::Values(TLS1_2_VERSION, TLS1_3_VERSION),
         testing::Values(0, 1, 2),
         testing::Values(ssl_test_ticket_aead_ok,
                         ssl_test_ticket_aead_seal_fail,
