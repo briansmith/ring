@@ -397,7 +397,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   SSL_CTX_up_ref(ctx);
   ssl->ctx = ctx;
   SSL_CTX_up_ref(ctx);
-  ssl->initial_ctx = ctx;
+  ssl->session_ctx = ctx;
 
   if (!ssl->ctx->x509_method->ssl_new(ssl)) {
     goto err;
@@ -480,7 +480,7 @@ void SSL_free(SSL *ssl) {
   ssl_cert_free(ssl->cert);
 
   OPENSSL_free(ssl->tlsext_hostname);
-  SSL_CTX_free(ssl->initial_ctx);
+  SSL_CTX_free(ssl->session_ctx);
   OPENSSL_free(ssl->supported_group_list);
   OPENSSL_free(ssl->alpn_client_proto_list);
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
@@ -1800,7 +1800,7 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL *const ssl = hs->ssl;
-  SSL_CTX *ctx = ssl->initial_ctx;
+  SSL_CTX *ctx = ssl->session_ctx;
   /* Never cache sessions with empty session IDs. */
   if (ssl->s3->established_session->session_id_length == 0 ||
       (ctx->session_cache_mode & mode) != mode) {
@@ -1985,7 +1985,7 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   }
 
   if (ctx == NULL) {
-    ctx = ssl->initial_ctx;
+    ctx = ssl->session_ctx;
   }
 
   ssl_cert_free(ssl->cert);

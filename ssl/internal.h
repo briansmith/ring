@@ -1881,7 +1881,9 @@ struct ssl_st {
   size_t supported_group_list_len;
   uint16_t *supported_group_list; /* our list */
 
-  SSL_CTX *initial_ctx; /* initial ctx, used to store sessions */
+  /* session_ctx is the |SSL_CTX| used for the session cache and related
+   * settings. */
+  SSL_CTX *session_ctx;
 
   /* srtp_profiles is the list of configured SRTP protection profiles for
    * DTLS-SRTP. */

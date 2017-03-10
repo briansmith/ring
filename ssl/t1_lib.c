@@ -3013,9 +3013,9 @@ static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   if (ssl->ctx->tlsext_servername_callback != 0) {
     ret = ssl->ctx->tlsext_servername_callback(ssl, &al,
                                                ssl->ctx->tlsext_servername_arg);
-  } else if (ssl->initial_ctx->tlsext_servername_callback != 0) {
-    ret = ssl->initial_ctx->tlsext_servername_callback(
-        ssl, &al, ssl->initial_ctx->tlsext_servername_arg);
+  } else if (ssl->session_ctx->tlsext_servername_callback != 0) {
+    ret = ssl->session_ctx->tlsext_servername_callback(
+        ssl, &al, ssl->session_ctx->tlsext_servername_arg);
   }
 
   switch (ret) {
@@ -3048,7 +3048,7 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len) {
   int ret = 1; /* Most errors are non-fatal. */
-  SSL_CTX *ssl_ctx = ssl->initial_ctx;
+  SSL_CTX *ssl_ctx = ssl->session_ctx;
   uint8_t *plaintext = NULL;
 
   HMAC_CTX hmac_ctx;

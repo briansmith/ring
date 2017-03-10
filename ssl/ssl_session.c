@@ -535,13 +535,13 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   if (version >= TLS1_3_VERSION) {
     /* TLS 1.3 uses tickets as authenticators, so we are willing to use them for
      * longer. */
-    session->timeout = ssl->initial_ctx->session_psk_dhe_timeout;
+    session->timeout = ssl->session_ctx->session_psk_dhe_timeout;
     session->auth_timeout = SSL_DEFAULT_SESSION_AUTH_TIMEOUT;
   } else {
     /* TLS 1.2 resumption does not incorporate new key material, so we use a
      * much shorter timeout. */
-    session->timeout = ssl->initial_ctx->session_timeout;
-    session->auth_timeout = ssl->initial_ctx->session_timeout;
+    session->timeout = ssl->session_ctx->session_timeout;
+    session->auth_timeout = ssl->session_ctx->session_timeout;
   }
 
   if (is_server) {
@@ -611,7 +611,7 @@ int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session) {
 
   /* Initialize HMAC and cipher contexts. If callback present it does all the
    * work otherwise use generated values from parent ctx. */
-  SSL_CTX *tctx = ssl->initial_ctx;
+  SSL_CTX *tctx = ssl->session_ctx;
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t key_name[16];
   if (tctx->tlsext_ticket_key_cb != NULL) {
@@ -736,27 +736,27 @@ static enum ssl_session_result_t ssl_lookup_session(
 
   SSL_SESSION *session = NULL;
   /* Try the internal cache, if it exists. */
-  if (!(ssl->initial_ctx->session_cache_mode &
+  if (!(ssl->session_ctx->session_cache_mode &
         SSL_SESS_CACHE_NO_INTERNAL_LOOKUP)) {
     SSL_SESSION data;
     data.ssl_version = ssl->version;
     data.session_id_length = session_id_len;
     OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 
-    CRYPTO_MUTEX_lock_read(&ssl->initial_ctx->lock);
-    session = lh_SSL_SESSION_retrieve(ssl->initial_ctx->sessions, &data);
+    CRYPTO_MUTEX_lock_read(&ssl->session_ctx->lock);
+    session = lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data);
     if (session != NULL) {
       SSL_SESSION_up_ref(session);
     }
     /* TODO(davidben): This should probably move it to the front of the list. */
-    CRYPTO_MUTEX_unlock_read(&ssl->initial_ctx->lock);
+    CRYPTO_MUTEX_unlock_read(&ssl->session_ctx->lock);
   }
 
   /* Fall back to the external cache, if it exists. */
   if (session == NULL &&
-      ssl->initial_ctx->get_session_cb != NULL) {
+      ssl->session_ctx->get_session_cb != NULL) {
     int copy = 1;
-    session = ssl->initial_ctx->get_session_cb(ssl, (uint8_t *)session_id,
+    session = ssl->session_ctx->get_session_cb(ssl, (uint8_t *)session_id,
                                                session_id_len, &copy);
 
     if (session == NULL) {
@@ -776,16 +776,16 @@ static enum ssl_session_result_t ssl_lookup_session(
     }
 
     /* Add the externally cached session to the internal cache if necessary. */
-    if (!(ssl->initial_ctx->session_cache_mode &
+    if (!(ssl->session_ctx->session_cache_mode &
           SSL_SESS_CACHE_NO_INTERNAL_STORE)) {
-      SSL_CTX_add_session(ssl->initial_ctx, session);
+      SSL_CTX_add_session(ssl->session_ctx, session);
     }
   }
 
   if (session != NULL &&
       !ssl_session_is_time_valid(ssl, session)) {
     /* The session was from the cache, so remove it. */
-    SSL_CTX_remove_session(ssl->initial_ctx, session);
+    SSL_CTX_remove_session(ssl->session_ctx, session);
     SSL_SESSION_free(session);
     session = NULL;
   }

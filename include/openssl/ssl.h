@@ -2454,6 +2454,21 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 #define SSL_TLSEXT_ERR_ALERT_FATAL 2
 #define SSL_TLSEXT_ERR_NOACK 3
 
+/* SSL_set_SSL_CTX changes |ssl|'s |SSL_CTX|. |ssl| will use the
+ * certificate-related settings from |ctx|, and |SSL_get_SSL_CTX| will report
+ * |ctx|. This function may be used during the callbacks registered by
+ * |SSL_CTX_set_select_certificate_cb|,
+ * |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb| or when
+ * the handshake is paused from them. It is typically used to switch
+ * certificates based on SNI.
+ *
+ * Note the session cache and related settings will continue to use the initial
+ * |SSL_CTX|. Callers should use |SSL_CTX_set_session_id_context| to partition
+ * the session cache between different domains.
+ *
+ * TODO(davidben): Should other settings change after this call? */
+OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
+
 
 /* Application-layer protocol negotiation.
  *
@@ -3173,20 +3188,6 @@ OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
 /* SSL_state_string_long returns the current state of the handshake state
  * machine as a string. This may be useful for debugging and logging. */
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
-
-/* SSL_set_SSL_CTX partially changes |ssl|'s |SSL_CTX|. |ssl| will use the
- * certificate and session_id_context from |ctx|, and |SSL_get_SSL_CTX| will
- * report |ctx|. However most settings and the session cache itself will
- * continue to use the initial |SSL_CTX|. It is often used as part of SNI.
- *
- * TODO(davidben): Make a better story here and get rid of this API. Also
- * determine if there's anything else affected by |SSL_set_SSL_CTX| that
- * matters. Not as many values are affected as one might initially think. The
- * session cache explicitly selects the initial |SSL_CTX|. Most settings are
- * copied at |SSL_new| so |ctx|'s versions don't apply. This, notably, has some
- * consequences for any plans to make |SSL| copy-on-write most of its
- * configuration. */
-OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 
 #define SSL_SENT_SHUTDOWN 1
 #define SSL_RECEIVED_SHUTDOWN 2
