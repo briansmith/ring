@@ -3229,6 +3229,23 @@ TEST(SSLTest, SetChainAndKey) {
                                      nullptr /* no session */));
 }
 
+// Configuring the empty cipher list, though an error, should still modify the
+// configuration.
+TEST(SSLTest, EmptyCipherList) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Initially, the cipher list is not empty.
+  EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list fails.
+  EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), ""));
+  ERR_clear_error();
+
+  // But the cipher list is still updated to empty.
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestCipherRules() ||

@@ -1377,11 +1377,6 @@ int ssl_create_cipher_list(
   OPENSSL_free(co_list); /* Not needed any longer */
   co_list = NULL;
 
-  if (sk_SSL_CIPHER_num(cipherstack) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    goto err;
-  }
-
   pref_list = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
   if (!pref_list) {
     goto err;
@@ -1399,6 +1394,13 @@ int ssl_create_cipher_list(
   }
   *out_cipher_list = pref_list;
   pref_list = NULL;
+
+  /* Configuring an empty cipher list is an error but still updates the
+   * output. */
+  if (sk_SSL_CIPHER_num((*out_cipher_list)->ciphers) == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+    return 0;
+  }
 
   return 1;
 
