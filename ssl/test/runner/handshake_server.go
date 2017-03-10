@@ -342,17 +342,21 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-		hs.clientHello.signatureAlgorithms = config.signSignatureAlgorithms()
-	}
-	if config.Bugs.IgnorePeerCurvePreferences {
-		hs.clientHello.supportedCurves = config.curvePreferences()
-	}
-	if config.Bugs.IgnorePeerCipherPreferences {
-		hs.clientHello.cipherSuites = config.cipherSuites()
-	}
+	applyBugsToClientHello(hs.clientHello, config)
 
 	return nil
+}
+
+func applyBugsToClientHello(clientHello *clientHelloMsg, config *Config) {
+	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
+		clientHello.signatureAlgorithms = config.signSignatureAlgorithms()
+	}
+	if config.Bugs.IgnorePeerCurvePreferences {
+		clientHello.supportedCurves = config.curvePreferences()
+	}
+	if config.Bugs.IgnorePeerCipherPreferences {
+		clientHello.cipherSuites = config.cipherSuites()
+	}
 }
 
 func (hs *serverHandshakeState) doTLS13Handshake() error {
@@ -586,6 +590,8 @@ ResendHelloRetryRequest:
 			return unexpectedMessageError(newClientHello, newMsg)
 		}
 		hs.writeClientHash(newClientHello.marshal())
+
+		applyBugsToClientHello(newClientHello, config)
 
 		// Check that the new ClientHello matches the old ClientHello,
 		// except for relevant modifications.
