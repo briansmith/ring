@@ -6662,6 +6662,10 @@ var testSignatureAlgorithms = []struct {
 	{"RSA-PKCS1-SHA384", signatureRSAPKCS1WithSHA384, testCertRSA},
 	{"RSA-PKCS1-SHA512", signatureRSAPKCS1WithSHA512, testCertRSA},
 	{"ECDSA-SHA1", signatureECDSAWithSHA1, testCertECDSAP256},
+	// The “P256” in the following line is not a mistake. In TLS 1.2 the
+	// hash function doesn't have to match the curve and so the same
+	// signature algorithm works with P-224.
+	{"ECDSA-P224-SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP224},
 	{"ECDSA-P256-SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP256},
 	{"ECDSA-P384-SHA384", signatureECDSAWithP384AndSHA384, testCertECDSAP384},
 	{"ECDSA-P521-SHA512", signatureECDSAWithP521AndSHA512, testCertECDSAP521},
@@ -6718,7 +6722,13 @@ func addSignatureAlgorithmTests() {
 				shouldVerifyFail = true
 			}
 			// RSA-PKCS1 does not exist in TLS 1.3.
-			if ver.version == VersionTLS13 && hasComponent(alg.name, "PKCS1") {
+			if ver.version >= VersionTLS13 && hasComponent(alg.name, "PKCS1") {
+				shouldSignFail = true
+				shouldVerifyFail = true
+			}
+			// SHA-224 has been removed from TLS 1.3 and, in 1.3,
+			// the curve has to match the hash size.
+			if ver.version >= VersionTLS13 && alg.cert == testCertECDSAP224 {
 				shouldSignFail = true
 				shouldVerifyFail = true
 			}
@@ -7486,31 +7496,6 @@ func addSignatureAlgorithmTests() {
 		},
 		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
 	})
-
-	// A server certificate with a P-224 key will only work up to TLS 1.2
-	// and we only test it with BoringSSL acting as a server because that's
-	// all Alphabet requires with it.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "P224-Server",
-		config: Config{
-			VerifySignatureAlgorithms: []signatureAlgorithm{
-				// TLS 1.2 does not require that the curve
-				// match the hash, thus P-256 with SHA-256 is
-				// the same signature algorithm value as P-224
-				// with SHA-256.
-				signatureECDSAWithP256AndSHA256,
-			},
-			// P-256 must be offered as well because ECDHE requires
-			// it.
-			CurvePreferences: []CurveID{CurveP224, CurveP256},
-		},
-		flags: []string{
-			"-max-version", strconv.Itoa(VersionTLS12),
-			"-cert-file", path.Join(*resourceDir, ecdsaP224CertificateFile),
-			"-key-file", path.Join(*resourceDir, ecdsaP224KeyFile),
-		},
-	})
 }
 
 // timeouts is the retransmit schedule for BoringSSL. It doubles and
@@ -8146,6 +8131,7 @@ var testCurves = []struct {
 	name string
 	id   CurveID
 }{
+	{"P-224", CurveP224},
 	{"P-256", CurveP256},
 	{"P-384", CurveP384},
 	{"P-521", CurveP521},

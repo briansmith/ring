@@ -300,6 +300,17 @@ static const SSL_ECDH_METHOD kDHEMethod = {
 
 static const SSL_ECDH_METHOD kMethods[] = {
     {
+        NID_secp224r1,
+        SSL_CURVE_SECP224R1,
+        "P-224",
+        ssl_ec_point_cleanup,
+        ssl_ec_point_offer,
+        ssl_ec_point_accept,
+        ssl_ec_point_finish,
+        CBS_get_u8_length_prefixed,
+        CBB_add_u8_length_prefixed,
+    },
+    {
         NID_X9_62_prime256v1,
         SSL_CURVE_SECP256R1,
         "P-256",
