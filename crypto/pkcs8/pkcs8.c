@@ -278,25 +278,49 @@ static int pkcs12_pbe_decrypt_init(const struct pbe_suite *suite,
 
 static const struct pbe_suite kBuiltinPBE[] = {
     {
-        NID_pbe_WithSHA1And40BitRC2_CBC, EVP_rc2_40_cbc, EVP_sha1,
-        pkcs12_pbe_decrypt_init, PBE_UCS2_CONVERT_PASSWORD,
+        NID_pbe_WithSHA1And40BitRC2_CBC,
+        /* 1.2.840.113549.1.12.1.6 */
+        {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x0c, 0x01, 0x06},
+        10,
+        EVP_rc2_40_cbc,
+        EVP_sha1,
+        pkcs12_pbe_decrypt_init,
+        PBE_UCS2_CONVERT_PASSWORD,
     },
     {
-        NID_pbe_WithSHA1And128BitRC4, EVP_rc4, EVP_sha1,
-        pkcs12_pbe_decrypt_init, PBE_UCS2_CONVERT_PASSWORD,
+        NID_pbe_WithSHA1And128BitRC4,
+        /* 1.2.840.113549.1.12.1.1 */
+        {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x0c, 0x01, 0x01},
+        10,
+        EVP_rc4,
+        EVP_sha1,
+        pkcs12_pbe_decrypt_init,
+        PBE_UCS2_CONVERT_PASSWORD,
     },
     {
-        NID_pbe_WithSHA1And3_Key_TripleDES_CBC, EVP_des_ede3_cbc, EVP_sha1,
-        pkcs12_pbe_decrypt_init, PBE_UCS2_CONVERT_PASSWORD,
+        NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
+        /* 1.2.840.113549.1.12.1.3 */
+        {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x0c, 0x01, 0x03},
+        10,
+        EVP_des_ede3_cbc,
+        EVP_sha1,
+        pkcs12_pbe_decrypt_init,
+        PBE_UCS2_CONVERT_PASSWORD,
     },
     {
-        NID_pbes2, NULL, NULL, PKCS5_pbe2_decrypt_init, 0,
+        NID_pbes2,
+        /* 1.2.840.113549.1.5.13 */
+        {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x05, 0x0d},
+        9,
+        NULL,
+        NULL,
+        PKCS5_pbe2_decrypt_init,
+        0,
     },
 };
 
 static const struct pbe_suite *get_pbe_suite(int pbe_nid) {
-  unsigned i;
-  for (i = 0; i < OPENSSL_ARRAY_SIZE(kBuiltinPBE); i++) {
+  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kBuiltinPBE); i++) {
     if (kBuiltinPBE[i].pbe_nid == pbe_nid) {
       return &kBuiltinPBE[i];
     }
@@ -358,9 +382,10 @@ static int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
   }
 
   /* See RFC 2898, appendix A.3. */
-  CBB algorithm, param, salt_cbb;
+  CBB algorithm, oid, param, salt_cbb;
   if (!CBB_add_asn1(out, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&algorithm, alg) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, suite->oid, suite->oid_len) ||
       !CBB_add_asn1(&algorithm, &param, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&param, &salt_cbb, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&salt_cbb, salt, salt_len) ||
@@ -387,7 +412,13 @@ static int pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
     goto err;
   }
 
-  const struct pbe_suite *suite = get_pbe_suite(OBJ_cbs2nid(&obj));
+  const struct pbe_suite *suite = NULL;
+  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kBuiltinPBE); i++) {
+    if (CBS_mem_equal(&obj, kBuiltinPBE[i].oid, kBuiltinPBE[i].oid_len)) {
+      suite = &kBuiltinPBE[i];
+      break;
+    }
+  }
   if (suite == NULL) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNKNOWN_ALGORITHM);
     goto err;
