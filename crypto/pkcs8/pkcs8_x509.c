@@ -149,6 +149,84 @@ err:
   return NULL;
 }
 
+PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
+                                   int pass_len_in) {
+  size_t pass_len;
+  if (pass_len_in == -1 && pass != NULL) {
+    pass_len = strlen(pass);
+  } else {
+    pass_len = (size_t)pass_len_in;
+  }
+
+  PKCS8_PRIV_KEY_INFO *ret = NULL;
+  EVP_PKEY *pkey = NULL;
+  uint8_t *in = NULL;
+
+  /* Convert the legacy ASN.1 object to a byte string. */
+  int in_len = i2d_X509_SIG(pkcs8, &in);
+  if (in_len < 0) {
+    goto err;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, in, in_len);
+  pkey = PKCS8_parse_encrypted_private_key(&cbs, pass, pass_len);
+  if (pkey == NULL || CBS_len(&cbs) != 0) {
+    goto err;
+  }
+
+  ret = EVP_PKEY2PKCS8(pkey);
+
+err:
+  OPENSSL_free(in);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
+X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+                        int pass_len_in, const uint8_t *salt, size_t salt_len,
+                        int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
+  size_t pass_len;
+  if (pass_len_in == -1 && pass != NULL) {
+    pass_len = strlen(pass);
+  } else {
+    pass_len = (size_t)pass_len_in;
+  }
+
+  /* Parse out the private key. */
+  EVP_PKEY *pkey = EVP_PKCS82PKEY(p8inf);
+  if (pkey == NULL) {
+    return NULL;
+  }
+
+  X509_SIG *ret = NULL;
+  uint8_t *der = NULL;
+  size_t der_len;
+  CBB cbb;
+  if (!CBB_init(&cbb, 128) ||
+      !PKCS8_marshal_encrypted_private_key(&cbb, pbe_nid, cipher, pass,
+                                           pass_len, salt, salt_len, iterations,
+                                           pkey) ||
+      !CBB_finish(&cbb, &der, &der_len)) {
+    CBB_cleanup(&cbb);
+    goto err;
+  }
+
+  /* Convert back to legacy ASN.1 objects. */
+  const uint8_t *ptr = der;
+  ret = d2i_X509_SIG(NULL, &ptr, der_len);
+  if (ret == NULL || ptr != der + der_len) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_INTERNAL_ERROR);
+    X509_SIG_free(ret);
+    ret = NULL;
+  }
+
+err:
+  OPENSSL_free(der);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
 struct pkcs12_context {
   EVP_PKEY **out_key;
   STACK_OF(X509) *out_certs;
@@ -239,36 +317,20 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
       return 0;
     }
 
-    if (CBS_len(&wrapped_value) > LONG_MAX) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+    EVP_PKEY *pkey = PKCS8_parse_encrypted_private_key(
+        &wrapped_value, ctx->password, ctx->password_len);
+    if (pkey == NULL) {
       return 0;
     }
 
-    /* |encrypted| isn't actually an X.509 signature, but it has the same
-     * structure as one and so |X509_SIG| is reused to store it. */
-    const uint8_t *inp = CBS_data(&wrapped_value);
-    X509_SIG *encrypted =
-        d2i_X509_SIG(NULL, &inp, (long)CBS_len(&wrapped_value));
-    if (encrypted == NULL) {
+    if (CBS_len(&wrapped_value) != 0) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
-      return 0;
-    }
-    if (inp != CBS_data(&wrapped_value) + CBS_len(&wrapped_value)) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
-      X509_SIG_free(encrypted);
+      EVP_PKEY_free(pkey);
       return 0;
     }
 
-    PKCS8_PRIV_KEY_INFO *pki =
-        PKCS8_decrypt(encrypted, ctx->password, ctx->password_len);
-    X509_SIG_free(encrypted);
-    if (pki == NULL) {
-      return 0;
-    }
-
-    *ctx->out_key = EVP_PKCS82PKEY(pki);
-    PKCS8_PRIV_KEY_INFO_free(pki);
-    return ctx->out_key != NULL;
+    *ctx->out_key = pkey;
+    return 1;
   }
 
   if (CBS_mem_equal(&bag_id, kCertBag, sizeof(kCertBag))) {

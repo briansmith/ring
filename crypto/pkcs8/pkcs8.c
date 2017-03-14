@@ -59,16 +59,13 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/hmac.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 #include "../internal.h"
@@ -412,80 +409,41 @@ err:
   return ret;
 }
 
-PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
-                                   int pass_len_i) {
-  size_t pass_len;
-  if (pass_len_i == -1 && pass != NULL) {
-    pass_len = strlen(pass);
-  } else {
-    pass_len = (size_t)pass_len_i;
-  }
-
-  PKCS8_PRIV_KEY_INFO *ret = NULL;
-  uint8_t *in = NULL, *out = NULL;
-  size_t out_len = 0;
-
-  /* Convert the legacy ASN.1 object to a byte string. */
-  int in_len = i2d_X509_SIG(pkcs8, &in);
-  if (in_len < 0) {
-    goto err;
-  }
-
+EVP_PKEY *PKCS8_parse_encrypted_private_key(CBS *cbs, const char *pass,
+                                            size_t pass_len) {
   /* See RFC 5208, section 6. */
-  CBS cbs, epki, algorithm, ciphertext;
-  CBS_init(&cbs, in, in_len);
-  if (!CBS_get_asn1(&cbs, &epki, CBS_ASN1_SEQUENCE) ||
+  CBS epki, algorithm, ciphertext;
+  if (!CBS_get_asn1(cbs, &epki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&epki, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&epki, &ciphertext, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&epki) != 0 ||
-      CBS_len(&cbs) != 0) {
+      CBS_len(&epki) != 0) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
-    goto err;
+    return 0;
   }
 
+  uint8_t *out;
+  size_t out_len;
   if (!pkcs8_pbe_decrypt(&out, &out_len, &algorithm, pass, pass_len,
                          CBS_data(&ciphertext), CBS_len(&ciphertext))) {
-    goto err;
+    return 0;
   }
 
-  if (out_len > LONG_MAX) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
-    goto err;
-  }
-
-  /* Convert back to legacy ASN.1 objects. */
-  const uint8_t *ptr = out;
-  ret = d2i_PKCS8_PRIV_KEY_INFO(NULL, &ptr, (long)out_len);
-  OPENSSL_cleanse(out, out_len);
-  if (ret == NULL || ptr != out + out_len) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
-    PKCS8_PRIV_KEY_INFO_free(ret);
-    ret = NULL;
-  }
-
-err:
-  OPENSSL_free(in);
+  CBS pki;
+  CBS_init(&pki, out, out_len);
+  EVP_PKEY *ret = EVP_parse_private_key(&pki);
   OPENSSL_cleanse(out, out_len);
   OPENSSL_free(out);
   return ret;
 }
 
-X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
-                        int pass_len_i, const uint8_t *salt, size_t salt_len,
-                        int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
-  size_t pass_len;
-  if (pass_len_i == -1 && pass != NULL) {
-    pass_len = strlen(pass);
-  } else {
-    pass_len = (size_t)pass_len_i;
-  }
-
-  X509_SIG *ret = NULL;
-  uint8_t *plaintext = NULL, *salt_buf = NULL, *der = NULL;
-  int plaintext_len = -1;
-  size_t der_len;
-  CBB cbb;
-  CBB_zero(&cbb);
+int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
+                                        const EVP_CIPHER *cipher,
+                                        const char *pass, size_t pass_len,
+                                        const uint8_t *salt, size_t salt_len,
+                                        int iterations, const EVP_PKEY *pkey) {
+  int ret = 0;
+  uint8_t *plaintext = NULL, *salt_buf = NULL;
+  size_t plaintext_len = 0;
   EVP_CIPHER_CTX ctx;
   EVP_CIPHER_CTX_init(&ctx);
 
@@ -508,15 +466,17 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
     iterations = PKCS5_DEFAULT_ITERATIONS;
   }
 
-  /* Convert the input from the legacy ASN.1 format. */
-  plaintext_len = i2d_PKCS8_PRIV_KEY_INFO(p8inf, &plaintext);
-  if (plaintext_len < 0) {
+  /* Serialize the input key. */
+  CBB plaintext_cbb;
+  if (!CBB_init(&plaintext_cbb, 128) ||
+      !EVP_marshal_private_key(&plaintext_cbb, pkey) ||
+      !CBB_finish(&plaintext_cbb, &plaintext, &plaintext_len)) {
+    CBB_cleanup(&plaintext_cbb);
     goto err;
   }
 
   CBB epki;
-  if (!CBB_init(&cbb, 128) ||
-      !CBB_add_asn1(&cbb, &epki, CBS_ASN1_SEQUENCE)) {
+  if (!CBB_add_asn1(out, &epki, CBS_ASN1_SEQUENCE)) {
     goto err;
   }
 
@@ -532,41 +492,32 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
     goto err;
   }
 
-  size_t max_out = (size_t)plaintext_len + EVP_CIPHER_CTX_block_size(&ctx);
-  if (max_out < (size_t)plaintext_len) {
+  size_t max_out = plaintext_len + EVP_CIPHER_CTX_block_size(&ctx);
+  if (max_out < plaintext_len) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
     goto err;
   }
 
   CBB ciphertext;
-  uint8_t *out;
+  uint8_t *ptr;
   int n1, n2;
   if (!CBB_add_asn1(&epki, &ciphertext, CBS_ASN1_OCTETSTRING) ||
-      !CBB_reserve(&ciphertext, &out, max_out) ||
-      !EVP_CipherUpdate(&ctx, out, &n1, plaintext, plaintext_len) ||
-      !EVP_CipherFinal_ex(&ctx, out + n1, &n2) ||
+      !CBB_reserve(&ciphertext, &ptr, max_out) ||
+      !EVP_CipherUpdate(&ctx, ptr, &n1, plaintext, plaintext_len) ||
+      !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
       !CBB_did_write(&ciphertext, n1 + n2) ||
-      !CBB_finish(&cbb, &der, &der_len)) {
+      !CBB_flush(out)) {
     goto err;
   }
 
-  /* Convert back to legacy ASN.1 objects. */
-  const uint8_t *ptr = der;
-  ret = d2i_X509_SIG(NULL, &ptr, der_len);
-  if (ret == NULL || ptr != der + der_len) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_INTERNAL_ERROR);
-    X509_SIG_free(ret);
-    ret = NULL;
-  }
+  ret = 1;
 
 err:
-  if (plaintext_len > 0) {
+  if (plaintext != NULL) {
     OPENSSL_cleanse(plaintext, plaintext_len);
+    OPENSSL_free(plaintext);
   }
-  OPENSSL_free(plaintext);
   OPENSSL_free(salt_buf);
-  OPENSSL_free(der);
-  CBB_cleanup(&cbb);
   EVP_CIPHER_CTX_cleanup(&ctx);
   return ret;
 }

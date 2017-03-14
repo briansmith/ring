@@ -88,6 +88,14 @@ OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
                                        int iterations,
                                        PKCS8_PRIV_KEY_INFO *p8inf);
 
+/* PKCS8_marshal_encrypted_private_key behaves like |PKCS8_encrypt| but encrypts
+ * an |EVP_PKEY| and writes the serialized EncryptedPrivateKeyInfo to |out|. It
+ * returns one on success and zero on error. */
+OPENSSL_EXPORT int PKCS8_marshal_encrypted_private_key(
+    CBB *out, int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+    size_t pass_len, const uint8_t *salt, size_t salt_len, int iterations,
+    const EVP_PKEY *pkey);
+
 /* PKCS8_decrypt decrypts and decodes a PKCS8_PRIV_KEY_INFO with PBES1 or PBES2
  * as defined in PKCS #5. Only pbeWithSHAAnd128BitRC4,
  * pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, and PBES2,
@@ -102,6 +110,13 @@ OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
                                                   const char *pass,
                                                   int pass_len);
+
+/* PKCS8_parse_encrypted_private_key behaves like |PKCS8_decrypt| but it parses
+ * the EncryptedPrivateKeyInfo structure from |cbs| and advances |cbs|. It
+ * returns a newly-allocated |EVP_PKEY| on success and zero on error. */
+OPENSSL_EXPORT EVP_PKEY *PKCS8_parse_encrypted_private_key(CBS *cbs,
+                                                           const char *pass,
+                                                           size_t pass_len);
 
 /* PKCS12_get_key_and_certs parses a PKCS#12 structure from |in|, authenticates
  * and decrypts it using |password|, sets |*out_key| to the included private
