@@ -140,8 +140,8 @@ static int add_cipher_oid(CBB *out, int nid) {
 }
 
 static int pkcs5_pbe2_cipher_init(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
-                                  unsigned iterations, const uint8_t *pass_raw,
-                                  size_t pass_raw_len, const uint8_t *salt,
+                                  unsigned iterations, const char *pass,
+                                  size_t pass_len, const uint8_t *salt,
                                   size_t salt_len, const uint8_t *iv,
                                   size_t iv_len, int enc) {
   if (iv_len != EVP_CIPHER_iv_length(cipher)) {
@@ -150,8 +150,7 @@ static int pkcs5_pbe2_cipher_init(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
   }
 
   uint8_t key[EVP_MAX_KEY_LENGTH];
-  int ret = PKCS5_PBKDF2_HMAC_SHA1((const char *)pass_raw, pass_raw_len, salt,
-                                   salt_len, iterations,
+  int ret = PKCS5_PBKDF2_HMAC_SHA1(pass, pass_len, salt, salt_len, iterations,
                                    EVP_CIPHER_key_length(cipher), key) &&
             EVP_CipherInit_ex(ctx, cipher, NULL /* engine */, key, iv, enc);
   OPENSSL_cleanse(key, EVP_MAX_KEY_LENGTH);
@@ -160,7 +159,7 @@ static int pkcs5_pbe2_cipher_init(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
 int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
                             const EVP_CIPHER *cipher, unsigned iterations,
-                            const uint8_t *pass_raw, size_t pass_raw_len,
+                            const char *pass, size_t pass_len,
                             const uint8_t *salt, size_t salt_len) {
   int cipher_nid = EVP_CIPHER_nid(cipher);
   if (cipher_nid == NID_undef) {
@@ -202,14 +201,13 @@ int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
     return 0;
   }
 
-  return pkcs5_pbe2_cipher_init(ctx, cipher, iterations, pass_raw, pass_raw_len,
-                                salt, salt_len, iv,
-                                EVP_CIPHER_iv_length(cipher), 1 /* encrypt */);
+  return pkcs5_pbe2_cipher_init(ctx, cipher, iterations, pass, pass_len, salt,
+                                salt_len, iv, EVP_CIPHER_iv_length(cipher),
+                                1 /* encrypt */);
 }
 
 int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
-                            const uint8_t *pass_raw, size_t pass_raw_len,
-                            CBS *param) {
+                            const char *pass, size_t pass_len, CBS *param) {
   CBS pbe_param, kdf, kdf_obj, enc_scheme, enc_obj;
   if (!CBS_get_asn1(param, &pbe_param, CBS_ASN1_SEQUENCE) ||
       CBS_len(param) != 0 ||
@@ -303,7 +301,7 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
     return 0;
   }
 
-  return pkcs5_pbe2_cipher_init(ctx, cipher, (unsigned)iterations, pass_raw,
-                                pass_raw_len, CBS_data(&salt), CBS_len(&salt),
+  return pkcs5_pbe2_cipher_init(ctx, cipher, (unsigned)iterations, pass,
+                                pass_len, CBS_data(&salt), CBS_len(&salt),
                                 CBS_data(&iv), CBS_len(&iv), 0 /* decrypt */);
 }

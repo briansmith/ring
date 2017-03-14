@@ -90,6 +90,7 @@ static int ascii_to_ucs2(const char *ascii, size_t ascii_len,
 
   uint8_t *unitmp = OPENSSL_malloc(ulen);
   if (unitmp == NULL) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   for (size_t i = 0; i < ulen - 2; i += 2) {
@@ -105,17 +106,28 @@ static int ascii_to_ucs2(const char *ascii, size_t ascii_len,
   return 1;
 }
 
-static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
-                              const uint8_t *salt, size_t salt_len,
-                              uint8_t id, unsigned iterations,
-                              size_t out_len, uint8_t *out,
-                              const EVP_MD *md) {
+static int pkcs12_key_gen(const char *pass, size_t pass_len,
+                          const uint8_t *salt, size_t salt_len, uint8_t id,
+                          unsigned iterations, size_t out_len, uint8_t *out,
+                          const EVP_MD *md) {
   /* See https://tools.ietf.org/html/rfc7292#appendix-B. Quoted parts of the
    * specification have errata applied and other typos fixed. */
 
   if (iterations < 1) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_ITERATION_COUNT);
     return 0;
+  }
+
+  int ret = 0;
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  uint8_t *pass_raw = NULL, *I = NULL;
+  size_t pass_raw_len = 0, I_len = 0;
+  /* If |pass| is NULL, we use the empty string rather than {0, 0} as the raw
+   * password. */
+  if (pass != NULL &&
+      !ascii_to_ucs2(pass, pass_len, &pass_raw, &pass_raw_len)) {
+    goto err;
   }
 
   /* In the spec, |block_size| is called "v", but measured in bits. */
@@ -139,20 +151,20 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
   if (salt_len + block_size - 1 < salt_len ||
       pass_raw_len + block_size - 1 < pass_raw_len) {
     OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
-    return 0;
+    goto err;
   }
   size_t S_len = block_size * ((salt_len + block_size - 1) / block_size);
   size_t P_len = block_size * ((pass_raw_len + block_size - 1) / block_size);
-  size_t I_len = S_len + P_len;
+  I_len = S_len + P_len;
   if (I_len < S_len) {
     OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
-    return 0;
+    goto err;
   }
 
-  uint8_t *I = OPENSSL_malloc(I_len);
+  I = OPENSSL_malloc(I_len);
   if (I_len != 0 && I == NULL) {
     OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-    return 0;
+    goto err;
   }
 
   for (size_t i = 0; i < S_len; i++) {
@@ -161,10 +173,6 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
   for (size_t i = 0; i < P_len; i++) {
     I[i + S_len] = pass_raw[i % pass_raw_len];
   }
-
-  int ret = 0;
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
 
   while (out_len != 0) {
     /* A. Set A_i=H^r(D||I). (i.e., the r-th hash of D||I,
@@ -217,32 +225,32 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
   ret = 1;
 
 err:
-  OPENSSL_cleanse(I, I_len);
-  OPENSSL_free(I);
+  if (I != NULL) {
+    OPENSSL_cleanse(I, I_len);
+    OPENSSL_free(I);
+  }
+  if (pass_raw != NULL) {
+    OPENSSL_cleanse(pass_raw, pass_raw_len);
+    OPENSSL_free(pass_raw);
+  }
   EVP_MD_CTX_cleanup(&ctx);
   return ret;
 }
 
 static int pkcs12_pbe_cipher_init(const struct pbe_suite *suite,
                                   EVP_CIPHER_CTX *ctx, unsigned iterations,
-                                  const uint8_t *pass_raw, size_t pass_raw_len,
+                                  const char *pass, size_t pass_len,
                                   const uint8_t *salt, size_t salt_len,
                                   int is_encrypt) {
   const EVP_CIPHER *cipher = suite->cipher_func();
   const EVP_MD *md = suite->md_func();
 
   uint8_t key[EVP_MAX_KEY_LENGTH];
-  if (!pkcs12_key_gen_raw(pass_raw, pass_raw_len, salt,
-                          salt_len, PKCS12_KEY_ID, iterations,
-                          EVP_CIPHER_key_length(cipher), key, md)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
-    return 0;
-  }
-
   uint8_t iv[EVP_MAX_IV_LENGTH];
-  if (!pkcs12_key_gen_raw(pass_raw, pass_raw_len, salt,
-                          salt_len, PKCS12_IV_ID, iterations,
-                          EVP_CIPHER_iv_length(cipher), iv, md)) {
+  if (!pkcs12_key_gen(pass, pass_len, salt, salt_len, PKCS12_KEY_ID, iterations,
+                      EVP_CIPHER_key_length(cipher), key, md) ||
+      !pkcs12_key_gen(pass, pass_len, salt, salt_len, PKCS12_IV_ID, iterations,
+                      EVP_CIPHER_iv_length(cipher), iv, md)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
     return 0;
   }
@@ -254,8 +262,8 @@ static int pkcs12_pbe_cipher_init(const struct pbe_suite *suite,
 }
 
 static int pkcs12_pbe_decrypt_init(const struct pbe_suite *suite,
-                                   EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
-                                   size_t pass_raw_len, CBS *param) {
+                                   EVP_CIPHER_CTX *ctx, const char *pass,
+                                   size_t pass_len, CBS *param) {
   CBS pbe_param, salt;
   uint64_t iterations;
   if (!CBS_get_asn1(param, &pbe_param, CBS_ASN1_SEQUENCE) ||
@@ -272,8 +280,8 @@ static int pkcs12_pbe_decrypt_init(const struct pbe_suite *suite,
     return 0;
   }
 
-  return pkcs12_pbe_cipher_init(suite, ctx, (unsigned)iterations, pass_raw,
-                                pass_raw_len, CBS_data(&salt), CBS_len(&salt),
+  return pkcs12_pbe_cipher_init(suite, ctx, (unsigned)iterations, pass,
+                                pass_len, CBS_data(&salt), CBS_len(&salt),
                                 0 /* decrypt */);
 }
 
@@ -286,7 +294,6 @@ static const struct pbe_suite kBuiltinPBE[] = {
         EVP_rc2_40_cbc,
         EVP_sha1,
         pkcs12_pbe_decrypt_init,
-        PBE_UCS2_CONVERT_PASSWORD,
     },
     {
         NID_pbe_WithSHA1And128BitRC4,
@@ -296,7 +303,6 @@ static const struct pbe_suite kBuiltinPBE[] = {
         EVP_rc4,
         EVP_sha1,
         pkcs12_pbe_decrypt_init,
-        PBE_UCS2_CONVERT_PASSWORD,
     },
     {
         NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
@@ -306,7 +312,6 @@ static const struct pbe_suite kBuiltinPBE[] = {
         EVP_des_ede3_cbc,
         EVP_sha1,
         pkcs12_pbe_decrypt_init,
-        PBE_UCS2_CONVERT_PASSWORD,
     },
     {
         NID_pbes2,
@@ -316,7 +321,6 @@ static const struct pbe_suite kBuiltinPBE[] = {
         NULL,
         NULL,
         PKCS5_pbe2_decrypt_init,
-        0,
     },
 };
 
@@ -330,51 +334,9 @@ static const struct pbe_suite *get_pbe_suite(int pbe_nid) {
   return NULL;
 }
 
-/* pass_to_pass_raw performs a password conversion (possibly a no-op)
- * appropriate to the supplied |pbe_nid|. The input |pass| is treated as a
- * NUL-terminated string if |pass_len| is -1, otherwise it is treated as a
- * buffer of the specified length. If the supplied PBE NID sets the
- * |PBE_UCS2_CONVERT_PASSWORD| flag, the supplied |pass| will be converted to
- * UCS-2.
- *
- * It sets |*out_pass_raw| to a new buffer that must be freed by the caller. It
- * returns one on success and zero on error. */
-static int pass_to_pass_raw(int pbe_nid, const char *pass, int pass_len,
-                            uint8_t **out_pass_raw, size_t *out_pass_raw_len) {
-  if (pass == NULL) {
-    *out_pass_raw = NULL;
-    *out_pass_raw_len = 0;
-    return 1;
-  }
-
-  if (pass_len == -1) {
-    pass_len = strlen(pass);
-  } else if (pass_len < 0 || pass_len > 2000000000) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
-    return 0;
-  }
-
-  const struct pbe_suite *suite = get_pbe_suite(pbe_nid);
-  if (suite != NULL && (suite->flags & PBE_UCS2_CONVERT_PASSWORD)) {
-    if (!ascii_to_ucs2(pass, pass_len, out_pass_raw, out_pass_raw_len)) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
-      return 0;
-    }
-  } else {
-    *out_pass_raw = BUF_memdup(pass, pass_len);
-    if (*out_pass_raw == NULL) {
-      OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-    *out_pass_raw_len = (size_t)pass_len;
-  }
-
-  return 1;
-}
-
 static int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
-                                   unsigned iterations, const uint8_t *pass_raw,
-                                   size_t pass_raw_len, const uint8_t *salt,
+                                   unsigned iterations, const char *pass,
+                                   size_t pass_len, const uint8_t *salt,
                                    size_t salt_len) {
   const struct pbe_suite *suite = get_pbe_suite(alg);
   if (suite == NULL) {
@@ -395,13 +357,13 @@ static int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
     return 0;
   }
 
-  return pkcs12_pbe_cipher_init(suite, ctx, iterations, pass_raw, pass_raw_len,
-                                salt, salt_len, 1 /* encrypt */);
+  return pkcs12_pbe_cipher_init(suite, ctx, iterations, pass, pass_len, salt,
+                                salt_len, 1 /* encrypt */);
 }
 
 static int pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
-                       const uint8_t *pass_raw, size_t pass_raw_len,
-                       const uint8_t *in, size_t in_len) {
+                       const char *pass, size_t pass_len, const uint8_t *in,
+                       size_t in_len) {
   int ret = 0;
   uint8_t *buf = NULL;;
   EVP_CIPHER_CTX ctx;
@@ -425,7 +387,7 @@ static int pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
     goto err;
   }
 
-  if (!suite->decrypt_init(suite, &ctx, pass_raw, pass_raw_len, algorithm)) {
+  if (!suite->decrypt_init(suite, &ctx, pass, pass_len, algorithm)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEYGEN_FAILURE);
     goto err;
   }
@@ -458,9 +420,15 @@ err:
   return ret;
 }
 
-static PKCS8_PRIV_KEY_INFO *pkcs8_decrypt_raw(X509_SIG *pkcs8,
-                                              const uint8_t *pass_raw,
-                                              size_t pass_raw_len) {
+PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
+                                   int pass_len_i) {
+  size_t pass_len;
+  if (pass_len_i == -1 && pass != NULL) {
+    pass_len = strlen(pass);
+  } else {
+    pass_len = (size_t)pass_len_i;
+  }
+
   PKCS8_PRIV_KEY_INFO *ret = NULL;
   uint8_t *in = NULL, *out = NULL;
   size_t out_len = 0;
@@ -483,7 +451,7 @@ static PKCS8_PRIV_KEY_INFO *pkcs8_decrypt_raw(X509_SIG *pkcs8,
     goto err;
   }
 
-  if (!pbe_decrypt(&out, &out_len, &algorithm, pass_raw, pass_raw_len,
+  if (!pbe_decrypt(&out, &out_len, &algorithm, pass, pass_len,
                    CBS_data(&ciphertext), CBS_len(&ciphertext))) {
     goto err;
   }
@@ -510,28 +478,16 @@ err:
   return ret;
 }
 
-PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
-                                   int pass_len) {
-  uint8_t *pass_raw = NULL;
-  size_t pass_raw_len = 0;
-  if (!pass_to_pass_raw(OBJ_obj2nid(pkcs8->algor->algorithm), pass, pass_len,
-                        &pass_raw, &pass_raw_len)) {
-    return NULL;
+X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+                        int pass_len_i, const uint8_t *salt, size_t salt_len,
+                        int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
+  size_t pass_len;
+  if (pass_len_i == -1 && pass != NULL) {
+    pass_len = strlen(pass);
+  } else {
+    pass_len = (size_t)pass_len_i;
   }
 
-  PKCS8_PRIV_KEY_INFO *ret = pkcs8_decrypt_raw(pkcs8, pass_raw, pass_raw_len);
-
-  if (pass_raw) {
-    OPENSSL_cleanse(pass_raw, pass_raw_len);
-    OPENSSL_free(pass_raw);
-  }
-  return ret;
-}
-
-static X509_SIG *pkcs8_encrypt_raw(int pbe_nid, const EVP_CIPHER *cipher,
-                                   const uint8_t *pass_raw, size_t pass_raw_len,
-                                   const uint8_t *salt, size_t salt_len,
-                                   int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   X509_SIG *ret = NULL;
   uint8_t *plaintext = NULL, *salt_buf = NULL, *der = NULL;
   int plaintext_len = -1;
@@ -575,10 +531,10 @@ static X509_SIG *pkcs8_encrypt_raw(int pbe_nid, const EVP_CIPHER *cipher,
   int alg_ok;
   if (pbe_nid == -1) {
     alg_ok = PKCS5_pbe2_encrypt_init(&epki, &ctx, cipher, (unsigned)iterations,
-                                     pass_raw, pass_raw_len, salt, salt_len);
+                                     pass, pass_len, salt, salt_len);
   } else {
     alg_ok = pkcs12_pbe_encrypt_init(&epki, &ctx, pbe_nid, (unsigned)iterations,
-                                     pass_raw, pass_raw_len, salt, salt_len);
+                                     pass, pass_len, salt, salt_len);
   }
   if (!alg_ok) {
     goto err;
@@ -620,25 +576,6 @@ err:
   OPENSSL_free(der);
   CBB_cleanup(&cbb);
   EVP_CIPHER_CTX_cleanup(&ctx);
-  return ret;
-}
-
-X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
-                        int pass_len, const uint8_t *salt, size_t salt_len,
-                        int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
-  uint8_t *pass_raw = NULL;
-  size_t pass_raw_len = 0;
-  if (!pass_to_pass_raw(pbe_nid, pass, pass_len, &pass_raw, &pass_raw_len)) {
-    return NULL;
-  }
-
-  X509_SIG *ret = pkcs8_encrypt_raw(pbe_nid, cipher, pass_raw, pass_raw_len,
-                                    salt, salt_len, iterations, p8inf);
-
-  if (pass_raw) {
-    OPENSSL_cleanse(pass_raw, pass_raw_len);
-    OPENSSL_free(pass_raw);
-  }
   return ret;
 }
 
@@ -695,7 +632,7 @@ err:
 struct pkcs12_context {
   EVP_PKEY **out_key;
   STACK_OF(X509) *out_certs;
-  uint8_t *password;
+  const char *password;
   size_t password_len;
 };
 
@@ -803,7 +740,7 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
     }
 
     PKCS8_PRIV_KEY_INFO *pki =
-        pkcs8_decrypt_raw(encrypted, ctx->password, ctx->password_len);
+        PKCS8_decrypt(encrypted, ctx->password, ctx->password_len);
     X509_SIG_free(encrypted);
     if (pki == NULL) {
       return 0;
@@ -1025,11 +962,8 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
 
   ctx.out_key = out_key;
   ctx.out_certs = out_certs;
-  if (!ascii_to_ucs2(password, password ? strlen(password) : 0, &ctx.password,
-                     &ctx.password_len)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
-    goto err;
-  }
+  ctx.password = password;
+  ctx.password_len = password != NULL ? strlen(password) : 0;
 
   /* Verify the MAC. */
   {
@@ -1061,9 +995,9 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
     }
 
     uint8_t hmac_key[EVP_MAX_MD_SIZE];
-    if (!pkcs12_key_gen_raw(ctx.password, ctx.password_len, CBS_data(&salt),
-                            CBS_len(&salt), PKCS12_MAC_ID, iterations,
-                            EVP_MD_size(md), hmac_key, md)) {
+    if (!pkcs12_key_gen(ctx.password, ctx.password_len, CBS_data(&salt),
+                        CBS_len(&salt), PKCS12_MAC_ID, iterations,
+                        EVP_MD_size(md), hmac_key, md)) {
       goto err;
     }
 
@@ -1088,7 +1022,6 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   ret = 1;
 
 err:
-  OPENSSL_free(ctx.password);
   OPENSSL_free(der_bytes);
   if (!ret) {
     EVP_PKEY_free(*out_key);
