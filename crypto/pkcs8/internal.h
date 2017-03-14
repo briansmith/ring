@@ -63,6 +63,26 @@ extern "C" {
 #endif
 
 
+/* pkcs8_pbe_decrypt decrypts |in| using the PBE scheme described by
+ * |algorithm|, which should be a serialized AlgorithmIdentifier structure. On
+ * success, it sets |*out| to a newly-allocated buffer containing the decrypted
+ * result and returns one. Otherwise, it returns zero. */
+int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
+                      const char *pass, size_t pass_len, const uint8_t *in,
+                      size_t in_len);
+
+#define PKCS12_KEY_ID 1
+#define PKCS12_IV_ID 2
+#define PKCS12_MAC_ID 3
+
+/* pkcs12_key_gen runs the PKCS#12 key derivation function as specified in
+ * RFC 7292, appendix B. On success, it writes the resulting |out_len| bytes of
+ * key material to |out| and returns one. Otherwise, it returns zero. |id|
+ * should be one of the |PKCS12_*_ID| values. */
+int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
+                   size_t salt_len, uint8_t id, unsigned iterations,
+                   size_t out_len, uint8_t *out, const EVP_MD *md);
+
 struct pbe_suite {
   int pbe_nid;
   uint8_t oid[10];
