@@ -2017,7 +2017,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 /* ssl_ticket_aead_result_t enumerates the possible results from decrypting a
  * ticket with an |SSL_TICKET_AEAD_METHOD|. */
 enum ssl_ticket_aead_result_t {
-  /* ssl_ticket_aead_success indicates the the ticket was successfully
+  /* ssl_ticket_aead_success indicates that the ticket was successfully
    * decrypted. */
   ssl_ticket_aead_success,
   /* ssl_ticket_aead_retry indicates that the operation could not be
