@@ -60,6 +60,7 @@
 #include <string.h>
 
 #include <openssl/asn1.h>
+#include <openssl/bytestring.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
@@ -328,20 +329,58 @@ static const struct {
   { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04}, 9, EVP_sha224 },
 };
 
+static const EVP_MD *cbs_to_md(const CBS *cbs) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMDOIDs); i++) {
+    if (CBS_len(cbs) == kMDOIDs[i].oid_len &&
+        OPENSSL_memcmp(CBS_data(cbs), kMDOIDs[i].oid, kMDOIDs[i].oid_len) ==
+            0) {
+      return kMDOIDs[i].md_func();
+    }
+  }
+
+  return NULL;
+}
+
 const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
   /* Handle objects with no corresponding OID. */
   if (obj->nid != NID_undef) {
     return EVP_get_digestbynid(obj->nid);
   }
 
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kMDOIDs); i++) {
-    if (obj->length == kMDOIDs[i].oid_len &&
-        memcmp(obj->data, kMDOIDs[i].oid, obj->length) == 0) {
-      return kMDOIDs[i].md_func();
+  CBS cbs;
+  CBS_init(&cbs, obj->data, obj->length);
+  return cbs_to_md(&cbs);
+}
+
+const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs) {
+  CBS algorithm, oid;
+  if (!CBS_get_asn1(cbs, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&algorithm, &oid, CBS_ASN1_OBJECT)) {
+    OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_DECODE_ERROR);
+    return NULL;
+  }
+
+  const EVP_MD *ret = cbs_to_md(&oid);
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_UNKNOWN_HASH);
+    return NULL;
+  }
+
+  /* The parameters, if present, must be NULL. Historically, whether the NULL
+   * was included or omitted was not well-specified. When parsing an
+   * AlgorithmIdentifier, we allow both. (Note this code is not used when
+   * verifying RSASSA-PKCS1-v1_5 signatures.) */
+  if (CBS_len(&algorithm) > 0) {
+    CBS param;
+    if (!CBS_get_asn1(&algorithm, &param, CBS_ASN1_NULL) ||
+        CBS_len(&param) != 0 ||
+        CBS_len(&algorithm) != 0) {
+      OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_DECODE_ERROR);
+      return NULL;
     }
   }
 
-  return NULL;
+  return ret;
 }
 
 const EVP_MD *EVP_get_digestbyname(const char *name) {

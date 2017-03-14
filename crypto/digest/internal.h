@@ -104,6 +104,8 @@ struct evp_md_pctx_ops {
   EVP_PKEY_CTX* (*dup) (EVP_PKEY_CTX *pctx);
 };
 
+const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

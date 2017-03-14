@@ -74,6 +74,7 @@
 #include "internal.h"
 #include "../internal.h"
 #include "../bytestring/internal.h"
+#include "../digest/internal.h"
 
 
 #define PKCS12_KEY_ID 1
@@ -1032,25 +1033,25 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
 
   /* Verify the MAC. */
   {
-    CBS mac, hash_type_seq, hash_oid, salt, expected_mac;
-    uint64_t iterations;
-    int hash_nid;
-    const EVP_MD *md;
-    uint8_t hmac_key[EVP_MAX_MD_SIZE];
-    uint8_t hmac[EVP_MAX_MD_SIZE];
-    unsigned hmac_len;
+    CBS mac, salt, expected_mac;
+    if (!CBS_get_asn1(&mac_data, &mac, CBS_ASN1_SEQUENCE)) {
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+      goto err;
+    }
 
-    if (!CBS_get_asn1(&mac_data, &mac, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&mac, &hash_type_seq, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&hash_type_seq, &hash_oid, CBS_ASN1_OBJECT) ||
-        !CBS_get_asn1(&mac, &expected_mac, CBS_ASN1_OCTETSTRING) ||
+    const EVP_MD *md = EVP_parse_digest_algorithm(&mac);
+    if (md == NULL) {
+      goto err;
+    }
+
+    if (!CBS_get_asn1(&mac, &expected_mac, CBS_ASN1_OCTETSTRING) ||
         !CBS_get_asn1(&mac_data, &salt, CBS_ASN1_OCTETSTRING)) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
       goto err;
     }
 
     /* The iteration count is optional and the default is one. */
-    iterations = 1;
+    uint64_t iterations = 1;
     if (CBS_len(&mac_data) > 0) {
       if (!CBS_get_asn1_uint64(&mac_data, &iterations) ||
           iterations > UINT_MAX) {
@@ -1059,19 +1060,15 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
       }
     }
 
-    hash_nid = OBJ_cbs2nid(&hash_oid);
-    if (hash_nid == NID_undef ||
-        (md = EVP_get_digestbynid(hash_nid)) == NULL) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNKNOWN_HASH);
-      goto err;
-    }
-
+    uint8_t hmac_key[EVP_MAX_MD_SIZE];
     if (!pkcs12_key_gen_raw(ctx.password, ctx.password_len, CBS_data(&salt),
                             CBS_len(&salt), PKCS12_MAC_ID, iterations,
                             EVP_MD_size(md), hmac_key, md)) {
       goto err;
     }
 
+    uint8_t hmac[EVP_MAX_MD_SIZE];
+    unsigned hmac_len;
     if (NULL == HMAC(md, hmac_key, EVP_MD_size(md), CBS_data(&authsafes),
                      CBS_len(&authsafes), hmac, &hmac_len)) {
       goto err;
