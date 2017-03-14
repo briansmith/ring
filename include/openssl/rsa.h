@@ -354,8 +354,8 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM,
  *
  * It returns one on success or zero on error. */
 OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP_mgf1(
-    uint8_t *to, unsigned to_len, const uint8_t *from, unsigned from_len,
-    const uint8_t *param, unsigned param_len, const EVP_MD *md,
+    uint8_t *to, size_t to_len, const uint8_t *from, size_t from_len,
+    const uint8_t *param, size_t param_len, const EVP_MD *md,
     const EVP_MD *mgf1md);
 
 /* RSA_add_pkcs1_prefix builds a version of |msg| prefixed with the DigestInfo
@@ -519,11 +519,11 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS(RSA *rsa, const uint8_t *mHash,
 /* RSA_padding_add_PKCS1_OAEP acts like |RSA_padding_add_PKCS1_OAEP_mgf1| but
  * the |md| and |mgf1md| parameters of the latter are implicitly set to NULL,
  * which means SHA-1. */
-OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, unsigned to_len,
+OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
                                               const uint8_t *from,
-                                              unsigned from_len,
+                                              size_t from_len,
                                               const uint8_t *param,
-                                              unsigned param_len);
+                                              size_t param_len);
 
 
 struct rsa_meth_st {
