@@ -69,6 +69,18 @@
 #include "../internal.h"
 
 
+/* 1.2.840.113549.1.5.12 */
+static const uint8_t kPBKDF2[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                  0x0d, 0x01, 0x05, 0x0c};
+
+/* 1.2.840.113549.1.5.13 */
+static const uint8_t kPBES2[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                 0x0d, 0x01, 0x05, 0x0d};
+
+/* 1.2.840.113549.2.7 */
+static const uint8_t kHMACWithSHA1[] = {0x2a, 0x86, 0x48, 0x86,
+                                        0xf7, 0x0d, 0x02, 0x07};
+
 static int pkcs5_pbe2_cipher_init(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                                   unsigned iterations, const uint8_t *pass_raw,
                                   size_t pass_raw_len, const uint8_t *salt,
@@ -105,12 +117,15 @@ int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
   }
 
   /* See RFC 2898, appendix A. */
-  CBB algorithm, param, kdf, kdf_param, salt_cbb, cipher_cbb, iv_cbb;
+  CBB algorithm, oid, param, kdf, kdf_oid, kdf_param, salt_cbb, cipher_cbb,
+      iv_cbb;
   if (!CBB_add_asn1(out, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&algorithm, NID_pbes2) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, kPBES2, sizeof(kPBES2)) ||
       !CBB_add_asn1(&algorithm, &param, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&param, &kdf, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&kdf, NID_id_pbkdf2) ||
+      !CBB_add_asn1(&kdf, &kdf_oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&kdf_oid, kPBKDF2, sizeof(kPBKDF2)) ||
       !CBB_add_asn1(&kdf, &kdf_param, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&kdf_param, &salt_cbb, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&salt_cbb, salt, salt_len) ||
@@ -149,8 +164,8 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
     return 0;
   }
 
-  /* Check that the key derivation function is PBKDF2. */
-  if (OBJ_cbs2nid(&kdf_obj) != NID_id_pbkdf2) {
+  /* Only PBKDF2 is supported. */
+  if (!CBS_mem_equal(&kdf_obj, kPBKDF2, sizeof(kPBKDF2))) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_KEY_DERIVATION_FUNCTION);
     return 0;
   }
@@ -203,7 +218,7 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
 
     /* We only support hmacWithSHA1. It is the DEFAULT, so DER requires it be
      * omitted, but we match OpenSSL in tolerating it being present. */
-    if (OBJ_cbs2nid(&prf) != NID_hmacWithSHA1) {
+    if (!CBS_mem_equal(&prf, kHMACWithSHA1, sizeof(kHMACWithSHA1))) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_PRF);
       return 0;
     }

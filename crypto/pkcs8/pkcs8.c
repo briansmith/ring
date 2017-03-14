@@ -718,6 +718,18 @@ err:
   return ret;
 }
 
+/* 1.2.840.113549.1.12.10.1.2 */
+static const uint8_t kPKCS8ShroudedKeyBag[] = {
+    0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x0c, 0x0a, 0x01, 0x02};
+
+/* 1.2.840.113549.1.12.10.1.3 */
+static const uint8_t kCertBag[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
+                                   0x01, 0x0c, 0x0a, 0x01, 0x03};
+
+/* 1.2.840.113549.1.9.22.1 */
+static const uint8_t kX509Certificate[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                           0x0d, 0x01, 0x09, 0x16, 0x01};
+
 /* PKCS12_handle_safe_bag parses a single SafeBag element in a PKCS#12
  * structure. */
 static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
@@ -730,8 +742,8 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
     return 0;
   }
 
-  int nid = OBJ_cbs2nid(&bag_id);
-  if (nid == NID_pkcs8ShroudedKeyBag) {
+  if (CBS_mem_equal(&bag_id, kPKCS8ShroudedKeyBag,
+                    sizeof(kPKCS8ShroudedKeyBag))) {
     /* See RFC 7292, section 4.2.2. */
     if (*ctx->out_key) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_MULTIPLE_PRIVATE_KEYS_IN_PKCS12);
@@ -770,7 +782,7 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
     return ctx->out_key != NULL;
   }
 
-  if (nid == NID_certBag) {
+  if (CBS_mem_equal(&bag_id, kCertBag, sizeof(kCertBag))) {
     /* See RFC 7292, section 4.2.3. */
     CBS cert_bag, cert_type, wrapped_cert, cert;
     if (!CBS_get_asn1(&wrapped_value, &cert_bag, CBS_ASN1_SEQUENCE) ||
@@ -782,7 +794,9 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
       return 0;
     }
 
-    if (OBJ_cbs2nid(&cert_type) != NID_x509Certificate) {
+    /* Skip unknown certificate types. */
+    if (!CBS_mem_equal(&cert_type, kX509Certificate,
+                       sizeof(kX509Certificate))) {
       return 1;
     }
 
@@ -816,12 +830,20 @@ static int PKCS12_handle_safe_bag(CBS *safe_bag, struct pkcs12_context *ctx) {
   return 1;
 }
 
+/* 1.2.840.113549.1.7.1 */
+static const uint8_t kPKCS7Data[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                     0x0d, 0x01, 0x07, 0x01};
+
+/* 1.2.840.113549.1.7.6 */
+static const uint8_t kPKCS7EncryptedData[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                              0x0d, 0x01, 0x07, 0x06};
+
 /* PKCS12_handle_content_info parses a single PKCS#7 ContentInfo element in a
  * PKCS#12 structure. */
 static int PKCS12_handle_content_info(CBS *content_info,
                                       struct pkcs12_context *ctx) {
   CBS content_type, wrapped_contents, contents;
-  int nid, ret = 0;
+  int ret = 0;
   uint8_t *storage = NULL;
 
   if (!CBS_get_asn1(content_info, &content_type, CBS_ASN1_OBJECT) ||
@@ -832,8 +854,8 @@ static int PKCS12_handle_content_info(CBS *content_info,
     goto err;
   }
 
-  nid = OBJ_cbs2nid(&content_type);
-  if (nid == NID_pkcs7_encrypted) {
+  if (CBS_mem_equal(&content_type, kPKCS7EncryptedData,
+                    sizeof(kPKCS7EncryptedData))) {
     /* See https://tools.ietf.org/html/rfc2315#section-13.
      *
      * PKCS#7 encrypted data inside a PKCS#12 structure is generally an
@@ -859,7 +881,7 @@ static int PKCS12_handle_content_info(CBS *content_info,
       goto err;
     }
 
-    if (OBJ_cbs2nid(&contents_type) != NID_pkcs7_data) {
+    if (!CBS_mem_equal(&contents_type, kPKCS7Data, sizeof(kPKCS7Data))) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
       goto err;
     }
@@ -874,7 +896,7 @@ static int PKCS12_handle_content_info(CBS *content_info,
     CBS_init(&safe_contents, out, out_len);
     ret = PKCS12_handle_sequence(&safe_contents, ctx, PKCS12_handle_safe_bag);
     OPENSSL_free(out);
-  } else if (nid == NID_pkcs7_data) {
+  } else if (CBS_mem_equal(&content_type, kPKCS7Data, sizeof(kPKCS7Data))) {
     CBS octet_string_contents;
 
     if (!CBS_get_asn1(&wrapped_contents, &octet_string_contents,
@@ -957,10 +979,9 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
     goto err;
   }
 
-  /* The content type can either be |NID_pkcs7_data| or |NID_pkcs7_signed|. The
-   * latter indicates that it's signed by a public key, which isn't
-   * supported. */
-  if (OBJ_cbs2nid(&content_type) != NID_pkcs7_data) {
+  /* The content type can either be data or signedData. The latter indicates
+   * that it's signed by a public key, which isn't supported. */
+  if (!CBS_mem_equal(&content_type, kPKCS7Data, sizeof(kPKCS7Data))) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_PKCS12_PUBLIC_KEY_INTEGRITY_NOT_SUPPORTED);
     goto err;
   }
