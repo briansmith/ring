@@ -62,7 +62,7 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/rand.h>
 
 #include "internal.h"
@@ -80,6 +80,64 @@ static const uint8_t kPBES2[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
 /* 1.2.840.113549.2.7 */
 static const uint8_t kHMACWithSHA1[] = {0x2a, 0x86, 0x48, 0x86,
                                         0xf7, 0x0d, 0x02, 0x07};
+
+static const struct {
+  uint8_t oid[9];
+  uint8_t oid_len;
+  int nid;
+  const EVP_CIPHER *(*cipher_func)(void);
+} kCipherOIDs[] = {
+    /* 1.2.840.113549.3.2 */
+    {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x03, 0x02},
+     8,
+     NID_rc2_cbc,
+     &EVP_rc2_cbc},
+    /* 1.2.840.113549.3.7 */
+    {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x03, 0x07},
+     8,
+     NID_des_ede3_cbc,
+     &EVP_des_ede3_cbc},
+    /* 2.16.840.1.101.3.4.1.2 */
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x01, 0x02},
+     9,
+     NID_aes_128_cbc,
+     &EVP_aes_128_cbc},
+    /* 2.16.840.1.101.3.4.1.22 */
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x01, 0x16},
+     9,
+     NID_aes_192_cbc,
+     &EVP_aes_192_cbc},
+    /* 2.16.840.1.101.3.4.1.42 */
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x01, 0x2a},
+     9,
+     NID_aes_256_cbc,
+     &EVP_aes_256_cbc},
+};
+
+static const EVP_CIPHER *cbs_to_cipher(const CBS *cbs) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCipherOIDs); i++) {
+    if (CBS_mem_equal(cbs, kCipherOIDs[i].oid, kCipherOIDs[i].oid_len)) {
+      return kCipherOIDs[i].cipher_func();
+    }
+  }
+
+  return NULL;
+}
+
+static int add_cipher_oid(CBB *out, int nid) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCipherOIDs); i++) {
+    if (kCipherOIDs[i].nid == nid) {
+      CBB child;
+      return CBB_add_asn1(out, &child, CBS_ASN1_OBJECT) &&
+             CBB_add_bytes(&child, kCipherOIDs[i].oid,
+                           kCipherOIDs[i].oid_len) &&
+             CBB_flush(out);
+    }
+  }
+
+  OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_CIPHER);
+  return 0;
+}
 
 static int pkcs5_pbe2_cipher_init(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                                   unsigned iterations, const uint8_t *pass_raw,
@@ -135,7 +193,7 @@ int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
        !CBB_add_asn1_uint64(&kdf_param, EVP_CIPHER_key_length(cipher))) ||
       /* Omit the PRF. We use the default hmacWithSHA1. */
       !CBB_add_asn1(&param, &cipher_cbb, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&cipher_cbb, cipher_nid) ||
+      !add_cipher_oid(&cipher_cbb, cipher_nid) ||
       /* RFC 2898 says RC2-CBC and RC5-CBC-Pad use a SEQUENCE with version and
        * IV, but OpenSSL always uses an OCTET STRING IV, so we do the same. */
       !CBB_add_asn1(&cipher_cbb, &iv_cbb, CBS_ASN1_OCTETSTRING) ||
@@ -171,7 +229,7 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
   }
 
   /* See if we recognise the encryption algorithm. */
-  const EVP_CIPHER *cipher = EVP_get_cipherbynid(OBJ_cbs2nid(&enc_obj));
+  const EVP_CIPHER *cipher = cbs_to_cipher(&enc_obj);
   if (cipher == NULL) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_CIPHER);
     return 0;
@@ -226,8 +284,8 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
 
   /* Parse the encryption scheme parameters. Note OpenSSL does not match the
    * specification. Per RFC 2898, this should depend on the encryption scheme.
-   * In particular, RC2-CBC and RC5-CBC-Pad use a SEQUENCE with version and IV.
-   * We align with OpenSSL. */
+   * In particular, RC2-CBC uses a SEQUENCE with version and IV. We align with
+   * OpenSSL. */
   CBS iv;
   if (!CBS_get_asn1(&enc_scheme, &iv, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&enc_scheme) != 0) {
