@@ -89,6 +89,18 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
     Ok((tag, inner))
 }
 
+pub fn bit_string_with_no_unused_bits<'a>(input: &mut untrusted::Reader<'a>)
+        -> Result<untrusted::Input<'a>, error::Unspecified> {
+    nested(input, Tag::BitString, error::Unspecified, |value| {
+        let unused_bits_at_end =
+            try!(value.read_byte().map_err(|_| error::Unspecified));
+        if unused_bits_at_end != 0 {
+            return Err(error::Unspecified);
+        }
+        Ok(value.skip_to_end())
+    })
+}
+
 // TODO: investigate taking decoder as a reference to reduce generated code
 // size.
 pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
