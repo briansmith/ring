@@ -2397,8 +2397,9 @@ int SSL_is_server(const SSL *ssl) { return ssl->server; }
 
 int SSL_is_dtls(const SSL *ssl) { return ssl->method->is_dtls; }
 
-void SSL_CTX_set_select_certificate_cb(SSL_CTX *ctx,
-                                       int (*cb)(const SSL_CLIENT_HELLO *)) {
+void SSL_CTX_set_select_certificate_cb(
+    SSL_CTX *ctx,
+    enum ssl_select_cert_result_t (*cb)(const SSL_CLIENT_HELLO *)) {
   ctx->select_certificate_cb = cb;
 }
 

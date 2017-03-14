@@ -2144,17 +2144,6 @@ static int SwitchSessionIDContextSNI(SSL *ssl, int *out_alert, void *arg) {
   return SSL_TLSEXT_ERR_OK;
 }
 
-static int SwitchSessionIDContextEarly(const SSL_CLIENT_HELLO *client_hello) {
-  static const uint8_t kContext[] = {3};
-
-  if (!SSL_set_session_id_context(client_hello->ssl, kContext,
-                                  sizeof(kContext))) {
-    return -1;
-  }
-
-  return 1;
-}
-
 static bool TestSessionIDContext(bool is_dtls, const SSL_METHOD *method,
                                  uint16_t version) {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
@@ -2226,8 +2215,18 @@ static bool TestSessionIDContext(bool is_dtls, const SSL_METHOD *method,
 
   // Switch the session ID context with the early callback instead.
   SSL_CTX_set_tlsext_servername_callback(server_ctx.get(), nullptr);
-  SSL_CTX_set_select_certificate_cb(server_ctx.get(),
-                                    SwitchSessionIDContextEarly);
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        static const uint8_t kContext[] = {3};
+
+        if (!SSL_set_session_id_context(client_hello->ssl, kContext,
+                                        sizeof(kContext))) {
+          return ssl_select_cert_error;
+        }
+
+        return ssl_select_cert_success;
+      });
 
   if (!ExpectSessionReused(client_ctx.get(), server_ctx.get(), session.get(),
                            false /* expect session not reused */)) {
@@ -2614,12 +2613,13 @@ TEST(SSLTest, EarlyCallbackVersionSwitch) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
   SSL_CTX_set_select_certificate_cb(
-      server_ctx.get(), [](const SSL_CLIENT_HELLO *client_hello) -> int {
+      server_ctx.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
         if (!SSL_set_max_proto_version(client_hello->ssl, TLS1_2_VERSION)) {
-          return -1;
+          return ssl_select_cert_error;
         }
 
-        return 1;
+        return ssl_select_cert_success;
       });
 
   bssl::UniquePtr<SSL> client, server;

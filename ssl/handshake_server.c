@@ -812,11 +812,11 @@ static int ssl3_process_client_hello(SSL_HANDSHAKE *hs) {
   /* Run the early callback. */
   if (ssl->ctx->select_certificate_cb != NULL) {
     switch (ssl->ctx->select_certificate_cb(&client_hello)) {
-      case 0:
+      case ssl_select_cert_retry:
         ssl->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
         return -1;
 
-      case -1:
+      case ssl_select_cert_error:
         /* Connection rejected. */
         OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);

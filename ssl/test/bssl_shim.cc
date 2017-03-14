@@ -533,7 +533,8 @@ static bool InstallCertificate(SSL *ssl) {
   return true;
 }
 
-static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
+static enum ssl_select_cert_result_t SelectCertificateCallback(
+    const SSL_CLIENT_HELLO *client_hello) {
   const TestConfig *config = GetTestConfig(client_hello->ssl);
   GetTestState(client_hello->ssl)->early_callback_called = true;
 
@@ -547,7 +548,7 @@ static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
             client_hello, TLSEXT_TYPE_server_name, &extension_data,
             &extension_len)) {
       fprintf(stderr, "Could not find server_name extension.\n");
-      return -1;
+      return ssl_select_cert_error;
     }
 
     CBS_init(&extension, extension_data, extension_len);
@@ -558,7 +559,7 @@ static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
         !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
         CBS_len(&server_name_list) != 0) {
       fprintf(stderr, "Could not decode server_name extension.\n");
-      return -1;
+      return ssl_select_cert_error;
     }
 
     if (!CBS_mem_equal(&host_name,
@@ -569,7 +570,7 @@ static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
   }
 
   if (config->fail_early_callback) {
-    return -1;
+    return ssl_select_cert_error;
   }
 
   // Install the certificate in the early callback.
@@ -578,13 +579,13 @@ static int SelectCertificateCallback(const SSL_CLIENT_HELLO *client_hello) {
         GetTestState(client_hello->ssl)->early_callback_ready;
     if (config->async && !early_callback_ready) {
       // Install the certificate asynchronously.
-      return 0;
+      return ssl_select_cert_retry;
     }
     if (!InstallCertificate(client_hello->ssl)) {
-      return -1;
+      return ssl_select_cert_error;
     }
   }
-  return 1;
+  return ssl_select_cert_success;
 }
 
 static bool CheckCertificateRequest(SSL *ssl) {

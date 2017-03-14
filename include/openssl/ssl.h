@@ -3144,6 +3144,20 @@ typedef struct ssl_early_callback_ctx {
   size_t extensions_len;
 } SSL_CLIENT_HELLO;
 
+/* ssl_select_cert_result_t enumerates the possible results from selecting a
+ * certificate with |select_certificate_cb|. */
+enum ssl_select_cert_result_t {
+  /* ssl_select_cert_success indicates that the certificate selection was
+   * successful. */
+  ssl_select_cert_success = 1,
+  /* ssl_select_cert_retry indicates that the operation could not be
+   * immediately completed and must be reattempted at a later point. */
+  ssl_select_cert_retry = 0,
+  /* ssl_select_cert_error indicates that a fatal error occured and the
+   * handshake should be terminated. */
+  ssl_select_cert_error = -1,
+};
+
 /* SSL_early_callback_ctx_extension_get searches the extensions in
  * |client_hello| for an extension of the given type. If not found, it returns
  * zero. Otherwise it sets |out_data| to point to the extension contents (not
@@ -3156,14 +3170,18 @@ OPENSSL_EXPORT int SSL_early_callback_ctx_extension_get(
 /* SSL_CTX_set_select_certificate_cb sets a callback that is called before most
  * ClientHello processing and before the decision whether to resume a session
  * is made. The callback may inspect the ClientHello and configure the
- * connection. It may then return one to continue the handshake or zero to
- * pause the handshake to perform an asynchronous operation. If paused,
- * |SSL_get_error| will return |SSL_ERROR_PENDING_CERTIFICATE|.
+ * connection. See |ssl_select_cert_result_t| for details of the return values.
+ *
+ * In the case that a retry is indicated, |SSL_get_error| will return
+ * |SSL_ERROR_PENDING_CERTIFICATE| and the caller should arrange for the
+ * high-level operation on |ssl| to be retried at a later time, which will
+ * result in another call to |cb|.
  *
  * Note: The |SSL_CLIENT_HELLO| is only valid for the duration of the callback
  * and is not valid while the handshake is paused. */
 OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(
-    SSL_CTX *ctx, int (*cb)(const SSL_CLIENT_HELLO *));
+    SSL_CTX *ctx,
+    enum ssl_select_cert_result_t (*cb)(const SSL_CLIENT_HELLO *));
 
 /* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
  * resumption decision for a ClientHello has been made. It can return one to
@@ -4112,12 +4130,10 @@ struct ssl_ctx_st {
   X509_VERIFY_PARAM *param;
 
   /* select_certificate_cb is called before most ClientHello processing and
-   * before the decision whether to resume a session is made. It may return one
-   * to continue the handshake or zero to cause the handshake loop to return
-   * with an error and cause SSL_get_error to return
-   * SSL_ERROR_PENDING_CERTIFICATE. Note: when the handshake loop is resumed, it
-   * will not call the callback a second time. */
-  int (*select_certificate_cb)(const SSL_CLIENT_HELLO *);
+   * before the decision whether to resume a session is made. See
+   * |ssl_select_cert_result_t| for details of the return values. */
+  enum ssl_select_cert_result_t (*select_certificate_cb)(
+      const SSL_CLIENT_HELLO *);
 
   /* dos_protection_cb is called once the resumption decision for a ClientHello
    * has been made. It returns one to continue the handshake or zero to
