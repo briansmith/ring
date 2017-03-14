@@ -52,7 +52,7 @@ echo no | $ANDROID_SDK_INSTALL_DIR/tools/android create avd --name arm-18 --targ
 
 $ANDROID_SDK_INSTALL_DIR/tools/android list avd
 
-if [[ ! -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]];then
+if [[ ! -f $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]];then
   mkdir -p "${ANDROID_INSTALL_PREFIX}/downloads"
   pushd "${ANDROID_INSTALL_PREFIX}/downloads"
 
