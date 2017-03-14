@@ -88,7 +88,7 @@ fi
 case $TARGET_X in
 arm-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
-  emulator @arm-18 -no-skin -no-boot-anim -no-audio -no-window &
+  emulator @arm-18 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
   adb push $target_dir/ring-* /data/ring-test
   for testfile in `find src crypto -name "*_test*.txt"`; do
