@@ -6593,6 +6593,31 @@ func addRenegotiationTests() {
 		shouldFail:    true,
 		expectedError: ":SERVER_CERT_CHANGED:",
 	})
+
+	// We do not negotiate ALPN after the initial handshake. This is
+	// error-prone and only risks bugs in consumers.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "Renegotiation-ForbidALPN",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				// Forcibly negotiate ALPN on both initial and
+				// renegotiation handshakes. The test stack will
+				// internally check the client does not offer
+				// it.
+				SendALPN: "foo",
+			},
+		},
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar\x03baz",
+			"-expect-alpn", "foo",
+			"-renegotiate-freely",
+		},
+		renegotiate:   1,
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
 }
 
 func addDTLSReplayTests() {

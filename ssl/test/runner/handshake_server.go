@@ -1182,6 +1182,11 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	}
 
 	if len(hs.clientHello.alpnProtocols) > 0 {
+		// We will never offer ALPN as a client on renegotiation
+		// handshakes.
+		if len(c.clientVerify) > 0 {
+			return errors.New("tls: offered ALPN on renegotiation")
+		}
 		if proto := c.config.Bugs.ALPNProtocol; proto != nil {
 			serverExtensions.alpnProtocol = *proto
 			serverExtensions.alpnProtocolEmpty = len(*proto) == 0
