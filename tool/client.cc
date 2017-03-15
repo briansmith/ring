@@ -107,7 +107,7 @@ static const struct argument kArguments[] = {
     },
     {
       "-root-certs", kOptionalArgument,
-      "A filename containing one of more PEM root certificates. Implies that"
+      "A filename containing one of more PEM root certificates. Implies that "
       "verification is required.",
     },
     {
