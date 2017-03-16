@@ -25,8 +25,7 @@ include = [
     "mk/bottom_of_makefile.mk",
     "mk/top_of_makefile.mk",
 
-    "pregenerated/msvc-ring-asm-i686.lib",
-    "pregenerated/msvc-ring-asm-x86_64.lib",
+    "pregenerated/*",
 
     "build.rs",
 
@@ -265,6 +264,8 @@ untrusted = "0.3.2"
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "0.2.1"
 
+
+# Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
 # we do not use the gcc parallel feature because we do the
 # parallelism ourself. This gives us a much higher level of

@@ -1,0 +1,16 @@
+[package]
+authors = ["Brian Smith <brian@briansmith.org>"]
+name = "pregenerate_asm"
+version = "0.0.1"
+
+[[bin]]
+name = "pregenerate_asm"
+path = "../build.rs"
+
+# Keep this in sync with `[build-dependencies]` in ../Cargo.toml.
+[dependencies]
+# we do not use the gcc parallel feature because we do the
+# parallelism ourself. This gives us a much higher level of
+# control about what should be parallised in which way
+gcc = "0.3"
+rayon = "0.6"

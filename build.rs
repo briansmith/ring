@@ -65,7 +65,9 @@
 extern crate gcc;
 extern crate rayon;
 
-use std::env;
+// In the `pregenerate_asm_main()` case we don't want to access (Cargo)
+// environment variables at all, so avoid `use std::env` here.
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs::{self, DirEntry};
@@ -214,6 +216,8 @@ const RING_PERL_INCLUDES: &'static [&'static str] =
 
 const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
 
+const PREGENERATED: &'static str = "pregenerated";
+
 fn c_flags(target: &Target) -> &'static [&'static str] {
     if target.env != "msvc" {
         static NON_MSVC_FLAGS: &'static [&'static str] = &[
@@ -317,6 +321,27 @@ const ASM_TARGETS:
 ];
 
 fn main() {
+    if let Ok(package_name) = std::env::var("CARGO_PKG_NAME") {
+        if package_name == "ring" {
+            ring_build_rs_main();
+            return;
+        }
+    }
+
+    pregenerate_asm_main();
+}
+
+fn ring_build_rs_main() {
+    use std::env;
+
+    let mut cfg = rayon::Configuration::new();
+    if let Ok(amt) = std::env::var("NUM_JOBS") {
+        if let Ok(amt) = amt.parse() {
+            cfg = cfg.set_num_threads(amt);
+        }
+    }
+    rayon::initialize(cfg).unwrap();
+
     for (key, value) in env::vars() {
         println!("{}: {}", key, value);
     }
@@ -324,16 +349,38 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
-    // copied from gcc
-    let mut cfg = rayon::Configuration::new();
-    if let Ok(amt) = env::var("NUM_JOBS") {
-        if let Ok(amt) = amt.parse() {
-            cfg = cfg.set_num_threads(amt);
-        }
-    }
-    rayon::initialize(cfg).unwrap();
+    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let (obj_ext, obj_opt) = if env == "msvc" {
+        ("obj", "/Fo")
+    } else {
+        ("o", "-o")
+    };
 
-    let _ = rayon::join(check_all_files_tracked, || build_c_code(out_dir));
+    let target = Target {
+        arch: arch,
+        os: os,
+        env: env,
+        obj_ext: obj_ext,
+        obj_opt: obj_opt,
+        is_debug: env::var("PROFILE").unwrap() == "debug",
+    };
+
+    let _ = rayon::join(check_all_files_tracked,
+                        || build_c_code(out_dir, &target));
+}
+
+fn pregenerate_asm_main() {
+    let pregenerated = PathBuf::from(PREGENERATED);
+    std::fs::create_dir(&pregenerated).unwrap();
+
+    for &(target_arch, target_os, perlasm_format) in ASM_TARGETS {
+        let perlasm_src_dsts =
+            perlasm_src_dsts(&pregenerated, target_arch, target_os,
+                             perlasm_format);
+        perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
+    }
 }
 
 struct Target {
@@ -342,35 +389,17 @@ struct Target {
     env: String,
     obj_ext: &'static str,
     obj_opt: &'static str,
+    is_debug: bool,
 }
 
 impl Target {
-    pub fn new() -> Target {
-        let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-        let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-        let (obj_ext, obj_opt) = if env == "msvc" {
-            ("obj", "/Fo")
-        } else {
-            ("o", "-o")
-        };
-
-        Target {
-            arch: arch,
-            os: os,
-            env: env,
-            obj_ext: obj_ext,
-            obj_opt: obj_opt,
-        }
-    }
-
     pub fn arch(&self) -> &str { &self.arch }
     pub fn os(&self) -> &str { &self.os }
     pub fn env(&self) -> &str { &self.env }
+    pub fn is_debug(&self) -> bool { self.is_debug }
 }
 
-fn build_c_code(out_dir: PathBuf) {
-    let target = Target::new();
+fn build_c_code(out_dir: PathBuf, target: &Target) {
     let mut lib_target = out_dir.clone();
     lib_target.push("libring-core.a");
     let lib_target = lib_target.as_path();
@@ -387,19 +416,6 @@ fn build_c_code(out_dir: PathBuf) {
         .max()
         .unwrap();
 
-    let mut srcs = Vec::new();
-    let mut perlasm_srcs = Vec::new();
-    for &(archs, src_path) in RING_SRCS {
-        if archs.is_empty() || archs.contains(&target.arch()) {
-            let src_path = PathBuf::from(src_path);
-            if src_path.extension().unwrap().to_str().unwrap() == "pl" {
-                perlasm_srcs.push(src_path);
-            } else {
-                srcs.push(src_path);
-            }
-        }
-    }
-
     fn is_none_or_equals<T>(opt: Option<T>, other: T)
                             -> bool where T: PartialEq {
         if let Some(value) = opt {
@@ -413,11 +429,30 @@ fn build_c_code(out_dir: PathBuf) {
         let &(entry_arch, entry_os, _) = *entry;
         entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
     }).unwrap();
-    let additional = perlasm_srcs.par_iter()
-        .weight_max()
-        .map(|src_path|
-            make_asm(&src_path, target.arch(), target.os(), perlasm_format,
-                     includes_modified, &out_dir))
+
+    let use_pregenerated = std::fs::metadata(".git").is_err();
+
+    let asm_dir = if use_pregenerated {
+        PathBuf::from(PREGENERATED)
+    } else {
+        out_dir.clone()
+    };
+
+    let perlasm_src_dsts =
+        perlasm_src_dsts(&asm_dir, target.arch(), Some(target.os()),
+                         perlasm_format);
+
+    if !use_pregenerated {
+        perlasm(&perlasm_src_dsts[..], target.arch(), perlasm_format,
+                Some(includes_modified));
+    }
+
+    let asm_srcs = perlasm_src_dsts.into_iter()
+        .map(|(_src, dst)| dst)
+        .collect::<Vec<_>>();
+
+    let srcs = sources_for_arch(target.arch()).into_iter()
+        .filter(|p| !is_perlasm(&p))
         .collect::<Vec<_>>();
 
     let test_srcs = RING_TEST_SRCS.iter()
@@ -427,13 +462,13 @@ fn build_c_code(out_dir: PathBuf) {
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     let ((), ()) = rayon::join(
-        || build_library("ring-core", lib_target, &additional[..], &srcs[..],
+        || build_library("ring-core", lib_target, &asm_srcs[..], &srcs[..],
                          &target, out_dir.clone(), includes_modified),
         || build_library("ring-test", test_target, &[], &test_srcs[..],
                          &target, out_dir.clone(), includes_modified));
 
     if target.env() != "msvc" {
-        let libcxx = if use_libcxx(&target) {
+        let libcxx = if use_libcxx(target) {
             "c++"
         } else {
             "stdc++"
@@ -555,7 +590,7 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
         (_, "msvc") => {},
         _ => { let _ = c.flag("-g3"); },
     };
-    if env::var("PROFILE").unwrap() != "debug" {
+    if !target.is_debug() {
         let _ = c.define("NDEBUG", None);
         if target.env() == "msvc" {
             let _ = c.flag("/Oi"); // Generate intrinsic functions.
@@ -634,29 +669,61 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
     }
 }
 
-fn make_asm(p: &Path, arch: &str, os: &str, perlasm_format: &str,
-            includes_modified: SystemTime, out_dir: &Path) -> PathBuf {
-    let src_stem = p.file_stem().expect("source file without basename");
+fn sources_for_arch(arch: &str) -> Vec<PathBuf> {
+    RING_SRCS.iter()
+        .filter(|&&(ref archs, _)| archs.is_empty() || archs.contains(&arch))
+        .map(|&(_, ref p)| PathBuf::from(p))
+        .collect::<Vec<_>>()
+}
+
+fn perlasm_src_dsts(out_dir: &Path, arch: &str, os: Option<&str>,
+                    perlasm_format: &str) -> Vec<(PathBuf, PathBuf)> {
+    sources_for_arch(arch).iter()
+        .filter(|p| is_perlasm(p))
+        .map(|src| (src.clone(), asm_path(out_dir, src, os, perlasm_format)))
+        .collect::<Vec<_>>()
+}
+
+fn is_perlasm(path: &PathBuf) -> bool {
+    path.extension().unwrap().to_str().unwrap() == "pl"
+}
+
+fn asm_path(out_dir: &Path, src: &Path, os: Option<&str>, perlasm_format: &str)
+            -> PathBuf {
+    let src_stem = src.file_stem().expect("source file without basename");
 
     let mut dst = PathBuf::from(out_dir);
     let dst_stem = src_stem.to_str().unwrap();
-    let dst_extension = if os == "windows" { "asm" } else { "S" };
+    let dst_extension = if os == Some("windows") { "asm" } else { "S" };
     let dst_filename =
         format!("{}-{}.{}", dst_stem, perlasm_format, dst_extension);
     dst.push(dst_filename);
+    dst
+}
 
-    if need_run(p, dst.as_path(), includes_modified) {
+fn perlasm(src_dst: &[(PathBuf, PathBuf)], arch: &str,
+           perlasm_format: &str, includes_modified: Option<SystemTime>) {
+    for &(ref src, ref dst) in src_dst {
+        if let Some(includes_modified) = includes_modified {
+            if !need_run(src, dst, includes_modified) {
+                continue;
+            }
+        }
+
         let mut args = Vec::<String>::new();
-        args.push(p.to_string_lossy().into_owned());
+        args.push(src.to_string_lossy().into_owned());
         args.push(perlasm_format.to_owned());
         if arch == "x86" {
             args.push("-fPIC".into());
             args.push("-DOPENSSL_IA32_SSE2".into());
         }
-        args.push(dst.to_str().expect("Could not convert path").into());
+        // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
+        // back slashes with forward slashes.
+        let dst =
+            dst.to_str().expect("Could not convert path").replace("\\", "/");
+        args.push(dst);
         run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
     }
-    dst
 }
 
 fn need_run(source: &Path, target: &Path, includes_modified: SystemTime)
@@ -679,7 +746,7 @@ fn file_modified(path: &Path) -> SystemTime {
 }
 
 fn get_command(var: &str, default: &str) -> String {
-    env::var(var).unwrap_or(default.into())
+    std::env::var(var).unwrap_or(default.into())
 }
 
 fn check_all_files_tracked() {
