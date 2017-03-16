@@ -205,7 +205,7 @@ int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,
   unsigned first_byte_is_zero = constant_time_eq(from[0], 0);
   unsigned second_byte_is_two = constant_time_eq(from[1], 2);
 
-  unsigned i, zero_index = 0, looking_for_index = ~0u;
+  unsigned i, zero_index = 0, looking_for_index = CONSTTIME_TRUE;
   for (i = 2; i < from_len; i++) {
     unsigned equals0 = constant_time_is_zero(from[i]);
     zero_index = constant_time_select(looking_for_index & equals0, (unsigned)i,
@@ -439,7 +439,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
   bad = ~constant_time_is_zero(CRYPTO_memcmp(db, phash, mdlen));
   bad |= ~constant_time_is_zero(from[0]);
 
-  looking_for_one_byte = ~0u;
+  looking_for_one_byte = CONSTTIME_TRUE;
   for (i = mdlen; i < dblen; i++) {
     unsigned equals1 = constant_time_eq(db[i], 1);
     unsigned equals0 = constant_time_eq(db[i], 0);

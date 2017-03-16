@@ -273,7 +273,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
       return 0;
     }
   } else {
-    padding_ok = ~0u;
+    padding_ok = CONSTTIME_TRUE;
     data_plus_mac_len = total;
     /* |data_plus_mac_len| = |total| = |in_len| at this point. |in_len| has
      * already been checked against the MAC size at the top of the function. */
