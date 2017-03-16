@@ -413,8 +413,6 @@ fn build_c_code(out_dir: PathBuf) {
 
     println!("cargo:rustc-link-search=native={}",
              out_dir.to_str().expect("Invalid path"));
-
-    print_rerun();
 }
 
 
@@ -731,23 +729,4 @@ fn walk_dir<F>(dir: &Path, cb: &F)
             }
         }
     }
-}
-
-fn print_rerun() {
-    for s in RING_ARM_SHARED_SRCS.iter()
-        .chain(RING_SRC.iter())
-        .chain(RING_TEST_SRCS.iter())
-        .chain(RING_AARCH64_SRCS.iter())
-        .chain(RING_ARM_SRCS.iter())
-        .chain(RING_X86_64_SRC.iter())
-        .chain(RING_X86_SRCS.iter())
-        .chain(RING_INTEL_SHARED_SRCS.iter())
-        .chain(RING_PPC_SRCS.iter())
-        .chain(RING_HEADERS.iter())
-        .chain(RING_TEST_HEADERS.iter())
-        .chain(RING_PERL_INCLUDES.iter())
-        .chain(RING_INLINE_FILES.iter()) {
-        println!("cargo:rerun-if-changed={}", s);
-    }
-    println!("cargo:rerun-if-changed=build.rs");
 }
