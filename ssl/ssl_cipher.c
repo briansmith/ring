@@ -193,6 +193,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
+#ifdef BORINGSSL_ENABLE_DHE_TLS
     /* Cipher 33 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_SHA,
@@ -203,6 +204,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
+#endif
 
     /* Cipher 35 */
     {
@@ -215,6 +217,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
+#ifdef BORINGSSL_ENABLE_DHE_TLS
     /* Cipher 39 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_256_SHA,
@@ -225,6 +228,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
+#endif
 
 
     /* TLS v1.2 ciphersuites */
@@ -251,6 +255,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA256,
     },
 
+#ifdef BORINGSSL_ENABLE_DHE_TLS
     /* Cipher 67 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_SHA256,
@@ -272,6 +277,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA256,
      SSL_HANDSHAKE_MAC_SHA256,
     },
+#endif
 
     /* PSK cipher suites. */
 
@@ -321,6 +327,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA384,
     },
 
+#ifdef BORINGSSL_ENABLE_DHE_TLS
     /* Cipher 9E */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -342,6 +349,7 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
     },
+#endif
 
     /* TLS 1.3 suites. */
 
@@ -622,9 +630,11 @@ static const CIPHER_ALIAS kCipherAliases[] = {
      * e.g. kEDH combines DHE_DSS and DHE_RSA) */
     {"kRSA", SSL_kRSA, ~0u, ~0u, ~0u, 0},
 
+#ifdef BORINGSSL_ENABLE_DHE_TLS
     {"kDHE", SSL_kDHE, ~0u, ~0u, ~0u, 0},
     {"kEDH", SSL_kDHE, ~0u, ~0u, ~0u, 0},
     {"DH", SSL_kDHE, ~0u, ~0u, ~0u, 0},
+#endif
 
     {"kECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"kEECDH", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
@@ -639,8 +649,10 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, 0},
 
     /* aliases combining key exchange and server authentication */
+#ifdef BORINGSSL_ENABLE_DHE_TLS
     {"DHE", SSL_kDHE, ~0u, ~0u, ~0u, 0},
     {"EDH", SSL_kDHE, ~0u, ~0u, ~0u, 0},
+#endif
     {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"RSA", SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, 0},

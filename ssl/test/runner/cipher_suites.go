@@ -48,6 +48,8 @@ const (
 	// client indicates that it supports ECC with a curve and point format
 	// that we're happy with.
 	suiteECDHE = 1 << iota
+	// suiteDHE indicates that the cipher suite involves Diffie-Hellman.
+	suiteDHE
 	// suiteECDSA indicates that the cipher suite involves an ECDSA
 	// signature and therefore may only be selected when the server's
 	// certificate is ECDSA. If this is not set then the cipher suite is
@@ -120,12 +122,12 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384, 32, 48, ivLenAES, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteSHA384, cipherAES, macSHA384, nil},
 	{TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdheRSAKA, suiteECDHE, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdheECDSAKA, suiteECDHE | suiteECDSA, cipherAES, macSHA1, nil},
-	{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, dheRSAKA, suiteTLS12, nil, nil, aeadAESGCM},
-	{TLS_DHE_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, dheRSAKA, suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
-	{TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, dheRSAKA, suiteTLS12, cipherAES, macSHA256, nil},
-	{TLS_DHE_RSA_WITH_AES_256_CBC_SHA256, 32, 32, ivLenAES, dheRSAKA, suiteTLS12, cipherAES, macSHA256, nil},
-	{TLS_DHE_RSA_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, dheRSAKA, 0, cipherAES, macSHA1, nil},
-	{TLS_DHE_RSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, dheRSAKA, 0, cipherAES, macSHA1, nil},
+	{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, dheRSAKA, suiteTLS12 | suiteDHE, nil, nil, aeadAESGCM},
+	{TLS_DHE_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, dheRSAKA, suiteTLS12 | suiteSHA384 | suiteDHE, nil, nil, aeadAESGCM},
+	{TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, dheRSAKA, suiteTLS12 | suiteDHE, cipherAES, macSHA256, nil},
+	{TLS_DHE_RSA_WITH_AES_256_CBC_SHA256, 32, 32, ivLenAES, dheRSAKA, suiteTLS12 | suiteDHE, cipherAES, macSHA256, nil},
+	{TLS_DHE_RSA_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, dheRSAKA, suiteDHE, cipherAES, macSHA1, nil},
+	{TLS_DHE_RSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, dheRSAKA, suiteDHE, cipherAES, macSHA1, nil},
 	{TLS_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, rsaKA, suiteTLS12, nil, nil, aeadAESGCM},
 	{TLS_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, rsaKA, suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
 	{TLS_RSA_WITH_RC4_128_SHA, 16, 20, noIV, rsaKA, suiteNoDTLS, cipherRC4, macSHA1, nil},
@@ -135,7 +137,7 @@ var cipherSuites = []*cipherSuite{
 	{TLS_RSA_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, rsaKA, 0, cipherAES, macSHA1, nil},
 	{TLS_RSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, rsaKA, 0, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, ecdheRSAKA, suiteECDHE, cipher3DES, macSHA1, nil},
-	{TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, dheRSAKA, 0, cipher3DES, macSHA1, nil},
+	{TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, dheRSAKA, suiteDHE, cipher3DES, macSHA1, nil},
 	{TLS_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, ivLen3DES, rsaKA, 0, cipher3DES, macSHA1, nil},
 	{TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdhePSKKA, suiteECDHE | suitePSK | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
 	{TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},

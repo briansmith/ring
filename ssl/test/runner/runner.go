@@ -65,6 +65,7 @@ var (
 	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
 	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
+	includeDHE         = flag.Bool("include-dhe", false, "If true, test DHE ciphersuites.")
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 )
 
@@ -1108,12 +1109,6 @@ var testCipherSuites = []testCipherSuite{
 	{"AES256-GCM", TLS_RSA_WITH_AES_256_GCM_SHA384},
 	{"AES256-SHA", TLS_RSA_WITH_AES_256_CBC_SHA},
 	{"AES256-SHA256", TLS_RSA_WITH_AES_256_CBC_SHA256},
-	{"DHE-RSA-AES128-GCM", TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
-	{"DHE-RSA-AES128-SHA", TLS_DHE_RSA_WITH_AES_128_CBC_SHA},
-	{"DHE-RSA-AES128-SHA256", TLS_DHE_RSA_WITH_AES_128_CBC_SHA256},
-	{"DHE-RSA-AES256-GCM", TLS_DHE_RSA_WITH_AES_256_GCM_SHA384},
-	{"DHE-RSA-AES256-SHA", TLS_DHE_RSA_WITH_AES_256_CBC_SHA},
-	{"DHE-RSA-AES256-SHA256", TLS_DHE_RSA_WITH_AES_256_CBC_SHA256},
 	{"ECDHE-ECDSA-AES128-GCM", TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
 	{"ECDHE-ECDSA-AES128-SHA", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA},
 	{"ECDHE-ECDSA-AES128-SHA256", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256},
@@ -1982,26 +1977,6 @@ func addBasicTests() {
 			expectedLocalError: "tls: peer did not false start: EOF",
 		},
 		{
-			name: "NoFalseStart-DHE_RSA",
-			config: Config{
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:   []string{"foo"},
-				Bugs: ProtocolBugs{
-					ExpectFalseStart:          true,
-					AlertBeforeFalseStartTest: alertAccessDenied,
-				},
-			},
-			flags: []string{
-				"-false-start",
-				"-advertise-alpn", "\x03foo",
-			},
-			shimWritesFirst:    true,
-			shouldFail:         true,
-			expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-			expectedLocalError: "tls: peer did not false start: EOF",
-		},
-		{
 			protocol: dtls,
 			name:     "SendSplitAlert-Sync",
 			config: Config{
@@ -2465,6 +2440,29 @@ func addBasicTests() {
 	}
 	testCases = append(testCases, basicTests...)
 
+	if *includeDHE {
+		testCases = append(testCases, testCase{
+			name: "NoFalseStart-DHE_RSA",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart:          true,
+					AlertBeforeFalseStartTest: alertAccessDenied,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst:    true,
+			shouldFail:         true,
+			expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
+			expectedLocalError: "tls: peer did not false start: EOF",
+		})
+	}
+
 	// Test that very large messages can be received.
 	cert := rsaCertificate
 	for i := 0; i < 50; i++ {
@@ -2685,6 +2683,17 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 func addCipherSuiteTests() {
 	const bogusCipher = 0xfe00
 
+	if *includeDHE {
+		testCipherSuites = append(testCipherSuites, []testCipherSuite{
+			{"DHE-RSA-AES128-GCM", TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+			{"DHE-RSA-AES128-SHA", TLS_DHE_RSA_WITH_AES_128_CBC_SHA},
+			{"DHE-RSA-AES128-SHA256", TLS_DHE_RSA_WITH_AES_128_CBC_SHA256},
+			{"DHE-RSA-AES256-GCM", TLS_DHE_RSA_WITH_AES_256_GCM_SHA384},
+			{"DHE-RSA-AES256-SHA", TLS_DHE_RSA_WITH_AES_256_CBC_SHA},
+			{"DHE-RSA-AES256-SHA256", TLS_DHE_RSA_WITH_AES_256_CBC_SHA256},
+		}...)
+	}
+
 	for _, suite := range testCipherSuites {
 		for _, ver := range tlsVersions {
 			for _, protocol := range []protocol{tls, dtls} {
@@ -2750,53 +2759,55 @@ func addCipherSuiteTests() {
 		expectedError: ":UNKNOWN_CIPHER_RETURNED:",
 	})
 
-	testCases = append(testCases, testCase{
-		name: "WeakDH",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				// This is a 1023-bit prime number, generated
-				// with:
-				// openssl gendh 1023 | openssl asn1parse -i
-				DHGroupPrime: bigFromHex("518E9B7930CE61C6E445C8360584E5FC78D9137C0FFDC880B495D5338ADF7689951A6821C17A76B3ACB8E0156AEA607B7EC406EBEDBB84D8376EB8FE8F8BA1433488BEE0C3EDDFD3A32DBB9481980A7AF6C96BFCF490A094CFFB2B8192C1BB5510B77B658436E27C2D4D023FE3718222AB0CA1273995B51F6D625A4944D0DD4B"),
+	if *includeDHE {
+		testCases = append(testCases, testCase{
+			name: "WeakDH",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					// This is a 1023-bit prime number, generated
+					// with:
+					// openssl gendh 1023 | openssl asn1parse -i
+					DHGroupPrime: bigFromHex("518E9B7930CE61C6E445C8360584E5FC78D9137C0FFDC880B495D5338ADF7689951A6821C17A76B3ACB8E0156AEA607B7EC406EBEDBB84D8376EB8FE8F8BA1433488BEE0C3EDDFD3A32DBB9481980A7AF6C96BFCF490A094CFFB2B8192C1BB5510B77B658436E27C2D4D023FE3718222AB0CA1273995B51F6D625A4944D0DD4B"),
+				},
 			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_DH_P_LENGTH:",
-	})
+			shouldFail:    true,
+			expectedError: ":BAD_DH_P_LENGTH:",
+		})
 
-	testCases = append(testCases, testCase{
-		name: "SillyDH",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				// This is a 4097-bit prime number, generated
-				// with:
-				// openssl gendh 4097 | openssl asn1parse -i
-				DHGroupPrime: bigFromHex("01D366FA64A47419B0CD4A45918E8D8C8430F674621956A9F52B0CA592BC104C6E38D60C58F2CA66792A2B7EBDC6F8FFE75AB7D6862C261F34E96A2AEEF53AB7C21365C2E8FB0582F71EB57B1C227C0E55AE859E9904A25EFECD7B435C4D4357BD840B03649D4A1F8037D89EA4E1967DBEEF1CC17A6111C48F12E9615FFF336D3F07064CB17C0B765A012C850B9E3AA7A6984B96D8C867DDC6D0F4AB52042572244796B7ECFF681CD3B3E2E29AAECA391A775BEE94E502FB15881B0F4AC60314EA947C0C82541C3D16FD8C0E09BB7F8F786582032859D9C13187CE6C0CB6F2D3EE6C3C9727C15F14B21D3CD2E02BDB9D119959B0E03DC9E5A91E2578762300B1517D2352FC1D0BB934A4C3E1B20CE9327DB102E89A6C64A8C3148EDFC5A94913933853442FA84451B31FD21E492F92DD5488E0D871AEBFE335A4B92431DEC69591548010E76A5B365D346786E9A2D3E589867D796AA5E25211201D757560D318A87DFB27F3E625BC373DB48BF94A63161C674C3D4265CB737418441B7650EABC209CF675A439BEB3E9D1AA1B79F67198A40CEFD1C89144F7D8BAF61D6AD36F466DA546B4174A0E0CAF5BD788C8243C7C2DDDCC3DB6FC89F12F17D19FBD9B0BC76FE92891CD6BA07BEA3B66EF12D0D85E788FD58675C1B0FBD16029DCC4D34E7A1A41471BDEDF78BF591A8B4E96D88BEC8EDC093E616292BFC096E69A916E8D624B"),
+		testCases = append(testCases, testCase{
+			name: "SillyDH",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					// This is a 4097-bit prime number, generated
+					// with:
+					// openssl gendh 4097 | openssl asn1parse -i
+					DHGroupPrime: bigFromHex("01D366FA64A47419B0CD4A45918E8D8C8430F674621956A9F52B0CA592BC104C6E38D60C58F2CA66792A2B7EBDC6F8FFE75AB7D6862C261F34E96A2AEEF53AB7C21365C2E8FB0582F71EB57B1C227C0E55AE859E9904A25EFECD7B435C4D4357BD840B03649D4A1F8037D89EA4E1967DBEEF1CC17A6111C48F12E9615FFF336D3F07064CB17C0B765A012C850B9E3AA7A6984B96D8C867DDC6D0F4AB52042572244796B7ECFF681CD3B3E2E29AAECA391A775BEE94E502FB15881B0F4AC60314EA947C0C82541C3D16FD8C0E09BB7F8F786582032859D9C13187CE6C0CB6F2D3EE6C3C9727C15F14B21D3CD2E02BDB9D119959B0E03DC9E5A91E2578762300B1517D2352FC1D0BB934A4C3E1B20CE9327DB102E89A6C64A8C3148EDFC5A94913933853442FA84451B31FD21E492F92DD5488E0D871AEBFE335A4B92431DEC69591548010E76A5B365D346786E9A2D3E589867D796AA5E25211201D757560D318A87DFB27F3E625BC373DB48BF94A63161C674C3D4265CB737418441B7650EABC209CF675A439BEB3E9D1AA1B79F67198A40CEFD1C89144F7D8BAF61D6AD36F466DA546B4174A0E0CAF5BD788C8243C7C2DDDCC3DB6FC89F12F17D19FBD9B0BC76FE92891CD6BA07BEA3B66EF12D0D85E788FD58675C1B0FBD16029DCC4D34E7A1A41471BDEDF78BF591A8B4E96D88BEC8EDC093E616292BFC096E69A916E8D624B"),
+				},
 			},
-		},
-		shouldFail:    true,
-		expectedError: ":DH_P_TOO_LONG:",
-	})
+			shouldFail:    true,
+			expectedError: ":DH_P_TOO_LONG:",
+		})
 
-	// This test ensures that Diffie-Hellman public values are padded with
-	// zeros so that they're the same length as the prime. This is to avoid
-	// hitting a bug in yaSSL.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "DHPublicValuePadded",
-		config: Config{
-			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				RequireDHPublicValueLen: (1025 + 7) / 8,
+		// This test ensures that Diffie-Hellman public values are padded with
+		// zeros so that they're the same length as the prime. This is to avoid
+		// hitting a bug in yaSSL.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "DHPublicValuePadded",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					RequireDHPublicValueLen: (1025 + 7) / 8,
+				},
 			},
-		},
-		flags: []string{"-use-sparse-dh-prime"},
-	})
+			flags: []string{"-use-sparse-dh-prime"},
+		})
+	}
 
 	// The server must be tolerant to bogus ciphers.
 	testCases = append(testCases, testCase{
@@ -6624,7 +6635,9 @@ func addSignatureAlgorithmTests() {
 		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
 		TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-		TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+	}
+	if *includeDHE {
+		signingCiphers = append(signingCiphers, TLS_DHE_RSA_WITH_AES_128_CBC_SHA)
 	}
 
 	var allAlgorithms []signatureAlgorithm
@@ -6724,27 +6737,30 @@ func addSignatureAlgorithmTests() {
 				expectedError: verifyError,
 			})
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ServerAuth-Sign" + suffix,
-				config: Config{
-					MaxVersion:   ver.version,
-					CipherSuites: signingCiphers,
-					VerifySignatureAlgorithms: []signatureAlgorithm{
-						fakeSigAlg1,
-						alg.id,
-						fakeSigAlg2,
+			// No signing cipher for SSL 3.0.
+			if *includeDHE || ver.version > VersionSSL30 {
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "ServerAuth-Sign" + suffix,
+					config: Config{
+						MaxVersion:   ver.version,
+						CipherSuites: signingCiphers,
+						VerifySignatureAlgorithms: []signatureAlgorithm{
+							fakeSigAlg1,
+							alg.id,
+							fakeSigAlg2,
+						},
 					},
-				},
-				flags: []string{
-					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-					"-enable-all-curves",
-				},
-				shouldFail:                     shouldSignFail,
-				expectedError:                  signError,
-				expectedPeerSignatureAlgorithm: alg.id,
-			})
+					flags: []string{
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
+					},
+					shouldFail:                     shouldSignFail,
+					expectedError:                  signError,
+					expectedPeerSignatureAlgorithm: alg.id,
+				})
+			}
 
 			testCases = append(testCases, testCase{
 				name: "ServerAuth-Verify" + suffix,
@@ -8186,11 +8202,11 @@ func addCurveTests() {
 			MaxVersion: VersionTLS12,
 			CipherSuites: []uint16{
 				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
 			},
 			CurvePreferences: []CurveID{CurveP224},
 		},
-		expectedCipher: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+		expectedCipher: TLS_RSA_WITH_AES_128_GCM_SHA256,
 	})
 
 	// The client must reject bogus curves and disabled curves.
