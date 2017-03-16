@@ -372,6 +372,7 @@ fn build_c_code(out_dir: PathBuf) {
     let test_target = test_target.as_path();
 
     let includes_modified = RING_HEADERS.par_iter()
+        .weight_max()
         .chain(RING_INLINE_FILES.par_iter())
         .chain(RING_TEST_HEADERS.par_iter())
         .chain(RING_BUILD_FILE.par_iter())
