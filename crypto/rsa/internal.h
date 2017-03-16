@@ -102,12 +102,14 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
                                    size_t from_len);
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
                                  const uint8_t *from, size_t from_len);
-int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len);
-int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
-                                      const uint8_t *from, unsigned from_len,
-                                      const uint8_t *param, unsigned plen,
-                                      const EVP_MD *md, const EVP_MD *mgf1md);
+int RSA_padding_check_PKCS1_type_2(uint8_t *out, size_t *out_len,
+                                   size_t max_out, const uint8_t *from,
+                                   size_t from_len);
+int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
+                                      size_t max_out, const uint8_t *from,
+                                      size_t from_len, const uint8_t *param,
+                                      size_t param_len, const EVP_MD *md,
+                                      const EVP_MD *mgf1md);
 int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
                          size_t from_len);
 

@@ -386,22 +386,15 @@ static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
   }
 
   if (rctx->pad_mode == RSA_PKCS1_OAEP_PADDING) {
-    size_t plaintext_len;
-    int message_len;
-
+    size_t padded_len;
     if (!setup_tbuf(rctx, ctx) ||
-        !RSA_decrypt(rsa, &plaintext_len, rctx->tbuf, key_len, in, inlen,
-                     RSA_NO_PADDING)) {
+        !RSA_decrypt(rsa, &padded_len, rctx->tbuf, key_len, in, inlen,
+                     RSA_NO_PADDING) ||
+        !RSA_padding_check_PKCS1_OAEP_mgf1(
+            out, outlen, key_len, rctx->tbuf, padded_len, rctx->oaep_label,
+            rctx->oaep_labellen, rctx->md, rctx->mgf1md)) {
       return 0;
     }
-
-    message_len = RSA_padding_check_PKCS1_OAEP_mgf1(
-        out, key_len, rctx->tbuf, plaintext_len, rctx->oaep_label,
-        rctx->oaep_labellen, rctx->md, rctx->mgf1md);
-    if (message_len < 0) {
-      return 0;
-    }
-    *outlen = message_len;
     return 1;
   }
 

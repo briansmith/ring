@@ -363,7 +363,6 @@ err:
 int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                         const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
-  int r = -1;
   uint8_t *buf = NULL;
   int ret = 0;
 
@@ -394,26 +393,25 @@ int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   switch (padding) {
     case RSA_PKCS1_PADDING:
-      r = RSA_padding_check_PKCS1_type_2(out, rsa_size, buf, rsa_size);
+      ret =
+          RSA_padding_check_PKCS1_type_2(out, out_len, rsa_size, buf, rsa_size);
       break;
     case RSA_PKCS1_OAEP_PADDING:
       /* Use the default parameters: SHA-1 for both hashes and no label. */
-      r = RSA_padding_check_PKCS1_OAEP_mgf1(out, rsa_size, buf, rsa_size,
-                                            NULL, 0, NULL, NULL);
+      ret = RSA_padding_check_PKCS1_OAEP_mgf1(out, out_len, rsa_size, buf,
+                                              rsa_size, NULL, 0, NULL, NULL);
       break;
     case RSA_NO_PADDING:
-      r = rsa_size;
+      *out_len = rsa_size;
+      ret = 1;
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
 
-  if (r < 0) {
+  if (!ret) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
-  } else {
-    *out_len = r;
-    ret = 1;
   }
 
 err:
