@@ -226,9 +226,7 @@ static void tls1_sha1_final_raw(void *ctx, uint8_t *md_out) {
 
 static void tls1_sha256_final_raw(void *ctx, uint8_t *md_out) {
   SHA256_CTX *sha256 = ctx;
-  unsigned i;
-
-  for (i = 0; i < 8; i++) {
+  for (unsigned i = 0; i < 8; i++) {
     u32toBE(sha256->h[i], md_out);
   }
 }
@@ -237,9 +235,7 @@ static void tls1_sha256_final_raw(void *ctx, uint8_t *md_out) {
 
 static void tls1_sha512_final_raw(void *ctx, uint8_t *md_out) {
   SHA512_CTX *sha512 = ctx;
-  unsigned i;
-
-  for (i = 0; i < 8; i++) {
+  for (unsigned i = 0; i < 8; i++) {
     u64toBE(sha512->h[i], md_out);
   }
 }
@@ -271,18 +267,8 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
   void (*md_final_raw)(void *ctx, uint8_t *md_out);
   void (*md_transform)(void *ctx, const uint8_t *block);
   unsigned md_size, md_block_size = 64;
-  unsigned len, max_mac_bytes, num_blocks, num_starting_blocks, k,
-           mac_end_offset, c, index_a, index_b;
-  unsigned int bits; /* at most 18 bits */
-  uint8_t length_bytes[MAX_HASH_BIT_COUNT_BYTES];
-  /* hmac_pad is the masked HMAC key. */
-  uint8_t hmac_pad[MAX_HASH_BLOCK_SIZE];
-  uint8_t first_block[MAX_HASH_BLOCK_SIZE];
-  uint8_t mac_out[EVP_MAX_MD_SIZE];
-  unsigned i, j, md_out_size_u;
-  EVP_MD_CTX md_ctx;
-  /* mdLengthSize is the number of bytes in the length field that terminates
-  * the hash. */
+  /* md_length_size is the number of bytes in the length field that terminates
+   * the hash. */
   unsigned md_length_size = 8;
 
   /* This is a, hopefully redundant, check that allows us to forget about
@@ -341,12 +327,12 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
 
   /* From now on we're dealing with the MAC, which conceptually has 13
    * bytes of `header' before the start of the data. */
-  len = data_plus_mac_plus_padding_size + kHeaderLength;
+  unsigned len = data_plus_mac_plus_padding_size + kHeaderLength;
   /* max_mac_bytes contains the maximum bytes of bytes in the MAC, including
-  * |header|, assuming that there's no padding. */
-  max_mac_bytes = len - md_size - 1;
+   * |header|, assuming that there's no padding. */
+  unsigned max_mac_bytes = len - md_size - 1;
   /* num_blocks is the maximum number of hash blocks. */
-  num_blocks =
+  unsigned num_blocks =
       (max_mac_bytes + 1 + md_length_size + md_block_size - 1) / md_block_size;
   /* In order to calculate the MAC in constant time we have to handle
    * the final blocks specially because the padding value could cause the
@@ -354,43 +340,46 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
    * can't leak where. However, |num_starting_blocks| worth of data can
    * be hashed right away because no padding value can affect whether
    * they are plaintext. */
-  num_starting_blocks = 0;
+  unsigned num_starting_blocks = 0;
   /* k is the starting byte offset into the conceptual header||data where
    * we start processing. */
-  k = 0;
+  unsigned k = 0;
   /* mac_end_offset is the index just past the end of the data to be
    * MACed. */
-  mac_end_offset = data_plus_mac_size + kHeaderLength - md_size;
+  unsigned mac_end_offset = data_plus_mac_size + kHeaderLength - md_size;
   /* c is the index of the 0x80 byte in the final hash block that
    * contains application data. */
-  c = mac_end_offset % md_block_size;
+  unsigned c = mac_end_offset % md_block_size;
   /* index_a is the hash block number that contains the 0x80 terminating
    * value. */
-  index_a = mac_end_offset / md_block_size;
+  unsigned index_a = mac_end_offset / md_block_size;
   /* index_b is the hash block number that contains the 64-bit hash
    * length, in bits. */
-  index_b = (mac_end_offset + md_length_size) / md_block_size;
-  /* bits is the hash-length in bits. It includes the additional hash
-   * block for the masked HMAC key. */
+  unsigned index_b = (mac_end_offset + md_length_size) / md_block_size;
 
   if (num_blocks > kVarianceBlocks) {
     num_starting_blocks = num_blocks - kVarianceBlocks;
     k = md_block_size * num_starting_blocks;
   }
 
-  bits = 8 * mac_end_offset;
+  /* bits is the hash-length in bits. It includes the additional hash
+   * block for the masked HMAC key. */
+  unsigned bits = 8 * mac_end_offset; /* at most 18 bits to represent */
 
   /* Compute the initial HMAC block. */
   bits += 8 * md_block_size;
+  /* hmac_pad is the masked HMAC key. */
+  uint8_t hmac_pad[MAX_HASH_BLOCK_SIZE];
   OPENSSL_memset(hmac_pad, 0, md_block_size);
   assert(mac_secret_length <= sizeof(hmac_pad));
   OPENSSL_memcpy(hmac_pad, mac_secret, mac_secret_length);
-  for (i = 0; i < md_block_size; i++) {
+  for (unsigned i = 0; i < md_block_size; i++) {
     hmac_pad[i] ^= 0x36;
   }
 
   md_transform(md_state.c, hmac_pad);
 
+  uint8_t length_bytes[MAX_HASH_BIT_COUNT_BYTES];
   OPENSSL_memset(length_bytes, 0, md_length_size - 4);
   length_bytes[md_length_size - 4] = (uint8_t)(bits >> 24);
   length_bytes[md_length_size - 3] = (uint8_t)(bits >> 16);
@@ -399,27 +388,29 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
 
   if (k > 0) {
     /* k is a multiple of md_block_size. */
+    uint8_t first_block[MAX_HASH_BLOCK_SIZE];
     OPENSSL_memcpy(first_block, header, 13);
     OPENSSL_memcpy(first_block + 13, data, md_block_size - 13);
     md_transform(md_state.c, first_block);
-    for (i = 1; i < k / md_block_size; i++) {
+    for (unsigned i = 1; i < k / md_block_size; i++) {
       md_transform(md_state.c, data + md_block_size * i - 13);
     }
   }
 
+  uint8_t mac_out[EVP_MAX_MD_SIZE];
   OPENSSL_memset(mac_out, 0, sizeof(mac_out));
 
   /* We now process the final hash blocks. For each block, we construct
    * it in constant time. If the |i==index_a| then we'll include the 0x80
    * bytes and zero pad etc. For each block we selectively copy it, in
    * constant time, to |mac_out|. */
-  for (i = num_starting_blocks; i <= num_starting_blocks + kVarianceBlocks;
-       i++) {
+  for (unsigned i = num_starting_blocks;
+       i <= num_starting_blocks + kVarianceBlocks; i++) {
     uint8_t block[MAX_HASH_BLOCK_SIZE];
     uint8_t is_block_a = constant_time_eq_8(i, index_a);
     uint8_t is_block_b = constant_time_eq_8(i, index_b);
-    for (j = 0; j < md_block_size; j++) {
-      uint8_t b = 0, is_past_c, is_past_cp1;
+    for (unsigned j = 0; j < md_block_size; j++) {
+      uint8_t b = 0;
       if (k < kHeaderLength) {
         b = header[k];
       } else if (k < data_plus_mac_plus_padding_size + kHeaderLength) {
@@ -427,8 +418,8 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
       }
       k++;
 
-      is_past_c = is_block_a & constant_time_ge_8(j, c);
-      is_past_cp1 = is_block_a & constant_time_ge_8(j, c + 1);
+      uint8_t is_past_c = is_block_a & constant_time_ge_8(j, c);
+      uint8_t is_past_cp1 = is_block_a & constant_time_ge_8(j, c + 1);
       /* If this is the block containing the end of the
        * application data, and we are at the offset for the
        * 0x80 value, then overwrite b with 0x80. */
@@ -456,11 +447,12 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     md_transform(md_state.c, block);
     md_final_raw(md_state.c, block);
     /* If this is index_b, copy the hash value to |mac_out|. */
-    for (j = 0; j < md_size; j++) {
+    for (unsigned j = 0; j < md_size; j++) {
       mac_out[j] |= block[j] & is_block_b;
     }
   }
 
+  EVP_MD_CTX md_ctx;
   EVP_MD_CTX_init(&md_ctx);
   if (!EVP_DigestInit_ex(&md_ctx, md, NULL /* engine */)) {
     EVP_MD_CTX_cleanup(&md_ctx);
@@ -468,12 +460,13 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
   }
 
   /* Complete the HMAC in the standard manner. */
-  for (i = 0; i < md_block_size; i++) {
+  for (unsigned i = 0; i < md_block_size; i++) {
     hmac_pad[i] ^= 0x6a;
   }
 
   EVP_DigestUpdate(&md_ctx, hmac_pad, md_block_size);
   EVP_DigestUpdate(&md_ctx, mac_out, md_size);
+  unsigned md_out_size_u;
   EVP_DigestFinal(&md_ctx, md_out, &md_out_size_u);
   *md_out_size = md_out_size_u;
   EVP_MD_CTX_cleanup(&md_ctx);
