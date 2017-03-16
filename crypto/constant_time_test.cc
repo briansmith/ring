@@ -54,10 +54,6 @@
 #include <gtest/gtest.h>
 
 
-static unsigned FromBool(bool b) {
-  return b ? CONSTTIME_TRUE : CONSTTIME_FALSE;
-}
-
 static uint8_t FromBool8(bool b) {
   return b ? CONSTTIME_TRUE_8 : CONSTTIME_FALSE_8;
 }
@@ -65,19 +61,6 @@ static uint8_t FromBool8(bool b) {
 static size_t FromBoolS(bool b) {
   return b ? CONSTTIME_TRUE_S : CONSTTIME_FALSE_S;
 }
-
-static unsigned test_values[] = {
-    0,
-    1,
-    1024,
-    12345,
-    32000,
-    UINT_MAX / 2 - 1,
-    UINT_MAX / 2,
-    UINT_MAX / 2 + 1,
-    UINT_MAX - 1,
-    UINT_MAX,
-};
 
 static uint8_t test_values_8[] = {0, 1, 2, 20, 32, 127, 128, 129, 255};
 
@@ -129,29 +112,10 @@ TEST(ConstantTimeTest, Test) {
     }
   }
 
-  for (unsigned a : test_values) {
-    SCOPED_TRACE(a);
-    EXPECT_EQ(FromBool(a == 0), constant_time_is_zero(a));
-    for (unsigned b : test_values) {
-      SCOPED_TRACE(b);
-
-      EXPECT_EQ(FromBool(a < b), constant_time_lt(a, b));
-      EXPECT_EQ(FromBool(a >= b), constant_time_ge(a, b));
-      EXPECT_EQ(FromBool(a == b), constant_time_eq(a, b));
-
-      EXPECT_EQ(a, constant_time_select(CONSTTIME_TRUE, a, b));
-      EXPECT_EQ(b, constant_time_select(CONSTTIME_FALSE, a, b));
-    }
-  }
-
   for (int a : signed_test_values) {
     SCOPED_TRACE(a);
     for (int b : signed_test_values) {
       SCOPED_TRACE(b);
-
-      // constant_time_select_int accepts both size_t and unsigned masks.
-      EXPECT_EQ(a, constant_time_select_int(CONSTTIME_TRUE, a, b));
-      EXPECT_EQ(b, constant_time_select_int(CONSTTIME_FALSE, a, b));
 
       EXPECT_EQ(a, constant_time_select_int(CONSTTIME_TRUE_S, a, b));
       EXPECT_EQ(b, constant_time_select_int(CONSTTIME_FALSE_S, a, b));

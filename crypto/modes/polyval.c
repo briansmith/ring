@@ -36,11 +36,11 @@ static void byte_reverse(polyval_block *b) {
 static void reverse_and_mulX_ghash(polyval_block *b) {
   uint64_t hi = b->u[0];
   uint64_t lo = b->u[1];
-  const unsigned carry = constant_time_eq(hi & 1, 1);
+  const size_t carry = constant_time_eq_s(hi & 1, 1);
   hi >>= 1;
   hi |= lo << 63;
   lo >>= 1;
-  lo ^= ((uint64_t) constant_time_select(carry, 0xe1, 0)) << 56;
+  lo ^= ((uint64_t) constant_time_select_s(carry, 0xe1, 0)) << 56;
 
   b->u[0] = CRYPTO_bswap8(lo);
   b->u[1] = CRYPTO_bswap8(hi);

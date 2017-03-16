@@ -183,25 +183,17 @@ static inline int buffers_alias(const uint8_t *a, size_t a_len,
  *
  * can be written as
  *
- * unsigned int lt = constant_time_lt(a, b);
- * c = constant_time_select(lt, a, b); */
+ * size_t lt = constant_time_lt_s(a, b);
+ * c = constant_time_select_s(lt, a, b); */
 
 #define CONSTTIME_TRUE_S ~((size_t)0)
 #define CONSTTIME_FALSE_S ((size_t)0)
-#define CONSTTIME_TRUE ~0u
-#define CONSTTIME_FALSE 0u
 #define CONSTTIME_TRUE_8 ((uint8_t)0xff)
 #define CONSTTIME_FALSE_8 ((uint8_t)0)
 
 /* constant_time_msb_s returns the given value with the MSB copied to all the
  * other bits. */
 static inline size_t constant_time_msb_s(size_t a) {
-  return 0u - (a >> (sizeof(a) * 8 - 1));
-}
-
-/* constant_time_msb returns the given value with the MSB copied to all the
- * other bits. */
-static inline unsigned int constant_time_msb(unsigned int a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
@@ -241,11 +233,6 @@ static inline size_t constant_time_lt_s(size_t a, size_t b) {
   return constant_time_msb_s(a^((a^b)|((a-b)^a)));
 }
 
-/* constant_time_lt acts like |constant_time_lt_s| but acts on |unsigned|. */
-static inline unsigned constant_time_lt(unsigned a, unsigned b) {
-  return (unsigned)constant_time_lt_s(a, b);
-}
-
 /* constant_time_lt_8 acts like |constant_time_lt_s| but returns an 8-bit
  * mask. */
 static inline uint8_t constant_time_lt_8(size_t a, size_t b) {
@@ -255,11 +242,6 @@ static inline uint8_t constant_time_lt_8(size_t a, size_t b) {
 /* constant_time_ge_s returns 0xff..f if a >= b and 0 otherwise. */
 static inline size_t constant_time_ge_s(size_t a, size_t b) {
   return ~constant_time_lt_s(a, b);
-}
-
-/* constant_time_ge acts like |constant_time_ge_s| but acts on |unsigned|. */
-static inline unsigned constant_time_ge(unsigned a, unsigned b) {
-  return (unsigned)(constant_time_ge_s(a, b));
 }
 
 /* constant_time_ge_8 acts like |constant_time_ge_s| but returns an 8-bit
@@ -285,12 +267,6 @@ static inline size_t constant_time_is_zero_s(size_t a) {
   return constant_time_msb_s(~a & (a - 1));
 }
 
-/* constant_time_is_zero acts like |constant_time_is_zero_s| but acts on
- * |unsigned|. */
-static inline unsigned constant_time_is_zero(unsigned a) {
-  return (unsigned)constant_time_is_zero_s(a);
-}
-
 /* constant_time_is_zero_8 acts like |constant_time_is_zero_s| but returns an
  * 8-bit mask. */
 static inline uint8_t constant_time_is_zero_8(size_t a) {
@@ -300,11 +276,6 @@ static inline uint8_t constant_time_is_zero_8(size_t a) {
 /* constant_time_eq_s returns 0xff..f if a == b and 0 otherwise. */
 static inline size_t constant_time_eq_s(size_t a, size_t b) {
   return constant_time_is_zero_s(a ^ b);
-}
-
-/* constant_time_eq acts like |constant_time_eq_s| but acts on |unsigned|. */
-static inline unsigned constant_time_eq(unsigned a, unsigned b) {
-  return (unsigned)constant_time_eq_s(a, b);
 }
 
 /* constant_time_eq_8 acts like |constant_time_eq_s| but returns an 8-bit
@@ -330,11 +301,6 @@ static inline uint8_t constant_time_eq_int_8(int a, int b) {
  * either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). */
 static inline size_t constant_time_select_s(size_t mask, size_t a, size_t b) {
   return (mask & a) | (~mask & b);
-}
-
-static inline unsigned constant_time_select(unsigned mask, unsigned a,
-                                            unsigned b) {
-  return (unsigned)(constant_time_select_s(mask, a, b));
 }
 
 /* constant_time_select_8 acts like |constant_time_select| but operates on
