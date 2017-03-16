@@ -436,7 +436,6 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
-  int r = -1;
 
   if (max_out < rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
@@ -500,21 +499,21 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   switch (padding) {
     case RSA_PKCS1_PADDING:
-      r = RSA_padding_check_PKCS1_type_1(out, rsa_size, buf, rsa_size);
+      ret =
+          RSA_padding_check_PKCS1_type_1(out, out_len, rsa_size, buf, rsa_size);
       break;
     case RSA_NO_PADDING:
-      r = rsa_size;
+      ret = 1;
+      *out_len = rsa_size;
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
 
-  if (r < 0) {
+  if (!ret) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
-  } else {
-    *out_len = r;
-    ret = 1;
+    goto err;
   }
 
 err:

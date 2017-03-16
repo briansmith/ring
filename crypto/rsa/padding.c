@@ -92,56 +92,56 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
   return 1;
 }
 
-int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len) {
-  unsigned i, j;
-  const uint8_t *p;
-
+int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
+                                   size_t max_out, const uint8_t *from,
+                                   size_t from_len) {
+  /* See RFC 8017, section 9.2. This is part of signature verification and thus
+   * does not need to run in constant-time. */
   if (from_len < 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_SMALL);
-    return -1;
+    return 0;
   }
 
-  p = from;
-  if ((*(p++) != 0) || (*(p++) != 1)) {
+  /* Check the header. */
+  if (from[0] != 0 || from[1] != 1) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BLOCK_TYPE_IS_NOT_01);
-    return -1;
+    return 0;
   }
 
-  /* scan over padding data */
-  j = from_len - 2; /* one for leading 00, one for type. */
-  for (i = 0; i < j; i++) {
-    /* should decrypt to 0xff */
-    if (*p != 0xff) {
-      if (*p == 0) {
-        p++;
-        break;
-      } else {
-        OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_FIXED_HEADER_DECRYPT);
-        return -1;
-      }
+  /* Scan over padded data, looking for the 00. */
+  size_t pad;
+  for (pad = 2 /* header */; pad < from_len; pad++) {
+    if (from[pad] == 0x00) {
+      break;
     }
-    p++;
+
+    if (from[pad] != 0xff) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_FIXED_HEADER_DECRYPT);
+      return 0;
+    }
   }
 
-  if (i == j) {
+  if (pad == from_len) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_NULL_BEFORE_BLOCK_MISSING);
-    return -1;
+    return 0;
   }
 
-  if (i < 8) {
+  if (pad < 2 /* header */ + 8) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_PAD_BYTE_COUNT);
-    return -1;
+    return 0;
   }
-  i++; /* Skip over the '\0' */
-  j -= i;
-  if (j > to_len) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
-    return -1;
-  }
-  OPENSSL_memcpy(to, p, j);
 
-  return j;
+  /* Skip over the 00. */
+  pad++;
+
+  if (from_len - pad > max_out) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
+    return 0;
+  }
+
+  OPENSSL_memcpy(out, from + pad, from_len - pad);
+  *out_len = from_len - pad;
+  return 1;
 }
 
 static int rand_nonzero(uint8_t *out, size_t len) {

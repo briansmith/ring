@@ -97,8 +97,9 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont_ctx,
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
                                  const uint8_t *from, size_t from_len);
-int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len);
+int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
+                                   size_t max_out, const uint8_t *from,
+                                   size_t from_len);
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
                                  const uint8_t *from, size_t from_len);
 int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,
