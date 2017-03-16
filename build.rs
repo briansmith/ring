@@ -395,13 +395,15 @@ fn build_c_code(out_dir: PathBuf) {
             additional_src.par_iter().map(|src|
                 make_asm(src, out_dir.clone(), &target, includes_modified))
         });
-    build_library("ring-core", lib_target, additional, RING_SRC, &target,
-                  out_dir.clone(), includes_modified);
 
-    // XXX: Ideally, this would only happen for `cargo test`,
-    // but we don't know how to do that yet.
-    build_library("ring-test", test_target, Vec::new().into_par_iter(),
-                  RING_TEST_SRCS, &target, out_dir.clone(), includes_modified);
+    // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
+    // can't do that yet.
+    let ((), ()) = rayon::join(
+        || build_library("ring-core", lib_target, additional, RING_SRC, &target,
+                         out_dir.clone(), includes_modified),
+        || build_library("ring-test", test_target, Vec::new().into_par_iter(),
+                         RING_TEST_SRCS, &target, out_dir.clone(),
+                         includes_modified));
 
     if target.env() != "msvc" {
         let libcxx = if use_libcxx(&target) {
