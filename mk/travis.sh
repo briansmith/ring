@@ -26,7 +26,7 @@ aarch64-unknown-linux-gnu)
 arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
-arm-linux-androideabi)
+armv7-linux-androideabi)
   # install the android sdk/ndk
   mk/travis-install-android.sh
 
@@ -86,7 +86,7 @@ else
 fi
 
 case $TARGET_X in
-arm-linux-androideabi)
+armv7-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
   emulator @arm-18 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
