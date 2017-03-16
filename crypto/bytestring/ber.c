@@ -38,7 +38,7 @@ static int is_string_type(unsigned tag) {
     case CBS_ASN1_UTF8STRING:
     case CBS_ASN1_NUMERICSTRING:
     case CBS_ASN1_PRINTABLESTRING:
-    case CBS_ASN1_T16STRING:
+    case CBS_ASN1_T61STRING:
     case CBS_ASN1_VIDEOTEXSTRING:
     case CBS_ASN1_IA5STRING:
     case CBS_ASN1_GRAPHICSTRING:
