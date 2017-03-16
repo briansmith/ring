@@ -69,6 +69,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs::{self, DirEntry};
+use std::time::SystemTime;
 use rayon::par_iter::{ParallelIterator, IntoParallelIterator,
                       IntoParallelRefIterator};
 
@@ -370,15 +371,14 @@ fn build_c_code(out_dir: PathBuf) {
     test_target.push("libring-test.a");
     let test_target = test_target.as_path();
 
-    let lib_header_change = RING_HEADERS.par_iter()
+    let includes_modified = RING_HEADERS.par_iter()
         .chain(RING_INLINE_FILES.par_iter())
+        .chain(RING_TEST_HEADERS.par_iter())
         .chain(RING_BUILD_FILE.par_iter())
-        .map(Path::new)
-        .any(|p| need_run(&p, lib_target));
-    let test_header_change = RING_TEST_HEADERS.par_iter()
-        .map(Path::new)
-        .any(|p| need_run(&p, test_target)) ||
-                             lib_header_change;
+        .chain(RING_PERL_INCLUDES.par_iter())
+        .map(|f| file_modified(Path::new(*f)))
+        .max()
+        .unwrap();
 
     let srcs = match target.arch() {
         "x86_64" => vec![RING_X86_64_SRC, RING_INTEL_SHARED_SRCS],
@@ -391,16 +391,16 @@ fn build_c_code(out_dir: PathBuf) {
     let additional = srcs.into_par_iter()
         .weight_max()
         .flat_map(|additional_src| {
-            additional_src.par_iter()
-                .map(|src| make_asm(src, out_dir.clone(), &target))
+            additional_src.par_iter().map(|src|
+                make_asm(src, out_dir.clone(), &target, includes_modified))
         });
     build_library(lib_target, additional, RING_SRC, &target, out_dir.clone(),
-                  lib_header_change);
+                  includes_modified);
 
     // XXX: Ideally, this would only happen for `cargo test`,
     // but we don't know how to do that yet.
     build_library(test_target, Vec::new().into_par_iter(), RING_TEST_SRCS,
-                  &target, out_dir.clone(), test_header_change);
+                  &target, out_dir.clone(), includes_modified);
     if target.env() != "msvc" {
         let libcxx = if use_libcxx(&target) {
             "c++"
@@ -416,14 +416,14 @@ fn build_c_code(out_dir: PathBuf) {
 
 fn build_library<P>(out_path: &Path, additional: P,
                     lib_src: &'static [&'static str], target: &Target,
-                    out_dir: PathBuf, header_changed: bool)
+                    out_dir: PathBuf, includes_modified: SystemTime)
     where P: ParallelIterator<Item = String>
 {
     // Compile all the (dirty) source files into object files.
     let objs = additional.chain(lib_src.par_iter().map(|a| String::from(*a)))
         .weight_max()
         .filter(|f| target.env() != "msvc" || !f.ends_with(".S"))
-        .map(|f| compile(&f, target, out_dir.clone(), header_changed))
+        .map(|f| compile(&f, target, out_dir.clone(), includes_modified))
         .map(|v| vec![v])
         .reduce(Vec::new,
                 &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
@@ -434,7 +434,7 @@ fn build_library<P>(out_path: &Path, additional: P,
     //Rebuild the library if necessary.
     if objs.par_iter()
         .map(|f| Path::new(f))
-        .any(|p| need_run(&p, out_path)) {
+        .any(|p| need_run(&p, out_path, includes_modified)) {
         let mut c = gcc::Config::new();
 
         for f in LD_FLAGS {
@@ -459,12 +459,11 @@ fn build_library<P>(out_path: &Path, additional: P,
 }
 
 fn compile(file: &str, target: &Target, mut out_dir: PathBuf,
-           header_change: bool)
-           -> String {
+           includes_modified: SystemTime) -> String {
     let p = Path::new(file);
     out_dir.push(p.file_name().expect("There is a filename"));
     out_dir.set_extension(target.obj_ext);
-    if header_change || need_run(&p, out_dir.as_path()) {
+    if need_run(&p, out_dir.as_path(), includes_modified) {
         let ext = p.extension().unwrap().to_str().unwrap();
         let mut c = if target.env() != "msvc" || ext != "asm" {
             cc(file, ext, target, &out_dir)
@@ -596,16 +595,14 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
     }
 }
 
-fn make_asm(source: &str, mut dst: PathBuf, target: &Target)
-            -> String {
+fn make_asm(source: &str, mut dst: PathBuf, target: &Target,
+            includes_modified: SystemTime) -> String {
     let p = Path::new(source);
     if p.extension().expect("File without extension").to_str() == Some("pl") {
         dst.push(p.file_name().expect("File without filename??"));
         dst.set_extension(if target.env() == "msvc" { "asm" } else { "S" });
         let r: String = dst.to_str().expect("Could not convert path").into();
-        let perl_include_changed = RING_PERL_INCLUDES.iter()
-            .any(|i| need_run(&Path::new(i), dst.as_path()));
-        if need_run(&p, dst.as_path()) || perl_include_changed {
+        if need_run(p, dst.as_path(), includes_modified) {
             let format = match (target.os(), target.arch()) {
                 ("macos", _) => "macosx",
                 ("ios", "arm") => "ios32",
@@ -632,17 +629,23 @@ fn make_asm(source: &str, mut dst: PathBuf, target: &Target)
     }
 }
 
-fn need_run(source: &Path, target: &Path) -> bool {
-    let s = std::fs::metadata(source);
-    let t = std::fs::metadata(target);
-    if s.is_err() || t.is_err() {
-        true
+fn need_run(source: &Path, target: &Path, includes_modified: SystemTime)
+            -> bool {
+    let s_modified = file_modified(source);
+    if let Ok(target_metadata) = std::fs::metadata(target) {
+        let target_modified = target_metadata.modified().unwrap();
+        s_modified >= target_modified || includes_modified >= target_modified
     } else {
-        match (s.unwrap().modified(), t.unwrap().modified()) {
-            (Ok(s), Ok(t)) => s >= t,
-            _ => true,
-        }
+        // On error fetching metadata for the target file, assume the target
+        // doesn't exist.
+        true
     }
+}
+
+fn file_modified(path: &Path) -> SystemTime {
+    let path = Path::new(path);
+    let path_as_str = format!("{:?}", path);
+    std::fs::metadata(path).expect(&path_as_str).modified().expect("nah")
 }
 
 fn get_command(var: &str, default: &str) -> String {
