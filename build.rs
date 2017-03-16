@@ -300,6 +300,22 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
 
 const LD_FLAGS: &'static [&'static str] = &[];
 
+// None means "any OS" or "any target". The first match in sequence order is
+// taken.
+const ASM_TARGETS:
+    &'static [(&'static str, Option<&'static str>, &'static str)] =
+&[
+    ("x86_64", Some("macos"), "macosx"),
+    ("x86_64", Some("windows"), "nasm"),
+    ("x86_64", None, "elf"),
+    ("aarch64", Some("ios"), "ios64"),
+    ("aarch64", None, "linux64"),
+    ("x86", Some("windows"), "win32n"),
+    ("x86", None, "elf"),
+    ("arm", Some("ios"), "ios32"),
+    ("arm", None, "linux32"),
+];
+
 fn main() {
     for (key, value) in env::vars() {
         println!("{}: {}", key, value);
@@ -338,6 +354,7 @@ impl Target {
         } else {
             ("o", "-o")
         };
+
         Target {
             arch: arch,
             os: os,
@@ -383,10 +400,24 @@ fn build_c_code(out_dir: PathBuf) {
         }
     }
 
+    fn is_none_or_equals<T>(opt: Option<T>, other: T)
+                            -> bool where T: PartialEq {
+        if let Some(value) = opt {
+            value == other
+        } else {
+            true
+        }
+    }
+
+    let &(_, _, perlasm_format) = ASM_TARGETS.iter().find(|entry| {
+        let &(entry_arch, entry_os, _) = *entry;
+        entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
+    }).unwrap();
     let additional = perlasm_srcs.par_iter()
         .weight_max()
         .map(|src_path|
-            make_asm(&src_path, out_dir.clone(), &target, includes_modified))
+            make_asm(&src_path, target.arch(), target.os(), perlasm_format,
+                     includes_modified, &out_dir))
         .collect::<Vec<_>>();
 
     let test_srcs = RING_TEST_SRCS.iter()
@@ -603,26 +634,17 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
     }
 }
 
-fn make_asm(p: &Path, mut dst: PathBuf, target: &Target,
-            includes_modified: SystemTime) -> PathBuf {
+fn make_asm(p: &Path, arch: &str, os: &str, perlasm_format: &str,
+            includes_modified: SystemTime, out_dir: &Path) -> PathBuf {
+    let mut dst = PathBuf::from(out_dir);
     dst.push(p.file_name().expect("File without filename??"));
-    dst.set_extension(if target.env() == "msvc" { "asm" } else { "S" });
+    dst.set_extension(if os == "windows" { "asm" } else { "S" });
     let r: String = dst.to_str().expect("Could not convert path").into();
     if need_run(p, dst.as_path(), includes_modified) {
-        let format = match (target.os(), target.arch()) {
-            ("macos", _) => "macosx",
-            ("ios", "arm") => "ios32",
-            ("ios", "aarch64") => "ios64",
-            ("windows", "x86_64") => "nasm",
-            ("windows", "x86") => "win32n",
-            (_, "aarch64") => "linux64",
-            (_, "arm") => "linux32",
-            _ => "elf",
-        };
         let mut args = Vec::<String>::new();
         args.push(p.to_string_lossy().into_owned());
-        args.push(format.into());
-        if target.arch() == "x86" {
+        args.push(perlasm_format.to_owned());
+        if arch == "x86" {
             args.push("-fPIC".into());
             args.push("-DOPENSSL_IA32_SSE2".into());
         }
