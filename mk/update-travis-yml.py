@@ -53,7 +53,7 @@ osx_compilers = [
 
 compilers = {
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
-    "arm-linux-androideabi" : [ "arm-linux-androideabi-gcc" ],
+    "armv7-linux-androideabi" : [ "arm-linux-androideabi-gcc" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
@@ -82,7 +82,7 @@ targets = {
         "x86_64-apple-darwin",
     ],
     "linux" : [
-        "arm-linux-androideabi",
+        "armv7-linux-androideabi",
         "x86_64-unknown-linux-gnu",
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
@@ -162,7 +162,7 @@ def format_entry(os, target, compiler, rust, mode, features):
         sources = sorted(list(set(sources_with_dups)))
 
     # TODO: Use trusty for everything?
-    if arch in ["aarch64", "arm"] and sys != "androideabi":
+    if arch in ["aarch64", "arm", "armv7"]:
         template += """
       dist: trusty
       sudo: required"""
@@ -219,7 +219,7 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
         packages += ["gcc-arm-linux-gnueabihf",
                      "g++-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
-    if target == "arm-linux-androideabi":
+    if target == "armv7-linux-androideabi":
         packages += ["expect",
                      "openjdk-6-jre-headless"]
 
@@ -248,7 +248,7 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libelf-dev",
                          "libdw-dev",
                          "binutils-dev"]
-    elif arch not in ["aarch64", "arm"]:
+    elif arch not in ["aarch64", "arm", "armv7"]:
         raise ValueError("unexpected arch: %s" % arch)
 
     return packages
