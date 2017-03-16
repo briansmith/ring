@@ -394,13 +394,14 @@ fn build_c_code(out_dir: PathBuf) {
             additional_src.par_iter().map(|src|
                 make_asm(src, out_dir.clone(), &target, includes_modified))
         });
-    build_library(lib_target, additional, RING_SRC, &target, out_dir.clone(),
-                  includes_modified);
+    build_library("ring-core", lib_target, additional, RING_SRC, &target,
+                  out_dir.clone(), includes_modified);
 
     // XXX: Ideally, this would only happen for `cargo test`,
     // but we don't know how to do that yet.
-    build_library(test_target, Vec::new().into_par_iter(), RING_TEST_SRCS,
-                  &target, out_dir.clone(), includes_modified);
+    build_library("ring-test", test_target, Vec::new().into_par_iter(),
+                  RING_TEST_SRCS, &target, out_dir.clone(), includes_modified);
+
     if target.env() != "msvc" {
         let libcxx = if use_libcxx(&target) {
             "c++"
@@ -410,11 +411,14 @@ fn build_c_code(out_dir: PathBuf) {
         println!("cargo:rustc-flags=-l dylib={}", libcxx);
     }
 
-     print_rerun();
+    println!("cargo:rustc-link-search=native={}",
+             out_dir.to_str().expect("Invalid path"));
+
+    print_rerun();
 }
 
 
-fn build_library<P>(out_path: &Path, additional: P,
+fn build_library<P>(lib_name: &str, out_path: &Path, additional: P,
                     lib_src: &'static [&'static str], target: &Target,
                     out_dir: PathBuf, includes_modified: SystemTime)
     where P: ParallelIterator<Item = String>
@@ -452,10 +456,18 @@ fn build_library<P>(out_path: &Path, additional: P,
         for o in objs {
             let _ = c.object(o);
         }
+
+        // Handled below.
+        let _ = c.cargo_metadata(false);
+
         c.compile(out_path.file_name()
             .and_then(|f| f.to_str())
             .expect("No filename"));
     }
+
+    // Link the library. This works even when the library doesn't need to be
+    // rebuilt.
+    println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
 fn compile(file: &str, target: &Target, mut out_dir: PathBuf,
