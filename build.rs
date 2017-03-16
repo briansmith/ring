@@ -636,10 +636,15 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
 
 fn make_asm(p: &Path, arch: &str, os: &str, perlasm_format: &str,
             includes_modified: SystemTime, out_dir: &Path) -> PathBuf {
+    let src_stem = p.file_stem().expect("source file without basename");
+
     let mut dst = PathBuf::from(out_dir);
-    dst.push(p.file_name().expect("File without filename??"));
-    dst.set_extension(if os == "windows" { "asm" } else { "S" });
-    let r: String = dst.to_str().expect("Could not convert path").into();
+    let dst_stem = src_stem.to_str().unwrap();
+    let dst_extension = if os == "windows" { "asm" } else { "S" };
+    let dst_filename =
+        format!("{}-{}.{}", dst_stem, perlasm_format, dst_extension);
+    dst.push(dst_filename);
+
     if need_run(p, dst.as_path(), includes_modified) {
         let mut args = Vec::<String>::new();
         args.push(p.to_string_lossy().into_owned());
@@ -648,7 +653,7 @@ fn make_asm(p: &Path, arch: &str, os: &str, perlasm_format: &str,
             args.push("-fPIC".into());
             args.push("-DOPENSSL_IA32_SSE2".into());
         }
-        args.push(r.clone());
+        args.push(dst.to_str().expect("Could not convert path").into());
         run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
     }
     dst
