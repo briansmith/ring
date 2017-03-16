@@ -73,20 +73,19 @@
  * supported by TLS.) */
 #define MAX_HASH_BLOCK_SIZE 128
 
-int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
-                               const uint8_t *in, unsigned in_len,
-                               unsigned block_size, unsigned mac_size) {
-  unsigned padding_length, good, to_check, i;
-  const unsigned overhead = 1 /* padding length byte */ + mac_size;
+int EVP_tls_cbc_remove_padding(size_t *out_padding_ok, size_t *out_len,
+                               const uint8_t *in, size_t in_len,
+                               size_t block_size, size_t mac_size) {
+  const size_t overhead = 1 /* padding length byte */ + mac_size;
 
   /* These lengths are all public so we can test them in non-constant time. */
   if (overhead > in_len) {
     return 0;
   }
 
-  padding_length = in[in_len - 1];
+  size_t padding_length = in[in_len - 1];
 
-  good = constant_time_ge(in_len, overhead + padding_length);
+  size_t good = constant_time_ge_s(in_len, overhead + padding_length);
   /* The padding consists of a length byte at the end of the record and
    * then that many bytes of padding, all with the same value as the
    * length byte. Thus, with the length byte included, there are i+1
@@ -96,12 +95,12 @@ int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
    * decrypted information. Therefore we always have to check the maximum
    * amount of padding possible. (Again, the length of the record is
    * public information so we can use it.) */
-  to_check = 256; /* maximum amount of padding, inc length byte. */
+  size_t to_check = 256; /* maximum amount of padding, inc length byte. */
   if (to_check > in_len) {
     to_check = in_len;
   }
 
-  for (i = 0; i < to_check; i++) {
+  for (size_t i = 0; i < to_check; i++) {
     uint8_t mask = constant_time_ge_8(padding_length, i);
     uint8_t b = in[in_len - 1 - i];
     /* The final |padding_length+1| bytes should all have the value
@@ -111,7 +110,7 @@ int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
 
   /* If any of the final |padding_length+1| bytes had the wrong value,
    * one or more of the lower eight bits of |good| will be cleared. */
-  good = constant_time_eq(0xff, good & 0xff);
+  good = constant_time_eq_s(0xff, good & 0xff);
 
   /* Always treat |padding_length| as zero on error. If, assuming block size of
    * 16, a padding of [<15 arbitrary bytes> 15] treated |padding_length| as 16
@@ -123,16 +122,15 @@ int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
   return 1;
 }
 
-void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
-                          const uint8_t *in, unsigned in_len,
-                          unsigned orig_len) {
+void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
+                          size_t in_len, size_t orig_len) {
   uint8_t rotated_mac1[EVP_MAX_MD_SIZE], rotated_mac2[EVP_MAX_MD_SIZE];
   uint8_t *rotated_mac = rotated_mac1;
   uint8_t *rotated_mac_tmp = rotated_mac2;
 
   /* mac_end is the index of |in| just after the end of the MAC. */
-  unsigned mac_end = in_len;
-  unsigned mac_start = mac_end - md_size;
+  size_t mac_end = in_len;
+  size_t mac_start = mac_end - md_size;
 
   assert(orig_len >= in_len);
   assert(in_len >= md_size);
@@ -140,20 +138,20 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
 
   /* scan_start contains the number of bytes that we can ignore because
    * the MAC's position can only vary by 255 bytes. */
-  unsigned scan_start = 0;
+  size_t scan_start = 0;
   /* This information is public so it's safe to branch based on it. */
   if (orig_len > md_size + 255 + 1) {
     scan_start = orig_len - (md_size + 255 + 1);
   }
 
-  unsigned rotate_offset = 0;
+  size_t rotate_offset = 0;
   uint8_t mac_started = 0;
   OPENSSL_memset(rotated_mac, 0, md_size);
-  for (unsigned i = scan_start, j = 0; i < orig_len; i++, j++) {
+  for (size_t i = scan_start, j = 0; i < orig_len; i++, j++) {
     if (j >= md_size) {
       j -= md_size;
     }
-    unsigned is_mac_start = constant_time_eq(i, mac_start);
+    size_t is_mac_start = constant_time_eq_s(i, mac_start);
     mac_started |= is_mac_start;
     uint8_t mac_ended = constant_time_ge_8(i, mac_end);
     rotated_mac[j] |= in[i] & mac_started & ~mac_ended;
@@ -163,12 +161,11 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
 
   /* Now rotate the MAC. We rotate in log(md_size) steps, one for each bit
    * position. */
-  for (unsigned offset = 1; offset < md_size;
-       offset <<= 1, rotate_offset >>= 1) {
+  for (size_t offset = 1; offset < md_size; offset <<= 1, rotate_offset >>= 1) {
     /* Rotate by |offset| iff the corresponding bit is set in
      * |rotate_offset|, placing the result in |rotated_mac_tmp|. */
     const uint8_t skip_rotate = (rotate_offset & 1) - 1;
-    for (unsigned i = 0, j = offset; i < md_size; i++, j++) {
+    for (size_t i = 0, j = offset; i < md_size; i++, j++) {
       if (j >= md_size) {
         j -= md_size;
       }
@@ -318,7 +315,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
   assert(md_block_size <= MAX_HASH_BLOCK_SIZE);
   assert(md_size <= EVP_MAX_MD_SIZE);
 
-  static const unsigned kHeaderLength = 13;
+  static const size_t kHeaderLength = 13;
 
   /* kVarianceBlocks is the number of blocks of the hash that we have to
    * calculate in constant time because they could be altered by the
@@ -327,16 +324,16 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
    * TLSv1 has MACs up to 48 bytes long (SHA-384) and the padding is not
    * required to be minimal. Therefore we say that the final six blocks
    * can vary based on the padding. */
-  static const unsigned kVarianceBlocks = 6;
+  static const size_t kVarianceBlocks = 6;
 
   /* From now on we're dealing with the MAC, which conceptually has 13
    * bytes of `header' before the start of the data. */
-  unsigned len = data_plus_mac_plus_padding_size + kHeaderLength;
+  size_t len = data_plus_mac_plus_padding_size + kHeaderLength;
   /* max_mac_bytes contains the maximum bytes of bytes in the MAC, including
    * |header|, assuming that there's no padding. */
-  unsigned max_mac_bytes = len - md_size - 1;
+  size_t max_mac_bytes = len - md_size - 1;
   /* num_blocks is the maximum number of hash blocks. */
-  unsigned num_blocks =
+  size_t num_blocks =
       (max_mac_bytes + 1 + md_length_size + md_block_size - 1) / md_block_size;
   /* In order to calculate the MAC in constant time we have to handle
    * the final blocks specially because the padding value could cause the
@@ -344,22 +341,22 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
    * can't leak where. However, |num_starting_blocks| worth of data can
    * be hashed right away because no padding value can affect whether
    * they are plaintext. */
-  unsigned num_starting_blocks = 0;
+  size_t num_starting_blocks = 0;
   /* k is the starting byte offset into the conceptual header||data where
    * we start processing. */
-  unsigned k = 0;
+  size_t k = 0;
   /* mac_end_offset is the index just past the end of the data to be
    * MACed. */
-  unsigned mac_end_offset = data_plus_mac_size + kHeaderLength - md_size;
+  size_t mac_end_offset = data_plus_mac_size + kHeaderLength - md_size;
   /* c is the index of the 0x80 byte in the final hash block that
    * contains application data. */
-  unsigned c = mac_end_offset % md_block_size;
+  size_t c = mac_end_offset % md_block_size;
   /* index_a is the hash block number that contains the 0x80 terminating
    * value. */
-  unsigned index_a = mac_end_offset / md_block_size;
+  size_t index_a = mac_end_offset / md_block_size;
   /* index_b is the hash block number that contains the 64-bit hash
    * length, in bits. */
-  unsigned index_b = (mac_end_offset + md_length_size) / md_block_size;
+  size_t index_b = (mac_end_offset + md_length_size) / md_block_size;
 
   if (num_blocks > kVarianceBlocks) {
     num_starting_blocks = num_blocks - kVarianceBlocks;
@@ -368,7 +365,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
 
   /* bits is the hash-length in bits. It includes the additional hash
    * block for the masked HMAC key. */
-  unsigned bits = 8 * mac_end_offset; /* at most 18 bits to represent */
+  size_t bits = 8 * mac_end_offset; /* at most 18 bits to represent */
 
   /* Compute the initial HMAC block. */
   bits += 8 * md_block_size;
@@ -377,12 +374,13 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
   OPENSSL_memset(hmac_pad, 0, md_block_size);
   assert(mac_secret_length <= sizeof(hmac_pad));
   OPENSSL_memcpy(hmac_pad, mac_secret, mac_secret_length);
-  for (unsigned i = 0; i < md_block_size; i++) {
+  for (size_t i = 0; i < md_block_size; i++) {
     hmac_pad[i] ^= 0x36;
   }
 
   md_transform(md_state.c, hmac_pad);
 
+  /* The length check means |bits| fits in four bytes. */
   uint8_t length_bytes[MAX_HASH_BIT_COUNT_BYTES];
   OPENSSL_memset(length_bytes, 0, md_length_size - 4);
   length_bytes[md_length_size - 4] = (uint8_t)(bits >> 24);
@@ -396,7 +394,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     OPENSSL_memcpy(first_block, header, 13);
     OPENSSL_memcpy(first_block + 13, data, md_block_size - 13);
     md_transform(md_state.c, first_block);
-    for (unsigned i = 1; i < k / md_block_size; i++) {
+    for (size_t i = 1; i < k / md_block_size; i++) {
       md_transform(md_state.c, data + md_block_size * i - 13);
     }
   }
@@ -408,12 +406,12 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
    * it in constant time. If the |i==index_a| then we'll include the 0x80
    * bytes and zero pad etc. For each block we selectively copy it, in
    * constant time, to |mac_out|. */
-  for (unsigned i = num_starting_blocks;
+  for (size_t i = num_starting_blocks;
        i <= num_starting_blocks + kVarianceBlocks; i++) {
     uint8_t block[MAX_HASH_BLOCK_SIZE];
     uint8_t is_block_a = constant_time_eq_8(i, index_a);
     uint8_t is_block_b = constant_time_eq_8(i, index_b);
-    for (unsigned j = 0; j < md_block_size; j++) {
+    for (size_t j = 0; j < md_block_size; j++) {
       uint8_t b = 0;
       if (k < kHeaderLength) {
         b = header[k];
@@ -451,7 +449,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     md_transform(md_state.c, block);
     md_final_raw(md_state.c, block);
     /* If this is index_b, copy the hash value to |mac_out|. */
-    for (unsigned j = 0; j < md_size; j++) {
+    for (size_t j = 0; j < md_size; j++) {
       mac_out[j] |= block[j] & is_block_b;
     }
   }
@@ -464,7 +462,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
   }
 
   /* Complete the HMAC in the standard manner. */
-  for (unsigned i = 0; i < md_block_size; i++) {
+  for (size_t i = 0; i < md_block_size; i++) {
     hmac_pad[i] ^= 0x6a;
   }
 

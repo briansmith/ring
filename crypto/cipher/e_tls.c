@@ -262,24 +262,24 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   /* Remove CBC padding. Code from here on is timing-sensitive with respect to
    * |padding_ok| and |data_plus_mac_len| for CBC ciphers. */
-  unsigned padding_ok, data_plus_mac_len;
+  size_t padding_ok, data_plus_mac_len;
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE) {
     if (!EVP_tls_cbc_remove_padding(
             &padding_ok, &data_plus_mac_len, out, total,
             EVP_CIPHER_CTX_block_size(&tls_ctx->cipher_ctx),
-            (unsigned)HMAC_size(&tls_ctx->hmac_ctx))) {
+            HMAC_size(&tls_ctx->hmac_ctx))) {
       /* Publicly invalid. This can be rejected in non-constant time. */
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
       return 0;
     }
   } else {
-    padding_ok = CONSTTIME_TRUE;
+    padding_ok = CONSTTIME_TRUE_S;
     data_plus_mac_len = total;
     /* |data_plus_mac_len| = |total| = |in_len| at this point. |in_len| has
      * already been checked against the MAC size at the top of the function. */
     assert(data_plus_mac_len >= HMAC_size(&tls_ctx->hmac_ctx));
   }
-  unsigned data_len = data_plus_mac_len - HMAC_size(&tls_ctx->hmac_ctx);
+  size_t data_len = data_plus_mac_len - HMAC_size(&tls_ctx->hmac_ctx);
 
   /* At this point, if the padding is valid, the first |data_plus_mac_len| bytes
    * after |out| are the plaintext and MAC. Otherwise, |data_plus_mac_len| is
@@ -332,8 +332,8 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * safe to simply perform the padding check first, but it would not be under a
    * different choice of MAC location on padding failure. See
    * EVP_tls_cbc_remove_padding. */
-  unsigned good = constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len),
-                                       0);
+  size_t good =
+      constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len), 0);
   good &= padding_ok;
   if (!good) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);

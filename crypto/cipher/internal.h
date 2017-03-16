@@ -110,9 +110,9 @@ struct evp_aead_st {
  * If the function returns one, it runs in time independent of the contents of
  * |in|. It is also guaranteed that |*out_len| >= |mac_size|, satisfying
  * |EVP_tls_cbc_copy_mac|'s precondition. */
-int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
-                               const uint8_t *in, unsigned in_len,
-                               unsigned block_size, unsigned mac_size);
+int EVP_tls_cbc_remove_padding(size_t *out_padding_ok, size_t *out_len,
+                               const uint8_t *in, size_t in_len,
+                               size_t block_size, size_t mac_size);
 
 /* EVP_tls_cbc_copy_mac copies |md_size| bytes from the end of the first
  * |in_len| bytes of |in| to |out| in constant time (independent of the concrete
@@ -122,9 +122,8 @@ int EVP_tls_cbc_remove_padding(unsigned *out_padding_ok, unsigned *out_len,
  * On entry:
  *   orig_len >= in_len >= md_size
  *   md_size <= EVP_MAX_MD_SIZE */
-void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
-                          const uint8_t *in, unsigned in_len,
-                          unsigned orig_len);
+void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
+                          size_t in_len, size_t orig_len);
 
 /* EVP_tls_cbc_record_digest_supported returns 1 iff |md| is a hash function
  * which EVP_tls_cbc_digest_record supports. */
