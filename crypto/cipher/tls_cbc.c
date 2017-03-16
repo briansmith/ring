@@ -271,9 +271,13 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
    * the hash. */
   unsigned md_length_size = 8;
 
-  /* This is a, hopefully redundant, check that allows us to forget about
-   * many possible overflows later in this function. */
-  assert(data_plus_mac_plus_padding_size < 1024 * 1024);
+  /* Bound the acceptable input so we can forget about many possible overflows
+   * later in this function. This is redundant with the record size limits in
+   * TLS. */
+  if (data_plus_mac_plus_padding_size >= 1024 * 1024) {
+    assert(0);
+    return 0;
+  }
 
   switch (EVP_MD_type(md)) {
     case NID_sha1:
