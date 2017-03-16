@@ -175,20 +175,16 @@ const RING_TEST_SRCS: &'static [&'static str] =
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_HEADERS: &'static [&'static str] =
-    &["crypto/poly1305/internal.h",
-      "crypto/test/scoped_types.h",
+    &["crypto/test/scoped_types.h",
       "crypto/test/rand.h",
       "crypto/curve25519/internal.h",
       "crypto/cipher/internal.h",
-      "crypto/bn/rsaz_exp.h",
       "crypto/bn/internal.h",
       "crypto/internal.h",
-      "crypto/rsa/internal.h",
       "crypto/modes/internal.h",
       "crypto/ec/ecp_nistz.h",
       "crypto/ec/ecp_nistz384.h",
       "crypto/ec/ecp_nistz256.h",
-      "crypto/ec/gfp_internal.h",
       "crypto/limbs/limbs.h",
       "include/openssl/type_check.h",
       "include/openssl/mem.h",
@@ -210,8 +206,6 @@ const RING_TEST_HEADERS: &'static [&'static str] =
 const RING_INLINE_FILES: &'static [&'static str] =
     &["crypto/ec/ecp_nistz256_table.inl",
       "crypto/ec/ecp_nistz384.inl",
-      "crypto/ec/gfp_limbs.inl",
-      "crypto/ec/ecp_nistz384_mul.inl",
       "crypto/limbs/limbs.inl"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
