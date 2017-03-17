@@ -172,18 +172,24 @@ const RING_TEST_SRCS: &'static [&'static str] = &[
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_HEADERS: &'static [&'static str] =
+const RING_INCLUDES: &'static [&'static str] =
     &["crypto/test/scoped_types.h",
       "crypto/test/rand.h",
       "crypto/curve25519/internal.h",
       "crypto/cipher/internal.h",
       "crypto/bn/internal.h",
+      "crypto/ec/ecp_nistz256_table.inl",
+      "crypto/ec/ecp_nistz384.inl",
       "crypto/internal.h",
       "crypto/modes/internal.h",
       "crypto/ec/ecp_nistz.h",
       "crypto/ec/ecp_nistz384.h",
       "crypto/ec/ecp_nistz256.h",
       "crypto/limbs/limbs.h",
+      "crypto/limbs/limbs.inl",
+      "crypto/test/bn_test_lib.h",
+      "crypto/test/file_test.h",
+      "crypto/test/bn_test_util.h",
       "include/openssl/type_check.h",
       "include/openssl/mem.h",
       "include/openssl/bn.h",
@@ -194,17 +200,6 @@ const RING_HEADERS: &'static [&'static str] =
       "include/openssl/aes.h",
       "include/openssl/base.h",
       "include/openssl/err.h"];
-
-const RING_TEST_HEADERS: &'static [&'static str] =
-    &["crypto/test/bn_test_lib.h",
-      "crypto/test/file_test.h",
-      "crypto/test/bn_test_util.h"];
-
-#[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_INLINE_FILES: &'static [&'static str] =
-    &["crypto/ec/ecp_nistz256_table.inl",
-      "crypto/ec/ecp_nistz384.inl",
-      "crypto/limbs/limbs.inl"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &'static [&'static str] =
@@ -368,10 +363,8 @@ fn build_c_code(out_dir: PathBuf) {
     test_target.push("libring-test.a");
     let test_target = test_target.as_path();
 
-    let includes_modified = RING_HEADERS.par_iter()
+    let includes_modified = RING_INCLUDES.par_iter()
         .weight_max()
-        .chain(RING_INLINE_FILES.par_iter())
-        .chain(RING_TEST_HEADERS.par_iter())
         .chain(RING_BUILD_FILE.par_iter())
         .chain(RING_PERL_INCLUDES.par_iter())
         .map(|f| file_modified(Path::new(*f)))
@@ -672,10 +665,10 @@ fn is_tracked(file: &DirEntry) {
     let p = file.path();
     let cmp = |f| p == PathBuf::from(f);
     let tracked = match p.extension().and_then(|p| p.to_str()) {
-        Some("h") => {
-            RING_HEADERS.iter().chain(RING_TEST_HEADERS.iter()).any(cmp)
+        Some("h") |
+        Some("inl") => {
+            RING_INCLUDES.iter().any(cmp)
         },
-        Some("inl") => RING_INLINE_FILES.iter().any(cmp),
         Some("c") |
         Some("cc") |
         Some("S") |
