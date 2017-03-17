@@ -161,11 +161,6 @@ const RING_AARCH64_SRCS: &'static [&'static str] =
       "crypto/sha/asm/sha256-armv8.pl",
       "crypto/sha/asm/sha512-armv8.pl"];
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_PPC_SRCS: &'static [&'static str] =
-    &["crypto/aes/asm/aesp8-ppc.pl",
-      "crypto/cpu-ppc64le.c"];
-
 const RING_TEST_SRCS: &'static [&'static str] =
     &["crypto/bn/bn_test.cc",
       "crypto/constant_time_test.c",
@@ -687,7 +682,6 @@ fn is_tracked(file: &DirEntry) {
                 .chain(RING_TEST_SRCS.iter())
                 .chain(RING_X86_64_SRC.iter())
                 .chain(RING_X86_SRCS.iter())
-                .chain(RING_PPC_SRCS.iter())
                 .any(cmp)
         },
         Some("S") |
@@ -707,7 +701,6 @@ fn is_tracked(file: &DirEntry) {
                 .chain(RING_INTEL_SHARED_SRCS.iter())
                 .chain(RING_X86_64_SRC.iter())
                 .chain(RING_X86_SRCS.iter())
-                .chain(RING_PPC_SRCS.iter())
                 .chain(RING_PERL_INCLUDES.iter())
                 .any(cmp)
         },
