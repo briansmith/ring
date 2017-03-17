@@ -73,101 +73,103 @@ use std::time::SystemTime;
 use rayon::par_iter::{ParallelIterator, IntoParallelIterator,
                       IntoParallelRefIterator};
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_SRC: &'static [&'static str] =
-    &["crypto/aes/aes.c",
-      "crypto/bn/add.c",
-      "crypto/bn/bn.c",
-      "crypto/bn/cmp.c",
-      "crypto/bn/convert.c",
-      "crypto/bn/div.c",
-      "crypto/bn/exponentiation.c",
-      "crypto/bn/gcd.c",
-      "crypto/bn/generic.c",
-      "crypto/bn/montgomery.c",
-      "crypto/bn/montgomery_inv.c",
-      "crypto/bn/mul.c",
-      "crypto/bn/random.c",
-      "crypto/bn/shift.c",
-      "crypto/cipher/e_aes.c",
-      "crypto/crypto.c",
-      "crypto/curve25519/curve25519.c",
-      "crypto/ec/ecp_nistz.c",
-      "crypto/ec/ecp_nistz256.c",
-      "crypto/ec/gfp_p256.c",
-      "crypto/ec/gfp_p384.c",
-      "crypto/mem.c",
-      "crypto/modes/gcm.c",
-      "crypto/rand/sysrand.c",
-      "crypto/limbs/limbs.c"];
-
-const RING_INTEL_SHARED_SRCS: &'static [&'static str] = &["crypto/cpu-intel.c"];
-
-const RING_X86_SRCS: &'static [&'static str] =
-    &["crypto/aes/asm/aes-586.pl",
-      "crypto/aes/asm/aesni-x86.pl",
-      "crypto/aes/asm/vpaes-x86.pl",
-      "crypto/bn/asm/x86-mont.pl",
-      "crypto/chacha/asm/chacha-x86.pl",
-      "crypto/ec/asm/ecp_nistz256-x86.pl",
-      "crypto/modes/asm/ghash-x86.pl",
-      "crypto/poly1305/asm/poly1305-x86.pl",
-      "crypto/sha/asm/sha256-586.pl",
-      "crypto/sha/asm/sha512-586.pl"];
-
-const RING_X86_64_SRC: &'static [&'static str] =
-    &["crypto/aes/asm/aes-x86_64.pl",
-      "crypto/aes/asm/aesni-x86_64.pl",
-      "crypto/aes/asm/bsaes-x86_64.pl",
-      "crypto/aes/asm/vpaes-x86_64.pl",
-      "crypto/bn/asm/x86_64-mont.pl",
-      "crypto/bn/asm/x86_64-mont5.pl",
-      "crypto/chacha/asm/chacha-x86_64.pl",
-      "crypto/curve25519/asm/x25519-asm-x86_64.S",
-      "crypto/curve25519/x25519-x86_64.c",
-      "crypto/ec/asm/ecp_nistz256-x86_64.pl",
-      "crypto/ec/asm/p256-x86_64-asm.pl",
-      "crypto/modes/asm/aesni-gcm-x86_64.pl",
-      "crypto/modes/asm/ghash-x86_64.pl",
-      "crypto/poly1305/asm/poly1305-x86_64.pl",
-      "crypto/sha/asm/sha256-x86_64.pl",
-      "crypto/sha/asm/sha512-x86_64.pl"];
+const X86: &'static str = "x86";
+const X86_64: &'static str = "x86_64";
+const AARCH64: &'static str = "aarch64";
+const ARM: &'static str = "arm";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_ARM_SHARED_SRCS: &'static [&'static str] =
-    &["crypto/cpu-arm.c",
-      "crypto/cpu-arm-linux.c",
-      "crypto/aes/asm/aesv8-armx.pl",
-      "crypto/modes/asm/ghashv8-armx.pl"];
+const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
+    (&[], "crypto/aes/aes.c"),
+    (&[], "crypto/bn/add.c"),
+    (&[], "crypto/bn/bn.c"),
+    (&[], "crypto/bn/cmp.c"),
+    (&[], "crypto/bn/convert.c"),
+    (&[], "crypto/bn/div.c"),
+    (&[], "crypto/bn/exponentiation.c"),
+    (&[], "crypto/bn/gcd.c"),
+    (&[], "crypto/bn/generic.c"),
+    (&[], "crypto/bn/montgomery.c"),
+    (&[], "crypto/bn/montgomery_inv.c"),
+    (&[], "crypto/bn/mul.c"),
+    (&[], "crypto/bn/random.c"),
+    (&[], "crypto/bn/shift.c"),
+    (&[], "crypto/cipher/e_aes.c"),
+    (&[], "crypto/crypto.c"),
+    (&[], "crypto/curve25519/curve25519.c"),
+    (&[], "crypto/ec/ecp_nistz.c"),
+    (&[], "crypto/ec/ecp_nistz256.c"),
+    (&[], "crypto/ec/gfp_p256.c"),
+    (&[], "crypto/ec/gfp_p384.c"),
+    (&[], "crypto/mem.c"),
+    (&[], "crypto/modes/gcm.c"),
+    (&[], "crypto/rand/sysrand.c"),
+    (&[], "crypto/limbs/limbs.c"),
 
-const RING_ARM_SRCS: &'static [&'static str] =
-    &["crypto/aes/asm/aes-armv4.pl",
-      "crypto/aes/asm/bsaes-armv7.pl",
-      "crypto/bn/asm/armv4-mont.pl",
-      "crypto/chacha/asm/chacha-armv4.pl",
-      "crypto/curve25519/asm/x25519-asm-arm.S",
-      "crypto/ec/asm/ecp_nistz256-armv4.pl",
-      "crypto/modes/asm/ghash-armv4.pl",
-      "crypto/poly1305/asm/poly1305-armv4.pl",
-      "crypto/sha/asm/sha256-armv4.pl",
-      "crypto/sha/asm/sha512-armv4.pl"];
+    (&[X86_64, X86], "crypto/cpu-intel.c"),
 
-const RING_AARCH64_SRCS: &'static [&'static str] =
-    &["crypto/cpu-aarch64-linux.c",
-      "crypto/bn/asm/armv8-mont.pl",
-      "crypto/chacha/asm/chacha-armv8.pl",
-      "crypto/ec/asm/ecp_nistz256-armv8.pl",
-      "crypto/poly1305/asm/poly1305-armv8.pl",
-      "crypto/sha/asm/sha256-armv8.pl",
-      "crypto/sha/asm/sha512-armv8.pl"];
+    (&[X86], "crypto/aes/asm/aes-586.pl"),
+    (&[X86], "crypto/aes/asm/aesni-x86.pl"),
+    (&[X86], "crypto/aes/asm/vpaes-x86.pl"),
+    (&[X86], "crypto/bn/asm/x86-mont.pl"),
+    (&[X86], "crypto/chacha/asm/chacha-x86.pl"),
+    (&[X86], "crypto/ec/asm/ecp_nistz256-x86.pl"),
+    (&[X86], "crypto/modes/asm/ghash-x86.pl"),
+    (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
+    (&[X86], "crypto/sha/asm/sha256-586.pl"),
+    (&[X86], "crypto/sha/asm/sha512-586.pl"),
 
-const RING_TEST_SRCS: &'static [&'static str] =
-    &["crypto/bn/bn_test.cc",
-      "crypto/constant_time_test.c",
-      "crypto/test/bn_test_convert.c",
-      "crypto/test/bn_test_lib.c",
-      "crypto/test/bn_test_new.c",
-      "crypto/test/file_test.cc"];
+    (&[X86_64], "crypto/curve25519/x25519-x86_64.c"),
+
+    (&[X86_64], "crypto/aes/asm/aes-x86_64.pl"),
+    (&[X86_64], "crypto/aes/asm/aesni-x86_64.pl"),
+    (&[X86_64], "crypto/aes/asm/bsaes-x86_64.pl"),
+    (&[X86_64], "crypto/aes/asm/vpaes-x86_64.pl"),
+    (&[X86_64], "crypto/bn/asm/x86_64-mont.pl"),
+    (&[X86_64], "crypto/bn/asm/x86_64-mont5.pl"),
+    (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
+    (&[X86_64], "crypto/curve25519/asm/x25519-asm-x86_64.S"),
+    (&[X86_64], "crypto/ec/asm/ecp_nistz256-x86_64.pl"),
+    (&[X86_64], "crypto/ec/asm/p256-x86_64-asm.pl"),
+    (&[X86_64], "crypto/modes/asm/aesni-gcm-x86_64.pl"),
+    (&[X86_64], "crypto/modes/asm/ghash-x86_64.pl"),
+    (&[X86_64], "crypto/poly1305/asm/poly1305-x86_64.pl"),
+    (&[X86_64], "crypto/sha/asm/sha256-x86_64.pl"),
+    (&[X86_64], "crypto/sha/asm/sha512-x86_64.pl"),
+
+    (&[AARCH64, ARM], "crypto/cpu-arm-linux.c"),
+    (&[AARCH64, ARM], "crypto/cpu-arm.c"),
+    (&[AARCH64, ARM], "crypto/aes/asm/aesv8-armx.pl"),
+    (&[AARCH64, ARM], "crypto/modes/asm/ghashv8-armx.pl"),
+
+    (&[ARM], "crypto/aes/asm/aes-armv4.pl"),
+    (&[ARM], "crypto/aes/asm/bsaes-armv7.pl"),
+    (&[ARM], "crypto/bn/asm/armv4-mont.pl"),
+    (&[ARM], "crypto/chacha/asm/chacha-armv4.pl"),
+    (&[ARM], "crypto/curve25519/asm/x25519-asm-arm.S"),
+    (&[ARM], "crypto/ec/asm/ecp_nistz256-armv4.pl"),
+    (&[ARM], "crypto/modes/asm/ghash-armv4.pl"),
+    (&[ARM], "crypto/poly1305/asm/poly1305-armv4.pl"),
+    (&[ARM], "crypto/sha/asm/sha256-armv4.pl"),
+    (&[ARM], "crypto/sha/asm/sha512-armv4.pl"),
+
+    (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
+    (&[AARCH64], "crypto/bn/asm/armv8-mont.pl"),
+    (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
+    (&[AARCH64], "crypto/ec/asm/ecp_nistz256-armv8.pl"),
+    (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
+    (&[AARCH64], "crypto/sha/asm/sha256-armv8.pl"),
+    (&[AARCH64], "crypto/sha/asm/sha512-armv8.pl"),
+];
+
+const RING_TEST_SRCS: &'static [&'static str] = &[
+    ("crypto/bn/bn_test.cc"),
+    ("crypto/constant_time_test.c"),
+    ("crypto/test/bn_test_convert.c"),
+    ("crypto/test/bn_test_lib.c"),
+    ("crypto/test/bn_test_new.c"),
+    ("crypto/test/file_test.cc"),
+];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_HEADERS: &'static [&'static str] =
@@ -376,29 +378,36 @@ fn build_c_code(out_dir: PathBuf) {
         .max()
         .unwrap();
 
-    let srcs = match target.arch() {
-        "x86_64" => vec![RING_X86_64_SRC, RING_INTEL_SHARED_SRCS],
-        "x86" => vec![RING_X86_SRCS, RING_INTEL_SHARED_SRCS],
-        "arm" => vec![RING_ARM_SHARED_SRCS, RING_ARM_SRCS],
-        "aarch64" => vec![RING_ARM_SHARED_SRCS, RING_AARCH64_SRCS],
-        _ => Vec::new(),
-    };
+    let mut srcs = Vec::new();
+    let mut perlasm_srcs = Vec::new();
+    for &(archs, src_path) in RING_SRCS {
+        if archs.is_empty() || archs.contains(&target.arch()) {
+            let src_path = PathBuf::from(src_path);
+            if src_path.extension().unwrap().to_str().unwrap() == "pl" {
+                perlasm_srcs.push(src_path);
+            } else {
+                srcs.push(src_path);
+            }
+        }
+    }
 
-    let additional = srcs.into_par_iter()
+    let additional = perlasm_srcs.par_iter()
         .weight_max()
-        .flat_map(|additional_src| {
-            additional_src.par_iter().map(|src|
-                make_asm(src, out_dir.clone(), &target, includes_modified))
-        });
+        .map(|src_path|
+            make_asm(&src_path, out_dir.clone(), &target, includes_modified))
+        .collect::<Vec<_>>();
+
+    let test_srcs = RING_TEST_SRCS.iter()
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     let ((), ()) = rayon::join(
-        || build_library("ring-core", lib_target, additional, RING_SRC, &target,
-                         out_dir.clone(), includes_modified),
-        || build_library("ring-test", test_target, Vec::new().into_par_iter(),
-                         RING_TEST_SRCS, &target, out_dir.clone(),
-                         includes_modified));
+        || build_library("ring-core", lib_target, &additional[..], &srcs[..],
+                         &target, out_dir.clone(), includes_modified),
+        || build_library("ring-test", test_target, &[], &test_srcs[..],
+                         &target, out_dir.clone(), includes_modified));
 
     if target.env() != "msvc" {
         let libcxx = if use_libcxx(&target) {
@@ -414,16 +423,16 @@ fn build_c_code(out_dir: PathBuf) {
 }
 
 
-fn build_library<P>(lib_name: &str, out_path: &Path, additional: P,
-                    lib_src: &'static [&'static str], target: &Target,
-                    out_dir: PathBuf, includes_modified: SystemTime)
-    where P: ParallelIterator<Item = String>
-{
+fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
+                    lib_src: &[PathBuf], target: &Target, out_dir: PathBuf,
+                    includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
-    let objs = additional.chain(lib_src.par_iter().map(|a| String::from(*a)))
+    let objs = additional.into_par_iter().chain(lib_src.into_par_iter())
         .weight_max()
-        .filter(|f| target.env() != "msvc" || !f.ends_with(".S"))
-        .map(|f| compile(&f, target, out_dir.clone(), includes_modified))
+        .filter(|f|
+            target.env() != "msvc" ||
+                f.extension().unwrap().to_str().unwrap() != "S")
+        .map(|f| compile(f, target, out_dir.clone(), includes_modified))
         .map(|v| vec![v])
         .reduce(Vec::new,
                 &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
@@ -466,30 +475,29 @@ fn build_library<P>(lib_name: &str, out_path: &Path, additional: P,
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(file: &str, target: &Target, mut out_dir: PathBuf,
+fn compile(p: &Path, target: &Target, mut out_dir: PathBuf,
            includes_modified: SystemTime) -> String {
-    let p = Path::new(file);
     out_dir.push(p.file_name().expect("There is a filename"));
     out_dir.set_extension(target.obj_ext);
     if need_run(&p, out_dir.as_path(), includes_modified) {
         let ext = p.extension().unwrap().to_str().unwrap();
         let mut c = if target.env() != "msvc" || ext != "asm" {
-            cc(file, ext, target, &out_dir)
+            cc(p, ext, target, &out_dir)
         } else {
-            yasm(file, target, &out_dir)
+            yasm(p, target, &out_dir)
         };
 
         println!("{:?}", c);
         if !c.status()
-            .expect(&format!("Failed to compile {}", file))
+            .expect(&format!("Failed to compile {:?}", p))
             .success() {
-            panic!("Failed to compile {}", file)
+            panic!("Failed to compile {:?}", p)
         }
     }
     out_dir.to_str().expect("Invalid path").into()
 }
 
-fn cc(file: &str, ext: &str, target: &Target, out_dir: &Path) -> Command {
+fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
     let mut c = gcc::Config::new();
     let _ = c.include("include");
     match ext {
@@ -563,7 +571,7 @@ fn cc(file: &str, ext: &str, target: &Target, out_dir: &Path) -> Command {
     c
 }
 
-fn yasm(file: &str, target: &Target, out_file: &Path) -> Command {
+fn yasm(file: &Path, target: &Target, out_file: &Path) -> Command {
     let (oformat, machine) = if target.arch() == "x86_64" {
         ("--oformat=win64", "--machine=amd64")
     } else {
@@ -603,38 +611,33 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
     }
 }
 
-fn make_asm(source: &str, mut dst: PathBuf, target: &Target,
-            includes_modified: SystemTime) -> String {
-    let p = Path::new(source);
-    if p.extension().expect("File without extension").to_str() == Some("pl") {
-        dst.push(p.file_name().expect("File without filename??"));
-        dst.set_extension(if target.env() == "msvc" { "asm" } else { "S" });
-        let r: String = dst.to_str().expect("Could not convert path").into();
-        if need_run(p, dst.as_path(), includes_modified) {
-            let format = match (target.os(), target.arch()) {
-                ("macos", _) => "macosx",
-                ("ios", "arm") => "ios32",
-                ("ios", "aarch64") => "ios64",
-                ("windows", "x86_64") => "nasm",
-                ("windows", "x86") => "win32n",
-                (_, "aarch64") => "linux64",
-                (_, "arm") => "linux32",
-                _ => "elf",
-            };
-            let mut args = vec![source.to_owned()];
-            args.push(format.into());
-            if target.arch() == "x86" {
-                args.push("-fPIC".into());
-                args.push("-DOPENSSL_IA32_SSE2".into());
-            }
-            args.push(r.clone());
-            run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"),
-                                  &args);
+fn make_asm(p: &Path, mut dst: PathBuf, target: &Target,
+            includes_modified: SystemTime) -> PathBuf {
+    dst.push(p.file_name().expect("File without filename??"));
+    dst.set_extension(if target.env() == "msvc" { "asm" } else { "S" });
+    let r: String = dst.to_str().expect("Could not convert path").into();
+    if need_run(p, dst.as_path(), includes_modified) {
+        let format = match (target.os(), target.arch()) {
+            ("macos", _) => "macosx",
+            ("ios", "arm") => "ios32",
+            ("ios", "aarch64") => "ios64",
+            ("windows", "x86_64") => "nasm",
+            ("windows", "x86") => "win32n",
+            (_, "aarch64") => "linux64",
+            (_, "arm") => "linux32",
+            _ => "elf",
+        };
+        let mut args = Vec::<String>::new();
+        args.push(p.to_string_lossy().into_owned());
+        args.push(format.into());
+        if target.arch() == "x86" {
+            args.push("-fPIC".into());
+            args.push("-DOPENSSL_IA32_SSE2".into());
         }
-        r
-    } else {
-        p.to_str().expect("Could not convert path").into()
+        args.push(r.clone());
+        run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
     }
+    dst
 }
 
 fn need_run(source: &Path, target: &Path, includes_modified: SystemTime)
@@ -673,36 +676,16 @@ fn is_tracked(file: &DirEntry) {
             RING_HEADERS.iter().chain(RING_TEST_HEADERS.iter()).any(cmp)
         },
         Some("inl") => RING_INLINE_FILES.iter().any(cmp),
-        Some("c") | Some("cc") => {
-            RING_SRC.iter()
-                .chain(RING_AARCH64_SRCS.iter())
-                .chain(RING_ARM_SHARED_SRCS.iter())
-                .chain(RING_ARM_SRCS.iter())
-                .chain(RING_INTEL_SHARED_SRCS.iter())
-                .chain(RING_TEST_SRCS.iter())
-                .chain(RING_X86_64_SRC.iter())
-                .chain(RING_X86_SRCS.iter())
-                .any(cmp)
-        },
+        Some("c") |
+        Some("cc") |
         Some("S") |
         Some("asm") => {
-            RING_AARCH64_SRCS.iter()
-                .chain(RING_ARM_SHARED_SRCS.iter())
-                .chain(RING_ARM_SRCS.iter())
-                .chain(RING_INTEL_SHARED_SRCS.iter())
-                .chain(RING_X86_64_SRC.iter())
-                .chain(RING_X86_SRCS.iter())
-                .any(cmp)
+            RING_SRCS.iter().any(|&(_, ref f)| cmp(f)) ||
+                RING_TEST_SRCS.iter().any(cmp)
         },
         Some("pl") => {
-            RING_AARCH64_SRCS.iter()
-                .chain(RING_ARM_SHARED_SRCS.iter())
-                .chain(RING_ARM_SRCS.iter())
-                .chain(RING_INTEL_SHARED_SRCS.iter())
-                .chain(RING_X86_64_SRC.iter())
-                .chain(RING_X86_SRCS.iter())
-                .chain(RING_PERL_INCLUDES.iter())
-                .any(cmp)
+            RING_SRCS.iter().any(|&(_, ref f)| cmp(f)) ||
+                RING_PERL_INCLUDES.iter().any(cmp)
         },
         _ => true,
     };
