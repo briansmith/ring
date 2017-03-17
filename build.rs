@@ -101,10 +101,10 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/ec/ecp_nistz256.c"),
     (&[], "crypto/ec/gfp_p256.c"),
     (&[], "crypto/ec/gfp_p384.c"),
+    (&[], "crypto/limbs/limbs.c"),
     (&[], "crypto/mem.c"),
     (&[], "crypto/modes/gcm.c"),
     (&[], "crypto/rand/sysrand.c"),
-    (&[], "crypto/limbs/limbs.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -137,9 +137,9 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/sha/asm/sha256-x86_64.pl"),
     (&[X86_64], "crypto/sha/asm/sha512-x86_64.pl"),
 
+    (&[AARCH64, ARM], "crypto/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/cpu-arm-linux.c"),
     (&[AARCH64, ARM], "crypto/cpu-arm.c"),
-    (&[AARCH64, ARM], "crypto/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/modes/asm/ghashv8-armx.pl"),
 
     (&[ARM], "crypto/aes/asm/aes-armv4.pl"),
@@ -153,8 +153,8 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[ARM], "crypto/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/sha/asm/sha512-armv4.pl"),
 
-    (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
     (&[AARCH64], "crypto/bn/asm/armv8-mont.pl"),
+    (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
@@ -173,45 +173,45 @@ const RING_TEST_SRCS: &'static [&'static str] = &[
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_INCLUDES: &'static [&'static str] =
-    &["crypto/test/scoped_types.h",
-      "crypto/test/rand.h",
-      "crypto/curve25519/internal.h",
+    &["crypto/bn/internal.h",
       "crypto/cipher/internal.h",
-      "crypto/bn/internal.h",
+      "crypto/curve25519/internal.h",
       "crypto/ec/ecp_nistz256_table.inl",
       "crypto/ec/ecp_nistz384.inl",
-      "crypto/internal.h",
-      "crypto/modes/internal.h",
       "crypto/ec/ecp_nistz.h",
       "crypto/ec/ecp_nistz384.h",
       "crypto/ec/ecp_nistz256.h",
+      "crypto/internal.h",
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",
+      "crypto/modes/internal.h",
       "crypto/test/bn_test_lib.h",
-      "crypto/test/file_test.h",
       "crypto/test/bn_test_util.h",
-      "include/openssl/type_check.h",
-      "include/openssl/mem.h",
-      "include/openssl/bn.h",
-      "include/openssl/opensslconf.h",
-      "include/openssl/arm_arch.h",
-      "include/openssl/cpu.h",
-      "include/openssl/rsa.h",
+      "crypto/test/file_test.h",
+      "crypto/test/rand.h",
+      "crypto/test/scoped_types.h",
       "include/openssl/aes.h",
+      "include/openssl/arm_arch.h",
       "include/openssl/base.h",
-      "include/openssl/err.h"];
+      "include/openssl/bn.h",
+      "include/openssl/cpu.h",
+      "include/openssl/err.h",
+      "include/openssl/mem.h",
+      "include/openssl/opensslconf.h",
+      "include/openssl/rsa.h",
+      "include/openssl/type_check.h"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &'static [&'static str] =
-    &["crypto/sha/asm/sha-x86_64.pl",
+    &["crypto/perlasm/arm-xlate.pl",
+      "crypto/perlasm/ppc-xlate.pl",
+      "crypto/sha/asm/sha-x86_64.pl",
       "crypto/sha/asm/sha-armv8.pl",
       "crypto/perlasm/x86masm.pl",
       "crypto/perlasm/x86gas.pl",
       "crypto/perlasm/x86nasm.pl",
       "crypto/perlasm/x86asm.pl",
-      "crypto/perlasm/x86_64-xlate.pl",
-      "crypto/perlasm/arm-xlate.pl",
-      "crypto/perlasm/ppc-xlate.pl"];
+      "crypto/perlasm/x86_64-xlate.pl"];
 
 const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
 
