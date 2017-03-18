@@ -400,9 +400,6 @@ impl Target {
 }
 
 fn build_c_code(target: &Target, out_dir: &Path) {
-    let lib_target = out_dir.join("libring-core.a");
-    let test_target = out_dir.join("libring-test.a");
-
     let includes_modified = RING_INCLUDES.par_iter()
         .weight_max()
         .chain(RING_BUILD_FILE.par_iter())
@@ -443,7 +440,7 @@ fn build_c_code(target: &Target, out_dir: &Path) {
         .map(|(_src, dst)| dst)
         .collect::<Vec<_>>();
 
-    let srcs = sources_for_arch(target.arch()).into_iter()
+    let core_srcs = sources_for_arch(target.arch()).into_iter()
         .filter(|p| !is_perlasm(&p))
         .collect::<Vec<_>>();
 
@@ -451,13 +448,18 @@ fn build_c_code(target: &Target, out_dir: &Path) {
         .map(PathBuf::from)
         .collect::<Vec<_>>();
 
+    let libs = [
+        ("ring-core", &core_srcs[..], &asm_srcs[..]),
+        ("ring-test", &test_srcs[..], &[]),
+    ];
+
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    let ((), ()) = rayon::join(
-        || build_library("ring-core", &lib_target, &asm_srcs[..], &srcs[..],
-                         &target, out_dir, includes_modified),
-        || build_library("ring-test", &test_target, &[], &test_srcs[..],
-                         &target, out_dir, includes_modified));
+    libs.into_par_iter()
+        .weight_max()
+        .for_each(|&(lib_name, srcs, additional_srcs)|
+            build_library(&target, &out_dir, lib_name, srcs, additional_srcs,
+                          includes_modified));
 
     if target.env() != "msvc" {
         let libcxx = if use_libcxx(target) {
@@ -473,11 +475,11 @@ fn build_c_code(target: &Target, out_dir: &Path) {
 }
 
 
-fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
-                 lib_src: &[PathBuf], target: &Target, out_dir: &Path,
+fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
+                 srcs: &[PathBuf], additional_srcs: &[PathBuf],
                  includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
-    let objs = additional.into_par_iter().chain(lib_src.into_par_iter())
+    let objs = additional_srcs.into_par_iter().chain(srcs.into_par_iter())
         .weight_max()
         .filter(|f|
             target.env() != "msvc" ||
@@ -491,10 +493,12 @@ fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
                 });
 
     // Rebuild the library if necessary.
+    let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
+
     if objs.par_iter()
         .weight_max()
         .map(|f| Path::new(f))
-        .any(|p| need_run(&p, out_path, includes_modified)) {
+        .any(|p| need_run(&p, &lib_path, includes_modified)) {
         let mut c = gcc::Config::new();
 
         for f in LD_FLAGS {
@@ -516,7 +520,7 @@ fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
         // Handled below.
         let _ = c.cargo_metadata(false);
 
-        c.compile(out_path.file_name()
+        c.compile(lib_path.file_name()
             .and_then(|f| f.to_str())
             .expect("No filename"));
     }
