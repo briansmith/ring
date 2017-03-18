@@ -368,7 +368,7 @@ fn ring_build_rs_main() {
     };
 
     let _ = rayon::join(check_all_files_tracked,
-                        || build_c_code(out_dir, &target));
+                        || build_c_code(&target, &out_dir));
 }
 
 fn pregenerate_asm_main() {
@@ -399,14 +399,9 @@ impl Target {
     pub fn is_debug(&self) -> bool { self.is_debug }
 }
 
-fn build_c_code(out_dir: PathBuf, target: &Target) {
-    let mut lib_target = out_dir.clone();
-    lib_target.push("libring-core.a");
-    let lib_target = lib_target.as_path();
-
-    let mut test_target = out_dir.clone();
-    test_target.push("libring-test.a");
-    let test_target = test_target.as_path();
+fn build_c_code(target: &Target, out_dir: &Path) {
+    let lib_target = out_dir.join("libring-core.a");
+    let test_target = out_dir.join("libring-test.a");
 
     let includes_modified = RING_INCLUDES.par_iter()
         .weight_max()
@@ -432,14 +427,11 @@ fn build_c_code(out_dir: PathBuf, target: &Target) {
 
     let use_pregenerated = std::fs::metadata(".git").is_err();
 
-    let asm_dir = if use_pregenerated {
-        PathBuf::from(PREGENERATED)
-    } else {
-        out_dir.clone()
-    };
+    let pregenerated = PathBuf::from(PREGENERATED);
+    let asm_dir = if use_pregenerated { &pregenerated } else { out_dir };
 
     let perlasm_src_dsts =
-        perlasm_src_dsts(&asm_dir, target.arch(), Some(target.os()),
+        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()),
                          perlasm_format);
 
     if !use_pregenerated {
@@ -462,10 +454,10 @@ fn build_c_code(out_dir: PathBuf, target: &Target) {
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     let ((), ()) = rayon::join(
-        || build_library("ring-core", lib_target, &asm_srcs[..], &srcs[..],
-                         &target, out_dir.clone(), includes_modified),
-        || build_library("ring-test", test_target, &[], &test_srcs[..],
-                         &target, out_dir.clone(), includes_modified));
+        || build_library("ring-core", &lib_target, &asm_srcs[..], &srcs[..],
+                         &target, out_dir, includes_modified),
+        || build_library("ring-test", &test_target, &[], &test_srcs[..],
+                         &target, out_dir, includes_modified));
 
     if target.env() != "msvc" {
         let libcxx = if use_libcxx(target) {
@@ -482,15 +474,15 @@ fn build_c_code(out_dir: PathBuf, target: &Target) {
 
 
 fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
-                    lib_src: &[PathBuf], target: &Target, out_dir: PathBuf,
-                    includes_modified: SystemTime) {
+                 lib_src: &[PathBuf], target: &Target, out_dir: &Path,
+                 includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
     let objs = additional.into_par_iter().chain(lib_src.into_par_iter())
         .weight_max()
         .filter(|f|
             target.env() != "msvc" ||
                 f.extension().unwrap().to_str().unwrap() != "S")
-        .map(|f| compile(f, target, out_dir.clone(), includes_modified))
+        .map(|f| compile(f, target, out_dir, includes_modified))
         .map(|v| vec![v])
         .reduce(Vec::new,
                 &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
@@ -498,8 +490,9 @@ fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
                     a
                 });
 
-    //Rebuild the library if necessary.
+    // Rebuild the library if necessary.
     if objs.par_iter()
+        .weight_max()
         .map(|f| Path::new(f))
         .any(|p| need_run(&p, out_path, includes_modified)) {
         let mut c = gcc::Config::new();
@@ -533,16 +526,16 @@ fn build_library(lib_name: &str, out_path: &Path, additional: &[PathBuf],
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, mut out_dir: PathBuf,
+fn compile(p: &Path, target: &Target, out_dir: &Path,
            includes_modified: SystemTime) -> String {
-    out_dir.push(p.file_name().expect("There is a filename"));
-    out_dir.set_extension(target.obj_ext);
-    if need_run(&p, out_dir.as_path(), includes_modified) {
+    let mut out_path = out_dir.clone().join(p.file_name().unwrap());
+    out_path.set_extension(target.obj_ext);
+    if need_run(&p, &out_path, includes_modified) {
         let ext = p.extension().unwrap().to_str().unwrap();
         let mut c = if target.env() != "msvc" || ext != "asm" {
-            cc(p, ext, target, &out_dir)
+            cc(p, ext, target, &out_path)
         } else {
-            yasm(p, target, &out_dir)
+            yasm(p, target, &out_path)
         };
 
         println!("{:?}", c);
@@ -552,7 +545,7 @@ fn compile(p: &Path, target: &Target, mut out_dir: PathBuf,
             panic!("Failed to compile {:?}", p)
         }
     }
-    out_dir.to_str().expect("Invalid path").into()
+    out_path.to_str().expect("Invalid path").into()
 }
 
 fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
