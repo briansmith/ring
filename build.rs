@@ -136,8 +136,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/modes/asm/aesni-gcm-x86_64.pl"),
     (&[X86_64], "crypto/modes/asm/ghash-x86_64.pl"),
     (&[X86_64], "crypto/poly1305/asm/poly1305-x86_64.pl"),
-    (&[X86_64], "crypto/sha/asm/sha256-x86_64.pl"),
-    (&[X86_64], "crypto/sha/asm/sha512-x86_64.pl"),
+    (&[X86_64], SHA512_X86_64),
 
     (&[AARCH64, ARM], "crypto/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/cpu-arm-linux.c"),
@@ -160,9 +159,14 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
-    (&[AARCH64], "crypto/sha/asm/sha256-armv8.pl"),
-    (&[AARCH64], "crypto/sha/asm/sha512-armv8.pl"),
+    (&[AARCH64], SHA512_ARMV8),
 ];
+
+const SHA256_X86_64: &'static str = "crypto/sha/asm/sha256-x86_64.pl";
+const SHA512_X86_64: &'static str = "crypto/sha/asm/sha512-x86_64.pl";
+
+const SHA256_ARMV8: &'static str = "crypto/sha/asm/sha256-armv8.pl";
+const SHA512_ARMV8: &'static str = "crypto/sha/asm/sha512-armv8.pl";
 
 const RING_TEST_SRCS: &'static [&'static str] = &[
     ("crypto/bn/bn_test.cc"),
@@ -206,8 +210,6 @@ const RING_INCLUDES: &'static [&'static str] =
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &'static [&'static str] =
     &["crypto/perlasm/arm-xlate.pl",
-      "crypto/sha/asm/sha-x86_64.pl",
-      "crypto/sha/asm/sha-armv8.pl",
       "crypto/perlasm/x86masm.pl",
       "crypto/perlasm/x86gas.pl",
       "crypto/perlasm/x86nasm.pl",
@@ -714,10 +716,29 @@ fn sources_for_arch(arch: &str) -> Vec<PathBuf> {
 
 fn perlasm_src_dsts(out_dir: &Path, arch: &str, os: Option<&str>,
                     perlasm_format: &str) -> Vec<(PathBuf, PathBuf)> {
-    sources_for_arch(arch).iter()
+    let srcs = sources_for_arch(arch);
+    let mut src_dsts = srcs.iter()
         .filter(|p| is_perlasm(p))
         .map(|src| (src.clone(), asm_path(out_dir, src, os, perlasm_format)))
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    // Some PerlAsm source files need to be run multiple times with different
+    // output paths.
+    { // Appease the borrow checker.
+        let mut maybe_synthesize = |concrete, synthesized| {
+            let concrete_path = PathBuf::from(concrete);
+            if srcs.contains(&concrete_path) {
+                let synthesized_path = PathBuf::from(synthesized);
+                src_dsts.push((concrete_path,
+                               asm_path(out_dir, &synthesized_path, os,
+                                        perlasm_format)))
+            }
+        };
+        maybe_synthesize(SHA512_X86_64, SHA256_X86_64);
+        maybe_synthesize(SHA512_ARMV8, SHA256_ARMV8);
+    }
+
+    src_dsts
 }
 
 fn asm_srcs(perlasm_src_dsts: Vec<(PathBuf, PathBuf)>) -> Vec<PathBuf> {
