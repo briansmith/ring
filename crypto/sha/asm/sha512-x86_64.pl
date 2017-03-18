@@ -120,7 +120,7 @@ $avx=1		if (!$shaext && $avx);
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
-if ($output =~ /512/) {
+if ($output =~ /sha512-x86_64/) {
 	$func="GFp_sha512_block_data_order";
 	$TABLE="K512";
 	$SZ=8;

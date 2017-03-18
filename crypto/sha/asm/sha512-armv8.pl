@@ -40,7 +40,7 @@ die "can't locate arm-xlate.pl";
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
-if ($output =~ /512/) {
+if ($output =~ /sha512-armv8/) {
 	$BITS=512;
 	$SZ=8;
 	@Sigma0=(28,34,39);
