@@ -210,7 +210,6 @@ const RING_INCLUDES: &'static [&'static str] =
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &'static [&'static str] =
     &["crypto/perlasm/arm-xlate.pl",
-      "crypto/perlasm/x86masm.pl",
       "crypto/perlasm/x86gas.pl",
       "crypto/perlasm/x86nasm.pl",
       "crypto/perlasm/x86asm.pl",

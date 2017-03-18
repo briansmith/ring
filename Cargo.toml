@@ -197,7 +197,6 @@ include = [
     "crypto/perlasm/readme",
     "crypto/perlasm/x86asm.pl",
     "crypto/perlasm/x86gas.pl",
-    "crypto/perlasm/x86masm.pl",
     "crypto/perlasm/x86nasm.pl",
     "crypto/perlasm/x86_64-xlate.pl",
     "crypto/poly1305/asm/poly1305-armv4.pl",
