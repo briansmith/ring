@@ -14,7 +14,8 @@ version = "0.7.1"
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
     # from packaged builds in build.rs.
-    ".gitignore"
+    ".gitignore",
+    "pregenerated/tmp",
 ]
 include = [
     "LICENSE",

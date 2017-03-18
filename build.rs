@@ -219,7 +219,7 @@ const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
 const PREGENERATED: &'static str = "pregenerated";
 
 fn c_flags(target: &Target) -> &'static [&'static str] {
-    if target.env != "msvc" {
+    if target.env != MSVC {
         static NON_MSVC_FLAGS: &'static [&'static str] = &[
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-Wbad-function-cast",
@@ -234,7 +234,7 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
 }
 
 fn cxx_flags(target: &Target) -> &'static [&'static str] {
-    if target.env != "msvc" {
+    if target.env != MSVC {
         static NON_MSVC_FLAGS: &'static [&'static str] = &[
             "-std=c++0x"  // GCC 4.6 requires "c++0x" instead of "c++11"
         ];
@@ -245,7 +245,7 @@ fn cxx_flags(target: &Target) -> &'static [&'static str] {
 }
 
 fn cpp_flags(target: &Target) -> &'static [&'static str] {
-    if target.env != "msvc" {
+    if target.env != MSVC {
         static NON_MSVC_FLAGS: &'static [&'static str] = &[
             "-fdata-sections",
             "-ffunction-sections",
@@ -310,15 +310,21 @@ const ASM_TARGETS:
     &'static [(&'static str, Option<&'static str>, &'static str)] =
 &[
     ("x86_64", Some("macos"), "macosx"),
-    ("x86_64", Some("windows"), "nasm"),
+    ("x86_64", Some(WINDOWS), "nasm"),
     ("x86_64", None, "elf"),
     ("aarch64", Some("ios"), "ios64"),
     ("aarch64", None, "linux64"),
-    ("x86", Some("windows"), "win32n"),
+    ("x86", Some(WINDOWS), "win32n"),
     ("x86", None, "elf"),
     ("arm", Some("ios"), "ios32"),
     ("arm", None, "linux32"),
 ];
+
+const WINDOWS: &'static str = "windows";
+const MSVC: &'static str = "msvc";
+const MSVC_OBJ_OPT: &'static str = "/Fo";
+const MSVC_OBJ_EXT: &'static str = "obj";
+
 
 fn main() {
     if let Ok(package_name) = std::env::var("CARGO_PKG_NAME") {
@@ -352,8 +358,8 @@ fn ring_build_rs_main() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let (obj_ext, obj_opt) = if env == "msvc" {
-        ("obj", "/Fo")
+    let (obj_ext, obj_opt) = if env == MSVC {
+        (MSVC_OBJ_EXT, MSVC_OBJ_OPT)
     } else {
         ("o", "-o")
     };
@@ -374,12 +380,33 @@ fn ring_build_rs_main() {
 fn pregenerate_asm_main() {
     let pregenerated = PathBuf::from(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
+    let pregenerated_tmp = pregenerated.join("tmp");
+    std::fs::create_dir(&pregenerated_tmp).unwrap();
 
     for &(target_arch, target_os, perlasm_format) in ASM_TARGETS {
+        // For Windows, package pregenerated object files instead of
+        // pregenerated assembly language source files, so that the user
+        // doesn't need to install the assembler.
+        let asm_dir = if target_os == Some(WINDOWS) {
+            &pregenerated_tmp
+        } else {
+            &pregenerated
+        };
+
         let perlasm_src_dsts =
-            perlasm_src_dsts(&pregenerated, target_arch, target_os,
-                             perlasm_format);
+            perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
         perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
+
+        if target_os == Some(WINDOWS) {
+            //let lib_name = ring_asm_name(target_arch);
+            let srcs = asm_srcs(perlasm_src_dsts);
+            for src in srcs {
+                let src_path = PathBuf::from(src);
+                let obj_path =
+                    obj_path(&pregenerated, &src_path, MSVC_OBJ_EXT);
+                run_command(yasm(&src_path, target_arch, &obj_path));
+            }
+        }
     }
 }
 
@@ -436,9 +463,16 @@ fn build_c_code(target: &Target, out_dir: &Path) {
                 Some(includes_modified));
     }
 
-    let asm_srcs = perlasm_src_dsts.into_iter()
-        .map(|(_src, dst)| dst)
-        .collect::<Vec<_>>();
+    let mut asm_srcs = asm_srcs(perlasm_src_dsts);
+
+    // For Windows we also pregenerate the object files for non-Git builds so
+    // the user doesn't need to install the assembler. On other platforms we
+    // assume the C compiler also assembles.
+    if use_pregenerated && target.os() == WINDOWS {
+        asm_srcs = asm_srcs.iter()
+            .map(|src| obj_path(&pregenerated, src.as_path(), target.obj_ext))
+            .collect::<Vec<_>>();
+    }
 
     let core_srcs = sources_for_arch(target.arch()).into_iter()
         .filter(|p| !is_perlasm(&p))
@@ -532,24 +566,29 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
 
 fn compile(p: &Path, target: &Target, out_dir: &Path,
            includes_modified: SystemTime) -> String {
-    let mut out_path = out_dir.clone().join(p.file_name().unwrap());
-    out_path.set_extension(target.obj_ext);
-    if need_run(&p, &out_path, includes_modified) {
-        let ext = p.extension().unwrap().to_str().unwrap();
-        let mut c = if target.env() != "msvc" || ext != "asm" {
-            cc(p, ext, target, &out_path)
-        } else {
-            yasm(p, target, &out_path)
-        };
+    let ext = p.extension().unwrap().to_str().unwrap();
+    if ext == "obj" {
+        p.to_str().expect("Invalid path").into()
+    } else {
+        let mut out_path = out_dir.clone().join(p.file_name().unwrap());
+        out_path.set_extension(target.obj_ext);
+        if need_run(&p, &out_path, includes_modified) {
+            let cmd = if target.env() != "msvc" || ext != "asm" {
+                cc(p, ext, target, &out_path)
+            } else {
+                yasm(p, target.arch(), &out_path)
+            };
 
-        println!("{:?}", c);
-        if !c.status()
-            .expect(&format!("Failed to compile {:?}", p))
-            .success() {
-            panic!("Failed to compile {:?}", p)
+            run_command(cmd);
         }
+        out_path.to_str().expect("Invalid path").into()
     }
-    out_path.to_str().expect("Invalid path").into()
+}
+
+fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
+    let mut out_path = out_dir.clone().join(src.file_name().unwrap());
+    out_path.set_extension(obj_ext);
+    out_path
 }
 
 fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
@@ -626,11 +665,11 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
     c
 }
 
-fn yasm(file: &Path, target: &Target, out_file: &Path) -> Command {
-    let (oformat, machine) = if target.arch() == "x86_64" {
-        ("--oformat=win64", "--machine=amd64")
-    } else {
-        ("--oformat=win32", "--machine=x86")
+fn yasm(file: &Path, arch: &str, out_file: &Path) -> Command {
+    let (oformat, machine) = match arch {
+        "x86_64" => ("--oformat=win64", "--machine=amd64"),
+        "x86" => ("--oformat=win32", "--machine=x86"),
+        _ => panic!("unsupported arch: {}", arch),
     };
     let mut c = Command::new("yasm.exe");
     let _ = c.arg("-X").arg("vc")
@@ -653,14 +692,14 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
 {
     let mut cmd = Command::new(command_name);
     let _ = cmd.args(args);
+    run_command(cmd)
+}
 
-    println!("running: {:?}", cmd);
-
+fn run_command(mut cmd: Command) {
+    println!("running {:?}", cmd);
     let status = cmd.status().unwrap_or_else(|e| {
-        panic!("failed to execute {}: {}",
-               command_name.as_ref().to_str().unwrap(), e);
+        panic!("failed to execute: {}", e);
     });
-
     if !status.success() {
         panic!("execution failed");
     }
@@ -678,6 +717,12 @@ fn perlasm_src_dsts(out_dir: &Path, arch: &str, os: Option<&str>,
     sources_for_arch(arch).iter()
         .filter(|p| is_perlasm(p))
         .map(|src| (src.clone(), asm_path(out_dir, src, os, perlasm_format)))
+        .collect::<Vec<_>>()
+}
+
+fn asm_srcs(perlasm_src_dsts: Vec<(PathBuf, PathBuf)>) -> Vec<PathBuf> {
+    perlasm_src_dsts.into_iter()
+        .map(|(_src, dst)| dst)
         .collect::<Vec<_>>()
 }
 
