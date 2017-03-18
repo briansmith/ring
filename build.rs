@@ -685,13 +685,11 @@ fn asm_path(out_dir: &Path, src: &Path, os: Option<&str>, perlasm_format: &str)
             -> PathBuf {
     let src_stem = src.file_stem().expect("source file without basename");
 
-    let mut dst = PathBuf::from(out_dir);
     let dst_stem = src_stem.to_str().unwrap();
     let dst_extension = if os == Some("windows") { "asm" } else { "S" };
     let dst_filename =
         format!("{}-{}.{}", dst_stem, perlasm_format, dst_extension);
-    dst.push(dst_filename);
-    dst
+    out_dir.join(dst_filename)
 }
 
 fn perlasm(src_dst: &[(PathBuf, PathBuf)], arch: &str,
