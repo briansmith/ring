@@ -77,17 +77,18 @@ impl RSAKeyPair {
     /// The private key is validated according to [NIST SP-800-56B rev. 1]
     /// section 6.4.1.4.3, crt_pkv (Intended Exponent-Creation Method Unknown),
     /// with the following exceptions:
-    /// - Section 6.4.1.2.1, Step 1: Neither a target security level nor an
+    ///
+    /// * Section 6.4.1.2.1, Step 1: Neither a target security level nor an
     ///   expected modulus length is provided as a parameter, so checks
     ///   regarding these expectations are not done.
-    /// - Section 6.4.1.2.1, Step 3: Since neither the public key nor the
+    /// * Section 6.4.1.2.1, Step 3: Since neither the public key nor the
     ///   expected modulus length is provided as a parameter, the consistency
     ///   check between these values and the private key's value of n isn't done.
-    /// - Section 6.4.1.2.1, Step 5: No primality tests are done, both for
+    /// * Section 6.4.1.2.1, Step 5: No primality tests are done, both for
     ///   performance reasons and to avoid any side channels that such tests
     ///   would provide.
-    /// - Section 6.4.1.2.1, Step 6, and 6.4.1.4.3, Step 7:
-    ///     - *ring* has a slightly looser lower bound for the values of `p`
+    /// * Section 6.4.1.2.1, Step 6, and 6.4.1.4.3, Step 7:
+    ///     * *ring* has a slightly looser lower bound for the values of `p`
     ///     and `q` than what the NIST document specifies. This looser lower
     ///     bound matches what most other crypto libraries do. The check might
     ///     be tightened to meet NIST's requirements in the future.
@@ -99,7 +100,8 @@ impl RSAKeyPair {
     ///     consistency of `dP`, `dQ`, `e` and `n` with each other is
     ///     necessary, that can be done by signing any message with the key
     ///     pair.
-    ///     - `d` is not fully validated, neither at construction nor during
+    ///
+    ///     * `d` is not fully validated, neither at construction nor during
     ///     signing. This is OK as far as *ring*'s usage of the key is
     ///     concerned because *ring* never uses the value of `d` (*ring* always
     ///     uses `p`, `q`, `dP` and `dQ` via the Chinese Remainder Theorem,
