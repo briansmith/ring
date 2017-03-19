@@ -371,7 +371,7 @@ fn ring_build_rs_main() {
         env: env,
         obj_ext: obj_ext,
         obj_opt: obj_opt,
-        is_debug: env::var("PROFILE").unwrap() == "debug",
+        is_debug: env::var("DEBUG").unwrap() != "false",
     };
 
     let _ = rayon::join(check_all_files_tracked,
