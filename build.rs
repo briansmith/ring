@@ -278,9 +278,11 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &'static [&'static str] = &[
-            "-EHsc",
-
             "/GS", // Buffer security checks.
+            "/Gy", // Enable function-level linking.
+
+            "/EHsc", // C++ exceptions only, only in C++.
+            "/GR-", // Disable RTTI.
 
             "/Zc:wchar_t",
             "/Zc:forScope",
@@ -621,6 +623,7 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
         target.env() != "msvc" {
         let _ = c.flag("-fstack-protector");
     }
+
     match (target.os(), target.env()) {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         ("macos", _) => { let _ = c.flag("-gfull"); },
@@ -629,17 +632,18 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
     };
     if !target.is_debug() {
         let _ = c.define("NDEBUG", None);
-        if target.env() == "msvc" {
-            let _ = c.flag("/Oi"); // Generate intrinsic functions.
-        }
-    } else {
-        if target.env() == "msvc" {
-            let _ = c.flag("/Oy-"); // Don't omit frame pointers.
+    }
+
+    if target.env() == "msvc" {
+        if std::env::var("OPT_LEVEL").unwrap() == "0" {
+            let _ = c.flag("/Od"); // Disable optimization for debug builds.
             // run-time checking: (s)tack frame, (u)ninitialized variables
             let _ = c.flag("/RTCsu");
-            let _ = c.flag("/Od"); // Disable optimization for debug builds.
+        } else {
+            let _ = c.flag("/Ox"); // Enable full optimization.
         }
     }
+
     if target.env() != "msvc" {
         let _ = c.define("_XOPEN_SOURCE", Some("700"));
     }
