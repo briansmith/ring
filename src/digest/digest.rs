@@ -274,7 +274,7 @@ impl core::fmt::Debug for Digest {
 /// C analog: `EVP_MD`
 pub struct Algorithm {
     /// C analog: `EVP_MD_size`
-    pub output_len: usize,
+    output_len: usize,
 
     /// The size of the chaining value of the digest function, in bytes. For
     /// non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal to
@@ -282,10 +282,10 @@ pub struct Algorithm {
     /// this is equal to the length before truncation. This is mostly helpful
     /// for determining the size of an HMAC key that is appropriate for the
     /// digest algorithm.
-    pub chaining_len: usize,
+    chaining_len: usize,
 
     /// C analog: `EVP_MD_block_size`
-    pub block_len: usize,
+    block_len: usize,
 
     /// The length of the length in the padding.
     len_len: usize,
@@ -295,6 +295,28 @@ pub struct Algorithm {
     format_output: fn(input: &State) -> Output,
 
     initial_state: State,
+}
+
+impl Algorithm {
+    /// C analog: `EVP_MD_size`
+    pub fn output_len(&self) -> usize {
+        self.output_len
+    }
+
+    /// The size of the chaining value of the digest function, in bytes. For
+    /// non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal to
+    /// `output_len`. For truncated algorithms (e.g. SHA-384, SHA-512/256),
+    /// this is equal to the length before truncation. This is mostly helpful
+    /// for determining the size of an HMAC key that is appropriate for the
+    /// digest algorithm.
+    pub fn chaining_len(&self) -> usize {
+        self.chaining_len
+    }
+
+    /// C analog: `EVP_MD_block_size`
+    pub fn block_len(&self) -> usize {
+        self.block_len
+    }
 }
 
 impl core::fmt::Debug for Algorithm {
@@ -771,6 +793,15 @@ mod tests {
                    &format!("{:?}",
                             digest::digest(&digest::SHA512, b"hello, world")));
 
+    }
+
+    #[test]
+    fn test_algorithm_accessors() {
+        for alg in &[&digest::SHA1, &digest::SHA256, &digest::SHA384, &digest::SHA512] {
+            assert_eq!(alg.output_len, alg.output_len());
+            assert_eq!(alg.chaining_len, alg.chaining_len());
+            assert_eq!(alg.block_len, alg.block_len());
+        }
     }
 
     mod max_input {

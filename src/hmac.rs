@@ -223,7 +223,7 @@ impl SigningKey {
         };
 
         let key_hash;
-        let key_value = if key_value.len() <= digest_alg.block_len {
+        let key_value = if key_value.len() <= digest_alg.block_len() {
             key_value
         } else {
             key_hash = digest::digest(digest_alg, key_value);
@@ -240,7 +240,7 @@ impl SigningKey {
 
         // If the key is shorter than one block then act as though the key is
         // padded with zeros.
-        for _ in key_value.len()..digest_alg.block_len {
+        for _ in key_value.len()..digest_alg.block_len() {
             key.ctx_prototype.inner.update(&[IPAD]);
             key.ctx_prototype.outer.update(&[OPAD]);
         }
@@ -379,7 +379,7 @@ pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
 ///     https://tools.ietf.org/html/rfc5246#appendix-C
 #[inline]
 pub fn recommended_key_len(digest_alg: &digest::Algorithm) -> usize {
-    digest_alg.chaining_len
+    digest_alg.chaining_len()
 }
 
 
@@ -407,7 +407,7 @@ mod tests {
             }
 
             {
-                let mut key_bytes = vec![0; d.chaining_len];
+                let mut key_bytes = vec![0; d.chaining_len()];
                 let key =
                     hmac::SigningKey::generate_serializable(d, &mut rng,
                                                             &mut key_bytes)
@@ -422,8 +422,8 @@ mod tests {
             // Attempt with a `key_bytes` parameter that wrongly uses the
             // output length instead of the chaining length, when those two
             // values differ.
-            if d.chaining_len != d.output_len {
-                let mut key_bytes = vec![0; d.output_len];
+            if d.chaining_len() != d.output_len() {
+                let mut key_bytes = vec![0; d.output_len()];
                 assert!(hmac::SigningKey::generate_serializable(d, &mut rng,
                                                                 &mut key_bytes)
                             .is_err());
@@ -431,7 +431,7 @@ mod tests {
 
             // Attempt with a too-small `key_bytes`.
             {
-                let mut key_bytes = vec![0; d.chaining_len - 1];
+                let mut key_bytes = vec![0; d.chaining_len() - 1];
                 assert!(hmac::SigningKey::generate_serializable(d, &mut rng,
                                                                 &mut key_bytes)
                             .is_err());
@@ -439,7 +439,7 @@ mod tests {
 
             // Attempt with a too-large `key_bytes`.
             {
-                let mut key_bytes = vec![0; d.chaining_len + 1];
+                let mut key_bytes = vec![0; d.chaining_len() + 1];
                 assert!(hmac::SigningKey::generate_serializable(d, &mut rng,
                                                                 &mut key_bytes)
                             .is_err());
@@ -458,7 +458,7 @@ mod tests {
             let key_value_in = test_case.consume_bytes("Key");
 
             let rng = test::rand::FixedSliceRandom { bytes: &key_value_in };
-            let mut key_value_out = vec![0; digest_alg.chaining_len];
+            let mut key_value_out = vec![0; digest_alg.chaining_len()];
             let _ = hmac::SigningKey::generate_serializable(
                     digest_alg, &rng, &mut key_value_out).unwrap();
             assert_eq!(&key_value_in, &key_value_out);
