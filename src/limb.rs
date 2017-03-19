@@ -152,17 +152,23 @@ pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
     Ok(())
 }
 
+/// XXX: Panics if `out` isn't large enough, but in theory the callers ensure
+/// that never happens. TODO: When `ring::rsa::bigint::Nonnegative` stops using
+/// `BIGNUM`, it should be the case that `limbs.len() == out.len() * LIMB_BYTES`
+/// and so the padding logic can be dropped.
 pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
     let num_limbs = limbs.len();
-    debug_assert_eq!(out.len(), num_limbs * LIMB_BYTES);
+    let (dest, to_zero) =
+        out.split_at_mut(num_limbs * LIMB_BYTES); // May panic.
     for i in 0..num_limbs {
         let mut limb = limbs[i];
         for j in 0..LIMB_BYTES {
-            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
-                (limb & 0xff) as u8;
+            dest[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
+                 (limb & 0xff) as u8;
             limb >>= 8;
         }
     }
+    polyfill::slice::fill(to_zero, 0);
 }
 
 extern {
