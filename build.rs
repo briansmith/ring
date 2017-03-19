@@ -172,7 +172,6 @@ const RING_TEST_SRCS: &'static [&'static str] = &[
     ("crypto/bn/bn_test.cc"),
     ("crypto/constant_time_test.c"),
     ("crypto/test/bn_test_convert.c"),
-    ("crypto/test/bn_test_lib.c"),
     ("crypto/test/bn_test_new.c"),
     ("crypto/test/file_test.cc"),
 ];

@@ -151,7 +151,7 @@ pub fn verify_rsa(params: &RSAParameters,
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
     let decoded = &mut decoded[..n_bits.as_usize_bytes_rounded_up()];
-    try!(m.fill_be_bytes(decoded));
+    m.fill_be_bytes(decoded);
 
     // Verify the padded message is correct.
     let m_hash = digest::digest(params.padding_alg.digest_alg(),

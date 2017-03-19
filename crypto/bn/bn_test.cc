@@ -93,7 +93,7 @@
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-extern "C" int bssl_bn_test_main(RAND *rng);
+extern "C" int bssl_bn_test_main(void);
 
 
 static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
@@ -447,74 +447,6 @@ static bool RunTest(FileTest *t, void *) {
   return false;
 }
 
-static bool TestBN2BinPadded(RAND *rng) {
-  uint8_t zeros[256], out[256], reference[128];
-
-  memset(zeros, 0, sizeof(zeros));
-
-  // Test edge case at 0.
-  ScopedBIGNUM n(GFp_BN_new());
-  if (!n || !GFp_BN_bn2bin_padded(NULL, 0, n.get())) {
-    fprintf(stderr,
-            "GFp_BN_bn2bin_padded failed to encode 0 in an empty buffer.\n");
-    return false;
-  }
-  memset(out, -1, sizeof(out));
-  if (!GFp_BN_bn2bin_padded(out, sizeof(out), n.get())) {
-    fprintf(stderr,
-            "GFp_BN_bn2bin_padded failed to encode 0 in a non-empty buffer.\n");
-    return false;
-  }
-  if (memcmp(zeros, out, sizeof(out))) {
-    fprintf(stderr, "GFp_BN_bn2bin_padded did not zero buffer.\n");
-    return false;
-  }
-
-  // Test a random numbers at various byte lengths.
-  for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
-    if (!GFp_BN_rand(n.get(), static_cast<int>(bytes * 8), rng)) {
-      return false;
-    }
-    if (GFp_BN_num_bytes(n.get()) != bytes ||
-        GFp_BN_bn2bin(n.get(), reference) != bytes) {
-      fprintf(stderr, "Bad result from GFp_BN_rand; bytes.\n");
-      return false;
-    }
-    // Empty buffer should fail.
-    if (GFp_BN_bn2bin_padded(NULL, 0, n.get())) {
-      fprintf(stderr,
-              "GFp_BN_bn2bin_padded incorrectly succeeded on empty buffer.\n");
-      return false;
-    }
-    // One byte short should fail.
-    if (GFp_BN_bn2bin_padded(out, bytes - 1, n.get())) {
-      fprintf(stderr, "GFp_BN_bn2bin_padded incorrectly succeeded on short.\n");
-      return false;
-    }
-    // Exactly right size should encode.
-    if (!GFp_BN_bn2bin_padded(out, bytes, n.get()) ||
-        memcmp(out, reference, bytes) != 0) {
-      fprintf(stderr, "GFp_BN_bn2bin_padded gave a bad result.\n");
-      return false;
-    }
-    // Pad up one byte extra.
-    if (!GFp_BN_bn2bin_padded(out, bytes + 1, n.get()) ||
-        memcmp(out + 1, reference, bytes) || memcmp(out, zeros, 1)) {
-      fprintf(stderr, "GFp_BN_bn2bin_padded gave a bad result.\n");
-      return false;
-    }
-    // Pad up to 256.
-    if (!GFp_BN_bn2bin_padded(out, sizeof(out), n.get()) ||
-        memcmp(out + sizeof(out) - bytes, reference, bytes) ||
-        memcmp(out, zeros, sizeof(out) - bytes)) {
-      fprintf(stderr, "GFp_BN_bn2bin_padded gave a bad result.\n");
-      return false;
-    }
-  }
-
-  return true;
-}
-
 static int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
   return GFp_BN_abs_is_word(bn, w) && (w == 0 || bn->neg == 0);
 }
@@ -551,28 +483,6 @@ static bool TestHex2BN() {
   if (ret != 3 || !BN_is_word(bn.get(), 0xabc) ||
       GFp_BN_is_negative(bn.get())) {
     fprintf(stderr, "GFp_BN_hex2bn gave a bad result.\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool TestRand(RAND *rng) {
-  ScopedBIGNUM bn(GFp_BN_new());
-  if (!bn) {
-    return false;
-  }
-
-  // Test GFp_BN_rand accounts for degenerate cases
-  if (!GFp_BN_rand(bn.get(), 0, rng) ||
-      !GFp_BN_is_zero(bn.get())) {
-    fprintf(stderr, "GFp_BN_rand gave a bad result.\n");
-    return false;
-  }
-
-  if (!GFp_BN_rand(bn.get(), 1, rng) ||
-      !BN_is_word(bn.get(), 1)) {
-    fprintf(stderr, "GFp_BN_rand gave a bad result.\n");
     return false;
   }
 
@@ -762,10 +672,8 @@ static bool TestCmpWord() {
   return true;
 }
 
-extern "C" int bssl_bn_test_main(RAND *rng) {
-  if (!TestBN2BinPadded(rng) ||
-      !TestHex2BN() ||
-      !TestRand(rng) ||
+extern "C" int bssl_bn_test_main() {
+  if (!TestHex2BN() ||
       !TestNegativeZero() ||
       !TestBadModulus() ||
       !TestCmpWord()) {

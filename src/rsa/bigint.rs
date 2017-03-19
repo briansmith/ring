@@ -350,12 +350,9 @@ impl<M> Elem<M, Unencoded> {
         Ok(r)
     }
 
-    pub fn fill_be_bytes(&self, out: &mut [u8])
-                         -> Result<(), error::Unspecified> {
-        bssl::map_result(unsafe {
-            GFp_BN_bn2bin_padded(out.as_mut_ptr(), out.len(),
-                                 self.value.as_ref())
-        })
+    #[inline]
+    pub fn fill_be_bytes(&self, out: &mut [u8]) {
+        limb::big_endian_from_limbs_padded(self.value.limbs(), out)
     }
 
     pub fn is_one(&self) -> bool { self.value.is_one() }
@@ -719,6 +716,9 @@ impl Nonnegative {
         bits::BitLength::from_usize_bits(bits)
     }
 
+    #[inline]
+    fn limbs(&self) -> &[limb::Limb] { self.0.limbs() }
+
     fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
         let r = unsafe { GFp_BN_ucmp(self.as_ref(), other.as_ref()) };
@@ -824,6 +824,13 @@ mod repr_c {
                 flags: 0,
             }
         }
+
+        #[inline]
+        pub fn limbs(&self) -> &[limb::Limb] {
+            unsafe {
+                core::slice::from_raw_parts(self.d, self.top as usize)
+            }
+        }
     }
 }
 
@@ -833,8 +840,6 @@ extern {
     fn GFp_BN_one(r: &mut BIGNUM) -> c::int;
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
-    fn GFp_BN_bn2bin_padded(out_: *mut u8, len: c::size_t, in_: &BIGNUM)
-                            -> c::int;
     fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
     fn GFp_BN_equal_consttime(a: &BIGNUM, b: &BIGNUM) -> c::int;

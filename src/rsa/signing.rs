@@ -587,7 +587,9 @@ impl RSASigningState {
             Ok(m)
         }));
 
-        result.fill_be_bytes(signature)
+        result.fill_be_bytes(signature);
+
+        Ok(())
     }
 }
 
