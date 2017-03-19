@@ -143,8 +143,6 @@ BIGNUM *GFp_BN_new(void);
 * absolute value of |bn|. */
 OPENSSL_EXPORT unsigned GFp_BN_num_bytes(const BIGNUM *bn);
 
-void GFp_BN_set_negative(BIGNUM *bn, int sign);
-
 
 #if defined(__cplusplus)
 }

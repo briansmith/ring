@@ -179,11 +179,3 @@ err:
 int GFp_BN_hex2bn(BIGNUM **outp, const char *in) {
   return bn_x2bn(outp, in, decode_hex, isxdigit);
 }
-
-void GFp_BN_set_negative(BIGNUM *bn, int sign) {
-  if (sign && !GFp_BN_is_zero(bn)) {
-    bn->neg = 1;
-  } else {
-    bn->neg = 0;
-  }
-}

@@ -489,112 +489,6 @@ static bool TestHex2BN() {
   return true;
 }
 
-static bool TestNegativeZero() {
-  ScopedBIGNUM a(GFp_BN_new());
-  ScopedBIGNUM b(GFp_BN_new());
-  ScopedBIGNUM c(GFp_BN_new());
-  if (!a || !b || !c) {
-    return false;
-  }
-
-  // Test that GFp_BN_mul_no_alias never gives negative zero.
-  if (!GFp_BN_set_word(a.get(), 1)) {
-    return false;
-  }
-  GFp_BN_set_negative(a.get(), 1);
-  GFp_BN_zero(b.get());
-  if (!GFp_BN_mul_no_alias(c.get(), a.get(), b.get())) {
-    return false;
-  }
-  if (!GFp_BN_is_zero(c.get()) || GFp_BN_is_negative(c.get())) {
-    fprintf(stderr, "Multiplication test failed.\n");
-    return false;
-  }
-
-  ScopedBIGNUM numerator(GFp_BN_new()), denominator(GFp_BN_new());
-  if (!numerator || !denominator) {
-    return false;
-  }
-
-  // Test that GFp_BN_div never gives negative zero in the quotient.
-  if (!GFp_BN_set_word(numerator.get(), 1) ||
-      !GFp_BN_set_word(denominator.get(), 2)) {
-    return false;
-  }
-  GFp_BN_set_negative(numerator.get(), 1);
-  if (!GFp_BN_div(a.get(), b.get(), numerator.get(), denominator.get())) {
-    return false;
-  }
-  if (!GFp_BN_is_zero(a.get()) || GFp_BN_is_negative(a.get())) {
-    fprintf(stderr, "Incorrect quotient.\n");
-    return false;
-  }
-
-  // Test that GFp_BN_div never gives negative zero in the remainder.
-  if (!GFp_BN_set_word(denominator.get(), 1)) {
-    return false;
-  }
-  if (!GFp_BN_div(a.get(), b.get(), numerator.get(), denominator.get())) {
-    return false;
-  }
-  if (!GFp_BN_is_zero(b.get()) || GFp_BN_is_negative(b.get())) {
-    fprintf(stderr, "Incorrect remainder.\n");
-    return false;
-  }
-
-  // Test that GFp_BN_set_negative will not produce a negative zero.
-  GFp_BN_zero(a.get());
-  GFp_BN_set_negative(a.get(), 1);
-  if (GFp_BN_is_negative(a.get())) {
-    fprintf(stderr, "GFp_BN_set_negative produced a negative zero.\n");
-    return false;
-  }
-
-  // Test that |BN_rshift| and |BN_rshift1| will not produce a negative zero.
-  if (!GFp_BN_set_word(a.get(), 1)) {
-    return false;
-  }
-
-  GFp_BN_set_negative(a.get(), 1);
-  if (!GFp_BN_rshift(b.get(), a.get(), 1) ||
-      !GFp_BN_rshift1(c.get(), a.get())) {
-    return false;
-  }
-
-  if (!GFp_BN_is_zero(b.get()) || GFp_BN_is_negative(b.get())) {
-    fprintf(stderr, "BN_rshift(-1, 1) produced the wrong result.\n");
-    return false;
-  }
-
-  if (!GFp_BN_is_zero(c.get()) || GFp_BN_is_negative(c.get())) {
-    fprintf(stderr, "BN_rshift1(-1) produced the wrong result.\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool TestBadModulus() {
-  ScopedBIGNUM a(GFp_BN_new());
-  ScopedBIGNUM b(GFp_BN_new());
-  ScopedBIGNUM zero(GFp_BN_new());
-  ScopedBIGNUM one(GFp_BN_new());
-  if (!a || !b || !zero || !one ||
-      !GFp_BN_set_word(one.get(), 1)) {
-    return false;
-  }
-
-  GFp_BN_zero(zero.get());
-
-  if (GFp_BN_div(a.get(), b.get(), one.get(), zero.get())) {
-    fprintf(stderr, "Division by zero unexpectedly succeeded.\n");
-    return false;
-  }
-  ERR_clear_error();
-
-  return true;
-}
-
 static bool TestCmpWord() {
   static const BN_ULONG kMaxWord = (BN_ULONG)-1;
 
@@ -630,15 +524,6 @@ static bool TestCmpWord() {
     return false;
   }
 
-  GFp_BN_set_negative(r.get(), 1);
-
-  if (GFp_BN_cmp_word(r.get(), 0) >= 0 ||
-      GFp_BN_cmp_word(r.get(), 100) >= 0 ||
-      GFp_BN_cmp_word(r.get(), kMaxWord) >= 0) {
-    fprintf(stderr, "GFp_BN_cmp_word compared against -100 incorrectly.\n");
-    return false;
-  }
-
   if (!GFp_BN_set_word(r.get(), kMaxWord)) {
     return false;
   }
@@ -660,22 +545,11 @@ static bool TestCmpWord() {
     return false;
   }
 
-  GFp_BN_set_negative(r.get(), 1);
-
-  if (GFp_BN_cmp_word(r.get(), 0) >= 0 ||
-      GFp_BN_cmp_word(r.get(), kMaxWord) >= 0) {
-    fprintf(stderr,
-            "GFp_BN_cmp_word compared against -kMaxWord - 1 incorrectly.\n");
-    return false;
-  }
-
   return true;
 }
 
 extern "C" int bssl_bn_test_main() {
   if (!TestHex2BN() ||
-      !TestNegativeZero() ||
-      !TestBadModulus() ||
       !TestCmpWord()) {
     return 1;
   }
