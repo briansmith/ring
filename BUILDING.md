@@ -11,54 +11,48 @@ components, and its build script (build.rs) builds all those things
 automatically.
 
 
+Packaged Builds
+---------------
 
-Building *ring* on Windows
---------------------------
+When you build *ring* from its package (e.g. the ones on crates.io), you only
+need the Rust toolchain and a C/C++ compiler. For Windows targets, the packaged
+crate contains precompiled object files for the assembly language modules so no
+macro assembler is required. On other platforms, *ring*'s build script assumes
+the C/C++ compiler knows how to build `.S` files (assembly language sources
+with C preprocessor directives).
+
+
+Builds directly from Git
+------------------------
+
+If you want to hack on *ring* then you need to build it directly from its Git
+repository. In this case, you must also have Perl installed, because the
+assembly language modules inherited from BoringSSL (inherited from OpenSSL)
+use Perl as a macro assembly language.
+
+When building from Git for Windows, directories containing yasm.exe and
+perl.exe must be in `%PATH%`, where yasm.exe is
+[Yasm](http://yasm.tortall.net/Download.html) 1.3 or later and where perl.exe
+is recommended to be [Strawberry Perl](http://strawberryperl.com). 
+
+
+Supported Toolchains
+--------------------
+
+*ring* targets the current stable release of Rust and Cargo. We also verify
+that the current beta and nightly releases work.
 
 On Windows, *ring* supports the x86_64-pc-windows-msvc and i686-pc-windows-msvc
-targets best. These targets require Visual Studio 2015 Update 3 or later to be
-installed; currently it isn't enough to install the “Visual C++ Build Tools
-2015” package ([#337]). Patches to get it working on other variants, including
-in particular Visual Studio “15” ([#338]), ARM platforms, Windows Universal
-Platform, Windows XP compatibility (the v140_xp toolchain; [#339]), and the
--gnu targets ([#330]) are welcome.
+targets best. These targets require the “Visual C++ Build Tools
+2015” package or Visual Studio 2015 Update 3 or later to be installed. Patches
+to get it working on other variants, including in particular Visual Studio 2017
+([#338]), Windows ARM platforms, Windows Universal Platform, Windows XP (the
+v140_xp toolchain; [#339]), and the -gnu targets ([#330]) are welcome.
 
-Currently, *ring*'s build script (build.rs) uses Visual Studio's MSBuild to
-build its non-Rust components, so it must be able to find MSBuild. Cargo
-usually sets things up so that it mostly works automatically, at least when the
-host architecture is the target architecture. If you have trouble building,
-make sure that there isn't an old version of msbuild.exe ahead of MSBuild 14.0
-in `%PATH%`. Failing that, try starting the build from within "VS2015 Native
-Tools Command Prompt." In the near future, we plan to remove the dependencies
-on MSBuild ([https://github.com/briansmith/ring/issues/340]).
-
-When building a packaged release (e.g. from crates.io), it is not necessary to
-have Yasm or Perl. When building from Git, the directories containing yasm.exe
-and perl.exe must be in `%PATH%`, where yasm.exe is
-[Yasm](http://yasm.tortall.net/Download.html) 1.3 or later and where perl.exe
-is recommended to be [Strawberry Perl](http://strawberryperl.com). (Packaged
-releases contain precompiled libraries comtaining the assembly language code
-for x86_64-pc-windows-msvc and i686-pc-windows-msvc targets.)
-
-
-
-Building *ring* on Other Platforms
-----------------------------------
-
-Currently, *ring*'s build script (build.rs) uses GNU make on non-Windows
-platforms. By default it tries to invoke GNU make using `make` on non-BSD
-platforms (including in particular Linux and macOS) and `gmake` on BSD
-platforms. This can be overriden with the `$MAKE` environment variable. Work is
-underway to remove the GNU make dependency completely ([#321]).
-
-A C and C++ compiler is required; GCC 4.6 or later, and Clang 3.5 or later are
-currently supported best. Other compilers probably work. Environment variables
-like `$(CC)`, `$(CXX)`, `$(AS)`, etc. are supported for controlling this.
-
-Perl is required for preprocessing the assembly language code. In the near
-future, packaged releases won't require Perl because we'll include the
-preprocessed assembly language code in the packages ([#334]; this is already
-the case for \*-pc-windows-msvc targets).
+For other platforms, GCC 4.6 or later and Clang 3.5 or later are currently
+supported best. The build script passes options to the C/C++ compiler that are
+GCC- and Clang- specific. Pull requests to support other compilers will be
+considered.
 
 Note in particular that if you are cross-compiling an x86 build on a 64-bit
 version of Linux, then you need to have the proper gcc-multilibs and
