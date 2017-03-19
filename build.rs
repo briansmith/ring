@@ -483,6 +483,10 @@ fn build_c_code(target: &Target, out_dir: &Path) {
 
     let test_srcs = RING_TEST_SRCS.iter()
         .map(PathBuf::from)
+        // Avoid the libstdc++ vs libc++ issue for macOS/iOS by just avoiding
+        // all the C++-based tests.
+        .filter(|p| !(target.os() == "macos" || target.os == "ios") ||
+                    p.extension().unwrap().to_str().unwrap() != "cc")
         .collect::<Vec<_>>();
 
     let libs = [
@@ -498,7 +502,8 @@ fn build_c_code(target: &Target, out_dir: &Path) {
             build_library(&target, &out_dir, lib_name, srcs, additional_srcs,
                           includes_modified));
 
-    if target.env() != "msvc" {
+    if target.env() != "msvc" &&
+       !(target.os() == "macos" || target.os() == "ios") {
         let libcxx = if use_libcxx(target) {
             "c++"
         } else {
@@ -687,9 +692,7 @@ fn yasm(file: &Path, arch: &str, out_file: &Path) -> Command {
 }
 
 fn use_libcxx(target: &Target) -> bool {
-    target.os() == "macos" ||
-        target.os() == "ios" ||
-        target.os() == "freebsd"
+    target.os() == "freebsd"
 }
 
 fn run_command_with_args<S>(command_name: S, args: &[String])
