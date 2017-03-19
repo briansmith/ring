@@ -14,6 +14,11 @@
 
 //! Public key signatures: signing and verification.
 //!
+//! **IMPORTANT:** If you are reading this on docs.rs or another third-party
+//! site, you may not be seeing the complete documentation due to their
+//! limitations. Read it at
+//! https://briansmith.org/rustdoc/ring/signature/ instead.
+//!
 //! Use the `verify` function to verify signatures, passing a reference to the
 //! algorithm that identifies the algorithm. See the documentation for `verify`
 //! for examples.
