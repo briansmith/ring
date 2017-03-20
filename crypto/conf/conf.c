@@ -69,6 +69,10 @@
 #include "../internal.h"
 
 
+/* The maximum length we can grow a value to after variable expansion. 64k
+ * should be more than enough for all reasonable uses. */
+#define MAX_CONF_VALUE_LENGTH 65536
+
 static uint32_t conf_value_hash(const CONF_VALUE *v) {
   return (lh_strhash(v->section) << 2) ^ lh_strhash(v->name);
 }
@@ -316,7 +320,15 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
         OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_HAS_NO_VALUE);
         goto err;
       }
-      BUF_MEM_grow_clean(buf, (strlen(p) + buf->length - (e - from)));
+      size_t newsize = strlen(p) + buf->length - (e - from);
+      if (newsize > MAX_CONF_VALUE_LENGTH) {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_TOO_LONG);
+        goto err;
+      }
+      if (!BUF_MEM_grow_clean(buf, newsize)) {
+        OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
       while (*p) {
         buf->data[to++] = *(p++);
       }
