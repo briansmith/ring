@@ -356,8 +356,12 @@ int X509_STORE_add_cert(X509_STORE *ctx, X509 *x)
         OPENSSL_free(obj);
         OPENSSL_PUT_ERROR(X509, X509_R_CERT_ALREADY_IN_HASH_TABLE);
         ret = 0;
-    } else
-        sk_X509_OBJECT_push(ctx->objs, obj);
+    } else if (!sk_X509_OBJECT_push(ctx->objs, obj)) {
+        X509_OBJECT_free_contents(obj);
+        OPENSSL_free(obj);
+        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+        ret = 0;
+    }
 
     CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
@@ -388,8 +392,12 @@ int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x)
         OPENSSL_free(obj);
         OPENSSL_PUT_ERROR(X509, X509_R_CERT_ALREADY_IN_HASH_TABLE);
         ret = 0;
-    } else
-        sk_X509_OBJECT_push(ctx->objs, obj);
+    } else if (!sk_X509_OBJECT_push(ctx->objs, obj)) {
+        X509_OBJECT_free_contents(obj);
+        OPENSSL_free(obj);
+        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+        ret = 0;
+    }
 
     CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
