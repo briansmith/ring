@@ -224,9 +224,8 @@ static bool TestEVP(FileTest *t, void *arg) {
   }
   EVP_PKEY *key = (*key_map)[key_name].get();
 
-  std::vector<uint8_t> input, output;
-  if (!t->GetBytes(&input, "Input") ||
-      !t->GetBytes(&output, "Output")) {
+  std::vector<uint8_t> input;
+  if (!t->GetBytes(&input, "Input")) {
     return false;
   }
 
@@ -263,7 +262,9 @@ static bool TestEVP(FileTest *t, void *arg) {
   }
 
   if (t->GetType() == "Verify") {
-    if (!EVP_PKEY_verify(ctx.get(), output.data(), output.size(), input.data(),
+    std::vector<uint8_t> output;
+    if (!t->GetBytes(&output, "Output") ||
+        !EVP_PKEY_verify(ctx.get(), output.data(), output.size(), input.data(),
                          input.size())) {
       // ECDSA sometimes doesn't push an error code. Push one on the error queue
       // so it's distinguishable from other errors.
@@ -274,7 +275,7 @@ static bool TestEVP(FileTest *t, void *arg) {
   }
 
   size_t len;
-  std::vector<uint8_t> actual;
+  std::vector<uint8_t> actual, output;
   if (!key_op(ctx.get(), nullptr, &len, input.data(), input.size())) {
     return false;
   }
@@ -283,7 +284,8 @@ static bool TestEVP(FileTest *t, void *arg) {
     return false;
   }
   actual.resize(len);
-  if (!t->ExpectBytesEqual(output.data(), output.size(), actual.data(), len)) {
+  if (!t->GetBytes(&output, "Output") ||
+      !t->ExpectBytesEqual(output.data(), output.size(), actual.data(), len)) {
     return false;
   }
   return true;
