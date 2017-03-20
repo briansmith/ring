@@ -277,14 +277,13 @@ Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
 Output = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 Error = DATA_TOO_LARGE
 
-# TODO(davidben): Add this as a regression test once upstream's fix is imported.
-# Verify = RSA-512
-# RSAPadding = PSS
-# PSSSaltLength = -2
-# Digest = SHA512
-# Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-# Output = 457001d9ca50a93385fc5ec721c9dbbe7a0f2e9e4a2f846a30a8811dde66347b83901c7492039243537c7a667fafffd69049bcbd36afd0010d9b425e2d8785c1
-# Error = DATA_TOO_LARGE
+Verify = RSA-512
+RSAPadding = PSS
+PSSSaltLength = -2
+Digest = SHA512
+Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+Output = 457001d9ca50a93385fc5ec721c9dbbe7a0f2e9e4a2f846a30a8811dde66347b83901c7492039243537c7a667fafffd69049bcbd36afd0010d9b425e2d8785c1
+Error = DATA_TOO_LARGE
 
 
 # RSA decrypt

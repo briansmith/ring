@@ -530,7 +530,7 @@ int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
     EM++;
     emLen--;
   }
-  if (emLen < ((int)hLen + sLen + 2)) {
+  if (emLen < (int)hLen + 2 || emLen < ((int)hLen + sLen + 2)) {
     /* sLen can be small negative */
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
     goto err;
