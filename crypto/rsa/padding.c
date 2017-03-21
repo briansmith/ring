@@ -486,7 +486,7 @@ decoding_err:
   return -1;
 }
 
-static const unsigned char zeroes[] = {0,0,0,0,0,0,0,0};
+static const uint8_t kPSSZeroes[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
                               const EVP_MD *Hash, const EVP_MD *mgf1Hash,
@@ -567,16 +567,10 @@ int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
     goto err;
   }
   if (!EVP_DigestInit_ex(&ctx, Hash, NULL) ||
-      !EVP_DigestUpdate(&ctx, zeroes, sizeof zeroes) ||
-      !EVP_DigestUpdate(&ctx, mHash, hLen)) {
-    goto err;
-  }
-  if (maskedDBLen - i) {
-    if (!EVP_DigestUpdate(&ctx, DB + i, maskedDBLen - i)) {
-      goto err;
-    }
-  }
-  if (!EVP_DigestFinal_ex(&ctx, H_, NULL)) {
+      !EVP_DigestUpdate(&ctx, kPSSZeroes, sizeof(kPSSZeroes)) ||
+      !EVP_DigestUpdate(&ctx, mHash, hLen) ||
+      !EVP_DigestUpdate(&ctx, DB + i, maskedDBLen - i) ||
+      !EVP_DigestFinal_ex(&ctx, H_, NULL)) {
     goto err;
   }
   if (OPENSSL_memcmp(H_, H, hLen)) {
@@ -601,7 +595,6 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
   size_t maskedDBLen, MSBits, emLen;
   size_t hLen;
   unsigned char *H, *salt = NULL, *p;
-  EVP_MD_CTX ctx;
 
   if (mgf1Hash == NULL) {
     mgf1Hash = Hash;
@@ -660,19 +653,18 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
   }
   maskedDBLen = emLen - hLen - 1;
   H = EM + maskedDBLen;
+
+  EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
-  if (!EVP_DigestInit_ex(&ctx, Hash, NULL) ||
-      !EVP_DigestUpdate(&ctx, zeroes, sizeof zeroes) ||
-      !EVP_DigestUpdate(&ctx, mHash, hLen)) {
-    goto err;
-  }
-  if (sLen && !EVP_DigestUpdate(&ctx, salt, sLen)) {
-    goto err;
-  }
-  if (!EVP_DigestFinal_ex(&ctx, H, NULL)) {
-    goto err;
-  }
+  int digest_ok = EVP_DigestInit_ex(&ctx, Hash, NULL) &&
+                  EVP_DigestUpdate(&ctx, kPSSZeroes, sizeof(kPSSZeroes)) &&
+                  EVP_DigestUpdate(&ctx, mHash, hLen) &&
+                  EVP_DigestUpdate(&ctx, salt, sLen) &&
+                  EVP_DigestFinal_ex(&ctx, H, NULL);
   EVP_MD_CTX_cleanup(&ctx);
+  if (!digest_ok) {
+    goto err;
+  }
 
   /* Generate dbMask in place then perform XOR on it */
   if (!PKCS1_MGF1(EM, maskedDBLen, H, hLen, mgf1Hash)) {
