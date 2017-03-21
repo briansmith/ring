@@ -37,5 +37,4 @@ add_library(
   tasn_utl.c
   time_support.c
   x_bignum.c
-  x_long.c
 )

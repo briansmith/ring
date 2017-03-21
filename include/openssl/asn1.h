@@ -257,9 +257,6 @@ typedef struct ASN1_ENCODING_st
 	unsigned alias_only_on_next_parse:1;
 	} ASN1_ENCODING;
 
-/* Used with ASN1 LONG type: if a long is set to this it is omitted */
-#define ASN1_LONG_UNDEF	0x7fffffffL
-
 #define STABLE_FLAGS_MALLOC	0x01
 #define STABLE_NO_MASK		0x02
 #define DIRSTRING_TYPE	\
