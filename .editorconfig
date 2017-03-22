@@ -1,7 +1,9 @@
 root = true
 
 [*]
-charset = utf-8
+# Visual Studio 2017 does this wrong
+# https://developercommunity.visualstudio.com/content/problem/22922/editorconfig-support-interprets-charset-utf-8-as-u.html
+# charset = utf-8
 end_of_line = lf
 indent_style = space
 insert_final_newline = true
