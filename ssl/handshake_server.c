@@ -728,11 +728,7 @@ static const SSL_CIPHER *ssl3_choose_cipher(
     SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
     const struct ssl_cipher_preference_list_st *server_pref) {
   SSL *const ssl = hs->ssl;
-  const SSL_CIPHER *c, *ret = NULL;
-  STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
-  int ok;
-  size_t cipher_index;
-  uint32_t alg_k, alg_a, mask_k, mask_a;
+  STACK_OF(SSL_CIPHER) *prio, *allow;
   /* in_group_flags will either be NULL, or will point to an array of bytes
    * which indicate equal-preference groups in the |prio| stack. See the
    * comment about |in_group_flags| in the |ssl_cipher_preference_list_st|
@@ -742,40 +738,38 @@ static const SSL_CIPHER *ssl3_choose_cipher(
    * such value exists yet. */
   int group_min = -1;
 
-  STACK_OF(SSL_CIPHER) *clnt = ssl_parse_client_cipher_list(client_hello);
-  if (clnt == NULL) {
+  STACK_OF(SSL_CIPHER) *client_pref =
+      ssl_parse_client_cipher_list(client_hello);
+  if (client_pref == NULL) {
     return NULL;
   }
 
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
-    prio = srvr;
+    prio = server_pref->ciphers;
     in_group_flags = server_pref->in_group_flags;
-    allow = clnt;
+    allow = client_pref;
   } else {
-    prio = clnt;
+    prio = client_pref;
     in_group_flags = NULL;
-    allow = srvr;
+    allow = server_pref->ciphers;
   }
 
+  uint32_t mask_k, mask_a;
   ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
 
+  const SSL_CIPHER *ret = NULL;
   for (size_t i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
-    c = sk_SSL_CIPHER_value(prio, i);
+    const SSL_CIPHER *c = sk_SSL_CIPHER_value(prio, i);
 
-    ok = 1;
-
-    /* Check the TLS version. */
-    if (SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
-        SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl)) {
-      ok = 0;
-    }
-
-    alg_k = c->algorithm_mkey;
-    alg_a = c->algorithm_auth;
-
-    ok = ok && (alg_k & mask_k) && (alg_a & mask_a);
-
-    if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
+    size_t cipher_index;
+    if (/* Check if the cipher is supported for the current version. */
+        SSL_CIPHER_get_min_version(c) <= ssl3_protocol_version(ssl) &&
+        ssl3_protocol_version(ssl) <= SSL_CIPHER_get_max_version(c) &&
+        /* Check the cipher is supported for the server configuration. */
+        (c->algorithm_mkey & mask_k) &&
+        (c->algorithm_auth & mask_a) &&
+        /* Check the cipher is in the |allow| list. */
+        sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
       if (in_group_flags != NULL && in_group_flags[i] == 1) {
         /* This element of |prio| is in a group. Update the minimum index found
          * so far and continue looking. */
@@ -799,7 +793,7 @@ static const SSL_CIPHER *ssl3_choose_cipher(
     }
   }
 
-  sk_SSL_CIPHER_free(clnt);
+  sk_SSL_CIPHER_free(client_pref);
   return ret;
 }
 
