@@ -235,7 +235,7 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
     return 0;
   }
 
-  /* Parse the KDF parameters. */
+  /* Parse the KDF parameters. See RFC 8018, appendix A.2. */
   CBS pbkdf2_params, salt;
   uint64_t iterations;
   if (!CBS_get_asn1(&kdf, &pbkdf2_params, CBS_ASN1_SEQUENCE) ||
@@ -267,8 +267,9 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
   }
 
   if (CBS_len(&pbkdf2_params) != 0) {
-    CBS prf;
-    if (!CBS_get_asn1(&pbkdf2_params, &prf, CBS_ASN1_OBJECT) ||
+    CBS alg_id, prf;
+    if (!CBS_get_asn1(&pbkdf2_params, &alg_id, CBS_ASN1_SEQUENCE) ||
+        !CBS_get_asn1(&alg_id, &prf, CBS_ASN1_OBJECT) ||
         CBS_len(&pbkdf2_params) != 0) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
       return 0;
@@ -278,6 +279,15 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
      * omitted, but we match OpenSSL in tolerating it being present. */
     if (!CBS_mem_equal(&prf, kHMACWithSHA1, sizeof(kHMACWithSHA1))) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_PRF);
+      return 0;
+    }
+
+    /* hmacWithSHA1 has a NULL parameter. */
+    CBS null;
+    if (!CBS_get_asn1(&alg_id, &null, CBS_ASN1_NULL) ||
+        CBS_len(&null) != 0 ||
+        CBS_len(&alg_id) != 0) {
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
       return 0;
     }
   }
