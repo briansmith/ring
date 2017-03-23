@@ -636,13 +636,6 @@ static int witness(BIGNUM *w, const BIGNUM *a, const BIGNUM *a1,
   return 1;
 }
 
-static BN_ULONG get_word(const BIGNUM *bn) {
-  if (bn->top == 1) {
-    return bn->d[0];
-  }
-  return 0;
-}
-
 static int probable_prime(BIGNUM *rnd, int bits) {
   int i;
   uint16_t mods[NUMPRIMES];
@@ -669,9 +662,9 @@ again:
     BN_ULONG size_limit;
     if (bits == BN_BITS2) {
       /* Avoid undefined behavior. */
-      size_limit = ~((BN_ULONG)0) - get_word(rnd);
+      size_limit = ~((BN_ULONG)0) - BN_get_word(rnd);
     } else {
-      size_limit = (((BN_ULONG)1) << bits) - get_word(rnd) - 1;
+      size_limit = (((BN_ULONG)1) << bits) - BN_get_word(rnd) - 1;
     }
     if (size_limit < maxdelta) {
       maxdelta = size_limit;
@@ -681,7 +674,7 @@ again:
 
 loop:
   if (is_single_word) {
-    BN_ULONG rnd_word = get_word(rnd);
+    BN_ULONG rnd_word = BN_get_word(rnd);
 
     /* In the case that the candidate prime is a single word then
      * we check that:
