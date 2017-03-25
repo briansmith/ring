@@ -18,27 +18,28 @@ use untrusted;
 
 pub use limb::*;
 
-/// Field elements. Field elements are always Montgomery-encoded and always
-/// fully reduced mod q; i.e. their range is [0, q).
+/// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus *q*.
 #[derive(Clone)]
 pub struct Elem<E> {
     // XXX: pub
     pub limbs: [Limb; MAX_LIMBS],
-    pub encoding: PhantomData<E>,
+
+    /// The number of Montgomery factors that need to be canceled out from
+    /// `value` to get the actual value.
+    encoding: PhantomData<E>,
 }
 
-/// Field elements that are not Montgomery-encoded. Their values are in the
-/// range [0, Q).
+/// Indicates the element is not Montgomery-encoded. Its value is in [0, q). No
+/// Montgomery factors need to be canceled out from the element's `value`.
 #[derive(Copy, Clone)]
 pub enum Unencoded {}
 
-/// Field elements that are Montgomery-encoded and reduced. Their values are
-/// in the range [0, m).
+/// Indicates the element is Montgomery-encoded. Its value is in [0, q). One
+/// Montgomery factor needs to be canceled out from the element's `value`.
 #[derive(Copy, Clone)]
 pub enum R {}
 
 impl<E> Elem<E> {
-    // TODO: copy documentation from ring::bigint.
     fn zero() -> Elem<E> {
         Elem {
             limbs: [0; MAX_LIMBS],
@@ -47,9 +48,8 @@ impl<E> Elem<E> {
     }
 }
 
-/// Scalars. Scalars are *not* Montgomery-encoded. They are always
-/// fully reduced mod n; i.e. their range is [0, n]. In most contexts,
-/// zero-valued scalars are forbidden.
+/// A scalar that is not Montgomery-encoded. Its value is in [0, n). Zero-valued
+/// scalars are forbidden in most contexts.
 pub struct Scalar {
     pub limbs: [Limb; MAX_LIMBS],
 }
@@ -61,7 +61,7 @@ impl Scalar {
     }
 }
 
-/// A `Scalar`, except Montgomery-encoded, and not reduced. The range is
+/// A Scalar that is Montgomery-encoded and not reduced. Its value is in
 /// [0, 2**`LIMB_BITS`).
 #[derive(Clone, Copy)]
 pub struct ScalarMont {
