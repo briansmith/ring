@@ -1865,20 +1865,16 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
 
-  int ret;
-  if (config->implicit_handshake) {
-    if (config->is_server) {
-      SSL_set_accept_state(ssl.get());
-    } else {
-      SSL_set_connect_state(ssl.get());
-    }
+  if (config->is_server) {
+    SSL_set_accept_state(ssl.get());
   } else {
+    SSL_set_connect_state(ssl.get());
+  }
+
+  int ret;
+  if (!config->implicit_handshake) {
     do {
-      if (config->is_server) {
-        ret = SSL_accept(ssl.get());
-      } else {
-        ret = SSL_connect(ssl.get());
-      }
+      ret = SSL_do_handshake(ssl.get());
     } while (config->async && RetryAsync(ssl.get(), ret));
     if (ret != 1 ||
         !CheckHandshakeProperties(ssl.get(), is_resume)) {
