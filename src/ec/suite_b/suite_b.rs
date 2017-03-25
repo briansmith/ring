@@ -31,7 +31,7 @@ use self::ops::*;
 //     y**2 == (x**2 + a)*x + b  (mod q)
 //
 fn verify_affine_point_is_on_the_curve(
-        ops: &CommonOps, (x, y): (&Elem<RUnreduced>, &Elem<RUnreduced>))
+        ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>))
         -> Result<(), error::Unspecified> {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
@@ -47,8 +47,7 @@ fn verify_affine_point_is_on_the_curve(
 //
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> Result<Elem<RUnreduced>,
-                                                   error::Unspecified> {
+                                         -> Result<Elem<R>, error::Unspecified> {
     let z = ops.point_z(p);
 
     // Verify that the point is not at infinity.
@@ -136,9 +135,8 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 // Elliptic Curve Cryptosystems" by Johannes Blömer, Martin Otto, and
 // Jean-Pierre Seifert.
 fn verify_affine_point_is_on_the_curve_scaled(
-        ops: &CommonOps, (x, y): (&Elem<RUnreduced>, &Elem<RUnreduced>),
-        a_scaled: &Elem<RUnreduced>, b_scaled: &Elem<RUnreduced>)
-        -> Result<(), error::Unspecified> {
+        ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>), a_scaled: &Elem<R>,
+        b_scaled: &Elem<R>) -> Result<(), error::Unspecified> {
     let lhs = ops.elem_squared(y);
     let lhs = ops.elem_reduced(&lhs);
 

@@ -100,7 +100,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // that would be necessary to compute the affine X coordinate.
         let x = self.ops.public_key_ops.common.point_x(&product);
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &Elem<Unencoded>,
-                          x: &Elem<RUnreduced>, z2: &Elem<RUnreduced>) -> bool {
+                          x: &Elem<R>, z2: &Elem<R>) -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_mul_mixed(z2, r);
             let x_decoded = cops.elem_decoded(x);

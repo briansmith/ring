@@ -51,9 +51,7 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    let x_ = Elem::<RUnreduced>::from(&x);
-    let y_ = Elem::<RUnreduced>::from(&y);
-    try!(verify_affine_point_is_on_the_curve(ops.common, (&x_, &y_)));
+    try!(verify_affine_point_is_on_the_curve(ops.common, (&x, &y)));
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
     // check that the public key is in the correct EC subgroup."

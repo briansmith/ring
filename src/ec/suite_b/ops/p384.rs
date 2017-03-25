@@ -73,7 +73,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: GFp_nistz384_point_mul,
 };
 
-fn p384_elem_inv(a: &Elem<RUnreduced>) -> Elem<RUnreduced> {
+fn p384_elem_inv(a: &Elem<R>) -> Elem<R> {
     // Calculate the modular inverse of field element |a| using Fermat's Little
     // Theorem:
     //
@@ -85,14 +85,12 @@ fn p384_elem_inv(a: &Elem<RUnreduced>) -> Elem<RUnreduced> {
     //      ffffffff0000000000000000fffffffd
 
     #[inline]
-    fn sqr_mul(a: &Elem<RUnreduced>, squarings: usize, b: &Elem<RUnreduced>)
-               -> Elem<RUnreduced> {
+    fn sqr_mul(a: &Elem<R>, squarings: usize, b: &Elem<R>) -> Elem<R> {
         elem_sqr_mul(&COMMON_OPS, a, squarings, b)
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut Elem<RUnreduced>, squarings: usize,
-                   b: &Elem<RUnreduced>) {
+    fn sqr_mul_acc(a: &mut Elem<R>, squarings: usize, b: &Elem<R>) {
         elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
     }
 
