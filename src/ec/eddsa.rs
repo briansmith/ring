@@ -22,16 +22,16 @@ pub struct EdDSAParameters;
 
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
-    private_public: [u8; 64],
+    private_public: [u8; KEY_PAIR_LEN],
 }
 
 /// The raw bytes of the Ed25519 key pair, for serialization.
 pub struct Ed25519KeyPairBytes {
     /// Private key bytes.
-    pub private_key: [u8; 32],
+    pub private_key: [u8; PRIVATE_KEY_LEN],
 
     /// Public key bytes.
-    pub public_key: [u8; 32],
+    pub public_key: [u8; PUBLIC_KEY_LEN],
 }
 
 impl<'a> Ed25519KeyPair {
@@ -51,8 +51,8 @@ impl<'a> Ed25519KeyPair {
             -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
                       error::Unspecified> {
         let mut bytes = Ed25519KeyPairBytes {
-            private_key: [0; 32],
-            public_key: [0; 32],
+            private_key: [0; PRIVATE_KEY_LEN],
+            public_key: [0; PUBLIC_KEY_LEN],
         };
         try!(rng.fill(&mut bytes.private_key));
         public_from_private(&bytes.private_key, &mut bytes.public_key);
@@ -78,7 +78,7 @@ impl<'a> Ed25519KeyPair {
         let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
                                                              public_key));
         { // borrow pair;
-            let mut public_key_check = [0; 32];
+            let mut public_key_check = [0; PUBLIC_KEY_LEN];
             let private_key =
                 slice_as_array_ref!(&pair.private_public[..SCALAR_LEN],
                                     SCALAR_LEN).unwrap();
@@ -92,14 +92,14 @@ impl<'a> Ed25519KeyPair {
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
                             -> Result<Ed25519KeyPair, error::Unspecified> {
-        if private_key.len() != 32 {
+        if private_key.len() != PRIVATE_KEY_LEN {
             return Err(error::Unspecified);
         }
-        if public_key.len() != 32 {
+        if public_key.len() != PUBLIC_KEY_LEN {
             return Err(error::Unspecified);
         }
-        let mut pair = Ed25519KeyPair { private_public: [0; 64] };
-        for i in 0..32 {
+        let mut pair = Ed25519KeyPair { private_public: [0; KEY_PAIR_LEN] };
+        for i in 0..SCALAR_LEN {
             pair.private_public[i] = private_key[i];
             pair.private_public[32 + i] = public_key[i];
         }
@@ -107,11 +107,13 @@ impl<'a> Ed25519KeyPair {
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
-    pub fn public_key_bytes(&'a self) -> &'a [u8] { &self.private_public[32..] }
+    pub fn public_key_bytes(&'a self) -> &'a [u8] {
+        &self.private_public[PRIVATE_KEY_LEN..]
+    }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
-        let mut signature_bytes = [0u8; 64];
+        let mut signature_bytes = [0u8; SIGNATURE_LEN];
         unsafe {
             GFp_ed25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
                              msg.len(), self.private_public.as_ptr());
@@ -132,7 +134,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
-        if public_key.len() != 32 || signature.len() != 64 {
+        if public_key.len() != PUBLIC_KEY_LEN || signature.len() != SIGNATURE_LEN {
             return Err(error::Unspecified);
         }
         let msg = msg.as_slice_less_safe();
@@ -196,8 +198,12 @@ struct Point {
 type Elem = [i32; ELEM_LIMBS];
 const ELEM_LIMBS: usize = 10;
 
-type PublicKey = [u8; ELEM_LEN];
+type PublicKey = [u8; PUBLIC_KEY_LEN];
+const PUBLIC_KEY_LEN: usize = ELEM_LEN;
 
+const PRIVATE_KEY_LEN: usize = SCALAR_LEN;
+const KEY_PAIR_LEN: usize = PUBLIC_KEY_LEN + PRIVATE_KEY_LEN;
+const SIGNATURE_LEN: usize = PUBLIC_KEY_LEN + PRIVATE_KEY_LEN;
 const SCALAR_LEN: usize = 32;
 const ELEM_LEN: usize = 32;
 
