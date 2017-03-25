@@ -924,6 +924,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
 static int set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
                            uint16_t version) {
+  /* Zero is interpreted as the default minimum version. */
   if (version == 0) {
     *out = method->min_version;
     return 1;
@@ -938,6 +939,7 @@ static int set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
 
 static int set_max_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
                            uint16_t version) {
+  /* Zero is interpreted as the default maximum version. */
   if (version == 0) {
     *out = method->max_version;
     /* TODO(svaldez): Enable TLS 1.3 by default once fully implemented. */
