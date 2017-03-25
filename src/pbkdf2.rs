@@ -254,7 +254,8 @@ pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
 
 /// A PRF algorithm for use with `derive` and `verify`.
 pub struct PRF {
-    digest_alg: &'static digest::Algorithm,
+    /// digest algorithm usable as a PBKDF2 PRF
+    pub digest_alg: &'static digest::Algorithm,
 }
 
 /// HMAC-SHA256.
