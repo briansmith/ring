@@ -3394,9 +3394,11 @@ func addExtendedMasterSecretTests() {
 }
 
 type stateMachineTestConfig struct {
-	protocol                            protocol
-	async                               bool
-	splitHandshake, packHandshakeFlight bool
+	protocol            protocol
+	async               bool
+	splitHandshake      bool
+	packHandshakeFlight bool
+	implicitHandshake   bool
 }
 
 // Adds tests that try to cover the range of the handshake state machine, under
@@ -3408,6 +3410,11 @@ func addAllStateMachineCoverageTests() {
 			addStateMachineCoverageTests(stateMachineTestConfig{
 				protocol: protocol,
 				async:    async,
+			})
+			addStateMachineCoverageTests(stateMachineTestConfig{
+				protocol:          protocol,
+				async:             async,
+				implicitHandshake: true,
 			})
 			addStateMachineCoverageTests(stateMachineTestConfig{
 				protocol:       protocol,
@@ -3460,14 +3467,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		resumeSession: true,
 	})
 	tests = append(tests, testCase{
-		name: "Basic-Client-Implicit",
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		flags:         []string{"-implicit-handshake"},
-		resumeSession: true,
-	})
-	tests = append(tests, testCase{
 		testType: serverTest,
 		name:     "Basic-Server",
 		config: Config{
@@ -3488,15 +3487,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		},
 		resumeSession: true,
 		flags:         []string{"-expect-session-id"},
-	})
-	tests = append(tests, testCase{
-		testType: serverTest,
-		name:     "Basic-Server-Implicit",
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		flags:         []string{"-implicit-handshake"},
-		resumeSession: true,
 	})
 	tests = append(tests, testCase{
 		testType: serverTest,
@@ -4062,22 +4052,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			resumeSession:   true,
 		})
 
-		// Client does False Start but doesn't explicitly call
-		// SSL_connect.
-		tests = append(tests, testCase{
-			name: "FalseStart-Implicit",
-			config: Config{
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:   []string{"foo"},
-			},
-			flags: []string{
-				"-implicit-handshake",
-				"-false-start",
-				"-advertise-alpn", "\x03foo",
-			},
-		})
-
 		// False Start without session tickets.
 		tests = append(tests, testCase{
 			name: "FalseStart-SessionTicketsDisabled",
@@ -4211,22 +4185,25 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			flags: []string{"-check-close-notify"},
 		})
 
-		// Bidirectional shutdown with the shim initiating. The runner,
-		// in the meantime, sends garbage before the close_notify which
-		// the shim must ignore.
-		tests = append(tests, testCase{
-			name: "Shutdown-Shim",
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					ExpectCloseNotify: true,
+		if !config.implicitHandshake {
+			// Bidirectional shutdown with the shim initiating. The runner,
+			// in the meantime, sends garbage before the close_notify which
+			// the shim must ignore. This test is disabled under implicit
+			// handshake tests because the shim never reads or writes.
+			tests = append(tests, testCase{
+				name: "Shutdown-Shim",
+				config: Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						ExpectCloseNotify: true,
+					},
 				},
-			},
-			shimShutsDown:     true,
-			sendEmptyRecords:  1,
-			sendWarningAlerts: 1,
-			flags:             []string{"-check-close-notify"},
-		})
+				shimShutsDown:     true,
+				sendEmptyRecords:  1,
+				sendWarningAlerts: 1,
+				flags:             []string{"-check-close-notify"},
+			})
+		}
 	} else {
 		// TODO(davidben): DTLS 1.3 will want a similar thing for
 		// HelloRetryRequest.
@@ -4263,6 +4240,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		if config.packHandshakeFlight {
 			test.name += "-PackHandshakeFlight"
 			test.config.Bugs.PackHandshakeFlight = true
+		}
+		if config.implicitHandshake {
+			test.name += "-ImplicitHandshake"
+			test.flags = append(test.flags, "-implicit-handshake")
 		}
 		testCases = append(testCases, test)
 	}
