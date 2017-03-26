@@ -90,11 +90,8 @@ static int pkcs7_parse_header(uint8_t **der_bytes, CBS *out, CBS *cbs) {
   return 1;
 
 err:
-  if (*der_bytes) {
-    OPENSSL_free(*der_bytes);
-    *der_bytes = NULL;
-  }
-
+  OPENSSL_free(*der_bytes);
+  *der_bytes = NULL;
   return 0;
 }
 
@@ -144,9 +141,7 @@ int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
   ret = 1;
 
 err:
-  if (der_bytes) {
-    OPENSSL_free(der_bytes);
-  }
+  OPENSSL_free(der_bytes);
 
   if (!ret) {
     while (sk_X509_num(out_certs) != initial_certs_len) {
@@ -214,9 +209,7 @@ int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs) {
   ret = 1;
 
 err:
-  if (der_bytes) {
-    OPENSSL_free(der_bytes);
-  }
+  OPENSSL_free(der_bytes);
 
   if (!ret) {
     while (sk_X509_CRL_num(out_crls) != initial_crls_len) {
