@@ -15,7 +15,7 @@
 use {error, rand};
 use core;
 use super::{bigint, N};
-use super::bigint::{R, RR};
+use arithmetic::montgomery::{R, RR};
 
 pub struct Blinding(Option<Contents>);
 

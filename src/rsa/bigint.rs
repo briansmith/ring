@@ -43,6 +43,7 @@
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
 
 use {bits, bssl, c, der, error, limb, rand, untrusted};
+use arithmetic::montgomery::*;
 use core;
 use core::marker::PhantomData;
 
@@ -215,75 +216,6 @@ impl Modulus<super::N> {
     pub fn value(&self) -> &OddPositive { &self.value }
 }
 
-// Not Montgomery encoded; there is no *R* factor that needs to be canceled out.
-pub enum Unencoded {}
-
-// Montgomery encoded; the value has one *R* factor that needs to be canceled
-// out.
-pub enum R {}
-
-// Montgomery encoded twice; the value has two *R* factors that need to be
-// canceled out.
-pub enum RR {}
-
-// Montgomery encoded three times; the value has three *R* factors that need to
-// be canceled out.
-pub enum RRR {}
-
-// Inversely Montgomery encoded; the value has one 1/*R* factor that needs to
-// be canceled out.
-pub enum RInverse {}
-
-// The encoding of the result of a Montgomery reduction.
-pub trait MontgomeryReductionEncoding {
-    type Output;
-}
-
-impl MontgomeryReductionEncoding for RRR { type Output = RR; }
-impl MontgomeryReductionEncoding for RR { type Output = R; }
-impl MontgomeryReductionEncoding for R { type Output = Unencoded; }
-impl MontgomeryReductionEncoding for Unencoded { type Output = RInverse; }
-
-// The encoding of the result of a Montgomery multiplication.
-pub trait MontgomeryProductEncoding {
-    type Output;
-}
-
-impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding for
-        (Unencoded, E) {
-    type Output = E::Output;
-}
-
-impl<E> MontgomeryProductEncoding for (R, E) { type Output = E; }
-
-impl<E: MontgomeryReductionEncoding> MontgomeryProductEncoding
-        for (RInverse, E) where E::Output: MontgomeryReductionEncoding {
-    type Output =
-        <<E as MontgomeryReductionEncoding>::Output
-            as MontgomeryReductionEncoding>::Output;
-}
-
-impl MontgomeryProductEncoding for (RR, RR) {
-    type Output = RRR;
-}
-
-// XXX: Rust doesn't allow overlapping impls,
-// TODO (if/when Rust allows it):
-// impl<E1, E2: MontgomeryReductionEncoding> MontgomeryProductEncoding for
-//         (E1, E2) {
-//     type Output = <(E2, E1) as MontgomeryProductEncoding>::Output;
-// }
-impl MontgomeryProductEncoding for (RR, Unencoded) {
-    type Output = <(Unencoded, RR) as MontgomeryProductEncoding>::Output;
-}
-impl MontgomeryProductEncoding for (RR, RInverse) {
-    type Output = <(RInverse, RR) as MontgomeryProductEncoding>::Output;
-}
-impl MontgomeryProductEncoding for (RRR, RInverse) {
-    type Output = <(RInverse, RRR) as MontgomeryProductEncoding>::Output;
-}
-
-
 /// Elements of ℤ/mℤ for some modulus *m*.
 //
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
@@ -368,9 +300,9 @@ impl<M> Elem<M, Unencoded> {
 }
 
 pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
-        -> Result<Elem<M, <(AF, BF) as MontgomeryProductEncoding>::Output>,
+        -> Result<Elem<M, <(AF, BF) as ProductEncoding>::Output>,
                   error::Unspecified>
-        where (AF, BF): MontgomeryProductEncoding {
+        where (AF, BF): ProductEncoding {
     let mut r = b.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, &m.value.as_ref(),
@@ -385,10 +317,10 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
 
 // `a` * `b` (mod `m`).
 pub fn elem_set_to_product<M, AF, BF>(
-        r: &mut Elem<M, <(AF, BF) as MontgomeryProductEncoding>::Output>,
+        r: &mut Elem<M, <(AF, BF) as ProductEncoding>::Output>,
         a: &Elem<M, AF>, b: &Elem<M, BF>, m: &Modulus<M>)
         -> Result<(), error::Unspecified>
-        where (AF, BF): MontgomeryProductEncoding {
+        where (AF, BF): ProductEncoding {
     bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
                             b.value.as_ref(), &m.value.as_ref(), &m.n0)
@@ -414,9 +346,9 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     elem_reduced_(tmp, m)
 }
 
-fn elem_reduced_<LargerM, E: MontgomeryReductionEncoding, SmallerM>(
+fn elem_reduced_<LargerM, E: ReductionEncoding, SmallerM>(
         mut a: Elem<LargerM, E>, m: &Modulus<SmallerM>)
-        -> Result<Elem<SmallerM, <E as MontgomeryReductionEncoding>::Output>,
+        -> Result<Elem<SmallerM, <E as ReductionEncoding>::Output>,
                   error::Unspecified> {
     let mut r = try!(Elem::zero());
     try!(bssl::map_result(unsafe {
@@ -427,9 +359,9 @@ fn elem_reduced_<LargerM, E: MontgomeryReductionEncoding, SmallerM>(
 }
 
 pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
-        -> Result<Elem<M, <(E, E) as MontgomeryProductEncoding>::Output>,
+        -> Result<Elem<M, <(E, E) as ProductEncoding>::Output>,
                   error::Unspecified>
-        where (E, E): MontgomeryProductEncoding {
+        where (E, E): ProductEncoding {
     let mut value = a.value;
     try!(bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),

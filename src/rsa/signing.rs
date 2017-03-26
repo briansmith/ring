@@ -18,7 +18,7 @@ use {bits, der, digest, error};
 use rand;
 use std;
 use super::{blinding, bigint, N};
-use super::bigint::{R, RR, RRR};
+use arithmetic::montgomery::{R, RR, RRR};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.

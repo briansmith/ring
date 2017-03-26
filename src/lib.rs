@@ -116,6 +116,9 @@ extern crate std;
 
 extern crate untrusted;
 
+#[path = "arithmetic/arithmetic.rs"]
+mod arithmetic;
+
 #[macro_use]
 mod bssl;
 
