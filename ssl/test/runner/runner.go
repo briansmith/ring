@@ -7878,6 +7878,22 @@ func addCustomExtensionTests() {
 			flags: []string{flag},
 		})
 
+		// 0-RTT is not currently supported with Custom Extensions.
+		testCases = append(testCases, testCase{
+			testType: testType,
+			name:     "CustomExtensions-" + suffix + "-EarlyData",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					CustomExtension:         expectedContents,
+					ExpectedCustomExtension: &expectedContents,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":CUSTOM_EXTENSION_ERROR:",
+			flags:         []string{flag, "-enable-early-data"},
+		})
+
 		// If the parse callback fails, the handshake should also fail.
 		testCases = append(testCases, testCase{
 			testType: testType,
@@ -10318,6 +10334,47 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-select-alpn", "foo",
 			"-select-resume-alpn", "bar",
+		},
+	})
+
+	// Test that we fail on early data with Channel ID.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyData-ChannelID-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			RequestChannelID: true,
+		},
+		resumeSession:   true,
+		expectChannelID: true,
+		shouldFail:      true,
+		expectedError:   ":CHANNEL_ID_ON_EARLY_DATA:",
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyData-ChannelID-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			ChannelID:  channelIDKey,
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession:   true,
+		expectChannelID: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-reject-early-data",
+			"-expect-channel-id",
+			base64.StdEncoding.EncodeToString(channelIDBytes),
 		},
 	})
 

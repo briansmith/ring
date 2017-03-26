@@ -359,6 +359,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           session->ticket_max_early_data != 0 &&
           /* The client must have offered early data. */
           hs->early_data_offered &&
+          /* Channel ID is incompatible with 0-RTT. */
+          !ssl->s3->tlsext_channel_id_valid &&
           /* The negotiated ALPN must match the one in the ticket. */
           ssl->s3->alpn_selected_len == session->early_alpn_len &&
           OPENSSL_memcmp(ssl->s3->alpn_selected, session->early_alpn,

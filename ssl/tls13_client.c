@@ -365,6 +365,10 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ALPN_MISMATCH_ON_EARLY_DATA);
       return ssl_hs_error;
     }
+    if (ssl->s3->tlsext_channel_id_valid) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_ON_EARLY_DATA);
+      return ssl_hs_error;
+    }
   }
 
   /* Release offered session now that it is no longer needed. */
