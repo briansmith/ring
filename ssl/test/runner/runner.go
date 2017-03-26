@@ -8690,7 +8690,8 @@ func addSessionTicketTests() {
 				SendTicketAge: 15 * time.Second,
 			},
 		},
-		resumeSession: true,
+		resumeSession:        true,
+		resumeRenewedSession: true,
 		flags: []string{
 			"-resumption-delay", "10",
 			"-expect-ticket-age-skew", "5",
@@ -8705,7 +8706,8 @@ func addSessionTicketTests() {
 				SendTicketAge: 5 * time.Second,
 			},
 		},
-		resumeSession: true,
+		resumeSession:        true,
+		resumeRenewedSession: true,
 		flags: []string{
 			"-resumption-delay", "10",
 			"-expect-ticket-age-skew", "-5",
