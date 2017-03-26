@@ -972,6 +972,7 @@ struct ssl_handshake_st {
   uint8_t server_handshake_secret[EVP_MAX_MD_SIZE];
   uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE];
   uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE];
+  uint8_t expected_client_finished[EVP_MAX_MD_SIZE];
 
   union {
     /* sent is a bitset where the bits correspond to elements of kExtensions
@@ -1152,7 +1153,11 @@ int tls13_post_handshake(SSL *ssl);
 
 int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous);
 int tls13_process_certificate_verify(SSL_HANDSHAKE *hs);
-int tls13_process_finished(SSL_HANDSHAKE *hs);
+
+/* tls13_process_finished processes the current message as a Finished message
+ * from the peer. If |use_saved_value| is one, the verify_data is compared
+ * against |hs->expected_client_finished| rather than computed fresh. */
+int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value);
 
 int tls13_add_certificate(SSL_HANDSHAKE *hs);
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,

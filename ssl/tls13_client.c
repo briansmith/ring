@@ -466,7 +466,7 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
 static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED) ||
-      !tls13_process_finished(hs) ||
+      !tls13_process_finished(hs, 0 /* don't use saved value */) ||
       !ssl_hash_current_message(hs) ||
       /* Update the secret to the master secret and derive traffic keys. */
       !tls13_advance_key_schedule(hs, kZeroes, hs->hash_len) ||

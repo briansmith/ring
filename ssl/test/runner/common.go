@@ -1180,9 +1180,9 @@ type ProtocolBugs struct {
 	// Finished message.
 	SendHalfRTTData [][]byte
 
-	// ExpectHalfRTTData causes a TLS 1.3 client to read application
-	// data after reading the server's Finished message and before
-	// sending any other handshake messages. It checks that the
+	// ExpectHalfRTTData causes a TLS 1.3 client, if 0-RTT was accepted, to
+	// read application data after reading the server's Finished message and
+	// before sending any subsequent handshake messages. It checks that the
 	// application data it reads matches what is provided in
 	// ExpectHalfRTTData and errors if the number of records or their
 	// content do not match.

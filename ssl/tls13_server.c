@@ -136,6 +136,68 @@ static const SSL_CIPHER *choose_tls13_cipher(
   return best;
 }
 
+static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  /* TLS 1.3 recommends single-use tickets, so issue multiple tickets in case
+   * the client makes several connections before getting a renewal. */
+  static const int kNumTickets = 2;
+
+  SSL_SESSION *session = hs->new_session;
+  CBB cbb;
+  CBB_zero(&cbb);
+
+  /* Rebase the session timestamp so that it is measured from ticket
+   * issuance. */
+  ssl_session_rebase_time(ssl, session);
+
+  for (int i = 0; i < kNumTickets; i++) {
+    if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
+      goto err;
+    }
+    session->ticket_age_add_valid = 1;
+
+    CBB body, ticket, extensions;
+    if (!ssl->method->init_message(ssl, &cbb, &body,
+                                   SSL3_MT_NEW_SESSION_TICKET) ||
+        !CBB_add_u32(&body, session->timeout) ||
+        !CBB_add_u32(&body, session->ticket_age_add) ||
+        !CBB_add_u16_length_prefixed(&body, &ticket) ||
+        !ssl_encrypt_ticket(ssl, &ticket, session) ||
+        !CBB_add_u16_length_prefixed(&body, &extensions)) {
+      goto err;
+    }
+
+    if (ssl->ctx->enable_early_data) {
+      session->ticket_max_early_data = kMaxEarlyDataAccepted;
+
+      CBB early_data_info;
+      if (!CBB_add_u16(&extensions, TLSEXT_TYPE_ticket_early_data_info) ||
+          !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
+          !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
+          !CBB_flush(&extensions)) {
+        goto err;
+      }
+    }
+
+    /* Add a fake extension. See draft-davidben-tls-grease-01. */
+    if (!CBB_add_u16(&extensions,
+                     ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
+        !CBB_add_u16(&extensions, 0 /* empty */)) {
+      goto err;
+    }
+
+    if (!ssl_add_message_cbb(ssl, &cbb)) {
+      goto err;
+    }
+  }
+
+  return 1;
+
+err:
+  CBB_cleanup(&cbb);
+  return 0;
+}
+
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   /* At this point, most ClientHello extensions have already been processed by
    * the common handshake logic. Resolve the remaining non-PSK parameters. */
@@ -567,6 +629,37 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (ssl->early_data_accepted) {
+    /* If accepting 0-RTT, we send tickets half-RTT. This gets the tickets on
+     * the wire sooner and also avoids triggering a write on |SSL_read| when
+     * processing the client Finished. This requires computing the client
+     * Finished early. See draft-ietf-tls-tls13-18, section 4.5.1. */
+    size_t finished_len;
+    if (!tls13_finished_mac(hs, hs->expected_client_finished, &finished_len,
+                            0 /* client */)) {
+      return ssl_hs_error;
+    }
+
+    if (finished_len != hs->hash_len) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+
+    /* Feed the predicted Finished into the transcript. This allows us to derive
+     * the resumption secret early and send half-RTT tickets.
+     *
+     * TODO(davidben): This will need to be updated for DTLS 1.3. */
+    assert(!SSL_is_dtls(hs->ssl));
+    uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0, hs->hash_len};
+    if (!SSL_TRANSCRIPT_update(&hs->transcript, header, sizeof(header)) ||
+        !SSL_TRANSCRIPT_update(&hs->transcript, hs->expected_client_finished,
+                               hs->hash_len) ||
+        !tls13_derive_resumption_secret(hs) ||
+        !add_new_session_tickets(hs)) {
+      return ssl_hs_error;
+    }
+  }
+
   hs->tls13_state = state_read_second_client_flight;
   return ssl_hs_flush;
 }
@@ -581,7 +674,6 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->tls13_state = state_process_end_of_early_data;
     return ssl_hs_read_end_of_early_data;
   }
-
   hs->tls13_state = state_process_end_of_early_data;
   return ssl_hs_ok;
 }
@@ -592,7 +684,8 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
                              hs->hash_len)) {
     return ssl_hs_error;
   }
-  hs->tls13_state = state_process_client_certificate;
+  hs->tls13_state = ssl->early_data_accepted ? state_process_client_finished
+                                             : state_process_client_certificate;
   return ssl_hs_read_message;
 }
 
@@ -659,30 +752,33 @@ static enum ssl_hs_wait_t do_process_channel_id(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_process_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED) ||
-      !tls13_process_finished(hs) ||
-      !ssl_hash_current_message(hs) ||
+      /* If early data was accepted, we've already computed the client Finished
+       * and derived the resumption secret. */
+      !tls13_process_finished(hs, ssl->early_data_accepted) ||
       /* evp_aead_seal keys have already been switched. */
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->client_traffic_secret_0,
-                             hs->hash_len) ||
-      !tls13_derive_resumption_secret(hs)) {
+                             hs->hash_len)) {
     return ssl_hs_error;
   }
 
   ssl->method->received_flight(ssl);
 
-  /* Rebase the session timestamp so that it is measured from ticket
-   * issuance. */
-  ssl_session_rebase_time(ssl, hs->new_session);
-  hs->tls13_state = state_send_new_session_ticket;
+  if (!ssl->early_data_accepted) {
+    if (!ssl_hash_current_message(hs) ||
+        !tls13_derive_resumption_secret(hs)) {
+      return ssl_hs_error;
+    }
+
+    /* We send post-handshake tickets as part of the handshake in 1-RTT. */
+    hs->tls13_state = state_send_new_session_ticket;
+    return ssl_hs_ok;
+  }
+
+  hs->tls13_state = state_done;
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
-  /* TLS 1.3 recommends single-use tickets, so issue multiple tickets in case the
-   * client makes several connections before getting a renewal. */
-  static const int kNumTickets = 2;
-
-  SSL *const ssl = hs->ssl;
   /* If the client doesn't accept resumption with PSK_DHE_KE, don't send a
    * session ticket. */
   if (!hs->accept_psk_mode) {
@@ -690,57 +786,12 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  SSL_SESSION *session = hs->new_session;
-  CBB cbb;
-  CBB_zero(&cbb);
-
-  for (int i = 0; i < kNumTickets; i++) {
-    if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
-      goto err;
-    }
-    session->ticket_age_add_valid = 1;
-
-    CBB body, ticket, extensions;
-    if (!ssl->method->init_message(ssl, &cbb, &body,
-                                   SSL3_MT_NEW_SESSION_TICKET) ||
-        !CBB_add_u32(&body, session->timeout) ||
-        !CBB_add_u32(&body, session->ticket_age_add) ||
-        !CBB_add_u16_length_prefixed(&body, &ticket) ||
-        !ssl_encrypt_ticket(ssl, &ticket, session) ||
-        !CBB_add_u16_length_prefixed(&body, &extensions)) {
-      goto err;
-    }
-
-    if (ssl->ctx->enable_early_data) {
-      session->ticket_max_early_data = kMaxEarlyDataAccepted;
-
-      CBB early_data_info;
-      if (!CBB_add_u16(&extensions, TLSEXT_TYPE_ticket_early_data_info) ||
-          !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
-          !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
-          !CBB_flush(&extensions)) {
-        goto err;
-      }
-    }
-
-    /* Add a fake extension. See draft-davidben-tls-grease-01. */
-    if (!CBB_add_u16(&extensions,
-                     ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
-        !CBB_add_u16(&extensions, 0 /* empty */)) {
-      goto err;
-    }
-
-    if (!ssl_add_message_cbb(ssl, &cbb)) {
-      goto err;
-    }
+  if (!add_new_session_tickets(hs)) {
+    return ssl_hs_error;
   }
 
   hs->tls13_state = state_done;
   return ssl_hs_flush;
-
-err:
-  CBB_cleanup(&cbb);
-  return ssl_hs_error;
 }
 
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {

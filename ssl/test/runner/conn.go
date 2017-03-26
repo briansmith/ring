@@ -1425,6 +1425,43 @@ func (c *Conn) Write(b []byte) (int, error) {
 	return n + m, c.out.setErrorLocked(err)
 }
 
+func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMsg, cipherSuite *cipherSuite) error {
+	if c.config.Bugs.ExpectGREASE && !newSessionTicket.hasGREASEExtension {
+		return errors.New("tls: no GREASE ticket extension found")
+	}
+
+	if c.config.Bugs.ExpectTicketEarlyDataInfo && newSessionTicket.maxEarlyDataSize == 0 {
+		return errors.New("tls: no ticket_early_data_info extension found")
+	}
+
+	if c.config.Bugs.ExpectNoNewSessionTicket {
+		return errors.New("tls: received unexpected NewSessionTicket")
+	}
+
+	if c.config.ClientSessionCache == nil || newSessionTicket.ticketLifetime == 0 {
+		return nil
+	}
+
+	session := &ClientSessionState{
+		sessionTicket:      newSessionTicket.ticket,
+		vers:               c.vers,
+		cipherSuite:        cipherSuite.id,
+		masterSecret:       c.resumptionSecret,
+		serverCertificates: c.peerCertificates,
+		sctList:            c.sctList,
+		ocspResponse:       c.ocspResponse,
+		ticketCreationTime: c.config.time(),
+		ticketExpiration:   c.config.time().Add(time.Duration(newSessionTicket.ticketLifetime) * time.Second),
+		ticketAgeAdd:       newSessionTicket.ticketAgeAdd,
+		maxEarlyDataSize:   newSessionTicket.maxEarlyDataSize,
+		earlyALPN:          c.clientProtocol,
+	}
+
+	cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
+	c.config.ClientSessionCache.Put(cacheKey, session)
+	return nil
+}
+
 func (c *Conn) handlePostHandshakeMessage() error {
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -1449,40 +1486,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 
 	if c.isClient {
 		if newSessionTicket, ok := msg.(*newSessionTicketMsg); ok {
-			if c.config.Bugs.ExpectGREASE && !newSessionTicket.hasGREASEExtension {
-				return errors.New("tls: no GREASE ticket extension found")
-			}
-
-			if c.config.Bugs.ExpectTicketEarlyDataInfo && newSessionTicket.maxEarlyDataSize == 0 {
-				return errors.New("tls: no ticket_early_data_info extension found")
-			}
-
-			if c.config.Bugs.ExpectNoNewSessionTicket {
-				return errors.New("tls: received unexpected NewSessionTicket")
-			}
-
-			if c.config.ClientSessionCache == nil || newSessionTicket.ticketLifetime == 0 {
-				return nil
-			}
-
-			session := &ClientSessionState{
-				sessionTicket:      newSessionTicket.ticket,
-				vers:               c.vers,
-				cipherSuite:        c.cipherSuite.id,
-				masterSecret:       c.resumptionSecret,
-				serverCertificates: c.peerCertificates,
-				sctList:            c.sctList,
-				ocspResponse:       c.ocspResponse,
-				ticketCreationTime: c.config.time(),
-				ticketExpiration:   c.config.time().Add(time.Duration(newSessionTicket.ticketLifetime) * time.Second),
-				ticketAgeAdd:       newSessionTicket.ticketAgeAdd,
-				maxEarlyDataSize:   newSessionTicket.maxEarlyDataSize,
-				earlyALPN:          c.clientProtocol,
-			}
-
-			cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
-			c.config.ClientSessionCache.Put(cacheKey, session)
-			return nil
+			return c.processTLS13NewSessionTicket(newSessionTicket, c.cipherSuite)
 		}
 	}
 

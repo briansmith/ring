@@ -861,15 +861,32 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// If we're expecting 0.5-RTT messages from the server, read them
 	// now.
-	for _, expectedMsg := range c.config.Bugs.ExpectHalfRTTData {
-		if err := c.readRecord(recordTypeApplicationData); err != nil {
-			return err
+	if encryptedExtensions.extensions.hasEarlyData {
+		// BoringSSL will always send two tickets half-RTT when
+		// negotiating 0-RTT.
+		for i := 0; i < shimConfig.HalfRTTTickets; i++ {
+			msg, err := c.readHandshake()
+			if err != nil {
+				return fmt.Errorf("tls: error reading half-RTT ticket: %s", err)
+			}
+			newSessionTicket, ok := msg.(*newSessionTicketMsg)
+			if !ok {
+				return errors.New("tls: expected half-RTT ticket")
+			}
+			if err := c.processTLS13NewSessionTicket(newSessionTicket, hs.suite); err != nil {
+				return err
+			}
 		}
-		if !bytes.Equal(c.input.data[c.input.off:], expectedMsg) {
-			return errors.New("ExpectHalfRTTData: did not get expected message")
+		for _, expectedMsg := range c.config.Bugs.ExpectHalfRTTData {
+			if err := c.readRecord(recordTypeApplicationData); err != nil {
+				return err
+			}
+			if !bytes.Equal(c.input.data[c.input.off:], expectedMsg) {
+				return errors.New("ExpectHalfRTTData: did not get expected message")
+			}
+			c.in.freeBlock(c.input)
+			c.input = nil
 		}
-		c.in.freeBlock(c.input)
-		c.input = nil
 	}
 
 	// Send EndOfEarlyData and then switch write key to handshake

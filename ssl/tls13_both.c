@@ -410,12 +410,21 @@ err:
   return ret;
 }
 
-int tls13_process_finished(SSL_HANDSHAKE *hs) {
+int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value) {
   SSL *const ssl = hs->ssl;
-  uint8_t verify_data[EVP_MAX_MD_SIZE];
+  uint8_t verify_data_buf[EVP_MAX_MD_SIZE];
+  const uint8_t *verify_data;
   size_t verify_data_len;
-  if (!tls13_finished_mac(hs, verify_data, &verify_data_len, !ssl->server)) {
-    return 0;
+  if (use_saved_value) {
+    assert(ssl->server);
+    verify_data = hs->expected_client_finished;
+    verify_data_len = hs->hash_len;
+  } else {
+    if (!tls13_finished_mac(hs, verify_data_buf, &verify_data_len,
+                            !ssl->server)) {
+      return 0;
+    }
+    verify_data = verify_data_buf;
   }
 
   int finished_ok =

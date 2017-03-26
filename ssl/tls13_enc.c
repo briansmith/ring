@@ -311,13 +311,11 @@ static int tls13_verify_data(const EVP_MD *digest, uint8_t *out,
 
 int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
                        int is_server) {
-  SSL *const ssl = hs->ssl;
-
   const uint8_t *traffic_secret;
-  if (is_server == ssl->server) {
-    traffic_secret = ssl->s3->write_traffic_secret;
+  if (is_server) {
+    traffic_secret = hs->server_handshake_secret;
   } else {
-    traffic_secret = ssl->s3->read_traffic_secret;
+    traffic_secret = hs->client_handshake_secret;
   }
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
