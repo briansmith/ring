@@ -30,14 +30,19 @@ pub enum Q {}
 
 /// A scalar that is not Montgomery-encoded. Its value is in [0, n). Zero-valued
 /// scalars are forbidden in most contexts.
-pub struct Scalar {
-    pub limbs: [Limb; MAX_LIMBS],
-}
+pub type Scalar = elem::Elem<N, Unencoded>;
+
+/// Represents the prime order *n* of the curve's group.
+pub enum N {}
 
 impl Scalar {
     #[inline(always)]
     pub fn from_limbs_unchecked(limbs: &[Limb; MAX_LIMBS]) -> Scalar {
-        Scalar { limbs: *limbs }
+        Scalar {
+            limbs: *limbs,
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 }
 
@@ -342,7 +347,11 @@ impl PublicScalarOps {
                             encoded_value, 1,
                             &self.public_key_ops.common.n.limbs[
                                 ..self.public_key_ops.common.num_limbs]));
-        Ok(Scalar { limbs: limbs })
+        Ok(Scalar {
+            limbs: limbs,
+            m: PhantomData,
+            encoding: PhantomData,
+        })
     }
 
     // See the documentation for `reduced_limbs()` for the limitations of this
@@ -350,7 +359,11 @@ impl PublicScalarOps {
     pub fn scalar_from_unreduced_limbs(&self, unreduced: &[Limb; MAX_LIMBS])
                                        -> Scalar {
         let cops = self.public_key_ops.common;
-        Scalar { limbs: cops.reduced_limbs(unreduced, &cops.n.limbs) }
+        Scalar {
+            limbs: cops.reduced_limbs(unreduced, &cops.n.limbs),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.
@@ -555,7 +568,11 @@ mod tests {
         assert_eq!(reduced.limbs, one.limbs);
     }
 
-    const ZERO_SCALAR: Scalar = Scalar { limbs: [0; MAX_LIMBS] };
+    const ZERO_SCALAR: Scalar = Scalar {
+        limbs: [0; MAX_LIMBS],
+        m: PhantomData,
+        encoding: PhantomData,
+    };
 
     #[test]
     fn p256_sum_test() {
@@ -982,7 +999,9 @@ mod tests {
         let bytes = untrusted::Input::from(&bytes);
         Scalar {
             limbs: parse_big_endian_value_in_range(
-                    bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap()
+                    bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap(),
+            m: PhantomData,
+            encoding: PhantomData,
         }
     }
 }
