@@ -725,6 +725,59 @@ mod tests {
     }
 
     #[test]
+    fn p256_elem_mul_test() {
+        elem_mul_test(&p256::COMMON_OPS,
+                      "src/ec/suite_b/ops/p256_elem_mul_tests.txt");
+    }
+
+    #[test]
+    fn p384_elem_mul_test() {
+        elem_mul_test(&p384::COMMON_OPS,
+                      "src/ec/suite_b/ops/p384_elem_mul_tests.txt");
+    }
+
+    fn elem_mul_test(ops: &CommonOps,  file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let mut a = consume_elem(ops, test_case, "a");
+            let b = consume_elem(ops, test_case, "b");
+            let r = consume_elem(ops, test_case, "r");
+            ops.elem_mul(&mut a, &b);
+            assert_limbs_are_equal(ops, &a.limbs, &r.limbs);
+
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn p256_scalar_mul_test() {
+        scalar_mul_test(&p256::PUBLIC_SCALAR_OPS,
+                      "src/ec/suite_b/ops/p256_scalar_mul_tests.txt");
+    }
+
+    #[test]
+    fn p384_scalar_mul_test() {
+        scalar_mul_test(&p384::PUBLIC_SCALAR_OPS,
+                      "src/ec/suite_b/ops/p384_scalar_mul_tests.txt");
+    }
+
+    fn scalar_mul_test(ops: &PublicScalarOps,  file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let cops = ops.public_key_ops.common;
+            let mut a = consume_scalar(cops, test_case, "a");
+            let b = consume_scalar_mont(cops, test_case, "b");
+            let expected_result = consume_scalar(cops, test_case, "r");
+            let actual_result = ops.scalar_mul_mixed(&mut a, &b);
+            assert_limbs_are_equal(cops, &actual_result.limbs,
+                                   &expected_result.limbs);
+
+            Ok(())
+        })
+    }
+
+    #[test]
     #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
         let _ = p256::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
@@ -1002,6 +1055,16 @@ mod tests {
                     bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap(),
             m: PhantomData,
             encoding: PhantomData,
+        }
+    }
+
+    fn consume_scalar_mont(ops: &CommonOps, test_case: &mut test::TestCase,
+                           name: &str) -> ScalarMont {
+        let bytes = test_case.consume_bytes(name);
+        let bytes = untrusted::Input::from(&bytes);
+        ScalarMont {
+            limbs: parse_big_endian_value_in_range(
+                bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap(),
         }
     }
 }
