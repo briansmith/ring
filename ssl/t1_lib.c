@@ -719,6 +719,7 @@ static int ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                     CBS *contents) {
   SSL *const ssl = hs->ssl;
   if (contents != NULL && ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 
