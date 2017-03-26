@@ -1074,10 +1074,6 @@ struct ssl_handshake_st {
   uint8_t *key_block;
   uint8_t key_block_len;
 
-  /* session_tickets_sent, in TLS 1.3, is the number of tickets the server has
-   * sent. */
-  uint8_t session_tickets_sent;
-
   /* scts_requested is one if the SCT extension is in the ClientHello. */
   unsigned scts_requested:1;
 

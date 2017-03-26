@@ -735,7 +735,6 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
     }
   }
 
-  hs->session_tickets_sent++;
   hs->tls13_state = state_done;
   return ssl_hs_flush;
 
