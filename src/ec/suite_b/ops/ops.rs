@@ -575,18 +575,18 @@ mod tests {
     };
 
     #[test]
-    fn p256_sum_test() {
-        sum_test(&p256::PUBLIC_SCALAR_OPS,
-                 "src/ec/suite_b/ops/p256_sum_tests.txt");
+    fn p256_elem_add_test() {
+        elem_add_test(&p256::PUBLIC_SCALAR_OPS,
+                      "src/ec/suite_b/ops/p256_elem_sum_tests.txt");
     }
 
     #[test]
-    fn p384_sum_test() {
-        sum_test(&p384::PUBLIC_SCALAR_OPS,
-                 "src/ec/suite_b/ops/p384_sum_tests.txt");
+    fn p384_elem_add_test() {
+        elem_add_test(&p384::PUBLIC_SCALAR_OPS,
+                      "src/ec/suite_b/ops/p384_elem_sum_tests.txt");
     }
 
-    fn sum_test(ops: &PublicScalarOps, file_path: &str) {
+    fn elem_add_test(ops: &PublicScalarOps, file_path: &str) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -611,17 +611,17 @@ mod tests {
     // the point arithmetic functions. Thus, we can't test it.
 
     #[test]
-    fn p384_difference_test() {
+    fn p384_elem_sub_test() {
         extern {
             fn GFp_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
         }
-        difference_test(&p384::COMMON_OPS, GFp_p384_elem_sub,
-                        "src/ec/suite_b/ops/p384_sum_tests.txt");
+        elem_sub_test(&p384::COMMON_OPS, GFp_p384_elem_sub,
+                      "src/ec/suite_b/ops/p384_elem_sum_tests.txt");
     }
 
-    fn difference_test(ops: &CommonOps,
-                       elem_sub: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                                  b: *const Limb),
+    fn elem_sub_test(ops: &CommonOps,
+                     elem_sub: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                                b: *const Limb),
                        file_path: &str) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
@@ -652,17 +652,17 @@ mod tests {
     // into the point arithmetic functions. Thus, we can't test it.
 
     #[test]
-    fn p384_div_by_2_test() {
+    fn p384_elem_div_by_2_test() {
         extern {
             fn GFp_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
         }
-        div_by_2_test(&p384::COMMON_OPS, GFp_p384_elem_div_by_2,
-                      "src/ec/suite_b/ops/p384_div_by_2_tests.txt");
+        elem_div_by_2_test(&p384::COMMON_OPS, GFp_p384_elem_div_by_2,
+                           "src/ec/suite_b/ops/p384_elem_div_by_2_tests.txt");
     }
 
-    fn div_by_2_test(ops: &CommonOps,
-                     elem_div_by_2: unsafe extern fn(r: *mut Limb,
-                                                     a: *const Limb),
+    fn elem_div_by_2_test(ops: &CommonOps,
+                          elem_div_by_2: unsafe extern fn(r: *mut Limb,
+                                                          a: *const Limb),
                      file_path: &str) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
@@ -688,7 +688,7 @@ mod tests {
             fn GFp_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(&p256::COMMON_OPS, GFp_nistz256_neg,
-                      "src/ec/suite_b/ops/p256_neg_tests.txt");
+                      "src/ec/suite_b/ops/p256_elem_neg_tests.txt");
     }
 
     #[test]
@@ -697,7 +697,7 @@ mod tests {
             fn GFp_p384_elem_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(&p384::COMMON_OPS, GFp_p384_elem_neg,
-                      "src/ec/suite_b/ops/p384_neg_tests.txt");
+                      "src/ec/suite_b/ops/p384_elem_neg_tests.txt");
     }
 
     fn elem_neg_test(ops: &CommonOps,
