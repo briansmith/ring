@@ -1883,6 +1883,22 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
+    if (config->handshake_twice) {
+      do {
+        ret = SSL_do_handshake(ssl.get());
+      } while (config->async && RetryAsync(ssl.get(), ret));
+      if (ret != 1) {
+        return false;
+      }
+    }
+
+    // Skip the |config->async| logic as this should be a no-op.
+    if (config->no_op_extra_handshake &&
+        SSL_do_handshake(ssl.get()) != 1) {
+      fprintf(stderr, "Extra SSL_do_handshake was not a no-op.\n");
+      return false;
+    }
+
     // Reset the state to assert later that the callback isn't called in
     // renegotations.
     GetTestState(ssl.get())->got_new_session = false;

@@ -128,6 +128,8 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-reject-early-data", &TestConfig::expect_reject_early_data },
   { "-expect-no-alpn", &TestConfig::expect_no_alpn },
   { "-expect-no-resume-alpn", &TestConfig::expect_no_resume_alpn },
+  { "-no-op-extra-handshake", &TestConfig::no_op_extra_handshake },
+  { "-handshake-twice", &TestConfig::handshake_twice },
 };
 
 const Flag<std::string> kStringFlags[] = {
