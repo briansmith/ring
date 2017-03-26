@@ -3078,8 +3078,20 @@ OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
 /* SSL_CTX_set_early_data_enabled sets whether early data is allowed to be used
- * with resumptions using |ctx|. WARNING: This is experimental and may cause
- * interoperability failures until fully implemented. */
+ * with resumptions using |ctx|.
+ *
+ * As a server, if the client's early data is accepted, |SSL_do_handshake| will
+ * complete as soon as the ClientHello is processed and server flight sent.
+ * |SSL_write| may be used to send half-RTT data. |SSL_read| will consume early
+ * data and transition to 1-RTT data as appropriate.
+ *
+ * Note early data is replayable by a network attacker. |SSL_in_init| and
+ * |SSL_is_init_finished| will report the handshake is still in progress until
+ * the client's Finished message is received. Callers may use these functions
+ * to defer some processing if desired.
+ *
+ * WARNING: This is experimental and may cause interoperability failures until
+ * fully implemented. */
 OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
 
 /* SSL_early_data_accepted returns whether early data was accepted on the
