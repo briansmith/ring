@@ -707,18 +707,25 @@ mod tests {
             assert_eq!(section, "");
 
             let a = consume_elem(ops, test_case, "a");
-            let r = consume_elem(ops, test_case, "r");
+            let b = consume_elem(ops, test_case, "b");
 
-            let mut actual_result = Elem::<R>::zero();
-            unsafe {
-                elem_neg(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr());
+            // Verify -a == b.
+            {
+                let mut actual_result = Elem::<R>::zero();
+                unsafe {
+                    elem_neg(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr());
+                }
+                assert_limbs_are_equal(ops, &actual_result.limbs, &b.limbs);
             }
-            assert_limbs_are_equal(ops, &actual_result.limbs, &r.limbs);
 
-            // We would test that the -r == a here, but because the P-256 uses
-            // almost-Montgomery reduction, and because -0 == 0. we can't.
-            // Instead, unlike the other input files, the input files for this
-            // test contain the inverse test vectors explicitly.
+            // Verify -b == a.
+            {
+                let mut actual_result = Elem::<R>::zero();
+                unsafe {
+                    elem_neg(actual_result.limbs.as_mut_ptr(), b.limbs.as_ptr());
+                }
+                assert_limbs_are_equal(ops, &actual_result.limbs, &a.limbs);
+            }
 
             Ok(())
         })
