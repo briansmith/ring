@@ -891,7 +891,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Send EndOfEarlyData and then switch write key to handshake
 	// traffic key.
-	if c.out.cipher != nil {
+	if c.out.cipher != nil && !c.config.Bugs.SkipEndOfEarlyData {
 		c.sendAlert(alertEndOfEarlyData)
 	}
 	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)

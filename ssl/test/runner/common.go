@@ -533,6 +533,10 @@ type ProtocolBugs struct {
 	// message.
 	SkipFinished bool
 
+	// SkipEndOfEarlyData causes the implementation to skip the
+	// end_of_early_data alert.
+	SkipEndOfEarlyData bool
+
 	// EarlyChangeCipherSpec causes the client to send an early
 	// ChangeCipherSpec message before the ClientKeyExchange. A value of
 	// zero disables this behavior. One and two configure variants for 0.9.8

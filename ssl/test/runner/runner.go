@@ -10380,6 +10380,25 @@ func addTLS13HandshakeTests() {
 		},
 	})
 
+	// Test that the server rejects 0-RTT streams without end_of_early_data.
+	// The subsequent records should fail to decrypt.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyData-SkipEndOfEarlyData",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{},
+				ExpectEarlyDataAccepted: true,
+				SkipEndOfEarlyData:      true,
+			},
+		},
+		resumeSession:      true,
+		flags:              []string{"-enable-early-data"},
+		shouldFail:         true,
+		expectedLocalError: "remote error: bad record MAC",
+		expectedError:      ":BAD_DECRYPT:",
+	})
 }
 
 func addTLS13CipherPreferenceTests() {
