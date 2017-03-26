@@ -48,7 +48,7 @@ if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
 fi
 
 if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
-  ./mk/travis-install-rust-std.sh
+  rustup target add "$TARGET_X"
 
   # By default cargo/rustc seems to use cc for linking, We installed the
   # multilib support that corresponds to $CC_X and $CXX_X but unless cc happens
