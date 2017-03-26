@@ -547,7 +547,7 @@ mod tests {
         let reduced = ops.elem_reduced(&q_minus_1);
         assert_eq!(reduced.limbs, q_minus_1.limbs);
 
-        let mut q_plus_1 = Elem{
+        let mut q_plus_1 = Elem {
             limbs: ops.q.p,
             encoding: PhantomData,
         };
