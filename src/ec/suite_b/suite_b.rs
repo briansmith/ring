@@ -14,6 +14,7 @@
 
 //! Elliptic curve operations on P-256 & P-384.
 
+use arithmetic::montgomery::*;
 use error;
 use self::ops::*;
 

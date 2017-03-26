@@ -40,17 +40,20 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     n: Elem {
         limbs: p256_limbs![0xffffffff, 0x00000000, 0xffffffff, 0xffffffff,
                            0xbce6faad, 0xa7179e84, 0xf3b9cac2, 0xfc632551],
+        m: PhantomData,
         encoding: PhantomData, // Unencoded
     },
 
     a: Elem {
         limbs: p256_limbs![0xfffffffc, 0x00000004, 0x00000000, 0x00000000,
                            0x00000003, 0xffffffff, 0xffffffff, 0xfffffffc],
+        m: PhantomData,
         encoding: PhantomData, // R
     },
     b: Elem {
         limbs: p256_limbs![0xdc30061d, 0x04874834, 0xe5a220ab, 0xf7212ed6,
                            0xacf005cd, 0x78843090, 0xd89cdf62, 0x29c4bddf],
+        m: PhantomData,
         encoding: PhantomData, // R
     },
 
@@ -139,6 +142,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     q_minus_n: Elem {
         limbs: p256_limbs![0, 0, 0, 0, 0x43190553, 0x58e8617b, 0x0c46353d,
                            0x039cdaae],
+        m: PhantomData,
         encoding: PhantomData, // Unencoded
     },
 

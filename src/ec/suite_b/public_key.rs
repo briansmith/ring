@@ -15,6 +15,7 @@
 //! Functionality shared by operations on public keys (ECDSA verification and
 //! ECDH agreement).
 
+use arithmetic::montgomery::*;
 use error;
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;

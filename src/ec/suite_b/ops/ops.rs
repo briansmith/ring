@@ -12,41 +12,21 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use arithmetic::montgomery::*;
 use core::marker::PhantomData;
 use {der, error, limb};
 use untrusted;
 
-pub use limb::*;
+pub use limb::*; // XXX
+pub use self::elem::*; // XXX
 
-/// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus *q*.
-#[derive(Clone)]
-pub struct Elem<E> {
-    // XXX: pub
-    pub limbs: [Limb; MAX_LIMBS],
+/// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus
+/// *q*.
+pub type Elem<E> = elem::Elem<Q, E>;
 
-    /// The number of Montgomery factors that need to be canceled out from
-    /// `value` to get the actual value.
-    encoding: PhantomData<E>,
-}
-
-/// Indicates the element is not Montgomery-encoded. Its value is in [0, q). No
-/// Montgomery factors need to be canceled out from the element's `value`.
-#[derive(Copy, Clone)]
-pub enum Unencoded {}
-
-/// Indicates the element is Montgomery-encoded. Its value is in [0, q). One
-/// Montgomery factor needs to be canceled out from the element's `value`.
-#[derive(Copy, Clone)]
-pub enum R {}
-
-impl<E> Elem<E> {
-    fn zero() -> Elem<E> {
-        Elem {
-            limbs: [0; MAX_LIMBS],
-            encoding: PhantomData,
-        }
-    }
-}
+/// Represents the (prime) order *q* of the curve's prime field.
+#[derive(Clone, Copy)]
+pub enum Q {}
 
 /// A scalar that is not Montgomery-encoded. Its value is in [0, n). Zero-valued
 /// scalars are forbidden in most contexts.
@@ -115,10 +95,9 @@ macro_rules! limbs {
     }
 }
 
-pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
-
 static ONE: Elem<Unencoded> = Elem {
     limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    m: PhantomData,
     encoding: PhantomData,
 };
 
@@ -175,6 +154,7 @@ impl CommonOps {
         let unreduced = rab(self.elem_mul_mont, &a.limbs, &b.limbs);
         Elem {
             limbs: self.reduced_limbs(&unreduced, &self.q.p),
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -183,6 +163,7 @@ impl CommonOps {
     pub fn elem_product(&self, a: &Elem<R>, b: &Elem<R>) -> Elem<R> {
         Elem {
             limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs),
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -191,6 +172,7 @@ impl CommonOps {
     pub fn elem_reduced(&self, a: &Elem<R>) -> Elem<R> {
         Elem {
             limbs: self.reduced_limbs(&a.limbs, &self.q.p),
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -204,6 +186,7 @@ impl CommonOps {
     pub fn elem_squared(&self, a: &Elem<R>) -> Elem<R> {
         Elem {
             limbs: ra(self.elem_sqr_mont, &a.limbs),
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -329,6 +312,7 @@ impl PublicKeyOps {
         }
         Ok(Elem {
             limbs: elem_limbs,
+            m: PhantomData,
             encoding: PhantomData
         })
     }
@@ -389,6 +373,7 @@ impl PublicScalarOps {
     pub fn scalar_as_elem_decoded(&self, a: &Scalar) -> Elem<Unencoded> {
         Elem {
             limbs: a.limbs,
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -416,6 +401,7 @@ impl PublicScalarOps {
         Elem {
             limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
                        &b.limbs),
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -534,6 +520,7 @@ mod tests {
 
         let q = Elem {
             limbs: ops.q.p,
+            m: PhantomData,
             encoding: PhantomData,
         };
         let reduced = ops.elem_reduced(&q);
@@ -541,6 +528,7 @@ mod tests {
 
         let mut q_minus_1 = Elem {
             limbs: ops.q.p,
+            m: PhantomData,
             encoding: PhantomData,
         };
         q_minus_1.limbs[0] -= 1;
@@ -549,6 +537,7 @@ mod tests {
 
         let mut q_plus_1 = Elem {
             limbs: ops.q.p,
+            m: PhantomData,
             encoding: PhantomData,
         };
         // Add one to it, dealing with the fact that the lower limb(s) are
@@ -944,6 +933,7 @@ mod tests {
                 limbs:
                     parse_big_endian_value_in_range(
                         bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap(),
+                m: PhantomData,
                 encoding: PhantomData,
             }
         }
@@ -981,6 +971,7 @@ mod tests {
         let bytes = untrusted::Input::from(&bytes);
         Elem {
             limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap(),
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -1078,3 +1069,4 @@ macro_rules! bench_curve {
 
 pub mod p256;
 pub mod p384;
+mod elem;

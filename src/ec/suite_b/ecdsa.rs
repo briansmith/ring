@@ -14,6 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
+use arithmetic::montgomery::*;
 use {der, digest, error, private, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;

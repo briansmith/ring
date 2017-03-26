@@ -42,6 +42,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
                            0xffffffff, 0xffffffff, 0xc7634d81, 0xf4372ddf,
                            0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973],
+        m: PhantomData,
         encoding: PhantomData, // Unencoded
     },
 
@@ -49,12 +50,14 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         limbs: p384_limbs![0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
                            0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffb,
                            0xfffffffc, 0x00000000, 0x00000003, 0xfffffffc],
+        m: PhantomData,
         encoding: PhantomData, // Unreduced
     },
     b: Elem {
         limbs: p384_limbs![0xcd08114b, 0x604fbff9, 0xb62b21f4, 0x1f022094,
                            0xe3374bee, 0x94938ae2, 0x77f2209b, 0x1920022e,
                            0xf729add8, 0x7a4c32ec, 0x08118871, 0x9d412dcc],
+        m: PhantomData,
         encoding: PhantomData, // Unreduced
     },
 
@@ -146,12 +149,14 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Point {
             limbs: p384_limbs![0x4d3aadc2, 0x299e1513, 0x812ff723, 0x614ede2b,
                                0x64548684, 0x59a30eff, 0x879c3afc, 0x541b4d6e,
                                0x20e378e2, 0xa0d6ce38, 0x3dd07566, 0x49c0b528],
+            m: PhantomData,
             encoding: PhantomData,
         },
         Elem {
             limbs: p384_limbs![0x2b78abc2, 0x5a15c5e9, 0xdd800226, 0x3969a840,
                                0xc6c35219, 0x68f4ffd9, 0x8bade756, 0x2e83b050,
                                0xa1bfa8bf, 0x7bb4a9ac, 0x23043dad, 0x4b03a4fe],
+            m: PhantomData,
             encoding: PhantomData,
         }
     );
@@ -170,6 +175,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     q_minus_n: Elem {
         limbs: p384_limbs![0, 0, 0, 0, 0, 0, 0x389cb27e, 0x0bc8d21f,
                            0x1313e696, 0x333ad68c, 0xa7e5f24c, 0xb74f5885],
+        m: PhantomData,
         encoding: PhantomData, // Unencoded
     },
 
