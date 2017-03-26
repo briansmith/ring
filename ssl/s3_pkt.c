@@ -372,15 +372,19 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       return -1;
     }
 
+    /* Handle the end_of_early_data alert. */
     if (rr->type == SSL3_RT_ALERT &&
+        rr->length == 2 &&
+        rr->data[0] == SSL3_AL_WARNING &&
+        rr->data[1] == TLS1_AD_END_OF_EARLY_DATA &&
         ssl->server &&
         ssl->s3->hs != NULL &&
         ssl->s3->hs->can_early_read &&
         ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-      int ret = ssl3_read_end_of_early_data(ssl);
-      if (ret <= 0) {
-        return ret;
-      }
+      /* Consume the record. */
+      rr->length = 0;
+      ssl_read_buffer_discard(ssl);
+      /* Stop accepting early data. */
       ssl->s3->hs->can_early_read = 0;
       *out_got_handshake = 1;
       return -1;
@@ -424,30 +428,6 @@ int ssl3_read_change_cipher_spec(SSL *ssl) {
 
   ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC, rr->data,
                       rr->length);
-
-  rr->length = 0;
-  ssl_read_buffer_discard(ssl);
-  return 1;
-}
-
-int ssl3_read_end_of_early_data(SSL *ssl) {
-  SSL3_RECORD *rr = &ssl->s3->rrec;
-
-  if (rr->length == 0) {
-    int ret = ssl3_get_record(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-
-  if (rr->type != SSL3_RT_ALERT ||
-      rr->length != 2 ||
-      rr->data[0] != SSL3_AL_WARNING ||
-      rr->data[1] != TLS1_AD_END_OF_EARLY_DATA) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-    return -1;
-  }
 
   rr->length = 0;
   ssl_read_buffer_discard(ssl);

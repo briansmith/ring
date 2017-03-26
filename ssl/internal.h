@@ -2078,7 +2078,6 @@ int ssl3_dispatch_alert(SSL *ssl);
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek);
 int ssl3_read_change_cipher_spec(SSL *ssl);
-int ssl3_read_end_of_early_data(SSL *ssl);
 void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len);
 int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len);
