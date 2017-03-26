@@ -27,6 +27,14 @@
 #include "../bytestring/internal.h"
 
 
+/* 1.2.840.113549.1.7.1 */
+static const uint8_t kPKCS7Data[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                     0x0d, 0x01, 0x07, 0x01};
+
+/* 1.2.840.113549.1.7.2 */
+static const uint8_t kPKCS7SignedData[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                           0x0d, 0x01, 0x07, 0x02};
+
 /* pkcs7_parse_header reads the non-certificate/non-CRL prefix of a PKCS#7
  * SignedData blob from |cbs| and sets |*out| to point to the rest of the
  * input. If the input is in BER format, then |*der_bytes| will be set to a
@@ -57,7 +65,8 @@ static int pkcs7_parse_header(uint8_t **der_bytes, CBS *out, CBS *cbs) {
     goto err;
   }
 
-  if (OBJ_cbs2nid(&content_type) != NID_pkcs7_signed) {
+  if (!CBS_mem_equal(&content_type, kPKCS7SignedData,
+                     sizeof(kPKCS7SignedData))) {
     OPENSSL_PUT_ERROR(X509, X509_R_NOT_PKCS7_SIGNED_DATA);
     goto err;
   }
@@ -270,12 +279,13 @@ int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls, BIO *pem_bio) {
  * pkcs7_bundle returns one on success or zero on error. */
 static int pkcs7_bundle(CBB *out, int (*cb)(CBB *out, const void *arg),
                         const void *arg) {
-  CBB outer_seq, wrapped_seq, seq, version_bytes, digest_algos_set,
+  CBB outer_seq, oid, wrapped_seq, seq, version_bytes, digest_algos_set,
       content_info;
 
   /* See https://tools.ietf.org/html/rfc2315#section-7 */
   if (!CBB_add_asn1(out, &outer_seq, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&outer_seq, NID_pkcs7_signed) ||
+      !CBB_add_asn1(&outer_seq, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, kPKCS7SignedData, sizeof(kPKCS7SignedData)) ||
       !CBB_add_asn1(&outer_seq, &wrapped_seq,
                     CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
       /* See https://tools.ietf.org/html/rfc2315#section-9.1 */
@@ -284,7 +294,8 @@ static int pkcs7_bundle(CBB *out, int (*cb)(CBB *out, const void *arg),
       !CBB_add_u8(&version_bytes, 1) ||
       !CBB_add_asn1(&seq, &digest_algos_set, CBS_ASN1_SET) ||
       !CBB_add_asn1(&seq, &content_info, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&content_info, NID_pkcs7_data) ||
+      !CBB_add_asn1(&content_info, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, kPKCS7Data, sizeof(kPKCS7Data)) ||
       !cb(&seq, arg)) {
     return 0;
   }
