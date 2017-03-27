@@ -225,26 +225,7 @@ int ssl_write_buffer_init(SSL *ssl, uint8_t **out_ptr, size_t max_len) {
     return 0;
   }
 
-  size_t header_len = ssl_seal_align_prefix_len(ssl);
-
-  /* TODO(davidben): This matches the original behavior in keeping the malloc
-   * size consistent. Does this matter? |cap| could just be |max_len|. */
-  size_t cap = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
-  if (SSL_is_dtls(ssl)) {
-    cap += DTLS1_RT_HEADER_LENGTH;
-  } else {
-    cap += SSL3_RT_HEADER_LENGTH;
-    if (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) {
-      cap += SSL3_RT_HEADER_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
-    }
-  }
-
-  if (max_len > cap) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  if (!setup_buffer(buf, header_len, cap)) {
+  if (!setup_buffer(buf, ssl_seal_align_prefix_len(ssl), max_len)) {
     return 0;
   }
   *out_ptr = buf->buf + buf->offset;
