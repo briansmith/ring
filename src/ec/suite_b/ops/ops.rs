@@ -138,7 +138,7 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_decoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
-        self.elem_mul_mixed(a, &ONE)
+        self.elem_product(a, &ONE)
     }
 
     #[inline]
@@ -147,14 +147,12 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_mul_mixed(&self, a: &Elem<R>, b: &Elem<Unencoded>)
-                          -> Elem<Unencoded> {
-        binary_op(self.elem_mul_mont, a, b)
-    }
-
-    #[inline]
-    pub fn elem_product(&self, a: &Elem<R>, b: &Elem<R>) -> Elem<R> {
-        binary_op(self.elem_mul_mont, a, b)
+    pub fn elem_product<EA: Encoding, EB: Encoding>(
+        &self, a: &Elem<EA>, b: &Elem<EB>)
+        -> Elem<<(EA, EB) as ProductEncoding>::Output>
+        where (EA, EB): ProductEncoding
+    {
+        elem::mul_mont(self.elem_mul_mont, a, b)
     }
 
     #[inline]
@@ -322,9 +320,12 @@ impl PublicScalarOps {
     }
 
     #[inline]
-    pub fn scalar_mul_mixed(&self, a: &Scalar<Unencoded>, b: &Scalar<R>)
-                            -> Scalar<Unencoded> {
-        binary_op(self.scalar_mul_mont, a, b)
+    pub fn scalar_product<EA: Encoding, EB: Encoding>(
+        &self, a: &Scalar<EA>, b: &Scalar<EB>)
+        -> Scalar<<(EA, EB) as ProductEncoding>::Output>
+        where (EA, EB): ProductEncoding
+    {
+        elem::mul_mont(self.scalar_mul_mont, a, b)
     }
 
     #[inline]
@@ -627,7 +628,7 @@ mod tests {
             let mut a = consume_scalar(cops, test_case, "a");
             let b = consume_scalar_mont(cops, test_case, "b");
             let expected_result = consume_scalar(cops, test_case, "r");
-            let actual_result = ops.scalar_mul_mixed(&mut a, &b);
+            let actual_result = ops.scalar_product(&mut a, &b);
             assert_limbs_are_equal(cops, &actual_result.limbs,
                                    &expected_result.limbs);
 

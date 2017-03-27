@@ -75,8 +75,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
 
         // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
         // u2 = (r * w) mod n."
-        let u1 = self.ops.scalar_mul_mixed(&e, &w);
-        let u2 = self.ops.scalar_mul_mixed(&r, &w);
+        let u1 = self.ops.scalar_product(&e, &w);
+        let u2 = self.ops.scalar_product(&r, &w);
 
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
@@ -104,7 +104,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &Elem<Unencoded>,
                           x: &Elem<R>, z2: &Elem<R>) -> bool {
             let cops = ops.public_key_ops.common;
-            let r_jacobian = cops.elem_mul_mixed(z2, r);
+            let r_jacobian = cops.elem_product(z2, r);
             let x_decoded = cops.elem_decoded(x);
             ops.elem_decoded_equals(&r_jacobian, &x_decoded)
         }

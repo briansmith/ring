@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use arithmetic::montgomery::Encoding;
+use arithmetic::montgomery::{Encoding, ProductEncoding};
 use core::marker::PhantomData;
 use limb::*;
 
@@ -42,6 +42,16 @@ impl<M, E: Encoding> Elem<M, E> {
             encoding: PhantomData,
         }
     }
+}
+
+#[inline]
+pub fn mul_mont<M, EA: Encoding, EB: Encoding>(
+    f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    a: &Elem<M, EA>, b: &Elem<M, EB>)
+    -> Elem<M, <(EA, EB) as ProductEncoding>::Output>
+    where (EA, EB): ProductEncoding
+{
+    binary_op(f, a, b)
 }
 
 // let r = f(a, b); return r;
