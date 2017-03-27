@@ -167,15 +167,6 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_reduced(&self, a: &Elem<R>) -> Elem<R> {
-        Elem {
-            limbs: self.reduced_limbs(&a.limbs, &self.q.p),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
-    }
-
-    #[inline]
     pub fn elem_square(&self, a: &mut Elem<R>) {
         a_assign(self.elem_sqr_mont, &mut a.limbs);
     }
@@ -509,61 +500,6 @@ mod tests {
     use super::*;
     use super::parse_big_endian_value_in_range;
     use untrusted;
-
-    #[test]
-    fn p256_elem_reduced_test() { test_elem_reduced(&p256::COMMON_OPS); }
-
-    #[test]
-    fn p384_elem_reduced_test() { test_elem_reduced(&p384::COMMON_OPS); }
-
-    fn test_elem_reduced(ops: &CommonOps) {
-        let zero = Elem::zero();
-
-        let reduced = ops.elem_reduced(&zero);
-        assert_eq!(reduced.limbs, zero.limbs);
-
-        let mut one = Elem::zero();
-        one.limbs[0] = 1;
-
-        let reduced = ops.elem_reduced(&one);
-        assert_eq!(reduced.limbs, one.limbs);
-
-        let q = Elem {
-            limbs: ops.q.p,
-            m: PhantomData,
-            encoding: PhantomData,
-        };
-        let reduced = ops.elem_reduced(&q);
-        assert_eq!(reduced.limbs, zero.limbs);
-
-        let mut q_minus_1 = Elem {
-            limbs: ops.q.p,
-            m: PhantomData,
-            encoding: PhantomData,
-        };
-        q_minus_1.limbs[0] -= 1;
-        let reduced = ops.elem_reduced(&q_minus_1);
-        assert_eq!(reduced.limbs, q_minus_1.limbs);
-
-        let mut q_plus_1 = Elem {
-            limbs: ops.q.p,
-            m: PhantomData,
-            encoding: PhantomData,
-        };
-        // Add one to it, dealing with the fact that the lower limb(s) are
-        // 0xfff...ff. We can't use `elem_add` because at least the P-384
-        // implementation would do the reduction itself.
-        for i in 0..ops.num_limbs {
-            q_plus_1.limbs[i] = q_plus_1.limbs[i].wrapping_add(1);
-            if q_plus_1.limbs[i] != 0 {
-                break;
-            }
-        }
-        assert!(reduced.limbs != q.limbs); // Sanity check the math we did.
-        assert!(reduced.limbs != one.limbs); // Sanity check the math we did.
-        let reduced = ops.elem_reduced(&q_plus_1);
-        assert_eq!(reduced.limbs, one.limbs);
-    }
 
     const ZERO_SCALAR: Scalar = Scalar {
         limbs: [0; MAX_LIMBS],
@@ -983,21 +919,16 @@ mod tests {
         match expected_point {
             &TestPoint::Infinity => {
                 let zero = Elem::zero();
-                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_x),
-                                             &zero));
-                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_y),
-                                             &zero));
-                assert!(cops.elems_are_equal(&cops.elem_reduced(&actual_z),
-                                             &zero));
+                assert!(cops.elems_are_equal(&actual_x, &zero));
+                assert!(cops.elems_are_equal(&actual_y, &zero));
+                assert!(cops.elems_are_equal(&actual_z, &zero));
             },
             &TestPoint::Affine(ref expected_x, ref expected_y) => {
                 let z_inv = ops.elem_inverse(&actual_z);
                 let zz_inv = cops.elem_squared(&z_inv);
-                let x_aff =
-                    cops.elem_reduced(&cops.elem_product(&actual_x, &zz_inv));
+                let x_aff = cops.elem_product(&actual_x, &zz_inv);
                 let zzz_inv = cops.elem_product(&z_inv, &zz_inv);
-                let y_aff =
-                    cops.elem_reduced(&cops.elem_product(&actual_y, &zzz_inv));
+                let y_aff = cops.elem_product(&actual_y, &zzz_inv);
                 assert!(cops.elems_are_equal(&x_aff, &expected_x));
                 assert!(cops.elems_are_equal(&y_aff, &expected_y));
             },

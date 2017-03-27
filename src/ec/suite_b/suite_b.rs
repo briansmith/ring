@@ -139,13 +139,11 @@ fn verify_affine_point_is_on_the_curve_scaled(
         ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>), a_scaled: &Elem<R>,
         b_scaled: &Elem<R>) -> Result<(), error::Unspecified> {
     let lhs = ops.elem_squared(y);
-    let lhs = ops.elem_reduced(&lhs);
 
     let mut rhs = ops.elem_squared(x);
     ops.elem_add(&mut rhs, a_scaled);
     ops.elem_mul(&mut rhs, x);
     ops.elem_add(&mut rhs, b_scaled);
-    let rhs = ops.elem_reduced(&rhs);
 
     if !ops.elems_are_equal(&lhs, &rhs) {
         return Err(error::Unspecified);
