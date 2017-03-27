@@ -149,9 +149,8 @@ impl CommonOps {
     #[inline]
     pub fn elem_mul_mixed(&self, a: &Elem<R>, b: &Elem<Unencoded>)
                           -> Elem<Unencoded> {
-        let unreduced = rab(self.elem_mul_mont, &a.limbs, &b.limbs);
         Elem {
-            limbs: self.reduced_limbs(&unreduced, &self.q.p),
+            limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs),
             m: PhantomData,
             encoding: PhantomData,
         }
