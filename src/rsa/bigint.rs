@@ -224,7 +224,7 @@ impl Modulus<super::N> {
 pub struct Elem<M, E = Unencoded> {
     value: Nonnegative,
 
-    /// The modulus m for the ring ℤ/mℤ for which this element is a value.
+    /// The modulus *m* for the ring ℤ/mℤ for which this element is a value.
     m: PhantomData<M>,
 
     /// The number of Montgomery factors that need to be canceled out from
@@ -234,7 +234,7 @@ pub struct Elem<M, E = Unencoded> {
 
 impl<M, E> Elem<M, E> {
     // There's no need to convert `value` to the Montgomery domain since
-    // 0 * R**2 (mod n) == 0, so the modulus isn't even needed to construct a
+    // 0 * R**2 (mod m) == 0, so the modulus isn't even needed to construct a
     // zero-valued element.
     pub fn zero() -> Result<Self, error::Unspecified> {
         let value = try!(Nonnegative::zero());
