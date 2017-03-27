@@ -46,8 +46,8 @@ impl Scalar {
     }
 }
 
-/// A Scalar that is Montgomery-encoded and not reduced. Its value is in
-/// [0, 2**`LIMB_BITS`).
+/// A Scalar that is Montgomery-encoded. Its value is in [0, n). Zero-valued
+/// scalars are forbidden in most contexts.
 #[derive(Clone, Copy)]
 pub struct ScalarMont {
     limbs: [Limb; MAX_LIMBS],
@@ -378,8 +378,11 @@ impl PublicScalarOps {
 
     #[inline]
     pub fn scalar_mul_mixed(&self, a: &Scalar, b: &ScalarMont) -> Scalar {
-        let unreduced = rab(self.scalar_mul_mont, &a.limbs, &b.limbs);
-        self.scalar_from_unreduced_limbs(&unreduced)
+        Scalar {
+            limbs: rab(self.scalar_mul_mont, &a.limbs, &b.limbs),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     #[inline]
