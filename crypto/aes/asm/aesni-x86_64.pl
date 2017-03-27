@@ -1129,7 +1129,7 @@ $code.=<<___;
 	lea	($key_),%rsp
 .Lctr32_epilogue:
 	ret
-.size	aesni_ctr32_encrypt_blocks,.-aesni_ctr32_encrypt_blocks
+.size	GFp_aesni_ctr32_encrypt_blocks,.-GFp_aesni_ctr32_encrypt_blocks
 ___
 } }}
 
