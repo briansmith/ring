@@ -290,21 +290,22 @@ $code.=<<___;
 	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]-np[i]
 	mov	8($ap,$i,8),%rax	# tp[i+1]
 	lea	1($i),$i		# i++
-	dec	$j			# doesn't affect CF!
+	dec	$j			# doesnn't affect CF!
 	jnz	.Lsub
 
 	sbb	\$0,%rax		# handle upmost overflow bit
 	xor	$i,$i
+	and	%rax,$ap
+	not	%rax
+	mov	$rp,$np
+	and	%rax,$np
 	mov	$num,$j			# j=num
+	or	$np,$ap			# ap=borrow?tp:rp
 .align	16
 .Lcopy:					# copy or in-place refresh
-	mov	(%rsp,$i,8),$ap
-	mov	($rp,$i,8),$np
-	xor	$np,$ap			# conditional select:
-	and	%rax,$ap		# ((ap ^ np) & %rax) ^ np
-	xor	$np,$ap			# ap = borrow?tp:rp
+	mov	($ap,$i,8),%rax
 	mov	$i,(%rsp,$i,8)		# zap temporary vector
-	mov	$ap,($rp,$i,8)		# rp[i]=tp[i]
+	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]
 	lea	1($i),$i
 	sub	\$1,$j
 	jnz	.Lcopy
@@ -675,6 +676,7 @@ my @ri=("%rax","%rdx",$m0,$m1);
 $code.=<<___;
 	mov	16(%rsp,$num,8),$rp	# restore $rp
 	mov	0(%rsp),@ri[0]		# tp[0]
+	pxor	%xmm0,%xmm0
 	mov	8(%rsp),@ri[1]		# tp[1]
 	shr	\$2,$num		# num/=4
 	lea	(%rsp),$ap		# borrow ap for tp
@@ -712,36 +714,35 @@ $code.=<<___;
 	mov	@ri[2],16($rp,$i,8)	# rp[i]=tp[i]-np[i]
 
 	sbb	\$0,@ri[0]		# handle upmost overflow bit
-	mov	@ri[0],%xmm0
-	punpcklqdq %xmm0,%xmm0		# extend mask to 128 bits
 	mov	@ri[3],24($rp,$i,8)	# rp[i]=tp[i]-np[i]
 	xor	$i,$i			# i=0
+	and	@ri[0],$ap
+	not	@ri[0]
+	mov	$rp,$np
+	and	@ri[0],$np
+	lea	-1($num),$j
+	or	$np,$ap			# ap=borrow?tp:rp
 
-	mov	$num,$j
-	pxor	%xmm5,%xmm5
+	movdqu	($ap),%xmm1
+	movdqa	%xmm0,(%rsp)
+	movdqu	%xmm1,($rp)
 	jmp	.Lcopy4x
 .align	16
-.Lcopy4x:				# copy or in-place refresh
-	movdqu	(%rsp,$i),%xmm2
-	movdqu  16(%rsp,$i),%xmm4
-	movdqu	($rp,$i),%xmm1
-	movdqu	16($rp,$i),%xmm3
-	pxor	%xmm1,%xmm2		# conditional select
-	pxor	%xmm3,%xmm4
-	pand	%xmm0,%xmm2
-	pand	%xmm0,%xmm4
-	pxor	%xmm1,%xmm2
-	pxor	%xmm3,%xmm4
-	movdqu	%xmm2,($rp,$i)
-	movdqu  %xmm4,16($rp,$i)
-	movdqa	%xmm5,(%rsp,$i)		# zap temporary vectors
-	movdqa	%xmm5,16(%rsp,$i)
-
+.Lcopy4x:					# copy or in-place refresh
+	movdqu	16($ap,$i),%xmm2
+	movdqu	32($ap,$i),%xmm1
+	movdqa	%xmm0,16(%rsp,$i)
+	movdqu	%xmm2,16($rp,$i)
+	movdqa	%xmm0,32(%rsp,$i)
+	movdqu	%xmm1,32($rp,$i)
 	lea	32($i),$i
 	dec	$j
 	jnz	.Lcopy4x
 
 	shl	\$2,$num
+	movdqu	16($ap,$i),%xmm2
+	movdqa	%xmm0,16(%rsp,$i)
+	movdqu	%xmm2,16($rp,$i)
 ___
 }
 $code.=<<___;
