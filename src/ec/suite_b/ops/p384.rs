@@ -206,10 +206,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     }
 
     fn sqr_mut(a: &mut Scalar<R>) {
-        unsafe {
-            GFp_p384_scalar_mul_mont(a.limbs.as_mut_ptr(), a.limbs.as_ptr(),
-                                     a.limbs.as_ptr())
-        }
+        unary_op_from_binary_op_assign(GFp_p384_scalar_mul_mont, a);
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
