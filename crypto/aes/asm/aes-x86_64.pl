@@ -590,6 +590,7 @@ $code.=<<___;
 .type	GFp_asm_AES_encrypt,\@function,3
 .hidden	GFp_asm_AES_encrypt
 GFp_asm_AES_encrypt:
+	mov	%rsp,%rax
 	push	%rbx
 	push	%rbp
 	push	%r12
@@ -598,7 +599,6 @@ GFp_asm_AES_encrypt:
 	push	%r15
 
 	# allocate frame "above" key schedule
-	mov	%rsp,%r10
 	lea	-63(%rdx),%rcx	# %rdx is key argument
 	and	\$-64,%rsp
 	sub	%rsp,%rcx
@@ -608,7 +608,7 @@ GFp_asm_AES_encrypt:
 	sub	\$32,%rsp
 
 	mov	%rsi,16(%rsp)	# save out
-	mov	%r10,24(%rsp)	# save real stack pointer
+	mov	%rax,24(%rsp)	# save original stack pointer
 .Lenc_prologue:
 
 	mov	%rdx,$key
@@ -640,13 +640,13 @@ GFp_asm_AES_encrypt:
 	mov	$s2,8($out)
 	mov	$s3,12($out)
 
-	mov	(%rsi),%r15
-	mov	8(%rsi),%r14
-	mov	16(%rsi),%r13
-	mov	24(%rsi),%r12
-	mov	32(%rsi),%rbp
-	mov	40(%rsi),%rbx
-	lea	48(%rsi),%rsp
+	mov	-48(%rsi),%r15
+	mov	-40(%rsi),%r14
+	mov	-32(%rsi),%r13
+	mov	-24(%rsi),%r12
+	mov	-16(%rsi),%rbp
+	mov	-8(%rsi),%rbx
+	lea	(%rsi),%rsp
 .Lenc_epilogue:
 	ret
 .size	GFp_asm_AES_encrypt,.-GFp_asm_AES_encrypt
@@ -1105,7 +1105,6 @@ block_se_handler:
 	jae	.Lin_block_prologue
 
 	mov	24(%rax),%rax		# pull saved real stack pointer
-	lea	48(%rax),%rax		# adjust...
 
 	mov	-8(%rax),%rbx
 	mov	-16(%rax),%rbp

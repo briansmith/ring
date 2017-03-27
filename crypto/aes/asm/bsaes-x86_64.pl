@@ -1196,7 +1196,7 @@ $code.=<<___;
 	cmp	%rax, %rbp
 	ja	.Lctr_enc_bzero
 
-	lea	(%rbp),%rsp		# restore %rsp
+	lea	0x78(%rbp),%rax
 ___
 $code.=<<___ if ($win64);
 	movaps	0x40(%rbp), %xmm6
@@ -1209,20 +1209,21 @@ $code.=<<___ if ($win64);
 	movaps	0xb0(%rbp), %xmm13
 	movaps	0xc0(%rbp), %xmm14
 	movaps	0xd0(%rbp), %xmm15
-	lea	0xa0(%rbp), %rsp
+	lea	0xa0(%rax), %rax
+.Lctr_enc_tail:
 ___
 $code.=<<___;
-	mov	0x48(%rsp), %r15
-	mov	0x50(%rsp), %r14
-	mov	0x58(%rsp), %r13
-	mov	0x60(%rsp), %r12
-	mov	0x68(%rsp), %rbx
-	mov	0x70(%rsp), %rax
-	lea	0x78(%rsp), %rsp
-	mov	%rax, %rbp
+	mov	-48(%rax), %r15
+	mov	-40(%rax), %r14
+	mov	-32(%rax), %r13
+	mov	-24(%rax), %r12
+	mov	-16(%rax), %rbx
+	mov	-8(%rax), %rbp
+	lea	(%rax), %rsp		# restore %rsp
 .Lctr_enc_epilogue:
 	ret
 .size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
+
 ___
 }
 $code.=<<___;
@@ -1313,15 +1314,18 @@ se_handler:
 
 	mov	0(%r11),%r10d		# HandlerData[0]
 	lea	(%rsi,%r10),%r10	# prologue label
-	cmp	%r10,%rbx		# context->Rip<prologue label
-	jb	.Lin_prologue
-
-	mov	152($context),%rax	# pull context->Rsp
+	cmp	%r10,%rbx		# context->Rip<=prologue label
+	jbe	.Lin_prologue
 
 	mov	4(%r11),%r10d		# HandlerData[1]
 	lea	(%rsi,%r10),%r10	# epilogue label
 	cmp	%r10,%rbx		# context->Rip>=epilogue label
 	jae	.Lin_prologue
+
+	mov	8(%r11),%r10d		# HandlerData[2]
+	lea	(%rsi,%r10),%r10	# epilogue label
+	cmp	%r10,%rbx		# context->Rip>=tail label
+	jae	.Lin_tail
 
 	mov	160($context),%rax	# pull context->Rbp
 
@@ -1329,15 +1333,15 @@ se_handler:
 	lea	512($context),%rdi	# &context.Xmm6
 	mov	\$20,%ecx		# 10*sizeof(%xmm0)/sizeof(%rax)
 	.long	0xa548f3fc		# cld; rep movsq
-	lea	0xa0(%rax),%rax		# adjust stack pointer
+	lea	0xa0+0x78(%rax),%rax	# adjust stack pointer
 
-	mov	0x70(%rax),%rbp
-	mov	0x68(%rax),%rbx
-	mov	0x60(%rax),%r12
-	mov	0x58(%rax),%r13
-	mov	0x50(%rax),%r14
-	mov	0x48(%rax),%r15
-	lea	0x78(%rax),%rax		# adjust stack pointer
+.Lin_tail:
+	mov	-48(%rax),%rbp
+	mov	-40(%rax),%rbx
+	mov	-32(%rax),%r12
+	mov	-24(%rax),%r13
+	mov	-16(%rax),%r14
+	mov	-8(%rax),%r15
 	mov	%rbx,144($context)	# restore context->Rbx
 	mov	%rbp,160($context)	# restore context->Rbp
 	mov	%r12,216($context)	# restore context->R12

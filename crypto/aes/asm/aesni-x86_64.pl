@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2009-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 #
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -161,14 +168,14 @@
 # Current large-block performance in cycles per byte processed with
 # 128-bit key (less is better).
 #
-#		CBC en-/decrypt	CTR	XTS	ECB
+#		CBC en-/decrypt	CTR	XTS	ECB	OCB
 # Westmere	3.77/1.25	1.25	1.25	1.26
-# * Bridge	5.07/0.74	0.75	0.90	0.85
-# Haswell	4.44/0.63	0.63	0.73	0.63
+# * Bridge	5.07/0.74	0.75	0.90	0.85	0.98
+# Haswell	4.44/0.63	0.63	0.73	0.63	0.70
 # Skylake	2.62/0.63	0.63	0.63	0.63
-# Silvermont	5.75/3.54	3.56	4.12	3.87(*)
-# Goldmont	3.82/1.26	1.26	1.29	1.29
-# Bulldozer	5.77/0.70	0.72	0.90	0.70
+# Silvermont	5.75/3.54	3.56	4.12	3.87(*)	4.11
+# Goldmont	3.82/1.26	1.26	1.29	1.29	1.50
+# Bulldozer	5.77/0.70	0.72	0.90	0.70	0.95
 #
 # (*)	Atom Silvermont ECB result is suboptimal because of penalties
 #	incurred by operations on %xmm8-15. As ECB is not considered
@@ -569,7 +576,7 @@ if ($PREFIX eq "aesni") {
 # with zero-round key xor.
 {
 my ($in0,$in1,$in2,$in3,$in4,$in5)=map("%xmm$_",(10..15));
-my ($key0,$ctr)=("${key_}d","${ivp}d");
+my ($key0,$ctr)=("%ebp","${ivp}d");
 my $frame_size = 0x80 + ($win64?160:0);
 
 $code.=<<___;
@@ -598,26 +605,25 @@ $code.=<<___;
 
 .align	16
 .Lctr32_bulk:
-	lea	(%rsp),%rax
+	lea	(%rsp),$key_			# use $key_ as frame pointer
 	push	%rbp
 	sub	\$$frame_size,%rsp
 	and	\$-16,%rsp	# Linux kernel stack can be incorrectly seeded
 ___
 $code.=<<___ if ($win64);
-	movaps	%xmm6,-0xa8(%rax)		# offload everything
-	movaps	%xmm7,-0x98(%rax)
-	movaps	%xmm8,-0x88(%rax)
-	movaps	%xmm9,-0x78(%rax)
-	movaps	%xmm10,-0x68(%rax)
-	movaps	%xmm11,-0x58(%rax)
-	movaps	%xmm12,-0x48(%rax)
-	movaps	%xmm13,-0x38(%rax)
-	movaps	%xmm14,-0x28(%rax)
-	movaps	%xmm15,-0x18(%rax)
+	movaps	%xmm6,-0xa8($key_)		# offload everything
+	movaps	%xmm7,-0x98($key_)
+	movaps	%xmm8,-0x88($key_)
+	movaps	%xmm9,-0x78($key_)
+	movaps	%xmm10,-0x68($key_)
+	movaps	%xmm11,-0x58($key_)
+	movaps	%xmm12,-0x48($key_)
+	movaps	%xmm13,-0x38($key_)
+	movaps	%xmm14,-0x28($key_)
+	movaps	%xmm15,-0x18($key_)
 .Lctr32_body:
 ___
 $code.=<<___;
-	lea	-8(%rax),%rbp
 
 	# 8 16-byte words on top of stack are counter values
 	# xor-ed with zero-round key
@@ -1089,26 +1095,26 @@ $code.=<<___ if (!$win64);
 	pxor	%xmm15,%xmm15
 ___
 $code.=<<___ if ($win64);
-	movaps	-0xa0(%rbp),%xmm6
-	movaps	%xmm0,-0xa0(%rbp)		# clear stack
-	movaps	-0x90(%rbp),%xmm7
-	movaps	%xmm0,-0x90(%rbp)
-	movaps	-0x80(%rbp),%xmm8
-	movaps	%xmm0,-0x80(%rbp)
-	movaps	-0x70(%rbp),%xmm9
-	movaps	%xmm0,-0x70(%rbp)
-	movaps	-0x60(%rbp),%xmm10
-	movaps	%xmm0,-0x60(%rbp)
-	movaps	-0x50(%rbp),%xmm11
-	movaps	%xmm0,-0x50(%rbp)
-	movaps	-0x40(%rbp),%xmm12
-	movaps	%xmm0,-0x40(%rbp)
-	movaps	-0x30(%rbp),%xmm13
-	movaps	%xmm0,-0x30(%rbp)
-	movaps	-0x20(%rbp),%xmm14
-	movaps	%xmm0,-0x20(%rbp)
-	movaps	-0x10(%rbp),%xmm15
-	movaps	%xmm0,-0x10(%rbp)
+	movaps	-0xa8($key_),%xmm6
+	movaps	%xmm0,-0xa8($key_)		# clear stack
+	movaps	-0x98($key_),%xmm7
+	movaps	%xmm0,-0x98($key_)
+	movaps	-0x88($key_),%xmm8
+	movaps	%xmm0,-0x88($key_)
+	movaps	-0x78($key_),%xmm9
+	movaps	%xmm0,-0x78($key_)
+	movaps	-0x68($key_),%xmm10
+	movaps	%xmm0,-0x68($key_)
+	movaps	-0x58($key_),%xmm11
+	movaps	%xmm0,-0x58($key_)
+	movaps	-0x48($key_),%xmm12
+	movaps	%xmm0,-0x48($key_)
+	movaps	-0x38($key_),%xmm13
+	movaps	%xmm0,-0x38($key_)
+	movaps	-0x28($key_),%xmm14
+	movaps	%xmm0,-0x28($key_)
+	movaps	-0x18($key_),%xmm15
+	movaps	%xmm0,-0x18($key_)
 	movaps	%xmm0,0x00(%rsp)
 	movaps	%xmm0,0x10(%rsp)
 	movaps	%xmm0,0x20(%rsp)
@@ -1119,11 +1125,11 @@ $code.=<<___ if ($win64);
 	movaps	%xmm0,0x70(%rsp)
 ___
 $code.=<<___;
-	lea	(%rbp),%rsp
-	pop	%rbp
+	mov	-8($key_),%rbp
+	lea	($key_),%rsp
 .Lctr32_epilogue:
 	ret
-.size	GFp_aesni_ctr32_encrypt_blocks,.-GFp_aesni_ctr32_encrypt_blocks
+.size	aesni_ctr32_encrypt_blocks,.-aesni_ctr32_encrypt_blocks
 ___
 } }}
 
@@ -1565,9 +1571,9 @@ $code.=<<___;
 .extern	__imp_RtlVirtualUnwind
 ___
 $code.=<<___ if ($PREFIX eq "aesni");
-.type	ctr_se_handler,\@abi-omnipotent
+.type	ctr_xts_se_handler,\@abi-omnipotent
 .align	16
-ctr_se_handler:
+ctr_xts_se_handler:
 	push	%rsi
 	push	%rdi
 	push	%rbx
@@ -1597,16 +1603,16 @@ ctr_se_handler:
 	cmp	%r10,%rbx		# context->Rip>=epilogue label
 	jae	.Lcommon_seh_tail
 
-	mov	160($context),%rax	# pull context->Rbp
-	lea	-0xa0(%rax),%rsi	# %xmm save area
+	mov	208($context),%rax	# pull context->R11
+
+	lea	-0xa8(%rax),%rsi	# %xmm save area
 	lea	512($context),%rdi	# & context.Xmm6
 	mov	\$20,%ecx		# 10*sizeof(%xmm0)/sizeof(%rax)
 	.long	0xa548f3fc		# cld; rep movsq
 
-	mov	160($context),%rax	# pull context->Rbp
-	mov	(%rax),%rbp		# restore saved %rbp
-	lea	8(%rax),%rax		# adjust stack pointer
+	mov	-8(%rax),%rbp		# restore saved %rbp
 	mov	%rbp,160($context)	# restore context->Rbp
+
 
 .Lcommon_seh_tail:
 	mov	8(%rax),%rdi
@@ -1646,7 +1652,7 @@ ctr_se_handler:
 	pop	%rdi
 	pop	%rsi
 	ret
-.size	ctr_se_handler,.-ctr_se_handler
+.size	ctr_xts_se_handler,.-ctr_xts_se_handler
 
 .section	.pdata
 .align	4
@@ -1666,7 +1672,7 @@ ___
 $code.=<<___ if ($PREFIX eq "aesni");
 .LSEH_info_GFp_ctr32:
 	.byte	9,0,0,0
-	.rva	ctr_se_handler
+	.rva	ctr_xts_se_handler
 	.rva	.Lctr32_body,.Lctr32_epilogue		# HandlerData[]
 ___
 $code.=<<___;
