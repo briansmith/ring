@@ -150,7 +150,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_mul_mont: GFp_p256_scalar_mul_mont,
 };
 
-fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
+fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //
@@ -161,20 +161,27 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     //    0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc63254f
 
     #[inline]
-    fn mul(a: &ScalarMont, b: &ScalarMont) -> ScalarMont {
-        ScalarMont { limbs: rab(GFp_p256_scalar_mul_mont, &a.limbs, &b.limbs) }
+    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
+        Scalar {
+            limbs: rab(GFp_p256_scalar_mul_mont, &a.limbs, &b.limbs),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     #[inline]
-    fn sqr(a: &ScalarMont) -> ScalarMont {
-        ScalarMont { limbs: ra(GFp_p256_scalar_sqr_mont, &a.limbs) }
+    fn sqr(a: &Scalar<R>) -> Scalar<R> {
+        Scalar {
+            limbs: ra(GFp_p256_scalar_sqr_mont, &a.limbs),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &ScalarMont, squarings: c::int, b: &ScalarMont)
-               -> ScalarMont {
+    fn sqr_mul(a: &Scalar<R>, squarings: c::int, b: &Scalar<R>) -> Scalar<R> {
         debug_assert!(squarings >= 1);
-        let mut tmp = ScalarMont { limbs: [0; MAX_LIMBS] };
+        let mut tmp = Scalar::zero();
         unsafe {
             GFp_p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(),
                                          a.limbs.as_ptr(), squarings)
@@ -183,7 +190,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut ScalarMont, squarings: c::int, b: &ScalarMont) {
+    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: c::int, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
         unsafe {
             GFp_p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(),
@@ -192,11 +199,15 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
         ab_assign(GFp_p256_scalar_mul_mont, &mut acc.limbs, &b.limbs);
     }
 
-    fn to_mont(a: &Scalar) -> ScalarMont {
+    fn to_mont(a: &Scalar) -> Scalar<R> {
         static N_RR: [Limb; MAX_LIMBS] =
             p256_limbs![0x66e12d94, 0xf3d95620, 0x2845b239, 0x2b6bec59,
                         0x4699799c, 0x49bd6fa6, 0x83244c95, 0xbe79eea2];
-        ScalarMont { limbs: rab(GFp_p256_scalar_mul_mont, &a.limbs, &N_RR) }
+        Scalar {
+            limbs: rab(GFp_p256_scalar_mul_mont, &a.limbs, &N_RR),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     // Indexes into `d`.
@@ -211,7 +222,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     const B_101111: usize = 8;
     const DIGIT_COUNT: usize = 9;
 
-    let mut d = [ScalarMont { limbs: [0; MAX_LIMBS] }; DIGIT_COUNT];
+    let mut d = [Scalar::zero(); DIGIT_COUNT];
 
     d[B_1]    = to_mont(a);
     d[B_10]   = sqr(&d[B_1]);
@@ -314,12 +325,22 @@ mod internal_benches {
     use super::super::internal_benches::*;
 
     bench_curve!(&[
-        Scalar { limbs: LIMBS_1 },
-        Scalar { limbs: LIMBS_ALTERNATING_10, },
+        Scalar {
+            limbs: LIMBS_1,
+            m: PhantomData,
+            encoding: PhantomData,
+        },
+        Scalar {
+            limbs: LIMBS_ALTERNATING_10,
+            m: PhantomData,
+            encoding: PhantomData,
+        },
         Scalar { // n - 1
             limbs: p256_limbs![0xffffffff, 0x00000000, 0xffffffff, 0xffffffff,
                                0xbce6faad, 0xa7179e84, 0xf3b9cac2,
                                0xfc632551 - 1],
+            m: PhantomData,
+            encoding: PhantomData,
         },
     ]);
 }

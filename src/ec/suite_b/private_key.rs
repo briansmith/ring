@@ -15,6 +15,7 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
+use arithmetic::montgomery::*;
 use {ec, error, limb, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
@@ -121,7 +122,8 @@ fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
 // actual value *only if* it is actually in range; in other words, this won't
 // leak anything about a valid value, but it might leak something about an
 // invalid value.
-fn is_scalar_within_range(scalar: &Scalar, max_exclusive: &[Limb]) -> bool {
+fn is_scalar_within_range(scalar: &Scalar<Unencoded>, max_exclusive: &[Limb])
+                          -> bool {
     let limbs = &scalar.limbs[..max_exclusive.len()];
     let eq_zero = limbs_are_zero_constant_time(limbs);
     let lt_bound = limb::limbs_less_than_limbs_consttime(limbs, max_exclusive);

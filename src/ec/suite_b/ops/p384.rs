@@ -183,7 +183,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_mul_mont: GFp_p384_scalar_mul_mont,
 };
 
-fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
+fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //
@@ -196,15 +196,23 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
 
     // XXX(perf): This hasn't been optimized at all. TODO: optimize.
 
-    fn mul(a: &ScalarMont, b: &ScalarMont) -> ScalarMont {
-        ScalarMont { limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &b.limbs) }
+    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
+        Scalar {
+            limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &b.limbs),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
-    fn sqr(a: &ScalarMont) -> ScalarMont {
-        ScalarMont { limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &a.limbs) }
+    fn sqr(a: &Scalar<R>) -> Scalar<R> {
+        Scalar {
+            limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &a.limbs),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
-    fn sqr_mut(a: &mut ScalarMont) {
+    fn sqr_mut(a: &mut Scalar<R>) {
         unsafe {
             GFp_p384_scalar_mul_mont(a.limbs.as_mut_ptr(), a.limbs.as_ptr(),
                                      a.limbs.as_ptr())
@@ -212,7 +220,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &ScalarMont, squarings: usize, b: &ScalarMont) -> ScalarMont {
+    fn sqr_mul(a: &Scalar<R>, squarings: usize, b: &Scalar<R>) -> Scalar<R> {
         debug_assert!(squarings >= 1);
         let mut tmp = sqr(a);
         for _ in 1..squarings {
@@ -222,7 +230,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut ScalarMont, squarings: usize, b: &ScalarMont) {
+    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: usize, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
         for _ in 0..squarings {
             sqr_mut(acc);
@@ -230,12 +238,16 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
         ab_assign(GFp_p384_scalar_mul_mont, &mut acc.limbs, &b.limbs)
     }
 
-    fn to_mont(a: &Scalar) -> ScalarMont {
+    fn to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
         static N_RR: [Limb; MAX_LIMBS] =
             p384_limbs![0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895,
                         0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
                         0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9];
-        ScalarMont { limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &N_RR) }
+        Scalar {
+            limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &N_RR),
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     // Indexes into `d`.
@@ -247,7 +259,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar) -> ScalarMont {
     const B_1111: usize = 5;
     const DIGIT_COUNT: usize = 6;
 
-    let mut d = [ScalarMont { limbs: [0; MAX_LIMBS] }; DIGIT_COUNT];
+    let mut d = [Scalar::zero(); DIGIT_COUNT];
 
     d[B_1]    = to_mont(a);
     d[B_10]   = sqr    (&d[B_1]);

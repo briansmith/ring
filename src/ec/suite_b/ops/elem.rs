@@ -18,7 +18,7 @@ use limb::*;
 
 /// Elements of ℤ/mℤ for some modulus *m*. Elements are always fully reduced
 /// with respect to *m*; i.e. the 0 <= x < m for every value x.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Elem<M, E: ReductionEncoding> {
     // XXX: pub
     pub limbs: [Limb; MAX_LIMBS],

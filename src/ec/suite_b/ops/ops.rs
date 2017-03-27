@@ -28,16 +28,17 @@ pub type Elem<E> = elem::Elem<Q, E>;
 #[derive(Clone, Copy)]
 pub enum Q {}
 
-/// A scalar that is not Montgomery-encoded. Its value is in [0, n). Zero-valued
-/// scalars are forbidden in most contexts.
-pub type Scalar = elem::Elem<N, Unencoded>;
+/// A scalar. Its value is in [0, n). Zero-valued scalars are forbidden in most
+/// contexts.
+pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
 
 /// Represents the prime order *n* of the curve's group.
+#[derive(Clone, Copy)]
 pub enum N {}
 
-impl Scalar {
+impl Scalar<Unencoded> {
     #[inline(always)]
-    pub fn from_limbs_unchecked(limbs: &[Limb; MAX_LIMBS]) -> Scalar {
+    pub fn from_limbs_unchecked(limbs: &[Limb; MAX_LIMBS]) -> Scalar<Unencoded> {
         Scalar {
             limbs: *limbs,
             m: PhantomData,
@@ -45,14 +46,6 @@ impl Scalar {
         }
     }
 }
-
-/// A Scalar that is Montgomery-encoded. Its value is in [0, n). Zero-valued
-/// scalars are forbidden in most contexts.
-#[derive(Clone, Copy)]
-pub struct ScalarMont {
-    limbs: [Limb; MAX_LIMBS],
-}
-
 
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
@@ -334,7 +327,7 @@ pub struct PublicScalarOps {
 
     pub q_minus_n: Elem<Unencoded>,
 
-    scalar_inv_to_mont_impl: fn(a: &Scalar) -> ScalarMont,
+    scalar_inv_to_mont_impl: fn(a: &Scalar) -> Scalar<R>,
     scalar_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
                                       b: *const Limb),
 }
@@ -367,7 +360,7 @@ impl PublicScalarOps {
     }
 
     /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.
-    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> ScalarMont {
+    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Scalar<R> {
         let num_limbs = self.public_key_ops.common.num_limbs;
 
         // `a` must not be zero.
@@ -377,7 +370,8 @@ impl PublicScalarOps {
     }
 
     #[inline]
-    pub fn scalar_mul_mixed(&self, a: &Scalar, b: &ScalarMont) -> Scalar {
+    pub fn scalar_mul_mixed(&self, a: &Scalar<Unencoded>, b: &Scalar<R>)
+                            -> Scalar<Unencoded> {
         Scalar {
             limbs: rab(self.scalar_mul_mont, &a.limbs, &b.limbs),
             m: PhantomData,
@@ -808,7 +802,7 @@ mod tests {
             assert_eq!(section, "");
             let a = consume_scalar(ops, test_case, "a");
             let expected_result = consume_scalar(ops, test_case, "r");
-            let mut actual_result = Scalar {
+            let mut actual_result: Scalar<R> = Scalar {
                 limbs: [0; MAX_LIMBS],
                 m: PhantomData,
                 encoding: PhantomData,
@@ -1105,12 +1099,14 @@ mod tests {
     }
 
     fn consume_scalar_mont(ops: &CommonOps, test_case: &mut test::TestCase,
-                           name: &str) -> ScalarMont {
+                           name: &str) -> Scalar<R> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        ScalarMont {
+        Scalar {
             limbs: parse_big_endian_value_in_range(
                 bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap(),
+            m: PhantomData,
+            encoding: PhantomData,
         }
     }
 }
