@@ -507,7 +507,7 @@ pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
 
 #[cfg(test)]
 mod tests {
-    use {error, test};
+    use {c, error, test};
     use std;
     use super::*;
     use super::parse_big_endian_value_in_range;
@@ -778,6 +778,42 @@ mod tests {
             let expected_result = consume_scalar(cops, test_case, "r");
             let actual_result = ops.scalar_mul_mixed(&mut a, &b);
             assert_limbs_are_equal(cops, &actual_result.limbs,
+                                   &expected_result.limbs);
+
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn p256_scalar_square_test() {
+        extern {
+            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb,
+                                            rep: c::int);
+        }
+        scalar_square_test(&p256::COMMON_OPS, GFp_p256_scalar_sqr_rep_mont,
+                           "src/ec/suite_b/ops/p256_scalar_square_tests.txt");
+    }
+
+    // XXX: There's no `p384_scalar_square_test()` because there's no dedicated
+    // `GFp_p384_scalar_sqr_rep_mont()`.
+
+    fn scalar_square_test(ops: &CommonOps,
+                          sqr_rep: unsafe extern fn(r: *mut Limb, a: *const Limb,
+                                                    rep: c::int),
+                          file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let a = consume_scalar(ops, test_case, "a");
+            let expected_result = consume_scalar(ops, test_case, "r");
+            let mut actual_result = Scalar {
+                limbs: [0; MAX_LIMBS],
+                m: PhantomData,
+                encoding: PhantomData,
+            };
+            unsafe {
+                sqr_rep(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr(), 1);
+            }
+            assert_limbs_are_equal(ops, &actual_result.limbs,
                                    &expected_result.limbs);
 
             Ok(())
