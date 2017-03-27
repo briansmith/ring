@@ -12,14 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use arithmetic::montgomery::ReductionEncoding;
+use arithmetic::montgomery::Encoding;
 use core::marker::PhantomData;
 use limb::*;
 
 /// Elements of ℤ/mℤ for some modulus *m*. Elements are always fully reduced
 /// with respect to *m*; i.e. the 0 <= x < m for every value x.
 #[derive(Clone, Copy)]
-pub struct Elem<M, E: ReductionEncoding> {
+pub struct Elem<M, E: Encoding> {
     // XXX: pub
     pub limbs: [Limb; MAX_LIMBS],
 
@@ -31,7 +31,7 @@ pub struct Elem<M, E: ReductionEncoding> {
     pub encoding: PhantomData<E>,
 }
 
-impl<M, E: ReductionEncoding> Elem<M, E> {
+impl<M, E: Encoding> Elem<M, E> {
     // There's no need to convert `value` to the Montgomery domain since
     // 0 * R**2 (mod m) == 0, so neither the modulus nor the encoding are needed
     // as inputs for constructing a zero-valued element.
@@ -46,8 +46,7 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
 
 // let r = f(a, b); return r;
 #[inline]
-pub fn binary_op<M, EA: ReductionEncoding, EB: ReductionEncoding,
-                 ER: ReductionEncoding>(
+pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
         f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
         a: &Elem<M, EA>, b: &Elem<M, EB>) -> Elem<M, ER> {
     let mut r = Elem {
@@ -61,7 +60,7 @@ pub fn binary_op<M, EA: ReductionEncoding, EB: ReductionEncoding,
 
 // a := f(a, b);
 #[inline]
-pub fn binary_op_assign<M, EA: ReductionEncoding, EB: ReductionEncoding>(
+pub fn binary_op_assign<M, EA: Encoding, EB: Encoding>(
         f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
         a: &mut Elem<M, EA>, b: &Elem<M, EB>) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
@@ -69,7 +68,7 @@ pub fn binary_op_assign<M, EA: ReductionEncoding, EB: ReductionEncoding>(
 
 // let r = f(a); return r;
 #[inline]
-pub fn unary_op<M, E: ReductionEncoding>(
+pub fn unary_op<M, E: Encoding>(
         f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &Elem<M, E>)
         -> Elem<M, E> {
     let mut r = Elem {
@@ -83,14 +82,14 @@ pub fn unary_op<M, E: ReductionEncoding>(
 
 // a := f(a);
 #[inline]
-pub fn unary_op_assign<M, E: ReductionEncoding>(
+pub fn unary_op_assign<M, E: Encoding>(
         f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &mut Elem<M, E>) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr()) }
 }
 
 // a := f(a, a);
 #[inline]
-pub fn unary_op_from_binary_op_assign<M, E: ReductionEncoding>(
+pub fn unary_op_from_binary_op_assign<M, E: Encoding>(
         f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
         a: &mut Elem<M, E>) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), a.limbs.as_ptr()) }

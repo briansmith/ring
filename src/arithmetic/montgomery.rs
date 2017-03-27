@@ -37,9 +37,17 @@ pub enum RRR {}
 #[derive(Copy, Clone)]
 pub enum RInverse {}
 
+pub trait Encoding {}
+
+impl Encoding for RRR {}
+impl Encoding for RR {}
+impl Encoding for R {}
+impl Encoding for Unencoded {}
+impl Encoding for RInverse {}
+
 /// The encoding of the result of a  reduction.
 pub trait ReductionEncoding {
-    type Output;
+    type Output: Encoding;
 }
 
 impl ReductionEncoding for RRR { type Output = RR; }
@@ -49,14 +57,14 @@ impl ReductionEncoding for Unencoded { type Output = RInverse; }
 
 /// The encoding of the result of a  multiplication.
 pub trait ProductEncoding {
-    type Output;
+    type Output: Encoding;
 }
 
-impl<E: ReductionEncoding> ProductEncoding for  (Unencoded, E) {
+impl<E: ReductionEncoding> ProductEncoding for (Unencoded, E) {
     type Output = E::Output;
 }
 
-impl<E> ProductEncoding for (R, E) { type Output = E; }
+impl<E: Encoding> ProductEncoding for (R, E) { type Output = E; }
 
 impl<E: ReductionEncoding> ProductEncoding
 for (RInverse, E) where E::Output: ReductionEncoding {
