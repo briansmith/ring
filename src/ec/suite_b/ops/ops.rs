@@ -215,20 +215,6 @@ impl CommonOps {
                                                          (3 * self.num_limbs)]);
         r
     }
-
-    // This assumes
-    // 2**((self.num_limbs * LIMB_BITS) - 1) < p and
-    // p < 2**(self.num_limbs * LIMB_BITS) and `p` is prime. See
-    // "Efficient Software Implementations of Modular Exponentiation" by Shay
-    // Gueron for the details. This is the case for both the field order and
-    // group order for both P-256 and P-384, but it is not the case for all
-    // curves. For example, it is not true for P-521.
-    fn reduced_limbs(&self, a: &[Limb; MAX_LIMBS], p: &[Limb; MAX_LIMBS])
-                     -> [Limb; MAX_LIMBS] {
-        let mut r = *a;
-        limbs_reduce_once_constant_time(&mut r, p);
-        r
-    }
 }
 
 struct Mont {
@@ -335,18 +321,6 @@ impl PublicScalarOps {
             m: PhantomData,
             encoding: PhantomData,
         })
-    }
-
-    // See the documentation for `reduced_limbs()` for the limitations of this
-    // function.
-    pub fn scalar_from_unreduced_limbs(&self, unreduced: &[Limb; MAX_LIMBS])
-                                       -> Scalar {
-        let cops = self.public_key_ops.common;
-        Scalar {
-            limbs: cops.reduced_limbs(unreduced, &cops.n.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
     }
 
     /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.

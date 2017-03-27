@@ -15,6 +15,7 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use arithmetic::montgomery::*;
+use core::marker::PhantomData;
 use {der, digest, error, private, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
@@ -162,8 +163,8 @@ fn digest_scalar(ops: &PublicScalarOps, digest_alg: &'static digest::Algorithm,
 // This is a separate function solely so that we can test specific digest
 // values like all-zero values and values larger than `n`.
 fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
-    let num_limbs = ops.public_key_ops.common.num_limbs;
-
+    let cops = ops.public_key_ops.common;
+    let num_limbs = cops.num_limbs;
     let digest = if digest.len() > num_limbs * LIMB_BYTES {
         &digest[..(num_limbs * LIMB_BYTES)]
     } else {
@@ -171,11 +172,22 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
     };
 
     // XXX: unwrap
-    let limbs =
-        parse_big_endian_value(untrusted::Input::from(digest), num_limbs)
-            .unwrap();
+    let mut r = Scalar {
+        limbs: parse_big_endian_value(untrusted::Input::from(digest), num_limbs)
+                .unwrap(),
+        m: PhantomData,
+        encoding: PhantomData,
+    };
 
-    ops.scalar_from_unreduced_limbs(&limbs)
+    // This assumes 2**((self.num_limbs * LIMB_BITS) - 1) < p and
+    // p < 2**(self.num_limbs * LIMB_BITS) and `p` is prime. See "Efficient
+    // Software Implementations of Modular Exponentiation" by Shay Gueron for
+    // details. This is the case for both the field order and group order for
+    // both P-256 and P-384, but it is not the case for all curves. For example,
+    // it is not true for P-521.
+    limbs_reduce_once_constant_time(&mut r.limbs[..], &cops.n.limbs);
+
+    r
 }
 
 fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
