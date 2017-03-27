@@ -44,4 +44,48 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
     }
 }
 
+// let r = f(a, b); return r;
+#[inline]
+pub fn binary_op<M, EA: ReductionEncoding, EB: ReductionEncoding,
+                 ER: ReductionEncoding>(
+        f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+        a: &Elem<M, EA>, b: &Elem<M, EB>) -> Elem<M, ER> {
+    let mut r = Elem {
+        limbs: [0; MAX_LIMBS],
+        m: PhantomData,
+        encoding: PhantomData
+    };
+    unsafe { f(r.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
+    r
+}
+
+// a := f(a, b);
+#[inline]
+pub fn binary_op_assign<M, EA: ReductionEncoding, EB: ReductionEncoding>(
+        f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+        a: &mut Elem<M, EA>, b: &Elem<M, EB>) {
+    unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
+}
+
+// let r = f(a); return r;
+#[inline]
+pub fn unary_op<M, E: ReductionEncoding>(
+        f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &Elem<M, E>)
+        -> Elem<M, E> {
+    let mut r = Elem {
+        limbs: [0; MAX_LIMBS],
+        m: PhantomData,
+        encoding: PhantomData,
+    };
+    unsafe { f(r.limbs.as_mut_ptr(), a.limbs.as_ptr()) }
+    r
+}
+
+// a := f(a);
+#[inline]
+pub fn unary_op_assign<M, E: ReductionEncoding>(
+        f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &mut Elem<M, E>) {
+    unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr()) }
+}
+
 pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;

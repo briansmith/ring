@@ -15,7 +15,8 @@
 use c;
 use core::marker::PhantomData;
 use super::*;
-use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc, ab_assign, ra, rab};
+use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc};
+use super::elem::{binary_op, binary_op_assign};
 
 macro_rules! p256_limbs {
     [$limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
@@ -162,20 +163,12 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
 
     #[inline]
     fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
-        Scalar {
-            limbs: rab(GFp_p256_scalar_mul_mont, &a.limbs, &b.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(GFp_p256_scalar_mul_mont, a, b)
     }
 
     #[inline]
     fn sqr(a: &Scalar<R>) -> Scalar<R> {
-        Scalar {
-            limbs: ra(GFp_p256_scalar_sqr_mont, &a.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        unary_op(GFp_p256_scalar_sqr_mont, a)
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
@@ -196,18 +189,17 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
             GFp_p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(),
                                          acc.limbs.as_ptr(), squarings)
         }
-        ab_assign(GFp_p256_scalar_mul_mont, &mut acc.limbs, &b.limbs);
+        binary_op_assign(GFp_p256_scalar_mul_mont, acc, b);
     }
 
     fn to_mont(a: &Scalar) -> Scalar<R> {
-        static N_RR: [Limb; MAX_LIMBS] =
-            p256_limbs![0x66e12d94, 0xf3d95620, 0x2845b239, 0x2b6bec59,
-                        0x4699799c, 0x49bd6fa6, 0x83244c95, 0xbe79eea2];
-        Scalar {
-            limbs: rab(GFp_p256_scalar_mul_mont, &a.limbs, &N_RR),
+        static N_RR: Scalar<Unencoded> = Scalar {
+            limbs: p256_limbs![0x66e12d94, 0xf3d95620, 0x2845b239, 0x2b6bec59,
+                               0x4699799c, 0x49bd6fa6, 0x83244c95, 0xbe79eea2],
             m: PhantomData,
             encoding: PhantomData,
-        }
+        };
+        binary_op(GFp_p256_scalar_mul_mont, a, &N_RR)
     }
 
     // Indexes into `d`.

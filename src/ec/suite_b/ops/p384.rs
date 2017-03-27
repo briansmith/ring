@@ -14,7 +14,8 @@
 
 use core::marker::PhantomData;
 use super::*;
-use super::{elem_sqr_mul, elem_sqr_mul_acc, Mont, ab_assign, rab};
+use super::{elem_sqr_mul, elem_sqr_mul_acc, Mont};
+use super::elem::{binary_op, binary_op_assign};
 
 
 macro_rules! p384_limbs {
@@ -197,19 +198,11 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     // XXX(perf): This hasn't been optimized at all. TODO: optimize.
 
     fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
-        Scalar {
-            limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &b.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(GFp_p384_scalar_mul_mont, a, b)
     }
 
     fn sqr(a: &Scalar<R>) -> Scalar<R> {
-        Scalar {
-            limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &a.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(GFp_p384_scalar_mul_mont, a, a)
     }
 
     fn sqr_mut(a: &mut Scalar<R>) {
@@ -235,19 +228,18 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
         for _ in 0..squarings {
             sqr_mut(acc);
         }
-        ab_assign(GFp_p384_scalar_mul_mont, &mut acc.limbs, &b.limbs)
+        binary_op_assign(GFp_p384_scalar_mul_mont, acc, b)
     }
 
     fn to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
-        static N_RR: [Limb; MAX_LIMBS] =
-            p384_limbs![0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895,
-                        0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
-                        0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9];
-        Scalar {
-            limbs: rab(GFp_p384_scalar_mul_mont, &a.limbs, &N_RR),
+        static N_RR: Scalar<Unencoded> = Scalar {
+            limbs: p384_limbs![0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895,
+                               0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
+                               0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9],
             m: PhantomData,
-            encoding: PhantomData,
-        }
+            encoding: PhantomData
+        };
+        binary_op(GFp_p384_scalar_mul_mont, a, &N_RR)
     }
 
     // Indexes into `d`.

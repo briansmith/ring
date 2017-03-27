@@ -124,7 +124,7 @@ pub struct CommonOps {
 impl CommonOps {
     #[inline]
     pub fn elem_add(&self, a: &mut Elem<R>, b: &Elem<R>) {
-        ab_assign(self.elem_add_impl, &mut a.limbs, &b.limbs)
+        binary_op_assign(self.elem_add_impl, a, b)
     }
 
     pub fn elems_are_equal(&self, a: &Elem<R>, b: &Elem<R>) -> bool {
@@ -143,40 +143,28 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_mul(&self, a: &mut Elem<R>, b: &Elem<R>) {
-        ab_assign(self.elem_mul_mont, &mut a.limbs, &b.limbs)
+        binary_op_assign(self.elem_mul_mont, a, b)
     }
 
     #[inline]
     pub fn elem_mul_mixed(&self, a: &Elem<R>, b: &Elem<Unencoded>)
                           -> Elem<Unencoded> {
-        Elem {
-            limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(self.elem_mul_mont, a, b)
     }
 
     #[inline]
     pub fn elem_product(&self, a: &Elem<R>, b: &Elem<R>) -> Elem<R> {
-        Elem {
-            limbs: rab(self.elem_mul_mont, &a.limbs, &b.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(self.elem_mul_mont, a, b)
     }
 
     #[inline]
     pub fn elem_square(&self, a: &mut Elem<R>) {
-        a_assign(self.elem_sqr_mont, &mut a.limbs);
+        unary_op_assign(self.elem_sqr_mont, a);
     }
 
     #[inline]
     pub fn elem_squared(&self, a: &Elem<R>) -> Elem<R> {
-        Elem {
-            limbs: ra(self.elem_sqr_mont, &a.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        unary_op(self.elem_sqr_mont, a)
     }
 
     pub fn elem_verify_is_not_zero(&self, a: &Elem<R>)
@@ -336,11 +324,7 @@ impl PublicScalarOps {
     #[inline]
     pub fn scalar_mul_mixed(&self, a: &Scalar<Unencoded>, b: &Scalar<R>)
                             -> Scalar<Unencoded> {
-        Scalar {
-            limbs: rab(self.scalar_mul_mont, &a.limbs, &b.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(self.scalar_mul_mont, a, b)
     }
 
     #[inline]
@@ -372,12 +356,7 @@ impl PublicScalarOps {
     #[inline]
     pub fn elem_decoded_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
                             -> Elem<Unencoded> {
-        Elem {
-            limbs: rab(self.public_key_ops.common.elem_add_impl, &a.limbs,
-                       &b.limbs),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        binary_op(self.public_key_ops.common.elem_add_impl, a, b)
     }
 }
 
@@ -419,40 +398,6 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize,
         ops.elem_square(acc);
     }
     ops.elem_mul(acc, b)
-}
-
-
-// let r = f(a, b); return r;
-#[inline]
-fn rab(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-       a: &[Limb; MAX_LIMBS], b: &[Limb; MAX_LIMBS]) -> [Limb; MAX_LIMBS] {
-    let mut r = [0; MAX_LIMBS];
-    unsafe { f(r.as_mut_ptr(), a.as_ptr(), b.as_ptr()) }
-    r
-}
-
-
-// a = f(a, b);
-#[inline]
-fn a_assign(f: unsafe extern fn(r: *mut Limb, a: *const Limb),
-            a: &mut [Limb; MAX_LIMBS]) {
-    unsafe { f(a.as_mut_ptr(), a.as_ptr()) }
-}
-
-// a = f(a, b);
-#[inline]
-fn ab_assign(f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-             a: &mut [Limb; MAX_LIMBS], b: &[Limb; MAX_LIMBS]) {
-    unsafe { f(a.as_mut_ptr(), a.as_ptr(), b.as_ptr()) }
-}
-
-// let r = f(a); return r;
-#[inline]
-fn ra(f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &[Limb; MAX_LIMBS])
-      -> [Limb; MAX_LIMBS] {
-    let mut r = [0; MAX_LIMBS];
-    unsafe { f(r.as_mut_ptr(), a.as_ptr()) }
-    r
 }
 
 
