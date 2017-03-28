@@ -61,7 +61,12 @@ OPENSSL_EXPORT void X25519_public_from_private(uint8_t out_public_value[32],
 /* Ed25519.
  *
  * Ed25519 is a signature scheme using a twisted-Edwards curve that is
- * birationally equivalent to curve25519. */
+ * birationally equivalent to curve25519.
+ *
+ * Note that, unlike RFC 8032's formulation, our private key representation
+ * includes a public key suffix to make multiple key signing operations with the
+ * same key more efficient. The RFC 8032 key private key is referred to in this
+ * implementation as the "seed" and is the first 32 bytes of our private key. */
 
 #define ED25519_PRIVATE_KEY_LEN 64
 #define ED25519_PUBLIC_KEY_LEN 32
