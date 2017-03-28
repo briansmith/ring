@@ -114,6 +114,9 @@ static const struct argument kArguments[] = {
         "-early-data", kBooleanArgument, "Allow early data",
     },
     {
+        "-ed25519", kBooleanArgument, "Advertise Ed25519 support",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -412,6 +415,10 @@ bool Client(const std::vector<std::string> &args) {
 
   if (args_map.count("-early-data") != 0) {
     SSL_CTX_set_early_data_enabled(ctx.get(), 1);
+  }
+
+  if (args_map.count("-ed25519") != 0) {
+    SSL_CTX_set_ed25519_enabled(ctx.get(), 1);
   }
 
   if (args_map.count("-test-resumption") != 0) {

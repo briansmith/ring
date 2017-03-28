@@ -238,6 +238,8 @@ static const char *SignatureAlgorithmToString(uint16_t version, uint16_t sigalg)
       return "rsa_pss_sha384";
     case SSL_SIGN_RSA_PSS_SHA512:
       return "rsa_pss_sha512";
+    case SSL_SIGN_ED25519:
+      return "ed25519";
     default:
       return "(unknown)";
   }

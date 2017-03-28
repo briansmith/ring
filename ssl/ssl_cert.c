@@ -825,29 +825,28 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
   assert(ssl3_protocol_version(ssl) < TLS1_3_VERSION);
 
   /* Check the certificate's type matches the cipher. */
-  int expected_type = ssl_cipher_get_key_type(hs->new_cipher);
-  assert(expected_type != EVP_PKEY_NONE);
-  if (pkey->type != expected_type) {
+  if (!(hs->new_cipher->algorithm_auth & ssl_cipher_auth_mask_for_key(pkey))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
     return 0;
   }
 
-  if (hs->new_cipher->algorithm_auth & SSL_aECDSA) {
+  /* Check key usages for all key types but RSA. This is needed to distinguish
+   * ECDH certificates, which we do not support, from ECDSA certificates. In
+   * principle, we should check RSA key usages based on cipher, but this breaks
+   * buggy antivirus deployments. Other key types are always used for signing.
+   *
+   * TODO(davidben): Get more recent data on RSA key usages. */
+  if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
     CBS leaf_cbs;
     CBS_init(&leaf_cbs, CRYPTO_BUFFER_data(leaf), CRYPTO_BUFFER_len(leaf));
-    /* ECDSA and ECDH certificates use the same public key format. Instead,
-     * they are distinguished by the key usage extension in the certificate. */
     if (!ssl_cert_check_digital_signature_key_usage(&leaf_cbs)) {
       return 0;
     }
+  }
 
-    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
-    if (ec_key == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
-      return 0;
-    }
-
+  if (EVP_PKEY_id(pkey) == EVP_PKEY_EC) {
     /* Check the key's group and point format are acceptable. */
+    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
     uint16_t group_id;
     if (!ssl_nid_to_group_id(
             &group_id, EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key))) ||

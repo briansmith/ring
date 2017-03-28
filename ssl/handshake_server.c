@@ -695,12 +695,9 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   uint32_t mask_a = 0;
 
   if (ssl_has_certificate(ssl)) {
-    int type = EVP_PKEY_id(hs->local_pubkey);
-    if (type == EVP_PKEY_RSA) {
+    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey);
+    if (EVP_PKEY_id(hs->local_pubkey) == EVP_PKEY_RSA) {
       mask_k |= SSL_kRSA;
-      mask_a |= SSL_aRSA;
-    } else if (type == EVP_PKEY_EC) {
-      mask_a |= SSL_aECDSA;
     }
   }
 
@@ -1321,16 +1318,9 @@ static int ssl3_send_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
-    const uint16_t *sigalgs;
-    size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
-    if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
+    if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
+        !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb)) {
       goto err;
-    }
-
-    for (size_t i = 0; i < num_sigalgs; i++) {
-      if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
-        goto err;
-      }
     }
   }
 

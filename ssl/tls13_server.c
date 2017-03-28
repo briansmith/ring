@@ -555,23 +555,10 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     CBB sigalgs_cbb;
     if (!ssl->method->init_message(ssl, &cbb, &body,
                                    SSL3_MT_CERTIFICATE_REQUEST) ||
-        !CBB_add_u8(&body, 0 /* no certificate_request_context. */)) {
-      goto err;
-    }
-
-    const uint16_t *sigalgs;
-    size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
-    if (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb)) {
-      goto err;
-    }
-
-    for (size_t i = 0; i < num_sigalgs; i++) {
-      if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
-        goto err;
-      }
-    }
-
-    if (!ssl_add_client_CA_list(ssl, &body) ||
+        !CBB_add_u8(&body, 0 /* no certificate_request_context. */) ||
+        !CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
+        !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb) ||
+        !ssl_add_client_CA_list(ssl, &body) ||
         !CBB_add_u16(&body, 0 /* empty certificate_extensions. */) ||
         !ssl_add_message_cbb(ssl, &cbb)) {
       goto err;

@@ -40,7 +40,7 @@ func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Con
 			continue
 		}
 
-		signer, err := getSigner(version, key, config, sigAlg)
+		signer, err := getSigner(version, key, config, sigAlg, false)
 		if err != nil {
 			continue
 		}
@@ -60,7 +60,7 @@ func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg s
 		msg = newMsg
 	}
 
-	signer, err := getSigner(version, key, config, sigAlg)
+	signer, err := getSigner(version, key, config, sigAlg, false)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func verifyMessage(version uint16, key crypto.PublicKey, config *Config, sigAlg 
 		return errors.New("tls: unsupported signature algorithm")
 	}
 
-	signer, err := getSigner(version, key, config, sigAlg)
+	signer, err := getSigner(version, key, config, sigAlg, true)
 	if err != nil {
 		return err
 	}
@@ -273,20 +273,24 @@ func (e *ed25519Signer) verifyMessage(key crypto.PublicKey, msg, sig []byte) err
 	return nil
 }
 
-func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm) (signer, error) {
+func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm, isVerify bool) (signer, error) {
 	// TLS 1.1 and below use legacy signature algorithms.
 	if version < VersionTLS12 {
-		switch key.(type) {
-		case *rsa.PrivateKey, *rsa.PublicKey:
-			return &rsaPKCS1Signer{crypto.MD5SHA1}, nil
-		case *ecdsa.PrivateKey, *ecdsa.PublicKey:
-			return &ecdsaSigner{version, config, nil, crypto.SHA1}, nil
-		default:
-			return nil, errors.New("unknown key type")
+		if config.Bugs.UseLegacySigningAlgorithm == 0 || isVerify {
+			switch key.(type) {
+			case *rsa.PrivateKey, *rsa.PublicKey:
+				return &rsaPKCS1Signer{crypto.MD5SHA1}, nil
+			case *ecdsa.PrivateKey, *ecdsa.PublicKey:
+				return &ecdsaSigner{version, config, nil, crypto.SHA1}, nil
+			default:
+				return nil, errors.New("unknown key type")
+			}
 		}
+
+		// Fall through, forcing a particular algorithm.
+		sigAlg = config.Bugs.UseLegacySigningAlgorithm
 	}
 
-	// TODO(davidben): Forbid RSASSA-PKCS1-v1_5 in TLS 1.3.
 	switch sigAlg {
 	case signatureRSAPKCS1WithMD5:
 		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {

@@ -1830,16 +1830,17 @@ const char *SSL_COMP_get_name(const COMP_METHOD *comp) { return NULL; }
 
 void SSL_COMP_free_compression_methods(void) {}
 
-int ssl_cipher_get_key_type(const SSL_CIPHER *cipher) {
-  uint32_t alg_a = cipher->algorithm_auth;
-
-  if (alg_a & SSL_aECDSA) {
-    return EVP_PKEY_EC;
-  } else if (alg_a & SSL_aRSA) {
-    return EVP_PKEY_RSA;
+uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
+  switch (EVP_PKEY_id(key)) {
+    case EVP_PKEY_RSA:
+      return SSL_aRSA;
+    case EVP_PKEY_EC:
+    case EVP_PKEY_ED25519:
+      /* Ed25519 keys in TLS 1.2 repurpose the ECDSA ciphers. */
+      return SSL_aECDSA;
+    default:
+      return 0;
   }
-
-  return EVP_PKEY_NONE;
 }
 
 int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher) {

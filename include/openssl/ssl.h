@@ -947,6 +947,7 @@ OPENSSL_EXPORT int SSL_set_ocsp_response(SSL *ssl,
 #define SSL_SIGN_RSA_PSS_SHA256 0x0804
 #define SSL_SIGN_RSA_PSS_SHA384 0x0805
 #define SSL_SIGN_RSA_PSS_SHA512 0x0806
+#define SSL_SIGN_ED25519 0x0807
 
 /* SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal signature algorithm used to
  * specify raw RSASSA-PKCS1-v1_5 with an MD5/SHA-1 concatenation, as used in TLS
@@ -2404,6 +2405,10 @@ OPENSSL_EXPORT int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store);
  * exclusively for certificate verification and returns one. An additional
  * reference to |store| will be taken. */
 OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
+
+/* SSL_CTX_set_ed25519_enabled configures whether |ctx| advertises support for
+ * the Ed25519 signature algorithm. */
+OPENSSL_EXPORT void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled);
 
 
 /* Client certificate CA list.
@@ -4292,6 +4297,9 @@ struct ssl_ctx_st {
   /* allow_unknown_alpn_protos is one if the client allows unsolicited ALPN
    * protocols from the peer. */
   unsigned allow_unknown_alpn_protos:1;
+
+  /* ed25519_enabled is one if Ed25519 is advertised in the handshake. */
+  unsigned ed25519_enabled:1;
 };
 
 

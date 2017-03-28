@@ -238,9 +238,9 @@ int ssl_create_cipher_list(
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
 
-/* ssl_cipher_get_key_type returns the |EVP_PKEY_*| value corresponding to the
- * server key used in |cipher| or |EVP_PKEY_NONE| if there is none. */
-int ssl_cipher_get_key_type(const SSL_CIPHER *cipher);
+/* ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
+ * values suitable for use with |key| in TLS 1.2 and below. */
+uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key);
 
 /* ssl_cipher_uses_certificate_auth returns one if |cipher| authenticates the
  * server and, optionally, the client with a certificate. Otherwise it returns
@@ -1287,9 +1287,9 @@ int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *sigalgs);
  * supported. It returns one on success and zero on error. */
 int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out);
 
-/* tls12_get_verify_sigalgs sets |*out| to the signature algorithms acceptable
- * for the peer signature and returns the length of the list. */
-size_t tls12_get_verify_sigalgs(const SSL *ssl, const uint16_t **out);
+/* tls12_add_verify_sigalgs adds the signature algorithms acceptable for the
+ * peer signature to |out|. It returns one on success and zero on error. */
+int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out);
 
 /* tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
  * signature. It returns one on success and zero on error, setting |*out_alert|

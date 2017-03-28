@@ -446,7 +446,8 @@ int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
  * BoringSSL. Once the change in Chrome has stuck and the values are finalized,
  * restore them. */
 static const uint16_t kVerifySignatureAlgorithms[] = {
-    /* Prefer SHA-256 algorithms. */
+    /* List our preferred algorithms first. */
+    SSL_SIGN_ED25519,
     SSL_SIGN_ECDSA_SECP256R1_SHA256,
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA256,
@@ -481,7 +482,8 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
  * BoringSSL. Once the change in Chrome has stuck and the values are finalized,
  * restore them. */
 static const uint16_t kSignSignatureAlgorithms[] = {
-    /* Prefer SHA-256 algorithms. */
+    /* List our preferred algorithms first. */
+    SSL_SIGN_ED25519,
     SSL_SIGN_ECDSA_SECP256R1_SHA256,
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA256,
@@ -508,16 +510,31 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     SSL_SIGN_RSA_PKCS1_SHA1,
 };
 
-size_t tls12_get_verify_sigalgs(const SSL *ssl, const uint16_t **out) {
-  *out = kVerifySignatureAlgorithms;
-  return OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
+void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled) {
+  ctx->ed25519_enabled = !!enabled;
+}
+
+int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms); i++) {
+    if (kVerifySignatureAlgorithms[i] == SSL_SIGN_ED25519 &&
+        !ssl->ctx->ed25519_enabled) {
+      continue;
+    }
+    if (!CBB_add_u16(out, kVerifySignatureAlgorithms[i])) {
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg) {
-  const uint16_t *verify_sigalgs;
-  size_t num_verify_sigalgs = tls12_get_verify_sigalgs(ssl, &verify_sigalgs);
-  for (size_t i = 0; i < num_verify_sigalgs; i++) {
-    if (sigalg == verify_sigalgs[i]) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms); i++) {
+    if (kVerifySignatureAlgorithms[i] == SSL_SIGN_ED25519 &&
+        !ssl->ctx->ed25519_enabled) {
+      continue;
+    }
+    if (sigalg == kVerifySignatureAlgorithms[i]) {
       return 1;
     }
   }
@@ -1031,23 +1048,12 @@ static int ext_sigalgs_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 1;
   }
 
-  const uint16_t *sigalgs;
-  const size_t num_sigalgs = tls12_get_verify_sigalgs(ssl, &sigalgs);
-
   CBB contents, sigalgs_cbb;
   if (!CBB_add_u16(out, TLSEXT_TYPE_signature_algorithms) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16_length_prefixed(&contents, &sigalgs_cbb)) {
-    return 0;
-  }
-
-  for (size_t i = 0; i < num_sigalgs; i++) {
-    if (!CBB_add_u16(&sigalgs_cbb, sigalgs[i])) {
-      return 0;
-    }
-  }
-
-  if (!CBB_flush(out)) {
+      !CBB_add_u16_length_prefixed(&contents, &sigalgs_cbb) ||
+      !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb) ||
+      !CBB_flush(out)) {
     return 0;
   }
 

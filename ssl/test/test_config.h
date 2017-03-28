@@ -144,6 +144,7 @@ struct TestConfig {
   bool no_op_extra_handshake = false;
   bool handshake_twice = false;
   bool allow_unknown_alpn_protos = false;
+  bool enable_ed25519 = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

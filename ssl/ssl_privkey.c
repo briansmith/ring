@@ -70,7 +70,8 @@
 
 
 int ssl_is_key_type_supported(int key_type) {
-  return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC;
+  return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC ||
+         key_type == EVP_PKEY_ED25519;
 }
 
 static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
@@ -321,6 +322,8 @@ static const SSL_SIGNATURE_ALGORITHM kSignatureAlgorithms[] = {
      0},
     {SSL_SIGN_ECDSA_SECP521R1_SHA512, EVP_PKEY_EC, NID_secp521r1, &EVP_sha512,
      0},
+
+    {SSL_SIGN_ED25519, EVP_PKEY_ED25519, NID_undef, NULL, 0},
 };
 
 static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
@@ -384,6 +387,11 @@ static int setup_ctx(SSL *ssl, EVP_PKEY_CTX *ctx, uint16_t sigalg) {
   return 1;
 }
 
+static int legacy_sign_digest_supported(const SSL_SIGNATURE_ALGORITHM *alg) {
+  return (alg->pkey_type == EVP_PKEY_EC || alg->pkey_type == EVP_PKEY_RSA) &&
+         !alg->is_rsa_pss;
+}
+
 enum ssl_private_key_result_t ssl_private_key_sign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t sigalg, const uint8_t *in, size_t in_len) {
@@ -397,8 +405,7 @@ enum ssl_private_key_result_t ssl_private_key_sign(
      * |SSL_PRIVATE_KEY_METHOD|s. */
     const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
     if (alg == NULL ||
-        (alg->pkey_type != EVP_PKEY_EC && alg->pkey_type != EVP_PKEY_RSA) ||
-        alg->is_rsa_pss) {
+        !legacy_sign_digest_supported(alg)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
       return ssl_private_key_failure;
     }
@@ -473,24 +480,25 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
     return 0;
   }
 
+  /* Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
+   * emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
+   * hash in TLS. Reasonable RSA key sizes are large enough for the largest
+   * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too small for
+   * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check the
+   * size so that we can fall back to another algorithm in that case. */
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg->is_rsa_pss) {
-    /* Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
-     * emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
-     * hash in TLS. Reasonable RSA key sizes are large enough for the largest
-     * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too small for
-     * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check
-     * the size so that we can fall back to another algorithm in that case. */
-    if ((size_t)EVP_PKEY_size(hs->local_pubkey) <
-        2 * EVP_MD_size(alg->digest_func()) + 2) {
-      return 0;
-    }
+  if (alg->is_rsa_pss &&
+      (size_t)EVP_PKEY_size(hs->local_pubkey) <
+          2 * EVP_MD_size(alg->digest_func()) + 2) {
+    return 0;
+  }
 
-    /* RSA-PSS is only supported by message-based private keys.
-     * TODO(davidben): Remove this check when sign_digest is gone. */
-    if (ssl->cert->key_method != NULL && ssl->cert->key_method->sign == NULL) {
-      return 0;
-    }
+  /* Newer algorithms require message-based private keys.
+   * TODO(davidben): Remove this check when sign_digest is gone. */
+  if (ssl->cert->key_method != NULL &&
+      ssl->cert->key_method->sign == NULL &&
+      !legacy_sign_digest_supported(alg)) {
+    return 0;
   }
 
   return 1;
