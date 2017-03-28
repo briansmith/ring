@@ -1020,7 +1020,7 @@ int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   if (fe_isnonzero(check)) {
     fe_add(check, vxx, u); /* vx^2+u */
     if (fe_isnonzero(check)) {
-      return -1;
+      return 0;
     }
     fe_mul(h->X, h->X, sqrtm1);
   }
@@ -1030,7 +1030,7 @@ int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   }
 
   fe_mul(h->T, h->X, h->Y);
-  return 0;
+  return 1;
 }
 
 static void ge_p2_0(ge_p2 *h) {
