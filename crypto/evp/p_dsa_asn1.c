@@ -256,7 +256,6 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_priv_encode,
 
   NULL /* pkey_opaque */,
-  NULL /* pkey_supports_digest */,
 
   int_dsa_size,
   dsa_bits,

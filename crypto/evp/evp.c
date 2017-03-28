@@ -120,13 +120,6 @@ int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
   return 0;
 }
 
-int EVP_PKEY_supports_digest(const EVP_PKEY *pkey, const EVP_MD *md) {
-  if (pkey->ameth && pkey->ameth->pkey_supports_digest) {
-    return pkey->ameth->pkey_supports_digest(pkey, md);
-  }
-  return 1;
-}
-
 int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   if (a->type != b->type) {
     return -1;

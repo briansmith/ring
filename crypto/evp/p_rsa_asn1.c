@@ -162,10 +162,6 @@ static int rsa_opaque(const EVP_PKEY *pkey) {
   return RSA_is_opaque(pkey->pkey.rsa);
 }
 
-static int rsa_supports_digest(const EVP_PKEY *pkey, const EVP_MD *md) {
-  return RSA_supports_digest(pkey->pkey.rsa, md);
-}
-
 static int int_rsa_size(const EVP_PKEY *pkey) {
   return RSA_size(pkey->pkey.rsa);
 }
@@ -189,7 +185,6 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   rsa_priv_encode,
 
   rsa_opaque,
-  rsa_supports_digest,
 
   int_rsa_size,
   rsa_bits,

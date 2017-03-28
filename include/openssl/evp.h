@@ -97,12 +97,6 @@ OPENSSL_EXPORT int EVP_PKEY_up_ref(EVP_PKEY *pkey);
  * an error to attempt to duplicate, export, or compare an opaque key. */
 OPENSSL_EXPORT int EVP_PKEY_is_opaque(const EVP_PKEY *pkey);
 
-/* EVP_PKEY_supports_digest returns one if |pkey| supports digests of
- * type |md|. This is intended for use with EVP_PKEYs backing custom
- * implementations which can't sign all digests. */
-OPENSSL_EXPORT int EVP_PKEY_supports_digest(const EVP_PKEY *pkey,
-                                            const EVP_MD *md);
-
 /* EVP_PKEY_cmp compares |a| and |b| and returns one if they are equal, zero if
  * not and a negative number on error.
  *

@@ -100,12 +100,6 @@ struct evp_pkey_asn1_method_st {
    * custom implementations which do not expose key material and parameters.*/
   int (*pkey_opaque)(const EVP_PKEY *pk);
 
-  /* pkey_supports_digest returns one if |pkey| supports digests of
-   * type |md|. This is intended for use with EVP_PKEYs backing custom
-   * implementations which can't sign all digests. If null, it is
-   * assumed that all digests are supported. */
-  int (*pkey_supports_digest)(const EVP_PKEY *pkey, const EVP_MD *md);
-
   int (*pkey_size)(const EVP_PKEY *pk);
   int (*pkey_bits)(const EVP_PKEY *pk);
 
