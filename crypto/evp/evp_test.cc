@@ -110,6 +110,9 @@ static int GetKeyType(FileTest *t, const std::string &name) {
   if (name == "DSA") {
     return EVP_PKEY_DSA;
   }
+  if (name == "Ed25519") {
+    return EVP_PKEY_ED25519;
+  }
   t->PrintLine("Unknown key type: '%s'", name.c_str());
   return EVP_PKEY_NONE;
 }

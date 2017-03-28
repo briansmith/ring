@@ -4192,6 +4192,11 @@ extern "C" {
 #define SN_X25519 "X25519"
 #define NID_X25519 948
 
+#define SN_Ed25519 "Ed25519"
+#define NID_Ed25519 949
+#define OBJ_Ed25519 1L, 3L, 101L, 112L
+
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

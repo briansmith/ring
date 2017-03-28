@@ -157,10 +157,21 @@ OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
 
+/* EVP_PKEY_new_ed25519_public returns a newly allocated |EVP_PKEY| wrapping an
+ * Ed25519 public key, or NULL on allocation error. */
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_public(
+    const uint8_t public_key[32]);
+
+/* EVP_PKEY_new_ed25519_private returns a newly allocated |EVP_PKEY| wrapping an
+ * Ed25519 private key, or NULL on allocation error. */
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_private(
+    const uint8_t private_key[64]);
+
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_DSA NID_dsa
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
+#define EVP_PKEY_ED25519 NID_Ed25519
 
 /* EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
  * the given type. The |type| argument should be one of the |EVP_PKEY_*|
@@ -771,7 +782,7 @@ struct evp_pkey_st {
   int type;
 
   union {
-    char *ptr;
+    void *ptr;
     RSA *rsa;
     DSA *dsa;
     DH *dh;
@@ -829,5 +840,6 @@ BORINGSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
 #define EVP_R_UNKNOWN_PUBLIC_KEY_TYPE 127
 #define EVP_R_UNSUPPORTED_ALGORITHM 128
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 129
+#define EVP_R_NOT_A_PRIVATE_KEY 130
 
 #endif  /* OPENSSL_HEADER_EVP_H */
