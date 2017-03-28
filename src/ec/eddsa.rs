@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use {c, digest, error, private, rand, signature};
+use {bssl, c, digest, error, private, rand, signature};
 use untrusted;
 
 /// Parameters for EdDSA signing and verification.
@@ -182,12 +182,9 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let (signature_r, signature_s) = signature.split_at(SCALAR_LEN);
         let msg = msg.as_slice_less_safe();
         let mut a = ExtPoint::new_at_infinity();
-        let ret = unsafe {
+        try!(bssl::map_result(unsafe {
             GFp_x25519_ge_frombytes_vartime(&mut a, public_key)
-        };
-        if ret != 0 {
-            return Err(error::Unspecified)
-        }
+        }));
         for i in 0..ELEM_LIMBS {
             a.x[i] = -a.x[i];
             a.t[i] = -a.t[i];
