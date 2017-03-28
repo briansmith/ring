@@ -16,7 +16,6 @@ use {c, error, init, rand};
 use untrusted;
 
 /// A key agreement algorithm.
-#[cfg_attr(not(test), allow(dead_code))]
 pub struct AgreementAlgorithmImpl {
     pub public_key_len: usize,
     pub elem_and_scalar_len: usize,
