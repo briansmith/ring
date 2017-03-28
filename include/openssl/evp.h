@@ -223,6 +223,10 @@ OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
  * operation will be written to |*pctx|; this can be used to set alternative
  * signing options.
  *
+ * This function performs a streaming signing operation and will fail for
+ * signature algorithms which do not support this. Use |EVP_PKEY_sign_message|
+ * for a single-shot operation.
+ *
  * It returns one on success, or zero on error. */
 OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                                       const EVP_MD *type, ENGINE *e,
@@ -252,6 +256,10 @@ OPENSSL_EXPORT int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
  * |EVP_MD_CTX_init|. If |pctx| is not NULL, the |EVP_PKEY_CTX| of the signing
  * operation will be written to |*pctx|; this can be used to set alternative
  * signing options.
+ *
+ * This function performs streaming signature verification and will fail for
+ * signature algorithms which do not support this. Use |EVP_PKEY_verify_message|
+ * for a single-shot verification.
  *
  * It returns one on success, or zero on error. */
 OPENSSL_EXPORT int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -409,11 +417,15 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx);
  * It returns one on success or zero on error. */
 OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 
-/* EVP_PKEY_sign signs |data_len| bytes from |data| using |ctx|. If |sig| is
+/* EVP_PKEY_sign signs |digest_len| bytes from |digest| using |ctx|. If |sig| is
  * NULL, the maximum size of the signature is written to
  * |out_sig_len|. Otherwise, |*sig_len| must contain the number of bytes of
  * space available at |sig|. If sufficient, the signature will be written to
  * |sig| and |*sig_len| updated with the true length.
+ *
+ * This function expects a pre-hashed input and will fail for signature
+ * algorithms which do not support this. Use |EVP_PKEY_sign_message| or
+ * |EVP_DigestSignInit| to sign an unhashed input.
  *
  * WARNING: Setting |sig| to NULL only gives the maximum size of the
  * signature. The actual signature may be smaller.
@@ -421,8 +433,23 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
  * It returns one on success or zero on error. (Note: this differs from
  * OpenSSL, which can also return negative values to indicate an error. ) */
 OPENSSL_EXPORT int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig,
-                                 size_t *sig_len, const uint8_t *data,
-                                 size_t data_len);
+                                 size_t *sig_len, const uint8_t *digest,
+                                 size_t digest_len);
+
+/* EVP_PKEY_sign_message signs |data_len| bytes from |data| using |ctx|. If
+ * |sig| is NULL, the maximum size of the signature is written to |out_sig_len|.
+ * Otherwise, |*sig_len| must contain the number of bytes of space available at
+ * |sig|. If sufficient, the signature will be written to |sig| and |*sig_len|
+ * updated with the true length.
+ *
+ * WARNING: Setting |sig| to NULL only gives the maximum size of the
+ * signature. The actual signature may be smaller.
+ *
+ * It returns one on success or zero on error. (Note: this differs from
+ * OpenSSL, which can also return negative values to indicate an error. ) */
+OPENSSL_EXPORT int EVP_PKEY_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                         size_t *sig_len, const uint8_t *data,
+                                         size_t data_len);
 
 /* EVP_PKEY_verify_init initialises an |EVP_PKEY_CTX| for a signature
  * verification operation. It should be called before |EVP_PKEY_verify|.
@@ -431,12 +458,23 @@ OPENSSL_EXPORT int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig,
 OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid
- * signature for |data|.
+ * signature for |digest|.
+ *
+ * This function expects a pre-hashed input and will fail for signature
+ * algorithms which do not support this. Use |EVP_PKEY_verify_message| or
+ * |EVP_DigestVerifyInit| to verify a signature given the unhashed input.
  *
  * It returns one on success or zero on error. */
 OPENSSL_EXPORT int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
-                                   size_t sig_len, const uint8_t *data,
-                                   size_t data_len);
+                                   size_t sig_len, const uint8_t *digest,
+                                   size_t digest_len);
+
+/* EVP_PKEY_verify_message verifies that |sig_len| bytes from |sig| are a valid
+ * signature for |data|. It returns one on success or zero on error. */
+OPENSSL_EXPORT int EVP_PKEY_verify_message(EVP_PKEY_CTX *ctx,
+                                           const uint8_t *sig, size_t sig_len,
+                                           const uint8_t *data,
+                                           size_t data_len);
 
 /* EVP_PKEY_encrypt_init initialises an |EVP_PKEY_CTX| for an encryption
  * operation. It should be called before |EVP_PKEY_encrypt|.

@@ -201,16 +201,24 @@ static bool TestEVP(FileTest *t, void *arg) {
 
   int (*key_op_init)(EVP_PKEY_CTX *ctx);
   int (*key_op)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
-                const uint8_t *in, size_t in_len);
+                const uint8_t *in, size_t in_len) = nullptr;
+  int (*verify_op)(EVP_PKEY_CTX * ctx, const uint8_t *sig, size_t sig_len,
+                   const uint8_t *in, size_t in_len) = nullptr;
   if (t->GetType() == "Decrypt") {
     key_op_init = EVP_PKEY_decrypt_init;
     key_op = EVP_PKEY_decrypt;
   } else if (t->GetType() == "Sign") {
     key_op_init = EVP_PKEY_sign_init;
     key_op = EVP_PKEY_sign;
+  } else if (t->GetType() == "SignMessage") {
+    key_op_init = EVP_PKEY_sign_init;
+    key_op = EVP_PKEY_sign_message;
   } else if (t->GetType() == "Verify") {
     key_op_init = EVP_PKEY_verify_init;
-    key_op = nullptr;  // EVP_PKEY_verify is handled differently.
+    verify_op = EVP_PKEY_verify;
+  } else if (t->GetType() == "VerifyMessage") {
+    key_op_init = EVP_PKEY_verify_init;
+    verify_op = EVP_PKEY_verify_message;
   } else {
     t->PrintLine("Unknown test '%s'", t->GetType().c_str());
     return false;
@@ -261,11 +269,11 @@ static bool TestEVP(FileTest *t, void *arg) {
     }
   }
 
-  if (t->GetType() == "Verify") {
+  if (verify_op != nullptr) {
     std::vector<uint8_t> output;
     if (!t->GetBytes(&output, "Output") ||
-        !EVP_PKEY_verify(ctx.get(), output.data(), output.size(), input.data(),
-                         input.size())) {
+        !verify_op(ctx.get(), output.data(), output.size(), input.data(),
+                   input.size())) {
       // ECDSA sometimes doesn't push an error code. Push one on the error queue
       // so it's distinguishable from other errors.
       OPENSSL_PUT_ERROR(USER, ERR_R_EVP_LIB);
