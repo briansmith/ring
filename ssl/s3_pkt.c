@@ -190,6 +190,7 @@ again:
 
 int ssl3_write_app_data(SSL *ssl, const uint8_t *buf, int len) {
   assert(ssl_can_write(ssl));
+  assert(ssl->s3->aead_write_ctx != NULL);
 
   unsigned tot, n, nw;
 
@@ -326,6 +327,7 @@ static int consume_record(SSL *ssl, uint8_t *out, int len, int peek) {
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek) {
   assert(ssl_can_read(ssl));
+  assert(ssl->s3->aead_read_ctx != NULL);
   *out_got_handshake = 0;
 
   ssl->method->release_current_message(ssl, 0 /* don't free buffer */);
