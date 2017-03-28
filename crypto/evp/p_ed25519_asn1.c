@@ -23,19 +23,6 @@
 #include "../internal.h"
 
 
-typedef struct {
-  union {
-    uint8_t priv[64];
-    struct {
-      /* Shift the location of the public key to align with where it is in the
-       * private key representation. */
-      uint8_t pad[32];
-      uint8_t value[32];
-    } pub;
-  } key;
-  char has_private;
-} ED25519_KEY;
-
 static void ed25519_free(EVP_PKEY *pkey) {
   if (pkey->pkey.ptr != NULL) {
     ED25519_KEY *key = pkey->pkey.ptr;

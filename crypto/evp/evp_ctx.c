@@ -69,6 +69,7 @@
 static const EVP_PKEY_METHOD *const evp_methods[] = {
   &rsa_pkey_meth,
   &ec_pkey_meth,
+  &ed25519_pkey_meth,
 };
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
@@ -212,7 +213,8 @@ int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
 }
 
 int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
-  if (!ctx || !ctx->pmeth || !ctx->pmeth->sign) {
+  if (ctx == NULL || ctx->pmeth == NULL ||
+      (ctx->pmeth->sign == NULL && ctx->pmeth->sign_message == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
@@ -250,13 +252,18 @@ static const EVP_MD *get_signature_md(EVP_PKEY_CTX *ctx) {
 
 int EVP_PKEY_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
                           const uint8_t *data, size_t data_len) {
-  if (!ctx || !ctx->pmeth || !ctx->pmeth->sign) {
+  if (ctx == NULL || ctx->pmeth == NULL ||
+      (ctx->pmeth->sign == NULL && ctx->pmeth->sign_message == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
   if (ctx->operation != EVP_PKEY_OP_SIGN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
+  }
+
+  if (ctx->pmeth->sign_message != NULL) {
+    return ctx->pmeth->sign_message(ctx, sig, sig_len, data, data_len);
   }
 
   /* Don't bother digesting if we are only sampling the length. */
@@ -274,7 +281,8 @@ int EVP_PKEY_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
 }
 
 int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx) {
-  if (!ctx || !ctx->pmeth || !ctx->pmeth->verify) {
+  if (ctx == NULL || ctx->pmeth == NULL ||
+      (ctx->pmeth->verify == NULL && ctx->pmeth->verify_message == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
@@ -298,13 +306,18 @@ int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t sig_len,
 int EVP_PKEY_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
                             size_t sig_len, const uint8_t *data,
                             size_t data_len) {
-  if (!ctx || !ctx->pmeth || !ctx->pmeth->verify) {
+  if (ctx == NULL || ctx->pmeth == NULL ||
+      (ctx->pmeth->verify == NULL && ctx->pmeth->verify_message == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
   if (ctx->operation != EVP_PKEY_OP_VERIFY) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
+  }
+
+  if (ctx->pmeth->verify_message != NULL) {
+    return ctx->pmeth->verify_message(ctx, sig, sig_len, data, data_len);
   }
 
   uint8_t digest[EVP_MAX_MD_SIZE];
