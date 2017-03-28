@@ -184,6 +184,7 @@ var supportedSignatureAlgorithms = []signatureAlgorithm{
 	signatureECDSAWithP256AndSHA256,
 	signatureRSAPKCS1WithSHA1,
 	signatureECDSAWithSHA1,
+	signatureEd25519,
 }
 
 // SRTP protection profiles (See RFC 5764, section 4.1.2)

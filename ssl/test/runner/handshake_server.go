@@ -17,6 +17,8 @@ import (
 	"io"
 	"math/big"
 	"time"
+
+	"./ed25519"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.
@@ -1095,6 +1097,9 @@ Curves:
 	hs.ellipticOk = supportedCurve && supportedPointFormat
 
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
+	// Ed25519 also uses ECDSA certificates.
+	_, ed25519Ok := hs.cert.PrivateKey.(ed25519.PrivateKey)
+	hs.ecdsaOk = hs.ecdsaOk || ed25519Ok
 
 	// For test purposes, check that the peer never offers a session when
 	// renegotiating.
@@ -1859,13 +1864,13 @@ func (hs *serverHandshakeState) processCertsFromClient(certificates [][]byte) (c
 	}
 
 	if len(certs) > 0 {
-		var pub crypto.PublicKey
-		switch key := certs[0].PublicKey.(type) {
-		case *ecdsa.PublicKey, *rsa.PublicKey:
-			pub = key
+		pub := getCertificatePublicKey(certs[0])
+		switch pub.(type) {
+		case *ecdsa.PublicKey, *rsa.PublicKey, ed25519.PublicKey:
+			break
 		default:
 			c.sendAlert(alertUnsupportedCertificate)
-			return nil, fmt.Errorf("tls: client's certificate contains an unsupported public key of type %T", certs[0].PublicKey)
+			return nil, fmt.Errorf("tls: client's certificate contains an unsupported public key of type %T", pub)
 		}
 		c.peerCertificates = certs
 		return pub, nil

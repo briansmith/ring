@@ -19,6 +19,8 @@ import (
 	"net"
 	"strconv"
 	"time"
+
+	"./ed25519"
 )
 
 type clientHandshakeState struct {
@@ -820,7 +822,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		err = verifyMessage(c.vers, leaf.PublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
+		err = verifyMessage(c.vers, getCertificatePublicKey(leaf), c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		if err != nil {
 			return err
 		}
@@ -1216,12 +1218,13 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 		}
 	}
 
-	switch certs[0].PublicKey.(type) {
-	case *rsa.PublicKey, *ecdsa.PublicKey:
+	publicKey := getCertificatePublicKey(certs[0])
+	switch publicKey.(type) {
+	case *rsa.PublicKey, *ecdsa.PublicKey, ed25519.PublicKey:
 		break
 	default:
 		c.sendAlert(alertUnsupportedCertificate)
-		return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", certs[0].PublicKey)
+		return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", publicKey)
 	}
 
 	c.peerCertificates = certs
@@ -1695,6 +1698,7 @@ findCert:
 				switch {
 				case rsaAvail && x509Cert.PublicKeyAlgorithm == x509.RSA:
 				case ecdsaAvail && x509Cert.PublicKeyAlgorithm == x509.ECDSA:
+				case ecdsaAvail && isEd25519Certificate(x509Cert):
 				default:
 					continue findCert
 				}

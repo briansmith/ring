@@ -17,6 +17,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	"./ed25519"
 )
 
 type signer interface {
@@ -242,6 +244,35 @@ func (r *rsaPSSSigner) verifyMessage(key crypto.PublicKey, msg, sig []byte) erro
 	return rsa.VerifyPSS(rsaKey, r.hash, h.Sum(nil), sig, &pssOptions)
 }
 
+type ed25519Signer struct{}
+
+func (e *ed25519Signer) supportsKey(key crypto.PrivateKey) bool {
+	_, ok := key.(ed25519.PrivateKey)
+	return ok
+}
+
+func (e *ed25519Signer) signMessage(key crypto.PrivateKey, config *Config, msg []byte) ([]byte, error) {
+	privKey, ok := key.(ed25519.PrivateKey)
+	if !ok {
+		return nil, errors.New("invalid key type for Ed25519")
+	}
+
+	return ed25519.Sign(privKey, msg), nil
+}
+
+func (e *ed25519Signer) verifyMessage(key crypto.PublicKey, msg, sig []byte) error {
+	pubKey, ok := key.(ed25519.PublicKey)
+	if !ok {
+		return errors.New("invalid key type for Ed25519")
+	}
+
+	if !ed25519.Verify(pubKey, msg, sig) {
+		return errors.New("invalid Ed25519 signature")
+	}
+
+	return nil
+}
+
 func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm) (signer, error) {
 	// TLS 1.1 and below use legacy signature algorithms.
 	if version < VersionTLS12 {
@@ -291,6 +322,8 @@ func getSigner(version uint16, key interface{}, config *Config, sigAlg signature
 		return &rsaPSSSigner{crypto.SHA384}, nil
 	case signatureRSAPSSWithSHA512:
 		return &rsaPSSSigner{crypto.SHA512}, nil
+	case signatureEd25519:
+		return &ed25519Signer{}, nil
 	}
 
 	return nil, fmt.Errorf("unsupported signature algorithm %04x", sigAlg)

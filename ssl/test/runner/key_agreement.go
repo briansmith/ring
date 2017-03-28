@@ -17,6 +17,7 @@ import (
 	"math/big"
 
 	"./curve25519"
+	"./ed25519"
 )
 
 type keyType int
@@ -378,14 +379,16 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 
 func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, params []byte, sig []byte) error {
 	// The peer's key must match the cipher type.
+	publicKey := getCertificatePublicKey(cert)
 	switch ka.keyType {
 	case keyTypeECDSA:
-		_, ok := cert.PublicKey.(*ecdsa.PublicKey)
-		if !ok {
-			return errors.New("tls: ECDHE ECDSA requires a ECDSA server public key")
+		_, edsaOk := publicKey.(*ecdsa.PublicKey)
+		_, ed25519Ok := publicKey.(ed25519.PublicKey)
+		if !edsaOk && !ed25519Ok {
+			return errors.New("tls: ECDHE ECDSA requires a ECDSA or Ed25519 server public key")
 		}
 	case keyTypeRSA:
-		_, ok := cert.PublicKey.(*rsa.PublicKey)
+		_, ok := publicKey.(*rsa.PublicKey)
 		if !ok {
 			return errors.New("tls: ECDHE RSA requires a RSA server public key")
 		}
@@ -419,7 +422,7 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 	}
 	sig = sig[2:]
 
-	return verifyMessage(ka.version, cert.PublicKey, config, sigAlg, msg, sig)
+	return verifyMessage(ka.version, publicKey, config, sigAlg, msg, sig)
 }
 
 // ecdheKeyAgreement implements a TLS key agreement where the server

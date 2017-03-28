@@ -66,17 +66,30 @@ func GenerateKey(rand io.Reader) (publicKey PublicKey, privateKey PrivateKey, er
 		rand = cryptorand.Reader
 	}
 
-	privateKey = make([]byte, PrivateKeySize)
-	publicKey = make([]byte, PublicKeySize)
-	_, err = io.ReadFull(rand, privateKey[:32])
+	var seed [32]byte
+	_, err = io.ReadFull(rand, seed[:])
 	if err != nil {
 		return nil, nil, err
 	}
 
-	digest := sha512.Sum512(privateKey[:32])
+	publicKey, privateKey = NewKeyPairFromSeed(seed[:])
+	return publicKey, privateKey, nil
+}
+
+// NewKeyPairFromSeed calculates a public and private key from a 32-byte
+// Ed25519 seed.
+func NewKeyPairFromSeed(seed []byte) (publicKey PublicKey, privateKey PrivateKey) {
+	if len(seed) != 32 {
+		panic("Invalid seed length.")
+	}
+
+	digest := sha512.Sum512(seed)
 	digest[0] &= 248
 	digest[31] &= 127
 	digest[31] |= 64
+
+	privateKey = make([]byte, PrivateKeySize)
+	publicKey = make([]byte, PublicKeySize)
 
 	var A edwards25519.ExtendedGroupElement
 	var hBytes [32]byte
@@ -85,10 +98,11 @@ func GenerateKey(rand io.Reader) (publicKey PublicKey, privateKey PrivateKey, er
 	var publicKeyBytes [32]byte
 	A.ToBytes(&publicKeyBytes)
 
+	copy(privateKey, seed[:])
 	copy(privateKey[32:], publicKeyBytes[:])
 	copy(publicKey, publicKeyBytes[:])
 
-	return publicKey, privateKey, nil
+	return publicKey, privateKey
 }
 
 // Sign signs the message with privateKey and returns a signature. It will
