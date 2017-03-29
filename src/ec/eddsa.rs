@@ -78,10 +78,11 @@ impl<'a> Ed25519KeyPair {
         let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
                                                              public_key));
         { // borrow pair;
-            let mut public_key_check = [0; PUBLIC_KEY_LEN];
+            let (private_key, public_key) =
+                pair.private_public.split_at(SEED_LEN);
             let private_key =
-                slice_as_array_ref!(&pair.private_public[..SCALAR_LEN],
-                                    SCALAR_LEN).unwrap();
+                slice_as_array_ref!(private_key, SEED_LEN).unwrap();
+            let mut public_key_check = [0; PUBLIC_KEY_LEN];
             public_from_private(private_key, &mut public_key_check);
             if public_key != public_key_check {
                 return Err(error::Unspecified);
@@ -99,9 +100,11 @@ impl<'a> Ed25519KeyPair {
             return Err(error::Unspecified);
         }
         let mut pair = Ed25519KeyPair { private_public: [0; KEY_PAIR_LEN] };
-        for i in 0..SCALAR_LEN {
-            pair.private_public[i] = private_key[i];
-            pair.private_public[32 + i] = public_key[i];
+        {
+            let (pair_private_key, pair_public_key) =
+                pair.private_public.split_at_mut(SEED_LEN);
+            pair_private_key.copy_from_slice(private_key);
+            pair_public_key.copy_from_slice(public_key);
         }
         Ok(pair)
     }
