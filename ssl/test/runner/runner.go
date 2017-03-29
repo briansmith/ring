@@ -10295,10 +10295,11 @@ func addTLS13HandshakeTests() {
 		},
 	})
 
-	// Test that we fail on early data with Channel ID.
+	// Test that the client offering 0-RTT and Channel ID forbids the server
+	// from accepting both.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "TLS13-EarlyData-ChannelID-Client",
+		name:     "TLS13-EarlyDataChannelID-AcceptBoth-Client",
 		config: Config{
 			MaxVersion:       VersionTLS13,
 			MaxEarlyDataSize: 16384,
@@ -10315,14 +10316,57 @@ func addTLS13HandshakeTests() {
 		},
 	})
 
+	// Test that the client offering Channel ID and 0-RTT allows the server
+	// to decline 0-RTT.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyDataChannelID-AcceptChannelID-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			RequestChannelID: true,
+			Bugs: ProtocolBugs{
+				AlwaysRejectEarlyData: true,
+			},
+		},
+		resumeSession:   true,
+		expectChannelID: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+			"-expect-reject-early-data",
+		},
+	})
+
+	// Test that the client offering Channel ID and 0-RTT allows the server
+	// to decline Channel ID.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyDataChannelID-AcceptEarlyData-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+			"-expect-accept-early-data",
+		},
+	})
+
+	// Test that the server supporting Channel ID and 0-RTT declines 0-RTT
+	// if it would negotiate Channel ID.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "TLS13-EarlyData-ChannelID-Server",
+		name:     "TLS13-EarlyDataChannelID-OfferBoth-Server",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			ChannelID:  channelIDKey,
 			Bugs: ProtocolBugs{
-				SendEarlyData:           [][]byte{{}},
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
 				ExpectEarlyDataAccepted: false,
 			},
 		},
@@ -10333,6 +10377,28 @@ func addTLS13HandshakeTests() {
 			"-expect-reject-early-data",
 			"-expect-channel-id",
 			base64.StdEncoding.EncodeToString(channelIDBytes),
+		},
+	})
+
+	// Test that the server supporting Channel ID and 0-RTT accepts 0-RTT
+	// if not offered Channel ID.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-EarlyDataChannelID-OfferEarlyData-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+				ExpectEarlyDataAccepted: true,
+				ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
+			},
+		},
+		resumeSession:   true,
+		expectChannelID: false,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-accept-early-data",
+			"-enable-channel-id",
 		},
 	})
 
