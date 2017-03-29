@@ -280,7 +280,7 @@ rayon = "0.6"
 
 [features]
 # These features are documented in the top-level module's documentation.
-default = ["use_heap", "dev_urandom_fallback", "bn_tests"]
+default = ["use_heap", "dev_urandom_fallback"]
 dev_urandom_fallback = []
 internal_benches = []
 rsa_signing = []
