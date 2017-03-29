@@ -134,7 +134,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
-        if public_key.len() != PUBLIC_KEY_LEN || signature.len() != SIGNATURE_LEN {
+        if public_key.len() != PUBLIC_KEY_LEN ||
+           signature.len() != SIGNATURE_LEN {
             return Err(error::Unspecified);
         }
         let msg = msg.as_slice_less_safe();
