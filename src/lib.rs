@@ -189,6 +189,7 @@ mod private {
 #[cfg(test)]
 mod tests {
     #[cfg(all(feature = "use_heap",
+              feature = "bn_tests",
               not(any(target_os = "macos", target_os = "ios"))))]
     bssl_test!(test_bn, bssl_bn_test_main);
 

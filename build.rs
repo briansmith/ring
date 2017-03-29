@@ -482,6 +482,9 @@ fn build_c_code(target: &Target, out_dir: &Path) {
 
     let test_srcs = RING_TEST_SRCS.iter()
         .map(PathBuf::from)
+        // Allow the C++-based tests to be disabled, fixes musl-g++ issue
+        .filter(|p| cfg!(feature = "bn_tests") ||
+            p.extension().unwrap().to_str().unwrap() != "cc")
         // Avoid the libstdc++ vs libc++ issue for macOS/iOS by just avoiding
         // all the C++-based tests.
         .filter(|p| !(target.os() == "macos" || target.os == "ios") ||

@@ -280,13 +280,14 @@ rayon = "0.6"
 
 [features]
 # These features are documented in the top-level module's documentation.
-default = ["use_heap", "dev_urandom_fallback"]
+default = ["use_heap", "dev_urandom_fallback", "bn_tests"]
 dev_urandom_fallback = []
 internal_benches = []
 rsa_signing = []
 slow_tests = []
 test_logging = []
 use_heap = []
+bn_tests = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
