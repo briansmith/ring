@@ -28,7 +28,7 @@ pub struct Ed25519KeyPair {
 /// The raw bytes of the Ed25519 key pair, for serialization.
 pub struct Ed25519KeyPairBytes {
     /// Private key bytes.
-    pub private_key: [u8; PRIVATE_KEY_LEN],
+    pub private_key: [u8; SEED_LEN],
 
     /// Public key bytes.
     pub public_key: [u8; PUBLIC_KEY_LEN],
@@ -51,7 +51,7 @@ impl<'a> Ed25519KeyPair {
             -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
                       error::Unspecified> {
         let mut bytes = Ed25519KeyPairBytes {
-            private_key: [0; PRIVATE_KEY_LEN],
+            private_key: [0; SEED_LEN],
             public_key: [0; PUBLIC_KEY_LEN],
         };
         try!(rng.fill(&mut bytes.private_key));
@@ -92,7 +92,7 @@ impl<'a> Ed25519KeyPair {
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
                             -> Result<Ed25519KeyPair, error::Unspecified> {
-        if private_key.len() != PRIVATE_KEY_LEN {
+        if private_key.len() != SEED_LEN {
             return Err(error::Unspecified);
         }
         if public_key.len() != PUBLIC_KEY_LEN {
@@ -108,7 +108,7 @@ impl<'a> Ed25519KeyPair {
 
     /// Returns a reference to the little-endian-encoded public key bytes.
     pub fn public_key_bytes(&'a self) -> &'a [u8] {
-        &self.private_public[PRIVATE_KEY_LEN..]
+        &self.private_public[SEED_LEN..]
     }
 
     /// Returns the signature of the message `msg`.
@@ -202,9 +202,8 @@ const ELEM_LIMBS: usize = 10;
 type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_LEN;
 
-const PRIVATE_KEY_LEN: usize = SCALAR_LEN;
-const KEY_PAIR_LEN: usize = PUBLIC_KEY_LEN + PRIVATE_KEY_LEN;
-const SIGNATURE_LEN: usize = PUBLIC_KEY_LEN + PRIVATE_KEY_LEN;
+const KEY_PAIR_LEN: usize = SEED_LEN + PUBLIC_KEY_LEN;
+const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
 const SCALAR_LEN: usize = 32;
 const ELEM_LEN: usize = 32;
 
