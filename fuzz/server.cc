@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include <openssl/bio.h>
 #include <openssl/dh.h>
@@ -195,7 +196,7 @@ static const uint8_t kRSAPrivateKeyDER[] = {
 };
 
 static const uint8_t kOCSPResponse[] = {0x01, 0x02, 0x03, 0x04};
-static const uint8_t kSCT[] = {0x05, 0x06, 0x07, 0x08};
+static const uint8_t kSCT[] = {0x00, 0x06, 0x00, 0x04, 0x05, 0x06, 0x07, 0x08};
 
 static int ALPNSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *out_len,
                               const uint8_t *in, unsigned in_len, void *arg) {
@@ -235,8 +236,10 @@ struct GlobalState {
     SSL_CTX_use_certificate(ctx, cert);
     X509_free(cert);
 
-    SSL_CTX_set_ocsp_response(ctx, kOCSPResponse, sizeof(kOCSPResponse));
-    SSL_CTX_set_signed_cert_timestamp_list(ctx, kSCT, sizeof(kSCT));
+    if (!SSL_CTX_set_ocsp_response(ctx, kOCSPResponse, sizeof(kOCSPResponse)) ||
+        !SSL_CTX_set_signed_cert_timestamp_list(ctx, kSCT, sizeof(kSCT))) {
+      abort();
+    }
 
     SSL_CTX_set_alpn_select_cb(ctx, ALPNSelectCallback, nullptr);
     SSL_CTX_set_next_protos_advertised_cb(ctx, NPNAdvertiseCallback, nullptr);
