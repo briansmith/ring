@@ -49,7 +49,8 @@ macro_rules! suite_b_curve {
                                 private_key: &ec::PrivateKey)
                                 -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::public_from_private($private_key_ops,
-                                                         public_out, private_key)
+                                                          public_out,
+                                                          private_key)
         }
     }
 }
