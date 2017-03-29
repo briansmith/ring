@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2017 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,15 @@ use {error, init, rand};
 use untrusted;
 
 /// A key agreement algorithm.
+// XXX: This doesn't seem like the best place for this.
 pub struct AgreementAlgorithmImpl {
+    pub curve: &'static Curve,
+    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey,
+                 peer_public_key: untrusted::Input)
+                 -> Result<(), error::Unspecified>,
+}
+
+pub struct Curve {
     pub public_key_len: usize,
     pub elem_and_scalar_len: usize,
 
@@ -27,10 +35,6 @@ pub struct AgreementAlgorithmImpl {
 
     public_from_private: fn(public_out: &mut [u8], private_key: &PrivateKey)
                             -> Result<(), error::Unspecified>,
-
-    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey,
-                 peer_public_key: untrusted::Input)
-                 -> Result<(), error::Unspecified>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -45,19 +49,18 @@ pub struct PrivateKey {
 }
 
 impl<'a> PrivateKey {
-    pub fn generate(alg: &AgreementAlgorithmImpl, rng: &rand::SecureRandom)
+    pub fn generate(curve: &Curve, rng: &rand::SecureRandom)
                     -> Result<PrivateKey, error::Unspecified> {
         init::init_once();
-        (alg.generate_private_key)(rng)
+        (curve.generate_private_key)(rng)
     }
 
     /// Panics if `test_vector` is not the correct length.
     #[cfg(test)]
-    pub fn from_test_vector(alg: &AgreementAlgorithmImpl, test_vector: &[u8])
-                            -> PrivateKey {
+    pub fn from_test_vector(curve: &Curve, test_vector: &[u8]) -> PrivateKey {
         init::init_once();
         let mut bytes = [0; SCALAR_MAX_BYTES];
-        bytes[..alg.elem_and_scalar_len].copy_from_slice(test_vector);
+        bytes[..curve.elem_and_scalar_len].copy_from_slice(test_vector);
         PrivateKey { bytes: bytes }
     }
 
@@ -65,13 +68,12 @@ impl<'a> PrivateKey {
     pub fn bytes(&'a self) -> &'a [u8] { &self.bytes[..] }
 
     #[inline(always)]
-    pub fn compute_public_key(&self, alg: &AgreementAlgorithmImpl,
-                              out: &mut [u8])
+    pub fn compute_public_key(&self, curve: &Curve, out: &mut [u8])
                               -> Result<(), error::Unspecified> {
-        if out.len() != alg.public_key_len {
+        if out.len() != curve.public_key_len {
             return Err(error::Unspecified);
         }
-        (alg.public_from_private)(out, self)
+        (curve.public_from_private)(out, self)
     }
 }
 

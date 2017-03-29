@@ -117,7 +117,7 @@ impl<'a> EphemeralPrivateKey {
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
         Ok(EphemeralPrivateKey {
-            private_key: try!(ec::PrivateKey::generate(&alg.i, rng)),
+            private_key: try!(ec::PrivateKey::generate(&alg.i.curve, rng)),
             alg: alg,
         })
     }
@@ -126,7 +126,8 @@ impl<'a> EphemeralPrivateKey {
     pub fn from_test_vector(alg: &'static Algorithm, test_vector: &[u8])
                             -> EphemeralPrivateKey {
         EphemeralPrivateKey {
-            private_key: ec::PrivateKey::from_test_vector(&alg.i, test_vector),
+            private_key:
+                ec::PrivateKey::from_test_vector(&alg.i.curve, test_vector),
             alg: alg,
         }
     }
@@ -137,7 +138,7 @@ impl<'a> EphemeralPrivateKey {
 
     /// The size in bytes of the encoded public key.
     #[inline(always)]
-    pub fn public_key_len(&self) -> usize { self.alg.i.public_key_len }
+    pub fn public_key_len(&self) -> usize { self.alg.i.curve.public_key_len }
 
     /// Computes the public key from the private key's value and fills `out`
     /// with the public point encoded in the standard form for the algorithm.
@@ -151,7 +152,7 @@ impl<'a> EphemeralPrivateKey {
         // Obviously, this only handles the part of Step 1 between the private
         // key generation and the sending of the public key to the peer. `out`
         // is what should be sent to the peer.
-        self.private_key.compute_public_key(&self.alg.i, out)
+        self.private_key.compute_public_key(&self.alg.i.curve, out)
     }
 
     #[cfg(test)]
@@ -193,9 +194,11 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key_alg.i.id != my_private_key.alg.i.id {
+    if peer_public_key_alg.i.curve.id != my_private_key.alg.i.curve.id {
         return Err(error_value);
     }
+
+    let alg = &my_private_key.alg.i;
 
     // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
     // to the caller.
@@ -209,14 +212,14 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
 
     let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
     let shared_key =
-        &mut shared_key[..my_private_key.alg.i.elem_and_scalar_len];
+        &mut shared_key[..alg.curve.elem_and_scalar_len];
 
     // NSA Guide Steps 2, 3, and 4.
     //
     // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
     // that doesn't meet the NSA requirement to "zeroize."
-    try!((my_private_key.alg.i.ecdh)(shared_key, &my_private_key.private_key,
-                                     peer_public_key).map_err(|_| error_value));
+    try!((alg.ecdh)(shared_key, &my_private_key.private_key, peer_public_key)
+            .map_err(|_| error_value));
 
     // NSA Guide Steps 5 and 6.
     //

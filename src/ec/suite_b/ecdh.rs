@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2017 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,7 @@
 
 //! ECDH key agreement using the P-256 and P-384 curves.
 
-use {agreement, ec, error, rand};
+use {agreement, ec, error};
 use super::ops::*;
 use super::private_key::*;
 use super::public_key::*;
@@ -22,9 +22,8 @@ use untrusted;
 
 /// A key agreement algorithm.
 macro_rules! ecdh {
-    ( $NAME:ident, $bits:expr, $name_str:expr, $private_key_ops:expr,
-      $public_key_ops:expr, $id:expr, $ecdh:ident,
-      $generate_private_key:ident, $public_from_private:ident) =>
+    ( $NAME:ident, $curve:expr, $name_str:expr, $private_key_ops:expr,
+      $public_key_ops:expr, $ecdh:ident ) =>
     {
         #[doc="ECDH using the NSA Suite B"]
         #[doc=$name_str]
@@ -45,11 +44,7 @@ macro_rules! ecdh {
         ///     https://github.com/briansmith/ring/blob/master/doc/ecdh.pdf
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
             i: ec::AgreementAlgorithmImpl {
-                public_key_len: 1 + (2 * (($bits + 7) / 8)),
-                elem_and_scalar_len: ($bits + 7) / 8,
-                id: $id,
-                generate_private_key: $generate_private_key,
-                public_from_private: $public_from_private,
+                curve: $curve,
                 ecdh: $ecdh,
             },
         };
@@ -60,27 +55,14 @@ macro_rules! ecdh {
             ecdh($private_key_ops, $public_key_ops, out, my_private_key,
                  peer_public_key)
         }
-
-        fn $generate_private_key(rng: &rand::SecureRandom)
-                                 -> Result<ec::PrivateKey, error::Unspecified> {
-            generate_private_key($private_key_ops, rng)
-        }
-
-        fn $public_from_private(public_out: &mut [u8],
-                                private_key: &ec::PrivateKey)
-                                -> Result<(), error::Unspecified> {
-            public_from_private($private_key_ops, public_out, private_key)
-        }
     }
 }
 
-ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &p256::PRIVATE_KEY_OPS,
-      &p256::PUBLIC_KEY_OPS, ec::CurveID::P256, p256_ecdh,
-      p256_generate_private_key, p256_public_from_private);
+ecdh!(ECDH_P256, &ec::suite_b::curve::P256, "P-256 (secp256r1)",
+      &p256::PRIVATE_KEY_OPS, &p256::PUBLIC_KEY_OPS, p256_ecdh);
 
-ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &p384::PRIVATE_KEY_OPS,
-      &p384::PUBLIC_KEY_OPS, ec::CurveID::P384, p384_ecdh,
-      p384_generate_private_key, p384_public_from_private);
+ecdh!(ECDH_P384, &ec::suite_b::curve::P384, "P-384 (secp384r1)",
+      &p384::PRIVATE_KEY_OPS, &p384::PUBLIC_KEY_OPS, p384_ecdh);
 
 
 fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,

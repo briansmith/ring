@@ -18,6 +18,14 @@ use {agreement, bssl, c, ec, error, rand};
 use untrusted;
 
 
+static CURVE25519: ec::Curve = ec::Curve {
+    public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
+    elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
+    id: ec::CurveID::Curve25519,
+    generate_private_key: x25519_generate_private_key,
+    public_from_private: x25519_public_from_private,
+};
+
 /// X25519 (ECDH using Curve25519) as described in [RFC 7748].
 ///
 /// Everything is as described in RFC 7748. Key agreement will fail if the
@@ -28,11 +36,7 @@ use untrusted;
 /// [RFC 7748 section 6.1]: https://tools.ietf.org/html/rfc7748#section-6.1
 pub static X25519: agreement::Algorithm = agreement::Algorithm {
     i: ec::AgreementAlgorithmImpl {
-        public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
-        elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
-        id: ec::CurveID::Curve25519,
-        generate_private_key: x25519_generate_private_key,
-        public_from_private: x25519_public_from_private,
+        curve: &CURVE25519,
         ecdh: x25519_ecdh,
     },
 };
