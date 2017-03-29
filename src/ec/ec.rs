@@ -44,19 +44,14 @@ impl<'a> PrivateKey {
         (alg.generate_private_key)(rng)
     }
 
+    /// Panics if `test_vector` is not the correct length.
     #[cfg(test)]
     pub fn from_test_vector(alg: &AgreementAlgorithmImpl, test_vector: &[u8])
                             -> PrivateKey {
         init::init_once();
-        let mut result = PrivateKey { bytes: [0; SCALAR_MAX_BYTES] };
-        {
-            let private_key_bytes = &mut result.bytes[..alg.elem_and_scalar_len];
-            assert_eq!(test_vector.len(), private_key_bytes.len());
-            for i in 0..private_key_bytes.len() {
-                private_key_bytes[i] = test_vector[i];
-            }
-        }
-        result
+        let mut bytes = [0; SCALAR_MAX_BYTES];
+        bytes[..alg.elem_and_scalar_len].copy_from_slice(test_vector);
+        PrivateKey { bytes: bytes }
     }
 
     #[cfg(test)]
