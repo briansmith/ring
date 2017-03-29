@@ -101,8 +101,11 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   return 1;
 }
 
-int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
-                            EVP_PKEY *pkey) {
+int x509_digest_verify_init(EVP_PKEY_CTX *ctx, X509_ALGOR *sigalg) {
+  if (!EVP_PKEY_verify_init(ctx)) {
+    return 0;
+  }
+
   /* Convert the signature OID into digest and public key OIDs. */
   int sigalg_nid = OBJ_obj2nid(sigalg->algorithm);
   int digest_nid, pkey_nid;
@@ -112,6 +115,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
   }
 
   /* Check the public key OID matches the public key type. */
+  EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx);
   if (pkey_nid != EVP_PKEY_id(pkey)) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
@@ -119,11 +123,18 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
 
   /* NID_undef signals that there are custom parameters to set. */
   if (digest_nid == NID_undef) {
-    if (sigalg_nid != NID_rsassaPss) {
-      OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM);
-      return 0;
+    if (sigalg_nid == NID_rsassaPss) {
+      return x509_rsa_pss_to_ctx(ctx, sigalg);
     }
-    return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
+    if (sigalg_nid == NID_Ed25519) {
+      if (sigalg->parameter != NULL) {
+        OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PARAMETER);
+        return 0;
+      }
+      return 1; /* Nothing to configure. */
+    }
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM);
+    return 0;
   }
 
   /* Otherwise, initialize with the digest from the OID. */
@@ -133,5 +144,5 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
     return 0;
   }
 
-  return EVP_DigestVerifyInit(ctx, NULL, digest, NULL, pkey);
+  return EVP_PKEY_CTX_set_signature_md(ctx, digest);
 }

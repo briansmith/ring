@@ -85,10 +85,10 @@ static const nid_triple kTriples[] = {
     {NID_ecdsa_with_SHA256, NID_sha256, NID_X9_62_id_ecPublicKey},
     {NID_ecdsa_with_SHA384, NID_sha384, NID_X9_62_id_ecPublicKey},
     {NID_ecdsa_with_SHA512, NID_sha512, NID_X9_62_id_ecPublicKey},
-    /* For PSS the digest algorithm can vary and depends on the included
-     * AlgorithmIdentifier. The digest "undef" indicates the public key method
-     * should handle this explicitly. */
+    /* The following algorithms use more complex (or simpler) parameters. The
+     * digest "undef" indicates the caller should handle this explicitly. */
     {NID_rsassaPss, NID_undef, NID_rsaEncryption},
+    {NID_Ed25519, NID_undef, NID_Ed25519},
 };
 
 int OBJ_find_sigid_algs(int sign_nid, int *out_digest_nid, int *out_pkey_nid) {

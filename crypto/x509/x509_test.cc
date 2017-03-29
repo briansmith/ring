@@ -389,6 +389,35 @@ static const char kUnknownCriticalCRL2[] =
     "GKljn9weIYiMPV/BzGymwfv2EW0preLwtyJNJPaxbdin6Jc=\n"
     "-----END X509 CRL-----\n";
 
+// kEd25519Cert is a self-signed Ed25519 certificate.
+static const char kEd25519Cert[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBkTCCAUOgAwIBAgIJAJwooam0UCDmMAUGAytlcDBFMQswCQYDVQQGEwJBVTET\n"
+    "MBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJuZXQgV2lkZ2l0cyBQ\n"
+    "dHkgTHRkMB4XDTE0MDQyMzIzMjE1N1oXDTE0MDUyMzIzMjE1N1owRTELMAkGA1UE\n"
+    "BhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdp\n"
+    "ZGdpdHMgUHR5IEx0ZDAqMAUGAytlcAMhANdamAGCsQq31Uv+08lkBzoO4XLz2qYj\n"
+    "Ja8CGmj3B1Eao1AwTjAdBgNVHQ4EFgQUoux7eV+fJK2v3ah6QPU/lj1/+7UwHwYD\n"
+    "VR0jBBgwFoAUoux7eV+fJK2v3ah6QPU/lj1/+7UwDAYDVR0TBAUwAwEB/zAFBgMr\n"
+    "ZXADQQBuCzqji8VP9xU8mHEMjXGChX7YP5J664UyVKHKH9Z1u4wEbB8dJ3ScaWSL\n"
+    "r+VHVKUhsrvcdCelnXRrrSD7xWAL\n"
+    "-----END CERTIFICATE-----\n";
+
+// kEd25519CertNull is an invalid self-signed Ed25519 with an explicit NULL in
+// the signature algorithm.
+static const char kEd25519CertNull[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBlTCCAUWgAwIBAgIJAJwooam0UCDmMAcGAytlcAUAMEUxCzAJBgNVBAYTAkFV\n"
+    "MRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz\n"
+    "IFB0eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQswCQYD\n"
+    "VQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJuZXQg\n"
+    "V2lkZ2l0cyBQdHkgTHRkMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPa\n"
+    "piMlrwIaaPcHURqjUDBOMB0GA1UdDgQWBBSi7Ht5X58kra/dqHpA9T+WPX/7tTAf\n"
+    "BgNVHSMEGDAWgBSi7Ht5X58kra/dqHpA9T+WPX/7tTAMBgNVHRMEBTADAQH/MAcG\n"
+    "AytlcAUAA0EA70uefNocdJohkKPNROKVyBuBD3LXMyvmdTklsaxSRY3PcZdOohlr\n"
+    "recgVPpVS7B+d9g4EwtZXIh4lodTBDHBBw==\n"
+    "-----END CERTIFICATE-----\n";
+
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
 static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
@@ -726,6 +755,49 @@ static bool TestBadPSSParameters() {
 
   if (X509_verify(cert.get(), pkey.get())) {
     fprintf(stderr, "Unexpectedly verified bad certificate.\n");
+    return false;
+  }
+  ERR_clear_error();
+  return true;
+}
+
+static bool TestEd25519() {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kEd25519Cert));
+  if (!cert) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  if (!pkey) {
+    return false;
+  }
+
+  if (!X509_verify(cert.get(), pkey.get())) {
+    fprintf(stderr, "Could not verify certificate.\n");
+    return false;
+  }
+  return true;
+}
+
+static bool TestBadEd25519Parameters() {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kEd25519CertNull));
+  if (!cert) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  if (!pkey) {
+    return false;
+  }
+
+  if (X509_verify(cert.get(), pkey.get())) {
+    fprintf(stderr, "Unexpectedly verified bad certificate.\n");
+    return false;
+  }
+  uint32_t err = ERR_get_error();
+  if (ERR_GET_LIB(err) != ERR_LIB_X509 ||
+      ERR_GET_REASON(err) != X509_R_INVALID_PARAMETER) {
+    fprintf(stderr, "Did not get X509_R_INVALID_PARAMETER as expected.\n");
     return false;
   }
   ERR_clear_error();
@@ -1086,6 +1158,8 @@ int main() {
       !TestCRL() ||
       !TestPSS() ||
       !TestBadPSSParameters() ||
+      !TestEd25519() ||
+      !TestBadEd25519Parameters() ||
       !TestSignCtx() ||
       !TestFromBuffer() ||
       !TestFromBufferTrailingData() ||
