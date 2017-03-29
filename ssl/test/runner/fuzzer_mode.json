@@ -21,6 +21,7 @@
     "*-InvalidSignature-*": "Fuzzer mode always accepts a signature.",
     "*Auth-Verify-RSA-PKCS1-*-TLS13": "Fuzzer mode always accepts a signature.",
     "*Auth-Verify-ECDSA-SHA1-TLS13": "Fuzzer mode always accepts a signature.",
+    "*Auth-Verify-ECDSA-P224-*-TLS13": "Fuzzer mode always accepts a signature.",
     "Verify-*Auth-SignatureType*": "Fuzzer mode always accepts a signature.",
     "ECDSACurveMismatch-Verify-TLS13": "Fuzzer mode always accepts a signature.",
     "InvalidChannelIDSignature-*": "Fuzzer mode always accepts a signature.",
@@ -34,6 +35,12 @@
 
     "Resume-Server-*Binder*": "Fuzzer mode does not check binders.",
 
-    "SkipEarlyData*": "Trial decryption does not work with the NULL cipher."
+    "SkipEarlyData*": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-ChannelID-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-NonZeroRTTSession-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-SkipEndOfEarlyData": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-ALPNMismatch-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-ALPNOmitted1-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-ALPNOmitted2-Server": "Trial decryption does not work with the NULL cipher."
   }
 }
