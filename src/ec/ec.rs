@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {c, error, init, rand};
+use {error, init, rand};
 use untrusted;
 
 /// A key agreement algorithm.
@@ -20,7 +20,7 @@ pub struct AgreementAlgorithmImpl {
     pub public_key_len: usize,
     pub elem_and_scalar_len: usize,
 
-    pub nid: c::int,
+    pub id: CurveID,
 
     generate_private_key: fn(rng: &rand::SecureRandom)
                              -> Result<PrivateKey, error::Unspecified>,
@@ -31,6 +31,13 @@ pub struct AgreementAlgorithmImpl {
     pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey,
                  peer_public_key: untrusted::Input)
                  -> Result<(), error::Unspecified>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum CurveID {
+    Curve25519,
+    P256,
+    P384,
 }
 
 pub struct PrivateKey {

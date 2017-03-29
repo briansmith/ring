@@ -193,7 +193,7 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key_alg.i.nid != my_private_key.alg.i.nid {
+    if peer_public_key_alg.i.id != my_private_key.alg.i.id {
         return Err(error_value);
     }
 

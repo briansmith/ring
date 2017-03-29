@@ -23,7 +23,7 @@ use untrusted;
 /// A key agreement algorithm.
 macro_rules! ecdh {
     ( $NAME:ident, $bits:expr, $name_str:expr, $private_key_ops:expr,
-      $public_key_ops:expr, $nid:expr, $ecdh:ident,
+      $public_key_ops:expr, $id:expr, $ecdh:ident,
       $generate_private_key:ident, $public_from_private:ident) =>
     {
         #[doc="ECDH using the NSA Suite B"]
@@ -47,7 +47,7 @@ macro_rules! ecdh {
             i: ec::AgreementAlgorithmImpl {
                 public_key_len: 1 + (2 * (($bits + 7) / 8)),
                 elem_and_scalar_len: ($bits + 7) / 8,
-                nid: $nid,
+                id: $id,
                 generate_private_key: $generate_private_key,
                 public_from_private: $public_from_private,
                 ecdh: $ecdh,
@@ -75,11 +75,11 @@ macro_rules! ecdh {
 }
 
 ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", &p256::PRIVATE_KEY_OPS,
-      &p256::PUBLIC_KEY_OPS, 415 /*NID_X9_62_prime256v1*/, p256_ecdh,
+      &p256::PUBLIC_KEY_OPS, ec::CurveID::P256, p256_ecdh,
       p256_generate_private_key, p256_public_from_private);
 
 ecdh!(ECDH_P384, 384, "P-384 (secp384r1)", &p384::PRIVATE_KEY_OPS,
-      &p384::PUBLIC_KEY_OPS, 715 /*NID_secp384r1*/, p384_ecdh,
+      &p384::PUBLIC_KEY_OPS, ec::CurveID::P384, p384_ecdh,
       p384_generate_private_key, p384_public_from_private);
 
 

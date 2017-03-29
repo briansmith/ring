@@ -30,7 +30,7 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
     i: ec::AgreementAlgorithmImpl {
         public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
         elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
-        nid: 948 /* NID_X25519 */,
+        id: ec::CurveID::Curve25519,
         generate_private_key: x25519_generate_private_key,
         public_from_private: x25519_public_from_private,
         ecdh: x25519_ecdh,
