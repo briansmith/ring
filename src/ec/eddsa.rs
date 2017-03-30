@@ -162,12 +162,7 @@ fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     unsafe {
         GFp_ed25519_scalar_mask(&mut a_bytes);
     }
-    let mut a = ExtPoint {
-        x: [0; ELEM_LIMBS],
-        y: [0; ELEM_LIMBS],
-        z: [0; ELEM_LIMBS],
-        t: [0; ELEM_LIMBS],
-    };
+    let mut a = ExtPoint::new_at_infinity();
     unsafe {
         GFp_x25519_ge_scalarmult_base(&mut a, &a_bytes);
         GFp_ge_p3_tobytes(out, &a);
@@ -196,6 +191,17 @@ struct ExtPoint {
     y: Elem,
     z: Elem,
     t: Elem,
+}
+
+impl ExtPoint {
+    fn new_at_infinity() -> Self {
+        ExtPoint {
+            x: [0; ELEM_LIMBS],
+            y: [0; ELEM_LIMBS],
+            z: [0; ELEM_LIMBS],
+            t: [0; ELEM_LIMBS],
+        }
+    }
 }
 
 // Keep this in sync with `fe` in curve25519/internal.h.
