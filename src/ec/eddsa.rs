@@ -162,7 +162,7 @@ fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     unsafe {
         GFp_ed25519_scalar_mask(&mut a_bytes);
     }
-    let mut a = Point {
+    let mut a = ExtPoint {
         x: [0; ELEM_LIMBS],
         y: [0; ELEM_LIMBS],
         z: [0; ELEM_LIMBS],
@@ -184,18 +184,18 @@ extern  {
                           signature: *const u8/*[64]*/,
                           public_key: *const u8/*[32]*/) -> c::int;
 
-    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &Point);
-    fn GFp_x25519_ge_scalarmult_base(h: &mut Point, a: &Seed);
+    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
+    fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
 
 }
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
 #[repr(C)]
-struct Point {
-  x: Elem,
-  y: Elem,
-  z: Elem,
-  t: Elem,
+struct ExtPoint {
+    x: Elem,
+    y: Elem,
+    z: Elem,
+    t: Elem,
 }
 
 // Keep this in sync with `fe` in curve25519/internal.h.
