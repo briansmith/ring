@@ -166,7 +166,7 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) {
   SSL_TRANSCRIPT_cleanup(&hs->transcript);
   OPENSSL_free(hs->cookie);
   OPENSSL_free(hs->key_share_bytes);
-  OPENSSL_free(hs->public_key);
+  OPENSSL_free(hs->ecdh_public_key);
   SSL_SESSION_free(hs->new_session);
   OPENSSL_free(hs->peer_sigalgs);
   OPENSSL_free(hs->peer_supported_group_list);

@@ -1014,10 +1014,10 @@ struct ssl_handshake_st {
   uint8_t *key_share_bytes;
   size_t key_share_bytes_len;
 
-  /* public_key, for servers, is the key share to be sent to the client in TLS
-   * 1.3. */
-  uint8_t *public_key;
-  size_t public_key_len;
+  /* ecdh_public_key, for servers, is the key share to be sent to the client in
+   * TLS 1.3. */
+  uint8_t *ecdh_public_key;
+  size_t ecdh_public_key_len;
 
   /* peer_sigalgs are the signature algorithms that the peer supports. These are
    * taken from the contents of the signature algorithms extension for a server

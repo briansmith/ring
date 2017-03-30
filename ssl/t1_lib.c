@@ -2336,7 +2336,8 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
       !SSL_ECDH_CTX_init(&group, group_id) ||
       !SSL_ECDH_CTX_accept(&group, &public_key, &secret, &secret_len, out_alert,
                            CBS_data(&peer_key), CBS_len(&peer_key)) ||
-      !CBB_finish(&public_key, &hs->public_key, &hs->public_key_len)) {
+      !CBB_finish(&public_key, &hs->ecdh_public_key,
+                  &hs->ecdh_public_key_len)) {
     OPENSSL_free(secret);
     SSL_ECDH_CTX_cleanup(&group);
     CBB_cleanup(&public_key);
@@ -2360,14 +2361,15 @@ int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(out, &kse_bytes) ||
       !CBB_add_u16(&kse_bytes, group_id) ||
       !CBB_add_u16_length_prefixed(&kse_bytes, &public_key) ||
-      !CBB_add_bytes(&public_key, hs->public_key, hs->public_key_len) ||
+      !CBB_add_bytes(&public_key, hs->ecdh_public_key,
+                     hs->ecdh_public_key_len) ||
       !CBB_flush(out)) {
     return 0;
   }
 
-  OPENSSL_free(hs->public_key);
-  hs->public_key = NULL;
-  hs->public_key_len = 0;
+  OPENSSL_free(hs->ecdh_public_key);
+  hs->ecdh_public_key = NULL;
+  hs->ecdh_public_key_len = 0;
 
   hs->new_session->group_id = group_id;
   return 1;
