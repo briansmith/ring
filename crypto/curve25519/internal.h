@@ -72,7 +72,7 @@ typedef struct {
 } ge_p2;
 
 
-/* Keep in sync with `Point` in eddsa.rs. */
+/* Keep in sync with `ExtPoint` in eddsa.rs. */
 typedef struct {
   fe X;
   fe Y;
