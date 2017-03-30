@@ -565,9 +565,9 @@ enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
                                                        size_t max_out);
 
 /* ssl_private_key_supports_signature_algorithm returns one if |hs|'s private
- * key supports |signature_algorithm| and zero otherwise. */
+ * key supports |sigalg| and zero otherwise. */
 int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                 uint16_t signature_algorithm);
+                                                 uint16_t sigalg);
 
 /* ssl_public_key_verify verifies that the |signature| is valid for the public
  * key |pkey| and input |in|, using the |signature_algorithm| specified. */
