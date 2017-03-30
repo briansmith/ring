@@ -2095,7 +2095,7 @@ static int ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       session_version < TLS1_3_VERSION ||
       ssl->session->ticket_max_early_data == 0 ||
       hs->received_hello_retry_request ||
-      !ssl->ctx->enable_early_data) {
+      !ssl->cert->enable_early_data) {
     return 1;
   }
 

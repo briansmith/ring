@@ -167,7 +167,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    if (ssl->ctx->enable_early_data) {
+    if (ssl->cert->enable_early_data) {
       session->ticket_max_early_data = kMaxEarlyDataAccepted;
 
       CBB early_data_info;
@@ -355,7 +355,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       hs->new_session = SSL_SESSION_dup(session, SSL_SESSION_DUP_AUTH_ONLY);
 
       if (/* Early data must be acceptable for this ticket. */
-          ssl->ctx->enable_early_data &&
+          ssl->cert->enable_early_data &&
           session->ticket_max_early_data != 0 &&
           /* The client must have offered early data. */
           hs->early_data_offered &&

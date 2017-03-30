@@ -204,6 +204,8 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->sid_ctx_length = cert->sid_ctx_length;
   OPENSSL_memcpy(ret->sid_ctx, cert->sid_ctx, sizeof(ret->sid_ctx));
 
+  ret->enable_early_data = cert->enable_early_data;
+
   return ret;
 
 err:

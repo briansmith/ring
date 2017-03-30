@@ -1371,6 +1371,9 @@ typedef struct cert_st {
    * ticket key. Only sessions with a matching value will be accepted. */
   uint8_t sid_ctx_length;
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+
+  /* If enable_early_data is non-zero, early data can be sent and accepted. */
+  unsigned enable_early_data:1;
 } CERT;
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked

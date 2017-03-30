@@ -704,7 +704,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
     goto err;
   }
 
-  if (have_early_data_info && ssl->ctx->enable_early_data) {
+  if (have_early_data_info && ssl->cert->enable_early_data) {
     if (!CBS_get_u32(&early_data_info, &session->ticket_max_early_data) ||
         CBS_len(&early_data_info) != 0) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);

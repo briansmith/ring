@@ -3095,6 +3095,11 @@ OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
  * fully implemented. */
 OPENSSL_EXPORT void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled);
 
+/* SSL_set_early_data_enabled sets whether early data is allowed to be used
+ * with resumptions using |ssl|. See |SSL_CTX_set_early_data_enabled| for more
+ * information. */
+OPENSSL_EXPORT void SSL_set_early_data_enabled(SSL *ssl, int enabled);
+
 /* SSL_early_data_accepted returns whether early data was accepted on the
  * handshake performed by |ssl|. */
 OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
@@ -4253,10 +4258,6 @@ struct ssl_ctx_st {
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */
   unsigned quiet_shutdown:1;
-
-  /* If enable_early_data is non-zero, early data can be sent and accepted over
-   * new connections. */
-  unsigned enable_early_data:1;
 
   /* ocsp_stapling_enabled is only used by client connections and indicates
    * whether OCSP stapling will be requested. */

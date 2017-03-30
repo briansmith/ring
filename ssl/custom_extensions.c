@@ -69,7 +69,7 @@ static int custom_ext_add_hello(SSL_HANDSHAKE *hs, CBB *extensions) {
     return 1;
   }
 
-  if (ssl->ctx->enable_early_data) {
+  if (ssl->cert->enable_early_data) {
     /* TODO(svaldez): Support Custom Extensions with 0-RTT. For now the caller
      * is expected not to configure both together.
      * https://crbug.com/boringssl/173. */
