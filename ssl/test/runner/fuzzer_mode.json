@@ -36,7 +36,7 @@
     "Resume-Server-*Binder*": "Fuzzer mode does not check binders.",
 
     "SkipEarlyData*": "Trial decryption does not work with the NULL cipher.",
-    "TLS13-EarlyData-ChannelID-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyDataChannelID-OfferBoth-Server": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-NonZeroRTTSession-Server": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-SkipEndOfEarlyData": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-ALPNMismatch-Server": "Trial decryption does not work with the NULL cipher.",
