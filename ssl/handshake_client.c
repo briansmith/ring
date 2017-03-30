@@ -1527,7 +1527,7 @@ static int ssl3_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(ssl) ||
+  if (!ssl_on_certificate_selected(hs) ||
       !ssl3_output_cert_chain(ssl)) {
     return -1;
   }
@@ -1739,7 +1739,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   }
 
   /* Set aside space for the signature. */
-  const size_t max_sig_len = ssl_private_key_max_signature_len(ssl);
+  const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey);
   uint8_t *ptr;
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &ptr, max_sig_len)) {

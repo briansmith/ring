@@ -298,40 +298,6 @@ int ssl_has_private_key(const SSL *ssl) {
   return ssl->cert->privatekey != NULL || ssl->cert->key_method != NULL;
 }
 
-int ssl_is_ecdsa_key_type(int type) {
-  switch (type) {
-    case NID_secp224r1:
-    case NID_X9_62_prime256v1:
-    case NID_secp384r1:
-    case NID_secp521r1:
-      return 1;
-    default:
-      return 0;
-  }
-}
-
-int ssl_private_key_type(SSL *ssl) {
-  if (ssl->cert->key_method != NULL) {
-    return ssl->cert->key_method->type(ssl);
-  }
-  switch (EVP_PKEY_id(ssl->cert->privatekey)) {
-    case EVP_PKEY_RSA:
-      return NID_rsaEncryption;
-    case EVP_PKEY_EC:
-      return EC_GROUP_get_curve_name(
-          EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(ssl->cert->privatekey)));
-    default:
-      return NID_undef;
-  }
-}
-
-size_t ssl_private_key_max_signature_len(SSL *ssl) {
-  if (ssl->cert->key_method != NULL) {
-    return ssl->cert->key_method->max_signature_len(ssl);
-  }
-  return EVP_PKEY_size(ssl->cert->privatekey);
-}
-
 static int is_rsa_pkcs1(const EVP_MD **out_md, uint16_t sigalg) {
   switch (sigalg) {
     case SSL_SIGN_RSA_PKCS1_MD5_SHA1:
@@ -523,18 +489,19 @@ enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
   return ssl->cert->key_method->complete(ssl, out, out_len, max_out);
 }
 
-int ssl_private_key_supports_signature_algorithm(SSL *ssl,
+int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t signature_algorithm) {
+  SSL *const ssl = hs->ssl;
+  int type = EVP_PKEY_id(hs->local_pubkey);
   const EVP_MD *md;
   if (is_rsa_pkcs1(&md, signature_algorithm) &&
       ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
-    return ssl_private_key_type(ssl) == NID_rsaEncryption;
+    return type == EVP_PKEY_RSA;
   }
 
   int curve;
   if (is_ecdsa(&curve, &md, signature_algorithm)) {
-    int type = ssl_private_key_type(ssl);
-    if (!ssl_is_ecdsa_key_type(type)) {
+    if (type != EVP_PKEY_EC) {
       return 0;
     }
 
@@ -543,11 +510,13 @@ int ssl_private_key_supports_signature_algorithm(SSL *ssl,
       return 1;
     }
 
-    return curve != NID_undef && type == curve;
+    return curve != NID_undef &&
+           EC_GROUP_get_curve_name(EC_KEY_get0_group(
+               EVP_PKEY_get0_EC_KEY(hs->local_pubkey))) == curve;
   }
 
   if (is_rsa_pss(&md, signature_algorithm)) {
-    if (ssl_private_key_type(ssl) != NID_rsaEncryption) {
+    if (type != EVP_PKEY_RSA) {
       return 0;
     }
 
@@ -557,7 +526,7 @@ int ssl_private_key_supports_signature_algorithm(SSL *ssl,
      * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too large for
      * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check
      * the size to fall back to another algorithm. */
-    if (ssl_private_key_max_signature_len(ssl) < 2 * EVP_MD_size(md) + 2) {
+    if ((size_t)EVP_PKEY_size(hs->local_pubkey) < 2 * EVP_MD_size(md) + 2) {
       return 0;
     }
 

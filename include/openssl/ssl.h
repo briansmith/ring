@@ -1069,15 +1069,16 @@ enum ssl_private_key_result_t {
 
 /* ssl_private_key_method_st (aka |SSL_PRIVATE_KEY_METHOD|) describes private
  * key hooks. This is used to off-load signing operations to a custom,
- * potentially asynchronous, backend. */
+ * potentially asynchronous, backend. Metadata about the key such as the type
+ * and size are parsed out of the certificate.
+ *
+ * TODO(davidben): This API has a number of legacy hooks. Remove the last
+ * consumer of |sign_digest| and trim it. */
 struct ssl_private_key_method_st {
-  /* type returns the type of the key used by |ssl|. For RSA keys, return
-   * |NID_rsaEncryption|. For ECDSA keys, return |NID_X9_62_prime256v1|,
-   * |NID_secp384r1|, or |NID_secp521r1|, depending on the curve. */
+  /* type is ignored and should be NULL. */
   int (*type)(SSL *ssl);
 
-  /* max_signature_len returns the maximum length of a signature signed by the
-   * key used by |ssl|. This must be a constant value for a given |ssl|. */
+  /* max_signature_len is ignored and should be NULL. */
   size_t (*max_signature_len)(SSL *ssl);
 
   /* sign signs the message |in| in using the specified signature algorithm. On

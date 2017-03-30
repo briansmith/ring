@@ -861,6 +861,25 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
   return 1;
 }
 
+int ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  if (!ssl_has_certificate(ssl)) {
+    /* Nothing to do. */
+    return 1;
+  }
+
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(ssl)) {
+    return 0;
+  }
+
+  CBS leaf;
+  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0), &leaf);
+
+  EVP_PKEY_free(hs->local_pubkey);
+  hs->local_pubkey = ssl_cert_parse_pubkey(&leaf);
+  return hs->local_pubkey != NULL;
+}
+
 static int set_signed_cert_timestamp_list(CERT *cert, const uint8_t *list,
                                            size_t list_len) {
   CBS sct_list;

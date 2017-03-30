@@ -542,21 +542,15 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
 
 /* Private key operations. */
 
+typedef struct ssl_handshake_st SSL_HANDSHAKE;
+
 /* ssl_has_private_key returns one if |ssl| has a private key
  * configured and zero otherwise. */
 int ssl_has_private_key(const SSL *ssl);
 
-/* ssl_is_ecdsa_key_type returns one if |type| is an ECDSA key type and zero
- * otherwise. */
-int ssl_is_ecdsa_key_type(int type);
-
 /* ssl_private_key_* call the corresponding function on the
  * |SSL_PRIVATE_KEY_METHOD| for |ssl|, if configured. Otherwise, they implement
  * the operation with |EVP_PKEY|. */
-
-int ssl_private_key_type(SSL *ssl);
-
-size_t ssl_private_key_max_signature_len(SSL *ssl);
 
 enum ssl_private_key_result_t ssl_private_key_sign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
@@ -570,9 +564,9 @@ enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
                                                        size_t *out_len,
                                                        size_t max_out);
 
-/* ssl_private_key_supports_signature_algorithm returns one if |ssl|'s private
+/* ssl_private_key_supports_signature_algorithm returns one if |hs|'s private
  * key supports |signature_algorithm| and zero otherwise. */
-int ssl_private_key_supports_signature_algorithm(SSL *ssl,
+int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t signature_algorithm);
 
 /* ssl_public_key_verify verifies that the |signature| is valid for the public
@@ -584,8 +578,6 @@ int ssl_public_key_verify(
 
 
 /* Custom extensions */
-
-typedef struct ssl_handshake_st SSL_HANDSHAKE;
 
 /* ssl_custom_extension (a.k.a. SSL_CUSTOM_EXTENSION) is a structure that
  * contains information about custom-extension callbacks. */
@@ -857,6 +849,11 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb);
 int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
                                const CRYPTO_BUFFER *leaf);
 
+/* ssl_on_certificate_selected is called once the certificate has been selected.
+ * It finalizes the certificate and initializes |hs->local_pubkey|. It returns
+ * one on success and zero on error. */
+int ssl_on_certificate_selected(SSL_HANDSHAKE *hs);
+
 
 /* TLS 1.3 key derivation. */
 
@@ -1060,6 +1057,9 @@ struct ssl_handshake_st {
 
   /* hostname, on the server, is the value of the SNI extension. */
   char *hostname;
+
+  /* local_pubkey is the public key we are authenticating as. */
+  EVP_PKEY *local_pubkey;
 
   /* peer_pubkey is the public key parsed from the peer's leaf certificate. */
   EVP_PKEY *peer_pubkey;

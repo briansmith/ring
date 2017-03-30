@@ -286,23 +286,6 @@ static bssl::UniquePtr<STACK_OF(X509_NAME)> DecodeHexX509Names(
   return ret;
 }
 
-static int AsyncPrivateKeyType(SSL *ssl) {
-  EVP_PKEY *key = GetTestState(ssl)->private_key.get();
-  switch (EVP_PKEY_id(key)) {
-    case EVP_PKEY_RSA:
-      return NID_rsaEncryption;
-    case EVP_PKEY_EC:
-      return EC_GROUP_get_curve_name(
-          EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
-    default:
-      return NID_undef;
-  }
-}
-
-static size_t AsyncPrivateKeyMaxSignatureLen(SSL *ssl) {
-  return EVP_PKEY_size(GetTestState(ssl)->private_key.get());
-}
-
 static ssl_private_key_result_t AsyncPrivateKeySign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t signature_algorithm, const uint8_t *in, size_t in_len) {
@@ -436,8 +419,8 @@ static ssl_private_key_result_t AsyncPrivateKeyComplete(
 }
 
 static const SSL_PRIVATE_KEY_METHOD g_async_private_key_method = {
-    AsyncPrivateKeyType,
-    AsyncPrivateKeyMaxSignatureLen,
+    nullptr /* type */,
+    nullptr /* max_signature_len */,
     AsyncPrivateKeySign,
     nullptr /* sign_digest */,
     AsyncPrivateKeyDecrypt,

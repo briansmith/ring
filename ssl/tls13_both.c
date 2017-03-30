@@ -549,7 +549,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
 
   /* Sign the digest. */
   CBB child;
-  const size_t max_sig_len = ssl_private_key_max_signature_len(ssl);
+  const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey);
   uint8_t *sig;
   size_t sig_len;
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
