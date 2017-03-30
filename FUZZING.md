@@ -80,5 +80,5 @@ If both sets of tests pass, refresh the fuzzer corpora with `refresh_ssl_corpora
 
 ```
 cd fuzz
-./refresh_fuzzer_corpora.sh /path/to/fuzzer/mode/build /path/to/non/fuzzer/mode/build
+./refresh_ssl_corpora.sh /path/to/fuzzer/mode/build /path/to/non/fuzzer/mode/build
 ```
