@@ -225,13 +225,6 @@ static int TestDigest(const TestVector *test) {
     if (!CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()))) {
       return false;
     }
-
-    // Test the deprecated static buffer variant, until it's removed.
-    out = test->md.one_shot_func((const uint8_t *)test->input,
-                                 strlen(test->input), NULL);
-    if (!CompareDigest(test, out, EVP_MD_size(test->md.func()))) {
-      return false;
-    }
   }
 
   return true;

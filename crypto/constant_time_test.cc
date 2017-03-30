@@ -62,7 +62,7 @@ static size_t FromBoolS(bool b) {
   return b ? CONSTTIME_TRUE_S : CONSTTIME_FALSE_S;
 }
 
-static uint8_t test_values_8[] = {0, 1, 2, 20, 32, 127, 128, 129, 255};
+static const uint8_t test_values_8[] = {0, 1, 2, 20, 32, 127, 128, 129, 255};
 
 static size_t test_values_s[] = {
     0,

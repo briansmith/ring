@@ -99,12 +99,6 @@ int SHA256_Init(SHA256_CTX *sha) {
 
 uint8_t *SHA224(const uint8_t *data, size_t len, uint8_t *out) {
   SHA256_CTX ctx;
-  static uint8_t buf[SHA224_DIGEST_LENGTH];
-
-  /* TODO(fork): remove this static buffer. */
-  if (out == NULL) {
-    out = buf;
-  }
   SHA224_Init(&ctx);
   SHA224_Update(&ctx, data, len);
   SHA224_Final(out, &ctx);
@@ -114,12 +108,6 @@ uint8_t *SHA224(const uint8_t *data, size_t len, uint8_t *out) {
 
 uint8_t *SHA256(const uint8_t *data, size_t len, uint8_t *out) {
   SHA256_CTX ctx;
-  static uint8_t buf[SHA256_DIGEST_LENGTH];
-
-  /* TODO(fork): remove this static buffer. */
-  if (out == NULL) {
-    out = buf;
-  }
   SHA256_Init(&ctx);
   SHA256_Update(&ctx, data, len);
   SHA256_Final(out, &ctx);
