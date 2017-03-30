@@ -14,6 +14,8 @@
 
 #include <openssl/base.h>
 
+#include <memory>
+
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
@@ -61,44 +63,28 @@ static const struct argument kArguments[] = {
     },
 };
 
+struct FileCloser {
+  void operator()(FILE *file) {
+    fclose(file);
+  }
+};
+
+using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
+
 static bool LoadOCSPResponse(SSL_CTX *ctx, const char *filename) {
-  void *data = NULL;
-  bool ret = false;
-  size_t bytes_read;
-  long length;
-
-  FILE *f = fopen(filename, "rb");
-
-  if (f == NULL ||
-      fseek(f, 0, SEEK_END) != 0) {
-    goto out;
+  ScopedFILE f(fopen(filename, "rb"));
+  std::vector<uint8_t> data;
+  if (f == nullptr ||
+      !ReadAll(&data, f.get())) {
+    fprintf(stderr, "Error reading %s.\n", filename);
+    return false;
   }
 
-  length = ftell(f);
-  if (length < 0) {
-    goto out;
+  if (!SSL_CTX_set_ocsp_response(ctx, data.data(), data.size())) {
+    return false;
   }
 
-  data = malloc(length);
-  if (data == NULL) {
-    goto out;
-  }
-  rewind(f);
-
-  bytes_read = fread(data, 1, length, f);
-  if (ferror(f) != 0 ||
-      bytes_read != (size_t)length ||
-      !SSL_CTX_set_ocsp_response(ctx, (uint8_t*)data, bytes_read)) {
-    goto out;
-  }
-
-  ret = true;
-out:
-  if (f != NULL) {
-      fclose(f);
-  }
-  free(data);
-  return ret;
+  return true;
 }
 
 static bssl::UniquePtr<EVP_PKEY> MakeKeyPairForSelfSignedCert() {

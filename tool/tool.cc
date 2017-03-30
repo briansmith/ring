@@ -52,6 +52,7 @@ static const Tool kTools[] = {
   { "sha256sum", SHA256Sum },
   { "sha384sum", SHA384Sum },
   { "sha512sum", SHA512Sum },
+  { "sign", Sign },
   { "speed", Speed },
   { "", nullptr },
 };
@@ -122,5 +123,10 @@ int main(int argc, char **argv) {
     args.push_back(argv[i]);
   }
 
-  return !tool(args);
+  if (!tool(args)) {
+    ERR_print_errors_fp(stderr);
+    return 1;
+  }
+
+  return 0;
 }
