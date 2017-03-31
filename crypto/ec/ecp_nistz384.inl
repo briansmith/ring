@@ -29,11 +29,10 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]);
 
 
-static BN_ULONG is_infinity(const BN_ULONG x[P384_LIMBS],
-                            const BN_ULONG y[P384_LIMBS]) {
+static BN_ULONG is_zero(const BN_ULONG a[P384_LIMBS]) {
   BN_ULONG acc = 0;
   for (size_t i = 0; i < P384_LIMBS; ++i) {
-    acc |= x[i] | y[i];
+    acc |= a[i];
   }
   return constant_time_is_zero_size_t(acc);
 }
@@ -107,8 +106,8 @@ void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
   const BN_ULONG *in2_y = b->Y;
   const BN_ULONG *in2_z = b->Z;
 
-  BN_ULONG in1infty = is_infinity(a->X, a->Y);
-  BN_ULONG in2infty = is_infinity(b->X, b->Y);
+  BN_ULONG in1infty = is_zero(a->Z);
+  BN_ULONG in2infty = is_zero(b->Z);
 
   elem_sqr_mont(Z2sqr, in2_z); /* Z2^2 */
   elem_sqr_mont(Z1sqr, in1_z); /* Z1^2 */
