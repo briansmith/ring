@@ -775,6 +775,47 @@ mod tests {
     }
 
     #[test]
+    fn p256_point_sum_mixed_test() {
+        extern {
+            fn GFp_nistz256_point_add_affine(
+                r: *mut Limb/*[p256::COMMON_OPS.num_limbs*3]*/,
+                a: *const Limb/*[p256::COMMON_OPS.num_limbs*3]*/,
+                b: *const Limb/*[p256::COMMON_OPS.num_limbs*2]*/);
+        }
+        point_sum_mixed_test(
+            &p256::PRIVATE_KEY_OPS, GFp_nistz256_point_add_affine,
+            "src/ec/suite_b/ops/p256_point_sum_mixed_tests.txt");
+    }
+
+    // XXX: There is no `GFp_nistz384_point_add_affine()`.
+
+    fn point_sum_mixed_test(
+            ops: &PrivateKeyOps,
+            point_add_affine: unsafe extern fn(
+                r: *mut Limb/*[ops.num_limbs*3]*/,
+                a: *const Limb/*[ops.num_limbs*3]*/,
+                b: *const Limb/*[ops.num_limbs*2]*/),
+            file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_jacobian_point(ops, test_case, "a");
+            let b = consume_affine_point(ops, test_case, "b");
+            let r_expected = consume_point(ops, test_case, "r");
+
+            let mut r_actual = Point::new_at_infinity();
+            unsafe {
+                point_add_affine(r_actual.xyz.as_mut_ptr(), a.xyz.as_ptr(),
+                                 b.xy.as_ptr());
+            }
+
+            assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
+
+            Ok(())
+        });
+    }
+
+    #[test]
     fn p256_point_double_test() {
         extern {
             fn GFp_nistz256_point_double(
@@ -900,25 +941,40 @@ mod tests {
     fn consume_jacobian_point(ops: &PrivateKeyOps,
                               test_case: &mut test::TestCase, name: &str)
                               -> Point {
-        fn consume_point_elem(ops: &CommonOps, p: &mut Point,
-                              elems: &std::vec::Vec<&str>, i: usize) {
-            let bytes = test::from_hex(elems[i]).unwrap();
-            let bytes = untrusted::Input::from(&bytes);
-            let limbs =
-                parse_big_endian_value_in_range(
-                    bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap();
-            p.xyz[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
-                .copy_from_slice(&limbs[..ops.num_limbs]);
-        }
-
         let input = test_case.consume_string(name);
         let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
         assert_eq!(elems.len(), 3);
         let mut p = Point::new_at_infinity();
-        consume_point_elem(ops.common, &mut p, &elems, 0);
-        consume_point_elem(ops.common, &mut p, &elems, 1);
-        consume_point_elem(ops.common, &mut p, &elems, 2);
+        consume_point_elem(ops.common, &mut p.xyz, &elems, 0);
+        consume_point_elem(ops.common, &mut p.xyz, &elems, 1);
+        consume_point_elem(ops.common, &mut p.xyz, &elems, 2);
         p
+    }
+
+    struct AffinePoint {
+        xy: [Limb; 2 * MAX_LIMBS],
+    }
+
+    fn consume_affine_point(ops: &PrivateKeyOps,
+                            test_case: &mut test::TestCase, name: &str)
+                            -> AffinePoint {
+        let input = test_case.consume_string(name);
+        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        assert_eq!(elems.len(), 2);
+        let mut p = AffinePoint { xy: [0; 2 * MAX_LIMBS] };
+        consume_point_elem(ops.common, &mut p.xy, &elems, 0);
+        consume_point_elem(ops.common, &mut p.xy, &elems, 1);
+        p
+    }
+
+    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb],
+                          elems: &std::vec::Vec<&str>, i: usize) {
+        let bytes = test::from_hex(elems[i]).unwrap();
+        let bytes = untrusted::Input::from(&bytes);
+        let limbs = parse_big_endian_value_in_range(
+            bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap();
+        limbs_out[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
+            .copy_from_slice(&limbs[..ops.num_limbs]);
     }
 
     enum TestPoint {

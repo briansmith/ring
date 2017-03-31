@@ -66,6 +66,7 @@ include = [
     "src/ec/suite_b/ops/p256_point_mul_base_tests.txt",
     "src/ec/suite_b/ops/p256_point_mul_tests.txt",
     "src/ec/suite_b/ops/p256_point_sum_tests.txt",
+    "src/ec/suite_b/ops/p256_point_sum_mixed_tests.txt",
     "src/ec/suite_b/ops/p256_scalar_mul_tests.txt",
     "src/ec/suite_b/ops/p256_scalar_square_tests.txt",
     "src/ec/suite_b/ops/p384.rs",
