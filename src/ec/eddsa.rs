@@ -84,21 +84,15 @@ impl<'a> Ed25519KeyPair {
                 slice_as_array_ref!(private_key, SEED_LEN).unwrap();
             let mut public_key_check = [0; PUBLIC_KEY_LEN];
             public_from_private(private_key, &mut public_key_check);
-            if public_key != public_key_check {
-                return Err(error::Unspecified);
-            }
+            try!(check!(public_key == public_key_check))
         }
         Ok(pair)
     }
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
                             -> Result<Ed25519KeyPair, error::Unspecified> {
-        if private_key.len() != SEED_LEN {
-            return Err(error::Unspecified);
-        }
-        if public_key.len() != PUBLIC_KEY_LEN {
-            return Err(error::Unspecified);
-        }
+        try!(check!(private_key.len() == SEED_LEN));
+        try!(check!(public_key.len() == PUBLIC_KEY_LEN));
         let mut pair = Ed25519KeyPair { private_public: [0; KEY_PAIR_LEN] };
         {
             let (pair_private_key, pair_public_key) =
@@ -168,16 +162,10 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
-        if public_key.len() != PUBLIC_KEY_LEN {
-            return Err(error::Unspecified);
-        }
+        try!(check!(public_key.len() == PUBLIC_KEY_LEN));
         let signature = signature.as_slice_less_safe();
-        if signature.len() != SIGNATURE_LEN {
-            return Err(error::Unspecified);
-        }
-        if (signature[63] & 224) != 0 {
-            return Err(error::Unspecified);
-        }
+        try!(check!(signature.len() == SIGNATURE_LEN));
+        try!(check!((signature[63] & 224) == 0));
         let public_key = slice_as_array_ref!(public_key, SCALAR_LEN).unwrap();
         let (signature_r, signature_s) = signature.split_at(SCALAR_LEN);
         let msg = msg.as_slice_less_safe();
@@ -199,10 +187,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         unsafe { GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &s_copy) };
         let mut r_check = [0u8; ELEM_LEN];
         unsafe { GFp_x25519_ge_tobytes(&mut r_check, &r) };
-        if r_copy != r_check {
-            return Err(error::Unspecified);
-        }
-        Ok(())
+        check!(r_copy == r_check)
     }
 }
 
