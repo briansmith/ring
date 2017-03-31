@@ -201,10 +201,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         try!(bssl::map_result(unsafe {
             GFp_x25519_ge_frombytes_vartime(&mut a, public_key)
         }));
-        for i in 0..ELEM_LIMBS {
-            a.x[i] = -a.x[i];
-            a.t[i] = -a.t[i];
-        }
+        a.invert();
 
         let h_digest =
             eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
@@ -287,6 +284,13 @@ impl ExtPoint {
             y: [0; ELEM_LIMBS],
             z: [0; ELEM_LIMBS],
             t: [0; ELEM_LIMBS],
+        }
+    }
+
+    fn invert(&mut self) {
+        for i in 0..ELEM_LIMBS {
+            self.x[i] = -self.x[i];
+            self.t[i] = -self.t[i];
         }
     }
 }
