@@ -1308,51 +1308,15 @@ err:
   return -1;
 }
 
-static int add_cert_types(SSL *ssl, CBB *cbb) {
-  /* Get configured signature algorithms. */
-  int have_rsa_sign = 0;
-  int have_ecdsa_sign = 0;
-  const uint16_t *sig_algs;
-  size_t num_sig_algs = tls12_get_verify_sigalgs(ssl, &sig_algs);
-  for (size_t i = 0; i < num_sig_algs; i++) {
-    switch (sig_algs[i]) {
-      case SSL_SIGN_RSA_PKCS1_SHA512:
-      case SSL_SIGN_RSA_PKCS1_SHA384:
-      case SSL_SIGN_RSA_PKCS1_SHA256:
-      case SSL_SIGN_RSA_PKCS1_SHA1:
-        have_rsa_sign = 1;
-        break;
-
-      case SSL_SIGN_ECDSA_SECP521R1_SHA512:
-      case SSL_SIGN_ECDSA_SECP384R1_SHA384:
-      case SSL_SIGN_ECDSA_SECP256R1_SHA256:
-      case SSL_SIGN_ECDSA_SHA1:
-        have_ecdsa_sign = 1;
-        break;
-    }
-  }
-
-  if (have_rsa_sign && !CBB_add_u8(cbb, SSL3_CT_RSA_SIGN)) {
-    return 0;
-  }
-
-  /* ECDSA certs can be used with RSA cipher suites as well so we don't need to
-   * check for SSL_kECDH or SSL_kECDHE. */
-  if (ssl->version >= TLS1_VERSION && have_ecdsa_sign &&
-      !CBB_add_u8(cbb, TLS_CT_ECDSA_SIGN)) {
-    return 0;
-  }
-
-  return 1;
-}
-
 static int ssl3_send_certificate_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   CBB cbb, body, cert_types, sigalgs_cbb;
   if (!ssl->method->init_message(ssl, &cbb, &body,
                                  SSL3_MT_CERTIFICATE_REQUEST) ||
       !CBB_add_u8_length_prefixed(&body, &cert_types) ||
-      !add_cert_types(ssl, &cert_types)) {
+      !CBB_add_u8(&cert_types, SSL3_CT_RSA_SIGN) ||
+      (ssl->version >= TLS1_VERSION &&
+       !CBB_add_u8(&cert_types, TLS_CT_ECDSA_SIGN))) {
     goto err;
   }
 
