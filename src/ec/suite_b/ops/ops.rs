@@ -775,6 +775,51 @@ mod tests {
     }
 
     #[test]
+    fn p256_point_double_test() {
+        extern {
+            fn GFp_nistz256_point_double(
+                r: *mut Limb/*[p256::COMMON_OPS.num_limbs*3]*/,
+                a: *const Limb/*[p256::COMMON_OPS.num_limbs*3]*/);
+        }
+        point_double_test(&p256::PRIVATE_KEY_OPS, GFp_nistz256_point_double,
+                         "src/ec/suite_b/ops/p256_point_double_tests.txt");
+    }
+
+    #[test]
+    fn p384_point_double_test() {
+        extern {
+            fn GFp_nistz384_point_double(
+                r: *mut Limb/*[p384::COMMON_OPS.num_limbs*3]*/,
+                a: *const Limb/*[p384::COMMON_OPS.num_limbs*3]*/);
+        }
+        point_double_test(&p384::PRIVATE_KEY_OPS, GFp_nistz384_point_double,
+                          "src/ec/suite_b/ops/p384_point_double_tests.txt");
+    }
+
+    fn point_double_test(
+            ops: &PrivateKeyOps,
+            point_double: unsafe extern fn(
+                r: *mut Limb/*[ops.num_limbs*3]*/,
+                a: *const Limb/*[ops.num_limbs*3]*/),
+            file_path: &str) {
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+
+            let a = consume_jacobian_point(ops, test_case, "a");
+            let r_expected = consume_point(ops, test_case, "r");
+
+            let mut r_actual = Point::new_at_infinity();
+            unsafe {
+                point_double(r_actual.xyz.as_mut_ptr(), a.xyz.as_ptr());
+            }
+
+            assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
+
+            Ok(())
+        });
+    }
+
+    #[test]
     fn p256_point_mul_test() {
         point_mul_tests(&p256::PRIVATE_KEY_OPS,
                         "src/ec/suite_b/ops/p256_point_mul_tests.txt");
