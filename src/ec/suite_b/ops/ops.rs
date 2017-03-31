@@ -838,8 +838,6 @@ mod tests {
         match expected_point {
             &TestPoint::Infinity => {
                 let zero = Elem::zero();
-                assert!(cops.elems_are_equal(&actual_x, &zero));
-                assert!(cops.elems_are_equal(&actual_y, &zero));
                 assert!(cops.elems_are_equal(&actual_z, &zero));
             },
             &TestPoint::Affine(ref expected_x, ref expected_y) => {
