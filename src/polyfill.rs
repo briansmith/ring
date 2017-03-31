@@ -178,3 +178,20 @@ macro_rules! slice_as_array_ref_mut {
         }
     }
 }
+
+/// Converts a boolean into a `Result<(), err::Unspecified>` in the
+/// obvious way. By composing this with `try!`, we can compactly
+/// represent `Result`-valued early returns that guard on a condition.
+macro_rules! check {
+    ($cond:expr) => {
+        {
+            use error;
+
+            if $cond {
+                Ok(())
+            } else {
+                Err(error::Unspecified)
+            }
+        }
+    }
+}
