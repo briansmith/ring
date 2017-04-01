@@ -323,28 +323,23 @@ mod tests {
     fn alg_from_curve_and_digest_asn1(curve_name: &str, digest_name: &str)
             -> (&'static signature::VerificationAlgorithm,
                 &'static PublicScalarOps, &'static digest::Algorithm) {
-        if curve_name == "P-256" {
-            if digest_name == "SHA256" {
+        match (curve_name, digest_name) {
+            ("P-256", "SHA256") =>
                 (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256)
-            } else if digest_name == "SHA384" {
+                 &digest::SHA256),
+            ("P-256", "SHA384") =>
                 (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384)
-            } else {
-                panic!("Unsupported digest algorithm: {}", digest_name);
-            }
-        } else if curve_name == "P-384" {
-            if digest_name == "SHA256" {
+                 &digest::SHA384),
+            ("P-384", "SHA256") =>
                 (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256)
-            } else if digest_name == "SHA384" {
+                 &digest::SHA256),
+            ("P-384", "SHA384") =>
                 (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384)
-            } else {
-                panic!("Unsupported digest algorithm: {}", digest_name);
+                 &digest::SHA384),
+            _ => {
+                panic!("Unsupported curve+digest: {}+{}", curve_name,
+                       digest_name);
             }
-        } else {
-            panic!("Unsupported curve: {}", curve_name);
         }
     }
 }
