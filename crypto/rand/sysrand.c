@@ -45,7 +45,9 @@ long GFp_sysrand_chunk(void *buf, size_t len);
 
 #include <limits.h>
 
+#if defined(_MSC_VER)
 #pragma warning(push, 3)
+#endif
 
 #include <windows.h>
 
@@ -56,7 +58,9 @@ long GFp_sysrand_chunk(void *buf, size_t len);
 #include <ntsecapi.h>
 #undef SystemFunction036
 
+#if defined(_MSC_VER)
 #pragma warning(pop)
+#endif
 
 long GFp_sysrand_chunk(void *out, size_t requested) {
   if (requested > ULONG_MAX) {
