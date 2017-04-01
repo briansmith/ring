@@ -505,6 +505,7 @@ fn build_c_code(target: &Target, out_dir: &Path) {
                           includes_modified));
 
     if target.env() != "msvc" &&
+        target.env() != "musl" &&
         cfg!(feature = "bn_tests") &&
        !(target.os() == "macos" || target.os() == "ios") {
         let libcxx = if use_libcxx(target) {
