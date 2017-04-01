@@ -45,8 +45,9 @@ long GFp_sysrand_chunk(void *buf, size_t len);
 
 #include <limits.h>
 
+#ifdef _MSC_VER
 #pragma warning(push, 3)
-
+#endif
 #include <windows.h>
 
 /* #define needed to link in RtlGenRandom(), a.k.a. SystemFunction036.  See the
@@ -56,7 +57,9 @@ long GFp_sysrand_chunk(void *buf, size_t len);
 #include <ntsecapi.h>
 #undef SystemFunction036
 
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 long GFp_sysrand_chunk(void *out, size_t requested) {
   if (requested > ULONG_MAX) {

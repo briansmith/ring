@@ -580,7 +580,7 @@ fn compile(p: &Path, target: &Target, out_dir: &Path,
         let mut out_path = out_dir.clone().join(p.file_name().unwrap());
         out_path.set_extension(target.obj_ext);
         if need_run(&p, &out_path, includes_modified) {
-            let cmd = if target.env() != "msvc" || ext != "asm" {
+            let cmd = if target.os() != WINDOWS || ext != "asm" {
                 cc(p, ext, target, &out_path)
             } else {
                 yasm(p, target.arch(), &out_path)
@@ -624,7 +624,7 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
     }
     if target.os() != "none" &&
         target.os() != "redox" &&
-        target.env() != "msvc" {
+        target.os() != "windows" {
         let _ = c.flag("-fstack-protector");
     }
 
