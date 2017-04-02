@@ -62,10 +62,14 @@
 #include <inttypes.h>
 
 #if defined(OPENSSL_WINDOWS)
+#ifdef _MSC_VER
 #pragma warning(push, 3)
+#endif
 #include <immintrin.h>
 #include <intrin.h>
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 #endif
 
 #include "internal.h"
