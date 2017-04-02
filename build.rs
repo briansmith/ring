@@ -482,9 +482,12 @@ fn build_c_code(target: &Target, out_dir: &Path) {
 
     let test_srcs = RING_TEST_SRCS.iter()
         .map(PathBuf::from)
-        // Avoid the libstdc++ vs libc++ issue for macOS/iOS by just avoiding
+        // Allow the C++-based tests to be disabled
+        .filter(|p| cfg!(feature = "bn_tests") ||
+            p.extension().unwrap().to_str().unwrap() != "cc")
+        // Avoid the libstdc++ vs libc++ issue for macOS/iOS, and g++ issue on musl by just avoiding
         // all the C++-based tests.
-        .filter(|p| !(target.os() == "macos" || target.os == "ios") ||
+        .filter(|p| !(target.os() == "macos" || target.os == "ios" || target.env() == "musl") ||
                     p.extension().unwrap().to_str().unwrap() != "cc")
         .collect::<Vec<_>>();
 
@@ -502,6 +505,8 @@ fn build_c_code(target: &Target, out_dir: &Path) {
                           includes_modified));
 
     if target.env() != "msvc" &&
+        target.env() != "musl" &&
+        cfg!(feature = "bn_tests") &&
        !(target.os() == "macos" || target.os() == "ios") {
         let libcxx = if use_libcxx(target) {
             "c++"
