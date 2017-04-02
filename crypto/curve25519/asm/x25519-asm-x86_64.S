@@ -29,7 +29,7 @@
 #define HIDDEN .private_extern
 #elif defined(__MINGW32__) || defined(__MINGW64__)
 #define C_ABI(x) x
-#define HIDDEN
+#define HIDDEN .globl
 #else
 #define C_ABI(x) x
 #define HIDDEN .hidden
