@@ -272,6 +272,7 @@ impl PublicKeyOps {
                     encoded_value, 0,
                     &self.common.q.p[..self.common.num_limbs]));
         // Montgomery encode (elem_to_mont).
+        // TODO: do something about this.
         unsafe {
             (self.common.elem_mul_mont)(elem_limbs.as_mut_ptr(),
                                         elem_limbs.as_ptr(),
@@ -302,6 +303,7 @@ pub struct PublicScalarOps {
 }
 
 impl PublicScalarOps {
+    // TODO: did we end up duplicating this somewhere?
     pub fn scalar_parse(&self, input: untrusted::Input)
                         -> Result<Scalar, error::Unspecified> {
         let limbs = try!(parse_big_endian_value_in_range(
@@ -419,6 +421,24 @@ pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
     try!(limb::parse_big_endian_and_pad(input, &mut result[..num_limbs]));
     Ok(result)
 }
+
+pub fn scalar_parse_big_endian_fixed_consttime(ops: &CommonOps, bytes: &[u8])
+        -> Result<Scalar, error::Unspecified> {
+    let num_limbs = ops.num_limbs;
+    let n = &ops.n.limbs[..num_limbs];
+
+    let limbs =
+        try!(parse_big_endian_value(untrusted::Input::from(bytes), num_limbs));
+    if limbs_less_than_limbs_consttime(&limbs[..num_limbs], n) != LimbMask::True {
+        return Err(error::Unspecified);
+    }
+    let r = Scalar::from_limbs_unchecked(&limbs);
+    if ops.is_zero(&r) {
+        return Err(error::Unspecified);
+    }
+    Ok(r)
+}
+
 
 #[cfg(test)]
 mod tests {

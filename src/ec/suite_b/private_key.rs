@@ -15,7 +15,6 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use arithmetic::montgomery::*;
 use {ec, error, limb, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
@@ -38,7 +37,6 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
     // and switch to the other mechanism.
 
     let num_limbs = ops.common.num_limbs;
-    let max_exclusive = &ops.common.n.limbs[..num_limbs];
 
     // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
     // what specific value would be better, but it seems bad to try 100 times.
@@ -70,8 +68,8 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
         // advantage to the way the NSA suggests? There doesn't seem to be,
         // other than being less error prone w.r.t. accidentally generating
         // zero-valued keys.
-        let scalar = private_key_as_scalar_(ops, &candidate_private_key);
-        if !is_scalar_within_range(&scalar, max_exclusive) {
+        if scalar_from_big_endian_bytes(
+                ops, &candidate_private_key.bytes[..num_bytes]).is_err() {
             continue;
         }
 
@@ -92,42 +90,35 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
 #[inline]
 pub fn private_key_as_scalar(ops: &PrivateKeyOps,
                              private_key: &ec::PrivateKey) -> Scalar {
-    let num_limbs = ops.common.num_limbs;
-    let max_exclusive = &ops.common.n.limbs[..num_limbs];
-
-    let r = private_key_as_scalar_(ops, private_key);
-    assert!(is_scalar_within_range(&r, max_exclusive));
-    r
+    // This cannot fail because we know the private key is valid.
+    scalar_from_big_endian_bytes(
+        ops, &private_key.bytes[..(ops.common.num_limbs * LIMB_BYTES)]).unwrap()
 }
 
-// Like `private_key_as_scalar`, but without the assertions about the range of
-// the value.
-fn private_key_as_scalar_(ops: &PrivateKeyOps, private_key: &ec::PrivateKey)
-                          -> Scalar {
-    let num_limbs = ops.common.num_limbs;
-    let bytes = &private_key.bytes;
-    let mut limbs = [0; MAX_LIMBS];
-    for i in 0..num_limbs {
-        let mut limb = 0;
-        for j in 0..LIMB_BYTES {
-            limb = (limb << 8) |
-                   (bytes[((num_limbs - i - 1) * LIMB_BYTES) + j] as Limb);
-        }
-        limbs[i] = limb;
-    }
-    Scalar::from_limbs_unchecked(&limbs)
-}
-
-// Is scalar within [1, max_exclusive)? Constant-time with respect to the
-// actual value *only if* it is actually in range; in other words, this won't
-// leak anything about a valid value, but it might leak something about an
-// invalid value.
-fn is_scalar_within_range(scalar: &Scalar<Unencoded>, max_exclusive: &[Limb])
-                          -> bool {
-    let limbs = &scalar.limbs[..max_exclusive.len()];
-    let eq_zero = limbs_are_zero_constant_time(limbs);
-    let lt_bound = limb::limbs_less_than_limbs_consttime(limbs, max_exclusive);
-    eq_zero == LimbMask::False && lt_bound == LimbMask::True
+// Parses a fixed-length (zero-padded) big-endian-encoded scalar in the range
+// [1, n). This is constant-time with respect to the actual value *only if* the
+// value is actually in range. In other words, this won't leak anything about a
+// valid value, but it might leak small amounts of information about an invalid
+// value (which constraint it failed).
+pub fn scalar_from_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
+                                    -> Result<Scalar, error::Unspecified> {
+    // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
+    // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
+    // "Key Pair Generation by Testing Candidates".
+    //
+    // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf.
+    // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf.
+    //
+    // Steps 5, 6, and 7.
+    //
+    // XXX: The NSA guide says that we should verify that the random scalar is
+    // in the range [0, n - 1) and then add one to it so that it is in the range
+    // [1, n). Instead, we verify that the scalar is in the range [1, n) like
+    // BoringSSL (et al.) does. This way, we avoid needing to compute or store
+    // the value (n - 1), we avoid the need to implement a function to add one
+    // to a scalar, and we avoid needing to convert the scalar back into an
+    // array of bytes.
+    super::ops::scalar_parse_big_endian_fixed_consttime(ops.common, bytes)
 }
 
 pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
