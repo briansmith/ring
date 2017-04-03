@@ -222,8 +222,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
 impl private::Private for EdDSAParameters {}
 
-fn eddsa_digest(signature_r: &[u8], public_key: &[u8],
-                msg: &[u8]) -> digest::Digest {
+fn eddsa_digest(signature_r: &[u8], public_key: &[u8], msg: &[u8])
+                -> digest::Digest {
     let mut ctx = digest::Context::new(&digest::SHA512);
     ctx.update(signature_r);
     ctx.update(public_key);
