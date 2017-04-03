@@ -26,8 +26,7 @@ pub struct ECDSAParameters {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
     split_rs:
-        for<'a> fn(ops: &'static PublicScalarOps,
-                   input: &mut untrusted::Reader<'a>)
+        for<'a> fn(ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
                    -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                              error::Unspecified>,
 }
@@ -38,6 +37,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key_ops = self.ops.public_key_ops;
+        let scalar_ops = self.ops.scalar_ops;
 
         // NSA Guide Prerequisites:
         //
@@ -60,7 +60,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
             try!(parse_uncompressed_point(public_key_ops, public_key));
 
         let (r, s) = try!(signature.read_all(
-            error::Unspecified, |input| (self.split_rs)(self.ops, input)));
+            error::Unspecified, |input| (self.split_rs)(scalar_ops, input)));
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
@@ -73,16 +73,16 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // Hash(M)."
         // NSA Guide Step 3: "Convert the bit string H to an integer e as
         // described in Appendix B.2."
-        let e = digest_scalar(self.ops, self.digest_alg, msg);
+        let e = digest_scalar(scalar_ops, self.digest_alg, msg);
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
-        let w = self.ops.scalar_inv_to_mont(&s);
+        let w = scalar_ops.scalar_inv_to_mont(&s);
 
         // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
         // u2 = (r * w) mod n."
-        let u1 = self.ops.scalar_product(&e, &w);
-        let u2 = self.ops.scalar_product(&r, &w);
+        let u1 = scalar_ops.scalar_product(&e, &w);
+        let u2 = scalar_ops.scalar_product(&r, &w);
 
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
@@ -133,7 +133,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
 impl private::Private for ECDSAParameters {}
 
 fn split_rs_fixed<'a>(
-        ops: &'static PublicScalarOps, input: &mut untrusted::Reader<'a>)
+        ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
         -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                   error::Unspecified> {
     let scalar_len = ops.scalar_bytes_len();
@@ -143,7 +143,7 @@ fn split_rs_fixed<'a>(
 }
 
 fn split_rs_asn1<'a>(
-        _ops: &'static PublicScalarOps, input: &mut untrusted::Reader<'a>)
+        _ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
         -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                   error::Unspecified> {
     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
@@ -179,7 +179,7 @@ fn split_rs_asn1<'a>(
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-fn digest_scalar(ops: &PublicScalarOps, digest_alg: &'static digest::Algorithm,
+fn digest_scalar(ops: &ScalarOps, digest_alg: &'static digest::Algorithm,
                  msg: untrusted::Input) -> Scalar {
     let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
     digest_scalar_(ops, digest.as_ref())
@@ -187,8 +187,8 @@ fn digest_scalar(ops: &PublicScalarOps, digest_alg: &'static digest::Algorithm,
 
 // This is a separate function solely so that we can test specific digest
 // values like all-zero values and values larger than `n`.
-fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
-    let cops = ops.public_key_ops.common;
+fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
+    let cops = ops.common;
     let num_limbs = cops.num_limbs;
     let digest = if digest.len() > num_limbs * LIMB_BYTES {
         &digest[..(num_limbs * LIMB_BYTES)]
@@ -378,7 +378,7 @@ mod tests {
                 ops.public_key_ops.common, AllowZero::Yes,
                 untrusted::Input::from(&output)).unwrap();
 
-            let actual = digest_scalar_(ops, &input);
+            let actual = digest_scalar_(ops.scalar_ops, &input);
 
             assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
 

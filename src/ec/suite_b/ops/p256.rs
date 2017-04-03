@@ -135,8 +135,14 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps { common: &COMMON_OPS };
 
+pub static SCALAR_OPS: ScalarOps = ScalarOps {
+    common: &COMMON_OPS,
+    scalar_inv_to_mont_impl: p256_scalar_inv_to_mont,
+    scalar_mul_mont: GFp_p256_scalar_mul_mont,
+};
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
+    scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
     private_key_ops: &PRIVATE_KEY_OPS,
 
@@ -146,9 +152,6 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
         m: PhantomData,
         encoding: PhantomData, // Unencoded
     },
-
-    scalar_inv_to_mont_impl: p256_scalar_inv_to_mont,
-    scalar_mul_mont: GFp_p256_scalar_mul_mont,
 };
 
 fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
