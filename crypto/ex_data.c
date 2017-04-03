@@ -239,6 +239,13 @@ int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
     return 1;
   }
 
+  for (size_t i = 0; i < ex_data_class->num_reserved; i++) {
+    void *ptr = CRYPTO_get_ex_data(from, i);
+    if (!CRYPTO_set_ex_data(to, i, ptr)) {
+      return 0;
+    }
+  }
+
   STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
   if (!get_func_pointers(&func_pointers, ex_data_class)) {
     return 0;
@@ -252,7 +259,10 @@ int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
       func_pointer->dup_func(to, from, &ptr, i + ex_data_class->num_reserved,
                              func_pointer->argl, func_pointer->argp);
     }
-    CRYPTO_set_ex_data(to, i + ex_data_class->num_reserved, ptr);
+    if (!CRYPTO_set_ex_data(to, i + ex_data_class->num_reserved, ptr)) {
+      sk_CRYPTO_EX_DATA_FUNCS_free(func_pointers);
+      return 0;
+    }
   }
 
   sk_CRYPTO_EX_DATA_FUNCS_free(func_pointers);
