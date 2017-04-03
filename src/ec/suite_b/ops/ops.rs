@@ -320,13 +320,10 @@ impl PublicScalarOps {
         self.public_key_ops.common.num_limbs * LIMB_BYTES
     }
 
-    /// Returns the modular inverse of `a` (mod `n`). `a` must not be zero.
+    /// Returns the modular inverse of `a` (mod `n`). Panics of `a` is zero,
+    /// because zero isn't invertible.
     pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Scalar<R> {
-        let num_limbs = self.public_key_ops.common.num_limbs;
-
-        // `a` must not be zero.
-        assert!(a.limbs[..num_limbs].iter().any(|x| *x != 0));
-
+        assert!(!self.public_key_ops.common.is_zero(a));
         (self.scalar_inv_to_mont_impl)(a)
     }
 
@@ -684,13 +681,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
+    #[should_panic(expected = "!self.public_key_ops.common.is_zero(a)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
         let _ = p256::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
 
     #[test]
-    #[should_panic(expected = "a.limbs[..num_limbs].iter().any(|x| *x != 0)")]
+    #[should_panic(expected = "!self.public_key_ops.common.is_zero(a)")]
     fn p384_scalar_inv_to_mont_zero_panic_test() {
         let _ = p384::PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
