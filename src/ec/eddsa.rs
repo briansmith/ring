@@ -124,32 +124,38 @@ impl<'a> Ed25519KeyPair {
         let mut signature_bytes = [0u8; SIGNATURE_LEN];
         { // borrow signature_bytes;
             let (signature_r, signature_s) =
-                signature_bytes.split_at_mut(SCALAR_LEN);
+                signature_bytes.split_at_mut(ELEM_LEN);
             let signature_r =
-                slice_as_array_ref_mut!(signature_r, SCALAR_LEN).unwrap();
+                slice_as_array_ref_mut!(signature_r, ELEM_LEN).unwrap();
             let signature_s =
                 slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
+
             let az = digest::digest(&digest::SHA512, self.private_key_bytes());
             let (a_encoded, z_encoded) = az.as_ref().split_at(SCALAR_LEN);
+
             let mut a = [0; SCALAR_LEN];
             a.copy_from_slice(a_encoded);
             unsafe { GFp_ed25519_scalar_mask(&mut a) };
-            let mut nonce = digest_scalar({
+
+            let nonce = {
                 let mut ctx = digest::Context::new(&digest::SHA512);
                 ctx.update(z_encoded);
                 ctx.update(msg);
                 ctx.finish()
-            });
+            };
+            let nonce = digest_scalar(nonce);
+
             let mut r = ExtPoint::new_at_infinity();
             unsafe {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
                 GFp_ge_p3_tobytes(signature_r, &r);
             }
+
             let hram_digest =
                 eddsa_digest(signature_r, self.public_key_bytes(), msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &a, &mut nonce);
+                GFp_x25519_sc_muladd(signature_s, &hram, &a, &nonce);
             }
         }
         signature::Signature::new(signature_bytes)
