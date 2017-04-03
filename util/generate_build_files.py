@@ -459,6 +459,14 @@ def AllFiles(dent, is_dir):
   return True
 
 
+def NoTestRunnerFiles(dent, is_dir):
+  """Filter function that can be passed to FindCFiles or FindHeaderFiles in
+  order to exclude test runner files."""
+  # NOTE(martinkr): This prevents .h/.cc files in src/ssl/test/runner, which
+  # are in their own subpackage, from being included in boringssl/BUILD files.
+  return not is_dir or dent != 'runner'
+
+
 def NotGTestMain(dent, is_dir):
   return dent != 'gtest_main.cc'
 
@@ -625,7 +633,7 @@ def main(platforms):
                                     NotGTestMain)
   test_support_h_files = (
       FindHeaderFiles(os.path.join('src', 'crypto', 'test'), AllFiles) +
-      FindHeaderFiles(os.path.join('src', 'ssl', 'test'), AllFiles))
+      FindHeaderFiles(os.path.join('src', 'ssl', 'test'), NoTestRunnerFiles))
 
   test_c_files = []
   crypto_test_files = ['src/crypto/test/gtest_main.cc']
