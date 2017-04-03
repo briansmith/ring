@@ -461,13 +461,13 @@ pub extern fn GFp_SHA512_4(out: *mut u8, out_len: c::size_t,
     out.copy_from_slice(digest);
 }
 
-/// The length of the output of SHA-256, in bytes.
+/// The length of the output of SHA-1, in bytes.
 pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN;
 
 /// The length of the output of SHA-256, in bytes.
 pub const SHA256_OUTPUT_LEN: usize = 256 / 8;
 
-/// The length of the output of SHA-512, in bytes.
+/// The length of the output of SHA-384, in bytes.
 pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
 
 /// The length of the output of SHA-512, in bytes.
