@@ -82,9 +82,7 @@ int SHA1_Init(SHA_CTX *sha) {
 
 uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
   SHA_CTX ctx;
-  if (!SHA1_Init(&ctx)) {
-    return NULL;
-  }
+  SHA1_Init(&ctx);
   SHA1_Update(&ctx, data, len);
   SHA1_Final(out, &ctx);
   OPENSSL_cleanse(&ctx, sizeof(ctx));
