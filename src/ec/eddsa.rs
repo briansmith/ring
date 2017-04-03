@@ -22,7 +22,8 @@ pub struct EdDSAParameters;
 
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
-    private_public: [u8; KEY_PAIR_LEN],
+    private_key: [u8; SEED_LEN],
+    public_key: [u8; PUBLIC_KEY_LEN],
 }
 
 /// The raw bytes of the Ed25519 key pair, for serialization.
@@ -77,49 +78,61 @@ impl<'a> Ed25519KeyPair {
                       -> Result<Ed25519KeyPair, error::Unspecified> {
         let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
                                                              public_key));
-        { // borrow pair;
-            let (private_key, public_key) =
-                pair.private_public.split_at(SEED_LEN);
-            let private_key =
-                slice_as_array_ref!(private_key, SEED_LEN).unwrap();
-            let mut public_key_check = [0; PUBLIC_KEY_LEN];
-            public_from_private(private_key, &mut public_key_check);
-            if public_key != public_key_check {
-                return Err(error::Unspecified);
-            }
-        }
+        let mut public_key_check = [0; PUBLIC_KEY_LEN];
+        public_from_private(&pair.private_key, &mut public_key_check);
+        try!(check!(public_key == public_key_check));
         Ok(pair)
     }
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
                             -> Result<Ed25519KeyPair, error::Unspecified> {
-        if private_key.len() != SEED_LEN {
-            return Err(error::Unspecified);
-        }
-        if public_key.len() != PUBLIC_KEY_LEN {
-            return Err(error::Unspecified);
-        }
-        let mut pair = Ed25519KeyPair { private_public: [0; KEY_PAIR_LEN] };
-        {
-            let (pair_private_key, pair_public_key) =
-                pair.private_public.split_at_mut(SEED_LEN);
-            pair_private_key.copy_from_slice(private_key);
-            pair_public_key.copy_from_slice(public_key);
-        }
+        try!(check!(private_key.len() == SEED_LEN));
+        try!(check!(public_key.len() == PUBLIC_KEY_LEN));
+        let mut pair = Ed25519KeyPair {
+            private_key: [0u8; SEED_LEN],
+            public_key: [0u8; PUBLIC_KEY_LEN],
+        };
+        pair.private_key.copy_from_slice(private_key);
+        pair.public_key.copy_from_slice(public_key);
         Ok(pair)
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
     pub fn public_key_bytes(&'a self) -> &'a [u8] {
-        &self.private_public[SEED_LEN..]
+        &self.public_key
     }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         let mut signature_bytes = [0u8; SIGNATURE_LEN];
-        unsafe {
-            GFp_ed25519_sign(signature_bytes.as_mut_ptr(), msg.as_ptr(),
-                             msg.len(), self.private_public.as_ptr());
+        { // Borrow `signature_bytes` for this block only.
+            let (signature_r, signature_s) =
+                signature_bytes.split_at_mut(SCALAR_LEN);
+            let signature_r =
+                slice_as_array_ref_mut!(signature_r, SCALAR_LEN).unwrap();
+            let signature_s =
+                slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
+            let az = digest::digest(&digest::SHA512, &self.private_key);
+            let (a_encoded, z_encoded) = az.as_ref().split_at(SCALAR_LEN);
+            let mut a = [0; SCALAR_LEN];
+            a.copy_from_slice(a_encoded);
+            unsafe { GFp_ed25519_scalar_mask(&mut a) };
+            let mut nonce = digest_scalar({
+                let mut ctx = digest::Context::new(&digest::SHA512);
+                ctx.update(z_encoded);
+                ctx.update(msg);
+                ctx.finish()
+            });
+            let mut r = ExtPoint::new_at_infinity();
+            unsafe {
+                GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
+                GFp_ge_p3_tobytes(signature_r, &r);
+            }
+            let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
+            let hram = digest_scalar(hram_digest);
+            unsafe {
+                GFp_x25519_sc_muladd(signature_s, &hram, &a, &mut nonce);
+            }
         }
         signature::Signature::new(signature_bytes)
     }
@@ -137,21 +150,51 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
-        if public_key.len() != PUBLIC_KEY_LEN ||
-           signature.len() != SIGNATURE_LEN {
-            return Err(error::Unspecified);
-        }
-        let msg = msg.as_slice_less_safe();
+        try!(check!(public_key.len() == PUBLIC_KEY_LEN));
         let signature = signature.as_slice_less_safe();
-        bssl::map_result(unsafe {
-            GFp_ed25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
-                               public_key.as_ptr())
-        })
+        try!(check!(signature.len() == SIGNATURE_LEN));
+        try!(check!((signature[63] & 224) == 0));
+        let public_key = slice_as_array_ref!(public_key, SCALAR_LEN).unwrap();
+        let (signature_r, signature_s) = signature.split_at(SCALAR_LEN);
+        let msg = msg.as_slice_less_safe();
+        let mut a = ExtPoint::new_at_infinity();
+        try!(bssl::map_result(unsafe {
+            GFp_x25519_ge_frombytes_vartime(&mut a, public_key)
+        }));
+        a.invert();
+        let mut r_copy = [0u8; SCALAR_LEN];
+        r_copy.copy_from_slice(signature_r);
+        let mut s_copy = [0u8; SCALAR_LEN];
+        s_copy.copy_from_slice(signature_s);
+        let h_digest = eddsa_digest(signature_r, public_key, msg);
+        let h = digest_scalar(h_digest);
+        let mut r = Point::new_at_infinity();
+        unsafe { GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &s_copy) };
+        let mut r_check = [0u8; ELEM_LEN];
+        unsafe { GFp_x25519_ge_tobytes(&mut r_check, &r) };
+        check!(r_copy == r_check)
     }
 }
 
 impl private::Private for EdDSAParameters {}
 
+fn eddsa_digest(signature_r: &[u8], public_key: &[u8],
+                msg: &[u8]) -> digest::Digest {
+    let mut ctx = digest::Context::new(&digest::SHA512);
+    ctx.update(signature_r);
+    ctx.update(public_key);
+    ctx.update(msg);
+    ctx.finish()
+}
+
+fn digest_scalar(digest: digest::Digest) -> Scalar {
+    let mut unreduced = [0u8; digest::SHA512_OUTPUT_LEN];
+    unreduced.copy_from_slice(digest.as_ref());
+    unsafe { GFp_x25519_sc_reduce(&mut unreduced) };
+    let mut scalar = [0u8; SCALAR_LEN];
+    scalar.copy_from_slice(&unreduced[..SCALAR_LEN]);
+    scalar
+}
 
 fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     let seed_sha512 = digest::digest(&digest::SHA512, seed);
@@ -162,53 +205,85 @@ fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     unsafe {
         GFp_ed25519_scalar_mask(&mut a_bytes);
     }
-    let mut a = Point {
-        x: [0; ELEM_LIMBS],
-        y: [0; ELEM_LIMBS],
-        z: [0; ELEM_LIMBS],
-        t: [0; ELEM_LIMBS],
-    };
+    let mut a = ExtPoint::new_at_infinity();
     unsafe {
         GFp_x25519_ge_scalarmult_base(&mut a, &a_bytes);
         GFp_ge_p3_tobytes(out, &a);
     }
 }
 
-
 extern  {
-    fn GFp_ed25519_scalar_mask(a: &mut [u8; SCALAR_LEN]);
-    fn GFp_ed25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
-                        message_len: c::size_t, private_key: *const u8/*[64]*/);
-
-    fn GFp_ed25519_verify(message: *const u8, message_len: c::size_t,
-                          signature: *const u8/*[64]*/,
-                          public_key: *const u8/*[32]*/) -> c::int;
-
-    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &Point);
-    fn GFp_x25519_ge_scalarmult_base(h: &mut Point, a: &Seed);
-
+    fn GFp_ed25519_scalar_mask(a: &mut Scalar);
+    fn GFp_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
+                                        a: &ExtPoint, b_coeff: &Scalar);
+    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
+    fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &Scalar) -> c::int;
+    fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
+    fn GFp_x25519_ge_tobytes(s: &mut Scalar, h: &Point);
+    fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
+    fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
 #[repr(C)]
+struct ExtPoint {
+    x: Elem,
+    y: Elem,
+    z: Elem,
+    t: Elem,
+}
+
+impl ExtPoint {
+    fn new_at_infinity() -> Self {
+        ExtPoint {
+            x: [0; ELEM_LIMBS],
+            y: [0; ELEM_LIMBS],
+            z: [0; ELEM_LIMBS],
+            t: [0; ELEM_LIMBS],
+        }
+    }
+
+    fn invert(&mut self) {
+        for i in 0..ELEM_LIMBS {
+            self.x[i] = -self.x[i];
+            self.t[i] = -self.t[i];
+        }
+    }
+}
+
+// Keep this in sync with `ge_p2` in curve25519/internal.h.
+#[repr(C)]
 struct Point {
-  x: Elem,
-  y: Elem,
-  z: Elem,
-  t: Elem,
+    x: Elem,
+    y: Elem,
+    z: Elem,
+}
+
+impl Point {
+    fn new_at_infinity() -> Self {
+        Point {
+            x: [0; ELEM_LIMBS],
+            y: [0; ELEM_LIMBS],
+            z: [0; ELEM_LIMBS],
+        }
+    }
 }
 
 // Keep this in sync with `fe` in curve25519/internal.h.
 type Elem = [i32; ELEM_LIMBS];
 const ELEM_LIMBS: usize = 10;
+const ELEM_LEN: usize = 32;
 
 type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_LEN;
 
-const KEY_PAIR_LEN: usize = SEED_LEN + PUBLIC_KEY_LEN;
 const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
+
+type Scalar = [u8; SCALAR_LEN];
 const SCALAR_LEN: usize = 32;
-const ELEM_LEN: usize = 32;
+
+type UnreducedScalar = [u8; UNREDUCED_SCALAR_LEN];
+const UNREDUCED_SCALAR_LEN: usize = SCALAR_LEN * 2;
 
 type Seed = [u8; SEED_LEN];
 const SEED_LEN: usize = 32;

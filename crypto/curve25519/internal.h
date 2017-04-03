@@ -65,6 +65,7 @@ typedef int32_t fe[10];
  *   ge_precomp (Duif): (y+x,y-x,2dxy)
  */
 
+/* Keep in sync with `Point` in eddsa.rs. */
 typedef struct {
   fe X;
   fe Y;
@@ -72,7 +73,7 @@ typedef struct {
 } ge_p2;
 
 
-/* Keep in sync with `Point` in eddsa.rs. */
+/* Keep in sync with `ExtPoint` in eddsa.rs. */
 typedef struct {
   fe X;
   fe Y;

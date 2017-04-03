@@ -30,7 +30,11 @@
 
 
 /* Prevent -Wmissing-prototypes warnings. */
+void GFp_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                      const ge_p3 *A, const uint8_t *b);
 void GFp_ge_p3_tobytes(uint8_t *s, const ge_p3 *h);
+void GFp_x25519_ge_tobytes(uint8_t *s, const ge_p2 *h);
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s);
 void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
                           const uint8_t *c);
@@ -956,7 +960,7 @@ static void fe_pow22523(fe out, const fe z) {
   fe_mul(out, t0, z);
 }
 
-static void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
+void GFp_x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
   fe recip;
   fe x;
   fe y;
@@ -986,7 +990,7 @@ static const fe d = {-10913610, 13857413, -15372611, 6949391,   114729,
 static const fe sqrtm1 = {-32595792, -7943725,  9377950,  3500415, 12389472,
                           -272473,   -25146209, -2005654, 326686,  11406482};
 
-static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
   fe v;
   fe v3;
@@ -1016,7 +1020,7 @@ static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   if (fe_isnonzero(check)) {
     fe_add(check, vxx, u); /* vx^2+u */
     if (fe_isnonzero(check)) {
-      return -1;
+      return 0;
     }
     fe_mul(h->X, h->X, sqrtm1);
   }
@@ -1026,7 +1030,7 @@ static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   }
 
   fe_mul(h->T, h->X, h->Y);
-  return 0;
+  return 1;
 }
 
 static void ge_p2_0(ge_p2 *h) {
@@ -3639,8 +3643,8 @@ static const ge_precomp Bi[8] = {
  * where a = a[0]+256*a[1]+...+256^31 a[31].
  * and b = b[0]+256*b[1]+...+256^31 b[31].
  * B is the Ed25519 base point (x,4/5) with x positive. */
-static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
-                                         const ge_p3 *A, const uint8_t *b) {
+void GFp_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                      const ge_p3 *A, const uint8_t *b) {
   signed char aslide[256];
   signed char bslide[256];
   ge_cached Ai[8]; /* A,3A,5A,7A,9A,11A,13A,15A */
@@ -4543,76 +4547,12 @@ void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 
 /* Prototype to avoid -Wmissing-prototypes warnings. */
 void GFp_ed25519_scalar_mask(uint8_t a[32]);
-void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
-                      size_t message_len, const uint8_t private_key[64]);
-int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
-                       const uint8_t signature[64],
-                       const uint8_t public_key[32]);
 
 void GFp_ed25519_scalar_mask(uint8_t a[32]) {
   a[0] &= 248;
   a[31] &= 63;
   a[31] |= 64;
 }
-
-void GFp_ed25519_sign(uint8_t *out_sig, const uint8_t *message,
-                      size_t message_len, const uint8_t private_key[64]) {
-  uint8_t az[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
-
-  GFp_ed25519_scalar_mask(az);
-
-  uint8_t nonce[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
-               NULL, 0);
-
-  GFp_x25519_sc_reduce(nonce);
-  ge_p3 R;
-  GFp_x25519_ge_scalarmult_base(&R, nonce);
-  GFp_ge_p3_tobytes(out_sig, &R);
-
-  uint8_t hram[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
-               message_len, NULL, 0);
-
-  GFp_x25519_sc_reduce(hram);
-  GFp_x25519_sc_muladd(out_sig + 32, hram, az, nonce);
-}
-
-int GFp_ed25519_verify(const uint8_t *message, size_t message_len,
-                       const uint8_t signature[64],
-                       const uint8_t public_key[32]) {
-  ge_p3 A;
-  if ((signature[63] & 224) != 0 ||
-      x25519_ge_frombytes_vartime(&A, public_key) != 0) {
-    return 0;
-  }
-
-  fe_neg(A.X, A.X);
-  fe_neg(A.T, A.T);
-
-  uint8_t pkcopy[32];
-  memcpy(pkcopy, public_key, 32);
-  uint8_t rcopy[32];
-  memcpy(rcopy, signature, 32);
-  uint8_t scopy[32];
-  memcpy(scopy, signature + 32, 32);
-
-  uint8_t h[SHA512_DIGEST_LENGTH];
-  GFp_SHA512_4(h, sizeof(h), signature, 32, public_key, 32, message,
-               message_len, NULL, 0);
-
-  GFp_x25519_sc_reduce(h);
-
-  ge_p2 R;
-  ge_double_scalarmult_vartime(&R, h, &A, scopy);
-
-  uint8_t rcheck[32];
-  x25519_ge_tobytes(rcheck, &R);
-
-  return GFp_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
-}
-
 
 #if defined(BORINGSSL_X25519_X86_64)
 
