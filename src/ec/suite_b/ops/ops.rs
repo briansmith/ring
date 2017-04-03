@@ -137,7 +137,7 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_decoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
+    pub fn elem_unencoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
         self.elem_product(a, &ONE)
     }
 
@@ -333,7 +333,7 @@ impl PublicScalarOps {
     }
 
     #[inline]
-    pub fn scalar_as_elem_decoded(&self, a: &Scalar) -> Elem<Unencoded> {
+    pub fn scalar_as_elem(&self, a: &Scalar) -> Elem<Unencoded> {
         Elem {
             limbs: a.limbs,
             m: PhantomData,
@@ -341,8 +341,8 @@ impl PublicScalarOps {
         }
     }
 
-    pub fn elem_decoded_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
-                               -> bool {
+    pub fn elem_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
+                       -> bool {
         for i in 0..self.public_key_ops.common.num_limbs {
             if a.limbs[i] != b.limbs[i] {
                 return false;
@@ -351,16 +351,16 @@ impl PublicScalarOps {
         true
     }
 
-    pub fn elem_decoded_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
-                                  -> bool {
+    pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
+                          -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
         limb::limbs_less_than_limbs_vartime(&a.limbs[..num_limbs],
                                             &b.limbs[..num_limbs])
     }
 
     #[inline]
-    pub fn elem_decoded_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
-                            -> Elem<Unencoded> {
+    pub fn elem_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
+                    -> Elem<Unencoded> {
         binary_op(self.public_key_ops.common.elem_add_impl, a, b)
     }
 }

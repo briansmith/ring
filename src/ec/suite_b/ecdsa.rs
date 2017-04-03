@@ -108,17 +108,16 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
                           x: &Elem<R>, z2: &Elem<R>) -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_product(z2, r);
-            let x_decoded = cops.elem_decoded(x);
-            ops.elem_decoded_equals(&r_jacobian, &x_decoded)
+            let x = cops.elem_unencoded(x);
+            ops.elem_equals(&r_jacobian, &x)
         }
-        let r = self.ops.scalar_as_elem_decoded(&r);
+        let r = self.ops.scalar_as_elem(&r);
         if sig_r_equals_x(self.ops, &r, &x, &z2) {
             return Ok(());
         }
-        if self.ops.elem_decoded_less_than(&r, &self.ops.q_minus_n) {
+        if self.ops.elem_less_than(&r, &self.ops.q_minus_n) {
             let r_plus_n =
-                self.ops.elem_decoded_sum(&r,
-                                          &self.ops.public_key_ops.common.n);
+                self.ops.elem_sum(&r, &self.ops.public_key_ops.common.n);
             if sig_r_equals_x(self.ops, &r_plus_n, &x, &z2) {
                 return Ok(());
             }
