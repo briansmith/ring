@@ -173,20 +173,30 @@ pub static ED25519: EdDSAParameters = EdDSAParameters {};
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
-        let public_key = public_key.as_slice_less_safe();
         if public_key.len() != PUBLIC_KEY_LEN {
             return Err(error::Unspecified);
         }
-        let signature = signature.as_slice_less_safe();
-        if signature.len() != SIGNATURE_LEN {
+        let public_key = public_key.as_slice_less_safe();
+        let public_key = slice_as_array_ref!(public_key, ELEM_LEN).unwrap();
+
+        let (signature_r, signature_s) =
+                try!(signature.read_all(error::Unspecified, |input| {
+            let r = try!(input.skip_and_get_input(ELEM_LEN));
+            let r = r.as_slice_less_safe();
+            // `r` is only used as a slice, so don't convert it to an array ref.
+
+            let s = try!(input.skip_and_get_input(SCALAR_LEN));
+            let s = s.as_slice_less_safe();
+            let s = slice_as_array_ref!(s, SCALAR_LEN).unwrap();
+
+            Ok((r, s))
+        }));
+
+        // Ensure `s` is not too large.
+        if (signature_s[SCALAR_LEN - 1] & 0b11100000) != 0 {
             return Err(error::Unspecified);
         }
-        if (signature[63] & 224) != 0 {
-            return Err(error::Unspecified);
-        }
-        let public_key = slice_as_array_ref!(public_key, SCALAR_LEN).unwrap();
-        let (signature_r, signature_s) = signature.split_at(SCALAR_LEN);
-        let msg = msg.as_slice_less_safe();
+
         let mut a = ExtPoint::new_at_infinity();
         try!(bssl::map_result(unsafe {
             GFp_x25519_ge_frombytes_vartime(&mut a, public_key)
@@ -195,17 +205,18 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
             a.x[i] = -a.x[i];
             a.t[i] = -a.t[i];
         }
-        let mut r_copy = [0u8; SCALAR_LEN];
-        r_copy.copy_from_slice(signature_r);
-        let mut s_copy = [0u8; SCALAR_LEN];
-        s_copy.copy_from_slice(signature_s);
-        let h_digest = eddsa_digest(signature_r, public_key, msg);
+
+        let h_digest =
+            eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
         let h = digest_scalar(h_digest);
+
         let mut r = Point::new_at_infinity();
-        unsafe { GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &s_copy) };
+        unsafe {
+            GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s)
+        };
         let mut r_check = [0u8; ELEM_LEN];
         unsafe { GFp_x25519_ge_tobytes(&mut r_check, &r) };
-        if r_copy != r_check {
+        if signature_r != r_check {
             return Err(error::Unspecified);
         }
         Ok(())
