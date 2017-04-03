@@ -22,7 +22,8 @@ pub struct EdDSAParameters;
 
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
-    private_public: [u8; KEY_PAIR_LEN],
+    private_key: [u8; SEED_LEN],
+    public_key: [u8; PUBLIC_KEY_LEN],
 }
 
 /// The raw bytes of the Ed25519 key pair, for serialization.
@@ -77,15 +78,9 @@ impl<'a> Ed25519KeyPair {
                       -> Result<Ed25519KeyPair, error::Unspecified> {
         let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
                                                              public_key));
-        { // borrow pair;
-            let (private_key, public_key) =
-                pair.private_public.split_at(SEED_LEN);
-            let private_key =
-                slice_as_array_ref!(private_key, SEED_LEN).unwrap();
-            let mut public_key_check = [0; PUBLIC_KEY_LEN];
-            public_from_private(private_key, &mut public_key_check);
-            try!(check!(public_key == public_key_check))
-        }
+        let mut public_key_check = [0; PUBLIC_KEY_LEN];
+        public_from_private(&pair.private_key, &mut public_key_check);
+        try!(check!(public_key == public_key_check));
         Ok(pair)
     }
 
@@ -93,37 +88,31 @@ impl<'a> Ed25519KeyPair {
                             -> Result<Ed25519KeyPair, error::Unspecified> {
         try!(check!(private_key.len() == SEED_LEN));
         try!(check!(public_key.len() == PUBLIC_KEY_LEN));
-        let mut pair = Ed25519KeyPair { private_public: [0; KEY_PAIR_LEN] };
-        {
-            let (pair_private_key, pair_public_key) =
-                pair.private_public.split_at_mut(SEED_LEN);
-            pair_private_key.copy_from_slice(private_key);
-            pair_public_key.copy_from_slice(public_key);
-        }
+        let mut pair = Ed25519KeyPair {
+            private_key: [0u8; SEED_LEN],
+            public_key: [0u8; PUBLIC_KEY_LEN],
+        };
+        pair.private_key.copy_from_slice(private_key);
+        pair.public_key.copy_from_slice(public_key);
         Ok(pair)
-    }
-
-    // Returns a reference to the little-endian-encoded private key bytes.
-    fn private_key_bytes(&'a self) -> &'a [u8] {
-        &self.private_public[..SEED_LEN]
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
     pub fn public_key_bytes(&'a self) -> &'a [u8] {
-        &self.private_public[SEED_LEN..]
+        &self.public_key
     }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         let mut signature_bytes = [0u8; SIGNATURE_LEN];
-        { // borrow signature_bytes;
+        { // Borrow `signature_bytes` for this block only.
             let (signature_r, signature_s) =
                 signature_bytes.split_at_mut(SCALAR_LEN);
             let signature_r =
                 slice_as_array_ref_mut!(signature_r, SCALAR_LEN).unwrap();
             let signature_s =
                 slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
-            let az = digest::digest(&digest::SHA512, self.private_key_bytes());
+            let az = digest::digest(&digest::SHA512, &self.private_key);
             let (a_encoded, z_encoded) = az.as_ref().split_at(SCALAR_LEN);
             let mut a = [0; SCALAR_LEN];
             a.copy_from_slice(a_encoded);
@@ -139,8 +128,7 @@ impl<'a> Ed25519KeyPair {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
                 GFp_ge_p3_tobytes(signature_r, &r);
             }
-            let hram_digest =
-                eddsa_digest(signature_r, self.public_key_bytes(), msg);
+            let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
                 GFp_x25519_sc_muladd(signature_s, &hram, &a, &mut nonce);
@@ -289,7 +277,6 @@ const ELEM_LEN: usize = 32;
 type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_LEN;
 
-const KEY_PAIR_LEN: usize = SEED_LEN + PUBLIC_KEY_LEN;
 const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
 
 type Scalar = [u8; SCALAR_LEN];
