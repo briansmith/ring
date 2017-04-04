@@ -18,6 +18,7 @@
 use {ec, error, limb, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
+use untrusted;
 
 pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
                             -> Result<ec::PrivateKey, error::Unspecified> {
@@ -118,7 +119,8 @@ pub fn scalar_from_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
     // the value (n - 1), we avoid the need to implement a function to add one
     // to a scalar, and we avoid needing to convert the scalar back into an
     // array of bytes.
-    super::ops::scalar_parse_big_endian_fixed_consttime(ops.common, bytes)
+    super::ops::scalar_parse_big_endian_fixed_consttime(
+        ops.common, untrusted::Input::from(bytes))
 }
 
 pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],

@@ -101,6 +101,25 @@ pub enum AllowZero {
     Yes
 }
 
+/// Parses `input` into `result`, reducing it via conditional subtraction
+/// (mod `m`). Assuming 2**((self.num_limbs * LIMB_BITS) - 1) < m and
+/// m < 2**(self.num_limbs * LIMB_BITS), the value will be reduced mod `m` in
+/// constant time so that the result is in the range [0, m) if `allow_zero` is
+/// `AllowZero::Yes`, or [1, m) if `allow_zero` is `AllowZero::No`. `result` is
+/// padded with zeros to its length.
+pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
+        input: untrusted::Input, allow_zero: AllowZero, m: &[Limb],
+        result: &mut [Limb]) -> Result<(), error::Unspecified> {
+    try!(parse_big_endian_and_pad_consttime(input, result));
+    limbs_reduce_once_constant_time(result, m);
+    if allow_zero != AllowZero::Yes {
+        if limbs_are_zero_constant_time(&result) != LimbMask::False {
+            return Err(error::Unspecified);
+        }
+    }
+    Ok(())
+}
+
 /// Parses `input` into `result`, verifies that the value is less than
 /// `max_exclusive`, and pads `result` with zeros to its length. If `allow_zero`
 /// is not `AllowZero::Yes`, zero values are rejected.
@@ -196,4 +215,54 @@ extern {
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
                        -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
+}
+
+#[cfg(test)]
+mod tests {
+    use untrusted;
+    use super::*;
+
+    #[test]
+    fn test_parse_big_endian_and_pad_consttime() {
+        const LIMBS: usize = 4;
+
+        {
+            // Empty input.
+            let inp = untrusted::Input::from(&[]);
+            let mut result = [0; LIMBS];
+            assert!(parse_big_endian_and_pad_consttime(inp, &mut result)
+                        .is_err());
+        }
+
+        // The input is longer than will fit in the given number of limbs.
+        {
+            let inp = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            let inp = untrusted::Input::from(&inp);
+            let mut result = [0; 8 / LIMB_BYTES];
+            assert!(parse_big_endian_and_pad_consttime(inp, &mut result[..])
+                        .is_err());
+        }
+
+        // Less than a full limb.
+        {
+            let inp = [0xfe];
+            let inp = untrusted::Input::from(&inp);
+            let mut result = [0; LIMBS];
+            assert_eq!(Ok(()),
+                       parse_big_endian_and_pad_consttime(inp, &mut result[..]));
+            assert_eq!(&[0xfe, 0, 0, 0], &result);
+        }
+
+        // A whole limb for 32-bit, half a limb for 64-bit.
+        {
+            let inp = [0xbe, 0xef, 0xf0, 0x0d];
+            let inp = untrusted::Input::from(&inp);
+            let mut result = [0; LIMBS];
+            assert_eq!(Ok(()),
+                       parse_big_endian_and_pad_consttime(inp, &mut result));
+            assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
+        }
+
+        // XXX: This is a weak set of tests. TODO: expand it.
+    }
 }

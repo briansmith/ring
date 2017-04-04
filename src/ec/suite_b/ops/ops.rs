@@ -36,17 +36,6 @@ pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
 #[derive(Clone, Copy)]
 pub enum N {}
 
-impl Scalar<Unencoded> {
-    #[inline(always)]
-    pub fn from_limbs_unchecked(limbs: &[Limb; MAX_LIMBS]) -> Scalar<Unencoded> {
-        Scalar {
-            limbs: *limbs,
-            m: PhantomData,
-            encoding: PhantomData,
-        }
-    }
-}
-
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
     // `ops.num_limbs` elements are the X coordinate, the next
@@ -267,22 +256,19 @@ impl PublicKeyOps {
                       -> Result<Elem<R>, error::Unspecified> {
         let encoded_value =
             try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
-        let mut elem_limbs =
-            try!(parse_big_endian_value_in_range(
-                    encoded_value, AllowZero::Yes,
-                    &self.common.q.p[..self.common.num_limbs]));
+        let parsed =
+            try!(elem_parse_big_endian_fixed_consttime(self.common,
+                                                       encoded_value));
+        let mut r = Elem::zero();
         // Montgomery encode (elem_to_mont).
         // TODO: do something about this.
         unsafe {
-            (self.common.elem_mul_mont)(elem_limbs.as_mut_ptr(),
-                                        elem_limbs.as_ptr(),
+            (self.common.elem_mul_mont)(r.limbs.as_mut_ptr(),
+                                        parsed.limbs.as_ptr(),
                                         self.common.q.rr.as_ptr())
+
         }
-        Ok(Elem {
-            limbs: elem_limbs,
-            m: PhantomData,
-            encoding: PhantomData
-        })
+        Ok(r)
     }
 }
 
@@ -303,20 +289,6 @@ pub struct PublicScalarOps {
 }
 
 impl PublicScalarOps {
-    // TODO: did we end up duplicating this somewhere?
-    pub fn scalar_parse(&self, input: untrusted::Input)
-                        -> Result<Scalar, error::Unspecified> {
-        let limbs = try!(parse_big_endian_value_in_range(
-                            input, AllowZero::No,
-                            &self.public_key_ops.common.n.limbs[
-                                ..self.public_key_ops.common.num_limbs]));
-        Ok(Scalar {
-            limbs: limbs,
-            m: PhantomData,
-            encoding: PhantomData,
-        })
-    }
-
     // The (maximum) length of a scalar, not including any padding.
     pub fn scalar_bytes_len(&self) -> usize {
         self.public_key_ops.common.num_limbs * LIMB_BYTES
@@ -372,24 +344,6 @@ impl PublicScalarOps {
 }
 
 
-// Public Keys consist of two fixed-width, big-endian-encoded integers in the
-// range [0, q). ECDSA signatures consist of two variable-width,
-// big-endian-encoded integers in the range [1, n).
-// `parse_big_endian_value_in_range` is the common logic for converting the
-// big-endian encoding of bytes into an least-significant-limb-first array of
-// native-endian limbs, padded with zeros, and for validating that the value is
-// in the given range.
-fn parse_big_endian_value_in_range(
-        input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb])
-        -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
-    let mut result = [0; MAX_LIMBS];
-    try!(limb::parse_big_endian_in_range_and_pad_consttime(
-            input, allow_zero, max_exclusive,
-            &mut result[..max_exclusive.len()]));
-    Ok(result)
-}
-
-
 // Returns (`a` squared `squarings` times) * `b`.
 fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>)
                 -> Elem<R> {
@@ -411,42 +365,62 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize,
     ops.elem_mul(acc, b)
 }
 
-
-// `parse_big_endian_value` is the common logic for converting the big-endian
-// encoding of bytes into an least-significant-limb-first array of
-// native-endian limbs, padded with zeros.
-pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
-                              -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
-    let mut result = [0; MAX_LIMBS];
-    try!(limb::parse_big_endian_and_pad_consttime(input,
-                                                  &mut result[..num_limbs]));
-    Ok(result)
+#[inline]
+pub fn elem_parse_big_endian_fixed_consttime(
+        ops: &CommonOps, bytes: untrusted::Input)
+        -> Result<Elem<Unencoded>, error::Unspecified> {
+    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::Yes,
+                                     &ops.q.p[..ops.num_limbs])
 }
 
-pub fn scalar_parse_big_endian_fixed_consttime(ops: &CommonOps, bytes: &[u8])
+#[inline]
+pub fn scalar_parse_big_endian_fixed_consttime(
+        ops: &CommonOps, bytes: untrusted::Input)
         -> Result<Scalar, error::Unspecified> {
-    let num_limbs = ops.num_limbs;
-    let n = &ops.n.limbs[..num_limbs];
+    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::No,
+                                     &ops.n.limbs[..ops.num_limbs])
+}
 
-    let limbs =
-        try!(parse_big_endian_value(untrusted::Input::from(bytes), num_limbs));
-    if limbs_less_than_limbs_consttime(&limbs[..num_limbs], n) != LimbMask::True {
+#[inline]
+pub fn scalar_parse_big_endian_variable(ops: &CommonOps, allow_zero: AllowZero,
+                                        bytes: untrusted::Input)
+                                        -> Result<Scalar, error::Unspecified> {
+    let mut r = Scalar::zero();
+    try!(parse_big_endian_in_range_and_pad_consttime(
+            bytes, allow_zero, &ops.n.limbs[..ops.num_limbs],
+            &mut r.limbs[..ops.num_limbs]));
+    Ok(r)
+}
+
+pub fn scalar_parse_big_endian_partially_reduced_variable_consttime(
+        ops: &CommonOps, allow_zero: AllowZero, bytes: untrusted::Input)
+        -> Result<Scalar, error::Unspecified> {
+    let mut r = Scalar::zero();
+    try!(parse_big_endian_in_range_partially_reduced_and_pad_consttime(
+            bytes, allow_zero, &ops.n.limbs[..ops.num_limbs],
+            &mut r.limbs[..ops.num_limbs]));
+    Ok(r)
+}
+
+fn parse_big_endian_fixed_consttime<M>(
+        ops: &CommonOps, bytes: untrusted::Input, allow_zero: AllowZero,
+        max_exclusive: &[Limb])
+        -> Result<elem::Elem<M, Unencoded>, error::Unspecified> {
+    if bytes.len() != ops.num_limbs * LIMB_BYTES {
         return Err(error::Unspecified);
     }
-    let r = Scalar::from_limbs_unchecked(&limbs);
-    if ops.is_zero(&r) {
-        return Err(error::Unspecified);
-    }
+    let mut r = elem::Elem::zero();
+    try!(parse_big_endian_in_range_and_pad_consttime(
+            bytes, allow_zero, max_exclusive, &mut r.limbs[..ops.num_limbs]));
     Ok(r)
 }
 
 
 #[cfg(test)]
 mod tests {
-    use {c, error, test};
+    use {c, test};
     use std;
     use super::*;
-    use super::parse_big_endian_value_in_range;
     use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
@@ -714,69 +688,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_big_endian_value_test() {
-        // Empty input.
-        let inp = untrusted::Input::from(&[]);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Err(error::Unspecified));
-
-        // Less than a full limb.
-        let inp = [0xfe];
-        let inp = untrusted::Input::from(&inp);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xfe]));
-
-        // A whole limb for 32-bit, half a limb for 64-bit.
-        let inp = [0xbe, 0xef, 0xf0, 0x0d];
-        let inp = untrusted::Input::from(&inp);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xbeeff00d]));
-
-        // A whole number of limbs (2 for 32-bit, 1 for 64-bit).
-        let inp = [0xfe, 0xed, 0xde, 0xad, 0xbe, 0xef, 0xf0, 0x0d];
-        let inp = untrusted::Input::from(&inp);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xfeeddead,
-                             0xbeeff00d]));
-
-        // One limb - 1 for 32-bit.
-        let inp = [0xef, 0xf0, 0x0d];
-        let inp = untrusted::Input::from(&inp);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xeff00d]));
-
-        // Two limbs - 1 for 64-bit, four limbs - 1 for 32-bit.
-        let inp = [     0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8,
-                   0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0];
-        let inp = untrusted::Input::from(&inp);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0x000e0d0c, 0x0b0a0908,
-                             0x07060504, 0x03020100]));
-
-        // One limb + 1 for for 32-bit, half a limb + 1 for 64-bit.
-        let inp = [0x4, 0x3, 0x2, 0x1, 0x0];
-        let inp = untrusted::Input::from(&inp);
-        assert_eq!(parse_big_endian_value(inp, MAX_LIMBS),
-                   Ok(limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x04, 0x03020100]));
-
-        // A whole number of limbs + 1.
-        let inp = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00];
-        let inp = untrusted::Input::from(&inp);
-        let out = limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x77665544,
-                         0x33221100];
-        assert_eq!(parse_big_endian_value(inp, 3), Ok(out));
-
-        // The input is longer than will fit in the given number of limbs.
-        assert_eq!(parse_big_endian_value(inp, 2),
-                   if cfg!(target_pointer_width = "64") {
-                       Ok(out)
-                   } else {
-                       Err(error::Unspecified)
-                   });
-        assert_eq!(parse_big_endian_value(inp, 1), Err(error::Unspecified));
-    }
-
-    #[test]
     fn p256_point_sum_test() {
         point_sum_test(&p256::PRIVATE_KEY_OPS,
                        "src/ec/suite_b/ops/p256_point_sum_tests.txt");
@@ -1000,10 +911,11 @@ mod tests {
                           elems: &std::vec::Vec<&str>, i: usize) {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
-        let limbs = parse_big_endian_value_in_range(
-            bytes, AllowZero::Yes, &ops.q.p[..ops.num_limbs]).unwrap();
+        let r: Elem<Unencoded> =
+            super::elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
+        // XXX: “Transmute” this to `Elem<R>` limbs.
         limbs_out[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
-            .copy_from_slice(&limbs[..ops.num_limbs]);
+            .copy_from_slice(&r.limbs[..ops.num_limbs]);
     }
 
     enum TestPoint {
@@ -1017,10 +929,12 @@ mod tests {
                               i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
+            let unencoded: Elem<Unencoded> =
+                super::elem_parse_big_endian_fixed_consttime(ops, bytes)
+                    .unwrap();
+            // XXX: “Transmute” this to `Elem<R>` limbs.
             Elem {
-                limbs:  parse_big_endian_value_in_range(
-                            bytes, AllowZero::No,
-                            &ops.q.p[..ops.num_limbs]).unwrap(),
+                limbs: unencoded.limbs,
                 m: PhantomData,
                 encoding: PhantomData,
             }
@@ -1055,10 +969,13 @@ mod tests {
 
     fn consume_elem(ops: &CommonOps, test_case: &mut test::TestCase,
                     name: &str) -> Elem<R> {
-        let bytes = test_case.consume_bytes(name);
+        let bytes = consume_padded_bytes(ops, test_case, name);
         let bytes = untrusted::Input::from(&bytes);
+        let r: Elem<Unencoded> =
+            super::elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
+        // XXX: “Transmute” this to an `Elem<R>`.
         Elem {
-            limbs: parse_big_endian_value(bytes, ops.num_limbs).unwrap(),
+            limbs: r.limbs,
             m: PhantomData,
             encoding: PhantomData,
         }
@@ -1068,30 +985,31 @@ mod tests {
                       name: &str) -> Scalar {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        // Allow zero-valued scalars to test the zero-valued scalars in cases
-        // where normally zero-valued scalars aren't possible.
-        Scalar {
-            limbs: parse_big_endian_value_in_range(
-                    bytes, AllowZero::Yes,
-                    &ops.n.limbs[..ops.num_limbs]).unwrap(),
-            m: PhantomData,
-            encoding: PhantomData,
-        }
+        super::scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes)
+            .unwrap()
     }
 
     fn consume_scalar_mont(ops: &CommonOps, test_case: &mut test::TestCase,
                            name: &str) -> Scalar<R> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        // Allow zero-valued scalars to test the zero-valued scalars in cases
-        // where normally zero-valued scalars aren't possible.
+        let s = super::scalar_parse_big_endian_variable(ops, AllowZero::Yes,
+                                                        bytes).unwrap();
+        // “Transmute” it to a `Scalar<R>`.
         Scalar {
-            limbs: parse_big_endian_value_in_range(
-                    bytes, AllowZero::Yes,
-                    &ops.n.limbs[..ops.num_limbs]).unwrap(),
+            limbs: s.limbs,
             m: PhantomData,
             encoding: PhantomData,
         }
+    }
+
+    fn consume_padded_bytes(ops: &CommonOps, test_case: &mut test::TestCase,
+                            name: &str) -> std::vec::Vec<u8> {
+        let unpadded_bytes = test_case.consume_bytes(name);
+        let mut bytes =
+            vec![0; (ops.num_limbs * LIMB_BYTES) - unpadded_bytes.len()];
+        bytes.extend(&unpadded_bytes);
+        bytes
     }
 }
 

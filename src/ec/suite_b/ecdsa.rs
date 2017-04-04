@@ -15,7 +15,6 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use arithmetic::montgomery::*;
-use core::marker::PhantomData;
 use {der, digest, error, private, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
@@ -38,6 +37,8 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
+        let public_key_ops = self.ops.public_key_ops;
+
         // NSA Guide Prerequisites:
         //
         //    Prior to accepting a verified digital signature as valid the
@@ -56,15 +57,17 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // parameters are hard-coded into the source. Prerequisite #3 is
         // handled by `parse_uncompressed_point`.
         let peer_pub_key =
-            try!(parse_uncompressed_point(self.ops.public_key_ops, public_key));
+            try!(parse_uncompressed_point(public_key_ops, public_key));
 
         let (r, s) = try!(signature.read_all(
             error::Unspecified, |input| (self.split_rs)(self.ops, input)));
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let r = try!(self.ops.scalar_parse(r));
-        let s = try!(self.ops.scalar_parse(s));
+        let r = try!(scalar_parse_big_endian_variable(public_key_ops.common,
+                                                      AllowZero::No, r));
+        let s = try!(scalar_parse_big_endian_variable(public_key_ops.common,
+                                                      AllowZero::No, s));
 
         // NSA Guide Step 2: "Use the selected hash function to compute H =
         // Hash(M)."
@@ -95,7 +98,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         // But, we're going to avoid converting to affine for performance
         // reasons, so we do the verification using the Jacobian coordinates.
         let z2 = try!(verify_jacobian_point_is_on_the_curve(
-                        self.ops.public_key_ops.common, &product));
+                        public_key_ops.common, &product));
 
         // NSA Guide Step 7: "Compute v = xR mod n."
         // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
@@ -103,7 +106,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         //
         // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
         // that would be necessary to compute the affine X coordinate.
-        let x = self.ops.public_key_ops.common.point_x(&product);
+        let x = public_key_ops.common.point_x(&product);
         fn sig_r_equals_x(ops: &PublicScalarOps, r: &Elem<Unencoded>,
                           x: &Elem<R>, z2: &Elem<R>) -> bool {
             let cops = ops.public_key_ops.common;
@@ -117,7 +120,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
         }
         if self.ops.elem_less_than(&r, &self.ops.q_minus_n) {
             let r_plus_n =
-                self.ops.elem_sum(&r, &self.ops.public_key_ops.common.n);
+                self.ops.elem_sum(&r, &public_key_ops.common.n);
             if sig_r_equals_x(self.ops, &r_plus_n, &x, &z2) {
                 return Ok(());
             }
@@ -193,23 +196,8 @@ fn digest_scalar_(ops: &PublicScalarOps, digest: &[u8]) -> Scalar {
         digest
     };
 
-    // XXX: unwrap
-    let mut r = Scalar {
-        limbs: parse_big_endian_value(untrusted::Input::from(digest), num_limbs)
-                .unwrap(),
-        m: PhantomData,
-        encoding: PhantomData,
-    };
-
-    // This assumes 2**((self.num_limbs * LIMB_BITS) - 1) < p and
-    // p < 2**(self.num_limbs * LIMB_BITS) and `p` is prime. See "Efficient
-    // Software Implementations of Modular Exponentiation" by Shay Gueron for
-    // details. This is the case for both the field order and group order for
-    // both P-256 and P-384, but it is not the case for all curves. For example,
-    // it is not true for P-521.
-    limbs_reduce_once_constant_time(&mut r.limbs[..], &cops.n.limbs);
-
-    r
+    scalar_parse_big_endian_partially_reduced_variable_consttime(
+        cops, AllowZero::Yes, untrusted::Input::from(digest)).unwrap()
 }
 
 fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
@@ -386,13 +374,13 @@ mod tests {
             assert_eq!(output.len(),
                        ops.public_key_ops.common.num_limbs * LIMB_BYTES);
 
-            let expected =
-                try!(parse_big_endian_value(untrusted::Input::from(&output),
-                                            num_limbs));
+            let expected = scalar_parse_big_endian_variable(
+                ops.public_key_ops.common, AllowZero::Yes,
+                untrusted::Input::from(&output)).unwrap();
 
             let actual = digest_scalar_(ops, &input);
 
-            assert_eq!(actual.limbs[..num_limbs], expected[..num_limbs]);
+            assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
 
             Ok(())
         });
