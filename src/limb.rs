@@ -95,24 +95,42 @@ pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
 
-/// Parses `input` into `result`, verifies that the value is in the range
-/// [min_exclusive, max_exclusive), and pads `result` with zeros to its length.
-pub fn parse_big_endian_in_range_and_pad(
-        input: untrusted::Input, min_inclusive: Limb, max_exclusive: &[Limb],
+#[derive(Clone, Copy, PartialEq)]
+pub enum AllowZero {
+    No,
+    Yes
+}
+
+/// Parses `input` into `result`, verifies that the value is less than
+/// `max_exclusive`, and pads `result` with zeros to its length. If `allow_zero`
+/// is not `AllowZero::Yes`, zero values are rejected.
+///
+/// This attempts to be constant-time with respect to the actual value *only if*
+/// the value is actually in range. In other words, this won't leak anything
+/// about a valid value, but it might leak small amounts of information about an
+/// invalid value (which constraint it failed).
+pub fn parse_big_endian_in_range_and_pad_consttime(
+        input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb],
         result: &mut [Limb]) -> Result<(), error::Unspecified> {
-    try!(parse_big_endian_and_pad(input, result));
-    if !limbs_less_than_limbs_vartime(&result, max_exclusive) {
+    try!(parse_big_endian_and_pad_consttime(input, result));
+    if limbs_less_than_limbs_consttime(&result, max_exclusive) !=
+            LimbMask::True {
         return Err(error::Unspecified);
     }
-    if result[0] < min_inclusive && result[1..].iter().all(|limb| *limb == 0) {
-        return Err(error::Unspecified);
+    if allow_zero != AllowZero::Yes {
+        if limbs_are_zero_constant_time(&result) != LimbMask::False {
+            return Err(error::Unspecified);
+        }
     }
     Ok(())
 }
 
 /// Parses `input` into `result`, padding `result` with zeros to its length.
-pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
-                                -> Result<(), error::Unspecified> {
+/// This attempts to be constant-time with respect to the value but not with
+/// respect to the length; it is assumed that the length is public knowledge.
+pub fn parse_big_endian_and_pad_consttime(
+        input: untrusted::Input, result: &mut [Limb])
+        -> Result<(), error::Unspecified> {
     if input.is_empty() {
         return Err(error::Unspecified);
     }
@@ -132,6 +150,12 @@ pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
         return Err(error::Unspecified);
     }
 
+    for r in &mut result[..] {
+        *r = 0;
+    }
+
+    // XXX: Questionable as far as constant-timedness is concerned.
+    // TODO: Improve this.
     try!(input.read_all(error::Unspecified, |input| {
         for i in 0..num_encoded_limbs {
             let mut limb: Limb = 0;
@@ -144,10 +168,6 @@ pub fn parse_big_endian_and_pad(input: untrusted::Input, result: &mut [Limb])
         }
         Ok(())
     }));
-
-    for limb in &mut result[num_encoded_limbs..] {
-        *limb = 0;
-    }
 
     Ok(())
 }

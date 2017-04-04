@@ -269,7 +269,7 @@ impl PublicKeyOps {
             try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
         let mut elem_limbs =
             try!(parse_big_endian_value_in_range(
-                    encoded_value, 0,
+                    encoded_value, AllowZero::Yes,
                     &self.common.q.p[..self.common.num_limbs]));
         // Montgomery encode (elem_to_mont).
         // TODO: do something about this.
@@ -307,7 +307,7 @@ impl PublicScalarOps {
     pub fn scalar_parse(&self, input: untrusted::Input)
                         -> Result<Scalar, error::Unspecified> {
         let limbs = try!(parse_big_endian_value_in_range(
-                            input, 1,
+                            input, AllowZero::No,
                             &self.public_key_ops.common.n.limbs[
                                 ..self.public_key_ops.common.num_limbs]));
         Ok(Scalar {
@@ -380,11 +380,11 @@ impl PublicScalarOps {
 // native-endian limbs, padded with zeros, and for validating that the value is
 // in the given range.
 fn parse_big_endian_value_in_range(
-        input: untrusted::Input, min_inclusive: Limb, max_exclusive: &[Limb])
+        input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb])
         -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
     let mut result = [0; MAX_LIMBS];
-    try!(limb::parse_big_endian_in_range_and_pad(
-            input, min_inclusive, max_exclusive,
+    try!(limb::parse_big_endian_in_range_and_pad_consttime(
+            input, allow_zero, max_exclusive,
             &mut result[..max_exclusive.len()]));
     Ok(result)
 }
@@ -418,7 +418,8 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize,
 pub fn parse_big_endian_value(input: untrusted::Input, num_limbs: usize)
                               -> Result<[Limb; MAX_LIMBS], error::Unspecified> {
     let mut result = [0; MAX_LIMBS];
-    try!(limb::parse_big_endian_and_pad(input, &mut result[..num_limbs]));
+    try!(limb::parse_big_endian_and_pad_consttime(input,
+                                                  &mut result[..num_limbs]));
     Ok(result)
 }
 
@@ -1000,7 +1001,7 @@ mod tests {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
         let limbs = parse_big_endian_value_in_range(
-            bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap();
+            bytes, AllowZero::Yes, &ops.q.p[..ops.num_limbs]).unwrap();
         limbs_out[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
             .copy_from_slice(&limbs[..ops.num_limbs]);
     }
@@ -1017,9 +1018,9 @@ mod tests {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             Elem {
-                limbs:
-                    parse_big_endian_value_in_range(
-                        bytes, 0, &ops.q.p[..ops.num_limbs]).unwrap(),
+                limbs:  parse_big_endian_value_in_range(
+                            bytes, AllowZero::No,
+                            &ops.q.p[..ops.num_limbs]).unwrap(),
                 m: PhantomData,
                 encoding: PhantomData,
             }
@@ -1067,9 +1068,12 @@ mod tests {
                       name: &str) -> Scalar {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
+        // Allow zero-valued scalars to test the zero-valued scalars in cases
+        // where normally zero-valued scalars aren't possible.
         Scalar {
             limbs: parse_big_endian_value_in_range(
-                    bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap(),
+                    bytes, AllowZero::Yes,
+                    &ops.n.limbs[..ops.num_limbs]).unwrap(),
             m: PhantomData,
             encoding: PhantomData,
         }
@@ -1079,9 +1083,12 @@ mod tests {
                            name: &str) -> Scalar<R> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
+        // Allow zero-valued scalars to test the zero-valued scalars in cases
+        // where normally zero-valued scalars aren't possible.
         Scalar {
             limbs: parse_big_endian_value_in_range(
-                bytes, 0, &ops.n.limbs[..ops.num_limbs]).unwrap(),
+                    bytes, AllowZero::Yes,
+                    &ops.n.limbs[..ops.num_limbs]).unwrap(),
             m: PhantomData,
             encoding: PhantomData,
         }
