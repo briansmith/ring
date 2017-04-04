@@ -165,11 +165,18 @@ impl CommonOps {
         unary_op(self.elem_sqr_mont, a)
     }
 
+    #[inline]
+    pub fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
+        limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) ==
+            LimbMask::True
+    }
+
     pub fn elem_verify_is_not_zero(&self, a: &Elem<R>)
                                    -> Result<(), error::Unspecified> {
-        match limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) {
-            LimbMask::False => Ok(()),
-            _ => Err(error::Unspecified),
+        if self.is_zero(a) {
+            Err(error::Unspecified)
+        } else {
+            Ok(())
         }
     }
 
