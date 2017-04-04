@@ -89,7 +89,6 @@ pub use ec::x25519::X25519;
 
 
 /// A key agreement algorithm.
-#[cfg_attr(not(test), allow(dead_code))]
 pub struct Algorithm {
     // XXX: This is public so that `Algorithms`s can be defined in other `ring`
     // submodules, but it isn't actually useful outside `ring` since
