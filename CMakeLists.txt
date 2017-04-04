@@ -236,6 +236,10 @@ if (OPENSSL_NO_ASM)
   set(ARCH "generic")
 endif()
 
+if(FIPS)
+  add_definitions(-DBORINGSSL_FIPS)
+endif()
+
 # Add minimal googletest targets. The provided one has many side-effects, and
 # googletest has a very straightforward build.
 add_library(gtest third_party/googletest/src/gtest-all.cc)

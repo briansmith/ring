@@ -67,9 +67,6 @@ add_subdirectory(bytestring)
 add_subdirectory(pool)
 
 # Level 0.2 - depends on nothing but itself
-add_subdirectory(sha)
-add_subdirectory(md4)
-add_subdirectory(md5)
 add_subdirectory(modes)
 add_subdirectory(aes)
 add_subdirectory(des)
@@ -80,7 +77,7 @@ add_subdirectory(poly1305)
 add_subdirectory(curve25519)
 
 # Level 1, depends only on 0.*
-add_subdirectory(digest)
+add_subdirectory(digest_extra)
 add_subdirectory(cipher)
 add_subdirectory(rand)
 add_subdirectory(bio)
@@ -96,7 +93,7 @@ add_subdirectory(rsa)
 add_subdirectory(ec)
 add_subdirectory(ecdh)
 add_subdirectory(ecdsa)
-add_subdirectory(hmac)
+add_subdirectory(hmac_extra)
 
 # Level 3
 add_subdirectory(cmac)
@@ -112,8 +109,12 @@ add_subdirectory(pkcs8)
 # Test support code
 add_subdirectory(test)
 
+add_subdirectory(fipsmodule)
+
 add_library(
-  crypto
+  crypto_base
+
+  OBJECT
 
   cpu-aarch64-linux.c
   cpu-arm.c
@@ -129,17 +130,31 @@ add_library(
   thread_none.c
   thread_pthread.c
   thread_win.c
+)
 
+if(FIPS)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
+
+  set(
+    CRYPTO_FIPS_OBJECTS
+
+    fipsmodule/bcm.o
+  )
+endif()
+
+add_library(
+  crypto
+
+  $<TARGET_OBJECTS:crypto_base>
   $<TARGET_OBJECTS:stack>
   $<TARGET_OBJECTS:lhash>
   $<TARGET_OBJECTS:err>
   $<TARGET_OBJECTS:base64>
   $<TARGET_OBJECTS:bytestring>
   $<TARGET_OBJECTS:pool>
-  $<TARGET_OBJECTS:sha>
-  $<TARGET_OBJECTS:md4>
-  $<TARGET_OBJECTS:md5>
-  $<TARGET_OBJECTS:digest>
+  $<TARGET_OBJECTS:fipsmodule>
+  $<TARGET_OBJECTS:digest_extra>
   $<TARGET_OBJECTS:cipher>
   $<TARGET_OBJECTS:modes>
   $<TARGET_OBJECTS:aes>
@@ -162,7 +177,6 @@ add_library(
   $<TARGET_OBJECTS:ec>
   $<TARGET_OBJECTS:ecdh>
   $<TARGET_OBJECTS:ecdsa>
-  $<TARGET_OBJECTS:hmac>
   $<TARGET_OBJECTS:cmac>
   $<TARGET_OBJECTS:evp>
   $<TARGET_OBJECTS:hkdf>
@@ -170,7 +184,15 @@ add_library(
   $<TARGET_OBJECTS:x509>
   $<TARGET_OBJECTS:x509v3>
   $<TARGET_OBJECTS:pkcs8_lib>
+
+  ${CRYPTO_FIPS_OBJECTS}
 )
+
+if(FIPS)
+  add_dependencies(crypto bcm_o_target)
+endif()
+
+SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
 
 if(NOT MSVC AND NOT ANDROID)
   target_link_libraries(crypto pthread)

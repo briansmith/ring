@@ -30,6 +30,7 @@ var (
 )
 
 func mapName(path string) string {
+	path = strings.Replace(path, filepath.FromSlash("/fipsmodule/"), string(filepath.Separator), 1)
 	switch filepath.ToSlash(path) {
 	case "crypto/cipher/asm/chacha20_poly1305_x86_64.pl", "crypto/rand/asm/rdrand-x86_64.pl":
 		return ""

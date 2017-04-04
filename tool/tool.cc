@@ -29,6 +29,11 @@
 #include "internal.h"
 
 
+static bool IsFIPS(const std::vector<std::string> &args) {
+  printf("%d\n", FIPS_mode());
+  return true;
+}
+
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 struct Tool {
@@ -39,6 +44,7 @@ struct Tool {
 static const Tool kTools[] = {
   { "ciphers", Ciphers },
   { "client", Client },
+  { "isfips", IsFIPS },
   { "generate-ed25519", GenerateEd25519Key },
   { "genrsa", GenerateRSAKey },
   { "md5sum", MD5Sum },

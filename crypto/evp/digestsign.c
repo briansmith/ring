@@ -58,7 +58,7 @@
 #include <openssl/err.h>
 
 #include "internal.h"
-#include "../digest/internal.h"
+#include "../fipsmodule/digest/internal.h"
 
 
 static const struct evp_md_pctx_ops md_pctx_ops = {
