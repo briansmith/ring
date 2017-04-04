@@ -143,6 +143,7 @@ struct TestConfig {
   int expect_ticket_age_skew = 0;
   bool no_op_extra_handshake = false;
   bool handshake_twice = false;
+  bool allow_unknown_alpn_protos = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

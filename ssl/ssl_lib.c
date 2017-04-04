@@ -1753,6 +1753,9 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
   }
 }
 
+void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx, int enabled) {
+  ctx->allow_unknown_alpn_protos = !!enabled;
+}
 
 void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx, int enabled) {
   ctx->tlsext_channel_id_enabled = !!enabled;

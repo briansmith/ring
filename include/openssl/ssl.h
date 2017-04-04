@@ -2586,6 +2586,13 @@ OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl,
                                            const uint8_t **out_data,
                                            unsigned *out_len);
 
+/* SSL_CTX_set_allow_unknown_alpn_protos configures client connections on |ctx|
+ * to allow unknown ALPN protocols from the server. Otherwise, by default, the
+ * client will require that the protocol be advertised in
+ * |SSL_CTX_set_alpn_protos|. */
+OPENSSL_EXPORT void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx,
+                                                          int enabled);
+
 
 /* Next protocol negotiation.
  *
@@ -4280,6 +4287,10 @@ struct ssl_ctx_st {
    * that this currently requires post-handshake verification of
    * certificates. */
   unsigned i_promise_to_verify_certs_after_the_handshake:1;
+
+  /* allow_unknown_alpn_protos is one if the client allows unsolicited ALPN
+   * protocols from the peer. */
+  unsigned allow_unknown_alpn_protos:1;
 };
 
 

@@ -1187,6 +1187,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_early_data_enabled(ssl_ctx.get(), 1);
   }
 
+  if (config->allow_unknown_alpn_protos) {
+    SSL_CTX_set_allow_unknown_alpn_protos(ssl_ctx.get(), 1);
+  }
+
   return ssl_ctx;
 }
 

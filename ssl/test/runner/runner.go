@@ -4889,7 +4889,7 @@ func addExtensionTests() {
 		})
 		testCases = append(testCases, testCase{
 			testType: clientTest,
-			name:     "ALPNClient-Mismatch-" + ver.name,
+			name:     "ALPNClient-RejectUnknown-" + ver.name,
 			config: Config{
 				MaxVersion: ver.version,
 				Bugs: ProtocolBugs{
@@ -4902,6 +4902,20 @@ func addExtensionTests() {
 			shouldFail:         true,
 			expectedError:      ":INVALID_ALPN_PROTOCOL:",
 			expectedLocalError: "remote error: illegal parameter",
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "ALPNClient-AllowUnknown-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					SendALPN: "baz",
+				},
+			},
+			flags: []string{
+				"-advertise-alpn", "\x03foo\x03bar",
+				"-allow-unknown-alpn-protos",
+			},
 		})
 		testCases = append(testCases, testCase{
 			testType: serverTest,
