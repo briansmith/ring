@@ -478,9 +478,9 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
     /* Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
      * emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
      * hash in TLS. Reasonable RSA key sizes are large enough for the largest
-     * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too large for
+     * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too small for
      * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check
-     * the size to fall back to another algorithm. */
+     * the size so that we can fall back to another algorithm in that case. */
     if ((size_t)EVP_PKEY_size(hs->local_pubkey) <
         2 * EVP_MD_size(alg->digest_func()) + 2) {
       return 0;
