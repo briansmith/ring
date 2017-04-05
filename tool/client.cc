@@ -35,86 +35,86 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 static const struct argument kArguments[] = {
     {
-     "-connect", kRequiredArgument,
-     "The hostname and port of the server to connect to, e.g. foo.com:443",
+        "-connect", kRequiredArgument,
+        "The hostname and port of the server to connect to, e.g. foo.com:443",
     },
     {
-     "-cipher", kOptionalArgument,
-     "An OpenSSL-style cipher suite string that configures the offered ciphers",
+        "-cipher", kOptionalArgument,
+        "An OpenSSL-style cipher suite string that configures the offered "
+        "ciphers",
     },
     {
-     "-max-version", kOptionalArgument,
-     "The maximum acceptable protocol version",
+        "-max-version", kOptionalArgument,
+        "The maximum acceptable protocol version",
     },
     {
-     "-min-version", kOptionalArgument,
-     "The minimum acceptable protocol version",
+        "-min-version", kOptionalArgument,
+        "The minimum acceptable protocol version",
     },
     {
-     "-server-name", kOptionalArgument,
-     "The server name to advertise",
+        "-server-name", kOptionalArgument, "The server name to advertise",
     },
     {
-     "-select-next-proto", kOptionalArgument,
-     "An NPN protocol to select if the server supports NPN",
+        "-select-next-proto", kOptionalArgument,
+        "An NPN protocol to select if the server supports NPN",
     },
     {
-     "-alpn-protos", kOptionalArgument,
-     "A comma-separated list of ALPN protocols to advertise",
+        "-alpn-protos", kOptionalArgument,
+        "A comma-separated list of ALPN protocols to advertise",
     },
     {
-     "-fallback-scsv", kBooleanArgument,
-     "Enable FALLBACK_SCSV",
+        "-fallback-scsv", kBooleanArgument, "Enable FALLBACK_SCSV",
     },
     {
-     "-ocsp-stapling", kBooleanArgument,
-     "Advertise support for OCSP stabling",
+        "-ocsp-stapling", kBooleanArgument,
+        "Advertise support for OCSP stabling",
     },
     {
-     "-signed-certificate-timestamps", kBooleanArgument,
-     "Advertise support for signed certificate timestamps",
+        "-signed-certificate-timestamps", kBooleanArgument,
+        "Advertise support for signed certificate timestamps",
     },
     {
-     "-channel-id-key", kOptionalArgument,
-     "The key to use for signing a channel ID",
+        "-channel-id-key", kOptionalArgument,
+        "The key to use for signing a channel ID",
     },
     {
-     "-false-start", kBooleanArgument,
-     "Enable False Start",
-    },
-    { "-session-in", kOptionalArgument,
-      "A file containing a session to resume.",
-    },
-    { "-session-out", kOptionalArgument,
-      "A file to write the negotiated session to.",
+        "-false-start", kBooleanArgument, "Enable False Start",
     },
     {
-      "-key", kOptionalArgument,
-      "Private-key file to use (default is no client certificate)",
+        "-session-in", kOptionalArgument,
+        "A file containing a session to resume.",
     },
     {
-      "-starttls", kOptionalArgument,
-      "A STARTTLS mini-protocol to run before the TLS handshake. Supported"
-      " values: 'smtp'",
+        "-session-out", kOptionalArgument,
+        "A file to write the negotiated session to.",
     },
     {
-     "-grease", kBooleanArgument,
-     "Enable GREASE",
+        "-key", kOptionalArgument,
+        "Private-key file to use (default is no client certificate)",
     },
     {
-      "-resume", kBooleanArgument,
-      "Establish a second connection resuming the original connection.",
+        "-starttls", kOptionalArgument,
+        "A STARTTLS mini-protocol to run before the TLS handshake. Supported"
+        " values: 'smtp'",
     },
     {
-      "-root-certs", kOptionalArgument,
-      "A filename containing one of more PEM root certificates. Implies that "
-      "verification is required.",
+        "-grease", kBooleanArgument, "Enable GREASE",
+    },
+    {
+        "-test-resumption", kBooleanArgument,
+        "Connect to the server twice. The first connection is closed once a "
+        "session is established. The second connection offers it.",
+    },
+    {
+        "-root-certs", kOptionalArgument,
+        "A filename containing one of more PEM root certificates. Implies that "
+        "verification is required.",
     },
     {
         "-early-data", kBooleanArgument, "Allow early data",
     },
     {
-     "", kOptionalArgument, "",
+        "", kOptionalArgument, "",
     },
 };
 
@@ -234,7 +234,9 @@ static bool DoConnection(SSL_CTX *ctx,
       return false;
     }
     SSL_set_session(ssl.get(), session.get());
-  } else if (resume_session) {
+  }
+
+  if (resume_session) {
     SSL_set_session(ssl.get(), resume_session.get());
   }
 
@@ -412,9 +414,16 @@ bool Client(const std::vector<std::string> &args) {
     SSL_CTX_set_early_data_enabled(ctx.get(), 1);
   }
 
-  if (args_map.count("-resume") != 0 &&
-      !DoConnection(ctx.get(), args_map, &WaitForSession)) {
-    return false;
+  if (args_map.count("-test-resumption") != 0) {
+    if (args_map.count("-session-in") != 0) {
+      fprintf(stderr,
+              "Flags -session-in and -test-resumption are incompatible.\n");
+      return false;
+    }
+
+    if (!DoConnection(ctx.get(), args_map, &WaitForSession)) {
+      return false;
+    }
   }
 
   return DoConnection(ctx.get(), args_map, &TransferData);
