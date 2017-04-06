@@ -1633,10 +1633,15 @@ typedef struct ssl3_state_st {
    * handshake. */
   unsigned tlsext_channel_id_valid:1;
 
+  /* key_update_pending is one if we have a KeyUpdate acknowledgment
+   * outstanding. */
+  unsigned key_update_pending:1;
+
   uint8_t send_alert[2];
 
   /* pending_flight is the pending outgoing flight. This is used to flush each
-   * handshake flight in a single write. */
+   * handshake flight in a single write. |write_buffer| must be written out
+   * before this data. */
   BUF_MEM *pending_flight;
 
   /* pending_flight_offset is the number of bytes of |pending_flight| which have

@@ -377,6 +377,10 @@ type testCase struct {
 	// shimWritesFirst controls whether the shim sends an initial "hello"
 	// message before doing a roundtrip with the runner.
 	shimWritesFirst bool
+	// readWithUnfinishedWrite behaves like shimWritesFirst, but the shim
+	// does not complete the write until responding to the first runner
+	// message.
+	readWithUnfinishedWrite bool
 	// shimShutsDown, if true, runs a test where the shim shuts down the
 	// connection immediately after the handshake rather than echoing
 	// messages from the runner.
@@ -678,36 +682,26 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 		}
 	}
 
-	if test.shimWritesFirst {
-		var buf [5]byte
-		_, err := io.ReadFull(tlsConn, buf[:])
-		if err != nil {
-			return err
-		}
-		if string(buf[:]) != "hello" {
-			return fmt.Errorf("bad initial message")
-		}
-	}
-
-	for i := 0; i < test.sendKeyUpdates; i++ {
-		if err := tlsConn.SendKeyUpdate(test.keyUpdateRequest); err != nil {
-			return err
-		}
-	}
-
-	for i := 0; i < test.sendEmptyRecords; i++ {
-		tlsConn.Write(nil)
-	}
-
-	for i := 0; i < test.sendWarningAlerts; i++ {
-		tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
-	}
-
 	if test.sendHalfHelloRequest {
 		tlsConn.SendHalfHelloRequest()
 	}
 
+	shimPrefixPending := test.shimWritesFirst || test.readWithUnfinishedWrite
 	if test.renegotiate > 0 {
+		// If readWithUnfinishedWrite is set, the shim prefix will be
+		// available later.
+		if shimPrefixPending && !test.readWithUnfinishedWrite {
+			var buf [5]byte
+			_, err := io.ReadFull(tlsConn, buf[:])
+			if err != nil {
+				return err
+			}
+			if string(buf[:]) != "hello" {
+				return fmt.Errorf("bad initial message")
+			}
+			shimPrefixPending = false
+		}
+
 		if test.renegotiateCiphers != nil {
 			config.CipherSuites = test.renegotiateCiphers
 		}
@@ -745,12 +739,6 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 	}
 
 	for j := 0; j < messageCount; j++ {
-		testMessage := make([]byte, messageLen)
-		for i := range testMessage {
-			testMessage[i] = 0x42 ^ byte(j)
-		}
-		tlsConn.Write(testMessage)
-
 		for i := 0; i < test.sendKeyUpdates; i++ {
 			tlsConn.SendKeyUpdate(test.keyUpdateRequest)
 		}
@@ -763,9 +751,36 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 			tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
 		}
 
+		testMessage := make([]byte, messageLen)
+		for i := range testMessage {
+			testMessage[i] = 0x42 ^ byte(j)
+		}
+		tlsConn.Write(testMessage)
+
+		// Consume the shim prefix if needed.
+		if shimPrefixPending {
+			var buf [5]byte
+			_, err := io.ReadFull(tlsConn, buf[:])
+			if err != nil {
+				return err
+			}
+			if string(buf[:]) != "hello" {
+				return fmt.Errorf("bad initial message")
+			}
+			shimPrefixPending = false
+		}
+
 		if test.shimShutsDown || test.expectMessageDropped {
 			// The shim will not respond.
 			continue
+		}
+
+		// Process the KeyUpdate ACK. However many KeyUpdates the runner
+		// sends, the shim should respond only once.
+		if test.sendKeyUpdates > 0 && test.keyUpdateRequest == keyUpdateRequested {
+			if err := tlsConn.ReadKeyUpdateACK(); err != nil {
+				return err
+			}
 		}
 
 		buf := make([]byte, len(testMessage))
@@ -938,6 +953,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	if test.shimWritesFirst {
 		flags = append(flags, "-shim-writes-first")
+	}
+
+	if test.readWithUnfinishedWrite {
+		flags = append(flags, "-read-with-unfinished-write")
 	}
 
 	if test.shimShutsDown {
@@ -2299,6 +2318,38 @@ func addBasicTests() {
 			keyUpdateRequest: 42,
 			shouldFail:       true,
 			expectedError:    ":DECODE_ERROR:",
+		},
+		{
+			// Test that KeyUpdates are acknowledged properly.
+			name: "KeyUpdate-RequestACK",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RejectUnsolicitedKeyUpdate: true,
+				},
+			},
+			// Test the shim receiving many KeyUpdates in a row.
+			sendKeyUpdates:   5,
+			messageCount:     5,
+			keyUpdateRequest: keyUpdateRequested,
+		},
+		{
+			// Test that KeyUpdates are acknowledged properly if the
+			// peer's KeyUpdate is discovered while a write is
+			// pending.
+			name: "KeyUpdate-RequestACK-UnfinishedWrite",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RejectUnsolicitedKeyUpdate: true,
+				},
+			},
+			// Test the shim receiving many KeyUpdates in a row.
+			sendKeyUpdates:          5,
+			messageCount:            5,
+			keyUpdateRequest:        keyUpdateRequested,
+			readWithUnfinishedWrite: true,
+			flags: []string{"-async"},
 		},
 		{
 			name: "SendSNIWarningAlert",
@@ -6553,11 +6604,11 @@ func addRenegotiationTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 		},
-		renegotiate: 1,
+		renegotiate:             1,
+		readWithUnfinishedWrite: true,
 		flags: []string{
 			"-async",
 			"-renegotiate-freely",
-			"-read-with-unfinished-write",
 		},
 		shouldFail:    true,
 		expectedError: ":NO_RENEGOTIATION:",

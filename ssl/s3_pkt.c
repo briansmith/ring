@@ -260,14 +260,6 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
     return ssl3_write_pending(ssl, type, buf, len);
   }
 
-  /* The handshake flight buffer is mutually exclusive with application data.
-   *
-   * TODO(davidben): This will not be true when closure alerts use this. */
-  if (ssl->s3->pending_flight != NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
@@ -277,18 +269,47 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
     return 0;
   }
 
+  size_t flight_len = 0;
+  if (ssl->s3->pending_flight != NULL) {
+    flight_len =
+        ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset;
+  }
+
   size_t max_out = len + SSL_max_seal_overhead(ssl);
-  if (max_out < len) {
+  if (max_out < len || max_out + flight_len < max_out) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return -1;
   }
+  max_out += flight_len;
+
   uint8_t *out;
   size_t ciphertext_len;
-  if (!ssl_write_buffer_init(ssl, &out, max_out) ||
-      !tls_seal_record(ssl, out, &ciphertext_len, max_out, type, buf, len)) {
+  if (!ssl_write_buffer_init(ssl, &out, max_out)) {
     return -1;
   }
-  ssl_write_buffer_set_len(ssl, ciphertext_len);
+
+  /* Add any unflushed handshake data as a prefix. This may be a KeyUpdate
+   * acknowledgment or 0-RTT key change messages. |pending_flight| must be clear
+   * when data is added to |write_buffer| or it will be written in the wrong
+   * order. */
+  if (ssl->s3->pending_flight != NULL) {
+    OPENSSL_memcpy(
+        out, ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
+        flight_len);
+    BUF_MEM_free(ssl->s3->pending_flight);
+    ssl->s3->pending_flight = NULL;
+    ssl->s3->pending_flight_offset = 0;
+  }
+
+  if (!tls_seal_record(ssl, out + flight_len, &ciphertext_len,
+                       max_out - flight_len, type, buf, len)) {
+    return -1;
+  }
+  ssl_write_buffer_set_len(ssl, flight_len + ciphertext_len);
+
+  /* Now that we've made progress on the connection, uncork KeyUpdate
+   * acknowledgments. */
+  ssl->s3->key_update_pending = 0;
 
   /* memorize arguments so that ssl3_write_pending can detect bad write retries
    * later */

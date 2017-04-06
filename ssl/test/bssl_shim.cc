@@ -1305,7 +1305,8 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
 
 // WriteAll writes |in_len| bytes from |in| to |ssl|, resolving any asynchronous
 // operations. It returns the result of the final |SSL_write| call.
-static int WriteAll(SSL *ssl, const uint8_t *in, size_t in_len) {
+static int WriteAll(SSL *ssl, const void *in_, size_t in_len) {
+  const uint8_t *in = reinterpret_cast<const uint8_t *>(in_);
   const TestConfig *config = GetTestConfig(ssl);
   int ret;
   do {
@@ -1969,22 +1970,23 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       }
     }
   } else {
+    static const char kInitialWrite[] = "hello";
+    bool pending_initial_write = false;
     if (config->read_with_unfinished_write) {
       if (!config->async) {
         fprintf(stderr, "-read-with-unfinished-write requires -async.\n");
         return false;
       }
 
-      int write_ret = SSL_write(ssl.get(),
-                          reinterpret_cast<const uint8_t *>("unfinished"), 10);
+      int write_ret =
+          SSL_write(ssl.get(), kInitialWrite, strlen(kInitialWrite));
       if (SSL_get_error(ssl.get(), write_ret) != SSL_ERROR_WANT_WRITE) {
         fprintf(stderr, "Failed to leave unfinished write.\n");
         return false;
       }
-    }
-    if (config->shim_writes_first) {
-      if (WriteAll(ssl.get(), reinterpret_cast<const uint8_t *>("hello"),
-                   5) < 0) {
+      pending_initial_write = true;
+    } else if (config->shim_writes_first) {
+      if (WriteAll(ssl.get(), kInitialWrite, strlen(kInitialWrite)) < 0) {
         return false;
       }
     }
@@ -2027,6 +2029,14 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
             !SSL_early_data_accepted(ssl.get())) {
           fprintf(stderr, "handshake was not completed after SSL_read\n");
           return false;
+        }
+
+        // Clear the initial write, if unfinished.
+        if (pending_initial_write) {
+          if (WriteAll(ssl.get(), kInitialWrite, strlen(kInitialWrite)) < 0) {
+            return false;
+          }
+          pending_initial_write = false;
         }
 
         for (int i = 0; i < n; i++) {

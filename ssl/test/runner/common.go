@@ -1335,6 +1335,10 @@ type ProtocolBugs struct {
 	// SendServerHelloAsHelloRetryRequest, if true, causes the server to
 	// send ServerHello messages with a HelloRetryRequest type field.
 	SendServerHelloAsHelloRetryRequest bool
+
+	// RejectUnsolicitedKeyUpdate, if true, causes all unsolicited
+	// KeyUpdates from the peer to be rejected.
+	RejectUnsolicitedKeyUpdate bool
 }
 
 func (c *Config) serverInit() {

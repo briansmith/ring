@@ -852,20 +852,22 @@ func (c *Conn) readRecord(want recordType) error {
 	default:
 		c.sendAlert(alertInternalError)
 		return c.in.setErrorLocked(errors.New("tls: unknown record type requested"))
-	case recordTypeHandshake, recordTypeChangeCipherSpec:
+	case recordTypeChangeCipherSpec:
 		if c.handshakeComplete {
 			c.sendAlert(alertInternalError)
-			return c.in.setErrorLocked(errors.New("tls: handshake or ChangeCipherSpec requested after handshake complete"))
+			return c.in.setErrorLocked(errors.New("tls: ChangeCipherSpec requested after handshake complete"))
 		}
 	case recordTypeApplicationData:
 		if !c.handshakeComplete && !c.config.Bugs.ExpectFalseStart && len(c.config.Bugs.ExpectHalfRTTData) == 0 && len(c.config.Bugs.ExpectEarlyData) == 0 {
 			c.sendAlert(alertInternalError)
 			return c.in.setErrorLocked(errors.New("tls: application data record requested before handshake complete"))
 		}
-	case recordTypeAlert:
-		// Looking for a close_notify. Note: unlike a real
-		// implementation, this is not tolerant of additional records.
-		// See the documentation for ExpectCloseNotify.
+	case recordTypeAlert, recordTypeHandshake:
+		// Looking for a close_notify or handshake message. Note: unlike
+		// a real implementation, this is not tolerant of additional
+		// records. See the documentation for ExpectCloseNotify.
+		// Post-handshake requests for handshake messages are allowed if
+		// the caller used ReadKeyUpdateACK.
 	}
 
 Again:
@@ -1497,6 +1499,9 @@ func (c *Conn) handlePostHandshakeMessage() error {
 	}
 
 	if keyUpdate, ok := msg.(*keyUpdateMsg); ok {
+		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
+			return errors.New("tls: unexpected KeyUpdate message")
+		}
 		c.in.doKeyUpdate(c, false)
 		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
 			c.keyUpdateRequested = true
@@ -1504,9 +1509,33 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		return nil
 	}
 
-	// TODO(davidben): Add support for KeyUpdate.
 	c.sendAlert(alertUnexpectedMessage)
-	return alertUnexpectedMessage
+	return errors.New("tls: unexpected post-handshake message")
+}
+
+// Reads a KeyUpdate acknowledgment from the peer. There may not be any
+// application data records before the message.
+func (c *Conn) ReadKeyUpdateACK() error {
+	c.in.Lock()
+	defer c.in.Unlock()
+
+	msg, err := c.readHandshake()
+	if err != nil {
+		return err
+	}
+
+	keyUpdate, ok := msg.(*keyUpdateMsg)
+	if !ok {
+		c.sendAlert(alertUnexpectedMessage)
+		return errors.New("tls: unexpected message when reading KeyUpdate")
+	}
+
+	if keyUpdate.keyUpdateRequest != keyUpdateNotRequested {
+		return errors.New("tls: received invalid KeyUpdate message")
+	}
+
+	c.in.doKeyUpdate(c, false)
+	return nil
 }
 
 func (c *Conn) Renegotiate() error {

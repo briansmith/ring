@@ -625,9 +625,30 @@ static int tls13_receive_key_update(SSL *ssl) {
     return 0;
   }
 
-  /* TODO(svaldez): Send KeyUpdate if |key_update_request| is
-   * |SSL_KEY_UPDATE_REQUESTED|. */
-  return tls13_rotate_traffic_key(ssl, evp_aead_open);
+  if (!tls13_rotate_traffic_key(ssl, evp_aead_open)) {
+    return 0;
+  }
+
+  /* Acknowledge the KeyUpdate */
+  if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
+      !ssl->s3->key_update_pending) {
+    CBB cbb, body;
+    if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_KEY_UPDATE) ||
+        !CBB_add_u8(&body, SSL_KEY_UPDATE_NOT_REQUESTED) ||
+        !ssl_add_message_cbb(ssl, &cbb) ||
+        !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
+      CBB_cleanup(&cbb);
+      return 0;
+    }
+
+    /* Suppress KeyUpdate acknowledgments until this change is written to the
+     * wire. This prevents us from accumulating write obligations when read and
+     * write progress at different rates. See draft-ietf-tls-tls13-18, section
+     * 4.5.3. */
+    ssl->s3->key_update_pending = 1;
+  }
+
+  return 1;
 }
 
 int tls13_post_handshake(SSL *ssl) {
@@ -648,8 +669,6 @@ int tls13_post_handshake(SSL *ssl) {
       !ssl->server) {
     return tls13_process_new_session_ticket(ssl);
   }
-
-  // TODO(svaldez): Handle post-handshake authentication.
 
   ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
