@@ -251,6 +251,8 @@ func main() {
 			"ssl/test/runner/ecdsa_p384_key.pem",
 			"ssl/test/runner/ecdsa_p521_cert.pem",
 			"ssl/test/runner/ecdsa_p521_key.pem",
+			"ssl/test/runner/ed25519_cert.pem",
+			"ssl/test/runner/ed25519_key.pem",
 			"ssl/test/runner/key.pem",
 			"ssl/test/runner/rsa_1024_cert.pem",
 			"ssl/test/runner/rsa_1024_key.pem",
