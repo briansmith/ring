@@ -292,14 +292,14 @@ OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 
-/* RSA_check_key performs basic validatity tests on |rsa|. It returns one if
+/* RSA_check_key performs basic validity tests on |rsa|. It returns one if
  * they pass and zero otherwise. Opaque keys and public keys always pass. If it
  * returns zero then a more detailed error is available on the error queue. */
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
-/* RSA_check_fips performs public key validatity tests on |key|. It returns one
+/* RSA_check_fips performs public key validity tests on |key|. It returns one
  * if they pass and zero otherwise. Opaque keys always fail. */
-OPENSSL_EXPORT int RSA_check_fips(const RSA *key);
+OPENSSL_EXPORT int RSA_check_fips(RSA *key);
 
 /* RSA_recover_crt_params uses |rsa->n|, |rsa->d| and |rsa->e| in order to
  * calculate the two primes used and thus the precomputed, CRT values. These

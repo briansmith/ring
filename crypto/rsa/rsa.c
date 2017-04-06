@@ -644,7 +644,7 @@ static const BN_ULONG kSmallFactorsLimbs[] = {
 };
 static const BIGNUM kSmallFactors = STATIC_BIGNUM(kSmallFactorsLimbs);
 
-int RSA_check_fips(const RSA *key) {
+int RSA_check_fips(RSA *key) {
   if (RSA_is_opaque(key)) {
     /* Opaque keys can't be checked. */
     OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
@@ -681,6 +681,30 @@ int RSA_check_fips(const RSA *key) {
 
   BN_free(&small_gcd);
   BN_CTX_free(ctx);
+
+  if (!ret) {
+    return ret;
+  }
+
+  /* FIPS pairwise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
+   * section 9.9, it is not known whether |rsa| will be used for signing or
+   * encryption, so either pair-wise consistency self-test is acceptable. We
+   * perform a signing test. */
+  uint8_t data[32] = {0};
+  unsigned sig_len = RSA_size(key);
+  uint8_t *sig = OPENSSL_malloc(sig_len);
+  if (sig == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key) ||
+      !RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    ret = 0;
+  }
+
+  OPENSSL_free(sig);
 
   return ret;
 }

@@ -314,6 +314,15 @@ TEST_P(ECCurveTest, SetAffine) {
                                                    x.get(), y.get(), nullptr));
 }
 
+TEST_P(ECCurveTest, CheckFIPS) {
+  // Generate an EC_KEY.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  EXPECT_TRUE(EC_KEY_check_fips(key.get()));
+}
+
 TEST_P(ECCurveTest, AddingEqualPoints) {
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);

@@ -70,6 +70,7 @@
 #include <string.h>
 
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
@@ -343,6 +344,26 @@ err:
   BN_CTX_free(ctx);
   EC_POINT_free(point);
   return ok;
+}
+
+int EC_KEY_check_fips(const EC_KEY *key) {
+  uint8_t data[16] = {0};
+  unsigned sig_len = ECDSA_size(key);
+  uint8_t *sig = OPENSSL_malloc(sig_len);
+  if (sig == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  int ret = 1;
+  if (!ECDSA_sign(0, data, sizeof(data), sig, &sig_len, key) ||
+      !ECDSA_verify(0, data, sizeof(data), sig, sig_len, key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    ret = 0;
+  }
+
+  OPENSSL_free(sig);
+  return ret;
 }
 
 int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
