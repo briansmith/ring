@@ -127,7 +127,7 @@ static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
 
     /* The addition can overflow, so use Dietz's method for it.
      *
-     * Dietz calculates (x+y)/2 by (x⊕y)>>1 + x&y. This is valid for all
+     * Dietz calculates (x+y)/2 by (x xor y)>>1 + x&y. This is valid for all
      * (unsigned) x and y, even when x+y overflows. Evidence for 32-bit values
      * (embedded in 64 bits to so that overflow can be ignored):
      *

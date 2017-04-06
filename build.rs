@@ -287,7 +287,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "/Zc:forScope",
             "/Zc:inline",
             "/Zc:rvalueCast",
-            "/utf-8", // Input files are Unicode.
 
             // Warnings.
             "/sdl",
