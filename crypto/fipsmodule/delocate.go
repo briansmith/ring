@@ -124,10 +124,6 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	var extractedText []string
 	extractingText := false
 
-	// dropping is true iff the current part of the assembly file is being
-	// dropped from the final output.
-	dropping := false
-
 	for lineNo, line := range lines {
 		if strings.Contains(line, "OPENSSL_ia32cap_P(%rip)") {
 			panic("reference to OPENSSL_ia32cap_P needs to be changed to indirect via OPENSSL_ia32cap_addr")
@@ -141,34 +137,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		}
 
 		switch parts[0] {
-		case ".type":
-			if strings.HasPrefix(parts[1], "BORINGSSL_bcm_text_dummy_") {
-				// This is a dummy function, drop it.
-				dropping = true
-			}
-
-		case ".size":
-			if strings.HasPrefix(parts[1], "BORINGSSL_bcm_text_dummy_") {
-				// End of dummy function that we dropped.
-				dropping = false
-				continue
-			}
-
-		case ".file":
-			// These directives must be included even when in a
-			// dummy function.
-			ret = append(ret, line)
-			continue
-		}
-
-		// Symbol definitions inside dropped functions cannot be
-		// eliminated because the debug information may reference them.
-		if dropping && !strings.HasSuffix(line, ":") {
-			continue
-		}
-
-		switch parts[0] {
-		case "call", "jmp":
+		case "call", "callq", "jmp":
 			target := parts[1]
 			// indirect via register or local label
 			if strings.HasPrefix(target, "*") || strings.HasPrefix(target, ".L") {
@@ -203,6 +172,13 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 
 			ret = append(ret, fmt.Sprintf("\t%s %s", parts[0], redirectorName))
 			redirectors[redirectorName] = target
+			continue
+
+		case ".file":
+			// Do not reorder .file directives. These define
+			// numbered files which are referenced by other debug
+			// directives which may not be reordered.
+			ret = append(ret, line)
 			continue
 
 		case ".section":
