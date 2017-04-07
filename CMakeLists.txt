@@ -158,50 +158,6 @@ if (BUILD_SHARED_LIBS)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-  set(ARCH "x86_64")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")
-  set(ARCH "x86_64")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "AMD64")
-  # cmake reports AMD64 on Windows, but we might be building for 32-bit.
-  if (CMAKE_CL_64)
-    set(ARCH "x86_64")
-  else()
-    set(ARCH "x86")
-  endif()
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
-  set(ARCH "x86")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i386")
-  set(ARCH "x86")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
-  set(ARCH "x86")
-elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
-  set(ARCH "arm")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-  set(ARCH "aarch64")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "mips")
-  # Just to avoid the “unknown processor” error.
-  set(ARCH "generic")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ppc64le")
-  set(ARCH "ppc64le")
-else()
-  message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
-endif()
-
-if (ANDROID AND ${ARCH} STREQUAL "arm")
-  # The Android-NDK CMake files somehow fail to set the -march flag for
-  # assembly files. Without this flag, the compiler believes that it's
-  # building for ARMv5.
-  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=${CMAKE_SYSTEM_PROCESSOR}")
-endif()
-
-if (${ARCH} STREQUAL "x86" AND APPLE)
-  # With CMake 2.8.x, ${CMAKE_SYSTEM_PROCESSOR} evalutes to i386 on OS X,
-  # but clang defaults to 64-bit builds on OS X unless otherwise told.
-  # Set ARCH to x86_64 so clang and CMake agree. This is fixed in CMake 3.
-  set(ARCH "x86_64")
-endif()
-
 if (MSAN)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "Cannot enable MSAN unless using Clang")
@@ -231,13 +187,71 @@ if (GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(FIPS)
+  add_definitions(-DBORINGSSL_FIPS)
+endif()
+
+# CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
+# architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
+# alone, and expects all architecture-specific logic to be conditioned within
+# the source files rather than the build. This does not work for our assembly
+# files, so we fix CMAKE_SYSTEM_PROCESSOR and only support single-architecture
+# builds.
+if (NOT OPENSSL_NO_ASM AND CMAKE_OSX_ARCHITECTURES)
+  list(LENGTH CMAKE_OSX_ARCHITECTURES NUM_ARCHES)
+  if (NOT ${NUM_ARCHES} EQUAL 1)
+    message(FATAL_ERROR "Universal binaries not supported.")
+  endif()
+  list(GET CMAKE_OSX_ARCHITECTURES 0 CMAKE_SYSTEM_PROCESSOR)
+endif()
+
 if (OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+  set(ARCH "x86_64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")
+  set(ARCH "x86_64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "AMD64")
+  # cmake reports AMD64 on Windows, but we might be building for 32-bit.
+  if (CMAKE_CL_64)
+    set(ARCH "x86_64")
+  else()
+    set(ARCH "x86")
+  endif()
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
+  set(ARCH "x86")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i386")
+  set(ARCH "x86")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+  set(ARCH "x86")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+  set(ARCH "aarch64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
+  set(ARCH "aarch64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
+  set(ARCH "arm")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "mips")
+  # Just to avoid the “unknown processor” error.
+  set(ARCH "generic")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ppc64le")
+  set(ARCH "ppc64le")
+else()
+  message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
-if(FIPS)
-  add_definitions(-DBORINGSSL_FIPS)
+if (ANDROID AND ${ARCH} STREQUAL "arm")
+  # The Android-NDK CMake files somehow fail to set the -march flag for
+  # assembly files. Without this flag, the compiler believes that it's
+  # building for ARMv5.
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+if (${ARCH} STREQUAL "x86" AND APPLE)
+  # With CMake 2.8.x, ${CMAKE_SYSTEM_PROCESSOR} evalutes to i386 on OS X,
+  # but clang defaults to 64-bit builds on OS X unless otherwise told.
+  # Set ARCH to x86_64 so clang and CMake agree. This is fixed in CMake 3.
+  set(ARCH "x86_64")
 endif()
 
 # Add minimal googletest targets. The provided one has many side-effects, and

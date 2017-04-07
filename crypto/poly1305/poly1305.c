@@ -156,7 +156,7 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint32_t t0, t1, t2, t3;
 
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
+#if defined(OPENSSL_POLY1305_NEON)
   if (CRYPTO_is_NEON_capable()) {
     CRYPTO_poly1305_init_neon(statep, key);
     return;
@@ -203,7 +203,7 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
   unsigned int i;
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
 
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
+#if defined(OPENSSL_POLY1305_NEON)
   if (CRYPTO_is_NEON_capable()) {
     CRYPTO_poly1305_update_neon(statep, in, in_len);
     return;
@@ -249,7 +249,7 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   uint32_t g0, g1, g2, g3, g4;
   uint32_t b, nb;
 
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
+#if defined(OPENSSL_POLY1305_NEON)
   if (CRYPTO_is_NEON_capable()) {
     CRYPTO_poly1305_finish_neon(statep, mac);
     return;
