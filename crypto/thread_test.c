@@ -14,6 +14,8 @@
 
 #include "internal.h"
 
+#include <openssl/crypto.h>
+
 #include <stdio.h>
 
 
@@ -119,6 +121,18 @@ static int test_once(void) {
     fprintf(stderr, "Expected init function to be called once, but found %u.\n",
             g_once_init_called);
     return 0;
+  }
+
+  if (FIPS_mode()) {
+    /* Our FIPS tooling currently requires that |CRYPTO_ONCE_INIT| is all
+     * zeros, so the |CRYPTO_once_t| is placed in the bss. */
+    static const CRYPTO_once_t once_init_value = CRYPTO_ONCE_INIT;
+    static const CRYPTO_once_t once_bss;
+    if (OPENSSL_memcmp(&once_init_value, &once_bss, sizeof(CRYPTO_once_t)) !=
+        0) {
+      fprintf(stderr, "CRYPTO_ONCE_INIT did not expand to all zeros.\n");
+      return 0;
+    }
   }
 
   return 1;

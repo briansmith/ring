@@ -87,12 +87,16 @@ static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
   CHECK(MD4_Final(out, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md4,
-                       {
-                           NID_md4, MD4_DIGEST_LENGTH, 0 /* flags */, md4_init,
-                           md4_update, md4_final, 64 /* block size */,
-                           sizeof(MD4_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md4) {
+  out->type = NID_md4;
+  out->md_size = MD4_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = md4_init;
+  out->update = md4_update;
+  out->final = md4_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(MD4_CTX);
+}
 
 
 static void md5_init(EVP_MD_CTX *ctx) {
@@ -107,12 +111,16 @@ static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
   CHECK(MD5_Final(out, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5,
-                       {
-                           NID_md5, MD5_DIGEST_LENGTH, 0 /* flags */, md5_init,
-                           md5_update, md5_final, 64 /* block size */,
-                           sizeof(MD5_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5) {
+  out->type = NID_md5;
+  out->md_size = MD5_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = md5_init;
+  out->update = md5_update;
+  out->final = md5_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(MD5_CTX);
+}
 
 
 static void sha1_init(EVP_MD_CTX *ctx) {
@@ -127,12 +135,16 @@ static void sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
   CHECK(SHA1_Final(md, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1,
-                       {
-                           NID_sha1, SHA_DIGEST_LENGTH, 0 /* flags */,
-                           sha1_init, sha1_update, sha1_final,
-                           64 /* block size */, sizeof(SHA_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1) {
+  out->type = NID_sha1;
+  out->md_size = SHA_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = sha1_init;
+  out->update = sha1_update;
+  out->final = sha1_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(SHA_CTX);
+}
 
 
 static void sha224_init(EVP_MD_CTX *ctx) {
@@ -147,12 +159,16 @@ static void sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
   CHECK(SHA224_Final(md, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224,
-                       {
-                           NID_sha224, SHA224_DIGEST_LENGTH, 0 /* flags */,
-                           sha224_init, sha224_update, sha224_final,
-                           64 /* block size */, sizeof(SHA256_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224) {
+  out->type = NID_sha224;
+  out->md_size = SHA224_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = sha224_init;
+  out->update = sha224_update;
+  out->final = sha224_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(SHA256_CTX);
+}
 
 
 static void sha256_init(EVP_MD_CTX *ctx) {
@@ -167,12 +183,16 @@ static void sha256_final(EVP_MD_CTX *ctx, uint8_t *md) {
   CHECK(SHA256_Final(md, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256,
-                       {
-                           NID_sha256, SHA256_DIGEST_LENGTH, 0 /* flags */,
-                           sha256_init, sha256_update, sha256_final,
-                           64 /* block size */, sizeof(SHA256_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256) {
+  out->type = NID_sha256;
+  out->md_size = SHA256_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = sha256_init;
+  out->update = sha256_update;
+  out->final = sha256_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(SHA256_CTX);
+}
 
 
 static void sha384_init(EVP_MD_CTX *ctx) {
@@ -187,12 +207,16 @@ static void sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
   CHECK(SHA384_Final(md, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384,
-                       {
-                           NID_sha384, SHA384_DIGEST_LENGTH, 0 /* flags */,
-                           sha384_init, sha384_update, sha384_final,
-                           128 /* block size */, sizeof(SHA512_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
+  out->type = NID_sha384;
+  out->md_size = SHA384_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = sha384_init;
+  out->update = sha384_update;
+  out->final = sha384_final;
+  out->block_size = 128;
+  out->ctx_size = sizeof(SHA512_CTX);
+}
 
 
 static void sha512_init(EVP_MD_CTX *ctx) {
@@ -207,12 +231,16 @@ static void sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
   CHECK(SHA512_Final(md, ctx->md_data));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512,
-                       {
-                           NID_sha512, SHA512_DIGEST_LENGTH, 0 /* flags */,
-                           sha512_init, sha512_update, sha512_final,
-                           128 /* block size */, sizeof(SHA512_CTX),
-                       })
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512) {
+  out->type = NID_sha512;
+  out->md_size = SHA512_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = sha512_init;
+  out->update = sha512_update;
+  out->final = sha512_final;
+  out->block_size = 128;
+  out->ctx_size = sizeof(SHA512_CTX);
+}
 
 
 typedef struct {
@@ -238,13 +266,15 @@ static void md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {
         SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1));
 }
 
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1,
-                       {
-                           NID_md5_sha1, MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
-                           0 /* flags */, md5_sha1_init, md5_sha1_update,
-                           md5_sha1_final, 64 /* block size */,
-                           sizeof(MD5_SHA1_CTX),
-                       })
-
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1) {
+  out->type = NID_md5_sha1;
+  out->md_size = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = md5_sha1_init;
+  out->update = md5_sha1_update;
+  out->final = md5_sha1_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(MD5_SHA1_CTX);
+}
 
 #undef CHECK

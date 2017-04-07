@@ -78,8 +78,8 @@ if(FIPS)
 
   add_custom_command(
     OUTPUT bcm-delocated.S
-    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/delocate.go crypto/fipsmodule/ar.go -a $<TARGET_FILE:bcm_c_generated_asm> -as ${CMAKE_CURRENT_BINARY_DIR}/${BCM_ASM_SOURCES_COMMA_SEP} -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S
-    DEPENDS bcm_c_generated_asm ${BCM_ASM_SOURCES} delocate.go ar.go
+    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/delocate.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -a $<TARGET_FILE:bcm_c_generated_asm> -as ${CMAKE_CURRENT_BINARY_DIR}/${BCM_ASM_SOURCES_COMMA_SEP} -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S
+    DEPENDS bcm_c_generated_asm ${BCM_ASM_SOURCES} delocate.go ar.go const.go
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
 
@@ -146,8 +146,8 @@ if(FIPS)
 
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/inject-hash.go crypto/fipsmodule/ar.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in $<TARGET_FILE:bcm_hashunset> -bin $<TARGET_FILE:bcm_hashunset_test>
-    DEPENDS bcm_hashunset_test bcm_hashunset inject-hash.go ar.go
+    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/inject-hash.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in $<TARGET_FILE:bcm_hashunset> -bin $<TARGET_FILE:bcm_hashunset_test>
+    DEPENDS bcm_hashunset_test bcm_hashunset inject-hash.go ar.go const.go
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
 

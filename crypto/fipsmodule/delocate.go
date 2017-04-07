@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -118,15 +119,27 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	// redirector function for that symbol.
 	redirectors := make(map[string]string)
 
+	// ia32capAddrNeeded is true iff OPENSSL_ia32cap_addr has been
+	// referenced and thus needs to be emitted outside the module.
+	ia32capAddrNeeded := false
+
 	// extractedText contains lines that have been extracted from the
 	// assembly and need to be moved outside of the module. (This is used
 	// for the .init_array section that specifies constructors.)
 	var extractedText []string
 	extractingText := false
 
+	// bssAccessorsNeeded contains the names of BSS symbols for which
+	// accessor functions need to be emitted outside of the module.
+	var bssAccessorsNeeded []string
+
 	for lineNo, line := range lines {
 		if strings.Contains(line, "OPENSSL_ia32cap_P(%rip)") {
 			panic("reference to OPENSSL_ia32cap_P needs to be changed to indirect via OPENSSL_ia32cap_addr")
+		}
+
+		if strings.Contains(line, "OPENSSL_ia32cap_addr(%rip)") {
+			ia32capAddrNeeded = true
 		}
 
 		parts := strings.Fields(strings.TrimSpace(line))
@@ -181,6 +194,13 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 			ret = append(ret, line)
 			continue
 
+		case ".comm":
+			p := strings.Split(parts[1], ",")
+			name := p[0]
+			bssAccessorsNeeded = append(bssAccessorsNeeded, name)
+			symbols[accessorName(name)] = false
+			ret = append(ret, line)
+
 		case ".section":
 			extractingText = false
 
@@ -209,14 +229,6 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				// relocated, this section is moved to the end
 				// of the file.
 				extractedText = append(extractedText, line)
-				extractingText = true
-
-			case "nonmodule_rodata", "nonmodule_text":
-				// Symbols in either nonmodule_rodata or
-				// nonmodule_text get moved to the text section
-				// outside the module. These are used to avoid
-				// relocations in referencing data.
-				extractedText = append(extractedText, ".text  # "+section)
 				extractingText = true
 
 			default:
@@ -255,9 +267,41 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		ret = append(ret, "\tjmp "+target)
 	}
 
+	// Emit BSS accessor functions. Each is a single LEA followed by RET.
+	for _, name := range bssAccessorsNeeded {
+		funcName := accessorName(name)
+		ret = append(ret, ".type "+funcName+", @function")
+		ret = append(ret, funcName+":")
+		ret = append(ret, "\tleaq "+name+"(%rip), %rax")
+		ret = append(ret, "\tret")
+	}
+
+	// Emit an indirect reference to OPENSSL_ia32cap_P.
+	if ia32capAddrNeeded {
+		ret = append(ret, ".extern OPENSSL_ia32cap_P")
+		ret = append(ret, ".type OPENSSL_ia32cap_addr,@object")
+		ret = append(ret, ".size OPENSSL_ia32cap_addr,8")
+		ret = append(ret, "OPENSSL_ia32cap_addr:")
+		ret = append(ret, "\t.quad OPENSSL_ia32cap_P")
+	}
+
+	// Emit an array for storing the module hash.
+	ret = append(ret, ".type BORINGSSL_bcm_text_hash,@object")
+	ret = append(ret, ".size OPENSSL_ia32cap_addr,32")
+	ret = append(ret, "BORINGSSL_bcm_text_hash:")
+	for _, b := range uninitHashValue {
+		ret = append(ret, ".byte 0x"+strconv.FormatUint(uint64(b), 16))
+	}
+
 	ret = append(ret, extractedText...)
 
 	return ret
+}
+
+// accessorName returns the name of the accessor function for a BSS symbol
+// named name.
+func accessorName(name string) string {
+	return name + "_bss_get"
 }
 
 // localTargetName returns the name of the local target label for a global

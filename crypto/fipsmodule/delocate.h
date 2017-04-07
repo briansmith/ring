@@ -21,58 +21,46 @@
 
 
 #if defined(BORINGSSL_FIPS)
+#define DEFINE_BSS_GET(type, name)            \
+  static type name __attribute__((used)); \
+  type *name##_bss_get(void);
+#else
+#define DEFINE_BSS_GET(type, name) \
+  static type name;            \
+  static type *name##_bss_get(void) { return &name; }
+#endif
 
-/* NONMODULE_RODATA, in FIPS mode, causes delocate.go to move the specified
- * const global to the unhashed non-module area of code located after the
- * module. */
-#define NONMODULE_RODATA __attribute__((section("nonmodule_rodata")))
-
-/* NONMODULE_TEXT, in FIPS mode, causes delocate.go to move the specified
- * function to the unhashed non-module area of code located after the module. We
- * mark such functions noinline to prevent module callers from inlining the
- * relocations into themselves. */
-#define NONMODULE_TEXT __attribute__((section("nonmodule_text"), noinline))
-
-/* DEFINE_METHOD_FUNCTION defines a function named |name| which returns a method
- * table of type const |type|*, initialized by |initializer|. In FIPS mode, to
- * avoid rel.ro data, it is split into a CRYPTO_once_t-guarded initializer in
- * the module and unhashed, non-module accessor functions to space reserved in
- * the BSS. This does not use a static initializer because their execution order
- * is undefined. See FIPS.md for more details.
+/* DEFINE_METHOD_FUNCTION defines a function named |name| which returns a
+ * method table of type const |type|*. In FIPS mode, to avoid rel.ro data, it
+ * is split into a CRYPTO_once_t-guarded initializer in the module and
+ * unhashed, non-module accessor functions to space reserved in the BSS. The
+ * method table is initialized by a caller-supplied function which takes a
+ * parameter named |out| of type |type|*. The caller should follow the macro
+ * invocation with the body of this function:
  *
- * __VA_ARGS__ is used to get around macros not allowing arguments with
- * commas. */
-#define DEFINE_METHOD_FUNCTION(type, name, ... /* initializer */) \
-  NONMODULE_TEXT static type *name##_bss_get(void) {              \
-    static type ret;                                              \
-    return &ret;                                                  \
-  }                                                               \
-                                                                  \
-  NONMODULE_TEXT static CRYPTO_once_t *name##_once_get(void) {    \
-    static CRYPTO_once_t ret = CRYPTO_ONCE_INIT;                  \
-    return &ret;                                                  \
-  }                                                               \
-                                                                  \
-  static void name##_init(void) {                                 \
-    type ret = __VA_ARGS__;                                       \
-    OPENSSL_memcpy(name##_bss_get(), &ret, sizeof(ret));          \
-  }                                                               \
-                                                                  \
-  const type *name(void) {                                        \
-    CRYPTO_once(name##_once_get(), name##_init);                  \
-    return name##_bss_get();                                      \
-  }
+ *     DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md4) {
+ *       out->type = NID_md4;
+ *       out->md_size = MD4_DIGEST_LENGTH;
+ *       out->flags = 0;
+ *       out->init = md4_init;
+ *       out->update = md4_update;
+ *       out->final = md4_final;
+ *       out->block_size = 64;
+ *       out->ctx_size = sizeof(MD4_CTX);
+ *     }
+ *
+ * This mechanism does not use a static initializer because their execution
+ * order is undefined. See FIPS.md for more details. */
+#define DEFINE_METHOD_FUNCTION(type, name)                                    \
+  DEFINE_BSS_GET(type, name##_storage)                                        \
+  DEFINE_BSS_GET(CRYPTO_once_t, name##_once)                                  \
+  static void name##_do_init(type *out);                                      \
+  static void name##_init(void) { name##_do_init(name##_storage_bss_get()); } \
+  const type *name(void) {                                                    \
+    CRYPTO_once(name##_once_bss_get(), name##_init);                          \
+    return name##_storage_bss_get();                                          \
+  }                                                                           \
+  static void name##_do_init(type *out)
 
-#else /* !BORINGSSL_FIPS */
-
-#define NONMODULE_RODATA
-#define NONMODULE_TEXT
-#define DEFINE_METHOD_FUNCTION(type, name, ...) \
-  const type *name(void) {                      \
-    static const type ret = __VA_ARGS__;        \
-    return &ret;                                \
-  }
-
-#endif /* BORINGSSL_FIPS */
 
 #endif /* OPENSSL_HEADER_FIPSMODULE_DELOCATE_H */

@@ -13,12 +13,10 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/base.h>
-#include <openssl/cpu.h>
 #include <openssl/crypto.h>
 #include <openssl/hmac.h>
 
 #include "../internal.h"
-#include "./delocate.h"
 
 #include "digest/digest.c"
 #include "digest/digests.c"
@@ -43,15 +41,7 @@ static void hexdump(const uint8_t *in, size_t len) {
  * the integrity hash. */
 static void BORINGSSL_bcm_text_dummy_start(void) {}
 static void BORINGSSL_bcm_text_dummy_end(void) {}
-
-/* BORINGSSL_bcm_text_hash is outside the module so it may be filled in with the
- * correct hash without a circular dependency. This must match the value used
- * in inject-hash.go. */
-NONMODULE_RODATA static const uint8_t BORINGSSL_bcm_text_hash[32] = {
-    0x5f, 0x30, 0xd1, 0x80, 0xe7, 0x9e, 0x8f, 0x8f, 0xdf, 0x8b, 0x93,
-    0xd4, 0x96, 0x36, 0x30, 0xcc, 0x30, 0xea, 0x38, 0x0f, 0x75, 0x56,
-    0x9a, 0x1b, 0x23, 0x2f, 0x7c, 0x79, 0xff, 0x1b, 0x2b, 0xca,
-};
+static void BORINGSSL_bcm_text_dummy_hash(void) {}
 
 static void BORINGSSL_bcm_power_on_self_test(void) __attribute__((constructor));
 
@@ -71,7 +61,9 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
-  const uint8_t *const expected = BORINGSSL_bcm_text_hash;
+  const uint8_t *const expected =
+      (const uint8_t *)BORINGSSL_bcm_text_dummy_hash;
+
   if (OPENSSL_memcmp(expected, result, sizeof(result)) != 0) {
     printf("FIPS integrity test failed.\nExpected: ");
     hexdump(expected, sizeof(result));
@@ -92,9 +84,3 @@ err:
   }
 }
 #endif  /* BORINGSSL_FIPS */
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* OPENSSL_ia32cap_addr is outside the FIPS module so the FIPS module may locate
- * the address of |OPENSSL_ia32cap_P| without a relocation. */
-NONMODULE_RODATA uint32_t *const OPENSSL_ia32cap_addr = OPENSSL_ia32cap_P;
-#endif

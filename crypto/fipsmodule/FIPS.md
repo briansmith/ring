@@ -26,7 +26,7 @@ In this diagram, the integrity check hashes from `module_start` to `module_end`.
 
 Normally read-only data is placed in a `.data` segment that doesn't get mapped into memory with execute permissions. However, the offset of the data segment from the text segment is another thing that isn't determined until the final link. In order to fix data offsets before the link, read-only data is simply placed in the module's `.text` segment. This might make building ROP chains easier for an attacker, but so it goes.
 
-One special case is `rel.ro` data, which is data that contains function pointers. Since these function pointers are absolute, they are written by the dynamic linker at run-time and so we must eliminate them. The pattern that causes them is when we have a static `EVP_MD` or `EVP_CIPHER` object thus, inside the module, we'll change this pattern to instead to reserve space in the BSS for the object, and add a `CRYPTO_once_t` to protect its initialisation. Functions outside of the module are used to access the reserved space—they effectively act like a special-purpose `malloc` calls that cannot fail. This is implemented by the `DEFINE_METHOD_FUNCTION` macro.
+One special case is `rel.ro` data, which is data that contains function pointers. Since these function pointers are absolute, they are written by the dynamic linker at run-time and so we must eliminate them. The pattern that causes them is when we have a static `EVP_MD` or `EVP_CIPHER` object thus, inside the module, we'll change this pattern to instead to reserve space in the BSS for the object, and add a `CRYPTO_once_t` to protect its initialisation. The script will generate functions outside of the module that return pointers to these areas of memory—they effectively act like a special-purpose malloc calls that cannot fail.
 
 ##### Read-write data
 
@@ -39,9 +39,10 @@ Thankfully, mutable data is very rare in our cryptographic code and I hope that 
 The script performs a number of other transformations which are worth noting but do not warrant their own sections:
 
 1.  It duplicates each global symbol with a local symbol that has `_local_target` appended to the name. References to the global symbols are rewritten to use these duplicates instead. Otherwise, although the generated code uses IP-relative references, relocations are emitted for global symbols in case they are overridden by a different object file during the link.
-1.  Everything in `nonmodule_rodata` and `nonmodule_text` segments is moved to the bottom of the text segment, outside the module.
 1.  Various sections, notably `.rodata`, are moved to the `.text` section, inside the module, so module code may reference it without relocations.
+1.  For each BSS symbol, it generates a function named after that symbol but with `_bss_get` appended, which returns its address.
 1.  It inserts the labels that delimit the module's code and data (called `module_start` and `module_end` in the diagram above).
+1.  It adds a 32-byte, read-only array outside of the module to contain the known-good HMAC value.
 1.  It rewrites some "dummy" references to point to those labels and that array. In order to get the C compiler to emit the correct code it's necessary to make it think that it's referencing static functions. This compensates for that trick.
 
 ##### Integrity testing
