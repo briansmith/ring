@@ -17,13 +17,13 @@
 
 #include <openssl/poly1305.h>
 
-#if defined(OPENSSL_POLY1305_NEON)
-
 #include <string.h>
 
 #include "../internal.h"
 #include "internal.h"
 
+
+#if defined(OPENSSL_POLY1305_NEON)
 
 typedef struct {
   uint32_t v[12]; /* for alignment; only using 10 */
