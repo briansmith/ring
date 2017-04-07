@@ -60,6 +60,9 @@
 #include <openssl/base.h>
 
 #include <openssl/aead.h>
+#include <openssl/aes.h>
+
+#include "../modes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -153,6 +156,16 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               size_t data_plus_mac_plus_padding_size,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
+
+/* aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
+ * where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
+ * set to a function that encrypts single blocks. If not NULL, |*gcm_ctx| is
+ * initialised to do GHASH with the given key. It returns a function for
+ * optimised CTR-mode, or NULL if CTR-mode should be built using
+ * |*out_block|. */
+ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
+                         block128_f *out_block, const uint8_t *key,
+                         size_t key_bytes);
 
 #if defined(__cplusplus)
 } /* extern C */
