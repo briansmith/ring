@@ -72,8 +72,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs::{self, DirEntry};
 use std::time::SystemTime;
-use rayon::par_iter::{ParallelIterator, IntoParallelIterator,
-                      IntoParallelRefIterator};
+use rayon::iter::{ParallelIterator, IndexedParallelIterator,
+                  IntoParallelIterator, IntoParallelRefIterator};
 
 const X86: &'static str = "x86";
 const X86_64: &'static str = "x86_64";
@@ -344,7 +344,7 @@ fn ring_build_rs_main() {
     let mut cfg = rayon::Configuration::new();
     if let Ok(amt) = std::env::var("NUM_JOBS") {
         if let Ok(amt) = amt.parse() {
-            cfg = cfg.set_num_threads(amt);
+            cfg = cfg.num_threads(amt);
         }
     }
     rayon::initialize(cfg).unwrap();
@@ -429,7 +429,7 @@ impl Target {
 
 fn build_c_code(target: &Target, out_dir: &Path) {
     let includes_modified = RING_INCLUDES.par_iter()
-        .weight_max()
+        .with_max_len(1)
         .chain(RING_BUILD_FILE.par_iter())
         .chain(RING_PERL_INCLUDES.par_iter())
         .map(|f| file_modified(Path::new(*f)))
@@ -499,7 +499,7 @@ fn build_c_code(target: &Target, out_dir: &Path) {
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     libs.into_par_iter()
-        .weight_max()
+        .with_max_len(1)
         .for_each(|&(lib_name, srcs, additional_srcs)|
             build_library(&target, &out_dir, lib_name, srcs, additional_srcs,
                           includes_modified));
@@ -526,7 +526,7 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
                  includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs.into_par_iter().chain(srcs.into_par_iter())
-        .weight_max()
+        .with_max_len(1)
         .filter(|f|
             target.env() != "msvc" ||
                 f.extension().unwrap().to_str().unwrap() != "S")
@@ -542,7 +542,7 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
 
     if objs.par_iter()
-        .weight_max()
+        .with_max_len(1)
         .map(|f| Path::new(f))
         .any(|p| need_run(&p, &lib_path, includes_modified)) {
         let mut c = gcc::Config::new();
