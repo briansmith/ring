@@ -438,10 +438,12 @@ def FindCMakeFiles(directory):
   return cmakefiles
 
 def OnlyFIPSFragments(path, dent, is_dir):
-  return is_dir or path.startswith(os.path.join('src', 'crypto', 'fipsmodule', ''))
+  return is_dir or path.startswith(
+      os.path.join('src', 'crypto', 'fipsmodule', ''))
 
 def NoTestsNorFIPSFragments(path, dent, is_dir):
-  return NoTests(path, dent, is_dir) and (is_dir or not OnlyFIPSFragments(path, dent, is_dir))
+  return (NoTests(path, dent, is_dir) and
+      (is_dir or not OnlyFIPSFragments(path, dent, is_dir)))
 
 def NoTests(path, dent, is_dir):
   """Filter function that can be passed to FindCFiles in order to remove test

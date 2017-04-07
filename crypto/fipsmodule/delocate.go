@@ -18,9 +18,9 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -357,22 +357,17 @@ func arLines(lines []string, arPath string) ([]string, error) {
 	}
 	defer arFile.Close()
 
-	ar := NewAR(arFile)
+	ar, err := ParseAR(arFile)
+	if err != nil {
+		return nil, err
+	}
 
-	for {
-		header, err := ar.Next()
-		if err == io.EOF {
-			return lines, nil
-		}
-		if err != nil {
-			return nil, err
-		}
+	if len(ar) != 1 {
+		return nil, fmt.Errorf("expected one file in archive, but found %d", len(ar))
+	}
 
-		if len(header.Name) == 0 {
-			continue
-		}
-
-		scanner := bufio.NewScanner(ar)
+	for _, contents := range ar {
+		scanner := bufio.NewScanner(bytes.NewBuffer(contents))
 		for scanner.Scan() {
 			lines = append(lines, scanner.Text())
 		}
@@ -380,6 +375,8 @@ func arLines(lines []string, arPath string) ([]string, error) {
 			return nil, err
 		}
 	}
+
+	return lines, nil
 }
 
 // validSymbolName returns true if s is a valid (non-local) name for a symbol.

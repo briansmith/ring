@@ -70,26 +70,18 @@ func do(outPath, arInput, binPath string) error {
 	}
 	defer arFile.Close()
 
-	ar := NewAR(arFile)
-
-	for {
-		header, err := ar.Next()
-		if err != nil {
-			return errors.New("error reading from archive file: " + err.Error())
-		}
-
-		if len(header.Name) > 0 {
-			break
-		}
-
-		if _, err := ioutil.ReadAll(ar); err != nil {
-			return errors.New("error reading from archive file: " + err.Error())
-		}
-	}
-
-	object, err := ioutil.ReadAll(ar)
+	ar, err := ParseAR(arFile)
 	if err != nil {
 		return err
+	}
+
+	if len(ar) != 1 {
+		return fmt.Errorf("expected one file in archive, but found %d", len(ar))
+	}
+
+	var object []byte
+	for _, contents := range ar {
+		object = contents
 	}
 
 	offset := bytes.Index(object, uninitHashValue[:])
