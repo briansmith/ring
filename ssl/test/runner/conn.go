@@ -1001,11 +1001,17 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
-	if msgType := c.config.Bugs.SendWrongMessageType; msgType != 0 {
-		if typ == recordTypeHandshake && data[0] == msgType {
+	if typ == recordTypeHandshake {
+		msgType := data[0]
+		if c.config.Bugs.SendWrongMessageType != 0 && msgType == c.config.Bugs.SendWrongMessageType {
+			msgType += 42
+		} else if msgType == typeServerHello && c.config.Bugs.SendServerHelloAsHelloRetryRequest {
+			msgType = typeHelloRetryRequest
+		}
+		if msgType != data[0] {
 			newData := make([]byte, len(data))
 			copy(newData, data)
-			newData[0] += 42
+			newData[0] = msgType
 			data = newData
 		}
 	}

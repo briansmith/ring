@@ -1331,6 +1331,10 @@ type ProtocolBugs struct {
 	// to use when signing in TLS 1.1 and earlier where algorithms are not
 	// negotiated.
 	UseLegacySigningAlgorithm signatureAlgorithm
+
+	// SendServerHelloAsHelloRetryRequest, if true, causes the server to
+	// send ServerHello messages with a HelloRetryRequest type field.
+	SendServerHelloAsHelloRetryRequest bool
 }
 
 func (c *Config) serverInit() {
