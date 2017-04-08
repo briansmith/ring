@@ -193,7 +193,6 @@ const RING_INCLUDES: &'static [&'static str] =
       "crypto/test/bn_test_lib.h",
       "crypto/test/bn_test_util.h",
       "crypto/test/file_test.h",
-      "crypto/test/rand.h",
       "crypto/test/scoped_types.h",
       "include/openssl/aes.h",
       "include/openssl/arm_arch.h",

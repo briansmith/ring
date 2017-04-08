@@ -30,9 +30,6 @@
           test))]
 use c;
 
-#[cfg(test)]
-use core;
-
 use error;
 
 
@@ -255,21 +252,6 @@ impl<'a> RAND<'a> {
     /// Wraps `rng` in a `RAND` so it can be passed to non-Rust code.
     pub fn new(rng: &'a SecureRandom) -> RAND<'a> { RAND { rng: rng } }
 }
-
-#[cfg(test)]
-#[allow(non_snake_case)]
-#[doc(hidden)]
-#[no_mangle]
-pub unsafe extern fn GFp_RAND_bytes(rng: *mut RAND, dest: *mut u8,
-                                    dest_len: c::size_t) -> c::int {
-    let dest: &mut [u8] = core::slice::from_raw_parts_mut(dest, dest_len);
-
-    match (*(*rng).rng).fill(dest) {
-        Ok(()) => 1,
-        _ => 0,
-    }
-}
-
 
 #[cfg(any(target_os = "linux", windows))]
 extern {
