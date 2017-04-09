@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.7.3"
+version = "0.7.4"
 
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
@@ -39,6 +39,8 @@ include = [
     "src/aead/chacha20_poly1305_openssh.rs",
     "src/aead/chacha20_poly1305_tests.txt",
     "src/agreement.rs",
+    "src/arithmetic/arithmetic.rs",
+    "src/arithmetic/montgomery.rs",
     "src/bits.rs",
     "src/bssl.rs",
     "src/c.rs",
@@ -53,11 +55,13 @@ include = [
     "src/ec/ecdh_tests.txt",
     "src/ec/ed25519_tests.txt",
     "src/ec/eddsa.rs",
+    "src/ec/suite_b/curve.rs",
     "src/ec/suite_b/ecdh.rs",
     "src/ec/suite_b/ecdsa.rs",
     "src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
     "src/ec/suite_b/ecdsa_verify_asn1_tests.txt",
     "src/ec/suite_b/ecdsa_verify_fixed_tests.txt",
+    "src/ec/suite_b/ops/elem.rs",
     "src/ec/suite_b/ops/ops.rs",
     "src/ec/suite_b/ops/p256.rs",
     "src/ec/suite_b/ops/p256_elem_mul_tests.txt",
