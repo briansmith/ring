@@ -90,7 +90,13 @@ static const struct argument kArguments[] = {
     },
     {
         "-key", kOptionalArgument,
-        "Private-key file to use (default is no client certificate)",
+        "PEM-encoded file containing the private key.",
+    },
+    {
+        "-cert", kOptionalArgument,
+        "PEM-encoded file containing the leaf certificate and optional "
+        "certificate chain. This is taken from the -key argument if this "
+        "argument is not provided.",
     },
     {
         "-starttls", kOptionalArgument,
@@ -376,12 +382,15 @@ bool Client(const std::vector<std::string> &args) {
 
   if (args_map.count("-key") != 0) {
     const std::string &key = args_map["-key"];
-    if (!SSL_CTX_use_PrivateKey_file(ctx.get(), key.c_str(), SSL_FILETYPE_PEM)) {
+    if (!SSL_CTX_use_PrivateKey_file(ctx.get(), key.c_str(),
+                                     SSL_FILETYPE_PEM)) {
       fprintf(stderr, "Failed to load private key: %s\n", key.c_str());
       return false;
     }
-    if (!SSL_CTX_use_certificate_chain_file(ctx.get(), key.c_str())) {
-      fprintf(stderr, "Failed to load cert chain: %s\n", key.c_str());
+    const std::string &cert =
+        args_map.count("-cert") != 0 ? args_map["-cert"] : key;
+    if (!SSL_CTX_use_certificate_chain_file(ctx.get(), cert.c_str())) {
+      fprintf(stderr, "Failed to load cert chain: %s\n", cert.c_str());
       return false;
     }
   }
