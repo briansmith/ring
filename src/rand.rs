@@ -25,9 +25,7 @@
 //! (seccomp filters on Linux in particular). See `SystemRandom`'s
 //! documentation for more details.
 
-#[cfg(any(target_os = "linux",
-          windows,
-          test))]
+#[cfg(any(target_os = "linux", windows))]
 use c;
 
 use error;
