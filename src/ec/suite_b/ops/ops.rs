@@ -413,9 +413,7 @@ fn parse_big_endian_fixed_consttime<M>(
         ops: &CommonOps, bytes: untrusted::Input, allow_zero: AllowZero,
         max_exclusive: &[Limb])
         -> Result<elem::Elem<M, Unencoded>, error::Unspecified> {
-    if bytes.len() != ops.num_limbs * LIMB_BYTES {
-        return Err(error::Unspecified);
-    }
+    try!(error::check(bytes.len() == ops.num_limbs * LIMB_BYTES));
     let mut r = elem::Elem::zero();
     try!(parse_big_endian_in_range_and_pad_consttime(
             bytes, allow_zero, max_exclusive, &mut r.limbs[..ops.num_limbs]));

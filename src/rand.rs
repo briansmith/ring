@@ -134,9 +134,7 @@ mod sysrand {
                 super::GFp_sysrand_chunk(dest[read_len..].as_mut_ptr(),
                                          dest.len() - read_len)
             };
-            if r < 0 {
-                return Err(error::Unspecified);
-            }
+            try!(error::check(r >= 0));
             // XXX: If r == 0 then this is a busy wait loop waiting for the
             // kernel entropy pool to be initialized.
             read_len += r as usize;

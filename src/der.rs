@@ -45,9 +45,7 @@ pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
                                     -> Result<untrusted::Input<'a>,
                                               error::Unspecified> {
     let (actual_tag, inner) = try!(read_tag_and_get_value(input));
-    if (tag as usize) != (actual_tag as usize) {
-        return Err(error::Unspecified);
-    }
+    try!(error::check((tag as usize) == (actual_tag as usize)));
     Ok(inner)
 }
 
@@ -55,9 +53,8 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
                                   -> Result<(u8, untrusted::Input<'a>),
                                             error::Unspecified> {
     let tag = try!(input.read_byte());
-    if (tag & 0x1F) == 0x1F {
-        return Err(error::Unspecified); // High tag number form is not allowed.
-    }
+    // High tag number form is not allowed.
+    try!(error::check((tag & 0x1F) != 0x1F));
 
     // If the high order bit of the first byte is set to zero then the length
     // is encoded in the seven remaining bits of that byte. Otherwise, those
@@ -66,18 +63,16 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
         n if (n & 0x80) == 0 => n as usize,
         0x81 => {
             let second_byte = try!(input.read_byte());
-            if second_byte < 128 {
-                return Err(error::Unspecified); // Not the canonical encoding.
-            }
+            // Not the canonical encoding.
+            try!(error::check(second_byte >= 128));
             second_byte as usize
         },
         0x82 => {
             let second_byte = try!(input.read_byte()) as usize;
             let third_byte = try!(input.read_byte()) as usize;
             let combined = (second_byte << 8) | third_byte;
-            if combined < 256 {
-                return Err(error::Unspecified); // Not the canonical encoding.
-            }
+            // Not the canonical encoding.
+            try!(error::check(combined >= 256));
             combined
         },
         _ => {
@@ -94,9 +89,7 @@ pub fn bit_string_with_no_unused_bits<'a>(input: &mut untrusted::Reader<'a>)
     nested(input, Tag::BitString, error::Unspecified, |value| {
         let unused_bits_at_end =
             try!(value.read_byte().map_err(|_| error::Unspecified));
-        if unused_bits_at_end != 0 {
-            return Err(error::Unspecified);
-        }
+        try!(error::check(unused_bits_at_end == 0));
         Ok(value.skip_to_end())
     })
 }
@@ -119,9 +112,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
                      -> Result<(), error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
             let first_byte = try!(input.read_byte());
-            if input.at_end() && first_byte < min_value {
-                return Err(error::Unspecified);
-            }
+            try!(error::check(!(input.at_end() && first_byte < min_value)));
             let _ = input.skip_to_end();
             Ok(())
         })
@@ -136,20 +127,16 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
         if first_byte == 0 {
             if input.at_end() {
                 // |value| is the legal encoding of zero.
-                if min_value > 0 {
-                    return Err(error::Unspecified);
-                }
+                try!(error::check(min_value == 0));
                 return Ok(value);
             }
 
             let r = input.skip_to_end();
             try!(r.read_all(error::Unspecified, |input| {
                 let second_byte = try!(input.read_byte());
-                if (second_byte & 0x80) == 0 {
-                    // A leading zero is only allowed when the value's high bit
-                    // is set.
-                    return Err(error::Unspecified);
-                }
+                // A leading zero is only allowed when the value's high bit is
+                // set.
+                try!(error::check((second_byte & 0x80) != 0));
                 let _ = input.skip_to_end();
                 Ok(())
             }));
@@ -158,9 +145,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
         }
 
         // Negative values are not allowed.
-        if (first_byte & 0x80) != 0 {
-            return Err(error::Unspecified);
-        }
+        try!(error::check((first_byte & 0x80) == 0));
 
         let _ = input.skip_to_end();
         try!(check_minimum(value, min_value));

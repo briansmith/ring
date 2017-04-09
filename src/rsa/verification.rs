@@ -129,9 +129,7 @@ pub fn verify_rsa(params: &RSAParameters,
     let n = try!(n.into_modulus::<N>());
 
     // The signature must be the same length as the modulus, in bytes.
-    if signature.len() != n_bits.as_usize_bytes_rounded_up() {
-        return Err(error::Unspecified);
-    }
+    try!(error::check(signature.len() == n_bits.as_usize_bytes_rounded_up()));
 
     // RFC 8017 Section 5.2.2: RSAVP1.
 

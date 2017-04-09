@@ -145,11 +145,7 @@ fn verify_affine_point_is_on_the_curve_scaled(
     ops.elem_mul(&mut rhs, x);
     ops.elem_add(&mut rhs, b_scaled);
 
-    if !ops.elems_are_equal(&lhs, &rhs) {
-        return Err(error::Unspecified);
-    }
-
-    Ok(())
+    error::check(ops.elems_are_equal(&lhs, &rhs))
 }
 
 
