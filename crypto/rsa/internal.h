@@ -59,6 +59,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/bn.h>
+
 
 #if defined(__cplusplus)
 extern "C" {
@@ -133,6 +135,20 @@ typedef struct RSA_additional_prime_st {
 } RSA_additional_prime;
 
 void RSA_additional_prime_free(RSA_additional_prime *ap);
+
+
+/* The following utility functions are exported for test purposes. */
+
+extern const BN_ULONG kBoringSSLRSASqrtTwo[];
+extern const size_t kBoringSSLRSASqrtTwoLen;
+
+/* rsa_less_than_words returns one if |a| < |b| and zero otherwise, where |a|
+ * and |b| both are |len| words long. It runs in constant time. */
+int rsa_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len);
+
+/* rsa_greater_than_pow2 returns one if |b| is greater than 2^|n| and zero
+ * otherwise. */
+int rsa_greater_than_pow2(const BIGNUM *b, int n);
 
 
 #if defined(__cplusplus)

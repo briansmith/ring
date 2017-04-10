@@ -67,8 +67,10 @@
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
+#include "../bn/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
+#include "internal.h"
 
 
 // kPlaintext is a sample plaintext.
@@ -846,3 +848,135 @@ TEST(RSATest, RoundKeyLengths) {
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 1152, e.get(), nullptr));
   EXPECT_EQ(1152u, BN_num_bits(rsa->n));
 }
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+TEST(RSATest, SqrtTwo) {
+  bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(sqrt);
+  ASSERT_TRUE(pow2);
+  ASSERT_TRUE(ctx);
+
+  size_t bits = kBoringSSLRSASqrtTwoLen * BN_BITS2;
+  ASSERT_TRUE(BN_one(pow2.get()));
+  ASSERT_TRUE(BN_lshift(pow2.get(), pow2.get(), 2 * bits - 1));
+
+  // Check that sqrt² < pow2.
+  ASSERT_TRUE(
+      bn_set_words(sqrt.get(), kBoringSSLRSASqrtTwo, kBoringSSLRSASqrtTwoLen));
+  ASSERT_TRUE(BN_sqr(sqrt.get(), sqrt.get(), ctx.get()));
+  EXPECT_LT(BN_cmp(sqrt.get(), pow2.get()), 0);
+
+  // Check that pow2 < (sqrt + 1)².
+  ASSERT_TRUE(
+      bn_set_words(sqrt.get(), kBoringSSLRSASqrtTwo, kBoringSSLRSASqrtTwoLen));
+  ASSERT_TRUE(BN_add_word(sqrt.get(), 1));
+  ASSERT_TRUE(BN_sqr(sqrt.get(), sqrt.get(), ctx.get()));
+  EXPECT_LT(BN_cmp(pow2.get(), sqrt.get()), 0);
+
+  // Check the kBoringSSLRSASqrtTwo is sized for a 3072-bit RSA key.
+  EXPECT_EQ(3072u / 2u, bits);
+}
+
+TEST(RSATest, LessThanWords) {
+  // kTestVectors is an array of 256-bit values in sorted order.
+  static const BN_ULONG kTestVectors[][256 / BN_BITS2] = {
+      {TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000),
+       TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)},
+      {TOBN(0x00000000, 0x00000001), TOBN(0x00000000, 0x00000000),
+       TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)},
+      {TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0x00000000),
+       TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)},
+      {TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff),
+       TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)},
+      {TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff),
+       TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0x00000000)},
+      {TOBN(0x00000000, 0x00000000), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0x00000000, 0x83339915), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0xed17ac85, 0x00000000), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0xed17ac85, 0x83339915), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0xed17ac85, 0xffffffff), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0xffffffff, 0x83339915), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0xffffffff, 0xffffffff), TOBN(0x1d6f60ba, 0x893ba84c),
+       TOBN(0x597d89b3, 0x754abe9f), TOBN(0xb504f333, 0xf9de6484)},
+      {TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000),
+       TOBN(0x00000000, 0x00000000), TOBN(0xffffffff, 0xffffffff)},
+      {TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000),
+       TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff)},
+      {TOBN(0x00000000, 0x00000001), TOBN(0x00000000, 0x00000000),
+       TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff)},
+      {TOBN(0x00000000, 0x00000000), TOBN(0xffffffff, 0xffffffff),
+       TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff)},
+      {TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff),
+       TOBN(0xffffffff, 0xffffffff), TOBN(0xffffffff, 0xffffffff)},
+  };
+
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTestVectors); i++) {
+    SCOPED_TRACE(i);
+    for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(kTestVectors); j++) {
+      SCOPED_TRACE(j);
+      EXPECT_EQ(i < j ? 1 : 0,
+                rsa_less_than_words(kTestVectors[i], kTestVectors[j],
+                                    OPENSSL_ARRAY_SIZE(kTestVectors[i])));
+    }
+  }
+
+  EXPECT_EQ(0, rsa_less_than_words(NULL, NULL, 0));
+}
+
+TEST(RSATest, GreaterThanPow2) {
+  bssl::UniquePtr<BIGNUM> b(BN_new());
+  BN_zero(b.get());
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 0));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 1));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 20));
+
+  ASSERT_TRUE(BN_set_word(b.get(), 1));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 0));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 1));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 20));
+
+  ASSERT_TRUE(BN_set_word(b.get(), 2));
+  EXPECT_TRUE(rsa_greater_than_pow2(b.get(), 0));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 1));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 20));
+
+  ASSERT_TRUE(BN_set_word(b.get(), 3));
+  EXPECT_TRUE(rsa_greater_than_pow2(b.get(), 0));
+  EXPECT_TRUE(rsa_greater_than_pow2(b.get(), 1));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 2));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 20));
+
+  BN_set_negative(b.get(), 1);
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 0));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 1));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 2));
+  EXPECT_FALSE(rsa_greater_than_pow2(b.get(), 20));
+
+  // Check all bit lengths mod 64.
+  for (int n = 1024; n < 1024 + 64; n++) {
+    SCOPED_TRACE(n);
+    ASSERT_TRUE(BN_set_word(b.get(), 1));
+    ASSERT_TRUE(BN_lshift(b.get(), b.get(), n));
+    EXPECT_TRUE(rsa_greater_than_pow2(b.get(), n - 1));
+    EXPECT_FALSE(rsa_greater_than_pow2(b.get(), n));
+    EXPECT_FALSE(rsa_greater_than_pow2(b.get(), n + 1));
+
+    ASSERT_TRUE(BN_sub_word(b.get(), 1));
+    EXPECT_TRUE(rsa_greater_than_pow2(b.get(), n - 1));
+    EXPECT_FALSE(rsa_greater_than_pow2(b.get(), n));
+    EXPECT_FALSE(rsa_greater_than_pow2(b.get(), n + 1));
+
+    ASSERT_TRUE(BN_add_word(b.get(), 2));
+    EXPECT_TRUE(rsa_greater_than_pow2(b.get(), n - 1));
+    EXPECT_TRUE(rsa_greater_than_pow2(b.get(), n));
+    EXPECT_FALSE(rsa_greater_than_pow2(b.get(), n + 1));
+  }
+}
+#endif  // !BORINGSSL_SHARED_LIBRARY
