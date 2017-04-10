@@ -213,15 +213,6 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   return rsa_default_keygen(rsa, bits, e_value, cb);
 }
 
-int RSA_generate_multi_prime_key(RSA *rsa, int bits, int num_primes,
-                                 BIGNUM *e_value, BN_GENCB *cb) {
-  if (rsa->meth->multi_prime_keygen) {
-    return rsa->meth->multi_prime_keygen(rsa, bits, num_primes, e_value, cb);
-  }
-
-  return rsa_default_multi_prime_keygen(rsa, bits, num_primes, e_value, cb);
-}
-
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
   if (rsa->meth->encrypt) {

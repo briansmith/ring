@@ -641,33 +641,6 @@ TEST_P(RSAMultiPrimeTest, TestDecrypt) {
 INSTANTIATE_TEST_CASE_P(, RSAMultiPrimeTest,
                         testing::ValuesIn(kRSAMultiPrimeParams));
 
-TEST(RSATest, MultiPrimeKeygen) {
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  ASSERT_TRUE(rsa);
-  ASSERT_TRUE(e);
-  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
-
-  // Test key generation.
-  static const size_t kBits = 1024;
-  ASSERT_TRUE(
-      RSA_generate_multi_prime_key(rsa.get(), kBits, 3, e.get(), nullptr));
-  ASSERT_TRUE(RSA_check_key(rsa.get()));
-
-  // Test the key round-trips.
-  static const char kMessage[] = "Hello world.";
-  uint8_t encrypted[kBits / 8], decrypted[kBits / 8];
-  size_t encrypted_len, decrypted_len;
-  ASSERT_TRUE(RSA_encrypt(rsa.get(), &encrypted_len, encrypted,
-                          sizeof(encrypted), (const uint8_t *)kMessage,
-                          sizeof(kMessage), RSA_PKCS1_PADDING));
-  ASSERT_TRUE(RSA_decrypt(rsa.get(), &decrypted_len, decrypted,
-                          sizeof(decrypted), encrypted, encrypted_len,
-                          RSA_PKCS1_PADDING));
-  EXPECT_EQ(Bytes((const uint8_t *)kMessage, sizeof(kMessage)),
-            Bytes(decrypted, decrypted_len));
-}
-
 TEST(RSATest, BadKey) {
   bssl::UniquePtr<RSA> key(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
