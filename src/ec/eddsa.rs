@@ -156,16 +156,9 @@ impl<'a> Ed25519KeyPair {
             let signature_s =
                 slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
 
-            let az = digest::digest(&digest::SHA512, &self.private_key);
-            let (a_encoded, z_encoded) = az.as_ref().split_at(SCALAR_LEN);
-
-            let mut a = [0; SCALAR_LEN];
-            a.copy_from_slice(a_encoded);
-            unsafe { GFp_ed25519_scalar_mask(&mut a) };
-
             let nonce = {
                 let mut ctx = digest::Context::new(&digest::SHA512);
-                ctx.update(z_encoded);
+                ctx.update(&self.private_prefix);
                 ctx.update(msg);
                 ctx.finish()
             };
@@ -180,7 +173,7 @@ impl<'a> Ed25519KeyPair {
             let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &a, &nonce);
+                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
             }
         }
         signature::Signature::new(signature_bytes)
