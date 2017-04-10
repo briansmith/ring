@@ -38,9 +38,7 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
     let (x, y) = try!(input.read_all(error::Unspecified, |input| {
         // The encoding must be 4, which is the encoding for "uncompressed".
         let encoding = try!(input.read_byte());
-        if encoding != 4 {
-            return Err(error::Unspecified);
-        }
+        check!(encoding == 4);
 
         // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the
         // interval [0, p-1] in the case that q is an odd prime p[.]"

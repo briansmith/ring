@@ -187,9 +187,7 @@ impl SigningKey {
     pub fn generate_serializable(digest_alg: &'static digest::Algorithm,
                                  rng: &rand::SecureRandom, key_bytes: &mut [u8])
                     -> Result<SigningKey, error::Unspecified> {
-        if key_bytes.len() != recommended_key_len(digest_alg) {
-            return Err(error::Unspecified);
-        }
+        check!(key_bytes.len() == recommended_key_len(digest_alg));
         try!(rng.fill(key_bytes));
         Ok(SigningKey::new(digest_alg, key_bytes))
     }

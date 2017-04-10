@@ -122,9 +122,7 @@ impl RSAKeyPair {
         input.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
                 let version = try!(der::small_nonnegative_integer(input));
-                if version != 0 {
-                    return Err(error::Unspecified);
-                }
+                check!(version == 0);
                 let n = try!(bigint::Positive::from_der(input));
                 let e = try!(bigint::Positive::from_der(input));
                 let d = try!(bigint::Positive::from_der(input));
@@ -182,9 +180,7 @@ impl RSAKeyPair {
                 //
                 // Second, stop if `p > 2**(nBits/2) - 1`.
                 let half_n_bits = n_bits.half_rounded_up();
-                if p.bit_length() != half_n_bits {
-                    return Err(error::Unspecified);
-                }
+                check!(p.bit_length() == half_n_bits);
                 let p = try!(p.into_odd_positive());
 
                 // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
@@ -196,9 +192,7 @@ impl RSAKeyPair {
                 // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
                 //
                 // Second, stop if `q > 2**(nBits/2) - 1`.
-                if p.bit_length() != q.bit_length() {
-                    return Err(error::Unspecified);
-                }
+                check!(p.bit_length() == q.bit_length());
                 let q = try!(q.into_odd_positive());
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
@@ -243,9 +237,7 @@ impl RSAKeyPair {
                     };
                     let min_pq_bitlen_diff = try!(half_n_bits.try_sub(
                             bits::BitLength::from_usize_bits(100)));
-                    if p_minus_q_bits <= min_pq_bitlen_diff {
-                        return Err(error::Unspecified);
-                    }
+                    check!(p_minus_q_bits > min_pq_bitlen_diff);
                 }
 
                 // 6.4.1.4.3 - Step 3.a (out of order).
@@ -266,9 +258,7 @@ impl RSAKeyPair {
                 };
                 let pq_mod_n =
                     try!(bigint::elem_mul(&q_mod_n, p_mod_n, &n));
-                if !pq_mod_n.is_zero() {
-                    return Err(error::Unspecified);
-                }
+                check!(pq_mod_n.is_zero());
 
                 // 6.4.1.4.3/6.4.1.2.1 - Step 6.
 
@@ -278,9 +268,8 @@ impl RSAKeyPair {
                 // has a bit length of half_n_bits + 1, this check gives us
                 // 2**half_n_bits <= d, and knowing d is odd makes the
                 // inequality strict.
-                if !(half_n_bits < d.bit_length()) {
-                    return Err(error::Unspecified);
-                }
+                check!(half_n_bits < d.bit_length());
+
                 // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
@@ -319,9 +308,7 @@ impl RSAKeyPair {
                 };
                 let qInv_times_q_mod_p =
                     try!(bigint::elem_mul(&qInv, q_mod_p, &p.modulus));
-                if !qInv_times_q_mod_p.is_one() {
-                    return Err(error::Unspecified);
-                }
+                check!(qInv_times_q_mod_p.is_one());
 
                 // Step 7.b (out of order). Same proof as for `dP < p - 1`.
                 let q = try!(PrivatePrime::new(q, dQ));
@@ -515,9 +502,7 @@ impl RSASigningState {
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
         let mod_bits = self.key_pair.n_bits;
-        if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
-            return Err(error::Unspecified);
-        }
+        check!(signature.len() == mod_bits.as_usize_bytes_rounded_up());
 
         let &mut RSASigningState {
             key_pair: ref key,

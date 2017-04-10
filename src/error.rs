@@ -101,3 +101,24 @@ impl std::error::Error for Unspecified {
 impl From<untrusted::EndOfInput> for Unspecified {
     fn from(_: untrusted::EndOfInput) -> Self { Unspecified }
 }
+
+/// Map a boolean condition to a `Result<(), ring::error::Unspecified>`,
+/// returning early if it is false.
+///
+/// The `check` macro is meant for use in functions with return type
+/// `Result<T, ring::error::Unspecified>`. The two motivating use cases are (a)
+/// such functions whose purpose is to check a boolean condition (e.g.
+/// `ring::signature::VerificationAlgorithm::verify()`) and (b) those which
+/// must return early with `Err(ring::error::Unspecified)` if certain
+/// intermediate conditions fail to hold.
+macro_rules! check {
+    ($cond:expr) => {
+        {
+            use error;
+
+            if !$cond {
+                return Err(error::Unspecified);
+            }
+        }
+    }
+}

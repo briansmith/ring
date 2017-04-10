@@ -101,12 +101,8 @@ fn check_public_modulus_and_exponent(
     let n_bits_rounded_up =
         try!(bits::BitLength::from_usize_bytes(
             n_bits.as_usize_bytes_rounded_up()));
-    if n_bits_rounded_up < n_min_bits {
-        return Err(error::Unspecified);
-    }
-    if n_bits > n_max_bits {
-        return Err(error::Unspecified);
-    }
+    check!(n_bits_rounded_up >= n_min_bits);
+    check!(n_bits <= n_max_bits);
 
     // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
     // `e > 2**16`, so the requirement is met if and only if `e_min_bits >= 17`.
@@ -114,9 +110,7 @@ fn check_public_modulus_and_exponent(
     // compatibility.
     debug_assert!(e_min_bits >= bits::BitLength::from_usize_bits(2));
     let e_bits = e.bit_length();
-    if e_bits < e_min_bits {
-        return Err(error::Unspecified);
-    }
+    check!(e_bits >= e_min_bits);
 
     // Only small public exponents are supported.
     let e = try!(e.into_public_exponent());

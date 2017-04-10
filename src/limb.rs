@@ -113,9 +113,7 @@ pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
     try!(parse_big_endian_and_pad_consttime(input, result));
     limbs_reduce_once_constant_time(result, m);
     if allow_zero != AllowZero::Yes {
-        if limbs_are_zero_constant_time(&result) != LimbMask::False {
-            return Err(error::Unspecified);
-        }
+        check!(limbs_are_zero_constant_time(&result) == LimbMask::False);
     }
     Ok(())
 }
@@ -132,14 +130,11 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
         input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb],
         result: &mut [Limb]) -> Result<(), error::Unspecified> {
     try!(parse_big_endian_and_pad_consttime(input, result));
-    if limbs_less_than_limbs_consttime(&result, max_exclusive) !=
-            LimbMask::True {
-        return Err(error::Unspecified);
-    }
+    check!(limbs_less_than_limbs_consttime(&result, max_exclusive) ==
+           LimbMask::True);
+
     if allow_zero != AllowZero::Yes {
-        if limbs_are_zero_constant_time(&result) != LimbMask::False {
-            return Err(error::Unspecified);
-        }
+        check!(limbs_are_zero_constant_time(&result) == LimbMask::False);
     }
     Ok(())
 }
@@ -150,9 +145,7 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
 pub fn parse_big_endian_and_pad_consttime(
         input: untrusted::Input, result: &mut [Limb])
         -> Result<(), error::Unspecified> {
-    if input.is_empty() {
-        return Err(error::Unspecified);
-    }
+    check!(!input.is_empty());
 
     // `bytes_in_current_limb` is the number of bytes in the current limb.
     // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
@@ -165,9 +158,7 @@ pub fn parse_big_endian_and_pad_consttime(
     let num_encoded_limbs =
         (input.len() / LIMB_BYTES) +
         (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
-    if num_encoded_limbs > result.len() {
-        return Err(error::Unspecified);
-    }
+    check!(num_encoded_limbs <= result.len());
 
     for r in &mut result[..] {
         *r = 0;

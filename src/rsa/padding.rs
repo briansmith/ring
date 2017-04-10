@@ -82,9 +82,7 @@ impl RSAVerification for PKCS1 {
         let calculated =
             &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);
-        if m.skip_to_end() != polyfill::ref_from_mut_ref(calculated) {
-            return Err(error::Unspecified);
-        }
+        check!(m.skip_to_end() == polyfill::ref_from_mut_ref(calculated));
         Ok(())
     }
 }
@@ -278,9 +276,7 @@ impl RSAVerification for PSS {
         // strip before we start the PSS decoding steps which is an artifact of
         // the `Verification` interface.
         if metrics.top_byte_mask == 0xff {
-            if try!(m.read_byte()) != 0 {
-                return Err(error::Unspecified);
-            }
+            check!(try!(m.read_byte()) == 0);
         };
         let em = m;
 
@@ -296,9 +292,7 @@ impl RSAVerification for PSS {
         let h_hash = try!(em.skip_and_get_input(metrics.h_len));
 
         // Step 4.
-        if try!(em.read_byte()) != 0xbc {
-            return Err(error::Unspecified);
-        }
+        check!(try!(em.read_byte()) == 0xbc);
 
         // Step 7.
         let mut db = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
@@ -309,9 +303,7 @@ impl RSAVerification for PSS {
         try!(masked_db.read_all(error::Unspecified, |masked_bytes| {
             // Step 6. Check the top bits of first byte are zero.
             let b = try!(masked_bytes.read_byte());
-            if b & !metrics.top_byte_mask != 0 {
-                return Err(error::Unspecified);
-            }
+            check!(b & !metrics.top_byte_mask == 0);
             db[0] ^= b;
 
             // Step 8.
@@ -327,13 +319,9 @@ impl RSAVerification for PSS {
         // Step 10.
         let ps_len = metrics.ps_len;
         for i in 0..ps_len {
-            if db[i] != 0 {
-                return Err(error::Unspecified);
-            }
+            check!(db[i] == 0);
         }
-        if db[metrics.ps_len] != 1 {
-            return Err(error::Unspecified);
-        }
+        check!(db[metrics.ps_len] == 1);
 
         // Step 11.
         let salt = &db[(db.len() - metrics.s_len)..];
@@ -342,9 +330,7 @@ impl RSAVerification for PSS {
         let h_prime = pss_digest(self.digest_alg, m_hash, salt);
 
         // Step 14.
-        if h_hash != h_prime.as_ref() {
-            return Err(error::Unspecified);
-        }
+        check!(h_hash == h_prime.as_ref());
 
         Ok(())
     }
