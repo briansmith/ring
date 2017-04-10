@@ -25,6 +25,11 @@ extern "C" {
 #endif
 
 
+/* RAND_bytes_with_additional_data samples from the RNG after mixing 32 bytes
+ * from |user_additional_data| in. */
+void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
+                                     const uint8_t user_additional_data[32]);
+
 /* CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
  * system. */
 void CRYPTO_sysrand(uint8_t *buf, size_t len);

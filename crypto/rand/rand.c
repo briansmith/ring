@@ -34,41 +34,34 @@
  * In addition, the hardware may provide a low-latency RNG. Intel's rdrand
  * instruction is the canonical example of this. When a hardware RNG is
  * available we don't need to worry about an RNG failure arising from fork()ing
- * the process or moving a VM, so we can keep thread-local RNG state and XOR
- * the hardware entropy in.
+ * the process or moving a VM, so we can keep thread-local RNG state and use it
+ * as an additional-data input to CTR-DRBG.
  *
  * (We assume that the OS entropy is safe from fork()ing and VM duplication.
  * This might be a bit of a leap of faith, esp on Windows, but there's nothing
  * that we can do about it.) */
 
-/* rand_thread_state contains the per-thread state for the RNG. This is only
- * used if the system has support for a hardware RNG. */
+/* kReseedInterval is the number of generate calls made to CTR-DRBG before
+ * reseeding. */
+static const unsigned kReseedInterval = 4096;
+
+/* rand_thread_state contains the per-thread state for the RNG. */
 struct rand_thread_state {
-  uint8_t key[32];
-  uint64_t calls_used;
-  size_t bytes_used;
-  uint8_t partial_block[64];
-  unsigned partial_block_used;
+  CTR_DRBG_STATE drbg;
+  /* calls is the number of generate calls made on |drbg| since it was last
+   * (re)seeded. This is bound by |kReseedInterval|. */
+  unsigned calls;
 };
-
-/* kMaxCallsPerRefresh is the maximum number of |RAND_bytes| calls that we'll
- * serve before reading a new key from the operating system. This only applies
- * if we have a hardware RNG. */
-static const unsigned kMaxCallsPerRefresh = 1024;
-
-/* kMaxBytesPerRefresh is the maximum number of bytes that we'll return from
- * |RAND_bytes| before reading a new key from the operating system. This only
- * applies if we have a hardware RNG. */
-static const uint64_t kMaxBytesPerRefresh = 1024 * 1024;
 
 /* rand_thread_state_free frees a |rand_thread_state|. This is called when a
  * thread exits. */
-static void rand_thread_state_free(void *state) {
-  if (state == NULL) {
+static void rand_thread_state_free(void *state_in) {
+  if (state_in == NULL) {
     return;
   }
 
-  OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
+  struct rand_thread_state *state = state_in;
+  CTR_DRBG_clear(&state->drbg);
   OPENSSL_free(state);
 }
 
@@ -115,77 +108,112 @@ static int hwrand(uint8_t *buf, size_t len) {
 
 #endif
 
-int RAND_bytes(uint8_t *buf, size_t len) {
-  if (len == 0) {
-    return 1;
+#if defined(BORINGSSL_FIPS)
+
+static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  /* We overread from /dev/urandom by a factor of 10 and XOR to whiten. */
+#define FIPS_OVERREAD 10
+  uint8_t entropy[CTR_DRBG_ENTROPY_LEN * FIPS_OVERREAD];
+  CRYPTO_sysrand(entropy, sizeof(entropy));
+
+  OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
+
+  for (size_t i = 1; i < FIPS_OVERREAD; i++) {
+    for (size_t j = 0; j < CTR_DRBG_ENTROPY_LEN; j++) {
+      seed[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
+    }
+  }
+}
+
+#else
+
+static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  /* If not in FIPS mode, we don't overread from the system entropy source. */
+  CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
+}
+
+#endif
+
+void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
+                                     const uint8_t user_additional_data[32]) {
+  if (out_len == 0) {
+    return;
   }
 
-  if (!hwrand(buf, len)) {
-    /* Without a hardware RNG to save us from address-space duplication, the OS
-     * entropy is used directly. */
-    CRYPTO_sysrand(buf, len);
-    return 1;
-  }
-
+  struct rand_thread_state stack_state;
   struct rand_thread_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
+
   if (state == NULL) {
     state = OPENSSL_malloc(sizeof(struct rand_thread_state));
     if (state == NULL ||
         !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
                                  rand_thread_state_free)) {
-      CRYPTO_sysrand(buf, len);
-      return 1;
+      /* If the system is out of memory, use an ephemeral state on the
+       * stack. */
+      state = &stack_state;
     }
 
-    OPENSSL_memset(state->partial_block, 0, sizeof(state->partial_block));
-    state->calls_used = kMaxCallsPerRefresh;
+    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+    rand_get_seed(seed);
+    if (!CTR_DRBG_init(&state->drbg, seed, NULL, 0)) {
+      abort();
+    }
+    state->calls = 0;
   }
 
-  if (state->calls_used >= kMaxCallsPerRefresh ||
-      state->bytes_used >= kMaxBytesPerRefresh) {
-    CRYPTO_sysrand(state->key, sizeof(state->key));
-    state->calls_used = 0;
-    state->bytes_used = 0;
-    state->partial_block_used = sizeof(state->partial_block);
+  if (state->calls >= kReseedInterval) {
+    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+    rand_get_seed(seed);
+    if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
+      abort();
+    }
+    state->calls = 0;
   }
 
-  if (len >= sizeof(state->partial_block)) {
-    size_t remaining = len;
-    while (remaining > 0) {
-      /* kMaxBytesPerCall is only 2GB, while ChaCha can handle 256GB. But this
-       * is sufficient and easier on 32-bit. */
-      static const size_t kMaxBytesPerCall = 0x80000000;
-      size_t todo = remaining;
-      if (todo > kMaxBytesPerCall) {
-        todo = kMaxBytesPerCall;
-      }
-      uint8_t nonce[12];
-      OPENSSL_memset(nonce, 0, 4);
-      OPENSSL_memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
-      CRYPTO_chacha_20(buf, buf, todo, state->key, nonce, 0);
-      buf += todo;
-      remaining -= todo;
-      state->calls_used++;
-    }
-  } else {
-    if (sizeof(state->partial_block) - state->partial_block_used < len) {
-      uint8_t nonce[12];
-      OPENSSL_memset(nonce, 0, 4);
-      OPENSSL_memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
-      CRYPTO_chacha_20(state->partial_block, state->partial_block,
-                       sizeof(state->partial_block), state->key, nonce, 0);
-      state->partial_block_used = 0;
-    }
-
-    unsigned i;
-    for (i = 0; i < len; i++) {
-      buf[i] ^= state->partial_block[state->partial_block_used++];
-    }
-    state->calls_used++;
+  /* Additional data is mixed into every CTR-DRBG call to protect, as best we
+   * can, against forks & VM clones. We do not over-read this information and
+   * don't reseed with it so, from the point of view of FIPS, this doesn't
+   * provide “prediction resistance”. But, in practice, it does. */
+  uint8_t additional_data[32];
+  if (!hwrand(additional_data, sizeof(additional_data))) {
+    /* Without a hardware RNG to save us from address-space duplication, the OS
+     * entropy is used. */
+    CRYPTO_sysrand(additional_data, sizeof(additional_data));
   }
-  state->bytes_used += len;
 
+  for (size_t i = 0; i < sizeof(additional_data); i++) {
+    additional_data[i] ^= user_additional_data[i];
+  }
+
+  int first_call = 1;
+  while (out_len > 0) {
+    size_t todo = out_len;
+    if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
+      todo = CTR_DRBG_MAX_GENERATE_LENGTH;
+    }
+
+    if (!CTR_DRBG_generate(&state->drbg, out, todo, additional_data,
+                           first_call ? sizeof(additional_data) : 0)) {
+      abort();
+    }
+
+    out += todo;
+    out_len -= todo;
+    state->calls++;
+    first_call = 0;
+  }
+
+  if (state == &stack_state) {
+    CTR_DRBG_clear(&state->drbg);
+  }
+
+  return;
+}
+
+int RAND_bytes(uint8_t *out, size_t out_len) {
+  static const uint8_t kZeroAdditionalData[32] = {0};
+  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
   return 1;
 }
 
