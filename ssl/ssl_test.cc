@@ -126,16 +126,10 @@ static const CipherTest kCipherTests[] = {
     // ECDHE_RSA.
     {
         "ALL:-kECDHE:"
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-        "-kDHE:"
-#endif
         "-kRSA:-ALL:"
         "AESGCM+AES128+aRSA",
         {
             {TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, 0},
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-            {TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256, 0},
-#endif
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
         false,
@@ -188,9 +182,6 @@ static const CipherTest kCipherTests[] = {
     {
         // To simplify things, banish all but {ECDHE_RSA,RSA} x
         // {CHACHA20,AES_256_CBC,AES_128_CBC} x SHA1.
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-        "!kEDH:"
-#endif
         "!AESGCM:!3DES:!SHA256:!SHA384:"
         // Order some ciphers backwards by strength.
         "ALL:-CHACHA20:-AES256:-AES128:-ALL:"
@@ -800,11 +791,6 @@ typedef struct {
 static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
     {SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA"},
     {TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA"},
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    {TLS1_CK_DHE_RSA_WITH_AES_256_SHA, "TLS_DHE_RSA_WITH_AES_256_CBC_SHA"},
-    {TLS1_CK_DHE_RSA_WITH_AES_256_SHA256,
-     "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256"},
-#endif
     {TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
      "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"},
     {TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
@@ -1850,12 +1836,7 @@ static bool ClientHelloMatches(uint16_t version, const uint8_t *expected,
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   // Our default cipher list varies by CPU capabilities, so manually place the
   // ChaCha20 ciphers in front.
-  const char* cipher_list =
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-      "!DHE:CHACHA20:ALL";
-#else
-      "CHACHA20:ALL";
-#endif
+  const char* cipher_list = "CHACHA20:ALL";
   if (!ctx ||
       // SSLv3 is off by default.
       !SSL_CTX_set_min_proto_version(ctx.get(), SSL3_VERSION) ||

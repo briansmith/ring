@@ -16,7 +16,6 @@
 #include <stdlib.h>
 
 #include <openssl/bio.h>
-#include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -277,10 +276,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
 
   // Enable ciphers that are off by default.
   SSL_set_strict_cipher_list(server, "ALL:NULL-SHA");
-
-  DH *dh = DH_get_1024_160(nullptr);
-  SSL_set_tmp_dh(server, dh);
-  DH_free(dh);
 
   BIO_write(in, buf, len);
   if (SSL_do_handshake(server) == 1) {

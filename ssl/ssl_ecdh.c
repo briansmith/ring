@@ -219,85 +219,6 @@ static int ssl_x25519_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
 }
 
 
-/* Legacy DHE-based implementation. */
-
-static void ssl_dhe_cleanup(SSL_ECDH_CTX *ctx) {
-  DH_free((DH *)ctx->data);
-}
-
-static int ssl_dhe_offer(SSL_ECDH_CTX *ctx, CBB *out) {
-  DH *dh = (DH *)ctx->data;
-  /* The group must have been initialized already, but not the key. */
-  assert(dh != NULL);
-  assert(dh->priv_key == NULL);
-
-  /* Due to a bug in yaSSL, the public key must be zero padded to the size of
-   * the prime. */
-  return DH_generate_key(dh) &&
-         BN_bn2cbb_padded(out, BN_num_bytes(dh->p), dh->pub_key);
-}
-
-static int ssl_dhe_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
-                          size_t *out_secret_len, uint8_t *out_alert,
-                          const uint8_t *peer_key, size_t peer_key_len) {
-  DH *dh = (DH *)ctx->data;
-  assert(dh != NULL);
-  assert(dh->priv_key != NULL);
-  *out_alert = SSL_AD_INTERNAL_ERROR;
-
-  int secret_len = 0;
-  uint8_t *secret = NULL;
-  BIGNUM *peer_point = BN_bin2bn(peer_key, peer_key_len, NULL);
-  if (peer_point == NULL) {
-    goto err;
-  }
-
-  secret = OPENSSL_malloc(DH_size(dh));
-  if (secret == NULL) {
-    goto err;
-  }
-  secret_len = DH_compute_key(secret, peer_point, dh);
-  if (secret_len <= 0) {
-    goto err;
-  }
-
-  *out_secret = secret;
-  *out_secret_len = (size_t)secret_len;
-  BN_free(peer_point);
-  return 1;
-
-err:
-  if (secret_len > 0) {
-    OPENSSL_cleanse(secret, (size_t)secret_len);
-  }
-  OPENSSL_free(secret);
-  BN_free(peer_point);
-  return 0;
-}
-
-static int ssl_dhe_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
-                          uint8_t **out_secret, size_t *out_secret_len,
-                          uint8_t *out_alert, const uint8_t *peer_key,
-                          size_t peer_key_len) {
-  *out_alert = SSL_AD_INTERNAL_ERROR;
-  if (!ssl_dhe_offer(ctx, out_public_key) ||
-      !ssl_dhe_finish(ctx, out_secret, out_secret_len, out_alert, peer_key,
-                      peer_key_len)) {
-    return 0;
-  }
-  return 1;
-}
-
-static const SSL_ECDH_METHOD kDHEMethod = {
-    NID_undef, 0, "",
-    ssl_dhe_cleanup,
-    ssl_dhe_offer,
-    ssl_dhe_accept,
-    ssl_dhe_finish,
-    CBS_get_u16_length_prefixed,
-    CBB_add_u16_length_prefixed,
-};
-
 static const SSL_ECDH_METHOD kMethods[] = {
     {
         NID_secp224r1,
@@ -307,8 +228,6 @@ static const SSL_ECDH_METHOD kMethods[] = {
         ssl_ec_point_offer,
         ssl_ec_point_accept,
         ssl_ec_point_finish,
-        CBS_get_u8_length_prefixed,
-        CBB_add_u8_length_prefixed,
     },
     {
         NID_X9_62_prime256v1,
@@ -318,8 +237,6 @@ static const SSL_ECDH_METHOD kMethods[] = {
         ssl_ec_point_offer,
         ssl_ec_point_accept,
         ssl_ec_point_finish,
-        CBS_get_u8_length_prefixed,
-        CBB_add_u8_length_prefixed,
     },
     {
         NID_secp384r1,
@@ -329,8 +246,6 @@ static const SSL_ECDH_METHOD kMethods[] = {
         ssl_ec_point_offer,
         ssl_ec_point_accept,
         ssl_ec_point_finish,
-        CBS_get_u8_length_prefixed,
-        CBB_add_u8_length_prefixed,
     },
     {
         NID_secp521r1,
@@ -340,8 +255,6 @@ static const SSL_ECDH_METHOD kMethods[] = {
         ssl_ec_point_offer,
         ssl_ec_point_accept,
         ssl_ec_point_finish,
-        CBS_get_u8_length_prefixed,
-        CBB_add_u8_length_prefixed,
     },
     {
         NID_X25519,
@@ -351,8 +264,6 @@ static const SSL_ECDH_METHOD kMethods[] = {
         ssl_x25519_offer,
         ssl_x25519_accept,
         ssl_x25519_finish,
-        CBS_get_u8_length_prefixed,
-        CBB_add_u8_length_prefixed,
     },
 };
 
@@ -422,13 +333,6 @@ int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t group_id) {
   return 1;
 }
 
-void SSL_ECDH_CTX_init_for_dhe(SSL_ECDH_CTX *ctx, DH *params) {
-  SSL_ECDH_CTX_cleanup(ctx);
-
-  ctx->method = &kDHEMethod;
-  ctx->data = params;
-}
-
 void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx) {
   if (ctx->method == NULL) {
     return;
@@ -440,20 +344,6 @@ void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx) {
 
 uint16_t SSL_ECDH_CTX_get_id(const SSL_ECDH_CTX *ctx) {
   return ctx->method->group_id;
-}
-
-int SSL_ECDH_CTX_get_key(SSL_ECDH_CTX *ctx, CBS *cbs, CBS *out) {
-  if (ctx->method == NULL) {
-    return 0;
-  }
-  return ctx->method->get_key(cbs, out);
-}
-
-int SSL_ECDH_CTX_add_key(SSL_ECDH_CTX *ctx, CBB *cbb, CBB *out_contents) {
-  if (ctx->method == NULL) {
-    return 0;
-  }
-  return ctx->method->add_key(cbb, out_contents);
 }
 
 int SSL_ECDH_CTX_offer(SSL_ECDH_CTX *ctx, CBB *out_public_key) {

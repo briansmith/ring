@@ -155,7 +155,6 @@
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
-#include <openssl/dh.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
@@ -701,10 +700,6 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
     }
   }
 
-  if (ssl->cert->dh_tmp != NULL || ssl->cert->dh_tmp_cb != NULL) {
-    mask_k |= SSL_kDHE;
-  }
-
   /* Check for a shared group to consider ECDHE ciphers. */
   uint16_t unused;
   if (tls1_get_shared_group(hs, &unused)) {
@@ -1155,34 +1150,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
       }
     }
 
-    if (alg_k & SSL_kDHE) {
-      /* Determine the group to use. */
-      DH *params = ssl->cert->dh_tmp;
-      if (params == NULL && ssl->cert->dh_tmp_cb != NULL) {
-        params = ssl->cert->dh_tmp_cb(ssl, 0, 1024);
-      }
-      if (params == NULL) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_DH_KEY);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-        goto err;
-      }
-
-      /* Set up DH, generate a key, and emit the public half. */
-      DH *dh = DHparams_dup(params);
-      if (dh == NULL) {
-        goto err;
-      }
-
-      SSL_ECDH_CTX_init_for_dhe(&hs->ecdh_ctx, dh);
-      if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !BN_bn2cbb_padded(&child, BN_num_bytes(params->p), params->p) ||
-          !CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !BN_bn2cbb_padded(&child, BN_num_bytes(params->g), params->g) ||
-          !CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !SSL_ECDH_CTX_offer(&hs->ecdh_ctx, &child)) {
-        goto err;
-      }
-    } else if (alg_k & SSL_kECDHE) {
+    if (alg_k & SSL_kECDHE) {
       /* Determine the group to use. */
       uint16_t group_id;
       if (!tls1_get_shared_group(hs, &group_id)) {
@@ -1632,10 +1600,10 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     OPENSSL_free(decrypt_buf);
     decrypt_buf = NULL;
-  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
+  } else if (alg_k & SSL_kECDHE) {
     /* Parse the ClientKeyExchange. */
     CBS peer_key;
-    if (!SSL_ECDH_CTX_get_key(&hs->ecdh_ctx, &client_key_exchange, &peer_key) ||
+    if (!CBS_get_u8_length_prefixed(&client_key_exchange, &peer_key) ||
         CBS_len(&client_key_exchange) != 0) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);

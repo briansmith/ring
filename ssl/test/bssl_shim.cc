@@ -46,7 +46,6 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
-#include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -1051,34 +1050,6 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
     SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
   if (!SSL_CTX_set_strict_cipher_list(ssl_ctx.get(), cipher_list.c_str())) {
-    return nullptr;
-  }
-
-  bssl::UniquePtr<DH> dh(DH_get_2048_256(NULL));
-  if (!dh) {
-    return nullptr;
-  }
-
-  if (config->use_sparse_dh_prime) {
-    // This prime number is 2^1024 + 643 – a value just above a power of two.
-    // Because of its form, values modulo it are essentially certain to be one
-    // byte shorter. This is used to test padding of these values.
-    if (BN_hex2bn(
-            &dh->p,
-            "1000000000000000000000000000000000000000000000000000000000000000"
-            "0000000000000000000000000000000000000000000000000000000000000000"
-            "0000000000000000000000000000000000000000000000000000000000000000"
-            "0000000000000000000000000000000000000000000000000000000000000028"
-            "3") == 0 ||
-        !BN_set_word(dh->g, 2)) {
-      return nullptr;
-    }
-    BN_free(dh->q);
-    dh->q = NULL;
-    dh->priv_length = 0;
-  }
-
-  if (!SSL_CTX_set_tmp_dh(ssl_ctx.get(), dh.get())) {
     return nullptr;
   }
 

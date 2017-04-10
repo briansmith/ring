@@ -193,19 +193,6 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    /* Cipher 33 */
-    {
-     TLS1_TXT_DHE_RSA_WITH_AES_128_SHA,
-     TLS1_CK_DHE_RSA_WITH_AES_128_SHA,
-     SSL_kDHE,
-     SSL_aRSA,
-     SSL_AES128,
-     SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT,
-    },
-#endif
-
     /* Cipher 35 */
     {
      TLS1_TXT_RSA_WITH_AES_256_SHA,
@@ -216,19 +203,6 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
-
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    /* Cipher 39 */
-    {
-     TLS1_TXT_DHE_RSA_WITH_AES_256_SHA,
-     TLS1_CK_DHE_RSA_WITH_AES_256_SHA,
-     SSL_kDHE,
-     SSL_aRSA,
-     SSL_AES256,
-     SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT,
-    },
-#endif
 
 
     /* TLS v1.2 ciphersuites */
@@ -254,30 +228,6 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA256,
      SSL_HANDSHAKE_MAC_SHA256,
     },
-
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    /* Cipher 67 */
-    {
-     TLS1_TXT_DHE_RSA_WITH_AES_128_SHA256,
-     TLS1_CK_DHE_RSA_WITH_AES_128_SHA256,
-     SSL_kDHE,
-     SSL_aRSA,
-     SSL_AES128,
-     SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-
-    /* Cipher 6B */
-    {
-     TLS1_TXT_DHE_RSA_WITH_AES_256_SHA256,
-     TLS1_CK_DHE_RSA_WITH_AES_256_SHA256,
-     SSL_kDHE,
-     SSL_aRSA,
-     SSL_AES256,
-     SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-#endif
 
     /* PSK cipher suites. */
 
@@ -326,30 +276,6 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
     },
-
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    /* Cipher 9E */
-    {
-     TLS1_TXT_DHE_RSA_WITH_AES_128_GCM_SHA256,
-     TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256,
-     SSL_kDHE,
-     SSL_aRSA,
-     SSL_AES128GCM,
-     SSL_AEAD,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-
-    /* Cipher 9F */
-    {
-     TLS1_TXT_DHE_RSA_WITH_AES_256_GCM_SHA384,
-     TLS1_CK_DHE_RSA_WITH_AES_256_GCM_SHA384,
-     SSL_kDHE,
-     SSL_aRSA,
-     SSL_AES256GCM,
-     SSL_AEAD,
-     SSL_HANDSHAKE_MAC_SHA384,
-    },
-#endif
 
     /* TLS 1.3 suites. */
 
@@ -626,15 +552,8 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 
     /* key exchange aliases
      * (some of those using only a single bit here combine
-     * multiple key exchange algs according to the RFCs,
-     * e.g. kEDH combines DHE_DSS and DHE_RSA) */
+     * multiple key exchange algs according to the RFCs. */
     {"kRSA", SSL_kRSA, ~0u, ~0u, ~0u, 0},
-
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    {"kDHE", SSL_kDHE, ~0u, ~0u, ~0u, 0},
-    {"kEDH", SSL_kDHE, ~0u, ~0u, ~0u, 0},
-    {"DH", SSL_kDHE, ~0u, ~0u, ~0u, 0},
-#endif
 
     {"kECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"kEECDH", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
@@ -649,10 +568,6 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, 0},
 
     /* aliases combining key exchange and server authentication */
-#ifdef BORINGSSL_ENABLE_DHE_TLS
-    {"DHE", SSL_kDHE, ~0u, ~0u, ~0u, 0},
-    {"EDH", SSL_kDHE, ~0u, ~0u, ~0u, 0},
-#endif
     {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"RSA", SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, 0},
@@ -1485,10 +1400,6 @@ int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_auth & SSL_aECDSA) != 0;
 }
 
-int SSL_CIPHER_is_DHE(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_mkey & SSL_kDHE) != 0;
-}
-
 int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mkey & SSL_kECDHE) != 0;
 }
@@ -1536,15 +1447,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
   switch (cipher->algorithm_mkey) {
     case SSL_kRSA:
       return "RSA";
-
-    case SSL_kDHE:
-      switch (cipher->algorithm_auth) {
-        case SSL_aRSA:
-          return "DHE_RSA";
-        default:
-          assert(0);
-          return "UNKNOWN";
-      }
 
     case SSL_kECDHE:
       switch (cipher->algorithm_auth) {
@@ -1705,10 +1607,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
       kx = "RSA";
       break;
 
-    case SSL_kDHE:
-      kx = "DH";
-      break;
-
     case SSL_kECDHE:
       kx = "ECDH";
       break;
@@ -1849,8 +1747,7 @@ int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher) {
 
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {
   /* Ephemeral Diffie-Hellman key exchanges require a ServerKeyExchange. */
-  if (cipher->algorithm_mkey & SSL_kDHE ||
-      cipher->algorithm_mkey & SSL_kECDHE) {
+  if (cipher->algorithm_mkey & SSL_kECDHE) {
     return 1;
   }
 

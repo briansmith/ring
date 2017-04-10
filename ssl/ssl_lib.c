@@ -146,7 +146,6 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
-#include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
@@ -1466,22 +1465,10 @@ uint16_t SSL_get_curve_id(const SSL *ssl) {
 }
 
 int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) {
-  DH_free(ctx->cert->dh_tmp);
-  ctx->cert->dh_tmp = DHparams_dup(dh);
-  if (ctx->cert->dh_tmp == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
-    return 0;
-  }
   return 1;
 }
 
 int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
-  DH_free(ssl->cert->dh_tmp);
-  ssl->cert->dh_tmp = DHparams_dup(dh);
-  if (ssl->cert->dh_tmp == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
-    return 0;
-  }
   return 1;
 }
 
@@ -2110,12 +2097,10 @@ void SSL_set_tmp_rsa_callback(SSL *ssl, RSA *(*cb)(SSL *ssl, int is_export,
 void SSL_CTX_set_tmp_dh_callback(SSL_CTX *ctx,
                                  DH *(*callback)(SSL *ssl, int is_export,
                                                  int keylength)) {
-  ctx->cert->dh_tmp_cb = callback;
 }
 
 void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*callback)(SSL *ssl, int is_export,
                                                        int keylength)) {
-  ssl->cert->dh_tmp_cb = callback;
 }
 
 int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {

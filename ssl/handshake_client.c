@@ -156,7 +156,6 @@
 #include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
-#include <openssl/dh.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
@@ -1133,7 +1132,6 @@ static int ssl3_verify_server_cert(SSL_HANDSHAKE *hs) {
 static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   int al;
-  DH *dh = NULL;
   EC_KEY *ecdh = NULL;
   EC_POINT *srvr_ecpoint = NULL;
 
@@ -1204,50 +1202,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (alg_k & SSL_kDHE) {
-    CBS dh_p, dh_g, dh_Ys;
-    if (!CBS_get_u16_length_prefixed(&server_key_exchange, &dh_p) ||
-        CBS_len(&dh_p) == 0 ||
-        !CBS_get_u16_length_prefixed(&server_key_exchange, &dh_g) ||
-        CBS_len(&dh_g) == 0 ||
-        !CBS_get_u16_length_prefixed(&server_key_exchange, &dh_Ys) ||
-        CBS_len(&dh_Ys) == 0) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto f_err;
-    }
-
-    dh = DH_new();
-    if (dh == NULL) {
-      goto err;
-    }
-
-    dh->p = BN_bin2bn(CBS_data(&dh_p), CBS_len(&dh_p), NULL);
-    dh->g = BN_bin2bn(CBS_data(&dh_g), CBS_len(&dh_g), NULL);
-    if (dh->p == NULL || dh->g == NULL) {
-      goto err;
-    }
-
-    unsigned bits = DH_num_bits(dh);
-    if (bits < 1024) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DH_P_LENGTH);
-      goto err;
-    } else if (bits > 4096) {
-      /* Overly large DHE groups are prohibitively expensive, so enforce a limit
-       * to prevent a server from causing us to perform too expensive of a
-       * computation. */
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DH_P_TOO_LONG);
-      goto err;
-    }
-
-    SSL_ECDH_CTX_init_for_dhe(&hs->ecdh_ctx, dh);
-    dh = NULL;
-
-    /* Save the peer public key for later. */
-    if (!CBS_stow(&dh_Ys, &hs->peer_key, &hs->peer_key_len)) {
-      goto err;
-    }
-  } else if (alg_k & SSL_kECDHE) {
+  if (alg_k & SSL_kECDHE) {
     /* Parse the server parameters. */
     uint8_t group_type;
     uint16_t group_id;
@@ -1363,7 +1318,6 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
 f_err:
   ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
 err:
-  DH_free(dh);
   EC_POINT_free(srvr_ecpoint);
   EC_KEY_free(ecdh);
   return -1;
@@ -1590,10 +1544,10 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
         !CBB_flush(&body)) {
       goto err;
     }
-  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
+  } else if (alg_k & SSL_kECDHE) {
     /* Generate a keypair and serialize the public half. */
     CBB child;
-    if (!SSL_ECDH_CTX_add_key(&hs->ecdh_ctx, &body, &child)) {
+    if (!CBB_add_u8_length_prefixed(&body, &child)) {
       goto err;
     }
 

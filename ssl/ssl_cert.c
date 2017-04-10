@@ -121,7 +121,6 @@
 #include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
-#include <openssl/dh.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -167,15 +166,6 @@ CERT *ssl_cert_dup(CERT *cert) {
 
   ret->key_method = cert->key_method;
   ret->x509_method = cert->x509_method;
-
-  if (cert->dh_tmp != NULL) {
-    ret->dh_tmp = DHparams_dup(cert->dh_tmp);
-    if (ret->dh_tmp == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
-      goto err;
-    }
-  }
-  ret->dh_tmp_cb = cert->dh_tmp_cb;
 
   if (cert->sigalgs != NULL) {
     ret->sigalgs =
@@ -232,8 +222,6 @@ void ssl_cert_free(CERT *c) {
   if (c == NULL) {
     return;
   }
-
-  DH_free(c->dh_tmp);
 
   ssl_cert_clear_certs(c);
   c->x509_method->cert_free(c);
