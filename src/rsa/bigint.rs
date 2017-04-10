@@ -75,20 +75,20 @@ impl Positive {
                          -> Result<Positive, error::Unspecified> {
         // Reject leading zeros. Also reject the value zero ([0]) because zero
         // isn't positive.
-        try!(error::check(!untrusted::Reader::new(input).peek(0)));
+        check!(!untrusted::Reader::new(input).peek(0));
         Self::from_be_bytes_padded(input)
     }
 
     pub fn from_be_bytes_padded(input: untrusted::Input)
                                 -> Result<Positive, error::Unspecified> {
         // Reject empty inputs.
-        try!(error::check(!input.is_empty()));
+        check!(!input.is_empty());
         let mut r = try!(Nonnegative::zero());
         try!(bssl::map_result(unsafe {
             GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
                           r.as_mut_ref())
         }));
-        try!(error::check(!r.is_zero()));
+        check!(!r.is_zero());
         Ok(Positive(r))
     }
 
@@ -133,10 +133,10 @@ impl OddPositive {
     pub fn into_public_exponent(self)
                                 -> Result<PublicExponent, error::Unspecified> {
         let bits = self.bit_length();
-        try!(error::check(bits >= bits::BitLength::from_usize_bits(2)));
-        try!(error::check(bits <= PUBLIC_EXPONENT_MAX_BITS));
+        check!(bits >= bits::BitLength::from_usize_bits(2));
+        check!(bits <= PUBLIC_EXPONENT_MAX_BITS);
         let value = unsafe { GFp_BN_get_positive_u64(self.as_ref()) };
-        try!(error::check(value != 0));
+        check!(value != 0);
         Ok(PublicExponent(value))
     }
 }
@@ -188,8 +188,7 @@ unsafe impl<M> Sync for Modulus<M> {}
 impl<M> Modulus<M> {
     fn new(value: OddPositive) -> Result<Self, error::Unspecified> {
         // A `Modulus` must be larger than 1.
-        try!(error::check(value.bit_length() >=
-                          bits::BitLength::from_usize_bits(2)));
+        check!(value.bit_length() >= bits::BitLength::from_usize_bits(2));
         let n0 = unsafe { GFp_bn_mont_n0(value.as_ref()) };
         Ok(Modulus {
             value: value,
@@ -641,7 +640,8 @@ impl Nonnegative {
     fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
         let r = unsafe { GFp_BN_ucmp(self.as_ref(), other.as_ref()) };
-        error::check(r < 0)
+        check!(r < 0);
+        Ok(())
     }
 
     fn randomize(&mut self, m: &BIGNUM, rng: &rand::SecureRandom)
@@ -668,7 +668,7 @@ impl Nonnegative {
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
-        try!(error::check(is_odd != 0));
+        check!(is_odd != 0);
         Ok(OddPositive(Positive(self)))
     }
 

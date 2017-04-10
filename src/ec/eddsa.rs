@@ -84,15 +84,15 @@ impl<'a> Ed25519KeyPair {
                 slice_as_array_ref!(private_key, SEED_LEN).unwrap();
             let mut public_key_check = [0; PUBLIC_KEY_LEN];
             public_from_private(private_key, &mut public_key_check);
-            try!(error::check(public_key == public_key_check));
+            check!(public_key == public_key_check);
         }
         Ok(pair)
     }
 
     fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
                             -> Result<Ed25519KeyPair, error::Unspecified> {
-        try!(error::check(private_key.len() == SEED_LEN));
-        try!(error::check(public_key.len() == PUBLIC_KEY_LEN));
+        check!(private_key.len() == SEED_LEN);
+        check!(public_key.len() == PUBLIC_KEY_LEN);
         let mut pair = Ed25519KeyPair { private_public: [0; KEY_PAIR_LEN] };
         {
             let (pair_private_key, pair_public_key) =
@@ -167,7 +167,7 @@ pub static ED25519: EdDSAParameters = EdDSAParameters {};
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
-        try!(error::check(public_key.len() == PUBLIC_KEY_LEN));
+        check!(public_key.len() == PUBLIC_KEY_LEN);
         let public_key = public_key.as_slice_less_safe();
         let public_key = slice_as_array_ref!(public_key, ELEM_LEN).unwrap();
 
@@ -185,7 +185,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         }));
 
         // Ensure `s` is not too large.
-        try!(error::check((signature_s[SCALAR_LEN - 1] & 0b11100000) == 0));
+        check!((signature_s[SCALAR_LEN - 1] & 0b11100000) == 0);
 
         let mut a = ExtPoint::new_at_infinity();
         try!(bssl::map_result(unsafe {
@@ -203,7 +203,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         };
         let mut r_check = [0u8; ELEM_LEN];
         unsafe { GFp_x25519_ge_tobytes(&mut r_check, &r) };
-        error::check(signature_r == r_check)
+        check!(signature_r == r_check);
+        Ok(())
     }
 }
 

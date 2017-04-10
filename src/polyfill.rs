@@ -145,7 +145,7 @@ macro_rules! slice_as_array_ref {
 
             fn slice_as_array_ref<T>(slice: &[T])
                                      -> Result<&[T; $len], error::Unspecified> {
-                try!(error::check(slice.len() == $len));
+                check!(slice.len() == $len);
                 Ok(unsafe {
                     &*(slice.as_ptr() as *const [T; $len])
                 })
@@ -165,7 +165,8 @@ macro_rules! slice_as_array_ref_mut {
             fn slice_as_array_ref<T>(slice: &mut [T])
                                      -> Result<&mut [T; $len],
                                                error::Unspecified> {
-                try!(error::check(slice.len() == $len));                                                        Ok(unsafe {
+                check!(slice.len() == $len);
+                Ok(unsafe {
                     &mut *(slice.as_mut_ptr() as *mut [T; $len])
                 })
             }

@@ -70,7 +70,7 @@ impl<'a> PrivateKey {
     #[inline(always)]
     pub fn compute_public_key(&self, curve: &Curve, out: &mut [u8])
                               -> Result<(), error::Unspecified> {
-        try!(error::check(out.len() == curve.public_key_len));
+        check!(out.len() == curve.public_key_len);
         (curve.public_from_private)(out, self)
     }
 }

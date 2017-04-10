@@ -22,7 +22,7 @@ use {c, error};
 /// `a` and `b`.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8])
                                -> Result<(), error::Unspecified> {
-    try!(error::check(a.len() == b.len()));
+    check!(a.len() == b.len());
     let result = unsafe { GFp_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
     match result {
         0 => Ok(()),

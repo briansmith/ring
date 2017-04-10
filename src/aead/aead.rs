@@ -216,7 +216,7 @@ impl SealingKey {
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
                      in_out: &mut [u8], out_suffix_capacity: usize)
                      -> Result<usize, error::Unspecified> {
-    try!(error::check(out_suffix_capacity >= key.key.algorithm.tag_len()));
+    check!(out_suffix_capacity >= key.key.algorithm.tag_len());
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let in_out_len =
         try!(in_out.len().checked_sub(out_suffix_capacity)
@@ -251,7 +251,7 @@ impl Key {
     fn init(&mut self, key_bytes: &[u8]) -> Result<(), error::Unspecified> {
         init::init_once();
 
-        try!(error::check(key_bytes.len() == self.algorithm.key_len()));
+        check!(key_bytes.len() == self.algorithm.key_len());
 
         let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut self.ctx_buf);
         (self.algorithm.init)(ctx_buf_bytes, key_bytes)
@@ -324,7 +324,8 @@ const NONCE_LEN: usize = 96 / 8;
 /// operations that work on more than 256GB at a time, for all AEADs.
 fn check_per_nonce_max_bytes(in_out_len: usize)
                              -> Result<(), error::Unspecified> {
-    error::check(polyfill::u64_from_usize(in_out_len) < (1u64 << 32) * 64 - 64)
+    check!(polyfill::u64_from_usize(in_out_len) < (1u64 << 32) * 64 - 64);
+    Ok(())
 }
 
 

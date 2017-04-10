@@ -213,7 +213,7 @@ fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8],
 pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
               secret: &[u8], previously_derived: &[u8])
               -> Result<(), error::Unspecified> {
-    try!(error::check(!previously_derived.is_empty()));
+    check!(!previously_derived.is_empty());
 
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
@@ -243,7 +243,9 @@ pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
         matches &= current_block_matches;
     }
 
-    error::check(matches != 0)
+    check!(matches != 0);
+
+    Ok(())
 }
 
 /// A PRF algorithm for use with `derive` and `verify`.

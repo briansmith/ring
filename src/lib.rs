@@ -123,7 +123,11 @@ mod arithmetic;
 mod bssl;
 
 #[macro_use]
+pub mod error;
+
+#[macro_use]
 mod polyfill;
+
 
 #[path = "aead/aead.rs"]
 pub mod aead;
@@ -146,7 +150,6 @@ pub mod digest;
 #[path = "ec/ec.rs"]
 mod ec;
 
-pub mod error;
 pub mod hkdf;
 pub mod hmac;
 mod init;
