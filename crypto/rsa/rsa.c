@@ -525,6 +525,8 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
     goto out;
   }
 
+  /* Check that no other information follows the hash value (FIPS 186-4 Section
+   * 5.5) and it matches the expected hash. */
   if (len != signed_msg_len || OPENSSL_memcmp(buf, signed_msg, len) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     goto out;
