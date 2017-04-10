@@ -23,6 +23,16 @@ pub struct EdDSAParameters;
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
     private_key: [u8; SEED_LEN],
+
+    // As described in RFC 8032 Section 5.1.6, Step 1, we compute and cache
+    // these values when generating key pairs, since they are used in every
+    // signature. They are defined by:
+    //
+    //     SHA-512(private_key) = private_scalar || private_prefix
+    //
+    private_scalar: [u8; SCALAR_LEN],
+    private_prefix: [u8; PREFIX_LEN],
+
     public_key: [u8; PUBLIC_KEY_LEN],
 }
 
@@ -31,8 +41,29 @@ pub struct Ed25519KeyPairBytes {
     /// Private key bytes.
     pub private_key: [u8; SEED_LEN],
 
+    private_scalar: [u8; SCALAR_LEN],
+    private_prefix: [u8; PREFIX_LEN],
+
     /// Public key bytes.
     pub public_key: [u8; PUBLIC_KEY_LEN],
+}
+
+impl Ed25519KeyPairBytes {
+    fn from_key_pair(key_pair: &Ed25519KeyPair) -> Ed25519KeyPairBytes {
+        let mut bytes = Ed25519KeyPairBytes {
+            private_key: [0; SEED_LEN],
+            private_scalar: [0; SCALAR_LEN],
+            private_prefix: [0; PREFIX_LEN],
+            public_key: [0; PUBLIC_KEY_LEN],
+        };
+
+        bytes.private_key.copy_from_slice(&key_pair.private_key);
+        bytes.private_scalar.copy_from_slice(&key_pair.private_scalar);
+        bytes.private_prefix.copy_from_slice(&key_pair.private_prefix);
+        bytes.public_key.copy_from_slice(&key_pair.public_key);
+
+        bytes
+    }
 }
 
 impl<'a> Ed25519KeyPair {
@@ -51,15 +82,16 @@ impl<'a> Ed25519KeyPair {
     pub fn generate_serializable(rng: &rand::SecureRandom)
             -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
                       error::Unspecified> {
-        let mut bytes = Ed25519KeyPairBytes {
-            private_key: [0; SEED_LEN],
-            public_key: [0; PUBLIC_KEY_LEN],
-        };
-        try!(rng.fill(&mut bytes.private_key));
-        public_from_private(&bytes.private_key, &mut bytes.public_key);
+        let mut private_key = [0u8; SEED_LEN];
+        try!(rng.fill(&mut private_key));
+
+        let mut public_key = [0u8; PUBLIC_KEY_LEN];
+        public_from_private(&private_key, &mut public_key);
         let key_pair =
-            try!(Ed25519KeyPair::from_bytes_unchecked(&bytes.private_key,
-                                                      &bytes.public_key));
+            try!(Ed25519KeyPair::from_bytes_unchecked(&private_key,
+                                                      &public_key));
+        let bytes = Ed25519KeyPairBytes::from_key_pair(&key_pair);
+
         Ok((key_pair, bytes))
     }
 
@@ -94,8 +126,12 @@ impl<'a> Ed25519KeyPair {
         if public_key.len() != PUBLIC_KEY_LEN {
             return Err(error::Unspecified);
         }
+        let seed = slice_as_array_ref!(private_key, SEED_LEN).unwrap();
+        let (scalar, prefix) = private_scalar_prefix_from_seed(seed);
         let mut pair = Ed25519KeyPair {
             private_key: [0u8; SEED_LEN],
+            private_scalar: scalar,
+            private_prefix: prefix,
             public_key: [0u8; PUBLIC_KEY_LEN],
         };
         pair.private_key.copy_from_slice(private_key);
@@ -245,6 +281,20 @@ fn public_from_private(seed: &Seed, out: &mut PublicKey) {
     }
 }
 
+fn private_scalar_prefix_from_seed(seed: &Seed) -> (Scalar, Prefix) {
+    let h = digest::digest(&digest::SHA512, seed);
+    let (scalar_encoded, prefix_encoded) = h.as_ref().split_at(SCALAR_LEN);
+
+    let mut prefix = [0u8; PREFIX_LEN];
+    prefix.copy_from_slice(prefix_encoded);
+
+    let mut scalar = [0u8; SCALAR_LEN];
+    scalar.copy_from_slice(&scalar_encoded);
+    unsafe { GFp_ed25519_scalar_mask(&mut scalar) };
+
+    (scalar, prefix)
+}
+
 extern  {
     fn GFp_ed25519_scalar_mask(a: &mut Scalar);
     fn GFp_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
@@ -309,6 +359,9 @@ const ELEM_LEN: usize = 32;
 
 type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_LEN;
+
+type Prefix = [u8; PREFIX_LEN];
+const PREFIX_LEN: usize = digest::SHA512_OUTPUT_LEN - SCALAR_LEN;
 
 const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
 
