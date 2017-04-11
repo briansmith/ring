@@ -299,6 +299,10 @@ OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
  * returns zero then a more detailed error is available on the error queue. */
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
+/* RSA_check_fips performs public key validatity tests on |key|. It returns one
+ * if they pass and zero otherwise. Opaque keys always fail. */
+OPENSSL_EXPORT int RSA_check_fips(const RSA *key);
+
 /* RSA_recover_crt_params uses |rsa->n|, |rsa->d| and |rsa->e| in order to
  * calculate the two primes used and thus the precomputed, CRT values. These
  * values are set in the |p|, |q|, |dmp1|, |dmq1| and |iqmp| members of |rsa|,
@@ -687,5 +691,6 @@ BORINGSSL_MAKE_DELETER(RSA, RSA_free)
 #define RSA_R_UNKNOWN_PADDING_TYPE 143
 #define RSA_R_VALUE_MISSING 144
 #define RSA_R_WRONG_SIGNATURE_LENGTH 145
+#define RSA_R_PUBLIC_KEY_VALIDATION_FAILED 146
 
 #endif  /* OPENSSL_HEADER_RSA_H */

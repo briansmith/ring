@@ -69,6 +69,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../bn/internal.h"
 
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
@@ -667,6 +668,62 @@ out:
   BN_CTX_free(ctx);
 
   return ok;
+}
+
+
+/* This is the product of the 132 smallest odd primes, from 3 to 751. */
+static const BN_ULONG kSmallFactorsLimbs[] = {
+    TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
+    TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
+    TOBN(0x6b55514b, 0xbf26c483), TOBN(0x0a84d817, 0x5a144871),
+    TOBN(0x77d12fee, 0x9b82210a), TOBN(0xdb5b93c2, 0x97f050b3),
+    TOBN(0x4acad6b9, 0x4d6c026b), TOBN(0xeb7751f3, 0x54aec893),
+    TOBN(0xdba53368, 0x36bc85c4), TOBN(0xd85a1b28, 0x7f5ec78e),
+    TOBN(0x2eb072d8, 0x6b322244), TOBN(0xbba51112, 0x5e2b3aea),
+    TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
+    0x000017b1
+};
+static const BIGNUM kSmallFactors = STATIC_BIGNUM(kSmallFactorsLimbs);
+
+int RSA_check_fips(const RSA *key) {
+  if (RSA_is_opaque(key)) {
+    /* Opaque keys can't be checked. */
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
+    return 0;
+  }
+
+  if (!RSA_check_key(key)) {
+    return 0;
+  }
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  BIGNUM small_gcd;
+  BN_init(&small_gcd);
+
+  int ret = 1;
+
+  /* Perform partial public key validation of RSA keys (SP 800-89 5.3.3). */
+  /* TODO(svaldez): Check that n is composite and not a power of a prime using
+   * extended Miller-Rabin. */
+  if (BN_num_bits(key->e) < 16 ||
+      BN_num_bits(key->e) > 256 ||
+      !BN_is_odd(key->n) ||
+      !BN_is_odd(key->e) ||
+      !BN_gcd(&small_gcd, key->n, &kSmallFactors, ctx) ||
+      !BN_is_one(&small_gcd)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
+    ret = 0;
+  }
+
+  BN_free(&small_gcd);
+  BN_CTX_free(ctx);
+
+  return ret;
 }
 
 int RSA_recover_crt_params(RSA *rsa) {

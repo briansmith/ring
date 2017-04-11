@@ -654,6 +654,7 @@ TEST(RSATest, BadKey) {
 
   // Bad keys are detected.
   EXPECT_FALSE(RSA_check_key(key.get()));
+  EXPECT_FALSE(RSA_check_fips(key.get()));
 
   // Bad keys may not be parsed.
   uint8_t *der;
