@@ -45,12 +45,21 @@
  * reseeding. */
 static const unsigned kReseedInterval = 4096;
 
+/* CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
+ * continuous random number generator test in FIPS 140-2, section 4.9.2. */
+#define CRNGT_BLOCK_SIZE 16
+
 /* rand_thread_state contains the per-thread state for the RNG. */
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
   /* calls is the number of generate calls made on |drbg| since it was last
    * (re)seeded. This is bound by |kReseedInterval|. */
   unsigned calls;
+  /* last_block contains the previous block from |CRYPTO_sysrand|. */
+  uint8_t last_block[CRNGT_BLOCK_SIZE];
+  /* last_block_valid is non-zero iff |last_block| contains data from
+   * |CRYPTO_sysrand|. */
+  int last_block_valid;
 };
 
 /* rand_thread_state_free frees a |rand_thread_state|. This is called when a
@@ -110,11 +119,35 @@ static int hwrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
-static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+static void rand_get_seed(struct rand_thread_state *state,
+                          uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  if (!state->last_block_valid) {
+    CRYPTO_sysrand(state->last_block, sizeof(state->last_block));
+    state->last_block_valid = 1;
+  }
+
   /* We overread from /dev/urandom by a factor of 10 and XOR to whiten. */
 #define FIPS_OVERREAD 10
   uint8_t entropy[CTR_DRBG_ENTROPY_LEN * FIPS_OVERREAD];
   CRYPTO_sysrand(entropy, sizeof(entropy));
+
+  /* See FIPS 140-2, section 4.9.2. This is the “continuous random number
+   * generator test” which causes the program to randomly abort. Hopefully the
+   * rate of failure is small enough not to be a problem in practice. */
+  if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
+    abort();
+  }
+
+  for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
+       i += CRNGT_BLOCK_SIZE) {
+    if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
+                      CRNGT_BLOCK_SIZE) == 0) {
+      abort();
+    }
+  }
+  OPENSSL_memcpy(state->last_block,
+                 entropy + sizeof(entropy) - CRNGT_BLOCK_SIZE,
+                 CRNGT_BLOCK_SIZE);
 
   OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
 
@@ -127,7 +160,8 @@ static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
 
 #else
 
-static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+static void rand_get_seed(struct rand_thread_state *state,
+                          uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
   /* If not in FIPS mode, we don't overread from the system entropy source. */
   CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
 }
@@ -154,8 +188,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       state = &stack_state;
     }
 
+    state->last_block_valid = 0;
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    rand_get_seed(seed);
+    rand_get_seed(state, seed);
     if (!CTR_DRBG_init(&state->drbg, seed, NULL, 0)) {
       abort();
     }
@@ -164,7 +199,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
   if (state->calls >= kReseedInterval) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    rand_get_seed(seed);
+    rand_get_seed(state, seed);
     if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
       abort();
     }
