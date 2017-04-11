@@ -246,13 +246,13 @@ func runTest(test test) (bool, error) {
 	}
 }
 
-// shortTestName returns the short name of a test. Except for evp_test, it
-// assumes that any argument which ends in .txt is a path to a data file and not
-// relevant to the test's uniqueness.
+// shortTestName returns the short name of a test. Except for evp_test and
+// cipher_test, it assumes that any argument which ends in .txt is a path to a
+// data file and not relevant to the test's uniqueness.
 func shortTestName(test test) string {
 	var args []string
 	for _, arg := range test.args {
-		if test.args[0] == "crypto/evp/evp_test" || !strings.HasSuffix(arg, ".txt") {
+		if test.args[0] == "crypto/evp/evp_test" || test.args[0] == "crypto/cipher/cipher_test" || !strings.HasSuffix(arg, ".txt") {
 			args = append(args, arg)
 		}
 	}
