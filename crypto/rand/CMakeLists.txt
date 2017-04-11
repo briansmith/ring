@@ -15,6 +15,7 @@ add_library(
 
   ctrdrbg.c
   deterministic.c
+  forkunsafe.c
   fuchsia.c
   rand.c
   urandom.c

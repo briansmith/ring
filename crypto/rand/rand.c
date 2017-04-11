@@ -178,8 +178,14 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   uint8_t additional_data[32];
   if (!hwrand(additional_data, sizeof(additional_data))) {
     /* Without a hardware RNG to save us from address-space duplication, the OS
-     * entropy is used. */
-    CRYPTO_sysrand(additional_data, sizeof(additional_data));
+     * entropy is used. This can be expensive (one read per |RAND_bytes| call)
+     * and so can be disabled by applications that we have ensured don't fork
+     * and aren't at risk of VM cloning. */
+    if (!rand_fork_unsafe_buffering_enabled()) {
+      CRYPTO_sysrand(additional_data, sizeof(additional_data));
+    } else {
+      OPENSSL_memset(additional_data, 0, sizeof(additional_data));
+    }
   }
 
   for (size_t i = 0; i < sizeof(additional_data); i++) {
