@@ -459,23 +459,16 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
   }
 
   if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
-                            &signed_msg_is_alloced, hash_nid, in, in_len)) {
-    return 0;
+                            &signed_msg_is_alloced, hash_nid, in, in_len) ||
+      !RSA_sign_raw(rsa, &size_t_out_len, out, rsa_size, signed_msg,
+                    signed_msg_len, RSA_PKCS1_PADDING)) {
+    goto err;
   }
 
-  if (rsa_size < RSA_PKCS1_PADDING_SIZE ||
-      signed_msg_len > rsa_size - RSA_PKCS1_PADDING_SIZE) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DIGEST_TOO_BIG_FOR_RSA_KEY);
-    goto finish;
-  }
+  *out_len = size_t_out_len;
+  ret = 1;
 
-  if (RSA_sign_raw(rsa, &size_t_out_len, out, rsa_size, signed_msg,
-                   signed_msg_len, RSA_PKCS1_PADDING)) {
-    *out_len = size_t_out_len;
-    ret = 1;
-  }
-
-finish:
+err:
   if (signed_msg_is_alloced) {
     OPENSSL_free(signed_msg);
   }

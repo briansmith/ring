@@ -82,9 +82,6 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb);
 
 
-#define RSA_PKCS1_PADDING_SIZE 11
-
-
 BN_BLINDING *BN_BLINDING_new(void);
 void BN_BLINDING_free(BN_BLINDING *b);
 int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BIGNUM *e,

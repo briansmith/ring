@@ -69,7 +69,8 @@
 #include "internal.h"
 #include "../internal.h"
 
-/* TODO(fork): don't the check functions have to be constant time? */
+
+#define RSA_PKCS1_PADDING_SIZE 11
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
                                  const uint8_t *from, size_t from_len) {
@@ -80,7 +81,7 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
   }
 
   if (from_len > to_len - RSA_PKCS1_PADDING_SIZE) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DIGEST_TOO_BIG_FOR_RSA_KEY);
     return 0;
   }
 
