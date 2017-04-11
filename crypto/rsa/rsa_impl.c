@@ -771,6 +771,16 @@ static int ensure_bignum(BIGNUM **out) {
 }
 
 int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+  /* Always generate RSA keys which are a multiple of 128 bits. Round |bits|
+   * down as needed. */
+  bits &= ~127;
+
+  /* Reject excessively small keys. */
+  if (bits < 256) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
+    return 0;
+  }
+
   BIGNUM *r0 = NULL, *r1 = NULL, *r2 = NULL, *r3 = NULL, *tmp;
   int ok = -1, n = 0;
   BN_CTX *ctx = NULL;

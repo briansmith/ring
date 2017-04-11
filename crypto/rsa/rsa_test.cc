@@ -805,3 +805,44 @@ TEST(RSATest, BadExponent) {
   EXPECT_FALSE(rsa);
   ERR_clear_error();
 }
+
+// Attempting to generate an excessively small key should fail.
+TEST(RSATest, GenerateSmallKey) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  EXPECT_FALSE(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_KEY_SIZE_TOO_SMALL, ERR_GET_REASON(err));
+}
+
+// Attempting to generate an funny RSA key length should round down.
+TEST(RSATest, RoundKeyLengths) {
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 1025, e.get(), nullptr));
+  EXPECT_EQ(1024u, BN_num_bits(rsa->n));
+
+  rsa.reset(RSA_new());
+  ASSERT_TRUE(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 1027, e.get(), nullptr));
+  EXPECT_EQ(1024u, BN_num_bits(rsa->n));
+
+  rsa.reset(RSA_new());
+  ASSERT_TRUE(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 1151, e.get(), nullptr));
+  EXPECT_EQ(1024u, BN_num_bits(rsa->n));
+
+  rsa.reset(RSA_new());
+  ASSERT_TRUE(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 1152, e.get(), nullptr));
+  EXPECT_EQ(1152u, BN_num_bits(rsa->n));
+}
