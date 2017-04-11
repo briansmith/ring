@@ -29,6 +29,8 @@
 #include <unistd.h>
 
 #if defined(OPENSSL_LINUX)
+#include <linux/random.h>
+#include <sys/ioctl.h>
 #include <sys/syscall.h>
 #endif
 
@@ -135,6 +137,38 @@ static void init_once(void) {
   if (fd < 0) {
     abort();
   }
+
+#if defined(BORINGSSL_FIPS)
+  /* In FIPS mode we ensure that the kernel has sufficient entropy before
+   * continuing. This is automatically handled by getrandom, which requires
+   * that the entropy pool has been initialised, but for urandom we have to
+   * poll. */
+  int first_iteration = 1;
+  for (;;) {
+    int entropy_bits;
+    if (ioctl(fd, RNDGETENTCNT, &entropy_bits)) {
+      fprintf(stderr,
+              "RNDGETENTCNT on /dev/urandom failed. We cannot continue in this "
+              "case when in FIPS mode.\n");
+      abort();
+    }
+
+    static const int kBitsNeeded = 256;
+    if (entropy_bits >= kBitsNeeded) {
+      break;
+    }
+
+    if (first_iteration) {
+      fprintf(stderr,
+              "The kernel entropy pool contains too few bits: have %d, want "
+              "%d. This process is built in FIPS mode and will block until "
+              "sufficient entropy is available.\n", entropy_bits, kBitsNeeded);
+    }
+    first_iteration = 0;
+
+    usleep(250000);
+  }
+#endif
 
   int flags = fcntl(fd, F_GETFD);
   if (flags == -1) {
