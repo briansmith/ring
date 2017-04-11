@@ -203,3 +203,13 @@ static const EVP_CIPHER des_ede_ecb = {
     NULL /* cleanup */,  NULL /* ctrl */, };
 
 const EVP_CIPHER *EVP_des_ede(void) { return &des_ede_ecb; }
+
+
+static const EVP_CIPHER des_ede3_ecb = {
+    NID_des_ede3_cbc,    8 /* block_size */,  24 /* key_size */,
+    0 /* iv_len */,      sizeof(DES_EDE_KEY), EVP_CIPH_ECB_MODE,
+    NULL /* app_data */, des_ede3_init_key,   des_ede_ecb_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */,
+};
+
+const EVP_CIPHER *EVP_des_ede3(void) { return &des_ede3_ecb; }
