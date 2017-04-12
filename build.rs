@@ -373,8 +373,12 @@ fn ring_build_rs_main() {
         is_debug: env::var("DEBUG").unwrap() != "false",
     };
 
+    let pregenerated =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join(PREGENERATED);
+
     let _ = rayon::join(check_all_files_tracked,
-                        || build_c_code(&target, &out_dir));
+                        || build_c_code(&target, pregenerated, &out_dir));
 }
 
 fn pregenerate_asm_main() {
@@ -426,7 +430,7 @@ impl Target {
     pub fn is_debug(&self) -> bool { self.is_debug }
 }
 
-fn build_c_code(target: &Target, out_dir: &Path) {
+fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     let includes_modified = RING_INCLUDES.par_iter()
         .with_max_len(1)
         .chain(RING_BUILD_FILE.par_iter())
@@ -451,7 +455,6 @@ fn build_c_code(target: &Target, out_dir: &Path) {
 
     let use_pregenerated = std::fs::metadata(".git").is_err();
 
-    let pregenerated = PathBuf::from(PREGENERATED);
     let asm_dir = if use_pregenerated { &pregenerated } else { out_dir };
 
     let perlasm_src_dsts =
