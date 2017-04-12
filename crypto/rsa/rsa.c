@@ -110,19 +110,6 @@ RSA *RSA_new_method(const ENGINE *engine) {
   return rsa;
 }
 
-void RSA_additional_prime_free(RSA_additional_prime *ap) {
-  if (ap == NULL) {
-    return;
-  }
-
-  BN_clear_free(ap->prime);
-  BN_clear_free(ap->exp);
-  BN_clear_free(ap->coeff);
-  BN_clear_free(ap->r);
-  BN_MONT_CTX_free(ap->mont);
-  OPENSSL_free(ap);
-}
-
 void RSA_free(RSA *rsa) {
   unsigned u;
 
@@ -157,10 +144,6 @@ void RSA_free(RSA *rsa) {
   }
   OPENSSL_free(rsa->blindings);
   OPENSSL_free(rsa->blindings_inuse);
-  if (rsa->additional_primes != NULL) {
-    sk_RSA_additional_prime_pop_free(rsa->additional_primes,
-                                     RSA_additional_prime_free);
-  }
   CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
@@ -584,23 +567,6 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
-  size_t num_additional_primes = 0;
-  if (key->additional_primes != NULL) {
-    num_additional_primes = sk_RSA_additional_prime_num(key->additional_primes);
-  }
-
-  for (size_t i = 0; i < num_additional_primes; i++) {
-    const RSA_additional_prime *ap =
-        sk_RSA_additional_prime_value(key->additional_primes, i);
-    if (!BN_mul(&n, &n, ap->prime, ctx) ||
-        !BN_sub(&pm1, ap->prime, BN_value_one()) ||
-        !BN_mul(&lcm, &lcm, &pm1, ctx) ||
-        !BN_gcd(&gcd, &gcd, &pm1, ctx)) {
-      OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-      goto out;
-    }
-  }
-
   if (!BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
       !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
       /* de = d*e mod lcm(prime-1, for all primes). */
@@ -626,7 +592,7 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
-  if (has_crt_values && num_additional_primes == 0) {
+  if (has_crt_values) {
     if (/* dmp1 = d mod (p-1) */
         !BN_mod(&dmp1, key->d, &pm1, ctx) ||
         /* dmq1 = d mod (q-1) */
@@ -731,11 +697,6 @@ int RSA_recover_crt_params(RSA *rsa) {
 
   if (rsa->p || rsa->q || rsa->dmp1 || rsa->dmq1 || rsa->iqmp) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_PARAMS_ALREADY_GIVEN);
-    return 0;
-  }
-
-  if (rsa->additional_primes != NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY);
     return 0;
   }
 

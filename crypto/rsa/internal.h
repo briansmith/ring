@@ -117,26 +117,6 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len);
 
 
-/* RSA_additional_prime contains information about the third, forth etc prime
- * in a multi-prime RSA key. */
-typedef struct RSA_additional_prime_st {
-  BIGNUM *prime;
-  /* exp is d^{prime-1} mod prime */
-  BIGNUM *exp;
-  /* coeff is such that r×coeff ≡ 1 mod prime. */
-  BIGNUM *coeff;
-
-  /* Values below here are not in the ASN.1 serialisation. */
-
-  /* r is the product of all primes (including p and q) prior to this one. */
-  BIGNUM *r;
-  /* mont is a |BN_MONT_CTX| modulo |prime|. */
-  BN_MONT_CTX *mont;
-} RSA_additional_prime;
-
-void RSA_additional_prime_free(RSA_additional_prime *ap);
-
-
 /* The following utility functions are exported for test purposes. */
 
 extern const BN_ULONG kBoringSSLRSASqrtTwo[];

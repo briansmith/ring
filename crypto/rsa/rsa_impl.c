@@ -651,11 +651,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   BIGNUM *r1, *m1, *vrfy;
   int ret = 0;
-  size_t i, num_additional_primes = 0;
-
-  if (rsa->additional_primes != NULL) {
-    num_additional_primes = sk_RSA_additional_prime_num(rsa->additional_primes);
-  }
 
   BN_CTX_start(ctx);
   r1 = BN_CTX_get(ctx);
@@ -731,31 +726,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   }
   if (!BN_add(r0, r1, m1)) {
     goto err;
-  }
-
-  for (i = 0; i < num_additional_primes; i++) {
-    /* multi-prime RSA. */
-    RSA_additional_prime *ap =
-        sk_RSA_additional_prime_value(rsa->additional_primes, i);
-
-    /* c will already point to a BIGNUM with the correct flags. */
-    if (!BN_mod(r1, I, ap->prime, ctx)) {
-      goto err;
-    }
-
-    if (!BN_MONT_CTX_set_locked(&ap->mont, &rsa->lock, ap->prime, ctx) ||
-        !BN_mod_exp_mont_consttime(m1, r1, ap->exp, ap->prime, ctx, ap->mont)) {
-      goto err;
-    }
-
-    if (!BN_sub(m1, m1, r0) ||
-        !BN_mul(m1, m1, ap->coeff, ctx) ||
-        !BN_mod(m1, m1, ap->prime, ctx) ||
-        (BN_is_negative(m1) && !BN_add(m1, m1, ap->prime)) ||
-        !BN_mul(m1, m1, ap->r, ctx) ||
-        !BN_add(r0, r0, m1)) {
-      goto err;
-    }
   }
 
   ret = 1;
@@ -1031,10 +1001,6 @@ int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
                                    rsa->mont_p)) {
     goto bn_err;
   }
-
-  sk_RSA_additional_prime_pop_free(rsa->additional_primes,
-                                   RSA_additional_prime_free);
-  rsa->additional_primes = NULL;
 
   /* The key generation process is complex and thus error-prone. It could be
    * disastrous to generate and then use a bad key so double-check that the key

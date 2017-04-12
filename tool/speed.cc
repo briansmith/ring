@@ -620,18 +620,6 @@ bool Speed(const std::vector<std::string> &args) {
     return false;
   }
 
-  key.reset(RSA_private_key_from_bytes(kDERRSAPrivate3Prime2048,
-                                       kDERRSAPrivate3Prime2048Len));
-  if (key == nullptr) {
-    fprintf(stderr, "Failed to parse RSA key.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  if (!SpeedRSA("RSA 2048 (3 prime, e=3)", key.get(), selected)) {
-    return false;
-  }
-
   key.reset(
       RSA_private_key_from_bytes(kDERRSAPrivate4096, kDERRSAPrivate4096Len));
   if (key == nullptr) {

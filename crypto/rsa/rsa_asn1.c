@@ -169,36 +169,9 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   return 1;
 }
 
-/* kVersionTwoPrime and kVersionMulti are the supported values of the version
- * field of an RSAPrivateKey structure (RFC 3447). */
+/* kVersionTwoPrime is the value of the version field for a two-prime
+ * RSAPrivateKey structure (RFC 3447). */
 static const uint64_t kVersionTwoPrime = 0;
-static const uint64_t kVersionMulti = 1;
-
-/* rsa_parse_additional_prime parses a DER-encoded OtherPrimeInfo from |cbs| and
- * advances |cbs|. It returns a newly-allocated |RSA_additional_prime| on
- * success or NULL on error. The |r| and |mont| fields of the result are set to
- * NULL. */
-static RSA_additional_prime *rsa_parse_additional_prime(CBS *cbs) {
-  RSA_additional_prime *ret = OPENSSL_malloc(sizeof(RSA_additional_prime));
-  if (ret == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  OPENSSL_memset(ret, 0, sizeof(RSA_additional_prime));
-
-  CBS child;
-  if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !parse_integer(&child, &ret->prime) ||
-      !parse_integer(&child, &ret->exp) ||
-      !parse_integer(&child, &ret->coeff) ||
-      CBS_len(&child) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
-    RSA_additional_prime_free(ret);
-    return NULL;
-  }
-
-  return ret;
-}
 
 RSA *RSA_parse_private_key(CBS *cbs) {
   BN_CTX *ctx = NULL;
@@ -216,7 +189,7 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
-  if (version != kVersionTwoPrime && version != kVersionMulti) {
+  if (version != kVersionTwoPrime) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_VERSION);
     goto err;
   }
@@ -230,50 +203,6 @@ RSA *RSA_parse_private_key(CBS *cbs) {
       !parse_integer(&child, &ret->dmq1) ||
       !parse_integer(&child, &ret->iqmp)) {
     goto err;
-  }
-
-  if (version == kVersionMulti) {
-    /* Although otherPrimeInfos is written as OPTIONAL in RFC 3447, it later
-     * says "[otherPrimeInfos] shall be omitted if version is 0 and shall
-     * contain at least one instance of OtherPrimeInfo if version is 1." The
-     * OPTIONAL is just so both versions share a single definition. */
-    CBS other_prime_infos;
-    if (!CBS_get_asn1(&child, &other_prime_infos, CBS_ASN1_SEQUENCE) ||
-        CBS_len(&other_prime_infos) == 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
-      goto err;
-    }
-    ret->additional_primes = sk_RSA_additional_prime_new_null();
-    if (ret->additional_primes == NULL) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-
-    ctx = BN_CTX_new();
-    product_of_primes_so_far = BN_new();
-    if (ctx == NULL ||
-        product_of_primes_so_far == NULL ||
-        !BN_mul(product_of_primes_so_far, ret->p, ret->q, ctx)) {
-      goto err;
-    }
-
-    while (CBS_len(&other_prime_infos) > 0) {
-      RSA_additional_prime *ap = rsa_parse_additional_prime(&other_prime_infos);
-      if (ap == NULL) {
-        goto err;
-      }
-      if (!sk_RSA_additional_prime_push(ret->additional_primes, ap)) {
-        OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-        RSA_additional_prime_free(ap);
-        goto err;
-      }
-      ap->r = BN_dup(product_of_primes_so_far);
-      if (ap->r == NULL ||
-          !BN_mul(product_of_primes_so_far, product_of_primes_so_far,
-                  ap->prime, ctx)) {
-        goto err;
-      }
-    }
   }
 
   if (CBS_len(&child) != 0) {
@@ -310,13 +239,9 @@ RSA *RSA_private_key_from_bytes(const uint8_t *in, size_t in_len) {
 }
 
 int RSA_marshal_private_key(CBB *cbb, const RSA *rsa) {
-  const int is_multiprime =
-      sk_RSA_additional_prime_num(rsa->additional_primes) > 0;
-
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&child,
-                           is_multiprime ? kVersionMulti : kVersionTwoPrime) ||
+      !CBB_add_asn1_uint64(&child, kVersionTwoPrime) ||
       !marshal_integer(&child, rsa->n) ||
       !marshal_integer(&child, rsa->e) ||
       !marshal_integer(&child, rsa->d) ||
@@ -324,35 +249,8 @@ int RSA_marshal_private_key(CBB *cbb, const RSA *rsa) {
       !marshal_integer(&child, rsa->q) ||
       !marshal_integer(&child, rsa->dmp1) ||
       !marshal_integer(&child, rsa->dmq1) ||
-      !marshal_integer(&child, rsa->iqmp)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
-    return 0;
-  }
-
-  CBB other_prime_infos;
-  if (is_multiprime) {
-    if (!CBB_add_asn1(&child, &other_prime_infos, CBS_ASN1_SEQUENCE)) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
-      return 0;
-    }
-    for (size_t i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes);
-         i++) {
-      RSA_additional_prime *ap =
-          sk_RSA_additional_prime_value(rsa->additional_primes, i);
-      CBB other_prime_info;
-      if (!CBB_add_asn1(&other_prime_infos, &other_prime_info,
-                        CBS_ASN1_SEQUENCE) ||
-          !marshal_integer(&other_prime_info, ap->prime) ||
-          !marshal_integer(&other_prime_info, ap->exp) ||
-          !marshal_integer(&other_prime_info, ap->coeff) ||
-          !CBB_flush(&other_prime_infos)) {
-        OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
-        return 0;
-      }
-    }
-  }
-
-  if (!CBB_flush(cbb)) {
+      !marshal_integer(&child, rsa->iqmp) ||
+      !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     return 0;
   }
