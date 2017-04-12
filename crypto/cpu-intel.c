@@ -76,7 +76,7 @@
  * |*out_edx|. */
 static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
                           uint32_t *out_ecx, uint32_t *out_edx, uint32_t leaf) {
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER)
   int tmp[4];
   __cpuid(tmp, (int)leaf);
   *out_eax = (uint32_t)tmp[0];
