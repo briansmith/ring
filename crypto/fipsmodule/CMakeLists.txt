@@ -94,60 +94,10 @@ if(FIPS)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
-  add_executable(
-    bcm_hashunset_test
-
-    bcm_hashunset_test.c
-
-    $<TARGET_OBJECTS:crypto_base>
-    $<TARGET_OBJECTS:stack>
-    $<TARGET_OBJECTS:lhash>
-    $<TARGET_OBJECTS:err>
-    $<TARGET_OBJECTS:base64>
-    $<TARGET_OBJECTS:bytestring>
-    $<TARGET_OBJECTS:pool>
-    $<TARGET_OBJECTS:digest_extra>
-    $<TARGET_OBJECTS:cipher>
-    $<TARGET_OBJECTS:modes>
-    $<TARGET_OBJECTS:aes>
-    $<TARGET_OBJECTS:des>
-    $<TARGET_OBJECTS:rc4>
-    $<TARGET_OBJECTS:conf>
-    $<TARGET_OBJECTS:chacha>
-    $<TARGET_OBJECTS:poly1305>
-    $<TARGET_OBJECTS:curve25519>
-    $<TARGET_OBJECTS:buf>
-    $<TARGET_OBJECTS:bn>
-    $<TARGET_OBJECTS:bio>
-    $<TARGET_OBJECTS:rand>
-    $<TARGET_OBJECTS:obj>
-    $<TARGET_OBJECTS:asn1>
-    $<TARGET_OBJECTS:engine>
-    $<TARGET_OBJECTS:dh>
-    $<TARGET_OBJECTS:dsa>
-    $<TARGET_OBJECTS:rsa>
-    $<TARGET_OBJECTS:ec>
-    $<TARGET_OBJECTS:ecdh>
-    $<TARGET_OBJECTS:ecdsa>
-    $<TARGET_OBJECTS:cmac>
-    $<TARGET_OBJECTS:evp>
-    $<TARGET_OBJECTS:hkdf>
-    $<TARGET_OBJECTS:pem>
-    $<TARGET_OBJECTS:x509>
-    $<TARGET_OBJECTS:x509v3>
-    $<TARGET_OBJECTS:pkcs8_lib>
-  )
-
-  target_link_libraries(bcm_hashunset_test bcm_hashunset)
-
-  if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(bcm_hashunset_test pthread)
-  endif()
-
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/inject-hash.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in $<TARGET_FILE:bcm_hashunset> -bin $<TARGET_FILE:bcm_hashunset_test>
-    DEPENDS bcm_hashunset_test bcm_hashunset inject-hash.go ar.go const.go
+    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/inject-hash.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in $<TARGET_FILE:bcm_hashunset>
+    DEPENDS bcm_hashunset inject-hash.go ar.go const.go
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
 

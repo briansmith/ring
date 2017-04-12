@@ -49,7 +49,7 @@ The script performs a number of other transformations which are worth noting but
 
 In order to actually implement the integrity test, a constructor function within the module calculates an HMAC from `module_start` to `module_end` using a fixed, all-zero key. It compares the result with the known-good value added (by the script) to the unhashed portion of the text segment. If they don't match, it calls `exit` in an infinite loop.
 
-Initially the known-good value will be incorrect. Another script runs the module after an object file has been produced to get the calculated value which it then injects back into the object file.
+Initially the known-good value will be incorrect. Another script (`inject-hash.go`) calculates the correct value from the assembled object and injects it back into the object.
 
 ![build process](/crypto/fipsmodule/intcheck2.png)
 
