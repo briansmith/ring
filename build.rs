@@ -472,8 +472,10 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     // the user doesn't need to install the assembler. On other platforms we
     // assume the C compiler also assembles.
     if use_pregenerated && target.os() == WINDOWS {
+        // The pregenerated object files always use ".obj" as the extension,
+        // even when the C/C++ compiler outputs files with the ".o" extension.
         asm_srcs = asm_srcs.iter()
-            .map(|src| obj_path(&pregenerated, src.as_path(), target.obj_ext))
+            .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
             .collect::<Vec<_>>();
     }
 
