@@ -173,7 +173,8 @@ impl<'a> Ed25519KeyPair {
             let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
+                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar,
+                                     &nonce);
             }
         }
         signature::Signature::new(signature_bytes)
@@ -278,12 +279,12 @@ fn private_scalar_prefix_from_seed(seed: &Seed) -> (Scalar, Prefix) {
     let h = digest::digest(&digest::SHA512, seed);
     let (scalar_encoded, prefix_encoded) = h.as_ref().split_at(SCALAR_LEN);
 
-    let mut prefix = [0u8; PREFIX_LEN];
-    prefix.copy_from_slice(prefix_encoded);
-
     let mut scalar = [0u8; SCALAR_LEN];
     scalar.copy_from_slice(&scalar_encoded);
     unsafe { GFp_ed25519_scalar_mask(&mut scalar) };
+
+    let mut prefix = [0u8; PREFIX_LEN];
+    prefix.copy_from_slice(prefix_encoded);
 
     (scalar, prefix)
 }
