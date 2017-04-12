@@ -48,6 +48,14 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__((constructor));
 static void BORINGSSL_bcm_power_on_self_test(void) {
   CRYPTO_library_init();
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+  /* Power-on tests cannot run under ASAN because it involves reading the full
+   * .text section, which triggers the global-buffer overflow detection. */
+  return;
+#endif
+#endif
+
   const uint8_t *const start = (const uint8_t *)BORINGSSL_bcm_text_dummy_start;
   const uint8_t *const end = (const uint8_t *)BORINGSSL_bcm_text_dummy_end;
 

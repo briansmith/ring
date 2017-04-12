@@ -49,6 +49,10 @@ func main() {
 
 	asPaths := strings.Split(*asmFiles, ",")
 	for i, path := range asPaths {
+		if len(path) == 0 {
+			continue
+		}
+
 		if lines, err = asLines(lines, path, i); err != nil {
 			panic(err)
 		}
@@ -258,6 +262,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		}
 	}
 
+	ret = append(ret, ".text")
 	ret = append(ret, "BORINGSSL_bcm_text_end:")
 
 	// Emit redirector functions. Each is a single JMP instruction.
