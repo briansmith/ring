@@ -172,11 +172,8 @@ pub static ED25519: EdDSAParameters = EdDSAParameters {};
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
-        if public_key.len() != PUBLIC_KEY_LEN {
-            return Err(error::Unspecified);
-        }
         let public_key = public_key.as_slice_less_safe();
-        let public_key = slice_as_array_ref!(public_key, ELEM_LEN).unwrap();
+        let public_key = try!(slice_as_array_ref!(public_key, ELEM_LEN));
 
         let (signature_r, signature_s) =
                 try!(signature.read_all(error::Unspecified, |input| {
