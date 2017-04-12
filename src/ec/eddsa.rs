@@ -60,14 +60,10 @@ impl<'a> Ed25519KeyPair {
         let mut seed = [0u8; SEED_LEN];
         try!(rng.fill(&mut seed));
 
-        let mut public_key = [0u8; PUBLIC_KEY_LEN];
-        public_from_private(&seed, &mut public_key);
-        let key_pair =
-            Ed25519KeyPair::from_bytes_unchecked(&seed, &public_key);
-
+        let key_pair = Ed25519KeyPair::from_seed(&seed);
         let bytes = Ed25519KeyPairBytes {
             private_key: seed,
-            public_key: public_key,
+            public_key: key_pair.public_key,
         };
 
         Ok((key_pair, bytes))
@@ -90,22 +86,29 @@ impl<'a> Ed25519KeyPair {
         let public_key =
             try!(slice_as_array_ref!(public_key, PUBLIC_KEY_LEN));
 
-        let pair = Ed25519KeyPair::from_bytes_unchecked(seed, public_key);
-        let mut public_key_check = [0; PUBLIC_KEY_LEN];
-        public_from_private(&seed, &mut public_key_check);
-        if &public_key[..] != &public_key_check[..] {
+        let pair = Ed25519KeyPair::from_seed(seed);
+        if &public_key[..] != &pair.public_key[..] {
             return Err(error::Unspecified);
         }
         Ok(pair)
     }
 
-    fn from_bytes_unchecked(seed: &Seed, public_key: &PublicKey)
-                            -> Ed25519KeyPair {
+    fn from_seed(seed: &Seed) -> Ed25519KeyPair {
         let (scalar, prefix) = private_scalar_prefix_from_seed(seed);
+
+        let mut a = ExtPoint::new_at_infinity();
+        unsafe {
+            GFp_x25519_ge_scalarmult_base(&mut a, &scalar);
+        }
+        let mut public_key = [0; PUBLIC_KEY_LEN];
+        unsafe {
+            GFp_ge_p3_tobytes(&mut public_key, &a);
+        }
+
         Ed25519KeyPair {
             private_scalar: scalar,
             private_prefix: prefix,
-            public_key: *public_key,
+            public_key: public_key,
         }
     }
 
@@ -226,22 +229,6 @@ fn digest_scalar(digest: digest::Digest) -> Scalar {
     let mut scalar = [0u8; SCALAR_LEN];
     scalar.copy_from_slice(&unreduced[..SCALAR_LEN]);
     scalar
-}
-
-fn public_from_private(seed: &Seed, out: &mut PublicKey) {
-    let seed_sha512 = digest::digest(&digest::SHA512, seed);
-    let a_bytes =
-        slice_as_array_ref!(&seed_sha512.as_ref()[..SCALAR_LEN], SCALAR_LEN)
-            .unwrap();
-    let mut a_bytes = *a_bytes;
-    unsafe {
-        GFp_ed25519_scalar_mask(&mut a_bytes);
-    }
-    let mut a = ExtPoint::new_at_infinity();
-    unsafe {
-        GFp_x25519_ge_scalarmult_base(&mut a, &a_bytes);
-        GFp_ge_p3_tobytes(out, &a);
-    }
 }
 
 fn private_scalar_prefix_from_seed(seed: &Seed) -> (Scalar, Prefix) {
