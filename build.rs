@@ -709,7 +709,7 @@ fn run_command_with_args<S>(command_name: S, args: &[String])
 fn run_command(mut cmd: Command) {
     println!("running {:?}", cmd);
     let status = cmd.status().unwrap_or_else(|e| {
-        panic!("failed to execute: {}", e);
+        panic!("failed to execute [{:?}]: {}", cmd, e);
     });
     if !status.success() {
         panic!("execution failed");
