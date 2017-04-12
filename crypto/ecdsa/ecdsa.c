@@ -229,7 +229,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
                             BIGNUM **rp, const uint8_t *digest,
                             size_t digest_len) {
   BN_CTX *ctx = NULL;
-  BIGNUM *k = NULL, *r = NULL, *tmp = NULL;
+  BIGNUM *k = NULL, *kinv = NULL, *r = NULL, *tmp = NULL;
   EC_POINT *tmp_point = NULL;
   const EC_GROUP *group;
   int ret = 0;
@@ -248,10 +248,11 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
     ctx = ctx_in;
   }
 
-  k = BN_new(); /* this value is later returned in *kinvp */
+  k = BN_new();
+  kinv = BN_new(); /* this value is later returned in *kinvp */
   r = BN_new(); /* this value is later returned in *rp    */
   tmp = BN_new();
-  if (k == NULL || r == NULL || tmp == NULL) {
+  if (k == NULL || kinv == NULL || r == NULL || tmp == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -262,6 +263,13 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
   }
 
   const BIGNUM *order = EC_GROUP_get0_order(group);
+
+  /* Check that the size of the group order is FIPS compliant (FIPS 186-4
+   * B.5.2). */
+  if (BN_num_bits(order) < 160) {
+    OPENSSL_PUT_ERROR(ECDSA, EC_R_INVALID_GROUP_ORDER);
+    goto err;
+  }
 
   do {
     /* If possible, we'll include the private key and message digest in the k
@@ -277,6 +285,15 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
       } while (BN_is_zero(k));
     } else if (!BN_rand_range_ex(k, 1, order)) {
       OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
+      goto err;
+    }
+
+    /* Compute the inverse of k. The order is a prime, so use Fermat's Little
+     * Theorem. Note |ec_group_get_mont_data| may return NULL but
+     * |bn_mod_inverse_prime| allows this. */
+    if (!bn_mod_inverse_prime(kinv, k, order, ctx,
+                              ec_group_get_mont_data(group))) {
+      OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
 
@@ -310,25 +327,19 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
     }
   } while (BN_is_zero(r));
 
-  /* Compute the inverse of k. The order is a prime, so use Fermat's Little
-   * Theorem. Note |ec_group_get_mont_data| may return NULL but
-   * |bn_mod_inverse_prime| allows this. */
-  if (!bn_mod_inverse_prime(k, k, order, ctx, ec_group_get_mont_data(group))) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    goto err;
-  }
   /* clear old values if necessary */
   BN_clear_free(*rp);
   BN_clear_free(*kinvp);
 
   /* save the pre-computed values  */
   *rp = r;
-  *kinvp = k;
+  *kinvp = kinv;
   ret = 1;
 
 err:
+  BN_clear_free(k);
   if (!ret) {
-    BN_clear_free(k);
+    BN_clear_free(kinv);
     BN_clear_free(r);
   }
   if (ctx_in == NULL) {
