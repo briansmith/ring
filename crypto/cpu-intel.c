@@ -61,15 +61,11 @@
 
 #include <inttypes.h>
 
-#if defined(OPENSSL_WINDOWS)
 #if defined(_MSC_VER)
 #pragma warning(push, 3)
-#endif
 #include <immintrin.h>
 #include <intrin.h>
-#if defined(_MSC_VER)
 #pragma warning(pop)
-#endif
 #endif
 
 #include "internal.h"
@@ -109,9 +105,12 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
 }
 
 /* OPENSSL_xgetbv returns the value of an Intel Extended Control Register (XCR).
- * Currently only XCR0 is defined by Intel so |xcr| should always be zero. */
+ * Currently only XCR0 is defined by Intel so |xcr| should always be zero.
+ *
+ * See https://software.intel.com/en-us/articles/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family
+ */
 static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER)
   return (uint64_t)_xgetbv(xcr);
 #else
   uint32_t eax, edx;
