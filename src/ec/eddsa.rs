@@ -22,48 +22,23 @@ pub struct EdDSAParameters;
 
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
-    private_key: [u8; SEED_LEN],
-
-    // As described in RFC 8032 Section 5.1.6, Step 1, we compute and cache
-    // these values when generating key pairs, since they are used in every
-    // signature. They are defined by:
-    //
-    //     SHA-512(private_key) = private_scalar || private_prefix
-    //
+    // RFC 8032 Section 5.1.6 calls this *s*.
     private_scalar: [u8; SCALAR_LEN],
+
+    // RFC 8032 Section 5.1.6 calls this *prefix*.
     private_prefix: [u8; PREFIX_LEN],
 
+    // RFC 8032 Section 5.1.5 calls this *A*.
     public_key: [u8; PUBLIC_KEY_LEN],
 }
 
 /// The raw bytes of the Ed25519 key pair, for serialization.
 pub struct Ed25519KeyPairBytes {
-    /// Private key bytes.
+    /// Private key (seed) bytes.
     pub private_key: [u8; SEED_LEN],
-
-    private_scalar: [u8; SCALAR_LEN],
-    private_prefix: [u8; PREFIX_LEN],
 
     /// Public key bytes.
     pub public_key: [u8; PUBLIC_KEY_LEN],
-}
-
-impl Ed25519KeyPairBytes {
-    fn from_key_pair(key_pair: &Ed25519KeyPair) -> Ed25519KeyPairBytes {
-        let mut bytes = Ed25519KeyPairBytes {
-            private_key: [0; SEED_LEN],
-            private_scalar: [0; SCALAR_LEN],
-            private_prefix: [0; PREFIX_LEN],
-            public_key: [0; PUBLIC_KEY_LEN],
-        };
-
-        bytes.private_key.copy_from_slice(&key_pair.private_key);
-        bytes.private_scalar.copy_from_slice(&key_pair.private_scalar);
-        bytes.private_prefix.copy_from_slice(&key_pair.private_prefix);
-        bytes.public_key.copy_from_slice(&key_pair.public_key);
-
-        bytes
-    }
 }
 
 impl<'a> Ed25519KeyPair {
@@ -88,9 +63,12 @@ impl<'a> Ed25519KeyPair {
         let mut public_key = [0u8; PUBLIC_KEY_LEN];
         public_from_private(&private_key, &mut public_key);
         let key_pair =
-            try!(Ed25519KeyPair::from_bytes_unchecked(&private_key,
-                                                      &public_key));
-        let bytes = Ed25519KeyPairBytes::from_key_pair(&key_pair);
+            Ed25519KeyPair::from_bytes_unchecked(&private_key, &public_key);
+
+        let bytes = Ed25519KeyPairBytes {
+            private_key: private_key,
+            public_key: public_key,
+        };
 
         Ok((key_pair, bytes))
     }
@@ -108,36 +86,28 @@ impl<'a> Ed25519KeyPair {
     /// corruption that might have occurred during storage of the key pair.
     pub fn from_bytes(private_key: &[u8], public_key: &[u8])
                       -> Result<Ed25519KeyPair, error::Unspecified> {
-        let pair = try!(Ed25519KeyPair::from_bytes_unchecked(private_key,
-                                                             public_key));
+        let private_key = try!(slice_as_array_ref!(private_key, SEED_LEN));
+        let public_key =
+            try!(slice_as_array_ref!(public_key, PUBLIC_KEY_LEN));
+
+        let pair = Ed25519KeyPair::from_bytes_unchecked(private_key, public_key);
         let mut public_key_check = [0; PUBLIC_KEY_LEN];
-        public_from_private(&pair.private_key, &mut public_key_check);
-        if public_key != public_key_check {
+        public_from_private(&private_key, &mut public_key_check);
+        if &public_key[..] != &public_key_check[..] {
             return Err(error::Unspecified);
         }
         Ok(pair)
     }
 
-    fn from_bytes_unchecked(private_key: &[u8], public_key: &[u8])
-                            -> Result<Ed25519KeyPair, error::Unspecified> {
-        if private_key.len() != SEED_LEN {
-            return Err(error::Unspecified);
-        }
-        if public_key.len() != PUBLIC_KEY_LEN {
-            return Err(error::Unspecified);
-        }
-        let seed = slice_as_array_ref!(private_key, SEED_LEN).unwrap();
-        let (scalar, prefix) = private_scalar_prefix_from_seed(seed);
-        let mut pair = Ed25519KeyPair {
-            private_key: [0u8; SEED_LEN],
+    fn from_bytes_unchecked(private_key: &[u8; SEED_LEN],
+                            public_key: &[u8; PUBLIC_KEY_LEN])
+                            -> Ed25519KeyPair {
+        let (scalar, prefix) = private_scalar_prefix_from_seed(private_key);
+        Ed25519KeyPair {
             private_scalar: scalar,
             private_prefix: prefix,
-            public_key: [0u8; PUBLIC_KEY_LEN],
-        };
-        pair.private_key.copy_from_slice(private_key);
-        pair.public_key.copy_from_slice(public_key);
-
-        Ok(pair)
+            public_key: *public_key,
+        }
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
