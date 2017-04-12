@@ -23,13 +23,13 @@ pub struct EdDSAParameters;
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
     // RFC 8032 Section 5.1.6 calls this *s*.
-    private_scalar: [u8; SCALAR_LEN],
+    private_scalar: Scalar,
 
     // RFC 8032 Section 5.1.6 calls this *prefix*.
-    private_prefix: [u8; PREFIX_LEN],
+    private_prefix: Prefix,
 
     // RFC 8032 Section 5.1.5 calls this *A*.
-    public_key: [u8; PUBLIC_KEY_LEN],
+    public_key: PublicKey,
 }
 
 /// The raw bytes of the Ed25519 key pair, for serialization.
@@ -57,16 +57,16 @@ impl<'a> Ed25519KeyPair {
     pub fn generate_serializable(rng: &rand::SecureRandom)
             -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
                       error::Unspecified> {
-        let mut private_key = [0u8; SEED_LEN];
-        try!(rng.fill(&mut private_key));
+        let mut seed = [0u8; SEED_LEN];
+        try!(rng.fill(&mut seed));
 
         let mut public_key = [0u8; PUBLIC_KEY_LEN];
-        public_from_private(&private_key, &mut public_key);
+        public_from_private(&seed, &mut public_key);
         let key_pair =
-            Ed25519KeyPair::from_bytes_unchecked(&private_key, &public_key);
+            Ed25519KeyPair::from_bytes_unchecked(&seed, &public_key);
 
         let bytes = Ed25519KeyPairBytes {
-            private_key: private_key,
+            private_key: seed,
             public_key: public_key,
         };
 
@@ -84,25 +84,24 @@ impl<'a> Ed25519KeyPair {
     /// helps protect, for example, against the accidental swapping of the
     /// public and private components of the key pair. This also detects
     /// corruption that might have occurred during storage of the key pair.
-    pub fn from_bytes(private_key: &[u8], public_key: &[u8])
+    pub fn from_bytes(seed: &[u8], public_key: &[u8])
                       -> Result<Ed25519KeyPair, error::Unspecified> {
-        let private_key = try!(slice_as_array_ref!(private_key, SEED_LEN));
+        let seed = try!(slice_as_array_ref!(seed, SEED_LEN));
         let public_key =
             try!(slice_as_array_ref!(public_key, PUBLIC_KEY_LEN));
 
-        let pair = Ed25519KeyPair::from_bytes_unchecked(private_key, public_key);
+        let pair = Ed25519KeyPair::from_bytes_unchecked(seed, public_key);
         let mut public_key_check = [0; PUBLIC_KEY_LEN];
-        public_from_private(&private_key, &mut public_key_check);
+        public_from_private(&seed, &mut public_key_check);
         if &public_key[..] != &public_key_check[..] {
             return Err(error::Unspecified);
         }
         Ok(pair)
     }
 
-    fn from_bytes_unchecked(private_key: &[u8; SEED_LEN],
-                            public_key: &[u8; PUBLIC_KEY_LEN])
+    fn from_bytes_unchecked(seed: &Seed, public_key: &PublicKey)
                             -> Ed25519KeyPair {
-        let (scalar, prefix) = private_scalar_prefix_from_seed(private_key);
+        let (scalar, prefix) = private_scalar_prefix_from_seed(seed);
         Ed25519KeyPair {
             private_scalar: scalar,
             private_prefix: prefix,
