@@ -83,13 +83,13 @@ impl<'a> Ed25519KeyPair {
     pub fn from_bytes(seed: &[u8], public_key: &[u8])
                       -> Result<Ed25519KeyPair, error::Unspecified> {
         let seed = try!(slice_as_array_ref!(seed, SEED_LEN));
-        let public_key =
-            try!(slice_as_array_ref!(public_key, PUBLIC_KEY_LEN));
-
         let pair = Ed25519KeyPair::from_seed(seed);
-        if &public_key[..] != &pair.public_key[..] {
+
+        // This implicitly verifies that `public_key` is the right length.
+        if public_key != &pair.public_key[..] {
             return Err(error::Unspecified);
         }
+
         Ok(pair)
     }
 
