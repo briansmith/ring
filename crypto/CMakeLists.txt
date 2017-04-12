@@ -236,6 +236,7 @@ add_executable(
   asn1/asn1_test.cc
   base64/base64_test.cc
   bio/bio_test.cc
+  bytestring/bytestring_test.cc
   chacha/chacha_test.cc
   constant_time_test.cc
   curve25519/x25519_test.cc
