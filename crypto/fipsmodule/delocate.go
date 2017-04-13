@@ -164,7 +164,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		}
 
 		switch parts[0] {
-		case "call", "callq", "jmp":
+		case "call", "callq", "jmp", "jne", "jb", "jz", "jnz", "ja":
 			target := parts[1]
 			// indirect via register or local label
 			if strings.HasPrefix(target, "*") || strings.HasPrefix(target, ".L") {
@@ -199,6 +199,22 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 
 			ret = append(ret, fmt.Sprintf("\t%s %s", parts[0], redirectorName))
 			redirectors[redirectorName] = target
+			continue
+
+		case "leaq":
+			if strings.Contains(line, "BORINGSSL_bcm_text_dummy_") {
+				line = strings.Replace(line, "BORINGSSL_bcm_text_dummy_", "BORINGSSL_bcm_text_", -1)
+			}
+
+			target := strings.SplitN(parts[1], ",", 2)[0]
+			if strings.HasSuffix(target, "(%rip)") {
+				target = target[:len(target)-6]
+				if isGlobal := symbols[target]; isGlobal {
+					line = strings.Replace(line, target, localTargetName(target), 1)
+				}
+			}
+
+			ret = append(ret, line)
 			continue
 
 		case ".file":
@@ -265,9 +281,6 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				}
 			}
 
-			if parts[0] == "leaq" {
-				line = strings.Replace(line, "BORINGSSL_bcm_text_dummy_", "BORINGSSL_bcm_text_", -1)
-			}
 			ret = append(ret, line)
 		}
 	}
