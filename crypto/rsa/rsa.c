@@ -682,7 +682,9 @@ int RSA_check_fips(RSA *key) {
   BN_free(&small_gcd);
   BN_CTX_free(ctx);
 
-  if (!ret) {
+  if (!ret || key->d == NULL || key->p == NULL) {
+    /* On a failure or on only a public key, there's nothing else can be
+     * checked. */
     return ret;
   }
 
@@ -694,13 +696,13 @@ int RSA_check_fips(RSA *key) {
   unsigned sig_len = RSA_size(key);
   uint8_t *sig = OPENSSL_malloc(sig_len);
   if (sig == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key) ||
       !RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     ret = 0;
   }
 

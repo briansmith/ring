@@ -347,18 +347,32 @@ err:
 }
 
 int EC_KEY_check_fips(const EC_KEY *key) {
+  if (EC_KEY_is_opaque(key)) {
+    /* Opaque keys can't be checked. */
+    OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
+    return 0;
+  }
+
+  if (!EC_KEY_check_key(key)) {
+    return 0;
+  }
+
+  if (!key->priv_key) {
+    return 1;
+  }
+
   uint8_t data[16] = {0};
   unsigned sig_len = ECDSA_size(key);
   uint8_t *sig = OPENSSL_malloc(sig_len);
   if (sig == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   int ret = 1;
   if (!ECDSA_sign(0, data, sizeof(data), sig, &sig_len, key) ||
       !ECDSA_verify(0, data, sizeof(data), sig, sig_len, key)) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
     ret = 0;
   }
 
