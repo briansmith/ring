@@ -114,11 +114,17 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+#include <openssl/type_check.h>
 
 #include "../internal.h"
+#include "../rand/internal.h"
 
 
-int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
+static const uint8_t kZeroAdditionalData[32] = {0};
+
+static int bn_rand_with_additional_data(BIGNUM *rnd, int bits, int top,
+                                        int bottom,
+                                        const uint8_t additional_data[32]) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
 
@@ -153,9 +159,7 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   }
 
   /* Make a random number and set the top and bottom bits. */
-  if (!RAND_bytes(buf, bytes)) {
-    goto err;
-  }
+  RAND_bytes_with_additional_data(buf, bytes, additional_data);
 
   if (top != BN_RAND_TOP_ANY) {
     if (top == BN_RAND_TOP_TWO && bits > 1) {
@@ -191,12 +195,18 @@ err:
   return (ret);
 }
 
+int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
+  return bn_rand_with_additional_data(rnd, bits, top, bottom,
+                                      kZeroAdditionalData);
+}
+
 int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   return BN_rand(rnd, bits, top, bottom);
 }
 
-int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
-                     const BIGNUM *max_exclusive) {
+static int bn_rand_range_with_additional_data(
+    BIGNUM *r, BN_ULONG min_inclusive, const BIGNUM *max_exclusive,
+    const uint8_t additional_data[32]) {
   if (BN_cmp_word(max_exclusive, min_inclusive) <= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
@@ -214,7 +224,8 @@ int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
     }
 
     if (/* steps 4 and 5 */
-        !BN_rand(r, n, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY) ||
+        !bn_rand_with_additional_data(r, n, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY,
+                                      additional_data) ||
         /* step 7 */
         !BN_add_word(r, min_inclusive)) {
       return 0;
@@ -228,6 +239,12 @@ int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
   return 1;
 }
 
+int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
+                     const BIGNUM *max_exclusive) {
+  return bn_rand_range_with_additional_data(r, min_inclusive, max_exclusive,
+                                            kZeroAdditionalData);
+}
+
 int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
   return BN_rand_range_ex(r, 0, range);
 }
@@ -239,80 +256,31 @@ int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {
 int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
                           const uint8_t *message, size_t message_len,
                           BN_CTX *ctx) {
-  SHA512_CTX sha;
-  /* We use 512 bits of random data per iteration to
-   * ensure that we have at least |range| bits of randomness. */
-  uint8_t random_bytes[64];
-  uint8_t digest[SHA512_DIGEST_LENGTH];
-  size_t done, todo, attempt;
-  const unsigned num_k_bytes = BN_num_bytes(range);
-  const unsigned bits_to_mask = (8 - (BN_num_bits(range) % 8)) % 8;
-  uint8_t private_bytes[96];
-  uint8_t *k_bytes = NULL;
-  int ret = 0;
-
-  if (out == NULL) {
-    return 0;
-  }
-
-  if (BN_is_zero(range)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
-    goto err;
-  }
-
-  k_bytes = OPENSSL_malloc(num_k_bytes);
-  if (!k_bytes) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
   /* We copy |priv| into a local buffer to avoid furthur exposing its
    * length. */
-  todo = sizeof(priv->d[0]) * priv->top;
+  uint8_t private_bytes[96];
+  size_t todo = sizeof(priv->d[0]) * priv->top;
   if (todo > sizeof(private_bytes)) {
     /* No reasonable DSA or ECDSA key should have a private key
      * this large and we don't handle this case in order to avoid
      * leaking the length of the private key. */
     OPENSSL_PUT_ERROR(BN, BN_R_PRIVATE_KEY_TOO_LARGE);
-    goto err;
+    return 0;
   }
   OPENSSL_memcpy(private_bytes, priv->d, todo);
   OPENSSL_memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
 
-  for (attempt = 0;; attempt++) {
-    for (done = 0; done < num_k_bytes;) {
-      if (!RAND_bytes(random_bytes, sizeof(random_bytes))) {
-        goto err;
-      }
-      SHA512_Init(&sha);
-      SHA512_Update(&sha, &attempt, sizeof(attempt));
-      SHA512_Update(&sha, &done, sizeof(done));
-      SHA512_Update(&sha, private_bytes, sizeof(private_bytes));
-      SHA512_Update(&sha, message, message_len);
-      SHA512_Update(&sha, random_bytes, sizeof(random_bytes));
-      SHA512_Final(digest, &sha);
+  /* Pass a SHA256 hash of the private key and message as additional data into
+   * the RBG. This is a hardening measure against entropy failure. */
+  OPENSSL_COMPILE_ASSERT(SHA256_DIGEST_LENGTH == 32,
+                         additional_data_is_different_size_from_sha256);
+  SHA256_CTX sha;
+  uint8_t digest[SHA256_DIGEST_LENGTH];
+  SHA256_Init(&sha);
+  SHA256_Update(&sha, private_bytes, sizeof(private_bytes));
+  SHA256_Update(&sha, message, message_len);
+  SHA256_Final(digest, &sha);
 
-      todo = num_k_bytes - done;
-      if (todo > SHA512_DIGEST_LENGTH) {
-        todo = SHA512_DIGEST_LENGTH;
-      }
-      OPENSSL_memcpy(k_bytes + done, digest, todo);
-      done += todo;
-    }
-
-    k_bytes[0] &= 0xff >> bits_to_mask;
-
-    if (!BN_bin2bn(k_bytes, num_k_bytes, out)) {
-      goto err;
-    }
-    if (BN_cmp(out, range) < 0) {
-      break;
-    }
-  }
-
-  ret = 1;
-
-err:
-  OPENSSL_free(k_bytes);
-  return ret;
+  /* Select a value k from [1, range-1], following FIPS 186-4 appendix B.5.2. */
+  return bn_rand_range_with_additional_data(out, 1, range, digest);
 }
