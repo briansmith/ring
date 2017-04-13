@@ -198,7 +198,7 @@ $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
+( $xlate="${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
@@ -209,7 +209,7 @@ $movkey = $PREFIX eq "aesni" ? "movups" : "movups";
 		("%rdi","%rsi","%rdx","%rcx");	# Unix order
 
 $code=".text\n";
-$code.=".extern	OPENSSL_ia32cap_P\n";
+$code.=".extern	OPENSSL_ia32cap_addr\n";
 
 $rounds="%eax";	# input to and changed by aesni_[en|de]cryptN !!!
 # this is natural Unix argument order for public $PREFIX_[ecb|cbc]_encrypt ...
@@ -1271,7 +1271,8 @@ $code.=<<___;
 	lea	7($ctr),%r9
 	 mov	%r10d,0x60+12(%rsp)
 	bswap	%r9d
-	 mov	OPENSSL_ia32cap_P+4(%rip),%r10d
+	movq	OPENSSL_ia32cap_addr(%rip),%r10
+	 mov	4(%r10),%r10d
 	xor	$key0,%r9d
 	 and	\$`1<<26|1<<22`,%r10d		# isolate XSAVE+MOVBE
 	mov	%r9d,0x70+12(%rsp)
@@ -3771,7 +3772,8 @@ $code.=<<___;
 	movdqa	$inout3,$in3
 	movdqu	0x50($inp),$inout5
 	movdqa	$inout4,$in4
-	mov	OPENSSL_ia32cap_P+4(%rip),%r9d
+	movq	OPENSSL_ia32cap_addr(%rip),%r9
+	mov	4(%r9),%r9d
 	cmp	\$0x70,$len
 	jbe	.Lcbc_dec_six_or_seven
 
@@ -4274,10 +4276,11 @@ __aesni_set_encrypt_key:
 	test	$key,$key
 	jz	.Lenc_key_ret
 
-	mov	\$`1<<28|1<<11`,%r10d	# AVX and XOP bits
 	movups	($inp),%xmm0		# pull first 128 bits of *userKey
 	xorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
-	and	OPENSSL_ia32cap_P+4(%rip),%r10d
+	movq	OPENSSL_ia32cap_addr(%rip),%r10
+	movl	4(%r10),%r10d
+	and	\$`1<<28|1<<11`,%r10d	# AVX and XOP bits
 	lea	16($key),%rax		# %rax is used as modifiable copy of $key
 	cmp	\$256,$bits
 	je	.L14rounds

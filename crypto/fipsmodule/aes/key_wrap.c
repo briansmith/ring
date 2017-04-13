@@ -53,7 +53,7 @@
 
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* kDefaultIV is the default IV value given in RFC 3394, 2.2.3.1. */

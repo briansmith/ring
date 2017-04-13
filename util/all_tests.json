@@ -1,5 +1,5 @@
 [
-	["crypto/aes/aes_test", "crypto/aes/aes_tests.txt"],
+	["crypto/fipsmodule/aes_test", "crypto/fipsmodule/aes/aes_tests.txt"],
 	["crypto/base64/base64_test"],
 	["crypto/bn/bn_test", "crypto/bn/bn_tests.txt"],
 	["crypto/bytestring/bytestring_test"],

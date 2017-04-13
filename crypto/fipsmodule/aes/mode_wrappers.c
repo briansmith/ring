@@ -46,42 +46,67 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
-#ifndef OPENSSL_HEADER_AES_INTERNAL_H
-#define OPENSSL_HEADER_AES_INTERNAL_H
+#include <openssl/aes.h>
 
-#include <openssl/base.h>
+#include <assert.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+#include "../../modes/internal.h"
 
 
-#if defined(_MSC_VER) && \
-    (defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64))
-#define SWAP(x) (_lrotl(x, 8) & 0x00ff00ff | _lrotr(x, 8) & 0xff00ff00)
-#define GETU32(p) SWAP(*((uint32_t *)(p)))
-#define PUTU32(ct, st) \
-  { *((uint32_t *)(ct)) = SWAP((st)); }
-#else
-#define GETU32(pt)                                         \
-  (((uint32_t)(pt)[0] << 24) ^ ((uint32_t)(pt)[1] << 16) ^ \
-   ((uint32_t)(pt)[2] << 8) ^ ((uint32_t)(pt)[3]))
-#define PUTU32(ct, st)          \
-  {                             \
-    (ct)[0] = (uint8_t)((st) >> 24); \
-    (ct)[1] = (uint8_t)((st) >> 16); \
-    (ct)[2] = (uint8_t)((st) >> 8);  \
-    (ct)[3] = (uint8_t)(st);         \
+void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                        const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
+                        uint8_t ecount_buf[AES_BLOCK_SIZE], unsigned int *num) {
+  CRYPTO_ctr128_encrypt(in, out, len, key, ivec, ecount_buf, num,
+                        (block128_f)AES_encrypt);
+}
+
+void AES_ecb_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key,
+                     const int enc) {
+  assert(in && out && key);
+  assert((AES_ENCRYPT == enc) || (AES_DECRYPT == enc));
+
+  if (AES_ENCRYPT == enc) {
+    AES_encrypt(in, out, key);
+  } else {
+    AES_decrypt(in, out, key);
   }
-#endif
+}
 
-#define MAXKC (256 / 32)
-#define MAXKB (256 / 8)
-#define MAXNR 14
+#if defined(OPENSSL_NO_ASM) || \
+    (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86))
+void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                     const AES_KEY *key, uint8_t *ivec, const int enc) {
 
+  if (enc) {
+    CRYPTO_cbc128_encrypt(in, out, len, key, ivec, (block128_f)AES_encrypt);
+  } else {
+    CRYPTO_cbc128_decrypt(in, out, len, key, ivec, (block128_f)AES_decrypt);
+  }
+}
+#else
 
-#if defined(__cplusplus)
-} /* extern C */
-#endif
+void asm_AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                         const AES_KEY *key, uint8_t *ivec, const int enc);
+void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                     const AES_KEY *key, uint8_t *ivec, const int enc) {
+  asm_AES_cbc_encrypt(in, out, len, key, ivec, enc);
+}
 
-#endif /* OPENSSL_HEADER_AES_INTERNAL_H */
+#endif  /* OPENSSL_NO_ASM || (!OPENSSL_X86_64 && !OPENSSL_X86) */
+
+void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                        const AES_KEY *key, uint8_t *ivec, int *num) {
+  unsigned num_u = (unsigned)(*num);
+  CRYPTO_ofb128_encrypt(in, out, length, key, ivec, &num_u,
+                        (block128_f)AES_encrypt);
+  *num = (int)num_u;
+}
+
+void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                        const AES_KEY *key, uint8_t *ivec, int *num,
+                        int enc) {
+  unsigned num_u = (unsigned)(*num);
+  CRYPTO_cfb128_encrypt(in, out, length, key, ivec, &num_u, enc,
+                        (block128_f)AES_encrypt);
+  *num = (int)num_u;
+}

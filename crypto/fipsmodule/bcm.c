@@ -18,6 +18,9 @@
 
 #include "../internal.h"
 
+#include "aes/aes.c"
+#include "aes/key_wrap.c"
+#include "aes/mode_wrappers.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
 #include "hmac/hmac.c"

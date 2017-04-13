@@ -34,7 +34,7 @@ $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
+( $xlate="${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
@@ -1642,7 +1642,7 @@ $code.=<<___;
 .align	16
 .globl	asm_AES_cbc_encrypt
 .type	asm_AES_cbc_encrypt,\@function,6
-.extern	OPENSSL_ia32cap_P
+.extern	OPENSSL_ia32cap_addr
 .hidden	asm_AES_cbc_encrypt
 asm_AES_cbc_encrypt:
 	cmp	\$0,%rdx	# check length
@@ -1664,7 +1664,8 @@ asm_AES_cbc_encrypt:
 	cmp	\$0,%r9
 	cmoveq	%r10,$sbox
 
-	mov	OPENSSL_ia32cap_P(%rip),%r10d
+	mov	OPENSSL_ia32cap_addr(%rip),%r10
+	mov	(%r10), %r10d
 	cmp	\$$speed_limit,%rdx
 	jb	.Lcbc_slow_prologue
 	test	\$15,%rdx

@@ -62,7 +62,7 @@ $PREFIX="aesni";	# if $PREFIX is set to "AES", the script
 $inline=1;		# inline _aesni_[en|de]crypt
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-push(@INC,"${dir}","${dir}../../perlasm");
+push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
 $output = pop;

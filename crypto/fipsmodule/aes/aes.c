@@ -53,7 +53,7 @@
 
 #include <openssl/cpu.h>
 
-#include "internal.h"
+#include "../../modes/internal.h"
 
 
 #if defined(OPENSSL_NO_ASM) || \
