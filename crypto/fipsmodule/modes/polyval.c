@@ -20,7 +20,7 @@
 #include <string.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* byte_reverse reverses the order of the bytes in |b->c|. */
@@ -57,7 +57,9 @@ void CRYPTO_POLYVAL_init(struct polyval_ctx *ctx, const uint8_t key[16]) {
   OPENSSL_memcpy(H.c, key, 16);
   reverse_and_mulX_ghash(&H);
 
-  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable, H.c);
+  int unused;
+  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable, &unused,
+                    H.c);
   OPENSSL_memset(&ctx->S, 0, sizeof(ctx->S));
 }
 

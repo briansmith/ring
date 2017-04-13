@@ -89,7 +89,7 @@ $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
+( $xlate="${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
 # See the notes about |$avx| in aesni-gcm-x86_64.pl; otherwise tags will be
@@ -212,7 +212,7 @@ ___
 
 $code=<<___;
 .text
-.extern	OPENSSL_ia32cap_P
+.extern	OPENSSL_ia32cap_addr
 
 .globl	gcm_gmult_4bit
 .type	gcm_gmult_4bit,\@function,2
@@ -644,7 +644,8 @@ if ($do4xaggr) {
 my ($Xl,$Xm,$Xh,$Hkey3,$Hkey4)=map("%xmm$_",(11..15));
 
 $code.=<<___;
-	mov		OPENSSL_ia32cap_P+4(%rip),%eax
+	mov		OPENSSL_ia32cap_addr(%rip),%rax
+	mov		4(%rax),%eax
 	cmp		\$0x30,$len
 	jb		.Lskip4x
 

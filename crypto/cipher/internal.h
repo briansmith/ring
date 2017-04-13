@@ -62,7 +62,7 @@
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 
-#include "../modes/internal.h"
+#include "../fipsmodule/modes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

@@ -61,7 +61,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../test/test_util.h"
+#include "../../test/test_util.h"
 
 
 struct test_case {

@@ -55,8 +55,7 @@
 #include <openssl/cpu.h>
 
 #include "internal.h"
-#include "../internal.h"
-
+#include "../../internal.h"
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
@@ -270,11 +269,6 @@ void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                    size_t len);
 #define AESNI_GCM
-static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, ctr128_f stream) {
-  return stream == aesni_ctr32_encrypt_blocks &&
-         ctx->ghash == gcm_ghash_avx;
-}
-
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const void *key, uint8_t ivec[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
@@ -352,7 +346,10 @@ void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 *out_key, u128 out_table[16],
+                       int *out_use_aesni_gcm_encrypt,
                        const uint8_t *gcm_key) {
+  *out_use_aesni_gcm_encrypt = 0;
+
   union {
     uint64_t u[2];
     uint8_t c[16];
@@ -372,6 +369,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
       gcm_init_avx(out_table, H.u);
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
+      *out_use_aesni_gcm_encrypt = 1;
       return;
     }
     gcm_init_clmul(out_table, H.u);
@@ -428,7 +426,11 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
   OPENSSL_memset(gcm_key, 0, sizeof(gcm_key));
   (*block)(gcm_key, gcm_key, aes_key);
 
-  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable, gcm_key);
+  int use_aesni_gcm_crypt;
+  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable,
+                    &use_aesni_gcm_crypt, gcm_key);
+
+  ctx->use_aesni_gcm_crypt = use_aesni_gcm_crypt ? 1 : 0;
 }
 
 void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
@@ -858,7 +860,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   }
 
 #if defined(AESNI_GCM)
-  if (aesni_gcm_enabled(ctx, stream)) {
+  if (ctx->use_aesni_gcm_crypt) {
     /* |aesni_gcm_encrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
     size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
@@ -961,7 +963,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   }
 
 #if defined(AESNI_GCM)
-  if (aesni_gcm_enabled(ctx, stream)) {
+  if (ctx->use_aesni_gcm_crypt) {
     /* |aesni_gcm_decrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
     size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
@@ -1062,8 +1064,8 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag, size_t len) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 int crypto_gcm_clmul_enabled(void) {
 #ifdef GHASH_ASM
-  return OPENSSL_ia32cap_P[0] & (1 << 24) &&  /* check FXSR bit */
-    OPENSSL_ia32cap_P[1] & (1 << 1);  /* check PCLMULQDQ bit */
+  return (OPENSSL_ia32cap_P[0] & (1 << 24)) && /* check FXSR bit */
+         (OPENSSL_ia32cap_P[1] & (1 << 1));    /* check PCLMULQDQ bit */
 #else
   return 0;
 #endif

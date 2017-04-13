@@ -45,7 +45,7 @@
 	["crypto/hkdf/hkdf_test"],
 	["crypto/hmac_extra/hmac_test", "crypto/hmac_extra/hmac_tests.txt"],
 	["crypto/lhash/lhash_test"],
-	["crypto/modes/gcm_test"],
+	["crypto/fipsmodule/gcm_test"],
 	["crypto/obj/obj_test"],
 	["crypto/pkcs7/pkcs7_test"],
 	["crypto/pkcs8/pkcs12_test"],

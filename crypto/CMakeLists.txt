@@ -80,7 +80,6 @@ add_subdirectory(bytestring)
 add_subdirectory(pool)
 
 # Level 0.2 - depends on nothing but itself
-add_subdirectory(modes)
 add_subdirectory(des)
 add_subdirectory(rc4)
 add_subdirectory(conf)
@@ -169,7 +168,6 @@ add_library(
   $<TARGET_OBJECTS:fipsmodule>
   $<TARGET_OBJECTS:digest_extra>
   $<TARGET_OBJECTS:cipher>
-  $<TARGET_OBJECTS:modes>
   $<TARGET_OBJECTS:des>
   $<TARGET_OBJECTS:rc4>
   $<TARGET_OBJECTS:conf>

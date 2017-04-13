@@ -53,14 +53,12 @@
 
 #include <string.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-
-#define asm __asm__
 
 #define STRICT_ALIGNMENT 1
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
@@ -159,6 +157,10 @@ struct gcm128_context {
 
   unsigned int mres, ares;
   block128_f block;
+
+  /* use_aesni_gcm_crypt is true if this context should use the assembly
+   * functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data. */
+  unsigned use_aesni_gcm_crypt:1;
 };
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -212,10 +214,12 @@ typedef struct gcm128_context GCM128_CONTEXT;
 
 /* CRYPTO_ghash_init writes a precomputed table of powers of |gcm_key| to
  * |out_table| and sets |*out_mult| and |*out_hash| to (potentially hardware
- * accelerated) functions for performing operations in the GHASH field. */
-void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 *out_key, u128 out_table[16],
-                       const uint8_t *gcm_key);
+ * accelerated) functions for performing operations in the GHASH field. If the
+ * assembly functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| can be used,
+ * |*out_use_aesni_gcm_crypt| will be true. */
+void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash, u128
+    *out_key, u128 out_table[16], int *out_use_aesni_gcm_crypt, const uint8_t
+    *gcm_key);
 
 /* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
  * the given key. */

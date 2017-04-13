@@ -50,7 +50,7 @@
 
 #include <assert.h>
 
-#include "../../modes/internal.h"
+#include "../modes/internal.h"
 
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,

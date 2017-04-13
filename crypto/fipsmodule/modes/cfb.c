@@ -54,7 +54,7 @@
 #include "internal.h"
 
 
-OPENSSL_COMPILE_ASSERT((16 % sizeof(size_t)) == 0, bad_size_t_size);
+OPENSSL_COMPILE_ASSERT((16 % sizeof(size_t)) == 0, bad_size_t_size_cfb);
 
 void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const void *key, uint8_t ivec[16], unsigned *num,

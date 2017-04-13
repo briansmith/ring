@@ -59,7 +59,7 @@
 
 #include "internal.h"
 #include "../internal.h"
-#include "../modes/internal.h"
+#include "../fipsmodule/modes/internal.h"
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #include <openssl/arm_arch.h>
