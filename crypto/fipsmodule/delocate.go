@@ -114,6 +114,16 @@ func definedSymbols(lines []string) map[string]bool {
 	return symbols
 }
 
+func referencesIA32CapDirectly(line string) bool {
+	const symbol = "OPENSSL_ia32cap_P"
+	i := strings.Index(line, symbol)
+	if i < 0 {
+		return false
+	}
+	i += len(symbol)
+	return i == len(line) || line[i] == '+' || line[i] == '('
+}
+
 // transform performs a number of transformations on the given assembly code.
 // See FIPS.md in the current directory for an overview.
 func transform(lines []string, symbols map[string]bool) (ret []string) {
@@ -138,7 +148,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	var bssAccessorsNeeded []string
 
 	for lineNo, line := range lines {
-		if strings.Contains(line, "OPENSSL_ia32cap_P(%rip)") {
+		if referencesIA32CapDirectly(line) {
 			panic("reference to OPENSSL_ia32cap_P needs to be changed to indirect via OPENSSL_ia32cap_addr")
 		}
 
