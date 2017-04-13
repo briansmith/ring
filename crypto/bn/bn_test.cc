@@ -1105,6 +1105,49 @@ static bool TestRand() {
   return true;
 }
 
+static bool TestRandRange() {
+  bssl::UniquePtr<BIGNUM> bn(BN_new()), six(BN_new());
+  if (!bn || !six ||
+      !BN_set_word(six.get(), 6)) {
+    return false;
+  }
+
+  // Generate 1,000 random numbers and ensure they all stay in range. This check
+  // may flakily pass when it should have failed but will not flakily fail.
+  bool seen[6] = {false, false, false, false, false};
+  for (unsigned i = 0; i < 1000; i++) {
+    if (!BN_rand_range_ex(bn.get(), 1, six.get())) {
+      return false;
+    }
+
+    BN_ULONG word = BN_get_word(bn.get());
+    if (BN_is_negative(bn.get()) ||
+        word < 1 ||
+        word >= 6) {
+      fprintf(stderr,
+              "BN_rand_range_ex generated invalid value: " BN_DEC_FMT1 "\n",
+              word);
+      return false;
+    }
+
+    seen[word] = true;
+  }
+
+  // Test that all numbers were accounted for. Note this test is probabilistic
+  // and may flakily fail when it should have passed. As an upper-bound on the
+  // failure probability, we'll never see any one number with probability
+  // (4/5)^1000, so the probability of failure is at most 5*(4/5)^1000. This is
+  // around 1 in 2^320.
+  for (unsigned i = 1; i < 6; i++) {
+    if (!seen[i]) {
+      fprintf(stderr, "BN_rand_range failed to generate %u.\n", i);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 struct ASN1Test {
   const char *value_ascii;
   const char *der;
@@ -1775,6 +1818,7 @@ int main(int argc, char *argv[]) {
       !TestLittleEndian() ||
       !TestMPI() ||
       !TestRand() ||
+      !TestRandRange() ||
       !TestASN1() ||
       !TestNegativeZero(ctx.get()) ||
       !TestBadModulus(ctx.get()) ||
@@ -1784,6 +1828,7 @@ int main(int argc, char *argv[]) {
       !TestBN2Dec() ||
       !TestBNSetGetU64() ||
       !TestBNPow2(ctx.get())) {
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 

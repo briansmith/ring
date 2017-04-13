@@ -468,8 +468,7 @@ int EC_KEY_generate_key(EC_KEY *eckey) {
     goto err;
   }
 
-  /* Generate the private key by testing candidates (FIPS 186-4 B.4.2).
-   * TODO(svaldez): Fix BN_rand_range_ex to implement B.4.2. */
+  /* Generate the private key by testing candidates (FIPS 186-4 B.4.2). */
   if (!BN_rand_range_ex(priv_key, 1, order)) {
     goto err;
   }
