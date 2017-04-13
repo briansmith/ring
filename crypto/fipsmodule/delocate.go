@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -289,10 +290,16 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	ret = append(ret, "BORINGSSL_bcm_text_end:")
 
 	// Emit redirector functions. Each is a single JMP instruction.
-	for redirectorName, target := range redirectors {
-		ret = append(ret, ".type "+redirectorName+", @function")
-		ret = append(ret, redirectorName+":")
-		ret = append(ret, "\tjmp "+target)
+	var redirectorNames []string
+	for name := range redirectors {
+		redirectorNames = append(redirectorNames, name)
+	}
+	sort.Strings(redirectorNames)
+
+	for _, name := range redirectorNames {
+		ret = append(ret, ".type "+name+", @function")
+		ret = append(ret, name+":")
+		ret = append(ret, "\tjmp "+redirectors[name])
 	}
 
 	// Emit BSS accessor functions. Each is a single LEA followed by RET.
