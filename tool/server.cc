@@ -35,6 +35,10 @@ static const struct argument kArguments[] = {
         "ciphers",
     },
     {
+        "-curves", kOptionalArgument,
+        "An OpenSSL-style ECDH curves list that configures the offered curves",
+    },
+    {
         "-max-version", kOptionalArgument,
         "The maximum acceptable protocol version",
     },
@@ -187,6 +191,12 @@ bool Server(const std::vector<std::string> &args) {
   if (args_map.count("-cipher") != 0 &&
       !SSL_CTX_set_strict_cipher_list(ctx.get(), args_map["-cipher"].c_str())) {
     fprintf(stderr, "Failed setting cipher list\n");
+    return false;
+  }
+
+  if (args_map.count("-curves") != 0 &&
+      !SSL_CTX_set1_curves_list(ctx.get(), args_map["-curves"].c_str())) {
+    fprintf(stderr, "Failed setting curves list\n");
     return false;
   }
 
