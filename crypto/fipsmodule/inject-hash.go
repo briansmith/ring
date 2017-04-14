@@ -30,25 +30,38 @@ import (
 	"os"
 )
 
-func do(outPath, arInput string) error {
-	arFile, err := os.Open(arInput)
-	if err != nil {
-		return err
-	}
-	defer arFile.Close()
-
-	ar, err := ParseAR(arFile)
-	if err != nil {
-		return err
-	}
-
-	if len(ar) != 1 {
-		return fmt.Errorf("expected one file in archive, but found %d", len(ar))
-	}
-
+func do(outPath, oInput string, arInput string) error {
 	var objectBytes []byte
-	for _, contents := range ar {
-		objectBytes = contents
+	if len(arInput) > 0 {
+		if len(oInput) > 0 {
+			return fmt.Errorf("-in-archive and -in-object are mutually exclusive")
+		}
+
+		arFile, err := os.Open(arInput)
+		if err != nil {
+			return err
+		}
+		defer arFile.Close()
+
+		ar, err := ParseAR(arFile)
+		if err != nil {
+			return err
+		}
+
+		if len(ar) != 1 {
+			return fmt.Errorf("expected one file in archive, but found %d", len(ar))
+		}
+
+		for _, contents := range ar {
+			objectBytes = contents
+		}
+	} else if len(oInput) > 0 {
+		var err error
+		if objectBytes, err = ioutil.ReadFile(oInput); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("exactly one of -in-archive or -in-object is required")
 	}
 
 	object, err := elf.NewFile(bytes.NewReader(objectBytes))
@@ -147,12 +160,13 @@ func do(outPath, arInput string) error {
 }
 
 func main() {
-	arInput := flag.String("in", "", "Path to a .a file")
+	arInput := flag.String("in-archive", "", "Path to a .a file")
+	oInput := flag.String("in-object", "", "Path to a .o file")
 	outPath := flag.String("o", "", "Path to output object")
 
 	flag.Parse()
 
-	if err := do(*outPath, *arInput); err != nil {
+	if err := do(*outPath, *oInput, *arInput); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}

@@ -148,7 +148,7 @@ if(FIPS)
 
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/inject-hash.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in $<TARGET_FILE:bcm_hashunset>
+    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/inject-hash.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
     DEPENDS bcm_hashunset inject-hash.go ar.go const.go
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
