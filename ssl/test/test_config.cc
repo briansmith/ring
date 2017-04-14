@@ -195,6 +195,7 @@ const Flag<int> kIntFlags[] = {
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
   { "-signing-prefs", &TestConfig::signing_prefs },
+  { "-verify-prefs", &TestConfig::verify_prefs },
 };
 
 }  // namespace

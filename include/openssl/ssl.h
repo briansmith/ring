@@ -2366,8 +2366,16 @@ OPENSSL_EXPORT int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store);
 OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
 
 /* SSL_CTX_set_ed25519_enabled configures whether |ctx| advertises support for
- * the Ed25519 signature algorithm. */
+ * the Ed25519 signature algorithm when using the default preference list. */
 OPENSSL_EXPORT void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled);
+
+/* SSL_CTX_set_verify_algorithm_prefs confingures |ctx| to use |prefs| as the
+ * preference list when verifying signature's from the peer's long-term key. It
+ * returns one on zero on error. |prefs| should not include the internal-only
+ * value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|. */
+OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
+                                                      const uint16_t *prefs,
+                                                      size_t num_prefs);
 
 
 /* Client certificate CA list.
@@ -4244,6 +4252,11 @@ struct ssl_ctx_st {
   /* ticket_aead_method contains function pointers for opening and sealing
    * session tickets. */
   const SSL_TICKET_AEAD_METHOD *ticket_aead_method;
+
+  /* verify_sigalgs, if not empty, is the set of signature algorithms
+   * accepted from the peer in decreasing order of preference. */
+  uint16_t *verify_sigalgs;
+  size_t num_verify_sigalgs;
 
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */

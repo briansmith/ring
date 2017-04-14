@@ -350,6 +350,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   OPENSSL_free(ctx->supported_group_list);
   OPENSSL_free(ctx->alpn_client_proto_list);
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
+  OPENSSL_free(ctx->verify_sigalgs);
 
   OPENSSL_free(ctx);
 }

@@ -354,8 +354,14 @@ static const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
       SSL_CTX_set_cipher_list(ctx, ciphers.c_str());
     },
     [](SSL_CTX *ctx, CBS *cbs) {
-      // This function was left blank rather than removed to avoid invalidating
-      // the existing corpus. New entries may reuse it.
+      std::string verify_algos;
+      if (!GetString(&verify_algos, cbs)) {
+        return;
+      }
+
+      SSL_CTX_set_verify_algorithm_prefs(
+          ctx, reinterpret_cast<const uint16_t *>(verify_algos.data()),
+          verify_algos.size() / sizeof(uint16_t));
     },
     [](SSL_CTX *ctx, CBS *cbs) {
       std::string ciphers;

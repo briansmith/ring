@@ -515,12 +515,20 @@ void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled) {
 }
 
 int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms); i++) {
-    if (kVerifySignatureAlgorithms[i] == SSL_SIGN_ED25519 &&
+  const uint16_t *sigalgs = kVerifySignatureAlgorithms;
+  size_t num_sigalgs = OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
+  if (ssl->ctx->num_verify_sigalgs != 0) {
+    sigalgs = ssl->ctx->verify_sigalgs;
+    num_sigalgs = ssl->ctx->num_verify_sigalgs;
+  }
+
+  for (size_t i = 0; i < num_sigalgs; i++) {
+    if (sigalgs == kVerifySignatureAlgorithms &&
+        sigalgs[i] == SSL_SIGN_ED25519 &&
         !ssl->ctx->ed25519_enabled) {
       continue;
     }
-    if (!CBB_add_u16(out, kVerifySignatureAlgorithms[i])) {
+    if (!CBB_add_u16(out, sigalgs[i])) {
       return 0;
     }
   }
@@ -529,12 +537,20 @@ int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
 }
 
 int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg) {
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms); i++) {
-    if (kVerifySignatureAlgorithms[i] == SSL_SIGN_ED25519 &&
+  const uint16_t *sigalgs = kVerifySignatureAlgorithms;
+  size_t num_sigalgs = OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
+  if (ssl->ctx->num_verify_sigalgs != 0) {
+    sigalgs = ssl->ctx->verify_sigalgs;
+    num_sigalgs = ssl->ctx->num_verify_sigalgs;
+  }
+
+  for (size_t i = 0; i < num_sigalgs; i++) {
+    if (sigalgs == kVerifySignatureAlgorithms &&
+        sigalgs[i] == SSL_SIGN_ED25519 &&
         !ssl->ctx->ed25519_enabled) {
       continue;
     }
-    if (sigalg == kVerifySignatureAlgorithms[i]) {
+    if (sigalg == sigalgs[i]) {
       return 1;
     }
   }

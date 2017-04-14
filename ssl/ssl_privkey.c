@@ -222,30 +222,38 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
   ctx->cert->key_method = key_method;
 }
 
-static int set_signing_algorithm_prefs(CERT *cert, const uint16_t *prefs,
-                                       size_t num_prefs) {
-  OPENSSL_free(cert->sigalgs);
+static int set_algorithm_prefs(uint16_t **out_prefs, size_t *out_num_prefs,
+                               const uint16_t *prefs, size_t num_prefs) {
+  OPENSSL_free(*out_prefs);
 
-  cert->num_sigalgs = 0;
-  cert->sigalgs = BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
-  if (cert->sigalgs == NULL) {
+  *out_num_prefs = 0;
+  *out_prefs = BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
+  if (*out_prefs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  cert->num_sigalgs = num_prefs;
+  *out_num_prefs = num_prefs;
 
   return 1;
 }
 
 int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                         size_t num_prefs) {
-  return set_signing_algorithm_prefs(ctx->cert, prefs, num_prefs);
+  return set_algorithm_prefs(&ctx->cert->sigalgs, &ctx->cert->num_sigalgs,
+                             prefs, num_prefs);
 }
 
 
 int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
                                     size_t num_prefs) {
-  return set_signing_algorithm_prefs(ssl->cert, prefs, num_prefs);
+  return set_algorithm_prefs(&ssl->cert->sigalgs, &ssl->cert->num_sigalgs,
+                             prefs, num_prefs);
+}
+
+int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
+                                       size_t num_prefs) {
+  return set_algorithm_prefs(&ctx->verify_sigalgs, &ctx->num_verify_sigalgs,
+                             prefs, num_prefs);
 }
 
 int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
