@@ -4,17 +4,17 @@ if (${ARCH} STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
+    aesni-gcm-x86_64.${ASM_EXT}
+    aesni-x86_64.${ASM_EXT}
+    aes-x86_64.${ASM_EXT}
+    bsaes-x86_64.${ASM_EXT}
+    ghash-x86_64.${ASM_EXT}
     md5-x86_64.${ASM_EXT}
+    rdrand-x86_64.${ASM_EXT}
     sha1-x86_64.${ASM_EXT}
     sha256-x86_64.${ASM_EXT}
     sha512-x86_64.${ASM_EXT}
-    aes-x86_64.${ASM_EXT}
-    aesni-x86_64.${ASM_EXT}
-    bsaes-x86_64.${ASM_EXT}
     vpaes-x86_64.${ASM_EXT}
-    aesni-gcm-x86_64.${ASM_EXT}
-    ghash-x86_64.${ASM_EXT}
-    rdrand-x86_64.${ASM_EXT}
   )
 endif()
 
@@ -22,14 +22,14 @@ if (${ARCH} STREQUAL "x86")
   set(
     BCM_ASM_SOURCES
 
+    aes-586.${ASM_EXT}
+    aesni-x86.${ASM_EXT}
+    ghash-x86.${ASM_EXT}
     md5-586.${ASM_EXT}
     sha1-586.${ASM_EXT}
     sha256-586.${ASM_EXT}
     sha512-586.${ASM_EXT}
-    aes-586.${ASM_EXT}
     vpaes-x86.${ASM_EXT}
-    aesni-x86.${ASM_EXT}
-    ghash-x86.${ASM_EXT}
   )
 endif()
 
@@ -37,14 +37,14 @@ if (${ARCH} STREQUAL "arm")
   set(
     BCM_ASM_SOURCES
 
+    aes-armv4.${ASM_EXT}
+    aesv8-armx.${ASM_EXT}
+    bsaes-armv7.${ASM_EXT}
+    ghash-armv4.${ASM_EXT}
+    ghashv8-armx.${ASM_EXT}
     sha1-armv4-large.${ASM_EXT}
     sha256-armv4.${ASM_EXT}
     sha512-armv4.${ASM_EXT}
-    aes-armv4.${ASM_EXT}
-    bsaes-armv7.${ASM_EXT}
-    aesv8-armx.${ASM_EXT}
-    ghash-armv4.${ASM_EXT}
-    ghashv8-armx.${ASM_EXT}
   )
 endif()
 
@@ -52,11 +52,11 @@ if (${ARCH} STREQUAL "aarch64")
   set(
     BCM_ASM_SOURCES
 
+    aesv8-armx.${ASM_EXT}
+    ghashv8-armx.${ASM_EXT}
     sha1-armv8.${ASM_EXT}
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
-    aesv8-armx.${ASM_EXT}
-    ghashv8-armx.${ASM_EXT}
   )
 endif()
 
