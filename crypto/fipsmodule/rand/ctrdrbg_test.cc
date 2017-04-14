@@ -18,7 +18,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
-#include "../test/test_util.h"
+#include "../../test/test_util.h"
 
 
 TEST(CTRDRBGTest, Basic) {

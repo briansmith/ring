@@ -54,7 +54,7 @@
 	["crypto/pkcs8/pkcs8_test"],
 	["crypto/poly1305/poly1305_test", "crypto/poly1305/poly1305_tests.txt"],
 	["crypto/pool/pool_test"],
-	["crypto/rand/ctrdrbg_vector_test", "crypto/rand/ctrdrbg_vectors.txt"],
+	["crypto/fipsmodule/ctrdrbg_vector_test", "crypto/fipsmodule/rand/ctrdrbg_vectors.txt"],
 	["crypto/refcount_test"],
 	["crypto/thread_test"],
 	["crypto/x509/x509_test"],

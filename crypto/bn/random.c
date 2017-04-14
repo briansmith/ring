@@ -117,7 +117,7 @@
 #include <openssl/type_check.h>
 
 #include "../internal.h"
-#include "../rand/internal.h"
+#include "../fipsmodule/rand/internal.h"
 
 
 static const uint8_t kZeroAdditionalData[32] = {0};

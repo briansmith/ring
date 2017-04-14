@@ -32,7 +32,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
-#include "internal.h"
+#include "../fipsmodule/rand/internal.h"
 
 
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {

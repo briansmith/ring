@@ -14,31 +14,30 @@
 
 #include <openssl/rand.h>
 
+#if defined(OPENSSL_FUCHSIA) && !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+
+#include <limits.h>
 #include <stdlib.h>
 
-#include "internal.h"
+#include <magenta/syscalls.h>
 
+#include "../fipsmodule/rand/internal.h"
 
-/* g_buffering_enabled is true if fork-unsafe buffering has been enabled. */
-static int g_buffering_enabled = 0;
-
-/* g_lock protects |g_buffering_enabled|. */
-static struct CRYPTO_STATIC_MUTEX g_lock = CRYPTO_STATIC_MUTEX_INIT;
-
-void RAND_enable_fork_unsafe_buffering(int fd) {
-  /* We no longer support setting the file-descriptor with this function. */
-  if (fd != -1) {
-    abort();
+void CRYPTO_sysrand(uint8_t *out, size_t requested) {
+  while (requested > 0) {
+    size_t output_bytes_this_pass = MX_CPRNG_DRAW_MAX_LEN;
+    if (requested < output_bytes_this_pass) {
+      output_bytes_this_pass = requested;
+    }
+    size_t bytes_drawn;
+    mx_status_t status =
+        mx_cprng_draw(out, output_bytes_this_pass, &bytes_drawn);
+    if (status != NO_ERROR) {
+      abort();
+    }
+    requested -= bytes_drawn;
+    out += bytes_drawn;
   }
-
-  CRYPTO_STATIC_MUTEX_lock_write(&g_lock);
-  g_buffering_enabled = 1;
-  CRYPTO_STATIC_MUTEX_unlock_write(&g_lock);
 }
 
-int rand_fork_unsafe_buffering_enabled(void) {
-  CRYPTO_STATIC_MUTEX_lock_read(&g_lock);
-  const int ret = g_buffering_enabled;
-  CRYPTO_STATIC_MUTEX_unlock_read(&g_lock);
-  return ret;
-}
+#endif /* OPENSSL_FUCHSIA && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE */

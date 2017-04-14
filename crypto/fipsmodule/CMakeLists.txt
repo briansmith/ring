@@ -14,6 +14,7 @@ if (${ARCH} STREQUAL "x86_64")
     vpaes-x86_64.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     ghash-x86_64.${ASM_EXT}
+    rdrand-x86_64.${ASM_EXT}
   )
 endif()
 
@@ -85,6 +86,7 @@ perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
 perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
 perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
 perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
+perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
 perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
 perlasm(sha1-armv4-large.${ASM_EXT} sha/asm/sha1-armv4-large.pl)
 perlasm(sha1-armv8.${ASM_EXT} sha/asm/sha1-armv8.pl)
@@ -198,3 +200,14 @@ add_executable(
 
 target_link_libraries(gcm_test crypto)
 add_dependencies(all_tests gcm_test)
+
+add_executable(
+  ctrdrbg_vector_test
+
+  rand/ctrdrbg_vector_test.cc
+
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(ctrdrbg_vector_test crypto)
+add_dependencies(all_tests ctrdrbg_vector_test)

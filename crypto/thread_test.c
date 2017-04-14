@@ -103,6 +103,9 @@ static void call_once_thread(void) {
 static CRYPTO_once_t once_init_value = CRYPTO_ONCE_INIT;
 static CRYPTO_once_t once_bss;
 
+static struct CRYPTO_STATIC_MUTEX mutex_init_value = CRYPTO_STATIC_MUTEX_INIT;
+static struct CRYPTO_STATIC_MUTEX mutex_bss;
+
 static int test_once(void) {
   if (g_once_init_called != 0) {
     fprintf(stderr, "g_once_init_called was non-zero at start.\n");
@@ -127,11 +130,18 @@ static int test_once(void) {
   }
 
   if (FIPS_mode()) {
-    /* Our FIPS tooling currently requires that |CRYPTO_ONCE_INIT| is all
-     * zeros, so the |CRYPTO_once_t| is placed in the bss. */
+    /* Our FIPS tooling currently requires that |CRYPTO_ONCE_INIT| and
+     * |CRYPTO_STATIC_MUTEX_INIT| are all zeros and so can be placed in the BSS
+     * section. */
     if (OPENSSL_memcmp((void *)&once_init_value, (void *)&once_bss,
                        sizeof(CRYPTO_once_t)) != 0) {
       fprintf(stderr, "CRYPTO_ONCE_INIT did not expand to all zeros.\n");
+      return 0;
+    }
+
+    if (OPENSSL_memcmp((void *)&mutex_init_value, (void *)&mutex_bss,
+                       sizeof(struct CRYPTO_STATIC_MUTEX)) != 0) {
+      fprintf(stderr, "CRYPTO_STATIC_MUTEX did not expand to all zeros.\n");
       return 0;
     }
   }

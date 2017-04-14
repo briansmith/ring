@@ -17,8 +17,8 @@
 #include <openssl/crypto.h>
 
 #include "internal.h"
-#include "../test/test_util.h"
-#include "../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../../test/file_test.h"
 
 
 static bool TestCTRDRBG(FileTest *t, void *arg) {

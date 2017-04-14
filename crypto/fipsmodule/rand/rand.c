@@ -23,7 +23,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* It's assumed that the operating system always has an unfailing source of
@@ -261,53 +261,3 @@ int RAND_bytes(uint8_t *out, size_t out_len) {
 int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
   return RAND_bytes(buf, len);
 }
-
-void RAND_seed(const void *buf, int num) {
-  /* OpenSSH calls |RAND_seed| before jailing on the assumption that any needed
-   * file descriptors etc will be opened. */
-  uint8_t unused;
-  RAND_bytes(&unused, sizeof(unused));
-}
-
-int RAND_load_file(const char *path, long num) {
-  if (num < 0) {  /* read the "whole file" */
-    return 1;
-  } else if (num <= INT_MAX) {
-    return (int) num;
-  } else {
-    return INT_MAX;
-  }
-}
-
-const char *RAND_file_name(char *buf, size_t num) { return NULL; }
-
-void RAND_add(const void *buf, int num, double entropy) {}
-
-int RAND_egd(const char *path) {
-  return 255;
-}
-
-int RAND_poll(void) {
-  return 1;
-}
-
-int RAND_status(void) {
-  return 1;
-}
-
-static const struct rand_meth_st kSSLeayMethod = {
-  RAND_seed,
-  RAND_bytes,
-  RAND_cleanup,
-  RAND_add,
-  RAND_pseudo_bytes,
-  RAND_status,
-};
-
-RAND_METHOD *RAND_SSLeay(void) {
-  return (RAND_METHOD*) &kSSLeayMethod;
-}
-
-void RAND_set_rand_method(const RAND_METHOD *method) {}
-
-void RAND_cleanup(void) {}

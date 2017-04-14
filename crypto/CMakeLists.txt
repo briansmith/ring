@@ -90,7 +90,7 @@ add_subdirectory(curve25519)
 # Level 1, depends only on 0.*
 add_subdirectory(digest_extra)
 add_subdirectory(cipher)
-add_subdirectory(rand)
+add_subdirectory(rand_extra)
 add_subdirectory(bio)
 add_subdirectory(bn)
 add_subdirectory(obj)
@@ -177,7 +177,7 @@ add_library(
   $<TARGET_OBJECTS:buf>
   $<TARGET_OBJECTS:bn>
   $<TARGET_OBJECTS:bio>
-  $<TARGET_OBJECTS:rand>
+  $<TARGET_OBJECTS:rand_extra>
   $<TARGET_OBJECTS:obj>
   $<TARGET_OBJECTS:asn1>
   $<TARGET_OBJECTS:engine>
@@ -245,7 +245,7 @@ add_executable(
   ec/ec_test.cc
   err/err_test.cc
   evp/evp_extra_test.cc
-  rand/ctrdrbg_test.cc
+  fipsmodule/rand/ctrdrbg_test.cc
   rsa/rsa_test.cc
 
   $<TARGET_OBJECTS:gtest_main>

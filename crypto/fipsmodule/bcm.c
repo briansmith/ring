@@ -12,6 +12,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if !defined(_GNU_SOURCE)
+#define _GNU_SOURCE  /* needed for syscall() on Linux. */
+#endif
+
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/base.h>
@@ -19,13 +23,13 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/des.h>
-#include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
+#include <openssl/ec_key.h>
 #include <openssl/hmac.h>
 #include <openssl/rsa.h>
 
 #include "../internal.h"
-#include "../rand/internal.h"
+#include "rand/internal.h"
 
 #include "aes/aes.c"
 #include "aes/key_wrap.c"
@@ -41,6 +45,9 @@
 #include "modes/gcm.c"
 #include "modes/ofb.c"
 #include "modes/polyval.c"
+#include "rand/ctrdrbg.c"
+#include "rand/rand.c"
+#include "rand/urandom.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"

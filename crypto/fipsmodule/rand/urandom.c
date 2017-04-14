@@ -12,10 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE  /* needed for syscall() on Linux. */
-#endif
-
 #include <openssl/rand.h>
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_FUCHSIA) && \
@@ -38,7 +34,8 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../delocate.h"
+#include "../../internal.h"
 
 
 #if defined(OPENSSL_LINUX)
@@ -78,30 +75,42 @@
 
 #endif  /* OPENSSL_LINUX */
 
-/* requested_lock is used to protect the |*_requested| variables. */
-static struct CRYPTO_STATIC_MUTEX requested_lock = CRYPTO_STATIC_MUTEX_INIT;
+/* rand_lock is used to protect the |*_requested| variables. */
+DEFINE_STATIC_MUTEX(rand_lock);
 
 /* The following constants are magic values of |urandom_fd|. */
-static const int kUnset = -2;
+static const int kUnset = 0;
 static const int kHaveGetrandom = -3;
 
 /* urandom_fd_requested is set by |RAND_set_urandom_fd|. It's protected by
- * |requested_lock|. */
-static int urandom_fd_requested = -2 /* kUnset */;
+ * |rand_lock|. */
+DEFINE_BSS_GET(int, urandom_fd_requested);
 
 /* urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|. */
-static int urandom_fd = -2 /* kUnset */;
+DEFINE_BSS_GET(int, urandom_fd);
 
-static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
+DEFINE_STATIC_ONCE(rand_once);
+
+#if defined(USE_SYS_getrandom) || defined(BORINGSSL_FIPS)
+/* message writes |msg| to stderr. We use this because referencing |stderr|
+ * with |fprintf| generates relocations, which is a problem inside the FIPS
+ * module. */
+static void message(const char *msg) {
+  ssize_t r;
+  do {
+    r = write(2, msg, strlen(msg));
+  } while (r == -1 && errno == EINTR);
+}
+#endif
 
 /* init_once initializes the state of this module to values previously
  * requested. This is the only function that modifies |urandom_fd| and
  * |urandom_buffering|, whose values may be read safely after calling the
  * once. */
 static void init_once(void) {
-  CRYPTO_STATIC_MUTEX_lock_read(&requested_lock);
-  int fd = urandom_fd_requested;
-  CRYPTO_STATIC_MUTEX_unlock_read(&requested_lock);
+  CRYPTO_STATIC_MUTEX_lock_read(rand_lock_bss_get());
+  int fd = *urandom_fd_requested_bss_get();
+  CRYPTO_STATIC_MUTEX_unlock_read(rand_lock_bss_get());
 
 #if defined(USE_SYS_getrandom)
   uint8_t dummy;
@@ -109,20 +118,21 @@ static void init_once(void) {
       syscall(SYS_getrandom, &dummy, sizeof(dummy), GRND_NONBLOCK);
 
   if (getrandom_ret == 1) {
-    urandom_fd = kHaveGetrandom;
+    *urandom_fd_bss_get() = kHaveGetrandom;
     return;
   } else if (getrandom_ret == -1 && errno == EAGAIN) {
-    fprintf(stderr,
-            "getrandom indicates that the entropy pool has not been "
-            "initialized. Rather than continue with poor entropy, this process "
-            "will block until entropy is available.\n");
+    message(
+        "getrandom indicates that the entropy pool has not been initialized. "
+        "Rather than continue with poor entropy, this process will block until "
+        "entropy is available.\n");
+
     do {
       getrandom_ret =
           syscall(SYS_getrandom, &dummy, sizeof(dummy), 0 /* no flags */);
     } while (getrandom_ret == -1 && errno == EINTR);
 
     if (getrandom_ret == 1) {
-      urandom_fd = kHaveGetrandom;
+      *urandom_fd_bss_get() = kHaveGetrandom;
       return;
     }
   }
@@ -138,6 +148,19 @@ static void init_once(void) {
     abort();
   }
 
+  assert(kUnset == 0);
+  if (fd == kUnset) {
+    /* Because we want to keep |urandom_fd| in the BSS, we have to initialise
+     * it to zero. But zero is a valid file descriptor too. Thus if open
+     * returns zero for /dev/urandom, we dup it to get a non-zero number. */
+    fd = dup(fd);
+    close(kUnset);
+
+    if (fd <= 0) {
+      abort();
+    }
+  }
+
 #if defined(BORINGSSL_FIPS)
   /* In FIPS mode we ensure that the kernel has sufficient entropy before
    * continuing. This is automatically handled by getrandom, which requires
@@ -147,9 +170,9 @@ static void init_once(void) {
   for (;;) {
     int entropy_bits;
     if (ioctl(fd, RNDGETENTCNT, &entropy_bits)) {
-      fprintf(stderr,
-              "RNDGETENTCNT on /dev/urandom failed. We cannot continue in this "
-              "case when in FIPS mode.\n");
+      message(
+          "RNDGETENTCNT on /dev/urandom failed. We cannot continue in this "
+          "case when in FIPS mode.\n");
       abort();
     }
 
@@ -159,10 +182,10 @@ static void init_once(void) {
     }
 
     if (first_iteration) {
-      fprintf(stderr,
-              "The kernel entropy pool contains too few bits: have %d, want "
-              "%d. This process is built in FIPS mode and will block until "
-              "sufficient entropy is available.\n", entropy_bits, kBitsNeeded);
+      message(
+          "The kernel entropy pool contains too few bits. This process is "
+          "built in FIPS mode and will block until sufficient entropy is "
+          "available.\n");
     }
     first_iteration = 0;
 
@@ -182,7 +205,7 @@ static void init_once(void) {
       abort();
     }
   }
-  urandom_fd = fd;
+  *urandom_fd_bss_get() = fd;
 }
 
 void RAND_set_urandom_fd(int fd) {
@@ -191,14 +214,27 @@ void RAND_set_urandom_fd(int fd) {
     abort();
   }
 
-  CRYPTO_STATIC_MUTEX_lock_write(&requested_lock);
-  urandom_fd_requested = fd;
-  CRYPTO_STATIC_MUTEX_unlock_write(&requested_lock);
+  assert(kUnset == 0);
+  if (fd == kUnset) {
+    /* Because we want to keep |urandom_fd| in the BSS, we have to initialise
+     * it to zero. But zero is a valid file descriptor too. Thus if dup
+     * returned zero we dup it again to get a non-zero number. */
+    fd = dup(fd);
+    close(kUnset);
 
-  CRYPTO_once(&once, init_once);
-  if (urandom_fd == kHaveGetrandom) {
+    if (fd <= 0) {
+      abort();
+    }
+  }
+
+  CRYPTO_STATIC_MUTEX_lock_write(rand_lock_bss_get());
+  *urandom_fd_requested_bss_get() = fd;
+  CRYPTO_STATIC_MUTEX_unlock_write(rand_lock_bss_get());
+
+  CRYPTO_once(rand_once_bss_get(), init_once);
+  if (*urandom_fd_bss_get() == kHaveGetrandom) {
     close(fd);
-  } else if (urandom_fd != fd) {
+  } else if (*urandom_fd_bss_get() != fd) {
     abort();  // Already initialized.
   }
 }
@@ -215,7 +251,7 @@ static char fill_with_entropy(uint8_t *out, size_t len) {
   while (len > 0) {
     ssize_t r;
 
-    if (urandom_fd == kHaveGetrandom) {
+    if (*urandom_fd_bss_get() == kHaveGetrandom) {
 #if defined(USE_SYS_getrandom)
       do {
         r = syscall(SYS_getrandom, out, len, 0 /* no flags */);
@@ -236,7 +272,7 @@ static char fill_with_entropy(uint8_t *out, size_t len) {
 #endif
     } else {
       do {
-        r = read(urandom_fd, out, len);
+        r = read(*urandom_fd_bss_get(), out, len);
       } while (r == -1 && errno == EINTR);
     }
 
@@ -256,7 +292,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
     return;
   }
 
-  CRYPTO_once(&once, init_once);
+  CRYPTO_once(rand_once_bss_get(), init_once);
 
   if (!fill_with_entropy(out, requested)) {
     abort();
