@@ -250,14 +250,15 @@ bool Server(const std::vector<std::string> &args) {
       int ssl_err = SSL_get_error(ssl.get(), ret);
       fprintf(stderr, "Error while connecting: %d\n", ssl_err);
       ERR_print_errors_cb(PrintErrorCallback, stderr);
-      return false;
+      result = false;
+      continue;
     }
 
     fprintf(stderr, "Connected.\n");
     PrintConnectionInfo(ssl.get());
 
     result = TransferData(ssl.get(), sock);
-  } while (result && args_map.count("-loop") != 0);
+  } while (args_map.count("-loop") != 0);
 
   return result;
 }
