@@ -77,6 +77,8 @@ extern "C" {
 
 /* Allocation and freeing. */
 
+DEFINE_STACK_OF(BIO)
+
 /* BIO_new creates a new BIO with the given type and a reference count of one.
  * It returns the fresh |BIO|, or NULL on error. */
 OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *type);

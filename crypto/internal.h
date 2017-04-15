@@ -110,6 +110,7 @@
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
 #include <openssl/ex_data.h>
+#include <openssl/stack.h>
 #include <openssl/thread.h>
 
 #include <string.h>
@@ -503,6 +504,8 @@ OPENSSL_EXPORT int CRYPTO_set_thread_local(
 /* ex_data */
 
 typedef struct crypto_ex_data_func_st CRYPTO_EX_DATA_FUNCS;
+
+DECLARE_STACK_OF(CRYPTO_EX_DATA_FUNCS)
 
 /* CRYPTO_EX_DATA_CLASS tracks the ex_indices registered for a type which
  * supports ex_data. It should defined as a static global within the module

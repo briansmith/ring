@@ -89,6 +89,8 @@ struct conf_st {
   LHASH_OF(CONF_VALUE) *data;
 };
 
+DEFINE_STACK_OF(CONF_VALUE)
+
 
 /* NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
  * argument must be NULL. */

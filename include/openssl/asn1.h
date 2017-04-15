@@ -205,7 +205,7 @@ struct asn1_object_st
 	int flags;	/* Should we free this one */
 	};
 
-DECLARE_STACK_OF(ASN1_OBJECT)
+DEFINE_STACK_OF(ASN1_OBJECT)
 
 #define ASN1_STRING_FLAG_BITS_LEFT 0x08 /* Set if 0x07 has bits left value */
 /* This indicates that the ASN1_STRING is not a real value but just a place
@@ -480,6 +480,7 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 				ASN1_STRFLGS_DUMP_UNKNOWN | \
 				ASN1_STRFLGS_DUMP_DER)
 
+DEFINE_STACK_OF(ASN1_INTEGER)
 DECLARE_ASN1_SET_OF(ASN1_INTEGER)
 
 struct asn1_type_st
@@ -512,6 +513,7 @@ struct asn1_type_st
 		} value;
     };
 
+DEFINE_STACK_OF(ASN1_TYPE)
 DECLARE_ASN1_SET_OF(ASN1_TYPE)
 
 typedef STACK_OF(ASN1_TYPE) ASN1_SEQUENCE_ANY;

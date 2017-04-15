@@ -71,7 +71,7 @@
 
 
 typedef STACK_OF(X509_NAME_ENTRY) STACK_OF_X509_NAME_ENTRY;
-DECLARE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
+DEFINE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
 
 /*
  * Maximum length of X509_NAME: much larger than anything we should

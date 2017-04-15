@@ -407,10 +407,12 @@ ASN1_ITEM_EXP *item;		/* Relevant ASN1_ITEM or ASN1_ADB */
 typedef struct ASN1_ADB_TABLE_st ASN1_ADB_TABLE;
 typedef struct ASN1_ADB_st ASN1_ADB;
 
+typedef struct asn1_must_be_null_st ASN1_MUST_BE_NULL;
+
 struct ASN1_ADB_st {
 	unsigned long flags;	/* Various flags */
 	unsigned long offset;	/* Offset of selector field */
-	STACK_OF(ASN1_ADB_TABLE) **app_items; /* Application defined items */
+	ASN1_MUST_BE_NULL *unused;
 	const ASN1_ADB_TABLE *tbl;	/* Table of possible types */
 	long tblcount;		/* Number of entries in tbl */
 	const ASN1_TEMPLATE *default_tt;  /* Type to use if no match */
@@ -850,7 +852,7 @@ DECLARE_ASN1_ITEM(ASN1_TBOOLEAN)
 DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)
 DECLARE_ASN1_ITEM(ASN1_SEQUENCE)
 
-DECLARE_STACK_OF(ASN1_VALUE)
+DEFINE_STACK_OF(ASN1_VALUE)
 
 /* Functions used internally by the ASN1 code */
 

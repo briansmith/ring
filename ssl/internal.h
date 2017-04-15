@@ -591,6 +591,8 @@ struct ssl_custom_extension {
 
 void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
 
+DEFINE_STACK_OF(SSL_CUSTOM_EXTENSION)
+
 int custom_ext_add_clienthello(SSL_HANDSHAKE *hs, CBB *extensions);
 int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
                                  uint16_t value, const CBS *extension);

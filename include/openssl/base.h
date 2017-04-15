@@ -197,6 +197,12 @@ extern "C" {
 #define OPENSSL_MSVC_PRAGMA(arg)
 #endif
 
+#if defined(__GNUC__)
+#define OPENSSL_UNUSED __attribute__((unused))
+#else
+#define OPENSSL_UNUSED
+#endif
+
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define BORINGSSL_UNSAFE_DETERMINISTIC_MODE

@@ -111,6 +111,7 @@ struct X509_objects_st
 	int (*i2a)(void);
 	} /* X509_OBJECTS */;
 
+DEFINE_STACK_OF(X509_ALGOR)
 DECLARE_ASN1_SET_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
@@ -142,7 +143,7 @@ struct X509_name_entry_st
 	int size; 	/* temp variable */
 	} /* X509_NAME_ENTRY */;
 
-DECLARE_STACK_OF(X509_NAME_ENTRY)
+DEFINE_STACK_OF(X509_NAME_ENTRY)
 DECLARE_ASN1_SET_OF(X509_NAME_ENTRY)
 
 /* we always keep X509_NAMEs in 2 forms. */
@@ -160,7 +161,7 @@ struct X509_name_st
 	int canon_enclen;
 	} /* X509_NAME */;
 
-DECLARE_STACK_OF(X509_NAME)
+DEFINE_STACK_OF(X509_NAME)
 
 #define X509_EX_V_NETSCAPE_HACK		0x8000
 #define X509_EX_V_INIT			0x0001
@@ -173,7 +174,7 @@ struct X509_extension_st
 
 typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 
-DECLARE_STACK_OF(X509_EXTENSION)
+DEFINE_STACK_OF(X509_EXTENSION)
 DECLARE_ASN1_SET_OF(X509_EXTENSION)
 
 /* a sequence of these are used */
@@ -188,7 +189,7 @@ struct x509_attributes_st
 		} value;
 	} /* X509_ATTRIBUTE */;
 
-DECLARE_STACK_OF(X509_ATTRIBUTE)
+DEFINE_STACK_OF(X509_ATTRIBUTE)
 DECLARE_ASN1_SET_OF(X509_ATTRIBUTE)
 
 
@@ -240,6 +241,9 @@ struct x509_cert_aux_st
 	STACK_OF(X509_ALGOR) *other;		/* other unspecified info */
 	} /* X509_CERT_AUX */;
 
+DECLARE_STACK_OF(DIST_POINT)
+DECLARE_STACK_OF(GENERAL_NAME)
+
 struct x509_st
 	{
 	X509_CINF *cert_info;
@@ -267,7 +271,7 @@ struct x509_st
 	CRYPTO_MUTEX lock;
 	} /* X509 */;
 
-DECLARE_STACK_OF(X509)
+DEFINE_STACK_OF(X509)
 DECLARE_ASN1_SET_OF(X509)
 
 /* This is used for a table of trust checking functions */
@@ -281,7 +285,7 @@ struct x509_trust_st {
 	void *arg2;
 } /* X509_TRUST */;
 
-DECLARE_STACK_OF(X509_TRUST)
+DEFINE_STACK_OF(X509_TRUST)
 
 struct x509_cert_pair_st {
 	X509 *forward;
@@ -403,7 +407,7 @@ struct x509_revoked_st
 	int sequence; /* load sequence */
 	};
 
-DECLARE_STACK_OF(X509_REVOKED)
+DEFINE_STACK_OF(X509_REVOKED)
 DECLARE_ASN1_SET_OF(X509_REVOKED)
 
 struct X509_crl_info_st
@@ -417,6 +421,8 @@ struct X509_crl_info_st
 	STACK_OF(X509_EXTENSION) /* [0] */ *extensions;
 	ASN1_ENCODING enc;
 	} /* X509_CRL_INFO */;
+
+DECLARE_STACK_OF(GENERAL_NAMES)
 
 struct X509_crl_st
 	{
@@ -441,7 +447,7 @@ struct X509_crl_st
 	void *meth_data;
 	} /* X509_CRL */;
 
-DECLARE_STACK_OF(X509_CRL)
+DEFINE_STACK_OF(X509_CRL)
 DECLARE_ASN1_SET_OF(X509_CRL)
 
 struct private_key_st
@@ -476,7 +482,7 @@ struct X509_info_st
 
 	} /* X509_INFO */;
 
-DECLARE_STACK_OF(X509_INFO)
+DEFINE_STACK_OF(X509_INFO)
 #endif
 
 /* The next 2 structures and their 8 routines were sent to me by

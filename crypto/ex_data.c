@@ -121,6 +121,8 @@
 #include "internal.h"
 
 
+DEFINE_STACK_OF(CRYPTO_EX_DATA_FUNCS)
+
 struct crypto_ex_data_func_st {
   long argl;  /* Arbitary long */
   void *argp; /* Arbitary void pointer */
