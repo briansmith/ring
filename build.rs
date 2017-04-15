@@ -106,7 +106,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/limbs/limbs.c"),
     (&[], "crypto/mem.c"),
     (&[], "crypto/modes/gcm.c"),
-    (&[], "crypto/rand/sysrand.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 

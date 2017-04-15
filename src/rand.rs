@@ -25,9 +25,6 @@
 //! (seccomp filters on Linux in particular). See `SystemRandom`'s
 //! documentation for more details.
 
-#[cfg(any(target_os = "linux", windows))]
-use c;
-
 use error;
 
 
@@ -123,23 +120,87 @@ use self::sysrand_or_urandom::fill as fill_impl;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
 
+#[cfg(target_os = "linux")]
+mod sysrand_chunk {
+    use error;
+    use c;
+
+    extern {
+        fn syscall(number: c::long, ...) -> c::long;
+        fn GFp_errno() -> c::int;
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    const GETRANDOM: c::long = 278;
+    #[cfg(target_arch = "arm")]
+    const GETRANDOM: c::long = 384;
+    #[cfg(target_arch = "x86")]
+    const GETRANDOM: c::long = 355;
+    #[cfg(target_arch = "x86_64")]
+    const GETRANDOM: c::long = 318;
+
+    const EINTR: c::int = 4;
+
+    #[inline]
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        let chunk_len: c::size_t = dest.len();
+        let flags: c::uint = 0;
+        let r = unsafe {
+            syscall(GETRANDOM, dest.as_mut_ptr(), chunk_len, flags)
+        };
+        if r < 0 {
+            if unsafe { GFp_errno() } == EINTR {
+                // If an interrupt occurs while getrandom() is blocking
+                // to wait for the entropy pool, then EINTR is returned.
+                // Returning 0 will cause the caller to try again.
+                return Ok(0);
+            }
+            return Err(error::Unspecified);
+        }
+        Ok(r as usize)
+    }
+}
+
+#[cfg(windows)]
+mod sysrand_chunk {
+    use std::cmp::min;
+    use error;
+    use c::win32::{ULONG, BOOLEAN};
+    use core::mem::size_of;
+
+    #[link(name = "Advapi32")]
+    extern "system" {
+        // also known as RtlGenRandom
+        fn SystemFunction036(random_buffer: *mut u8,
+                             random_buffer_length: ULONG)
+                             -> BOOLEAN;
+    }
+
+    #[inline]
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        assert!(size_of::<usize>() >= size_of::<ULONG>());
+        let max_chunk_len = (1 << (size_of::<ULONG>()*8 - 1)) - 1;
+        assert_eq!(max_chunk_len, 2147483647);
+        let len = min(dest.len(), max_chunk_len);
+
+        if unsafe { SystemFunction036(dest.as_mut_ptr(), len as ULONG) } != 0 {
+            Ok(len)
+        } else {
+            Err(error::Unspecified)
+        }
+    }
+}
+
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
     use error;
+    use super::sysrand_chunk::chunk;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         let mut read_len = 0;
         while read_len < dest.len() {
-            let r = unsafe {
-                super::GFp_sysrand_chunk(dest[read_len..].as_mut_ptr(),
-                                         dest.len() - read_len)
-            };
-            if r < 0 {
-                return Err(error::Unspecified);
-            }
-            // XXX: If r == 0 then this is a busy wait loop waiting for the
-            // kernel entropy pool to be initialized.
-            read_len += r as usize;
+            let chunk_len = try!(chunk(&mut dest[read_len..]));
+            read_len += chunk_len;
         }
         Ok(())
     }
@@ -189,9 +250,7 @@ mod sysrand_or_urandom {
         lazy_static! {
             static ref MECHANISM: Mechanism = {
                 let mut dummy = [0u8; 1];
-                if unsafe {
-                    super::GFp_sysrand_chunk(dummy.as_mut_ptr(),
-                                               dummy.len()) } == -1 {
+                if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
                     Mechanism::DevURandom
                 } else {
                     Mechanism::Sysrand
@@ -249,11 +308,6 @@ pub struct RAND<'a> {
 impl<'a> RAND<'a> {
     /// Wraps `rng` in a `RAND` so it can be passed to non-Rust code.
     pub fn new(rng: &'a SecureRandom) -> RAND<'a> { RAND { rng: rng } }
-}
-
-#[cfg(any(target_os = "linux", windows))]
-extern {
-    fn GFp_sysrand_chunk(buf: *mut u8, len: c::size_t) -> c::long;
 }
 
 
