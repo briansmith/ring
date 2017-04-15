@@ -6,6 +6,7 @@ add_library(
   OBJECT
 
   pkcs7.c
+  pkcs7_x509.c
 )
 
 add_executable(

@@ -29,12 +29,18 @@ extern "C" {
  * This library contains functions for extracting information from PKCS#7
  * structures (RFC 2315). */
 
+DECLARE_STACK_OF(CRYPTO_BUFFER)
 DECLARE_STACK_OF(X509)
 DECLARE_STACK_OF(X509_CRL)
 
-/* PKCS7_get_certificates parses a PKCS#7, SignedData structure from |cbs| and
- * appends the included certificates to |out_certs|. It returns one on success
- * and zero on error. */
+/* PKCS7_get_raw_certificates parses a PKCS#7, SignedData structure from |cbs|
+ * and appends the included certificates to |out_certs|. It returns one on
+ * success and zero on error. */
+OPENSSL_EXPORT int PKCS7_get_raw_certificates(
+    STACK_OF(CRYPTO_BUFFER) *out_certs, CBS *cbs, CRYPTO_BUFFER_POOL *pool);
+
+/* PKCS7_get_certificates behaves like |PKCS7_get_raw_certificates| but parses
+ * them into |X509| objects. */
 OPENSSL_EXPORT int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs);
 
 /* PKCS7_bundle_certificates appends a PKCS#7, SignedData structure containing
