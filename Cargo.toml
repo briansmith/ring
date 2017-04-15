@@ -148,11 +148,8 @@ include = [
     "crypto/bn/asm/x86_64-mont.pl",
     "crypto/bn/asm/x86_64-mont5.pl",
     "crypto/bn/bn.c",
-    "crypto/bn/bn_test.cc",
-    "crypto/bn/bn_tests.txt",
     "crypto/bn/cmp.c",
     "crypto/bn/convert.c",
-    "crypto/bn/ctx.c",
     "crypto/bn/div.c",
     "crypto/bn/exponentiation.c",
     "crypto/bn/gcd.c",
@@ -227,14 +224,6 @@ include = [
     "crypto/sha/asm/sha512-armv4.pl",
     "crypto/sha/asm/sha512-armv8.pl",
     "crypto/sha/asm/sha512-x86_64.pl",
-    "crypto/test/bn_test_convert.c",
-    "crypto/test/bn_test_lib.c",
-    "crypto/test/bn_test_lib.h",
-    "crypto/test/bn_test_new.c",
-    "crypto/test/bn_test_util.h",
-    "crypto/test/file_test.cc",
-    "crypto/test/file_test.h",
-    "crypto/test/scoped_types.h",
     "include/GFp/aes.h",
     "include/GFp/arm_arch.h",
     "include/GFp/base.h",
@@ -287,11 +276,10 @@ rayon = "0.7"
 default = ["use_heap", "dev_urandom_fallback"]
 dev_urandom_fallback = []
 internal_benches = []
-rsa_signing = ["bn_tests", "use_heap"]
+rsa_signing = ["use_heap"]
 slow_tests = []
 test_logging = []
 use_heap = []
-bn_tests = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

@@ -89,7 +89,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/bn/convert.c"),
     (&[], "crypto/bn/div.c"),
     (&[], "crypto/bn/exponentiation.c"),
-    (&[], "crypto/bn/gcd.c"),
     (&[], "crypto/bn/generic.c"),
     (&[], "crypto/bn/montgomery.c"),
     (&[], "crypto/bn/montgomery_inv.c"),
@@ -168,11 +167,7 @@ const SHA256_ARMV8: &'static str = "crypto/sha/asm/sha256-armv8.pl";
 const SHA512_ARMV8: &'static str = "crypto/sha/asm/sha512-armv8.pl";
 
 const RING_TEST_SRCS: &'static [&'static str] = &[
-    ("crypto/bn/bn_test.cc"),
     ("crypto/constant_time_test.c"),
-    ("crypto/test/bn_test_convert.c"),
-    ("crypto/test/bn_test_new.c"),
-    ("crypto/test/file_test.cc"),
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -189,10 +184,6 @@ const RING_INCLUDES: &'static [&'static str] =
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",
       "crypto/modes/internal.h",
-      "crypto/test/bn_test_lib.h",
-      "crypto/test/bn_test_util.h",
-      "crypto/test/file_test.h",
-      "crypto/test/scoped_types.h",
       "include/GFp/aes.h",
       "include/GFp/arm_arch.h",
       "include/GFp/base.h",
@@ -222,17 +213,6 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
             "-Wmissing-prototypes",
             "-Wnested-externs",
             "-Wstrict-prototypes"
-        ];
-        NON_MSVC_FLAGS
-    } else {
-        &[]
-    }
-}
-
-fn cxx_flags(target: &Target) -> &'static [&'static str] {
-    if target.env != MSVC {
-        static NON_MSVC_FLAGS: &'static [&'static str] = &[
-            "-std=c++0x"  // GCC 4.6 requires "c++0x" instead of "c++11"
         ];
         NON_MSVC_FLAGS
     } else {
@@ -482,14 +462,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
     let test_srcs = RING_TEST_SRCS.iter()
         .map(PathBuf::from)
-        // Allow the C++-based tests to be disabled
-        .filter(|p| cfg!(feature = "bn_tests") ||
-            p.extension().unwrap().to_str().unwrap() != "cc")
-        // Avoid the libstdc++ vs libc++ issue for macOS/iOS, and g++ issue on
-        // musl by just avoiding all the C++-based tests.
-        .filter(|p| !(target.os() == "macos" || target.os == "ios" ||
-                      target.env() == "musl") ||
-                    p.extension().unwrap().to_str().unwrap() != "cc")
         .collect::<Vec<_>>();
 
     let libs = [
@@ -504,18 +476,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .for_each(|&(lib_name, srcs, additional_srcs)|
             build_library(&target, &out_dir, lib_name, srcs, additional_srcs,
                           includes_modified));
-
-    if target.env() != "msvc" &&
-        target.env() != "musl" &&
-        cfg!(feature = "bn_tests") &&
-       !(target.os() == "macos" || target.os() == "ios") {
-        let libcxx = if use_libcxx(target) {
-            "c++"
-        } else {
-            "stdc++"
-        };
-        println!("cargo:rustc-flags=-l dylib={}", libcxx);
-    }
 
     println!("cargo:rustc-link-search=native={}",
              out_dir.to_str().expect("Invalid path"));
@@ -613,15 +573,6 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
                 let _ = c.flag(f);
             }
         },
-        "cc" => {
-            for f in cxx_flags(target) {
-                let _ = c.flag(f);
-            }
-            let _ = c.cpp(true);
-            if use_libcxx(target) {
-                let _ = c.cpp_set_stdlib(Some("c++"));
-            }
-        },
         "S" => {},
         e => panic!("Unsupported file extension: {:?}", e),
     };
@@ -694,10 +645,6 @@ fn yasm(file: &Path, arch: &str, out_file: &Path) -> Command {
              .arg("-o").arg(out_file.to_str().expect("Invalid path"))
              .arg(file);
     c
-}
-
-fn use_libcxx(target: &Target) -> bool {
-    target.os() == "freebsd"
 }
 
 fn run_command_with_args<S>(command_name: S, args: &[String])
@@ -835,7 +782,6 @@ fn is_tracked(file: &DirEntry) {
             RING_INCLUDES.iter().any(cmp)
         },
         Some("c") |
-        Some("cc") |
         Some("S") |
         Some("asm") => {
             RING_SRCS.iter().any(|&(_, ref f)| cmp(f)) ||

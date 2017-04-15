@@ -237,14 +237,6 @@ OPENSSL_EXPORT int GFp_BN_usub_unchecked(BIGNUM *r, const BIGNUM *a,
  * as |a| or |b|. Returns one on success and zero otherwise. */
 OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
-/* GFp_BN_div divides |numerator| by |divisor| and places the result in
- * |quotient| and the remainder in |rem|. Either of |quotient| or |rem| may be
- * NULL, in which case the respective value is not returned. The result is
- * rounded towards zero; thus if |numerator| is negative, the remainder will be
- * zero or negative. It returns one on success or zero on error. */
-OPENSSL_EXPORT int GFp_BN_div(BIGNUM *quotient, BIGNUM *rem,
-                              const BIGNUM *numerator, const BIGNUM *divisor);
-
 
 /* Comparison functions */
 
@@ -277,19 +269,6 @@ OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
 
 /* Bitwise operations. */
 
-/* GFp_BN_lshift sets |r| equal to |a| << n. The |a| and |r| arguments may be
- * the same |BIGNUM|. It returns one on success and zero on allocation failure.
- */
-OPENSSL_EXPORT int GFp_BN_lshift(BIGNUM *r, const BIGNUM *a, int n);
-
-/* GFp_BN_rshift sets |r| equal to |a| >> n, where |r| and |a| may be the same
- * pointer. It returns one on success and zero on allocation failure. */
-OPENSSL_EXPORT int GFp_BN_rshift(BIGNUM *r, const BIGNUM *a, int n);
-
-/* GFp_BN_rshift1 sets |r| equal to |a| >> 1, where |r| and |a| may be the same
- * pointer. It returns one on success and zero on allocation failure. */
-OPENSSL_EXPORT int GFp_BN_rshift1(BIGNUM *r, const BIGNUM *a);
-
 /* GFp_BN_set_bit sets the |n|th, least-significant bit in |a|. For example, if
  * |a| is 2 then setting bit zero will make it 3. It returns one on success or
  * zero on allocation failure. */
@@ -301,17 +280,6 @@ OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 
 
 /* Modulo arithmetic. */
-
-/* GFp_BN_mod is a helper macro that calls |GFp_BN_div| and discards the
- * quotient. */
-#define GFp_BN_mod(rem, numerator, divisor) \
-  GFp_BN_div(NULL, (rem), (numerator), (divisor))
-
-/* GFp_BN_nnmod is a non-negative modulo function. It acts like |GFp_BN_mod|,
- * but 0 <= |rem| < |divisor| is always true. It returns one on success and
- * zero on error. */
-OPENSSL_EXPORT int GFp_BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
-                                const BIGNUM *divisor);
 
 /* GFp_BN_mod_add_quick acts like |BN_mod_add| but requires that |a| and |b| be
  * non-negative and less than |m|. */
