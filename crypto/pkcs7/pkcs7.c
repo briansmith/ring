@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/x509.h>
+#include <openssl/pkcs7.h>
 
 #include <assert.h>
 #include <limits.h>
@@ -23,6 +23,7 @@
 #include <openssl/obj.h>
 #include <openssl/pem.h>
 #include <openssl/stack.h>
+#include <openssl/x509.h>
 
 #include "../bytestring/internal.h"
 
@@ -67,7 +68,7 @@ static int pkcs7_parse_header(uint8_t **der_bytes, CBS *out, CBS *cbs) {
 
   if (!CBS_mem_equal(&content_type, kPKCS7SignedData,
                      sizeof(kPKCS7SignedData))) {
-    OPENSSL_PUT_ERROR(X509, X509_R_NOT_PKCS7_SIGNED_DATA);
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NOT_PKCS7_SIGNED_DATA);
     goto err;
   }
 
@@ -82,7 +83,7 @@ static int pkcs7_parse_header(uint8_t **der_bytes, CBS *out, CBS *cbs) {
   }
 
   if (version < 1) {
-    OPENSSL_PUT_ERROR(X509, X509_R_BAD_PKCS7_VERSION);
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_BAD_PKCS7_VERSION);
     goto err;
   }
 
@@ -108,7 +109,7 @@ int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
   /* See https://tools.ietf.org/html/rfc2315#section-9.1 */
   if (!CBS_get_asn1(&signed_data, &certificates,
                     CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
-    OPENSSL_PUT_ERROR(X509, X509_R_NO_CERTIFICATES_INCLUDED);
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CERTIFICATES_INCLUDED);
     goto err;
   }
 
@@ -176,7 +177,7 @@ int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs) {
 
   if (!CBS_get_asn1(&signed_data, &crls,
                     CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1)) {
-    OPENSSL_PUT_ERROR(X509, X509_R_NO_CRLS_INCLUDED);
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CRLS_INCLUDED);
     goto err;
   }
 

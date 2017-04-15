@@ -14,7 +14,6 @@ add_library(
   by_dir.c
   by_file.c
   i2d_pr.c
-  pkcs7.c
   rsa_pss.c
   t_crl.c
   t_req.c
@@ -59,14 +58,6 @@ add_library(
 )
 
 add_executable(
-  pkcs7_test
-
-  pkcs7_test.c
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-add_executable(
   x509_test
 
   x509_test.cc
@@ -74,6 +65,5 @@ add_executable(
   $<TARGET_OBJECTS:test_support>
 )
 
-target_link_libraries(pkcs7_test crypto)
 target_link_libraries(x509_test crypto)
-add_dependencies(all_tests pkcs7_test x509_test)
+add_dependencies(all_tests x509_test)

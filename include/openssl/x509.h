@@ -77,6 +77,7 @@
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/obj.h>
+#include <openssl/pkcs7.h>
 #include <openssl/pool.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -1114,37 +1115,6 @@ typedef struct rsa_pss_params_st {
 
 DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 
-
-/* PKCS7_get_certificates parses a PKCS#7, SignedData structure from |cbs| and
- * appends the included certificates to |out_certs|. It returns one on success
- * and zero on error. */
-OPENSSL_EXPORT int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs);
-
-/* PKCS7_bundle_certificates appends a PKCS#7, SignedData structure containing
- * |certs| to |out|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int PKCS7_bundle_certificates(
-    CBB *out, const STACK_OF(X509) *certs);
-
-/* PKCS7_get_CRLs parses a PKCS#7, SignedData structure from |cbs| and appends
- * the included CRLs to |out_crls|. It returns one on success and zero on
- * error. */
-OPENSSL_EXPORT int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs);
-
-/* PKCS7_bundle_CRLs appends a PKCS#7, SignedData structure containing
- * |crls| to |out|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls);
-
-/* PKCS7_get_PEM_certificates reads a PEM-encoded, PKCS#7, SignedData structure
- * from |pem_bio| and appends the included certificates to |out_certs|. It
- * returns one on success and zero on error. */
-OPENSSL_EXPORT int PKCS7_get_PEM_certificates(STACK_OF(X509) *out_certs,
-                                              BIO *pem_bio);
-
-/* PKCS7_get_PEM_CRLs reads a PEM-encoded, PKCS#7, SignedData structure from
- * |pem_bio| and appends the included CRLs to |out_crls|. It returns one on
- * success and zero on error. */
-OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
-                                      BIO *pem_bio);
 
 /* EVP_PK values indicate the algorithm of the public key in a certificate. */
 

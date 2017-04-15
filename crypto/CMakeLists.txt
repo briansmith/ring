@@ -116,6 +116,7 @@ add_subdirectory(x509)
 add_subdirectory(x509v3)
 
 # Level 4
+add_subdirectory(pkcs7)
 add_subdirectory(pkcs8)
 
 # Test support code
@@ -194,6 +195,7 @@ add_library(
   $<TARGET_OBJECTS:pem>
   $<TARGET_OBJECTS:x509>
   $<TARGET_OBJECTS:x509v3>
+  $<TARGET_OBJECTS:pkcs7>
   $<TARGET_OBJECTS:pkcs8_lib>
 
   ${CRYPTO_FIPS_OBJECTS}

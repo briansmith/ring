@@ -21,6 +21,7 @@ add_custom_command(
   hkdf.errordata
   obj.errordata
   pem.errordata
+  pkcs7.errordata
   pkcs8.errordata
   rsa.errordata
   ssl.errordata
