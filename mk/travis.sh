@@ -88,8 +88,12 @@ fi
 case $TARGET_X in
 armv7-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
+
+  # Building the AVD is slow. Do it here, after we build the code so that any
+  # build breakage is reported sooner, instead of being delayed by this.
   echo no | android create avd --name arm-18 --target android-18 --abi armeabi-v7a
   android list avd
+
   emulator @arm-18 -memory 2048 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
   adb push $target_dir/ring-* /data/ring-test
