@@ -175,10 +175,6 @@ void GFp_BN_zero(BIGNUM *bn) {
   bn->top = bn->neg = 0;
 }
 
-int GFp_BN_one(BIGNUM *bn) {
-  return GFp_BN_set_word(bn, 1);
-}
-
 /* GFp_BN_get_positive_u64 returns the value of |bn| if the value is in
  * [1, 2**64). Otherwise it returns 0 to indicate an error occurred. */
 uint64_t GFp_BN_get_positive_u64(const BIGNUM *bn) {

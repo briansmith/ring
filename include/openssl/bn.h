@@ -177,10 +177,6 @@ OPENSSL_EXPORT unsigned GFp_BN_num_bits(const BIGNUM *bn);
 /* GFp_BN_zero sets |bn| to zero. */
 OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
 
-/* GFp_BN_one sets |bn| to one. It returns one on success or zero on allocation
- * failure. */
-OPENSSL_EXPORT int GFp_BN_one(BIGNUM *bn);
-
 /* GFp_BN_set_word sets |bn| to |value|. It returns one on success or zero on
  * allocation failure. */
 OPENSSL_EXPORT int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value);

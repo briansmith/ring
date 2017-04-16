@@ -277,7 +277,7 @@ impl<M> Elem<M, Unencoded> {
     pub fn one() -> Result<Self, error::Unspecified> {
         let mut r = try!(Elem::zero());
         try!(bssl::map_result(unsafe {
-            GFp_BN_one(r.value.as_mut_ref())
+            GFp_BN_set_word(r.value.as_mut_ref(), 1)
         }));
         Ok(r)
     }
@@ -769,7 +769,7 @@ mod repr_c {
 pub use self::repr_c::BIGNUM;
 
 extern {
-    fn GFp_BN_one(r: &mut BIGNUM) -> c::int;
+    fn GFp_BN_set_word(r: &mut BIGNUM, w: limb::Limb) -> c::int;
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
     fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
