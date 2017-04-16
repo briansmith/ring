@@ -138,9 +138,9 @@ mod sysrand_chunk {
         };
         if r < 0 {
             if unsafe { *libc::__errno_location() } == libc::EINTR {
-                // If an interrupt occurs while getrandom() is blocking
-                // to wait for the entropy pool, then EINTR is returned.
-                // Returning 0 will cause the caller to try again.
+                // If an interrupt occurs while getrandom() is blocking to wait
+                // for the entropy pool, then EINTR is returned. Returning 0
+                // will cause the caller to try again.
                 return Ok(0);
             }
             return Err(error::Unspecified);
@@ -151,31 +151,31 @@ mod sysrand_chunk {
 
 #[cfg(windows)]
 mod sysrand_chunk {
-    use std::cmp::min;
-    use error;
-    use c::win32::{ULONG, BOOLEAN};
-    use core::mem::size_of;
+    use core;
+    use {c, error};
 
     #[link(name = "Advapi32")]
     extern "system" {
-        // also known as RtlGenRandom
-        fn SystemFunction036(random_buffer: *mut u8,
-                             random_buffer_length: ULONG)
-                             -> BOOLEAN;
+        #[link_name = "SystemFunction036"]
+        fn RtlGenRandom(random_buffer: *mut u8,
+                        random_buffer_length: c::win32::ULONG)
+                        -> c::win32::BOOLEAN;
     }
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        assert!(size_of::<usize>() >= size_of::<ULONG>());
-        let max_chunk_len = (1 << (size_of::<ULONG>()*8 - 1)) - 1;
-        assert_eq!(max_chunk_len, 2147483647);
-        let len = min(dest.len(), max_chunk_len);
+        assert!(core::mem::size_of::<usize>() >=
+                    core::mem::size_of::<c::win32::ULONG>());
+        let max_chunk_len = c::win32::ULONG::from(0u32).wrapping_sub(1) as usize;
+        assert_eq!(max_chunk_len, 0xffff_ffff);
+        let len = core::cmp::min(dest.len(), max_chunk_len);
 
-        if unsafe { SystemFunction036(dest.as_mut_ptr(), len as ULONG) } != 0 {
-            Ok(len)
-        } else {
-            Err(error::Unspecified)
+        if unsafe { RtlGenRandom(dest.as_mut_ptr(), len as c::win32::ULONG) }
+                == 0 {
+            return Err(error::Unspecified);
         }
+
+        Ok(len)
     }
 }
 

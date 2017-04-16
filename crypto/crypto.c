@@ -24,6 +24,20 @@
 #include <sys/syscall.h>
 #endif
 
+#if defined(OPENSSL_WINDOWS)
+
+#if defined(_MSC_VER)
+#pragma warning(push, 3)
+#endif
+
+#include <windows.h>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+#endif
+
 #include "internal.h"
 
 
@@ -115,17 +129,7 @@ DEFINE_METRICS(uint)
 
 DEFINE_METRICS(size_t)
 
-#ifdef OPENSSL_WINDOWS
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
-#include <windows.h>
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
+#if defined(OPENSSL_WINDOWS)
 DEFINE_METRICS(ULONG)
 DEFINE_METRICS(BOOLEAN)
 #endif
