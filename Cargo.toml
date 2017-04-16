@@ -220,7 +220,6 @@ include = [
     "crypto/poly1305/asm/poly1305-armv8.pl",
     "crypto/poly1305/asm/poly1305-x86.pl",
     "crypto/poly1305/asm/poly1305-x86_64.pl",
-    "crypto/rand/sysrand.c",
     "crypto/rsa/rsa.c",
     "crypto/sha/asm/sha256-586.pl",
     "crypto/sha/asm/sha256-armv4.pl",
