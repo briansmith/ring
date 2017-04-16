@@ -19,27 +19,6 @@
 #include "internal.h"
 
 
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
-     defined(OPENSSL_PPC64LE))
-/* x86, x86_64, the ARMs and ppc64le need to record the result of a
- * cpuid/getauxval call for the asm to work correctly, unless compiled without
- * asm code. */
-#define NEED_CPUID
-
-#else
-
-/* Otherwise, don't emit a static initialiser. */
-
-#if !defined(BORINGSSL_NO_STATIC_INITIALIZER)
-#define BORINGSSL_NO_STATIC_INITIALIZER
-#endif
-
-#endif  /* !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 ||
-                               OPENSSL_ARM || OPENSSL_AARCH64) */
-
-
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* This value must be explicitly initialised to zero in order to work around a
  * bug in libtool or the linker on OS X.
