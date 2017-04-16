@@ -155,9 +155,19 @@
 
 use {constant_time, digest, error, rand};
 
+/// An HMAC signature.
+///
+/// For a given signature `s`, use `s.as_ref()` to get the signature value as
+/// a byte slice.
+pub struct Signature(digest::Digest);
+
 /// A key to use for HMAC signing.
 pub struct SigningKey {
     ctx_prototype: SigningContext,
+}
+
+impl AsRef<[u8]> for Signature {
+    #[inline] fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 impl SigningKey {
@@ -291,9 +301,9 @@ impl SigningContext {
     // instead.
     ///
     /// C analog: `HMAC_Final`
-    pub fn sign(mut self) -> digest::Digest {
+    pub fn sign(mut self) -> Signature {
         self.outer.update(self.inner.finish().as_ref());
-        self.outer.finish()
+        Signature(self.outer.finish())
     }
 }
 
@@ -307,7 +317,7 @@ impl SigningContext {
 /// instead.
 ///
 /// C analog: `HMAC_CTX_init` + `HMAC_Update` + `HMAC_Final`.
-pub fn sign(key: &SigningKey, data: &[u8]) -> digest::Digest {
+pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
     let mut ctx = SigningContext::with_key(key);
     ctx.update(data);
     ctx.sign()
