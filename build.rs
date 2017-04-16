@@ -201,8 +201,6 @@ const RING_INCLUDES: &'static [&'static str] =
       "include/openssl/cpu.h",
       "include/openssl/err.h",
       "include/openssl/mem.h",
-      "include/openssl/opensslconf.h",
-      "include/openssl/rsa.h",
       "include/openssl/type_check.h"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]

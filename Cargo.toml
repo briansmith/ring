@@ -243,8 +243,6 @@ include = [
     "include/openssl/cpu.h",
     "include/openssl/err.h",
     "include/openssl/mem.h",
-    "include/openssl/opensslconf.h",
-    "include/openssl/rsa.h",
     "include/openssl/type_check.h",
     "examples/checkdigest.rs",
     "third-party/NIST/README.md",

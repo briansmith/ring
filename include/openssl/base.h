@@ -60,8 +60,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include <openssl/opensslconf.h>
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
