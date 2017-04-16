@@ -125,21 +125,16 @@ mod sysrand_chunk {
     use {c, error};
     use libc;
 
-    #[cfg(target_arch = "aarch64")]
-    const GETRANDOM: c::long = 278;
-    #[cfg(target_arch = "arm")]
-    const GETRANDOM: c::long = 384;
-    #[cfg(target_arch = "x86")]
-    const GETRANDOM: c::long = 355;
-    #[cfg(target_arch = "x86_64")]
-    const GETRANDOM: c::long = 318;
+    extern {
+        static GFp_SYS_GETRANDOM: c::long;
+    }
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
         let chunk_len: c::size_t = dest.len();
         let flags: c::uint = 0;
         let r = unsafe {
-            libc::syscall(GETRANDOM, dest.as_mut_ptr(), chunk_len, flags)
+            libc::syscall(GFp_SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, flags)
         };
         if r < 0 {
             if unsafe { *libc::__errno_location() } == libc::EINTR {

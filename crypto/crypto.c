@@ -12,9 +12,17 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if defined(__linux__)
+#define _GNU_SOURCE
+#endif
+
 #include <stdint.h>
 
 #include <openssl/cpu.h>
+
+#if defined(__linux__)
+#include <sys/syscall.h>
+#endif
 
 #include "internal.h"
 
@@ -56,6 +64,28 @@ uint32_t GFp_armcap_P =
 uint32_t GFp_armcap_P = 0;
 #endif
 
+#endif
+
+#if defined(__linux__)
+
+/* The getrandom syscall was added in Linux 3.17. For some important platforms,
+ * we also support building against older kernels' headers. For other
+ * platforms, the newer kernel's headers are required. */
+#if !defined(SYS_getrandom)
+#if defined(OPENSSL_AARCH64)
+#define SYS_getrandom 278
+#elif defined(OPENSSL_ARM)
+#define SYS_getrandom 384
+#elif defined(OPENSSL_X86)
+#define SYS_getrandom 355
+#elif defined(OPENSSL_X86_64)
+#define SYS_getrandom 318
+#else
+#error "Error: Kernel headers are too old; SYS_getrandom not defined."
+#endif
+#endif
+
+const long GFp_SYS_GETRANDOM = SYS_getrandom;
 #endif
 
 /* These allow tests in other languages to verify that their understanding of
