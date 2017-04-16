@@ -127,69 +127,10 @@ extern "C" {
 /* Private functions. */
 
 #define OPENSSL_PUT_ERROR(library, reason)
-#define OPENSSL_PUT_SYSTEM_ERROR(func)
-#define ERR_clear_error()
-
-
-enum {
-  ERR_LIB_NONE = 1,
-  ERR_LIB_SYS,
-  ERR_LIB_BN,
-  ERR_LIB_RSA,
-  ERR_LIB_DH,
-  ERR_LIB_EVP,
-  ERR_LIB_BUF,
-  ERR_LIB_CRYPTO,
-  ERR_LIB_EC,
-  ERR_LIB_RAND,
-  ERR_LIB_UI,
-  ERR_LIB_COMP,
-  ERR_LIB_ECDSA,
-  ERR_LIB_ECDH,
-  ERR_LIB_DIGEST,
-  ERR_LIB_CIPHER,
-  ERR_LIB_USER,
-  ERR_NUM_LIBS
-};
-
-#define ERR_R_SYS_LIB ERR_LIB_SYS
-#define ERR_R_BN_LIB ERR_LIB_BN
-#define ERR_R_RSA_LIB ERR_LIB_RSA
-#define ERR_R_DH_LIB ERR_LIB_DH
-#define ERR_R_EVP_LIB ERR_LIB_EVP
-#define ERR_R_BUF_LIB ERR_LIB_BUF
-#define ERR_R_CRYPTO_LIB ERR_LIB_CRYPTO
-#define ERR_R_EC_LIB ERR_LIB_EC
-#define ERR_R_RAND_LIB ERR_LIB_RAND
-#define ERR_R_DSO_LIB ERR_LIB_DSO
-#define ERR_R_UI_LIB ERR_LIB_UI
-#define ERR_R_COMP_LIB ERR_LIB_COMP
-#define ERR_R_ECDSA_LIB ERR_LIB_ECDSA
-#define ERR_R_ECDH_LIB ERR_LIB_ECDH
-#define ERR_R_STORE_LIB ERR_LIB_STORE
-#define ERR_R_FIPS_LIB ERR_LIB_FIPS
-#define ERR_R_CMS_LIB ERR_LIB_CMS
-#define ERR_R_TS_LIB ERR_LIB_TS
-#define ERR_R_JPAKE_LIB ERR_LIB_JPAKE
-#define ERR_R_USER_LIB ERR_LIB_USER
-#define ERR_R_DIGEST_LIB ERR_LIB_DIGEST
-#define ERR_R_CIPHER_LIB ERR_LIB_CIPHER
 
 /* Global reasons. */
 #define ERR_R_FATAL 64
 #define ERR_R_MALLOC_FAILURE (1 | ERR_R_FATAL)
-#define ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED (2 | ERR_R_FATAL)
-#define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)
-#define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)
-#define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
-
-
-/* OPENSSL_DECLARE_ERROR_REASON is used by util/make_errors.h (which generates
- * the error defines) to recognise that an additional reason value is needed.
- * This is needed when the reason value is used outside of an
- * |OPENSSL_PUT_ERROR| macro. The resulting define will be
- * ${lib}_R_${reason}. */
-#define OPENSSL_DECLARE_ERROR_REASON(lib, reason)
 
 
 #if defined(__cplusplus)
