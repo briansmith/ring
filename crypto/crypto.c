@@ -58,16 +58,6 @@ uint32_t GFp_armcap_P = 0;
 
 #endif
 
-#ifndef OPENSSL_WINDOWS
-#include <errno.h>
-/* errno is stored in thread-local storage, so we must use a C wrapper
- * until #[thread_local] is stabilized. */
-OPENSSL_EXPORT int GFp_errno(void);
-int GFp_errno(void) {
-    return errno;
-}
-#endif
-
 /* These allow tests in other languages to verify that their understanding of
  * the C types matches the C compiler's understanding. */
 

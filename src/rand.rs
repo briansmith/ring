@@ -122,13 +122,8 @@ use self::darwin::fill as fill_impl;
 
 #[cfg(target_os = "linux")]
 mod sysrand_chunk {
-    use error;
-    use c;
-
-    extern {
-        fn syscall(number: c::long, ...) -> c::long;
-        fn GFp_errno() -> c::int;
-    }
+    use {c, error};
+    use libc;
 
     #[cfg(target_arch = "aarch64")]
     const GETRANDOM: c::long = 278;
@@ -139,17 +134,15 @@ mod sysrand_chunk {
     #[cfg(target_arch = "x86_64")]
     const GETRANDOM: c::long = 318;
 
-    const EINTR: c::int = 4;
-
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
         let chunk_len: c::size_t = dest.len();
         let flags: c::uint = 0;
         let r = unsafe {
-            syscall(GETRANDOM, dest.as_mut_ptr(), chunk_len, flags)
+            libc::syscall(GETRANDOM, dest.as_mut_ptr(), chunk_len, flags)
         };
         if r < 0 {
-            if unsafe { GFp_errno() } == EINTR {
+            if unsafe { *libc::__errno_location() } == libc::EINTR {
                 // If an interrupt occurs while getrandom() is blocking
                 // to wait for the entropy pool, then EINTR is returned.
                 // Returning 0 will cause the caller to try again.
