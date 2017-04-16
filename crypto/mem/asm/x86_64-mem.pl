@@ -136,10 +136,10 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 				 ("%rdi","%rsi","%rdx","%rcx");	# Unix order
 
 print<<___;
-.globl  CRYPTO_memcmp
-.type   CRYPTO_memcmp,\@abi-omnipotent
+.globl  GFp_memcmp
+.type   GFp_memcmp,\@abi-omnipotent
 .align  16
-CRYPTO_memcmp:
+GFp_memcmp:
 	xor	%rax,%rax
 	xor	%r10,%r10
 	cmp	\$0,$arg3
@@ -156,7 +156,7 @@ CRYPTO_memcmp:
 	shr	\$63,%rax
 .Lno_data:
 	ret
-.size	CRYPTO_memcmp,.-CRYPTO_memcmp
+.size	GFp_memcmp,.-GFp_memcmp
 ___
 
 close STDOUT;	# flush

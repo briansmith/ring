@@ -142,10 +142,10 @@ $code.=<<___;
 #undef	__thumb2__
 #endif
 
-.global	CRYPTO_memcmp
-.type	CRYPTO_memcmp,%function
+.global	GFp_memcmp
+.type	GFp_memcmp,%function
 .align	4
-CRYPTO_memcmp:
+GFp_memcmp:
 	eor	ip,ip,ip
 	cmp	r2,#0
 	beq	.Lno_data
@@ -170,7 +170,7 @@ CRYPTO_memcmp:
 	moveq	pc,lr
 	.word	0xe12fff1e	@ bx	lr
 #endif
-.size	CRYPTO_memcmp,.-CRYPTO_memcmp
+.size	GFp_memcmp,.-GFp_memcmp
 ___
 
 print $code;

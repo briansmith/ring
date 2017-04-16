@@ -136,10 +136,10 @@ $code.=<<___;
 .text
 .arch	armv8-a+crypto
 
-.globl	CRYPTO_memcmp
-.type	CRYPTO_memcmp,%function
+.globl	GFp_memcmp
+.type	GFp_memcmp,%function
 .align	4
-CRYPTO_memcmp:
+GFp_memcmp:
 	eor	w3,w3,w3
 	cbz	x2,.Lno_data	// len==0?
 .Loop_cmp:
@@ -154,7 +154,7 @@ CRYPTO_memcmp:
 	neg	w0,w3
 	lsr	w0,w0,#31
 	ret
-.size	CRYPTO_memcmp,.-CRYPTO_memcmp
+.size	GFp_memcmp,.-GFp_memcmp
 ___
 
 print $code;

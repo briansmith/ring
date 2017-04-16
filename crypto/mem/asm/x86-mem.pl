@@ -130,7 +130,7 @@ open OUT,">$output";
 
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-&function_begin_B("CRYPTO_memcmp");
+&function_begin_B("GFp_memcmp");
 	&push	("esi");
 	&push	("edi");
 	&mov	("esi",&wparam(0));
@@ -154,7 +154,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&pop	("edi");
 	&pop	("esi");
 	&ret	();
-&function_end_B("CRYPTO_memcmp");
+&function_end_B("GFp_memcmp");
 
 &asm_finish();
 
