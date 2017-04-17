@@ -101,8 +101,6 @@ fn reset(elem1: bigint::Elem<N, R>, elem2: bigint::Elem<N, R>,
                 let random =
                     try!(bigint::elem_mul(oneRR.as_ref(), random, n));
                 let random = try!(bigint::elem_exp_vartime(random, e, n));
-                let random_inv =
-                    try!(bigint::elem_mul(oneRR.as_ref(), random_inv, n));
                 return Ok(Contents {
                     blinding_factor: random,
                     blinding_factor_inv: random_inv,

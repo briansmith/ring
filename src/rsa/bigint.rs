@@ -568,7 +568,7 @@ pub fn elem_randomize<M, E>(a: &mut Elem<M, E>, m: &Modulus<M>,
 // This relies on the invariants of `Modulus` that its value is odd and larger
 // than one.
 pub fn elem_set_to_inverse_blinded<M>(
-            r: &mut Elem<M, Unencoded>, a: &Elem<M, Unencoded>, m: &Modulus<M>,
+            r: &mut Elem<M, R>, a: &Elem<M, Unencoded>, m: &Modulus<M>,
             rng: &rand::SecureRandom) -> Result<(), InversionError> {
     let mut blinding_factor = try!(Elem::<M, R>::zero());
     try!(blinding_factor.value.randomize(m.value.as_ref(), rng));
@@ -584,24 +584,134 @@ pub fn elem_set_to_inverse_blinded<M>(
 // This relies on the invariants of `Modulus` that its value is odd and larger
 // than one.
 fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
-                   -> Result<Elem<M, Unencoded>, InversionError> {
-    let mut value = a.value;
-    let mut no_inverse = 0;
-    try!(bssl::map_result(unsafe {
-        GFp_BN_mod_inverse_odd(value.as_mut_ref(), &mut no_inverse,
-                               value.as_ref(), m.value.as_ref())
-    }).map_err(|_| {
-        if no_inverse != 0 {
-            InversionError::NoInverse
-        } else {
-            InversionError::Unspecified
-        }
-    }));
-    Ok(Elem {
-        value: value,
+                   -> Result<Elem<M, R>, InversionError> {
+    let a_clone = try!(a.try_clone());
+    let inverse = try!(nonnegative_mod_inverse(a.value, &(m.value.0).0));
+    let r: Elem<M, R> = Elem {
+        value: inverse,
         m: PhantomData,
         encoding: PhantomData,
-    })
+    };
+
+    // Fail safe: Verify a * r == 1 (mod m).
+    let check = try!(elem_mul(&r, a_clone, m));
+    assert!(check.is_one());
+
+    Ok(r)
+}
+
+fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
+                           -> Result<Nonnegative, InversionError> {
+    use limb::*;
+
+    // Algorithm 2.23 from "Guide to Elliptic Curve Cryptography" [2004] by
+    // Darrel Hankerson, Alfred Menezes, and Scott Vanstone.
+
+    debug_assert!(greater_than(m, &a));
+    if a.is_zero() {
+        return Err(InversionError::NoInverse);
+    }
+
+    // n /= 2; i.e. n >>= 1. `n` must be even, and so no bits are lost.
+    fn halve(n: &mut Nonnegative) {
+        debug_assert!(n.is_even());
+
+        let mut carry = 0;
+        for limb in n.limbs_mut().iter_mut().rev() {
+            let original_value = *limb;
+            *limb = (original_value >> 1) | (carry << (LIMB_BITS - 1));
+            carry = original_value & 1;
+        }
+        n.0.shrunk_by_at_most_one_bit();
+    }
+
+    // n *= 2; i.e. n <<= 1.
+    fn double(n: &mut Nonnegative) -> Result<(), InversionError> {
+        let mut carry = 0;
+        for limb in n.limbs_mut() {
+            let original_value = *limb;
+            *limb = (original_value << 1) | carry;
+            carry = original_value >> (LIMB_BITS - 1);
+        }
+        if carry != 0 {
+            try!(n.0.grow_by_one_bit());
+        }
+        Ok(())
+    }
+
+    // n += other.
+    #[inline]
+    fn add_assign(n: &mut Nonnegative, other: &Nonnegative)
+                  -> Result<(), error::Unspecified> {
+        bssl::map_result(unsafe {
+            GFp_BN_uadd(n.as_mut_ref(), n.as_ref(), other.as_ref())
+        })
+    }
+
+    // n == other.
+    #[inline]
+    fn sub_assign(n: &mut Nonnegative, other: &Nonnegative)
+                  -> Result<(), error::Unspecified> {
+        bssl::map_result(unsafe {
+            GFp_BN_usub(n.as_mut_ref(), n.as_ref(), other.as_ref())
+        })
+    }
+
+    // Returns a > b.
+    #[inline]
+    fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
+        let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
+        r > 0
+    }
+
+    let mut u = a;
+    let mut v = try!(m.try_clone());
+    let mut x1 = try!(Nonnegative::one());
+    let mut x2 = try!(Nonnegative::zero());
+    let mut k = 0;
+
+    while !v.is_zero() {
+        if v.is_even() {
+            halve(&mut v);
+            try!(double(&mut x1));
+        } else if u.is_even() {
+            halve(&mut u);
+            try!(double(&mut x2));
+        } else if !greater_than(&u, &v) {
+            try!(sub_assign(&mut v, &u));
+            halve(&mut v);
+            try!(add_assign(&mut x2, &x1));
+            try!(double(&mut x1));
+        } else {
+            try!(sub_assign(&mut u, &v));
+            halve(&mut u);
+            try!(add_assign(&mut x1, &x2));
+            try!(double(&mut x2));
+        }
+        k += 1;
+    }
+
+    if !u.is_one() {
+        return Err(InversionError::NoInverse);
+    }
+
+    if !greater_than(m, &x1) {
+        try!(sub_assign(&mut x1, m));
+    }
+    assert!(greater_than(m, &x1));
+
+    // Use the simpler repeated-subtraction reduction in 2.23.
+
+    let n = m.bit_length().as_usize_bits();
+    assert!(k >= n);
+    for _ in n..k {
+        if !x1.is_even() {
+            try!(add_assign(&mut x1, m));
+        }
+        halve(&mut x1);
+    }
+
+    Ok(x1)
 }
 
 pub enum InversionError {
@@ -613,9 +723,8 @@ impl From<error::Unspecified> for InversionError {
     fn from(_: error::Unspecified) -> Self { InversionError::Unspecified }
 }
 
-pub fn elem_verify_equal_consttime<M>(a: &Elem<M, Unencoded>,
-                                      b: &Elem<M, Unencoded>)
-                                      -> Result<(), error::Unspecified> {
+pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
+                                         -> Result<(), error::Unspecified> {
     bssl::map_result(unsafe {
         GFp_BN_equal_consttime(a.value.as_ref(), b.value.as_ref())
     })
@@ -653,6 +762,9 @@ impl Nonnegative {
     }
 
     #[inline]
+    fn is_even(&self) -> bool { !self.is_odd() }
+
+    #[inline]
     fn is_odd(&self) -> bool {
         let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
         if is_odd == 0 {
@@ -669,6 +781,9 @@ impl Nonnegative {
 
     #[inline]
     fn limbs(&self) -> &[limb::Limb] { self.0.limbs() }
+
+    #[inline]
+    fn limbs_mut(&mut self) -> &mut [limb::Limb] { self.0.limbs_mut() }
 
     fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
@@ -738,7 +853,7 @@ fn n0_from_u64(n0: u64) -> N0 {
 // not accessible.
 mod repr_c {
     use core;
-    use {c, limb};
+    use {bssl, c, error, limb};
     use libc;
 
     // Keep in sync with `bignum_st` in openss/bn.h.
@@ -781,6 +896,38 @@ mod repr_c {
                 core::slice::from_raw_parts(self.d, self.top as usize)
             }
         }
+
+        #[inline]
+        pub fn limbs_mut(&mut self) -> &mut [limb::Limb] {
+            unsafe {
+                core::slice::from_raw_parts_mut(self.d, self.top as usize)
+            }
+        }
+
+        pub fn grow_by_one_bit(&mut self) -> Result<(), error::Unspecified> {
+            let old_top = self.top;
+            let new_top = old_top + 1;
+            try!(bssl::map_result(unsafe {
+                GFp_bn_wexpand(self, new_top)
+            }));
+            self.top = new_top;
+            self.limbs_mut()[old_top as usize] = 1;
+            Ok(())
+        }
+
+        pub fn shrunk_by_at_most_one_bit(&mut self) {
+            let has_shrunk = {
+                let limbs = self.limbs();
+                limbs.len() > 1 && limbs[limbs.len() - 1] == 0
+            };
+            if has_shrunk {
+                self.top -= 1;
+            }
+        }
+    }
+
+    extern {
+        fn GFp_bn_wexpand(r: &mut BIGNUM, words: c::int) -> c::int;
     }
 }
 
@@ -802,8 +949,8 @@ extern {
                                      n: &BIGNUM) -> c::int;
 
     // `r` and `a` may alias.
-    fn GFp_BN_mod_inverse_odd(r: *mut BIGNUM, out_no_inverse: &mut c::int,
-                              a: *const BIGNUM, m: &BIGNUM) -> c::int;
+    fn GFp_BN_uadd(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
+    fn GFp_BN_usub(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
@@ -910,6 +1057,85 @@ mod tests {
             let actual_result = actual_result.into_unencoded(&m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn test_elem_inverse_invertible() {
+        test::from_file("src/rsa/bigint_elem_inverse_invertible.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let m = consume_modulus::<M>(test_case, "M");
+            let a = consume_elem(test_case, "A", &m);
+            let expected_result = consume_elem(test_case, "R", &m);
+            let actual_result = match elem_inverse(a, &m) {
+                Ok(actual_result) => actual_result,
+                Err(InversionError::Unspecified) => unreachable!("Unspecified"),
+                Err(InversionError::NoInverse) => unreachable!("No Inverse"),
+            };
+            let one: Elem<M, Unencoded> = try!(Elem::one());
+            let actual_result = try!(elem_mul(&one, actual_result, &m));
+            assert_elem_eq(&actual_result, &expected_result);
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn test_elem_set_to_inverse_blinded_invertible() {
+        let rng = rand::SystemRandom::new();
+
+        test::from_file("src/rsa/bigint_elem_inverse_invertible.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let m = consume_modulus::<M>(test_case, "M");
+            let a = consume_elem(test_case, "A", &m);
+            let expected_result = consume_elem(test_case, "R", &m);
+            let mut actual_result = try!(Elem::<M, R>::zero());
+            assert!(elem_set_to_inverse_blinded(&mut actual_result, &a, &m,
+                                                &rng).is_ok());
+            let one: Elem<M, Unencoded> = try!(Elem::one());
+            let actual_result = try!(elem_mul(&one, actual_result, &m));
+            assert_elem_eq(&actual_result, &expected_result);
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn test_elem_inverse_noninvertible() {
+        test::from_file("src/rsa/bigint_elem_inverse_noninvertible.txt",
+                        |section, test_case| {
+                            assert_eq!(section, "");
+
+            let m = consume_modulus::<M>(test_case, "M");
+            let a = consume_elem(test_case, "A", &m);
+            match elem_inverse(a, &m) {
+                Err(InversionError::NoInverse) => (),
+                Err(InversionError::Unspecified) => unreachable!("Unspecified"),
+                Ok(..) => unreachable!("No error"),
+            }
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn test_elem_set_to_inverse_blinded_noninvertible() {
+        let rng = rand::SystemRandom::new();
+
+        test::from_file("src/rsa/bigint_elem_inverse_noninvertible.txt",
+                        |section, test_case| {
+            assert_eq!(section, "");
+
+            let m = consume_modulus::<M>(test_case, "M");
+            let a = consume_elem(test_case, "A", &m);
+            let mut actual_result = try!(Elem::<M, R>::zero());
+            match elem_set_to_inverse_blinded(&mut actual_result, &a, &m, &rng) {
+                Err(InversionError::NoInverse) => (),
+                Err(InversionError::Unspecified) => unreachable!("Unspecified"),
+                Ok(..) => unreachable!("No error"),
+            }
             Ok(())
         })
     }
