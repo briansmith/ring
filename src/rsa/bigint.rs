@@ -652,6 +652,16 @@ impl Nonnegative {
         is_one != 0
     }
 
+    #[inline]
+    fn is_odd(&self) -> bool {
+        let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
+        if is_odd == 0 {
+            false
+        } else {
+            true
+        }
+    }
+
     fn bit_length(&self) -> bits::BitLength {
         let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
         bits::BitLength::from_usize_bits(bits)
@@ -692,8 +702,7 @@ impl Nonnegative {
     }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
-        let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
-        if is_odd == 0 {
+        if !self.is_odd() {
             return Err(error::Unspecified);
         }
         Ok(OddPositive(Positive(self)))
