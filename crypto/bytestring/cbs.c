@@ -329,16 +329,13 @@ int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value) {
 
 int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   CBS bytes;
-  const uint8_t *data;
-  size_t i, len;
-
   if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER)) {
     return 0;
   }
 
   *out = 0;
-  data = CBS_data(&bytes);
-  len = CBS_len(&bytes);
+  const uint8_t *data = CBS_data(&bytes);
+  size_t len = CBS_len(&bytes);
 
   if (len == 0) {
     /* An INTEGER is encoded with at least one octet. */
@@ -355,7 +352,7 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
     return 0;
   }
 
-  for (i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     if ((*out >> 56) != 0) {
       /* Too large to represent as a uint64_t. */
       return 0;
