@@ -382,7 +382,10 @@ func asLines(lines []string, path string, uniqueId int) ([]string, error) {
 
 	for _, line := range contents {
 		for symbol, mappedSymbol := range localSymbols {
-			for i := strings.Index(line, symbol); i >= 0; i = strings.Index(line[i:], symbol) {
+			i := 0
+			for match := strings.Index(line, symbol); match >= 0; match = strings.Index(line[i:], symbol) {
+				i += match
+
 				before := ' '
 				if i > 0 {
 					before, _ = utf8.DecodeLastRuneInString(line[:i])
