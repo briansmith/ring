@@ -539,7 +539,7 @@ impl RSASigningState {
         let base = try!(base.into_elem(&key.n));
 
         // Step 2.
-        let result = try!(blinding.blind(base, key.e, &key.n, &key.oneRR_mod_n,
+        let result = try!(blinding.blind(base, key.e, &key.oneRR_mod_n, &key.n,
                                          rng, |c| {
             // Step 2.b.i.
             let m_1 = try!(elem_exp_consttime(&c, &key.p));

@@ -29,9 +29,8 @@ impl Blinding {
     pub fn new() -> Self { Blinding(None) }
 
     pub fn blind<F>(&mut self, x: bigint::Elem<N>,
-                    e: bigint::PublicExponent, n: &bigint::Modulus<N>,
-                    oneRR_mod_n: &bigint::One<N, RR>,
-                    rng: &rand::SecureRandom, f: F)
+                    e: bigint::PublicExponent, oneRR: &bigint::One<N, RR>,
+                    n: &bigint::Modulus<N>, rng: &rand::SecureRandom, f: F)
                     -> Result<bigint::Elem<N>, error::Unspecified>
                     where F: FnOnce(bigint::Elem<N>)
                                     -> Result<bigint::Elem<N>,
@@ -55,15 +54,14 @@ impl Blinding {
                         remaining: remaining - 1,
                     })
                 } else {
-                    reset(blinding_factor, blinding_factor_inv, e, n,
-                          oneRR_mod_n, rng)
+                    reset(blinding_factor, blinding_factor_inv, e, oneRR, n, rng)
                 }
             },
 
             None => {
                 let elem1 = try!(bigint::Elem::zero());
                 let elem2 = try!(bigint::Elem::zero());
-                reset(elem1, elem2, e, n, oneRR_mod_n, rng)
+                reset(elem1, elem2, e, oneRR, n, rng)
             },
         });
 
@@ -89,8 +87,8 @@ impl Blinding {
 }
 
 fn reset(elem1: bigint::Elem<N, R>, elem2: bigint::Elem<N, R>,
-         e: bigint::PublicExponent, n: &bigint::Modulus<N>,
-         oneRR_mod_n: &bigint::One<N, RR>, rng: &rand::SecureRandom)
+         e: bigint::PublicExponent, oneRR: &bigint::One<N, RR>,
+         n: &bigint::Modulus<N>, rng: &rand::SecureRandom)
          -> Result<Contents, error::Unspecified> {
     let mut random = bigint::Elem::take_storage(elem1);
     let mut random_inv = bigint::Elem::take_storage(elem2);
@@ -101,10 +99,10 @@ fn reset(elem1: bigint::Elem<N, R>, elem2: bigint::Elem<N, R>,
                                                   rng) {
             Ok(()) => {
                 let random =
-                    try!(bigint::elem_mul(oneRR_mod_n.as_ref(), random, n));
+                    try!(bigint::elem_mul(oneRR.as_ref(), random, n));
                 let random = try!(bigint::elem_exp_vartime(random, e, n));
                 let random_inv =
-                    try!(bigint::elem_mul(oneRR_mod_n.as_ref(), random_inv, n));
+                    try!(bigint::elem_mul(oneRR.as_ref(), random_inv, n));
                 return Ok(Contents {
                     blinding_factor: random,
                     blinding_factor_inv: random_inv,
