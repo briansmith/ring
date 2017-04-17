@@ -342,8 +342,6 @@ static int BN_prime_checks_for_size(int bits) {
   return 28;
 }
 
-static int witness(BIGNUM *w, const BIGNUM *a, const BIGNUM *a1,
-                   const BIGNUM *a1_odd, int k, BN_CTX *ctx, BN_MONT_CTX *mont);
 static int probable_prime(BIGNUM *rnd, int bits);
 static int probable_prime_dh(BIGNUM *rnd, int bits, const BIGNUM *add,
                              const BIGNUM *rem, BN_CTX *ctx);
@@ -486,11 +484,8 @@ int BN_is_prime_ex(const BIGNUM *candidate, int checks, BN_CTX *ctx, BN_GENCB *c
 
 int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
                             int do_trial_division, BN_GENCB *cb) {
-  int i, j, ret = -1;
-  int k;
+  int i, ret = -1;
   BN_CTX *ctx = NULL;
-  BIGNUM *A1, *A1_odd, *check; /* taken from ctx */
-  BN_MONT_CTX *mont = NULL;
   const BIGNUM *A = NULL;
 
   if (BN_cmp(a, BN_value_one()) <= 0) {
@@ -542,65 +537,12 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
     A = a;
   }
 
-  A1 = BN_CTX_get(ctx);
-  A1_odd = BN_CTX_get(ctx);
-  check = BN_CTX_get(ctx);
-  if (check == NULL) {
+  enum bn_primality_result_t result;
+  if (!BN_enhanced_miller_rabin_primality_test(&result, A, checks, ctx, cb)) {
     goto err;
   }
 
-  /* compute A1 := A - 1 */
-  if (!BN_copy(A1, A)) {
-    goto err;
-  }
-  if (!BN_sub_word(A1, 1)) {
-    goto err;
-  }
-  if (BN_is_zero(A1)) {
-    ret = 0;
-    goto err;
-  }
-
-  /* write  A1  as  A1_odd * 2^k */
-  k = 1;
-  while (!BN_is_bit_set(A1, k)) {
-    k++;
-  }
-  if (!BN_rshift(A1_odd, A1, k)) {
-    goto err;
-  }
-
-  /* Montgomery setup for computations mod A */
-  mont = BN_MONT_CTX_new();
-  if (mont == NULL) {
-    goto err;
-  }
-  if (!BN_MONT_CTX_set(mont, A, ctx)) {
-    goto err;
-  }
-
-  for (i = 0; i < checks; i++) {
-    if (!BN_pseudo_rand_range(check, A1)) {
-      goto err;
-    }
-    if (!BN_add_word(check, 1)) {
-      goto err;
-    }
-    /* now 1 <= check < A */
-
-    j = witness(check, A, A1, A1_odd, k, ctx, mont);
-    if (j == -1) {
-      goto err;
-    }
-    if (j) {
-      ret = 0;
-      goto err;
-    }
-    if (!BN_GENCB_call(cb, 1, i)) {
-      goto err;
-    }
-  }
-  ret = 1;
+  ret = (result == bn_probably_prime);
 
 err:
   if (ctx != NULL) {
@@ -609,44 +551,144 @@ err:
       BN_CTX_free(ctx);
     }
   }
+
+  return ret;
+}
+
+/* Implement the Enhanced Miller-Rabin Primality Test (FIPS 186-4 C.3.2). */
+int BN_enhanced_miller_rabin_primality_test(
+    enum bn_primality_result_t *out_result, const BIGNUM *w, int iterations,
+    BN_CTX *ctx, BN_GENCB *cb) {
+  int ret = 0;
+  BN_MONT_CTX *mont = NULL;
+
+  if (out_result == NULL) {
+    goto err;
+  }
+
+  BIGNUM *w1 = BN_CTX_get(ctx);
+  if (w1 == NULL ||
+      !BN_copy(w1, w) ||
+      !BN_sub_word(w1, 1)) {
+    goto err;
+  }
+
+  /* Write w1 as m*2^a (Steps 1 and 2). */
+  int a = 0;
+  while (!BN_is_bit_set(w1, a)) {
+    a++;
+  }
+  BIGNUM *m = BN_CTX_get(ctx);
+  if (m == NULL ||
+      !BN_rshift(m, w1, a)) {
+    goto err;
+  }
+
+  BIGNUM *b = BN_CTX_get(ctx);
+  BIGNUM *g = BN_CTX_get(ctx);
+  BIGNUM *z = BN_CTX_get(ctx);
+  BIGNUM *x = BN_CTX_get(ctx);
+  BIGNUM *x1 = BN_CTX_get(ctx);
+  if (b == NULL ||
+      g == NULL ||
+      z == NULL ||
+      x == NULL ||
+      x1 == NULL) {
+    goto err;
+  }
+
+  /* Montgomery setup for computations mod A */
+  mont = BN_MONT_CTX_new();
+  if (mont == NULL) {
+    goto err;
+  }
+  if (!BN_MONT_CTX_set(mont, w, ctx)) {
+    goto err;
+  }
+
+  /* The following loop performs in inner iteration of the Enhanced Miller-Rabin
+   * Primality test (Step 4). */
+  for (int i = 1; i <= iterations; i++) {
+    /* Step 4.1-4.2 */
+    if (!BN_rand_range_ex(b, 2, w1)) {
+      goto err;
+    }
+
+    /* Step 4.3-4.4 */
+    if (!BN_gcd(g, b, w, ctx)) {
+      goto err;
+    }
+    if (BN_cmp_word(g, 1) > 0) {
+      *out_result = bn_composite;
+      ret = 1;
+      goto err;
+    }
+
+    /* Step 4.5 */
+    if (!BN_mod_exp_mont(z, b, m, w, ctx, mont)) {
+      goto err;
+    }
+
+    /* Step 4.6 */
+    if (BN_is_one(z) || BN_cmp(z, w1) == 0) {
+      goto loop;
+    }
+
+    /* Step 4.7 */
+    for (int j = 1; j < a; j++) {
+      if (!BN_copy(x, z) || !BN_mod_mul(z, x, x, w, ctx)) {
+        goto err;
+      }
+      if (BN_cmp(z, w1) == 0) {
+        goto loop;
+      }
+      if (BN_is_one(z)) {
+        goto composite;
+      }
+    }
+
+    /* Step 4.8-4.9 */
+    if (!BN_copy(x, z) || !BN_mod_mul(z, x, x, w, ctx)) {
+      goto err;
+    }
+
+    /* Step 4.10-4.11 */
+    if (!BN_is_one(z) && !BN_copy(x, z)) {
+      goto err;
+    }
+
+ composite:
+    /* Step 4.12-4.14 */
+    if (!BN_copy(x1, x) ||
+        !BN_sub_word(x1, 1) ||
+        !BN_gcd(g, x1, w, ctx)) {
+      goto err;
+    }
+    if (BN_cmp_word(g, 1) > 0) {
+      *out_result = bn_composite;
+    } else {
+      *out_result = bn_non_prime_power_composite;
+    }
+
+    ret = 1;
+    goto err;
+
+ loop:
+    /* Step 4.15 */
+    if (!BN_GENCB_call(cb, 1, i)) {
+      goto err;
+    }
+  }
+
+  *out_result = bn_probably_prime;
+  ret = 1;
+
+err:
   if (mont != NULL) {
     BN_MONT_CTX_free(mont);
   }
 
   return ret;
-}
-
-static int witness(BIGNUM *w, const BIGNUM *a, const BIGNUM *a1,
-                   const BIGNUM *a1_odd, int k, BN_CTX *ctx,
-                   BN_MONT_CTX *mont) {
-  if (!BN_mod_exp_mont(w, w, a1_odd, a, ctx, mont)) { /* w := w^a1_odd mod a */
-    return -1;
-  }
-  if (BN_is_one(w)) {
-    return 0; /* probably prime */
-  }
-  if (BN_cmp(w, a1) == 0) {
-    return 0; /* w == -1 (mod a),  'a' is probably prime */
-  }
-
-  while (--k) {
-    if (!BN_mod_mul(w, w, w, a, ctx)) { /* w := w^2 mod a */
-      return -1;
-    }
-
-    if (BN_is_one(w)) {
-      return 1; /* 'a' is composite, otherwise a previous 'w' would
-                 * have been == -1 (mod 'a') */
-    }
-
-    if (BN_cmp(w, a1) == 0) {
-      return 0; /* w == -1 (mod a), 'a' is probably prime */
-    }
-  }
-
-  /* If we get here, 'w' is the (a-1)/2-th power of the original 'w',
-   * and it is neither -1 nor +1 -- so 'a' cannot be prime */
-  return 1;
 }
 
 static int probable_prime(BIGNUM *rnd, int bits) {

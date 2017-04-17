@@ -707,6 +707,22 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
  * Miller-Rabin checks that gives a false positive rate of ~2^{-80}. */
 #define BN_prime_checks 0
 
+/* bn_primality_result_t enumerates the outcomes of primality-testing. */
+enum bn_primality_result_t {
+  bn_probably_prime,
+  bn_composite,
+  bn_non_prime_power_composite,
+};
+
+/* BN_enhanced_miller_rabin_primality_test tests whether |w| is probably a prime
+ * number using the Enhanced Miller-Rabin test with |iterations| iterations and
+ * returns the result in |out_result|. It returns one on success and zero on
+ * failure. If |cb| is not NULL, then it is called during each iteration of the
+ * primality test. */
+int BN_enhanced_miller_rabin_primality_test(
+    enum bn_primality_result_t *out_result, const BIGNUM *w, int iterations,
+    BN_CTX *ctx, BN_GENCB *cb);
+
 /* BN_primality_test sets |*is_probably_prime| to one if |candidate| is
  * probably a prime number by the Miller-Rabin test or zero if it's certainly
  * not.
