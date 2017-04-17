@@ -29,11 +29,6 @@
 #include "internal.h"
 
 
-/* kMaxEarlyDataAccepted is the advertised number of plaintext bytes of early
- * data that will be accepted. This value should be slightly below
- * kMaxEarlyDataSkipped in tls_record.c, which is measured in ciphertext. */
-static const size_t kMaxEarlyDataAccepted = 14336;
-
 enum server_hs_state_t {
   state_select_parameters = 0,
   state_select_session,

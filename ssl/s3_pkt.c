@@ -395,15 +395,17 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       return -1;
     }
 
+    const int is_early_data_read = ssl->server &&
+                                   ssl->s3->hs != NULL &&
+                                   ssl->s3->hs->can_early_read &&
+                                   ssl3_protocol_version(ssl) >= TLS1_3_VERSION;
+
     /* Handle the end_of_early_data alert. */
     if (rr->type == SSL3_RT_ALERT &&
         rr->length == 2 &&
         rr->data[0] == SSL3_AL_WARNING &&
         rr->data[1] == TLS1_AD_END_OF_EARLY_DATA &&
-        ssl->server &&
-        ssl->s3->hs != NULL &&
-        ssl->s3->hs->can_early_read &&
-        ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+        is_early_data_read) {
       /* Consume the record. */
       rr->length = 0;
       ssl_read_buffer_discard(ssl);
@@ -417,6 +419,16 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return -1;
+    }
+
+    if (is_early_data_read) {
+      if (rr->length > kMaxEarlyDataAccepted - ssl->s3->hs->early_data_read) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MUCH_READ_EARLY_DATA);
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL3_AD_UNEXPECTED_MESSAGE);
+        return -1;
+      }
+
+      ssl->s3->hs->early_data_read += rr->length;
     }
 
     if (rr->length != 0) {
