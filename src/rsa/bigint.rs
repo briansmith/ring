@@ -275,11 +275,12 @@ impl<M> Elem<M, R> {
 
 impl<M> Elem<M, Unencoded> {
     pub fn one() -> Result<Self, error::Unspecified> {
-        let mut r = try!(Elem::zero());
-        try!(bssl::map_result(unsafe {
-            GFp_BN_set_word(r.value.as_mut_ref(), 1)
-        }));
-        Ok(r)
+        let value = try!(Nonnegative::one());
+        Ok(Elem {
+            value: value,
+            m: PhantomData,
+            encoding: PhantomData,
+        })
     }
 
     #[inline]
@@ -630,6 +631,14 @@ impl Nonnegative {
     fn zero() -> Result<Self, error::Unspecified> {
         let r = Nonnegative(BIGNUM::zero());
         debug_assert!(r.is_zero());
+        Ok(r)
+    }
+
+    fn one() -> Result<Self, error::Unspecified> {
+        let mut r = try!(Self::zero());
+        try!(bssl::map_result(unsafe {
+            GFp_BN_set_word(r.as_mut_ref(), 1)
+        }));
         Ok(r)
     }
 
