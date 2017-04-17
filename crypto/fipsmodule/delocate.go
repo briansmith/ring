@@ -125,6 +125,13 @@ func referencesIA32CapDirectly(line string) bool {
 	return i == len(line) || line[i] == '+' || line[i] == '('
 }
 
+// threadLocalOffsetFunc describes a function that fetches the offset to symbol
+// in the thread-local space and writes it to the given target register.
+type threadLocalOffsetFunc struct {
+	target string
+	symbol string
+}
+
 // transform performs a number of transformations on the given assembly code.
 // See FIPS.md in the current directory for an overview.
 func transform(lines []string, symbols map[string]bool) (ret []string) {
@@ -147,6 +154,10 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	// bssAccessorsNeeded contains the names of BSS symbols for which
 	// accessor functions need to be emitted outside of the module.
 	var bssAccessorsNeeded []string
+
+	// threadLocalOffsets records the accessor functions needed for getting
+	// offsets in the thread-local storage.
+	threadLocalOffsets := make(map[string]threadLocalOffsetFunc)
 
 	for lineNo, line := range lines {
 		if referencesIA32CapDirectly(line) {
@@ -216,6 +227,30 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 			}
 
 			ret = append(ret, line)
+			continue
+
+		case "movq":
+			if !strings.Contains(line, "@GOTTPOFF(%rip)") {
+				ret = append(ret, line)
+				continue
+			}
+
+			// GOTTPOFF are offsets into the thread-local storage
+			// that are stored in the GOT. We have to move these
+			// relocations out of the module, but do not know
+			// whether rax is live at this point. Thus a normal
+			// function call might clobber a register and so we
+			// synthesize different functions for writing to each
+			// target register.
+			//
+			// (BoringSSL itself does not use __thread variables,
+			// but ASAN and MSAN may add these references for their
+			// bookkeeping.)
+			targetRegister := parts[2][1:]
+			symbol := strings.SplitN(parts[1], "@", 2)[0]
+			functionName := fmt.Sprintf("BORINGSSL_bcm_tpoff_to_%s_for_%s", targetRegister, symbol)
+			threadLocalOffsets[functionName] = threadLocalOffsetFunc{target: targetRegister, symbol: symbol}
+			ret = append(ret, "\tcallq "+functionName+"\n")
 			continue
 
 		case ".file":
@@ -318,6 +353,22 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		ret = append(ret, ".size OPENSSL_ia32cap_addr,8")
 		ret = append(ret, "OPENSSL_ia32cap_addr:")
 		ret = append(ret, "\t.quad OPENSSL_ia32cap_P")
+	}
+
+	// Emit accessors for thread-local offsets.
+	var threadAccessorNames []string
+	for name := range threadLocalOffsets {
+		threadAccessorNames = append(threadAccessorNames, name)
+	}
+	sort.Strings(threadAccessorNames)
+
+	for _, name := range threadAccessorNames {
+		f := threadLocalOffsets[name]
+
+		ret = append(ret, ".type "+name+",@function")
+		ret = append(ret, name+":")
+		ret = append(ret, "\tmovq "+f.symbol+"@GOTTPOFF(%rip), %"+f.target)
+		ret = append(ret, "\tret")
 	}
 
 	// Emit an array for storing the module hash.
