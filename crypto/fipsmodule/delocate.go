@@ -413,13 +413,28 @@ func asLines(lines []string, path string, uniqueId int) ([]string, error) {
 	}
 	defer asFile.Close()
 
-	var contents []string
-
 	// localSymbols maps from the symbol name used in the input, to a
 	// unique symbol name.
 	localSymbols := make(map[string]string)
 
 	scanner := bufio.NewScanner(asFile)
+	var contents []string
+
+	if len(lines) == 0 {
+		// If this is the first assembly file, don't rewrite symbols.
+		// Only all-but-one file needs to be rewritten and so time can
+		// be saved by putting the (large) bcm.s first.
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+
+		if err := scanner.Err(); err != nil {
+			return nil, err
+		}
+
+		return lines, nil
+	}
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
@@ -431,7 +446,7 @@ func asLines(lines []string, path string, uniqueId int) ([]string, error) {
 			continue
 		}
 
-		contents = append(contents, scanner.Text())
+		contents = append(contents, line)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
