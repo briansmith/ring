@@ -262,9 +262,10 @@ class Bazel(object):
           out.write('\n')
         first = False
 
-        src_prefix = 'src/' + test[0]
         for src in files['test']:
-          if src.startswith(src_prefix):
+          # For example, basename(src/crypto/fipsmodule/aes/aes_test.cc)
+          # startswith basename(crypto/fipsmodule/aes_test).
+          if os.path.basename(src).startswith(os.path.basename(test[0]) + '.'):
             src = src
             break
         else:
@@ -680,13 +681,22 @@ def main(platforms):
   tests = [test for test in tests if test[0] not in ['crypto/crypto_test',
                                                      'decrepit/decrepit_test',
                                                      'ssl/ssl_test']]
-  test_binaries = set([test[0] for test in tests])
-  test_sources = set([
+  # The same test name can appear multiple times with different arguments.  So,
+  # make a set to get a list of unique test binaries.
+  test_names = set([test[0] for test in tests])
+  test_binaries = set(map(os.path.basename, test_names))
+  # Make sure the test basenames are unique.
+  if len(test_binaries) != len(set(test_names)):
+    raise ValueError('non-unique test basename')
+  # Ensure a 1:1 correspondence between test sources and tests.  This
+  # guarantees that the Bazel output includes everything in the JSON.
+  # Sometimes, a test's source isn't in the same directory as the test,
+  # which we handle by considering only the basename.
+  test_sources = set(map(os.path.basename, [
       test.replace('.cc', '').replace('.c', '').replace(
           'src/',
           '')
-      for test in test_c_files])
-
+      for test in test_c_files]))
   if test_binaries != test_sources:
     print 'Test sources and configured tests do not match'
     a = test_binaries.difference(test_sources)
