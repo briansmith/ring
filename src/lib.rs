@@ -96,6 +96,7 @@
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
+#[cfg(any(feature = "use_heap", target_os = "linux"))]
 extern crate libc;
 
 #[cfg(feature = "internal_benches")]
@@ -110,8 +111,7 @@ extern crate test as bench;
 extern crate lazy_static;
 
 // `ring::test` uses the formatting & printing stuff in non-test mode.
-#[cfg_attr(not(test), macro_use(format, print, println))]
-#[cfg_attr(test, macro_use(format, print, println, vec))]
+#[macro_use]
 extern crate std;
 
 extern crate untrusted;
