@@ -164,9 +164,12 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	// referenced and thus needs to be emitted outside the module.
 	ia32capAddrNeeded := false
 
-	// bssAccessorsNeeded contains the names of BSS symbols for which
-	// accessor functions need to be emitted outside of the module.
-	var bssAccessorsNeeded []string
+	// bssAccessorsNeeded maps the names of BSS variables for which
+	// accessor functions need to be emitted outside of the module, to the
+	// BSS symbols they point to. For example, “EVP_sha256_once” could map
+	// to “.LEVP_sha256_once_local_target” or “EVP_sha256_once” (if .comm
+	// was used).
+	bssAccessorsNeeded := make(map[string]string)
 
 	// threadLocalOffsets records the accessor functions needed for getting
 	// offsets in the thread-local storage.
@@ -283,7 +286,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		case ".comm":
 			p := strings.Split(parts[1], ",")
 			name := p[0]
-			bssAccessorsNeeded = append(bssAccessorsNeeded, name)
+			bssAccessorsNeeded[name] = name
 			ret = append(ret, line)
 
 		case ".section":
@@ -330,6 +333,15 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 			case ".debug", ".note":
 				ret = append(ret, line)
 
+			case ".bss":
+				ret = append(ret, line)
+
+				var accessors map[string]string
+				accessors, ret = handleBSSSection(ret, source)
+				for accessor, name := range accessors {
+					bssAccessorsNeeded[accessor] = name
+				}
+
 			default:
 				panic(fmt.Sprintf("unknown section %q on line %d", section, source.lineNo))
 			}
@@ -361,12 +373,18 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		ret = append(ret, "\tjmp "+redirectors[name]+"@PLT")
 	}
 
+	var accessorNames []string
+	for accessor := range bssAccessorsNeeded {
+		accessorNames = append(accessorNames, accessor)
+	}
+	sort.Strings(accessorNames)
+
 	// Emit BSS accessor functions. Each is a single LEA followed by RET.
-	for _, name := range bssAccessorsNeeded {
+	for _, name := range accessorNames {
 		funcName := accessorName(name)
 		ret = append(ret, ".type "+funcName+", @function")
 		ret = append(ret, funcName+":")
-		ret = append(ret, "\tleaq "+name+"(%rip), %rax")
+		ret = append(ret, "\tleaq "+bssAccessorsNeeded[name]+"(%rip), %rax")
 		ret = append(ret, "\tret")
 	}
 
@@ -404,6 +422,45 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	}
 
 	return ret
+}
+
+// handleBSSSection reads lines from source until the next section and adds a
+// local symbol for each BSS symbol found.
+func handleBSSSection(lines []string, source *lineSource) (map[string]string, []string) {
+	accessors := make(map[string]string)
+
+	for {
+		line, ok := source.Next()
+		if !ok {
+			return accessors, lines
+		}
+
+		parts := strings.Fields(strings.TrimSpace(line))
+		if len(parts) == 0 {
+			lines = append(lines, line)
+			continue
+		}
+
+		if strings.HasSuffix(parts[0], ":") {
+			symbol := parts[0][:len(parts[0])-1]
+			localSymbol := ".L" + symbol + "_local_target"
+
+			lines = append(lines, line)
+			lines = append(lines, localSymbol + ":")
+
+			accessors[symbol] = localSymbol
+			continue
+		}
+
+		switch parts[0] {
+		case ".text", ".section":
+			source.Unread()
+			return accessors, lines
+
+		default:
+			lines = append(lines, line)
+		}
+	}
 }
 
 // accessorName returns the name of the accessor function for a BSS symbol
