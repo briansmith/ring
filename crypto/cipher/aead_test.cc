@@ -35,6 +35,15 @@ const EVP_AEAD* EVP_aead_aes_256_gcm_siv(void) {
 }
 #endif
 
+#if !defined(BORINGSSL_FIPS)
+const EVP_AEAD* EVP_aead_aes_128_gcm_fips_testonly(void) {
+  return nullptr;
+}
+const EVP_AEAD* EVP_aead_aes_256_gcm_fips_testonly(void) {
+  return nullptr;
+}
+#endif
+
 // This program tests an AEAD against a series of test vectors from a file,
 // using the FileTest format. As an example, here's a valid test case:
 //
@@ -239,7 +248,9 @@ static int TestTruncatedTags(const EVP_AEAD *aead) {
   }
 
   const size_t overhead_used = ciphertext_len - sizeof(plaintext);
-  if (overhead_used != 1) {
+  const size_t expected_overhead =
+      1 + EVP_AEAD_max_overhead(aead) - EVP_AEAD_max_tag_len(aead);
+  if (overhead_used != expected_overhead) {
     fprintf(stderr, "AEAD is probably ignoring request to truncate tags.\n");
     return 0;
   }
@@ -387,6 +398,8 @@ static const struct KnownAEAD kAEADs[] = {
   { "aes-256-gcm", EVP_aead_aes_256_gcm, false, true },
   { "aes-128-gcm-siv", EVP_aead_aes_128_gcm_siv, false, false },
   { "aes-256-gcm-siv", EVP_aead_aes_256_gcm_siv, false, false },
+  { "aes-128-gcm-fips-testonly", EVP_aead_aes_128_gcm_fips_testonly, true, true },
+  { "aes-256-gcm-fips-testonly", EVP_aead_aes_256_gcm_fips_testonly, true, true },
   { "chacha20-poly1305", EVP_aead_chacha20_poly1305, false, true },
   { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls, true, false },
   { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv, true, false },
