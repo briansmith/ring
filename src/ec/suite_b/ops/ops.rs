@@ -871,7 +871,7 @@ mod tests {
         match expected_point {
             &TestPoint::Infinity => {
                 let zero = Elem::zero();
-                assert!(cops.elems_are_equal(&actual_z, &zero));
+                assert_elems_are_equal(cops, &actual_z, &zero);
             },
             &TestPoint::Affine(ref expected_x, ref expected_y) => {
                 let z_inv = ops.elem_inverse(&actual_z);
@@ -879,8 +879,8 @@ mod tests {
                 let x_aff = cops.elem_product(&actual_x, &zz_inv);
                 let zzz_inv = cops.elem_product(&z_inv, &zz_inv);
                 let y_aff = cops.elem_product(&actual_y, &zzz_inv);
-                assert!(cops.elems_are_equal(&x_aff, &expected_x));
-                assert!(cops.elems_are_equal(&y_aff, &expected_y));
+                assert_elems_are_equal(cops, &x_aff, &expected_x);
+                assert_elems_are_equal(cops, &y_aff, &expected_y);
             },
         }
     }
@@ -956,6 +956,10 @@ mod tests {
         let x = consume_point_elem(ops.common, &elems, 0);
         let y = consume_point_elem(ops.common, &elems, 1);
         TestPoint::Affine(x, y)
+    }
+
+    fn assert_elems_are_equal(ops: &CommonOps, a: &Elem<R>, b: &Elem<R>) {
+        assert_limbs_are_equal(ops, &a.limbs, &b.limbs)
     }
 
     fn assert_limbs_are_equal(ops: &CommonOps, actual: &[Limb; MAX_LIMBS],
