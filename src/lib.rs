@@ -165,6 +165,11 @@ mod rsa;
 #[doc(hidden)]
 pub use rsa::GFp_rand_mod;
 
+// Really a private method; only has public visibility so that C compilation
+// can see it.
+#[doc(hidden)]
+pub use ec::eddsa::eddsa_elem_invert;
+
 pub mod signature;
 
 #[cfg(any(feature = "use_heap", test))]
