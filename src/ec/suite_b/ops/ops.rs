@@ -838,6 +838,46 @@ mod tests {
     }
 
     #[test]
+    fn p256_point_mul_serialized_test() {
+        point_mul_serialized_test(
+            &p256::PRIVATE_KEY_OPS, &p256::PUBLIC_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_mul_serialized_tests.txt");
+    }
+
+    fn point_mul_serialized_test(priv_ops: &PrivateKeyOps,
+                                 pub_ops: &PublicKeyOps, file_path: &str) {
+        let cops = pub_ops.common;
+
+        test::from_file(file_path, |section, test_case| {
+            assert_eq!(section, "");
+            let p_scalar = consume_scalar(cops, test_case, "p_scalar");
+
+            let p = test_case.consume_bytes("p");
+            let p = super::super::public_key::parse_uncompressed_point(
+                pub_ops, untrusted::Input::from(&p)).expect("valid point");
+
+            let expected_result = test_case.consume_bytes("r");
+
+            let product = priv_ops.point_mul(&p_scalar, &p);
+
+            let mut actual_result =
+                vec![4u8; 1 + (2 * (cops.num_limbs * LIMB_BYTES))];
+            {
+                let (x, y) =
+                    actual_result[1..].split_at_mut(cops.num_limbs * LIMB_BYTES);
+                super::super::private_key::big_endian_affine_from_jacobian(
+                        priv_ops, Some(x), Some(y), &product)
+                    .expect("successful encoding");
+
+            }
+
+            assert_eq!(expected_result, actual_result);
+
+            Ok(())
+        })
+    }
+
+    #[test]
     fn p256_point_mul_base_test() {
         point_mul_base_tests(&p256::PRIVATE_KEY_OPS,
                              "src/ec/suite_b/ops/p256_point_mul_base_tests.txt");
