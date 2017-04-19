@@ -509,7 +509,7 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
         goto err;
       }
       if (mod == 0) {
-        return 0;
+        return BN_is_word(a, primes[i]);
       }
     }
 
@@ -562,9 +562,23 @@ int BN_enhanced_miller_rabin_primality_test(
   int ret = 0;
   BN_MONT_CTX *mont = NULL;
 
-  if (out_result == NULL) {
-    goto err;
+  /* This algorithm only works on odd numbers. */
+  if (!BN_is_odd(w)) {
+    if (BN_is_word(w, 2)) {
+      *out_result = bn_probably_prime;
+    } else {
+      *out_result = bn_composite;
+    }
+    return 1;
   }
+
+  /* The algorithm is broken for w = 3. */
+  if (BN_is_word(w, 3)) {
+    *out_result = bn_probably_prime;
+    return 1;
+  }
+
+  BN_CTX_start(ctx);
 
   BIGNUM *w1 = BN_CTX_get(ctx);
   if (w1 == NULL ||
@@ -684,9 +698,8 @@ int BN_enhanced_miller_rabin_primality_test(
   ret = 1;
 
 err:
-  if (mont != NULL) {
-    BN_MONT_CTX_free(mont);
-  }
+  BN_MONT_CTX_free(mont);
+  BN_CTX_end(ctx);
 
   return ret;
 }
