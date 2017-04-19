@@ -104,7 +104,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/ec/gfp_p256.c"),
     (&[], "crypto/ec/gfp_p384.c"),
     (&[], "crypto/limbs/limbs.c"),
-    (&[], "crypto/mem.c"),
     (&[], "crypto/modes/gcm.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
@@ -119,6 +118,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
     (&[X86], "crypto/sha/asm/sha256-586.pl"),
     (&[X86], "crypto/sha/asm/sha512-586.pl"),
+    (&[X86], "crypto/mem/asm/x86-mem.pl"),
 
     (&[X86_64], "crypto/curve25519/x25519-x86_64.c"),
 
@@ -136,6 +136,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/modes/asm/ghash-x86_64.pl"),
     (&[X86_64], "crypto/poly1305/asm/poly1305-x86_64.pl"),
     (&[X86_64], SHA512_X86_64),
+    (&[X86_64], "crypto/mem/asm/x86_64-mem.pl"),
 
     (&[AARCH64, ARM], "crypto/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/cpu-arm-linux.c"),
@@ -152,6 +153,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[ARM], "crypto/poly1305/asm/poly1305-armv4.pl"),
     (&[ARM], "crypto/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/sha/asm/sha512-armv4.pl"),
+    (&[ARM], "crypto/mem/asm/armv4-mem.pl"),
 
     (&[AARCH64], "crypto/bn/asm/armv8-mont.pl"),
     (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
@@ -159,6 +161,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[AARCH64], "crypto/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+    (&[AARCH64], "crypto/mem/asm/armv8-mem.pl"),
 ];
 
 const SHA256_X86_64: &'static str = "crypto/sha/asm/sha256-x86_64.pl";
