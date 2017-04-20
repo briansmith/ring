@@ -250,30 +250,6 @@ extern  {
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }
 
-fn elem_mul(out: &mut Elem, a: &Elem, b: &Elem) {
-    unsafe {
-        GFp_fe_mul(out.as_mut_ptr(), a.as_ptr(), b.as_ptr());
-    }
-}
-
-fn elem_mul_in_place(a: &mut Elem, b: &Elem) {
-    unsafe {
-        GFp_fe_mul(a.as_mut_ptr(), a.as_ptr(), b.as_ptr());
-    }
-}
-
-fn elem_sq(out: &mut Elem, a: &Elem) {
-    unsafe {
-        GFp_fe_sq(out.as_mut_ptr(), a.as_ptr());
-    }
-}
-
-fn elem_sq_in_place(a: &mut Elem) {
-    unsafe {
-        GFp_fe_sq(a.as_mut_ptr(), a.as_ptr());
-    }
-}
-
 /// Invert a field element using Fermat's Little Theorem.
 ///
 /// We are in the situation where we have an input element |a| from the finite
@@ -297,60 +273,80 @@ fn elem_sq_in_place(a: &mut Elem) {
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern fn eddsa_elem_invert(out: &mut Elem, a: &Elem) {
+    // Sets |out| to be |a| * |b| (mod p).
+    fn mul(out: &mut Elem, a: &Elem, b: &Elem) {
+        unsafe { GFp_fe_mul(out.as_mut_ptr(), a.as_ptr(), b.as_ptr()); }
+    }
+
+    // Sets |a| to be |a| * |b| (mod p).
+    fn mul_in_place(a: &mut Elem, b: &Elem) {
+        unsafe { GFp_fe_mul(a.as_mut_ptr(), a.as_ptr(), b.as_ptr()); }
+    }
+
+    // Sets |out| to be |a|**2 (mod p).
+    fn sqr(out: &mut Elem, a: &Elem) {
+        unsafe { GFp_fe_sq(out.as_mut_ptr(), a.as_ptr()); }
+    }
+
+    // Sets |a| to be |a|**2 (mod p).
+    fn sqr_in_place(a: &mut Elem) {
+        unsafe { GFp_fe_sq(a.as_mut_ptr(), a.as_ptr()); }
+    }
+
     let mut t0 = [0i32; ELEM_LIMBS];
     let mut t1 = [0i32; ELEM_LIMBS];
     let mut t2 = [0i32; ELEM_LIMBS];
     let mut t3 = [0i32; ELEM_LIMBS];
 
-    elem_sq(&mut t0, a);
-    elem_sq(&mut t1, &t0);
+    sqr(&mut t0, a);
+    sqr(&mut t1, &t0);
     for _ in 1..2 {
-        elem_sq_in_place(&mut t1);
+        sqr_in_place(&mut t1);
     }
-    elem_mul_in_place(&mut t1, a);
-    elem_mul_in_place(&mut t0, &t1);
-    elem_sq(&mut t2, &t0);
-    elem_mul_in_place(&mut t1, &t2);
-    elem_sq(&mut t2, &t1);
+    mul_in_place(&mut t1, a);
+    mul_in_place(&mut t0, &t1);
+    sqr(&mut t2, &t0);
+    mul_in_place(&mut t1, &t2);
+    sqr(&mut t2, &t1);
     for _ in 1..5 {
-        elem_sq_in_place(&mut t2);
+        sqr_in_place(&mut t2);
     }
-    elem_mul_in_place(&mut t1, &t2);
-    elem_sq(&mut t2, &t1);
+    mul_in_place(&mut t1, &t2);
+    sqr(&mut t2, &t1);
     for _ in 1..10 {
-        elem_sq_in_place(&mut t2);
+        sqr_in_place(&mut t2);
     }
-    elem_mul_in_place(&mut t2, &t1);
-    elem_sq(&mut t3, &t2);
+    mul_in_place(&mut t2, &t1);
+    sqr(&mut t3, &t2);
     for _ in 1..20 {
-        elem_sq_in_place(&mut t3);
+        sqr_in_place(&mut t3);
     }
-    elem_mul_in_place(&mut t2, &t3);
-    elem_sq_in_place(&mut t2);
+    mul_in_place(&mut t2, &t3);
+    sqr_in_place(&mut t2);
     for _ in 1..10 {
-        elem_sq_in_place(&mut t2);
+        sqr_in_place(&mut t2);
     }
-    elem_mul_in_place(&mut t1, &t2);
-    elem_sq(&mut t2, &t1);
+    mul_in_place(&mut t1, &t2);
+    sqr(&mut t2, &t1);
     for _ in 1..50 {
-        elem_sq_in_place(&mut t2);
+        sqr_in_place(&mut t2);
     }
-    elem_mul_in_place(&mut t2, &t1);
-    elem_sq(&mut t3, &t2);
+    mul_in_place(&mut t2, &t1);
+    sqr(&mut t3, &t2);
     for _ in 1..100 {
-        elem_sq_in_place(&mut t3);
+        sqr_in_place(&mut t3);
     }
-    elem_mul_in_place(&mut t2, &t3);
-    elem_sq_in_place(&mut t2);
+    mul_in_place(&mut t2, &t3);
+    sqr_in_place(&mut t2);
     for _ in 1..50 {
-        elem_sq_in_place(&mut t2);
+        sqr_in_place(&mut t2);
     }
-    elem_mul_in_place(&mut t1, &t2);
-    elem_sq_in_place(&mut t1);
+    mul_in_place(&mut t1, &t2);
+    sqr_in_place(&mut t1);
     for _ in 1..5 {
-        elem_sq_in_place(&mut t1);
+        sqr_in_place(&mut t1);
     }
-    elem_mul(out, &t1, &t0);
+    mul(out, &t1, &t0);
 }
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
