@@ -54,13 +54,13 @@ static void hexdump(const uint8_t *in, size_t len) {
   }
 }
 
-static int check_test(const void *actual, const void *expected,
+static int check_test(const void *expected, const void *actual,
                       size_t expected_len, const char *name) {
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
     printf("%s failed.\nExpected: ", name);
-    hexdump(actual, expected_len);
-    printf("\nCalculated: ");
     hexdump(expected, expected_len);
+    printf("\nCalculated: ");
+    hexdump(actual, expected_len);
     printf("\n");
     return 0;
   }
@@ -107,7 +107,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const expected =
       (const uint8_t *)BORINGSSL_bcm_text_dummy_hash;
 
-  if (!check_test(result, expected, sizeof(result), "FIPS integrity test")) {
+  if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
     goto err;
   }
 #endif
