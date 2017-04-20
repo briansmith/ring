@@ -272,7 +272,7 @@ pub use ec::suite_b::ecdsa::{
     ECDSA_P384_SHA384_ASN1, ECDSA_P384_SHA384_FIXED,
 };
 
-pub use ec::eddsa::{
+pub use ec::curve25519::ed25519::{
     EdDSAParameters,
 
     ED25519,

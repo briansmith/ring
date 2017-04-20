@@ -85,7 +85,7 @@ pub use ec::PUBLIC_KEY_MAX_LEN;
 
 pub use ec::suite_b::ecdh::{ECDH_P256, ECDH_P384};
 
-pub use ec::x25519::X25519;
+pub use ec::curve25519::x25519::X25519;
 
 
 /// A key agreement algorithm.
