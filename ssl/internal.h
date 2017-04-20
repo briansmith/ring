@@ -1272,6 +1272,11 @@ uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index);
  * error. */
 int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *sigalgs);
 
+/* tls1_get_legacy_signature_algorithm sets |*out| to the signature algorithm
+ * that should be used with |pkey| in TLS 1.1 and earlier. It returns one on
+ * success and zero if |pkey| may not be used at those versions. */
+int tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey);
+
 /* tls1_choose_signature_algorithm sets |*out| to a signature algorithm for use
  * with |hs|'s private key based on the peer's preferences and the algorithms
  * supported. It returns one on success and zero on error. */

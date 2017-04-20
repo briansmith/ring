@@ -1255,11 +1255,8 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         goto f_err;
       }
       hs->new_session->peer_signature_algorithm = signature_algorithm;
-    } else if (hs->peer_pubkey->type == EVP_PKEY_RSA) {
-      signature_algorithm = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
-    } else if (hs->peer_pubkey->type == EVP_PKEY_EC) {
-      signature_algorithm = SSL_SIGN_ECDSA_SHA1;
-    } else {
+    } else if (!tls1_get_legacy_signature_algorithm(&signature_algorithm,
+                                                    hs->peer_pubkey)) {
       al = SSL_AD_UNSUPPORTED_CERTIFICATE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
       goto f_err;
