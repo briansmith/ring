@@ -669,7 +669,7 @@ int RSA_check_fips(RSA *key) {
   /* Perform partial public key validation of RSA keys (SP 800-89 5.3.3). */
   /* TODO(svaldez): Check that n is composite and not a power of a prime using
    * extended Miller-Rabin. */
-  if (BN_num_bits(key->e) < 16 ||
+  if (BN_num_bits(key->e) <= 16 ||
       BN_num_bits(key->e) > 256 ||
       !BN_is_odd(key->n) ||
       !BN_is_odd(key->e) ||
