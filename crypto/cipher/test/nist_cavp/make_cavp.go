@@ -12,8 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// The make_cavp utility generates cipher_test input files from
-// NIST CAVP Known Answer Test response (.rsp) files.
+// The make_cavp utility generates cipher_test input files from NIST CAVP Known
+// Answer Test response (.rsp) files.
 package main
 
 import (
@@ -27,56 +27,53 @@ import (
 )
 
 var (
-	cipher             = flag.String("cipher", "", "The name of the cipher (supported: aes, tdes). Required.")
+	cipher             = flag.String("cipher", "", "The name of the cipher/mode (supported: aes, tdes, gcm). Required.")
 	cmdLineLabelStr    = flag.String("extra-labels", "", "Comma-separated list of additional label pairs to add (e.g. 'Cipher=AES-128-CBC,Operation=ENCRYPT')")
 	swapIVAndPlaintext = flag.Bool("swap-iv-plaintext", false, "When processing CBC vector files for CTR mode, swap IV and plaintext.")
 )
-
-// The set of supported values for the -cipher flag.
-var allCiphers = map[string]interface{}{"aes": nil, "tdes": nil}
-
-// The character to delimit key-value pairs throughout the file ('=' or ':').
-var kvDelim rune
-
-func parseKeyValue(s string) (key, value string) {
-	if kvDelim == 0 {
-		i := strings.IndexAny(s, "=:")
-		if i != -1 {
-			kvDelim = rune(s[i])
-		}
-	}
-	if i := strings.IndexRune(s, kvDelim); kvDelim != 0 && i != -1 {
-		key, value = s[:i], s[i+1:]
-	} else {
-		key = s
-	}
-	return strings.TrimSpace(key), strings.TrimSpace(value)
-}
 
 type kvPair struct {
 	key, value string
 }
 
-var kvTranslations = map[kvPair]kvPair{
-	{"ENCRYPT", ""}:    {"Operation", "ENCRYPT"},
-	{"DECRYPT", ""}:    {"Operation", "DECRYPT"},
-	{"COUNT", ""}:      {"Count", ""},
-	{"KEY", ""}:        {"Key", ""}, // AES
-	{"KEYs", ""}:       {"Key", ""}, // TDES
-	{"PLAINTEXT", ""}:  {"Plaintext", ""},
-	{"CIPHERTEXT", ""}: {"Ciphertext", ""},
-	{"COUNT", ""}:      {"", ""}, // delete
+// Test generates a FileTest file from a CAVP response file.
+type Test struct {
+	translations map[kvPair]kvPair
+	transform    func(k, v string) []kvPair
+	defaults     map[string]string
+	// kvDelim is the rune that delimits key-value pairs throughout the file ('=' or ':').
+	kvDelim rune
 }
 
-func translateKeyValue(key, value string) (string, string) {
-	if t, ok := kvTranslations[kvPair{key, ""}]; ok {
-		if len(t.value) == 0 && len(value) != 0 {
-			return t.key, value
+func (t *Test) parseKeyValue(s string) (key, value string) {
+	if t.kvDelim == 0 {
+		i := strings.IndexAny(s, "=:")
+		if i != -1 {
+			t.kvDelim = rune(s[i])
 		}
-		return t.key, t.value
 	}
-	if t, ok := kvTranslations[kvPair{key, value}]; ok {
-		return t.key, t.value
+	if i := strings.IndexRune(s, t.kvDelim); t.kvDelim != 0 && i != -1 {
+		key, value = s[:i], s[i+1:]
+		if trimmed := strings.TrimSpace(value); len(trimmed) != 0 {
+			value = trimmed
+		} else {
+			value = " "
+		}
+	} else {
+		key = s
+	}
+	return strings.TrimSpace(key), value
+}
+
+func (t *Test) translateKeyValue(key, value string) (string, string) {
+	if kv, ok := t.translations[kvPair{key, ""}]; ok {
+		if len(kv.value) == 0 && len(value) != 0 {
+			return kv.key, value
+		}
+		return kv.key, kv.value
+	}
+	if kv, ok := t.translations[kvPair{key, value}]; ok {
+		return kv.key, kv.value
 	}
 	return key, value
 }
@@ -85,11 +82,13 @@ func printKeyValue(key, value string) {
 	if len(value) == 0 {
 		fmt.Println(key)
 	} else {
+		// Omit the value if it is " ", i.e. print "key: ", not "key:  ".
+		value = strings.TrimSpace(value)
 		fmt.Printf("%s: %s\n", key, value)
 	}
 }
 
-func generateTest(r io.Reader) {
+func (t *Test) generate(r io.Reader, cmdLineLabelStr string) {
 	s := bufio.NewScanner(r)
 
 	// Label blocks consist of lines of the form "[key]" or "[key =
@@ -99,21 +98,22 @@ func generateTest(r io.Reader) {
 
 	// Auxiliary labels passed as a flag.
 	cmdLineLabels := make(map[string]string)
-	if len(*cmdLineLabelStr) != 0 {
-		pairs := strings.Split(*cmdLineLabelStr, ",")
+	if len(cmdLineLabelStr) != 0 {
+		pairs := strings.Split(cmdLineLabelStr, ",")
 		for _, p := range pairs {
-			key, value := parseKeyValue(p)
+			key, value := t.parseKeyValue(p)
 			cmdLineLabels[key] = value
 		}
 	}
 
-	kvDelim = 0
+	t.kvDelim = 0 // Reset kvDelim for scanning the file.
 
 	// Whether we are in a test or a label section.
 	inLabels := false
 	inTest := false
 
 	n := 0
+	var currentKv map[string]string
 	for s.Scan() {
 		n++
 		line := s.Text()
@@ -123,9 +123,16 @@ func generateTest(r io.Reader) {
 		// Blank line.
 		if len(l) == 0 {
 			if inTest {
+				// Fill in missing defaults at the end of a test case.
+				for k, v := range t.defaults {
+					if _, ok := currentKv[k]; !ok {
+						printKeyValue(k, v)
+					}
+				}
 				fmt.Println()
 			}
 			inTest = false
+			currentKv = make(map[string]string)
 			inLabels = false
 			continue
 		}
@@ -140,8 +147,8 @@ func generateTest(r io.Reader) {
 				inLabels = true
 			}
 
-			k, v := parseKeyValue(l[1 : len(l)-1])
-			k, v = translateKeyValue(k, v)
+			k, v := t.parseKeyValue(l[1 : len(l)-1])
+			k, v = t.translateKeyValue(k, v)
 			if len(k) != 0 {
 				labels[k] = v
 			}
@@ -154,19 +161,31 @@ func generateTest(r io.Reader) {
 			inTest = true
 			for k, v := range cmdLineLabels {
 				printKeyValue(k, v)
+				currentKv[k] = v
 			}
 			for k, v := range labels {
 				printKeyValue(k, v)
+				currentKv[k] = v
 			}
 		}
 
-		k, v := parseKeyValue(l)
-		k, v = translateKeyValue(k, v)
-		if *cipher == "tdes" && k == "Key" {
-			v += v + v // Key1=Key2=Key3
+		// Look up translation and apply transformation (if any).
+		k, v := t.parseKeyValue(l)
+		k, v = t.translateKeyValue(k, v)
+		kvPairs := []kvPair{{k, v}}
+		if t.transform != nil {
+			kvPairs = t.transform(k, v)
 		}
-		if len(k) != 0 {
-			printKeyValue(k, v)
+
+		for _, kv := range kvPairs {
+			k, v := kv.key, kv.value
+			if *cipher == "tdes" && k == "Key" {
+				v += v + v // Key1=Key2=Key3
+			}
+			if len(k) != 0 {
+				printKeyValue(k, v)
+				currentKv[k] = v
+			}
 		}
 	}
 }
@@ -176,22 +195,88 @@ func usage() {
 	flag.PrintDefaults()
 }
 
+func maybeSwapIVAndPlaintext(k, v string) []kvPair {
+	if *swapIVAndPlaintext {
+		if k == "Plaintext" {
+			return []kvPair{{"IV", v}}
+		} else if k == "IV" {
+			return []kvPair{{"Plaintext", v}}
+		}
+	}
+	return []kvPair{{k, v}}
+}
+
+// Test generator for different values of the -cipher flag.
+var testMap = map[string]Test{
+	// Generate cipher_test input file from AESVS .rsp file.
+	"aes": Test{
+		translations: map[kvPair]kvPair{
+			{"ENCRYPT", ""}:    {"Operation", "ENCRYPT"},
+			{"DECRYPT", ""}:    {"Operation", "DECRYPT"},
+			{"COUNT", ""}:      {"Count", ""},
+			{"KEY", ""}:        {"Key", ""},
+			{"PLAINTEXT", ""}:  {"Plaintext", ""},
+			{"CIPHERTEXT", ""}: {"Ciphertext", ""},
+			{"COUNT", ""}:      {"", ""}, // delete
+		},
+		transform: maybeSwapIVAndPlaintext,
+	},
+	// Generate cipher_test input file from TMOVS .rsp file.
+	"tdes": Test{
+		translations: map[kvPair]kvPair{
+			{"ENCRYPT", ""}:    {"Operation", "ENCRYPT"},
+			{"DECRYPT", ""}:    {"Operation", "DECRYPT"},
+			{"COUNT", ""}:      {"Count", ""},
+			{"KEYs", ""}:       {"Key", ""},
+			{"PLAINTEXT", ""}:  {"Plaintext", ""},
+			{"CIPHERTEXT", ""}: {"Ciphertext", ""},
+			{"COUNT", ""}:      {"", ""}, // delete
+		},
+		transform: maybeSwapIVAndPlaintext,
+	},
+	// Generate aead_test input file from GCMVS .rsp file.
+	"gcm": Test{
+		translations: map[kvPair]kvPair{
+			{"Keylen", ""}: {"", ""}, // delete
+			{"IVlen", ""}:  {"", ""}, // delete
+			{"PTlen", ""}:  {"", ""}, // delete
+			{"AADlen", ""}: {"", ""}, // delete
+			{"Taglen", ""}: {"", ""}, // delete
+			{"Count", ""}:  {"", ""}, // delete
+			{"Key", ""}:    {"KEY", ""},
+			{"IV", ""}:     {"NONCE", ""},
+			{"PT", ""}:     {"IN", ""},
+			{"AAD", ""}:    {"AD", ""},
+			{"Tag", ""}:    {"TAG", ""},
+			{"FAIL", ""}:   {"FAILS", " "},
+		},
+		transform: func(k, v string) []kvPair {
+			if k == "FAILS" {
+				// FAIL cases only appear in the decrypt rsp files. Skip encryption for
+				// these.
+				return []kvPair{{"FAILS", " "}, {"NO_SEAL", " "}}
+			}
+			return []kvPair{{k, v}}
+		},
+		defaults: map[string]string{
+			"IN": " ", // FAIL tests don't have IN
+		},
+	},
+}
+
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-
-	if *swapIVAndPlaintext {
-		kvTranslations[kvPair{"PLAINTEXT", ""}] = kvPair{"IV", ""}
-		kvTranslations[kvPair{"IV", ""}] = kvPair{"Plaintext", ""}
-	}
 
 	if len(flag.Args()) == 0 {
 		fmt.Fprintf(os.Stderr, "no input files\n\n")
 		flag.Usage()
 		os.Exit(1)
 	}
-	if _, ok := allCiphers[*cipher]; len(*cipher) == 0 || !ok {
-		fmt.Fprintf(os.Stderr, "invalid cipher: %s\n\n", *cipher)
+
+	test, ok := testMap[*cipher]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "invalid cipher: %q\n\n", *cipher)
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -207,6 +292,6 @@ func main() {
 		defer f.Close()
 
 		fmt.Printf("# File %d: %s\n\n", i+1, p)
-		generateTest(f)
+		test.generate(f, *cmdLineLabelStr)
 	}
 }
