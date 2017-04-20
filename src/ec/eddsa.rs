@@ -250,15 +250,14 @@ extern  {
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }
 
-/// Invert a field element using Fermat's Little Theorem.
+/// Calculate the modular inverse of field element |a| using Fermat's Little
+/// Theorem:
 ///
-/// We are in the situation where we have an input element |a| from the finite
-/// field |F_p|, where |p| is the prime 2^255 - 19. The idea of this algorithm
-/// is to find the inverse of |a| using Fermat's Little Theorem, which implies
-/// the identity: a**(p - 2) == a**-1 (mod p).
+///    a**-1 (mod q) == a**(q - 2) (mod q)
 ///
-/// Since |p| is prime, we have that |a| and |p| are always coprime as
-/// integers, so the above equation holds for any |a|.
+/// The exponent (q - 2) is:
+///
+///    0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb
 ///
 /// Note that we do not explicitly guard against the case |a| == 0, even though
 /// it has no multiplicative inverse.
@@ -273,22 +272,22 @@ extern  {
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern fn eddsa_elem_invert(out: &mut Elem, a: &Elem) {
-    // Sets |out| to be |a| * |b| (mod p).
+    // Sets |out| to be |a| * |b| (mod q).
     fn mul(out: &mut Elem, a: &Elem, b: &Elem) {
         unsafe { GFp_fe_mul(out.as_mut_ptr(), a.as_ptr(), b.as_ptr()); }
     }
 
-    // Sets |a| to be |a| * |b| (mod p).
+    // Sets |a| to be |a| * |b| (mod q).
     fn mul_in_place(a: &mut Elem, b: &Elem) {
         unsafe { GFp_fe_mul(a.as_mut_ptr(), a.as_ptr(), b.as_ptr()); }
     }
 
-    // Sets |out| to be |a|**2 (mod p).
+    // Sets |out| to be |a|**2 (mod q).
     fn sqr(out: &mut Elem, a: &Elem) {
         unsafe { GFp_fe_sq(out.as_mut_ptr(), a.as_ptr()); }
     }
 
-    // Sets |a| to be |a|**2 (mod p).
+    // Sets |a| to be |a|**2 (mod q).
     fn sqr_in_place(a: &mut Elem) {
         unsafe { GFp_fe_sq(a.as_mut_ptr(), a.as_ptr()); }
     }
