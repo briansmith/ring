@@ -204,26 +204,26 @@ int RSA_padding_check_PKCS1_type_2(uint8_t *out, size_t *out_len,
     return 0;
   }
 
-  size_t first_byte_is_zero = constant_time_eq_s(from[0], 0);
-  size_t second_byte_is_two = constant_time_eq_s(from[1], 2);
+  crypto_word_t first_byte_is_zero = constant_time_eq_w(from[0], 0);
+  crypto_word_t second_byte_is_two = constant_time_eq_w(from[1], 2);
 
-  size_t zero_index = 0, looking_for_index = CONSTTIME_TRUE_S;
+  crypto_word_t zero_index = 0, looking_for_index = CONSTTIME_TRUE_W;
   for (size_t i = 2; i < from_len; i++) {
-    size_t equals0 = constant_time_is_zero_s(from[i]);
+    crypto_word_t equals0 = constant_time_is_zero_w(from[i]);
     zero_index =
-        constant_time_select_s(looking_for_index & equals0, i, zero_index);
-    looking_for_index = constant_time_select_s(equals0, 0, looking_for_index);
+        constant_time_select_w(looking_for_index & equals0, i, zero_index);
+    looking_for_index = constant_time_select_w(equals0, 0, looking_for_index);
   }
 
   /* The input must begin with 00 02. */
-  size_t valid_index = first_byte_is_zero;
+  crypto_word_t valid_index = first_byte_is_zero;
   valid_index &= second_byte_is_two;
 
   /* We must have found the end of PS. */
   valid_index &= ~looking_for_index;
 
   /* PS must be at least 8 bytes long, and it starts two bytes into |from|. */
-  valid_index &= constant_time_ge_s(zero_index, 2 + 8);
+  valid_index &= constant_time_ge_w(zero_index, 2 + 8);
 
   /* Skip the zero byte. */
   zero_index++;
@@ -436,17 +436,18 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
     goto err;
   }
 
-  size_t bad = ~constant_time_is_zero_s(CRYPTO_memcmp(db, phash, mdlen));
-  bad |= ~constant_time_is_zero_s(from[0]);
+  crypto_word_t bad = ~constant_time_is_zero_w(CRYPTO_memcmp(db, phash, mdlen));
+  bad |= ~constant_time_is_zero_w(from[0]);
 
-  size_t looking_for_one_byte = CONSTTIME_TRUE_S, one_index = 0;
+  crypto_word_t looking_for_one_byte = CONSTTIME_TRUE_W;
+  size_t one_index = 0;
   for (size_t i = mdlen; i < dblen; i++) {
-    size_t equals1 = constant_time_eq_s(db[i], 1);
-    size_t equals0 = constant_time_eq_s(db[i], 0);
+    crypto_word_t equals1 = constant_time_eq_w(db[i], 1);
+    crypto_word_t equals0 = constant_time_eq_w(db[i], 0);
     one_index =
-        constant_time_select_s(looking_for_one_byte & equals1, i, one_index);
+        constant_time_select_w(looking_for_one_byte & equals1, i, one_index);
     looking_for_one_byte =
-        constant_time_select_s(equals1, 0, looking_for_one_byte);
+        constant_time_select_w(equals1, 0, looking_for_one_byte);
     bad |= looking_for_one_byte & ~equals0;
   }
 

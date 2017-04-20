@@ -61,9 +61,6 @@
 #include "internal.h"
 
 
-/* TODO(davidben): unsigned should be size_t. The various constant_time
- * functions need to be switched to size_t. */
-
 /* MAX_HASH_BIT_COUNT_BYTES is the maximum number of bytes in the hash's length
  * field. (SHA-384/512 have 128-bit length.) */
 #define MAX_HASH_BIT_COUNT_BYTES 16
@@ -73,7 +70,7 @@
  * supported by TLS.) */
 #define MAX_HASH_BLOCK_SIZE 128
 
-int EVP_tls_cbc_remove_padding(size_t *out_padding_ok, size_t *out_len,
+int EVP_tls_cbc_remove_padding(crypto_word_t *out_padding_ok, size_t *out_len,
                                const uint8_t *in, size_t in_len,
                                size_t block_size, size_t mac_size) {
   const size_t overhead = 1 /* padding length byte */ + mac_size;
@@ -85,7 +82,7 @@ int EVP_tls_cbc_remove_padding(size_t *out_padding_ok, size_t *out_len,
 
   size_t padding_length = in[in_len - 1];
 
-  size_t good = constant_time_ge_s(in_len, overhead + padding_length);
+  crypto_word_t good = constant_time_ge_w(in_len, overhead + padding_length);
   /* The padding consists of a length byte at the end of the record and
    * then that many bytes of padding, all with the same value as the
    * length byte. Thus, with the length byte included, there are i+1
@@ -110,7 +107,7 @@ int EVP_tls_cbc_remove_padding(size_t *out_padding_ok, size_t *out_len,
 
   /* If any of the final |padding_length+1| bytes had the wrong value,
    * one or more of the lower eight bits of |good| will be cleared. */
-  good = constant_time_eq_s(0xff, good & 0xff);
+  good = constant_time_eq_w(0xff, good & 0xff);
 
   /* Always treat |padding_length| as zero on error. If, assuming block size of
    * 16, a padding of [<15 arbitrary bytes> 15] treated |padding_length| as 16
@@ -151,7 +148,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
     if (j >= md_size) {
       j -= md_size;
     }
-    size_t is_mac_start = constant_time_eq_s(i, mac_start);
+    crypto_word_t is_mac_start = constant_time_eq_w(i, mac_start);
     mac_started |= is_mac_start;
     uint8_t mac_ended = constant_time_ge_8(i, mac_end);
     rotated_mac[j] |= in[i] & mac_started & ~mac_ended;

@@ -62,6 +62,7 @@
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 
+#include "../internal.h"
 #include "../fipsmodule/modes/internal.h"
 
 #if defined(__cplusplus)
@@ -113,7 +114,7 @@ struct evp_aead_st {
  * If the function returns one, it runs in time independent of the contents of
  * |in|. It is also guaranteed that |*out_len| >= |mac_size|, satisfying
  * |EVP_tls_cbc_copy_mac|'s precondition. */
-int EVP_tls_cbc_remove_padding(size_t *out_padding_ok, size_t *out_len,
+int EVP_tls_cbc_remove_padding(crypto_word_t *out_padding_ok, size_t *out_len,
                                const uint8_t *in, size_t in_len,
                                size_t block_size, size_t mac_size);
 

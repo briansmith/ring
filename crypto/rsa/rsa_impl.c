@@ -773,13 +773,13 @@ const BN_ULONG kBoringSSLRSASqrtTwo[] = {
 const size_t kBoringSSLRSASqrtTwoLen = OPENSSL_ARRAY_SIZE(kBoringSSLRSASqrtTwo);
 
 int rsa_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
-  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(size_t),
-                         size_t_constant_time_functions_too_small);
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small);
   int ret = 0;
   /* Process the words in little-endian order. */
   for (size_t i = 0; i < len; i++) {
-    size_t eq = constant_time_eq_s(a[i], b[i]);
-    size_t lt = constant_time_lt_s(a[i], b[i]);
+    crypto_word_t eq = constant_time_eq_w(a[i], b[i]);
+    crypto_word_t lt = constant_time_lt_w(a[i], b[i]);
     ret = constant_time_select_int(eq, ret, constant_time_select_int(lt, 1, 0));
   }
   return ret;

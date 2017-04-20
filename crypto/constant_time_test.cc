@@ -58,13 +58,13 @@ static uint8_t FromBool8(bool b) {
   return b ? CONSTTIME_TRUE_8 : CONSTTIME_FALSE_8;
 }
 
-static size_t FromBoolS(bool b) {
-  return b ? CONSTTIME_TRUE_S : CONSTTIME_FALSE_S;
+static crypto_word_t FromBoolW(bool b) {
+  return b ? CONSTTIME_TRUE_W : CONSTTIME_FALSE_W;
 }
 
 static const uint8_t test_values_8[] = {0, 1, 2, 20, 32, 127, 128, 129, 255};
 
-static size_t test_values_s[] = {
+static crypto_word_t test_values_w[] = {
     0,
     1,
     1024,
@@ -77,11 +77,11 @@ static size_t test_values_s[] = {
     0xffffffff - 1,
     0xffffffff,
 #endif
-    std::numeric_limits<size_t>::max() / 2 - 1,
-    std::numeric_limits<size_t>::max() / 2,
-    std::numeric_limits<size_t>::max() / 2 + 1,
-    std::numeric_limits<size_t>::max() - 1,
-    std::numeric_limits<size_t>::max(),
+    std::numeric_limits<crypto_word_t>::max() / 2 - 1,
+    std::numeric_limits<crypto_word_t>::max() / 2,
+    std::numeric_limits<crypto_word_t>::max() / 2 + 1,
+    std::numeric_limits<crypto_word_t>::max() - 1,
+    std::numeric_limits<crypto_word_t>::max(),
 };
 
 static int signed_test_values[] = {
@@ -89,26 +89,26 @@ static int signed_test_values[] = {
     32000, -32000, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 1};
 
 TEST(ConstantTimeTest, Test) {
-  for (size_t a : test_values_s) {
+  for (crypto_word_t a : test_values_w) {
     SCOPED_TRACE(a);
 
-    EXPECT_EQ(FromBoolS(a == 0), constant_time_is_zero_s(a));
+    EXPECT_EQ(FromBoolW(a == 0), constant_time_is_zero_w(a));
     EXPECT_EQ(FromBool8(a == 0), constant_time_is_zero_8(a));
 
-    for (size_t b : test_values_s) {
+    for (crypto_word_t b : test_values_w) {
       SCOPED_TRACE(b);
 
-      EXPECT_EQ(FromBoolS(a < b), constant_time_lt_s(a, b));
+      EXPECT_EQ(FromBoolW(a < b), constant_time_lt_w(a, b));
       EXPECT_EQ(FromBool8(a < b), constant_time_lt_8(a, b));
 
-      EXPECT_EQ(FromBoolS(a >= b), constant_time_ge_s(a, b));
+      EXPECT_EQ(FromBoolW(a >= b), constant_time_ge_w(a, b));
       EXPECT_EQ(FromBool8(a >= b), constant_time_ge_8(a, b));
 
-      EXPECT_EQ(FromBoolS(a == b), constant_time_eq_s(a, b));
+      EXPECT_EQ(FromBoolW(a == b), constant_time_eq_w(a, b));
       EXPECT_EQ(FromBool8(a == b), constant_time_eq_8(a, b));
 
-      EXPECT_EQ(a, constant_time_select_s(CONSTTIME_TRUE_S, a, b));
-      EXPECT_EQ(b, constant_time_select_s(CONSTTIME_FALSE_S, a, b));
+      EXPECT_EQ(a, constant_time_select_w(CONSTTIME_TRUE_W, a, b));
+      EXPECT_EQ(b, constant_time_select_w(CONSTTIME_FALSE_W, a, b));
     }
   }
 
@@ -117,10 +117,10 @@ TEST(ConstantTimeTest, Test) {
     for (int b : signed_test_values) {
       SCOPED_TRACE(b);
 
-      EXPECT_EQ(a, constant_time_select_int(CONSTTIME_TRUE_S, a, b));
-      EXPECT_EQ(b, constant_time_select_int(CONSTTIME_FALSE_S, a, b));
+      EXPECT_EQ(a, constant_time_select_int(CONSTTIME_TRUE_W, a, b));
+      EXPECT_EQ(b, constant_time_select_int(CONSTTIME_FALSE_W, a, b));
 
-      EXPECT_EQ(FromBoolS(a == b), constant_time_eq_int(a, b));
+      EXPECT_EQ(FromBoolW(a == b), constant_time_eq_int(a, b));
       EXPECT_EQ(FromBool8(a == b), constant_time_eq_int_8(a, b));
     }
   }

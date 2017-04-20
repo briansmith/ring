@@ -262,7 +262,8 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   /* Remove CBC padding. Code from here on is timing-sensitive with respect to
    * |padding_ok| and |data_plus_mac_len| for CBC ciphers. */
-  size_t padding_ok, data_plus_mac_len;
+  size_t data_plus_mac_len;
+  crypto_word_t padding_ok;
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE) {
     if (!EVP_tls_cbc_remove_padding(
             &padding_ok, &data_plus_mac_len, out, total,
@@ -273,7 +274,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
       return 0;
     }
   } else {
-    padding_ok = CONSTTIME_TRUE_S;
+    padding_ok = CONSTTIME_TRUE_W;
     data_plus_mac_len = total;
     /* |data_plus_mac_len| = |total| = |in_len| at this point. |in_len| has
      * already been checked against the MAC size at the top of the function. */
@@ -332,7 +333,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * safe to simply perform the padding check first, but it would not be under a
    * different choice of MAC location on padding failure. See
    * EVP_tls_cbc_remove_padding. */
-  size_t good =
+  crypto_word_t good =
       constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len), 0);
   good &= padding_ok;
   if (!good) {
