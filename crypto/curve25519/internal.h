@@ -102,6 +102,9 @@ typedef struct {
 } ge_cached;
 
 
+extern void eddsa_elem_invert(fe out, const fe a);
+
+
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

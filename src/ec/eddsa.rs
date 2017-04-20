@@ -238,6 +238,8 @@ fn digest_scalar(digest: digest::Digest) -> Scalar {
 
 extern  {
     fn GFp_ed25519_scalar_mask(a: &mut Scalar);
+    fn GFp_fe_mul(out: *mut i32, a: *const i32, b: *const i32);
+    fn GFp_fe_sq(out: *mut i32, a: *const i32);
     fn GFp_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
                                         a: &ExtPoint, b_coeff: &Scalar);
     fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
@@ -246,6 +248,104 @@ extern  {
     fn GFp_x25519_ge_tobytes(s: &mut Scalar, h: &Point);
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
+}
+
+/// Calculate the modular inverse of field element |a| using Fermat's Little
+/// Theorem:
+///
+///    a**-1 (mod q) == a**(q - 2) (mod q)
+///
+/// The exponent (q - 2) is:
+///
+///    0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb
+///
+/// Note that we do not explicitly guard against the case |a| == 0, even though
+/// it has no multiplicative inverse.
+///
+/// This implementation of the modular exponentiation is ultimately derived
+/// from Daniel J. Bernstein's reference implementation in qhasm, via
+/// BoringSSL, and referenced in [Curve15519]. The overall strategy is to
+/// square and multiply against the fixed base |a| to double and add to the
+/// exponent, reusing intermediate computations as we are able.
+///
+/// [Curve25519]: https://cr.yp.to/ecdh.html#curve25519-paper
+#[doc(hidden)]
+#[no_mangle]
+pub unsafe extern fn eddsa_elem_invert(out: &mut Elem, a: &Elem) {
+    // Sets |out| to be |a| * |b| (mod q).
+    fn mul(out: &mut Elem, a: &Elem, b: &Elem) {
+        unsafe { GFp_fe_mul(out.as_mut_ptr(), a.as_ptr(), b.as_ptr()); }
+    }
+
+    // Sets |a| to be |a| * |b| (mod q).
+    fn mul_in_place(a: &mut Elem, b: &Elem) {
+        unsafe { GFp_fe_mul(a.as_mut_ptr(), a.as_ptr(), b.as_ptr()); }
+    }
+
+    // Sets |out| to be |a|**2 (mod q).
+    fn sqr(out: &mut Elem, a: &Elem) {
+        unsafe { GFp_fe_sq(out.as_mut_ptr(), a.as_ptr()); }
+    }
+
+    // Sets |a| to be |a|**2 (mod q).
+    fn sqr_in_place(a: &mut Elem) {
+        unsafe { GFp_fe_sq(a.as_mut_ptr(), a.as_ptr()); }
+    }
+
+    let mut t0 = [0i32; ELEM_LIMBS];
+    let mut t1 = [0i32; ELEM_LIMBS];
+    let mut t2 = [0i32; ELEM_LIMBS];
+    let mut t3 = [0i32; ELEM_LIMBS];
+
+    sqr(&mut t0, a);
+    sqr(&mut t1, &t0);
+    for _ in 1..2 {
+        sqr_in_place(&mut t1);
+    }
+    mul_in_place(&mut t1, a);
+    mul_in_place(&mut t0, &t1);
+    sqr(&mut t2, &t0);
+    mul_in_place(&mut t1, &t2);
+    sqr(&mut t2, &t1);
+    for _ in 1..5 {
+        sqr_in_place(&mut t2);
+    }
+    mul_in_place(&mut t1, &t2);
+    sqr(&mut t2, &t1);
+    for _ in 1..10 {
+        sqr_in_place(&mut t2);
+    }
+    mul_in_place(&mut t2, &t1);
+    sqr(&mut t3, &t2);
+    for _ in 1..20 {
+        sqr_in_place(&mut t3);
+    }
+    mul_in_place(&mut t2, &t3);
+    sqr_in_place(&mut t2);
+    for _ in 1..10 {
+        sqr_in_place(&mut t2);
+    }
+    mul_in_place(&mut t1, &t2);
+    sqr(&mut t2, &t1);
+    for _ in 1..50 {
+        sqr_in_place(&mut t2);
+    }
+    mul_in_place(&mut t2, &t1);
+    sqr(&mut t3, &t2);
+    for _ in 1..100 {
+        sqr_in_place(&mut t3);
+    }
+    mul_in_place(&mut t2, &t3);
+    sqr_in_place(&mut t2);
+    for _ in 1..50 {
+        sqr_in_place(&mut t2);
+    }
+    mul_in_place(&mut t1, &t2);
+    sqr_in_place(&mut t1);
+    for _ in 1..5 {
+        sqr_in_place(&mut t1);
+    }
+    mul(out, &t1, &t0);
 }
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
