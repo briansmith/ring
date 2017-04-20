@@ -667,14 +667,16 @@ int RSA_check_fips(RSA *key) {
   int ret = 1;
 
   /* Perform partial public key validation of RSA keys (SP 800-89 5.3.3). */
-  /* TODO(svaldez): Check that n is composite and not a power of a prime using
-   * extended Miller-Rabin. */
+  enum bn_primality_result_t primality_result;
   if (BN_num_bits(key->e) <= 16 ||
       BN_num_bits(key->e) > 256 ||
       !BN_is_odd(key->n) ||
       !BN_is_odd(key->e) ||
       !BN_gcd(&small_gcd, key->n, &kSmallFactors, ctx) ||
-      !BN_is_one(&small_gcd)) {
+      !BN_is_one(&small_gcd) ||
+      !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
+                                               BN_prime_checks, ctx, NULL) ||
+      primality_result != bn_non_prime_power_composite) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
     ret = 0;
   }
