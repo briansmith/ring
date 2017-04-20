@@ -88,7 +88,7 @@ $_n0="$num,#14*4";
 $_num="$num,#15*4";	$_bpend=$_num;
 
 $code=<<___;
-#include <openssl/arm_arch.h>
+#include <GFp/arm_arch.h>
 
 .text
 #if defined(__thumb2__)

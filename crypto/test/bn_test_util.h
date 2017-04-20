@@ -123,7 +123,7 @@
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_BN_TEST_UTIL_H
 #define OPENSSL_HEADER_CRYPTO_TEST_BN_TEST_UTIL_H
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
 #include <stdio.h>
 

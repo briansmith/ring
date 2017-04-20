@@ -15,7 +15,7 @@
 #ifndef OPENSSL_HEADER_CURVE25519_INTERNAL_H
 #define OPENSSL_HEADER_CURVE25519_INTERNAL_H
 
-#include <openssl/base.h>
+#include <GFp/base.h>
 
 #include <stdint.h>
 

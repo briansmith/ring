@@ -21,8 +21,8 @@
 
 #include <string.h>
 
-#include <openssl/cpu.h>
-#include <openssl/mem.h>
+#include <GFp/cpu.h>
+#include <GFp/mem.h>
 
 #include "../internal.h"
 

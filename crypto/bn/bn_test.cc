@@ -82,9 +82,9 @@
 
 #include <utility>
 
-#include <openssl/bn.h>
-#include <openssl/err.h>
-#include <openssl/mem.h>
+#include <GFp/bn.h>
+#include <GFp/err.h>
+#include <GFp/mem.h>
 
 #include "../test/bn_test_lib.h"
 #include "../crypto/test/file_test.h"

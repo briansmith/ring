@@ -28,7 +28,7 @@
 #pragma warning(pop)
 #endif
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
 template<typename T, void (*func)(T*)>
 struct OpenSSLDeleter {

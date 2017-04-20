@@ -6,7 +6,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -46,11 +46,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
-#include <openssl/aes.h>
+#include <GFp/aes.h>
 
 #include <assert.h>
 
-#include <openssl/cpu.h>
+#include <GFp/cpu.h>
 
 #include "../internal.h"
 

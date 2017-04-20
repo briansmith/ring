@@ -14,7 +14,7 @@
 
 #include "limbs.h"
 
-#include <openssl/type_check.h>
+#include <GFp/type_check.h>
 
 #include "../internal.h"
 

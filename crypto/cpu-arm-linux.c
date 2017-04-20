@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/cpu.h>
+#include <GFp/cpu.h>
 
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_STATIC_ARMCAP)
 
@@ -22,8 +22,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <openssl/arm_arch.h>
-#include <openssl/mem.h>
+#include <GFp/arm_arch.h>
+#include <GFp/mem.h>
 
 #include "internal.h"
 

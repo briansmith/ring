@@ -20,7 +20,7 @@ compatibility with existing OpenSSL consumers.
 ## Forward declarations
 
 Do not write `typedef struct foo_st FOO` or try otherwise to define BoringSSL's
-types. Including `openssl/base.h` (or `openssl/ossl_typ.h` for consumers who
+types. Including `GFp/base.h` (or `GFp/ossl_typ.h` for consumers who
 wish to be OpenSSL-compatible) will forward-declare each type without importing
 the rest of the library or invasive macros.
 

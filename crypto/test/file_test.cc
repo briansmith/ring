@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/err.h>
+#include <GFp/err.h>
 
 
 FileTest::FileTest(const char *path)

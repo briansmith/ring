@@ -57,8 +57,8 @@
 #include "bn_test_util.h"
 #include "bn_test_lib.h"
 
-#include <openssl/bn.h>
-#include <openssl/err.h>
+#include <GFp/bn.h>
+#include <GFp/err.h>
 
 #include <ctype.h>
 #include <limits.h>

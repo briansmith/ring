@@ -49,7 +49,7 @@
 #ifndef OPENSSL_HEADER_MODES_INTERNAL_H
 #define OPENSSL_HEADER_MODES_INTERNAL_H
 
-#include <openssl/aes.h>
+#include <GFp/aes.h>
 
 #include "../internal.h"
 
@@ -75,7 +75,7 @@ typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
 #define GCM128_SERIALIZED_LEN (GCM128_HTABLE_LEN * 16)
 
 /* This differs from OpenSSL's |gcm128_context| in that it does not have the
- * |key| pointer, in order to make it |memcpy|-friendly. See openssl/modes.h
+ * |key| pointer, in order to make it |memcpy|-friendly. See GFp/modes.h
  * for more info. */
 struct gcm128_context {
   /* Following 6 names follow names in GCM specification */

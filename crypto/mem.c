@@ -54,7 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/mem.h>
+#include <GFp/mem.h>
 
 int GFp_memcmp(const void *in_a, const void *in_b, size_t len) {
   const uint8_t *a = in_a;

@@ -48,17 +48,17 @@
 
 #include <string.h>
 
-#include <openssl/aes.h>
-#include <openssl/cpu.h>
-#include <openssl/err.h>
-#include <openssl/mem.h>
+#include <GFp/aes.h>
+#include <GFp/cpu.h>
+#include <GFp/err.h>
+#include <GFp/mem.h>
 
 #include "internal.h"
 #include "../internal.h"
 #include "../modes/internal.h"
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-#include <openssl/arm_arch.h>
+#include <GFp/arm_arch.h>
 #endif
 
 

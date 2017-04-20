@@ -123,8 +123,8 @@
 #ifndef OPENSSL_HEADER_BN_TEST_LIB_H
 #define OPENSSL_HEADER_BN_TEST_LIB_H
 
-#include <openssl/base.h>
-#include <openssl/bn.h>
+#include <GFp/base.h>
+#include <GFp/bn.h>
 
 #if defined(__cplusplus)
 extern "C" {

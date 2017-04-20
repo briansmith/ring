@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
 #include "../bn/internal.h"
 

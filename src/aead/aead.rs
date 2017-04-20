@@ -18,7 +18,7 @@
 //! generic composition paradigm][AEAD] for an introduction to the concept of
 //! AEADs.
 //!
-//! C analog: `openssl/aead.h`
+//! C analog: `GFp/aead.h`
 //!
 //! Go analog: [`crypto.cipher.AEAD`]
 //!
@@ -638,7 +638,7 @@ mod tests {
         }
         {
             let mut in_out = Vec::from(to_open);
-            assert!(aead::open_in_place(&o_key, &nonce[..1], &ad, prefix_len, 
+            assert!(aead::open_in_place(&o_key, &nonce[..1], &ad, prefix_len,
                                         &mut in_out).is_err());
         }
 

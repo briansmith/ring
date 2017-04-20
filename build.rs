@@ -193,14 +193,14 @@ const RING_INCLUDES: &'static [&'static str] =
       "crypto/test/bn_test_util.h",
       "crypto/test/file_test.h",
       "crypto/test/scoped_types.h",
-      "include/openssl/aes.h",
-      "include/openssl/arm_arch.h",
-      "include/openssl/base.h",
-      "include/openssl/bn.h",
-      "include/openssl/cpu.h",
-      "include/openssl/err.h",
-      "include/openssl/mem.h",
-      "include/openssl/type_check.h"];
+      "include/GFp/aes.h",
+      "include/GFp/arm_arch.h",
+      "include/GFp/base.h",
+      "include/GFp/bn.h",
+      "include/GFp/cpu.h",
+      "include/GFp/err.h",
+      "include/GFp/mem.h",
+      "include/GFp/type_check.h"];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &'static [&'static str] =

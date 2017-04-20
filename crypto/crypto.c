@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-#include <openssl/cpu.h>
+#include <GFp/cpu.h>
 
 #if defined(__linux__)
 #include <sys/syscall.h>
@@ -52,7 +52,7 @@
 uint32_t GFp_ia32cap_P[4] = {0};
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-#include <openssl/arm_arch.h>
+#include <GFp/arm_arch.h>
 
 #if defined(OPENSSL_STATIC_ARMCAP)
 

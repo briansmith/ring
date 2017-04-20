@@ -46,14 +46,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
-#include <openssl/base.h>
+#include <GFp/base.h>
 
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/mem.h>
-#include <openssl/cpu.h>
-#include <openssl/type_check.h>
+#include <GFp/mem.h>
+#include <GFp/cpu.h>
+#include <GFp/type_check.h>
 
 #include "internal.h"
 #include "../internal.h"
@@ -305,7 +305,7 @@ void GFp_gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16],
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-#include <openssl/arm_arch.h>
+#include <GFp/arm_arch.h>
 
 #if __ARM_MAX_ARCH__ >= 8
 #define ARM_PMULL_ASM

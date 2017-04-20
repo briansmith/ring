@@ -106,9 +106,9 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
-#include <openssl/err.h>
+#include <GFp/err.h>
 
 
 int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {

@@ -15,12 +15,12 @@
 #ifndef OPENSSL_HEADER_EC_ECP_NISTZ_H
 #define OPENSSL_HEADER_EC_ECP_NISTZ_H
 
-#include <openssl/base.h>
+#include <GFp/base.h>
 
 #include <assert.h>
 
-#include <openssl/bn.h>
-#include <openssl/type_check.h>
+#include <GFp/bn.h>
+#include <GFp/type_check.h>
 
 #include "../internal.h"
 

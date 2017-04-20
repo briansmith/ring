@@ -15,7 +15,7 @@
 #ifndef OPENSSL_HEADER_EC_ECP_NISTZ384_H
 #define OPENSSL_HEADER_EC_ECP_NISTZ384_H
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
 #include "../limbs/limbs.h"
 

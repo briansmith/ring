@@ -15,8 +15,8 @@
 #ifndef RING_LIMBS_H
 #define RING_LIMBS_H
 
-#include <openssl/base.h>
-#include <openssl/bn.h>
+#include <GFp/base.h>
+#include <GFp/bn.h>
 
 #include <stddef.h>
 

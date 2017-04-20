@@ -330,7 +330,7 @@ instance, For instance:
     const uint8_t *in,
     size_t in_len,
 
-Name public headers like `include/openssl/evp.h` with header guards like
+Name public headers like `include/GFp/evp.h` with header guards like
 `OPENSSL_HEADER_EVP_H`. Name internal headers like
 `crypto/ec/internal.h` with header guards like
 `OPENSSL_HEADER_EC_INTERNAL_H`.

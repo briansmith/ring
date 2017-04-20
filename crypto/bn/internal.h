@@ -123,7 +123,7 @@
 #ifndef OPENSSL_HEADER_BN_INTERNAL_H
 #define OPENSSL_HEADER_BN_INTERNAL_H
 
-#include <openssl/base.h>
+#include <GFp/base.h>
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 #pragma warning(push, 3)

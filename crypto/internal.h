@@ -117,8 +117,8 @@
 
 #include <stddef.h>
 
-#include <openssl/base.h>
-#include <openssl/type_check.h>
+#include <GFp/base.h>
+#include <GFp/type_check.h>
 
 #if defined(_MSC_VER)
 #pragma warning(push, 3)

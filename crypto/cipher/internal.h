@@ -61,12 +61,12 @@
 #define __STDC_CONSTANT_MACROS
 #endif
 
-#include <openssl/base.h>
+#include <GFp/base.h>
 
 #include <assert.h>
 #include <stdint.h>
 
-#include <openssl/err.h>
+#include <GFp/err.h>
 
 #include "../internal.h"
 

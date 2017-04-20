@@ -27,8 +27,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <openssl/bn.h>
-#include <openssl/err.h>
+#include <GFp/bn.h>
+#include <GFp/err.h>
 
 #include "ecp_nistz.h"
 #include "../limbs/limbs.h"

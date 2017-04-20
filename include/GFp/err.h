@@ -109,7 +109,7 @@
 #ifndef OPENSSL_HEADER_ERR_H
 #define OPENSSL_HEADER_ERR_H
 
-#include <openssl/base.h>
+#include <GFp/base.h>
 
 #if defined(__cplusplus)
 extern "C" {
