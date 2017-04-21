@@ -74,11 +74,18 @@ func main() {
 	}
 }
 
+func removeComment(line string) string {
+	if i := strings.Index(line, "#"); i != -1 {
+		return line[:i]
+	}
+	return line
+}
+
 // isSymbolDef returns detects whether line contains a (non-local) symbol
 // definition. If so, it returns the symbol and true. Otherwise it returns ""
 // and false.
 func isSymbolDef(line string) (string, bool) {
-	line = strings.TrimSpace(line)
+	line = strings.TrimSpace(removeComment(line))
 
 	if len(line) > 0 && line[len(line)-1] == ':' && line[0] != '.' {
 		symbol := line[:len(line)-1]
