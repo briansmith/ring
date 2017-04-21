@@ -174,8 +174,6 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
 static const uint64_t kVersionTwoPrime = 0;
 
 RSA *RSA_parse_private_key(CBS *cbs) {
-  BN_CTX *ctx = NULL;
-  BIGNUM *product_of_primes_so_far = NULL;
   RSA *ret = RSA_new();
   if (ret == NULL) {
     return NULL;
@@ -215,13 +213,9 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
-  BN_CTX_free(ctx);
-  BN_free(product_of_primes_so_far);
   return ret;
 
 err:
-  BN_CTX_free(ctx);
-  BN_free(product_of_primes_so_far);
   RSA_free(ret);
   return NULL;
 }
