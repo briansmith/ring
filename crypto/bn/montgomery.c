@@ -273,7 +273,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   }
 
   max = (2 * nl); /* carry is stored separately */
-  if (bn_wexpand(r, max) == NULL) {
+  if (!bn_wexpand(r, max)) {
     return 0;
   }
 
@@ -297,7 +297,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
     rp[nl] = v;
   }
 
-  if (bn_wexpand(ret, nl) == NULL) {
+  if (!bn_wexpand(ret, nl)) {
     return 0;
   }
   ret->top = nl;
@@ -378,7 +378,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
   }
 
-  if (bn_wexpand(r, num) == NULL) {
+  if (!bn_wexpand(r, num)) {
     return 0;
   }
   if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {

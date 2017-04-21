@@ -239,7 +239,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
    * larger than sdiv, we pad snum with enough zeroes without changing its
    * value. */
   if (snum->top <= sdiv->top + 1) {
-    if (bn_wexpand(snum, sdiv->top + 2) == NULL) {
+    if (!bn_wexpand(snum, sdiv->top + 2)) {
       goto err;
     }
     for (i = snum->top; i < sdiv->top + 2; i++) {
@@ -247,7 +247,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
     }
     snum->top = sdiv->top + 2;
   } else {
-    if (bn_wexpand(snum, snum->top + 1) == NULL) {
+    if (!bn_wexpand(snum, snum->top + 1)) {
       goto err;
     }
     snum->d[snum->top] = 0;
@@ -663,7 +663,7 @@ int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
 
   /* Otherwise, first make sure we have enough space in |r|.
    * Note that this will fail if num_words > INT_MAX. */
-  if (bn_wexpand(r, num_words) == NULL) {
+  if (!bn_wexpand(r, num_words)) {
     return 0;
   }
 
@@ -696,7 +696,7 @@ int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   size_t num_words = 1 + (e - 1) / BN_BITS2;
 
   /* Expand |r| to the size of our modulus. */
-  if (bn_wexpand(r, num_words) == NULL) {
+  if (!bn_wexpand(r, num_words)) {
     return 0;
   }
 

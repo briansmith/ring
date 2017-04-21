@@ -591,7 +591,7 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   i = al - bl;
   if (i == 0) {
     if (al == 8) {
-      if (bn_wexpand(rr, 16) == NULL) {
+      if (!bn_wexpand(rr, 16)) {
         goto err;
       }
       rr->top = 16;
@@ -619,19 +619,19 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
         goto err;
       }
       if (al > j || bl > j) {
-        if (bn_wexpand(t, k * 4) == NULL) {
+        if (!bn_wexpand(t, k * 4)) {
           goto err;
         }
-        if (bn_wexpand(rr, k * 4) == NULL) {
+        if (!bn_wexpand(rr, k * 4)) {
           goto err;
         }
         bn_mul_part_recursive(rr->d, a->d, b->d, j, al - j, bl - j, t->d);
       } else {
         /* al <= j || bl <= j */
-        if (bn_wexpand(t, k * 2) == NULL) {
+        if (!bn_wexpand(t, k * 2)) {
           goto err;
         }
-        if (bn_wexpand(rr, k * 2) == NULL) {
+        if (!bn_wexpand(rr, k * 2)) {
           goto err;
         }
         bn_mul_recursive(rr->d, a->d, b->d, j, al - j, bl - j, t->d);
@@ -641,7 +641,7 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
     }
   }
 
-  if (bn_wexpand(rr, top) == NULL) {
+  if (!bn_wexpand(rr, top)) {
     goto err;
   }
   rr->top = top;
@@ -790,7 +790,7 @@ int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
 
   ll = bn_mul_words(bn->d, bn->d, bn->top, w);
   if (ll) {
-    if (bn_wexpand(bn, bn->top + 1) == NULL) {
+    if (!bn_wexpand(bn, bn->top + 1)) {
       return 0;
     }
     bn->d[bn->top++] = ll;
@@ -819,7 +819,7 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   }
 
   max = 2 * al; /* Non-zero (from above) */
-  if (bn_wexpand(rr, max) == NULL) {
+  if (!bn_wexpand(rr, max)) {
     goto err;
   }
 
@@ -838,12 +838,12 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
       j = 1 << (j - 1);
       k = j + j;
       if (al == j) {
-        if (bn_wexpand(tmp, k * 2) == NULL) {
+        if (!bn_wexpand(tmp, k * 2)) {
           goto err;
         }
         bn_sqr_recursive(rr->d, a->d, al, tmp->d);
       } else {
-        if (bn_wexpand(tmp, max) == NULL) {
+        if (!bn_wexpand(tmp, max)) {
           goto err;
         }
         bn_sqr_normal(rr->d, a->d, al, tmp->d);

@@ -75,7 +75,7 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
 
   r->neg = a->neg;
   nw = n / BN_BITS2;
-  if (bn_wexpand(r, a->top + nw + 1) == NULL) {
+  if (!bn_wexpand(r, a->top + nw + 1)) {
     return 0;
   }
   lb = n % BN_BITS2;
@@ -107,12 +107,12 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
 
   if (r != a) {
     r->neg = a->neg;
-    if (bn_wexpand(r, a->top + 1) == NULL) {
+    if (!bn_wexpand(r, a->top + 1)) {
       return 0;
     }
     r->top = a->top;
   } else {
-    if (bn_wexpand(r, a->top + 1) == NULL) {
+    if (!bn_wexpand(r, a->top + 1)) {
       return 0;
     }
   }
@@ -152,7 +152,7 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   i = (BN_num_bits(a) - n + (BN_BITS2 - 1)) / BN_BITS2;
   if (r != a) {
     r->neg = a->neg;
-    if (bn_wexpand(r, i) == NULL) {
+    if (!bn_wexpand(r, i)) {
       return 0;
     }
   } else {
@@ -201,7 +201,7 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   ap = a->d;
   j = i - (ap[i - 1] == 1);
   if (a != r) {
-    if (bn_wexpand(r, j) == NULL) {
+    if (!bn_wexpand(r, j)) {
       return 0;
     }
     r->neg = a->neg;
@@ -236,7 +236,7 @@ int BN_set_bit(BIGNUM *a, int n) {
   i = n / BN_BITS2;
   j = n % BN_BITS2;
   if (a->top <= i) {
-    if (bn_wexpand(a, i + 1) == NULL) {
+    if (!bn_wexpand(a, i + 1)) {
       return 0;
     }
     for (k = a->top; k < i + 1; k++) {

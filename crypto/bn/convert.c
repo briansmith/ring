@@ -90,7 +90,7 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
 
   num_words = ((len - 1) / BN_BYTES) + 1;
   m = (len - 1) % BN_BYTES;
-  if (bn_wexpand(ret, num_words) == NULL) {
+  if (!bn_wexpand(ret, num_words)) {
     if (bn) {
       BN_free(bn);
     }
@@ -294,7 +294,7 @@ static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
     return 0;
   }
   /* |in_len| is the number of hex digits. */
-  if (bn_expand(bn, in_len * 4) == NULL) {
+  if (!bn_expand(bn, in_len * 4)) {
     return 0;
   }
 

@@ -145,7 +145,7 @@ BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src) {
     return dest;
   }
 
-  if (bn_wexpand(dest, src->top) == NULL) {
+  if (!bn_wexpand(dest, src->top)) {
     return NULL;
   }
 
@@ -250,7 +250,7 @@ int BN_set_word(BIGNUM *bn, BN_ULONG value) {
     return 1;
   }
 
-  if (bn_wexpand(bn, 1) == NULL) {
+  if (!bn_wexpand(bn, 1)) {
     return 0;
   }
 
@@ -268,7 +268,7 @@ int BN_set_u64(BIGNUM *bn, uint64_t value) {
     return BN_set_word(bn, (BN_ULONG)value);
   }
 
-  if (bn_wexpand(bn, 2) == NULL) {
+  if (!bn_wexpand(bn, 2)) {
     return 0;
   }
 
@@ -283,7 +283,7 @@ int BN_set_u64(BIGNUM *bn, uint64_t value) {
 }
 
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
-  if (bn_wexpand(bn, num) == NULL) {
+  if (!bn_wexpand(bn, num)) {
     return 0;
   }
   OPENSSL_memmove(bn->d, words, num * sizeof(BN_ULONG));
@@ -306,27 +306,27 @@ void BN_set_negative(BIGNUM *bn, int sign) {
   }
 }
 
-BIGNUM *bn_wexpand(BIGNUM *bn, size_t words) {
+int bn_wexpand(BIGNUM *bn, size_t words) {
   BN_ULONG *a;
 
   if (words <= (size_t)bn->dmax) {
-    return bn;
+    return 1;
   }
 
   if (words > (INT_MAX / (4 * BN_BITS2))) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
-    return NULL;
+    return 0;
   }
 
   if (bn->flags & BN_FLG_STATIC_DATA) {
     OPENSSL_PUT_ERROR(BN, BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
-    return NULL;
+    return 0;
   }
 
   a = OPENSSL_malloc(sizeof(BN_ULONG) * words);
   if (a == NULL) {
     OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    return NULL;
+    return 0;
   }
 
   OPENSSL_memcpy(a, bn->d, sizeof(BN_ULONG) * bn->top);
@@ -335,13 +335,13 @@ BIGNUM *bn_wexpand(BIGNUM *bn, size_t words) {
   bn->d = a;
   bn->dmax = (int)words;
 
-  return bn;
+  return 1;
 }
 
-BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
+int bn_expand(BIGNUM *bn, size_t bits) {
   if (bits + BN_BITS2 - 1 < bits) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
-    return NULL;
+    return 0;
   }
   return bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
 }

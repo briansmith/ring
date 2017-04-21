@@ -651,7 +651,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   j = m->top; /* borrow j */
   if (m->d[j - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    if (bn_wexpand(r, j) == NULL) {
+    if (!bn_wexpand(r, j)) {
       goto err;
     }
     /* 2^(top*BN_BITS2) - m */
@@ -760,7 +760,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
   const int width = 1 << window;
   volatile BN_ULONG *table = (volatile BN_ULONG *)buf;
 
-  if (bn_wexpand(b, top) == NULL) {
+  if (!bn_wexpand(b, top)) {
     return 0;
   }
 
@@ -903,7 +903,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
    * crypto/bn/rsaz_exp.c and accompanying assembly modules. */
   if ((16 == a->top) && (16 == p->top) && (BN_num_bits(m) == 1024) &&
       rsaz_avx2_eligible()) {
-    if (NULL == bn_wexpand(rr, 16)) {
+    if (!bn_wexpand(rr, 16)) {
       goto err;
     }
     RSAZ_1024_mod_exp_avx2(rr->d, a->d, p->d, m->d, mont->RR.d, mont->n0[0]);
