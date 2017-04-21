@@ -346,9 +346,9 @@ void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 *out_key, u128 out_table[16],
-                       int *out_use_aesni_gcm_encrypt,
+                       int *out_is_avx,
                        const uint8_t *gcm_key) {
-  *out_use_aesni_gcm_encrypt = 0;
+  *out_is_avx = 0;
 
   union {
     uint64_t u[2];
@@ -369,7 +369,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
       gcm_init_avx(out_table, H.u);
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
-      *out_use_aesni_gcm_encrypt = 1;
+      *out_is_avx = 1;
       return;
     }
     gcm_init_clmul(out_table, H.u);
@@ -418,7 +418,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 }
 
 void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
-                        block128_f block) {
+                        block128_f block, int is_aesni_encrypt) {
   OPENSSL_memset(ctx, 0, sizeof(*ctx));
   ctx->block = block;
 
@@ -426,11 +426,11 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
   OPENSSL_memset(gcm_key, 0, sizeof(gcm_key));
   (*block)(gcm_key, gcm_key, aes_key);
 
-  int use_aesni_gcm_crypt;
-  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable,
-                    &use_aesni_gcm_crypt, gcm_key);
+  int is_avx;
+  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable, &is_avx,
+                    gcm_key);
 
-  ctx->use_aesni_gcm_crypt = use_aesni_gcm_crypt ? 1 : 0;
+  ctx->use_aesni_gcm_crypt = (is_avx && is_aesni_encrypt) ? 1 : 0;
 }
 
 void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,

@@ -404,7 +404,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aesni_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aesni_encrypt, 1);
     }
     if (out_block) {
       *out_block = (block128_f) aesni_encrypt;
@@ -415,7 +415,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_hw_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_hw_encrypt, 0);
     }
     if (out_block) {
       *out_block = (block128_f) aes_hw_encrypt;
@@ -426,7 +426,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   if (bsaes_capable()) {
     AES_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt, 0);
     }
     if (out_block) {
       *out_block = (block128_f) AES_encrypt;
@@ -440,14 +440,14 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
       *out_block = (block128_f) vpaes_encrypt;
     }
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)vpaes_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)vpaes_encrypt, 0);
     }
     return NULL;
   }
 
   AES_set_encrypt_key(key, key_bytes * 8, aes_key);
   if (gcm_ctx != NULL) {
-    CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt);
+    CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt, 0);
   }
   if (out_block) {
     *out_block = (block128_f) AES_encrypt;
@@ -842,7 +842,7 @@ static int aesni_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   }
   if (key) {
     aesni_set_encrypt_key(key, ctx->key_len * 8, &gctx->ks.ks);
-    CRYPTO_gcm128_init(&gctx->gcm, &gctx->ks, (block128_f)aesni_encrypt);
+    CRYPTO_gcm128_init(&gctx->gcm, &gctx->ks, (block128_f)aesni_encrypt, 1);
     gctx->ctr = (ctr128_f)aesni_ctr32_encrypt_blocks;
     /* If we have an iv can set it directly, otherwise use
      * saved IV. */

@@ -215,16 +215,15 @@ typedef struct gcm128_context GCM128_CONTEXT;
 /* CRYPTO_ghash_init writes a precomputed table of powers of |gcm_key| to
  * |out_table| and sets |*out_mult| and |*out_hash| to (potentially hardware
  * accelerated) functions for performing operations in the GHASH field. If the
- * assembly functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| can be used,
- * |*out_use_aesni_gcm_crypt| will be true. */
-void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash, u128
-    *out_key, u128 out_table[16], int *out_use_aesni_gcm_crypt, const uint8_t
-    *gcm_key);
+ * AVX implementation was used |*out_is_avx| will be true. */
+void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
+                       u128 *out_key, u128 out_table[16], int *out_is_avx,
+                       const uint8_t *gcm_key);
 
 /* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
- * the given key. */
+ * the given key. |is_aesni_encrypt| is one if |block| is |aesni_encrypt|. */
 OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
-                                       block128_f block);
+                                       block128_f block, int is_aesni_encrypt);
 
 /* CRYPTO_gcm128_setiv sets the IV (nonce) for |ctx|. The |key| must be the
  * same key that was passed to |CRYPTO_gcm128_init|. */

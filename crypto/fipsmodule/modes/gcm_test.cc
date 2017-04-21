@@ -348,7 +348,7 @@ static int run_test_case(unsigned test_num, const struct test_case *test) {
     goto out;
   }
 
-  CRYPTO_gcm128_init(&ctx, &aes_key, (block128_f) AES_encrypt);
+  CRYPTO_gcm128_init(&ctx, &aes_key, (block128_f) AES_encrypt, 0);
   CRYPTO_gcm128_setiv(&ctx, &aes_key, nonce, nonce_len);
   OPENSSL_memset(out, 0, plaintext_len);
   if (additional_data) {
