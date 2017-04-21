@@ -58,7 +58,7 @@ static void CheckRepresentation(T value) {
 
 TEST(CompilerTest, IntegerRepresentation) {
   EXPECT_EQ(8, CHAR_BIT);
-  EXPECT_EQ(0xff, UCHAR_MAX);
+  EXPECT_EQ(0xff, static_cast<int>(UCHAR_MAX));
 
   // uint8_t is assumed to be unsigned char. I.e., casting to uint8_t should be
   // as good as unsigned char for strict aliasing purposes.
