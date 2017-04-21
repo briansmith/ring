@@ -233,10 +233,6 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				continue
 			}
 
-			if parts[0] == "leaq" {
-				line = strings.Replace(line, "BORINGSSL_bcm_text_dummy_", "BORINGSSL_bcm_text_", -1)
-			}
-
 			target := strings.SplitN(parts[1], ",", 2)[0]
 			if strings.HasSuffix(target, "(%rip)") {
 				target = target[:len(target)-6]

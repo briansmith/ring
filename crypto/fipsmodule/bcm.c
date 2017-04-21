@@ -77,12 +77,11 @@ static int check_test(const void *expected, const void *actual,
 
 
 #ifndef OPENSSL_ASAN
-/* These functions are removed by delocate.go and references to them are
- * rewritten to point to the start and end of the module, and the location of
- * the integrity hash. */
-static void BORINGSSL_bcm_text_dummy_start(void) {}
-static void BORINGSSL_bcm_text_dummy_end(void) {}
-static void BORINGSSL_bcm_text_dummy_hash(void) {}
+/* These symbols are filled in by delocate.go. They point to the start and end
+ * of the module, and the location of the integrity hash, respectively. */
+extern const uint8_t BORINGSSL_bcm_text_start[];
+extern const uint8_t BORINGSSL_bcm_text_end[];
+extern const uint8_t BORINGSSL_bcm_text_hash[];
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) __attribute__((constructor));
@@ -91,8 +90,8 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   CRYPTO_library_init();
 
 #ifndef OPENSSL_ASAN
-  const uint8_t *const start = (const uint8_t *)BORINGSSL_bcm_text_dummy_start;
-  const uint8_t *const end = (const uint8_t *)BORINGSSL_bcm_text_dummy_end;
+  const uint8_t *const start = BORINGSSL_bcm_text_start;
+  const uint8_t *const end = BORINGSSL_bcm_text_end;
 
   static const uint8_t kHMACKey[32] = {0};
   uint8_t result[SHA256_DIGEST_LENGTH];
@@ -104,8 +103,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
-  const uint8_t *const expected =
-      (const uint8_t *)BORINGSSL_bcm_text_dummy_hash;
+  const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
     goto err;
