@@ -482,12 +482,8 @@ int BN_is_prime_ex(const BIGNUM *candidate, int checks, BN_CTX *ctx, BN_GENCB *c
   return BN_is_prime_fasttest_ex(candidate, checks, ctx, 0, cb);
 }
 
-int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
+int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx,
                             int do_trial_division, BN_GENCB *cb) {
-  int i, ret = -1;
-  BN_CTX *ctx = NULL;
-  const BIGNUM *A = NULL;
-
   if (BN_cmp(a, BN_value_one()) <= 0) {
     return 0;
   }
@@ -503,10 +499,10 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
   }
 
   if (do_trial_division) {
-    for (i = 1; i < NUMPRIMES; i++) {
+    for (int i = 1; i < NUMPRIMES; i++) {
       BN_ULONG mod = BN_mod_word(a, primes[i]);
       if (mod == (BN_ULONG)-1) {
-        goto err;
+        return -1;
       }
       if (mod == 0) {
         return BN_is_word(a, primes[i]);
@@ -514,44 +510,29 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
     }
 
     if (!BN_GENCB_call(cb, 1, -1)) {
-      goto err;
+      return -1;
     }
   }
 
-  if (ctx_passed != NULL) {
-    ctx = ctx_passed;
-  } else if ((ctx = BN_CTX_new()) == NULL) {
-    goto err;
-  }
-  BN_CTX_start(ctx);
-
-  /* A := abs(a) */
-  if (a->neg) {
-    BIGNUM *t = BN_CTX_get(ctx);
-    if (t == NULL || !BN_copy(t, a)) {
-      goto err;
+  int ret = -1;
+  BN_CTX *ctx_allocated = NULL;
+  if (ctx == NULL) {
+    ctx_allocated = BN_CTX_new();
+    if (ctx_allocated == NULL) {
+      return -1;
     }
-    t->neg = 0;
-    A = t;
-  } else {
-    A = a;
+    ctx = ctx_allocated;
   }
 
   enum bn_primality_result_t result;
-  if (!BN_enhanced_miller_rabin_primality_test(&result, A, checks, ctx, cb)) {
+  if (!BN_enhanced_miller_rabin_primality_test(&result, a, checks, ctx, cb)) {
     goto err;
   }
 
   ret = (result == bn_probably_prime);
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    if (ctx_passed == NULL) {
-      BN_CTX_free(ctx);
-    }
-  }
-
+  BN_CTX_free(ctx_allocated);
   return ret;
 }
 
@@ -613,10 +594,8 @@ int BN_enhanced_miller_rabin_primality_test(
 
   /* Montgomery setup for computations mod A */
   mont = BN_MONT_CTX_new();
-  if (mont == NULL) {
-    goto err;
-  }
-  if (!BN_MONT_CTX_set(mont, w, ctx)) {
+  if (mont == NULL ||
+      !BN_MONT_CTX_set(mont, w, ctx)) {
     goto err;
   }
 

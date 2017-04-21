@@ -2739,6 +2739,26 @@ static bool TestPrimeChecking(BN_CTX *ctx) {
     }
   }
 
+  // Negative numbers are not prime.
+  if (!BN_set_word(p.get(), 7)) {
+    return false;
+  }
+  BN_set_negative(p.get(), 1);
+  if (!BN_primality_test(&is_probably_prime_1, p.get(), BN_prime_checks, ctx,
+                         false /* do_trial_division */,
+                         nullptr /* callback */) ||
+      is_probably_prime_1 != 0 ||
+      !BN_primality_test(&is_probably_prime_2, p.get(), BN_prime_checks, ctx,
+                         true /* do_trial_division */,
+                         nullptr /* callback */) ||
+      is_probably_prime_2 != 0) {
+    fprintf(stderr,
+            "TestPrimeChecking failed for -7 (is_prime: 0 vs %d without "
+            "trial division vs %d with it)\n",
+            is_probably_prime_1, is_probably_prime_2);
+    return false;
+  }
+
   return true;
 }
 
