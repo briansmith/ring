@@ -699,10 +699,16 @@ enum bn_primality_result_t {
 };
 
 /* BN_enhanced_miller_rabin_primality_test tests whether |w| is probably a prime
- * number using the Enhanced Miller-Rabin test with |iterations| iterations and
- * returns the result in |out_result|. It returns one on success and zero on
- * failure. If |cb| is not NULL, then it is called during each iteration of the
- * primality test. */
+ * number using the Enhanced Miller-Rabin Test (FIPS 186-4 C.3.2) with
+ * |iterations| iterations and returns the result in |out_result|. Enhanced
+ * Miller-Rabin tests primality for odd integers greater than 3, returning
+ * |bn_probably_prime| if the number is probably prime,
+ * |bn_non_prime_power_composite| if the number is a composite that is not the
+ * power of a single prime, and |bn_composite| otherwise.  If |iterations| is
+ * |BN_prime_checks|, then a value that results in a false positive rate lower
+ * than the number-field sieve security level of |w| is used. It returns one on
+ * success and zero on failure. If |cb| is not NULL, then it is called during
+ * each iteration of the primality test. */
 int BN_enhanced_miller_rabin_primality_test(
     enum bn_primality_result_t *out_result, const BIGNUM *w, int iterations,
     BN_CTX *ctx, BN_GENCB *cb);
@@ -714,9 +720,10 @@ int BN_enhanced_miller_rabin_primality_test(
  * If |do_trial_division| is non-zero then |candidate| will be tested against a
  * list of small primes before Miller-Rabin tests. The probability of this
  * function returning a false positive is 2^{2*checks}. If |checks| is
- * |BN_prime_checks| then a value that results in approximately 2^{-80} false
- * positive probability is used. If |cb| is not NULL then it is called during
- * the checking process. See the comment above |BN_GENCB|.
+ * |BN_prime_checks| then a value that results in a false positive rate lower
+ * than the number-field sieve security level of |candidate| is used. If |cb| is
+ * not NULL then it is called during the checking process. See the comment above
+ * |BN_GENCB|.
  *
  * The function returns one on success and zero on error.
  *
@@ -732,9 +739,10 @@ OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
  * If |do_trial_division| is non-zero then |candidate| will be tested against a
  * list of small primes before Miller-Rabin tests. The probability of this
  * function returning one when |candidate| is composite is 2^{2*checks}. If
- * |checks| is |BN_prime_checks| then a value that results in approximately
- * 2^{-80} false positive probability is used. If |cb| is not NULL then it is
- * called during the checking process. See the comment above |BN_GENCB|.
+ * |checks| is |BN_prime_checks| then a value that results in a false positive
+ * rate lower than the number-field sieve security level of |candidate| is used.
+ * If |cb| is not NULL then it is called during the checking process. See the
+ * comment above |BN_GENCB|.
  *
  * WARNING: deprecated. Use |BN_primality_test|. */
 OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
@@ -967,5 +975,6 @@ BORINGSSL_MAKE_DELETER(BN_MONT_CTX, BN_MONT_CTX_free)
 #define BN_R_TOO_MANY_TEMPORARY_VARIABLES 116
 #define BN_R_BAD_ENCODING 117
 #define BN_R_ENCODE_ERROR 118
+#define BN_R_INVALID_INPUT 119
 
 #endif  /* OPENSSL_HEADER_BN_H */
