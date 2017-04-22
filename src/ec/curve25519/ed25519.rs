@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use {bssl, c, digest, error, private, rand, signature};
+use {digest, error, private, rand, signature};
 use super::ops::{ELEM_LEN, ExtPoint, Point};
 use untrusted;
 
@@ -109,15 +109,11 @@ impl<'a> Ed25519KeyPair {
         unsafe {
             GFp_x25519_ge_scalarmult_base(&mut a, &scalar);
         }
-        let mut public_key = [0; PUBLIC_KEY_LEN];
-        unsafe {
-            GFp_ge_p3_tobytes(&mut public_key, &a);
-        }
 
         Ed25519KeyPair {
             private_scalar: scalar,
             private_prefix: prefix,
-            public_key: public_key,
+            public_key: a.into_encoded_point(),
         }
     }
 
@@ -148,9 +144,8 @@ impl<'a> Ed25519KeyPair {
             let mut r = ExtPoint::new_at_infinity();
             unsafe {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
-                GFp_ge_p3_tobytes(signature_r, &r);
             }
-
+            signature_r.copy_from_slice(&r.into_encoded_point());
             let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
@@ -194,10 +189,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
             return Err(error::Unspecified);
         }
 
-        let mut a = ExtPoint::new_at_infinity();
-        try!(bssl::map_result(unsafe {
-            GFp_x25519_ge_frombytes_vartime(&mut a, public_key)
-        }));
+        let mut a = try!(ExtPoint::from_encoded_point_vartime(public_key));
         a.invert_vartime();
 
         let h_digest =
@@ -208,8 +200,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         unsafe {
             GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s)
         };
-        let mut r_check = [0u8; ELEM_LEN];
-        unsafe { GFp_x25519_ge_tobytes(&mut r_check, &r) };
+        let r_check = r.into_encoded_point();
         if signature_r != r_check {
             return Err(error::Unspecified);
         }
@@ -241,10 +232,7 @@ extern  {
     fn GFp_ed25519_scalar_mask(a: &mut Scalar);
     fn GFp_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
                                         a: &ExtPoint, b_coeff: &Scalar);
-    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
-    fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &Scalar) -> c::int;
     fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
-    fn GFp_x25519_ge_tobytes(s: &mut Scalar, h: &Point);
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }
