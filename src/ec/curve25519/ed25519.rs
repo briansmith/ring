@@ -15,6 +15,7 @@
 //! EdDSA Signatures.
 
 use {bssl, c, digest, error, private, rand, signature};
+use super::ops::{ELEM_LEN, ExtPoint, Point};
 use untrusted;
 
 /// Parameters for EdDSA signing and verification.
@@ -247,56 +248,6 @@ extern  {
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }
-
-// Keep this in sync with `ge_p3` in curve25519/internal.h.
-#[repr(C)]
-struct ExtPoint {
-    x: Elem,
-    y: Elem,
-    z: Elem,
-    t: Elem,
-}
-
-impl ExtPoint {
-    fn new_at_infinity() -> Self {
-        ExtPoint {
-            x: [0; ELEM_LIMBS],
-            y: [0; ELEM_LIMBS],
-            z: [0; ELEM_LIMBS],
-            t: [0; ELEM_LIMBS],
-        }
-    }
-
-    fn invert_vartime(&mut self) {
-        for i in 0..ELEM_LIMBS {
-            self.x[i] = -self.x[i];
-            self.t[i] = -self.t[i];
-        }
-    }
-}
-
-// Keep this in sync with `ge_p2` in curve25519/internal.h.
-#[repr(C)]
-struct Point {
-    x: Elem,
-    y: Elem,
-    z: Elem,
-}
-
-impl Point {
-    fn new_at_infinity() -> Self {
-        Point {
-            x: [0; ELEM_LIMBS],
-            y: [0; ELEM_LIMBS],
-            z: [0; ELEM_LIMBS],
-        }
-    }
-}
-
-// Keep this in sync with `fe` in curve25519/internal.h.
-type Elem = [i32; ELEM_LIMBS];
-const ELEM_LIMBS: usize = 10;
-const ELEM_LEN: usize = 32;
 
 type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_LEN;
