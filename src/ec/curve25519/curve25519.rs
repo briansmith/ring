@@ -12,7 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Elliptic curve operations on Curve25519.
+//! Elliptic curve operations and schemes using Curve25519.
 
 pub mod ed25519;
 pub mod x25519;
+
+mod ops;

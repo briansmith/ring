@@ -49,7 +49,7 @@ void GFp_x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
  * t[3]+2^102 t[4]+...+2^230 t[9]. Bounds on each t[i] vary depending on
  * context.
  *
- * Keep in sync with `Elem` and `ELEM_LIMBS` in eddsa.rs. */
+ * Keep in sync with `Elem` and `ELEM_LIMBS` in curve25519/ops.rs. */
 typedef int32_t fe[10];
 
 /* ge means group element.
@@ -65,7 +65,7 @@ typedef int32_t fe[10];
  *   ge_precomp (Duif): (y+x,y-x,2dxy)
  */
 
-/* Keep in sync with `Point` in eddsa.rs. */
+/* Keep in sync with `Point` in curve25519/ops.rs. */
 typedef struct {
   fe X;
   fe Y;
@@ -73,7 +73,7 @@ typedef struct {
 } ge_p2;
 
 
-/* Keep in sync with `ExtPoint` in eddsa.rs. */
+/* Keep in sync with `ExtPoint` in curve25519/ops.rs. */
 typedef struct {
   fe X;
   fe Y;
