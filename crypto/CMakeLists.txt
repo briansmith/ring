@@ -238,6 +238,7 @@ add_executable(
   bio/bio_test.cc
   bytestring/bytestring_test.cc
   chacha/chacha_test.cc
+  cmac/cmac_test.cc
   compiler_test.cc
   constant_time_test.cc
   curve25519/x25519_test.cc

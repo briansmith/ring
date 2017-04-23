@@ -32,7 +32,6 @@
 	["crypto/cipher/cipher_test", "crypto/cipher/test/nist_cavp/aes_256_ctr.txt"],
 	["crypto/cipher/cipher_test", "crypto/cipher/test/nist_cavp/tdes_cbc.txt"],
 	["crypto/cipher/cipher_test", "crypto/cipher/test/nist_cavp/tdes_ecb.txt"],
-	["crypto/cmac/cmac_test"],
 	["crypto/crypto_test"],
 	["crypto/curve25519/ed25519_test", "crypto/curve25519/ed25519_tests.txt"],
 	["crypto/curve25519/spake25519_test"],
