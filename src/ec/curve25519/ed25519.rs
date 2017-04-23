@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use {digest, error, private, rand, signature};
-use super::ops::{ELEM_LEN, ExtPoint, Point};
+use super::ops::*;
 use untrusted;
 
 /// Parameters for EdDSA signing and verification.
@@ -244,12 +244,6 @@ type Prefix = [u8; PREFIX_LEN];
 const PREFIX_LEN: usize = digest::SHA512_OUTPUT_LEN - SCALAR_LEN;
 
 const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
-
-type Scalar = [u8; SCALAR_LEN];
-const SCALAR_LEN: usize = 32;
-
-type UnreducedScalar = [u8; UNREDUCED_SCALAR_LEN];
-const UNREDUCED_SCALAR_LEN: usize = SCALAR_LEN * 2;
 
 type Seed = [u8; SEED_LEN];
 const SEED_LEN: usize = 32;

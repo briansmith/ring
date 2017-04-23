@@ -24,6 +24,12 @@ const ELEM_LIMBS: usize = 10;
 type EncodedPoint = [u8; ELEM_LEN];
 pub const ELEM_LEN: usize = 32;
 
+pub type Scalar = [u8; SCALAR_LEN];
+pub const SCALAR_LEN: usize = 32;
+
+pub type UnreducedScalar = [u8; UNREDUCED_SCALAR_LEN];
+const UNREDUCED_SCALAR_LEN: usize = SCALAR_LEN * 2;
+
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
 #[repr(C)]
 pub struct ExtPoint {
