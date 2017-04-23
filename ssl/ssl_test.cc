@@ -306,57 +306,39 @@ static const char *kBadCurvesLists[] = {
   ":X25519:P-256",
 };
 
-static void PrintCipherPreferenceList(ssl_cipher_preference_list_st *list) {
+static std::string CipherListToString(ssl_cipher_preference_list_st *list) {
   bool in_group = false;
+  std::string ret;
   for (size_t i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(list->ciphers, i);
     if (!in_group && list->in_group_flags[i]) {
-      fprintf(stderr, "\t[\n");
+      ret += "\t[\n";
       in_group = true;
     }
-    fprintf(stderr, "\t");
+    ret += "\t";
     if (in_group) {
-      fprintf(stderr, "  ");
+      ret += "  ";
     }
-    fprintf(stderr, "%s\n", SSL_CIPHER_get_name(cipher));
+    ret += SSL_CIPHER_get_name(cipher);
+    ret += "\n";
     if (in_group && !list->in_group_flags[i]) {
-      fprintf(stderr, "\t]\n");
+      ret += "\t]\n";
       in_group = false;
     }
   }
+  return ret;
 }
 
-static bool TestCipherRule(const CipherTest &t) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
+static bool CipherListsEqual(ssl_cipher_preference_list_st *list,
+                             const std::vector<ExpectedCipher> &expected) {
+  if (sk_SSL_CIPHER_num(list->ciphers) != expected.size()) {
     return false;
   }
 
-  if (!SSL_CTX_set_cipher_list(ctx.get(), t.rule)) {
-    fprintf(stderr, "Error testing cipher rule '%s'\n", t.rule);
-    return false;
-  }
-
-  if (!SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule) != t.strict_fail) {
-    fprintf(stderr, "Unexpected strict failure result testing cipher rule '%s':"
-            " expected %d\n", t.rule, t.strict_fail);
-    return false;
-  }
-
-  // Compare the two lists.
-  if (sk_SSL_CIPHER_num(ctx->cipher_list->ciphers) != t.expected.size()) {
-    fprintf(stderr, "Error: cipher rule '%s' evaluated to:\n", t.rule);
-    PrintCipherPreferenceList(ctx->cipher_list);
-    return false;
-  }
-
-  for (size_t i = 0; i < t.expected.size(); i++) {
-    const SSL_CIPHER *cipher =
-        sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i);
-    if (t.expected[i].id != SSL_CIPHER_get_id(cipher) ||
-        t.expected[i].in_group_flag != ctx->cipher_list->in_group_flags[i]) {
-      fprintf(stderr, "Error: cipher rule '%s' evaluated to:\n", t.rule);
-      PrintCipherPreferenceList(ctx->cipher_list);
+  for (size_t i = 0; i < expected.size(); i++) {
+    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(list->ciphers, i);
+    if (expected[i].id != SSL_CIPHER_get_id(cipher) ||
+        expected[i].in_group_flag != list->in_group_flags[i]) {
       return false;
     }
   }
@@ -364,99 +346,72 @@ static bool TestCipherRule(const CipherTest &t) {
   return true;
 }
 
-static bool TestRuleDoesNotIncludeNull(const char *rule) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_server_method()));
-  if (!ctx) {
-    return false;
-  }
-  if (!SSL_CTX_set_strict_cipher_list(ctx.get(), rule)) {
-    fprintf(stderr, "Error: cipher rule '%s' failed\n", rule);
-    return false;
-  }
-  for (size_t i = 0; i < sk_SSL_CIPHER_num(ctx->cipher_list->ciphers); i++) {
-    if (SSL_CIPHER_is_NULL(sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i))) {
-      fprintf(stderr, "Error: cipher rule '%s' includes NULL\n",rule);
-      return false;
-    }
-  }
-  return true;
-}
+TEST(SSLTest, CipherRules) {
+  for (const CipherTest &t : kCipherTests) {
+    SCOPED_TRACE(t.rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
 
-static bool TestCipherRules() {
-  for (const CipherTest &test : kCipherTests) {
-    if (!TestCipherRule(test)) {
-      return false;
+    // Test lax mode.
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
+    EXPECT_TRUE(CipherListsEqual(ctx->cipher_list, t.expected))
+        << "Cipher rule evaluated to:\n"
+        << CipherListToString(ctx->cipher_list);
+
+    // Test strict mode.
+    if (t.strict_fail) {
+      EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
+    } else {
+      ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
+      EXPECT_TRUE(CipherListsEqual(ctx->cipher_list, t.expected))
+          << "Cipher rule evaluated to:\n"
+          << CipherListToString(ctx->cipher_list);
     }
   }
 
   for (const char *rule : kBadRules) {
-    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_server_method()));
-    if (!ctx) {
-      return false;
-    }
-    if (SSL_CTX_set_cipher_list(ctx.get(), rule)) {
-      fprintf(stderr, "Cipher rule '%s' unexpectedly succeeded\n", rule);
-      return false;
-    }
+    SCOPED_TRACE(rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), rule));
     ERR_clear_error();
   }
 
   for (const char *rule : kMustNotIncludeNull) {
-    if (!TestRuleDoesNotIncludeNull(rule)) {
-      return false;
+    SCOPED_TRACE(rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
+    for (size_t i = 0; i < sk_SSL_CIPHER_num(ctx->cipher_list->ciphers); i++) {
+      EXPECT_FALSE(SSL_CIPHER_is_NULL(
+          sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i)));
     }
   }
-
-  return true;
 }
 
-static bool TestCurveRule(const CurveTest &t) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
-    return false;
-  }
+TEST(SSLTest, CurveRules) {
+  for (const CurveTest &t : kCurveTests) {
+    SCOPED_TRACE(t.rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
 
-  if (!SSL_CTX_set1_curves_list(ctx.get(), t.rule)) {
-    fprintf(stderr, "Error testing curves list '%s'\n", t.rule);
-    return false;
-  }
-
-  // Compare the two lists.
-  if (ctx->supported_group_list_len != t.expected.size()) {
-    fprintf(stderr, "Error testing curves list '%s': length\n", t.rule);
-    return false;
-  }
-
-  for (size_t i = 0; i < t.expected.size(); i++) {
-    if (t.expected[i] != ctx->supported_group_list[i]) {
-      fprintf(stderr, "Error testing curves list '%s': mismatch\n", t.rule);
-      return false;
-    }
-  }
-
-  return true;
-}
-
-static bool TestCurveRules() {
-  for (const CurveTest &test : kCurveTests) {
-    if (!TestCurveRule(test)) {
-      return false;
+    ASSERT_TRUE(SSL_CTX_set1_curves_list(ctx.get(), t.rule));
+    ASSERT_EQ(t.expected.size(), ctx->supported_group_list_len);
+    for (size_t i = 0; i < t.expected.size(); i++) {
+      EXPECT_EQ(t.expected[i], ctx->supported_group_list[i]);
     }
   }
 
   for (const char *rule : kBadCurvesLists) {
-    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(SSLv23_server_method()));
-    if (!ctx) {
-      return false;
-    }
-    if (SSL_CTX_set1_curves_list(ctx.get(), rule)) {
-      fprintf(stderr, "Curves list '%s' unexpectedly succeeded\n", rule);
-      return false;
-    }
+    SCOPED_TRACE(rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    EXPECT_FALSE(SSL_CTX_set1_curves_list(ctx.get(), rule));
     ERR_clear_error();
   }
-
-  return true;
 }
 
 // kOpenSSLSession is a serialized SSL_SESSION.
@@ -770,19 +725,6 @@ static bool TestDefaultVersion(uint16_t min_version, uint16_t max_version,
   return true;
 }
 
-static bool CipherGetRFCName(std::string *out, uint16_t value) {
-  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(value);
-  if (cipher == NULL) {
-    return false;
-  }
-  bssl::UniquePtr<char> rfc_name(SSL_CIPHER_get_rfc_name(cipher));
-  if (!rfc_name) {
-    return false;
-  }
-  out->assign(rfc_name.get());
-  return true;
-}
-
 typedef struct {
   int id;
   const char *rfc_name;
@@ -810,22 +752,17 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
     {TLS1_CK_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256"},
 };
 
-static bool TestCipherGetRFCName(void) {
-  for (size_t i = 0;
-       i < OPENSSL_ARRAY_SIZE(kCipherRFCNameTests); i++) {
-    const CIPHER_RFC_NAME_TEST *test = &kCipherRFCNameTests[i];
-    std::string rfc_name;
-    if (!CipherGetRFCName(&rfc_name, test->id & 0xffff)) {
-      fprintf(stderr, "SSL_CIPHER_get_rfc_name failed\n");
-      return false;
-    }
-    if (rfc_name != test->rfc_name) {
-      fprintf(stderr, "SSL_CIPHER_get_rfc_name: got '%s', wanted '%s'\n",
-              rfc_name.c_str(), test->rfc_name);
-      return false;
-    }
+TEST(SSLTest, CipherGetRFCName) {
+  for (const CIPHER_RFC_NAME_TEST &t : kCipherRFCNameTests) {
+    SCOPED_TRACE(t.rfc_name);
+
+    const SSL_CIPHER *cipher = SSL_get_cipher_by_value(t.id & 0xffff);
+    ASSERT_TRUE(cipher);
+    bssl::UniquePtr<char> rfc_name(SSL_CIPHER_get_rfc_name(cipher));
+    ASSERT_TRUE(rfc_name);
+
+    EXPECT_STREQ(t.rfc_name, rfc_name.get());
   }
-  return true;
 }
 
 // CreateSessionWithTicket returns a sample |SSL_SESSION| with the specified
@@ -1014,9 +951,9 @@ static void AppendSession(SSL_SESSION *session, void *arg) {
   out->push_back(session);
 }
 
-// ExpectCache returns true if |ctx|'s session cache consists of |expected|, in
+// CacheEquals returns true if |ctx|'s session cache consists of |expected|, in
 // order.
-static bool ExpectCache(SSL_CTX *ctx,
+static bool CacheEquals(SSL_CTX *ctx,
                         const std::vector<SSL_SESSION*> &expected) {
   // Check the linked list.
   SSL_SESSION *ptr = ctx->session_cache_head;
@@ -1064,19 +1001,15 @@ static bssl::UniquePtr<SSL_SESSION> CreateTestSession(uint32_t number) {
 }
 
 // Test that the internal session cache behaves as expected.
-static bool TestInternalSessionCache() {
+TEST(SSLTest, InternalSessionCache) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  if (!ctx) {
-    return false;
-  }
+  ASSERT_TRUE(ctx);
 
   // Prepare 10 test sessions.
   std::vector<bssl::UniquePtr<SSL_SESSION>> sessions;
   for (int i = 0; i < 10; i++) {
     bssl::UniquePtr<SSL_SESSION> session = CreateTestSession(i);
-    if (!session) {
-      return false;
-    }
+    ASSERT_TRUE(session);
     sessions.push_back(std::move(session));
   }
 
@@ -1084,68 +1017,42 @@ static bool TestInternalSessionCache() {
 
   // Insert all the test sessions.
   for (const auto &session : sessions) {
-    if (!SSL_CTX_add_session(ctx.get(), session.get())) {
-      return false;
-    }
+    ASSERT_TRUE(SSL_CTX_add_session(ctx.get(), session.get()));
   }
 
   // Only the last five should be in the list.
-  std::vector<SSL_SESSION*> expected = {
-      sessions[9].get(),
-      sessions[8].get(),
-      sessions[7].get(),
-      sessions[6].get(),
-      sessions[5].get(),
-  };
-  if (!ExpectCache(ctx.get(), expected)) {
-    return false;
-  }
+  ASSERT_TRUE(CacheEquals(
+      ctx.get(), {sessions[9].get(), sessions[8].get(), sessions[7].get(),
+                  sessions[6].get(), sessions[5].get()}));
 
-  // Inserting an element already in the cache should fail.
-  if (SSL_CTX_add_session(ctx.get(), sessions[7].get()) ||
-      !ExpectCache(ctx.get(), expected)) {
-    return false;
-  }
+  // Inserting an element already in the cache should fail and leave the cache
+  // unchanged.
+  ASSERT_FALSE(SSL_CTX_add_session(ctx.get(), sessions[7].get()));
+  ASSERT_TRUE(CacheEquals(
+      ctx.get(), {sessions[9].get(), sessions[8].get(), sessions[7].get(),
+                  sessions[6].get(), sessions[5].get()}));
 
   // Although collisions should be impossible (256-bit session IDs), the cache
   // must handle them gracefully.
   bssl::UniquePtr<SSL_SESSION> collision(CreateTestSession(7));
-  if (!collision || !SSL_CTX_add_session(ctx.get(), collision.get())) {
-    return false;
-  }
-  expected = {
-      collision.get(),
-      sessions[9].get(),
-      sessions[8].get(),
-      sessions[6].get(),
-      sessions[5].get(),
-  };
-  if (!ExpectCache(ctx.get(), expected)) {
-    return false;
-  }
+  ASSERT_TRUE(collision);
+  ASSERT_TRUE(SSL_CTX_add_session(ctx.get(), collision.get()));
+  ASSERT_TRUE(CacheEquals(
+      ctx.get(), {collision.get(), sessions[9].get(), sessions[8].get(),
+                  sessions[6].get(), sessions[5].get()}));
 
   // Removing sessions behaves correctly.
-  if (!SSL_CTX_remove_session(ctx.get(), sessions[6].get())) {
-    return false;
-  }
-  expected = {
-      collision.get(),
-      sessions[9].get(),
-      sessions[8].get(),
-      sessions[5].get(),
-  };
-  if (!ExpectCache(ctx.get(), expected)) {
-    return false;
-  }
+  ASSERT_TRUE(SSL_CTX_remove_session(ctx.get(), sessions[6].get()));
+  ASSERT_TRUE(CacheEquals(ctx.get(), {collision.get(), sessions[9].get(),
+                                      sessions[8].get(), sessions[5].get()}));
 
   // Removing sessions requires an exact match.
-  if (SSL_CTX_remove_session(ctx.get(), sessions[0].get()) ||
-      SSL_CTX_remove_session(ctx.get(), sessions[7].get()) ||
-      !ExpectCache(ctx.get(), expected)) {
-    return false;
-  }
+  ASSERT_FALSE(SSL_CTX_remove_session(ctx.get(), sessions[0].get()));
+  ASSERT_FALSE(SSL_CTX_remove_session(ctx.get(), sessions[7].get()));
 
-  return true;
+  // The cache remains unchanged.
+  ASSERT_TRUE(CacheEquals(ctx.get(), {collision.get(), sessions[9].get(),
+                                      sessions[8].get(), sessions[5].get()}));
 }
 
 static uint16_t EpochFromSequence(uint64_t seq) {
@@ -3544,9 +3451,7 @@ TEST(SSLTest, SSL3Method) {
 
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
-  if (!TestCipherRules() ||
-      !TestCurveRules() ||
-      !TestSSL_SESSIONEncoding(kOpenSSLSession) ||
+  if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||
       !TestSSL_SESSIONEncoding(kCustomSession) ||
       !TestSSL_SESSIONEncoding(kBoringSSLSession) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionExtraField) ||
@@ -3560,7 +3465,6 @@ TEST(SSLTest, AllTests) {
       !TestDefaultVersion(TLS1_1_VERSION, TLS1_2_VERSION, &DTLS_method) ||
       !TestDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &DTLSv1_method) ||
       !TestDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &DTLSv1_2_method) ||
-      !TestCipherGetRFCName() ||
       // Test the padding extension at TLS 1.2.
       !TestPaddingExtension(TLS1_2_VERSION, TLS1_2_VERSION) ||
       // Test the padding extension at TLS 1.3 with a TLS 1.2 session, so there
@@ -3569,7 +3473,6 @@ TEST(SSLTest, AllTests) {
       // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
       // will be a PSK binder after the padding extension.
       !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT_VERSION) ||
-      !TestInternalSessionCache() ||
       !ForEachVersion(TestSequenceNumber) ||
       !ForEachVersion(TestOneSidedShutdown) ||
       !ForEachVersion(TestGetPeerCertificate) ||
