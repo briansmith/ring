@@ -55,10 +55,7 @@ impl ExtPoint {
     }
 
     pub fn into_encoded_point(self) -> EncodedPoint {
-        let mut bytes = [0u8; ELEM_LEN];
-        unsafe { GFp_ge_p3_tobytes(&mut bytes, &self); }
-
-        bytes
+        encode_point(self.x, self.y, self.z)
     }
 
     pub fn invert_vartime(&mut self) {
@@ -87,16 +84,36 @@ impl Point {
     }
 
     pub fn into_encoded_point(self) -> EncodedPoint {
-        let mut bytes = [0u8; ELEM_LEN];
-        unsafe { GFp_x25519_ge_tobytes(&mut bytes, &self); }
-
-        bytes
+        encode_point(self.x, self.y, self.z)
     }
 }
 
+fn encode_point(x: Elem, y: Elem, z: Elem) -> EncodedPoint {
+    let mut recip = [0; ELEM_LIMBS];
+    let mut x_over_z = [0; ELEM_LIMBS];
+    let mut y_over_z = [0; ELEM_LIMBS];
+    let mut bytes = [0; ELEM_LEN];
+
+    unsafe {
+        GFp_fe_invert(&mut recip, &z);
+        GFp_fe_mul(&mut x_over_z, &x, &recip);
+        GFp_fe_mul(&mut y_over_z, &y, &recip);
+        GFp_fe_tobytes(&mut bytes, &y_over_z);
+    }
+    let sign_mask = unsafe { GFp_fe_isnegative(&x_over_z) << 7 };
+
+    // The preceding computations must execute in constant time, but this
+    // doesn't need to.
+    bytes[ELEM_LEN - 1] ^= sign_mask;
+
+    bytes
+}
+
 extern {
-    fn GFp_ge_p3_tobytes(s: &mut EncodedPoint, h: &ExtPoint);
+    fn GFp_fe_invert(out: &mut Elem, z: &Elem);
+    fn GFp_fe_isnegative(elem: &Elem) -> u8;
+    fn GFp_fe_mul(h: &mut Elem, f: &Elem, g: &Elem);
+    fn GFp_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem);
     fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint)
                                        -> c::int;
-    fn GFp_x25519_ge_tobytes(s: &mut EncodedPoint, h: &Point);
 }
