@@ -192,28 +192,17 @@ OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
                                                       const char **data,
                                                       int *flags);
 
-/* ERR_error_string generates a human-readable string representing
- * |packed_error|, places it at |buf| (which must be at least
- * ERR_ERROR_STRING_BUF_LEN bytes long) and returns |buf|. If |buf| is NULL,
- * the error string is placed in a static buffer which is returned. (The static
- * buffer may be overridden by concurrent calls in other threads so this form
- * is deprecated.)
+/* ERR_error_string_n generates a human-readable string representing
+ * |packed_error| and places it at |buf|. It writes at most |len| bytes
+ * (including the terminating NUL) and truncates the string if necessary. If
+ * |len| is greater than zero then |buf| is always NUL terminated.
  *
  * The string will have the following format:
  *
  *   error:[error code]:[library name]:OPENSSL_internal:[reason string]
  *
  * error code is an 8 digit hexadecimal number; library name and reason string
- * are ASCII text.
- *
- * TODO(fork): remove in favour of |ERR_error_string_n|. */
-OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
-#define ERR_ERROR_STRING_BUF_LEN 256
-
-/* ERR_error_string_n is a variant of |ERR_error_string| that writes at most
- * len characters (including the terminating NUL) and truncates the string if
- * necessary. If |len| is greater than zero then |buf| is always NUL
- * terminated. */
+ * are ASCII text. */
 OPENSSL_EXPORT void ERR_error_string_n(uint32_t packed_error, char *buf,
                                        size_t len);
 
@@ -287,6 +276,18 @@ OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);
 
 /* ERR_func_error_string returns the string "OPENSSL_internal". */
 OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
+
+/* ERR_error_string behaves like |ERR_error_string_n| but |len| is implicitly
+ * |ERR_ERROR_STRING_BUF_LEN| and it returns |buf|. If |buf| is NULL, the error
+ * string is placed in a static buffer which is returned. (The static buffer may
+ * be overridden by concurrent calls in other threads so this form should not be
+ * used.)
+ *
+ * Use |ERR_error_string_n| instead.
+ *
+ * TODO(fork): remove this function. */
+OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
+#define ERR_ERROR_STRING_BUF_LEN 256
 
 
 /* Private functions. */
