@@ -422,7 +422,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 
 	// Emit an array for storing the module hash.
 	ret = append(ret, ".type BORINGSSL_bcm_text_hash,@object")
-	ret = append(ret, ".size OPENSSL_ia32cap_addr,32")
+	ret = append(ret, ".size BORINGSSL_bcm_text_hash,32")
 	ret = append(ret, "BORINGSSL_bcm_text_hash:")
 	for _, b := range uninitHashValue {
 		ret = append(ret, ".byte 0x"+strconv.FormatUint(uint64(b), 16))
@@ -453,7 +453,7 @@ func handleBSSSection(lines []string, source *lineSource) (map[string]string, []
 			localSymbol := ".L" + symbol + "_local_target"
 
 			lines = append(lines, line)
-			lines = append(lines, localSymbol + ":")
+			lines = append(lines, localSymbol+":")
 
 			accessors[symbol] = localSymbol
 			continue
