@@ -241,6 +241,7 @@ add_executable(
   cmac/cmac_test.cc
   compiler_test.cc
   constant_time_test.cc
+  curve25519/spake25519_test.cc
   curve25519/x25519_test.cc
   dh/dh_test.cc
   dsa/dsa_test.cc
