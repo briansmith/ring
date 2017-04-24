@@ -741,7 +741,7 @@ mod repr_c {
     use {c, limb};
     use libc;
 
-    /* Keep in sync with `bignum_st` in openss/bn.h. */
+    // Keep in sync with `bignum_st` in openss/bn.h.
     #[repr(C)]
     pub struct BIGNUM {
         d: *mut limb::Limb,
