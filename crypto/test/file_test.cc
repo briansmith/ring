@@ -14,6 +14,7 @@
 
 #include "file_test.h"
 
+#include <algorithm>
 #include <memory>
 
 #include <ctype.h>
@@ -60,25 +61,45 @@ static std::string StripSpace(const char *str, size_t len) {
     str++;
     len--;
   }
-  while (len > 0 && isspace(str[len-1])) {
+  while (len > 0 && isspace(str[len - 1])) {
     len--;
   }
   return std::string(str, len);
 }
 
+static std::pair<std::string, std::string> ParseKeyValue(const char *str, const size_t len) {
+  const char *delimiter = FindDelimiter(str);
+  std::string key, value;
+  if (delimiter == nullptr) {
+    key = StripSpace(str, len);
+  } else {
+    key = StripSpace(str, delimiter - str);
+    value = StripSpace(delimiter + 1, str + len - delimiter - 1);
+  }
+  return {key, value};
+}
+
 FileTest::ReadResult FileTest::ReadNext() {
-  // If the previous test had unused attributes, it is an error.
-  if (!unused_attributes_.empty()) {
+  // If the previous test had unused attributes or instructions, it is an error.
+  if (!unused_attributes_.empty() && !ignore_unused_attributes_) {
     for (const std::string &key : unused_attributes_) {
       PrintLine("Unused attribute: %s", key.c_str());
+    }
+    return kReadError;
+  }
+  if (!unused_instructions_.empty() && !ignore_unused_attributes_) {
+    for (const std::string &key : unused_instructions_) {
+      PrintLine("Unused instruction: %s", key.c_str());
     }
     return kReadError;
   }
 
   ClearTest();
 
-  static const size_t kBufLen = 64 + 8192*2;
+  static const size_t kBufLen = 64 + 8192 * 2;
   std::unique_ptr<char[]> buf(new char[kBufLen]);
+
+  bool in_instruction_block = false;
 
   while (true) {
     // Read the next line.
@@ -99,21 +120,51 @@ FileTest::ReadResult FileTest::ReadNext() {
       return kReadError;
     }
 
-    if (buf[0] == '\n' || buf[0] == '\0') {
+    if (buf[0] == '\n' || buf[0] == '\r' || buf[0] == '\0') {
       // Empty lines delimit tests.
       if (start_line_ > 0) {
         return kReadSuccess;
       }
-    } else if (buf[0] != '#') {  // Comment lines are ignored.
-      // Parse the line as an attribute.
-      const char *delimiter = FindDelimiter(buf.get());
-      if (delimiter == nullptr) {
-        fprintf(stderr, "Line %u: Could not parse attribute.\n", line_);
+      if (in_instruction_block) {
+        in_instruction_block = false;
+        // Delimit instruction block from test with a blank line.
+        current_test_ += "\r\n";
+      }
+    } else if (buf[0] == '[') {  // Inside an instruction block.
+      if (start_line_ != 0) {
+        // Instructions should be separate blocks.
+        fprintf(stderr, "Line %u is an instruction in a test case.\n", line_);
         return kReadError;
       }
-      std::string key = StripSpace(buf.get(), delimiter - buf.get());
-      std::string value = StripSpace(delimiter + 1,
-                                     buf.get() + len - delimiter - 1);
+      if (!in_instruction_block) {
+        ClearInstructions();
+        in_instruction_block = true;
+      }
+
+      // Parse the line as an instruction ("[key = value]" or "[key]").
+      std::string kv = StripSpace(buf.get(), len);
+      if (kv[kv.size() - 1] != ']') {
+        fprintf(stderr, "Line %u, invalid instruction: %s\n", line_,
+                kv.c_str());
+        return kReadError;
+      }
+      current_test_ += kv + "\r\n";
+      kv = std::string(kv.begin() + 1, kv.end() - 1);
+
+      std::string key, value;
+      std::tie(key, value) = ParseKeyValue(kv.c_str(), kv.size());
+      instructions_[key] = value;
+    } else if (buf[0] != '#') {  // Comment lines are ignored.
+      if (in_instruction_block) {
+        // Test cases should be separate blocks.
+        fprintf(stderr, "Line %u is a test case attribute in an instruction block.\n",
+                line_);
+        return kReadError;
+      }
+
+      current_test_ += std::string(buf.get(), len);
+      std::string key, value;
+      std::tie(key, value) = ParseKeyValue(buf.get(), len);
 
       unused_attributes_.insert(key);
       attributes_[key] = value;
@@ -122,6 +173,9 @@ FileTest::ReadResult FileTest::ReadNext() {
         type_ = key;
         parameter_ = value;
         start_line_ = line_;
+        for (const auto &kv : instructions_) {
+          unused_instructions_.insert(kv.first);
+        }
       }
     }
   }
@@ -171,6 +225,26 @@ const std::string &FileTest::GetAttributeOrDie(const std::string &key) {
   return attributes_[key];
 }
 
+bool FileTest::HasInstruction(const std::string &key) {
+  OnInstructionUsed(key);
+  return instructions_.count(key) > 0;
+}
+
+bool FileTest::GetInstruction(std::string *out_value, const std::string &key) {
+  OnInstructionUsed(key);
+  auto iter = instructions_.find(key);
+  if (iter == instructions_.end()) {
+    PrintLine("Missing instruction '%s'.", key.c_str());
+    return false;
+  }
+  *out_value = iter->second;
+  return true;
+}
+
+const std::string &FileTest::CurrentTestToString() const {
+  return current_test_;
+}
+
 static bool FromHexDigit(uint8_t *out, char c) {
   if ('0' <= c && c <= '9') {
     *out = c - '0';
@@ -206,7 +280,7 @@ bool FileTest::GetBytes(std::vector<uint8_t> *out, const std::string &key) {
   out->reserve(value.size() / 2);
   for (size_t i = 0; i < value.size(); i += 2) {
     uint8_t hi, lo;
-    if (!FromHexDigit(&hi, value[i]) || !FromHexDigit(&lo, value[i+1])) {
+    if (!FromHexDigit(&hi, value[i]) || !FromHexDigit(&lo, value[i + 1])) {
       PrintLine("Error decoding value: %s", value.c_str());
       return false;
     }
@@ -246,14 +320,28 @@ void FileTest::ClearTest() {
   parameter_.clear();
   attributes_.clear();
   unused_attributes_.clear();
+  current_test_ = "";
+}
+
+void FileTest::ClearInstructions() {
+  instructions_.clear();
+  unused_attributes_.clear();
 }
 
 void FileTest::OnKeyUsed(const std::string &key) {
   unused_attributes_.erase(key);
 }
 
-int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
-                 const char *path) {
+void FileTest::OnInstructionUsed(const std::string &key) {
+  unused_instructions_.erase(key);
+}
+
+void FileTest::SetIgnoreUnusedAttributes(bool ignore) {
+  ignore_unused_attributes_ = ignore;
+}
+
+int FileTestMainSilent(bool (*run_test)(FileTest *t, void *arg), void *arg,
+                       const char *path) {
   FileTest t(path);
   if (!t.is_open()) {
     return 1;
@@ -278,8 +366,8 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
       uint32_t err = ERR_peek_error();
       if (ERR_reason_error_string(err) != t.GetAttributeOrDie("Error")) {
         t.PrintLine("Unexpected error; wanted '%s', got '%s'.",
-                     t.GetAttributeOrDie("Error").c_str(),
-                     ERR_reason_error_string(err));
+                    t.GetAttributeOrDie("Error").c_str(),
+                    ERR_reason_error_string(err));
         failed = true;
         ERR_clear_error();
         continue;
@@ -295,10 +383,14 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
     }
   }
 
-  if (failed) {
-    return 1;
-  }
+  return failed ? 1 : 0;
+}
 
-  printf("PASS\n");
-  return 0;
+int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
+                 const char *path) {
+  int result = FileTestMainSilent(run_test, arg, path);
+  if (!result) {
+    printf("PASS\n");
+  }
+  return result;
 }

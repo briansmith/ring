@@ -21,11 +21,11 @@
 #include <stdio.h>
 
 OPENSSL_MSVC_PRAGMA(warning(push))
-OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
+OPENSSL_MSVC_PRAGMA(warning(disable : 4702))
 
-#include <string>
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
@@ -33,31 +33,46 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 // File-based test framework.
 //
 // This module provides a file-based test framework. The file format is based on
-// that of OpenSSL upstream's evp_test and BoringSSL's aead_test. Each input
-// file is a sequence of attributes and blank lines.
+// that of OpenSSL upstream's evp_test and BoringSSL's aead_test. NIST CAVP test
+// vector files are also supported. Each input file is a sequence of attributes,
+// instructions and blank lines.
 //
 // Each attribute has the form:
 //
 //   Name = Value
 //
+// Instructions are enclosed in square brackets and may appear without a value:
+//
+//   [Name = Value]
+//
+// or
+//
+//   [Name]
+//
 // Either '=' or ':' may be used to delimit the name from the value. Both the
 // name and value have leading and trailing spaces stripped.
 //
-// Lines beginning with # are ignored.
+// Each file contains a number of instruction blocks and test cases.
 //
-// A test is a sequence of one or more attributes followed by a blank line.
-// Blank lines are otherwise ignored. For tests that process multiple kinds of
-// test cases, the first attribute is parsed out as the test's type and
-// parameter. Otherwise, attributes are unordered. The first attribute is also
-// included in the set of attributes, so tests which do not dispatch may ignore
-// this mechanism.
+// An instruction block is a sequence of instructions followed by a blank line.
+// Instructions apply to all test cases following its appearance, until the next
+// instruction block. Instructions are unordered.
+//
+// A test is a sequence of one or more attributes followed by a blank line.  For
+// tests that process multiple kinds of test cases, the first attribute is
+// parsed out as the test's type and parameter. Otherwise, attributes are
+// unordered. The first attribute is also included in the set of attributes, so
+// tests which do not dispatch may ignore this mechanism.
+//
+// Additional blank lines and lines beginning with # are ignored.
 //
 // Functions in this module freely output to |stderr| on failure. Tests should
 // also do so, and it is recommended they include the corresponding test's line
 // number in any output. |PrintLine| does this automatically.
 //
-// Each attribute in a test must be consumed. When a test completes, if any
-// attributes haven't been processed, the framework reports an error.
+// Each attribute in a test and all instructions applying to it must be
+// consumed. When a test completes, if any attributes or insturctions haven't
+// been processed, the framework reports an error.
 
 
 class FileTest {
@@ -115,9 +130,28 @@ class FileTest {
   bool ExpectBytesEqual(const uint8_t *expected, size_t expected_len,
                         const uint8_t *actual, size_t actual_len);
 
+  // HasInstruction returns true if the current test has an instruction.
+  bool HasInstruction(const std::string &key);
+
+  // GetInstruction looks up the instruction with key |key|. It sets
+  // |*out_value| to the value (empty string if the instruction has no value)
+  // and returns true if it exists and returns false with an error to |stderr|
+  // otherwise.
+  bool GetInstruction(std::string *out_value, const std::string &key);
+
+  // CurrentTestToString returns the file content parsed for the current test.
+  // If the current test was preceded by an instruction block, the return test
+  // case is preceded by the instruction block and a single blank line. All
+  // other blank or comment lines are omitted.
+  const std::string &CurrentTestToString() const;
+
+  void SetIgnoreUnusedAttributes(bool ignore);
+
  private:
   void ClearTest();
+  void ClearInstructions();
   void OnKeyUsed(const std::string &key);
+  void OnInstructionUsed(const std::string &key);
 
   FILE *file_ = nullptr;
   // line_ is the number of lines read.
@@ -131,12 +165,21 @@ class FileTest {
   std::string parameter_;
   // attributes_ contains all attributes in the test, including the first.
   std::map<std::string, std::string> attributes_;
+  // instructions_ contains all instructions in scope for the test.
+  std::map<std::string, std::string> instructions_;
 
-  // unused_attributes_ is the set of attributes that have been queried.
+  // unused_attributes_ is the set of attributes that have not been queried.
   std::set<std::string> unused_attributes_;
 
-  FileTest(const FileTest&) = delete;
-  FileTest &operator=(const FileTest&) = delete;
+  // unused_instructions_ is the set of instructions that have not been queried.
+  std::set<std::string> unused_instructions_;
+
+  std::string current_test_;
+
+  bool ignore_unused_attributes_ = false;
+
+  FileTest(const FileTest &) = delete;
+  FileTest &operator=(const FileTest &) = delete;
 };
 
 // FileTestMain runs a file-based test out of |path| and returns an exit code
@@ -153,5 +196,9 @@ class FileTest {
 int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
                  const char *path);
 
+// FileTestMainSilent behaves like FileTestMain but does not print a final
+// FAIL/PASS message to stdout.
+int FileTestMainSilent(bool (*run_test)(FileTest *t, void *arg), void *arg,
+                       const char *path);
 
 #endif /* OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H */
