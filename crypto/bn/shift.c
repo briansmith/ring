@@ -75,7 +75,7 @@ int GFp_BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
 
   r->neg = a->neg;
   nw = n / BN_BITS2;
-  if (GFp_bn_wexpand(r, a->top + nw + 1) == NULL) {
+  if (!GFp_bn_wexpand(r, a->top + nw + 1)) {
     return 0;
   }
   lb = n % BN_BITS2;
@@ -121,7 +121,7 @@ int GFp_BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   i = (GFp_BN_num_bits(a) - n + (BN_BITS2 - 1)) / BN_BITS2;
   if (r != a) {
     r->neg = a->neg;
-    if (GFp_bn_wexpand(r, i) == NULL) {
+    if (!GFp_bn_wexpand(r, i)) {
       return 0;
     }
   } else {
@@ -171,7 +171,7 @@ int GFp_BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   ap = a->d;
   j = i - (ap[i - 1] == 1);
   if (a != r) {
-    if (GFp_bn_wexpand(r, j) == NULL) {
+    if (!GFp_bn_wexpand(r, j)) {
       return 0;
     }
     r->neg = a->neg;
@@ -206,7 +206,7 @@ int GFp_BN_set_bit(BIGNUM *a, int n) {
   i = n / BN_BITS2;
   j = n % BN_BITS2;
   if (a->top <= i) {
-    if (GFp_bn_wexpand(a, i + 1) == NULL) {
+    if (!GFp_bn_wexpand(a, i + 1)) {
       return 0;
     }
     for (k = a->top; k < i + 1; k++) {

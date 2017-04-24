@@ -76,7 +76,7 @@ int GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
 
   num_words = ((len - 1) / BN_BYTES) + 1;
   m = (len - 1) % BN_BYTES;
-  if (GFp_bn_wexpand(ret, num_words) == NULL) {
+  if (!GFp_bn_wexpand(ret, num_words)) {
     return 0;
   }
 

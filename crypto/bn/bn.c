@@ -98,7 +98,7 @@ int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
     return 1;
   }
 
-  if (GFp_bn_wexpand(dest, src->top) == NULL) {
+  if (!GFp_bn_wexpand(dest, src->top)) {
     return 0;
   }
 
@@ -201,7 +201,7 @@ int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value) {
     return 1;
   }
 
-  if (GFp_bn_wexpand(bn, 1) == NULL) {
+  if (!GFp_bn_wexpand(bn, 1)) {
     return 0;
   }
 
@@ -215,27 +215,27 @@ int GFp_BN_is_negative(const BIGNUM *bn) {
   return bn->neg != 0;
 }
 
-BIGNUM *GFp_bn_wexpand(BIGNUM *bn, size_t words) {
+int GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   BN_ULONG *a;
 
   if (words <= (size_t)bn->dmax) {
-    return bn;
+    return 1;
   }
 
   if (words > (INT_MAX / (4 * BN_BITS2))) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
-    return NULL;
+    return 0;
   }
 
   if (bn->flags & BN_FLG_STATIC_DATA) {
     OPENSSL_PUT_ERROR(BN, BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
-    return NULL;
+    return 0;
   }
 
   a = OPENSSL_malloc(sizeof(BN_ULONG) * words);
   if (a == NULL) {
     OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    return NULL;
+    return 0;
   }
 
   memcpy(a, bn->d, sizeof(BN_ULONG) * bn->top);
@@ -244,7 +244,7 @@ BIGNUM *GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   bn->d = a;
   bn->dmax = (int)words;
 
-  return bn;
+  return 1;
 }
 
 void GFp_bn_correct_top(BIGNUM *bn) {

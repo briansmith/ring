@@ -115,7 +115,7 @@ int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   min = b->top;
   dif = max - min;
 
-  if (GFp_bn_wexpand(r, max + 1) == NULL) {
+  if (!GFp_bn_wexpand(r, max + 1)) {
     return 0;
   }
 
@@ -197,7 +197,7 @@ int GFp_BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   /* We are actually doing a - b :-) */
 
   max = (a->top > b->top) ? a->top : b->top;
-  if (GFp_bn_wexpand(r, max) == NULL) {
+  if (!GFp_bn_wexpand(r, max)) {
     return 0;
   }
 
@@ -239,7 +239,7 @@ int GFp_BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     return 0;
   }
 
-  if (GFp_bn_wexpand(r, max) == NULL) {
+  if (!GFp_bn_wexpand(r, max)) {
     return 0;
   }
 

@@ -161,7 +161,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
   const int width = 1 << window;
   volatile BN_ULONG *table = (volatile BN_ULONG *)buf;
 
-  if (GFp_bn_wexpand(b, top) == NULL) {
+  if (!GFp_bn_wexpand(b, top)) {
     return 0;
   }
 

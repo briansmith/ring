@@ -176,7 +176,7 @@ int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n) {
   }
 
   /* Set |r| to the largest power of two less than |n|. */
-  if (GFp_bn_wexpand(r, n->top) == NULL) {
+  if (!GFp_bn_wexpand(r, n->top)) {
     return 0;
   }
   assert(p > n_bits);

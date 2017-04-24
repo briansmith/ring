@@ -142,7 +142,7 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
   }
 
   max = (2 * nl); /* carry is stored separately */
-  if (GFp_bn_wexpand(r, max) == NULL) {
+  if (!GFp_bn_wexpand(r, max)) {
     return 0;
   }
 
@@ -166,7 +166,7 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
     rp[nl] = v;
   }
 
-  if (GFp_bn_wexpand(ret, nl) == NULL) {
+  if (!GFp_bn_wexpand(ret, nl)) {
     return 0;
   }
   ret->top = nl;
@@ -230,7 +230,7 @@ int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   }
 
   if (a->top == num && b->top == num) {
-    if (GFp_bn_wexpand(r, num) == NULL) {
+    if (!GFp_bn_wexpand(r, num)) {
       return 0;
     }
     GFp_bn_mul_mont(r->d, a->d, b->d, n->d, n0, num);

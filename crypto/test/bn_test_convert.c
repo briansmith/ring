@@ -66,10 +66,10 @@
 #include "../bn/internal.h"
 
 
-static BIGNUM *bn_expand(BIGNUM *bn, size_t bits) {
+static int bn_expand(BIGNUM *bn, size_t bits) {
   if (bits + BN_BITS2 - 1 < bits) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
-    return NULL;
+    return 0;
   }
   return GFp_bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
 }
@@ -81,7 +81,7 @@ static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
     return 0;
   }
   /* |in_len| is the number of hex digits. */
-  if (bn_expand(bn, in_len * 4) == NULL) {
+  if (!bn_expand(bn, in_len * 4)) {
     return 0;
   }
 

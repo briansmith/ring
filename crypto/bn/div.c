@@ -249,7 +249,7 @@ int GFp_BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num,
    * larger than sdiv, we pad snum with enough zeroes without changing its
    * value. */
   if (snum.top <= sdiv.top + 1) {
-    if (GFp_bn_wexpand(&snum, sdiv.top + 2) == NULL) {
+    if (!GFp_bn_wexpand(&snum, sdiv.top + 2)) {
       goto err;
     }
     for (i = snum.top; i < sdiv.top + 2; i++) {
@@ -257,7 +257,7 @@ int GFp_BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num,
     }
     snum.top = sdiv.top + 2;
   } else {
-    if (GFp_bn_wexpand(&snum, snum.top + 1) == NULL) {
+    if (!GFp_bn_wexpand(&snum, snum.top + 1)) {
       goto err;
     }
     snum.d[snum.top] = 0;

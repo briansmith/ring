@@ -117,7 +117,7 @@ int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
     return 0;
   }
 
-  if (GFp_bn_wexpand(r, max_exclusive->top) == NULL) {
+  if (!GFp_bn_wexpand(r, max_exclusive->top)) {
     return 0;
   }
 
