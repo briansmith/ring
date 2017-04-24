@@ -145,7 +145,7 @@ impl<'a> Ed25519KeyPair {
             unsafe {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
             }
-            signature_r.copy_from_slice(&r.into_encoded_point());
+            *signature_r = r.into_encoded_point();
             let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
