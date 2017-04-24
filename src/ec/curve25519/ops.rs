@@ -94,17 +94,17 @@ fn encode_point(x: Elem, y: Elem, z: Elem) -> EncodedPoint {
     let mut y_over_z = [0; ELEM_LIMBS];
     let mut bytes = [0; ELEM_LEN];
 
-    unsafe {
+    let sign_bit: u8 = unsafe {
         GFp_fe_invert(&mut recip, &z);
         GFp_fe_mul(&mut x_over_z, &x, &recip);
         GFp_fe_mul(&mut y_over_z, &y, &recip);
         GFp_fe_tobytes(&mut bytes, &y_over_z);
-    }
-    let sign_mask = unsafe { GFp_fe_isnegative(&x_over_z) << 7 };
+        GFp_fe_isnegative(&x_over_z)
+    };
 
     // The preceding computations must execute in constant time, but this
     // doesn't need to.
-    bytes[ELEM_LEN - 1] ^= sign_mask;
+    bytes[ELEM_LEN - 1] ^= sign_bit << 7;
 
     bytes
 }
