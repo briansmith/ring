@@ -711,18 +711,23 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
   return true;
 }
 
-static bool TestDefaultVersion(uint16_t min_version, uint16_t max_version,
-                               const SSL_METHOD *(*method)(void)) {
+static void ExpectDefaultVersion(uint16_t min_version, uint16_t max_version,
+                                 const SSL_METHOD *(*method)(void)) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method()));
-  if (!ctx) {
-    return false;
-  }
-  if (ctx->min_version != min_version || ctx->max_version != max_version) {
-    fprintf(stderr, "Got min %04x, max %04x; wanted min %04x, max %04x\n",
-            ctx->min_version, ctx->max_version, min_version, max_version);
-    return false;
-  }
-  return true;
+  ASSERT_TRUE(ctx);
+  EXPECT_EQ(min_version, ctx->min_version);
+  EXPECT_EQ(max_version, ctx->max_version);
+}
+
+TEST(SSLTest, DefaultVersion) {
+  // TODO(svaldez): Update this when TLS 1.3 is enabled by default.
+  ExpectDefaultVersion(TLS1_VERSION, TLS1_2_VERSION, &TLS_method);
+  ExpectDefaultVersion(TLS1_VERSION, TLS1_VERSION, &TLSv1_method);
+  ExpectDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &TLSv1_1_method);
+  ExpectDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &TLSv1_2_method);
+  ExpectDefaultVersion(TLS1_1_VERSION, TLS1_2_VERSION, &DTLS_method);
+  ExpectDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &DTLSv1_method);
+  ExpectDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &DTLSv1_2_method);
 }
 
 typedef struct {
@@ -3457,14 +3462,6 @@ TEST(SSLTest, AllTests) {
       !TestBadSSL_SESSIONEncoding(kBadSessionExtraField) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionVersion) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionTrailingData) ||
-      // TODO(svaldez): Update this when TLS 1.3 is enabled by default.
-      !TestDefaultVersion(TLS1_VERSION, TLS1_2_VERSION, &TLS_method) ||
-      !TestDefaultVersion(TLS1_VERSION, TLS1_VERSION, &TLSv1_method) ||
-      !TestDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &TLSv1_1_method) ||
-      !TestDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &TLSv1_2_method) ||
-      !TestDefaultVersion(TLS1_1_VERSION, TLS1_2_VERSION, &DTLS_method) ||
-      !TestDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &DTLSv1_method) ||
-      !TestDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &DTLSv1_2_method) ||
       // Test the padding extension at TLS 1.2.
       !TestPaddingExtension(TLS1_2_VERSION, TLS1_2_VERSION) ||
       // Test the padding extension at TLS 1.3 with a TLS 1.2 session, so there
