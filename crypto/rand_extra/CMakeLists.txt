@@ -5,6 +5,7 @@ add_library(
 
   OBJECT
 
+  deterministic.c
   forkunsafe.c
   fuchsia.c
   rand_extra.c
