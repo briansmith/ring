@@ -147,17 +147,6 @@ int GFp_BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
   }
 }
 
-int GFp_BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
-  BIGNUM b_bn;
-  GFp_BN_init(&b_bn);
-
-  b_bn.d = &b;
-  b_bn.top = b > 0;
-  b_bn.dmax = 1;
-  b_bn.flags = BN_FLG_STATIC_DATA;
-  return GFp_BN_cmp(a, &b_bn);
-}
-
 int GFp_BN_is_zero(const BIGNUM *bn) {
   return bn->top == 0;
 }

@@ -108,14 +108,15 @@
 
 #include <GFp/bn.h>
 
+#include <assert.h>
+
 #include <GFp/err.h>
 
 
 int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
-  if (GFp_BN_cmp_word(max_exclusive, 1) <= 0) {
-    OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
-    return 0;
-  }
+  assert(!GFp_BN_is_negative(max_exclusive));
+  assert(!GFp_BN_is_zero(max_exclusive));
+  assert(!GFp_BN_is_one(max_exclusive));
 
   if (!GFp_bn_wexpand(r, max_exclusive->top)) {
     return 0;

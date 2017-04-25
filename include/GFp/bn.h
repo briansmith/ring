@@ -236,10 +236,6 @@ OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM 
  * is less than, equal to or greater than |b|, respectively. */
 OPENSSL_EXPORT int GFp_BN_cmp(const BIGNUM *a, const BIGNUM *b);
 
-/* GFp_BN_cmp_word is like |GFp_BN_cmp| except it takes its second argument as
- * a |BN_ULONG| instead of a |BIGNUM|. */
-OPENSSL_EXPORT int GFp_BN_cmp_word(const BIGNUM *a, BN_ULONG b);
-
 /* GFp_BN_ucmp returns a value less than, equal to or greater than zero if the
  * absolute value of |a| is less than, equal to or greater than the absolute
  * value of |b|, respectively. */
