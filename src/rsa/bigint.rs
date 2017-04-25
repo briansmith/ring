@@ -331,12 +331,18 @@ pub fn elem_set_to_product<M, AF, BF>(
 pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
-    let mut r = try!(Elem::zero());
-    try!(bssl::map_result(unsafe {
-        GFp_BN_mod_sub_quick(r.value.as_mut_ref(), a.value.as_ref(),
-                             m.value.as_ref(), m.value.as_ref())
-    }));
-    Ok(r)
+    let mut r = try!(a.value.try_clone());
+    // XXX TODO: Not constant-time.
+    if !greater_than(&(m.value.0).0, &a.value) {
+        try!(bssl::map_result(unsafe {
+            GFp_BN_usub(r.as_mut_ref(), r.as_ref(), m.value.as_ref())
+        }));
+    }
+    Ok(Elem {
+        value: r,
+        m: PhantomData,
+        encoding: PhantomData,
+    })
 }
 
 #[inline]
@@ -657,13 +663,6 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
         })
     }
 
-    // Returns a > b.
-    #[inline]
-    fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
-        let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
-        r > 0
-    }
-
     let mut u = a;
     let mut v = try!(m.try_clone());
     let mut x1 = try!(Nonnegative::one());
@@ -830,6 +829,13 @@ impl Nonnegative {
         }));
         Ok(r)
     }
+}
+
+// Returns a > b.
+#[inline]
+fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
+    let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
+    r > 0
 }
 
 type N0 = [limb::Limb; N0_LIMBS];
