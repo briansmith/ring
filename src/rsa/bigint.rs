@@ -338,6 +338,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
             GFp_BN_usub(r.as_mut_ref(), r.as_ref(), m.value.as_ref())
         }));
     }
+    debug_assert!(greater_than(&(m.value.0).0, &r));
     Ok(Elem {
         value: r,
         m: PhantomData,
