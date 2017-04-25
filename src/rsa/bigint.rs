@@ -42,7 +42,7 @@
 // XXX TODO: Remove this once RSA verification has been done in Rust.
 #![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
 
-use {bits, bssl, c, der, error, limb, rand, untrusted};
+use {bits, bssl, c, constant_time, der, error, limb, rand, untrusted};
 use arithmetic::montgomery::*;
 use core;
 use core::marker::PhantomData;
@@ -725,9 +725,9 @@ impl From<error::Unspecified> for InversionError {
 
 pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
                                          -> Result<(), error::Unspecified> {
-    bssl::map_result(unsafe {
-        GFp_BN_equal_consttime(a.value.as_ref(), b.value.as_ref())
-    })
+    // XXX: Not constant-time if the number of limbs in `a` and `b` differ.
+    constant_time::verify_slices_are_equal(limb::limbs_as_bytes(a.value.limbs()),
+                                           limb::limbs_as_bytes(b.value.limbs()))
 }
 
 /// Nonnegative integers: `Positive` ∪ {0}.
@@ -944,7 +944,6 @@ extern {
                      -> c::int;
     fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
-    fn GFp_BN_equal_consttime(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_one(a: &BIGNUM) -> c::int;

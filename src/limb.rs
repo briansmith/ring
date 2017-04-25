@@ -48,7 +48,7 @@ pub enum LimbMask {
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-#[cfg(all(test, target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 #[inline]
 pub fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
     polyfill::slice::u64_as_u8(src)
@@ -60,7 +60,7 @@ pub fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
     polyfill::slice::u64_as_u8_mut(src)
 }
 
-#[cfg(all(test, target_pointer_width = "32"))]
+#[cfg(target_pointer_width = "32")]
 #[inline]
 pub fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
     polyfill::slice::u32_as_u8(src)

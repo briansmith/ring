@@ -61,10 +61,6 @@
 #include "internal.h"
 
 
-/* Avoid -Wmissing-prototypes warnings. */
-int GFp_BN_equal_consttime(const BIGNUM *a, const BIGNUM *b);
-
-
 int GFp_BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
   int i;
   BN_ULONG t1, t2, *ap, *bp;
@@ -97,12 +93,4 @@ int GFp_BN_is_one(const BIGNUM *bn) {
 
 int GFp_BN_is_odd(const BIGNUM *bn) {
   return bn->top > 0 && (bn->d[0] & 1) == 1;
-}
-
-int GFp_BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
-  if (a->top != b->top) {
-    return 0;
-  }
-
-  return GFp_memcmp(a->d, b->d, (size_t)a->top * sizeof(a->d[0])) == 0;
 }
