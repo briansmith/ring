@@ -125,7 +125,7 @@ int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 int GFp_BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   assert(!GFp_BN_is_negative(a));
   assert(!GFp_BN_is_negative(b));
-  assert(GFp_BN_cmp(a, b) >= 0);
+  assert(GFp_BN_ucmp(a, b) >= 0);
   return GFp_BN_usub_unchecked(r, a, b);
 }
 

@@ -261,7 +261,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
                                   const BIGNUM *n,
                                   const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   assert(!GFp_BN_is_negative(a_mont));
-  assert(GFp_BN_cmp(a_mont, n) < 0);
+  assert(GFp_BN_ucmp(a_mont, n) < 0);
 
   assert(!GFp_BN_is_negative(n));
   assert(!GFp_BN_is_zero(n));
