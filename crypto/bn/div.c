@@ -79,12 +79,11 @@ int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   assert(GFp_BN_ucmp(a, m) <= 0);
   assert(GFp_BN_ucmp(b, m) <= 0);
 
-  if (!GFp_BN_sub(r, a, b)) {
+  if (GFp_BN_ucmp(a, b) >= 0) {
+    return GFp_BN_usub(r, a, b);
+  }
+  if (!GFp_BN_usub(r, b, a)) {
     return 0;
   }
-  if (r->neg) {
-    r->neg = 0;
-    return GFp_BN_usub(r, m, r);
-  }
-  return 1;
+  return GFp_BN_usub(r, m, r);
 }

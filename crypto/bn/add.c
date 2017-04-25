@@ -122,63 +122,6 @@ int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int GFp_BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  int max;
-  int add = 0, neg = 0;
-  const BIGNUM *tmp;
-
-  /*  a -  b	a-b
-   *  a - -b	a+b
-   * -a -  b	-(a+b)
-   * -a - -b	b-a
-   */
-  if (a->neg) {
-    if (b->neg) {
-      tmp = a;
-      a = b;
-      b = tmp;
-    } else {
-      add = 1;
-      neg = 1;
-    }
-  } else {
-    if (b->neg) {
-      add = 1;
-      neg = 0;
-    }
-  }
-
-  if (add) {
-    if (!GFp_BN_uadd(r, a, b)) {
-      return 0;
-    }
-
-    r->neg = neg;
-    return 1;
-  }
-
-  /* We are actually doing a - b :-) */
-
-  max = (a->top > b->top) ? a->top : b->top;
-  if (!GFp_bn_wexpand(r, max)) {
-    return 0;
-  }
-
-  if (GFp_BN_ucmp(a, b) < 0) {
-    if (!GFp_BN_usub_unchecked(r, b, a)) {
-      return 0;
-    }
-    r->neg = 1;
-  } else {
-    if (!GFp_BN_usub_unchecked(r, a, b)) {
-      return 0;
-    }
-    r->neg = 0;
-  }
-
-  return 1;
-}
-
 int GFp_BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   assert(!GFp_BN_is_negative(a));
   assert(!GFp_BN_is_negative(b));
