@@ -1063,7 +1063,7 @@ mod tests {
 
     #[test]
     fn test_elem_inverse_invertible() {
-        test::from_file("src/rsa/bigint_elem_inverse_invertible.txt",
+        test::from_file("src/rsa/bigint_elem_inverse_invertible_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
@@ -1086,7 +1086,7 @@ mod tests {
     fn test_elem_set_to_inverse_blinded_invertible() {
         let rng = rand::SystemRandom::new();
 
-        test::from_file("src/rsa/bigint_elem_inverse_invertible.txt",
+        test::from_file("src/rsa/bigint_elem_inverse_invertible_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
@@ -1105,7 +1105,7 @@ mod tests {
 
     #[test]
     fn test_elem_inverse_noninvertible() {
-        test::from_file("src/rsa/bigint_elem_inverse_noninvertible.txt",
+        test::from_file("src/rsa/bigint_elem_inverse_noninvertible_tests.txt",
                         |section, test_case| {
                             assert_eq!(section, "");
 
@@ -1124,7 +1124,7 @@ mod tests {
     fn test_elem_set_to_inverse_blinded_noninvertible() {
         let rng = rand::SystemRandom::new();
 
-        test::from_file("src/rsa/bigint_elem_inverse_noninvertible.txt",
+        test::from_file("src/rsa/bigint_elem_inverse_noninvertible_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
