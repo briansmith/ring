@@ -84,7 +84,6 @@ int GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
    * |ret->dmax|. */
   assert(num_words <= INT_MAX);
   ret->top = (int)num_words;
-  ret->neg = 0;
 
   while (len--) {
     word = (word << 8) | *(in++);

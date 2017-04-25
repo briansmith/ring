@@ -72,10 +72,6 @@ int GFp_BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 
 int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m) {
-  assert(!GFp_BN_is_negative(r));
-  assert(!GFp_BN_is_negative(a));
-  assert(!GFp_BN_is_negative(b));
-  assert(!GFp_BN_is_negative(m));
   assert(GFp_BN_ucmp(a, m) <= 0);
   assert(GFp_BN_ucmp(b, m) <= 0);
 

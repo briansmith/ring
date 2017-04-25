@@ -114,7 +114,6 @@
 
 
 int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive, RAND *rng) {
-  assert(!GFp_BN_is_negative(max_exclusive));
   assert(!GFp_BN_is_zero(max_exclusive));
   assert(!GFp_BN_is_one(max_exclusive));
 

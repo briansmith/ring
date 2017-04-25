@@ -260,13 +260,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
                                   const BIGNUM *p, const BIGNUM *one_mont,
                                   const BIGNUM *n,
                                   const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
-  assert(!GFp_BN_is_negative(a_mont));
   assert(GFp_BN_ucmp(a_mont, n) < 0);
-
-  assert(!GFp_BN_is_negative(n));
   assert(!GFp_BN_is_zero(n));
-
-  assert(!GFp_BN_is_negative(p));
   assert(!GFp_BN_is_zero(p));
 
   int i, bits, ret = 0, wvalue;
@@ -329,7 +324,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   am.d = tmp.d + top;
   tmp.top = am.top = 0;
   tmp.dmax = am.dmax = top;
-  tmp.neg = am.neg = 0;
   tmp.flags = am.flags = BN_FLG_STATIC_DATA;
 
   /* Copy a^0 and a^1. */

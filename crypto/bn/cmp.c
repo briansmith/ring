@@ -92,7 +92,7 @@ int GFp_BN_is_zero(const BIGNUM *bn) {
 }
 
 int GFp_BN_is_one(const BIGNUM *bn) {
-  return bn->neg == 0 && bn->top == 1 && bn->d[0] == 1;
+  return bn->top == 1 && bn->d[0] == 1;
 }
 
 int GFp_BN_is_odd(const BIGNUM *bn) {
@@ -104,10 +104,5 @@ int GFp_BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
     return 0;
   }
 
-  int limbs_are_equal =
-    GFp_memcmp(a->d, b->d, (size_t)a->top * sizeof(a->d[0])) == 0;
-
-  int signs_are_equal = a->neg == b->neg;
-
-  return limbs_are_equal && signs_are_equal;
+  return GFp_memcmp(a->d, b->d, (size_t)a->top * sizeof(a->d[0])) == 0;
 }

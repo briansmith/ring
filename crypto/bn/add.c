@@ -118,13 +118,10 @@ int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     }
   }
 
-  r->neg = 0;
   return 1;
 }
 
 int GFp_BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  assert(!GFp_BN_is_negative(a));
-  assert(!GFp_BN_is_negative(b));
   assert(GFp_BN_ucmp(a, b) >= 0);
   return GFp_BN_usub_unchecked(r, a, b);
 }
@@ -190,7 +187,6 @@ int GFp_BN_usub_unchecked(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   }
 
   r->top = max;
-  r->neg = 0;
   GFp_bn_correct_top(r);
 
   return 1;

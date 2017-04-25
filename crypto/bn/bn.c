@@ -107,7 +107,6 @@ int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
   }
 
   dest->top = src->top;
-  dest->neg = src->neg;
   return 1;
 }
 
@@ -172,7 +171,7 @@ unsigned GFp_BN_num_bits(const BIGNUM *bn) {
 }
 
 void GFp_BN_zero(BIGNUM *bn) {
-  bn->top = bn->neg = 0;
+  bn->top = 0;
 }
 
 /* GFp_BN_get_positive_u64 returns the value of |bn| if the value is in
@@ -205,14 +204,9 @@ int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value) {
     return 0;
   }
 
-  bn->neg = 0;
   bn->d[0] = value;
   bn->top = 1;
   return 1;
-}
-
-int GFp_BN_is_negative(const BIGNUM *bn) {
-  return bn->neg != 0;
 }
 
 int GFp_bn_wexpand(BIGNUM *bn, size_t words) {
@@ -258,9 +252,5 @@ void GFp_bn_correct_top(BIGNUM *bn) {
       }
     }
     bn->top = tmp_top;
-  }
-
-  if (bn->top == 0) {
-    bn->neg = 0;
   }
 }

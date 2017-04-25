@@ -869,7 +869,6 @@ mod repr_c {
         d: *mut limb::Limb,
         top: c::int,
         dmax: c::int,
-        neg: c::int,
         flags: c::int,
     }
 
@@ -892,7 +891,6 @@ mod repr_c {
                 d: core::ptr::null_mut(),
                 top: 0,
                 dmax: 0,
-                neg: 0,
                 flags: 0,
             }
         }

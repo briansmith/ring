@@ -127,8 +127,6 @@ int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   }
   top = al + bl;
 
-  r->neg = a->neg ^ b->neg;
-
   if (!GFp_bn_wexpand(r, top)) {
     goto err;
   }

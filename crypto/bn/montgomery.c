@@ -146,7 +146,6 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
     return 0;
   }
 
-  r->neg ^= n->neg;
   np = n->d;
   rp = r->d;
 
@@ -170,7 +169,6 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
     return 0;
   }
   ret->top = nl;
-  ret->neg = r->neg;
 
   rp = ret->d;
   ap = &(r->d[nl]);
@@ -216,11 +214,8 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
 int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                         const BIGNUM *n,
                         const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
-  assert(!GFp_BN_is_negative(a));
   assert(GFp_BN_ucmp(a, n) < 0);
-  assert(!GFp_BN_is_negative(b));
   assert(GFp_BN_ucmp(b, n) < 0);
-  assert(!GFp_BN_is_negative(n));
 
   int num = n->top;
 
@@ -234,7 +229,6 @@ int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
       return 0;
     }
     GFp_bn_mul_mont(r->d, a->d, b->d, n->d, n0, num);
-    r->neg = a->neg ^ b->neg;
     r->top = num;
     GFp_bn_correct_top(r);
     return 1;

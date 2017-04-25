@@ -181,9 +181,6 @@ OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
  * allocation failure. */
 OPENSSL_EXPORT int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value);
 
-/* GFp_BN_is_negative returns one if |bn| is negative and zero otherwise. */
-OPENSSL_EXPORT int GFp_BN_is_negative(const BIGNUM *bn);
-
 
 /* Conversion functions. */
 
@@ -199,7 +196,7 @@ OPENSSL_EXPORT int GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
  * what you want before turning to these. */
 
 /* bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
- * until |top| is zero. If |bn| is zero, |bn->neg| is set to zero. */
+ * until |top| is zero. */
 OPENSSL_EXPORT void GFp_bn_correct_top(BIGNUM *bn);
 
 /* bn_wexpand ensures that |bn| has at least |words| works of space without
@@ -330,7 +327,6 @@ struct bignum_st {
                   order. */
   int top;   /* Index of last used element in |d|, plus one. */
   int dmax;  /* Size of |d|, in words. */
-  int neg;   /* one if the number is negative */
   int flags; /* bitmask of BN_FLG_* values */
 };
 

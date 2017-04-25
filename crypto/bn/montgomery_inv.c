@@ -34,7 +34,6 @@ OPENSSL_COMPILE_ASSERT(sizeof(uint64_t) ==
 uint64_t GFp_bn_mont_n0(const BIGNUM *n) {
   /* These conditions are checked by the caller, |BN_MONT_CTX_set|. */
   assert(!GFp_BN_is_zero(n));
-  assert(!GFp_BN_is_negative(n));
   assert(GFp_BN_is_odd(n));
 
   /* r == 2**(BN_MONT_CTX_N0_LIMBS * BN_BITS2) and LG_LITTLE_R == lg(r). This
@@ -164,7 +163,6 @@ static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
  * odd. */
 int GFp_bn_mod_exp_base_2_vartime(BIGNUM *r, size_t p, const BIGNUM *n) {
   assert(!GFp_BN_is_zero(n));
-  assert(!GFp_BN_is_negative(n));
   assert(GFp_BN_is_odd(n));
 
   GFp_BN_zero(r);
