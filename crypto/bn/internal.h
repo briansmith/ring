@@ -200,8 +200,6 @@ BN_ULONG GFp_bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, int num);
 
-uint64_t GFp_bn_mont_n0(const BIGNUM *n);
-
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)

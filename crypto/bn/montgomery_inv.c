@@ -20,7 +20,9 @@
 #include "../internal.h"
 #include "../limbs/limbs.h"
 
-static uint64_t bn_neg_inv_mod_r_u64(uint64_t n);
+
+/* Avoid -Wmissing-prototypes warnings. */
+uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n);
 
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
@@ -30,53 +32,6 @@ OPENSSL_COMPILE_ASSERT(sizeof(uint64_t) ==
 
 /* LG_LITTLE_R is log_2(r). */
 #define LG_LITTLE_R (BN_MONT_CTX_N0_LIMBS * BN_BITS2)
-
-uint64_t GFp_bn_mont_n0(const BIGNUM *n) {
-  /* These conditions are checked by the caller, |BN_MONT_CTX_set|. */
-  assert(!GFp_BN_is_zero(n));
-  assert(GFp_BN_is_odd(n));
-
-  /* r == 2**(BN_MONT_CTX_N0_LIMBS * BN_BITS2) and LG_LITTLE_R == lg(r). This
-   * ensures that we can do integer division by |r| by simply ignoring
-   * |BN_MONT_CTX_N0_LIMBS| limbs. Similarly, we can calculate values modulo
-   * |r| by just looking at the lowest |BN_MONT_CTX_N0_LIMBS| limbs. This is
-   * what makes Montgomery multiplication efficient.
-   *
-   * As shown in Algorithm 1 of "Fast Prime Field Elliptic Curve Cryptography
-   * with 256 Bit Primes" by Shay Gueron and Vlad Krasnov, in the loop of a
-   * multi-limb Montgomery multiplication of |a * b (mod n)|, given the
-   * unreduced product |t == a * b|, we repeatedly calculate:
-   *
-   *    t1 := t % r         |t1| is |t|'s lowest limb (see previous paragraph).
-   *    t2 := t1*n0*n
-   *    t3 := t + t2
-   *    t := t3 / r         copy all limbs of |t3| except the lowest to |t|.
-   *
-   * In the last step, it would only make sense to ignore the lowest limb of
-   * |t3| if it were zero. The middle steps ensure that this is the case:
-   *
-   *                            t3 ==  0 (mod r)
-   *                        t + t2 ==  0 (mod r)
-   *                   t + t1*n0*n ==  0 (mod r)
-   *                       t1*n0*n == -t (mod r)
-   *                        t*n0*n == -t (mod r)
-   *                          n0*n == -1 (mod r)
-   *                            n0 == -1/n (mod r)
-   *
-   * Thus, in each iteration of the loop, we multiply by the constant factor
-   * |n0|, the negative inverse of n (mod r). */
-
-  /* n_mod_r = n % r. As explained above, this is done by taking the lowest
-   * |BN_MONT_CTX_N0_LIMBS| limbs of |n|. */
-  uint64_t n_mod_r = n->d[0];
-#if BN_MONT_CTX_N0_LIMBS == 2
-  if (n->top > 1) {
-    n_mod_r |= (uint64_t)n->d[1] << BN_BITS2;
-  }
-#endif
-
-  return bn_neg_inv_mod_r_u64(n_mod_r);
-}
 
 /* bn_neg_inv_r_mod_n_u64 calculates the -1/n mod r; i.e. it calculates |v|
  * such that u*r - v*n == 1. |r| is the constant defined in |bn_mont_n0|. |n|
@@ -100,7 +55,7 @@ uint64_t GFp_bn_mont_n0(const BIGNUM *n) {
  * caller would have to negate the resultant |v| for the purpose of Montgomery
  * multiplication. This implementation does the negation implicitly by doing
  * the computations as a difference instead of a sum. */
-static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
+uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n) {
   assert(n % 2 == 1);
 
   /* alpha == 2**(lg r - 1) == r / 2. */

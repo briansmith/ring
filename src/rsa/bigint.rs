@@ -187,6 +187,36 @@ pub struct Modulus<M> {
 
     // n0 * N == -1 (mod r).
     //
+    // r == 2**(N0_LIMBS_USED * LIMB_BITS) and LG_LITTLE_R == lg(r). This
+    // ensures that we can do integer division by |r| by simply ignoring
+    // `N0_LIMBS_USED` limbs. Similarly, we can calculate values modulo `r` by
+    // just looking at the lowest `N0_LIMBS_USED` limbs. This is what makes
+    // Montgomery multiplication efficient.
+    //
+    // As shown in Algorithm 1 of "Fast Prime Field Elliptic Curve Cryptography
+    // with 256 Bit Primes" by Shay Gueron and Vlad Krasnov, in the loop of a
+    // multi-limb Montgomery multiplication of a * b (mod n), given the
+    // unreduced product t == a * b, we repeatedly calculate:
+    //
+    //    t1 := t % r         |t1| is |t|'s lowest limb (see previous paragraph).
+    //    t2 := t1*n0*n
+    //    t3 := t + t2
+    //    t := t3 / r         copy all limbs of |t3| except the lowest to |t|.
+    //
+    // In the last step, it would only make sense to ignore the lowest limb of
+    // |t3| if it were zero. The middle steps ensure that this is the case:
+    //
+    //                            t3 ==  0 (mod r)
+    //                        t + t2 ==  0 (mod r)
+    //                   t + t1*n0*n ==  0 (mod r)
+    //                       t1*n0*n == -t (mod r)
+    //                        t*n0*n == -t (mod r)
+    //                          n0*n == -1 (mod r)
+    //                            n0 == -1/n (mod r)
+    //
+    // Thus, in each iteration of the loop, we multiply by the constant factor
+    // n0, the negative inverse of n (mod r). */
+    //
     // TODO(perf): Not all 32-bit platforms actually make use of n0[1]. For the
     // ones that don't, we could use a shorter `R` value and use faster `Limb`
     // calculations instead of double-precision `u64` calculations.
@@ -202,14 +232,29 @@ unsafe impl<M> Send for Modulus<M> {}
 unsafe impl<M> Sync for Modulus<M> {}
 
 impl<M> Modulus<M> {
-    fn new(value: OddPositive) -> Result<Self, error::Unspecified> {
+    fn new(n: OddPositive) -> Result<Self, error::Unspecified> {
         // A `Modulus` must be larger than 1.
-        if value.bit_length() < bits::BitLength::from_usize_bits(2) {
+        if n.bit_length() < bits::BitLength::from_usize_bits(2) {
             return Err(error::Unspecified);
         }
-        let n0 = unsafe { GFp_bn_mont_n0(value.as_ref()) };
+
+        // n_mod_r = n % r. As explained in the documentation for `n0`, this is
+        // done by taking the lowest `N0_LIMBS_USED` limbs of `n`.
+        let n0 = {
+            let n_limbs = (n.0).0.limbs();
+            let mut n_mod_r: u64 = u64::from(n_limbs[0]);
+
+            if N0_LIMBS_USED == 2 {
+                // XXX: If we use `<< limb::LIMB_BITS` here then 64-bit builds
+                // fail to compile because of `deny(exceeding_bitshifts)`.
+                debug_assert_eq!(limb::LIMB_BITS, 32);
+                n_mod_r |= u64::from(n_limbs[1]) << 32;
+            }
+            unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) }
+        };
+
         Ok(Modulus {
-            value: value,
+            value: n,
             n0: n0_from_u64(n0),
             m: PhantomData,
         })
@@ -910,14 +955,18 @@ fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
 type N0 = [limb::Limb; N0_LIMBS];
 const N0_LIMBS: usize = 2;
 
-// const N0_LIMBS_USED: usize = 1;
+#[cfg(target_pointer_width = "64")]
+const N0_LIMBS_USED: usize = 1;
+
 #[cfg(target_pointer_width = "64")]
 #[inline]
 fn n0_from_u64(n0: u64) -> N0 {
     [n0, 0]
 }
 
-// const N0_LIMBS_USED: usize = 2;
+#[cfg(target_pointer_width = "32")]
+const N0_LIMBS_USED: usize = 2;
+
 #[cfg(target_pointer_width = "32")]
 #[inline]
 fn n0_from_u64(n0: u64) -> N0 {
@@ -1033,7 +1082,6 @@ extern {
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
-    fn GFp_bn_mont_n0(n: &BIGNUM) -> u64;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
@@ -1043,6 +1091,8 @@ extern {
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
                                    n0: &N0) -> c::int;
+
+    fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
 
     fn LIMBS_shl_mod(r: *mut limb::Limb, a: *const limb::Limb,
                      m: *const limb::Limb, num_limbs: c::size_t);
