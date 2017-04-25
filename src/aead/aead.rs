@@ -239,8 +239,6 @@ struct Key {
     algorithm: &'static Algorithm,
 }
 
-// TODO: Implement Drop for Key that zeroizes the key data?
-
 const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
 
 // Keep this in sync with `aead_aes_gcm_ctx` in e_aes.c.
