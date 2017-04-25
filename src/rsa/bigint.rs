@@ -455,23 +455,56 @@ impl<M> One<M, R> {
 
 impl<M> One<M, RR> {
     pub fn newRR(m: &Modulus<M>) -> Result<One<M, RR>, error::Unspecified> {
-        // RR = R**2 (mod N). R is the smallest power of 2**LIMB_BITS such that
-        // R > m. Even though the assembly on some 32-bit platforms works
-        // with 64-bit values, using `LIMB_BITS` here, rather than
-        // `N0_LIMBS_USED * LIMB_BITS`, is correct because R**2 will still be
-        // a multiple of the latter as `N0_LIMBS_USED` is either one or two.
-        use limb::LIMB_BITS;
-        let lg_R =
-            (m.value.bit_length().as_usize_bits() + (LIMB_BITS - 1))
-                / LIMB_BITS * LIMB_BITS;
-
-        let mut RR = try!(Elem::zero());
-        try!(bssl::map_result(unsafe {
-            GFp_bn_mod_exp_base_2_vartime(RR.value.as_mut_ref(), 2 * lg_R,
-                                          m.value.as_ref())
-        }));
-        Ok(One(RR))
+        let RR = try!(calculate_RR(&(m.value.0).0));
+        Ok(One(Elem {
+            value: RR,
+            m: PhantomData,
+            encoding: PhantomData,
+        }))
     }
+}
+
+// Returns 2**(lg R) (mod m).
+//
+// RR = R**2 (mod N). R is the smallest power of 2**LIMB_BITS such that R > m.
+// Even though the assembly on some 32-bit platforms works with 64-bit values,
+// using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`, is correct
+// because R**2 will still be a multiple of the latter as `N0_LIMBS_USED` is
+// either one or two.
+fn calculate_RR(m: &Nonnegative) -> Result<Nonnegative, error::Unspecified> {
+    use limb::LIMB_BITS;
+
+    let m_bits = m.bit_length().as_usize_bits();
+
+    let lg_RR = ((m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS) * 2;
+
+    let mut r = try!(Nonnegative::zero());
+
+    let num_limbs = m.limbs().len();
+
+    try!(r.as_mut_ref().make_limbs(num_limbs, |limbs| {
+        // Zero all the limbs.
+        for limb in limbs.iter_mut() {
+            *limb = 0;
+        }
+
+        // Make `r` the highest power of 2 less than `m`.
+        let bit = m_bits - 1;
+        limbs[bit / LIMB_BITS] = 1 << (bit % LIMB_BITS);
+
+        // Double the value (mod m) until it is 2**(lg RR) (mod m),
+        // i.e. RR (mod m).
+        for _ in bit..lg_RR {
+            unsafe {
+                LIMBS_shl_mod(limbs.as_mut_ptr(), limbs.as_ptr(),
+                              m.limbs().as_ptr(), num_limbs);
+            }
+        }
+
+        Ok(())
+    }));
+
+    Ok(r)
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -838,7 +871,7 @@ impl Nonnegative {
 
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
     // this ASAP.
-    unsafe fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
+    fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
 
     fn into_elem<M>(self, m: &Modulus<M>)
                     -> Result<Elem<M, Unencoded>, error::Unspecified> {
@@ -894,12 +927,9 @@ fn n0_from_u64(n0: u64) -> N0 {
 // `BIGNUM` is defined in its own submodule so that its private components are
 // not accessible.
 mod repr_c {
-    use {c, limb};
+    use {bssl, c, error, limb};
     use core;
     use libc;
-
-    #[cfg(feature = "rsa_signing")]
-    use {bssl, error};
 
     // Keep in sync with `bignum_st` in openss/bn.h.
     #[repr(C)]
@@ -940,7 +970,6 @@ mod repr_c {
             }
         }
 
-        #[cfg(feature = "rsa_signing")]
         #[inline]
         pub fn limbs_mut(&mut self) -> &mut [limb::Limb] {
             unsafe {
@@ -971,7 +1000,6 @@ mod repr_c {
             }
         }
 
-        #[cfg(feature = "rsa_signing")]
         pub fn make_limbs<F>(&mut self, num_limbs: usize, f: F)
                              -> Result<(), error::Unspecified>
                 where F: FnOnce(&mut [limb::Limb])
@@ -989,7 +1017,6 @@ mod repr_c {
         }
     }
 
-    #[cfg(feature = "rsa_signing")]
     extern {
         fn GFp_bn_correct_top(r: &mut BIGNUM);
         fn GFp_bn_wexpand(r: &mut BIGNUM, words: c::int) -> c::int;
@@ -1007,8 +1034,6 @@ extern {
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
     fn GFp_bn_mont_n0(n: &BIGNUM) -> u64;
-    fn GFp_bn_mod_exp_base_2_vartime(r: &mut BIGNUM, p: c::size_t,
-                                     n: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
@@ -1018,6 +1043,9 @@ extern {
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
                                    n0: &N0) -> c::int;
+
+    fn LIMBS_shl_mod(r: *mut limb::Limb, a: *const limb::Limb,
+                     m: *const limb::Limb, num_limbs: c::size_t);
 }
 
 #[cfg(feature = "rsa_signing")]

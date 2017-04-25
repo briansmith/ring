@@ -246,11 +246,6 @@ OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
 
 /* Bitwise operations. */
 
-/* GFp_BN_set_bit sets the |n|th, least-significant bit in |a|. For example, if
- * |a| is 2 then setting bit zero will make it 3. It returns one on success or
- * zero on allocation failure. */
-OPENSSL_EXPORT int GFp_BN_set_bit(BIGNUM *a, int n);
-
 /* GFp_BN_is_bit_set returns the value of the |n|th, least-significant bit in
  * |a|, or zero if the bit doesn't exist. */
 OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
