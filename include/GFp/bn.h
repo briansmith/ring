@@ -269,21 +269,6 @@ OPENSSL_EXPORT int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a,
                                         const BIGNUM *b, const BIGNUM *m);
 
 
-/* Number theory functions */
-
-/* GFp_BN_mod_inverse_odd sets |out| equal to |a|^-1, mod |n|. |a| must be
- * non-negative and must be less than |n|. |n| must be odd. This function
- * shouldn't be used for secret values; use |GFp_BN_mod_inverse_blinded|
- * instead. Or, if |n| is guaranteed to be prime, use
- * |GFp_BN_mod_exp_mont_consttime(out, a, m_minus_2, m, ctx, m_mont)|, taking
- * advantage of Fermat's Little Theorem. It returns one on success or zero on
- * failure. On failure, if the failure was caused by |a| having no inverse mod
- * |n| then |*out_no_inverse| will be set to one; otherwise it will be set to
- * zero. */
-int GFp_BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                           const BIGNUM *n);
-
-
 /* GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
  * Both |a| and |b| must already be in the Montgomery domain (by
  * |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range
