@@ -58,9 +58,6 @@
  * initialising it to zero, it becomes a "data symbol", which isn't so
  * affected. */
 uint32_t OPENSSL_ia32cap_P[4] = {0};
-#if !defined(BORINGSSL_FIPS)
-uint32_t *OPENSSL_ia32cap_addr = OPENSSL_ia32cap_P;
-#endif
 
 #elif defined(OPENSSL_PPC64LE)
 

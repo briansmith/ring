@@ -249,15 +249,14 @@ ___
 $code=<<___;
 .text
 
-.extern	OPENSSL_ia32cap_addr
+.extern	OPENSSL_ia32cap_P
 .globl	$func
 .type	$func,\@function,3
 .align	16
 $func:
 ___
 $code.=<<___ if ($SZ==4 || $avx);
-	lea	OPENSSL_ia32cap_addr(%rip),%r11
-	mov	(%r11),%r11
+	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	mov	0(%r11),%r9d
 	mov	4(%r11),%r10d
 	mov	8(%r11),%r11d

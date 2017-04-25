@@ -1642,7 +1642,7 @@ $code.=<<___;
 .align	16
 .globl	asm_AES_cbc_encrypt
 .type	asm_AES_cbc_encrypt,\@function,6
-.extern	OPENSSL_ia32cap_addr
+.extern	OPENSSL_ia32cap_P
 .hidden	asm_AES_cbc_encrypt
 asm_AES_cbc_encrypt:
 	cmp	\$0,%rdx	# check length
@@ -1664,7 +1664,7 @@ asm_AES_cbc_encrypt:
 	cmp	\$0,%r9
 	cmoveq	%r10,$sbox
 
-	mov	OPENSSL_ia32cap_addr(%rip),%r10
+	leaq	OPENSSL_ia32cap_P(%rip),%r10
 	mov	(%r10), %r10d
 	cmp	\$$speed_limit,%rdx
 	jb	.Lcbc_slow_prologue

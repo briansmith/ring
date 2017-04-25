@@ -121,16 +121,6 @@ func definedSymbols(lines []string) map[string]bool {
 	return symbols
 }
 
-func referencesIA32CapDirectly(line string) bool {
-	const symbol = "OPENSSL_ia32cap_P"
-	i := strings.Index(line, symbol)
-	if i < 0 {
-		return false
-	}
-	i += len(symbol)
-	return i == len(line) || line[i] == '+' || line[i] == '(' || line[i] == '@'
-}
-
 // threadLocalOffsetFunc describes a function that fetches the offset to symbol
 // in the thread-local space and writes it to the given target register.
 type threadLocalOffsetFunc struct {
@@ -231,9 +221,9 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	// redirector function for that symbol.
 	redirectors := make(map[string]string)
 
-	// ia32capAddrNeeded is true iff OPENSSL_ia32cap_addr has been
-	// referenced and thus needs to be emitted outside the module.
-	ia32capAddrNeeded := false
+	// ia32capAddrDeltaNeeded is true iff OPENSSL_ia32cap_addr_delta has
+	// been referenced and thus needs to be emitted outside the module.
+	ia32capAddrDeltaNeeded := false
 
 	// ia32capGetNeeded is true iff OPENSSL_ia32cap_get has been referenced
 	// and thus needs to be emitted outside the module.
@@ -256,14 +246,6 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		line, ok := source.Next()
 		if !ok {
 			break
-		}
-
-		if referencesIA32CapDirectly(line) {
-			panic("reference to OPENSSL_ia32cap_P needs to be changed to indirect via OPENSSL_ia32cap_addr")
-		}
-
-		if strings.Contains(line, "OPENSSL_ia32cap_addr(%rip)") {
-			ia32capAddrNeeded = true
 		}
 
 		if strings.Contains(line, "OPENSSL_ia32cap_get@PLT") {
@@ -326,7 +308,9 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				symbol := strings.SplitN(args[0], "@", 2)[0]
 				functionName := fmt.Sprintf("BORINGSSL_bcm_tpoff_to_%s_for_%s", targetRegister, symbol)
 				threadLocalOffsets[functionName] = threadLocalOffsetFunc{target: targetRegister, symbol: symbol}
+				ret = append(ret, "leaq -128(%rsp), %rsp") // Clear the red zone.
 				ret = append(ret, "\tcallq "+functionName+"\n")
+				ret = append(ret, "leaq 128(%rsp), %rsp")
 				continue
 			}
 
@@ -351,6 +335,35 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 					// referencing the symbol directly,
 					// needs to be transformed into an LEA.
 					line = strings.Replace(line, "movq", "leaq", 1)
+					instr = "leaq"
+				}
+
+				if target == "OPENSSL_ia32cap_P" {
+					if instr != "leaq" {
+						panic("reference to OPENSSL_ia32cap_P needs to be changed to go through leaq or GOTPCREL")
+					}
+					if args[1][0] != '%' {
+						panic("reference to OPENSSL_ia32cap_P must target a register.")
+					}
+
+					// We assume pushfq is safe, after
+					// clearing the red zone, because any
+					// signals will be delivered using
+					// %rsp. Thus perlasm and
+					// compiler-generated code must not use
+					// %rsp as a general-purpose register.
+					//
+					// TODO(davidben): This messes up CFI
+					// for a small window if %rsp is the CFI
+					// register.
+					ia32capAddrDeltaNeeded = true
+					ret = append(ret, "leaq -128(%rsp), %rsp") // Clear the red zone.
+					ret = append(ret, "pushfq")
+					ret = append(ret, fmt.Sprintf("leaq OPENSSL_ia32cap_addr_delta(%%rip), %s", args[1]))
+					ret = append(ret, fmt.Sprintf("addq OPENSSL_ia32cap_addr_delta(%%rip), %s", args[1]))
+					ret = append(ret, "popfq")
+					ret = append(ret, "leaq 128(%rsp), %rsp")
+					continue
 				}
 			}
 
@@ -468,12 +481,12 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	}
 
 	// Emit an indirect reference to OPENSSL_ia32cap_P.
-	if ia32capAddrNeeded {
+	if ia32capAddrDeltaNeeded {
 		ret = append(ret, ".extern OPENSSL_ia32cap_P")
-		ret = append(ret, ".type OPENSSL_ia32cap_addr,@object")
-		ret = append(ret, ".size OPENSSL_ia32cap_addr,8")
-		ret = append(ret, "OPENSSL_ia32cap_addr:")
-		ret = append(ret, "\t.quad OPENSSL_ia32cap_P")
+		ret = append(ret, ".type OPENSSL_ia32cap_addr_delta,@object")
+		ret = append(ret, ".size OPENSSL_ia32cap_addr_delta,8")
+		ret = append(ret, "OPENSSL_ia32cap_addr_delta:")
+		ret = append(ret, "\t.quad OPENSSL_ia32cap_P-OPENSSL_ia32cap_addr_delta")
 	}
 
 	// Emit accessors for thread-local offsets.
