@@ -210,10 +210,6 @@ OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
 /* Simple arithmetic */
 
-/* GFp_BN_add sets |r| = |a| + |b|, where |r| may be the same pointer as either
- * |a| or |b|. It returns one on success and zero on allocation failure. */
-OPENSSL_EXPORT int GFp_BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
-
 /* GFp_BN_uadd sets |r| = |a| + |b|, where |a| and |b| are non-negative and |r|
  * may be the same pointer as either |a| or |b|. It returns one on success and
  * zero on allocation failure. */

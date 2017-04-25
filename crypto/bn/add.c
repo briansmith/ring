@@ -64,43 +64,6 @@
 #include "internal.h"
 
 
-int GFp_BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  const BIGNUM *tmp;
-  int a_neg = a->neg, ret;
-
-  /*  a +  b	a+b
-   *  a + -b	a-b
-   * -a +  b	b-a
-   * -a + -b	-(a+b)
-   */
-  if (a_neg ^ b->neg) {
-    /* only one is negative */
-    if (a_neg) {
-      tmp = a;
-      a = b;
-      b = tmp;
-    }
-
-    /* we are now a - b */
-    if (GFp_BN_ucmp(a, b) < 0) {
-      if (!GFp_BN_usub_unchecked(r, b, a)) {
-        return 0;
-      }
-      r->neg = 1;
-    } else {
-      if (!GFp_BN_usub_unchecked(r, a, b)) {
-        return 0;
-      }
-      r->neg = 0;
-    }
-    return 1;
-  }
-
-  ret = GFp_BN_uadd(r, a, b);
-  r->neg = a_neg;
-  return ret;
-}
-
 int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   int max, min, dif;
   BN_ULONG *ap, *bp, *rp, carry, t1, t2;

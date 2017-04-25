@@ -74,7 +74,8 @@ int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     return 0;
   }
   if (r->neg) {
-    return GFp_BN_add(r, r, m);
+    r->neg = 0;
+    return GFp_BN_usub(r, m, r);
   }
   return 1;
 }
