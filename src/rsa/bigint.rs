@@ -39,13 +39,13 @@
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
 
-// XXX TODO: Remove this once RSA verification has been done in Rust.
-#![cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
-
-use {bits, bssl, c, constant_time, der, error, limb, rand, untrusted};
+use {bits, bssl, c, error, limb, untrusted};
 use arithmetic::montgomery::*;
 use core;
 use core::marker::PhantomData;
+
+#[cfg(feature = "rsa_signing")]
+use {constant_time, der, rand};
 
 impl AsRef<BIGNUM> for Positive {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
@@ -65,6 +65,7 @@ pub struct Positive(Nonnegative);
 
 impl Positive {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
+    #[cfg(feature = "rsa_signing")]
     pub fn from_der(input: &mut untrusted::Reader)
                     -> Result<Positive, error::Unspecified> {
         Self::from_be_bytes(try!(der::positive_integer(input)))
@@ -115,17 +116,20 @@ impl Positive {
 pub struct OddPositive(Positive);
 
 impl OddPositive {
+    #[cfg(feature = "rsa_signing")]
     #[inline]
     pub fn verify_less_than(&self, other: &Self)
                             -> Result<(), error::Unspecified> {
         (self.0).0.verify_less_than(&(other.0).0)
     }
 
+    #[cfg(feature = "rsa_signing")]
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
         let value = try!((self.0).0.try_clone());
         Ok(OddPositive(Positive(value)))
     }
 
+    #[cfg(feature = "rsa_signing")]
     pub fn into_elem<M>(self, m: &Modulus<M>)
                         -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.0.into_elem(m)
@@ -212,6 +216,7 @@ impl<M> Modulus<M> {
     }
 }
 
+#[cfg(feature = "rsa_signing")]
 impl Modulus<super::N> {
     pub fn value(&self) -> &OddPositive { &self.value }
 }
@@ -245,8 +250,10 @@ impl<M, E> Elem<M, E> {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     pub fn is_zero(&self) -> bool { self.value.is_zero() }
 
+    #[cfg(feature = "rsa_signing")]
     pub fn take_storage<OtherF>(e: Elem<M, OtherF>) -> Elem<M, E> {
         Elem {
             value: e.value,
@@ -274,6 +281,7 @@ impl<M> Elem<M, R> {
 }
 
 impl<M> Elem<M, Unencoded> {
+    #[cfg(feature = "rsa_signing")]
     pub fn one() -> Result<Self, error::Unspecified> {
         let value = try!(Nonnegative::one());
         Ok(Elem {
@@ -288,12 +296,15 @@ impl<M> Elem<M, Unencoded> {
         limb::big_endian_from_limbs_padded(self.value.limbs(), out)
     }
 
+    #[cfg(feature = "rsa_signing")]
     pub fn is_one(&self) -> bool { self.value.is_one() }
 
     // The result is security-sensitive.
+    #[cfg(feature = "rsa_signing")]
     #[inline]
     pub fn bit_length(&self) -> bits::BitLength { self.value.bit_length() }
 
+    #[cfg(feature = "rsa_signing")]
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
         let value = try!(self.value.into_odd_positive());
         value.into_modulus()
@@ -317,6 +328,7 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
 }
 
 // `a` * `b` (mod `m`).
+#[cfg(feature = "rsa_signing")]
 pub fn elem_set_to_product<M, AF, BF>(
         r: &mut Elem<M, <(AF, BF) as ProductEncoding>::Output>,
         a: &Elem<M, AF>, b: &Elem<M, BF>, m: &Modulus<M>)
@@ -328,6 +340,7 @@ pub fn elem_set_to_product<M, AF, BF>(
     })
 }
 
+#[cfg(feature = "rsa_signing")]
 pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
@@ -346,6 +359,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     })
 }
 
+#[cfg(feature = "rsa_signing")]
 #[inline]
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
@@ -382,6 +396,7 @@ pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
     })
 }
 
+#[cfg(feature = "rsa_signing")]
 pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
         a: Elem<Smaller, Unencoded>) -> Elem<Larger, Unencoded> {
     Elem {
@@ -393,6 +408,7 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 
 
 // TODO: Document why this works for all Montgomery factors.
+#[cfg(feature = "rsa_signing")]
 pub fn elem_add<M, E>(a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>)
                       -> Result<Elem<M, E>, error::Unspecified> {
     let mut value = b.value;
@@ -408,6 +424,7 @@ pub fn elem_add<M, E>(a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>)
 }
 
 // TODO: Document why this works for all Montgomery factors.
+#[cfg(feature = "rsa_signing")]
 pub fn elem_sub<M, E>(a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
                    -> Result<Elem<M, E>, error::Unspecified> {
     let mut value = a.value;
@@ -426,6 +443,7 @@ pub fn elem_sub<M, E>(a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
 // The value 1, Montgomery-encoded some number of times.
 pub struct One<M, E>(Elem<M, E>);
 
+#[cfg(feature = "rsa_signing")]
 impl<M> One<M, R> {
     pub fn newR(oneRR: &One<M, RR>, m: &Modulus<M>)
                 -> Result<One<M, R>, error::Unspecified> {
@@ -456,6 +474,7 @@ impl<M> One<M, RR> {
     }
 }
 
+#[cfg(feature = "rsa_signing")]
 impl<M> One<M, RRR> {
     pub fn newRRR(oneRR: One<M, RR>, m: &Modulus<M>)
                   -> Result<One<M, RRR>, error::Unspecified> {
@@ -468,6 +487,7 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> { &self.0 }
 }
 
+#[cfg(feature = "rsa_signing")]
 impl<M, E> One<M, E> {
     pub fn try_clone(&self) -> Result<Self, error::Unspecified> {
         let value = try!(self.0.try_clone());
@@ -534,6 +554,7 @@ pub fn elem_exp_vartime<M>(
     Ok(acc)
 }
 
+#[cfg(feature = "rsa_signing")]
 pub fn elem_exp_consttime<M>(
         base: Elem<M, R>, exponent: &OddPositive, oneR: &One<M, R>,
         m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
@@ -564,6 +585,7 @@ pub fn elem_exp_consttime<M>(
     Ok(r)
 }
 
+#[cfg(feature = "rsa_signing")]
 pub fn elem_randomize<E>(a: &mut Elem<super::N, E>, m: &Modulus<super::N>,
                          rng: &rand::SecureRandom)
                          -> Result<(), error::Unspecified> {
@@ -574,6 +596,7 @@ pub fn elem_randomize<E>(a: &mut Elem<super::N, E>, m: &Modulus<super::N>,
 //
 // This relies on the invariants of `Modulus` that its value is odd and larger
 // than one.
+#[cfg(feature = "rsa_signing")]
 pub fn elem_set_to_inverse_blinded(
             r: &mut Elem<super::N, R>, a: &Elem<super::N, Unencoded>,
             n: &Modulus<super::N>, rng: &rand::SecureRandom)
@@ -591,6 +614,7 @@ pub fn elem_set_to_inverse_blinded(
 //
 // This relies on the invariants of `Modulus` that its value is odd and larger
 // than one.
+#[cfg(feature = "rsa_signing")]
 fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
                    -> Result<Elem<M, R>, InversionError> {
     let a_clone = try!(a.try_clone());
@@ -608,6 +632,7 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
     Ok(r)
 }
 
+#[cfg(feature = "rsa_signing")]
 fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
                            -> Result<Nonnegative, InversionError> {
     use limb::*;
@@ -715,15 +740,18 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     Ok(x1)
 }
 
+#[cfg(feature = "rsa_signing")]
 pub enum InversionError {
     NoInverse,
     Unspecified
 }
 
+#[cfg(feature = "rsa_signing")]
 impl From<error::Unspecified> for InversionError {
     fn from(_: error::Unspecified) -> Self { InversionError::Unspecified }
 }
 
+#[cfg(feature = "rsa_signing")]
 pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
                                          -> Result<(), error::Unspecified> {
     // XXX: Not constant-time if the number of limbs in `a` and `b` differ.
@@ -744,6 +772,7 @@ impl Nonnegative {
         Ok(r)
     }
 
+    #[cfg(feature = "rsa_signing")]
     fn one() -> Result<Self, error::Unspecified> {
         let mut r = try!(Self::zero());
         try!(bssl::map_result(unsafe {
@@ -757,11 +786,13 @@ impl Nonnegative {
         is_zero != 0
     }
 
+    #[cfg(feature = "rsa_signing")]
     fn is_one(&self) -> bool {
         let is_one = unsafe { GFp_BN_is_one(self.as_ref()) };
         is_one != 0
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[inline]
     fn is_even(&self) -> bool { !self.is_odd() }
 
@@ -783,6 +814,7 @@ impl Nonnegative {
     #[inline]
     fn limbs(&self) -> &[limb::Limb] { self.0.limbs() }
 
+    #[cfg(feature = "rsa_signing")]
     #[inline]
     fn limbs_mut(&mut self) -> &mut [limb::Limb] { self.0.limbs_mut() }
 
@@ -795,6 +827,7 @@ impl Nonnegative {
         Ok(())
     }
 
+    #[cfg(feature = "rsa_signing")]
     fn randomize(&mut self, m: &Modulus<super::N>, rng: &rand::SecureRandom)
                  -> Result<(), error::Unspecified> {
         let m = (m.value.0).0.limbs();
@@ -834,6 +867,7 @@ impl Nonnegative {
 }
 
 // Returns a > b.
+#[cfg(feature = "rsa_signing")]
 #[inline]
 fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
     let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
@@ -860,9 +894,12 @@ fn n0_from_u64(n0: u64) -> N0 {
 // `BIGNUM` is defined in its own submodule so that its private components are
 // not accessible.
 mod repr_c {
+    use {c, limb};
     use core;
-    use {bssl, c, error, limb};
     use libc;
+
+    #[cfg(feature = "rsa_signing")]
+    use {bssl, error};
 
     // Keep in sync with `bignum_st` in openss/bn.h.
     #[repr(C)]
@@ -903,6 +940,7 @@ mod repr_c {
             }
         }
 
+        #[cfg(feature = "rsa_signing")]
         #[inline]
         pub fn limbs_mut(&mut self) -> &mut [limb::Limb] {
             unsafe {
@@ -910,6 +948,7 @@ mod repr_c {
             }
         }
 
+        #[cfg(feature = "rsa_signing")]
         pub fn grow_by_one_bit(&mut self) -> Result<(), error::Unspecified> {
             let old_top = self.top;
             let new_top = old_top + 1;
@@ -921,6 +960,7 @@ mod repr_c {
             Ok(())
         }
 
+        #[cfg(feature = "rsa_signing")]
         pub fn shrunk_by_at_most_one_bit(&mut self) {
             let has_shrunk = {
                 let limbs = self.limbs();
@@ -931,6 +971,7 @@ mod repr_c {
             }
         }
 
+        #[cfg(feature = "rsa_signing")]
         pub fn make_limbs<F>(&mut self, num_limbs: usize, f: F)
                              -> Result<(), error::Unspecified>
                 where F: FnOnce(&mut [limb::Limb])
@@ -948,6 +989,7 @@ mod repr_c {
         }
     }
 
+    #[cfg(feature = "rsa_signing")]
     extern {
         fn GFp_bn_correct_top(r: &mut BIGNUM);
         fn GFp_bn_wexpand(r: &mut BIGNUM, words: c::int) -> c::int;
@@ -957,40 +999,46 @@ mod repr_c {
 pub use self::repr_c::BIGNUM;
 
 extern {
-    fn GFp_BN_set_word(r: &mut BIGNUM, w: limb::Limb) -> c::int;
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
     fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
-    fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
     fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
     fn GFp_bn_mont_n0(n: &BIGNUM) -> u64;
     fn GFp_bn_mod_exp_base_2_vartime(r: &mut BIGNUM, p: c::size_t,
                                      n: &BIGNUM) -> c::int;
 
-    // `r` and `a` may alias.
-    fn GFp_BN_uadd(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
-    fn GFp_BN_usub(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
-
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                             n: &BIGNUM, n0: &N0) -> c::int;
-    fn GFp_BN_mod_add_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
-                            m: &BIGNUM) -> c::int;
-    fn GFp_BN_mod_sub_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
-                            m: &BIGNUM) -> c::int;
+
+    // The use of references here implies lack of aliasing.
+    fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
+    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
+                                   n0: &N0) -> c::int;
+}
+
+#[cfg(feature = "rsa_signing")]
+extern {
+    fn GFp_BN_set_word(r: &mut BIGNUM, w: limb::Limb) -> c::int;
+    fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
                                      p: &BIGNUM, one_mont: &BIGNUM, n: &BIGNUM,
                                      n0: &N0) -> c::int;
 
-    // The use of references here implies lack of aliasing.
-    fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
-    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
-                                   n0: &N0) -> c::int;
+    // `r` and/or 'a' and/or 'b' may alias.
+    fn GFp_BN_mod_add_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
+                            m: &BIGNUM) -> c::int;
+    fn GFp_BN_mod_sub_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
+                            m: &BIGNUM) -> c::int;
+
+    // `r` and `a` may alias.
+    fn GFp_BN_uadd(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
+    fn GFp_BN_usub(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
 }
 
 #[cfg(test)]
@@ -1036,6 +1084,7 @@ mod tests {
     // Type-level representation of an arbitrary modulus.
     struct M {}
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_exp_consttime() {
         test::from_file("src/rsa/bigint_elem_exp_consttime_tests.txt",
@@ -1077,6 +1126,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_inverse_invertible() {
         test::from_file("src/rsa/bigint_elem_inverse_invertible_tests.txt",
@@ -1098,6 +1148,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_set_to_inverse_blinded_invertible() {
         use super::super::N;
@@ -1121,6 +1172,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_inverse_noninvertible() {
         test::from_file("src/rsa/bigint_elem_inverse_noninvertible_tests.txt",
@@ -1138,6 +1190,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_set_to_inverse_blinded_noninvertible() {
         use super::super::N;
@@ -1200,6 +1253,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_reduced() {
         test::from_file("src/rsa/bigint_elem_reduced_tests.txt",
@@ -1224,6 +1278,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_reduced_once() {
         test::from_file("src/rsa/bigint_elem_reduced_once_tests.txt",
@@ -1253,6 +1308,7 @@ mod tests {
         value.into_elem::<M>(m).unwrap()
     }
 
+    #[cfg(feature = "rsa_signing")]
     fn consume_elem_unchecked<M>(test_case: &mut test::TestCase, name: &str)
             -> Elem<M, Unencoded> {
         let value = consume_nonnegative(test_case, name);

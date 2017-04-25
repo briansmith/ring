@@ -20,8 +20,11 @@
 
 /// RSA signatures.
 
-use {bits, der, error, limb};
+use {bits, der, error};
 use untrusted;
+
+#[cfg(feature = "rsa_signing")]
+use limb;
 
 mod padding;
 
@@ -48,6 +51,7 @@ const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = 8192 / 8;
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength =
     bits::BitLength(4096);
 
+#[cfg(feature = "rsa_signing")]
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS: usize =
     (4096 + limb::LIMB_BITS - 1) / limb::LIMB_BITS;
 
@@ -147,4 +151,5 @@ mod bigint;
 #[cfg(feature = "rsa_signing")]
 mod blinding;
 
+#[cfg(feature = "rsa_signing")]
 mod random;

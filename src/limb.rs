@@ -48,25 +48,25 @@ pub enum LimbMask {
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(feature = "rsa_signing", target_pointer_width = "64"))]
 #[inline]
 pub fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
     polyfill::slice::u64_as_u8(src)
 }
 
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(feature = "rsa_signing", target_pointer_width = "64"))]
 #[inline]
 pub fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
     polyfill::slice::u64_as_u8_mut(src)
 }
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(all(feature = "rsa_signing", target_pointer_width = "32"))]
 #[inline]
 pub fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
     polyfill::slice::u32_as_u8(src)
 }
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(all(feature = "rsa_signing", target_pointer_width = "32"))]
 #[inline]
 pub fn limbs_as_bytes_mut<'a>(src: &'a mut [Limb]) -> &'a mut [u8] {
     polyfill::slice::u32_as_u8_mut(src)
