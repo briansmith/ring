@@ -239,7 +239,15 @@ struct Key {
     algorithm: &'static Algorithm,
 }
 
-// TODO: Implement Drop for Key that zeroizes the key data?
+impl Drop for Key {
+    /// Reset key's buffer to zero to avoid someone reading the data after the software
+    /// finishes running.
+    fn drop(&mut self) {
+        for idx in self.ctx_buf.iter_mut() {
+            *idx = 0u64;
+        }
+    }
+}
 
 const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
 
