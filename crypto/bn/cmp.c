@@ -87,23 +87,12 @@ int GFp_BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
   return 0;
 }
 
-int GFp_BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
-  switch (bn->top) {
-    case 1:
-      return bn->d[0] == w;
-    case 0:
-      return w == 0;
-    default:
-      return 0;
-  }
-}
-
 int GFp_BN_is_zero(const BIGNUM *bn) {
   return bn->top == 0;
 }
 
 int GFp_BN_is_one(const BIGNUM *bn) {
-  return bn->neg == 0 && GFp_BN_abs_is_word(bn, 1);
+  return bn->neg == 0 && bn->top == 1 && bn->d[0] == 1;
 }
 
 int GFp_BN_is_odd(const BIGNUM *bn) {

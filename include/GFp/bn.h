@@ -237,10 +237,6 @@ OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM 
  * value of |b|, respectively. */
 OPENSSL_EXPORT int GFp_BN_ucmp(const BIGNUM *a, const BIGNUM *b);
 
-/* GFp_BN_abs_is_word returns one if the absolute value of |bn| equals |w| and
- * zero otherwise. */
-OPENSSL_EXPORT int GFp_BN_abs_is_word(const BIGNUM *bn, BN_ULONG w);
-
 /* GFp_BN_is_zero returns one if |bn| is zero and zero otherwise. */
 OPENSSL_EXPORT int GFp_BN_is_zero(const BIGNUM *bn);
 
