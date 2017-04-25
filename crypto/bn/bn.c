@@ -112,7 +112,7 @@ int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
 
 /* GFp_BN_num_bits_word returns the minimum number of bits needed to represent
  * the value in |l|. */
-unsigned GFp_BN_num_bits_word(BN_ULONG l) {
+static unsigned GFp_BN_num_bits_word(BN_ULONG l) {
   static const unsigned char bits[256] = {
       0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
       5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,

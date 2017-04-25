@@ -303,8 +303,6 @@ struct bignum_st {
   int flags; /* bitmask of BN_FLG_* values */
 };
 
-OPENSSL_EXPORT unsigned GFp_BN_num_bits_word(BN_ULONG l);
-
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
 
