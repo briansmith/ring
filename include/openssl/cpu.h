@@ -91,6 +91,15 @@ extern "C" {
  * Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
  * bits in XCR0, so it is not necessary to check those. */
 extern uint32_t OPENSSL_ia32cap_P[4];
+
+#if defined(BORINGSSL_FIPS)
+const uint32_t *OPENSSL_ia32cap_get(void);
+#else
+static inline const uint32_t *OPENSSL_ia32cap_get(void) {
+  return OPENSSL_ia32cap_P;
+}
+#endif
+
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)

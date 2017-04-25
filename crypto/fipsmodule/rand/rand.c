@@ -82,7 +82,7 @@ extern int CRYPTO_rdrand(uint8_t out[8]);
 extern int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
 
 static int have_rdrand(void) {
-  return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
+  return (OPENSSL_ia32cap_get()[1] & (1u << 30)) != 0;
 }
 
 static int hwrand(uint8_t *buf, size_t len) {
