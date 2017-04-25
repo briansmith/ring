@@ -386,7 +386,7 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 
 
 // TODO: Document why this works for all Montgomery factors.
-pub fn elem_add<M, E>(a: &Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>)
+pub fn elem_add<M, E>(a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>)
                       -> Result<Elem<M, E>, error::Unspecified> {
     let mut value = b.value;
     try!(bssl::map_result(unsafe {

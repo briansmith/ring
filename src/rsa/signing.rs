@@ -561,7 +561,7 @@ impl RSASigningState {
             let h = bigint::elem_widen(h);
             let q_times_h = try!(bigint::elem_mul(&key.q_mod_n, h, &key.n));
             let m_2 = bigint::elem_widen(m_2);
-            let m = try!(bigint::elem_add(&m_2, q_times_h, &key.n));
+            let m = try!(bigint::elem_add(m_2, q_times_h, &key.n));
 
             // Step 2.b.v isn't needed since there are only two primes.
 
