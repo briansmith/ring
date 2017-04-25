@@ -227,7 +227,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "-pedantic",
             "-pedantic-errors",
             "-Wall",
-            "-Werror",
             "-Wextra",
             "-Wcast-align",
             "-Wcast-qual",
@@ -429,7 +428,10 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
     }).unwrap();
 
-    let use_pregenerated = std::fs::metadata(".git").is_err();
+    let is_git = std::fs::metadata(".git").is_ok();
+
+    let use_pregenerated = !is_git;
+    let warnings_are_errors = is_git;
 
     let asm_dir = if use_pregenerated { &pregenerated } else { out_dir };
 
@@ -474,7 +476,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .with_max_len(1)
         .for_each(|&(lib_name, srcs, additional_srcs)|
             build_library(&target, &out_dir, lib_name, srcs, additional_srcs,
-                          includes_modified));
+                          warnings_are_errors, includes_modified));
 
     println!("cargo:rustc-link-search=native={}",
              out_dir.to_str().expect("Invalid path"));
@@ -483,14 +485,15 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
 fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
                  srcs: &[PathBuf], additional_srcs: &[PathBuf],
-                 includes_modified: SystemTime) {
+                 warnings_are_errors: bool, includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs.into_par_iter().chain(srcs.into_par_iter())
         .with_max_len(1)
         .filter(|f|
             target.env() != "msvc" ||
                 f.extension().unwrap().to_str().unwrap() != "S")
-        .map(|f| compile(f, target, out_dir, includes_modified))
+        .map(|f| compile(f, target, warnings_are_errors, out_dir,
+                         includes_modified))
         .map(|v| vec![v])
         .reduce(Vec::new,
                 &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
@@ -536,7 +539,7 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, out_dir: &Path,
+fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path,
            includes_modified: SystemTime) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "obj" {
@@ -546,7 +549,7 @@ fn compile(p: &Path, target: &Target, out_dir: &Path,
         out_path.set_extension(target.obj_ext);
         if need_run(&p, &out_path, includes_modified) {
             let cmd = if target.os() != WINDOWS || ext != "asm" {
-                cc(p, ext, target, &out_path)
+                cc(p, ext, target, warnings_are_errors, &out_path)
             } else {
                 yasm(p, target.arch(), &out_path)
             };
@@ -563,7 +566,9 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     out_path
 }
 
-fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
+fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
+      out_dir: &Path)
+      -> Command {
     let mut c = gcc::Config::new();
     let _ = c.include("include");
     match ext {
@@ -606,6 +611,9 @@ fn cc(file: &Path, ext: &str, target: &Target, out_dir: &Path) -> Command {
 
     if target.env() != "msvc" {
         let _ = c.define("_XOPEN_SOURCE", Some("700"));
+        if warnings_are_errors {
+            let _ = c.flag("-Werror");
+        }
     }
     if target.env() == "musl" {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
