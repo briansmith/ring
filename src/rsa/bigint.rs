@@ -564,25 +564,26 @@ pub fn elem_exp_consttime<M>(
     Ok(r)
 }
 
-pub fn elem_randomize<M, E>(a: &mut Elem<M, E>, m: &Modulus<M>,
-                            rng: &rand::SecureRandom)
-                            -> Result<(), error::Unspecified> {
-    a.value.randomize(m.value.as_ref(), rng)
+pub fn elem_randomize<E>(a: &mut Elem<super::N, E>, m: &Modulus<super::N>,
+                         rng: &rand::SecureRandom)
+                         -> Result<(), error::Unspecified> {
+    a.value.randomize(m, rng)
 }
 
 // r = 1/a (mod m), blinded with a random element.
 //
 // This relies on the invariants of `Modulus` that its value is odd and larger
 // than one.
-pub fn elem_set_to_inverse_blinded<M>(
-            r: &mut Elem<M, R>, a: &Elem<M, Unencoded>, m: &Modulus<M>,
-            rng: &rand::SecureRandom) -> Result<(), InversionError> {
-    let mut blinding_factor = try!(Elem::<M, R>::zero());
-    try!(blinding_factor.value.randomize(m.value.as_ref(), rng));
+pub fn elem_set_to_inverse_blinded(
+            r: &mut Elem<super::N, R>, a: &Elem<super::N, Unencoded>,
+            n: &Modulus<super::N>, rng: &rand::SecureRandom)
+            -> Result<(), InversionError> {
+    let mut blinding_factor = try!(Elem::<super::N, R>::zero());
+    try!(elem_randomize(&mut blinding_factor, n, rng));
     let to_blind = try!(a.try_clone());
-    let blinded = try!(elem_mul(&blinding_factor, to_blind, m));
-    let blinded_inverse = try!(elem_inverse(blinded, m));
-    try!(elem_set_to_product(r, &blinding_factor, &blinded_inverse, m));
+    let blinded = try!(elem_mul(&blinding_factor, to_blind, n));
+    let blinded_inverse = try!(elem_inverse(blinded, n));
+    try!(elem_set_to_product(r, &blinding_factor, &blinded_inverse, n));
     Ok(())
 }
 
@@ -794,11 +795,11 @@ impl Nonnegative {
         Ok(())
     }
 
-    fn randomize(&mut self, m: &BIGNUM, rng: &rand::SecureRandom)
+    fn randomize(&mut self, m: &Modulus<super::N>, rng: &rand::SecureRandom)
                  -> Result<(), error::Unspecified> {
-        let mut rand = rand::RAND::new(rng);
-        bssl::map_result(unsafe {
-            GFp_BN_rand_range_ex(self.as_mut_ref(), m, &mut rand)
+        let m = (m.value.0).0.limbs();
+        self.0.make_limbs(m.len(), |limbs| {
+            super::random::set_to_rand_mod(limbs, m, rng)
         })
     }
 
@@ -929,9 +930,26 @@ mod repr_c {
                 self.top -= 1;
             }
         }
+
+        pub fn make_limbs<F>(&mut self, num_limbs: usize, f: F)
+                             -> Result<(), error::Unspecified>
+                where F: FnOnce(&mut [limb::Limb])
+                                -> Result<(), error::Unspecified> {
+            let num_limbs = num_limbs as c::int; // XXX
+            try!(bssl::map_result(unsafe {
+                GFp_bn_wexpand(self, num_limbs)
+            }));
+            self.top = num_limbs;
+            try!(f(self.limbs_mut()));
+            unsafe {
+                GFp_bn_correct_top(self)
+            }
+            Ok(())
+        }
     }
 
     extern {
+        fn GFp_bn_correct_top(r: &mut BIGNUM);
         fn GFp_bn_wexpand(r: &mut BIGNUM, words: c::int) -> c::int;
     }
 }
@@ -973,12 +991,6 @@ extern {
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
                                    n0: &N0) -> c::int;
-}
-
-#[allow(improper_ctypes)]
-extern {
-    fn GFp_BN_rand_range_ex(r: &mut BIGNUM, max_exclusive: &BIGNUM,
-                            rng: &mut rand::RAND) -> c::int;
 }
 
 #[cfg(test)]
@@ -1088,20 +1100,22 @@ mod tests {
 
     #[test]
     fn test_elem_set_to_inverse_blinded_invertible() {
+        use super::super::N;
+
         let rng = rand::SystemRandom::new();
 
         test::from_file("src/rsa/bigint_elem_inverse_invertible_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
-            let m = consume_modulus::<M>(test_case, "M");
-            let a = consume_elem(test_case, "A", &m);
-            let expected_result = consume_elem(test_case, "R", &m);
-            let mut actual_result = try!(Elem::<M, R>::zero());
-            assert!(elem_set_to_inverse_blinded(&mut actual_result, &a, &m,
+            let n = consume_modulus::<N>(test_case, "M");
+            let a = consume_elem(test_case, "A", &n);
+            let expected_result = consume_elem(test_case, "R", &n);
+            let mut actual_result = try!(Elem::<N, R>::zero());
+            assert!(elem_set_to_inverse_blinded(&mut actual_result, &a, &n,
                                                 &rng).is_ok());
-            let one: Elem<M, Unencoded> = try!(Elem::one());
-            let actual_result = try!(elem_mul(&one, actual_result, &m));
+            let one: Elem<N, Unencoded> = try!(Elem::one());
+            let actual_result = try!(elem_mul(&one, actual_result, &n));
             assert_elem_eq(&actual_result, &expected_result);
             Ok(())
         })
@@ -1126,16 +1140,18 @@ mod tests {
 
     #[test]
     fn test_elem_set_to_inverse_blinded_noninvertible() {
+        use super::super::N;
+
         let rng = rand::SystemRandom::new();
 
         test::from_file("src/rsa/bigint_elem_inverse_noninvertible_tests.txt",
                         |section, test_case| {
             assert_eq!(section, "");
 
-            let m = consume_modulus::<M>(test_case, "M");
-            let a = consume_elem(test_case, "A", &m);
-            let mut actual_result = try!(Elem::<M, R>::zero());
-            match elem_set_to_inverse_blinded(&mut actual_result, &a, &m, &rng) {
+            let n = consume_modulus::<N>(test_case, "M");
+            let a = consume_elem(test_case, "A", &n);
+            let mut actual_result = try!(Elem::<N, R>::zero());
+            match elem_set_to_inverse_blinded(&mut actual_result, &a, &n, &rng) {
                 Err(InversionError::NoInverse) => (),
                 Err(InversionError::Unspecified) => unreachable!("Unspecified"),
                 Ok(..) => unreachable!("No error"),

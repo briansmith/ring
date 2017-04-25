@@ -269,18 +269,6 @@ OPENSSL_EXPORT int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a,
                                         const BIGNUM *b, const BIGNUM *m);
 
 
-/* Random generation. */
-
-
-extern int GFp_rand_mod(BN_ULONG *dest, const BN_ULONG *max_exclusive,
-                        size_t num_limbs, RAND *rand);
-
-/* GFp_BN_rand_range_ex sets |rnd| to a random value in [1..max_exclusive). It
- * returns one on success and zero otherwise. */
-OPENSSL_EXPORT int GFp_BN_rand_range_ex(BIGNUM *r, const BIGNUM *max_exclusive,
-                                        RAND *rng);
-
-
 /* Number theory functions */
 
 /* GFp_BN_mod_inverse_odd sets |out| equal to |a|^-1, mod |n|. |a| must be

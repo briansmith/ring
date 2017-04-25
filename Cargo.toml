@@ -158,7 +158,6 @@ include = [
     "crypto/bn/montgomery.c",
     "crypto/bn/montgomery_inv.c",
     "crypto/bn/mul.c",
-    "crypto/bn/random.c",
     "crypto/bn/shift.c",
     "crypto/chacha/asm/chacha-armv4.pl",
     "crypto/chacha/asm/chacha-armv8.pl",

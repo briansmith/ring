@@ -159,12 +159,6 @@ pub mod rand;
 #[path = "rsa/rsa.rs"]
 mod rsa;
 
-// Really a private method; only has public visibility so that C compilation
-// can see it.
-#[cfg(feature = "use_heap")]
-#[doc(hidden)]
-pub use rsa::GFp_rand_mod;
-
 pub mod signature;
 
 #[cfg(any(feature = "use_heap", test))]

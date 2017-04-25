@@ -16,35 +16,13 @@
 //! Generation of random field elements, in particular field elements in GFn
 //! where *n* is an RSA public modulus.
 
-use {c, core, rand, error, rsa};
+use {rand, error, rsa};
 use limb::*;
 
-/// Sets `out`, which has `num_limbs` limbs, to a random value in the range
-/// [1, `max_exclusive`), where `max_exclusive` also has `num_limbs` limbs.
-#[doc(hidden)]
-#[no_mangle]
-pub unsafe extern fn GFp_rand_mod(out: *mut Limb, max_exclusive: *const Limb,
-                                  num_limbs: c::size_t, rng: *mut rand::RAND)
-                                  -> c::int {
-    const ERR: c::int = 0;
-    const SUCCESS: c::int = 1;
-
-    let max_exclusive = core::slice::from_raw_parts(max_exclusive, num_limbs);
-    let mut out = core::slice::from_raw_parts_mut(out, num_limbs);
-
-    let result = set_to_rand_mod(&mut out, &max_exclusive, (*rng).rng);
-    if result.is_err() {
-        return ERR;
-    }
-
-    SUCCESS
-}
-
-/// Chooses a positive integer less than `max_exclusive` uniformly at random
-/// and stores it into `out`.
-fn set_to_rand_mod(out: &mut [Limb], max_exclusive: &[Limb],
-                   rng: &rand::SecureRandom)
-                   -> Result<(), error::Unspecified> {
+/// Sets `out` to a *uniformly* random value in the range [1, `max_exclusive`).
+pub fn set_to_rand_mod(out: &mut [Limb], max_exclusive: &[Limb],
+                       rng: &rand::SecureRandom)
+                       -> Result<(), error::Unspecified> {
     assert_eq!(out.len(), max_exclusive.len());
     assert!(out.len() >= 1);
     assert!(out.len() <= rsa::PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS);

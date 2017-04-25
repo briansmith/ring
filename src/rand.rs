@@ -286,19 +286,6 @@ mod darwin {
     }
 }
 
-/// An adapter that lets the C code use `SecureRandom`.
-#[allow(non_snake_case)]
-#[doc(hidden)]
-pub struct RAND<'a> {
-    pub rng: &'a SecureRandom,
-}
-
-impl<'a> RAND<'a> {
-    /// Wraps `rng` in a `RAND` so it can be passed to non-Rust code.
-    pub fn new(rng: &'a SecureRandom) -> RAND<'a> { RAND { rng: rng } }
-}
-
-
 #[cfg(test)]
 mod tests {
     use rand;

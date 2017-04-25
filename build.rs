@@ -93,7 +93,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/bn/montgomery.c"),
     (&[], "crypto/bn/montgomery_inv.c"),
     (&[], "crypto/bn/mul.c"),
-    (&[], "crypto/bn/random.c"),
     (&[], "crypto/bn/shift.c"),
     (&[], "crypto/cipher/e_aes.c"),
     (&[], "crypto/crypto.c"),

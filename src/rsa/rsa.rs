@@ -148,8 +148,3 @@ mod bigint;
 mod blinding;
 
 mod random;
-
-// Really a private method; only has public visibility so that C compilation
-// can see it.
-#[doc(hidden)]
-pub use rsa::random::GFp_rand_mod;
