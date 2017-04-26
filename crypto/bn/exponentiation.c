@@ -109,6 +109,7 @@
 #include <GFp/bn.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <GFp/cpu.h>
