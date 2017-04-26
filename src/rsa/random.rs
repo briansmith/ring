@@ -197,7 +197,7 @@ struct SamplingParams {
 // applications, where, e.g., the 2048 or 2047-bit modulus will be the product
 // of two 1024-bit integers.
 fn select_sampling_params(max_exclusive: &[Limb]) -> SamplingParams {
-    let most_sig = max_exclusive[max_exclusive.len() - 1];
+    let most_sig = max_exclusive.last().unwrap();
 
     if most_sig >> (LIMB_BITS - 3) == 0b100 {
         SamplingParams {

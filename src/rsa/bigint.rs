@@ -887,12 +887,10 @@ impl Nonnegative {
 
     fn bit_length(&self) -> bits::BitLength {
         let limbs = self.limbs();
-        if limbs.len() == 0 {
-            return bits::BitLength::from_usize_bits(0);
-        }
         // XXX: This assumes `Limb::leading_zeros()` is constant-time.
-        let high_bits = limb::LIMB_BITS -
-            (limbs[limbs.len() - 1].leading_zeros() as usize);
+        let high_bits = limbs.last()
+            .map_or(0, |high_limb|
+                limb::LIMB_BITS - (high_limb.leading_zeros() as usize));
         bits::BitLength::from_usize_bits(
             ((limbs.len() - 1) * limb::LIMB_BITS) + high_bits)
     }
@@ -1048,11 +1046,7 @@ mod repr_c {
 
         #[cfg(feature = "rsa_signing")]
         pub fn shrunk_by_at_most_one_bit(&mut self) {
-            let has_shrunk = {
-                let limbs = self.limbs();
-                limbs.len() > 1 && limbs[limbs.len() - 1] == 0
-            };
-            if has_shrunk {
+            if self.limbs().last().map_or(false, |last| *last == 0) {
                 self.top -= 1;
             }
         }
