@@ -83,7 +83,6 @@ const ARM: &'static str = "arm";
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/aes/aes.c"),
-    (&[], "crypto/bn/add.c"),
     (&[], "crypto/bn/bn.c"),
     (&[], "crypto/bn/cmp.c"),
     (&[], "crypto/bn/convert.c"),

@@ -141,7 +141,6 @@ include = [
     "crypto/aes/asm/bsaes-x86_64.pl",
     "crypto/aes/asm/vpaes-x86.pl",
     "crypto/aes/asm/vpaes-x86_64.pl",
-    "crypto/bn/add.c",
     "crypto/bn/asm/armv4-mont.pl",
     "crypto/bn/asm/armv8-mont.pl",
     "crypto/bn/asm/x86-mont.pl",

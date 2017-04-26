@@ -390,12 +390,12 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
     let mut r = try!(a.value.try_clone());
-    // XXX TODO: Not constant-time.
-    if !greater_than(&(m.value.0).0, &a.value) {
-        try!(bssl::map_result(unsafe {
-            GFp_BN_usub(r.as_mut_ref(), r.as_ref(), m.value.as_ref())
-        }));
-    }
+    let m_limbs = (m.value.0).0.limbs();
+    assert!(r.limbs().len() <= m_limbs.len());
+    try!(r.0.make_limbs(m_limbs.len(), |r_limbs| {
+        limb::limbs_reduce_once_constant_time(r_limbs, m_limbs);
+        Ok(())
+    }));
     debug_assert!(greater_than(&(m.value.0).0, &r));
     Ok(Elem {
         value: r,
@@ -773,12 +773,18 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
         Ok(())
     }
 
-    // n == other.
+    // r -= a. Requires r > a.
     #[inline]
-    fn sub_assign(n: &mut Nonnegative, other: &Nonnegative)
+    fn sub_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
                   -> Result<(), error::Unspecified> {
-        bssl::map_result(unsafe {
-            GFp_BN_usub(n.as_mut_ref(), n.as_ref(), other.as_ref())
+        r.0.make_limbs(m_limb_count, |r_limbs| {
+            a.0.make_limbs(m_limb_count, |a_limbs| {
+                unsafe {
+                    LIMBS_sub_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
+                                     m_limb_count);
+                }
+                Ok(())
+            })
         })
     }
 
@@ -799,12 +805,12 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
             halve(&mut u);
             try!(double(&mut x2));
         } else if !greater_than(&u, &v) {
-            try!(sub_assign(&mut v, &u));
+            try!(sub_assign(&mut v, &mut u, m_limb_count));
             halve(&mut v);
             try!(add_assign(&mut x2, &mut x1, m_limb_count));
             try!(double(&mut x1));
         } else {
-            try!(sub_assign(&mut u, &v));
+            try!(sub_assign(&mut u, &mut v, m_limb_count));
             halve(&mut u);
             try!(add_assign(&mut x1, &mut x2, m_limb_count));
             try!(double(&mut x2));
@@ -816,8 +822,17 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
         return Err(InversionError::NoInverse);
     }
 
+    // Reduce `x1` once if necessary to ensure it is less than `m`.
     if !greater_than(m, &x1) {
-        try!(sub_assign(&mut x1, m));
+        debug_assert!(x1.limbs().len() <= m_limb_count + 1);
+        // If `x` is longer than `m` then chop off that top bit.
+        try!(x1.0.make_limbs(m_limb_count, |x1_limbs| {
+            unsafe {
+                LIMBS_sub_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
+                                 m_limb_count);
+            }
+            Ok(())
+        }));
     }
     assert!(greater_than(m, &x1));
 
@@ -1157,9 +1172,6 @@ extern {
                                      n0: &N0) -> c::int;
 
     // `r` and `a` may alias.
-    fn GFp_BN_usub(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
-
-    // `r` and `a` may alias.
     fn LIMBS_add_mod(r: *mut limb::Limb, a: *const limb::Limb,
                      b: *const limb::Limb, m: *const limb::Limb,
                      num_limbs: c::size_t);
@@ -1169,6 +1181,8 @@ extern {
 
     fn LIMBS_add_assign(r: *mut limb::Limb, a: *const limb::Limb,
                         num_limbs: c::size_t) -> limb::Limb;
+    fn LIMBS_sub_assign(r: *mut limb::Limb, a: *const limb::Limb,
+                        num_limbs: c::size_t);
 }
 
 #[cfg(test)]

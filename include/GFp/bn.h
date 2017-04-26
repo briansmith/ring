@@ -203,16 +203,6 @@ OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
 /* Simple arithmetic */
 
-/* GFp_BN_usub sets |r| = |a| - |b|, where |a| and |b| are non-negative
- * integers, |b| < |a| and |r| may be the same pointer as either |a| or |b|. It
- * returns one on success and zero on allocation failure. */
-OPENSSL_EXPORT int GFp_BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
-
-/* GFp_BN_usub_unchecked is line |GFp_BN_usub| except it doesn't assert that
- * the preconditions are true. */
-OPENSSL_EXPORT int GFp_BN_usub_unchecked(BIGNUM *r, const BIGNUM *a,
-                                         const BIGNUM *b);
-
 /* GFp_BN_mul_no_alias sets |r| = |a| * |b|, where |r| must not be the same pointer
  * as |a| or |b|. Returns one on success and zero otherwise. */
 OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);

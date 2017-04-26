@@ -28,6 +28,7 @@
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 Limb LIMBS_add_assign(Limb r[], const Limb a[], size_t num_limbs);
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
+void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs);
 void LIMBS_sub_mod_ex(Limb r[], const Limb a[], const Limb m[], size_t num_limbs,
                       size_t a_limbs);
 
@@ -109,6 +110,11 @@ void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
   }
+}
+
+void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs) {
+  /* An unhandled borrow is expected by some callers. */
+  (void) limbs_sub(r, r, a, num_limbs);
 }
 
 void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
