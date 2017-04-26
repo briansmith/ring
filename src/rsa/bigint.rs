@@ -471,18 +471,19 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, mut b: Elem<M, E>, m: &Modulus<M>)
 
 // TODO: Document why this works for all Montgomery factors.
 #[cfg(feature = "rsa_signing")]
-pub fn elem_sub<M, E>(a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
+pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
                    -> Result<Elem<M, E>, error::Unspecified> {
-    let mut value = a.value;
-    try!(bssl::map_result(unsafe {
-        GFp_BN_mod_sub_quick(&mut value.0, &value.0, b.value.as_ref(),
-                             m.value.as_ref())
+    let m_limbs = (m.value.0).0.limbs();
+    try!(a.value.0.make_limbs(m_limbs.len(), |a_limbs| {
+        let b_limbs = b.value.limbs();
+        unsafe {
+            // XXX Not constant-time, even though it looks like it might be.
+            LIMBS_sub_mod_ex(a_limbs.as_mut_ptr(), b_limbs.as_ptr(),
+                             m_limbs.as_ptr(), m_limbs.len(), b_limbs.len())
+        }
+        Ok(())
     }));
-    Ok(Elem {
-        value: value,
-        m: PhantomData,
-        encoding: PhantomData,
-    })
+    Ok(a)
 }
 
 
@@ -1123,10 +1124,6 @@ extern {
                                      one_mont: &BIGNUM, n: &BIGNUM,
                                      n0: &N0) -> c::int;
 
-    // `r` and/or 'a' and/or 'b' may alias.
-    fn GFp_BN_mod_sub_quick(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
-                            m: &BIGNUM) -> c::int;
-
     // `r` and `a` may alias.
     fn GFp_BN_uadd(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_usub(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
@@ -1134,6 +1131,9 @@ extern {
     fn LIMBS_add_mod(r: *mut limb::Limb, a: *const limb::Limb,
                      b: *const limb::Limb, m: *const limb::Limb,
                      num_limbs: c::size_t);
+    fn LIMBS_sub_mod_ex(r: *mut limb::Limb, a: *const limb::Limb,
+                        m: *const limb::Limb, num_limbs: c::size_t,
+                        a_limbs: c::size_t);
 }
 
 #[cfg(test)]

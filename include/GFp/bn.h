@@ -249,12 +249,6 @@ OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 
 /* Modulo arithmetic. */
 
-/* GFp_BN_mod_sub_quick acts like |GFp_BN_mod_sub| but requires that |a| and
- * |b| be non-negative and less than |m|. */
-OPENSSL_EXPORT int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a,
-                                        const BIGNUM *b, const BIGNUM *m);
-
-
 /* GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
  * Both |a| and |b| must already be in the Montgomery domain (by
  * |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range
