@@ -36,7 +36,6 @@ func main() {
 	arInput := flag.String("a", "", "Path to a .a file containing assembly sources")
 
 	outFile := flag.String("o", "", "Path to output assembly")
-	asmFiles := flag.String("as", "", "Comma separated list of assembly inputs")
 
 	flag.Parse()
 
@@ -48,8 +47,7 @@ func main() {
 		}
 	}
 
-	asPaths := strings.Split(*asmFiles, ",")
-	for i, path := range asPaths {
+	for i, path := range flag.Args() {
 		if len(path) == 0 {
 			continue
 		}

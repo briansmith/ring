@@ -111,26 +111,22 @@ if(FIPS)
     bcm.c
   )
 
-  SET_TARGET_PROPERTIES(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
-  SET_TARGET_PROPERTIES(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
+  set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  function(JOIN VALUES GLUE OUTPUT)
-    string (REPLACE ";" "${GLUE}" _TMP_STR "${VALUES}")
-    set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
+  function(prepend_path values prefix output)
+    set(result)
+    foreach(value ${values})
+      list(APPEND result "${prefix}/${value}")
+    endforeach(value)
+    set(${output} ${result} PARENT_SCOPE)
   endfunction()
 
-  set(DELOCATE_AS_FLAG)
-  set(DELOCATE_AS_ARG)
-
-  if(NOT "${BCM_ASM_SOURCES}" STREQUAL "")
-    set(DELOCATE_AS_FLAG "-as")
-    JOIN("${BCM_ASM_SOURCES}" ",${CMAKE_CURRENT_BINARY_DIR}/" BCM_ASM_SOURCES_COMMA_SEP)
-    SET(DELOCATE_AS_ARG "${CMAKE_CURRENT_BINARY_DIR}/${BCM_ASM_SOURCES_COMMA_SEP}")
-  endif()
+  prepend_path("${BCM_ASM_SOURCES}" "${CMAKE_CURRENT_BINARY_DIR}" DELOCATE_ASM_ARGS)
 
   add_custom_command(
     OUTPUT bcm-delocated.S
-    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/delocate.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -a $<TARGET_FILE:bcm_c_generated_asm> ${DELOCATE_AS_FLAG} ${DELOCATE_AS_ARG} -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S
+    COMMAND ${GO_EXECUTABLE} run crypto/fipsmodule/delocate.go crypto/fipsmodule/ar.go crypto/fipsmodule/const.go -a $<TARGET_FILE:bcm_c_generated_asm> -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S ${DELOCATE_ASM_ARGS}
     DEPENDS bcm_c_generated_asm ${BCM_ASM_SOURCES} delocate.go ar.go const.go
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
