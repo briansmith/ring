@@ -147,14 +147,9 @@ extern "C" {
 
 #define BN_BITS2	64
 #define BN_BYTES	8
-#define BN_BITS4	32
 #define BN_MASK2	(0xffffffffffffffffUL)
-#define BN_MASK2l	(0xffffffffUL)
-#define BN_MASK2h	(0xffffffff00000000UL)
-#define BN_MASK2h1	(0xffffffff80000000UL)
 #define BN_MONT_CTX_N0_LIMBS 1
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
-#define BN_TBIT		(0x8000000000000000UL)
 #define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
 
 #elif defined(OPENSSL_32_BIT)
@@ -162,11 +157,7 @@ extern "C" {
 #define BN_ULLONG	uint64_t
 #define BN_BITS2	32
 #define BN_BYTES	4
-#define BN_BITS4	16
 #define BN_MASK2	(0xffffffffUL)
-#define BN_MASK2l	(0xffffUL)
-#define BN_MASK2h1	(0xffff8000UL)
-#define BN_MASK2h	(0xffff0000UL)
 /* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
  * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
  * needs to be two words long. Only certain 32-bit platforms actually make use
@@ -174,7 +165,6 @@ extern "C" {
  * currently only the assembly files know which is which. */
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
-#define BN_TBIT		(0x80000000UL)
 #define TOBN(hi, lo) (lo), (hi)
 
 #else

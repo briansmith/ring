@@ -272,15 +272,7 @@ struct bignum_st {
 }  /* extern C */
 #endif
 
-#define BN_R_ARG2_LT_ARG3 100
 #define BN_R_BIGNUM_TOO_LONG 102
-#define BN_R_CALLED_WITH_EVEN_MODULUS 104
-#define BN_R_DIV_BY_ZERO 105
 #define BN_R_EXPAND_ON_STATIC_BIGNUM_DATA 106
-#define BN_R_INPUT_NOT_REDUCED 107
-#define BN_R_INVALID_RANGE 108
-#define BN_R_NEGATIVE_NUMBER 109
-#define BN_R_NOT_INITIALIZED 111
-#define BN_R_NO_INVERSE 112
 
 #endif  /* OPENSSL_HEADER_BN_H */
