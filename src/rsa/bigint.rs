@@ -44,8 +44,11 @@ use arithmetic::montgomery::*;
 use core;
 use core::marker::PhantomData;
 
+#[cfg(any(test, feature = "rsa_signing"))]
+use constant_time;
+
 #[cfg(feature = "rsa_signing")]
-use {constant_time, der, rand};
+use {der, rand};
 
 impl AsRef<BIGNUM> for Positive {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
@@ -879,7 +882,7 @@ impl From<error::Unspecified> for InversionError {
     fn from(_: error::Unspecified) -> Self { InversionError::Unspecified }
 }
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(any(test, feature = "rsa_signing"))]
 pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
                                          -> Result<(), error::Unspecified> {
     // XXX: Not constant-time if the number of limbs in `a` and `b` differ.
@@ -953,8 +956,7 @@ impl Nonnegative {
 
     fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
-        let r = unsafe { GFp_BN_ucmp(self.as_ref(), other.as_ref()) };
-        if !(r < 0) {
+        if !greater_than(other, self) {
             return Err(error::Unspecified);
         }
         Ok(())
@@ -1000,11 +1002,14 @@ impl Nonnegative {
 }
 
 // Returns a > b.
-#[cfg(feature = "rsa_signing")]
-#[inline]
 fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
-    let r = unsafe { GFp_BN_ucmp(a.as_ref(), b.as_ref()) };
-    r > 0
+    let a_limbs = a.limbs();
+    let b_limbs = b.limbs();
+    if a_limbs.len() == b_limbs.len() {
+        limb::limbs_less_than_limbs_vartime(b_limbs, a_limbs)
+    } else {
+        a_limbs.len() > b_limbs.len()
+    }
 }
 
 type N0 = [limb::Limb; N0_LIMBS];
@@ -1140,7 +1145,6 @@ pub use self::repr_c::BIGNUM;
 extern {
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
-    fn GFp_BN_ucmp(a: &BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
@@ -1188,7 +1192,6 @@ extern {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::GFp_BN_ucmp;
     use untrusted;
     use test;
 
@@ -1494,8 +1497,7 @@ mod tests {
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        let r = unsafe { GFp_BN_ucmp(a.value.as_ref(), b.value.as_ref()) };
-        assert_eq!(r, 0)
+        elem_verify_equal_consttime(&a, b).unwrap()
     }
 
     fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
