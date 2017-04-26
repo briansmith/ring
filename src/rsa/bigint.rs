@@ -886,8 +886,15 @@ impl Nonnegative {
     }
 
     fn bit_length(&self) -> bits::BitLength {
-        let bits = unsafe { GFp_BN_num_bits(self.as_ref()) };
-        bits::BitLength::from_usize_bits(bits)
+        let limbs = self.limbs();
+        if limbs.len() == 0 {
+            return bits::BitLength::from_usize_bits(0);
+        }
+        // XXX: This assumes `Limb::leading_zeros()` is constant-time.
+        let high_bits = limb::LIMB_BITS -
+            (limbs[limbs.len() - 1].leading_zeros() as usize);
+        bits::BitLength::from_usize_bits(
+            ((limbs.len() - 1) * limb::LIMB_BITS) + high_bits)
     }
 
     #[inline]
@@ -1082,7 +1089,6 @@ extern {
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
     fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
-    fn GFp_BN_num_bits(bn: *const BIGNUM) -> c::size_t;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,

@@ -170,10 +170,6 @@ OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 
 /* Basic functions. */
 
-/* GFp_BN_num_bits returns the minimum number of bits needed to represent the
- * absolute value of |bn|. */
-OPENSSL_EXPORT unsigned GFp_BN_num_bits(const BIGNUM *bn);
-
 /* GFp_BN_zero sets |bn| to zero. */
 OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
 
