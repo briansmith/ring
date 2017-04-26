@@ -59,17 +59,6 @@
 #include <assert.h>
 
 
-int GFp_BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                         const BIGNUM *m) {
-  if (!GFp_BN_uadd(r, a, b)) {
-    return 0;
-  }
-  if (GFp_BN_ucmp(r, m) >= 0) {
-    return GFp_BN_usub(r, r, m);
-  }
-  return 1;
-}
-
 int GFp_BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m) {
   assert(GFp_BN_ucmp(a, m) <= 0);
