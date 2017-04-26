@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -156,6 +157,71 @@ func (ls *lineSource) Unread() {
 	ls.lineNo--
 }
 
+func parseInstruction(line string) (instr string, args []string) {
+	line = strings.TrimSpace(line)
+	if len(line) == 0 || line[0] == '#' {
+		return "", nil
+	}
+
+	idx := strings.IndexFunc(line, unicode.IsSpace)
+	if idx < 0 {
+		return line, nil
+	}
+
+	instr = strings.TrimSpace(line[:idx])
+	line = strings.TrimSpace(line[idx:])
+	for len(line) > 0 {
+		var inQuote bool
+		var parens int
+	Loop:
+		for idx = 0; idx < len(line); idx++ {
+			if inQuote {
+				if line[idx] == '\\' {
+					if idx == len(line)-1 {
+						panic(fmt.Sprintf("could not parse %q", line))
+					}
+					idx++
+				} else {
+					inQuote = line[idx] != '"'
+				}
+				continue
+			}
+			switch line[idx] {
+			case '"':
+				inQuote = true
+			case '(':
+				parens++
+			case ')':
+				if parens == 0 {
+					panic(fmt.Sprintf("could not parse %q", line))
+				}
+				parens--
+			case ',':
+				if parens == 0 {
+					break Loop
+				}
+			case '#':
+				line = line[:idx]
+				break Loop
+			}
+		}
+
+		if inQuote || parens > 0 {
+			panic(fmt.Sprintf("could not parse %q", line))
+		}
+
+		args = append(args, strings.TrimSpace(line[:idx]))
+		if idx < len(line) {
+			// Skip the comma.
+			line = line[idx+1:]
+		} else {
+			line = line[idx:]
+		}
+	}
+
+	return
+}
+
 // transform performs a number of transformations on the given assembly code.
 // See FIPS.md in the current directory for an overview.
 func transform(lines []string, symbols map[string]bool) (ret []string) {
@@ -205,16 +271,16 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		}
 
 		line = strings.Replace(line, "@PLT", "", -1)
-		parts := strings.Fields(strings.TrimSpace(line))
 
-		if len(parts) == 0 {
+		instr, args := parseInstruction(line)
+		if len(instr) == 0 {
 			ret = append(ret, line)
 			continue
 		}
 
-		switch parts[0] {
+		switch instr {
 		case "call", "callq", "jmp", "jne", "jb", "jz", "jnz", "ja":
-			target := parts[1]
+			target := args[0]
 			// indirect via register or local label
 			if strings.HasPrefix(target, "*") || strings.HasPrefix(target, ".L") {
 				ret = append(ret, line)
@@ -233,17 +299,17 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				if isGlobal {
 					newTarget = localTargetName(target)
 				}
-				ret = append(ret, fmt.Sprintf("\t%s %s", parts[0], newTarget))
+				ret = append(ret, fmt.Sprintf("\t%s %s", instr, newTarget))
 				continue
 			}
 
 			redirectorName := "bcm_redirector_" + target
-			ret = append(ret, fmt.Sprintf("\t%s %s", parts[0], redirectorName))
+			ret = append(ret, fmt.Sprintf("\t%s %s", instr, redirectorName))
 			redirectors[redirectorName] = target
 			continue
 
 		case "leaq", "movq", "cmpq":
-			if parts[0] == "movq" && strings.Contains(line, "@GOTTPOFF(%rip)") {
+			if instr == "movq" && strings.Contains(line, "@GOTTPOFF(%rip)") {
 				// GOTTPOFF are offsets into the thread-local
 				// storage that are stored in the GOT. We have
 				// to move these relocations out of the module,
@@ -256,22 +322,22 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				// (BoringSSL itself does not use __thread
 				// variables, but ASAN and MSAN may add these
 				// references for their bookkeeping.)
-				targetRegister := parts[2][1:]
-				symbol := strings.SplitN(parts[1], "@", 2)[0]
+				targetRegister := args[1][1:]
+				symbol := strings.SplitN(args[0], "@", 2)[0]
 				functionName := fmt.Sprintf("BORINGSSL_bcm_tpoff_to_%s_for_%s", targetRegister, symbol)
 				threadLocalOffsets[functionName] = threadLocalOffsetFunc{target: targetRegister, symbol: symbol}
 				ret = append(ret, "\tcallq "+functionName+"\n")
 				continue
 			}
 
-			target := strings.SplitN(parts[1], ",", 2)[0]
+			target := args[0]
 			if strings.HasSuffix(target, "(%rip)") {
 				target = target[:len(target)-6]
 				if isGlobal := symbols[target]; isGlobal {
 					line = strings.Replace(line, target, localTargetName(target), 1)
 				}
 
-				if strings.Contains(line, "@GOTPCREL") && parts[0] == "movq" {
+				if strings.Contains(line, "@GOTPCREL") && instr == "movq" {
 					line = strings.Replace(line, "@GOTPCREL", "", -1)
 					target = strings.Replace(target, "@GOTPCREL", "", -1)
 
@@ -292,15 +358,12 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 			continue
 
 		case ".comm":
-			p := strings.Split(parts[1], ",")
-			name := p[0]
+			name := args[0]
 			bssAccessorsNeeded[name] = name
 			ret = append(ret, line)
 
 		case ".section":
-			p := strings.Split(parts[1], ",")
-
-			section := strings.Trim(p[0], "\"")
+			section := strings.Trim(args[0], "\"")
 			if section == ".data.rel.ro" {
 				// In a normal build, this is an indication of
 				// a problem but any references from the module
@@ -329,7 +392,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				ret = append(ret, ".text  # "+section)
 
 			case ".data":
-				panic(fmt.Sprintf("bad section %q on line %d", parts[1], source.lineNo))
+				panic(fmt.Sprintf("bad section %q on line %d", args[0], source.lineNo))
 
 			case ".init_array", ".fini_array", ".ctors", ".dtors":
 				// init_array/ctors/dtors contains function
