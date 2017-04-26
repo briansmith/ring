@@ -64,63 +64,6 @@
 #include "internal.h"
 
 
-int GFp_BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  int max, min, dif;
-  BN_ULONG *ap, *bp, *rp, carry, t1, t2;
-  const BIGNUM *tmp;
-
-  if (a->top < b->top) {
-    tmp = a;
-    a = b;
-    b = tmp;
-  }
-  max = a->top;
-  min = b->top;
-  dif = max - min;
-
-  if (!GFp_bn_wexpand(r, max + 1)) {
-    return 0;
-  }
-
-  r->top = max;
-
-  ap = a->d;
-  bp = b->d;
-  rp = r->d;
-
-  carry = GFp_bn_add_words(rp, ap, bp, min);
-  rp += min;
-  ap += min;
-  bp += min;
-
-  if (carry) {
-    while (dif) {
-      dif--;
-      t1 = *(ap++);
-      t2 = (t1 + 1) & BN_MASK2;
-      *(rp++) = t2;
-      if (t2) {
-        carry = 0;
-        break;
-      }
-    }
-    if (carry) {
-      /* carry != 0 => dif == 0 */
-      *rp = 1;
-      r->top++;
-    }
-  }
-
-  if (dif && rp != ap) {
-    while (dif--) {
-      /* copy remaining words if ap != rp */
-      *(rp++) = *(ap++);
-    }
-  }
-
-  return 1;
-}
-
 int GFp_BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   assert(GFp_BN_ucmp(a, b) >= 0);
   return GFp_BN_usub_unchecked(r, a, b);

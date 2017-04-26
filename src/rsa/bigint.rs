@@ -753,13 +753,24 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
         Ok(())
     }
 
-    // n += other.
-    #[inline]
-    fn add_assign(n: &mut Nonnegative, other: &Nonnegative)
+    // r += a.
+    fn add_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
                   -> Result<(), error::Unspecified> {
-        bssl::map_result(unsafe {
-            GFp_BN_uadd(n.as_mut_ref(), n.as_ref(), other.as_ref())
-        })
+        let mut carry = 0;
+        try!(r.0.make_limbs(m_limb_count, |r_limbs| {
+            a.0.make_limbs(m_limb_count, |a_limbs| {
+                carry = unsafe {
+                    LIMBS_add_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
+                                     m_limb_count)
+                };
+                Ok(())
+            })
+        }));
+        // It is possible for the result to be one bit larger than `m`.
+        if carry != 0 {
+            try!(r.0.grow_by_one_bit())
+        }
+        Ok(())
     }
 
     // n == other.
@@ -777,6 +788,9 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     let mut x2 = try!(Nonnegative::zero());
     let mut k = 0;
 
+    let m_limbs = m.limbs();
+    let m_limb_count = m_limbs.len();
+
     while !v.is_zero() {
         if v.is_even() {
             halve(&mut v);
@@ -787,12 +801,12 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
         } else if !greater_than(&u, &v) {
             try!(sub_assign(&mut v, &u));
             halve(&mut v);
-            try!(add_assign(&mut x2, &x1));
+            try!(add_assign(&mut x2, &mut x1, m_limb_count));
             try!(double(&mut x1));
         } else {
             try!(sub_assign(&mut u, &v));
             halve(&mut u);
-            try!(add_assign(&mut x1, &x2));
+            try!(add_assign(&mut x1, &mut x2, m_limb_count));
             try!(double(&mut x2));
         }
         k += 1;
@@ -812,10 +826,28 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     let n = m.bit_length().as_usize_bits();
     assert!(k >= n);
     for _ in n..k {
-        if !x1.is_even() {
-            try!(add_assign(&mut x1, m));
+        let mut carry = 0;
+        if x1.is_odd() {
+            // x1 += m.
+            try!(x1.0.make_limbs(m_limb_count, |x1_limbs| {
+                carry = unsafe {
+                    LIMBS_add_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
+                                     m_limb_count)
+                };
+                Ok(())
+            }));
         }
+
+        // x1 /= 2.
         halve(&mut x1);
+
+        // Shift in the carry bit at the top.
+        if carry != 0 {
+            try!(x1.0.make_limbs(m_limb_count, |limbs| {
+                *limbs.last_mut().unwrap() |= 1 << (LIMB_BITS - 1);
+                Ok(())
+            }));
+        }
     }
 
     Ok(x1)
@@ -1125,15 +1157,18 @@ extern {
                                      n0: &N0) -> c::int;
 
     // `r` and `a` may alias.
-    fn GFp_BN_uadd(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
     fn GFp_BN_usub(r: *mut BIGNUM, a: *const BIGNUM, b: &BIGNUM) -> c::int;
 
+    // `r` and `a` may alias.
     fn LIMBS_add_mod(r: *mut limb::Limb, a: *const limb::Limb,
                      b: *const limb::Limb, m: *const limb::Limb,
                      num_limbs: c::size_t);
     fn LIMBS_sub_mod_ex(r: *mut limb::Limb, a: *const limb::Limb,
                         m: *const limb::Limb, num_limbs: c::size_t,
                         a_limbs: c::size_t);
+
+    fn LIMBS_add_assign(r: *mut limb::Limb, a: *const limb::Limb,
+                        num_limbs: c::size_t) -> limb::Limb;
 }
 
 #[cfg(test)]

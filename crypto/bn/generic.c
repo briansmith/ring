@@ -148,15 +148,6 @@ BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
   return c1;
 }
 
-BN_ULONG GFp_bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                          int n) {
-  assert(n >= 0);
-  if (n <= 0) {
-    return (BN_ULONG)0;
-  }
-  return limbs_add(r, a, b, (size_t)n);
-}
-
 BN_ULONG GFp_bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                           int n) {
   assert(n >= 0);

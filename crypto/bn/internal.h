@@ -186,8 +186,6 @@ BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                               BN_ULONG w);
 BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w);
-BN_ULONG GFp_bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                          int num);
 BN_ULONG GFp_bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                           int num);
 
