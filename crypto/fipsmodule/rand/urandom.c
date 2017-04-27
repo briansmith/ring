@@ -166,7 +166,6 @@ static void init_once(void) {
    * continuing. This is automatically handled by getrandom, which requires
    * that the entropy pool has been initialised, but for urandom we have to
    * poll. */
-  int first_iteration = 1;
   for (;;) {
     int entropy_bits;
     if (ioctl(fd, RNDGETENTCNT, &entropy_bits)) {
@@ -180,14 +179,6 @@ static void init_once(void) {
     if (entropy_bits >= kBitsNeeded) {
       break;
     }
-
-    if (first_iteration) {
-      message(
-          "The kernel entropy pool contains too few bits. This process is "
-          "built in FIPS mode and will block until sufficient entropy is "
-          "available.\n");
-    }
-    first_iteration = 0;
 
     usleep(250000);
   }
