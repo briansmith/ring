@@ -61,10 +61,6 @@
 #include "internal.h"
 
 
-int GFp_BN_is_one(const BIGNUM *bn) {
-  return bn->top == 1 && bn->d[0] == 1;
-}
-
 int GFp_BN_is_odd(const BIGNUM *bn) {
   return bn->top > 0 && (bn->d[0] & 1) == 1;
 }

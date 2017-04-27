@@ -210,9 +210,6 @@ OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM 
 
 /* Comparison functions */
 
-/* GFp_BN_is_one returns one if |bn| equals one and zero otherwise. */
-OPENSSL_EXPORT int GFp_BN_is_one(const BIGNUM *bn);
-
 /* GFp_BN_is_odd returns one if |bn| is odd and zero otherwise. */
 OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
 

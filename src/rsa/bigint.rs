@@ -916,10 +916,7 @@ impl Nonnegative {
     fn is_zero(&self) -> bool { self.limbs().is_empty() }
 
     #[cfg(feature = "rsa_signing")]
-    fn is_one(&self) -> bool {
-        let is_one = unsafe { GFp_BN_is_one(self.as_ref()) };
-        is_one != 0
-    }
+    fn is_one(&self) -> bool { self.limbs() == &[1] }
 
     #[cfg(feature = "rsa_signing")]
     #[inline]
@@ -1164,7 +1161,6 @@ extern {
 #[cfg(feature = "rsa_signing")]
 extern {
     fn GFp_BN_set_word(r: &mut BIGNUM, w: limb::Limb) -> c::int;
-    fn GFp_BN_is_one(a: &BIGNUM) -> c::int;
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
