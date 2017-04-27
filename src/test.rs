@@ -342,13 +342,13 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
 
             // End of the file on a non-empty test cases ends the test case.
             None => {
-                return Some(TestCase { attributes: attributes });
+                return Some(TestCase { attributes });
             },
 
             // A blank line ends a test case if the test case isn't empty.
             Some(ref line) if line.is_empty() => {
                 if !is_first_line {
-                    return Some(TestCase { attributes: attributes });
+                    return Some(TestCase { attributes });
                 }
                 // Ignore leading blank lines.
             },

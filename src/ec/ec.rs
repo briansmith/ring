@@ -61,7 +61,7 @@ impl<'a> PrivateKey {
         init::init_once();
         let mut bytes = [0; SCALAR_MAX_BYTES];
         bytes[..curve.elem_and_scalar_len].copy_from_slice(test_vector);
-        PrivateKey { bytes: bytes }
+        PrivateKey { bytes }
     }
 
     #[cfg(test)]

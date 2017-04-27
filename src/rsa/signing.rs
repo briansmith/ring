@@ -331,15 +331,15 @@ impl RSAKeyPair {
                 let qq = try!(qq.into_modulus::<QQ>());
 
                 Ok(RSAKeyPair {
-                    n: n,
-                    e: e,
-                    p: p,
-                    q: q,
-                    qInv: qInv,
-                    oneRR_mod_n: oneRR_mod_n,
-                    q_mod_n: q_mod_n,
-                    qq: qq,
-                    n_bits: n_bits,
+                    n,
+                    e,
+                    p,
+                    q,
+                    qInv,
+                    oneRR_mod_n,
+                    q_mod_n,
+                    qq,
+                    n_bits
                 })
             })
         })

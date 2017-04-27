@@ -336,15 +336,8 @@ fn ring_build_rs_main() {
         ("o", "-o")
     };
 
-    let target = Target {
-        arch: arch,
-        os: os,
-        env: env,
-        obj_ext: obj_ext,
-        obj_opt: obj_opt,
-        is_debug: env::var("DEBUG").unwrap() != "false",
-    };
-
+    let is_debug = env::var("DEBUG").unwrap() != "false";
+    let target = Target { arch, os, env, obj_ext, obj_opt, is_debug };
     let pregenerated =
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
             .join(PREGENERATED);
