@@ -147,7 +147,6 @@ include = [
     "crypto/bn/asm/x86_64-mont.pl",
     "crypto/bn/asm/x86_64-mont5.pl",
     "crypto/bn/bn.c",
-    "crypto/bn/cmp.c",
     "crypto/bn/convert.c",
     "crypto/bn/exponentiation.c",
     "crypto/bn/gcd.c",

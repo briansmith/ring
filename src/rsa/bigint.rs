@@ -924,12 +924,7 @@ impl Nonnegative {
 
     #[inline]
     fn is_odd(&self) -> bool {
-        let is_odd = unsafe { GFp_BN_is_odd(self.as_ref()) };
-        if is_odd == 0 {
-            false
-        } else {
-            true
-        }
+        self.limbs().first().unwrap_or(&0) & 1 == 1
     }
 
     fn bit_length(&self) -> bits::BitLength {
@@ -1141,7 +1136,6 @@ extern {
     fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
                      -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
-    fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,

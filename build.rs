@@ -84,7 +84,6 @@ const ARM: &'static str = "arm";
 const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/aes/aes.c"),
     (&[], "crypto/bn/bn.c"),
-    (&[], "crypto/bn/cmp.c"),
     (&[], "crypto/bn/convert.c"),
     (&[], "crypto/bn/exponentiation.c"),
     (&[], "crypto/bn/generic.c"),
