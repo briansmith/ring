@@ -117,7 +117,6 @@
  * Zimmermann's, as implemented in PGP.  I have had a read of his comments and
  * implemented my own version. */
 
-/* NUMPRIMES is the number of primes that fit into a uint16_t. */
 #define NUMPRIMES 2048
 
 /* primes contains all the primes that fit into a uint16_t. */
