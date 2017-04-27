@@ -906,8 +906,9 @@ impl Nonnegative {
     #[cfg(feature = "rsa_signing")]
     fn one() -> Result<Self, error::Unspecified> {
         let mut r = try!(Self::zero());
-        try!(bssl::map_result(unsafe {
-            GFp_BN_set_word(r.as_mut_ref(), 1)
+        try!(r.0.make_limbs(1, |limbs| {
+            limbs[0] = 1;
+            Ok(())
         }));
         Ok(r)
     }
@@ -1154,8 +1155,6 @@ extern {
 
 #[cfg(feature = "rsa_signing")]
 extern {
-    fn GFp_BN_set_word(r: &mut BIGNUM, w: limb::Limb) -> c::int;
-
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
                                      p: &BIGNUM, p_bits: c::size_t,

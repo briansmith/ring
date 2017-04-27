@@ -134,21 +134,6 @@ uint64_t GFp_BN_get_positive_u64(const BIGNUM *bn) {
   return r;
 }
 
-int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value) {
-  if (value == 0) {
-    GFp_BN_zero(bn);
-    return 1;
-  }
-
-  if (!GFp_bn_wexpand(bn, 1)) {
-    return 0;
-  }
-
-  bn->d[0] = value;
-  bn->top = 1;
-  return 1;
-}
-
 int GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   BN_ULONG *a;
 

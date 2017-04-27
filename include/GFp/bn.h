@@ -173,10 +173,6 @@ OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 /* GFp_BN_zero sets |bn| to zero. */
 OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
 
-/* GFp_BN_set_word sets |bn| to |value|. It returns one on success or zero on
- * allocation failure. */
-OPENSSL_EXPORT int GFp_BN_set_word(BIGNUM *bn, BN_ULONG value);
-
 
 /* Conversion functions. */
 
