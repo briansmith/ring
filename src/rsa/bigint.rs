@@ -1055,15 +1055,27 @@ mod repr_c {
                              -> Result<(), error::Unspecified>
                 where F: FnOnce(&mut [limb::Limb])
                                 -> Result<(), error::Unspecified> {
-            let num_limbs = num_limbs as c::int; // XXX
-            try!(bssl::map_result(unsafe {
-                GFp_bn_wexpand(self, num_limbs)
-            }));
-            self.top = num_limbs;
+            if num_limbs <= self.top as usize {
+                self.top = num_limbs as c::int;
+            } else {
+                let old_top = self.top as usize;
+                try!(bssl::map_result(unsafe {
+                    GFp_bn_wexpand(self, num_limbs as c::int)
+                }));
+                self.top = num_limbs as c::int;
+
+                // Zero the new upper limbs, leaving the old lower limbs untouched.
+                for limb in &mut self.limbs_mut()[old_top..] {
+                    *limb = 0;
+                }
+            }
+
             try!(f(self.limbs_mut()));
+
             unsafe {
                 GFp_bn_correct_top(self)
             }
+
             Ok(())
         }
     }
