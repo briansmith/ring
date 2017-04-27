@@ -190,7 +190,7 @@ impl Key {
                                counter: &chacha::Counter) -> Key {
         let mut bytes = [0u8; KEY_LEN];
         chacha::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
-        Key { bytes  }
+        Key { bytes }
     }
 
     #[cfg(test)]
