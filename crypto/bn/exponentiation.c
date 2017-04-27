@@ -258,15 +258,12 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  * |p| must be positive. |a_mont| must in [0, m). |one_mont| must be
  * the value 1 Montgomery-encoded and fully reduced (mod m).
  *
- * Assumes a_mont < n. */
+ * Assumes 0 < a_mont < n, 0 < p, 0 < p_bits. */
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
                                   const BIGNUM *p, size_t p_bits,
                                   const BIGNUM *one_mont, const BIGNUM *n,
                                   const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
-  assert(!GFp_BN_is_zero(n));
-  assert(!GFp_BN_is_zero(p));
   assert(p_bits > 0);
-
   assert(p_bits <= (size_t)INT_MAX);
   int bits = (int)p_bits;
 

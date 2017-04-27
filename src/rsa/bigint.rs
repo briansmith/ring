@@ -912,10 +912,8 @@ impl Nonnegative {
         Ok(r)
     }
 
-    fn is_zero(&self) -> bool {
-        let is_zero = unsafe { GFp_BN_is_zero(self.as_ref()) };
-        is_zero != 0
-    }
+    #[inline]
+    fn is_zero(&self) -> bool { self.limbs().is_empty() }
 
     #[cfg(feature = "rsa_signing")]
     fn is_one(&self) -> bool {
@@ -1147,7 +1145,6 @@ extern {
                      -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
     fn GFp_BN_is_odd(a: &BIGNUM) -> c::int;
-    fn GFp_BN_is_zero(a: &BIGNUM) -> c::int;
 
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
