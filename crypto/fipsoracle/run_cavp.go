@@ -14,6 +14,7 @@ import (
 
 var (
 	binaryDir = flag.String("bin-dir", "", "Directory containing fipsoracle binaries")
+	suiteDir  = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
 )
 
 // test describes a single request file.
@@ -39,6 +40,10 @@ type testSuite struct {
 	tests  []test
 }
 
+func (t *testSuite) getDirectory() string {
+	return filepath.Join(*suiteDir, t.directory)
+}
+
 var aesGCMTests = testSuite{
 	"AES_GCM",
 	"cavp_aes_gcm_test",
@@ -54,46 +59,45 @@ var aesTests = testSuite{
 	"AES",
 	"cavp_aes_test",
 	[]test{
-		{"CBCGFSbox128", []string{"aes-128-cbc"}, false},
-		{"CBCGFSbox192", []string{"aes-192-cbc"}, false},
-		{"CBCGFSbox256", []string{"aes-256-cbc"}, false},
-		{"CBCKeySbox128", []string{"aes-128-cbc"}, false},
-		{"CBCKeySbox192", []string{"aes-192-cbc"}, false},
-		{"CBCKeySbox256", []string{"aes-256-cbc"}, false},
-		{"CBCMMT128", []string{"aes-128-cbc"}, false},
-		{"CBCMMT192", []string{"aes-192-cbc"}, false},
-		{"CBCMMT256", []string{"aes-256-cbc"}, false},
-		{"CBCVarKey128", []string{"aes-128-cbc"}, false},
-		{"CBCVarKey192", []string{"aes-192-cbc"}, false},
-		{"CBCVarKey256", []string{"aes-256-cbc"}, false},
-		{"CBCVarTxt128", []string{"aes-128-cbc"}, false},
-		{"CBCVarTxt192", []string{"aes-192-cbc"}, false},
-		{"CBCVarTxt256", []string{"aes-256-cbc"}, false},
-		{"ECBGFSbox128", []string{"aes-128-ecb"}, false},
-		{"ECBGFSbox192", []string{"aes-192-ecb"}, false},
-		{"ECBGFSbox256", []string{"aes-256-ecb"}, false},
-		{"ECBKeySbox128", []string{"aes-128-ecb"}, false},
-		{"ECBKeySbox192", []string{"aes-192-ecb"}, false},
-		{"ECBKeySbox256", []string{"aes-256-ecb"}, false},
-		{"ECBMMT128", []string{"aes-128-ecb"}, false},
-		{"ECBMMT192", []string{"aes-192-ecb"}, false},
-		{"ECBMMT256", []string{"aes-256-ecb"}, false},
-		{"ECBVarKey128", []string{"aes-128-ecb"}, false},
-		{"ECBVarKey192", []string{"aes-192-ecb"}, false},
-		{"ECBVarKey256", []string{"aes-256-ecb"}, false},
-		{"ECBVarTxt128", []string{"aes-128-ecb"}, false},
-		{"ECBVarTxt192", []string{"aes-192-ecb"}, false},
-		{"ECBVarTxt256", []string{"aes-256-ecb"}, false},
+		{"CBCGFSbox128", []string{"kat", "aes-128-cbc"}, false},
+		{"CBCGFSbox192", []string{"kat", "aes-192-cbc"}, false},
+		{"CBCGFSbox256", []string{"kat", "aes-256-cbc"}, false},
+		{"CBCKeySbox128", []string{"kat", "aes-128-cbc"}, false},
+		{"CBCKeySbox192", []string{"kat", "aes-192-cbc"}, false},
+		{"CBCKeySbox256", []string{"kat", "aes-256-cbc"}, false},
+		{"CBCMMT128", []string{"kat", "aes-128-cbc"}, false},
+		{"CBCMMT192", []string{"kat", "aes-192-cbc"}, false},
+		{"CBCMMT256", []string{"kat", "aes-256-cbc"}, false},
+		{"CBCVarKey128", []string{"kat", "aes-128-cbc"}, false},
+		{"CBCVarKey192", []string{"kat", "aes-192-cbc"}, false},
+		{"CBCVarKey256", []string{"kat", "aes-256-cbc"}, false},
+		{"CBCVarTxt128", []string{"kat", "aes-128-cbc"}, false},
+		{"CBCVarTxt192", []string{"kat", "aes-192-cbc"}, false},
+		{"CBCVarTxt256", []string{"kat", "aes-256-cbc"}, false},
+		{"ECBGFSbox128", []string{"kat", "aes-128-ecb"}, false},
+		{"ECBGFSbox192", []string{"kat", "aes-192-ecb"}, false},
+		{"ECBGFSbox256", []string{"kat", "aes-256-ecb"}, false},
+		{"ECBKeySbox128", []string{"kat", "aes-128-ecb"}, false},
+		{"ECBKeySbox192", []string{"kat", "aes-192-ecb"}, false},
+		{"ECBKeySbox256", []string{"kat", "aes-256-ecb"}, false},
+		{"ECBMMT128", []string{"kat", "aes-128-ecb"}, false},
+		{"ECBMMT192", []string{"kat", "aes-192-ecb"}, false},
+		{"ECBMMT256", []string{"kat", "aes-256-ecb"}, false},
+		{"ECBVarKey128", []string{"kat", "aes-128-ecb"}, false},
+		{"ECBVarKey192", []string{"kat", "aes-192-ecb"}, false},
+		{"ECBVarKey256", []string{"kat", "aes-256-ecb"}, false},
+		{"ECBVarTxt128", []string{"kat", "aes-128-ecb"}, false},
+		{"ECBVarTxt192", []string{"kat", "aes-192-ecb"}, false},
+		{"ECBVarTxt256", []string{"kat", "aes-256-ecb"}, false},
+		// AES Monte-Carlo tests
+		{"ECBMCT128", []string{"mct", "aes-128-ecb"}, false},
+		{"ECBMCT192", []string{"mct", "aes-192-ecb"}, false},
+		{"ECBMCT256", []string{"mct", "aes-256-ecb"}, false},
+		{"CBCMCT128", []string{"mct", "aes-128-cbc"}, false},
+		{"CBCMCT192", []string{"mct", "aes-192-cbc"}, false},
+		{"CBCMCT256", []string{"mct", "aes-256-cbc"}, false},
 	},
 }
-
-// AES Monte-Carlo tests need a different binary.
-//{"ECBMCT128", []string{"aes-128-ecb"}, false},
-//{"ECBMCT192", []string{"aes-192-ecb"}, false},
-//{"ECBMCT256", []string{"aes-256-ecb"}, false},
-//{"CBCMCT128", []string{"aes-128-cbc"}, false},
-//{"CBCMCT192", []string{"aes-192-cbc"}, false},
-//{"CBCMCT256", []string{"aes-256-cbc"}, false},
 
 var ecdsa2PKVTests = testSuite{
 	"ECDSA2",
@@ -144,12 +148,12 @@ func doTest(suite *testSuite, test test) error {
 
 	var args []string
 	args = append(args, test.args...)
-	args = append(args, filepath.Join(suite.directory, "req", test.inFile+".req"))
+	args = append(args, filepath.Join(suite.getDirectory(), "req", test.inFile+".req"))
 
-	outPath := filepath.Join(suite.directory, "resp", test.inFile+".resp")
+	outPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".resp")
 	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("cannot open output file for %q %q: %s", suite.directory, test.inFile, err)
+		return fmt.Errorf("cannot open output file for %q %q: %s", suite.getDirectory(), test.inFile, err)
 	}
 	defer outFile.Close()
 
@@ -158,7 +162,7 @@ func doTest(suite *testSuite, test test) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("cannot run command for %q %q: %s", suite.directory, test.inFile, err)
+		return fmt.Errorf("cannot run command for %q %q: %s", suite.getDirectory(), test.inFile, err)
 	}
 
 	return nil
@@ -175,17 +179,17 @@ func canonicalizeLine(in string) string {
 }
 
 func compareFAX(suite *testSuite, test test) error {
-	respPath := filepath.Join(suite.directory, "resp", test.inFile+".resp")
+	respPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".resp")
 	respFile, err := os.Open(respPath)
 	if err != nil {
-		return fmt.Errorf("cannot read output of %q %q: %s", suite.directory, test.inFile, err)
+		return fmt.Errorf("cannot read output of %q %q: %s", suite.getDirectory(), test.inFile, err)
 	}
 	defer respFile.Close()
 
-	faxPath := filepath.Join(suite.directory, "fax", test.inFile+".fax")
+	faxPath := filepath.Join(suite.getDirectory(), "fax", test.inFile+".fax")
 	faxFile, err := os.Open(faxPath)
 	if err != nil {
-		return fmt.Errorf("cannot open fax file for %q %q: %s", suite.directory, test.inFile, err)
+		return fmt.Errorf("cannot open fax file for %q %q: %s", suite.getDirectory(), test.inFile, err)
 	}
 	defer faxFile.Close()
 
@@ -225,7 +229,7 @@ func compareFAX(suite *testSuite, test test) error {
 			}
 
 			if !haveFaxLine {
-				return fmt.Errorf("resp file is longer than fax for %q %q", suite.directory, test.inFile)
+				return fmt.Errorf("resp file is longer than fax for %q %q", suite.getDirectory(), test.inFile)
 			}
 
 			if strings.HasPrefix(faxLine, " (Reason: ") {
@@ -239,11 +243,11 @@ func compareFAX(suite *testSuite, test test) error {
 			continue
 		}
 
-		return fmt.Errorf("resp and fax differ at line %d for %q %q: %q vs %q", lineNo, suite.directory, test.inFile, respLine, faxLine)
+		return fmt.Errorf("resp and fax differ at line %d for %q %q: %q vs %q", lineNo, suite.getDirectory(), test.inFile, respLine, faxLine)
 	}
 
 	if faxScanner.Scan() {
-		return fmt.Errorf("fax file is longer than resp for %q %q", suite.directory, test.inFile)
+		return fmt.Errorf("fax file is longer than resp for %q %q", suite.getDirectory(), test.inFile)
 	}
 
 	return nil
