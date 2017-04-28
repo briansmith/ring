@@ -50,7 +50,6 @@
 
 #include <GFp/aes.h>
 #include <GFp/cpu.h>
-#include <GFp/err.h>
 #include <GFp/mem.h>
 
 #include "internal.h"

@@ -59,7 +59,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include <GFp/err.h>
 #include <GFp/mem.h>
 
 #include "internal.h"
@@ -117,18 +116,15 @@ int GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   }
 
   if (words > (INT_MAX / (4 * BN_BITS2))) {
-    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return 0;
   }
 
   if (bn->flags & BN_FLG_STATIC_DATA) {
-    OPENSSL_PUT_ERROR(BN, BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
     return 0;
   }
 
   a = OPENSSL_malloc(sizeof(BN_ULONG) * words);
   if (a == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

@@ -111,7 +111,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <GFp/err.h>
 #include <GFp/mem.h>
 #include <GFp/type_check.h>
 

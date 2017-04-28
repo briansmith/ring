@@ -66,8 +66,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include <GFp/err.h>
-
 #include "../internal.h"
 
 #if defined(__cplusplus)

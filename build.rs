@@ -184,7 +184,6 @@ const RING_INCLUDES: &'static [&'static str] =
       "include/GFp/base.h",
       "include/GFp/bn.h",
       "include/GFp/cpu.h",
-      "include/GFp/err.h",
       "include/GFp/mem.h",
       "include/GFp/type_check.h"];
 

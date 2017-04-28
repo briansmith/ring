@@ -125,8 +125,6 @@
 
 #include <GFp/base.h>
 
-#include <inttypes.h>  /* for PRIu64 and friends */
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -254,8 +252,5 @@ struct bignum_st {
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
-
-#define BN_R_BIGNUM_TOO_LONG 102
-#define BN_R_EXPAND_ON_STATIC_BIGNUM_DATA 106
 
 #endif  /* OPENSSL_HEADER_BN_H */

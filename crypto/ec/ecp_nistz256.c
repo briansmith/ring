@@ -28,7 +28,6 @@
 #include <string.h>
 
 #include <GFp/bn.h>
-#include <GFp/err.h>
 
 #include "ecp_nistz.h"
 #include "../limbs/limbs.h"

@@ -114,8 +114,6 @@ extern "C" {
 
 typedef struct bignum_st BIGNUM;
 
-typedef struct RAND RAND;
-
 
 #if defined(__cplusplus)
 }  /* extern C */

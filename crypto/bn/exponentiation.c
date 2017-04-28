@@ -112,8 +112,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include <GFp/cpu.h>
-#include <GFp/err.h>
 #include <GFp/mem.h>
 
 #include "internal.h"
