@@ -132,7 +132,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #pragma intrinsic(__umulh, _umul128)
 #endif
 
-#include "../internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

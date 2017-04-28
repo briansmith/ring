@@ -116,7 +116,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 #if !defined(OPENSSL_NO_ASM) &&                         \

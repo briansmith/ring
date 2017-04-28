@@ -47,7 +47,7 @@ $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
+( $xlate="${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
@@ -94,7 +94,8 @@ bn_mul_mont:
 	jb	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%r11d
+	leaq	OPENSSL_ia32cap_P(%rip),%r11
+	mov	8(%r11),%r11d
 ___
 $code.=<<___;
 	cmp	$ap,$bp
@@ -295,7 +296,8 @@ $code.=<<___;
 	mov	$num,$j			# j=num
 	jmp	.Lsub
 .align	16
-.Lsub:	sbb	($np,$i,8),%rax
+.Lsub:
+	sbb	($np,$i,8),%rax
 	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]-np[i]
 	mov	8($ap,$i,8),%rax	# tp[i+1]
 	lea	1($i),$i		# i++
@@ -900,7 +902,8 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%eax
+	leaq	OPENSSL_ia32cap_P(%rip),%rax
+	mov	8(%rax),%eax
 	and	\$0x80100,%eax
 	cmp	\$0x80100,%eax
 	jne	.Lsqr8x_nox

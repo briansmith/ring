@@ -91,9 +91,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../internal.h"
-#include "../test/file_test.h"
-#include "../test/test_util.h"
+#include "../../internal.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
 
 
 static int HexToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {

@@ -69,7 +69,7 @@
 
 #include "internal.h"
 #include "../internal.h"
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;

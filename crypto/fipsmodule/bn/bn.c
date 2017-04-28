@@ -63,6 +63,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../delocate.h"
 
 
 BIGNUM *BN_new(void) {
@@ -165,11 +166,13 @@ void BN_clear(BIGNUM *bn) {
   bn->neg = 0;
 }
 
-const BIGNUM *BN_value_one(void) {
+DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
   static const BN_ULONG kOneLimbs[1] = { 1 };
-  static const BIGNUM kOne = STATIC_BIGNUM(kOneLimbs);
-
-  return &kOne;
+  out->d = (BN_ULONG*) kOneLimbs;
+  out->top = 1;
+  out->dmax = 1;
+  out->neg = 0;
+  out->flags = BN_FLG_STATIC_DATA;
 }
 
 /* BN_num_bits_word returns the minimum number of bits needed to represent the

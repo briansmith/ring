@@ -71,7 +71,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 #include "internal.h"
 
 

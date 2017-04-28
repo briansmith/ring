@@ -59,7 +59,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* How many bignums are in each "pool item"; */

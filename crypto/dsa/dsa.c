@@ -72,7 +72,7 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 #include "../internal.h"
 
 

@@ -92,7 +92,7 @@ add_subdirectory(digest_extra)
 add_subdirectory(cipher)
 add_subdirectory(rand_extra)
 add_subdirectory(bio)
-add_subdirectory(bn)
+add_subdirectory(bn_extra)
 add_subdirectory(obj)
 add_subdirectory(asn1)
 
@@ -175,7 +175,7 @@ add_library(
   $<TARGET_OBJECTS:poly1305>
   $<TARGET_OBJECTS:curve25519>
   $<TARGET_OBJECTS:buf>
-  $<TARGET_OBJECTS:bn>
+  $<TARGET_OBJECTS:bn_extra>
   $<TARGET_OBJECTS:bio>
   $<TARGET_OBJECTS:rand_extra>
   $<TARGET_OBJECTS:obj>

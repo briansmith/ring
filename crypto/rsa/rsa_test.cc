@@ -67,7 +67,7 @@
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "internal.h"

@@ -264,7 +264,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		case "call", "callq", "jmp", "jne", "jb", "jz", "jnz", "ja":
 			target := args[0]
 			// indirect via register or local label
-			if strings.HasPrefix(target, "*") || strings.HasPrefix(target, ".L") {
+			if strings.HasPrefix(target, "*") || isLocalLabel(target) {
 				ret = append(ret, line)
 				continue
 			}
@@ -344,6 +344,11 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 
 					if isGlobal := symbols[target]; isGlobal {
 						line = strings.Replace(line, target, localTargetName(target), 1)
+					} else if !strings.HasPrefix(target, "BORINGSSL_bcm_") {
+						redirectorName := "bcm_redirector_" + target
+						redirectors[redirectorName] = target
+						line = strings.Replace(line, target, redirectorName, 1)
+						target = redirectorName
 					}
 
 					// Nobody actually wants to read the
@@ -531,6 +536,17 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	}
 
 	return ret
+}
+
+func isLocalLabel(label string) bool {
+	if strings.HasPrefix(label, ".L") {
+		return true
+	}
+	if strings.HasSuffix(label, "f") || strings.HasSuffix(label, "b") {
+		label = label[:len(label)-1]
+		return strings.IndexFunc(label, func(r rune) bool { return !unicode.IsNumber(r) }) == -1
+	}
+	return false
 }
 
 // handleBSSSection reads lines from source until the next section and adds a

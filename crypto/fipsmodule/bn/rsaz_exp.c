@@ -48,7 +48,7 @@
 
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /*

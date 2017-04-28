@@ -24,7 +24,7 @@
 #include <openssl/bn.h>
 #include <openssl/mem.h>
 
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 #include "../test/file_test.h"
 #include "p256-x86_64.h"
 

@@ -116,11 +116,11 @@
 #include <openssl/sha.h>
 #include <openssl/type_check.h>
 
-#include "../internal.h"
-#include "../fipsmodule/rand/internal.h"
+#include "../../internal.h"
+#include "../rand/internal.h"
 
 
-static const uint8_t kZeroAdditionalData[32] = {0};
+static const uint8_t kDefaultAdditionalData[32] = {0};
 
 static int bn_rand_with_additional_data(BIGNUM *rnd, int bits, int top,
                                         int bottom,
@@ -197,7 +197,7 @@ err:
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   return bn_rand_with_additional_data(rnd, bits, top, bottom,
-                                      kZeroAdditionalData);
+                                      kDefaultAdditionalData);
 }
 
 int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom) {
@@ -242,7 +242,7 @@ static int bn_rand_range_with_additional_data(
 int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
                      const BIGNUM *max_exclusive) {
   return bn_rand_range_with_additional_data(r, min_inclusive, max_exclusive,
-                                            kZeroAdditionalData);
+                                            kDefaultAdditionalData);
 }
 
 int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
