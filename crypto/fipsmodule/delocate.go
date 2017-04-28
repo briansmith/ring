@@ -290,6 +290,23 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 			redirectors[redirectorName] = target
 			continue
 
+		case "pushq":
+			target := args[0]
+			if strings.HasSuffix(target, "@GOTPCREL(%rip)") {
+				target = target[:len(target)-15]
+				if !symbols[target] {
+					panic(fmt.Sprintf("Reference to unknown symbol on line %d: %s", source.lineNo, line))
+				}
+
+				ret = append(ret, "\tpushq %rax")
+				ret = append(ret, "\tleaq "+localTargetName(target)+"(%rip), %rax")
+				ret = append(ret, "\txchg %rax, (%rsp)")
+				continue
+			}
+
+			ret = append(ret, line)
+			continue
+
 		case "leaq", "movq", "cmpq":
 			if instr == "movq" && strings.Contains(line, "@GOTTPOFF(%rip)") {
 				// GOTTPOFF are offsets into the thread-local
