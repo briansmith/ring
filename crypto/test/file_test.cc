@@ -96,7 +96,7 @@ FileTest::ReadResult FileTest::ReadNext() {
 
   ClearTest();
 
-  static const size_t kBufLen = 64 + 8192 * 2;
+  static const size_t kBufLen = 8192 * 4;
   std::unique_ptr<char[]> buf(new char[kBufLen]);
 
   bool in_instruction_block = false;

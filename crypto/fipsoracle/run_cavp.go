@@ -111,11 +111,42 @@ var ecdsa2SigVerTests = testSuite{
 	[]test{{"SigVer", nil, false}},
 }
 
+var shaTests = testSuite{
+	"SHA",
+	"cavp_sha_test",
+	[]test{
+		{"SHA1LongMsg", []string{"SHA1"}, false},
+		{"SHA1ShortMsg", []string{"SHA1"}, false},
+		{"SHA224LongMsg", []string{"SHA224"}, false},
+		{"SHA224ShortMsg", []string{"SHA224"}, false},
+		{"SHA256LongMsg", []string{"SHA256"}, false},
+		{"SHA256ShortMsg", []string{"SHA256"}, false},
+		{"SHA384LongMsg", []string{"SHA384"}, false},
+		{"SHA384ShortMsg", []string{"SHA384"}, false},
+		{"SHA512LongMsg", []string{"SHA512"}, false},
+		{"SHA512ShortMsg", []string{"SHA512"}, false},
+	},
+}
+
+var shaMonteTests = testSuite{
+	"SHA",
+	"cavp_sha_monte_test",
+	[]test{
+		{"SHA1Monte", []string{"SHA1"}, false},
+		{"SHA224Monte", []string{"SHA224"}, false},
+		{"SHA256Monte", []string{"SHA256"}, false},
+		{"SHA384Monte", []string{"SHA384"}, false},
+		{"SHA512Monte", []string{"SHA512"}, false},
+	},
+}
+
 var allTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
 	&ecdsa2PKVTests,
 	&ecdsa2SigVerTests,
+	&shaTests,
+	&shaMonteTests,
 }
 
 func main() {
