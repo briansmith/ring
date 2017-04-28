@@ -86,16 +86,8 @@ impl Positive {
     }
 
     pub fn from_be_bytes_padded(input: untrusted::Input)
-                                -> Result<Positive, error::Unspecified> {
-        // Reject empty inputs.
-        if input.is_empty() {
-            return Err(error::Unspecified);
-        }
-        let mut r = try!(Nonnegative::zero());
-        try!(bssl::map_result(unsafe {
-            GFp_BN_bin2bn(input.as_slice_less_safe().as_ptr(), input.len(),
-                          r.as_mut_ref())
-        }));
+                                -> Result<Self, error::Unspecified> {
+        let r = try!(Nonnegative::from_be_bytes_padded(input));
         if r.is_zero() {
             return Err(error::Unspecified);
         }
@@ -913,6 +905,18 @@ impl Nonnegative {
         Ok(r)
     }
 
+    pub fn from_be_bytes_padded(input: untrusted::Input)
+                                -> Result<Self, error::Unspecified> {
+        let mut r = try!(Self::zero());
+        try!(r.0.make_limbs(
+            ((input.len() * limb::LIMB_BYTES) + limb::LIMB_BYTES - 1) /
+                limb::LIMB_BYTES, |limbs|  {
+            // Rejects empty inputs.
+            limb::parse_big_endian_and_pad_consttime(input, limbs)
+        }));
+        Ok(r)
+    }
+
     #[inline]
     fn is_zero(&self) -> bool { self.limbs().is_empty() }
 
@@ -1134,8 +1138,6 @@ mod repr_c {
 pub use self::repr_c::BIGNUM;
 
 extern {
-    fn GFp_BN_bin2bn(in_: *const u8, len: c::size_t, ret: &mut BIGNUM)
-                     -> c::int;
     fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
 
     // `r` and/or 'a' and/or 'b' may alias.
@@ -1475,11 +1477,8 @@ mod tests {
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str)
                            -> Nonnegative {
         let bytes = test_case.consume_bytes(name);
-        let mut r = Nonnegative::zero().unwrap();
-        bssl::map_result(unsafe {
-            GFp_BN_bin2bn(bytes.as_ptr(), bytes.len(), r.as_mut_ref())
-        }).unwrap();
-        r
+        Nonnegative::from_be_bytes_padded(untrusted::Input::from(&bytes))
+            .unwrap()
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {

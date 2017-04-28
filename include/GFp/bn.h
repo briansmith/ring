@@ -174,13 +174,6 @@ OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
 
 
-/* Conversion functions. */
-
-/* GFp_BN_bin2bn sets |*ret| to the value of |len| bytes from |in|, interpreted
- * as a big-endian number. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int GFp_BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
-
-
 /* Internal functions.
  *
  * These functions are useful for code that is doing low-level manipulations of
