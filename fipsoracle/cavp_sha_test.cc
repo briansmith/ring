@@ -12,16 +12,16 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// cavp_sha_monte_test processes a NIST CAVP SHA-Monte test vector request file
-// and emits the corresponding response. An optional sample vector file can be
-// passed to verify the result.
+// cavp_sha_test processes a NIST CAVP SHA test vector request file and emits
+// the corresponding response. An optional sample vector file can be passed to
+// verify the result.
 
 #include <stdlib.h>
 
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 
-#include "../test/file_test.h"
+#include "../crypto/test/file_test.h"
 #include "cavp_test_util.h"
 
 
@@ -29,7 +29,7 @@ struct TestCtx {
   std::string hash;
 };
 
-static bool TestSHAMonte(FileTest *t, void *arg) {
+static bool TestSHA(FileTest *t, void *arg) {
   TestCtx *ctx = reinterpret_cast<TestCtx *>(arg);
 
   const EVP_MD *md = EVP_get_digestbyname(ctx->hash.c_str());
@@ -44,35 +44,30 @@ static bool TestSHAMonte(FileTest *t, void *arg) {
     return false;
   }
 
-  std::vector<uint8_t> seed;
-  if (!t->GetBytes(&seed, "Seed") ||
-      seed.size() != md_len) {
+  std::string msg_len_str;
+  std::vector<uint8_t> msg;
+  if (!t->GetAttribute(&msg_len_str, "Len") ||
+      !t->GetBytes(&msg, "Msg")) {
     return false;
   }
 
-  std::vector<uint8_t> out = seed;
-
-  printf("%s\r\n", t->CurrentTestToString().c_str());
-
-  for (int count = 0; count < 100; count++) {
-    std::vector<uint8_t> msg;
-    msg.insert(msg.end(), out.begin(), out.end());
-    msg.insert(msg.end(), out.begin(), out.end());
-    msg.insert(msg.end(), out.begin(), out.end());
-    for (int i = 0; i < 1000; i++) {
-      unsigned digest_len;
-      if (!EVP_Digest(msg.data(), msg.size(), out.data(), &digest_len, md,
-                      nullptr) ||
-          digest_len != out.size()) {
-        return false;
-      }
-
-      msg.erase(msg.begin(), msg.begin() + out.size());
-      msg.insert(msg.end(), out.begin(), out.end());
-    }
-    printf("COUNT = %d\r\n", count);
-    printf("MD = %s\r\n\r\n", EncodeHex(out.data(), out.size()).c_str());
+  size_t msg_len = strtoul(msg_len_str.c_str(), nullptr, 0);
+  if (msg_len % 8 != 0 ||
+      msg_len / 8 > msg.size()) {
+    return false;
   }
+  msg_len /= 8;
+
+  std::vector<uint8_t> out;
+  out.resize(md_len);
+  unsigned digest_len;
+  if (!EVP_Digest(msg.data(), msg_len, out.data(), &digest_len, md, nullptr) ||
+      digest_len != out.size()) {
+    return false;
+  }
+
+  printf("%s", t->CurrentTestToString().c_str());
+  printf("MD = %s\r\n\r\n", EncodeHex(out.data(), out.size()).c_str());
 
   return true;
 }
@@ -97,5 +92,5 @@ int main(int argc, char **argv) {
   }
   printf("\r\n\r\n");
 
-  return FileTestMainSilent(TestSHAMonte, &ctx, argv[2]);
+  return FileTestMainSilent(TestSHA, &ctx, argv[2]);
 }

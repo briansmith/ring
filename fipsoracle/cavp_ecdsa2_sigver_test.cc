@@ -26,7 +26,7 @@
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
-#include "../test/file_test.h"
+#include "../crypto/test/file_test.h"
 #include "cavp_test_util.h"
 
 

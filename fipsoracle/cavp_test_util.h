@@ -22,7 +22,7 @@
 #include <openssl/aead.h>
 #include <openssl/cipher.h>
 
-#include "../test/file_test.h"
+#include "../crypto/test/file_test.h"
 
 
 std::string EncodeHex(const uint8_t *in, size_t in_len);
