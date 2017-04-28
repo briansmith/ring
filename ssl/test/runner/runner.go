@@ -3641,8 +3641,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				MaxVersion: VersionTLS13,
 				MinVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
-					SendEarlyData:           [][]byte{bytes.Repeat([]byte{1},
-					                                               14336 + 1)},
+					SendEarlyData:           [][]byte{bytes.Repeat([]byte{1}, 14336+1)},
 					ExpectEarlyDataAccepted: true,
 				},
 			},
