@@ -15,6 +15,7 @@
 #include "cavp_test_util.h"
 
 #include <openssl/bn.h>
+#include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/nid.h>
 
@@ -195,4 +196,24 @@ int GetECGroupNIDFromInstruction(FileTest *t) {
   }
   t->PrintLine("No supported group specified.");
   return NID_undef;
+}
+
+const EVP_MD *GetDigestFromInstruction(FileTest *t) {
+  if (t->HasInstruction("SHA-1")) {
+    return EVP_sha1();
+  }
+  if (t->HasInstruction("SHA-224")) {
+    return EVP_sha224();
+  }
+  if (t->HasInstruction("SHA-256")) {
+    return EVP_sha256();
+  }
+  if (t->HasInstruction("SHA-384")) {
+    return EVP_sha384();
+  }
+  if (t->HasInstruction("SHA-512")) {
+    return EVP_sha512();
+  }
+  t->PrintLine("No supported digest function specified.");
+  return nullptr;
 }

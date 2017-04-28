@@ -151,9 +151,18 @@ FileTest::ReadResult FileTest::ReadNext() {
       current_test_ += kv + "\r\n";
       kv = std::string(kv.begin() + 1, kv.end() - 1);
 
-      std::string key, value;
-      std::tie(key, value) = ParseKeyValue(kv.c_str(), kv.size());
-      instructions_[key] = value;
+      for (;;) {
+        size_t idx = kv.find(",");
+        if (idx == std::string::npos) {
+          idx = kv.size();
+        }
+        std::string key, value;
+        std::tie(key, value) = ParseKeyValue(kv.c_str(), idx);
+        instructions_[key] = value;
+        if (idx == kv.size())
+          break;
+        kv = kv.substr(idx + 1);
+      }
     } else if (buf[0] != '#') {  // Comment lines are ignored.
       if (in_instruction_block) {
         // Test cases should be separate blocks.

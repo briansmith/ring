@@ -50,5 +50,7 @@ bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute);
 
 int GetECGroupNIDFromInstruction(FileTest *t);
 
+const EVP_MD *GetDigestFromInstruction(FileTest *t);
+
 
 #endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_CAVP_TEST_UTIL_H

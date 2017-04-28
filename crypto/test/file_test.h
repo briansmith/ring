@@ -49,6 +49,15 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 //
 //   [Name]
 //
+// Commas in instruction lines are treated as separate instructions. Thus this:
+//
+//   [Name1,Name2]
+//
+// is the same as:
+//
+//   [Name1]
+//   [Name2]
+//
 // Either '=' or ':' may be used to delimit the name from the value. Both the
 // name and value have leading and trailing spaces stripped.
 //
