@@ -144,10 +144,25 @@ impl OddPositive {
         if bits > PUBLIC_EXPONENT_MAX_BITS {
             return Err(error::Unspecified);
         }
-        let value = unsafe { GFp_BN_get_positive_u64(self.as_ref()) };
-        if value == 0 {
-            return Err(error::Unspecified);
-        }
+
+        let limbs = (self.0).0.limbs();
+
+        #[cfg(target_pointer_width = "64")]
+        let value = {
+            assert!(limbs.len() == 1);
+            *limbs.first().unwrap()
+        };
+
+        #[cfg(target_pointer_width = "32")]
+        let value = {
+            let mut value = u64::from(limbs[0]);
+            if limbs.len() > 1 {
+                assert!(limbs.len() == 2);
+                value |= u64::from(limbs[1]) << limb::LIMB_BITS;
+            };
+            value
+        };
+
         Ok(PublicExponent(value))
     }
 }
@@ -1138,8 +1153,6 @@ mod repr_c {
 pub use self::repr_c::BIGNUM;
 
 extern {
-    fn GFp_BN_get_positive_u64(a: &BIGNUM) -> u64;
-
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
                             n: &BIGNUM, n0: &N0) -> c::int;
