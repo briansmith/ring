@@ -14,6 +14,10 @@
 
 #include "cavp_test_util.h"
 
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/nid.h>
+
 
 std::string EncodeHex(const uint8_t *in, size_t in_len) {
   static const char kHexDigits[] = "0123456789abcdef";
@@ -153,4 +157,42 @@ bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
     return false;
   }
   return true;
+}
+
+static int HexToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {
+  BIGNUM *raw = NULL;
+  int ret = BN_hex2bn(&raw, in);
+  out->reset(raw);
+  return ret;
+}
+
+bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute) {
+  std::string hex;
+  if (!t->GetAttribute(&hex, attribute)) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<BIGNUM> ret;
+  if (HexToBIGNUM(&ret, hex.c_str()) != static_cast<int>(hex.size())) {
+    t->PrintLine("Could not decode '%s'.", hex.c_str());
+    return nullptr;
+  }
+  return ret;
+}
+
+int GetECGroupNIDFromInstruction(FileTest *t) {
+  if (t->HasInstruction("P-224")) {
+    return NID_secp224r1;
+  }
+  if (t->HasInstruction("P-256")) {
+    return NID_X9_62_prime256v1;
+  }
+  if (t->HasInstruction("P-384")) {
+    return NID_secp384r1;
+  }
+  if (t->HasInstruction("P-521")) {
+    return NID_secp521r1;
+  }
+  t->PrintLine("No supported group specified.");
+  return NID_undef;
 }

@@ -23,7 +23,7 @@ type test struct {
 	inFile string
 	// args are the arguments (not including the input filename) to the
 	// oracle binary.
-	args   []string
+	args []string
 	// noFAX, if true, indicates that the output cannot be compared against
 	// the FAX file. (E.g. because the primitive is non-deterministic.)
 	noFAX bool
@@ -35,8 +35,8 @@ type testSuite struct {
 	// directory is the name of the directory in the CAVP input, i.e. “AES”.
 	directory string
 	// binary is the name of the binary that can process these tests.
-	binary    string
-	tests     []test
+	binary string
+	tests  []test
 }
 
 var aesGCMTests = testSuite{
@@ -95,9 +95,16 @@ var aesTests = testSuite{
 //{"CBCMCT192", []string{"aes-192-cbc"}, false},
 //{"CBCMCT256", []string{"aes-256-cbc"}, false},
 
+var ecdsa2PKVTests = testSuite{
+	"ECDSA2",
+	"cavp_ecdsa2_pkv_test",
+	[]test{{"PKV", nil, false}},
+}
+
 var allTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
+	&ecdsa2PKVTests,
 }
 
 func main() {
@@ -148,6 +155,16 @@ func doTest(suite *testSuite, test test) error {
 	}
 
 	return nil
+}
+
+func canonicalizeLine(in string) string {
+	if strings.HasPrefix(in, "Result = P (") {
+		return "Result = P"
+	}
+	if strings.HasPrefix(in, "Result = F (") {
+		return "Result = F"
+	}
+	return in
 }
 
 func compareFAX(suite *testSuite, test test) error {
@@ -211,7 +228,7 @@ func compareFAX(suite *testSuite, test test) error {
 			break
 		}
 
-		if faxLine == respLine {
+		if canonicalizeLine(faxLine) == canonicalizeLine(respLine) {
 			continue
 		}
 

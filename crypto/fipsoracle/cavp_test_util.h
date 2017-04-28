@@ -22,6 +22,8 @@
 #include <openssl/aead.h>
 #include <openssl/cipher.h>
 
+#include "../test/file_test.h"
+
 
 std::string EncodeHex(const uint8_t *in, size_t in_len);
 
@@ -43,6 +45,10 @@ bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
                  const std::vector<uint8_t> &key,
                  const std::vector<uint8_t> &ct,
                  const std::vector<uint8_t> &tag, std::vector<uint8_t> &iv);
+
+bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute);
+
+int GetECGroupNIDFromInstruction(FileTest *t);
 
 
 #endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_CAVP_TEST_UTIL_H
