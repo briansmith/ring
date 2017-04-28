@@ -175,7 +175,6 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
       BN_ucmp(sig->r, order) >= 0 || BN_is_zero(sig->s) ||
       BN_is_negative(sig->s) || BN_ucmp(sig->s, order) >= 0) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
-    ret = 0; /* signature is invalid */
     goto err;
   }
   /* calculate tmp1 = inv(S) mod order */
@@ -216,7 +215,12 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     goto err;
   }
   /* if the signature is correct u1 is equal to sig->r */
-  ret = (BN_ucmp(u1, sig->r) == 0);
+  if (BN_ucmp(u1, sig->r) != 0) {
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
+    goto err;
+  }
+
+  ret = 1;
 
 err:
   BN_CTX_end(ctx);

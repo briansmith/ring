@@ -463,39 +463,34 @@ Verify = P-256
 Digest = SHA1
 Input = "0123456789ABCDEF12345"
 Output = 3045022100b1d1cb1a577035bccdd5a86c6148c2cc7c633cd42b7234139b593076d041e15202201898cdd52b41ca502098184b409cf83a21bc945006746e3b7cea52234e043ec8
-# This operation fails without an error code, so ERR_R_EVP_LIB is surfaced.
-Error = public key routines
+Error = BAD_SIGNATURE
 
 # Digest too short
 Verify = P-256
 Digest = SHA1
 Input = "0123456789ABCDEF123"
 Output = 3045022100b1d1cb1a577035bccdd5a86c6148c2cc7c633cd42b7234139b593076d041e15202201898cdd52b41ca502098184b409cf83a21bc945006746e3b7cea52234e043ec8
-# This operation fails without an error code, so ERR_R_EVP_LIB is surfaced.
-Error = public key routines
+Error = BAD_SIGNATURE
 
 # Digest invalid
 Verify = P-256
 Digest = SHA1
 Input = "0123456789ABCDEF1235"
 Output = 3045022100b1d1cb1a577035bccdd5a86c6148c2cc7c633cd42b7234139b593076d041e15202201898cdd52b41ca502098184b409cf83a21bc945006746e3b7cea52234e043ec8
-# This operation fails without an error code, so ERR_R_EVP_LIB is surfaced.
-Error = public key routines
+Error = BAD_SIGNATURE
 
 # Invalid signature
 Verify = P-256
 Digest = SHA1
 Input = "0123456789ABCDEF1234"
 Output = 3045022100b1d1cb1a577035bccdd5a86c6148c2cc7c633cd42b7234139b593076d041e15202201898cdd52b41ca502098184b409cf83a21bc945006746e3b7cea52234e043ec7
-# This operation fails without an error code, so ERR_R_EVP_LIB is surfaced.
-Error = public key routines
+Error = BAD_SIGNATURE
 
 # Garbage after signature
 Verify = P-256
 Digest = SHA1
 Input = "0123456789ABCDEF1234"
 Output = 3045022100b1d1cb1a577035bccdd5a86c6148c2cc7c633cd42b7234139b593076d041e15202201898cdd52b41ca502098184b409cf83a21bc945006746e3b7cea52234e043ec800
-# This operation fails without an error code, so ERR_R_EVP_LIB is surfaced.
 Error = BAD_SIGNATURE
 
 # BER signature
