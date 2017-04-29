@@ -4,6 +4,7 @@ if (${ARCH} STREQUAL "x86_64")
   set(
     CIPHER_ARCH_SOURCES
 
+    aes128gcmsiv-x86_64.${ASM_EXT}
     chacha20_poly1305_x86_64.${ASM_EXT}
   )
 endif()
@@ -47,6 +48,7 @@ add_executable(
   $<TARGET_OBJECTS:test_support>
 )
 
+perlasm(aes128gcmsiv-x86_64.${ASM_EXT} asm/aes128gcmsiv-x86_64.pl)
 perlasm(chacha20_poly1305_x86_64.${ASM_EXT} asm/chacha20_poly1305_x86_64.pl)
 
 target_link_libraries(cipher_test crypto)
