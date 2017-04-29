@@ -14,7 +14,15 @@
 
 #[inline(always)]
 pub fn init_once() {
-    #[cfg(not(target_os = "ios"))]
+    #[cfg(all(not(target_os = "ios"), any(target_arch = "x86_64", target_arch = "x86")))]
+    {
+        use std;
+        use cpu;
+        static INIT: std::sync::Once = std::sync::ONCE_INIT;
+        INIT.call_once(|| cpu::cpuid_setup() );
+    }
+
+    #[cfg(all(not(target_os = "ios"), not(any(target_arch = "x86_64", target_arch = "x86"))))]
     {
         use std;
         extern { fn GFp_cpuid_setup(); }

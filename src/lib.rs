@@ -135,6 +135,7 @@ mod bits;
 
 mod c;
 mod chacha;
+mod cpu;
 pub mod constant_time;
 
 #[doc(hidden)]
