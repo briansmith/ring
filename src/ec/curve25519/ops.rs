@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Elliptic curve operations on Curve25519.
+//! Elliptic curve operations on the birationally equivalent curves Curve25519
+//! and Edwards25519.
 
 use {bssl, c, error};
 
@@ -20,7 +21,12 @@ use {bssl, c, error};
 pub type Elem = [i32; ELEM_LIMBS];
 const ELEM_LIMBS: usize = 10;
 
-// A point on Curve25519, encoded as described in section 5.1.2 of RFC 8032.
+// An encoding of a curve point. If on Curve25519, it should be encoded as
+// described in Section 5 of [RFC 7748]. If on Edwards25519, it should be
+// encoded as described in section 5.1.2 of [RFC 8032].
+//
+// [RFC 7748] https://tools.ietf.org/html/rfc7748#section-5
+// [RFC 8032] https://tools.ietf.org/html/rfc8032#section-5.1.2
 type EncodedPoint = [u8; ELEM_LEN];
 pub const ELEM_LEN: usize = 32;
 
