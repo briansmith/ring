@@ -205,7 +205,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < argc; i++) {
     printf(" %s", argv[i]);
   }
-  printf("\n\n");
+  printf("\r\n\r\n");
 
   return FileTestMainSilent(test_fn, &ctx, argv[3]);
 }
