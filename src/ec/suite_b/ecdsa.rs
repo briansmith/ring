@@ -22,7 +22,7 @@ use super::public_key::*;
 use untrusted;
 
 /// Parameters for ECDSA signing and verification.
-pub struct ECDSAParameters {
+pub struct ECDSAVerificationAlgorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
     split_rs:
@@ -31,7 +31,7 @@ pub struct ECDSAParameters {
                              error::Unspecified>,
 }
 
-impl signature::VerificationAlgorithm for ECDSAParameters {
+impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
     // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
@@ -130,7 +130,7 @@ impl signature::VerificationAlgorithm for ECDSAParameters {
     }
 }
 
-impl private::Private for ECDSAParameters {}
+impl private::Private for ECDSAVerificationAlgorithm {}
 
 fn split_rs_fixed<'a>(
         ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
@@ -214,7 +214,8 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED: ECDSAParameters = ECDSAParameters {
+pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
+        ECDSAVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_fixed,
@@ -225,7 +226,8 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAParameters = ECDSAParameters {
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED: ECDSAParameters = ECDSAParameters {
+pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
+        ECDSAVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
@@ -236,7 +238,8 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAParameters = ECDSAParameters {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
+pub static ECDSA_P256_SHA256_ASN1: ECDSAVerificationAlgorithm =
+        ECDSAVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -252,7 +255,8 @@ pub static ECDSA_P256_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
+pub static ECDSA_P256_SHA384_ASN1: ECDSAVerificationAlgorithm =
+        ECDSAVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
@@ -268,7 +272,8 @@ pub static ECDSA_P256_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
+pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
+        ECDSAVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -279,7 +284,8 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAParameters = ECDSAParameters {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1: ECDSAParameters = ECDSAParameters {
+pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
+        ECDSAVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,

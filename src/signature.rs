@@ -263,7 +263,7 @@ use {error, init, private};
 use untrusted;
 
 pub use ec::suite_b::ecdsa::{
-    ECDSAParameters,
+    ECDSAVerificationAlgorithm,
 
     ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
     ECDSA_P256_SHA384_ASN1,
