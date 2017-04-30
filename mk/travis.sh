@@ -97,7 +97,7 @@ armv7-linux-androideabi)
   emulator @arm-18 -memory 2048 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
   adb push $target_dir/ring-* /data/ring-test
-  for testfile in `find src crypto -name "*_test*.txt"`; do
+  for testfile in `find src crypto tests -name "*_test*.txt" -o -name "*test*.pk8"`; do
     adb shell mkdir -p /data/`dirname $testfile`
     adb push $testfile /data/$testfile
   done

@@ -14,7 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bits, der, digest, error};
+use {bits, der, digest, error, pkcs8};
 use rand;
 use std;
 use super::{blinding, bigint, N};
@@ -44,35 +44,49 @@ pub struct RSAKeyPair {
 unsafe impl Sync for RSAKeyPair {}
 
 impl RSAKeyPair {
-    /// Parse a private key in DER-encoded ASN.1 `RSAPrivateKey` form (see
-    /// [RFC 3447 Appendix A.1.2]).
+    /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
-    /// Only two-prime keys (version 0) keys are supported. The public modulus
-    /// (n) must be at least 2048 bits. Currently, the public modulus must be
-    /// no larger than 4096 bits.
+    /// Only two-prime (not multi-prime) keys are supported. The public modulus
+    /// (n) must be at least 2047 bits. The public modulus must be no larger
+    /// than 4096 bits. It is recommended that the public modulus be exactly
+    /// 2048 or 3072 bits. The public exponent must be at least 65537.
     ///
-    /// Here's one way to generate a key in the required format using OpenSSL:
-    ///
-    /// ```sh
-    /// openssl genpkey -algorithm RSA \
-    ///                 -pkeyopt rsa_keygen_bits:2048 \
-    ///                 -outform der \
-    ///                 -out private_key.der
-    /// ```
-    ///
-    /// Often, keys generated for use in OpenSSL-based software are
-    /// encoded in PEM format, which is not supported by *ring*. PEM-encoded
-    /// keys that are in `RSAPrivateKey` format can be decoded into the using
-    /// an OpenSSL command like this:
+    /// This will generate a 2048-bit RSA private key of the correct form using
+    /// OpenSSL's command line tool:
     ///
     /// ```sh
-    /// openssl rsa -in private_key.pem -outform DER -out private_key.der
+    ///    openssl genpkey -algorithm RSA \
+    ///        -pkeyopt rsa_keygen_bits:2048 \
+    ///        -pkeyopt rsa_keygen_pubexp:65537 | \
+    ///      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-2048-private-key.pk8
     /// ```
     ///
-    /// If these commands don't work, it is likely that the private key is in a
-    /// different format like PKCS#8, which isn't supported yet. An upcoming
-    /// version of *ring* will likely replace the support for the
-    /// `RSAPrivateKey` format with support for the PKCS#8 format.
+    /// This will generate a 3072-bit RSA private key of the correct form:
+    ///
+    /// ```sh
+    ///    openssl genpkey -algorithm RSA \
+    ///        -pkeyopt rsa_keygen_bits:2048 \
+    ///        -pkeyopt rsa_keygen_pubexp:65537 | \
+    ///      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-2048-private-key.pk8
+    /// ```
+    ///
+    /// Often, keys generated for use in OpenSSL-based software are stored in
+    /// the Base64 “PEM” format without the PKCS#8 wrapper. Such keys can be
+    /// converted to binary PKCS#8 form using the OpenSSL command line tool like
+    /// this:
+    ///
+    /// ```sh
+    /// openssl pkcs8 -topk8 -nocrypt -outform der \
+    ///     -in rsa-2048-private-key.pem > rsa-2048-private-key.pk8
+    /// ```
+    ///
+    /// Base64 (“PEM”) PKCS#8-encoded keys can be converted to the binary PKCS#8
+    /// form like this:
+    ///
+    /// ```sh
+    /// openssl pkcs8 -nocrypt -outform der \
+    ///     -in rsa-2048-private-key.pem > rsa-2048-private-key.pk8
+    /// ```
     ///
     /// The private key is validated according to [NIST SP-800-56B rev. 1]
     /// section 6.4.1.4.3, crt_pkv (Intended Exponent-Creation Method Unknown),
@@ -111,6 +125,36 @@ impl RSAKeyPair {
     ///
     /// In addition to the NIST requirements, *ring* requires that `p > q` and
     /// that `e` must be no more than 33 bits.
+    ///
+    /// See [RFC 5958] and [RFC 3447 Appendix A.1.2] for more details of the
+    /// encoding of the key.
+    ///
+    /// [NIST SP-800-56B rev. 1]:
+    ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
+    ///
+    /// [RFC 3447 Appendix A.1.2]:
+    ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
+    ///
+    /// [RFC 5958]:
+    ///     https://tools.ietf.org/html/rfc5958
+    ///
+    pub fn from_pkcs8(input: untrusted::Input)
+                      -> Result<RSAKeyPair, error::Unspecified> {
+        const RSA_ENCRYPTION: &'static [u8] =
+            include_bytes!("../data/alg-rsa-encryption.der");
+        let der = try!(pkcs8::unwrap_key(input, &RSA_ENCRYPTION));
+        Self::from_der(der)
+    }
+
+    /// Parses an RSA private key that is not inside a PKCS#8 wrapper.
+    ///
+    /// The private key must be encoded as a binary DER-encoded ASN.1
+    /// `RSAPrivateKey` as described in [RFC 3447 Appendix A.1.2]). In all other
+    /// respects, this is just like `RSAKeyPair::from_pkcs8()`. See the
+    /// documentation for `from_pkcs8()` for more details.
+    ///
+    /// It is recommended to use `RSAKeyPair::from_pkcs8()` (with a
+    /// PKCS#8-encoded key) instead.
     ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
