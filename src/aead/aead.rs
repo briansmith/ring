@@ -71,7 +71,7 @@
 //!    // where a new nonce is generated at every few pixels at
 //!    // https://github.com/jaysonsantos/bad-encryption-example
 //!    // it must be 12 bytes (96 bits) and you should use a secure random generator, not
-//!    // some pseudo random algorithm without entropy like /dev/random.
+//!    // some pseudo random algorithm without enough entropy
 //!    let mut nonce = vec![0; 12];
 //!
 //!    // Fill nonce with random data
