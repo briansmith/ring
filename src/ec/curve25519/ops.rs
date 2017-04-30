@@ -27,7 +27,7 @@ const ELEM_LIMBS: usize = 10;
 //
 // [RFC 7748] https://tools.ietf.org/html/rfc7748#section-5
 // [RFC 8032] https://tools.ietf.org/html/rfc8032#section-5.1.2
-type EncodedPoint = [u8; ELEM_LEN];
+pub type EncodedPoint = [u8; ELEM_LEN];
 pub const ELEM_LEN: usize = 32;
 
 pub type Scalar = [u8; SCALAR_LEN];

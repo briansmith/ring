@@ -14,7 +14,7 @@
 
 //! X25519 Key agreement.
 
-use {agreement, bssl, c, ec, error, rand};
+use {agreement, constant_time, ec, error, rand};
 use super::ops;
 use untrusted;
 
@@ -85,9 +85,18 @@ fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
     let peer_public_key =
         try!(slice_as_array_ref!(peer_public_key.as_slice_less_safe(),
                                  PUBLIC_KEY_LEN));
-    bssl::map_result(unsafe {
-        GFp_x25519_ecdh(out, my_private_key, peer_public_key)
-    })
+
+    unsafe {
+        GFp_x25519_scalar_mult(out, my_private_key, peer_public_key);
+    }
+
+    let zeros: SharedSecret = [0; SHARED_SECRET_LEN];
+    if constant_time::verify_slices_are_equal(out, &zeros).is_ok() {
+        // All-zero output results when the input is a point of small order.
+        return Err(error::Unspecified);
+    }
+
+    Ok(())
 }
 
 const ELEM_AND_SCALAR_LEN: usize = ops::ELEM_LEN;
@@ -106,11 +115,10 @@ const SHARED_SECRET_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 
 extern {
-    fn GFp_x25519_ecdh(out_shared_key: &mut SharedSecret,
-                       private_key: &PrivateKey, peer_public_value: &PublicKey)
-                       -> c::int;
     fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey,
                                       private_key: &PrivateKey);
+    fn GFp_x25519_scalar_mult(out: &mut ops::EncodedPoint, scalar: &ops::Scalar,
+                              point: &ops::EncodedPoint);
 }
 
 #[cfg(test)]

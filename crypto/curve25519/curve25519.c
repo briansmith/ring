@@ -41,6 +41,8 @@ void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
                           const uint8_t *c);
 void GFp_x25519_sc_reduce(uint8_t *s);
+void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+                            const uint8_t point[32]);
 
 static const int64_t kBottom25Bits = INT64_C(0x1ffffff);
 static const int64_t kBottom26Bits = INT64_C(0x3ffffff);
@@ -4530,8 +4532,8 @@ void GFp_ed25519_scalar_mask(uint8_t a[32]) {
 
 #if defined(BORINGSSL_X25519_X86_64)
 
-static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                               const uint8_t point[32]) {
+void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+                            const uint8_t point[32]) {
   GFp_x25519_x86_64(out, scalar, point);
 }
 
@@ -4671,8 +4673,8 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
   GFp_fe_tobytes(out, x2);
 }
 
-static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                               const uint8_t point[32]) {
+void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+                            const uint8_t point[32]) {
 #if defined(BORINGSSL_X25519_NEON)
   if (GFp_is_NEON_capable()) {
     GFp_x25519_NEON(out, scalar, point);
@@ -4689,18 +4691,6 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 void GFp_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]);
-int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
-                    const uint8_t peer_public_value[32]);
-
-
-/* GFp_x25519_ecdh |X25519| function from the RFC. */
-int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
-                    const uint8_t peer_public_value[32]) {
-  static const uint8_t kZeros[32] = {0};
-  x25519_scalar_mult(out_shared_key, private_key, peer_public_value);
-  /* The all-zero output results when the input is a point of small order. */
-  return GFp_memcmp(kZeros, out_shared_key, 32) != 0;
-}
 
 #if defined(BORINGSSL_X25519_X86_64)
 
@@ -4711,7 +4701,7 @@ int GFp_x25519_ecdh(uint8_t out_shared_key[32], const uint8_t private_key[32],
 void GFp_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]) {
   static const uint8_t kMongomeryBasePoint[32] = {9};
-  x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
+  GFp_x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
 }
 
 #else
