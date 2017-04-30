@@ -15,12 +15,13 @@
 //! X25519 Key agreement.
 
 use {agreement, bssl, c, ec, error, rand};
+use super::ops;
 use untrusted;
 
 
 static CURVE25519: ec::Curve = ec::Curve {
-    public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
-    elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
+    public_key_len: PUBLIC_KEY_LEN,
+    elem_and_scalar_len: ELEM_AND_SCALAR_LEN,
     id: ec::CurveID::Curve25519,
     check_private_key_bytes: x25519_check_private_key_bytes,
     generate_private_key: x25519_generate_private_key,
@@ -44,29 +45,27 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
 
 fn x25519_check_private_key_bytes(bytes: &[u8])
                                   -> Result<(), error::Unspecified> {
-    debug_assert_eq!(bytes.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
+    debug_assert_eq!(bytes.len(), PRIVATE_KEY_LEN);
     Ok(())
 }
 
 fn x25519_generate_private_key(rng: &rand::SecureRandom)
                                -> Result<ec::PrivateKey, error::Unspecified> {
     let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
-    try!(rng.fill(&mut result.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]));
+    try!(rng.fill(&mut result.bytes[..PRIVATE_KEY_LEN]));
     Ok(result)
 }
 
 fn x25519_public_from_private(public_out: &mut [u8],
                               private_key: &ec::PrivateKey)
                               -> Result<(), error::Unspecified> {
-    let public_out =
-        try!(slice_as_array_ref_mut!(public_out,
-                                     X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+    let public_out = try!(slice_as_array_ref_mut!(public_out, PUBLIC_KEY_LEN));
+
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
     let private_key =
-        try!(slice_as_array_ref!(
-                &private_key.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
-                X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+        try!(slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN],
+                                 PRIVATE_KEY_LEN));
     unsafe {
         GFp_x25519_public_from_private(public_out, private_key);
     }
@@ -76,33 +75,42 @@ fn x25519_public_from_private(public_out: &mut [u8],
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input)
                -> Result<(), error::Unspecified> {
-    let out =
-        try!(slice_as_array_ref_mut!(out, X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+    let out = try!(slice_as_array_ref_mut!(out, SHARED_SECRET_LEN));
+
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
     let my_private_key =
-        try!(slice_as_array_ref!(
-                &my_private_key.bytes[..X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
-                X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+        try!(slice_as_array_ref!(&my_private_key.bytes[..PRIVATE_KEY_LEN],
+                                 PRIVATE_KEY_LEN));
     let peer_public_key =
         try!(slice_as_array_ref!(peer_public_key.as_slice_less_safe(),
-                                 X25519_ELEM_SCALAR_PUBLIC_KEY_LEN));
+                                 PUBLIC_KEY_LEN));
     bssl::map_result(unsafe {
         GFp_x25519_ecdh(out, my_private_key, peer_public_key)
     })
 }
 
+const ELEM_AND_SCALAR_LEN: usize = ops::ELEM_LEN;
 
-const X25519_ELEM_SCALAR_PUBLIC_KEY_LEN: usize = 32;
+// An X25519 private key as an unmasked scalar.
+type PrivateKey = [u8; PRIVATE_KEY_LEN];
+const PRIVATE_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
+
+// An X25519 public key as an encoded Curve25519 point.
+type PublicKey = [u8; PUBLIC_KEY_LEN];
+const PUBLIC_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
+
+// An X25519 shared secret as an encoded Curve25519 point.
+type SharedSecret = [u8; SHARED_SECRET_LEN];
+const SHARED_SECRET_LEN: usize = ELEM_AND_SCALAR_LEN;
+
 
 extern {
-    fn GFp_x25519_ecdh(
-        out_shared_key: &mut [u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
-        private_key: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
-        peer_public_value: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]) -> c::int;
-    fn GFp_x25519_public_from_private(
-        public_key_out: &mut [u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN],
-        private_key: &[u8; X25519_ELEM_SCALAR_PUBLIC_KEY_LEN]);
+    fn GFp_x25519_ecdh(out_shared_key: &mut SharedSecret,
+                       private_key: &PrivateKey, peer_public_value: &PublicKey)
+                       -> c::int;
+    fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey,
+                                      private_key: &PrivateKey);
 }
 
 #[cfg(test)]
