@@ -99,6 +99,12 @@ var aesTests = testSuite{
 	},
 }
 
+var ecdsa2KeyPairTests = testSuite{
+	"ECDSA2",
+	"cavp_ecdsa2_keypair_test",
+	[]test{{"KeyPair", nil, true}},
+}
+
 var ecdsa2PKVTests = testSuite{
 	"ECDSA2",
 	"cavp_ecdsa2_pkv_test",
@@ -159,6 +165,7 @@ var allTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
 	&ctrDRBGTests,
+	&ecdsa2KeyPairTests,
 	&ecdsa2PKVTests,
 	&ecdsa2SigGenTests,
 	&ecdsa2SigVerTests,

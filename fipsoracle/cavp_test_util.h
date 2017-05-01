@@ -48,7 +48,7 @@ bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
 
 bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute);
 
-int GetECGroupNIDFromInstruction(FileTest *t);
+int GetECGroupNIDFromInstruction(FileTest *t, const char **out_str = nullptr);
 
 const EVP_MD *GetDigestFromInstruction(FileTest *t);
 

@@ -130,6 +130,12 @@ FileTest::ReadResult FileTest::ReadNext() {
         // Delimit instruction block from test with a blank line.
         current_test_ += "\r\n";
       }
+    } else if (buf[0] == '#' ||
+               strcmp("[B.4.2 Key Pair Generation by Testing Candidates]\r\n",
+                      buf.get()) == 0) {
+      // Ignore comments. The above instruction-like line is treated as a
+      // comment because the FIPS lab's request files are hopelessly
+      // inconsistent.
     } else if (buf[0] == '[') {  // Inside an instruction block.
       if (start_line_ != 0) {
         // Instructions should be separate blocks.
@@ -163,7 +169,7 @@ FileTest::ReadResult FileTest::ReadNext() {
           break;
         kv = kv.substr(idx + 1);
       }
-    } else if (buf[0] != '#') {  // Comment lines are ignored.
+    } else {
       if (in_instruction_block) {
         // Test cases should be separate blocks.
         fprintf(stderr, "Line %u is a test case attribute in an instruction block.\n",

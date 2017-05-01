@@ -181,17 +181,26 @@ bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute) {
   return ret;
 }
 
-int GetECGroupNIDFromInstruction(FileTest *t) {
+int GetECGroupNIDFromInstruction(FileTest *t, const char **out_str) {
+  const char *dummy;
+  if (out_str == nullptr) {
+    out_str = &dummy;
+  }
+
   if (t->HasInstruction("P-224")) {
+    *out_str = "P-224";
     return NID_secp224r1;
   }
   if (t->HasInstruction("P-256")) {
+    *out_str = "P-256";
     return NID_X9_62_prime256v1;
   }
   if (t->HasInstruction("P-384")) {
+    *out_str = "P-384";
     return NID_secp384r1;
   }
   if (t->HasInstruction("P-521")) {
+    *out_str = "P-521";
     return NID_secp521r1;
   }
   t->PrintLine("No supported group specified.");
