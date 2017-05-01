@@ -126,6 +126,12 @@ var ecdsa2SigVerTests = testSuite{
 	[]test{{"SigVer", nil, false}},
 }
 
+var hmacTests = testSuite{
+	"HMAC",
+	"cavp_hmac_test",
+	[]test{{"HMAC", nil, false}},
+}
+
 var shaTests = testSuite{
 	"SHA",
 	"cavp_sha_test",
@@ -169,6 +175,7 @@ var allTestSuites = []*testSuite{
 	&ecdsa2PKVTests,
 	&ecdsa2SigGenTests,
 	&ecdsa2SigVerTests,
+	&hmacTests,
 	&shaTests,
 	&shaMonteTests,
 }
@@ -284,6 +291,10 @@ func compareFAX(suite *testSuite, test test) error {
 			}
 
 			if !haveFaxLine {
+				// Ignore blank lines at the end of the generated file.
+				if len(respLine) == 0 {
+					break
+				}
 				return fmt.Errorf("resp file is longer than fax for %q %q", suite.getDirectory(), test.inFile)
 			}
 
