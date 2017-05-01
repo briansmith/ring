@@ -162,7 +162,7 @@
 //! // send them in a protocol message to the peer(s). Here we just use the
 //! // public key from the private key we just generated.
 //! let peer_public_key_bytes = &generated_bytes.public_key;
-//! let sig_bytes = sig.as_slice();
+//! let sig_bytes = sig.as_ref();
 //!
 //! // Verify the signature of the message using the public key. Normally the
 //! // verifier of the message would parse the inputs to `signature::verify`
@@ -339,9 +339,10 @@ impl<'a> Signature {
     pub fn new(signature_bytes: [u8; 64]) -> Signature {
         Signature { value: signature_bytes }
     }
+}
 
-    /// Returns a reference to the signature's encoded value.
-    pub fn as_slice(&'a self) -> &'a [u8] { &self.value[..] }
+impl AsRef<[u8]> for Signature {
+    fn as_ref(&self) -> &[u8] { &self.value[..] }
 }
 
 /// A signature verification algorithm.

@@ -270,7 +270,7 @@ mod tests {
             let key_pair = Ed25519KeyPair::from_bytes(&private_key[..32],
                                                       &public_key).unwrap();
             let actual_sig = key_pair.sign(&msg);
-            assert_eq!(&expected_sig[..], actual_sig.as_slice());
+            assert_eq!(&expected_sig[..], actual_sig.as_ref());
 
             let public_key = untrusted::Input::from(&public_key);
             let msg = untrusted::Input::from(&msg);
