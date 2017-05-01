@@ -367,12 +367,16 @@ bool FileTest::IsAtNewInstructionBlock() const {
   return is_at_new_instruction_block_;
 }
 
+void FileTest::InjectInstruction(const std::string &key,
+                                 const std::string &value) {
+  instructions_[key] = value;
+}
+
 void FileTest::SetIgnoreUnusedAttributes(bool ignore) {
   ignore_unused_attributes_ = ignore;
 }
 
-int FileTestMainSilent(bool (*run_test)(FileTest *t, void *arg), void *arg,
-                       const char *path) {
+int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path) {
   FileTest t(path);
   if (!t.is_open()) {
     return 1;
@@ -417,8 +421,7 @@ int FileTestMainSilent(bool (*run_test)(FileTest *t, void *arg), void *arg,
   return failed ? 1 : 0;
 }
 
-int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
-                 const char *path) {
+int FileTestMain(FileTestFunc run_test, void *arg, const char *path) {
   int result = FileTestMainSilent(run_test, arg, path);
   if (!result) {
     printf("PASS\n");

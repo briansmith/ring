@@ -158,6 +158,10 @@ class FileTest {
   // other blank or comment lines are omitted.
   const std::string &CurrentTestToString() const;
 
+  // InjectInstruction adds a key value pair to the most recently parsed set of
+  // instructions.
+  void InjectInstruction(const std::string &key, const std::string &value);
+
   void SetIgnoreUnusedAttributes(bool ignore);
 
  private:
@@ -197,6 +201,8 @@ class FileTest {
   FileTest &operator=(const FileTest &) = delete;
 };
 
+typedef bool (*FileTestFunc)(FileTest *t, void *arg);
+
 // FileTestMain runs a file-based test out of |path| and returns an exit code
 // suitable to return out of |main|. |run_test| should return true on pass and
 // false on failure. FileTestMain also implements common handling of the 'Error'
@@ -208,12 +214,10 @@ class FileTest {
 // list of keys. This may be used to initialize a shared set of keys for many
 // tests. However, if one test fails, the framework will continue to run
 // subsequent tests.
-int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
-                 const char *path);
+int FileTestMain(FileTestFunc run_test, void *arg, const char *path);
 
 // FileTestMainSilent behaves like FileTestMain but does not print a final
 // FAIL/PASS message to stdout.
-int FileTestMainSilent(bool (*run_test)(FileTest *t, void *arg), void *arg,
-                       const char *path);
+int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path);
 
 #endif /* OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H */
