@@ -175,11 +175,20 @@ FileTest::ReadResult FileTest::ReadNext() {
       std::string key, value;
       std::tie(key, value) = ParseKeyValue(buf.get(), len);
 
-      unused_attributes_.insert(key);
-      attributes_[key] = value;
+      // Duplicate keys are rewritten to have “/2”, “/3”, … suffixes.
+      std::string mapped_key = key;
+      for (unsigned i = 2; attributes_.count(mapped_key) != 0; i++) {
+        char suffix[32];
+        snprintf(suffix, sizeof(suffix), "/%u", i);
+        suffix[sizeof(suffix)-1] = 0;
+        mapped_key = key + suffix;
+      }
+
+      unused_attributes_.insert(mapped_key);
+      attributes_[mapped_key] = value;
       if (start_line_ == 0) {
         // This is the start of a test.
-        type_ = key;
+        type_ = mapped_key;
         parameter_ = value;
         start_line_ = line_;
         for (const auto &kv : instructions_) {

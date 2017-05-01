@@ -140,9 +140,16 @@ var shaMonteTests = testSuite{
 	},
 }
 
+var ctrDRBGTests = testSuite{
+	"DRBG800-90A",
+	"cavp_ctr_drbg_test",
+	[]test{{"CTR_DRBG", nil, false}},
+}
+
 var allTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
+	&ctrDRBGTests,
 	&ecdsa2PKVTests,
 	&ecdsa2SigVerTests,
 	&shaTests,

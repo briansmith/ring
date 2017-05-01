@@ -51,6 +51,15 @@ if (FIPS)
     $<TARGET_OBJECTS:test_support>
   )
 
+  add_executable(
+    cavp_ctr_drbg_test
+
+    cavp_ctr_drbg_test.cc
+    cavp_test_util.h
+    cavp_test_util.cc
+    $<TARGET_OBJECTS:test_support>
+  )
+
   target_link_libraries(cavp_aes_test crypto)
   target_link_libraries(cavp_aes_gcm_test crypto)
 
@@ -59,4 +68,6 @@ if (FIPS)
 
   target_link_libraries(cavp_sha_test crypto)
   target_link_libraries(cavp_sha_monte_test crypto)
+
+  target_link_libraries(cavp_ctr_drbg_test crypto)
 endif()
