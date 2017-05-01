@@ -127,7 +127,7 @@ if [[ "$KCOV" == "1" ]]; then
   ${HOME}/kcov-${TARGET_X}/bin/kcov --verify \
                                     --coveralls-id=$TRAVIS_JOB_ID \
                                     --exclude-path=/usr/include \
-                                    --include-pattern="ring/crypto,ring/src" \
+                                    --include-pattern="ring/crypto,ring/src,ring/tests" \
                                     target/kcov \
                                     target/$TARGET_X/debug/ring-*
 fi
