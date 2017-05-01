@@ -12,9 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// cavp_aes_gcm_test processes a NIST CAVP AES GCM test vector request file and
-// emits the corresponding response. An optional sample vector file can be
-// passed to verify the result.
+// cavp_ctr_drbg_test processes a NIST CAVP DRBG800-90A test vector request
+// file and emits the corresponding response. An optional sample vector file
+// can be passed to verify the result.
 
 #include <openssl/crypto.h>
 
