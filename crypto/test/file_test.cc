@@ -100,6 +100,7 @@ FileTest::ReadResult FileTest::ReadNext() {
   std::unique_ptr<char[]> buf(new char[kBufLen]);
 
   bool in_instruction_block = false;
+  is_at_new_instruction_block_ = false;
 
   while (true) {
     // Read the next line.
@@ -137,6 +138,7 @@ FileTest::ReadResult FileTest::ReadNext() {
       // comment because the FIPS lab's request files are hopelessly
       // inconsistent.
     } else if (buf[0] == '[') {  // Inside an instruction block.
+      is_at_new_instruction_block_ = true;
       if (start_line_ != 0) {
         // Instructions should be separate blocks.
         fprintf(stderr, "Line %u is an instruction in a test case.\n", line_);
@@ -170,11 +172,12 @@ FileTest::ReadResult FileTest::ReadNext() {
         kv = kv.substr(idx + 1);
       }
     } else {
+      // Parsing a test case.
       if (in_instruction_block) {
-        // Test cases should be separate blocks.
-        fprintf(stderr, "Line %u is a test case attribute in an instruction block.\n",
-                line_);
-        return kReadError;
+        // Some NIST CAVP test files (TDES) have a test case immediately
+        // following an instruction block, without a separate blank line, some
+        // of the time.
+        in_instruction_block = false;
       }
 
       current_test_ += std::string(buf.get(), len);
@@ -358,6 +361,10 @@ void FileTest::OnKeyUsed(const std::string &key) {
 
 void FileTest::OnInstructionUsed(const std::string &key) {
   unused_instructions_.erase(key);
+}
+
+bool FileTest::IsAtNewInstructionBlock() const {
+  return is_at_new_instruction_block_;
 }
 
 void FileTest::SetIgnoreUnusedAttributes(bool ignore) {

@@ -139,6 +139,10 @@ class FileTest {
   bool ExpectBytesEqual(const uint8_t *expected, size_t expected_len,
                         const uint8_t *actual, size_t actual_len);
 
+  // AtNewInstructionBlock returns true if the current test was immediately
+  // preceded by an instruction block.
+  bool IsAtNewInstructionBlock() const;
+
   // HasInstruction returns true if the current test has an instruction.
   bool HasInstruction(const std::string &key);
 
@@ -184,6 +188,8 @@ class FileTest {
   std::set<std::string> unused_instructions_;
 
   std::string current_test_;
+
+  bool is_at_new_instruction_block_ = false;
 
   bool ignore_unused_attributes_ = false;
 

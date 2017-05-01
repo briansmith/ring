@@ -167,6 +167,31 @@ var ctrDRBGTests = testSuite{
 	[]test{{"CTR_DRBG", nil, false}},
 }
 
+var tdesTests = testSuite{
+	"TDES",
+	"cavp_tdes_test",
+	[]test{
+		// {"TCBCMMT2", []string{"mmt"}, false},
+		// {"TCBCMMT3", []string{"mmt"}, false},
+		// {"TCBCMonte2", []string{"mct"}, false},
+		// {"TCBCMonte3", []string{"mct"}, false},
+		{"TCBCinvperm", []string{"kat", "des-ede3-cbc"}, false},
+		{"TCBCpermop", []string{"kat", "des-ede3-cbc"}, false},
+		{"TCBCsubtab", []string{"kat", "des-ede3-cbc"}, false},
+		{"TCBCvarkey", []string{"kat", "des-ede3-cbc"}, false},
+		{"TCBCvartext", []string{"kat", "des-ede3-cbc"}, false},
+		// {"TECBMMT2", []string{"mmt"}, false},
+		// {"TECBMMT3", []string{"mmt"}, false},
+		// {"TECBMonte2", []string{"mct"}, false},
+		// {"TECBMonte3", []string{"mct"}, false},
+		{"TECBinvperm", []string{"kat", "des-ede3"}, false},
+		{"TECBpermop", []string{"kat", "des-ede3"}, false},
+		{"TECBsubtab", []string{"kat", "des-ede3"}, false},
+		{"TECBvarkey", []string{"kat", "des-ede3"}, false},
+		{"TECBvartext", []string{"kat", "des-ede3"}, false},
+	},
+}
+
 var allTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
@@ -178,6 +203,7 @@ var allTestSuites = []*testSuite{
 	&hmacTests,
 	&shaTests,
 	&shaMonteTests,
+	&tdesTests,
 }
 
 func main() {
@@ -224,7 +250,7 @@ func doTest(suite *testSuite, test test) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("cannot run command for %q %q: %s", suite.getDirectory(), test.inFile, err)
+		return fmt.Errorf("cannot run command for %q %q (%s): %s", suite.getDirectory(), test.inFile, strings.Join(append([]string{binary}, args...), " "), err)
 	}
 
 	return nil
