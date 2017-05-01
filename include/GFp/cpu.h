@@ -113,7 +113,7 @@ extern uint32_t GFp_ia32cap_P[4];
 /* GFp_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
  * unit. Note that |OPENSSL_armcap_P| also exists and contains the same
  * information in a form that's easier for assembly to use. */
-OPENSSL_EXPORT char GFp_is_NEON_capable_at_runtime(void);
+OPENSSL_EXPORT uint8_t GFp_is_NEON_capable_at_runtime(void);
 
 /* GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
  * this is known statically then it returns one immediately. */

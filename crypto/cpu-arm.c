@@ -22,7 +22,7 @@
 
 extern uint32_t GFp_armcap_P;
 
-char GFp_is_NEON_capable_at_runtime(void) {
+uint8_t GFp_is_NEON_capable_at_runtime(void) {
   return (GFp_armcap_P & ARMV7_NEON) != 0;
 }
 
