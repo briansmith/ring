@@ -85,6 +85,7 @@
 //!
 //! ```
 //! use ring::{digest, hmac, rand};
+//! use ring::rand::SecureRandom;
 //!
 //! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let msg = "hello, world";
@@ -113,6 +114,7 @@
 //! ## Using the multi-part API:
 //! ```
 //! use ring::{digest, hmac, rand};
+//! use ring::rand::SecureRandom;
 //!
 //! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let parts = ["hello", ", ", "world"];

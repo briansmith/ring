@@ -37,6 +37,7 @@ use std;
 /// ```
 /// extern crate ring;
 /// use ring::rand;
+/// use ring::rand::SecureRandom;
 ///
 /// enum Error {
 ///    CryptoError,
