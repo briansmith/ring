@@ -269,7 +269,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				continue
 			}
 
-			if strings.HasSuffix(target, "_bss_get") {
+			if strings.HasSuffix(target, "_bss_get") || target == "OPENSSL_ia32cap_get" {
 				// reference to a synthesised function. Don't
 				// indirect it.
 				ret = append(ret, line)
