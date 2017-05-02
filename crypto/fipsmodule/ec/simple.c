@@ -74,7 +74,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* Most method functions in this file are designed to work with non-trivial

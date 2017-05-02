@@ -100,9 +100,9 @@ add_subdirectory(engine)
 add_subdirectory(dh)
 add_subdirectory(dsa)
 add_subdirectory(rsa)
-add_subdirectory(ec)
+add_subdirectory(ec_extra)
 add_subdirectory(ecdh)
-add_subdirectory(ecdsa)
+add_subdirectory(ecdsa_extra)
 add_subdirectory(hmac_extra)
 
 # Level 3
@@ -182,9 +182,9 @@ add_library(
   $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:dsa>
   $<TARGET_OBJECTS:rsa>
-  $<TARGET_OBJECTS:ec>
+  $<TARGET_OBJECTS:ec_extra>
   $<TARGET_OBJECTS:ecdh>
-  $<TARGET_OBJECTS:ecdsa>
+  $<TARGET_OBJECTS:ecdsa_extra>
   $<TARGET_OBJECTS:cmac>
   $<TARGET_OBJECTS:evp>
   $<TARGET_OBJECTS:hkdf>
@@ -243,9 +243,9 @@ add_executable(
   curve25519/x25519_test.cc
   dh/dh_test.cc
   dsa/dsa_test.cc
-  ec/ec_test.cc
   err/err_test.cc
   evp/evp_extra_test.cc
+  fipsmodule/ec/ec_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
   rsa/rsa_test.cc
 

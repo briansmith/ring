@@ -29,6 +29,9 @@
 /* For FIPS builds we require that CRYPTO_STATIC_MUTEX_INIT be zero. */
 #define DEFINE_STATIC_MUTEX(name) \
   DEFINE_BSS_GET(struct CRYPTO_STATIC_MUTEX, name)
+/* For FIPS builds we require that CRYPTO_EX_DATA_CLASS_INIT be zero. */
+#define DEFINE_STATIC_EX_DATA_CLASS(name) \
+  DEFINE_BSS_GET(CRYPTO_EX_DATA_CLASS, name)
 #else
 #define DEFINE_BSS_GET(type, name) \
   static type name;                \
@@ -39,7 +42,23 @@
 #define DEFINE_STATIC_MUTEX(name)                                    \
   static struct CRYPTO_STATIC_MUTEX name = CRYPTO_STATIC_MUTEX_INIT; \
   static struct CRYPTO_STATIC_MUTEX *name##_bss_get(void) { return &name; }
+#define DEFINE_STATIC_EX_DATA_CLASS(name)                       \
+  static CRYPTO_EX_DATA_CLASS name = CRYPTO_EX_DATA_CLASS_INIT; \
+  static CRYPTO_EX_DATA_CLASS *name##_bss_get(void) { return &name; }
 #endif
+
+#define DEFINE_DATA(type, name, accessor_decorations)                         \
+  DEFINE_BSS_GET(type, name##_storage)                                        \
+  DEFINE_STATIC_ONCE(name##_once)                                             \
+  static void name##_do_init(type *out);                                      \
+  static void name##_init(void) { name##_do_init(name##_storage_bss_get()); } \
+  accessor_decorations type *name(void) {                                     \
+    CRYPTO_once(name##_once_bss_get(), name##_init);                          \
+    /* See http://c-faq.com/ansi/constmismatch.html for why the following     \
+     * cast is needed. */                                                     \
+    return (const type *)name##_storage_bss_get();                            \
+  }                                                                           \
+  static void name##_do_init(type *out)
 
 /* DEFINE_METHOD_FUNCTION defines a function named |name| which returns a
  * method table of type const |type|*. In FIPS mode, to avoid rel.ro data, it
@@ -62,16 +81,8 @@
  *
  * This mechanism does not use a static initializer because their execution
  * order is undefined. See FIPS.md for more details. */
-#define DEFINE_METHOD_FUNCTION(type, name)                                    \
-  DEFINE_BSS_GET(type, name##_storage)                                        \
-  DEFINE_STATIC_ONCE(name##_once)                                             \
-  static void name##_do_init(type *out);                                      \
-  static void name##_init(void) { name##_do_init(name##_storage_bss_get()); } \
-  const type *name(void) {                                                    \
-    CRYPTO_once(name##_once_bss_get(), name##_init);                          \
-    return name##_storage_bss_get();                                          \
-  }                                                                           \
-  static void name##_do_init(type *out)
+#define DEFINE_METHOD_FUNCTION(type, name) DEFINE_DATA(type, name, const)
 
+#define DEFINE_LOCAL_DATA(type, name) DEFINE_DATA(type, name, static const)
 
 #endif /* OPENSSL_HEADER_FIPSMODULE_DELOCATE_H */

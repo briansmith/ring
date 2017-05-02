@@ -78,10 +78,10 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
-static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+DEFINE_STATIC_EX_DATA_CLASS(g_ec_ex_data_class);
 
 EC_KEY *EC_KEY_new(void) { return EC_KEY_new_method(NULL); }
 
@@ -107,7 +107,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   CRYPTO_new_ex_data(&ret->ex_data);
 
   if (ret->ecdsa_meth && ret->ecdsa_meth->init && !ret->ecdsa_meth->init(ret)) {
-    CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
+    CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), ret, &ret->ex_data);
     if (ret->ecdsa_meth) {
       METHOD_unref(ret->ecdsa_meth);
     }
@@ -152,7 +152,7 @@ void EC_KEY_free(EC_KEY *r) {
   EC_POINT_free(r->pub_key);
   BN_clear_free(r->priv_key);
 
-  CRYPTO_free_ex_data(&g_ex_data_class, r, &r->ex_data);
+  CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), r, &r->ex_data);
 
   OPENSSL_cleanse((void *)r, sizeof(EC_KEY));
   OPENSSL_free(r);
@@ -200,8 +200,8 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
       dest->ecdsa_meth = src->ecdsa_meth;
       METHOD_ref(dest->ecdsa_meth);
   }
-  CRYPTO_free_ex_data(&g_ex_data_class, dest, &dest->ex_data);
-  if (!CRYPTO_dup_ex_data(&g_ex_data_class, &dest->ex_data,
+  CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), dest, &dest->ex_data);
+  if (!CRYPTO_dup_ex_data(g_ec_ex_data_class_bss_get(), &dest->ex_data,
                           &src->ex_data)) {
     return NULL;
   }
@@ -505,8 +505,8 @@ int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                             CRYPTO_EX_dup *dup_func,
                             CRYPTO_EX_free *free_func) {
   int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, dup_func,
-                               free_func)) {
+  if (!CRYPTO_get_ex_new_index(g_ec_ex_data_class_bss_get(), &index, argl, argp,
+                               dup_func, free_func)) {
     return -1;
   }
   return index;

@@ -30,18 +30,15 @@
 
 #include <string.h>
 
+#include "../delocate.h"
+#include "../../internal.h"
 #include "internal.h"
-#include "../internal.h"
 
-
-typedef uint8_t u8;
-typedef uint64_t u64;
-typedef int64_t s64;
 
 /* The underlying field. P256 operates over GF(2^256-2^224+2^192+2^96-1). We
  * can serialise an element of this field into 32 bytes. We call this an
  * felem_bytearray. */
-typedef u8 felem_bytearray[32];
+typedef uint8_t felem_bytearray[32];
 
 /* The representation of field elements.
  * ------------------------------------
@@ -67,33 +64,33 @@ typedef u8 felem_bytearray[32];
 typedef uint128_t limb;
 typedef limb felem[NLIMBS];
 typedef limb longfelem[NLIMBS * 2];
-typedef u64 smallfelem[NLIMBS];
+typedef uint64_t smallfelem[NLIMBS];
 
 /* This is the value of the prime as four 64-bit words, little-endian. */
-static const u64 kPrime[4] = {0xfffffffffffffffful, 0xffffffff, 0,
+static const uint64_t kPrime[4] = {0xfffffffffffffffful, 0xffffffff, 0,
                               0xffffffff00000001ul};
-static const u64 bottom63bits = 0x7ffffffffffffffful;
+static const uint64_t bottom63bits = 0x7ffffffffffffffful;
 
 /* bin32_to_felem takes a little-endian byte array and converts it into felem
  * form. This assumes that the CPU is little-endian. */
-static void bin32_to_felem(felem out, const u8 in[32]) {
-  out[0] = *((const u64 *)&in[0]);
-  out[1] = *((const u64 *)&in[8]);
-  out[2] = *((const u64 *)&in[16]);
-  out[3] = *((const u64 *)&in[24]);
+static void bin32_to_felem(felem out, const uint8_t in[32]) {
+  out[0] = *((const uint64_t *)&in[0]);
+  out[1] = *((const uint64_t *)&in[8]);
+  out[2] = *((const uint64_t *)&in[16]);
+  out[3] = *((const uint64_t *)&in[24]);
 }
 
 /* smallfelem_to_bin32 takes a smallfelem and serialises into a little endian,
  * 32 byte array. This assumes that the CPU is little-endian. */
-static void smallfelem_to_bin32(u8 out[32], const smallfelem in) {
-  *((u64 *)&out[0]) = in[0];
-  *((u64 *)&out[8]) = in[1];
-  *((u64 *)&out[16]) = in[2];
-  *((u64 *)&out[24]) = in[3];
+static void smallfelem_to_bin32(uint8_t out[32], const smallfelem in) {
+  *((uint64_t *)&out[0]) = in[0];
+  *((uint64_t *)&out[8]) = in[1];
+  *((uint64_t *)&out[16]) = in[2];
+  *((uint64_t *)&out[24]) = in[3];
 }
 
 /* To preserve endianness when using BN_bn2bin and BN_bin2bn. */
-static void flip_endian(u8 *out, const u8 *in, size_t len) {
+static void flip_endian(uint8_t *out, const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; ++i) {
     out[i] = in[len - 1 - i];
   }
@@ -156,7 +153,7 @@ static void felem_small_sum(felem out, const smallfelem in) {
 }
 
 /* felem_scalar sets out = out * scalar */
-static void felem_scalar(felem out, const u64 scalar) {
+static void felem_scalar(felem out, const uint64_t scalar) {
   out[0] *= scalar;
   out[1] *= scalar;
   out[2] *= scalar;
@@ -164,7 +161,7 @@ static void felem_scalar(felem out, const u64 scalar) {
 }
 
 /* longfelem_scalar sets out = out * scalar */
-static void longfelem_scalar(longfelem out, const u64 scalar) {
+static void longfelem_scalar(longfelem out, const uint64_t scalar) {
   out[0] *= scalar;
   out[1] *= scalar;
   out[2] *= scalar;
@@ -291,15 +288,16 @@ static const felem zero110 = {two64m0, two110p32m0, two64m46, two64m32};
  *   out[i] < 2^64. */
 static void felem_shrink(smallfelem out, const felem in) {
   felem tmp;
-  u64 a, b, mask;
-  s64 high, low;
-  static const u64 kPrime3Test = 0x7fffffff00000001ul; /* 2^63 - 2^32 + 1 */
+  uint64_t a, b, mask;
+  int64_t high, low;
+  static const uint64_t kPrime3Test =
+      0x7fffffff00000001ul; /* 2^63 - 2^32 + 1 */
 
   /* Carry 2->3 */
-  tmp[3] = zero110[3] + in[3] + ((u64)(in[2] >> 64));
+  tmp[3] = zero110[3] + in[3] + ((uint64_t)(in[2] >> 64));
   /* tmp[3] < 2^110 */
 
-  tmp[2] = zero110[2] + (u64)in[2];
+  tmp[2] = zero110[2] + (uint64_t)in[2];
   tmp[0] = zero110[0] + in[0];
   tmp[1] = zero110[1] + in[1];
   /* tmp[0] < 2**110, tmp[1] < 2^111, tmp[2] < 2**65 */
@@ -307,7 +305,7 @@ static void felem_shrink(smallfelem out, const felem in) {
   /* We perform two partial reductions where we eliminate the high-word of
    * tmp[3]. We don't update the other words till the end. */
   a = tmp[3] >> 64; /* a < 2^46 */
-  tmp[3] = (u64)tmp[3];
+  tmp[3] = (uint64_t)tmp[3];
   tmp[3] -= a;
   tmp[3] += ((limb)a) << 32;
   /* tmp[3] < 2^79 */
@@ -315,7 +313,7 @@ static void felem_shrink(smallfelem out, const felem in) {
   b = a;
   a = tmp[3] >> 64; /* a < 2^15 */
   b += a;           /* b < 2^46 + 2^15 < 2^47 */
-  tmp[3] = (u64)tmp[3];
+  tmp[3] = (uint64_t)tmp[3];
   tmp[3] -= a;
   tmp[3] += ((limb)a) << 32;
   /* tmp[3] < 2^64 + 2^47 */
@@ -353,12 +351,12 @@ static void felem_shrink(smallfelem out, const felem in) {
   tmp[3] -= mask & kPrime[3];
   /* tmp[3] < 2**64 - 2**32 + 1 */
 
-  tmp[1] += ((u64)(tmp[0] >> 64));
-  tmp[0] = (u64)tmp[0];
-  tmp[2] += ((u64)(tmp[1] >> 64));
-  tmp[1] = (u64)tmp[1];
-  tmp[3] += ((u64)(tmp[2] >> 64));
-  tmp[2] = (u64)tmp[2];
+  tmp[1] += ((uint64_t)(tmp[0] >> 64));
+  tmp[0] = (uint64_t)tmp[0];
+  tmp[2] += ((uint64_t)(tmp[1] >> 64));
+  tmp[1] = (uint64_t)tmp[1];
+  tmp[3] += ((uint64_t)(tmp[2] >> 64));
+  tmp[2] = (uint64_t)tmp[2];
   /* tmp[i] < 2^64 */
 
   out[0] = tmp[0];
@@ -382,7 +380,7 @@ static void smallfelem_expand(felem out, const smallfelem in) {
  *   out[i] < 7 * 2^64 < 2^67 */
 static void smallfelem_square(longfelem out, const smallfelem small) {
   limb a;
-  u64 high, low;
+  uint64_t high, low;
 
   a = ((uint128_t)small[0]) * small[0];
   low = a;
@@ -457,7 +455,7 @@ static void smallfelem_square(longfelem out, const smallfelem small) {
  * On exit:
  *   out[i] < 7 * 2^64 < 2^67. */
 static void felem_square(longfelem out, const felem in) {
-  u64 small[4];
+  uint64_t small[4];
   felem_shrink(small, in);
   smallfelem_square(out, small);
 }
@@ -471,7 +469,7 @@ static void felem_square(longfelem out, const felem in) {
 static void smallfelem_mul(longfelem out, const smallfelem small1,
                            const smallfelem small2) {
   limb a;
-  u64 high, low;
+  uint64_t high, low;
 
   a = ((uint128_t)small1[0]) * small2[0];
   low = a;
@@ -700,32 +698,32 @@ static void felem_reduce_zero105(felem out, const longfelem in) {
 
 /* subtract_u64 sets *result = *result - v and *carry to one if the
  * subtraction underflowed. */
-static void subtract_u64(u64 *result, u64 *carry, u64 v) {
+static void subtract_u64(uint64_t *result, uint64_t *carry, uint64_t v) {
   uint128_t r = *result;
   r -= v;
   *carry = (r >> 64) & 1;
-  *result = (u64)r;
+  *result = (uint64_t)r;
 }
 
 /* felem_contract converts |in| to its unique, minimal representation. On
  * entry: in[i] < 2^109. */
 static void felem_contract(smallfelem out, const felem in) {
-  u64 all_equal_so_far = 0, result = 0;
+  uint64_t all_equal_so_far = 0, result = 0;
 
   felem_shrink(out, in);
   /* small is minimal except that the value might be > p */
 
   all_equal_so_far--;
   /* We are doing a constant time test if out >= kPrime. We need to compare
-   * each u64, from most-significant to least significant. For each one, if
+   * each uint64_t, from most-significant to least significant. For each one, if
    * all words so far have been equal (m is all ones) then a non-equal
    * result is the answer. Otherwise we continue. */
   for (size_t i = 3; i < 4; i--) {
-    u64 equal;
+    uint64_t equal;
     uint128_t a = ((uint128_t)kPrime[i]) - out[i];
     /* if out[i] > kPrime[i] then a will underflow and the high 64-bits
      * will all be set. */
-    result |= all_equal_so_far & ((u64)(a >> 64));
+    result |= all_equal_so_far & ((uint64_t)(a >> 64));
 
     /* if kPrime[i] == out[i] then |equal| will be all zeros and the
      * decrement will make it all ones. */
@@ -737,7 +735,7 @@ static void felem_contract(smallfelem out, const felem in) {
     equal &= equal << 4;
     equal &= equal << 2;
     equal &= equal << 1;
-    equal = ((s64)equal) >> 63;
+    equal = ((int64_t)equal) >> 63;
 
     all_equal_so_far &= equal;
   }
@@ -747,7 +745,7 @@ static void felem_contract(smallfelem out, const felem in) {
   result |= all_equal_so_far;
 
   /* if out >= kPrime then we subtract kPrime. */
-  u64 carry;
+  uint64_t carry;
   subtract_u64(&out[0], &carry, result & kPrime[0]);
   subtract_u64(&out[1], &carry, carry);
   subtract_u64(&out[2], &carry, carry);
@@ -769,9 +767,9 @@ static void felem_contract(smallfelem out, const felem in) {
  *   small[i] < 2^64 */
 static limb smallfelem_is_zero(const smallfelem small) {
   limb result;
-  u64 is_p;
+  uint64_t is_p;
 
-  u64 is_zero = small[0] | small[1] | small[2] | small[3];
+  uint64_t is_zero = small[0] | small[1] | small[2] | small[3];
   is_zero--;
   is_zero &= is_zero << 32;
   is_zero &= is_zero << 16;
@@ -779,7 +777,7 @@ static limb smallfelem_is_zero(const smallfelem small) {
   is_zero &= is_zero << 4;
   is_zero &= is_zero << 2;
   is_zero &= is_zero << 1;
-  is_zero = ((s64)is_zero) >> 63;
+  is_zero = ((int64_t)is_zero) >> 63;
 
   is_p = (small[0] ^ kPrime[0]) | (small[1] ^ kPrime[1]) |
          (small[2] ^ kPrime[2]) | (small[3] ^ kPrime[3]);
@@ -790,7 +788,7 @@ static limb smallfelem_is_zero(const smallfelem small) {
   is_p &= is_p << 4;
   is_p &= is_p << 2;
   is_p &= is_p << 1;
-  is_p = ((s64)is_p) >> 63;
+  is_p = ((int64_t)is_p) >> 63;
 
   is_zero |= is_p;
 
@@ -1005,8 +1003,8 @@ static void point_double_small(smallfelem x_out, smallfelem y_out,
   felem_shrink(z_out, felem_z_out);
 }
 
-/* copy_conditional copies in to out iff mask is all ones. */
-static void copy_conditional(felem out, const felem in, limb mask) {
+/* p256_copy_conditional copies in to out iff mask is all ones. */
+static void p256_copy_conditional(felem out, const felem in, limb mask) {
   for (size_t i = 0; i < NLIMBS; ++i) {
     const limb tmp = mask & (in[i] ^ out[i]);
     out[i] ^= tmp;
@@ -1015,7 +1013,7 @@ static void copy_conditional(felem out, const felem in, limb mask) {
 
 /* copy_small_conditional copies in to out iff mask is all ones. */
 static void copy_small_conditional(felem out, const smallfelem in, limb mask) {
-  const u64 mask64 = mask;
+  const uint64_t mask64 = mask;
   for (size_t i = 0; i < NLIMBS; ++i) {
     out[i] = ((limb)(in[i] & mask64)) | (out[i] & ~mask);
   }
@@ -1179,11 +1177,11 @@ static void point_add(felem x3, felem y3, felem z3, const felem x1,
   /* y_out[i] < 2^106 */
 
   copy_small_conditional(x_out, x2, z1_is_zero);
-  copy_conditional(x_out, x1, z2_is_zero);
+  p256_copy_conditional(x_out, x1, z2_is_zero);
   copy_small_conditional(y_out, y2, z1_is_zero);
-  copy_conditional(y_out, y1, z2_is_zero);
+  p256_copy_conditional(y_out, y1, z2_is_zero);
   copy_small_conditional(z_out, z2, z1_is_zero);
-  copy_conditional(z_out, z1, z2_is_zero);
+  p256_copy_conditional(z_out, z1, z2_is_zero);
   felem_assign(x3, x_out);
   felem_assign(y3, y_out);
   felem_assign(z3, z_out);
@@ -1398,15 +1396,15 @@ static const smallfelem g_pre_comp[2][16][3] = {
 
 /* select_point selects the |idx|th point from a precomputation table and
  * copies it to out. */
-static void select_point(const u64 idx, size_t size,
+static void select_point(const uint64_t idx, size_t size,
                          const smallfelem pre_comp[/*size*/][3],
                          smallfelem out[3]) {
-  u64 *outlimbs = &out[0][0];
+  uint64_t *outlimbs = &out[0][0];
   OPENSSL_memset(outlimbs, 0, 3 * sizeof(smallfelem));
 
   for (size_t i = 0; i < size; i++) {
-    const u64 *inlimbs = (const u64 *)&pre_comp[i][0][0];
-    u64 mask = i ^ idx;
+    const uint64_t *inlimbs = (const uint64_t *)&pre_comp[i][0][0];
+    uint64_t mask = i ^ idx;
     mask |= mask >> 4;
     mask |= mask >> 2;
     mask |= mask >> 1;
@@ -1431,12 +1429,13 @@ static char get_bit(const felem_bytearray in, int i) {
  * in p_scalar, if non-NULL. If g_scalar is non-NULL, we also add this multiple
  * of the generator, using certain (large) precomputed multiples in g_pre_comp.
  * Output point (X, Y, Z) is stored in x_out, y_out, z_out. */
-static void batch_mul(felem x_out, felem y_out, felem z_out, const u8 *p_scalar,
-                      const u8 *g_scalar, const smallfelem p_pre_comp[17][3]) {
+static void batch_mul(felem x_out, felem y_out, felem z_out,
+                      const uint8_t *p_scalar, const uint8_t *g_scalar,
+                      const smallfelem p_pre_comp[17][3]) {
   felem nq[3], ftmp;
   smallfelem tmp[3];
-  u64 bits;
-  u8 sign, digit;
+  uint64_t bits;
+  uint8_t sign, digit;
 
   /* set nq to the point at infinity */
   OPENSSL_memset(nq, 0, 3 * sizeof(felem));
@@ -1685,17 +1684,18 @@ err:
   return ret;
 }
 
-const EC_METHOD EC_GFp_nistp256_method = {
-    ec_GFp_simple_group_init,
-    ec_GFp_simple_group_finish,
-    ec_GFp_simple_group_copy,
-    ec_GFp_simple_group_set_curve,
-    ec_GFp_nistp256_point_get_affine_coordinates,
-    ec_GFp_nistp256_points_mul,
-    ec_GFp_simple_field_mul,
-    ec_GFp_simple_field_sqr,
-    NULL /* field_encode */,
-    NULL /* field_decode */,
+DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
+  out->group_init = ec_GFp_simple_group_init;
+  out->group_finish = ec_GFp_simple_group_finish;
+  out->group_copy = ec_GFp_simple_group_copy;
+  out->group_set_curve = ec_GFp_simple_group_set_curve;
+  out->point_get_affine_coordinates =
+      ec_GFp_nistp256_point_get_affine_coordinates;
+  out->mul = ec_GFp_nistp256_points_mul;
+  out->field_mul = ec_GFp_simple_field_mul;
+  out->field_sqr = ec_GFp_simple_field_sqr;
+  out->field_encode = NULL;
+  out->field_decode = NULL;
 };
 
 #endif  /* 64_BIT && !WINDOWS */

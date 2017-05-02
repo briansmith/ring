@@ -23,7 +23,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/nid.h>
 
-#include "../test/file_test.h"
+#include "../../test/file_test.h"
 
 
 static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
@@ -61,47 +61,37 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 
 static bool TestECDSASign(FileTest *t, void *arg) {
   bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
-  bssl::UniquePtr<BIGNUM> priv_key = GetBIGNUM(t, "Private");
   bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
   bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
-  bssl::UniquePtr<BIGNUM> k = GetBIGNUM(t, "K");
   bssl::UniquePtr<BIGNUM> r = GetBIGNUM(t, "R");
   bssl::UniquePtr<BIGNUM> s = GetBIGNUM(t, "S");
   std::vector<uint8_t> digest;
-  if (!group || !priv_key || !x || !y || !k || !r || !s ||
+  if (!group || !x || !y || !r || !s ||
       !t->GetBytes(&digest, "Digest")) {
     return false;
   }
 
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
   bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
-  if (!key || !pub_key ||
+  bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
+  if (!key || !pub_key || !sig ||
       !EC_KEY_set_group(key.get(), group.get()) ||
-      !EC_KEY_set_private_key(key.get(), priv_key.get()) ||
       !EC_POINT_set_affine_coordinates_GFp(group.get(), pub_key.get(), x.get(),
                                            y.get(), nullptr) ||
       !EC_KEY_set_public_key(key.get(), pub_key.get()) ||
-      !EC_KEY_check_key(key.get())) {
+      !BN_copy(sig->r, r.get()) ||
+      !BN_copy(sig->s, s.get())) {
     return false;
   }
 
-  // |ECDSA_do_sign_ex| expects |k| to already be inverted.
-  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
-  if (!ctx ||
-      !BN_mod_inverse(k.get(), k.get(), EC_GROUP_get0_order(group.get()),
-                      ctx.get())) {
-    return false;
-  }
-
-  bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_do_sign_ex(digest.data(), digest.size(), k.get(),
-                                 r.get(), key.get()));
-  if (!sig) {
-    return false;
-  }
-
-  if (BN_cmp(r.get(), sig->r) != 0 ||
-      BN_cmp(s.get(), sig->s) != 0) {
-    t->PrintLine("Signature mismatch.");
+  int ok = ECDSA_do_verify(digest.data(), digest.size(), sig.get(), key.get());
+  if (t->HasAttribute("Invalid")) {
+    if (ok) {
+      t->PrintLine("Signature was incorrectly accepted.");
+      return false;
+    }
+  } else if (!ok) {
+    t->PrintLine("Signature was incorrectly rejected.");
     return false;
   }
 

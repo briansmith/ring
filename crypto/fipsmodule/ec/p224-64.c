@@ -30,35 +30,32 @@
 #include <string.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
-
-typedef uint8_t u8;
-typedef uint64_t u64;
-typedef int64_t s64;
 
 /* Field elements are represented as a_0 + 2^56*a_1 + 2^112*a_2 + 2^168*a_3
  * using 64-bit coefficients called 'limbs', and sometimes (for multiplication
  * results) as b_0 + 2^56*b_1 + 2^112*b_2 + 2^168*b_3 + 2^224*b_4 + 2^280*b_5 +
- * 2^336*b_6 using 128-bit coefficients called 'widelimbs'. A 4-limb
- * representation is an 'felem'; a 7-widelimb representation is a 'widefelem'.
- * Even within felems, bits of adjacent limbs overlap, and we don't always
- * reduce the representations: we ensure that inputs to each felem
- * multiplication satisfy a_i < 2^60, so outputs satisfy b_i < 4*2^60*2^60, and
- * fit into a 128-bit word without overflow. The coefficients are then again
- * partially reduced to obtain an felem satisfying a_i < 2^57. We only reduce
- * to the unique minimal representation at the end of the computation. */
+ * 2^336*b_6 using 128-bit coefficients called 'widelimbs'. A 4-p224_limb
+ * representation is an 'p224_felem'; a 7-p224_widelimb representation is a
+ * 'p224_widefelem'. Even within felems, bits of adjacent limbs overlap, and we
+ * don't always reduce the representations: we ensure that inputs to each
+ * p224_felem multiplication satisfy a_i < 2^60, so outputs satisfy b_i <
+ * 4*2^60*2^60, and fit into a 128-bit word without overflow. The coefficients
+ * are then again partially reduced to obtain an p224_felem satisfying a_i <
+ * 2^57. We only reduce to the unique minimal representation at the end of the
+ * computation. */
 
-typedef uint64_t limb;
-typedef uint128_t widelimb;
+typedef uint64_t p224_limb;
+typedef uint128_t p224_widelimb;
 
-typedef limb felem[4];
-typedef widelimb widefelem[7];
+typedef p224_limb p224_felem[4];
+typedef p224_widelimb p224_widefelem[7];
 
 /* Field element represented as a byte arrary. 28*8 = 224 bits is also the
  * group order size for the elliptic curve, and we also use this type for
  * scalars for point multiplication. */
-typedef u8 felem_bytearray[28];
+typedef uint8_t p224_felem_bytearray[28];
 
 /* Precomputed multiples of the standard generator
  * Points are given in coordinates (X, Y, Z) where Z normally is 1
@@ -89,7 +86,7 @@ typedef u8 felem_bytearray[28];
  * The reason for this is so that we can clock bits into four different
  * locations when doing simple scalar multiplies against the base point,
  * and then another four locations using the second 16 elements. */
-static const felem g_pre_comp[2][16][3] = {
+static const p224_felem g_p224_pre_comp[2][16][3] = {
     {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
      {{0x3280d6115c1d21, 0xc1d356c2112234, 0x7f321390b94a03, 0xb70e0cbd6bb4bf},
       {0xd5819985007e34, 0x75a05a07476444, 0xfb4c22dfe6cd43, 0xbd376388b5f723},
@@ -184,14 +181,14 @@ static const felem g_pre_comp[2][16][3] = {
       {1, 0, 0, 0}}}};
 
 /* Helper functions to convert field elements to/from internal representation */
-static void bin28_to_felem(felem out, const u8 in[28]) {
+static void p224_bin28_to_felem(p224_felem out, const uint8_t in[28]) {
   out[0] = *((const uint64_t *)(in)) & 0x00ffffffffffffff;
   out[1] = (*((const uint64_t *)(in + 7))) & 0x00ffffffffffffff;
   out[2] = (*((const uint64_t *)(in + 14))) & 0x00ffffffffffffff;
   out[3] = (*((const uint64_t *)(in + 20))) >> 8;
 }
 
-static void felem_to_bin28(u8 out[28], const felem in) {
+static void p224_felem_to_bin28(uint8_t out[28], const p224_felem in) {
   for (size_t i = 0; i < 7; ++i) {
     out[i] = in[0] >> (8 * i);
     out[i + 7] = in[1] >> (8 * i);
@@ -201,16 +198,16 @@ static void felem_to_bin28(u8 out[28], const felem in) {
 }
 
 /* To preserve endianness when using BN_bn2bin and BN_bin2bn */
-static void flip_endian(u8 *out, const u8 *in, size_t len) {
+static void p224_flip_endian(uint8_t *out, const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; ++i) {
     out[i] = in[len - 1 - i];
   }
 }
 
 /* From OpenSSL BIGNUM to internal representation */
-static int BN_to_felem(felem out, const BIGNUM *bn) {
+static int p224_BN_to_felem(p224_felem out, const BIGNUM *bn) {
   /* BN_bn2bin eats leading zeroes */
-  felem_bytearray b_out;
+  p224_felem_bytearray b_out;
   OPENSSL_memset(b_out, 0, sizeof(b_out));
   size_t num_bytes = BN_num_bytes(bn);
   if (num_bytes > sizeof(b_out) ||
@@ -219,18 +216,18 @@ static int BN_to_felem(felem out, const BIGNUM *bn) {
     return 0;
   }
 
-  felem_bytearray b_in;
+  p224_felem_bytearray b_in;
   num_bytes = BN_bn2bin(bn, b_in);
-  flip_endian(b_out, b_in, num_bytes);
-  bin28_to_felem(out, b_out);
+  p224_flip_endian(b_out, b_in, num_bytes);
+  p224_bin28_to_felem(out, b_out);
   return 1;
 }
 
 /* From internal representation to OpenSSL BIGNUM */
-static BIGNUM *felem_to_BN(BIGNUM *out, const felem in) {
-  felem_bytearray b_in, b_out;
-  felem_to_bin28(b_in, in);
-  flip_endian(b_out, b_in, sizeof(b_out));
+static BIGNUM *p224_felem_to_BN(BIGNUM *out, const p224_felem in) {
+  p224_felem_bytearray b_in, b_out;
+  p224_felem_to_bin28(b_in, in);
+  p224_flip_endian(b_out, b_in, sizeof(b_out));
   return BN_bin2bn(b_out, sizeof(b_out), out);
 }
 
@@ -239,7 +236,7 @@ static BIGNUM *felem_to_BN(BIGNUM *out, const felem in) {
  * expected to be correct in general - e.g., multiplication with a large scalar
  * will cause an overflow. */
 
-static void felem_assign(felem out, const felem in) {
+static void p224_felem_assign(p224_felem out, const p224_felem in) {
   out[0] = in[0];
   out[1] = in[1];
   out[2] = in[2];
@@ -247,7 +244,7 @@ static void felem_assign(felem out, const felem in) {
 }
 
 /* Sum two field elements: out += in */
-static void felem_sum(felem out, const felem in) {
+static void p224_felem_sum(p224_felem out, const p224_felem in) {
   out[0] += in[0];
   out[1] += in[1];
   out[2] += in[2];
@@ -256,11 +253,13 @@ static void felem_sum(felem out, const felem in) {
 
 /* Get negative value: out = -in */
 /* Assumes in[i] < 2^57 */
-static void felem_neg(felem out, const felem in) {
-  static const limb two58p2 = (((limb)1) << 58) + (((limb)1) << 2);
-  static const limb two58m2 = (((limb)1) << 58) - (((limb)1) << 2);
-  static const limb two58m42m2 =
-      (((limb)1) << 58) - (((limb)1) << 42) - (((limb)1) << 2);
+static void p224_felem_neg(p224_felem out, const p224_felem in) {
+  static const p224_limb two58p2 =
+      (((p224_limb)1) << 58) + (((p224_limb)1) << 2);
+  static const p224_limb two58m2 =
+      (((p224_limb)1) << 58) - (((p224_limb)1) << 2);
+  static const p224_limb two58m42m2 =
+      (((p224_limb)1) << 58) - (((p224_limb)1) << 42) - (((p224_limb)1) << 2);
 
   /* Set to 0 mod 2^224-2^96+1 to ensure out > in */
   out[0] = two58p2 - in[0];
@@ -271,11 +270,13 @@ static void felem_neg(felem out, const felem in) {
 
 /* Subtract field elements: out -= in */
 /* Assumes in[i] < 2^57 */
-static void felem_diff(felem out, const felem in) {
-  static const limb two58p2 = (((limb)1) << 58) + (((limb)1) << 2);
-  static const limb two58m2 = (((limb)1) << 58) - (((limb)1) << 2);
-  static const limb two58m42m2 =
-      (((limb)1) << 58) - (((limb)1) << 42) - (((limb)1) << 2);
+static void p224_felem_diff(p224_felem out, const p224_felem in) {
+  static const p224_limb two58p2 =
+      (((p224_limb)1) << 58) + (((p224_limb)1) << 2);
+  static const p224_limb two58m2 =
+      (((p224_limb)1) << 58) - (((p224_limb)1) << 2);
+  static const p224_limb two58m42m2 =
+      (((p224_limb)1) << 58) - (((p224_limb)1) << 42) - (((p224_limb)1) << 2);
 
   /* Add 0 mod 2^224-2^96+1 to ensure out > in */
   out[0] += two58p2;
@@ -291,12 +292,13 @@ static void felem_diff(felem out, const felem in) {
 
 /* Subtract in unreduced 128-bit mode: out -= in */
 /* Assumes in[i] < 2^119 */
-static void widefelem_diff(widefelem out, const widefelem in) {
-  static const widelimb two120 = ((widelimb)1) << 120;
-  static const widelimb two120m64 =
-      (((widelimb)1) << 120) - (((widelimb)1) << 64);
-  static const widelimb two120m104m64 =
-      (((widelimb)1) << 120) - (((widelimb)1) << 104) - (((widelimb)1) << 64);
+static void p224_widefelem_diff(p224_widefelem out, const p224_widefelem in) {
+  static const p224_widelimb two120 = ((p224_widelimb)1) << 120;
+  static const p224_widelimb two120m64 =
+      (((p224_widelimb)1) << 120) - (((p224_widelimb)1) << 64);
+  static const p224_widelimb two120m104m64 = (((p224_widelimb)1) << 120) -
+                                             (((p224_widelimb)1) << 104) -
+                                             (((p224_widelimb)1) << 64);
 
   /* Add 0 mod 2^224-2^96+1 to ensure out > in */
   out[0] += two120;
@@ -318,11 +320,14 @@ static void widefelem_diff(widefelem out, const widefelem in) {
 
 /* Subtract in mixed mode: out128 -= in64 */
 /* in[i] < 2^63 */
-static void felem_diff_128_64(widefelem out, const felem in) {
-  static const widelimb two64p8 = (((widelimb)1) << 64) + (((widelimb)1) << 8);
-  static const widelimb two64m8 = (((widelimb)1) << 64) - (((widelimb)1) << 8);
-  static const widelimb two64m48m8 =
-      (((widelimb)1) << 64) - (((widelimb)1) << 48) - (((widelimb)1) << 8);
+static void p224_felem_diff_128_64(p224_widefelem out, const p224_felem in) {
+  static const p224_widelimb two64p8 =
+      (((p224_widelimb)1) << 64) + (((p224_widelimb)1) << 8);
+  static const p224_widelimb two64m8 =
+      (((p224_widelimb)1) << 64) - (((p224_widelimb)1) << 8);
+  static const p224_widelimb two64m48m8 = (((p224_widelimb)1) << 64) -
+                                          (((p224_widelimb)1) << 48) -
+                                          (((p224_widelimb)1) << 8);
 
   /* Add 0 mod 2^224-2^96+1 to ensure out > in */
   out[0] += two64p8;
@@ -338,7 +343,7 @@ static void felem_diff_128_64(widefelem out, const felem in) {
 
 /* Multiply a field element by a scalar: out = out * scalar
  * The scalars we actually use are small, so results fit without overflow */
-static void felem_scalar(felem out, const limb scalar) {
+static void p224_felem_scalar(p224_felem out, const p224_limb scalar) {
   out[0] *= scalar;
   out[1] *= scalar;
   out[2] *= scalar;
@@ -347,7 +352,8 @@ static void felem_scalar(felem out, const limb scalar) {
 
 /* Multiply an unreduced field element by a scalar: out = out * scalar
  * The scalars we actually use are small, so results fit without overflow */
-static void widefelem_scalar(widefelem out, const widelimb scalar) {
+static void p224_widefelem_scalar(p224_widefelem out,
+                                  const p224_widelimb scalar) {
   out[0] *= scalar;
   out[1] *= scalar;
   out[2] *= scalar;
@@ -358,45 +364,47 @@ static void widefelem_scalar(widefelem out, const widelimb scalar) {
 }
 
 /* Square a field element: out = in^2 */
-static void felem_square(widefelem out, const felem in) {
-  limb tmp0, tmp1, tmp2;
+static void p224_felem_square(p224_widefelem out, const p224_felem in) {
+  p224_limb tmp0, tmp1, tmp2;
   tmp0 = 2 * in[0];
   tmp1 = 2 * in[1];
   tmp2 = 2 * in[2];
-  out[0] = ((widelimb)in[0]) * in[0];
-  out[1] = ((widelimb)in[0]) * tmp1;
-  out[2] = ((widelimb)in[0]) * tmp2 + ((widelimb)in[1]) * in[1];
-  out[3] = ((widelimb)in[3]) * tmp0 + ((widelimb)in[1]) * tmp2;
-  out[4] = ((widelimb)in[3]) * tmp1 + ((widelimb)in[2]) * in[2];
-  out[5] = ((widelimb)in[3]) * tmp2;
-  out[6] = ((widelimb)in[3]) * in[3];
+  out[0] = ((p224_widelimb)in[0]) * in[0];
+  out[1] = ((p224_widelimb)in[0]) * tmp1;
+  out[2] = ((p224_widelimb)in[0]) * tmp2 + ((p224_widelimb)in[1]) * in[1];
+  out[3] = ((p224_widelimb)in[3]) * tmp0 + ((p224_widelimb)in[1]) * tmp2;
+  out[4] = ((p224_widelimb)in[3]) * tmp1 + ((p224_widelimb)in[2]) * in[2];
+  out[5] = ((p224_widelimb)in[3]) * tmp2;
+  out[6] = ((p224_widelimb)in[3]) * in[3];
 }
 
 /* Multiply two field elements: out = in1 * in2 */
-static void felem_mul(widefelem out, const felem in1, const felem in2) {
-  out[0] = ((widelimb)in1[0]) * in2[0];
-  out[1] = ((widelimb)in1[0]) * in2[1] + ((widelimb)in1[1]) * in2[0];
-  out[2] = ((widelimb)in1[0]) * in2[2] + ((widelimb)in1[1]) * in2[1] +
-           ((widelimb)in1[2]) * in2[0];
-  out[3] = ((widelimb)in1[0]) * in2[3] + ((widelimb)in1[1]) * in2[2] +
-           ((widelimb)in1[2]) * in2[1] + ((widelimb)in1[3]) * in2[0];
-  out[4] = ((widelimb)in1[1]) * in2[3] + ((widelimb)in1[2]) * in2[2] +
-           ((widelimb)in1[3]) * in2[1];
-  out[5] = ((widelimb)in1[2]) * in2[3] + ((widelimb)in1[3]) * in2[2];
-  out[6] = ((widelimb)in1[3]) * in2[3];
+static void p224_felem_mul(p224_widefelem out, const p224_felem in1,
+                           const p224_felem in2) {
+  out[0] = ((p224_widelimb)in1[0]) * in2[0];
+  out[1] = ((p224_widelimb)in1[0]) * in2[1] + ((p224_widelimb)in1[1]) * in2[0];
+  out[2] = ((p224_widelimb)in1[0]) * in2[2] + ((p224_widelimb)in1[1]) * in2[1] +
+           ((p224_widelimb)in1[2]) * in2[0];
+  out[3] = ((p224_widelimb)in1[0]) * in2[3] + ((p224_widelimb)in1[1]) * in2[2] +
+           ((p224_widelimb)in1[2]) * in2[1] + ((p224_widelimb)in1[3]) * in2[0];
+  out[4] = ((p224_widelimb)in1[1]) * in2[3] + ((p224_widelimb)in1[2]) * in2[2] +
+           ((p224_widelimb)in1[3]) * in2[1];
+  out[5] = ((p224_widelimb)in1[2]) * in2[3] + ((p224_widelimb)in1[3]) * in2[2];
+  out[6] = ((p224_widelimb)in1[3]) * in2[3];
 }
 
 /* Reduce seven 128-bit coefficients to four 64-bit coefficients.
  * Requires in[i] < 2^126,
  * ensures out[0] < 2^56, out[1] < 2^56, out[2] < 2^56, out[3] <= 2^56 + 2^16 */
-static void felem_reduce(felem out, const widefelem in) {
-  static const widelimb two127p15 =
-      (((widelimb)1) << 127) + (((widelimb)1) << 15);
-  static const widelimb two127m71 =
-      (((widelimb)1) << 127) - (((widelimb)1) << 71);
-  static const widelimb two127m71m55 =
-      (((widelimb)1) << 127) - (((widelimb)1) << 71) - (((widelimb)1) << 55);
-  widelimb output[5];
+static void p224_felem_reduce(p224_felem out, const p224_widefelem in) {
+  static const p224_widelimb two127p15 =
+      (((p224_widelimb)1) << 127) + (((p224_widelimb)1) << 15);
+  static const p224_widelimb two127m71 =
+      (((p224_widelimb)1) << 127) - (((p224_widelimb)1) << 71);
+  static const p224_widelimb two127m71m55 = (((p224_widelimb)1) << 127) -
+                                            (((p224_widelimb)1) << 71) -
+                                            (((p224_widelimb)1) << 55);
+  p224_widelimb output[5];
 
   /* Add 0 mod 2^224-2^96+1 to ensure all differences are positive */
   output[0] = in[0] + two127p15;
@@ -451,9 +459,9 @@ static void felem_reduce(felem out, const widefelem in) {
 }
 
 /* Reduce to unique minimal representation.
- * Requires 0 <= in < 2*p (always call felem_reduce first) */
-static void felem_contract(felem out, const felem in) {
-  static const int64_t two56 = ((limb)1) << 56;
+ * Requires 0 <= in < 2*p (always call p224_felem_reduce first) */
+static void p224_felem_contract(p224_felem out, const p224_felem in) {
+  static const int64_t two56 = ((p224_limb)1) << 56;
   /* 0 <= in < 2*p, p = 2^224 - 2^96 + 1 */
   /* if in > p , reduce in = in - 2^224 + 2^96 - 1 */
   int64_t tmp[4], a;
@@ -502,15 +510,15 @@ static void felem_contract(felem out, const felem in) {
 /* Zero-check: returns 1 if input is 0, and 0 otherwise. We know that field
  * elements are reduced to in < 2^225, so we only need to check three cases: 0,
  * 2^224 - 2^96 + 1, and 2^225 - 2^97 + 2 */
-static limb felem_is_zero(const felem in) {
-  limb zero = in[0] | in[1] | in[2] | in[3];
+static p224_limb p224_felem_is_zero(const p224_felem in) {
+  p224_limb zero = in[0] | in[1] | in[2] | in[3];
   zero = (((int64_t)(zero)-1) >> 63) & 1;
 
-  limb two224m96p1 = (in[0] ^ 1) | (in[1] ^ 0x00ffff0000000000) |
+  p224_limb two224m96p1 = (in[0] ^ 1) | (in[1] ^ 0x00ffff0000000000) |
                      (in[2] ^ 0x00ffffffffffffff) |
                      (in[3] ^ 0x00ffffffffffffff);
   two224m96p1 = (((int64_t)(two224m96p1)-1) >> 63) & 1;
-  limb two225m97p2 = (in[0] ^ 2) | (in[1] ^ 0x00fffe0000000000) |
+  p224_limb two225m97p2 = (in[0] ^ 2) | (in[1] ^ 0x00fffe0000000000) |
                      (in[2] ^ 0x00ffffffffffffff) |
                      (in[3] ^ 0x01ffffffffffffff);
   two225m97p2 = (((int64_t)(two225m97p2)-1) >> 63) & 1;
@@ -519,92 +527,93 @@ static limb felem_is_zero(const felem in) {
 
 /* Invert a field element */
 /* Computation chain copied from djb's code */
-static void felem_inv(felem out, const felem in) {
-  felem ftmp, ftmp2, ftmp3, ftmp4;
-  widefelem tmp;
+static void p224_felem_inv(p224_felem out, const p224_felem in) {
+  p224_felem ftmp, ftmp2, ftmp3, ftmp4;
+  p224_widefelem tmp;
 
-  felem_square(tmp, in);
-  felem_reduce(ftmp, tmp); /* 2 */
-  felem_mul(tmp, in, ftmp);
-  felem_reduce(ftmp, tmp); /* 2^2 - 1 */
-  felem_square(tmp, ftmp);
-  felem_reduce(ftmp, tmp); /* 2^3 - 2 */
-  felem_mul(tmp, in, ftmp);
-  felem_reduce(ftmp, tmp); /* 2^3 - 1 */
-  felem_square(tmp, ftmp);
-  felem_reduce(ftmp2, tmp); /* 2^4 - 2 */
-  felem_square(tmp, ftmp2);
-  felem_reduce(ftmp2, tmp); /* 2^5 - 4 */
-  felem_square(tmp, ftmp2);
-  felem_reduce(ftmp2, tmp); /* 2^6 - 8 */
-  felem_mul(tmp, ftmp2, ftmp);
-  felem_reduce(ftmp, tmp); /* 2^6 - 1 */
-  felem_square(tmp, ftmp);
-  felem_reduce(ftmp2, tmp); /* 2^7 - 2 */
+  p224_felem_square(tmp, in);
+  p224_felem_reduce(ftmp, tmp); /* 2 */
+  p224_felem_mul(tmp, in, ftmp);
+  p224_felem_reduce(ftmp, tmp); /* 2^2 - 1 */
+  p224_felem_square(tmp, ftmp);
+  p224_felem_reduce(ftmp, tmp); /* 2^3 - 2 */
+  p224_felem_mul(tmp, in, ftmp);
+  p224_felem_reduce(ftmp, tmp); /* 2^3 - 1 */
+  p224_felem_square(tmp, ftmp);
+  p224_felem_reduce(ftmp2, tmp); /* 2^4 - 2 */
+  p224_felem_square(tmp, ftmp2);
+  p224_felem_reduce(ftmp2, tmp); /* 2^5 - 4 */
+  p224_felem_square(tmp, ftmp2);
+  p224_felem_reduce(ftmp2, tmp); /* 2^6 - 8 */
+  p224_felem_mul(tmp, ftmp2, ftmp);
+  p224_felem_reduce(ftmp, tmp); /* 2^6 - 1 */
+  p224_felem_square(tmp, ftmp);
+  p224_felem_reduce(ftmp2, tmp); /* 2^7 - 2 */
   for (size_t i = 0; i < 5; ++i) { /* 2^12 - 2^6 */
-    felem_square(tmp, ftmp2);
-    felem_reduce(ftmp2, tmp);
+    p224_felem_square(tmp, ftmp2);
+    p224_felem_reduce(ftmp2, tmp);
   }
-  felem_mul(tmp, ftmp2, ftmp);
-  felem_reduce(ftmp2, tmp); /* 2^12 - 1 */
-  felem_square(tmp, ftmp2);
-  felem_reduce(ftmp3, tmp); /* 2^13 - 2 */
+  p224_felem_mul(tmp, ftmp2, ftmp);
+  p224_felem_reduce(ftmp2, tmp); /* 2^12 - 1 */
+  p224_felem_square(tmp, ftmp2);
+  p224_felem_reduce(ftmp3, tmp); /* 2^13 - 2 */
   for (size_t i = 0; i < 11; ++i) {/* 2^24 - 2^12 */
-    felem_square(tmp, ftmp3);
-    felem_reduce(ftmp3, tmp);
+    p224_felem_square(tmp, ftmp3);
+    p224_felem_reduce(ftmp3, tmp);
   }
-  felem_mul(tmp, ftmp3, ftmp2);
-  felem_reduce(ftmp2, tmp); /* 2^24 - 1 */
-  felem_square(tmp, ftmp2);
-  felem_reduce(ftmp3, tmp); /* 2^25 - 2 */
+  p224_felem_mul(tmp, ftmp3, ftmp2);
+  p224_felem_reduce(ftmp2, tmp); /* 2^24 - 1 */
+  p224_felem_square(tmp, ftmp2);
+  p224_felem_reduce(ftmp3, tmp); /* 2^25 - 2 */
   for (size_t i = 0; i < 23; ++i) {/* 2^48 - 2^24 */
-    felem_square(tmp, ftmp3);
-    felem_reduce(ftmp3, tmp);
+    p224_felem_square(tmp, ftmp3);
+    p224_felem_reduce(ftmp3, tmp);
   }
-  felem_mul(tmp, ftmp3, ftmp2);
-  felem_reduce(ftmp3, tmp); /* 2^48 - 1 */
-  felem_square(tmp, ftmp3);
-  felem_reduce(ftmp4, tmp); /* 2^49 - 2 */
+  p224_felem_mul(tmp, ftmp3, ftmp2);
+  p224_felem_reduce(ftmp3, tmp); /* 2^48 - 1 */
+  p224_felem_square(tmp, ftmp3);
+  p224_felem_reduce(ftmp4, tmp); /* 2^49 - 2 */
   for (size_t i = 0; i < 47; ++i) {/* 2^96 - 2^48 */
-    felem_square(tmp, ftmp4);
-    felem_reduce(ftmp4, tmp);
+    p224_felem_square(tmp, ftmp4);
+    p224_felem_reduce(ftmp4, tmp);
   }
-  felem_mul(tmp, ftmp3, ftmp4);
-  felem_reduce(ftmp3, tmp); /* 2^96 - 1 */
-  felem_square(tmp, ftmp3);
-  felem_reduce(ftmp4, tmp); /* 2^97 - 2 */
+  p224_felem_mul(tmp, ftmp3, ftmp4);
+  p224_felem_reduce(ftmp3, tmp); /* 2^96 - 1 */
+  p224_felem_square(tmp, ftmp3);
+  p224_felem_reduce(ftmp4, tmp); /* 2^97 - 2 */
   for (size_t i = 0; i < 23; ++i) {/* 2^120 - 2^24 */
-    felem_square(tmp, ftmp4);
-    felem_reduce(ftmp4, tmp);
+    p224_felem_square(tmp, ftmp4);
+    p224_felem_reduce(ftmp4, tmp);
   }
-  felem_mul(tmp, ftmp2, ftmp4);
-  felem_reduce(ftmp2, tmp); /* 2^120 - 1 */
+  p224_felem_mul(tmp, ftmp2, ftmp4);
+  p224_felem_reduce(ftmp2, tmp); /* 2^120 - 1 */
   for (size_t i = 0; i < 6; ++i) { /* 2^126 - 2^6 */
-    felem_square(tmp, ftmp2);
-    felem_reduce(ftmp2, tmp);
+    p224_felem_square(tmp, ftmp2);
+    p224_felem_reduce(ftmp2, tmp);
   }
-  felem_mul(tmp, ftmp2, ftmp);
-  felem_reduce(ftmp, tmp); /* 2^126 - 1 */
-  felem_square(tmp, ftmp);
-  felem_reduce(ftmp, tmp); /* 2^127 - 2 */
-  felem_mul(tmp, ftmp, in);
-  felem_reduce(ftmp, tmp); /* 2^127 - 1 */
+  p224_felem_mul(tmp, ftmp2, ftmp);
+  p224_felem_reduce(ftmp, tmp); /* 2^126 - 1 */
+  p224_felem_square(tmp, ftmp);
+  p224_felem_reduce(ftmp, tmp); /* 2^127 - 2 */
+  p224_felem_mul(tmp, ftmp, in);
+  p224_felem_reduce(ftmp, tmp); /* 2^127 - 1 */
   for (size_t i = 0; i < 97; ++i) {/* 2^224 - 2^97 */
-    felem_square(tmp, ftmp);
-    felem_reduce(ftmp, tmp);
+    p224_felem_square(tmp, ftmp);
+    p224_felem_reduce(ftmp, tmp);
   }
-  felem_mul(tmp, ftmp, ftmp3);
-  felem_reduce(out, tmp); /* 2^224 - 2^96 - 1 */
+  p224_felem_mul(tmp, ftmp, ftmp3);
+  p224_felem_reduce(out, tmp); /* 2^224 - 2^96 - 1 */
 }
 
 /* Copy in constant time:
  * if icopy == 1, copy in to out,
  * if icopy == 0, copy out to itself. */
-static void copy_conditional(felem out, const felem in, limb icopy) {
+static void p224_copy_conditional(p224_felem out, const p224_felem in,
+                                  p224_limb icopy) {
   /* icopy is a (64-bit) 0 or 1, so copy is either all-zero or all-one */
-  const limb copy = -icopy;
+  const p224_limb copy = -icopy;
   for (size_t i = 0; i < 4; ++i) {
-    const limb tmp = copy & (in[i] ^ out[i]);
+    const p224_limb tmp = copy & (in[i] ^ out[i]);
     out[i] ^= tmp;
   }
 }
@@ -622,73 +631,74 @@ static void copy_conditional(felem out, const felem in, limb icopy) {
  * Z' = (Y + Z)^2 - Y^2 - Z^2 = 2 * Y * Z
  * Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed,
  * while x_out == y_in is not (maybe this works, but it's not tested). */
-static void point_double(felem x_out, felem y_out, felem z_out,
-                         const felem x_in, const felem y_in, const felem z_in) {
-  widefelem tmp, tmp2;
-  felem delta, gamma, beta, alpha, ftmp, ftmp2;
+static void p224_point_double(p224_felem x_out, p224_felem y_out,
+                              p224_felem z_out, const p224_felem x_in,
+                              const p224_felem y_in, const p224_felem z_in) {
+  p224_widefelem tmp, tmp2;
+  p224_felem delta, gamma, beta, alpha, ftmp, ftmp2;
 
-  felem_assign(ftmp, x_in);
-  felem_assign(ftmp2, x_in);
+  p224_felem_assign(ftmp, x_in);
+  p224_felem_assign(ftmp2, x_in);
 
   /* delta = z^2 */
-  felem_square(tmp, z_in);
-  felem_reduce(delta, tmp);
+  p224_felem_square(tmp, z_in);
+  p224_felem_reduce(delta, tmp);
 
   /* gamma = y^2 */
-  felem_square(tmp, y_in);
-  felem_reduce(gamma, tmp);
+  p224_felem_square(tmp, y_in);
+  p224_felem_reduce(gamma, tmp);
 
   /* beta = x*gamma */
-  felem_mul(tmp, x_in, gamma);
-  felem_reduce(beta, tmp);
+  p224_felem_mul(tmp, x_in, gamma);
+  p224_felem_reduce(beta, tmp);
 
   /* alpha = 3*(x-delta)*(x+delta) */
-  felem_diff(ftmp, delta);
+  p224_felem_diff(ftmp, delta);
   /* ftmp[i] < 2^57 + 2^58 + 2 < 2^59 */
-  felem_sum(ftmp2, delta);
+  p224_felem_sum(ftmp2, delta);
   /* ftmp2[i] < 2^57 + 2^57 = 2^58 */
-  felem_scalar(ftmp2, 3);
+  p224_felem_scalar(ftmp2, 3);
   /* ftmp2[i] < 3 * 2^58 < 2^60 */
-  felem_mul(tmp, ftmp, ftmp2);
+  p224_felem_mul(tmp, ftmp, ftmp2);
   /* tmp[i] < 2^60 * 2^59 * 4 = 2^121 */
-  felem_reduce(alpha, tmp);
+  p224_felem_reduce(alpha, tmp);
 
   /* x' = alpha^2 - 8*beta */
-  felem_square(tmp, alpha);
+  p224_felem_square(tmp, alpha);
   /* tmp[i] < 4 * 2^57 * 2^57 = 2^116 */
-  felem_assign(ftmp, beta);
-  felem_scalar(ftmp, 8);
+  p224_felem_assign(ftmp, beta);
+  p224_felem_scalar(ftmp, 8);
   /* ftmp[i] < 8 * 2^57 = 2^60 */
-  felem_diff_128_64(tmp, ftmp);
+  p224_felem_diff_128_64(tmp, ftmp);
   /* tmp[i] < 2^116 + 2^64 + 8 < 2^117 */
-  felem_reduce(x_out, tmp);
+  p224_felem_reduce(x_out, tmp);
 
   /* z' = (y + z)^2 - gamma - delta */
-  felem_sum(delta, gamma);
+  p224_felem_sum(delta, gamma);
   /* delta[i] < 2^57 + 2^57 = 2^58 */
-  felem_assign(ftmp, y_in);
-  felem_sum(ftmp, z_in);
+  p224_felem_assign(ftmp, y_in);
+  p224_felem_sum(ftmp, z_in);
   /* ftmp[i] < 2^57 + 2^57 = 2^58 */
-  felem_square(tmp, ftmp);
+  p224_felem_square(tmp, ftmp);
   /* tmp[i] < 4 * 2^58 * 2^58 = 2^118 */
-  felem_diff_128_64(tmp, delta);
+  p224_felem_diff_128_64(tmp, delta);
   /* tmp[i] < 2^118 + 2^64 + 8 < 2^119 */
-  felem_reduce(z_out, tmp);
+  p224_felem_reduce(z_out, tmp);
 
   /* y' = alpha*(4*beta - x') - 8*gamma^2 */
-  felem_scalar(beta, 4);
+  p224_felem_scalar(beta, 4);
   /* beta[i] < 4 * 2^57 = 2^59 */
-  felem_diff(beta, x_out);
+  p224_felem_diff(beta, x_out);
   /* beta[i] < 2^59 + 2^58 + 2 < 2^60 */
-  felem_mul(tmp, alpha, beta);
+  p224_felem_mul(tmp, alpha, beta);
   /* tmp[i] < 4 * 2^57 * 2^60 = 2^119 */
-  felem_square(tmp2, gamma);
+  p224_felem_square(tmp2, gamma);
   /* tmp2[i] < 4 * 2^57 * 2^57 = 2^116 */
-  widefelem_scalar(tmp2, 8);
+  p224_widefelem_scalar(tmp2, 8);
   /* tmp2[i] < 8 * 2^116 = 2^119 */
-  widefelem_diff(tmp, tmp2);
+  p224_widefelem_diff(tmp, tmp2);
   /* tmp[i] < 2^119 + 2^120 < 2^121 */
-  felem_reduce(y_out, tmp);
+  p224_felem_reduce(y_out, tmp);
 }
 
 /* Add two elliptic curve points:
@@ -706,165 +716,168 @@ static void point_double(felem x_out, felem y_out, felem z_out,
  * checking whether the two input points are equal, (while not equal to the
  * point at infinity). This case never happens during single point
  * multiplication, so there is no timing leak for ECDH or ECDSA signing. */
-static void point_add(felem x3, felem y3, felem z3, const felem x1,
-                      const felem y1, const felem z1, const int mixed,
-                      const felem x2, const felem y2, const felem z2) {
-  felem ftmp, ftmp2, ftmp3, ftmp4, ftmp5, x_out, y_out, z_out;
-  widefelem tmp, tmp2;
-  limb z1_is_zero, z2_is_zero, x_equal, y_equal;
+static void p224_point_add(p224_felem x3, p224_felem y3, p224_felem z3,
+                           const p224_felem x1, const p224_felem y1,
+                           const p224_felem z1, const int mixed,
+                           const p224_felem x2, const p224_felem y2,
+                           const p224_felem z2) {
+  p224_felem ftmp, ftmp2, ftmp3, ftmp4, ftmp5, x_out, y_out, z_out;
+  p224_widefelem tmp, tmp2;
+  p224_limb z1_is_zero, z2_is_zero, x_equal, y_equal;
 
   if (!mixed) {
     /* ftmp2 = z2^2 */
-    felem_square(tmp, z2);
-    felem_reduce(ftmp2, tmp);
+    p224_felem_square(tmp, z2);
+    p224_felem_reduce(ftmp2, tmp);
 
     /* ftmp4 = z2^3 */
-    felem_mul(tmp, ftmp2, z2);
-    felem_reduce(ftmp4, tmp);
+    p224_felem_mul(tmp, ftmp2, z2);
+    p224_felem_reduce(ftmp4, tmp);
 
     /* ftmp4 = z2^3*y1 */
-    felem_mul(tmp2, ftmp4, y1);
-    felem_reduce(ftmp4, tmp2);
+    p224_felem_mul(tmp2, ftmp4, y1);
+    p224_felem_reduce(ftmp4, tmp2);
 
     /* ftmp2 = z2^2*x1 */
-    felem_mul(tmp2, ftmp2, x1);
-    felem_reduce(ftmp2, tmp2);
+    p224_felem_mul(tmp2, ftmp2, x1);
+    p224_felem_reduce(ftmp2, tmp2);
   } else {
     /* We'll assume z2 = 1 (special case z2 = 0 is handled later) */
 
     /* ftmp4 = z2^3*y1 */
-    felem_assign(ftmp4, y1);
+    p224_felem_assign(ftmp4, y1);
 
     /* ftmp2 = z2^2*x1 */
-    felem_assign(ftmp2, x1);
+    p224_felem_assign(ftmp2, x1);
   }
 
   /* ftmp = z1^2 */
-  felem_square(tmp, z1);
-  felem_reduce(ftmp, tmp);
+  p224_felem_square(tmp, z1);
+  p224_felem_reduce(ftmp, tmp);
 
   /* ftmp3 = z1^3 */
-  felem_mul(tmp, ftmp, z1);
-  felem_reduce(ftmp3, tmp);
+  p224_felem_mul(tmp, ftmp, z1);
+  p224_felem_reduce(ftmp3, tmp);
 
   /* tmp = z1^3*y2 */
-  felem_mul(tmp, ftmp3, y2);
+  p224_felem_mul(tmp, ftmp3, y2);
   /* tmp[i] < 4 * 2^57 * 2^57 = 2^116 */
 
   /* ftmp3 = z1^3*y2 - z2^3*y1 */
-  felem_diff_128_64(tmp, ftmp4);
+  p224_felem_diff_128_64(tmp, ftmp4);
   /* tmp[i] < 2^116 + 2^64 + 8 < 2^117 */
-  felem_reduce(ftmp3, tmp);
+  p224_felem_reduce(ftmp3, tmp);
 
   /* tmp = z1^2*x2 */
-  felem_mul(tmp, ftmp, x2);
+  p224_felem_mul(tmp, ftmp, x2);
   /* tmp[i] < 4 * 2^57 * 2^57 = 2^116 */
 
   /* ftmp = z1^2*x2 - z2^2*x1 */
-  felem_diff_128_64(tmp, ftmp2);
+  p224_felem_diff_128_64(tmp, ftmp2);
   /* tmp[i] < 2^116 + 2^64 + 8 < 2^117 */
-  felem_reduce(ftmp, tmp);
+  p224_felem_reduce(ftmp, tmp);
 
   /* the formulae are incorrect if the points are equal
    * so we check for this and do doubling if this happens */
-  x_equal = felem_is_zero(ftmp);
-  y_equal = felem_is_zero(ftmp3);
-  z1_is_zero = felem_is_zero(z1);
-  z2_is_zero = felem_is_zero(z2);
+  x_equal = p224_felem_is_zero(ftmp);
+  y_equal = p224_felem_is_zero(ftmp3);
+  z1_is_zero = p224_felem_is_zero(z1);
+  z2_is_zero = p224_felem_is_zero(z2);
   /* In affine coordinates, (X_1, Y_1) == (X_2, Y_2) */
   if (x_equal && y_equal && !z1_is_zero && !z2_is_zero) {
-    point_double(x3, y3, z3, x1, y1, z1);
+    p224_point_double(x3, y3, z3, x1, y1, z1);
     return;
   }
 
   /* ftmp5 = z1*z2 */
   if (!mixed) {
-    felem_mul(tmp, z1, z2);
-    felem_reduce(ftmp5, tmp);
+    p224_felem_mul(tmp, z1, z2);
+    p224_felem_reduce(ftmp5, tmp);
   } else {
     /* special case z2 = 0 is handled later */
-    felem_assign(ftmp5, z1);
+    p224_felem_assign(ftmp5, z1);
   }
 
   /* z_out = (z1^2*x2 - z2^2*x1)*(z1*z2) */
-  felem_mul(tmp, ftmp, ftmp5);
-  felem_reduce(z_out, tmp);
+  p224_felem_mul(tmp, ftmp, ftmp5);
+  p224_felem_reduce(z_out, tmp);
 
   /* ftmp = (z1^2*x2 - z2^2*x1)^2 */
-  felem_assign(ftmp5, ftmp);
-  felem_square(tmp, ftmp);
-  felem_reduce(ftmp, tmp);
+  p224_felem_assign(ftmp5, ftmp);
+  p224_felem_square(tmp, ftmp);
+  p224_felem_reduce(ftmp, tmp);
 
   /* ftmp5 = (z1^2*x2 - z2^2*x1)^3 */
-  felem_mul(tmp, ftmp, ftmp5);
-  felem_reduce(ftmp5, tmp);
+  p224_felem_mul(tmp, ftmp, ftmp5);
+  p224_felem_reduce(ftmp5, tmp);
 
   /* ftmp2 = z2^2*x1*(z1^2*x2 - z2^2*x1)^2 */
-  felem_mul(tmp, ftmp2, ftmp);
-  felem_reduce(ftmp2, tmp);
+  p224_felem_mul(tmp, ftmp2, ftmp);
+  p224_felem_reduce(ftmp2, tmp);
 
   /* tmp = z2^3*y1*(z1^2*x2 - z2^2*x1)^3 */
-  felem_mul(tmp, ftmp4, ftmp5);
+  p224_felem_mul(tmp, ftmp4, ftmp5);
   /* tmp[i] < 4 * 2^57 * 2^57 = 2^116 */
 
   /* tmp2 = (z1^3*y2 - z2^3*y1)^2 */
-  felem_square(tmp2, ftmp3);
+  p224_felem_square(tmp2, ftmp3);
   /* tmp2[i] < 4 * 2^57 * 2^57 < 2^116 */
 
   /* tmp2 = (z1^3*y2 - z2^3*y1)^2 - (z1^2*x2 - z2^2*x1)^3 */
-  felem_diff_128_64(tmp2, ftmp5);
+  p224_felem_diff_128_64(tmp2, ftmp5);
   /* tmp2[i] < 2^116 + 2^64 + 8 < 2^117 */
 
   /* ftmp5 = 2*z2^2*x1*(z1^2*x2 - z2^2*x1)^2 */
-  felem_assign(ftmp5, ftmp2);
-  felem_scalar(ftmp5, 2);
+  p224_felem_assign(ftmp5, ftmp2);
+  p224_felem_scalar(ftmp5, 2);
   /* ftmp5[i] < 2 * 2^57 = 2^58 */
 
   /* x_out = (z1^3*y2 - z2^3*y1)^2 - (z1^2*x2 - z2^2*x1)^3 -
      2*z2^2*x1*(z1^2*x2 - z2^2*x1)^2 */
-  felem_diff_128_64(tmp2, ftmp5);
+  p224_felem_diff_128_64(tmp2, ftmp5);
   /* tmp2[i] < 2^117 + 2^64 + 8 < 2^118 */
-  felem_reduce(x_out, tmp2);
+  p224_felem_reduce(x_out, tmp2);
 
   /* ftmp2 = z2^2*x1*(z1^2*x2 - z2^2*x1)^2 - x_out */
-  felem_diff(ftmp2, x_out);
+  p224_felem_diff(ftmp2, x_out);
   /* ftmp2[i] < 2^57 + 2^58 + 2 < 2^59 */
 
   /* tmp2 = (z1^3*y2 - z2^3*y1)*(z2^2*x1*(z1^2*x2 - z2^2*x1)^2 - x_out) */
-  felem_mul(tmp2, ftmp3, ftmp2);
+  p224_felem_mul(tmp2, ftmp3, ftmp2);
   /* tmp2[i] < 4 * 2^57 * 2^59 = 2^118 */
 
   /* y_out = (z1^3*y2 - z2^3*y1)*(z2^2*x1*(z1^2*x2 - z2^2*x1)^2 - x_out) -
      z2^3*y1*(z1^2*x2 - z2^2*x1)^3 */
-  widefelem_diff(tmp2, tmp);
+  p224_widefelem_diff(tmp2, tmp);
   /* tmp2[i] < 2^118 + 2^120 < 2^121 */
-  felem_reduce(y_out, tmp2);
+  p224_felem_reduce(y_out, tmp2);
 
   /* the result (x_out, y_out, z_out) is incorrect if one of the inputs is
    * the point at infinity, so we need to check for this separately */
 
   /* if point 1 is at infinity, copy point 2 to output, and vice versa */
-  copy_conditional(x_out, x2, z1_is_zero);
-  copy_conditional(x_out, x1, z2_is_zero);
-  copy_conditional(y_out, y2, z1_is_zero);
-  copy_conditional(y_out, y1, z2_is_zero);
-  copy_conditional(z_out, z2, z1_is_zero);
-  copy_conditional(z_out, z1, z2_is_zero);
-  felem_assign(x3, x_out);
-  felem_assign(y3, y_out);
-  felem_assign(z3, z_out);
+  p224_copy_conditional(x_out, x2, z1_is_zero);
+  p224_copy_conditional(x_out, x1, z2_is_zero);
+  p224_copy_conditional(y_out, y2, z1_is_zero);
+  p224_copy_conditional(y_out, y1, z2_is_zero);
+  p224_copy_conditional(z_out, z2, z1_is_zero);
+  p224_copy_conditional(z_out, z1, z2_is_zero);
+  p224_felem_assign(x3, x_out);
+  p224_felem_assign(y3, y_out);
+  p224_felem_assign(z3, z_out);
 }
 
-/* select_point selects the |idx|th point from a precomputation table and
+/* p224_select_point selects the |idx|th point from a precomputation table and
  * copies it to out. */
-static void select_point(const u64 idx, size_t size,
-                         const felem pre_comp[/*size*/][3], felem out[3]) {
-  limb *outlimbs = &out[0][0];
-  OPENSSL_memset(outlimbs, 0, 3 * sizeof(felem));
+static void p224_select_point(const uint64_t idx, size_t size,
+                              const p224_felem pre_comp[/*size*/][3],
+                              p224_felem out[3]) {
+  p224_limb *outlimbs = &out[0][0];
+  OPENSSL_memset(outlimbs, 0, 3 * sizeof(p224_felem));
 
   for (size_t i = 0; i < size; i++) {
-    const limb *inlimbs = &pre_comp[i][0][0];
-    u64 mask = i ^ idx;
+    const p224_limb *inlimbs = &pre_comp[i][0][0];
+    uint64_t mask = i ^ idx;
     mask |= mask >> 4;
     mask |= mask >> 2;
     mask |= mask >> 1;
@@ -876,8 +889,8 @@ static void select_point(const u64 idx, size_t size,
   }
 }
 
-/* get_bit returns the |i|th bit in |in| */
-static char get_bit(const felem_bytearray in, size_t i) {
+/* p224_get_bit returns the |i|th bit in |in| */
+static char p224_get_bit(const p224_felem_bytearray in, size_t i) {
   if (i >= 224) {
     return 0;
   }
@@ -887,16 +900,17 @@ static char get_bit(const felem_bytearray in, size_t i) {
 /* Interleaved point multiplication using precomputed point multiples:
  * The small point multiples 0*P, 1*P, ..., 16*P are in p_pre_comp, the scalars
  * in p_scalar, if non-NULL. If g_scalar is non-NULL, we also add this multiple
- * of the generator, using certain (large) precomputed multiples in g_pre_comp.
- * Output point (X, Y, Z) is stored in x_out, y_out, z_out */
-static void batch_mul(felem x_out, felem y_out, felem z_out, const u8 *p_scalar,
-                      const u8 *g_scalar, const felem p_pre_comp[17][3]) {
-  felem nq[3], tmp[4];
-  u64 bits;
-  u8 sign, digit;
+ * of the generator, using certain (large) precomputed multiples in
+ * g_p224_pre_comp. Output point (X, Y, Z) is stored in x_out, y_out, z_out */
+static void p224_batch_mul(p224_felem x_out, p224_felem y_out, p224_felem z_out,
+                           const uint8_t *p_scalar, const uint8_t *g_scalar,
+                           const p224_felem p_pre_comp[17][3]) {
+  p224_felem nq[3], tmp[4];
+  uint64_t bits;
+  uint8_t sign, digit;
 
   /* set nq to the point at infinity */
-  OPENSSL_memset(nq, 0, 3 * sizeof(felem));
+  OPENSSL_memset(nq, 0, 3 * sizeof(p224_felem));
 
   /* Loop over both scalars msb-to-lsb, interleaving additions of multiples of
    * the generator (two in each of the last 28 rounds) and additions of p (every
@@ -906,58 +920,58 @@ static void batch_mul(felem x_out, felem y_out, felem z_out, const u8 *p_scalar,
   for (;;) {
     /* double */
     if (!skip) {
-      point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
+      p224_point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
     }
 
     /* add multiples of the generator */
     if (g_scalar != NULL && i <= 27) {
       /* first, look 28 bits upwards */
-      bits = get_bit(g_scalar, i + 196) << 3;
-      bits |= get_bit(g_scalar, i + 140) << 2;
-      bits |= get_bit(g_scalar, i + 84) << 1;
-      bits |= get_bit(g_scalar, i + 28);
+      bits = p224_get_bit(g_scalar, i + 196) << 3;
+      bits |= p224_get_bit(g_scalar, i + 140) << 2;
+      bits |= p224_get_bit(g_scalar, i + 84) << 1;
+      bits |= p224_get_bit(g_scalar, i + 28);
       /* select the point to add, in constant time */
-      select_point(bits, 16, g_pre_comp[1], tmp);
+      p224_select_point(bits, 16, g_p224_pre_comp[1], tmp);
 
       if (!skip) {
-        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
+        p224_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
                   tmp[0], tmp[1], tmp[2]);
       } else {
-        OPENSSL_memcpy(nq, tmp, 3 * sizeof(felem));
+        OPENSSL_memcpy(nq, tmp, 3 * sizeof(p224_felem));
         skip = 0;
       }
 
       /* second, look at the current position */
-      bits = get_bit(g_scalar, i + 168) << 3;
-      bits |= get_bit(g_scalar, i + 112) << 2;
-      bits |= get_bit(g_scalar, i + 56) << 1;
-      bits |= get_bit(g_scalar, i);
+      bits = p224_get_bit(g_scalar, i + 168) << 3;
+      bits |= p224_get_bit(g_scalar, i + 112) << 2;
+      bits |= p224_get_bit(g_scalar, i + 56) << 1;
+      bits |= p224_get_bit(g_scalar, i);
       /* select the point to add, in constant time */
-      select_point(bits, 16, g_pre_comp[0], tmp);
-      point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */, tmp[0],
-                tmp[1], tmp[2]);
+      p224_select_point(bits, 16, g_p224_pre_comp[0], tmp);
+      p224_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
+                     tmp[0], tmp[1], tmp[2]);
     }
 
     /* do other additions every 5 doublings */
     if (p_scalar != NULL && i % 5 == 0) {
-      bits = get_bit(p_scalar, i + 4) << 5;
-      bits |= get_bit(p_scalar, i + 3) << 4;
-      bits |= get_bit(p_scalar, i + 2) << 3;
-      bits |= get_bit(p_scalar, i + 1) << 2;
-      bits |= get_bit(p_scalar, i) << 1;
-      bits |= get_bit(p_scalar, i - 1);
+      bits = p224_get_bit(p_scalar, i + 4) << 5;
+      bits |= p224_get_bit(p_scalar, i + 3) << 4;
+      bits |= p224_get_bit(p_scalar, i + 2) << 3;
+      bits |= p224_get_bit(p_scalar, i + 1) << 2;
+      bits |= p224_get_bit(p_scalar, i) << 1;
+      bits |= p224_get_bit(p_scalar, i - 1);
       ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
 
       /* select the point to add or subtract */
-      select_point(digit, 17, p_pre_comp, tmp);
-      felem_neg(tmp[3], tmp[1]); /* (X, -Y, Z) is the negative point */
-      copy_conditional(tmp[1], tmp[3], sign);
+      p224_select_point(digit, 17, p_pre_comp, tmp);
+      p224_felem_neg(tmp[3], tmp[1]); /* (X, -Y, Z) is the negative point */
+      p224_copy_conditional(tmp[1], tmp[3], sign);
 
       if (!skip) {
-        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
+        p224_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
                   tmp[0], tmp[1], tmp[2]);
       } else {
-        OPENSSL_memcpy(nq, tmp, 3 * sizeof(felem));
+        OPENSSL_memcpy(nq, tmp, 3 * sizeof(p224_felem));
         skip = 0;
       }
     }
@@ -967,9 +981,9 @@ static void batch_mul(felem x_out, felem y_out, felem z_out, const u8 *p_scalar,
     }
     --i;
   }
-  felem_assign(x_out, nq[0]);
-  felem_assign(y_out, nq[1]);
-  felem_assign(z_out, nq[2]);
+  p224_felem_assign(x_out, nq[0]);
+  p224_felem_assign(y_out, nq[1]);
+  p224_felem_assign(z_out, nq[2]);
 }
 
 /* Takes the Jacobian coordinates (X, Y, Z) of a point and returns
@@ -978,37 +992,37 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
                                                         const EC_POINT *point,
                                                         BIGNUM *x, BIGNUM *y,
                                                         BN_CTX *ctx) {
-  felem z1, z2, x_in, y_in, x_out, y_out;
-  widefelem tmp;
+  p224_felem z1, z2, x_in, y_in, x_out, y_out;
+  p224_widefelem tmp;
 
   if (EC_POINT_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
 
-  if (!BN_to_felem(x_in, &point->X) ||
-      !BN_to_felem(y_in, &point->Y) ||
-      !BN_to_felem(z1, &point->Z)) {
+  if (!p224_BN_to_felem(x_in, &point->X) ||
+      !p224_BN_to_felem(y_in, &point->Y) ||
+      !p224_BN_to_felem(z1, &point->Z)) {
     return 0;
   }
 
-  felem_inv(z2, z1);
-  felem_square(tmp, z2);
-  felem_reduce(z1, tmp);
-  felem_mul(tmp, x_in, z1);
-  felem_reduce(x_in, tmp);
-  felem_contract(x_out, x_in);
-  if (x != NULL && !felem_to_BN(x, x_out)) {
+  p224_felem_inv(z2, z1);
+  p224_felem_square(tmp, z2);
+  p224_felem_reduce(z1, tmp);
+  p224_felem_mul(tmp, x_in, z1);
+  p224_felem_reduce(x_in, tmp);
+  p224_felem_contract(x_out, x_in);
+  if (x != NULL && !p224_felem_to_BN(x, x_out)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     return 0;
   }
 
-  felem_mul(tmp, z1, z2);
-  felem_reduce(z1, tmp);
-  felem_mul(tmp, y_in, z1);
-  felem_reduce(y_in, tmp);
-  felem_contract(y_out, y_in);
-  if (y != NULL && !felem_to_BN(y, y_out)) {
+  p224_felem_mul(tmp, z1, z2);
+  p224_felem_reduce(z1, tmp);
+  p224_felem_mul(tmp, y_in, z1);
+  p224_felem_reduce(y_in, tmp);
+  p224_felem_contract(y_out, y_in);
+  if (y != NULL && !p224_felem_to_BN(y, y_out)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     return 0;
   }
@@ -1022,10 +1036,10 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
   int ret = 0;
   BN_CTX *new_ctx = NULL;
   BIGNUM *x, *y, *z, *tmp_scalar;
-  felem_bytearray g_secret, p_secret;
-  felem p_pre_comp[17][3];
-  felem_bytearray tmp;
-  felem x_in, y_in, z_in, x_out, y_out, z_out;
+  p224_felem_bytearray g_secret, p_secret;
+  p224_felem p_pre_comp[17][3];
+  p224_felem_bytearray tmp;
+  p224_felem x_in, y_in, z_in, x_out, y_out, z_out;
 
   if (ctx == NULL) {
     ctx = BN_CTX_new();
@@ -1062,26 +1076,26 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
       num_bytes = BN_bn2bin(p_scalar, tmp);
     }
 
-    flip_endian(p_secret, tmp, num_bytes);
+    p224_flip_endian(p_secret, tmp, num_bytes);
     /* precompute multiples */
-    if (!BN_to_felem(x_out, &p->X) ||
-        !BN_to_felem(y_out, &p->Y) ||
-        !BN_to_felem(z_out, &p->Z)) {
+    if (!p224_BN_to_felem(x_out, &p->X) ||
+        !p224_BN_to_felem(y_out, &p->Y) ||
+        !p224_BN_to_felem(z_out, &p->Z)) {
       goto err;
     }
 
-    felem_assign(p_pre_comp[1][0], x_out);
-    felem_assign(p_pre_comp[1][1], y_out);
-    felem_assign(p_pre_comp[1][2], z_out);
+    p224_felem_assign(p_pre_comp[1][0], x_out);
+    p224_felem_assign(p_pre_comp[1][1], y_out);
+    p224_felem_assign(p_pre_comp[1][2], z_out);
 
     for (size_t j = 2; j <= 16; ++j) {
       if (j & 1) {
-        point_add(p_pre_comp[j][0], p_pre_comp[j][1], p_pre_comp[j][2],
+        p224_point_add(p_pre_comp[j][0], p_pre_comp[j][1], p_pre_comp[j][2],
                   p_pre_comp[1][0], p_pre_comp[1][1], p_pre_comp[1][2],
                   0, p_pre_comp[j - 1][0], p_pre_comp[j - 1][1],
                   p_pre_comp[j - 1][2]);
       } else {
-        point_double(p_pre_comp[j][0], p_pre_comp[j][1],
+        p224_point_double(p_pre_comp[j][0], p_pre_comp[j][1],
                      p_pre_comp[j][2], p_pre_comp[j / 2][0],
                      p_pre_comp[j / 2][1], p_pre_comp[j / 2][2]);
       }
@@ -1103,19 +1117,19 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
       num_bytes = BN_bn2bin(g_scalar, tmp);
     }
 
-    flip_endian(g_secret, tmp, num_bytes);
+    p224_flip_endian(g_secret, tmp, num_bytes);
   }
-  batch_mul(x_out, y_out, z_out,
-            (p != NULL && p_scalar != NULL) ? p_secret : NULL,
-            g_scalar != NULL ? g_secret : NULL, (const felem(*)[3])p_pre_comp);
+  p224_batch_mul(
+      x_out, y_out, z_out, (p != NULL && p_scalar != NULL) ? p_secret : NULL,
+      g_scalar != NULL ? g_secret : NULL, (const p224_felem(*)[3])p_pre_comp);
 
   /* reduce the output to its unique minimal representation */
-  felem_contract(x_in, x_out);
-  felem_contract(y_in, y_out);
-  felem_contract(z_in, z_out);
-  if (!felem_to_BN(x, x_in) ||
-      !felem_to_BN(y, y_in) ||
-      !felem_to_BN(z, z_in)) {
+  p224_felem_contract(x_in, x_out);
+  p224_felem_contract(y_in, y_out);
+  p224_felem_contract(z_in, z_out);
+  if (!p224_felem_to_BN(x, x_in) ||
+      !p224_felem_to_BN(y, y_in) ||
+      !p224_felem_to_BN(z, z_in)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
@@ -1127,17 +1141,18 @@ err:
   return ret;
 }
 
-const EC_METHOD EC_GFp_nistp224_method = {
-    ec_GFp_simple_group_init,
-    ec_GFp_simple_group_finish,
-    ec_GFp_simple_group_copy,
-    ec_GFp_simple_group_set_curve,
-    ec_GFp_nistp224_point_get_affine_coordinates,
-    ec_GFp_nistp224_points_mul,
-    ec_GFp_simple_field_mul,
-    ec_GFp_simple_field_sqr,
-    NULL /* field_encode */,
-    NULL /* field_decode */,
+DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
+  out->group_init = ec_GFp_simple_group_init;
+  out->group_finish = ec_GFp_simple_group_finish;
+  out->group_copy = ec_GFp_simple_group_copy;
+  out->group_set_curve = ec_GFp_simple_group_set_curve;
+  out->point_get_affine_coordinates =
+      ec_GFp_nistp224_point_get_affine_coordinates;
+  out->mul = ec_GFp_nistp224_points_mul;
+  out->field_mul = ec_GFp_simple_field_mul;
+  out->field_sqr = ec_GFp_simple_field_sqr;
+  out->field_encode = NULL;
+  out->field_decode = NULL;
 };
 
 #endif  /* 64_BIT && !WINDOWS && !SMALL */

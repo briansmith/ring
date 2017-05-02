@@ -28,7 +28,7 @@
 #include <openssl/nid.h>
 #include <openssl/obj.h>
 
-#include "../test/test_util.h"
+#include "../../test/test_util.h"
 
 
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field

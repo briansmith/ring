@@ -75,7 +75,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* This file implements the wNAF-based interleaving multi-exponentiation method

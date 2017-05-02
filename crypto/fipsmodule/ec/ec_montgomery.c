@@ -71,7 +71,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../fipsmodule/bn/internal.h"
+#include "../bn/internal.h"
+#include "../delocate.h"
 #include "internal.h"
 
 
@@ -289,15 +290,15 @@ err:
   return ret;
 }
 
-const EC_METHOD EC_GFp_mont_method = {
-    ec_GFp_mont_group_init,
-    ec_GFp_mont_group_finish,
-    ec_GFp_mont_group_copy,
-    ec_GFp_mont_group_set_curve,
-    ec_GFp_mont_point_get_affine_coordinates,
-    ec_wNAF_mul /* XXX: Not constant time. */,
-    ec_GFp_mont_field_mul,
-    ec_GFp_mont_field_sqr,
-    ec_GFp_mont_field_encode,
-    ec_GFp_mont_field_decode,
-};
+DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
+  out->group_init = ec_GFp_mont_group_init;
+  out->group_finish = ec_GFp_mont_group_finish;
+  out->group_copy = ec_GFp_mont_group_copy;
+  out->group_set_curve = ec_GFp_mont_group_set_curve;
+  out->point_get_affine_coordinates = ec_GFp_mont_point_get_affine_coordinates;
+  out->mul = ec_wNAF_mul /* XXX: Not constant time. */;
+  out->field_mul = ec_GFp_mont_field_mul;
+  out->field_sqr = ec_GFp_mont_field_sqr;
+  out->field_encode = ec_GFp_mont_field_encode;
+  out->field_decode = ec_GFp_mont_field_decode;
+}

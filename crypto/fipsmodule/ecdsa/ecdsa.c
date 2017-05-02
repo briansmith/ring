@@ -60,50 +60,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../fipsmodule/bn/internal.h"
+#include "../bn/internal.h"
 #include "../ec/internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
-
-int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
-               unsigned int *sig_len, const EC_KEY *eckey) {
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    return eckey->ecdsa_meth->sign(digest, digest_len, sig, sig_len,
-                                   (EC_KEY*) eckey /* cast away const */);
-  }
-
-  return ECDSA_sign_ex(type, digest, digest_len, sig, sig_len, NULL, NULL,
-                       eckey);
-}
-
-int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
-                 const uint8_t *sig, size_t sig_len, const EC_KEY *eckey) {
-  ECDSA_SIG *s;
-  int ret = 0;
-  uint8_t *der = NULL;
-
-  /* Decode the ECDSA signature. */
-  s = ECDSA_SIG_from_bytes(sig, sig_len);
-  if (s == NULL) {
-    goto err;
-  }
-
-  /* Defend against potential laxness in the DER parser. */
-  size_t der_len;
-  if (!ECDSA_SIG_to_bytes(&der, &der_len, s) ||
-      der_len != sig_len || OPENSSL_memcmp(sig, der, sig_len) != 0) {
-    /* This should never happen. crypto/bytestring is strictly DER. */
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  ret = ECDSA_do_verify(digest, digest_len, s, eckey);
-
-err:
-  OPENSSL_free(der);
-  ECDSA_SIG_free(s);
-  return ret;
-}
 
 /* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
  * number and sets |out| to that value. It then truncates |out| so that it's,
@@ -453,42 +413,5 @@ err:
   BN_clear_free(m);
   BN_clear_free(tmp);
   BN_clear_free(kinv);
-  return ret;
-}
-
-int ECDSA_sign_ex(int type, const uint8_t *digest, size_t digest_len,
-                  uint8_t *sig, unsigned int *sig_len, const BIGNUM *kinv,
-                  const BIGNUM *r, const EC_KEY *eckey) {
-  int ret = 0;
-  ECDSA_SIG *s = NULL;
-
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    *sig_len = 0;
-    goto err;
-  }
-
-  s = ECDSA_do_sign_ex(digest, digest_len, kinv, r, eckey);
-  if (s == NULL) {
-    *sig_len = 0;
-    goto err;
-  }
-
-  CBB cbb;
-  CBB_zero(&cbb);
-  size_t len;
-  if (!CBB_init_fixed(&cbb, sig, ECDSA_size(eckey)) ||
-      !ECDSA_SIG_marshal(&cbb, s) ||
-      !CBB_finish(&cbb, NULL, &len)) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
-    CBB_cleanup(&cbb);
-    *sig_len = 0;
-    goto err;
-  }
-  *sig_len = (unsigned)len;
-  ret = 1;
-
-err:
-  ECDSA_SIG_free(s);
   return ret;
 }

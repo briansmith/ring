@@ -10,6 +10,7 @@ if (${ARCH} STREQUAL "x86_64")
     bsaes-x86_64.${ASM_EXT}
     ghash-x86_64.${ASM_EXT}
     md5-x86_64.${ASM_EXT}
+    p256-x86_64-asm.${ASM_EXT}
     rdrand-x86_64.${ASM_EXT}
     rsaz-avx2.${ASM_EXT}
     sha1-x86_64.${ASM_EXT}
@@ -98,6 +99,7 @@ perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
 perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
 perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
 perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
+perlasm(p256-x86_64-asm.${ASM_EXT} ec/asm/p256-x86_64-asm.pl)
 perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
 perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
 perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
@@ -234,3 +236,56 @@ add_executable(
 
 target_link_libraries(ctrdrbg_vector_test crypto)
 add_dependencies(all_tests ctrdrbg_vector_test)
+
+add_executable(
+  example_mul
+
+  ec/example_mul.c
+
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(example_mul crypto)
+
+add_executable(
+  p256-x86_64_test
+
+  ec/p256-x86_64_test.cc
+
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(p256-x86_64_test crypto)
+add_dependencies(all_tests example_mul p256-x86_64_test)
+
+add_executable(
+  ecdsa_test
+
+  ecdsa/ecdsa_test.cc
+
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(ecdsa_test crypto)
+
+add_executable(
+  ecdsa_sign_test
+
+  ecdsa/ecdsa_sign_test.cc
+
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(ecdsa_sign_test crypto)
+
+add_executable(
+  ecdsa_verify_test
+
+  ecdsa/ecdsa_verify_test.cc
+
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(ecdsa_verify_test crypto)
+
+add_dependencies(all_tests ecdsa_test ecdsa_sign_test ecdsa_verify_test)

@@ -62,7 +62,7 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "internal.h"
+#include "../fipsmodule/ec/internal.h"
 #include "../bytestring/internal.h"
 #include "../internal.h"
 
@@ -159,7 +159,8 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
 
     /* Save the point conversion form.
      * TODO(davidben): Consider removing this. */
-    ret->conv_form = (point_conversion_form_t)(CBS_data(&public_key)[0] & ~0x01);
+    ret->conv_form =
+        (point_conversion_form_t)(CBS_data(&public_key)[0] & ~0x01);
   } else {
     /* Compute the public key instead. */
     if (!EC_POINT_mul(group, ret->pub_key, ret->priv_key, NULL, NULL, NULL)) {
@@ -332,11 +333,12 @@ EC_GROUP *EC_KEY_parse_curve_name(CBS *cbs) {
   }
 
   /* Look for a matching curve. */
-  unsigned i;
-  for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
-    const struct built_in_curve *curve = &OPENSSL_built_in_curves[i];
+  const struct built_in_curves *const curves = OPENSSL_built_in_curves();
+  for (size_t i = 0; i < OPENSSL_NUM_BUILT_IN_CURVES; i++) {
+    const struct built_in_curve *curve = &curves->curves[i];
     if (CBS_len(&named_curve) == curve->oid_len &&
-        OPENSSL_memcmp(CBS_data(&named_curve), curve->oid, curve->oid_len) == 0) {
+        OPENSSL_memcmp(CBS_data(&named_curve), curve->oid, curve->oid_len) ==
+            0) {
       return EC_GROUP_new_by_curve_name(curve->nid);
     }
   }
@@ -352,9 +354,9 @@ int EC_KEY_marshal_curve_name(CBB *cbb, const EC_GROUP *group) {
     return 0;
   }
 
-  unsigned i;
-  for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
-    const struct built_in_curve *curve = &OPENSSL_built_in_curves[i];
+  const struct built_in_curves *const curves = OPENSSL_built_in_curves();
+  for (size_t i = 0; i < OPENSSL_NUM_BUILT_IN_CURVES; i++) {
+    const struct built_in_curve *curve = &curves->curves[i];
     if (curve->nid == nid) {
       CBB child;
       return CBB_add_asn1(cbb, &child, CBS_ASN1_OBJECT) &&
@@ -383,9 +385,9 @@ EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
   }
 
   /* Look for a matching prime curve. */
-  unsigned i;
-  for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
-    const struct built_in_curve *curve = &OPENSSL_built_in_curves[i];
+  const struct built_in_curves *const curves = OPENSSL_built_in_curves();
+  for (size_t i = 0; i < OPENSSL_NUM_BUILT_IN_CURVES; i++) {
+    const struct built_in_curve *curve = &curves->curves[i];
     const unsigned param_len = curve->data->param_len;
     /* |curve->data->data| is ordered p, a, b, x, y, order, each component
      * zero-padded up to the field length. Although SEC 1 states that the
