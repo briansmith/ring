@@ -126,6 +126,24 @@ var ecdsa2SigVerTests = testSuite{
 	[]test{{"SigVer", nil, false}},
 }
 
+var rsa2SigGenTests = testSuite{
+	"RSA2",
+	"cavp_rsa2_siggen_test",
+	[]test{
+		{"SigGen15_186-3", []string{"pkcs15"}, true},
+		// {"SigGenPSS_186-3", []string{"pss"}, true},
+	},
+}
+
+var rsa2SigVerTests = testSuite{
+	"RSA2",
+	"cavp_rsa2_sigver_test",
+	[]test{
+		{"SigVer15_186-3", []string{"pkcs15"}, true},
+		// {"SigVerPSS_186-3", []string{"pss"}, true},
+	},
+}
+
 var hmacTests = testSuite{
 	"HMAC",
 	"cavp_hmac_test",
@@ -200,6 +218,8 @@ var allTestSuites = []*testSuite{
 	&ecdsa2PKVTests,
 	&ecdsa2SigGenTests,
 	&ecdsa2SigVerTests,
+	&rsa2SigGenTests,
+	&rsa2SigVerTests,
 	&hmacTests,
 	&shaTests,
 	&shaMonteTests,
