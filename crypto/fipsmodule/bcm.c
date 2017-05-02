@@ -53,6 +53,7 @@
 #include "bn/rsaz_exp.c"
 #include "bn/shift.c"
 #include "bn/sqrt.c"
+#include "des/des.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
 #include "hmac/hmac.c"

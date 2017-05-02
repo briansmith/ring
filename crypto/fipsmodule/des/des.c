@@ -769,3 +769,17 @@ void DES_ede2_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 void DES_set_key_unchecked(const DES_cblock *key, DES_key_schedule *schedule) {
   DES_set_key(key, schedule);
 }
+
+#undef HPERM_OP
+#undef c2l
+#undef l2c
+#undef c2ln
+#undef l2cn
+#undef PERM_OP
+#undef IP
+#undef FP
+#undef LOAD_DATA
+#undef D_ENCRYPT
+#undef ITERATIONS
+#undef HALF_ITERATIONS
+#undef ROTATE
