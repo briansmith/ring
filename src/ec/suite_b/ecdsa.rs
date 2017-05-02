@@ -21,7 +21,7 @@ use super::ops::*;
 use super::public_key::*;
 use untrusted;
 
-/// Parameters for ECDSA signing and verification.
+/// An ECDSA signature verification algorithm.
 pub struct ECDSAVerificationAlgorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
