@@ -375,7 +375,7 @@ func main() {
 	if len(failed) > 0 {
 		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(testCases))
 		for _, test := range failed {
-			fmt.Printf("\t%s%s\n", strings.Join(test.args, ""), test.cpuMsg())
+			fmt.Printf("\t%s%s\n", strings.Join(test.args, " "), test.cpuMsg())
 		}
 		os.Exit(1)
 	}
