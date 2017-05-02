@@ -180,18 +180,7 @@ static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
   }
 
   if (rctx->md) {
-    unsigned int out_len;
-
-    if (tbslen != EVP_MD_size(rctx->md)) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_LENGTH);
-      return 0;
-    }
-
-    if (EVP_MD_type(rctx->md) == NID_mdc2) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_NO_MDC2_SUPPORT);
-      return 0;
-    }
-
+    unsigned out_len;
     switch (rctx->pad_mode) {
       case RSA_PKCS1_PADDING:
         if (!RSA_sign(EVP_MD_type(rctx->md), tbs, tbslen, sig, &out_len, rsa)) {
@@ -201,14 +190,8 @@ static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
         return 1;
 
       case RSA_PKCS1_PSS_PADDING:
-        if (!setup_tbuf(rctx, ctx) ||
-            !RSA_padding_add_PKCS1_PSS_mgf1(rsa, rctx->tbuf, tbs, rctx->md,
-                                            rctx->mgf1md, rctx->saltlen) ||
-            !RSA_sign_raw(rsa, siglen, sig, *siglen, rctx->tbuf, key_len,
-                          RSA_NO_PADDING)) {
-          return 0;
-        }
-        return 1;
+        return RSA_sign_pss_mgf1(rsa, siglen, sig, *siglen, tbs, tbslen,
+                                 rctx->md, rctx->mgf1md, rctx->saltlen);
 
       default:
         return 0;
@@ -223,8 +206,6 @@ static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
                            size_t tbslen) {
   RSA_PKEY_CTX *rctx = ctx->data;
   RSA *rsa = ctx->pkey->pkey.rsa;
-  size_t rslen;
-  const size_t key_len = EVP_PKEY_size(ctx->pkey);
 
   if (rctx->md) {
     switch (rctx->pad_mode) {
@@ -232,25 +213,16 @@ static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
         return RSA_verify(EVP_MD_type(rctx->md), tbs, tbslen, sig, siglen, rsa);
 
       case RSA_PKCS1_PSS_PADDING:
-        if (tbslen != EVP_MD_size(rctx->md)) {
-          OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_LENGTH);
-          return 0;
-        }
-
-        if (!setup_tbuf(rctx, ctx) ||
-            !RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, siglen,
-                            RSA_NO_PADDING) ||
-            !RSA_verify_PKCS1_PSS_mgf1(rsa, tbs, rctx->md, rctx->mgf1md,
-                                       rctx->tbuf, rctx->saltlen)) {
-          return 0;
-        }
-        return 1;
+        return RSA_verify_pss_mgf1(rsa, tbs, tbslen, rctx->md, rctx->mgf1md,
+                                   rctx->saltlen, sig, siglen);
 
       default:
         return 0;
     }
   }
 
+  size_t rslen;
+  const size_t key_len = EVP_PKEY_size(ctx->pkey);
   if (!setup_tbuf(rctx, ctx) ||
       !RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, siglen,
                       rctx->pad_mode) ||

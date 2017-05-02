@@ -60,6 +60,7 @@
 #include <string.h>
 
 #include <openssl/bn.h>
+#include <openssl/digest.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
@@ -473,6 +474,29 @@ err:
   return ret;
 }
 
+int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                      const uint8_t *in, size_t in_len, const EVP_MD *md,
+                      const EVP_MD *mgf1_md, int salt_len) {
+  if (in_len != EVP_MD_size(md)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
+    return 0;
+  }
+
+  size_t padded_len = RSA_size(rsa);
+  uint8_t *padded = OPENSSL_malloc(padded_len);
+  if (padded == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  int ret =
+      RSA_padding_add_PKCS1_PSS_mgf1(rsa, padded, in, md, mgf1_md, salt_len) &&
+      RSA_sign_raw(rsa, out_len, out, max_out, padded, padded_len,
+                   RSA_NO_PADDING);
+  OPENSSL_free(padded);
+  return ret;
+}
+
 int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
                const uint8_t *sig, size_t sig_len, RSA *rsa) {
   if (rsa->n == NULL || rsa->e == NULL) {
@@ -522,6 +546,38 @@ out:
   if (signed_msg_is_alloced) {
     OPENSSL_free(signed_msg);
   }
+  return ret;
+}
+
+int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *msg, size_t msg_len,
+                        const EVP_MD *md, const EVP_MD *mgf1_md, int salt_len,
+                        const uint8_t *sig, size_t sig_len) {
+  if (msg_len != EVP_MD_size(md)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
+    return 0;
+  }
+
+  size_t em_len = RSA_size(rsa);
+  uint8_t *em = OPENSSL_malloc(em_len);
+  if (em == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  int ret = 0;
+  if (!RSA_verify_raw(rsa, &em_len, em, em_len, sig, sig_len, RSA_NO_PADDING)) {
+    goto err;
+  }
+
+  if (em_len != RSA_size(rsa)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  ret = RSA_verify_PKCS1_PSS_mgf1(rsa, msg, md, mgf1_md, em, salt_len);
+
+err:
+  OPENSSL_free(em);
   return ret;
 }
 

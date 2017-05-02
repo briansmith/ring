@@ -206,6 +206,24 @@ OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
                             unsigned int in_len, uint8_t *out,
                             unsigned int *out_len, RSA *rsa);
 
+/* RSA_sign_pss_mgf1 signs |in_len| bytes from |in| with the public key from
+ * |rsa| using RSASSA-PSS with MGF1 as the mask generation function. It writes,
+ * at most, |max_out| bytes of signature data to |out|. The |max_out| argument
+ * must be, at least, |RSA_size| in order to ensure success. It returns 1 on
+ * success or zero on error.
+ *
+ * The |md| and |mgf1_md| arguments identify the hash used to calculate |msg|
+ * and the MGF1 hash, respectively. If |mgf1_md| is NULL, |md| is
+ * used.
+ *
+ * |salt_len| specifies the expected salt length in bytes. If |salt_len| is -1,
+ * then the salt length is the same as the hash length. If -2, then the salt
+ * length is maximal given the size of |rsa|. If unsure, use -1. */
+OPENSSL_EXPORT int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out,
+                                     size_t max_out, const uint8_t *in,
+                                     size_t in_len, const EVP_MD *md,
+                                     const EVP_MD *mgf1_md, int salt_len);
+
 /* RSA_sign_raw signs |in_len| bytes from |in| with the public key from |rsa|
  * and writes, at most, |max_out| bytes of signature data to |out|. The
  * |max_out| argument must be, at least, |RSA_size| in order to ensure success.
@@ -222,7 +240,7 @@ OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
 /* RSA_verify verifies that |sig_len| bytes from |sig| are a valid,
  * RSASSA-PKCS1-v1_5 signature of |msg_len| bytes at |msg| by |rsa|.
  *
- * The |hash_nid| argument identifies the hash function used to calculate |in|
+ * The |hash_nid| argument identifies the hash function used to calculate |msg|
  * and is embedded in the resulting signature in order to prevent hash
  * confusion attacks. For example, it might be |NID_sha256|.
  *
@@ -232,6 +250,23 @@ OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
  * returned -1 on error. */
 OPENSSL_EXPORT int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
                               const uint8_t *sig, size_t sig_len, RSA *rsa);
+
+/* RSA_verify_pss_mgf1 verifies that |sig_len| bytes from |sig| are a valid,
+ * RSASSA-PSS signature of |msg_len| bytes at |msg| by |rsa|. It returns one if
+ * the signature is valid and zero otherwise. MGF1 is used as the mask
+ * generation function.
+ *
+ * The |md| and |mgf1_md| arguments identify the hash used to calculate |msg|
+ * and the MGF1 hash, respectively. If |mgf1_md| is NULL, |md| is
+ * used. |salt_len| specifies the expected salt length in bytes.
+ *
+ * If |salt_len| is -1, then the salt length is the same as the hash length. If
+ * -2, then the salt length is recovered and all values accepted. If unsure, use
+ * -1. */
+OPENSSL_EXPORT int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *msg,
+                                       size_t msg_len, const EVP_MD *md,
+                                       const EVP_MD *mgf1_md, int salt_len,
+                                       const uint8_t *sig, size_t sig_len);
 
 /* RSA_verify_raw verifies |in_len| bytes of signature from |in| using the
  * public key from |rsa| and writes, at most, |max_out| bytes of plaintext to
@@ -318,7 +353,10 @@ OPENSSL_EXPORT int RSA_recover_crt_params(RSA *rsa);
  *
  * If unsure, use -1.
  *
- * It returns one on success or zero on error. */
+ * It returns one on success or zero on error.
+ *
+ * This function implements only the low-level padding logic. Use
+ * |RSA_verify_pss_mgf1| instead. */
 OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
                                              const EVP_MD *Hash,
                                              const EVP_MD *mgf1Hash,
@@ -332,7 +370,10 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
  * the salt length is the same as the hash length. If -2, then the salt length
  * is maximal given the space in |EM|.
  *
- * It returns one on success or zero on error. */
+ * It returns one on success or zero on error.
+ *
+ * This function implements only the low-level padding logic. Use
+ * |RSA_sign_pss_mgf1| instead. */
 OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM,
                                                   const uint8_t *mHash,
                                                   const EVP_MD *Hash,
@@ -497,13 +538,19 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
 /* RSA_padding_add_PKCS1_PSS acts like |RSA_padding_add_PKCS1_PSS_mgf1| but the
- * |mgf1Hash| parameter of the latter is implicitly set to |Hash|. */
+ * |mgf1Hash| parameter of the latter is implicitly set to |Hash|.
+ *
+ * This function implements only the low-level padding logic. Use
+ * |RSA_sign_pss_mgf1| instead. */
 OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS(RSA *rsa, uint8_t *EM,
                                              const uint8_t *mHash,
                                              const EVP_MD *Hash, int sLen);
 
 /* RSA_verify_PKCS1_PSS acts like |RSA_verify_PKCS1_PSS_mgf1| but the
- * |mgf1Hash| parameter of the latter is implicitly set to |Hash|. */
+ * |mgf1Hash| parameter of the latter is implicitly set to |Hash|.
+ *
+ * This function implements only the low-level padding logic. Use
+ * |RSA_verify_pss_mgf1| instead. */
 OPENSSL_EXPORT int RSA_verify_PKCS1_PSS(RSA *rsa, const uint8_t *mHash,
                                         const EVP_MD *Hash, const uint8_t *EM,
                                         int sLen);
