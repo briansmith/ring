@@ -298,12 +298,15 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
     return 0;
   }
 
+  /* Assemble the encoded hash, using a placeholder hash value. */
+  static const uint8_t kDummyHash[EVP_MAX_MD_SIZE] = {0};
+  const size_t hash_len = EVP_MD_size(rctx->md);
   uint8_t *asn1_prefix;
   size_t asn1_prefix_len;
   int asn1_prefix_allocated;
   if (!RSA_add_pkcs1_prefix(&asn1_prefix, &asn1_prefix_len,
-                            &asn1_prefix_allocated, EVP_MD_type(rctx->md), NULL,
-                            0)) {
+                            &asn1_prefix_allocated, EVP_MD_type(rctx->md),
+                            kDummyHash, hash_len)) {
     return 0;
   }
 
@@ -311,8 +314,9 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
   int ok = 1;
   if (!RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, sig_len,
                       RSA_PKCS1_PADDING) ||
-      rslen < asn1_prefix_len ||
-      CRYPTO_memcmp(rctx->tbuf, asn1_prefix, asn1_prefix_len) != 0) {
+      rslen != asn1_prefix_len ||
+      /* Compare all but the hash suffix. */
+      CRYPTO_memcmp(rctx->tbuf, asn1_prefix, asn1_prefix_len - hash_len) != 0) {
     ok = 0;
   }
 
@@ -324,15 +328,10 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  const size_t result_len = rslen - asn1_prefix_len;
-  if (result_len != EVP_MD_size(rctx->md)) {
-    return 0;
-  }
-
   if (out != NULL) {
-    OPENSSL_memcpy(out, rctx->tbuf + asn1_prefix_len, result_len);
+    OPENSSL_memcpy(out, rctx->tbuf + rslen - hash_len, hash_len);
   }
-  *out_len = result_len;
+  *out_len = hash_len;
 
   return 1;
 }

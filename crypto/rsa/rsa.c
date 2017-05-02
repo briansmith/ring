@@ -63,8 +63,10 @@
 #include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
+#include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
+#include <openssl/sha.h>
 #include <openssl/thread.h>
 
 #include "internal.h"
@@ -323,6 +325,8 @@ static const unsigned SSL_SIG_LENGTH = 36;
 struct pkcs1_sig_prefix {
   /* nid identifies the hash function. */
   int nid;
+  /* hash_len is the expected length of the hash function. */
+  uint8_t hash_len;
   /* len is the number of bytes of |bytes| which are valid. */
   uint8_t len;
   /* bytes contains the DER bytes. */
@@ -334,42 +338,48 @@ struct pkcs1_sig_prefix {
 static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     {
      NID_md5,
+     MD5_DIGEST_LENGTH,
      18,
      {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
       0x02, 0x05, 0x05, 0x00, 0x04, 0x10},
     },
     {
      NID_sha1,
+     SHA_DIGEST_LENGTH,
      15,
      {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05,
       0x00, 0x04, 0x14},
     },
     {
      NID_sha224,
+     SHA224_DIGEST_LENGTH,
      19,
      {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
       0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1c},
     },
     {
      NID_sha256,
+     SHA256_DIGEST_LENGTH,
      19,
      {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
       0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20},
     },
     {
      NID_sha384,
+     SHA384_DIGEST_LENGTH,
      19,
      {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
       0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30},
     },
     {
      NID_sha512,
+     SHA512_DIGEST_LENGTH,
      19,
      {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
       0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
     },
     {
-     NID_undef, 0, {0},
+     NID_undef, 0, 0, {0},
     },
 };
 
@@ -395,6 +405,11 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
     const struct pkcs1_sig_prefix *sig_prefix = &kPKCS1SigPrefixes[i];
     if (sig_prefix->nid != hash_nid) {
       continue;
+    }
+
+    if (msg_len != sig_prefix->hash_len) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
+      return 0;
     }
 
     const uint8_t* prefix = sig_prefix->bytes;

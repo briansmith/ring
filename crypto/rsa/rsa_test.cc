@@ -528,7 +528,7 @@ TEST(RSATest, OnlyDGiven) {
   // Keys with only n, e, and d are functional.
   EXPECT_TRUE(RSA_check_key(key.get()));
 
-  const uint8_t kDummyHash[16] = {0};
+  const uint8_t kDummyHash[32] = {0};
   uint8_t buf[64];
   unsigned buf_len = sizeof(buf);
   ASSERT_LE(RSA_size(key.get()), sizeof(buf));
@@ -585,7 +585,7 @@ TEST(RSATest, RecoverCRTParams) {
   unsigned buf_len = sizeof(buf);
   ASSERT_LE(RSA_size(key2.get()), buf_len);
 
-  const uint8_t kDummyHash[16] = {0};
+  const uint8_t kDummyHash[32] = {0};
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
                        &buf_len, key2.get()));
   EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
