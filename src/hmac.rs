@@ -271,6 +271,7 @@ impl SigningKey {
 /// Use `sign` for single-step HMAC signing.
 ///
 /// C analog: `HMAC_CTX`.
+#[derive(Clone)]
 pub struct SigningContext {
     inner: digest::Context,
     outer: digest::Context,
